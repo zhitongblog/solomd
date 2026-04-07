@@ -1,0 +1,54 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "SoloMD",
+  "version": "0.1.0",
+  "identifier": "app.solomd",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "SoloMD",
+        "width": 1000,
+        "height": 700,
+        "minWidth": 480,
+        "minHeight": 360
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "category": "Productivity",
+    "shortDescription": "Lightweight Markdown + plain text editor",
+    "longDescription": "SoloMD is a lightweight, distraction-free editor for Markdown and plain text files. One file. One window. Just write.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "fileAssociations": [
+      {
+        "ext": ["md", "markdown", "mdown", "mkd"],
+        "name": "Markdown Document",
+        "description": "Markdown text document",
+        "role": "Editor"
+      },
+      {
+        "ext": ["txt"],
+        "name": "Plain Text",
+        "description": "Plain text document",
+        "role": "Editor"
+      }
+    ]
+  }
+}

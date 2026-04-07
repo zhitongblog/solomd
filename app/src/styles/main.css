@@ -1,0 +1,192 @@
+/* SoloMD brand styles + theme variables */
+
+:root {
+  /* brand */
+  --brand-bg: #000000;
+  --brand-fg: #ffffff;
+  --brand-accent: #ff9f40;
+
+  /* light theme (default) */
+  --bg: #fafaf7;
+  --bg-elev: #ffffff;
+  --bg-hover: #f0eee8;
+  --bg-active: #ebe9e2;
+  --border: #e5e3dc;
+  --text: #1a1a1a;
+  --text-muted: #8a8a8a;
+  --text-faint: #b8b6ad;
+  --accent: #ff9f40;
+  --accent-fg: #1a1a1a;
+  --danger: #d64545;
+
+  /* Markdown element colors (light) */
+  --md-h1: #1a1a1a;
+  --md-h2: #232323;
+  --md-h3: #2f2f2f;
+  --md-h4: #3a3a3a;
+  --md-h5: #4a4a4a;
+  --md-h6: #6a6a6a;
+  --md-strong: #1a1a1a;
+  --md-em: #444444;
+  --md-link: #ff9f40;
+  --md-url: #c97a20;
+  --md-code: #c0392b;
+  --md-code-bg: #f3efe7;
+  --md-quote: #6a6a6a;
+  --md-list: #c97a20;
+  --md-hr: #c0bdb3;
+
+  /* Code block syntax (light) — gentle, not garish */
+  --syn-keyword: #a626a4;
+  --syn-string: #50a14f;
+  --syn-number: #986801;
+  --syn-comment: #a0a1a7;
+  --syn-function: #4078f2;
+  --syn-variable: #383a42;
+  --syn-type: #c18401;
+  --syn-property: #e45649;
+  --syn-operator: #0184bc;
+
+  --font-ui: -apple-system, "Segoe UI", "Inter", Roboto, "Helvetica Neue",
+    "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", "Cascadia Code", "Menlo",
+    "Consolas", monospace;
+
+  --titlebar-h: 36px;
+  --tabbar-h: 34px;
+  --statusbar-h: 24px;
+}
+
+:root[data-theme="dark"] {
+  --bg: #1a1a1a;
+  --bg-elev: #232323;
+  --bg-hover: #2a2a2a;
+  --bg-active: #333333;
+  --border: #333333;
+  --text: #f0f0ed;
+  --text-muted: #8a8a8a;
+  --text-faint: #555;
+  --accent: #ff9f40;
+  --accent-fg: #1a1a1a;
+
+  /* Markdown element colors (dark) */
+  --md-h1: #ffffff;
+  --md-h2: #f0f0ed;
+  --md-h3: #e2e2dc;
+  --md-h4: #cccccc;
+  --md-h5: #a8a8a8;
+  --md-h6: #888888;
+  --md-strong: #ffffff;
+  --md-em: #d8d8d8;
+  --md-link: #ff9f40;
+  --md-url: #ffb874;
+  --md-code: #ff9f9f;
+  --md-code-bg: #2a2a2a;
+  --md-quote: #888888;
+  --md-list: #ff9f40;
+  --md-hr: #444444;
+
+  /* Code block syntax (dark) */
+  --syn-keyword: #c678dd;
+  --syn-string: #98c379;
+  --syn-number: #d19a66;
+  --syn-comment: #5c6370;
+  --syn-function: #61afef;
+  --syn-variable: #e06c75;
+  --syn-type: #e5c07b;
+  --syn-property: #e06c75;
+  --syn-operator: #56b6c2;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.12s;
+}
+button:hover {
+  background: var(--bg-hover);
+}
+button:active {
+  background: var(--bg-active);
+}
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 5px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-faint);
+}
+
+/* Print: only show the preview pane content */
+@media print {
+  .toolbar,
+  .tabbar,
+  .statusbar,
+  .ftree,
+  .outline,
+  .pane--editor {
+    display: none !important;
+  }
+  .preview-host,
+  .pane--preview {
+    border: none !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+  body,
+  html,
+  #app,
+  .app,
+  .workspace,
+  .content {
+    height: auto !important;
+    overflow: visible !important;
+    background: white !important;
+    color: black !important;
+  }
+  .preview-content {
+    max-width: none !important;
+    padding: 0 !important;
+    color: black !important;
+  }
+}
