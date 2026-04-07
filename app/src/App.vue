@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { onMounted, ref, watchEffect, computed } from 'vue';
+import { onMounted, onBeforeUnmount, ref, watch, watchEffect, computed } from 'vue';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
+import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import Toolbar from './components/Toolbar.vue';
 import TabBar from './components/TabBar.vue';
 import Editor from './components/Editor.vue';
@@ -11,11 +12,13 @@ import Outline from './components/Outline.vue';
 import FileTree from './components/FileTree.vue';
 import SettingsPanel from './components/SettingsPanel.vue';
 import MarkdownHelp from './components/MarkdownHelp.vue';
+import GlobalSearch from './components/GlobalSearch.vue';
 import Toast from './components/Toast.vue';
 import { useTabsStore } from './stores/tabs';
 import { useSettingsStore } from './stores/settings';
 import { useFiles } from './composables/useFiles';
 import { useShortcuts } from './composables/useShortcuts';
+import { loadCustomTheme } from './lib/custom-theme';
 
 const tabs = useTabsStore();
 const settings = useSettingsStore();
@@ -26,18 +29,21 @@ const cursorCol = ref(1);
 const paletteOpen = ref(false);
 const settingsOpen = ref(false);
 const helpOpen = ref(false);
+const searchOpen = ref(false);
 const editorRef = ref<InstanceType<typeof Editor> | null>(null);
 
 useShortcuts({
   openPalette: () => (paletteOpen.value = true),
   openSettings: () => (settingsOpen.value = true),
   openHelp: () => (helpOpen.value = true),
+  openGlobalSearch: () => (searchOpen.value = true),
 });
 
 // Esc closes the topmost modal
 function onEsc(e: KeyboardEvent) {
   if (e.key !== 'Escape') return;
-  if (helpOpen.value) helpOpen.value = false;
+  if (searchOpen.value) searchOpen.value = false;
+  else if (helpOpen.value) helpOpen.value = false;
   else if (paletteOpen.value) paletteOpen.value = false;
   else if (settingsOpen.value) settingsOpen.value = false;
 }
@@ -55,14 +61,41 @@ watchEffect(() => {
   document.documentElement.setAttribute('data-theme', settings.theme);
 });
 
+// Apply custom CSS theme whenever the path changes (and on first load).
+watch(
+  () => settings.customCssPath,
+  (path) => {
+    loadCustomTheme(path);
+  },
+  { immediate: true }
+);
+
 function onOpenHelpEvent() {
   helpOpen.value = true;
 }
+function onOpenSearchEvent() {
+  searchOpen.value = true;
+}
+
+let unlistenOpened: UnlistenFn | null = null;
 
 onMounted(async () => {
   if (tabs.tabs.length === 0) tabs.newTab();
   window.addEventListener('keydown', onEsc);
   window.addEventListener('solomd:open-help', onOpenHelpEvent as EventListener);
+  window.addEventListener('solomd:open-global-search', onOpenSearchEvent as EventListener);
+
+  // OS file association: when a file is passed via CLI / double-click,
+  // runner.rs emits "solomd://opened-file" with the path string.
+  try {
+    unlistenOpened = await listen<string>('solomd://opened-file', async (e) => {
+      if (e.payload) await files.openPath(e.payload);
+    });
+  } catch (err) {
+    console.warn('opened-file listener not available', err);
+  }
+
+  // Drag-drop file open via Tauri's webview events.
   try {
     const webview = getCurrentWebview();
     await webview.onDragDropEvent(async (event) => {
@@ -74,6 +107,16 @@ onMounted(async () => {
     });
   } catch (e) {
     console.warn('drag-drop not available', e);
+  }
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onEsc);
+  window.removeEventListener('solomd:open-help', onOpenHelpEvent as EventListener);
+  window.removeEventListener('solomd:open-global-search', onOpenSearchEvent as EventListener);
+  if (unlistenOpened) {
+    unlistenOpened();
+    unlistenOpened = null;
   }
 });
 
@@ -94,6 +137,7 @@ const showOutlinePane = computed(
       @open-palette="paletteOpen = true"
       @open-settings="settingsOpen = true"
       @open-help="helpOpen = true"
+      @open-search="searchOpen = true"
     />
     <TabBar />
     <div class="workspace">
@@ -101,7 +145,14 @@ const showOutlinePane = computed(
       <Outline v-if="showOutlinePane" @goto="onOutlineGoto" />
       <div class="content">
         <div class="pane pane--editor" v-if="showEditor && tabs.activeTab">
-          <Editor ref="editorRef" :tab="tabs.activeTab" @cursor="onCursor" />
+          <Editor
+            ref="editorRef"
+            :tab="tabs.activeTab"
+            :focus-mode="settings.focusMode"
+            :typewriter-mode="settings.typewriterMode"
+            :spell-check="settings.spellCheck"
+            @cursor="onCursor"
+          />
         </div>
         <div class="pane pane--preview" v-if="showPreview && tabs.activeTab">
           <Preview :source="tabs.activeTab.content" />
@@ -113,6 +164,7 @@ const showOutlinePane = computed(
     <CommandPalette :open="paletteOpen" @close="paletteOpen = false" />
     <SettingsPanel :open="settingsOpen" @close="settingsOpen = false" />
     <MarkdownHelp :open="helpOpen" @close="helpOpen = false" />
+    <GlobalSearch :open="searchOpen" @close="searchOpen = false" />
     <Toast />
   </div>
 </template>

@@ -1,19 +1,19 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useTabsStore } from '../stores/tabs';
+import { cjkWordCount } from '../lib/chinese';
 
 const props = defineProps<{ line: number; col: number }>();
 const tabs = useTabsStore();
 
-const wordCount = computed(() => {
+const stats = computed(() => {
   const c = tabs.activeTab?.content ?? '';
-  if (!c) return 0;
-  // Approximate: split on whitespace, but also count CJK chars as words.
-  const ascii = (c.match(/[A-Za-z0-9_]+/g) || []).length;
-  const cjk = (c.match(/[\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af]/g) || []).length;
-  return ascii + cjk;
+  return cjkWordCount(c);
 });
-const charCount = computed(() => tabs.activeTab?.content.length ?? 0);
+
+const wordCount = computed(() => stats.value.total);
+const cjkCount = computed(() => stats.value.cjk);
+const charCount = computed(() => stats.value.chars);
 const lineCount = computed(() => {
   const c = tabs.activeTab?.content ?? '';
   return c ? c.split('\n').length : 0;
@@ -29,6 +29,9 @@ const enc = computed(() => tabs.activeTab?.encoding ?? 'UTF-8');
     <span class="seg">{{ lineCount }} lines</span>
     <span class="sep">·</span>
     <span class="seg">{{ wordCount }} words</span>
+    <span v-if="cjkCount > 0" class="seg seg--cjk" :title="`${cjkCount} CJK characters`">
+      ({{ cjkCount }} 字)
+    </span>
     <span class="sep">·</span>
     <span class="seg">{{ charCount }} chars</span>
     <span class="spacer"></span>
@@ -54,4 +57,5 @@ const enc = computed(() => tabs.activeTab?.encoding ?? 'UTF-8');
 .spacer { flex: 1; }
 .sep { color: var(--text-faint); }
 .seg--lang { color: var(--accent); }
+.seg--cjk { color: var(--accent); margin-left: -4px; }
 </style>

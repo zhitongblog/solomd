@@ -21,73 +21,126 @@ const PDF_CSS = `
   .pdf-page {
     box-sizing: border-box;
     width: 760px;
-    padding: 40px 56px 56px;
-    color: #1a1a1a;
+    padding: 56px 64px 72px;
+    color: #1f1d1a;
     background: #ffffff;
-    font: 15px/1.7 -apple-system, "Segoe UI", "Inter", Roboto,
-      "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei",
-      "WenQuanYi Micro Hei", system-ui, sans-serif;
+    font: 15px/1.75 -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", Roboto,
+      "Helvetica Neue", Arial,
+      "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+      "Noto Sans CJK SC", "WenQuanYi Micro Hei",
+      system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
-  .pdf-page h1, .pdf-page h2, .pdf-page h3, .pdf-page h4 {
+  .pdf-page h1, .pdf-page h2, .pdf-page h3,
+  .pdf-page h4, .pdf-page h5, .pdf-page h6 {
     line-height: 1.25;
     font-weight: 700;
-    margin: 1.6em 0 0.5em;
+    color: #1f1d1a;
+    margin: 1.8em 0 0.55em;
+    page-break-after: avoid;
+    break-after: avoid-page;
   }
+  .pdf-page h1:first-child,
+  .pdf-page h2:first-child,
+  .pdf-page h3:first-child { margin-top: 0; }
   .pdf-page h1 {
     font-size: 2em;
-    border-bottom: 1px solid #e5e3dc;
-    padding-bottom: .3em;
+    border-bottom: 2px solid #ff9f40;
+    padding-bottom: .32em;
+    letter-spacing: -0.01em;
   }
   .pdf-page h2 {
     font-size: 1.5em;
-    border-bottom: 1px solid #e5e3dc;
+    border-bottom: 1px solid #e6e2d8;
     padding-bottom: .25em;
   }
   .pdf-page h3 { font-size: 1.2em; }
-  .pdf-page p { margin: .8em 0; }
-  .pdf-page a { color: #ff9f40; text-decoration: none; }
+  .pdf-page h4 { font-size: 1.05em; }
+  .pdf-page h5, .pdf-page h6 { font-size: 1em; color: #6a6560; }
+  .pdf-page p { margin: .85em 0; }
+  .pdf-page a {
+    color: #ff9f40;
+    text-decoration: none;
+    border-bottom: 1px solid #ffe7cc;
+  }
   .pdf-page code {
     font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
-    font-size: .9em;
+    font-size: .88em;
     background: #f3efe7;
-    padding: .15em .4em;
+    padding: .15em .45em;
     border-radius: 4px;
+    color: #8a4a00;
   }
   .pdf-page pre {
     background: #f3efe7;
-    padding: 14px 16px;
-    border-radius: 6px;
+    padding: 14px 18px;
+    border-radius: 8px;
     overflow-x: auto;
+    margin: 1.1em 0;
+    line-height: 1.55;
+    border: 1px solid #e6e2d8;
     page-break-inside: avoid;
+    break-inside: avoid;
   }
   .pdf-page pre code {
     background: transparent;
     padding: 0;
-    font-size: .85em;
+    font-size: .86em;
+    color: #1f1d1a;
   }
+  .pdf-page pre code .hljs-keyword,
+  .pdf-page pre code .hljs-built_in,
+  .pdf-page pre code .hljs-tag { color: #ff9f40; }
   .pdf-page blockquote {
-    border-left: 3px solid #ff9f40;
-    margin: 1em 0;
-    padding: .2em 1em;
-    color: #6a6a6a;
+    border-left: 4px solid #ff9f40;
+    margin: 1.3em 0;
+    padding: .5em 1.1em;
+    color: #6a6560;
+    font-style: italic;
+    background: #fff7ec;
+    border-radius: 0 4px 4px 0;
+    page-break-inside: avoid;
+    break-inside: avoid;
   }
-  .pdf-page ul, .pdf-page ol { padding-left: 1.6em; }
-  .pdf-page table { border-collapse: collapse; margin: 1em 0; }
+  .pdf-page blockquote p { margin: .35em 0; }
+  .pdf-page ul, .pdf-page ol { padding-left: 1.8em; margin: .9em 0; }
+  .pdf-page li { margin: .3em 0; }
+  .pdf-page table {
+    border-collapse: collapse;
+    margin: 1.3em 0;
+    width: 100%;
+    font-size: .95em;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
   .pdf-page th, .pdf-page td {
-    border: 1px solid #e5e3dc;
-    padding: 6px 12px;
+    border: 1px solid #e6e2d8;
+    padding: 7px 13px;
+    text-align: left;
   }
+  .pdf-page thead th {
+    background: #ffe7cc;
+    color: #1f1d1a;
+    font-weight: 700;
+    border-bottom: 2px solid #ff9f40;
+  }
+  .pdf-page tbody tr:nth-child(even) { background: #f7f4ec; }
   .pdf-page hr {
     border: none;
-    border-top: 1px solid #e5e3dc;
-    margin: 2em 0;
+    border-top: 1px solid #e6e2d8;
+    margin: 2.2em 0;
   }
-  .pdf-page img { max-width: 100%; }
+  .pdf-page img {
+    max-width: 100%;
+    border-radius: 6px;
+    margin: 1.1em 0;
+  }
   .pdf-page .mermaid-block {
     display: flex;
     justify-content: center;
     margin: 1.5em 0;
     page-break-inside: avoid;
+    break-inside: avoid;
   }
   .pdf-page .mermaid-block svg { max-width: 100%; height: auto; }
   .pdf-page .katex-display {
@@ -164,7 +217,10 @@ export async function markdownToPdfBlob(source: string, title: string): Promise<
         format: 'a4',
         orientation: 'portrait',
       },
-      pagebreak: { mode: ['css', 'legacy'], avoid: ['pre', '.mermaid-block', 'table'] },
+      pagebreak: {
+        mode: ['css', 'legacy'],
+        avoid: ['pre', '.mermaid-block', 'table', 'blockquote', 'h1', 'h2', 'h3'],
+      },
     };
     const worker = html2pdf().set(opts).from(page);
 

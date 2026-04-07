@@ -26,4 +26,5 @@ chardetng = "1.0.0"
 encoding_rs = "0.8.35"
 tauri-plugin-dialog = "2.7.0"
 tauri-plugin-clipboard-manager = "2.3.2"
+walkdir = "2.5.0"
 

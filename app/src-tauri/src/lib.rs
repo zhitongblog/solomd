@@ -1,4 +1,5 @@
-mod commands;
+pub mod commands;
+pub mod search;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -11,6 +12,7 @@ pub fn run() {
             commands::write_file,
             commands::write_binary_file,
             commands::list_dir,
+            search::search_in_dir,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

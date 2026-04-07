@@ -157,6 +157,80 @@ button:disabled {
   background: var(--text-faint);
 }
 
+/* Markdown extension styles (front-matter, task list, mark, footnotes) */
+.md-frontmatter {
+  margin: 0 0 1rem;
+  padding: 0.6rem 0.9rem;
+  border-left: 3px solid var(--accent);
+  background: var(--bg-hover);
+  font-size: 0.85rem;
+  border-radius: 0 4px 4px 0;
+}
+.md-frontmatter dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 0.9rem;
+  row-gap: 0.25rem;
+  margin: 0;
+}
+.md-frontmatter dt {
+  font-weight: 600;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+}
+.md-frontmatter dd {
+  margin: 0;
+  color: var(--text);
+}
+.md-frontmatter--raw {
+  white-space: pre-wrap;
+  font-family: var(--font-mono);
+}
+
+.contains-task-list {
+  list-style: none;
+  padding-left: 1.25rem;
+}
+.task-list-item {
+  position: relative;
+}
+.task-list-item-checkbox {
+  margin-right: 0.45rem;
+  transform: translateY(2px);
+  cursor: default;
+  accent-color: var(--accent);
+}
+
+mark {
+  background: rgba(255, 159, 64, 0.28);
+  color: inherit;
+  padding: 0 0.18em;
+  border-radius: 2px;
+}
+
+.footnote-ref a {
+  text-decoration: none;
+  font-size: 0.78em;
+  vertical-align: super;
+  color: var(--accent);
+}
+.footnotes {
+  margin-top: 2.2rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.88rem;
+  color: var(--text-muted);
+}
+.footnotes-list {
+  padding-left: 1.4rem;
+}
+.footnote-backref {
+  text-decoration: none;
+  margin-left: 0.3em;
+  color: var(--accent);
+}
+
 /* Print: only show the preview pane content */
 @media print {
   .toolbar,

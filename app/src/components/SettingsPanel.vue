@@ -1,10 +1,24 @@
 <script setup lang="ts">
 import { useSettingsStore } from '../stores/settings';
+import { useToastsStore } from '../stores/toasts';
+import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
 
 defineProps<{ open: boolean }>();
 const emit = defineEmits<{ (e: 'close'): void }>();
 
 const settings = useSettingsStore();
+const toasts = useToastsStore();
+
+async function pickCustomCss() {
+  const path = await openFileDialog({
+    multiple: false,
+    filters: [{ name: 'CSS', extensions: ['css'] }],
+  });
+  if (path && typeof path === 'string') {
+    settings.setCustomCssPath(path);
+    toasts.success('Custom CSS theme loaded');
+  }
+}
 
 const fontFamilies = [
   { label: 'JetBrains Mono', value: '"JetBrains Mono", "SF Mono", "Cascadia Code", Menlo, Consolas, monospace' },
@@ -82,6 +96,38 @@ const fontFamilies = [
             <input type="checkbox" :checked="settings.showFileTree" @change="settings.toggleFileTree()" />
             Show File Tree
           </label>
+        </section>
+
+        <section>
+          <label>
+            <input type="checkbox" :checked="settings.spellCheck" @change="settings.toggleSpellCheck()" />
+            Spell Check (browser)
+          </label>
+        </section>
+
+        <section>
+          <label>
+            <input type="checkbox" :checked="settings.focusMode" @change="settings.toggleFocusMode()" />
+            Focus Mode — dim non-active lines
+          </label>
+        </section>
+
+        <section>
+          <label>
+            <input type="checkbox" :checked="settings.typewriterMode" @change="settings.toggleTypewriterMode()" />
+            Typewriter Mode — keep cursor centered
+          </label>
+        </section>
+
+        <section>
+          <label>Custom CSS Theme</label>
+          <div class="row" style="gap: 8px; align-items: center;">
+            <button @click="pickCustomCss">Pick .css file…</button>
+            <button v-if="settings.customCssPath" @click="settings.setCustomCssPath('')">Clear</button>
+          </div>
+          <div v-if="settings.customCssPath" style="font-size: 11px; color: var(--text-faint); word-break: break-all; margin-top: 4px;">
+            {{ settings.customCssPath }}
+          </div>
         </section>
       </div>
     </div>

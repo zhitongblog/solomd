@@ -13,6 +13,12 @@ interface Settings {
   showOutline: boolean;
   showFileTree: boolean;
   livePreview: boolean;
+  // Editor super features
+  spellCheck: boolean;
+  focusMode: boolean;
+  typewriterMode: boolean;
+  // Custom CSS theme override (path to a .css file on disk)
+  customCssPath: string;
 }
 
 function defaults(): Settings {
@@ -30,6 +36,10 @@ function defaults(): Settings {
     showOutline: false,
     showFileTree: false,
     livePreview: true,
+    spellCheck: true,
+    focusMode: false,
+    typewriterMode: false,
+    customCssPath: '',
   };
 }
 
@@ -91,6 +101,22 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleLivePreview() {
       this.livePreview = !this.livePreview;
+      this.persist();
+    },
+    toggleSpellCheck() {
+      this.spellCheck = !this.spellCheck;
+      this.persist();
+    },
+    toggleFocusMode() {
+      this.focusMode = !this.focusMode;
+      this.persist();
+    },
+    toggleTypewriterMode() {
+      this.typewriterMode = !this.typewriterMode;
+      this.persist();
+    },
+    setCustomCssPath(p: string) {
+      this.customCssPath = p;
       this.persist();
     },
   },

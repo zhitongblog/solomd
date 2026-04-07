@@ -5,7 +5,7 @@ import { EditorView, keymap, lineNumbers, highlightActiveLine, drawSelection } f
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { searchKeymap, highlightSelectionMatches, search } from '@codemirror/search';
 import { syntaxHighlighting, defaultHighlightStyle, indentOnInput, bracketMatching } from '@codemirror/language';
-import { markdown } from '@codemirror/lang-markdown';
+import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { LanguageDescription } from '@codemirror/language';
 import { javascript } from '@codemirror/lang-javascript';
 import { python } from '@codemirror/lang-python';
@@ -24,6 +24,14 @@ import { useTabsStore } from '../stores/tabs';
 import { useSettingsStore } from '../stores/settings';
 import type { Tab } from '../types';
 import { livePreviewExtension, richHighlightOnly } from '../lib/cm-live-preview';
+import { imagePasteExtension } from '../lib/cm-image-paste';
+import { focusModeExtension, typewriterModeExtension } from '../lib/cm-focus-mode';
+import { taskListExtension } from '../lib/cm-task-list';
+import {
+  sessionRestoreExtension,
+  readSession,
+  clearSession,
+} from '../lib/cm-session-restore';
 
 const codeLanguages = [
   LanguageDescription.of({ name: 'javascript', alias: ['js', 'jsx'], support: javascript({ jsx: true }) }),
@@ -41,7 +49,19 @@ const codeLanguages = [
   LanguageDescription.of({ name: 'xml', support: xml() }),
 ];
 
-const props = defineProps<{ tab: Tab }>();
+const props = withDefaults(
+  defineProps<{
+    tab: Tab;
+    focusMode?: boolean;
+    typewriterMode?: boolean;
+    spellCheck?: boolean;
+  }>(),
+  {
+    focusMode: false,
+    typewriterMode: false,
+    spellCheck: true,
+  },
+);
 const emit = defineEmits<{ (e: 'cursor', line: number, col: number): void }>();
 
 const tabs = useTabsStore();
@@ -56,6 +76,19 @@ const wrapCompartment = new Compartment();
 const lineNumCompartment = new Compartment();
 const fontSizeCompartment = new Compartment();
 const richCompartment = new Compartment();
+const spellCheckCompartment = new Compartment();
+const focusCompartment = new Compartment();
+const typewriterCompartment = new Compartment();
+
+function markdownExt() {
+  // Use `markdownLanguage` as the base so GFM features (including task
+  // list parsing with TaskMarker nodes) are enabled.
+  return markdown({ base: markdownLanguage, codeLanguages, addKeymap: true });
+}
+
+function spellCheckExt(on: boolean) {
+  return EditorView.contentAttributes.of({ spellcheck: on ? 'true' : 'false' });
+}
 
 function richExtensionsFor(tab: Tab) {
   if (tab.language !== 'markdown') return [];
@@ -91,10 +124,16 @@ function buildExtensions() {
     keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
     lineNumCompartment.of(settings.showLineNumbers ? lineNumbers() : []),
     wrapCompartment.of(settings.wordWrap ? EditorView.lineWrapping : []),
-    langCompartment.of(props.tab.language === 'markdown' ? [markdown()] : []),
+    langCompartment.of(props.tab.language === 'markdown' ? [markdownExt()] : []),
     richCompartment.of(richExtensionsFor(props.tab)),
     themeCompartment.of(settings.theme === 'dark' ? oneDark : []),
     fontSizeCompartment.of(fontSizeTheme(settings.fontSize, settings.fontFamily)),
+    spellCheckCompartment.of(spellCheckExt(props.spellCheck)),
+    focusCompartment.of(props.focusMode ? focusModeExtension() : []),
+    typewriterCompartment.of(props.typewriterMode ? typewriterModeExtension() : []),
+    imagePasteExtension({ getFilePath: () => props.tab.filePath }),
+    taskListExtension(),
+    sessionRestoreExtension(props.tab.id),
     EditorView.updateListener.of((u) => {
       if (u.docChanged) {
         const text = u.state.doc.toString();
@@ -109,12 +148,27 @@ function buildExtensions() {
   ];
 }
 
+function maybeRestoreSession() {
+  if (!view) return;
+  const saved = readSession(props.tab.id);
+  if (
+    saved &&
+    saved !== '' &&
+    props.tab.content === '' &&
+    view.state.doc.length === 0 &&
+    saved !== view.state.doc.toString()
+  ) {
+    view.dispatch({ changes: { from: 0, to: 0, insert: saved } });
+  }
+}
+
 onMounted(() => {
   if (!host.value) return;
   view = new EditorView({
     state: EditorState.create({ doc: props.tab.content, extensions: buildExtensions() }),
     parent: host.value,
   });
+  maybeRestoreSession();
 });
 
 onBeforeUnmount(() => {
@@ -122,7 +176,8 @@ onBeforeUnmount(() => {
   view = null;
 });
 
-// Switching tabs: replace doc.
+// Switching tabs: replace doc (and rebuild extensions so the
+// session-restore plugin is recreated with the new tab id).
 watch(
   () => props.tab.id,
   () => {
@@ -130,7 +185,46 @@ watch(
     view.setState(
       EditorState.create({ doc: props.tab.content, extensions: buildExtensions() })
     );
+    maybeRestoreSession();
   }
+);
+
+// Clean-save watcher: when the buffer matches savedContent, drop any
+// stale session snapshot for this tab.
+watch(
+  () => [props.tab.content, props.tab.savedContent] as const,
+  ([content, saved]) => {
+    if (content === saved) clearSession(props.tab.id);
+  },
+);
+
+watch(
+  () => props.spellCheck,
+  (v) => {
+    view?.dispatch({
+      effects: spellCheckCompartment.reconfigure(spellCheckExt(v)),
+    });
+  },
+);
+
+watch(
+  () => props.focusMode,
+  (v) => {
+    view?.dispatch({
+      effects: focusCompartment.reconfigure(v ? focusModeExtension() : []),
+    });
+  },
+);
+
+watch(
+  () => props.typewriterMode,
+  (v) => {
+    view?.dispatch({
+      effects: typewriterCompartment.reconfigure(
+        v ? typewriterModeExtension() : [],
+      ),
+    });
+  },
 );
 
 // External content updates (e.g. after Save replacing savedContent only — content stays).
@@ -179,7 +273,7 @@ watch(
   (l) => {
     view?.dispatch({
       effects: [
-        langCompartment.reconfigure(l === 'markdown' ? [markdown({ codeLanguages })] : []),
+        langCompartment.reconfigure(l === 'markdown' ? [markdownExt()] : []),
         richCompartment.reconfigure(richExtensionsFor(props.tab)),
       ],
     });

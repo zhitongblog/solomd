@@ -2,7 +2,15 @@ import { useFiles } from './useFiles';
 import { useSettingsStore } from '../stores/settings';
 import { useTabsStore } from '../stores/tabs';
 import { useExport } from './useExport';
+import { useToastsStore } from '../stores/toasts';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
+import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
+import { writeText } from '@tauri-apps/plugin-clipboard-manager';
+import {
+  simplifiedToTraditional,
+  traditionalToSimplified,
+  pinyin,
+} from '../lib/chinese';
 
 export interface Command {
   id: string;
@@ -17,6 +25,19 @@ export function useCommands(): Command[] {
   const settings = useSettingsStore();
   const tabs = useTabsStore();
   const exporter = useExport();
+  const toasts = useToastsStore();
+
+  /** Replace the active editor's content (used for the Chinese conversion commands). */
+  function transformActive(fn: (s: string) => string, successMsg: string) {
+    const t = tabs.activeTab;
+    if (!t) {
+      toasts.warning('No active document');
+      return;
+    }
+    const next = fn(t.content);
+    tabs.setContent(t.id, next);
+    toasts.success(successMsg);
+  }
 
   return [
     { id: 'file.new', title: 'New Markdown File', shortcut: 'Ctrl+N', run: () => files.newFile() },
@@ -42,6 +63,66 @@ export function useCommands(): Command[] {
     { id: 'view.toggleLineNumbers', title: 'View: Toggle Line Numbers', run: () => settings.toggleLineNumbers() },
     { id: 'view.toggleTheme', title: 'View: Toggle Theme', run: () => settings.toggleTheme() },
     { id: 'view.toggleLivePreview', title: 'View: Toggle Live Preview / Raw Source (Markdown)', run: () => settings.toggleLivePreview() },
+    { id: 'view.toggleSpellCheck', title: 'View: Toggle Spell Check', run: () => settings.toggleSpellCheck() },
+    { id: 'view.toggleFocusMode', title: 'View: Toggle Focus Mode', run: () => settings.toggleFocusMode() },
+    { id: 'view.toggleTypewriter', title: 'View: Toggle Typewriter Mode', run: () => settings.toggleTypewriterMode() },
+
+    {
+      id: 'search.global',
+      title: 'Search in Folder…',
+      shortcut: 'Ctrl+Shift+F',
+      hint: 'Search across all .md / .txt files in the open folder',
+      run: () => window.dispatchEvent(new CustomEvent('solomd:open-global-search')),
+    },
+
+    {
+      id: 'theme.customCss',
+      title: 'Theme: Set Custom CSS File…',
+      hint: 'Pick a .css file to override SoloMD styles',
+      run: async () => {
+        const path = await openFileDialog({
+          multiple: false,
+          filters: [{ name: 'CSS', extensions: ['css'] }],
+        });
+        if (path && typeof path === 'string') {
+          settings.setCustomCssPath(path);
+          toasts.success('Custom CSS theme loaded');
+        }
+      },
+    },
+    {
+      id: 'theme.clearCustomCss',
+      title: 'Theme: Clear Custom CSS',
+      run: () => {
+        settings.setCustomCssPath('');
+        toasts.info('Custom CSS theme cleared');
+      },
+    },
+
+    {
+      id: 'cn.s2t',
+      title: 'Chinese: Simplified → Traditional',
+      hint: 'Convert document content',
+      run: () => transformActive(simplifiedToTraditional, 'Converted to Traditional'),
+    },
+    {
+      id: 'cn.t2s',
+      title: 'Chinese: Traditional → Simplified',
+      run: () => transformActive(traditionalToSimplified, 'Converted to Simplified'),
+    },
+    {
+      id: 'cn.copyPinyin',
+      title: 'Chinese: Copy Active Document as Pinyin',
+      run: async () => {
+        const t = tabs.activeTab;
+        if (!t) {
+          toasts.warning('No active document');
+          return;
+        }
+        await writeText(pinyin(t.content));
+        toasts.success('Pinyin copied to clipboard');
+      },
+    },
 
     { id: 'export.html', title: 'Export to HTML…', run: () => exporter.exportHtml() },
     { id: 'export.docx', title: 'Export to Word (DOCX)…', run: () => exporter.exportDocx() },

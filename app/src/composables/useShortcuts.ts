@@ -8,6 +8,7 @@ interface Hooks {
   openPalette?: () => void;
   openSettings?: () => void;
   openHelp?: () => void;
+  openGlobalSearch?: () => void;
 }
 
 export function useShortcuts(hooks: Hooks = {}) {
@@ -80,6 +81,9 @@ export function useShortcuts(hooks: Hooks = {}) {
     } else if (k === 'k' && e.shiftKey) {
       e.preventDefault();
       hooks.openPalette?.();
+    } else if (k === 'f' && e.shiftKey) {
+      e.preventDefault();
+      hooks.openGlobalSearch?.();
     } else if (k === 'b') {
       e.preventDefault();
       settings.toggleFileTree();
