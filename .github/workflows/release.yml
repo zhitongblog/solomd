@@ -96,10 +96,11 @@ jobs:
 
             See assets below for downloads.
 
-            ### Install
-            - **macOS**: Download `.dmg`, drag SoloMD to Applications
-            - **Windows**: Download `.msi` or `.exe`, run installer
-            - **Linux**: Download `.AppImage` (portable) or `.deb` / `.rpm`
+            ### Install / 安装
+
+            - **macOS**: download `.dmg`, drag SoloMD to `/Applications`
+            - **Windows**: download `.msi`. On first launch you may see "Windows protected your PC" → click **More info** → **Run anyway** (one-time, until SmartScreen reputation builds). 首次运行点 "更多信息" → "仍要运行" 即可
+            - **Linux**: download `.AppImage` (`chmod +x` and run) or `.deb` / `.rpm`
 
             🤖 Auto-built by GitHub Actions
           releaseDraft: true
