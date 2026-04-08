@@ -64,6 +64,28 @@ Download the latest release for your platform from the [Releases page](https://g
 
 从 [Releases 页面](https://github.com/zhitongblog/solomd/releases) 下载对应平台的安装包。
 
+#### macOS
+Drag `SoloMD.app` to `/Applications`. The first launch may take a moment as macOS verifies the notarized signature.
+
+将 `SoloMD.app` 拖入 `/Applications`。首次启动会稍慢一点（macOS 在校验签名）。
+
+#### Windows
+Until SoloMD's Microsoft SmartScreen reputation builds, you may see a blue **"Windows protected your PC"** dialog on first launch. To run anyway:
+
+由于 SoloMD 还没有积累 Microsoft SmartScreen 信誉，**首次运行可能会看到蓝色的 "Windows 已保护你的电脑" 提示**。绕过方法：
+
+1. Click **More info** / 点 **"更多信息"**
+2. Click **Run anyway** / 点 **"仍要运行"**
+
+This is a one-time prompt; subsequent launches won't show it. We're a small open-source project — if you'd rather not see this warning at all, please ⭐ the repo (more downloads → faster reputation building) or [sponsor a code-signing certificate](#-support--赞助).
+
+只会出现一次。SoloMD 是个小型开源项目，等下载量上来 SmartScreen 就不再警告了。
+
+#### Linux
+- **`.AppImage`**: `chmod +x SoloMD-*.AppImage && ./SoloMD-*.AppImage`
+- **`.deb`**: `sudo dpkg -i solomd_*.deb`
+- **`.rpm`**: `sudo rpm -i solomd-*.rpm`
+
 ### Development / 本地开发
 
 ```bash
