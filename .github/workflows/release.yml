@@ -20,10 +20,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # macOS universal binary (Apple Silicon + Intel)
-          - platform: macos-14
-            args: '--target universal-apple-darwin'
-            rust_targets: 'aarch64-apple-darwin,x86_64-apple-darwin'
           # Windows x64
           - platform: windows-latest
             args: ''
@@ -32,6 +28,11 @@ jobs:
           - platform: ubuntu-22.04
             args: ''
             rust_targets: ''
+          # NOTE: macOS removed from CI matrix.
+          # Build locally with `./scripts/build-mac.sh` (full sign + notarize)
+          # then upload the resulting .dmg manually to the GitHub release.
+          # Reason: notarytool can hang indefinitely on GitHub-hosted runners
+          # without producing a clear error, burning hours of CI time.
 
     runs-on: ${{ matrix.platform }}
 
@@ -77,16 +78,9 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # ---- macOS code signing + notarization ----
-          # Set these in: Settings → Secrets and variables → Actions
-          # All optional — if not set, the macOS build will produce an
-          # unsigned .dmg that users can still run after right-click "Open".
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # macOS signing/notarization secrets are no longer wired here —
+          # the macOS build is done locally on the maintainer's machine via
+          # scripts/build-mac.sh. See scripts/README.md.
         with:
           projectPath: app
           tagName: ${{ github.ref_name }}
