@@ -1,0 +1,107 @@
+name: Release SoloMD
+
+# Trigger: push a tag that starts with `v`, e.g.
+#   git tag v0.1.0 && git push --tags
+# This kicks off a matrix build across macOS / Windows / Linux and uploads
+# the bundles to a draft GitHub Release named after the tag. The release
+# stays a draft so you can review the artifacts before flipping the
+# "Publish" switch.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch: # also allows manual triggering from the Actions tab
+
+jobs:
+  publish:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # macOS universal binary (Apple Silicon + Intel)
+          - platform: macos-14
+            args: '--target universal-apple-darwin'
+            rust_targets: 'aarch64-apple-darwin,x86_64-apple-darwin'
+          # Windows x64
+          - platform: windows-latest
+            args: ''
+            rust_targets: ''
+          # Linux x64 (.deb / .AppImage / .rpm)
+          - platform: ubuntu-22.04
+            args: ''
+            rust_targets: ''
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_targets }}
+
+      - name: Cache cargo
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: app/src-tauri -> target
+
+      - name: Install Linux build dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libssl-dev
+
+      - name: Install frontend dependencies
+        run: cd app && pnpm install --frozen-lockfile
+
+      - name: Build & release with tauri-action
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # ---- macOS code signing + notarization ----
+          # Set these in: Settings → Secrets and variables → Actions
+          # All optional — if not set, the macOS build will produce an
+          # unsigned .dmg that users can still run after right-click "Open".
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        with:
+          projectPath: app
+          tagName: ${{ github.ref_name }}
+          releaseName: 'SoloMD ${{ github.ref_name }}'
+          releaseBody: |
+            ## SoloMD ${{ github.ref_name }}
+
+            See assets below for downloads.
+
+            ### Install
+            - **macOS**: Download `.dmg`, drag SoloMD to Applications
+            - **Windows**: Download `.msi` or `.exe`, run installer
+            - **Linux**: Download `.AppImage` (portable) or `.deb` / `.rpm`
+
+            🤖 Auto-built by GitHub Actions
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
