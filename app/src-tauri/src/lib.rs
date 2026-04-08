@@ -11,6 +11,7 @@ pub fn run() {
             commands::read_file,
             commands::write_file,
             commands::write_binary_file,
+            commands::copy_file,
             commands::list_dir,
             search::search_in_dir,
         ])

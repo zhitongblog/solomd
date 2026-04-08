@@ -95,12 +95,12 @@ export function cjkWordCount(text: string): {
   const cjk = cjkMatches ? cjkMatches.length : 0;
 
   // Strip the CJK characters, then whitespace-split the remainder for ASCII
-  // "word" counting. Empty tokens (from punctuation-only remainders) are
-  // filtered out.
+  // "word" counting. Tokens that are nothing but punctuation/symbols are
+  // filtered out — a real word needs at least one letter or digit.
   const nonCjk = text.replace(cjkRe, ' ');
   const asciiWords = nonCjk
     .split(/\s+/)
-    .filter((w) => w.length > 0 && /[^\s]/.test(w)).length;
+    .filter((w) => w.length > 0 && /[\p{L}\p{N}]/u.test(w)).length;
 
   const withSpaces = text.length;
   const chars = text.replace(/\s+/g, '').length;

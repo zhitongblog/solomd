@@ -74,7 +74,28 @@ pub fn write_file(path: String, content: String, encoding: String) -> Result<(),
 /// Write raw bytes to disk. Used for binary export targets like DOCX/PDF.
 #[tauri::command]
 pub fn write_binary_file(path: String, data: Vec<u8>) -> Result<(), String> {
+    if let Some(parent) = Path::new(&path).parent() {
+        if !parent.as_os_str().is_empty() {
+            fs::create_dir_all(parent)
+                .map_err(|e| format!("mkdir failed: {e}"))?;
+        }
+    }
     fs::write(&path, &data).map_err(|e| format!("write failed: {e}"))
+}
+
+/// Copy a file from `src` to `dst`, creating parent dirs as needed.
+/// Used by image drag-drop to bring an OS file into the document's
+/// `_assets/` folder without round-tripping bytes through JavaScript.
+#[tauri::command]
+pub fn copy_file(src: String, dst: String) -> Result<(), String> {
+    if let Some(parent) = Path::new(&dst).parent() {
+        if !parent.as_os_str().is_empty() {
+            fs::create_dir_all(parent)
+                .map_err(|e| format!("mkdir failed: {e}"))?;
+        }
+    }
+    fs::copy(&src, &dst).map_err(|e| format!("copy failed: {e}"))?;
+    Ok(())
 }
 
 fn sniff_bom(bytes: &[u8]) -> Option<(&'static Encoding, usize)> {

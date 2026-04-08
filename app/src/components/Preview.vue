@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted, nextTick } from 'vue';
 import mermaid from 'mermaid';
+import { convertFileSrc } from '@tauri-apps/api/core';
 import { renderMarkdown } from '../lib/markdown';
 import { useSettingsStore } from '../stores/settings';
 
-const props = defineProps<{ source: string }>();
+const props = defineProps<{ source: string; filePath?: string }>();
 const settings = useSettingsStore();
 const host = ref<HTMLDivElement | null>(null);
 
@@ -12,7 +13,48 @@ let mermaidIdSeq = 0;
 
 mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: 'default' });
 
-const html = computed(() => renderMarkdown(props.source || ''));
+/**
+ * Resolve a single image src into something the webview can actually load.
+ * Tauri's webview blocks raw file:// URLs, so for any local path we route
+ * through `convertFileSrc()` which produces an `asset://` URL the
+ * `assetProtocol` handler will serve.
+ */
+function resolveImageSrc(src: string): string {
+  if (!src) return src;
+  // Already a remote / data / blob / asset URL — leave alone.
+  if (/^(https?|data|blob|asset|tauri):/i.test(src)) return src;
+
+  // Strip a leading file:// prefix so we can re-encode it.
+  let p = src.startsWith('file://') ? src.slice(7) : src;
+
+  // Resolve relative paths against the current file's directory.
+  const isAbsolute = p.startsWith('/') || /^[a-zA-Z]:[\\/]/.test(p);
+  if (!isAbsolute && props.filePath) {
+    const dir = props.filePath.replace(/[\\/][^\\/]*$/, '');
+    const sep = props.filePath.includes('\\') ? '\\' : '/';
+    // Don't try to be clever about ./ — markdown-it already strips it on
+    // the rare occasion it appears.
+    p = dir + sep + p;
+  }
+
+  try {
+    return convertFileSrc(p);
+  } catch {
+    return src;
+  }
+}
+
+/** Rewrite all `<img src=…>` URLs in the rendered markdown HTML. */
+function rewriteImageUrls(rawHtml: string): string {
+  return rawHtml.replace(
+    /(<img[^>]*\bsrc=)(["'])([^"']*)\2/gi,
+    (_match, prefix: string, q: string, src: string) => {
+      return `${prefix}${q}${resolveImageSrc(src)}${q}`;
+    },
+  );
+}
+
+const html = computed(() => rewriteImageUrls(renderMarkdown(props.source || '')));
 
 async function processMermaid() {
   if (!host.value) return;

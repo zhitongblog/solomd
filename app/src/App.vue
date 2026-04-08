@@ -78,6 +78,68 @@ function onOpenSearchEvent() {
 }
 
 let unlistenOpened: UnlistenFn | null = null;
+let unlistenMenu: UnlistenFn | null = null;
+
+function dispatchMenuAction(id: string) {
+  switch (id) {
+    case 'file.new':
+      files.newFile();
+      break;
+    case 'file.newText':
+      files.newTextFile();
+      break;
+    case 'file.open':
+      files.openFile();
+      break;
+    case 'file.openFolder':
+      files.openFolder();
+      break;
+    case 'file.save':
+      files.saveActive();
+      break;
+    case 'file.saveAs':
+      files.saveActiveAs();
+      break;
+    case 'file.closeTab':
+      if (tabs.activeId) files.closeTabSafe(tabs.activeId);
+      break;
+    case 'window.new':
+      window.dispatchEvent(new CustomEvent('solomd:new-window'));
+      break;
+    case 'view.toggleTheme':
+      settings.toggleTheme();
+      break;
+    case 'view.toggleFileTree':
+      settings.toggleFileTree();
+      break;
+    case 'view.toggleOutline':
+      settings.toggleOutline();
+      break;
+    case 'view.cycleView':
+      settings.cycleViewMode();
+      break;
+    case 'view.cmdPalette':
+      paletteOpen.value = true;
+      break;
+    case 'view.settings':
+      settingsOpen.value = true;
+      break;
+    case 'search.global':
+      searchOpen.value = true;
+      break;
+    case 'help.markdown':
+      helpOpen.value = true;
+      break;
+    case 'help.about':
+      // Simple bilingual about — could be its own modal later
+      alert(
+        'SoloMD\n\n一个轻量、跨平台的 Markdown / 纯文本编辑器。\nA lightweight, cross-platform Markdown / plain text editor.\n\nOne file. One window. Just write.'
+      );
+      break;
+    default:
+      console.warn('unknown menu action', id);
+  }
+}
 
 onMounted(async () => {
   if (tabs.tabs.length === 0) tabs.newTab();
@@ -95,13 +157,33 @@ onMounted(async () => {
     console.warn('opened-file listener not available', err);
   }
 
+  // Native menu bar: runner.rs emits "solomd://menu" with the item id.
+  try {
+    unlistenMenu = await listen<string>('solomd://menu', (e) => {
+      if (e.payload) dispatchMenuAction(e.payload);
+    });
+  } catch (err) {
+    console.warn('menu listener not available', err);
+  }
+
   // Drag-drop file open via Tauri's webview events.
+  // For images we route through the editor's image-insert pipeline (copy
+  // into _assets/ and insert markdown link). For everything else we open
+  // the file as a new tab via the normal file pipeline.
   try {
     const webview = getCurrentWebview();
     await webview.onDragDropEvent(async (event) => {
       if (event.payload.type === 'drop') {
         for (const path of event.payload.paths) {
-          await files.openPath(path);
+          if (isImagePath(path)) {
+            try {
+              await editorRef.value?.insertImageFromPath(path);
+            } catch (err) {
+              console.error('image insert failed', err);
+            }
+          } else {
+            await files.openPath(path);
+          }
         }
       }
     });
@@ -110,6 +192,17 @@ onMounted(async () => {
   }
 });
 
+const IMAGE_EXTS = new Set([
+  'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp',
+  'tiff', 'tif', 'heic', 'heif', 'avif', 'ico',
+]);
+
+function isImagePath(p: string): boolean {
+  const m = /\.([a-z0-9]+)$/i.exec(p);
+  if (!m) return false;
+  return IMAGE_EXTS.has(m[1].toLowerCase());
+}
+
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onEsc);
   window.removeEventListener('solomd:open-help', onOpenHelpEvent as EventListener);
@@ -117,6 +210,10 @@ onBeforeUnmount(() => {
   if (unlistenOpened) {
     unlistenOpened();
     unlistenOpened = null;
+  }
+  if (unlistenMenu) {
+    unlistenMenu();
+    unlistenMenu = null;
   }
 });
 
@@ -155,7 +252,7 @@ const showOutlinePane = computed(
           />
         </div>
         <div class="pane pane--preview" v-if="showPreview && tabs.activeTab">
-          <Preview :source="tabs.activeTab.content" />
+          <Preview :source="tabs.activeTab.content" :file-path="tabs.activeTab.filePath" />
         </div>
       </div>
     </div>

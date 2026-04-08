@@ -24,7 +24,7 @@ import { useTabsStore } from '../stores/tabs';
 import { useSettingsStore } from '../stores/settings';
 import type { Tab } from '../types';
 import { livePreviewExtension, richHighlightOnly } from '../lib/cm-live-preview';
-import { imagePasteExtension } from '../lib/cm-image-paste';
+import { imagePasteExtension, insertImageFromPath as cmInsertImageFromPath } from '../lib/cm-image-paste';
 import { focusModeExtension, typewriterModeExtension } from '../lib/cm-focus-mode';
 import { taskListExtension } from '../lib/cm-task-list';
 import {
@@ -298,7 +298,14 @@ function gotoLine(line: number) {
   view.focus();
 }
 
-defineExpose({ gotoLine });
+async function insertImageFromPath(srcPath: string): Promise<void> {
+  if (!view) return;
+  await cmInsertImageFromPath(view, srcPath, {
+    getFilePath: () => props.tab.filePath,
+  });
+}
+
+defineExpose({ gotoLine, insertImageFromPath });
 
 const cls = computed(() => ({
   'cm-host': true,

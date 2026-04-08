@@ -198,6 +198,57 @@ async function handleDrop(
   return true;
 }
 
+/**
+ * Insert a markdown image reference for an OS file path that the user
+ * dragged into the window. Unlike paste/drop on the editor DOM (where we
+ * already have the bytes), this path comes from Tauri's webview-level
+ * drag-drop event, so we copy the file via the Rust `copy_file` command
+ * instead of round-tripping bytes through JS.
+ */
+export async function insertImageFromPath(
+  view: EditorView,
+  srcPath: string,
+  opts: ImagePasteOptions,
+): Promise<void> {
+  let sepCh: string;
+  try {
+    sepCh = sep();
+  } catch {
+    sepCh = '/';
+  }
+
+  const ext = extFromName(srcPath) || 'png';
+  const filename = `image-${timestamp()}-${randSuffix()}.${ext}`;
+  const filePath = opts.getFilePath();
+
+  let dstPath: string;
+  let insertText: string;
+  if (filePath) {
+    const dir = dirnameOf(filePath, sepCh);
+    const assetsDir = joinPath(dir, '_assets', sepCh);
+    dstPath = joinPath(assetsDir, filename, sepCh);
+    insertText = `![](_assets/${filename})`;
+  } else {
+    const t = await resolveTempDir(opts.tempDir);
+    const solomdDir = joinPath(t, 'solomd', sepCh);
+    dstPath = joinPath(solomdDir, filename, sepCh);
+    insertText = `![](${dstPath})`;
+  }
+
+  try {
+    await invoke('copy_file', { src: srcPath, dst: dstPath });
+  } catch (err) {
+    console.error('[cm-image-paste] copy_file failed', err);
+    throw err;
+  }
+
+  const pos = view.state.selection.main.head;
+  view.dispatch({
+    changes: { from: pos, insert: insertText },
+    selection: { anchor: pos + insertText.length },
+  });
+}
+
 export function imagePasteExtension(opts: ImagePasteOptions) {
   return EditorView.domEventHandlers({
     paste(event, view) {
