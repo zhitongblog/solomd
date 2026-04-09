@@ -1,0 +1,93 @@
+---
+import { getT, type Lang } from '../i18n/translations';
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const tr = getT(lang);
+---
+
+<section id="compare">
+  <div class="container">
+    <div class="compare__header">
+      <h2>{tr.compare.heading}</h2>
+      <p class="lead">{tr.compare.lead}</p>
+    </div>
+    <div class="compare__table-wrap">
+      <table class="compare__table">
+        <thead>
+          <tr>
+            <th></th>
+            <th class="compare__highlight">{tr.compare.headers.solomd}</th>
+            <th>{tr.compare.headers.typora}</th>
+            <th>{tr.compare.headers.marktext}</th>
+            <th>{tr.compare.headers.obsidian}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {tr.compare.rows.map((row) => (
+            <tr>
+              <th scope="row">{row[0]}</th>
+              <td class="compare__highlight">{row[1]}</td>
+              <td>{row[2]}</td>
+              <td>{row[3]}</td>
+              <td>{row[4]}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<style>
+  .compare__header {
+    text-align: center;
+    margin-bottom: 40px;
+    max-width: 720px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .compare__header .lead { margin: 16px auto 0; }
+  .compare__table-wrap {
+    overflow-x: auto;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+  }
+  .compare__table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--bg-elev);
+    font-size: 14px;
+    min-width: 640px;
+  }
+  .compare__table thead th {
+    background: var(--bg-soft);
+    padding: 14px 16px;
+    text-align: center;
+    font-weight: 600;
+    color: var(--text);
+    border-bottom: 1px solid var(--border);
+  }
+  .compare__table tbody th {
+    text-align: left;
+    padding: 12px 16px;
+    font-weight: 500;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .compare__table tbody td {
+    text-align: center;
+    padding: 12px 16px;
+    color: var(--text);
+    border-bottom: 1px solid var(--border);
+  }
+  .compare__table tbody tr:last-child th,
+  .compare__table tbody tr:last-child td {
+    border-bottom: none;
+  }
+  .compare__highlight {
+    background: var(--accent-soft) !important;
+    color: var(--text) !important;
+    font-weight: 600;
+  }
+</style>

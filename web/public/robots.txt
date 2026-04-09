@@ -1,0 +1,37 @@
+# SoloMD — robots.txt
+# https://solomd.app
+
+User-agent: *
+Allow: /
+
+# Helpful pointers
+Sitemap: https://solomd.app/sitemap-index.xml
+
+# Welcome LLM crawlers — see /llms.txt for the project summary
+# Anthropic
+User-agent: ClaudeBot
+Allow: /
+User-agent: anthropic-ai
+Allow: /
+User-agent: Claude-Web
+Allow: /
+
+# OpenAI
+User-agent: GPTBot
+Allow: /
+User-agent: ChatGPT-User
+Allow: /
+User-agent: OAI-SearchBot
+Allow: /
+
+# Perplexity
+User-agent: PerplexityBot
+Allow: /
+
+# Google AI (Gemini, AI Overviews)
+User-agent: Google-Extended
+Allow: /
+
+# Common Crawl (training data for many models)
+User-agent: CCBot
+Allow: /

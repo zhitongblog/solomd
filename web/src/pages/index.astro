@@ -3,7 +3,9 @@ import Layout from '../layouts/Layout.astro';
 import Header from '../components/Header.astro';
 import Hero from '../components/Hero.astro';
 import Features from '../components/Features.astro';
+import Compare from '../components/Compare.astro';
 import Download from '../components/Download.astro';
+import Faq from '../components/Faq.astro';
 import Sponsor from '../components/Sponsor.astro';
 import Footer from '../components/Footer.astro';
 
@@ -11,15 +13,17 @@ const lang = 'en' as const;
 ---
 
 <Layout
-  title="SoloMD — Lightweight Markdown editor"
-  description="A lightweight, cross-platform Markdown + plain text editor for macOS, Windows, and Linux. One file. One window. Just write."
+  title="SoloMD — Lightweight Markdown + plain text editor for macOS, Windows, Linux"
+  description="A lightweight, open-source, cross-platform Markdown + plain text editor. ~15 MB installer. Live preview, KaTeX, Mermaid, image paste, multi-encoding (UTF-8/GBK/Big5). MIT licensed. macOS notarized."
   lang={lang}
 >
   <Header lang={lang} />
   <main>
     <Hero lang={lang} />
     <Features lang={lang} />
+    <Compare lang={lang} />
     <Download lang={lang} />
+    <Faq lang={lang} />
     <Sponsor lang={lang} />
   </main>
   <Footer lang={lang} />

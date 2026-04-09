@@ -49,6 +49,54 @@ const path = lang === 'zh' ? '/zh/' : '/';
     <meta name="theme-color" content="#0e0e0c" media="(prefers-color-scheme: dark)" />
 
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+
+    <!-- Sitemap discovery hint -->
+    <link rel="sitemap" type="application/xml" href="/sitemap-index.xml" />
+
+    <!-- JSON-LD: SoftwareApplication (helps Google software result cards + LLM citations) -->
+    <script type="application/ld+json" set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "SoloMD",
+      "alternateName": ["#MD", "Solo MD"],
+      "description": "A lightweight, cross-platform Markdown + plain text editor for macOS, Windows, and Linux. One file. One window. Just write.",
+      "applicationCategory": "ProductivityApplication",
+      "applicationSubCategory": "Text Editor",
+      "operatingSystem": "macOS, Windows, Linux",
+      "softwareVersion": "0.1.0",
+      "fileSize": "15MB",
+      "url": "https://solomd.app",
+      "downloadUrl": "https://github.com/zhitongblog/solomd/releases",
+      "license": "https://opensource.org/licenses/MIT",
+      "softwareRequirements": "macOS 11+, Windows 10+, or Linux x64",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD",
+      },
+      "author": {
+        "@type": "Person",
+        "name": "xiangdong li",
+        "url": "https://github.com/zhitongblog",
+      },
+      "publisher": {
+        "@type": "Person",
+        "name": "xiangdong li",
+      },
+      "featureList": [
+        "Live Preview Markdown editor",
+        "KaTeX math rendering",
+        "Mermaid diagrams",
+        "Image paste & drag-drop",
+        "Global file search",
+        "Multi-encoding support (UTF-8/GBK/Big5)",
+        "Export to PDF, DOCX, HTML",
+        "Light & dark themes",
+        "Custom CSS theme",
+        "Cross-platform native menus",
+      ],
+      "inLanguage": ["en", "zh-CN"],
+    })} />
   </head>
   <body>
     <slot />

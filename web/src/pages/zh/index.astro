@@ -3,7 +3,9 @@ import Layout from '../../layouts/Layout.astro';
 import Header from '../../components/Header.astro';
 import Hero from '../../components/Hero.astro';
 import Features from '../../components/Features.astro';
+import Compare from '../../components/Compare.astro';
 import Download from '../../components/Download.astro';
+import Faq from '../../components/Faq.astro';
 import Sponsor from '../../components/Sponsor.astro';
 import Footer from '../../components/Footer.astro';
 
@@ -11,15 +13,17 @@ const lang = 'zh' as const;
 ---
 
 <Layout
-  title="SoloMD — 轻量 Markdown 编辑器"
-  description="一款轻量、跨平台的 Markdown 与纯文本编辑器,支持 macOS / Windows / Linux。一个文件,一个窗口,专心写作。"
+  title="SoloMD — 轻量级跨平台 Markdown 编辑器 / Mac Windows Linux"
+  description="开源免费的轻量级 Markdown 与纯文本编辑器。安装包仅 15 MB。支持实时预览、KaTeX 公式、Mermaid 图表、图片粘贴、多编码识别 (UTF-8/GBK/Big5)。MIT 协议。macOS 已 notarize。"
   lang={lang}
 >
   <Header lang={lang} />
   <main>
     <Hero lang={lang} />
     <Features lang={lang} />
+    <Compare lang={lang} />
     <Download lang={lang} />
+    <Faq lang={lang} />
     <Sponsor lang={lang} />
   </main>
   <Footer lang={lang} />

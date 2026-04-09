@@ -56,6 +56,77 @@ export const t = {
       allReleases: 'Looking for older versions?',
       allReleasesLink: 'All releases →',
     },
+    compare: {
+      heading: 'How SoloMD compares',
+      lead: 'A clear-eyed look at where SoloMD fits in the Markdown editor landscape.',
+      headers: {
+        feature: '',
+        solomd: 'SoloMD',
+        typora: 'Typora',
+        marktext: 'MarkText',
+        obsidian: 'Obsidian',
+      },
+      rows: [
+        ['Installer size', '~15 MB', '~70 MB', '~80 MB', '~110 MB'],
+        ['Price', 'Free, MIT', '$14.99', 'Free', 'Free + $96/yr sync'],
+        ['Open source', '✅', '❌', '✅ (dormant)', '❌'],
+        ['Live preview', '✅', '✅', '✅', '✅'],
+        ['KaTeX math', '✅', '✅', '✅', '✅'],
+        ['Mermaid diagrams', '✅', '✅', '✅', '✅'],
+        ['Image paste', '✅', '✅', '✅', '✅'],
+        ['Global search', '✅', '🟡', '❌', '✅'],
+        ['CJK encoding (GBK/Big5)', '✅', '❌', '❌', '❌'],
+        ['Custom CSS', '✅', '✅', '✅', '✅'],
+        ['Native menu bar', '✅', '✅', '✅', '✅'],
+        ['Notarized macOS', '✅', '✅', '✅', '✅'],
+      ],
+    },
+    faq: {
+      heading: 'Frequently asked questions',
+      lead: '',
+      items: [
+        {
+          q: 'Is SoloMD really free?',
+          a: 'Yes. SoloMD is MIT-licensed open-source software. There is no paid tier, no account, no telemetry, no ads. If it helps your writing you can sponsor the developer, but you never have to.',
+        },
+        {
+          q: 'How big is the installer?',
+          a: 'About 10–15 MB depending on the platform. That is roughly 6× smaller than Typora and 7× smaller than Obsidian, because SoloMD uses Tauri (system webview + Rust) instead of bundling Chromium.',
+        },
+        {
+          q: 'Does it work offline?',
+          a: 'Yes, fully. SoloMD makes zero network requests. There is no cloud, no telemetry, no auto-update phoning home. Your files never leave your machine.',
+        },
+        {
+          q: 'How does SoloMD handle non-UTF-8 files like GBK / Big5?',
+          a: 'SoloMD auto-detects encoding using the chardetng Rust crate when you open a file. UTF-8, UTF-16 LE/BE (with or without BOM), GBK, GB18030, Big5, Shift_JIS and many more are recognized and correctly displayed.',
+        },
+        {
+          q: 'Can I sync my notes to other devices?',
+          a: 'SoloMD does not have built-in sync, but it works perfectly with iCloud Drive, Dropbox, OneDrive, Syncthing, or any folder-based sync tool. Just save your notes inside a synced folder.',
+        },
+        {
+          q: 'Why are there no plugins?',
+          a: 'SoloMD intentionally omits a plugin system to stay lightweight and stable. The 12 most-requested features (image paste, KaTeX, Mermaid, focus mode, custom CSS, etc.) ship in core.',
+        },
+        {
+          q: 'Why did "Windows protected your PC" pop up on first launch?',
+          a: 'SoloMD is a small open-source project that has not yet built up Microsoft SmartScreen reputation. Click "More info → Run anyway" once and it will not prompt again. We are working on a code-signing certificate.',
+        },
+        {
+          q: 'How do I open .md files with SoloMD by default?',
+          a: 'Right-click any .md file → Open With → SoloMD → check "Always use this app". The bundled installer registers SoloMD as a handler for .md, .markdown, .mdown, .mkd, and .txt extensions.',
+        },
+        {
+          q: 'What is the difference between SoloMD and Obsidian?',
+          a: 'Obsidian is a knowledge management tool with vaults, wiki links, backlinks, a graph view, and a plugin marketplace. SoloMD is a lightweight editor for writing single Markdown files. Use Obsidian if you want a second brain; use SoloMD if you want a fast notepad.',
+        },
+        {
+          q: 'Does SoloMD support Vim or Emacs key bindings?',
+          a: 'Not yet, but the editor is built on CodeMirror 6 which supports Vim mode via @codemirror/vim. It is on the roadmap.',
+        },
+      ],
+    },
     sponsor: {
       heading: 'Support SoloMD',
       lead: 'SoloMD is built and maintained by one developer in their free time. If it helps your writing, consider sponsoring — even a tiny amount keeps the project alive.',
@@ -130,6 +201,77 @@ export const t = {
       },
       allReleases: '想找历史版本?',
       allReleasesLink: '所有版本 →',
+    },
+    compare: {
+      heading: 'SoloMD 对比同类产品',
+      lead: '直白看 SoloMD 在 Markdown 编辑器市场的定位。',
+      headers: {
+        feature: '',
+        solomd: 'SoloMD',
+        typora: 'Typora',
+        marktext: 'MarkText',
+        obsidian: 'Obsidian',
+      },
+      rows: [
+        ['安装包大小', '~15 MB', '~70 MB', '~80 MB', '~110 MB'],
+        ['价格', '免费 / MIT', '$14.99', '免费', '免费 + 同步 $96/年'],
+        ['开源', '✅', '❌', '✅ (停更)', '❌'],
+        ['实时预览', '✅', '✅', '✅', '✅'],
+        ['KaTeX 公式', '✅', '✅', '✅', '✅'],
+        ['Mermaid 图表', '✅', '✅', '✅', '✅'],
+        ['图片粘贴', '✅', '✅', '✅', '✅'],
+        ['全局搜索', '✅', '🟡', '❌', '✅'],
+        ['中文编码 (GBK/Big5)', '✅', '❌', '❌', '❌'],
+        ['自定义 CSS', '✅', '✅', '✅', '✅'],
+        ['原生菜单栏', '✅', '✅', '✅', '✅'],
+        ['macOS 已 notarize', '✅', '✅', '✅', '✅'],
+      ],
+    },
+    faq: {
+      heading: '常见问题',
+      lead: '',
+      items: [
+        {
+          q: 'SoloMD 真的免费吗?',
+          a: '是的。SoloMD 是 MIT 协议开源软件,没有付费版,没有账号,没有遥测,没有广告。如果它帮到你,你可以选择赞助开发者,但完全不强制。',
+        },
+        {
+          q: '安装包多大?',
+          a: '约 10–15 MB,具体取决于平台。这比 Typora 小约 6 倍,比 Obsidian 小约 7 倍——因为 SoloMD 用 Tauri (系统 webview + Rust),不打包 Chromium。',
+        },
+        {
+          q: '能离线使用吗?',
+          a: '完全可以。SoloMD 不发任何网络请求,没有云,没有遥测,没有自动更新回传。你的文件永远不会离开本机。',
+        },
+        {
+          q: 'SoloMD 怎么处理非 UTF-8 文件 (比如 GBK / Big5)?',
+          a: 'SoloMD 用 Rust 的 chardetng 库自动检测编码。UTF-8、UTF-16 LE/BE (带或不带 BOM)、GBK、GB18030、Big5、Shift_JIS 等都能正确识别并显示。',
+        },
+        {
+          q: '能多设备同步笔记吗?',
+          a: 'SoloMD 没内置同步,但完美兼容 iCloud Drive、Dropbox、OneDrive、坚果云、Syncthing 等任何文件夹同步工具。把笔记存在同步文件夹里就行。',
+        },
+        {
+          q: '为什么没有插件系统?',
+          a: 'SoloMD 故意不做插件系统,保持轻量稳定。12 个最常被需要的功能 (图片粘贴、KaTeX、Mermaid、焦点模式、自定义 CSS 等) 都内置在核心里。',
+        },
+        {
+          q: '为什么 Windows 首次启动弹出"已保护你的电脑"?',
+          a: 'SoloMD 是一个小型开源项目,还没积累 Microsoft SmartScreen 信誉。点 "更多信息" → "仍要运行",之后就不会再弹了。我们正在申请代码签名证书。',
+        },
+        {
+          q: '怎么把 .md 文件默认用 SoloMD 打开?',
+          a: '右键 .md 文件 → 打开方式 → SoloMD → 勾选 "始终使用此应用"。安装包已注册 SoloMD 为 .md / .markdown / .mdown / .mkd / .txt 后缀的处理程序。',
+        },
+        {
+          q: 'SoloMD 和 Obsidian 有什么区别?',
+          a: 'Obsidian 是知识管理工具,有 vault、wiki link、反向链接、图谱视图和插件市场。SoloMD 是用来写单个 Markdown 文件的轻量编辑器。想要"第二大脑"就用 Obsidian,想要快速笔记本就用 SoloMD。',
+        },
+        {
+          q: 'SoloMD 支持 Vim 或 Emacs 快捷键吗?',
+          a: '暂时不支持,但编辑器基于 CodeMirror 6,可以通过 @codemirror/vim 加 Vim 模式。在 roadmap 里。',
+        },
+      ],
     },
     sponsor: {
       heading: '赞助 SoloMD',
