@@ -26,3 +26,11 @@ pnpm-debug.log*
 # Brand experimental output
 brand/test_response.json
 brand/*_error.json
+
+# Local secrets — never commit
+.env.local
+.env.*.local
+*.p12
+*.pem
+*.cer
+solomd-*.txt
