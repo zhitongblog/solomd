@@ -3,6 +3,13 @@ import { getT, type Lang } from '../i18n/translations';
 interface Props { lang: Lang }
 const { lang } = Astro.props;
 const tr = getT(lang);
+
+const VERSION = '0.1.0';
+const REPO = 'zhitongblog/solomd';
+const baseUrl = `https://github.com/${REPO}/releases/download/v${VERSION}`;
+
+// Default (SSR / no-JS / unknown OS) → mac dmg link
+const defaultDownload = `${baseUrl}/SoloMD_${VERSION}_universal.dmg`;
 ---
 
 <section class="hero">
@@ -14,25 +21,59 @@ const tr = getT(lang);
     </h1>
     <p class="lead">{tr.hero.lead}</p>
     <div class="hero__cta">
-      <a href="#download" class="btn btn--primary">{tr.hero.ctaPrimary}</a>
+      <a
+        id="hero-download"
+        href={defaultDownload}
+        class="btn btn--primary btn--lg"
+        data-default-text={tr.hero.ctaPrimary}
+        data-mac-text={tr.hero.ctaForMac}
+        data-win-text={tr.hero.ctaForWindows}
+        data-linux-text={tr.hero.ctaForLinux}
+        data-mac-href={`${baseUrl}/SoloMD_${VERSION}_universal.dmg`}
+        data-win-href={`${baseUrl}/SoloMD_${VERSION}_x64_en-US.msi`}
+        data-linux-href={`${baseUrl}/SoloMD_${VERSION}_amd64.AppImage`}
+      >
+        ⬇ {tr.hero.ctaPrimary}
+      </a>
       <a
         href="https://github.com/zhitongblog/solomd"
         target="_blank"
         rel="noopener"
-        class="btn btn--secondary"
+        class="btn btn--secondary btn--lg"
       >
         {tr.hero.ctaSecondary}
       </a>
     </div>
+    <a href="#download" class="hero__all-platforms">{tr.hero.ctaAllPlatforms}</a>
     <div class="hero__chips">
       {tr.hero.chips.map((c) => <span class="chip">{c}</span>)}
     </div>
   </div>
 </section>
 
+<script is:inline>
+  // Detect the visitor's OS and rewrite the hero download button to point at
+  // the right artifact directly. Falls back gracefully to the universal mac
+  // dmg if detection fails or the user has scripting disabled.
+  (function () {
+    var btn = document.getElementById('hero-download');
+    if (!btn) return;
+    var ua = navigator.userAgent || '';
+    var platform = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '';
+    var os = 'mac';
+    if (/Win/i.test(ua) || /Windows/i.test(platform)) os = 'win';
+    else if (/Linux/i.test(ua) && !/Android/i.test(ua)) os = 'linux';
+    else if (/Mac|iPhone|iPad/i.test(ua) || /Mac/i.test(platform)) os = 'mac';
+    var href = btn.getAttribute('data-' + os + '-href');
+    var text = btn.getAttribute('data-' + os + '-text');
+    if (href) btn.setAttribute('href', href);
+    if (text) btn.innerHTML = '⬇ ' + text;
+  })();
+</script>
+
 <style>
   .hero {
-    padding: 100px 0 80px;
+    padding: 100px 0 60px;
     text-align: center;
     background: radial-gradient(ellipse at top, var(--accent-soft) 0%, transparent 55%);
   }
@@ -59,7 +100,22 @@ const tr = getT(lang);
     gap: 14px;
     justify-content: center;
     flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+  .btn--lg {
+    padding: 14px 28px;
+    font-size: 15px;
+    border-radius: 10px;
+  }
+  .hero__all-platforms {
+    display: inline-block;
+    color: var(--text-muted);
+    font-size: 13px;
+    text-decoration: none;
     margin-bottom: 36px;
+  }
+  .hero__all-platforms:hover {
+    color: var(--accent);
   }
   .hero__chips {
     display: flex;
