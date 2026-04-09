@@ -1,6 +1,7 @@
 // Self-test for SoloMD pure libs (run with: npx tsx test-self.mjs)
 import { simplifiedToTraditional, traditionalToSimplified, pinyin, cjkWordCount } from './src/lib/chinese.ts';
 import { extractOutline, renderMarkdown } from './src/lib/markdown.ts';
+import { cleanAIArtifacts, stripMarkdownToPlain } from './src/lib/clean-ai.ts';
 
 let pass = 0, fail = 0;
 function ok(name, cond, detail = '') {
@@ -39,6 +40,36 @@ ok('outline length', outline.length === 5, JSON.stringify(outline));
 ok('outline H1 level', outline[0].level === 1);
 ok('outline H2 level', outline[1].level === 2);
 ok('outline H3 level', outline[3].level === 3);
+
+console.log('\n=== clean-ai.ts ===');
+// Smart quotes
+ok('smart double quotes', cleanAIArtifacts('\u201chello\u201d') === '"hello"');
+ok('smart single quotes', cleanAIArtifacts('it\u2019s') === "it's");
+// Em / en dashes
+ok('em dash', cleanAIArtifacts('hello\u2014world') === 'hello - world');
+ok('en dash', cleanAIArtifacts('1\u20132') === '1-2');
+// Ellipsis
+ok('ellipsis', cleanAIArtifacts('wait\u2026') === 'wait...');
+// Invisible chars
+ok('zero-width space removed', cleanAIArtifacts('a\u200Bb') === 'ab');
+ok('non-breaking space normalized', cleanAIArtifacts('a\u00A0b') === 'a b');
+ok('BOM stripped', cleanAIArtifacts('\uFEFFhello') === 'hello');
+// Whitespace
+ok('triple newline collapsed', cleanAIArtifacts('a\n\n\n\nb') === 'a\n\nb');
+ok('trailing whitespace trimmed', cleanAIArtifacts('hello   \nworld') === 'hello\nworld');
+// Markdown preserved
+ok('markdown preserved', cleanAIArtifacts('# heading\n**bold**') === '# heading\n**bold**');
+
+// Strip plain test
+const md = '# Title\n\n**bold** and *italic* with `code`.\n\n- item 1\n- [x] done\n\n```js\nconst x = 1;\n```';
+const plain = stripMarkdownToPlain(md);
+ok('strip plain — no #', !plain.includes('#'));
+ok('strip plain — no **', !plain.includes('**'));
+ok('strip plain — no `', !plain.includes('`'));
+ok('strip plain — no -', !/^- /m.test(plain));
+ok('strip plain — keeps content "Title"', plain.includes('Title'));
+ok('strip plain — keeps "bold"', plain.includes('bold'));
+ok('strip plain — keeps code "const x = 1"', plain.includes('const x = 1'));
 
 console.log(`\n=== ${pass} passed / ${fail} failed ===`);
 process.exit(fail > 0 ? 1 : 0);

@@ -13,6 +13,7 @@ import FileTree from './components/FileTree.vue';
 import SettingsPanel from './components/SettingsPanel.vue';
 import MarkdownHelp from './components/MarkdownHelp.vue';
 import GlobalSearch from './components/GlobalSearch.vue';
+import AboutDialog from './components/AboutDialog.vue';
 import Toast from './components/Toast.vue';
 import { useTabsStore } from './stores/tabs';
 import { useSettingsStore } from './stores/settings';
@@ -30,6 +31,7 @@ const paletteOpen = ref(false);
 const settingsOpen = ref(false);
 const helpOpen = ref(false);
 const searchOpen = ref(false);
+const aboutOpen = ref(false);
 const editorRef = ref<InstanceType<typeof Editor> | null>(null);
 
 useShortcuts({
@@ -42,7 +44,8 @@ useShortcuts({
 // Esc closes the topmost modal
 function onEsc(e: KeyboardEvent) {
   if (e.key !== 'Escape') return;
-  if (searchOpen.value) searchOpen.value = false;
+  if (aboutOpen.value) aboutOpen.value = false;
+  else if (searchOpen.value) searchOpen.value = false;
   else if (helpOpen.value) helpOpen.value = false;
   else if (paletteOpen.value) paletteOpen.value = false;
   else if (settingsOpen.value) settingsOpen.value = false;
@@ -131,10 +134,7 @@ function dispatchMenuAction(id: string) {
       helpOpen.value = true;
       break;
     case 'help.about':
-      // Simple bilingual about — could be its own modal later
-      alert(
-        'SoloMD\n\n一个轻量、跨平台的 Markdown / 纯文本编辑器。\nA lightweight, cross-platform Markdown / plain text editor.\n\nOne file. One window. Just write.'
-      );
+      aboutOpen.value = true;
       break;
     default:
       console.warn('unknown menu action', id);
@@ -262,6 +262,7 @@ const showOutlinePane = computed(
     <SettingsPanel :open="settingsOpen" @close="settingsOpen = false" />
     <MarkdownHelp :open="helpOpen" @close="helpOpen = false" />
     <GlobalSearch :open="searchOpen" @close="searchOpen = false" />
+    <AboutDialog :open="aboutOpen" @close="aboutOpen = false" />
     <Toast />
   </div>
 </template>

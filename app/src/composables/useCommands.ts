@@ -11,6 +11,7 @@ import {
   traditionalToSimplified,
   pinyin,
 } from '../lib/chinese';
+import { cleanAIArtifacts, stripMarkdownToPlain } from '../lib/clean-ai';
 
 export interface Command {
   id: string;
@@ -122,6 +123,20 @@ export function useCommands(): Command[] {
         await writeText(pinyin(t.content));
         toasts.success('Pinyin copied to clipboard');
       },
+    },
+
+    // ---- AI text cleanup ----
+    {
+      id: 'clean.aiArtifacts',
+      title: 'Clean AI Artifacts (smart quotes, em-dashes, invisible chars)',
+      hint: 'Strip junk Unicode that LLM chat interfaces leak into copied text',
+      run: () => transformActive(cleanAIArtifacts, 'AI artifacts cleaned'),
+    },
+    {
+      id: 'clean.stripMarkdown',
+      title: 'Strip All Markdown to Plain Text',
+      hint: 'Remove headings, bold, lists, code fences — leave only prose',
+      run: () => transformActive(stripMarkdownToPlain, 'Stripped to plain text'),
     },
 
     { id: 'export.html', title: 'Export to HTML…', run: () => exporter.exportHtml() },

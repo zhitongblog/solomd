@@ -3,6 +3,9 @@
 > One file. One window. Just write.
 > 一个文件，一个窗口，专心写作。
 
+**🌐 [solomd.app](https://solomd.app)** · **[Download](https://github.com/zhitongblog/solomd/releases/latest)** · **[FAQ](https://solomd.app/#faq)** · **[Sponsor ❤️](https://solomd.app/#sponsor)**
+
+[![Website](https://img.shields.io/badge/website-solomd.app-ff9f40.svg)](https://solomd.app)
 [![License: MIT](https://img.shields.io/badge/License-MIT-orange.svg)](LICENSE)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-orange.svg)](https://tauri.app)
 [![Vue](https://img.shields.io/badge/Vue-3-42b883.svg)](https://vuejs.org)
@@ -149,8 +152,9 @@ If SoloMD helps your writing flow, consider sponsoring the development:
 
 如果 SoloMD 让你的写作更高效，欢迎赞助开发者：
 
-- 🌍 GitHub Sponsors: _coming soon_
-- 🇨🇳 爱发电: _coming soon_
+- 🌍 [GitHub Sponsors](https://github.com/sponsors/zhitongblog) — 国际开发者
+- 💙 Alipay / 支付宝 — see [solomd.app/#sponsor](https://solomd.app/#sponsor)
+- 💚 WeChat Pay / 微信支付 — see [solomd.app/#sponsor](https://solomd.app/#sponsor)
 
 ---
 
