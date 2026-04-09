@@ -1,0 +1,67 @@
+name: IndexNow ping
+
+# Notify Bing / Yandex / Naver / Seznam (and any other IndexNow-compatible
+# search engine) whenever the website content changes. Run after every push
+# to main that touches the web/ directory or sitemap-relevant files.
+#
+# Google does not currently consume IndexNow but does pick up sitemap.xml
+# changes via Search Console; Cloudflare's "Crawler Hints" feature also
+# auto-submits to IndexNow as a backup.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'web/**'
+      - '.github/workflows/indexnow.yml'
+  workflow_dispatch:
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Submit URLs to IndexNow
+        run: |
+          KEY="f68666d4ab777ed248d92d4c0fe3a9d5"
+          HOST="solomd.app"
+          KEY_LOCATION="https://${HOST}/${KEY}.txt"
+
+          # The set of URLs we want re-crawled on each content change.
+          URLS='[
+            "https://solomd.app/",
+            "https://solomd.app/zh/",
+            "https://solomd.app/sitemap-index.xml",
+            "https://solomd.app/llms.txt"
+          ]'
+
+          PAYLOAD=$(jq -n \
+            --arg host "$HOST" \
+            --arg key "$KEY" \
+            --arg keyLocation "$KEY_LOCATION" \
+            --argjson urlList "$URLS" \
+            '{host: $host, key: $key, keyLocation: $keyLocation, urlList: $urlList}')
+
+          echo "Submitting payload:"
+          echo "$PAYLOAD" | jq .
+
+          # Submit to the IndexNow shared endpoint (Bing forwards to all
+          # participating engines).
+          HTTP_CODE=$(curl -s -o /tmp/indexnow.out -w "%{http_code}" \
+            -X POST "https://api.indexnow.org/IndexNow" \
+            -H "Content-Type: application/json; charset=utf-8" \
+            -H "Host: api.indexnow.org" \
+            -d "$PAYLOAD")
+
+          echo ""
+          echo "HTTP $HTTP_CODE"
+          cat /tmp/indexnow.out || true
+          echo ""
+
+          # 200 = received, 202 = accepted (queued), both fine.
+          if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "202" ]; then
+            echo "✓ IndexNow accepted the submission"
+            exit 0
+          else
+            echo "✗ IndexNow rejected with HTTP $HTTP_CODE"
+            exit 1
+          fi
