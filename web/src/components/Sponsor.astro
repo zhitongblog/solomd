@@ -4,9 +4,12 @@ interface Props { lang: Lang }
 const { lang } = Astro.props;
 const tr = getT(lang);
 
-// TODO: replace with real URLs once accounts are set up.
-const githubSponsor = 'https://github.com/sponsors/zhitongblog';
-const afdian = 'https://afdian.net/a/zhitongblog';
+// TODO: replace with real GitHub Sponsors URL once approved
+const githubSponsorUrl = 'https://github.com/sponsors/zhitongblog';
+
+// QR images live in /public/sponsor/.
+const alipayQr = '/sponsor/alipay-qr.jpg';
+const wechatQr = '/sponsor/wechat-qr.jpg';
 ---
 
 <section id="sponsor">
@@ -14,14 +17,57 @@ const afdian = 'https://afdian.net/a/zhitongblog';
     <div class="sponsor__icon">❤️</div>
     <h2>{tr.sponsor.heading}</h2>
     <p class="lead">{tr.sponsor.lead}</p>
-    <div class="sponsor__buttons">
-      <a href={githubSponsor} target="_blank" rel="noopener" class="btn btn--secondary">
-        {tr.sponsor.ghButton}
-      </a>
-      <a href={afdian} target="_blank" rel="noopener" class="btn btn--secondary">
-        {tr.sponsor.cnButton}
-      </a>
+
+    <div class="sponsor__grid">
+      <!-- GitHub Sponsors -->
+      <article class="sp-card sp-card--gh">
+        <div class="sp-card__head">
+          <span class="sp-icon sp-icon--gh" aria-hidden="true">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.4 3-.405 1.02.005 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>
+            </svg>
+          </span>
+          <h3>{tr.sponsor.ghTitle}</h3>
+        </div>
+        <p class="sp-card__desc">{tr.sponsor.ghDesc}</p>
+        <a href={githubSponsorUrl} target="_blank" rel="noopener" class="btn btn--secondary sp-card__btn">
+          {tr.sponsor.ghButton}
+        </a>
+      </article>
+
+      <!-- Alipay -->
+      <article class="sp-card sp-card--alipay">
+        <div class="sp-card__head">
+          <span class="sp-icon sp-icon--alipay" aria-hidden="true">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="#ffffff">
+              <path d="M22.957 12.058c-3.077-.93-7.477-2.218-9.965-2.876.43-.738.79-1.527 1.07-2.354H17.6V5.6h-4.8V4.4h5.6V3.2h-5.6V1.6c0-.16-.07-.31-.19-.42a.59.59 0 0 0-.42-.18.59.59 0 0 0-.42.18.59.59 0 0 0-.18.42v1.6H5.4v1.2h6.2V5.6H6.8v1.228h6.27c-.255.764-.6 1.493-1.024 2.165a64.65 64.65 0 0 0-3.396-.835l.265 1.07c.965.244 1.93.51 2.864.795a16.61 16.61 0 0 1-1.21 1.39c-2.92-.97-6.04-1.755-7.83-2.04C1.262 9.232 0 10.516 0 12.025c0 1.738 1.473 3.142 3.292 3.142h.018c2.18 0 4.18-.93 5.78-2.34.79-.6 1.52-1.32 2.16-2.13 2.39.78 5.13 1.65 7.5 2.31C20.59 13.51 24 13.06 24 12.61c0-.275-.55-.404-1.043-.552zM3.31 14.04c-1.08 0-1.95-.78-1.95-1.74 0-.96.87-1.74 1.95-1.74.27 0 .53.05.79.13 1.21.42 2.27.85 3.21 1.27-.96 1.18-2.43 2.08-3.99 2.08z"/>
+            </svg>
+          </span>
+          <h3>{tr.sponsor.alipayTitle}</h3>
+        </div>
+        <p class="sp-card__desc">{tr.sponsor.alipayDesc}</p>
+        <div class="sp-card__qr">
+          <img src={alipayQr} alt={`${tr.sponsor.alipayTitle} ${tr.sponsor.scanQr}`} loading="lazy" />
+        </div>
+      </article>
+
+      <!-- WeChat Pay -->
+      <article class="sp-card sp-card--wechat">
+        <div class="sp-card__head">
+          <span class="sp-icon sp-icon--wechat" aria-hidden="true">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="#ffffff">
+              <path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.328.328 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.017.812-.04-.171-.585-.265-1.196-.265-1.834 0-3.825 3.323-6.93 7.42-6.93.286 0 .57.014.85.041C17.65 4.891 13.535 2.188 8.69 2.188zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.624 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 4.769c-3.825 0-6.948 2.706-6.948 6.014 0 3.31 3.123 6.013 6.948 6.013.667 0 1.32-.087 1.932-.243a.55.55 0 0 1 .421.062l1.557.94c.05.025.103.038.155.038.142 0 .254-.108.254-.246a.39.39 0 0 0-.013-.097l-.32-1.272a.56.56 0 0 1 .227-.633c1.622-1.092 2.69-2.687 2.69-4.562 0-3.308-3.123-6.014-6.948-6.014h.045zm-2.301 3.18c.495 0 .898.404.898.9a.89.89 0 0 1-.898.898.89.89 0 0 1-.898-.898c0-.496.403-.9.898-.9zm4.598 0c.495 0 .898.404.898.9a.89.89 0 0 1-.898.898.89.89 0 0 1-.898-.898c0-.496.403-.9.898-.9z"/>
+            </svg>
+          </span>
+          <h3>{tr.sponsor.wechatTitle}</h3>
+        </div>
+        <p class="sp-card__desc">{tr.sponsor.wechatDesc}</p>
+        <div class="sp-card__qr">
+          <img src={wechatQr} alt={`${tr.sponsor.wechatTitle} ${tr.sponsor.scanQr}`} loading="lazy" />
+        </div>
+      </article>
     </div>
+
     <p class="sponsor__note">{tr.sponsor.note}</p>
   </div>
 </section>
@@ -29,17 +75,101 @@ const afdian = 'https://afdian.net/a/zhitongblog';
 <style>
   .sponsor__inner {
     text-align: center;
-    max-width: 720px;
+    max-width: 1100px;
   }
-  .sponsor__icon { font-size: 48px; margin-bottom: 8px; }
-  .sponsor__inner .lead { margin: 16px auto 32px; }
-  .sponsor__buttons {
+  .sponsor__icon {
+    font-size: 48px;
+    margin-bottom: 8px;
+  }
+  .sponsor__inner .lead {
+    margin: 16px auto 40px;
+  }
+
+  .sponsor__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    margin-bottom: 32px;
+    text-align: left;
+  }
+  .sp-card {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px;
     display: flex;
-    gap: 14px;
-    justify-content: center;
-    flex-wrap: wrap;
-    margin-bottom: 28px;
+    flex-direction: column;
+    transition: all 0.2s;
   }
+  .sp-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.18);
+  }
+  .sp-card--gh:hover { border-color: #6e40c9; }
+  .sp-card--alipay:hover { border-color: #1677FF; }
+  .sp-card--wechat:hover { border-color: #07C160; }
+
+  .sp-card__head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+  .sp-card__head h3 {
+    margin: 0;
+    font-size: 1.05rem;
+  }
+  .sp-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    flex-shrink: 0;
+  }
+  .sp-icon--gh {
+    background: #1a1a1a;
+    color: #ffffff;
+  }
+  .sp-icon--alipay {
+    background: #1677FF;
+  }
+  .sp-icon--wechat {
+    background: #07C160;
+  }
+
+  .sp-card__desc {
+    color: var(--text-muted);
+    font-size: 13px;
+    line-height: 1.6;
+    margin: 0 0 18px;
+    flex: 1;
+  }
+
+  .sp-card__btn {
+    align-self: flex-start;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .sp-card__qr {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #ffffff;
+    border-radius: 10px;
+    padding: 12px;
+    border: 1px solid var(--border);
+  }
+  .sp-card__qr img {
+    display: block;
+    width: 100%;
+    max-width: 200px;
+    height: auto;
+    border-radius: 4px;
+  }
+
   .sponsor__note {
     font-size: 12px;
     color: var(--text-faint);
