@@ -1,0 +1,56 @@
+---
+import '../styles/global.css';
+import type { Lang } from '../i18n/translations';
+
+interface Props {
+  title?: string;
+  description?: string;
+  lang?: Lang;
+}
+
+const {
+  title = 'SoloMD — Lightweight Markdown editor',
+  description = 'A lightweight, cross-platform Markdown + plain text editor.',
+  lang = 'en',
+} = Astro.props;
+
+const htmlLang = lang === 'zh' ? 'zh-CN' : 'en';
+const path = lang === 'zh' ? '/zh/' : '/';
+---
+
+<!doctype html>
+<html lang={htmlLang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+
+    <link rel="alternate" hreflang="en" href="https://solomd.app/" />
+    <link rel="alternate" hreflang="zh-CN" href="https://solomd.app/zh/" />
+    <link rel="alternate" hreflang="x-default" href="https://solomd.app/" />
+    <link rel="canonical" href={`https://solomd.app${path}`} />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={`https://solomd.app${path}`} />
+    <meta property="og:site_name" content="SoloMD" />
+    <meta property="og:locale" content={htmlLang === 'zh-CN' ? 'zh_CN' : 'en_US'} />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+
+    <meta name="theme-color" content="#ff9f40" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0e0e0c" media="(prefers-color-scheme: dark)" />
+
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

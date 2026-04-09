@@ -1,0 +1,79 @@
+---
+import { getT, type Lang } from '../i18n/translations';
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const tr = getT(lang);
+---
+
+<section class="hero">
+  <div class="container hero__inner">
+    <div class="hero__badge">{tr.hero.badge}</div>
+    <h1>
+      {tr.hero.title1}<br />
+      <span class="hero__accent">{tr.hero.title2}</span>
+    </h1>
+    <p class="lead">{tr.hero.lead}</p>
+    <div class="hero__cta">
+      <a href="#download" class="btn btn--primary">{tr.hero.ctaPrimary}</a>
+      <a
+        href="https://github.com/zhitongblog/solomd"
+        target="_blank"
+        rel="noopener"
+        class="btn btn--secondary"
+      >
+        {tr.hero.ctaSecondary}
+      </a>
+    </div>
+    <div class="hero__chips">
+      {tr.hero.chips.map((c) => <span class="chip">{c}</span>)}
+    </div>
+  </div>
+</section>
+
+<style>
+  .hero {
+    padding: 100px 0 80px;
+    text-align: center;
+    background: radial-gradient(ellipse at top, var(--accent-soft) 0%, transparent 55%);
+  }
+  .hero__inner { max-width: 880px; }
+  .hero__badge {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 24px;
+    font-family: var(--font-mono);
+  }
+  .hero h1 {
+    font-size: clamp(2.4rem, 6vw, 4.2rem);
+    margin-bottom: 28px;
+  }
+  .hero__accent { color: var(--accent); }
+  .hero .lead { margin: 0 auto 36px; }
+  .hero__cta {
+    display: flex;
+    gap: 14px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 36px;
+  }
+  .hero__chips {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .chip {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+</style>

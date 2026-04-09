@@ -1,0 +1,48 @@
+---
+import { getT, type Lang } from '../i18n/translations';
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const tr = getT(lang);
+
+// TODO: replace with real URLs once accounts are set up.
+const githubSponsor = 'https://github.com/sponsors/zhitongblog';
+const afdian = 'https://afdian.net/a/zhitongblog';
+---
+
+<section id="sponsor">
+  <div class="container sponsor__inner">
+    <div class="sponsor__icon">❤️</div>
+    <h2>{tr.sponsor.heading}</h2>
+    <p class="lead">{tr.sponsor.lead}</p>
+    <div class="sponsor__buttons">
+      <a href={githubSponsor} target="_blank" rel="noopener" class="btn btn--secondary">
+        {tr.sponsor.ghButton}
+      </a>
+      <a href={afdian} target="_blank" rel="noopener" class="btn btn--secondary">
+        {tr.sponsor.cnButton}
+      </a>
+    </div>
+    <p class="sponsor__note">{tr.sponsor.note}</p>
+  </div>
+</section>
+
+<style>
+  .sponsor__inner {
+    text-align: center;
+    max-width: 720px;
+  }
+  .sponsor__icon { font-size: 48px; margin-bottom: 8px; }
+  .sponsor__inner .lead { margin: 16px auto 32px; }
+  .sponsor__buttons {
+    display: flex;
+    gap: 14px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 28px;
+  }
+  .sponsor__note {
+    font-size: 12px;
+    color: var(--text-faint);
+    margin: 0;
+  }
+</style>

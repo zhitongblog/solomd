@@ -1,0 +1,67 @@
+---
+import { getT, type Lang } from '../i18n/translations';
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const tr = getT(lang);
+---
+
+<section id="features">
+  <div class="container">
+    <div class="features__header">
+      <h2>{tr.features.heading1}<br /><span class="muted">{tr.features.heading2}</span></h2>
+      <p class="lead">{tr.features.lead}</p>
+    </div>
+    <div class="features__grid">
+      {tr.features.items.map((f) => (
+        <article class="feature-card">
+          <div class="feature-card__icon">{f.icon}</div>
+          <h3>{f.title}</h3>
+          <p>{f.desc}</p>
+        </article>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .features__header {
+    text-align: center;
+    margin-bottom: 60px;
+    max-width: 720px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .features__header h2 .muted { color: var(--text-muted); }
+  .features__header .lead { margin: 16px auto 0; }
+  .features__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+    gap: 20px;
+  }
+  .feature-card {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    transition: all 0.2s;
+  }
+  .feature-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px -12px rgba(255, 159, 64, 0.25);
+  }
+  .feature-card__icon {
+    font-size: 28px;
+    margin-bottom: 12px;
+  }
+  .feature-card h3 {
+    font-size: 1rem;
+    margin-bottom: 10px;
+  }
+  .feature-card p {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 0;
+    line-height: 1.6;
+  }
+</style>

@@ -1,0 +1,152 @@
+---
+import { getT, type Lang } from '../i18n/translations';
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const tr = getT(lang);
+
+const VERSION = '0.1.0';
+const REPO = 'zhitongblog/solomd';
+const baseUrl = `https://github.com/${REPO}/releases/download/v${VERSION}`;
+
+const platforms = [
+  {
+    icon: '🍎',
+    key: 'macos' as const,
+    primaryFile: `SoloMD_${VERSION}_universal.dmg`,
+  },
+  {
+    icon: '🪟',
+    key: 'windows' as const,
+    primaryFile: `SoloMD_${VERSION}_x64_en-US.msi`,
+    secondaryFile: `SoloMD_${VERSION}_x64-setup.exe`,
+  },
+  {
+    icon: '🐧',
+    key: 'linux' as const,
+    primaryFile: `SoloMD_${VERSION}_amd64.AppImage`,
+    secondaryFile: `SoloMD_${VERSION}_amd64.deb`,
+    tertiaryFile: `SoloMD-${VERSION}-1.x86_64.rpm`,
+  },
+];
+---
+
+<section id="download">
+  <div class="container">
+    <div class="download__header">
+      <h2>{tr.download.heading} <span class="muted">v{VERSION}</span></h2>
+      <p class="lead">{tr.download.lead}</p>
+    </div>
+    <div class="download__grid">
+      {platforms.map((p) => {
+        const meta = tr.download.platforms[p.key];
+        return (
+          <article class="dl-card">
+            <div class="dl-card__head">
+              <div class="dl-card__icon">{p.icon}</div>
+              <div>
+                <h3>{meta.name}</h3>
+                <div class="dl-card__note">{meta.note}</div>
+              </div>
+            </div>
+            <a href={`${baseUrl}/${p.primaryFile}`} class="btn btn--primary dl-card__btn">
+              {meta.primary}
+            </a>
+            {p.secondaryFile && 'secondary' in meta && (
+              <a href={`${baseUrl}/${p.secondaryFile}`} class="dl-card__alt">
+                — {meta.secondary}
+              </a>
+            )}
+            {p.tertiaryFile && 'tertiary' in meta && (
+              <a href={`${baseUrl}/${p.tertiaryFile}`} class="dl-card__alt">
+                — {meta.tertiary}
+              </a>
+            )}
+          </article>
+        );
+      })}
+    </div>
+    <div class="download__notes">
+      <div class="note"><strong>macOS</strong>: {tr.download.notes.macos}</div>
+      <div class="note"><strong>Windows</strong>: {tr.download.notes.windows}</div>
+      <div class="note"><strong>Linux</strong>: {tr.download.notes.linux}</div>
+    </div>
+    <p class="download__all">
+      {tr.download.allReleases}
+      <a href={`https://github.com/${REPO}/releases`} target="_blank" rel="noopener">
+        {tr.download.allReleasesLink}
+      </a>
+    </p>
+  </div>
+</section>
+
+<style>
+  .download__header {
+    text-align: center;
+    margin-bottom: 50px;
+  }
+  .download__header .muted {
+    color: var(--text-faint);
+    font-family: var(--font-mono);
+    font-size: 0.7em;
+    font-weight: 500;
+  }
+  .download__header .lead { margin: 16px auto 0; }
+  .download__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    margin-bottom: 40px;
+  }
+  .dl-card {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 26px;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.2s;
+  }
+  .dl-card:hover { border-color: var(--accent); }
+  .dl-card__head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 22px;
+  }
+  .dl-card__icon { font-size: 36px; line-height: 1; }
+  .dl-card h3 { margin: 0 0 4px; font-size: 1.1rem; }
+  .dl-card__note { font-size: 12px; color: var(--text-muted); }
+  .dl-card__btn {
+    width: 100%;
+    justify-content: center;
+    margin-bottom: 8px;
+  }
+  .dl-card__alt {
+    display: block;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 8px;
+    text-align: center;
+  }
+  .dl-card__alt:hover { color: var(--accent); }
+  .download__notes {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+    margin: 40px 0 24px;
+  }
+  .note {
+    background: var(--bg-soft);
+    border-left: 3px solid var(--accent);
+    padding: 14px 18px;
+    border-radius: 0 6px 6px 0;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+  .note strong { color: var(--text); }
+  .download__all {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+</style>

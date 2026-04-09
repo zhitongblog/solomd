@@ -1,0 +1,82 @@
+---
+import { getT, type Lang } from '../i18n/translations';
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const tr = getT(lang);
+const homeHref = lang === 'zh' ? '/zh/' : '/';
+---
+
+<header class="header">
+  <div class="container header__inner">
+    <a href={homeHref} class="header__brand">
+      <span class="brand-mark"><span class="h">#</span><span class="md">MD</span></span>
+      <span class="header__name">SoloMD</span>
+    </a>
+    <nav class="header__nav">
+      <a href="#features">{tr.nav.features}</a>
+      <a href="#download">{tr.nav.download}</a>
+      <a href="#sponsor">{tr.nav.sponsor}</a>
+      <a href="https://github.com/zhitongblog/solomd" target="_blank" rel="noopener">
+        {tr.nav.github}
+      </a>
+      <a href={tr.langSwitchHref} class="header__lang">
+        {tr.langSwitch}
+      </a>
+    </nav>
+  </div>
+</header>
+
+<style>
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    backdrop-filter: saturate(180%) blur(14px);
+    background: color-mix(in srgb, var(--bg) 80%, transparent);
+    border-bottom: 1px solid var(--border);
+  }
+  .header__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+  }
+  .header__brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    color: var(--text);
+    text-decoration: none;
+  }
+  .header__brand .brand-mark { font-size: 18px; }
+  .header__name { font-weight: 700; }
+  .header__nav {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+  }
+  .header__nav a {
+    color: var(--text-muted);
+    font-size: 14px;
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+  .header__nav a:hover { color: var(--accent); }
+  .header__lang {
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 4px 12px;
+    font-size: 12px !important;
+    color: var(--text) !important;
+  }
+  .header__lang:hover {
+    border-color: var(--accent);
+    color: var(--accent) !important;
+  }
+  @media (max-width: 720px) {
+    .header__nav a:not(.header__lang):not([href*='github']) {
+      display: none;
+    }
+  }
+</style>
