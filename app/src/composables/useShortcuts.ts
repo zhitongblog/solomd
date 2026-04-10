@@ -1,5 +1,6 @@
 import { onMounted, onUnmounted } from 'vue';
 import { useFiles } from './useFiles';
+import { useExport } from './useExport';
 import { useSettingsStore } from '../stores/settings';
 import { useTabsStore } from '../stores/tabs';
 import { useCommands } from './useCommands';
@@ -13,6 +14,7 @@ interface Hooks {
 
 export function useShortcuts(hooks: Hooks = {}) {
   const files = useFiles();
+  const exporter = useExport();
   const settings = useSettingsStore();
   const tabs = useTabsStore();
   const commands = useCommands();
@@ -63,6 +65,9 @@ export function useShortcuts(hooks: Hooks = {}) {
     } else if (k === 'o') {
       e.preventDefault();
       files.openFile();
+    } else if (k === 'c' && e.shiftKey) {
+      e.preventDefault();
+      exporter.copyAsHtml();
     } else if (k === 's' && e.shiftKey) {
       e.preventDefault();
       files.saveActiveAs();

@@ -3,6 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { writeText, writeHtml } from '@tauri-apps/plugin-clipboard-manager';
 import { markdownToDocxBlob } from '../lib/docx-export';
 import { markdownToPdfBlob } from '../lib/pdf-export';
+import { markdownToImageBlob } from '../lib/image-export';
 import { renderMarkdown } from '../lib/markdown';
 import { useTabsStore } from '../stores/tabs';
 import { useToastsStore } from '../stores/toasts';
@@ -304,13 +305,57 @@ export function useExport() {
     }
   }
 
+  /** Export as PNG image (renders preview, captures with html2canvas). */
+  async function exportImage() {
+    const ctx = activeOr();
+    if (!ctx) return;
+    const path = await saveDialog({
+      defaultPath: `${ctx.baseName}.png`,
+      filters: [{ name: 'PNG Image', extensions: ['png'] }],
+    });
+    if (!path) return;
+    const tid = toasts.info('Generating image…', 0);
+    try {
+      const blob = await markdownToImageBlob(ctx.content, ctx.baseName);
+      const buffer = new Uint8Array(await blob.arrayBuffer());
+      await invoke('write_binary_file', { path, data: Array.from(buffer) });
+      toasts.dismiss(tid);
+      toasts.success('Exported to PNG image');
+    } catch (e) {
+      console.error(e);
+      toasts.dismiss(tid);
+      toasts.error(`Image export failed: ${e}`);
+    }
+  }
+
+  /** Copy rendered markdown as a PNG image to the clipboard. */
+  async function copyAsImage() {
+    const ctx = activeOr();
+    if (!ctx) return;
+    const tid = toasts.info('Capturing image…', 0);
+    try {
+      const blob = await markdownToImageBlob(ctx.content, ctx.baseName);
+      await navigator.clipboard.write([
+        new ClipboardItem({ 'image/png': blob }),
+      ]);
+      toasts.dismiss(tid);
+      toasts.success('Copied as image');
+    } catch (e) {
+      console.error(e);
+      toasts.dismiss(tid);
+      toasts.error(`Copy image failed: ${e}`);
+    }
+  }
+
   return {
     exportHtml,
     exportDocx,
     exportPdf,
     exportPdfPrint,
+    exportImage,
     copyAsHtml,
     copyAsPlainText,
     copyAsMarkdown,
+    copyAsImage,
   };
 }

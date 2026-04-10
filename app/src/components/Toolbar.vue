@@ -43,6 +43,7 @@ function onCleanAI() {
 const recentOpen = ref(false);
 const exportOpen = ref(false);
 const newOpen = ref(false);
+const copyOpen = ref(false);
 
 function shortPath(p: string) {
   const parts = p.split(/[\\/]/);
@@ -57,6 +58,9 @@ function closeExportSoon() {
 }
 function closeNewSoon() {
   setTimeout(() => (newOpen.value = false), 150);
+}
+function closeCopySoon() {
+  setTimeout(() => (copyOpen.value = false), 150);
 }
 </script>
 
@@ -155,6 +159,9 @@ function closeNewSoon() {
           <button class="dropdown__item dropdown__item--single" @mousedown.prevent="exporter.exportPdfPrint(); exportOpen = false">
             <span class="dropdown__name">Export to PDF via Print…</span>
           </button>
+          <button class="dropdown__item dropdown__item--single" @mousedown.prevent="exporter.exportImage(); exportOpen = false">
+            <span class="dropdown__name">Export to Image (PNG)…</span>
+          </button>
           <div class="dropdown__sep"></div>
           <button class="dropdown__item dropdown__item--single" @mousedown.prevent="exporter.copyAsHtml(); exportOpen = false">
             <span class="dropdown__name">Copy as HTML</span>
@@ -178,6 +185,44 @@ function closeNewSoon() {
         <span class="clean-ai-label">AI</span>
         <span class="clean-ai-x">✕</span>
       </button>
+    </div>
+
+    <div class="toolbar__group">
+      <div class="copy-split">
+        <button
+          class="copy-split__main"
+          @click="exporter.copyAsHtml()"
+          title="Copy as rich text HTML (Cmd+Shift+C) — paste into WeChat / email / Notion with formatting"
+        >
+          <Icon name="export" :size="14" />
+          Copy
+        </button>
+        <div class="dropdown">
+          <button
+            class="copy-split__arrow"
+            @click="copyOpen = !copyOpen"
+            @blur="closeCopySoon"
+            title="Copy format options"
+          >
+            <Icon name="chevron-down" :size="10" />
+          </button>
+          <div v-if="copyOpen" class="dropdown__menu dropdown__menu--narrow copy-dropdown">
+            <button class="dropdown__item dropdown__item--single" @mousedown.prevent="exporter.copyAsHtml(); copyOpen = false">
+              <span class="dropdown__name">📋 Copy as HTML</span>
+              <span class="dropdown__shortcut">⇧⌘C</span>
+            </button>
+            <button class="dropdown__item dropdown__item--single" @mousedown.prevent="exporter.copyAsMarkdown(); copyOpen = false">
+              <span class="dropdown__name">📝 Copy as Markdown</span>
+            </button>
+            <button class="dropdown__item dropdown__item--single" @mousedown.prevent="exporter.copyAsPlainText(); copyOpen = false">
+              <span class="dropdown__name">📄 Copy as Plain Text</span>
+            </button>
+            <button class="dropdown__item dropdown__item--single" @mousedown.prevent="exporter.copyAsImage(); copyOpen = false">
+              <span class="dropdown__name">🖼 Copy as Image</span>
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="toolbar__spacer"></div>
@@ -345,6 +390,50 @@ function closeNewSoon() {
   font-size: 9px;
   opacity: 0.6;
   margin-left: 1px;
+}
+
+/* Split copy button: [Copy | ▾] */
+.copy-split {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.copy-split__main {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px !important;
+  font-size: 12px !important;
+  color: var(--text-muted);
+  border: none;
+  border-radius: 0;
+  transition: all 0.15s;
+}
+.copy-split__main:hover {
+  color: var(--accent);
+  background: var(--bg-hover);
+}
+.copy-split__arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  padding: 0 !important;
+  border: none;
+  border-left: 1px solid var(--border);
+  border-radius: 0;
+  color: var(--text-faint);
+}
+.copy-split__arrow:hover {
+  color: var(--accent);
+  background: var(--bg-hover);
+}
+.copy-dropdown {
+  right: 0;
+  left: auto;
+  min-width: 220px;
 }
 .toolbar__spacer { flex: 1; }
 .toolbar__divider {

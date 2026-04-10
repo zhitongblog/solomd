@@ -143,9 +143,11 @@ export function useCommands(): Command[] {
     { id: 'export.docx', title: 'Export to Word (DOCX)…', run: () => exporter.exportDocx() },
     { id: 'export.pdf', title: 'Export to PDF…', run: () => exporter.exportPdf() },
     { id: 'export.pdfPrint', title: 'Export to PDF via System Print…', shortcut: 'Ctrl+P', run: () => exporter.exportPdfPrint() },
-    { id: 'export.copyHtml', title: 'Copy as HTML', run: () => exporter.copyAsHtml() },
+    { id: 'export.image', title: 'Export to Image (PNG)…', run: () => exporter.exportImage() },
+    { id: 'export.copyHtml', title: 'Copy as HTML', shortcut: 'Ctrl+Shift+C', run: () => exporter.copyAsHtml() },
     { id: 'export.copyPlain', title: 'Copy as Plain Text', run: () => exporter.copyAsPlainText() },
     { id: 'export.copyMd', title: 'Copy as Markdown', run: () => exporter.copyAsMarkdown() },
+    { id: 'export.copyImage', title: 'Copy as Image (PNG)', run: () => exporter.copyAsImage() },
 
     {
       id: 'help.markdown',
