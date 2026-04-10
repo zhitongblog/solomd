@@ -17,13 +17,26 @@ export function cleanAIArtifacts(text: string): string {
 
   return (
     text
+      // ===== AI citation / reference markers =====
+      // Gemini / Google AI / NotebookLM
+      .replace(/\[cite_start\]/gi, '')
+      .replace(/\[cite:\s*[\d,\s]+\]/gi, '')
+      // ChatGPT / GPT-4 web browsing citations: 【1†source】【oai_citation:1|title】
+      .replace(/【[^】]*†[^】]*】/g, '')
+      .replace(/【oai_citation:[^】]*】/g, '')
+      .replace(/【\d+:\d+†[^】]*】/g, '')
+      // Perplexity-style inline citations: [1] [2] [3] at end of sentences
+      // (only strip when they look like citation clusters, not markdown footnotes)
+      .replace(/(?<=\S)\s*\[\d+\](?:\s*\[\d+\])*/g, '')
+      // Generic "Source:" / "Sources:" trailing blocks at end of text
+      .replace(/\n{2,}(?:Sources?|References?|Citations?):\s*\n[\s\S]*$/i, '')
+
+      // ===== Unicode normalization =====
       // 1. Strip BOM at start of file (sometimes copied along with text)
       .replace(/^\uFEFF/, '')
       // 2. Strip zero-width / bidi / format-control invisible characters
-      //    Includes: ZWSP, ZWNJ, ZWJ, LRM, RLM, LRE, RLE, PDF, LRO, RLO,
-      //              LRI, RLI, FSI, PDI, WJ, etc., and lingering BOMs.
       .replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '')
-      // 3. Non-breaking space → regular space (NBSP confuses search/copy)
+      // 3. Non-breaking space → regular space
       .replace(/\u00A0/g, ' ')
       // 4. "Smart" double quotes → straight ASCII double quote
       .replace(/[\u201C\u201D\u201E\u201F\u2033\u2036]/g, '"')
@@ -35,6 +48,8 @@ export function cleanAIArtifacts(text: string): string {
       .replace(/\u2014/g, ' - ')
       // 8. Horizontal ellipsis → three dots
       .replace(/\u2026/g, '...')
+
+      // ===== Whitespace cleanup =====
       // 9. Trim trailing whitespace on each line
       .replace(/[ \t]+$/gm, '')
       // 10. Collapse 3+ consecutive blank lines → 2

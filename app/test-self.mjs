@@ -60,6 +60,16 @@ ok('trailing whitespace trimmed', cleanAIArtifacts('hello   \nworld') === 'hello
 // Markdown preserved
 ok('markdown preserved', cleanAIArtifacts('# heading\n**bold**') === '# heading\n**bold**');
 
+// Gemini cite markers
+ok('Gemini [cite_start] removed', !cleanAIArtifacts('[cite_start]Hello world').includes('[cite_start]'));
+ok('Gemini [cite: N, M] removed', !cleanAIArtifacts('Some text [cite: 5, 41].').includes('[cite:'));
+ok('Gemini mixed', cleanAIArtifacts('[cite_start]他说了 [cite: 36, 63]。').includes('他说了'));
+ok('Gemini mixed no brackets', !cleanAIArtifacts('[cite_start]他说了 [cite: 36, 63]。').includes('['));
+// ChatGPT citations
+ok('ChatGPT 【†source】 removed', !cleanAIArtifacts('Hello 【1†source】world').includes('【'));
+// Perplexity [1][2]
+ok('Perplexity [1][2] removed', !cleanAIArtifacts('Hello [1] [2] world').includes('[1]'));
+
 // Strip plain test
 const md = '# Title\n\n**bold** and *italic* with `code`.\n\n- item 1\n- [x] done\n\n```js\nconst x = 1;\n```';
 const plain = stripMarkdownToPlain(md);

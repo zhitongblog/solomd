@@ -15,7 +15,9 @@ const links = {
   sponsor: 'https://solomd.app/#sponsor',
 };
 
-async function open(url: string) {
+// NOTE: this function intentionally is NOT named `open` because that
+// collides with the `open` prop and the template would shadow it.
+async function visit(url: string) {
   try {
     await openUrl(url);
   } catch (e) {
@@ -47,28 +49,28 @@ async function open(url: string) {
       </p>
 
       <div class="about__links">
-        <button class="about__link" @click="open(links.website)">
+        <button class="about__link" @click="visit(links.website)">
           <span class="about__link-icon">🌐</span>
           <div>
             <div class="about__link-title">Website / 官网</div>
             <div class="about__link-url">solomd.app</div>
           </div>
         </button>
-        <button class="about__link" @click="open(links.github)">
+        <button class="about__link" @click="visit(links.github)">
           <span class="about__link-icon">⭐</span>
           <div>
             <div class="about__link-title">GitHub</div>
             <div class="about__link-url">zhitongblog/solomd</div>
           </div>
         </button>
-        <button class="about__link" @click="open(links.releases)">
+        <button class="about__link" @click="visit(links.releases)">
           <span class="about__link-icon">📦</span>
           <div>
             <div class="about__link-title">Releases / 历史版本</div>
             <div class="about__link-url">github.com/.../releases</div>
           </div>
         </button>
-        <button class="about__link" @click="open(links.sponsor)">
+        <button class="about__link" @click="visit(links.sponsor)">
           <span class="about__link-icon">❤️</span>
           <div>
             <div class="about__link-title">Sponsor / 赞助</div>

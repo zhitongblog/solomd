@@ -6,6 +6,8 @@ import { useSettingsStore } from '../stores/settings';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useFiles } from '../composables/useFiles';
 import { useExport } from '../composables/useExport';
+import { useToastsStore } from '../stores/toasts';
+import { cleanAIArtifacts } from '../lib/clean-ai';
 
 defineEmits<{
   (e: 'open-palette'): void;
@@ -19,8 +21,24 @@ const settings = useSettingsStore();
 const workspace = useWorkspaceStore();
 const files = useFiles();
 const exporter = useExport();
+const toasts = useToastsStore();
 
 const isMarkdown = computed(() => tabs.activeTab?.language === 'markdown');
+
+function onCleanAI() {
+  const t = tabs.activeTab;
+  if (!t) {
+    toasts.warning('No active document');
+    return;
+  }
+  const cleaned = cleanAIArtifacts(t.content);
+  if (cleaned === t.content) {
+    toasts.info('No AI artifacts found');
+    return;
+  }
+  tabs.setContent(t.id, cleaned);
+  toasts.success('AI artifacts cleaned');
+}
 
 const recentOpen = ref(false);
 const exportOpen = ref(false);
@@ -149,6 +167,17 @@ function closeNewSoon() {
           </button>
         </div>
       </div>
+    </div>
+
+    <div class="toolbar__group">
+      <button
+        class="icon-btn clean-ai-btn"
+        @click="onCleanAI"
+        title="Clean AI Artifacts (cite markers, smart quotes, invisible chars)"
+      >
+        <span class="clean-ai-label">AI</span>
+        <span class="clean-ai-x">✕</span>
+      </button>
     </div>
 
     <div class="toolbar__spacer"></div>
@@ -291,6 +320,31 @@ function closeNewSoon() {
 }
 .icon-btn:hover {
   color: var(--text);
+}
+.clean-ai-btn {
+  position: relative;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 11px !important;
+  padding: 3px 10px !important;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  gap: 2px;
+  color: var(--text-muted);
+  transition: all 0.15s;
+}
+.clean-ai-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft, rgba(255, 159, 64, 0.08));
+}
+.clean-ai-label {
+  letter-spacing: 0.04em;
+}
+.clean-ai-x {
+  font-size: 9px;
+  opacity: 0.6;
+  margin-left: 1px;
 }
 .toolbar__spacer { flex: 1; }
 .toolbar__divider {
