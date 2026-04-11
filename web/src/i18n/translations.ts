@@ -271,6 +271,10 @@ export const t = {
           q: 'SoloMD 支持 Vim 或 Emacs 快捷键吗?',
           a: '暂时不支持,但编辑器基于 CodeMirror 6,可以通过 @codemirror/vim 加 Vim 模式。在 roadmap 里。',
         },
+        {
+          q: 'Linux 上"复制为图片"失败怎么办?',
+          a: 'SoloMD 使用系统剪贴板,Linux 上需要 wl-clipboard (Wayland) 或 xclip (X11)。安装命令: sudo apt install wl-clipboard (Wayland/Ubuntu 22+) 或 sudo apt install xclip (X11)。如果仍然失败,SoloMD 会弹出另存为 PNG 的对话框。',
+        },
       ],
     },
     sponsor: {
