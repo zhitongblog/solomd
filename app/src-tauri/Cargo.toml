@@ -40,3 +40,11 @@ tauri-plugin-dialog = "2.7.0"
 tauri-plugin-clipboard-manager = "2.3.2"
 walkdir = "2.5.0"
 
+# Platform-specific deps for "Set as default editor" feature.
+[target.'cfg(target_os = "macos")'.dependencies]
+core-foundation = "0.10"
+core-foundation-sys = "0.8"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+winreg = "0.52"
+

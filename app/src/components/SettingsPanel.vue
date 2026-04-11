@@ -1,7 +1,23 @@
 <script setup lang="ts">
+import { ref } from 'vue';
+import { invoke } from '@tauri-apps/api/core';
 import { useSettingsStore } from '../stores/settings';
 import { useToastsStore } from '../stores/toasts';
 import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
+
+const settingDefault = ref(false);
+
+async function setAsDefault() {
+  settingDefault.value = true;
+  try {
+    const msg = await invoke<string>('set_as_default_markdown_editor');
+    toasts.success(msg);
+  } catch (e) {
+    toasts.error(String(e));
+  } finally {
+    settingDefault.value = false;
+  }
+}
 
 defineProps<{ open: boolean }>();
 const emit = defineEmits<{ (e: 'close'): void }>();
@@ -127,6 +143,22 @@ const fontFamilies = [
           </div>
           <div v-if="settings.customCssPath" style="font-size: 11px; color: var(--text-faint); word-break: break-all; margin-top: 4px;">
             {{ settings.customCssPath }}
+          </div>
+        </section>
+
+        <section>
+          <label>File Association</label>
+          <div class="row" style="gap: 8px; align-items: center;">
+            <button
+              class="primary-btn"
+              :disabled="settingDefault"
+              @click="setAsDefault"
+            >
+              {{ settingDefault ? 'Setting…' : '⭐ Set SoloMD as default Markdown editor' }}
+            </button>
+          </div>
+          <div style="font-size: 11px; color: var(--text-faint); margin-top: 6px; line-height: 1.5;">
+            Registers SoloMD as the default app for .md / .markdown / .mdown / .mkd files. On Windows, also adds SoloMD to the "Open with" menu. On Linux requires <code>xdg-utils</code>.
           </div>
         </section>
       </div>

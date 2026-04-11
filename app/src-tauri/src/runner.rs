@@ -4,6 +4,9 @@ mod commands;
 #[path = "search.rs"]
 mod search;
 
+#[path = "set_default.rs"]
+mod set_default;
+
 use std::sync::Mutex;
 use tauri::menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder};
 use tauri::{Emitter, Manager, RunEvent};
@@ -35,6 +38,7 @@ pub fn run_with(initial_file: Option<String>) {
             commands::list_dir,
             search::search_in_dir,
             drain_pending_opens,
+            set_default::set_as_default_markdown_editor,
         ])
         .on_menu_event(|app_handle, event| {
             // Forward every menu click to the frontend as a single event
