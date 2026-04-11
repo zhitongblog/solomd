@@ -14,7 +14,7 @@ const defaultDownload = `${baseUrl}/SoloMD_${VERSION}_universal.dmg`;
 
 <section class="hero">
   <div class="container hero__inner">
-    <div class="hero__badge">{tr.hero.badge} · <span id="hero-dl-count"></span></div>
+    <div class="hero__badge">{tr.hero.badge} · <span id="hero-stars"></span> · <span id="hero-dl-count"></span></div>
     <h1>
       {tr.hero.title1}<br />
       <span class="hero__accent">{tr.hero.title2}</span>
@@ -77,6 +77,22 @@ const defaultDownload = `${baseUrl}/SoloMD_${VERSION}_universal.dmg`;
       })
       .catch(function () {
         var el = document.getElementById('hero-dl-count');
+        if (el) el.style.display = 'none';
+      });
+  })();
+
+  // Fetch GitHub stars count
+  (function () {
+    fetch('https://api.github.com/repos/zhitongblog/solomd')
+      .then(function (r) { return r.json(); })
+      .then(function (repo) {
+        var stars = repo.stargazers_count || 0;
+        var text = stars >= 1000 ? (stars / 1000).toFixed(1) + 'k' : String(stars);
+        var el = document.getElementById('hero-stars');
+        if (el) el.textContent = '⭐ ' + text;
+      })
+      .catch(function () {
+        var el = document.getElementById('hero-stars');
         if (el) el.style.display = 'none';
       });
   })();
