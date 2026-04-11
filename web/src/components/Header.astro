@@ -21,6 +21,9 @@ const homeHref = lang === 'zh' ? '/zh/' : '/';
       <a href="https://github.com/zhitongblog/solomd" target="_blank" rel="noopener">
         {tr.nav.github}
       </a>
+      <a href="https://storyalter.com" target="_blank" rel="noopener" class="header__sister" title={lang === 'zh' ? 'AI 小说写作平台' : 'AI Novel Writing Platform'}>
+        StoryAlter
+      </a>
       <a href={tr.langSwitchHref} class="header__lang">
         {tr.langSwitch}
       </a>
@@ -65,6 +68,14 @@ const homeHref = lang === 'zh' ? '/zh/' : '/';
     transition: color 0.15s;
   }
   .header__nav a:hover { color: var(--accent); }
+  .header__sister {
+    color: var(--accent) !important;
+    font-weight: 500;
+    font-size: 13px !important;
+  }
+  .header__sister:hover {
+    text-decoration: underline;
+  }
   .header__lang {
     border: 1px solid var(--border);
     border-radius: 999px;
