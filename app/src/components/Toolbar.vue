@@ -398,7 +398,8 @@ function closeCopySoon() {
   align-items: stretch;
   border: 1px solid var(--border);
   border-radius: 6px;
-  overflow: hidden;
+  /* NOTE: no overflow:hidden here — it would clip the dropdown menu */
+  position: relative;
 }
 .copy-split__main {
   display: inline-flex;
@@ -408,7 +409,7 @@ function closeCopySoon() {
   font-size: 12px !important;
   color: var(--text-muted);
   border: none;
-  border-radius: 0;
+  border-radius: 6px 0 0 6px;
   transition: all 0.15s;
 }
 .copy-split__main:hover {
@@ -423,7 +424,7 @@ function closeCopySoon() {
   padding: 0 !important;
   border: none;
   border-left: 1px solid var(--border);
-  border-radius: 0;
+  border-radius: 0 6px 6px 0;
   color: var(--text-faint);
 }
 .copy-split__arrow:hover {

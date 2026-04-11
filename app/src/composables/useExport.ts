@@ -1,6 +1,7 @@
 import { save as saveDialog } from '@tauri-apps/plugin-dialog';
 import { invoke } from '@tauri-apps/api/core';
-import { writeText, writeHtml } from '@tauri-apps/plugin-clipboard-manager';
+import { writeText, writeHtml, writeImage } from '@tauri-apps/plugin-clipboard-manager';
+import { Image } from '@tauri-apps/api/image';
 import { markdownToDocxBlob } from '../lib/docx-export';
 import { markdownToPdfBlob } from '../lib/pdf-export';
 import { markdownToImageBlob } from '../lib/image-export';
@@ -335,15 +336,33 @@ export function useExport() {
     const tid = toasts.info('Capturing image…', 0);
     try {
       const blob = await markdownToImageBlob(ctx.content, ctx.baseName);
-      await navigator.clipboard.write([
-        new ClipboardItem({ 'image/png': blob }),
-      ]);
+      const bytes = new Uint8Array(await blob.arrayBuffer());
+      // Use Tauri's clipboard plugin (browser Clipboard API doesn't support
+      // images in webview contexts).
+      const img = await Image.fromBytes(bytes);
+      await writeImage(img);
       toasts.dismiss(tid);
       toasts.success('Copied as image');
     } catch (e) {
       console.error(e);
       toasts.dismiss(tid);
-      toasts.error(`Copy image failed: ${e}`);
+      // Fallback: save to file instead
+      try {
+        const path = await saveDialog({
+          defaultPath: `${ctx.baseName}.png`,
+          filters: [{ name: 'PNG Image', extensions: ['png'] }],
+        });
+        if (path) {
+          const blob2 = await markdownToImageBlob(ctx.content, ctx.baseName);
+          const buffer = new Uint8Array(await blob2.arrayBuffer());
+          await invoke('write_binary_file', { path, data: Array.from(buffer) });
+          toasts.success('Clipboard failed — saved as PNG instead');
+        } else {
+          toasts.error(`Copy image failed: ${e}`);
+        }
+      } catch (e2) {
+        toasts.error(`Copy image failed: ${e}`);
+      }
     }
   }
 

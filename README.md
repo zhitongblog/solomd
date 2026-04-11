@@ -89,6 +89,12 @@ This is a one-time prompt; subsequent launches won't show it. We're a small open
 - **`.deb`**: `sudo dpkg -i solomd_*.deb`
 - **`.rpm`**: `sudo rpm -i solomd-*.rpm`
 
+> **Note:** "Copy as Image" requires a clipboard tool on Linux. Install if needed:
+> ```bash
+> sudo apt install wl-clipboard  # Wayland (Ubuntu 22+, Fedora 34+)
+> sudo apt install xclip          # X11
+> ```
+
 ### Development / 本地开发
 
 ```bash
