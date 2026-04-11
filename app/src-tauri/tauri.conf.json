@@ -32,8 +32,8 @@
     "targets": "all",
     "category": "Productivity",
     "license": "MIT",
-    "publisher": "xiangdong li",
-    "homepage": "https://github.com/zhitongblog/solomd",
+    "publisher": "zhitong",
+    "homepage": "https://solomd.app",
     "shortDescription": "Lightweight Markdown + plain text editor",
     "longDescription": "SoloMD is a lightweight, distraction-free editor for Markdown and plain text files. One file. One window. Just write.",
     "icon": [
@@ -48,14 +48,23 @@
         "ext": ["md", "markdown", "mdown", "mkd"],
         "name": "Markdown Document",
         "description": "Markdown text document",
-        "role": "Editor"
+        "role": "Editor",
+        "mimeType": "text/markdown"
       },
       {
         "ext": ["txt"],
         "name": "Plain Text",
         "description": "Plain text document",
-        "role": "Editor"
+        "role": "Editor",
+        "mimeType": "text/plain"
       }
-    ]
+    ],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "installerIcon": "icons/icon.ico",
+        "displayLanguageSelector": false
+      }
+    }
   }
 }
