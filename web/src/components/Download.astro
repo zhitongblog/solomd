@@ -4,7 +4,7 @@ interface Props { lang: Lang }
 const { lang } = Astro.props;
 const tr = getT(lang);
 
-const VERSION = '0.1.4';
+const VERSION = '0.1.5';
 const REPO = 'zhitongblog/solomd';
 const baseUrl = `https://github.com/${REPO}/releases/download/v${VERSION}`;
 
@@ -33,7 +33,7 @@ const platforms = [
 <section id="download">
   <div class="container">
     <div class="download__header">
-      <h2>{tr.download.heading} <span class="muted">v{VERSION}</span></h2>
+      <h2>{tr.download.heading} <span class="muted">v{VERSION}</span> <span class="muted" id="dl-section-count"></span></h2>
       <p class="lead">{tr.download.lead}</p>
     </div>
     <div class="download__grid">
