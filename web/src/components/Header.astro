@@ -6,6 +6,17 @@ const tr = getT(lang);
 const homeHref = lang === 'zh' ? '/zh/' : '/';
 ---
 
+<div class="topbar">
+  <div class="container topbar__inner">
+    <span class="topbar__text">
+      ✨ {lang === 'zh'
+        ? '试试我们的 AI 小说写作平台'
+        : 'Try our AI novel writing platform'}
+      →
+      <a href="https://storyalter.com" target="_blank" rel="noopener">StoryAlter.com</a>
+    </span>
+  </div>
+</div>
 <header class="header">
   <div class="container header__inner">
     <a href={homeHref} class="header__brand">
@@ -21,9 +32,6 @@ const homeHref = lang === 'zh' ? '/zh/' : '/';
       <a href="https://github.com/zhitongblog/solomd" target="_blank" rel="noopener">
         {tr.nav.github}
       </a>
-      <a href="https://storyalter.com" target="_blank" rel="noopener" class="header__sister" title={lang === 'zh' ? 'AI 小说写作平台' : 'AI Novel Writing Platform'}>
-        StoryAlter
-      </a>
       <a href={tr.langSwitchHref} class="header__lang">
         {tr.langSwitch}
       </a>
@@ -32,6 +40,29 @@ const homeHref = lang === 'zh' ? '/zh/' : '/';
 </header>
 
 <style>
+  .topbar {
+    background: var(--ink);
+    color: #ffffff;
+    font-size: 12px;
+    text-align: center;
+    padding: 7px 0;
+  }
+  .topbar__inner {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .topbar__text {
+    color: rgba(255, 255, 255, 0.8);
+  }
+  .topbar__text a {
+    color: var(--accent);
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .topbar__text a:hover {
+    text-decoration: underline;
+  }
   .header {
     position: sticky;
     top: 0;
@@ -68,14 +99,6 @@ const homeHref = lang === 'zh' ? '/zh/' : '/';
     transition: color 0.15s;
   }
   .header__nav a:hover { color: var(--accent); }
-  .header__sister {
-    color: var(--accent) !important;
-    font-weight: 500;
-    font-size: 13px !important;
-  }
-  .header__sister:hover {
-    text-decoration: underline;
-  }
   .header__lang {
     border: 1px solid var(--border);
     border-radius: 999px;

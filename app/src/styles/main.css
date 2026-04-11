@@ -50,7 +50,8 @@
   --font-ui: -apple-system, "Segoe UI", "Inter", Roboto, "Helvetica Neue",
     "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", "SF Mono", "Cascadia Code", "Menlo",
-    "Consolas", monospace;
+    "Consolas", "Fira Code", "Source Code Pro", "DejaVu Sans Mono",
+    "Liberation Mono", "Ubuntu Mono", "Noto Sans Mono", monospace;
 
   --titlebar-h: 36px;
   --tabbar-h: 34px;
