@@ -4,8 +4,20 @@ version = "0.1.5"
 description = "SoloMD — a lightweight, cross-platform Markdown + plain text editor"
 authors = ["zhitong"]
 edition = "2021"
+# Disable auto-discovery of bins so Cargo only produces the explicit
+# [[bin]] "SoloMD" below (instead of also building an implicit "solomd"
+# binary from src/main.rs + package.name).
+autobins = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+# Force the binary name to "SoloMD" so it matches tauri.conf.json's
+# `mainBinaryName`. Without this, Cargo would produce `solomd.exe` (lowercase
+# from [package].name) while Tauri's NSIS template was creating shortcuts
+# pointing to a different name, causing the Windows shortcut to break.
+[[bin]]
+name = "SoloMD"
+path = "src/main.rs"
 
 [lib]
 # The `_lib` suffix may seem redundant but it is necessary

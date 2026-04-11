@@ -27,6 +27,7 @@
       }
     }
   },
+  "mainBinaryName": "SoloMD",
   "bundle": {
     "active": true,
     "targets": "all",

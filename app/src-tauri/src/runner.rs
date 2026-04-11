@@ -8,7 +8,16 @@ use std::sync::Mutex;
 use tauri::menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder};
 use tauri::{Emitter, Manager, RunEvent};
 
-struct PendingOpen(Mutex<Vec<String>>);
+pub struct PendingOpen(pub Mutex<Vec<String>>);
+
+/// Command: returns all paths queued by macOS Apple Events / CLI args
+/// and clears the buffer. Called by the frontend on mount — this prevents
+/// the race where the "opened" event fires before the JS listener exists.
+#[tauri::command]
+fn drain_pending_opens(state: tauri::State<PendingOpen>) -> Vec<String> {
+    let mut guard = state.0.lock().unwrap();
+    std::mem::take(&mut *guard)
+}
 
 pub fn run_with(initial_file: Option<String>) {
     let pending: Vec<String> = initial_file.into_iter().collect();
@@ -25,6 +34,7 @@ pub fn run_with(initial_file: Option<String>) {
             commands::copy_file,
             commands::list_dir,
             search::search_in_dir,
+            drain_pending_opens,
         ])
         .on_menu_event(|app_handle, event| {
             // Forward every menu click to the frontend as a single event
@@ -140,22 +150,10 @@ pub fn run_with(initial_file: Option<String>) {
                 .build()?;
             app.set_menu(menu)?;
 
-            // ---- Drain pending file path from CLI / OS double-click ----
-            let handle = app.handle().clone();
-            let pending_state = app.state::<PendingOpen>();
-            let paths: Vec<String> = {
-                let mut guard = pending_state.0.lock().unwrap();
-                std::mem::take(&mut *guard)
-            };
-            if !paths.is_empty() {
-                // Defer a tick so the frontend has a chance to mount its listener.
-                std::thread::spawn(move || {
-                    std::thread::sleep(std::time::Duration::from_millis(400));
-                    for path in paths {
-                        let _ = handle.emit("solomd://opened-file", path);
-                    }
-                });
-            }
+            // NOTE: do NOT drain PendingOpen here. The frontend calls
+            // `drain_pending_opens` on mount instead, which avoids the
+            // race condition where the "opened-file" event fires before
+            // the JS listener is ready (happens on macOS cold start).
             Ok(())
         })
         .build(tauri::generate_context!())
@@ -173,6 +171,13 @@ pub fn run_with(initial_file: Option<String>) {
                     Some(url.to_string())
                 };
                 if let Some(p) = path {
+                    // Always push to the pending buffer so a cold start
+                    // can pick it up via `drain_pending_opens`.
+                    if let Some(state) = app_handle.try_state::<PendingOpen>() {
+                        state.0.lock().unwrap().push(p.clone());
+                    }
+                    // Also emit the event for the hot case where the
+                    // frontend is already mounted and listening.
                     let _ = app_handle.emit("solomd://opened-file", p);
                 }
             }

@@ -2,6 +2,7 @@
 import { onMounted, onBeforeUnmount, ref, watch, watchEffect, computed } from 'vue';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
+import { invoke } from '@tauri-apps/api/core';
 import Toolbar from './components/Toolbar.vue';
 import TabBar from './components/TabBar.vue';
 import Editor from './components/Editor.vue';
@@ -142,7 +143,6 @@ function dispatchMenuAction(id: string) {
 }
 
 onMounted(async () => {
-  if (tabs.tabs.length === 0) tabs.newTab();
   window.addEventListener('keydown', onEsc);
   window.addEventListener('solomd:open-help', onOpenHelpEvent as EventListener);
   window.addEventListener('solomd:open-global-search', onOpenSearchEvent as EventListener);
@@ -156,6 +156,22 @@ onMounted(async () => {
   } catch (err) {
     console.warn('opened-file listener not available', err);
   }
+
+  // Drain any files queued by the backend BEFORE this listener was
+  // set up (cold start from double-click on macOS / CLI args elsewhere).
+  // This must happen before we decide whether to create a blank tab.
+  try {
+    const pending = await invoke<string[]>('drain_pending_opens');
+    for (const p of pending || []) {
+      await files.openPath(p);
+    }
+  } catch (err) {
+    console.warn('drain_pending_opens failed', err);
+  }
+
+  // Only create a blank Untitled tab if nothing was restored AND nothing
+  // was opened from the OS file-association path.
+  if (tabs.tabs.length === 0) tabs.newTab();
 
   // Native menu bar: runner.rs emits "solomd://menu" with the item id.
   try {
