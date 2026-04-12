@@ -225,9 +225,9 @@ mod linux {
     use std::process::Command;
 
     pub fn set_default() -> Result<String, String> {
-        // The .desktop file name comes from Tauri's deb/rpm packaging,
-        // which uses the Cargo package name (solomd) + ".desktop".
-        let desktop_file = "solomd.desktop";
+        // The .desktop file name comes from Tauri's deb/rpm packaging.
+        // With [[bin]] name = "SoloMD" in Cargo.toml, the file is SoloMD.desktop.
+        let desktop_file = "SoloMD.desktop";
 
         // Markdown MIME types (some distros use one, some another)
         let mimes = [

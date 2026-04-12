@@ -160,6 +160,12 @@ install_linux() {
       sudo apt-get install -f -y
     }
     rm -f "$tmp"
+    # The Cargo binary is named SoloMD (capital). Create a lowercase symlink
+    # so users can type either `solomd` or `SoloMD`.
+    if [ -x /usr/bin/SoloMD ] && ! [ -e /usr/bin/solomd ]; then
+      sudo ln -sf /usr/bin/SoloMD /usr/bin/solomd
+      info "Created symlink: solomd → SoloMD"
+    fi
     printf "\n✨ ${BOLD}SoloMD installed. Run with: solomd${RESET}\n\n"
   elif command -v rpm >/dev/null 2>&1 && command -v sudo >/dev/null 2>&1; then
     local url="$BASE_URL/SoloMD-${VERSION}-1.x86_64.rpm"
@@ -169,6 +175,10 @@ install_linux() {
     info "Installing with sudo rpm…"
     sudo rpm -i --replacepkgs "$tmp"
     rm -f "$tmp"
+    if [ -x /usr/bin/SoloMD ] && ! [ -e /usr/bin/solomd ]; then
+      sudo ln -sf /usr/bin/SoloMD /usr/bin/solomd
+      info "Created symlink: solomd → SoloMD"
+    fi
     printf "\n✨ ${BOLD}SoloMD installed. Run with: solomd${RESET}\n\n"
   else
     info "No dpkg/rpm detected — falling back to AppImage (no sudo needed)"
