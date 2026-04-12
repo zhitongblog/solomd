@@ -36,6 +36,40 @@ const platforms = [
       <h2>{tr.download.heading} <span class="muted">v{VERSION}</span> <span class="muted" id="dl-section-count"></span></h2>
       <p class="lead">{tr.download.lead}</p>
     </div>
+
+    <div class="quick-install">
+      <div class="quick-install__label">
+        ⚡ {lang === 'zh' ? '一键安装(推荐)' : 'One-line install (recommended)'}
+      </div>
+      <div class="quick-install__tabs">
+        <button class="qi-tab qi-tab--active" data-tab="unix">macOS / Linux</button>
+        <button class="qi-tab" data-tab="win">Windows</button>
+      </div>
+      <div class="qi-panel qi-panel--active" data-panel="unix">
+        <pre class="qi-code"><code>curl -fsSL https://solomd.app/install.sh | bash</code></pre>
+        <button class="qi-copy" data-copy="curl -fsSL https://solomd.app/install.sh | bash">
+          {lang === 'zh' ? '复制' : 'Copy'}
+        </button>
+      </div>
+      <div class="qi-panel" data-panel="win">
+        <pre class="qi-code"><code>irm https://solomd.app/install.ps1 | iex</code></pre>
+        <button class="qi-copy" data-copy="irm https://solomd.app/install.ps1 | iex">
+          {lang === 'zh' ? '复制' : 'Copy'}
+        </button>
+      </div>
+      <div class="quick-install__hint">
+        {lang === 'zh'
+          ? '脚本会自动检测系统，下载并安装最新版本。'
+          : 'The script auto-detects your OS + architecture, downloads and installs the latest version.'}
+        <a href="/install.sh" target="_blank">install.sh</a> ·
+        <a href="/install.ps1" target="_blank">install.ps1</a>
+      </div>
+    </div>
+
+    <div class="download__or">
+      <span>{lang === 'zh' ? '或手动下载' : 'Or download manually'}</span>
+    </div>
+
     <div class="download__grid">
       {platforms.map((p) => {
         const meta = tr.download.platforms[p.key];
@@ -149,4 +183,167 @@ const platforms = [
     color: var(--text-muted);
     font-size: 13px;
   }
+
+  /* Quick install block */
+  .quick-install {
+    max-width: 720px;
+    margin: 0 auto 28px;
+    background: var(--bg-soft);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 22px 24px;
+  }
+  .quick-install__label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 10px;
+  }
+  .quick-install__tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 10px;
+  }
+  .qi-tab {
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .qi-tab:hover { color: var(--text); }
+  .qi-tab--active {
+    background: var(--bg);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .qi-panel {
+    display: none;
+    position: relative;
+  }
+  .qi-panel--active { display: block; }
+  .qi-code {
+    margin: 0;
+    padding: 14px 90px 14px 18px;
+    background: var(--ink, #0e0e0c);
+    color: #e8e6de;
+    border-radius: 8px;
+    font-family: var(--font-mono, 'SF Mono', Menlo, Consolas, monospace);
+    font-size: 13px;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  .qi-code code {
+    background: transparent;
+    color: inherit;
+    padding: 0;
+  }
+  .qi-copy {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    padding: 5px 12px;
+    font-size: 11px;
+    font-weight: 500;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 5px;
+    color: #e8e6de;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .qi-copy:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #000;
+  }
+  .qi-copy.copied {
+    background: #2ea043;
+    border-color: #2ea043;
+    color: white;
+  }
+  .quick-install__hint {
+    font-size: 11px;
+    color: var(--text-faint);
+    margin-top: 10px;
+    line-height: 1.6;
+  }
+  .quick-install__hint a {
+    color: var(--text-muted);
+    text-decoration: underline;
+  }
+  .quick-install__hint a:hover { color: var(--accent); }
+
+  .download__or {
+    text-align: center;
+    margin: 0 0 20px;
+    position: relative;
+  }
+  .download__or::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: var(--border);
+  }
+  .download__or span {
+    position: relative;
+    background: var(--bg);
+    padding: 0 18px;
+    font-size: 12px;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
 </style>
+
+<script is:inline>
+  // Tab switching for quick-install block
+  (function () {
+    var tabs = document.querySelectorAll('.qi-tab');
+    var panels = document.querySelectorAll('.qi-panel');
+    tabs.forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        var target = tab.getAttribute('data-tab');
+        tabs.forEach(function (t) { t.classList.remove('qi-tab--active'); });
+        tab.classList.add('qi-tab--active');
+        panels.forEach(function (p) {
+          if (p.getAttribute('data-panel') === target) {
+            p.classList.add('qi-panel--active');
+          } else {
+            p.classList.remove('qi-panel--active');
+          }
+        });
+      });
+    });
+
+    // Auto-select Windows tab for Windows visitors
+    if (/Windows/i.test(navigator.userAgent || '')) {
+      var winTab = document.querySelector('.qi-tab[data-tab="win"]');
+      if (winTab) winTab.click();
+    }
+
+    // Copy-to-clipboard buttons
+    var copyBtns = document.querySelectorAll('.qi-copy');
+    copyBtns.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var text = btn.getAttribute('data-copy') || '';
+        navigator.clipboard.writeText(text).then(function () {
+          var orig = btn.textContent;
+          btn.classList.add('copied');
+          btn.textContent = '✓';
+          setTimeout(function () {
+            btn.classList.remove('copied');
+            btn.textContent = orig;
+          }, 1500);
+        });
+      });
+    });
+  })();
+</script>
