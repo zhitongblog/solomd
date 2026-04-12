@@ -37,39 +37,6 @@ const platforms = [
       <p class="lead">{tr.download.lead}</p>
     </div>
 
-    <div class="quick-install">
-      <div class="quick-install__label">
-        ⚡ {lang === 'zh' ? '一键安装(推荐)' : 'One-line install (recommended)'}
-      </div>
-      <div class="quick-install__tabs">
-        <button class="qi-tab qi-tab--active" data-tab="unix">macOS / Linux</button>
-        <button class="qi-tab" data-tab="win">Windows</button>
-      </div>
-      <div class="qi-panel qi-panel--active" data-panel="unix">
-        <pre class="qi-code"><code>curl -fsSL https://solomd.app/install.sh | bash</code></pre>
-        <button class="qi-copy" data-copy="curl -fsSL https://solomd.app/install.sh | bash">
-          {lang === 'zh' ? '复制' : 'Copy'}
-        </button>
-      </div>
-      <div class="qi-panel" data-panel="win">
-        <pre class="qi-code"><code>irm https://solomd.app/install.ps1 | iex</code></pre>
-        <button class="qi-copy" data-copy="irm https://solomd.app/install.ps1 | iex">
-          {lang === 'zh' ? '复制' : 'Copy'}
-        </button>
-      </div>
-      <div class="quick-install__hint">
-        {lang === 'zh'
-          ? '脚本会自动检测系统，下载并安装最新版本。'
-          : 'The script auto-detects your OS + architecture, downloads and installs the latest version.'}
-        <a href="/install.sh" target="_blank">install.sh</a> ·
-        <a href="/install.ps1" target="_blank">install.ps1</a>
-      </div>
-    </div>
-
-    <div class="download__or">
-      <span>{lang === 'zh' ? '或手动下载' : 'Or download manually'}</span>
-    </div>
-
     <div class="download__grid">
       {platforms.map((p) => {
         const meta = tr.download.platforms[p.key];

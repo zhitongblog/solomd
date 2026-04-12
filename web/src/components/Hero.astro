@@ -44,6 +44,23 @@ const defaultDownload = `${baseUrl}/SoloMD_${VERSION}_universal.dmg`;
         {tr.hero.ctaSecondary}
       </a>
     </div>
+    <div class="hero__install">
+      <div class="hero__install-label">
+        ⚡ {lang === 'zh' ? '或一键安装命令' : 'Or one-line install'}
+      </div>
+      <div class="hero__install-tabs">
+        <button class="hi-tab hi-tab--active" data-hi-tab="unix">macOS / Linux</button>
+        <button class="hi-tab" data-hi-tab="win">Windows</button>
+      </div>
+      <div class="hi-panel hi-panel--active" data-hi-panel="unix">
+        <code class="hi-code">curl -fsSL https://solomd.app/install.sh | bash</code>
+        <button class="hi-copy" data-hi-copy="curl -fsSL https://solomd.app/install.sh | bash" title="Copy">📋</button>
+      </div>
+      <div class="hi-panel" data-hi-panel="win">
+        <code class="hi-code">irm https://solomd.app/install.ps1 | iex</code>
+        <button class="hi-copy" data-hi-copy="irm https://solomd.app/install.ps1 | iex" title="Copy">📋</button>
+      </div>
+    </div>
     <a href="#download" class="hero__all-platforms">{tr.hero.ctaAllPlatforms}</a>
     <div class="hero__chips">
       {tr.hero.chips.map((c) => <span class="chip">{c}</span>)}
@@ -113,6 +130,49 @@ const defaultDownload = `${baseUrl}/SoloMD_${VERSION}_universal.dmg`;
     var text = btn.getAttribute('data-' + os + '-text');
     if (href) btn.setAttribute('href', href);
     if (text) btn.innerHTML = '⬇ ' + text;
+
+    // Also switch the one-line install block to Windows if user is on Windows
+    if (os === 'win') {
+      var winTab = document.querySelector('.hi-tab[data-hi-tab="win"]');
+      if (winTab) winTab.click();
+    }
+  })();
+
+  // One-line install: tab switch + copy-to-clipboard
+  (function () {
+    var tabs = document.querySelectorAll('.hi-tab');
+    var panels = document.querySelectorAll('.hi-panel');
+    tabs.forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        var target = tab.getAttribute('data-hi-tab');
+        tabs.forEach(function (t) { t.classList.remove('hi-tab--active'); });
+        tab.classList.add('hi-tab--active');
+        panels.forEach(function (p) {
+          if (p.getAttribute('data-hi-panel') === target) {
+            p.classList.add('hi-panel--active');
+          } else {
+            p.classList.remove('hi-panel--active');
+          }
+        });
+      });
+    });
+    var copyBtns = document.querySelectorAll('.hi-copy');
+    copyBtns.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var text = btn.getAttribute('data-hi-copy') || '';
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function () {
+            var orig = btn.textContent;
+            btn.classList.add('copied');
+            btn.textContent = '✓';
+            setTimeout(function () {
+              btn.classList.remove('copied');
+              btn.textContent = orig;
+            }, 1500);
+          });
+        }
+      });
+    });
   })();
 </script>
 
@@ -157,10 +217,91 @@ const defaultDownload = `${baseUrl}/SoloMD_${VERSION}_universal.dmg`;
     color: var(--text-muted);
     font-size: 13px;
     text-decoration: none;
-    margin-bottom: 36px;
+    margin: 18px 0 36px;
   }
   .hero__all-platforms:hover {
     color: var(--accent);
+  }
+
+  /* One-line install block in Hero */
+  .hero__install {
+    max-width: 620px;
+    margin: 22px auto 0;
+    text-align: left;
+  }
+  .hero__install-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-align: center;
+    margin-bottom: 8px;
+    letter-spacing: 0.02em;
+  }
+  .hero__install-tabs {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    margin-bottom: 8px;
+  }
+  .hi-tab {
+    padding: 4px 12px;
+    font-size: 11px;
+    font-weight: 500;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .hi-tab:hover { color: var(--text); }
+  .hi-tab--active {
+    background: var(--bg-elev);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .hi-panel {
+    display: none;
+    position: relative;
+  }
+  .hi-panel--active { display: block; }
+  .hi-code {
+    display: block;
+    padding: 12px 50px 12px 16px;
+    background: var(--ink, #0e0e0c);
+    color: #e8e6de;
+    border-radius: 8px;
+    font-family: var(--font-mono, 'SF Mono', Menlo, Consolas, monospace);
+    font-size: 13px;
+    overflow-x: auto;
+    white-space: nowrap;
+    text-align: left;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .hi-copy {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    font-size: 14px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 5px;
+    color: #e8e6de;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .hi-copy:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #000;
+  }
+  .hi-copy.copied {
+    background: #2ea043;
+    border-color: #2ea043;
+    color: white;
   }
   .hero__chips {
     display: flex;
