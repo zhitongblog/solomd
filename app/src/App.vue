@@ -1,10 +1,8 @@
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, ref, watch, watchEffect, computed } from 'vue';
+import { onMounted, onBeforeUnmount, ref, watch, watchEffect, computed, provide } from 'vue';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
-import { getCurrentWindow } from '@tauri-apps/api/window';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
-import { confirm } from '@tauri-apps/plugin-dialog';
 import Toolbar from './components/Toolbar.vue';
 import TabBar from './components/TabBar.vue';
 import Editor from './components/Editor.vue';
@@ -17,6 +15,7 @@ import SettingsPanel from './components/SettingsPanel.vue';
 import MarkdownHelp from './components/MarkdownHelp.vue';
 import GlobalSearch from './components/GlobalSearch.vue';
 import AboutDialog from './components/AboutDialog.vue';
+import UnsavedDialog from './components/UnsavedDialog.vue';
 import Toast from './components/Toast.vue';
 import { useTabsStore } from './stores/tabs';
 import { useSettingsStore } from './stores/settings';
@@ -35,6 +34,33 @@ const settingsOpen = ref(false);
 const helpOpen = ref(false);
 const searchOpen = ref(false);
 const aboutOpen = ref(false);
+
+// Unsaved-changes dialog state
+const unsavedOpen = ref(false);
+const unsavedMode = ref<'tab' | 'window'>('tab');
+const unsavedFileName = ref('');
+const unsavedCount = ref(0);
+let unsavedResolve: ((action: 'save' | 'discard' | 'cancel') => void) | null = null;
+
+function showUnsavedDialog(mode: 'tab' | 'window', fileName: string, count: number): Promise<'save' | 'discard' | 'cancel'> {
+  unsavedMode.value = mode;
+  unsavedFileName.value = fileName;
+  unsavedCount.value = count;
+  unsavedOpen.value = true;
+  return new Promise((resolve) => {
+    unsavedResolve = resolve;
+  });
+}
+function onUnsavedAction(action: 'save' | 'discard' | 'cancel') {
+  unsavedOpen.value = false;
+  if (unsavedResolve) {
+    unsavedResolve(action);
+    unsavedResolve = null;
+  }
+}
+
+// Expose to child composables (useFiles) via provide/inject
+provide('showUnsavedDialog', showUnsavedDialog);
 const editorRef = ref<InstanceType<typeof Editor> | null>(null);
 
 useShortcuts({
@@ -177,8 +203,31 @@ onMounted(async () => {
   // was opened from the OS file-association path.
   if (tabs.tabs.length === 0) tabs.newTab();
 
-  // TODO: add unsaved-changes guard back once red × close issue is resolved.
-  // For now, window closes without asking.
+  // Window close: Rust intercepts CloseRequested and emits this event.
+  // We check unsaved tabs and either force-close or let the user cancel.
+  // (JS onCloseRequested was broken on macOS, so we do it from Rust.)
+  try {
+    await listen('solomd://close-requested', async () => {
+      const unsaved = tabs.tabs.filter((t) => t.content !== t.savedContent);
+      if (unsaved.length === 0) {
+        await invoke('force_close_window');
+        return;
+      }
+      const action = await showUnsavedDialog('window', '', unsaved.length);
+      if (action === 'save') {
+        for (const t of unsaved) {
+          tabs.activeId = t.id;
+          await files.saveActive();
+        }
+        await invoke('force_close_window');
+      } else if (action === 'discard') {
+        await invoke('force_close_window');
+      }
+      // 'cancel' → do nothing
+    });
+  } catch (err) {
+    console.warn('close-requested listener failed', err);
+  }
 
   // Native menu bar: runner.rs emits "solomd://menu" with the item id.
   try {
@@ -286,6 +335,15 @@ const showOutlinePane = computed(
     <MarkdownHelp :open="helpOpen" @close="helpOpen = false" />
     <GlobalSearch :open="searchOpen" @close="searchOpen = false" />
     <AboutDialog :open="aboutOpen" @close="aboutOpen = false" />
+    <UnsavedDialog
+      :open="unsavedOpen"
+      :mode="unsavedMode"
+      :file-name="unsavedFileName"
+      :count="unsavedCount"
+      @save="onUnsavedAction('save')"
+      @discard="onUnsavedAction('discard')"
+      @cancel="onUnsavedAction('cancel')"
+    />
     <Toast />
   </div>
 </template>

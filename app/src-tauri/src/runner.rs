@@ -10,9 +10,20 @@ mod set_default;
 #[path = "convert.rs"]
 mod convert;
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use tauri::menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder};
 use tauri::{Emitter, Manager, RunEvent};
+
+/// Set to true by `force_close_window` command after the frontend confirms close.
+static FORCE_CLOSE: AtomicBool = AtomicBool::new(false);
+
+/// Frontend calls this after user confirms "Discard & Close".
+#[tauri::command]
+fn force_close_window(window: tauri::Window) {
+    FORCE_CLOSE.store(true, Ordering::Relaxed);
+    window.close().ok();
+}
 
 pub struct PendingOpen(pub Mutex<Vec<String>>);
 
@@ -41,6 +52,7 @@ pub fn run_with(initial_file: Option<String>) {
             commands::list_dir,
             search::search_in_dir,
             drain_pending_opens,
+            force_close_window,
             set_default::set_as_default_markdown_editor,
             convert::convert_file_to_markdown,
         ])
@@ -168,31 +180,42 @@ pub fn run_with(initial_file: Option<String>) {
         .expect("error while building tauri application");
 
     app.run(|app_handle, event| {
-        #[cfg(target_os = "macos")]
-        if let RunEvent::Opened { urls } = &event {
-            for url in urls {
-                let path = if url.scheme() == "file" {
-                    url.to_file_path()
-                        .ok()
-                        .and_then(|p| p.to_str().map(|s| s.to_string()))
-                } else {
-                    Some(url.to_string())
-                };
-                if let Some(p) = path {
-                    // Always push to the pending buffer so a cold start
-                    // can pick it up via `drain_pending_opens`.
-                    if let Some(state) = app_handle.try_state::<PendingOpen>() {
-                        state.0.lock().unwrap().push(p.clone());
+        match &event {
+            // ---- Window close: intercept and ask frontend ----
+            RunEvent::WindowEvent {
+                event: tauri::WindowEvent::CloseRequested { api, .. },
+                ..
+            } => {
+                if FORCE_CLOSE.load(Ordering::Relaxed) {
+                    // Frontend confirmed — let the close proceed.
+                    return;
+                }
+                // Prevent the close and ask the frontend to check unsaved tabs.
+                api.prevent_close();
+                let _ = app_handle.emit("solomd://close-requested", ());
+            }
+
+            // ---- macOS file open via double-click / Finder ----
+            #[cfg(target_os = "macos")]
+            RunEvent::Opened { urls } => {
+                for url in urls {
+                    let path = if url.scheme() == "file" {
+                        url.to_file_path()
+                            .ok()
+                            .and_then(|p| p.to_str().map(|s| s.to_string()))
+                    } else {
+                        Some(url.to_string())
+                    };
+                    if let Some(p) = path {
+                        if let Some(state) = app_handle.try_state::<PendingOpen>() {
+                            state.0.lock().unwrap().push(p.clone());
+                        }
+                        let _ = app_handle.emit("solomd://opened-file", p);
                     }
-                    // Also emit the event for the hot case where the
-                    // frontend is already mounted and listening.
-                    let _ = app_handle.emit("solomd://opened-file", p);
                 }
             }
-        }
-        #[cfg(not(target_os = "macos"))]
-        {
-            let _ = (app_handle, &event);
+
+            _ => {}
         }
     });
 }

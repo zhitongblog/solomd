@@ -1,5 +1,6 @@
+import { inject } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
-import { open as openDialog, save as saveDialog, ask } from '@tauri-apps/plugin-dialog';
+import { open as openDialog, save as saveDialog } from '@tauri-apps/plugin-dialog';
 import { useTabsStore } from '../stores/tabs';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useSettingsStore } from '../stores/settings';
@@ -163,25 +164,22 @@ export function useFiles() {
     if (tabs.activeTab) await saveTabAs(tabs.activeTab);
   }
 
+  const showUnsavedDialog = inject<(mode: 'tab' | 'window', fileName: string, count: number) => Promise<'save' | 'discard' | 'cancel'>>('showUnsavedDialog');
+
   async function closeTabSafe(id: string) {
     const tab = tabs.tabs.find((t) => t.id === id);
     if (!tab) return;
-    if (tab.content !== tab.savedContent) {
-      const yes = await ask(
-        `${tab.fileName} has unsaved changes. Save before closing?`,
-        { title: 'SoloMD', kind: 'warning', okLabel: 'Save', cancelLabel: "Don't save" }
-      );
-      if (yes) {
+    if (tab.content !== tab.savedContent && showUnsavedDialog) {
+      const action = await showUnsavedDialog('tab', tab.fileName, 1);
+      if (action === 'save') {
         const ok = await saveTab(tab);
         if (!ok) return;
+      } else if (action === 'cancel') {
+        return; // go back to editing
       }
+      // 'discard' → fall through to close
     }
     tabs.closeTab(id);
-    // If that was the last tab, close the window (quit the app).
-    if (tabs.tabs.length === 0) {
-      const { getCurrentWindow } = await import('@tauri-apps/api/window');
-      getCurrentWindow().close();
-    }
   }
 
   return {
