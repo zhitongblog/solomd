@@ -34,3 +34,8 @@ brand/*_error.json
 *.pem
 *.cer
 solomd-*.txt
+
+# Distribution binaries (use GitHub Releases instead)
+distribution/windows/
+distribution/macos/
+distribution/linux/

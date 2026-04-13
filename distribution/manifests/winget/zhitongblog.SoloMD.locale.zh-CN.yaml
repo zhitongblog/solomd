@@ -1,0 +1,35 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.locale.1.6.0.schema.json
+
+PackageIdentifier: zhitongblog.SoloMD
+PackageVersion: 0.1.8
+PackageLocale: zh-CN
+Publisher: zhitongblog
+PublisherUrl: https://github.com/zhitongblog
+PublisherSupportUrl: https://github.com/zhitongblog/solomd/issues
+Author: 李向东
+PackageName: SoloMD
+PackageUrl: https://solomd.app
+License: MIT
+LicenseUrl: https://github.com/zhitongblog/solomd/blob/main/LICENSE
+Copyright: Copyright (c) 2024 xiangdong li
+ShortDescription: 轻量级跨平台 Markdown 编辑器，支持所见即所得
+Description: |-
+  SoloMD 是一款使用 Tauri 2 构建的轻量级 Markdown + 纯文本编辑器。
+  主要功能：
+  - 所见即所得编辑模式
+  - KaTeX 数学公式渲染
+  - Mermaid 流程图
+  - 多编码支持（UTF-8、GBK、Big5）
+  - 导出为 PDF、DOCX、HTML
+  - 亮色/暗色主题
+  - 清除 AI 格式
+Tags:
+- markdown
+- 编辑器
+- 文本编辑器
+- tauri
+- 所见即所得
+- 写作
+- 笔记
+ManifestType: locale
+ManifestVersion: 1.6.0

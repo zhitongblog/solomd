@@ -1,0 +1,18 @@
+VERIFICATION
+
+Verification is intended to assist the Chocolatey moderators and community
+in verifying that this package's contents are trustworthy.
+
+Package Source:
+The installer is downloaded directly from the official GitHub releases page:
+https://github.com/zhitongblog/solomd/releases/download/v0.1.8/SoloMD_0.1.8_x64-setup.exe
+
+Verification Steps:
+1. Download the installer from the URL above
+2. Calculate the SHA256 hash using:
+   - PowerShell: Get-FileHash SoloMD_0.1.8_x64-setup.exe -Algorithm SHA256
+   - Or any other SHA256 tool
+3. Verify the hash matches: 868a9351eaf52b3cb204037ba592204d887950172ea7a982449b51ee81dd9e62
+
+License:
+MIT License - https://github.com/zhitongblog/solomd/blob/main/LICENSE

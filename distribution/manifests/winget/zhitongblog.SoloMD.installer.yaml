@@ -1,0 +1,28 @@
+# Created using wingetcreate
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.6.0.schema.json
+
+PackageIdentifier: zhitongblog.SoloMD
+PackageVersion: 0.1.8
+Platform:
+- Windows.Desktop
+MinimumOSVersion: 10.0.17763.0
+InstallerType: nullsoft
+Scope: user
+InstallModes:
+- interactive
+- silent
+- silentWithProgress
+UpgradeBehavior: install
+Commands:
+- solomd
+FileExtensions:
+- md
+- markdown
+- txt
+Installers:
+- Architecture: x64
+  InstallerUrl: https://github.com/zhitongblog/solomd/releases/download/v0.1.8/SoloMD_0.1.8_x64-setup.exe
+  InstallerSha256: 868A9351EAF52B3CB204037BA592204D887950172EA7A982449B51EE81DD9E62
+  ProductCode: SoloMD
+ManifestType: installer
+ManifestVersion: 1.6.0

@@ -1,0 +1,38 @@
+# Created using wingetcreate
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.6.0.schema.json
+
+PackageIdentifier: zhitongblog.SoloMD
+PackageVersion: 0.1.8
+PackageLocale: en-US
+Publisher: zhitongblog
+PublisherUrl: https://github.com/zhitongblog
+PublisherSupportUrl: https://github.com/zhitongblog/solomd/issues
+Author: xiangdong li
+PackageName: SoloMD
+PackageUrl: https://solomd.app
+License: MIT
+LicenseUrl: https://github.com/zhitongblog/solomd/blob/main/LICENSE
+Copyright: Copyright (c) 2024 xiangdong li
+ShortDescription: A lightweight, cross-platform Markdown editor with live preview
+Description: |-
+  SoloMD is a lightweight Markdown + plain text editor built with Tauri 2.
+  Features:
+  - Live preview (WYSIWYG-style editing)
+  - KaTeX math rendering
+  - Mermaid diagrams
+  - Multi-encoding support (UTF-8, GBK, Big5)
+  - Export to PDF, DOCX, HTML
+  - Light & dark themes
+  - Clean AI artifacts
+Moniker: solomd
+Tags:
+- markdown
+- editor
+- text-editor
+- tauri
+- wysiwyg
+- writing
+- notes
+ReleaseNotesUrl: https://github.com/zhitongblog/solomd/releases/tag/v0.1.8
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0

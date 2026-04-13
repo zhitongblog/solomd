@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>solomd</id>
+    <version>0.1.8</version>
+    <title>SoloMD</title>
+    <authors>xiangdong li</authors>
+    <owners>zhitongblog</owners>
+    <licenseUrl>https://github.com/zhitongblog/solomd/blob/main/LICENSE</licenseUrl>
+    <projectUrl>https://solomd.app</projectUrl>
+    <iconUrl>https://solomd.app/favicon.svg</iconUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>
+SoloMD is a lightweight, cross-platform Markdown + plain text editor built with Tauri 2.
+
+## Features
+- Live preview (WYSIWYG-style editing)
+- KaTeX math rendering
+- Mermaid diagrams
+- Multi-encoding support (UTF-8, GBK, Big5)
+- Export to PDF, DOCX, HTML
+- Light &amp; dark themes
+- Clean AI artifacts (remove citations from ChatGPT/Claude)
+- Only 15MB installer
+
+## Why SoloMD?
+One file. One window. Just write.
+    </description>
+    <summary>A lightweight Markdown editor with live preview</summary>
+    <releaseNotes>https://github.com/zhitongblog/solomd/releases/tag/v0.1.8</releaseNotes>
+    <copyright>Copyright 2024 xiangdong li</copyright>
+    <tags>markdown editor text-editor tauri wysiwyg writing notes</tags>
+    <projectSourceUrl>https://github.com/zhitongblog/solomd</projectSourceUrl>
+    <packageSourceUrl>https://github.com/zhitongblog/solomd/tree/main/distribution/manifests/chocolatey</packageSourceUrl>
+    <docsUrl>https://github.com/zhitongblog/solomd#readme</docsUrl>
+    <bugTrackerUrl>https://github.com/zhitongblog/solomd/issues</bugTrackerUrl>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
