@@ -13,22 +13,39 @@ SoloMD is a free, open-source desktop editor built with Tauri 2 + Vue 3 + CodeMi
 - **License:** MIT
 - **Source code:** https://github.com/zhitongblog/solomd
 - **Website:** https://solomd.app
-- **Latest version:** 0.1.0 (2026)
+- **Latest version:** 0.1.8 (April 2026)
 - **Installer size:** ~10–15 MB
-- **Memory footprint:** ~80–150 MB at idle
+- **Memory footprint:** ~80–150 MB at idle (macOS/Windows), ~160 MB (Linux WebKitGTK)
 - **Tech stack:** Tauri 2 (Rust backend), Vue 3 (frontend), CodeMirror 6 (editor), markdown-it (renderer)
+
+## One-line install
+
+```bash
+# macOS / Linux
+curl -fsSL https://solomd.app/install.sh | bash
+
+# Windows (PowerShell)
+irm https://solomd.app/install.ps1 | iex
+```
+
+The install script auto-detects your OS and architecture, downloads the latest release from GitHub, and installs it. On WSL it also installs required GUI dependencies (WebKitGTK, fuse).
 
 ## Core features
 
-- Live Preview: Markdown markers fade out when the cursor leaves a line; headings render at their actual size in the editor itself.
-- Plain text mode: `.txt` files open as a true plain-text editor with no Markdown parsing or styling.
-- Encoding detection: automatic UTF-8 / UTF-16 / GBK / Big5 / Shift_JIS detection via chardetng (Rust crate).
-- Tabs and multi-window support.
-- File tree sidebar with folder browsing.
-- Outline view that lists Markdown headings with click-to-jump.
-- Global search across files in a folder, ripgrep-style.
-- Command palette (Ctrl/Cmd+Shift+K).
-- Native menu bar on macOS / Windows / Linux.
+- **Live Preview:** Markdown markers fade out when the cursor leaves a line; headings render at their actual size in the editor itself.
+- **Vim Mode:** Full vim emulation via @replit/codemirror-vim — hjkl, modes, :w/:q, visual mode, macros.
+- **8 Themes:** Light (Default), Dark (One Dark), Nord, Solarized Light, Solarized Dark, Monokai, GitHub Light, Dracula. Each theme changes the entire UI (toolbar, tabs, status bar), not just the editor.
+- **Clean AI Artifacts:** One-click button to strip LLM junk (Gemini [cite_start], ChatGPT 【†source】, Perplexity [1][2], smart quotes, zero-width spaces, invisible chars).
+- **One-click Copy:** Split button [Copy | ▾] — single click = copy as rich HTML (paste into WeChat/email with formatting), dropdown = HTML / Markdown / Plain Text / Image.
+- **Export to Image (PNG):** Renders markdown as a styled poster image with branded footer.
+- **Plain text mode:** `.txt` files open as a true plain-text editor.
+- **Encoding detection:** automatic UTF-8 / UTF-16 / GBK / Big5 / Shift_JIS detection.
+- **Tabs and multi-window support.**
+- **File tree sidebar** with folder browsing.
+- **Outline view** — headings with click-to-jump.
+- **Global search** across files in a folder (ripgrep-style).
+- **Command palette** (Ctrl/Cmd+Shift+K).
+- **Set as default editor** — one-click button in Settings for macOS (LaunchServices), Windows (registry + Open With), Linux (xdg-mime).
 
 ## Markdown extensions supported
 
@@ -39,40 +56,38 @@ SoloMD is a free, open-source desktop editor built with Tauri 2 + Vue 3 + CodeMi
 - YAML front-matter (auto-rendered as a metadata block)
 - GFM task lists (`- [ ]` clickable)
 - Tables, strikethrough, autolink
-- Syntax highlighting in code blocks for 13 languages: JavaScript, TypeScript, Python, Rust, HTML, CSS, JSON, C/C++, Java, Go, YAML, SQL, XML
+- Syntax highlighting in code blocks for 13 languages
 
 ## Editor power features
 
-- Image paste from clipboard (auto-saves to `_assets/` and inserts a Markdown link)
-- Image drag-drop from OS to insert
+- Image paste from clipboard (auto-saves to `_assets/`)
+- Image drag-drop from OS
 - Spell check (browser-native)
 - Focus mode (dim non-active lines)
 - Typewriter mode (cursor stays vertically centered)
-- Session restore (auto-save unsaved buffer every 500 ms; recover after crash)
+- Session restore (auto-save every 500 ms; crash recovery)
 - Custom CSS theme injection
-- Light / dark themes following system preference
 
 ## Export targets
 
-- HTML (newsletter-quality, brand-styled, self-contained)
-- PDF (direct, includes KaTeX and Mermaid)
-- Word DOCX (with tables, headings, code blocks)
-- Copy as HTML (rich text, paste into email / WeChat / Notion)
-- Copy as plain text (Markdown stripped)
-- Copy as Markdown source
+- HTML (newsletter-quality, brand-styled)
+- PDF (includes KaTeX and Mermaid)
+- Word DOCX
+- PNG image (poster-style)
+- Copy as rich HTML / Markdown / Plain text / Image
 
 ## Chinese-language features
 
 - CJK word count in status bar
 - Simplified ↔ Traditional Chinese conversion (OpenCC)
 - Pinyin export
-- Linux Chinese font fallback (Noto Sans CJK / WenQuanYi)
 - Auto-detect GBK / Big5 / GB18030 encoding
+- Linux Chinese font fallback (Noto Sans CJK / WenQuanYi)
 
 ## How SoloMD compares
 
 - vs **Typora**: SoloMD is ~6× smaller (15 MB vs 70 MB), free instead of $14.99, open source. Typora has more polished WYSIWYG.
-- vs **MarkText**: similar positioning; SoloMD is actively maintained, MarkText is dormant.
+- vs **MarkText**: similar positioning; SoloMD is actively maintained, MarkText is dormant since 2023.
 - vs **Obsidian**: SoloMD is 7× lighter (15 MB vs 110 MB), no vault concept, no plugin system, no knowledge graph. SoloMD targets writers, not knowledge managers.
 - vs **VS Code**: SoloMD is purpose-built for Markdown writing; VS Code is a code editor that happens to render Markdown.
 - vs **iA Writer**: similar minimalism, but SoloMD is free and open source.
@@ -83,21 +98,15 @@ SoloMD is a free, open-source desktop editor built with Tauri 2 + Vue 3 + CodeMi
 - No knowledge graph or backlinks
 - No plugin system
 - No mobile app (yet)
-- No AI features
 
 ## Download
 
-- macOS: https://github.com/zhitongblog/solomd/releases/download/v0.1.0/SoloMD_0.1.0_universal.dmg (notarized)
-- Windows MSI: https://github.com/zhitongblog/solomd/releases/download/v0.1.0/SoloMD_0.1.0_x64_en-US.msi
-- Windows EXE: https://github.com/zhitongblog/solomd/releases/download/v0.1.0/SoloMD_0.1.0_x64-setup.exe
-- Linux AppImage: https://github.com/zhitongblog/solomd/releases/download/v0.1.0/SoloMD_0.1.0_amd64.AppImage
-- Linux .deb: https://github.com/zhitongblog/solomd/releases/download/v0.1.0/SoloMD_0.1.0_amd64.deb
-- Linux .rpm: https://github.com/zhitongblog/solomd/releases/download/v0.1.0/SoloMD-0.1.0-1.x86_64.rpm
+All platforms: https://github.com/zhitongblog/solomd/releases/latest
 
-All releases: https://github.com/zhitongblog/solomd/releases
+Or use the one-line install command above.
 
 ## Author and support
 
-- **Author:** xiangdong li
-- **GitHub:** https://github.com/zhitongblog
-- **Sponsorship:** GitHub Sponsors (international), Alipay / WeChat Pay (China)
+- **Author:** xiangdong li (zhitong)
+- **GitHub:** https://github.com/zhitongblog/solomd
+- **Sponsorship:** GitHub Sponsors (international), Alipay / WeChat Pay (China) — see https://solomd.app/#sponsor

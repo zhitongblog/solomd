@@ -39,11 +39,16 @@ const path = lang === 'zh' ? '/zh/' : '/';
     <meta property="og:url" content={`https://solomd.app${path}`} />
     <meta property="og:site_name" content="SoloMD" />
     <meta property="og:locale" content={htmlLang === 'zh-CN' ? 'zh_CN' : 'en_US'} />
+    <meta property="og:image" content="https://solomd.app/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/png" />
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content="https://solomd.app/og-image.png" />
 
     <meta name="theme-color" content="#ff9f40" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0e0e0c" media="(prefers-color-scheme: dark)" />
@@ -52,6 +57,16 @@ const path = lang === 'zh' ? '/zh/' : '/';
 
     <!-- Sitemap discovery hint -->
     <link rel="sitemap" type="application/xml" href="/sitemap-index.xml" />
+
+    <!-- JSON-LD: BreadcrumbList -->
+    <script type="application/ld+json" set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "SoloMD", "item": "https://solomd.app/" },
+        ...(path === '/zh/' ? [{ "@type": "ListItem", "position": 2, "name": "中文", "item": "https://solomd.app/zh/" }] : []),
+      ]
+    })} />
 
     <!-- JSON-LD: SoftwareApplication (helps Google software result cards + LLM citations) -->
     <script type="application/ld+json" set:html={JSON.stringify({
