@@ -17,6 +17,7 @@ interface Settings {
   spellCheck: boolean;
   focusMode: boolean;
   typewriterMode: boolean;
+  vimMode: boolean;
   // Custom CSS theme override (path to a .css file on disk)
   customCssPath: string;
 }
@@ -39,6 +40,7 @@ function defaults(): Settings {
     spellCheck: true,
     focusMode: false,
     typewriterMode: false,
+    vimMode: false,
     customCssPath: '',
   };
 }
@@ -113,6 +115,10 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleTypewriterMode() {
       this.typewriterMode = !this.typewriterMode;
+      this.persist();
+    },
+    toggleVimMode() {
+      this.vimMode = !this.vimMode;
       this.persist();
     },
     setCustomCssPath(p: string) {

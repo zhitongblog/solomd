@@ -61,8 +61,10 @@ function onOutlineGoto(line: number) {
   editorRef.value?.gotoLine(line);
 }
 
+import { dataThemeFor } from './lib/themes';
+
 watchEffect(() => {
-  document.documentElement.setAttribute('data-theme', settings.theme);
+  document.documentElement.setAttribute('data-theme', dataThemeFor(settings.theme));
 });
 
 // Apply custom CSS theme whenever the path changes (and on first load).

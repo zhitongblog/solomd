@@ -4,6 +4,8 @@ import { invoke } from '@tauri-apps/api/core';
 import { useSettingsStore } from '../stores/settings';
 import { useToastsStore } from '../stores/toasts';
 import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
+import { themeLabels } from '../lib/themes';
+import type { Theme } from '../types';
 
 const settingDefault = ref(false);
 
@@ -55,10 +57,12 @@ const fontFamilies = [
       <div class="settings__body">
         <section>
           <label>Theme</label>
-          <div class="row">
-            <button :class="{ active: settings.theme === 'light' }" @click="settings.setTheme('light')">Light</button>
-            <button :class="{ active: settings.theme === 'dark' }" @click="settings.setTheme('dark')">Dark</button>
-          </div>
+          <select
+            :value="settings.theme"
+            @change="settings.setTheme(($event.target as HTMLSelectElement).value as Theme)"
+          >
+            <option v-for="t in themeLabels" :key="t.value" :value="t.value">{{ t.label }}</option>
+          </select>
         </section>
 
         <section>
@@ -132,6 +136,13 @@ const fontFamilies = [
           <label>
             <input type="checkbox" :checked="settings.typewriterMode" @change="settings.toggleTypewriterMode()" />
             Typewriter Mode — keep cursor centered
+          </label>
+        </section>
+
+        <section>
+          <label>
+            <input type="checkbox" :checked="settings.vimMode" @change="settings.toggleVimMode()" />
+            Vim Mode — hjkl navigation, modes, ex commands
           </label>
         </section>
 

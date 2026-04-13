@@ -1,6 +1,14 @@
 export type Language = 'markdown' | 'plaintext';
 export type ViewMode = 'edit' | 'preview' | 'split';
-export type Theme = 'light' | 'dark';
+export type Theme =
+  | 'light'
+  | 'dark'
+  | 'nord'
+  | 'solarized-light'
+  | 'solarized-dark'
+  | 'monokai'
+  | 'github-light'
+  | 'dracula';
 
 export interface Tab {
   id: string;

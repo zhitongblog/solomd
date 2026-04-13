@@ -19,7 +19,8 @@ import { go } from '@codemirror/lang-go';
 import { yaml } from '@codemirror/lang-yaml';
 import { sql } from '@codemirror/lang-sql';
 import { xml } from '@codemirror/lang-xml';
-import { oneDark } from '@codemirror/theme-one-dark';
+import { vim } from '@replit/codemirror-vim';
+import { cmThemeFor } from '../lib/themes';
 import { useTabsStore } from '../stores/tabs';
 import { useSettingsStore } from '../stores/settings';
 import type { Tab } from '../types';
@@ -79,6 +80,7 @@ const richCompartment = new Compartment();
 const spellCheckCompartment = new Compartment();
 const focusCompartment = new Compartment();
 const typewriterCompartment = new Compartment();
+const vimCompartment = new Compartment();
 
 function markdownExt() {
   // Use `markdownLanguage` as the base so GFM features (including task
@@ -126,7 +128,8 @@ function buildExtensions() {
     wrapCompartment.of(settings.wordWrap ? EditorView.lineWrapping : []),
     langCompartment.of(props.tab.language === 'markdown' ? [markdownExt()] : []),
     richCompartment.of(richExtensionsFor(props.tab)),
-    themeCompartment.of(settings.theme === 'dark' ? oneDark : []),
+    themeCompartment.of(cmThemeFor(settings.theme)),
+    vimCompartment.of(settings.vimMode ? vim() : []),
     fontSizeCompartment.of(fontSizeTheme(settings.fontSize, settings.fontFamily)),
     spellCheckCompartment.of(spellCheckExt(props.spellCheck)),
     focusCompartment.of(props.focusMode ? focusModeExtension() : []),
@@ -243,7 +246,14 @@ watch(
 watch(
   () => settings.theme,
   (t) => {
-    view?.dispatch({ effects: themeCompartment.reconfigure(t === 'dark' ? oneDark : []) });
+    view?.dispatch({ effects: themeCompartment.reconfigure(cmThemeFor(t)) });
+  }
+);
+
+watch(
+  () => settings.vimMode,
+  (v) => {
+    view?.dispatch({ effects: vimCompartment.reconfigure(v ? vim() : []) });
   }
 );
 
