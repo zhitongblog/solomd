@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, ref, watch, onMounted, nextTick } from 'vue';
+import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import mermaid from 'mermaid';
 import { convertFileSrc } from '@tauri-apps/api/core';
+import { openUrl } from '@tauri-apps/plugin-opener';
 import { renderMarkdown } from '../lib/markdown';
 import { useSettingsStore } from '../stores/settings';
 
@@ -91,9 +92,33 @@ watch(html, async () => {
   processMermaid();
 });
 
+/**
+ * Intercept all link clicks inside the preview pane and open them in the
+ * system browser instead of navigating the Tauri webview (which would
+ * replace the SoloMD UI with the target page).
+ */
+function handleLinkClick(e: MouseEvent) {
+  const anchor = (e.target as HTMLElement).closest('a');
+  if (!anchor) return;
+  const href = anchor.getAttribute('href');
+  if (!href) return;
+  // Allow in-page anchor jumps (#heading)
+  if (href.startsWith('#')) return;
+  e.preventDefault();
+  e.stopPropagation();
+  openUrl(href).catch(() => {
+    // Silently fail if opener can't handle the URL
+  });
+}
+
 onMounted(async () => {
   await nextTick();
   processMermaid();
+  host.value?.addEventListener('click', handleLinkClick);
+});
+
+onBeforeUnmount(() => {
+  host.value?.removeEventListener('click', handleLinkClick);
 });
 </script>
 
