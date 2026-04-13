@@ -9,7 +9,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v0.1.7 · MIT · Cross-platform',
+      badge: 'v0.1.8 · MIT · Cross-platform',
       title1: 'One file. One window.',
       title2: 'Just write.',
       lead: 'A lightweight, distraction-free Markdown + plain text editor for macOS, Windows, and Linux. Built with Tauri 2 — under 15 MB installed.',
@@ -155,7 +155,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v0.1.7 · MIT 协议 · 跨平台',
+      badge: 'v0.1.8 · MIT 协议 · 跨平台',
       title1: '一个文件,一个窗口,',
       title2: '专心写作。',
       lead: '一款轻量、无干扰的 Markdown 与纯文本编辑器,支持 macOS / Windows / Linux 三平台。基于 Tauri 2 构建,安装包小于 15 MB。',
