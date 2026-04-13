@@ -133,18 +133,10 @@ export function cmThemeFor(theme: Theme): Extension {
   }
 }
 
-// Map theme → CSS data-theme value (for shell CSS vars)
+// Each theme gets its own data-theme value so the UI shell (toolbar, tabs,
+// status bar) can style itself with theme-specific CSS variables.
 export function dataThemeFor(theme: Theme): string {
-  switch (theme) {
-    case 'dark':
-    case 'nord':
-    case 'solarized-dark':
-    case 'monokai':
-    case 'dracula':
-      return 'dark';
-    default:
-      return 'light';
-  }
+  return theme;
 }
 
 export const themeLabels: { value: Theme; label: string }[] = [
