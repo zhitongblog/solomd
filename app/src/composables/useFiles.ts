@@ -37,7 +37,24 @@ export function useFiles() {
     await openPath(selected);
   }
 
+  // Extensions that the built-in converter handles (Rust, no Python).
+  const CONVERT_BUILTIN = new Set(['docx', 'csv', 'xlsx', 'xls']);
+
+  // Extensions that need markitdown CLI (Python).
+  const CONVERT_CLI = new Set([
+    'pdf', 'pptx', 'epub', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp',
+    'mp3', 'wav', 'm4a', 'ogg', 'flac',
+  ]);
+
   async function openPath(path: string) {
+    const ext = (path.split('.').pop() || '').toLowerCase();
+
+    // If it's a convertible format, convert to Markdown first.
+    if (CONVERT_BUILTIN.has(ext) || CONVERT_CLI.has(ext)) {
+      return openAndConvert(path, ext);
+    }
+
+    // Native open: text files, markdown, code, etc.
     try {
       const result = await invoke<FileReadResult>('read_file', { path });
       tabs.openFromDisk({
@@ -53,6 +70,37 @@ export function useFiles() {
     } catch (e) {
       console.error('open failed', e);
       toasts.error(`Failed to open file: ${e}`);
+    }
+  }
+
+  async function openAndConvert(path: string, ext: string) {
+    const fileName = path.split(/[\\/]/).pop() ?? path;
+    const tid = toasts.info(`Converting ${fileName} to Markdown…`, 0);
+    try {
+      const markdown = await invoke<string>('convert_file_to_markdown', { path });
+      toasts.dismiss(tid);
+      // Open as a new unsaved Markdown tab with the converted content.
+      const baseName = fileName.replace(/\.[^.]+$/, '');
+      tabs.newTab();
+      const tab = tabs.activeTab;
+      if (tab) {
+        tab.content = markdown;
+        tab.fileName = `${baseName}.md`;
+        tab.language = 'markdown';
+      }
+      toasts.success(`Converted ${fileName} → Markdown`);
+    } catch (e) {
+      toasts.dismiss(tid);
+      const msg = String(e);
+      if (msg.includes('markitdown')) {
+        // Show install hint for markitdown-dependent formats
+        toasts.warning(
+          `Converting .${ext} requires markitdown:\npip install 'markitdown[all]'`,
+          8000,
+        );
+      } else {
+        toasts.error(`Conversion failed: ${msg}`);
+      }
     }
   }
 
