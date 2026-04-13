@@ -381,17 +381,63 @@ fn convert_pdf(path: &str) -> Result<String, String> {
         );
     }
 
-    // Basic structure: split by double newlines into paragraphs
+    // Clean up: PDF extraction often includes garbage strings like resource
+    // IDs, font hashes, image references (e.g. "30fad226...HZ-3dW6...~~").
     let mut out = String::new();
-    for para in text.split("\n\n") {
-        let trimmed = para.trim();
-        if !trimmed.is_empty() {
-            out.push_str(trimmed);
-            out.push_str("\n\n");
+    for line in text.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            out.push('\n');
+            continue;
+        }
+        if is_pdf_garbage(trimmed) {
+            continue;
+        }
+        // Clean inline garbage within a line
+        let cleaned = clean_pdf_line(trimmed);
+        let cleaned = cleaned.trim();
+        if !cleaned.is_empty() {
+            out.push_str(cleaned);
+            out.push('\n');
         }
     }
 
+    // Collapse 3+ newlines to 2
+    let re = regex_lite::Regex::new(r"\n{3,}").unwrap();
+    let out = re.replace_all(&out, "\n\n");
+
     Ok(out.trim().to_string())
+}
+
+/// Detect garbage lines from PDF extraction: resource IDs, font hashes, etc.
+fn is_pdf_garbage(line: &str) -> bool {
+    // Lines that are mostly hex/base64 hash-like characters (no spaces, long)
+    if line.len() > 20 && !line.contains(' ') {
+        let alnum = line.chars().filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_' || *c == '~').count();
+        if alnum as f64 / line.len() as f64 > 0.85 {
+            return true;
+        }
+    }
+    // Lines ending with ~~ are typically resource references
+    if line.ends_with("~~") && line.len() > 10 {
+        return true;
+    }
+    false
+}
+
+/// Remove inline garbage tokens from a line (hash-like strings mixed with text).
+fn clean_pdf_line(line: &str) -> String {
+    let mut result = String::new();
+    for word in line.split_whitespace() {
+        if is_pdf_garbage(word) {
+            continue;
+        }
+        if !result.is_empty() {
+            result.push(' ');
+        }
+        result.push_str(word);
+    }
+    result
 }
 
 // ====================================================================

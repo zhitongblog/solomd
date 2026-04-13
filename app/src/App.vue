@@ -177,22 +177,8 @@ onMounted(async () => {
   // was opened from the OS file-association path.
   if (tabs.tabs.length === 0) tabs.newTab();
 
-  // Intercept window close (red × / Cmd+Q) — ask about unsaved changes.
-  const appWindow = getCurrentWindow();
-  appWindow.onCloseRequested(async (event) => {
-    const unsaved = tabs.tabs.filter((t) => t.content !== t.savedContent);
-    if (unsaved.length === 0) return; // nothing unsaved, let it close
-
-    event.preventDefault();
-    const names = unsaved.map((t) => t.fileName).join(', ');
-    const close = await confirm(
-      `${unsaved.length} file(s) have unsaved changes:\n${names}\n\nDiscard changes and close?`,
-      { title: 'SoloMD', kind: 'warning', okLabel: 'Discard & Close', cancelLabel: 'Cancel' },
-    );
-    if (close) {
-      appWindow.destroy();
-    }
-  });
+  // TODO: add unsaved-changes guard back once red × close issue is resolved.
+  // For now, window closes without asking.
 
   // Native menu bar: runner.rs emits "solomd://menu" with the item id.
   try {

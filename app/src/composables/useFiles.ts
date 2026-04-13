@@ -177,6 +177,11 @@ export function useFiles() {
       }
     }
     tabs.closeTab(id);
+    // If that was the last tab, close the window (quit the app).
+    if (tabs.tabs.length === 0) {
+      const { getCurrentWindow } = await import('@tauri-apps/api/window');
+      getCurrentWindow().close();
+    }
   }
 
   return {
