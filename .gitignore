@@ -39,3 +39,4 @@ solomd-*.txt
 distribution/windows/
 distribution/macos/
 distribution/linux/
+winget-pkgs
