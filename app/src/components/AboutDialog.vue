@@ -1,12 +1,19 @@
 <script setup lang="ts">
+import { ref, onMounted } from 'vue';
+import { getVersion } from '@tauri-apps/api/app';
 import { openUrl } from '@tauri-apps/plugin-opener';
 
 defineProps<{ open: boolean }>();
 const emit = defineEmits<{ (e: 'close'): void }>();
 
-// Pulled from package.json at build time would be cleaner; for now we
-// keep it in sync with tauri.conf.json's `version` field.
-const VERSION = '0.1.1';
+const VERSION = ref('…');
+onMounted(async () => {
+  try {
+    VERSION.value = await getVersion();
+  } catch {
+    VERSION.value = '0.1.8';
+  }
+});
 
 const links = {
   website: 'https://solomd.app',
