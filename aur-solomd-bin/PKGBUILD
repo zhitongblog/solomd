@@ -1,0 +1,46 @@
+# Maintainer: zhitong <dev@solomd.local>
+pkgname=solomd-bin
+pkgver=0.1.8
+pkgrel=1
+pkgdesc='A lightweight Markdown and plain text editor built with Tauri 2'
+arch=('x86_64')
+url='https://solomd.app'
+license=('MIT')
+depends=('webkit2gtk-4.1' 'gtk3' 'libayatana-appindicator' 'librsvg' 'fuse2')
+optdepends=(
+    'wl-clipboard: clipboard image support on Wayland'
+    'xclip: clipboard image support on X11'
+)
+provides=('solomd')
+conflicts=('solomd')
+options=('!strip' '!debug')
+source=("${pkgname}-${pkgver}.AppImage::https://github.com/zhitongblog/solomd/releases/download/v${pkgver}/SoloMD_${pkgver}_amd64.AppImage"
+        "solomd.desktop")
+sha256sums=('3fc7ca85303c418c3819f732911738a8de0397190470408b7570ad1711d6e142'
+            'SKIP')
+
+prepare() {
+    chmod +x "${pkgname}-${pkgver}.AppImage"
+    "./${pkgname}-${pkgver}.AppImage" --appimage-extract 2>/dev/null || true
+}
+
+package() {
+    # Install the AppImage binary
+    install -Dm755 "${srcdir}/${pkgname}-${pkgver}.AppImage" \
+        "${pkgdir}/opt/solomd/SoloMD.AppImage"
+
+    # Install extracted icon if available, otherwise skip
+    if [ -d "${srcdir}/squashfs-root" ]; then
+        find "${srcdir}/squashfs-root" -name "*.png" -path "*/128x128/*" \
+            -exec install -Dm644 {} "${pkgdir}/usr/share/icons/hicolor/128x128/apps/solomd.png" \; 2>/dev/null || true
+    fi
+
+    # Install desktop file
+    install -Dm644 "${srcdir}/solomd.desktop" \
+        "${pkgdir}/usr/share/applications/solomd.desktop"
+
+    # Create /usr/bin symlinks (both SoloMD and solomd)
+    install -dm755 "${pkgdir}/usr/bin"
+    ln -sf /opt/solomd/SoloMD.AppImage "${pkgdir}/usr/bin/SoloMD"
+    ln -sf /opt/solomd/SoloMD.AppImage "${pkgdir}/usr/bin/solomd"
+}

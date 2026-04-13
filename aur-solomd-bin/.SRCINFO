@@ -1,0 +1,24 @@
+pkgbase = solomd-bin
+	pkgdesc = A lightweight Markdown and plain text editor built with Tauri 2
+	pkgver = 0.1.8
+	pkgrel = 1
+	url = https://solomd.app
+	arch = x86_64
+	license = MIT
+	depends = webkit2gtk-4.1
+	depends = gtk3
+	depends = libayatana-appindicator
+	depends = librsvg
+	depends = fuse2
+	optdepends = wl-clipboard: clipboard image support on Wayland
+	optdepends = xclip: clipboard image support on X11
+	provides = solomd
+	conflicts = solomd
+	options = !strip
+	options = !debug
+	source = solomd-bin-0.1.8.AppImage::https://github.com/zhitongblog/solomd/releases/download/v0.1.8/SoloMD_0.1.8_amd64.AppImage
+	source = solomd.desktop
+	sha256sums = 3fc7ca85303c418c3819f732911738a8de0397190470408b7570ad1711d6e142
+	sha256sums = SKIP
+
+pkgname = solomd-bin
