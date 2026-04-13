@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, watch, watchEffect, computed } from 'vue';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
+import { confirm } from '@tauri-apps/plugin-dialog';
 import Toolbar from './components/Toolbar.vue';
 import TabBar from './components/TabBar.vue';
 import Editor from './components/Editor.vue';
@@ -174,6 +176,23 @@ onMounted(async () => {
   // Only create a blank Untitled tab if nothing was restored AND nothing
   // was opened from the OS file-association path.
   if (tabs.tabs.length === 0) tabs.newTab();
+
+  // Intercept window close (red × / Cmd+Q) — ask about unsaved changes.
+  const appWindow = getCurrentWindow();
+  appWindow.onCloseRequested(async (event) => {
+    const unsaved = tabs.tabs.filter((t) => t.content !== t.savedContent);
+    if (unsaved.length === 0) return; // nothing unsaved, let it close
+
+    event.preventDefault();
+    const names = unsaved.map((t) => t.fileName).join(', ');
+    const close = await confirm(
+      `${unsaved.length} file(s) have unsaved changes:\n${names}\n\nDiscard changes and close?`,
+      { title: 'SoloMD', kind: 'warning', okLabel: 'Discard & Close', cancelLabel: 'Cancel' },
+    );
+    if (close) {
+      appWindow.destroy();
+    }
+  });
 
   // Native menu bar: runner.rs emits "solomd://menu" with the item id.
   try {

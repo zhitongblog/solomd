@@ -38,7 +38,7 @@ export function useFiles() {
   }
 
   // Extensions that the built-in converter handles (Rust, no Python).
-  const CONVERT_BUILTIN = new Set(['docx', 'csv', 'xlsx', 'xls']);
+  const CONVERT_BUILTIN = new Set(['docx', 'csv', 'xlsx', 'xls', 'html', 'htm']);
 
   // Extensions that need markitdown CLI (Python).
   const CONVERT_CLI = new Set([
