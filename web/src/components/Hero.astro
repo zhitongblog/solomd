@@ -69,10 +69,52 @@ const defaultDownload = `${baseUrl}/SoloMD_${VERSION}_universal.dmg`;
 </section>
 
 <script is:inline>
-  // Fetch total download count from GitHub Releases API and display it.
+  // Fetch download count + stars from GitHub API with 1-hour localStorage cache
+  // to avoid hitting the 60/hour rate limit on shared IPs (schools / offices / CGN).
   (function () {
-    fetch('https://api.github.com/repos/zhitongblog/solomd/releases')
-      .then(function (r) { return r.json(); })
+    var CACHE_KEY = 'solomd_stats_v1';
+    var CACHE_TTL = 3600 * 1000; // 1 hour
+
+    function formatDownloads(total) {
+      return total >= 1000
+        ? (total / 1000).toFixed(1) + 'k downloads'
+        : total + ' downloads';
+    }
+    function formatStars(stars) {
+      return '⭐ ' + (stars >= 1000 ? (stars / 1000).toFixed(1) + 'k' : String(stars));
+    }
+    function render(stats) {
+      if (stats.downloads != null) {
+        var el = document.getElementById('hero-dl-count');
+        if (el) el.textContent = formatDownloads(stats.downloads);
+        var el2 = document.getElementById('dl-section-count');
+        if (el2) el2.textContent = stats.downloads.toLocaleString() + '+';
+      }
+      if (stats.stars != null) {
+        var el3 = document.getElementById('hero-stars');
+        if (el3) el3.textContent = formatStars(stats.stars);
+      }
+    }
+
+    // 1. Try cache first (so numbers appear instantly on repeat visits)
+    var cached = null;
+    try {
+      var raw = localStorage.getItem(CACHE_KEY);
+      if (raw) {
+        var parsed = JSON.parse(raw);
+        if (parsed && Date.now() - parsed.ts < CACHE_TTL) {
+          render(parsed);
+          return; // fresh enough, don't hit the API
+        }
+        cached = parsed; // stale cache, use as fallback if API fails
+      }
+    } catch (_) { /* ignore */ }
+
+    // 2. Fetch fresh data
+    var stats = { ts: Date.now(), downloads: null, stars: null };
+
+    var dl = fetch('https://api.github.com/repos/zhitongblog/solomd/releases?per_page=100')
+      .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (releases) {
         if (!Array.isArray(releases)) return;
         var total = 0;
@@ -82,36 +124,27 @@ const defaultDownload = `${baseUrl}/SoloMD_${VERSION}_universal.dmg`;
             total += assets[j].download_count || 0;
           }
         }
-        var text = total >= 10000
-          ? (total / 1000).toFixed(1) + 'k downloads'
-          : total >= 1000
-            ? (total / 1000).toFixed(1) + 'k downloads'
-            : total + ' downloads';
-        var el = document.getElementById('hero-dl-count');
-        if (el) el.textContent = text;
-        var el2 = document.getElementById('dl-section-count');
-        if (el2) el2.textContent = total.toLocaleString() + '+';
+        stats.downloads = total;
       })
-      .catch(function () {
-        var el = document.getElementById('hero-dl-count');
-        if (el) el.style.display = 'none';
-      });
-  })();
+      .catch(function () { /* ignore */ });
 
-  // Fetch GitHub stars count
-  (function () {
-    fetch('https://api.github.com/repos/zhitongblog/solomd')
-      .then(function (r) { return r.json(); })
+    var st = fetch('https://api.github.com/repos/zhitongblog/solomd')
+      .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (repo) {
-        var stars = repo.stargazers_count || 0;
-        var text = stars >= 1000 ? (stars / 1000).toFixed(1) + 'k' : String(stars);
-        var el = document.getElementById('hero-stars');
-        if (el) el.textContent = '⭐ ' + text;
+        if (repo) stats.stars = repo.stargazers_count || 0;
       })
-      .catch(function () {
-        var el = document.getElementById('hero-stars');
-        if (el) el.style.display = 'none';
-      });
+      .catch(function () { /* ignore */ });
+
+    Promise.all([dl, st]).then(function () {
+      // If API failed (rate limit, offline, CORS), fall back to stale cache.
+      if (stats.downloads == null && stats.stars == null && cached) {
+        render(cached);
+        return;
+      }
+      render(stats);
+      // Save whatever we got (partial is fine)
+      try { localStorage.setItem(CACHE_KEY, JSON.stringify(stats)); } catch (_) {}
+    });
   })();
 
   // Detect the visitor's OS and rewrite the hero download button to point at
