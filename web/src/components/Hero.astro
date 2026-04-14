@@ -10,11 +10,48 @@ const baseUrl = `https://github.com/${REPO}/releases/download/v${VERSION}`;
 
 // Default (SSR / no-JS / unknown OS) → mac dmg link
 const defaultDownload = `${baseUrl}/SoloMD_${VERSION}_universal.dmg`;
+
+// ---- Fetch stats at BUILD time (Cloudflare Pages runs this fresh) ----
+// This guarantees the numbers render even if the client-side API call
+// gets rate-limited. Client-side JS can still update to a newer value.
+let initialStars = 0;
+let initialDownloads = 0;
+try {
+  const [repoRes, relRes] = await Promise.all([
+    fetch(`https://api.github.com/repos/${REPO}`),
+    fetch(`https://api.github.com/repos/${REPO}/releases?per_page=100`),
+  ]);
+  if (repoRes.ok) {
+    const r = await repoRes.json();
+    initialStars = r.stargazers_count || 0;
+  }
+  if (relRes.ok) {
+    const rels = await relRes.json();
+    if (Array.isArray(rels)) {
+      for (const rel of rels) {
+        for (const a of rel.assets || []) {
+          initialDownloads += a.download_count || 0;
+        }
+      }
+    }
+  }
+} catch {
+  // Build will just render empty badges; JS will try to fill them.
+}
+
+function fmtStars(n: number): string {
+  return n >= 1000 ? `⭐ ${(n / 1000).toFixed(1)}k` : `⭐ ${n}`;
+}
+function fmtDownloads(n: number): string {
+  return n >= 1000 ? `${(n / 1000).toFixed(1)}k downloads` : `${n} downloads`;
+}
+const initialStarsText = initialStars > 0 ? fmtStars(initialStars) : '';
+const initialDownloadsText = initialDownloads > 0 ? fmtDownloads(initialDownloads) : '';
 ---
 
 <section class="hero">
   <div class="container hero__inner">
-    <div class="hero__badge">{tr.hero.badge} · <span id="hero-stars"></span> · <span id="hero-dl-count"></span></div>
+    <div class="hero__badge">{tr.hero.badge} · <span id="hero-stars">{initialStarsText}</span> · <span id="hero-dl-count">{initialDownloadsText}</span></div>
     <h1>
       {tr.hero.title1}<br />
       <span class="hero__accent">{tr.hero.title2}</span>
