@@ -104,6 +104,16 @@ watchEffect(() => {
   document.documentElement.style.setProperty('--ui-font-size', `${settings.uiFontSize}px`);
 });
 
+// Sync native menu bar language with settings (macOS top bar + Linux app menu).
+watchEffect(() => {
+  invoke('set_menu_language', { lang: settings.language }).catch(() => {});
+  // Also persist to a file Rust reads on next launch — this is needed
+  // because NSUserDefaults "AppleLanguages" only takes effect at app
+  // startup (before AppKit loads), so native dialogs in the current
+  // session still show the language active at launch time.
+  invoke('save_language_preference', { lang: settings.language }).catch(() => {});
+});
+
 watchEffect(() => {
   document.documentElement.setAttribute('data-theme', dataThemeFor(settings.theme));
 });

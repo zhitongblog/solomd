@@ -66,6 +66,9 @@
         "installerIcon": "icons/icon.ico",
         "displayLanguageSelector": false
       }
+    },
+    "macOS": {
+      "minimumSystemVersion": "10.15"
     }
   }
 }

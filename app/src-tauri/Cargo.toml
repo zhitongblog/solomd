@@ -53,6 +53,8 @@ pdf-extract = "0.7"            # PDF text extraction
 [target.'cfg(target_os = "macos")'.dependencies]
 core-foundation = "0.10"
 core-foundation-sys = "0.8"
+objc2 = "0.5"
+objc2-foundation = { version = "0.2", features = ["NSArray", "NSString", "NSUserDefaults"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 winreg = "0.52"

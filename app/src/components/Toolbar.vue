@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import Icon from './Icons.vue';
 import { useTabsStore } from '../stores/tabs';
 import { useSettingsStore } from '../stores/settings';
@@ -53,18 +53,42 @@ function shortPath(p: string) {
   return parts[parts.length - 1] || p;
 }
 
-function closeRecentSoon() {
-  setTimeout(() => (recentOpen.value = false), 150);
+// Close any open dropdown when user clicks outside.
+// More reliable than @blur which doesn't fire consistently across browsers.
+function closeAllDropdowns() {
+  newOpen.value = false;
+  recentOpen.value = false;
+  exportOpen.value = false;
+  copyOpen.value = false;
 }
-function closeExportSoon() {
-  setTimeout(() => (exportOpen.value = false), 150);
+// Exclusive open: opening one dropdown closes others.
+function toggleDropdown(name: 'new' | 'recent' | 'export' | 'copy') {
+  const isOpen =
+    (name === 'new' && newOpen.value) ||
+    (name === 'recent' && recentOpen.value) ||
+    (name === 'export' && exportOpen.value) ||
+    (name === 'copy' && copyOpen.value);
+  closeAllDropdowns();
+  if (!isOpen) {
+    if (name === 'new') newOpen.value = true;
+    else if (name === 'recent') recentOpen.value = true;
+    else if (name === 'export') exportOpen.value = true;
+    else if (name === 'copy') copyOpen.value = true;
+  }
 }
-function closeNewSoon() {
-  setTimeout(() => (newOpen.value = false), 150);
+function onDocClick(e: MouseEvent) {
+  // If the click is inside any .dropdown, leave it to the dropdown's own
+  // handlers (toggle on button, mousedown on item).
+  const target = e.target as HTMLElement | null;
+  if (target && target.closest('.dropdown')) return;
+  closeAllDropdowns();
 }
-function closeCopySoon() {
-  setTimeout(() => (copyOpen.value = false), 150);
-}
+onMounted(() => {
+  document.addEventListener('click', onDocClick, true);
+});
+onBeforeUnmount(() => {
+  document.removeEventListener('click', onDocClick, true);
+});
 </script>
 
 <template>
@@ -77,9 +101,8 @@ function closeCopySoon() {
       <div class="dropdown">
         <button
           class="icon-btn"
-          @click="newOpen = !newOpen"
-          @blur="closeNewSoon"
-          title="New file"
+          @click="toggleDropdown('new')"
+          :title="t('toolbar.newFile')"
         >
           <Icon name="new" />
           <Icon name="chevron-down" :size="10" />
@@ -97,15 +120,14 @@ function closeCopySoon() {
           </button>
         </div>
       </div>
-      <button class="icon-btn" @click="files.openFile" title="Open file (Ctrl+O)">
+      <button class="icon-btn" @click="files.openFile" :title="t('toolbar.openFileTooltip')">
         <Icon name="open" />
       </button>
       <div class="dropdown">
         <button
           class="icon-btn"
-          @click="recentOpen = !recentOpen"
-          @blur="closeRecentSoon"
-          title="Recent files"
+          @click="toggleDropdown('recent')"
+          :title="t('toolbar.recent')"
         >
           <Icon name="recent" />
           <Icon name="chevron-down" :size="10" />
@@ -136,15 +158,14 @@ function closeCopySoon() {
       <button class="icon-btn" @click="files.saveActive" v-bind:title="t('toolbar.save') + ' (Ctrl+S)'">
         <Icon name="save" />
       </button>
-      <button class="icon-btn" @click="files.saveActiveAs" title="Save As (Ctrl+Shift+S)">
+      <button class="icon-btn" @click="files.saveActiveAs" :title="t('toolbar.saveAsTooltip')">
         <Icon name="save-as" />
       </button>
       <div class="dropdown">
         <button
           class="icon-btn"
-          @click="exportOpen = !exportOpen"
-          @blur="closeExportSoon"
-          title="Export / Copy"
+          @click="toggleDropdown('export')"
+          :title="t('toolbar.exportTooltip')"
         >
           <Icon name="export" />
           <Icon name="chevron-down" :size="10" />
@@ -167,13 +188,13 @@ function closeCopySoon() {
           </button>
           <div class="dropdown__sep"></div>
           <button class="dropdown__item dropdown__item--single" @mousedown.prevent="exporter.copyAsHtml(); exportOpen = false">
-            <span class="dropdown__name">Copy as HTML</span>
+            <span class="dropdown__name">{{ t('toolbar.copyHtml') }}</span>
           </button>
           <button class="dropdown__item dropdown__item--single" @mousedown.prevent="exporter.copyAsPlainText(); exportOpen = false">
-            <span class="dropdown__name">Copy as Plain Text</span>
+            <span class="dropdown__name">{{ t('toolbar.copyPlain') }}</span>
           </button>
           <button class="dropdown__item dropdown__item--single" @mousedown.prevent="exporter.copyAsMarkdown(); exportOpen = false">
-            <span class="dropdown__name">Copy as Markdown</span>
+            <span class="dropdown__name">{{ t('toolbar.copyMarkdown') }}</span>
           </button>
         </div>
       </div>
@@ -195,17 +216,16 @@ function closeCopySoon() {
         <button
           class="copy-split__main"
           @click="exporter.copyAsHtml()"
-          title="Copy as rich text HTML (Cmd+Shift+C) — paste into WeChat / email / Notion with formatting"
+          :title="t('toolbar.copyTooltip')"
         >
           <Icon name="export" :size="14" />
-          Copy
+          {{ t('toolbar.copy') }}
         </button>
         <div class="dropdown">
           <button
             class="copy-split__arrow"
-            @click="copyOpen = !copyOpen"
-            @blur="closeCopySoon"
-            title="Copy format options"
+            @click="toggleDropdown('copy')"
+            :title="t('toolbar.copyFormats')"
           >
             <Icon name="chevron-down" :size="10" />
           </button>
@@ -234,24 +254,24 @@ function closeCopySoon() {
       <button
         @click="settings.setViewMode('edit')"
         :class="{ active: settings.viewMode === 'edit' }"
-        title="Edit only"
-      >Edit</button>
+        :title="t('toolbar.editOnly')"
+      >{{ t('toolbar.editMode') }}</button>
       <button
         @click="settings.setViewMode('split')"
         :class="{ active: settings.viewMode === 'split' }"
-        title="Split (Ctrl+Shift+P)"
-      >Split</button>
+        :title="t('toolbar.splitPane')"
+      >{{ t('toolbar.splitMode') }}</button>
       <button
         @click="settings.setViewMode('preview')"
         :class="{ active: settings.viewMode === 'preview' }"
-        title="Preview only"
-      >Preview</button>
+        :title="t('toolbar.previewOnly')"
+      >{{ t('toolbar.previewMode') }}</button>
       <span class="toolbar__divider"></span>
       <button
         class="icon-btn"
         @click="settings.toggleLivePreview"
         :class="{ active: settings.livePreview }"
-        :title="settings.livePreview ? 'Live preview ON — click for raw source' : 'Raw source — click for live preview'"
+        :title="settings.livePreview ? t('toolbar.livePreviewOn') : t('toolbar.livePreviewOff')"
       >
         <Icon :name="settings.livePreview ? 'live' : 'source'" />
       </button>
@@ -262,7 +282,7 @@ function closeCopySoon() {
         class="icon-btn"
         @click="settings.toggleFocusMode"
         :class="{ active: settings.focusMode }"
-        title="Focus mode (dim non-active lines)"
+        :title="t('toolbar.focusModeTooltip')"
       >
         <Icon name="live" />
       </button>
@@ -270,7 +290,7 @@ function closeCopySoon() {
         class="icon-btn"
         @click="settings.toggleTypewriterMode"
         :class="{ active: settings.typewriterMode }"
-        title="Typewriter mode (keep cursor centered)"
+        :title="t('toolbar.typewriterTooltip')"
       >
         <Icon name="outline" />
       </button>
@@ -278,7 +298,7 @@ function closeCopySoon() {
         class="icon-btn"
         @click="settings.toggleSpellCheck"
         :class="{ active: settings.spellCheck }"
-        title="Spell check"
+        :title="t('toolbar.spellCheckTooltip')"
       >
         <Icon name="help" />
       </button>
@@ -287,7 +307,7 @@ function closeCopySoon() {
         class="icon-btn"
         @click="settings.toggleFileTree"
         :class="{ active: settings.showFileTree }"
-        title="Toggle file tree (Ctrl+B)"
+        :title="t('toolbar.fileTreeTooltip')"
       >
         <Icon name="sidebar" />
       </button>
@@ -296,26 +316,26 @@ function closeCopySoon() {
         class="icon-btn"
         @click="settings.toggleOutline"
         :class="{ active: settings.showOutline }"
-        title="Toggle outline (Ctrl+Shift+O)"
+        :title="t('toolbar.outlineTooltip')"
       >
         <Icon name="outline" />
       </button>
-      <button class="icon-btn" @click="$emit('open-search')" title="Search in folder (Ctrl+Shift+F)">
+      <button class="icon-btn" @click="$emit('open-search')" :title="t('toolbar.searchTooltip')">
         <Icon name="palette" />
       </button>
-      <button class="icon-btn" @click="$emit('open-palette')" title="Command palette (Ctrl+Shift+K)">
+      <button class="icon-btn" @click="$emit('open-palette')" :title="t('toolbar.paletteTooltip')">
         <Icon name="palette" />
       </button>
-      <button class="icon-btn" @click="$emit('open-help')" title="Markdown cheatsheet (F1 or Ctrl+/)">
+      <button class="icon-btn" @click="$emit('open-help')" :title="t('toolbar.helpTooltip')">
         <Icon name="help" />
       </button>
-      <button class="icon-btn" @click="$emit('open-settings')" title="Settings (Ctrl+,)">
+      <button class="icon-btn" @click="$emit('open-settings')" :title="t('toolbar.settingsTooltip')">
         <Icon name="settings" />
       </button>
       <button
         class="icon-btn"
         @click="settings.toggleTheme"
-        :title="settings.theme === 'dark' ? 'Light mode' : 'Dark mode'"
+        :title="settings.theme === 'dark' ? t('toolbar.lightMode') : t('toolbar.darkMode')"
       >
         <Icon :name="settings.theme === 'dark' ? 'theme-light' : 'theme-dark'" />
       </button>
