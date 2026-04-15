@@ -91,6 +91,19 @@ function onOutlineGoto(line: number) {
 
 import { dataThemeFor } from './lib/themes';
 
+// Auto-persist tabs (list + active + per-tab content) on every change.
+// Crash recovery + "close without saving" both depend on this.
+watch(
+  () => [tabs.tabs.map((t) => [t.id, t.fileName, t.filePath, t.content, t.savedContent, t.language].join('|')).join(';'), tabs.activeId],
+  () => tabs.persist(),
+  { deep: false },
+);
+
+// UI font size — applied via CSS var on <html> for all components to inherit.
+watchEffect(() => {
+  document.documentElement.style.setProperty('--ui-font-size', `${settings.uiFontSize}px`);
+});
+
 watchEffect(() => {
   document.documentElement.setAttribute('data-theme', dataThemeFor(settings.theme));
 });
@@ -206,24 +219,14 @@ onMounted(async () => {
   // Window close: Rust intercepts CloseRequested and emits this event.
   // We check unsaved tabs and either force-close or let the user cancel.
   // (JS onCloseRequested was broken on macOS, so we do it from Rust.)
+  // Window close: no prompt. The user's unsaved work is persisted by
+  // session restore (auto-save every 500ms) AND the tabs store (localStorage).
+  // Next launch rehydrates everything, so closing is always safe.
   try {
     await listen('solomd://close-requested', async () => {
-      const unsaved = tabs.tabs.filter((t) => t.content !== t.savedContent);
-      if (unsaved.length === 0) {
-        await invoke('force_close_window');
-        return;
-      }
-      const action = await showUnsavedDialog('window', '', unsaved.length);
-      if (action === 'save') {
-        for (const t of unsaved) {
-          tabs.activeId = t.id;
-          await files.saveActive();
-        }
-        await invoke('force_close_window');
-      } else if (action === 'discard') {
-        await invoke('force_close_window');
-      }
-      // 'cancel' → do nothing
+      // Ensure latest state is persisted before quitting.
+      tabs.persist?.();
+      await invoke('force_close_window');
     });
   } catch (err) {
     console.warn('close-requested listener failed', err);

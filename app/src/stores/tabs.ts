@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia';
 import type { Language, Tab } from '../types';
 
+const LS_KEY = 'solomd.tabs.v1';
+
 let nextId = 1;
 const newId = () => `tab-${Date.now()}-${nextId++}`;
 
@@ -10,11 +12,26 @@ function inferLanguage(name: string): Language {
   return 'plaintext';
 }
 
+interface PersistedState {
+  tabs: Tab[];
+  activeId: string;
+}
+
+function loadPersisted(): PersistedState {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) {
+      const data = JSON.parse(raw) as PersistedState;
+      if (Array.isArray(data.tabs)) {
+        return { tabs: data.tabs, activeId: data.activeId || '' };
+      }
+    }
+  } catch {}
+  return { tabs: [], activeId: '' };
+}
+
 export const useTabsStore = defineStore('tabs', {
-  state: () => ({
-    tabs: [] as Tab[],
-    activeId: '' as string,
-  }),
+  state: (): PersistedState => loadPersisted(),
   getters: {
     activeTab(state): Tab | undefined {
       return state.tabs.find((t) => t.id === state.activeId);
@@ -94,6 +111,14 @@ export const useTabsStore = defineStore('tabs', {
     },
     activate(id: string) {
       this.activeId = id;
+    },
+    persist() {
+      try {
+        localStorage.setItem(
+          LS_KEY,
+          JSON.stringify({ tabs: this.tabs, activeId: this.activeId }),
+        );
+      } catch {}
     },
   },
 });

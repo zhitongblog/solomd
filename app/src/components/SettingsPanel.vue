@@ -5,7 +5,10 @@ import { useSettingsStore } from '../stores/settings';
 import { useToastsStore } from '../stores/toasts';
 import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
 import { themeLabels } from '../lib/themes';
+import { useI18n } from '../i18n';
 import type { Theme } from '../types';
+
+const { t } = useI18n();
 
 const settingDefault = ref(false);
 
@@ -51,29 +54,40 @@ const fontFamilies = [
   <div v-if="open" class="settings__backdrop" @click.self="emit('close')">
     <div class="settings" role="dialog" aria-label="Settings">
       <header class="settings__header">
-        <h2>Settings</h2>
+        <h2>{{ t('settings.title') }}</h2>
         <button class="settings__close" @click="emit('close')">×</button>
       </header>
       <div class="settings__body">
         <section>
-          <label>Theme</label>
+          <label>{{ t('settings.language') }}</label>
           <select
-            :value="settings.theme"
-            @change="settings.setTheme(($event.target as HTMLSelectElement).value as Theme)"
+            :value="settings.language"
+            @change="settings.setLanguage(($event.target as HTMLSelectElement).value as 'en' | 'zh')"
           >
-            <option v-for="t in themeLabels" :key="t.value" :value="t.value">{{ t.label }}</option>
+            <option value="en">English</option>
+            <option value="zh">中文</option>
           </select>
         </section>
 
         <section>
-          <label>Font Family</label>
+          <label>{{ t('settings.theme') }}</label>
+          <select
+            :value="settings.theme"
+            @change="settings.setTheme(($event.target as HTMLSelectElement).value as Theme)"
+          >
+            <option v-for="th in themeLabels" :key="th.value" :value="th.value">{{ th.label }}</option>
+          </select>
+        </section>
+
+        <section>
+          <label>{{ t('settings.fontFamily') }}</label>
           <select :value="settings.fontFamily" @change="settings.setFontFamily(($event.target as HTMLSelectElement).value)">
             <option v-for="f in fontFamilies" :key="f.label" :value="f.value">{{ f.label }}</option>
           </select>
         </section>
 
         <section>
-          <label>Font Size: {{ settings.fontSize }}px</label>
+          <label>{{ t('settings.fontSize') }}: {{ settings.fontSize }}px</label>
           <input
             type="range"
             min="10"
@@ -84,73 +98,84 @@ const fontFamilies = [
         </section>
 
         <section>
+          <label>{{ t('settings.uiFontSize') }}: {{ settings.uiFontSize }}px</label>
+          <input
+            type="range"
+            min="10"
+            max="20"
+            :value="settings.uiFontSize"
+            @input="settings.setUiFontSize(+($event.target as HTMLInputElement).value)"
+          />
+        </section>
+
+        <section>
           <label>
             <input type="checkbox" :checked="settings.wordWrap" @change="settings.toggleWordWrap()" />
-            Word Wrap
+            {{ t('settings.wordWrap') }}
           </label>
         </section>
 
         <section>
           <label>
             <input type="checkbox" :checked="settings.showLineNumbers" @change="settings.toggleLineNumbers()" />
-            Line Numbers
+            {{ t('settings.lineNumbers') }}
           </label>
         </section>
 
         <section>
           <label>
             <input type="checkbox" :checked="settings.livePreview" @change="settings.toggleLivePreview()" />
-            Live Preview (Markdown) — hide markers off-line, render headings, bold etc.
+            {{ t('settings.livePreview') }}
           </label>
         </section>
 
         <section>
           <label>
             <input type="checkbox" :checked="settings.showOutline" @change="settings.toggleOutline()" />
-            Show Outline (Markdown)
+            {{ t('settings.showOutline') }}
           </label>
         </section>
 
         <section>
           <label>
             <input type="checkbox" :checked="settings.showFileTree" @change="settings.toggleFileTree()" />
-            Show File Tree
+            {{ t('settings.showFileTree') }}
           </label>
         </section>
 
         <section>
           <label>
             <input type="checkbox" :checked="settings.spellCheck" @change="settings.toggleSpellCheck()" />
-            Spell Check (browser)
+            {{ t('settings.spellCheck') }}
           </label>
         </section>
 
         <section>
           <label>
             <input type="checkbox" :checked="settings.focusMode" @change="settings.toggleFocusMode()" />
-            Focus Mode — dim non-active lines
+            {{ t('settings.focusMode') }}
           </label>
         </section>
 
         <section>
           <label>
             <input type="checkbox" :checked="settings.typewriterMode" @change="settings.toggleTypewriterMode()" />
-            Typewriter Mode — keep cursor centered
+            {{ t('settings.typewriterMode') }}
           </label>
         </section>
 
         <section>
           <label>
             <input type="checkbox" :checked="settings.vimMode" @change="settings.toggleVimMode()" />
-            Vim Mode — hjkl navigation, modes, ex commands
+            {{ t('settings.vimMode') }}
           </label>
         </section>
 
         <section>
-          <label>Custom CSS Theme</label>
+          <label>{{ t('settings.customCss') }}</label>
           <div class="row" style="gap: 8px; align-items: center;">
-            <button @click="pickCustomCss">Pick .css file…</button>
-            <button v-if="settings.customCssPath" @click="settings.setCustomCssPath('')">Clear</button>
+            <button @click="pickCustomCss">{{ t('settings.pickCss') }}</button>
+            <button v-if="settings.customCssPath" @click="settings.setCustomCssPath('')">{{ t('settings.clear') }}</button>
           </div>
           <div v-if="settings.customCssPath" style="font-size: 11px; color: var(--text-faint); word-break: break-all; margin-top: 4px;">
             {{ settings.customCssPath }}
@@ -158,18 +183,18 @@ const fontFamilies = [
         </section>
 
         <section>
-          <label>File Association</label>
+          <label>{{ t('settings.fileAssoc') }}</label>
           <div class="row" style="gap: 8px; align-items: center;">
             <button
               class="primary-btn"
               :disabled="settingDefault"
               @click="setAsDefault"
             >
-              {{ settingDefault ? 'Setting…' : '⭐ Set SoloMD as default Markdown editor' }}
+              {{ settingDefault ? t('settings.settingDefault') : t('settings.setDefault') }}
             </button>
           </div>
           <div style="font-size: 11px; color: var(--text-faint); margin-top: 6px; line-height: 1.5;">
-            Registers SoloMD as the default app for .md / .markdown / .mdown / .mkd files. On Windows, also adds SoloMD to the "Open with" menu. On Linux requires <code>xdg-utils</code>.
+            {{ t('settings.setDefaultHint') }}
           </div>
         </section>
       </div>

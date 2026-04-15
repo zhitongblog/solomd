@@ -247,7 +247,7 @@ body,
 
 body {
   font-family: var(--font-ui);
-  font-size: 13px;
+  font-size: var(--ui-font-size, 13px);
   color: var(--text);
   background: var(--bg);
   -webkit-font-smoothing: antialiased;

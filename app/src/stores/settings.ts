@@ -18,6 +18,8 @@ interface Settings {
   focusMode: boolean;
   typewriterMode: boolean;
   vimMode: boolean;
+  uiFontSize: number;
+  language: 'en' | 'zh';
   // Custom CSS theme override (path to a .css file on disk)
   customCssPath: string;
 }
@@ -41,6 +43,14 @@ function defaults(): Settings {
     focusMode: false,
     typewriterMode: false,
     vimMode: false,
+    uiFontSize: 13,
+    language: (() => {
+      // Detect browser language on first run (zh-CN, zh-TW, etc. → 'zh')
+      try {
+        const nav = typeof navigator !== 'undefined' ? navigator.language || '' : '';
+        return /^zh/i.test(nav) ? 'zh' : 'en';
+      } catch { return 'en'; }
+    })() as 'en' | 'zh',
     customCssPath: '',
   };
 }
@@ -119,6 +129,14 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleVimMode() {
       this.vimMode = !this.vimMode;
+      this.persist();
+    },
+    setUiFontSize(n: number) {
+      this.uiFontSize = Math.max(10, Math.min(20, n));
+      this.persist();
+    },
+    setLanguage(lang: 'en' | 'zh') {
+      this.language = lang;
       this.persist();
     },
     setCustomCssPath(p: string) {

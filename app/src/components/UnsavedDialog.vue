@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { useI18n } from '../i18n';
+const { t } = useI18n();
+
 defineProps<{
   open: boolean;
   fileName: string;
@@ -20,24 +23,18 @@ const emit = defineEmits<{
 
       <div class="ud__icon">⚠️</div>
 
-      <h3 class="ud__title" v-if="mode === 'tab'">
-        Unsaved Changes
-      </h3>
-      <h3 class="ud__title" v-else>
-        {{ count }} unsaved file(s)
+      <h3 class="ud__title">
+        {{ t('unsaved.title') }}
       </h3>
 
-      <p class="ud__msg" v-if="mode === 'tab'">
-        <strong>{{ fileName }}</strong> has been modified. Save changes?
-      </p>
-      <p class="ud__msg" v-else>
-        Your changes will be lost if you close without saving.
+      <p class="ud__msg">
+        <strong>{{ fileName }}</strong>: {{ t('unsaved.message', { file: fileName }).replace(fileName + ' ', '').replace(fileName, '') }}
       </p>
 
       <div class="ud__actions">
-        <button class="ud__btn ud__btn--cancel" @click="emit('cancel')">Cancel</button>
-        <button class="ud__btn ud__btn--discard" @click="emit('discard')">Don't Save</button>
-        <button class="ud__btn ud__btn--save" @click="emit('save')">Save</button>
+        <button class="ud__btn ud__btn--cancel" @click="emit('cancel')">{{ t('unsaved.cancel') }}</button>
+        <button class="ud__btn ud__btn--discard" @click="emit('discard')">{{ t('unsaved.dontSave') }}</button>
+        <button class="ud__btn ud__btn--save" @click="emit('save')">{{ t('unsaved.save') }}</button>
       </div>
     </div>
   </div>

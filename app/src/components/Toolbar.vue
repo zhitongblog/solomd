@@ -8,6 +8,9 @@ import { useFiles } from '../composables/useFiles';
 import { useExport } from '../composables/useExport';
 import { useToastsStore } from '../stores/toasts';
 import { cleanAIArtifacts } from '../lib/clean-ai';
+import { useI18n } from '../i18n';
+
+const { t } = useI18n();
 
 defineEmits<{
   (e: 'open-palette'): void;
@@ -84,12 +87,12 @@ function closeCopySoon() {
         <div v-if="newOpen" class="dropdown__menu dropdown__menu--narrow">
           <button class="dropdown__item dropdown__item--single" @mousedown.prevent="files.newFile(); newOpen = false">
             <Icon name="new" />
-            <span class="dropdown__name">New Markdown</span>
+            <span class="dropdown__name">{{ t('toolbar.newMarkdown') }}</span>
             <span class="dropdown__shortcut">Ctrl+N</span>
           </button>
           <button class="dropdown__item dropdown__item--single" @mousedown.prevent="files.newTextFile(); newOpen = false">
             <Icon name="new-text" />
-            <span class="dropdown__name">New Plain Text</span>
+            <span class="dropdown__name">{{ t('toolbar.newPlainText') }}</span>
             <span class="dropdown__shortcut">Ctrl+Alt+N</span>
           </button>
         </div>
@@ -108,7 +111,7 @@ function closeCopySoon() {
           <Icon name="chevron-down" :size="10" />
         </button>
         <div v-if="recentOpen" class="dropdown__menu">
-          <div v-if="!workspace.recentFiles.length" class="dropdown__empty">No recent files</div>
+          <div v-if="!workspace.recentFiles.length" class="dropdown__empty">{{ t('toolbar.noRecent') }}</div>
           <button
             v-for="p in workspace.recentFiles"
             :key="p"
@@ -124,13 +127,13 @@ function closeCopySoon() {
             v-if="workspace.recentFiles.length"
             class="dropdown__item dropdown__item--muted"
             @mousedown.prevent="workspace.clearRecent(); recentOpen = false"
-          >Clear recent</button>
+          >{{ t('toolbar.clearRecent') }}</button>
         </div>
       </div>
-      <button class="icon-btn" @click="files.openFolder" title="Open folder">
+      <button class="icon-btn" @click="files.openFolder" v-bind:title="t('toolbar.openFolder')">
         <Icon name="folder" />
       </button>
-      <button class="icon-btn" @click="files.saveActive" title="Save (Ctrl+S)">
+      <button class="icon-btn" @click="files.saveActive" v-bind:title="t('toolbar.save') + ' (Ctrl+S)'">
         <Icon name="save" />
       </button>
       <button class="icon-btn" @click="files.saveActiveAs" title="Save As (Ctrl+Shift+S)">
@@ -148,19 +151,19 @@ function closeCopySoon() {
         </button>
         <div v-if="exportOpen" class="dropdown__menu">
           <button class="dropdown__item dropdown__item--single" @mousedown.prevent="exporter.exportHtml(); exportOpen = false">
-            <span class="dropdown__name">Export to HTML…</span>
+            <span class="dropdown__name">{{ t('toolbar.exportHtml') }}</span>
           </button>
           <button class="dropdown__item dropdown__item--single" @mousedown.prevent="exporter.exportDocx(); exportOpen = false">
-            <span class="dropdown__name">Export to Word (DOCX)…</span>
+            <span class="dropdown__name">{{ t('toolbar.exportDocx') }}</span>
           </button>
           <button class="dropdown__item dropdown__item--single" @mousedown.prevent="exporter.exportPdf(); exportOpen = false">
-            <span class="dropdown__name">Export to PDF…</span>
+            <span class="dropdown__name">{{ t('toolbar.exportPdf') }}</span>
           </button>
           <button class="dropdown__item dropdown__item--single" @mousedown.prevent="exporter.exportPdfPrint(); exportOpen = false">
-            <span class="dropdown__name">Export to PDF via Print…</span>
+            <span class="dropdown__name">{{ t('toolbar.exportPdfPrint') }}</span>
           </button>
           <button class="dropdown__item dropdown__item--single" @mousedown.prevent="exporter.exportImage(); exportOpen = false">
-            <span class="dropdown__name">Export to Image (PNG)…</span>
+            <span class="dropdown__name">{{ t('toolbar.exportImage') }}</span>
           </button>
           <div class="dropdown__sep"></div>
           <button class="dropdown__item dropdown__item--single" @mousedown.prevent="exporter.copyAsHtml(); exportOpen = false">
@@ -180,7 +183,7 @@ function closeCopySoon() {
       <button
         class="icon-btn clean-ai-btn"
         @click="onCleanAI"
-        title="Clean AI Artifacts (cite markers, smart quotes, invisible chars)"
+        v-bind:title="t('toolbar.cleanAiTitle')"
       >
         <span class="clean-ai-label">AI</span>
         <span class="clean-ai-x">✕</span>
@@ -208,17 +211,17 @@ function closeCopySoon() {
           </button>
           <div v-if="copyOpen" class="dropdown__menu dropdown__menu--narrow copy-dropdown">
             <button class="dropdown__item dropdown__item--single" @mousedown.prevent="exporter.copyAsHtml(); copyOpen = false">
-              <span class="dropdown__name">📋 Copy as HTML</span>
+              <span class="dropdown__name">{{ '📋 ' + t('toolbar.copyHtml') }}</span>
               <span class="dropdown__shortcut">⇧⌘C</span>
             </button>
             <button class="dropdown__item dropdown__item--single" @mousedown.prevent="exporter.copyAsMarkdown(); copyOpen = false">
-              <span class="dropdown__name">📝 Copy as Markdown</span>
+              <span class="dropdown__name">{{ '📝 ' + t('toolbar.copyMarkdown') }}</span>
             </button>
             <button class="dropdown__item dropdown__item--single" @mousedown.prevent="exporter.copyAsPlainText(); copyOpen = false">
-              <span class="dropdown__name">📄 Copy as Plain Text</span>
+              <span class="dropdown__name">{{ '📄 ' + t('toolbar.copyPlain') }}</span>
             </button>
             <button class="dropdown__item dropdown__item--single" @mousedown.prevent="exporter.copyAsImage(); copyOpen = false">
-              <span class="dropdown__name">🖼 Copy as Image</span>
+              <span class="dropdown__name">{{ '🖼 ' + t('toolbar.copyImage') }}</span>
             </button>
           </div>
         </div>
