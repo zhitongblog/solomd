@@ -40,3 +40,7 @@ distribution/windows/
 distribution/macos/
 distribution/linux/
 winget-pkgs
+
+# ai assist
+CLAUDE.md
+.claude/

@@ -136,4 +136,12 @@ export const zh: I18n = {
     converted: '已转换为 Markdown',
     conversionFailed: '转换失败',
   },
+  overlay: {
+    close: '关闭',
+    zoomIn: '放大',
+    zoomOut: '缩小',
+    resetZoom: '重置',
+    image: '图片',
+    diagram: '图表',
+  },
 };
