@@ -28,6 +28,12 @@ jobs:
           - platform: ubuntu-22.04
             args: ''
             rust_targets: ''
+          # Linux ARM64 — for Raspberry Pi 4/5, Mac users running Linux VMs,
+          # Ampere servers, and ARM Chromebooks.
+          # Cross-compiled from x86_64 runner via aarch64 toolchain.
+          - platform: ubuntu-22.04-arm
+            args: ''
+            rust_targets: ''
           # NOTE: macOS removed from CI matrix.
           # Build locally with `./scripts/build-mac.sh` (full sign + notarize)
           # then upload the resulting .dmg manually to the GitHub release.
@@ -61,7 +67,7 @@ jobs:
           workspaces: app/src-tauri -> target
 
       - name: Install Linux build dependencies
-        if: matrix.platform == 'ubuntu-22.04'
+        if: startsWith(matrix.platform, 'ubuntu-')
         run: |
           sudo apt-get update
           sudo apt-get install -y \

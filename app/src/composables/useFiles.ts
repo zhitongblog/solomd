@@ -165,11 +165,12 @@ export function useFiles() {
   }
 
   type UnsavedDialog = (mode: 'tab' | 'window', fileName: string, count: number) => Promise<'save' | 'discard' | 'cancel'>;
-  const injectedDialog = inject<UnsavedDialog>('showUnsavedDialog');
+  // Pass `null` default so Vue doesn't emit "injection not found" warnings
+  // when useFiles() is called before App.vue's provide() runs (e.g. inside
+  // App.vue's own setup). The real dialog is always available via the
+  // window global fallback below.
+  const injectedDialog = inject<UnsavedDialog | null>('showUnsavedDialog', null);
 
-  /** Get the dialog from whichever source is available.
-   *  Prefer inject (scoped) but fall back to window-global so shortcuts
-   *  and menu-driven closes also get the prompt. */
   function getUnsavedDialog(): UnsavedDialog | undefined {
     if (injectedDialog) return injectedDialog;
     const w = window as any;

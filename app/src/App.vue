@@ -207,6 +207,7 @@ interface SavedWindow { w: number; h: number; x?: number; y?: number }
 async function restoreWindowSize() {
   try {
     const raw = localStorage.getItem(WINDOW_LS_KEY);
+    console.log('[window] restore: localStorage=', raw);
     if (!raw) return;
     const s = JSON.parse(raw) as SavedWindow;
     if (typeof s.w !== 'number' || typeof s.h !== 'number') return;
@@ -215,7 +216,8 @@ async function restoreWindowSize() {
     if (typeof s.x === 'number' && typeof s.y === 'number') {
       await win.setPosition(new LogicalPosition(s.x, s.y));
     }
-  } catch {}
+    console.log('[window] restored to', s);
+  } catch (e) { console.warn('[window] restore failed', e); }
 }
 
 async function saveWindowSize() {
@@ -231,7 +233,8 @@ async function saveWindowSize() {
       y: phyPos.y / scale,
     };
     localStorage.setItem(WINDOW_LS_KEY, JSON.stringify(s));
-  } catch {}
+    console.log('[window] saved', s);
+  } catch (e) { console.warn('[window] save failed', e); }
 }
 
 let saveWindowDebounce: number | undefined;
@@ -289,7 +292,9 @@ onMounted(async () => {
   // Next launch rehydrates everything, so closing is always safe.
   try {
     await listen('solomd://close-requested', async () => {
-      // Ensure latest state is persisted before quitting.
+      // Persist window size + tabs BEFORE destroying the window — the
+      // save handlers may not have fired recently enough otherwise.
+      await saveWindowSize();
       tabs.persist?.();
       await invoke('force_close_window');
     });
