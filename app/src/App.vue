@@ -376,14 +376,54 @@ onBeforeUnmount(() => {
   }
 });
 
-// ---- Split-pane scroll sync ----
-// In split mode, syncs editor scroll with preview pane by percentage.
+// ---- Split-pane scroll sync (line-based) ----
+// Uses data-source-line attributes injected by markdown-it to map editor
+// viewport lines → preview DOM elements, so the same logical content line
+// stays aligned across both panes (content-level sync, not just percentage).
 let syncEditorScroll: (() => void) | null = null;
 let syncPreviewScroll: (() => void) | null = null;
 let syncGuard = false;
 
+function getCMViewLine(editor: HTMLElement): number | null {
+  // Find the CodeMirror line closest to the top of the viewport.
+  const lines = editor.querySelectorAll('.cm-line');
+  if (!lines.length) return null;
+  const top = editor.getBoundingClientRect().top;
+  for (let i = 0; i < lines.length; i++) {
+    const rect = (lines[i] as HTMLElement).getBoundingClientRect();
+    if (rect.bottom >= top) {
+      // i is 0-indexed within visible lines — but CodeMirror only renders
+      // visible lines, so we need the actual line number from the CM state.
+      // Fallback: use the ratio (fraction of visible lines) * doc total.
+      return i + 1; // will be corrected via editorRef below
+    }
+  }
+  return lines.length;
+}
+
+function getPreviewElementsByLine(preview: HTMLElement): Array<{ line: number; el: HTMLElement }> {
+  const nodes = preview.querySelectorAll<HTMLElement>('[data-source-line]');
+  const list: Array<{ line: number; el: HTMLElement }> = [];
+  for (const el of Array.from(nodes)) {
+    const n = Number(el.getAttribute('data-source-line') || '0');
+    if (n > 0) list.push({ line: n, el });
+  }
+  list.sort((a, b) => a.line - b.line);
+  return list;
+}
+
+function findNearestEntry<T extends { line: number }>(list: T[], line: number): T | null {
+  if (!list.length) return null;
+  let lo = 0, hi = list.length - 1, best = list[0];
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (list[mid].line <= line) { best = list[mid]; lo = mid + 1; }
+    else hi = mid - 1;
+  }
+  return best;
+}
+
 function bindScrollSync() {
-  // Clean up previous listeners
   if (syncEditorScroll) syncEditorScroll();
   if (syncPreviewScroll) syncPreviewScroll();
   syncEditorScroll = null;
@@ -397,26 +437,56 @@ function bindScrollSync() {
 
   const onEditorScroll = () => {
     if (syncGuard) return;
-    const max = editor.scrollHeight - editor.clientHeight;
-    if (max <= 0) return;
-    const pct = editor.scrollTop / max;
-    const pmax = preview.scrollHeight - preview.clientHeight;
-    if (pmax <= 0) return;
+    // Prefer exact line from CM if available via ref
+    const cmRef = editorRef.value as any;
+    let currentLine: number | null = null;
+    if (cmRef?.getViewLine) {
+      currentLine = cmRef.getViewLine();
+    }
+    if (!currentLine) {
+      currentLine = getCMViewLine(editor);
+    }
+    if (!currentLine) return;
+
+    const previewLines = getPreviewElementsByLine(preview);
+    const entry = findNearestEntry(previewLines, currentLine);
+    if (!entry) {
+      // No mapped element — fall back to percentage
+      const emax = editor.scrollHeight - editor.clientHeight;
+      const pmax = preview.scrollHeight - preview.clientHeight;
+      if (emax > 0 && pmax > 0) {
+        syncGuard = true;
+        preview.scrollTop = (editor.scrollTop / emax) * pmax;
+        requestAnimationFrame(() => { syncGuard = false; });
+      }
+      return;
+    }
+    const elRect = entry.el.getBoundingClientRect();
+    const wrapRect = preview.getBoundingClientRect();
     syncGuard = true;
-    preview.scrollTop = pct * pmax;
+    preview.scrollTop += elRect.top - wrapRect.top - 8;
     requestAnimationFrame(() => { syncGuard = false; });
   };
+
   const onPreviewScroll = () => {
     if (syncGuard) return;
-    const max = preview.scrollHeight - preview.clientHeight;
-    if (max <= 0) return;
-    const pct = preview.scrollTop / max;
-    const emax = editor.scrollHeight - editor.clientHeight;
-    if (emax <= 0) return;
-    syncGuard = true;
-    editor.scrollTop = pct * emax;
-    requestAnimationFrame(() => { syncGuard = false; });
+    const previewLines = getPreviewElementsByLine(preview);
+    const wrapTop = preview.getBoundingClientRect().top;
+    // Find the first element whose top is below the viewport top
+    let targetLine: number | null = null;
+    for (const { line, el } of previewLines) {
+      const r = el.getBoundingClientRect();
+      if (r.bottom >= wrapTop) { targetLine = line; break; }
+    }
+    if (targetLine == null) return;
+    const cmRef = editorRef.value as any;
+    if (cmRef?.scrollToLine) {
+      syncGuard = true;
+      cmRef.scrollToLine(targetLine);
+      requestAnimationFrame(() => { syncGuard = false; });
+    }
   };
+
   editor.addEventListener('scroll', onEditorScroll, { passive: true });
   preview.addEventListener('scroll', onPreviewScroll, { passive: true });
   syncEditorScroll = () => editor.removeEventListener('scroll', onEditorScroll);

@@ -81,5 +81,26 @@ ok('strip plain — keeps content "Title"', plain.includes('Title'));
 ok('strip plain — keeps "bold"', plain.includes('bold'));
 ok('strip plain — keeps code "const x = 1"', plain.includes('const x = 1'));
 
+console.log('\n=== check-update semver compare ===');
+// Inline semver compare identical to check-update.ts
+function cmp(a, b) {
+  const pa = a.replace(/^v/, '').split('.').map(Number);
+  const pb = b.replace(/^v/, '').split('.').map(Number);
+  const len = Math.max(pa.length, pb.length);
+  for (let i = 0; i < len; i++) {
+    const na = pa[i] || 0;
+    const nb = pb[i] || 0;
+    if (na > nb) return 1;
+    if (na < nb) return -1;
+  }
+  return 0;
+}
+ok('0.1.10 > 0.1.9', cmp('0.1.10', '0.1.9') === 1);
+ok('0.1.9 < 0.1.10', cmp('0.1.9', '0.1.10') === -1);
+ok('0.1.10 == 0.1.10', cmp('0.1.10', '0.1.10') === 0);
+ok('v0.2.0 > v0.1.99', cmp('v0.2.0', 'v0.1.99') === 1);
+ok('1.0.0 > 0.99.99', cmp('1.0.0', '0.99.99') === 1);
+ok('0.1 == 0.1.0', cmp('0.1', '0.1.0') === 0);
+
 console.log(`\n=== ${pass} passed / ${fail} failed ===`);
 process.exit(fail > 0 ? 1 : 0);

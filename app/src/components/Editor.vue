@@ -315,7 +315,25 @@ async function insertImageFromPath(srcPath: string): Promise<void> {
   });
 }
 
-defineExpose({ gotoLine, insertImageFromPath });
+/** Returns the 1-indexed line currently at the top of the visible viewport. */
+function getViewLine(): number | null {
+  if (!view) return null;
+  const top = view.scrollDOM.scrollTop;
+  const block = view.lineBlockAtHeight(top);
+  return view.state.doc.lineAt(block.from).number;
+}
+
+/** Scroll the given 1-indexed line to the top of the viewport (without moving cursor). */
+function scrollToLine(line: number): void {
+  if (!view) return;
+  const safe = Math.max(1, Math.min(line, view.state.doc.lines));
+  const lineObj = view.state.doc.line(safe);
+  view.dispatch({
+    effects: EditorView.scrollIntoView(lineObj.from, { y: 'start', yMargin: 8 }),
+  });
+}
+
+defineExpose({ gotoLine, insertImageFromPath, getViewLine, scrollToLine });
 
 const cls = computed(() => ({
   'cm-host': true,

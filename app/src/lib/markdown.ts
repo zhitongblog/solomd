@@ -39,6 +39,33 @@ export const md = new MarkdownIt({
   .use(footnote)
   .use(mark);
 
+// ---- Source line mapping for split-pane scroll sync ----
+// Annotate every block-level opening token with `data-source-line` set to
+// the 1-indexed source line. App.vue's split-scroll uses these attributes
+// to map editor viewport lines to preview elements for accurate alignment.
+const BLOCK_OPEN_TYPES = new Set([
+  'paragraph_open',
+  'heading_open',
+  'blockquote_open',
+  'list_item_open',
+  'bullet_list_open',
+  'ordered_list_open',
+  'table_open',
+  'fence',
+  'code_block',
+  'hr',
+  'html_block',
+  'math_block',
+]);
+md.core.ruler.push('source_line_map', (state) => {
+  for (const tok of state.tokens) {
+    if (!BLOCK_OPEN_TYPES.has(tok.type)) continue;
+    if (!tok.map || tok.map.length < 1) continue;
+    const line = tok.map[0] + 1; // 1-indexed
+    tok.attrJoin('data-source-line', String(line));
+  }
+});
+
 // Custom core rule: detect GitHub-style task list items (a leading
 // `[ ]` / `[x]` in the first inline child of a list item) and:
 //   1. add a `task-list-item` class to the <li>
