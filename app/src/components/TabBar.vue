@@ -22,6 +22,7 @@ function isDirty(id: string) {
         :title="t.filePath || t.fileName"
       >
         <span class="tab__name">{{ t.fileName }}</span>
+        <span class="tab__outline" v-if="t.showOutline && t.language === 'markdown'" title="Outline on">≡</span>
         <span class="tab__dot" v-if="isDirty(t.id)">●</span>
         <button
           class="tab__close"
@@ -88,6 +89,10 @@ function isDirty(id: string) {
 .tab__dot {
   color: var(--accent);
   font-size: 10px;
+}
+.tab__outline {
+  font-size: 11px;
+  color: var(--text-faint);
 }
 .tab__close {
   padding: 0 4px;

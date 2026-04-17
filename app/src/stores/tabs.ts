@@ -112,6 +112,10 @@ export const useTabsStore = defineStore('tabs', {
     activate(id: string) {
       this.activeId = id;
     },
+    toggleOutline(id: string) {
+      const t = this.tabs.find((x) => x.id === id);
+      if (t) t.showOutline = !t.showOutline;
+    },
     persist() {
       try {
         localStorage.setItem(

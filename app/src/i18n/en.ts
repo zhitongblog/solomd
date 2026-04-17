@@ -42,6 +42,7 @@ export const en = {
     previewOnly: 'Preview only',
     livePreviewOn: 'Live preview ON — click for raw source',
     livePreviewOff: 'Raw source — click for live preview',
+    fitWidthTooltip: 'Preview Fit Width (toggle)',
     focusModeTooltip: 'Focus mode (dim non-active lines)',
     typewriterTooltip: 'Typewriter mode (keep cursor centered)',
     spellCheckTooltip: 'Spell check',

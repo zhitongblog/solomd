@@ -44,6 +44,7 @@ export const zh: I18n = {
     previewOnly: '仅预览',
     livePreviewOn: '实时预览已开启 — 点击切换源码',
     livePreviewOff: '源码模式 — 点击切换实时预览',
+    fitWidthTooltip: '预览自适应宽度 (切换)',
     focusModeTooltip: '专注模式 (淡化非活动行)',
     typewriterTooltip: '打字机模式 (光标居中)',
     spellCheckTooltip: '拼写检查',

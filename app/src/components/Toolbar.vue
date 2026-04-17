@@ -200,6 +200,19 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
+    <span class="toolbar__divider"></span>
+
+    <div class="toolbar__group">
+      <button
+        class="icon-btn"
+        @click="settings.toggleFileTree"
+        :class="{ active: settings.showFileTree }"
+        :title="t('toolbar.fileTreeTooltip')"
+      >
+        <Icon name="sidebar" />
+      </button>
+    </div>
+
     <div class="toolbar__group">
       <button
         class="icon-btn clean-ai-btn"
@@ -252,20 +265,29 @@ onBeforeUnmount(() => {
 
     <div class="toolbar__group" v-if="isMarkdown">
       <button
+        class="icon-btn"
         @click="settings.setViewMode('edit')"
         :class="{ active: settings.viewMode === 'edit' }"
         :title="t('toolbar.editOnly')"
-      >{{ t('toolbar.editMode') }}</button>
+      >
+        <Icon name="view-edit" />
+      </button>
       <button
+        class="icon-btn"
         @click="settings.setViewMode('split')"
         :class="{ active: settings.viewMode === 'split' }"
         :title="t('toolbar.splitPane')"
-      >{{ t('toolbar.splitMode') }}</button>
+      >
+        <Icon name="view-split" />
+      </button>
       <button
+        class="icon-btn"
         @click="settings.setViewMode('preview')"
         :class="{ active: settings.viewMode === 'preview' }"
         :title="t('toolbar.previewOnly')"
-      >{{ t('toolbar.previewMode') }}</button>
+      >
+        <Icon name="view-preview" />
+      </button>
       <span class="toolbar__divider"></span>
       <button
         class="icon-btn"
@@ -275,7 +297,18 @@ onBeforeUnmount(() => {
       >
         <Icon :name="settings.livePreview ? 'live' : 'source'" />
       </button>
+      <button
+        v-if="settings.viewMode !== 'edit'"
+        class="icon-btn"
+        @click="settings.togglePreviewFitWidth"
+        :class="{ active: settings.previewFitWidth }"
+        :title="t('toolbar.fitWidthTooltip')"
+      >
+        <Icon name="fit-width" />
+      </button>
     </div>
+
+    <span v-if="isMarkdown" class="toolbar__divider"></span>
 
     <div class="toolbar__group">
       <button
@@ -284,7 +317,7 @@ onBeforeUnmount(() => {
         :class="{ active: settings.focusMode }"
         :title="t('toolbar.focusModeTooltip')"
       >
-        <Icon name="live" />
+        <Icon name="focus" />
       </button>
       <button
         class="icon-btn"
@@ -292,7 +325,7 @@ onBeforeUnmount(() => {
         :class="{ active: settings.typewriterMode }"
         :title="t('toolbar.typewriterTooltip')"
       >
-        <Icon name="outline" />
+        <Icon name="typewriter" />
       </button>
       <button
         class="icon-btn"
@@ -300,28 +333,11 @@ onBeforeUnmount(() => {
         :class="{ active: settings.spellCheck }"
         :title="t('toolbar.spellCheckTooltip')"
       >
-        <Icon name="help" />
+        <Icon name="spellcheck" />
       </button>
       <span class="toolbar__divider"></span>
-      <button
-        class="icon-btn"
-        @click="settings.toggleFileTree"
-        :class="{ active: settings.showFileTree }"
-        :title="t('toolbar.fileTreeTooltip')"
-      >
-        <Icon name="sidebar" />
-      </button>
-      <button
-        v-if="isMarkdown"
-        class="icon-btn"
-        @click="settings.toggleOutline"
-        :class="{ active: settings.showOutline }"
-        :title="t('toolbar.outlineTooltip')"
-      >
-        <Icon name="outline" />
-      </button>
       <button class="icon-btn" @click="$emit('open-search')" :title="t('toolbar.searchTooltip')">
-        <Icon name="palette" />
+        <Icon name="search" />
       </button>
       <button class="icon-btn" @click="$emit('open-palette')" :title="t('toolbar.paletteTooltip')">
         <Icon name="palette" />

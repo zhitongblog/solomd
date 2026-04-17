@@ -19,6 +19,7 @@ export interface Tab {
   encoding: string;
   language: Language;
   hadBom: boolean;
+  showOutline?: boolean;
 }
 
 export interface FileReadResult {
