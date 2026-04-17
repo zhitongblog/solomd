@@ -213,7 +213,7 @@ defineExpose({ scrollToLine });
 
 <template>
   <div class="preview-host">
-    <article ref="host" class="preview-content" v-html="html"></article>
+    <article ref="host" class="preview-content" :class="{ 'preview-content--fit': settings.previewFitWidth }" v-html="html"></article>
   </div>
 </template>
 
@@ -240,6 +240,10 @@ defineExpose({ scrollToLine });
   font-family: var(--font-ui);
   font-size: 15px;
   line-height: 1.7;
+}
+.preview-content--fit {
+  max-width: none;
+  padding: 28px 16px 64px;
 }
 :where(.preview-content) h1,
 :where(.preview-content) h2,
@@ -298,6 +302,9 @@ defineExpose({ scrollToLine });
 :where(.preview-content) table {
   border-collapse: collapse;
   margin: 1em 0;
+}
+:where(.preview-content--fit) table {
+  width: 100%;
 }
 :where(.preview-content) th,
 :where(.preview-content) td {

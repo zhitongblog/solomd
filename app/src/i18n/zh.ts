@@ -88,6 +88,7 @@ export const zh: I18n = {
     lineNumbers: '显示行号',
     livePreview: '实时预览 (Markdown) — 离开行时隐藏标记符,渲染标题和粗体等',
     showOutline: '显示大纲 (Markdown)',
+    previewFitWidth: '预览自适应宽度 — 预览区铺满窗口,不出现横向滚动条',
     showFileTree: '显示文件树',
     spellCheck: '拼写检查 (浏览器)',
     focusMode: '专注模式 — 淡化非活动行',

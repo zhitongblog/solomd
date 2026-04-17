@@ -21,6 +21,8 @@ interface Settings {
   uiFontSize: number;
   language: 'en' | 'zh';
   autoCheckUpdate: boolean;
+  // Preview layout
+  previewFitWidth: boolean;
   // Custom CSS theme override (path to a .css file on disk)
   customCssPath: string;
 }
@@ -53,6 +55,7 @@ function defaults(): Settings {
         return /^zh/i.test(nav) ? 'zh' : 'en';
       } catch { return 'en'; }
     })() as 'en' | 'zh',
+    previewFitWidth: false,
     customCssPath: '',
   };
 }
@@ -147,6 +150,10 @@ export const useSettingsStore = defineStore('settings', {
     },
     setCustomCssPath(p: string) {
       this.customCssPath = p;
+      this.persist();
+    },
+    togglePreviewFitWidth() {
+      this.previewFitWidth = !this.previewFitWidth;
       this.persist();
     },
   },

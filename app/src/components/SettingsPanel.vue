@@ -160,6 +160,13 @@ const fontFamilies = [
 
         <section>
           <label>
+            <input type="checkbox" :checked="settings.previewFitWidth" @change="settings.togglePreviewFitWidth()" />
+            {{ t('settings.previewFitWidth') }}
+          </label>
+        </section>
+
+        <section>
+          <label>
             <input type="checkbox" :checked="settings.showFileTree" @change="settings.toggleFileTree()" />
             {{ t('settings.showFileTree') }}
           </label>
