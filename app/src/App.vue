@@ -23,6 +23,7 @@ import { useSettingsStore } from './stores/settings';
 import { useFiles } from './composables/useFiles';
 import { useShortcuts } from './composables/useShortcuts';
 import { loadCustomTheme } from './lib/custom-theme';
+import { isIOS } from './lib/platform';
 
 const tabs = useTabsStore();
 const settings = useSettingsStore();
@@ -205,6 +206,7 @@ const WINDOW_LS_KEY = 'solomd.window.v1';
 interface SavedWindow { w: number; h: number; x?: number; y?: number }
 
 async function restoreWindowSize() {
+  if (isIOS()) return;
   try {
     const raw = localStorage.getItem(WINDOW_LS_KEY);
     console.log('[window] restore: localStorage=', raw);
@@ -221,6 +223,7 @@ async function restoreWindowSize() {
 }
 
 async function saveWindowSize() {
+  if (isIOS()) return;
   try {
     const win = getCurrentWindow();
     const scale = await win.scaleFactor();
@@ -251,12 +254,14 @@ onMounted(async () => {
   // Restore window size from last session (before any UI activity)
   await restoreWindowSize();
 
-  // Persist on resize / move (debounced)
-  try {
-    const win = getCurrentWindow();
-    await win.onResized(scheduleSaveWindow);
-    await win.onMoved(scheduleSaveWindow);
-  } catch {}
+  // Persist on resize / move (debounced) — desktop only
+  if (!isIOS()) {
+    try {
+      const win = getCurrentWindow();
+      await win.onResized(scheduleSaveWindow);
+      await win.onMoved(scheduleSaveWindow);
+    } catch {}
+  }
 
   // OS file association: when a file is passed via CLI / double-click,
   // runner.rs emits "solomd://opened-file" with the path string.
@@ -340,8 +345,10 @@ onMounted(async () => {
   await new Promise((r) => setTimeout(r, 300));
   bindScrollSync();
 
-  // Auto-check for updates (once per 24h if enabled)
-  if (settings.autoCheckUpdate) {
+  // Auto-check for updates (once per 24h if enabled) — desktop only.
+  // iOS/iPadOS apps MUST NOT point users at external update URLs; the App
+  // Store handles updates there and Apple rejects apps that do otherwise.
+  if (!isIOS() && settings.autoCheckUpdate) {
     try {
       const { checkForUpdateOnStartup, openReleaseUrl } = await import('./lib/check-update');
       const result = await checkForUpdateOnStartup();

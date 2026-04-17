@@ -111,6 +111,9 @@ const CSS = `
   justify-content: center;
   overflow: hidden;
   position: relative;
+  /* Disable native pan/zoom so our pointer handlers can do pinch + pan. */
+  touch-action: none;
+  -webkit-touch-callout: none;
 }
 .io-viewport {
   pointer-events: none;
@@ -479,45 +482,71 @@ export function openImageOverlay(opts: OverlayOptions) {
     }
   }) as EventListener);
 
-  // Pointer pan
-  let isPanning = false;
-  let lastPx = 0;
-  let lastPy = 0;
+  // Pointer pan + pinch-to-zoom (touch).
+  // Tracks every active pointer so two simultaneous touches can drive
+  // a two-finger pinch gesture in addition to single-pointer pan.
+  const pointers = new Map<number, { x: number; y: number }>();
+  let pinchStartDist = 0;
+  let pinchStartScale = 1;
+
+  function pinchDistance(): number {
+    const pts = Array.from(pointers.values());
+    if (pts.length < 2) return 0;
+    const [a, b] = pts;
+    const dx = a.x - b.x;
+    const dy = a.y - b.y;
+    return Math.hypot(dx, dy);
+  }
 
   on(contentEl, 'pointerdown', ((e: PointerEvent) => {
-    // Don't start pan from header/footer
     if ((e.target as HTMLElement).closest('.io-header, .io-footer')) return;
     e.preventDefault();
-    isPanning = true;
-    lastPx = e.clientX;
-    lastPy = e.clientY;
-    contentEl.style.cursor = 'grabbing';
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     contentEl.setPointerCapture(e.pointerId);
+    if (pointers.size === 2) {
+      pinchStartDist = pinchDistance();
+      pinchStartScale = scale;
+    } else {
+      contentEl.style.cursor = 'grabbing';
+    }
   }) as EventListener);
 
   on(contentEl, 'pointermove', ((e: PointerEvent) => {
-    if (!isPanning) return;
-    const dx = e.clientX - lastPx;
-    const dy = e.clientY - lastPy;
-    if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
-      active!.didPan = true;
+    const prev = pointers.get(e.pointerId);
+    if (!prev) return;
+    const curr = { x: e.clientX, y: e.clientY };
+    pointers.set(e.pointerId, curr);
+
+    if (pointers.size >= 2) {
+      // Pinch zoom — anchor at the midpoint of the two active pointers.
+      const dist = pinchDistance();
+      if (pinchStartDist > 0 && dist > 0) {
+        const pts = Array.from(pointers.values());
+        const cx = (pts[0].x + pts[1].x) / 2;
+        const cy = (pts[0].y + pts[1].y) / 2;
+        const target = pinchStartScale * (dist / pinchStartDist);
+        zoomAt(target, cx, cy);
+        active!.didPan = true;
+      }
+      return;
     }
+
+    // Single-finger / mouse pan
+    const dx = curr.x - prev.x;
+    const dy = curr.y - prev.y;
+    if (Math.abs(dx) > 1 || Math.abs(dy) > 1) active!.didPan = true;
     panX += dx;
     panY += dy;
-    lastPx = e.clientX;
-    lastPy = e.clientY;
     applyTransform();
   }) as EventListener);
 
-  on(contentEl, 'pointerup', (() => {
-    isPanning = false;
-    contentEl.style.cursor = 'grab';
-  }) as EventListener);
-
-  on(contentEl, 'pointercancel', (() => {
-    isPanning = false;
-    contentEl.style.cursor = 'grab';
-  }) as EventListener);
+  function endPointer(e: PointerEvent) {
+    pointers.delete(e.pointerId);
+    if (pointers.size < 2) pinchStartDist = 0;
+    if (pointers.size === 0) contentEl.style.cursor = 'grab';
+  }
+  on(contentEl, 'pointerup', ((e: PointerEvent) => endPointer(e)) as EventListener);
+  on(contentEl, 'pointercancel', ((e: PointerEvent) => endPointer(e)) as EventListener);
 
   // Prevent native image drag
   on(viewport, 'dragstart', ((e: DragEvent) => {

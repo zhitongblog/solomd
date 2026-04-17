@@ -47,11 +47,15 @@
   --syn-property: #e45649;
   --syn-operator: #0184bc;
 
-  --font-ui: -apple-system, "Segoe UI", "Inter", Roboto, "Helvetica Neue",
-    "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-ui: "SoloMD CJK", system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", "PingFang SC", "PingFang TC", "Hiragino Sans GB",
+    "Heiti SC", "Microsoft YaHei", "Inter", Roboto, "Helvetica Neue",
+    sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji";
   --font-mono: "JetBrains Mono", "SF Mono", "Cascadia Code", "Menlo",
     "Consolas", "Fira Code", "Source Code Pro", "DejaVu Sans Mono",
-    "Liberation Mono", "Ubuntu Mono", "Noto Sans Mono", monospace;
+    "Liberation Mono", "Ubuntu Mono", "Noto Sans Mono",
+    "SoloMD CJK", "PingFang SC", "Hiragino Sans GB", monospace,
+    "Apple Color Emoji", "Segoe UI Emoji";
 
   --titlebar-h: 36px;
   --tabbar-h: 34px;
