@@ -4,10 +4,13 @@ import mermaid from 'mermaid';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { renderMarkdown } from '../lib/markdown';
+import { openImageOverlay, type OverlayStrings } from '../lib/image-overlay';
+import { useI18n } from '../i18n';
 import { useSettingsStore } from '../stores/settings';
 
 const props = defineProps<{ source: string; filePath?: string }>();
 const settings = useSettingsStore();
+const { t } = useI18n();
 const host = ref<HTMLDivElement | null>(null);
 
 let mermaidIdSeq = 0;
@@ -87,9 +90,56 @@ watch(
   }
 );
 
+function overlayStrings(): OverlayStrings {
+  return {
+    close: t('overlay.close'),
+    zoomIn: t('overlay.zoomIn'),
+    zoomOut: t('overlay.zoomOut'),
+    resetZoom: t('overlay.resetZoom'),
+    image: t('overlay.image'),
+    diagram: t('overlay.diagram'),
+  };
+}
+
+function attachImageOverlayHandlers() {
+  if (!host.value) return;
+
+  const images = host.value.querySelectorAll('img');
+  for (const img of Array.from(images)) {
+    if ((img as HTMLElement).dataset.overlayBound === '1') continue;
+    (img as HTMLElement).dataset.overlayBound = '1';
+    img.addEventListener('click', (e: MouseEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+      openImageOverlay({
+        source: img,
+        title: img.alt || img.getAttribute('src') || undefined,
+        strings: overlayStrings(),
+      });
+    });
+  }
+
+  const blocks = host.value.querySelectorAll('.mermaid-block');
+  for (const block of Array.from(blocks)) {
+    if ((block as HTMLElement).dataset.overlayBound === '1') continue;
+    (block as HTMLElement).dataset.overlayBound = '1';
+    block.addEventListener('click', ((e: MouseEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+      const svg = block.querySelector('svg');
+      if (!svg) return;
+      openImageOverlay({
+        source: svg,
+        strings: overlayStrings(),
+      });
+    }) as EventListener);
+  }
+}
+
 watch(html, async () => {
   await nextTick();
-  processMermaid();
+  await processMermaid();
+  attachImageOverlayHandlers();
 });
 
 /**
@@ -113,7 +163,8 @@ function handleLinkClick(e: MouseEvent) {
 
 onMounted(async () => {
   await nextTick();
-  processMermaid();
+  await processMermaid();
+  attachImageOverlayHandlers();
   host.value?.addEventListener('click', handleLinkClick);
 });
 
@@ -213,11 +264,21 @@ onBeforeUnmount(() => {
 .preview-content :deep(img) {
   max-width: 100%;
   border-radius: 4px;
+  cursor: zoom-in;
+  transition: opacity 0.15s;
+}
+.preview-content :deep(img:hover) {
+  opacity: 0.85;
 }
 .preview-content :deep(.mermaid-block) {
   display: flex;
   justify-content: center;
   margin: 1.5em 0;
+  cursor: zoom-in;
+  transition: opacity 0.15s;
+}
+.preview-content :deep(.mermaid-block:hover) {
+  opacity: 0.85;
 }
 .preview-content :deep(.mermaid-block svg) {
   max-width: 100%;

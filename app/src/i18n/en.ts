@@ -134,6 +134,14 @@ export const en = {
     converted: 'Converted to Markdown',
     conversionFailed: 'Conversion failed',
   },
+  overlay: {
+    close: 'Close',
+    zoomIn: 'Zoom in',
+    zoomOut: 'Zoom out',
+    resetZoom: 'Reset',
+    image: 'Image',
+    diagram: 'Diagram',
+  },
 };
 
 export type I18n = typeof en;
