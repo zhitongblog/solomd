@@ -68,6 +68,7 @@ provide('showUnsavedDialog', showUnsavedDialog);
 // is called from multiple places — some without an injection context.
 (window as any).__solomd_showUnsavedDialog = showUnsavedDialog;
 const editorRef = ref<InstanceType<typeof Editor> | null>(null);
+const previewRef = ref<InstanceType<typeof Preview> | null>(null);
 
 useShortcuts({
   openPalette: () => (paletteOpen.value = true),
@@ -92,7 +93,14 @@ function onCursor(line: number, col: number) {
 }
 
 function onOutlineGoto(line: number) {
-  editorRef.value?.gotoLine(line);
+  // In preview-only mode the editor is unmounted, so route the scroll to
+  // the preview pane instead. In split / edit modes the editor is the
+  // source of truth and scroll-sync mirrors the jump in the preview.
+  if (settings.viewMode === 'preview') {
+    previewRef.value?.scrollToLine(line);
+  } else {
+    editorRef.value?.gotoLine(line);
+  }
 }
 
 import { dataThemeFor } from './lib/themes';
@@ -550,7 +558,11 @@ const showOutlinePane = computed(
           />
         </div>
         <div class="pane pane--preview" v-if="showPreview && tabs.activeTab">
-          <Preview :source="tabs.activeTab.content" :file-path="tabs.activeTab.filePath" />
+          <Preview
+            ref="previewRef"
+            :source="tabs.activeTab.content"
+            :file-path="tabs.activeTab.filePath"
+          />
         </div>
       </div>
     </div>

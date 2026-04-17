@@ -1,5 +1,6 @@
 import MarkdownIt from 'markdown-it';
 import anchor from 'markdown-it-anchor';
+import hljs from 'highlight.js/lib/common';
 // @ts-ignore — types are loose
 import katex from '@vscode/markdown-it-katex';
 // @ts-ignore — no types shipped
@@ -28,6 +29,24 @@ export const md = new MarkdownIt({
   linkify: true,
   typographer: true,
   breaks: false,
+  highlight: (code: string, lang: string): string => {
+    // Mermaid blocks are handled after-render (processMermaid in Preview.vue)
+    // and must keep the `language-mermaid` class untouched. Return '' so
+    // markdown-it falls through to its default HTML-escape path for this
+    // lang; the class is still emitted via langPrefix on the <code> tag.
+    if (lang === 'mermaid') return '';
+    if (lang && hljs.getLanguage(lang)) {
+      try {
+        return hljs.highlight(code, { language: lang, ignoreIllegals: true }).value;
+      } catch {}
+    }
+    // Unknown language: let hljs auto-detect for a best-effort highlight.
+    try {
+      return hljs.highlightAuto(code).value;
+    } catch {
+      return '';
+    }
+  },
 })
   // front-matter must run first so it's stripped from the body before
   // any other plugin/rule sees it.

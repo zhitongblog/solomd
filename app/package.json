@@ -39,6 +39,7 @@
     "@vscode/markdown-it-katex": "^1.1.2",
     "codemirror": "^6.0.2",
     "docx": "^9.6.1",
+    "highlight.js": "^11.11.1",
     "html2canvas": "^1.4.1",
     "html2pdf.js": "^0.14.0",
     "js-yaml": "^4.1.1",

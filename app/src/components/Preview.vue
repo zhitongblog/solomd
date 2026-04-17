@@ -171,6 +171,44 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   host.value?.removeEventListener('click', handleLinkClick);
 });
+
+/**
+ * Scroll the preview pane so the element tagged with `data-source-line="N"`
+ * (where N is the nearest line ≤ the requested line) is brought to the top.
+ * Used by the outline when viewMode === 'preview' (the editor is unmounted
+ * so its gotoLine is unavailable).
+ */
+function scrollToLine(line: number) {
+  const article = host.value;
+  if (!article) return;
+  const container = article.parentElement as HTMLElement | null;
+  if (!container) return;
+
+  const nodes = Array.from(
+    article.querySelectorAll<HTMLElement>('[data-source-line]'),
+  );
+  if (nodes.length === 0) return;
+
+  // Find the last element whose source-line is ≤ target (binary search).
+  let lo = 0;
+  let hi = nodes.length - 1;
+  let best = 0;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    const n = Number(nodes[mid].getAttribute('data-source-line') || 0);
+    if (n <= line) {
+      best = mid;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  const target = nodes[best];
+  const offset = target.offsetTop - 8;
+  container.scrollTo({ top: offset, behavior: 'smooth' });
+}
+
+defineExpose({ scrollToLine });
 </script>
 
 <template>
@@ -179,14 +217,22 @@ onBeforeUnmount(() => {
   </div>
 </template>
 
-<style scoped>
+<!--
+  Intentionally NOT scoped: the markdown HTML is injected via v-html, so
+  Vue's scoped-style attribute wouldn't make it onto those child nodes
+  anyway. Manually prefixing every rule with `.preview-content` keeps
+  styles contained to the preview pane while still letting user-provided
+  custom CSS (injected via custom-theme.ts at the end of <head>) override
+  on equal-or-higher specificity.
+-->
+<style>
 .preview-host {
   height: 100%;
   overflow: auto;
   background: var(--bg);
   border-left: 1px solid var(--border);
 }
-.preview-content {
+:where(.preview-content) {
   max-width: 760px;
   margin: 0 auto;
   padding: 28px 36px 64px;
@@ -195,101 +241,103 @@ onBeforeUnmount(() => {
   font-size: 15px;
   line-height: 1.7;
 }
-.preview-content :deep(h1),
-.preview-content :deep(h2),
-.preview-content :deep(h3),
-.preview-content :deep(h4) {
+:where(.preview-content) h1,
+:where(.preview-content) h2,
+:where(.preview-content) h3,
+:where(.preview-content) h4 {
   font-weight: 700;
   line-height: 1.25;
   margin: 1.6em 0 0.5em;
 }
-.preview-content :deep(h1) {
+:where(.preview-content) h1 {
   font-size: 2em;
   border-bottom: 1px solid var(--border);
   padding-bottom: 0.3em;
 }
-.preview-content :deep(h2) {
+:where(.preview-content) h2 {
   font-size: 1.5em;
   border-bottom: 1px solid var(--border);
   padding-bottom: 0.25em;
 }
-.preview-content :deep(h3) { font-size: 1.2em; }
-.preview-content :deep(p) { margin: 0.8em 0; }
-.preview-content :deep(a) {
+:where(.preview-content) h3 { font-size: 1.2em; }
+:where(.preview-content) p { margin: 0.8em 0; }
+:where(.preview-content) a {
   color: var(--accent);
   text-decoration: none;
 }
-.preview-content :deep(a:hover) { text-decoration: underline; }
-.preview-content :deep(code) {
+:where(.preview-content) a:hover { text-decoration: underline; }
+:where(.preview-content) code {
   font-family: var(--font-mono);
   font-size: 0.9em;
   background: var(--bg-hover);
   padding: 0.15em 0.4em;
   border-radius: 4px;
 }
-.preview-content :deep(pre) {
+:where(.preview-content) pre {
+  font-family: var(--font-mono);
   background: var(--bg-hover);
   padding: 14px 16px;
   border-radius: 6px;
   overflow-x: auto;
 }
-.preview-content :deep(pre code) {
+:where(.preview-content) pre code {
+  font-family: var(--font-mono);
   background: transparent;
   padding: 0;
 }
-.preview-content :deep(blockquote) {
+:where(.preview-content) blockquote {
   border-left: 3px solid var(--accent);
   margin: 1em 0;
   padding: 0.2em 1em;
   color: var(--text-muted);
 }
-.preview-content :deep(ul),
-.preview-content :deep(ol) {
+:where(.preview-content) ul,
+:where(.preview-content) ol {
   padding-left: 1.6em;
 }
-.preview-content :deep(table) {
+:where(.preview-content) table {
   border-collapse: collapse;
   margin: 1em 0;
 }
-.preview-content :deep(th),
-.preview-content :deep(td) {
+:where(.preview-content) th,
+:where(.preview-content) td {
   border: 1px solid var(--border);
   padding: 6px 12px;
 }
-.preview-content :deep(hr) {
+:where(.preview-content) hr {
   border: none;
   border-top: 1px solid var(--border);
   margin: 2em 0;
 }
-.preview-content :deep(img) {
+:where(.preview-content) img {
   max-width: 100%;
   border-radius: 4px;
   cursor: zoom-in;
   transition: opacity 0.15s;
 }
-.preview-content :deep(img:hover) {
+:where(.preview-content) img:hover {
   opacity: 0.85;
 }
-.preview-content :deep(.mermaid-block) {
+:where(.preview-content) .mermaid-block {
   display: flex;
   justify-content: center;
   margin: 1.5em 0;
   cursor: zoom-in;
   transition: opacity 0.15s;
 }
-.preview-content :deep(.mermaid-block:hover) {
+:where(.preview-content) .mermaid-block:hover {
   opacity: 0.85;
 }
-.preview-content :deep(.mermaid-block svg) {
+:where(.preview-content) .mermaid-block svg {
   max-width: 100%;
   height: auto;
 }
-.preview-content :deep(.mermaid-error) {
+:where(.preview-content) .mermaid-error {
   color: var(--danger);
   background: rgba(214, 69, 69, 0.08);
   border-left: 3px solid var(--danger);
 }
-.preview-content :deep(.katex-display) {
+:where(.preview-content) .katex-display {
   overflow-x: auto;
   overflow-y: hidden;
   margin: 1em 0;
