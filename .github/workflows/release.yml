@@ -75,7 +75,11 @@ jobs:
             libappindicator3-dev \
             librsvg2-dev \
             patchelf \
-            libssl-dev
+            libssl-dev \
+            xdg-utils \
+            file \
+            fuse \
+            libfuse2
 
       - name: Install frontend dependencies
         run: cd app && pnpm install --frozen-lockfile
