@@ -3,6 +3,7 @@ import { onMounted, onBeforeUnmount, ref, watch, watchEffect, computed, provide 
 import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
+import { getCurrentWindow, LogicalSize, LogicalPosition } from '@tauri-apps/api/window';
 import Toolbar from './components/Toolbar.vue';
 import TabBar from './components/TabBar.vue';
 import Editor from './components/Editor.vue';
@@ -61,6 +62,10 @@ function onUnsavedAction(action: 'save' | 'discard' | 'cancel') {
 
 // Expose to child composables (useFiles) via provide/inject
 provide('showUnsavedDialog', showUnsavedDialog);
+// Also expose globally so non-component callers (shortcuts, menu events)
+// can use it. inject() only works inside a component setup, and useFiles()
+// is called from multiple places — some without an injection context.
+(window as any).__solomd_showUnsavedDialog = showUnsavedDialog;
 const editorRef = ref<InstanceType<typeof Editor> | null>(null);
 
 useShortcuts({
@@ -195,10 +200,60 @@ function dispatchMenuAction(id: string) {
   }
 }
 
+// ---- Window size + position persistence ----
+const WINDOW_LS_KEY = 'solomd.window.v1';
+interface SavedWindow { w: number; h: number; x?: number; y?: number }
+
+async function restoreWindowSize() {
+  try {
+    const raw = localStorage.getItem(WINDOW_LS_KEY);
+    if (!raw) return;
+    const s = JSON.parse(raw) as SavedWindow;
+    if (typeof s.w !== 'number' || typeof s.h !== 'number') return;
+    const win = getCurrentWindow();
+    await win.setSize(new LogicalSize(s.w, s.h));
+    if (typeof s.x === 'number' && typeof s.y === 'number') {
+      await win.setPosition(new LogicalPosition(s.x, s.y));
+    }
+  } catch {}
+}
+
+async function saveWindowSize() {
+  try {
+    const win = getCurrentWindow();
+    const scale = await win.scaleFactor();
+    const phySize = await win.innerSize();
+    const phyPos = await win.outerPosition();
+    const s: SavedWindow = {
+      w: phySize.width / scale,
+      h: phySize.height / scale,
+      x: phyPos.x / scale,
+      y: phyPos.y / scale,
+    };
+    localStorage.setItem(WINDOW_LS_KEY, JSON.stringify(s));
+  } catch {}
+}
+
+let saveWindowDebounce: number | undefined;
+function scheduleSaveWindow() {
+  if (saveWindowDebounce) clearTimeout(saveWindowDebounce);
+  saveWindowDebounce = window.setTimeout(saveWindowSize, 400);
+}
+
 onMounted(async () => {
   window.addEventListener('keydown', onEsc);
   window.addEventListener('solomd:open-help', onOpenHelpEvent as EventListener);
   window.addEventListener('solomd:open-global-search', onOpenSearchEvent as EventListener);
+
+  // Restore window size from last session (before any UI activity)
+  await restoreWindowSize();
+
+  // Persist on resize / move (debounced)
+  try {
+    const win = getCurrentWindow();
+    await win.onResized(scheduleSaveWindow);
+    await win.onMoved(scheduleSaveWindow);
+  } catch {}
 
   // OS file association: when a file is passed via CLI / double-click,
   // runner.rs emits "solomd://opened-file" with the path string.
@@ -275,6 +330,25 @@ onMounted(async () => {
   } catch (e) {
     console.warn('drag-drop not available', e);
   }
+
+  // Initial scroll sync (after panes are rendered)
+  await new Promise((r) => setTimeout(r, 300));
+  bindScrollSync();
+
+  // Auto-check for updates (once per 24h if enabled)
+  if (settings.autoCheckUpdate) {
+    try {
+      const { checkForUpdateOnStartup, openReleaseUrl } = await import('./lib/check-update');
+      const result = await checkForUpdateOnStartup();
+      if (result && result.hasUpdate) {
+        const toastsStore = (await import('./stores/toasts')).useToastsStore();
+        const { useI18n } = await import('./i18n');
+        const { t: tr } = useI18n();
+        toastsStore.success(tr('settings.updateAvailable', { version: result.latest || '' }), 8000);
+        setTimeout(() => openReleaseUrl(result.url), 3000);
+      }
+    } catch { /* silent */ }
+  }
 });
 
 const IMAGE_EXTS = new Set([
@@ -302,6 +376,63 @@ onBeforeUnmount(() => {
   }
 });
 
+// ---- Split-pane scroll sync ----
+// In split mode, syncs editor scroll with preview pane by percentage.
+let syncEditorScroll: (() => void) | null = null;
+let syncPreviewScroll: (() => void) | null = null;
+let syncGuard = false;
+
+function bindScrollSync() {
+  // Clean up previous listeners
+  if (syncEditorScroll) syncEditorScroll();
+  if (syncPreviewScroll) syncPreviewScroll();
+  syncEditorScroll = null;
+  syncPreviewScroll = null;
+
+  if (settings.viewMode !== 'split') return;
+
+  const editor = document.querySelector('.pane--editor .cm-scroller') as HTMLElement | null;
+  const preview = document.querySelector('.pane--preview .preview-host') as HTMLElement | null;
+  if (!editor || !preview) return;
+
+  const onEditorScroll = () => {
+    if (syncGuard) return;
+    const max = editor.scrollHeight - editor.clientHeight;
+    if (max <= 0) return;
+    const pct = editor.scrollTop / max;
+    const pmax = preview.scrollHeight - preview.clientHeight;
+    if (pmax <= 0) return;
+    syncGuard = true;
+    preview.scrollTop = pct * pmax;
+    requestAnimationFrame(() => { syncGuard = false; });
+  };
+  const onPreviewScroll = () => {
+    if (syncGuard) return;
+    const max = preview.scrollHeight - preview.clientHeight;
+    if (max <= 0) return;
+    const pct = preview.scrollTop / max;
+    const emax = editor.scrollHeight - editor.clientHeight;
+    if (emax <= 0) return;
+    syncGuard = true;
+    editor.scrollTop = pct * emax;
+    requestAnimationFrame(() => { syncGuard = false; });
+  };
+  editor.addEventListener('scroll', onEditorScroll, { passive: true });
+  preview.addEventListener('scroll', onPreviewScroll, { passive: true });
+  syncEditorScroll = () => editor.removeEventListener('scroll', onEditorScroll);
+  syncPreviewScroll = () => preview.removeEventListener('scroll', onPreviewScroll);
+}
+
+watch(() => settings.viewMode, async () => {
+  await new Promise((r) => setTimeout(r, 100)); // wait for DOM to update
+  bindScrollSync();
+}, { immediate: false });
+
+watch(() => tabs.activeId, async () => {
+  await new Promise((r) => setTimeout(r, 100));
+  bindScrollSync();
+});
+
 const showEditor = computed(
   () => tabs.activeTab?.language !== 'markdown' || settings.viewMode !== 'preview'
 );
@@ -324,7 +455,7 @@ const showOutlinePane = computed(
     <TabBar />
     <div class="workspace">
       <FileTree v-if="settings.showFileTree" />
-      <Outline v-if="showOutlinePane" @goto="onOutlineGoto" />
+      <Outline v-if="showOutlinePane" :cursor-line="cursorLine" @goto="onOutlineGoto" />
       <div class="content">
         <div class="pane pane--editor" v-if="showEditor && tabs.activeTab">
           <Editor

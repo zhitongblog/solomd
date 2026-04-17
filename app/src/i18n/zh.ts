@@ -101,6 +101,11 @@ export const zh: I18n = {
     settingDefault: '设置中…',
     setDefaultHint: '将 SoloMD 注册为 .md / .markdown / .mdown / .mkd 文件的默认打开方式。Windows 还会加入右键"打开方式"菜单。Linux 需要 xdg-utils。',
     language: '语言 / Language',
+    autoCheckUpdate: '自动检查更新',
+    checkUpdate: '立即检查更新',
+    checkingUpdate: '检查中…',
+    updateAvailable: '发现新版本 {version}',
+    upToDate: '当前已是最新版本',
   },
   unsaved: {
     title: '有未保存的修改',

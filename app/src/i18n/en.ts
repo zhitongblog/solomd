@@ -99,6 +99,11 @@ export const en = {
     settingDefault: 'Setting…',
     setDefaultHint: 'Registers SoloMD as the default app for .md / .markdown / .mdown / .mkd files. On Windows, also adds SoloMD to the "Open with" menu. On Linux requires xdg-utils.',
     language: 'Language / 语言',
+    autoCheckUpdate: 'Automatically check for updates',
+    checkUpdate: 'Check for updates now',
+    checkingUpdate: 'Checking…',
+    updateAvailable: 'New version {version} available',
+    upToDate: 'You are up to date',
   },
   unsaved: {
     title: 'Unsaved Changes',

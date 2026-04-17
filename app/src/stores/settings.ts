@@ -20,6 +20,7 @@ interface Settings {
   vimMode: boolean;
   uiFontSize: number;
   language: 'en' | 'zh';
+  autoCheckUpdate: boolean;
   // Custom CSS theme override (path to a .css file on disk)
   customCssPath: string;
 }
@@ -44,6 +45,7 @@ function defaults(): Settings {
     typewriterMode: false,
     vimMode: false,
     uiFontSize: 13,
+    autoCheckUpdate: true,
     language: (() => {
       // Detect browser language on first run (zh-CN, zh-TW, etc. → 'zh')
       try {
@@ -129,6 +131,10 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleVimMode() {
       this.vimMode = !this.vimMode;
+      this.persist();
+    },
+    toggleAutoCheckUpdate() {
+      this.autoCheckUpdate = !this.autoCheckUpdate;
       this.persist();
     },
     setUiFontSize(n: number) {

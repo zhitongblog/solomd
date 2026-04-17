@@ -164,11 +164,22 @@ export function useFiles() {
     if (tabs.activeTab) await saveTabAs(tabs.activeTab);
   }
 
-  const showUnsavedDialog = inject<(mode: 'tab' | 'window', fileName: string, count: number) => Promise<'save' | 'discard' | 'cancel'>>('showUnsavedDialog');
+  type UnsavedDialog = (mode: 'tab' | 'window', fileName: string, count: number) => Promise<'save' | 'discard' | 'cancel'>;
+  const injectedDialog = inject<UnsavedDialog>('showUnsavedDialog');
+
+  /** Get the dialog from whichever source is available.
+   *  Prefer inject (scoped) but fall back to window-global so shortcuts
+   *  and menu-driven closes also get the prompt. */
+  function getUnsavedDialog(): UnsavedDialog | undefined {
+    if (injectedDialog) return injectedDialog;
+    const w = window as any;
+    return w.__solomd_showUnsavedDialog as UnsavedDialog | undefined;
+  }
 
   async function closeTabSafe(id: string) {
     const tab = tabs.tabs.find((t) => t.id === id);
     if (!tab) return;
+    const showUnsavedDialog = getUnsavedDialog();
     if (tab.content !== tab.savedContent && showUnsavedDialog) {
       const action = await showUnsavedDialog('tab', tab.fileName, 1);
       if (action === 'save') {

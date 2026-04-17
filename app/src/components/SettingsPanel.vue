@@ -6,9 +6,28 @@ import { useToastsStore } from '../stores/toasts';
 import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
 import { themeLabels } from '../lib/themes';
 import { useI18n } from '../i18n';
+import { checkForUpdate, openReleaseUrl } from '../lib/check-update';
 import type { Theme } from '../types';
 
 const { t } = useI18n();
+
+const checkingUpdate = ref(false);
+async function manualCheckUpdate() {
+  checkingUpdate.value = true;
+  try {
+    const r = await checkForUpdate();
+    if (r.hasUpdate) {
+      toasts.success(t('settings.updateAvailable', { version: r.latest || '' }));
+      await openReleaseUrl(r.url);
+    } else {
+      toasts.info(t('settings.upToDate'));
+    }
+  } catch (e) {
+    toasts.error(String(e));
+  } finally {
+    checkingUpdate.value = false;
+  }
+}
 
 const settingDefault = ref(false);
 
@@ -169,6 +188,18 @@ const fontFamilies = [
             <input type="checkbox" :checked="settings.vimMode" @change="settings.toggleVimMode()" />
             {{ t('settings.vimMode') }}
           </label>
+        </section>
+
+        <section>
+          <label>
+            <input type="checkbox" :checked="settings.autoCheckUpdate" @change="settings.toggleAutoCheckUpdate()" />
+            {{ t('settings.autoCheckUpdate') }}
+          </label>
+          <div class="row" style="gap: 8px; align-items: center; margin-top: 8px;">
+            <button :disabled="checkingUpdate" @click="manualCheckUpdate">
+              {{ checkingUpdate ? t('settings.checkingUpdate') : t('settings.checkUpdate') }}
+            </button>
+          </div>
         </section>
 
         <section>
