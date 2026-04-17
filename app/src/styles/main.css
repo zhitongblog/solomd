@@ -290,6 +290,216 @@ button:disabled {
   background: var(--text-faint);
 }
 
+/* ============================================================
+ * iPad / touch-device responsive overrides.
+ * Activates on devices with coarse pointer (touch) OR narrow viewport.
+ * Ensures all interactive elements meet Apple's 44×44 pt minimum.
+ * ============================================================ */
+
+@media (pointer: coarse) {
+  /* ---- Global: bigger tap targets ---- */
+  button {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 8px 12px;
+    font-size: 15px;
+  }
+  select, input[type="range"] {
+    min-height: 44px;
+    font-size: 15px;
+  }
+
+  /* ---- Titlebar: hidden on iOS (no window chrome) ---- */
+  .titlebar {
+    display: none !important;
+  }
+
+  /* ---- Toolbar: bigger buttons, larger text ---- */
+  .toolbar {
+    height: auto;
+    min-height: 50px;
+    padding: 6px 12px;
+    gap: 4px;
+    flex-wrap: wrap;
+    -webkit-overflow-scrolling: touch;
+  }
+  .toolbar .icon-btn {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 10px;
+  }
+  .toolbar .icon-btn svg {
+    width: 20px;
+    height: 20px;
+  }
+  .toolbar__brand {
+    font-size: 16px;
+  }
+  .toolbar__group {
+    gap: 2px;
+  }
+
+  /* ---- Mode buttons (Edit/Split/Preview) ---- */
+  .mode-btn {
+    min-height: 44px;
+    padding: 8px 16px;
+    font-size: 14px;
+  }
+
+  /* ---- Tab bar ---- */
+  .tabbar {
+    height: auto;
+    min-height: 40px;
+  }
+  .tab {
+    padding: 8px 14px;
+    font-size: 14px;
+  }
+  .tab__close {
+    min-width: 32px;
+    min-height: 32px;
+    font-size: 16px;
+  }
+
+  /* ---- Status bar ---- */
+  .statusbar {
+    height: auto;
+    min-height: 32px;
+    font-size: 13px;
+    padding: 4px 12px;
+  }
+
+  /* ---- File tree ---- */
+  .filetree__item {
+    min-height: 40px;
+    padding: 6px 12px;
+    font-size: 14px;
+  }
+
+  /* ---- Outline ---- */
+  .outline__item {
+    min-height: 40px;
+    padding: 6px 12px;
+    font-size: 14px;
+  }
+
+  /* ---- Dropdown menus ---- */
+  .dropdown__menu {
+    min-width: 200px;
+  }
+  .dropdown__item {
+    min-height: 44px;
+    padding: 10px 14px;
+    font-size: 15px;
+  }
+  .dropdown__name {
+    font-size: 15px;
+  }
+
+  /* ---- Editor: larger text, more padding ---- */
+  .cm-editor .cm-content {
+    padding: 16px 20px;
+    font-size: 16px;
+  }
+  .cm-editor .cm-gutters {
+    padding-right: 8px;
+  }
+
+  /* ---- Preview pane ---- */
+  .preview-content {
+    padding: 20px 24px 80px;
+    font-size: 16px;
+  }
+
+  /* ---- Settings dialog ---- */
+  .settings {
+    width: min(560px, 95vw);
+    max-height: 90vh;
+  }
+  .settings__body section {
+    padding: 6px 0;
+  }
+  .settings__body label {
+    font-size: 15px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .settings__body input[type="checkbox"] {
+    width: 22px;
+    height: 22px;
+  }
+
+  /* ---- Copy split button ---- */
+  .copy-split__main {
+    min-height: 44px;
+    padding: 8px 14px !important;
+    font-size: 14px !important;
+  }
+  .copy-split__arrow {
+    min-width: 40px;
+    min-height: 44px;
+  }
+
+  /* ---- Clean AI button ---- */
+  .clean-ai-btn {
+    min-height: 44px;
+    padding: 8px 14px !important;
+    font-size: 13px !important;
+  }
+
+  /* ---- Unsaved dialog ---- */
+  .ud {
+    width: min(480px, 92vw);
+  }
+  .ud__btn {
+    min-height: 44px;
+    padding: 10px 20px;
+    font-size: 15px;
+  }
+
+  /* ---- About dialog ---- */
+  .about {
+    width: min(500px, 92vw);
+  }
+  .about__link {
+    min-height: 48px;
+    padding: 12px 16px;
+  }
+
+  /* ---- Global search ---- */
+  .gs__input {
+    min-height: 44px;
+    font-size: 16px;
+    padding: 10px 14px;
+  }
+
+  /* ---- Command palette ---- */
+  .palette__input {
+    min-height: 44px;
+    font-size: 16px;
+    padding: 10px 14px;
+  }
+  .palette__item {
+    min-height: 44px;
+    padding: 10px 14px;
+    font-size: 15px;
+  }
+}
+
+/* Portrait mode on narrow screens (iPhone / iPad portrait) */
+@media (pointer: coarse) and (max-width: 768px) {
+  /* Stack toolbar vertically or hide less-used buttons */
+  .toolbar__spacer {
+    display: none;
+  }
+  .toolbar {
+    justify-content: flex-start;
+    overflow-x: auto;
+  }
+}
+
 /* Markdown extension styles (front-matter, task list, mark, footnotes) */
 .md-frontmatter {
   margin: 0 0 1rem;
