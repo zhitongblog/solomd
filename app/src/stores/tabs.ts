@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import type { Language, Tab } from '../types';
+import { useSettingsStore } from './settings';
 
 const LS_KEY = 'solomd.tabs.v1';
 
@@ -47,6 +48,7 @@ export const useTabsStore = defineStore('tabs', {
     newTab(opts?: { fileName?: string; language?: Language }) {
       const fileName = opts?.fileName ?? 'Untitled.md';
       const language = opts?.language ?? inferLanguage(fileName);
+      const settings = useSettingsStore();
       const tab: Tab = {
         id: newId(),
         fileName,
@@ -55,6 +57,7 @@ export const useTabsStore = defineStore('tabs', {
         encoding: 'UTF-8',
         language,
         hadBom: false,
+        showOutline: language === 'markdown' && settings.showOutline,
       };
       this.tabs.push(tab);
       this.activeId = tab.id;
@@ -74,6 +77,7 @@ export const useTabsStore = defineStore('tabs', {
         return existing;
       }
       const fileName = payload.filePath.split(/[\\/]/).pop() ?? 'Untitled';
+      const settings = useSettingsStore();
       const tab: Tab = {
         id: newId(),
         filePath: payload.filePath,
@@ -83,6 +87,7 @@ export const useTabsStore = defineStore('tabs', {
         encoding: payload.encoding,
         language: payload.language,
         hadBom: payload.hadBom,
+        showOutline: payload.language === 'markdown' && settings.showOutline,
       };
       this.tabs.push(tab);
       this.activeId = tab.id;
@@ -115,6 +120,11 @@ export const useTabsStore = defineStore('tabs', {
     toggleOutline(id: string) {
       const t = this.tabs.find((x) => x.id === id);
       if (t) t.showOutline = !t.showOutline;
+    },
+    setShowOutlineAll(value: boolean) {
+      for (const t of this.tabs) {
+        if (t.language === 'markdown') t.showOutline = value;
+      }
     },
     persist() {
       try {

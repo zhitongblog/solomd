@@ -54,6 +54,13 @@ const settings = useSettingsStore();
 const tabs = useTabsStore();
 const toasts = useToastsStore();
 
+function onToggleOutlineGlobal() {
+  settings.toggleOutline();
+  // Apply the new default to all currently-open markdown tabs so the toggle
+  // feels immediate, not just prospective for future tabs.
+  tabs.setShowOutlineAll(settings.showOutline);
+}
+
 async function pickCustomCss() {
   const path = await openFileDialog({
     multiple: false,
@@ -155,7 +162,7 @@ const fontFamilies = [
 
         <section>
           <label>
-            <input type="checkbox" :checked="!!tabs.activeTab?.showOutline" @change="tabs.activeId && tabs.toggleOutline(tabs.activeId)" />
+            <input type="checkbox" :checked="settings.showOutline" @change="onToggleOutlineGlobal()" />
             {{ t('settings.showOutline') }}
           </label>
         </section>

@@ -1,21 +1,37 @@
 <script setup lang="ts">
+import { nextTick, ref, watch } from 'vue';
 import { useTabsStore } from '../stores/tabs';
 import { useFiles } from '../composables/useFiles';
 
 const tabs = useTabsStore();
 const files = useFiles();
 
+const tabsRef = ref<HTMLElement | null>(null);
+
 function isDirty(id: string) {
   return tabs.isDirty(id);
 }
+
+// When the active tab changes (e.g., opening a new file that creates a tab
+// off-screen), scroll it into view so the user actually sees the switch.
+watch(
+  () => tabs.activeId,
+  async (id) => {
+    if (!id) return;
+    await nextTick();
+    const el = tabsRef.value?.querySelector<HTMLElement>(`[data-tab-id="${id}"]`);
+    el?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  },
+);
 </script>
 
 <template>
   <div class="tabbar">
-    <div class="tabs">
+    <div class="tabs" ref="tabsRef">
       <div
         v-for="t in tabs.tabs"
         :key="t.id"
+        :data-tab-id="t.id"
         class="tab"
         :class="{ 'tab--active': t.id === tabs.activeId }"
         @click="tabs.activate(t.id)"
