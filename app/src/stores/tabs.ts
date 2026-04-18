@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import type { Language, Tab } from '../types';
 import { useSettingsStore } from './settings';
+import { useTilesStore } from './tiles';
 
 const LS_KEY = 'solomd.tabs.v1';
 
@@ -112,6 +113,11 @@ export const useTabsStore = defineStore('tabs', {
       if (this.activeId === id) {
         this.activeId = this.tabs[idx]?.id ?? this.tabs[idx - 1]?.id ?? '';
       }
+      // Clean up any pane references to the closed tab
+      try {
+        const tiles = useTilesStore();
+        tiles.removePaneReferences(id);
+      } catch {}
       if (this.tabs.length === 0) this.newTab();
     },
     activate(id: string) {

@@ -1,6 +1,7 @@
 import { useFiles } from './useFiles';
 import { useSettingsStore } from '../stores/settings';
 import { useTabsStore } from '../stores/tabs';
+import { useTilesStore } from '../stores/tiles';
 import { useExport } from './useExport';
 import { useToastsStore } from '../stores/toasts';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
@@ -25,6 +26,7 @@ export function useCommands(): Command[] {
   const files = useFiles();
   const settings = useSettingsStore();
   const tabs = useTabsStore();
+  const tiles = useTilesStore();
   const exporter = useExport();
   const toasts = useToastsStore();
 
@@ -67,6 +69,13 @@ export function useCommands(): Command[] {
     { id: 'view.toggleSpellCheck', title: 'View: Toggle Spell Check', run: () => settings.toggleSpellCheck() },
     { id: 'view.toggleFocusMode', title: 'View: Toggle Focus Mode', run: () => settings.toggleFocusMode() },
     { id: 'view.toggleTypewriter', title: 'View: Toggle Typewriter Mode', run: () => settings.toggleTypewriterMode() },
+
+    // ---- Tile layout ----
+    { id: 'tile.splitRight', title: 'Split Editor Right', shortcut: 'Ctrl+\\', run: () => tiles.splitPane(tiles.focusedPaneId, 'horizontal') },
+    { id: 'tile.splitDown', title: 'Split Editor Down', shortcut: 'Ctrl+Shift+\\', run: () => tiles.splitPane(tiles.focusedPaneId, 'vertical') },
+    { id: 'tile.closePane', title: 'Close Pane', run: () => tiles.closePane(tiles.focusedPaneId) },
+    { id: 'tile.focusNext', title: 'Focus Next Pane', shortcut: 'Ctrl+Alt+Right', run: () => tiles.focusNextPane() },
+    { id: 'tile.focusPrev', title: 'Focus Previous Pane', shortcut: 'Ctrl+Alt+Left', run: () => tiles.focusPrevPane() },
 
     {
       id: 'search.global',
