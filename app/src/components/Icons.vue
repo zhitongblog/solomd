@@ -105,5 +105,43 @@ defineProps<{ name: string; size?: number }>();
       <line x1="18" y1="6" x2="6" y2="18" />
       <line x1="6" y1="6" x2="18" y2="18" />
     </template>
+    <template v-else-if="name === 'fit-width'">
+      <line x1="2" y1="12" x2="22" y2="12" />
+      <polyline points="6 8 2 12 6 16" />
+      <polyline points="18 8 22 12 18 16" />
+    </template>
+    <template v-else-if="name === 'view-edit'">
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+    </template>
+    <template v-else-if="name === 'view-split'">
+      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+      <line x1="12" y1="3" x2="12" y2="21" />
+    </template>
+    <template v-else-if="name === 'view-preview'">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
+    </template>
+    <template v-else-if="name === 'focus'">
+      <circle cx="12" cy="12" r="4" />
+      <line x1="12" y1="2" x2="12" y2="5" />
+      <line x1="12" y1="19" x2="12" y2="22" />
+      <line x1="2" y1="12" x2="5" y2="12" />
+      <line x1="19" y1="12" x2="22" y2="12" />
+    </template>
+    <template v-else-if="name === 'typewriter'">
+      <rect x="2" y="4" width="20" height="12" rx="2" />
+      <line x1="6" y1="20" x2="18" y2="20" />
+      <line x1="12" y1="16" x2="12" y2="20" />
+    </template>
+    <template v-else-if="name === 'spellcheck'">
+      <path d="M7 20l4-16h2l4 16" />
+      <line x1="9" y1="14" x2="15" y2="14" />
+      <polyline points="16 18 19 21 23 15" />
+    </template>
+    <template v-else-if="name === 'search'">
+      <circle cx="11" cy="11" r="8" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </template>
   </svg>
 </template>

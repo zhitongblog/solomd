@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { useSettingsStore } from '../stores/settings';
+import { useTabsStore } from '../stores/tabs';
 import { useToastsStore } from '../stores/toasts';
 import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
 import { themeLabels } from '../lib/themes';
@@ -50,6 +51,7 @@ defineProps<{ open: boolean }>();
 const emit = defineEmits<{ (e: 'close'): void }>();
 
 const settings = useSettingsStore();
+const tabs = useTabsStore();
 const toasts = useToastsStore();
 
 async function pickCustomCss() {
@@ -153,7 +155,7 @@ const fontFamilies = [
 
         <section>
           <label>
-            <input type="checkbox" :checked="settings.showOutline" @change="settings.toggleOutline()" />
+            <input type="checkbox" :checked="!!tabs.activeTab?.showOutline" @change="tabs.activeId && tabs.toggleOutline(tabs.activeId)" />
             {{ t('settings.showOutline') }}
           </label>
         </section>

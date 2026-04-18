@@ -24,10 +24,12 @@ import { useFiles } from './composables/useFiles';
 import { useShortcuts } from './composables/useShortcuts';
 import { loadCustomTheme } from './lib/custom-theme';
 import { isIOS } from './lib/platform';
+import { useI18n } from './i18n';
 
 const tabs = useTabsStore();
 const settings = useSettingsStore();
 const files = useFiles();
+const { t } = useI18n();
 
 const cursorLine = ref(1);
 const cursorCol = ref(1);
@@ -184,7 +186,7 @@ function dispatchMenuAction(id: string) {
       settings.toggleFileTree();
       break;
     case 'view.toggleOutline':
-      settings.toggleOutline();
+      if (tabs.activeId) tabs.toggleOutline(tabs.activeId);
       break;
     case 'view.cycleView':
       settings.cycleViewMode();
@@ -530,7 +532,7 @@ const showPreview = computed(
   () => tabs.activeTab?.language === 'markdown' && settings.viewMode !== 'edit'
 );
 const showOutlinePane = computed(
-  () => settings.showOutline && tabs.activeTab?.language === 'markdown'
+  () => !!tabs.activeTab?.showOutline && tabs.activeTab?.language === 'markdown'
 );
 </script>
 
@@ -547,6 +549,17 @@ const showOutlinePane = computed(
       <FileTree v-if="settings.showFileTree" />
       <Outline v-if="showOutlinePane" :cursor-line="cursorLine" @goto="onOutlineGoto" />
       <div class="content">
+        <button
+          v-if="tabs.activeTab?.language === 'markdown' && !showOutlinePane"
+          class="outline-toggle"
+          @click="tabs.activeId && tabs.toggleOutline(tabs.activeId)"
+          :title="t('toolbar.outlineTooltip')"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" />
+            <line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" />
+          </svg>
+        </button>
         <div class="pane pane--editor" v-if="showEditor && tabs.activeTab">
           <Editor
             ref="editorRef"
@@ -606,6 +619,28 @@ const showOutlinePane = computed(
   display: flex;
   min-width: 0;
   overflow: hidden;
+  position: relative;
+}
+.outline-toggle {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 10;
+  padding: 4px 6px;
+  border-radius: 4px;
+  color: var(--text-faint);
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  opacity: 0;
+  transition: opacity 0.15s;
+  cursor: pointer;
+}
+.outline-toggle:hover {
+  opacity: 1 !important;
+  color: var(--text-muted);
+}
+.content:hover > .outline-toggle {
+  opacity: 0.5;
 }
 .pane {
   flex: 1;

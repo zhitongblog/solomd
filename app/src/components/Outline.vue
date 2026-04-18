@@ -43,7 +43,10 @@ watch(activeIndex, async () => {
 
 <template>
   <aside class="outline">
-    <div class="outline__header">Outline</div>
+    <div class="outline__header">
+      <span>Outline</span>
+      <button class="outline__close" @click="tabs.activeId && tabs.toggleOutline(tabs.activeId)">×</button>
+    </div>
     <div v-if="!items.length" class="outline__empty">No headings</div>
     <ul ref="listRef" class="outline__list" v-else>
       <li
@@ -78,6 +81,20 @@ watch(activeIndex, async () => {
   letter-spacing: 0.06em;
   color: var(--text-muted);
   border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.outline__close {
+  padding: 0 4px;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--text-faint);
+  border-radius: 3px;
+}
+.outline__close:hover {
+  color: var(--text);
+  background: var(--bg-hover);
 }
 .outline__list {
   list-style: none;
