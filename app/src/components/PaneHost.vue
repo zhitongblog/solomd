@@ -107,6 +107,7 @@ function onCursor(line: number, col: number) {
 .pane-host {
   display: flex;
   flex-direction: column;
+  flex: 1;
   min-width: 0;
   min-height: 0;
   overflow: hidden;

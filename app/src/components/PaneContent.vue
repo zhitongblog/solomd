@@ -194,6 +194,7 @@ function onOutlineGotoEvent(e: Event) {
   flex: 1;
   display: flex;
   min-width: 0;
+  min-height: 0;
   overflow: hidden;
 }
 .pane {

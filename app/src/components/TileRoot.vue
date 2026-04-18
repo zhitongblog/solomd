@@ -65,6 +65,7 @@ const emit = defineEmits<{
   flex-direction: column;
 }
 .tile-child {
+  display: flex;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
