@@ -86,6 +86,7 @@ export const en = {
     lineNumbers: 'Line Numbers',
     livePreview: 'Live Preview (Markdown) — hide markers off-line, render headings, bold etc.',
     showOutline: 'Show Outline (Markdown)',
+    previewFitWidth: 'Preview Fit Width — stretch preview to fill window, no horizontal scrollbar',
     showFileTree: 'Show File Tree',
     spellCheck: 'Spell Check (browser)',
     focusMode: 'Focus Mode — dim non-active lines',
