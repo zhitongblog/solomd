@@ -7,11 +7,12 @@ import { useToastsStore } from '../stores/toasts';
 import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
 import { themeLabels } from '../lib/themes';
 import { useI18n } from '../i18n';
-import { checkForUpdate, openReleaseUrl } from '../lib/check-update';
+import { checkForUpdate, openReleaseUrl, isMasBuild } from '../lib/check-update';
 import { isIOS } from '../lib/platform';
 import type { Theme } from '../types';
 
 const isMobilePlatform = isIOS();
+const masBuild = isMasBuild();
 
 const { t } = useI18n();
 
@@ -209,7 +210,7 @@ const fontFamilies = [
           </label>
         </section>
 
-        <section v-if="!isMobilePlatform">
+        <section v-if="!isMobilePlatform && !masBuild">
           <label>
             <input type="checkbox" :checked="settings.autoCheckUpdate" @change="settings.toggleAutoCheckUpdate()" />
             {{ t('settings.autoCheckUpdate') }}

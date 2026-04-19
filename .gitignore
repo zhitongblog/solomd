@@ -44,3 +44,4 @@ winget-pkgs
 # ai assist
 CLAUDE.md
 .claude/
+app/src-tauri/embedded.provisionprofile

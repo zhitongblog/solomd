@@ -24,8 +24,15 @@ function compareSemver(a: string, b: string): number {
   return 0;
 }
 
+const MAS_BUILD = import.meta.env.VITE_MAS_BUILD === '1';
+
+export const isMasBuild = (): boolean => MAS_BUILD;
+
 export async function checkForUpdate(): Promise<UpdateResult> {
   const current = await getVersion().catch(() => '0.0.0');
+  if (MAS_BUILD) {
+    return { current, latest: null, hasUpdate: false, url: '' };
+  }
   try {
     const res = await fetch(RELEASES_URL);
     if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -62,6 +69,7 @@ const LS_KEY = 'solomd.update.last-check';
 const CHECK_INTERVAL = 24 * 3600 * 1000; // 24 hours
 
 export async function checkForUpdateOnStartup(): Promise<UpdateResult | null> {
+  if (MAS_BUILD) return null;
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (raw) {
