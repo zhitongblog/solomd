@@ -23,11 +23,13 @@ import { useFiles } from './composables/useFiles';
 import { useShortcuts } from './composables/useShortcuts';
 import { loadCustomTheme } from './lib/custom-theme';
 import { isIOS } from './lib/platform';
+import { useI18n } from './i18n';
 
 const tabs = useTabsStore();
 const settings = useSettingsStore();
 const tiles = useTilesStore();
 const files = useFiles();
+const { t } = useI18n();
 
 const cursorLine = ref(1);
 const cursorCol = ref(1);
@@ -396,6 +398,17 @@ const showOutlinePane = computed(
       <FileTree v-if="settings.showFileTree" />
       <Outline v-if="showOutlinePane" :cursor-line="cursorLine" @goto="onOutlineGoto" />
       <div class="content">
+        <button
+          v-if="tabs.activeTab?.language === 'markdown' && !showOutlinePane"
+          class="outline-toggle"
+          @click="tabs.activeId && tabs.toggleOutline(tabs.activeId)"
+          :title="t('toolbar.outlineTooltip')"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" />
+            <line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" />
+          </svg>
+        </button>
         <TileRoot :node="tiles.root" @cursor="onCursor" />
       </div>
     </div>

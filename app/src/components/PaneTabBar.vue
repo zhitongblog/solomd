@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { nextTick, ref, watch } from 'vue';
 import { useTabsStore } from '../stores/tabs';
 import { useTilesStore } from '../stores/tiles';
 import { useFiles } from '../composables/useFiles';
@@ -13,6 +13,21 @@ const props = defineProps<{
 const tabs = useTabsStore();
 const tiles = useTilesStore();
 const files = useFiles();
+
+const tabsEl = ref<HTMLElement | null>(null);
+
+// When the active tab changes (e.g., opening a new file that creates a tab
+// off-screen in a crowded tabbar), scroll it into view so the user sees
+// the switch.
+watch(
+  () => props.activeTabId,
+  async (id) => {
+    if (!id) return;
+    await nextTick();
+    const el = tabsEl.value?.querySelector<HTMLElement>(`[data-tab-id="${id}"]`);
+    el?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  },
+);
 
 // ---- Context menu ----
 const ctxMenu = ref<{ x: number; y: number; tabId: string } | null>(null);
@@ -55,10 +70,11 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
 
 <template>
   <div class="pane-tabbar">
-    <div class="tabs">
+    <div class="tabs" ref="tabsEl">
       <div
         v-for="t in tabs.tabs"
         :key="t.id"
+        :data-tab-id="t.id"
         class="tab"
         :class="{ 'tab--active': t.id === activeTabId }"
         @click="tiles.setActiveTab(paneId, t.id)"
