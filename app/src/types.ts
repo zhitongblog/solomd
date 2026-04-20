@@ -28,3 +28,23 @@ export interface FileReadResult {
   language: Language;
   had_bom: boolean;
 }
+
+// ---- Tile layout (split editor) ----
+
+export type SplitDirection = 'horizontal' | 'vertical';
+
+export interface TileLeaf {
+  type: 'leaf';
+  id: string;
+  activeTabId: string;
+}
+
+export interface TileBranch {
+  type: 'branch';
+  id: string;
+  direction: SplitDirection;
+  sizes: [number, number]; // percentages summing to 100
+  children: [TileNode, TileNode];
+}
+
+export type TileNode = TileLeaf | TileBranch;

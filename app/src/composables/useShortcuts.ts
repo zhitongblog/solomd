@@ -3,6 +3,7 @@ import { useFiles } from './useFiles';
 import { useExport } from './useExport';
 import { useSettingsStore } from '../stores/settings';
 import { useTabsStore } from '../stores/tabs';
+import { useTilesStore } from '../stores/tiles';
 import { useCommands } from './useCommands';
 
 interface Hooks {
@@ -17,6 +18,7 @@ export function useShortcuts(hooks: Hooks = {}) {
   const exporter = useExport();
   const settings = useSettingsStore();
   const tabs = useTabsStore();
+  const tiles = useTilesStore();
   const commands = useCommands();
 
   function runById(id: string) {
@@ -92,6 +94,27 @@ export function useShortcuts(hooks: Hooks = {}) {
     } else if (k === 'b') {
       e.preventDefault();
       settings.toggleFileTree();
+    }
+
+    // Tile layout shortcuts
+    if (e.key === '\\') {
+      e.preventDefault();
+      if (e.shiftKey) {
+        tiles.splitPane(tiles.focusedPaneId, 'vertical');
+      } else {
+        tiles.splitPane(tiles.focusedPaneId, 'horizontal');
+      }
+      return;
+    }
+    if (k === 'arrowright' && e.altKey) {
+      e.preventDefault();
+      tiles.focusNextPane();
+      return;
+    }
+    if (k === 'arrowleft' && e.altKey) {
+      e.preventDefault();
+      tiles.focusPrevPane();
+      return;
     }
   }
 
