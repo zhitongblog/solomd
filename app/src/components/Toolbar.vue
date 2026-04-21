@@ -4,6 +4,7 @@ import Icon from './Icons.vue';
 import { useTabsStore } from '../stores/tabs';
 import { useSettingsStore } from '../stores/settings';
 import { useWorkspaceStore } from '../stores/workspace';
+import { useTilesStore } from '../stores/tiles';
 import { useFiles } from '../composables/useFiles';
 import { useExport } from '../composables/useExport';
 import { useToastsStore } from '../stores/toasts';
@@ -22,6 +23,7 @@ defineEmits<{
 const tabs = useTabsStore();
 const settings = useSettingsStore();
 const workspace = useWorkspaceStore();
+const tiles = useTilesStore();
 const files = useFiles();
 const exporter = useExport();
 const toasts = useToastsStore();
@@ -47,6 +49,16 @@ const recentOpen = ref(false);
 const exportOpen = ref(false);
 const newOpen = ref(false);
 const copyOpen = ref(false);
+const insertOpen = ref(false);
+
+function dispatchInsert(snippet: string) {
+  window.dispatchEvent(
+    new CustomEvent('solomd:insert-markdown', {
+      detail: { snippet, paneId: tiles.focusedPaneId },
+    })
+  );
+  insertOpen.value = false;
+}
 
 function shortPath(p: string) {
   const parts = p.split(/[\\/]/);
@@ -60,20 +72,23 @@ function closeAllDropdowns() {
   recentOpen.value = false;
   exportOpen.value = false;
   copyOpen.value = false;
+  insertOpen.value = false;
 }
 // Exclusive open: opening one dropdown closes others.
-function toggleDropdown(name: 'new' | 'recent' | 'export' | 'copy') {
+function toggleDropdown(name: 'new' | 'recent' | 'export' | 'copy' | 'insert') {
   const isOpen =
     (name === 'new' && newOpen.value) ||
     (name === 'recent' && recentOpen.value) ||
     (name === 'export' && exportOpen.value) ||
-    (name === 'copy' && copyOpen.value);
+    (name === 'copy' && copyOpen.value) ||
+    (name === 'insert' && insertOpen.value);
   closeAllDropdowns();
   if (!isOpen) {
     if (name === 'new') newOpen.value = true;
     else if (name === 'recent') recentOpen.value = true;
     else if (name === 'export') exportOpen.value = true;
     else if (name === 'copy') copyOpen.value = true;
+    else if (name === 'insert') insertOpen.value = true;
   }
 }
 function onDocClick(e: MouseEvent) {
@@ -211,6 +226,51 @@ onBeforeUnmount(() => {
       >
         <Icon name="sidebar" />
       </button>
+    </div>
+
+    <div class="toolbar__group" v-if="isMarkdown">
+      <div class="dropdown">
+        <button
+          class="icon-btn"
+          @click="toggleDropdown('insert')"
+          :title="t('toolbar.insertTooltip')"
+        >
+          <Icon name="insert" />
+          <Icon name="chevron-down" :size="10" />
+        </button>
+        <div v-if="insertOpen" class="dropdown__menu">
+          <button class="dropdown__item dropdown__item--single" @mousedown.prevent="dispatchInsert('\n```\n$|$\n```\n')">
+            <span class="dropdown__name">{{ t('toolbar.insertCodeBlock') }}</span>
+          </button>
+          <button class="dropdown__item dropdown__item--single" @mousedown.prevent="dispatchInsert('`$|$`')">
+            <span class="dropdown__name">{{ t('toolbar.insertInlineCode') }}</span>
+          </button>
+          <div class="dropdown__sep"></div>
+          <button class="dropdown__item dropdown__item--single" @mousedown.prevent="dispatchInsert('\n$$\n$|$\n$$\n')">
+            <span class="dropdown__name">{{ t('toolbar.insertMathBlock') }}</span>
+          </button>
+          <button class="dropdown__item dropdown__item--single" @mousedown.prevent="dispatchInsert('$$|$$')">
+            <span class="dropdown__name">{{ t('toolbar.insertMathInline') }}</span>
+          </button>
+          <div class="dropdown__sep"></div>
+          <button class="dropdown__item dropdown__item--single" @mousedown.prevent="dispatchInsert('\n| $|$ | Header |\n| --- | --- |\n| cell | cell |\n')">
+            <span class="dropdown__name">{{ t('toolbar.insertTable') }}</span>
+          </button>
+          <button class="dropdown__item dropdown__item--single" @mousedown.prevent="dispatchInsert('\n```mermaid\ngraph TD\n  A[$|$] --> B[End]\n```\n')">
+            <span class="dropdown__name">{{ t('toolbar.insertMermaid') }}</span>
+          </button>
+          <div class="dropdown__sep"></div>
+          <button class="dropdown__item dropdown__item--single" @mousedown.prevent="dispatchInsert('[$|$](url)')">
+            <span class="dropdown__name">{{ t('toolbar.insertLink') }}</span>
+          </button>
+          <button class="dropdown__item dropdown__item--single" @mousedown.prevent="dispatchInsert('> $|$')">
+            <span class="dropdown__name">{{ t('toolbar.insertQuote') }}</span>
+          </button>
+          <button class="dropdown__item dropdown__item--single" @mousedown.prevent="dispatchInsert('\n---\n')">
+            <span class="dropdown__name">{{ t('toolbar.insertDivider') }}</span>
+          </button>
+        </div>
+      </div>
     </div>
 
     <div class="toolbar__group">

@@ -333,7 +333,32 @@ function scrollToLine(line: number): void {
   });
 }
 
-defineExpose({ gotoLine, insertImageFromPath, getViewLine, scrollToLine });
+/**
+ * Insert markdown snippet at the current cursor. If `snippet` contains a
+ * literal `$|$` marker, the cursor lands there after insert (marker stripped).
+ * Otherwise the cursor is placed at the end of the inserted text.
+ */
+function insertMarkdown(snippet: string): void {
+  if (!view) return;
+  const CURSOR = '$|$';
+  const cursorIdx = snippet.indexOf(CURSOR);
+  const finalText = cursorIdx >= 0 ? snippet.replace(CURSOR, '') : snippet;
+  const sel = view.state.selection.main;
+  // Add a leading newline if not already at the start of a line, for block-level snippets.
+  const needsLeadingBreak = snippet.startsWith('\n') && sel.from > 0 &&
+    view.state.doc.sliceString(sel.from - 1, sel.from) !== '\n';
+  const insertText = needsLeadingBreak ? '\n' + finalText : finalText;
+  const adjust = needsLeadingBreak ? 1 : 0;
+  view.dispatch({
+    changes: { from: sel.from, to: sel.to, insert: insertText },
+    selection: {
+      anchor: cursorIdx >= 0 ? sel.from + cursorIdx + adjust : sel.from + insertText.length,
+    },
+  });
+  view.focus();
+}
+
+defineExpose({ gotoLine, insertImageFromPath, getViewLine, scrollToLine, insertMarkdown });
 
 const cls = computed(() => ({
   'cm-host': true,

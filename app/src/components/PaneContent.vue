@@ -150,12 +150,14 @@ watch(() => props.tab?.id, async () => {
 onMounted(() => {
   setTimeout(bindScrollSync, 300);
   window.addEventListener('solomd:outline-goto', onOutlineGotoEvent);
+  window.addEventListener('solomd:insert-markdown', onInsertMarkdownEvent);
 });
 
 onBeforeUnmount(() => {
   syncEditorScroll?.();
   syncPreviewScroll?.();
   window.removeEventListener('solomd:outline-goto', onOutlineGotoEvent);
+  window.removeEventListener('solomd:insert-markdown', onInsertMarkdownEvent);
 });
 
 defineExpose({ gotoLine, editorRef });
@@ -164,6 +166,13 @@ function onOutlineGotoEvent(e: Event) {
   const { line, paneId } = (e as CustomEvent).detail;
   if (paneId !== props.paneId) return;
   gotoLine(line);
+}
+
+function onInsertMarkdownEvent(e: Event) {
+  const { snippet, paneId } = (e as CustomEvent).detail;
+  if (paneId !== props.paneId) return;
+  const ed = editorRef.value as unknown as { insertMarkdown?: (s: string) => void } | null;
+  ed?.insertMarkdown?.(snippet);
 }
 </script>
 
