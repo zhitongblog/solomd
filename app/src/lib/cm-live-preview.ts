@@ -25,11 +25,12 @@ import {
 import { tags as t } from '@lezer/highlight';
 
 // Marker node names (from @lezer/markdown) we want to hide off-line.
+// LinkMark (brackets) and CodeMark (backticks) intentionally kept visible —
+// hiding them makes `![alt](url)` and `` `code` `` look like plain text and
+// loses the visual hint that it's a link or inline code.
 const HIDDEN_MARK_NODES = new Set<string>([
   'HeaderMark',
   'EmphasisMark',
-  'CodeMark',
-  'LinkMark',
   'StrikethroughMark',
 ]);
 
