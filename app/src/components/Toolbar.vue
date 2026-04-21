@@ -348,8 +348,9 @@ onBeforeUnmount(() => {
       >
         <Icon name="view-preview" />
       </button>
-      <span class="toolbar__divider"></span>
+      <span class="toolbar__divider" v-if="settings.viewMode !== 'preview'"></span>
       <button
+        v-if="settings.viewMode !== 'preview'"
         class="icon-btn"
         @click="settings.toggleLivePreview"
         :class="{ active: settings.livePreview }"

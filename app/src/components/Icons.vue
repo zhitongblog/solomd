@@ -91,8 +91,16 @@ defineProps<{ name: string; size?: number }>();
       <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
     </template>
     <template v-else-if="name === 'live'">
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-      <circle cx="12" cy="12" r="3" />
+      <!-- Magic wand: indicates live / transforming render -->
+      <path d="M15 4V2" />
+      <path d="M15 16v-2" />
+      <path d="M8 9h2" />
+      <path d="M20 9h2" />
+      <path d="M17.8 11.8 19 13" />
+      <path d="M15 9h.01" />
+      <path d="M17.8 6.2 19 5" />
+      <path d="m3 21 9-9" />
+      <path d="M12.2 6.2 11 5" />
     </template>
     <template v-else-if="name === 'source'">
       <polyline points="16 18 22 12 16 6" />
