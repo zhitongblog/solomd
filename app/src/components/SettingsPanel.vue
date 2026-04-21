@@ -304,11 +304,20 @@ section {
   gap: 8px;
 }
 section > label {
-  font-size: 12px;
-  color: var(--text-muted);
+  font-size: 13px;
+  color: var(--text);
   display: flex;
   align-items: center;
   gap: 8px;
+}
+section > label:has(input[type='checkbox']) {
+  display: inline-flex;
+  align-self: flex-start;
+  cursor: pointer;
+}
+section > label:not(:has(input)) {
+  font-size: 12px;
+  color: var(--text-muted);
 }
 .row {
   display: flex;
