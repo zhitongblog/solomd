@@ -83,6 +83,8 @@ export const zh: I18n = {
     title: '设置',
     theme: '主题',
     fontFamily: '字体',
+    customFont: '自定义…',
+    customFontPlaceholder: '输入字体名，如 PingFang SC',
     fontSize: '编辑器字号',
     uiFontSize: '界面字号',
     wordWrap: '自动换行',

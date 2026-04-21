@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { useSettingsStore } from '../stores/settings';
 import { useTabsStore } from '../stores/tabs';
@@ -74,12 +74,42 @@ async function pickCustomCss() {
 }
 
 const fontFamilies = [
-  { label: 'JetBrains Mono', value: '"JetBrains Mono", "SF Mono", "Cascadia Code", Menlo, Consolas, monospace' },
-  { label: 'SF Mono', value: '"SF Mono", Menlo, monospace' },
-  { label: 'Menlo', value: 'Menlo, Consolas, monospace' },
-  { label: 'Consolas', value: 'Consolas, "Courier New", monospace' },
-  { label: 'System UI', value: '-apple-system, "Segoe UI", Inter, Roboto, system-ui, sans-serif' },
+  // Monospace — for code-heavy editing
+  { label: 'JetBrains Mono', value: 'JetBrains Mono' },
+  { label: 'SF Mono', value: 'SF Mono' },
+  { label: 'Menlo', value: 'Menlo' },
+  { label: 'Consolas', value: 'Consolas' },
+  { label: 'Fira Code', value: 'Fira Code' },
+  // Proportional — for prose / long-form writing
+  { label: 'System Sans', value: '-apple-system, "Segoe UI", system-ui, sans-serif' },
+  { label: 'Georgia (Serif)', value: 'Georgia' },
+  { label: 'Times New Roman (Serif)', value: 'Times New Roman' },
+  // Common CJK faces that already ship on the OS
+  { label: 'PingFang SC', value: 'PingFang SC' },
+  { label: 'Microsoft YaHei', value: 'Microsoft YaHei' },
+  { label: 'Source Han Sans', value: 'Source Han Sans SC' },
+  { label: 'Source Han Serif', value: 'Source Han Serif SC' },
 ];
+const fontFamilyPresetValues = new Set(fontFamilies.map((f) => f.value));
+const customFontFamily = ref(
+  fontFamilyPresetValues.has(settings.fontFamily) ? '' : settings.fontFamily
+);
+function onSelectFontFamily(v: string) {
+  if (v === '__custom__') {
+    // Switch UI into custom mode. Keep existing custom value or start empty.
+    if (!customFontFamily.value) customFontFamily.value = settings.fontFamily;
+    return;
+  }
+  customFontFamily.value = '';
+  settings.setFontFamily(v);
+}
+function onCustomFontInput(v: string) {
+  customFontFamily.value = v;
+  if (v.trim()) settings.setFontFamily(v.trim());
+}
+const fontFamilySelectValue = computed(() =>
+  fontFamilyPresetValues.has(settings.fontFamily) ? settings.fontFamily : '__custom__'
+);
 </script>
 
 <template>
@@ -113,9 +143,18 @@ const fontFamilies = [
 
         <section>
           <label>{{ t('settings.fontFamily') }}</label>
-          <select :value="settings.fontFamily" @change="settings.setFontFamily(($event.target as HTMLSelectElement).value)">
+          <select :value="fontFamilySelectValue" @change="onSelectFontFamily(($event.target as HTMLSelectElement).value)">
             <option v-for="f in fontFamilies" :key="f.label" :value="f.value">{{ f.label }}</option>
+            <option value="__custom__">{{ t('settings.customFont') }}</option>
           </select>
+          <input
+            v-if="fontFamilySelectValue === '__custom__'"
+            type="text"
+            :placeholder="t('settings.customFontPlaceholder')"
+            :value="customFontFamily"
+            @input="onCustomFontInput(($event.target as HTMLInputElement).value)"
+            style="margin-top: 6px; padding: 6px 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px; font: inherit; width: 100%;"
+          />
         </section>
 
         <section>

@@ -40,6 +40,9 @@ tauri-plugin-dialog = "2.7.0"
 tauri-plugin-clipboard-manager = "2.3.2"
 walkdir = "2.5.0"
 
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-window-state = "2"
+
 # File-to-Markdown conversion (built-in, no Python needed)
 htmd = "0.5"
 zip = "2"

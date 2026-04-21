@@ -22,7 +22,7 @@ import { xml } from '@codemirror/lang-xml';
 import { vim } from '@replit/codemirror-vim';
 import { cmThemeFor } from '../lib/themes';
 import { useTabsStore } from '../stores/tabs';
-import { useSettingsStore } from '../stores/settings';
+import { useSettingsStore, buildEditorFontStack } from '../stores/settings';
 import type { Tab } from '../types';
 import { livePreviewExtension, richHighlightOnly } from '../lib/cm-live-preview';
 import { imagePasteExtension, insertImageFromPath as cmInsertImageFromPath } from '../lib/cm-image-paste';
@@ -100,7 +100,7 @@ function richExtensionsFor(tab: Tab) {
 const fontSizeTheme = (px: number, family: string) =>
   EditorView.theme({
     '&': { fontSize: `${px}px`, height: '100%' },
-    '.cm-scroller': { fontFamily: family, lineHeight: '1.6' },
+    '.cm-scroller': { fontFamily: buildEditorFontStack(family), lineHeight: '1.6' },
     '.cm-content': { padding: '12px 16px' },
     '.cm-gutters': {
       backgroundColor: 'transparent',

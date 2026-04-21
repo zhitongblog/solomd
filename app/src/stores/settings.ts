@@ -3,6 +3,23 @@ import type { Theme, ViewMode } from '../types';
 
 const LS_KEY = 'solomd.settings.v1';
 
+// CJK + generic fallback appended after the user's chosen face. This way
+// Latin glyphs come from the user's pick while CJK still falls back to
+// a real CJK font instead of whatever the generic `monospace` happens to be.
+const CJK_FALLBACK =
+  '"PingFang SC", "PingFang TC", "Hiragino Sans GB", "Microsoft YaHei", "Heiti SC", "Noto Sans CJK SC"';
+
+export function buildEditorFontStack(face: string): string {
+  const trimmed = face.trim();
+  if (!trimmed) return `${CJK_FALLBACK}, sans-serif`;
+  // If user pasted a full stack already (contains comma), use as-is but still
+  // append CJK fallback for safety.
+  if (trimmed.includes(',')) return `${trimmed}, ${CJK_FALLBACK}`;
+  const needsQuote = /\s/.test(trimmed) && !/^["']/.test(trimmed);
+  const quoted = needsQuote ? `"${trimmed}"` : trimmed;
+  return `${quoted}, ${CJK_FALLBACK}, "JetBrains Mono", Menlo, Consolas, monospace`;
+}
+
 interface Settings {
   theme: Theme;
   viewMode: ViewMode;
@@ -36,7 +53,7 @@ function defaults(): Settings {
     theme: prefersDark ? 'dark' : 'light',
     viewMode: 'edit',
     fontSize: 14,
-    fontFamily: '"JetBrains Mono", "SF Mono", "Cascadia Code", Menlo, Consolas, monospace',
+    fontFamily: 'JetBrains Mono',
     wordWrap: true,
     showLineNumbers: true,
     showOutline: false,

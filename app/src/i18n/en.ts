@@ -81,6 +81,8 @@ export const en = {
     title: 'Settings',
     theme: 'Theme',
     fontFamily: 'Font Family',
+    customFont: 'Custom…',
+    customFontPlaceholder: 'Enter font name, e.g. PingFang SC',
     fontSize: 'Editor Font Size',
     uiFontSize: 'UI Font Size',
     wordWrap: 'Word Wrap',
