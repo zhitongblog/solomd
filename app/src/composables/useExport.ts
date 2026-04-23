@@ -193,9 +193,14 @@ export function useExport() {
       toasts.error('No active document');
       return null;
     }
+    // Tolerate stale persisted state from older versions where the
+    // field was named `title` instead of `fileName`.
+    const name = (tab as { fileName?: string; title?: string }).fileName
+      ?? (tab as { title?: string }).title
+      ?? 'Untitled';
     return {
-      content: tab.content,
-      baseName: tab.fileName.replace(/\.[^.]+$/, ''),
+      content: tab.content ?? '',
+      baseName: name.replace(/\.[^.]+$/, ''),
     };
   }
 
@@ -262,12 +267,59 @@ export function useExport() {
     }
   }
 
-  /** Fallback: open the system print dialog (still useful as backup). */
+  /**
+   * Open the system print dialog with the rendered markdown.
+   * Builds a hidden iframe with the same HTML template used for export,
+   * so Print works regardless of current view mode (edit / split / preview).
+   */
   function exportPdfPrint() {
     track('file_exported', { format: 'pdf_print' });
-    document.body.classList.add('printing');
-    window.print();
-    setTimeout(() => document.body.classList.remove('printing'), 500);
+    const ctx = activeOr();
+    if (!ctx) return;
+    const html = HTML_TEMPLATE(ctx.baseName, renderMarkdown(ctx.content));
+
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText =
+      'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
+    document.body.appendChild(iframe);
+
+    const cleanup = () => {
+      try {
+        document.body.removeChild(iframe);
+      } catch {}
+    };
+
+    iframe.onload = () => {
+      const cw = iframe.contentWindow;
+      if (!cw) {
+        cleanup();
+        toasts.error('Print: failed to prepare document');
+        return;
+      }
+      // Wait a tick so KaTeX / Mermaid / images finish rendering before print.
+      setTimeout(() => {
+        try {
+          cw.focus();
+          cw.print();
+        } catch (e) {
+          console.error(e);
+          toasts.error(`Print failed: ${e}`);
+        }
+        // Remove iframe after a delay — some browsers finalize print asynchronously.
+        setTimeout(cleanup, 1000);
+      }, 300);
+    };
+
+    // Write after setting onload so load event always fires.
+    const doc = iframe.contentDocument;
+    if (doc) {
+      doc.open();
+      doc.write(html);
+      doc.close();
+    } else {
+      cleanup();
+      toasts.error('Print: failed to create document');
+    }
   }
 
   async function copyAsHtml() {
