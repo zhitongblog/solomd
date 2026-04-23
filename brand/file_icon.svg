@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- Drop shadow for depth -->
+  <defs>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="12"/>
+      <feOffset dx="0" dy="10" result="offsetblur"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.18"/>
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Paper body. Top-right corner folded -->
+  <g filter="url(#shadow)">
+    <!-- Main page outline (drawn as path so the folded corner is a cut) -->
+    <path d="
+      M 200 120
+      L 720 120
+      L 880 280
+      L 880 900
+      Q 880 920 860 920
+      L 220 920
+      Q 200 920 200 900
+      Z
+    " fill="#FAFAF7" stroke="#1A1A1A" stroke-width="14" stroke-linejoin="round"/>
+
+    <!-- Folded corner (triangle filled with shadow-ish tone) -->
+    <path d="
+      M 720 120
+      L 880 280
+      L 720 280
+      Z
+    " fill="#E5E3DA" stroke="#1A1A1A" stroke-width="14" stroke-linejoin="round"/>
+  </g>
+
+  <!-- Brand #MD: # in accent orange, MD in dark -->
+  <g transform="translate(540,570)" text-anchor="middle" font-family="ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, monospace" font-weight="800">
+    <!-- # accent -->
+    <text x="-120" y="0" font-size="340" fill="#FF9F40">#</text>
+    <!-- MD -->
+    <text x="110" y="0" font-size="260" fill="#1A1A1A" font-family="Inter, system-ui, -apple-system, 'Segoe UI', sans-serif">MD</text>
+  </g>
+
+  <!-- Three subtle content lines under the brand to suggest document text -->
+  <g stroke="#8A8A8A" stroke-width="12" stroke-linecap="round" opacity="0.65">
+    <line x1="300" y1="720" x2="760" y2="720"/>
+    <line x1="300" y1="780" x2="700" y2="780"/>
+    <line x1="300" y1="840" x2="620" y2="840"/>
+  </g>
+</svg>
