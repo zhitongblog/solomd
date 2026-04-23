@@ -65,7 +65,7 @@
         "installMode": "currentUser",
         "installerIcon": "icons/icon.ico",
         "displayLanguageSelector": false,
-        "installer-hooks": "installer.nsh"
+        "installerHooks": "installer.nsh"
       }
     },
     "resources": [
