@@ -86,6 +86,7 @@ struct MenuStrings {
     open_folder: &'static str,
     save: &'static str,
     save_as: &'static str,
+    print_item: &'static str,
     close_tab: &'static str,
     new_window: &'static str,
     toggle_theme: &'static str,
@@ -112,6 +113,7 @@ fn strings_for(lang: &str) -> MenuStrings {
             open_folder: "打开文件夹…",
             save: "保存",
             save_as: "另存为…",
+            print_item: "打印…",
             close_tab: "关闭标签页",
             new_window: "新建窗口",
             toggle_theme: "切换主题",
@@ -136,6 +138,7 @@ fn strings_for(lang: &str) -> MenuStrings {
             open_folder: "Open Folder…",
             save: "Save",
             save_as: "Save As…",
+            print_item: "Print…",
             close_tab: "Close Tab",
             new_window: "New Window",
             toggle_theme: "Toggle Theme",
@@ -173,6 +176,9 @@ fn build_app_menu<R: tauri::Runtime>(
     let save_as = MenuItemBuilder::with_id("file.saveAs", s.save_as)
         .accelerator("CmdOrCtrl+Shift+S")
         .build(app)?;
+    let print_item = MenuItemBuilder::with_id("file.print", s.print_item)
+        .accelerator("CmdOrCtrl+P")
+        .build(app)?;
     let close_tab = MenuItemBuilder::with_id("file.closeTab", s.close_tab)
         .accelerator("CmdOrCtrl+W")
         .build(app)?;
@@ -189,6 +195,8 @@ fn build_app_menu<R: tauri::Runtime>(
         .separator()
         .item(&save)
         .item(&save_as)
+        .separator()
+        .item(&print_item)
         .separator()
         .item(&new_window)
         .item(&close_tab)
@@ -281,10 +289,16 @@ pub fn run_with(initial_file: Option<String>) {
     let saved_lang = read_saved_language();
     apply_macos_language(&saved_lang);
 
-    let app = tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(tauri_plugin_aptabase::Builder::new("A-EU-4631704280").build());
+
+    #[cfg(desktop)]
+    let builder = builder.plugin(tauri_plugin_window_state::Builder::default().build());
+
+    let app = builder
         .manage(PendingOpen(Mutex::new(pending)))
         .invoke_handler(tauri::generate_handler![
             commands::read_file,
@@ -312,6 +326,16 @@ pub fn run_with(initial_file: Option<String>) {
             // `set_menu_language` on mount to apply the user's saved preference.
             let menu = build_app_menu(app.handle(), "en")?;
             app.set_menu(menu)?;
+
+            // Windows-specific: when launched via file association, the newly
+            // created window sometimes lands behind the Explorer window that
+            // triggered it (focus-stealing prevention). Explicitly show + focus
+            // the main window to bring it forward.
+            if let Some(win) = app.get_webview_window("main") {
+                let _ = win.show();
+                let _ = win.unminimize();
+                let _ = win.set_focus();
+            }
 
             // NOTE: do NOT drain PendingOpen here. The frontend calls
             // `drain_pending_opens` on mount instead, which avoids the

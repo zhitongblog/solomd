@@ -3,7 +3,6 @@ import { onMounted, onBeforeUnmount, ref, watch, watchEffect, computed, provide 
 import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
-import { getCurrentWindow, LogicalSize, LogicalPosition } from '@tauri-apps/api/window';
 import Toolbar from './components/Toolbar.vue';
 import TelemetryBanner from './components/TelemetryBanner.vue';
 import TileRoot from './components/TileRoot.vue';
@@ -21,6 +20,7 @@ import { useTabsStore } from './stores/tabs';
 import { useSettingsStore } from './stores/settings';
 import { useTilesStore } from './stores/tiles';
 import { useFiles } from './composables/useFiles';
+import { useExport } from './composables/useExport';
 import { useShortcuts } from './composables/useShortcuts';
 import { loadCustomTheme } from './lib/custom-theme';
 import { isIOS } from './lib/platform';
@@ -31,6 +31,7 @@ const tabs = useTabsStore();
 const settings = useSettingsStore();
 const tiles = useTilesStore();
 const files = useFiles();
+const exporter = useExport();
 const { t } = useI18n();
 
 const cursorLine = ref(1);
@@ -178,6 +179,9 @@ function dispatchMenuAction(id: string) {
     case 'file.saveAs':
       files.saveActiveAs();
       break;
+    case 'file.print':
+      exporter.exportPdfPrint();
+      break;
     case 'file.closeTab':
       if (tabs.activeId) files.closeTabSafe(tabs.activeId);
       break;
@@ -216,50 +220,14 @@ function dispatchMenuAction(id: string) {
   }
 }
 
-// ---- Window size + position persistence ----
-const WINDOW_LS_KEY = 'solomd.window.v1';
-interface SavedWindow { w: number; h: number; x?: number; y?: number }
-
-async function restoreWindowSize() {
-  if (isIOS()) return;
-  try {
-    const raw = localStorage.getItem(WINDOW_LS_KEY);
-    console.log('[window] restore: localStorage=', raw);
-    if (!raw) return;
-    const s = JSON.parse(raw) as SavedWindow;
-    if (typeof s.w !== 'number' || typeof s.h !== 'number') return;
-    const win = getCurrentWindow();
-    await win.setSize(new LogicalSize(s.w, s.h));
-    if (typeof s.x === 'number' && typeof s.y === 'number') {
-      await win.setPosition(new LogicalPosition(s.x, s.y));
-    }
-    console.log('[window] restored to', s);
-  } catch (e) { console.warn('[window] restore failed', e); }
-}
-
-async function saveWindowSize() {
-  if (isIOS()) return;
-  try {
-    const win = getCurrentWindow();
-    const scale = await win.scaleFactor();
-    const phySize = await win.innerSize();
-    const phyPos = await win.outerPosition();
-    const s: SavedWindow = {
-      w: phySize.width / scale,
-      h: phySize.height / scale,
-      x: phyPos.x / scale,
-      y: phyPos.y / scale,
-    };
-    localStorage.setItem(WINDOW_LS_KEY, JSON.stringify(s));
-    console.log('[window] saved', s);
-  } catch (e) { console.warn('[window] save failed', e); }
-}
-
-let saveWindowDebounce: number | undefined;
-function scheduleSaveWindow() {
-  if (saveWindowDebounce) clearTimeout(saveWindowDebounce);
-  saveWindowDebounce = window.setTimeout(saveWindowSize, 400);
-}
+// Window size + position are persisted by tauri-plugin-window-state on the
+// Rust side. The plugin clamps restored coordinates to the current monitor
+// set, which prevents the "window is off-screen, only taskbar thumbnail
+// visible" bug that the old localStorage approach had.
+// Remove stale localStorage entry from earlier versions on first run.
+try {
+  localStorage.removeItem('solomd.window.v1');
+} catch {}
 
 onMounted(async () => {
   window.addEventListener('keydown', onEsc);
@@ -271,16 +239,6 @@ onMounted(async () => {
     theme: settings.theme,
     live_preview: settings.livePreview ? 1 : 0,
   });
-
-  await restoreWindowSize();
-
-  if (!isIOS()) {
-    try {
-      const win = getCurrentWindow();
-      await win.onResized(scheduleSaveWindow);
-      await win.onMoved(scheduleSaveWindow);
-    } catch {}
-  }
 
   // OS file association
   try {
@@ -312,7 +270,6 @@ onMounted(async () => {
   // Window close
   try {
     await listen('solomd://close-requested', async () => {
-      await saveWindowSize();
       tabs.persist?.();
       tiles.persist();
       await invoke('force_close_window');
