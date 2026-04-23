@@ -1,0 +1,113 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+
+const lang = 'en' as const;
+---
+
+<Layout
+  title="SoloMD v1.1.6 — File Icons & Native Print"
+  description="What shipped in SoloMD 1.1.6: a proper document icon for .md files on Mac and Windows, and a native system print dialog on all three desktop platforms."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <article class="container blog-article">
+      <nav class="breadcrumbs">
+        <a href="/">Home</a> / <a href="/blog/">Blog</a> / <span>v1.1.6</span>
+      </nav>
+      <time>2026-04-23</time>
+      <h1>v1.1.6 — File Icons & Native Print</h1>
+      <p class="lead">
+        Two small-looking features that took way more work than expected. Both
+        ship in today's release and quietly fix longstanding paper cuts.
+      </p>
+
+      <h2>1. A proper document icon</h2>
+      <p>
+        Before v1.1.6 every <code>.md</code> file on your desktop looked identical
+        to the SoloMD app icon — same solid black square with the orange #MD.
+        You could confuse a document with the app itself at a glance.
+      </p>
+      <p>
+        We drew a document-specific icon (paper shape, folded top-right corner,
+        subtle #MD watermark, a few faint content lines) and wired it into the
+        file association metadata on both platforms.
+      </p>
+      <p>
+        On <strong>macOS</strong> this meant patching <code>CFBundleDocumentTypes</code>
+        in <code>Info.plist</code> to set <code>CFBundleTypeIconFile</code>, copying
+        the <code>.icns</code> into <code>Contents/Resources/</code>, re-signing the
+        bundle, re-notarizing, and stapling the ticket. Tauri 2's file-association
+        config doesn't expose per-type icons yet, so this happens in our build
+        script post-bundle.
+      </p>
+      <p>
+        On <strong>Windows</strong> we added an NSIS installer hook
+        (<code>installer.nsh</code>) that registers a separate <code>SoloMD.md</code>
+        ProgID with <code>DefaultIcon</code> pointing to <code>file_icon.ico</code>
+        bundled as a resource, then nudges Explorer to refresh its icon cache.
+      </p>
+
+      <h2>2. Native system print dialog</h2>
+      <p>
+        File → Print used to call <code>window.print()</code> — which works great in
+        Electron but is <strong>silently no-op</strong> in Tauri's WKWebView on
+        macOS. No print dialog, no error.
+      </p>
+      <p>
+        The fix: Tauri 2 exposes <code>WebviewWindow::print()</code> on the Rust
+        side, which routes to the platform-native print (NSPrintOperation on
+        macOS, WebView2's PrintAsync on Windows, WebKitGTK print on Linux). We
+        added a small <code>print_webview</code> Tauri command, mount a hidden
+        overlay with the rendered Markdown, flip a <code>@media print</code>
+        class on body to hide the editor chrome, then invoke the Rust command.
+      </p>
+      <p>
+        Result: Cmd+P (Ctrl+P on Windows) now opens the OS's standard print
+        sheet with a clean render of your document. Choose a printer — or pick
+        "Save as PDF" for the highest-quality PDF output.
+      </p>
+
+      <h2>Also in 1.1.6</h2>
+      <ul>
+        <li>Scaffolded <a href="/compare/">comparison pages</a> (vs Typora, Obsidian, MarkText).</li>
+        <li>Scaffolded <a href="/docs/">docs</a> (shortcuts, export).</li>
+        <li>Fixes from earlier patch releases now consolidated: custom-font input
+          box, window-state plugin, removal of the problematic aptabase telemetry.</li>
+      </ul>
+
+      <h2>Grab it</h2>
+      <p>
+        <a href="/#download" class="btn btn--primary">Download v1.1.6</a>
+      </p>
+
+      <h2>What's next</h2>
+      <p>
+        v1.2 is lining up: full WYSIWYG inline math / tables in the live-preview
+        editor, better mobile layout on iPad, and possibly a first-party sync
+        option for folks who want their docs on multiple devices without an
+        Obsidian subscription.
+      </p>
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .blog-article { max-width: 760px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .blog-article time { font-size: 13px; color: var(--text-muted, #888); }
+  .blog-article h1 { font-size: 2.2rem; line-height: 1.2; margin: 8px 0 18px; }
+  .blog-article h2 { font-size: 1.4rem; margin: 36px 0 12px; }
+  .blog-article .lead { color: var(--text-muted, #555); font-size: 1.1rem; line-height: 1.6; margin-bottom: 28px; }
+  .blog-article p { line-height: 1.75; margin: 14px 0; }
+  .blog-article ul { padding-left: 22px; }
+  .blog-article li { margin: 6px 0; line-height: 1.7; }
+  .blog-article code { background: #f5f5f0; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+  .blog-article a { color: #ff9f40; }
+  .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  .btn--primary { background: #ff9f40; color: #000 !important; }
+</style>

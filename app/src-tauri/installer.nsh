@@ -6,7 +6,7 @@
 !macro NSIS_HOOK_POSTINSTALL
   ; SoloMD ProgID for markdown files
   WriteRegStr SHCTX "Software\Classes\SoloMD.md" "" "Markdown Document"
-  WriteRegStr SHCTX "Software\Classes\SoloMD.md\DefaultIcon" "" "$INSTDIR\resources\file_icon.ico,0"
+  WriteRegStr SHCTX "Software\Classes\SoloMD.md\DefaultIcon" "" "$INSTDIR\resources\icons\file_icon.ico,0"
   WriteRegStr SHCTX "Software\Classes\SoloMD.md\shell\open\command" "" '"$INSTDIR\SoloMD.exe" "%1"'
   WriteRegStr SHCTX "Software\Classes\.md\OpenWithProgids" "SoloMD.md" ""
   WriteRegStr SHCTX "Software\Classes\.markdown\OpenWithProgids" "SoloMD.md" ""
@@ -15,7 +15,7 @@
 
   ; SoloMD ProgID for plain text files
   WriteRegStr SHCTX "Software\Classes\SoloMD.txt" "" "Plain Text"
-  WriteRegStr SHCTX "Software\Classes\SoloMD.txt\DefaultIcon" "" "$INSTDIR\resources\file_icon.ico,0"
+  WriteRegStr SHCTX "Software\Classes\SoloMD.txt\DefaultIcon" "" "$INSTDIR\resources\icons\file_icon.ico,0"
   WriteRegStr SHCTX "Software\Classes\SoloMD.txt\shell\open\command" "" '"$INSTDIR\SoloMD.exe" "%1"'
   WriteRegStr SHCTX "Software\Classes\.txt\OpenWithProgids" "SoloMD.txt" ""
 

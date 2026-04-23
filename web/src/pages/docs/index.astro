@@ -1,0 +1,71 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+
+const lang = 'en' as const;
+
+const docs = [
+  {
+    slug: 'shortcuts',
+    title: 'Keyboard Shortcuts',
+    lead: 'Every shortcut — editing, navigation, view, export, file ops.',
+  },
+  {
+    slug: 'export',
+    title: 'Export & Copy',
+    lead: 'PDF, DOCX, HTML, PNG, Print, rich-text copy — when to use each.',
+  },
+  {
+    slug: 'markdown-syntax',
+    title: 'Markdown Syntax Reference',
+    lead: 'Headings, lists, tables, math, Mermaid — everything SoloMD supports.',
+  },
+];
+---
+
+<Layout
+  title="SoloMD Documentation"
+  description="Keyboard shortcuts, export formats, markdown syntax reference, and guides for using SoloMD."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <section class="container docs-index">
+      <h1>Documentation</h1>
+      <p class="lead">
+        Everything you need to use SoloMD effectively — shortcuts, export options,
+        supported Markdown syntax, and workflow guides.
+      </p>
+
+      <div class="docs-cards">
+        {docs.map((d) => (
+          <a href={`/docs/${d.slug}/`} class="docs-card">
+            <h2>{d.title}</h2>
+            <p>{d.lead}</p>
+            <span class="arrow">→</span>
+          </a>
+        ))}
+      </div>
+
+      <p class="docs-footer">
+        Can't find what you need? Open an issue on
+        <a href="https://github.com/zhitongblog/solomd/issues" rel="external">GitHub</a>.
+      </p>
+    </section>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .docs-index { max-width: 860px; padding: 40px 20px 80px; }
+  .docs-index h1 { font-size: 2rem; margin: 10px 0 14px; }
+  .docs-index .lead { font-size: 1.05rem; color: var(--text-muted, #555); margin-bottom: 32px; }
+  .docs-cards { display: grid; grid-template-columns: 1fr; gap: 14px; }
+  .docs-card { display: block; padding: 20px 24px; border: 1px solid #e5e5e0; border-radius: 10px; text-decoration: none; color: inherit; position: relative; transition: transform 0.1s, border-color 0.1s; }
+  .docs-card:hover { transform: translateY(-2px); border-color: #ff9f40; }
+  .docs-card h2 { margin: 0 0 6px; font-size: 1.2rem; }
+  .docs-card p { margin: 0; color: var(--text-muted, #555); }
+  .docs-card .arrow { position: absolute; top: 50%; right: 24px; transform: translateY(-50%); color: #ff9f40; font-size: 1.4rem; }
+  .docs-footer { margin-top: 40px; font-size: 0.95rem; color: var(--text-muted, #555); }
+</style>

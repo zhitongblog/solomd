@@ -1,0 +1,139 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+
+const lang = 'en' as const;
+---
+
+<Layout
+  title="SoloMD vs Obsidian — Simple Editor vs Knowledge Graph (2026)"
+  description="SoloMD is a tiny, single-file Markdown editor. Obsidian is a complete knowledge management app. Honest comparison of when each one wins."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main class="compare-page">
+    <article class="container compare-article">
+      <nav class="breadcrumbs">
+        <a href="/">Home</a> / <a href="/compare/">Compare</a> / <span>vs Obsidian</span>
+      </nav>
+
+      <h1>SoloMD vs Obsidian: Editor or Second Brain?</h1>
+      <p class="lead">
+        They're not really competitors — pick by what you're doing.
+        <strong>SoloMD</strong> for writing individual Markdown files. <strong>Obsidian</strong>
+        if you want a personal knowledge graph with backlinks, plugins, and a vault.
+      </p>
+
+      <h2>Quick verdict</h2>
+      <table class="compare-detail">
+        <thead>
+          <tr><th>&nbsp;</th><th>SoloMD</th><th>Obsidian</th></tr>
+        </thead>
+        <tbody>
+          <tr><th>Mental model</th><td>Document editor</td><td>Vault / knowledge base</td></tr>
+          <tr><th>Price</th><td><strong>Free</strong> (MIT)</td><td>Free personal · $50/yr commercial</td></tr>
+          <tr><th>Open source</th><td>✅</td><td>❌ core closed; plugins open</td></tr>
+          <tr><th>Installer size</th><td>~15 MB</td><td>~130 MB</td></tr>
+          <tr><th>RAM at idle</th><td>~150 MB</td><td>~400 MB</td></tr>
+          <tr><th>Backlinks / graph</th><td>❌</td><td>✅ core feature</td></tr>
+          <tr><th>Plugins</th><td>❌ (Custom CSS yes)</td><td>✅ thousands</td></tr>
+          <tr><th>Wiki-style links</th><td>❌</td><td>✅ <code>[[file]]</code></td></tr>
+          <tr><th>Works with single files</th><td>✅ open any .md</td><td>⚠️ prefers a vault folder</td></tr>
+          <tr><th>Multi-encoding (GBK/Big5)</th><td>✅</td><td>⚠️ UTF-8 only</td></tr>
+          <tr><th>iPad</th><td>✅ App Store</td><td>✅ App Store</td></tr>
+          <tr><th>Vim mode</th><td>✅</td><td>✅ core plugin</td></tr>
+          <tr><th>Export PDF / DOCX</th><td>✅</td><td>PDF ✅ · DOCX via plugin</td></tr>
+          <tr><th>Live preview</th><td>✅</td><td>✅ editing view</td></tr>
+          <tr><th>Built on</th><td>Tauri 2 + Vue + CodeMirror 6</td><td>Electron + CodeMirror</td></tr>
+        </tbody>
+      </table>
+
+      <h2>Use SoloMD when</h2>
+      <ul>
+        <li>You just need to edit a Markdown file — not build a connected knowledge base.</li>
+        <li>Your docs live in a repo or sync folder and you want to double-click a .md file and have it open quickly.</li>
+        <li>You care about install size / RAM. SoloMD is ~4× smaller and uses ~2.5× less memory.</li>
+        <li>You're editing files with legacy encodings (CJK / GBK / Big5 / Shift-JIS). Obsidian requires UTF-8.</li>
+        <li>You don't want to learn a new "vault" concept — just work with plain files in plain folders.</li>
+      </ul>
+
+      <h2>Use Obsidian when</h2>
+      <ul>
+        <li>You're building a <strong>Zettelkasten / PKM / second brain</strong>. Backlinks, the graph
+          view, <code>[[wikilinks]]</code>, and daily notes are its core value.</li>
+        <li>You want a deep plugin ecosystem — tasks, calendars, kanban, spaced repetition, templates.</li>
+        <li>You want sync across devices via Obsidian Sync (paid) or iCloud / Git.</li>
+        <li>You're fine committing to a single-folder "vault" structure.</li>
+      </ul>
+
+      <h2>Can I use both?</h2>
+      <p>
+        Yes, naturally. Obsidian vaults are just folders of Markdown files. SoloMD
+        reads and writes the same files. Open your vault folder in SoloMD for quick
+        edits; use Obsidian when you need the graph / backlinks. No conversion, no
+        sync conflicts (if you close one before opening the other on the same file).
+      </p>
+
+      <h2>What SoloMD doesn't try to do</h2>
+      <p>
+        SoloMD doesn't have — and isn't trying to build — backlinks, wikilinks,
+        a graph view, plugin marketplace, daily notes, or a vault sync. The
+        positioning is "Notepad meets Markdown": open, write, close. If those
+        features define your workflow, Obsidian is the right tool.
+      </p>
+
+      <h2>What Obsidian doesn't do well (in our opinion)</h2>
+      <ul>
+        <li><strong>Opening a single .md file</strong> from Finder / Explorer takes several seconds
+          (Obsidian cold-starts the whole vault machinery).</li>
+        <li><strong>Non-UTF-8 files</strong> need manual conversion.</li>
+        <li>The full editor feels <strong>heavy</strong> for quick "jot + save" use.</li>
+      </ul>
+
+      <h2>Migration — either direction</h2>
+      <p>
+        Your files stay the same. Key differences if you move from Obsidian to SoloMD:
+      </p>
+      <ul>
+        <li><code>[[wikilinks]]</code> render as literal text in SoloMD (not broken links — they just aren't clickable).</li>
+        <li>Obsidian's <code>{'> [!note]'}</code> callouts render as regular blockquotes in SoloMD.</li>
+        <li>Dataview queries become plain code blocks.</li>
+      </ul>
+
+      <h2>Pricing</h2>
+      <p>
+        SoloMD: free, MIT, no commercial licence. Obsidian: free for personal use,
+        <a href="https://obsidian.md/commercial-license" rel="external">$50/user/year</a>
+        for commercial use in teams of ≥2.
+      </p>
+
+      <div class="compare-cta">
+        <a href="/#download" class="btn btn--primary">Download SoloMD</a>
+        <a href="/compare/vs-typora/" class="btn btn--secondary">Compare vs Typora</a>
+      </div>
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .compare-article { max-width: 820px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .compare-article h1 { font-size: 2.2rem; line-height: 1.2; margin: 10px 0 20px; }
+  .compare-article h2 { font-size: 1.55rem; margin: 36px 0 14px; }
+  .compare-article .lead { font-size: 1.1rem; color: var(--text-muted, #555); margin-bottom: 32px; }
+  .compare-detail { width: 100%; border-collapse: collapse; margin: 20px 0 28px; font-size: 14px; }
+  .compare-detail th, .compare-detail td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #eee; }
+  .compare-detail thead th { background: #fafafa; font-weight: 600; }
+  .compare-detail tbody th { font-weight: 500; width: 32%; }
+  .compare-cta { display: flex; gap: 12px; margin-top: 40px; }
+  .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  .btn--primary { background: #ff9f40; color: #000; }
+  .btn--secondary { background: #111; color: #fff; }
+  .compare-article ul { padding-left: 22px; }
+  .compare-article li { margin: 6px 0; line-height: 1.6; }
+  .compare-article p { line-height: 1.7; margin: 12px 0; }
+  .compare-article code { background: #f5f5f0; padding: 1px 6px; border-radius: 4px; font-size: 0.92em; }
+</style>

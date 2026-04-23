@@ -1,0 +1,98 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+
+const lang = 'en' as const;
+---
+
+<Layout
+  title="Export & Copy in SoloMD — PDF, DOCX, HTML, Print, Image"
+  description="How SoloMD exports Markdown to PDF, DOCX, HTML, PNG and prints via system dialog. Includes rich-text copy for WeChat / Notion / Confluence."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <article class="container docs-article">
+      <nav class="breadcrumbs">
+        <a href="/">Home</a> / <a href="/docs/">Docs</a> / <span>Export & Copy</span>
+      </nav>
+
+      <h1>Export & Copy</h1>
+      <p class="lead">Six ways to get your Markdown out of SoloMD.</p>
+
+      <h2>Export menu (toolbar → Export)</h2>
+      <table class="kb-table">
+        <thead><tr><th>Format</th><th>Best for</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><th>HTML</th><td>Publishing, archives</td><td>Single-file HTML with inlined CSS. KaTeX + Mermaid render via CDN or bundled.</td></tr>
+          <tr><th>PDF</th><td>Sharing, printing</td><td>Generated with html2pdf.js, no external dependency.</td></tr>
+          <tr><th>PDF (Print)</th><td>System print dialog</td><td>Uses <code>WebviewWindow::print()</code>. Choose a printer or "Save as PDF".</td></tr>
+          <tr><th>DOCX</th><td>Word / Office sharing</td><td>True <code>.docx</code>, not HTML-in-Word. Tables, headings, math, code preserved.</td></tr>
+          <tr><th>Image (PNG)</th><td>Social, screenshots</td><td>Full rendered preview captured as a single PNG.</td></tr>
+        </tbody>
+      </table>
+
+      <h2>Copy to clipboard (toolbar → Copy split-button)</h2>
+      <table class="kb-table">
+        <thead><tr><th>Format</th><th>Best for</th></tr></thead>
+        <tbody>
+          <tr><th>Rich HTML (default)</th><td>Paste into WeChat 公众号 / Notion / Confluence / Slack — keeps styling.</td></tr>
+          <tr><th>Markdown</th><td>Paste into another Markdown editor, GitHub issue, Discord.</td></tr>
+          <tr><th>Plain text</th><td>Strip all formatting — just the prose.</td></tr>
+          <tr><th>Image</th><td>Quick visual share to Twitter / 微博.</td></tr>
+        </tbody>
+      </table>
+
+      <h2>Print (Ctrl/⌘ + P)</h2>
+      <p>
+        Opens the native system print dialog. On macOS uses <code>NSPrintOperation</code>;
+        on Windows uses the WebView2 print controller; on Linux uses WebKitGTK's print.
+        The content sent to the printer is a clean render of your Markdown — no toolbar,
+        no sidebar, just the document.
+      </p>
+      <p>
+        <strong>Tip:</strong> from the print dialog, choose "Save as PDF" for a
+        system-quality PDF (often better layout than the built-in PDF exporter).
+      </p>
+
+      <h2>Image paste & embedding</h2>
+      <p>
+        When you paste or drag an image into SoloMD, it's saved to a
+        <code>_assets/</code> folder next to your document (if the file is saved)
+        and a relative Markdown image link is inserted:
+      </p>
+      <pre><code>![](_assets/20260423-145520.png)</code></pre>
+      <p>
+        Works with copy-from-browser, screenshots from Snipping Tool / ⌘⇧4, and
+        drag from Finder / Explorer.
+      </p>
+
+      <h2>CJK and encoding</h2>
+      <p>
+        SoloMD auto-detects UTF-8, GBK, Big5, Shift-JIS, EUC-KR, and a few others
+        when reading files. It saves in the source file's encoding by default
+        (set per-tab in the status bar), so you don't accidentally convert
+        legacy files to UTF-8.
+      </p>
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .docs-article { max-width: 820px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .docs-article h1 { font-size: 2rem; margin: 10px 0 16px; }
+  .docs-article h2 { font-size: 1.4rem; margin: 32px 0 12px; }
+  .docs-article .lead { color: var(--text-muted, #555); margin-bottom: 24px; line-height: 1.6; font-size: 1.05rem; }
+  .kb-table { width: 100%; border-collapse: collapse; margin: 14px 0 20px; font-size: 14px; }
+  .kb-table th, .kb-table td { text-align: left; padding: 9px 12px; border-bottom: 1px solid #eee; }
+  .kb-table thead th { background: #fafafa; font-weight: 600; }
+  .kb-table tbody th { font-weight: 500; width: 28%; }
+  .docs-article code { background: #f5f5f0; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+  .docs-article pre { background: #f5f5f0; padding: 12px 16px; border-radius: 6px; overflow-x: auto; }
+  .docs-article pre code { background: none; padding: 0; }
+  .docs-article p { line-height: 1.7; margin: 12px 0; }
+</style>

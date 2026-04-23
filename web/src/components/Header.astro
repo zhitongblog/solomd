@@ -24,11 +24,11 @@ const homeHref = lang === 'zh' ? '/zh/' : '/';
       <span class="header__name">SoloMD</span>
     </a>
     <nav class="header__nav">
-      <a href="#features">{tr.nav.features}</a>
-      <a href="#compare">{lang === 'zh' ? '对比' : 'Compare'}</a>
-      <a href="#download">{tr.nav.download}</a>
-      <a href="#faq">FAQ</a>
-      <a href="#sponsor">{tr.nav.sponsor}</a>
+      <a href={homeHref + '#features'}>{tr.nav.features}</a>
+      <a href={lang === 'zh' ? '/zh/compare/' : '/compare/'}>{lang === 'zh' ? '对比' : 'Compare'}</a>
+      <a href={lang === 'zh' ? '/zh/docs/' : '/docs/'}>{lang === 'zh' ? '文档' : 'Docs'}</a>
+      <a href={lang === 'zh' ? '/zh/blog/' : '/blog/'}>{lang === 'zh' ? '博客' : 'Blog'}</a>
+      <a href={homeHref + '#download'}>{tr.nav.download}</a>
       <a href="https://github.com/zhitongblog/solomd" target="_blank" rel="noopener">
         {tr.nav.github}
       </a>

@@ -1,0 +1,56 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+
+const lang = 'en' as const;
+
+const posts = [
+  {
+    slug: 'v1-1-6-file-icons-and-native-print',
+    title: 'v1.1.6 — File Icons & Native Print',
+    date: '2026-04-23',
+    lead:
+      'A proper document icon for .md files, and Print (Cmd+P) now opens the real system print dialog on all three platforms.',
+  },
+];
+---
+
+<Layout
+  title="SoloMD Blog"
+  description="Release notes, development insights, and guides from the SoloMD team."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <section class="container blog-index">
+      <h1>Blog</h1>
+      <p class="lead">Release notes, workflow guides, and the occasional build-log.</p>
+
+      <ul class="posts">
+        {posts.map((p) => (
+          <li class="post-item">
+            <a href={`/blog/${p.slug}/`}>
+              <time>{p.date}</time>
+              <h2>{p.title}</h2>
+              <p>{p.lead}</p>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .blog-index { max-width: 820px; padding: 40px 20px 80px; }
+  .blog-index h1 { font-size: 2rem; margin: 10px 0 14px; }
+  .blog-index .lead { color: var(--text-muted, #555); margin-bottom: 32px; }
+  .posts { list-style: none; padding: 0; margin: 0; }
+  .post-item a { display: block; padding: 20px 0; border-bottom: 1px solid #eee; text-decoration: none; color: inherit; }
+  .post-item time { font-size: 13px; color: var(--text-muted, #888); }
+  .post-item h2 { margin: 4px 0 6px; font-size: 1.3rem; }
+  .post-item p { margin: 0; color: var(--text-muted, #555); }
+  .post-item a:hover h2 { color: #ff9f40; }
+</style>

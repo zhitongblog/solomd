@@ -1,0 +1,118 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+
+const lang = 'en' as const;
+---
+
+<Layout
+  title="SoloMD vs MarkText — Two Free Open-Source Markdown Editors Compared"
+  description="SoloMD and MarkText are both free and open source. Side-by-side comparison of features, size, active development, and which one to choose."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main class="compare-page">
+    <article class="container compare-article">
+      <nav class="breadcrumbs">
+        <a href="/">Home</a> / <a href="/compare/">Compare</a> / <span>vs MarkText</span>
+      </nav>
+
+      <h1>SoloMD vs MarkText: Two Free Markdown Editors Compared</h1>
+      <p class="lead">
+        Both are free and open source. <strong>SoloMD</strong> is newer, smaller (15 MB vs 90 MB),
+        actively maintained in 2026, and includes features like multi-tab, split view, and CJK
+        encoding auto-detect. <strong>MarkText</strong> has a larger history but limited recent
+        commits.
+      </p>
+
+      <h2>At a glance</h2>
+      <table class="compare-detail">
+        <thead>
+          <tr><th>&nbsp;</th><th>SoloMD</th><th>MarkText</th></tr>
+        </thead>
+        <tbody>
+          <tr><th>License</th><td>MIT</td><td>MIT</td></tr>
+          <tr><th>Installer size</th><td>~15 MB</td><td>~90 MB</td></tr>
+          <tr><th>Built on</th><td>Tauri 2 + Vue 3 + CodeMirror 6</td><td>Electron + Vue 2 + Muya</td></tr>
+          <tr><th>Active development</th><td>✅ weekly releases (2026)</td><td>⚠️ sparse updates</td></tr>
+          <tr><th>Multi-tab</th><td>✅</td><td>✅</td></tr>
+          <tr><th>Split view</th><td>✅ any pane</td><td>❌</td></tr>
+          <tr><th>Live preview</th><td>✅</td><td>✅ (the core feature)</td></tr>
+          <tr><th>Source mode</th><td>✅</td><td>✅</td></tr>
+          <tr><th>File tree sidebar</th><td>✅</td><td>✅</td></tr>
+          <tr><th>Outline panel</th><td>✅ with cursor-sync highlight</td><td>✅</td></tr>
+          <tr><th>Multi-encoding</th><td>✅ UTF-8 / GBK / Big5 / etc auto-detect</td><td>⚠️ UTF-8</td></tr>
+          <tr><th>Export</th><td>HTML · PDF · DOCX · PNG · system Print</td><td>HTML · PDF</td></tr>
+          <tr><th>Vim mode</th><td>✅</td><td>❌</td></tr>
+          <tr><th>Command palette</th><td>✅ Ctrl+Shift+K</td><td>❌</td></tr>
+          <tr><th>iPad / iOS</th><td>✅ App Store</td><td>❌</td></tr>
+          <tr><th>Clean-AI button</th><td>✅ strips citations / curly quotes / zero-width</td><td>❌</td></tr>
+        </tbody>
+      </table>
+
+      <h2>When SoloMD wins</h2>
+      <ul>
+        <li>You want the smallest possible install (~15 MB vs 90 MB).</li>
+        <li>You want <strong>split view</strong> — code on one side, preview on the other, synced scroll.</li>
+        <li>You want <strong>Vim keybindings</strong>.</li>
+        <li>You work with <strong>CJK encodings</strong> (SoloMD auto-detects GBK / Big5; MarkText needs manual conversion).</li>
+        <li>You want to edit on an <strong>iPad</strong>.</li>
+        <li>You want <strong>DOCX export</strong> and rich <strong>copy-as-image</strong>.</li>
+      </ul>
+
+      <h2>When MarkText might win</h2>
+      <ul>
+        <li>You strongly prefer MarkText's specific block-based live preview rendering.</li>
+        <li>You already use it and don't want to migrate settings / themes.</li>
+      </ul>
+      <p>
+        Note: as of early 2026, MarkText's GitHub repo shows long periods between releases.
+        SoloMD ships frequent patches and actively responds to issues — something to weigh
+        if bug fixes matter to you.
+      </p>
+
+      <h2>Why SoloMD is smaller</h2>
+      <p>
+        MarkText is built on Electron — the installer bundles Chromium (~60 MB by itself).
+        SoloMD uses Tauri 2, which embeds the OS's native webview (WKWebView / WebView2 /
+        WebKitGTK). There's no Chromium to ship. The binary is the Rust core + a compact
+        Vue 3 + CodeMirror 6 bundle, totaling around 15 MB installed.
+      </p>
+
+      <h2>Compatibility</h2>
+      <p>
+        Both read and write the same Markdown flavor — CommonMark + GitHub-Flavored
+        (GFM) + KaTeX math + Mermaid diagrams + front-matter. Your files move between
+        them with no conversion.
+      </p>
+
+      <div class="compare-cta">
+        <a href="/#download" class="btn btn--primary">Download SoloMD</a>
+        <a href="/compare/" class="btn btn--secondary">All Comparisons</a>
+      </div>
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .compare-article { max-width: 820px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .compare-article h1 { font-size: 2.2rem; line-height: 1.2; margin: 10px 0 20px; }
+  .compare-article h2 { font-size: 1.55rem; margin: 36px 0 14px; }
+  .compare-article .lead { font-size: 1.1rem; color: var(--text-muted, #555); margin-bottom: 32px; }
+  .compare-detail { width: 100%; border-collapse: collapse; margin: 20px 0 28px; font-size: 14px; }
+  .compare-detail th, .compare-detail td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #eee; }
+  .compare-detail thead th { background: #fafafa; font-weight: 600; }
+  .compare-detail tbody th { font-weight: 500; width: 32%; }
+  .compare-cta { display: flex; gap: 12px; margin-top: 40px; }
+  .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  .btn--primary { background: #ff9f40; color: #000; }
+  .btn--secondary { background: #111; color: #fff; }
+  .compare-article ul { padding-left: 22px; }
+  .compare-article li { margin: 6px 0; line-height: 1.6; }
+  .compare-article p { line-height: 1.7; margin: 12px 0; }
+  .compare-article code { background: #f5f5f0; padding: 1px 6px; border-radius: 4px; font-size: 0.92em; }
+</style>
