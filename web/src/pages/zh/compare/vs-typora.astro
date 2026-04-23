@@ -1,0 +1,173 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import Header from '../../../components/Header.astro';
+import Footer from '../../../components/Footer.astro';
+
+const lang = 'zh' as const;
+---
+
+<Layout
+  title="SoloMD vs Typora —— 轻量 Markdown 编辑器对比 2026"
+  description="SoloMD 和 Typora 两款 Markdown 编辑器的详细对比：价格、体积、功能、跨平台支持，以及免费开源的意义。"
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main class="compare-page">
+    <article class="container compare-article">
+      <nav class="breadcrumbs">
+        <a href="/zh/">首页</a> / <a href="/zh/compare/">对比</a> / <span>vs Typora</span>
+      </nav>
+
+      <h1>SoloMD vs Typora：选哪个？</h1>
+      <p class="lead">
+        快速结论：想要 <strong>免费、开源、体积小</strong>（~15 MB）选 <strong>SoloMD</strong>；
+        已经习惯 <strong>Typora</strong> 的付费纯 WYSIWYG 体验、不介意 70 MB 安装包可以继续用。
+      </p>
+
+      <h2>30 秒速览</h2>
+      <table class="compare-detail">
+        <thead>
+          <tr><th>&nbsp;</th><th>SoloMD</th><th>Typora</th></tr>
+        </thead>
+        <tbody>
+          <tr><th>价格</th><td><strong>免费</strong>（MIT）</td><td>$14.99 美元（买断）</td></tr>
+          <tr><th>安装包体积</th><td>~15 MB</td><td>~70 MB</td></tr>
+          <tr><th>开源</th><td>✅ GitHub</td><td>❌ 闭源</td></tr>
+          <tr><th>支持平台</th><td>macOS · Windows · Linux · iPad</td><td>macOS · Windows · Linux</td></tr>
+          <tr><th>实时预览</th><td>✅ 可切换</td><td>✅ 默认全时</td></tr>
+          <tr><th>源码模式</th><td>✅</td><td>⚠️ 有限</td></tr>
+          <tr><th>分屏（编辑+预览）</th><td>✅</td><td>❌</td></tr>
+          <tr><th>多标签</th><td>✅</td><td>❌ 每文件独立窗口</td></tr>
+          <tr><th>KaTeX / Mermaid</th><td>✅ 内置</td><td>✅</td></tr>
+          <tr><th>导出 PDF / DOCX / HTML / PNG</th><td>✅</td><td>✅</td></tr>
+          <tr><th>多编码（GBK / Big5）</th><td>✅ 自动识别</td><td>⚠️ 仅 UTF-8</td></tr>
+          <tr><th>Vim 模式</th><td>✅</td><td>❌</td></tr>
+          <tr><th>自定义 CSS 主题</th><td>✅ 任意 .css</td><td>✅</td></tr>
+          <tr><th>技术栈</th><td>Tauri 2（Rust + webview）</td><td>Electron</td></tr>
+          <tr><th>空闲内存</th><td>~150 MB</td><td>~300 MB</td></tr>
+        </tbody>
+      </table>
+
+      <h2>选 SoloMD 的情况</h2>
+      <ul>
+        <li>想要<strong>永久免费开源</strong>，没有 license key，没有弹窗。</li>
+        <li>电脑资源紧张。Tauri 原生 webview 比 Electron 省一半内存。</li>
+        <li>编辑 CJK / 旧版文本文件，需要自动识别 GBK / Big5 / Shift-JIS 等编码。</li>
+        <li>喜欢分屏 —— 左边源码、右边实时预览，滚动同步。</li>
+        <li>想用 Vim 快捷键写 Markdown。</li>
+        <li>在 iPad 上写作（SoloMD 有 iPad App Store 版，Typora 没有）。</li>
+      </ul>
+
+      <h2>选 Typora 的情况</h2>
+      <ul>
+        <li>强烈偏好 <strong>始终开启的 WYSIWYG</strong>，不需要源码模式切换。</li>
+        <li>已经熟悉 Typora 的快捷键，不想重新学。</li>
+        <li>公式/表格需要完全所见即所得的行内渲染（SoloMD 的实时预览隐藏标记符但还没做
+          行内公式/表格渲染 —— 这在 v2 路线图上）。</li>
+      </ul>
+
+      <h2>体积和内存 —— 为什么重要</h2>
+      <p>
+        Typora 基于 Electron，每个安装都自带一份 Chromium（~70 MB）。SoloMD 用
+        Tauri 2，直接调用操作系统原生 webview（Mac 的 WKWebView、Win 的 WebView2、
+        Linux 的 WebKitGTK），二进制只有 Rust 内核 + 前端 bundle。
+        结果：**体积小 4 倍，内存省一半**。
+      </p>
+
+      <h2>功能深度</h2>
+      <h3>实时预览</h3>
+      <p>
+        两者都支持边写边渲染。Typora 总是隐藏原始标记符；SoloMD 只在光标不在的行隐藏，
+        且保留图片链接括号和行内代码反引号，让结构始终可见。
+      </p>
+
+      <h3>导出</h3>
+      <p>两者都支持 PDF、DOCX、HTML、PNG。SoloMD 额外有：</p>
+      <ul>
+        <li><strong>复制为富文本 HTML</strong> —— 带样式粘贴到微信公众号 / Notion / 语雀。</li>
+        <li><strong>系统打印对话框</strong> —— Mac 用 NSPrintOperation、Win 用 WebView2 原生。</li>
+        <li><strong>复制为图片</strong> —— 截图样式的 PNG。</li>
+      </ul>
+
+      <h3>SoloMD 独有功能</h3>
+      <ul>
+        <li>多标签（一个窗口多个文件）</li>
+        <li>分屏（拖标签到侧边分屏）</li>
+        <li>大纲面板（光标所在标题自动高亮）</li>
+        <li>文件树侧栏（打开文件夹模式）</li>
+        <li>Vim 快捷键</li>
+        <li>文件夹全局搜索（Ctrl+Shift+F）</li>
+        <li>清除 AI 格式按钮 —— 一键清掉 ChatGPT / Claude 复制过来的引用标记、弯引号、
+          零宽字符</li>
+        <li>多编码自动识别</li>
+      </ul>
+
+      <h2>两者都做得好的</h2>
+      <ul>
+        <li>KaTeX 数学（行内 <code>$a^2+b^2=c^2$</code> 和块 <code>$$...$$</code>）</li>
+        <li>Mermaid 图表</li>
+        <li>代码块语法高亮</li>
+        <li>GFM 表格、任务列表、删除线</li>
+        <li>Front-matter（YAML）</li>
+      </ul>
+
+      <h2>价格</h2>
+      <p>
+        SoloMD 免费 + MIT 许可 —— 克隆仓库自己编译，或
+        <a href="/zh/#download">下载安装包</a>，不用注册账号、不用订阅，默认不收集任何数据
+        （可选的匿名使用计数，设置里一键关闭）。
+      </p>
+      <p>Typora：$14.99 美元买断，每账号最多 3 台设备。自 v1.0（2021）起没有免费版。</p>
+
+      <h2>从 Typora 迁移到 SoloMD</h2>
+      <p>
+        你的 <code>.md</code> 文件就是纯文本；两者读同一格式，"迁移" = 装 SoloMD + 打开文件夹。注意事项：
+      </p>
+      <ul>
+        <li>Typora 特有的扩展语法 <code>==高亮==</code>、<code>^上标^</code>、<code>~下标~</code> 还没在 SoloMD 里支持。标准 CommonMark + GFM 完全兼容。</li>
+        <li>Typora 的"图片自动复制到 assets 目录"功能，SoloMD 有一样的 —— 粘贴或拖图片，自动保存到当前文档旁的 <code>./_assets/</code>。</li>
+      </ul>
+
+      <h2>FAQ</h2>
+      <h3>SoloMD 真的免费吗？</h3>
+      <p>是。MIT 许可，无广告，默认不收集遥测。源码见
+        <a href="https://github.com/zhitongblog/solomd" rel="external">GitHub</a>。</p>
+
+      <h3>公司电脑能装吗？</h3>
+      <p>能。Mac 版 Apple 公证，Windows 版 SmartScreen 刚上线可能会弹一次"未知发布者"，点
+        "更多信息 → 仍要运行"即可，用几次后自动加白名单。Linux 的 AppImage / deb / rpm
+        按发行版惯例不签名。</p>
+
+      <h3>支持 Typora 主题吗？</h3>
+      <p>主题 CSS 选择器不完全兼容，但 SoloMD 支持在「设置 → 自定义 CSS」里选任意 .css 文件覆盖默认样式。</p>
+
+      <div class="compare-cta">
+        <a href="/zh/#download" class="btn btn--primary">下载 SoloMD</a>
+        <a href="https://github.com/zhitongblog/solomd" class="btn btn--secondary" rel="external">GitHub</a>
+      </div>
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .compare-article { max-width: 820px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .compare-article h1 { font-size: 2.2rem; line-height: 1.2; margin: 10px 0 20px; }
+  .compare-article h2 { font-size: 1.55rem; margin: 36px 0 14px; }
+  .compare-article h3 { font-size: 1.15rem; margin: 24px 0 10px; }
+  .compare-article .lead { font-size: 1.1rem; color: var(--text-muted, #555); margin-bottom: 32px; }
+  .compare-detail { width: 100%; border-collapse: collapse; margin: 20px 0 28px; font-size: 14px; }
+  .compare-detail th, .compare-detail td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #eee; }
+  .compare-detail thead th { background: #fafafa; font-weight: 600; }
+  .compare-detail tbody th { font-weight: 500; width: 32%; }
+  .compare-cta { display: flex; gap: 12px; margin-top: 40px; }
+  .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  .btn--primary { background: #ff9f40; color: #000; }
+  .btn--secondary { background: #111; color: #fff; }
+  .compare-article ul { padding-left: 22px; }
+  .compare-article li { margin: 6px 0; line-height: 1.6; }
+  .compare-article p { line-height: 1.7; margin: 12px 0; }
+  .compare-article code { background: #f5f5f0; padding: 1px 6px; border-radius: 4px; font-size: 0.92em; }
+</style>

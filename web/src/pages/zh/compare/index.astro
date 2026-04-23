@@ -1,0 +1,64 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import Header from '../../../components/Header.astro';
+import Footer from '../../../components/Footer.astro';
+
+const lang = 'zh' as const;
+
+const comparisons = [
+  {
+    slug: 'vs-typora',
+    title: 'SoloMD vs Typora',
+    lead: '免费开源 vs 收费闭源 —— 两者各自强项。',
+  },
+  {
+    slug: 'vs-obsidian',
+    title: 'SoloMD vs Obsidian',
+    lead: '单文件编辑器 vs 知识图谱工具。',
+  },
+  {
+    slug: 'vs-marktext',
+    title: 'SoloMD vs MarkText',
+    lead: '两个免费开源 Markdown 编辑器的对比。',
+  },
+];
+---
+
+<Layout
+  title="Markdown 编辑器对比 —— SoloMD vs Typora / Obsidian / MarkText"
+  description="选哪个 Markdown 编辑器？SoloMD 和主流替代品的并排对比，看价格、体积、功能、平台支持。"
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <section class="container compare-index">
+      <h1>Markdown 编辑器对比</h1>
+      <p class="lead">
+        选哪个 Markdown 编辑器？这里是 SoloMD 与主流替代品的详细对比，2026 年更新。
+      </p>
+
+      <div class="compare-cards">
+        {comparisons.map((c) => (
+          <a href={`/zh/compare/${c.slug}/`} class="compare-card">
+            <h2>{c.title}</h2>
+            <p>{c.lead}</p>
+            <span class="arrow">→</span>
+          </a>
+        ))}
+      </div>
+    </section>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .compare-index { max-width: 860px; padding: 40px 20px 80px; }
+  .compare-index h1 { font-size: 2rem; margin: 10px 0 14px; }
+  .compare-index .lead { font-size: 1.05rem; color: var(--text-muted, #555); margin-bottom: 32px; }
+  .compare-cards { display: grid; grid-template-columns: 1fr; gap: 14px; }
+  .compare-card { display: block; padding: 20px 24px; border: 1px solid #e5e5e0; border-radius: 10px; text-decoration: none; color: inherit; position: relative; transition: transform 0.1s, border-color 0.1s; }
+  .compare-card:hover { transform: translateY(-2px); border-color: #ff9f40; }
+  .compare-card h2 { margin: 0 0 6px; font-size: 1.2rem; }
+  .compare-card p { margin: 0; color: var(--text-muted, #555); }
+  .compare-card .arrow { position: absolute; top: 50%; right: 24px; transform: translateY(-50%); color: #ff9f40; font-size: 1.4rem; }
+</style>

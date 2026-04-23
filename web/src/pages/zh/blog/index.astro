@@ -1,0 +1,56 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import Header from '../../../components/Header.astro';
+import Footer from '../../../components/Footer.astro';
+
+const lang = 'zh' as const;
+
+const posts = [
+  {
+    slug: 'v1-1-6-file-icons-and-native-print',
+    title: 'v1.1.6 —— 文件图标与原生打印',
+    date: '2026-04-23',
+    lead:
+      '.md 文件终于有了独立的文档图标，菜单 File → 打印 现在会弹系统原生打印对话框（三平台通用）。',
+  },
+];
+---
+
+<Layout
+  title="SoloMD 博客"
+  description="发布日志、开发笔记、使用技巧。"
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <section class="container blog-index">
+      <h1>博客</h1>
+      <p class="lead">发布日志、工作流指南、开发笔记。</p>
+
+      <ul class="posts">
+        {posts.map((p) => (
+          <li class="post-item">
+            <a href={`/zh/blog/${p.slug}/`}>
+              <time>{p.date}</time>
+              <h2>{p.title}</h2>
+              <p>{p.lead}</p>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .blog-index { max-width: 820px; padding: 40px 20px 80px; }
+  .blog-index h1 { font-size: 2rem; margin: 10px 0 14px; }
+  .blog-index .lead { color: var(--text-muted, #555); margin-bottom: 32px; }
+  .posts { list-style: none; padding: 0; margin: 0; }
+  .post-item a { display: block; padding: 20px 0; border-bottom: 1px solid #eee; text-decoration: none; color: inherit; }
+  .post-item time { font-size: 13px; color: var(--text-muted, #888); }
+  .post-item h2 { margin: 4px 0 6px; font-size: 1.3rem; }
+  .post-item p { margin: 0; color: var(--text-muted, #555); }
+  .post-item a:hover h2 { color: #ff9f40; }
+</style>

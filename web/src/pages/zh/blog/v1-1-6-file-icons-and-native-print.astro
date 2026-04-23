@@ -1,0 +1,105 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import Header from '../../../components/Header.astro';
+import Footer from '../../../components/Footer.astro';
+
+const lang = 'zh' as const;
+---
+
+<Layout
+  title="SoloMD v1.1.6 —— 文件图标与原生打印"
+  description="v1.1.6 更新内容：Mac 和 Windows 的 .md 文件图标独立设计，系统原生打印对话框（跨三平台）。"
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <article class="container blog-article">
+      <nav class="breadcrumbs">
+        <a href="/zh/">首页</a> / <a href="/zh/blog/">博客</a> / <span>v1.1.6</span>
+      </nav>
+      <time>2026-04-23</time>
+      <h1>v1.1.6 —— 文件图标与原生打印</h1>
+      <p class="lead">
+        两个看起来不大、实际花了不少功夫的功能。都随今天的 release 上线，安静地修掉了长期存在的小毛病。
+      </p>
+
+      <h2>1. 专门的文档图标</h2>
+      <p>
+        v1.1.6 之前，桌面上每个 <code>.md</code> 文件的图标和 SoloMD 主程序一模一样 ——
+        同样的黑色方块 + 橙色 #MD。一眼看过去分不清文档和应用。
+      </p>
+      <p>
+        我们画了专属的文档图标（纸张外形 + 右上折角 + #MD 水印 + 几条浅灰内容线），
+        并分别接入了两个平台的文件关联元数据。
+      </p>
+      <p>
+        在 <strong>macOS</strong> 上，需要在 <code>Info.plist</code> 的
+        <code>CFBundleDocumentTypes</code> 里加 <code>CFBundleTypeIconFile</code>，
+        把 <code>.icns</code> 复制到 <code>Contents/Resources/</code>，然后重新签名、
+        重新公证、封装 dmg。Tauri 2 的 fileAssociations 配置还没暴露 per-type icon，
+        所以这步在我们的本地 build 脚本里做。
+      </p>
+      <p>
+        在 <strong>Windows</strong> 上，我们写了一个 NSIS installer hook
+        （<code>installer.nsh</code>），安装时注册独立的 <code>SoloMD.md</code>
+        ProgID，<code>DefaultIcon</code> 指向 <code>file_icon.ico</code>，
+        并发信号让 Explorer 刷新 icon cache。
+      </p>
+
+      <h2>2. 原生系统打印对话框</h2>
+      <p>
+        文件 → 打印 之前调的是 <code>window.print()</code> —— 在 Electron 里没问题，
+        但在 Tauri 的 WKWebView（macOS）里是<strong>静默无响应</strong>的。
+        对话框不弹，也没报错。
+      </p>
+      <p>
+        解决办法：Tauri 2 在 Rust 侧暴露了 <code>WebviewWindow::print()</code>，
+        对应平台原生打印（Mac 用 NSPrintOperation、Win 用 WebView2 的 PrintAsync、
+        Linux 用 WebKitGTK print）。我们加了一个小的 <code>print_webview</code>
+        Tauri 命令，前端打印时先挂一个隐藏 overlay 里放渲染好的 Markdown HTML，
+        翻 <code>@media print</code> CSS 隐藏编辑器 UI，再调 Rust 命令。
+      </p>
+      <p>
+        现在按 Ctrl+P（Mac ⌘P）会弹系统打印对话框，显示的是干净渲染后的文档。
+        选打印机 —— 或选"存为 PDF"，通常质量比内置 PDF 导出器还好。
+      </p>
+
+      <h2>其他 1.1.6 更新</h2>
+      <ul>
+        <li>官网新增<a href="/zh/compare/">对比页</a>（vs Typora / Obsidian / MarkText）。</li>
+        <li>官网新增<a href="/zh/docs/">文档</a>（快捷键、导出）。</li>
+        <li>之前几个 patch 的修复都合并了：自定义字体输入框、窗口位置记忆、移除有问题的
+          aptabase 遥测。</li>
+      </ul>
+
+      <h2>下载</h2>
+      <p>
+        <a href="/zh/#download" class="btn btn--primary">下载 v1.1.6</a>
+      </p>
+
+      <h2>下一步</h2>
+      <p>
+        v1.2 正在排期：实时预览里的行内公式/表格完全 WYSIWYG、iPad 的更好移动布局、
+        可能还有一个一方的同步选项给那些不想订阅 Obsidian 但想多设备同步的人。
+      </p>
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .blog-article { max-width: 760px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .blog-article time { font-size: 13px; color: var(--text-muted, #888); }
+  .blog-article h1 { font-size: 2.2rem; line-height: 1.2; margin: 8px 0 18px; }
+  .blog-article h2 { font-size: 1.4rem; margin: 36px 0 12px; }
+  .blog-article .lead { color: var(--text-muted, #555); font-size: 1.1rem; line-height: 1.6; margin-bottom: 28px; }
+  .blog-article p { line-height: 1.75; margin: 14px 0; }
+  .blog-article ul { padding-left: 22px; }
+  .blog-article li { margin: 6px 0; line-height: 1.7; }
+  .blog-article code { background: #f5f5f0; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+  .blog-article a { color: #ff9f40; }
+  .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  .btn--primary { background: #ff9f40; color: #000 !important; }
+</style>

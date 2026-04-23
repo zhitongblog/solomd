@@ -1,0 +1,136 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+
+const lang = 'en' as const;
+---
+
+<Layout
+  title="Markdown Syntax Reference — SoloMD"
+  description="Every Markdown feature SoloMD supports: headings, lists, tables, code, math, Mermaid diagrams, task lists, front-matter, and more."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <article class="container docs-article">
+      <nav class="breadcrumbs">
+        <a href="/">Home</a> / <a href="/docs/">Docs</a> / <span>Markdown Syntax</span>
+      </nav>
+
+      <h1>Markdown Syntax Reference</h1>
+      <p class="lead">SoloMD supports CommonMark + GFM + a few common extensions.
+        This page is a quick reference for what works.</p>
+
+      <h2>Headings</h2>
+      <pre><code># H1
+## H2
+### H3
+#### H4</code></pre>
+
+      <h2>Emphasis</h2>
+      <pre><code>*italic* or _italic_
+**bold** or __bold__
+***bold italic***
+~~strikethrough~~
+`inline code`</code></pre>
+
+      <h2>Lists</h2>
+      <pre><code>- Unordered item
+- Another
+  - Nested
+
+1. Ordered
+2. Items
+
+- [x] Completed task
+- [ ] Pending task</code></pre>
+
+      <h2>Links and images</h2>
+      <pre><code>[Link text](https://example.com)
+[Link with title](https://example.com "Tooltip")
+
+![Alt text](path/to/image.png)
+![Alt](./_assets/screenshot.png "Caption")</code></pre>
+
+      <h2>Blockquotes</h2>
+      <pre><code>&gt; Single-line quote.
+&gt;
+&gt; Multi-paragraph quote continues.
+&gt;
+&gt; &gt; Nested quote.</code></pre>
+
+      <h2>Code blocks</h2>
+      <pre><code>```python
+def hello():
+    print("world")
+```</code></pre>
+      <p>Supported syntax highlighting: Python, JavaScript, TypeScript, Rust, Go,
+        Java, C, C++, HTML, CSS, JSON, YAML, SQL, XML, Bash, and more via
+        highlight.js.</p>
+
+      <h2>Tables</h2>
+      <pre><code>| Left | Center | Right |
+| :--- | :----: | ----: |
+| a    | b      | c     |
+| d    | e      | f     |</code></pre>
+
+      <h2>Horizontal rule</h2>
+      <pre><code>---</code></pre>
+
+      <h2>Math (KaTeX)</h2>
+      <p>Inline: <code>$a^2 + b^2 = c^2$</code></p>
+      <p>Block:</p>
+      <pre><code>$$
+\int_0^\infty e^&#123;-x^2&#125; \, dx = \frac&#123;\sqrt\pi&#125;&#123;2&#125;
+$$</code></pre>
+
+      <h2>Mermaid diagrams</h2>
+      <pre><code>```mermaid
+graph TD
+  A[Start] --&gt; B&#123;Decision&#125;
+  B --&gt;|Yes| C[Done]
+  B --&gt;|No|  D[Retry]
+```</code></pre>
+      <p>Also supports sequence, class, state, ER, flowchart, gantt, pie, and
+        more Mermaid diagram types.</p>
+
+      <h2>Front-matter</h2>
+      <p>SoloMD recognizes YAML front-matter at the top of a file (it's hidden
+        from the rendered preview):</p>
+      <pre><code>---
+title: My Article
+date: 2026-04-24
+tags: [markdown, notes]
+---
+
+# Content starts here</code></pre>
+
+      <h2>Not supported (yet)</h2>
+      <ul>
+        <li>Obsidian-style <code>[[wikilinks]]</code>, callouts
+          (<code>{'> [!note]'}</code>), and embedded queries — render as plain text.</li>
+        <li>Typora-style <code>==highlight==</code>, <code>^superscript^</code>,
+          <code>~subscript~</code> — not parsed.</li>
+        <li>HTML inside markdown works but is sanitized for security when
+          exporting.</li>
+      </ul>
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .docs-article { max-width: 820px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .docs-article h1 { font-size: 2rem; margin: 10px 0 16px; }
+  .docs-article h2 { font-size: 1.35rem; margin: 32px 0 10px; }
+  .docs-article .lead { color: var(--text-muted, #555); margin-bottom: 24px; line-height: 1.7; font-size: 1.05rem; }
+  .docs-article code { background: #f5f5f0; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+  .docs-article pre { background: #f5f5f0; padding: 12px 16px; border-radius: 6px; overflow-x: auto; font-size: 14px; }
+  .docs-article pre code { background: none; padding: 0; }
+  .docs-article p { line-height: 1.7; margin: 12px 0; }
+  .docs-article ul { padding-left: 22px; }
+  .docs-article li { margin: 6px 0; line-height: 1.7; }
+</style>
