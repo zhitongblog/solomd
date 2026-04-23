@@ -91,15 +91,18 @@ const fontFamilies = [
   { label: 'Source Han Serif', value: 'Source Han Serif SC' },
 ];
 const fontFamilyPresetValues = new Set(fontFamilies.map((f) => f.value));
+// Track custom-mode independently of settings.fontFamily so selecting
+// "自定义…" reveals the input even before user types anything.
+const inCustomMode = ref(!fontFamilyPresetValues.has(settings.fontFamily));
 const customFontFamily = ref(
-  fontFamilyPresetValues.has(settings.fontFamily) ? '' : settings.fontFamily
+  inCustomMode.value ? settings.fontFamily : ''
 );
 function onSelectFontFamily(v: string) {
   if (v === '__custom__') {
-    // Switch UI into custom mode. Keep existing custom value or start empty.
-    if (!customFontFamily.value) customFontFamily.value = settings.fontFamily;
+    inCustomMode.value = true;
     return;
   }
+  inCustomMode.value = false;
   customFontFamily.value = '';
   settings.setFontFamily(v);
 }
@@ -108,7 +111,7 @@ function onCustomFontInput(v: string) {
   if (v.trim()) settings.setFontFamily(v.trim());
 }
 const fontFamilySelectValue = computed(() =>
-  fontFamilyPresetValues.has(settings.fontFamily) ? settings.fontFamily : '__custom__'
+  inCustomMode.value ? '__custom__' : settings.fontFamily
 );
 </script>
 
