@@ -396,36 +396,27 @@ mark {
   color: var(--accent);
 }
 
-/* Print: only show the preview pane content */
+/* Print: hide the app shell and show the #solomd-print-overlay instead. */
 @media print {
-  .toolbar,
-  .tabbar,
-  .statusbar,
-  .ftree,
-  .outline,
-  .pane--editor {
+  body.solomd-printing #app {
     display: none !important;
   }
-  .preview-host,
-  .pane--preview {
-    border: none !important;
-    overflow: visible !important;
-    height: auto !important;
+  body.solomd-printing #solomd-print-overlay {
+    display: block !important;
+    position: static !important;
   }
-  body,
-  html,
-  #app,
-  .app,
-  .workspace,
-  .content {
-    height: auto !important;
-    overflow: visible !important;
-    background: white !important;
-    color: black !important;
-  }
-  .preview-content {
-    max-width: none !important;
-    padding: 0 !important;
-    color: black !important;
-  }
+}
+/* On-screen the overlay must be invisible — @media print flips it. */
+#solomd-print-overlay {
+  display: none;
+}
+body.solomd-printing {
+  background: white !important;
+  color: black !important;
+}
+.solomd-print-content {
+  max-width: none !important;
+  padding: 0 !important;
+  color: black !important;
+  font-family: var(--font-ui, sans-serif);
 }

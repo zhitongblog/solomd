@@ -83,6 +83,17 @@ pub fn write_binary_file(path: String, data: Vec<u8>) -> Result<(), String> {
     fs::write(&path, &data).map_err(|e| format!("write failed: {e}"))
 }
 
+/// Trigger the OS native print dialog for the given webview window. The
+/// frontend should first mount a print-friendly overlay so only the rendered
+/// markdown (not the editor UI) is included in the print.
+///
+/// Why here instead of `window.print()` in JS? WKWebView on macOS silently
+/// no-ops `window.print()`, so the native call is the only way.
+#[tauri::command]
+pub fn print_webview(window: tauri::WebviewWindow) -> Result<(), String> {
+    window.print().map_err(|e| format!("print failed: {e}"))
+}
+
 /// Copy a file from `src` to `dst`, creating parent dirs as needed.
 /// Used by image drag-drop to bring an OS file into the document's
 /// `_assets/` folder without round-tripping bytes through JavaScript.

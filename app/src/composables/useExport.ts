@@ -270,55 +270,48 @@ export function useExport() {
   /**
    * Open the system print dialog with the rendered markdown.
    * Builds a hidden iframe with the same HTML template used for export,
-   * so Print works regardless of current view mode (edit / split / preview).
+   * Print: mount a print-only overlay with the rendered markdown, then ask
+   * Tauri (Rust side) to open the native print dialog. @media print CSS
+   * hides the app shell so only our overlay prints cleanly.
+   *
+   * Why Rust? WKWebView's window.print() is silently no-op in Tauri 2 on
+   * macOS. Tauri's Rust-side `WebviewWindow::print()` routes to the platform
+   * native print (NSPrintOperation on macOS, WebView2 PrintAsync on Windows,
+   * WebKitGTK print on Linux).
    */
-  function exportPdfPrint() {
+  async function exportPdfPrint() {
     track('file_exported', { format: 'pdf_print' });
     const ctx = activeOr();
     if (!ctx) return;
-    const html = HTML_TEMPLATE(ctx.baseName, renderMarkdown(ctx.content));
 
-    const iframe = document.createElement('iframe');
-    iframe.style.cssText =
-      'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
-    document.body.appendChild(iframe);
+    const body = renderMarkdown(ctx.content);
+
+    let overlay = document.getElementById('solomd-print-overlay') as HTMLDivElement | null;
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'solomd-print-overlay';
+      document.body.appendChild(overlay);
+    }
+    overlay.innerHTML = `<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<div class="solomd-print-content preview-content">${body}</div>`;
+    document.body.classList.add('solomd-printing');
 
     const cleanup = () => {
-      try {
-        document.body.removeChild(iframe);
-      } catch {}
+      document.body.classList.remove('solomd-printing');
+      overlay?.remove();
     };
 
-    iframe.onload = () => {
-      const cw = iframe.contentWindow;
-      if (!cw) {
-        cleanup();
-        toasts.error('Print: failed to prepare document');
-        return;
-      }
-      // Wait a tick so KaTeX / Mermaid / images finish rendering before print.
-      setTimeout(() => {
-        try {
-          cw.focus();
-          cw.print();
-        } catch (e) {
-          console.error(e);
-          toasts.error(`Print failed: ${e}`);
-        }
-        // Remove iframe after a delay — some browsers finalize print asynchronously.
-        setTimeout(cleanup, 1000);
-      }, 300);
-    };
-
-    // Write after setting onload so load event always fires.
-    const doc = iframe.contentDocument;
-    if (doc) {
-      doc.open();
-      doc.write(html);
-      doc.close();
-    } else {
-      cleanup();
-      toasts.error('Print: failed to create document');
+    // Give KaTeX / images a tick to apply layout before print.
+    await new Promise((r) => setTimeout(r, 200));
+    try {
+      await invoke('print_webview');
+    } catch (e) {
+      console.error('[print] failed', e);
+      toasts.error(`Print failed: ${e}`);
+    } finally {
+      // The native print sheet is modal; by the time invoke resolves,
+      // the user has already dismissed it. Safe to tear down now.
+      setTimeout(cleanup, 100);
     }
   }
 

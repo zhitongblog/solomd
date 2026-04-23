@@ -303,6 +303,7 @@ pub fn run_with(initial_file: Option<String>) {
             commands::read_file,
             commands::write_file,
             commands::write_binary_file,
+            commands::print_webview,
             commands::copy_file,
             commands::list_dir,
             search::search_in_dir,
