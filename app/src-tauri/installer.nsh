@@ -7,13 +7,24 @@
   ; SoloMD ProgID for markdown files
   WriteRegStr SHCTX "Software\Classes\SoloMD.md" "" "Markdown Document"
   WriteRegStr SHCTX "Software\Classes\SoloMD.md\DefaultIcon" "" "$INSTDIR\resources\icons\file_icon.ico,0"
+  WriteRegStr SHCTX "Software\Classes\SoloMD.md\shell" "" "open"
+  WriteRegStr SHCTX "Software\Classes\SoloMD.md\shell\open" "" "Open with SoloMD"
   WriteRegStr SHCTX "Software\Classes\SoloMD.md\shell\open\command" "" '"$INSTDIR\SoloMD.exe" "%1"'
+
+  ; Make SoloMD.md the DEFAULT handler for each markdown extension so the
+  ; file icon actually shows in Explorer. Also add to OpenWithProgids as
+  ; a fallback for cases where another default is already set.
+  WriteRegStr SHCTX "Software\Classes\.md" "" "SoloMD.md"
   WriteRegStr SHCTX "Software\Classes\.md\OpenWithProgids" "SoloMD.md" ""
+  WriteRegStr SHCTX "Software\Classes\.markdown" "" "SoloMD.md"
   WriteRegStr SHCTX "Software\Classes\.markdown\OpenWithProgids" "SoloMD.md" ""
+  WriteRegStr SHCTX "Software\Classes\.mdown" "" "SoloMD.md"
   WriteRegStr SHCTX "Software\Classes\.mdown\OpenWithProgids" "SoloMD.md" ""
+  WriteRegStr SHCTX "Software\Classes\.mkd" "" "SoloMD.md"
   WriteRegStr SHCTX "Software\Classes\.mkd\OpenWithProgids" "SoloMD.md" ""
 
-  ; SoloMD ProgID for plain text files
+  ; SoloMD ProgID for plain text files — only set OpenWithProgids (don't
+  ; hijack .txt default since Notepad is user-expected there).
   WriteRegStr SHCTX "Software\Classes\SoloMD.txt" "" "Plain Text"
   WriteRegStr SHCTX "Software\Classes\SoloMD.txt\DefaultIcon" "" "$INSTDIR\resources\icons\file_icon.ico,0"
   WriteRegStr SHCTX "Software\Classes\SoloMD.txt\shell\open\command" "" '"$INSTDIR\SoloMD.exe" "%1"'
