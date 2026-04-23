@@ -5,6 +5,7 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow, LogicalSize, LogicalPosition } from '@tauri-apps/api/window';
 import Toolbar from './components/Toolbar.vue';
+import TelemetryBanner from './components/TelemetryBanner.vue';
 import TileRoot from './components/TileRoot.vue';
 import StatusBar from './components/StatusBar.vue';
 import CommandPalette from './components/CommandPalette.vue';
@@ -24,6 +25,7 @@ import { useShortcuts } from './composables/useShortcuts';
 import { loadCustomTheme } from './lib/custom-theme';
 import { isIOS } from './lib/platform';
 import { useI18n } from './i18n';
+import { track } from './lib/telemetry';
 
 const tabs = useTabsStore();
 const settings = useSettingsStore();
@@ -264,6 +266,12 @@ onMounted(async () => {
   window.addEventListener('solomd:open-help', onOpenHelpEvent as EventListener);
   window.addEventListener('solomd:open-global-search', onOpenSearchEvent as EventListener);
 
+  track('app_launched', {
+    locale: settings.language,
+    theme: settings.theme,
+    live_preview: settings.livePreview ? 1 : 0,
+  });
+
   await restoreWindowSize();
 
   if (!isIOS()) {
@@ -394,6 +402,7 @@ const showOutlinePane = computed(
       @open-help="helpOpen = true"
       @open-search="searchOpen = true"
     />
+    <TelemetryBanner />
     <div class="workspace">
       <FileTree v-if="settings.showFileTree" />
       <Outline v-if="showOutlinePane" :cursor-line="cursorLine" @goto="onOutlineGoto" />

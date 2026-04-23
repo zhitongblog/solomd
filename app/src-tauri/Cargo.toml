@@ -39,6 +39,7 @@ encoding_rs = "0.8.35"
 tauri-plugin-dialog = "2.7.0"
 tauri-plugin-clipboard-manager = "2.3.2"
 walkdir = "2.5.0"
+tauri-plugin-aptabase = "1.0.0"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-window-state = "2"

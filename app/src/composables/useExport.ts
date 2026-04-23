@@ -8,6 +8,7 @@ import { markdownToImageBlob } from '../lib/image-export';
 import { renderMarkdown } from '../lib/markdown';
 import { useTabsStore } from '../stores/tabs';
 import { useToastsStore } from '../stores/toasts';
+import { track } from '../lib/telemetry';
 
 const HTML_TEMPLATE = (title: string, body: string) => `<!doctype html>
 <html lang="en">
@@ -199,6 +200,7 @@ export function useExport() {
   }
 
   async function exportHtml() {
+    track('file_exported', { format: 'html' });
     const ctx = activeOr();
     if (!ctx) return;
     const path = await saveDialog({
@@ -216,6 +218,7 @@ export function useExport() {
   }
 
   async function exportDocx() {
+    track('file_exported', { format: 'docx' });
     const ctx = activeOr();
     if (!ctx) return;
     const path = await saveDialog({
@@ -237,6 +240,7 @@ export function useExport() {
 
   /** Native-feel PDF export: build a real .pdf file via html2pdf.js. */
   async function exportPdf() {
+    track('file_exported', { format: 'pdf' });
     const ctx = activeOr();
     if (!ctx) return;
     const path = await saveDialog({
@@ -260,6 +264,7 @@ export function useExport() {
 
   /** Fallback: open the system print dialog (still useful as backup). */
   function exportPdfPrint() {
+    track('file_exported', { format: 'pdf_print' });
     document.body.classList.add('printing');
     window.print();
     setTimeout(() => document.body.classList.remove('printing'), 500);
@@ -308,6 +313,7 @@ export function useExport() {
 
   /** Export as PNG image (renders preview, captures with html2canvas). */
   async function exportImage() {
+    track('file_exported', { format: 'image' });
     const ctx = activeOr();
     if (!ctx) return;
     const path = await saveDialog({

@@ -118,6 +118,13 @@ export const en = {
     checkingUpdate: 'Checking…',
     updateAvailable: 'New version {version} available',
     upToDate: 'You are up to date',
+    telemetry: 'Send anonymous usage data',
+    telemetryHint:
+      'Helps improve SoloMD. No IP address, no file contents, no personal information.',
+    telemetryNotice:
+      'SoloMD collects anonymous usage data (feature usage, version, OS) to help improve the product. No IP address, file contents, or personal information. You can disable this any time in settings.',
+    telemetryNoticeOk: 'Got it',
+    telemetryNoticeDisable: 'Disable now',
   },
   unsaved: {
     title: 'Unsaved Changes',

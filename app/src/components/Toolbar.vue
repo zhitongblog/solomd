@@ -5,6 +5,7 @@ import { useTabsStore } from '../stores/tabs';
 import { useSettingsStore } from '../stores/settings';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useTilesStore } from '../stores/tiles';
+import { track } from '../lib/telemetry';
 import { useFiles } from '../composables/useFiles';
 import { useExport } from '../composables/useExport';
 import { useToastsStore } from '../stores/toasts';
@@ -326,7 +327,7 @@ onBeforeUnmount(() => {
     <div class="toolbar__group" v-if="isMarkdown">
       <button
         class="icon-btn"
-        @click="settings.setViewMode('edit')"
+        @click="() => { settings.setViewMode('edit'); track('view_mode', { mode: 'edit' }); }"
         :class="{ active: settings.viewMode === 'edit' }"
         :title="t('toolbar.editOnly')"
       >
@@ -334,7 +335,7 @@ onBeforeUnmount(() => {
       </button>
       <button
         class="icon-btn"
-        @click="settings.setViewMode('split')"
+        @click="() => { settings.setViewMode('split'); track('view_mode', { mode: 'split' }); }"
         :class="{ active: settings.viewMode === 'split' }"
         :title="t('toolbar.splitPane')"
       >
@@ -342,7 +343,7 @@ onBeforeUnmount(() => {
       </button>
       <button
         class="icon-btn"
-        @click="settings.setViewMode('preview')"
+        @click="() => { settings.setViewMode('preview'); track('view_mode', { mode: 'preview' }); }"
         :class="{ active: settings.viewMode === 'preview' }"
         :title="t('toolbar.previewOnly')"
       >
@@ -352,7 +353,7 @@ onBeforeUnmount(() => {
       <button
         v-if="settings.viewMode !== 'preview'"
         class="icon-btn"
-        @click="settings.toggleLivePreview"
+        @click="() => { settings.toggleLivePreview(); track('live_preview_toggled', { on: settings.livePreview ? 1 : 0 }); }"
         :class="{ active: settings.livePreview }"
         :title="settings.livePreview ? t('toolbar.livePreviewOn') : t('toolbar.livePreviewOff')"
       >
@@ -411,7 +412,7 @@ onBeforeUnmount(() => {
       </button>
       <button
         class="icon-btn"
-        @click="settings.toggleTheme"
+        @click="() => { settings.toggleTheme(); track('theme_changed', { theme: settings.theme }); }"
         :title="settings.theme === 'dark' ? t('toolbar.lightMode') : t('toolbar.darkMode')"
       >
         <Icon :name="settings.theme === 'dark' ? 'theme-light' : 'theme-dark'" />

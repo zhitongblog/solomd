@@ -42,6 +42,10 @@ interface Settings {
   previewFitWidth: boolean;
   // Custom CSS theme override (path to a .css file on disk)
   customCssPath: string;
+  // Anonymous telemetry (Aptabase). Defaults true but user can opt out.
+  telemetryEnabled: boolean;
+  // First-run banner dismissal. Shown once, never again.
+  telemetryNoticeAck: boolean;
 }
 
 function defaults(): Settings {
@@ -74,6 +78,8 @@ function defaults(): Settings {
     })() as 'en' | 'zh',
     previewFitWidth: false,
     customCssPath: '',
+    telemetryEnabled: true,
+    telemetryNoticeAck: false,
   };
 }
 
@@ -155,6 +161,14 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleAutoCheckUpdate() {
       this.autoCheckUpdate = !this.autoCheckUpdate;
+      this.persist();
+    },
+    toggleTelemetry() {
+      this.telemetryEnabled = !this.telemetryEnabled;
+      this.persist();
+    },
+    ackTelemetryNotice() {
+      this.telemetryNoticeAck = true;
       this.persist();
     },
     setUiFontSize(n: number) {

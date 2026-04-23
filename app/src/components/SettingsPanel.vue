@@ -262,6 +262,16 @@ const fontFamilySelectValue = computed(() =>
         </section>
 
         <section>
+          <label>
+            <input type="checkbox" :checked="settings.telemetryEnabled" @change="settings.toggleTelemetry()" />
+            {{ t('settings.telemetry') }}
+          </label>
+          <div style="font-size: 11px; color: var(--text-faint); margin-top: 4px; line-height: 1.5;">
+            {{ t('settings.telemetryHint') }}
+          </div>
+        </section>
+
+        <section>
           <label>{{ t('settings.customCss') }}</label>
           <div class="row" style="gap: 8px; align-items: center;">
             <button @click="pickCustomCss">{{ t('settings.pickCss') }}</button>
