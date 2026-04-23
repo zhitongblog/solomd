@@ -1,0 +1,65 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+
+const lang = 'en' as const;
+
+const comparisons = [
+  {
+    slug: 'vs-typora',
+    title: 'SoloMD vs Typora',
+    lead: 'Free open-source vs paid closed-source — when each one wins.',
+  },
+  {
+    slug: 'vs-obsidian',
+    title: 'SoloMD vs Obsidian',
+    lead: 'Single-file simplicity vs knowledge-graph power.',
+  },
+  {
+    slug: 'vs-marktext',
+    title: 'SoloMD vs MarkText',
+    lead: 'Two free open-source editors compared feature-by-feature.',
+  },
+];
+---
+
+<Layout
+  title="Markdown Editor Comparison — SoloMD vs Typora, Obsidian, MarkText"
+  description="Compare popular Markdown editors side by side. Pick the right tool based on price, install size, platform support, and feature depth."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <section class="container compare-index">
+      <h1>Markdown Editor Comparisons</h1>
+      <p class="lead">
+        Choosing the right Markdown editor? Here are side-by-side comparisons of
+        SoloMD against the most popular alternatives, updated for 2026.
+      </p>
+
+      <div class="compare-cards">
+        {comparisons.map((c) => (
+          <a href={`/compare/${c.slug}`} class="compare-card">
+            <h2>{c.title}</h2>
+            <p>{c.lead}</p>
+            <span class="arrow">→</span>
+          </a>
+        ))}
+      </div>
+    </section>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .compare-index { max-width: 860px; padding: 40px 20px 80px; }
+  .compare-index h1 { font-size: 2rem; margin: 10px 0 14px; }
+  .compare-index .lead { font-size: 1.05rem; color: var(--text-muted, #555); margin-bottom: 32px; }
+  .compare-cards { display: grid; grid-template-columns: 1fr; gap: 14px; }
+  .compare-card { display: block; padding: 20px 24px; border: 1px solid #e5e5e0; border-radius: 10px; text-decoration: none; color: inherit; position: relative; transition: transform 0.1s, border-color 0.1s; }
+  .compare-card:hover { transform: translateY(-2px); border-color: #ff9f40; }
+  .compare-card h2 { margin: 0 0 6px; font-size: 1.2rem; }
+  .compare-card p { margin: 0; color: var(--text-muted, #555); }
+  .compare-card .arrow { position: absolute; top: 50%; right: 24px; transform: translateY(-50%); color: #ff9f40; font-size: 1.4rem; }
+</style>

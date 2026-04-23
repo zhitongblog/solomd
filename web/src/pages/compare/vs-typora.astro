@@ -1,0 +1,187 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+
+const lang = 'en' as const;
+---
+
+<Layout
+  title="SoloMD vs Typora — Lightweight Markdown Editor Comparison 2026"
+  description="Detailed side-by-side comparison of SoloMD and Typora Markdown editors. Price, size, features, cross-platform support, and why free-and-open-source matters."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main class="compare-page">
+    <article class="container compare-article">
+      <nav class="breadcrumbs">
+        <a href="/">Home</a> / <a href="/compare">Compare</a> / <span>vs Typora</span>
+      </nav>
+
+      <h1>SoloMD vs Typora: Which Markdown Editor Should You Use?</h1>
+      <p class="lead">
+        Quick answer: <strong>SoloMD</strong> if you want a free, open-source,
+        tiny (~15 MB) editor. <strong>Typora</strong> if you prefer a mature,
+        paid, WYSIWYG-only experience and don't mind a ~70 MB install.
+      </p>
+
+      <h2>The 30-second verdict</h2>
+      <table class="compare-detail">
+        <thead>
+          <tr><th>&nbsp;</th><th>SoloMD</th><th>Typora</th></tr>
+        </thead>
+        <tbody>
+          <tr><th>Price</th><td><strong>Free</strong> (MIT)</td><td>$14.99 USD (one-time)</td></tr>
+          <tr><th>Installer size</th><td>~15 MB</td><td>~70 MB</td></tr>
+          <tr><th>Open source</th><td>✅ on GitHub</td><td>❌ closed source</td></tr>
+          <tr><th>Platforms</th><td>macOS · Windows · Linux · iPad</td><td>macOS · Windows · Linux</td></tr>
+          <tr><th>Live preview</th><td>✅ toggleable</td><td>✅ always on</td></tr>
+          <tr><th>Raw source mode</th><td>✅</td><td>⚠️ limited</td></tr>
+          <tr><th>Split view (edit + preview)</th><td>✅</td><td>❌</td></tr>
+          <tr><th>Multi-tab</th><td>✅</td><td>❌ one window per file</td></tr>
+          <tr><th>KaTeX / Mermaid</th><td>✅ bundled</td><td>✅</td></tr>
+          <tr><th>Export PDF / DOCX / HTML / PNG</th><td>✅</td><td>✅</td></tr>
+          <tr><th>Multi-encoding (GBK / Big5)</th><td>✅ auto-detect</td><td>⚠️ UTF-8 only</td></tr>
+          <tr><th>Vim mode</th><td>✅</td><td>❌</td></tr>
+          <tr><th>Custom CSS theme</th><td>✅ pick any .css</td><td>✅</td></tr>
+          <tr><th>Built on</th><td>Tauri 2 (Rust + webview)</td><td>Electron</td></tr>
+          <tr><th>RAM at idle</th><td>~150 MB</td><td>~300 MB</td></tr>
+        </tbody>
+      </table>
+
+      <h2>When to pick SoloMD</h2>
+      <ul>
+        <li>You want <strong>open source and free forever</strong> — no licence key, no nag screen.</li>
+        <li>Your machine is tight on resources. Tauri's native webview uses half the RAM of Electron.</li>
+        <li>You work with CJK / legacy text files and need auto-detection of GBK / Big5 / Shift-JIS.</li>
+        <li>You like split view — code on the left, live preview on the right, synced scroll.</li>
+        <li>You want Vim keybindings in a Markdown editor.</li>
+        <li>You edit on an iPad (SoloMD ships on the iPad App Store, Typora doesn't).</li>
+      </ul>
+
+      <h2>When to pick Typora</h2>
+      <ul>
+        <li>You strongly prefer <strong>always-on WYSIWYG</strong> with no "raw source" fallback needed.</li>
+        <li>You're already used to Typora's specific shortcut set and don't want to retrain.</li>
+        <li>You want the most polished WYSIWYG rendering of tables and formulas inline-in-editor
+          (SoloMD's live preview hides markers but doesn't yet render formulas/tables inline — that's
+          on the v2 roadmap).</li>
+      </ul>
+
+      <h2>Install size & memory — why it matters</h2>
+      <p>
+        Typora is built on Electron, which means every install ships its own copy of
+        Chromium (~70 MB). SoloMD uses Tauri 2, which embeds the OS's native webview
+        (WKWebView on Mac, WebView2 on Win, WebKitGTK on Linux), so the binary is
+        just the Rust core + your Vue/TS bundle. The result: **~4× smaller install,
+        ~2× less RAM** in typical use.
+      </p>
+
+      <h2>Feature depth</h2>
+      <h3>Live preview</h3>
+      <p>
+        Both editors render Markdown inline as you type. Typora hides the raw markers
+        always; SoloMD hides them only on lines that don't touch the cursor, and keeps
+        image link brackets + inline code backticks visible so you always see structure.
+      </p>
+
+      <h3>Export</h3>
+      <p>
+        Both support PDF, DOCX, HTML, and PNG. SoloMD adds:
+      </p>
+      <ul>
+        <li><strong>Copy as rich HTML</strong> — paste styled into WeChat / 公众号 / Notion / Confluence.</li>
+        <li><strong>Print via system dialog</strong> — uses native NSPrintOperation (macOS) / WebView2 (Win).</li>
+        <li><strong>Copy as image</strong> — screenshot-style PNG of the rendered markdown.</li>
+      </ul>
+
+      <h3>Editor features SoloMD has that Typora doesn't</h3>
+      <ul>
+        <li>Tabs (multiple files in one window)</li>
+        <li>Split panes (drag a tab to split horizontally)</li>
+        <li>Outline panel with cursor-synced heading highlight</li>
+        <li>File tree sidebar for folder mode</li>
+        <li>Vim keybindings</li>
+        <li>Global search across a folder (Ctrl+Shift+F)</li>
+        <li>Clean-AI button — strips citations / curly quotes / zero-width chars from pasted ChatGPT / Claude output</li>
+        <li>Encoding auto-detection for legacy Chinese/Japanese files</li>
+      </ul>
+
+      <h2>Both editors do well</h2>
+      <ul>
+        <li>KaTeX math (inline <code>$a^2+b^2=c^2$</code> and block <code>$$...$$</code>)</li>
+        <li>Mermaid diagrams</li>
+        <li>Syntax-highlighted code fences</li>
+        <li>GFM tables, task lists, strikethrough</li>
+        <li>Front-matter (YAML)</li>
+      </ul>
+
+      <h2>Pricing</h2>
+      <p>
+        SoloMD is free and MIT-licensed — clone the repo, build yourself if you like, or
+        <a href="/#download">download the installer</a>. No account, no subscription,
+        no data collection beyond an optional anonymous usage counter (off with one click).
+      </p>
+      <p>
+        Typora is $14.99 USD one-time per user, up to 3 devices. There's no free tier
+        since v1.0 (2021).
+      </p>
+
+      <h2>Migration — Typora to SoloMD</h2>
+      <p>
+        Your <code>.md</code> files are just text; both editors read the same format, so
+        "migration" means installing SoloMD and opening your folder. Caveats:
+      </p>
+      <ul>
+        <li>Typora-specific extensions like <code>==highlight==</code>,
+          <code>^superscript^</code>, and <code>~subscript~</code> aren't in SoloMD yet.
+          Standard CommonMark + GFM works 100%.</li>
+        <li>If you used Typora's "image copy to assets folder" feature, SoloMD has the
+          same thing — paste or drop an image and it's saved to <code>./_assets/</code>
+          next to the document.</li>
+      </ul>
+
+      <h2>FAQ</h2>
+      <h3>Is SoloMD really free?</h3>
+      <p>Yes. MIT license, no ads, no telemetry by default. Source on
+        <a href="https://github.com/zhitongblog/solomd" rel="external">GitHub</a>.</p>
+
+      <h3>Can I use SoloMD on work computers?</h3>
+      <p>Yes — Mac build is notarized, Windows installer is EV-signed-adjacent
+        (Microsoft SmartScreen only flags new publishers briefly until reputation builds).
+        Linux AppImage / deb / rpm all ship unsigned per distro convention.</p>
+
+      <h3>Does SoloMD support Typora themes?</h3>
+      <p>Not out-of-the-box (different CSS selectors), but you can paste any CSS file
+        via Settings → Custom CSS and override most styles.</p>
+
+      <div class="compare-cta">
+        <a href="/#download" class="btn btn--primary">Download SoloMD</a>
+        <a href="https://github.com/zhitongblog/solomd" class="btn btn--secondary" rel="external">View on GitHub</a>
+      </div>
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .compare-article { max-width: 820px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .compare-article h1 { font-size: 2.2rem; line-height: 1.2; margin: 10px 0 20px; }
+  .compare-article h2 { font-size: 1.55rem; margin: 36px 0 14px; }
+  .compare-article h3 { font-size: 1.15rem; margin: 24px 0 10px; }
+  .compare-article .lead { font-size: 1.1rem; color: var(--text-muted, #555); margin-bottom: 32px; }
+  .compare-detail { width: 100%; border-collapse: collapse; margin: 20px 0 28px; font-size: 14px; }
+  .compare-detail th, .compare-detail td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #eee; }
+  .compare-detail thead th { background: #fafafa; font-weight: 600; }
+  .compare-detail tbody th { font-weight: 500; width: 32%; }
+  .compare-cta { display: flex; gap: 12px; margin-top: 40px; }
+  .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  .btn--primary { background: #ff9f40; color: #000; }
+  .btn--secondary { background: #111; color: #fff; }
+  .compare-article ul { padding-left: 22px; }
+  .compare-article li { margin: 6px 0; line-height: 1.6; }
+  .compare-article p { line-height: 1.7; margin: 12px 0; }
+  .compare-article code { background: #f5f5f0; padding: 1px 6px; border-radius: 4px; font-size: 0.92em; }
+</style>
