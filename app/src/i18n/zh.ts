@@ -69,6 +69,8 @@ export const zh: I18n = {
     outline: '大纲',
     fileTree: '文件树',
     search: '搜索',
+    previewSearchPlaceholder: '在预览中查找…',
+    noResults: '无匹配结果',
     edit: '编辑',
     split: '分栏',
     preview: '预览',
