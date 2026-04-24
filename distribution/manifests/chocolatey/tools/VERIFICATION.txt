@@ -5,14 +5,14 @@ in verifying that this package's contents are trustworthy.
 
 Package Source:
 The installer is downloaded directly from the official GitHub releases page:
-https://github.com/zhitongblog/solomd/releases/download/v1.1.6/SoloMD_1.1.6_x64-setup.exe
+https://github.com/zhitongblog/solomd/releases/download/v1.2.1/SoloMD_1.2.1_x64-setup.exe
 
 Verification Steps:
 1. Download the installer from the URL above
 2. Calculate the SHA256 hash using:
-   - PowerShell: Get-FileHash SoloMD_1.1.6_x64-setup.exe -Algorithm SHA256
+   - PowerShell: Get-FileHash SoloMD_1.2.1_x64-setup.exe -Algorithm SHA256
    - Or any other SHA256 tool
-3. Verify the hash matches: b20f6f19957f22f1ca3e42ae96b795b2e0fb898c53acab46d45dcf130d75668d
+3. Verify the hash matches: 7177315e349e0a7ea7c0f1a405141e8cad3861da9164d156daf1d2004f84b1dc
 
 License:
 MIT License - https://github.com/zhitongblog/solomd/blob/main/LICENSE

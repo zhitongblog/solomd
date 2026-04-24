@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
   <metadata>
     <id>solomd</id>
-    <version>1.1.6</version>
+    <version>1.2.1</version>
     <title>SoloMD</title>
     <authors>xiangdong li</authors>
     <owners>zhitongblog</owners>
@@ -27,7 +27,7 @@ SoloMD is a lightweight, cross-platform Markdown + plain text editor built with 
 One file. One window. Just write.
     </description>
     <summary>A lightweight Markdown editor with live preview</summary>
-    <releaseNotes>https://github.com/zhitongblog/solomd/releases/tag/v1.1.6</releaseNotes>
+    <releaseNotes>https://github.com/zhitongblog/solomd/releases/tag/v1.2.1</releaseNotes>
     <copyright>Copyright 2024 xiangdong li</copyright>
     <tags>markdown editor text-editor tauri wysiwyg writing notes</tags>
     <projectSourceUrl>https://github.com/zhitongblog/solomd</projectSourceUrl>
