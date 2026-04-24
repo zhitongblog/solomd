@@ -375,6 +375,7 @@ onBeforeUnmount(() => {
     <div class="toolbar__group">
       <button
         class="icon-btn"
+        :disabled="settings.viewMode === 'preview'"
         @click="settings.toggleFocusMode"
         :class="{ active: settings.focusMode }"
         :title="t('toolbar.focusModeTooltip')"
@@ -383,6 +384,7 @@ onBeforeUnmount(() => {
       </button>
       <button
         class="icon-btn"
+        :disabled="settings.viewMode === 'preview'"
         @click="settings.toggleTypewriterMode"
         :class="{ active: settings.typewriterMode }"
         :title="t('toolbar.typewriterTooltip')"
@@ -391,6 +393,7 @@ onBeforeUnmount(() => {
       </button>
       <button
         class="icon-btn"
+        :disabled="settings.viewMode === 'preview'"
         @click="settings.toggleSpellCheck"
         :class="{ active: settings.spellCheck }"
         :title="t('toolbar.spellCheckTooltip')"
@@ -466,6 +469,13 @@ onBeforeUnmount(() => {
 }
 .icon-btn:hover {
   color: var(--text);
+}
+.icon-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.icon-btn:disabled:hover {
+  color: var(--text-muted);
 }
 .clean-ai-btn {
   position: relative;

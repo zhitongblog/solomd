@@ -419,7 +419,7 @@ const showOutlinePane = computed(
 }
 .outline-toggle {
   position: absolute;
-  top: 6px;
+  top: calc(var(--tabbar-h, 34px) + 6px);
   left: 6px;
   z-index: 10;
   padding: 4px 6px;
