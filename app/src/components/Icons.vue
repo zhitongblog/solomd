@@ -64,8 +64,8 @@ defineProps<{ name: string; size?: number }>();
       <line x1="3" y1="18" x2="3.01" y2="18" />
     </template>
     <template v-else-if="name === 'palette'">
-      <circle cx="11" cy="11" r="8" />
-      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      <polyline points="4 17 10 11 4 5" />
+      <line x1="12" y1="19" x2="20" y2="19" />
     </template>
     <template v-else-if="name === 'help'">
       <circle cx="12" cy="12" r="10" />
