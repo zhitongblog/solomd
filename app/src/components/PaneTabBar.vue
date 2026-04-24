@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { useTabsStore } from '../stores/tabs';
 import { useTilesStore } from '../stores/tiles';
 import { useFiles } from '../composables/useFiles';
+import { useI18n } from '../i18n';
 import type { SplitDirection } from '../types';
 
 const props = defineProps<{
@@ -13,6 +14,7 @@ const props = defineProps<{
 const tabs = useTabsStore();
 const tiles = useTilesStore();
 const files = useFiles();
+const { t } = useI18n();
 
 const tabsEl = ref<HTMLElement | null>(null);
 
@@ -49,6 +51,48 @@ function splitPane(direction: SplitDirection) {
 function closePane() {
   tiles.closePane(props.paneId);
   closeCtxMenu();
+}
+
+// Tab-level close operations relative to the tab the menu was opened on.
+const ctxFlags = computed(() => {
+  if (!ctxMenu.value) return null;
+  const list = tabs.tabs;
+  const idx = list.findIndex((t) => t.id === ctxMenu.value!.tabId);
+  if (idx < 0) return null;
+  return {
+    hasLeft: idx > 0,
+    hasRight: idx < list.length - 1,
+    hasOthers: list.length > 1,
+    hasSaved: list.some((x) => x.id !== ctxMenu.value!.tabId && x.content === x.savedContent),
+    hasAny: list.length > 0,
+  };
+});
+
+async function closeMany(ids: string[]) {
+  for (const id of ids) {
+    if (!tabs.tabs.find((t) => t.id === id)) continue;
+    await files.closeTabSafe(id);
+  }
+}
+
+async function onTabAction(action: 'close' | 'closeLeft' | 'closeRight' | 'closeOthers' | 'closeSaved' | 'closeAll') {
+  const m = ctxMenu.value;
+  closeCtxMenu();
+  if (!m) return;
+  const list = tabs.tabs;
+  const idx = list.findIndex((t) => t.id === m.tabId);
+  if (idx < 0) return;
+  const ids = (() => {
+    switch (action) {
+      case 'close':       return [m.tabId];
+      case 'closeLeft':   return list.slice(0, idx).map((x) => x.id);
+      case 'closeRight':  return list.slice(idx + 1).map((x) => x.id);
+      case 'closeOthers': return list.filter((x) => x.id !== m.tabId).map((x) => x.id);
+      case 'closeSaved':  return list.filter((x) => x.content === x.savedContent).map((x) => x.id);
+      case 'closeAll':    return list.map((x) => x.id);
+    }
+  })();
+  await closeMany(ids);
 }
 
 // ---- Drag to split ----
@@ -102,6 +146,15 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
         :style="{ left: ctxMenu.x + 'px', top: ctxMenu.y + 'px' }"
         @click.stop
       >
+        <button class="ctx-item" @click="onTabAction('close')">{{ t('tabMenu.close') }}</button>
+        <div class="ctx-sep" />
+        <button class="ctx-item" :disabled="!ctxFlags?.hasLeft"   @click="onTabAction('closeLeft')">{{ t('tabMenu.closeLeft') }}</button>
+        <button class="ctx-item" :disabled="!ctxFlags?.hasRight"  @click="onTabAction('closeRight')">{{ t('tabMenu.closeRight') }}</button>
+        <button class="ctx-item" :disabled="!ctxFlags?.hasOthers" @click="onTabAction('closeOthers')">{{ t('tabMenu.closeOthers') }}</button>
+        <div class="ctx-sep" />
+        <button class="ctx-item" :disabled="!ctxFlags?.hasSaved" @click="onTabAction('closeSaved')">{{ t('tabMenu.closeSaved') }}</button>
+        <button class="ctx-item" :disabled="!ctxFlags?.hasAny"   @click="onTabAction('closeAll')">{{ t('tabMenu.closeAll') }}</button>
+        <div class="ctx-sep" />
         <button class="ctx-item" @click="splitPane('horizontal')">Split Right</button>
         <button class="ctx-item" @click="splitPane('vertical')">Split Down</button>
         <div class="ctx-sep" v-if="tiles.allLeaves.length > 1" />
@@ -210,8 +263,12 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
   border: none;
   cursor: pointer;
 }
-.ctx-item:hover {
+.ctx-item:hover:not(:disabled) {
   background: var(--bg-hover);
+}
+.ctx-item:disabled {
+  color: var(--text-faint);
+  cursor: default;
 }
 .ctx-sep {
   height: 1px;
