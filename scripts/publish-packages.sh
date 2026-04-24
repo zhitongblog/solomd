@@ -6,9 +6,13 @@
 #   ./scripts/publish-packages.sh 0.1.9 brew            # just Homebrew
 #   ./scripts/publish-packages.sh 0.1.9 brew winget     # multiple
 #
-# Supported platforms: brew, winget, scoop, choco
+# Supported platforms: brew, winget, choco
 # (AUR is NOT supported here — requires SSH access to aur.archlinux.org,
 #  see aur-solomd-bin/ for manual submission steps.)
+#
+# Scoop is intentionally NOT listed — ScoopInstaller/Extras bucket's
+# checkver+autoupdate config auto-tracks our GitHub releases, so manual
+# PRs are unnecessary and unwanted (see our issue #11 for context).
 #
 # Prerequisites:
 #   - gh CLI authenticated
@@ -28,9 +32,9 @@ fi
 VERSION="$1"
 shift
 
-# Default: all platforms
+# Default: all platforms EXCEPT scoop (see #11 — upstream auto-tracks)
 if [ "$#" -eq 0 ]; then
-    TARGETS=("brew" "winget" "scoop" "choco")
+    TARGETS=("brew" "winget" "choco")
 else
     TARGETS=("$@")
 fi
@@ -457,10 +461,10 @@ for target in "${TARGETS[@]}"; do
     case "$target" in
         brew)   publish_brew ;;
         winget) publish_winget ;;
-        scoop)  publish_scoop ;;
+        scoop)  fail "Scoop target disabled — upstream auto-tracks via checkver/autoupdate. See issue #11." ;;
         choco)  publish_choco ;;
-        all)    publish_brew; publish_winget; publish_scoop; publish_choco ;;
-        *)      fail "Unknown target: $target (use: brew|winget|scoop|choco|all)" ;;
+        all)    publish_brew; publish_winget; publish_choco ;;
+        *)      fail "Unknown target: $target (use: brew|winget|choco|all)" ;;
     esac
 done
 
