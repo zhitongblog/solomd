@@ -1,46 +1,36 @@
-; Custom NSIS hook: register .md / .markdown / .mdown / .mkd / .txt file
-; associations to use a dedicated document icon (not the main app icon).
+; Custom NSIS hook: override Tauri's default-icon for the .md/.txt file
+; associations so Explorer shows the dedicated document icon (not the
+; app's main icon).
 ;
-; Triggered by tauri's bundler via bundle.windows.nsis.installerHooks.
+; Tauri's APP_ASSOCIATE macro writes:
+;   Classes\<name>\DefaultIcon = $INSTDIR\<app>.exe,0
+; where <name> is the association `name` field from tauri.conf.json
+; (here: "Markdown Document" and "Plain Text").
+;
+; Our POSTINSTALL hook runs AFTER those writes, so we overwrite the
+; DefaultIcon value to point at our bundled file_icon.ico resource.
 
 !macro NSIS_HOOK_POSTINSTALL
-  ; SoloMD ProgID for markdown files
-  WriteRegStr SHCTX "Software\Classes\SoloMD.md" "" "Markdown Document"
-  WriteRegStr SHCTX "Software\Classes\SoloMD.md\DefaultIcon" "" "$INSTDIR\resources\icons\file_icon.ico,0"
-  WriteRegStr SHCTX "Software\Classes\SoloMD.md\shell" "" "open"
-  WriteRegStr SHCTX "Software\Classes\SoloMD.md\shell\open" "" "Open with SoloMD"
-  WriteRegStr SHCTX "Software\Classes\SoloMD.md\shell\open\command" "" '"$INSTDIR\SoloMD.exe" "%1"'
+  ; Overwrite Tauri-registered DefaultIcon with our document-specific icon.
+  WriteRegStr SHCTX "Software\Classes\Markdown Document\DefaultIcon" "" "$INSTDIR\resources\icons\file_icon.ico,0"
+  WriteRegStr SHCTX "Software\Classes\Plain Text\DefaultIcon" "" "$INSTDIR\resources\icons\file_icon.ico,0"
 
-  ; Make SoloMD.md the DEFAULT handler for each markdown extension so the
-  ; file icon actually shows in Explorer. Also add to OpenWithProgids as
-  ; a fallback for cases where another default is already set.
-  WriteRegStr SHCTX "Software\Classes\.md" "" "SoloMD.md"
-  WriteRegStr SHCTX "Software\Classes\.md\OpenWithProgids" "SoloMD.md" ""
-  WriteRegStr SHCTX "Software\Classes\.markdown" "" "SoloMD.md"
-  WriteRegStr SHCTX "Software\Classes\.markdown\OpenWithProgids" "SoloMD.md" ""
-  WriteRegStr SHCTX "Software\Classes\.mdown" "" "SoloMD.md"
-  WriteRegStr SHCTX "Software\Classes\.mdown\OpenWithProgids" "SoloMD.md" ""
-  WriteRegStr SHCTX "Software\Classes\.mkd" "" "SoloMD.md"
-  WriteRegStr SHCTX "Software\Classes\.mkd\OpenWithProgids" "SoloMD.md" ""
+  ; Clean up any stale SoloMD.md / SoloMD.txt ProgIDs left by earlier
+  ; 1.1.6-rebuild installers so the registry state is consistent.
+  DeleteRegKey SHCTX "Software\Classes\SoloMD.md"
+  DeleteRegKey SHCTX "Software\Classes\SoloMD.txt"
+  ; Tauri writes `.md → "Markdown Document"` via APP_ASSOCIATE already;
+  ; earlier versions of this hook overrode that to `.md → SoloMD.md`,
+  ; so restore it to Tauri's value.
+  WriteRegStr SHCTX "Software\Classes\.md" "" "Markdown Document"
+  WriteRegStr SHCTX "Software\Classes\.markdown" "" "Markdown Document"
+  WriteRegStr SHCTX "Software\Classes\.mdown" "" "Markdown Document"
+  WriteRegStr SHCTX "Software\Classes\.mkd" "" "Markdown Document"
 
-  ; SoloMD ProgID for plain text files — only set OpenWithProgids (don't
-  ; hijack .txt default since Notepad is user-expected there).
-  WriteRegStr SHCTX "Software\Classes\SoloMD.txt" "" "Plain Text"
-  WriteRegStr SHCTX "Software\Classes\SoloMD.txt\DefaultIcon" "" "$INSTDIR\resources\icons\file_icon.ico,0"
-  WriteRegStr SHCTX "Software\Classes\SoloMD.txt\shell\open\command" "" '"$INSTDIR\SoloMD.exe" "%1"'
-  WriteRegStr SHCTX "Software\Classes\.txt\OpenWithProgids" "SoloMD.txt" ""
-
-  ; Force Explorer to refresh icon cache so new icons show without reboot
+  ; Force Explorer to refresh icon cache.
   System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, i 0, i 0)'
 !macroend
 
 !macro NSIS_HOOK_POSTUNINSTALL
-  DeleteRegKey SHCTX "Software\Classes\SoloMD.md"
-  DeleteRegKey SHCTX "Software\Classes\SoloMD.txt"
-  DeleteRegValue SHCTX "Software\Classes\.md\OpenWithProgids" "SoloMD.md"
-  DeleteRegValue SHCTX "Software\Classes\.markdown\OpenWithProgids" "SoloMD.md"
-  DeleteRegValue SHCTX "Software\Classes\.mdown\OpenWithProgids" "SoloMD.md"
-  DeleteRegValue SHCTX "Software\Classes\.mkd\OpenWithProgids" "SoloMD.md"
-  DeleteRegValue SHCTX "Software\Classes\.txt\OpenWithProgids" "SoloMD.txt"
-  System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, i 0, i 0)'
+  ; Tauri's uninstaller already removes its own associations; nothing to do.
 !macroend
