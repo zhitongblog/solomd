@@ -46,6 +46,14 @@ interface Settings {
   telemetryEnabled: boolean;
   // First-run banner dismissal. Shown once, never again.
   telemetryNoticeAck: boolean;
+  // Restore previously-open tabs + pane layout at startup (default: true).
+  restoreSession: boolean;
+  // Opening a file from the toolbar/menu spawns a new Tauri window instead
+  // of a new tab in the current window. Default off.
+  openFileInNewWindow: boolean;
+  // After opening a file, point the file tree sidebar at its parent folder
+  // (and reveal the sidebar if hidden). Default off.
+  revealInFileTreeOnOpen: boolean;
 }
 
 function defaults(): Settings {
@@ -80,6 +88,9 @@ function defaults(): Settings {
     customCssPath: '',
     telemetryEnabled: true,
     telemetryNoticeAck: false,
+    restoreSession: true,
+    openFileInNewWindow: false,
+    revealInFileTreeOnOpen: false,
   };
 }
 
@@ -169,6 +180,18 @@ export const useSettingsStore = defineStore('settings', {
     },
     ackTelemetryNotice() {
       this.telemetryNoticeAck = true;
+      this.persist();
+    },
+    toggleRestoreSession() {
+      this.restoreSession = !this.restoreSession;
+      this.persist();
+    },
+    toggleOpenFileInNewWindow() {
+      this.openFileInNewWindow = !this.openFileInNewWindow;
+      this.persist();
+    },
+    toggleRevealInFileTreeOnOpen() {
+      this.revealInFileTreeOnOpen = !this.revealInFileTreeOnOpen;
       this.persist();
     },
     setUiFontSize(n: number) {

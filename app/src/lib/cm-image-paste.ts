@@ -17,8 +17,19 @@ import { tempDir, sep } from '@tauri-apps/api/path';
 
 export interface ImagePasteOptions {
   getFilePath: () => string | undefined;
+  /** Current document content, used to read front-matter `imageRoot`. */
+  getDocContent?: () => string;
   /** Override temp directory (mainly for tests). */
   tempDir?: string;
+}
+
+/** Minimal front-matter imageRoot parser (kept local to avoid import cycles). */
+function parseImageRootFast(source: string): string | null {
+  const m = /^---\r?\n([\s\S]*?)\r?\n---/.exec(source);
+  if (!m) return null;
+  const im = /^(?:imageRoot|image_root|typora-root-url)\s*:\s*(.+?)\s*$/m.exec(m[1]);
+  if (!im) return null;
+  return im[1].replace(/^["']|["']$/g, '').trim() || null;
 }
 
 const IMAGE_MIME_EXT: Record<string, string> = {
@@ -110,10 +121,21 @@ async function saveAndInsert(
   const filePath = opts.getFilePath();
   const filename = `image-${timestamp()}-${randSuffix()}.${ext}`;
 
+  // If the document has a front-matter `imageRoot`, write to that dir and
+  // insert a markdown link relative to it.
+  const imageRoot = opts.getDocContent ? parseImageRootFast(opts.getDocContent()) : null;
+
   let fullPath: string;
   let insertText: string;
 
-  if (filePath) {
+  if (imageRoot && filePath) {
+    const rootAbs = imageRoot.startsWith('/') || /^[a-zA-Z]:[\\/]/.test(imageRoot);
+    const rootDir = rootAbs
+      ? imageRoot
+      : joinPath(dirnameOf(filePath, sepCh), imageRoot, sepCh);
+    fullPath = joinPath(rootDir, filename, sepCh);
+    insertText = `![](${filename})`;
+  } else if (filePath) {
     const dir = dirnameOf(filePath, sepCh);
     const assetsDir = joinPath(dir, '_assets', sepCh);
     fullPath = joinPath(assetsDir, filename, sepCh);
@@ -220,10 +242,18 @@ export async function insertImageFromPath(
   const ext = extFromName(srcPath) || 'png';
   const filename = `image-${timestamp()}-${randSuffix()}.${ext}`;
   const filePath = opts.getFilePath();
+  const imageRoot = opts.getDocContent ? parseImageRootFast(opts.getDocContent()) : null;
 
   let dstPath: string;
   let insertText: string;
-  if (filePath) {
+  if (imageRoot && filePath) {
+    const rootAbs = imageRoot.startsWith('/') || /^[a-zA-Z]:[\\/]/.test(imageRoot);
+    const rootDir = rootAbs
+      ? imageRoot
+      : joinPath(dirnameOf(filePath, sepCh), imageRoot, sepCh);
+    dstPath = joinPath(rootDir, filename, sepCh);
+    insertText = `![](${filename})`;
+  } else if (filePath) {
     const dir = dirnameOf(filePath, sepCh);
     const assetsDir = joinPath(dir, '_assets', sepCh);
     dstPath = joinPath(assetsDir, filename, sepCh);

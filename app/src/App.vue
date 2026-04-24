@@ -240,10 +240,11 @@ onMounted(async () => {
     live_preview: settings.livePreview ? 1 : 0,
   });
 
-  // OS file association
+  // OS file association — an OS-level file-open always belongs in the current
+  // window (this window was just spawned for it). Bypass new-window routing.
   try {
     unlistenOpened = await listen<string>('solomd://opened-file', async (e) => {
-      if (e.payload) await files.openPath(e.payload);
+      if (e.payload) await files.openPath(e.payload, { bypassNewWindow: true });
     });
   } catch (err) {
     console.warn('opened-file listener not available', err);
@@ -252,11 +253,21 @@ onMounted(async () => {
   try {
     const pending = await invoke<string[]>('drain_pending_opens');
     for (const p of pending || []) {
-      await files.openPath(p);
+      await files.openPath(p, { bypassNewWindow: true });
     }
   } catch (err) {
     console.warn('drain_pending_opens failed', err);
   }
+
+  // New-window launched via `?path=<encoded>` (used by the "open in new
+  // window" setting). Same reasoning as above — bypass the setting.
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const initialPath = params.get('path');
+    if (initialPath) {
+      await files.openPath(initialPath, { bypassNewWindow: true });
+    }
+  } catch {}
 
   if (tabs.tabs.length === 0) tabs.newTab();
 
@@ -293,11 +304,8 @@ onMounted(async () => {
     await webview.onDragDropEvent(async (event) => {
       if (event.payload.type === 'drop') {
         for (const path of event.payload.paths) {
-          if (isImagePath(path)) {
-            await files.openPath(path);
-          } else {
-            await files.openPath(path);
-          }
+          // Drop targets this window explicitly — bypass new-window routing.
+          await files.openPath(path, { bypassNewWindow: true });
         }
       }
     });
@@ -320,17 +328,6 @@ onMounted(async () => {
     } catch { /* silent */ }
   }
 });
-
-const IMAGE_EXTS = new Set([
-  'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp',
-  'tiff', 'tif', 'heic', 'heif', 'avif', 'ico',
-]);
-
-function isImagePath(p: string): boolean {
-  const m = /\.([a-z0-9]+)$/i.exec(p);
-  if (!m) return false;
-  return IMAGE_EXTS.has(m[1].toLowerCase());
-}
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onEsc);

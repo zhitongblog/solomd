@@ -134,7 +134,10 @@ function buildExtensions() {
     spellCheckCompartment.of(spellCheckExt(props.spellCheck)),
     focusCompartment.of(props.focusMode ? focusModeExtension() : []),
     typewriterCompartment.of(props.typewriterMode ? typewriterModeExtension() : []),
-    imagePasteExtension({ getFilePath: () => props.tab.filePath }),
+    imagePasteExtension({
+      getFilePath: () => props.tab.filePath,
+      getDocContent: () => props.tab.content,
+    }),
     taskListExtension(),
     sessionRestoreExtension(props.tab.id),
     EditorView.updateListener.of((u) => {
@@ -312,6 +315,7 @@ async function insertImageFromPath(srcPath: string): Promise<void> {
   if (!view) return;
   await cmInsertImageFromPath(view, srcPath, {
     getFilePath: () => props.tab.filePath,
+    getDocContent: () => props.tab.content,
   });
 }
 

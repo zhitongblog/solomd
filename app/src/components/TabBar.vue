@@ -1,15 +1,81 @@
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useTabsStore } from '../stores/tabs';
 import { useFiles } from '../composables/useFiles';
+import { useI18n } from '../i18n';
 
 const tabs = useTabsStore();
 const files = useFiles();
+const { t } = useI18n();
 
 const tabsRef = ref<HTMLElement | null>(null);
 
 function isDirty(id: string) {
   return tabs.isDirty(id);
+}
+
+// --- Right-click context menu ---------------------------------------------
+interface MenuState { tabId: string; x: number; y: number }
+const menu = ref<MenuState | null>(null);
+
+function openMenu(e: MouseEvent, tabId: string) {
+  e.preventDefault();
+  menu.value = { tabId, x: e.clientX, y: e.clientY };
+}
+function closeMenu() {
+  menu.value = null;
+}
+function onDocMouseDown(e: MouseEvent) {
+  if (!menu.value) return;
+  const el = e.target as HTMLElement | null;
+  if (el && el.closest('.tab-menu')) return;
+  closeMenu();
+}
+onMounted(() => document.addEventListener('mousedown', onDocMouseDown, true));
+onBeforeUnmount(() => document.removeEventListener('mousedown', onDocMouseDown, true));
+
+// Menu availability flags.
+const menuFlags = computed(() => {
+  if (!menu.value) return null;
+  const list = tabs.tabs;
+  const idx = list.findIndex((t) => t.id === menu.value!.tabId);
+  if (idx < 0) return null;
+  return {
+    hasLeft: idx > 0,
+    hasRight: idx < list.length - 1,
+    hasOthers: list.length > 1,
+    hasSaved: list.some((t) => t.id !== menu.value!.tabId && t.content === t.savedContent),
+    hasAll: list.length > 0,
+  };
+});
+
+async function closeMany(ids: string[]) {
+  // closeTabSafe shows unsaved dialog when needed; close sequentially so
+  // prompts don't stack up. User can cancel at any step to stop the batch.
+  for (const id of ids) {
+    if (!tabs.tabs.find((t) => t.id === id)) continue;
+    await files.closeTabSafe(id);
+  }
+}
+
+async function onMenu(action: 'close' | 'closeLeft' | 'closeRight' | 'closeOthers' | 'closeSaved' | 'closeAll') {
+  const m = menu.value;
+  closeMenu();
+  if (!m) return;
+  const list = tabs.tabs;
+  const idx = list.findIndex((t) => t.id === m.tabId);
+  if (idx < 0) return;
+  const ids = (() => {
+    switch (action) {
+      case 'close':       return [m.tabId];
+      case 'closeLeft':   return list.slice(0, idx).map((t) => t.id);
+      case 'closeRight':  return list.slice(idx + 1).map((t) => t.id);
+      case 'closeOthers': return list.filter((t) => t.id !== m.tabId).map((t) => t.id);
+      case 'closeSaved':  return list.filter((t) => t.content === t.savedContent).map((t) => t.id);
+      case 'closeAll':    return list.map((t) => t.id);
+    }
+  })();
+  await closeMany(ids);
 }
 
 // When the active tab changes (e.g., opening a new file that creates a tab
@@ -29,25 +95,43 @@ watch(
   <div class="tabbar">
     <div class="tabs" ref="tabsRef">
       <div
-        v-for="t in tabs.tabs"
-        :key="t.id"
-        :data-tab-id="t.id"
+        v-for="tab in tabs.tabs"
+        :key="tab.id"
+        :data-tab-id="tab.id"
         class="tab"
-        :class="{ 'tab--active': t.id === tabs.activeId }"
-        @click="tabs.activate(t.id)"
-        :title="t.filePath || t.fileName"
+        :class="{ 'tab--active': tab.id === tabs.activeId }"
+        @click="tabs.activate(tab.id)"
+        @contextmenu="openMenu($event, tab.id)"
+        :title="tab.filePath || tab.fileName"
       >
-        <span class="tab__name">{{ t.fileName }}</span>
-        <span class="tab__outline" v-if="t.showOutline && t.language === 'markdown'" title="Outline on">≡</span>
-        <span class="tab__dot" v-if="isDirty(t.id)">●</span>
+        <span class="tab__name">{{ tab.fileName }}</span>
+        <span class="tab__outline" v-if="tab.showOutline && tab.language === 'markdown'" title="Outline on">≡</span>
+        <span class="tab__dot" v-if="isDirty(tab.id)">●</span>
         <button
           class="tab__close"
-          @click.stop="files.closeTabSafe(t.id)"
+          @click.stop="files.closeTabSafe(tab.id)"
           aria-label="Close tab"
         >×</button>
       </div>
     </div>
     <button class="tabbar__new" @click="files.newFile" title="New tab (Ctrl+N)">+</button>
+
+    <!-- Context menu portal -->
+    <ul
+      v-if="menu"
+      class="tab-menu"
+      :style="{ left: menu.x + 'px', top: menu.y + 'px' }"
+      @click.stop
+    >
+      <li><button @mousedown.prevent="onMenu('close')">{{ t('tabMenu.close') }}</button></li>
+      <li class="tab-menu__sep"></li>
+      <li><button :disabled="!menuFlags?.hasLeft"   @mousedown.prevent="onMenu('closeLeft')">{{ t('tabMenu.closeLeft') }}</button></li>
+      <li><button :disabled="!menuFlags?.hasRight"  @mousedown.prevent="onMenu('closeRight')">{{ t('tabMenu.closeRight') }}</button></li>
+      <li><button :disabled="!menuFlags?.hasOthers" @mousedown.prevent="onMenu('closeOthers')">{{ t('tabMenu.closeOthers') }}</button></li>
+      <li class="tab-menu__sep"></li>
+      <li><button :disabled="!menuFlags?.hasSaved" @mousedown.prevent="onMenu('closeSaved')">{{ t('tabMenu.closeSaved') }}</button></li>
+      <li><button :disabled="!menuFlags?.hasAll"   @mousedown.prevent="onMenu('closeAll')">{{ t('tabMenu.closeAll') }}</button></li>
+    </ul>
   </div>
 </template>
 
@@ -60,6 +144,7 @@ watch(
   border-bottom: 1px solid var(--border);
   user-select: none;
   overflow: hidden;
+  position: relative;
 }
 .tabs {
   display: flex;
@@ -131,5 +216,44 @@ watch(
   padding: 0;
   font-size: 16px;
   color: var(--text-muted);
+}
+
+/* Right-click menu */
+.tab-menu {
+  position: fixed;
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  z-index: 1500;
+  min-width: 180px;
+}
+.tab-menu li { padding: 0; }
+.tab-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 6px 14px;
+  border: 0;
+  background: none;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+}
+.tab-menu button:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--accent);
+}
+.tab-menu button:disabled {
+  color: var(--text-faint);
+  cursor: default;
+}
+.tab-menu__sep {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
 }
 </style>

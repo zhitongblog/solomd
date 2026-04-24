@@ -230,6 +230,26 @@ export function renderMarkdown(source: string): string {
   return body;
 }
 
+/**
+ * Extract the `imageRoot` field from a document's YAML front matter.
+ * Supports aliases `image_root` and (Typora) `typora-root-url`.
+ * Returns null if no front matter or no such field.
+ *
+ * Parsing is a minimal regex — we don't want a full YAML dep just for this.
+ * Good enough for single-line string values like:
+ *   imageRoot: ./images
+ *   imageRoot: "D:\\blog\\assets"
+ *   imageRoot: '/Users/foo/blog/assets'
+ */
+export function extractImageRoot(source: string): string | null {
+  const m = /^---\r?\n([\s\S]*?)\r?\n---/.exec(source);
+  if (!m) return null;
+  const fm = m[1];
+  const im = /^(?:imageRoot|image_root|typora-root-url)\s*:\s*(.+?)\s*$/m.exec(fm);
+  if (!im) return null;
+  return im[1].replace(/^["']|["']$/g, '').trim() || null;
+}
+
 export interface OutlineItem {
   level: number;
   text: string;

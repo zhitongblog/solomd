@@ -3,7 +3,7 @@ import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import mermaid from 'mermaid';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { openUrl } from '@tauri-apps/plugin-opener';
-import { renderMarkdown } from '../lib/markdown';
+import { renderMarkdown, extractImageRoot } from '../lib/markdown';
 import { openImageOverlay, type OverlayStrings } from '../lib/image-overlay';
 import { useI18n } from '../i18n';
 import { useSettingsStore } from '../stores/settings';
@@ -23,7 +23,7 @@ mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: 'defaul
  * through `convertFileSrc()` which produces an `asset://` URL the
  * `assetProtocol` handler will serve.
  */
-function resolveImageSrc(src: string): string {
+function resolveImageSrc(src: string, imageRoot: string | null): string {
   if (!src) return src;
   // Already a remote / data / blob / asset URL — leave alone.
   if (/^(https?|data|blob|asset|tauri):/i.test(src)) return src;
@@ -31,14 +31,28 @@ function resolveImageSrc(src: string): string {
   // Strip a leading file:// prefix so we can re-encode it.
   let p = src.startsWith('file://') ? src.slice(7) : src;
 
-  // Resolve relative paths against the current file's directory.
+  // Resolve relative paths. Prefer front-matter `imageRoot` over the file's
+  // own parent directory (matches Typora's `typora-root-url` behavior).
   const isAbsolute = p.startsWith('/') || /^[a-zA-Z]:[\\/]/.test(p);
-  if (!isAbsolute && props.filePath) {
-    const dir = props.filePath.replace(/[\\/][^\\/]*$/, '');
-    const sep = props.filePath.includes('\\') ? '\\' : '/';
-    // Don't try to be clever about ./ — markdown-it already strips it on
-    // the rare occasion it appears.
-    p = dir + sep + p;
+  if (!isAbsolute) {
+    let base: string | null = null;
+    if (imageRoot) {
+      const rootAbsolute = imageRoot.startsWith('/') || /^[a-zA-Z]:[\\/]/.test(imageRoot);
+      if (rootAbsolute) {
+        base = imageRoot;
+      } else if (props.filePath) {
+        const dir = props.filePath.replace(/[\\/][^\\/]*$/, '');
+        const sep = props.filePath.includes('\\') ? '\\' : '/';
+        base = dir + sep + imageRoot;
+      }
+    }
+    if (!base && props.filePath) {
+      base = props.filePath.replace(/[\\/][^\\/]*$/, '');
+    }
+    if (base) {
+      const sep = base.includes('\\') ? '\\' : '/';
+      p = base + sep + p;
+    }
   }
 
   try {
@@ -49,16 +63,19 @@ function resolveImageSrc(src: string): string {
 }
 
 /** Rewrite all `<img src=…>` URLs in the rendered markdown HTML. */
-function rewriteImageUrls(rawHtml: string): string {
+function rewriteImageUrls(rawHtml: string, imageRoot: string | null): string {
   return rawHtml.replace(
     /(<img[^>]*\bsrc=)(["'])([^"']*)\2/gi,
     (_match, prefix: string, q: string, src: string) => {
-      return `${prefix}${q}${resolveImageSrc(src)}${q}`;
+      return `${prefix}${q}${resolveImageSrc(src, imageRoot)}${q}`;
     },
   );
 }
 
-const html = computed(() => rewriteImageUrls(renderMarkdown(props.source || '')));
+const html = computed(() => {
+  const source = props.source || '';
+  return rewriteImageUrls(renderMarkdown(source), extractImageRoot(source));
+});
 
 async function processMermaid() {
   if (!host.value) return;

@@ -19,7 +19,21 @@ interface PersistedState {
   activeId: string;
 }
 
+/** Read-only check for the "restore previous session" setting, inlined
+ *  from localStorage so we can run before the settings store hydrates. */
+function restoreSessionEnabled(): boolean {
+  try {
+    const raw = localStorage.getItem('solomd.settings.v1');
+    if (raw) {
+      const s = JSON.parse(raw);
+      if (s && typeof s.restoreSession === 'boolean') return s.restoreSession;
+    }
+  } catch {}
+  return true;
+}
+
 function loadPersisted(): PersistedState {
+  if (!restoreSessionEnabled()) return { tabs: [], activeId: '' };
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (raw) {

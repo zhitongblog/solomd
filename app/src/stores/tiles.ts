@@ -13,7 +13,19 @@ interface PersistedState {
   focusedPaneId: string;
 }
 
+function restoreSessionEnabled(): boolean {
+  try {
+    const raw = localStorage.getItem('solomd.settings.v1');
+    if (raw) {
+      const s = JSON.parse(raw);
+      if (s && typeof s.restoreSession === 'boolean') return s.restoreSession;
+    }
+  } catch {}
+  return true;
+}
+
 function loadPersisted(): PersistedState | null {
+  if (!restoreSessionEnabled()) return null;
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (raw) {

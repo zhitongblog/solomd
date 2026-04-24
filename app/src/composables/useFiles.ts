@@ -1,6 +1,7 @@
 import { inject } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { open as openDialog, save as saveDialog } from '@tauri-apps/plugin-dialog';
+import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { useTabsStore } from '../stores/tabs';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useSettingsStore } from '../stores/settings';
@@ -47,7 +48,26 @@ export function useFiles() {
     'mp3', 'wav', 'm4a', 'ogg', 'flac',
   ]);
 
-  async function openPath(path: string) {
+  async function openPath(path: string, opts: { bypassNewWindow?: boolean } = {}) {
+    // Spawn a new Tauri window with the path in the query string when the
+    // user has opted in. Only applies when the current window already has
+    // at least one tab (fresh-launch first file should stay in this window).
+    if (
+      settings.openFileInNewWindow &&
+      !opts.bypassNewWindow &&
+      tabs.tabs.length > 0
+    ) {
+      try {
+        const label = `solomd-${Date.now()}`;
+        const url = `/?path=${encodeURIComponent(path)}`;
+        new WebviewWindow(label, { url, title: 'SoloMD', width: 1000, height: 700 });
+        return;
+      } catch (e) {
+        // Fall back to in-tab open if window creation fails.
+        console.warn('new-window open failed, falling back to tab', e);
+      }
+    }
+
     const ext = (path.split('.').pop() || '').toLowerCase();
 
     // If it's a convertible format, convert to Markdown first.
@@ -67,6 +87,14 @@ export function useFiles() {
       });
       workspace.pushRecent(path);
       const fileName = path.split(/[\\/]/).pop() ?? path;
+      // Optionally reveal the file in the file-tree sidebar.
+      if (settings.revealInFileTreeOnOpen) {
+        const parent = path.replace(/[\\/][^\\/]+$/, '');
+        if (parent && parent !== path) {
+          workspace.setFolder(parent);
+          if (!settings.showFileTree) settings.toggleFileTree();
+        }
+      }
       toasts.success(`Opened ${fileName}`);
     } catch (e) {
       console.error('open failed', e);

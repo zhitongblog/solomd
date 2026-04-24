@@ -252,6 +252,36 @@ const fontFamilySelectValue = computed(() =>
           </label>
         </section>
 
+        <section>
+          <label>
+            <input type="checkbox" :checked="settings.restoreSession" @change="settings.toggleRestoreSession()" />
+            {{ t('settings.restoreSession') }}
+          </label>
+          <div style="font-size: 11px; color: var(--text-faint); margin-top: 4px; line-height: 1.5;">
+            {{ t('settings.restoreSessionHint') }}
+          </div>
+        </section>
+
+        <section v-if="!isMobilePlatform">
+          <label>
+            <input type="checkbox" :checked="settings.openFileInNewWindow" @change="settings.toggleOpenFileInNewWindow()" />
+            {{ t('settings.openFileInNewWindow') }}
+          </label>
+          <div style="font-size: 11px; color: var(--text-faint); margin-top: 4px; line-height: 1.5;">
+            {{ t('settings.openFileInNewWindowHint') }}
+          </div>
+        </section>
+
+        <section>
+          <label>
+            <input type="checkbox" :checked="settings.revealInFileTreeOnOpen" @change="settings.toggleRevealInFileTreeOnOpen()" />
+            {{ t('settings.revealInFileTreeOnOpen') }}
+          </label>
+          <div style="font-size: 11px; color: var(--text-faint); margin-top: 4px; line-height: 1.5;">
+            {{ t('settings.revealInFileTreeOnOpenHint') }}
+          </div>
+        </section>
+
         <section v-if="!isMobilePlatform && !masBuild">
           <label>
             <input type="checkbox" :checked="settings.autoCheckUpdate" @change="settings.toggleAutoCheckUpdate()" />
