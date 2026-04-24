@@ -284,7 +284,10 @@ export function useExport() {
     const ctx = activeOr();
     if (!ctx) return;
 
-    const body = renderMarkdown(ctx.content);
+    // Strip YAML front matter before rendering — users don't want the
+    // metadata block to show up in the printed output.
+    const source = ctx.content.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '');
+    const body = renderMarkdown(source);
 
     let overlay = document.getElementById('solomd-print-overlay') as HTMLDivElement | null;
     if (!overlay) {

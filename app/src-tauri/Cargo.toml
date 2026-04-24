@@ -1,6 +1,6 @@
 [package]
 name = "solomd"
-version = "1.1.6"
+version = "1.2.0"
 description = "SoloMD — a lightweight, cross-platform Markdown + plain text editor"
 authors = ["zhitong"]
 edition = "2021"
@@ -39,8 +39,14 @@ encoding_rs = "0.8.35"
 tauri-plugin-dialog = "2.7.0"
 tauri-plugin-clipboard-manager = "2.3.2"
 walkdir = "2.5.0"
-# Note: tauri-plugin-aptabase removed in v1.1.3 — suspected runtime crash
-# on Windows. Will re-add after proper Win testing.
+# Aptabase + tokio: aptabase's plugin setup calls `tokio::spawn`, which
+# needs an ambient tokio runtime. Tauri 2 brings tokio transitively but
+# the runtime isn't always entered at plugin-setup time on Windows
+# (this is the root cause of the v1.1.2 Windows launch crash —
+# aptabase/tauri-plugin-aptabase#16). We explicitly enter a tokio
+# runtime in main() before calling tauri::Builder::run().
+tauri-plugin-aptabase = "1.0.0"
+tokio = { version = "1", features = ["rt-multi-thread"] }
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-window-state = "2"
