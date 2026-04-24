@@ -1,36 +1,32 @@
-; Custom NSIS hook: override Tauri's default-icon for the .md/.txt file
-; associations so Explorer shows the dedicated document icon (not the
-; app's main icon).
+; Custom NSIS hook: make the .md / .markdown / .mdown / .mkd / .txt file
+; association show a dedicated document icon.
 ;
-; Tauri's APP_ASSOCIATE macro writes:
-;   Classes\<name>\DefaultIcon = $INSTDIR\<app>.exe,0
-; where <name> is the association `name` field from tauri.conf.json
-; (here: "Markdown Document" and "Plain Text").
-;
-; Our POSTINSTALL hook runs AFTER those writes, so we overwrite the
-; DefaultIcon value to point at our bundled file_icon.ico resource.
+; Two ProgIDs get the correct DefaultIcon:
+;   - "Markdown Document" (Tauri's default FILECLASS from tauri.conf.json
+;     fileAssociations[0].name)
+;   - "SoloMD.md" (leftover from earlier 1.1.6 rebuilds; UserChoice on some
+;     machines still points at it and Windows protects UserChoice so we
+;     can't delete it without taking ownership — patch the ProgID instead)
 
 !macro NSIS_HOOK_POSTINSTALL
-  ; Overwrite Tauri-registered DefaultIcon with our document-specific icon.
+  ; Primary: override Tauri-registered DefaultIcon for "Markdown Document"
   WriteRegStr SHCTX "Software\Classes\Markdown Document\DefaultIcon" "" "$INSTDIR\icons\file_icon.ico,0"
   WriteRegStr SHCTX "Software\Classes\Plain Text\DefaultIcon" "" "$INSTDIR\icons\file_icon.ico,0"
 
-  ; Clean up any stale SoloMD.md / SoloMD.txt ProgIDs left by earlier
-  ; 1.1.6-rebuild installers so the registry state is consistent.
-  DeleteRegKey SHCTX "Software\Classes\SoloMD.md"
-  DeleteRegKey SHCTX "Software\Classes\SoloMD.txt"
-  ; Tauri writes `.md → "Markdown Document"` via APP_ASSOCIATE already;
-  ; earlier versions of this hook overrode that to `.md → SoloMD.md`,
-  ; so restore it to Tauri's value.
-  WriteRegStr SHCTX "Software\Classes\.md" "" "Markdown Document"
-  WriteRegStr SHCTX "Software\Classes\.markdown" "" "Markdown Document"
-  WriteRegStr SHCTX "Software\Classes\.mdown" "" "Markdown Document"
-  WriteRegStr SHCTX "Software\Classes\.mkd" "" "Markdown Document"
+  ; Fallback: ensure the SoloMD.md / SoloMD.txt ProgIDs (if UserChoice or
+  ; older installs point to them) also have the right icon + open command.
+  WriteRegStr SHCTX "Software\Classes\SoloMD.md" "" "Markdown Document"
+  WriteRegStr SHCTX "Software\Classes\SoloMD.md\DefaultIcon" "" "$INSTDIR\icons\file_icon.ico,0"
+  WriteRegStr SHCTX "Software\Classes\SoloMD.md\shell\open\command" "" '"$INSTDIR\SoloMD.exe" "%1"'
+  WriteRegStr SHCTX "Software\Classes\SoloMD.txt" "" "Plain Text"
+  WriteRegStr SHCTX "Software\Classes\SoloMD.txt\DefaultIcon" "" "$INSTDIR\icons\file_icon.ico,0"
+  WriteRegStr SHCTX "Software\Classes\SoloMD.txt\shell\open\command" "" '"$INSTDIR\SoloMD.exe" "%1"'
 
-  ; Force Explorer to refresh icon cache.
+  ; Force Explorer to refresh icon cache (SHCNE_ASSOCCHANGED).
   System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, i 0, i 0)'
 !macroend
 
 !macro NSIS_HOOK_POSTUNINSTALL
-  ; Tauri's uninstaller already removes its own associations; nothing to do.
+  DeleteRegKey SHCTX "Software\Classes\SoloMD.md"
+  DeleteRegKey SHCTX "Software\Classes\SoloMD.txt"
 !macroend
