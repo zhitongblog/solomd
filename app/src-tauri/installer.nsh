@@ -12,8 +12,8 @@
 
 !macro NSIS_HOOK_POSTINSTALL
   ; Overwrite Tauri-registered DefaultIcon with our document-specific icon.
-  WriteRegStr SHCTX "Software\Classes\Markdown Document\DefaultIcon" "" "$INSTDIR\resources\icons\file_icon.ico,0"
-  WriteRegStr SHCTX "Software\Classes\Plain Text\DefaultIcon" "" "$INSTDIR\resources\icons\file_icon.ico,0"
+  WriteRegStr SHCTX "Software\Classes\Markdown Document\DefaultIcon" "" "$INSTDIR\icons\file_icon.ico,0"
+  WriteRegStr SHCTX "Software\Classes\Plain Text\DefaultIcon" "" "$INSTDIR\icons\file_icon.ico,0"
 
   ; Clean up any stale SoloMD.md / SoloMD.txt ProgIDs left by earlier
   ; 1.1.6-rebuild installers so the registry state is consistent.
