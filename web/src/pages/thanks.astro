@@ -1,0 +1,133 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import thanksData from '../data/thanks.json';
+
+const lang = 'en' as const;
+
+interface Donor {
+  name: string;
+  date: string;
+  platform: 'wechat' | 'alipay' | 'other';
+  amount?: string;
+  message?: string;
+}
+
+// Newest first.
+const donors: Donor[] = [...(thanksData.donors as Donor[])].sort(
+  (a, b) => (a.date < b.date ? 1 : -1),
+);
+
+const platformLabel: Record<Donor['platform'], string> = {
+  wechat: 'WeChat Pay',
+  alipay: 'Alipay',
+  other: 'Other',
+};
+---
+
+<Layout
+  title="Thanks — Supporters of SoloMD"
+  description="A thank-you wall for everyone who has supported SoloMD with a WeChat / Alipay tip."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <section class="container thanks-page">
+      <h1>Thanks ♥</h1>
+      <p class="lead">
+        SoloMD is free and open source. These kind souls chose to send a tip
+        anyway — their contributions fund the occasional coffee and the
+        occasional Apple Developer renewal. Thank you.
+      </p>
+
+      {donors.length === 0 ? (
+        <p class="empty">No supporters yet — be the first!</p>
+      ) : (
+        <ul class="donors">
+          {donors.map((d) => (
+            <li class="donor">
+              <div class="donor__head">
+                <span class="donor__name">{d.name}</span>
+                {d.amount ? <span class="donor__amount">{d.amount}</span> : null}
+              </div>
+              <div class="donor__meta">
+                <time>{d.date}</time>
+                <span class="donor__platform">· {platformLabel[d.platform]}</span>
+              </div>
+              {d.message ? <p class="donor__message">“{d.message}”</p> : null}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <section class="support">
+        <h2>Want to support SoloMD?</h2>
+        <p>
+          WeChat Pay and Alipay QR codes are on the
+          <a href="/#sponsor"> sponsor section of the home page</a>. After
+          tipping, feel free to open a
+          <a href="https://github.com/zhitongblog/solomd/issues" rel="external">
+            GitHub issue
+          </a>
+          with the title "Thanks list" and your preferred display name + optional
+          message. I'll add you here.
+        </p>
+        <p class="privacy-note">
+          Privacy: I never publish an amount or message unless you explicitly
+          opt in. Use "Anonymous" / "匿名" as the name if you'd rather not be
+          listed at all — in which case I just say thanks privately.
+        </p>
+      </section>
+    </section>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .thanks-page { max-width: 720px; padding: 40px 20px 80px; }
+  .thanks-page h1 { font-size: 2rem; margin: 10px 0 14px; color: #ff9f40; }
+  .thanks-page .lead {
+    font-size: 1.05rem;
+    line-height: 1.7;
+    color: var(--text-muted, #555);
+    margin-bottom: 32px;
+  }
+  .empty { color: var(--text-faint, #888); font-style: italic; }
+  .donors { list-style: none; padding: 0; margin: 0 0 48px; }
+  .donor {
+    padding: 14px 0;
+    border-bottom: 1px dashed #eee;
+  }
+  .donor:last-child { border-bottom: 0; }
+  .donor__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+  }
+  .donor__name { font-weight: 600; font-size: 1rem; }
+  .donor__amount { color: #ff9f40; font-size: 0.95rem; font-variant-numeric: tabular-nums; }
+  .donor__meta {
+    font-size: 12px;
+    color: var(--text-faint, #999);
+    margin-top: 2px;
+  }
+  .donor__platform { margin-left: 2px; }
+  .donor__message {
+    margin: 8px 0 0;
+    color: var(--text-muted, #555);
+    font-style: italic;
+    line-height: 1.6;
+  }
+  .support {
+    margin-top: 40px;
+    padding: 24px;
+    background: var(--bg-soft, #fafaf7);
+    border-radius: 10px;
+    border: 1px solid #eee;
+  }
+  .support h2 { margin: 0 0 12px; font-size: 1.1rem; }
+  .support p { margin: 8px 0; line-height: 1.7; color: var(--text-muted, #555); }
+  .privacy-note { font-size: 0.9rem; color: var(--text-faint, #888); }
+</style>

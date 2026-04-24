@@ -1,0 +1,19 @@
+{
+  "$comment": "Manually curated thank-you list. Add one entry per donor after verifying the WeChat / Alipay screenshot. Entries render newest-first on /thanks and /zh/thanks.",
+  "$schema": {
+    "name": "string — display name, nickname, or '匿名' for anonymous",
+    "date": "string YYYY-MM-DD",
+    "platform": "wechat | alipay | other",
+    "amount": "string — show as-is, e.g. '¥10' or '¥66.6'; leave empty to hide",
+    "message": "optional string — donor's message or dedication"
+  },
+  "donors": [
+    {
+      "name": "示例 · Sample",
+      "date": "2026-04-24",
+      "platform": "wechat",
+      "amount": "¥10",
+      "message": "感谢开发这个轻量的编辑器！"
+    }
+  ]
+}

@@ -1,0 +1,126 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import thanksData from '../../data/thanks.json';
+
+const lang = 'zh' as const;
+
+interface Donor {
+  name: string;
+  date: string;
+  platform: 'wechat' | 'alipay' | 'other';
+  amount?: string;
+  message?: string;
+}
+
+const donors: Donor[] = [...(thanksData.donors as Donor[])].sort(
+  (a, b) => (a.date < b.date ? 1 : -1),
+);
+
+const platformLabel: Record<Donor['platform'], string> = {
+  wechat: '微信',
+  alipay: '支付宝',
+  other: '其他',
+};
+---
+
+<Layout
+  title="鸣谢 — 打赏过 SoloMD 的朋友"
+  description="SoloMD 是免费开源项目，感谢愿意通过微信/支付宝打赏支持的每位朋友。"
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <section class="container thanks-page">
+      <h1>鸣谢 ♥</h1>
+      <p class="lead">
+        SoloMD 免费开源，下面这些朋友选择了打赏支持。他们的心意让我能继续买咖啡、续 Apple Developer 会员、给 SSL 证书续期。谢谢大家。
+      </p>
+
+      {donors.length === 0 ? (
+        <p class="empty">暂无记录 —— 成为第一个吧！</p>
+      ) : (
+        <ul class="donors">
+          {donors.map((d) => (
+            <li class="donor">
+              <div class="donor__head">
+                <span class="donor__name">{d.name}</span>
+                {d.amount ? <span class="donor__amount">{d.amount}</span> : null}
+              </div>
+              <div class="donor__meta">
+                <time>{d.date}</time>
+                <span class="donor__platform">· {platformLabel[d.platform]}</span>
+              </div>
+              {d.message ? <p class="donor__message">“{d.message}”</p> : null}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <section class="support">
+        <h2>想打赏 SoloMD？</h2>
+        <p>
+          微信/支付宝收款码在
+          <a href="/zh/#sponsor">首页的赞助区域</a>。打赏后可以在
+          <a href="https://github.com/zhitongblog/solomd/issues" rel="external">
+            GitHub
+          </a>
+          开个 issue，标题写 "鸣谢列表"，附上你想显示的名字（可用昵称/"匿名"）+ 可选留言，我会加到这里。
+        </p>
+        <p class="privacy-note">
+          隐私说明：除非你主动要求，否则不会公开打赏金额或留言。名字填 "匿名" 就是完全不上墙，只是我私下感谢你。
+        </p>
+      </section>
+    </section>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .thanks-page { max-width: 720px; padding: 40px 20px 80px; }
+  .thanks-page h1 { font-size: 2rem; margin: 10px 0 14px; color: #ff9f40; }
+  .thanks-page .lead {
+    font-size: 1.05rem;
+    line-height: 1.7;
+    color: var(--text-muted, #555);
+    margin-bottom: 32px;
+  }
+  .empty { color: var(--text-faint, #888); font-style: italic; }
+  .donors { list-style: none; padding: 0; margin: 0 0 48px; }
+  .donor {
+    padding: 14px 0;
+    border-bottom: 1px dashed #eee;
+  }
+  .donor:last-child { border-bottom: 0; }
+  .donor__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+  }
+  .donor__name { font-weight: 600; font-size: 1rem; }
+  .donor__amount { color: #ff9f40; font-size: 0.95rem; font-variant-numeric: tabular-nums; }
+  .donor__meta {
+    font-size: 12px;
+    color: var(--text-faint, #999);
+    margin-top: 2px;
+  }
+  .donor__platform { margin-left: 2px; }
+  .donor__message {
+    margin: 8px 0 0;
+    color: var(--text-muted, #555);
+    font-style: italic;
+    line-height: 1.6;
+  }
+  .support {
+    margin-top: 40px;
+    padding: 24px;
+    background: var(--bg-soft, #fafaf7);
+    border-radius: 10px;
+    border: 1px solid #eee;
+  }
+  .support h2 { margin: 0 0 12px; font-size: 1.1rem; }
+  .support p { margin: 8px 0; line-height: 1.7; color: var(--text-muted, #555); }
+  .privacy-note { font-size: 0.9rem; color: var(--text-faint, #888); }
+</style>
