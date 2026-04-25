@@ -9,6 +9,7 @@ import TileRoot from './components/TileRoot.vue';
 import StatusBar from './components/StatusBar.vue';
 import CommandPalette from './components/CommandPalette.vue';
 import Outline from './components/Outline.vue';
+import BacklinksPanel from './components/BacklinksPanel.vue';
 import FileTree from './components/FileTree.vue';
 import SettingsPanel from './components/SettingsPanel.vue';
 import MarkdownHelp from './components/MarkdownHelp.vue';
@@ -382,6 +383,13 @@ onBeforeUnmount(() => {
 const showOutlinePane = computed(
   () => !!tabs.activeTab?.showOutline && tabs.activeTab?.language === 'markdown'
 );
+const showBacklinksPane = computed(
+  () =>
+    settings.showBacklinks &&
+    tabs.activeTab?.language === 'markdown' &&
+    !!workspace.currentFolder,
+);
+const showRightSidebar = computed(() => showOutlinePane.value || showBacklinksPane.value);
 </script>
 
 <template>
@@ -395,7 +403,6 @@ const showOutlinePane = computed(
     <TelemetryBanner />
     <div class="workspace">
       <FileTree v-if="settings.showFileTree" />
-      <Outline v-if="showOutlinePane" :cursor-line="cursorLine" @goto="onOutlineGoto" />
       <div class="content">
         <button
           v-if="tabs.activeTab?.language === 'markdown' && !showOutlinePane"
@@ -410,6 +417,10 @@ const showOutlinePane = computed(
         </button>
         <TileRoot :node="tiles.root" @cursor="onCursor" />
       </div>
+      <aside v-if="showRightSidebar" class="right-sidebar">
+        <Outline v-if="showOutlinePane" :cursor-line="cursorLine" @goto="onOutlineGoto" />
+        <BacklinksPanel v-if="showBacklinksPane" />
+      </aside>
     </div>
     <StatusBar :line="cursorLine" :col="cursorCol" />
 
@@ -445,6 +456,33 @@ const showOutlinePane = computed(
   display: flex;
   min-height: 0;
   overflow: hidden;
+}
+.right-sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 260px;
+  flex: 0 0 260px;
+  min-width: 0;
+  border-left: 1px solid var(--border);
+  background: var(--bg-soft, var(--bg));
+}
+.right-sidebar > :deep(*) {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  /* Reset Outline's own width since it now lives in a sized container. */
+}
+.right-sidebar > :deep(.outline) {
+  width: 100% !important;
+  border-left: 0;
+}
+.right-sidebar > :deep(.backlinks) {
+  border-top: 1px solid var(--border);
+  border-left: 0;
+}
+.right-sidebar > :deep(*:first-child:nth-last-child(1)) {
+  /* When only one panel is shown, ensure no top-border leak */
+  border-top: 0;
 }
 .content {
   flex: 1;

@@ -56,6 +56,8 @@ interface Settings {
   revealInFileTreeOnOpen: boolean;
   // First-launch welcome tour: opened automatically once. Don't reopen.
   welcomeShown: boolean;
+  // v2.0 F1: show the Backlinks panel (right of editor) for markdown docs.
+  showBacklinks: boolean;
 }
 
 function defaults(): Settings {
@@ -94,6 +96,7 @@ function defaults(): Settings {
     openFileInNewWindow: false,
     revealInFileTreeOnOpen: false,
     welcomeShown: false,
+    showBacklinks: true,
   };
 }
 
@@ -199,6 +202,10 @@ export const useSettingsStore = defineStore('settings', {
     },
     markWelcomeShown() {
       this.welcomeShown = true;
+      this.persist();
+    },
+    toggleBacklinks() {
+      this.showBacklinks = !this.showBacklinks;
       this.persist();
     },
     setUiFontSize(n: number) {

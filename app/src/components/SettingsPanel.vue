@@ -231,6 +231,13 @@ const fontFamilySelectValue = computed(() =>
 
         <section>
           <label>
+            <input type="checkbox" :checked="settings.showBacklinks" @change="settings.toggleBacklinks()" />
+            {{ t('settings.showBacklinks') }}
+          </label>
+        </section>
+
+        <section>
+          <label>
             <input type="checkbox" :checked="settings.spellCheck" @change="settings.toggleSpellCheck()" />
             {{ t('settings.spellCheck') }}
           </label>

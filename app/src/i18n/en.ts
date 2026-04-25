@@ -104,6 +104,7 @@ export const en = {
     showOutline: 'Show Outline (Markdown)',
     previewFitWidth: 'Preview Fit Width — stretch preview to fill window, no horizontal scrollbar',
     showFileTree: 'Show File Tree',
+    showBacklinks: 'Show Backlinks panel — show notes that link here (folder required)',
     spellCheck: 'Spell Check (browser)',
     focusMode: 'Focus Mode — dim non-active paragraphs',
     typewriterMode: 'Typewriter Mode — keep cursor centered',

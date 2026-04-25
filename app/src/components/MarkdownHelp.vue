@@ -202,6 +202,13 @@ const items: Item[] = [
     zh: '引用式链接，便于复用 URL',
     en: 'Reference-style link, reuse the URL',
   },
+  {
+    category: C.links,
+    syntax: '[[note]]',
+    example: '[[Welcome]]\n[[Welcome|home page]]\n[[Welcome#Get started]]',
+    zh: '双链：跳转工作区中同名笔记。Cmd/Ctrl+点击打开。开 `[[` 自动补全。',
+    en: 'Wikilink to a note in the workspace folder. Cmd/Ctrl+click to open. Type `[[` for autocomplete. Optional `|alias` and `#heading`.',
+  },
 
   // Code
   {

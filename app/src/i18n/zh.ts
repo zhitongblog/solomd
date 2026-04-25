@@ -106,6 +106,7 @@ export const zh: I18n = {
     showOutline: '显示大纲 (Markdown)',
     previewFitWidth: '预览自适应宽度 — 预览区铺满窗口,不出现横向滚动条',
     showFileTree: '显示文件树',
+    showBacklinks: '显示反向链接面板 —— 列出引用本文档的笔记（需先打开文件夹）',
     spellCheck: '拼写检查 (浏览器)',
     focusMode: '专注模式 — 淡化非活动段落',
     typewriterMode: '打字机模式 — 光标始终居中',
