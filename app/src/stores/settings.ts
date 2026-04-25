@@ -289,14 +289,10 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleAutoGit() {
       this.autoGitEnabled = !this.autoGitEnabled;
-      // Surface the history panel together with AutoGit — the v2.2 launch
-      // had two separate toggles and users who only flipped AutoGit on
-      // saw nothing visible (commits piled up in .git/ but the panel
-      // stayed hidden). Turning AutoGit *off* doesn't auto-hide the
-      // panel; the user might still want to inspect existing history.
-      if (this.autoGitEnabled) {
-        this.showHistoryPanel = true;
-      }
+      // Tie panel visibility to the AutoGit toggle — there's only one
+      // user-facing concept ("version history is on / off") and the
+      // panel showing matches that mental model.
+      this.showHistoryPanel = this.autoGitEnabled;
       this.persist();
     },
     toggleHistoryPanel() {

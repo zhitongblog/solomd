@@ -46,14 +46,6 @@ const workspace = useWorkspaceStore();
 const workspaceIndex = useWorkspaceIndexStore();
 const autoCommit = useAutoCommit();
 autoCommit.start();
-
-// One-shot reconciliation: v2.2 shipped with two separate toggles
-// (Enable AutoGit / Show history panel). Users who enabled AutoGit but
-// not the panel saw "no history" even though commits were piling up.
-// If we boot in that state, surface the panel.
-if (settings.autoGitEnabled && !settings.showHistoryPanel) {
-  settings.toggleHistoryPanel();
-}
 const { t } = useI18n();
 
 const cursorLine = ref(1);
@@ -452,8 +444,12 @@ const showTagsPane = computed(
   () => settings.showTagsPanel && !!workspace.currentFolder,
 );
 const showHistoryPane = computed(
+  // One concept, one switch: AutoGit on = panel visible. The legacy
+  // `showHistoryPanel` field is kept in the store for back-compat with
+  // older persisted state but is no longer surfaced as a separate
+  // toggle in Settings.
   () =>
-    settings.showHistoryPanel &&
+    settings.autoGitEnabled &&
     tabs.activeTab?.language === 'markdown' &&
     !!workspace.currentFolder,
 );

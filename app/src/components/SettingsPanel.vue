@@ -253,19 +253,9 @@ const fontFamilySelectValue = computed(() =>
             <input type="checkbox" :checked="settings.autoGitEnabled" @change="settings.toggleAutoGit()" />
             {{ t('settings.autoGitEnabled') }}
           </label>
-          <label style="margin-top: 4px;">
-            <input type="checkbox" :checked="settings.showHistoryPanel" @change="settings.toggleHistoryPanel()" />
-            {{ t('settings.showHistoryPanel') }}
-          </label>
-          <label style="margin-top: 8px;">{{ t('settings.autoGitDebounceSeconds') }}</label>
-          <input
-            type="number"
-            min="5"
-            max="600"
-            :value="settings.autoGitDebounceSeconds"
-            @input="settings.setAutoGitDebounceSeconds(Number(($event.target as HTMLInputElement).value))"
-            style="width: 96px; padding: 4px 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px; font: inherit;"
-          />
+          <p style="font-size: 11px; color: var(--text-faint); margin: 4px 0 0; line-height: 1.5;">
+            {{ t('settings.autoGitHelp') }}
+          </p>
         </section>
 
         <section>
