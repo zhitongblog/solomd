@@ -1,5 +1,8 @@
 export type Language = 'markdown' | 'plaintext';
-export type ViewMode = 'edit' | 'preview' | 'split';
+// `liveEdit` (v2.3) renders markdown formatting inline inside the editor —
+// Typora / Obsidian Live Preview style. The editor IS the only pane in
+// this mode; there is no separate preview column.
+export type ViewMode = 'edit' | 'preview' | 'split' | 'liveEdit';
 export type Theme =
   | 'light'
   | 'dark'

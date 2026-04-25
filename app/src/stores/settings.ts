@@ -163,7 +163,9 @@ export const useSettingsStore = defineStore('settings', {
       this.persist();
     },
     cycleViewMode() {
-      const order: ViewMode[] = ['edit', 'split', 'preview'];
+      // `liveEdit` (v2.3) joins the cycle — order chosen so the WYSIWYG
+      // mode lives between split (markup-visible) and preview (rendered).
+      const order: ViewMode[] = ['edit', 'split', 'liveEdit', 'preview'];
       const i = order.indexOf(this.viewMode);
       this.setViewMode(order[(i + 1) % order.length]);
     },

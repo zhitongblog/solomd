@@ -396,15 +396,26 @@ onBeforeUnmount(() => {
       </button>
       <button
         class="icon-btn"
+        @click="() => { settings.setViewMode('liveEdit'); track('view_mode', { mode: 'liveEdit' }); }"
+        :class="{ active: settings.viewMode === 'liveEdit' }"
+        :title="t('toolbar.liveEditMode')"
+      >
+        <Icon name="view-live" />
+      </button>
+      <button
+        class="icon-btn"
         @click="() => { settings.setViewMode('preview'); track('view_mode', { mode: 'preview' }); }"
         :class="{ active: settings.viewMode === 'preview' }"
         :title="t('toolbar.previewOnly')"
       >
         <Icon name="view-preview" />
       </button>
-      <span class="toolbar__divider" v-if="settings.viewMode !== 'preview'"></span>
+      <span
+        class="toolbar__divider"
+        v-if="settings.viewMode !== 'preview' && settings.viewMode !== 'liveEdit'"
+      ></span>
       <button
-        v-if="settings.viewMode !== 'preview'"
+        v-if="settings.viewMode !== 'preview' && settings.viewMode !== 'liveEdit'"
         class="icon-btn"
         @click="() => { settings.toggleLivePreview(); track('live_preview_toggled', { on: settings.livePreview ? 1 : 0 }); }"
         :class="{ active: settings.livePreview }"
@@ -413,7 +424,7 @@ onBeforeUnmount(() => {
         <Icon :name="settings.livePreview ? 'live' : 'source'" />
       </button>
       <button
-        v-if="settings.viewMode !== 'edit'"
+        v-if="settings.viewMode === 'split' || settings.viewMode === 'preview'"
         class="icon-btn"
         @click="settings.togglePreviewFitWidth"
         :class="{ active: settings.previewFitWidth }"

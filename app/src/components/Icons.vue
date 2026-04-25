@@ -131,6 +131,15 @@ defineProps<{ name: string; size?: number }>();
       <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
       <circle cx="12" cy="12" r="3" />
     </template>
+    <template v-else-if="name === 'view-live'">
+      <!-- pen-on-paper: distinct from "view-edit" (which is also a pen
+           but on a notebook). Communicates "live / inline rendering".
+           A document with a pen tip writing on it. -->
+      <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7" />
+      <line x1="8" y1="9" x2="13" y2="9" />
+      <line x1="8" y1="13" x2="11" y2="13" />
+      <path d="M19 2.5a1.8 1.8 0 0 1 2.5 2.5L16 11l-3 1 1-3 5-6.5z" />
+    </template>
     <template v-else-if="name === 'focus'">
       <circle cx="12" cy="12" r="4" />
       <line x1="12" y1="2" x2="12" y2="5" />

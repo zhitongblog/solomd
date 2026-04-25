@@ -25,6 +25,7 @@ import { useTabsStore } from '../stores/tabs';
 import { useSettingsStore, buildEditorFontStack } from '../stores/settings';
 import type { Tab } from '../types';
 import { livePreviewExtension, richHighlightOnly } from '../lib/cm-live-preview';
+import { liveEditExtension } from '../lib/cm-live-render';
 import { imagePasteExtension, insertImageFromPath as cmInsertImageFromPath } from '../lib/cm-image-paste';
 import { focusModeExtension, typewriterModeExtension } from '../lib/cm-focus-mode';
 import { wikilinkExtension, wikilinkComplete } from '../lib/cm-wikilink';
@@ -113,6 +114,11 @@ function spellCheckExt(on: boolean) {
 
 function richExtensionsFor(tab: Tab) {
   if (tab.language !== 'markdown') return [];
+  // v2.3 live-edit takes precedence over the existing livePreview toggle —
+  // the WYSIWYG bundle ALREADY includes rich highlighting + marker hiding,
+  // and stacking livePreviewExtension on top would cause duplicate
+  // marker-replace decorations.
+  if (settings.viewMode === 'liveEdit') return liveEditExtension();
   return settings.livePreview ? livePreviewExtension() : richHighlightOnly();
 }
 
@@ -336,6 +342,16 @@ watch(
 
 watch(
   () => settings.livePreview,
+  () => {
+    view?.dispatch({ effects: richCompartment.reconfigure(richExtensionsFor(props.tab)) });
+  }
+);
+
+// v2.3: switching into / out of `liveEdit` swaps the rich extension
+// bundle (live-edit decorations are MUCH more aggressive than the
+// livePreview fallback, so we need a real reconfigure).
+watch(
+  () => settings.viewMode,
   () => {
     view?.dispatch({ effects: richCompartment.reconfigure(richExtensionsFor(props.tab)) });
   }

@@ -600,6 +600,110 @@ impl DevServer {
         Ok(text_result(path))
     }
 
+    #[tool(description = "v2.3 live-edit self-test. Reports current viewMode, the contract of CSS class names the live-edit extension is expected to emit (so the caller can grep for them in a screenshot or DOM dump), and the active tab's markdown so the caller can know which classes SHOULD be present. Args: { bundle?: 'dev'|'prod' }.")]
+    pub async fn solomd_get_editor_decorations(
+        &self,
+        Parameters(args): Parameters<BundleArgs>,
+    ) -> Result<CallToolResult, McpError> {
+        // CSS classes emitted by app/src/lib/cm-live-render.ts. Keep this
+        // list in sync with the LIVE_EDIT_CLASSES constant exported there
+        // — both are the contract the dev-MCP self-test checks against.
+        let live_edit_classes = vec![
+            "cm-md-heading-line-1",
+            "cm-md-heading-line-2",
+            "cm-md-heading-line-3",
+            "cm-md-heading-line-4",
+            "cm-md-heading-line-5",
+            "cm-md-heading-line-6",
+            "cm-md-strong",
+            "cm-md-em",
+            "cm-md-strike",
+            "cm-md-code",
+            "cm-md-link",
+            "cm-md-quote-line",
+            "cm-md-fenced-line",
+        ];
+
+        let settings = ls_get(&args.bundle, "solomd.settings.v1")
+            .unwrap_or(JsonValue::Null);
+        let view_mode = settings
+            .get("viewMode")
+            .and_then(|v| v.as_str())
+            .unwrap_or("edit")
+            .to_string();
+        let live_edit_active = view_mode == "liveEdit";
+
+        // Pull the active tab's content so the caller can correlate
+        // expected decorations (e.g. "this doc has a `# H1` so the DOM
+        // should contain `.cm-md-heading-line-1`").
+        let tabs = ls_get(&args.bundle, "solomd.tabs.v1").unwrap_or(JsonValue::Null);
+        let active_id = tabs
+            .get("activeTabId")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        let mut active_content = String::new();
+        let mut active_path = String::new();
+        if let Some(arr) = tabs.get("tabs").and_then(|v| v.as_array()) {
+            for tab in arr {
+                if tab.get("id").and_then(|v| v.as_str()) == Some(active_id) {
+                    active_content = tab
+                        .get("content")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    active_path = tab
+                        .get("filePath")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    break;
+                }
+            }
+        }
+
+        // Heuristic "expected classes" derived from the active doc — so
+        // the caller can self-test by checking that screenshots of the
+        // editor in liveEdit mode actually render these.
+        let mut expected: Vec<&str> = Vec::new();
+        if active_content.lines().any(|l| l.starts_with("# ")) {
+            expected.push("cm-md-heading-line-1");
+        }
+        if active_content.lines().any(|l| l.starts_with("## ")) {
+            expected.push("cm-md-heading-line-2");
+        }
+        if active_content.lines().any(|l| l.starts_with("### ")) {
+            expected.push("cm-md-heading-line-3");
+        }
+        if active_content.contains("**") {
+            expected.push("cm-md-strong");
+        }
+        if active_content.contains('*') {
+            expected.push("cm-md-em");
+        }
+        if active_content.contains('`') {
+            expected.push("cm-md-code");
+        }
+        if active_content.contains("](") {
+            expected.push("cm-md-link");
+        }
+        if active_content.lines().any(|l| l.trim_start().starts_with('>')) {
+            expected.push("cm-md-quote-line");
+        }
+        if active_content.contains("```") {
+            expected.push("cm-md-fenced-line");
+        }
+
+        Ok(json_result(serde_json::json!({
+            "view_mode": view_mode,
+            "live_edit_active": live_edit_active,
+            "active_tab_path": active_path,
+            "active_tab_chars": active_content.chars().count(),
+            "live_edit_classes": live_edit_classes,
+            "expected_classes_from_active_doc": expected,
+            "note": "Live edit decorations only render when view_mode == 'liveEdit'. Take a screenshot via solomd_screenshot and verify the listed classes appear in the rendered DOM (Inspector). To self-test programmatically, use the existing chrome-devtools MCP to evaluate `document.querySelectorAll('.cm-md-heading-line-1').length > 0` on the WebView.",
+        })))
+    }
+
     #[tool(description = "List running SoloMD processes (dev = `target/debug/SoloMD`, prod = `/Applications/SoloMD.app`).")]
     pub async fn solomd_app_status(
         &self,
@@ -641,6 +745,7 @@ impl ServerHandler for DevServer {
                  solomd_get_tabs/solomd_set_tabs, \
                  solomd_git_status/init/commit/log/rollback/file_at, \
                  solomd_read_file/solomd_write_file, \
+                 solomd_get_editor_decorations (v2.3 live-edit self-test), \
                  solomd_screenshot, solomd_app_status. \
                  Settings/workspace/tabs writes require SoloMD be closed.",
             )

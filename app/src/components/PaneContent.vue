@@ -24,8 +24,13 @@ const previewRef = ref<InstanceType<typeof Preview> | null>(null);
 const showEditor = computed(
   () => props.tab?.language !== 'markdown' || settings.viewMode !== 'preview'
 );
+// `liveEdit` mode is editor-only: the inline-rendered markdown IS the
+// preview, so we don't show the separate Preview pane next to it.
 const showPreview = computed(
-  () => props.tab?.language === 'markdown' && settings.viewMode !== 'edit'
+  () =>
+    props.tab?.language === 'markdown' &&
+    settings.viewMode !== 'edit' &&
+    settings.viewMode !== 'liveEdit'
 );
 
 const isFocused = computed(() => tiles.focusedPaneId === props.paneId);

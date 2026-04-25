@@ -56,6 +56,7 @@ export const en = {
     helpTitle: 'Help (F1)',
     editOnly: 'Edit only',
     splitPane: 'Split (Ctrl+Shift+P)',
+    liveEditMode: 'Live edit (WYSIWYG) — render markdown inline as you type',
     previewOnly: 'Preview only',
     livePreviewOn: 'Live preview ON — click for raw source',
     livePreviewOff: 'Raw source — click for live preview',

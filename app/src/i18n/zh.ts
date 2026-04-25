@@ -58,6 +58,7 @@ export const zh: I18n = {
     helpTitle: '帮助 (F1)',
     editOnly: '仅编辑',
     splitPane: '分栏 (Ctrl+Shift+P)',
+    liveEditMode: '实时编辑 (所见即所得) — 边输入边渲染',
     previewOnly: '仅预览',
     livePreviewOn: '实时预览已开启 — 点击切换源码',
     livePreviewOff: '源码模式 — 点击切换实时预览',
