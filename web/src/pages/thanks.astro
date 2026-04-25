@@ -9,7 +9,7 @@ const lang = 'en' as const;
 interface Donor {
   name: string;
   date: string;
-  platform: 'wechat' | 'alipay' | 'other';
+  platform: 'wechat' | 'alipay' | 'paypal' | 'github' | 'other';
   amount?: string;
   message?: string;
 }
@@ -22,6 +22,8 @@ const donors: Donor[] = [...(thanksData.donors as Donor[])].sort(
 const platformLabel: Record<Donor['platform'], string> = {
   wechat: 'WeChat Pay',
   alipay: 'Alipay',
+  paypal: 'PayPal',
+  github: 'GitHub Sponsors',
   other: 'Other',
 };
 ---
@@ -64,7 +66,7 @@ const platformLabel: Record<Donor['platform'], string> = {
       <section class="support">
         <h2>Want to support SoloMD?</h2>
         <p>
-          WeChat Pay and Alipay QR codes are on the
+          PayPal, WeChat Pay, and Alipay options are on the
           <a href="/#sponsor"> sponsor section of the home page</a>. After
           tipping, feel free to open a
           <a href="https://github.com/zhitongblog/solomd/issues" rel="external">

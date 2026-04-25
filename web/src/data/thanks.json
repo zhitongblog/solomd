@@ -3,7 +3,7 @@
   "$schema": {
     "name": "string — display name, nickname, or '匿名' for anonymous. WeChat already masks with * (e.g. 'm*p', '*和'), keep as-is",
     "date": "string YYYY-MM-DD",
-    "platform": "wechat | alipay | other",
+    "platform": "wechat | alipay | paypal | github | other",
     "amount": "string — show as-is, e.g. '¥10' or '¥66.6'; leave empty to hide",
     "message": "optional string — donor's message or dedication"
   },

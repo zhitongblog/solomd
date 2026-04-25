@@ -6,6 +6,7 @@ const tr = getT(lang);
 
 // TODO: replace with real GitHub Sponsors URL once approved
 const githubSponsorUrl = 'https://github.com/sponsors/zhitongblog';
+const paypalUrl = 'https://paypal.me/solomdapp';
 
 // QR images live in /public/sponsor/.
 const alipayQr = '/sponsor/alipay-qr.jpg';
@@ -32,6 +33,22 @@ const wechatQr = '/sponsor/wechat-qr.jpg';
         <p class="sp-card__desc">{tr.sponsor.ghDesc}</p>
         <a href={githubSponsorUrl} target="_blank" rel="noopener" class="btn btn--secondary sp-card__btn">
           {tr.sponsor.ghButton}
+        </a>
+      </article>
+
+      <!-- PayPal -->
+      <article class="sp-card sp-card--paypal">
+        <div class="sp-card__head">
+          <span class="sp-icon sp-icon--paypal" aria-hidden="true">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="#ffffff">
+              <path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797h-2.19c-.524 0-.968.382-1.05.9l-1.12 7.106zm14.146-14.42a3.35 3.35 0 0 0-.607-.541c-.013.076-.026.175-.041.254-.59 3.025-2.566 5.18-5.66 6.005a18.4 18.4 0 0 1-4.737.595h-1.16l-.7 4.452-.337 2.137-.061.39h4.03c.46 0 .85-.334.922-.788l.038-.197.722-4.583.046-.252c.073-.454.464-.788.924-.788h.582c3.762 0 6.706-1.528 7.566-5.946.36-1.847.174-3.388-.776-4.471z"/>
+            </svg>
+          </span>
+          <h3>{tr.sponsor.paypalTitle}</h3>
+        </div>
+        <p class="sp-card__desc">{tr.sponsor.paypalDesc}</p>
+        <a href={paypalUrl} target="_blank" rel="noopener" class="btn btn--secondary sp-card__btn">
+          {tr.sponsor.paypalButton}
         </a>
       </article>
 
@@ -106,6 +123,7 @@ const wechatQr = '/sponsor/wechat-qr.jpg';
     box-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.18);
   }
   .sp-card--gh:hover { border-color: #6e40c9; }
+  .sp-card--paypal:hover { border-color: #003087; }
   .sp-card--alipay:hover { border-color: #1677FF; }
   .sp-card--wechat:hover { border-color: #07C160; }
 
@@ -131,6 +149,9 @@ const wechatQr = '/sponsor/wechat-qr.jpg';
   .sp-icon--gh {
     background: #1a1a1a;
     color: #ffffff;
+  }
+  .sp-icon--paypal {
+    background: #003087;
   }
   .sp-icon--alipay {
     background: #1677FF;

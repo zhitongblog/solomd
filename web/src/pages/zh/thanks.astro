@@ -9,7 +9,7 @@ const lang = 'zh' as const;
 interface Donor {
   name: string;
   date: string;
-  platform: 'wechat' | 'alipay' | 'other';
+  platform: 'wechat' | 'alipay' | 'paypal' | 'github' | 'other';
   amount?: string;
   message?: string;
 }
@@ -21,6 +21,8 @@ const donors: Donor[] = [...(thanksData.donors as Donor[])].sort(
 const platformLabel: Record<Donor['platform'], string> = {
   wechat: '微信',
   alipay: '支付宝',
+  paypal: 'PayPal',
+  github: 'GitHub Sponsors',
   other: '其他',
 };
 ---
@@ -61,7 +63,7 @@ const platformLabel: Record<Donor['platform'], string> = {
       <section class="support">
         <h2>想打赏 SoloMD？</h2>
         <p>
-          微信/支付宝收款码在
+          PayPal、微信、支付宝在
           <a href="/zh/#sponsor">首页的赞助区域</a>。打赏后可以在
           <a href="https://github.com/zhitongblog/solomd/issues" rel="external">
             GitHub
