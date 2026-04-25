@@ -102,16 +102,23 @@ async function toggleRow(sha: string) {
 
 async function onRestore(sha: string, shortSha: string) {
   if (!folder.value || !activeFile.value) return;
-  // Lightweight in-thread confirm; the parent integrates a richer dialog later.
   if (!window.confirm(t('history.confirmRestore', { sha: shortSha }))) return;
+  const tabId = tabs.activeTab?.id;
   try {
+    // Backend rolls back the on-disk file...
     await gh.rollback(folder.value, activeFile.value, sha);
+    // ...but the active tab's in-memory buffer still has the OLD content.
+    // If we don't sync it now, (1) the editor visually shows no change so
+    // the user thinks rollback failed, and (2) the next ⌘S writes the
+    // stale buffer back to disk, silently undoing the rollback. Pull the
+    // fresh content from the target sha and overwrite the tab buffer +
+    // mark it saved (no unsaved-changes indicator).
+    const restored = await gh.fileAt(folder.value, activeFile.value, sha);
+    if (restored !== null && tabId) {
+      tabs.setContent(tabId, restored);
+      tabs.markSaved(tabId, activeFile.value);
+    }
     toasts.success(t('history.restored', { sha: shortSha }));
-    // Tell the editor to reload from disk — the file watcher catches the
-    // change but the active tab won't auto-pick-up unless we hint it.
-    window.dispatchEvent(
-      new CustomEvent('solomd:reload-active', { detail: { filePath: activeFile.value } }),
-    );
   } catch (e) {
     toasts.error(`${t('history.commitFailed')}: ${e}`);
   }
