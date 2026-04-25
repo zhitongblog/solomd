@@ -32,6 +32,8 @@ export type ProviderId =
   | 'kimi'
   | 'volcengine'
   | 'siliconflow'
+  // Aggregator
+  | 'openrouter'
   // Local
   | 'ollama';
 
@@ -61,45 +63,48 @@ export const PROVIDERS: ProviderConfig[] = [
     id: 'openai',
     label: 'OpenAI',
     apiFormat: 'openai',
-    defaultModel: 'gpt-4.1-mini',
+    defaultModel: 'gpt-5.5',
     defaultBaseUrl: 'https://api.openai.com',
-    modelHint: 'gpt-4.1-mini · gpt-4.1 · o4-mini · gpt-4o-mini',
+    modelHint: 'gpt-5.5 · gpt-5.5-pro · gpt-5.4 · gpt-5.4-mini · gpt-5.4-nano',
     signupUrl: 'https://platform.openai.com/api-keys',
   },
   {
     id: 'anthropic',
     label: 'Anthropic Claude',
     apiFormat: 'anthropic',
-    defaultModel: 'claude-haiku-4-5',
+    defaultModel: 'claude-sonnet-4-6',
     defaultBaseUrl: 'https://api.anthropic.com',
-    modelHint: 'claude-opus-4-5 · claude-sonnet-4-5 · claude-haiku-4-5',
+    modelHint: 'claude-opus-4-7 · claude-sonnet-4-6 · claude-haiku-4-5',
     signupUrl: 'https://console.anthropic.com/settings/keys',
   },
   {
     id: 'gemini',
     label: 'Google Gemini',
     apiFormat: 'openai',
-    defaultModel: 'gemini-2.0-flash',
+    defaultModel: 'gemini-3.1-pro-preview',
     defaultBaseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
-    modelHint: 'gemini-2.5-pro · gemini-2.0-flash · gemini-2.0-flash-thinking',
+    modelHint:
+      '旗舰: gemini-3.1-pro-preview · 标准: gemini-3-flash-preview / gemini-2.5-flash · 轻量: gemini-3.1-flash-lite-preview',
     signupUrl: 'https://aistudio.google.com/apikey',
   },
   {
     id: 'xai',
     label: 'xAI Grok',
     apiFormat: 'openai',
-    defaultModel: 'grok-3',
+    defaultModel: 'grok-4.20',
     defaultBaseUrl: 'https://api.x.ai/v1',
-    modelHint: 'grok-3 · grok-3-mini · grok-2-vision',
+    modelHint:
+      'grok-4.20 · grok-4-fast-reasoning · grok-4-1-fast-reasoning · grok-4-fast-non-reasoning · grok-code-fast-1',
     signupUrl: 'https://console.x.ai',
   },
   {
     id: 'mistral',
     label: 'Mistral',
     apiFormat: 'openai',
-    defaultModel: 'mistral-small-latest',
+    defaultModel: 'mistral-large-3',
     defaultBaseUrl: 'https://api.mistral.ai/v1',
-    modelHint: 'mistral-large-latest · mistral-small-latest · codestral-latest',
+    modelHint:
+      'mistral-large-3 · mistral-medium-3.1 · mistral-small-4 · 推理: magistral-medium-1.2 · 编码: devstral-2 / codestral',
     signupUrl: 'https://console.mistral.ai/api-keys',
   },
   {
@@ -108,7 +113,8 @@ export const PROVIDERS: ProviderConfig[] = [
     apiFormat: 'openai',
     defaultModel: 'llama-3.3-70b-versatile',
     defaultBaseUrl: 'https://api.groq.com/openai/v1',
-    modelHint: 'llama-3.3-70b-versatile · qwen-2.5-32b · deepseek-r1-distill-llama-70b',
+    modelHint:
+      'llama-3.3-70b-versatile · meta-llama/llama-4-scout-17b-16e-instruct · openai/gpt-oss-120b · qwen/qwen3-32b · groq/compound',
     signupUrl: 'https://console.groq.com/keys',
   },
   // ---- CN providers --------------------------------------------------
@@ -116,9 +122,10 @@ export const PROVIDERS: ProviderConfig[] = [
     id: 'deepseek',
     label: 'DeepSeek',
     apiFormat: 'openai',
-    defaultModel: 'deepseek-chat',
+    defaultModel: 'deepseek-v4-flash',
     defaultBaseUrl: 'https://api.deepseek.com',
-    modelHint: '标准: deepseek-chat · 推理: deepseek-reasoner · 编码: deepseek-coder',
+    modelHint:
+      '旗舰: deepseek-v4-pro · 通用: deepseek-v4-flash · (旧版即将下线: deepseek-chat / deepseek-reasoner)',
     signupUrl: 'https://platform.deepseek.com/api_keys',
   },
   {
@@ -128,46 +135,59 @@ export const PROVIDERS: ProviderConfig[] = [
     defaultModel: 'qwen-plus',
     defaultBaseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
     modelHint:
-      '标准: qwen-plus / qwen-max / qwen-turbo · 编码: qwen-coder-plus / qwen3-coder-plus · 推理: qwq-plus',
+      '标准: qwen3-max / qwen3.5-plus / qwen-plus / qwen-flash · 编码: qwen3-coder-plus / qwen3-coder-flash · 推理: qwq-plus / qvq-max · 视觉: qwen3-vl-plus',
     signupUrl: 'https://bailian.console.aliyun.com/?apiKey=1',
   },
   {
     id: 'glm',
     label: '智谱 GLM',
     apiFormat: 'openai',
-    defaultModel: 'glm-4-plus',
+    defaultModel: 'glm-4.6',
     defaultBaseUrl: 'https://open.bigmodel.cn/api/paas/v4',
-    modelHint: '标准: glm-4-plus / glm-4-air · 推理: glm-zero-preview · 编码: codegeex-4',
+    modelHint:
+      '旗舰: glm-5.1 / glm-5 / glm-5-turbo · 稳定: glm-4.6 / glm-4.7 · 轻量: glm-4.7-flashx / glm-4.5-air · 视觉: glm-5v-turbo / glm-4.6v',
     signupUrl: 'https://bigmodel.cn/usercenter/proj-mgmt/apikeys',
   },
   {
     id: 'kimi',
     label: 'Moonshot Kimi',
     apiFormat: 'openai',
-    defaultModel: 'moonshot-v1-8k',
+    defaultModel: 'kimi-k2-0905-preview',
     defaultBaseUrl: 'https://api.moonshot.cn/v1',
-    modelHint: 'moonshot-v1-8k · moonshot-v1-32k · moonshot-v1-128k · kimi-latest',
+    modelHint:
+      'K2: kimi-k2-0905-preview / kimi-k2-turbo-preview / kimi-k2-thinking · K2.6 (2026-04-20 发布,API id 待确认) · 兼容: kimi-latest / moonshot-v1-128k',
     signupUrl: 'https://platform.moonshot.cn/console/api-keys',
   },
   {
     id: 'volcengine',
     label: '火山方舟 / 豆包 (Volcengine ARK)',
     apiFormat: 'openai',
-    defaultModel: 'doubao-1-5-pro-32k',
+    defaultModel: 'doubao-seed-1.6',
     defaultBaseUrl: 'https://ark.cn-beijing.volces.com/api/v3',
     modelHint:
-      '标准: doubao-1-5-pro-32k / doubao-1-5-lite · 编码: doubao-pro-coder · 推理: doubao-1-5-thinking-pro',
+      'Seed 1.6: doubao-seed-1.6 (pro) · doubao-seed-1.6-lite · doubao-seed-1.6-flash · doubao-seed-1.6-thinking · doubao-seed-1.6-vision · 旧版: doubao-1-5-pro-32k',
     signupUrl: 'https://console.volcengine.com/ark/region:ark+cn-beijing/apiKey',
   },
   {
     id: 'siliconflow',
     label: '硅基流动 SiliconFlow',
     apiFormat: 'openai',
-    defaultModel: 'Qwen/Qwen2.5-7B-Instruct',
+    defaultModel: 'deepseek-ai/DeepSeek-V3',
     defaultBaseUrl: 'https://api.siliconflow.cn/v1',
     modelHint:
-      '托管多家开源模型: Qwen/Qwen2.5-* · deepseek-ai/DeepSeek-V3 · meta-llama/Meta-Llama-3.1-* 等',
+      '需要 vendor/Model 前缀。常用: deepseek-ai/DeepSeek-V3 · Qwen/Qwen2.5-Coder-32B-Instruct · moonshotai/Kimi-K2-Instruct',
     signupUrl: 'https://cloud.siliconflow.cn/account/ak',
+  },
+  // ---- Aggregator (one key, hundreds of models) ---------------------
+  {
+    id: 'openrouter',
+    label: 'OpenRouter (聚合,400+ 模型)',
+    apiFormat: 'openai',
+    defaultModel: 'anthropic/claude-sonnet-4-6',
+    defaultBaseUrl: 'https://openrouter.ai/api/v1',
+    modelHint:
+      '一个 key 调用 400+ 模型。常用: anthropic/claude-sonnet-4-6 · openai/gpt-5.5 · google/gemini-3.1-pro · deepseek/deepseek-v4 · x-ai/grok-4.20 · 完整: openrouter.ai/models',
+    signupUrl: 'https://openrouter.ai/keys',
   },
   // ---- Local ---------------------------------------------------------
   {

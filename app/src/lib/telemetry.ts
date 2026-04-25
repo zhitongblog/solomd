@@ -23,8 +23,29 @@ export function track(event: string, props?: EventProps): void {
   try {
     const settings = useSettingsStore();
     if (!settings.telemetryEnabled) return;
-    invoke('plugin:aptabase|track_event', { name: event, props }).catch(() => {});
+    invoke('plugin:aptabase|track_event', { name: event, props })
+      .then(() => {
+        if (TELEMETRY_DEBUG) console.debug('[telemetry] tracked', event, props);
+      })
+      .catch((err) => {
+        if (TELEMETRY_DEBUG) console.warn('[telemetry] failed', event, err);
+      });
   } catch {
     // Pinia not ready; swallow silently — telemetry must never break the app.
   }
 }
+
+/**
+ * Set `localStorage.solomd.telemetryDebug = '1'` to see every track() call
+ * in the devtools console. Useful for verifying events actually flow when
+ * the Aptabase dashboard shows nothing — most often that's the dashboard's
+ * "hide debug events" filter (toggle in the top right) rather than a bug
+ * in our wiring.
+ */
+const TELEMETRY_DEBUG = (() => {
+  try {
+    return localStorage.getItem('solomd.telemetryDebug') === '1';
+  } catch {
+    return false;
+  }
+})();
