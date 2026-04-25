@@ -3,7 +3,8 @@
  * Walks markdown-it tokens and emits Word paragraphs / runs.
  *
  * Supports: headings (h1-h6), paragraphs, bold, italic, inline code, links,
- * fenced code blocks, ordered/bullet lists, blockquotes, horizontal rules.
+ * fenced code blocks, ordered/bullet lists, blockquotes, horizontal rules,
+ * tables, and embedded images (local + remote).
  */
 
 import {
@@ -11,6 +12,7 @@ import {
   Packer,
   Paragraph,
   TextRun,
+  ImageRun,
   HeadingLevel,
   AlignmentType,
   ExternalHyperlink,
@@ -21,7 +23,9 @@ import {
   TableCell,
   WidthType,
 } from 'docx';
-import { md } from './markdown';
+import { invoke } from '@tauri-apps/api/core';
+import { md, extractImageRoot } from './markdown';
+import { resolveImagePath } from './image-resolve';
 import type Token from 'markdown-it/lib/token.mjs';
 
 type BlockChild = Paragraph | Table;
@@ -42,6 +46,97 @@ const HEADING_LEVELS: Record<string, (typeof HeadingLevel)[keyof typeof HeadingL
   h5: HeadingLevel.HEADING_5,
   h6: HeadingLevel.HEADING_6,
 };
+
+/** Image cache: absolute path → { data, width, height, type } */
+interface ImageCache {
+  data: Uint8Array;
+  width: number;
+  height: number;
+  type: 'jpg' | 'png' | 'gif' | 'bmp';
+}
+const imageCache = new Map<string, ImageCache>();
+
+function imageTypeFromPath(path: string): 'jpg' | 'png' | 'gif' | 'bmp' {
+  const ext = path.split('.').pop()?.toLowerCase() ?? '';
+  if (ext === 'jpg' || ext === 'jpeg') return 'jpg';
+  if (ext === 'gif') return 'gif';
+  if (ext === 'bmp') return 'bmp';
+  return 'png';
+}
+
+async function fetchImageBytes(absPath: string): Promise<ImageCache | null> {
+  const cached = imageCache.get(absPath);
+  if (cached) return cached;
+
+  try {
+    const data = await invoke<number[]>('read_binary_file', { path: absPath });
+    const bytes = new Uint8Array(data);
+
+    const { width, height } = readImageDimensions(bytes) ?? { width: 400, height: 300 };
+
+    const result: ImageCache = {
+      data: bytes,
+      width,
+      height,
+      type: imageTypeFromPath(absPath),
+    };
+    imageCache.set(absPath, result);
+    return result;
+  } catch {
+    return null;
+  }
+}
+
+/** Read width/height from PNG/JPEG/GIF/BMP headers without decoding the full image. */
+function readImageDimensions(data: Uint8Array): { width: number; height: number } | null {
+  // PNG: bytes 16-23 are width (4B BE) + height (4B BE)
+  if (data[0] === 0x89 && data[1] === 0x50 /* P */) {
+    const w = (data[16] << 24) | (data[17] << 16) | (data[18] << 8) | data[19];
+    const h = (data[20] << 24) | (data[21] << 16) | (data[22] << 8) | data[23];
+    if (w > 0 && h > 0) return { width: w, height: h };
+  }
+  // JPEG: scan SOF0/SOF2 marker (0xFFC0 / 0xFFC2)
+  if (data[0] === 0xFF && data[1] === 0xD8) {
+    let i = 2;
+    while (i < data.length - 8) {
+      if (data[i] !== 0xFF) break;
+      const marker = data[i + 1];
+      if (marker === 0xC0 || marker === 0xC2) {
+        const h = (data[i + 5] << 8) | data[i + 6];
+        const w = (data[i + 7] << 8) | data[i + 8];
+        if (w > 0 && h > 0) return { width: w, height: h };
+      }
+      const segLen = ((data[i + 2] << 8) | data[i + 3]) + 2;
+      if (segLen < 3) break;
+      i += segLen;
+    }
+  }
+  // GIF: little-endian width/height at offset 6-9
+  if (data[0] === 0x47 && data[1] === 0x49 && data[2] === 0x46 /* GIF */) {
+    const w = data[6] | (data[7] << 8);
+    const h = data[8] | (data[9] << 8);
+    if (w > 0 && h > 0) return { width: w, height: h };
+  }
+  // BMP: little-endian at offset 18-25
+  if (data[0] === 0x42 && data[1] === 0x4D) {
+    const w = data[18] | (data[19] << 8) | (data[20] << 16) | (data[21] << 24);
+    const h = Math.abs(data[22] | (data[23] << 8) | (data[24] << 16) | (data[25] << 24));
+    if (w > 0 && h > 0) return { width: w, height: h };
+  }
+  return null;
+}
+
+/** Max image width in the DOCX (pixels at 96dpi). */
+const MAX_IMG_WIDTH = 580;
+
+function scaleDimensions(w: number, h: number): { width: number; height: number } {
+  if (w > MAX_IMG_WIDTH) {
+    const ratio = MAX_IMG_WIDTH / w;
+    w = MAX_IMG_WIDTH;
+    h = Math.round(h * ratio);
+  }
+  return { width: w, height: h };
+}
 
 function buildRuns(inlineToken: Token, style: RunStyle = {}): (TextRun | ExternalHyperlink)[] {
   const out: (TextRun | ExternalHyperlink)[] = [];
@@ -112,18 +207,12 @@ function buildRuns(inlineToken: Token, style: RunStyle = {}): (TextRun | Externa
           pendingLink = null;
         }
         break;
-      case 'image': {
-        // Actual image embedding would require fetching bytes + knowing
-        // dimensions, which is out of scope here. Emit a styled placeholder
-        // that still conveys the intent in the resulting document.
-        const alt = tok.content || tok.attrGet('alt') || 'image';
-        const src = tok.attrGet('src') || '';
-        const label = src ? `[image: ${alt}] (${src})` : `[image: ${alt}]`;
-        push(new TextRun({ text: label, italics: true, color: '888888' }));
+      case 'image':
+        // Images are handled at the block level (see buildBody), but if an
+        // image appears inline we emit a placeholder.
+        push(new TextRun({ text: `[${tok.content || 'image'}]`, italics: true, color: '888888' }));
         break;
-      }
       default:
-        // Unknown inline → fall back to its raw content
         if (tok.content) push(new TextRun({ text: tok.content, ...toRunOpts(cur) }));
     }
   }
@@ -170,17 +259,24 @@ function findMatchingClose(tokens: Token[], start: number, openType: string, clo
   return tokens.length - 1;
 }
 
-function buildBody(tokens: Token[]): BlockChild[] {
+/** Resolve an image src from markdown to an absolute local path. Returns null for remote URLs. */
+function resolveLocalImagePath(src: string, imageRoot: string | null, filePath?: string): string | null {
+  if (!src || /^(https?|data|blob|asset|tauri):/i.test(src)) return null;
+  const resolved = resolveImagePath(src, imageRoot, filePath);
+  if (/^(https?|data|blob|asset|tauri):/i.test(resolved)) return null;
+  return resolved;
+}
+
+async function buildBody(tokens: Token[], imageRoot: string | null, filePath?: string): Promise<BlockChild[]> {
   const out: BlockChild[] = [];
   let i = 0;
-  // List nesting state: depth + counters per level
   const listStack: { type: 'bullet' | 'ordered'; index: number }[] = [];
 
   while (i < tokens.length) {
     const tok = tokens[i];
     switch (tok.type) {
       case 'heading_open': {
-        const level = tok.tag; // h1..h6
+        const level = tok.tag;
         const inline = tokens[i + 1];
         i += 3;
         out.push(
@@ -197,6 +293,53 @@ function buildBody(tokens: Token[]): BlockChild[] {
         const inline = tokens[i + 1];
         i += 3;
         const isInList = listStack.length > 0;
+
+        // Check if this paragraph contains a standalone image (image-only paragraph)
+        if (inline && isImageOnlyParagraph(inline)) {
+          const imgTok = inline.children!.find(c => c.type === 'image')!;
+          const src = imgTok.attrGet('src') || '';
+          const alt = imgTok.content || imgTok.attrGet('alt') || '';
+          const absPath = resolveLocalImagePath(src, imageRoot, filePath);
+
+          if (absPath) {
+            const img = await fetchImageBytes(absPath);
+            if (img) {
+              const dim = scaleDimensions(img.width, img.height);
+              out.push(
+                new Paragraph({
+                  children: [
+                    new ImageRun({
+                      type: img.type,
+                      data: img.data,
+                      transformation: { width: dim.width, height: dim.height },
+                      altText: { name: alt, description: alt },
+                    }),
+                  ],
+                  alignment: AlignmentType.CENTER,
+                  spacing: { before: 160, after: 160 },
+                })
+              );
+              break;
+            }
+          }
+
+          // Fallback: placeholder for remote or unreadable images
+          out.push(
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: src ? `[image: ${alt}] (${src})` : `[image: ${alt}]`,
+                  italics: true,
+                  color: '888888',
+                }),
+              ],
+              alignment: AlignmentType.CENTER,
+              spacing: { before: 160, after: 160 },
+            })
+          );
+          break;
+        }
+
         out.push(
           new Paragraph({
             children: buildRuns(inline),
@@ -257,12 +400,11 @@ function buildBody(tokens: Token[]): BlockChild[] {
       case 'blockquote_open': {
         const end = findMatchingClose(tokens, i, 'blockquote_open', 'blockquote_close');
         const inner = tokens.slice(i + 1, end);
-        const innerBlocks = buildBody(inner);
+        const innerBlocks = await buildBody(inner, imageRoot, filePath);
         for (const block of innerBlocks) {
           if (block instanceof Paragraph) {
             out.push(
               new Paragraph({
-                // Copy runs from the inner paragraph by re-reading its stored options.
                 children: ((block as any).options?.children ?? []) as TextRun[],
                 alignment: AlignmentType.LEFT,
                 indent: { left: 360 },
@@ -283,7 +425,6 @@ function buildBody(tokens: Token[]): BlockChild[] {
         const end = findMatchingClose(tokens, i, 'table_open', 'table_close');
         const table = buildTable(tokens.slice(i + 1, end));
         if (table) out.push(table);
-        // Small spacer paragraph after the table so following text breathes.
         out.push(new Paragraph({ text: '', spacing: { before: 0, after: 120 } }));
         i = end + 1;
         break;
@@ -312,11 +453,24 @@ function buildBody(tokens: Token[]): BlockChild[] {
   return out;
 }
 
+/** Check if an inline token's children consist of only a single image (possibly wrapped in a link). */
+function isImageOnlyParagraph(inline: Token): boolean {
+  if (!inline.children) return false;
+  const nonWhitespace = inline.children.filter(
+    c => !(c.type === 'text' && !c.content.trim()) && c.type !== 'softbreak'
+  );
+  if (nonWhitespace.length === 1 && nonWhitespace[0].type === 'image') return true;
+  // Link wrapping an image: link_open → image → link_close
+  if (nonWhitespace.length === 3
+    && nonWhitespace[0].type === 'link_open'
+    && nonWhitespace[1].type === 'image'
+    && nonWhitespace[2].type === 'link_close') return true;
+  return false;
+}
+
 /**
  * Build a docx Table from the tokens BETWEEN `table_open` and `table_close`
- * (exclusive). markdown-it emits:
- *   thead_open, tr_open, th_open, inline, th_close, ..., tr_close, thead_close,
- *   tbody_open, tr_open, td_open, inline, td_close, ..., tr_close, tbody_close
+ * (exclusive).
  */
 function buildTable(inner: Token[]): Table | null {
   const rows: { cells: TextRun[][]; isHeader: boolean }[] = [];
@@ -347,7 +501,6 @@ function buildTable(inner: Token[]): Table | null {
         break;
       }
       default:
-        // ignore th_close / td_close / inline (already consumed via lookahead)
         break;
     }
   }
@@ -391,9 +544,11 @@ function buildTable(inner: Token[]): Table | null {
   });
 }
 
-export async function markdownToDocxBlob(source: string, _title = 'Document'): Promise<Blob> {
-  const tokens = md.parse(source || '', {});
-  const blocks = buildBody(tokens);
+export async function markdownToDocxBlob(source: string, _title = 'Document', filePath?: string): Promise<Blob> {
+  imageCache.clear();
+  const tokens = md.parse(source ?? '', {});
+  const imageRoot = extractImageRoot(source || '');
+  const blocks = await buildBody(tokens, imageRoot, filePath);
   if (blocks.length === 0) blocks.push(new Paragraph({ text: '' }));
 
   const doc = new Document({
