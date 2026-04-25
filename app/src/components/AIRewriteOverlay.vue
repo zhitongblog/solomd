@@ -371,8 +371,18 @@ onBeforeUnmount(() => {
 
       <!-- Streaming view ----------------------------------------------- -->
       <div v-else class="ai-overlay__diff">
-        <div v-if="sentBanner && !streamingError" class="ai-overlay__banner">
-          {{ t('ai.sending', { provider: providerLabel }) }}
+        <div
+          v-if="streaming && !streamingError"
+          class="ai-overlay__banner ai-overlay__banner--live"
+        >
+          <span class="ai-overlay__spinner" aria-hidden="true"></span>
+          <span>{{ t('ai.sending', { provider: providerLabel }) }}</span>
+        </div>
+        <div
+          v-else-if="!streaming && !streamingError && proposed"
+          class="ai-overlay__banner ai-overlay__banner--done"
+        >
+          ✓ {{ t('ai.proposed') }}
         </div>
         <div v-if="streamingError" class="ai-overlay__error">
           {{ streamingError }}
@@ -388,7 +398,7 @@ onBeforeUnmount(() => {
             <div class="ai-overlay__col-head">{{ t('ai.proposed') }}</div>
             <div ref="proposedRef" class="ai-overlay__col-body ai-overlay__col-body--prop">
               <span v-if="proposed">{{ proposed }}</span>
-              <span v-else-if="streaming" class="ai-overlay__placeholder">…</span>
+              <span v-else-if="streaming" class="ai-overlay__placeholder">{{ t('ai.empty') }}</span>
               <span v-else class="ai-overlay__placeholder">{{ t('ai.empty') }}</span>
               <span v-if="streaming" class="ai-overlay__cursor">▌</span>
             </div>
@@ -532,12 +542,39 @@ onBeforeUnmount(() => {
   min-height: 0;
 }
 .ai-overlay__banner {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 6px;
-  padding: 6px 10px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ai-overlay__banner--live {
+  background: rgba(99, 102, 241, 0.08);
+  border-color: rgba(99, 102, 241, 0.4);
+  color: var(--accent, #6366f1);
+  font-weight: 500;
+}
+.ai-overlay__banner--done {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #059669;
+  font-weight: 500;
+}
+.ai-overlay__spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: ai-overlay-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes ai-overlay-spin {
+  to { transform: rotate(360deg); }
 }
 .ai-overlay__error {
   font-size: 12px;

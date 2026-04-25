@@ -63,26 +63,26 @@ function onAIRewrite() {
     window.dispatchEvent(new CustomEvent('solomd:open-settings'));
     return;
   }
-  // Read selection from the focused CodeMirror view; fall back to whole doc.
+  // Read selection from the focused CodeMirror view. We REFUSE to fall back
+  // to the whole document — silently translating the entire file is almost
+  // never what the user wants, and the overlay's accept path replaces using
+  // the editor's current selection anyway, so a "whole doc" toolbar fire
+  // would either replace the whole doc on accept (data loss surprise) or
+  // splice the translation at the cursor (also surprising). Force explicit
+  // selection.
   const cm = document.querySelector('.cm-editor.cm-focused') as HTMLElement | null;
   const sel = window.getSelection();
-  let selection = '';
-  let from = 0;
-  let to = 0;
-  if (cm && sel && sel.rangeCount > 0 && !sel.isCollapsed) {
-    selection = sel.toString();
-    // CM doesn't expose the (from,to) doc offsets via DOM selection alone;
-    // the overlay will read them from the editor view via its own keymap.
-    // For toolbar fire we pass selection text and the overlay derives the
-    // range when the user accepts.
-  } else {
-    // No selection: take the whole active doc.
-    selection = t.content;
-  }
-  if (!selection.trim()) {
-    toasts.info('Select some text to rewrite first');
+  if (!cm || !sel || sel.rangeCount === 0 || sel.isCollapsed) {
+    toasts.info('Select some text first, then click AI rewrite (or press ⌘J).');
     return;
   }
+  const selection = sel.toString();
+  if (!selection.trim()) {
+    toasts.info('Select some text first, then click AI rewrite (or press ⌘J).');
+    return;
+  }
+  const from = 0;
+  const to = 0;
   window.dispatchEvent(
     new CustomEvent('solomd:ai-rewrite-open', {
       detail: { selection, from, to },
