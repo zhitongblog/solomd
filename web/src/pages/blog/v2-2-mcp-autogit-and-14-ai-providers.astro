@@ -1,0 +1,170 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+
+const lang = 'en' as const;
+---
+
+<Layout
+  title="SoloMD v2.2 — MCP server, AutoGit version history, 14 AI providers"
+  description="Every save is now a snapshot you can roll back from a sidebar panel. Every note is queryable from Claude Desktop / Cursor / any MCP client. AI rewrite spans 14 BYOK providers — keys live in the OS keychain, never on disk."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <article class="container blog-article">
+      <nav class="breadcrumbs">
+        <a href="/">Home</a> / <a href="/blog/">Blog</a> / <span>v2.2</span>
+      </nav>
+      <time>2026-04-25</time>
+      <h1>v2.2 — MCP server, AutoGit version history, 14 AI providers</h1>
+      <p class="lead">
+        Three things that used to be "out of scope for a Markdown editor" are
+        now built in: an <strong>MCP server</strong> so any LLM client can read
+        and write your vault, <strong>AutoGit version history</strong> so every
+        save becomes a snapshot you can roll back, and <strong>14 BYOK AI
+        providers</strong> behind <kbd>Cmd+J</kbd> — all local, all opt-in, all
+        offline-friendly.
+      </p>
+
+      <h2>🔌 MCP server</h2>
+      <p>
+        Ship-by-default Model Context Protocol server (<code>solomd-mcp</code>)
+        — point Claude Desktop, Cursor, Codex CLI, or anything that speaks
+        MCP at your notes folder, and it gets eight read tools out of the box:
+      </p>
+      <ul>
+        <li><code>list_notes</code> · <code>read_note</code> · <code>search</code></li>
+        <li><code>get_backlinks</code> · <code>list_tags</code> · <code>get_outline</code></li>
+        <li><code>write_note</code> · <code>append_to_note</code> — gated behind <code>--allow-write</code>; default is read-only</li>
+      </ul>
+      <p>
+        Path-traversal guard, workspace-canonical containment, no network
+        port (stdio only). Single 1.5&nbsp;MB binary. Configure once in
+        Claude Desktop:
+      </p>
+      <pre><code>{`{
+  "mcpServers": {
+    "solomd": {
+      "command": "/path/to/solomd-mcp",
+      "args": ["--workspace", "/path/to/notes"]
+    }
+  }
+}`}</code></pre>
+
+      <h2>📜 AutoGit version history</h2>
+      <p>
+        Toggle one switch in Settings → Version history. From that moment:
+      </p>
+      <ul>
+        <li>Every <kbd>Cmd+S</kbd> creates a snapshot in a local <code>.git</code> inside your workspace folder.</li>
+        <li>The right-hand <strong>History panel</strong> lists every commit that touched the active file, newest first.</li>
+        <li>Click any row → expand the diff inline.</li>
+        <li>Click <strong>Restore this version</strong> → working copy + editor buffer revert atomically (no data-loss footguns).</li>
+        <li>Repo is yours. Push it to GitHub if you want — or never.</li>
+      </ul>
+      <p>
+        Implemented with libgit2 (vendored, no system <code>git</code>
+        required). Runs on a blocking thread pool so the UI never freezes,
+        even on a workspace with thousands of notes.
+      </p>
+
+      <h2>🤖 AI rewrite — 14 providers, BYOK</h2>
+      <p>
+        <kbd>Cmd+J</kbd> on a selection. Pick rewrite / shorten / expand /
+        translate (en+zh) / explain / custom prompt. Stream the result inline,
+        accept or reject:
+      </p>
+      <ul>
+        <li><strong>US</strong>: OpenAI, Anthropic Claude, Google Gemini, xAI Grok, Mistral, Groq</li>
+        <li><strong>CN</strong>: DeepSeek, Qwen, GLM, Moonshot Kimi, Doubao (Volcengine), SiliconFlow</li>
+        <li><strong>Aggregator</strong>: OpenRouter (one key, 400+ models)</li>
+        <li><strong>Local</strong>: Ollama (no key needed)</li>
+      </ul>
+      <p>
+        Keys live in the OS keychain
+        (<a href="/security/">Keychain on macOS, Credential Manager on Windows, libsecret on Linux</a>) —
+        never in <code>localStorage</code>, never in any config file we write.
+        BYOK by design: SoloMD doesn't host any models, every request goes
+        directly from your machine to the provider you chose.
+      </p>
+
+      <h2>🔐 New /security page</h2>
+      <p>
+        A complete writeup of every place user data is touched:
+        <a href="/security/">solomd.app/security</a>. Eight numbered
+        sections covering disk-only notes, OS-keychain key storage, opt-in
+        direct-to-vendor AI calls, the MCP path-traversal guard, AutoGit's
+        local-only commits, content-free opt-out telemetry, Tauri sandbox
+        + signed builds, and MIT-license auditability. Every claim is linked
+        to the source line.
+      </p>
+
+      <h2>🛠 Engineering notes (for the curious)</h2>
+      <ul>
+        <li>
+          <strong>keyring v3 platform features pinned</strong> —
+          <code>apple-native</code>, <code>windows-native</code>,
+          <code>sync-secret-service</code>. v3 changed defaults vs v2 and
+          without these features the keychain crate falls through to an
+          in-process mock store.
+        </li>
+        <li>
+          <strong>Symlink-aware path resolution</strong> for AutoGit — macOS
+          workspaces under <code>/var/</code> or <code>/tmp/</code> resolve via
+          <code>/private/...</code>, which used to make every commit error
+          out as "file outside workspace".
+        </li>
+        <li>
+          <strong>Async git2</strong> via
+          <code>tauri::async_runtime::spawn_blocking</code> — git work never
+          blocks the UI thread, so you can keep typing while a snapshot
+          serializes.
+        </li>
+        <li>
+          <strong>solomd-dev-mcp</strong> — internal-only MCP server that
+          exposes SoloMD's domain logic for end-to-end self-testing. Ships
+          with the source, never with the user binary. We use it ourselves
+          to verify every shipped feature actually works before tagging.
+        </li>
+      </ul>
+
+      <h2>What's next (v2.3+)</h2>
+      <p>
+        Local RAG / semantic search (the biggest field-wide gap right now —
+        Obsidian doesn't have it, Tolaria doesn't have it, we shouldn't
+        either if we want to be the obvious choice for "search across my
+        notes by meaning"), and a Tauri WebDriver bridge so the dev MCP
+        can drive Vue components too. Sync (CRDT) remains the v3 anchor.
+      </p>
+
+      <p>
+        <a class="btn btn--primary" href="https://github.com/zhitongblog/solomd/releases/tag/v2.2.0">Download v2.2 →</a>
+        &nbsp;
+        <a class="btn" href="https://github.com/zhitongblog/solomd/releases/tag/v2.2.0">Full release notes</a>
+      </p>
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .blog-article { max-width: 760px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .blog-article time { font-size: 13px; color: var(--text-muted, #888); }
+  .blog-article h1 { font-size: 2.2rem; line-height: 1.2; margin: 8px 0 18px; }
+  .blog-article h2 { font-size: 1.4rem; margin: 36px 0 12px; }
+  .blog-article .lead { color: var(--text-muted, #555); font-size: 1.1rem; line-height: 1.6; margin-bottom: 28px; }
+  .blog-article p { line-height: 1.75; margin: 14px 0; }
+  .blog-article ul { padding-left: 22px; }
+  .blog-article li { margin: 6px 0; line-height: 1.7; }
+  .blog-article code { background: #f5f5f0; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+  .blog-article pre { background: #1f1f1f; color: #eaeaea; padding: 14px 18px; border-radius: 8px; overflow-x: auto; font-size: 13px; line-height: 1.55; }
+  .blog-article pre code { background: transparent; color: inherit; padding: 0; font-size: inherit; }
+  .blog-article a { color: #ff9f40; }
+  .blog-article kbd { background: #f5f5f0; border: 1px solid #ddd; border-radius: 3px; padding: 1px 6px; font-family: ui-monospace, Menlo, monospace; font-size: 0.85em; }
+  .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  .btn--primary { background: #ff9f40; color: #000 !important; }
+</style>

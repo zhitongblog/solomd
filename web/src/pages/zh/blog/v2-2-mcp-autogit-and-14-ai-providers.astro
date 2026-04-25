@@ -1,0 +1,160 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import Header from '../../../components/Header.astro';
+import Footer from '../../../components/Footer.astro';
+
+const lang = 'zh' as const;
+---
+
+<Layout
+  title="SoloMD v2.2 — MCP 服务、AutoGit 版本历史、14 家 AI 提供商"
+  description="每次保存自动留快照,可在右侧面板一键回滚。任意 MCP 客户端(Claude Desktop / Cursor / ...)都能查询你的笔记。AI 改写覆盖 14 家厂商 BYOK,key 存系统钥匙串、绝不落盘。"
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <article class="container blog-article">
+      <nav class="breadcrumbs">
+        <a href="/zh/">首页</a> / <a href="/zh/blog/">博客</a> / <span>v2.2</span>
+      </nav>
+      <time>2026-04-25</time>
+      <h1>v2.2 — MCP 服务、AutoGit 版本历史、14 家 AI 提供商</h1>
+      <p class="lead">
+        三件原本"超出 Markdown 编辑器范畴"的事这一版变成了内建:<strong>MCP
+        服务</strong>让任何 LLM 客户端都能读写你的笔记仓;
+        <strong>AutoGit 版本历史</strong>让每次保存都成为可回滚的快照;
+        <strong>14 家 BYOK AI 提供商</strong>挂在 <kbd>⌘J</kbd> 后面 —— 全部本地,
+        全部 opt-in,全部离线友好。
+      </p>
+
+      <h2>🔌 MCP 服务</h2>
+      <p>
+        默认随包附带的 Model Context Protocol 服务(<code>solomd-mcp</code>)——
+        把它指向你的笔记文件夹,Claude Desktop / Cursor / Codex CLI 等任何 MCP
+        客户端开箱就有 8 个工具:
+      </p>
+      <ul>
+        <li><code>list_notes</code> · <code>read_note</code> · <code>search</code></li>
+        <li><code>get_backlinks</code> · <code>list_tags</code> · <code>get_outline</code></li>
+        <li><code>write_note</code> · <code>append_to_note</code> —— 默认禁用,需要 <code>--allow-write</code> 显式开启</li>
+      </ul>
+      <p>
+        路径穿越校验、工作区根目录强制约束、不开网络端口(只用 stdio)。
+        单独 1.5&nbsp;MB 二进制。Claude Desktop 配置一次:
+      </p>
+      <pre><code>{`{
+  "mcpServers": {
+    "solomd": {
+      "command": "/path/to/solomd-mcp",
+      "args": ["--workspace", "/path/to/notes"]
+    }
+  }
+}`}</code></pre>
+
+      <h2>📜 AutoGit 版本历史</h2>
+      <p>
+        在"设置 → 版本历史"勾上一个开关,从那一刻起:
+      </p>
+      <ul>
+        <li>每次 <kbd>⌘S</kbd> 在工作区里的本地 <code>.git</code> 创建一份快照。</li>
+        <li>右侧 <strong>历史版本面板</strong> 列出所有改过当前文件的 commit,最新在最上。</li>
+        <li>点任意一行 → 内联展开 diff。</li>
+        <li>点 <strong>恢复到此版本</strong> → 工作副本和编辑器内容**同时**回滚(没有"看似回滚但下一次保存覆盖回去"这种坑)。</li>
+        <li>仓库归你 —— 想推到 GitHub 就推,不想推就完全本地。</li>
+      </ul>
+      <p>
+        基于 libgit2(已 vendored,系统不需要装 <code>git</code>)。git 操作走
+        blocking 线程池,UI 线程永不阻塞 —— 即使工作区有几千篇笔记,你保存的瞬间
+        也不会卡。
+      </p>
+
+      <h2>🤖 AI 改写 —— 14 家厂商,BYOK</h2>
+      <p>
+        选中文字按 <kbd>⌘J</kbd>。挑一个动作:改写 / 精简 / 扩写 / 翻译(中英)/
+        解释 / 自定义 prompt。流式生成,接受或拒绝:
+      </p>
+      <ul>
+        <li><strong>美区</strong>:OpenAI、Anthropic Claude、Google Gemini、xAI Grok、Mistral、Groq</li>
+        <li><strong>国内</strong>:DeepSeek、通义千问、智谱 GLM、Moonshot Kimi、火山豆包、硅基流动</li>
+        <li><strong>聚合</strong>:OpenRouter(一个 key 接 400+ 模型)</li>
+        <li><strong>本地</strong>:Ollama(完全不需要 key)</li>
+      </ul>
+      <p>
+        Key 存在系统钥匙串里(
+        <a href="/zh/security/">macOS Keychain / Windows 凭据管理器 / Linux libsecret</a>)
+        —— 绝不写入 <code>localStorage</code>,绝不在任何我们写的配置文件里。
+        BYOK 设计上就是这样:SoloMD 不托管任何模型,每个请求都从你的机器直接发去你
+        选的厂商。
+      </p>
+
+      <h2>🔐 新增 /security 页</h2>
+      <p>
+        把所有可能涉及用户数据的地方都讲清楚:
+        <a href="/zh/security/">solomd.app/zh/security</a>。八条编号清单覆盖
+        笔记只在磁盘、Key 存钥匙串、AI 直连厂商、MCP 路径穿越防护、AutoGit 本地不
+        push、遥测无内容可关、Tauri 沙箱 + 签名构建、MIT 开源可审计,每条都给了
+        GitHub 源码定位链接。
+      </p>
+
+      <h2>🛠 工程笔记(给关心实现的同学)</h2>
+      <ul>
+        <li>
+          <strong>keyring v3 平台 feature 钉死</strong> ——
+          <code>apple-native</code>、<code>windows-native</code>、
+          <code>sync-secret-service</code>。v3 跟 v2 默认值变了,不带这几个 feature
+          的话 keyring 会默默掉到一个进程内的 mock store(我们 v2.2 第一次发布因此
+          翻车,详见 release notes)。
+        </li>
+        <li>
+          <strong>识别 symlink 的路径解析</strong> —— macOS 上 <code>/var/</code>
+          和 <code>/tmp/</code> 经过 <code>/private/...</code>,以前 AutoGit 在这种
+          路径下每次 commit 都报"file outside workspace"。
+        </li>
+        <li>
+          <strong>git2 走 async</strong> ——
+          通过 <code>tauri::async_runtime::spawn_blocking</code> 调度,UI 线程永不
+          阻塞,保存的瞬间就能继续输入。
+        </li>
+        <li>
+          <strong>solomd-dev-mcp</strong> —— 一个**仅供内部**的 MCP 服务,把 SoloMD
+          的领域逻辑暴露出来用于端到端自测。源码随仓库走,从不打包进用户版本。
+          我们自己用它在打 tag 之前验证每个特性是不是真能跑通。
+        </li>
+      </ul>
+
+      <h2>下一步(v2.3+)</h2>
+      <p>
+        本地 RAG / 语义搜索(目前整个领域最大的空白 —— Obsidian 没有,Tolaria
+        也没有,如果想成为"按意思搜笔记"的首选,我们必须有),以及给 Tauri 加一个
+        WebDriver 桥让 dev MCP 也能驱动 Vue 组件。同步(CRDT)依然是 v3 的主轴。
+      </p>
+
+      <p>
+        <a class="btn btn--primary" href="https://github.com/zhitongblog/solomd/releases/tag/v2.2.0">下载 v2.2 →</a>
+        &nbsp;
+        <a class="btn" href="https://github.com/zhitongblog/solomd/releases/tag/v2.2.0">完整 release notes</a>
+      </p>
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .blog-article { max-width: 760px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .blog-article time { font-size: 13px; color: var(--text-muted, #888); }
+  .blog-article h1 { font-size: 2.2rem; line-height: 1.2; margin: 8px 0 18px; }
+  .blog-article h2 { font-size: 1.4rem; margin: 36px 0 12px; }
+  .blog-article .lead { color: var(--text-muted, #555); font-size: 1.1rem; line-height: 1.6; margin-bottom: 28px; }
+  .blog-article p { line-height: 1.75; margin: 14px 0; }
+  .blog-article ul { padding-left: 22px; }
+  .blog-article li { margin: 6px 0; line-height: 1.7; }
+  .blog-article code { background: #f5f5f0; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+  .blog-article pre { background: #1f1f1f; color: #eaeaea; padding: 14px 18px; border-radius: 8px; overflow-x: auto; font-size: 13px; line-height: 1.55; }
+  .blog-article pre code { background: transparent; color: inherit; padding: 0; font-size: inherit; }
+  .blog-article a { color: #ff9f40; }
+  .blog-article kbd { background: #f5f5f0; border: 1px solid #ddd; border-radius: 3px; padding: 1px 6px; font-family: ui-monospace, Menlo, monospace; font-size: 0.85em; }
+  .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  .btn--primary { background: #ff9f40; color: #000 !important; }
+</style>
