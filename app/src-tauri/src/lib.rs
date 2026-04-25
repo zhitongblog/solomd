@@ -24,6 +24,9 @@ pub mod cloud_folder;
 // v2.6.3 workspace-level E2EE: passphrase → Argon2id → key in keyring;
 // XChaCha20-Poly1305 over each .md before push, decrypt after pull.
 pub mod crypto;
+// PR #24 (@beihai23) external file-change watcher — preview mode auto-reloads,
+// edit / split modes pop a reload-vs-keep dialog.
+pub mod watcher;
 
 // v2.3 dev WebDriver bridge — debug builds only.
 #[cfg(debug_assertions)]
@@ -41,6 +44,7 @@ pub fn run() {
     let builder = builder.plugin(tauri_plugin_window_state::Builder::default().build());
 
     builder
+        .manage(watcher::WatcherState::new())
         .setup(|app| {
             #[cfg(debug_assertions)]
             {
@@ -126,6 +130,8 @@ pub fn run() {
             crypto::crypto_clear_passphrase,
             crypto::crypto_encrypt_for_push,
             crypto::crypto_decrypt_after_pull,
+            watcher::watch_file,
+            watcher::unwatch_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

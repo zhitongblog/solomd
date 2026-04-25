@@ -55,6 +55,9 @@ mod crypto;
 #[path = "dev_bridge.rs"]
 mod dev_bridge;
 
+#[path = "watcher.rs"]
+mod watcher;
+
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use tauri::menu::{
@@ -397,6 +400,7 @@ pub fn run_with(initial_file: Option<String>) {
 
     let app = builder
         .manage(PendingOpen(Mutex::new(pending)))
+        .manage(watcher::WatcherState::new())
         .invoke_handler(tauri::generate_handler![
             commands::read_file,
             commands::write_file,
@@ -469,6 +473,8 @@ pub fn run_with(initial_file: Option<String>) {
             crypto::crypto_clear_passphrase,
             crypto::crypto_encrypt_for_push,
             crypto::crypto_decrypt_after_pull,
+            watcher::watch_file,
+            watcher::unwatch_file,
         ])
         .on_menu_event(|app_handle, event| {
             // Forward every menu click to the frontend as a single event
