@@ -272,6 +272,11 @@ export const en = {
     noKey: 'Set an API key in Settings to use AI rewrite.',
     setKey: 'Open Settings',
     getKey: 'Get an API key',
+    modelHintPrefix: 'Common models',
+    testConnection: 'Test connection',
+    verifying: 'verifying…',
+    verified: 'Verified',
+    verifyFailed: 'Verification failed',
   },
   pandoc: {
     notFound: 'Pandoc not found on PATH.',

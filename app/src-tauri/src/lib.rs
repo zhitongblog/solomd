@@ -42,6 +42,7 @@ pub fn run() {
             ai_proxy::ai_clear_key,
             ai_proxy::ai_rewrite,
             ai_proxy::ai_cancel,
+            ai_proxy::ai_verify_key,
             pandoc::pandoc_detect,
             pandoc::pandoc_export,
             git_history::git_workspace_status,

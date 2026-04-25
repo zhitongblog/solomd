@@ -45,6 +45,34 @@ const status = ref<{ kind: 'ok' | 'err'; msg: string } | null>(null);
 
 const currentProviderConfig = computed(() => providerById(props.provider));
 
+/**
+ * Parse the provider's modelHint into a flat list of model ids for the
+ * <datalist> dropdown. Hints look like:
+ *   "旗舰: deepseek-v4-pro · 通用: deepseek-v4-flash · (旧版即将下线: deepseek-chat / deepseek-reasoner)"
+ * — split by both `·` and `/`, drop the category labels (anything before `:`),
+ * trim parens / whitespace, dedupe, and front-load the defaultModel.
+ */
+const modelChoices = computed<string[]>(() => {
+  const cfg = currentProviderConfig.value;
+  if (!cfg) return [];
+  const out = new Set<string>();
+  if (cfg.defaultModel) out.add(cfg.defaultModel);
+  const hint = cfg.modelHint || '';
+  for (const segment of hint.split('·')) {
+    let s = segment.trim().replace(/^\(/, '').replace(/\)$/, '');
+    // Drop the "标准:" / "推理:" / "Coding:" label.
+    const colonIdx = s.indexOf(':');
+    if (colonIdx >= 0) s = s.slice(colonIdx + 1);
+    for (const m of s.split('/')) {
+      const id = m.trim();
+      if (id && !id.includes(' ') && !id.includes('…') && !id.includes('（')) {
+        out.add(id);
+      }
+    }
+  }
+  return Array.from(out);
+});
+
 const needsKey = computed(() => props.provider !== 'ollama');
 
 async function refreshHasKey(p: ProviderId): Promise<void> {
@@ -82,9 +110,46 @@ async function saveKey(): Promise<void> {
     await invoke('ai_set_key', { provider: props.provider, key });
     keyInput.value = '';
     await refreshHasKey(props.provider);
-    status.value = { kind: 'ok', msg: t('ai.keySaved') };
+    status.value = { kind: 'ok', msg: t('ai.keySaved') + ' · ' + t('ai.verifying') };
+    // Auto-verify the key right after save — single-call sanity check
+    // so users don't discover bad keys later via a failed rewrite.
+    try {
+      const cfg = currentProviderConfig.value;
+      const ok = await invoke<string>('ai_verify_key', {
+        provider: props.provider,
+        key: null,
+        api_format: cfg?.apiFormat || 'openai',
+        base_url: props.baseUrl || cfg?.defaultBaseUrl || null,
+      });
+      status.value = { kind: 'ok', msg: t('ai.verified') + ' · ' + ok };
+    } catch (verifyErr) {
+      status.value = {
+        kind: 'err',
+        msg: t('ai.verifyFailed') + ': ' + String(verifyErr),
+      };
+    }
   } catch (e) {
     status.value = { kind: 'err', msg: String(e) };
+  } finally {
+    saving.value = false;
+  }
+}
+
+/** Manual re-verify button for users who already saved their key. */
+async function verifyExisting(): Promise<void> {
+  saving.value = true;
+  status.value = { kind: 'ok', msg: t('ai.verifying') };
+  try {
+    const cfg = currentProviderConfig.value;
+    const ok = await invoke<string>('ai_verify_key', {
+      provider: props.provider,
+      key: null,
+      api_format: cfg?.apiFormat || 'openai',
+      base_url: props.baseUrl || cfg?.defaultBaseUrl || null,
+    });
+    status.value = { kind: 'ok', msg: t('ai.verified') + ' · ' + ok };
+  } catch (e) {
+    status.value = { kind: 'err', msg: t('ai.verifyFailed') + ': ' + String(e) };
   } finally {
     saving.value = false;
   }
@@ -151,11 +216,17 @@ function onProviderChange(ev: Event): void {
           :value="model"
           class="ai-settings__input"
           :placeholder="currentProviderConfig?.defaultModel"
+          :list="`ai-model-options-${provider}`"
+          autocomplete="off"
+          spellcheck="false"
           @input="emit('update:model', ($event.target as HTMLInputElement).value)"
         />
+        <datalist :id="`ai-model-options-${provider}`">
+          <option v-for="m in modelChoices" :key="m" :value="m" />
+        </datalist>
       </div>
       <p v-if="currentProviderConfig?.modelHint" class="ai-settings__hint">
-        {{ currentProviderConfig.modelHint }}
+        {{ t('ai.modelHintPrefix') }}: {{ currentProviderConfig.modelHint }}
       </p>
       <p v-if="currentProviderConfig?.signupUrl" class="ai-settings__hint">
         <a :href="currentProviderConfig.signupUrl" target="_blank" rel="noopener">
@@ -194,6 +265,14 @@ function onProviderChange(ev: Event): void {
               @click="saveKey"
             >
               {{ t('ai.saveKey') }}
+            </button>
+            <button
+              type="button"
+              class="ai-settings__btn"
+              :disabled="saving || (!hasKey[provider] && provider !== 'ollama')"
+              @click="verifyExisting"
+            >
+              {{ t('ai.testConnection') }}
             </button>
             <button
               type="button"

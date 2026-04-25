@@ -122,6 +122,115 @@ fn keychain_entry(provider: &str) -> Result<keyring::Entry, String> {
         .map_err(|e| format!("keychain entry failed: {e}"))
 }
 
+/// Make a minimal call to the provider to confirm the key + base_url work.
+/// Returns Ok with a short message (e.g. model count) on success, Err with
+/// a human-readable reason on failure. Used by AISettings to show a green
+/// "Verified ✓" / red "Invalid key" pill right after the user clicks Save.
+#[tauri::command]
+pub async fn ai_verify_key(
+    provider: String,
+    key: Option<String>,
+    api_format: Option<String>,
+    base_url: Option<String>,
+) -> Result<String, String> {
+    let format = api_format.unwrap_or_else(|| provider.clone());
+    let key_str = match key {
+        Some(k) if !k.trim().is_empty() => k,
+        _ => match read_key(&provider) {
+            Ok(k) => k,
+            Err(e) => return Err(e),
+        },
+    };
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(15))
+        .build()
+        .map_err(|e| e.to_string())?;
+    match format.as_str() {
+        "openai" => {
+            let base = base_url
+                .filter(|s| !s.is_empty())
+                .unwrap_or_else(|| "https://api.openai.com".to_string());
+            let url = format!("{}/v1/models", base.trim_end_matches('/'));
+            let res = client
+                .get(&url)
+                .bearer_auth(&key_str)
+                .send()
+                .await
+                .map_err(|e| format!("network: {e}"))?;
+            let status = res.status();
+            if status.is_success() {
+                let body: serde_json::Value = res.json().await.map_err(|e| e.to_string())?;
+                let n = body
+                    .get("data")
+                    .and_then(|d| d.as_array())
+                    .map(|a| a.len())
+                    .unwrap_or(0);
+                Ok(format!("OK · {n} models available"))
+            } else {
+                let txt = res.text().await.unwrap_or_default();
+                Err(format!("HTTP {status}: {}", truncate(&txt, 200)))
+            }
+        }
+        "anthropic" => {
+            // Anthropic doesn't have a free /models endpoint — send a 1-token ping.
+            let url = "https://api.anthropic.com/v1/messages";
+            let body = serde_json::json!({
+                "model": "claude-haiku-4-5",
+                "max_tokens": 1,
+                "messages": [{"role":"user","content":"ping"}]
+            });
+            let res = client
+                .post(url)
+                .header("x-api-key", &key_str)
+                .header("anthropic-version", "2023-06-01")
+                .json(&body)
+                .send()
+                .await
+                .map_err(|e| format!("network: {e}"))?;
+            let status = res.status();
+            if status.is_success() {
+                Ok("OK · key accepted".to_string())
+            } else {
+                let txt = res.text().await.unwrap_or_default();
+                Err(format!("HTTP {status}: {}", truncate(&txt, 200)))
+            }
+        }
+        "ollama" => {
+            let base = base_url
+                .filter(|s| !s.is_empty())
+                .unwrap_or_else(|| "http://localhost:11434".to_string());
+            let url = format!("{}/api/tags", base.trim_end_matches('/'));
+            let res = client
+                .get(&url)
+                .send()
+                .await
+                .map_err(|e| format!("network: {e} (is Ollama running?)"))?;
+            if res.status().is_success() {
+                let body: serde_json::Value = res.json().await.map_err(|e| e.to_string())?;
+                let n = body
+                    .get("models")
+                    .and_then(|d| d.as_array())
+                    .map(|a| a.len())
+                    .unwrap_or(0);
+                Ok(format!("OK · {n} local models"))
+            } else {
+                Err(format!("HTTP {}: ollama not reachable", res.status()))
+            }
+        }
+        other => Err(format!("unknown api_format: {other}")),
+    }
+}
+
+fn truncate(s: &str, n: usize) -> String {
+    if s.chars().count() <= n {
+        s.to_string()
+    } else {
+        let mut out: String = s.chars().take(n).collect();
+        out.push('…');
+        out
+    }
+}
+
 #[tauri::command]
 pub fn ai_set_key(provider: String, key: String) -> Result<(), String> {
     let entry = keychain_entry(&provider)?;

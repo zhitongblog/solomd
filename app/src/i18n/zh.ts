@@ -273,6 +273,11 @@ export const zh: I18n = {
     noKey: '请先到「设置」中配置 API 密钥。',
     setKey: '打开设置',
     getKey: '申请 API 密钥',
+    modelHintPrefix: '常用模型',
+    testConnection: '测试连接',
+    verifying: '验证中…',
+    verified: '已验证',
+    verifyFailed: '验证失败',
   },
   pandoc: {
     notFound: '未在 PATH 中找到 Pandoc。',

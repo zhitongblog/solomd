@@ -84,7 +84,7 @@ export const PROVIDERS: ProviderConfig[] = [
     defaultModel: 'gemini-3.1-pro-preview',
     defaultBaseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
     modelHint:
-      '旗舰: gemini-3.1-pro-preview · 标准: gemini-3-flash-preview / gemini-2.5-flash · 轻量: gemini-3.1-flash-lite-preview',
+      'gemini-3.1-pro-preview · gemini-3-flash-preview · gemini-2.5-flash · gemini-3.1-flash-lite-preview · gemini-2.0-flash',
     signupUrl: 'https://aistudio.google.com/apikey',
   },
   {
@@ -94,7 +94,7 @@ export const PROVIDERS: ProviderConfig[] = [
     defaultModel: 'grok-4.20',
     defaultBaseUrl: 'https://api.x.ai/v1',
     modelHint:
-      'grok-4.20 · grok-4-fast-reasoning · grok-4-1-fast-reasoning · grok-4-fast-non-reasoning · grok-code-fast-1',
+      'grok-4.20 · grok-4-fast-reasoning · grok-4-1-fast-reasoning · grok-4-1-fast-non-reasoning · grok-code-fast-1',
     signupUrl: 'https://console.x.ai',
   },
   {
@@ -104,7 +104,7 @@ export const PROVIDERS: ProviderConfig[] = [
     defaultModel: 'mistral-large-3',
     defaultBaseUrl: 'https://api.mistral.ai/v1',
     modelHint:
-      'mistral-large-3 · mistral-medium-3.1 · mistral-small-4 · 推理: magistral-medium-1.2 · 编码: devstral-2 / codestral',
+      'mistral-large-3 · mistral-medium-3.1 · mistral-small-4 · magistral-medium-1.2 · devstral-2 · codestral',
     signupUrl: 'https://console.mistral.ai/api-keys',
   },
   {
@@ -114,7 +114,7 @@ export const PROVIDERS: ProviderConfig[] = [
     defaultModel: 'llama-3.3-70b-versatile',
     defaultBaseUrl: 'https://api.groq.com/openai/v1',
     modelHint:
-      'llama-3.3-70b-versatile · meta-llama/llama-4-scout-17b-16e-instruct · openai/gpt-oss-120b · qwen/qwen3-32b · groq/compound',
+      'llama-3.3-70b-versatile · meta-llama/llama-4-scout-17b-16e-instruct · openai/gpt-oss-120b · qwen/qwen3-32b · groq/compound · groq/compound-mini',
     signupUrl: 'https://console.groq.com/keys',
   },
   // ---- CN providers --------------------------------------------------
@@ -125,7 +125,7 @@ export const PROVIDERS: ProviderConfig[] = [
     defaultModel: 'deepseek-v4-flash',
     defaultBaseUrl: 'https://api.deepseek.com',
     modelHint:
-      '旗舰: deepseek-v4-pro · 通用: deepseek-v4-flash · (旧版即将下线: deepseek-chat / deepseek-reasoner)',
+      'deepseek-v4-pro · deepseek-v4-flash · deepseek-chat (legacy) · deepseek-reasoner (legacy)',
     signupUrl: 'https://platform.deepseek.com/api_keys',
   },
   {
@@ -135,7 +135,7 @@ export const PROVIDERS: ProviderConfig[] = [
     defaultModel: 'qwen-plus',
     defaultBaseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
     modelHint:
-      '标准: qwen3-max / qwen3.5-plus / qwen-plus / qwen-flash · 编码: qwen3-coder-plus / qwen3-coder-flash · 推理: qwq-plus / qvq-max · 视觉: qwen3-vl-plus',
+      'qwen3-max · qwen3.5-plus · qwen-plus · qwen-flash · qwen3-coder-plus · qwen3-coder-flash · qwq-plus · qvq-max · qwen3-vl-plus',
     signupUrl: 'https://bailian.console.aliyun.com/?apiKey=1',
   },
   {
@@ -145,7 +145,7 @@ export const PROVIDERS: ProviderConfig[] = [
     defaultModel: 'glm-4.6',
     defaultBaseUrl: 'https://open.bigmodel.cn/api/paas/v4',
     modelHint:
-      '旗舰: glm-5.1 / glm-5 / glm-5-turbo · 稳定: glm-4.6 / glm-4.7 · 轻量: glm-4.7-flashx / glm-4.5-air · 视觉: glm-5v-turbo / glm-4.6v',
+      'glm-5.1 · glm-5 · glm-5-turbo · glm-4.7 · glm-4.6 · glm-4.7-flashx · glm-4.5-air · glm-5v-turbo · codegeex-4',
     signupUrl: 'https://bigmodel.cn/usercenter/proj-mgmt/apikeys',
   },
   {
@@ -155,7 +155,7 @@ export const PROVIDERS: ProviderConfig[] = [
     defaultModel: 'kimi-k2-0905-preview',
     defaultBaseUrl: 'https://api.moonshot.cn/v1',
     modelHint:
-      'K2: kimi-k2-0905-preview / kimi-k2-turbo-preview / kimi-k2-thinking · K2.6 (2026-04-20 发布,API id 待确认) · 兼容: kimi-latest / moonshot-v1-128k',
+      'kimi-k2-0905-preview · kimi-k2-turbo-preview · kimi-k2-thinking · kimi-latest · moonshot-v1-128k',
     signupUrl: 'https://platform.moonshot.cn/console/api-keys',
   },
   {
@@ -165,7 +165,7 @@ export const PROVIDERS: ProviderConfig[] = [
     defaultModel: 'doubao-seed-1.6',
     defaultBaseUrl: 'https://ark.cn-beijing.volces.com/api/v3',
     modelHint:
-      'Seed 1.6: doubao-seed-1.6 (pro) · doubao-seed-1.6-lite · doubao-seed-1.6-flash · doubao-seed-1.6-thinking · doubao-seed-1.6-vision · 旧版: doubao-1-5-pro-32k',
+      'doubao-seed-1.6 · doubao-seed-1.6-lite · doubao-seed-1.6-flash · doubao-seed-1.6-thinking · doubao-seed-1.6-vision · doubao-1-5-pro-32k',
     signupUrl: 'https://console.volcengine.com/ark/region:ark+cn-beijing/apiKey',
   },
   {
@@ -175,7 +175,7 @@ export const PROVIDERS: ProviderConfig[] = [
     defaultModel: 'deepseek-ai/DeepSeek-V3',
     defaultBaseUrl: 'https://api.siliconflow.cn/v1',
     modelHint:
-      '需要 vendor/Model 前缀。常用: deepseek-ai/DeepSeek-V3 · Qwen/Qwen2.5-Coder-32B-Instruct · moonshotai/Kimi-K2-Instruct',
+      'deepseek-ai/DeepSeek-V3 · Qwen/Qwen2.5-Coder-32B-Instruct · moonshotai/Kimi-K2-Instruct · meta-llama/Meta-Llama-3.1-70B-Instruct',
     signupUrl: 'https://cloud.siliconflow.cn/account/ak',
   },
   // ---- Aggregator (one key, hundreds of models) ---------------------
@@ -186,7 +186,7 @@ export const PROVIDERS: ProviderConfig[] = [
     defaultModel: 'anthropic/claude-sonnet-4-6',
     defaultBaseUrl: 'https://openrouter.ai/api/v1',
     modelHint:
-      '一个 key 调用 400+ 模型。常用: anthropic/claude-sonnet-4-6 · openai/gpt-5.5 · google/gemini-3.1-pro · deepseek/deepseek-v4 · x-ai/grok-4.20 · 完整: openrouter.ai/models',
+      'anthropic/claude-sonnet-4-6 · openai/gpt-5.5 · google/gemini-3.1-pro · deepseek/deepseek-v4 · x-ai/grok-4.20 · meta-llama/llama-4-scout',
     signupUrl: 'https://openrouter.ai/keys',
   },
   // ---- Local ---------------------------------------------------------
@@ -196,7 +196,7 @@ export const PROVIDERS: ProviderConfig[] = [
     apiFormat: 'ollama',
     defaultModel: 'llama3.2',
     defaultBaseUrl: 'http://localhost:11434',
-    modelHint: 'llama3.2 · qwen2.5 · deepseek-r1 · gemma3 (任何 ollama pull 拉过的模型)',
+    modelHint: 'llama3.2 · qwen2.5 · deepseek-r1 · gemma3 · mistral · phi3',
   },
 ];
 
