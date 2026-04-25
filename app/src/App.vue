@@ -487,7 +487,7 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
 
     <AIRewriteOverlay
       :enabled="settings.aiEnabled"
-      :provider="settings.aiProvider"
+      :provider="(settings.aiProvider as any)"
       :model="settings.aiModel"
       :base-url="settings.aiBaseUrl"
       :has-key="aiHasKey"

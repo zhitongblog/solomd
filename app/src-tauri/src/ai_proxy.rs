@@ -33,9 +33,20 @@ use tauri::{AppHandle, Emitter};
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RewriteRequest {
-    /// "openai" | "anthropic" | "ollama"
+    /// Stable id used for keychain key storage (e.g. "openai", "deepseek",
+    /// "qwen"). Each provider gets its own key slot in the OS keychain so
+    /// users can keep multiple keys at once.
     pub provider: String,
-    /// e.g. "gpt-4.1-mini", "claude-haiku-4-5", "llama3.2"
+    /// API wire format. Maps to the streaming implementation used:
+    ///   - "openai"     — OpenAI Chat Completions (also DeepSeek, Qwen,
+    ///                    GLM, Kimi, Doubao, xAI, Mistral, Groq, Gemini's
+    ///                    OpenAI-compat endpoint, etc.)
+    ///   - "anthropic"  — Anthropic Messages API
+    ///   - "ollama"     — local Ollama (no API key required)
+    /// Defaults to `provider` when missing for backwards compatibility.
+    #[serde(default)]
+    pub api_format: Option<String>,
+    /// Model id, e.g. "gpt-4.1-mini", "deepseek-chat", "qwen-plus".
     pub model: String,
     /// System prompt — describes the assistant's role.
     pub system: String,
@@ -175,8 +186,15 @@ pub async fn ai_rewrite(app: AppHandle, request: RewriteRequest) -> Result<Strin
     let request_id = make_request_id();
     let cancel = register_cancel_flag(&request_id);
 
-    // Ollama doesn't need a key — only OpenAI / Anthropic do.
-    let api_key = if request.provider == "ollama" {
+    // Resolve which wire format to use: explicit `api_format` from the
+    // frontend, or the legacy `provider` value as a fallback.
+    let format = request
+        .api_format
+        .clone()
+        .unwrap_or_else(|| request.provider.clone());
+
+    // Ollama doesn't need a key — every other format does.
+    let api_key = if format == "ollama" {
         String::new()
     } else {
         match read_key(&request.provider) {
@@ -190,13 +208,13 @@ pub async fn ai_rewrite(app: AppHandle, request: RewriteRequest) -> Result<Strin
 
     let id_for_task = request_id.clone();
     tauri::async_runtime::spawn(async move {
-        let result = match request.provider.as_str() {
+        let result = match format.as_str() {
             "openai" => run_openai(&app, &id_for_task, &request, &api_key, cancel.clone()).await,
             "anthropic" => {
                 run_anthropic(&app, &id_for_task, &request, &api_key, cancel.clone()).await
             }
             "ollama" => run_ollama(&app, &id_for_task, &request, cancel.clone()).await,
-            other => Err(format!("unknown provider: {other}")),
+            other => Err(format!("unknown api_format: {other}")),
         };
 
         match result {

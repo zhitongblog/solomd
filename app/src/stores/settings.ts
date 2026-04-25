@@ -65,9 +65,11 @@ interface Settings {
   dailyNotesFormat: string;
   dailyNotesTemplate: string;
   showTagsPanel: boolean;
-  // v2.0 F4: BYOK AI rewrite
+  // v2.0 F4: BYOK AI rewrite. `aiProvider` is a stable id from
+  // ai-providers.ts PROVIDERS — widened to string to avoid breaking when
+  // new providers land.
   aiEnabled: boolean;
-  aiProvider: 'openai' | 'anthropic' | 'ollama';
+  aiProvider: string;
   aiModel: string;
   aiBaseUrl: string;
   // v2.0 F5: Pandoc + citations
@@ -258,7 +260,7 @@ export const useSettingsStore = defineStore('settings', {
       this.aiEnabled = !this.aiEnabled;
       this.persist();
     },
-    setAiProvider(p: 'openai' | 'anthropic' | 'ollama') {
+    setAiProvider(p: string) {
       this.aiProvider = p;
       this.persist();
     },

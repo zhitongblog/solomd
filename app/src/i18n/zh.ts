@@ -267,6 +267,7 @@ export const zh: I18n = {
     sending: '正在发送到 {provider}…',
     noKey: '请先到「设置」中配置 API 密钥。',
     setKey: '打开设置',
+    getKey: '申请 API 密钥',
   },
   pandoc: {
     notFound: '未在 PATH 中找到 Pandoc。',

@@ -266,6 +266,7 @@ export const en = {
     sending: 'Sending selection to {provider}…',
     noKey: 'Set an API key in Settings to use AI rewrite.',
     setKey: 'Open Settings',
+    getKey: 'Get an API key',
   },
   pandoc: {
     notFound: 'Pandoc not found on PATH.',

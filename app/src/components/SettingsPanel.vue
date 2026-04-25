@@ -278,11 +278,11 @@ const fontFamilySelectValue = computed(() =>
 
         <AISettings
           :enabled="settings.aiEnabled"
-          :provider="settings.aiProvider"
+          :provider="(settings.aiProvider as any)"
           :model="settings.aiModel"
           :base-url="settings.aiBaseUrl"
           @update:enabled="settings.toggleAiEnabled()"
-          @update:provider="(v: 'openai' | 'anthropic' | 'ollama') => settings.setAiProvider(v)"
+          @update:provider="(v: string) => settings.setAiProvider(v)"
           @update:model="(v: string) => settings.setAiModel(v)"
           @update:baseUrl="(v: string) => settings.setAiBaseUrl(v)"
         />

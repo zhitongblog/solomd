@@ -188,14 +188,16 @@ async function startAction(a: AIAction): Promise<void> {
   await ensureListeners();
   try {
     const userPrompt = a.custom ? customPrompt.value.trim() : a.user;
+    const cfg = providerById(props.provider);
     const id = await invoke<string>('ai_rewrite', {
       request: {
         provider: props.provider,
-        model: props.model,
+        api_format: cfg?.apiFormat || 'openai',
+        model: props.model || cfg?.defaultModel || '',
         system: a.system,
         user: userPrompt,
         selection: range.value.selection,
-        base_url: props.baseUrl || null,
+        base_url: props.baseUrl || cfg?.defaultBaseUrl || null,
       },
     });
     requestId.value = id;

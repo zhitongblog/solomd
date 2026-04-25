@@ -38,11 +38,7 @@ const emit = defineEmits<{
 // Key-presence tracking (queried from the OS keychain).
 // ---------------------------------------------------------------------------
 
-const hasKey = ref<Record<ProviderId, boolean>>({
-  openai: false,
-  anthropic: false,
-  ollama: false,
-});
+const hasKey = ref<Partial<Record<ProviderId, boolean>>>({});
 const keyInput = ref('');
 const saving = ref(false);
 const status = ref<{ kind: 'ok' | 'err'; msg: string } | null>(null);
@@ -158,6 +154,14 @@ function onProviderChange(ev: Event): void {
           @input="emit('update:model', ($event.target as HTMLInputElement).value)"
         />
       </div>
+      <p v-if="currentProviderConfig?.modelHint" class="ai-settings__hint">
+        {{ currentProviderConfig.modelHint }}
+      </p>
+      <p v-if="currentProviderConfig?.signupUrl" class="ai-settings__hint">
+        <a :href="currentProviderConfig.signupUrl" target="_blank" rel="noopener">
+          {{ t('ai.getKey') }} ↗
+        </a>
+      </p>
 
       <div class="ai-settings__row">
         <label class="ai-settings__label" for="ai-baseurl">{{ t('ai.baseUrl') }}</label>
