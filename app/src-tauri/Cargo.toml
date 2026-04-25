@@ -60,6 +60,18 @@ csv = "1.3"
 regex-lite = "0.1"             # Lightweight regex for HTML tag stripping
 pdf-extract = "0.7"            # PDF text extraction
 
+# v2.0 workspace index (F1 wikilinks, F3 tags, F6 bases)
+notify = { version = "6", default-features = false, features = ["macos_fsevent"] }
+serde_yaml = "0.9"
+sha2 = "0.10"                  # cache key hashing
+once_cell = "1"                # global index state
+
+# v2.0 spellcheck (F2): Hunspell wrapped in pure-Rust port
+spellbook = "0.3"              # MIT, no GPL deps; ships with English+Latin support
+
+# v2.0 AI rewrite (F4): provider keys in OS keychain
+keyring = "3"                  # cross-platform credential storage
+
 # Platform-specific deps for "Set as default editor" feature.
 [target.'cfg(target_os = "macos")'.dependencies]
 core-foundation = "0.10"

@@ -185,6 +185,13 @@ export const en = {
     image: 'Image',
     diagram: 'Diagram',
   },
+  backlinks: {
+    heading: 'Backlinks',
+    loading: 'Loading…',
+    openFolder: 'Open a folder to enable backlinks.',
+    noActive: 'No active document.',
+    noResults: 'No notes link here yet.',
+  },
 };
 
 export type I18n = typeof en;

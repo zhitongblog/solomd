@@ -27,12 +27,16 @@ import { isIOS } from './lib/platform';
 import { useI18n } from './i18n';
 import { track } from './lib/telemetry';
 import { openWelcomeTour } from './lib/welcome-tour';
+import { useWorkspaceStore } from './stores/workspace';
+import { useWorkspaceIndexStore } from './stores/workspaceIndex';
 
 const tabs = useTabsStore();
 const settings = useSettingsStore();
 const tiles = useTilesStore();
 const files = useFiles();
 const exporter = useExport();
+const workspace = useWorkspaceStore();
+const workspaceIndex = useWorkspaceIndexStore();
 const { t } = useI18n();
 
 const cursorLine = ref(1);
@@ -140,6 +144,11 @@ watchEffect(() => {
 
 watchEffect(() => {
   document.documentElement.setAttribute('data-theme', dataThemeFor(settings.theme));
+});
+
+// v2.0: keep the Rust workspace index in sync with the active folder.
+watchEffect(() => {
+  workspaceIndex.setFolder(workspace.currentFolder).catch(() => {});
 });
 
 watch(
@@ -338,10 +347,28 @@ onMounted(async () => {
   }
 });
 
+async function onWikiOpen(e: Event) {
+  const detail = (e as CustomEvent).detail || {};
+  const target: string = detail.target || '';
+  if (!target) return;
+  const path = await workspaceIndex.resolve(target);
+  if (path) {
+    await files.openPath(path, { bypassNewWindow: true });
+  } else {
+    // Unresolved: create a new tab with the wikilink target as filename.
+    const fileName = /\.md$/i.test(target) ? target : `${target}.md`;
+    const tab = tabs.newTab({ fileName, language: 'markdown' });
+    tab.content = `# ${target}\n\n`;
+    tabs.activate(tab.id);
+  }
+}
+window.addEventListener('solomd:wiki-open', onWikiOpen as EventListener);
+
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onEsc);
   window.removeEventListener('solomd:open-help', onOpenHelpEvent as EventListener);
   window.removeEventListener('solomd:open-global-search', onOpenSearchEvent as EventListener);
+  window.removeEventListener('solomd:wiki-open', onWikiOpen as EventListener);
   if (unlistenOpened) {
     unlistenOpened();
     unlistenOpened = null;

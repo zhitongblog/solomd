@@ -1,5 +1,6 @@
 pub mod commands;
 pub mod search;
+pub mod workspace_index;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -21,6 +22,12 @@ pub fn run() {
             commands::copy_file,
             commands::list_dir,
             search::search_in_dir,
+            workspace_index::workspace_index_init,
+            workspace_index::workspace_index_files,
+            workspace_index::workspace_index_backlinks,
+            workspace_index::workspace_index_tags,
+            workspace_index::workspace_index_resolve,
+            workspace_index::workspace_index_rescan,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

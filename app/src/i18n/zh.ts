@@ -186,4 +186,11 @@ export const zh: I18n = {
     image: '图片',
     diagram: '图表',
   },
+  backlinks: {
+    heading: '反向链接',
+    loading: '加载中…',
+    openFolder: '打开一个文件夹后才能使用反向链接。',
+    noActive: '当前没有打开文档。',
+    noResults: '还没有其他笔记引用本文档。',
+  },
 };

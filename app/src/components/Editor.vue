@@ -27,6 +27,7 @@ import type { Tab } from '../types';
 import { livePreviewExtension, richHighlightOnly } from '../lib/cm-live-preview';
 import { imagePasteExtension, insertImageFromPath as cmInsertImageFromPath } from '../lib/cm-image-paste';
 import { focusModeExtension, typewriterModeExtension } from '../lib/cm-focus-mode';
+import { wikilinkExtension } from '../lib/cm-wikilink';
 import { taskListExtension } from '../lib/cm-task-list';
 import {
   sessionRestoreExtension,
@@ -138,6 +139,7 @@ function buildExtensions() {
       getFilePath: () => props.tab.filePath,
       getDocContent: () => props.tab.content,
     }),
+    ...(props.tab.language === 'markdown' ? [wikilinkExtension()] : []),
     taskListExtension(),
     sessionRestoreExtension(props.tab.id),
     EditorView.updateListener.of((u) => {

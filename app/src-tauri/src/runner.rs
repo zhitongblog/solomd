@@ -10,6 +10,9 @@ mod set_default;
 #[path = "convert.rs"]
 mod convert;
 
+#[path = "workspace_index.rs"]
+mod workspace_index;
+
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use tauri::menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder};
@@ -314,6 +317,12 @@ pub fn run_with(initial_file: Option<String>) {
             save_language_preference,
             set_default::set_as_default_markdown_editor,
             convert::convert_file_to_markdown,
+            workspace_index::workspace_index_init,
+            workspace_index::workspace_index_files,
+            workspace_index::workspace_index_backlinks,
+            workspace_index::workspace_index_tags,
+            workspace_index::workspace_index_resolve,
+            workspace_index::workspace_index_rescan,
         ])
         .on_menu_event(|app_handle, event| {
             // Forward every menu click to the frontend as a single event

@@ -170,6 +170,16 @@ watch(html, async () => {
 function handleLinkClick(e: MouseEvent) {
   const anchor = (e.target as HTMLElement).closest('a');
   if (!anchor) return;
+  // Wikilink (F1, v2.0): intercept and dispatch resolution to App.vue.
+  if (anchor.classList.contains('md-wikilink')) {
+    const target = anchor.getAttribute('data-wikilink-target') || '';
+    if (target) {
+      e.preventDefault();
+      e.stopPropagation();
+      window.dispatchEvent(new CustomEvent('solomd:wiki-open', { detail: { target } }));
+    }
+    return;
+  }
   const href = anchor.getAttribute('href');
   if (!href) return;
   // Allow in-page anchor jumps (#heading)
@@ -379,6 +389,27 @@ defineExpose({ scrollToLine, openSearch });
   overflow-x: auto;
   overflow-y: hidden;
   margin: 1em 0;
+}
+/* Wikilinks (F1, v2.0) */
+.preview-content .md-wikilink {
+  color: var(--accent, #ff9f40);
+  background: color-mix(in srgb, var(--accent, #ff9f40) 10%, transparent);
+  padding: 1px 5px;
+  border-radius: 4px;
+  text-decoration: none;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.preview-content .md-wikilink::before {
+  content: '🔗';
+  font-size: 0.75em;
+  margin-right: 3px;
+  opacity: 0.6;
+}
+.preview-content .md-wikilink:hover {
+  background: color-mix(in srgb, var(--accent, #ff9f40) 22%, transparent);
+  text-decoration: underline;
 }
 /* Preview search highlights */
 .preview-content .ps-mark {

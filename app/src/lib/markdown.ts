@@ -58,6 +58,60 @@ export const md = new MarkdownIt({
   .use(footnote)
   .use(mark);
 
+// ---- Wikilink rule (`[[X]]`, `[[X|alias]]`, `[[X#heading]]`) ---------------
+// Used by F1 (v2.0). Renders into <a class="md-wikilink" data-wikilink-target="X">…</a>.
+// Preview.vue intercepts clicks and resolves through the workspace index.
+md.inline.ruler.before('link', 'wikilink', (state, silent) => {
+  const start = state.pos;
+  const src = state.src;
+  if (src.charCodeAt(start) !== 0x5b /* [ */) return false;
+  if (src.charCodeAt(start + 1) !== 0x5b) return false;
+  // Find closing `]]` on the same line. Disallow nested `[`.
+  const max = state.posMax;
+  let i = start + 2;
+  while (i < max - 1) {
+    const ch = src.charCodeAt(i);
+    if (ch === 0x0a) return false; // newline
+    if (ch === 0x5b) return false; // nested [
+    if (ch === 0x5d && src.charCodeAt(i + 1) === 0x5d) {
+      // Found closing ]]
+      const inner = src.slice(start + 2, i).trim();
+      if (!inner) return false;
+      if (silent) {
+        state.pos = i + 2;
+        return true;
+      }
+      // Parse target / heading / alias
+      let target = inner;
+      let alias: string | null = null;
+      let heading: string | null = null;
+      const pipe = target.indexOf('|');
+      if (pipe >= 0) {
+        alias = target.slice(pipe + 1).trim() || null;
+        target = target.slice(0, pipe).trim();
+      }
+      const hash = target.indexOf('#');
+      if (hash >= 0) {
+        heading = target.slice(hash + 1).trim() || null;
+        target = target.slice(0, hash).trim();
+      }
+      const display = alias || (heading ? `${target}#${heading}` : target);
+      const tokOpen = state.push('wikilink_open', 'a', 1);
+      tokOpen.attrSet('class', 'md-wikilink');
+      tokOpen.attrSet('href', '#');
+      tokOpen.attrSet('data-wikilink-target', target);
+      if (heading) tokOpen.attrSet('data-wikilink-heading', heading);
+      const tokText = state.push('text', '', 0);
+      tokText.content = display;
+      state.push('wikilink_close', 'a', -1);
+      state.pos = i + 2;
+      return true;
+    }
+    i++;
+  }
+  return false;
+});
+
 // ---- Source line mapping for split-pane scroll sync ----
 // Annotate every block-level opening token with `data-source-line` set to
 // the 1-indexed source line. App.vue's split-scroll uses these attributes
