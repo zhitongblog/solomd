@@ -177,14 +177,24 @@ async function clearKey(): Promise<void> {
   }
 }
 
+/**
+ * On provider change we ALWAYS reset model + baseUrl to the new provider's
+ * defaults — leaving them stale was the source of a verify-against-wrong-
+ * provider bug ("API key not valid" when an OpenAI base URL was carried
+ * over after switching to Gemini). Power users who set a custom base URL
+ * (e.g. self-hosted OpenAI-compat endpoint) just re-edit the field after
+ * switching; that's the rare path.
+ */
 function onProviderChange(ev: Event): void {
   const sel = (ev.target as HTMLSelectElement).value as ProviderId;
   emit('update:provider', sel);
-  // Reset model + base URL to provider defaults when switching, but only
-  // if they're empty (keeps user customizations across re-opens).
   const cfg = providerById(sel);
-  if (cfg && !props.model) emit('update:model', cfg.defaultModel);
-  if (cfg && !props.baseUrl) emit('update:baseUrl', cfg.defaultBaseUrl || '');
+  if (cfg) {
+    emit('update:model', cfg.defaultModel);
+    emit('update:baseUrl', cfg.defaultBaseUrl || '');
+  }
+  // Clear any stale verify status from the previous provider.
+  status.value = null;
 }
 </script>
 

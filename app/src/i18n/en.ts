@@ -246,7 +246,7 @@ export const en = {
     model: 'Model',
     baseUrl: 'Base URL (optional)',
     apiKey: 'API key',
-    saveKey: 'Save to Keychain',
+    saveKey: 'Save & verify',
     clearKey: 'Clear',
     keyStored: 'Key stored',
     keyMissing: 'No key set',

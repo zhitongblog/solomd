@@ -247,7 +247,7 @@ export const zh: I18n = {
     model: '模型',
     baseUrl: '接口地址（可选）',
     apiKey: 'API 密钥',
-    saveKey: '保存到钥匙串',
+    saveKey: '保存并验证',
     clearKey: '清除',
     keyStored: '已保存密钥',
     keyMissing: '未设置密钥',
