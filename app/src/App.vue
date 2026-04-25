@@ -23,6 +23,7 @@ import GlobalSearch from './components/GlobalSearch.vue';
 import RagSearch from './components/RagSearch.vue';
 import AboutDialog from './components/AboutDialog.vue';
 import UnsavedDialog from './components/UnsavedDialog.vue';
+import FileChangedDialog from './components/FileChangedDialog.vue';
 import Toast from './components/Toast.vue';
 import { useTabsStore } from './stores/tabs';
 import { useSettingsStore } from './stores/settings';
@@ -30,6 +31,7 @@ import { useTilesStore } from './stores/tiles';
 import { useFiles } from './composables/useFiles';
 import { useExport } from './composables/useExport';
 import { useShortcuts } from './composables/useShortcuts';
+import { useFileWatcher } from './composables/useFileWatcher';
 import { loadCustomTheme } from './lib/custom-theme';
 import { isIOS } from './lib/platform';
 import { useI18n } from './i18n';
@@ -88,6 +90,26 @@ function onUnsavedAction(action: 'save' | 'discard' | 'cancel') {
 provide('showUnsavedDialog', showUnsavedDialog);
 (window as any).__solomd_showUnsavedDialog = showUnsavedDialog;
 
+// File-changed dialog state
+const fileChangedOpen = ref(false);
+const fileChangedFileName = ref('');
+let fileChangedResolve: ((action: 'reload' | 'overwrite' | 'cancel') => void) | null = null;
+
+function showFileChangedDialog(fileName: string): Promise<'reload' | 'overwrite' | 'cancel'> {
+  fileChangedFileName.value = fileName;
+  fileChangedOpen.value = true;
+  return new Promise((resolve) => {
+    fileChangedResolve = resolve;
+  });
+}
+function onFileChangedAction(action: 'reload' | 'overwrite' | 'cancel') {
+  fileChangedOpen.value = false;
+  if (fileChangedResolve) {
+    fileChangedResolve(action);
+    fileChangedResolve = null;
+  }
+}
+
 useShortcuts({
   openPalette: () => (paletteOpen.value = true),
   openSettings: () => (settingsOpen.value = true),
@@ -96,11 +118,14 @@ useShortcuts({
   openRagSearch: () => (ragSearchOpen.value = true),
 });
 
+useFileWatcher(showFileChangedDialog);
+
 // Esc closes the topmost modal
 function onEsc(e: KeyboardEvent) {
   if (e.key !== 'Escape') return;
   if (aboutOpen.value) aboutOpen.value = false;
   else if (ragSearchOpen.value) ragSearchOpen.value = false;
+  else if (fileChangedOpen.value) fileChangedOpen.value = false;
   else if (searchOpen.value) searchOpen.value = false;
   else if (helpOpen.value) helpOpen.value = false;
   else if (paletteOpen.value) paletteOpen.value = false;
@@ -583,6 +608,13 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
       @save="onUnsavedAction('save')"
       @discard="onUnsavedAction('discard')"
       @cancel="onUnsavedAction('cancel')"
+    />
+    <FileChangedDialog
+      :open="fileChangedOpen"
+      :file-name="fileChangedFileName"
+      @reload="onFileChangedAction('reload')"
+      @overwrite="onFileChangedAction('overwrite')"
+      @cancel="onFileChangedAction('cancel')"
     />
     <Toast />
   </div>

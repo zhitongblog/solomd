@@ -175,6 +175,13 @@ export const en = {
     dontSave: "Don't Save",
     cancel: 'Cancel',
   },
+  fileChanged: {
+    title: 'File Changed on Disk',
+    message: 'has been modified by another program.',
+    reload: 'Reload from Disk',
+    overwrite: 'Overwrite',
+    dismiss: 'Dismiss',
+  },
   about: {
     version: 'Version',
     website: 'Website',

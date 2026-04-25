@@ -31,6 +31,9 @@ mod git_history;
 #[path = "dev_bridge.rs"]
 mod dev_bridge;
 
+#[path = "watcher.rs"]
+mod watcher;
+
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use tauri::menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder};
@@ -321,6 +324,7 @@ pub fn run_with(initial_file: Option<String>) {
 
     let app = builder
         .manage(PendingOpen(Mutex::new(pending)))
+        .manage(watcher::WatcherState::new())
         .invoke_handler(tauri::generate_handler![
             commands::read_file,
             commands::write_file,
@@ -361,6 +365,8 @@ pub fn run_with(initial_file: Option<String>) {
             git_history::git_file_diff,
             git_history::git_file_at_version,
             git_history::git_rollback_file,
+            watcher::watch_file,
+            watcher::unwatch_file,
         ])
         .on_menu_event(|app_handle, event| {
             // Forward every menu click to the frontend as a single event

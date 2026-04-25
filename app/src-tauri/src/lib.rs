@@ -6,6 +6,7 @@ pub mod ai_proxy;
 pub mod pandoc;
 pub mod git_history;
 pub mod rag;
+pub mod watcher;
 
 // v2.3 dev WebDriver bridge — debug builds only.
 #[cfg(debug_assertions)]
@@ -23,6 +24,7 @@ pub fn run() {
     let builder = builder.plugin(tauri_plugin_window_state::Builder::default().build());
 
     builder
+        .manage(watcher::WatcherState::new())
         .setup(|app| {
             #[cfg(debug_assertions)]
             {
@@ -73,6 +75,8 @@ pub fn run() {
             rag::rag_reindex,
             rag::rag_search,
             rag::rag_reindex_file,
+            watcher::watch_file,
+            watcher::unwatch_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

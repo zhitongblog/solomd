@@ -68,7 +68,11 @@ pub fn write_file(path: String, content: String, encoding: String) -> Result<(),
             enc.name()
         ));
     }
-    fs::write(&path, cow.as_ref()).map_err(|e| format!("write failed: {e}"))
+    fs::write(&path, cow.as_ref()).map_err(|e| format!("write failed: {e}"))?;
+
+    super::watcher::mark_self_write(&path);
+
+    Ok(())
 }
 
 /// Write raw bytes to disk. Used for binary export targets like DOCX/PDF.

@@ -176,6 +176,13 @@ export const zh: I18n = {
     dontSave: '不保存',
     cancel: '取消',
   },
+  fileChanged: {
+    title: '文件已被外部修改',
+    message: '已被其他程序修改。',
+    reload: '从磁盘重新加载',
+    overwrite: '覆盖外部修改',
+    dismiss: '忽略',
+  },
   about: {
     version: '版本',
     website: '官网',
