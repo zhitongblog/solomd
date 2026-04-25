@@ -74,13 +74,33 @@ const sentBanner = ref(false);
 
 const proposedRef = ref<HTMLDivElement | null>(null);
 
+/**
+ * Local mirror of "does this provider have a key in keychain?". The
+ * `hasKey` prop is set in App.vue by a watchEffect that only fires on
+ * aiEnabled / aiProvider change, so it goes stale right after a save
+ * in Settings (the keychain has the key, but the prop is still false
+ * — and the action buttons stay gated). We refresh this every time
+ * the overlay opens, which is cheap and authoritative.
+ */
+const liveHasKey = ref(false);
+
 const providerLabel = computed(
   () => providerById(props.provider)?.label || props.provider,
 );
 
 const needsKey = computed(
-  () => props.provider !== 'ollama' && !props.hasKey,
+  () => props.provider !== 'ollama' && !liveHasKey.value,
 );
+
+async function refreshLiveHasKey(): Promise<void> {
+  try {
+    liveHasKey.value = await invoke<boolean>('ai_has_key', {
+      provider: props.provider,
+    });
+  } catch {
+    liveHasKey.value = false;
+  }
+}
 
 // --- Open / close ----------------------------------------------------------
 
@@ -108,6 +128,8 @@ function onOpenEvent(ev: Event): void {
   customPrompt.value = '';
   reset();
   open.value = true;
+  // Authoritative key check now, in case the prop is stale.
+  void refreshLiveHasKey();
 }
 
 function onKeydown(ev: KeyboardEvent): void {
@@ -261,6 +283,8 @@ watch(
 onMounted(() => {
   window.addEventListener(AI_REWRITE_OPEN_EVENT, onOpenEvent as EventListener);
   window.addEventListener('keydown', onKeydown);
+  // Initial sync — keeps the gate truthful even before the first open.
+  void refreshLiveHasKey();
 });
 
 onBeforeUnmount(() => {
