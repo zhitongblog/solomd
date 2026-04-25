@@ -54,6 +54,8 @@ interface Settings {
   // After opening a file, point the file tree sidebar at its parent folder
   // (and reveal the sidebar if hidden). Default off.
   revealInFileTreeOnOpen: boolean;
+  // First-launch welcome tour: opened automatically once. Don't reopen.
+  welcomeShown: boolean;
 }
 
 function defaults(): Settings {
@@ -91,6 +93,7 @@ function defaults(): Settings {
     restoreSession: true,
     openFileInNewWindow: false,
     revealInFileTreeOnOpen: false,
+    welcomeShown: false,
   };
 }
 
@@ -192,6 +195,10 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleRevealInFileTreeOnOpen() {
       this.revealInFileTreeOnOpen = !this.revealInFileTreeOnOpen;
+      this.persist();
+    },
+    markWelcomeShown() {
+      this.welcomeShown = true;
       this.persist();
     },
     setUiFontSize(n: number) {

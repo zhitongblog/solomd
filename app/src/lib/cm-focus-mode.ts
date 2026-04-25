@@ -45,12 +45,26 @@ const focusPlugin = ViewPlugin.fromClass(
     build(view: EditorView): DecorationSet {
       const builder = new RangeSetBuilder<Decoration>();
       const doc = view.state.doc;
-      // Collect line numbers that hold any selection range's head/anchor.
+      // Expand active line set to the full paragraph (block of contiguous
+      // non-empty lines) the cursor is in. Empty lines act as separators.
       const activeLines = new Set<number>();
+      const isBlank = (n: number) => doc.line(n).text.trim().length === 0;
       for (const range of view.state.selection.ranges) {
         const from = doc.lineAt(range.from).number;
         const to = doc.lineAt(range.to).number;
         for (let n = from; n <= to; n++) activeLines.add(n);
+        // Walk up until a blank line (paragraph start).
+        let up = from - 1;
+        while (up >= 1 && !isBlank(up)) {
+          activeLines.add(up);
+          up--;
+        }
+        // Walk down until a blank line (paragraph end).
+        let down = to + 1;
+        while (down <= doc.lines && !isBlank(down)) {
+          activeLines.add(down);
+          down++;
+        }
       }
 
       for (const { from, to } of view.visibleRanges) {

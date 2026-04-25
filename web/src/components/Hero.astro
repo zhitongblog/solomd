@@ -102,6 +102,17 @@ const initialDownloadsText = initialDownloads > 0 ? fmtDownloads(initialDownload
     <div class="hero__chips">
       {tr.hero.chips.map((c) => <span class="chip">{c}</span>)}
     </div>
+
+    <div class="hero__demo">
+      <img
+        class="hero__demo-media"
+        src="/demo/solomd-demo.svg"
+        alt={tr.hero.demoAlt}
+        width="1280"
+        height="800"
+        loading="lazy"
+      />
+    </div>
   </div>
 </section>
 
@@ -339,5 +350,28 @@ const initialDownloadsText = initialDownloads > 0 ? fmtDownloads(initialDownload
     border: 1px solid var(--border);
     font-size: 12px;
     color: var(--text-muted);
+  }
+  .hero__demo {
+    margin: 48px auto 0;
+    max-width: 1100px;
+    width: 100%;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--border);
+    background: var(--bg-elev);
+    aspect-ratio: 16 / 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .hero__demo-media {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  @media (max-width: 720px) {
+    .hero__demo { margin-top: 32px; aspect-ratio: 4 / 3; }
   }
 </style>

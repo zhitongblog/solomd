@@ -89,6 +89,10 @@ const fontFamilies = [
   { label: 'Microsoft YaHei', value: 'Microsoft YaHei' },
   { label: 'Source Han Sans', value: 'Source Han Sans SC' },
   { label: 'Source Han Serif', value: 'Source Han Serif SC' },
+  // Writing-friendly CJK faces (open source, install separately if missing)
+  { label: 'LXGW WenKai 霞鹜文楷', value: 'LXGW WenKai' },
+  { label: 'LXGW Bright 霞鹜新晨宋', value: 'LXGW Bright' },
+  { label: 'TsangerJinKai 仓耳今楷', value: 'TsangerJinKai03 W04' },
 ];
 const fontFamilyPresetValues = new Set(fontFamilies.map((f) => f.value));
 // Track custom-mode independently of settings.fontFamily so selecting
@@ -158,6 +162,7 @@ const fontFamilySelectValue = computed(() =>
             @input="onCustomFontInput(($event.target as HTMLInputElement).value)"
             style="margin-top: 6px; padding: 6px 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px; font: inherit; width: 100%;"
           />
+          <p class="setting-hint">{{ t('settings.fontFamilyHint') }}</p>
         </section>
 
         <section>
@@ -400,6 +405,16 @@ section > label:has(input[type='checkbox']) {
 section > label:not(:has(input)) {
   font-size: 12px;
   color: var(--text-muted);
+}
+.setting-hint {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-faint, #888);
+  line-height: 1.5;
+}
+.setting-hint a {
+  color: var(--accent);
+  text-decoration: underline;
 }
 .row {
   display: flex;

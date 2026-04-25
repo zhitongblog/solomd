@@ -26,6 +26,7 @@ import { loadCustomTheme } from './lib/custom-theme';
 import { isIOS } from './lib/platform';
 import { useI18n } from './i18n';
 import { track } from './lib/telemetry';
+import { openWelcomeTour } from './lib/welcome-tour';
 
 const tabs = useTabsStore();
 const settings = useSettingsStore();
@@ -269,7 +270,15 @@ onMounted(async () => {
     }
   } catch {}
 
-  if (tabs.tabs.length === 0) tabs.newTab();
+  // First-launch welcome tour: only when there are no tabs at all (fresh
+  // install or user has cleared session) and we haven't shown it before.
+  const isFreshLaunch = tabs.tabs.length === 0 && !settings.welcomeShown;
+  if (isFreshLaunch) {
+    openWelcomeTour();
+    settings.markWelcomeShown();
+  } else if (tabs.tabs.length === 0) {
+    tabs.newTab();
+  }
 
   // Initialize tile layout: validate persisted state or create default
   tiles.validate(tabs.tabs);

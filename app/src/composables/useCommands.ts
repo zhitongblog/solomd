@@ -13,6 +13,8 @@ import {
   pinyin,
 } from '../lib/chinese';
 import { cleanAIArtifacts, stripMarkdownToPlain } from '../lib/clean-ai';
+import { openWelcomeTour } from '../lib/welcome-tour';
+import { formatMarkdown } from '../lib/markdown-format';
 
 export interface Command {
   id: string;
@@ -134,6 +136,36 @@ export function useCommands(): Command[] {
       },
     },
 
+    {
+      id: 'format.markdown',
+      title: 'Format Markdown (Prettier)',
+      shortcut: 'Ctrl+Alt+L',
+      hint: 'Reformat the active document — normalize lists, tables, spacing',
+      run: async () => {
+        const t = tabs.activeTab;
+        if (!t) {
+          toasts.warning('No active document');
+          return;
+        }
+        if (t.language !== 'markdown') {
+          toasts.warning('Format works on Markdown files only');
+          return;
+        }
+        try {
+          const next = await formatMarkdown(t.content);
+          if (next === t.content) {
+            toasts.info('Already formatted');
+            return;
+          }
+          tabs.setContent(t.id, next);
+          toasts.success('Formatted');
+        } catch (e) {
+          console.error('format failed', e);
+          toasts.warning('Format failed — check syntax');
+        }
+      },
+    },
+
     // ---- AI text cleanup ----
     {
       id: 'clean.aiArtifacts',
@@ -159,6 +191,15 @@ export function useCommands(): Command[] {
     { id: 'export.copyImage', title: 'Copy as Image (PNG)', run: () => exporter.copyAsImage() },
 
     {
+      id: 'help.welcomeTour',
+      title: 'Open Welcome Tour',
+      hint: 'Open 4 in-memory tutorial tabs (Welcome, Syntax, Slideshow, Shortcuts)',
+      run: () => {
+        openWelcomeTour();
+        toasts.success(settings.language === 'zh' ? '已打开教程' : 'Welcome tour opened');
+      },
+    },
+    {
       id: 'help.markdown',
       title: 'Markdown Cheatsheet',
       shortcut: 'F1 / Ctrl+/',
@@ -166,6 +207,41 @@ export function useCommands(): Command[] {
       run: () => {
         // Triggered via App-level event since useCommands has no DOM access.
         window.dispatchEvent(new CustomEvent('solomd:open-help'));
+      },
+    },
+    {
+      id: 'view.slideshow',
+      title: 'Present Slideshow',
+      shortcut: 'Ctrl+Alt+P',
+      hint: 'Render the active document as a fullscreen slideshow (split on `---`)',
+      run: async () => {
+        const t = tabs.activeTab;
+        if (!t) {
+          toasts.warning('No active document');
+          return;
+        }
+        try {
+          localStorage.setItem('solomd:slideshow:content', t.content || '');
+          localStorage.setItem(
+            'solomd:slideshow:title',
+            t.fileName || 'Untitled',
+          );
+        } catch {}
+        const label = `solomd-slideshow-${Date.now()}`;
+        try {
+          const win = new WebviewWindow(label, {
+            url: '/?slideshow=1',
+            title: 'SoloMD — Slideshow',
+            width: 1200,
+            height: 800,
+            decorations: true,
+            resizable: true,
+          });
+          win.once('tauri://error', (e) => console.error('slideshow window error', e));
+        } catch (e) {
+          console.error('failed to open slideshow', e);
+          toasts.warning('Failed to open slideshow window');
+        }
       },
     },
     {

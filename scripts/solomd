@@ -1,0 +1,199 @@
+#!/bin/bash
+#
+# solomd - CLI for SoloMD Markdown Editor
+# https://github.com/zhitongblog/solomd
+#
+# Usage:
+#   solomd open <title|path>     Open a markdown file in SoloMD
+#   solomd new <title> [text]    Create a new markdown file and open it
+#   solomd list [folder]         List markdown files in a folder
+#   solomd search <query>        Search markdown files in CWD for a query
+#   solomd cat <title|path>      Print a markdown file's content
+#   solomd help                  Show this help
+#
+# Notes:
+#   - Default notes directory: $SOLOMD_NOTES (or ~/Documents/SoloMD if unset)
+#   - "title" arguments resolve to <notes-dir>/<title>.md if no extension is
+#     given. Pass an explicit path to bypass this.
+
+set -e
+
+# ---- Colors --------------------------------------------------------------
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[0;33m'
+DIM='\033[2m'
+NC='\033[0m'
+
+# ---- Notes dir resolution ------------------------------------------------
+NOTES_DIR="${SOLOMD_NOTES:-$HOME/Documents/SoloMD}"
+
+ensure_notes_dir() {
+    if [[ ! -d "$NOTES_DIR" ]]; then
+        mkdir -p "$NOTES_DIR"
+    fi
+}
+
+# ---- App binary detection ------------------------------------------------
+detect_solomd_bin() {
+    if [[ "$(uname)" == "Darwin" ]]; then
+        local mac_paths=(
+            "/Applications/SoloMD.app/Contents/MacOS/SoloMD"
+            "$HOME/Applications/SoloMD.app/Contents/MacOS/SoloMD"
+        )
+        for p in "${mac_paths[@]}"; do
+            [[ -x "$p" ]] && echo "$p" && return 0
+        done
+    elif [[ "$(uname)" == "Linux" ]]; then
+        for cmd in solomd SoloMD; do
+            if command -v "$cmd" >/dev/null 2>&1; then
+                command -v "$cmd"
+                return 0
+            fi
+        done
+        local linux_paths=(
+            "/usr/bin/solomd"
+            "/usr/local/bin/solomd"
+            "/opt/SoloMD/solomd"
+        )
+        for p in "${linux_paths[@]}"; do
+            [[ -x "$p" ]] && echo "$p" && return 0
+        done
+    fi
+    return 1
+}
+
+# ---- Path resolution -----------------------------------------------------
+# Resolve a title or path to a filesystem path. Rules:
+#   1. If contains '/' or has .md/.markdown/.txt extension, use as-is
+#      (relative to CWD if not absolute).
+#   2. Otherwise, treat as title and look in $NOTES_DIR/<title>.md
+resolve_path() {
+    local input="$1"
+    [[ -z "$input" ]] && return 1
+    if [[ "$input" == /* ]]; then
+        echo "$input"
+        return 0
+    fi
+    if [[ "$input" == *.md || "$input" == *.markdown || "$input" == *.txt ]]; then
+        echo "$PWD/$input"
+        return 0
+    fi
+    if [[ "$input" == */* ]]; then
+        echo "$PWD/$input"
+        return 0
+    fi
+    echo "$NOTES_DIR/$input.md"
+}
+
+# ---- Commands ------------------------------------------------------------
+cmd_help() {
+    printf "${GREEN}solomd${NC} — CLI for SoloMD Markdown Editor\n"
+    printf "         %s\n\n" "https://github.com/zhitongblog/solomd"
+    printf "${BLUE}USAGE${NC}\n"
+    printf "  solomd <command> [args]\n\n"
+    printf "${BLUE}COMMANDS${NC}\n"
+    printf "  ${GREEN}%-22s${NC} %s\n" "open <title|path>" "Open file in SoloMD"
+    printf "  ${GREEN}%-22s${NC} %s\n" "new <title> [text]" "Create new note + open"
+    printf "  ${GREEN}%-22s${NC} %s\n" "list [folder]" "List markdown files"
+    printf "  ${GREEN}%-22s${NC} %s\n" "search <query>" "Search markdown for text"
+    printf "  ${GREEN}%-22s${NC} %s\n" "cat <title|path>" "Print file content"
+    printf "  ${GREEN}%-22s${NC} %s\n" "help" "Show this help"
+    printf "\n${BLUE}NOTES DIR${NC}\n"
+    printf "  ${DIM}%s${NC}\n" "$NOTES_DIR"
+    printf "  ${DIM}override with SOLOMD_NOTES env var${NC}\n"
+}
+
+cmd_open() {
+    local target="$1"
+    [[ -z "$target" ]] && { echo "Usage: solomd open <title|path>" >&2; exit 1; }
+    local path
+    path="$(resolve_path "$target")"
+    if [[ ! -f "$path" ]]; then
+        printf "${YELLOW}File not found:${NC} %s\n" "$path" >&2
+        exit 1
+    fi
+    local bin
+    if bin="$(detect_solomd_bin)"; then
+        "$bin" "$path" >/dev/null 2>&1 &
+        disown 2>/dev/null || true
+        printf "Opening ${GREEN}%s${NC}\n" "$path"
+    elif [[ "$(uname)" == "Darwin" ]]; then
+        open -a SoloMD "$path"
+    else
+        printf "${YELLOW}SoloMD not found.${NC} Install from https://solomd.app\n" >&2
+        exit 1
+    fi
+}
+
+cmd_new() {
+    local title="$1"; shift || true
+    local body="$*"
+    [[ -z "$title" ]] && { echo "Usage: solomd new <title> [text]" >&2; exit 1; }
+    ensure_notes_dir
+    local path
+    path="$(resolve_path "$title")"
+    if [[ -f "$path" ]]; then
+        printf "${YELLOW}File already exists:${NC} %s\n" "$path" >&2
+        exit 1
+    fi
+    {
+        printf "# %s\n\n" "$title"
+        [[ -n "$body" ]] && printf "%s\n" "$body"
+    } > "$path"
+    printf "Created ${GREEN}%s${NC}\n" "$path"
+    cmd_open "$path"
+}
+
+cmd_list() {
+    local folder="${1:-$NOTES_DIR}"
+    if [[ ! -d "$folder" ]]; then
+        printf "${YELLOW}Not a folder:${NC} %s\n" "$folder" >&2
+        exit 1
+    fi
+    find "$folder" -maxdepth 2 -type f \( -name "*.md" -o -name "*.markdown" \) 2>/dev/null \
+        | sort \
+        | while IFS= read -r f; do
+            local rel="${f#$folder/}"
+            printf "  ${GREEN}%s${NC}\n" "$rel"
+        done
+}
+
+cmd_search() {
+    local query="$*"
+    [[ -z "$query" ]] && { echo "Usage: solomd search <query>" >&2; exit 1; }
+    local folder="$NOTES_DIR"
+    [[ ! -d "$folder" ]] && folder="$PWD"
+    if command -v rg >/dev/null 2>&1; then
+        rg --color=auto -i -t md "$query" "$folder" 2>/dev/null || {
+            printf "${DIM}No matches for: %s${NC}\n" "$query"
+        }
+    else
+        grep -ri --include="*.md" --include="*.markdown" -n "$query" "$folder" 2>/dev/null || {
+            printf "${DIM}No matches for: %s${NC}\n" "$query"
+        }
+    fi
+}
+
+cmd_cat() {
+    local target="$1"
+    [[ -z "$target" ]] && { echo "Usage: solomd cat <title|path>" >&2; exit 1; }
+    local path
+    path="$(resolve_path "$target")"
+    if [[ ! -f "$path" ]]; then
+        printf "${YELLOW}File not found:${NC} %s\n" "$path" >&2
+        exit 1
+    fi
+    cat "$path"
+}
+
+# ---- Dispatch ------------------------------------------------------------
+case "${1:-help}" in
+    open)   shift; cmd_open "$@" ;;
+    new)    shift; cmd_new "$@" ;;
+    list)   shift; cmd_list "$@" ;;
+    search) shift; cmd_search "$@" ;;
+    cat)    shift; cmd_cat "$@" ;;
+    help|--help|-h) cmd_help ;;
+    *) printf "${YELLOW}Unknown command:${NC} %s\n\n" "$1"; cmd_help; exit 1 ;;
+esac

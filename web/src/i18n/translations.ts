@@ -20,6 +20,7 @@ export const t = {
       ctaForWindows: 'Download for Windows',
       ctaForLinux: 'Download for Linux',
       chips: ['📝 Live preview', '🖼 Image paste', '🧮 KaTeX', '📊 Mermaid', '🌏 中文 first-class', '📤 PDF / DOCX / HTML'],
+      demoAlt: 'SoloMD editor demo — live preview, split view, and slideshow mode',
     },
     features: {
       heading1: 'Everything you need.',
@@ -185,6 +186,7 @@ export const t = {
       ctaForWindows: '下载 Windows 版本',
       ctaForLinux: '下载 Linux 版本',
       chips: ['📝 实时预览', '🖼 图片粘贴', '🧮 KaTeX 公式', '📊 Mermaid 图表', '🌏 中文一等公民', '📤 PDF / DOCX / HTML'],
+      demoAlt: 'SoloMD 演示 — 实时预览、分屏、演讲模式',
     },
     features: {
       heading1: '该有的都有,',

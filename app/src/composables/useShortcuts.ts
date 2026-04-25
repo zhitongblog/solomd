@@ -82,6 +82,9 @@ export function useShortcuts(hooks: Hooks = {}) {
     } else if (k === 'p' && e.shiftKey) {
       e.preventDefault();
       settings.cycleViewMode();
+    } else if (k === 'p' && e.altKey) {
+      e.preventDefault();
+      runById('view.slideshow');
     } else if (k === 'p') {
       e.preventDefault();
       runById('export.pdfPrint');
@@ -101,6 +104,9 @@ export function useShortcuts(hooks: Hooks = {}) {
     } else if (k === 'b') {
       e.preventDefault();
       settings.toggleFileTree();
+    } else if (k === 'l' && e.altKey) {
+      e.preventDefault();
+      runById('format.markdown');
     }
 
     // Tile layout shortcuts
