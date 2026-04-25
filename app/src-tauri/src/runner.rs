@@ -22,6 +22,9 @@ mod ai_proxy;
 #[path = "pandoc.rs"]
 mod pandoc;
 
+#[path = "git_history.rs"]
+mod git_history;
+
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use tauri::menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder};
@@ -344,6 +347,13 @@ pub fn run_with(initial_file: Option<String>) {
             ai_proxy::ai_cancel,
             pandoc::pandoc_detect,
             pandoc::pandoc_export,
+            git_history::git_workspace_status,
+            git_history::git_init_workspace,
+            git_history::git_auto_commit,
+            git_history::git_file_history,
+            git_history::git_file_diff,
+            git_history::git_file_at_version,
+            git_history::git_rollback_file,
         ])
         .on_menu_event(|app_handle, event| {
             // Forward every menu click to the frontend as a single event

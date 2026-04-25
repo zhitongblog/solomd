@@ -75,6 +75,10 @@ interface Settings {
   // v2.0 F5: Pandoc + citations
   workspaceBibliography: string;
   workspaceCsl: string;
+  // v2.2: AutoGit per-note version history
+  autoGitEnabled: boolean;
+  autoGitDebounceSeconds: number;
+  showHistoryPanel: boolean;
 }
 
 function defaults(): Settings {
@@ -125,6 +129,9 @@ function defaults(): Settings {
     aiBaseUrl: '',
     workspaceBibliography: '',
     workspaceCsl: '',
+    autoGitEnabled: false,
+    autoGitDebounceSeconds: 30,
+    showHistoryPanel: false,
   };
 }
 
@@ -278,6 +285,18 @@ export const useSettingsStore = defineStore('settings', {
     },
     setWorkspaceCsl(p: string) {
       this.workspaceCsl = p;
+      this.persist();
+    },
+    toggleAutoGit() {
+      this.autoGitEnabled = !this.autoGitEnabled;
+      this.persist();
+    },
+    toggleHistoryPanel() {
+      this.showHistoryPanel = !this.showHistoryPanel;
+      this.persist();
+    },
+    setAutoGitDebounceSeconds(n: number) {
+      this.autoGitDebounceSeconds = Math.max(5, Math.min(600, Math.round(n) || 30));
       this.persist();
     },
     setUiFontSize(n: number) {

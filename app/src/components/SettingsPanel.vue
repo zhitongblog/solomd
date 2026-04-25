@@ -246,6 +246,29 @@ const fontFamilySelectValue = computed(() =>
         </section>
 
         <section>
+          <h3 style="font-size: 13px; font-weight: 600; color: var(--text); margin: 18px 0 6px;">
+            {{ t('settings.versionHistoryHeading') }}
+          </h3>
+          <label>
+            <input type="checkbox" :checked="settings.autoGitEnabled" @change="settings.toggleAutoGit()" />
+            {{ t('settings.autoGitEnabled') }}
+          </label>
+          <label style="margin-top: 4px;">
+            <input type="checkbox" :checked="settings.showHistoryPanel" @change="settings.toggleHistoryPanel()" />
+            {{ t('settings.showHistoryPanel') }}
+          </label>
+          <label style="margin-top: 8px;">{{ t('settings.autoGitDebounceSeconds') }}</label>
+          <input
+            type="number"
+            min="5"
+            max="600"
+            :value="settings.autoGitDebounceSeconds"
+            @input="settings.setAutoGitDebounceSeconds(Number(($event.target as HTMLInputElement).value))"
+            style="width: 96px; padding: 4px 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px; font: inherit;"
+          />
+        </section>
+
+        <section>
           <label>
             <input type="checkbox" :checked="settings.spellcheckEnabled" @change="settings.toggleSpellcheckEnabled()" />
             {{ t('settings.spellcheckEnabled') }}

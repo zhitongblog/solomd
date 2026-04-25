@@ -69,6 +69,11 @@ once_cell = "1"                # global index state
 # v2.0 spellcheck (F2): Hunspell wrapped in pure-Rust port
 spellbook = "0.3"              # MIT, no GPL deps; ships with English+Latin support
 
+# v2.2 AutoGit per-note history: libgit2 bindings for cross-platform
+# git access (no shelling out). Uses bundled libgit2 by default so we
+# don't depend on a system library.
+git2 = { version = "0.19", default-features = false, features = ["vendored-libgit2"] }
+
 # v2.0 AI rewrite (F4): provider keys in OS keychain + streaming HTTP
 keyring = "3"                  # cross-platform credential storage
 reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls"] }

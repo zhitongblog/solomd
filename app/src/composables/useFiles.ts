@@ -150,6 +150,11 @@ export function useFiles() {
       });
       tabs.markSaved(tab.id, tab.filePath);
       workspace.pushRecent(tab.filePath);
+      // v2.2: notify the AutoGit composable so the debounced auto-commit
+      // pipeline picks up this save. Listener is in `useAutoCommit.ts`.
+      window.dispatchEvent(
+        new CustomEvent('solomd:saved', { detail: { filePath: tab.filePath } }),
+      );
       toasts.success(`Saved ${tab.fileName}`);
       return true;
     } catch (e) {
@@ -174,6 +179,9 @@ export function useFiles() {
       });
       tabs.markSaved(tab.id, path);
       workspace.pushRecent(path);
+      window.dispatchEvent(
+        new CustomEvent('solomd:saved', { detail: { filePath: path } }),
+      );
       const fileName = path.split(/[\\/]/).pop() ?? path;
       toasts.success(`Saved as ${fileName}`);
       return true;

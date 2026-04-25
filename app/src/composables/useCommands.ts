@@ -18,7 +18,10 @@ import { formatMarkdown } from '../lib/markdown-format';
 import { useDailyNotes } from './useDailyNotes';
 import { usePandocExport } from './usePandocExport';
 import { useBasesView } from './useBasesView';
+import { useAutoCommit } from './useAutoCommit';
 import { useWorkspaceIndexStore } from '../stores/workspaceIndex';
+import { useGitHistoryStore } from '../stores/gitHistory';
+import { useWorkspaceStore } from '../stores/workspace';
 
 export interface Command {
   id: string;
@@ -38,6 +41,9 @@ export function useCommands(): Command[] {
   const daily = useDailyNotes();
   const pandoc = usePandocExport();
   const bases = useBasesView();
+  const auto = useAutoCommit();
+  const gh = useGitHistoryStore();
+  const ws = useWorkspaceStore();
 
   /** Replace the active editor's content (used for the Chinese conversion commands). */
   function transformActive(fn: (s: string) => string, successMsg: string) {
@@ -229,6 +235,34 @@ export function useCommands(): Command[] {
       title: 'Workspace: Properties Table (Bases)',
       hint: 'Browse all notes as a sortable / filterable table',
       run: () => bases.openBases(),
+    },
+    {
+      id: 'history.initWorkspace',
+      title: 'History: Initialize Git History',
+      hint: 'Run `git init` + initial commit of all .md/.txt files in this workspace',
+      run: async () => {
+        if (!ws.currentFolder) {
+          toasts.warning('Open a folder first');
+          return;
+        }
+        try {
+          await gh.init(ws.currentFolder);
+          toasts.success('Git history initialized');
+        } catch (e) {
+          toasts.warning(`Init failed: ${e}`);
+        }
+      },
+    },
+    {
+      id: 'history.commitNow',
+      title: 'History: Save Snapshot Now',
+      hint: 'Force an auto-commit immediately (skips the debounce window)',
+      run: () => auto.commitNow(),
+    },
+    {
+      id: 'history.toggleAutoGit',
+      title: 'History: Toggle Auto-Commit on Save',
+      run: () => settings.toggleAutoGit(),
     },
 
     {

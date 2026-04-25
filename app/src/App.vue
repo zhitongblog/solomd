@@ -11,6 +11,8 @@ import CommandPalette from './components/CommandPalette.vue';
 import Outline from './components/Outline.vue';
 import BacklinksPanel from './components/BacklinksPanel.vue';
 import TagsPanel from './components/TagsPanel.vue';
+import HistoryPanel from './components/HistoryPanel.vue';
+import { useAutoCommit } from './composables/useAutoCommit';
 import AIRewriteOverlay from './components/AIRewriteOverlay.vue';
 import BasesView from './components/BasesView.vue';
 import { BASES_OPEN_EVENT, BASES_CLOSE_EVENT } from './composables/useBasesView';
@@ -42,6 +44,8 @@ const files = useFiles();
 const exporter = useExport();
 const workspace = useWorkspaceStore();
 const workspaceIndex = useWorkspaceIndexStore();
+const autoCommit = useAutoCommit();
+autoCommit.start();
 const { t } = useI18n();
 
 const cursorLine = ref(1);
@@ -439,8 +443,18 @@ const showBacklinksPane = computed(
 const showTagsPane = computed(
   () => settings.showTagsPanel && !!workspace.currentFolder,
 );
+const showHistoryPane = computed(
+  () =>
+    settings.showHistoryPanel &&
+    tabs.activeTab?.language === 'markdown' &&
+    !!workspace.currentFolder,
+);
 const showRightSidebar = computed(
-  () => showOutlinePane.value || showBacklinksPane.value || showTagsPane.value,
+  () =>
+    showOutlinePane.value ||
+    showBacklinksPane.value ||
+    showTagsPane.value ||
+    showHistoryPane.value,
 );
 const basesOpen = ref(false);
 const aiHasKey = ref(false);
@@ -485,6 +499,7 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
         <Outline v-if="showOutlinePane" :cursor-line="cursorLine" @goto="onOutlineGoto" />
         <BacklinksPanel v-if="showBacklinksPane" />
         <TagsPanel v-if="showTagsPane" />
+        <HistoryPanel v-if="showHistoryPane" />
       </aside>
     </div>
     <StatusBar :line="cursorLine" :col="cursorCol" />

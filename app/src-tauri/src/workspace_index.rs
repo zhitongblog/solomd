@@ -397,10 +397,9 @@ fn extract_wikilinks(body: &str) -> Vec<WikilinkRef> {
 }
 
 fn extract_body_tags(body: &str) -> Vec<String> {
-    static RE: Lazy<Regex> = Lazy::new(|| {
-        // Match #tag, #nested/tag, but not inside fenced code or inline code.
-        Regex::new(r"(?:^|\s)#([\p{L}\p{N}][\p{L}\p{N}_/-]*)").expect("tag regex")
-    });
+    // Hand-rolled scanner — `regex-lite` does NOT support Unicode classes
+    // (`\p{L}` / `\p{N}`), and trying to compile such a pattern panics at
+    // runtime. We use `char::is_alphanumeric` which IS Unicode-aware.
     let mut out = Vec::new();
     let mut in_fence = false;
     for line in body.lines() {
@@ -411,15 +410,49 @@ fn extract_body_tags(body: &str) -> Vec<String> {
         if in_fence {
             continue;
         }
-        // Strip inline code spans (cheap pass)
+        // Strip inline code spans (cheap pass) before scanning.
         let stripped = strip_inline_code(line);
-        for cap in RE.captures_iter(&stripped) {
-            if let Some(m) = cap.get(1) {
-                out.push(m.as_str().to_string());
-            }
-        }
+        scan_tags_in_line(&stripped, &mut out);
     }
     out
+}
+
+fn scan_tags_in_line(line: &str, out: &mut Vec<String>) {
+    let bytes = line.as_bytes();
+    let mut chars = line.char_indices().peekable();
+    while let Some((i, c)) = chars.next() {
+        if c != '#' {
+            continue;
+        }
+        // `#` must be at start of line OR preceded by whitespace.
+        if i > 0 {
+            let prev = bytes[i - 1];
+            if !(prev as char).is_whitespace() {
+                continue;
+            }
+        }
+        // First char of tag must be alphanumeric (Unicode-aware).
+        let mut tag = String::new();
+        // Peek next char.
+        let first = match chars.peek() {
+            Some(&(_, ch)) if ch.is_alphanumeric() => ch,
+            _ => continue,
+        };
+        chars.next();
+        tag.push(first);
+        // Subsequent chars: alphanumeric or `_` `/` `-`.
+        while let Some(&(_, ch)) = chars.peek() {
+            if ch.is_alphanumeric() || ch == '_' || ch == '/' || ch == '-' {
+                tag.push(ch);
+                chars.next();
+            } else {
+                break;
+            }
+        }
+        if !tag.is_empty() {
+            out.push(tag);
+        }
+    }
 }
 
 fn strip_inline_code(s: &str) -> String {
