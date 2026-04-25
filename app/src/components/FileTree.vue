@@ -13,6 +13,9 @@ interface Node extends Entry {
   expanded?: boolean;
   children?: Node[];
   loading?: boolean;
+  /** True when the directory had more children than we serialized — surface
+   *  a "+N more" hint instead of silently hiding files. */
+  truncated?: boolean;
 }
 
 const workspace = useWorkspaceStore();
@@ -20,13 +23,27 @@ const files = useFiles();
 
 const root = ref<Node | null>(null);
 
-async function loadDir(path: string): Promise<Node[]> {
+/** Sentinel emitted by the Rust backend when it truncated a huge dir
+ * past the 10,000-entry hard cap. We surface it as a dedicated UI
+ * row instead of rendering it as a fake file. */
+const TRUNCATED_SENTINEL = '__solomd_truncated__';
+
+async function loadDir(path: string): Promise<{ children: Node[]; truncated: boolean }> {
   try {
     const entries = await invoke<Entry[]>('list_dir', { path });
-    return entries.map((e) => ({ ...e }));
+    let truncated = false;
+    const filtered: Node[] = [];
+    for (const e of entries) {
+      if (e.name === TRUNCATED_SENTINEL && !e.is_dir && e.path === '') {
+        truncated = true;
+        continue;
+      }
+      filtered.push({ ...e });
+    }
+    return { children: filtered, truncated };
   } catch (e) {
     console.error('list_dir failed', e);
-    return [];
+    return { children: [], truncated: false };
   }
 }
 
@@ -43,7 +60,13 @@ async function refreshRoot() {
     expanded: true,
     loading: true,
   };
-  node.children = await loadDir(path);
+  // Set immediately so the user sees a Loading row instead of an
+  // empty pane while a slow filesystem (Windows OneDrive, network
+  // mounts) churns through the dir scan.
+  root.value = node;
+  const { children, truncated } = await loadDir(path);
+  node.children = children;
+  node.truncated = truncated;
   node.loading = false;
   root.value = node;
 }
@@ -59,7 +82,9 @@ async function toggle(node: Node) {
   }
   if (!node.children) {
     node.loading = true;
-    node.children = await loadDir(node.path);
+    const { children, truncated } = await loadDir(node.path);
+    node.children = children;
+    node.truncated = truncated;
     node.loading = false;
   }
   node.expanded = true;
@@ -79,7 +104,11 @@ watch(() => workspace.currentFolder, refreshRoot, { immediate: true });
     </div>
     <div v-else class="ftree__body">
       <div class="ftree__root">{{ root.name }}</div>
-      <ul class="ftree__list">
+      <div v-if="root.loading" class="ftree__loading">
+        <span class="ftree__spinner" aria-hidden="true"></span>
+        <span>Loading…</span>
+      </div>
+      <ul v-else class="ftree__list">
         <FileTreeNode
           v-for="child in root.children"
           :key="child.path"
@@ -87,6 +116,9 @@ watch(() => workspace.currentFolder, refreshRoot, { immediate: true });
           :depth="0"
           @toggle="toggle"
         />
+        <li v-if="root.truncated" class="ftree__truncated" :title="`This folder has more than 10,000 entries; showing the first batch. Move groups into subfolders to see them all.`">
+          + 10,000+ more —— folder is huge
+        </li>
       </ul>
     </div>
   </aside>
@@ -195,6 +227,32 @@ export const FileTreeNode = defineComponent({
   list-style: none;
   margin: 0;
   padding: 0 0 12px;
+}
+.ftree__loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.ftree__spinner {
+  width: 11px;
+  height: 11px;
+  border: 1.5px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: ftree-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes ftree-spin { to { transform: rotate(360deg); } }
+.ftree__truncated {
+  padding: 6px 14px;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-faint);
+  font-style: italic;
+  border-top: 1px dashed var(--border);
 }
 :deep(.ftree__item) {
   display: flex;

@@ -142,33 +142,42 @@ pub struct DirEntry {
 
 /// List immediate children of a directory. Hidden entries (starting with `.`)
 /// are filtered out. Sorted: dirs first, then files, both alphabetical.
-fn list_dir_inner(path: String) -> Result<Vec<DirEntry>, String> {
+///
+/// Whether each child is a directory comes from `e.file_type()`, NOT
+/// `e.metadata()`. On Windows the difference is enormous: `file_type()`
+/// uses the cached info from the directory scan (one bulk
+/// `FindFirstFile`/`FindNextFile` traversal), while `metadata()` triggers
+/// a separate `GetFileInformationByHandle` syscall **per entry**. On a
+/// folder with a few thousand notes that's the difference between
+/// "instant" and "10 seconds with the antivirus also doing on-access
+/// scanning". Reported by user 2026-04-26 as "Win 下打开一个文件比较多
+/// 的目录还是有些卡顿".
+pub fn list_dir_inner(path: String) -> Result<Vec<DirEntry>, String> {
     let read = fs::read_dir(&path).map_err(|e| format!("read_dir failed: {e}"))?;
-    // Cap at ~10k entries — anything beyond that is almost certainly a
-    // misconfigured workspace (a `node_modules` root, a system folder, an
-    // OneDrive root with hundreds of thousands of placeholders), and
-    // serializing the list to the webview frontend would freeze the UI
-    // anyway. Returning a partial list is friendlier than blocking.
     const HARD_CAP: usize = 10_000;
     let mut entries: Vec<DirEntry> = Vec::new();
+    let mut truncated = false;
     for e in read.flatten() {
         if entries.len() >= HARD_CAP {
+            truncated = true;
             break;
         }
         let name = e.file_name().to_string_lossy().to_string();
         if name.starts_with('.') {
             continue;
         }
-        // metadata() can hang or error on Windows reparse points / dangling
-        // symlinks — skip the entry rather than abort the whole listing.
-        let meta = match e.metadata() {
-            Ok(m) => m,
+        // file_type() uses the dir-scan's cached entry type — no extra
+        // syscall. metadata() on Windows would re-stat each entry. Falls
+        // back gracefully for symlinks/reparse points whose type can't
+        // be determined cheaply: skip them rather than block.
+        let is_dir = match e.file_type() {
+            Ok(t) => t.is_dir(),
             Err(_) => continue,
         };
         entries.push(DirEntry {
             name,
             path: e.path().to_string_lossy().to_string(),
-            is_dir: meta.is_dir(),
+            is_dir,
         });
     }
     entries.sort_by(|a, b| match (a.is_dir, b.is_dir) {
@@ -176,6 +185,17 @@ fn list_dir_inner(path: String) -> Result<Vec<DirEntry>, String> {
         (false, true) => std::cmp::Ordering::Greater,
         _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
     });
+    if truncated {
+        // Surface truncation as a sentinel last entry so the UI can show
+        // a "+N more, refine your folder layout" hint without needing a
+        // second IPC call. The frontend filters this entry by its
+        // distinctive name + is_dir=false signature.
+        entries.push(DirEntry {
+            name: "__solomd_truncated__".into(),
+            path: String::new(),
+            is_dir: false,
+        });
+    }
     Ok(entries)
 }
 
