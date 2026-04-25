@@ -26,13 +26,59 @@ mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: 'defaul
  * through `convertFileSrc()` which produces an `asset://` URL the
  * `assetProtocol` handler will serve.
  */
+/**
+ * Normalize a filesystem path so `convertFileSrc` produces a URL the
+ * webview will actually load on every platform. Fixes issue #22 (Windows
+ * local images not displaying). Three things matter:
+ *  1. Mixed `\` / `/` separators must be unified — Windows asset URLs
+ *     misroute when paths contain both.
+ *  2. `./` and `../` segments must be resolved before encoding (otherwise
+ *     `https://asset.localhost/.../somedir/./image.png` fails).
+ *  3. Windows drive prefixes (`C:`) must survive normalization with the
+ *     drive letter intact.
+ */
+function normalizePath(p: string): string {
+  if (!p) return p;
+  // 1. Unify separators.
+  let s = p.replace(/\\/g, '/');
+  // 2. Detect leading sentinel kinds before splitting:
+  //    - Unix absolute (`/foo`)
+  //    - Windows drive (`C:/foo`)
+  //    - Bare relative (`foo`, `./foo`)
+  const driveMatch = s.match(/^([a-zA-Z]):\/(.*)$/);
+  let prefix = '';
+  let body = s;
+  if (driveMatch) {
+    prefix = driveMatch[1].toUpperCase() + ':/';
+    body = driveMatch[2];
+  } else if (s.startsWith('/')) {
+    prefix = '/';
+    body = s.slice(1);
+  }
+  // 3. Resolve segments.
+  const out: string[] = [];
+  for (const seg of body.split('/')) {
+    if (seg === '' || seg === '.') continue;
+    if (seg === '..') {
+      if (out.length > 0) out.pop();
+      continue;
+    }
+    out.push(seg);
+  }
+  return prefix + out.join('/');
+}
+
 function resolveImageSrc(src: string, imageRoot: string | null): string {
   if (!src) return src;
   // Already a remote / data / blob / asset URL — leave alone.
   if (/^(https?|data|blob|asset|tauri):/i.test(src)) return src;
 
-  // Strip a leading file:// prefix so we can re-encode it.
-  let p = src.startsWith('file://') ? src.slice(7) : src;
+  // Strip leading file:// prefix. `file:///C:/x` → `C:/x`; `file:///x` → `/x`.
+  let p = src;
+  if (/^file:\/\//i.test(p)) {
+    p = p.slice(7);
+    if (p.startsWith('/') && /^\/[a-zA-Z]:/.test(p)) p = p.slice(1);
+  }
 
   // Resolve relative paths. Prefer front-matter `imageRoot` over the file's
   // own parent directory (matches Typora's `typora-root-url` behavior).
@@ -45,18 +91,20 @@ function resolveImageSrc(src: string, imageRoot: string | null): string {
         base = imageRoot;
       } else if (props.filePath) {
         const dir = props.filePath.replace(/[\\/][^\\/]*$/, '');
-        const sep = props.filePath.includes('\\') ? '\\' : '/';
-        base = dir + sep + imageRoot;
+        base = dir + '/' + imageRoot;
       }
     }
     if (!base && props.filePath) {
       base = props.filePath.replace(/[\\/][^\\/]*$/, '');
     }
     if (base) {
-      const sep = base.includes('\\') ? '\\' : '/';
-      p = base + sep + p;
+      p = base + '/' + p;
     }
   }
+
+  // Normalize before handing to Tauri — prevents the Windows mixed-slash
+  // bug where `convertFileSrc` produces an URL the webview can't load.
+  p = normalizePath(p);
 
   try {
     return convertFileSrc(p);
