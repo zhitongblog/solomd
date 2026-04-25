@@ -167,6 +167,7 @@ onBeforeUnmount(() => {
       <div class="slide__help-card">
         <h2>Slideshow Shortcuts</h2>
         <table>
+          <tbody>
           <tr><td>Next slide</td><td>→ ↓ Space PageDown l j</td></tr>
           <tr><td>Previous slide</td><td>← ↑ PageUp h k</td></tr>
           <tr><td>First / last slide</td><td>Home / End</td></tr>
@@ -174,6 +175,7 @@ onBeforeUnmount(() => {
           <tr><td>Show / hide this help</td><td>?</td></tr>
           <tr><td>Exit</td><td>Esc</td></tr>
           <tr><td>Click to advance</td><td>Click anywhere</td></tr>
+          </tbody>
         </table>
         <p class="slide__help-foot">Slides are split by lines containing only <code>---</code>.</p>
       </div>

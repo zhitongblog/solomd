@@ -403,6 +403,7 @@ async function copyExample(text: string) {
           <section v-for="g in shortcutGroups" :key="g.title" class="help__section">
             <h3>{{ g.title }}</h3>
             <table class="help__keys">
+              <tbody>
               <tr v-for="(s, i) in g.items" :key="i">
                 <td class="help__keys-key"><kbd>{{ s.keys }}</kbd></td>
                 <td class="help__keys-desc">
@@ -410,6 +411,7 @@ async function copyExample(text: string) {
                   <div class="help__keys-en">{{ s.en }}</div>
                 </td>
               </tr>
+              </tbody>
             </table>
           </section>
         </template>
@@ -428,12 +430,14 @@ async function copyExample(text: string) {
           <section class="help__section">
             <h3>子命令 / Commands</h3>
             <table class="help__keys">
+              <tbody>
               <tr><td class="help__keys-key"><code>solomd open &lt;title|path&gt;</code></td><td class="help__keys-desc"><div>在 SoloMD 中打开指定笔记</div><div class="help__keys-en">Open note in SoloMD</div></td></tr>
               <tr><td class="help__keys-key"><code>solomd new &lt;title&gt; [text]</code></td><td class="help__keys-desc"><div>在笔记目录创建新笔记并打开</div><div class="help__keys-en">Create + open new note</div></td></tr>
               <tr><td class="help__keys-key"><code>solomd list [folder]</code></td><td class="help__keys-desc"><div>列出文件夹内的 markdown 文件</div><div class="help__keys-en">List markdown files in a folder</div></td></tr>
               <tr><td class="help__keys-key"><code>solomd search &lt;query&gt;</code></td><td class="help__keys-desc"><div>在笔记目录搜索文本（自动用 ripgrep）</div><div class="help__keys-en">Search markdown content (uses ripgrep if available)</div></td></tr>
               <tr><td class="help__keys-key"><code>solomd cat &lt;title|path&gt;</code></td><td class="help__keys-desc"><div>在终端打印笔记内容</div><div class="help__keys-en">Print note content to stdout</div></td></tr>
               <tr><td class="help__keys-key"><code>solomd help</code></td><td class="help__keys-desc"><div>显示帮助</div><div class="help__keys-en">Show help</div></td></tr>
+              </tbody>
             </table>
           </section>
           <section class="help__section">
