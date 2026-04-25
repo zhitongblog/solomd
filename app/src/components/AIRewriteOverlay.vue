@@ -243,6 +243,10 @@ function onReject(): void {
 }
 
 function onSetKey(): void {
+  // Close the overlay before opening Settings — otherwise the overlay
+  // sits on top of the Settings dialog and the user has to dismiss it
+  // manually before they can configure anything.
+  close();
   emit('open-settings');
 }
 

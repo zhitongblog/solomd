@@ -513,7 +513,10 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
       @open-settings="settingsOpen = true"
     />
     <CommandPalette :open="paletteOpen" @close="paletteOpen = false" />
-    <SettingsPanel :open="settingsOpen" @close="settingsOpen = false" />
+    <SettingsPanel
+      :open="settingsOpen"
+      @close="settingsOpen = false; refreshAiHasKey()"
+    />
     <MarkdownHelp :open="helpOpen" @close="helpOpen = false" />
     <GlobalSearch :open="searchOpen" @close="searchOpen = false" />
     <AboutDialog :open="aboutOpen" @close="aboutOpen = false" />
