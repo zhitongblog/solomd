@@ -142,28 +142,52 @@ pub struct DirEntry {
 
 /// List immediate children of a directory. Hidden entries (starting with `.`)
 /// are filtered out. Sorted: dirs first, then files, both alphabetical.
-#[tauri::command]
-pub fn list_dir(path: String) -> Result<Vec<DirEntry>, String> {
+fn list_dir_inner(path: String) -> Result<Vec<DirEntry>, String> {
     let read = fs::read_dir(&path).map_err(|e| format!("read_dir failed: {e}"))?;
-    let mut entries: Vec<DirEntry> = read
-        .flatten()
-        .filter_map(|e| {
-            let name = e.file_name().to_string_lossy().to_string();
-            if name.starts_with('.') {
-                return None;
-            }
-            let meta = e.metadata().ok()?;
-            Some(DirEntry {
-                name,
-                path: e.path().to_string_lossy().to_string(),
-                is_dir: meta.is_dir(),
-            })
-        })
-        .collect();
+    // Cap at ~10k entries — anything beyond that is almost certainly a
+    // misconfigured workspace (a `node_modules` root, a system folder, an
+    // OneDrive root with hundreds of thousands of placeholders), and
+    // serializing the list to the webview frontend would freeze the UI
+    // anyway. Returning a partial list is friendlier than blocking.
+    const HARD_CAP: usize = 10_000;
+    let mut entries: Vec<DirEntry> = Vec::new();
+    for e in read.flatten() {
+        if entries.len() >= HARD_CAP {
+            break;
+        }
+        let name = e.file_name().to_string_lossy().to_string();
+        if name.starts_with('.') {
+            continue;
+        }
+        // metadata() can hang or error on Windows reparse points / dangling
+        // symlinks — skip the entry rather than abort the whole listing.
+        let meta = match e.metadata() {
+            Ok(m) => m,
+            Err(_) => continue,
+        };
+        entries.push(DirEntry {
+            name,
+            path: e.path().to_string_lossy().to_string(),
+            is_dir: meta.is_dir(),
+        });
+    }
     entries.sort_by(|a, b| match (a.is_dir, b.is_dir) {
         (true, false) => std::cmp::Ordering::Less,
         (false, true) => std::cmp::Ordering::Greater,
         _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
     });
     Ok(entries)
+}
+
+/// Async wrapper. `fs::read_dir` + per-entry `metadata()` can take seconds on
+/// Windows (network drives, OneDrive placeholders, antivirus scanning) and
+/// the previous *synchronous* `#[tauri::command]` blocked the main thread —
+/// long enough for Win11 to flag the app as unresponsive and kill it
+/// (reproduced as "toggle file tree → app crashes" on Win11). Same fix as
+/// git_history: hand off to the blocking pool.
+#[tauri::command]
+pub async fn list_dir(path: String) -> Result<Vec<DirEntry>, String> {
+    tauri::async_runtime::spawn_blocking(move || list_dir_inner(path))
+        .await
+        .map_err(|e| format!("join: {e}"))?
 }
