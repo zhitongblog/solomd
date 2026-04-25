@@ -149,8 +149,8 @@ pub async fn ai_verify_key(
         "openai" => {
             let base = base_url
                 .filter(|s| !s.is_empty())
-                .unwrap_or_else(|| "https://api.openai.com".to_string());
-            let url = format!("{}/v1/models", base.trim_end_matches('/'));
+                .unwrap_or_else(|| "https://api.openai.com/v1".to_string());
+            let url = format!("{}/models", base.trim_end_matches('/'));
             let res = client
                 .get(&url)
                 .bearer_auth(&key_str)
@@ -400,8 +400,11 @@ async fn run_openai(
         .as_ref()
         .map(|s| s.trim_end_matches('/').to_string())
         .filter(|s| !s.is_empty())
-        .unwrap_or_else(|| "https://api.openai.com".to_string());
-    let url = format!("{base}/v1/chat/completions");
+        .unwrap_or_else(|| "https://api.openai.com/v1".to_string());
+    // Convention: base URL already includes the version path (`/v1`,
+    // `/api/v3`, `/v1beta/openai`, etc.) — same as the OpenAI SDK default.
+    // The Rust side just appends `/chat/completions`.
+    let url = format!("{base}/chat/completions");
 
     let body = serde_json::json!({
         "model": req.model,

@@ -64,7 +64,7 @@ export const PROVIDERS: ProviderConfig[] = [
     label: 'OpenAI',
     apiFormat: 'openai',
     defaultModel: 'gpt-5.5',
-    defaultBaseUrl: 'https://api.openai.com',
+    defaultBaseUrl: 'https://api.openai.com/v1',
     modelHint: 'gpt-5.5 · gpt-5.5-pro · gpt-5.4 · gpt-5.4-mini · gpt-5.4-nano',
     signupUrl: 'https://platform.openai.com/api-keys',
   },
@@ -123,7 +123,7 @@ export const PROVIDERS: ProviderConfig[] = [
     label: 'DeepSeek',
     apiFormat: 'openai',
     defaultModel: 'deepseek-v4-flash',
-    defaultBaseUrl: 'https://api.deepseek.com',
+    defaultBaseUrl: 'https://api.deepseek.com/v1',
     modelHint:
       'deepseek-v4-pro · deepseek-v4-flash · deepseek-chat (legacy) · deepseek-reasoner (legacy)',
     signupUrl: 'https://platform.deepseek.com/api_keys',
