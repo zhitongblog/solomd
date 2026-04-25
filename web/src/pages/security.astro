@@ -1,0 +1,272 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+
+const lang = 'en' as const;
+---
+
+<Layout
+  title="Security — How SoloMD protects your data"
+  description="SoloMD is a pure client-side, local-first Markdown editor. Your notes stay on your disk; API keys live in the OS keychain; AI calls go direct to the vendor you chose. No middlemen, no cloud, MIT-licensed and auditable."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <article class="container security-page">
+      <h1>Security & Data Handling</h1>
+      <p class="updated">Last updated: 2026-04-25 · v2.2</p>
+
+      <p class="lead">
+        SoloMD is a <strong>pure client-side</strong> desktop / mobile app.
+        There is no SoloMD server, no SoloMD account, no SoloMD cloud. Below is
+        every place data flows in the product, and exactly how we protect it.
+      </p>
+
+      <h2>1. Your notes — always on your disk</h2>
+      <ul>
+        <li>
+          Every note is a plain <code>.md</code> file in the workspace folder
+          you choose. No proprietary database, no opaque blob format.
+        </li>
+        <li>
+          Uninstall SoloMD and your files are still there, openable in
+          Obsidian / VS Code / Notepad / <code>cat</code>. There is no
+          lock-in.
+        </li>
+        <li>
+          Tauri's filesystem permissions are scoped to the workspace you
+          opened. The app cannot scan the rest of your disk.
+        </li>
+        <li>
+          No "sync to cloud" code path exists. We literally couldn't upload
+          your notes if we wanted to.
+        </li>
+      </ul>
+
+      <h2>2. API keys — OS keychain, never on disk in plain text</h2>
+      <ul>
+        <li>
+          API keys for the 14 supported AI providers are stored via
+          <code>keyring-rs</code>, which means:
+          <ul>
+            <li><strong>macOS</strong> → Keychain (hardware-encrypted)</li>
+            <li><strong>Windows</strong> → Credential Manager</li>
+            <li><strong>Linux</strong> → libsecret / GNOME Keyring</li>
+          </ul>
+        </li>
+        <li>
+          Keys are <strong>never</strong> written to <code>localStorage</code>,
+          <code>settings.json</code>, log files, or any config file.
+        </li>
+        <li>
+          The key only leaves the keychain at the moment of an AI call —
+          read by the Rust backend, sent to the vendor, then dropped. The
+          frontend never holds the plain-text key.
+        </li>
+        <li>
+          When you remove a provider's key, it's deleted from the keychain
+          immediately.
+        </li>
+      </ul>
+
+      <h2>3. AI rewrite — opt-in, direct, scoped to your selection</h2>
+      <ul>
+        <li>
+          AI is <strong>off by default</strong>. You have to enable it in
+          settings and supply your own key (BYOK). No SoloMD-hosted models.
+        </li>
+        <li>
+          When you trigger a rewrite, only the <strong>selected text</strong>
+          is sent. We don't include the file name, file path, surrounding
+          paragraphs, or any other note metadata.
+        </li>
+        <li>
+          The request goes <strong>directly</strong> from your machine to the
+          provider you picked — there is no SoloMD relay, no logging, no
+          interception. We can't see the content because it doesn't pass
+          through us.
+        </li>
+        <li>
+          The "verify key" step also calls the provider's
+          <code>/models</code> endpoint directly.
+        </li>
+      </ul>
+
+      <h2>4. MCP server — read-only by default, with path-traversal guard</h2>
+      <ul>
+        <li>
+          The bundled <code>solomd-mcp</code> binary exposes 6 read-only
+          tools by default: <code>list_notes</code>, <code>read_note</code>,
+          <code>search</code>, <code>get_backlinks</code>,
+          <code>list_tags</code>, <code>get_outline</code>.
+        </li>
+        <li>
+          Write tools (<code>write_note</code>,
+          <code>append_to_note</code>) are <strong>only</strong> enabled if
+          you start the server with the explicit <code>--allow-write</code>
+          flag. Default = read-only.
+        </li>
+        <li>
+          Every path argument is canonicalized and checked against the
+          workspace root. Attempts like <code>../../etc/passwd</code> are
+          rejected before any I/O happens.
+        </li>
+        <li>
+          MCP runs locally over stdio — it doesn't open a network port.
+        </li>
+      </ul>
+
+      <h2>5. AutoGit — local commits, never auto-pushed</h2>
+      <ul>
+        <li>
+          Auto-commits go to a <strong>local</strong> <code>.git</code>
+          repository inside your workspace. Nothing is pushed to any remote
+          automatically.
+        </li>
+        <li>
+          You control remotes. If you want to push to GitHub / a private
+          server, do it manually with the git tool of your choice.
+        </li>
+        <li>
+          Because it's a normal git repo, you can audit every commit with
+          <code>git log</code> — no hidden state.
+        </li>
+      </ul>
+
+      <h2>6. Telemetry — minimal, opt-out, content-free, inspectable</h2>
+      <ul>
+        <li>
+          We send anonymous event counters (app launched, which feature was
+          used) to help us decide what to build next.
+        </li>
+        <li>
+          We <strong>never</strong> send: note content, file names, file
+          paths, workspace paths, API keys, search queries, or any personally
+          identifiable info.
+        </li>
+        <li>
+          One toggle in settings turns it off. App Store builds default to
+          off.
+        </li>
+        <li>
+          Want to see exactly what's being reported? Open DevTools and run
+          <code>localStorage.setItem('solomd.telemetryDebug', '1')</code>.
+          Every event will be printed to the console verbatim.
+        </li>
+      </ul>
+
+      <h2>7. Sandboxing & supply chain</h2>
+      <ul>
+        <li>
+          Tauri 2 isolates the webview from the OS — the renderer can only
+          call Rust commands we explicitly registered.
+        </li>
+        <li>
+          The Rust backend has no eval, no shell-out to user-supplied
+          strings.
+        </li>
+        <li>
+          We pin all dependencies and ship the lockfile. Every release is
+          built from a tagged commit on GitHub Actions.
+        </li>
+        <li>
+          macOS builds are notarized by Apple; Windows builds are signed.
+        </li>
+      </ul>
+
+      <h2>8. Transparency — open source MIT</h2>
+      <p>
+        Every claim above is <strong>auditable</strong>. The whole codebase
+        is MIT-licensed:
+      </p>
+      <ul>
+        <li>
+          Want to verify keychain handling? Read
+          <a href="https://github.com/zhitongblog/solomd/blob/main/app/src-tauri/src/ai_proxy.rs" rel="external">
+            <code>app/src-tauri/src/ai_proxy.rs</code>
+          </a>
+        </li>
+        <li>
+          Want to verify MCP path checks? Read
+          <a href="https://github.com/zhitongblog/solomd/blob/main/mcp-server/src/main.rs" rel="external">
+            <code>mcp-server/src/main.rs</code>
+          </a>
+        </li>
+        <li>
+          Want to verify there's no telemetry of file content? grep the
+          repo:
+          <a href="https://github.com/zhitongblog/solomd/search?q=trackEvent" rel="external">
+            <code>trackEvent</code>
+          </a>
+        </li>
+      </ul>
+
+      <h2>Reporting a vulnerability</h2>
+      <p>
+        Found something? Email
+        <a href="mailto:slushy@139.com">slushy@139.com</a> with details. We'll
+        respond within 72 hours and credit you in the release notes (unless
+        you'd rather stay anonymous).
+      </p>
+
+      <p class="lang-switch">
+        <a href="/zh/security/">中文版</a> · <a href="/privacy/">Privacy Policy</a>
+      </p>
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .security-page {
+    max-width: 760px;
+    padding: 40px 20px 80px;
+    color: var(--text, #1a1a1a);
+    line-height: 1.75;
+  }
+  .security-page h1 {
+    font-size: 2rem;
+    margin: 10px 0 6px;
+    color: #ff9f40;
+  }
+  .security-page .updated {
+    color: var(--text-faint, #999);
+    font-size: 0.85rem;
+    margin: 0 0 2em;
+  }
+  .security-page .lead {
+    font-size: 1.05rem;
+    color: var(--text-muted, #555);
+    margin-bottom: 2em;
+  }
+  .security-page h2 {
+    font-size: 1.2rem;
+    margin: 2.4em 0 0.6em;
+    padding-top: 0.6em;
+    border-top: 1px dashed #eee;
+  }
+  .security-page ul {
+    padding-left: 1.4em;
+    margin: 0.4em 0 0.8em;
+  }
+  .security-page li {
+    margin: 0.4em 0;
+    color: var(--text-muted, #444);
+  }
+  .security-page code {
+    background: var(--bg-soft, #fafaf7);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    border: 1px solid #eee;
+  }
+  .security-page a {
+    color: var(--accent, #ff9f40);
+  }
+  .lang-switch {
+    margin-top: 3em;
+    font-size: 0.9rem;
+    color: var(--text-faint, #999);
+  }
+</style>

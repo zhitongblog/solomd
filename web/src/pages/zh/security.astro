@@ -1,0 +1,251 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+
+const lang = 'zh' as const;
+---
+
+<Layout
+  title="安全机制 — SoloMD 如何保护你的数据"
+  description="SoloMD 是一款纯客户端、本地优先的 Markdown 编辑器。笔记永远在你的硬盘上，API key 存在系统钥匙串里，AI 调用直连厂商 —— 没有中转服务器，没有云端，MIT 开源可审计。"
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <article class="container security-page">
+      <h1>安全机制 & 数据流</h1>
+      <p class="updated">最后更新:2026-04-25 · v2.2</p>
+
+      <p class="lead">
+        SoloMD 是<strong>纯客户端</strong>桌面 / 移动应用。没有 SoloMD 服务器,
+        没有 SoloMD 账号,没有 SoloMD 云端。下面把产品里所有可能涉及数据的地方
+        和我们的保护机制全部讲清楚。
+      </p>
+
+      <h2>1. 笔记内容 — 永远在你的硬盘上</h2>
+      <ul>
+        <li>
+          每条笔记都是工作区文件夹里的一个普通 <code>.md</code> 文件。没有专有
+          数据库,没有不透明的二进制格式。
+        </li>
+        <li>
+          就算卸载 SoloMD,你的文件还在原地,Obsidian / VS Code / 记事本 /
+          <code>cat</code> 全都能打开,完全不锁定。
+        </li>
+        <li>
+          Tauri 的文件系统权限只限你打开的工作区,App 无法扫描你硬盘的其他位置。
+        </li>
+        <li>
+          代码里根本不存在"同步到云端"的路径。我们想上传你的笔记都做不到。
+        </li>
+      </ul>
+
+      <h2>2. API Key — 系统钥匙串,不落盘明文</h2>
+      <ul>
+        <li>
+          14 家 AI 厂商的 API key 通过 <code>keyring-rs</code> 存储,实际位置:
+          <ul>
+            <li><strong>macOS</strong> → Keychain(硬件加密)</li>
+            <li><strong>Windows</strong> → Credential Manager(凭据管理器)</li>
+            <li><strong>Linux</strong> → libsecret / GNOME Keyring</li>
+          </ul>
+        </li>
+        <li>
+          Key <strong>绝不</strong>写入 <code>localStorage</code>、
+          <code>settings.json</code>、日志、任何配置文件。
+        </li>
+        <li>
+          只在调用 AI 的那一瞬间从钥匙串取出,Rust 后端读出后直接发给厂商,然后
+          就丢弃。前端从来拿不到 key 的明文。
+        </li>
+        <li>
+          你在设置里删除某个厂商的 key,会立刻从钥匙串里删除。
+        </li>
+      </ul>
+
+      <h2>3. AI 改写 — 默认关闭,直连,只发选中文字</h2>
+      <ul>
+        <li>
+          AI 默认<strong>关闭</strong>。需要你在设置里手动开启,并填自己的 key
+          (BYOK)。我们不托管任何模型。
+        </li>
+        <li>
+          触发改写时<strong>只发送你选中的那一段</strong>。不带文件名、文件路径、
+          上下文段落,也不带任何笔记元信息。
+        </li>
+        <li>
+          请求<strong>直接</strong>从你的电脑发到你选的厂商 — 没有 SoloMD 中转,
+          没有日志,没有拦截。我们看不到内容,因为它根本不经过我们。
+        </li>
+        <li>
+          "验证 key" 也是直连厂商的 <code>/models</code> 接口。
+        </li>
+      </ul>
+
+      <h2>4. MCP Server — 默认只读,带路径穿越防护</h2>
+      <ul>
+        <li>
+          自带的 <code>solomd-mcp</code> 二进制默认只暴露 6 个只读工具:
+          <code>list_notes</code>、<code>read_note</code>、<code>search</code>、
+          <code>get_backlinks</code>、<code>list_tags</code>、
+          <code>get_outline</code>。
+        </li>
+        <li>
+          写入工具(<code>write_note</code>、<code>append_to_note</code>)
+          <strong>必须</strong>用显式的 <code>--allow-write</code> 启动参数才能开启。
+          默认 = 只读。
+        </li>
+        <li>
+          每个路径参数都会做 <code>canonicalize</code> + 工作区根目录前缀校验。
+          类似 <code>../../etc/passwd</code> 的访问会在任何 I/O 之前被拒绝。
+        </li>
+        <li>
+          MCP 通过 stdio 在本地通信,不开任何网络端口。
+        </li>
+      </ul>
+
+      <h2>5. AutoGit — 本地提交,绝不自动推送</h2>
+      <ul>
+        <li>
+          自动提交只发生在你工作区里的<strong>本地</strong> <code>.git</code>
+          仓库,绝不会自动 push 到任何远程。
+        </li>
+        <li>
+          推送由你掌控。想推到 GitHub / 私服,用你喜欢的 git 工具手动推。
+        </li>
+        <li>
+          它就是普通的 git 仓库,所有提交都能用 <code>git log</code> 审计,
+          没有隐藏状态。
+        </li>
+      </ul>
+
+      <h2>6. 遥测 — 极少 + 可关 + 不带内容 + 可见</h2>
+      <ul>
+        <li>
+          只发匿名事件计数(打开次数、用了哪个功能),帮我们决定接下来做什么。
+        </li>
+        <li>
+          <strong>绝不</strong>发送:笔记内容、文件名、文件路径、工作区路径、
+          API key、搜索关键词,或任何能识别个人身份的信息。
+        </li>
+        <li>
+          设置里一键关闭。App Store 版本默认关闭。
+        </li>
+        <li>
+          想看到底发了什么?打开 DevTools 执行
+          <code>localStorage.setItem('solomd.telemetryDebug', '1')</code>,
+          所有事件会原样打印到控制台。
+        </li>
+      </ul>
+
+      <h2>7. 沙箱 & 供应链</h2>
+      <ul>
+        <li>
+          Tauri 2 把 Webview 和操作系统隔离 — 渲染层只能调我们显式注册的
+          Rust 命令。
+        </li>
+        <li>
+          Rust 后端没有 eval,也没有把用户输入拼到 shell 命令里这种事。
+        </li>
+        <li>
+          所有依赖都钉死版本,锁文件随仓库一起发布。每个版本都从 GitHub
+          Actions 上的 tag 提交构建。
+        </li>
+        <li>
+          macOS 构建经过 Apple notarize,Windows 构建有签名。
+        </li>
+      </ul>
+
+      <h2>8. 透明 — MIT 开源</h2>
+      <p>
+        上面所有的说法都<strong>可审计</strong>。整个代码库都是 MIT 协议:
+      </p>
+      <ul>
+        <li>
+          想验证钥匙串处理?读
+          <a href="https://github.com/zhitongblog/solomd/blob/main/app/src-tauri/src/ai_proxy.rs" rel="external">
+            <code>app/src-tauri/src/ai_proxy.rs</code>
+          </a>
+        </li>
+        <li>
+          想验证 MCP 路径校验?读
+          <a href="https://github.com/zhitongblog/solomd/blob/main/mcp-server/src/main.rs" rel="external">
+            <code>mcp-server/src/main.rs</code>
+          </a>
+        </li>
+        <li>
+          想验证遥测里没有笔记内容?在仓库里搜
+          <a href="https://github.com/zhitongblog/solomd/search?q=trackEvent" rel="external">
+            <code>trackEvent</code>
+          </a>
+        </li>
+      </ul>
+
+      <h2>报告漏洞</h2>
+      <p>
+        发现安全问题?发邮件到
+        <a href="mailto:slushy@139.com">slushy@139.com</a>,我们 72 小时内回复,
+        并在版本说明里致谢(除非你希望匿名)。
+      </p>
+
+      <p class="lang-switch">
+        <a href="/security/">English</a> · <a href="/zh/privacy/">隐私政策</a>
+      </p>
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .security-page {
+    max-width: 760px;
+    padding: 40px 20px 80px;
+    color: var(--text, #1a1a1a);
+    line-height: 1.85;
+  }
+  .security-page h1 {
+    font-size: 2rem;
+    margin: 10px 0 6px;
+    color: #ff9f40;
+  }
+  .security-page .updated {
+    color: var(--text-faint, #999);
+    font-size: 0.85rem;
+    margin: 0 0 2em;
+  }
+  .security-page .lead {
+    font-size: 1.05rem;
+    color: var(--text-muted, #555);
+    margin-bottom: 2em;
+  }
+  .security-page h2 {
+    font-size: 1.2rem;
+    margin: 2.4em 0 0.6em;
+    padding-top: 0.6em;
+    border-top: 1px dashed #eee;
+  }
+  .security-page ul {
+    padding-left: 1.4em;
+    margin: 0.4em 0 0.8em;
+  }
+  .security-page li {
+    margin: 0.4em 0;
+    color: var(--text-muted, #444);
+  }
+  .security-page code {
+    background: var(--bg-soft, #fafaf7);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    border: 1px solid #eee;
+  }
+  .security-page a {
+    color: var(--accent, #ff9f40);
+  }
+  .lang-switch {
+    margin-top: 3em;
+    font-size: 0.9rem;
+    color: var(--text-faint, #999);
+  }
+</style>
