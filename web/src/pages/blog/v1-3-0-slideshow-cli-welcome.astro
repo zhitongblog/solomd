@@ -24,6 +24,11 @@ const lang = 'en' as const;
         we could find for ideas worth borrowing, picked seven, and shipped
         them in one cut.
       </p>
+      <aside class="callout">
+        <strong>Patched in <a href="https://github.com/zhitongblog/solomd/releases/tag/v1.3.1">v1.3.1</a>:</strong>
+        slideshow's close button no longer kills the main editor, and fullscreen
+        on Windows now works reliably. Download links below point at v1.3.1.
+      </aside>
 
       <h2>🎤 Slideshow mode (<code>⌘⌥P</code>)</h2>
       <p>
@@ -139,9 +144,9 @@ solomd cat readme               # print to stdout</code></pre>
       </p>
 
       <p>
-        <a class="btn btn--primary" href="https://github.com/zhitongblog/solomd/releases/tag/v1.3.0">Download v1.3.0 →</a>
+        <a class="btn btn--primary" href="https://github.com/zhitongblog/solomd/releases/tag/v1.3.1">Download v1.3.1 →</a>
         &nbsp;
-        <a class="btn" href="https://github.com/zhitongblog/solomd/releases/tag/v1.3.0">Full release notes</a>
+        <a class="btn" href="https://github.com/zhitongblog/solomd/releases/tag/v1.3.1">Full release notes</a>
       </p>
     </article>
   </main>
@@ -164,6 +169,8 @@ solomd cat readme               # print to stdout</code></pre>
   .blog-article pre code { background: transparent; padding: 0; color: inherit; }
   .blog-article a { color: #ff9f40; }
   .blog-article kbd { background: #f5f5f0; border: 1px solid #ddd; border-radius: 3px; padding: 1px 6px; font-family: ui-monospace, Menlo, monospace; font-size: 0.85em; }
+  .callout { margin: 0 0 28px; padding: 12px 16px; background: rgba(255, 159, 64, 0.08); border-left: 3px solid #ff9f40; border-radius: 4px; font-size: 0.95rem; line-height: 1.7; }
+  .callout strong { color: #ff9f40; }
   .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; }
   .btn--primary { background: #ff9f40; color: #000 !important; }
 </style>
