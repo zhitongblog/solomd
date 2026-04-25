@@ -1,0 +1,52 @@
+[package]
+name = "solomd-dev-mcp"
+version = "0.1.0"
+edition = "2021"
+description = "Internal MCP server that exposes SoloMD's domain logic for end-to-end self-testing by Claude. NOT shipped to end users."
+license = "MIT"
+publish = false
+
+[[bin]]
+name = "solomd-dev-mcp"
+path = "src/main.rs"
+
+[dependencies]
+# MCP SDK — same line as the user-facing solomd-mcp crate.
+rmcp = { version = "1.5", features = ["server", "macros", "transport-io"] }
+
+# Async runtime
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-std", "io-util", "fs", "process"] }
+
+# CLI parsing
+clap = { version = "4", features = ["derive"] }
+
+# Serialisation
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+schemars = "1"
+
+# git2 for the "drive AutoGit from outside" tools — same vendored libgit2 as the app.
+git2 = { version = "0.19", default-features = false, features = ["vendored-libgit2"] }
+
+# rusqlite for direct WebKit LocalStorage SQLite read/write.
+rusqlite = { version = "0.32", features = ["bundled"] }
+
+# UTF-16 LE roundtripping for WebKit LocalStorage values.
+encoding_rs = "0.8"
+
+# Logging (to stderr)
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Error handling
+anyhow = "1"
+
+# Run shell commands (screencapture, osascript)
+# (provided by tokio::process)
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"
