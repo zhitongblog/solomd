@@ -27,9 +27,10 @@ import type { Tab } from '../types';
 import { livePreviewExtension, richHighlightOnly } from '../lib/cm-live-preview';
 import { imagePasteExtension, insertImageFromPath as cmInsertImageFromPath } from '../lib/cm-image-paste';
 import { focusModeExtension, typewriterModeExtension } from '../lib/cm-focus-mode';
-import { wikilinkExtension } from '../lib/cm-wikilink';
-import { tagAutocompleteExtension } from '../lib/cm-tag-autocomplete';
-import { citationsExtension } from '../lib/cm-citations';
+import { wikilinkExtension, wikilinkComplete } from '../lib/cm-wikilink';
+import { tagAutocompleteExtension, tagComplete } from '../lib/cm-tag-autocomplete';
+import { citationsExtension, citationCompleteSource } from '../lib/cm-citations';
+import { autocompletion } from '@codemirror/autocomplete';
 import { aiRewriteExtension } from '../lib/cm-ai-rewrite';
 import { spellcheckExtension } from '../lib/cm-spellcheck';
 import { spellcheckTheme } from '../lib/cm-spellcheck-theme';
@@ -161,6 +162,18 @@ function buildExtensions() {
           wikilinkExtension(),
           tagAutocompleteExtension(),
           citationsExtension(() => cachedCitations),
+          // Single autocompletion config combining all 3 markdown sources
+          // (wikilinks `[[`, tags `#`, citations `@`). CM6 disallows
+          // multiple `autocompletion({ override })` extensions.
+          autocompletion({
+            override: [
+              wikilinkComplete,
+              tagComplete,
+              citationCompleteSource(() => cachedCitations),
+            ],
+            defaultKeymap: true,
+            activateOnTyping: true,
+          }),
           aiRewriteExtension(),
           spellcheckExtension({ enabled: () => settings.spellcheckEnabled }),
           spellcheckTheme,

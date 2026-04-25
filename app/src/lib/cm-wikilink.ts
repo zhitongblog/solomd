@@ -21,11 +21,10 @@ import {
   WidgetType,
 } from '@codemirror/view';
 import type { DecorationSet } from '@codemirror/view';
-import {
-  autocompletion,
-  type CompletionContext,
-  type CompletionResult,
-  type Completion,
+import type {
+  CompletionContext,
+  CompletionResult,
+  Completion,
 } from '@codemirror/autocomplete';
 import type { Extension } from '@codemirror/state';
 import { useWorkspaceIndexStore } from '../stores/workspaceIndex';
@@ -215,14 +214,13 @@ function wikilinkComplete(context: CompletionContext): CompletionResult | null {
   };
 }
 
+/** Decoration + click + theme only (no autocompletion). The matching
+ * `wikilinkComplete` source is exported separately and combined in
+ * Editor.vue with the other markdown autocompletion sources, since CM6
+ * doesn't allow multiple `autocompletion({ override })` extensions to
+ * coexist. */
 export function wikilinkExtension(): Extension {
-  return [
-    wikilinkPlugin,
-    wikilinkTheme,
-    autocompletion({
-      override: [wikilinkComplete],
-      defaultKeymap: true,
-      activateOnTyping: true,
-    }),
-  ];
+  return [wikilinkPlugin, wikilinkTheme];
 }
+
+export { wikilinkComplete };

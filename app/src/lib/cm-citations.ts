@@ -12,11 +12,10 @@
  * citation rendering on export. In live preview the user just sees `@key`
  * which is fine and unambiguous.
  */
-import {
-  autocompletion,
-  type CompletionContext,
-  type CompletionResult,
-  type Completion,
+import type {
+  CompletionContext,
+  CompletionResult,
+  Completion,
 } from '@codemirror/autocomplete';
 import { EditorView } from '@codemirror/view';
 import type { Extension } from '@codemirror/state';
@@ -49,14 +48,17 @@ function shortAuthorList(author: string): string {
   return `${surnames[0]} et al.`;
 }
 
-export function citationsExtension(getEntries: () => CitationEntry[]): Extension {
-  function complete(context: CompletionContext): CompletionResult | null {
-    // Match `@key` (or `@partial`) before the cursor. We also need to
-    // ensure the `@` isn't preceded by a word character (e.g. an email
-    // "user@host" should NOT trigger).
+/** No-autocompletion extension; kept for API parity. The matching
+ * `citationCompleteSource(getEntries)` is exported separately and combined
+ * in Editor.vue. */
+export function citationsExtension(_getEntries: () => CitationEntry[]): Extension {
+  return [];
+}
+
+export function citationCompleteSource(getEntries: () => CitationEntry[]) {
+  return function complete(context: CompletionContext): CompletionResult | null {
     const match = context.matchBefore(/@[\w:.\-]*/);
     if (!match) return null;
-    // Look one char before the match for a word char — if so, bail.
     if (match.from > 0) {
       const prev = context.state.doc.sliceString(match.from - 1, match.from);
       if (/\w/.test(prev)) return null;
@@ -92,14 +94,7 @@ export function citationsExtension(getEntries: () => CitationEntry[]): Extension
       from: match.from,
       to: match.to,
       options,
-      // Only stay valid while the user keeps typing key-ish chars.
       validFor: /^@[\w:.\-]*$/,
     };
-  }
-
-  return autocompletion({
-    override: [complete],
-    defaultKeymap: true,
-    activateOnTyping: true,
-  });
+  };
 }

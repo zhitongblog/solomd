@@ -14,11 +14,10 @@
  * current document head up to the cursor — much cheaper than building a
  * full markdown syntax tree just for this.
  */
-import {
-  autocompletion,
-  type CompletionContext,
-  type CompletionResult,
-  type Completion,
+import type {
+  CompletionContext,
+  CompletionResult,
+  Completion,
 } from '@codemirror/autocomplete';
 import type { Extension } from '@codemirror/state';
 import { useWorkspaceIndexStore } from '../stores/workspaceIndex';
@@ -130,12 +129,10 @@ function tagComplete(context: CompletionContext): CompletionResult | null {
   };
 }
 
+/** No-autocompletion extension; kept for API parity. The `tagComplete`
+ * source is exported separately and combined in Editor.vue. */
 export function tagAutocompleteExtension(): Extension {
-  return [
-    autocompletion({
-      override: [tagComplete],
-      defaultKeymap: true,
-      activateOnTyping: true,
-    }),
-  ];
+  return [];
 }
+
+export { tagComplete };
