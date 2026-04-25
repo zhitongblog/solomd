@@ -79,6 +79,9 @@ interface Settings {
   autoGitEnabled: boolean;
   autoGitDebounceSeconds: number;
   showHistoryPanel: boolean;
+  // v2.3: Local RAG / semantic search. Off by default — when on, the
+  // workspace is scanned + embedded into <workspace>/.solomd/embeddings.sqlite.
+  ragEnabled: boolean;
 }
 
 function defaults(): Settings {
@@ -132,6 +135,7 @@ function defaults(): Settings {
     autoGitEnabled: false,
     autoGitDebounceSeconds: 30,
     showHistoryPanel: false,
+    ragEnabled: false,
   };
 }
 
@@ -317,6 +321,10 @@ export const useSettingsStore = defineStore('settings', {
     },
     togglePreviewFitWidth() {
       this.previewFitWidth = !this.previewFitWidth;
+      this.persist();
+    },
+    toggleRagEnabled() {
+      this.ragEnabled = !this.ragEnabled;
       this.persist();
     },
   },

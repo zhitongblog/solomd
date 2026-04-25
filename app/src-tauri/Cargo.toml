@@ -89,6 +89,11 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "str
 futures-util = "0.3"           # for stream consumption in ai_proxy
 async-stream = "0.3"           # streaming responses to the frontend
 
+# v2.3 RAG / semantic search: vectors stored in a single SQLite file per
+# workspace. `bundled` ships libsqlite3 so we don't depend on a system
+# library — same invariant as `git2` above.
+rusqlite = { version = "0.32", features = ["bundled", "blob"] }
+
 # Platform-specific deps for "Set as default editor" feature.
 [target.'cfg(target_os = "macos")'.dependencies]
 core-foundation = "0.10"

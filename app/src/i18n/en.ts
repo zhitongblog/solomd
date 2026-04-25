@@ -301,6 +301,29 @@ export const en = {
     loading: 'Loading…',
     diffUnavailable: 'No diff available.',
   },
+  rag: {
+    settingsHeading: 'Semantic search',
+    enable: 'Enable semantic search (local RAG, ⌘⇧F)',
+    enableHint:
+      'Off by default. When on, your notes are embedded locally into <workspace>/.solomd/embeddings.sqlite — no network, no model download needed for the bundled hashed-trigram backend. ⌘⇧F opens the panel.',
+    statusReady: 'Indexed: {indexed} / {total} notes · {chunks} chunks · backend {backend}',
+    statusEmpty: 'Not indexed yet — toggle on to build the index.',
+    reindexNow: 'Re-index now',
+    placeholder: 'Search notes by meaning…',
+    openSettings: 'Open Settings',
+    openFolder: 'Open a folder first (⌘B → Folder)',
+    notIndexed: 'No semantic index yet for this workspace.',
+    buildIndex: 'Build index now',
+    indexing: 'Indexing…',
+    tryQueries:
+      'Type a query — ranks notes by semantic similarity. Try a phrase, not just a single word.',
+    noResults: 'No semantic matches.',
+    indexedCounter: '{indexed}/{total} notes · {chunks} chunks indexed',
+    reindex: 'Reindex',
+    hintNav: '↑↓ navigate · ↵ open · Esc close',
+    disabledHeading:
+      'Semantic search is off. Enable it in Settings to build a local index of this workspace.',
+  },
   bases: {
     title: 'Properties',
     back: 'Back to editor',

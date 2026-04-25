@@ -11,6 +11,8 @@ interface Hooks {
   openSettings?: () => void;
   openHelp?: () => void;
   openGlobalSearch?: () => void;
+  /** v2.3: open the RAG / semantic-search panel. */
+  openRagSearch?: () => void;
 }
 
 export function useShortcuts(hooks: Hooks = {}) {
@@ -93,7 +95,14 @@ export function useShortcuts(hooks: Hooks = {}) {
       hooks.openPalette?.();
     } else if (k === 'f' && e.shiftKey) {
       e.preventDefault();
-      hooks.openGlobalSearch?.();
+      // v2.3: ⌘⇧F prefers semantic search when the user has opted in;
+      // otherwise we keep the legacy keyword search behaviour so muscle
+      // memory carries over.
+      if (settings.ragEnabled) {
+        hooks.openRagSearch?.();
+      } else {
+        hooks.openGlobalSearch?.();
+      }
     } else if (k === 'f' && !e.shiftKey) {
       if (settings.viewMode === 'preview' && tabs.activeTab?.language === 'markdown') {
         e.preventDefault();

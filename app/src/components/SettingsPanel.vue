@@ -4,6 +4,8 @@ import { invoke } from '@tauri-apps/api/core';
 import { useSettingsStore } from '../stores/settings';
 import { useTabsStore } from '../stores/tabs';
 import { useToastsStore } from '../stores/toasts';
+import { useWorkspaceStore } from '../stores/workspace';
+import { useRagStore } from '../stores/rag';
 import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
 import { themeLabels } from '../lib/themes';
 import { useI18n } from '../i18n';
@@ -56,6 +58,24 @@ const emit = defineEmits<{ (e: 'close'): void }>();
 const settings = useSettingsStore();
 const tabs = useTabsStore();
 const toasts = useToastsStore();
+const workspace = useWorkspaceStore();
+const rag = useRagStore();
+
+async function onToggleRagEnabled() {
+  settings.toggleRagEnabled();
+  if (settings.ragEnabled && workspace.currentFolder) {
+    // Kick off the indexer the moment the user opts in. spawn_blocking
+    // on the Rust side keeps the UI thread free.
+    await rag.setEnabled(workspace.currentFolder, true);
+  } else {
+    await rag.setEnabled(workspace.currentFolder, false);
+  }
+}
+
+async function onReindexNow() {
+  if (!workspace.currentFolder) return;
+  await rag.reindex(workspace.currentFolder);
+}
 
 function onToggleOutlineGlobal() {
   settings.toggleOutline();
@@ -263,6 +283,48 @@ const fontFamilySelectValue = computed(() =>
             <input type="checkbox" :checked="settings.spellcheckEnabled" @change="settings.toggleSpellcheckEnabled()" />
             {{ t('settings.spellcheckEnabled') }}
           </label>
+        </section>
+
+        <section>
+          <h3 style="font-size: 13px; font-weight: 600; color: var(--text); margin: 18px 0 6px;">
+            {{ t('rag.settingsHeading') }}
+          </h3>
+          <label>
+            <input
+              type="checkbox"
+              :checked="settings.ragEnabled"
+              @change="onToggleRagEnabled()"
+            />
+            {{ t('rag.enable') }}
+          </label>
+          <p style="font-size: 11px; color: var(--text-faint); margin: 4px 0 0; line-height: 1.5;">
+            {{ t('rag.enableHint') }}
+          </p>
+          <div
+            v-if="settings.ragEnabled && workspace.currentFolder"
+            style="margin-top: 8px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;"
+          >
+            <span style="font-size: 11px; color: var(--text-muted);">
+              <template v-if="rag.status?.ready">
+                {{ t('rag.statusReady', {
+                  indexed: String(rag.status.indexed_files),
+                  total: String(rag.status.total_files),
+                  chunks: String(rag.status.total_chunks),
+                  backend: rag.status.backend,
+                }) }}
+              </template>
+              <template v-else>
+                {{ t('rag.statusEmpty') }}
+              </template>
+            </span>
+            <button
+              :disabled="rag.indexing"
+              @click="onReindexNow"
+              style="font-size: 11px; padding: 4px 10px;"
+            >
+              {{ rag.indexing ? t('rag.indexing') : t('rag.reindexNow') }}
+            </button>
+          </div>
         </section>
 
         <section>
