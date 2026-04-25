@@ -76,6 +76,7 @@ jobs:
             librsvg2-dev \
             patchelf \
             libssl-dev \
+            libdbus-1-dev \
             xdg-utils \
             file \
             fuse \
