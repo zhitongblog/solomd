@@ -1,0 +1,156 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+
+const lang = 'en' as const;
+---
+
+<Layout
+  title="SoloMD vs Tolaria — Tauri Markdown Editors Compared (2026)"
+  description="Two Tauri-based open-source Markdown editors. SoloMD ships on macOS / Windows / Linux / iPad with 14 AI providers, Pandoc export, and CJK encoding. Tolaria is Mac/Linux-only with built-in MCP server and AutoGit. Detailed comparison."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main class="compare-page">
+    <article class="container compare-article">
+      <nav class="breadcrumbs">
+        <a href="/">Home</a> / <a href="/compare">Compare</a> / <span>vs Tolaria</span>
+      </nav>
+
+      <h1>SoloMD vs Tolaria: Two Tauri-Based Markdown Editors</h1>
+      <p class="lead">
+        Quick answer: <strong>SoloMD</strong> if you need Windows or iPad,
+        write in Chinese (GBK / Big5 auto-detect), want 14 AI providers in
+        one BYOK panel, or rely on Pandoc / academic citation export.
+        <strong>Tolaria</strong> if you live on macOS, route everything
+        through Claude Code / MCP-compatible agents, and want a Notion-style
+        block editor with type-driven nav.
+      </p>
+
+      <h2>The 30-second verdict</h2>
+      <table class="compare-detail">
+        <thead>
+          <tr><th>&nbsp;</th><th>SoloMD</th><th>Tolaria</th></tr>
+        </thead>
+        <tbody>
+          <tr><th>Price</th><td><strong>Free</strong> (MIT)</td><td><strong>Free</strong> (open source)</td></tr>
+          <tr><th>Stack</th><td>Tauri 2 + Vue 3 + CodeMirror 6 + Rust</td><td>Tauri + React + TypeScript + Rust</td></tr>
+          <tr><th>Platforms</th><td>macOS · Windows · Linux x64/ARM64 · <strong>iPad</strong></td><td>macOS · Linux <em>(no Windows)</em></td></tr>
+          <tr><th>Installer size</th><td>~15 MB</td><td>~25 MB</td></tr>
+          <tr><th>Editor model</th><td>CodeMirror source-mode + live preview + split</td><td>Block-based slash-command editor (Notion-style)</td></tr>
+          <tr><th>Multi-tab + split panes</th><td>✅ tabs + tile splitting</td><td>❌ single-pane</td></tr>
+          <tr><th>Wikilinks <code>[[note]]</code></th><td>✅ auto-complete + backlinks panel</td><td>✅ auto-complete + backlinks</td></tr>
+          <tr><th>AI rewrite (in-app, BYOK)</th><td>✅ <code>⌘J</code> · 14 providers · streaming diff overlay</td><td>🟡 routes through external MCP agents</td></tr>
+          <tr><th>MCP server (vault as tool)</th><td>🟡 v2.2 (in progress)</td><td>✅ built in</td></tr>
+          <tr><th>AutoGit per-note history</th><td>🟡 v2.2 (in progress)</td><td>✅ built in</td></tr>
+          <tr><th>Multi-encoding (GBK / Big5)</th><td>✅ auto-detect</td><td>❌ UTF-8 only</td></tr>
+          <tr><th>File import (DOCX / PDF / XLSX / PPTX)</th><td>✅ drag-in → Markdown</td><td>❌</td></tr>
+          <tr><th>Pandoc export (EPUB / ODT / LaTeX / RTF)</th><td>✅</td><td>❌</td></tr>
+          <tr><th><code>@citekey</code> citations + .bib / CSL</th><td>✅</td><td>❌</td></tr>
+          <tr><th>Slideshow / presentation mode</th><td>✅ <code>⌘⌥P</code></td><td>❌</td></tr>
+          <tr><th>Vim mode</th><td>✅</td><td>❌</td></tr>
+          <tr><th>Welcome tour (en + zh)</th><td>✅</td><td>❌</td></tr>
+          <tr><th>Spell-check (Hunspell)</th><td>✅ opt-in</td><td>🟡 OS-level only</td></tr>
+          <tr><th>Properties / table view</th><td>✅ Bases (YAML-driven)</td><td>✅ Types-as-lenses (drives nav)</td></tr>
+          <tr><th>CLI tool</th><td>✅ <code>solomd</code></td><td>❌</td></tr>
+          <tr><th>Bilingual UI (en + zh)</th><td>✅</td><td>❌ English only</td></tr>
+          <tr><th>Default file format</th><td>plain <code>.md</code></td><td>plain <code>.md</code></td></tr>
+        </tbody>
+      </table>
+
+      <h2>When to pick SoloMD</h2>
+      <ul>
+        <li>You're on <strong>Windows</strong> — Tolaria has no Windows build.</li>
+        <li>You write on an <strong>iPad</strong> — SoloMD ships on the App Store.</li>
+        <li>You write in <strong>Chinese / Japanese / Korean</strong> — SoloMD auto-detects GBK / Big5 / Shift-JIS encodings; Tolaria assumes UTF-8.</li>
+        <li>You want <strong>multiple AI providers</strong> at once — SoloMD has 14 (OpenAI · Claude · Gemini · DeepSeek · Qwen · GLM · Kimi · 火山方舟 · OpenRouter · Ollama · …) all using OS keychain. Tolaria leans on external MCP agents for AI.</li>
+        <li>You need <strong>Pandoc export</strong> (EPUB / ODT / LaTeX) or <strong>academic citations</strong> (<code>@citekey</code> + <code>.bib</code> / CSL) — Tolaria ships neither.</li>
+        <li>You want <strong>multi-tab + split panes</strong> — Tolaria is single-pane.</li>
+        <li>You import from <strong>.docx / .pdf / .xlsx / .pptx</strong> — Tolaria has no file converter.</li>
+        <li>You want <strong>presentation mode</strong> for talks (<code>⌘⌥P</code> renders the doc as fullscreen slides).</li>
+      </ul>
+
+      <h2>When to pick Tolaria</h2>
+      <ul>
+        <li>You're <strong>macOS or Linux only</strong> and prefer a fresh Notion-style block editor.</li>
+        <li>You route everything through <strong>Claude Code / Codex CLI / MCP-compatible agents</strong> — Tolaria's built-in MCP server makes the vault a first-class tool. (SoloMD ships an MCP server in v2.2; until then Tolaria has the lead here.)</li>
+        <li>You want <strong>versioning per note via auto-commits</strong> — Tolaria's AutoGit and per-note history tab beat SoloMD's filesystem-only model. (Coming to SoloMD in v2.2.)</li>
+        <li>You like <strong>"types as lenses"</strong> — every note has a `type` (Project / Topic / etc.) with custom icons + columns that drives the whole sidebar. SoloMD has Bases (a property table view), but folders / tabs are still the primary nav.</li>
+        <li>You want a <strong>Tiago-Forte-style Inbox workflow</strong> with explicit "organized" markers.</li>
+      </ul>
+
+      <h2>Both editors share</h2>
+      <ul>
+        <li>Tauri-based architecture (smaller / faster than Electron alternatives like Obsidian).</li>
+        <li>Open source, free forever, no accounts.</li>
+        <li>Wikilinks <code>[[note]]</code> + backlinks panel.</li>
+        <li>Local-first — your <code>.md</code> files stay yours, no cloud round-trip.</li>
+        <li>Active maintenance (both projects shipped major releases in April 2026).</li>
+      </ul>
+
+      <h2>Migration — Tolaria to SoloMD</h2>
+      <p>
+        Both write plain <code>.md</code> with YAML front-matter, so opening
+        your Tolaria vault folder in SoloMD <strong>just works</strong>.
+        Caveats:
+      </p>
+      <ul>
+        <li>Tolaria's <strong>type metadata</strong> (e.g. `type: Project`) lives in
+          front-matter — SoloMD's Bases view picks it up automatically as a column.
+          You won't get the icon / color customization, but the data is preserved.</li>
+        <li>If you used Tolaria's <strong>AutoGit</strong>, your vault is already a git repo —
+          SoloMD's AutoGit (v2.2) will be compatible with the same convention.</li>
+        <li>The <strong>Inbox flag</strong> doesn't translate directly; you can keep using
+          a YAML field (<code>status: inbox</code>) and filter via Bases.</li>
+      </ul>
+
+      <h2>FAQ</h2>
+
+      <h3>Is SoloMD also adding an MCP server?</h3>
+      <p>Yes — it's the headline feature for v2.2 (currently in development). The plan: a
+        Tauri sidecar binary speaking MCP over stdio, exposing
+        <code>list_notes</code>, <code>read_note</code>, <code>search</code>,
+        <code>get_backlinks</code>, <code>list_tags</code>, and (with explicit user consent)
+        <code>write_note</code>. Discoverable by any MCP client — Claude Code, Codex CLI, your own.</p>
+
+      <h3>Why no Windows for Tolaria?</h3>
+      <p>It's a small project (3 months old). Windows support is on their roadmap but not
+        prioritized. SoloMD has Windows from day one because Tauri's WebView2 + NSIS
+        installer + native menu bar are all wired in.</p>
+
+      <h3>Can I use both?</h3>
+      <p>Yes — they read the same <code>.md</code> files. A common combo is Tolaria on a
+        Mac at home + SoloMD on a Windows / Linux work laptop or iPad on the road, all
+        pointing at the same git-synced vault.</p>
+
+      <div class="compare-cta">
+        <a href="/#download" class="btn btn--primary">Download SoloMD</a>
+        <a href="https://tolaria.md" class="btn btn--secondary" rel="external">Visit Tolaria</a>
+      </div>
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .compare-article { max-width: 820px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .compare-article h1 { font-size: 2.2rem; line-height: 1.2; margin: 10px 0 20px; }
+  .compare-article h2 { font-size: 1.55rem; margin: 36px 0 14px; }
+  .compare-article h3 { font-size: 1.15rem; margin: 24px 0 10px; }
+  .compare-article .lead { font-size: 1.1rem; color: var(--text-muted, #555); margin-bottom: 32px; }
+  .compare-detail { width: 100%; border-collapse: collapse; margin: 20px 0 28px; font-size: 14px; }
+  .compare-detail th, .compare-detail td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #eee; }
+  .compare-detail thead th { background: #fafafa; font-weight: 600; }
+  .compare-detail tbody th { font-weight: 500; width: 32%; }
+  .compare-cta { display: flex; gap: 12px; margin-top: 40px; }
+  .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  .btn--primary { background: #ff9f40; color: #000; }
+  .btn--secondary { background: #111; color: #fff; }
+  .compare-article ul { padding-left: 22px; }
+  .compare-article li { margin: 6px 0; line-height: 1.6; }
+  .compare-article p { line-height: 1.7; margin: 12px 0; }
+  .compare-article code { background: #f5f5f0; padding: 1px 6px; border-radius: 4px; font-size: 0.92em; }
+</style>

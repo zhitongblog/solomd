@@ -1,0 +1,141 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import Header from '../../../components/Header.astro';
+import Footer from '../../../components/Footer.astro';
+
+const lang = 'zh' as const;
+---
+
+<Layout
+  title="SoloMD vs Tolaria —— 两款 Tauri Markdown 编辑器对比 (2026)"
+  description="两个 Tauri 开源 Markdown 编辑器的并排对比。SoloMD 跨平台 (Mac/Win/Linux/iPad)、内置 14 个 AI provider、Pandoc + 引用、CJK 编码自动识别；Tolaria 仅 Mac/Linux,内置 MCP 服务和 AutoGit。详细对比。"
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main class="compare-page">
+    <article class="container compare-article">
+      <nav class="breadcrumbs">
+        <a href="/zh/">首页</a> / <a href="/zh/compare">对比</a> / <span>vs Tolaria</span>
+      </nav>
+
+      <h1>SoloMD vs Tolaria：两款 Tauri Markdown 编辑器</h1>
+      <p class="lead">
+        快速结论：你需要 <strong>Windows / iPad</strong>、用<strong>中文写作</strong>（GBK / Big5 自动识别）、想要 <strong>14 个 AI provider 同时配</strong>、或者依赖 <strong>Pandoc / 学术引用</strong> —— 选 SoloMD。
+        你只用 macOS、所有 AI 走 <strong>Claude Code / MCP-compatible agent</strong>、想要 Notion 风格的 <strong>块编辑器 + 类型驱动导航</strong> —— 选 Tolaria。
+      </p>
+
+      <h2>30 秒看完</h2>
+      <table class="compare-detail">
+        <thead>
+          <tr><th>&nbsp;</th><th>SoloMD</th><th>Tolaria</th></tr>
+        </thead>
+        <tbody>
+          <tr><th>价格</th><td><strong>免费</strong> / MIT</td><td><strong>免费</strong> / 开源</td></tr>
+          <tr><th>技术栈</th><td>Tauri 2 + Vue 3 + CodeMirror 6 + Rust</td><td>Tauri + React + TypeScript + Rust</td></tr>
+          <tr><th>支持平台</th><td>macOS · Windows · Linux x64/ARM64 · <strong>iPad</strong></td><td>macOS · Linux <em>（无 Windows）</em></td></tr>
+          <tr><th>安装包大小</th><td>~15 MB</td><td>~25 MB</td></tr>
+          <tr><th>编辑模型</th><td>CodeMirror 源码模式 + 实时预览 + 分屏</td><td>Notion 式块编辑器 + 斜杠命令</td></tr>
+          <tr><th>多标签 + 分屏</th><td>✅ 标签页 + 任意分屏</td><td>❌ 单面板</td></tr>
+          <tr><th>双向链接 <code>[[note]]</code></th><td>✅ 自动补全 + Backlinks 面板</td><td>✅ 自动补全 + Backlinks</td></tr>
+          <tr><th>内置 AI 改写（BYOK）</th><td>✅ <code>⌘J</code> · 14 provider · 流式 diff 浮层</td><td>🟡 通过外部 MCP agent</td></tr>
+          <tr><th>MCP server（vault 作为工具）</th><td>🟡 v2.2 开发中</td><td>✅ 内置</td></tr>
+          <tr><th>AutoGit 每篇笔记历史</th><td>🟡 v2.2 开发中</td><td>✅ 内置</td></tr>
+          <tr><th>多编码（GBK / Big5）</th><td>✅ 自动识别</td><td>❌ 仅 UTF-8</td></tr>
+          <tr><th>文件导入（DOCX/PDF/XLSX/PPTX）</th><td>✅ 拖入即转 Markdown</td><td>❌</td></tr>
+          <tr><th>Pandoc 导出（EPUB/ODT/LaTeX/RTF）</th><td>✅</td><td>❌</td></tr>
+          <tr><th><code>@citekey</code> 引用 + .bib / CSL</th><td>✅</td><td>❌</td></tr>
+          <tr><th>演讲 / 幻灯片模式</th><td>✅ <code>⌘⌥P</code></td><td>❌</td></tr>
+          <tr><th>Vim 模式</th><td>✅</td><td>❌</td></tr>
+          <tr><th>欢迎教程（中英双语）</th><td>✅</td><td>❌</td></tr>
+          <tr><th>拼写检查（Hunspell）</th><td>✅ opt-in</td><td>🟡 仅依赖系统</td></tr>
+          <tr><th>属性 / 表格视图</th><td>✅ Bases（基于 YAML）</td><td>✅ Types-as-lenses（驱动导航）</td></tr>
+          <tr><th>CLI 命令行工具</th><td>✅ <code>solomd</code></td><td>❌</td></tr>
+          <tr><th>双语 UI（中英）</th><td>✅</td><td>❌ 仅英文</td></tr>
+          <tr><th>默认文件格式</th><td>纯 <code>.md</code></td><td>纯 <code>.md</code></td></tr>
+        </tbody>
+      </table>
+
+      <h2>什么时候选 SoloMD</h2>
+      <ul>
+        <li>你在 <strong>Windows</strong> —— Tolaria 没有 Windows 版。</li>
+        <li>你在 <strong>iPad</strong> 上写作 —— SoloMD 已上 App Store。</li>
+        <li>你<strong>用中文 / 日文 / 韩文</strong>写作 —— SoloMD 自动识别 GBK / Big5 / Shift-JIS 编码；Tolaria 假设全 UTF-8。</li>
+        <li>你想<strong>同时配多个 AI provider</strong> —— SoloMD 内置 14 个（OpenAI · Claude · Gemini · DeepSeek · 通义千问 · GLM · Kimi · 火山方舟 · OpenRouter · Ollama 等），每个用 OS 钥匙串独立保存 key。Tolaria 只能通过外部 MCP agent 调用 AI。</li>
+        <li>你需要 <strong>Pandoc 导出</strong>（EPUB / ODT / LaTeX）或<strong>学术引用</strong>（<code>@citekey</code> + <code>.bib</code> / CSL）—— Tolaria 都不支持。</li>
+        <li>你想要<strong>多标签 + 分屏</strong> —— Tolaria 只能开一个面板。</li>
+        <li>你需要从 <strong>.docx / .pdf / .xlsx / .pptx</strong> 导入 —— Tolaria 没有文件转换。</li>
+        <li>你想要<strong>演讲模式</strong>，把文档当幻灯片演讲（<code>⌘⌥P</code>）。</li>
+      </ul>
+
+      <h2>什么时候选 Tolaria</h2>
+      <ul>
+        <li>你只在 <strong>macOS / Linux</strong>，喜欢全新的 Notion 式块编辑体验。</li>
+        <li>你所有 AI 工作流都走 <strong>Claude Code / Codex CLI / MCP 兼容客户端</strong> —— Tolaria 内置 MCP server，让 vault 成为 agent 的一级工具。（SoloMD v2.2 也会加这个，但目前 Tolaria 领先。）</li>
+        <li>你想要<strong>每篇笔记自动版本历史</strong> —— Tolaria 的 AutoGit + 每篇笔记 history tab 比 SoloMD 当前的纯文件系统模式更强。（SoloMD v2.2 加。）</li>
+        <li>你喜欢 <strong>"types as lenses"</strong> —— 每篇笔记有 type（Project / Topic / 等），自定义图标 + 列，且驱动整个侧栏。SoloMD 的 Bases 是属性表，但导航主要还是文件夹 + 标签页。</li>
+        <li>你想要 Tiago Forte 式的 <strong>Inbox 工作流</strong> + 显式 organized 标记。</li>
+      </ul>
+
+      <h2>两者共同点</h2>
+      <ul>
+        <li>都基于 Tauri（比 Electron 类的 Obsidian 更小更快）。</li>
+        <li>都开源，永久免费，不需要账号。</li>
+        <li>都支持双向链接 <code>[[note]]</code> + Backlinks 面板。</li>
+        <li>本地优先 —— 你的 <code>.md</code> 文件归你所有，不上云。</li>
+        <li>都在积极维护（两个项目都在 2026 年 4 月发了大更新）。</li>
+      </ul>
+
+      <h2>从 Tolaria 迁移到 SoloMD</h2>
+      <p>
+        两者都用纯 <code>.md</code> + YAML front-matter，把 Tolaria vault 文件夹直接用 SoloMD 打开<strong>就能工作</strong>。注意几点：
+      </p>
+      <ul>
+        <li>Tolaria 的 <strong>type 元数据</strong>（如 <code>type: Project</code>）存在 front-matter 里 —— SoloMD 的 Bases 视图会自动当成一列。图标 / 颜色定制丢失，但数据完整保留。</li>
+        <li>如果你用 Tolaria 的 <strong>AutoGit</strong>，vault 已经是 git repo —— SoloMD 的 AutoGit (v2.2) 会兼容同样约定。</li>
+        <li><strong>Inbox 标记</strong>没有直接对应；可以继续用 YAML 字段（<code>status: inbox</code>），用 Bases 过滤。</li>
+      </ul>
+
+      <h2>常见问题</h2>
+
+      <h3>SoloMD 也要加 MCP server 吗？</h3>
+      <p>是的 —— 这是 v2.2 的头条功能（开发中）。计划：一个 Tauri sidecar binary 走 stdio 跑 MCP 协议，暴露
+        <code>list_notes</code>、<code>read_note</code>、<code>search</code>、
+        <code>get_backlinks</code>、<code>list_tags</code>，以及（用户明确同意后）
+        <code>write_note</code>。任何 MCP 客户端都能用 —— Claude Code、Codex CLI、自定义。</p>
+
+      <h3>Tolaria 为什么没 Windows？</h3>
+      <p>项目刚 3 个月。Windows 在路线图里但没排上。SoloMD 第一天就有 Windows 版，因为 Tauri 的 WebView2 + NSIS 安装器 + 原生菜单栏都接好了。</p>
+
+      <h3>能两个都用吗？</h3>
+      <p>可以 —— 都读同样的 <code>.md</code> 文件。常见组合：家里 Mac 跑 Tolaria，公司 Windows / Linux 笔记本或路上 iPad 跑 SoloMD，都指向同一个 git 同步的 vault。</p>
+
+      <div class="compare-cta">
+        <a href="/#download" class="btn btn--primary">下载 SoloMD</a>
+        <a href="https://tolaria.md" class="btn btn--secondary" rel="external">访问 Tolaria</a>
+      </div>
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .compare-article { max-width: 820px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .compare-article h1 { font-size: 2.2rem; line-height: 1.2; margin: 10px 0 20px; }
+  .compare-article h2 { font-size: 1.55rem; margin: 36px 0 14px; }
+  .compare-article h3 { font-size: 1.15rem; margin: 24px 0 10px; }
+  .compare-article .lead { font-size: 1.1rem; color: var(--text-muted, #555); margin-bottom: 32px; }
+  .compare-detail { width: 100%; border-collapse: collapse; margin: 20px 0 28px; font-size: 14px; }
+  .compare-detail th, .compare-detail td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #eee; }
+  .compare-detail thead th { background: #fafafa; font-weight: 600; }
+  .compare-detail tbody th { font-weight: 500; width: 32%; }
+  .compare-cta { display: flex; gap: 12px; margin-top: 40px; }
+  .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  .btn--primary { background: #ff9f40; color: #000; }
+  .btn--secondary { background: #111; color: #fff; }
+  .compare-article ul { padding-left: 22px; }
+  .compare-article li { margin: 6px 0; line-height: 1.6; }
+  .compare-article p { line-height: 1.7; margin: 12px 0; }
+  .compare-article code { background: #f5f5f0; padding: 1px 6px; border-radius: 4px; font-size: 0.92em; }
+</style>
