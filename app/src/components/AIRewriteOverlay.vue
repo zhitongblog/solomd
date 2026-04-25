@@ -158,6 +158,7 @@ async function ensureListeners(): Promise<void> {
   unlistenChunk = await listen<{ request_id: string; chunk: string }>(
     'solomd://ai-chunk',
     (e) => {
+      console.log('[ai] chunk', e.payload.request_id, JSON.stringify(e.payload.chunk).slice(0, 80));
       if (!requestId.value || e.payload.request_id !== requestId.value) return;
       proposed.value += e.payload.chunk;
       autoscroll();
@@ -166,8 +167,8 @@ async function ensureListeners(): Promise<void> {
   unlistenDone = await listen<{ request_id: string; full_text: string }>(
     'solomd://ai-done',
     (e) => {
+      console.log('[ai] done', e.payload.request_id, 'full length=', e.payload.full_text?.length);
       if (!requestId.value || e.payload.request_id !== requestId.value) return;
-      // Use full_text in case any chunk was lost (defensive).
       if (e.payload.full_text && e.payload.full_text.length >= proposed.value.length) {
         proposed.value = e.payload.full_text;
       }
@@ -178,8 +179,8 @@ async function ensureListeners(): Promise<void> {
   unlistenError = await listen<{ request_id: string; error: string }>(
     'solomd://ai-error',
     (e) => {
+      console.warn('[ai] error event', e.payload);
       if (!requestId.value || e.payload.request_id !== requestId.value) return;
-      // Don't surface a "cancelled" error to the user; that's expected on Esc / re-roll.
       if (e.payload.error !== 'cancelled') {
         streamingError.value = e.payload.error;
       }
@@ -197,8 +198,29 @@ function autoscroll(): void {
 }
 
 async function startAction(a: AIAction): Promise<void> {
-  if (!range.value) return;
-  if (needsKey.value) return;
+  console.log('[ai] startAction', a.id, {
+    hasRange: !!range.value,
+    needsKey: needsKey.value,
+    liveHasKey: liveHasKey.value,
+    provider: props.provider,
+    model: props.model,
+    baseUrl: props.baseUrl,
+  });
+  if (!range.value) {
+    streamingError.value = 'No selection captured — close and re-select text.';
+    streaming.value = true;
+    sentBanner.value = false;
+    action.value = a;
+    return;
+  }
+  if (needsKey.value) {
+    streamingError.value =
+      `No API key found in keychain for "${props.provider}". Open AI Settings, paste your key, click Save & verify.`;
+    streaming.value = true;
+    sentBanner.value = false;
+    action.value = a;
+    return;
+  }
   if (a.custom && !customPrompt.value.trim()) {
     action.value = a;
     return;
@@ -211,19 +233,21 @@ async function startAction(a: AIAction): Promise<void> {
   try {
     const userPrompt = a.custom ? customPrompt.value.trim() : a.user;
     const cfg = providerById(props.provider);
-    const id = await invoke<string>('ai_rewrite', {
-      request: {
-        provider: props.provider,
-        api_format: cfg?.apiFormat || 'openai',
-        model: props.model || cfg?.defaultModel || '',
-        system: a.system,
-        user: userPrompt,
-        selection: range.value.selection,
-        base_url: props.baseUrl || cfg?.defaultBaseUrl || null,
-      },
-    });
+    const payload = {
+      provider: props.provider,
+      api_format: cfg?.apiFormat || 'openai',
+      model: props.model || cfg?.defaultModel || '',
+      system: a.system,
+      user: userPrompt,
+      selection: range.value.selection,
+      base_url: props.baseUrl || cfg?.defaultBaseUrl || null,
+    };
+    console.log('[ai] invoke ai_rewrite', payload);
+    const id = await invoke<string>('ai_rewrite', { request: payload });
+    console.log('[ai] ai_rewrite returned request_id', id);
     requestId.value = id;
   } catch (err) {
+    console.error('[ai] ai_rewrite invoke threw', err);
     streaming.value = false;
     streamingError.value = String(err);
   }
