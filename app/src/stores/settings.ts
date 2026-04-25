@@ -58,6 +58,21 @@ interface Settings {
   welcomeShown: boolean;
   // v2.0 F1: show the Backlinks panel (right of editor) for markdown docs.
   showBacklinks: boolean;
+  // v2.0 F2: CodeMirror Hunspell spell-check (separate from browser-native `spellCheck` above).
+  spellcheckEnabled: boolean;
+  // v2.0 F3: daily notes
+  dailyNotesFolder: string;
+  dailyNotesFormat: string;
+  dailyNotesTemplate: string;
+  showTagsPanel: boolean;
+  // v2.0 F4: BYOK AI rewrite
+  aiEnabled: boolean;
+  aiProvider: 'openai' | 'anthropic' | 'ollama';
+  aiModel: string;
+  aiBaseUrl: string;
+  // v2.0 F5: Pandoc + citations
+  workspaceBibliography: string;
+  workspaceCsl: string;
 }
 
 function defaults(): Settings {
@@ -97,6 +112,17 @@ function defaults(): Settings {
     revealInFileTreeOnOpen: false,
     welcomeShown: false,
     showBacklinks: true,
+    spellcheckEnabled: false,
+    dailyNotesFolder: 'Daily',
+    dailyNotesFormat: 'YYYY-MM-DD.md',
+    dailyNotesTemplate: '',
+    showTagsPanel: true,
+    aiEnabled: false,
+    aiProvider: 'openai',
+    aiModel: '',
+    aiBaseUrl: '',
+    workspaceBibliography: '',
+    workspaceCsl: '',
   };
 }
 
@@ -206,6 +232,50 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleBacklinks() {
       this.showBacklinks = !this.showBacklinks;
+      this.persist();
+    },
+    toggleSpellcheckEnabled() {
+      this.spellcheckEnabled = !this.spellcheckEnabled;
+      this.persist();
+    },
+    toggleTagsPanel() {
+      this.showTagsPanel = !this.showTagsPanel;
+      this.persist();
+    },
+    setDailyNotesFolder(p: string) {
+      this.dailyNotesFolder = p;
+      this.persist();
+    },
+    setDailyNotesFormat(f: string) {
+      this.dailyNotesFormat = f;
+      this.persist();
+    },
+    setDailyNotesTemplate(t: string) {
+      this.dailyNotesTemplate = t;
+      this.persist();
+    },
+    toggleAiEnabled() {
+      this.aiEnabled = !this.aiEnabled;
+      this.persist();
+    },
+    setAiProvider(p: 'openai' | 'anthropic' | 'ollama') {
+      this.aiProvider = p;
+      this.persist();
+    },
+    setAiModel(m: string) {
+      this.aiModel = m;
+      this.persist();
+    },
+    setAiBaseUrl(u: string) {
+      this.aiBaseUrl = u;
+      this.persist();
+    },
+    setWorkspaceBibliography(p: string) {
+      this.workspaceBibliography = p;
+      this.persist();
+    },
+    setWorkspaceCsl(p: string) {
+      this.workspaceCsl = p;
       this.persist();
     },
     setUiFontSize(n: number) {

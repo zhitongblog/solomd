@@ -15,6 +15,10 @@ import {
 import { cleanAIArtifacts, stripMarkdownToPlain } from '../lib/clean-ai';
 import { openWelcomeTour } from '../lib/welcome-tour';
 import { formatMarkdown } from '../lib/markdown-format';
+import { useDailyNotes } from './useDailyNotes';
+import { usePandocExport } from './usePandocExport';
+import { useBasesView } from './useBasesView';
+import { useWorkspaceIndexStore } from '../stores/workspaceIndex';
 
 export interface Command {
   id: string;
@@ -31,6 +35,9 @@ export function useCommands(): Command[] {
   const tiles = useTilesStore();
   const exporter = useExport();
   const toasts = useToastsStore();
+  const daily = useDailyNotes();
+  const pandoc = usePandocExport();
+  const bases = useBasesView();
 
   /** Replace the active editor's content (used for the Chinese conversion commands). */
   function transformActive(fn: (s: string) => string, successMsg: string) {
@@ -185,10 +192,44 @@ export function useCommands(): Command[] {
     { id: 'export.pdf', title: 'Export to PDF…', run: () => exporter.exportPdf() },
     { id: 'export.pdfPrint', title: 'Export to PDF via System Print…', shortcut: 'Ctrl+P', run: () => exporter.exportPdfPrint() },
     { id: 'export.image', title: 'Export to Image (PNG)…', run: () => exporter.exportImage() },
+    { id: 'export.epub', title: 'Export to EPUB…', hint: 'via Pandoc', run: () => pandoc.exportTo('epub') },
+    { id: 'export.odt', title: 'Export to ODT…', hint: 'via Pandoc', run: () => pandoc.exportTo('odt') },
+    { id: 'export.latex', title: 'Export to LaTeX…', hint: 'via Pandoc', run: () => pandoc.exportTo('latex') },
+    { id: 'export.rtf', title: 'Export to RTF…', hint: 'via Pandoc', run: () => pandoc.exportTo('rtf') },
+    { id: 'export.pandocCustom', title: 'Export via Pandoc Template…', run: () => pandoc.exportTo('custom') },
     { id: 'export.copyHtml', title: 'Copy as HTML', shortcut: 'Ctrl+Shift+C', run: () => exporter.copyAsHtml() },
     { id: 'export.copyPlain', title: 'Copy as Plain Text', run: () => exporter.copyAsPlainText() },
     { id: 'export.copyMd', title: 'Copy as Markdown', run: () => exporter.copyAsMarkdown() },
     { id: 'export.copyImage', title: 'Copy as Image (PNG)', run: () => exporter.copyAsImage() },
+
+    {
+      id: 'daily.openToday',
+      title: "Open Today's Daily Note",
+      shortcut: 'Ctrl+D',
+      hint: 'Create / open today\'s note in the workspace daily folder',
+      run: () => daily.openTodayNote(),
+    },
+    {
+      id: 'daily.openYesterday',
+      title: "Open Yesterday's Daily Note",
+      run: () => daily.openYesterday(),
+    },
+    {
+      id: 'daily.openTomorrow',
+      title: "Open Tomorrow's Daily Note",
+      run: () => daily.openTomorrow(),
+    },
+    {
+      id: 'tags.refresh',
+      title: 'Refresh Tag Index',
+      run: () => useWorkspaceIndexStore().rescan(),
+    },
+    {
+      id: 'bases.open',
+      title: 'Workspace: Properties Table (Bases)',
+      hint: 'Browse all notes as a sortable / filterable table',
+      run: () => bases.openBases(),
+    },
 
     {
       id: 'help.welcomeTour',

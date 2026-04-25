@@ -8,6 +8,8 @@ import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
 import { themeLabels } from '../lib/themes';
 import { useI18n } from '../i18n';
 import { checkForUpdate, openReleaseUrl, isMasBuild } from '../lib/check-update';
+import AISettings from './AISettings.vue';
+import CitationPickerSettings from './CitationPickerSettings.vue';
 import { isIOS } from '../lib/platform';
 import type { Theme } from '../types';
 
@@ -235,6 +237,55 @@ const fontFamilySelectValue = computed(() =>
             {{ t('settings.showBacklinks') }}
           </label>
         </section>
+
+        <section>
+          <label>
+            <input type="checkbox" :checked="settings.showTagsPanel" @change="settings.toggleTagsPanel()" />
+            {{ t('settings.showTagsPanel') }}
+          </label>
+        </section>
+
+        <section>
+          <label>
+            <input type="checkbox" :checked="settings.spellcheckEnabled" @change="settings.toggleSpellcheckEnabled()" />
+            {{ t('settings.spellcheckEnabled') }}
+          </label>
+        </section>
+
+        <section>
+          <label>{{ t('settings.dailyNotesFolder') }}</label>
+          <input
+            type="text"
+            :value="settings.dailyNotesFolder"
+            @input="settings.setDailyNotesFolder(($event.target as HTMLInputElement).value)"
+            placeholder="Daily"
+            style="padding: 6px 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px; font: inherit;"
+          />
+        </section>
+
+        <section>
+          <label>{{ t('settings.dailyNotesFormat') }}</label>
+          <input
+            type="text"
+            :value="settings.dailyNotesFormat"
+            @input="settings.setDailyNotesFormat(($event.target as HTMLInputElement).value)"
+            placeholder="YYYY-MM-DD.md"
+            style="padding: 6px 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px; font: inherit;"
+          />
+        </section>
+
+        <CitationPickerSettings />
+
+        <AISettings
+          :enabled="settings.aiEnabled"
+          :provider="settings.aiProvider"
+          :model="settings.aiModel"
+          :base-url="settings.aiBaseUrl"
+          @update:enabled="settings.toggleAiEnabled()"
+          @update:provider="(v: 'openai' | 'anthropic' | 'ollama') => settings.setAiProvider(v)"
+          @update:model="(v: string) => settings.setAiModel(v)"
+          @update:baseUrl="(v: string) => settings.setAiBaseUrl(v)"
+        />
 
         <section>
           <label>

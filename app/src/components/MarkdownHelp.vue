@@ -57,8 +57,17 @@ const shortcutGroups: ShortcutGroup[] = [
     title: '编辑 & 格式化 / Editing',
     items: [
       { keys: 'Ctrl+Alt+L', zh: '格式化 Markdown（Prettier）', en: 'Format Markdown (Prettier)' },
+      { keys: 'Ctrl+J', zh: 'AI 改写所选文本（需在设置开启）', en: 'AI rewrite the selection (requires enabling in Settings)' },
+      { keys: 'Cmd/Ctrl + click [[link]]', zh: '跳转到双链目标', en: 'Open the target of a [[wikilink]]' },
       { keys: 'Tab', zh: '增加缩进 / 跨表格列', en: 'Indent / table column nav' },
       { keys: 'Shift+Tab', zh: '减少缩进', en: 'Outdent' },
+    ],
+  },
+  {
+    title: '工作区 / Workspace',
+    items: [
+      { keys: 'Ctrl+D', zh: '打开今日的每日笔记', en: 'Open today\'s daily note' },
+      { keys: '(Command palette)', zh: 'Properties Table —— Bases 视图（按 Ctrl+Shift+K 找 "bases"）', en: 'Properties Table — Bases view (Ctrl+Shift+K → bases)' },
     ],
   },
   {

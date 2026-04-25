@@ -28,6 +28,13 @@ import { livePreviewExtension, richHighlightOnly } from '../lib/cm-live-preview'
 import { imagePasteExtension, insertImageFromPath as cmInsertImageFromPath } from '../lib/cm-image-paste';
 import { focusModeExtension, typewriterModeExtension } from '../lib/cm-focus-mode';
 import { wikilinkExtension } from '../lib/cm-wikilink';
+import { tagAutocompleteExtension } from '../lib/cm-tag-autocomplete';
+import { citationsExtension } from '../lib/cm-citations';
+import { aiRewriteExtension } from '../lib/cm-ai-rewrite';
+import { spellcheckExtension } from '../lib/cm-spellcheck';
+import { spellcheckTheme } from '../lib/cm-spellcheck-theme';
+import { usePandocExport } from '../composables/usePandocExport';
+import type { CitationEntry } from '../lib/citations';
 import { taskListExtension } from '../lib/cm-task-list';
 import {
   sessionRestoreExtension,
@@ -68,6 +75,16 @@ const emit = defineEmits<{ (e: 'cursor', line: number, col: number): void }>();
 
 const tabs = useTabsStore();
 const settings = useSettingsStore();
+const pandoc = usePandocExport();
+let cachedCitations: CitationEntry[] = [];
+pandoc.loadCitations().then((c) => { cachedCitations = c; }).catch(() => {});
+watch(
+  () => settings.workspaceBibliography,
+  () => {
+    pandoc.invalidateCitationsCache();
+    pandoc.loadCitations().then((c) => { cachedCitations = c; }).catch(() => {});
+  },
+);
 
 const host = ref<HTMLDivElement | null>(null);
 let view: EditorView | null = null;
@@ -139,7 +156,16 @@ function buildExtensions() {
       getFilePath: () => props.tab.filePath,
       getDocContent: () => props.tab.content,
     }),
-    ...(props.tab.language === 'markdown' ? [wikilinkExtension()] : []),
+    ...(props.tab.language === 'markdown'
+      ? [
+          wikilinkExtension(),
+          tagAutocompleteExtension(),
+          citationsExtension(() => cachedCitations),
+          aiRewriteExtension(),
+          spellcheckExtension({ enabled: () => settings.spellcheckEnabled }),
+          spellcheckTheme,
+        ]
+      : []),
     taskListExtension(),
     sessionRestoreExtension(props.tab.id),
     EditorView.updateListener.of((u) => {

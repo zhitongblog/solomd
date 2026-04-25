@@ -107,6 +107,9 @@ export function useShortcuts(hooks: Hooks = {}) {
     } else if (k === 'l' && e.altKey) {
       e.preventDefault();
       runById('format.markdown');
+    } else if (k === 'd' && !e.shiftKey && !e.altKey) {
+      e.preventDefault();
+      runById('daily.openToday');
     }
 
     // Tile layout shortcuts

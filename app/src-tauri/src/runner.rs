@@ -13,6 +13,15 @@ mod convert;
 #[path = "workspace_index.rs"]
 mod workspace_index;
 
+#[path = "spellcheck.rs"]
+mod spellcheck;
+
+#[path = "ai_proxy.rs"]
+mod ai_proxy;
+
+#[path = "pandoc.rs"]
+mod pandoc;
+
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use tauri::menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder};
@@ -323,6 +332,18 @@ pub fn run_with(initial_file: Option<String>) {
             workspace_index::workspace_index_tags,
             workspace_index::workspace_index_resolve,
             workspace_index::workspace_index_rescan,
+            spellcheck::spellcheck_init,
+            spellcheck::spellcheck_check,
+            spellcheck::spellcheck_suggest,
+            spellcheck::spellcheck_add_to_dict,
+            spellcheck::spellcheck_load_user_dict,
+            ai_proxy::ai_set_key,
+            ai_proxy::ai_has_key,
+            ai_proxy::ai_clear_key,
+            ai_proxy::ai_rewrite,
+            ai_proxy::ai_cancel,
+            pandoc::pandoc_detect,
+            pandoc::pandoc_export,
         ])
         .on_menu_event(|app_handle, event| {
             // Forward every menu click to the frontend as a single event

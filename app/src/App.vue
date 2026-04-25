@@ -10,6 +10,10 @@ import StatusBar from './components/StatusBar.vue';
 import CommandPalette from './components/CommandPalette.vue';
 import Outline from './components/Outline.vue';
 import BacklinksPanel from './components/BacklinksPanel.vue';
+import TagsPanel from './components/TagsPanel.vue';
+import AIRewriteOverlay from './components/AIRewriteOverlay.vue';
+import BasesView from './components/BasesView.vue';
+import { BASES_OPEN_EVENT, BASES_CLOSE_EVENT } from './composables/useBasesView';
 import FileTree from './components/FileTree.vue';
 import SettingsPanel from './components/SettingsPanel.vue';
 import MarkdownHelp from './components/MarkdownHelp.vue';
@@ -150,6 +154,19 @@ watchEffect(() => {
 // v2.0: keep the Rust workspace index in sync with the active folder.
 watchEffect(() => {
   workspaceIndex.setFolder(workspace.currentFolder).catch(() => {});
+});
+
+// v2.0 F2: load Hunspell dict on demand. (Lang fixed at en_US in v2.0.)
+let spellcheckLoaded = false;
+watchEffect(async () => {
+  if (settings.spellcheckEnabled && !spellcheckLoaded) {
+    try {
+      await invoke('spellcheck_init', { lang: 'en_US' });
+      spellcheckLoaded = true;
+    } catch (e) {
+      console.warn('spellcheck_init failed', e);
+    }
+  }
 });
 
 watch(
@@ -348,6 +365,24 @@ onMounted(async () => {
   }
 });
 
+function onAIRewriteAccept(e: Event) {
+  const detail = (e as CustomEvent).detail || {};
+  const { from, to, replacement } = detail;
+  if (typeof from !== 'number' || typeof to !== 'number' || typeof replacement !== 'string') return;
+  // The Editor doesn't expose its EditorView directly, so route through the
+  // existing insert-markdown channel — `cm-image-paste`'s insertMarkdown helper
+  // replaces the current selection. We piggyback on the same convention.
+  const ev = new CustomEvent('solomd:insert-markdown', {
+    detail: { snippet: replacement, paneId: tiles.focusedPaneId, replaceFrom: from, replaceTo: to },
+  });
+  window.dispatchEvent(ev);
+}
+function onAIRewriteCancel() {
+  // No-op for now; AIRewriteOverlay self-closes.
+}
+function onOpenBases() { basesOpen.value = true; }
+function onCloseBases() { basesOpen.value = false; }
+
 async function onWikiOpen(e: Event) {
   const detail = (e as CustomEvent).detail || {};
   const target: string = detail.target || '';
@@ -364,12 +399,20 @@ async function onWikiOpen(e: Event) {
   }
 }
 window.addEventListener('solomd:wiki-open', onWikiOpen as EventListener);
+window.addEventListener('solomd:ai-rewrite-accept', onAIRewriteAccept as EventListener);
+window.addEventListener('solomd:ai-rewrite-cancel', onAIRewriteCancel as EventListener);
+window.addEventListener(BASES_OPEN_EVENT, onOpenBases as EventListener);
+window.addEventListener(BASES_CLOSE_EVENT, onCloseBases as EventListener);
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onEsc);
   window.removeEventListener('solomd:open-help', onOpenHelpEvent as EventListener);
   window.removeEventListener('solomd:open-global-search', onOpenSearchEvent as EventListener);
   window.removeEventListener('solomd:wiki-open', onWikiOpen as EventListener);
+  window.removeEventListener('solomd:ai-rewrite-accept', onAIRewriteAccept as EventListener);
+  window.removeEventListener('solomd:ai-rewrite-cancel', onAIRewriteCancel as EventListener);
+  window.removeEventListener(BASES_OPEN_EVENT, onOpenBases as EventListener);
+  window.removeEventListener(BASES_CLOSE_EVENT, onCloseBases as EventListener);
   if (unlistenOpened) {
     unlistenOpened();
     unlistenOpened = null;
@@ -389,7 +432,23 @@ const showBacklinksPane = computed(
     tabs.activeTab?.language === 'markdown' &&
     !!workspace.currentFolder,
 );
-const showRightSidebar = computed(() => showOutlinePane.value || showBacklinksPane.value);
+const showTagsPane = computed(
+  () => settings.showTagsPanel && !!workspace.currentFolder,
+);
+const showRightSidebar = computed(
+  () => showOutlinePane.value || showBacklinksPane.value || showTagsPane.value,
+);
+const basesOpen = ref(false);
+const aiHasKey = ref(false);
+async function refreshAiHasKey() {
+  if (!settings.aiEnabled) { aiHasKey.value = false; return; }
+  try {
+    aiHasKey.value = await invoke<boolean>('ai_has_key', { provider: settings.aiProvider });
+  } catch {
+    aiHasKey.value = false;
+  }
+}
+watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAiHasKey(); });
 </script>
 
 <template>
@@ -415,15 +474,25 @@ const showRightSidebar = computed(() => showOutlinePane.value || showBacklinksPa
             <line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" />
           </svg>
         </button>
-        <TileRoot :node="tiles.root" @cursor="onCursor" />
+        <BasesView v-if="basesOpen" />
+        <TileRoot v-else :node="tiles.root" @cursor="onCursor" />
       </div>
       <aside v-if="showRightSidebar" class="right-sidebar">
         <Outline v-if="showOutlinePane" :cursor-line="cursorLine" @goto="onOutlineGoto" />
         <BacklinksPanel v-if="showBacklinksPane" />
+        <TagsPanel v-if="showTagsPane" />
       </aside>
     </div>
     <StatusBar :line="cursorLine" :col="cursorCol" />
 
+    <AIRewriteOverlay
+      :enabled="settings.aiEnabled"
+      :provider="settings.aiProvider"
+      :model="settings.aiModel"
+      :base-url="settings.aiBaseUrl"
+      :has-key="aiHasKey"
+      @open-settings="settingsOpen = true"
+    />
     <CommandPalette :open="paletteOpen" @close="paletteOpen = false" />
     <SettingsPanel :open="settingsOpen" @close="settingsOpen = false" />
     <MarkdownHelp :open="helpOpen" @close="helpOpen = false" />

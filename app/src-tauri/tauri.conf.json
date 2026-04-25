@@ -69,7 +69,9 @@
       }
     },
     "resources": [
-      "icons/file_icon.ico"
+      "icons/file_icon.ico",
+      "resources/dicts/en_US.aff",
+      "resources/dicts/en_US.dic"
     ],
     "macOS": {
       "minimumSystemVersion": "10.15"

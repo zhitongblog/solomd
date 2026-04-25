@@ -1,6 +1,9 @@
 pub mod commands;
 pub mod search;
 pub mod workspace_index;
+pub mod spellcheck;
+pub mod ai_proxy;
+pub mod pandoc;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -28,6 +31,18 @@ pub fn run() {
             workspace_index::workspace_index_tags,
             workspace_index::workspace_index_resolve,
             workspace_index::workspace_index_rescan,
+            spellcheck::spellcheck_init,
+            spellcheck::spellcheck_check,
+            spellcheck::spellcheck_suggest,
+            spellcheck::spellcheck_add_to_dict,
+            spellcheck::spellcheck_load_user_dict,
+            ai_proxy::ai_set_key,
+            ai_proxy::ai_has_key,
+            ai_proxy::ai_clear_key,
+            ai_proxy::ai_rewrite,
+            ai_proxy::ai_cancel,
+            pandoc::pandoc_detect,
+            pandoc::pandoc_export,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
