@@ -329,6 +329,7 @@ onBeforeUnmount(() => {
       </button>
       <button
         class="icon-btn ai-rewrite-btn"
+        @mousedown.prevent
         @click="onAIRewrite"
         :title="t('toolbar.aiRewriteTooltip')"
       >
