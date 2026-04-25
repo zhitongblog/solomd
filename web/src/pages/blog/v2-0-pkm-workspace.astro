@@ -1,0 +1,178 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+
+const lang = 'en' as const;
+---
+
+<Layout
+  title="SoloMD v2.0 — From Markdown editor to PKM workspace"
+  description="The biggest release since 1.0. Wikilinks + backlinks, spell-check, daily notes + tags, AI rewrite (13 providers), Pandoc export with @citekey citations, and a Bases-style table view of every note."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <article class="container blog-article">
+      <nav class="breadcrumbs">
+        <a href="/">Home</a> / <a href="/blog/">Blog</a> / <span>v2.0</span>
+      </nav>
+      <time>2026-04-25</time>
+      <h1>v2.0 — From Markdown editor to PKM workspace</h1>
+      <p class="lead">
+        Six features designed together as a single planned cut, after a
+        survey of every major Markdown editor on the market (Obsidian, Logseq,
+        iA Writer, Ulysses, Bear, Zettlr, Joplin, Notesnook, NotePlan, Reflect,
+        MiaoYan and more). Two credibility holes closed; two
+        differentiators added; one new view; everything bilingual; opt-in by
+        default for anything that touches the network or your dictionary.
+      </p>
+
+      <h2>🔗 Wikilinks + Backlinks</h2>
+      <p>
+        Type <code>[[Welcome]]</code> in any markdown doc. Cmd/Ctrl+click jumps
+        to the target note (or creates it if missing). The new
+        <strong>Backlinks panel</strong> in the right sidebar shows every other
+        note that links here, with three lines of context per match. Autocomplete
+        on <code>[[</code> lists every note in your workspace, ranked by stem and
+        title.
+      </p>
+
+      <h2>🔤 Spell-check</h2>
+      <p>
+        Hunspell-powered red-wavy underline for misspelled English words.
+        Right-click for suggestions / "Add to dictionary" / "Ignore once".
+        Latin-only by design (CJK runs are skipped — single-character "words"
+        aren't spellable). Off by default; ~3 MB en_US dict on first enable.
+      </p>
+
+      <h2>📅 Daily Notes + 🏷 Tags panel</h2>
+      <p>
+        <kbd>Cmd+D</kbd> opens today's daily note (<code>&lt;workspace&gt;/Daily/2026-04-25.md</code>
+        by default), creating it from your template if missing. Customizable folder,
+        filename format (<code>YYYY-MM-DD.md</code>), and template (with
+        <code>{`{{date}}`}</code>, <code>{`{{day}}`}</code>, <code>{`{{previous}}`}</code>,
+        <code>{`{{next}}`}</code> tokens).
+      </p>
+      <p>
+        The <strong>Tags panel</strong> stacks under Backlinks, indexing every
+        <code>#tag</code> across the workspace — click any tag to filter. Type
+        <code>#</code> in the editor for autocomplete over existing tags.
+      </p>
+
+      <h2>🤖 Inline AI rewrite — <code>⌘J</code> on any selection</h2>
+      <p>
+        Select text, press <kbd>Cmd+J</kbd>, pick an action (Rewrite / Shorten /
+        Expand / Translate to EN / Translate to ZH / Explain / Custom prompt). The
+        proposed text streams into a side-by-side diff overlay; <kbd>Cmd+Enter</kbd>
+        accepts, <kbd>Esc</kbd> rejects, "Re-roll" regenerates.
+      </p>
+      <p>
+        <strong>13 providers wired in</strong> — pick a vendor in Settings, enter your key
+        once, switch model freely:
+      </p>
+      <ul>
+        <li>🇺🇸 <strong>OpenAI</strong> · <strong>Anthropic Claude</strong> · <strong>Google Gemini</strong> · <strong>xAI Grok</strong> · <strong>Mistral</strong> · <strong>Groq</strong></li>
+        <li>🇨🇳 <strong>DeepSeek</strong> · <strong>通义千问 Qwen</strong> · <strong>智谱 GLM</strong> · <strong>Moonshot Kimi</strong> · <strong>火山方舟 / 豆包</strong> · <strong>硅基流动 SiliconFlow</strong></li>
+        <li>💻 <strong>Ollama</strong> (local, no key needed)</li>
+      </ul>
+      <p>
+        For vendors with multiple lineups, the model field carries hints — DeepSeek
+        shows <code>deepseek-chat / deepseek-reasoner / deepseek-coder</code>; Qwen shows
+        <code>qwen-plus / qwen-coder-plus / qwq-plus</code>; 豆包 shows
+        <code>doubao-1-5-pro / doubao-pro-coder / doubao-1-5-thinking-pro</code>. Same key,
+        same endpoint — just type the model name and go.
+      </p>
+      <p>
+        <strong>Each provider's key is stored in your OS keychain</strong> (macOS Keychain /
+        Windows Credential Manager / libsecret on Linux), never in localStorage. You
+        can keep multiple vendors' keys simultaneously. Off by default — opt-in via
+        <strong>Settings → AI rewrite</strong>.
+      </p>
+
+      <h2>📄 Pandoc export + <code>@citekey</code> citations</h2>
+      <p>
+        Export to <strong>EPUB / ODT / LaTeX / RTF</strong> in addition to the existing
+        PDF / DOCX / HTML / PNG. Pandoc is detected on PATH (not bundled — keeps the
+        installer at ~15 MB).
+      </p>
+      <p>
+        For academic writing: pick a <code>.bib</code> or <code>.csl-json</code> file in
+        <strong>Settings → Bibliography</strong>, optionally pair with a <code>.csl</code>
+        style. Type <code>@</code> in any markdown doc and an autocomplete dropdown lists
+        matching citation keys with author + year + title. Pandoc handles the actual
+        bibliography generation on export with <code>--citeproc</code>.
+      </p>
+
+      <h2>📊 Bases-style properties table</h2>
+      <p>
+        A new view that renders every note in your workspace as a table — columns are
+        inferred from YAML front-matter keys (any key seen in 2+ files becomes a
+        column). Filter, sort, save views. Click a row to open the note. Open via the
+        command palette: <strong>"Workspace: Properties Table (Bases)"</strong>.
+      </p>
+
+      <h2>🐞 Bug fixes</h2>
+      <ul>
+        <li>
+          <strong>Local images on Windows now display reliably (#22)</strong>.
+          The <code>convertFileSrc</code> URL builder was fragile to mixed
+          <code>\</code>/<code>/</code> separators and unresolved <code>./</code> /
+          <code>../</code> segments. New <code>normalizePath</code> helper canonicalizes
+          paths before encoding. Platform-agnostic — Linux and macOS got fewer silent
+          failures along the way.
+        </li>
+      </ul>
+
+      <h2>⌨️ New shortcuts</h2>
+      <ul>
+        <li><kbd>Cmd/Ctrl+D</kbd> — Open today's daily note</li>
+        <li><kbd>Cmd/Ctrl+J</kbd> — AI rewrite the selection (when enabled)</li>
+        <li><kbd>Cmd/Ctrl + click [[link]]</kbd> — Jump to wikilink target</li>
+        <li><code>[[</code>, <code>#</code>, <code>@</code> — Autocomplete in markdown</li>
+      </ul>
+
+      <h2>🪶 Quality bar</h2>
+      <p>Every feature meets all of:</p>
+      <ul>
+        <li>Bilingual UI (en + zh)</li>
+        <li>Settings panel control</li>
+        <li>Help dialog entry</li>
+        <li>No console errors at idle</li>
+        <li>Built-in fallbacks (missing pandoc / no API key / no workspace folder all show readable empty states)</li>
+      </ul>
+
+      <h2>What's next</h2>
+      <p>
+        Sync (CRDT-based, possibly paid-tier — the single biggest moat against
+        Obsidian) is the v3 work. In v2.x: speaker-mode notes for slideshow, more
+        wire formats for AI providers, and Mac App Store resubmission.
+      </p>
+
+      <p>
+        <a class="btn btn--primary" href="https://github.com/zhitongblog/solomd/releases/tag/v2.0.0">Download v2.0 →</a>
+        &nbsp;
+        <a class="btn" href="https://github.com/zhitongblog/solomd/releases/tag/v2.0.0">Full release notes</a>
+      </p>
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .blog-article { max-width: 760px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .blog-article time { font-size: 13px; color: var(--text-muted, #888); }
+  .blog-article h1 { font-size: 2.2rem; line-height: 1.2; margin: 8px 0 18px; }
+  .blog-article h2 { font-size: 1.4rem; margin: 36px 0 12px; }
+  .blog-article .lead { color: var(--text-muted, #555); font-size: 1.1rem; line-height: 1.6; margin-bottom: 28px; }
+  .blog-article p { line-height: 1.75; margin: 14px 0; }
+  .blog-article ul { padding-left: 22px; }
+  .blog-article li { margin: 6px 0; line-height: 1.7; }
+  .blog-article code { background: #f5f5f0; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+  .blog-article a { color: #ff9f40; }
+  .blog-article kbd { background: #f5f5f0; border: 1px solid #ddd; border-radius: 3px; padding: 1px 6px; font-family: ui-monospace, Menlo, monospace; font-size: 0.85em; }
+  .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  .btn--primary { background: #ff9f40; color: #000 !important; }
+</style>

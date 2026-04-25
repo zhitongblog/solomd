@@ -1,0 +1,145 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import Header from '../../../components/Header.astro';
+import Footer from '../../../components/Footer.astro';
+
+const lang = 'zh' as const;
+---
+
+<Layout
+  title="SoloMD v2.0 — 从 Markdown 编辑器到 PKM 工作台"
+  description="1.0 之后最大的一次更新。双向链接 + Backlinks、拼写检查、每日笔记 + 标签、AI 改写（13 个 provider）、Pandoc 导出 + @citekey 引用、Bases 属性表。"
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <article class="container blog-article">
+      <nav class="breadcrumbs">
+        <a href="/zh/">首页</a> / <a href="/zh/blog/">博客</a> / <span>v2.0</span>
+      </nav>
+      <time>2026-04-25</time>
+      <h1>v2.0 —— 从 Markdown 编辑器到 PKM 工作台</h1>
+      <p class="lead">
+        我们调研了市面上所有主流 Markdown 编辑器（Obsidian、Logseq、iA Writer、Ulysses、
+        Bear、Zettlr、Joplin、Notesnook、NotePlan、Reflect、MiaoYan...），挑出 6 个值得做的
+        功能，作为一次完整的设计推进。两个信用洞补上，两个差异化卖点加上，新增一个表格视图，
+        全部双语，所有联网 / 改字典的功能默认关闭由用户主动启用。
+      </p>
+
+      <h2>🔗 双向链接 + Backlinks</h2>
+      <p>
+        在任意 markdown 文档里输入 <code>[[欢迎]]</code>，Cmd/Ctrl+点击跳转到目标笔记
+        （没有就新建）。右侧栏的 <strong>Backlinks 面板</strong>列出所有引用本笔记的其他文档，
+        每条带 3 行上下文。<code>[[</code> 触发自动补全，按文件名 + 标题模糊匹配。
+      </p>
+
+      <h2>🔤 拼写检查</h2>
+      <p>
+        Hunspell 驱动的红色波浪线标记英文拼写错误。右键给出建议 / 「加入词典」 / 「本次忽略」。
+        只检查拉丁文（CJK 字符不属于「单词」概念，跳过）。默认关闭，首次启用约 3 MB en_US 词典。
+      </p>
+
+      <h2>📅 每日笔记 + 🏷 标签面板</h2>
+      <p>
+        <kbd>Cmd+D</kbd> 打开今日笔记（默认在
+        <code>&lt;workspace&gt;/Daily/2026-04-25.md</code>），不存在则按模板创建。可自定义文件夹、
+        文件名格式（<code>YYYY-MM-DD.md</code>）、模板（支持 <code>{`{{date}}`}</code>、
+        <code>{`{{day}}`}</code>、<code>{`{{previous}}`}</code>、<code>{`{{next}}`}</code> 占位符）。
+      </p>
+      <p>
+        <strong>标签面板</strong>挂在 Backlinks 下方，索引整个工作区的 <code>#tag</code>，点击筛选。
+        编辑器里输入 <code>#</code> 触发已有标签的自动补全。
+      </p>
+
+      <h2>🤖 行内 AI 改写 —— <code>⌘J</code> 改写选中文本</h2>
+      <p>
+        选中文本，按 <kbd>Cmd+J</kbd>，选一个动作（改写 / 精简 / 扩写 / 翻译为英文 / 翻译为中文 /
+        解释 / 自定义提示词）。改写结果以流式形式出现在原文 / 改写后的并排对比浮层。
+        <kbd>Cmd+Enter</kbd> 采用，<kbd>Esc</kbd> 放弃，「重新生成」再来一次。
+      </p>
+      <p>
+        <strong>13 个 provider 全部内置</strong>，在「设置 → AI 改写」选一家、填一次密钥、随时切换模型：
+      </p>
+      <ul>
+        <li>🇺🇸 <strong>OpenAI</strong> · <strong>Anthropic Claude</strong> · <strong>Google Gemini</strong> · <strong>xAI Grok</strong> · <strong>Mistral</strong> · <strong>Groq</strong></li>
+        <li>🇨🇳 <strong>DeepSeek</strong> · <strong>通义千问 Qwen</strong> · <strong>智谱 GLM</strong> · <strong>Moonshot Kimi</strong> · <strong>火山方舟 / 豆包</strong> · <strong>硅基流动 SiliconFlow</strong></li>
+        <li>💻 <strong>Ollama</strong>（本地，不需密钥）</li>
+      </ul>
+      <p>
+        对于多产品线的厂商，model 字段下方有提示 —— DeepSeek 有 standard / coder / reasoner 三档；
+        Qwen 有 qwen-plus / qwen-coder-plus / qwq-plus；豆包有 doubao-1-5-pro / doubao-pro-coder /
+        doubao-1-5-thinking-pro。同 endpoint 同 key，改个 model 名就能切换。
+      </p>
+      <p>
+        <strong>每个 provider 的密钥存在 OS 钥匙串中</strong>（macOS Keychain / Windows Credential Manager /
+        Linux libsecret），不进 localStorage。可以同时配多家。默认关闭 —— 在「设置 → AI 改写」开启。
+      </p>
+
+      <h2>📄 Pandoc 导出 + <code>@citekey</code> 引用</h2>
+      <p>
+        除原有的 PDF / DOCX / HTML / PNG 外，新增 <strong>EPUB / ODT / LaTeX / RTF</strong>。
+        Pandoc 通过系统 PATH 检测（不打包，安装包保持 ~15 MB）。
+      </p>
+      <p>
+        学术写作场景：在「设置 → 参考文献库」选一个 <code>.bib</code> 或 <code>.csl-json</code> 文件，
+        可选搭配 <code>.csl</code> 样式。在 markdown 里输入 <code>@</code>，下拉框列出匹配的引用 key，
+        显示作者 + 年份 + 标题。导出时 Pandoc 用 <code>--citeproc</code> 自动生成参考文献列表。
+      </p>
+
+      <h2>📊 Bases 属性表视图</h2>
+      <p>
+        新视图：把整个工作区的所有笔记渲染成一个表格 —— 列由 YAML front matter 自动推断
+        （任意 key 出现在 2+ 文件中即成一列）。可筛选、排序、保存视图。点击行打开笔记。
+        通过命令面板打开：<strong>"Workspace: Properties Table (Bases)"</strong>。
+      </p>
+
+      <h2>🐞 Bug 修复</h2>
+      <ul>
+        <li>
+          <strong>Windows 本地图片不显示问题修复（#22）</strong>。
+          <code>convertFileSrc</code> URL 构造对斜杠混用和 <code>./</code> / <code>../</code> 解析有缺陷。
+          新增 <code>normalizePath</code> 在编码前规范化路径。三平台通用 —— Linux 和 macOS 顺便也修了几处沉默失败。
+        </li>
+      </ul>
+
+      <h2>⌨️ 新增快捷键</h2>
+      <ul>
+        <li><kbd>Cmd/Ctrl+D</kbd> —— 打开今日的每日笔记</li>
+        <li><kbd>Cmd/Ctrl+J</kbd> —— AI 改写选中文本（启用后）</li>
+        <li><kbd>Cmd/Ctrl + 点击 [[链接]]</kbd> —— 跳转到 wikilink 目标</li>
+        <li><code>[[</code>、<code>#</code>、<code>@</code> —— markdown 中的自动补全</li>
+      </ul>
+
+      <h2>下一步</h2>
+      <p>
+        v3 的工作重点是同步（基于 CRDT，可能是 paid tier —— 也是对抗 Obsidian 最大的一道护城河）。
+        v2.x 期间：演讲模式的 speaker notes、更多 AI provider 接入、Mac App Store 重新提交。
+      </p>
+
+      <p>
+        <a class="btn btn--primary" href="https://github.com/zhitongblog/solomd/releases/tag/v2.0.0">下载 v2.0 →</a>
+        &nbsp;
+        <a class="btn" href="https://github.com/zhitongblog/solomd/releases/tag/v2.0.0">完整 release notes</a>
+      </p>
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .blog-article { max-width: 760px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .blog-article time { font-size: 13px; color: var(--text-muted, #888); }
+  .blog-article h1 { font-size: 2.2rem; line-height: 1.2; margin: 8px 0 18px; }
+  .blog-article h2 { font-size: 1.4rem; margin: 36px 0 12px; }
+  .blog-article .lead { color: var(--text-muted, #555); font-size: 1.1rem; line-height: 1.6; margin-bottom: 28px; }
+  .blog-article p { line-height: 1.75; margin: 14px 0; }
+  .blog-article ul { padding-left: 22px; }
+  .blog-article li { margin: 6px 0; line-height: 1.7; }
+  .blog-article code { background: #f5f5f0; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+  .blog-article a { color: #ff9f40; }
+  .blog-article kbd { background: #f5f5f0; border: 1px solid #ddd; border-radius: 3px; padding: 1px 6px; font-family: ui-monospace, Menlo, monospace; font-size: 0.85em; }
+  .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  .btn--primary { background: #ff9f40; color: #000 !important; }
+</style>
