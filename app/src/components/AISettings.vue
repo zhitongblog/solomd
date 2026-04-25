@@ -131,7 +131,7 @@ function onProviderChange(ev: Event): void {
       </span>
     </label>
 
-    <div v-if="enabled" class="ai-settings__group">
+    <div class="ai-settings__group">
       <div class="ai-settings__row">
         <label class="ai-settings__label" for="ai-provider">{{ t('ai.provider') }}</label>
         <select

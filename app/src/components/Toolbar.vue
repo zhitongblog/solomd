@@ -46,6 +46,50 @@ function onCleanAI() {
   toasts.success('AI artifacts cleaned');
 }
 
+/**
+ * Toolbar entry for v2.0 F4. Mirrors the Cmd+J keyboard binding —
+ * builders the same `solomd:ai-rewrite-open` event off the active editor's
+ * selection so both routes funnel into AIRewriteOverlay.
+ */
+function onAIRewrite() {
+  const t = tabs.activeTab;
+  if (!t) {
+    toasts.warning('No active document');
+    return;
+  }
+  if (!settings.aiEnabled) {
+    toasts.info(t === undefined ? '' : 'Enable AI rewrite in Settings first (⌘,)');
+    // Open settings to the AI block — single dispatch the existing settings open path.
+    window.dispatchEvent(new CustomEvent('solomd:open-settings'));
+    return;
+  }
+  // Read selection from the focused CodeMirror view; fall back to whole doc.
+  const cm = document.querySelector('.cm-editor.cm-focused') as HTMLElement | null;
+  const sel = window.getSelection();
+  let selection = '';
+  let from = 0;
+  let to = 0;
+  if (cm && sel && sel.rangeCount > 0 && !sel.isCollapsed) {
+    selection = sel.toString();
+    // CM doesn't expose the (from,to) doc offsets via DOM selection alone;
+    // the overlay will read them from the editor view via its own keymap.
+    // For toolbar fire we pass selection text and the overlay derives the
+    // range when the user accepts.
+  } else {
+    // No selection: take the whole active doc.
+    selection = t.content;
+  }
+  if (!selection.trim()) {
+    toasts.info('Select some text to rewrite first');
+    return;
+  }
+  window.dispatchEvent(
+    new CustomEvent('solomd:ai-rewrite-open', {
+      detail: { selection, from, to },
+    }),
+  );
+}
+
 const recentOpen = ref(false);
 const exportOpen = ref(false);
 const newOpen = ref(false);
@@ -283,6 +327,14 @@ onBeforeUnmount(() => {
         <span class="clean-ai-label">AI</span>
         <span class="clean-ai-x">✕</span>
       </button>
+      <button
+        class="icon-btn ai-rewrite-btn"
+        @click="onAIRewrite"
+        :title="t('toolbar.aiRewriteTooltip')"
+      >
+        <span class="ai-rewrite-label">AI</span>
+        <span class="ai-rewrite-spark">✨</span>
+      </button>
     </div>
 
     <div class="toolbar__group">
@@ -502,6 +554,25 @@ onBeforeUnmount(() => {
   opacity: 0.6;
   margin-left: 1px;
 }
+.ai-rewrite-btn {
+  position: relative;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 11px !important;
+  padding: 3px 10px !important;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  gap: 2px;
+  color: var(--text-muted);
+  transition: all 0.15s;
+}
+.ai-rewrite-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft, rgba(255, 159, 64, 0.08));
+}
+.ai-rewrite-label { letter-spacing: 0.04em; }
+.ai-rewrite-spark { font-size: 11px; opacity: 0.85; margin-left: 2px; }
 
 /* Split copy button: [Copy | ▾] */
 .copy-split {

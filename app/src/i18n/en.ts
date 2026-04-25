@@ -28,6 +28,7 @@ export const en = {
     copy: 'Copy',
     cleanAi: 'Clean AI Artifacts',
     cleanAiTitle: 'Clean AI Artifacts (cite markers, smart quotes, invisible chars)',
+    aiRewriteTooltip: 'AI Rewrite (⌘J) — rewrite / shorten / translate / explain selection',
     newFile: 'New file',
     openFileTooltip: 'Open file (Ctrl+O)',
     saveAsTooltip: 'Save As (Ctrl+Shift+S)',

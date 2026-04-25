@@ -398,11 +398,14 @@ async function onWikiOpen(e: Event) {
     tabs.activate(tab.id);
   }
 }
+function onOpenSettingsEvent() { settingsOpen.value = true; }
+
 window.addEventListener('solomd:wiki-open', onWikiOpen as EventListener);
 window.addEventListener('solomd:ai-rewrite-accept', onAIRewriteAccept as EventListener);
 window.addEventListener('solomd:ai-rewrite-cancel', onAIRewriteCancel as EventListener);
 window.addEventListener(BASES_OPEN_EVENT, onOpenBases as EventListener);
 window.addEventListener(BASES_CLOSE_EVENT, onCloseBases as EventListener);
+window.addEventListener('solomd:open-settings', onOpenSettingsEvent as EventListener);
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onEsc);
@@ -413,6 +416,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('solomd:ai-rewrite-cancel', onAIRewriteCancel as EventListener);
   window.removeEventListener(BASES_OPEN_EVENT, onOpenBases as EventListener);
   window.removeEventListener(BASES_CLOSE_EVENT, onCloseBases as EventListener);
+  window.removeEventListener('solomd:open-settings', onOpenSettingsEvent as EventListener);
   if (unlistenOpened) {
     unlistenOpened();
     unlistenOpened = null;

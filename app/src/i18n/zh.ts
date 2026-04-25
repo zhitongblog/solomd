@@ -30,6 +30,7 @@ export const zh: I18n = {
     copy: '复制',
     cleanAi: '清除 AI 格式',
     cleanAiTitle: '清除 AI 格式 (引用标记、弯引号、不可见字符)',
+    aiRewriteTooltip: 'AI 改写 (⌘J) —— 改写 / 精简 / 翻译 / 解释选中文本',
     newFile: '新建文件',
     openFileTooltip: '打开文件 (Ctrl+O)',
     saveAsTooltip: '另存为 (Ctrl+Shift+S)',
