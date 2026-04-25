@@ -105,29 +105,32 @@ async function saveKey(): Promise<void> {
   const key = keyInput.value.trim();
   if (!key) return;
   saving.value = true;
-  status.value = null;
+  status.value = { kind: 'ok', msg: t('ai.verifying') };
   try {
-    await invoke('ai_set_key', { provider: props.provider, key });
-    keyInput.value = '';
-    await refreshHasKey(props.provider);
-    status.value = { kind: 'ok', msg: t('ai.keySaved') + ' · ' + t('ai.verifying') };
-    // Auto-verify the key right after save — single-call sanity check
-    // so users don't discover bad keys later via a failed rewrite.
+    // Verify FIRST with the key the user just typed, before storing it
+    // in keychain. If verification fails, the user keeps their old key
+    // (if any) untouched, and we surface the exact provider error.
+    const cfg = currentProviderConfig.value;
+    let verifiedMsg: string;
     try {
-      const cfg = currentProviderConfig.value;
-      const ok = await invoke<string>('ai_verify_key', {
+      verifiedMsg = await invoke<string>('ai_verify_key', {
         provider: props.provider,
-        key: null,
-        api_format: cfg?.apiFormat || 'openai',
-        base_url: props.baseUrl || cfg?.defaultBaseUrl || null,
+        key,
+        apiFormat: cfg?.apiFormat || 'openai',
+        baseUrl: props.baseUrl || cfg?.defaultBaseUrl || null,
       });
-      status.value = { kind: 'ok', msg: t('ai.verified') + ' · ' + ok };
     } catch (verifyErr) {
       status.value = {
         kind: 'err',
         msg: t('ai.verifyFailed') + ': ' + String(verifyErr),
       };
+      return;
     }
+    // Verification passed — now save to keychain.
+    await invoke('ai_set_key', { provider: props.provider, key });
+    keyInput.value = '';
+    await refreshHasKey(props.provider);
+    status.value = { kind: 'ok', msg: t('ai.verified') + ' · ' + verifiedMsg };
   } catch (e) {
     status.value = { kind: 'err', msg: String(e) };
   } finally {
@@ -135,8 +138,13 @@ async function saveKey(): Promise<void> {
   }
 }
 
-/** Manual re-verify button for users who already saved their key. */
+/** Manual re-verify button — uses the key already in keychain. */
 async function verifyExisting(): Promise<void> {
+  // Ollama doesn't need a key, but provider must be a real one.
+  if (props.provider !== 'ollama' && !hasKey.value[props.provider]) {
+    status.value = { kind: 'err', msg: t('ai.noKey') };
+    return;
+  }
   saving.value = true;
   status.value = { kind: 'ok', msg: t('ai.verifying') };
   try {
@@ -144,8 +152,8 @@ async function verifyExisting(): Promise<void> {
     const ok = await invoke<string>('ai_verify_key', {
       provider: props.provider,
       key: null,
-      api_format: cfg?.apiFormat || 'openai',
-      base_url: props.baseUrl || cfg?.defaultBaseUrl || null,
+      apiFormat: cfg?.apiFormat || 'openai',
+      baseUrl: props.baseUrl || cfg?.defaultBaseUrl || null,
     });
     status.value = { kind: 'ok', msg: t('ai.verified') + ' · ' + ok };
   } catch (e) {
