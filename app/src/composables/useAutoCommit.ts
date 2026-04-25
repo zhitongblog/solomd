@@ -52,12 +52,21 @@ export function useAutoCommit() {
     if (!folder) return;
     if (!gh.status) await gh.refreshStatus(folder);
     if (!gh.isInitialized) {
-      // AutoGit is enabled but the workspace isn't a repo. Fail silently
-      // for the auto path; the explicit `commitNow` flow surfaces it.
-      if (!opts?.quiet) {
-        toasts.warning(t('history.notInitialized'));
+      // AutoGit is enabled but the workspace isn't a repo yet — auto-init
+      // it so the user doesn't have to dig through the history panel for a
+      // separate "Initialize" button. We surface the init via toast even
+      // on the auto path because it's a one-time event the user should
+      // know about (a `.git/` directory will appear in their workspace).
+      try {
+        await gh.init(folder);
+        toasts.info(t('history.initialized'));
+      } catch (e) {
+        if (!opts?.quiet) {
+          toasts.error(`${t('history.commitFailed')}: ${e}`);
+        }
+        console.warn('autogit init failed', e);
+        return;
       }
-      return;
     }
     const filePath = tabs.activeTab?.filePath ?? undefined;
     try {
@@ -66,9 +75,10 @@ export function useAutoCommit() {
         toasts.success(t('history.savedSnapshot', { sha: sha.slice(0, 7) }));
       }
     } catch (e) {
-      if (!opts?.quiet) {
-        toasts.error(`${t('history.commitFailed')}: ${e}`);
-      }
+      // Surface the error even on the auto path — silent failures are
+      // why the v2.2 launch shipped with AutoGit "doing nothing" (rel_path
+      // symlink bug). Always toast so the user can see what went wrong.
+      toasts.error(`${t('history.commitFailed')}: ${e}`);
       console.warn('autogit commit failed', e);
     }
   }

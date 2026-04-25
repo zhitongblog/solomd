@@ -112,12 +112,33 @@ fn build_signature(repo: &Repository) -> Result<Signature<'static>, String> {
 /// Convert an absolute working-copy path into a forward-slash repo-relative
 /// path (libgit2's pathspec format). Returns `None` if the file is outside
 /// the workdir.
+///
+/// We canonicalize both sides before comparing — on macOS `/tmp` and
+/// `/var/...` are symlinks to `/private/tmp` and `/private/var/...`, and
+/// `repo.workdir()` returns the canonical form while the JS frontend
+/// typically passes the un-resolved path. Without canonicalization,
+/// `strip_prefix` fails and AutoGit silently rejects every save with
+/// "file is outside workspace".
 fn rel_path(repo: &Repository, abs: &str) -> Option<String> {
     let workdir = repo.workdir()?;
-    let p = Path::new(abs);
-    let stripped = p.strip_prefix(workdir).ok()?;
-    let s = stripped.to_string_lossy().replace('\\', "/");
-    Some(s)
+    let abs_path = Path::new(abs);
+
+    // Try the cheap fast path first — most users on Linux / Windows hit it.
+    if let Ok(stripped) = abs_path.strip_prefix(workdir) {
+        return Some(stripped.to_string_lossy().replace('\\', "/"));
+    }
+
+    // Symlinks differ — canonicalize both, retry. We only canonicalize the
+    // file path's *parent*, since the file itself may have just been
+    // created and `canonicalize` would succeed but trigger a stat we can
+    // skip. The parent is enough to resolve every symlink up to the file.
+    let abs_canon = match abs_path.parent().and_then(|p| p.canonicalize().ok()) {
+        Some(parent) => parent.join(abs_path.file_name()?),
+        None => abs_path.canonicalize().ok()?,
+    };
+    let workdir_canon = workdir.canonicalize().ok()?;
+    let stripped = abs_canon.strip_prefix(&workdir_canon).ok()?;
+    Some(stripped.to_string_lossy().replace('\\', "/"))
 }
 
 /// Default auto-commit message: `auto: 2026-04-24 09:30:01`.
@@ -282,7 +303,7 @@ fn commit_staged(
 /// Sync impl. Public command below dispatches to spawn_blocking — never
 /// call this directly from a Tauri command thread, only through the async
 /// wrapper, so a slow git2 call can't freeze the UI.
-fn git_workspace_status_inner(folder: String) -> Result<WorkspaceStatus, String> {
+pub fn git_workspace_status_inner(folder: String) -> Result<WorkspaceStatus, String> {
     if folder.is_empty() {
         return Ok(WorkspaceStatus {
             initialized: false,
@@ -337,7 +358,7 @@ pub async fn git_workspace_status(folder: String) -> Result<WorkspaceStatus, Str
         .map_err(|e| format!("join: {e}"))?
 }
 
-fn git_init_workspace_inner(
+pub fn git_init_workspace_inner(
     folder: String,
     initial_message: Option<String>,
     exclude_assets: Option<bool>,
@@ -375,7 +396,7 @@ pub async fn git_init_workspace(
     .map_err(|e| format!("join: {e}"))?
 }
 
-fn git_auto_commit_inner(
+pub fn git_auto_commit_inner(
     folder: String,
     file_path: Option<String>,
     message: Option<String>,
@@ -408,7 +429,7 @@ pub async fn git_auto_commit(
     .map_err(|e| format!("join: {e}"))?
 }
 
-fn git_file_history_inner(
+pub fn git_file_history_inner(
     folder: String,
     file_path: String,
     limit: u32,
@@ -512,7 +533,7 @@ fn commit_touches_path(repo: &Repository, commit: &Commit<'_>, rel: &str) -> boo
     diff.deltas().len() > 0
 }
 
-fn git_file_diff_inner(
+pub fn git_file_diff_inner(
     folder: String,
     file_path: String,
     sha: String,
@@ -615,7 +636,7 @@ pub async fn git_file_diff(
     .map_err(|e| format!("join: {e}"))?
 }
 
-fn git_file_at_version_inner(
+pub fn git_file_at_version_inner(
     folder: String,
     file_path: String,
     sha: String,
@@ -652,7 +673,7 @@ pub async fn git_file_at_version(
     .map_err(|e| format!("join: {e}"))?
 }
 
-fn git_rollback_file_inner(
+pub fn git_rollback_file_inner(
     folder: String,
     file_path: String,
     sha: String,
