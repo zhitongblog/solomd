@@ -46,6 +46,14 @@ const workspace = useWorkspaceStore();
 const workspaceIndex = useWorkspaceIndexStore();
 const autoCommit = useAutoCommit();
 autoCommit.start();
+
+// One-shot reconciliation: v2.2 shipped with two separate toggles
+// (Enable AutoGit / Show history panel). Users who enabled AutoGit but
+// not the panel saw "no history" even though commits were piling up.
+// If we boot in that state, surface the panel.
+if (settings.autoGitEnabled && !settings.showHistoryPanel) {
+  settings.toggleHistoryPanel();
+}
 const { t } = useI18n();
 
 const cursorLine = ref(1);
