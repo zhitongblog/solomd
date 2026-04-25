@@ -643,11 +643,14 @@ fn handle_event(app: &AppHandle, event: Event) {
             }
         }
         if changed {
-            // Persist + notify
-            if let Ok(s) = STATE.read() {
-                if let Some(root) = &s.root {
-                    let _ = save_cache(&app_for_thread, root);
-                }
+            // Persist + notify. IMPORTANT: don't hold STATE.read() across
+            // save_cache(), which itself acquires STATE.read() — recursive
+            // reads on std::sync::RwLock can deadlock on macOS when a
+            // writer is queued in between. Clone `root` out, drop the
+            // guard, then call save_cache.
+            let root = STATE.read().ok().and_then(|s| s.root.clone());
+            if let Some(root) = root {
+                let _ = save_cache(&app_for_thread, &root);
             }
             let _ = app_for_thread.emit("solomd://index-updated", &"watch");
         }

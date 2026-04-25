@@ -279,8 +279,10 @@ fn commit_staged(
 // Tauri commands.
 // ---------------------------------------------------------------------------
 
-#[tauri::command]
-pub fn git_workspace_status(folder: String) -> Result<WorkspaceStatus, String> {
+/// Sync impl. Public command below dispatches to spawn_blocking — never
+/// call this directly from a Tauri command thread, only through the async
+/// wrapper, so a slow git2 call can't freeze the UI.
+fn git_workspace_status_inner(folder: String) -> Result<WorkspaceStatus, String> {
     if folder.is_empty() {
         return Ok(WorkspaceStatus {
             initialized: false,
@@ -329,7 +331,13 @@ pub fn git_workspace_status(folder: String) -> Result<WorkspaceStatus, String> {
 }
 
 #[tauri::command]
-pub fn git_init_workspace(
+pub async fn git_workspace_status(folder: String) -> Result<WorkspaceStatus, String> {
+    tauri::async_runtime::spawn_blocking(move || git_workspace_status_inner(folder))
+        .await
+        .map_err(|e| format!("join: {e}"))?
+}
+
+fn git_init_workspace_inner(
     folder: String,
     initial_message: Option<String>,
     exclude_assets: Option<bool>,
@@ -338,7 +346,6 @@ pub fn git_init_workspace(
     if !path.exists() {
         return Err(format!("folder does not exist: {}", folder));
     }
-    // Open existing or init a new repo.
     let repo = match Repository::open(path) {
         Ok(r) => r,
         Err(_) => Repository::init(path).map_err(|e| format!("git init: {}", e))?,
@@ -351,20 +358,29 @@ pub fn git_init_workspace(
     let sig = build_signature(&repo)?;
     let msg = initial_message.unwrap_or_else(|| "init: SoloMD workspace".to_string());
 
-    // It's OK if there's nothing to commit (truly empty folder); we still
-    // succeed — the next save will create the first commit.
     let _ = commit_staged(&repo, &sig, &msg)?;
     Ok(())
 }
 
 #[tauri::command]
-pub fn git_auto_commit(
+pub async fn git_init_workspace(
+    folder: String,
+    initial_message: Option<String>,
+    exclude_assets: Option<bool>,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        git_init_workspace_inner(folder, initial_message, exclude_assets)
+    })
+    .await
+    .map_err(|e| format!("join: {e}"))?
+}
+
+fn git_auto_commit_inner(
     folder: String,
     file_path: Option<String>,
     message: Option<String>,
 ) -> Result<Option<String>, String> {
     let repo = open_repo(&folder)?;
-    // Translate the optional absolute path into a repo-relative pathspec.
     let pathspec = match file_path.as_ref() {
         Some(abs) => match rel_path(&repo, abs) {
             Some(r) => Some(r),
@@ -380,7 +396,19 @@ pub fn git_auto_commit(
 }
 
 #[tauri::command]
-pub fn git_file_history(
+pub async fn git_auto_commit(
+    folder: String,
+    file_path: Option<String>,
+    message: Option<String>,
+) -> Result<Option<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        git_auto_commit_inner(folder, file_path, message)
+    })
+    .await
+    .map_err(|e| format!("join: {e}"))?
+}
+
+fn git_file_history_inner(
     folder: String,
     file_path: String,
     limit: u32,
@@ -424,6 +452,19 @@ pub fn git_file_history(
         }
     }
     Ok(out)
+}
+
+#[tauri::command]
+pub async fn git_file_history(
+    folder: String,
+    file_path: String,
+    limit: u32,
+) -> Result<Vec<CommitMeta>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        git_file_history_inner(folder, file_path, limit)
+    })
+    .await
+    .map_err(|e| format!("join: {e}"))?
 }
 
 fn commit_to_meta(commit: &Commit<'_>) -> CommitMeta {
@@ -471,8 +512,7 @@ fn commit_touches_path(repo: &Repository, commit: &Commit<'_>, rel: &str) -> boo
     diff.deltas().len() > 0
 }
 
-#[tauri::command]
-pub fn git_file_diff(
+fn git_file_diff_inner(
     folder: String,
     file_path: String,
     sha: String,
@@ -563,7 +603,19 @@ pub fn git_file_diff(
 }
 
 #[tauri::command]
-pub fn git_file_at_version(
+pub async fn git_file_diff(
+    folder: String,
+    file_path: String,
+    sha: String,
+) -> Result<DiffResult, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        git_file_diff_inner(folder, file_path, sha)
+    })
+    .await
+    .map_err(|e| format!("join: {e}"))?
+}
+
+fn git_file_at_version_inner(
     folder: String,
     file_path: String,
     sha: String,
@@ -588,14 +640,39 @@ pub fn git_file_at_version(
 }
 
 #[tauri::command]
-pub fn git_rollback_file(
+pub async fn git_file_at_version(
+    folder: String,
+    file_path: String,
+    sha: String,
+) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        git_file_at_version_inner(folder, file_path, sha)
+    })
+    .await
+    .map_err(|e| format!("join: {e}"))?
+}
+
+fn git_rollback_file_inner(
     folder: String,
     file_path: String,
     sha: String,
 ) -> Result<(), String> {
-    let content = git_file_at_version(folder.clone(), file_path.clone(), sha)?;
+    let content = git_file_at_version_inner(folder.clone(), file_path.clone(), sha)?;
     fs::write(Path::new(&file_path), content).map_err(|e| format!("write: {}", e))?;
     Ok(())
+}
+
+#[tauri::command]
+pub async fn git_rollback_file(
+    folder: String,
+    file_path: String,
+    sha: String,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        git_rollback_file_inner(folder, file_path, sha)
+    })
+    .await
+    .map_err(|e| format!("join: {e}"))?
 }
 
 // ---------------------------------------------------------------------------
