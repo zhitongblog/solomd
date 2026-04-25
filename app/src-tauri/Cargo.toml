@@ -75,7 +75,16 @@ spellbook = "0.3"              # MIT, no GPL deps; ships with English+Latin supp
 git2 = { version = "0.19", default-features = false, features = ["vendored-libgit2"] }
 
 # v2.0 AI rewrite (F4): provider keys in OS keychain + streaming HTTP
-keyring = "3"                  # cross-platform credential storage
+# keyring v3 ships with NO default backend — without these features it
+# silently falls back to an in-process mock store, which is why keys
+# appeared to "save" but never persisted across sessions and never
+# landed in the real OS Keychain. Enable the real backends explicitly.
+keyring = { version = "3", default-features = false, features = [
+  "apple-native",
+  "windows-native",
+  "sync-secret-service",
+  "crypto-rust",
+] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls"] }
 futures-util = "0.3"           # for stream consumption in ai_proxy
 async-stream = "0.3"           # streaming responses to the frontend
