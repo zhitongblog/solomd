@@ -91,6 +91,13 @@ export function useShortcuts(hooks: Hooks = {}) {
     } else if (k === 'f' && e.shiftKey) {
       e.preventDefault();
       hooks.openGlobalSearch?.();
+    } else if (k === 'f' && !e.shiftKey) {
+      if (settings.viewMode === 'preview' && tabs.activeTab?.language === 'markdown') {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('solomd:preview-search', {
+          detail: { paneId: tiles.focusedPaneId },
+        }));
+      }
     } else if (k === 'b') {
       e.preventDefault();
       settings.toggleFileTree();

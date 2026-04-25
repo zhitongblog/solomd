@@ -7,11 +7,14 @@ import { renderMarkdown, extractImageRoot } from '../lib/markdown';
 import { openImageOverlay, type OverlayStrings } from '../lib/image-overlay';
 import { useI18n } from '../i18n';
 import { useSettingsStore } from '../stores/settings';
+import PreviewSearch from './PreviewSearch.vue';
 
 const props = defineProps<{ source: string; filePath?: string }>();
 const settings = useSettingsStore();
 const { t } = useI18n();
 const host = ref<HTMLDivElement | null>(null);
+const searchOpen = ref(false);
+const searchRef = ref<InstanceType<typeof PreviewSearch> | null>(null);
 
 let mermaidIdSeq = 0;
 
@@ -189,6 +192,11 @@ onBeforeUnmount(() => {
   host.value?.removeEventListener('click', handleLinkClick);
 });
 
+function openSearch() {
+  searchOpen.value = true;
+  nextTick(() => searchRef.value?.focusInput());
+}
+
 /**
  * Scroll the preview pane so the element tagged with `data-source-line="N"`
  * (where N is the nearest line ≤ the requested line) is brought to the top.
@@ -225,11 +233,17 @@ function scrollToLine(line: number) {
   container.scrollTo({ top: offset, behavior: 'smooth' });
 }
 
-defineExpose({ scrollToLine });
+defineExpose({ scrollToLine, openSearch });
 </script>
 
 <template>
   <div class="preview-host">
+    <PreviewSearch
+      v-if="searchOpen && host"
+      ref="searchRef"
+      :container="host"
+      @close="searchOpen = false"
+    />
     <article ref="host" class="preview-content" :class="{ 'preview-content--fit': settings.previewFitWidth }" v-html="html"></article>
   </div>
 </template>
@@ -365,5 +379,16 @@ defineExpose({ scrollToLine });
   overflow-x: auto;
   overflow-y: hidden;
   margin: 1em 0;
+}
+/* Preview search highlights */
+.preview-content .ps-mark {
+  background: rgba(255, 159, 64, 0.3);
+  color: inherit;
+  padding: 1px 0;
+  border-radius: 2px;
+}
+.preview-content .ps-mark--current {
+  background: var(--accent);
+  color: var(--accent-fg, #fff);
 }
 </style>

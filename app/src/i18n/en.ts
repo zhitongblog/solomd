@@ -67,6 +67,8 @@ export const en = {
     outline: 'Outline',
     fileTree: 'File tree',
     search: 'Search',
+    previewSearchPlaceholder: 'Find in preview…',
+    noResults: 'No results',
     edit: 'Edit',
     split: 'Split',
     preview: 'Preview',

@@ -34,10 +34,11 @@ defineProps<{ name: string; size?: number }>();
       <polyline points="7 3 7 8 15 8" />
     </template>
     <template v-else-if="name === 'save-as'">
-      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-      <polyline points="17 21 17 13 7 13 7 21" />
-      <line x1="12" y1="3" x2="12" y2="8" />
-      <polyline points="9 5 12 2 15 5" />
+      <rect x="3" y="3" width="13" height="13" rx="1" />
+      <polyline points="13 3 13 8 5 8" />
+      <rect x="8" y="12" width="13" height="9" rx="1" fill="var(--bg)" stroke="currentColor" />
+      <polyline points="18 12 18 16 11 16" />
+      <line x1="11" y1="19" x2="18" y2="19" />
     </template>
     <template v-else-if="name === 'folder'">
       <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
@@ -64,8 +65,8 @@ defineProps<{ name: string; size?: number }>();
       <line x1="3" y1="18" x2="3.01" y2="18" />
     </template>
     <template v-else-if="name === 'palette'">
-      <circle cx="11" cy="11" r="8" />
-      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      <polyline points="4 17 10 11 4 5" />
+      <line x1="12" y1="19" x2="20" y2="19" />
     </template>
     <template v-else-if="name === 'help'">
       <circle cx="12" cy="12" r="10" />
