@@ -29,6 +29,10 @@ const homeHref = lang === 'zh' ? '/zh/' : '/';
       <a href={lang === 'zh' ? '/zh/docs/' : '/docs/'}>{lang === 'zh' ? '文档' : 'Docs'}</a>
       <a href={lang === 'zh' ? '/zh/blog/' : '/blog/'}>{lang === 'zh' ? '博客' : 'Blog'}</a>
       <a href={homeHref + '#download'}>{tr.nav.download}</a>
+      <a href={homeHref + '#sponsor'} class="header__sponsor" title={lang === 'zh' ? '支持开发者' : 'Support the developer'}>
+        <span class="header__sponsor-heart">♥</span>
+        {lang === 'zh' ? '赞助' : 'Sponsor'}
+      </a>
       <a href="https://github.com/zhitongblog/solomd" target="_blank" rel="noopener">
         {tr.nav.github}
       </a>
@@ -110,8 +114,30 @@ const homeHref = lang === 'zh' ? '/zh/' : '/';
     border-color: var(--accent);
     color: var(--accent) !important;
   }
+  .header__sponsor {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    border-radius: 999px;
+    padding: 4px 12px;
+    font-size: 12px !important;
+    color: var(--accent) !important;
+    font-weight: 600;
+    transition: all 0.15s;
+  }
+  .header__sponsor:hover {
+    background: color-mix(in srgb, var(--accent) 22%, transparent);
+    border-color: var(--accent);
+  }
+  .header__sponsor-heart {
+    color: #ff5a78;
+    font-size: 13px;
+    line-height: 1;
+  }
   @media (max-width: 720px) {
-    .header__nav a:not(.header__lang):not([href*='github']) {
+    .header__nav a:not(.header__lang):not(.header__sponsor):not([href*='github']) {
       display: none;
     }
   }
