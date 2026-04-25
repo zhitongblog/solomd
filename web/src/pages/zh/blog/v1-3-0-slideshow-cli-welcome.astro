@@ -1,0 +1,120 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import Header from '../../../components/Header.astro';
+import Footer from '../../../components/Footer.astro';
+
+const lang = 'zh' as const;
+---
+
+<Layout
+  title="SoloMD v1.3.0 — 演讲模式、欢迎教程和 CLI"
+  description="SoloMD 1.3.0 更新内容：把 Markdown 当 PPT 演讲、首次启动的引导教程、solomd 命令行工具、Prettier 格式化、段落级专注模式。"
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <article class="container blog-article">
+      <nav class="breadcrumbs">
+        <a href="/zh/">首页</a> / <a href="/zh/blog/">博客</a> / <span>v1.3.0</span>
+      </nav>
+      <time>2026-04-25</time>
+      <h1>v1.3.0 — 演讲模式、欢迎教程、CLI</h1>
+      <p class="lead">
+        1.0 之后最大的一次更新。我们把市面上能找到的 Markdown 编辑器都看了一遍，挑出 7 个值得借鉴的点，一次性全做了。
+      </p>
+
+      <h2>🎤 演讲模式（<code>⌘⌥P</code>）</h2>
+      <p>
+        在任何 Markdown 文档上按 <kbd>Cmd+Alt+P</kbd>，SoloMD 会开一个新全屏窗口把它当幻灯片渲染。只包含 <code>---</code> 的行是分页符。文档顶部的 front matter 会被忽略 —— 不会变成空白的第一页。
+      </p>
+      <p>
+        导航：<kbd>←</kbd> <kbd>→</kbd>、<kbd>空格</kbd>、<kbd>PageUp</kbd>/<kbd>PageDown</kbd>，Vim 的 <kbd>h j k l</kbd>，鼠标点击都行。<kbd>F</kbd> 切全屏，<kbd>?</kbd> 显示快捷键，<kbd>Esc</kbd> 退出。代码块、KaTeX 公式、Mermaid 图表全部能在幻灯片里渲染，跟普通预览一致。
+      </p>
+
+      <h2>👋 欢迎教程</h2>
+      <p>
+        新用户首次启动时自动打开 4 个内存中的教程标签页 —— 欢迎 / Markdown 语法 / 演讲模式 / 快捷键 —— 跟随系统语言（中文或英文）。教程跑过一次就不会再触发。任何时候都可以从命令面板（<kbd>Ctrl+K</kbd>）的 <strong>Open Welcome Tour</strong> 重新打开。
+      </p>
+      <p>
+        这些标签页只在内存里，不写磁盘，关掉零成本。
+      </p>
+
+      <h2>💻 <code>solomd</code> 命令行工具</h2>
+      <p>
+        命令行用户的福音。一行装：
+      </p>
+      <pre><code>curl -fsSL https://raw.githubusercontent.com/zhitongblog/solomd/main/scripts/install-cli.sh | bash</code></pre>
+      <p>然后：</p>
+      <pre><code>solomd new "daily-2026-04-25"   # 新建并打开
+solomd open ./会议笔记.md          # 打开现有文档
+solomd list                      # 列出 $SOLOMD_NOTES 内的笔记
+solomd search "重要"               # 跨笔记 ripgrep 搜索
+solomd cat readme               # 直接打印到终端</code></pre>
+      <p>
+        默认笔记目录是 <code>~/Documents/SoloMD</code>，用 <code>SOLOMD_NOTES</code> 环境变量改。不带路径的 title 自动解析为 <code>$SOLOMD_NOTES/&lt;title&gt;.md</code>；带 <code>/</code> 或后缀的按路径处理。
+      </p>
+
+      <h2>🪄 Markdown 格式化（<code>⌘⌥L</code>）</h2>
+      <p>
+        Prettier + markdown 插件规范列表、表格、空格。Front matter 完整保留 —— Prettier 不懂 YAML，我们也不假装它懂。
+      </p>
+
+      <h2>🎯 专注模式 → 段落级</h2>
+      <p>
+        专注模式以前只把当前光标行高亮，其余行变暗。现在按 <em>段落</em> 高亮 —— 你能看清刚写完的整段，不用瞄那些半淡的邻居。长文写作明显更舒服。
+      </p>
+
+      <h2>🔍 预览模式查找（<code>⌘F</code>）</h2>
+      <p>
+        感谢 <a href="https://github.com/beihai23" rel="external">@beihai23</a> 的
+        <a href="https://github.com/zhitongblog/solomd/pull/21" rel="external">PR #21</a>：预览模式下按 <kbd>Ctrl+F</kbd> 在渲染后的 HTML 里查找，匹配高亮 + Enter / Shift+Enter 上下导航。同 PR 还顺带优化了一组工具栏图标 —— 另存为图标、命令面板图标都跟搜索图标做了区分；预览模式下不可用的「专注 / 打字机 / 拼写检查」按钮自动变灰。
+      </p>
+
+      <h2>📚 帮助对话框新增「快捷键」「CLI」标签</h2>
+      <p>
+        按 <kbd>F1</kbd> 或 <kbd>Ctrl+/</kbd>。原本只有 Markdown 速查，现在加上完整的快捷键映射和 CLI 用法，都是中英双语 + 点击即复制。再也不用翻 README 找绑定。
+      </p>
+
+      <h2>🇨🇳 CJK 写作字体</h2>
+      <p>
+        设置 → 字体 里多了三个：<strong>霞鹜文楷 LXGW WenKai</strong>、<strong>霞鹜新晨宋 LXGW Bright</strong>、<strong>仓耳今楷 TsangerJinKai</strong>。都是开源 CJK 字体，适合长文阅读。我们没打包它们（一打包安装包就从 15&nbsp;MB 涨到 35+&nbsp;MB），自行安装即可，缺字体会自动回退到 PingFang。
+      </p>
+      <p>
+        macOS 上：
+      </p>
+      <pre><code>brew install --cask font-lxgw-wenkai</code></pre>
+
+      <h2>下一步</h2>
+      <p>
+        演讲模式的 speaker notes（主屏显示下一页预览），首页占位 SVG 替换成真实演示视频，等证书问题解决后重新提交 Mac App Store。
+      </p>
+
+      <p>
+        <a class="btn btn--primary" href="https://github.com/zhitongblog/solomd/releases/tag/v1.3.0">下载 v1.3.0 →</a>
+        &nbsp;
+        <a class="btn" href="https://github.com/zhitongblog/solomd/releases/tag/v1.3.0">完整 release notes</a>
+      </p>
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .blog-article { max-width: 760px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .blog-article time { font-size: 13px; color: var(--text-muted, #888); }
+  .blog-article h1 { font-size: 2.2rem; line-height: 1.2; margin: 8px 0 18px; }
+  .blog-article h2 { font-size: 1.4rem; margin: 36px 0 12px; }
+  .blog-article .lead { color: var(--text-muted, #555); font-size: 1.1rem; line-height: 1.6; margin-bottom: 28px; }
+  .blog-article p { line-height: 1.75; margin: 14px 0; }
+  .blog-article ul { padding-left: 22px; }
+  .blog-article li { margin: 6px 0; line-height: 1.7; }
+  .blog-article code { background: #f5f5f0; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+  .blog-article pre { background: #1a1a1a; color: #eee; padding: 14px 16px; border-radius: 8px; overflow-x: auto; font-size: 13px; line-height: 1.6; }
+  .blog-article pre code { background: transparent; padding: 0; color: inherit; }
+  .blog-article a { color: #ff9f40; }
+  .blog-article kbd { background: #f5f5f0; border: 1px solid #ddd; border-radius: 3px; padding: 1px 6px; font-family: ui-monospace, Menlo, monospace; font-size: 0.85em; }
+  .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  .btn--primary { background: #ff9f40; color: #000 !important; }
+</style>

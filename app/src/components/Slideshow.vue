@@ -47,19 +47,52 @@ function prev() {
 function first() { idx.value = 0; }
 function last() { idx.value = total.value - 1; }
 
+/**
+ * Toggle fullscreen using Tauri's window API first, then fall back to
+ * the HTML5 Fullscreen API. On Windows the Tauri setter sometimes needs a
+ * user gesture to take effect; the HTML5 path works because `F` is one.
+ */
 async function toggleFullscreen() {
+  // Try Tauri first.
+  let usedTauri = false;
   try {
     const win = getCurrentWindow();
     const isFs = await win.isFullscreen();
     await win.setFullscreen(!isFs);
+    usedTauri = true;
+    // Verify it actually changed (Windows can silently no-op).
+    await new Promise((r) => setTimeout(r, 50));
+    if ((await win.isFullscreen()) === isFs) {
+      usedTauri = false; // didn't change → fall through to HTML5
+    }
   } catch {}
+  if (usedTauri) return;
+  // HTML5 fallback (works in WebView2 + WKWebView).
+  try {
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+    } else {
+      await document.documentElement.requestFullscreen();
+    }
+  } catch (e) {
+    console.warn('fullscreen toggle failed', e);
+  }
 }
 
 async function exitShow() {
   try {
     const win = getCurrentWindow();
+    // macOS fullscreen needs to be exited before close, otherwise the
+    // close request races the fullscreen-out animation and can hang.
+    if (await win.isFullscreen()) {
+      await win.setFullscreen(false);
+      // Wait for the OS-level fullscreen-out animation to finish.
+      await new Promise((r) => setTimeout(r, 350));
+    }
     await win.close();
-  } catch {}
+  } catch (e) {
+    console.warn('slideshow exit failed', e);
+  }
 }
 
 function onKey(e: KeyboardEvent) {
@@ -106,9 +139,12 @@ onMounted(async () => {
   source.value = source.value.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '');
   document.title = `${title.value} — SoloMD Slideshow`;
   window.addEventListener('keydown', onKey);
-  // Try to enter fullscreen on launch (best-effort, may be denied).
+  // Try to enter fullscreen on launch via Tauri. On Windows this can
+  // silently fail without a user gesture — the HUD shows "F to fullscreen"
+  // so the user can press F to use the HTML5 fallback path.
   try {
     const win = getCurrentWindow();
+    await new Promise((r) => setTimeout(r, 100)); // let window settle
     await win.setFullscreen(true);
   } catch {}
 });
@@ -125,7 +161,7 @@ onBeforeUnmount(() => {
     </div>
     <div class="slide__hud" @click.stop>
       <span class="slide__pos">{{ idx + 1 }} / {{ total }}</span>
-      <span class="slide__hint">← → to navigate · F fullscreen · ? help · Esc exit</span>
+      <span class="slide__hint">F fullscreen · ? help · Esc exit</span>
     </div>
     <div v-if="showHelp" class="slide__help" @click.stop="showHelp = false">
       <div class="slide__help-card">
@@ -251,9 +287,9 @@ onBeforeUnmount(() => {
   color: rgba(255, 255, 255, 0.7);
 }
 .slide__hint {
-  display: none;
+  display: inline;
+  font-size: 11px;
 }
-.slide__hud:hover .slide__hint { display: inline; }
 .slide__help {
   position: fixed;
   inset: 0;

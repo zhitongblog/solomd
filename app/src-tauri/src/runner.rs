@@ -350,10 +350,18 @@ pub fn run_with(initial_file: Option<String>) {
     app.run(|app_handle, event| {
         match &event {
             // ---- Window close: intercept and ask frontend ----
+            // Only the main window gets the unsaved-tabs check. Auxiliary
+            // windows (slideshow, "open file in new window" spawns labelled
+            // `solomd-…`) close directly, otherwise their close event would
+            // trigger the main window's listener and shut down the editor.
             RunEvent::WindowEvent {
                 event: tauri::WindowEvent::CloseRequested { api, .. },
+                label,
                 ..
             } => {
+                if label != "main" {
+                    return; // let the auxiliary window close itself
+                }
                 if FORCE_CLOSE.load(Ordering::Relaxed) {
                     // Frontend confirmed — let the close proceed.
                     return;

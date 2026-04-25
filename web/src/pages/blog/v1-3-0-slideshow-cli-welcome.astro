@@ -1,0 +1,169 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+
+const lang = 'en' as const;
+---
+
+<Layout
+  title="SoloMD v1.3.0 — Slideshow, Welcome Tour & CLI"
+  description="What shipped in SoloMD 1.3.0: present markdown as fullscreen slides, a guided first-launch experience, a `solomd` CLI tool, Prettier-powered formatting, and paragraph-level focus mode."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <article class="container blog-article">
+      <nav class="breadcrumbs">
+        <a href="/">Home</a> / <a href="/blog/">Blog</a> / <span>v1.3.0</span>
+      </nav>
+      <time>2026-04-25</time>
+      <h1>v1.3.0 — Slideshow, Welcome Tour & CLI</h1>
+      <p class="lead">
+        The biggest single drop since 1.0. We surveyed every Markdown editor
+        we could find for ideas worth borrowing, picked seven, and shipped
+        them in one cut.
+      </p>
+
+      <h2>🎤 Slideshow mode (<code>⌘⌥P</code>)</h2>
+      <p>
+        Press <kbd>Cmd+Alt+P</kbd> on any markdown doc and SoloMD opens a new
+        fullscreen window that renders it as slides. Lines containing only
+        <code>---</code> are slide breaks. Front matter is ignored — it doesn't
+        become a blank slide.
+      </p>
+      <p>
+        Navigate with <kbd>←</kbd> <kbd>→</kbd>, <kbd>Space</kbd>, <kbd>PageUp</kbd>/<kbd>PageDown</kbd>,
+        Vim's <kbd>h j k l</kbd>, or just click. <kbd>F</kbd> toggles fullscreen, <kbd>?</kbd> shows shortcuts,
+        <kbd>Esc</kbd> exits. Code blocks keep syntax highlighting, KaTeX math
+        renders, Mermaid diagrams render. Everything from the editor preview
+        works in slides — no feature regression at the cost of "it looks like
+        slides now."
+      </p>
+      <p>
+        Implementation note: rather than bolt reveal.js onto the main app, we
+        added a separate route (<code>/?slideshow=1</code>) that mounts a tiny
+        <code>Slideshow.vue</code> component with its own keyboard map. Content
+        gets passed through localStorage so any future feature like
+        speaker-mode notes can layer on without touching the editor's state
+        machine.
+      </p>
+
+      <h2>👋 Welcome Tour</h2>
+      <p>
+        First-time users now land on four in-memory tutorial tabs — Welcome /
+        Markdown syntax / Slideshow / Shortcuts — in their system language
+        (English or 中文). The tour is opt-out: we mark a flag the first time
+        it runs and never repeat. You can also reopen it any time via
+        <strong>Open Welcome Tour</strong> in the command palette.
+      </p>
+      <p>
+        These tabs are in-memory only. They don't write to disk unless you
+        <kbd>Save As</kbd>, so closing them costs nothing.
+      </p>
+
+      <h2>💻 The <code>solomd</code> CLI</h2>
+      <p>
+        For terminal-first workflows. Install with one line:
+      </p>
+      <pre><code>curl -fsSL https://raw.githubusercontent.com/zhitongblog/solomd/main/scripts/install-cli.sh | bash</code></pre>
+      <p>Then:</p>
+      <pre><code>solomd new "daily-2026-04-25"   # create + open in SoloMD
+solomd open ./meeting-notes.md   # open existing file
+solomd list                      # list notes in $SOLOMD_NOTES
+solomd search "P0 bug"           # ripgrep across notes
+solomd cat readme               # print to stdout</code></pre>
+      <p>
+        The default notes directory is <code>~/Documents/SoloMD</code> — point
+        elsewhere with <code>SOLOMD_NOTES</code>. Bare titles auto-resolve to
+        <code>$SOLOMD_NOTES/&lt;title&gt;.md</code>; anything with
+        a <code>/</code> or extension is treated as a path.
+      </p>
+
+      <h2>🪄 Format Markdown (<code>⌘⌥L</code>)</h2>
+      <p>
+        Prettier with the markdown plugin reformats lists, tables, and
+        spacing. Front matter is preserved verbatim — Prettier's parser
+        doesn't understand YAML and we don't pretend it does.
+      </p>
+
+      <h2>🎯 Focus mode → paragraph-level</h2>
+      <p>
+        Focus mode used to dim every line except the cursor's. Now it
+        dims every <em>paragraph</em> except the one your cursor is in.
+        For long-form writing this is dramatically easier on the eyes —
+        you can actually see the sentence you just wrote without
+        squinting at faded neighbours.
+      </p>
+
+      <h2>🔍 Find in Preview (<code>⌘F</code>)</h2>
+      <p>
+        Thanks <a href="https://github.com/beihai23" rel="external">@beihai23</a>
+        for <a href="https://github.com/zhitongblog/solomd/pull/21" rel="external">PR #21</a>:
+        <kbd>Ctrl+F</kbd> in Preview mode now searches the rendered HTML with
+        highlight + Enter / Shift+Enter navigation. Some other touch-ups in
+        that PR — disambiguated <em>Save As</em> icon, command-palette icon
+        moved away from the search magnifier, and Focus / Typewriter / Spell
+        Check buttons now correctly grey out in Preview mode where they
+        don't apply.
+      </p>
+
+      <h2>📚 In-app help got Shortcuts and CLI tabs</h2>
+      <p>
+        Press <kbd>F1</kbd> or <kbd>Ctrl+/</kbd>. The Markdown cheatsheet
+        is now joined by a full keyboard map and a CLI usage reference,
+        both bilingual and click-to-copy. No more digging through
+        the README to find a binding.
+      </p>
+
+      <h2>🇨🇳 CJK writing fonts</h2>
+      <p>
+        Three new options in <strong>Settings → Font Family</strong>:
+        LXGW WenKai 霞鹜文楷, LXGW Bright 霞鹜新晨宋, and TsangerJinKai
+        仓耳今楷. All are open-source CJK faces designed for long-form
+        reading. We don't bundle them (would have grown the installer
+        from 15&nbsp;MB to 35+&nbsp;MB) — install separately and SoloMD
+        falls back gracefully if a face is missing.
+      </p>
+      <p>
+        On macOS:
+      </p>
+      <pre><code>brew install --cask font-lxgw-wenkai</code></pre>
+
+      <h2>What's next</h2>
+      <p>
+        Speaker-mode notes for slideshow (current monitor shows next-slide
+        preview), a real demo GIF on the homepage replacing the
+        placeholder, and the Mac App Store resubmission once the
+        certificate situation clears.
+      </p>
+
+      <p>
+        <a class="btn btn--primary" href="https://github.com/zhitongblog/solomd/releases/tag/v1.3.0">Download v1.3.0 →</a>
+        &nbsp;
+        <a class="btn" href="https://github.com/zhitongblog/solomd/releases/tag/v1.3.0">Full release notes</a>
+      </p>
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .blog-article { max-width: 760px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .blog-article time { font-size: 13px; color: var(--text-muted, #888); }
+  .blog-article h1 { font-size: 2.2rem; line-height: 1.2; margin: 8px 0 18px; }
+  .blog-article h2 { font-size: 1.4rem; margin: 36px 0 12px; }
+  .blog-article .lead { color: var(--text-muted, #555); font-size: 1.1rem; line-height: 1.6; margin-bottom: 28px; }
+  .blog-article p { line-height: 1.75; margin: 14px 0; }
+  .blog-article ul { padding-left: 22px; }
+  .blog-article li { margin: 6px 0; line-height: 1.7; }
+  .blog-article code { background: #f5f5f0; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+  .blog-article pre { background: #1a1a1a; color: #eee; padding: 14px 16px; border-radius: 8px; overflow-x: auto; font-size: 13px; line-height: 1.6; }
+  .blog-article pre code { background: transparent; padding: 0; color: inherit; }
+  .blog-article a { color: #ff9f40; }
+  .blog-article kbd { background: #f5f5f0; border: 1px solid #ddd; border-radius: 3px; padding: 1px 6px; font-family: ui-monospace, Menlo, monospace; font-size: 0.85em; }
+  .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  .btn--primary { background: #ff9f40; color: #000 !important; }
+</style>
