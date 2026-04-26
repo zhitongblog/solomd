@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import Icon from './Icons.vue';
+import PomodoroPopover from './PomodoroPopover.vue';
 import { useTabsStore } from '../stores/tabs';
 import { useSettingsStore } from '../stores/settings';
 import { useWorkspaceStore } from '../stores/workspace';
@@ -95,6 +96,13 @@ const exportOpen = ref(false);
 const newOpen = ref(false);
 const copyOpen = ref(false);
 const insertOpen = ref(false);
+const pomoOpen = ref(false);
+
+function togglePomo() {
+  // Mirror the same exclusive-open behaviour as the other dropdowns.
+  closeAllDropdowns();
+  pomoOpen.value = !pomoOpen.value;
+}
 
 function dispatchInsert(snippet: string) {
   window.dispatchEvent(
@@ -118,6 +126,7 @@ function closeAllDropdowns() {
   exportOpen.value = false;
   copyOpen.value = false;
   insertOpen.value = false;
+  pomoOpen.value = false;
 }
 // Exclusive open: opening one dropdown closes others.
 function toggleDropdown(name: 'new' | 'recent' | 'export' | 'copy' | 'insert') {
@@ -445,15 +454,28 @@ onBeforeUnmount(() => {
     <span v-if="isMarkdown" class="toolbar__divider"></span>
 
     <div class="toolbar__group">
-      <button
-        class="icon-btn"
-        :disabled="settings.viewMode === 'preview'"
-        @click="settings.toggleFocusMode"
-        :class="{ active: settings.focusMode }"
-        :title="t('toolbar.focusModeTooltip')"
-      >
-        <Icon name="focus" />
-      </button>
+      <div class="dropdown focus-with-pomo">
+        <button
+          class="icon-btn"
+          :disabled="settings.viewMode === 'preview'"
+          @click="settings.toggleFocusMode"
+          :class="{ active: settings.focusMode }"
+          :title="t('toolbar.focusModeTooltip')"
+        >
+          <Icon name="focus" />
+        </button>
+        <button
+          v-if="settings.pomodoroShowControls"
+          class="icon-btn pomo-chevron"
+          @click="togglePomo"
+          :title="t('pomodoro.openMenu')"
+          aria-haspopup="dialog"
+          :aria-expanded="pomoOpen"
+        >
+          <Icon name="chevron-down" :size="10" />
+        </button>
+        <PomodoroPopover :open="pomoOpen" @close="pomoOpen = false" />
+      </div>
       <button
         class="icon-btn"
         :disabled="settings.viewMode === 'preview'"
@@ -658,6 +680,16 @@ onBeforeUnmount(() => {
 .dropdown {
   position: relative;
 }
+.focus-with-pomo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+}
+.pomo-chevron {
+  padding: 5px 4px !important;
+  color: var(--text-faint);
+}
+.pomo-chevron:hover { color: var(--text); }
 .dropdown__menu {
   position: absolute;
   top: calc(100% + 4px);

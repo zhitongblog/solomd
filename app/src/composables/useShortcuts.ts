@@ -6,6 +6,7 @@ import { useTabsStore } from '../stores/tabs';
 import { useTilesStore } from '../stores/tiles';
 import { useCommands } from './useCommands';
 import { useInbox } from './useInbox';
+import { usePomodoroStore, getLastPreset } from '../stores/pomodoro';
 
 interface Hooks {
   openPalette?: () => void;
@@ -24,6 +25,7 @@ export function useShortcuts(hooks: Hooks = {}) {
   const tiles = useTilesStore();
   const commands = useCommands();
   const inbox = useInbox();
+  const pomodoro = usePomodoroStore();
 
   function runById(id: string) {
     const cmd = commands.find((c) => c.id === id);
@@ -135,6 +137,17 @@ export function useShortcuts(hooks: Hooks = {}) {
       // v2.4: ⌘E toggles `inbox: true|false` in the active doc's front matter.
       e.preventDefault();
       inbox.toggleActive();
+    } else if (k === 'z' && e.shiftKey && !e.altKey) {
+      // v2.5 F4: ⌘⇧Z = "Zen" — start the last-used preset (or the
+      // settings default if no last-used). If a session is already
+      // running this is a no-op so the shortcut doesn't accidentally
+      // restart and lose the in-progress writing window.
+      e.preventDefault();
+      if (!pomodoro.active) {
+        const last = getLastPreset();
+        const min = Number.isFinite(last) && last > 0 ? last : settings.pomodoroDefaultMinutes;
+        pomodoro.start(min, { notify: true });
+      }
     }
 
     // Tile layout shortcuts

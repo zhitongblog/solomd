@@ -7,12 +7,15 @@ import { cjkWordCount } from '../lib/chinese';
 import { useInbox } from '../composables/useInbox';
 import { useI18n } from '../i18n';
 import WritingGoals from './WritingGoals.vue';
+import PomodoroPill from './PomodoroPill.vue';
+import { usePomodoroStore } from '../stores/pomodoro';
 
 const props = defineProps<{ line: number; col: number }>();
 const tabs = useTabsStore();
 const settings = useSettingsStore();
 const writingSession = useWritingSessionStore();
 const inbox = useInbox();
+const pomodoro = usePomodoroStore();
 const { t } = useI18n();
 
 const stats = computed(() => {
@@ -69,6 +72,7 @@ function onPillClick() {
         })
       }}
     </span>
+    <PomodoroPill v-if="pomodoro.active" />
     <button
       v-if="inbox.activeIsInbox.value"
       class="seg seg--inbox"

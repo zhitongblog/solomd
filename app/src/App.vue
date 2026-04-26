@@ -28,6 +28,7 @@ import Toast from './components/Toast.vue';
 import { useTabsStore } from './stores/tabs';
 import { useSettingsStore } from './stores/settings';
 import { useTilesStore } from './stores/tiles';
+import { usePomodoroStore } from './stores/pomodoro';
 import { useFiles } from './composables/useFiles';
 import { useExport } from './composables/useExport';
 import { useShortcuts } from './composables/useShortcuts';
@@ -50,6 +51,16 @@ const workspaceIndex = useWorkspaceIndexStore();
 const rag = useRagStore();
 const autoCommit = useAutoCommit();
 autoCommit.start();
+// v2.5 F4: pick up an in-progress focus session from before the reload.
+// Fire-and-forget — the store handles the (rare) "session already past
+// its end" case by short-circuiting into the completion path.
+const pomodoro = usePomodoroStore();
+pomodoro.rehydrate();
+// Expose to the dev-bridge so the self-test harness can drive the store
+// directly via window.usePomodoroStore() instead of fishing it out of
+// Pinia internals. Dev-only convenience — release builds ignore the
+// extra hook.
+(window as any).usePomodoroStore = usePomodoroStore;
 const { t } = useI18n();
 
 const cursorLine = ref(1);
