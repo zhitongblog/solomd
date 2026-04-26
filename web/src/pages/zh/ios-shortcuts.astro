@@ -1,0 +1,147 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+
+const lang = 'zh' as const;
+---
+
+<Layout
+  title="SoloMD 在 iOS 上 — 用 Apple 快捷指令从任何地方采集"
+  description="三个一键搭建的 Apple Shortcuts 配方,通过 Wi-Fi 把笔记从 iPhone/iPad 直接发送到桌面端 SoloMD —— 快速记录、追加到今天的日记、Safari 分享剪藏。iOS 15+,无第三方服务器,无需签名应用。"
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <article class="container shortcuts">
+      <nav class="breadcrumbs">
+        <a href="/zh/">首页</a> / <span>iOS 快捷指令</span>
+      </nav>
+      <h1>iOS 快捷指令配方</h1>
+      <p class="lead">
+        三个一键搭建的 Apple Shortcuts 配方,通过你的局域网把笔记从 iPhone /
+        iPad 直接发送到桌面端 SoloMD —— 不走云、不绕第三方、不依赖签名扩展。
+        v2.4 上线了接收端;这个页面是发送端。
+      </p>
+
+      <section class="callout">
+        <strong>状态:</strong> 当前是手工搭建配方。带二维码的 iCloud 一键
+        共享链接会在 Apple 那边的 URL Scheme 复审通过后陆续上来 —— 手工搭建路
+        径永远不会失效,iCloud 链接只是可选的便利层。
+      </section>
+
+      <h2>开始之前(只配一次)</h2>
+      <ol>
+        <li>桌面打开 <strong>SoloMD</strong>(Mac / Windows / Linux 都行)。</li>
+        <li>进入 <strong>设置 → 采集端点 (Capture endpoint)</strong>。</li>
+        <li>开启 <strong>启用</strong>,勾上 <strong>允许局域网访问</strong>。</li>
+        <li>复制 bearer token。看一下电脑的局域网 IP(macOS 系统设置 → 网络)。</li>
+        <li>确保手机和电脑在同一个 Wi-Fi。</li>
+      </ol>
+      <p>
+        配对就这样。Token 永远只在你这两台设备之间 —— 配方里存一次,后面每
+        次跑都用同一个。
+      </p>
+
+      <h2>配方 1 — 快速记录</h2>
+      <p>
+        敲一行想法,运行,直接进 SoloMD 收件箱。加到 <strong>共享菜单</strong>
+        以后,在 Safari、邮件、消息里选中文字一键就能存。
+      </p>
+      <ol class="steps">
+        <li><strong>询问输入</strong> —— 文本,提示 <code>记到收件箱</code>。</li>
+        <li>
+          <strong>获取 URL 内容</strong>
+          <ul>
+            <li>URL: <code>http://你的局域网IP:7777/capture</code></li>
+            <li>方法: <code>POST</code></li>
+            <li>请求头: <code>Authorization: Bearer 你的TOKEN</code> 和 <code>Content-Type: application/json</code></li>
+            <li>请求正文(JSON):
+              <ul>
+                <li><code>body</code> → <em>提供的输入</em></li>
+                <li><code>title</code> → <code>快速记录 &lt;当前日期&gt;</code></li>
+                <li><code>inbox</code> → <em>true</em></li>
+              </ul>
+            </li>
+          </ul>
+        </li>
+        <li><strong>显示通知</strong> 成功/失败结果。</li>
+      </ol>
+
+      <h2>配方 2 — 追加到今天的日记</h2>
+      <p>
+        避免每个想法都新生成一个文件。用 v2.4 新加的 <code>append_path</code>
+        模式 —— 如果今天的日记还没有,接收端自动创建;有的话就在末尾加一空行
+        + 新内容。
+      </p>
+      <ol class="steps">
+        <li><strong>询问输入</strong>。</li>
+        <li><strong>格式化日期</strong>为 <code>yyyy-MM-dd</code>。</li>
+        <li>
+          <strong>获取 URL 内容</strong>,正文:
+          <ul>
+            <li><code>body</code> → <code>\n- {提供的输入}</code></li>
+            <li><code>append_path</code> → <code>daily/{格式化日期}.md</code></li>
+          </ul>
+        </li>
+      </ol>
+
+      <h2>配方 3 — 通过共享菜单剪藏 Safari URL</h2>
+      <p>
+        什么都不选 —— 在 Safari 页面上 <strong>分享 → SoloMD: 剪藏 URL</strong>
+        即可。iOS 自己抽出正文、转成 markdown、补上 YAML front matter、
+        POST 到收件箱。
+      </p>
+      <ol class="steps">
+        <li><strong>获取网页内容</strong>(输入: URL)。</li>
+        <li><strong>从 HTML 制作富文本</strong>。</li>
+        <li><strong>从富文本制作 Markdown</strong>。</li>
+        <li><strong>获取网页详细信息</strong>:URL 和标题。</li>
+        <li>用 <strong>文本</strong>组装 YAML front matter + markdown 正文。</li>
+        <li><strong>获取 URL 内容</strong>,这段文本当 <code>body</code>。</li>
+      </ol>
+      <p>
+        对带代码块的技术文章,iOS 这套转换不太干净 —— 桌面浏览器
+        <a href="https://github.com/zhitongblog/solomd/releases/latest">web clipper 扩展</a>
+        用 Mozilla Readability + turndown 转出来效果更好。iOS 这套配方做博文、
+        新闻、菜谱足够好。
+      </p>
+
+      <h2>隐私</h2>
+      <p>
+        每个 Shortcut 只跟你输入的那一个 URL 通信 —— 无第三方服务器、无
+        telemetry、不绕 Apple 中转。Token 授权一台桌面 SoloMD;
+        在同一局域网里能猜中你 32 位 hex token 的人才能往你工作区写东西。
+        在不可信 Wi-Fi 环境下顺手在 设置 → 采集端点 重新生成 token 即可。
+      </p>
+      <p>
+        完整协议在 <a href="/zh/security/#capture">/zh/security § 采集</a>。
+      </p>
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .shortcuts { max-width: 760px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .shortcuts h1 { font-size: 2.2rem; line-height: 1.2; margin: 8px 0 18px; }
+  .shortcuts h2 { font-size: 1.4rem; margin: 36px 0 12px; }
+  .shortcuts .lead { color: var(--text-muted, #555); font-size: 1.1rem; line-height: 1.6; margin-bottom: 28px; }
+  .shortcuts p { line-height: 1.75; margin: 14px 0; }
+  .shortcuts ul, .shortcuts ol { padding-left: 22px; }
+  .shortcuts li { margin: 6px 0; line-height: 1.7; }
+  .shortcuts code { background: #f5f5f0; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+  .shortcuts a { color: #ff9f40; }
+  .callout {
+    background: #fff8ee;
+    border-left: 3px solid #ff9f40;
+    padding: 14px 18px;
+    border-radius: 0 6px 6px 0;
+    margin: 24px 0;
+    font-size: 14px;
+  }
+  .steps li { margin: 12px 0; }
+  .steps ul { margin-top: 6px; }
+</style>

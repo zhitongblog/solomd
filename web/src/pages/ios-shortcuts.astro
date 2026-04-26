@@ -1,0 +1,156 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+
+const lang = 'en' as const;
+---
+
+<Layout
+  title="SoloMD on iOS — Shortcuts presets for capture from anywhere"
+  description="Three Apple Shortcuts that hit the SoloMD desktop capture endpoint over your LAN — quick capture, append-to-daily, and Safari-share clip. iOS 15+, no third-party servers, no signed apps required."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <article class="container shortcuts">
+      <nav class="breadcrumbs">
+        <a href="/">Home</a> / <span>iOS Shortcuts</span>
+      </nav>
+      <h1>iOS Shortcuts for SoloMD</h1>
+      <p class="lead">
+        Three ready-to-build Shortcuts that send notes from your iPhone or iPad
+        to the SoloMD desktop app on your laptop, over your local Wi-Fi —
+        no cloud account, no third-party server, no signed extension.
+        v2.4 ships the receiver; this page is the sender.
+      </p>
+
+      <section class="callout">
+        <strong>Status:</strong> hand-build recipes today. iCloud share links
+        with QR codes will appear here once Apple's signed-shortcut review
+        completes (the URLs you'd paste below get reviewed for URL-scheme
+        misuse). The hand-build path is permanent and never breaks; the
+        iCloud links are an optional convenience layer.
+      </section>
+
+      <h2>Before you start (one-time setup)</h2>
+      <ol>
+        <li>Open <strong>SoloMD</strong> on your Mac/Windows/Linux.</li>
+        <li>Go to <strong>Settings → Capture endpoint</strong>.</li>
+        <li>Toggle <strong>Enable</strong> on. Tick <strong>Allow LAN access</strong>.</li>
+        <li>Copy the bearer token. Note your computer's LAN IP
+            (System Settings → Network on macOS).</li>
+        <li>Make sure your phone is on the same Wi-Fi.</li>
+      </ol>
+      <p>
+        That's the entire pairing. The token never leaves your devices —
+        it's stored once in the Shortcut and reused on every run.
+      </p>
+
+      <h2>Recipe 1 — Quick capture</h2>
+      <p>
+        Type a thought, hit Run, it lands in your SoloMD inbox.
+        Add to the Share Sheet so highlighted text from any app
+        (Safari, Mail, Messages) triggers a one-tap save.
+      </p>
+      <ol class="steps">
+        <li><strong>Ask for Input</strong> — Text, prompt <code>Capture to inbox</code>.</li>
+        <li>
+          <strong>Get Contents of URL</strong>
+          <ul>
+            <li>URL: <code>http://YOUR-LAN-IP:7777/capture</code></li>
+            <li>Method: <code>POST</code></li>
+            <li>Headers: <code>Authorization: Bearer YOUR-TOKEN</code> and <code>Content-Type: application/json</code></li>
+            <li>Request body (JSON):
+              <ul>
+                <li><code>body</code> → <em>Provided Input</em></li>
+                <li><code>title</code> → <code>Quick capture &lt;Current Date&gt;</code></li>
+                <li><code>inbox</code> → <em>true</em></li>
+              </ul>
+            </li>
+          </ul>
+        </li>
+        <li><strong>Show Notification</strong> on success / failure.</li>
+      </ol>
+
+      <h2>Recipe 2 — Append to today's daily note</h2>
+      <p>
+        Avoids accumulating a new file per thought. Uses v2.4's new
+        <code>append_path</code> mode — if today's daily note doesn't
+        exist, the endpoint creates it; otherwise it appends with a
+        leading newline.
+      </p>
+      <ol class="steps">
+        <li><strong>Ask for Input</strong>.</li>
+        <li><strong>Format Date</strong> as <code>yyyy-MM-dd</code>.</li>
+        <li>
+          <strong>Get Contents of URL</strong> with body:
+          <ul>
+            <li><code>body</code> → <code>\n- {Provided Input}</code></li>
+            <li><code>append_path</code> → <code>daily/{formatted-date}.md</code></li>
+          </ul>
+        </li>
+      </ol>
+
+      <h2>Recipe 3 — Clip a Safari URL via Share Sheet</h2>
+      <p>
+        Highlight nothing — just hit Share → SoloMD: Clip URL on a Safari
+        page. iOS extracts the article body, converts to markdown,
+        prepends YAML front matter, and POSTs to the inbox.
+      </p>
+      <ol class="steps">
+        <li><strong>Get Contents of Web Page</strong> (input: URL).</li>
+        <li><strong>Make Rich Text from HTML</strong>.</li>
+        <li><strong>Make Markdown from Rich Text</strong>.</li>
+        <li><strong>Get Details of Web Page</strong> for URL + title.</li>
+        <li>Build a Text action with the YAML front matter + markdown body.</li>
+        <li><strong>Get Contents of URL</strong> with that text as <code>body</code>.</li>
+      </ol>
+      <p>
+        For technical pages with code blocks, the desktop browser
+        <a href="https://github.com/zhitongblog/solomd/releases/latest">web clipper extension</a>
+        gives a much cleaner conversion (uses Mozilla Readability + turndown).
+        The iOS path is best for blog posts, news, recipes.
+      </p>
+
+      <h2>Privacy</h2>
+      <p>
+        Every Shortcut talks to the URL you typed and only that URL — there
+        is no third-party server, no telemetry, no Apple-side relay. The
+        token authorises a single SoloMD desktop instance on your LAN.
+        Anyone on the same LAN who guesses the token (it's 32 hex chars)
+        could write to your workspace; rotate the token in
+        Settings → Capture endpoint if you ever share Wi-Fi with people
+        you don't trust.
+      </p>
+      <p>
+        Full protocol: <a href="/security/#capture">/security § capture</a>.
+      </p>
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .shortcuts { max-width: 760px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .shortcuts h1 { font-size: 2.2rem; line-height: 1.2; margin: 8px 0 18px; }
+  .shortcuts h2 { font-size: 1.4rem; margin: 36px 0 12px; }
+  .shortcuts .lead { color: var(--text-muted, #555); font-size: 1.1rem; line-height: 1.6; margin-bottom: 28px; }
+  .shortcuts p { line-height: 1.75; margin: 14px 0; }
+  .shortcuts ul, .shortcuts ol { padding-left: 22px; }
+  .shortcuts li { margin: 6px 0; line-height: 1.7; }
+  .shortcuts code { background: #f5f5f0; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+  .shortcuts a { color: #ff9f40; }
+  .callout {
+    background: #fff8ee;
+    border-left: 3px solid #ff9f40;
+    padding: 14px 18px;
+    border-radius: 0 6px 6px 0;
+    margin: 24px 0;
+    font-size: 14px;
+  }
+  .steps li { margin: 12px 0; }
+  .steps ul { margin-top: 6px; }
+</style>
