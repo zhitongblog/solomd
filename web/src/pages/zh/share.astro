@@ -1,0 +1,124 @@
+---
+import Layout from '../../layouts/Layout.astro';
+
+const lang = 'zh' as const;
+---
+
+<Layout
+  title="共享笔记 · SoloMD"
+  description="一篇托管在 GitHub 上的 Markdown 笔记，由 SoloMD 渲染成只读视图。"
+  lang={lang}
+>
+  <main class="share-page">
+    <div id="share-toolbar" class="share-toolbar" hidden>
+      <a class="share-toolbar__home" href="/zh/">SoloMD</a>
+      <span class="share-toolbar__divider">/</span>
+      <span id="share-repo-label"></span>
+      <span class="share-toolbar__sep"></span>
+      <a id="share-source" class="share-toolbar__src" href="" rel="external" target="_blank">在 GitHub 上查看 →</a>
+    </div>
+
+    <article id="share-article" class="share-article">
+      <div id="share-loading" class="share-state">加载笔记中…</div>
+      <div id="share-error" class="share-state share-state--err" hidden></div>
+      <div id="share-content" class="share-content"></div>
+    </article>
+
+    <footer id="share-footer" class="share-footer" hidden>
+      <p>
+        本页由 <a href="https://solomd.app/zh/">SoloMD</a> 渲染 ——
+        一款自带 GitHub 同步的 Markdown 编辑器。笔记内容来自一个公开的 GitHub 仓库，由浏览器直接拉取，我们不存储任何内容。
+      </p>
+    </footer>
+  </main>
+</Layout>
+
+<script type="module" is:inline>
+  import { marked } from 'https://cdn.jsdelivr.net/npm/marked@13.0.3/lib/marked.esm.js';
+  import DOMPurify from 'https://cdn.jsdelivr.net/npm/dompurify@3.1.6/+esm';
+
+  const params = new URLSearchParams(window.location.search);
+  const repo = (params.get('repo') || '').trim();
+  const path = (params.get('path') || '').trim();
+  const branch = (params.get('branch') || 'main').trim();
+
+  const loading = document.getElementById('share-loading');
+  const errorEl = document.getElementById('share-error');
+  const content = document.getElementById('share-content');
+  const toolbar = document.getElementById('share-toolbar');
+  const repoLabel = document.getElementById('share-repo-label');
+  const sourceLink = document.getElementById('share-source');
+  const footer = document.getElementById('share-footer');
+
+  function fail(msg) {
+    loading.hidden = true;
+    errorEl.hidden = false;
+    errorEl.textContent = msg;
+  }
+
+  if (!/^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/.test(repo)) {
+    fail('链接无效：缺少或不合法的仓库参数（?repo=owner/name）。');
+  } else if (!path || path.split('/').some((seg) => seg === '..')) {
+    fail('链接无效：缺少或不安全的文件路径。');
+  } else {
+    const rawUrl = `https://raw.githubusercontent.com/${repo}/${encodeURIComponent(branch)}/${path
+      .split('/')
+      .map(encodeURIComponent)
+      .join('/')}`;
+    const ghUrl = `https://github.com/${repo}/blob/${encodeURIComponent(branch)}/${path}`;
+    repoLabel.textContent = `${repo}/${path}`;
+    sourceLink.href = ghUrl;
+
+    fetch(rawUrl)
+      .then((res) => {
+        if (res.status === 404) {
+          throw new Error(
+            '没找到这篇笔记。可能是仓库是私有的（此分享页只能渲染公开仓库），或者路径写错了。',
+          );
+        }
+        if (!res.ok) throw new Error(`GitHub 返回 HTTP ${res.status}。`);
+        return res.text();
+      })
+      .then((md) => {
+        const stripped = md.replace(/^---\n[\s\S]*?\n---\n+/, '');
+        const html = marked.parse(stripped, { gfm: true, breaks: true });
+        const safe = DOMPurify.sanitize(html, { ADD_ATTR: ['class', 'id'] });
+        content.innerHTML = safe;
+        loading.hidden = true;
+        toolbar.hidden = false;
+        footer.hidden = false;
+        const h1 = content.querySelector('h1');
+        document.title = `${(h1 ? h1.textContent : path) || '笔记'} · SoloMD`;
+      })
+      .catch((e) => fail(String(e?.message || e)));
+  }
+</script>
+
+<style is:inline>
+  .share-page { max-width: 760px; margin: 0 auto; padding: 28px 22px 80px; }
+  .share-toolbar { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-muted, #666); padding: 10px 0 18px; border-bottom: 1px solid var(--border, #eee); margin-bottom: 24px; flex-wrap: wrap; }
+  .share-toolbar__home { color: var(--accent, #ff9f40); font-weight: 600; text-decoration: none; }
+  .share-toolbar__divider { color: var(--text-faint, #aaa); }
+  .share-toolbar__sep { flex: 1; }
+  .share-toolbar__src { color: var(--text-muted, #666); font-size: 12px; text-decoration: none; }
+  .share-toolbar__src:hover { color: var(--accent, #ff9f40); }
+  .share-state { text-align: center; color: var(--text-muted, #888); padding: 60px 20px; font-size: 14px; }
+  .share-state--err { color: #c2410c; }
+  .share-content { line-height: 1.85; color: var(--text, #1a1a1a); font-size: 16px; }
+  .share-content h1, .share-content h2, .share-content h3 { margin-top: 1.4em; line-height: 1.3; }
+  .share-content h1 { font-size: 1.85rem; border-bottom: 1px solid var(--border, #eee); padding-bottom: 0.3em; }
+  .share-content h2 { font-size: 1.45rem; }
+  .share-content h3 { font-size: 1.2rem; }
+  .share-content p, .share-content ul, .share-content ol, .share-content blockquote { margin: 0.85em 0; }
+  .share-content code { background: #f6f3eb; padding: 2px 6px; border-radius: 4px; font-size: 0.92em; font-family: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace; }
+  .share-content pre { background: #1f1d1a; color: #e8e6de; padding: 14px 18px; border-radius: 8px; overflow-x: auto; line-height: 1.55; font-size: 13px; }
+  .share-content pre code { background: transparent; color: inherit; padding: 0; }
+  .share-content blockquote { border-left: 3px solid var(--accent, #ff9f40); padding-left: 14px; color: var(--text-muted, #666); }
+  .share-content table { border-collapse: collapse; margin: 1em 0; }
+  .share-content table th, .share-content table td { padding: 8px 12px; border: 1px solid var(--border, #eee); }
+  .share-content table thead { background: #fafafa; }
+  .share-content img { max-width: 100%; height: auto; }
+  .share-content a { color: var(--accent, #ff9f40); }
+  .share-footer { margin-top: 60px; padding-top: 18px; border-top: 1px solid var(--border, #eee); color: var(--text-faint, #999); font-size: 12px; }
+  .share-footer a { color: var(--text-muted, #666); }
+</style>
