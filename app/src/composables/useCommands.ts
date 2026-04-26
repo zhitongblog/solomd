@@ -196,7 +196,7 @@ export function useCommands(): Command[] {
     { id: 'export.html', title: 'Export to HTML…', run: () => exporter.exportHtml() },
     { id: 'export.docx', title: 'Export to Word (DOCX)…', run: () => exporter.exportDocx() },
     { id: 'export.pdf', title: 'Export to PDF…', run: () => exporter.exportPdf() },
-    { id: 'export.pdfPrint', title: 'Export to PDF via System Print…', shortcut: 'Ctrl+P', run: () => exporter.exportPdfPrint() },
+    { id: 'export.pdfPrint', title: 'Export to PDF via System Print…', shortcut: 'Ctrl+Shift+Alt+P', run: () => exporter.exportPdfPrint() },
     { id: 'export.image', title: 'Export to Image (PNG)…', run: () => exporter.exportImage() },
     { id: 'export.epub', title: 'Export to EPUB…', hint: 'via Pandoc', run: () => pandoc.exportTo('epub') },
     { id: 'export.odt', title: 'Export to ODT…', hint: 'via Pandoc', run: () => pandoc.exportTo('odt') },

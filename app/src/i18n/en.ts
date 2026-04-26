@@ -496,6 +496,11 @@ export const en = {
     notificationTitle: 'SoloMD — focus session complete',
     notificationBody: '{minutes} min · {words} words written',
   },
+  quickSwitcher: {
+    placeholder: 'Type to filter recent files…',
+    empty: 'No recent files yet — save a file to seed the list.',
+    noMatch: 'No matching files',
+  },
   bases: {
     title: 'Properties',
     back: 'Back to editor',

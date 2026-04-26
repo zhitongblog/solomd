@@ -492,6 +492,11 @@ export const zh: I18n = {
     notificationTitle: 'SoloMD —— 专注会话已完成',
     notificationBody: '{minutes} 分钟 · 写了 {words} 词',
   },
+  quickSwitcher: {
+    placeholder: '输入文件名筛选最近文件…',
+    empty: '暂无最近文件 —— 保存一个文件即可加入列表。',
+    noMatch: '没有匹配的文件',
+  },
   bases: {
     title: '属性表',
     back: '返回编辑器',

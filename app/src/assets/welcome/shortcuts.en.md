@@ -39,9 +39,15 @@
 
 | | |
 | --- | --- |
-| `Ctrl+P` | Export PDF (system print dialog) |
+| `Ctrl+Shift+Alt+P` | Export PDF (system print dialog) |
 | `Ctrl+Shift+C` | Copy as HTML |
 | `Ctrl+Alt+P` | Present slideshow |
+
+## Quick Switcher
+
+| | |
+| --- | --- |
+| `Ctrl+P` | Quick file switcher (recent + frequent) |
 
 ## Tips
 

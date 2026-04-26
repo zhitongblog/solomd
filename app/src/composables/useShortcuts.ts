@@ -15,6 +15,8 @@ interface Hooks {
   openGlobalSearch?: () => void;
   /** v2.3: open the RAG / semantic-search panel. */
   openRagSearch?: () => void;
+  /** v2.5: open the VSCode-style ⌘P quick file switcher. */
+  openQuickSwitcher?: () => void;
 }
 
 export function useShortcuts(hooks: Hooks = {}) {
@@ -90,6 +92,11 @@ export function useShortcuts(hooks: Hooks = {}) {
       // Same effect as ⌘N — both create a fresh markdown tab.
       e.preventDefault();
       files.newFile();
+    } else if (k === 'p' && e.shiftKey && e.altKey) {
+      // v2.5: PDF-print moved to ⌘⌥⇧P so plain ⌘P can host the new
+      // VSCode-style quick file switcher (#1 v2.5 feature).
+      e.preventDefault();
+      runById('export.pdfPrint');
     } else if (k === 'p' && e.shiftKey) {
       e.preventDefault();
       settings.cycleViewMode();
@@ -97,8 +104,9 @@ export function useShortcuts(hooks: Hooks = {}) {
       e.preventDefault();
       runById('view.slideshow');
     } else if (k === 'p') {
+      // v2.5: ⌘P opens the quick file switcher (VSCode-style).
       e.preventDefault();
-      runById('export.pdfPrint');
+      hooks.openQuickSwitcher?.();
     } else if (k === 'r' && e.shiftKey) {
       // v2.4: Cmd/Ctrl+Shift+R toggles reading mode. Pressing the same
       // combo while already in reading mode restores the previous mode.

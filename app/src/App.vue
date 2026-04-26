@@ -8,6 +8,7 @@ import TelemetryBanner from './components/TelemetryBanner.vue';
 import TileRoot from './components/TileRoot.vue';
 import StatusBar from './components/StatusBar.vue';
 import CommandPalette from './components/CommandPalette.vue';
+import QuickSwitcher from './components/QuickSwitcher.vue';
 import Outline from './components/Outline.vue';
 import BacklinksPanel from './components/BacklinksPanel.vue';
 import TagsPanel from './components/TagsPanel.vue';
@@ -66,6 +67,7 @@ const { t } = useI18n();
 const cursorLine = ref(1);
 const cursorCol = ref(1);
 const paletteOpen = ref(false);
+const quickSwitcherOpen = ref(false);
 const settingsOpen = ref(false);
 const helpOpen = ref(false);
 const searchOpen = ref(false);
@@ -106,6 +108,7 @@ useShortcuts({
   openHelp: () => (helpOpen.value = true),
   openGlobalSearch: () => (searchOpen.value = true),
   openRagSearch: () => (ragSearchOpen.value = true),
+  openQuickSwitcher: () => (quickSwitcherOpen.value = true),
 });
 
 // Esc closes the topmost modal
@@ -115,6 +118,7 @@ function onEsc(e: KeyboardEvent) {
   else if (ragSearchOpen.value) ragSearchOpen.value = false;
   else if (searchOpen.value) searchOpen.value = false;
   else if (helpOpen.value) helpOpen.value = false;
+  else if (quickSwitcherOpen.value) quickSwitcherOpen.value = false;
   else if (paletteOpen.value) paletteOpen.value = false;
   else if (settingsOpen.value) settingsOpen.value = false;
   // v2.4: reading mode is "modal-like" too — Esc exits back to the
@@ -616,6 +620,7 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
       @open-settings="settingsOpen = true"
     />
     <CommandPalette :open="paletteOpen" @close="paletteOpen = false" />
+    <QuickSwitcher :open="quickSwitcherOpen" @close="quickSwitcherOpen = false" />
     <SettingsPanel
       :open="settingsOpen"
       @close="settingsOpen = false; refreshAiHasKey()"

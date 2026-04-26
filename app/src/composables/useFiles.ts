@@ -6,6 +6,7 @@ import { useTabsStore } from '../stores/tabs';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useSettingsStore } from '../stores/settings';
 import { useToastsStore } from '../stores/toasts';
+import { useRecentEditsStore } from '../stores/recentEdits';
 import type { FileReadResult, Tab } from '../types';
 
 // Save dialogs only — opening uses no filter so any file is selectable.
@@ -21,6 +22,7 @@ export function useFiles() {
   const workspace = useWorkspaceStore();
   const settings = useSettingsStore();
   const toasts = useToastsStore();
+  const recentEdits = useRecentEditsStore();
 
   async function newFile() {
     tabs.newTab();
@@ -150,6 +152,8 @@ export function useFiles() {
       });
       tabs.markSaved(tab.id, tab.filePath);
       workspace.pushRecent(tab.filePath);
+      // v2.5: feed the ⌘P quick-switcher's MFU ranking.
+      recentEdits.recordEdit(tab.filePath);
       // v2.2: notify the AutoGit composable so the debounced auto-commit
       // pipeline picks up this save. Listener is in `useAutoCommit.ts`.
       window.dispatchEvent(
@@ -179,6 +183,8 @@ export function useFiles() {
       });
       tabs.markSaved(tab.id, path);
       workspace.pushRecent(path);
+      // v2.5: feed the ⌘P quick-switcher's MFU ranking.
+      recentEdits.recordEdit(path);
       window.dispatchEvent(
         new CustomEvent('solomd:saved', { detail: { filePath: path } }),
       );
