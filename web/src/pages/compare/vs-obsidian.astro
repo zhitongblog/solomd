@@ -8,7 +8,7 @@ const lang = 'en' as const;
 
 <Layout
   title="SoloMD vs Obsidian — Simple Editor vs Knowledge Graph (2026)"
-  description="SoloMD is a tiny, single-file Markdown editor. Obsidian is a complete knowledge management app. Honest comparison of when each one wins."
+  description="SoloMD ships local semantic search, AutoGit, MCP server, and 14 AI providers in core. Obsidian is a knowledge graph + plugin marketplace. Honest comparison of when each one wins."
   lang={lang}
 >
   <Header lang={lang} />
@@ -31,23 +31,29 @@ const lang = 'en' as const;
           <tr><th>&nbsp;</th><th>SoloMD</th><th>Obsidian</th></tr>
         </thead>
         <tbody>
-          <tr><th>Mental model</th><td>Document editor</td><td>Vault / knowledge base</td></tr>
-          <tr><th>Price</th><td><strong>Free</strong> (MIT)</td><td>Free personal · $50/yr commercial</td></tr>
+          <tr><th>Mental model</th><td>Document editor + AI / search / history toolkit</td><td>Vault / knowledge base + plugin marketplace</td></tr>
+          <tr><th>Price</th><td><strong>Free</strong> (MIT)</td><td>Free personal · $50/yr commercial · $96/yr Sync</td></tr>
           <tr><th>Open source</th><td>✅</td><td>❌ core closed; plugins open</td></tr>
           <tr><th>Installer size</th><td>~15 MB</td><td>~130 MB</td></tr>
           <tr><th>RAM at idle</th><td>~150 MB</td><td>~400 MB</td></tr>
+          <tr><th>Local semantic search</th><td>✅ <strong>v2.3</strong> · core, on-device, no model download</td><td>🟡 paid plugins (Smart Connections etc.)</td></tr>
+          <tr><th>WYSIWYG live edit mode</th><td>✅ <strong>v2.3</strong></td><td>✅ Live Preview</td></tr>
+          <tr><th>AutoGit version history</th><td>✅ <strong>v2.2</strong> · per-save snapshots in core</td><td>❌ (set up Obsidian Git plugin manually)</td></tr>
+          <tr><th>MCP server bundled</th><td>✅ <strong>v2.2</strong> · 1.5 MB sidecar</td><td>❌</td></tr>
+          <tr><th>14 AI providers, BYOK</th><td>✅ in core · keys in OS keychain</td><td>❌ (1–2 per AI plugin)</td></tr>
           <tr><th>Backlinks / graph</th><td>❌</td><td>✅ core feature</td></tr>
           <tr><th>Plugins</th><td>❌ (Custom CSS yes)</td><td>✅ thousands</td></tr>
           <tr><th>Wiki-style links</th><td>❌</td><td>✅ <code>[[file]]</code></td></tr>
           <tr><th>Works with single files</th><td>✅ open any .md</td><td>⚠️ prefers a vault folder</td></tr>
           <tr><th>Multi-encoding (GBK/Big5)</th><td>✅</td><td>⚠️ UTF-8 only</td></tr>
-          <tr><th>iPad</th><td>✅ App Store</td><td>✅ App Store</td></tr>
+          <tr><th>iPad</th><td>🟡 submitted, in review</td><td>✅ App Store</td></tr>
           <tr><th>Vim mode</th><td>✅</td><td>✅ core plugin</td></tr>
           <tr><th>Slideshow / presentation</th><td>✅ <code>⌘⌥P</code> built-in</td><td>🟡 Slides plugin</td></tr>
           <tr><th>CLI tool</th><td>✅ <code>solomd</code></td><td>❌</td></tr>
           <tr><th>Format Markdown (Prettier)</th><td>✅ <code>⌘⌥L</code></td><td>🟡 community plugin</td></tr>
           <tr><th>Welcome tour</th><td>✅</td><td>🟡 sample vault</td></tr>
-          <tr><th>Export PDF / DOCX</th><td>✅</td><td>PDF ✅ · DOCX via plugin</td></tr>
+          <tr><th>Export PDF / DOCX / EPUB / ODT / LaTeX</th><td>✅ Pandoc</td><td>PDF ✅ · DOCX via plugin · others ❌</td></tr>
+          <tr><th>Sync (CRDT, built-in)</th><td>❌ v3 roadmap</td><td>✅ Obsidian Sync (paid)</td></tr>
           <tr><th>Live preview</th><td>✅</td><td>✅ editing view</td></tr>
           <tr><th>Built on</th><td>Tauri 2 + Vue + CodeMirror 6</td><td>Electron + CodeMirror</td></tr>
         </tbody>
@@ -55,7 +61,10 @@ const lang = 'en' as const;
 
       <h2>Use SoloMD when</h2>
       <ul>
-        <li>You just need to edit a Markdown file — not build a connected knowledge base.</li>
+        <li>You want <strong>local semantic search</strong> in core, with no extra plugin and no cloud round-trip. Obsidian has third-party plugins (Smart Connections, etc.) — most cost $5–10/mo and many call hosted embedding APIs.</li>
+        <li>You want <strong>per-save version history</strong> without configuring the Obsidian Git plugin and a cron schedule. SoloMD's AutoGit is one toggle.</li>
+        <li>You want an <strong>MCP server</strong> so Claude Desktop / Cursor / Codex CLI can read your notes — Obsidian doesn't ship one.</li>
+        <li>You want <strong>14 AI providers in one BYOK panel</strong> instead of one or two per Obsidian AI plugin.</li>
         <li>Your docs live in a repo or sync folder and you want to double-click a .md file and have it open quickly.</li>
         <li>You care about install size / RAM. SoloMD is ~4× smaller and uses ~2.5× less memory.</li>
         <li>You're editing files with legacy encodings (CJK / GBK / Big5 / Shift-JIS). Obsidian requires UTF-8.</li>

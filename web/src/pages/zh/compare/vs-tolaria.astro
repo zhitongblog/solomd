@@ -8,7 +8,7 @@ const lang = 'zh' as const;
 
 <Layout
   title="SoloMD vs Tolaria —— 两款 Tauri Markdown 编辑器对比 (2026)"
-  description="两个 Tauri 开源 Markdown 编辑器的并排对比。SoloMD 跨平台 (Mac/Win/Linux/iPad)、内置 14 个 AI provider、Pandoc + 引用、CJK 编码自动识别；Tolaria 仅 Mac/Linux,内置 MCP 服务和 AutoGit。详细对比。"
+  description="两个 Tauri 开源 Markdown 编辑器的并排对比。SoloMD 跨平台、14 AI provider、Pandoc 导出、CJK 编码识别,且 v2.2 已带 MCP server + AutoGit、v2.3 又加了本地语义搜索;Tolaria 仅 Mac/Linux 的 Notion 式块编辑器。详细对比。"
   lang={lang}
 >
   <Header lang={lang} />
@@ -37,9 +37,11 @@ const lang = 'zh' as const;
           <tr><th>编辑模型</th><td>CodeMirror 源码模式 + 实时预览 + 分屏</td><td>Notion 式块编辑器 + 斜杠命令</td></tr>
           <tr><th>多标签 + 分屏</th><td>✅ 标签页 + 任意分屏</td><td>❌ 单面板</td></tr>
           <tr><th>双向链接 <code>[[note]]</code></th><td>✅ 自动补全 + Backlinks 面板</td><td>✅ 自动补全 + Backlinks</td></tr>
+          <tr><th>本地语义搜索</th><td>✅ <strong>v2.3</strong> · ⌘⇧F · 设备本地,不下模型</td><td>❌</td></tr>
+          <tr><th>WYSIWYG 实时编辑</th><td>✅ <strong>v2.3</strong> · 第 4 种视图</td><td>✅ 块编辑器</td></tr>
           <tr><th>内置 AI 改写（BYOK）</th><td>✅ <code>⌘J</code> · 14 provider · 流式 diff 浮层</td><td>🟡 通过外部 MCP agent</td></tr>
-          <tr><th>MCP server（vault 作为工具）</th><td>🟡 v2.2 开发中</td><td>✅ 内置</td></tr>
-          <tr><th>AutoGit 每篇笔记历史</th><td>🟡 v2.2 开发中</td><td>✅ 内置</td></tr>
+          <tr><th>MCP server（vault 作为工具）</th><td>✅ <strong>v2.2</strong> · 1.5 MB 二进制 · 8 只读 + 2 写工具</td><td>✅ 内置</td></tr>
+          <tr><th>AutoGit 每篇笔记历史</th><td>✅ <strong>v2.2</strong> · libgit2,永不自动 push</td><td>✅ 内置</td></tr>
           <tr><th>多编码（GBK / Big5）</th><td>✅ 自动识别</td><td>❌ 仅 UTF-8</td></tr>
           <tr><th>文件导入（DOCX/PDF/XLSX/PPTX）</th><td>✅ 拖入即转 Markdown</td><td>❌</td></tr>
           <tr><th>Pandoc 导出（EPUB/ODT/LaTeX/RTF）</th><td>✅</td><td>❌</td></tr>
@@ -70,11 +72,13 @@ const lang = 'zh' as const;
       <h2>什么时候选 Tolaria</h2>
       <ul>
         <li>你只在 <strong>macOS / Linux</strong>，喜欢全新的 Notion 式块编辑体验。</li>
-        <li>你所有 AI 工作流都走 <strong>Claude Code / Codex CLI / MCP 兼容客户端</strong> —— Tolaria 内置 MCP server，让 vault 成为 agent 的一级工具。（SoloMD v2.2 也会加这个，但目前 Tolaria 领先。）</li>
-        <li>你想要<strong>每篇笔记自动版本历史</strong> —— Tolaria 的 AutoGit + 每篇笔记 history tab 比 SoloMD 当前的纯文件系统模式更强。（SoloMD v2.2 加。）</li>
         <li>你喜欢 <strong>"types as lenses"</strong> —— 每篇笔记有 type（Project / Topic / 等），自定义图标 + 列，且驱动整个侧栏。SoloMD 的 Bases 是属性表，但导航主要还是文件夹 + 标签页。</li>
         <li>你想要 Tiago Forte 式的 <strong>Inbox 工作流</strong> + 显式 organized 标记。</li>
       </ul>
+      <p>
+        说明：MCP server 和 AutoGit 版本历史曾经只有 Tolaria 有。两者都已在 SoloMD v2.2 中正式发布 ——
+        而 SoloMD v2.3 又加上了<strong>本地语义搜索</strong>，这一项 Tolaria 目前还没有。
+      </p>
 
       <h2>两者共同点</h2>
       <ul>
@@ -91,17 +95,18 @@ const lang = 'zh' as const;
       </p>
       <ul>
         <li>Tolaria 的 <strong>type 元数据</strong>（如 <code>type: Project</code>）存在 front-matter 里 —— SoloMD 的 Bases 视图会自动当成一列。图标 / 颜色定制丢失，但数据完整保留。</li>
-        <li>如果你用 Tolaria 的 <strong>AutoGit</strong>，vault 已经是 git repo —— SoloMD 的 AutoGit (v2.2) 会兼容同样约定。</li>
+        <li>如果你用 Tolaria 的 <strong>AutoGit</strong>，vault 已经是 git repo —— SoloMD 的 AutoGit (v2.2+) 兼容同样约定，两者都用 libgit2 + 工作区内的本地 <code>.git</code>。</li>
         <li><strong>Inbox 标记</strong>没有直接对应；可以继续用 YAML 字段（<code>status: inbox</code>），用 Bases 过滤。</li>
       </ul>
 
       <h2>常见问题</h2>
 
-      <h3>SoloMD 也要加 MCP server 吗？</h3>
-      <p>是的 —— 这是 v2.2 的头条功能（开发中）。计划：一个 Tauri sidecar binary 走 stdio 跑 MCP 协议，暴露
+      <h3>SoloMD 的 MCP server 是真的吗？</h3>
+      <p>真的 —— v2.2 已发布。1.5 MB 的 Tauri sidecar 二进制（<code>solomd-mcp</code>）走 stdio 跑 MCP 协议（不开网络端口）。开箱 8 个只读工具：
         <code>list_notes</code>、<code>read_note</code>、<code>search</code>、
-        <code>get_backlinks</code>、<code>list_tags</code>，以及（用户明确同意后）
-        <code>write_note</code>。任何 MCP 客户端都能用 —— Claude Code、Codex CLI、自定义。</p>
+        <code>get_backlinks</code>、<code>list_tags</code>、<code>get_outline</code> 等;
+        以及 <code>write_note</code>、<code>append_to_note</code> 两个写工具,需要 <code>--allow-write</code> 开关。
+        Path traversal 守卫 + 工作区 canonical 校验。任何 MCP 客户端都能用 —— Claude Desktop、Cursor、Codex CLI、自定义 agent。</p>
 
       <h3>Tolaria 为什么没 Windows？</h3>
       <p>项目刚 3 个月。Windows 在路线图里但没排上。SoloMD 第一天就有 Windows 版，因为 Tauri 的 WebView2 + NSIS 安装器 + 原生菜单栏都接好了。</p>

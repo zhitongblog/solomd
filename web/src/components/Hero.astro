@@ -4,9 +4,10 @@ interface Props { lang: Lang }
 const { lang } = Astro.props;
 const tr = getT(lang);
 
-const VERSION = '2.0.0';
+const VERSION = '2.2.1';
 const REPO = 'zhitongblog/solomd';
 const baseUrl = `https://github.com/${REPO}/releases/download/v${VERSION}`;
+const whatsNewHref = lang === 'zh' ? '/zh/whats-new/' : '/whats-new/';
 
 // Default (SSR / no-JS / unknown OS) → mac dmg link
 const defaultDownload = `${baseUrl}/SoloMD_${VERSION}_universal.dmg`;
@@ -56,7 +57,11 @@ const initialDownloadsText = initialDownloads > 0 ? fmtDownloads(initialDownload
       {tr.hero.title1}<br />
       <span class="hero__accent">{tr.hero.title2}</span>
     </h1>
+    <p class="hero__subtagline">{tr.hero.subtagline}</p>
     <p class="lead">{tr.hero.lead}</p>
+    <div class="hero__whatsnew-row">
+      <a href={whatsNewHref} class="hero__whatsnew">{tr.hero.ctaWhatsNew}</a>
+    </div>
     <div class="hero__cta">
       <a
         id="hero-download"
@@ -232,7 +237,35 @@ const initialDownloadsText = initialDownloads > 0 ? fmtDownloads(initialDownload
     margin-bottom: 28px;
   }
   .hero__accent { color: var(--accent); }
-  .hero .lead { margin: 0 auto 36px; }
+  .hero__subtagline {
+    max-width: 720px;
+    margin: -8px auto 18px;
+    padding: 10px 18px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 14%, transparent) 0%, color-mix(in srgb, var(--accent) 8%, transparent) 100%);
+    border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.55;
+    text-align: center;
+  }
+  .hero__whatsnew-row {
+    margin: 0 0 22px;
+  }
+  .hero__whatsnew {
+    display: inline-block;
+    color: var(--accent);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    border-bottom: 1px dashed color-mix(in srgb, var(--accent) 60%, transparent);
+    padding-bottom: 1px;
+  }
+  .hero__whatsnew:hover {
+    border-bottom-style: solid;
+  }
+  .hero .lead { margin: 0 auto 28px; }
   .hero__cta {
     display: flex;
     gap: 14px;

@@ -1,0 +1,124 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import Header from '../../../components/Header.astro';
+import Footer from '../../../components/Footer.astro';
+
+const lang = 'zh' as const;
+---
+
+<Layout
+  title="SoloMD vs MarkText —— 两款免费开源 Markdown 编辑器对比"
+  description="SoloMD 和 MarkText 都是 MIT 开源。SoloMD 更小 (15 MB vs 90 MB)、活跃维护、内置语义搜索 / AutoGit / MCP server / 14 AI provider 和 CJK 编码;MarkText 历史更久但更新稀疏。详细对比。"
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main class="compare-page">
+    <article class="container compare-article">
+      <nav class="breadcrumbs">
+        <a href="/zh/">首页</a> / <a href="/zh/compare/">对比</a> / <span>vs MarkText</span>
+      </nav>
+
+      <h1>SoloMD vs MarkText：两款免费 Markdown 编辑器对比</h1>
+      <p class="lead">
+        都是免费开源。<strong>SoloMD</strong> 更新、更小 (15 MB vs 90 MB)、2026 年活跃维护，
+        内置多标签、分屏、CJK 编码识别、语义搜索、AutoGit 历史、MCP server、14 AI provider。
+        <strong>MarkText</strong> 历史更久，但近期 commit 稀疏。
+      </p>
+
+      <h2>30 秒速览</h2>
+      <table class="compare-detail">
+        <thead>
+          <tr><th>&nbsp;</th><th>SoloMD</th><th>MarkText</th></tr>
+        </thead>
+        <tbody>
+          <tr><th>许可证</th><td>MIT</td><td>MIT</td></tr>
+          <tr><th>安装包大小</th><td>~15 MB</td><td>~90 MB</td></tr>
+          <tr><th>技术栈</th><td>Tauri 2 + Vue 3 + CodeMirror 6</td><td>Electron + Vue 2 + Muya</td></tr>
+          <tr><th>活跃度</th><td>✅ 2026 年频繁更新</td><td>⚠️ 更新稀疏</td></tr>
+          <tr><th>本地语义搜索</th><td>✅ <strong>v2.3</strong> · ⌘⇧F · 设备本地</td><td>❌</td></tr>
+          <tr><th>WYSIWYG 实时编辑</th><td>✅ <strong>v2.3</strong></td><td>✅ (核心特性)</td></tr>
+          <tr><th>AutoGit 版本历史</th><td>✅ <strong>v2.2</strong></td><td>❌</td></tr>
+          <tr><th>内置 MCP server</th><td>✅ <strong>v2.2</strong></td><td>❌</td></tr>
+          <tr><th>14 个 AI provider · BYOK</th><td>✅</td><td>❌</td></tr>
+          <tr><th>多标签</th><td>✅</td><td>✅</td></tr>
+          <tr><th>分屏视图</th><td>✅ 任意面板</td><td>❌</td></tr>
+          <tr><th>实时预览</th><td>✅</td><td>✅ (核心特性)</td></tr>
+          <tr><th>源码模式</th><td>✅</td><td>✅</td></tr>
+          <tr><th>文件树侧栏</th><td>✅</td><td>✅</td></tr>
+          <tr><th>大纲面板</th><td>✅ 光标同步高亮</td><td>✅</td></tr>
+          <tr><th>多编码识别</th><td>✅ UTF-8 / GBK / Big5 自动识别</td><td>⚠️ UTF-8</td></tr>
+          <tr><th>导出</th><td>HTML · PDF · DOCX · PNG · EPUB · ODT · LaTeX (Pandoc)</td><td>HTML · PDF</td></tr>
+          <tr><th>Vim 模式</th><td>✅</td><td>❌</td></tr>
+          <tr><th>演讲 / 幻灯片模式</th><td>✅ <code>⌘⌥P</code></td><td>❌</td></tr>
+          <tr><th>CLI 命令行</th><td>✅ <code>solomd</code></td><td>❌</td></tr>
+          <tr><th>Markdown 格式化 (Prettier)</th><td>✅ <code>⌘⌥L</code></td><td>❌</td></tr>
+          <tr><th>欢迎教程</th><td>✅ 首次启动</td><td>❌</td></tr>
+          <tr><th>命令面板</th><td>✅ ⌘⇧K</td><td>❌</td></tr>
+          <tr><th>iPad / iOS</th><td>🟡 已提交,审核中</td><td>❌</td></tr>
+          <tr><th>清除 AI 格式</th><td>✅ 一键去引用 / 弯引号 / 零宽字符</td><td>❌</td></tr>
+        </tbody>
+      </table>
+
+      <h2>选 SoloMD 的情况</h2>
+      <ul>
+        <li>想要最小体积 (15 MB vs 90 MB)。</li>
+        <li>想要<strong>分屏视图</strong> —— 一边源码一边预览,同步滚动。</li>
+        <li>想要 <strong>Vim 快捷键</strong>。</li>
+        <li>用<strong>中文 / 日文 / 韩文</strong> 写作 (SoloMD 自动识别 GBK / Big5;MarkText 需手动转码)。</li>
+        <li>想用 <strong>iPad</strong> 写作。</li>
+        <li>想要 <strong>DOCX / EPUB / Pandoc 导出</strong> 和"复制为图片"。</li>
+        <li>想要 <strong>核心内置 AI / 语义搜索 / 版本历史 / MCP server</strong>。</li>
+      </ul>
+
+      <h2>选 MarkText 的情况</h2>
+      <ul>
+        <li>强烈偏好 MarkText 特定的块式实时预览渲染。</li>
+        <li>已经在用,不想迁主题 / 设置。</li>
+      </ul>
+      <p>
+        说明:截至 2026 年初,MarkText 的 GitHub 仓库 release 间隔较长。
+        SoloMD 频繁迭代、积极响应 issue —— 如果你看重 bug 修复速度,这是个差别。
+      </p>
+
+      <h2>为什么 SoloMD 更小</h2>
+      <p>
+        MarkText 基于 Electron,安装包自带一份 Chromium (~60 MB)。SoloMD 用 Tauri 2,
+        直接调用系统原生 webview (Mac WKWebView / Win WebView2 / Linux WebKitGTK),不打 Chromium。
+        二进制只有 Rust 内核 + 紧凑的 Vue 3 + CodeMirror 6 bundle,装好约 15 MB。
+      </p>
+
+      <h2>兼容性</h2>
+      <p>
+        两者都读写同样的 Markdown 方言 —— CommonMark + GitHub-Flavored (GFM) + KaTeX 公式 + Mermaid 图表 + front-matter。
+        文件可以无缝切换,无需转换。
+      </p>
+
+      <div class="compare-cta">
+        <a href="/zh/#download" class="btn btn--primary">下载 SoloMD</a>
+        <a href="/zh/compare/" class="btn btn--secondary">所有对比</a>
+      </div>
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .compare-article { max-width: 820px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .compare-article h1 { font-size: 2.2rem; line-height: 1.2; margin: 10px 0 20px; }
+  .compare-article h2 { font-size: 1.55rem; margin: 36px 0 14px; }
+  .compare-article .lead { font-size: 1.1rem; color: var(--text-muted, #555); margin-bottom: 32px; }
+  .compare-detail { width: 100%; border-collapse: collapse; margin: 20px 0 28px; font-size: 14px; }
+  .compare-detail th, .compare-detail td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #eee; }
+  .compare-detail thead th { background: #fafafa; font-weight: 600; }
+  .compare-detail tbody th { font-weight: 500; width: 32%; }
+  .compare-cta { display: flex; gap: 12px; margin-top: 40px; }
+  .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  .btn--primary { background: #ff9f40; color: #000; }
+  .btn--secondary { background: #111; color: #fff; }
+  .compare-article ul { padding-left: 22px; }
+  .compare-article li { margin: 6px 0; line-height: 1.6; }
+  .compare-article p { line-height: 1.7; margin: 12px 0; }
+  .compare-article code { background: #f5f5f0; padding: 1px 6px; border-radius: 4px; font-size: 0.92em; }
+</style>

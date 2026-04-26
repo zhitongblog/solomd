@@ -35,12 +35,18 @@ const lang = 'en' as const;
           <tr><th>Installer size</th><td>~15 MB</td><td>~70 MB</td></tr>
           <tr><th>Open source</th><td>✅ on GitHub</td><td>❌ closed source</td></tr>
           <tr><th>Platforms</th><td>macOS · Windows · Linux · iPad</td><td>macOS · Windows · Linux</td></tr>
+          <tr><th>Local semantic search</th><td>✅ <strong>v2.3</strong> · ⌘⇧F · on-device, no model download</td><td>❌</td></tr>
+          <tr><th>WYSIWYG live edit mode</th><td>✅ <strong>v2.3</strong> · 4th view</td><td>✅ always on</td></tr>
+          <tr><th>AutoGit version history</th><td>✅ <strong>v2.2</strong> · per-save snapshots, sidebar restore</td><td>❌</td></tr>
+          <tr><th>MCP server bundled</th><td>✅ <strong>v2.2</strong> · 1.5 MB sidecar</td><td>❌</td></tr>
+          <tr><th>14 AI providers, BYOK</th><td>✅ <code>⌘J</code> · keys in OS keychain</td><td>❌</td></tr>
           <tr><th>Live preview</th><td>✅ toggleable</td><td>✅ always on</td></tr>
           <tr><th>Raw source mode</th><td>✅</td><td>⚠️ limited</td></tr>
           <tr><th>Split view (edit + preview)</th><td>✅</td><td>❌</td></tr>
           <tr><th>Multi-tab</th><td>✅</td><td>❌ one window per file</td></tr>
           <tr><th>KaTeX / Mermaid</th><td>✅ bundled</td><td>✅</td></tr>
           <tr><th>Export PDF / DOCX / HTML / PNG</th><td>✅</td><td>✅</td></tr>
+          <tr><th>Pandoc export (EPUB / ODT / LaTeX)</th><td>✅</td><td>❌</td></tr>
           <tr><th>Multi-encoding (GBK / Big5)</th><td>✅ auto-detect</td><td>⚠️ UTF-8 only</td></tr>
           <tr><th>Vim mode</th><td>✅</td><td>❌</td></tr>
           <tr><th>Slideshow / presentation mode</th><td>✅ <code>⌘⌥P</code></td><td>❌</td></tr>
@@ -65,11 +71,8 @@ const lang = 'en' as const;
 
       <h2>When to pick Typora</h2>
       <ul>
-        <li>You strongly prefer <strong>always-on WYSIWYG</strong> with no "raw source" fallback needed.</li>
         <li>You're already used to Typora's specific shortcut set and don't want to retrain.</li>
-        <li>You want the most polished WYSIWYG rendering of tables and formulas inline-in-editor
-          (SoloMD's live preview hides markers but doesn't yet render formulas/tables inline — that's
-          on the v2 roadmap).</li>
+        <li>You want a single always-on WYSIWYG view with no view-mode switcher (SoloMD added a WYSIWYG live edit mode in v2.3, but it sits alongside the source / split / preview modes — you switch to it explicitly).</li>
       </ul>
 
       <h2>Install size & memory — why it matters</h2>
