@@ -33,6 +33,8 @@ import { tagAutocompleteExtension, tagComplete } from '../lib/cm-tag-autocomplet
 import { citationsExtension, citationCompleteSource } from '../lib/cm-citations';
 import { autocompletion } from '@codemirror/autocomplete';
 import { aiRewriteExtension } from '../lib/cm-ai-rewrite';
+import { slashCommandsExtension } from '../lib/cm-slash-commands';
+import { useI18n } from '../i18n';
 import { spellcheckExtension } from '../lib/cm-spellcheck';
 import { spellcheckTheme } from '../lib/cm-spellcheck-theme';
 import { usePandocExport } from '../composables/usePandocExport';
@@ -77,6 +79,7 @@ const emit = defineEmits<{ (e: 'cursor', line: number, col: number): void }>();
 
 const tabs = useTabsStore();
 const settings = useSettingsStore();
+const { t } = useI18n();
 const pandoc = usePandocExport();
 let cachedCitations: CitationEntry[] = [];
 pandoc.loadCitations().then((c) => { cachedCitations = c; }).catch(() => {});
@@ -101,6 +104,23 @@ const spellCheckCompartment = new Compartment();
 const focusCompartment = new Compartment();
 const typewriterCompartment = new Compartment();
 const vimCompartment = new Compartment();
+const slashCompartment = new Compartment();
+
+function slashExt() {
+  if (!settings.slashCommandsEnabled) return [];
+  return slashCommandsExtension({
+    enabled: () => settings.slashCommandsEnabled,
+    labelFor: (id) => {
+      const v = t(`slashCommands.labels.${id}`);
+      return v.startsWith('slashCommands.') ? undefined : v;
+    },
+    hintFor: (id) => {
+      const v = t(`slashCommands.hints.${id}`);
+      return v.startsWith('slashCommands.') ? undefined : v;
+    },
+    emptyHint: (q) => t('slashCommands.empty', { query: q }),
+  });
+}
 
 function markdownExt() {
   // Use `markdownLanguage` as the base so GFM features (including task
@@ -183,6 +203,7 @@ function buildExtensions() {
           aiRewriteExtension(),
           spellcheckExtension({ enabled: () => settings.spellcheckEnabled }),
           spellcheckTheme,
+          slashCompartment.of(slashExt()),
         ]
       : []),
     taskListExtension(),
@@ -222,9 +243,19 @@ onMounted(() => {
     parent: host.value,
   });
   maybeRestoreSession();
+  // Expose the focused EditorView on `window` for dev-bridge / self-test
+  // harnesses. Vite injects `import.meta.env.DEV === true` only in dev
+  // builds; production bundles dead-code-eliminate this entire block.
+  if (import.meta.env.DEV) {
+    (window as unknown as { __solomdActiveView?: EditorView }).__solomdActiveView = view;
+  }
 });
 
 onBeforeUnmount(() => {
+  if (import.meta.env.DEV) {
+    const w = window as unknown as { __solomdActiveView?: EditorView };
+    if (w.__solomdActiveView === view) delete w.__solomdActiveView;
+  }
   view?.destroy();
   view = null;
 });
@@ -355,6 +386,18 @@ watch(
   () => {
     view?.dispatch({ effects: richCompartment.reconfigure(richExtensionsFor(props.tab)) });
   }
+);
+
+// v2.5: hot-toggle the slash-command extension when the user flips
+// the setting. Only meaningful for markdown buffers — other languages
+// never have the compartment in their bundle.
+watch(
+  () => settings.slashCommandsEnabled,
+  () => {
+    if (!view) return;
+    if (props.tab.language !== 'markdown') return;
+    view.dispatch({ effects: slashCompartment.reconfigure(slashExt()) });
+  },
 );
 
 function gotoLine(line: number) {

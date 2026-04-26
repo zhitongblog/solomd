@@ -110,6 +110,10 @@ interface Settings {
   pomodoroShowControls: boolean;
   pomodoroAutoEngageFocus: boolean;
   pomodoroDefaultMinutes: 25 | 50 | 90 | number;
+  // v2.5 F7: Affine/Notion-style "/" slash command popup in the markdown
+  // editor. Default ON — can be turned off for users who don't like
+  // the keyboard interception.
+  slashCommandsEnabled: boolean;
 }
 
 /** v2.5 PDF / print export defaults. */
@@ -220,6 +224,7 @@ function defaults(): Settings {
     pomodoroShowControls: true,
     pomodoroAutoEngageFocus: true,
     pomodoroDefaultMinutes: 25,
+    slashCommandsEnabled: true,
   };
 }
 
@@ -522,6 +527,10 @@ export const useSettingsStore = defineStore('settings', {
     setPomodoroDefaultMinutes(n: number) {
       const clean = Math.max(1, Math.min(600, Math.round(n) || 25));
       this.pomodoroDefaultMinutes = clean;
+      this.persist();
+    },
+    toggleSlashCommandsEnabled() {
+      this.slashCommandsEnabled = !this.slashCommandsEnabled;
       this.persist();
     },
   },

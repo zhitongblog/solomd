@@ -694,6 +694,13 @@ function onSelectPdfFont(v: string) {
 
         <section>
           <label>
+            <input type="checkbox" :checked="settings.slashCommandsEnabled" @change="settings.toggleSlashCommandsEnabled()" />
+            {{ t('settings.slashCommandsEnabled') }}
+          </label>
+        </section>
+
+        <section>
+          <label>
             <input type="checkbox" :checked="settings.restoreSession" @change="settings.toggleRestoreSession()" />
             {{ t('settings.restoreSession') }}
           </label>
