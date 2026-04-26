@@ -41,6 +41,10 @@ mod cjk_proofread;
 #[path = "github_sync.rs"]
 mod github_sync;
 
+// v2.6.1 cloud-folder detection + cross-device session restore.
+#[path = "cloud_folder.rs"]
+mod cloud_folder;
+
 // v2.3 dev WebDriver bridge — debug builds only. Module file itself is
 // `#[cfg(debug_assertions)]`-gated, so this `mod` line is too.
 #[cfg(debug_assertions)]
@@ -451,6 +455,11 @@ pub fn run_with(initial_file: Option<String>) {
             github_sync::github_push,
             github_sync::github_pull,
             github_sync::github_resolve_conflict,
+            cloud_folder::cloud_folder_detect,
+            cloud_folder::device_id_get_or_create,
+            cloud_folder::session_save,
+            cloud_folder::session_load,
+            cloud_folder::session_list_others,
         ])
         .on_menu_event(|app_handle, event| {
             // Forward every menu click to the frontend as a single event

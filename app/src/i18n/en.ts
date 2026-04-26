@@ -576,6 +576,24 @@ export const en = {
       frontmatter: '--- yaml ---',
     },
   },
+  cloudSync: {
+    detectedTitle: 'Workspace is in {label}',
+    detectedHint:
+      'Files saved here propagate automatically to your other devices via the cloud provider. SoloMD adds cross-device session restore on top — open the same workspace on another machine and the same tabs come back.',
+    siblingCount: '{n} other device(s) have opened this workspace.',
+    restoreTitle: 'Pick up where you left off?',
+    restoreLead:
+      '{device} saved {tabs} tab(s) here {ago}. Restore them on this device?',
+    restoreBtn: 'Restore tabs',
+    restoring: 'Restoring…',
+    keepMineBtn: 'Keep mine',
+    siblingMissing: 'That session file is no longer there.',
+    restoredToast: 'Restored tabs from {device}.',
+    agoSec: '{n}s ago',
+    agoMin: '{n}m ago',
+    agoHour: '{n}h ago',
+    agoDay: '{n}d ago',
+  },
   githubSync: {
     heading: 'GitHub sync',
     intro:

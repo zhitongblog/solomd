@@ -572,6 +572,23 @@ export const zh: I18n = {
       frontmatter: '--- yaml ---',
     },
   },
+  cloudSync: {
+    detectedTitle: '工作区在 {label} 中',
+    detectedHint:
+      '保存到这里的文件会自动同步到你其他装了同一云服务的设备。SoloMD 在此之上加了跨设备会话恢复 —— 在另一台机器打开同一个工作区时，原来的标签页会回来。',
+    siblingCount: '此工作区有 {n} 台其它设备打开过。',
+    restoreTitle: '从上次的位置接着写？',
+    restoreLead: '{device} 在 {ago} 保存了 {tabs} 个标签页。要在本机也打开吗？',
+    restoreBtn: '恢复标签页',
+    restoring: '恢复中…',
+    keepMineBtn: '保留当前',
+    siblingMissing: '那台设备的会话文件已经不在了。',
+    restoredToast: '已从 {device} 恢复标签页。',
+    agoSec: '{n} 秒前',
+    agoMin: '{n} 分钟前',
+    agoHour: '{n} 小时前',
+    agoDay: '{n} 天前',
+  },
   githubSync: {
     heading: 'GitHub 同步',
     intro:

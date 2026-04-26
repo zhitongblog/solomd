@@ -15,6 +15,8 @@ import TagsPanel from './components/TagsPanel.vue';
 import HistoryPanel from './components/HistoryPanel.vue';
 import { useAutoCommit } from './composables/useAutoCommit';
 import { useGithubSync } from './composables/useGithubSync';
+import { useSessionRestore } from './composables/useSessionRestore';
+import SessionRestoreDialog from './components/SessionRestoreDialog.vue';
 import AIRewriteOverlay from './components/AIRewriteOverlay.vue';
 import BasesView from './components/BasesView.vue';
 import { BASES_OPEN_EVENT, BASES_CLOSE_EVENT } from './composables/useBasesView';
@@ -58,6 +60,10 @@ autoCommit.start();
 // pull on a timer. Dormant unless the workspace has a `.solomd/sync.json`.
 const githubSync = useGithubSync();
 githubSync.start();
+// v2.6.1: session-restore listens for cloud-folder workspace changes and
+// offers to pick up tabs from a sibling device when one is fresher.
+const sessionRestore = useSessionRestore();
+sessionRestore.start();
 // v2.5 F4: pick up an in-progress focus session from before the reload.
 // Fire-and-forget — the store handles the (rare) "session already past
 // its end" case by short-circuiting into the completion path.
@@ -670,6 +676,7 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
       @discard="onUnsavedAction('discard')"
       @cancel="onUnsavedAction('cancel')"
     />
+    <SessionRestoreDialog />
     <Toast />
   </div>
 </template>

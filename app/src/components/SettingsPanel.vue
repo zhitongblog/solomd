@@ -15,6 +15,7 @@ import CitationPickerSettings from './CitationPickerSettings.vue';
 import CaptureEndpointSettings from './CaptureEndpointSettings.vue';
 import IntegrationsSettings from './IntegrationsSettings.vue';
 import GithubSyncSettings from './GithubSyncSettings.vue';
+import CloudFolderBanner from './CloudFolderBanner.vue';
 import ThemeMarketplace from './ThemeMarketplace.vue';
 import { isIOS } from '../lib/platform';
 import type { Theme } from '../types';
@@ -373,6 +374,12 @@ function onSelectPdfFont(v: string) {
             {{ t('settings.autoGitHelp') }}
           </p>
         </section>
+
+        <!-- v2.6.1 cloud-folder banner. Self-hides if the workspace isn't
+             inside a known cloud-sync folder. Sits above GitHub sync so the
+             user sees "you already have iCloud / Dropbox" before reading
+             about a paid alternative. -->
+        <CloudFolderBanner />
 
         <!-- v2.6 GitHub sync — sits right under AutoGit since it pushes the
              same commits AutoGit produces; reads top-down as one story. -->
