@@ -12,6 +12,7 @@ import { useI18n } from '../i18n';
 import { checkForUpdate, openReleaseUrl, isMasBuild } from '../lib/check-update';
 import AISettings from './AISettings.vue';
 import CitationPickerSettings from './CitationPickerSettings.vue';
+import CaptureEndpointSettings from './CaptureEndpointSettings.vue';
 import { isIOS } from '../lib/platform';
 import type { Theme } from '../types';
 
@@ -468,6 +469,10 @@ const fontFamilySelectValue = computed(() =>
             {{ t('settings.setDefaultHint') }}
           </div>
         </section>
+
+        <!-- v2.4 Integrations: HTTP capture endpoint. Self-contained subcomponent
+             so the diff against parallel Integrations work stays clean. -->
+        <CaptureEndpointSettings />
       </div>
     </div>
   </div>

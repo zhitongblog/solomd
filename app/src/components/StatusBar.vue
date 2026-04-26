@@ -2,9 +2,13 @@
 import { computed } from 'vue';
 import { useTabsStore } from '../stores/tabs';
 import { cjkWordCount } from '../lib/chinese';
+import { useInbox } from '../composables/useInbox';
+import { useI18n } from '../i18n';
 
 const props = defineProps<{ line: number; col: number }>();
 const tabs = useTabsStore();
+const inbox = useInbox();
+const { t } = useI18n();
 
 const stats = computed(() => {
   const c = tabs.activeTab?.content ?? '';
@@ -20,6 +24,11 @@ const lineCount = computed(() => {
 });
 const lang = computed(() => (tabs.activeTab?.language === 'markdown' ? 'Markdown' : 'Plain Text'));
 const enc = computed(() => tabs.activeTab?.encoding ?? 'UTF-8');
+
+function onPillClick() {
+  // Click toggles off — same affordance as ⌘E.
+  inbox.toggleActive();
+}
 </script>
 
 <template>
@@ -35,6 +44,14 @@ const enc = computed(() => tabs.activeTab?.encoding ?? 'UTF-8');
     <span class="sep">·</span>
     <span class="seg">{{ charCount }} chars</span>
     <span class="spacer"></span>
+    <button
+      v-if="inbox.activeIsInbox.value"
+      class="seg seg--inbox"
+      :title="t('inbox.pillTooltip')"
+      @click="onPillClick"
+    >
+      {{ t('inbox.pill') }}
+    </button>
     <span class="seg">{{ enc }}</span>
     <span class="sep">·</span>
     <span class="seg seg--lang">{{ lang }}</span>
@@ -58,4 +75,19 @@ const enc = computed(() => tabs.activeTab?.encoding ?? 'UTF-8');
 .sep { color: var(--text-faint); }
 .seg--lang { color: var(--accent); }
 .seg--cjk { color: var(--accent); margin-left: -4px; }
+.seg--inbox {
+  background: var(--accent);
+  color: var(--bg-elev);
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: none;
+  cursor: pointer;
+}
+.seg--inbox:hover {
+  filter: brightness(1.1);
+}
 </style>

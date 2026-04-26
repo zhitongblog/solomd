@@ -25,6 +25,10 @@ mod pandoc;
 #[path = "git_history.rs"]
 mod git_history;
 
+// v2.4 inbound HTTP capture endpoint — production-grade, opt-in via Settings.
+#[path = "capture_endpoint.rs"]
+mod capture_endpoint;
+
 // v2.3 dev WebDriver bridge — debug builds only. Module file itself is
 // `#[cfg(debug_assertions)]`-gated, so this `mod` line is too.
 #[cfg(debug_assertions)]
@@ -361,6 +365,11 @@ pub fn run_with(initial_file: Option<String>) {
             git_history::git_file_diff,
             git_history::git_file_at_version,
             git_history::git_rollback_file,
+            capture_endpoint::capture_get_state,
+            capture_endpoint::capture_set_enabled,
+            capture_endpoint::capture_regenerate_token,
+            capture_endpoint::capture_set_inbox_folder,
+            capture_endpoint::capture_set_workspace,
         ])
         .on_menu_event(|app_handle, event| {
             // Forward every menu click to the frontend as a single event
