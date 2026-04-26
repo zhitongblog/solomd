@@ -2,6 +2,7 @@
 import Layout from '../../../layouts/Layout.astro';
 import Header from '../../../components/Header.astro';
 import Footer from '../../../components/Footer.astro';
+import Giscus from '../../../components/Giscus.astro';
 
 const lang = 'zh' as const;
 ---
@@ -154,6 +155,7 @@ const lang = 'zh' as const;
         移动端通过同样的 AutoGit 模式同步,CRDT 实时同步是 v3 的主轴。
       </p>
     </article>
+    <Giscus lang={lang} />
   </main>
   <Footer lang={lang} />
 </Layout>
