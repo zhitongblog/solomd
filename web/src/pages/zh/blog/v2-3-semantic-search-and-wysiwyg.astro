@@ -1,0 +1,177 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import Header from '../../../components/Header.astro';
+import Footer from '../../../components/Footer.astro';
+
+const lang = 'zh' as const;
+---
+
+<Layout
+  title="SoloMD v2.3 — 语义搜索、WYSIWYG 实时编辑、Windows 便携版"
+  description="按意思而非关键词搜索笔记 —— 100% 本地,不下模型文件。Typora 风 WYSIWYG 实时所见即所得模式,Windows 文件树 10× 提速,新增便携版 .zip,以及一个内部用的 MCP 自测桥。"
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <article class="container blog-article">
+      <nav class="breadcrumbs">
+        <a href="/zh/">首页</a> / <a href="/zh/blog/">博客</a> / <span>v2.3</span>
+      </nav>
+      <time>2026-04-26</time>
+      <h1>v2.3 — 语义搜索、WYSIWYG 实时编辑、Windows 便携版</h1>
+      <p class="lead">
+        两个大功能 + 两组 bug 收尾。最大的一个:<strong>本地 RAG 语义搜索</strong>
+        ——不下载任何模型文件、不联网、默认关闭。另外是 <strong>Typora 风的
+        WYSIWYG 实时编辑模式</strong>、<strong>Windows 文件树 10× 提速</strong>、
+        以及给不想跑安装器的用户的 Windows <strong>便携版 .zip</strong>。
+      </p>
+
+      <h2>🔍 本地 RAG —— 按意思搜笔记</h2>
+      <p>
+        按 <kbd>⌘⇧F</kbd>(Windows 是 <kbd>Ctrl+Shift+F</kbd>),弹出新面板。输入
+        自然语言查询,结果按语义相似度排序,不只是字面匹配。搜"部署"也能浮出讨论
+        "上线"、"发版"、"灰度"的段落。
+      </p>
+      <ul>
+        <li>
+          100% 本地。<strong>不下载任何模型文件</strong> ——
+          我们用一个完全跑在 Rust 进程里的确定性哈希字符三元组嵌入器,整个索引器
+          就几百行代码。
+        </li>
+        <li>
+          默认关闭。设置 → 语义搜索 启用。关闭时零开销,不扫描、不建索引。
+        </li>
+        <li>
+          索引存在 <code>&lt;workspace&gt;/.solomd/embeddings.sqlite</code>,
+          就是普通 SQLite,可以用 <code>sqlite3 .schema</code> 直接看。AutoGit
+          打开时自动加进 .gitignore。
+        </li>
+        <li>
+          隐私小结:<em>查询文本 → 本地嵌入函数 → 本地 SQLite 扫描 → 排序结果。</em>
+          查询从不接触任何网络套接字。完整说明见
+          <a href="/zh/security/#5">/zh/security § 5</a>。
+        </li>
+      </ul>
+      <p>
+        这是当前笔记应用领域最大的空白 —— Obsidian、Tolaria、MarkText 都没有
+        语义搜索。我们做成内建,不是插件。
+      </p>
+
+      <h2>✍️ WYSIWYG 实时编辑模式</h2>
+      <p>
+        工具栏分栏和预览之间多了一个钢笔图标。点它(或用 <kbd>Ctrl+Shift+P</kbd>
+        循环切换)进入 <strong>实时编辑</strong> 模式 —— markdown 标记一边输入
+        一边渲染:
+      </p>
+      <ul>
+        <li><code># 标题</code> 渲染成放大粗体,光标进入这一行时 <code>#</code> 重新出现。</li>
+        <li><code>**粗体**</code> 渲染成 <strong>粗体</strong>,光标点进去时星号又显示。</li>
+        <li>斜体、删除线、行内代码、链接、引用、围栏代码块 —— 全都是同一套 caret-aware reveal。</li>
+        <li>同一个 buffer、同一个文件 —— 渲染发生在编辑器本身,不是单独的预览栏。</li>
+      </ul>
+      <p>
+        这是第四种视图模式(编辑 / 分栏 / 实时编辑 / 预览),来回切换不丢状态。
+        欢迎文档加了一份 live-edit demo,可以试每种支持的语法。
+      </p>
+
+      <h2>⚡ Windows 文件树提速 ~10×</h2>
+      <p>
+        Win11 用户反馈:打开文件多的目录卡住几秒。根因:每个目录条目调
+        <code>e.metadata()</code>,Windows 上每次都触发一次单独的
+        <code>GetFileInformationByHandle</code> 系统调用 —— 几千个文件就是几千
+        次 stat 调用,杀软在线扫描时更糟。
+      </p>
+      <p>
+        改用 <code>e.file_type()</code>,直接复用 <code>FindFirstFile</code>
+        批量遍历时缓存的类型信息,无额外 stat。Windows 上大目录立刻快
+        ~5–10×。同时加了"加载中…"转圈条 + 超过 10,000 条目的截断提示。
+      </p>
+
+      <h2>📦 Windows 便携版 .zip</h2>
+      <p>
+        来自 <a href="https://github.com/zhitongblog/solomd/issues/27" rel="external">issue #27</a>
+        的请求:无需安装的 Windows 版本。从这个版本开始,每次发布会同时产生一个
+        <code>SoloMD_&lt;version&gt;_x64-portable.zip</code>,跟现有的 .msi /
+        .exe 并列。解压跑 <code>SoloMD.exe</code> 即可 —— 不要管理员权限,不写
+        注册表,可以放 U 盘里跑。
+      </p>
+      <p>
+        需要 Microsoft Edge WebView2(Win10/11 已预装)。zip 里附带一份小
+        README,如果你的系统恰好没装,里头有微软的安装链接。
+      </p>
+
+      <h2>🛠 Bug 收尾</h2>
+      <ul>
+        <li>
+          <strong>Win11 切换文件树时闪退</strong>
+          (<a href="https://github.com/zhitongblog/solomd/issues/25" rel="external">#25</a>)
+          —— v2.2.1 修了。根因是 <code>list_dir</code> 是同步 Tauri 命令,在慢盘
+          (OneDrive 占位符、网盘、杀软)上堵主线程,Win11 把进程当无响应杀掉。
+          现在 async + spawn_blocking。
+        </li>
+        <li>
+          <strong>Windows 本地图片不显示</strong>
+          (<a href="https://github.com/zhitongblog/solomd/issues/22" rel="external">#22</a>)
+          —— v2.0 就修了;混斜杠路径现在过 <code>normalizePath</code> 才到
+          <code>convertFileSrc</code>。
+        </li>
+      </ul>
+
+      <h2>🤖 工程笔记:dev-bridge</h2>
+      <p>
+        v2.3 内部新增的一块基础设施 —— 不直接面向用户,但值得说一下。在 v2.3 之前,
+        我们有 <code>solomd-dev-mcp</code> 这个内部 MCP 服务,可以驱动 Tauri IPC
+        之下的所有逻辑(设置、工作区状态、AutoGit、文件读写),但**不能**驱动
+        实际 Vue UI(点击、读 DOM、派发事件),因为 macOS 上 Tauri 的 WKWebView
+        没有原生 Chrome DevTools Protocol。
+      </p>
+      <p>
+        v2.3 加了一个 <code>#[cfg(debug_assertions)]</code> 严格 gate 的本地
+        JSON-RPC 桥,**只在 dev 构建里启动**。Bearer token 鉴权,只绑 127.0.0.1,
+        端口和 token 写到
+        <code>~/Library/Application Support/app.solomd/dev-bridge.&#123;port,token&#125;</code>。
+        dev-mcp 多了 6 个新工具:<code>solomd_dev_eval / click / text /
+        dispatch / url / wait_for</code>。Release 二进制里完全没痕迹
+        (<code>nm | grep dev_bridge</code> 0 匹配)。
+      </p>
+      <p>
+        这填上了我们全局规则"每个客户端项目都标配 CLI + MCP 自测"的最后一块缺口。
+        Claude 现在能点你 SoloMD 的按钮、读你的 DOM、派发键盘事件 —— 跟真用户
+        一模一样的回路,只是从外面驱动的。
+      </p>
+
+      <h2>📥 下载</h2>
+      <p>
+        <a class="btn btn--primary" href="https://github.com/zhitongblog/solomd/releases/latest">下载最新版 →</a>
+        &nbsp;
+        <a class="btn" href="https://github.com/zhitongblog/solomd/releases">所有版本</a>
+      </p>
+
+      <h2>下一步</h2>
+      <p>
+        v2.4:Notion 风的官网叙事板块 + GitHub Discussions 集成马上跟着这篇博客
+        上线(在 v2.3 surfacing 之上的额外一层)。再之后:Mac App Store 重新提交、
+        移动端通过同样的 AutoGit 模式同步,CRDT 实时同步是 v3 的主轴。
+      </p>
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .blog-article { max-width: 760px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .blog-article time { font-size: 13px; color: var(--text-muted, #888); }
+  .blog-article h1 { font-size: 2.2rem; line-height: 1.2; margin: 8px 0 18px; }
+  .blog-article h2 { font-size: 1.4rem; margin: 36px 0 12px; }
+  .blog-article .lead { color: var(--text-muted, #555); font-size: 1.1rem; line-height: 1.6; margin-bottom: 28px; }
+  .blog-article p { line-height: 1.75; margin: 14px 0; }
+  .blog-article ul { padding-left: 22px; }
+  .blog-article li { margin: 6px 0; line-height: 1.7; }
+  .blog-article code { background: #f5f5f0; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+  .blog-article a { color: #ff9f40; }
+  .blog-article kbd { background: #f5f5f0; border: 1px solid #ddd; border-radius: 3px; padding: 1px 6px; font-family: ui-monospace, Menlo, monospace; font-size: 0.85em; }
+  .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  .btn--primary { background: #ff9f40; color: #000 !important; }
+</style>

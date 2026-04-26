@@ -1,0 +1,195 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+
+const lang = 'en' as const;
+---
+
+<Layout
+  title="SoloMD v2.3 — Semantic search, WYSIWYG live edit, Windows portable"
+  description="Search your notes by meaning, not just keywords — 100% on-device, no model file download. Plus a Typora-style live edit mode, a 10× Windows file-tree speedup, a portable .zip build, and a new internal MCP-driven self-test bridge."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <article class="container blog-article">
+      <nav class="breadcrumbs">
+        <a href="/">Home</a> / <a href="/blog/">Blog</a> / <span>v2.3</span>
+      </nav>
+      <time>2026-04-26</time>
+      <h1>v2.3 — Semantic search, WYSIWYG live edit, Windows portable</h1>
+      <p class="lead">
+        Two major feature drops + two reported-bug rollups. The big one:
+        <strong>Local RAG / semantic search</strong> ships with no model file
+        download, no network call, off by default. Plus a <strong>Typora-style
+        WYSIWYG live edit mode</strong>, a <strong>10× Windows file-tree
+        speedup</strong>, and a Windows <strong>portable .zip</strong> build for
+        users who'd rather not run an installer.
+      </p>
+
+      <h2>🔍 Local RAG — search your notes by meaning</h2>
+      <p>
+        Press <kbd>⌘⇧F</kbd> (or <kbd>Ctrl+Shift+F</kbd>). New panel. Type a
+        natural-language query. Results rank by semantic similarity, not just
+        keyword match. Search "deployment" and you can also surface paragraphs
+        about "rolling out", "shipping", "release".
+      </p>
+      <ul>
+        <li>
+          100% on-device. <strong>No model file download</strong> — we ship a
+          deterministic hashed character-trigram embedder that runs entirely in
+          our Rust process. The whole indexer is a few hundred lines.
+        </li>
+        <li>
+          Off by default. Enable in Settings → Semantic search. Zero overhead
+          when off; no scanning, no index file.
+        </li>
+        <li>
+          Index lives at <code>&lt;workspace&gt;/.solomd/embeddings.sqlite</code>
+          — a plain SQLite file you can <code>sqlite3 .schema</code> into. Auto-
+          gitignored when AutoGit is on.
+        </li>
+        <li>
+          Privacy summary:
+          <em>query text → local embedding fn → local SQLite scan → ranked results.</em>
+          The query text never touches a network socket. See the full writeup in
+          <a href="/security/#5">/security § 5</a>.
+        </li>
+      </ul>
+      <p>
+        This is the biggest field-wide gap in note-taking apps right now —
+        Obsidian, Tolaria, MarkText all lack semantic search. Built-in, not a
+        plugin.
+      </p>
+
+      <h2>✍️ WYSIWYG live edit mode</h2>
+      <p>
+        Toolbar between Split and Preview, you'll see a new pen-on-paper icon.
+        Click it (or cycle with <kbd>Ctrl+Shift+P</kbd>) to enter <strong>live
+        edit</strong> mode — markdown formatting renders inline as you type:
+      </p>
+      <ul>
+        <li><code># Heading</code> renders as a larger bold heading; the <code>#</code> is hidden until your cursor enters the line.</li>
+        <li><code>**bold**</code> renders as <strong>bold</strong>; the asterisks reappear when you click in.</li>
+        <li>Italic, strikethrough, inline code, links, blockquotes, fenced code blocks — same caret-aware reveal.</li>
+        <li>Same buffer, same file. Not a separate preview pane — formatting is
+          in the editor itself.</li>
+      </ul>
+      <p>
+        It's the fourth view mode (edit / split / liveEdit / preview), so you
+        can toggle in and out without losing state. Welcome doc updated with a
+        live-edit demo to try every supported syntax.
+      </p>
+
+      <h2>⚡ Windows file-tree speedup (~10×)</h2>
+      <p>
+        Reported on Win11: opening a folder with a few thousand notes was
+        painfully slow. Root cause: the per-entry <code>e.metadata()</code> call
+        on Windows triggers a separate
+        <code>GetFileInformationByHandle</code> syscall per entry. We were
+        making thousands of stat syscalls when the directory scan already had
+        the type info cached.
+      </p>
+      <p>
+        Switched to <code>e.file_type()</code>, which reuses the bulk
+        <code>FindFirstFile</code> traversal's cached entry type — no
+        per-entry stat. Effect on Windows: ~5–10× faster on large folders, especially
+        with antivirus on-access scanning. Also added a "Loading…" spinner +
+        truncation hint at 10,000 entries.
+      </p>
+
+      <h2>📦 Windows portable .zip</h2>
+      <p>
+        Requested by <a href="https://github.com/zhitongblog/solomd/issues/27" rel="external">issue #27</a>:
+        a no-installer Windows build. Each release now produces
+        <code>SoloMD_&lt;version&gt;_x64-portable.zip</code> alongside the
+        existing .msi / .exe. Just unzip and run <code>SoloMD.exe</code> — no
+        admin, no registry writes, runs from a USB stick.
+      </p>
+      <p>
+        Requires Microsoft Edge WebView2, which is preinstalled on Windows 10
+        and 11. The zip ships with a short README pointing at Microsoft's
+        installer URL in case you need it.
+      </p>
+
+      <h2>🛠 Bug rollups</h2>
+      <ul>
+        <li>
+          <strong>Win11 file-tree crash on toggle</strong>
+          (<a href="https://github.com/zhitongblog/solomd/issues/25" rel="external">#25</a>)
+          — fixed in v2.2.1; root cause was a synchronous <code>list_dir</code>
+          Tauri command blocking the main thread on slow filesystems
+          (OneDrive placeholders, network drives, antivirus). Now async + spawn_blocking.
+        </li>
+        <li>
+          <strong>Windows local images not displaying</strong>
+          (<a href="https://github.com/zhitongblog/solomd/issues/22" rel="external">#22</a>)
+          — fixed back in v2.0; mixed-slash paths now go through a
+          <code>normalizePath</code> helper before reaching
+          <code>convertFileSrc</code>.
+        </li>
+      </ul>
+
+      <h2>🤖 Engineering: the dev-bridge</h2>
+      <p>
+        New internal piece — not user-facing — but worth flagging. Until v2.3,
+        we had a <code>solomd-dev-mcp</code> internal MCP server that could
+        drive everything <em>behind</em> the Tauri IPC layer (settings,
+        workspace state, AutoGit, file IO). It couldn't drive the actual Vue
+        UI — clicks, DOM reads, event dispatch — because Tauri's WKWebView
+        on macOS doesn't natively expose Chrome DevTools Protocol.
+      </p>
+      <p>
+        v2.3 adds a tiny <code>#[cfg(debug_assertions)]</code>-gated localhost
+        JSON-RPC bridge that runs <em>only</em> in the dev build. Bearer-token
+        auth, 127.0.0.1 only, port + token written to
+        <code>~/Library/Application Support/app.solomd/dev-bridge.&#123;port,token&#125;</code>.
+        dev-mcp gains 6 new tools: <code>solomd_dev_eval / click / text /
+        dispatch / url / wait_for</code>. Verified zero footprint in release
+        binaries (<code>nm | grep dev_bridge</code> returns 0 matches).
+      </p>
+      <p>
+        Closes the last gap in the global rule "every client project ships
+        with CLI + MCP for self-test". Claude can now click your buttons,
+        read your DOM, and dispatch keyboard events — same loop a real user
+        would use, but driven from outside.
+      </p>
+
+      <h2>📥 Download</h2>
+      <p>
+        <a class="btn btn--primary" href="https://github.com/zhitongblog/solomd/releases/latest">Download latest →</a>
+        &nbsp;
+        <a class="btn" href="https://github.com/zhitongblog/solomd/releases">All releases</a>
+      </p>
+
+      <h2>What's next</h2>
+      <p>
+        v2.4: a real Notion-style narrative homepage section + GitHub
+        Discussions integration is landing right after this post (separate
+        layer on top of the v2.3 surfacing pass). Beyond that:
+        Mac App Store resubmission, mobile sync via the same AutoGit
+        pattern, and CRDT real-time sync on the v3 horizon.
+      </p>
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .blog-article { max-width: 760px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .blog-article time { font-size: 13px; color: var(--text-muted, #888); }
+  .blog-article h1 { font-size: 2.2rem; line-height: 1.2; margin: 8px 0 18px; }
+  .blog-article h2 { font-size: 1.4rem; margin: 36px 0 12px; }
+  .blog-article .lead { color: var(--text-muted, #555); font-size: 1.1rem; line-height: 1.6; margin-bottom: 28px; }
+  .blog-article p { line-height: 1.75; margin: 14px 0; }
+  .blog-article ul { padding-left: 22px; }
+  .blog-article li { margin: 6px 0; line-height: 1.7; }
+  .blog-article code { background: #f5f5f0; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+  .blog-article a { color: #ff9f40; }
+  .blog-article kbd { background: #f5f5f0; border: 1px solid #ddd; border-radius: 3px; padding: 1px 6px; font-family: ui-monospace, Menlo, monospace; font-size: 0.85em; }
+  .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  .btn--primary { background: #ff9f40; color: #000 !important; }
+</style>
