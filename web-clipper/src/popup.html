@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>SoloMD Web Clipper</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="header">
+      <img src="icons/icon-48.png" alt="" class="header__icon" />
+      <h1 id="popup-title" class="header__title">SoloMD Web Clipper</h1>
+    </header>
+
+    <main class="actions">
+      <button class="action" data-mode="page">
+        <span class="action__label" data-i18n="clipper.popup.clipPage">Clip whole page</span>
+        <span class="action__hint" data-i18n="clipper.popup.clipPageHint"
+          >Reader-extracted main content → Markdown</span
+        >
+      </button>
+
+      <button class="action" data-mode="selection">
+        <span class="action__label">
+          <span data-i18n="clipper.popup.clipSelection">Clip selection</span>
+          <kbd class="action__kbd" data-i18n="clipper.popup.shortcut.selection">⌘⇧S</kbd>
+        </span>
+        <span class="action__hint" data-i18n="clipper.popup.clipSelectionHint"
+          >Just the highlighted text</span
+        >
+      </button>
+
+      <button class="action" data-mode="link">
+        <span class="action__label">
+          <span data-i18n="clipper.popup.saveLink">Save link</span>
+          <kbd class="action__kbd" data-i18n="clipper.popup.shortcut.link">⌘⇧L</kbd>
+        </span>
+        <span class="action__hint" data-i18n="clipper.popup.saveLinkHint"
+          >Title + URL only — for read-later</span
+        >
+      </button>
+    </main>
+
+    <footer class="footer">
+      <span class="footer__pair" id="pair-status" data-i18n="clipper.popup.checking"
+        >Checking…</span
+      >
+      <button class="footer__settings" id="open-options" data-i18n="clipper.popup.openOptions">
+        Settings
+      </button>
+    </footer>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

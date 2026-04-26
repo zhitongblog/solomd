@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import type { Theme, ViewMode } from '../types';
+import { isIOS } from '../lib/platform';
 
 const LS_KEY = 'solomd.settings.v1';
 
@@ -82,6 +83,15 @@ interface Settings {
   // v2.3: Local RAG / semantic search. Off by default — when on, the
   // workspace is scanned + embedded into <workspace>/.solomd/embeddings.sqlite.
   ragEnabled: boolean;
+  // v2.4: when on, opening any tab on iPad / iPhone snaps view mode to
+  // `reading` (no editor chrome — just the rendered prose). Defaults to
+  // `true` on iOS, `false` everywhere else. Esc / Cmd+Shift+R still
+  // toggles back into edit mode for power users.
+  readingByDefaultOnMobile: boolean;
+  // v2.4: last view mode the user was in before they entered reading mode.
+  // Persisted so Esc / the close-button restores their previous workspace
+  // even across reloads. Never set to 'reading' — sentinel only.
+  lastNonReadingViewMode: ViewMode;
 }
 
 function defaults(): Settings {
@@ -136,6 +146,14 @@ function defaults(): Settings {
     autoGitDebounceSeconds: 30,
     showHistoryPanel: false,
     ragEnabled: false,
+    readingByDefaultOnMobile: (() => {
+      try {
+        return isIOS();
+      } catch {
+        return false;
+      }
+    })(),
+    lastNonReadingViewMode: 'edit',
   };
 }
 
@@ -163,15 +181,51 @@ export const useSettingsStore = defineStore('settings', {
       this.setTheme(this.theme === 'light' ? 'dark' : 'light');
     },
     setViewMode(mode: ViewMode) {
+      // Remember whatever non-reading mode we were in before — the
+      // reading-mode close button / Esc handler restores it.
+      if (mode !== 'reading' && this.viewMode !== 'reading') {
+        this.lastNonReadingViewMode = mode;
+      } else if (mode !== 'reading') {
+        this.lastNonReadingViewMode = mode;
+      }
       this.viewMode = mode;
       this.persist();
     },
     cycleViewMode() {
       // `liveEdit` (v2.3) joins the cycle — order chosen so the WYSIWYG
       // mode lives between split (markup-visible) and preview (rendered).
-      const order: ViewMode[] = ['edit', 'split', 'liveEdit', 'preview'];
+      // `reading` (v2.4) joins as the 5th cycle target — full-bleed serif
+      // preview, last in the cycle so the common edit/split toggle keeps
+      // its muscle memory at the top of the rotation.
+      const order: ViewMode[] = ['edit', 'split', 'liveEdit', 'preview', 'reading'];
       const i = order.indexOf(this.viewMode);
       this.setViewMode(order[(i + 1) % order.length]);
+    },
+    /**
+     * Toggle reading mode on/off. If the user is currently in reading mode
+     * we restore whatever they were in before; otherwise we save the
+     * current mode and snap to reading.
+     */
+    toggleReadingMode() {
+      if (this.viewMode === 'reading') {
+        this.exitReadingMode();
+      } else {
+        this.lastNonReadingViewMode = this.viewMode;
+        this.viewMode = 'reading';
+        this.persist();
+      }
+    },
+    /** Restore the last non-reading view mode (used by Esc / close button). */
+    exitReadingMode() {
+      // Defensive: never exit *into* reading mode (would loop). Default
+      // back to 'edit' if the saved sentinel is somehow 'reading'.
+      const next = this.lastNonReadingViewMode === 'reading' ? 'edit' : this.lastNonReadingViewMode;
+      this.viewMode = next;
+      this.persist();
+    },
+    toggleReadingByDefaultOnMobile() {
+      this.readingByDefaultOnMobile = !this.readingByDefaultOnMobile;
+      this.persist();
     },
     setFontSize(n: number) {
       this.fontSize = Math.max(10, Math.min(28, n));

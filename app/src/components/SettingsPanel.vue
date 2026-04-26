@@ -13,6 +13,7 @@ import { checkForUpdate, openReleaseUrl, isMasBuild } from '../lib/check-update'
 import AISettings from './AISettings.vue';
 import CitationPickerSettings from './CitationPickerSettings.vue';
 import CaptureEndpointSettings from './CaptureEndpointSettings.vue';
+import IntegrationsSettings from './IntegrationsSettings.vue';
 import { isIOS } from '../lib/platform';
 import type { Theme } from '../types';
 
@@ -247,6 +248,18 @@ const fontFamilySelectValue = computed(() =>
 
         <section>
           <label>
+            <input
+              type="checkbox"
+              :checked="settings.readingByDefaultOnMobile"
+              @change="settings.toggleReadingByDefaultOnMobile()"
+            />
+            {{ t('reading.readingByDefaultOnMobile') }}
+          </label>
+          <p style="font-size: 11px; color: var(--text-faint); margin: 4px 0 0; line-height: 1.5;">{{ t('reading.readingByDefaultOnMobileHint') }}</p>
+        </section>
+
+        <section>
+          <label>
             <input type="checkbox" :checked="settings.showFileTree" @change="settings.toggleFileTree()" />
             {{ t('settings.showFileTree') }}
           </label>
@@ -362,6 +375,10 @@ const fontFamilySelectValue = computed(() =>
           @update:model="(v: string) => settings.setAiModel(v)"
           @update:baseUrl="(v: string) => settings.setAiBaseUrl(v)"
         />
+
+        <!-- v2.4: Integrations (CLI + MCP) — sits under AI rewrite so the
+             "things SoloMD talks to" section reads as one cluster. -->
+        <IntegrationsSettings />
 
         <section>
           <label>

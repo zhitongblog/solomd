@@ -92,6 +92,11 @@ export function useShortcuts(hooks: Hooks = {}) {
     } else if (k === 'p') {
       e.preventDefault();
       runById('export.pdfPrint');
+    } else if (k === 'r' && e.shiftKey) {
+      // v2.4: Cmd/Ctrl+Shift+R toggles reading mode. Pressing the same
+      // combo while already in reading mode restores the previous mode.
+      e.preventDefault();
+      settings.toggleReadingMode();
     } else if (k === 'k' && e.shiftKey) {
       e.preventDefault();
       hooks.openPalette?.();

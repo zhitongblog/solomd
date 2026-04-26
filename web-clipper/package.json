@@ -1,0 +1,32 @@
+{
+  "name": "solomd-web-clipper",
+  "version": "2.4.0",
+  "private": true,
+  "description": "SoloMD web clipper — Chrome + Firefox WebExtension. Sends the current page (or a selection) to the local SoloMD desktop app over the v2.4 capture endpoint.",
+  "license": "MIT",
+  "author": "SoloMD contributors",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "build:chrome": "TARGET=chrome node scripts/build.mjs",
+    "build:firefox": "TARGET=firefox node scripts/build.mjs",
+    "package": "node scripts/build.mjs && node scripts/package.mjs",
+    "smoke": "bash scripts/smoke-test.sh",
+    "test:markdown": "node scripts/test-markdown.mjs",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@mozilla/readability": "0.5.0",
+    "turndown": "7.2.0",
+    "webextension-polyfill": "0.12.0"
+  },
+  "devDependencies": {
+    "@types/chrome": "0.0.270",
+    "@types/firefox-webext-browser": "120.0.4",
+    "@types/turndown": "5.0.5",
+    "esbuild": "0.24.0",
+    "jsdom": "25.0.1",
+    "typescript": "5.6.3"
+  }
+}

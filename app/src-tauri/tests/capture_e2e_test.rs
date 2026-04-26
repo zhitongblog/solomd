@@ -27,9 +27,10 @@ fn lock() -> MutexGuard<'static, ()> {
 }
 
 use app_lib::capture_endpoint::{
-    capture_get_state, capture_regenerate_token, capture_set_inbox_folder,
-    capture_write_inner, local_iso8601_now, CaptureError, _test_bind_and_serve,
-    _test_check_auth, _test_current_token, _test_handle_capture, _test_set_state,
+    capture_append_inner, capture_get_state, capture_regenerate_token,
+    capture_set_inbox_folder, capture_write_inner, local_iso8601_now, CaptureError,
+    _test_bind_and_serve, _test_check_auth, _test_current_token, _test_handle_capture,
+    _test_resolve_safe_workspace_path, _test_set_state,
 };
 
 fn fresh_workspace(label: &str) -> PathBuf {
@@ -329,4 +330,166 @@ fn iso8601_format_is_well_formed() {
     assert_eq!(&s[16..17], ":");
     let off = &s[19..20];
     assert!(off == "+" || off == "-", "offset sign got {off:?}");
+}
+
+// ---------------------------------------------------------------------------
+// v2.4 — `append_path` mode (iOS Shortcuts "append to today's daily note").
+// ---------------------------------------------------------------------------
+
+/// Appending to a brand-new file creates it; the body is preceded by a
+/// leading newline so successive appends stack on separate lines.
+#[test]
+fn append_creates_file_and_prepends_newline() {
+    let _g = lock();
+    let ws = fresh_workspace("append-create");
+
+    // First append: file does not exist → created with leading \n + body.
+    let path = capture_append_inner(&ws, "Daily/2026-04-26.md", "first line").expect("first append");
+    let raw = fs::read_to_string(&path).unwrap();
+    assert_eq!(raw, "\nfirst line\n", "first append (file is new)");
+
+    // Second append: file exists → another leading \n separates entries.
+    let path2 =
+        capture_append_inner(&ws, "Daily/2026-04-26.md", "second line\n").expect("second append");
+    assert_eq!(path, path2, "same file targeted both times");
+    let raw = fs::read_to_string(&path).unwrap();
+    assert_eq!(raw, "\nfirst line\n\nsecond line\n");
+}
+
+/// `append_path` resolution rejects every path-traversal style we know of.
+#[test]
+fn append_path_rejects_traversal_and_absolute_paths() {
+    let _g = lock();
+    let ws = fresh_workspace("append-traversal");
+
+    let bad: &[&str] = &[
+        "../escape.md",
+        "Daily/../../etc/passwd",
+        "Daily/../../../etc/passwd",
+        "/etc/passwd",
+        r"\Windows\System32\evil.md",
+        "C:/Windows/evil.md",
+        r"C:\Windows\evil.md",
+    ];
+    for input in bad {
+        let err =
+            _test_resolve_safe_workspace_path(&ws, input).expect_err(&format!("must reject {input}"));
+        assert!(
+            err.contains("..") || err.contains("absolute") || err.contains("drive") || err.contains("outside"),
+            "rejection message should explain why ({input}): {err}",
+        );
+    }
+
+    // Sanity: a normal relative path is accepted.
+    let ok = _test_resolve_safe_workspace_path(&ws, "Daily/today.md").expect("normal path ok");
+    assert!(ok.starts_with(fs::canonicalize(&ws).unwrap()));
+}
+
+/// End-to-end: drive `handle_capture` (the JSON entrypoint) with a body
+/// that has `append_path`, and verify the file landed in the workspace.
+#[test]
+fn handle_capture_with_append_path() {
+    let _g = lock();
+    let ws = fresh_workspace("append-handle");
+    _test_set_state(Some(ws.clone()), "tok".into(), "inbox".into());
+
+    let body = serde_json::json!({
+        "append_path": "Daily/2026-04-26.md",
+        "content": "- 11:30 lunch with M",
+    })
+    .to_string();
+    let path = _test_handle_capture(body.as_bytes()).expect("append handle");
+    let raw = fs::read_to_string(&path).unwrap();
+    assert_eq!(raw, "\n- 11:30 lunch with M\n");
+    let p = std::path::PathBuf::from(&path);
+    let canon_ws = fs::canonicalize(&ws).unwrap();
+    assert!(p.starts_with(&canon_ws), "must land inside the workspace");
+
+    // Path-traversal attempt → 400-style BadRequest, no file created.
+    let body = serde_json::json!({
+        "append_path": "../../etc/passwd",
+        "content": "x",
+    })
+    .to_string();
+    let err = _test_handle_capture(body.as_bytes()).unwrap_err();
+    assert!(matches!(err, CaptureError::BadRequest(_)), "got {err:?}");
+
+    // Empty append_path → BadRequest.
+    let body = serde_json::json!({
+        "append_path": "   ",
+        "content": "x",
+    })
+    .to_string();
+    let err = _test_handle_capture(body.as_bytes()).unwrap_err();
+    assert!(matches!(err, CaptureError::BadRequest(_)));
+}
+
+/// Live HTTP round-trip for the append branch — same shape as the
+/// `live_http_round_trip` test, but asserts the file content.
+#[test]
+fn live_http_append_round_trip() {
+    let _g = lock();
+    let ws = fresh_workspace("append-http");
+
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    let port: u16 = rt.block_on(async {
+        _test_set_state(
+            Some(ws.clone()),
+            "append-token-http".to_string(),
+            "inbox".to_string(),
+        );
+        _test_bind_and_serve().await.unwrap()
+    });
+    std::thread::spawn(move || {
+        rt.block_on(async {
+            loop {
+                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+            }
+        });
+    });
+    std::thread::sleep(std::time::Duration::from_millis(50));
+
+    // (a) No auth → 401.
+    let resp = http_post(
+        port,
+        "/capture",
+        None,
+        b"{\"append_path\":\"Daily/2026-04-26.md\",\"content\":\"x\"}",
+    );
+    assert!(resp.starts_with("HTTP/1.1 401"), "got {resp:.80}");
+
+    // (b) Authed append → 200, file created with leading \n.
+    let body = serde_json::json!({
+        "append_path": "Daily/2026-04-26.md",
+        "content": "- 09:00 standup",
+    })
+    .to_string();
+    let resp = http_post(
+        port,
+        "/capture",
+        Some("Bearer append-token-http"),
+        body.as_bytes(),
+    );
+    assert!(resp.starts_with("HTTP/1.1 200"), "got {resp:.120}");
+    let canon_ws = fs::canonicalize(&ws).unwrap();
+    let target = canon_ws.join("Daily/2026-04-26.md");
+    let raw = fs::read_to_string(&target).expect("file should exist");
+    assert_eq!(raw, "\n- 09:00 standup\n");
+
+    // (c) Path-traversal → 400.
+    let body = serde_json::json!({
+        "append_path": "../../etc/passwd",
+        "content": "x",
+    })
+    .to_string();
+    let resp = http_post(
+        port,
+        "/capture",
+        Some("Bearer append-token-http"),
+        body.as_bytes(),
+    );
+    assert!(resp.starts_with("HTTP/1.1 400"), "got {resp:.120}");
 }

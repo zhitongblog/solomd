@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>SoloMD Web Clipper · Settings</title>
+    <link rel="stylesheet" href="popup.css" />
+    <style>
+      body {
+        width: 100%;
+        max-width: 540px;
+        margin: 32px auto;
+        padding: 0 24px 64px;
+        background: #fff;
+      }
+      h1 {
+        font-size: 20px;
+        margin: 0 0 8px;
+      }
+      h2 {
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #888;
+        margin: 24px 0 8px;
+        font-weight: 600;
+      }
+      p.intro {
+        font-size: 13px;
+        line-height: 1.6;
+        color: #555;
+        margin: 0 0 16px;
+      }
+      form {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      label.field {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .field__hint {
+        font-size: 11px;
+        font-weight: normal;
+        color: #888;
+      }
+      input[type='text'],
+      input[type='password'],
+      select {
+        font: inherit;
+        font-size: 13px;
+        padding: 8px 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        background: #fff;
+        color: #222;
+        font-family: ui-monospace, Menlo, monospace;
+      }
+      input[type='text']:focus,
+      input[type='password']:focus,
+      select:focus {
+        outline: none;
+        border-color: #ff9f40;
+        box-shadow: 0 0 0 2px rgba(255, 159, 64, 0.2);
+      }
+      .field__row {
+        display: flex;
+        gap: 8px;
+      }
+      .field__row input {
+        flex: 1;
+      }
+      .checkbox-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        color: #444;
+      }
+      .actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-top: 8px;
+      }
+      .btn {
+        font: inherit;
+        font-size: 13px;
+        padding: 8px 16px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        cursor: pointer;
+        background: #fafafa;
+        color: #222;
+      }
+      .btn--primary {
+        background: #ff9f40;
+        border-color: #ff9f40;
+        color: white;
+        font-weight: 600;
+      }
+      .btn--primary:hover {
+        background: #ff8c1a;
+      }
+      .btn:disabled {
+        opacity: 0.6;
+        cursor: progress;
+      }
+      .status {
+        font-size: 12px;
+        color: #666;
+        min-height: 18px;
+        margin-left: auto;
+      }
+      .status--ok {
+        color: #2e7d32;
+      }
+      .status--err {
+        color: #c0392b;
+      }
+      @media (prefers-color-scheme: dark) {
+        body {
+          background: #1f2024;
+          color: #e6e6e6;
+        }
+        h2 {
+          color: #999;
+        }
+        p.intro {
+          color: #bbb;
+        }
+        input[type='text'],
+        input[type='password'],
+        select {
+          background: #2a2b30;
+          border-color: #3a3b40;
+          color: #e6e6e6;
+        }
+        .checkbox-row {
+          color: #ddd;
+        }
+        .btn {
+          background: #2a2b30;
+          border-color: #3a3b40;
+          color: #ddd;
+        }
+        .btn--primary {
+          background: #ff9f40;
+          border-color: #ff9f40;
+          color: #1f2024;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1 data-i18n="clipper.options.heading">Pair with SoloMD</h1>
+    <p class="intro" data-i18n="clipper.options.intro">
+      In SoloMD, open Settings → Integrations → HTTP capture endpoint, toggle it on, and copy the
+      bearer token here.
+    </p>
+
+    <form id="settings-form" autocomplete="off">
+      <label class="field">
+        <span data-i18n="clipper.options.endpoint">Endpoint URL</span>
+        <input id="endpoint" type="text" placeholder="http://127.0.0.1:7777" />
+        <span class="field__hint" data-i18n="clipper.options.endpointHint"
+          >Default: http://127.0.0.1:7777 (loopback only — never leaves your machine).</span
+        >
+      </label>
+
+      <label class="field">
+        <span data-i18n="clipper.options.token">Bearer token</span>
+        <input id="token" type="password" placeholder="paste your token" />
+        <span class="field__hint" data-i18n="clipper.options.tokenHint"
+          >Paste the token from SoloMD Settings → Integrations.</span
+        >
+      </label>
+
+      <label class="field">
+        <span data-i18n="clipper.options.subfolder">Sub-folder (optional)</span>
+        <input id="subfolder" type="text" placeholder="" />
+        <span class="field__hint" data-i18n="clipper.options.subfolderHint"
+          >Relative to the workspace inbox. Leave blank to drop into the inbox root.</span
+        >
+      </label>
+
+      <label class="checkbox-row">
+        <input id="notify" type="checkbox" />
+        <span data-i18n="clipper.options.notifyOnSuccess"
+          >Show a desktop notification when a capture lands.</span
+        >
+      </label>
+
+      <label class="field">
+        <span data-i18n="clipper.options.locale">Language</span>
+        <select id="locale">
+          <option value="auto" data-i18n="clipper.options.localeAuto">Auto (browser default)</option>
+          <option value="en" data-i18n="clipper.options.localeEn">English</option>
+          <option value="zh" data-i18n="clipper.options.localeZh">中文 (Chinese)</option>
+        </select>
+      </label>
+
+      <div class="actions">
+        <button class="btn" id="test-btn" type="button" data-i18n="clipper.options.test">
+          Test connection
+        </button>
+        <button class="btn btn--primary" id="save-btn" type="submit" data-i18n="clipper.options.save">
+          Save
+        </button>
+        <span class="status" id="status"></span>
+      </div>
+    </form>
+
+    <script type="module" src="options.js"></script>
+  </body>
+</html>

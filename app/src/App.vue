@@ -21,6 +21,7 @@ import SettingsPanel from './components/SettingsPanel.vue';
 import MarkdownHelp from './components/MarkdownHelp.vue';
 import GlobalSearch from './components/GlobalSearch.vue';
 import RagSearch from './components/RagSearch.vue';
+import ReadingView from './components/ReadingView.vue';
 import AboutDialog from './components/AboutDialog.vue';
 import UnsavedDialog from './components/UnsavedDialog.vue';
 import Toast from './components/Toast.vue';
@@ -105,6 +106,9 @@ function onEsc(e: KeyboardEvent) {
   else if (helpOpen.value) helpOpen.value = false;
   else if (paletteOpen.value) paletteOpen.value = false;
   else if (settingsOpen.value) settingsOpen.value = false;
+  // v2.4: reading mode is "modal-like" too — Esc exits back to the
+  // previous view. Lowest priority so any open dialog beats it.
+  else if (settings.viewMode === 'reading') settings.exitReadingMode();
 }
 
 function onCursor(line: number, col: number) {
@@ -144,6 +148,25 @@ watch(
   (newActiveId) => {
     if (newActiveId) tiles.syncFromTabs(newActiveId);
   },
+);
+
+// v2.4: on iOS / iPad, default to reading mode whenever a markdown tab
+// becomes active (and the user hasn't opted out via the setting). Skips
+// non-markdown docs so plaintext tabs still get the editor.
+watch(
+  () => tabs.activeId,
+  (newActiveId) => {
+    if (!newActiveId) return;
+    if (!isIOS()) return;
+    if (!settings.readingByDefaultOnMobile) return;
+    const t = tabs.activeTab;
+    if (!t || t.language !== 'markdown') return;
+    if (settings.viewMode === 'reading') return;
+    settings.lastNonReadingViewMode = settings.viewMode;
+    settings.viewMode = 'reading';
+    settings.persist();
+  },
+  { immediate: true },
 );
 
 // UI font size
@@ -528,39 +551,50 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
 </script>
 
 <template>
-  <div class="app">
-    <Toolbar
-      @open-palette="paletteOpen = true"
-      @open-settings="settingsOpen = true"
-      @open-help="helpOpen = true"
-      @open-search="searchOpen = true"
-    />
-    <TelemetryBanner />
-    <div class="workspace">
-      <FileTree v-if="settings.showFileTree" />
-      <div class="content">
-        <button
-          v-if="tabs.activeTab?.language === 'markdown' && !showOutlinePane"
-          class="outline-toggle"
-          @click="tabs.activeId && tabs.toggleOutline(tabs.activeId)"
-          :title="t('toolbar.outlineTooltip')"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" />
-            <line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" />
-          </svg>
-        </button>
-        <BasesView v-if="basesOpen" />
-        <TileRoot v-else :node="tiles.root" @cursor="onCursor" />
+  <div class="app" :class="{ 'app--reading': settings.viewMode === 'reading' }">
+    <!--
+      v2.4 reading mode swaps out the entire toolbar / sidebar / status-bar
+      stack for a single ReadingView component. We keep all the modal
+      dialogs (settings, palette, etc.) mounted at the bottom so the user
+      can still summon them from inside reading mode if needed.
+    -->
+    <template v-if="settings.viewMode === 'reading'">
+      <ReadingView />
+    </template>
+    <template v-else>
+      <Toolbar
+        @open-palette="paletteOpen = true"
+        @open-settings="settingsOpen = true"
+        @open-help="helpOpen = true"
+        @open-search="searchOpen = true"
+      />
+      <TelemetryBanner />
+      <div class="workspace">
+        <FileTree v-if="settings.showFileTree" />
+        <div class="content">
+          <button
+            v-if="tabs.activeTab?.language === 'markdown' && !showOutlinePane"
+            class="outline-toggle"
+            @click="tabs.activeId && tabs.toggleOutline(tabs.activeId)"
+            :title="t('toolbar.outlineTooltip')"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" />
+              <line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" />
+            </svg>
+          </button>
+          <BasesView v-if="basesOpen" />
+          <TileRoot v-else :node="tiles.root" @cursor="onCursor" />
+        </div>
+        <aside v-if="showRightSidebar" class="right-sidebar">
+          <Outline v-if="showOutlinePane" :cursor-line="cursorLine" @goto="onOutlineGoto" />
+          <BacklinksPanel v-if="showBacklinksPane" />
+          <TagsPanel v-if="showTagsPane" />
+          <HistoryPanel v-if="showHistoryPane" />
+        </aside>
       </div>
-      <aside v-if="showRightSidebar" class="right-sidebar">
-        <Outline v-if="showOutlinePane" :cursor-line="cursorLine" @goto="onOutlineGoto" />
-        <BacklinksPanel v-if="showBacklinksPane" />
-        <TagsPanel v-if="showTagsPane" />
-        <HistoryPanel v-if="showHistoryPane" />
-      </aside>
-    </div>
-    <StatusBar :line="cursorLine" :col="cursorCol" />
+      <StatusBar :line="cursorLine" :col="cursorCol" />
+    </template>
 
     <AIRewriteOverlay
       :enabled="settings.aiEnabled"
