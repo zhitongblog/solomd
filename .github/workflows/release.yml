@@ -85,6 +85,20 @@ jobs:
       - name: Install frontend dependencies
         run: cd app && pnpm install --frozen-lockfile
 
+      # Tauri's build.rs verifies externalBin presence at COMPILE time
+      # (not at bundle time), so the sidecar must exist before tauri-action
+      # runs cargo build. beforeBundleCommand can't help here — it runs
+      # after the rust build. Pre-build the sidecar for this matrix's
+      # rust triple, matching what tauri-action's TAURI_ENV_TARGET_TRIPLE
+      # will be.
+      - name: Pre-build solomd-mcp sidecar
+        shell: bash
+        run: |
+          set -euo pipefail
+          TRIPLE="$(rustc -vV | sed -n 's/^host: //p')"
+          echo "host triple: $TRIPLE"
+          bash scripts/build-mcp-sidecar.sh "$TRIPLE"
+
       - name: Build & release with tauri-action
         uses: tauri-apps/tauri-action@v0
         env:
@@ -241,6 +255,10 @@ jobs:
   # draft release.
   # ---------------------------------------------------------------------------
   web-clipper:
+    # Wait for the draft release to exist (one of the publish jobs creates it
+    # via tauri-action's `release: true`). Without `needs:`, we race against
+    # the matrix and fail with `release not found` when we land first.
+    needs: publish
     permissions:
       contents: write
     runs-on: ubuntu-latest
