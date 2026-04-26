@@ -92,15 +92,62 @@ interface Settings {
   // Persisted so Esc / the close-button restores their previous workspace
   // even across reloads. Never set to 'reading' — sentinel only.
   lastNonReadingViewMode: ViewMode;
-  // v2.5: writing stats — show the per-doc word/char goal pill in the
+  // v2.5 F2: writing stats — show the per-doc word/char goal pill in the
   // status bar. Off-by-default-ish: the pill stays inert unless the doc's
   // YAML front matter sets a `goal:` key, so this toggle is a hard kill
   // switch for the whole feature rather than a daily-use opt-in.
   showWritingStats: boolean;
-  // v2.5: optional "Today: 1,200 words across 3 docs" bauble in the bottom
+  // v2.5 F2: optional "Today: 1,200 words across 3 docs" bauble in the bottom
   // right of the status bar. Stretch goal — defaults off because most users
   // care about per-doc progress, not workspace-wide.
   showWorkspaceDailyTotal: boolean;
+  // v2.5 F3: PDF / print export defaults. When a field is the empty string
+  // / `null` we fall back to whatever the webview / jsPDF chose (i.e. the
+  // pre-v2.5 behavior). YAML front matter `pdf:` block on a doc overrides
+  // these per-document.
+  pdfDefaults: PdfDefaults;
+}
+
+/** v2.5 PDF / print export defaults. */
+export interface PdfDefaults {
+  /** Page size preset (`A4` / `A5` / `Letter` / `Legal`) or `Custom`. */
+  pageSize: 'A4' | 'A5' | 'Letter' | 'Legal' | 'Custom';
+  /** Custom page width in mm — only consulted when `pageSize === 'Custom'`. */
+  customWidthMm: number;
+  /** Custom page height in mm — only consulted when `pageSize === 'Custom'`. */
+  customHeightMm: number;
+  /** Margin preset (`Narrow` 10mm / `Normal` 15mm / `Wide` 25mm / `Custom`). */
+  margin: 'Narrow' | 'Normal' | 'Wide' | 'Custom';
+  /** Custom margins in mm — only consulted when `margin === 'Custom'`. */
+  customMarginTopMm: number;
+  customMarginRightMm: number;
+  customMarginBottomMm: number;
+  customMarginLeftMm: number;
+  /** Font family for body text. Empty string = let the PDF stylesheet decide. */
+  fontFamily: string;
+  /** Font size in pt (9-16). */
+  fontSize: number;
+  /** When true, append a page-number footer. */
+  footer: boolean;
+  /** Code-block syntax highlighting in PDF: match preview / always light / always dark. */
+  codeTheme: 'preview' | 'light' | 'dark';
+}
+
+export function defaultPdfDefaults(): PdfDefaults {
+  return {
+    pageSize: 'A4',
+    customWidthMm: 210,
+    customHeightMm: 297,
+    margin: 'Normal',
+    customMarginTopMm: 15,
+    customMarginRightMm: 15,
+    customMarginBottomMm: 15,
+    customMarginLeftMm: 15,
+    fontFamily: '',
+    fontSize: 11,
+    footer: true,
+    codeTheme: 'preview',
+  };
 }
 
 function defaults(): Settings {
@@ -165,13 +212,55 @@ function defaults(): Settings {
     lastNonReadingViewMode: 'edit',
     showWritingStats: true,
     showWorkspaceDailyTotal: false,
+    pdfDefaults: defaultPdfDefaults(),
+  };
+}
+
+/**
+ * Merge a (possibly partial / legacy) saved `pdfDefaults` blob with the
+ * current schema defaults. Treats unknown / out-of-range numeric values
+ * as "use the default" so a 5MB margin can never sneak in via tampered
+ * localStorage.
+ */
+function mergePdfDefaults(saved: unknown): PdfDefaults {
+  const base = defaultPdfDefaults();
+  if (!saved || typeof saved !== 'object') return base;
+  const s = saved as Partial<PdfDefaults>;
+  const clamp = (n: unknown, min: number, max: number, fallback: number) => {
+    const v = typeof n === 'number' && Number.isFinite(n) ? n : fallback;
+    return Math.max(min, Math.min(max, v));
+  };
+  const okPageSize = ['A4', 'A5', 'Letter', 'Legal', 'Custom'] as const;
+  const okMargin = ['Narrow', 'Normal', 'Wide', 'Custom'] as const;
+  const okCodeTheme = ['preview', 'light', 'dark'] as const;
+  return {
+    pageSize: okPageSize.includes(s.pageSize as never) ? (s.pageSize as PdfDefaults['pageSize']) : base.pageSize,
+    customWidthMm: clamp(s.customWidthMm, 50, 500, base.customWidthMm),
+    customHeightMm: clamp(s.customHeightMm, 50, 500, base.customHeightMm),
+    margin: okMargin.includes(s.margin as never) ? (s.margin as PdfDefaults['margin']) : base.margin,
+    customMarginTopMm: clamp(s.customMarginTopMm, 5, 100, base.customMarginTopMm),
+    customMarginRightMm: clamp(s.customMarginRightMm, 5, 100, base.customMarginRightMm),
+    customMarginBottomMm: clamp(s.customMarginBottomMm, 5, 100, base.customMarginBottomMm),
+    customMarginLeftMm: clamp(s.customMarginLeftMm, 5, 100, base.customMarginLeftMm),
+    fontFamily: typeof s.fontFamily === 'string' ? s.fontFamily : base.fontFamily,
+    fontSize: clamp(s.fontSize, 9, 16, base.fontSize),
+    footer: typeof s.footer === 'boolean' ? s.footer : base.footer,
+    codeTheme: okCodeTheme.includes(s.codeTheme as never) ? (s.codeTheme as PdfDefaults['codeTheme']) : base.codeTheme,
   };
 }
 
 function load(): Settings {
   try {
     const raw = localStorage.getItem(LS_KEY);
-    if (raw) return { ...defaults(), ...JSON.parse(raw) };
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<Settings>;
+      const merged: Settings = { ...defaults(), ...parsed };
+      // pdfDefaults is a nested object: do a clamping merge so a missing
+      // sub-key (older settings blob) doesn't yield `undefined` and a
+      // tampered numeric stays in range.
+      merged.pdfDefaults = mergePdfDefaults(parsed.pdfDefaults);
+      return merged;
+    }
   } catch {}
   return defaults();
 }
@@ -400,6 +489,19 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleWorkspaceDailyTotal() {
       this.showWorkspaceDailyTotal = !this.showWorkspaceDailyTotal;
+      this.persist();
+    },
+    /**
+     * v2.5 F3: shallow-merge a partial `pdfDefaults` patch. Used by the
+     * Settings panel so each `<select>`/`<input>` only has to send the one
+     * field it changed.
+     */
+    setPdfDefaults(patch: Partial<PdfDefaults>) {
+      this.pdfDefaults = mergePdfDefaults({ ...this.pdfDefaults, ...patch });
+      this.persist();
+    },
+    resetPdfDefaults() {
+      this.pdfDefaults = defaultPdfDefaults();
       this.persist();
     },
   },
