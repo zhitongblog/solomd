@@ -21,6 +21,9 @@ We use this dev MCP for things AppleScript can't reliably do (clicking nested WK
 | `solomd_git_log` | List commits that touched a single file, newest first. |
 | `solomd_git_file_at` | Read a file's content at a specific commit (no disk write). |
 | `solomd_git_rollback` | Overwrite the working-copy file with the version at a SHA. |
+| `solomd_rag_status` | v2.3: report semantic-index status for a workspace folder. |
+| `solomd_rag_reindex` | v2.3: full reindex into `<folder>/.solomd/embeddings.sqlite`. |
+| `solomd_rag_search` | v2.3: semantic search over an indexed workspace; ranks by cosine similarity. |
 | `solomd_read_file` / `solomd_write_file` | Plain disk read/write for verification. |
 | `solomd_screenshot` | `screencapture -x` to a temp PNG; returns the path. |
 | `solomd_app_status` | List running SoloMD processes (so you know if you're testing dev or prod). |

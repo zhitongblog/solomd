@@ -117,7 +117,42 @@ const lang = 'en' as const;
         </li>
       </ul>
 
-      <h2>5. AutoGit — local commits, never auto-pushed</h2>
+      <h2>5. Local RAG / semantic search — never leaves the disk</h2>
+      <ul>
+        <li>
+          v2.3 adds a semantic-search panel (⌘⇧F). Like everything else
+          in SoloMD it is <strong>off by default</strong>. Settings →
+          "Enable semantic search" turns it on; until then nothing is
+          scanned and no index file is created.
+        </li>
+        <li>
+          When you opt in, your notes are split into paragraphs and
+          embedded with a hashed character-trigram embedder that runs
+          entirely in our Rust process. <strong>No model file is
+          downloaded</strong> — the bundled embedder needs no weights
+          and no network. The vectors are stored in
+          <code>&lt;workspace&gt;/.solomd/embeddings.sqlite</code>, a
+          plain SQLite file you can <code>sqlite3 &lt;file&gt; .schema</code>
+          to inspect.
+        </li>
+        <li>
+          Queries are also embedded locally. Ranking is brute-force
+          cosine similarity in Rust — there is no remote API call, no
+          query log, no network traffic.
+        </li>
+        <li>
+          The index folder <code>.solomd/</code> is auto-added to your
+          workspace's <code>.gitignore</code>, so AutoGit never commits
+          embeddings into your history.
+        </li>
+        <li>
+          Privacy summary: query text → local embedding function →
+          local SQLite scan → ranked results. The query text never
+          touches a network socket.
+        </li>
+      </ul>
+
+      <h2>6. AutoGit — local commits, never auto-pushed</h2>
       <ul>
         <li>
           Auto-commits go to a <strong>local</strong> <code>.git</code>
@@ -134,7 +169,7 @@ const lang = 'en' as const;
         </li>
       </ul>
 
-      <h2>6. Telemetry — minimal, opt-out, content-free, inspectable</h2>
+      <h2>7. Telemetry — minimal, opt-out, content-free, inspectable</h2>
       <ul>
         <li>
           We send anonymous event counters (app launched, which feature was
@@ -156,7 +191,7 @@ const lang = 'en' as const;
         </li>
       </ul>
 
-      <h2>7. Sandboxing & supply chain</h2>
+      <h2>8. Sandboxing & supply chain</h2>
       <ul>
         <li>
           Tauri 2 isolates the webview from the OS — the renderer can only
@@ -175,7 +210,7 @@ const lang = 'en' as const;
         </li>
       </ul>
 
-      <h2>8. Transparency — open source MIT</h2>
+      <h2>9. Transparency — open source MIT</h2>
       <p>
         Every claim above is <strong>auditable</strong>. The whole codebase
         is MIT-licensed:

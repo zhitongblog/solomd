@@ -5,6 +5,7 @@ pub mod spellcheck;
 pub mod ai_proxy;
 pub mod pandoc;
 pub mod git_history;
+pub mod rag;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -52,6 +53,11 @@ pub fn run() {
             git_history::git_file_diff,
             git_history::git_file_at_version,
             git_history::git_rollback_file,
+            rag::rag_set_enabled,
+            rag::rag_index_status,
+            rag::rag_reindex,
+            rag::rag_search,
+            rag::rag_reindex_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

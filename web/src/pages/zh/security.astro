@@ -105,7 +105,36 @@ const lang = 'zh' as const;
         </li>
       </ul>
 
-      <h2>5. AutoGit — 本地提交,绝不自动推送</h2>
+      <h2>5. 本地 RAG / 语义搜索 —— 数据从不离开磁盘</h2>
+      <ul>
+        <li>
+          v2.3 新增了语义搜索面板（⌘⇧F）。和 SoloMD 里其他功能一样，
+          <strong>默认关闭</strong>。在「设置 → 启用语义搜索」开启后才会建立索引；
+          关闭状态下不扫描、不生成索引文件、零开销。
+        </li>
+        <li>
+          开启后，笔记会按段落切块，使用一个完全在 Rust 进程里运行的
+          哈希三元组嵌入器生成向量。<strong>不会下载任何模型文件</strong> ——
+          自带嵌入器无需权重、无需联网。向量存放在
+          <code>&lt;workspace&gt;/.solomd/embeddings.sqlite</code>，
+          就是一个普通 SQLite 文件，可以用 <code>sqlite3 &lt;file&gt; .schema</code>
+          直接查看结构。
+        </li>
+        <li>
+          查询语句也在本地完成嵌入。排序在 Rust 里直接做暴力余弦相似度 ——
+          没有任何远程 API 调用，没有查询日志，没有网络流量。
+        </li>
+        <li>
+          索引目录 <code>.solomd/</code> 会被自动加到工作区的
+          <code>.gitignore</code>，AutoGit 不会把嵌入索引提交进版本历史。
+        </li>
+        <li>
+          隐私小结：查询文本 → 本地嵌入函数 → 本地 SQLite 扫描 →
+          排序结果。查询文本从不接触任何网络套接字。
+        </li>
+      </ul>
+
+      <h2>6. AutoGit — 本地提交,绝不自动推送</h2>
       <ul>
         <li>
           自动提交只发生在你工作区里的<strong>本地</strong> <code>.git</code>
@@ -120,7 +149,7 @@ const lang = 'zh' as const;
         </li>
       </ul>
 
-      <h2>6. 遥测 — 极少 + 可关 + 不带内容 + 可见</h2>
+      <h2>7. 遥测 — 极少 + 可关 + 不带内容 + 可见</h2>
       <ul>
         <li>
           只发匿名事件计数(打开次数、用了哪个功能),帮我们决定接下来做什么。
@@ -139,7 +168,7 @@ const lang = 'zh' as const;
         </li>
       </ul>
 
-      <h2>7. 沙箱 & 供应链</h2>
+      <h2>8. 沙箱 & 供应链</h2>
       <ul>
         <li>
           Tauri 2 把 Webview 和操作系统隔离 — 渲染层只能调我们显式注册的
@@ -157,7 +186,7 @@ const lang = 'zh' as const;
         </li>
       </ul>
 
-      <h2>8. 透明 — MIT 开源</h2>
+      <h2>9. 透明 — MIT 开源</h2>
       <p>
         上面所有的说法都<strong>可审计</strong>。整个代码库都是 MIT 协议:
       </p>

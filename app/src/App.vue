@@ -20,6 +20,7 @@ import FileTree from './components/FileTree.vue';
 import SettingsPanel from './components/SettingsPanel.vue';
 import MarkdownHelp from './components/MarkdownHelp.vue';
 import GlobalSearch from './components/GlobalSearch.vue';
+import RagSearch from './components/RagSearch.vue';
 import AboutDialog from './components/AboutDialog.vue';
 import UnsavedDialog from './components/UnsavedDialog.vue';
 import Toast from './components/Toast.vue';
@@ -36,6 +37,7 @@ import { track } from './lib/telemetry';
 import { openWelcomeTour } from './lib/welcome-tour';
 import { useWorkspaceStore } from './stores/workspace';
 import { useWorkspaceIndexStore } from './stores/workspaceIndex';
+import { useRagStore } from './stores/rag';
 
 const tabs = useTabsStore();
 const settings = useSettingsStore();
@@ -44,6 +46,7 @@ const files = useFiles();
 const exporter = useExport();
 const workspace = useWorkspaceStore();
 const workspaceIndex = useWorkspaceIndexStore();
+const rag = useRagStore();
 const autoCommit = useAutoCommit();
 autoCommit.start();
 const { t } = useI18n();
@@ -54,6 +57,7 @@ const paletteOpen = ref(false);
 const settingsOpen = ref(false);
 const helpOpen = ref(false);
 const searchOpen = ref(false);
+const ragSearchOpen = ref(false);
 const aboutOpen = ref(false);
 
 // Unsaved-changes dialog state
@@ -89,12 +93,14 @@ useShortcuts({
   openSettings: () => (settingsOpen.value = true),
   openHelp: () => (helpOpen.value = true),
   openGlobalSearch: () => (searchOpen.value = true),
+  openRagSearch: () => (ragSearchOpen.value = true),
 });
 
 // Esc closes the topmost modal
 function onEsc(e: KeyboardEvent) {
   if (e.key !== 'Escape') return;
   if (aboutOpen.value) aboutOpen.value = false;
+  else if (ragSearchOpen.value) ragSearchOpen.value = false;
   else if (searchOpen.value) searchOpen.value = false;
   else if (helpOpen.value) helpOpen.value = false;
   else if (paletteOpen.value) paletteOpen.value = false;
@@ -159,6 +165,46 @@ watchEffect(() => {
 watchEffect(() => {
   workspaceIndex.setFolder(workspace.currentFolder).catch(() => {});
 });
+
+// v2.3: keep the RAG index in sync with the toggle + active folder. When
+// `ragEnabled` flips on we trigger a background scan via the Rust side
+// (`rag_set_enabled` already wraps run_indexer). When the folder
+// changes we refresh the status line so the panel shows the right
+// counters.
+let ragLastFolder: string | null = null;
+let ragLastEnabled = false;
+watchEffect(() => {
+  const folder = workspace.currentFolder;
+  const enabled = settings.ragEnabled;
+  if (folder === ragLastFolder && enabled === ragLastEnabled) return;
+  ragLastFolder = folder;
+  ragLastEnabled = enabled;
+  if (!folder) {
+    rag.refreshStatus(null);
+    return;
+  }
+  if (enabled) {
+    rag.setEnabled(folder, true).catch(() => {});
+  } else {
+    rag.refreshStatus(folder).catch(() => {});
+  }
+});
+
+// Listen for the `solomd://index-updated` event the workspace_index
+// emits on watcher debounces. When semantic search is on, mirror that
+// event into a single-file rescan so the embeddings stay fresh without
+// a full reindex on every save.
+window.addEventListener(
+  'solomd:rag-bus',
+  (e) => {
+    if (!settings.ragEnabled) return;
+    const detail = (e as CustomEvent).detail || {};
+    const path = detail.path;
+    if (typeof path === 'string') {
+      rag.reindexFile(workspace.currentFolder, path).catch(() => {});
+    }
+  },
+);
 
 // v2.0 F2: load Hunspell dict on demand. (Lang fixed at en_US in v2.0.)
 let spellcheckLoaded = false;
@@ -523,6 +569,11 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
     />
     <MarkdownHelp :open="helpOpen" @close="helpOpen = false" />
     <GlobalSearch :open="searchOpen" @close="searchOpen = false" />
+    <RagSearch
+      :open="ragSearchOpen"
+      @close="ragSearchOpen = false"
+      @open-settings="ragSearchOpen = false; settingsOpen = true"
+    />
     <AboutDialog :open="aboutOpen" @close="aboutOpen = false" />
     <UnsavedDialog
       :open="unsavedOpen"

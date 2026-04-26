@@ -313,6 +313,334 @@ pub struct WriteFileArgs { pub path: String, pub content: String }
 pub struct EmptyArgs {}
 
 // ---------------------------------------------------------------------------
+// RAG (v2.3) — re-implementation of `app/src-tauri/src/rag.rs` so this
+// crate stays decoupled from the Tauri app. The on-disk schema MUST match
+// — both sides write into <workspace>/.solomd/embeddings.sqlite.
+// ---------------------------------------------------------------------------
+
+const RAG_EMBED_DIM: usize = 256;
+const RAG_MIN_CHUNK_TOKENS: usize = 8;
+const RAG_MAX_CHUNK_CHARS: usize = 1500;
+const RAG_INDEX_VERSION: u32 = 2;
+
+const RAG_SCHEMA: &str = r#"
+CREATE TABLE IF NOT EXISTS rag_meta (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS rag_chunks (
+    path TEXT NOT NULL,
+    chunk_idx INTEGER NOT NULL,
+    char_start INTEGER NOT NULL,
+    char_end INTEGER NOT NULL,
+    snippet TEXT NOT NULL,
+    embedding BLOB NOT NULL,
+    PRIMARY KEY (path, chunk_idx)
+);
+CREATE INDEX IF NOT EXISTS idx_rag_chunks_path ON rag_chunks(path);
+CREATE TABLE IF NOT EXISTS rag_files (
+    path TEXT PRIMARY KEY,
+    mtime INTEGER NOT NULL,
+    size INTEGER NOT NULL
+);
+"#;
+
+fn rag_db_path(folder: &str) -> PathBuf {
+    Path::new(folder).join(".solomd").join("embeddings.sqlite")
+}
+
+fn rag_open_db(folder: &str) -> Result<Connection> {
+    let p = rag_db_path(folder);
+    if let Some(parent) = p.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let conn = Connection::open(&p)?;
+    conn.execute_batch(RAG_SCHEMA)?;
+    let stored: Option<String> = conn
+        .query_row(
+            "SELECT value FROM rag_meta WHERE key='index_version'",
+            [],
+            |r| r.get(0),
+        )
+        .ok();
+    let want = RAG_INDEX_VERSION.to_string();
+    if stored.as_deref() != Some(want.as_str()) {
+        conn.execute_batch("DELETE FROM rag_chunks; DELETE FROM rag_files;")?;
+        conn.execute(
+            "INSERT OR REPLACE INTO rag_meta(key, value) VALUES('index_version', ?1)",
+            rusqlite::params![want],
+        )?;
+    }
+    Ok(conn)
+}
+
+fn rag_fnv1a64(bytes: &[u8]) -> u64 {
+    let mut h: u64 = 0xcbf29ce484222325;
+    for &b in bytes {
+        h ^= b as u64;
+        h = h.wrapping_mul(0x100000001b3);
+    }
+    h
+}
+
+fn rag_embed(text: &str) -> Vec<f32> {
+    let mut v = vec![0f32; RAG_EMBED_DIM];
+    if text.is_empty() {
+        return v;
+    }
+    let normalized: String = text.chars().map(|c| c.to_ascii_lowercase()).collect();
+    let chars: Vec<char> = normalized.chars().collect();
+    rag_add_char_ngrams(&chars, 2, 0.5, &mut v);
+    rag_add_char_ngrams(&chars, 3, 1.0, &mut v);
+    for word in normalized
+        .split(|c: char| !c.is_alphanumeric())
+        .filter(|w| !w.is_empty())
+    {
+        let h = rag_fnv1a64(word.as_bytes());
+        let idx = (h as usize) % RAG_EMBED_DIM;
+        let sign = if (h >> 32) & 1 == 0 { 1.0 } else { -1.0 };
+        v[idx] += 2.0 * sign;
+        let prefix_len = word.chars().count().min(5);
+        if prefix_len >= 3 {
+            let prefix: String = word.chars().take(prefix_len).collect();
+            let h2 = rag_fnv1a64(prefix.as_bytes());
+            let idx2 = (h2 as usize) % RAG_EMBED_DIM;
+            let sign2 = if (h2 >> 32) & 1 == 0 { 1.0 } else { -1.0 };
+            v[idx2] += sign2;
+        }
+    }
+    let mag: f32 = v.iter().map(|x| x * x).sum::<f32>().sqrt();
+    if mag > 0.0 {
+        for x in v.iter_mut() {
+            *x /= mag;
+        }
+    }
+    v
+}
+
+fn rag_add_char_ngrams(chars: &[char], n: usize, weight: f32, v: &mut [f32]) {
+    if chars.len() < n {
+        let s: String = chars.iter().collect();
+        let h = rag_fnv1a64(s.as_bytes());
+        let idx = (h as usize) % v.len();
+        let sign = if (h >> 32) & 1 == 0 { 1.0 } else { -1.0 };
+        v[idx] += weight * sign;
+        return;
+    }
+    let mut buf = [0u8; 16];
+    for i in 0..=(chars.len() - n) {
+        let mut len = 0;
+        for &c in &chars[i..i + n] {
+            let s = c.encode_utf8(&mut buf[len..]);
+            len += s.len();
+        }
+        let h = rag_fnv1a64(&buf[..len]);
+        let idx = (h as usize) % v.len();
+        let sign = if (h >> 32) & 1 == 0 { 1.0 } else { -1.0 };
+        v[idx] += weight * sign;
+    }
+}
+
+fn rag_cosine(a: &[f32], b: &[f32]) -> f32 {
+    let n = a.len().min(b.len());
+    let mut s = 0f32;
+    for i in 0..n {
+        s += a[i] * b[i];
+    }
+    s
+}
+
+fn rag_bytes_to_vec(b: &[u8]) -> Vec<f32> {
+    let mut out = Vec::with_capacity(b.len() / 4);
+    for chunk in b.chunks_exact(4) {
+        out.push(f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]));
+    }
+    out
+}
+
+fn rag_vec_to_bytes(v: &[f32]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(v.len() * 4);
+    for x in v {
+        out.extend_from_slice(&x.to_le_bytes());
+    }
+    out
+}
+
+fn rag_strip_front_matter(raw: &str) -> &str {
+    let trimmed = raw.trim_start_matches('\u{feff}');
+    if !trimmed.starts_with("---") {
+        return raw;
+    }
+    let after_first = match trimmed.find('\n') {
+        Some(i) => &trimmed[i + 1..],
+        None => return raw,
+    };
+    if let Some(end) = after_first.find("\n---") {
+        let rest_offset = end + "\n---".len();
+        let rest = &after_first[rest_offset..];
+        return rest.strip_prefix('\n').unwrap_or(rest);
+    }
+    raw
+}
+
+#[derive(Clone)]
+struct RagChunk {
+    char_start: u32,
+    char_end: u32,
+    text: String,
+}
+
+fn rag_chunk_text(content: &str) -> Vec<RagChunk> {
+    let body = rag_strip_front_matter(content);
+    let offset_to_body = content.chars().count() - body.chars().count();
+    let mut chunks: Vec<RagChunk> = Vec::new();
+    let mut buf = String::new();
+    let mut buf_start: usize = 0;
+    let mut cur_offset: usize = 0;
+    let lines: Vec<&str> = body.split('\n').collect();
+    for (i, line) in lines.iter().enumerate() {
+        let lc = line.chars().count();
+        if line.trim().is_empty() {
+            if !buf.trim().is_empty() {
+                rag_push_chunk(&mut chunks, &buf, buf_start + offset_to_body);
+                buf.clear();
+            }
+            cur_offset += lc + 1;
+            buf_start = cur_offset;
+            continue;
+        }
+        if buf.is_empty() {
+            buf_start = cur_offset;
+        } else {
+            buf.push('\n');
+        }
+        buf.push_str(line);
+        cur_offset += lc;
+        if i < lines.len() - 1 {
+            cur_offset += 1;
+        }
+        if buf.chars().count() >= RAG_MAX_CHUNK_CHARS {
+            rag_push_chunk(&mut chunks, &buf, buf_start + offset_to_body);
+            buf.clear();
+            buf_start = cur_offset;
+        }
+    }
+    if !buf.trim().is_empty() {
+        rag_push_chunk(&mut chunks, &buf, buf_start + offset_to_body);
+    }
+    chunks
+}
+
+fn rag_push_chunk(out: &mut Vec<RagChunk>, text: &str, char_start: usize) {
+    let trimmed = text.trim_end_matches('\n').to_string();
+    let n = trimmed.chars().count();
+    if n == 0 {
+        return;
+    }
+    let token_count = trimmed.split_whitespace().count();
+    if token_count < RAG_MIN_CHUNK_TOKENS && n < 20 {
+        if let Some(prev) = out.last_mut() {
+            prev.text.push('\n');
+            prev.text.push_str(&trimmed);
+            prev.char_end = (char_start + n) as u32;
+            return;
+        }
+    }
+    out.push(RagChunk {
+        char_start: char_start as u32,
+        char_end: (char_start + n) as u32,
+        text: trimmed,
+    });
+}
+
+fn rag_list_markdown(folder: &str) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    let root = Path::new(folder);
+    if !root.is_dir() {
+        return out;
+    }
+    let mut stack = vec![root.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        let entries = match std::fs::read_dir(&dir) {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+        for entry in entries.flatten() {
+            let p = entry.path();
+            if p.file_name().and_then(|s| s.to_str()) == Some(".solomd") {
+                continue;
+            }
+            if p.is_dir() {
+                stack.push(p);
+            } else if p.is_file() {
+                let lower = p
+                    .extension()
+                    .and_then(|s| s.to_str())
+                    .map(|s| s.to_lowercase())
+                    .unwrap_or_default();
+                if matches!(lower.as_str(), "md" | "markdown" | "mdown" | "txt") {
+                    out.push(p);
+                }
+            }
+        }
+    }
+    out
+}
+
+fn rag_index_one(conn: &Connection, path: &Path) -> Result<usize> {
+    let raw = match std::fs::read_to_string(path) {
+        Ok(s) => s,
+        Err(_) => return Ok(0),
+    };
+    let chunks = rag_chunk_text(&raw);
+    let p = path.to_string_lossy().to_string();
+    conn.execute("DELETE FROM rag_chunks WHERE path = ?1", rusqlite::params![&p])?;
+    let mut stmt = conn.prepare(
+        "INSERT INTO rag_chunks(path, chunk_idx, char_start, char_end, snippet, embedding)
+         VALUES(?1, ?2, ?3, ?4, ?5, ?6)",
+    )?;
+    for (i, ch) in chunks.iter().enumerate() {
+        let v = rag_embed(&ch.text);
+        let bytes = rag_vec_to_bytes(&v);
+        let snippet: String = ch.text.chars().take(240).collect();
+        stmt.execute(rusqlite::params![
+            &p,
+            i as i64,
+            ch.char_start as i64,
+            ch.char_end as i64,
+            &snippet,
+            &bytes
+        ])?;
+    }
+    drop(stmt);
+    let meta = std::fs::metadata(path)?;
+    let mtime = meta
+        .modified()
+        .ok()
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0);
+    conn.execute(
+        "INSERT OR REPLACE INTO rag_files(path, mtime, size) VALUES(?1, ?2, ?3)",
+        rusqlite::params![&p, mtime, meta.len() as i64],
+    )?;
+    Ok(chunks.len())
+}
+
+#[derive(Debug, Deserialize, Serialize, JsonSchema)]
+pub struct RagFolderArgs {
+    pub folder: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, JsonSchema)]
+pub struct RagSearchArgs {
+    pub folder: String,
+    pub query: String,
+    #[serde(default)]
+    pub limit: Option<u32>,
+}
+
+// ---------------------------------------------------------------------------
 // Tool router
 // ---------------------------------------------------------------------------
 
@@ -704,6 +1032,137 @@ impl DevServer {
         })))
     }
 
+    #[tool(description = "v2.3 RAG: report semantic-index status for a workspace folder. Args: { folder }.")]
+    pub async fn solomd_rag_status(
+        &self,
+        Parameters(args): Parameters<RagFolderArgs>,
+    ) -> Result<CallToolResult, McpError> {
+        let folder = args.folder.clone();
+        let total_files = rag_list_markdown(&folder).len();
+        let db_p = rag_db_path(&folder);
+        if !db_p.exists() {
+            return Ok(json_result(serde_json::json!({
+                "ready": false,
+                "total_files": total_files,
+                "indexed_files": 0,
+                "total_chunks": 0,
+                "backend": "hash-trigram-256",
+                "index_version": RAG_INDEX_VERSION,
+                "db_path": db_p.to_string_lossy(),
+            })));
+        }
+        let conn = rag_open_db(&folder).map_err(|e| err(e.to_string()))?;
+        let indexed: i64 = conn
+            .query_row("SELECT COUNT(*) FROM rag_files", [], |r| r.get(0))
+            .unwrap_or(0);
+        let chunks: i64 = conn
+            .query_row("SELECT COUNT(*) FROM rag_chunks", [], |r| r.get(0))
+            .unwrap_or(0);
+        Ok(json_result(serde_json::json!({
+            "ready": indexed > 0,
+            "total_files": total_files,
+            "indexed_files": indexed,
+            "total_chunks": chunks,
+            "backend": "hash-trigram-256",
+            "index_version": RAG_INDEX_VERSION,
+            "db_path": db_p.to_string_lossy(),
+        })))
+    }
+
+    #[tool(description = "v2.3 RAG: full reindex of a workspace folder (writes <folder>/.solomd/embeddings.sqlite). Args: { folder }.")]
+    pub async fn solomd_rag_reindex(
+        &self,
+        Parameters(args): Parameters<RagFolderArgs>,
+    ) -> Result<CallToolResult, McpError> {
+        let folder = args.folder.clone();
+        if !Path::new(&folder).is_dir() {
+            return Err(err(format!("not a directory: {folder}")));
+        }
+        let conn = rag_open_db(&folder).map_err(|e| err(e.to_string()))?;
+        conn.execute("DELETE FROM rag_chunks", []).ok();
+        conn.execute("DELETE FROM rag_files", []).ok();
+        let files = rag_list_markdown(&folder);
+        let mut total_chunks: usize = 0;
+        for f in &files {
+            total_chunks += rag_index_one(&conn, f).map_err(|e| err(e.to_string()))?;
+        }
+        Ok(json_result(serde_json::json!({
+            "indexed_files": files.len(),
+            "total_chunks": total_chunks,
+            "db_path": rag_db_path(&folder).to_string_lossy(),
+        })))
+    }
+
+    #[tool(description = "v2.3 RAG: semantic search over an indexed workspace. Top-K results by cosine similarity. Args: { folder, query, limit? }.")]
+    pub async fn solomd_rag_search(
+        &self,
+        Parameters(args): Parameters<RagSearchArgs>,
+    ) -> Result<CallToolResult, McpError> {
+        let folder = args.folder.clone();
+        let q = args.query.trim().to_string();
+        let cap = args.limit.unwrap_or(20).max(1) as usize;
+        if q.is_empty() {
+            return Ok(json_result(serde_json::json!([])));
+        }
+        let db_p = rag_db_path(&folder);
+        if !db_p.exists() {
+            return Err(err("index not built yet — run solomd_rag_reindex first"));
+        }
+        let conn = rag_open_db(&folder).map_err(|e| err(e.to_string()))?;
+        let qv = rag_embed(&q);
+
+        let mut stmt = conn
+            .prepare("SELECT path, chunk_idx, char_start, char_end, snippet, embedding FROM rag_chunks")
+            .map_err(|e| err(e.to_string()))?;
+        let rows = stmt
+            .query_map([], |r| {
+                Ok((
+                    r.get::<_, String>(0)?,
+                    r.get::<_, i64>(1)?,
+                    r.get::<_, i64>(2)?,
+                    r.get::<_, i64>(3)?,
+                    r.get::<_, String>(4)?,
+                    r.get::<_, Vec<u8>>(5)?,
+                ))
+            })
+            .map_err(|e| err(e.to_string()))?;
+
+        let mut best: HashMap<String, (f32, serde_json::Value)> = HashMap::new();
+        for row in rows.flatten() {
+            let (path, idx, cs, ce, snippet, blob) = row;
+            let v = rag_bytes_to_vec(&blob);
+            let s = rag_cosine(&qv, &v);
+            let name = Path::new(&path)
+                .file_name()
+                .and_then(|s| s.to_str())
+                .unwrap_or("")
+                .to_string();
+            let item = serde_json::json!({
+                "path": path,
+                "name": name,
+                "chunk_idx": idx,
+                "char_start": cs,
+                "char_end": ce,
+                "score": s,
+                "snippet": snippet,
+            });
+            match best.get(&path) {
+                Some((prev, _)) if *prev >= s => {}
+                _ => {
+                    best.insert(path, (s, item));
+                }
+            }
+        }
+        let mut hits: Vec<serde_json::Value> = best.into_values().map(|(_, v)| v).collect();
+        hits.sort_by(|a, b| {
+            let sa = a.get("score").and_then(|x| x.as_f64()).unwrap_or(0.0);
+            let sb = b.get("score").and_then(|x| x.as_f64()).unwrap_or(0.0);
+            sb.partial_cmp(&sa).unwrap_or(std::cmp::Ordering::Equal)
+        });
+        hits.truncate(cap);
+        Ok(json_result(serde_json::Value::Array(hits)))
+    }
+
     #[tool(description = "List running SoloMD processes (dev = `target/debug/SoloMD`, prod = `/Applications/SoloMD.app`).")]
     pub async fn solomd_app_status(
         &self,
@@ -744,6 +1203,7 @@ impl ServerHandler for DevServer {
                  solomd_get_workspace/solomd_set_workspace, \
                  solomd_get_tabs/solomd_set_tabs, \
                  solomd_git_status/init/commit/log/rollback/file_at, \
+                 solomd_rag_status/solomd_rag_reindex/solomd_rag_search, \
                  solomd_read_file/solomd_write_file, \
                  solomd_get_editor_decorations (v2.3 live-edit self-test), \
                  solomd_screenshot, solomd_app_status. \
