@@ -165,5 +165,12 @@ defineProps<{ name: string; size?: number }>();
       <line x1="12" y1="5" x2="12" y2="19" />
       <line x1="5" y1="12" x2="19" y2="12" />
     </template>
+    <template v-else-if="name === 'view-reading'">
+      <!-- An open book — denotes "reading mode": full-bleed prose preview.
+           Distinct from view-preview (an eye, which we use for the rendered-
+           preview pane). Two facing pages with a center spine. -->
+      <path d="M2 5h7a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H2z" />
+      <path d="M22 5h-7a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h8z" />
+    </template>
   </svg>
 </template>

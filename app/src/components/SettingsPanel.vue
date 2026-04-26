@@ -248,6 +248,18 @@ const fontFamilySelectValue = computed(() =>
 
         <section>
           <label>
+            <input
+              type="checkbox"
+              :checked="settings.readingByDefaultOnMobile"
+              @change="settings.toggleReadingByDefaultOnMobile()"
+            />
+            {{ t('reading.readingByDefaultOnMobile') }}
+          </label>
+          <p style="font-size: 11px; color: var(--text-faint); margin: 4px 0 0; line-height: 1.5;">{{ t('reading.readingByDefaultOnMobileHint') }}</p>
+        </section>
+
+        <section>
+          <label>
             <input type="checkbox" :checked="settings.showFileTree" @change="settings.toggleFileTree()" />
             {{ t('settings.showFileTree') }}
           </label>

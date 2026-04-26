@@ -2,7 +2,12 @@ export type Language = 'markdown' | 'plaintext';
 // `liveEdit` (v2.3) renders markdown formatting inline inside the editor —
 // Typora / Obsidian Live Preview style. The editor IS the only pane in
 // this mode; there is no separate preview column.
-export type ViewMode = 'edit' | 'preview' | 'split' | 'liveEdit';
+//
+// `reading` (v2.4) is a full-bleed serif preview without any editor chrome:
+// no toolbar, no file tree, no status bar — just the centered prose, like
+// a book page. Toggled via Cmd+Shift+R / the toolbar's view-mode cycle,
+// auto-applies on iOS when the `readingByDefaultOnMobile` setting is on.
+export type ViewMode = 'edit' | 'preview' | 'split' | 'liveEdit' | 'reading';
 export type Theme =
   | 'light'
   | 'dark'

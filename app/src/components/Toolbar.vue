@@ -410,6 +410,14 @@ onBeforeUnmount(() => {
       >
         <Icon name="view-preview" />
       </button>
+      <button
+        class="icon-btn"
+        @click="() => { settings.setViewMode('reading'); track('view_mode', { mode: 'reading' }); }"
+        :class="{ active: settings.viewMode === 'reading' }"
+        :title="t('toolbar.readingMode')"
+      >
+        <Icon name="view-reading" />
+      </button>
       <span
         class="toolbar__divider"
         v-if="settings.viewMode !== 'preview' && settings.viewMode !== 'liveEdit'"

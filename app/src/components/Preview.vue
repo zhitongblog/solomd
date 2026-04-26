@@ -9,7 +9,21 @@ import { useI18n } from '../i18n';
 import { useSettingsStore } from '../stores/settings';
 import PreviewSearch from './PreviewSearch.vue';
 
-const props = defineProps<{ source: string; filePath?: string }>();
+const props = withDefaults(
+  defineProps<{
+    source: string;
+    filePath?: string;
+    /**
+     * v2.4: which "skin" the rendered prose should use.
+     *  - `default` — the standard editor preview pane (constrained max-width
+     *    inside a sidebar, used in split / preview view modes).
+     *  - `reading` — full-bleed serif reading mode (no chrome around it,
+     *    centered prose, larger type, book-like spacing).
+     */
+    skin?: 'default' | 'reading';
+  }>(),
+  { skin: 'default' },
+);
 const settings = useSettingsStore();
 const { t } = useI18n();
 const host = ref<HTMLDivElement | null>(null);
@@ -295,14 +309,22 @@ defineExpose({ scrollToLine, openSearch });
 </script>
 
 <template>
-  <div class="preview-host">
+  <div class="preview-host" :class="{ 'preview-host--reading': skin === 'reading' }">
     <PreviewSearch
       v-if="searchOpen && host"
       ref="searchRef"
       :container="host"
       @close="searchOpen = false"
     />
-    <article ref="host" class="preview-content" :class="{ 'preview-content--fit': settings.previewFitWidth }" v-html="html"></article>
+    <article
+      ref="host"
+      class="preview-content"
+      :class="{
+        'preview-content--fit': settings.previewFitWidth && skin !== 'reading',
+        'preview-content--reading': skin === 'reading',
+      }"
+      v-html="html"
+    ></article>
   </div>
 </template>
 
@@ -469,5 +491,77 @@ defineExpose({ scrollToLine, openSearch });
 .preview-content .ps-mark--current {
   background: var(--accent);
   color: var(--accent-fg, #fff);
+}
+
+/* ----- v2.4 Reading mode skin -----
+ *
+ * "Public reading mode" — full-bleed, single-doc preview without any
+ * editor chrome. We override a handful of `.preview-content` rules
+ * (max-width up, padding up, serif body, looser line-height) and lean
+ * on `--font-reading` so the user can override via the existing custom-
+ * font setting if they prefer a different serif.
+ *
+ * macOS ships Charter and Iowan Old Style; Windows has Cambria; Linux
+ * usually has DejaVu Serif via fontconfig. The whole stack collapses to
+ * a generic `serif` if none of those exist.
+ */
+.preview-host--reading {
+  /* Ditch the editor-pane border — reading mode is full-bleed. */
+  border-left: 0;
+  background: var(--bg);
+}
+.preview-content--reading {
+  --font-reading:
+    Charter,
+    "Iowan Old Style",
+    "Source Serif Pro",
+    "Source Serif",
+    "PT Serif",
+    Cambria,
+    "Liberation Serif",
+    "Noto Serif",
+    Georgia,
+    serif;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 64px 32px 96px;
+  font-family: var(--font-reading);
+  font-size: 18px;
+  line-height: 1.8;
+  color: var(--text);
+}
+:where(.preview-content--reading) h1,
+:where(.preview-content--reading) h2,
+:where(.preview-content--reading) h3,
+:where(.preview-content--reading) h4 {
+  font-family: var(--font-reading);
+  letter-spacing: -0.005em;
+}
+:where(.preview-content--reading) h1 {
+  font-size: 2.2em;
+  margin-top: 0;
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+:where(.preview-content--reading) h2 {
+  font-size: 1.55em;
+  border-bottom: 0;
+  padding-bottom: 0;
+  margin: 2em 0 0.5em;
+}
+:where(.preview-content--reading) p {
+  margin: 1em 0;
+}
+:where(.preview-content--reading) blockquote {
+  border-left: 3px solid var(--border);
+  color: var(--text-muted);
+  font-style: italic;
+}
+/* Tighten max-width on phones; on iPad keep the comfy reading column. */
+@media (max-width: 540px) {
+  .preview-content--reading {
+    padding: 32px 18px 64px;
+    font-size: 17px;
+  }
 }
 </style>

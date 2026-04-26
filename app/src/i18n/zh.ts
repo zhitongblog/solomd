@@ -60,6 +60,7 @@ export const zh: I18n = {
     splitPane: '分栏 (Ctrl+Shift+P)',
     liveEditMode: '实时编辑 (所见即所得) — 边输入边渲染',
     previewOnly: '仅预览',
+    readingMode: '阅读模式 (⌘⇧R) — 全屏衬线，无界面装饰',
     livePreviewOn: '实时预览已开启 — 点击切换源码',
     livePreviewOff: '源码模式 — 点击切换实时预览',
     fitWidthTooltip: '预览自适应宽度 (切换)',
@@ -403,6 +404,15 @@ export const zh: I18n = {
     curlCopied: '已复制 curl 命令',
     endpointEnabled: '捕获端点正在监听 127.0.0.1:{port}',
     endpointDisabled: '捕获端点已停止',
+  },
+  reading: {
+    exit: '退出阅读模式',
+    exitTooltip: '退出阅读模式 (Esc)',
+    empty: '当前没有打开文档。',
+    settingHeading: '阅读模式',
+    readingByDefaultOnMobile: '在 iPad / iPhone 上默认进入阅读模式 —— 以衬线全屏预览打开笔记',
+    readingByDefaultOnMobileHint:
+      '开启后，iPad 和 iPhone 切换标签时会自动进入阅读模式。按 ⌘⇧R 或点右上角 ✕ 即可返回编辑。',
   },
   bases: {
     title: '属性表',

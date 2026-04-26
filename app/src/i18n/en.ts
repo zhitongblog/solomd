@@ -58,6 +58,7 @@ export const en = {
     splitPane: 'Split (Ctrl+Shift+P)',
     liveEditMode: 'Live edit (WYSIWYG) — render markdown inline as you type',
     previewOnly: 'Preview only',
+    readingMode: 'Reading mode (⌘⇧R) — full-bleed serif, no chrome',
     livePreviewOn: 'Live preview ON — click for raw source',
     livePreviewOff: 'Raw source — click for live preview',
     fitWidthTooltip: 'Preview Fit Width (toggle)',
@@ -406,6 +407,16 @@ export const en = {
     curlCopied: 'curl command copied',
     endpointEnabled: 'Capture endpoint listening on 127.0.0.1:{port}',
     endpointDisabled: 'Capture endpoint stopped',
+  },
+  reading: {
+    exit: 'Exit reading mode',
+    exitTooltip: 'Exit reading mode (Esc)',
+    empty: 'No document is open.',
+    settingHeading: 'Reading mode',
+    readingByDefaultOnMobile:
+      'Default to reading mode on iPad / iPhone — open notes in clean serif preview',
+    readingByDefaultOnMobileHint:
+      'iPad and iPhone tabs auto-snap to reading mode when on. Press ⌘⇧R or tap the ✕ button to switch back to editing.',
   },
   bases: {
     title: 'Properties',
