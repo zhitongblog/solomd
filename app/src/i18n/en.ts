@@ -153,6 +153,7 @@ export const en = {
     checkingUpdate: 'Checking…',
     updateAvailable: 'New version {version} available',
     upToDate: 'You are up to date',
+    updateCheckFailed: "Couldn't reach update server — check your network and try again",
     telemetry: 'Send anonymous usage data',
     telemetryHint:
       'Helps improve SoloMD. No IP address, no file contents, no personal information.',
