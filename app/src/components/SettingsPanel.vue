@@ -13,6 +13,7 @@ import { checkForUpdate, openReleaseUrl, isMasBuild } from '../lib/check-update'
 import AISettings from './AISettings.vue';
 import CitationPickerSettings from './CitationPickerSettings.vue';
 import CaptureEndpointSettings from './CaptureEndpointSettings.vue';
+import IntegrationsSettings from './IntegrationsSettings.vue';
 import { isIOS } from '../lib/platform';
 import type { Theme } from '../types';
 
@@ -362,6 +363,10 @@ const fontFamilySelectValue = computed(() =>
           @update:model="(v: string) => settings.setAiModel(v)"
           @update:baseUrl="(v: string) => settings.setAiBaseUrl(v)"
         />
+
+        <!-- v2.4: Integrations (CLI + MCP) — sits under AI rewrite so the
+             "things SoloMD talks to" section reads as one cluster. -->
+        <IntegrationsSettings />
 
         <section>
           <label>

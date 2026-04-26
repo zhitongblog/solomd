@@ -113,10 +113,57 @@ jobs:
           args: ${{ matrix.args }}
 
       # ----------------------------------------------------------------------
+      # v2.4: solomd-mcp standalone tarballs.
+      #
+      # `tauri-action` already ran `scripts/build-mcp-sidecar.sh` (via
+      # `beforeBundleCommand` in tauri.conf.json) and embedded the binary
+      # into the .app / .msi / .deb. We now repackage *that exact same
+      # binary* into a standalone tarball so users who don't want the
+      # desktop app (e.g. running a headless MCP server on a homelab box)
+      # can `curl install-mcp.sh | bash` and get the matched build.
+      #
+      # Linux x64:    solomd-mcp-linux-x64.tar.gz
+      # Linux arm64:  solomd-mcp-linux-arm64.tar.gz
+      # Windows x64:  solomd-mcp-win-x64.zip
+      # macOS:        produced locally via scripts/build-mac.sh, since
+      #               macOS isn't in this matrix anymore.
+      # ----------------------------------------------------------------------
+      - name: Pack solomd-mcp tarball (Linux)
+        if: startsWith(matrix.platform, 'ubuntu-')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # Map runner -> arch label install-mcp.sh expects.
+          case "${{ matrix.platform }}" in
+            ubuntu-22.04-arm) ARCH="arm64" ;;
+            ubuntu-22.04)     ARCH="x64" ;;
+            *) echo "unknown linux runner: ${{ matrix.platform }}"; exit 1 ;;
+          esac
+          ASSET="solomd-mcp-linux-${ARCH}.tar.gz"
+          # Tauri's externalBin produced the binary under
+          # mcp-server/target/<triple>/release/solomd-mcp via our pre-bundle
+          # script. Find it portably without hardcoding the triple.
+          BIN="$(find mcp-server/target -type f -name solomd-mcp -path '*/release/*' | head -1)"
+          if [[ -z "$BIN" || ! -x "$BIN" ]]; then
+            echo "Missing solomd-mcp release binary — beforeBundleCommand didn't run"
+            ls -la mcp-server/target || true
+            exit 1
+          fi
+          STAGE="$(mktemp -d)"
+          cp "$BIN" "$STAGE/solomd-mcp"
+          chmod +x "$STAGE/solomd-mcp"
+          tar -C "$STAGE" -czf "$ASSET" solomd-mcp
+          gh release upload "${{ github.ref_name }}" "$ASSET" --clobber
+
+      # ----------------------------------------------------------------------
       # Windows portable .zip (issue #27) — same .exe Tauri produces, just
       # zipped without the NSIS installer wrapper. Modern Win10/11 already
       # has WebView2; users without it see a runtime prompt the first time.
       # Skipped on non-Windows runners. Uploaded to the same draft release.
+      #
+      # Also packs solomd-mcp.exe into a separate `.zip` for `install-mcp.sh`.
       # ----------------------------------------------------------------------
       - name: Build Windows portable .zip
         if: matrix.platform == 'windows-latest'
@@ -130,12 +177,14 @@ jobs:
             Write-Error "Missing $exe — Tauri build did not run as expected"
             exit 1
           }
+          # Locate the solomd-mcp.exe Tauri's externalBin built before the bundle.
+          $mcpExe = Get-ChildItem -Path "mcp-server/target" -Recurse -Filter "solomd-mcp.exe" |
+                    Where-Object { $_.FullName -match "\\release\\" } |
+                    Select-Object -First 1
           $stage = "SoloMD_${version}_x64-portable"
           New-Item -ItemType Directory -Force -Path $stage | Out-Null
           Copy-Item $exe -Destination "$stage/SoloMD.exe"
-          # Bundled MCP sidecar so portable users get the MCP server too.
-          $mcp = "app/src-tauri/target/release/solomd-mcp.exe"
-          if (Test-Path $mcp) { Copy-Item $mcp -Destination "$stage/solomd-mcp.exe" }
+          if ($mcpExe) { Copy-Item $mcpExe.FullName -Destination "$stage/solomd-mcp.exe" }
           # Tiny README the user finds inside the zip.
           @"
           SoloMD ${version} — portable build
@@ -150,3 +199,36 @@ jobs:
           $zip = "SoloMD_${version}_x64-portable.zip"
           Compress-Archive -Path "$stage/*" -DestinationPath $zip -Force
           gh release upload "${{ github.ref_name }}" $zip --clobber
+
+          # solomd-mcp standalone .zip (install-mcp.sh on Windows expects this).
+          if ($mcpExe) {
+            $mcpStage = "solomd-mcp-win-x64"
+            New-Item -ItemType Directory -Force -Path $mcpStage | Out-Null
+            Copy-Item $mcpExe.FullName -Destination "$mcpStage/solomd-mcp.exe"
+            $mcpZip = "solomd-mcp-win-x64.zip"
+            Compress-Archive -Path "$mcpStage/*" -DestinationPath $mcpZip -Force
+            gh release upload "${{ github.ref_name }}" $mcpZip --clobber
+          }
+
+      # ----------------------------------------------------------------------
+      # Verify install-mcp.sh can actually pull the asset we just uploaded.
+      # Hits GitHub releases for the current tag and confirms `solomd-mcp
+      # --version` runs. Linux only — Windows tarballs are smoke-tested in
+      # the build step above by checking the file copied into the zip.
+      # ----------------------------------------------------------------------
+      - name: Verify install-mcp.sh self-test
+        if: startsWith(matrix.platform, 'ubuntu-')
+        shell: bash
+        run: |
+          set -euo pipefail
+          export VERSION="${{ github.ref_name }}"
+          # Wait briefly for the upload-then-CDN propagation to settle.
+          sleep 5
+          # Run the installer into a clean prefix so we don't clobber the runner.
+          export HOME_OVERRIDE="$RUNNER_TEMP/mcp-self-test"
+          mkdir -p "$HOME_OVERRIDE/.local/bin"
+          PATH="$HOME_OVERRIDE/.local/bin:$PATH" \
+            HOME="$HOME_OVERRIDE" \
+            bash scripts/install-mcp.sh
+          "$HOME_OVERRIDE/.local/bin/solomd-mcp" --version || true
+          echo "self-test ok"

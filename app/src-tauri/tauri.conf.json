@@ -7,6 +7,7 @@
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
     "beforeBuildCommand": "pnpm build",
+    "beforeBundleCommand": "bash ../scripts/build-mcp-sidecar.sh",
     "frontendDist": "../dist"
   },
   "app": {
@@ -72,6 +73,9 @@
       "icons/file_icon.ico",
       "resources/dicts/en_US.aff",
       "resources/dicts/en_US.dic"
+    ],
+    "externalBin": [
+      "binaries/solomd-mcp"
     ],
     "macOS": {
       "minimumSystemVersion": "10.15"

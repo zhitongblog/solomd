@@ -1338,6 +1338,33 @@ impl DevServer {
         Ok(json_result(serde_json::Value::Array(hits)))
     }
 
+    #[tool(description = "v2.4 Integrations: probe the live app via the dev bridge to verify Settings → Integrations is wired up. Returns { cli: {installed, path, version}, mcp: {path, bundled}, claude_config: <path> }. Requires `pnpm tauri dev` and the SettingsPanel to be openable. Args: none.")]
+    pub async fn solomd_integrations_status(
+        &self,
+        Parameters(_args): Parameters<EmptyArgs>,
+    ) -> Result<CallToolResult, McpError> {
+        // Just call the three Tauri commands the panel uses, in parallel,
+        // and return the raw payloads. We do NOT click the UI — we drive
+        // the same `invoke()` calls the Vue panel does, which is the
+        // cleanest "is this wired up?" check.
+        let script = r#"
+            const core = window.__TAURI__ && window.__TAURI__.core;
+            if (!core || typeof core.invoke !== 'function') {
+                throw new Error('Tauri invoke unavailable — wrong build?');
+            }
+            const [cli, mcp, claude_config] = await Promise.all([
+                core.invoke('cli_status').catch(e => ({ error: String(e) })),
+                core.invoke('mcp_path').catch(e => ({ error: String(e) })),
+                core.invoke('mcp_claude_desktop_config_path').catch(e => null),
+            ]);
+            return { cli, mcp, claude_config };
+        "#;
+        match dev_eval_raw(script, 5_000).await {
+            Ok(v) => Ok(json_result(v)),
+            Err(e) => Err(err(e.to_string())),
+        }
+    }
+
     #[tool(description = "List running SoloMD processes (dev = `target/debug/SoloMD`, prod = `/Applications/SoloMD.app`).")]
     pub async fn solomd_app_status(
         &self,
@@ -1513,6 +1540,7 @@ impl ServerHandler for DevServer {
                  solomd_rag_status/solomd_rag_reindex/solomd_rag_search, \
                  solomd_read_file/solomd_write_file, \
                  solomd_get_editor_decorations (v2.3 live-edit self-test), \
+                 solomd_integrations_status (v2.4 CLI/MCP wiring check), \
                  solomd_screenshot, solomd_app_status, \
                  solomd_dev_eval/click/text/dispatch/url/wait_for (v2.3 live UI bridge — needs `pnpm tauri dev`). \
                  Settings/workspace/tabs writes require SoloMD be closed.",

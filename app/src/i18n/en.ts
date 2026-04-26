@@ -238,6 +238,57 @@ export const en = {
     noWorkspace: 'Open a folder first to use daily notes.',
     createFailed: 'Failed to create daily note: {error}',
   },
+  integrations: {
+    heading: 'Integrations',
+    intro:
+      'SoloMD speaks to your terminal and to MCP-aware AI clients (Claude Desktop, Codex CLI, Cursor) so you can read/write your notes from outside the app.',
+    cliTitle: 'CLI (solomd)',
+    cliInstalled: 'Installed at {path}',
+    cliNotInstalled: 'Not installed',
+    cliVersionLabel: 'Version',
+    cliInstallBtn: 'Install / Reinstall CLI',
+    cliCopyInstallBtn: 'Copy install command',
+    cliCopiedToast: 'Install command copied — paste in your terminal.',
+    cliInstallToast:
+      'Run this in your terminal — sudo is required for /usr/local/bin:',
+    cliSubcommandsHeading: 'What can it do?',
+    cliSubcommands: {
+      open: 'open <title|path> — open a note in SoloMD',
+      new: 'new <title> [text] — create + open a new note',
+      list: 'list [folder] — list markdown files',
+      search: 'search <query> — grep your notes',
+      cat: 'cat <title|path> — print a note to stdout',
+      help: 'help — show all commands',
+    },
+    mcpTitle: 'MCP server (solomd-mcp)',
+    mcpBundled: 'Bundled at {path}',
+    mcpNotBundled:
+      'Not bundled (this dev build skips the externalBin sidecar). Production builds always include it.',
+    mcpDesc:
+      'Exposes the open workspace as a Model Context Protocol server so Claude Desktop / Codex / Cursor can list, read, search, write your notes.',
+    mcpClaudeConfigHeading: 'Claude Desktop config',
+    mcpClaudeConfigHint:
+      'Paste this block into ~/Library/Application Support/Claude/claude_desktop_config.json (macOS), or use the buttons below.',
+    mcpCopyConfigBtn: 'Copy Claude Desktop config',
+    mcpOpenConfigBtn: 'Open Claude Desktop config file',
+    mcpHowBtn: 'Show how this works',
+    mcpCopiedToast: 'Claude Desktop config copied to clipboard.',
+    mcpNoWorkspace:
+      'Open a folder first — the config snippet needs a workspace path.',
+    mcpToolsHeading: 'API surface — tools your AI client can call',
+    mcpTools: {
+      list_notes: 'list_notes — enumerate Markdown files',
+      read_note: 'read_note — fetch a note by relative path',
+      search: 'search — full-text search across the vault',
+      get_backlinks: 'get_backlinks — find notes that link here',
+      list_tags: 'list_tags — every #tag in the vault',
+      get_outline: 'get_outline — heading tree for a note',
+      write_note: 'write_note — create / overwrite (write-gated)',
+      append_to_note: 'append_to_note — add to end of file (write-gated)',
+    },
+    mcpWriteNote:
+      'write_note + append_to_note are off by default. Pass --allow-write to opt in.',
+  },
   ai: {
     settingsHeading: 'AI rewrite',
     enable: 'Enable AI rewrite',

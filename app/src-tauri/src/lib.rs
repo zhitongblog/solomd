@@ -8,6 +8,8 @@ pub mod git_history;
 pub mod rag;
 // v2.4 inbound HTTP capture endpoint — production-grade, opt-in via Settings.
 pub mod capture_endpoint;
+// v2.4 outbound integrations — CLI + MCP sidecar discovery, surfaced in Settings.
+pub mod integrations;
 
 // v2.3 dev WebDriver bridge — debug builds only.
 #[cfg(debug_assertions)]
@@ -80,6 +82,9 @@ pub fn run() {
             capture_endpoint::capture_regenerate_token,
             capture_endpoint::capture_set_inbox_folder,
             capture_endpoint::capture_set_workspace,
+            integrations::cli_status,
+            integrations::mcp_path,
+            integrations::mcp_claude_desktop_config_path,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
