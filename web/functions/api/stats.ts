@@ -8,7 +8,11 @@
  *     the 60/hour anon limit)
  *   - Stats update automatically every 5 minutes without any redeploy
  *
- * Response: { stars: number, downloads: number, updated: ISO-string }
+ * Response: { stars, downloads, updated, latest_tag, latest_url }
+ *
+ * Desktop app's "Check for updates" feature also calls this endpoint
+ * (instead of api.github.com directly) to avoid hitting GitHub's
+ * 60 req/hour unauth rate limit on the user's own IP.
  */
 
 const REPO = 'zhitongblog/solomd';
@@ -25,6 +29,8 @@ export const onRequest: PagesFunction = async ({ request }) => {
   // 2. Fetch from GitHub (server-side, User-Agent required)
   let stars = 0;
   let downloads = 0;
+  let latestTag: string | null = null;
+  let latestUrl: string | null = null;
 
   try {
     const headers = {
@@ -43,6 +49,11 @@ export const onRequest: PagesFunction = async ({ request }) => {
 
     if (relRes.ok) {
       const releases = (await relRes.json()) as Array<{
+        tag_name?: string;
+        html_url?: string;
+        draft?: boolean;
+        prerelease?: boolean;
+        published_at?: string;
         assets?: Array<{ download_count?: number }>;
       }>;
       if (Array.isArray(releases)) {
@@ -50,6 +61,13 @@ export const onRequest: PagesFunction = async ({ request }) => {
           for (const a of rel.assets || []) {
             downloads += a.download_count || 0;
           }
+        }
+        // First non-draft, non-prerelease release == latest stable
+        // (releases are returned newest-first by published_at).
+        const stable = releases.find((r) => !r.draft && !r.prerelease);
+        if (stable) {
+          latestTag = (stable.tag_name || '').replace(/^v/, '') || null;
+          latestUrl = stable.html_url || null;
         }
       }
     }
@@ -61,6 +79,8 @@ export const onRequest: PagesFunction = async ({ request }) => {
     stars,
     downloads,
     updated: new Date().toISOString(),
+    latest_tag: latestTag,
+    latest_url: latestUrl,
   });
 
   const response = new Response(body, {

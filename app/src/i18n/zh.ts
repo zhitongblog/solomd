@@ -155,6 +155,7 @@ export const zh: I18n = {
     checkingUpdate: '检查中…',
     updateAvailable: '发现新版本 {version}',
     upToDate: '当前已是最新版本',
+    updateCheckFailed: '无法连接更新服务器,请检查网络后重试',
     telemetry: '发送匿名使用数据',
     telemetryHint: '帮助改进 SoloMD。不包含 IP、文件内容或任何个人信息。',
     telemetryNotice:
