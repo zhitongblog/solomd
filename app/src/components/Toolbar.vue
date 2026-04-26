@@ -324,8 +324,8 @@ onBeforeUnmount(() => {
         @click="onCleanAI"
         v-bind:title="t('toolbar.cleanAiTitle')"
       >
+        <span class="clean-ai-broom">🧹</span>
         <span class="clean-ai-label">AI</span>
-        <span class="clean-ai-x">✕</span>
       </button>
       <button
         class="icon-btn ai-rewrite-btn"
@@ -569,10 +569,10 @@ onBeforeUnmount(() => {
 .clean-ai-label {
   letter-spacing: 0.04em;
 }
-.clean-ai-x {
-  font-size: 9px;
-  opacity: 0.6;
-  margin-left: 1px;
+.clean-ai-broom {
+  font-size: 11px;
+  opacity: 0.85;
+  margin-right: 1px;
 }
 .ai-rewrite-btn {
   position: relative;
@@ -632,6 +632,15 @@ onBeforeUnmount(() => {
 .copy-split__arrow:hover {
   color: var(--accent);
   background: var(--bg-hover);
+}
+/* The menu lives inside `.copy-split > .dropdown`, but if `.dropdown`
+ * is `position: relative` here the menu anchors to the 22 px chevron
+ * arrow and looks misaligned (issue #31). Demote that one `.dropdown`
+ * to static so the menu falls back to the wrapping `.copy-split`
+ * (which is relative), letting `right: 0` line up with the right edge
+ * of the whole Copy + chevron widget. */
+.copy-split > .dropdown {
+  position: static;
 }
 .copy-dropdown {
   right: 0;

@@ -83,6 +83,11 @@ export function useShortcuts(hooks: Hooks = {}) {
     } else if (k === 'w') {
       e.preventDefault();
       if (tabs.activeId) files.closeTabSafe(tabs.activeId);
+    } else if (k === 't' && !e.shiftKey && !e.altKey) {
+      // v2.4.2: ⌘T mirrors Chrome / Obsidian "new tab" muscle memory.
+      // Same effect as ⌘N — both create a fresh markdown tab.
+      e.preventDefault();
+      files.newFile();
     } else if (k === 'p' && e.shiftKey) {
       e.preventDefault();
       settings.cycleViewMode();
