@@ -61,22 +61,26 @@ async function refreshRoot() {
     return;
   }
   const path = workspace.currentFolder;
-  const node: Node = {
+  // Phase 1: show "Loading…" immediately so a slow filesystem (Windows
+  // OneDrive, network mounts) doesn't render as an empty pane.
+  root.value = {
     name: path.split(/[\\/]/).pop() ?? path,
     path,
     is_dir: true,
     expanded: true,
     loading: true,
   };
-  // Set immediately so the user sees a Loading row instead of an
-  // empty pane while a slow filesystem (Windows OneDrive, network
-  // mounts) churns through the dir scan.
-  root.value = node;
+  // Phase 2: load children, then mutate through the existing proxy so
+  // Vue picks up the change. (Re-assigning the same raw `node` object
+  // back into `root.value` after mutating it externally is a no-op —
+  // ref's setter checks identity. Going through `root.value.x = y`
+  // routes through the reactive proxy and does trigger updates.)
   const { children, truncated } = await loadDir(path);
-  node.children = children;
-  node.truncated = truncated;
-  node.loading = false;
-  root.value = node;
+  if (root.value) {
+    root.value.children = children;
+    root.value.truncated = truncated;
+    root.value.loading = false;
+  }
 }
 
 async function toggle(node: Node) {
