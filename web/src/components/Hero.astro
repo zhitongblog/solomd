@@ -4,7 +4,7 @@ interface Props { lang: Lang }
 const { lang } = Astro.props;
 const tr = getT(lang);
 
-const VERSION = '2.3.0';
+const VERSION = '2.3.1';
 const REPO = 'zhitongblog/solomd';
 const baseUrl = `https://github.com/${REPO}/releases/download/v${VERSION}`;
 const whatsNewHref = lang === 'zh' ? '/zh/whats-new/' : '/whats-new/';
