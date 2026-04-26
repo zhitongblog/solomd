@@ -7,8 +7,14 @@ import { markdownToPdfBlob } from '../lib/pdf-export';
 import { markdownToImageBlob } from '../lib/image-export';
 import { renderMarkdown } from '../lib/markdown';
 import { useTabsStore } from '../stores/tabs';
+import { useSettingsStore } from '../stores/settings';
 import { useToastsStore } from '../stores/toasts';
 import { track } from '../lib/telemetry';
+import {
+  resolvePdfOptions,
+  userTouchedPdfDefaults,
+  buildPrintStyle,
+} from '../lib/pdf-options';
 
 const HTML_TEMPLATE = (title: string, body: string) => `<!doctype html>
 <html lang="en">
@@ -186,6 +192,7 @@ function stripMarkdown(src: string): string {
 export function useExport() {
   const tabs = useTabsStore();
   const toasts = useToastsStore();
+  const settings = useSettingsStore();
 
   function activeOr(): { content: string; baseName: string } | null {
     const tab = tabs.activeTab;
@@ -255,7 +262,17 @@ export function useExport() {
     if (!path) return;
     const tid = toasts.info('Generating PDF…', 0);
     try {
-      const blob = await markdownToPdfBlob(ctx.content, ctx.baseName);
+      // v2.5 F3: feed Settings → PDF defaults (with per-doc front-matter
+      // override) into the html2pdf.js builder. When the user hasn't
+      // touched Settings *and* there's no `pdf:` block, `userTouched`
+      // is false and the resolver returns null sentinels — `markdownToPdfBlob`
+      // then falls back to its pre-v2.5 hardcoded A4/10mm path.
+      const pdfOpts = resolvePdfOptions(
+        settings.pdfDefaults,
+        ctx.content,
+        userTouchedPdfDefaults(settings.pdfDefaults),
+      );
+      const blob = await markdownToPdfBlob(ctx.content, ctx.baseName, pdfOpts);
       const buffer = new Uint8Array(await blob.arrayBuffer());
       await invoke('write_binary_file', { path, data: Array.from(buffer) });
       toasts.dismiss(tid);
@@ -299,9 +316,29 @@ export function useExport() {
 <div class="solomd-print-content preview-content">${body}</div>`;
     document.body.classList.add('solomd-printing');
 
+    // v2.5 F3: inject @page / @media print stylesheet derived from
+    // Settings → PDF defaults + per-doc `pdf:` front matter override.
+    // When the user has never touched Settings AND the doc has no
+    // `pdf:` block, `buildPrintStyle` returns "" and we mirror
+    // pre-v2.5 webview-default behavior.
+    const pdfOpts = resolvePdfOptions(
+      settings.pdfDefaults,
+      ctx.content,
+      userTouchedPdfDefaults(settings.pdfDefaults),
+    );
+    const styleCss = buildPrintStyle(pdfOpts);
+    let styleEl: HTMLStyleElement | null = null;
+    if (styleCss) {
+      styleEl = document.createElement('style');
+      styleEl.id = 'solomd-print-style';
+      styleEl.textContent = styleCss;
+      document.head.appendChild(styleEl);
+    }
+
     const cleanup = () => {
       document.body.classList.remove('solomd-printing');
       overlay?.remove();
+      styleEl?.remove();
     };
 
     // Give KaTeX / images a tick to apply layout before print.

@@ -15,6 +15,7 @@
 import html2pdf from 'html2pdf.js';
 import mermaid from 'mermaid';
 import { renderMarkdown } from './markdown';
+import type { ResolvedPdfOptions } from './pdf-options';
 
 const PDF_CSS = `
   body { margin: 0; }
@@ -174,12 +175,47 @@ async function processMermaidBlocks(container: HTMLElement) {
   }
 }
 
-export async function markdownToPdfBlob(source: string, title: string): Promise<Blob> {
+/**
+ * @param source — markdown source (may include YAML front matter; rendering
+ *   strips the block so it doesn't bleed into the PDF body).
+ * @param title — used for the `filename` field on the html2pdf builder.
+ * @param pdfOpts — v2.5 resolved options (Settings + frontmatter merged).
+ *   Pass `undefined` to preserve pre-v2.5 hardcoded A4 / 10mm behavior.
+ */
+export async function markdownToPdfBlob(
+  source: string,
+  title: string,
+  pdfOpts?: ResolvedPdfOptions,
+): Promise<Blob> {
   const html = renderMarkdown(source || '');
 
   // Build an off-screen container that mimics the preview look.
   const styleEl = document.createElement('style');
   styleEl.textContent = PDF_CSS;
+
+  // v2.5 F3: derived font / size CSS overlay (only when caller passed
+  // options that the user actually customized). Empty string when the user
+  // hasn't touched Settings *and* the doc has no `pdf:` block.
+  let extraStyle: HTMLStyleElement | null = null;
+  if (pdfOpts && pdfOpts.pageSizeMm && pdfOpts.marginMm) {
+    extraStyle = document.createElement('style');
+    const fontDecl = pdfOpts.fontFamily.trim()
+      ? `font-family: ${quoteFontFamily(pdfOpts.fontFamily)}, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", system-ui, sans-serif !important;`
+      : '';
+    const codeOverride =
+      pdfOpts.codeTheme === 'light'
+        ? `.pdf-page pre, .pdf-page code { background: #f3efe7 !important; color: #1f1d1a !important; }`
+        : pdfOpts.codeTheme === 'dark'
+        ? `.pdf-page pre, .pdf-page code { background: #1f1d1a !important; color: #eee !important; }`
+        : '';
+    extraStyle.textContent = `
+      .pdf-page {
+        ${fontDecl}
+        font-size: ${pdfOpts.fontSizePt}pt !important;
+      }
+      ${codeOverride}
+    `;
+  }
 
   const root = document.createElement('div');
   root.style.position = 'fixed';
@@ -192,6 +228,7 @@ export async function markdownToPdfBlob(source: string, title: string): Promise<
   page.innerHTML = html;
 
   root.appendChild(styleEl);
+  if (extraStyle) root.appendChild(extraStyle);
   root.appendChild(page);
   document.body.appendChild(root);
 
@@ -201,8 +238,34 @@ export async function markdownToPdfBlob(source: string, title: string): Promise<
     // Give the browser a tick to lay everything out (KaTeX fonts especially).
     await new Promise((r) => setTimeout(r, 60));
 
+    // v2.5 F3: derive jsPDF / margin args from the resolved opts. When
+    // the caller didn't customize anything, fall back to the legacy
+    // hardcoded values so old users see exactly the same output as v2.4.
+    let margins: [number, number, number, number] = [10, 10, 12, 10];
+    let jsPdfFormat: string | [number, number] = 'a4';
+    let orientation: 'portrait' | 'landscape' = 'portrait';
+    if (pdfOpts && pdfOpts.pageSizeMm && pdfOpts.marginMm) {
+      margins = [
+        pdfOpts.marginMm.top,
+        pdfOpts.marginMm.right,
+        pdfOpts.marginMm.bottom,
+        pdfOpts.marginMm.left,
+      ];
+      // jsPDF accepts named formats ('a4' / 'letter' / 'legal') or [w, h].
+      const named = pageSizeLabelToJsPdf(pdfOpts.pageSizeLabel);
+      if (named) {
+        jsPdfFormat = named;
+        // 'a5' is portrait by default; same orientation logic as the
+        // others. We always emit portrait — landscape isn't a v2.5 feature.
+      } else {
+        jsPdfFormat = [pdfOpts.pageSizeMm.width, pdfOpts.pageSizeMm.height];
+      }
+      orientation =
+        pdfOpts.pageSizeMm.width > pdfOpts.pageSizeMm.height ? 'landscape' : 'portrait';
+    }
+
     const opts: any = {
-      margin: [10, 10, 12, 10],
+      margin: margins,
       filename: `${title || 'document'}.pdf`,
       image: { type: 'jpeg', quality: 0.96 },
       html2canvas: {
@@ -214,8 +277,8 @@ export async function markdownToPdfBlob(source: string, title: string): Promise<
       },
       jsPDF: {
         unit: 'mm',
-        format: 'a4',
-        orientation: 'portrait',
+        format: jsPdfFormat,
+        orientation,
       },
       pagebreak: {
         mode: ['css', 'legacy'],
@@ -229,4 +292,27 @@ export async function markdownToPdfBlob(source: string, title: string): Promise<
   } finally {
     document.body.removeChild(root);
   }
+}
+
+function pageSizeLabelToJsPdf(label: string): string | null {
+  switch (label) {
+    case 'A4':
+      return 'a4';
+    case 'A5':
+      return 'a5';
+    case 'Letter':
+      return 'letter';
+    case 'Legal':
+      return 'legal';
+    default:
+      return null;
+  }
+}
+
+function quoteFontFamily(family: string): string {
+  const trimmed = family.trim();
+  if (trimmed.includes(',')) return trimmed;
+  if (/^["']/.test(trimmed)) return trimmed;
+  if (/\s/.test(trimmed)) return `"${trimmed}"`;
+  return trimmed;
 }

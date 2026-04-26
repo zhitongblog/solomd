@@ -1,0 +1,52 @@
+/*
+ * Pure Black (OLED) — community theme for SoloMD.
+ * True #000 background — burns zero pixels on OLED panels and pairs well
+ * with low-power mode on phones / e-ink. Greens and cyans for accent so
+ * pure black + pure white never sit next to each other (avoids smearing).
+ *
+ * Author:  alex
+ * License: MIT
+ */
+:root,
+:root[data-theme="light"],
+:root[data-theme="dark"] {
+  --bg: #000000;
+  --bg-elev: #0a0a0a;
+  --bg-hover: #141414;
+  --bg-active: #1f1f1f;
+  --border: #1f1f1f;
+  --text: #e8e8e8;
+  --text-muted: #9a9a9a;
+  --text-faint: #545454;
+  --accent: #50fa7b;        /* dracula green — pops on black */
+  --accent-fg: #000000;
+  --danger: #ff5555;
+
+  /* Markdown element colors */
+  --md-h1: #ffffff;
+  --md-h2: #f0f0f0;
+  --md-h3: #d8d8d8;
+  --md-h4: #c0c0c0;
+  --md-h5: #a8a8a8;
+  --md-h6: #888888;
+  --md-strong: #ffffff;
+  --md-em: #e8e8e8;
+  --md-link: #50fa7b;
+  --md-url: #8be9fd;
+  --md-code: #ff79c6;
+  --md-code-bg: #141414;
+  --md-quote: #6a6a6a;
+  --md-list: #50fa7b;
+  --md-hr: #1f1f1f;
+
+  /* Code block syntax — high contrast */
+  --syn-keyword: #ff79c6;
+  --syn-string: #f1fa8c;
+  --syn-number: #bd93f9;
+  --syn-comment: #545454;
+  --syn-function: #50fa7b;
+  --syn-variable: #e8e8e8;
+  --syn-type: #8be9fd;
+  --syn-property: #50fa7b;
+  --syn-operator: #ff79c6;
+}

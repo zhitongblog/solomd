@@ -22,7 +22,7 @@
 
 ## SoloMD 的特别之处
 
-- **原生打印转 PDF**：`Ctrl+P` 走系统打印对话框，不走 headless Chrome。
+- **原生打印转 PDF**：`Ctrl+Shift+Alt+P` 走系统打印对话框，不走 headless Chrome。
 - **演讲模式**：`Ctrl+Alt+P` 全屏播放当前文档，`---` 行分页。
 - **Front matter 的 `imageRoot`**：每篇文章的粘贴/拖拽图片可写到指定目录。
 - **App Store 版默认无遥测**，其他渠道默认开但可关 —— 你说了算。

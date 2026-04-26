@@ -2,6 +2,8 @@ import { defineStore } from 'pinia';
 import type { Language, Tab } from '../types';
 import { useSettingsStore } from './settings';
 import { useTilesStore } from './tiles';
+import { useWritingSessionStore } from './writingSession';
+import { stampGoalSetAtIfMissing } from '../composables/useWritingGoals';
 
 const LS_KEY = 'solomd.tabs.v1';
 
@@ -117,12 +119,27 @@ export const useTabsStore = defineStore('tabs', {
       if (!t) return;
       t.filePath = filePath;
       t.fileName = filePath.split(/[\\/]/).pop() ?? t.fileName;
+      // v2.5 — auto-stamp `goal_set_at: <today>` on the first save of any
+      // doc that declares a `goal:`. This is the anchor the streak counter
+      // uses. Idempotent — no-op when the field already exists or there's
+      // no goal declared.
+      const stamped = stampGoalSetAtIfMissing(t.content);
+      if (stamped !== t.content) {
+        t.content = stamped;
+      }
       t.savedContent = t.content;
       t.language = inferLanguage(t.fileName);
+      // v2.5 — push a "saved" anchor into the writing-session store so the
+      // popover can show "since last save" instead of "since open".
+      try {
+        const ws = useWritingSessionStore();
+        ws.markSaved(filePath, ws.sessionForPath(filePath)?.current ?? 0);
+      } catch {}
     },
     closeTab(id: string) {
       const idx = this.tabs.findIndex((t) => t.id === id);
       if (idx === -1) return;
+      const closed = this.tabs[idx];
       this.tabs.splice(idx, 1);
       if (this.activeId === id) {
         this.activeId = this.tabs[idx]?.id ?? this.tabs[idx - 1]?.id ?? '';
@@ -131,6 +148,13 @@ export const useTabsStore = defineStore('tabs', {
       try {
         const tiles = useTilesStore();
         tiles.removePaneReferences(id);
+      } catch {}
+      // v2.5 — drop the writing-session anchor for this doc so that
+      // closing then reopening starts a fresh "since opened" delta.
+      try {
+        const ws = useWritingSessionStore();
+        const key = closed?.filePath || closed?.id;
+        if (key) ws.closePath(key);
       } catch {}
       if (this.tabs.length === 0) this.newTab();
     },

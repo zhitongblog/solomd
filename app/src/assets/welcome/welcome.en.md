@@ -22,7 +22,7 @@ This tour is **four short notes**. Open any tab to keep reading.
 
 ## A few things SoloMD does that other editors don't
 
-- **Native print → PDF** with `Ctrl+P` (no headless Chrome required).
+- **Native print → PDF** with `Ctrl+Shift+Alt+P` (no headless Chrome required).
 - **Slideshow mode** — `Ctrl+Alt+P` renders the active doc as fullscreen slides, split on `---`.
 - **Front-matter `imageRoot`** lets every paste/drop write to a custom image folder per document.
 - **No telemetry by default in the App Store version**, opt-in elsewhere — you decide.

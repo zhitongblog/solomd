@@ -1,0 +1,51 @@
+/*
+ * Sepia — community theme for SoloMD.
+ * Paper-like reading mode. Warm cream paper, brown ink. Designed for
+ * long-form prose, books, journaling.
+ *
+ * Author:  alex
+ * License: MIT
+ */
+:root,
+:root[data-theme="light"],
+:root[data-theme="dark"] {
+  --bg: #f4ecd8;          /* aged paper */
+  --bg-elev: #faf3e0;
+  --bg-hover: #ebe2c8;
+  --bg-active: #ddd1b0;
+  --border: #d6c8a4;
+  --text: #5b4636;        /* warm sepia ink */
+  --text-muted: #826852;
+  --text-faint: #a89072;
+  --accent: #b85c38;      /* burnt sienna */
+  --accent-fg: #faf3e0;
+  --danger: #a13d2d;
+
+  /* Markdown element colors */
+  --md-h1: #3d2c1a;
+  --md-h2: #4a3722;
+  --md-h3: #5b4636;
+  --md-h4: #6b5644;
+  --md-h5: #826852;
+  --md-h6: #9a8068;
+  --md-strong: #3d2c1a;
+  --md-em: #5b4636;
+  --md-link: #b85c38;
+  --md-url: #8b4513;
+  --md-code: #a13d2d;
+  --md-code-bg: #ebe2c8;
+  --md-quote: #826852;
+  --md-list: #8b4513;
+  --md-hr: #d6c8a4;
+
+  /* Code block syntax — muted, paperback feel */
+  --syn-keyword: #8b4513;
+  --syn-string: #6b8e23;
+  --syn-number: #b8860b;
+  --syn-comment: #a89072;
+  --syn-function: #8b4513;
+  --syn-variable: #5b4636;
+  --syn-type: #b85c38;
+  --syn-property: #a13d2d;
+  --syn-operator: #826852;
+}

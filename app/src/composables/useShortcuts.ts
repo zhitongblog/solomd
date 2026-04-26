@@ -6,6 +6,7 @@ import { useTabsStore } from '../stores/tabs';
 import { useTilesStore } from '../stores/tiles';
 import { useCommands } from './useCommands';
 import { useInbox } from './useInbox';
+import { usePomodoroStore, getLastPreset } from '../stores/pomodoro';
 
 interface Hooks {
   openPalette?: () => void;
@@ -14,6 +15,10 @@ interface Hooks {
   openGlobalSearch?: () => void;
   /** v2.3: open the RAG / semantic-search panel. */
   openRagSearch?: () => void;
+  /** v2.5: open the VSCode-style ⌘P quick file switcher. */
+  openQuickSwitcher?: () => void;
+  /** v2.5 F6: open the CJK proofread panel (⌘⇧J — J for "句"/sentence). */
+  openCjkProofread?: () => void;
 }
 
 export function useShortcuts(hooks: Hooks = {}) {
@@ -24,6 +29,7 @@ export function useShortcuts(hooks: Hooks = {}) {
   const tiles = useTilesStore();
   const commands = useCommands();
   const inbox = useInbox();
+  const pomodoro = usePomodoroStore();
 
   function runById(id: string) {
     const cmd = commands.find((c) => c.id === id);
@@ -88,6 +94,11 @@ export function useShortcuts(hooks: Hooks = {}) {
       // Same effect as ⌘N — both create a fresh markdown tab.
       e.preventDefault();
       files.newFile();
+    } else if (k === 'p' && e.shiftKey && e.altKey) {
+      // v2.5: PDF-print moved to ⌘⌥⇧P so plain ⌘P can host the new
+      // VSCode-style quick file switcher (#1 v2.5 feature).
+      e.preventDefault();
+      runById('export.pdfPrint');
     } else if (k === 'p' && e.shiftKey) {
       e.preventDefault();
       settings.cycleViewMode();
@@ -95,8 +106,9 @@ export function useShortcuts(hooks: Hooks = {}) {
       e.preventDefault();
       runById('view.slideshow');
     } else if (k === 'p') {
+      // v2.5: ⌘P opens the quick file switcher (VSCode-style).
       e.preventDefault();
-      runById('export.pdfPrint');
+      hooks.openQuickSwitcher?.();
     } else if (k === 'r' && e.shiftKey) {
       // v2.4: Cmd/Ctrl+Shift+R toggles reading mode. Pressing the same
       // combo while already in reading mode restores the previous mode.
@@ -105,6 +117,11 @@ export function useShortcuts(hooks: Hooks = {}) {
     } else if (k === 'k' && e.shiftKey) {
       e.preventDefault();
       hooks.openPalette?.();
+    } else if (k === 'j' && e.shiftKey) {
+      // v2.5 F6: ⌘⇧J — CJK proofread panel. Shift differentiates from
+      // ⌘J (CodeMirror "AI rewrite", bound inside the editor keymap).
+      e.preventDefault();
+      hooks.openCjkProofread?.();
     } else if (k === 'f' && e.shiftKey) {
       e.preventDefault();
       // v2.3: ⌘⇧F prefers semantic search when the user has opted in;
@@ -135,6 +152,17 @@ export function useShortcuts(hooks: Hooks = {}) {
       // v2.4: ⌘E toggles `inbox: true|false` in the active doc's front matter.
       e.preventDefault();
       inbox.toggleActive();
+    } else if (k === 'z' && e.shiftKey && !e.altKey) {
+      // v2.5 F4: ⌘⇧Z = "Zen" — start the last-used preset (or the
+      // settings default if no last-used). If a session is already
+      // running this is a no-op so the shortcut doesn't accidentally
+      // restart and lose the in-progress writing window.
+      e.preventDefault();
+      if (!pomodoro.active) {
+        const last = getLastPreset();
+        const min = Number.isFinite(last) && last > 0 ? last : settings.pomodoroDefaultMinutes;
+        pomodoro.start(min, { notify: true });
+      }
     }
 
     // Tile layout shortcuts

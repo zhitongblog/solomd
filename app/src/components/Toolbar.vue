@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import Icon from './Icons.vue';
+import PomodoroPopover from './PomodoroPopover.vue';
 import { useTabsStore } from '../stores/tabs';
 import { useSettingsStore } from '../stores/settings';
 import { useWorkspaceStore } from '../stores/workspace';
@@ -30,6 +31,14 @@ const exporter = useExport();
 const toasts = useToastsStore();
 
 const isMarkdown = computed(() => tabs.activeTab?.language === 'markdown');
+
+/**
+ * v2.5 F6 — open the CJK proofread panel. App.vue listens for this
+ * event (same pattern as `solomd:open-help` / `solomd:open-settings`).
+ */
+function onOpenCjkProofread() {
+  window.dispatchEvent(new CustomEvent('solomd:open-cjk-proofread'));
+}
 
 function onCleanAI() {
   const t = tabs.activeTab;
@@ -95,6 +104,13 @@ const exportOpen = ref(false);
 const newOpen = ref(false);
 const copyOpen = ref(false);
 const insertOpen = ref(false);
+const pomoOpen = ref(false);
+
+function togglePomo() {
+  // Mirror the same exclusive-open behaviour as the other dropdowns.
+  closeAllDropdowns();
+  pomoOpen.value = !pomoOpen.value;
+}
 
 function dispatchInsert(snippet: string) {
   window.dispatchEvent(
@@ -118,6 +134,7 @@ function closeAllDropdowns() {
   exportOpen.value = false;
   copyOpen.value = false;
   insertOpen.value = false;
+  pomoOpen.value = false;
 }
 // Exclusive open: opening one dropdown closes others.
 function toggleDropdown(name: 'new' | 'recent' | 'export' | 'copy' | 'insert') {
@@ -445,15 +462,28 @@ onBeforeUnmount(() => {
     <span v-if="isMarkdown" class="toolbar__divider"></span>
 
     <div class="toolbar__group">
-      <button
-        class="icon-btn"
-        :disabled="settings.viewMode === 'preview'"
-        @click="settings.toggleFocusMode"
-        :class="{ active: settings.focusMode }"
-        :title="t('toolbar.focusModeTooltip')"
-      >
-        <Icon name="focus" />
-      </button>
+      <div class="dropdown focus-with-pomo">
+        <button
+          class="icon-btn"
+          :disabled="settings.viewMode === 'preview'"
+          @click="settings.toggleFocusMode"
+          :class="{ active: settings.focusMode }"
+          :title="t('toolbar.focusModeTooltip')"
+        >
+          <Icon name="focus" />
+        </button>
+        <button
+          v-if="settings.pomodoroShowControls"
+          class="icon-btn pomo-chevron"
+          @click="togglePomo"
+          :title="t('pomodoro.openMenu')"
+          aria-haspopup="dialog"
+          :aria-expanded="pomoOpen"
+        >
+          <Icon name="chevron-down" :size="10" />
+        </button>
+        <PomodoroPopover :open="pomoOpen" @close="pomoOpen = false" />
+      </div>
       <button
         class="icon-btn"
         :disabled="settings.viewMode === 'preview'"
@@ -471,6 +501,14 @@ onBeforeUnmount(() => {
         :title="t('toolbar.spellCheckTooltip')"
       >
         <Icon name="spellcheck" />
+      </button>
+      <button
+        class="icon-btn cjk-proof-btn"
+        :disabled="settings.viewMode === 'preview'"
+        @click="onOpenCjkProofread"
+        :title="t('toolbar.cjkProofreadTooltip')"
+      >
+        <span class="cjk-proof-glyph">中</span>
       </button>
       <span class="toolbar__divider"></span>
       <button class="icon-btn" @click="$emit('open-search')" :title="t('toolbar.searchTooltip')">
@@ -594,6 +632,21 @@ onBeforeUnmount(() => {
 .ai-rewrite-label { letter-spacing: 0.04em; }
 .ai-rewrite-spark { font-size: 11px; opacity: 0.85; margin-left: 2px; }
 
+/* v2.5 F6 — CJK proofread toolbar button. Uses the literal "中"
+ * glyph instead of an SVG icon: it telegraphs the feature's CJK
+ * scope at a glance and matches Spell-check (a small icon-as-mark
+ * style sits in the same toolbar group). */
+.cjk-proof-btn {
+  font-family: var(--font-zh, 'PingFang SC', 'Hiragino Sans GB', sans-serif);
+  font-size: 13px !important;
+  font-weight: 700;
+  padding: 4px 8px !important;
+  line-height: 1;
+}
+.cjk-proof-glyph {
+  display: inline-block;
+}
+
 /* Split copy button: [Copy | ▾] */
 .copy-split {
   display: inline-flex;
@@ -658,6 +711,16 @@ onBeforeUnmount(() => {
 .dropdown {
   position: relative;
 }
+.focus-with-pomo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+}
+.pomo-chevron {
+  padding: 5px 4px !important;
+  color: var(--text-faint);
+}
+.pomo-chevron:hover { color: var(--text); }
 .dropdown__menu {
   position: absolute;
   top: calc(100% + 4px);

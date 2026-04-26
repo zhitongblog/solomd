@@ -14,6 +14,7 @@ import AISettings from './AISettings.vue';
 import CitationPickerSettings from './CitationPickerSettings.vue';
 import CaptureEndpointSettings from './CaptureEndpointSettings.vue';
 import IntegrationsSettings from './IntegrationsSettings.vue';
+import ThemeMarketplace from './ThemeMarketplace.vue';
 import { isIOS } from '../lib/platform';
 import type { Theme } from '../types';
 
@@ -101,6 +102,12 @@ async function pickCustomCss() {
   }
 }
 
+// v2.5: theme marketplace modal — opened from the Custom CSS section.
+const themeMarketplaceOpen = ref(false);
+function openThemeMarketplace() {
+  themeMarketplaceOpen.value = true;
+}
+
 const fontFamilies = [
   // Monospace — for code-heavy editing
   { label: 'JetBrains Mono', value: 'JetBrains Mono' },
@@ -145,6 +152,50 @@ function onCustomFontInput(v: string) {
 const fontFamilySelectValue = computed(() =>
   inCustomMode.value ? '__custom__' : settings.fontFamily
 );
+
+// ---- v2.5 F3: PDF / print export defaults ---------------------------------
+
+const pdfMmRangeError = ref(false);
+function onCustomMmChange(
+  field:
+    | 'customWidthMm'
+    | 'customHeightMm'
+    | 'customMarginTopMm'
+    | 'customMarginRightMm'
+    | 'customMarginBottomMm'
+    | 'customMarginLeftMm',
+  raw: string,
+) {
+  const n = Number(raw);
+  // Width/height accept 50–500 mm; margins 5–100 mm. Out-of-range silently
+  // clamps (the store also clamps) but flag the error inline so the user
+  // sees feedback if they mistype "500" into a 5–100 field.
+  const isMargin = field.startsWith('customMargin');
+  const min = isMargin ? 5 : 50;
+  const max = isMargin ? 100 : 500;
+  if (!Number.isFinite(n) || n < min || n > max) {
+    pdfMmRangeError.value = true;
+  } else {
+    pdfMmRangeError.value = false;
+  }
+  // Forward what we have — the store clamps to the safe range, so a typo
+  // won't produce a half-page-wide margin.
+  settings.setPdfDefaults({ [field]: n } as any);
+}
+
+// PDF font select: the dropdown uses the same `fontFamilies` list as the
+// editor; the empty value means "inherit / use stylesheet default."
+const pdfFontSelectValue = computed(() =>
+  fontFamilyPresetValues.has(settings.pdfDefaults.fontFamily)
+    ? settings.pdfDefaults.fontFamily
+    : settings.pdfDefaults.fontFamily
+      ? '__custom_pdf__'
+      : ''
+);
+function onSelectPdfFont(v: string) {
+  if (v === '__custom_pdf__') return;
+  settings.setPdfDefaults({ fontFamily: v });
+}
 </script>
 
 <template>
@@ -285,6 +336,32 @@ const fontFamilySelectValue = computed(() =>
 
         <section>
           <h3 style="font-size: 13px; font-weight: 600; color: var(--text); margin: 18px 0 6px;">
+            {{ t('writingStats.settingsHeading') }}
+          </h3>
+          <label>
+            <input
+              type="checkbox"
+              :checked="settings.showWritingStats"
+              @change="settings.toggleWritingStats()"
+            />
+            {{ t('writingStats.showInStatusBar') }}
+          </label>
+          <label style="margin-top: 6px;">
+            <input
+              type="checkbox"
+              :checked="settings.showWorkspaceDailyTotal"
+              @change="settings.toggleWorkspaceDailyTotal()"
+              :disabled="!settings.showWritingStats"
+            />
+            {{ t('writingStats.showWorkspaceDailyTotal') }}
+          </label>
+          <p style="font-size: 11px; color: var(--text-faint); margin: 4px 0 0; line-height: 1.5;">
+            {{ t('writingStats.frontMatterHint') }}
+          </p>
+        </section>
+
+        <section>
+          <h3 style="font-size: 13px; font-weight: 600; color: var(--text); margin: 18px 0 6px;">
             {{ t('settings.versionHistoryHeading') }}
           </h3>
           <label>
@@ -345,6 +422,165 @@ const fontFamilySelectValue = computed(() =>
           </div>
         </section>
 
+        <!-- v2.5 F3: PDF / print export defaults. Lives between AutoGit and
+             Daily-notes so the "documents you produce" cluster reads top-down. -->
+        <section>
+          <h3 style="font-size: 13px; font-weight: 600; color: var(--text); margin: 18px 0 6px;">
+            {{ t('settings.pdfDefaults.heading') }}
+          </h3>
+          <p class="setting-hint">{{ t('settings.pdfDefaults.headingHint') }}</p>
+        </section>
+
+        <section>
+          <label>{{ t('settings.pdfDefaults.pageSize') }}</label>
+          <select
+            :value="settings.pdfDefaults.pageSize"
+            @change="settings.setPdfDefaults({ pageSize: ($event.target as HTMLSelectElement).value as any })"
+          >
+            <option value="A4">A4 (210 × 297 mm)</option>
+            <option value="A5">A5 (148 × 210 mm)</option>
+            <option value="Letter">{{ t('settings.pdfDefaults.letter') }} (8.5 × 11 in)</option>
+            <option value="Legal">{{ t('settings.pdfDefaults.legal') }} (8.5 × 14 in)</option>
+            <option value="Custom">{{ t('settings.pdfDefaults.custom') }}</option>
+          </select>
+          <div
+            v-if="settings.pdfDefaults.pageSize === 'Custom'"
+            class="row"
+            style="gap: 6px; align-items: center; margin-top: 6px;"
+          >
+            <input
+              type="number"
+              min="50"
+              max="500"
+              step="1"
+              :value="settings.pdfDefaults.customWidthMm"
+              @input="onCustomMmChange('customWidthMm', ($event.target as HTMLInputElement).value)"
+              style="width: 90px; padding: 6px 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px;"
+              :aria-label="t('settings.pdfDefaults.widthMm')"
+            />
+            <span style="font-size: 12px; color: var(--text-muted);">×</span>
+            <input
+              type="number"
+              min="50"
+              max="500"
+              step="1"
+              :value="settings.pdfDefaults.customHeightMm"
+              @input="onCustomMmChange('customHeightMm', ($event.target as HTMLInputElement).value)"
+              style="width: 90px; padding: 6px 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px;"
+              :aria-label="t('settings.pdfDefaults.heightMm')"
+            />
+            <span style="font-size: 12px; color: var(--text-muted);">mm</span>
+          </div>
+        </section>
+
+        <section>
+          <label>{{ t('settings.pdfDefaults.margin') }}</label>
+          <select
+            :value="settings.pdfDefaults.margin"
+            @change="settings.setPdfDefaults({ margin: ($event.target as HTMLSelectElement).value as any })"
+          >
+            <option value="Narrow">{{ t('settings.pdfDefaults.marginNarrow') }} (10 mm)</option>
+            <option value="Normal">{{ t('settings.pdfDefaults.marginNormal') }} (15 mm)</option>
+            <option value="Wide">{{ t('settings.pdfDefaults.marginWide') }} (25 mm)</option>
+            <option value="Custom">{{ t('settings.pdfDefaults.custom') }}</option>
+          </select>
+          <div
+            v-if="settings.pdfDefaults.margin === 'Custom'"
+            style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; margin-top: 6px;"
+          >
+            <label style="display: flex; align-items: center; gap: 6px; font-size: 12px;">
+              <span style="min-width: 56px; color: var(--text-muted);">{{ t('settings.pdfDefaults.marginTop') }}</span>
+              <input
+                type="number" min="5" max="100" step="1"
+                :value="settings.pdfDefaults.customMarginTopMm"
+                @input="onCustomMmChange('customMarginTopMm', ($event.target as HTMLInputElement).value)"
+                style="width: 70px; padding: 4px 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px;"
+              />
+              <span style="font-size: 11px; color: var(--text-muted);">mm</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 6px; font-size: 12px;">
+              <span style="min-width: 56px; color: var(--text-muted);">{{ t('settings.pdfDefaults.marginRight') }}</span>
+              <input
+                type="number" min="5" max="100" step="1"
+                :value="settings.pdfDefaults.customMarginRightMm"
+                @input="onCustomMmChange('customMarginRightMm', ($event.target as HTMLInputElement).value)"
+                style="width: 70px; padding: 4px 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px;"
+              />
+              <span style="font-size: 11px; color: var(--text-muted);">mm</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 6px; font-size: 12px;">
+              <span style="min-width: 56px; color: var(--text-muted);">{{ t('settings.pdfDefaults.marginBottom') }}</span>
+              <input
+                type="number" min="5" max="100" step="1"
+                :value="settings.pdfDefaults.customMarginBottomMm"
+                @input="onCustomMmChange('customMarginBottomMm', ($event.target as HTMLInputElement).value)"
+                style="width: 70px; padding: 4px 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px;"
+              />
+              <span style="font-size: 11px; color: var(--text-muted);">mm</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 6px; font-size: 12px;">
+              <span style="min-width: 56px; color: var(--text-muted);">{{ t('settings.pdfDefaults.marginLeft') }}</span>
+              <input
+                type="number" min="5" max="100" step="1"
+                :value="settings.pdfDefaults.customMarginLeftMm"
+                @input="onCustomMmChange('customMarginLeftMm', ($event.target as HTMLInputElement).value)"
+                style="width: 70px; padding: 4px 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px;"
+              />
+              <span style="font-size: 11px; color: var(--text-muted);">mm</span>
+            </label>
+          </div>
+          <p v-if="pdfMmRangeError" class="setting-hint" style="color: var(--danger, #d12);">
+            {{ t('settings.pdfDefaults.mmRangeError') }}
+          </p>
+        </section>
+
+        <section>
+          <label>{{ t('settings.pdfDefaults.fontFamily') }}</label>
+          <select
+            :value="pdfFontSelectValue"
+            @change="onSelectPdfFont(($event.target as HTMLSelectElement).value)"
+          >
+            <option value="">{{ t('settings.pdfDefaults.fontInherit') }}</option>
+            <option v-for="f in fontFamilies" :key="f.label" :value="f.value">{{ f.label }}</option>
+          </select>
+        </section>
+
+        <section>
+          <label>{{ t('settings.pdfDefaults.fontSize') }}: {{ settings.pdfDefaults.fontSize }}pt</label>
+          <input
+            type="range"
+            min="9"
+            max="16"
+            step="1"
+            :value="settings.pdfDefaults.fontSize"
+            @input="settings.setPdfDefaults({ fontSize: +($event.target as HTMLInputElement).value })"
+          />
+        </section>
+
+        <section>
+          <label>
+            <input
+              type="checkbox"
+              :checked="settings.pdfDefaults.footer"
+              @change="settings.setPdfDefaults({ footer: ($event.target as HTMLInputElement).checked })"
+            />
+            {{ t('settings.pdfDefaults.footer') }}
+          </label>
+        </section>
+
+        <section>
+          <label>{{ t('settings.pdfDefaults.codeTheme') }}</label>
+          <select
+            :value="settings.pdfDefaults.codeTheme"
+            @change="settings.setPdfDefaults({ codeTheme: ($event.target as HTMLSelectElement).value as any })"
+          >
+            <option value="preview">{{ t('settings.pdfDefaults.codeThemePreview') }}</option>
+            <option value="light">{{ t('settings.pdfDefaults.codeThemeLight') }}</option>
+            <option value="dark">{{ t('settings.pdfDefaults.codeThemeDark') }}</option>
+          </select>
+          <p class="setting-hint">{{ t('settings.pdfDefaults.frontmatterHint') }}</p>
+        </section>
+
         <section>
           <label>{{ t('settings.dailyNotesFolder') }}</label>
           <input
@@ -399,6 +635,57 @@ const fontFamilySelectValue = computed(() =>
         </section>
 
         <section>
+          <h3 style="font-size: 13px; font-weight: 600; color: var(--text); margin: 18px 0 6px;">
+            {{ t('pomodoro.settingsHeading') }}
+          </h3>
+          <label>
+            <input
+              type="checkbox"
+              :checked="settings.pomodoroShowControls"
+              @change="settings.togglePomodoroShowControls()"
+            />
+            {{ t('pomodoro.showControls') }}
+          </label>
+          <p style="font-size: 11px; color: var(--text-faint); margin: 4px 0 8px; line-height: 1.5;">
+            {{ t('pomodoro.showControlsHint') }}
+          </p>
+          <label>
+            <input
+              type="checkbox"
+              :checked="settings.pomodoroAutoEngageFocus"
+              @change="settings.togglePomodoroAutoEngageFocus()"
+            />
+            {{ t('pomodoro.autoEngageFocus') }}
+          </label>
+          <p style="font-size: 11px; color: var(--text-faint); margin: 4px 0 8px; line-height: 1.5;">
+            {{ t('pomodoro.autoEngageFocusHint') }}
+          </p>
+          <label style="display: block; margin-top: 4px;">{{ t('pomodoro.defaultDuration') }}</label>
+          <select
+            :value="String(settings.pomodoroDefaultMinutes)"
+            @change="(e) => {
+              const v = (e.target as HTMLSelectElement).value;
+              if (v === 'custom') return;
+              settings.setPomodoroDefaultMinutes(parseInt(v, 10));
+            }"
+            style="margin-top: 4px;"
+          >
+            <option value="25">25 {{ t('pomodoro.minShort') }}</option>
+            <option value="50">50 {{ t('pomodoro.minShort') }}</option>
+            <option value="90">90 {{ t('pomodoro.minShort') }}</option>
+          </select>
+          <input
+            type="number"
+            min="1"
+            max="600"
+            :value="settings.pomodoroDefaultMinutes"
+            @input="settings.setPomodoroDefaultMinutes(parseInt(($event.target as HTMLInputElement).value, 10) || 25)"
+            :aria-label="t('pomodoro.customDurationLabel')"
+            style="margin-left: 8px; padding: 4px 6px; width: 70px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px; font: inherit;"
+          />
+        </section>
+
+        <section>
           <label>
             <input type="checkbox" :checked="settings.typewriterMode" @change="settings.toggleTypewriterMode()" />
             {{ t('settings.typewriterMode') }}
@@ -409,6 +696,13 @@ const fontFamilySelectValue = computed(() =>
           <label>
             <input type="checkbox" :checked="settings.vimMode" @change="settings.toggleVimMode()" />
             {{ t('settings.vimMode') }}
+          </label>
+        </section>
+
+        <section>
+          <label>
+            <input type="checkbox" :checked="settings.slashCommandsEnabled" @change="settings.toggleSlashCommandsEnabled()" />
+            {{ t('settings.slashCommandsEnabled') }}
           </label>
         </section>
 
@@ -466,13 +760,15 @@ const fontFamilySelectValue = computed(() =>
 
         <section>
           <label>{{ t('settings.customCss') }}</label>
-          <div class="row" style="gap: 8px; align-items: center;">
+          <div class="row" style="gap: 8px; align-items: center; flex-wrap: wrap;">
             <button @click="pickCustomCss">{{ t('settings.pickCss') }}</button>
+            <button @click="openThemeMarketplace">{{ t('themes.browseBtn') }}</button>
             <button v-if="settings.customCssPath" @click="settings.setCustomCssPath('')">{{ t('settings.clear') }}</button>
           </div>
           <div v-if="settings.customCssPath" style="font-size: 11px; color: var(--text-faint); word-break: break-all; margin-top: 4px;">
             {{ settings.customCssPath }}
           </div>
+          <p class="setting-hint">{{ t('themes.browseHint') }}</p>
         </section>
 
         <section>
@@ -496,6 +792,13 @@ const fontFamilySelectValue = computed(() =>
         <CaptureEndpointSettings />
       </div>
     </div>
+    <!-- v2.5: theme marketplace modal. Lives outside settings__body so it
+         overlays the entire viewport, but inside the settings backdrop so
+         closing settings closes it too. -->
+    <ThemeMarketplace
+      :open="themeMarketplaceOpen"
+      @close="themeMarketplaceOpen = false"
+    />
   </div>
 </template>
 

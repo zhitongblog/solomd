@@ -29,6 +29,10 @@ mod git_history;
 #[path = "capture_endpoint.rs"]
 mod capture_endpoint;
 
+// v2.5 community theme marketplace — see app/src-tauri/src/themes.rs.
+#[path = "themes.rs"]
+mod themes;
+
 // v2.3 dev WebDriver bridge — debug builds only. Module file itself is
 // `#[cfg(debug_assertions)]`-gated, so this `mod` line is too.
 #[cfg(debug_assertions)]
@@ -422,6 +426,9 @@ pub fn run_with(initial_file: Option<String>) {
             capture_endpoint::capture_regenerate_token,
             capture_endpoint::capture_set_inbox_folder,
             capture_endpoint::capture_set_workspace,
+            themes::theme_install,
+            themes::theme_uninstall,
+            themes::theme_list_installed,
         ])
         .on_menu_event(|app_handle, event| {
             // Forward every menu click to the frontend as a single event

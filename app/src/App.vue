@@ -8,6 +8,7 @@ import TelemetryBanner from './components/TelemetryBanner.vue';
 import TileRoot from './components/TileRoot.vue';
 import StatusBar from './components/StatusBar.vue';
 import CommandPalette from './components/CommandPalette.vue';
+import QuickSwitcher from './components/QuickSwitcher.vue';
 import Outline from './components/Outline.vue';
 import BacklinksPanel from './components/BacklinksPanel.vue';
 import TagsPanel from './components/TagsPanel.vue';
@@ -21,6 +22,7 @@ import SettingsPanel from './components/SettingsPanel.vue';
 import MarkdownHelp from './components/MarkdownHelp.vue';
 import GlobalSearch from './components/GlobalSearch.vue';
 import RagSearch from './components/RagSearch.vue';
+import CjkProofread from './components/CjkProofread.vue';
 import ReadingView from './components/ReadingView.vue';
 import AboutDialog from './components/AboutDialog.vue';
 import UnsavedDialog from './components/UnsavedDialog.vue';
@@ -28,6 +30,7 @@ import Toast from './components/Toast.vue';
 import { useTabsStore } from './stores/tabs';
 import { useSettingsStore } from './stores/settings';
 import { useTilesStore } from './stores/tiles';
+import { usePomodoroStore } from './stores/pomodoro';
 import { useFiles } from './composables/useFiles';
 import { useExport } from './composables/useExport';
 import { useShortcuts } from './composables/useShortcuts';
@@ -50,15 +53,27 @@ const workspaceIndex = useWorkspaceIndexStore();
 const rag = useRagStore();
 const autoCommit = useAutoCommit();
 autoCommit.start();
+// v2.5 F4: pick up an in-progress focus session from before the reload.
+// Fire-and-forget — the store handles the (rare) "session already past
+// its end" case by short-circuiting into the completion path.
+const pomodoro = usePomodoroStore();
+pomodoro.rehydrate();
+// Expose to the dev-bridge so the self-test harness can drive the store
+// directly via window.usePomodoroStore() instead of fishing it out of
+// Pinia internals. Dev-only convenience — release builds ignore the
+// extra hook.
+(window as any).usePomodoroStore = usePomodoroStore;
 const { t } = useI18n();
 
 const cursorLine = ref(1);
 const cursorCol = ref(1);
 const paletteOpen = ref(false);
+const quickSwitcherOpen = ref(false);
 const settingsOpen = ref(false);
 const helpOpen = ref(false);
 const searchOpen = ref(false);
 const ragSearchOpen = ref(false);
+const cjkProofreadOpen = ref(false);
 const aboutOpen = ref(false);
 
 // Unsaved-changes dialog state
@@ -95,15 +110,19 @@ useShortcuts({
   openHelp: () => (helpOpen.value = true),
   openGlobalSearch: () => (searchOpen.value = true),
   openRagSearch: () => (ragSearchOpen.value = true),
+  openQuickSwitcher: () => (quickSwitcherOpen.value = true),
+  openCjkProofread: () => (cjkProofreadOpen.value = true),
 });
 
 // Esc closes the topmost modal
 function onEsc(e: KeyboardEvent) {
   if (e.key !== 'Escape') return;
   if (aboutOpen.value) aboutOpen.value = false;
+  else if (cjkProofreadOpen.value) cjkProofreadOpen.value = false;
   else if (ragSearchOpen.value) ragSearchOpen.value = false;
   else if (searchOpen.value) searchOpen.value = false;
   else if (helpOpen.value) helpOpen.value = false;
+  else if (quickSwitcherOpen.value) quickSwitcherOpen.value = false;
   else if (paletteOpen.value) paletteOpen.value = false;
   else if (settingsOpen.value) settingsOpen.value = false;
   // v2.4: reading mode is "modal-like" too — Esc exits back to the
@@ -264,6 +283,9 @@ function onOpenHelpEvent() {
 function onOpenSearchEvent() {
   searchOpen.value = true;
 }
+function onOpenCjkProofreadEvent() {
+  cjkProofreadOpen.value = true;
+}
 
 let unlistenOpened: UnlistenFn | null = null;
 let unlistenMenu: UnlistenFn | null = null;
@@ -342,6 +364,7 @@ onMounted(async () => {
   window.addEventListener('keydown', onEsc);
   window.addEventListener('solomd:open-help', onOpenHelpEvent as EventListener);
   window.addEventListener('solomd:open-global-search', onOpenSearchEvent as EventListener);
+  window.addEventListener('solomd:open-cjk-proofread', onOpenCjkProofreadEvent as EventListener);
 
   track('app_launched', {
     locale: settings.language,
@@ -492,6 +515,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('keydown', onEsc);
   window.removeEventListener('solomd:open-help', onOpenHelpEvent as EventListener);
   window.removeEventListener('solomd:open-global-search', onOpenSearchEvent as EventListener);
+  window.removeEventListener('solomd:open-cjk-proofread', onOpenCjkProofreadEvent as EventListener);
   window.removeEventListener('solomd:wiki-open', onWikiOpen as EventListener);
   window.removeEventListener('solomd:ai-rewrite-accept', onAIRewriteAccept as EventListener);
   window.removeEventListener('solomd:ai-rewrite-cancel', onAIRewriteCancel as EventListener);
@@ -605,6 +629,7 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
       @open-settings="settingsOpen = true"
     />
     <CommandPalette :open="paletteOpen" @close="paletteOpen = false" />
+    <QuickSwitcher :open="quickSwitcherOpen" @close="quickSwitcherOpen = false" />
     <SettingsPanel
       :open="settingsOpen"
       @close="settingsOpen = false; refreshAiHasKey()"
@@ -616,6 +641,7 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
       @close="ragSearchOpen = false"
       @open-settings="ragSearchOpen = false; settingsOpen = true"
     />
+    <CjkProofread :open="cjkProofreadOpen" @close="cjkProofreadOpen = false" />
     <AboutDialog :open="aboutOpen" @close="aboutOpen = false" />
     <UnsavedDialog
       :open="unsavedOpen"

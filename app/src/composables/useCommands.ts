@@ -149,6 +149,18 @@ export function useCommands(): Command[] {
       },
     },
 
+    // v2.5 F6: CJK proofread — flag common Chinese typos in the
+    // active doc. The actual panel is owned by App.vue; we dispatch
+    // a custom event because useCommands has no DOM/component
+    // handles (same pattern as `help.markdown` and `search.global`).
+    {
+      id: 'proofread.cjk',
+      title: 'CJK Proofread — flag Chinese typos',
+      shortcut: 'Ctrl+Shift+J',
+      hint: 'Half-/full-width punct, 的/地/得 misuse, repeats, spacing',
+      run: () => window.dispatchEvent(new CustomEvent('solomd:open-cjk-proofread')),
+    },
+
     {
       id: 'format.markdown',
       title: 'Format Markdown (Prettier)',
@@ -196,7 +208,7 @@ export function useCommands(): Command[] {
     { id: 'export.html', title: 'Export to HTML…', run: () => exporter.exportHtml() },
     { id: 'export.docx', title: 'Export to Word (DOCX)…', run: () => exporter.exportDocx() },
     { id: 'export.pdf', title: 'Export to PDF…', run: () => exporter.exportPdf() },
-    { id: 'export.pdfPrint', title: 'Export to PDF via System Print…', shortcut: 'Ctrl+P', run: () => exporter.exportPdfPrint() },
+    { id: 'export.pdfPrint', title: 'Export to PDF via System Print…', shortcut: 'Ctrl+Shift+Alt+P', run: () => exporter.exportPdfPrint() },
     { id: 'export.image', title: 'Export to Image (PNG)…', run: () => exporter.exportImage() },
     { id: 'export.epub', title: 'Export to EPUB…', hint: 'via Pandoc', run: () => pandoc.exportTo('epub') },
     { id: 'export.odt', title: 'Export to ODT…', hint: 'via Pandoc', run: () => pandoc.exportTo('odt') },

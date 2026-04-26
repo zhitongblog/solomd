@@ -66,6 +66,7 @@ const shortcutGroups: ShortcutGroup[] = [
   {
     title: '工作区 / Workspace',
     items: [
+      { keys: 'Ctrl+P', zh: '快速切换最近文件（VSCode 风格）', en: 'Quick file switcher (VSCode-style)' },
       { keys: 'Ctrl+D', zh: '打开今日的每日笔记', en: 'Open today\'s daily note' },
       { keys: '(Command palette)', zh: 'Properties Table —— Bases 视图（按 Ctrl+Shift+K 找 "bases"）', en: 'Properties Table — Bases view (Ctrl+Shift+K → bases)' },
     ],
@@ -73,7 +74,7 @@ const shortcutGroups: ShortcutGroup[] = [
   {
     title: '导出 & 演讲 / Export & Present',
     items: [
-      { keys: 'Ctrl+P', zh: '导出 PDF（系统打印对话框）', en: 'Export PDF (system print)' },
+      { keys: 'Ctrl+Shift+Alt+P', zh: '导出 PDF（系统打印对话框）', en: 'Export PDF (system print)' },
       { keys: 'Ctrl+Shift+C', zh: '复制为 HTML', en: 'Copy as HTML' },
       { keys: 'Ctrl+Alt+P', zh: '演讲模式（`---` 分页）', en: 'Slideshow mode (split on ---)' },
     ],
