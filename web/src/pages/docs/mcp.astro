@@ -1,0 +1,130 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import Giscus from '../../components/Giscus.astro';
+
+const lang = 'en' as const;
+---
+
+<Layout
+  title="SoloMD MCP Server — Drive Your Notes from Claude Desktop, Codex, Cursor"
+  description="SoloMD ships an MCP (Model Context Protocol) sidecar so any MCP-aware AI client can list, search, read, and write your notes."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <article class="container docs-article">
+      <nav class="breadcrumbs">
+        <a href="/">Home</a> / <a href="/docs/">Docs</a> / <span>MCP server</span>
+      </nav>
+
+      <h1>SoloMD MCP server</h1>
+      <p class="lead">
+        Every SoloMD release ships <code>solomd-mcp</code> — a sidecar binary that
+        speaks the <a href="https://modelcontextprotocol.io" rel="external">Model Context Protocol</a>.
+        Point Claude Desktop, Codex CLI, Cursor, or any MCP client at it and the
+        AI can list / search / read / write your notes from outside the app.
+      </p>
+
+      <h2>Why this matters</h2>
+      <p>
+        Most note apps treat AI as a feature inside the editor — paste in some
+        text, get a rewrite back. SoloMD inverts that: your AI client gets full
+        access to the vault, so you can ask <em>"summarise everything I wrote
+        about Q2 planning"</em> or <em>"draft a follow-up to last week's meeting
+        note"</em> and the model reads the actual files itself.
+      </p>
+
+      <h2>Quick start — Claude Desktop</h2>
+      <ol>
+        <li>Open SoloMD → <strong>Settings → Integrations → MCP server</strong>.</li>
+        <li>Click <strong>Copy Claude Desktop config</strong>. The block already
+          embeds the bundled binary path and your currently-open workspace.</li>
+        <li>Click <strong>Open Claude Desktop config file</strong>. Paste the
+          block under <code>"mcpServers"</code> and save.</li>
+        <li>Restart Claude Desktop. <code>solomd-vault</code> appears in the
+          tools menu — done.</li>
+      </ol>
+
+      <h2>Tools the model can call</h2>
+      <table class="kb-table">
+        <thead><tr><th>Tool</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><th><code>list_notes</code></th><td>Enumerate every Markdown file in the workspace.</td></tr>
+          <tr><th><code>read_note</code></th><td>Fetch a note by relative path. Returns content + front matter.</td></tr>
+          <tr><th><code>search</code></th><td>Full-text search across the vault. Returns ranked snippets.</td></tr>
+          <tr><th><code>get_backlinks</code></th><td>Every note that <code>[[wiki-links]]</code> to the target.</td></tr>
+          <tr><th><code>list_tags</code></th><td>All <code>#tags</code> in the vault, with usage count.</td></tr>
+          <tr><th><code>get_outline</code></th><td>Heading tree for a note — useful before a long edit.</td></tr>
+          <tr><th><code>write_note</code></th><td>Create or overwrite a file. <strong>Off by default</strong> — see below.</td></tr>
+          <tr><th><code>append_to_note</code></th><td>Append text to the end of an existing note. <strong>Off by default.</strong></td></tr>
+        </tbody>
+      </table>
+
+      <h2>Read-only by default</h2>
+      <p>
+        <code>solomd-mcp</code> exposes write tools only when launched with
+        <code>--allow-write</code>. The default config the Settings panel
+        copies is read-only. To enable writes, edit the args list:
+      </p>
+      <pre class="code"><code>{`{
+  "mcpServers": {
+    "solomd-vault": {
+      "command": "/path/to/solomd-mcp",
+      "args": ["--workspace", "/path/to/your/notes", "--allow-write"]
+    }
+  }
+}`}</code></pre>
+      <p>
+        We split this so a model can never accidentally rewrite a note as part
+        of a search request — you have to opt in by hand.
+      </p>
+
+      <h2>Other clients</h2>
+      <p>
+        Anything that speaks MCP works. Codex CLI, Cursor, Continue, Zed's MCP
+        client, and the open-source <code>mcp-cli</code> all share the same
+        config shape — point them at the same <code>command</code> +
+        <code>args</code> and they'll see the same tool set.
+      </p>
+
+      <h2>Where the binary lives</h2>
+      <p>
+        On macOS the bundled binary is inside the app bundle:
+        <code>SoloMD.app/Contents/MacOS/solomd-mcp</code>. On Windows + Linux
+        it's beside the main executable. The Settings panel always shows the
+        absolute path under <strong>Bundled at …</strong> so you don't have to
+        hunt for it.
+      </p>
+
+      <p class="docs-footer">
+        Bug or missing tool? Open an issue on
+        <a href="https://github.com/zhitongblog/solomd/issues" rel="external">GitHub</a>
+        — write-side surface area is intentionally small but we're happy to
+        grow it where the use case is clear.
+      </p>
+    </article>
+    <Giscus lang={lang} />
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .docs-article { max-width: 820px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .docs-article h1 { font-size: 2rem; margin: 10px 0 16px; }
+  .docs-article h2 { font-size: 1.4rem; margin: 32px 0 12px; }
+  .docs-article .lead { color: var(--text-muted, #555); margin-bottom: 24px; line-height: 1.6; }
+  .docs-article p { line-height: 1.7; margin: 12px 0; }
+  .docs-article ol { padding-left: 20px; line-height: 1.8; }
+  .kb-table { width: 100%; border-collapse: collapse; margin: 14px 0 20px; font-size: 14px; }
+  .kb-table th, .kb-table td { text-align: left; padding: 9px 12px; border-bottom: 1px solid #eee; }
+  .kb-table thead th { background: #fafafa; font-weight: 600; }
+  .kb-table tbody th { font-weight: 500; width: 30%; }
+  .docs-article code { background: #f5f5f0; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+  .code { background: #f5f5f0; padding: 16px 18px; border-radius: 8px; overflow-x: auto; font-size: 13px; line-height: 1.55; margin: 14px 0; }
+  .code code { background: transparent; padding: 0; }
+  .docs-footer { margin-top: 40px; font-size: 0.95rem; color: var(--text-muted, #555); }
+</style>
