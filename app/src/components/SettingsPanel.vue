@@ -14,6 +14,7 @@ import AISettings from './AISettings.vue';
 import CitationPickerSettings from './CitationPickerSettings.vue';
 import CaptureEndpointSettings from './CaptureEndpointSettings.vue';
 import IntegrationsSettings from './IntegrationsSettings.vue';
+import ThemeMarketplace from './ThemeMarketplace.vue';
 import { isIOS } from '../lib/platform';
 import type { Theme } from '../types';
 
@@ -99,6 +100,12 @@ async function pickCustomCss() {
     settings.setCustomCssPath(path);
     toasts.success('Custom CSS theme loaded');
   }
+}
+
+// v2.5: theme marketplace modal — opened from the Custom CSS section.
+const themeMarketplaceOpen = ref(false);
+function openThemeMarketplace() {
+  themeMarketplaceOpen.value = true;
 }
 
 const fontFamilies = [
@@ -753,13 +760,15 @@ function onSelectPdfFont(v: string) {
 
         <section>
           <label>{{ t('settings.customCss') }}</label>
-          <div class="row" style="gap: 8px; align-items: center;">
+          <div class="row" style="gap: 8px; align-items: center; flex-wrap: wrap;">
             <button @click="pickCustomCss">{{ t('settings.pickCss') }}</button>
+            <button @click="openThemeMarketplace">{{ t('themes.browseBtn') }}</button>
             <button v-if="settings.customCssPath" @click="settings.setCustomCssPath('')">{{ t('settings.clear') }}</button>
           </div>
           <div v-if="settings.customCssPath" style="font-size: 11px; color: var(--text-faint); word-break: break-all; margin-top: 4px;">
             {{ settings.customCssPath }}
           </div>
+          <p class="setting-hint">{{ t('themes.browseHint') }}</p>
         </section>
 
         <section>
@@ -783,6 +792,13 @@ function onSelectPdfFont(v: string) {
         <CaptureEndpointSettings />
       </div>
     </div>
+    <!-- v2.5: theme marketplace modal. Lives outside settings__body so it
+         overlays the entire viewport, but inside the settings backdrop so
+         closing settings closes it too. -->
+    <ThemeMarketplace
+      :open="themeMarketplaceOpen"
+      @close="themeMarketplaceOpen = false"
+    />
   </div>
 </template>
 
