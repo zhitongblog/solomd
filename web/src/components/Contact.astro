@@ -1,0 +1,175 @@
+---
+import type { Lang } from '../i18n/translations';
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+
+const heading = lang === 'zh' ? '联系作者 / 加群' : 'Contact / Join the room';
+const lead = lang === 'zh'
+  ? '一个开发者,直接微信或 Telegram 找我。GitHub Discussions 也是一个等价入口 —— 见下面。'
+  : "One maintainer, two front doors. WeChat for the Chinese community, Telegram channel for everyone else. GitHub Discussions works too — link below.";
+
+const wechatLabel = lang === 'zh' ? '个人微信' : 'WeChat (personal)';
+const wechatHint = lang === 'zh' ? '扫码加好友。注明 "SoloMD" 直接通过。' : 'Scan to add me on WeChat. Mention "SoloMD" so I know it\'s you.';
+
+const telegramLabel = lang === 'zh' ? 'Telegram 频道 @SOLOMDAPP' : 'Telegram channel @SOLOMDAPP';
+const telegramHint = lang === 'zh'
+  ? '点击或扫码进入频道,发布更新和讨论都在这里。'
+  : 'Click or scan to join. Release announcements + chat live here.';
+
+const discussionsLabel = lang === 'zh' ? 'GitHub Discussions' : 'GitHub Discussions';
+const discussionsHint = lang === 'zh'
+  ? '不想加私聊? 可在 GitHub 公开频道讨论 —— 同一作者,异步。'
+  : "Async, public, searchable — same maintainer, no DM required.";
+---
+
+<section id="contact" class="contact">
+  <div class="container">
+    <div class="contact__header">
+      <h2>{heading}</h2>
+      <p class="lead">{lead}</p>
+    </div>
+
+    <div class="contact__grid">
+      <article class="contact__card">
+        <div class="contact__card-body">
+          <img
+            src="/contact/wechat.jpg"
+            alt={wechatLabel}
+            loading="lazy"
+            width="220"
+            height="270"
+          />
+          <div class="contact__card-meta">
+            <h3>{wechatLabel}</h3>
+            <p>{wechatHint}</p>
+          </div>
+        </div>
+      </article>
+
+      <article class="contact__card">
+        <div class="contact__card-body">
+          <a href="https://t.me/SOLOMDAPP" target="_blank" rel="noopener">
+            <img
+              src="/contact/telegram.jpg"
+              alt={telegramLabel}
+              loading="lazy"
+              width="220"
+              height="390"
+            />
+          </a>
+          <div class="contact__card-meta">
+            <h3>
+              <a href="https://t.me/SOLOMDAPP" target="_blank" rel="noopener">
+                @SOLOMDAPP
+              </a>
+            </h3>
+            <p>{telegramHint}</p>
+          </div>
+        </div>
+      </article>
+
+      <article class="contact__card contact__card--discussions">
+        <div class="contact__card-body">
+          <div class="contact__discussions-icon" aria-hidden="true">💬</div>
+          <div class="contact__card-meta">
+            <h3>
+              <a href="https://github.com/zhitongblog/solomd/discussions" target="_blank" rel="noopener">
+                {discussionsLabel} →
+              </a>
+            </h3>
+            <p>{discussionsHint}</p>
+          </div>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<style>
+  .contact {
+    padding: 64px 0;
+    background: var(--bg-soft);
+    border-top: 1px solid var(--border);
+  }
+  .contact__header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  .contact__header h2 {
+    font-size: 1.6rem;
+    margin: 0 0 12px;
+  }
+  .contact__header .lead {
+    color: var(--text-muted);
+    max-width: 560px;
+    margin: 0 auto;
+    font-size: 0.95rem;
+    line-height: 1.6;
+  }
+  .contact__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 18px;
+    max-width: 980px;
+    margin: 0 auto;
+  }
+  .contact__card {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 22px 22px 24px;
+    display: flex;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .contact__card:hover {
+    border-color: var(--accent);
+  }
+  .contact__card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    align-items: center;
+    text-align: center;
+    width: 100%;
+  }
+  .contact__card-body img {
+    width: 220px;
+    height: auto;
+    max-height: 280px;
+    object-fit: contain;
+    border-radius: 8px;
+    background: #fff;
+  }
+  .contact__card-meta h3 {
+    margin: 0 0 6px;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+  .contact__card-meta h3 a {
+    color: var(--text);
+    text-decoration: none;
+  }
+  .contact__card-meta h3 a:hover {
+    color: var(--accent);
+  }
+  .contact__card-meta p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    line-height: 1.55;
+  }
+
+  .contact__card--discussions {
+    background: var(--bg);
+  }
+  .contact__discussions-icon {
+    font-size: 56px;
+    line-height: 1;
+    width: 220px;
+    max-height: 280px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-faint);
+  }
+</style>
