@@ -3,6 +3,21 @@ import { getT, type Lang } from '../i18n/translations';
 interface Props { lang: Lang }
 const { lang } = Astro.props;
 const tr = getT(lang);
+
+const compareIndex = lang === 'zh' ? '/zh/compare/' : '/compare/';
+const moreLabel = lang === 'zh' ? '看每款逐项对比 →' : 'See each editor side-by-side →';
+
+const wins = lang === 'zh'
+  ? [
+      { icon: '🔍', title: '本地语义搜索', desc: 'Obsidian / Typora / MarkText 都不在核心里。SoloMD ⌘⇧F 一键开,本地嵌入,不下模型,不联网。' },
+      { icon: '📜', title: 'AutoGit 版本历史', desc: '每次 ⌘S 都是一次本地 .git 快照,侧栏一键回滚。同类编辑器都得手动配 git。' },
+      { icon: '🔌', title: 'MCP server 内置', desc: '1.5 MB 二进制,8 个只读工具。把 vault 接入 Claude Desktop / Cursor / Codex CLI。' },
+    ]
+  : [
+      { icon: '🔍', title: 'Local semantic search', desc: 'Obsidian, Typora and MarkText all skip this in core. SoloMD ⌘⇧F: on-device embedder, no model download, no network call.' },
+      { icon: '📜', title: 'AutoGit version history', desc: 'Every ⌘S becomes a local .git snapshot — sidebar history panel restores in one click. Competitors leave you to wire git manually.' },
+      { icon: '🔌', title: 'MCP server bundled', desc: '1.5 MB binary, 8 read-only tools. Plug your vault into Claude Desktop, Cursor, or Codex CLI.' },
+    ];
 ---
 
 <section id="compare">
@@ -11,6 +26,17 @@ const tr = getT(lang);
       <h2>{tr.compare.heading}</h2>
       <p class="lead">{tr.compare.lead}</p>
     </div>
+
+    <div class="compare__wins">
+      {wins.map((w) => (
+        <div class="compare__win">
+          <div class="compare__win-icon">{w.icon}</div>
+          <h3>{w.title}</h3>
+          <p>{w.desc}</p>
+        </div>
+      ))}
+    </div>
+
     <div class="compare__table-wrap">
       <table class="compare__table">
         <thead>
@@ -35,18 +61,50 @@ const tr = getT(lang);
         </tbody>
       </table>
     </div>
+    <div class="compare__more">
+      <a href={compareIndex}>{moreLabel}</a>
+    </div>
   </div>
 </section>
 
 <style>
   .compare__header {
     text-align: center;
-    margin-bottom: 40px;
+    margin-bottom: 32px;
     max-width: 720px;
     margin-left: auto;
     margin-right: auto;
   }
   .compare__header .lead { margin: 16px auto 0; }
+
+  .compare__wins {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+    margin: 0 0 36px;
+  }
+  .compare__win {
+    background: var(--bg-elev);
+    border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
+    border-radius: 12px;
+    padding: 20px 22px;
+  }
+  .compare__win-icon {
+    font-size: 26px;
+    margin-bottom: 8px;
+    line-height: 1;
+  }
+  .compare__win h3 {
+    font-size: 1rem;
+    margin: 0 0 8px;
+  }
+  .compare__win p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
   .compare__table-wrap {
     overflow-x: auto;
     border-radius: 12px;
@@ -90,4 +148,16 @@ const tr = getT(lang);
     color: var(--text) !important;
     font-weight: 600;
   }
+
+  .compare__more {
+    text-align: center;
+    margin-top: 24px;
+  }
+  .compare__more a {
+    color: var(--accent);
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .compare__more a:hover { text-decoration: underline; }
 </style>

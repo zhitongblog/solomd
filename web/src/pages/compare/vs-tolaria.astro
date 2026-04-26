@@ -8,7 +8,7 @@ const lang = 'en' as const;
 
 <Layout
   title="SoloMD vs Tolaria — Tauri Markdown Editors Compared (2026)"
-  description="Two Tauri-based open-source Markdown editors. SoloMD ships on macOS / Windows / Linux / iPad with 14 AI providers, Pandoc export, and CJK encoding. Tolaria is Mac/Linux-only with built-in MCP server and AutoGit. Detailed comparison."
+  description="Two Tauri-based open-source Markdown editors. SoloMD: cross-platform, 14 AI providers, Pandoc export, CJK encoding, plus MCP server + AutoGit + semantic search shipped. Tolaria: Mac/Linux-only Notion-style block editor. Detailed comparison."
   lang={lang}
 >
   <Header lang={lang} />
@@ -41,9 +41,11 @@ const lang = 'en' as const;
           <tr><th>Editor model</th><td>CodeMirror source-mode + live preview + split</td><td>Block-based slash-command editor (Notion-style)</td></tr>
           <tr><th>Multi-tab + split panes</th><td>✅ tabs + tile splitting</td><td>❌ single-pane</td></tr>
           <tr><th>Wikilinks <code>[[note]]</code></th><td>✅ auto-complete + backlinks panel</td><td>✅ auto-complete + backlinks</td></tr>
+          <tr><th>Local semantic search</th><td>✅ <strong>v2.3</strong> · ⌘⇧F · on-device, no model download</td><td>❌</td></tr>
+          <tr><th>WYSIWYG live edit mode</th><td>✅ <strong>v2.3</strong> · 4th view</td><td>✅ block editor</td></tr>
           <tr><th>AI rewrite (in-app, BYOK)</th><td>✅ <code>⌘J</code> · 14 providers · streaming diff overlay</td><td>🟡 routes through external MCP agents</td></tr>
-          <tr><th>MCP server (vault as tool)</th><td>🟡 v2.2 (in progress)</td><td>✅ built in</td></tr>
-          <tr><th>AutoGit per-note history</th><td>🟡 v2.2 (in progress)</td><td>✅ built in</td></tr>
+          <tr><th>MCP server (vault as tool)</th><td>✅ <strong>v2.2</strong> · 1.5 MB binary · 8 read tools + 2 gated write tools</td><td>✅ built in</td></tr>
+          <tr><th>AutoGit per-note history</th><td>✅ <strong>v2.2</strong> · libgit2, never auto-pushed</td><td>✅ built in</td></tr>
           <tr><th>Multi-encoding (GBK / Big5)</th><td>✅ auto-detect</td><td>❌ UTF-8 only</td></tr>
           <tr><th>File import (DOCX / PDF / XLSX / PPTX)</th><td>✅ drag-in → Markdown</td><td>❌</td></tr>
           <tr><th>Pandoc export (EPUB / ODT / LaTeX / RTF)</th><td>✅</td><td>❌</td></tr>
@@ -74,11 +76,14 @@ const lang = 'en' as const;
       <h2>When to pick Tolaria</h2>
       <ul>
         <li>You're <strong>macOS or Linux only</strong> and prefer a fresh Notion-style block editor.</li>
-        <li>You route everything through <strong>Claude Code / Codex CLI / MCP-compatible agents</strong> — Tolaria's built-in MCP server makes the vault a first-class tool. (SoloMD ships an MCP server in v2.2; until then Tolaria has the lead here.)</li>
-        <li>You want <strong>versioning per note via auto-commits</strong> — Tolaria's AutoGit and per-note history tab beat SoloMD's filesystem-only model. (Coming to SoloMD in v2.2.)</li>
         <li>You like <strong>"types as lenses"</strong> — every note has a `type` (Project / Topic / etc.) with custom icons + columns that drives the whole sidebar. SoloMD has Bases (a property table view), but folders / tabs are still the primary nav.</li>
         <li>You want a <strong>Tiago-Forte-style Inbox workflow</strong> with explicit "organized" markers.</li>
       </ul>
+      <p>
+        Note: MCP server and AutoGit version history both used to be Tolaria-only.
+        Both shipped in SoloMD as of v2.2 — and SoloMD's v2.3 added local
+        <strong>semantic search</strong>, which Tolaria still doesn't have.
+      </p>
 
       <h2>Both editors share</h2>
       <ul>
@@ -100,19 +105,25 @@ const lang = 'en' as const;
           front-matter — SoloMD's Bases view picks it up automatically as a column.
           You won't get the icon / color customization, but the data is preserved.</li>
         <li>If you used Tolaria's <strong>AutoGit</strong>, your vault is already a git repo —
-          SoloMD's AutoGit (v2.2) will be compatible with the same convention.</li>
+          SoloMD's AutoGit (v2.2+) is compatible with the same convention. Both use libgit2 and
+          a local-only <code>.git</code> inside the workspace.</li>
         <li>The <strong>Inbox flag</strong> doesn't translate directly; you can keep using
           a YAML field (<code>status: inbox</code>) and filter via Bases.</li>
       </ul>
 
       <h2>FAQ</h2>
 
-      <h3>Is SoloMD also adding an MCP server?</h3>
-      <p>Yes — it's the headline feature for v2.2 (currently in development). The plan: a
-        Tauri sidecar binary speaking MCP over stdio, exposing
-        <code>list_notes</code>, <code>read_note</code>, <code>search</code>,
-        <code>get_backlinks</code>, <code>list_tags</code>, and (with explicit user consent)
-        <code>write_note</code>. Discoverable by any MCP client — Claude Code, Codex CLI, your own.</p>
+      <h3>Is SoloMD's MCP server real?</h3>
+      <p>Yes — shipped in v2.2. A 1.5 MB Tauri sidecar binary
+        (<code>solomd-mcp</code>) speaks MCP over stdio (no network port). Out
+        of the box it exposes 8 read tools — <code>list_notes</code>,
+        <code>read_note</code>, <code>search</code>,
+        <code>get_backlinks</code>, <code>list_tags</code>,
+        <code>get_outline</code>, etc. — plus <code>write_note</code> and
+        <code>append_to_note</code> gated behind <code>--allow-write</code>.
+        Path-traversal guarded, workspace-canonical containment.
+        Discoverable by any MCP client — Claude Desktop, Cursor, Codex CLI,
+        your own agent.</p>
 
       <h3>Why no Windows for Tolaria?</h3>
       <p>It's a small project (3 months old). Windows support is on their roadmap but not

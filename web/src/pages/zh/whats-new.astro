@@ -1,0 +1,146 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+
+const lang = 'zh' as const;
+---
+
+<Layout
+  title="SoloMD v2.3 新功能 —— 语义搜索 & WYSIWYG 实时编辑"
+  description="v2.3 新增本地语义搜索 (⌘⇧F,完全本地不下模型) 和第四种 WYSIWYG 实时编辑视图。叠加 v2.2 的 MCP server、AutoGit 历史和 14 个 AI provider —— 全部已发布,全部在核心里。"
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <article class="container whats-new">
+      <nav class="breadcrumbs">
+        <a href="/zh/">首页</a> / <span>新功能</span>
+      </nav>
+
+      <p class="version-row">
+        <span class="version-tag">v2.3</span>
+        <time>2026 年 4 月</time>
+      </p>
+      <h1>v2.3 新功能</h1>
+      <p class="lead">
+        两件让 "Markdown 编辑器核心里该有什么" 重新定义的功能 ——
+        <strong>本地语义搜索</strong>和 <strong>WYSIWYG 实时编辑</strong>视图。
+        叠加在 v2.2 的 MCP server、AutoGit 历史和 14 个 AI provider 之上。
+        以下功能全部在核心里、MIT 协议、不需要账号。
+      </p>
+
+      <section>
+        <h2>🔍 本地语义搜索 (v2.3)</h2>
+        <p>
+          按 <kbd>⌘⇧F</kbd>。新搜索面板按"语义"匹配段落,而不只是关键词 ——
+          搜 <em>"deployment"</em> 也能找到讲 <em>"上线"</em>、<em>"发布"</em>、
+          <em>"rolling out"</em> 的笔记。
+        </p>
+        <p>有趣的是它<strong>不</strong>做什么:</p>
+        <ul>
+          <li><strong>不下载模型文件。</strong>内置 embedder 是基于哈希字符 trigram 的纯函数,完全跑在我们的 Rust 进程里。没有 100 MB 的 ONNX 文件,首次启动也不下载。</li>
+          <li><strong>永不联网。</strong>查询本地嵌入,排序是 Rust 里对 SQLite 的暴力余弦相似度。query 文本永远不会碰网络 socket。</li>
+          <li><strong>默认关闭。</strong>设置 → "启用语义搜索" 才打开。打开之前不扫描任何笔记,也不创建任何索引文件。</li>
+          <li><strong>索引存在工作区里。</strong><code>&lt;工作区&gt;/.solomd/embeddings.sqlite</code>,自动加进 <code>.gitignore</code>,AutoGit 不会把它纳入提交历史。</li>
+        </ul>
+        <p>
+          这是同类编辑器里的空白:Obsidian 的语义搜索藏在付费插件后面 (Smart Connections 等),且大多调用云端 embedding API。
+          Typora 和 MarkText 都没有。Tolaria 也没有。SoloMD 是<strong>唯一</strong>把它放进核心、完全离线的。
+        </p>
+        <p class="callout">
+          完整数据流见 <a href="/zh/security/">安全 § 5: 本地 RAG / 语义搜索</a>。
+        </p>
+      </section>
+
+      <section>
+        <h2>✍️ WYSIWYG 实时编辑模式 (v2.3)</h2>
+        <p>
+          在源码 / 分屏 / 预览之外加入第四种视图:<strong>实时编辑</strong>。
+          标题行内显示更大,<code>**粗体**</code>真粗不显示星号,列表自动缩进,引用块带左边框。
+          光标进入行时才显示原始标记 —— 所以你随时能切回源码,而不用切换视图。
+        </p>
+        <p>
+          通过编辑器 header 的视图切换器开启,或命令面板 (<kbd>⌘⇧K</kbd> → "Live edit") 开启。
+        </p>
+      </section>
+
+      <section>
+        <h2>v2.2 已发布的功能</h2>
+        <p>错过 v2.2 的话,这里是回顾:</p>
+
+        <h3>📜 AutoGit 版本历史</h3>
+        <p>
+          设置里一个开关。打开后,每次 <kbd>⌘S</kbd> 都在工作区里的本地
+          <code>.git</code> 写一次快照。右侧 history 面板列出每次改过当前文件的提交;
+          点 <strong>Restore</strong> 一键回滚 (原子操作,不会丢失修改)。
+          libgit2 内置 —— 不需要安装系统 git。永不自动 push。
+        </p>
+
+        <h3>🔌 MCP server</h3>
+        <p>
+          1.5 MB sidecar 二进制。把 Claude Desktop / Cursor / Codex CLI 指向你的工作区,
+          开箱 8 个只读工具 (<code>list_notes</code>、<code>read_note</code>、<code>search</code>、
+          <code>get_backlinks</code>、<code>list_tags</code>、<code>get_outline</code> 等),
+          以及 2 个写工具 (要 <code>--allow-write</code> 开关)。stdio 协议 —— 不开网络端口。
+          Path-traversal 守卫。
+        </p>
+
+        <h3>🤖 AI 改写 —— 14 个 BYOK provider</h3>
+        <p>
+          选中文字按 <kbd>⌘J</kbd>。改写 / 缩短 / 扩展 / 翻译 (中英) / 解释 / 自定义。
+          OpenAI、Anthropic、Gemini、xAI、Mistral、Groq、DeepSeek、通义、智谱 GLM、Kimi、豆包、硅基流动、OpenRouter、Ollama。
+          Key 存系统钥匙串。直连厂商,无中转。
+        </p>
+      </section>
+
+      <section>
+        <h2>还没做的</h2>
+        <p>诚实清单 —— SoloMD 目前没有的:</p>
+        <ul>
+          <li><strong>内置 CRDT 同步</strong> —— v3 主目标。目前请用 iCloud Drive / Dropbox / 坚果云 / Syncthing,或 AutoGit + 手动 push。</li>
+          <li><strong>移动端</strong> —— iOS App Store 已提交,审核中。无 Android。</li>
+          <li><strong>插件系统</strong> —— 故意不在路线图。写作者要的功能我们直接放核心。</li>
+          <li><strong>双向链接 / 图谱视图</strong> —— Obsidian 的领域。SoloMD 是写作工具,不是知识图谱。</li>
+        </ul>
+      </section>
+
+      <section class="cta">
+        <p>
+          <a class="btn btn--primary" href="https://github.com/zhitongblog/solomd/releases">下载 v2.3 →</a>
+          &nbsp;
+          <a class="btn" href="/zh/blog/v2-2-mcp-autogit-and-14-ai-providers/">阅读 v2.2 深度文章</a>
+        </p>
+        <p class="note">
+          MIT 协议。无需账号。默认零遥测。源码在
+          <a href="https://github.com/zhitongblog/solomd" rel="external">GitHub</a>。
+        </p>
+      </section>
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .whats-new { max-width: 820px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .version-row { display: flex; align-items: center; gap: 12px; margin: 8px 0 4px; }
+  .version-tag { display: inline-block; padding: 4px 12px; border-radius: 999px; background: #ff9f40; color: #000; font-weight: 700; font-size: 12px; letter-spacing: 0.04em; font-family: ui-monospace, Menlo, monospace; }
+  .whats-new time { font-size: 13px; color: var(--text-muted, #888); }
+  .whats-new h1 { font-size: 2.4rem; line-height: 1.15; margin: 0 0 18px; }
+  .whats-new h2 { font-size: 1.6rem; margin: 44px 0 14px; }
+  .whats-new h3 { font-size: 1.15rem; margin: 22px 0 8px; }
+  .whats-new .lead { font-size: 1.15rem; color: var(--text-muted, #555); line-height: 1.65; margin-bottom: 24px; }
+  .whats-new p { line-height: 1.75; margin: 12px 0; }
+  .whats-new ul { padding-left: 22px; }
+  .whats-new li { margin: 6px 0; line-height: 1.7; }
+  .whats-new code { background: #f5f5f0; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+  .whats-new kbd { background: #f5f5f0; border: 1px solid #ddd; border-radius: 3px; padding: 1px 6px; font-family: ui-monospace, Menlo, monospace; font-size: 0.85em; }
+  .whats-new a { color: #ff9f40; }
+  .whats-new .callout { background: #fff7ee; border-left: 3px solid #ff9f40; padding: 10px 16px; margin: 18px 0; border-radius: 0 6px 6px 0; font-size: 0.95em; }
+  .whats-new .cta { margin-top: 44px; padding-top: 28px; border-top: 1px solid #eee; }
+  .whats-new .cta .note { font-size: 13px; color: var(--text-muted, #888); margin-top: 12px; }
+  .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; color: var(--text); }
+  .btn--primary { background: #ff9f40; color: #000 !important; }
+</style>

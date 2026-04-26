@@ -1,0 +1,137 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import Header from '../../../components/Header.astro';
+import Footer from '../../../components/Footer.astro';
+
+const lang = 'zh' as const;
+---
+
+<Layout
+  title="SoloMD vs Obsidian —— 编辑器还是第二大脑？(2026)"
+  description="SoloMD 在核心里就带本地语义搜索、AutoGit、MCP server 和 14 个 AI provider。Obsidian 是知识图谱 + 插件市场。直白对比两者的强项。"
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main class="compare-page">
+    <article class="container compare-article">
+      <nav class="breadcrumbs">
+        <a href="/zh/">首页</a> / <a href="/zh/compare/">对比</a> / <span>vs Obsidian</span>
+      </nav>
+
+      <h1>SoloMD vs Obsidian：编辑器还是"第二大脑"？</h1>
+      <p class="lead">
+        其实不太算同类产品 —— 看你要做什么。
+        <strong>SoloMD</strong> 用来写 Markdown 文件，但核心里就内置了语义搜索、版本历史、MCP server、14 个 AI provider。
+        <strong>Obsidian</strong> 是知识图谱 / 第二大脑，加上一个庞大的插件生态。
+      </p>
+
+      <h2>30 秒速览</h2>
+      <table class="compare-detail">
+        <thead>
+          <tr><th>&nbsp;</th><th>SoloMD</th><th>Obsidian</th></tr>
+        </thead>
+        <tbody>
+          <tr><th>定位</th><td>文档编辑器 + AI / 搜索 / 历史 工具集</td><td>vault / 知识库 + 插件市场</td></tr>
+          <tr><th>价格</th><td><strong>免费</strong> (MIT)</td><td>个人免费 · 商用 $50/年 · Sync $96/年</td></tr>
+          <tr><th>开源</th><td>✅</td><td>❌ 核心闭源,插件开源</td></tr>
+          <tr><th>安装包大小</th><td>~15 MB</td><td>~130 MB</td></tr>
+          <tr><th>空闲内存</th><td>~150 MB</td><td>~400 MB</td></tr>
+          <tr><th>本地语义搜索</th><td>✅ <strong>v2.3</strong> · 核心内置,设备本地不下模型</td><td>🟡 付费插件 (Smart Connections 等)</td></tr>
+          <tr><th>WYSIWYG 实时编辑</th><td>✅ <strong>v2.3</strong></td><td>✅ Live Preview</td></tr>
+          <tr><th>AutoGit 版本历史</th><td>✅ <strong>v2.2</strong> · 每次保存快照,核心内置</td><td>❌ (需手动配 Obsidian Git 插件)</td></tr>
+          <tr><th>内置 MCP server</th><td>✅ <strong>v2.2</strong> · 1.5 MB sidecar</td><td>❌</td></tr>
+          <tr><th>14 个 AI provider · BYOK</th><td>✅ 核心内置 · key 存系统钥匙串</td><td>❌ (每个 AI 插件 1–2 个)</td></tr>
+          <tr><th>反向链接 / 图谱</th><td>❌</td><td>✅ 核心功能</td></tr>
+          <tr><th>插件系统</th><td>❌ (支持自定义 CSS)</td><td>✅ 数千个</td></tr>
+          <tr><th>Wiki 双向链接</th><td>❌</td><td>✅ <code>[[file]]</code></td></tr>
+          <tr><th>支持单文件打开</th><td>✅ 任意 .md</td><td>⚠️ 偏向 vault 文件夹</td></tr>
+          <tr><th>多编码 (GBK/Big5)</th><td>✅</td><td>⚠️ 仅 UTF-8</td></tr>
+          <tr><th>iPad</th><td>🟡 已提交,审核中</td><td>✅ App Store</td></tr>
+          <tr><th>Vim 模式</th><td>✅</td><td>✅ 核心插件</td></tr>
+          <tr><th>演讲 / 幻灯片</th><td>✅ <code>⌘⌥P</code> 内置</td><td>🟡 Slides 插件</td></tr>
+          <tr><th>CLI 命令行</th><td>✅ <code>solomd</code></td><td>❌</td></tr>
+          <tr><th>Markdown 格式化 (Prettier)</th><td>✅ <code>⌘⌥L</code></td><td>🟡 社区插件</td></tr>
+          <tr><th>欢迎教程</th><td>✅</td><td>🟡 示例 vault</td></tr>
+          <tr><th>导出 PDF / DOCX / EPUB / ODT / LaTeX</th><td>✅ Pandoc</td><td>PDF ✅ · DOCX 需插件 · 其他 ❌</td></tr>
+          <tr><th>同步 (内置 CRDT)</th><td>❌ v3 路线图</td><td>✅ Obsidian Sync (付费)</td></tr>
+          <tr><th>实时预览</th><td>✅</td><td>✅ Editing View</td></tr>
+          <tr><th>技术栈</th><td>Tauri 2 + Vue + CodeMirror 6</td><td>Electron + CodeMirror</td></tr>
+        </tbody>
+      </table>
+
+      <h2>什么时候选 SoloMD</h2>
+      <ul>
+        <li>你想要<strong>核心内置的本地语义搜索</strong>,不用装额外插件、不会上云。Obsidian 的第三方插件 (Smart Connections 等) 大多 5–10 美元/月,且很多调用云端 embedding API。</li>
+        <li>你想要<strong>每次保存自动版本历史</strong>,不想为了 Obsidian Git 插件配 cron。SoloMD 的 AutoGit 一键开关。</li>
+        <li>你想要 <strong>MCP server</strong> 让 Claude Desktop / Cursor / Codex CLI 读你的笔记 —— Obsidian 不内置。</li>
+        <li>你想要<strong>一个面板里 14 个 AI provider</strong>,而不是每个 Obsidian AI 插件只支持 1–2 个。</li>
+        <li>你的笔记在 git 仓库或同步文件夹里,你想双击 .md 直接打开。</li>
+        <li>在意<strong>体积 / 内存</strong>。SoloMD 小 4 倍,内存少 2.5 倍。</li>
+        <li>你写<strong>非 UTF-8</strong> 文件 (CJK / GBK / Big5 / Shift-JIS)。Obsidian 必须 UTF-8。</li>
+        <li>你不想学新的 vault 概念 —— 普通文件夹里的普通文件就行。</li>
+      </ul>
+
+      <h2>什么时候选 Obsidian</h2>
+      <ul>
+        <li>你在搭<strong>卡片盒笔记 / PKM / 第二大脑</strong>。反向链接、图谱视图、<code>[[wikilinks]]</code> 和 Daily Notes 是它的核心价值。</li>
+        <li>你想要<strong>插件生态</strong> —— Tasks、Calendar、Kanban、间隔重复、模板。</li>
+        <li>你愿意为 Obsidian Sync (付费) 或自己配 iCloud / Git 来跨设备同步。</li>
+        <li>你接受 vault 这种"单一文件夹"的结构。</li>
+      </ul>
+
+      <h2>能两个都用吗？</h2>
+      <p>
+        当然 —— Obsidian vault 就是一个文件夹的 Markdown 文件。SoloMD 读写同样的格式。打开 vault 用 SoloMD 快速编辑;
+        要画图谱 / 看反向链接时切回 Obsidian。不用转换,只要不同时改同一个文件就没冲突。
+      </p>
+
+      <h2>SoloMD 不打算做的</h2>
+      <p>
+        SoloMD 不会加 —— 也不打算加 —— 反向链接、wikilink、图谱视图、插件市场、Daily Notes、vault sync。
+        定位就是"Notepad 遇上 Markdown":打开、写、关。如果这些是你工作流的核心,Obsidian 是更合适的工具。
+      </p>
+
+      <h2>从 Obsidian 迁移到 SoloMD</h2>
+      <p>文件不用改。差异点:</p>
+      <ul>
+        <li><code>[[wikilinks]]</code> 在 SoloMD 里渲染成纯文字 (不是断链,只是不能点)。</li>
+        <li>Obsidian 的 <code>{'> [!note]'}</code> Callout 在 SoloMD 里渲染成普通引用块。</li>
+        <li>Dataview 查询变成普通代码块。</li>
+      </ul>
+
+      <h2>价格</h2>
+      <p>
+        SoloMD: 免费 / MIT,无商用许可证。Obsidian: 个人免费,
+        <a href="https://obsidian.md/commercial-license" rel="external">$50/用户/年</a>商用,
+        Sync $96/年。
+      </p>
+
+      <div class="compare-cta">
+        <a href="/zh/#download" class="btn btn--primary">下载 SoloMD</a>
+        <a href="/zh/compare/vs-typora/" class="btn btn--secondary">对比 vs Typora</a>
+      </div>
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .compare-article { max-width: 820px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .compare-article h1 { font-size: 2.2rem; line-height: 1.2; margin: 10px 0 20px; }
+  .compare-article h2 { font-size: 1.55rem; margin: 36px 0 14px; }
+  .compare-article .lead { font-size: 1.1rem; color: var(--text-muted, #555); margin-bottom: 32px; }
+  .compare-detail { width: 100%; border-collapse: collapse; margin: 20px 0 28px; font-size: 14px; }
+  .compare-detail th, .compare-detail td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #eee; }
+  .compare-detail thead th { background: #fafafa; font-weight: 600; }
+  .compare-detail tbody th { font-weight: 500; width: 32%; }
+  .compare-cta { display: flex; gap: 12px; margin-top: 40px; }
+  .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  .btn--primary { background: #ff9f40; color: #000; }
+  .btn--secondary { background: #111; color: #fff; }
+  .compare-article ul { padding-left: 22px; }
+  .compare-article li { margin: 6px 0; line-height: 1.6; }
+  .compare-article p { line-height: 1.7; margin: 12px 0; }
+  .compare-article code { background: #f5f5f0; padding: 1px 6px; border-radius: 4px; font-size: 0.92em; }
+</style>

@@ -3,6 +3,17 @@ import { getT, type Lang } from '../i18n/translations';
 interface Props { lang: Lang }
 const { lang } = Astro.props;
 const tr = getT(lang);
+
+const NEW_TAGS = ['(v2.3)', '(v2.2)'];
+function tagOf(title: string): string | null {
+  for (const tag of NEW_TAGS) {
+    if (title.includes(tag)) return tag;
+  }
+  return null;
+}
+function stripTag(title: string): string {
+  return title.replace(/\s*\((v\d[^)]*)\)\s*$/, '').trim();
+}
 ---
 
 <section id="features">
@@ -12,14 +23,39 @@ const tr = getT(lang);
       <p class="lead">{tr.features.lead}</p>
     </div>
     <div class="features__grid">
-      {tr.features.items.map((f) => (
-        <article class="feature-card">
-          <div class="feature-card__icon">{f.icon}</div>
-          <h3>{f.title}</h3>
-          <p>{f.desc}</p>
-        </article>
-      ))}
+      {tr.features.items.map((f) => {
+        const tag = tagOf(f.title);
+        const cleanTitle = stripTag(f.title);
+        const tagClass = tag === '(v2.3)' ? 'feature-tag feature-tag--v23' : tag === '(v2.2)' ? 'feature-tag feature-tag--v22' : '';
+        return (
+          <article class={`feature-card${tag ? ' feature-card--new' : ''}`}>
+            <div class="feature-card__head">
+              <span class="feature-card__icon">{f.icon}</span>
+              {tag && <span class={tagClass}>{tag.replace(/[()]/g, '')}</span>}
+            </div>
+            <h3>{cleanTitle}</h3>
+            <p>{f.desc}</p>
+          </article>
+        );
+      })}
     </div>
+
+    {tr.features.qol && (
+      <div class="features__qol">
+        <h3 class="features__qol-heading">{tr.features.qol.heading}</h3>
+        <div class="features__qol-grid">
+          {tr.features.qol.items.map((f) => (
+            <article class="feature-card feature-card--qol">
+              <div class="feature-card__head">
+                <span class="feature-card__icon feature-card__icon--sm">{f.icon}</span>
+              </div>
+              <h3>{f.title}</h3>
+              <p>{f.desc}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+    )}
   </div>
 </section>
 
@@ -44,15 +80,48 @@ const tr = getT(lang);
     border-radius: 12px;
     padding: 24px;
     transition: all 0.2s;
+    position: relative;
   }
   .feature-card:hover {
     border-color: var(--accent);
     transform: translateY(-2px);
     box-shadow: 0 12px 32px -12px rgba(255, 159, 64, 0.25);
   }
+  .feature-card--new {
+    border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 16%, transparent) inset;
+  }
+  .feature-card__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
   .feature-card__icon {
     font-size: 28px;
-    margin-bottom: 12px;
+    line-height: 1;
+  }
+  .feature-card__icon--sm {
+    font-size: 22px;
+  }
+  .feature-tag {
+    display: inline-block;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    padding: 3px 8px;
+    border-radius: 999px;
+    text-transform: uppercase;
+    font-family: var(--font-mono);
+  }
+  .feature-tag--v23 {
+    background: var(--accent);
+    color: #000;
+  }
+  .feature-tag--v22 {
+    background: color-mix(in srgb, var(--accent) 18%, var(--bg-elev));
+    color: var(--accent);
+    border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
   }
   .feature-card h3 {
     font-size: 1rem;
@@ -63,5 +132,36 @@ const tr = getT(lang);
     color: var(--text-muted);
     margin-bottom: 0;
     line-height: 1.6;
+  }
+
+  .features__qol {
+    margin-top: 64px;
+    padding-top: 40px;
+    border-top: 1px dashed var(--border);
+  }
+  .features__qol-heading {
+    text-align: center;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 28px;
+  }
+  .features__qol-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+  }
+  .feature-card--qol {
+    padding: 18px 20px;
+  }
+  .feature-card--qol h3 {
+    font-size: 0.95rem;
+    margin-bottom: 6px;
+  }
+  .feature-card--qol p {
+    font-size: 12.5px;
+    line-height: 1.55;
   }
 </style>

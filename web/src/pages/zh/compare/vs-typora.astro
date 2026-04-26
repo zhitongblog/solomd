@@ -34,12 +34,18 @@ const lang = 'zh' as const;
           <tr><th>安装包体积</th><td>~15 MB</td><td>~70 MB</td></tr>
           <tr><th>开源</th><td>✅ GitHub</td><td>❌ 闭源</td></tr>
           <tr><th>支持平台</th><td>macOS · Windows · Linux · iPad</td><td>macOS · Windows · Linux</td></tr>
+          <tr><th>本地语义搜索</th><td>✅ <strong>v2.3</strong> · ⌘⇧F · 设备本地不下模型</td><td>❌</td></tr>
+          <tr><th>WYSIWYG 实时编辑</th><td>✅ <strong>v2.3</strong> · 第 4 种视图</td><td>✅ 默认全时</td></tr>
+          <tr><th>AutoGit 版本历史</th><td>✅ <strong>v2.2</strong> · 每次保存快照,侧栏回滚</td><td>❌</td></tr>
+          <tr><th>内置 MCP server</th><td>✅ <strong>v2.2</strong> · 1.5 MB sidecar</td><td>❌</td></tr>
+          <tr><th>14 个 AI provider · BYOK</th><td>✅ <code>⌘J</code> · key 存系统钥匙串</td><td>❌</td></tr>
           <tr><th>实时预览</th><td>✅ 可切换</td><td>✅ 默认全时</td></tr>
           <tr><th>源码模式</th><td>✅</td><td>⚠️ 有限</td></tr>
           <tr><th>分屏（编辑+预览）</th><td>✅</td><td>❌</td></tr>
           <tr><th>多标签</th><td>✅</td><td>❌ 每文件独立窗口</td></tr>
           <tr><th>KaTeX / Mermaid</th><td>✅ 内置</td><td>✅</td></tr>
           <tr><th>导出 PDF / DOCX / HTML / PNG</th><td>✅</td><td>✅</td></tr>
+          <tr><th>Pandoc 导出（EPUB / ODT / LaTeX）</th><td>✅</td><td>❌</td></tr>
           <tr><th>多编码（GBK / Big5）</th><td>✅ 自动识别</td><td>⚠️ 仅 UTF-8</td></tr>
           <tr><th>Vim 模式</th><td>✅</td><td>❌</td></tr>
           <tr><th>演讲 / 幻灯片模式</th><td>✅ <code>⌘⌥P</code></td><td>❌</td></tr>
@@ -64,10 +70,8 @@ const lang = 'zh' as const;
 
       <h2>选 Typora 的情况</h2>
       <ul>
-        <li>强烈偏好 <strong>始终开启的 WYSIWYG</strong>，不需要源码模式切换。</li>
         <li>已经熟悉 Typora 的快捷键，不想重新学。</li>
-        <li>公式/表格需要完全所见即所得的行内渲染（SoloMD 的实时预览隐藏标记符但还没做
-          行内公式/表格渲染 —— 这在 v2 路线图上）。</li>
+        <li>你想要单一的"始终 WYSIWYG"视图,不要视图切换器（SoloMD 在 v2.3 加了 WYSIWYG 实时编辑模式,但和源码 / 分屏 / 预览并列,需要你显式切换）。</li>
       </ul>
 
       <h2>体积和内存 —— 为什么重要</h2>
