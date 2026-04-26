@@ -2,6 +2,7 @@
 import Layout from '../../../layouts/Layout.astro';
 import Header from '../../../components/Header.astro';
 import Footer from '../../../components/Footer.astro';
+import Giscus from '../../../components/Giscus.astro';
 
 const lang = 'zh' as const;
 ---
@@ -83,6 +84,7 @@ const lang = 'zh' as const;
         可能还有一个一方的同步选项给那些不想订阅 Obsidian 但想多设备同步的人。
       </p>
     </article>
+    <Giscus lang={lang} />
   </main>
   <Footer lang={lang} />
 </Layout>

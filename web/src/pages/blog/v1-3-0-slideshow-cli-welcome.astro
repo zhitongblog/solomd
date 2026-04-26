@@ -2,6 +2,7 @@
 import Layout from '../../layouts/Layout.astro';
 import Header from '../../components/Header.astro';
 import Footer from '../../components/Footer.astro';
+import Giscus from '../../components/Giscus.astro';
 
 const lang = 'en' as const;
 ---
@@ -152,6 +153,7 @@ solomd cat readme               # print to stdout</code></pre>
         <a class="btn" href="https://github.com/zhitongblog/solomd/releases/tag/v2.0.0">Full release notes</a>
       </p>
     </article>
+    <Giscus lang={lang} />
   </main>
   <Footer lang={lang} />
 </Layout>

@@ -1,0 +1,151 @@
+---
+/**
+ * Giscus inline-comments widget.
+ *
+ * Drops onto any page (blog post, doc, what's-new). Reuses GitHub Discussions
+ * as the comment store — same backend that powers /community.
+ *
+ * One-time setup required at giscus.app:
+ *   1. Visit https://giscus.app
+ *   2. Enter repo: zhitongblog/solomd
+ *   3. Pick "Discussion title contains page pathname" mapping
+ *   4. Pick category "General"
+ *   5. Copy the data-repo-id and data-category-id values into the
+ *      DEFAULTS below (or override via props on a per-page basis).
+ *
+ * Until those IDs are filled in we render a graceful placeholder with a
+ * link to GitHub Discussions and a TODO note.
+ *
+ * Theming: we use giscus's `preferred_color_scheme` for light/dark
+ * sync, and a custom CSS file at /giscus-solomd.css that overrides
+ * accent-coloured tokens to SoloMD orange (#ff9f40).
+ */
+
+import { getT, type Lang } from '../i18n/translations';
+
+interface Props {
+  lang?: Lang;
+  /** Disable per-page if needed — e.g. legal pages. */
+  enabled?: boolean;
+  /** Override default mapping. Defaults to `pathname`. */
+  mapping?: 'pathname' | 'url' | 'title' | 'og:title' | 'specific' | 'number';
+  /** Override category if you want a different bucket per-page. */
+  category?: string;
+}
+
+const {
+  lang = 'en' as Lang,
+  enabled = true,
+  mapping = 'pathname',
+  category = 'General',
+} = Astro.props;
+
+const tr = getT(lang);
+
+// === giscus configuration ===
+// These four constants are the only things the maintainer needs to fill in
+// once via giscus.app. Repo + repo-id are stable; category-id depends on
+// which category you pick (General).
+const GISCUS_REPO = 'zhitongblog/solomd';
+const GISCUS_REPO_ID = ''; // <-- TODO: paste from giscus.app after running their wizard
+const GISCUS_CATEGORY = category;
+const GISCUS_CATEGORY_ID = ''; // <-- TODO: paste from giscus.app after running their wizard
+
+const isConfigured = GISCUS_REPO_ID !== '' && GISCUS_CATEGORY_ID !== '';
+const giscusLang = lang === 'zh' ? 'zh-CN' : 'en';
+const discussionsUrl = `https://github.com/${GISCUS_REPO}/discussions`;
+---
+
+{enabled && (
+  <section class="giscus-wrap">
+    <div class="container giscus-inner">
+      <div class="giscus-head">
+        <h2>{tr.giscus.heading}</h2>
+        <p>{tr.giscus.lead}</p>
+      </div>
+
+      {isConfigured ? (
+        <div
+          class="giscus"
+          data-repo={GISCUS_REPO}
+          data-repo-id={GISCUS_REPO_ID}
+          data-category={GISCUS_CATEGORY}
+          data-category-id={GISCUS_CATEGORY_ID}
+          data-mapping={mapping}
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="bottom"
+          data-theme="preferred_color_scheme"
+          data-lang={giscusLang}
+          data-loading="lazy"
+        ></div>
+      ) : (
+        <div
+          class="giscus-placeholder"
+          data-repo={GISCUS_REPO}
+          data-category={GISCUS_CATEGORY}
+          data-mapping={mapping}
+        >
+          <p class="giscus-placeholder__msg">{tr.giscus.placeholder}</p>
+          <a class="giscus-placeholder__cta" href={discussionsUrl} target="_blank" rel="noopener">
+            {lang === 'zh' ? '前往 GitHub Discussions →' : 'Open on GitHub Discussions →'}
+          </a>
+        </div>
+      )}
+    </div>
+
+    {isConfigured && (
+      <script is:inline async src="https://giscus.app/client.js" crossorigin="anonymous"></script>
+    )}
+  </section>
+)}
+
+<style>
+  .giscus-wrap {
+    border-top: 1px solid var(--border);
+    padding: 48px 0 64px;
+    background: var(--bg-soft);
+  }
+  .giscus-inner {
+    max-width: 760px;
+  }
+  .giscus-head {
+    margin-bottom: 24px;
+  }
+  .giscus-head h2 {
+    font-size: 1.25rem;
+    margin: 0 0 6px;
+  }
+  .giscus-head p {
+    color: var(--text-muted);
+    font-size: 13.5px;
+    margin: 0;
+  }
+  .giscus-placeholder {
+    border: 1px dashed color-mix(in srgb, var(--accent) 40%, var(--border));
+    border-radius: 12px;
+    padding: 22px 24px;
+    background: var(--bg-elev);
+  }
+  .giscus-placeholder__msg {
+    color: var(--text-muted);
+    font-size: 13.5px;
+    margin: 0 0 12px;
+    line-height: 1.6;
+  }
+  .giscus-placeholder__cta {
+    display: inline-block;
+    padding: 8px 16px;
+    background: var(--accent);
+    color: #1a1a1a;
+    font-weight: 600;
+    border-radius: 8px;
+    font-size: 13px;
+    text-decoration: none;
+  }
+  .giscus-placeholder__cta:hover {
+    background: var(--accent-deep);
+    text-decoration: none;
+  }
+</style>

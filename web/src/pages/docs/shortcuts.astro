@@ -2,6 +2,7 @@
 import Layout from '../../layouts/Layout.astro';
 import Header from '../../components/Header.astro';
 import Footer from '../../components/Footer.astro';
+import Giscus from '../../components/Giscus.astro';
 
 const lang = 'en' as const;
 
@@ -82,6 +83,7 @@ const editing: Row[] = [
         fuzzy search any action. Handy for shortcuts you forgot.
       </p>
     </article>
+    <Giscus lang={lang} />
   </main>
   <Footer lang={lang} />
 </Layout>

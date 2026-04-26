@@ -1,0 +1,160 @@
+---
+import { getT, type Lang } from '../i18n/translations';
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const tr = getT(lang);
+---
+
+<section id="use-cases" class="usecases">
+  <div class="container">
+    <div class="usecases__header">
+      <h2>{tr.useCases.heading}</h2>
+      <p class="lead">{tr.useCases.lead}</p>
+    </div>
+
+    <div class="usecases__list">
+      {tr.useCases.items.map((uc, i) => (
+        <article class={`uc-card uc-card--${i % 2 === 0 ? 'a' : 'b'}`}>
+          <div class="uc-card__media" aria-hidden="true">
+            <div class="uc-card__media-icon">{uc.icon}</div>
+          </div>
+          <div class="uc-card__body">
+            <div class="uc-card__eyebrow">{uc.eyebrow}</div>
+            <h3>{uc.headline}</h3>
+            <p>{uc.desc}</p>
+            <ul>
+              {uc.bullets.map((b) => <li>{b}</li>)}
+            </ul>
+          </div>
+        </article>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .usecases {
+    /* uses the section padding from global.css */
+  }
+  .usecases__header {
+    text-align: center;
+    margin-bottom: 56px;
+    max-width: 720px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .usecases__header h2 { line-height: 1.15; }
+  .usecases__header .lead { margin: 16px auto 0; }
+
+  .usecases__list {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+  .uc-card {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    gap: 28px;
+    align-items: stretch;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 28px;
+    transition: border-color 0.18s, transform 0.18s, box-shadow 0.18s;
+  }
+  .uc-card:hover {
+    border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+    transform: translateY(-2px);
+    box-shadow: 0 18px 40px -22px rgba(255, 159, 64, 0.28);
+  }
+  .uc-card--b {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  }
+  .uc-card--b .uc-card__media { order: 2; }
+  .uc-card--b .uc-card__body { order: 1; }
+
+  .uc-card__media {
+    border-radius: 14px;
+    background:
+      radial-gradient(120% 120% at 0% 0%, color-mix(in srgb, var(--accent) 22%, transparent) 0%, transparent 55%),
+      linear-gradient(135deg, var(--bg-soft) 0%, var(--bg-elev) 100%);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 180px;
+  }
+  .uc-card__media-icon {
+    font-size: 72px;
+    line-height: 1;
+    filter: drop-shadow(0 6px 14px color-mix(in srgb, var(--accent) 22%, transparent));
+  }
+
+  .uc-card__body {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 4px 0;
+  }
+  .uc-card__eyebrow {
+    display: inline-block;
+    align-self: flex-start;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+    padding: 4px 10px;
+    border-radius: 999px;
+    margin-bottom: 12px;
+    font-family: var(--font-mono);
+  }
+  .uc-card__body h3 {
+    font-size: clamp(1.25rem, 2.4vw, 1.55rem);
+    margin: 0 0 12px;
+    line-height: 1.25;
+  }
+  .uc-card__body p {
+    color: var(--text-muted);
+    line-height: 1.65;
+    margin: 0 0 14px;
+    font-size: 14.5px;
+  }
+  .uc-card__body ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .uc-card__body li {
+    position: relative;
+    padding-left: 22px;
+    font-size: 13.5px;
+    color: var(--text);
+    line-height: 1.55;
+  }
+  .uc-card__body li::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    top: 0;
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  @media (max-width: 760px) {
+    .uc-card,
+    .uc-card--b {
+      grid-template-columns: 1fr;
+      padding: 22px;
+    }
+    .uc-card--b .uc-card__media { order: 0; }
+    .uc-card--b .uc-card__body { order: 0; }
+    .uc-card__media { min-height: 140px; }
+    .uc-card__media-icon { font-size: 56px; }
+  }
+</style>

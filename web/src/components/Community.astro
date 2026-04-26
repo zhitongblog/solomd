@@ -1,0 +1,369 @@
+---
+/**
+ * /community page body — fetches the latest discussions from GitHub
+ * GraphQL at BUILD time, groups by category, renders.
+ *
+ * Auth: looks for GITHUB_TOKEN in process.env. On Cloudflare Pages /
+ * Vercel set it as a build-time env var. If unset (e.g. local
+ * `pnpm build` without auth), we silently fall back to the empty
+ * state — page still renders, no build error.
+ *
+ * Categories supported (per the live repo):
+ *   Announcements · General · Ideas · Polls · Q&A · Show and tell
+ */
+
+import { getT, type Lang } from '../i18n/translations';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const tr = getT(lang);
+
+const REPO_OWNER = 'zhitongblog';
+const REPO_NAME = 'solomd';
+const REPO_URL = `https://github.com/${REPO_OWNER}/${REPO_NAME}`;
+const DISCUSSIONS_URL = `${REPO_URL}/discussions`;
+const NEW_DISCUSSION_URL = `${REPO_URL}/discussions/new/choose`;
+
+interface Discussion {
+  id: string;
+  number: number;
+  title: string;
+  url: string;
+  createdAt: string;
+  comments: { totalCount: number };
+  author: { login: string; avatarUrl: string } | null;
+  category: { name: string; emoji: string };
+}
+
+const QUERY = `
+  query LatestDiscussions($owner: String!, $name: String!) {
+    repository(owner: $owner, name: $name) {
+      discussions(first: 20, orderBy: {field: UPDATED_AT, direction: DESC}) {
+        nodes {
+          id
+          number
+          title
+          url
+          createdAt
+          comments { totalCount }
+          author { login avatarUrl }
+          category { name emoji }
+        }
+      }
+      discussionCategories(first: 20) {
+        nodes { id name emoji slug }
+      }
+    }
+  }
+`;
+
+let discussions: Discussion[] = [];
+let categoriesFromApi: { name: string; slug: string }[] = [];
+let fetchError: string | null = null;
+
+const token = (typeof process !== 'undefined' && process.env && process.env.GITHUB_TOKEN) || '';
+
+if (token) {
+  try {
+    const res = await fetch('https://api.github.com/graphql', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'User-Agent': 'solomd-website-build',
+      },
+      body: JSON.stringify({
+        query: QUERY,
+        variables: { owner: REPO_OWNER, name: REPO_NAME },
+      }),
+    });
+    if (res.ok) {
+      const json = await res.json();
+      const repo = json?.data?.repository;
+      if (repo?.discussions?.nodes) {
+        discussions = repo.discussions.nodes as Discussion[];
+      }
+      if (repo?.discussionCategories?.nodes) {
+        categoriesFromApi = repo.discussionCategories.nodes;
+      }
+    } else {
+      fetchError = `HTTP ${res.status}`;
+    }
+  } catch (e: any) {
+    fetchError = e?.message || 'fetch failed';
+  }
+}
+
+// Canonical category order (matches Notion-style story ordering: announcements
+// first, then conversational categories, then polls / Q&A / show-and-tell).
+const CATEGORY_ORDER = [
+  'Announcements',
+  'Q&A',
+  'Ideas',
+  'Show and tell',
+  'Polls',
+  'General',
+];
+
+const grouped: Record<string, Discussion[]> = {};
+for (const d of discussions) {
+  const k = d.category?.name || 'General';
+  (grouped[k] ||= []).push(d);
+}
+
+function relativeFromNow(iso: string): string {
+  const t = tr.community.relativeTime;
+  const now = Date.now();
+  const then = new Date(iso).getTime();
+  const diffMs = Math.max(0, now - then);
+  const sec = Math.floor(diffMs / 1000);
+  if (sec < 60) return t.justNow;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return min === 1 ? `1 ${t.minute}` : `${min} ${t.minutes}`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return hr === 1 ? `1 ${t.hour}` : `${hr} ${t.hours}`;
+  const day = Math.floor(hr / 24);
+  if (day < 7) return day === 1 ? `1 ${t.day}` : `${day} ${t.days}`;
+  const wk = Math.floor(day / 7);
+  if (wk < 5) return wk === 1 ? `1 ${t.week}` : `${wk} ${t.weeks}`;
+  const mo = Math.floor(day / 30);
+  if (mo < 12) return mo === 1 ? `1 ${t.month}` : `${mo} ${t.months}`;
+  const yr = Math.floor(day / 365);
+  return yr === 1 ? `1 ${t.year}` : `${yr} ${t.years}`;
+}
+
+function categoryDeeplink(name: string): string {
+  // GitHub uses lowercased, hyphenated slugs for category URLs.
+  const fromApi = categoriesFromApi.find((c) => c.name === name);
+  if (fromApi?.slug) return `${DISCUSSIONS_URL}/categories/${fromApi.slug}`;
+  const slug = name.toLowerCase().replace(/&/g, '').replace(/\s+/g, '-').replace(/-+/g, '-');
+  return `${DISCUSSIONS_URL}/categories/${slug}`;
+}
+
+// Pre-build category metadata per visible category so the JSX below stays
+// expression-free (Astro / esbuild trips on `as Record<string, string>`
+// generic syntax inside an embedded {.map()} arrow.)
+const emojiMap = tr.community.categoryEmoji as { [k: string]: string };
+const nameMap = tr.community.categoryNames as { [k: string]: string };
+
+interface CategoryView {
+  key: string;
+  emoji: string;
+  localized: string;
+  deeplink: string;
+  threads: Discussion[];
+}
+
+const visibleCategories: CategoryView[] = CATEGORY_ORDER
+  .filter((name) => grouped[name]?.length)
+  .map((name) => ({
+    key: name,
+    emoji: emojiMap[name] || '💬',
+    localized: nameMap[name] || name,
+    deeplink: categoryDeeplink(name),
+    threads: grouped[name],
+  }));
+const hasAnyDiscussions = discussions.length > 0;
+---
+
+<section class="community-hero">
+  <div class="container">
+    <h1>{tr.community.heading}</h1>
+    <p class="lead">{tr.community.lead}</p>
+    <a class="btn btn--primary btn--lg" href={DISCUSSIONS_URL} target="_blank" rel="noopener">
+      {tr.community.ctaLabel}
+    </a>
+  </div>
+</section>
+
+<section class="community-list">
+  <div class="container">
+    {!hasAnyDiscussions && (
+      <div class="community-empty">
+        <p>{tr.community.loading}</p>
+        <p class="community-empty__note">{tr.community.fallbackNote}</p>
+        {fetchError && <p class="community-empty__err">build-time fetch error: {fetchError}</p>}
+      </div>
+    )}
+
+    {visibleCategories.map((cat) => (
+        <div class="cat">
+          <div class="cat__head">
+            <h2 class="cat__title">
+              <span class="cat__emoji">{cat.emoji}</span>
+              {cat.localized}
+              <span class="cat__count">{cat.threads.length}</span>
+            </h2>
+            <a class="cat__more" href={cat.deeplink} target="_blank" rel="noopener">
+              {tr.community.categoryAsk}
+            </a>
+          </div>
+          <ul class="thread-list">
+            {cat.threads.map((d) => (
+              <li class="thread">
+                <a class="thread__link" href={d.url} target="_blank" rel="noopener">
+                  <div class="thread__title">{d.title}</div>
+                  <div class="thread__meta">
+                    {d.author && (
+                      <span class="thread__author">
+                        <img class="thread__avatar" src={d.author.avatarUrl} alt={d.author.login} width="20" height="20" loading="lazy" />
+                        <span>{d.author.login}</span>
+                      </span>
+                    )}
+                    <span class="thread__sep">·</span>
+                    <span class="thread__when">{relativeFromNow(d.createdAt)}</span>
+                    <span class="thread__sep">·</span>
+                    <span class="thread__count">
+                      {d.comments.totalCount === 1 ? tr.community.countOne : `${d.comments.totalCount} ${tr.community.countMany}`}
+                    </span>
+                  </div>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+    ))}
+  </div>
+</section>
+
+<section class="community-cta">
+  <div class="container">
+    <div class="cta-card">
+      <div class="cta-card__icon">💬</div>
+      <h3>{tr.community.askHeading}</h3>
+      <p>{tr.community.askLead}</p>
+      <a class="btn btn--primary" href={NEW_DISCUSSION_URL} target="_blank" rel="noopener">
+        {tr.community.askButton}
+      </a>
+    </div>
+  </div>
+</section>
+
+<style>
+  .community-hero {
+    padding: 80px 0 36px;
+    text-align: center;
+    background: radial-gradient(ellipse at top, var(--accent-soft) 0%, transparent 60%);
+  }
+  .community-hero h1 {
+    font-size: clamp(2rem, 4vw, 2.8rem);
+    margin: 0 0 14px;
+  }
+  .community-hero .lead {
+    margin: 0 auto 24px;
+    max-width: 660px;
+  }
+  .btn--lg { padding: 14px 28px; font-size: 15px; border-radius: 10px; }
+
+  .community-list { padding: 36px 0 60px; }
+  .community-empty {
+    background: var(--bg-elev);
+    border: 1px dashed color-mix(in srgb, var(--accent) 40%, var(--border));
+    border-radius: 12px;
+    padding: 28px 24px;
+    text-align: center;
+  }
+  .community-empty p { margin: 0 0 6px; color: var(--text-muted); font-size: 14px; }
+  .community-empty__note { font-size: 12.5px !important; color: var(--text-faint) !important; }
+  .community-empty__err { font-family: var(--font-mono); font-size: 11.5px !important; color: var(--text-faint) !important; }
+
+  .cat { margin-bottom: 32px; }
+  .cat__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    gap: 12px;
+  }
+  .cat__title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.15rem;
+    margin: 0;
+  }
+  .cat__emoji { font-size: 1.2rem; }
+  .cat__count {
+    display: inline-block;
+    padding: 2px 8px;
+    background: var(--bg-soft);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+  }
+  .cat__more {
+    font-size: 12.5px;
+    color: var(--accent);
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .cat__more:hover { text-decoration: underline; }
+
+  .thread-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--bg-elev);
+  }
+  .thread { border-bottom: 1px solid var(--border); }
+  .thread:last-child { border-bottom: none; }
+  .thread__link {
+    display: block;
+    padding: 14px 18px;
+    color: inherit;
+    text-decoration: none;
+    transition: background 0.15s;
+  }
+  .thread__link:hover {
+    background: var(--bg-soft);
+    text-decoration: none;
+  }
+  .thread__title {
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+    line-height: 1.4;
+  }
+  .thread__link:hover .thread__title { color: var(--accent); }
+  .thread__meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    color: var(--text-muted);
+    flex-wrap: wrap;
+  }
+  .thread__author {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .thread__avatar {
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+  }
+  .thread__sep { opacity: 0.5; }
+
+  .community-cta { padding: 40px 0 80px; }
+  .cta-card {
+    background: var(--bg-elev);
+    border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
+    border-radius: 14px;
+    padding: 32px 28px;
+    text-align: center;
+    max-width: 620px;
+    margin: 0 auto;
+  }
+  .cta-card__icon { font-size: 30px; line-height: 1; margin-bottom: 8px; }
+  .cta-card h3 { margin: 0 0 8px; font-size: 1.2rem; }
+  .cta-card p { color: var(--text-muted); font-size: 14px; margin: 0 0 18px; }
+</style>

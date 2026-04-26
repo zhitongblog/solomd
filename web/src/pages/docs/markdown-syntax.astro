@@ -2,6 +2,7 @@
 import Layout from '../../layouts/Layout.astro';
 import Header from '../../components/Header.astro';
 import Footer from '../../components/Footer.astro';
+import Giscus from '../../components/Giscus.astro';
 
 const lang = 'en' as const;
 ---
@@ -116,6 +117,7 @@ tags: [markdown, notes]
           exporting.</li>
       </ul>
     </article>
+    <Giscus lang={lang} />
   </main>
   <Footer lang={lang} />
 </Layout>

@@ -1,0 +1,20 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import Community from '../../components/Community.astro';
+
+const lang = 'zh' as const;
+---
+
+<Layout
+  title="SoloMD 社区 — GitHub Discussions"
+  description="SoloMD 用户社区:创意、投票、作品展示、问答。所有讨论都在 GitHub Discussions —— 用 GitHub 账号一次登录即可。"
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <Community lang={lang} />
+  </main>
+  <Footer lang={lang} />
+</Layout>
