@@ -6,6 +6,8 @@ pub mod ai_proxy;
 pub mod pandoc;
 pub mod git_history;
 pub mod rag;
+// v2.4 inbound HTTP capture endpoint — production-grade, opt-in via Settings.
+pub mod capture_endpoint;
 
 // v2.3 dev WebDriver bridge — debug builds only.
 #[cfg(debug_assertions)]
@@ -73,6 +75,11 @@ pub fn run() {
             rag::rag_reindex,
             rag::rag_search,
             rag::rag_reindex_file,
+            capture_endpoint::capture_get_state,
+            capture_endpoint::capture_set_enabled,
+            capture_endpoint::capture_regenerate_token,
+            capture_endpoint::capture_set_inbox_folder,
+            capture_endpoint::capture_set_workspace,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

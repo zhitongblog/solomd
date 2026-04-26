@@ -166,6 +166,14 @@ watchEffect(() => {
   workspaceIndex.setFolder(workspace.currentFolder).catch(() => {});
 });
 
+// v2.4: push the active folder into the capture endpoint's view of the
+// world, so the localhost HTTP server knows where to write captured notes
+// (or returns 503 when no folder is open).
+watchEffect(() => {
+  const folder = workspace.currentFolder;
+  invoke('capture_set_workspace', { folder: folder ?? null }).catch(() => {});
+});
+
 // v2.3: keep the RAG index in sync with the toggle + active folder. When
 // `ragEnabled` flips on we trigger a background scan via the Rust side
 // (`rag_set_enabled` already wraps run_indexer). When the folder

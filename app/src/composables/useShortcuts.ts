@@ -5,6 +5,7 @@ import { useSettingsStore } from '../stores/settings';
 import { useTabsStore } from '../stores/tabs';
 import { useTilesStore } from '../stores/tiles';
 import { useCommands } from './useCommands';
+import { useInbox } from './useInbox';
 
 interface Hooks {
   openPalette?: () => void;
@@ -22,6 +23,7 @@ export function useShortcuts(hooks: Hooks = {}) {
   const tabs = useTabsStore();
   const tiles = useTilesStore();
   const commands = useCommands();
+  const inbox = useInbox();
 
   function runById(id: string) {
     const cmd = commands.find((c) => c.id === id);
@@ -119,6 +121,10 @@ export function useShortcuts(hooks: Hooks = {}) {
     } else if (k === 'd' && !e.shiftKey && !e.altKey) {
       e.preventDefault();
       runById('daily.openToday');
+    } else if (k === 'e' && !e.shiftKey && !e.altKey) {
+      // v2.4: ⌘E toggles `inbox: true|false` in the active doc's front matter.
+      e.preventDefault();
+      inbox.toggleActive();
     }
 
     // Tile layout shortcuts

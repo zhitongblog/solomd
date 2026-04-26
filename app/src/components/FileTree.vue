@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useFiles } from '../composables/useFiles';
+import { useInbox } from '../composables/useInbox';
+import { useI18n } from '../i18n';
 
 interface Entry {
   name: string;
@@ -20,8 +22,14 @@ interface Node extends Entry {
 
 const workspace = useWorkspaceStore();
 const files = useFiles();
+const inbox = useInbox();
+const { t } = useI18n();
 
 const root = ref<Node | null>(null);
+
+// v2.4 inbox filter — when on, the FileTreeNode subtree below prunes
+// non-inbox files (and dirs whose subtree contains no inbox docs).
+const showInboxOnly = computed(() => inbox.filterMode.value);
 
 /** Sentinel emitted by the Rust backend when it truncated a huge dir
  * past the 10,000-entry hard cap. We surface it as a dedicated UI
@@ -104,6 +112,22 @@ watch(() => workspace.currentFolder, refreshRoot, { immediate: true });
     </div>
     <div v-else class="ftree__body">
       <div class="ftree__root">{{ root.name }}</div>
+
+      <!-- v2.4: Inbox row. Clicking toggles the inbox-only filter so the
+           tree below shows only docs with `inbox: true` in their YAML. -->
+      <button
+        class="ftree__inbox"
+        :class="{ 'ftree__inbox--active': showInboxOnly }"
+        :title="showInboxOnly ? t('inbox.filterOff') : t('inbox.filterOn')"
+        @click="inbox.toggleFilter()"
+      >
+        <span class="ftree__icon">{{ showInboxOnly ? '▾' : '▸' }}</span>
+        <span class="ftree__name">{{ t('inbox.heading') }}</span>
+        <span class="ftree__badge" v-if="inbox.inboxCount.value > 0">
+          {{ inbox.inboxCount.value }}
+        </span>
+      </button>
+
       <div v-if="root.loading" class="ftree__loading">
         <span class="ftree__spinner" aria-hidden="true"></span>
         <span>Loading…</span>
@@ -114,6 +138,8 @@ watch(() => workspace.currentFolder, refreshRoot, { immediate: true });
           :key="child.path"
           :node="child"
           :depth="0"
+          :inbox-only="showInboxOnly"
+          :inbox-paths="inbox.inboxPaths.value"
           @toggle="toggle"
         />
         <li v-if="root.truncated" class="ftree__truncated" :title="`This folder has more than 10,000 entries; showing the first batch. Move groups into subfolders to see them all.`">
@@ -132,11 +158,34 @@ export const FileTreeNode = defineComponent({
   props: {
     node: { type: Object as () => any, required: true },
     depth: { type: Number, default: 0 },
+    /** v2.4: when true, hide files that aren't in `inboxPaths`. Empty
+     *  directories along the way also collapse out of the rendered tree. */
+    inboxOnly: { type: Boolean, default: false },
+    inboxPaths: { type: Object as () => Set<string>, default: () => new Set() },
   },
   emits: ['toggle'],
   setup(props, { emit }) {
+    /**
+     * For inbox-only mode, return whether this subtree contains anything
+     * worth rendering. Pure read — no eager dir loads, so an unexpanded
+     * dir simply won't be flagged as a match.
+     */
+    const subtreeHasInbox = (node: any): boolean => {
+      if (!node.is_dir) return props.inboxPaths.has(node.path);
+      if (!node.children) return false;
+      return node.children.some(subtreeHasInbox);
+    };
+
     return () => {
       const n = props.node as any;
+      const inboxOnly = props.inboxOnly;
+      // Filter pruning. Dirs with at least one inbox descendant survive;
+      // un-loaded dirs survive too (otherwise we'd hide them on first paint
+      // before the user clicks to expand).
+      if (inboxOnly) {
+        if (!n.is_dir && !props.inboxPaths.has(n.path)) return [];
+        if (n.is_dir && n.children && !subtreeHasInbox(n)) return [];
+      }
       const indent = 8 + props.depth * 12;
       const items: any[] = [
         h(
@@ -150,6 +199,9 @@ export const FileTreeNode = defineComponent({
           [
             h('span', { class: 'ftree__icon' }, n.is_dir ? (n.expanded ? '▾' : '▸') : '·'),
             h('span', { class: 'ftree__name' }, n.name),
+            !n.is_dir && props.inboxPaths.has(n.path)
+              ? h('span', { class: 'ftree__inbox-dot', title: 'inbox' }, '●')
+              : null,
           ]
         ),
       ];
@@ -159,6 +211,8 @@ export const FileTreeNode = defineComponent({
             h(FileTreeNode, {
               node: c,
               depth: props.depth + 1,
+              inboxOnly: props.inboxOnly,
+              inboxPaths: props.inboxPaths,
               onToggle: (target: any) => emit('toggle', target),
             })
           );
@@ -227,6 +281,52 @@ export const FileTreeNode = defineComponent({
   list-style: none;
   margin: 0;
   padding: 0 0 12px;
+}
+.ftree__inbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 14px;
+  background: transparent;
+  border: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  border-bottom: 1px dashed var(--border);
+}
+.ftree__inbox:hover {
+  background: var(--bg-hover);
+}
+.ftree__inbox--active {
+  background: var(--bg-active, var(--bg-hover));
+  color: var(--accent);
+}
+.ftree__inbox .ftree__icon {
+  width: 12px;
+  color: var(--text-faint);
+  font-size: 10px;
+  text-align: center;
+}
+.ftree__inbox .ftree__name {
+  flex: 1;
+}
+.ftree__badge {
+  background: var(--accent);
+  color: var(--bg-elev);
+  font-size: 10px;
+  padding: 0 6px;
+  border-radius: 999px;
+  min-width: 18px;
+  text-align: center;
+  font-weight: 700;
+}
+:deep(.ftree__inbox-dot) {
+  color: var(--accent);
+  font-size: 8px;
+  margin-left: auto;
 }
 .ftree__loading {
   display: flex;
