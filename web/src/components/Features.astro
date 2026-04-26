@@ -4,7 +4,7 @@ interface Props { lang: Lang }
 const { lang } = Astro.props;
 const tr = getT(lang);
 
-const NEW_TAGS = ['(v2.3)', '(v2.2)'];
+const NEW_TAGS = ['(v3.0)', '(v2.3)', '(v2.2)'];
 function tagOf(title: string): string | null {
   for (const tag of NEW_TAGS) {
     if (title.includes(tag)) return tag;
@@ -26,7 +26,7 @@ function stripTag(title: string): string {
       {tr.features.items.map((f) => {
         const tag = tagOf(f.title);
         const cleanTitle = stripTag(f.title);
-        const tagClass = tag === '(v2.3)' ? 'feature-tag feature-tag--v23' : tag === '(v2.2)' ? 'feature-tag feature-tag--v22' : '';
+        const tagClass = tag === '(v3.0)' ? 'feature-tag feature-tag--v30' : tag === '(v2.3)' ? 'feature-tag feature-tag--v23' : tag === '(v2.2)' ? 'feature-tag feature-tag--v22' : '';
         return (
           <article class={`feature-card${tag ? ' feature-card--new' : ''}`}>
             <div class="feature-card__head">
@@ -114,8 +114,13 @@ function stripTag(title: string): string {
     text-transform: uppercase;
     font-family: var(--font-mono);
   }
+  .feature-tag--v30 {
+    background: linear-gradient(135deg, #ff9f40 0%, #ffd166 100%);
+    color: #000;
+    box-shadow: 0 0 0 1px rgba(255, 159, 64, 0.4);
+  }
   .feature-tag--v23 {
-    background: var(--accent);
+    background: color-mix(in srgb, var(--accent) 60%, var(--bg-elev));
     color: #000;
   }
   .feature-tag--v22 {

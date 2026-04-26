@@ -1,0 +1,326 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+
+const lang = 'zh' as const;
+---
+
+<Layout
+  title="SoloMD 同步 — 笔记在你自己的 GitHub。免费，可选，端到端加密。"
+  description="v3.0 的同步层。把笔记推到你自己的 GitHub 私库。可选端到端加密。iCloud / Dropbox / OneDrive 联动。没有 SoloMD 服务器，不收订阅。"
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <section class="sync-hero">
+      <div class="container">
+        <span class="sync-tag">v3.0</span>
+        <h1>同步。<br/><span class="muted">笔记在你 GitHub 上。免费。</span></h1>
+        <p class="sync-lead">
+          我们一直拖到 v3.0 才做同步，是因为不想变成一个 SaaS。
+          最后选的形态是：<strong>SoloMD 是一个 git 客户端</strong>。数据在你自己的 GitHub 账号里。
+          <br/>没有 SoloMD 服务器。没有订阅。不需要账号。
+        </p>
+        <div class="sync-cta">
+          <a class="btn btn--primary" href="/zh/whats-new/">看 v3.0 发布说明 →</a>
+          <a class="btn" href="/zh/#download">下载 SoloMD</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="sync-pillars">
+      <div class="container">
+        <div class="sync-pillar">
+          <span class="sync-pillar__icon">☁️</span>
+          <h2>GitHub 同步</h2>
+          <p>
+            粘个 Personal Access Token（保存到系统钥匙串）。选一个已有仓库，或者让 SoloMD 给你新建一个私库。
+            保存后 5 秒自动推，5/15/30/60 分钟间隔自动拉。
+            历史侧边栏带逐文件冲突解决：用我的 / 用 GitHub 的 / 都保留。
+          </p>
+          <p class="sync-pillar__sub">
+            底层基于 <code>libgit2</code> 和 v2.2 AutoGit 同一套引擎，不依赖系统 git。
+            GitLab / Gitea / 任意 HTTPS git 地址也能工作 —— 推拉对平台无感。
+          </p>
+        </div>
+
+        <div class="sync-pillar">
+          <span class="sync-pillar__icon">🔒</span>
+          <h2>端到端加密（可选）</h2>
+          <p>
+            勾「推送前加密」并设口令。远端只看到密文：
+            <code>SLMD</code> magic + 24 字节 XChaCha20 nonce + 16 字节 Poly1305。
+            Argon2id 派生密钥。
+          </p>
+          <p class="sync-pillar__sub">
+            明文留在你设备上 —— 搜索、RAG、AI 改写都正常工作。
+            盐与 KDF 参数随加密仓库同步，所以另一台设备只要输同样口令就能派生同一把钥匙。
+          </p>
+        </div>
+
+        <div class="sync-pillar">
+          <span class="sync-pillar__icon">🗂️</span>
+          <h2>已经在 iCloud / Dropbox / OneDrive？</h2>
+          <p>
+            v3.0 自动识别工作区位于已知云盘文件夹的情况，弹横幅告诉你 ——
+            苹果 / Dropbox / 微软已经在做文件级同步。
+          </p>
+          <p class="sync-pillar__sub">
+            我们在此之上加一层跨设备会话恢复：
+            <code>.solomd/session.&lt;deviceId&gt;.json</code> 记录每台机器的标签页。
+            另一台设备打开同一工作区，会一键弹「从 <em>Mac mini</em> 恢复」。
+          </p>
+        </div>
+
+        <div class="sync-pillar">
+          <span class="sync-pillar__icon">🌐</span>
+          <h2>公开只读分享</h2>
+          <p>
+            命令面板「复制分享链接」，得到 <code>solomd.app/share/?repo=你/笔记&amp;path=note.md</code>。
+            任何人在浏览器里就能阅读 —— 直接从 <code>raw.githubusercontent.com</code> 拉取，
+            DOMPurify 净化，无 SoloMD 服务器。
+          </p>
+          <p class="sync-pillar__sub">
+            仅支持公开仓库 —— 私有笔记会清晰显示「可能是私有仓库」而不是默默 404。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="sync-vs">
+      <div class="container">
+        <h2>对比一下</h2>
+        <table>
+          <thead>
+            <tr><th></th><th>SoloMD v3.0</th><th>Obsidian Sync</th><th>仅 iCloud</th></tr>
+          </thead>
+          <tbody>
+            <tr><th>数据存哪</th><td>你的 GitHub</td><td>Obsidian 服务器</td><td>Apple 服务器</td></tr>
+            <tr><th>价格</th><td>免费</td><td>$96 / 年</td><td>5 GB 内免费</td></tr>
+            <tr><th>端到端加密</th><td>✅ 可选</td><td>✅ 可选</td><td>❌</td></tr>
+            <tr><th>每文件历史</th><td>完整 git log</td><td>1 年</td><td>30 天</td></tr>
+            <tr><th>多平台</th><td>GitHub / GitLab / Gitea / 自定义</td><td>仅 Obsidian</td><td>仅 Apple</td></tr>
+            <tr><th>需要订阅</th><td>否</td><td>是</td><td>5GB 之后</td></tr>
+            <tr><th>公开分享</th><td>✅ 内置</td><td>✅ Obsidian Publish ($120/年)</td><td>❌</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="sync-howto">
+      <div class="container">
+        <h2>60 秒上手</h2>
+        <ol>
+          <li>SoloMD →「设置 → GitHub 同步」。</li>
+          <li>点「获取 Token」—— 浏览器打开 GitHub Token 页，权限（<code>repo</code>）已预填。</li>
+          <li>粘贴 <code>ghp_…</code>，保存。</li>
+          <li>选一个已有仓库，或者点「创建并绑定」直接新建一个私库。</li>
+          <li>（可选）勾「推送前加密」并设口令。</li>
+          <li>保存一篇笔记。Toast 提示「已推送到 GitHub」。完事。</li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="sync-faq">
+      <div class="container">
+        <h2>诚实回答几个问题</h2>
+        <div class="faq">
+          <h3>口令丢了怎么办？</h3>
+          <p>加密的笔记就找不回来了。我们也帮不了 —— 这就是 E2EE 的本质。加密之前先把口令抄到安全的地方。</p>
+        </div>
+        <div class="faq">
+          <h3>SoloMD 哪天不维护了怎么办？</h3>
+          <p>你的笔记仓库就是一个普通的 GitHub git 仓库，<code>git clone</code> 下来用任何编辑器都能开。
+          就算开了 E2EE，格式上面写得很清楚，加密算法也是标准 XChaCha20-Poly1305 —— 30 行解密脚本就能读出来。</p>
+        </div>
+        <div class="faq">
+          <h3>为什么偏偏是 GitHub？</h3>
+          <p>因为我们用户基本都已经有 GitHub 账号。
+          自托管的方案（NextCloud、自建 S3）我们考虑过 —— 都需要额外的搭建步骤，我们不想为这层负责。
+          不信任 GitHub 的用户可以选 GitLab / Gitea，一等支持。</p>
+        </div>
+        <div class="faq">
+          <h3>同步会收费吗？</h3>
+          <p>同步本身不会。SoloMD 这边没有需要付费维护的服务器，数据在你和 GitHub 之间流动，我们只是个客户端。
+          （GitHub 自己对超过 1GB 的私库收费，那是你跟它的事。）</p>
+        </div>
+        <div class="faq">
+          <h3>iPad 能用同步吗？</h3>
+          <p>v3.0 还不行。iPad 版的发布按 <a href="https://github.com/zhitongblog/solomd/issues">roadmap</a> 等到 v3.0 桌面端稳定后再做。
+          目前 iPad 这边走 iCloud Drive 同步 —— 我们的云盘联动模式在你之后用 macOS 打开时会衔接上。</p>
+        </div>
+      </div>
+    </section>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .sync-hero {
+    padding: 60px 0 40px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .sync-tag {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #ff9f40 0%, #ffd166 100%);
+    color: #000;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 18px;
+  }
+  .sync-hero h1 {
+    font-size: 3rem;
+    line-height: 1.15;
+    margin: 0 0 18px;
+  }
+  .sync-hero h1 .muted {
+    color: var(--text-muted, #555);
+    font-weight: 500;
+  }
+  .sync-lead {
+    max-width: 640px;
+    margin: 0 auto 30px;
+    font-size: 1.1rem;
+    line-height: 1.85;
+    color: var(--text-muted, #555);
+  }
+  .sync-cta {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .sync-pillars {
+    padding: 60px 0;
+  }
+  .sync-pillars .container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 26px;
+  }
+  .sync-pillar {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 26px 26px 22px;
+    display: flex;
+    flex-direction: column;
+  }
+  .sync-pillar__icon {
+    font-size: 36px;
+    margin-bottom: 14px;
+  }
+  .sync-pillar h2 {
+    font-size: 1.25rem;
+    margin: 0 0 12px;
+  }
+  .sync-pillar p {
+    margin: 0 0 12px;
+    line-height: 1.85;
+    font-size: 14px;
+    color: var(--text);
+  }
+  .sync-pillar__sub {
+    color: var(--text-muted) !important;
+    font-size: 13px !important;
+  }
+  .sync-pillar code {
+    background: var(--bg-soft, var(--bg));
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-size: 0.88em;
+    font-family: var(--font-mono);
+  }
+  .sync-vs {
+    padding: 50px 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-soft, transparent);
+  }
+  .sync-vs h2 {
+    font-size: 1.6rem;
+    margin: 0 0 22px;
+    text-align: center;
+  }
+  .sync-vs table {
+    width: 100%;
+    max-width: 880px;
+    margin: 0 auto;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  .sync-vs th, .sync-vs td {
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .sync-vs thead th {
+    font-weight: 600;
+    background: var(--bg);
+  }
+  .sync-vs tbody th {
+    font-weight: 500;
+    color: var(--text-muted);
+    width: 28%;
+  }
+  .sync-howto {
+    padding: 60px 0;
+  }
+  .sync-howto h2 {
+    font-size: 1.6rem;
+    margin: 0 0 22px;
+    text-align: center;
+  }
+  .sync-howto ol {
+    max-width: 620px;
+    margin: 0 auto;
+    padding-left: 26px;
+    line-height: 2.1;
+    font-size: 15px;
+  }
+  .sync-howto code {
+    background: var(--bg-soft, var(--bg));
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+  }
+  .sync-faq {
+    padding: 60px 0 100px;
+    border-top: 1px solid var(--border);
+  }
+  .sync-faq h2 {
+    font-size: 1.6rem;
+    margin: 0 0 24px;
+    text-align: center;
+  }
+  .faq {
+    max-width: 720px;
+    margin: 0 auto 22px;
+  }
+  .faq h3 {
+    font-size: 1rem;
+    margin: 0 0 8px;
+    color: var(--text);
+  }
+  .faq p {
+    margin: 0;
+    line-height: 1.85;
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+  .faq code {
+    background: var(--bg-soft, var(--bg));
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 0.88em;
+  }
+</style>
