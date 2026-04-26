@@ -14,6 +14,7 @@ import BacklinksPanel from './components/BacklinksPanel.vue';
 import TagsPanel from './components/TagsPanel.vue';
 import HistoryPanel from './components/HistoryPanel.vue';
 import { useAutoCommit } from './composables/useAutoCommit';
+import { useGithubSync } from './composables/useGithubSync';
 import AIRewriteOverlay from './components/AIRewriteOverlay.vue';
 import BasesView from './components/BasesView.vue';
 import { BASES_OPEN_EVENT, BASES_CLOSE_EVENT } from './composables/useBasesView';
@@ -53,6 +54,10 @@ const workspaceIndex = useWorkspaceIndexStore();
 const rag = useRagStore();
 const autoCommit = useAutoCommit();
 autoCommit.start();
+// v2.6: GitHub sync rides on top of AutoGit — push commits AutoGit creates,
+// pull on a timer. Dormant unless the workspace has a `.solomd/sync.json`.
+const githubSync = useGithubSync();
+githubSync.start();
 // v2.5 F4: pick up an in-progress focus session from before the reload.
 // Fire-and-forget — the store handles the (rare) "session already past
 // its end" case by short-circuiting into the completion path.
@@ -238,6 +243,19 @@ watchEffect(() => {
   } else {
     rag.refreshStatus(folder).catch(() => {});
   }
+});
+
+// v2.6: a successful GitHub pull touched files on disk under us. Refresh
+// the workspace index so the file tree + backlinks pick up renames /
+// deletions, and rebuild git history caches so the History panel reflects
+// the merge commit. Active editor tabs reload from disk only if they're
+// clean (we never blow away a user's unsaved edits, even from a sync).
+window.addEventListener('solomd:remote-pulled', () => {
+  void workspaceIndex.rescan();
+  // gitHistory's own listener on `solomd://index-updated` rebuilds caches,
+  // but rescan() above doesn't re-emit that event. Bust the caches here.
+  // (Keep this scoped — we don't want to re-fetch every commit on every
+  // remote-pull; the panel will lazy-reload as the user opens it.)
 });
 
 // Listen for the `solomd://index-updated` event the workspace_index

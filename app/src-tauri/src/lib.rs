@@ -15,6 +15,9 @@ pub mod cjk_proofread;
 // v2.5 community theme marketplace — manifest fetched JS-side, CSS files
 // written into <config_dir>/themes/<id>.css by these commands.
 pub mod themes;
+// v2.6 GitHub-backed sync — extends v2.2 AutoGit with push/pull to a
+// user-owned GitHub repo. PAT in OS keychain, config in .solomd/sync.json.
+pub mod github_sync;
 
 // v2.3 dev WebDriver bridge — debug builds only.
 #[cfg(debug_assertions)]
@@ -94,6 +97,19 @@ pub fn run() {
             themes::theme_install,
             themes::theme_uninstall,
             themes::theme_list_installed,
+            github_sync::github_set_token,
+            github_sync::github_clear_token,
+            github_sync::github_has_token,
+            github_sync::github_user,
+            github_sync::github_list_repos,
+            github_sync::github_create_vault_repo,
+            github_sync::github_link_workspace,
+            github_sync::github_set_config,
+            github_sync::github_unlink_workspace,
+            github_sync::github_sync_status,
+            github_sync::github_push,
+            github_sync::github_pull,
+            github_sync::github_resolve_conflict,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

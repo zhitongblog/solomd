@@ -33,6 +33,14 @@ mod capture_endpoint;
 #[path = "themes.rs"]
 mod themes;
 
+// v2.5 CJK proofread — flags common Chinese typos with one-click fixes.
+#[path = "cjk_proofread.rs"]
+mod cjk_proofread;
+
+// v2.6 GitHub-backed sync — push/pull a workspace to a user-owned GitHub repo.
+#[path = "github_sync.rs"]
+mod github_sync;
+
 // v2.3 dev WebDriver bridge — debug builds only. Module file itself is
 // `#[cfg(debug_assertions)]`-gated, so this `mod` line is too.
 #[cfg(debug_assertions)]
@@ -429,6 +437,20 @@ pub fn run_with(initial_file: Option<String>) {
             themes::theme_install,
             themes::theme_uninstall,
             themes::theme_list_installed,
+            cjk_proofread::cjk_proofread,
+            github_sync::github_set_token,
+            github_sync::github_clear_token,
+            github_sync::github_has_token,
+            github_sync::github_user,
+            github_sync::github_list_repos,
+            github_sync::github_create_vault_repo,
+            github_sync::github_link_workspace,
+            github_sync::github_set_config,
+            github_sync::github_unlink_workspace,
+            github_sync::github_sync_status,
+            github_sync::github_push,
+            github_sync::github_pull,
+            github_sync::github_resolve_conflict,
         ])
         .on_menu_event(|app_handle, event| {
             // Forward every menu click to the frontend as a single event
