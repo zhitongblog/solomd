@@ -111,3 +111,42 @@ jobs:
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
+
+      # ----------------------------------------------------------------------
+      # Windows portable .zip (issue #27) — same .exe Tauri produces, just
+      # zipped without the NSIS installer wrapper. Modern Win10/11 already
+      # has WebView2; users without it see a runtime prompt the first time.
+      # Skipped on non-Windows runners. Uploaded to the same draft release.
+      # ----------------------------------------------------------------------
+      - name: Build Windows portable .zip
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $version = (Get-Content app/package.json -Raw | ConvertFrom-Json).version
+          $exe = "app/src-tauri/target/release/SoloMD.exe"
+          if (-Not (Test-Path $exe)) {
+            Write-Error "Missing $exe — Tauri build did not run as expected"
+            exit 1
+          }
+          $stage = "SoloMD_${version}_x64-portable"
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          Copy-Item $exe -Destination "$stage/SoloMD.exe"
+          # Bundled MCP sidecar so portable users get the MCP server too.
+          $mcp = "app/src-tauri/target/release/solomd-mcp.exe"
+          if (Test-Path $mcp) { Copy-Item $mcp -Destination "$stage/solomd-mcp.exe" }
+          # Tiny README the user finds inside the zip.
+          @"
+          SoloMD ${version} — portable build
+
+          Just run SoloMD.exe. No installation required.
+          Settings + recents are stored in %APPDATA%\app.solomd as usual.
+
+          Requires Microsoft Edge WebView2 (preinstalled on Windows 10/11).
+          If launch fails with a WebView2 missing error, install from
+          https://go.microsoft.com/fwlink/p/?LinkId=2124703
+          "@ | Set-Content -Path "$stage/README.txt" -Encoding UTF8
+          $zip = "SoloMD_${version}_x64-portable.zip"
+          Compress-Archive -Path "$stage/*" -DestinationPath $zip -Force
+          gh release upload "${{ github.ref_name }}" $zip --clobber
