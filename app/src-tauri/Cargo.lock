@@ -4967,7 +4967,7 @@ dependencies = [
 
 [[package]]
 name = "solomd"
-version = "2.2.1"
+version = "2.3.0"
 dependencies = [
  "async-stream",
  "calamine",
