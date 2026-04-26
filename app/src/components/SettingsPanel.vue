@@ -297,6 +297,17 @@ function onSelectPdfFont(v: string) {
         </section>
 
         <section>
+          <label>{{ t('settings.outlineSide') }}</label>
+          <select
+            :value="settings.outlineSide"
+            @change="settings.setOutlineSide(($event.target as HTMLSelectElement).value as 'left' | 'right')"
+          >
+            <option value="left">{{ t('settings.outlineSideLeft') }}</option>
+            <option value="right">{{ t('settings.outlineSideRight') }}</option>
+          </select>
+        </section>
+
+        <section>
           <label>
             <input type="checkbox" :checked="settings.previewFitWidth" @change="settings.togglePreviewFitWidth()" />
             {{ t('settings.previewFitWidth') }}
