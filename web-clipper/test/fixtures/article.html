@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>How browsers parse HTML</title>
+    <base href="https://example.com/articles/" />
+  </head>
+  <body>
+    <header>
+      <nav><a href="/home">Home</a> · <a href="/blog">Blog</a></nav>
+    </header>
+
+    <!-- Cookie banner the clipper should drop in 'full' mode -->
+    <div id="cookie-banner" role="dialog" aria-label="Cookie consent">
+      <p>We use cookies. <button>Accept</button></p>
+    </div>
+
+    <main>
+      <article>
+        <h1>How browsers parse HTML</h1>
+        <p>By <strong>Jane Doe</strong>, April 2026 — a long-enough body so Readability accepts it.</p>
+
+        <p>This article explains the <em>three big phases</em> of how a browser turns
+          HTML bytes into pixels. We talk about <a href="byte-stream">byte streams</a>,
+          tokenization, and DOM construction. Plenty of words here so Readability
+          doesn't bail out on charThreshold.</p>
+
+        <h2>Phases</h2>
+        <ol>
+          <li>Decode bytes into characters</li>
+          <li>Tokenize into start/end tags</li>
+          <li>
+            Build the DOM
+            <ul>
+              <li>Parents adopt children</li>
+              <li>Implicit elements get inserted</li>
+            </ul>
+          </li>
+        </ol>
+
+        <h2>An example</h2>
+        <pre class="language-ts"><code class="language-ts">function parse(input: string): Node[] {
+  return tokenize(input).map(toNode);
+}</code></pre>
+
+        <blockquote>
+          <p>"Browsers are the most complex software you'll touch." — old internet wisdom</p>
+        </blockquote>
+
+        <h2>Comparison table</h2>
+        <table>
+          <thead>
+            <tr><th>Phase</th><th>Output</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Decode</td><td>Code points</td></tr>
+            <tr><td>Tokenize</td><td>Tokens</td></tr>
+            <tr><td>Construct</td><td>DOM tree</td></tr>
+          </tbody>
+        </table>
+
+        <p>Read more <a href="follow-up">in the follow-up post</a> or look at
+          <img src="diagram.png" alt="Parsing diagram" /> the diagram. Any plain
+          paragraph is fine — Readability just needs ~200 chars of running text
+          to stay confident this is the article body. So here we are with extra
+          padding to clear that bar without straining anyone's eyeballs.</p>
+      </article>
+    </main>
+
+    <aside class="sidebar">
+      <h3>Related</h3>
+      <ul>
+        <li><a href="/x">x</a></li>
+      </ul>
+    </aside>
+
+    <footer>© 2026</footer>
+
+    <script>
+      console.log('this should be stripped');
+    </script>
+  </body>
+</html>

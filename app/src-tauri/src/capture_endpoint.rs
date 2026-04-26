@@ -344,6 +344,42 @@ async fn handle_conn(mut stream: TcpStream, _app: AppHandle) -> Result<(), Strin
         return Ok(());
     }
 
+    // Health check — used by the browser-extension "Test connection" button
+    // to verify URL + token without writing a note. Token-gated so we never
+    // reveal anything (workspace path included) to a probe lacking the
+    // bearer header. Returns the workspace path so the user can sanity-check
+    // they paired the extension with the *right* SoloMD instance.
+    if req.method == "GET" && req.path == "/capture/health" {
+        let (token, workspace, inbox_folder) = {
+            let s = STATE.lock().expect("capture state lock");
+            (s.token.clone(), s.workspace.clone(), s.inbox_folder.clone())
+        };
+        if !auth_ok(&req, &token) {
+            let _ = write_resp(
+                &mut stream,
+                401,
+                "Unauthorized",
+                "{\"ok\":false,\"error\":\"missing or wrong Authorization: Bearer <token>\"}",
+            )
+            .await;
+            return Ok(());
+        }
+        let workspace_str = workspace
+            .as_ref()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let body = serde_json::json!({
+            "ok": true,
+            "version": env!("CARGO_PKG_VERSION"),
+            "workspace": workspace_str,
+            "inbox_folder": inbox_folder,
+            "workspace_open": workspace.is_some(),
+        })
+        .to_string();
+        let _ = write_resp(&mut stream, 200, "OK", &body).await;
+        return Ok(());
+    }
+
     if req.method == "POST" && req.path == "/capture" {
         // Auth check.
         let token = STATE.lock().expect("capture state lock").token.clone();
@@ -1114,6 +1150,36 @@ pub async fn _test_bind_and_serve() -> Result<u16, String> {
                 }
                 if req.method == "GET" && req.path == "/" {
                     let _ = write_resp(&mut s, 200, "OK", "{\"ok\":true}").await;
+                    return;
+                }
+                if req.method == "GET" && req.path == "/capture/health" {
+                    let (token, workspace, inbox_folder) = {
+                        let st = STATE.lock().expect("capture state lock");
+                        (st.token.clone(), st.workspace.clone(), st.inbox_folder.clone())
+                    };
+                    if !auth_ok(&req, &token) {
+                        let _ = write_resp(
+                            &mut s,
+                            401,
+                            "Unauthorized",
+                            "{\"ok\":false,\"error\":\"missing or wrong token\"}",
+                        )
+                        .await;
+                        return;
+                    }
+                    let workspace_str = workspace
+                        .as_ref()
+                        .map(|p| p.to_string_lossy().to_string())
+                        .unwrap_or_default();
+                    let body = serde_json::json!({
+                        "ok": true,
+                        "version": env!("CARGO_PKG_VERSION"),
+                        "workspace": workspace_str,
+                        "inbox_folder": inbox_folder,
+                        "workspace_open": workspace.is_some(),
+                    })
+                    .to_string();
+                    let _ = write_resp(&mut s, 200, "OK", &body).await;
                     return;
                 }
                 if req.method == "POST" && req.path == "/capture" {

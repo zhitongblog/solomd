@@ -232,3 +232,57 @@ jobs:
             bash scripts/install-mcp.sh
           "$HOME_OVERRIDE/.local/bin/solomd-mcp" --version || true
           echo "self-test ok"
+
+  # ---------------------------------------------------------------------------
+  # v2.4 web-clipper — Chrome MV3 + Firefox MV2 WebExtension. Independent job:
+  # the source is ~30 KB of TS, the build is 30 s, and it's fully decoupled
+  # from the desktop matrix. Uploads two store-ready zips + a source zip
+  # (the third is for Mozilla AMO's source-review requirement) to the same
+  # draft release.
+  # ---------------------------------------------------------------------------
+  web-clipper:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install web-clipper deps
+        working-directory: web-clipper
+        run: pnpm install --frozen-lockfile
+
+      - name: Type-check
+        working-directory: web-clipper
+        run: pnpm typecheck
+
+      - name: Build Chrome + Firefox bundles
+        working-directory: web-clipper
+        run: pnpm build
+
+      - name: Rename for release
+        working-directory: web-clipper/dist
+        run: |
+          cp chrome.zip solomd-clipper-chrome.zip
+          cp firefox.zip solomd-clipper-firefox.zip
+          cp source.zip solomd-clipper-source.zip
+
+      - name: Upload to GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.ref_name }}" \
+            web-clipper/dist/solomd-clipper-chrome.zip \
+            web-clipper/dist/solomd-clipper-firefox.zip \
+            web-clipper/dist/solomd-clipper-source.zip \
+            --clobber
