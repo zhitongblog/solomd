@@ -1,171 +1,148 @@
 # SoloMD
 
-> One file. One window. Just write.
-> 一个文件，一个窗口，专心写作。
+> Local-first Markdown editor with semantic search, version history, and 14 AI providers.
 
-**🌐 [solomd.app](https://solomd.app)** · **[Download](https://github.com/zhitongblog/solomd/releases/latest)** · **[FAQ](https://solomd.app/#faq)** · **[Sponsor ❤️](https://solomd.app/#sponsor)**
-
+[![Latest release](https://img.shields.io/github/v/release/zhitongblog/solomd)](https://github.com/zhitongblog/solomd/releases/latest)
+[![License: MIT](https://img.shields.io/github/license/zhitongblog/solomd?color=orange)](LICENSE)
+[![Downloads](https://img.shields.io/github/downloads/zhitongblog/solomd/total)](https://github.com/zhitongblog/solomd/releases)
 [![Website](https://img.shields.io/badge/website-solomd.app-ff9f40.svg)](https://solomd.app)
-[![License: MIT](https://img.shields.io/badge/License-MIT-orange.svg)](LICENSE)
-[![Tauri](https://img.shields.io/badge/Tauri-2.0-orange.svg)](https://tauri.app)
-[![Vue](https://img.shields.io/badge/Vue-3-42b883.svg)](https://vuejs.org)
 
-A lightweight, cross-platform Markdown + plain text editor. Built with Tauri 2 + Vue 3 + CodeMirror 6.
+[**Download**](https://github.com/zhitongblog/solomd/releases/latest) · [**Website**](https://solomd.app) · [**Security**](https://solomd.app/security) · [**FAQ**](https://solomd.app/#faq) · [中文站点](https://solomd.app/zh)
 
-一款轻量级的跨平台 Markdown 与纯文本编辑器。
+![SoloMD editor](web/public/demo/solomd-demo.svg)
 
----
+SoloMD is a desktop Markdown editor for people who keep their notes as a folder of plain `.md` files. Built on Tauri 2 + Vue 3 + CodeMirror 6, the universal macOS dmg is ~23 MB. Everything — your notes, your AI keys, the embeddings index, the git history — stays on your machine. No account, no cloud round-trip, MIT-licensed.
 
-## ✨ Features / 功能特性
+## Features
 
-### Core editing / 核心编辑
-- 📝 **Live Preview** — Markdown 标记符号在光标离开行后自动隐藏，所见即所得
-- 🎨 **Rich syntax styling** — 标题真大、粗体真粗、代码真等宽
-- 🌗 **Light / Dark themes** — 跟随系统偏好
-- 🔤 **Multi-encoding** — 自动识别 UTF-8 / UTF-16 / GBK / Big5
-- 📑 **Tabs** — 多文件并存，脏标记
-- 🌳 **File tree sidebar** — 浏览整个文件夹
-- 🗺️ **Outline view** — Markdown 标题层级导航
-- 🔍 **Global search** — 跨文件 ripgrep 风格搜索
-
-### Markdown power / Markdown 增强
-- 🧮 **KaTeX math** — `$E=mc^2$` / `$$\int$$`
-- 📊 **Mermaid diagrams** — 流程图、序列图、甘特图
-- 📋 **Task lists** — `- [ ]` 可点击 checkbox
-- 🔖 **Footnotes** — `[^1]`
-- 📑 **YAML front-matter** — 元数据自动渲染
-- ✨ **Highlight** — `==高亮==`
-- 13 种代码块语法高亮
-
-### Editor super features / 编辑器进阶
-- 🖼️ **Image paste / drag-drop** — 自动复制到 `_assets/`
-- ✏️ **Spell check**
-- 🎯 **Focus mode** — 非当前段变暗
-- ⌨️ **Typewriter mode** — 光标始终居中
-- 💾 **Session restore** — 防丢失自动保存
-- 🌏 **Chinese power tools** — 简繁转换 / 拼音 / CJK 字数统计
-
-### Export / 导出
-- 📄 HTML (newsletter quality)
-- 📑 PDF (direct, with KaTeX & Mermaid)
-- 📘 Word (.docx) with tables
-- 📋 Copy as HTML / Plain text / Markdown
-
-### Cross-platform / 跨平台
-- 🍎 macOS (universal: Apple Silicon + Intel)
-- 🪟 Windows (x64)
-- 🐧 Linux (x64: .deb / .AppImage / .rpm)
-- 🌐 OS file association — 双击 .md / .txt 自动用 SoloMD 打开
-
----
-
-## 🚀 Quick Start / 快速开始
-
-### Install / 安装
-
-Download the latest release for your platform from the [Releases page](https://github.com/zhitongblog/solomd/releases).
-
-从 [Releases 页面](https://github.com/zhitongblog/solomd/releases) 下载对应平台的安装包。
-
-#### macOS
-Drag `SoloMD.app` to `/Applications`. The first launch may take a moment as macOS verifies the notarized signature.
-
-将 `SoloMD.app` 拖入 `/Applications`。首次启动会稍慢一点（macOS 在校验签名）。
-
-#### Windows
-Until SoloMD's Microsoft SmartScreen reputation builds, you may see a blue **"Windows protected your PC"** dialog on first launch. To run anyway:
-
-由于 SoloMD 还没有积累 Microsoft SmartScreen 信誉，**首次运行可能会看到蓝色的 "Windows 已保护你的电脑" 提示**。绕过方法：
-
-1. Click **More info** / 点 **"更多信息"**
-2. Click **Run anyway** / 点 **"仍要运行"**
-
-This is a one-time prompt; subsequent launches won't show it. We're a small open-source project — if you'd rather not see this warning at all, please ⭐ the repo (more downloads → faster reputation building) or [sponsor a code-signing certificate](#-support--赞助).
-
-只会出现一次。SoloMD 是个小型开源项目，等下载量上来 SmartScreen 就不再警告了。
-
-#### Linux
-- **`.AppImage`**: `chmod +x SoloMD-*.AppImage && ./SoloMD-*.AppImage`
-- **`.deb`**: `sudo dpkg -i solomd_*.deb`
-- **`.rpm`**: `sudo rpm -i solomd-*.rpm`
-
-> **Note:** "Copy as Image" requires a clipboard tool on Linux. Install if needed:
-> ```bash
-> sudo apt install wl-clipboard  # Wayland (Ubuntu 22+, Fedora 34+)
-> sudo apt install xclip          # X11
-> ```
-
-### Development / 本地开发
-
-```bash
-# Prerequisites: Rust, Node.js, pnpm
-cd app
-pnpm install
-pnpm tauri dev
-```
-
-### Build / 构建
-
-```bash
-cd app
-pnpm tauri build
-# Output: src-tauri/target/release/bundle/
-```
-
----
-
-## ⌨️ Shortcuts / 快捷键
-
-| Action | macOS | Win/Linux |
+| | | |
 |---|---|---|
-| New Markdown / 新建 .md | ⌘N | Ctrl+N |
-| New Plain Text / 新建 .txt | ⌘⌥N | Ctrl+Alt+N |
-| Open File / 打开 | ⌘O | Ctrl+O |
-| Save / 保存 | ⌘S | Ctrl+S |
-| Save As / 另存为 | ⌘⇧S | Ctrl+Shift+S |
-| Close Tab / 关闭标签 | ⌘W | Ctrl+W |
-| New Window / 新窗口 | ⌘⇧N | Ctrl+Shift+N |
-| Command Palette / 命令面板 | ⌘⇧K | Ctrl+Shift+K |
-| Global Search / 全局搜索 | ⌘⇧F | Ctrl+Shift+F |
-| Toggle File Tree / 文件树 | ⌘B | Ctrl+B |
-| Toggle Outline / 大纲 | ⌘⇧O | Ctrl+Shift+O |
-| Cycle View Mode / 切换视图 | ⌘⇧P | Ctrl+Shift+P |
-| Settings / 设置 | ⌘, | Ctrl+, |
-| Markdown Help / 帮助 | F1 or ⌘/ | F1 or Ctrl+/ |
+| **Local RAG** semantic search over the workspace, off by default, no cloud | **WYSIWYG live edit** — Typora/Obsidian-style inline rendering as a fourth view mode | **AutoGit** version history — every save is a commit, restore atomically |
+| **AI rewrite** with 14 BYOK providers — OpenAI, Claude, Gemini, DeepSeek, Qwen, GLM, Kimi, Ollama, OpenRouter, etc. | **MCP server** — 1.5 MB sidecar binary, 8 tools, plug into Claude Desktop / Cursor | **Wikilinks & backlinks** — `[[note]]` autocomplete, backlinks panel, outline view |
+| **Daily notes** with templated paths | **Pandoc export** — EPUB / ODT / LaTeX / RTF / DOCX / PDF / HTML | **CJK first-class** — auto-detect UTF-8 / GBK / Big5 / Shift-JIS, simplified⇄traditional, pinyin |
 
----
+Plus the basics: tabs and split panes, KaTeX, Mermaid, image paste to `_assets/`, drag-import from `.docx` / `.pdf` / `.xlsx` / `.pptx`, slideshow mode (`⌘⌥P`), Vim mode, Hunspell spell-check, `solomd` CLI, OS file association.
 
-## 🛠️ Tech Stack
+## Install
 
-- **Framework**: [Tauri 2](https://tauri.app) (Rust backend, system webview)
-- **Frontend**: Vue 3 + TypeScript + Pinia + Vite
-- **Editor**: [CodeMirror 6](https://codemirror.net)
-- **Markdown**: markdown-it + KaTeX + Mermaid
-- **Encoding**: chardetng + encoding_rs
-- **Total bundle**: ~10-15 MB installer
+Latest release: [v2.2.1](https://github.com/zhitongblog/solomd/releases/tag/v2.2.1).
 
----
+### macOS — universal dmg (Apple Silicon + Intel, ~23 MB)
 
-## 📜 License
+```
+https://github.com/zhitongblog/solomd/releases/download/v2.2.1/SoloMD_2.2.1_universal.dmg
+```
 
-[MIT](LICENSE) © 2026 xiangdong li
+Or one-line install:
 
----
+```bash
+curl -fsSL https://solomd.app/install.sh | bash
+```
 
-## 💖 Support / 赞助
+### Windows — x64 (~11 MB MSI, ~9 MB EXE)
 
-If SoloMD helps your writing flow, consider sponsoring the development:
+- [`SoloMD_2.2.1_x64_en-US.msi`](https://github.com/zhitongblog/solomd/releases/download/v2.2.1/SoloMD_2.2.1_x64_en-US.msi)
+- [`SoloMD_2.2.1_x64-setup.exe`](https://github.com/zhitongblog/solomd/releases/download/v2.2.1/SoloMD_2.2.1_x64-setup.exe) (NSIS)
 
-如果 SoloMD 让你的写作更高效，欢迎赞助开发者：
+Or:
 
-- 🌍 [GitHub Sponsors](https://github.com/sponsors/zhitongblog) — 国际开发者
-- 💙 Alipay / 支付宝 — see [solomd.app/#sponsor](https://solomd.app/#sponsor)
-- 💚 WeChat Pay / 微信支付 — see [solomd.app/#sponsor](https://solomd.app/#sponsor)
+```powershell
+irm https://solomd.app/install.ps1 | iex
+```
 
----
+SmartScreen may flag the installer on first run while the cert builds reputation; click **More info → Run anyway**.
 
-## 🤝 Contributing
+### Linux — x86_64 + aarch64
 
-PRs welcome! See [issues](https://github.com/zhitongblog/solomd/issues) or open a discussion.
+- [`SoloMD_2.2.1_amd64.AppImage`](https://github.com/zhitongblog/solomd/releases/download/v2.2.1/SoloMD_2.2.1_amd64.AppImage) — universal
+- [`SoloMD_2.2.1_amd64.deb`](https://github.com/zhitongblog/solomd/releases/download/v2.2.1/SoloMD_2.2.1_amd64.deb) — Debian/Ubuntu
+- [`SoloMD-2.2.1-1.x86_64.rpm`](https://github.com/zhitongblog/solomd/releases/download/v2.2.1/SoloMD-2.2.1-1.x86_64.rpm) — Fedora/RHEL
+- ARM64 builds also available — replace `amd64`/`x86_64` with `aarch64`
 
-欢迎 PR 和反馈。
+For "Copy as Image", install a clipboard tool: `sudo apt install wl-clipboard` (Wayland) or `xclip` (X11).
+
+### iPad
+
+[App Store](https://apps.apple.com/app/solomd/id6762498874) — same engine, native iPad UI.
+
+## What's new
+
+**v2.3** (merged on `main`, 2026-04-25)
+
+- Local RAG / semantic search panel (`⌘⇧F`), off by default — embeds every `.md` in the workspace, queries against a local vector index. No cloud.
+- WYSIWYG live edit view mode — markdown formatting renders inline inside the editor, no preview pane needed.
+- File tree ~10× faster on Windows (`file_type()` instead of full `metadata()` per entry).
+
+**v2.2.1** (released 2026-04-25)
+
+- MCP server — `solomd-mcp` sidecar binary, 8 tools, stdio. Default read-only.
+- AutoGit — every save commits to a local `.git` inside your workspace; libgit2 vendored, no system git needed.
+- AI rewrite — 14 BYOK providers (`⌘J` to rewrite / shorten / expand / translate / explain).
+- New [/security](https://solomd.app/security) page documenting every place data flows.
+- Hotfix: Win11 file-tree crash on slow filesystems ([#25](https://github.com/zhitongblog/solomd/issues/25)).
+
+Full notes: <https://github.com/zhitongblog/solomd/releases>.
+
+## MCP integration
+
+Point any MCP-compatible client (Claude Desktop, Cursor, Codex CLI) at your notes folder. The `solomd-mcp` binary ships in the install bundle.
+
+```json
+{
+  "mcpServers": {
+    "solomd": {
+      "command": "/Applications/SoloMD.app/Contents/Resources/solomd-mcp",
+      "args": ["--workspace", "/path/to/your/notes"]
+    }
+  }
+}
+```
+
+Tools: `list_notes`, `read_note`, `search`, `get_backlinks`, `list_tags`, `get_outline`, plus `write_note` and `append_to_note` (gated behind `--allow-write`). Path-traversal guarded, no network port.
+
+## How it compares
+
+| | SoloMD | Obsidian | Typora | Tolaria |
+|---|---|---|---|---|
+| License | **MIT** | proprietary (free) | paid ($14.99) | open source |
+| Stack | Tauri 2 (Rust + WebView) | Electron | Electron | Tauri |
+| Platforms | macOS · Win · Linux · iPad | macOS · Win · Linux · iOS · Android | macOS · Win · Linux | macOS · Linux |
+| Installer | ~23 MB (mac) / ~11 MB (win) | ~120 MB | ~95 MB | ~25 MB |
+| Built-in AI rewrite | ✅ 14 BYOK providers | plugin only | ❌ | via external MCP |
+| Local RAG / semantic search | ✅ off by default | plugin only | ❌ | ❌ |
+| Version history per note | ✅ AutoGit | plugin only | ❌ | ✅ |
+| MCP server | ✅ 8 tools, sidecar | ❌ | ❌ | ✅ |
+| Sync | ❌ (BYO git / Syncthing / iCloud) | paid add-on | ❌ | ❌ |
+| CJK encodings (GBK / Big5) | ✅ auto-detect | ❌ | ❌ | ❌ |
+
+Detailed breakdowns: [vs Obsidian](https://solomd.app/compare/vs-obsidian) · [vs Typora](https://solomd.app/compare/vs-typora) · [vs Tolaria](https://solomd.app/compare/vs-tolaria) · [vs Marktext](https://solomd.app/compare/vs-marktext).
+
+## Privacy & security
+
+Pure client-side. Your `.md` files stay in the folder you chose. API keys live in the OS keychain (macOS Keychain / Windows Credential Manager / Linux libsecret), never in `localStorage` or any config file. AI requests go direct from your machine to the provider you picked — no SoloMD relay. RAG embeddings and the AutoGit repo are local-only. The whole codebase is MIT and auditable.
+
+Full writeup: <https://solomd.app/security>.
+
+## Build from source
+
+Prereqs: Rust (stable), Node 18+, pnpm.
+
+```bash
+git clone https://github.com/zhitongblog/solomd.git
+cd solomd/app
+pnpm install
+pnpm tauri dev      # dev with hot reload
+pnpm tauri build    # release artifacts → src-tauri/target/release/bundle/
+```
+
+Linux additionally needs `libdbus-1-dev` for the keychain backend.
+
+The MCP server is a separate crate at `mcp-server/`; the dev MCP harness used for end-to-end testing lives at `dev-mcp/`.
+
+## Contributing
+
+Issues and PRs welcome — [open one](https://github.com/zhitongblog/solomd/issues). For a sense of direction, see [`docs/roadmap.md`](docs/roadmap.md).
+
+## License & credits
+
+[MIT](LICENSE) © 2026 xiangdong li. SoloMD stands on Tauri 2, Vue 3, CodeMirror 6, markdown-it, KaTeX, Mermaid, libgit2, Pandoc, Hunspell, `keyring-rs`, and `rmcp`. Sponsor on [GitHub Sponsors](https://github.com/sponsors/zhitongblog) or via [solomd.app/#sponsor](https://solomd.app/#sponsor).
