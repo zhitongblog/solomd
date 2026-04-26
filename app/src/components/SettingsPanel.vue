@@ -26,7 +26,11 @@ async function manualCheckUpdate() {
   checkingUpdate.value = true;
   try {
     const r = await checkForUpdate();
-    if (r.hasUpdate) {
+    if (r.error) {
+      // Both solomd.app proxy + GitHub direct failed (offline / DNS / etc).
+      // Don't lie to the user with "up to date" — show a real error.
+      toasts.error(t('settings.updateCheckFailed'));
+    } else if (r.hasUpdate) {
       toasts.success(t('settings.updateAvailable', { version: r.latest || '' }));
       await openReleaseUrl(r.url);
     } else {
