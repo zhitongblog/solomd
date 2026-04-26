@@ -25,6 +25,12 @@ mod pandoc;
 #[path = "git_history.rs"]
 mod git_history;
 
+// v2.3 dev WebDriver bridge — debug builds only. Module file itself is
+// `#[cfg(debug_assertions)]`-gated, so this `mod` line is too.
+#[cfg(debug_assertions)]
+#[path = "dev_bridge.rs"]
+mod dev_bridge;
+
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use tauri::menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder};
@@ -383,6 +389,14 @@ pub fn run_with(initial_file: Option<String>) {
             // `drain_pending_opens` on mount instead, which avoids the
             // race condition where the "opened-file" event fires before
             // the JS listener is ready (happens on macOS cold start).
+
+            // v2.3: in debug builds, start the WebDriver bridge so
+            // `solomd-dev-mcp` can drive the live UI from outside.
+            // Release builds compile this out entirely.
+            #[cfg(debug_assertions)]
+            {
+                dev_bridge::spawn(app.handle().clone());
+            }
             Ok(())
         })
         .build(tauri::generate_context!())

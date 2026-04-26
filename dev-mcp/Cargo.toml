@@ -44,6 +44,11 @@ anyhow = "1"
 # Run shell commands (screencapture, osascript)
 # (provided by tokio::process)
 
+# v2.3 dev-bridge HTTP client — talks to the SoloMD debug build's localhost
+# JSON-RPC server (see app/src-tauri/src/dev_bridge.rs). Same rustls posture
+# as the main app's reqwest config.
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+
 [profile.release]
 opt-level = "z"
 lto = true
