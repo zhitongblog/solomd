@@ -7,6 +7,10 @@ pub mod pandoc;
 pub mod git_history;
 pub mod rag;
 
+// v2.3 dev WebDriver bridge — debug builds only.
+#[cfg(debug_assertions)]
+pub mod dev_bridge;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default()
@@ -19,6 +23,17 @@ pub fn run() {
     let builder = builder.plugin(tauri_plugin_window_state::Builder::default().build());
 
     builder
+        .setup(|app| {
+            #[cfg(debug_assertions)]
+            {
+                dev_bridge::spawn(app.handle().clone());
+            }
+            #[cfg(not(debug_assertions))]
+            {
+                let _ = app;
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             commands::read_file,
             commands::write_file,

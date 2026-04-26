@@ -641,6 +641,181 @@ pub struct RagSearchArgs {
 }
 
 // ---------------------------------------------------------------------------
+// Dev-bridge (v2.3) — talks to the localhost JSON-RPC server inside SoloMD's
+// debug build. See app/src-tauri/src/dev_bridge.rs for the protocol.
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Deserialize, Serialize, JsonSchema)]
+pub struct DevEvalArgs {
+    /// JavaScript source to run in SoloMD's main WebView. The script runs
+    /// inside an `async` IIFE — you can use `await`. Whatever the IIFE
+    /// returns (or its last expression) is JSON-serialised and sent back.
+    pub script: String,
+    /// Per-call timeout in ms. Default 5000.
+    #[serde(default)]
+    pub timeout_ms: Option<u64>,
+}
+
+#[derive(Debug, Deserialize, Serialize, JsonSchema)]
+pub struct DevSelectorArgs {
+    /// CSS selector (e.g. `.cm-editor`, `button[data-id='save']`).
+    pub selector: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, JsonSchema)]
+pub struct DevTextArgs {
+    pub selector: String,
+    /// If true, return text of every match as an array. Default false (first match only).
+    #[serde(default)]
+    pub all: Option<bool>,
+}
+
+#[derive(Debug, Deserialize, Serialize, JsonSchema)]
+pub struct DevDispatchArgs {
+    pub selector: String,
+    /// DOM event type (`click`, `keydown`, `input`, `custom-thing`, ...).
+    pub event: String,
+    /// Optional `EventInit` dict, JSON-typed. For keyboard events use e.g.
+    /// `{ "key": "Enter", "bubbles": true }`.
+    #[serde(default)]
+    pub init: Option<JsonValue>,
+}
+
+#[derive(Debug, Deserialize, Serialize, JsonSchema)]
+pub struct DevWaitForArgs {
+    pub selector: String,
+    /// Total wait budget in ms (poll interval is 100ms internally). Default 5000.
+    #[serde(default)]
+    pub timeout_ms: Option<u64>,
+}
+
+/// Look up the SoloMD app config dir (where dev_bridge writes port/token).
+/// Mirrors what `app.path().app_config_dir()` returns under tauri 2 — it
+/// uses the bundle identifier from `tauri.conf.json` (`app.solomd`), the
+/// same path for both `pnpm tauri dev` and the installed dmg. Only debug
+/// builds actually write the file though, so a stale prod install won't
+/// produce one.
+fn dev_bridge_config_dir() -> Result<PathBuf> {
+    let home = std::env::var("HOME").context("HOME not set")?;
+    #[cfg(target_os = "macos")]
+    let dir = PathBuf::from(home).join("Library/Application Support/app.solomd");
+    #[cfg(target_os = "linux")]
+    let dir = PathBuf::from(&home).join(".config/app.solomd");
+    #[cfg(target_os = "windows")]
+    let dir = {
+        let appdata = std::env::var("APPDATA")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| PathBuf::from(home.clone()).join("AppData/Roaming"));
+        appdata.join("app.solomd")
+    };
+    Ok(dir)
+}
+
+fn read_dev_bridge_endpoint() -> Result<(u16, String)> {
+    let dir = dev_bridge_config_dir()?;
+    let port_path = dir.join("dev-bridge.port");
+    let token_path = dir.join("dev-bridge.token");
+    if !port_path.exists() || !token_path.exists() {
+        return Err(anyhow!(
+            "SoloMD dev build not running — start with `pnpm tauri dev` from app/. \
+             (looked for {} and {})",
+            port_path.display(),
+            token_path.display()
+        ));
+    }
+    let port: u16 = std::fs::read_to_string(&port_path)
+        .map_err(|e| anyhow!("read {}: {e}", port_path.display()))?
+        .trim()
+        .parse()
+        .map_err(|e| anyhow!("parse port: {e}"))?;
+    let token = std::fs::read_to_string(&token_path)
+        .map_err(|e| anyhow!("read {}: {e}", token_path.display()))?
+        .trim()
+        .to_string();
+    Ok((port, token))
+}
+
+/// Single shared reqwest client. Cheap to clone, internally pooled.
+///
+/// We explicitly disable any system / env-var HTTP proxy: the dev-bridge
+/// runs on 127.0.0.1, and many dev environments set `http_proxy` /
+/// `all_proxy` to a local mitm/clash proxy that doesn't know how to route
+/// arbitrary loopback ports — without `no_proxy` the request gets sent
+/// through the proxy and comes back as 502 Bad Gateway.
+fn http_client() -> &'static reqwest::Client {
+    use std::sync::OnceLock;
+    static C: OnceLock<reqwest::Client> = OnceLock::new();
+    C.get_or_init(|| {
+        reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(15))
+            .no_proxy()
+            .build()
+            .expect("reqwest client")
+    })
+}
+
+/// Run a raw script in the WebView. Returns whatever the script's final
+/// value evaluated to. `wrap_in_return` lets call sites pass an expression
+/// (we wrap with `return (...)`) vs a full statement block.
+async fn dev_eval_raw(script: &str, timeout_ms: u64) -> Result<JsonValue> {
+    let (port, token) = read_dev_bridge_endpoint()?;
+    let url = format!("http://127.0.0.1:{port}/eval");
+    let body = serde_json::json!({ "script": script, "timeout_ms": timeout_ms });
+    let resp = http_client()
+        .post(&url)
+        .header("Authorization", format!("Bearer {token}"))
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| anyhow!("dev-bridge POST {url}: {e}"))?;
+    let status = resp.status();
+    let parsed: JsonValue = resp.json().await.map_err(|e| anyhow!("decode resp: {e}"))?;
+    if !status.is_success() {
+        return Err(anyhow!("dev-bridge {status}: {parsed}"));
+    }
+    let ok = parsed.get("ok").and_then(|v| v.as_bool()).unwrap_or(false);
+    if ok {
+        Ok(parsed.get("value").cloned().unwrap_or(JsonValue::Null))
+    } else {
+        let err = parsed
+            .get("error")
+            .and_then(|v| v.as_str())
+            .unwrap_or("(no error message)")
+            .to_string();
+        Err(anyhow!("script error: {err}"))
+    }
+}
+
+/// Wrap a JS *expression* into a script that returns its value. Used by
+/// the higher-level convenience tools.
+fn expr_script(expr: &str) -> String {
+    format!("return ({expr});")
+}
+
+/// Escape a string for use inside a JS single-quoted literal.
+fn js_string(s: &str) -> String {
+    let mut out = String::with_capacity(s.len() + 2);
+    out.push('\'');
+    for ch in s.chars() {
+        match ch {
+            '\\' => out.push_str("\\\\"),
+            '\'' => out.push_str("\\'"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            // Use \uXXXX for any control characters or things that could
+            // close a script tag. Cheap belt-and-suspenders.
+            c if (c as u32) < 0x20 => {
+                out.push_str(&format!("\\u{:04x}", c as u32));
+            }
+            c => out.push(c),
+        }
+    }
+    out.push('\'');
+    out
+}
+
+// ---------------------------------------------------------------------------
 // Tool router
 // ---------------------------------------------------------------------------
 
@@ -1188,6 +1363,138 @@ impl DevServer {
         }).collect();
         Ok(json_result(serde_json::to_value(&lines).unwrap()))
     }
+
+    // -----------------------------------------------------------------
+    // v2.3 Dev Bridge — drive the live Vue UI (clicks, DOM reads, etc.).
+    // Talks to the localhost JSON-RPC server inside SoloMD's debug build
+    // (see app/src-tauri/src/dev_bridge.rs).
+    // -----------------------------------------------------------------
+
+    #[tool(description = "v2.3 dev-bridge: evaluate arbitrary JavaScript inside SoloMD's main WebView and return the result. Script runs inside an `async` IIFE — `await` is allowed. Use a `return` statement (or just leave a trailing expression evaluated via async return) to send a value back. Args: { script, timeout_ms? }. Requires `pnpm tauri dev` running.")]
+    pub async fn solomd_dev_eval(
+        &self,
+        Parameters(args): Parameters<DevEvalArgs>,
+    ) -> Result<CallToolResult, McpError> {
+        let timeout_ms = args.timeout_ms.unwrap_or(5_000);
+        match dev_eval_raw(&args.script, timeout_ms).await {
+            Ok(v) => Ok(json_result(v)),
+            Err(e) => Err(err(e.to_string())),
+        }
+    }
+
+    #[tool(description = "v2.3 dev-bridge: click the first DOM element matching `selector`. Returns { matched: bool, selector }. Args: { selector }.")]
+    pub async fn solomd_dev_click(
+        &self,
+        Parameters(args): Parameters<DevSelectorArgs>,
+    ) -> Result<CallToolResult, McpError> {
+        let sel = js_string(&args.selector);
+        let script = format!(
+            "const el = document.querySelector({sel}); \
+             if (!el) return {{ matched: false, selector: {sel} }}; \
+             el.click(); \
+             return {{ matched: true, selector: {sel}, tag: el.tagName.toLowerCase() }};"
+        );
+        match dev_eval_raw(&script, 3_000).await {
+            Ok(v) => Ok(json_result(v)),
+            Err(e) => Err(err(e.to_string())),
+        }
+    }
+
+    #[tool(description = "v2.3 dev-bridge: read the textContent of one or all DOM elements matching `selector`. With `all: true` returns an array; default returns the first match (or null). Args: { selector, all? }.")]
+    pub async fn solomd_dev_text(
+        &self,
+        Parameters(args): Parameters<DevTextArgs>,
+    ) -> Result<CallToolResult, McpError> {
+        let sel = js_string(&args.selector);
+        let all = args.all.unwrap_or(false);
+        let script = if all {
+            format!(
+                "return Array.from(document.querySelectorAll({sel})).map(e => (e.textContent || '').trim());"
+            )
+        } else {
+            format!(
+                "const el = document.querySelector({sel}); \
+                 return el ? (el.textContent || '').trim() : null;"
+            )
+        };
+        match dev_eval_raw(&script, 3_000).await {
+            Ok(v) => Ok(json_result(v)),
+            Err(e) => Err(err(e.to_string())),
+        }
+    }
+
+    #[tool(description = "v2.3 dev-bridge: dispatch a DOM event on the first matching element. Use this for keyboard input, custom events, etc. that `.click()` can't synthesise. `init` is the EventInit dict (e.g. `{ key: 'Enter', bubbles: true }`). Args: { selector, event, init? }.")]
+    pub async fn solomd_dev_dispatch(
+        &self,
+        Parameters(args): Parameters<DevDispatchArgs>,
+    ) -> Result<CallToolResult, McpError> {
+        let sel = js_string(&args.selector);
+        let event = js_string(&args.event);
+        let init_json = match args.init {
+            Some(v) => serde_json::to_string(&v).unwrap_or_else(|_| "{}".into()),
+            None => "{}".into(),
+        };
+        // Pick the right Event constructor for common types — KeyboardEvent
+        // for keydown/up/press, MouseEvent for click/down/up/move, custom
+        // string falls back to CustomEvent.
+        let script = format!(
+            "const el = document.querySelector({sel}); \
+             if (!el) return {{ matched: false }}; \
+             const evt_type = {event}; \
+             const init = Object.assign({{ bubbles: true, cancelable: true }}, ({init_json})); \
+             let ev; \
+             if (/^key/i.test(evt_type)) ev = new KeyboardEvent(evt_type, init); \
+             else if (/^(mouse|click|dbl|context)/i.test(evt_type)) ev = new MouseEvent(evt_type, init); \
+             else if (/^(input|change|focus|blur|select)/i.test(evt_type)) ev = new Event(evt_type, init); \
+             else ev = new CustomEvent(evt_type, {{ ...init, detail: init.detail }}); \
+             const default_prevented = !el.dispatchEvent(ev); \
+             return {{ matched: true, selector: {sel}, event: evt_type, default_prevented }};"
+        );
+        match dev_eval_raw(&script, 3_000).await {
+            Ok(v) => Ok(json_result(v)),
+            Err(e) => Err(err(e.to_string())),
+        }
+    }
+
+    #[tool(description = "v2.3 dev-bridge: report `location.href` of the SoloMD WebView. Use this to confirm the app is on the right route after navigation.")]
+    pub async fn solomd_dev_url(
+        &self,
+        Parameters(_args): Parameters<EmptyArgs>,
+    ) -> Result<CallToolResult, McpError> {
+        let script = expr_script("location.href");
+        match dev_eval_raw(&script, 3_000).await {
+            Ok(v) => Ok(json_result(v)),
+            Err(e) => Err(err(e.to_string())),
+        }
+    }
+
+    #[tool(description = "v2.3 dev-bridge: poll until `selector` matches at least one element, or the timeout fires. Returns { matched, elapsed_ms } on success, errors on timeout. Args: { selector, timeout_ms? } (default 5000ms, polled at 100ms).")]
+    pub async fn solomd_dev_wait_for(
+        &self,
+        Parameters(args): Parameters<DevWaitForArgs>,
+    ) -> Result<CallToolResult, McpError> {
+        let sel = js_string(&args.selector);
+        let total = args.timeout_ms.unwrap_or(5_000);
+        // Run the polling loop *inside* the WebView — one bridge call only.
+        // We give the bridge call a buffer over the JS timeout so the
+        // outer `timeout_ms` actually governs the wait.
+        let script = format!(
+            "const start = Date.now(); \
+             const total = {total}; \
+             const sel = {sel}; \
+             while (Date.now() - start < total) {{ \
+               if (document.querySelector(sel)) {{ \
+                 return {{ matched: true, elapsed_ms: Date.now() - start, selector: sel }}; \
+               }} \
+               await new Promise(r => setTimeout(r, 100)); \
+             }} \
+             throw new Error('wait_for timeout: ' + sel + ' (waited ' + total + 'ms)');"
+        );
+        match dev_eval_raw(&script, total + 1_000).await {
+            Ok(v) => Ok(json_result(v)),
+            Err(e) => Err(err(e.to_string())),
+        }
+    }
 }
 
 #[tool_handler]
@@ -1206,7 +1513,8 @@ impl ServerHandler for DevServer {
                  solomd_rag_status/solomd_rag_reindex/solomd_rag_search, \
                  solomd_read_file/solomd_write_file, \
                  solomd_get_editor_decorations (v2.3 live-edit self-test), \
-                 solomd_screenshot, solomd_app_status. \
+                 solomd_screenshot, solomd_app_status, \
+                 solomd_dev_eval/click/text/dispatch/url/wait_for (v2.3 live UI bridge — needs `pnpm tauri dev`). \
                  Settings/workspace/tabs writes require SoloMD be closed.",
             )
     }

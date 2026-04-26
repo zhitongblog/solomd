@@ -46,7 +46,15 @@ walkdir = "2.5.0"
 # aptabase/tauri-plugin-aptabase#16). We explicitly enter a tokio
 # runtime in main() before calling tauri::Builder::run().
 tauri-plugin-aptabase = "1.0.0"
-tokio = { version = "1", features = ["rt-multi-thread"] }
+# tokio: rt-multi-thread is needed by aptabase + tauri::async_runtime.
+# net/io-util/sync/time/macros are debug-only deps for the dev-bridge
+# WebDriver localhost server (gated by `#[cfg(debug_assertions)]`). Cargo
+# doesn't have a stable target spec for "debug only", so we just enable
+# the features unconditionally — they're tokio's lightweight modules and
+# don't add measurable bytes to the release binary, while letting us keep
+# the bridge code in a single conditional module rather than juggling a
+# whole separate crate.
+tokio = { version = "1", features = ["rt-multi-thread", "net", "io-util", "sync", "time", "macros"] }
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-window-state = "2"
