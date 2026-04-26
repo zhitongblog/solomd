@@ -65,19 +65,22 @@ We do **not** ship features piecemeal. Every minor version lands with: bilingual
 
 ---
 
-## v2.4 — "Capture from anywhere" · target: 2 months after v2.3
+## v2.4 — "Bridge to anywhere" · target: ASAP after v2.3 (single-day rollouts authorized)
 
-**Theme:** SoloMD becomes the destination for stuff users encounter on the web, in chat, on mobile.
+**Theme:** SoloMD becomes interoperable with everything else the user already has — a vault that talks to other tools, both inbound (web pages, iOS, scripts) and outbound (Claude Desktop, Cursor, terminal). Originally scoped as "Capture from anywhere"; rebadged 2026-04-26 once we realized CLI / MCP first-class shipping is the same arc as inbound capture — they're all *bridges* across SoloMD's boundary.
 
 | Feature | Why | Effort |
 |---|---|---|
+| **CLI first-class** — `solomd` CLI surfaced in Settings → Integrations panel with status check + reinstall button + copy-to-clipboard install command | Today the CLI is curl-bash only; users don't know it exists | S (1 day) |
+| **MCP server bundled in the desktop app** — `solomd-mcp` as Tauri sidecar (`/Applications/SoloMD.app/Contents/MacOS/solomd-mcp` etc.), Settings → Integrations shows path + ready-to-paste Claude Desktop config | `install-mcp.sh` 404s today because CI doesn't produce tarballs; bundling solves both UX + distribution at once | M (3 days) |
+| **CI publishes solomd-mcp tarballs** — `solomd-mcp-<platform>-<arch>.tar.gz` per release, so `install-mcp.sh` actually works | Standalone install path for users who don't want the desktop app | S (1 day) |
+| **HTTP capture endpoint** in the desktop app — `POST localhost:7777/capture` with markdown body, returns the new note's path. Webhooks-ready. Token auth, 127.0.0.1 only — same security posture as the dev-bridge but release-grade. | Lets `curl` / shortcuts / iOS shortcuts / shell scripts capture | S (3 days) |
+| **Inbox workflow** (Tolaria-inspired) — `inbox: true` YAML field, `Cmd+E` marks organized, sidebar inbox count badge | Structured triage without forcing folders; pairs with capture endpoint | S (2 days) |
 | **Browser web clipper** (Chrome + Firefox WebExtension) — sends selected text or whole page → local Tauri HTTP endpoint → new note in inbox | Joplin / Obsidian / Notesnook all have it; lowest-effort capture-loop closure | M (5 days) |
-| **Inbox workflow** (Tolaria-inspired) — `inbox: true` YAML field, `Cmd+E` marks organized, sidebar inbox count badge | Structured triage without forcing folders | S (2 days) |
-| **HTTP capture endpoint** in the desktop app — `POST localhost:7777/capture` with markdown body, returns the new note's path. Webhooks-ready. | Lets `curl` / shortcuts / iOS shortcuts / shell scripts capture | S (3 days) |
-| **iOS Shortcuts integration** for iPad app — "Append to today's daily note" / "New quick capture" actions | iPad story gets stronger | M (4 days) |
-| **Public reading mode** — single-doc preview without editor chrome, for screen-share / class-reading | Tiny but high-impact for teachers | S (1 day) |
+| **iOS Shortcuts integration** for iPad app — "Append to today's daily note" / "New quick capture" actions, hits the same capture endpoint | iPad story gets stronger | M (4 days) |
+| **Public reading mode** — single-doc preview without editor chrome, for screen-share / class-reading | Tiny but high-impact for teachers; can split off as v2.5 if v2.4 inflates | S (1 day) |
 
-**Total:** ~3 weeks. **Risk:** low — all standard patterns. **Success metric:** count of users with `aiEnabled = false` who use web clipper (proves capture works for non-AI users).
+**Total:** ~4 weeks if done sequentially; sub-day if multiple worktree agents run in parallel (the CLI/MCP + capture-endpoint + clipper layers are mostly independent files). **Risk:** low — all standard patterns. **Success metric:** count of users with `aiEnabled = false` who use web clipper (proves capture works for non-AI users).
 
 ---
 
@@ -165,6 +168,7 @@ We do **not** ship features piecemeal. Every minor version lands with: bilingual
 - **2026-04-25** — Moraya identified as direct architectural twin (Tauri 2 + Rust + MCP + keychain) via GitHub sweep. v2.2 narrative shifts from "MCP launch" to "MCP+AutoGit+iPad combination."
 - **2026-04-25** — Local RAG promoted to v2.3 hero feature. Largest field-wide gap.
 - **2026-04-25** — v3.0 scoped as "sync optional, paid tier candidate." Decision deferred until v2.5 ships.
+- **2026-04-26** — v2.4 retitled from "Capture from anywhere" to "Bridge to anywhere"; added CLI / MCP first-class as the outbound half of the same arc. Same week as v2.3 release; user-authorized "连发多个版本" cadence.
 
 ---
 
