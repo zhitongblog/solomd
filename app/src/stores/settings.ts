@@ -92,6 +92,15 @@ interface Settings {
   // Persisted so Esc / the close-button restores their previous workspace
   // even across reloads. Never set to 'reading' — sentinel only.
   lastNonReadingViewMode: ViewMode;
+  // v2.5: writing stats — show the per-doc word/char goal pill in the
+  // status bar. Off-by-default-ish: the pill stays inert unless the doc's
+  // YAML front matter sets a `goal:` key, so this toggle is a hard kill
+  // switch for the whole feature rather than a daily-use opt-in.
+  showWritingStats: boolean;
+  // v2.5: optional "Today: 1,200 words across 3 docs" bauble in the bottom
+  // right of the status bar. Stretch goal — defaults off because most users
+  // care about per-doc progress, not workspace-wide.
+  showWorkspaceDailyTotal: boolean;
 }
 
 function defaults(): Settings {
@@ -154,6 +163,8 @@ function defaults(): Settings {
       }
     })(),
     lastNonReadingViewMode: 'edit',
+    showWritingStats: true,
+    showWorkspaceDailyTotal: false,
   };
 }
 
@@ -381,6 +392,14 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleRagEnabled() {
       this.ragEnabled = !this.ragEnabled;
+      this.persist();
+    },
+    toggleWritingStats() {
+      this.showWritingStats = !this.showWritingStats;
+      this.persist();
+    },
+    toggleWorkspaceDailyTotal() {
+      this.showWorkspaceDailyTotal = !this.showWorkspaceDailyTotal;
       this.persist();
     },
   },

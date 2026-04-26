@@ -415,6 +415,26 @@ export const zh: I18n = {
     readingByDefaultOnMobileHint:
       '开启后，iPad 和 iPhone 切换标签时会自动进入阅读模式。按 ⌘⇧R 或点右上角 ✕ 即可返回编辑。',
   },
+  writingStats: {
+    settingsHeading: '写作统计',
+    showInStatusBar: '在状态栏显示写作进度',
+    showWorkspaceDailyTotal: '显示今日工作区总字数',
+    frontMatterHint:
+      '在文档的 YAML 前置元数据中写 `goal: <数字>` 即可追踪进度。`goal_unit:` 可选 `words`（默认）、`chars` 或 `cjk`。',
+    pillTooltip: '点击查看本次会话详情和连续天数',
+    popoverTitle: '本次写作',
+    deltaSinceOpen: '自打开以来',
+    deltaSinceSave: '自上次保存以来',
+    streak: '连续天数',
+    streakValue: '{n} 天',
+    todayWorkspace: '今天',
+    todayWorkspaceValue: '今天：{n} 词 · 共 {docs} 篇',
+    todayTooltip: '本工作区今天累计的新增词数',
+    resetSession: '重置本次会话',
+    unitWords: '词',
+    unitChars: '字符',
+    unitCjk: '字',
+  },
   bases: {
     title: '属性表',
     back: '返回编辑器',

@@ -285,6 +285,32 @@ const fontFamilySelectValue = computed(() =>
 
         <section>
           <h3 style="font-size: 13px; font-weight: 600; color: var(--text); margin: 18px 0 6px;">
+            {{ t('writingStats.settingsHeading') }}
+          </h3>
+          <label>
+            <input
+              type="checkbox"
+              :checked="settings.showWritingStats"
+              @change="settings.toggleWritingStats()"
+            />
+            {{ t('writingStats.showInStatusBar') }}
+          </label>
+          <label style="margin-top: 6px;">
+            <input
+              type="checkbox"
+              :checked="settings.showWorkspaceDailyTotal"
+              @change="settings.toggleWorkspaceDailyTotal()"
+              :disabled="!settings.showWritingStats"
+            />
+            {{ t('writingStats.showWorkspaceDailyTotal') }}
+          </label>
+          <p style="font-size: 11px; color: var(--text-faint); margin: 4px 0 0; line-height: 1.5;">
+            {{ t('writingStats.frontMatterHint') }}
+          </p>
+        </section>
+
+        <section>
+          <h3 style="font-size: 13px; font-weight: 600; color: var(--text); margin: 18px 0 6px;">
             {{ t('settings.versionHistoryHeading') }}
           </h3>
           <label>

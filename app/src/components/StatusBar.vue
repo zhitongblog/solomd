@@ -1,12 +1,17 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useTabsStore } from '../stores/tabs';
+import { useSettingsStore } from '../stores/settings';
+import { useWritingSessionStore } from '../stores/writingSession';
 import { cjkWordCount } from '../lib/chinese';
 import { useInbox } from '../composables/useInbox';
 import { useI18n } from '../i18n';
+import WritingGoals from './WritingGoals.vue';
 
 const props = defineProps<{ line: number; col: number }>();
 const tabs = useTabsStore();
+const settings = useSettingsStore();
+const writingSession = useWritingSessionStore();
 const inbox = useInbox();
 const { t } = useI18n();
 
@@ -24,6 +29,13 @@ const lineCount = computed(() => {
 });
 const lang = computed(() => (tabs.activeTab?.language === 'markdown' ? 'Markdown' : 'Plain Text'));
 const enc = computed(() => tabs.activeTab?.encoding ?? 'UTF-8');
+
+const showTodayTotal = computed(
+  () =>
+    settings.showWritingStats &&
+    settings.showWorkspaceDailyTotal &&
+    writingSession.todayDocCount > 0,
+);
 
 function onPillClick() {
   // Click toggles off — same affordance as ⌘E.
@@ -43,7 +55,20 @@ function onPillClick() {
     </span>
     <span class="sep">·</span>
     <span class="seg">{{ charCount }} chars</span>
+    <WritingGoals v-if="settings.showWritingStats" />
     <span class="spacer"></span>
+    <span
+      v-if="showTodayTotal"
+      class="seg seg--today"
+      :title="t('writingStats.todayTooltip')"
+    >
+      {{
+        t('writingStats.todayWorkspaceValue', {
+          n: writingSession.todayTotal.toLocaleString(),
+          docs: String(writingSession.todayDocCount),
+        })
+      }}
+    </span>
     <button
       v-if="inbox.activeIsInbox.value"
       class="seg seg--inbox"
@@ -89,5 +114,9 @@ function onPillClick() {
 }
 .seg--inbox:hover {
   filter: brightness(1.1);
+}
+.seg--today {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
 }
 </style>

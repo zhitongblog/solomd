@@ -419,6 +419,26 @@ export const en = {
     readingByDefaultOnMobileHint:
       'iPad and iPhone tabs auto-snap to reading mode when on. Press ⌘⇧R or tap the ✕ button to switch back to editing.',
   },
+  writingStats: {
+    settingsHeading: 'Writing stats',
+    showInStatusBar: 'Show writing stats in status bar',
+    showWorkspaceDailyTotal: 'Show today total across docs',
+    frontMatterHint:
+      'Set `goal: <N>` in a doc\'s YAML front matter to track progress. Optional `goal_unit:` accepts `words` (default), `chars`, or `cjk`.',
+    pillTooltip: 'Click for session details + streak',
+    popoverTitle: 'Writing session',
+    deltaSinceOpen: 'Since opened',
+    deltaSinceSave: 'Since last save',
+    streak: 'Streak',
+    streakValue: '{n} days',
+    todayWorkspace: 'Today',
+    todayWorkspaceValue: 'Today: {n} words across {docs} docs',
+    todayTooltip: 'Total new words today across all docs in this workspace',
+    resetSession: 'Reset session counter',
+    unitWords: 'words',
+    unitChars: 'chars',
+    unitCjk: '字',
+  },
   bases: {
     title: 'Properties',
     back: 'Back to editor',
