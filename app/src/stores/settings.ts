@@ -29,6 +29,7 @@ interface Settings {
   wordWrap: boolean;
   showLineNumbers: boolean;
   showOutline: boolean;
+  outlineSide: 'left' | 'right';
   showFileTree: boolean;
   livePreview: boolean;
   // Editor super features
@@ -107,6 +108,7 @@ function defaults(): Settings {
     wordWrap: true,
     showLineNumbers: true,
     showOutline: false,
+    outlineSide: 'right',
     showFileTree: false,
     livePreview: true,
     spellCheck: true,
@@ -245,6 +247,10 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleOutline() {
       this.showOutline = !this.showOutline;
+      this.persist();
+    },
+    setOutlineSide(side: 'left' | 'right') {
+      this.outlineSide = side;
       this.persist();
     },
     toggleFileTree() {

@@ -571,6 +571,15 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
       <TelemetryBanner />
       <div class="workspace">
         <FileTree v-if="settings.showFileTree" />
+        <aside
+          v-if="showRightSidebar && settings.outlineSide === 'left'"
+          class="side-sidebar side-sidebar--left"
+        >
+          <Outline v-if="showOutlinePane" :cursor-line="cursorLine" @goto="onOutlineGoto" />
+          <BacklinksPanel v-if="showBacklinksPane" />
+          <TagsPanel v-if="showTagsPane" />
+          <HistoryPanel v-if="showHistoryPane" />
+        </aside>
         <div class="content">
           <button
             v-if="tabs.activeTab?.language === 'markdown' && !showOutlinePane"
@@ -586,7 +595,10 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
           <BasesView v-if="basesOpen" />
           <TileRoot v-else :node="tiles.root" @cursor="onCursor" />
         </div>
-        <aside v-if="showRightSidebar" class="right-sidebar">
+        <aside
+          v-if="showRightSidebar && settings.outlineSide !== 'left'"
+          class="side-sidebar side-sidebar--right"
+        >
           <Outline v-if="showOutlinePane" :cursor-line="cursorLine" @goto="onOutlineGoto" />
           <BacklinksPanel v-if="showBacklinksPane" />
           <TagsPanel v-if="showTagsPane" />
@@ -645,30 +657,37 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
   min-height: 0;
   overflow: hidden;
 }
-.right-sidebar {
+.side-sidebar {
   display: flex;
   flex-direction: column;
   width: 260px;
   flex: 0 0 260px;
   min-width: 0;
-  border-left: 1px solid var(--border);
   background: var(--bg-soft, var(--bg));
 }
-.right-sidebar > :deep(*) {
+.side-sidebar--left {
+  border-right: 1px solid var(--border);
+}
+.side-sidebar--right {
+  border-left: 1px solid var(--border);
+}
+.side-sidebar > :deep(*) {
   flex: 1 1 0;
   min-height: 0;
   width: 100%;
   /* Reset Outline's own width since it now lives in a sized container. */
 }
-.right-sidebar > :deep(.outline) {
+.side-sidebar > :deep(.outline) {
   width: 100% !important;
   border-left: 0;
+  border-right: 0;
 }
-.right-sidebar > :deep(.backlinks) {
+.side-sidebar > :deep(.backlinks) {
   border-top: 1px solid var(--border);
   border-left: 0;
+  border-right: 0;
 }
-.right-sidebar > :deep(*:first-child:nth-last-child(1)) {
+.side-sidebar > :deep(*:first-child:nth-last-child(1)) {
   /* When only one panel is shown, ensure no top-border leak */
   border-top: 0;
 }
