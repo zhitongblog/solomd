@@ -674,6 +674,28 @@ export const zh: I18n = {
     pushAfterResolve: '推送解决结果',
     conflictResolvedToast: '已解决 {file}。',
     conflictResolveFailed: '解决失败',
+
+    // v2.6.3
+    providerTitle: '托管平台',
+    customProvider: '自定义 HTTPS Git 地址',
+    nonGithubHint:
+      '自动建仓 + 仓库选择器只支持 GitHub。GitLab / Gitea / 自建 Git 服务请直接粘贴 clone 链接 —— 推拉用 libgit2 + 你的 token，不依赖平台特定 API。',
+    enableE2ee: '推送前端到端加密',
+    e2eeHint:
+      '本机用你设置的口令加密笔记，只有密文会推到远端。本地搜索 / RAG / AI 重写仍然正常工作。远端永远只看到密文。',
+    pasteUrlTitle: '粘贴 clone 链接',
+    e2eeSection: '加密口令',
+    e2eePromptHint:
+      '在另一台设备上用过的口令，原样输一遍。盐值会从加密仓库同步过来，所以同一口令在任何设备都派生出同一把钥匙。',
+    passphrasePlaceholder: '库口令',
+    passphraseSaveBtn: '保存口令',
+    passphraseSaving: '保存中…',
+    passphraseSavedToast: '口令已保存。',
+    passphraseFailed: '口令未被接受',
+    decryptBtn: '立即解密',
+    decrypting: '解密中…',
+    decryptedToast: '已把密文解密到工作区。',
+    decryptFailed: '解密失败',
   },
   themes: {
     title: '主题市场',

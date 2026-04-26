@@ -48,6 +48,8 @@ export interface SyncStatus {
   remote_url: string;
   auto_push: boolean;
   auto_pull_minutes: number;
+  encrypted: boolean;
+  provider: string;
   ahead: number;
   behind: number;
   dirty: boolean;
@@ -55,6 +57,11 @@ export interface SyncStatus {
   conflicts: string[];
   last_push_at: number | null;
   last_pull_at: number | null;
+}
+
+export interface CryptoStatus {
+  enabled: boolean;
+  has_key: boolean;
 }
 
 export interface PullResult {
@@ -153,12 +160,34 @@ export const useGithubSyncStore = defineStore('githubSync', {
       return repo;
     },
 
-    async link(folder: string, remoteUrl: string): Promise<void> {
+    async link(
+      folder: string,
+      remoteUrl: string,
+      opts: { encrypted?: boolean; provider?: string } = {},
+    ): Promise<void> {
       await invoke<SyncConfig>('github_link_workspace', {
         folder,
         remoteUrl,
+        encrypted: opts.encrypted ?? false,
+        provider: opts.provider ?? 'github',
       });
       await this.refreshStatus(folder);
+    },
+
+    async cryptoStatus(folder: string): Promise<CryptoStatus> {
+      return await invoke<CryptoStatus>('crypto_status', { folder });
+    },
+
+    async setPassphrase(folder: string, passphrase: string): Promise<void> {
+      await invoke('crypto_set_passphrase', { folder, passphrase });
+    },
+
+    async clearPassphrase(folder: string): Promise<void> {
+      await invoke('crypto_clear_passphrase', { folder });
+    },
+
+    async decryptNow(folder: string): Promise<void> {
+      await invoke('crypto_decrypt_after_pull', { folder });
     },
 
     async setConfig(

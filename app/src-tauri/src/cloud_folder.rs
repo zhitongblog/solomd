@@ -279,6 +279,7 @@ pub fn session_list_others(folder: String, our_device_id: String) -> Result<Vec<
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::SystemTime;
 
     #[test]
     fn icloud_path_detected() {

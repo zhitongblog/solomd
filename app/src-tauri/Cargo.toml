@@ -102,6 +102,13 @@ async-stream = "0.3"           # streaming responses to the frontend
 # library — same invariant as `git2` above.
 rusqlite = { version = "0.32", features = ["bundled", "blob"] }
 
+# v2.6.3 E2EE: passphrase-derived key (Argon2id) + AEAD (XChaCha20-Poly1305).
+# Pure-Rust, RustCrypto project. We never send the passphrase or the key
+# anywhere; only ciphertext touches the network.
+argon2 = "0.5"
+chacha20poly1305 = "0.10"
+rand = "0.8"
+
 # Platform-specific deps for "Set as default editor" feature.
 [target.'cfg(target_os = "macos")'.dependencies]
 core-foundation = "0.10"

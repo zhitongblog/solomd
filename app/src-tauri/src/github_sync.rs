@@ -211,6 +211,34 @@ pub struct SyncConfig {
     /// Unix epoch seconds.
     pub last_push_at: Option<i64>,
     pub last_pull_at: Option<i64>,
+    /// v2.6.3 — when true, push/pull operate on `<workspace>/.solomd-encrypted/`
+    /// instead of the workspace itself, and we run encrypt-before-push +
+    /// decrypt-after-pull around every sync. Old configs without this
+    /// field deserialize to `false`, preserving v2.6.0/v2.6.1 behavior.
+    #[serde(default)]
+    pub encrypted: bool,
+    /// v2.6.3 — provider hint stored for the UI ("github" / "gitlab" /
+    /// "gitea" / "custom"). Doesn't change push/pull behaviour;
+    /// libgit2 + PAT credentials work uniformly across providers.
+    #[serde(default = "default_provider")]
+    pub provider: String,
+}
+
+fn default_provider() -> String {
+    "github".into()
+}
+
+const ENCRYPTED_SHADOW: &str = ".solomd-encrypted";
+
+/// Resolve the directory the git repo actually lives in. With E2EE on
+/// that's the encrypted shadow; otherwise it's the workspace itself.
+fn git_dir(workspace: &Path) -> PathBuf {
+    let cfg = load_config(workspace).ok().flatten().unwrap_or_default();
+    if cfg.encrypted {
+        workspace.join(ENCRYPTED_SHADOW)
+    } else {
+        workspace.to_path_buf()
+    }
 }
 
 fn config_path(workspace: &Path) -> PathBuf {
@@ -268,15 +296,30 @@ fn open_or_init_repo(workspace: &Path) -> Result<Repository, String> {
 }
 
 #[tauri::command]
-pub async fn github_link_workspace(folder: String, remote_url: String) -> Result<SyncConfig, String> {
+pub async fn github_link_workspace(
+    folder: String,
+    remote_url: String,
+    encrypted: Option<bool>,
+    provider: Option<String>,
+) -> Result<SyncConfig, String> {
     if folder.is_empty() || remote_url.is_empty() {
         return Err("folder and remote_url are required".into());
     }
+    let encrypted = encrypted.unwrap_or(false);
+    let provider = provider.unwrap_or_else(default_provider);
     tauri::async_runtime::spawn_blocking(move || -> Result<SyncConfig, String> {
         let path = PathBuf::from(&folder);
-        let repo = open_or_init_repo(&path)?;
-        // Replace existing `origin` remote — re-linking should never error
-        // out because of a stale remote.
+        // The git repo lives in the shadow when E2EE is on, otherwise in
+        // the workspace itself. The init also creates the shadow dir on
+        // demand so the first push has somewhere to mirror into.
+        let repo_dir = if encrypted {
+            let s = path.join(ENCRYPTED_SHADOW);
+            fs::create_dir_all(&s).map_err(|e| e.to_string())?;
+            s
+        } else {
+            path.clone()
+        };
+        let repo = open_or_init_repo(&repo_dir)?;
         if repo.find_remote("origin").is_ok() {
             repo.remote_delete("origin").map_err(|e| e.to_string())?;
         }
@@ -288,10 +331,15 @@ pub async fn github_link_workspace(folder: String, remote_url: String) -> Result
             auto_pull_minutes: 5,
             last_push_at: None,
             last_pull_at: None,
+            encrypted,
+            provider,
         };
         save_config(&path, &cfg)?;
-        // Without this, `.solomd/sync.json` would be committed and every
-        // device's slightly-different copy would conflict on pull.
+        // .solomd/ holds per-device state — never committed.
+        // .solomd-encrypted/ is the shadow git repo when E2EE is on —
+        // never committed into the workspace's own (optional AutoGit)
+        // history, otherwise a local AutoGit pass would scoop up the
+        // ciphertext mirror as duplicate noise.
         ensure_gitignore_excludes_solomd(&path)?;
         Ok(cfg)
     })
@@ -326,7 +374,8 @@ pub async fn github_set_config(
 pub async fn github_unlink_workspace(folder: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
         let path = PathBuf::from(&folder);
-        if let Ok(repo) = Repository::open(&path) {
+        let repo_dir = git_dir(&path);
+        if let Ok(repo) = Repository::open(&repo_dir) {
             let _ = repo.remote_delete("origin");
         }
         let cfg_path = config_path(&path);
@@ -349,6 +398,8 @@ pub struct SyncStatus {
     pub remote_url: String,
     pub auto_push: bool,
     pub auto_pull_minutes: u32,
+    pub encrypted: bool,
+    pub provider: String,
     pub ahead: usize,
     pub behind: usize,
     pub dirty: bool,
@@ -368,6 +419,8 @@ pub async fn github_sync_status(folder: String) -> Result<SyncStatus, String> {
             remote_url: cfg.remote_url.clone(),
             auto_push: cfg.auto_push,
             auto_pull_minutes: cfg.auto_pull_minutes,
+            encrypted: cfg.encrypted,
+            provider: cfg.provider.clone(),
             last_push_at: cfg.last_push_at,
             last_pull_at: cfg.last_pull_at,
             ..Default::default()
@@ -375,7 +428,8 @@ pub async fn github_sync_status(folder: String) -> Result<SyncStatus, String> {
         if !status.linked {
             return Ok(status);
         }
-        let repo = match Repository::open(&path) {
+        let repo_dir = git_dir(&path);
+        let repo = match Repository::open(&repo_dir) {
             Ok(r) => r,
             // Repo was deleted but config remained — degrade gracefully
             // rather than 500-ing the entire UI.
@@ -448,11 +502,47 @@ fn now_secs() -> i64 {
         .unwrap_or(0)
 }
 
+/// In a repo, stage every change in the working tree and commit. No-op
+/// if there's nothing to commit. Used by E2EE push/pull to keep the
+/// shadow's git history advancing as the user edits the workspace.
+fn commit_shadow_if_dirty(repo_dir: &Path, message: &str) -> Result<(), String> {
+    let repo = Repository::open(repo_dir).map_err(|e| e.to_string())?;
+    let mut index = repo.index().map_err(|e| e.to_string())?;
+    index
+        .add_all(["."].iter(), git2::IndexAddOption::DEFAULT, None)
+        .map_err(|e| e.to_string())?;
+    index.write().map_err(|e| e.to_string())?;
+    let tree_oid = index.write_tree().map_err(|e| e.to_string())?;
+    let tree = repo.find_tree(tree_oid).map_err(|e| e.to_string())?;
+
+    let parent_commit = repo.head().ok().and_then(|h| h.peel_to_commit().ok());
+    if let Some(ref p) = parent_commit {
+        if p.tree_id() == tree_oid {
+            return Ok(()); // nothing to do
+        }
+    }
+    let sig = signature(&repo)?;
+    let parents: Vec<&git2::Commit> = parent_commit.iter().collect();
+    repo.commit(Some("HEAD"), &sig, &sig, message, &tree, &parents)
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 /// Sync core for push — exposed so integration tests can drive it
 /// against a `file://` remote without touching the OS keychain.
+///
+/// When E2EE is enabled, this runs `crypto_encrypt_for_push` first so
+/// the shadow dir holds fresh ciphertext, then commits and pushes from
+/// the shadow's git repo. Plaintext never reaches the remote.
 pub fn github_push_inner(folder: String, token: String) -> Result<(), String> {
     let path = PathBuf::from(&folder);
-    let repo = Repository::open(&path).map_err(|e| e.to_string())?;
+    let cfg = load_config(&path).ok().flatten().unwrap_or_default();
+    let repo_dir = git_dir(&path);
+    if cfg.encrypted {
+        super::crypto::crypto_encrypt_for_push(folder.clone())?;
+        commit_shadow_if_dirty(&repo_dir, "encrypted: workspace state at push")?;
+    }
+    let repo = Repository::open(&repo_dir).map_err(|e| e.to_string())?;
     let mut origin = repo.find_remote("origin").map_err(|e| e.to_string())?;
 
     // Push the current HEAD branch's local ref to the same ref name on
@@ -494,8 +584,25 @@ pub struct PullResult {
 }
 
 /// Sync core for pull — exposed for integration tests.
+///
+/// When E2EE is enabled, this fetches/merges into the shadow dir as
+/// usual and then runs `crypto_decrypt_after_pull` so the user's
+/// plaintext working tree picks up remote edits.
 pub fn github_pull_inner(folder: String, token: String) -> Result<PullResult, String> {
-    let path = PathBuf::from(&folder);
+    let workspace = PathBuf::from(&folder);
+    let cfg = load_config(&workspace).ok().flatten().unwrap_or_default();
+    let path = git_dir(&workspace);
+    if cfg.encrypted {
+        // First-pull bootstrap: when the user has linked an encrypted
+        // remote but not yet entered the passphrase on this device,
+        // skip the encrypt-then-commit step. The fetch+merge can still
+        // happen — that's how the device learns the salt + ciphertext.
+        // Decrypt is also skipped (see finalize_decrypt); the user
+        // sets the passphrase, then we decrypt explicitly.
+        if super::crypto::crypto_encrypt_for_push(folder.clone()).is_ok() {
+            commit_shadow_if_dirty(&path, "encrypted: workspace state at pull")?;
+        }
+    }
         let repo = Repository::open(&path).map_err(|e| e.to_string())?;
         let head = repo.head().map_err(|e| e.to_string())?;
         let branch_name = head
@@ -526,7 +633,10 @@ pub fn github_pull_inner(folder: String, token: String) -> Result<PullResult, St
             .map_err(|e| e.to_string())?;
 
         if analysis.0.is_up_to_date() {
-            stamp_pull(&path);
+            stamp_pull(&workspace);
+            // No remote changes to decrypt back, but if E2EE is on and the
+            // workspace had local edits we just committed in the shadow,
+            // they're already in the shadow — no action needed.
             return Ok(PullResult {
                 kind: "up_to_date".into(),
                 conflicts: vec![],
@@ -546,7 +656,8 @@ pub fn github_pull_inner(folder: String, token: String) -> Result<PullResult, St
                 .map_err(|e| e.to_string())?;
             repo.checkout_head(Some(git2::build::CheckoutBuilder::new().force()))
                 .map_err(|e| e.to_string())?;
-            stamp_pull(&path);
+            stamp_pull(&workspace);
+            finalize_decrypt(&cfg, &workspace)?;
             return Ok(PullResult {
                 kind: "fast_forward".into(),
                 conflicts: vec![],
@@ -603,11 +714,31 @@ pub fn github_pull_inner(folder: String, token: String) -> Result<PullResult, St
         )
         .map_err(|e| e.to_string())?;
     repo.cleanup_state().map_err(|e| e.to_string())?;
-    stamp_pull(&path);
+    stamp_pull(&workspace);
+    finalize_decrypt(&cfg, &workspace)?;
     Ok(PullResult {
         kind: "merged".into(),
         conflicts: vec![],
     })
+}
+
+/// On every clean (non-conflicting) pull, mirror the freshly-fetched
+/// shadow back to plaintext if E2EE is on. No-op for non-encrypted
+/// vaults. Conflict path skips this — the user resolves on the shadow
+/// side first.
+fn finalize_decrypt(cfg: &SyncConfig, workspace: &Path) -> Result<(), String> {
+    if !cfg.encrypted {
+        return Ok(());
+    }
+    // Bootstrap-tolerant: if the key isn't in the keyring yet (a
+    // brand-new device that just pulled), don't fail the pull —
+    // surface a soft-OK and let the frontend prompt for passphrase
+    // post-pull, then call crypto_decrypt_after_pull explicitly.
+    match super::crypto::crypto_decrypt_after_pull(workspace.to_string_lossy().into_owned()) {
+        Ok(()) => Ok(()),
+        Err(e) if e.contains("key missing") || e.contains("not enabled") => Ok(()),
+        Err(e) => Err(e),
+    }
 }
 
 #[tauri::command]

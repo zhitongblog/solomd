@@ -45,6 +45,10 @@ mod github_sync;
 #[path = "cloud_folder.rs"]
 mod cloud_folder;
 
+// v2.6.3 workspace-level E2EE.
+#[path = "crypto.rs"]
+mod crypto;
+
 // v2.3 dev WebDriver bridge — debug builds only. Module file itself is
 // `#[cfg(debug_assertions)]`-gated, so this `mod` line is too.
 #[cfg(debug_assertions)]
@@ -460,6 +464,11 @@ pub fn run_with(initial_file: Option<String>) {
             cloud_folder::session_save,
             cloud_folder::session_load,
             cloud_folder::session_list_others,
+            crypto::crypto_status,
+            crypto::crypto_set_passphrase,
+            crypto::crypto_clear_passphrase,
+            crypto::crypto_encrypt_for_push,
+            crypto::crypto_decrypt_after_pull,
         ])
         .on_menu_event(|app_handle, event| {
             // Forward every menu click to the frontend as a single event

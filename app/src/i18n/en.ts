@@ -681,6 +681,28 @@ export const en = {
     pushAfterResolve: 'Push resolution',
     conflictResolvedToast: 'Resolved {file}.',
     conflictResolveFailed: 'Resolution failed',
+
+    // v2.6.3 — multi-provider + E2EE
+    providerTitle: 'Provider',
+    customProvider: 'Custom HTTPS git URL',
+    nonGithubHint:
+      'Auto-create + repo picker work for GitHub only. For GitLab / Gitea / custom servers, paste the clone URL below — push / pull use libgit2 + your token, no provider-specific API needed.',
+    enableE2ee: 'End-to-end encrypt before push',
+    e2eeHint:
+      'Files are encrypted on this device with a passphrase you set; only ciphertext is pushed. Search / RAG / AI rewrite still work locally. The remote sees only encrypted blobs.',
+    pasteUrlTitle: 'Paste a clone URL',
+    e2eeSection: 'Encryption passphrase',
+    e2eePromptHint:
+      'Set the same passphrase you used on your other device. The salt is synced from the encrypted repo so the same passphrase always derives the same key.',
+    passphrasePlaceholder: 'Vault passphrase',
+    passphraseSaveBtn: 'Save passphrase',
+    passphraseSaving: 'Saving…',
+    passphraseSavedToast: 'Passphrase saved.',
+    passphraseFailed: 'Passphrase rejected',
+    decryptBtn: 'Decrypt now',
+    decrypting: 'Decrypting…',
+    decryptedToast: 'Vault decrypted into the workspace.',
+    decryptFailed: 'Decrypt failed',
   },
   themes: {
     title: 'Theme marketplace',

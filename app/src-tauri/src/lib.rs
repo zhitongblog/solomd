@@ -21,6 +21,9 @@ pub mod github_sync;
 // v2.6.1 cloud-folder detection (iCloud / Dropbox / OneDrive / Google Drive)
 // + cross-device session restore via per-device JSON.
 pub mod cloud_folder;
+// v2.6.3 workspace-level E2EE: passphrase → Argon2id → key in keyring;
+// XChaCha20-Poly1305 over each .md before push, decrypt after pull.
+pub mod crypto;
 
 // v2.3 dev WebDriver bridge — debug builds only.
 #[cfg(debug_assertions)]
@@ -118,6 +121,11 @@ pub fn run() {
             cloud_folder::session_save,
             cloud_folder::session_load,
             cloud_folder::session_list_others,
+            crypto::crypto_status,
+            crypto::crypto_set_passphrase,
+            crypto::crypto_clear_passphrase,
+            crypto::crypto_encrypt_for_push,
+            crypto::crypto_decrypt_after_pull,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

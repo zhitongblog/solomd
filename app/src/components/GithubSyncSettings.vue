@@ -36,6 +36,14 @@ const creatingRepo = ref(false);
 const linking = ref(false);
 const showAdvanced = ref(false);
 
+// v2.6.3 — multi-provider + E2EE state
+const providerChoice = ref<'github' | 'gitlab' | 'gitea' | 'custom'>('github');
+const customUrl = ref('');
+const enableE2ee = ref(false);
+const passphraseInput = ref('');
+const passphraseSaving = ref(false);
+const decrypting = ref(false);
+
 onMounted(async () => {
   await sync.refreshHasToken();
   if (sync.hasToken) {
@@ -121,12 +129,52 @@ async function link(remoteUrl: string) {
   }
   linking.value = true;
   try {
-    await sync.link(workspace.currentFolder, remoteUrl);
+    await sync.link(workspace.currentFolder, remoteUrl, {
+      encrypted: enableE2ee.value,
+      provider: providerChoice.value,
+    });
     toasts.success(t('githubSync.linkedToast'));
   } catch (e) {
     toasts.error(`${t('githubSync.linkFailed')}: ${e}`);
   } finally {
     linking.value = false;
+  }
+}
+
+async function linkCustom() {
+  const url = customUrl.value.trim();
+  if (!url) return;
+  await link(url);
+  customUrl.value = '';
+}
+
+async function savePassphrase() {
+  if (!workspace.currentFolder) return;
+  const pw = passphraseInput.value;
+  if (!pw) return;
+  passphraseSaving.value = true;
+  try {
+    await sync.setPassphrase(workspace.currentFolder, pw);
+    passphraseInput.value = '';
+    toasts.success(t('githubSync.passphraseSavedToast'));
+  } catch (e) {
+    toasts.error(`${t('githubSync.passphraseFailed')}: ${e}`);
+  } finally {
+    passphraseSaving.value = false;
+  }
+}
+
+async function decryptNow() {
+  if (!workspace.currentFolder) return;
+  decrypting.value = true;
+  try {
+    await sync.decryptNow(workspace.currentFolder);
+    toasts.success(t('githubSync.decryptedToast'));
+    window.dispatchEvent(new CustomEvent('solomd:remote-pulled'));
+  } catch (e) {
+    toasts.error(`${t('githubSync.decryptFailed')}: ${e}`);
+  } finally {
+    decrypting.value = false;
   }
 }
 
@@ -261,8 +309,30 @@ const linkedRepoLabel = computed(() => {
       <template v-else>
         <p class="ghs-help">{{ t('githubSync.linkHint') }}</p>
 
-        <!-- Create new -->
+        <!-- v2.6.3 — provider + E2EE toggle, applied to whichever link
+             path the user chooses below. -->
         <div class="ghs-subblock">
+          <div class="ghs-sub-title">{{ t('githubSync.providerTitle') }}</div>
+          <div class="ghs-row">
+            <select v-model="providerChoice" class="ghs-select">
+              <option value="github">GitHub</option>
+              <option value="gitlab">GitLab</option>
+              <option value="gitea">Gitea (self-hosted)</option>
+              <option value="custom">{{ t('githubSync.customProvider') }}</option>
+            </select>
+          </div>
+          <p v-if="providerChoice !== 'github'" class="ghs-help">
+            {{ t('githubSync.nonGithubHint') }}
+          </p>
+          <label class="ghs-checkbox" style="margin-top: 6px;">
+            <input v-model="enableE2ee" type="checkbox" />
+            {{ t('githubSync.enableE2ee') }}
+          </label>
+          <p class="ghs-help">{{ t('githubSync.e2eeHint') }}</p>
+        </div>
+
+        <!-- Create new -->
+        <div v-if="providerChoice === 'github'" class="ghs-subblock">
           <div class="ghs-sub-title">{{ t('githubSync.createNewTitle') }}</div>
           <div class="ghs-row">
             <input
@@ -289,8 +359,34 @@ const linkedRepoLabel = computed(() => {
           </div>
         </div>
 
-        <!-- Pick existing -->
-        <div class="ghs-subblock">
+        <!-- Custom / GitLab / Gitea — paste a clone URL -->
+        <div v-if="providerChoice !== 'github'" class="ghs-subblock">
+          <div class="ghs-sub-title">{{ t('githubSync.pasteUrlTitle') }}</div>
+          <div class="ghs-row">
+            <input
+              v-model="customUrl"
+              type="text"
+              class="ghs-input ghs-input--mono"
+              :placeholder="providerChoice === 'gitlab'
+                ? 'https://gitlab.com/owner/repo.git'
+                : providerChoice === 'gitea'
+                  ? 'https://gitea.example.org/owner/repo.git'
+                  : 'https://git.example.org/owner/repo.git'"
+            />
+          </div>
+          <div class="ghs-row">
+            <button
+              class="ghs-btn ghs-btn--primary"
+              :disabled="linking || !customUrl.trim()"
+              @click="linkCustom"
+            >
+              {{ t('githubSync.linkBtn') }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Pick existing (GitHub only — repo list API is GitHub-shaped) -->
+        <div v-if="providerChoice === 'github'" class="ghs-subblock">
           <div class="ghs-sub-title">{{ t('githubSync.pickExistingTitle') }}</div>
           <div v-if="sync.loading" class="ghs-help">{{ t('githubSync.loadingRepos') }}</div>
           <div v-else-if="!sync.repos.length" class="ghs-help">
@@ -370,6 +466,34 @@ const linkedRepoLabel = computed(() => {
         >
           {{ sync.pulling ? t('githubSync.pulling') : t('githubSync.pullNow') }}
         </button>
+      </div>
+
+      <!-- v2.6.3 — E2EE passphrase prompt. Only visible when this
+           workspace is linked WITH encryption on. -->
+      <div v-if="sync.status?.encrypted" class="ghs-subblock">
+        <div class="ghs-sub-title">{{ t('githubSync.e2eeSection') }}</div>
+        <p class="ghs-help">{{ t('githubSync.e2eePromptHint') }}</p>
+        <div class="ghs-row">
+          <input
+            v-model="passphraseInput"
+            type="password"
+            autocomplete="new-password"
+            class="ghs-input"
+            :placeholder="t('githubSync.passphrasePlaceholder')"
+          />
+        </div>
+        <div class="ghs-row">
+          <button
+            class="ghs-btn ghs-btn--primary"
+            :disabled="passphraseSaving || !passphraseInput"
+            @click="savePassphrase"
+          >
+            {{ passphraseSaving ? t('githubSync.passphraseSaving') : t('githubSync.passphraseSaveBtn') }}
+          </button>
+          <button class="ghs-btn" :disabled="decrypting" @click="decryptNow">
+            {{ decrypting ? t('githubSync.decrypting') : t('githubSync.decryptBtn') }}
+          </button>
+        </div>
       </div>
 
       <details class="ghs-details" :open="showAdvanced">
