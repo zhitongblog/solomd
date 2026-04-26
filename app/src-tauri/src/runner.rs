@@ -37,7 +37,9 @@ mod dev_bridge;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
-use tauri::menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder};
+use tauri::menu::{
+    AboutMetadata, MenuBuilder, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder,
+};
 use tauri::{Emitter, Manager, RunEvent};
 
 /// Tell macOS AppKit to use the given language for native dialogs
@@ -281,6 +283,56 @@ fn build_app_menu<R: tauri::Runtime>(
         .item(&about)
         .build()?;
 
+    // macOS: the first submenu becomes the "App menu" (titled with the
+    // app's process name) and is where users go for About / Settings /
+    // Quit by HIG convention. Without this, ⌘Q does nothing and the
+    // last menu item visually becomes "Close Tab" (issue #31).
+    #[cfg(target_os = "macos")]
+    {
+        let app_about_meta = AboutMetadata {
+            name: Some("SoloMD".into()),
+            version: Some(env!("CARGO_PKG_VERSION").into()),
+            credits: Some("Made by 智通 / xiangdong li".into()),
+            authors: Some(vec!["xiangdong li".into()]),
+            comments: Some("Lightweight, cross-platform Markdown editor.".into()),
+            website: Some("https://solomd.app".into()),
+            website_label: Some("solomd.app".into()),
+            ..Default::default()
+        };
+        let app_submenu = SubmenuBuilder::new(app, "SoloMD")
+            .about(Some(app_about_meta))
+            .separator()
+            .item(&settings_item)
+            .separator()
+            .item(&PredefinedMenuItem::services(app, None)?)
+            .separator()
+            .item(&PredefinedMenuItem::hide(app, None)?)
+            .item(&PredefinedMenuItem::hide_others(app, None)?)
+            .item(&PredefinedMenuItem::show_all(app, None)?)
+            .separator()
+            .item(&PredefinedMenuItem::quit(app, None)?)
+            .build()?;
+
+        let window_submenu = SubmenuBuilder::new(app, if lang == "zh" { "窗口" } else { "Window" })
+            .item(&PredefinedMenuItem::minimize(app, None)?)
+            .item(&PredefinedMenuItem::maximize(app, None)?)
+            .separator()
+            .item(&PredefinedMenuItem::close_window(app, None)?)
+            .build()?;
+
+        return MenuBuilder::new(app)
+            .items(&[
+                &app_submenu,
+                &file_submenu,
+                &edit_submenu,
+                &view_submenu,
+                &window_submenu,
+                &help_submenu,
+            ])
+            .build();
+    }
+
+    #[cfg(not(target_os = "macos"))]
     MenuBuilder::new(app)
         .items(&[&file_submenu, &edit_submenu, &view_submenu, &help_submenu])
         .build()
