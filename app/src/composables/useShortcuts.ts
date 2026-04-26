@@ -17,6 +17,8 @@ interface Hooks {
   openRagSearch?: () => void;
   /** v2.5: open the VSCode-style ⌘P quick file switcher. */
   openQuickSwitcher?: () => void;
+  /** v2.5 F6: open the CJK proofread panel (⌘⇧J — J for "句"/sentence). */
+  openCjkProofread?: () => void;
 }
 
 export function useShortcuts(hooks: Hooks = {}) {
@@ -115,6 +117,11 @@ export function useShortcuts(hooks: Hooks = {}) {
     } else if (k === 'k' && e.shiftKey) {
       e.preventDefault();
       hooks.openPalette?.();
+    } else if (k === 'j' && e.shiftKey) {
+      // v2.5 F6: ⌘⇧J — CJK proofread panel. Shift differentiates from
+      // ⌘J (CodeMirror "AI rewrite", bound inside the editor keymap).
+      e.preventDefault();
+      hooks.openCjkProofread?.();
     } else if (k === 'f' && e.shiftKey) {
       e.preventDefault();
       // v2.3: ⌘⇧F prefers semantic search when the user has opted in;

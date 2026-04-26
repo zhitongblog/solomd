@@ -32,6 +32,14 @@ const toasts = useToastsStore();
 
 const isMarkdown = computed(() => tabs.activeTab?.language === 'markdown');
 
+/**
+ * v2.5 F6 — open the CJK proofread panel. App.vue listens for this
+ * event (same pattern as `solomd:open-help` / `solomd:open-settings`).
+ */
+function onOpenCjkProofread() {
+  window.dispatchEvent(new CustomEvent('solomd:open-cjk-proofread'));
+}
+
 function onCleanAI() {
   const t = tabs.activeTab;
   if (!t) {
@@ -494,6 +502,14 @@ onBeforeUnmount(() => {
       >
         <Icon name="spellcheck" />
       </button>
+      <button
+        class="icon-btn cjk-proof-btn"
+        :disabled="settings.viewMode === 'preview'"
+        @click="onOpenCjkProofread"
+        :title="t('toolbar.cjkProofreadTooltip')"
+      >
+        <span class="cjk-proof-glyph">中</span>
+      </button>
       <span class="toolbar__divider"></span>
       <button class="icon-btn" @click="$emit('open-search')" :title="t('toolbar.searchTooltip')">
         <Icon name="search" />
@@ -615,6 +631,21 @@ onBeforeUnmount(() => {
 }
 .ai-rewrite-label { letter-spacing: 0.04em; }
 .ai-rewrite-spark { font-size: 11px; opacity: 0.85; margin-left: 2px; }
+
+/* v2.5 F6 — CJK proofread toolbar button. Uses the literal "中"
+ * glyph instead of an SVG icon: it telegraphs the feature's CJK
+ * scope at a glance and matches Spell-check (a small icon-as-mark
+ * style sits in the same toolbar group). */
+.cjk-proof-btn {
+  font-family: var(--font-zh, 'PingFang SC', 'Hiragino Sans GB', sans-serif);
+  font-size: 13px !important;
+  font-weight: 700;
+  padding: 4px 8px !important;
+  line-height: 1;
+}
+.cjk-proof-glyph {
+  display: inline-block;
+}
 
 /* Split copy button: [Copy | ▾] */
 .copy-split {

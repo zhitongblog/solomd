@@ -149,6 +149,18 @@ export function useCommands(): Command[] {
       },
     },
 
+    // v2.5 F6: CJK proofread — flag common Chinese typos in the
+    // active doc. The actual panel is owned by App.vue; we dispatch
+    // a custom event because useCommands has no DOM/component
+    // handles (same pattern as `help.markdown` and `search.global`).
+    {
+      id: 'proofread.cjk',
+      title: 'CJK Proofread — flag Chinese typos',
+      shortcut: 'Ctrl+Shift+J',
+      hint: 'Half-/full-width punct, 的/地/得 misuse, repeats, spacing',
+      run: () => window.dispatchEvent(new CustomEvent('solomd:open-cjk-proofread')),
+    },
+
     {
       id: 'format.markdown',
       title: 'Format Markdown (Prettier)',

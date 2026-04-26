@@ -22,6 +22,7 @@ import SettingsPanel from './components/SettingsPanel.vue';
 import MarkdownHelp from './components/MarkdownHelp.vue';
 import GlobalSearch from './components/GlobalSearch.vue';
 import RagSearch from './components/RagSearch.vue';
+import CjkProofread from './components/CjkProofread.vue';
 import ReadingView from './components/ReadingView.vue';
 import AboutDialog from './components/AboutDialog.vue';
 import UnsavedDialog from './components/UnsavedDialog.vue';
@@ -72,6 +73,7 @@ const settingsOpen = ref(false);
 const helpOpen = ref(false);
 const searchOpen = ref(false);
 const ragSearchOpen = ref(false);
+const cjkProofreadOpen = ref(false);
 const aboutOpen = ref(false);
 
 // Unsaved-changes dialog state
@@ -109,12 +111,14 @@ useShortcuts({
   openGlobalSearch: () => (searchOpen.value = true),
   openRagSearch: () => (ragSearchOpen.value = true),
   openQuickSwitcher: () => (quickSwitcherOpen.value = true),
+  openCjkProofread: () => (cjkProofreadOpen.value = true),
 });
 
 // Esc closes the topmost modal
 function onEsc(e: KeyboardEvent) {
   if (e.key !== 'Escape') return;
   if (aboutOpen.value) aboutOpen.value = false;
+  else if (cjkProofreadOpen.value) cjkProofreadOpen.value = false;
   else if (ragSearchOpen.value) ragSearchOpen.value = false;
   else if (searchOpen.value) searchOpen.value = false;
   else if (helpOpen.value) helpOpen.value = false;
@@ -279,6 +283,9 @@ function onOpenHelpEvent() {
 function onOpenSearchEvent() {
   searchOpen.value = true;
 }
+function onOpenCjkProofreadEvent() {
+  cjkProofreadOpen.value = true;
+}
 
 let unlistenOpened: UnlistenFn | null = null;
 let unlistenMenu: UnlistenFn | null = null;
@@ -357,6 +364,7 @@ onMounted(async () => {
   window.addEventListener('keydown', onEsc);
   window.addEventListener('solomd:open-help', onOpenHelpEvent as EventListener);
   window.addEventListener('solomd:open-global-search', onOpenSearchEvent as EventListener);
+  window.addEventListener('solomd:open-cjk-proofread', onOpenCjkProofreadEvent as EventListener);
 
   track('app_launched', {
     locale: settings.language,
@@ -507,6 +515,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('keydown', onEsc);
   window.removeEventListener('solomd:open-help', onOpenHelpEvent as EventListener);
   window.removeEventListener('solomd:open-global-search', onOpenSearchEvent as EventListener);
+  window.removeEventListener('solomd:open-cjk-proofread', onOpenCjkProofreadEvent as EventListener);
   window.removeEventListener('solomd:wiki-open', onWikiOpen as EventListener);
   window.removeEventListener('solomd:ai-rewrite-accept', onAIRewriteAccept as EventListener);
   window.removeEventListener('solomd:ai-rewrite-cancel', onAIRewriteCancel as EventListener);
@@ -632,6 +641,7 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
       @close="ragSearchOpen = false"
       @open-settings="ragSearchOpen = false; settingsOpen = true"
     />
+    <CjkProofread :open="cjkProofreadOpen" @close="cjkProofreadOpen = false" />
     <AboutDialog :open="aboutOpen" @close="aboutOpen = false" />
     <UnsavedDialog
       :open="unsavedOpen"

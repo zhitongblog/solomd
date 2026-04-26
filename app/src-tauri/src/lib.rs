@@ -10,6 +10,8 @@ pub mod rag;
 pub mod capture_endpoint;
 // v2.4 outbound integrations — CLI + MCP sidecar discovery, surfaced in Settings.
 pub mod integrations;
+// v2.5 F6 CJK proofread — flags common Chinese typos with one-click fixes.
+pub mod cjk_proofread;
 
 // v2.3 dev WebDriver bridge — debug builds only.
 #[cfg(debug_assertions)]
@@ -85,6 +87,7 @@ pub fn run() {
             integrations::cli_status,
             integrations::mcp_path,
             integrations::mcp_claude_desktop_config_path,
+            cjk_proofread::cjk_proofread,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
