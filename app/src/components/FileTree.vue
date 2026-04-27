@@ -73,7 +73,10 @@ async function refreshRoot() {
     loading: true,
   };
   const { children, truncated } = await loadDir(path);
-  if (root.value) {
+  // If a newer setFolder fired during the await, root.value now points at a
+  // different node — discarding our stale result is correct. Same v2.3.1
+  // pattern that fixed FileTree-stuck-on-Loading.
+  if (root.value && root.value.path === path) {
     root.value.children = children;
     root.value.truncated = truncated;
     root.value.loading = false;

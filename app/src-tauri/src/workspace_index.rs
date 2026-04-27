@@ -111,7 +111,13 @@ static PENDING: Lazy<Mutex<HashMap<PathBuf, SystemTime>>> =
 // ---------------------------------------------------------------------------
 
 #[tauri::command]
-pub fn workspace_index_init(app: AppHandle, folder: String) -> Result<usize, String> {
+pub async fn workspace_index_init(app: AppHandle, folder: String) -> Result<usize, String> {
+    tauri::async_runtime::spawn_blocking(move || workspace_index_init_inner(app, folder))
+        .await
+        .map_err(|e| format!("join: {e}"))?
+}
+
+fn workspace_index_init_inner(app: AppHandle, folder: String) -> Result<usize, String> {
     let root = PathBuf::from(&folder);
     if !root.is_dir() {
         return Err(format!("not a directory: {folder}"));
@@ -239,7 +245,13 @@ pub fn workspace_index_resolve(name: String) -> Result<Option<String>, String> {
 }
 
 #[tauri::command]
-pub fn workspace_index_rescan(app: AppHandle) -> Result<usize, String> {
+pub async fn workspace_index_rescan(app: AppHandle) -> Result<usize, String> {
+    tauri::async_runtime::spawn_blocking(move || workspace_index_rescan_inner(app))
+        .await
+        .map_err(|e| format!("join: {e}"))?
+}
+
+fn workspace_index_rescan_inner(app: AppHandle) -> Result<usize, String> {
     let root = {
         let s = STATE.read().map_err(|e| e.to_string())?;
         match &s.root {
