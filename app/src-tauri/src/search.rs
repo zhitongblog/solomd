@@ -29,7 +29,17 @@ const ALLOWED_EXT: &[&str] = &["md", "markdown", "mdown", "mkd", "txt"];
 const SKIP_DIRS: &[&str] = &["node_modules", "target", ".git", "dist"];
 
 #[tauri::command]
-pub fn search_in_dir(
+pub async fn search_in_dir(
+    root: String,
+    query: String,
+    max_results: usize,
+) -> Result<Vec<SearchHit>, String> {
+    tauri::async_runtime::spawn_blocking(move || search_in_dir_inner(root, query, max_results))
+        .await
+        .map_err(|e| format!("join: {e}"))?
+}
+
+pub fn search_in_dir_inner(
     root: String,
     query: String,
     max_results: usize,

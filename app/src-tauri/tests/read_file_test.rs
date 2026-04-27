@@ -1,4 +1,4 @@
-use app_lib::commands::{read_file, write_file};
+use app_lib::commands::{read_file_inner as read_file, write_file_inner as write_file};
 use std::fs;
 
 #[test]

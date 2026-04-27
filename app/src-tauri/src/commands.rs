@@ -15,8 +15,17 @@ pub struct FileReadResult {
 /// Read a file from disk, auto-detecting its text encoding (UTF-8/16, GBK, etc.)
 /// and returning UTF-8 content along with the original encoding label so we can
 /// re-save in the same encoding later.
+///
+/// Async wrapper to keep file I/O off the IPC thread — see the audit note in
+/// `feedback_tauri_sync_command_audit.md`. The inner is exposed for tests.
 #[tauri::command]
-pub fn read_file(path: String) -> Result<FileReadResult, String> {
+pub async fn read_file(path: String) -> Result<FileReadResult, String> {
+    tauri::async_runtime::spawn_blocking(move || read_file_inner(path))
+        .await
+        .map_err(|e| format!("join: {e}"))?
+}
+
+pub fn read_file_inner(path: String) -> Result<FileReadResult, String> {
     let bytes = fs::read(&path).map_err(|e| format!("read failed: {e}"))?;
 
     // Try BOM first.
@@ -59,7 +68,13 @@ pub fn read_file(path: String) -> Result<FileReadResult, String> {
 /// Write a UTF-8 string back to disk in the requested encoding.
 /// `encoding` should be a label like "UTF-8", "GBK", "UTF-16LE".
 #[tauri::command]
-pub fn write_file(path: String, content: String, encoding: String) -> Result<(), String> {
+pub async fn write_file(path: String, content: String, encoding: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || write_file_inner(path, content, encoding))
+        .await
+        .map_err(|e| format!("join: {e}"))?
+}
+
+pub fn write_file_inner(path: String, content: String, encoding: String) -> Result<(), String> {
     let enc = Encoding::for_label(encoding.as_bytes()).unwrap_or(UTF_8);
     let (cow, _, had_errors) = enc.encode(&content);
     if had_errors {
@@ -77,7 +92,13 @@ pub fn write_file(path: String, content: String, encoding: String) -> Result<(),
 
 /// Write raw bytes to disk. Used for binary export targets like DOCX/PDF.
 #[tauri::command]
-pub fn write_binary_file(path: String, data: Vec<u8>) -> Result<(), String> {
+pub async fn write_binary_file(path: String, data: Vec<u8>) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || write_binary_file_inner(path, data))
+        .await
+        .map_err(|e| format!("join: {e}"))?
+}
+
+pub fn write_binary_file_inner(path: String, data: Vec<u8>) -> Result<(), String> {
     if let Some(parent) = Path::new(&path).parent() {
         if !parent.as_os_str().is_empty() {
             fs::create_dir_all(parent)
@@ -102,7 +123,13 @@ pub fn print_webview(window: tauri::WebviewWindow) -> Result<(), String> {
 /// Used by image drag-drop to bring an OS file into the document's
 /// `_assets/` folder without round-tripping bytes through JavaScript.
 #[tauri::command]
-pub fn copy_file(src: String, dst: String) -> Result<(), String> {
+pub async fn copy_file(src: String, dst: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || copy_file_inner(src, dst))
+        .await
+        .map_err(|e| format!("join: {e}"))?
+}
+
+pub fn copy_file_inner(src: String, dst: String) -> Result<(), String> {
     if let Some(parent) = Path::new(&dst).parent() {
         if !parent.as_os_str().is_empty() {
             fs::create_dir_all(parent)

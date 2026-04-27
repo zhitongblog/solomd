@@ -132,7 +132,13 @@ fn locate_pandoc() -> Option<PathBuf> {
 /// piping to stdin so pandoc's `--citeproc` resource resolver picks up
 /// relative paths correctly (it resolves relative to the input file).
 #[tauri::command]
-pub fn pandoc_export(args: ExportArgs) -> Result<(), String> {
+pub async fn pandoc_export(args: ExportArgs) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || pandoc_export_inner(args))
+        .await
+        .map_err(|e| format!("join: {e}"))?
+}
+
+pub fn pandoc_export_inner(args: ExportArgs) -> Result<(), String> {
     let pandoc_path = match locate_pandoc() {
         Some(p) => p,
         None => {

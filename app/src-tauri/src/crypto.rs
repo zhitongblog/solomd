@@ -423,7 +423,13 @@ pub fn crypto_clear_passphrase(folder: String) -> Result<(), String> {
 /// Returns the absolute path to the shadow dir so the caller can `git push`
 /// from there.
 #[tauri::command]
-pub fn crypto_encrypt_for_push(folder: String) -> Result<String, String> {
+pub async fn crypto_encrypt_for_push(folder: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || crypto_encrypt_for_push_inner(folder))
+        .await
+        .map_err(|e| format!("join: {e}"))?
+}
+
+pub fn crypto_encrypt_for_push_inner(folder: String) -> Result<String, String> {
     let path = PathBuf::from(&folder);
     let cfg = load_config(&path)?
         .ok_or_else(|| "encryption is not enabled for this workspace".to_string())?;
@@ -505,7 +511,13 @@ fn copy_if_changed(src: &Path, dst: &Path) -> Result<(), String> {
 /// decrypts every `*.<ext>.enc`, and writes the resulting plaintext back
 /// into the workspace at the same relative path.
 #[tauri::command]
-pub fn crypto_decrypt_after_pull(folder: String) -> Result<(), String> {
+pub async fn crypto_decrypt_after_pull(folder: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || crypto_decrypt_after_pull_inner(folder))
+        .await
+        .map_err(|e| format!("join: {e}"))?
+}
+
+pub fn crypto_decrypt_after_pull_inner(folder: String) -> Result<(), String> {
     let path = PathBuf::from(&folder);
     let cfg = load_config(&path)?
         .ok_or_else(|| "encryption is not enabled for this workspace".to_string())?;
@@ -669,7 +681,7 @@ mod tests {
 
         let folder = ws.to_string_lossy().to_string();
         crypto_set_passphrase(folder.clone(), "hunter2".into()).unwrap();
-        let shadow = crypto_encrypt_for_push(folder.clone()).unwrap();
+        let shadow = crypto_encrypt_for_push_inner(folder.clone()).unwrap();
         let shadow_dir = PathBuf::from(&shadow);
         assert!(shadow_dir.join("notes/a.md.enc").exists());
         assert!(shadow_dir.join("assets/img.png").exists());
@@ -678,7 +690,7 @@ mod tests {
         // Wipe the plaintext to simulate a fresh device, then decrypt
         // back from the shadow.
         fs::remove_file(ws.join("notes/a.md")).unwrap();
-        crypto_decrypt_after_pull(folder.clone()).unwrap();
+        crypto_decrypt_after_pull_inner(folder.clone()).unwrap();
         let restored = fs::read(ws.join("notes/a.md")).unwrap();
         assert_eq!(restored, b"# Hello");
     }

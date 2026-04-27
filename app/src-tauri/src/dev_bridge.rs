@@ -28,10 +28,8 @@
 //!
 //! Compiled in **only** under `#[cfg(debug_assertions)]`. Release builds
 //! never see this module — verify with
-//!
-//!     nm app/src-tauri/target/release/SoloMD | grep dev_bridge
-//!
-//! and you should get zero matches.
+//! `nm app/src-tauri/target/release/SoloMD | grep dev_bridge` and you
+//! should get zero matches.
 
 #![cfg(debug_assertions)]
 

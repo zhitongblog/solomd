@@ -1,4 +1,4 @@
-use app_lib::commands::copy_file;
+use app_lib::commands::copy_file_inner as copy_file;
 use std::fs;
 
 #[test]
@@ -37,7 +37,7 @@ fn copy_missing_source_errors() {
 
 #[test]
 fn write_binary_creates_parent_dirs() {
-    use app_lib::commands::write_binary_file;
+    use app_lib::commands::write_binary_file_inner as write_binary_file;
     let _ = fs::remove_dir_all("/tmp/solomd-bin-test");
     let path = "/tmp/solomd-bin-test/sub/dir/file.bin".to_string();
     write_binary_file(path.clone(), vec![1, 2, 3, 4]).unwrap();

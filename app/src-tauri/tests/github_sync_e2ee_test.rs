@@ -10,7 +10,9 @@
 //!   3. Device B sets the SAME passphrase and pulls; its workspace
 //!      ends up with the original plaintext content
 
-use app_lib::crypto::{crypto_encrypt_for_push, crypto_set_passphrase};
+use app_lib::crypto::{
+    crypto_encrypt_for_push_inner as crypto_encrypt_for_push, crypto_set_passphrase,
+};
 use app_lib::github_sync::{github_pull_inner, github_push_inner};
 use git2::{Repository, Signature};
 use std::fs;
@@ -146,7 +148,7 @@ fn e2ee_full_round_trip_two_devices() {
     // 3) Trigger decrypt explicitly. (In the live app the user clicks a
     //    "decrypt now" button after passphrase entry; the same outcome
     //    is reached by calling the helper directly.)
-    app_lib::crypto::crypto_decrypt_after_pull(folder_b.clone()).unwrap();
+    app_lib::crypto::crypto_decrypt_after_pull_inner(folder_b.clone()).unwrap();
 
     let plain_b = dev_b.join("note.md");
     assert!(plain_b.exists(), "decrypted plaintext should land in workspace");

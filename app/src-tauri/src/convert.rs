@@ -15,7 +15,13 @@ use encoding_rs::UTF_8;
 
 /// Main entry point. Returns Markdown string or error.
 #[tauri::command]
-pub fn convert_file_to_markdown(path: String) -> Result<String, String> {
+pub async fn convert_file_to_markdown(path: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || convert_file_to_markdown_inner(path))
+        .await
+        .map_err(|e| format!("join: {e}"))?
+}
+
+pub fn convert_file_to_markdown_inner(path: String) -> Result<String, String> {
     let p = Path::new(&path);
     let ext = p
         .extension()

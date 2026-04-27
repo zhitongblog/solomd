@@ -516,7 +516,7 @@ pub async fn github_enable_encryption(
         drop(shadow_repo);
 
         // 3 + 4. Encrypt the workspace into the shadow, commit.
-        super::crypto::crypto_encrypt_for_push(folder.clone())?;
+        super::crypto::crypto_encrypt_for_push_inner(folder.clone())?;
         commit_shadow_if_dirty(&shadow, "encrypted: enable end-to-end encryption")?;
 
         // 5. Flip the bit. `git_dir()` reads this on every subsequent
@@ -783,7 +783,7 @@ pub fn github_push_inner(folder: String, token: String) -> Result<(), String> {
     let cfg = load_config(&path).ok().flatten().unwrap_or_default();
     let repo_dir = git_dir(&path);
     if cfg.encrypted {
-        super::crypto::crypto_encrypt_for_push(folder.clone())?;
+        super::crypto::crypto_encrypt_for_push_inner(folder.clone())?;
         commit_shadow_if_dirty(&repo_dir, "encrypted: workspace state at push")?;
     }
     let repo = Repository::open(&repo_dir).map_err(|e| e.to_string())?;
@@ -848,7 +848,7 @@ pub fn github_pull_inner(folder: String, token: String) -> Result<PullResult, St
         // happen — that's how the device learns the salt + ciphertext.
         // Decrypt is also skipped (see finalize_decrypt); the user
         // sets the passphrase, then we decrypt explicitly.
-        if super::crypto::crypto_encrypt_for_push(folder.clone()).is_ok() {
+        if super::crypto::crypto_encrypt_for_push_inner(folder.clone()).is_ok() {
             commit_shadow_if_dirty(&path, "encrypted: workspace state at pull")?;
         }
     }
@@ -984,7 +984,7 @@ fn finalize_decrypt(cfg: &SyncConfig, workspace: &Path) -> Result<(), String> {
     // brand-new device that just pulled), don't fail the pull —
     // surface a soft-OK and let the frontend prompt for passphrase
     // post-pull, then call crypto_decrypt_after_pull explicitly.
-    match super::crypto::crypto_decrypt_after_pull(workspace.to_string_lossy().into_owned()) {
+    match super::crypto::crypto_decrypt_after_pull_inner(workspace.to_string_lossy().into_owned()) {
         Ok(()) => Ok(()),
         Err(e) if e.contains("key missing") || e.contains("not enabled") => Ok(()),
         Err(e) => Err(e),

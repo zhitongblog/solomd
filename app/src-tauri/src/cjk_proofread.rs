@@ -81,8 +81,10 @@ pub struct Issue {
 /// an empty vec; pure-ASCII text likewise (zero CJK = nothing to
 /// proofread).
 #[tauri::command]
-pub fn cjk_proofread(text: String) -> Vec<Issue> {
-    proofread(&text)
+pub async fn cjk_proofread(text: String) -> Vec<Issue> {
+    tauri::async_runtime::spawn_blocking(move || proofread(&text))
+        .await
+        .unwrap_or_default()
 }
 
 // ---------------------------------------------------------------------------
