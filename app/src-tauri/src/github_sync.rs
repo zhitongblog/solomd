@@ -126,9 +126,11 @@ pub fn github_set_token(token: String) -> Result<(), String> {
         return Err("token is empty".into());
     }
     let entry = keyring_entry()?;
+    // Order matters: keyring write FIRST, cache populate SECOND. Otherwise
+    // a keyring write failure leaves the in-process cache holding a token
+    // that the keychain doesn't know about — fine for this run but it
+    // disappears on relaunch with no obvious cause.
     entry.set_password(&trimmed).map_err(|e| e.to_string())?;
-    // Prime the cache so the very next push/pull doesn't trigger another
-    // keychain prompt right after the user just typed the token.
     if let Ok(mut guard) = TOKEN_CACHE.lock() {
         *guard = Some(trimmed);
     }
@@ -294,13 +296,18 @@ const ENCRYPTED_SHADOW: &str = ".solomd-encrypted";
 
 /// Resolve the directory the git repo actually lives in. With E2EE on
 /// that's the encrypted shadow; otherwise it's the workspace itself.
-fn git_dir(workspace: &Path) -> PathBuf {
-    let cfg = load_config(workspace).ok().flatten().unwrap_or_default();
-    if cfg.encrypted {
+///
+/// Returns Err if sync.json is corrupted — refusing to guess is the
+/// **only** safe behavior here. Treating "can't read config" as
+/// "encryption off" used to silently push plaintext workspaces from
+/// users who had E2EE enabled but whose config got truncated.
+fn git_dir(workspace: &Path) -> Result<PathBuf, String> {
+    let cfg = load_config(workspace)?.unwrap_or_default();
+    Ok(if cfg.encrypted {
         workspace.join(ENCRYPTED_SHADOW)
     } else {
         workspace.to_path_buf()
-    }
+    })
 }
 
 fn config_path(workspace: &Path) -> PathBuf {
@@ -556,7 +563,7 @@ pub async fn github_enable_encryption(
 pub async fn github_unlink_workspace(folder: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
         let path = PathBuf::from(&folder);
-        let repo_dir = git_dir(&path);
+        let repo_dir = git_dir(&path)?;
         if let Ok(repo) = Repository::open(&repo_dir) {
             let _ = repo.remote_delete("origin");
         }
@@ -610,7 +617,7 @@ pub async fn github_sync_status(folder: String) -> Result<SyncStatus, String> {
         if !status.linked {
             return Ok(status);
         }
-        let repo_dir = git_dir(&path);
+        let repo_dir = git_dir(&path)?;
         let repo = match Repository::open(&repo_dir) {
             Ok(r) => r,
             // Repo was deleted but config remained — degrade gracefully
@@ -736,10 +743,29 @@ pub fn proxy_set(url: String) -> Result<(), String> {
 /// which lets libgit2 try standard env vars / system config — usually a
 /// no-op in our GUI context but harmless. Returns a fresh options
 /// struct each call (ProxyOptions has no Clone).
+///
+/// libgit2's `ProxyOptions::url` takes `&'a str`. We hand it a `&'static
+/// str` from a process-local cache so we don't allocate-and-leak a new
+/// `Box<str>` on every push/pull (which would happen thousands of times
+/// per session for users with auto-push on). The cache leaks at most
+/// once per distinct proxy URL and reuses the leaked &'static str on
+/// subsequent calls — bounded by the count of times the user changes
+/// the proxy setting in a single session, which is essentially zero.
+static PROXY_URL_CACHE: Lazy<Mutex<Option<&'static str>>> = Lazy::new(|| Mutex::new(None));
+
 fn make_proxy_options() -> git2::ProxyOptions<'static> {
     let mut po = git2::ProxyOptions::new();
-    if let Some(url) = read_proxy_url() {
-        po.url(Box::leak(url.into_boxed_str()));
+    let current = read_proxy_url();
+    let mut guard = PROXY_URL_CACHE.lock().expect("proxy cache poisoned");
+    let cached_matches = matches!(
+        (&current, &*guard),
+        (Some(c), Some(g)) if c.as_str() == *g
+    );
+    if !cached_matches {
+        *guard = current.map(|s| Box::leak(s.into_boxed_str()) as &'static str);
+    }
+    if let Some(s) = *guard {
+        po.url(s);
     } else {
         po.auto();
     }
@@ -780,8 +806,12 @@ fn commit_shadow_if_dirty(repo_dir: &Path, message: &str) -> Result<(), String> 
 /// the shadow's git repo. Plaintext never reaches the remote.
 pub fn github_push_inner(folder: String, token: String) -> Result<(), String> {
     let path = PathBuf::from(&folder);
-    let cfg = load_config(&path).ok().flatten().unwrap_or_default();
-    let repo_dir = git_dir(&path);
+    // Refuse to push if sync.json is corrupted: a default Config has
+    // encrypted=false, and silently treating "can't read config" as
+    // "encryption off" would leak plaintext from a workspace whose
+    // user had E2EE enabled.
+    let cfg = load_config(&path)?.unwrap_or_default();
+    let repo_dir = git_dir(&path)?;
     if cfg.encrypted {
         super::crypto::crypto_encrypt_for_push_inner(folder.clone())?;
         commit_shadow_if_dirty(&repo_dir, "encrypted: workspace state at push")?;
@@ -835,8 +865,10 @@ pub struct PullResult {
 /// plaintext working tree picks up remote edits.
 pub fn github_pull_inner(folder: String, token: String) -> Result<PullResult, String> {
     let workspace = PathBuf::from(&folder);
-    let cfg = load_config(&workspace).ok().flatten().unwrap_or_default();
-    let path = git_dir(&workspace);
+    // Same fail-closed logic as github_push_inner: corrupted sync.json
+    // must not be downgraded to "no encryption".
+    let cfg = load_config(&workspace)?.unwrap_or_default();
+    let path = git_dir(&workspace)?;
     // PR #24 file-watcher integration: a successful pull legitimately
     // rewrites many files. Open a 30s rewrite window so the watcher
     // doesn't pop the "external change" dialog for every file.

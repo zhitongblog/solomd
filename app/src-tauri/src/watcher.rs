@@ -30,23 +30,28 @@ fn sync_windows() -> &'static Mutex<HashMap<PathBuf, Instant>> {
 }
 
 /// Called by write_file after a successful save to suppress the watcher event.
+///
+/// Opportunistically purges entries older than `SELF_WRITE_SUPPRESSION_MS`
+/// so the map can't grow without bound on a long-running session — after
+/// the suppression window expires the entry is dead weight either way.
 pub fn mark_self_write(path: &str) {
-    self_writes()
-        .lock()
-        .unwrap()
-        .insert(path.to_string(), Instant::now());
+    let mut map = self_writes().lock().unwrap();
+    let cutoff = Duration::from_millis(SELF_WRITE_SUPPRESSION_MS);
+    map.retain(|_, t| t.elapsed() < cutoff);
+    map.insert(path.to_string(), Instant::now());
 }
 
 /// v2.6 — call before a batch operation that legitimately rewrites many
 /// files in `workspace` (a successful GitHub pull, a `crypto_decrypt_after_pull`
 /// run). Suppresses the file-watcher's "external change" dialog for
-/// `SYNC_REWRITE_WINDOW_MS`.
+/// `SYNC_REWRITE_WINDOW_MS`. Same opportunistic cleanup as
+/// `mark_self_write` — removes any expired windows before inserting.
 pub fn mark_workspace_rewrite_window(workspace: &std::path::Path) {
     let canonical = std::fs::canonicalize(workspace).unwrap_or_else(|_| workspace.to_path_buf());
-    sync_windows()
-        .lock()
-        .unwrap()
-        .insert(canonical, Instant::now() + Duration::from_millis(SYNC_REWRITE_WINDOW_MS));
+    let mut map = sync_windows().lock().unwrap();
+    let now = Instant::now();
+    map.retain(|_, expires| *expires >= now);
+    map.insert(canonical, now + Duration::from_millis(SYNC_REWRITE_WINDOW_MS));
 }
 
 fn within_sync_rewrite_window(canonical_path: &std::path::Path) -> bool {
