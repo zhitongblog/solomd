@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
+import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useFiles } from '../composables/useFiles';
 import { useInbox } from '../composables/useInbox';
@@ -103,6 +104,82 @@ async function toggle(node: Node) {
 }
 
 watch(() => workspace.currentFolder, refreshRoot, { immediate: true });
+
+// v3.0 fix: auto-refresh the tree when files appear / disappear under
+// us. Three triggers we care about:
+//   - `solomd:saved`        — user pressed ⌘S; if this is a fresh
+//     Untitled tab being saved-as for the first time, the path is brand
+//     new and won't show in the tree until we re-list.
+//   - `solomd:remote-pulled`— GitHub sync just fetched + decrypted,
+//     potentially adding new files we haven't seen.
+//   - `solomd://index-updated` — Rust workspace_index emits this on
+//     watcher debounce when anything in the tree changes from outside.
+//
+// Refreshes are debounced 250ms — multiple rapid events coalesce into
+// one re-list. We keep currently-expanded subtrees expanded by walking
+// the new tree and re-applying expansion state from the old one.
+let refreshDebounce: ReturnType<typeof setTimeout> | null = null;
+function scheduleRefresh() {
+  if (refreshDebounce) clearTimeout(refreshDebounce);
+  refreshDebounce = setTimeout(() => {
+    refreshDebounce = null;
+    void refreshTreePreservingExpansion();
+  }, 250);
+}
+
+async function refreshTreePreservingExpansion() {
+  if (!workspace.currentFolder) return;
+  const oldRoot = root.value;
+  // Capture the set of expanded directory paths so the refresh doesn't
+  // collapse everything the user had open.
+  const expanded = new Set<string>();
+  function walk(n: Node | null | undefined) {
+    if (!n) return;
+    if (n.is_dir && n.expanded) expanded.add(n.path);
+    n.children?.forEach(walk);
+  }
+  walk(oldRoot);
+
+  const path = workspace.currentFolder;
+  const { children, truncated } = await loadDir(path);
+  // Re-expand: lazily reload children for any directory whose path was
+  // previously expanded.
+  async function rehydrate(nodes: Node[]) {
+    for (const n of nodes) {
+      if (n.is_dir && expanded.has(n.path)) {
+        const sub = await loadDir(n.path);
+        n.children = sub.children;
+        n.truncated = sub.truncated;
+        n.expanded = true;
+        await rehydrate(sub.children);
+      }
+    }
+  }
+  await rehydrate(children);
+  if (root.value) {
+    root.value.children = children;
+    root.value.truncated = truncated;
+    root.value.loading = false;
+  }
+}
+
+function onSaved() { scheduleRefresh(); }
+function onRemotePulled() { scheduleRefresh(); }
+
+let unlistenIndex: UnlistenFn | null = null;
+onMounted(async () => {
+  window.addEventListener('solomd:saved', onSaved as EventListener);
+  window.addEventListener('solomd:remote-pulled', onRemotePulled as EventListener);
+  try {
+    unlistenIndex = await listen('solomd://index-updated', () => scheduleRefresh());
+  } catch {}
+});
+onBeforeUnmount(() => {
+  window.removeEventListener('solomd:saved', onSaved as EventListener);
+  window.removeEventListener('solomd:remote-pulled', onRemotePulled as EventListener);
+  if (unlistenIndex) unlistenIndex();
+  if (refreshDebounce) clearTimeout(refreshDebounce);
+});
 </script>
 
 <template>

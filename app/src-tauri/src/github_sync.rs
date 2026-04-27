@@ -59,6 +59,36 @@ fn keyring_entry() -> Result<keyring::Entry, String> {
     keyring::Entry::new(KEYRING_SERVICE, KEYRING_USER).map_err(|e| e.to_string())
 }
 
+/// `~/.solomd/github-token-set` — a non-secret marker file written
+/// alongside `github_set_token` and removed by `github_clear_token`.
+/// Lets `github_has_token()` answer the "did the user log in?" question
+/// WITHOUT touching the OS keychain. macOS's keyring fires a
+/// password-prompt on every read — opening Settings was triggering it
+/// just to render a green dot. The marker file moves that prompt off
+/// the read path; the keychain only gets touched on push / pull (which
+/// the user explicitly initiates and where the prompt is meaningful).
+fn token_marker_path() -> Option<std::path::PathBuf> {
+    std::env::var_os("HOME")
+        .map(std::path::PathBuf::from)
+        .or_else(|| std::env::var_os("USERPROFILE").map(std::path::PathBuf::from))
+        .map(|h| h.join(".solomd").join("github-token-set"))
+}
+
+fn write_token_marker() {
+    if let Some(p) = token_marker_path() {
+        if let Some(parent) = p.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        let _ = std::fs::write(&p, b"1");
+    }
+}
+
+fn remove_token_marker() {
+    if let Some(p) = token_marker_path() {
+        let _ = std::fs::remove_file(&p);
+    }
+}
+
 fn read_token() -> Result<Option<String>, String> {
     let entry = keyring_entry()?;
     match entry.get_password() {
@@ -76,23 +106,27 @@ pub fn github_set_token(token: String) -> Result<(), String> {
         return Err("token is empty".into());
     }
     let entry = keyring_entry()?;
-    entry.set_password(&trimmed).map_err(|e| e.to_string())
+    entry.set_password(&trimmed).map_err(|e| e.to_string())?;
+    write_token_marker();
+    Ok(())
 }
 
 #[tauri::command]
 pub fn github_clear_token() -> Result<(), String> {
     let entry = keyring_entry()?;
-    match entry.delete_credential() {
+    let r = match entry.delete_credential() {
         Ok(()) => Ok(()),
-        // Already gone — treat as success.
         Err(keyring::Error::NoEntry) => Ok(()),
         Err(e) => Err(e.to_string()),
-    }
+    };
+    remove_token_marker();
+    r
 }
 
 #[tauri::command]
 pub fn github_has_token() -> Result<bool, String> {
-    Ok(read_token()?.is_some())
+    // Marker-file check — no keychain access, no macOS password prompt.
+    Ok(token_marker_path().map(|p| p.exists()).unwrap_or(false))
 }
 
 // ---------------------------------------------------------------------------

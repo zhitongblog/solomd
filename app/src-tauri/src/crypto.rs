@@ -299,11 +299,21 @@ pub struct CryptoStatus {
     pub has_key: bool,
 }
 
+/// Marker file flagging "encryption key is in the keychain". Not secret —
+/// just a flag. Same reason as github_sync's marker: `read_key_from_keyring`
+/// triggers a macOS password prompt on every read, and we'd hit it just
+/// by opening Settings.
+fn key_marker_path(workspace: &Path) -> PathBuf {
+    workspace.join(".solomd/encryption.key-set")
+}
+
 #[tauri::command]
 pub fn crypto_status(folder: String) -> Result<CryptoStatus, String> {
     let path = PathBuf::from(&folder);
     let enabled = config_path(&path).exists();
-    let has_key = read_key_from_keyring(&path)?.is_some();
+    // Marker-file check — no keychain access. The actual key is still
+    // read from the keychain only at encrypt / decrypt time.
+    let has_key = key_marker_path(&path).exists();
     Ok(CryptoStatus { enabled, has_key })
 }
 
@@ -356,6 +366,9 @@ pub fn crypto_set_passphrase(folder: String, passphrase: String) -> Result<(), S
     save_config(&path, &cfg)?;
     save_shadow_salt(&path, &cfg.salt, &kdf)?;
     write_key_to_keyring(&path, &key)?;
+    // Drop the marker so crypto_status can answer "key is set?" without
+    // re-reading the keychain (= without re-prompting on macOS).
+    let _ = fs::write(key_marker_path(&path), b"1");
 
     if fresh {
         let probe = encrypt_bytes(&key, "encryption.probe", b"SoloMD probe v1")?;
@@ -368,6 +381,7 @@ pub fn crypto_set_passphrase(folder: String, passphrase: String) -> Result<(), S
 #[tauri::command]
 pub fn crypto_clear_passphrase(folder: String) -> Result<(), String> {
     let path = PathBuf::from(&folder);
+    let _ = fs::remove_file(key_marker_path(&path));
     delete_key_from_keyring(&path)
 }
 
