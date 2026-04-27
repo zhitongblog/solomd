@@ -136,6 +136,57 @@ pub struct WriteResult {
 }
 
 // ---------------------------------------------------------------------------
+// v3.1 SoloMD-only tool args (autogit / sync / share)
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Deserialize, Serialize, JsonSchema)]
+pub struct AutogitLogArgs {
+    /// Path to the note (absolute or workspace-relative).
+    pub path: String,
+    /// Max commits to return (default 50, max 500).
+    #[serde(default)]
+    pub limit: Option<u32>,
+}
+
+#[derive(Debug, Deserialize, Serialize, JsonSchema)]
+pub struct AutogitDiffArgs {
+    /// Path to the note.
+    pub path: String,
+    /// SHA (or short SHA) to diff. Defaults to comparing HEAD against
+    /// the previous commit.
+    #[serde(default)]
+    pub sha: Option<String>,
+    /// Base SHA (defaults to the parent of `sha`). Use this to compare
+    /// arbitrary two commits.
+    #[serde(default)]
+    pub base: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize, JsonSchema)]
+pub struct AutogitRollbackArgs {
+    /// Path to the note.
+    pub path: String,
+    /// SHA whose version of the file should overwrite the current
+    /// working-tree copy.
+    pub sha: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, JsonSchema)]
+pub struct ShareUrlArgs {
+    /// Path to the note.
+    pub path: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct AutogitCommitMeta {
+    pub sha: String,
+    pub short_sha: String,
+    pub author: String,
+    pub time: i64,
+    pub summary: String,
+}
+
+// ---------------------------------------------------------------------------
 // Tool router
 // ---------------------------------------------------------------------------
 
@@ -356,6 +407,128 @@ impl SoloMdServer {
         ]))
     }
 
+    // ---- v3.1 SoloMD-only tools (autogit / sync / share) -----------------
+
+    /// List per-note commit history from SoloMD's AutoGit repo.
+    #[tool(
+        name = "autogit_log",
+        description = "List the commit history for a single note from SoloMD's AutoGit repo (saves are auto-committed). Returns sha + short_sha + author + time (unix seconds) + summary, newest first."
+    )]
+    pub async fn autogit_log(
+        &self,
+        args: Parameters<AutogitLogArgs>,
+    ) -> Result<CallToolResult, McpError> {
+        let workspace = self.workspace().to_path_buf();
+        let path = safety::resolve_in(&workspace, &args.0.path, true)
+            .map_err(|e| McpError::invalid_params(e, None))?;
+        let limit = args.0.limit.unwrap_or(50).min(500) as usize;
+        let commits = tokio::task::spawn_blocking(move || autogit_log_inner(&workspace, &path, limit))
+            .await
+            .map_err(|e| McpError::internal_error(format!("join: {e}"), None))?
+            .map_err(|e| McpError::internal_error(e, None))?;
+        let json = serde_json::json!({ "commits": commits, "count": commits.len() });
+        Ok(CallToolResult::success(vec![
+            Content::json(json).map_err(|e| McpError::internal_error(e.to_string(), None))?
+        ]))
+    }
+
+    /// Show the textual diff for one note between two AutoGit commits.
+    #[tool(
+        name = "autogit_diff",
+        description = "Show a unified diff for one note between two AutoGit commits. Defaults: sha=HEAD, base=parent of sha. Returns the diff as a string plus the resolved sha/base."
+    )]
+    pub async fn autogit_diff(
+        &self,
+        args: Parameters<AutogitDiffArgs>,
+    ) -> Result<CallToolResult, McpError> {
+        let workspace = self.workspace().to_path_buf();
+        let path = safety::resolve_in(&workspace, &args.0.path, true)
+            .map_err(|e| McpError::invalid_params(e, None))?;
+        let sha = args.0.sha.clone();
+        let base = args.0.base.clone();
+        let result = tokio::task::spawn_blocking(move || autogit_diff_inner(&workspace, &path, sha.as_deref(), base.as_deref()))
+            .await
+            .map_err(|e| McpError::internal_error(format!("join: {e}"), None))?
+            .map_err(|e| McpError::internal_error(e, None))?;
+        Ok(CallToolResult::success(vec![
+            Content::json(result).map_err(|e| McpError::internal_error(e.to_string(), None))?
+        ]))
+    }
+
+    /// Restore a note's content from a specific AutoGit commit. Gated by
+    /// `--allow-write`. Writes through the AutoGit repo so the rollback
+    /// itself becomes a new commit on top.
+    #[tool(
+        name = "autogit_rollback",
+        description = "Restore a note's content from a specific AutoGit commit by overwriting the working tree. Requires --allow-write. The rollback is itself a new save (and thus a new AutoGit commit), so the prior history is preserved."
+    )]
+    pub async fn autogit_rollback(
+        &self,
+        args: Parameters<AutogitRollbackArgs>,
+    ) -> Result<CallToolResult, McpError> {
+        if !self.inner.allow_write {
+            return Err(McpError::invalid_request(
+                "autogit_rollback is disabled. Restart solomd-mcp with --allow-write to enable it.",
+                None,
+            ));
+        }
+        let workspace = self.workspace().to_path_buf();
+        let path = safety::resolve_in(&workspace, &args.0.path, true)
+            .map_err(|e| McpError::invalid_params(e, None))?;
+        let sha = args.0.sha.clone();
+        let path_str = path.to_string_lossy().to_string();
+        let bytes = tokio::task::spawn_blocking(move || autogit_rollback_inner(&workspace, &path, &sha))
+            .await
+            .map_err(|e| McpError::internal_error(format!("join: {e}"), None))?
+            .map_err(|e| McpError::internal_error(e, None))?;
+        let result = WriteResult {
+            ok: true,
+            bytes_written: bytes,
+            path: path_str,
+        };
+        Ok(CallToolResult::success(vec![
+            Content::json(result).map_err(|e| McpError::internal_error(e.to_string(), None))?
+        ]))
+    }
+
+    /// Read SoloMD's GitHub-sync state for the workspace.
+    #[tool(
+        name = "sync_status",
+        description = "Return SoloMD's GitHub-sync configuration for this workspace: linked remote, current branch, encryption flag, last push/pull timestamps. Reads .solomd/sync.json — does not require credentials."
+    )]
+    pub async fn sync_status(&self) -> Result<CallToolResult, McpError> {
+        let workspace = self.workspace().to_path_buf();
+        let json = tokio::task::spawn_blocking(move || sync_status_inner(&workspace))
+            .await
+            .map_err(|e| McpError::internal_error(format!("join: {e}"), None))?
+            .map_err(|e| McpError::internal_error(e, None))?;
+        Ok(CallToolResult::success(vec![
+            Content::json(json).map_err(|e| McpError::internal_error(e.to_string(), None))?
+        ]))
+    }
+
+    /// Compute the public share URL for a note (only valid if the
+    /// workspace is linked to a public GitHub repo).
+    #[tool(
+        name = "share_url",
+        description = "Return the public solomd.app/share/ URL for a note. Only resolves to a real page if the workspace's linked repo is public; for private repos the URL exists but raw.githubusercontent.com will 404. Use sync_status first to check `private`."
+    )]
+    pub async fn share_url(
+        &self,
+        args: Parameters<ShareUrlArgs>,
+    ) -> Result<CallToolResult, McpError> {
+        let workspace = self.workspace().to_path_buf();
+        let path = safety::resolve_in(&workspace, &args.0.path, true)
+            .map_err(|e| McpError::invalid_params(e, None))?;
+        let json = tokio::task::spawn_blocking(move || share_url_inner(&workspace, &path))
+            .await
+            .map_err(|e| McpError::internal_error(format!("join: {e}"), None))?
+            .map_err(|e| McpError::internal_error(e, None))?;
+        Ok(CallToolResult::success(vec![
+            Content::json(json).map_err(|e| McpError::internal_error(e.to_string(), None))?
+        ]))
+    }
+
     /// Append to an existing note. Gated by `--allow-write`.
     #[tool(
         name = "append_to_note",
@@ -544,4 +717,287 @@ fn search_native(
         }
     }
     Ok(hits)
+}
+
+// ---------------------------------------------------------------------------
+// v3.1 inner helpers — git2 / sync.json / share URL
+// ---------------------------------------------------------------------------
+
+fn autogit_log_inner(
+    workspace: &std::path::Path,
+    note_path: &std::path::Path,
+    limit: usize,
+) -> Result<Vec<AutogitCommitMeta>, String> {
+    let repo = git2::Repository::open(workspace)
+        .map_err(|e| format!("not an AutoGit workspace: {e}"))?;
+    let rel = note_path
+        .strip_prefix(workspace)
+        .map_err(|_| "note is outside the workspace".to_string())?;
+    let mut walker = repo.revwalk().map_err(|e| e.to_string())?;
+    walker.push_head().map_err(|e| e.to_string())?;
+
+    let mut out: Vec<AutogitCommitMeta> = Vec::new();
+    for oid in walker.flatten() {
+        let commit = match repo.find_commit(oid) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+        if !commit_touches(&repo, &commit, rel).unwrap_or(false) {
+            continue;
+        }
+        let summary = commit.summary().unwrap_or("").to_string();
+        let name = commit.author().name().unwrap_or("").to_string();
+        out.push(AutogitCommitMeta {
+            sha: commit.id().to_string(),
+            short_sha: commit.id().to_string().chars().take(7).collect(),
+            author: name,
+            time: commit.time().seconds(),
+            summary,
+        });
+    }
+    // Sort newest-first by author time. Doing it in Rust dodges git2's
+    // sorting modes — Sort::TIME is ascending, REVERSE is non-obvious,
+    // and the resulting filter+visit order is fragile across history
+    // shapes. A plain sort_by here is unambiguous.
+    out.sort_by(|a, b| b.time.cmp(&a.time));
+    out.truncate(limit);
+    Ok(out)
+}
+
+fn commit_touches(
+    repo: &git2::Repository,
+    commit: &git2::Commit,
+    rel: &std::path::Path,
+) -> Result<bool, git2::Error> {
+    let tree = commit.tree()?;
+    let parent_tree = if commit.parent_count() > 0 {
+        Some(commit.parent(0)?.tree()?)
+    } else {
+        None
+    };
+    let diff = repo.diff_tree_to_tree(parent_tree.as_ref(), Some(&tree), None)?;
+    let mut hit = false;
+    diff.foreach(
+        &mut |delta, _| {
+            if delta
+                .new_file()
+                .path()
+                .or_else(|| delta.old_file().path())
+                .map(|p| p == rel)
+                .unwrap_or(false)
+            {
+                hit = true;
+            }
+            true
+        },
+        None,
+        None,
+        None,
+    )?;
+    Ok(hit)
+}
+
+fn autogit_diff_inner(
+    workspace: &std::path::Path,
+    note_path: &std::path::Path,
+    sha: Option<&str>,
+    base: Option<&str>,
+) -> Result<serde_json::Value, String> {
+    let repo = git2::Repository::open(workspace)
+        .map_err(|e| format!("not an AutoGit workspace: {e}"))?;
+    let rel = note_path
+        .strip_prefix(workspace)
+        .map_err(|_| "note is outside the workspace".to_string())?;
+
+    let new_oid = match sha {
+        Some(s) => repo
+            .revparse_single(s)
+            .map_err(|e| format!("resolve {s}: {e}"))?
+            .id(),
+        None => {
+            // Default: the most recent commit that actually touched this
+            // path. Plain HEAD-vs-parent is misleading when HEAD only
+            // changed *other* files — the diff would be empty even though
+            // there's plenty of history for the requested path.
+            let mut walker = repo.revwalk().map_err(|e| e.to_string())?;
+            walker.push_head().map_err(|e| e.to_string())?;
+            // Collect every commit that touches the path, then pick the
+            // newest by author time. (Don't rely on revwalk sort modes.)
+            let mut candidates: Vec<(git2::Oid, i64)> = Vec::new();
+            for oid in walker.flatten() {
+                if let Ok(c) = repo.find_commit(oid) {
+                    if commit_touches(&repo, &c, rel).unwrap_or(false) {
+                        candidates.push((oid, c.time().seconds()));
+                    }
+                }
+            }
+            candidates.sort_by(|a, b| b.1.cmp(&a.1));
+            candidates
+                .into_iter()
+                .next()
+                .map(|(oid, _)| oid)
+                .ok_or_else(|| format!("no commit in this repo has touched '{}'", rel.display()))?
+        }
+    };
+    let new_commit = repo.find_commit(new_oid).map_err(|e| e.to_string())?;
+    let new_tree = new_commit.tree().map_err(|e| e.to_string())?;
+
+    let base_commit = match base {
+        Some(s) => Some(
+            repo.revparse_single(s)
+                .map_err(|e| format!("resolve {s}: {e}"))?
+                .peel_to_commit()
+                .map_err(|e| e.to_string())?,
+        ),
+        None => {
+            if new_commit.parent_count() > 0 {
+                Some(new_commit.parent(0).map_err(|e| e.to_string())?)
+            } else {
+                None
+            }
+        }
+    };
+    let base_tree = match &base_commit {
+        Some(c) => Some(c.tree().map_err(|e| e.to_string())?),
+        None => None,
+    };
+
+    let mut diff_opts = git2::DiffOptions::new();
+    diff_opts.pathspec(rel.to_string_lossy().as_ref());
+    let diff = repo
+        .diff_tree_to_tree(base_tree.as_ref(), Some(&new_tree), Some(&mut diff_opts))
+        .map_err(|e| e.to_string())?;
+
+    let mut out = String::new();
+    diff.print(git2::DiffFormat::Patch, |_d, _h, line| {
+        let origin = line.origin();
+        if origin == '+' || origin == '-' || origin == ' ' {
+            out.push(origin);
+        }
+        out.push_str(std::str::from_utf8(line.content()).unwrap_or(""));
+        true
+    })
+    .map_err(|e| e.to_string())?;
+
+    Ok(serde_json::json!({
+        "sha": new_oid.to_string(),
+        "base": base_commit.as_ref().map(|c| c.id().to_string()),
+        "diff": out,
+        "path": rel.to_string_lossy(),
+    }))
+}
+
+fn autogit_rollback_inner(
+    workspace: &std::path::Path,
+    note_path: &std::path::Path,
+    sha: &str,
+) -> Result<usize, String> {
+    let repo = git2::Repository::open(workspace)
+        .map_err(|e| format!("not an AutoGit workspace: {e}"))?;
+    let rel = note_path
+        .strip_prefix(workspace)
+        .map_err(|_| "note is outside the workspace".to_string())?;
+    let object = repo
+        .revparse_single(sha)
+        .map_err(|e| format!("resolve {sha}: {e}"))?;
+    let commit = object
+        .peel_to_commit()
+        .map_err(|e| format!("not a commit: {e}"))?;
+    let tree = commit.tree().map_err(|e| e.to_string())?;
+    let entry = tree
+        .get_path(rel)
+        .map_err(|_| format!("file '{}' not in commit {}", rel.display(), sha))?;
+    let blob = repo
+        .find_blob(entry.id())
+        .map_err(|e| format!("blob: {e}"))?;
+    let bytes = blob.content().to_vec();
+    let n = bytes.len();
+    std::fs::write(note_path, bytes).map_err(|e| format!("write: {e}"))?;
+    Ok(n)
+}
+
+fn sync_status_inner(workspace: &std::path::Path) -> Result<serde_json::Value, String> {
+    let cfg_path = workspace.join(".solomd").join("sync.json");
+    if !cfg_path.exists() {
+        return Ok(serde_json::json!({
+            "linked": false,
+            "remote_url": null,
+            "encrypted": false,
+        }));
+    }
+    let raw = std::fs::read_to_string(&cfg_path).map_err(|e| e.to_string())?;
+    // Refuse to invent state if the config is corrupted — same fail-closed
+    // posture as the desktop app's github_push_inner / github_pull_inner.
+    let mut value: serde_json::Value =
+        serde_json::from_str(&raw).map_err(|e| format!("sync.json corrupted: {e}"))?;
+    if let Some(obj) = value.as_object_mut() {
+        obj.insert("linked".into(), serde_json::Value::Bool(true));
+    }
+    Ok(value)
+}
+
+fn share_url_inner(
+    workspace: &std::path::Path,
+    note_path: &std::path::Path,
+) -> Result<serde_json::Value, String> {
+    let cfg_path = workspace.join(".solomd").join("sync.json");
+    if !cfg_path.exists() {
+        return Err("workspace is not linked to a GitHub repo".into());
+    }
+    let raw = std::fs::read_to_string(&cfg_path).map_err(|e| e.to_string())?;
+    let cfg: serde_json::Value = serde_json::from_str(&raw)
+        .map_err(|e| format!("sync.json corrupted: {e}"))?;
+    let remote = cfg
+        .get("remote_url")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| "remote_url missing in sync.json".to_string())?;
+    // Accept both https://github.com/<owner>/<repo>.git and the bare form.
+    let owner_repo = parse_owner_repo(remote)
+        .ok_or_else(|| format!("not a GitHub remote: {remote}"))?;
+    let branch = cfg
+        .get("branch")
+        .and_then(|v| v.as_str())
+        .unwrap_or("main")
+        .to_string();
+    let rel = note_path
+        .strip_prefix(workspace)
+        .map_err(|_| "note is outside the workspace".to_string())?;
+    let rel_str = rel.to_string_lossy().replace('\\', "/");
+    let url = format!(
+        "https://solomd.app/share/?repo={}&path={}&branch={}",
+        urlencode(&owner_repo),
+        urlencode(&rel_str),
+        urlencode(&branch),
+    );
+    Ok(serde_json::json!({
+        "url": url,
+        "repo": owner_repo,
+        "branch": branch,
+        "path": rel_str,
+        "warning": "Public share only renders if the linked repo is public. Use sync_status if unsure.",
+    }))
+}
+
+fn parse_owner_repo(remote: &str) -> Option<String> {
+    let trimmed = remote.trim().trim_end_matches('/').trim_end_matches(".git");
+    let after = trimmed.split("github.com").nth(1)?.trim_start_matches([':', '/']);
+    let parts: Vec<&str> = after.split('/').filter(|s| !s.is_empty()).collect();
+    if parts.len() >= 2 {
+        Some(format!("{}/{}", parts[0], parts[1]))
+    } else {
+        None
+    }
+}
+
+fn urlencode(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for byte in s.bytes() {
+        match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' | b'/' => {
+                out.push(byte as char);
+            }
+            _ => out.push_str(&format!("%{:02X}", byte)),
+        }
+    }
+    out
 }

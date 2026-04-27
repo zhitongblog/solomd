@@ -32,6 +32,11 @@ walkdir = "2"
 regex-lite = "0.1"
 once_cell = "1"
 
+# v3.1 — git access for autogit_log/diff/rollback. Vendored libgit2 +
+# OpenSSL so the binary is self-contained on every platform (no system
+# git required, matching the desktop app's policy).
+git2 = { version = "0.19", default-features = false, features = ["vendored-libgit2"] }
+
 # Logging (to stderr)
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

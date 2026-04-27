@@ -98,6 +98,8 @@ cmd_help() {
     printf "  ${GREEN}%-22s${NC} %s\n" "list [folder]" "List markdown files"
     printf "  ${GREEN}%-22s${NC} %s\n" "search <query>" "Search markdown for text"
     printf "  ${GREEN}%-22s${NC} %s\n" "cat <title|path>" "Print file content"
+    printf "  ${GREEN}%-22s${NC} %s\n" "agent <prompt…>" "Run an LLM agent against the vault via MCP"
+    printf "  ${GREEN}%-22s${NC} %s\n" "mcp-config" "Print the MCP config snippet for your AI client"
     printf "  ${GREEN}%-22s${NC} %s\n" "help" "Show this help"
     printf "\n${BLUE}NOTES DIR${NC}\n"
     printf "  ${DIM}%s${NC}\n" "$NOTES_DIR"
@@ -187,13 +189,144 @@ cmd_cat() {
     cat "$path"
 }
 
+# ---- v3.1 agent endpoint -------------------------------------------------
+# Detect the bundled solomd-mcp binary alongside the desktop app, falling
+# back to anything on PATH. We don't ship a separate sidecar yet — the
+# desktop app embeds it via tauri externalBin, so the lookup mirrors
+# detect_solomd_bin().
+detect_mcp_bin() {
+    if [[ "$(uname)" == "Darwin" ]]; then
+        local mac_paths=(
+            "/Applications/SoloMD.app/Contents/Resources/solomd-mcp"
+            "$HOME/Applications/SoloMD.app/Contents/Resources/solomd-mcp"
+        )
+        for p in "${mac_paths[@]}"; do
+            [[ -x "$p" ]] && echo "$p" && return 0
+        done
+    elif [[ "$(uname)" == "Linux" ]]; then
+        local linux_paths=(
+            "/usr/lib/solomd/solomd-mcp"
+            "/usr/local/lib/solomd/solomd-mcp"
+            "/opt/SoloMD/solomd-mcp"
+        )
+        for p in "${linux_paths[@]}"; do
+            [[ -x "$p" ]] && echo "$p" && return 0
+        done
+    fi
+    if command -v solomd-mcp >/dev/null 2>&1; then
+        command -v solomd-mcp
+        return 0
+    fi
+    return 1
+}
+
+cmd_mcp_config() {
+    local mcp_bin
+    if ! mcp_bin="$(detect_mcp_bin)"; then
+        printf "${YELLOW}solomd-mcp not found.${NC} Install SoloMD or run install-mcp.sh.\n" >&2
+        printf "${DIM}https://github.com/zhitongblog/solomd/blob/main/scripts/install-mcp.sh${NC}\n" >&2
+        exit 1
+    fi
+    local workspace="${SOLOMD_NOTES:-$HOME/Documents/SoloMD}"
+    cat <<EOF
+{
+  "mcpServers": {
+    "solomd": {
+      "command": "$mcp_bin",
+      "args": ["--workspace", "$workspace"]
+    }
+  }
+}
+EOF
+}
+
+# `solomd agent <prompt>` — hand the prompt off to whichever LLM CLI is on
+# PATH (claude / codex / aider), with solomd-mcp pre-wired. We deliberately
+# do not implement an LLM loop ourselves: the user already has Claude Code,
+# Codex CLI, or aider installed and configured with their BYOK keys. Our
+# job is to put a SoloMD MCP server in front of that CLI so it can read +
+# edit the vault, then pass through.
+cmd_agent() {
+    local prompt="$*"
+    [[ -z "$prompt" ]] && {
+        printf "Usage: solomd agent <prompt>\n" >&2
+        printf "  e.g. solomd agent 'rewrite this week of dailies into a weekly review'\n" >&2
+        exit 1
+    }
+
+    local mcp_bin
+    if ! mcp_bin="$(detect_mcp_bin)"; then
+        printf "${YELLOW}solomd-mcp not found.${NC}\n" >&2
+        printf "  SoloMD bundles solomd-mcp inside the app (Mac/Linux). Make sure SoloMD is installed,\n" >&2
+        printf "  or run scripts/install-mcp.sh from this repo to drop it on PATH.\n" >&2
+        exit 1
+    fi
+    local workspace="${SOLOMD_NOTES:-$HOME/Documents/SoloMD}"
+
+    # Generate a one-shot MCP config in TMPDIR so the LLM CLI can pick it
+    # up without us touching the user's persistent config.
+    local cfg_dir
+    cfg_dir="$(mktemp -d -t solomd-agent.XXXXXX)"
+    local cfg="$cfg_dir/mcp.json"
+    cat > "$cfg" <<EOF
+{
+  "mcpServers": {
+    "solomd": {
+      "command": "$mcp_bin",
+      "args": ["--workspace", "$workspace", "--allow-write"]
+    }
+  }
+}
+EOF
+    trap "rm -rf $cfg_dir" EXIT
+
+    printf "${DIM}vault:    %s${NC}\n" "$workspace"
+    printf "${DIM}mcp:      %s${NC}\n" "$mcp_bin"
+
+    if command -v claude >/dev/null 2>&1; then
+        printf "${BLUE}→ claude${NC} (Claude Code CLI)\n\n"
+        # `claude "query"` starts an interactive session seeded with the
+        # query. `--mcp-config` registers the SoloMD MCP for that session.
+        # We don't pass `-p` (non-interactive one-shot) by default — agent
+        # work usually needs follow-up turns.
+        exec claude --mcp-config "$cfg" -- "$prompt"
+    elif command -v codex >/dev/null 2>&1; then
+        printf "${BLUE}→ codex${NC} (Codex CLI)\n\n"
+        # Codex CLI registers MCP servers via ~/.codex/config.toml, not a
+        # CLI flag. Print the right snippet and run codex with the prompt.
+        printf "${DIM}Add this to ~/.codex/config.toml if not already present:${NC}\n"
+        printf "  [mcp_servers.solomd]\n"
+        printf "  command = \"%s\"\n" "$mcp_bin"
+        printf "  args = [\"--workspace\", \"%s\", \"--allow-write\"]\n\n" "$workspace"
+        exec codex "$prompt"
+    elif command -v aider >/dev/null 2>&1; then
+        printf "${BLUE}→ aider${NC} (no native MCP — printing recipe instead)\n\n"
+        printf "  The aider CLI doesn't speak MCP. Either:\n"
+        printf "  1. Install Claude Code: https://docs.claude.com/en/docs/claude-code\n"
+        printf "  2. Or run: aider %s\n" "$workspace"
+        printf "     (it will read+edit notes directly without the SoloMD MCP wrapper)\n"
+        exit 0
+    else
+        printf "${YELLOW}No supported LLM CLI found on PATH.${NC}\n\n" >&2
+        printf "  Install one of:\n" >&2
+        printf "    Claude Code  — https://docs.claude.com/en/docs/claude-code\n" >&2
+        printf "    Codex CLI    — https://github.com/openai/codex\n" >&2
+        printf "  Then re-run: solomd agent '$prompt'\n\n" >&2
+        printf "${DIM}MCP config that would be used:${NC}\n" >&2
+        cat "$cfg" >&2
+        exit 1
+    fi
+}
+
 # ---- Dispatch ------------------------------------------------------------
 case "${1:-help}" in
-    open)   shift; cmd_open "$@" ;;
-    new)    shift; cmd_new "$@" ;;
-    list)   shift; cmd_list "$@" ;;
-    search) shift; cmd_search "$@" ;;
-    cat)    shift; cmd_cat "$@" ;;
+    open)       shift; cmd_open "$@" ;;
+    new)        shift; cmd_new "$@" ;;
+    list)       shift; cmd_list "$@" ;;
+    search)     shift; cmd_search "$@" ;;
+    cat)        shift; cmd_cat "$@" ;;
+    agent)      shift; cmd_agent "$@" ;;
+    mcp-config) shift; cmd_mcp_config "$@" ;;
     help|--help|-h) cmd_help ;;
     *) printf "${YELLOW}Unknown command:${NC} %s\n\n" "$1"; cmd_help; exit 1 ;;
 esac
