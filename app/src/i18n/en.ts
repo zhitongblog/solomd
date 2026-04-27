@@ -101,6 +101,12 @@ export const en = {
   },
   settings: {
     title: 'Settings',
+    catBasics: 'Basics',
+    catWriting: 'Writing',
+    catSync: 'Sync',
+    catIntegrations: 'Integrations',
+    catExport: 'Export',
+    catAdvanced: 'Advanced',
     theme: 'Theme',
     fontFamily: 'Font Family',
     customFont: 'Custom…',

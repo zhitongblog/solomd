@@ -103,6 +103,12 @@ export const zh: I18n = {
   },
   settings: {
     title: '设置',
+    catBasics: '基础',
+    catWriting: '写作',
+    catSync: '同步',
+    catIntegrations: '集成',
+    catExport: '导出',
+    catAdvanced: '高级',
     theme: '主题',
     fontFamily: '字体',
     customFont: '自定义…',
