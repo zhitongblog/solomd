@@ -24,18 +24,28 @@
 //! Poly1305 tag. AAD = relative path bytes, so a file moved in the
 //! ciphertext directory cannot be silently substituted for another file.
 
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 
 use argon2::{Algorithm, Argon2, Params, Version};
 use chacha20poly1305::{
     aead::{Aead, KeyInit, Payload},
     XChaCha20Poly1305, XNonce,
 };
+use once_cell::sync::Lazy;
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use walkdir::WalkDir;
+
+/// v3.0 — process-local cache of derived encryption keys, keyed by
+/// workspace path. Encrypt-for-push runs on every save (5s debounce);
+/// without this every push would trigger a macOS keychain prompt for
+/// the encryption key. Cleared on `clear_passphrase`; primed on a
+/// successful `set_passphrase`.
+static KEY_CACHE: Lazy<Mutex<HashMap<String, [u8; 32]>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
 /// Service name used for the OS keychain entry storing the derived key,
 /// keyed per workspace path so users can have different keys per vault.
@@ -186,9 +196,15 @@ fn derive_key(passphrase: &str, salt: &[u8], params: &KdfParams) -> Result<[u8; 
 }
 
 fn read_key_from_keyring(workspace: &Path) -> Result<Option<[u8; 32]>, String> {
+    let cache_key = workspace.to_string_lossy().to_string();
+    if let Ok(guard) = KEY_CACHE.lock() {
+        if let Some(k) = guard.get(&cache_key) {
+            return Ok(Some(*k));
+        }
+    }
     let entry = keyring::Entry::new(KEYRING_SERVICE, &keyring_user_for(workspace))
         .map_err(|e| e.to_string())?;
-    match entry.get_password() {
+    let key = match entry.get_password() {
         Ok(hex) => {
             let bytes = hex_decode(&hex)?;
             if bytes.len() != 32 {
@@ -196,11 +212,15 @@ fn read_key_from_keyring(workspace: &Path) -> Result<Option<[u8; 32]>, String> {
             }
             let mut out = [0u8; 32];
             out.copy_from_slice(&bytes);
-            Ok(Some(out))
+            Some(out)
         }
-        Err(keyring::Error::NoEntry) => Ok(None),
-        Err(e) => Err(e.to_string()),
+        Err(keyring::Error::NoEntry) => None,
+        Err(e) => return Err(e.to_string()),
+    };
+    if let (Ok(mut guard), Some(k)) = (KEY_CACHE.lock(), key.as_ref()) {
+        guard.insert(cache_key, *k);
     }
+    Ok(key)
 }
 
 fn write_key_to_keyring(workspace: &Path, key: &[u8; 32]) -> Result<(), String> {
@@ -208,10 +228,20 @@ fn write_key_to_keyring(workspace: &Path, key: &[u8; 32]) -> Result<(), String> 
         .map_err(|e| e.to_string())?;
     entry
         .set_password(&hex_encode(key))
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+    // Prime the in-process cache so the very next encrypt/decrypt call
+    // doesn't trigger another keychain prompt right after passphrase
+    // was just set.
+    if let Ok(mut guard) = KEY_CACHE.lock() {
+        guard.insert(workspace.to_string_lossy().to_string(), *key);
+    }
+    Ok(())
 }
 
 fn delete_key_from_keyring(workspace: &Path) -> Result<(), String> {
+    if let Ok(mut guard) = KEY_CACHE.lock() {
+        guard.remove(&workspace.to_string_lossy().to_string());
+    }
     let entry = keyring::Entry::new(KEYRING_SERVICE, &keyring_user_for(workspace))
         .map_err(|e| e.to_string())?;
     match entry.delete_credential() {

@@ -8,6 +8,7 @@ import { useInbox } from '../composables/useInbox';
 import { useI18n } from '../i18n';
 import WritingGoals from './WritingGoals.vue';
 import PomodoroPill from './PomodoroPill.vue';
+import SyncStatusPill from './SyncStatusPill.vue';
 import { usePomodoroStore } from '../stores/pomodoro';
 
 const props = defineProps<{ line: number; col: number }>();
@@ -73,6 +74,7 @@ function onPillClick() {
       }}
     </span>
     <PomodoroPill v-if="pomodoro.active" />
+    <SyncStatusPill />
     <button
       v-if="inbox.activeIsInbox.value"
       class="seg seg--inbox"

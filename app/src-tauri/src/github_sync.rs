@@ -40,9 +40,11 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use git2::{AutotagOption, FetchOptions, PushOptions, Repository, Signature};
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
 const KEYRING_SERVICE: &str = "solomd-github";
@@ -50,6 +52,14 @@ const KEYRING_USER: &str = "personal-access-token";
 const SYNC_CONFIG_FILE: &str = ".solomd/sync.json";
 const GITHUB_API: &str = "https://api.github.com";
 const USER_AGENT: &str = "SoloMD-sync/2.6";
+
+/// v3.0 — process-local token cache. Auto-push fires every save and
+/// auto-pull every N minutes; without this each call would re-read the
+/// keychain (= macOS prompt on every sync if the user hasn't clicked
+/// "Always Allow"). Cache lives only in this process's RAM — never
+/// persisted, never logged. Cleared on `clear_token` and on a successful
+/// `set_token` (which overwrites it with the fresh value).
+static TOKEN_CACHE: Lazy<Mutex<Option<String>>> = Lazy::new(|| Mutex::new(None));
 
 // ---------------------------------------------------------------------------
 // Token storage (OS keychain via `keyring`)
@@ -90,13 +100,23 @@ fn remove_token_marker() {
 }
 
 fn read_token() -> Result<Option<String>, String> {
-    let entry = keyring_entry()?;
-    match entry.get_password() {
-        Ok(s) => Ok(Some(s)),
-        // `NoEntry` is the "not set yet" path, not an error.
-        Err(keyring::Error::NoEntry) => Ok(None),
-        Err(e) => Err(e.to_string()),
+    // Cached read first — if the user already authorized the keychain
+    // earlier in this session, never bother them again.
+    if let Ok(guard) = TOKEN_CACHE.lock() {
+        if let Some(s) = guard.as_ref() {
+            return Ok(Some(s.clone()));
+        }
     }
+    let entry = keyring_entry()?;
+    let token = match entry.get_password() {
+        Ok(s) => Some(s),
+        Err(keyring::Error::NoEntry) => None,
+        Err(e) => return Err(e.to_string()),
+    };
+    if let (Ok(mut guard), Some(t)) = (TOKEN_CACHE.lock(), token.as_ref()) {
+        *guard = Some(t.clone());
+    }
+    Ok(token)
 }
 
 #[tauri::command]
@@ -107,6 +127,11 @@ pub fn github_set_token(token: String) -> Result<(), String> {
     }
     let entry = keyring_entry()?;
     entry.set_password(&trimmed).map_err(|e| e.to_string())?;
+    // Prime the cache so the very next push/pull doesn't trigger another
+    // keychain prompt right after the user just typed the token.
+    if let Ok(mut guard) = TOKEN_CACHE.lock() {
+        *guard = Some(trimmed);
+    }
     write_token_marker();
     Ok(())
 }
@@ -119,6 +144,9 @@ pub fn github_clear_token() -> Result<(), String> {
         Err(keyring::Error::NoEntry) => Ok(()),
         Err(e) => Err(e.to_string()),
     };
+    if let Ok(mut guard) = TOKEN_CACHE.lock() {
+        *guard = None;
+    }
     remove_token_marker();
     r
 }
