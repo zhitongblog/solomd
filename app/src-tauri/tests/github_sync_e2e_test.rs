@@ -221,3 +221,39 @@ fn github_sync_surfaces_conflicts_on_concurrent_edit() {
     assert_eq!(r.conflicts.len(), 1);
     assert!(r.conflicts[0].ends_with("note.md"));
 }
+
+/// Regression test for the v3.0.x audit fix: sync.json that fails to
+/// parse must NOT degrade silently to a default Config (which would
+/// have encrypted=false and could push plaintext from a workspace
+/// whose user had E2EE enabled). github_push_inner / github_pull_inner
+/// must instead surface the parse error.
+#[test]
+fn github_sync_corrupted_config_fails_closed() {
+    let bare_dir = fresh_dir("bare-fc");
+    Repository::init_bare(&bare_dir).unwrap();
+    let bare_url = format!("file://{}", bare_dir.display());
+
+    let dev = init_workspace_with_remote("devFC", &bare_url);
+    write(&dev.join("note.md"), "hello\n");
+    {
+        let repo = Repository::open(&dev).unwrap();
+        commit_all(&repo, "init");
+    }
+
+    // Corrupt sync.json — typical real-world scenario is a truncated
+    // write after a crash, but malformed JSON exercises the same path.
+    fs::write(dev.join(".solomd/sync.json"), b"{not valid json").unwrap();
+
+    let folder = dev.to_string_lossy().into_owned();
+    let push_err = github_push_inner(folder.clone(), "ignored".into()).err();
+    assert!(
+        push_err.is_some(),
+        "push must refuse when sync.json is corrupted (got Ok)"
+    );
+
+    let pull_err = github_pull_inner(folder, "ignored".into()).err();
+    assert!(
+        pull_err.is_some(),
+        "pull must refuse when sync.json is corrupted (got Ok)"
+    );
+}
