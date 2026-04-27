@@ -190,6 +190,14 @@ export const useGithubSyncStore = defineStore('githubSync', {
       await invoke('crypto_decrypt_after_pull', { folder });
     },
 
+    async getProxy(): Promise<string> {
+      return await invoke<string>('proxy_get');
+    },
+
+    async setProxy(url: string): Promise<void> {
+      await invoke('proxy_set', { url });
+    },
+
     async setConfig(
       folder: string,
       autoPush: boolean,

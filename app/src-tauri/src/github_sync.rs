@@ -564,6 +564,68 @@ fn now_secs() -> i64 {
         .unwrap_or(0)
 }
 
+// ---------------------------------------------------------------------------
+// v3.0 — global proxy URL for users in regions where direct GitHub is
+// blocked (China). We can't rely on launchctl-set env vars because Tauri
+// apps started from Finder/Dock don't inherit the user's shell env.
+// Storage: ~/.solomd/proxy (single-line URL like
+// `http://127.0.0.1:7897` or `socks5://127.0.0.1:1080`). Empty file = no
+// proxy = direct connect. Read on every push/pull (dirt-cheap).
+// ---------------------------------------------------------------------------
+
+fn proxy_path() -> Option<PathBuf> {
+    std::env::var_os("HOME")
+        .map(PathBuf::from)
+        .or_else(|| std::env::var_os("USERPROFILE").map(PathBuf::from))
+        .map(|h| h.join(".solomd").join("proxy"))
+}
+
+fn read_proxy_url() -> Option<String> {
+    let p = proxy_path()?;
+    let raw = fs::read_to_string(&p).ok()?;
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed.to_string())
+    }
+}
+
+#[tauri::command]
+pub fn proxy_get() -> Result<String, String> {
+    Ok(read_proxy_url().unwrap_or_default())
+}
+
+#[tauri::command]
+pub fn proxy_set(url: String) -> Result<(), String> {
+    let p = proxy_path().ok_or("no HOME directory")?;
+    if let Some(parent) = p.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    let trimmed = url.trim();
+    if trimmed.is_empty() {
+        // Empty input = remove the file = direct connect.
+        let _ = fs::remove_file(&p);
+        return Ok(());
+    }
+    fs::write(&p, trimmed).map_err(|e| e.to_string())
+}
+
+/// Build a `ProxyOptions` for libgit2 fetch/push. When the user has set
+/// a proxy URL, return `specified(url)`. Otherwise fall back to `auto()`
+/// which lets libgit2 try standard env vars / system config — usually a
+/// no-op in our GUI context but harmless. Returns a fresh options
+/// struct each call (ProxyOptions has no Clone).
+fn make_proxy_options() -> git2::ProxyOptions<'static> {
+    let mut po = git2::ProxyOptions::new();
+    if let Some(url) = read_proxy_url() {
+        po.url(Box::leak(url.into_boxed_str()));
+    } else {
+        po.auto();
+    }
+    po
+}
+
 /// In a repo, stage every change in the working tree and commit. No-op
 /// if there's nothing to commit. Used by E2EE push/pull to keep the
 /// shadow's git history advancing as the user edits the workspace.
@@ -618,6 +680,7 @@ pub fn github_push_inner(folder: String, token: String) -> Result<(), String> {
 
     let mut opts = PushOptions::new();
     opts.remote_callbacks(make_callbacks(token));
+    opts.proxy_options(make_proxy_options());
     origin
         .push(&[refspec.as_str()], Some(&mut opts))
         .map_err(|e| format!("push failed: {}", e))?;
@@ -680,6 +743,7 @@ pub fn github_pull_inner(folder: String, token: String) -> Result<PullResult, St
         let mut origin = repo.find_remote("origin").map_err(|e| e.to_string())?;
         let mut fetch_opts = FetchOptions::new();
         fetch_opts.remote_callbacks(make_callbacks(token));
+        fetch_opts.proxy_options(make_proxy_options());
         fetch_opts.download_tags(AutotagOption::All);
         origin
             .fetch(&[&branch_name], Some(&mut fetch_opts), None)

@@ -467,6 +467,8 @@ pub fn run_with(initial_file: Option<String>) {
             github_sync::github_push,
             github_sync::github_pull,
             github_sync::github_resolve_conflict,
+            github_sync::proxy_get,
+            github_sync::proxy_set,
             cloud_folder::cloud_folder_detect,
             cloud_folder::device_id_get_or_create,
             cloud_folder::session_save,
