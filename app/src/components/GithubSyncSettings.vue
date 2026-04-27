@@ -43,10 +43,8 @@ const enableE2ee = ref(false);
 const passphraseInput = ref('');
 const passphraseSaving = ref(false);
 const decrypting = ref(false);
-// v3.0 — proxy URL (global, ~/.solomd/proxy). Needed for users in regions
-// where direct github.com is blocked. Empty = direct connect.
-const proxyUrl = ref('');
-const proxySaving = ref(false);
+// v3.0 note: proxy URL UI lives in its own ProxySettings.vue card, sibling
+// to this one in the Sync category. We don't store proxy state here anymore.
 
 onMounted(async () => {
   await sync.refreshHasToken();
@@ -56,10 +54,6 @@ onMounted(async () => {
   if (sync.hasToken && !sync.isLinked) {
     await Promise.all([sync.refreshUser(), sync.listRepos().catch(() => {})]);
   }
-  // Load existing proxy setting (file read — no keychain prompt).
-  try {
-    proxyUrl.value = await sync.getProxy();
-  } catch {}
 });
 
 watch(
@@ -169,22 +163,6 @@ async function savePassphrase() {
     toasts.error(`${t('githubSync.passphraseFailed')}: ${e}`);
   } finally {
     passphraseSaving.value = false;
-  }
-}
-
-async function saveProxy() {
-  proxySaving.value = true;
-  try {
-    await sync.setProxy(proxyUrl.value);
-    toasts.success(
-      proxyUrl.value.trim()
-        ? t('githubSync.proxySavedToast')
-        : t('githubSync.proxyClearedToast'),
-    );
-  } catch (e) {
-    toasts.error(String(e));
-  } finally {
-    proxySaving.value = false;
   }
 }
 
@@ -563,28 +541,6 @@ const linkedRepoLabel = computed(() => {
             </select>
           </label>
           <p class="ghs-help">{{ t('githubSync.autoPullHint') }}</p>
-
-          <!-- v3.0 — proxy URL for users behind GFW / corporate networks. -->
-          <div class="ghs-subblock" style="margin-top: 12px;">
-            <div class="ghs-sub-title">{{ t('githubSync.proxyTitle') }}</div>
-            <div class="ghs-row">
-              <input
-                v-model="proxyUrl"
-                type="text"
-                class="ghs-input ghs-input--mono"
-                :placeholder="t('githubSync.proxyPlaceholder')"
-                spellcheck="false"
-              />
-              <button
-                class="ghs-btn ghs-btn--small"
-                :disabled="proxySaving"
-                @click="saveProxy"
-              >
-                {{ proxySaving ? t('githubSync.proxySaving') : t('githubSync.proxySaveBtn') }}
-              </button>
-            </div>
-            <p class="ghs-help">{{ t('githubSync.proxyHint') }}</p>
-          </div>
 
           <div class="ghs-row" style="margin-top: 10px;">
             <button class="ghs-btn ghs-btn--ghost" @click="unlink">

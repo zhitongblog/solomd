@@ -16,6 +16,7 @@ import CaptureEndpointSettings from './CaptureEndpointSettings.vue';
 import IntegrationsSettings from './IntegrationsSettings.vue';
 import GithubSyncSettings from './GithubSyncSettings.vue';
 import CloudFolderBanner from './CloudFolderBanner.vue';
+import ProxySettings from './ProxySettings.vue';
 import ThemeMarketplace from './ThemeMarketplace.vue';
 import { isIOS } from '../lib/platform';
 import type { Theme } from '../types';
@@ -421,6 +422,11 @@ function onSelectPdfFont(v: string) {
         <!-- v2.6 GitHub sync — sits right under AutoGit since it pushes the
              same commits AutoGit produces; reads top-down as one story. -->
         <div data-cat="sync"><GithubSyncSettings /></div>
+
+        <!-- v3.0 — proxy URL (network-level, applies to libgit2 push/pull
+             across GitHub / GitLab / Gitea). Pulled out of GithubSyncSettings
+             so users hitting timeouts find it at the top of the Sync tab. -->
+        <div data-cat="sync"><ProxySettings /></div>
 
         <section data-cat="writing">
           <label>
