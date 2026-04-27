@@ -691,6 +691,25 @@ export const en = {
     pushAfterResolve: 'Push resolution',
     conflictResolvedToast: 'Resolved {file}.',
     conflictResolveFailed: 'Resolution failed',
+    keychainHintTitle: 'macOS will ask for your password — click "Always Allow"',
+    keychainHintBody:
+      'The first time SoloMD pushes to GitHub, macOS pops a Keychain dialog so it can read your saved token. If End-to-end encryption is on, you\'ll see a second prompt for the encryption key. Click "Always Allow" (not just "Allow") on each — this whitelists SoloMD permanently and you\'ll never see the prompt again on this Mac. If you click "Allow" once, you\'ll be re-prompted every push.',
+    proxyTitle: 'HTTPS proxy (for GFW / corporate networks)',
+    proxyPlaceholder: 'http://127.0.0.1:7897 or socks5://127.0.0.1:1080',
+    proxyHint:
+      'Routes git push / pull through this proxy. Leave empty for direct connect. macOS GUI apps don\'t inherit shell HTTPS_PROXY env, so set it here for SoloMD specifically. Also fixes "Operation timed out" when github.com is unreachable directly.',
+    proxySaveBtn: 'Save proxy',
+    proxySaving: 'Saving…',
+    proxySavedToast: 'Proxy saved.',
+    proxyClearedToast: 'Proxy cleared — will direct-connect.',
+
+    pillBusy: 'Syncing…',
+    pillBehind: '{n} to pull — click to pull now',
+    pillAhead: '{n} to push — click to push now',
+    pillDirty: 'Uncommitted changes — save with ⌘S',
+    pillClean: 'In sync with GitHub',
+    pillConflicts: '{n} conflict(s) — click to resolve',
+    pillEncrypted: 'End-to-end encrypted',
 
     // v2.6.3 — multi-provider + E2EE
     providerTitle: 'Provider',

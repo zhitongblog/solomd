@@ -291,6 +291,19 @@ const linkedRepoLabel = computed(() => {
     <h3 class="ghs__heading">{{ t('githubSync.heading') }}</h3>
     <p class="ghs__intro">{{ t('githubSync.intro') }}</p>
 
+    <!-- v3.0 — first-time-setup hint. macOS prompts the user once for
+         the GitHub PAT and (if E2EE on) once for the encryption key.
+         Both prompts have "Always Allow" — clicking it once silences
+         all future runs. We surface this proactively so users don't
+         think the prompts are spam. -->
+    <div class="ghs-keychain-hint">
+      <span class="ghs-keychain-hint__icon">🔑</span>
+      <div>
+        <strong>{{ t('githubSync.keychainHintTitle') }}</strong>
+        <p>{{ t('githubSync.keychainHintBody') }}</p>
+      </div>
+    </div>
+
     <!-- ──────────────────────────────────────────────────────────────── -->
     <!-- State 1: no PAT — sign-in form                                   -->
     <!-- ──────────────────────────────────────────────────────────────── -->
@@ -827,5 +840,31 @@ const linkedRepoLabel = computed(() => {
   color: #d12;
   margin: 0;
   word-break: break-all;
+}
+.ghs-keychain-hint {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin: 0 0 10px;
+}
+.ghs-keychain-hint__icon {
+  font-size: 18px;
+  line-height: 1;
+}
+.ghs-keychain-hint strong {
+  display: block;
+  font-size: 12px;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.ghs-keychain-hint p {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.6;
 }
 </style>

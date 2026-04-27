@@ -150,6 +150,20 @@ const lang = 'zh' as const;
           <p>v3.0 还不行。iPad 版的发布按 <a href="https://github.com/zhitongblog/solomd/issues">roadmap</a> 等到 v3.0 桌面端稳定后再做。
           目前 iPad 这边走 iCloud Drive 同步 —— 我们的云盘联动模式在你之后用 macOS 打开时会衔接上。</p>
         </div>
+        <div class="faq">
+          <h3>第一次推送时 macOS 弹密码框问我，那是啥？</h3>
+          <p>那是 macOS 钥匙串访问在问 SoloMD 是否有权读取已保存的 GitHub token。可能会弹两次：一次是 token，一次是加密钥匙（开了 E2EE 时才有）。
+          <strong>每次都点「始终允许」（Always Allow），不要点「允许」</strong>—— 这样 SoloMD 就被永久授权，以后再不会问。点「允许」是一次性的，下次推送还会再问。</p>
+          <p>SoloMD 不会把密码发给任何地方。那是 macOS 自己的授权对话框，不是我们的；我们甚至看不到你输了什么。</p>
+        </div>
+        <div class="faq">
+          <h3>我在国内 push 老超时怎么办？</h3>
+          <p>国内访问 github.com 经常被防火墙拦。SoloMD 内置代理输入框：<strong>设置 → GitHub 同步 → 高级 → HTTPS 代理</strong>，
+          填你本机的代理地址比如 <code>http://127.0.0.1:7897</code>（Clash / Surge 默认端口）或 <code>socks5://127.0.0.1:1080</code>。
+          推 / 拉就会走这个代理。</p>
+          <p>不用费劲在 shell 里 export <code>HTTPS_PROXY</code> —— Tauri 应用从 Finder 启动时不继承 shell 环境变量，
+          应用内的输入框才是正确的地方。</p>
+        </div>
       </div>
     </section>
   </main>

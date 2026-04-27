@@ -684,6 +684,25 @@ export const zh: I18n = {
     pushAfterResolve: '推送解决结果',
     conflictResolvedToast: '已解决 {file}。',
     conflictResolveFailed: '解决失败',
+    keychainHintTitle: 'macOS 会问钥匙串密码 —— 一定点「始终允许」',
+    keychainHintBody:
+      '第一次推送到 GitHub 时，macOS 弹钥匙串对话框是为了让 SoloMD 读取保存的 token。如果开了端到端加密，会再弹一次问加密钥匙。两次都请点「始终允许」（不要只点「允许」）—— 这样 SoloMD 就被永久授权，以后这台 Mac 上再也不会问。点「允许」是一次性的，下次推送还会问。',
+    proxyTitle: 'HTTPS 代理（防火墙 / 公司网络穿透）',
+    proxyPlaceholder: 'http://127.0.0.1:7897 或 socks5://127.0.0.1:1080',
+    proxyHint:
+      '把 git 推/拉走这个代理。留空就直连。macOS 应用从 Finder 启动时不继承 shell 里的 HTTPS_PROXY 变量，所以专门在这里给 SoloMD 设。github.com 直连超时时填这个就好。',
+    proxySaveBtn: '保存代理',
+    proxySaving: '保存中…',
+    proxySavedToast: '代理已保存。',
+    proxyClearedToast: '已清除代理 — 将直连。',
+
+    pillBusy: '同步中…',
+    pillBehind: '有 {n} 个待拉取，点击立即拉取',
+    pillAhead: '有 {n} 个待推送，点击立即推送',
+    pillDirty: '有未提交修改，⌘S 保存',
+    pillClean: '已与 GitHub 同步',
+    pillConflicts: '{n} 个冲突待解决，点击查看',
+    pillEncrypted: '端到端加密',
 
     // v2.6.3
     providerTitle: '托管平台',

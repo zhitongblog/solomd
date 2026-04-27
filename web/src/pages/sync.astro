@@ -154,6 +154,16 @@ const lang = 'en' as const;
           <h3>Does sync work on iPad?</h3>
           <p>Not in v3.0. The iPad app is gated until the v3.0 desktop story is stable; we'll tackle it next. For now, iCloud Drive is the iPad sync path — our cloud-folder mode picks that up when you eventually open the same vault on macOS.</p>
         </div>
+        <div class="faq">
+          <h3>The first time I push, macOS asks me for my password — what is that?</h3>
+          <p>That's macOS Keychain Access asking SoloMD's permission to read your saved GitHub token. Two prompts may appear: one for the GitHub token, one for the encryption key (only if you turned on E2EE). <strong>Click "Always Allow" (not "Allow")</strong> on each — that whitelists SoloMD permanently and you'll never see the prompt again. If you click "Allow" once, every push re-prompts because Keychain treats one-time authorization literally.</p>
+          <p>SoloMD never sends your password anywhere. It's macOS's authorization dialog, not ours; we don't even see what you typed.</p>
+        </div>
+        <div class="faq">
+          <h3>I'm in China and push times out — what do I do?</h3>
+          <p>github.com is unreliable from mainland China. SoloMD has a built-in proxy field: <strong>Settings → GitHub Sync → Advanced → HTTPS proxy</strong>. Paste your local proxy URL like <code>http://127.0.0.1:7897</code> (Clash/Surge default) or <code>socks5://127.0.0.1:1080</code>. push and pull will route through that proxy.</p>
+          <p>Don't bother with shell <code>HTTPS_PROXY</code> exports — Tauri apps launched from Finder/Dock don't inherit shell env. The Settings field is the right place.</p>
+        </div>
       </div>
     </section>
   </main>
