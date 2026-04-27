@@ -79,11 +79,14 @@ const lang = 'en' as const;
   } else if (!path || path.split('/').some((seg) => seg === '..')) {
     fail('Invalid share link: missing or unsafe path.');
   } else {
-    const rawUrl = `https://raw.githubusercontent.com/${repo}/${encodeURIComponent(branch)}/${path
-      .split('/')
-      .map(encodeURIComponent)
-      .join('/')}`;
-    const ghUrl = `https://github.com/${repo}/blob/${encodeURIComponent(branch)}/${path}`;
+    // Encode each path segment but keep the slashes — branch names may
+    // contain `/` (e.g. `feature/foo`, `release/v1`) and a single
+    // encodeURIComponent on the whole branch would turn them into %2F
+    // and 404 the request.
+    const encodeRefOrPath = (s: string) =>
+      s.split('/').map(encodeURIComponent).join('/');
+    const rawUrl = `https://raw.githubusercontent.com/${repo}/${encodeRefOrPath(branch)}/${encodeRefOrPath(path)}`;
+    const ghUrl = `https://github.com/${repo}/blob/${encodeRefOrPath(branch)}/${path}`;
     repoLabel.textContent = `${repo}/${path}`;
     sourceLink.href = ghUrl;
 
