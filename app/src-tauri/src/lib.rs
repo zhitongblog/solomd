@@ -120,6 +120,7 @@ pub fn run() {
             github_sync::github_link_workspace,
             github_sync::github_set_config,
             github_sync::github_unlink_workspace,
+            github_sync::github_enable_encryption,
             github_sync::github_sync_status,
             github_sync::github_push,
             github_sync::github_pull,

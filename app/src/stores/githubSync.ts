@@ -198,6 +198,11 @@ export const useGithubSyncStore = defineStore('githubSync', {
       await invoke('proxy_set', { url });
     },
 
+    async enableEncryption(folder: string, passphrase: string): Promise<void> {
+      await invoke('github_enable_encryption', { folder, passphrase });
+      await this.refreshStatus(folder);
+    },
+
     async setConfig(
       folder: string,
       autoPush: boolean,

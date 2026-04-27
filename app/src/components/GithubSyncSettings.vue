@@ -46,6 +46,49 @@ const decrypting = ref(false);
 // v3.0 note: proxy URL UI lives in its own ProxySettings.vue card, sibling
 // to this one in the Sync category. We don't store proxy state here anymore.
 
+// v3.0 — upgrade-to-E2EE flow for an already-linked plaintext workspace.
+// Shown only when sync.status.linked && !sync.status.encrypted.
+const upgradePassphrase = ref('');
+const upgradeConfirm = ref('');
+const upgradeAcknowledged = ref(false);
+const upgrading = ref(false);
+const upgradeOpen = ref(false);
+
+async function startE2eeUpgrade() {
+  upgradeOpen.value = true;
+}
+function cancelE2eeUpgrade() {
+  upgradeOpen.value = false;
+  upgradePassphrase.value = '';
+  upgradeConfirm.value = '';
+  upgradeAcknowledged.value = false;
+}
+async function commitE2eeUpgrade() {
+  if (!workspace.currentFolder) return;
+  if (upgradePassphrase.value.length < 8) {
+    toasts.warning(t('githubSync.upgradeShortPassphrase'));
+    return;
+  }
+  if (upgradePassphrase.value !== upgradeConfirm.value) {
+    toasts.warning(t('githubSync.upgradeMismatch'));
+    return;
+  }
+  if (!upgradeAcknowledged.value) {
+    toasts.warning(t('githubSync.upgradeNotAcknowledged'));
+    return;
+  }
+  upgrading.value = true;
+  try {
+    await sync.enableEncryption(workspace.currentFolder, upgradePassphrase.value);
+    toasts.success(t('githubSync.upgradeDoneToast'));
+    cancelE2eeUpgrade();
+  } catch (e) {
+    toasts.error(`${t('githubSync.upgradeFailed')}: ${e}`);
+  } finally {
+    upgrading.value = false;
+  }
+}
+
 onMounted(async () => {
   await sync.refreshHasToken();
   if (workspace.currentFolder) {
@@ -483,6 +526,61 @@ const linkedRepoLabel = computed(() => {
         </button>
       </div>
 
+      <!-- v3.0 — upgrade plaintext-linked workspace to E2EE. Closed-by-default
+           card; clicking expands to passphrase + confirmation form.
+           This matches the user mental model: "I'm linked already, I want
+           to encrypt now" — no need to unlink + relink. -->
+      <div v-if="!sync.status?.encrypted && !upgradeOpen" class="ghs-upgrade-row">
+        <span class="ghs-upgrade-row__icon">🔒</span>
+        <div class="ghs-upgrade-row__copy">
+          <strong>{{ t('githubSync.upgradeRowTitle') }}</strong>
+          <p>{{ t('githubSync.upgradeRowBody') }}</p>
+        </div>
+        <button class="ghs-btn" @click="startE2eeUpgrade">
+          {{ t('githubSync.upgradeRowBtn') }}
+        </button>
+      </div>
+
+      <div v-if="!sync.status?.encrypted && upgradeOpen" class="ghs-subblock ghs-upgrade-form">
+        <div class="ghs-sub-title">{{ t('githubSync.upgradeFormTitle') }}</div>
+        <p class="ghs-help">{{ t('githubSync.upgradeFormBody') }}</p>
+        <div class="ghs-warn">⚠ {{ t('githubSync.upgradeForcePushWarning') }}</div>
+        <div class="ghs-row">
+          <input
+            v-model="upgradePassphrase"
+            type="password"
+            autocomplete="new-password"
+            class="ghs-input"
+            :placeholder="t('githubSync.upgradePassphrasePlaceholder')"
+          />
+        </div>
+        <div class="ghs-row">
+          <input
+            v-model="upgradeConfirm"
+            type="password"
+            autocomplete="new-password"
+            class="ghs-input"
+            :placeholder="t('githubSync.upgradeConfirmPlaceholder')"
+          />
+        </div>
+        <label class="ghs-checkbox" style="margin-top: 4px;">
+          <input v-model="upgradeAcknowledged" type="checkbox" />
+          {{ t('githubSync.upgradeAcknowledge') }}
+        </label>
+        <div class="ghs-row" style="margin-top: 4px;">
+          <button class="ghs-btn ghs-btn--ghost" :disabled="upgrading" @click="cancelE2eeUpgrade">
+            {{ t('githubSync.upgradeCancelBtn') }}
+          </button>
+          <button
+            class="ghs-btn ghs-btn--primary"
+            :disabled="upgrading || !upgradePassphrase || !upgradeConfirm || !upgradeAcknowledged"
+            @click="commitE2eeUpgrade"
+          >
+            {{ upgrading ? t('githubSync.upgradeRunning') : t('githubSync.upgradeCommitBtn') }}
+          </button>
+        </div>
+      </div>
+
       <!-- v2.6.3 — E2EE passphrase prompt. Only visible when this
            workspace is linked WITH encryption on. -->
       <div v-if="sync.status?.encrypted" class="ghs-subblock">
@@ -796,6 +894,51 @@ const linkedRepoLabel = computed(() => {
   color: #d12;
   margin: 0;
   word-break: break-all;
+}
+.ghs-upgrade-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-top: 10px;
+}
+.ghs-upgrade-row__icon {
+  font-size: 18px;
+  line-height: 1;
+}
+.ghs-upgrade-row__copy {
+  flex: 1;
+  min-width: 0;
+}
+.ghs-upgrade-row__copy strong {
+  display: block;
+  font-size: 12px;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+.ghs-upgrade-row__copy p {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.ghs-upgrade-form {
+  border-top: 1px dashed var(--border);
+  padding-top: 10px;
+  margin-top: 10px;
+}
+.ghs-warn {
+  font-size: 11px;
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.1);
+  border-left: 3px solid #f59e0b;
+  padding: 8px 10px;
+  border-radius: 4px;
+  line-height: 1.5;
+  margin: 4px 0;
 }
 .ghs-keychain-hint {
   display: flex;

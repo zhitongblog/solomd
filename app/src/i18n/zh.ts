@@ -710,6 +710,25 @@ export const zh: I18n = {
     pillConflicts: '{n} 个冲突待解决，点击查看',
     pillEncrypted: '端到端加密',
 
+    upgradeRowTitle: '当前仓库未加密',
+    upgradeRowBody: '你的笔记现在以明文形式推送到 GitHub。启用端到端加密后，远端只能看到密文。',
+    upgradeRowBtn: '启用加密',
+    upgradeFormTitle: '启用端到端加密',
+    upgradeFormBody: '设一个口令。SoloMD 会用 Argon2id 派生密钥，重新加密所有文件后再推送。',
+    upgradeForcePushWarning:
+      '将强制推送加密版本，**远端原本的明文历史会被覆盖、不再可达**。已经 clone 过这个仓库的人需要重新 clone。**口令丢失 = 笔记永远找不回**。',
+    upgradePassphrasePlaceholder: '库口令（至少 8 个字符）',
+    upgradeConfirmPlaceholder: '再输一遍确认',
+    upgradeAcknowledge: '我已经把口令记录到安全的地方了。我理解口令丢了等于笔记丢了。',
+    upgradeCommitBtn: '加密并强制推送',
+    upgradeCancelBtn: '取消',
+    upgradeRunning: '正在加密 + 推送…',
+    upgradeDoneToast: '仓库已加密，远端只剩密文了。',
+    upgradeFailed: '升级失败',
+    upgradeShortPassphrase: '口令至少要 8 个字符。',
+    upgradeMismatch: '两次输入的口令不一致。',
+    upgradeNotAcknowledged: '请先勾上"我已经记下口令"再继续。',
+
     // v2.6.3
     providerTitle: '托管平台',
     customProvider: '自定义 HTTPS Git 地址',

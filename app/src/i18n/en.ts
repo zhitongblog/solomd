@@ -717,6 +717,28 @@ export const en = {
     pillConflicts: '{n} conflict(s) — click to resolve',
     pillEncrypted: 'End-to-end encrypted',
 
+    upgradeRowTitle: 'This vault is not encrypted',
+    upgradeRowBody:
+      'Your notes are pushed to GitHub as plaintext. Enable end-to-end encryption to make the remote see only ciphertext.',
+    upgradeRowBtn: 'Enable encryption',
+    upgradeFormTitle: 'Enable end-to-end encryption',
+    upgradeFormBody:
+      'Set a passphrase. SoloMD will derive a key (Argon2id) and re-encrypt every file before pushing again.',
+    upgradeForcePushWarning:
+      'This force-pushes the encrypted history over the remote — old plaintext commits become unreachable on GitHub. Anyone who already cloned this repo will need to re-clone. If you forget the passphrase, your data is unrecoverable.',
+    upgradePassphrasePlaceholder: 'Vault passphrase (min 8 chars)',
+    upgradeConfirmPlaceholder: 'Confirm passphrase',
+    upgradeAcknowledge:
+      "I've recorded my passphrase. I understand losing it means losing my notes.",
+    upgradeCommitBtn: 'Encrypt + force push',
+    upgradeCancelBtn: 'Cancel',
+    upgradeRunning: 'Encrypting + pushing…',
+    upgradeDoneToast: 'Vault encrypted. Remote now has ciphertext only.',
+    upgradeFailed: 'Upgrade failed',
+    upgradeShortPassphrase: 'Passphrase must be at least 8 characters.',
+    upgradeMismatch: "The two passphrases don't match.",
+    upgradeNotAcknowledged: 'Tick the acknowledgement before continuing.',
+
     // v2.6.3 — multi-provider + E2EE
     providerTitle: 'Provider',
     customProvider: 'Custom HTTPS git URL',
