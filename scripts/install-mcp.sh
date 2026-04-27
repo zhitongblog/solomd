@@ -81,19 +81,30 @@ echo "URL:      $URL"
 # Pick install dir
 # ---------------------------------------------------------------------------
 
-TARGETS=("/usr/local/bin" "$HOME/.local/bin")
-target_dir=""
-for d in "${TARGETS[@]}"; do
-    if [[ -w "$d" ]] || (mkdir -p "$d" 2>/dev/null && [[ -w "$d" ]]); then
-        target_dir="$d"
-        break
+# Honour an explicit install dir (used by CI self-test + advanced setups).
+# Otherwise fall back to the standard precedence: /usr/local/bin, then
+# ~/.local/bin (the latter requires it to be on PATH).
+if [[ -n "${INSTALL_DIR:-}" ]]; then
+    mkdir -p "$INSTALL_DIR"
+    if [[ ! -w "$INSTALL_DIR" ]]; then
+        echo "Error: INSTALL_DIR=$INSTALL_DIR not writable" >&2
+        exit 1
     fi
-done
-
-if [[ -z "$target_dir" ]]; then
-    echo "Error: no writable install dir. Tried: ${TARGETS[*]}" >&2
-    echo "Run with sudo, or create ~/.local/bin and add it to PATH." >&2
-    exit 1
+    target_dir="$INSTALL_DIR"
+else
+    TARGETS=("/usr/local/bin" "$HOME/.local/bin")
+    target_dir=""
+    for d in "${TARGETS[@]}"; do
+        if [[ -w "$d" ]] || (mkdir -p "$d" 2>/dev/null && [[ -w "$d" ]]); then
+            target_dir="$d"
+            break
+        fi
+    done
+    if [[ -z "$target_dir" ]]; then
+        echo "Error: no writable install dir. Tried: ${TARGETS[*]}" >&2
+        echo "Run with sudo, or create ~/.local/bin and add it to PATH." >&2
+        exit 1
+    fi
 fi
 
 target_bin="$target_dir/solomd-mcp"
@@ -107,14 +118,23 @@ tmp="$(mktemp -d -t solomd-mcp.XXXXXX)"
 trap 'rm -rf "$tmp"' EXIT
 
 archive="$tmp/$asset"
-echo "Downloading..."
-if command -v curl >/dev/null 2>&1; then
-    curl -fsSL "$URL" -o "$archive"
-elif command -v wget >/dev/null 2>&1; then
-    wget -q "$URL" -O "$archive"
+# CI/test override: skip the download and use a local tarball. Used by
+# .github/workflows/release.yml to verify the just-built tarball without
+# round-tripping through the public release URL (which 404s on draft
+# releases until the publish flip happens).
+if [[ -n "${LOCAL_TARBALL:-}" ]]; then
+    echo "Using local tarball: $LOCAL_TARBALL"
+    cp "$LOCAL_TARBALL" "$archive"
 else
-    echo "Error: need curl or wget" >&2
-    exit 1
+    echo "Downloading..."
+    if command -v curl >/dev/null 2>&1; then
+        curl -fsSL "$URL" -o "$archive"
+    elif command -v wget >/dev/null 2>&1; then
+        wget -q "$URL" -O "$archive"
+    else
+        echo "Error: need curl or wget" >&2
+        exit 1
+    fi
 fi
 
 echo "Extracting..."

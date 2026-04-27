@@ -225,26 +225,30 @@ jobs:
           }
 
       # ----------------------------------------------------------------------
-      # Verify install-mcp.sh can actually pull the asset we just uploaded.
-      # Hits GitHub releases for the current tag and confirms `solomd-mcp
-      # --version` runs. Linux only — Windows tarballs are smoke-tested in
-      # the build step above by checking the file copied into the zip.
+      # Verify install-mcp.sh's extract+place+chmod logic against the just-
+      # packed tarball. Uses LOCAL_TARBALL to bypass the GitHub releases CDN —
+      # at this point in the workflow the release is still draft, and the
+      # public download URL returns 404 for anonymous curl. Linux only —
+      # Windows tarballs are smoke-tested in the build step above.
       # ----------------------------------------------------------------------
       - name: Verify install-mcp.sh self-test
         if: startsWith(matrix.platform, 'ubuntu-')
         shell: bash
         run: |
           set -euo pipefail
+          case "${{ matrix.platform }}" in
+            ubuntu-22.04-arm) ARCH="arm64" ;;
+            ubuntu-22.04)     ARCH="x64" ;;
+          esac
+          ASSET="solomd-mcp-linux-${ARCH}.tar.gz"
+          export LOCAL_TARBALL="$PWD/$ASSET"
+          if [[ ! -f "$LOCAL_TARBALL" ]]; then
+            echo "tarball missing at $LOCAL_TARBALL"; ls -la; exit 1
+          fi
           export VERSION="${{ github.ref_name }}"
-          # Wait briefly for the upload-then-CDN propagation to settle.
-          sleep 5
-          # Run the installer into a clean prefix so we don't clobber the runner.
-          export HOME_OVERRIDE="$RUNNER_TEMP/mcp-self-test"
-          mkdir -p "$HOME_OVERRIDE/.local/bin"
-          PATH="$HOME_OVERRIDE/.local/bin:$PATH" \
-            HOME="$HOME_OVERRIDE" \
-            bash scripts/install-mcp.sh
-          "$HOME_OVERRIDE/.local/bin/solomd-mcp" --version || true
+          export INSTALL_DIR="$RUNNER_TEMP/mcp-self-test/bin"
+          bash scripts/install-mcp.sh
+          "$INSTALL_DIR/solomd-mcp" --version
           echo "self-test ok"
 
   # ---------------------------------------------------------------------------
