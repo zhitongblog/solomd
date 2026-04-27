@@ -23,6 +23,7 @@ import { useWorkspaceStore } from '../stores/workspace';
 import { useGitHistoryStore, type CommitMeta, type DiffResult } from '../stores/gitHistory';
 import { useToastsStore } from '../stores/toasts';
 import { useI18n } from '../i18n';
+import GithubConflictPanel from './GithubConflictPanel.vue';
 
 const tabs = useTabsStore();
 const workspace = useWorkspaceStore();
@@ -147,6 +148,10 @@ function timeAgo(unix: number): string {
       <span class="history__title">{{ t('history.heading') }}</span>
       <span v-if="!loading && commits.length > 0" class="history__count">{{ commits.length }}</span>
     </header>
+
+    <!-- v2.6 — GitHub sync conflict resolver. Sits above the commit list
+         when a pull surfaced merge conflicts; auto-hides when empty. -->
+    <GithubConflictPanel />
 
     <!-- 1. No folder open -->
     <div v-if="!folder" class="history__empty">

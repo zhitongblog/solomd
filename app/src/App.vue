@@ -14,6 +14,9 @@ import BacklinksPanel from './components/BacklinksPanel.vue';
 import TagsPanel from './components/TagsPanel.vue';
 import HistoryPanel from './components/HistoryPanel.vue';
 import { useAutoCommit } from './composables/useAutoCommit';
+import { useGithubSync } from './composables/useGithubSync';
+import { useSessionRestore } from './composables/useSessionRestore';
+import SessionRestoreDialog from './components/SessionRestoreDialog.vue';
 import AIRewriteOverlay from './components/AIRewriteOverlay.vue';
 import BasesView from './components/BasesView.vue';
 import { BASES_OPEN_EVENT, BASES_CLOSE_EVENT } from './composables/useBasesView';
@@ -26,6 +29,7 @@ import CjkProofread from './components/CjkProofread.vue';
 import ReadingView from './components/ReadingView.vue';
 import AboutDialog from './components/AboutDialog.vue';
 import UnsavedDialog from './components/UnsavedDialog.vue';
+import FileChangedDialog from './components/FileChangedDialog.vue';
 import Toast from './components/Toast.vue';
 import { useTabsStore } from './stores/tabs';
 import { useSettingsStore } from './stores/settings';
@@ -34,6 +38,7 @@ import { usePomodoroStore } from './stores/pomodoro';
 import { useFiles } from './composables/useFiles';
 import { useExport } from './composables/useExport';
 import { useShortcuts } from './composables/useShortcuts';
+import { useFileWatcher } from './composables/useFileWatcher';
 import { loadCustomTheme } from './lib/custom-theme';
 import { isIOS } from './lib/platform';
 import { useI18n } from './i18n';
@@ -53,6 +58,14 @@ const workspaceIndex = useWorkspaceIndexStore();
 const rag = useRagStore();
 const autoCommit = useAutoCommit();
 autoCommit.start();
+// v2.6: GitHub sync rides on top of AutoGit — push commits AutoGit creates,
+// pull on a timer. Dormant unless the workspace has a `.solomd/sync.json`.
+const githubSync = useGithubSync();
+githubSync.start();
+// v2.6.1: session-restore listens for cloud-folder workspace changes and
+// offers to pick up tabs from a sibling device when one is fresher.
+const sessionRestore = useSessionRestore();
+sessionRestore.start();
 // v2.5 F4: pick up an in-progress focus session from before the reload.
 // Fire-and-forget — the store handles the (rare) "session already past
 // its end" case by short-circuiting into the completion path.
@@ -104,6 +117,26 @@ function onUnsavedAction(action: 'save' | 'discard' | 'cancel') {
 provide('showUnsavedDialog', showUnsavedDialog);
 (window as any).__solomd_showUnsavedDialog = showUnsavedDialog;
 
+// File-changed dialog state
+const fileChangedOpen = ref(false);
+const fileChangedFileName = ref('');
+let fileChangedResolve: ((action: 'reload' | 'overwrite' | 'cancel') => void) | null = null;
+
+function showFileChangedDialog(fileName: string): Promise<'reload' | 'overwrite' | 'cancel'> {
+  fileChangedFileName.value = fileName;
+  fileChangedOpen.value = true;
+  return new Promise((resolve) => {
+    fileChangedResolve = resolve;
+  });
+}
+function onFileChangedAction(action: 'reload' | 'overwrite' | 'cancel') {
+  fileChangedOpen.value = false;
+  if (fileChangedResolve) {
+    fileChangedResolve(action);
+    fileChangedResolve = null;
+  }
+}
+
 useShortcuts({
   openPalette: () => (paletteOpen.value = true),
   openSettings: () => (settingsOpen.value = true),
@@ -114,12 +147,15 @@ useShortcuts({
   openCjkProofread: () => (cjkProofreadOpen.value = true),
 });
 
+useFileWatcher(showFileChangedDialog);
+
 // Esc closes the topmost modal
 function onEsc(e: KeyboardEvent) {
   if (e.key !== 'Escape') return;
   if (aboutOpen.value) aboutOpen.value = false;
   else if (cjkProofreadOpen.value) cjkProofreadOpen.value = false;
   else if (ragSearchOpen.value) ragSearchOpen.value = false;
+  else if (fileChangedOpen.value) fileChangedOpen.value = false;
   else if (searchOpen.value) searchOpen.value = false;
   else if (helpOpen.value) helpOpen.value = false;
   else if (quickSwitcherOpen.value) quickSwitcherOpen.value = false;
@@ -238,6 +274,19 @@ watchEffect(() => {
   } else {
     rag.refreshStatus(folder).catch(() => {});
   }
+});
+
+// v2.6: a successful GitHub pull touched files on disk under us. Refresh
+// the workspace index so the file tree + backlinks pick up renames /
+// deletions, and rebuild git history caches so the History panel reflects
+// the merge commit. Active editor tabs reload from disk only if they're
+// clean (we never blow away a user's unsaved edits, even from a sync).
+window.addEventListener('solomd:remote-pulled', () => {
+  void workspaceIndex.rescan();
+  // gitHistory's own listener on `solomd://index-updated` rebuilds caches,
+  // but rescan() above doesn't re-emit that event. Bust the caches here.
+  // (Keep this scoped — we don't want to re-fetch every commit on every
+  // remote-pull; the panel will lazy-reload as the user opens it.)
 });
 
 // Listen for the `solomd://index-updated` event the workspace_index
@@ -595,6 +644,15 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
       <TelemetryBanner />
       <div class="workspace">
         <FileTree v-if="settings.showFileTree" />
+        <aside
+          v-if="showRightSidebar && settings.outlineSide === 'left'"
+          class="side-sidebar side-sidebar--left"
+        >
+          <Outline v-if="showOutlinePane" :cursor-line="cursorLine" @goto="onOutlineGoto" />
+          <BacklinksPanel v-if="showBacklinksPane" />
+          <TagsPanel v-if="showTagsPane" />
+          <HistoryPanel v-if="showHistoryPane" />
+        </aside>
         <div class="content">
           <button
             v-if="tabs.activeTab?.language === 'markdown' && !showOutlinePane"
@@ -610,7 +668,10 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
           <BasesView v-if="basesOpen" />
           <TileRoot v-else :node="tiles.root" @cursor="onCursor" />
         </div>
-        <aside v-if="showRightSidebar" class="right-sidebar">
+        <aside
+          v-if="showRightSidebar && settings.outlineSide !== 'left'"
+          class="side-sidebar side-sidebar--right"
+        >
           <Outline v-if="showOutlinePane" :cursor-line="cursorLine" @goto="onOutlineGoto" />
           <BacklinksPanel v-if="showBacklinksPane" />
           <TagsPanel v-if="showTagsPane" />
@@ -652,6 +713,14 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
       @discard="onUnsavedAction('discard')"
       @cancel="onUnsavedAction('cancel')"
     />
+    <SessionRestoreDialog />
+    <FileChangedDialog
+      :open="fileChangedOpen"
+      :file-name="fileChangedFileName"
+      @reload="onFileChangedAction('reload')"
+      @overwrite="onFileChangedAction('overwrite')"
+      @cancel="onFileChangedAction('cancel')"
+    />
     <Toast />
   </div>
 </template>
@@ -671,30 +740,37 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
   min-height: 0;
   overflow: hidden;
 }
-.right-sidebar {
+.side-sidebar {
   display: flex;
   flex-direction: column;
   width: 260px;
   flex: 0 0 260px;
   min-width: 0;
-  border-left: 1px solid var(--border);
   background: var(--bg-soft, var(--bg));
 }
-.right-sidebar > :deep(*) {
+.side-sidebar--left {
+  border-right: 1px solid var(--border);
+}
+.side-sidebar--right {
+  border-left: 1px solid var(--border);
+}
+.side-sidebar > :deep(*) {
   flex: 1 1 0;
   min-height: 0;
   width: 100%;
   /* Reset Outline's own width since it now lives in a sized container. */
 }
-.right-sidebar > :deep(.outline) {
+.side-sidebar > :deep(.outline) {
   width: 100% !important;
   border-left: 0;
+  border-right: 0;
 }
-.right-sidebar > :deep(.backlinks) {
+.side-sidebar > :deep(.backlinks) {
   border-top: 1px solid var(--border);
   border-left: 0;
+  border-right: 0;
 }
-.right-sidebar > :deep(*:first-child:nth-last-child(1)) {
+.side-sidebar > :deep(*:first-child:nth-last-child(1)) {
   /* When only one panel is shown, ensure no top-border leak */
   border-top: 0;
 }

@@ -1,6 +1,6 @@
 [package]
 name = "solomd"
-version = "2.5.0"
+version = "3.0.0"
 description = "SoloMD — a lightweight, cross-platform Markdown + plain text editor"
 authors = ["zhitong"]
 edition = "2021"
@@ -69,7 +69,9 @@ regex-lite = "0.1"             # Lightweight regex for HTML tag stripping
 pdf-extract = "0.7"            # PDF text extraction
 
 # v2.0 workspace index (F1 wikilinks, F3 tags, F6 bases)
-notify = { version = "6", default-features = false, features = ["macos_fsevent"] }
+# + file-change watcher for tab reload
+notify = "8"
+notify-debouncer-mini = "0.7"
 serde_yaml = "0.9"
 sha2 = "0.10"                  # cache key hashing
 once_cell = "1"                # global index state
@@ -77,10 +79,13 @@ once_cell = "1"                # global index state
 # v2.0 spellcheck (F2): Hunspell wrapped in pure-Rust port
 spellbook = "0.3"              # MIT, no GPL deps; ships with English+Latin support
 
-# v2.2 AutoGit per-note history: libgit2 bindings for cross-platform
-# git access (no shelling out). Uses bundled libgit2 by default so we
-# don't depend on a system library.
-git2 = { version = "0.19", default-features = false, features = ["vendored-libgit2"] }
+# v2.2 AutoGit per-note history + v3.0 GitHub sync: libgit2 bindings for
+# cross-platform git access (no shelling out). `vendored-libgit2` ships the
+# library so we don't depend on a system one. `https` + `vendored-openssl`
+# enable the libgit2 HTTPS transport — without them v3.0 push/pull dies
+# with "there is no TLS stream available; class=Ssl (16)" against
+# api.github.com. v2.2 didn't need this because all its ops were local.
+git2 = { version = "0.19", default-features = false, features = ["vendored-libgit2", "https", "vendored-openssl"] }
 
 # v2.0 AI rewrite (F4): provider keys in OS keychain + streaming HTTP
 # keyring v3 ships with NO default backend — without these features it
@@ -101,6 +106,13 @@ async-stream = "0.3"           # streaming responses to the frontend
 # workspace. `bundled` ships libsqlite3 so we don't depend on a system
 # library — same invariant as `git2` above.
 rusqlite = { version = "0.32", features = ["bundled", "blob"] }
+
+# v2.6.3 E2EE: passphrase-derived key (Argon2id) + AEAD (XChaCha20-Poly1305).
+# Pure-Rust, RustCrypto project. We never send the passphrase or the key
+# anywhere; only ciphertext touches the network.
+argon2 = "0.5"
+chacha20poly1305 = "0.10"
+rand = "0.8"
 
 # Platform-specific deps for "Set as default editor" feature.
 [target.'cfg(target_os = "macos")'.dependencies]

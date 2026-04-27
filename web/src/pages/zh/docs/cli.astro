@@ -1,0 +1,111 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import Header from '../../../components/Header.astro';
+import Footer from '../../../components/Footer.astro';
+import Giscus from '../../../components/Giscus.astro';
+
+const lang = 'zh' as const;
+---
+
+<Layout
+  title="SoloMD 命令行 — 在终端打开、搜索、写入你的笔记"
+  description="solomd 命令行工具暴露和 GUI 一致的核心操作 —— 打开、新建、搜索、列出、cat —— 适合脚本与终端工作流。"
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <article class="container docs-article">
+      <nav class="breadcrumbs">
+        <a href="/zh/">首页</a> / <a href="/zh/docs/">文档</a> / <span>命令行</span>
+      </nav>
+
+      <h1>SoloMD 命令行</h1>
+      <p class="lead">
+        <code>solomd</code> 是一个小巧的命令行二进制，暴露和 GUI 同一套核心操作 ——
+        打开笔记、新建笔记、搜索仓库、列出文件、把笔记 cat 到 stdout。
+        为 Shell 流水线、cron 任务和肌肉记忆而生。
+      </p>
+
+      <h2>安装</h2>
+      <p>
+        macOS / Linux —— 在终端粘贴：
+      </p>
+      <pre class="code"><code>curl -fsSL https://raw.githubusercontent.com/zhitongblog/solomd/main/scripts/install-cli.sh | bash</code></pre>
+      <p>
+        脚本会把 <code>solomd</code> 安装到 <code>/usr/local/bin</code>。
+        Windows 用户请到 <a href="https://github.com/zhitongblog/solomd/releases" rel="external">发布页</a>
+        下载 <code>solomd.exe</code>，加进 <code>%PATH%</code> 即可。
+      </p>
+
+      <h2>子命令</h2>
+      <table class="kb-table">
+        <thead><tr><th>命令</th><th>作用</th></tr></thead>
+        <tbody>
+          <tr><th><code>solomd open &lt;标题|路径&gt;</code></th><td>在 SoloMD 中打开。传标题时按模糊匹配在仓库里查找。</td></tr>
+          <tr><th><code>solomd new &lt;标题&gt; [正文]</code></th><td>新建一篇笔记，写入可选正文，并打开它。</td></tr>
+          <tr><th><code>solomd list [子目录]</code></th><td>列出工作区（或指定子目录）的 Markdown 文件。</td></tr>
+          <tr><th><code>solomd search &lt;查询&gt;</code></th><td>grep 整个仓库，返回路径与匹配行。</td></tr>
+          <tr><th><code>solomd cat &lt;标题|路径&gt;</code></th><td>把笔记内容打到 stdout —— 可管道到 <code>pandoc</code>、<code>fzf</code> 等。</td></tr>
+          <tr><th><code>solomd help</code></th><td>显示完整的子命令列表。</td></tr>
+        </tbody>
+      </table>
+
+      <h2>常用例子</h2>
+      <pre class="code"><code>{`# 即时捕获 —— 从剪贴板新建一条笔记
+solomd new "standup 2026-04-26" "$(pbpaste)"
+
+# 找出所有提到 "rust" 的笔记
+solomd search rust
+
+# 把一篇笔记走 pandoc 转成 docx
+solomd cat "weekly-review" | pandoc -t docx -o weekly-review.docx
+
+# cron：每天早上自动起一篇当日日记
+solomd new "$(date +%F)" "## $(date +%A)\n\n- [ ] "`}</code></pre>
+
+      <h2>它怎么找到你的仓库</h2>
+      <p>
+        命令行读取和 GUI 同一份偏好文件（<code>solomd-language</code> /
+        <code>solomd-workspace</code>）。如果你最近在 SoloMD 里打开过某个文件夹，
+        CLI 会沿用。临时切换可以用环境变量：
+      </p>
+      <pre class="code"><code>SOLOMD_WORKSPACE=/path/to/notes solomd list</code></pre>
+
+      <h2>和 MCP 服务搭配</h2>
+      <p>
+        命令行是「你打的字」，<code>solomd-mcp</code> 是「AI 调的接口」。两者共享同一份
+        工作区状态，因此 AI 通过 MCP 写完一篇新笔记后，你立刻就能 <code>solomd open</code>
+        打开它 —— 不用重载，不会竞争。
+      </p>
+      <p>
+        AI 那一侧请看 <a href="/zh/docs/mcp/">MCP 服务</a>。
+      </p>
+
+      <p class="docs-footer">
+        发现 bug 或缺哪个子命令？欢迎到
+        <a href="https://github.com/zhitongblog/solomd/issues" rel="external">GitHub</a>
+        提 issue。
+      </p>
+    </article>
+    <Giscus lang={lang} />
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .docs-article { max-width: 820px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .docs-article h1 { font-size: 2rem; margin: 10px 0 16px; }
+  .docs-article h2 { font-size: 1.4rem; margin: 32px 0 12px; }
+  .docs-article .lead { color: var(--text-muted, #555); margin-bottom: 24px; line-height: 1.6; }
+  .docs-article p { line-height: 1.7; margin: 12px 0; }
+  .kb-table { width: 100%; border-collapse: collapse; margin: 14px 0 20px; font-size: 14px; }
+  .kb-table th, .kb-table td { text-align: left; padding: 9px 12px; border-bottom: 1px solid #eee; }
+  .kb-table thead th { background: #fafafa; font-weight: 600; }
+  .kb-table tbody th { font-weight: 500; width: 38%; font-family: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace; font-size: 13px; }
+  .docs-article code { background: #f5f5f0; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+  .code { background: #f5f5f0; padding: 16px 18px; border-radius: 8px; overflow-x: auto; font-size: 13px; line-height: 1.55; margin: 14px 0; white-space: pre; }
+  .code code { background: transparent; padding: 0; }
+  .docs-footer { margin-top: 40px; font-size: 0.95rem; color: var(--text-muted, #555); }
+</style>

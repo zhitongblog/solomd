@@ -25,9 +25,11 @@ const homeHref = lang === 'zh' ? '/zh/' : '/';
     </a>
     <nav class="header__nav">
       <a href={homeHref + '#features'}>{tr.nav.features}</a>
+      <a href={lang === 'zh' ? '/zh/sync/' : '/sync/'} class="header__nav-new">{lang === 'zh' ? '同步' : 'Sync'} <sup>v3.0</sup></a>
       <a href={lang === 'zh' ? '/zh/compare/' : '/compare/'}>{lang === 'zh' ? '对比' : 'Compare'}</a>
       <a href={lang === 'zh' ? '/zh/docs/' : '/docs/'}>{lang === 'zh' ? '文档' : 'Docs'}</a>
       <a href={lang === 'zh' ? '/zh/blog/' : '/blog/'}>{lang === 'zh' ? '博客' : 'Blog'}</a>
+      <a href={homeHref + '#contact'}>{lang === 'zh' ? '联系我们' : 'Contact'}</a>
       <a href={homeHref + '#download'}>{tr.nav.download}</a>
       <a href={homeHref + '#sponsor'} class="header__sponsor" title={lang === 'zh' ? '支持开发者' : 'Support the developer'}>
         <span class="header__sponsor-heart">♥</span>
@@ -103,6 +105,21 @@ const homeHref = lang === 'zh' ? '/zh/' : '/';
     transition: color 0.15s;
   }
   .header__nav a:hover { color: var(--accent); }
+  .header__nav-new {
+    color: var(--text) !important;
+    font-weight: 600;
+  }
+  .header__nav-new sup {
+    font-size: 9px;
+    background: linear-gradient(135deg, #ff9f40 0%, #ffd166 100%);
+    color: #000;
+    padding: 1px 5px;
+    border-radius: 999px;
+    margin-left: 3px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    vertical-align: middle;
+  }
   .header__lang {
     border: 1px solid var(--border);
     border-radius: 999px;

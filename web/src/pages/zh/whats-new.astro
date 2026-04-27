@@ -8,8 +8,8 @@ const lang = 'zh' as const;
 ---
 
 <Layout
-  title="SoloMD v2.3 新功能 —— 语义搜索 & WYSIWYG 实时编辑"
-  description="v2.3 新增本地语义搜索 (⌘⇧F,完全本地不下模型) 和第四种 WYSIWYG 实时编辑视图。叠加 v2.2 的 MCP server、AutoGit 历史和 14 个 AI provider —— 全部已发布,全部在核心里。"
+  title="SoloMD v3.0 新功能 — 同步，按你的节奏"
+  description="v3.0 补上最后一块拼图 —— 同步。把工作区推到你自己的 GitHub 私库，可选端到端加密，可选 iCloud / Dropbox / OneDrive 文件夹联动，附带一个公开只读分享页。没有 SoloMD 服务器，没有订阅。"
   lang={lang}
 >
   <Header lang={lang} />
@@ -20,103 +20,139 @@ const lang = 'zh' as const;
       </nav>
 
       <p class="version-row">
-        <span class="version-tag">v2.3</span>
+        <span class="version-tag version-tag--v30">v3.0</span>
         <time>2026 年 4 月</time>
       </p>
-      <h1>v2.3 新功能</h1>
+      <h1>同步，按你的节奏。</h1>
       <p class="lead">
-        两件让 "Markdown 编辑器核心里该有什么" 重新定义的功能 ——
-        <strong>本地语义搜索</strong>和 <strong>WYSIWYG 实时编辑</strong>视图。
-        叠加在 v2.2 的 MCP server、AutoGit 历史和 14 个 AI provider 之上。
-        以下功能全部在核心里、MIT 协议、不需要账号。
+        v3.0 补上 SoloMD 一直避开的那块拼图：<strong>同步</strong>。
+        我们之所以一直避开，是因为同步最显然的形态 —— 我们自己跑 CRDT 服务 —— 会把 SoloMD 变成一个 SaaS。
+        我们最后选的形态是：<strong>把笔记仓库 → 推到你自己的 GitHub 私库</strong>。
+        端到端加密<strong>可选</strong>。iCloud / Dropbox / OneDrive 联动<strong>可选</strong>。
+        公开只读分享<strong>可选</strong>。<strong>不跑 SoloMD 服务器，不收订阅，不要账号。</strong>
       </p>
 
       <section>
-        <h2>🔍 本地语义搜索 (v2.3)</h2>
+        <h2>☁️ GitHub 同步</h2>
         <p>
-          按 <kbd>⌘⇧F</kbd>。新搜索面板按"语义"匹配段落,而不只是关键词 ——
-          搜 <em>"deployment"</em> 也能找到讲 <em>"上线"</em>、<em>"发布"</em>、
-          <em>"rolling out"</em> 的笔记。
+          打开「设置 → GitHub 同步」。粘个 Personal Access Token（保存到系统钥匙串 —— macOS 钥匙串 / Windows Credential Manager / Linux Secret Service）。
+          选一个已有仓库，或者让 SoloMD 直接给你新建一个私库。从这一刻起：
         </p>
-        <p>有趣的是它<strong>不</strong>做什么:</p>
         <ul>
-          <li><strong>不下载模型文件。</strong>内置 embedder 是基于哈希字符 trigram 的纯函数,完全跑在我们的 Rust 进程里。没有 100 MB 的 ONNX 文件,首次启动也不下载。</li>
-          <li><strong>永不联网。</strong>查询本地嵌入,排序是 Rust 里对 SQLite 的暴力余弦相似度。query 文本永远不会碰网络 socket。</li>
-          <li><strong>默认关闭。</strong>设置 → "启用语义搜索" 才打开。打开之前不扫描任何笔记,也不创建任何索引文件。</li>
-          <li><strong>索引存在工作区里。</strong><code>&lt;工作区&gt;/.solomd/embeddings.sqlite</code>,自动加进 <code>.gitignore</code>,AutoGit 不会把它纳入提交历史。</li>
+          <li><strong>自动推送</strong>：每次保存后 5 秒（去抖）。无可提交内容则跳过。</li>
+          <li><strong>自动拉取</strong>：可配置间隔（5 / 15 / 30 / 60 分钟）。本地有未提交修改时自动跳过 —— 不会把你的改动覆盖掉。</li>
+          <li><strong>冲突解决面板</strong>在历史侧边栏：每个文件三个按钮 —— 用我的 / 用 GitHub 的 / 都保留。「都保留」会把远端版本另存为 <code>note.remote-2026-04-26.md</code> 不丢任何一份。</li>
+          <li><strong>libgit2 内嵌</strong>，跟 v2.2 AutoGit 同一引擎，不依赖系统 git。</li>
         </ul>
         <p>
-          这是同类编辑器里的空白:Obsidian 的语义搜索藏在付费插件后面 (Smart Connections 等),且大多调用云端 embedding API。
-          Typora 和 MarkText 都没有。Tolaria 也没有。SoloMD 是<strong>唯一</strong>把它放进核心、完全离线的。
-        </p>
-        <p class="callout">
-          完整数据流见 <a href="/zh/security/">安全 § 5: 本地 RAG / 语义搜索</a>。
+          SoloMD 永远不存你的数据，连你建了什么仓库都不知道。
+          数据在 1GB 以内 GitHub 免费版就够；要无限私库就 GitHub Pro（$4/月）。
+          这笔订阅是你跟 GitHub 的事，不经我们手。
         </p>
       </section>
 
       <section>
-        <h2>✍️ WYSIWYG 实时编辑模式 (v2.3)</h2>
+        <h2>🔒 端到端加密（可选）</h2>
         <p>
-          在源码 / 分屏 / 预览之外加入第四种视图:<strong>实时编辑</strong>。
-          标题行内显示更大,<code>**粗体**</code>真粗不显示星号,列表自动缩进,引用块带左边框。
-          光标进入行时才显示原始标记 —— 所以你随时能切回源码,而不用切换视图。
+          绑定时勾「推送前加密」并设一个口令。从此远端只看到密文：每个 <code>.md</code> 变成 <code>.md.enc</code>，
+          头 4 字节是 <code>SLMD</code> magic，随后 24 字节 XChaCha20 nonce + 16 字节 Poly1305 校验。
         </p>
-        <p>
-          通过编辑器 header 的视图切换器开启,或命令面板 (<kbd>⌘⇧K</kbd> → "Live edit") 开启。
-        </p>
-      </section>
-
-      <section>
-        <h2>v2.2 已发布的功能</h2>
-        <p>错过 v2.2 的话,这里是回顾:</p>
-
-        <h3>📜 AutoGit 版本历史</h3>
-        <p>
-          设置里一个开关。打开后,每次 <kbd>⌘S</kbd> 都在工作区里的本地
-          <code>.git</code> 写一次快照。右侧 history 面板列出每次改过当前文件的提交;
-          点 <strong>Restore</strong> 一键回滚 (原子操作,不会丢失修改)。
-          libgit2 内置 —— 不需要安装系统 git。永不自动 push。
-        </p>
-
-        <h3>🔌 MCP server</h3>
-        <p>
-          1.5 MB sidecar 二进制。把 Claude Desktop / Cursor / Codex CLI 指向你的工作区,
-          开箱 8 个只读工具 (<code>list_notes</code>、<code>read_note</code>、<code>search</code>、
-          <code>get_backlinks</code>、<code>list_tags</code>、<code>get_outline</code> 等),
-          以及 2 个写工具 (要 <code>--allow-write</code> 开关)。stdio 协议 —— 不开网络端口。
-          Path-traversal 守卫。
-        </p>
-
-        <h3>🤖 AI 改写 —— 14 个 BYOK provider</h3>
-        <p>
-          选中文字按 <kbd>⌘J</kbd>。改写 / 缩短 / 扩展 / 翻译 (中英) / 解释 / 自定义。
-          OpenAI、Anthropic、Gemini、xAI、Mistral、Groq、DeepSeek、通义、智谱 GLM、Kimi、豆包、硅基流动、OpenRouter、Ollama。
-          Key 存系统钥匙串。直连厂商,无中转。
-        </p>
-      </section>
-
-      <section>
-        <h2>还没做的</h2>
-        <p>诚实清单 —— SoloMD 目前没有的:</p>
+        <p><strong>我们刻意做的几个权衡：</strong></p>
         <ul>
-          <li><strong>内置 CRDT 同步</strong> —— v3 主目标。目前请用 iCloud Drive / Dropbox / 坚果云 / Syncthing,或 AutoGit + 手动 push。</li>
-          <li><strong>移动端</strong> —— iOS App Store 已提交,审核中。无 Android。</li>
-          <li><strong>插件系统</strong> —— 故意不在路线图。写作者要的功能我们直接放核心。</li>
-          <li><strong>双向链接 / 图谱视图</strong> —— Obsidian 的领域。SoloMD 是写作工具,不是知识图谱。</li>
+          <li><strong>Argon2id</strong> 派生密钥，用 RFC9106 默认参数（~19MB / 2 轮）。盐 + KDF 参数提交到加密仓库，所以另一台设备只要输同样口令就能派生同一把钥匙。</li>
+          <li><strong>XChaCha20-Poly1305</strong> 做 AEAD，带认证；任何篡改会被发现。</li>
+          <li><strong>确定性 nonce</strong>：SHA-256(key ‖ aad ‖ plaintext)[..24]。等价于 convergent encryption —— 重新加密同一份明文得到同一份密文，git 不会有伪 diff。代价：远端读权限的攻击者能看出同库内哪些文件内容相同。单用户库这个代价我们接受。</li>
+          <li><strong>路径作为 AAD</strong>：把 <code>secret-2026.md.enc</code> 的密文挪到 <code>boring.md.enc</code> 解密会失败 —— 攻击者搬不动密文块。</li>
+          <li><strong>明文留本地。</strong>搜索 / RAG / AI 改写 / 演示模式 ——— 全部继续工作，因为本地读 .md 这条路径上没有任何加密层。加密影子放在 <code>&lt;workspace&gt;/.solomd-encrypted/</code> 里，只有它会被推到远端。</li>
+        </ul>
+        <p>
+          这套不是用来防本机恶意进程或被入侵设备的（那不是威胁模型）。
+          它<strong>能</strong>防住的是：PAT 泄漏、误把仓库设成 public、被人 clone 到、GitHub 内部合规扫描。
+        </p>
+      </section>
+
+      <section>
+        <h2>🗂️ iCloud / Dropbox / OneDrive（不用配置）</h2>
+        <p>
+          如果你工作区本来就在 <code>~/Library/Mobile Documents/com~apple~CloudDocs/Notes</code>
+          或 <code>~/Dropbox/Notes</code> 里，那其实根本不需要 GitHub 同步 —— 苹果 / Dropbox / 微软已经在做文件级同步了。
+          v3.0 自动识别这种情况，在设置里弹个横幅告诉你。
+        </p>
+        <p>
+          我们在此之上加一层<strong>跨设备会话恢复</strong>：每台设备会写一份
+          <code>.solomd/session.&lt;deviceId&gt;.json</code>，记录当前打开的标签页。
+          在另一台机器打开同一个工作区，看到对方的 session 比自己新时，会弹一个一键
+          「从 <em>Mac mini</em> 恢复标签页」 —— 接着写，无缝。我们不碰你的数据。
+        </p>
+      </section>
+
+      <section>
+        <h2>🌐 公开只读分享</h2>
+        <p>
+          打开命令面板，运行 <code>GitHub Sync: Copy Share Link for This Note</code>。
+          得到的链接形如
+          <code>solomd.app/share/?repo=you/notes&amp;path=2026-roadmap.md</code>。
+          任何拿到链接的人在浏览器里就能阅读这篇笔记 —— 直接从
+          <code>raw.githubusercontent.com</code> 拉，浏览器侧 marked + DOMPurify 渲染，
+          中间没有 SoloMD 服务器，也没人知道谁读了它。
+        </p>
+        <p>
+          私有仓库不能这样分享（raw 链接需要鉴权）。页面会清晰提示「可能是私有仓库」而不是默默 404。
+          要分享的话，先把笔记推到一个公开仓库。
+        </p>
+      </section>
+
+      <section>
+        <h2>🔧 多平台支持</h2>
+        <p>
+          GitHub 是默认，享有完整体验（自动建仓 + 仓库选择器走 GitHub REST API）。
+          GitLab / Gitea / 自建 Git 服务，下拉选你的平台、粘贴 clone 链接，
+          推 / 拉一样工作 —— 底层 libgit2 + PAT 凭证流程对平台无感。
+        </p>
+      </section>
+
+      <section>
+        <h2>🧰 来自社区的 QoL</h2>
+        <p>v3.0 同时合入两个社区 PR：</p>
+        <ul>
+          <li><strong>大纲折叠 + 侧边栏左右切换</strong>（<a href="https://github.com/zhitongblog/solomd/pull/35">#35</a>，@ZHTodd223）：大纲面板支持折叠子标题；设置 →「大纲位置」选左 / 右。</li>
+          <li><strong>外部文件变更监听</strong>（<a href="https://github.com/zhitongblog/solomd/pull/24">#24</a>，@beihai23）：在 SoloMD 之外改文件，编辑器立刻发现 —— 预览模式自动 reload，编辑模式弹「重载 / 保留」。已与 v3.0 GitHub 同步打通：拉取期间这个对话框会被静默（覆盖整个重写窗口）。</li>
         </ul>
       </section>
 
-      <section class="cta">
+      <section>
+        <h2>我们选的同步形态 vs. 我们没选的</h2>
+        <table class="compare">
+          <thead>
+            <tr><th></th><th>SoloMD v3.0（GitHub）</th><th>Obsidian Sync</th><th>仅 iCloud</th></tr>
+          </thead>
+          <tbody>
+            <tr><th>数据存哪</th><td>你的 GitHub 账号</td><td>Obsidian 服务器</td><td>Apple 服务器</td></tr>
+            <tr><th>价格</th><td>免费（或者你已有的 GitHub 套餐）</td><td>$96 / 年</td><td>5 GB 内免费</td></tr>
+            <tr><th>端到端加密</th><td>✅ 可选</td><td>✅ 可选</td><td>❌（密钥在 Apple 手里）</td></tr>
+            <tr><th>冲突解决</th><td>逐文件 UI</td><td>逐文件 UI</td><td>"重命名保留两份"</td></tr>
+            <tr><th>版本历史</th><td>每文件完整 git log</td><td>1 年</td><td>30 天</td></tr>
+            <tr><th>多平台</th><td>GitHub / GitLab / Gitea / 自定义</td><td>仅 Obsidian</td><td>仅 Apple</td></tr>
+            <tr><th>需要订阅</th><td>否</td><td>是</td><td>5GB 之后</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>没变的部分</h2>
         <p>
-          <a class="btn btn--primary" href="https://github.com/zhitongblog/solomd/releases">下载 v2.3 →</a>
-          &nbsp;
-          <a class="btn" href="/zh/blog/v2-2-mcp-autogit-and-14-ai-providers/">阅读 v2.2 深度文章</a>
-        </p>
-        <p class="note">
-          MIT 协议。无需账号。默认零遥测。源码在
-          <a href="https://github.com/zhitongblog/solomd" rel="external">GitHub</a>。
+          除此之外 SoloMD 跟 v2.5 一致：本地优先纯 <code>.md</code>，~15 MB 安装包，
+          14 个 AI 服务自带钥匙，MCP 服务自带，AutoGit 文件级历史，
+          语义搜索，WYSIWYG 实时编辑，斜杠命令，主题市场，中文校对。
+          v3.0 把同步加在最上面 —— 不开它，SoloMD 就是你之前用的那个 SoloMD。
         </p>
       </section>
+
+      <p class="thanks-row">
+        感谢 <strong>@beihai23</strong>、<strong>@ZHTodd223</strong>，
+        以及所有在 GitHub Discussions 里参与 v3.0 讨论的朋友。
+        Bug 与建议 → <a href="https://github.com/zhitongblog/solomd/issues">issues</a>。
+      </p>
     </article>
     <Giscus lang={lang} />
   </main>
@@ -127,22 +163,21 @@ const lang = 'zh' as const;
   .whats-new { max-width: 820px; padding: 40px 20px 80px; }
   .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
   .breadcrumbs a { color: inherit; }
-  .version-row { display: flex; align-items: center; gap: 12px; margin: 8px 0 4px; }
-  .version-tag { display: inline-block; padding: 4px 12px; border-radius: 999px; background: #ff9f40; color: #000; font-weight: 700; font-size: 12px; letter-spacing: 0.04em; font-family: ui-monospace, Menlo, monospace; }
+  .version-row { display: flex; align-items: center; gap: 12px; margin: 0 0 10px; }
+  .version-tag { display: inline-block; font-family: var(--font-mono); font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: var(--accent); color: #000; letter-spacing: 0.04em; text-transform: uppercase; }
+  .version-tag--v30 { background: linear-gradient(135deg, #ff9f40 0%, #ffd166 100%); }
   .whats-new time { font-size: 13px; color: var(--text-muted, #888); }
-  .whats-new h1 { font-size: 2.4rem; line-height: 1.15; margin: 0 0 18px; }
+  .whats-new h1 { font-size: 2.4rem; line-height: 1.2; margin: 0 0 18px; }
   .whats-new h2 { font-size: 1.6rem; margin: 44px 0 14px; }
   .whats-new h3 { font-size: 1.15rem; margin: 22px 0 8px; }
-  .whats-new .lead { font-size: 1.15rem; color: var(--text-muted, #555); line-height: 1.65; margin-bottom: 24px; }
-  .whats-new p { line-height: 1.75; margin: 12px 0; }
+  .whats-new .lead { font-size: 1.15rem; color: var(--text-muted, #555); line-height: 1.85; margin-bottom: 24px; }
+  .whats-new p { line-height: 1.85; margin: 12px 0; }
   .whats-new ul { padding-left: 22px; }
-  .whats-new li { margin: 6px 0; line-height: 1.7; }
-  .whats-new code { background: #f5f5f0; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
-  .whats-new kbd { background: #f5f5f0; border: 1px solid #ddd; border-radius: 3px; padding: 1px 6px; font-family: ui-monospace, Menlo, monospace; font-size: 0.85em; }
-  .whats-new a { color: #ff9f40; }
-  .whats-new .callout { background: #fff7ee; border-left: 3px solid #ff9f40; padding: 10px 16px; margin: 18px 0; border-radius: 0 6px 6px 0; font-size: 0.95em; }
-  .whats-new .cta { margin-top: 44px; padding-top: 28px; border-top: 1px solid #eee; }
-  .whats-new .cta .note { font-size: 13px; color: var(--text-muted, #888); margin-top: 12px; }
-  .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; color: var(--text); }
-  .btn--primary { background: #ff9f40; color: #000 !important; }
+  .whats-new li { margin: 6px 0; line-height: 1.85; }
+  .whats-new code { background: #f6f3eb; padding: 2px 6px; border-radius: 4px; font-size: 0.92em; font-family: var(--font-mono); }
+  .compare { width: 100%; border-collapse: collapse; margin: 18px 0 8px; font-size: 14px; }
+  .compare th, .compare td { padding: 9px 12px; text-align: left; border-bottom: 1px solid #eee; }
+  .compare thead th { background: #fafafa; font-weight: 600; }
+  .compare tbody th { font-weight: 500; width: 28%; color: var(--text-muted, #555); }
+  .thanks-row { margin-top: 60px; padding-top: 18px; border-top: 1px solid #eee; font-size: 14px; color: var(--text-muted, #555); }
 </style>

@@ -8,8 +8,8 @@ const lang = 'en' as const;
 ---
 
 <Layout
-  title="What's new in SoloMD v2.3 — semantic search & WYSIWYG live edit"
-  description="v2.3 adds local semantic search (⌘⇧F, on-device, no model download) and a fourth WYSIWYG live edit view mode. Combined with v2.2's MCP server, AutoGit history and 14 AI providers — all shipped, all in core."
+  title="What's new in SoloMD v3.0 — sync, optionally"
+  description="v3.0 closes the only gap left — sync. Push your vault to your own GitHub repo. Optional end-to-end encryption. iCloud / Dropbox / OneDrive folder mode. A read-only public share page. No SoloMD server, no subscription."
   lang={lang}
 >
   <Header lang={lang} />
@@ -20,121 +20,167 @@ const lang = 'en' as const;
       </nav>
 
       <p class="version-row">
-        <span class="version-tag">v2.3</span>
+        <span class="version-tag version-tag--v30">v3.0</span>
         <time>April 2026</time>
       </p>
-      <h1>What's new in v2.3</h1>
+      <h1>Sync, optionally.</h1>
       <p class="lead">
-        Two changes that move the goalposts for "what a Markdown editor
-        ships in core" — <strong>local semantic search</strong> and a
-        <strong>WYSIWYG live edit</strong> view mode. Both stack on top
-        of v2.2's MCP server, AutoGit history, and 14 AI providers.
-        Everything below is in core, MIT-licensed, and works without an
-        account.
+        v3.0 ships the one feature SoloMD always avoided: <strong>sync</strong>.
+        We avoided it because the obvious shape — SoloMD-hosted CRDT
+        servers — would have made us a SaaS. The shape we landed on
+        instead: <strong>your vault → your GitHub repo</strong>. Optional
+        <strong>end-to-end encryption</strong>. Optional
+        <strong>iCloud / Dropbox / OneDrive folder mode</strong>. Optional
+        <strong>public read-only share</strong>. <strong>No SoloMD
+        server. No subscription. No account.</strong>
       </p>
 
       <section>
-        <h2>🔍 Local semantic search (v2.3)</h2>
+        <h2>☁️ GitHub-backed sync</h2>
         <p>
-          Press <kbd>⌘⇧F</kbd>. A new search panel ranks paragraphs by
-          meaning instead of just keywords — type <em>"deployment"</em>
-          and you'll surface notes about <em>"rolling out"</em>,
-          <em>"shipping"</em>, <em>"cutting a release"</em>.
-        </p>
-        <p>The interesting part is what it doesn't do:</p>
-        <ul>
-          <li><strong>No model file download.</strong> The bundled embedder is a hashed character-trigram function that runs entirely in our Rust process. No 100 MB ONNX file, no first-launch download.</li>
-          <li><strong>No network call, ever.</strong> Query embeds locally; ranking is brute-force cosine similarity in Rust over a SQLite store. The query text never touches a socket.</li>
-          <li><strong>Off by default.</strong> Settings → "Enable semantic search" turns it on. Until then nothing is scanned and no index file is created.</li>
-          <li><strong>Index lives in the workspace.</strong> <code>&lt;workspace&gt;/.solomd/embeddings.sqlite</code>, auto-added to <code>.gitignore</code> so AutoGit won't snapshot embeddings.</li>
-        </ul>
-        <p>
-          Field-wide gap closer: Obsidian's semantic search lives behind
-          paid plugins (Smart Connections etc.) and most of those call
-          hosted embedding APIs. Typora and MarkText don't have it at all.
-          Tolaria doesn't either. SoloMD is the only one shipping it in
-          core, fully offline.
-        </p>
-        <p class="callout">
-          See <a href="/security/">Security § 5: Local RAG / semantic search</a> for the full data-flow writeup.
-        </p>
-      </section>
-
-      <section>
-        <h2>✍️ WYSIWYG live edit mode (v2.3)</h2>
-        <p>
-          A fourth view mode joins source / split / preview:
-          <strong>live edit</strong>. Headings render larger inline,
-          <code>**bold**</code> shows bold without the asterisks, lists
-          indent visually, blockquotes get a left border. The markup
-          reveals when the caret enters the line — so you always have
-          a way back to source without switching modes.
-        </p>
-        <p>
-          Toggle from the view-mode switcher in the editor header, or
-          via the command palette (<kbd>⌘⇧K</kbd> → "Live edit").
-        </p>
-      </section>
-
-      <section>
-        <h2>From v2.2 — already shipped</h2>
-        <p>If you missed v2.2, here's the gist:</p>
-
-        <h3>📜 AutoGit version history</h3>
-        <p>
-          One toggle in Settings. From that moment, every <kbd>⌘S</kbd>
-          becomes a snapshot in a local <code>.git</code> inside your
-          workspace. The right-hand history panel lists every commit
-          that touched the active file; click <strong>Restore</strong>
-          to roll back atomically. libgit2 vendored — no system git
-          required. Never auto-pushed.
-        </p>
-
-        <h3>🔌 MCP server</h3>
-        <p>
-          1.5 MB sidecar binary. Point Claude Desktop, Cursor, or Codex
-          CLI at your workspace and it gets 8 read tools out of the
-          box (<code>list_notes</code>, <code>read_note</code>,
-          <code>search</code>, <code>get_backlinks</code>,
-          <code>list_tags</code>, <code>get_outline</code>, etc.) plus
-          2 write tools gated behind <code>--allow-write</code>.
-          stdio only — no network port. Path-traversal guarded.
-        </p>
-
-        <h3>🤖 AI rewrite — 14 BYOK providers</h3>
-        <p>
-          <kbd>⌘J</kbd> on a selection. Pick rewrite / shorten / expand /
-          translate (en+zh) / explain / custom. OpenAI, Anthropic,
-          Gemini, xAI, Mistral, Groq, DeepSeek, Qwen, GLM, Moonshot,
-          Doubao, SiliconFlow, OpenRouter, Ollama. Keys live in the OS
-          keychain. Direct vendor calls, no relay.
-        </p>
-      </section>
-
-      <section>
-        <h2>What's still on the table</h2>
-        <p>
-          The honest list of things SoloMD doesn't do yet:
+          Open Settings → GitHub Sync. Paste a Personal Access Token
+          (stored in your OS keychain — macOS Keychain Access, Windows
+          Credential Manager, Linux Secret Service). Pick an existing
+          repo or let SoloMD create a fresh private one. From that point
+          on:
         </p>
         <ul>
-          <li><strong>Built-in CRDT sync</strong> — the v3 anchor. For now use iCloud Drive / Dropbox / Syncthing, or AutoGit + push manually.</li>
-          <li><strong>Mobile</strong> — iOS App Store submission is in review. No Android.</li>
-          <li><strong>Plugin system</strong> — intentionally not on the roadmap. The features serious writers ask for keep landing in core instead.</li>
-          <li><strong>Wiki-style backlinks / graph view</strong> — Obsidian territory. SoloMD is a writing tool, not a knowledge graph.</li>
+          <li><strong>Auto-push</strong> 5s after every save (debounced). Skips when there's nothing to commit.</li>
+          <li><strong>Auto-pull</strong> on a configurable interval (5 / 15 / 30 / 60 min). Skips when local has uncommitted changes — no surprise overwrites.</li>
+          <li><strong>Conflict resolver</strong> in the History panel: per-file Use Mine / Use GitHub / Keep Both. The "Keep Both" path saves the remote version alongside as <code>note.remote-2026-04-26.md</code>.</li>
+          <li><strong>libgit2-vendored</strong> — same engine that powers v2.2 AutoGit. No system git binary needed.</li>
+        </ul>
+        <p>
+          SoloMD never holds your data. We don't even know your repo
+          exists. Push to GitHub Free if you can fit in 1 GB; push to
+          GitHub Pro ($4/mo) for unlimited private repos. Either way the
+          subscription stays between you and GitHub.
+        </p>
+      </section>
+
+      <section>
+        <h2>🔒 End-to-end encryption (optional)</h2>
+        <p>
+          Tick "Encrypt before push" when linking. Set a passphrase. From
+          then on the remote sees only ciphertext: every <code>.md</code>
+          becomes a <code>.md.enc</code> blob with our 4-byte
+          <code>SLMD</code> magic, a 24-byte XChaCha20 nonce, and a
+          16-byte Poly1305 tag.
+        </p>
+        <p><strong>Trade-offs we picked, on purpose:</strong></p>
+        <ul>
+          <li><strong>Argon2id</strong> for passphrase → key. RFC9106 default params (~19 MB / 2 iters). Salt + KDF params committed to the encrypted repo so a second device with the same passphrase derives the same key.</li>
+          <li><strong>XChaCha20-Poly1305</strong> for the AEAD. Authenticated; tampering is detected.</li>
+          <li><strong>Deterministic, key-bound nonce</strong> — SHA-256(key ‖ aad ‖ plaintext)[..24]. This is convergent encryption: re-encrypting unchanged plaintext produces zero git diff. Without this, every push would touch every file. The trade-off: an attacker with read access to the remote can detect plaintext-equality across files in the same vault. For a single-user vault, that's acceptable.</li>
+          <li><strong>Path is AAD</strong>. Swapping <code>secret-2026.md.enc</code> ciphertext into <code>boring.md.enc</code> fails verification. Adversaries can't move blobs around.</li>
+          <li><strong>Plaintext stays local.</strong> Search, RAG, AI rewrite, slideshow — all keep working because nothing intercepts the local <code>.md</code> read path. The encrypted shadow lives in <code>&lt;workspace&gt;/.solomd-encrypted/</code> and is the only thing pushed.</li>
+        </ul>
+        <p>
+          Not bulletproof against a malicious local process or a
+          compromised device — that's not the threat model. It IS
+          bulletproof against a leaked PAT, a public-by-mistake repo, an
+          accidental clone, or GitHub's compliance team.
+        </p>
+      </section>
+
+      <section>
+        <h2>🗂️ iCloud / Dropbox / OneDrive (no setup required)</h2>
+        <p>
+          If your workspace already lives at
+          <code>~/Library/Mobile Documents/com~apple~CloudDocs/Notes</code>
+          or <code>~/Dropbox/Notes</code>, you don't need GitHub sync at
+          all — Apple / Dropbox / Microsoft already do the file-level
+          sync. v3.0 detects that and surfaces a banner in Settings, so
+          you know.
+        </p>
+        <p>
+          We add one thing on top: <strong>per-device session
+          restore</strong>. Each device writes a
+          <code>.solomd/session.&lt;deviceId&gt;.json</code> with its open
+          tabs. When you open the same workspace on a second device and
+          it sees a sibling session that's fresher than your own, you
+          get a one-click "Restore tabs from <em>Mac mini</em>" prompt.
+          Pick up where you left off, even across machines, without us
+          touching your data.
+        </p>
+      </section>
+
+      <section>
+        <h2>🌐 Public read-only share</h2>
+        <p>
+          Open the command palette, run
+          <code>GitHub Sync: Copy Share Link for This Note</code>. The
+          link looks like
+          <code>solomd.app/share/?repo=you/notes&amp;path=2026-roadmap.md</code>.
+          Anyone with that URL gets a clean Markdown render of the note
+          — fetched directly from <code>raw.githubusercontent.com</code>,
+          rendered in their browser via marked + DOMPurify, no SoloMD
+          server in the loop, no analytics tracking who reads it.
+        </p>
+        <p>
+          Private repos can't be shared this way (raw URLs need auth).
+          The page surfaces a clear "may be private" message instead of
+          silently 404-ing. If you do want to share something, push it
+          to a public repo first.
+        </p>
+      </section>
+
+      <section>
+        <h2>🔧 Multi-provider</h2>
+        <p>
+          GitHub is the default and gets the full UX (auto-create + repo
+          picker via the GitHub REST API). For GitLab, Gitea, or any
+          self-hosted git server, pick your provider in the dropdown,
+          paste a clone URL, and push / pull works the same way — the
+          underlying libgit2 + PAT credential dance is provider-agnostic.
+        </p>
+      </section>
+
+      <section>
+        <h2>🧰 Quality of life from the community</h2>
+        <p>Two community PRs landed alongside v3.0:</p>
+        <ul>
+          <li><strong>Collapsible outline + sidebar position</strong> (<a href="https://github.com/zhitongblog/solomd/pull/35">#35</a>, @ZHTodd223): the outline panel now collapses nested headings, and Settings → "Outline side" puts it on the left or right.</li>
+          <li><strong>External file change watcher</strong> (<a href="https://github.com/zhitongblog/solomd/pull/24">#24</a>, @beihai23): edit a file outside SoloMD and the editor notices — preview mode auto-reloads, edit mode pops a "reload vs keep" dialog. Coordinated with v3.0 GitHub sync so a pull doesn't fire the dialog per file (suppression window covers the rewrite).</li>
         </ul>
       </section>
 
-      <section class="cta">
+      <section>
+        <h2>The shape of "sync" we picked, vs. the shape we didn't</h2>
+        <table class="compare">
+          <thead>
+            <tr><th></th><th>SoloMD v3.0 (GitHub-backed)</th><th>Obsidian Sync</th><th>iCloud-only</th></tr>
+          </thead>
+          <tbody>
+            <tr><th>Where data lives</th><td>Your GitHub account</td><td>Obsidian's servers</td><td>Apple's servers</td></tr>
+            <tr><th>Cost</th><td>Free (or your existing GitHub plan)</td><td>$96 / yr</td><td>Free up to 5 GB</td></tr>
+            <tr><th>End-to-end encrypted</th><td>✅ optional, opt-in</td><td>✅ optional</td><td>❌ (Apple holds keys)</td></tr>
+            <tr><th>Conflict resolution</th><td>Per-file UI</td><td>Per-file UI</td><td>"Keep both" rename</td></tr>
+            <tr><th>Version history</th><td>Full git log per file</td><td>1 year</td><td>30 days</td></tr>
+            <tr><th>Multi-provider</th><td>GitHub / GitLab / Gitea / custom</td><td>Obsidian only</td><td>Apple only</td></tr>
+            <tr><th>Subscription required</th><td>No</td><td>Yes</td><td>Past 5 GB</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>What didn't change</h2>
         <p>
-          <a class="btn btn--primary" href="https://github.com/zhitongblog/solomd/releases">Download v2.3 →</a>
-          &nbsp;
-          <a class="btn" href="/blog/v2-2-mcp-autogit-and-14-ai-providers/">Read the v2.2 deep-dive</a>
-        </p>
-        <p class="note">
-          MIT-licensed. No account. No telemetry by default. Audit the source on
-          <a href="https://github.com/zhitongblog/solomd" rel="external">GitHub</a>.
+          Everything else about SoloMD is the same as v2.5:
+          local-first plain <code>.md</code> files, ~15 MB installer,
+          all 14 AI providers BYOK, MCP server bundled, AutoGit
+          per-note history, semantic search, WYSIWYG live edit, slash
+          commands, theme marketplace, CJK proofread. v3.0 adds an
+          optional sync layer on top — turn it off and SoloMD is still
+          the editor you've been using.
         </p>
       </section>
+
+      <p class="thanks-row">
+        Thanks <strong>@beihai23</strong>, <strong>@ZHTodd223</strong>,
+        and everyone in the GitHub Discussions for the v3.0 cycle. Bug
+        reports + ideas → <a href="https://github.com/zhitongblog/solomd/issues">issues</a>.
+      </p>
     </article>
     <Giscus lang={lang} />
   </main>
@@ -145,8 +191,9 @@ const lang = 'en' as const;
   .whats-new { max-width: 820px; padding: 40px 20px 80px; }
   .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
   .breadcrumbs a { color: inherit; }
-  .version-row { display: flex; align-items: center; gap: 12px; margin: 8px 0 4px; }
-  .version-tag { display: inline-block; padding: 4px 12px; border-radius: 999px; background: #ff9f40; color: #000; font-weight: 700; font-size: 12px; letter-spacing: 0.04em; font-family: ui-monospace, Menlo, monospace; }
+  .version-row { display: flex; align-items: center; gap: 12px; margin: 0 0 10px; }
+  .version-tag { display: inline-block; font-family: var(--font-mono); font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: var(--accent); color: #000; letter-spacing: 0.04em; text-transform: uppercase; }
+  .version-tag--v30 { background: linear-gradient(135deg, #ff9f40 0%, #ffd166 100%); }
   .whats-new time { font-size: 13px; color: var(--text-muted, #888); }
   .whats-new h1 { font-size: 2.4rem; line-height: 1.15; margin: 0 0 18px; }
   .whats-new h2 { font-size: 1.6rem; margin: 44px 0 14px; }
@@ -155,12 +202,10 @@ const lang = 'en' as const;
   .whats-new p { line-height: 1.75; margin: 12px 0; }
   .whats-new ul { padding-left: 22px; }
   .whats-new li { margin: 6px 0; line-height: 1.7; }
-  .whats-new code { background: #f5f5f0; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
-  .whats-new kbd { background: #f5f5f0; border: 1px solid #ddd; border-radius: 3px; padding: 1px 6px; font-family: ui-monospace, Menlo, monospace; font-size: 0.85em; }
-  .whats-new a { color: #ff9f40; }
-  .whats-new .callout { background: #fff7ee; border-left: 3px solid #ff9f40; padding: 10px 16px; margin: 18px 0; border-radius: 0 6px 6px 0; font-size: 0.95em; }
-  .whats-new .cta { margin-top: 44px; padding-top: 28px; border-top: 1px solid #eee; }
-  .whats-new .cta .note { font-size: 13px; color: var(--text-muted, #888); margin-top: 12px; }
-  .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; color: var(--text); }
-  .btn--primary { background: #ff9f40; color: #000 !important; }
+  .whats-new code { background: #f6f3eb; padding: 2px 6px; border-radius: 4px; font-size: 0.92em; font-family: var(--font-mono); }
+  .compare { width: 100%; border-collapse: collapse; margin: 18px 0 8px; font-size: 14px; }
+  .compare th, .compare td { padding: 9px 12px; text-align: left; border-bottom: 1px solid #eee; }
+  .compare thead th { background: #fafafa; font-weight: 600; }
+  .compare tbody th { font-weight: 500; width: 28%; color: var(--text-muted, #555); }
+  .thanks-row { margin-top: 60px; padding-top: 18px; border-top: 1px solid #eee; font-size: 14px; color: var(--text-muted, #555); }
 </style>

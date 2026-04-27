@@ -14,6 +14,9 @@ import AISettings from './AISettings.vue';
 import CitationPickerSettings from './CitationPickerSettings.vue';
 import CaptureEndpointSettings from './CaptureEndpointSettings.vue';
 import IntegrationsSettings from './IntegrationsSettings.vue';
+import GithubSyncSettings from './GithubSyncSettings.vue';
+import CloudFolderBanner from './CloudFolderBanner.vue';
+import ProxySettings from './ProxySettings.vue';
 import ThemeMarketplace from './ThemeMarketplace.vue';
 import { isIOS } from '../lib/platform';
 import type { Theme } from '../types';
@@ -22,6 +25,19 @@ const isMobilePlatform = isIOS();
 const masBuild = isMasBuild();
 
 const { t } = useI18n();
+
+// v3.0 — left-side category nav. Settings was a 30+ item single scroll;
+// split into 6 groups so the user navigates by category, not by scroll.
+type SettingsCategory = 'basics' | 'writing' | 'sync' | 'integrations' | 'export' | 'advanced';
+const activeCategory = ref<SettingsCategory>('basics');
+const categories: { id: SettingsCategory; icon: string; labelKey: string }[] = [
+  { id: 'basics', icon: '⚙️', labelKey: 'settings.catBasics' },
+  { id: 'writing', icon: '✍️', labelKey: 'settings.catWriting' },
+  { id: 'sync', icon: '☁️', labelKey: 'settings.catSync' },
+  { id: 'integrations', icon: '🔌', labelKey: 'settings.catIntegrations' },
+  { id: 'export', icon: '📤', labelKey: 'settings.catExport' },
+  { id: 'advanced', icon: '🛠️', labelKey: 'settings.catAdvanced' },
+];
 
 const checkingUpdate = ref(false);
 async function manualCheckUpdate() {
@@ -205,8 +221,23 @@ function onSelectPdfFont(v: string) {
         <h2>{{ t('settings.title') }}</h2>
         <button class="settings__close" @click="emit('close')">×</button>
       </header>
-      <div class="settings__body">
-        <section>
+      <div class="settings__layout">
+        <!-- v3.0 — left-side category nav. Click switches the right-side
+             content panel; only one category visible at a time. -->
+        <nav class="settings__nav">
+          <button
+            v-for="c in categories"
+            :key="c.id"
+            class="settings__nav-item"
+            :class="{ 'settings__nav-item--active': activeCategory === c.id }"
+            @click="activeCategory = c.id"
+          >
+            <span class="settings__nav-icon">{{ c.icon }}</span>
+            <span class="settings__nav-label">{{ t(c.labelKey) }}</span>
+          </button>
+        </nav>
+      <div class="settings__body" :data-active-cat="activeCategory">
+        <section data-cat="basics">
           <label>{{ t('settings.language') }}</label>
           <select
             :value="settings.language"
@@ -217,7 +248,7 @@ function onSelectPdfFont(v: string) {
           </select>
         </section>
 
-        <section>
+        <section data-cat="basics">
           <label>{{ t('settings.theme') }}</label>
           <select
             :value="settings.theme"
@@ -227,7 +258,7 @@ function onSelectPdfFont(v: string) {
           </select>
         </section>
 
-        <section>
+        <section data-cat="basics">
           <label>{{ t('settings.fontFamily') }}</label>
           <select :value="fontFamilySelectValue" @change="onSelectFontFamily(($event.target as HTMLSelectElement).value)">
             <option v-for="f in fontFamilies" :key="f.label" :value="f.value">{{ f.label }}</option>
@@ -244,7 +275,7 @@ function onSelectPdfFont(v: string) {
           <p class="setting-hint">{{ t('settings.fontFamilyHint') }}</p>
         </section>
 
-        <section>
+        <section data-cat="basics">
           <label>{{ t('settings.fontSize') }}: {{ settings.fontSize }}px</label>
           <input
             type="range"
@@ -255,7 +286,7 @@ function onSelectPdfFont(v: string) {
           />
         </section>
 
-        <section>
+        <section data-cat="basics">
           <label>{{ t('settings.uiFontSize') }}: {{ settings.uiFontSize }}px</label>
           <input
             type="range"
@@ -266,42 +297,53 @@ function onSelectPdfFont(v: string) {
           />
         </section>
 
-        <section>
+        <section data-cat="basics">
           <label>
             <input type="checkbox" :checked="settings.wordWrap" @change="settings.toggleWordWrap()" />
             {{ t('settings.wordWrap') }}
           </label>
         </section>
 
-        <section>
+        <section data-cat="basics">
           <label>
             <input type="checkbox" :checked="settings.showLineNumbers" @change="settings.toggleLineNumbers()" />
             {{ t('settings.lineNumbers') }}
           </label>
         </section>
 
-        <section>
+        <section data-cat="basics">
           <label>
             <input type="checkbox" :checked="settings.livePreview" @change="settings.toggleLivePreview()" />
             {{ t('settings.livePreview') }}
           </label>
         </section>
 
-        <section>
+        <section data-cat="basics">
           <label>
             <input type="checkbox" :checked="settings.showOutline" @change="onToggleOutlineGlobal()" />
             {{ t('settings.showOutline') }}
           </label>
         </section>
 
-        <section>
+        <section data-cat="basics">
+          <label>{{ t('settings.outlineSide') }}</label>
+          <select
+            :value="settings.outlineSide"
+            @change="settings.setOutlineSide(($event.target as HTMLSelectElement).value as 'left' | 'right')"
+          >
+            <option value="left">{{ t('settings.outlineSideLeft') }}</option>
+            <option value="right">{{ t('settings.outlineSideRight') }}</option>
+          </select>
+        </section>
+
+        <section data-cat="basics">
           <label>
             <input type="checkbox" :checked="settings.previewFitWidth" @change="settings.togglePreviewFitWidth()" />
             {{ t('settings.previewFitWidth') }}
           </label>
         </section>
 
-        <section>
+        <section data-cat="basics">
           <label>
             <input
               type="checkbox"
@@ -313,28 +355,28 @@ function onSelectPdfFont(v: string) {
           <p style="font-size: 11px; color: var(--text-faint); margin: 4px 0 0; line-height: 1.5;">{{ t('reading.readingByDefaultOnMobileHint') }}</p>
         </section>
 
-        <section>
+        <section data-cat="basics">
           <label>
             <input type="checkbox" :checked="settings.showFileTree" @change="settings.toggleFileTree()" />
             {{ t('settings.showFileTree') }}
           </label>
         </section>
 
-        <section>
+        <section data-cat="basics">
           <label>
             <input type="checkbox" :checked="settings.showBacklinks" @change="settings.toggleBacklinks()" />
             {{ t('settings.showBacklinks') }}
           </label>
         </section>
 
-        <section>
+        <section data-cat="basics">
           <label>
             <input type="checkbox" :checked="settings.showTagsPanel" @change="settings.toggleTagsPanel()" />
             {{ t('settings.showTagsPanel') }}
           </label>
         </section>
 
-        <section>
+        <section data-cat="writing">
           <h3 style="font-size: 13px; font-weight: 600; color: var(--text); margin: 18px 0 6px;">
             {{ t('writingStats.settingsHeading') }}
           </h3>
@@ -360,7 +402,7 @@ function onSelectPdfFont(v: string) {
           </p>
         </section>
 
-        <section>
+        <section data-cat="sync">
           <h3 style="font-size: 13px; font-weight: 600; color: var(--text); margin: 18px 0 6px;">
             {{ t('settings.versionHistoryHeading') }}
           </h3>
@@ -373,14 +415,27 @@ function onSelectPdfFont(v: string) {
           </p>
         </section>
 
-        <section>
+        <!-- v2.6.1 cloud-folder banner. Self-hides if the workspace isn't
+             inside a known cloud-sync folder. -->
+        <div data-cat="sync"><CloudFolderBanner /></div>
+
+        <!-- v2.6 GitHub sync — sits right under AutoGit since it pushes the
+             same commits AutoGit produces; reads top-down as one story. -->
+        <div data-cat="sync"><GithubSyncSettings /></div>
+
+        <!-- v3.0 — proxy URL (network-level, applies to libgit2 push/pull
+             across GitHub / GitLab / Gitea). Pulled out of GithubSyncSettings
+             so users hitting timeouts find it at the top of the Sync tab. -->
+        <div data-cat="sync"><ProxySettings /></div>
+
+        <section data-cat="writing">
           <label>
             <input type="checkbox" :checked="settings.spellcheckEnabled" @change="settings.toggleSpellcheckEnabled()" />
             {{ t('settings.spellcheckEnabled') }}
           </label>
         </section>
 
-        <section>
+        <section data-cat="integrations">
           <h3 style="font-size: 13px; font-weight: 600; color: var(--text); margin: 18px 0 6px;">
             {{ t('rag.settingsHeading') }}
           </h3>
@@ -422,16 +477,15 @@ function onSelectPdfFont(v: string) {
           </div>
         </section>
 
-        <!-- v2.5 F3: PDF / print export defaults. Lives between AutoGit and
-             Daily-notes so the "documents you produce" cluster reads top-down. -->
-        <section>
+        <!-- v2.5 F3: PDF / print export defaults. -->
+        <section data-cat="export">
           <h3 style="font-size: 13px; font-weight: 600; color: var(--text); margin: 18px 0 6px;">
             {{ t('settings.pdfDefaults.heading') }}
           </h3>
           <p class="setting-hint">{{ t('settings.pdfDefaults.headingHint') }}</p>
         </section>
 
-        <section>
+        <section data-cat="export">
           <label>{{ t('settings.pdfDefaults.pageSize') }}</label>
           <select
             :value="settings.pdfDefaults.pageSize"
@@ -473,7 +527,7 @@ function onSelectPdfFont(v: string) {
           </div>
         </section>
 
-        <section>
+        <section data-cat="export">
           <label>{{ t('settings.pdfDefaults.margin') }}</label>
           <select
             :value="settings.pdfDefaults.margin"
@@ -534,7 +588,7 @@ function onSelectPdfFont(v: string) {
           </p>
         </section>
 
-        <section>
+        <section data-cat="export">
           <label>{{ t('settings.pdfDefaults.fontFamily') }}</label>
           <select
             :value="pdfFontSelectValue"
@@ -545,7 +599,7 @@ function onSelectPdfFont(v: string) {
           </select>
         </section>
 
-        <section>
+        <section data-cat="export">
           <label>{{ t('settings.pdfDefaults.fontSize') }}: {{ settings.pdfDefaults.fontSize }}pt</label>
           <input
             type="range"
@@ -557,7 +611,7 @@ function onSelectPdfFont(v: string) {
           />
         </section>
 
-        <section>
+        <section data-cat="export">
           <label>
             <input
               type="checkbox"
@@ -568,7 +622,7 @@ function onSelectPdfFont(v: string) {
           </label>
         </section>
 
-        <section>
+        <section data-cat="export">
           <label>{{ t('settings.pdfDefaults.codeTheme') }}</label>
           <select
             :value="settings.pdfDefaults.codeTheme"
@@ -581,7 +635,7 @@ function onSelectPdfFont(v: string) {
           <p class="setting-hint">{{ t('settings.pdfDefaults.frontmatterHint') }}</p>
         </section>
 
-        <section>
+        <section data-cat="advanced">
           <label>{{ t('settings.dailyNotesFolder') }}</label>
           <input
             type="text"
@@ -592,7 +646,7 @@ function onSelectPdfFont(v: string) {
           />
         </section>
 
-        <section>
+        <section data-cat="advanced">
           <label>{{ t('settings.dailyNotesFormat') }}</label>
           <input
             type="text"
@@ -603,9 +657,9 @@ function onSelectPdfFont(v: string) {
           />
         </section>
 
-        <CitationPickerSettings />
+        <div data-cat="export"><CitationPickerSettings /></div>
 
-        <AISettings
+        <div data-cat="integrations"><AISettings
           :enabled="settings.aiEnabled"
           :provider="(settings.aiProvider as any)"
           :model="settings.aiModel"
@@ -614,27 +668,26 @@ function onSelectPdfFont(v: string) {
           @update:provider="(v: string) => settings.setAiProvider(v)"
           @update:model="(v: string) => settings.setAiModel(v)"
           @update:baseUrl="(v: string) => settings.setAiBaseUrl(v)"
-        />
+        /></div>
 
-        <!-- v2.4: Integrations (CLI + MCP) — sits under AI rewrite so the
-             "things SoloMD talks to" section reads as one cluster. -->
-        <IntegrationsSettings />
+        <!-- v2.4: Integrations (CLI + MCP). -->
+        <div data-cat="integrations"><IntegrationsSettings /></div>
 
-        <section>
+        <section data-cat="writing">
           <label>
             <input type="checkbox" :checked="settings.spellCheck" @change="settings.toggleSpellCheck()" />
             {{ t('settings.spellCheck') }}
           </label>
         </section>
 
-        <section>
+        <section data-cat="writing">
           <label>
             <input type="checkbox" :checked="settings.focusMode" @change="settings.toggleFocusMode()" />
             {{ t('settings.focusMode') }}
           </label>
         </section>
 
-        <section>
+        <section data-cat="writing">
           <h3 style="font-size: 13px; font-weight: 600; color: var(--text); margin: 18px 0 6px;">
             {{ t('pomodoro.settingsHeading') }}
           </h3>
@@ -685,28 +738,28 @@ function onSelectPdfFont(v: string) {
           />
         </section>
 
-        <section>
+        <section data-cat="writing">
           <label>
             <input type="checkbox" :checked="settings.typewriterMode" @change="settings.toggleTypewriterMode()" />
             {{ t('settings.typewriterMode') }}
           </label>
         </section>
 
-        <section>
+        <section data-cat="writing">
           <label>
             <input type="checkbox" :checked="settings.vimMode" @change="settings.toggleVimMode()" />
             {{ t('settings.vimMode') }}
           </label>
         </section>
 
-        <section>
+        <section data-cat="writing">
           <label>
             <input type="checkbox" :checked="settings.slashCommandsEnabled" @change="settings.toggleSlashCommandsEnabled()" />
             {{ t('settings.slashCommandsEnabled') }}
           </label>
         </section>
 
-        <section>
+        <section data-cat="advanced">
           <label>
             <input type="checkbox" :checked="settings.restoreSession" @change="settings.toggleRestoreSession()" />
             {{ t('settings.restoreSession') }}
@@ -716,7 +769,7 @@ function onSelectPdfFont(v: string) {
           </div>
         </section>
 
-        <section v-if="!isMobilePlatform">
+        <section v-if="!isMobilePlatform" data-cat="advanced">
           <label>
             <input type="checkbox" :checked="settings.openFileInNewWindow" @change="settings.toggleOpenFileInNewWindow()" />
             {{ t('settings.openFileInNewWindow') }}
@@ -726,7 +779,7 @@ function onSelectPdfFont(v: string) {
           </div>
         </section>
 
-        <section>
+        <section data-cat="advanced">
           <label>
             <input type="checkbox" :checked="settings.revealInFileTreeOnOpen" @change="settings.toggleRevealInFileTreeOnOpen()" />
             {{ t('settings.revealInFileTreeOnOpen') }}
@@ -736,7 +789,7 @@ function onSelectPdfFont(v: string) {
           </div>
         </section>
 
-        <section v-if="!isMobilePlatform && !masBuild">
+        <section v-if="!isMobilePlatform && !masBuild" data-cat="advanced">
           <label>
             <input type="checkbox" :checked="settings.autoCheckUpdate" @change="settings.toggleAutoCheckUpdate()" />
             {{ t('settings.autoCheckUpdate') }}
@@ -748,7 +801,7 @@ function onSelectPdfFont(v: string) {
           </div>
         </section>
 
-        <section>
+        <section data-cat="advanced">
           <label>
             <input type="checkbox" :checked="settings.telemetryEnabled" @change="settings.toggleTelemetry()" />
             {{ t('settings.telemetry') }}
@@ -758,7 +811,7 @@ function onSelectPdfFont(v: string) {
           </div>
         </section>
 
-        <section>
+        <section data-cat="advanced">
           <label>{{ t('settings.customCss') }}</label>
           <div class="row" style="gap: 8px; align-items: center; flex-wrap: wrap;">
             <button @click="pickCustomCss">{{ t('settings.pickCss') }}</button>
@@ -771,7 +824,7 @@ function onSelectPdfFont(v: string) {
           <p class="setting-hint">{{ t('themes.browseHint') }}</p>
         </section>
 
-        <section>
+        <section data-cat="advanced">
           <label>{{ t('settings.fileAssoc') }}</label>
           <div class="row" style="gap: 8px; align-items: center;">
             <button
@@ -787,9 +840,9 @@ function onSelectPdfFont(v: string) {
           </div>
         </section>
 
-        <!-- v2.4 Integrations: HTTP capture endpoint. Self-contained subcomponent
-             so the diff against parallel Integrations work stays clean. -->
-        <CaptureEndpointSettings />
+        <!-- v2.4 Integrations: HTTP capture endpoint. -->
+        <div data-cat="integrations"><CaptureEndpointSettings /></div>
+      </div>
       </div>
     </div>
     <!-- v2.5: theme marketplace modal. Lives outside settings__body so it
@@ -814,13 +867,77 @@ function onSelectPdfFont(v: string) {
 }
 .settings {
   background: var(--bg-elev);
-  width: min(480px, 92vw);
-  max-height: 80vh;
+  width: min(820px, 94vw);
+  height: min(640px, 84vh);
   border-radius: 10px;
   border: 1px solid var(--border);
   box-shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
   display: flex;
   flex-direction: column;
+}
+.settings__layout {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+.settings__nav {
+  width: 160px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  background: var(--bg-soft, var(--bg));
+  display: flex;
+  flex-direction: column;
+  padding: 10px 6px;
+  gap: 1px;
+  overflow-y: auto;
+}
+.settings__nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  transition: all 0.12s;
+}
+.settings__nav-item:hover {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  color: var(--text);
+}
+.settings__nav-item--active {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+  font-weight: 600;
+}
+.settings__nav-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+.settings__nav-label {
+  flex: 1;
+}
+/* v3.0 — single-source-of-truth visibility: each section/component
+   gets data-cat="basics|writing|sync|integrations|export|advanced",
+   the body's data-active-cat determines which subset renders. Saves
+   wrapping every section in v-if. */
+.settings__body[data-active-cat] > [data-cat] {
+  display: none;
+}
+.settings__body[data-active-cat="basics"] > [data-cat="basics"],
+.settings__body[data-active-cat="writing"] > [data-cat="writing"],
+.settings__body[data-active-cat="sync"] > [data-cat="sync"],
+.settings__body[data-active-cat="integrations"] > [data-cat="integrations"],
+.settings__body[data-active-cat="export"] > [data-cat="export"],
+.settings__body[data-active-cat="advanced"] > [data-cat="advanced"] {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 .settings__header {
   display: flex;
@@ -841,7 +958,8 @@ function onSelectPdfFont(v: string) {
   color: var(--text-muted);
 }
 .settings__body {
-  padding: 16px 20px;
+  flex: 1;
+  padding: 16px 22px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;

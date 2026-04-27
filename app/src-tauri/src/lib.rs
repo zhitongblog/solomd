@@ -15,6 +15,18 @@ pub mod cjk_proofread;
 // v2.5 community theme marketplace — manifest fetched JS-side, CSS files
 // written into <config_dir>/themes/<id>.css by these commands.
 pub mod themes;
+// v2.6 GitHub-backed sync — extends v2.2 AutoGit with push/pull to a
+// user-owned GitHub repo. PAT in OS keychain, config in .solomd/sync.json.
+pub mod github_sync;
+// v2.6.1 cloud-folder detection (iCloud / Dropbox / OneDrive / Google Drive)
+// + cross-device session restore via per-device JSON.
+pub mod cloud_folder;
+// v2.6.3 workspace-level E2EE: passphrase → Argon2id → key in keyring;
+// XChaCha20-Poly1305 over each .md before push, decrypt after pull.
+pub mod crypto;
+// PR #24 (@beihai23) external file-change watcher — preview mode auto-reloads,
+// edit / split modes pop a reload-vs-keep dialog.
+pub mod watcher;
 
 // v2.3 dev WebDriver bridge — debug builds only.
 #[cfg(debug_assertions)]
@@ -32,6 +44,7 @@ pub fn run() {
     let builder = builder.plugin(tauri_plugin_window_state::Builder::default().build());
 
     builder
+        .manage(watcher::WatcherState::new())
         .setup(|app| {
             #[cfg(debug_assertions)]
             {
@@ -50,6 +63,10 @@ pub fn run() {
             commands::print_webview,
             commands::copy_file,
             commands::list_dir,
+            commands::fs_create_file,
+            commands::fs_create_dir,
+            commands::fs_delete,
+            commands::fs_rename,
             search::search_in_dir,
             workspace_index::workspace_index_init,
             workspace_index::workspace_index_files,
@@ -94,6 +111,34 @@ pub fn run() {
             themes::theme_install,
             themes::theme_uninstall,
             themes::theme_list_installed,
+            github_sync::github_set_token,
+            github_sync::github_clear_token,
+            github_sync::github_has_token,
+            github_sync::github_user,
+            github_sync::github_list_repos,
+            github_sync::github_create_vault_repo,
+            github_sync::github_link_workspace,
+            github_sync::github_set_config,
+            github_sync::github_unlink_workspace,
+            github_sync::github_enable_encryption,
+            github_sync::github_sync_status,
+            github_sync::github_push,
+            github_sync::github_pull,
+            github_sync::github_resolve_conflict,
+            github_sync::proxy_get,
+            github_sync::proxy_set,
+            cloud_folder::cloud_folder_detect,
+            cloud_folder::device_id_get_or_create,
+            cloud_folder::session_save,
+            cloud_folder::session_load,
+            cloud_folder::session_list_others,
+            crypto::crypto_status,
+            crypto::crypto_set_passphrase,
+            crypto::crypto_clear_passphrase,
+            crypto::crypto_encrypt_for_push,
+            crypto::crypto_decrypt_after_pull,
+            watcher::watch_file,
+            watcher::unwatch_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

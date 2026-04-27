@@ -33,11 +33,30 @@ mod capture_endpoint;
 #[path = "themes.rs"]
 mod themes;
 
+// v2.5 CJK proofread — flags common Chinese typos with one-click fixes.
+#[path = "cjk_proofread.rs"]
+mod cjk_proofread;
+
+// v2.6 GitHub-backed sync — push/pull a workspace to a user-owned GitHub repo.
+#[path = "github_sync.rs"]
+mod github_sync;
+
+// v2.6.1 cloud-folder detection + cross-device session restore.
+#[path = "cloud_folder.rs"]
+mod cloud_folder;
+
+// v2.6.3 workspace-level E2EE.
+#[path = "crypto.rs"]
+mod crypto;
+
 // v2.3 dev WebDriver bridge — debug builds only. Module file itself is
 // `#[cfg(debug_assertions)]`-gated, so this `mod` line is too.
 #[cfg(debug_assertions)]
 #[path = "dev_bridge.rs"]
 mod dev_bridge;
+
+#[path = "watcher.rs"]
+mod watcher;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
@@ -381,6 +400,7 @@ pub fn run_with(initial_file: Option<String>) {
 
     let app = builder
         .manage(PendingOpen(Mutex::new(pending)))
+        .manage(watcher::WatcherState::new())
         .invoke_handler(tauri::generate_handler![
             commands::read_file,
             commands::write_file,
@@ -388,6 +408,10 @@ pub fn run_with(initial_file: Option<String>) {
             commands::print_webview,
             commands::copy_file,
             commands::list_dir,
+            commands::fs_create_file,
+            commands::fs_create_dir,
+            commands::fs_delete,
+            commands::fs_rename,
             search::search_in_dir,
             drain_pending_opens,
             force_close_window,
@@ -429,6 +453,35 @@ pub fn run_with(initial_file: Option<String>) {
             themes::theme_install,
             themes::theme_uninstall,
             themes::theme_list_installed,
+            cjk_proofread::cjk_proofread,
+            github_sync::github_set_token,
+            github_sync::github_clear_token,
+            github_sync::github_has_token,
+            github_sync::github_user,
+            github_sync::github_list_repos,
+            github_sync::github_create_vault_repo,
+            github_sync::github_link_workspace,
+            github_sync::github_set_config,
+            github_sync::github_unlink_workspace,
+            github_sync::github_enable_encryption,
+            github_sync::github_sync_status,
+            github_sync::github_push,
+            github_sync::github_pull,
+            github_sync::github_resolve_conflict,
+            github_sync::proxy_get,
+            github_sync::proxy_set,
+            cloud_folder::cloud_folder_detect,
+            cloud_folder::device_id_get_or_create,
+            cloud_folder::session_save,
+            cloud_folder::session_load,
+            cloud_folder::session_list_others,
+            crypto::crypto_status,
+            crypto::crypto_set_passphrase,
+            crypto::crypto_clear_passphrase,
+            crypto::crypto_encrypt_for_push,
+            crypto::crypto_decrypt_after_pull,
+            watcher::watch_file,
+            watcher::unwatch_file,
         ])
         .on_menu_event(|app_handle, event| {
             // Forward every menu click to the frontend as a single event

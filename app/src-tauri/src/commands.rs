@@ -68,7 +68,11 @@ pub fn write_file(path: String, content: String, encoding: String) -> Result<(),
             enc.name()
         ));
     }
-    fs::write(&path, cow.as_ref()).map_err(|e| format!("write failed: {e}"))
+    fs::write(&path, cow.as_ref()).map_err(|e| format!("write failed: {e}"))?;
+
+    super::watcher::mark_self_write(&path);
+
+    Ok(())
 }
 
 /// Write raw bytes to disk. Used for binary export targets like DOCX/PDF.
@@ -107,6 +111,59 @@ pub fn copy_file(src: String, dst: String) -> Result<(), String> {
     }
     fs::copy(&src, &dst).map_err(|e| format!("copy failed: {e}"))?;
     Ok(())
+}
+
+/// v3.0 file-tree edit ops — backing the New File / New Folder / Rename /
+/// Delete buttons in the left sidebar. Refuse to clobber existing files
+/// so the UI can show "already exists" without us silently overwriting.
+#[tauri::command]
+pub fn fs_create_file(path: String, content: Option<String>) -> Result<(), String> {
+    let p = Path::new(&path);
+    if p.exists() {
+        return Err(format!("already exists: {path}"));
+    }
+    if let Some(parent) = p.parent() {
+        if !parent.as_os_str().is_empty() {
+            fs::create_dir_all(parent).map_err(|e| format!("mkdir failed: {e}"))?;
+        }
+    }
+    fs::write(p, content.unwrap_or_default().as_bytes())
+        .map_err(|e| format!("create failed: {e}"))
+}
+
+#[tauri::command]
+pub fn fs_create_dir(path: String) -> Result<(), String> {
+    let p = Path::new(&path);
+    if p.exists() {
+        return Err(format!("already exists: {path}"));
+    }
+    fs::create_dir_all(p).map_err(|e| format!("mkdir failed: {e}"))
+}
+
+#[tauri::command]
+pub fn fs_delete(path: String) -> Result<(), String> {
+    let p = Path::new(&path);
+    if !p.exists() {
+        return Ok(()); // idempotent — already gone is fine
+    }
+    if p.is_dir() {
+        fs::remove_dir_all(p).map_err(|e| format!("delete dir failed: {e}"))
+    } else {
+        fs::remove_file(p).map_err(|e| format!("delete file failed: {e}"))
+    }
+}
+
+#[tauri::command]
+pub fn fs_rename(from: String, to: String) -> Result<(), String> {
+    let from_p = Path::new(&from);
+    let to_p = Path::new(&to);
+    if !from_p.exists() {
+        return Err(format!("source missing: {from}"));
+    }
+    if to_p.exists() {
+        return Err(format!("target already exists: {to}"));
+    }
+    fs::rename(from_p, to_p).map_err(|e| format!("rename failed: {e}"))
 }
 
 fn sniff_bom(bytes: &[u8]) -> Option<(&'static Encoding, usize)> {

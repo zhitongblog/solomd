@@ -1,0 +1,237 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+// v2.6.2 — public read-only share page.
+//
+// URL shape: /share/?repo=<owner>/<name>&path=<file>&branch=<branch>
+// Defaults: branch = main. Owner/repo/path are required.
+//
+// We fetch raw.githubusercontent.com client-side. That means private
+// repos cannot be shared this way (raw URLs require auth tokens we
+// won't ever have); the page surfaces a clear error in that case
+// instead of silently 404-ing.
+//
+// Markdown is rendered client-side via marked + DOMPurify loaded from
+// jsDelivr. No new dependencies in package.json — the share page is a
+// thin static shell with one inline <script> module.
+const lang = 'en' as const;
+---
+
+<Layout
+  title="Shared note · SoloMD"
+  description="A read-only view of a Markdown note hosted on GitHub, rendered by SoloMD."
+  lang={lang}
+>
+  <main class="share-page">
+    <div id="share-toolbar" class="share-toolbar" hidden>
+      <a class="share-toolbar__home" href="/">SoloMD</a>
+      <span class="share-toolbar__divider">/</span>
+      <span id="share-repo-label"></span>
+      <span class="share-toolbar__sep"></span>
+      <a id="share-source" class="share-toolbar__src" href="" rel="external" target="_blank">View source on GitHub →</a>
+    </div>
+
+    <article id="share-article" class="share-article">
+      <div id="share-loading" class="share-state">Loading note…</div>
+      <div id="share-error" class="share-state share-state--err" hidden></div>
+      <div id="share-content" class="share-content"></div>
+    </article>
+
+    <footer id="share-footer" class="share-footer" hidden>
+      <p>
+        Rendered by <a href="https://solomd.app">SoloMD</a> —
+        a Markdown editor with built-in GitHub-backed sync. The note above lives in a public GitHub repository and is fetched client-side; we never store its contents.
+      </p>
+    </footer>
+  </main>
+</Layout>
+
+<script type="module" is:inline>
+  import { marked } from 'https://cdn.jsdelivr.net/npm/marked@13.0.3/lib/marked.esm.js';
+  import DOMPurify from 'https://cdn.jsdelivr.net/npm/dompurify@3.1.6/+esm';
+
+  // ---- Parse URL ---------------------------------------------------------
+  const params = new URLSearchParams(window.location.search);
+  const repo = (params.get('repo') || '').trim();
+  const path = (params.get('path') || '').trim();
+  const branch = (params.get('branch') || 'main').trim();
+
+  const loading = document.getElementById('share-loading');
+  const errorEl = document.getElementById('share-error');
+  const content = document.getElementById('share-content');
+  const toolbar = document.getElementById('share-toolbar');
+  const repoLabel = document.getElementById('share-repo-label');
+  const sourceLink = document.getElementById('share-source');
+  const footer = document.getElementById('share-footer');
+
+  function fail(msg) {
+    loading.hidden = true;
+    errorEl.hidden = false;
+    errorEl.textContent = msg;
+  }
+
+  // ---- Validate ----------------------------------------------------------
+  // owner/name is two segments of [A-Za-z0-9._-]. Path is anything but ".."
+  // segments. We don't ship a full URL validator; this is just a guard
+  // against obviously bogus links pasted into the address bar.
+  if (!/^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/.test(repo)) {
+    fail('Invalid share link: missing or malformed repo (?repo=owner/name).');
+  } else if (!path || path.split('/').some((seg) => seg === '..')) {
+    fail('Invalid share link: missing or unsafe path.');
+  } else {
+    const rawUrl = `https://raw.githubusercontent.com/${repo}/${encodeURIComponent(branch)}/${path
+      .split('/')
+      .map(encodeURIComponent)
+      .join('/')}`;
+    const ghUrl = `https://github.com/${repo}/blob/${encodeURIComponent(branch)}/${path}`;
+    repoLabel.textContent = `${repo}/${path}`;
+    sourceLink.href = ghUrl;
+
+    fetch(rawUrl)
+      .then((res) => {
+        if (res.status === 404) {
+          throw new Error(
+            'Note not found. The repository may be private (this share page only works for public repos) or the file path is wrong.',
+          );
+        }
+        if (!res.ok) throw new Error(`GitHub returned HTTP ${res.status}.`);
+        return res.text();
+      })
+      .then((md) => {
+        // Strip YAML front matter so it doesn't render as a horizontal rule.
+        const stripped = md.replace(/^---\n[\s\S]*?\n---\n+/, '');
+        const html = marked.parse(stripped, { gfm: true, breaks: true });
+        // DOMPurify default config drops <script>, javascript: URLs, on*
+        // event handlers — i.e. exactly the XSS vectors a malicious .md
+        // could try to ride through us.
+        const safe = DOMPurify.sanitize(html, {
+          // Allow class/id so themed <pre><code class="language-rust"> still works.
+          ADD_ATTR: ['class', 'id'],
+        });
+        content.innerHTML = safe;
+        loading.hidden = true;
+        toolbar.hidden = false;
+        footer.hidden = false;
+        // Title from first h1, falls back to file name.
+        const h1 = content.querySelector('h1');
+        document.title = `${(h1 ? h1.textContent : path) || 'note'} · SoloMD`;
+      })
+      .catch((e) => fail(String(e?.message || e)));
+  }
+</script>
+
+<style is:inline>
+  .share-page {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 28px 22px 80px;
+  }
+  .share-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-muted, #666);
+    padding: 10px 0 18px;
+    border-bottom: 1px solid var(--border, #eee);
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+  .share-toolbar__home {
+    color: var(--accent, #ff9f40);
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .share-toolbar__divider {
+    color: var(--text-faint, #aaa);
+  }
+  .share-toolbar__sep {
+    flex: 1;
+  }
+  .share-toolbar__src {
+    color: var(--text-muted, #666);
+    font-size: 12px;
+    text-decoration: none;
+  }
+  .share-toolbar__src:hover {
+    color: var(--accent, #ff9f40);
+  }
+  .share-state {
+    text-align: center;
+    color: var(--text-muted, #888);
+    padding: 60px 20px;
+    font-size: 14px;
+  }
+  .share-state--err {
+    color: #c2410c;
+  }
+  .share-content {
+    line-height: 1.7;
+    color: var(--text, #1a1a1a);
+    font-size: 16px;
+  }
+  .share-content h1, .share-content h2, .share-content h3 {
+    margin-top: 1.4em;
+    line-height: 1.25;
+  }
+  .share-content h1 { font-size: 1.85rem; border-bottom: 1px solid var(--border, #eee); padding-bottom: 0.3em; }
+  .share-content h2 { font-size: 1.45rem; }
+  .share-content h3 { font-size: 1.2rem; }
+  .share-content p, .share-content ul, .share-content ol, .share-content blockquote {
+    margin: 0.85em 0;
+  }
+  .share-content code {
+    background: #f6f3eb;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.92em;
+    font-family: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+  }
+  .share-content pre {
+    background: #1f1d1a;
+    color: #e8e6de;
+    padding: 14px 18px;
+    border-radius: 8px;
+    overflow-x: auto;
+    line-height: 1.55;
+    font-size: 13px;
+  }
+  .share-content pre code {
+    background: transparent;
+    color: inherit;
+    padding: 0;
+  }
+  .share-content blockquote {
+    border-left: 3px solid var(--accent, #ff9f40);
+    padding-left: 14px;
+    color: var(--text-muted, #666);
+  }
+  .share-content table {
+    border-collapse: collapse;
+    margin: 1em 0;
+  }
+  .share-content table th, .share-content table td {
+    padding: 8px 12px;
+    border: 1px solid var(--border, #eee);
+  }
+  .share-content table thead {
+    background: #fafafa;
+  }
+  .share-content img {
+    max-width: 100%;
+    height: auto;
+  }
+  .share-content a {
+    color: var(--accent, #ff9f40);
+  }
+  .share-footer {
+    margin-top: 60px;
+    padding-top: 18px;
+    border-top: 1px solid var(--border, #eee);
+    color: var(--text-faint, #999);
+    font-size: 12px;
+  }
+  .share-footer a {
+    color: var(--text-muted, #666);
+  }
+</style>
