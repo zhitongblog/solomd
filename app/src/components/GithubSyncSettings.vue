@@ -46,11 +46,17 @@ const decrypting = ref(false);
 
 onMounted(async () => {
   await sync.refreshHasToken();
-  if (sync.hasToken) {
-    await Promise.all([sync.refreshUser(), sync.listRepos().catch(() => {})]);
-  }
   if (workspace.currentFolder) {
     await sync.refreshStatus(workspace.currentFolder);
+  }
+  // v3.0 fix: only fetch /user + /user/repos when the user is logged
+  // in BUT not yet linked to a repo — that's the only state where the
+  // UI actually needs that data (the repo picker). When already linked,
+  // we render from cached SyncStatus and don't touch the keychain.
+  // This kills the "macOS keychain prompt every time you open Settings"
+  // bug for already-set-up users.
+  if (sync.hasToken && !sync.isLinked) {
+    await Promise.all([sync.refreshUser(), sync.listRepos().catch(() => {})]);
   }
 });
 
