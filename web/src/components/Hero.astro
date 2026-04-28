@@ -131,7 +131,13 @@ const initialDownloadsText = initialDownloads > 0 ? fmtDownloads(initialDownload
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (stats) {
         if (!stats) return;
-        if (stats.stars != null) {
+        // Guard with > 0, NOT != null. The /api/stats fallback used to
+        // serve {stars: 0, downloads: 0} on GitHub failure — that's
+        // numerically valid but visually meaningless ("⭐ 0 · 0
+        // downloads" makes the project look dead) and it would clobber
+        // the build-time SSR value already on screen.
+        // Bug seen 2026-04-28; same fix mirrored in functions/api/stats.ts.
+        if (typeof stats.stars === 'number' && stats.stars > 0) {
           var el = document.getElementById('hero-stars');
           if (el) {
             el.textContent = stats.stars >= 1000
@@ -139,7 +145,7 @@ const initialDownloadsText = initialDownloads > 0 ? fmtDownloads(initialDownload
               : '⭐ ' + stats.stars;
           }
         }
-        if (stats.downloads != null) {
+        if (typeof stats.downloads === 'number' && stats.downloads > 0) {
           var text = stats.downloads >= 1000
             ? (stats.downloads / 1000).toFixed(1) + 'k downloads'
             : stats.downloads + ' downloads';

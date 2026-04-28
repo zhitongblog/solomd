@@ -27,10 +27,15 @@ export const onRequest: PagesFunction = async ({ request }) => {
   if (cached) return cached;
 
   // 2. Fetch from GitHub (server-side, User-Agent required)
-  let stars = 0;
-  let downloads = 0;
+  // null = "we don't know" (don't display anything / don't overwrite SSR value).
+  // 0 used to be returned on failure, which the homepage interpreted as
+  // "actually zero stars" and rendered ⭐ 0 / 0 downloads to every visitor
+  // for the 5-minute cache window — bug seen 2026-04-28.
+  let stars: number | null = null;
+  let downloads: number | null = null;
   let latestTag: string | null = null;
   let latestUrl: string | null = null;
+  let fetchOk = false;
 
   try {
     const headers = {
@@ -44,7 +49,8 @@ export const onRequest: PagesFunction = async ({ request }) => {
 
     if (repoRes.ok) {
       const repo = (await repoRes.json()) as { stargazers_count?: number };
-      stars = repo.stargazers_count || 0;
+      stars = repo.stargazers_count ?? null;
+      fetchOk = true;
     }
 
     if (relRes.ok) {
@@ -57,11 +63,13 @@ export const onRequest: PagesFunction = async ({ request }) => {
         assets?: Array<{ download_count?: number }>;
       }>;
       if (Array.isArray(releases)) {
+        let total = 0;
         for (const rel of releases) {
           for (const a of rel.assets || []) {
-            downloads += a.download_count || 0;
+            total += a.download_count || 0;
           }
         }
+        downloads = total;
         // First non-draft, non-prerelease release == latest stable
         // (releases are returned newest-first by published_at).
         const stable = releases.find((r) => !r.draft && !r.prerelease);
@@ -69,10 +77,11 @@ export const onRequest: PagesFunction = async ({ request }) => {
           latestTag = (stable.tag_name || '').replace(/^v/, '') || null;
           latestUrl = stable.html_url || null;
         }
+        fetchOk = true;
       }
     }
   } catch {
-    // Return zeros on failure — client can fall back to its own cache
+    // Leave everything null; fall through to short-cache failure response.
   }
 
   const body = JSON.stringify({
@@ -83,17 +92,24 @@ export const onRequest: PagesFunction = async ({ request }) => {
     latest_url: latestUrl,
   });
 
+  // Cache successful fetches for 5 minutes; failures get only 30 seconds
+  // so a single rate-limit hit doesn't pin ⭐ 0 to the homepage for the
+  // full TTL.
+  const ttl = fetchOk ? CACHE_TTL : 30;
+
   const response = new Response(body, {
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
-      'Cache-Control': `public, max-age=${CACHE_TTL}, s-maxage=${CACHE_TTL}`,
+      'Cache-Control': `public, max-age=${ttl}, s-maxage=${ttl}`,
       // Permit the browser on the same origin; other origins are read-only JSON.
       'Access-Control-Allow-Origin': '*',
     },
   });
 
-  // Cache at the edge for 5 min
-  await cache.put(cacheKey, response.clone());
+  if (fetchOk) {
+    // Only cache successful responses at the edge.
+    await cache.put(cacheKey, response.clone());
+  }
 
   return response;
 };
