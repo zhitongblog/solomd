@@ -68,11 +68,17 @@ solomd agent "把这周的 daily 整理成 weekly review，提交并推送"
 
 ### macOS — universal dmg（Apple Silicon + Intel，已公证）
 
+```bash
+brew install --cask zhitongblog/solomd/solomd
+```
+
+或直接下 dmg：
+
 ```
 https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_3.1.0_universal.dmg
 ```
 
-或一键安装：
+或 curl 一键安装：
 
 ```bash
 curl -fsSL https://solomd.app/install.sh | bash

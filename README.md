@@ -68,11 +68,17 @@ Latest release: [v3.1.0](https://github.com/zhitongblog/solomd/releases/latest).
 
 ### macOS — universal dmg (Apple Silicon + Intel, notarized)
 
+```bash
+brew install --cask zhitongblog/solomd/solomd
+```
+
+Or download the dmg directly:
+
 ```
 https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_3.1.0_universal.dmg
 ```
 
-Or one-line install:
+Or one-line shell install:
 
 ```bash
 curl -fsSL https://solomd.app/install.sh | bash
