@@ -39,14 +39,7 @@ encoding_rs = "0.8.35"
 tauri-plugin-dialog = "2.7.0"
 tauri-plugin-clipboard-manager = "2.3.2"
 walkdir = "2.5.0"
-# Aptabase + tokio: aptabase's plugin setup calls `tokio::spawn`, which
-# needs an ambient tokio runtime. Tauri 2 brings tokio transitively but
-# the runtime isn't always entered at plugin-setup time on Windows
-# (this is the root cause of the v1.1.2 Windows launch crash —
-# aptabase/tauri-plugin-aptabase#16). We explicitly enter a tokio
-# runtime in main() before calling tauri::Builder::run().
-tauri-plugin-aptabase = "1.0.0"
-# tokio: rt-multi-thread is needed by aptabase + tauri::async_runtime.
+# tokio: rt-multi-thread is needed by reqwest streaming + tauri::async_runtime.
 # net/io-util/sync/time/macros are debug-only deps for the dev-bridge
 # WebDriver localhost server (gated by `#[cfg(debug_assertions)]`). Cargo
 # doesn't have a stable target spec for "debug only", so we just enable
@@ -54,6 +47,12 @@ tauri-plugin-aptabase = "1.0.0"
 # don't add measurable bytes to the release binary, while letting us keep
 # the bridge code in a single conditional module rather than juggling a
 # whole separate crate.
+#
+# (Telemetry used to live in `tauri-plugin-aptabase` and pinned this list
+#  for its plugin-setup `tokio::spawn` calls. We migrated telemetry to a
+#  pure-frontend POST to solomd.app/api/track so the plugin is gone, but
+#  the runtime entry in main.rs and these features stay — they're still
+#  needed for the rest of the app's async work.)
 tokio = { version = "1", features = ["rt-multi-thread", "net", "io-util", "sync", "time", "macros"] }
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]

@@ -23,13 +23,17 @@ fn main() {
         });
 
     // Explicit multi-thread tokio runtime kept alive for the whole process
-    // lifetime. Several plugins (notably aptabase) call `tokio::spawn`
-    // during their `.setup()` callback; without a runtime entered on the
-    // main thread those spawns panic, and on Windows release builds
-    // (panic = abort) the panic terminates the entire app at startup.
+    // lifetime. Tauri 2 brings tokio transitively but doesn't always
+    // enter a multi-thread runtime at plugin-setup time on Windows;
+    // any plugin or sync code that does `tokio::spawn` during setup
+    // would panic, and on Windows release builds (panic = abort) that
+    // panic terminates the entire app at startup.
     //
-    // This is the root fix for the v1.1.2 Windows launch crash —
-    // https://github.com/aptabase/tauri-plugin-aptabase/issues/16
+    // First seen as the v1.1.2 Windows launch crash with the (now-gone)
+    // tauri-plugin-aptabase. The defensive guard stays after the
+    // telemetry migration to solomd.app/api/track because reqwest
+    // streaming + autogit + RAG all rely on the same multi-thread
+    // runtime being available.
     let rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()

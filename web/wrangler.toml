@@ -1,0 +1,20 @@
+name = "solomd-web"
+compatibility_date = "2025-01-15"
+pages_build_output_dir = "./dist"
+
+# D1 binding for /api/track + /api/admin/stats.
+# After running `wrangler d1 create solomd-analytics` the CLI prints a
+# database_id — paste it below. Same DB is used by local `wrangler pages
+# dev` (via --local) and the deployed Pages project (bound via the
+# Cloudflare dashboard or `wrangler pages project create`).
+[[d1_databases]]
+binding = "DB"
+database_name = "solomd-analytics"
+database_id = "REPLACE_WITH_DB_ID_FROM_WRANGLER_D1_CREATE"
+migrations_dir = "migrations"
+
+# ADMIN_TOKEN is the bearer token required by /api/admin/stats.
+# Set via `wrangler pages secret put ADMIN_TOKEN` (production)
+# or in a .dev.vars file at the web/ root for local dev:
+#     ADMIN_TOKEN=dev-anything-you-like
+# .dev.vars is gitignored; never commit a real production token.

@@ -8,6 +8,11 @@ node_modules/
 # env
 .env
 .env.local
+.dev.vars
+.dev.vars.*
 
 # logs
 *.log
+
+# wrangler / cloudflare local state
+.wrangler/
