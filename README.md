@@ -1,6 +1,6 @@
 # SoloMD
 
-> Local-first Markdown editor with semantic search, version history, and 14 AI providers.
+> A markdown editor — and the bridge to your LLM.
 
 [![Latest release](https://img.shields.io/github/v/release/zhitongblog/solomd)](https://github.com/zhitongblog/solomd/releases/latest)
 [![License: MIT](https://img.shields.io/github/license/zhitongblog/solomd?color=orange)](LICENSE)
@@ -11,26 +11,63 @@
 
 ![SoloMD editor](web/public/demo/solomd-demo.svg)
 
-SoloMD is a desktop Markdown editor for people who keep their notes as a folder of plain `.md` files. Built on Tauri 2 + Vue 3 + CodeMirror 6, the universal macOS dmg is ~23 MB. Everything — your notes, your AI keys, the embeddings index, the git history — stays on your machine. No account, no cloud round-trip, MIT-licensed.
+Your notes live in a folder. **SoloMD is the editor on top — and the MCP endpoint Claude Code, Codex CLI, and Cursor can drive directly.** Same `.md` files, two ways in.
 
-## Features
+Built on Tauri 2 + Vue 3 + CodeMirror 6. Universal macOS dmg ~32 MB. Free, MIT, no subscription, no SoloMD-hosted servers. Your notes, AI keys, embeddings index, and git history all stay on your machine.
 
-| | | |
-|---|---|---|
-| **Local RAG** semantic search over the workspace, off by default, no cloud | **WYSIWYG live edit** — Typora/Obsidian-style inline rendering as a fourth view mode | **AutoGit** version history — every save is a commit, restore atomically |
-| **AI rewrite** with 14 BYOK providers — OpenAI, Claude, Gemini, DeepSeek, Qwen, GLM, Kimi, Ollama, OpenRouter, etc. | **MCP server** — 1.5 MB sidecar binary, 8 tools, plug into Claude Desktop / Cursor | **Wikilinks & backlinks** — `[[note]]` autocomplete, backlinks panel, outline view |
-| **Daily notes** with templated paths | **Pandoc export** — EPUB / ODT / LaTeX / RTF / DOCX / PDF / HTML | **CJK first-class** — auto-detect UTF-8 / GBK / Big5 / Shift-JIS, simplified⇄traditional, pinyin |
+## Two halves of one product
 
-Plus the basics: tabs and split panes, KaTeX, Mermaid, image paste to `_assets/`, drag-import from `.docx` / `.pdf` / `.xlsx` / `.pptx`, slideshow mode (`⌘⌥P`), Vim mode, Hunspell spell-check, `solomd` CLI, OS file association.
+**The editor.** WYSIWYG live edit (Typora-style), tabs + split panes, KaTeX + Mermaid, image paste to `_assets/`, slideshow mode (`⌘⌥P`), Vim mode, Hunspell + CJK proofread, semantic search (`⌘⇧F`), wikilinks + backlinks, Pandoc export. CJK encodings (GBK / Big5 / Shift-JIS) auto-detected.
+
+**The endpoint.** A bundled `solomd-mcp` binary exposes the same vault to any MCP client — 13 tools out of the box, including 5 SoloMD-only ones (`autogit_log`, `autogit_diff`, `autogit_rollback`, `sync_status`, `share_url`) that no other markdown server has. Plus a `solomd agent <prompt>` CLI that hands off to Claude Code / Codex CLI with the MCP pre-wired.
+
+| Feature | |
+|---|---|
+| **AI rewrite, BYOK** | 14 providers — OpenAI · Claude · Gemini · DeepSeek · Qwen · GLM · Kimi · Doubao · SiliconFlow · OpenRouter · Mistral · Groq · xAI · Ollama. Direct vendor calls. Keys in OS keychain. |
+| **GitHub-backed sync** | Push your vault to a private GitHub repo on every save. Optional E2EE (Argon2id + XChaCha20-Poly1305). GitLab / Gitea / any HTTPS git URL works too. |
+| **AutoGit per note** | Every `⌘S` is a commit in a local `.git` inside the workspace. libgit2 vendored, no system git needed. Never auto-pushed. |
+| **MCP server bundled** | `solomd-mcp` ships in the install. 13 tools (8 generic + 5 SoloMD-only). stdio only, no network port. Read-only by default; `--allow-write` opt-in. |
+| **Cloud-folder mode** | If your vault lives in `~/Library/Mobile Documents/...` or `~/Dropbox/...`, SoloMD detects it and adds cross-device session restore on top — the OS already does the file sync. |
+| **Public read-only share** | Command palette → copy `solomd.app/share/?repo=...&path=...` link. Renders any file in your public GitHub repo, no SoloMD account needed to view. |
+
+## Use it from your LLM
+
+After installing SoloMD on macOS / Linux:
+
+```bash
+# One-shot: print the MCP config snippet for your AI client.
+solomd mcp-config
+```
+
+```json
+{
+  "mcpServers": {
+    "solomd": {
+      "command": "/Applications/SoloMD.app/Contents/Resources/solomd-mcp",
+      "args": ["--workspace", "/Users/me/Documents/SoloMD"]
+    }
+  }
+}
+```
+
+Or just run an agent task end-to-end:
+
+```bash
+# Hands the prompt to claude / codex (whichever is on PATH) with
+# solomd-mcp pre-wired, --allow-write enabled.
+solomd agent "rewrite this week of dailies into a weekly review and commit it"
+```
+
+Path-traversal guarded; no network port; the LLM only sees what you point the workspace at.
 
 ## Install
 
-Latest release: [v2.2.1](https://github.com/zhitongblog/solomd/releases/tag/v2.2.1).
+Latest release: [v3.1.0](https://github.com/zhitongblog/solomd/releases/latest).
 
-### macOS — universal dmg (Apple Silicon + Intel, ~23 MB)
+### macOS — universal dmg (Apple Silicon + Intel, notarized)
 
 ```
-https://github.com/zhitongblog/solomd/releases/download/v2.2.1/SoloMD_2.2.1_universal.dmg
+https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_3.1.0_universal.dmg
 ```
 
 Or one-line install:
@@ -39,87 +76,47 @@ Or one-line install:
 curl -fsSL https://solomd.app/install.sh | bash
 ```
 
-### Windows — x64 (~11 MB MSI, ~9 MB EXE)
+### Windows — x64
 
-- [`SoloMD_2.2.1_x64_en-US.msi`](https://github.com/zhitongblog/solomd/releases/download/v2.2.1/SoloMD_2.2.1_x64_en-US.msi)
-- [`SoloMD_2.2.1_x64-setup.exe`](https://github.com/zhitongblog/solomd/releases/download/v2.2.1/SoloMD_2.2.1_x64-setup.exe) (NSIS)
-
-Or:
+- [`SoloMD_3.1.0_x64_en-US.msi`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_3.1.0_x64_en-US.msi)
+- [`SoloMD_3.1.0_x64-setup.exe`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_3.1.0_x64-setup.exe) (NSIS)
+- [`SoloMD_3.1.0_x64-portable.zip`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_3.1.0_x64-portable.zip) — no installer
 
 ```powershell
 irm https://solomd.app/install.ps1 | iex
 ```
 
-SmartScreen may flag the installer on first run while the cert builds reputation; click **More info → Run anyway**.
-
 ### Linux — x86_64 + aarch64
 
-- [`SoloMD_2.2.1_amd64.AppImage`](https://github.com/zhitongblog/solomd/releases/download/v2.2.1/SoloMD_2.2.1_amd64.AppImage) — universal
-- [`SoloMD_2.2.1_amd64.deb`](https://github.com/zhitongblog/solomd/releases/download/v2.2.1/SoloMD_2.2.1_amd64.deb) — Debian/Ubuntu
-- [`SoloMD-2.2.1-1.x86_64.rpm`](https://github.com/zhitongblog/solomd/releases/download/v2.2.1/SoloMD-2.2.1-1.x86_64.rpm) — Fedora/RHEL
-- ARM64 builds also available — replace `amd64`/`x86_64` with `aarch64`
-
-For "Copy as Image", install a clipboard tool: `sudo apt install wl-clipboard` (Wayland) or `xclip` (X11).
+- `.AppImage` (universal), `.deb` (Debian/Ubuntu), `.rpm` (Fedora/RHEL) — both architectures from [the releases page](https://github.com/zhitongblog/solomd/releases/latest).
 
 ### iPad
 
 [App Store](https://apps.apple.com/app/solomd/id6762498874) — same engine, native iPad UI.
 
-## What's new
-
-**v2.3** (merged on `main`, 2026-04-25)
-
-- Local RAG / semantic search panel (`⌘⇧F`), off by default — embeds every `.md` in the workspace, queries against a local vector index. No cloud.
-- WYSIWYG live edit view mode — markdown formatting renders inline inside the editor, no preview pane needed.
-- File tree ~10× faster on Windows (`file_type()` instead of full `metadata()` per entry).
-
-**v2.2.1** (released 2026-04-25)
-
-- MCP server — `solomd-mcp` sidecar binary, 8 tools, stdio. Default read-only.
-- AutoGit — every save commits to a local `.git` inside your workspace; libgit2 vendored, no system git needed.
-- AI rewrite — 14 BYOK providers (`⌘J` to rewrite / shorten / expand / translate / explain).
-- New [/security](https://solomd.app/security) page documenting every place data flows.
-- Hotfix: Win11 file-tree crash on slow filesystems ([#25](https://github.com/zhitongblog/solomd/issues/25)).
-
-Full notes: <https://github.com/zhitongblog/solomd/releases>.
-
-## MCP integration
-
-Point any MCP-compatible client (Claude Desktop, Cursor, Codex CLI) at your notes folder. The `solomd-mcp` binary ships in the install bundle.
-
-```json
-{
-  "mcpServers": {
-    "solomd": {
-      "command": "/Applications/SoloMD.app/Contents/Resources/solomd-mcp",
-      "args": ["--workspace", "/path/to/your/notes"]
-    }
-  }
-}
-```
-
-Tools: `list_notes`, `read_note`, `search`, `get_backlinks`, `list_tags`, `get_outline`, plus `write_note` and `append_to_note` (gated behind `--allow-write`). Path-traversal guarded, no network port.
-
-## How it compares
+## Compared
 
 | | SoloMD | Obsidian | Typora | Tolaria |
 |---|---|---|---|---|
-| License | **MIT** | proprietary (free) | paid ($14.99) | open source |
-| Stack | Tauri 2 (Rust + WebView) | Electron | Electron | Tauri |
+| License | **MIT** | proprietary (free) | paid ($14.99) | AGPL |
+| Stack | Tauri 2 (Rust + WebView) | Electron | Electron | Tauri 2 |
 | Platforms | macOS · Win · Linux · iPad | macOS · Win · Linux · iOS · Android | macOS · Win · Linux | macOS · Linux |
-| Installer | ~23 MB (mac) / ~11 MB (win) | ~120 MB | ~95 MB | ~25 MB |
-| Built-in AI rewrite | ✅ 14 BYOK providers | plugin only | ❌ | via external MCP |
+| Installer | ~32 MB (mac) / ~10 MB (win) | ~120 MB | ~95 MB | ~25 MB |
+| **MCP server** | **✅ bundled, 13 tools, 5 SoloMD-only** | ❌ (community plugins) | ❌ | ✅ generic |
+| **Built-in AI rewrite** | **✅ 14 BYOK providers** | plugin only | ❌ | via external MCP |
+| GitHub-backed sync | ✅ | ❌ (Obsidian Sync $96/yr) | ❌ | ❌ |
+| End-to-end encryption | ✅ on your repo | ✅ on Obsidian's servers | ❌ | ❌ |
 | Local RAG / semantic search | ✅ off by default | plugin only | ❌ | ❌ |
 | Version history per note | ✅ AutoGit | plugin only | ❌ | ✅ |
-| MCP server | ✅ 8 tools, sidecar | ❌ | ❌ | ✅ |
-| Sync | ❌ (BYO git / Syncthing / iCloud) | paid add-on | ❌ | ❌ |
 | CJK encodings (GBK / Big5) | ✅ auto-detect | ❌ | ❌ | ❌ |
 
 Detailed breakdowns: [vs Obsidian](https://solomd.app/compare/vs-obsidian) · [vs Typora](https://solomd.app/compare/vs-typora) · [vs Tolaria](https://solomd.app/compare/vs-tolaria) · [vs Marktext](https://solomd.app/compare/vs-marktext).
 
 ## Privacy & security
 
-Pure client-side. Your `.md` files stay in the folder you chose. API keys live in the OS keychain (macOS Keychain / Windows Credential Manager / Linux libsecret), never in `localStorage` or any config file. AI requests go direct from your machine to the provider you picked — no SoloMD relay. RAG embeddings and the AutoGit repo are local-only. The whole codebase is MIT and auditable.
+Pure client-side. Your `.md` files stay in the folder you chose. API keys live in the OS keychain (macOS Keychain / Windows Credential Manager / Linux libsecret), never in `localStorage` or any config file. AI requests go direct from your machine to the provider you picked — no SoloMD relay. RAG embeddings and the AutoGit repo are local-only. The MCP server speaks stdio, never opens a network port. The whole codebase is MIT and auditable.
+
+E2EE sync uses Argon2id (RFC9106 default params) → XChaCha20-Poly1305 with deterministic nonces and path-as-AAD. Plaintext stays on your devices; the remote sees only ciphertext. Failed `sync.json` parsing is fail-closed — refuses to push rather than degrading to plaintext (a v3.0.x audit fix).
 
 Full writeup: <https://solomd.app/security>.
 

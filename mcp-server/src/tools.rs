@@ -1001,3 +1001,173 @@ fn urlencode(s: &str) -> String {
     }
     out
 }
+
+// ---------------------------------------------------------------------------
+// v3.1 unit tests for SoloMD-only inner helpers.
+//
+// These don't go through the MCP protocol layer — they call the inner
+// functions directly so we can pin down behavior (fail-closed on bad
+// sync.json, smart default for autogit_diff, branch-with-slash for share
+// URL, etc.) without spinning up the JSON-RPC server.
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use std::path::PathBuf;
+    use std::process::Command;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn fresh_repo(label: &str) -> PathBuf {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let dir = std::env::temp_dir().join(format!("solomd-mcp-{label}-{nanos}"));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        // git init + identity (avoid test depending on user's git config)
+        Command::new("git").args(["init", "-q", "-b", "main"]).current_dir(&dir).status().unwrap();
+        Command::new("git").args(["config", "user.email", "test@local"]).current_dir(&dir).status().unwrap();
+        Command::new("git").args(["config", "user.name", "Test"]).current_dir(&dir).status().unwrap();
+        dir
+    }
+
+    fn commit(repo: &std::path::Path, path: &str, body: &str, msg: &str) {
+        let full = repo.join(path);
+        if let Some(parent) = full.parent() {
+            fs::create_dir_all(parent).unwrap();
+        }
+        fs::write(&full, body).unwrap();
+        Command::new("git").args(["add", "."]).current_dir(repo).status().unwrap();
+        Command::new("git").args(["commit", "-q", "-m", msg]).current_dir(repo).status().unwrap();
+    }
+
+    #[test]
+    fn autogit_log_returns_only_commits_touching_path_newest_first() {
+        let repo = fresh_repo("log");
+        commit(&repo, "notes/foo.md", "v1\n", "initial: foo");
+        // Sleep 1s so author times differ deterministically.
+        std::thread::sleep(std::time::Duration::from_secs(1));
+        commit(&repo, "notes/bar.md", "bar\n", "add: bar (does not touch foo)");
+        std::thread::sleep(std::time::Duration::from_secs(1));
+        commit(&repo, "notes/foo.md", "v2\n", "edit: foo round 2");
+
+        let foo = repo.join("notes/foo.md");
+        let log = autogit_log_inner(&repo, &foo, 50).unwrap();
+        assert_eq!(log.len(), 2, "should skip the bar-only commit");
+        assert_eq!(log[0].summary, "edit: foo round 2", "newest first");
+        assert_eq!(log[1].summary, "initial: foo");
+        assert!(log[0].time >= log[1].time);
+    }
+
+    #[test]
+    fn autogit_diff_default_picks_most_recent_commit_touching_path() {
+        let repo = fresh_repo("diff");
+        commit(&repo, "notes/foo.md", "v1\n", "initial: foo");
+        std::thread::sleep(std::time::Duration::from_secs(1));
+        commit(&repo, "notes/foo.md", "v2\n", "edit: foo round 2");
+        std::thread::sleep(std::time::Duration::from_secs(1));
+        // HEAD doesn't touch foo — naive HEAD-vs-parent would diff empty.
+        commit(&repo, "notes/bar.md", "bar\n", "add: bar (HEAD)");
+
+        let foo = repo.join("notes/foo.md");
+        let result = autogit_diff_inner(&repo, &foo, None, None).unwrap();
+        let diff = result.get("diff").unwrap().as_str().unwrap();
+        assert!(diff.contains("-v1"), "expected the foo edit diff, got: {diff}");
+        assert!(diff.contains("+v2"), "expected the foo edit diff, got: {diff}");
+    }
+
+    #[test]
+    fn autogit_rollback_overwrites_working_tree() {
+        let repo = fresh_repo("roll");
+        commit(&repo, "notes/foo.md", "first\n", "initial");
+        let initial_sha = String::from_utf8(
+            Command::new("git").args(["rev-parse", "HEAD"]).current_dir(&repo).output().unwrap().stdout,
+        )
+        .unwrap()
+        .trim()
+        .to_string();
+        commit(&repo, "notes/foo.md", "second\n", "round 2");
+
+        let foo = repo.join("notes/foo.md");
+        assert_eq!(fs::read_to_string(&foo).unwrap(), "second\n");
+        let written = autogit_rollback_inner(&repo, &foo, &initial_sha).unwrap();
+        assert_eq!(written, 6); // "first\n"
+        assert_eq!(fs::read_to_string(&foo).unwrap(), "first\n");
+    }
+
+    #[test]
+    fn sync_status_no_config_means_unlinked() {
+        let repo = fresh_repo("st1");
+        let v = sync_status_inner(&repo).unwrap();
+        assert_eq!(v.get("linked").and_then(|x| x.as_bool()), Some(false));
+    }
+
+    #[test]
+    fn sync_status_corrupted_json_fails_closed() {
+        let repo = fresh_repo("st2");
+        fs::create_dir_all(repo.join(".solomd")).unwrap();
+        fs::write(repo.join(".solomd/sync.json"), b"{not valid json").unwrap();
+        let err = sync_status_inner(&repo).unwrap_err();
+        // Same posture as desktop github_push_inner: refuse to invent state.
+        assert!(err.contains("corrupted"), "got: {err}");
+    }
+
+    #[test]
+    fn sync_status_happy_path() {
+        let repo = fresh_repo("st3");
+        fs::create_dir_all(repo.join(".solomd")).unwrap();
+        fs::write(
+            repo.join(".solomd/sync.json"),
+            br#"{"remote_url":"https://github.com/me/notes.git","branch":"main","encrypted":true}"#,
+        )
+        .unwrap();
+        let v = sync_status_inner(&repo).unwrap();
+        assert_eq!(v.get("linked").and_then(|x| x.as_bool()), Some(true));
+        assert_eq!(v.get("encrypted").and_then(|x| x.as_bool()), Some(true));
+        assert_eq!(v.get("branch").and_then(|x| x.as_str()), Some("main"));
+    }
+
+    #[test]
+    fn share_url_handles_branch_with_slash() {
+        let repo = fresh_repo("share");
+        fs::create_dir_all(repo.join(".solomd")).unwrap();
+        // Branch name contains '/' — used to be the share-page bug.
+        fs::write(
+            repo.join(".solomd/sync.json"),
+            br#"{"remote_url":"https://github.com/owner/repo.git","branch":"feature/foo"}"#,
+        )
+        .unwrap();
+        let note = repo.join("notes/a.md");
+        fs::create_dir_all(note.parent().unwrap()).unwrap();
+        fs::write(&note, b"# A").unwrap();
+
+        let v = share_url_inner(&repo, &note).unwrap();
+        let url = v.get("url").unwrap().as_str().unwrap();
+        // The slash in feature/foo must survive — encodeURIComponent on the
+        // whole branch would turn it into %2F and 404 the share page.
+        assert!(url.contains("branch=feature/foo"), "url={url}");
+        assert!(url.contains("repo=owner/repo"));
+        assert!(url.contains("path=notes/a.md"));
+    }
+
+    #[test]
+    fn parse_owner_repo_handles_https_ssh_with_or_without_dot_git() {
+        assert_eq!(parse_owner_repo("https://github.com/owner/repo.git"), Some("owner/repo".into()));
+        assert_eq!(parse_owner_repo("https://github.com/owner/repo"), Some("owner/repo".into()));
+        assert_eq!(parse_owner_repo("git@github.com:owner/repo.git"), Some("owner/repo".into()));
+        assert_eq!(parse_owner_repo("https://gitlab.com/owner/repo.git"), None);
+    }
+
+    #[test]
+    fn share_url_refuses_when_workspace_not_linked() {
+        let repo = fresh_repo("nolink");
+        let note = repo.join("notes/a.md");
+        fs::create_dir_all(note.parent().unwrap()).unwrap();
+        fs::write(&note, b"# A").unwrap();
+        let err = share_url_inner(&repo, &note).unwrap_err();
+        assert!(err.contains("not linked"), "got: {err}");
+    }
+}
