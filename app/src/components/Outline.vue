@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch, nextTick } from 'vue';
+import { computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { useTabsStore } from '../stores/tabs';
 import { extractOutline, type OutlineItem } from '../lib/markdown';
 
@@ -19,6 +19,34 @@ const emit = defineEmits<{ (e: 'goto', line: number): void }>();
 const tabs = useTabsStore();
 const listRef = ref<HTMLUListElement | null>(null);
 const collapsedByTab = ref<Record<string, number[]>>({});
+
+// ---------------------------------------------------------------------------
+// v3.1.x keyboard jump (vimium-style)
+// ---------------------------------------------------------------------------
+//
+// When the outline is visible AND the editor isn't actively typing, single
+// letters jump to the labeled section, and `g<digits><Enter>` jumps to a
+// specific line. Letter labels skip `g` to keep that key reserved for the
+// line-jump mode trigger.
+//
+// The jump emits `goto(line)` — same path the click handler uses — so the
+// existing solomd:outline-goto event keeps everything else (scroll sync,
+// preview-mode goto, focus restore) wired identically.
+
+const LABEL_ALPHABET = 'abcdefhijklmnopqrstuvwxyz123456789'.split(''); // skip 'g'
+
+function labelAt(index: number): string {
+  if (index < LABEL_ALPHABET.length) return LABEL_ALPHABET[index];
+  // Two-char fallback for very long docs: aa, ab, ..., zz
+  const a = Math.floor((index - LABEL_ALPHABET.length) / 26);
+  const b = (index - LABEL_ALPHABET.length) % 26;
+  if (a >= 26) return ''; // out of room — happens past ~700 entries
+  return 'abcdefhijklmnopqrstuvwxyz'[a] + 'abcdefhijklmnopqrstuvwxyz'[b];
+}
+
+type JumpMode = 'idle' | 'line-jump';
+const jumpMode = ref<JumpMode>('idle');
+const lineBuffer = ref('');
 
 const activeMarkdownTab = computed(() => {
   const t = tabs.activeTab;
@@ -139,6 +167,80 @@ watch(activeIndex, async () => {
     el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
 });
+
+// Skip the keyboard handler when the user is actively typing. Editor
+// (CodeMirror) lives in a contenteditable div; settings panels use
+// <input>/<textarea>. We don't want `t` or `g` to fire while someone
+// is writing the letter `g`.
+function isTypingTarget(t: EventTarget | null): boolean {
+  if (!(t instanceof HTMLElement)) return false;
+  if (t.isContentEditable) return true;
+  const tag = t.tagName.toLowerCase();
+  return tag === 'input' || tag === 'textarea' || tag === 'select';
+}
+
+function jumpToLabel(label: string) {
+  const items = visibleItems.value;
+  for (let i = 0; i < items.length; i++) {
+    if (labelAt(i) === label) {
+      emit('goto', items[i].line);
+      return true;
+    }
+  }
+  return false;
+}
+
+function commitLineJump() {
+  const n = parseInt(lineBuffer.value, 10);
+  jumpMode.value = 'idle';
+  lineBuffer.value = '';
+  if (Number.isFinite(n) && n >= 1) emit('goto', n);
+}
+
+function onWindowKey(e: KeyboardEvent) {
+  if (isTypingTarget(e.target)) return;
+  // Don't intercept while the user holds a modifier — those are reserved
+  // for the global ⌘/Ctrl shortcut palette.
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+  if (jumpMode.value === 'line-jump') {
+    if (e.key >= '0' && e.key <= '9') {
+      lineBuffer.value += e.key;
+      e.preventDefault();
+      return;
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      commitLineJump();
+      return;
+    }
+    if (e.key === 'Escape' || e.key === 'Backspace') {
+      e.preventDefault();
+      jumpMode.value = 'idle';
+      lineBuffer.value = '';
+      return;
+    }
+    return; // swallow other keys silently
+  }
+
+  // Idle mode
+  if (e.key === 'g') {
+    e.preventDefault();
+    jumpMode.value = 'line-jump';
+    lineBuffer.value = '';
+    return;
+  }
+  if (e.key === 'Escape') {
+    return; // let other components close their UIs
+  }
+  // Single label letter or digit
+  if (e.key.length === 1 && /[a-z0-9]/.test(e.key)) {
+    if (jumpToLabel(e.key)) e.preventDefault();
+  }
+}
+
+onMounted(() => window.addEventListener('keydown', onWindowKey));
+onBeforeUnmount(() => window.removeEventListener('keydown', onWindowKey));
 </script>
 
 <template>
@@ -164,6 +266,12 @@ watch(activeIndex, async () => {
           {{ it.collapsed ? '▸' : '▾' }}
         </button>
         <span v-else class="outline__twisty outline__twisty--spacer" aria-hidden="true"></span>
+        <span
+          v-if="labelAt(i)"
+          class="outline__keylabel"
+          :title="`Press ${labelAt(i)} to jump`"
+          aria-hidden="true"
+        >{{ labelAt(i) }}</span>
         <button
           class="outline__label"
           @click="emit('goto', it.line)"
@@ -173,6 +281,13 @@ watch(activeIndex, async () => {
         </button>
       </li>
     </ul>
+    <div v-if="jumpMode === 'line-jump'" class="outline__statusbar">
+      <span class="outline__statusbar-prefix">: g</span><span class="outline__statusbar-buf">{{ lineBuffer || '_' }}</span>
+      <span class="outline__statusbar-hint">Enter ↵ goto · Esc cancel</span>
+    </div>
+    <div v-else-if="visibleItems.length" class="outline__statusbar outline__statusbar--idle">
+      <span class="outline__statusbar-hint">letter → jump · g+digits → line</span>
+    </div>
   </aside>
 </template>
 
@@ -268,5 +383,51 @@ watch(activeIndex, async () => {
   padding: 14px;
   font-size: 12px;
   color: var(--text-faint);
+}
+.outline__keylabel {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  flex: 0 0 auto;
+  padding: 2px 4px;
+  border-radius: 3px;
+  background: var(--bg-active);
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  user-select: none;
+}
+.outline__item:hover .outline__keylabel,
+.outline__item--active .outline__keylabel {
+  background: var(--accent);
+  color: var(--accent-fg, #1a1a1a);
+}
+.outline__statusbar {
+  border-top: 1px solid var(--border);
+  padding: 6px 10px;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 11px;
+  color: var(--text);
+  background: var(--bg-active);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.outline__statusbar--idle {
+  color: var(--text-faint);
+  background: transparent;
+}
+.outline__statusbar-prefix {
+  color: var(--accent);
+  font-weight: 600;
+}
+.outline__statusbar-buf {
+  flex: 1;
+  font-weight: 600;
+}
+.outline__statusbar-hint {
+  margin-left: auto;
+  color: var(--text-faint);
+  font-size: 10px;
 }
 </style>
