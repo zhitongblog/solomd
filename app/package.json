@@ -1,7 +1,7 @@
 {
   "name": "solomd",
   "private": true,
-  "version": "3.1.0",
+  "version": "3.5.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -55,6 +55,7 @@
     "pinia": "^3.0.4",
     "pinyin-pro": "^3.28.0",
     "prettier": "^3.8.3",
+    "reveal.js": "^6.0.1",
     "vue": "^3.5.13"
   },
   "devDependencies": {

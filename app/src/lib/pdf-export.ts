@@ -14,8 +14,9 @@
 // @ts-ignore — html2pdf.js ships no types
 import html2pdf from 'html2pdf.js';
 import mermaid from 'mermaid';
-import { renderMarkdown } from './markdown';
+import { renderMarkdown, extractImageRoot } from './markdown';
 import type { ResolvedPdfOptions } from './pdf-options';
+import { rewriteImageUrls } from './image-resolve';
 
 const PDF_CSS = `
   body { margin: 0; }
@@ -181,13 +182,16 @@ async function processMermaidBlocks(container: HTMLElement) {
  * @param title — used for the `filename` field on the html2pdf builder.
  * @param pdfOpts — v2.5 resolved options (Settings + frontmatter merged).
  *   Pass `undefined` to preserve pre-v2.5 hardcoded A4 / 10mm behavior.
+ * @param filePath — used to resolve relative image paths in the markdown.
  */
 export async function markdownToPdfBlob(
   source: string,
   title: string,
   pdfOpts?: ResolvedPdfOptions,
+  filePath?: string,
 ): Promise<Blob> {
-  const html = renderMarkdown(source || '');
+  const rawHtml = renderMarkdown(source || '');
+  const html = rewriteImageUrls(rawHtml, extractImageRoot(source || ''), filePath);
 
   // Build an off-screen container that mimics the preview look.
   const styleEl = document.createElement('style');

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import mermaid from 'mermaid';
-import { convertFileSrc } from '@tauri-apps/api/core';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { renderMarkdown, extractImageRoot } from '../lib/markdown';
+import { rewriteImageUrls } from '../lib/image-resolve';
 import { openImageOverlay, type OverlayStrings } from '../lib/image-overlay';
 import { useI18n } from '../i18n';
 import { useSettingsStore } from '../stores/settings';
@@ -34,112 +34,9 @@ let mermaidIdSeq = 0;
 
 mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: 'default' });
 
-/**
- * Resolve a single image src into something the webview can actually load.
- * Tauri's webview blocks raw file:// URLs, so for any local path we route
- * through `convertFileSrc()` which produces an `asset://` URL the
- * `assetProtocol` handler will serve.
- */
-/**
- * Normalize a filesystem path so `convertFileSrc` produces a URL the
- * webview will actually load on every platform. Fixes issue #22 (Windows
- * local images not displaying). Three things matter:
- *  1. Mixed `\` / `/` separators must be unified — Windows asset URLs
- *     misroute when paths contain both.
- *  2. `./` and `../` segments must be resolved before encoding (otherwise
- *     `https://asset.localhost/.../somedir/./image.png` fails).
- *  3. Windows drive prefixes (`C:`) must survive normalization with the
- *     drive letter intact.
- */
-function normalizePath(p: string): string {
-  if (!p) return p;
-  // 1. Unify separators.
-  let s = p.replace(/\\/g, '/');
-  // 2. Detect leading sentinel kinds before splitting:
-  //    - Unix absolute (`/foo`)
-  //    - Windows drive (`C:/foo`)
-  //    - Bare relative (`foo`, `./foo`)
-  const driveMatch = s.match(/^([a-zA-Z]):\/(.*)$/);
-  let prefix = '';
-  let body = s;
-  if (driveMatch) {
-    prefix = driveMatch[1].toUpperCase() + ':/';
-    body = driveMatch[2];
-  } else if (s.startsWith('/')) {
-    prefix = '/';
-    body = s.slice(1);
-  }
-  // 3. Resolve segments.
-  const out: string[] = [];
-  for (const seg of body.split('/')) {
-    if (seg === '' || seg === '.') continue;
-    if (seg === '..') {
-      if (out.length > 0) out.pop();
-      continue;
-    }
-    out.push(seg);
-  }
-  return prefix + out.join('/');
-}
-
-function resolveImageSrc(src: string, imageRoot: string | null): string {
-  if (!src) return src;
-  // Already a remote / data / blob / asset URL — leave alone.
-  if (/^(https?|data|blob|asset|tauri):/i.test(src)) return src;
-
-  // Strip leading file:// prefix. `file:///C:/x` → `C:/x`; `file:///x` → `/x`.
-  let p = src;
-  if (/^file:\/\//i.test(p)) {
-    p = p.slice(7);
-    if (p.startsWith('/') && /^\/[a-zA-Z]:/.test(p)) p = p.slice(1);
-  }
-
-  // Resolve relative paths. Prefer front-matter `imageRoot` over the file's
-  // own parent directory (matches Typora's `typora-root-url` behavior).
-  const isAbsolute = p.startsWith('/') || /^[a-zA-Z]:[\\/]/.test(p);
-  if (!isAbsolute) {
-    let base: string | null = null;
-    if (imageRoot) {
-      const rootAbsolute = imageRoot.startsWith('/') || /^[a-zA-Z]:[\\/]/.test(imageRoot);
-      if (rootAbsolute) {
-        base = imageRoot;
-      } else if (props.filePath) {
-        const dir = props.filePath.replace(/[\\/][^\\/]*$/, '');
-        base = dir + '/' + imageRoot;
-      }
-    }
-    if (!base && props.filePath) {
-      base = props.filePath.replace(/[\\/][^\\/]*$/, '');
-    }
-    if (base) {
-      p = base + '/' + p;
-    }
-  }
-
-  // Normalize before handing to Tauri — prevents the Windows mixed-slash
-  // bug where `convertFileSrc` produces an URL the webview can't load.
-  p = normalizePath(p);
-
-  try {
-    return convertFileSrc(p);
-  } catch {
-    return src;
-  }
-}
-
-/** Rewrite all `<img src=…>` URLs in the rendered markdown HTML. */
-function rewriteImageUrls(rawHtml: string, imageRoot: string | null): string {
-  return rawHtml.replace(
-    /(<img[^>]*\bsrc=)(["'])([^"']*)\2/gi,
-    (_match, prefix: string, q: string, src: string) => {
-      return `${prefix}${q}${resolveImageSrc(src, imageRoot)}${q}`;
-    },
-  );
-}
-
 const html = computed(() => {
   const source = props.source || '';
-  return rewriteImageUrls(renderMarkdown(source), extractImageRoot(source));
+  return rewriteImageUrls(renderMarkdown(source), extractImageRoot(source), props.filePath);
 });
 
 async function processMermaid() {

@@ -90,6 +90,22 @@ pub fn write_file_inner(path: String, content: String, encoding: String) -> Resu
     Ok(())
 }
 
+/// Read raw bytes from disk. v3.5: counterpart to `write_binary_file` —
+/// the export pipeline (PDF / DOCX / PNG) needs to embed local images
+/// into the output document, which means it has to read those image
+/// bytes regardless of the webview's CSP. Returns a `Vec<u8>`; on the
+/// JS side this lands as `number[]` so the caller can construct a Blob
+/// or base64-encode for the renderer. Async + spawn_blocking like its
+/// siblings so a slow disk doesn't queue parallel IPC calls.
+#[tauri::command]
+pub async fn read_binary_file(path: String) -> Result<Vec<u8>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        fs::read(&path).map_err(|e| format!("read failed: {e}"))
+    })
+    .await
+    .map_err(|e| format!("join: {e}"))?
+}
+
 /// Write raw bytes to disk. Used for binary export targets like DOCX/PDF.
 #[tauri::command]
 pub async fn write_binary_file(path: String, data: Vec<u8>) -> Result<(), String> {

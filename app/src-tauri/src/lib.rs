@@ -58,6 +58,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::read_file,
+            commands::read_binary_file,
             commands::write_file,
             commands::write_binary_file,
             commands::print_webview,

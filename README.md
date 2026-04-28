@@ -64,7 +64,7 @@ Path-traversal guarded; no network port; the LLM only sees what you point the wo
 
 ## Install
 
-Latest release: [v3.1.0](https://github.com/zhitongblog/solomd/releases/latest).
+Latest release: [v3.5.0](https://github.com/zhitongblog/solomd/releases/latest).
 
 ### macOS — universal dmg (Apple Silicon + Intel, notarized)
 
@@ -75,7 +75,7 @@ brew install --cask zhitongblog/solomd/solomd
 Or download the dmg directly:
 
 ```
-https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_3.1.0_universal.dmg
+https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_3.5.0_universal.dmg
 ```
 
 Or one-line shell install:
@@ -86,9 +86,9 @@ curl -fsSL https://solomd.app/install.sh | bash
 
 ### Windows — x64
 
-- [`SoloMD_3.1.0_x64_en-US.msi`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_3.1.0_x64_en-US.msi)
-- [`SoloMD_3.1.0_x64-setup.exe`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_3.1.0_x64-setup.exe) (NSIS)
-- [`SoloMD_3.1.0_x64-portable.zip`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_3.1.0_x64-portable.zip) — no installer
+- [`SoloMD_3.5.0_x64_en-US.msi`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_3.5.0_x64_en-US.msi)
+- [`SoloMD_3.5.0_x64-setup.exe`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_3.5.0_x64-setup.exe) (NSIS)
+- [`SoloMD_3.5.0_x64-portable.zip`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_3.5.0_x64-portable.zip) — no installer
 
 ```powershell
 irm https://solomd.app/install.ps1 | iex

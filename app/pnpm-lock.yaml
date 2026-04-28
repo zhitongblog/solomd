@@ -143,6 +143,9 @@ importers:
       prettier:
         specifier: ^3.8.3
         version: 3.8.3
+      reveal.js:
+        specifier: ^6.0.1
+        version: 6.0.1
       vue:
         specifier: ^3.5.13
         version: 3.5.32(typescript@5.6.3)
@@ -1442,6 +1445,9 @@ packages:
 
   regenerator-runtime@0.13.11:
     resolution: {integrity: sha512-kY1AZVr2Ra+t+piVaJ4gxaFaReZVH40AKNo7UCX6W+dEwBo/2oZJzqfuN1qLq1oL45o56cPaTXELwrTh8Fpggg==}
+
+  reveal.js@6.0.1:
+    resolution: {integrity: sha512-9eacArNIgqO2HGWOK+93gJNn+gvdGDVbSq+i2u3Ja9kjiHps0XNLpgYTZTYjKRH91uXy3clGimeGiw4umHG/tg==}
 
   rfdc@1.4.1:
     resolution: {integrity: sha512-q1b3N5QkRUWUl7iyylaaj3kOpIT0N2i9MqIEQXP73GVsN9cw3fdx8X63cEmWhJGi2PPCF23Ijp7ktmd39rawIA==}
@@ -2989,6 +2995,8 @@ snapshots:
 
   regenerator-runtime@0.13.11:
     optional: true
+
+  reveal.js@6.0.1: {}
 
   rfdc@1.4.1: {}
 

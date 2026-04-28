@@ -1,51 +1,185 @@
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
+import { onMounted, onBeforeUnmount, ref } from 'vue';
 import { renderMarkdown } from '../lib/markdown';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import Reveal from 'reveal.js';
+import 'reveal.js/reveal.css';
 
 const STORAGE_KEY = 'solomd:slideshow:content';
 const TITLE_KEY = 'solomd:slideshow:title';
 
-const source = ref('');
-const title = ref('');
+// ---------------------------------------------------------------------------
+// v3.5: full reveal.js migration. The previous slideshow was a hand-rolled
+// `\n---\n` splitter + v-html. That worked but couldn't handle backgrounds,
+// fragments, speaker notes, transitions — every additional ask was another
+// patch. Switching to reveal.js gives all of those for free; the cost is a
+// ~140 KB minified runtime, which is the right trade vs maintaining a
+// home-grown presentation engine forever.
+//
+// Markdown rendering still goes through OUR markdown-it + KaTeX + Mermaid
+// + highlight.js pipeline (so all existing in-doc features keep working);
+// reveal only handles layout / transitions / backgrounds / navigation.
+//
+// Slide separator: a line with `---` (horizontal) or `--` (vertical sub-slide).
+// Reveal's native conventions, applied here as input syntax.
+// ---------------------------------------------------------------------------
+
+const containerRef = ref<HTMLDivElement | null>(null);
+const slidesRef = ref<HTMLDivElement | null>(null);
+const total = ref(0);
 const idx = ref(0);
 const showHelp = ref(false);
+const title = ref('');
 
-// `\n---\n` splits horizontal slides. Fence-aware: don't split inside ``` blocks.
-function splitSlides(src: string): string[] {
-  if (!src) return [''];
+type RevealDeck = InstanceType<typeof Reveal>;
+let deck: RevealDeck | null = null;
+
+interface SlideMeta {
+  body: string;
+  /** A single CSS color, gradient, or image URL. */
+  bg?: string;
+  /** Distinguishes URL-style backgrounds from color/gradient. */
+  bgIsImage?: boolean;
+  bgSize?: string;     // e.g. 'cover' (default), 'contain', '100% 100%'
+  bgPosition?: string; // e.g. 'center', 'top left'
+  bgOpacity?: string;  // 0–1
+}
+
+/**
+ * Parse a single slide's leading HTML comments for background directives.
+ * Recognised forms:
+ *
+ *   <!-- bg: ./assets/cover.jpg -->
+ *   <!-- bg: #ff9f40 -->
+ *   <!-- bg: linear-gradient(135deg,#ff9f40,#ffd166) -->
+ *   <!-- bg-size: cover -->
+ *   <!-- bg-position: center -->
+ *   <!-- bg-opacity: 0.6 -->
+ *
+ * The directive line(s) are stripped from the slide body before rendering.
+ */
+function extractMeta(raw: string): SlideMeta {
+  const meta: SlideMeta = { body: raw };
+  const lines = raw.split(/\r?\n/);
+  const kept: string[] = [];
+  // Only consume directives at the *top* of the slide. Once we see a
+  // non-directive non-empty line, the rest is the slide body verbatim.
+  let inHeader = true;
+  for (const line of lines) {
+    if (inHeader) {
+      const m = /^\s*<!--\s*(bg|bg-size|bg-position|bg-opacity)\s*:\s*(.+?)\s*-->\s*$/.exec(line);
+      if (m) {
+        const key = m[1];
+        const value = m[2];
+        if (key === 'bg') {
+          meta.bg = value;
+          meta.bgIsImage = /^(https?:\/\/|\.{0,2}\/|file:|data:image\/)/.test(value)
+            || /\.(jpe?g|png|gif|webp|avif|svg)\b/i.test(value);
+        } else if (key === 'bg-size') {
+          meta.bgSize = value;
+        } else if (key === 'bg-position') {
+          meta.bgPosition = value;
+        } else if (key === 'bg-opacity') {
+          meta.bgOpacity = value;
+        }
+        continue;
+      }
+      if (line.trim() === '') {
+        kept.push(line);
+        continue;
+      }
+      inHeader = false;
+    }
+    kept.push(line);
+  }
+  meta.body = kept.join('\n');
+  return meta;
+}
+
+/**
+ * Split the source markdown into slide blocks. Reveal-style:
+ *   `\n---\n` → next horizontal slide
+ *   `\n--\n`  → next vertical sub-slide (within the current horizontal stack)
+ * Fence-aware: separators inside ``` blocks are content, not slide breaks.
+ */
+function splitSlides(src: string): string[][] {
+  if (!src) return [['']];
   const lines = src.split(/\r?\n/);
-  const slides: string[] = [];
+  const decks: string[][] = [];
+  let stack: string[][] = [[]]; // current horizontal slide's vertical stack
   let buf: string[] = [];
   let inFence = false;
+
+  function pushBuf() {
+    stack[stack.length - 1].push(buf.join('\n'));
+    buf = [];
+  }
+  function pushHorizontal() {
+    pushBuf();
+    decks.push(stack[0]);
+    stack = [[]];
+  }
+
   for (const line of lines) {
     if (/^```/.test(line)) inFence = !inFence;
     if (!inFence && /^---\s*$/.test(line)) {
-      slides.push(buf.join('\n'));
-      buf = [];
+      pushHorizontal();
+    } else if (!inFence && /^--\s*$/.test(line)) {
+      pushBuf();
+      stack[0].push(''); // start a new vertical slide; we'll fill it on subsequent lines
     } else {
       buf.push(line);
     }
   }
-  slides.push(buf.join('\n'));
-  // Drop a leading empty slide if the doc starts with `---` (front-matter is
-  // already stripped from the chosen content but be defensive).
-  if (slides.length > 1 && slides[0].trim() === '') slides.shift();
-  return slides;
+  pushBuf();
+  decks.push(stack[0]);
+
+  // Drop a leading empty horizontal slide (front-matter is also stripped
+  // upstream but be defensive).
+  if (decks.length > 1 && decks[0].every((s) => s.trim() === '')) {
+    decks.shift();
+  }
+  return decks;
 }
 
-const slides = computed(() => splitSlides(source.value));
-const total = computed(() => slides.value.length);
-const currentHtml = computed(() => renderMarkdown(slides.value[idx.value] || ''));
+function buildSection(meta: SlideMeta): HTMLElement {
+  const section = document.createElement('section');
+  if (meta.bg) {
+    if (meta.bgIsImage) {
+      section.setAttribute('data-background-image', meta.bg);
+      if (meta.bgSize) section.setAttribute('data-background-size', meta.bgSize);
+      if (meta.bgPosition) section.setAttribute('data-background-position', meta.bgPosition);
+      if (meta.bgOpacity) section.setAttribute('data-background-opacity', meta.bgOpacity);
+    } else {
+      section.setAttribute('data-background', meta.bg);
+      if (meta.bgOpacity) section.setAttribute('data-background-opacity', meta.bgOpacity);
+    }
+  }
+  section.innerHTML = renderMarkdown(meta.body);
+  return section;
+}
 
-function next() {
-  if (idx.value < total.value - 1) idx.value++;
+function buildDeck(src: string, host: HTMLElement) {
+  // Clear any prior content (re-init path).
+  while (host.firstChild) host.removeChild(host.firstChild);
+  const decks = splitSlides(src);
+  for (const stack of decks) {
+    const horiz = stack.length > 1
+      ? document.createElement('section') // wraps a vertical sub-stack
+      : null;
+    if (horiz) host.appendChild(horiz);
+    for (const slideSrc of stack) {
+      const meta = extractMeta(slideSrc);
+      const slide = buildSection(meta);
+      (horiz || host).appendChild(slide);
+    }
+  }
+  total.value = host.querySelectorAll(':scope > section').length
+    + host.querySelectorAll(':scope > section section').length;
+  // Above counts both top-level slides and nested verticals; for the HUD
+  // we want the absolute slide count which is what reveal exposes via
+  // getTotalSlides(). Real HUD update happens in `slidechanged` below.
 }
-function prev() {
-  if (idx.value > 0) idx.value--;
-}
-function first() { idx.value = 0; }
-function last() { idx.value = total.value - 1; }
 
 /**
  * Toggle fullscreen using Tauri's window API first, then fall back to
@@ -53,21 +187,18 @@ function last() { idx.value = total.value - 1; }
  * user gesture to take effect; the HTML5 path works because `F` is one.
  */
 async function toggleFullscreen() {
-  // Try Tauri first.
   let usedTauri = false;
   try {
     const win = getCurrentWindow();
     const isFs = await win.isFullscreen();
     await win.setFullscreen(!isFs);
     usedTauri = true;
-    // Verify it actually changed (Windows can silently no-op).
     await new Promise((r) => setTimeout(r, 50));
     if ((await win.isFullscreen()) === isFs) {
-      usedTauri = false; // didn't change → fall through to HTML5
+      usedTauri = false;
     }
   } catch {}
   if (usedTauri) return;
-  // HTML5 fallback (works in WebView2 + WKWebView).
   try {
     if (document.fullscreenElement) {
       await document.exitFullscreen();
@@ -82,11 +213,8 @@ async function toggleFullscreen() {
 async function exitShow() {
   try {
     const win = getCurrentWindow();
-    // macOS fullscreen needs to be exited before close, otherwise the
-    // close request races the fullscreen-out animation and can hang.
     if (await win.isFullscreen()) {
       await win.setFullscreen(false);
-      // Wait for the OS-level fullscreen-out animation to finish.
       await new Promise((r) => setTimeout(r, 350));
     }
     await win.close();
@@ -96,25 +224,10 @@ async function exitShow() {
 }
 
 function onKey(e: KeyboardEvent) {
-  if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown' || e.key === 'l') {
-    e.preventDefault();
-    next();
-  } else if (e.key === 'ArrowLeft' || e.key === 'PageUp' || e.key === 'h') {
-    e.preventDefault();
-    prev();
-  } else if (e.key === 'ArrowDown' || e.key === 'j') {
-    e.preventDefault();
-    next();
-  } else if (e.key === 'ArrowUp' || e.key === 'k') {
-    e.preventDefault();
-    prev();
-  } else if (e.key === 'Home') {
-    e.preventDefault();
-    first();
-  } else if (e.key === 'End') {
-    e.preventDefault();
-    last();
-  } else if (e.key === 'f' || e.key === 'F') {
+  // Reveal handles arrow keys / space / page-up/down natively. We only
+  // need our own escape-hatch shortcuts: F (fullscreen), Esc (exit),
+  // ? (help overlay).
+  if (e.key === 'f' || e.key === 'F') {
     e.preventDefault();
     toggleFullscreen();
   } else if (e.key === '?') {
@@ -131,34 +244,67 @@ function onKey(e: KeyboardEvent) {
 }
 
 onMounted(async () => {
+  let source = '';
   try {
-    source.value = localStorage.getItem(STORAGE_KEY) || '';
+    source = localStorage.getItem(STORAGE_KEY) || '';
     title.value = localStorage.getItem(TITLE_KEY) || 'Slideshow';
   } catch {}
-  // Strip front matter for slideshow rendering — we don't want it as slide 1.
-  source.value = source.value.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '');
+  // Strip front matter (first --- ... --- block) — front-matter is config,
+  // not slide-1 content.
+  source = source.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '');
   document.title = `${title.value} — SoloMD Slideshow`;
+
+  // Build the DOM once into the .slides container, then init Reveal on
+  // the wrapper. Reveal expects the structure to be present at init time.
+  if (slidesRef.value) {
+    buildDeck(source, slidesRef.value);
+  }
+
+  if (containerRef.value) {
+    deck = new Reveal(containerRef.value, {
+      embedded: false,
+      hash: false,
+      controls: false,           // we draw a minimal HUD ourselves
+      progress: true,
+      slideNumber: false,
+      keyboard: true,            // Reveal handles arrow / space / pgup
+      transition: 'slide',
+      backgroundTransition: 'fade',
+      autoSlide: 0,
+      // Plugins are intentionally NOT loaded — our markdown is already
+      // rendered (with KaTeX, Mermaid, highlight.js). Reveal's own
+      // markdown / highlight plugins would just duplicate work.
+      plugins: [],
+    });
+    await deck.initialize();
+    deck.on('slidechanged', (event: any) => {
+      idx.value = (event?.indexh ?? 0);
+      total.value = deck?.getTotalSlides() ?? 0;
+    });
+    total.value = deck.getTotalSlides();
+  }
+
   window.addEventListener('keydown', onKey);
-  // Try to enter fullscreen on launch via Tauri. On Windows this can
-  // silently fail without a user gesture — the HUD shows "F to fullscreen"
-  // so the user can press F to use the HTML5 fallback path.
+
+  // Try to enter fullscreen on launch via Tauri.
   try {
     const win = getCurrentWindow();
-    await new Promise((r) => setTimeout(r, 100)); // let window settle
+    await new Promise((r) => setTimeout(r, 100));
     await win.setFullscreen(true);
   } catch {}
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKey);
+  try {
+    deck?.destroy();
+  } catch {}
 });
 </script>
 
 <template>
-  <div class="slideshow" @click="next">
-    <div class="slide" @click.stop>
-      <div class="slide__content" v-html="currentHtml" />
-    </div>
+  <div ref="containerRef" class="solomd-slideshow reveal">
+    <div ref="slidesRef" class="slides"></div>
     <div class="slide__hud" @click.stop>
       <span class="slide__pos">{{ idx + 1 }} / {{ total }}</span>
       <span class="slide__hint">F fullscreen · ? help · Esc exit</span>
@@ -167,72 +313,80 @@ onBeforeUnmount(() => {
       <div class="slide__help-card">
         <h2>Slideshow Shortcuts</h2>
         <table>
-          <tr><td>Next slide</td><td>→ ↓ Space PageDown l j</td></tr>
-          <tr><td>Previous slide</td><td>← ↑ PageUp h k</td></tr>
+          <tr><td>Next slide</td><td>→ ↓ Space PageDown</td></tr>
+          <tr><td>Previous slide</td><td>← ↑ PageUp</td></tr>
           <tr><td>First / last slide</td><td>Home / End</td></tr>
           <tr><td>Toggle fullscreen</td><td>F</td></tr>
           <tr><td>Show / hide this help</td><td>?</td></tr>
           <tr><td>Exit</td><td>Esc</td></tr>
-          <tr><td>Click to advance</td><td>Click anywhere</td></tr>
+          <tr><td>Vertical sub-slides</td><td>Use <code>--</code> separator</td></tr>
         </table>
-        <p class="slide__help-foot">Slides are split by lines containing only <code>---</code>.</p>
+        <p class="slide__help-foot">
+          Slides split by <code>---</code> (horizontal) or <code>--</code>
+          (vertical). Add a background with
+          <code>&lt;!-- bg: ./image.jpg --&gt;</code> at the top of any slide.
+        </p>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.slideshow {
+.solomd-slideshow {
   position: fixed;
   inset: 0;
   background: #1a1a1a;
   color: #f0f0f0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
   overflow: hidden;
 }
-.slide {
-  width: 92vw;
-  max-width: 1400px;
-  max-height: 90vh;
-  overflow: auto;
-  cursor: default;
-  padding: 40px 60px;
+/*
+ * Reveal injects its own classes (.reveal, .slides). We override visuals
+ * to match the previous SoloMD slideshow look-and-feel — dark canvas,
+ * larger headings, accent-orange links — instead of pulling in any of
+ * reveal's bundled themes (which would double the CSS payload).
+ */
+.solomd-slideshow :deep(.slides) {
+  text-align: left !important;
+}
+.solomd-slideshow :deep(.slides section) {
   font-size: clamp(20px, 2.4vw, 32px);
   line-height: 1.55;
+  padding: 40px 60px;
+  text-align: left;
 }
-.slide__content :deep(h1) {
+.solomd-slideshow :deep(h1) {
   font-size: 2.4em;
   margin: 0 0 0.6em;
   text-align: center;
   font-weight: 700;
+  text-transform: none;
 }
-.slide__content :deep(h2) {
+.solomd-slideshow :deep(h2) {
   font-size: 1.8em;
   margin: 0 0 0.5em;
   font-weight: 600;
+  text-transform: none;
 }
-.slide__content :deep(h3) {
+.solomd-slideshow :deep(h3) {
   font-size: 1.4em;
   margin: 0.4em 0;
+  text-transform: none;
 }
-.slide__content :deep(p),
-.slide__content :deep(ul),
-.slide__content :deep(ol),
-.slide__content :deep(blockquote) {
+.solomd-slideshow :deep(p),
+.solomd-slideshow :deep(ul),
+.solomd-slideshow :deep(ol),
+.solomd-slideshow :deep(blockquote) {
   font-size: 1em;
   margin: 0.6em 0;
 }
-.slide__content :deep(li) { margin: 0.25em 0; }
-.slide__content :deep(code) {
+.solomd-slideshow :deep(li) { margin: 0.25em 0; }
+.solomd-slideshow :deep(code) {
   background: rgba(255, 255, 255, 0.1);
   padding: 0.1em 0.35em;
   border-radius: 4px;
   font-size: 0.85em;
 }
-.slide__content :deep(pre) {
+.solomd-slideshow :deep(pre) {
   background: rgba(0, 0, 0, 0.4);
   padding: 16px 20px;
   border-radius: 8px;
@@ -240,36 +394,37 @@ onBeforeUnmount(() => {
   font-size: 0.7em;
   line-height: 1.5;
 }
-.slide__content :deep(pre code) {
+.solomd-slideshow :deep(pre code) {
   background: transparent;
   padding: 0;
   font-size: 1em;
+  display: block;
 }
-.slide__content :deep(blockquote) {
+.solomd-slideshow :deep(blockquote) {
   border-left: 4px solid #ff9f40;
   padding-left: 16px;
   color: #ccc;
   font-style: italic;
 }
-.slide__content :deep(table) {
+.solomd-slideshow :deep(table) {
   border-collapse: collapse;
   margin: 1em 0;
   font-size: 0.85em;
 }
-.slide__content :deep(th),
-.slide__content :deep(td) {
+.solomd-slideshow :deep(th),
+.solomd-slideshow :deep(td) {
   border: 1px solid rgba(255, 255, 255, 0.2);
   padding: 8px 14px;
 }
-.slide__content :deep(img) {
+.solomd-slideshow :deep(img) {
   max-width: 100%;
   height: auto;
   border-radius: 6px;
 }
-.slide__content :deep(a) { color: #ff9f40; }
-.slide__content :deep(hr) { border-color: rgba(255, 255, 255, 0.2); }
+.solomd-slideshow :deep(a) { color: #ff9f40; }
+.solomd-slideshow :deep(hr) { border-color: rgba(255, 255, 255, 0.2); }
 .slide__hud {
-  position: absolute;
+  position: fixed;
   bottom: 16px;
   right: 24px;
   display: flex;
@@ -279,6 +434,7 @@ onBeforeUnmount(() => {
   color: rgba(255, 255, 255, 0.45);
   font-family: ui-monospace, Menlo, monospace;
   pointer-events: none;
+  z-index: 100;
 }
 .slide__pos {
   font-variant-numeric: tabular-nums;
@@ -297,13 +453,13 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10;
+  z-index: 200;
 }
 .slide__help-card {
   background: #2a2a2a;
   padding: 32px 40px;
   border-radius: 12px;
-  max-width: 520px;
+  max-width: 560px;
   font-size: 15px;
 }
 .slide__help-card h2 {
@@ -333,6 +489,7 @@ onBeforeUnmount(() => {
   color: #888;
   border-top: 1px solid #444;
   padding-top: 14px;
+  line-height: 1.55;
 }
 .slide__help-foot code {
   background: rgba(255, 255, 255, 0.1);

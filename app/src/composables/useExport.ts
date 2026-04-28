@@ -194,7 +194,7 @@ export function useExport() {
   const toasts = useToastsStore();
   const settings = useSettingsStore();
 
-  function activeOr(): { content: string; baseName: string } | null {
+  function activeOr(): { content: string; baseName: string; filePath?: string } | null {
     const tab = tabs.activeTab;
     if (!tab) {
       toasts.error('No active document');
@@ -208,6 +208,7 @@ export function useExport() {
     return {
       content: tab.content ?? '',
       baseName: name.replace(/\.[^.]+$/, ''),
+      filePath: tab.filePath,
     };
   }
 
@@ -239,7 +240,7 @@ export function useExport() {
     });
     if (!path) return;
     try {
-      const blob = await markdownToDocxBlob(ctx.content, ctx.baseName);
+      const blob = await markdownToDocxBlob(ctx.content, ctx.baseName, ctx.filePath);
       const buffer = new Uint8Array(await blob.arrayBuffer());
       // Tauri 2 serializes Uint8Array as a number array which Rust accepts as Vec<u8>.
       await invoke('write_binary_file', { path, data: Array.from(buffer) });
@@ -272,7 +273,7 @@ export function useExport() {
         ctx.content,
         userTouchedPdfDefaults(settings.pdfDefaults),
       );
-      const blob = await markdownToPdfBlob(ctx.content, ctx.baseName, pdfOpts);
+      const blob = await markdownToPdfBlob(ctx.content, ctx.baseName, pdfOpts, ctx.filePath);
       const buffer = new Uint8Array(await blob.arrayBuffer());
       await invoke('write_binary_file', { path, data: Array.from(buffer) });
       toasts.dismiss(tid);
@@ -408,7 +409,7 @@ export function useExport() {
     if (!path) return;
     const tid = toasts.info('Generating image…', 0);
     try {
-      const blob = await markdownToImageBlob(ctx.content, ctx.baseName);
+      const blob = await markdownToImageBlob(ctx.content, ctx.baseName, ctx.filePath);
       const buffer = new Uint8Array(await blob.arrayBuffer());
       await invoke('write_binary_file', { path, data: Array.from(buffer) });
       toasts.dismiss(tid);
@@ -426,7 +427,7 @@ export function useExport() {
     if (!ctx) return;
     const tid = toasts.info('Capturing image…', 0);
     try {
-      const blob = await markdownToImageBlob(ctx.content, ctx.baseName);
+      const blob = await markdownToImageBlob(ctx.content, ctx.baseName, ctx.filePath);
       const bytes = new Uint8Array(await blob.arrayBuffer());
       // Use Tauri's clipboard plugin (browser Clipboard API doesn't support
       // images in webview contexts).

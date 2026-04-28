@@ -20,40 +20,50 @@ const lang = 'en' as const;
 
       <h1>SoloMD vs Typora: Which Markdown Editor Should You Use?</h1>
       <p class="lead">
-        Quick answer: <strong>SoloMD</strong> if you want a free, open-source,
-        tiny (~15 MB) editor. <strong>Typora</strong> if you prefer a mature,
-        paid, WYSIWYG-only experience and don't mind a ~70 MB install.
+        Refreshed against <strong>SoloMD v3.5.0</strong> and <strong>Typora 1.13</strong> (April 2026).
+        Quick answer: <strong>SoloMD</strong> if you want an open-source editor that doubles as
+        an MCP endpoint your LLM can drive. <strong>Typora</strong> if you want the most polished
+        single-mode WYSIWYG experience and don't need AI / sync / version history in core.
       </p>
 
       <h2>The 30-second verdict</h2>
       <table class="compare-detail">
         <thead>
-          <tr><th>&nbsp;</th><th>SoloMD</th><th>Typora</th></tr>
+          <tr><th>&nbsp;</th><th>SoloMD v3.5</th><th>Typora 1.13</th></tr>
         </thead>
         <tbody>
-          <tr><th>Price</th><td><strong>Free</strong> (MIT)</td><td>$14.99 USD (one-time)</td></tr>
+          <tr><th>Price</th><td><strong>Free</strong> (MIT)</td><td>$14.99 USD (one-time, 3 devices)</td></tr>
           <tr><th>Installer size</th><td>~15 MB</td><td>~70 MB</td></tr>
           <tr><th>Open source</th><td>✅ on GitHub</td><td>❌ closed source</td></tr>
           <tr><th>Platforms</th><td>macOS · Windows · Linux · iPad</td><td>macOS · Windows · Linux</td></tr>
-          <tr><th>Local semantic search</th><td>✅ <strong>v2.3</strong> · ⌘⇧F · on-device, no model download</td><td>❌</td></tr>
-          <tr><th>WYSIWYG live edit mode</th><td>✅ <strong>v2.3</strong> · 4th view</td><td>✅ always on</td></tr>
+          <tr><th>Built-in AI rewrite</th><td>✅ <strong>14 BYOK providers</strong> · ⌘J · keys in OS keychain</td><td>❌</td></tr>
+          <tr><th>MCP server bundled</th><td>✅ <strong>v3.1</strong> · 13 tools, 5 SoloMD-only (autogit / sync / share)</td><td>❌</td></tr>
+          <tr><th><code>solomd agent &lt;prompt&gt;</code> CLI</th><td>✅ <strong>v3.1</strong> · hands off to Claude Code / Codex with MCP pre-wired</td><td>❌</td></tr>
+          <tr><th>GitHub-backed sync (your repo)</th><td>✅ <strong>v3.0</strong> · libgit2 + OS keychain</td><td>❌</td></tr>
+          <tr><th>End-to-end encryption</th><td>✅ <strong>v3.0</strong> · Argon2id + XChaCha20-Poly1305 on your repo</td><td>❌</td></tr>
+          <tr><th>Cloud-folder mode (iCloud / Dropbox / OneDrive)</th><td>✅ <strong>v3.0</strong> · auto-detect + cross-device session restore</td><td>❌</td></tr>
+          <tr><th>Public read-only share page</th><td>✅ <strong>v3.0</strong> · <code>solomd.app/share/</code></td><td>❌</td></tr>
           <tr><th>AutoGit version history</th><td>✅ <strong>v2.2</strong> · per-save snapshots, sidebar restore</td><td>❌</td></tr>
-          <tr><th>MCP server bundled</th><td>✅ <strong>v2.2</strong> · 1.5 MB sidecar</td><td>❌</td></tr>
-          <tr><th>14 AI providers, BYOK</th><td>✅ <code>⌘J</code> · keys in OS keychain</td><td>❌</td></tr>
+          <tr><th>Local semantic search (RAG)</th><td>✅ <strong>v2.3</strong> · ⌘⇧F · on-device, no model download</td><td>❌</td></tr>
+          <tr><th>Slideshow / presentation</th><td>✅ <strong>v3.5: full reveal.js</strong> · backgrounds, transitions, fragments, vertical sub-slides</td><td>❌</td></tr>
+          <tr><th>Outline keyboard jump</th><td>✅ <strong>v3.1.x</strong> · letter labels per heading + <code>g&lt;N&gt;</code> line jump</td><td>⚠️ outline panel, no jump</td></tr>
+          <tr><th>WYSIWYG live edit mode</th><td>✅ <strong>v2.3</strong> · 4th view mode you can toggle</td><td>✅ always on (only mode)</td></tr>
           <tr><th>Live preview</th><td>✅ toggleable</td><td>✅ always on</td></tr>
           <tr><th>Raw source mode</th><td>✅</td><td>⚠️ limited</td></tr>
           <tr><th>Split view (edit + preview)</th><td>✅</td><td>❌</td></tr>
           <tr><th>Multi-tab</th><td>✅</td><td>❌ one window per file</td></tr>
-          <tr><th>KaTeX / Mermaid</th><td>✅ bundled</td><td>✅</td></tr>
+          <tr><th>Math (KaTeX vs MathJax v4)</th><td>KaTeX ~280 KB</td><td>✅ <strong>MathJax v4</strong> · richer (line-break <code>\\</code>, more TeX packages)</td></tr>
+          <tr><th>Mermaid version</th><td>✅ <strong>11.14</strong> (newer)</td><td>11.13 (Venn + Ishikawa just added)</td></tr>
           <tr><th>Export PDF / DOCX / HTML / PNG</th><td>✅</td><td>✅</td></tr>
           <tr><th>Pandoc export (EPUB / ODT / LaTeX)</th><td>✅</td><td>❌</td></tr>
-          <tr><th>Multi-encoding (GBK / Big5)</th><td>✅ auto-detect</td><td>⚠️ UTF-8 only</td></tr>
+          <tr><th>Multi-encoding (GBK / Big5 / Shift-JIS)</th><td>✅ auto-detect (chardetng)</td><td>⚠️ UTF-8 only</td></tr>
+          <tr><th>CJK proofread (中文标点)</th><td>✅ <strong>v2.5</strong></td><td>❌</td></tr>
           <tr><th>Vim mode</th><td>✅</td><td>❌</td></tr>
-          <tr><th>Slideshow / presentation mode</th><td>✅ <code>⌘⌥P</code></td><td>❌</td></tr>
-          <tr><th>CLI tool</th><td>✅ <code>solomd</code></td><td>❌</td></tr>
+          <tr><th>CLI tool</th><td>✅ <code>solomd open / new / list / search / cat / agent / mcp-config</code></td><td>❌</td></tr>
+          <tr><th>VS Code / Cursor integration</th><td>✅ via bundled MCP server (LLM clients drive vault directly)</td><td>✅ "Open in Typora" extension (1.13)</td></tr>
           <tr><th>Format Markdown (Prettier)</th><td>✅ <code>⌘⌥L</code></td><td>❌</td></tr>
+          <tr><th>Theme marketplace</th><td>✅ <strong>v2.5</strong> · curated, click-install</td><td>✅ paid + free themes</td></tr>
           <tr><th>Welcome tour</th><td>✅</td><td>❌</td></tr>
-          <tr><th>Custom CSS theme</th><td>✅ pick any .css</td><td>✅</td></tr>
           <tr><th>Built on</th><td>Tauri 2 (Rust + webview)</td><td>Electron</td></tr>
           <tr><th>RAM at idle</th><td>~150 MB</td><td>~300 MB</td></tr>
         </tbody>
@@ -61,18 +71,21 @@ const lang = 'en' as const;
 
       <h2>When to pick SoloMD</h2>
       <ul>
+        <li>You want an editor whose <strong>vault any LLM client can drive directly</strong> via MCP — Claude Code, Codex CLI, Cursor — with 5 SoloMD-only tools nobody else has (per-note git history, sync state, share URLs).</li>
+        <li>You use AI in writing and want to <strong>bring your own keys</strong> across 14 providers (Claude, OpenAI, DeepSeek, Qwen, GLM, Kimi, Doubao, etc.) instead of the editor renting access for you.</li>
         <li>You want <strong>open source and free forever</strong> — no licence key, no nag screen.</li>
-        <li>Your machine is tight on resources. Tauri's native webview uses half the RAM of Electron.</li>
-        <li>You work with CJK / legacy text files and need auto-detection of GBK / Big5 / Shift-JIS.</li>
-        <li>You like split view — code on the left, live preview on the right, synced scroll.</li>
-        <li>You want Vim keybindings in a Markdown editor.</li>
+        <li>You want sync that goes to <strong>your own GitHub repo</strong> (optionally end-to-end encrypted) instead of a vendor's cloud.</li>
+        <li>You work with CJK / legacy text files and need auto-detection of GBK / Big5 / Shift-JIS, plus Chinese punctuation proofread.</li>
+        <li>You like split view, multi-tab, Vim mode, and an outline panel with letter-jump shortcuts.</li>
         <li>You edit on an iPad (SoloMD ships on the iPad App Store, Typora doesn't).</li>
       </ul>
 
       <h2>When to pick Typora</h2>
       <ul>
+        <li>You want a <strong>single always-on WYSIWYG view</strong> with no view-mode switcher. SoloMD has a WYSIWYG mode (v2.3) but it lives alongside source / split / preview as one of four modes — you switch to it explicitly.</li>
+        <li>You write papers heavy in math and need <strong>MathJax v4</strong> specifically (line-break <code>\\</code>, more TeX packages). SoloMD uses KaTeX which is ~5× smaller but a tighter feature set.</li>
         <li>You're already used to Typora's specific shortcut set and don't want to retrain.</li>
-        <li>You want a single always-on WYSIWYG view with no view-mode switcher (SoloMD added a WYSIWYG live edit mode in v2.3, but it sits alongside the source / split / preview modes — you switch to it explicitly).</li>
+        <li>You don't need AI / sync / version history in core — Typora 1.13 has chosen not to enter those spaces.</li>
       </ul>
 
       <h2>Install size & memory — why it matters</h2>

@@ -20,35 +20,44 @@ const lang = 'zh' as const;
 
       <h1>SoloMD vs Typora：选哪个？</h1>
       <p class="lead">
-        快速结论：想要 <strong>免费、开源、体积小</strong>（~15 MB）选 <strong>SoloMD</strong>；
-        已经习惯 <strong>Typora</strong> 的付费纯 WYSIWYG 体验、不介意 70 MB 安装包可以继续用。
+        对比基于 <strong>SoloMD v3.5.0</strong> 与 <strong>Typora 1.13</strong>（2026 年 4 月）。
+        想要一个 <strong>LLM 客户端能直接驱动的 markdown vault</strong>（自带 MCP）选 SoloMD；
+        想要最完整的<strong>单一 WYSIWYG</strong> 体验、不需要 AI / 同步 / 版本历史在核心，Typora 仍是好选择。
       </p>
 
       <h2>30 秒速览</h2>
       <table class="compare-detail">
         <thead>
-          <tr><th>&nbsp;</th><th>SoloMD</th><th>Typora</th></tr>
+          <tr><th>&nbsp;</th><th>SoloMD v3.5</th><th>Typora 1.13</th></tr>
         </thead>
         <tbody>
-          <tr><th>价格</th><td><strong>免费</strong>（MIT）</td><td>$14.99 美元（买断）</td></tr>
+          <tr><th>价格</th><td><strong>免费</strong>（MIT）</td><td>$14.99 美元（买断，3 设备）</td></tr>
           <tr><th>安装包体积</th><td>~15 MB</td><td>~70 MB</td></tr>
           <tr><th>开源</th><td>✅ GitHub</td><td>❌ 闭源</td></tr>
           <tr><th>支持平台</th><td>macOS · Windows · Linux · iPad</td><td>macOS · Windows · Linux</td></tr>
-          <tr><th>本地语义搜索</th><td>✅ <strong>v2.3</strong> · ⌘⇧F · 设备本地不下模型</td><td>❌</td></tr>
-          <tr><th>WYSIWYG 实时编辑</th><td>✅ <strong>v2.3</strong> · 第 4 种视图</td><td>✅ 默认全时</td></tr>
-          <tr><th>AutoGit 版本历史</th><td>✅ <strong>v2.2</strong> · 每次保存快照,侧栏回滚</td><td>❌</td></tr>
-          <tr><th>内置 MCP server</th><td>✅ <strong>v2.2</strong> · 1.5 MB sidecar</td><td>❌</td></tr>
-          <tr><th>14 个 AI provider · BYOK</th><td>✅ <code>⌘J</code> · key 存系统钥匙串</td><td>❌</td></tr>
+          <tr><th>AI 改写内建</th><td>✅ <strong>14 个 BYOK provider</strong> · ⌘J · key 存系统钥匙串</td><td>❌</td></tr>
+          <tr><th>内置 MCP server</th><td>✅ <strong>v3.1</strong> · 13 工具，5 个 SoloMD 独家（autogit/sync/share）</td><td>❌</td></tr>
+          <tr><th><code>solomd agent</code> CLI</th><td>✅ <strong>v3.1</strong> · 把 prompt 接给 Claude Code / Codex，MCP 已预连</td><td>❌</td></tr>
+          <tr><th>GitHub 同步（自己的库）</th><td>✅ <strong>v3.0</strong> · libgit2 + 系统钥匙串</td><td>❌</td></tr>
+          <tr><th>端到端加密</th><td>✅ <strong>v3.0</strong> · Argon2id + XChaCha20-Poly1305</td><td>❌</td></tr>
+          <tr><th>云盘联动（iCloud / Dropbox / OneDrive）</th><td>✅ <strong>v3.0</strong> · 自动识别 + 跨设备会话恢复</td><td>❌</td></tr>
+          <tr><th>公开只读分享</th><td>✅ <strong>v3.0</strong> · <code>solomd.app/share/</code></td><td>❌</td></tr>
+          <tr><th>AutoGit 版本历史</th><td>✅ <strong>v2.2</strong> · 每次保存快照，侧栏一键回滚</td><td>❌</td></tr>
+          <tr><th>本地语义搜索</th><td>✅ <strong>v2.3</strong> · ⌘⇧F · 不下模型</td><td>❌</td></tr>
+          <tr><th>演讲 / 幻灯片模式</th><td>✅ <strong>v3.5：完整 reveal.js</strong> · 背景图 / 转场 / fragments / 纵向子页</td><td>❌</td></tr>
+          <tr><th>大纲键盘跳转</th><td>✅ <strong>v3.1.x</strong> · 字母标签 + <code>g&lt;N&gt;</code> 跳行</td><td>⚠️ 大纲面板，无快捷跳转</td></tr>
+          <tr><th>WYSIWYG 实时编辑</th><td>✅ <strong>v2.3</strong> · 4 视图模式之一可切</td><td>✅ 默认全时（唯一模式）</td></tr>
           <tr><th>实时预览</th><td>✅ 可切换</td><td>✅ 默认全时</td></tr>
-          <tr><th>源码模式</th><td>✅</td><td>⚠️ 有限</td></tr>
           <tr><th>分屏（编辑+预览）</th><td>✅</td><td>❌</td></tr>
           <tr><th>多标签</th><td>✅</td><td>❌ 每文件独立窗口</td></tr>
-          <tr><th>KaTeX / Mermaid</th><td>✅ 内置</td><td>✅</td></tr>
+          <tr><th>数学（KaTeX vs MathJax v4）</th><td>KaTeX ~280 KB</td><td>✅ <strong>MathJax v4</strong> · 更全（<code>\\</code> 换行、更多 TeX 包）</td></tr>
+          <tr><th>Mermaid 版本</th><td>✅ <strong>11.14</strong>（更新）</td><td>11.13（刚加 Venn + Ishikawa）</td></tr>
           <tr><th>导出 PDF / DOCX / HTML / PNG</th><td>✅</td><td>✅</td></tr>
           <tr><th>Pandoc 导出（EPUB / ODT / LaTeX）</th><td>✅</td><td>❌</td></tr>
-          <tr><th>多编码（GBK / Big5）</th><td>✅ 自动识别</td><td>⚠️ 仅 UTF-8</td></tr>
+          <tr><th>多编码（GBK / Big5 / Shift-JIS）</th><td>✅ 自动识别（chardetng）</td><td>⚠️ 仅 UTF-8</td></tr>
+          <tr><th>中文标点校对</th><td>✅ <strong>v2.5</strong></td><td>❌</td></tr>
           <tr><th>Vim 模式</th><td>✅</td><td>❌</td></tr>
-          <tr><th>演讲 / 幻灯片模式</th><td>✅ <code>⌘⌥P</code></td><td>❌</td></tr>
+          <tr><th>VS Code / Cursor 集成</th><td>✅ 通过自带 MCP server（LLM 直接驱动 vault）</td><td>✅ "Open in Typora" 扩展</td></tr>
           <tr><th>CLI 命令行工具</th><td>✅ <code>solomd</code></td><td>❌</td></tr>
           <tr><th>Markdown 格式化（Prettier）</th><td>✅ <code>⌘⌥L</code></td><td>❌</td></tr>
           <tr><th>欢迎教程</th><td>✅</td><td>❌</td></tr>

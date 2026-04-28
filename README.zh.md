@@ -64,7 +64,7 @@ solomd agent "把这周的 daily 整理成 weekly review，提交并推送"
 
 ## 安装
 
-最新版本：[v3.1.0](https://github.com/zhitongblog/solomd/releases/latest)。
+最新版本：[v3.5.0](https://github.com/zhitongblog/solomd/releases/latest)。
 
 ### macOS — universal dmg（Apple Silicon + Intel，已公证）
 
@@ -75,7 +75,7 @@ brew install --cask zhitongblog/solomd/solomd
 或直接下 dmg：
 
 ```
-https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_3.1.0_universal.dmg
+https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_3.5.0_universal.dmg
 ```
 
 或 curl 一键安装：
@@ -86,9 +86,9 @@ curl -fsSL https://solomd.app/install.sh | bash
 
 ### Windows — x64
 
-- [`SoloMD_3.1.0_x64_en-US.msi`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_3.1.0_x64_en-US.msi)
-- [`SoloMD_3.1.0_x64-setup.exe`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_3.1.0_x64-setup.exe)（NSIS）
-- [`SoloMD_3.1.0_x64-portable.zip`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_3.1.0_x64-portable.zip) — 免安装版
+- [`SoloMD_3.5.0_x64_en-US.msi`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_3.5.0_x64_en-US.msi)
+- [`SoloMD_3.5.0_x64-setup.exe`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_3.5.0_x64-setup.exe)（NSIS）
+- [`SoloMD_3.5.0_x64-portable.zip`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_3.5.0_x64-portable.zip) — 免安装版
 
 ```powershell
 irm https://solomd.app/install.ps1 | iex

@@ -11,7 +11,8 @@
 // @ts-ignore — no types
 import html2canvas from 'html2canvas';
 import mermaid from 'mermaid';
-import { renderMarkdown } from './markdown';
+import { renderMarkdown, extractImageRoot } from './markdown';
+import { rewriteImageUrls } from './image-resolve';
 
 const IMAGE_CSS = `
   body { margin: 0; }
@@ -100,8 +101,9 @@ async function processMermaidBlocks(container: HTMLElement) {
   }
 }
 
-export async function markdownToImageBlob(source: string, _title?: string): Promise<Blob> {
-  const html = renderMarkdown(source || '');
+export async function markdownToImageBlob(source: string, _title?: string, filePath?: string): Promise<Blob> {
+  const rawHtml = renderMarkdown(source || '');
+  const html = rewriteImageUrls(rawHtml, extractImageRoot(source || ''), filePath);
 
   const styleEl = document.createElement('style');
   styleEl.textContent = IMAGE_CSS;
