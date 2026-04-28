@@ -18,6 +18,8 @@ import { renderMarkdown, extractImageRoot } from './markdown';
 import type { ResolvedPdfOptions } from './pdf-options';
 import { rewriteImageUrls } from './image-resolve';
 
+const EXPORT_TIMEOUT_MS = 30_000;
+
 const PDF_CSS = `
   body { margin: 0; }
   .pdf-page {
@@ -236,65 +238,79 @@ export async function markdownToPdfBlob(
   root.appendChild(page);
   document.body.appendChild(root);
 
+  let cleaned = false;
+  const cleanup = () => {
+    if (cleaned) return;
+    cleaned = true;
+    root.remove();
+  };
+
   try {
-    // Render any Mermaid blocks before capture.
-    await processMermaidBlocks(page);
-    // Give the browser a tick to lay everything out (KaTeX fonts especially).
-    await new Promise((r) => setTimeout(r, 60));
+    // Timeout guard — prevents the export from hanging the UI indefinitely
+    // if html2pdf.js or Mermaid gets stuck.
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('PDF export timed out')), EXPORT_TIMEOUT_MS),
+    );
 
-    // v2.5 F3: derive jsPDF / margin args from the resolved opts. When
-    // the caller didn't customize anything, fall back to the legacy
-    // hardcoded values so old users see exactly the same output as v2.4.
-    let margins: [number, number, number, number] = [10, 10, 12, 10];
-    let jsPdfFormat: string | [number, number] = 'a4';
-    let orientation: 'portrait' | 'landscape' = 'portrait';
-    if (pdfOpts && pdfOpts.pageSizeMm && pdfOpts.marginMm) {
-      margins = [
-        pdfOpts.marginMm.top,
-        pdfOpts.marginMm.right,
-        pdfOpts.marginMm.bottom,
-        pdfOpts.marginMm.left,
-      ];
-      // jsPDF accepts named formats ('a4' / 'letter' / 'legal') or [w, h].
-      const named = pageSizeLabelToJsPdf(pdfOpts.pageSizeLabel);
-      if (named) {
-        jsPdfFormat = named;
-        // 'a5' is portrait by default; same orientation logic as the
-        // others. We always emit portrait — landscape isn't a v2.5 feature.
-      } else {
-        jsPdfFormat = [pdfOpts.pageSizeMm.width, pdfOpts.pageSizeMm.height];
+    const work = async () => {
+      // Render any Mermaid blocks before capture.
+      await processMermaidBlocks(page);
+      // Give the browser a tick to lay everything out (KaTeX fonts especially).
+      await new Promise((r) => setTimeout(r, 60));
+
+      // v2.5 F3: derive jsPDF / margin args from the resolved opts. When
+      // the caller didn't customize anything, fall back to the legacy
+      // hardcoded values so old users see exactly the same output as v2.4.
+      let margins: [number, number, number, number] = [10, 10, 12, 10];
+      let jsPdfFormat: string | [number, number] = 'a4';
+      let orientation: 'portrait' | 'landscape' = 'portrait';
+      if (pdfOpts && pdfOpts.pageSizeMm && pdfOpts.marginMm) {
+        margins = [
+          pdfOpts.marginMm.top,
+          pdfOpts.marginMm.right,
+          pdfOpts.marginMm.bottom,
+          pdfOpts.marginMm.left,
+        ];
+        const named = pageSizeLabelToJsPdf(pdfOpts.pageSizeLabel);
+        if (named) {
+          jsPdfFormat = named;
+        } else {
+          jsPdfFormat = [pdfOpts.pageSizeMm.width, pdfOpts.pageSizeMm.height];
+        }
+        orientation =
+          pdfOpts.pageSizeMm.width > pdfOpts.pageSizeMm.height ? 'landscape' : 'portrait';
       }
-      orientation =
-        pdfOpts.pageSizeMm.width > pdfOpts.pageSizeMm.height ? 'landscape' : 'portrait';
-    }
 
-    const opts: any = {
-      margin: margins,
-      filename: `${title || 'document'}.pdf`,
-      image: { type: 'jpeg', quality: 0.96 },
-      html2canvas: {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-        letterRendering: true,
-        logging: false,
-      },
-      jsPDF: {
-        unit: 'mm',
-        format: jsPdfFormat,
-        orientation,
-      },
-      pagebreak: {
-        mode: ['css', 'legacy'],
-        avoid: ['pre', '.mermaid-block', 'table', 'blockquote', 'h1', 'h2', 'h3'],
-      },
+      const opts: any = {
+        margin: margins,
+        filename: `${title || 'document'}.pdf`,
+        image: { type: 'jpeg', quality: 0.96 },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          letterRendering: true,
+          logging: false,
+        },
+        jsPDF: {
+          unit: 'mm',
+          format: jsPdfFormat,
+          orientation,
+        },
+        pagebreak: {
+          mode: ['css', 'legacy'],
+          avoid: ['pre', '.mermaid-block', 'table', 'blockquote', 'h1', 'h2', 'h3'],
+        },
+      };
+      const worker = html2pdf().set(opts).from(page);
+
+      const blob: Blob = await worker.outputPdf('blob');
+      return blob;
     };
-    const worker = html2pdf().set(opts).from(page);
 
-    const blob: Blob = await worker.outputPdf('blob');
-    return blob;
+    return await Promise.race([work(), timeout]);
   } finally {
-    document.body.removeChild(root);
+    cleanup();
   }
 }
 

@@ -105,7 +105,13 @@ watch(
         :title="tab.filePath || tab.fileName"
       >
         <span class="tab__name">{{ tab.fileName }}</span>
-        <span class="tab__outline" v-if="tab.showOutline && tab.language === 'markdown'" title="Outline on">≡</span>
+        <button
+          v-if="tab.language === 'markdown'"
+          class="tab__outline"
+          :class="{ 'tab__outline--active': tab.showOutline }"
+          :title="tab.showOutline ? 'Hide outline' : 'Show outline'"
+          @click.stop="tabs.toggleOutline(tab.id)"
+        >≡</button>
         <span class="tab__dot" v-if="isDirty(tab.id)">●</span>
         <button
           class="tab__close"
@@ -192,8 +198,27 @@ watch(
   font-size: 10px;
 }
 .tab__outline {
-  font-size: 11px;
+  font-size: 14px;
+  font-weight: 700;
   color: var(--text-faint);
+  padding: 1px 4px;
+  line-height: 1;
+  border-radius: 3px;
+  opacity: 0;
+  transition: opacity 0.12s, color 0.12s, background 0.12s;
+}
+.tab:hover .tab__outline,
+.tab--active .tab__outline {
+  opacity: 1;
+}
+.tab__outline--active {
+  opacity: 1 !important;
+  color: var(--accent);
+  background: var(--bg-active);
+}
+.tab__outline:hover {
+  color: var(--accent);
+  background: var(--bg-hover);
 }
 .tab__close {
   padding: 0 4px;

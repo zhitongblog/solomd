@@ -313,13 +313,15 @@ onBeforeUnmount(() => {
       <div class="slide__help-card">
         <h2>Slideshow Shortcuts</h2>
         <table>
-          <tr><td>Next slide</td><td>→ ↓ Space PageDown</td></tr>
-          <tr><td>Previous slide</td><td>← ↑ PageUp</td></tr>
-          <tr><td>First / last slide</td><td>Home / End</td></tr>
-          <tr><td>Toggle fullscreen</td><td>F</td></tr>
-          <tr><td>Show / hide this help</td><td>?</td></tr>
-          <tr><td>Exit</td><td>Esc</td></tr>
-          <tr><td>Vertical sub-slides</td><td>Use <code>--</code> separator</td></tr>
+          <tbody>
+            <tr><td>Next slide</td><td>→ ↓ Space PageDown</td></tr>
+            <tr><td>Previous slide</td><td>← ↑ PageUp</td></tr>
+            <tr><td>First / last slide</td><td>Home / End</td></tr>
+            <tr><td>Toggle fullscreen</td><td>F</td></tr>
+            <tr><td>Show / hide this help</td><td>?</td></tr>
+            <tr><td>Exit</td><td>Esc</td></tr>
+            <tr><td>Vertical sub-slides</td><td>Use <code>--</code> separator</td></tr>
+          </tbody>
         </table>
         <p class="slide__help-foot">
           Slides split by <code>---</code> (horizontal) or <code>--</code>

@@ -263,11 +263,6 @@ export function useExport() {
     if (!path) return;
     const tid = toasts.info('Generating PDF…', 0);
     try {
-      // v2.5 F3: feed Settings → PDF defaults (with per-doc front-matter
-      // override) into the html2pdf.js builder. When the user hasn't
-      // touched Settings *and* there's no `pdf:` block, `userTouched`
-      // is false and the resolver returns null sentinels — `markdownToPdfBlob`
-      // then falls back to its pre-v2.5 hardcoded A4/10mm path.
       const pdfOpts = resolvePdfOptions(
         settings.pdfDefaults,
         ctx.content,

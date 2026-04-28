@@ -128,6 +128,18 @@ const CSS = `
   -webkit-user-select: none;
   -webkit-user-drag: none;
 }
+.io-viewport--svg svg {
+  background: #fff;
+  border-radius: 6px;
+  padding: 16px;
+  box-sizing: content-box;
+}
+.io-viewport--svg-dark svg {
+  background: #1e1e2e;
+  border-radius: 6px;
+  padding: 16px;
+  box-sizing: content-box;
+}
 .io-footer {
   position: absolute;
   bottom: 16px;
@@ -362,8 +374,14 @@ export function openImageOverlay(opts: OverlayOptions) {
 
   // Clone source
   const clone = source.cloneNode(true) as HTMLElement;
+  const isSvg = source instanceof SVGElement;
   if (clone instanceof HTMLImageElement) {
     clone.draggable = false;
+  }
+  if (isSvg) {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
+      || document.documentElement.classList.contains('dark');
+    viewport.classList.add(isDark ? 'io-viewport--svg-dark' : 'io-viewport--svg');
   }
   viewport.appendChild(clone);
   contentEl.appendChild(viewport);
