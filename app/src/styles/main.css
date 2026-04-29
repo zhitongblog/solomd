@@ -47,14 +47,25 @@
   --syn-property: #e45649;
   --syn-operator: #0184bc;
 
-  --font-ui: "SoloMD CJK", system-ui, -apple-system, BlinkMacSystemFont,
-    "Segoe UI", "PingFang SC", "PingFang TC", "Hiragino Sans GB",
-    "Heiti SC", "Microsoft YaHei", "Inter", Roboto, "Helvetica Neue",
-    sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji";
+  /* SoloMD CJK is at the END of every chain on purpose. It's a 43 KB
+     LXGW WenKai subset (unicode-range U+3400-9FFF + CJK punctuation)
+     that we ship only as a last-resort fallback for environments with
+     no system CJK font — most notably the iOS Simulator (no PingFang).
+     On Windows / macOS / Linux / real iPad the cascade hits Microsoft
+     YaHei / PingFang / Noto Sans CJK first, preserving native ClearType
+     / Quartz hinting. v3.5.0 and earlier put SoloMD CJK FIRST, which
+     overrode Windows YaHei everywhere with the (deliberately soft,
+     handwritten) LXGW glyphs and made the UI look thin/blurry — see
+     issue #43. */
+  --font-ui: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "PingFang SC", "PingFang TC", "Hiragino Sans GB", "Heiti SC",
+    "Microsoft YaHei", "Inter", Roboto, "Helvetica Neue", sans-serif,
+    "SoloMD CJK", "Apple Color Emoji", "Segoe UI Emoji",
+    "Noto Color Emoji";
   --font-mono: "JetBrains Mono", "SF Mono", "Cascadia Code", "Menlo",
     "Consolas", "Fira Code", "Source Code Pro", "DejaVu Sans Mono",
     "Liberation Mono", "Ubuntu Mono", "Noto Sans Mono",
-    "SoloMD CJK", "PingFang SC", "Hiragino Sans GB", monospace,
+    "PingFang SC", "Hiragino Sans GB", monospace, "SoloMD CJK",
     "Apple Color Emoji", "Segoe UI Emoji";
 
   --titlebar-h: 36px;
