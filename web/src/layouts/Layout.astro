@@ -55,6 +55,15 @@ const path = lang === 'zh' ? '/zh/' : '/';
 
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 
+    <!-- Marketing-site display serif. Source Serif 4 by Adobe, OFL — used
+         only on /landing and /blog headings; the desktop app does not
+         load any external font. preconnect keeps the round-trips off
+         the critical path. font-display: swap means the page renders
+         immediately in system serif if the network is slow. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" />
+
     <!-- Sitemap discovery hint -->
     <link rel="sitemap" type="application/xml" href="/sitemap-index.xml" />
 

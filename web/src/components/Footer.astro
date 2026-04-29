@@ -32,39 +32,48 @@ const year = new Date().getFullYear();
 </footer>
 
 <style>
+  /* Dark footer acts as the page's visual anchor — same role Anthropic's
+     near-black footer plays. Inverts colors locally so the brand mark's
+     orange # still pops against ink, but everything else fades to a
+     calm bone-white. */
   .footer {
-    padding: 40px 0;
-    background: var(--bg-soft);
-    border-top: 1px solid var(--border);
+    padding: 64px 0 56px;
+    background: #14140f;
+    color: #c5c2b9;
+    border-top: none;
   }
   .footer__inner {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 20px;
+    gap: 24px;
     text-align: center;
   }
   .footer__brand {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     font-size: 18px;
+    color: #f3efe7;
   }
-  .footer__name { font-weight: 700; }
+  .footer__brand .brand-mark .md { color: #f3efe7; }
+  .footer__name { font-weight: 600; }
   .footer__links {
     display: flex;
-    gap: 24px;
+    gap: 28px;
     flex-wrap: wrap;
     justify-content: center;
   }
   .footer__links a {
-    color: var(--text-muted);
+    color: #c5c2b9;
     font-size: 13px;
+    transition: color 0.18s;
   }
-  .footer__links a:hover { color: var(--accent); }
+  .footer__links a:hover { color: var(--accent); text-decoration: none; }
   .footer__legal {
     font-size: 11px;
-    color: var(--text-faint);
-    line-height: 1.7;
+    color: #7a7770;
+    line-height: 1.8;
+    max-width: 640px;
   }
 </style>
