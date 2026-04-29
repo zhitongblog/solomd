@@ -125,31 +125,42 @@ code {
 }
 /* Primary CTA is now ink-on-cream (Anthropic-style) instead of orange.
    Orange is reserved for sponsorship + inline links so the page has
-   a clear primary surface and a single accent color of attention. */
+   a clear primary surface and a single accent color of attention.
+   `a.btn` selector forces specificity over per-page article rules
+   like `.whats-new a` (which set color to --accent for inline links
+   and would otherwise inherit-override the CTA's cream label). */
+a.btn--primary,
 .btn--primary {
   background: var(--ink);
   color: var(--bg);
 }
+a.btn--primary:hover,
 .btn--primary:hover {
   background: var(--ink-soft);
+  color: var(--bg);
   text-decoration: none;
 }
+a.btn--secondary,
 .btn--secondary {
   background: transparent;
   color: var(--text);
   border-color: var(--border);
 }
+a.btn--secondary:hover,
 .btn--secondary:hover {
   background: var(--bg-soft);
+  color: var(--text);
   border-color: var(--ink);
   text-decoration: none;
 }
 /* Reserved for places that genuinely should pop in brand color —
    namely the Sponsor button. Keep its use minimal. */
+a.btn--accent,
 .btn--accent {
   background: var(--accent);
   color: #1a1a1a;
 }
+a.btn--accent:hover,
 .btn--accent:hover {
   background: var(--accent-deep);
   color: #1a1a1a;

@@ -5,11 +5,13 @@ import Footer from '../../components/Footer.astro';
 import Giscus from '../../components/Giscus.astro';
 
 const lang = 'zh' as const;
+const VERSION = '3.5.5';
+const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERSION}`;
 ---
 
 <Layout
-  title="SoloMD v3.0 新功能 — 同步，按你的节奏"
-  description="v3.0 补上最后一块拼图 —— 同步。把工作区推到你自己的 GitHub 私库，可选端到端加密，可选 iCloud / Dropbox / OneDrive 文件夹联动，附带一个公开只读分享页。没有 SoloMD 服务器，没有订阅。"
+  title="SoloMD v3.5.5 新功能"
+  description="潜伏 6 周的 Win UI 中文字体回退终于被定位并修了。匿名遥测整体从 Aptabase 迁到自建 Cloudflare D1 端点。还有 @beihai23 的 PR #48：PDF 导出超时、outline 按钮换位、Mermaid 浮窗对比度。"
   lang={lang}
 >
   <Header lang={lang} />
@@ -20,138 +22,98 @@ const lang = 'zh' as const;
       </nav>
 
       <p class="version-row">
-        <span class="version-tag version-tag--v30">v3.0</span>
+        <span class="version-tag">v{VERSION}</span>
         <time>2026 年 4 月</time>
       </p>
-      <h1>同步，按你的节奏。</h1>
+      <h1>Win 字体修复、自建遥测、polish。</h1>
       <p class="lead">
-        v3.0 补上 SoloMD 一直避开的那块拼图：<strong>同步</strong>。
-        我们之所以一直避开，是因为同步最显然的形态 —— 我们自己跑 CRDT 服务 —— 会把 SoloMD 变成一个 SaaS。
-        我们最后选的形态是：<strong>把笔记仓库 → 推到你自己的 GitHub 私库</strong>。
-        端到端加密<strong>可选</strong>。iCloud / Dropbox / OneDrive 联动<strong>可选</strong>。
-        公开只读分享<strong>可选</strong>。<strong>不跑 SoloMD 服务器，不收订阅，不要账号。</strong>
+        三件事打包发了一个 patch：潜伏 <strong>6 周的 Win UI 中文字体
+        回退</strong>终于被定位并修了；匿名遥测整体<strong>从 Aptabase
+        迁到自建 Cloudflare D1 端点</strong>（数据通路里没有任何
+        第三方 SaaS）；还有 <strong>@beihai23 的一个 polish PR</strong>
+        覆盖 PDF 导出超时、outline 按钮位置、Mermaid 浮窗对比度。
       </p>
 
+      <div class="cta-row">
+        <a class="btn btn--primary btn--lg" href={`${baseUrl}/SoloMD_${VERSION}_universal.dmg`}>⬇ 下载 v{VERSION} (Mac)</a>
+        <a class="btn btn--secondary btn--lg" href={`${baseUrl}/SoloMD_${VERSION}_x64_en-US.msi`}>下载 (Windows)</a>
+        <a class="btn btn--secondary btn--lg" href={`https://github.com/zhitongblog/solomd/releases/tag/v${VERSION}`}>所有平台 →</a>
+      </div>
+
       <section>
-        <h2>☁️ GitHub 同步</h2>
+        <h2>🇨🇳 Win UI 中文字体修复（issue #43）</h2>
         <p>
-          打开「设置 → GitHub 同步」。粘个 Personal Access Token（保存到系统钥匙串 —— macOS 钥匙串 / Windows Credential Manager / Linux Secret Service）。
-          选一个已有仓库，或者让 SoloMD 直接给你新建一个私库。从这一刻起：
+          从 v0.1.12 起，Win11 用户看到 UI 中文渲染变细变虚，跟原生
+          ClearType 不一样。根因：自带的 <code>"SoloMD CJK"</code>
+          字体（一个 43&nbsp;KB 的 LXGW WenKai 子集，本来是给 iOS
+          模拟器兜底用的）被放到了 font-family chain 的<em>第一位</em>。
+          加上它的 <code>unicode-range: U+3400-9FFF</code>，浏览器对
+          所有中文字符都优先用它，<em>"YaHei、PingFang、Noto Sans CJK
+          全跳过"</em>。
+        </p>
+        <p>
+          修复就一行：把它挪到 chain 末尾。unicode-range 控的是
+          下载触发，chain 顺序控的是优先级。每个真实平台都会先找到
+          系统 CJK 字体；只有 iOS 模拟器（它本来的目的）才回落到
+          这个兜底字体。
+        </p>
+        <p class="thread-note">
+          完整诊断 →
+          <a href="/zh/blog/v3-5-5-font-fix-self-hosted-analytics/">v3.5.5 博客</a>。
+          Issue 讨论 →
+          <a href="https://github.com/zhitongblog/solomd/issues/43">#43</a>。
+          报告人 <a href="https://github.com/sparkdonn-netizen">@sparkdonn-netizen</a>。
+        </p>
+      </section>
+
+      <section>
+        <h2>📊 自建匿名遥测 —— Aptabase → Cloudflare D1</h2>
+        <p>
+          之前用 Aptabase 收集启动数 + 功能使用频率，但 dashboard
+          显示只有 ~2 个活跃用户，跟 3,400+ 下载量对不上，没法用。
+          没去查这家 SaaS 哪里出问题，直接砍掉，换成 Cloudflare
+          Pages Function + D1 自建。
         </p>
         <ul>
-          <li><strong>自动推送</strong>：每次保存后 5 秒（去抖）。无可提交内容则跳过。</li>
-          <li><strong>自动拉取</strong>：可配置间隔（5 / 15 / 30 / 60 分钟）。本地有未提交修改时自动跳过 —— 不会把你的改动覆盖掉。</li>
-          <li><strong>冲突解决面板</strong>在历史侧边栏：每个文件三个按钮 —— 用我的 / 用 GitHub 的 / 都保留。「都保留」会把远端版本另存为 <code>note.remote-2026-04-26.md</code> 不丢任何一份。</li>
-          <li><strong>libgit2 内嵌</strong>，跟 v2.2 AutoGit 同一引擎，不依赖系统 git。</li>
+          <li>桌面端 POST 到 <code>solomd.app/api/track</code>。匿名设备 UUID 在 localStorage。<strong>没有 IP，没有 User-Agent，没有指纹。</strong></li>
+          <li>服务端 validator 丢弃疑似 PII 数据；一律返 204。</li>
+          <li>D1 免费额度按当前体量 3 倍冗余（5M reads/day、100k writes/day）。</li>
+          <li>管理面板 <code>solomd.app/admin/</code> 用 Bearer token，看每日活跃 / 版本分布 / OS / locale。</li>
         </ul>
         <p>
-          SoloMD 永远不存你的数据，连你建了什么仓库都不知道。
-          数据在 1GB 以内 GitHub 免费版就够；要无限私库就 GitHub Pro（$4/月）。
-          这笔订阅是你跟 GitHub 的事，不经我们手。
+          退订开关在 Settings → 发送匿名使用数据（默认开）。
+          架构说明在仓库的 <code>web/ANALYTICS.md</code>。
         </p>
       </section>
 
       <section>
-        <h2>🔒 端到端加密（可选）</h2>
-        <p>
-          绑定时勾「推送前加密」并设一个口令。从此远端只看到密文：每个 <code>.md</code> 变成 <code>.md.enc</code>，
-          头 4 字节是 <code>SLMD</code> magic，随后 24 字节 XChaCha20 nonce + 16 字节 Poly1305 校验。
-        </p>
-        <p><strong>我们刻意做的几个权衡：</strong></p>
-        <ul>
-          <li><strong>Argon2id</strong> 派生密钥，用 RFC9106 默认参数（~19MB / 2 轮）。盐 + KDF 参数提交到加密仓库，所以另一台设备只要输同样口令就能派生同一把钥匙。</li>
-          <li><strong>XChaCha20-Poly1305</strong> 做 AEAD，带认证；任何篡改会被发现。</li>
-          <li><strong>确定性 nonce</strong>：SHA-256(key ‖ aad ‖ plaintext)[..24]。等价于 convergent encryption —— 重新加密同一份明文得到同一份密文，git 不会有伪 diff。代价：远端读权限的攻击者能看出同库内哪些文件内容相同。单用户库这个代价我们接受。</li>
-          <li><strong>路径作为 AAD</strong>：把 <code>secret-2026.md.enc</code> 的密文挪到 <code>boring.md.enc</code> 解密会失败 —— 攻击者搬不动密文块。</li>
-          <li><strong>明文留本地。</strong>搜索 / RAG / AI 改写 / 演示模式 ——— 全部继续工作，因为本地读 .md 这条路径上没有任何加密层。加密影子放在 <code>&lt;workspace&gt;/.solomd-encrypted/</code> 里，只有它会被推到远端。</li>
-        </ul>
-        <p>
-          这套不是用来防本机恶意进程或被入侵设备的（那不是威胁模型）。
-          它<strong>能</strong>防住的是：PAT 泄漏、误把仓库设成 public、被人 clone 到、GitHub 内部合规扫描。
-        </p>
+        <h2>🐛 PR #48 —— @beihai23 的 4 处 polish</h2>
+        <ol>
+          <li><strong>PDF 导出 30 秒超时</strong> —— 用 <code>Promise.race</code> 套住整个流程；html2pdf.js / Mermaid 卡死时不再无限冻 UI。DOM 清理逻辑改成幂等。</li>
+          <li><strong>Outline 按钮搬到 Tab 上</strong> —— 编辑区左上角浮动 ≌ 按钮去掉了，每个 Markdown tab 自带一个 ≌ 切大纲。</li>
+          <li><strong>Mermaid 浮窗对比度</strong> —— lightbox 里的 SVG 自动套主题适配背景卡片（浅色白底，深色深石板）。</li>
+          <li><strong>HTML 规范</strong> —— <code>&lt;table&gt;</code> 加上 <code>&lt;tbody&gt;</code>，消 Vite warning。</li>
+        </ol>
       </section>
 
       <section>
-        <h2>🗂️ iCloud / Dropbox / OneDrive（不用配置）</h2>
+        <h2>🔮 下一步 —— v3.6</h2>
         <p>
-          如果你工作区本来就在 <code>~/Library/Mobile Documents/com~apple~CloudDocs/Notes</code>
-          或 <code>~/Dropbox/Notes</code> 里，那其实根本不需要 GitHub 同步 —— 苹果 / Dropbox / 微软已经在做文件级同步了。
-          v3.0 自动识别这种情况，在设置里弹个横幅告诉你。
-        </p>
-        <p>
-          我们在此之上加一层<strong>跨设备会话恢复</strong>：每台设备会写一份
-          <code>.solomd/session.&lt;deviceId&gt;.json</code>，记录当前打开的标签页。
-          在另一台机器打开同一个工作区，看到对方的 session 比自己新时，会弹一个一键
-          「从 <em>Mac mini</em> 恢复标签页」 —— 接着写，无缝。我们不碰你的数据。
-        </p>
-      </section>
-
-      <section>
-        <h2>🌐 公开只读分享</h2>
-        <p>
-          打开命令面板，运行 <code>GitHub Sync: Copy Share Link for This Note</code>。
-          得到的链接形如
-          <code>solomd.app/share/?repo=you/notes&amp;path=2026-roadmap.md</code>。
-          任何拿到链接的人在浏览器里就能阅读这篇笔记 —— 直接从
-          <code>raw.githubusercontent.com</code> 拉，浏览器侧 marked + DOMPurify 渲染，
-          中间没有 SoloMD 服务器，也没人知道谁读了它。
-        </p>
-        <p>
-          私有仓库不能这样分享（raw 链接需要鉴权）。页面会清晰提示「可能是私有仓库」而不是默默 404。
-          要分享的话，先把笔记推到一个公开仓库。
-        </p>
-      </section>
-
-      <section>
-        <h2>🔧 多平台支持</h2>
-        <p>
-          GitHub 是默认，享有完整体验（自动建仓 + 仓库选择器走 GitHub REST API）。
-          GitLab / Gitea / 自建 Git 服务，下拉选你的平台、粘贴 clone 链接，
-          推 / 拉一样工作 —— 底层 libgit2 + PAT 凭证流程对平台无感。
-        </p>
-      </section>
-
-      <section>
-        <h2>🧰 来自社区的 QoL</h2>
-        <p>v3.0 同时合入两个社区 PR：</p>
-        <ul>
-          <li><strong>大纲折叠 + 侧边栏左右切换</strong>（<a href="https://github.com/zhitongblog/solomd/pull/35">#35</a>，@ZHTodd223）：大纲面板支持折叠子标题；设置 →「大纲位置」选左 / 右。</li>
-          <li><strong>外部文件变更监听</strong>（<a href="https://github.com/zhitongblog/solomd/pull/24">#24</a>，@beihai23）：在 SoloMD 之外改文件，编辑器立刻发现 —— 预览模式自动 reload，编辑模式弹「重载 / 保留」。已与 v3.0 GitHub 同步打通：拉取期间这个对话框会被静默（覆盖整个重写窗口）。</li>
-        </ul>
-      </section>
-
-      <section>
-        <h2>我们选的同步形态 vs. 我们没选的</h2>
-        <table class="compare">
-          <thead>
-            <tr><th></th><th>SoloMD v3.0（GitHub）</th><th>Obsidian Sync</th><th>仅 iCloud</th></tr>
-          </thead>
-          <tbody>
-            <tr><th>数据存哪</th><td>你的 GitHub 账号</td><td>Obsidian 服务器</td><td>Apple 服务器</td></tr>
-            <tr><th>价格</th><td>免费（或者你已有的 GitHub 套餐）</td><td>$96 / 年</td><td>5 GB 内免费</td></tr>
-            <tr><th>端到端加密</th><td>✅ 可选</td><td>✅ 可选</td><td>❌（密钥在 Apple 手里）</td></tr>
-            <tr><th>冲突解决</th><td>逐文件 UI</td><td>逐文件 UI</td><td>"重命名保留两份"</td></tr>
-            <tr><th>版本历史</th><td>每文件完整 git log</td><td>1 年</td><td>30 天</td></tr>
-            <tr><th>多平台</th><td>GitHub / GitLab / Gitea / 自定义</td><td>仅 Obsidian</td><td>仅 Apple</td></tr>
-            <tr><th>需要订阅</th><td>否</td><td>是</td><td>5GB 之后</td></tr>
-          </tbody>
-        </table>
-      </section>
-
-      <section>
-        <h2>没变的部分</h2>
-        <p>
-          除此之外 SoloMD 跟 v2.5 一致：本地优先纯 <code>.md</code>，~15 MB 安装包，
-          14 个 AI 服务自带钥匙，MCP 服务自带，AutoGit 文件级历史，
-          语义搜索，WYSIWYG 实时编辑，斜杠命令，主题市场，中文校对。
-          v3.0 把同步加在最上面 —— 不开它，SoloMD 就是你之前用的那个 SoloMD。
+          Issue <a href="https://github.com/zhitongblog/solomd/issues/44">#44</a>
+          —— 实时编辑模式下图片和表格的内联渲染 —— 是下一个要做的。
+          这是一个 CodeMirror block-decoration 扩展：光标不在源码行
+          时显示渲染后的图片/表格，光标进入则展开成源码。不是改 CSS
+          能解决的，是真正的编辑器扩展。再之后：iPad / Mac App
+          Store 重新提交还排着队。
         </p>
       </section>
 
       <p class="thanks-row">
-        感谢 <strong>@beihai23</strong>、<strong>@ZHTodd223</strong>，
-        以及所有在 GitHub Discussions 里参与 v3.0 讨论的朋友。
-        Bug 与建议 → <a href="https://github.com/zhitongblog/solomd/issues">issues</a>。
+        感谢 <strong>@beihai23（王志刚）</strong>贡献 PR #48 ——
+        Ta 的第三个 PR，每个都是高质量修复 ——
+        以及 <strong>@sparkdonn-netizen</strong> 提供的截图
+        让 #43 真正能定位。早期版本 →
+        <a href="/zh/blog/">浏览博客 →</a>
       </p>
     </article>
     <Giscus lang={lang} />
@@ -161,23 +123,57 @@ const lang = 'zh' as const;
 
 <style>
   .whats-new { max-width: 820px; padding: 40px 20px 80px; }
-  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; }
   .breadcrumbs a { color: inherit; }
-  .version-row { display: flex; align-items: center; gap: 12px; margin: 0 0 10px; }
-  .version-tag { display: inline-block; font-family: var(--font-mono); font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: var(--accent); color: #000; letter-spacing: 0.04em; text-transform: uppercase; }
-  .version-tag--v30 { background: linear-gradient(135deg, #ff9f40 0%, #ffd166 100%); }
-  .whats-new time { font-size: 13px; color: var(--text-muted, #888); }
-  .whats-new h1 { font-size: 2.4rem; line-height: 1.2; margin: 0 0 18px; }
-  .whats-new h2 { font-size: 1.6rem; margin: 44px 0 14px; }
-  .whats-new h3 { font-size: 1.15rem; margin: 22px 0 8px; }
-  .whats-new .lead { font-size: 1.15rem; color: var(--text-muted, #555); line-height: 1.85; margin-bottom: 24px; }
-  .whats-new p { line-height: 1.85; margin: 12px 0; }
-  .whats-new ul { padding-left: 22px; }
-  .whats-new li { margin: 6px 0; line-height: 1.85; }
-  .whats-new code { background: #f6f3eb; padding: 2px 6px; border-radius: 4px; font-size: 0.92em; font-family: var(--font-mono); }
-  .compare { width: 100%; border-collapse: collapse; margin: 18px 0 8px; font-size: 14px; }
-  .compare th, .compare td { padding: 9px 12px; text-align: left; border-bottom: 1px solid #eee; }
-  .compare thead th { background: #fafafa; font-weight: 600; }
-  .compare tbody th { font-weight: 500; width: 28%; color: var(--text-muted, #555); }
-  .thanks-row { margin-top: 60px; padding-top: 18px; border-top: 1px solid #eee; font-size: 14px; color: var(--text-muted, #555); }
+  .version-row { display: flex; align-items: center; gap: 12px; margin: 0 0 14px; }
+  .version-tag {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #000;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .whats-new time { font-size: 13px; color: var(--text-muted); }
+  .whats-new h1 { font-size: clamp(2.2rem, 5vw, 3.4rem); line-height: 1.1; margin: 0 0 22px; }
+  .whats-new h2 { font-size: clamp(1.5rem, 3vw, 1.9rem); margin: 56px 0 16px; }
+  .whats-new .lead { font-size: 1.15rem; color: var(--text-muted); line-height: 1.65; margin-bottom: 28px; }
+  .whats-new p { line-height: 1.75; margin: 12px 0; }
+  .whats-new ul, .whats-new ol { padding-left: 22px; }
+  .whats-new li { margin: 6px 0; line-height: 1.7; }
+  .whats-new code {
+    background: var(--bg-soft);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.92em;
+    font-family: var(--font-mono);
+    color: var(--accent-deep);
+  }
+  /* Inline links accent-colored; excludes CTA buttons so global
+     .btn--primary / --secondary color rules win. See en page for why. */
+  .whats-new a:not(.btn) { color: var(--accent); }
+  .cta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 28px 0 8px;
+  }
+  .thread-note {
+    font-size: 13px;
+    color: var(--text-muted);
+    border-left: 2px solid var(--border);
+    padding-left: 14px;
+    margin-top: 14px;
+  }
+  .thanks-row {
+    margin-top: 64px;
+    padding-top: 22px;
+    border-top: 1px solid var(--border);
+    font-size: 14px;
+    color: var(--text-muted);
+  }
 </style>
