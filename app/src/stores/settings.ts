@@ -67,6 +67,8 @@ interface Settings {
   dailyNotesFormat: string;
   dailyNotesTemplate: string;
   showTagsPanel: boolean;
+  // v4.0 pillar 1: Inline Agent Panel — chat-with-vault sidebar.
+  showAgentPanel: boolean;
   // v2.0 F4: BYOK AI rewrite. `aiProvider` is a stable id from
   // ai-providers.ts PROVIDERS — widened to string to avoid breaking when
   // new providers land.
@@ -207,6 +209,7 @@ function defaults(): Settings {
     dailyNotesFormat: 'YYYY-MM-DD.md',
     dailyNotesTemplate: '',
     showTagsPanel: true,
+    showAgentPanel: false,
     aiEnabled: false,
     aiProvider: 'openai',
     aiModel: '',
@@ -433,6 +436,10 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleTagsPanel() {
       this.showTagsPanel = !this.showTagsPanel;
+      this.persist();
+    },
+    toggleAgentPanel() {
+      this.showAgentPanel = !this.showAgentPanel;
       this.persist();
     },
     setDailyNotesFolder(p: string) {

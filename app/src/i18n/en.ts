@@ -810,6 +810,20 @@ export const en = {
     dateAfter: 'After (inclusive)',
     dateBefore: 'Before (inclusive)',
   },
+
+  // v4.0 pillar 1: Inline Agent Panel
+  agent: {
+    heading: 'Agent',
+    empty: {
+      noFolder: 'Open a folder to chat with your vault.',
+      noAi: 'Configure an AI provider to start chatting.',
+      configureAi: 'Open AI settings…',
+      ready: 'Ask anything about your vault.',
+    },
+    placeholder: 'Message the agent…',
+    streamingComingSoon: 'Streaming + tool calls arrive in the next commit.',
+    clearTitle: 'Clear chat',
+  },
 };
 
 export type I18n = typeof en;

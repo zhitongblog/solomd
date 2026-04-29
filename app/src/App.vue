@@ -13,6 +13,7 @@ import Outline from './components/Outline.vue';
 import BacklinksPanel from './components/BacklinksPanel.vue';
 import TagsPanel from './components/TagsPanel.vue';
 import HistoryPanel from './components/HistoryPanel.vue';
+import AgentPanel from './components/AgentPanel.vue';
 import { useAutoCommit } from './composables/useAutoCommit';
 import { useGithubSync } from './composables/useGithubSync';
 import { useSessionRestore } from './composables/useSessionRestore';
@@ -616,12 +617,16 @@ const showHistoryPane = computed(
     tabs.activeTab?.language === 'markdown' &&
     !!workspace.currentFolder,
 );
+// v4.0 pillar 1: Agent Panel — workspace-level visibility (not per-tab).
+// Toggled via command palette `view.toggleAgentPanel`; persists in settings.
+const showAgentPane = computed(() => settings.showAgentPanel);
 const showRightSidebar = computed(
   () =>
     showOutlinePane.value ||
     showBacklinksPane.value ||
     showTagsPane.value ||
-    showHistoryPane.value,
+    showHistoryPane.value ||
+    showAgentPane.value,
 );
 const basesOpen = ref(false);
 const aiHasKey = ref(false);
@@ -665,6 +670,7 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
           <BacklinksPanel v-if="showBacklinksPane" />
           <TagsPanel v-if="showTagsPane" />
           <HistoryPanel v-if="showHistoryPane" />
+          <AgentPanel v-if="showAgentPane" @open-settings="(section?: string) => openSettingsAt(section ?? 'integrations')" />
         </aside>
         <div class="content">
           <BasesView v-if="basesOpen" />
@@ -678,6 +684,7 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
           <BacklinksPanel v-if="showBacklinksPane" />
           <TagsPanel v-if="showTagsPane" />
           <HistoryPanel v-if="showHistoryPane" />
+          <AgentPanel v-if="showAgentPane" @open-settings="(section?: string) => openSettingsAt(section ?? 'integrations')" />
         </aside>
       </div>
       <StatusBar :line="cursorLine" :col="cursorCol" />

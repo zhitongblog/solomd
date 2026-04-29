@@ -799,4 +799,18 @@ export const zh: I18n = {
     dateAfter: '之后（含）',
     dateBefore: '之前（含）',
   },
+
+  // v4.0 pillar 1: Inline Agent Panel
+  agent: {
+    heading: '智能体',
+    empty: {
+      noFolder: '请先打开一个文件夹，再开始与笔记库对话。',
+      noAi: '请先在设置里配置一个 AI 服务商。',
+      configureAi: '打开 AI 设置…',
+      ready: '想问什么都可以，关于你的笔记库。',
+    },
+    placeholder: '与智能体对话…',
+    streamingComingSoon: '流式响应与工具调用将在下一次提交中加入。',
+    clearTitle: '清空对话',
+  },
 };
