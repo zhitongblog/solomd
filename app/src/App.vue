@@ -76,7 +76,7 @@ pomodoro.rehydrate();
 // Pinia internals. Dev-only convenience — release builds ignore the
 // extra hook.
 (window as any).usePomodoroStore = usePomodoroStore;
-const { t } = useI18n();
+useI18n();
 
 const cursorLine = ref(1);
 const cursorCol = ref(1);
@@ -654,17 +654,6 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
           <HistoryPanel v-if="showHistoryPane" />
         </aside>
         <div class="content">
-          <button
-            v-if="tabs.activeTab?.language === 'markdown' && !showOutlinePane"
-            class="outline-toggle"
-            @click="tabs.activeId && tabs.toggleOutline(tabs.activeId)"
-            :title="t('toolbar.outlineTooltip')"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" />
-              <line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" />
-            </svg>
-          </button>
           <BasesView v-if="basesOpen" />
           <TileRoot v-else :node="tiles.root" @cursor="onCursor" />
         </div>
@@ -780,26 +769,5 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
   min-width: 0;
   overflow: hidden;
   position: relative;
-}
-.outline-toggle {
-  position: absolute;
-  top: calc(var(--tabbar-h, 34px) + 6px);
-  left: 6px;
-  z-index: 10;
-  padding: 4px 6px;
-  border-radius: 4px;
-  color: var(--text-faint);
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  opacity: 0;
-  transition: opacity 0.15s;
-  cursor: pointer;
-}
-.outline-toggle:hover {
-  opacity: 1 !important;
-  color: var(--text-muted);
-}
-.content:hover > .outline-toggle {
-  opacity: 0.5;
 }
 </style>
