@@ -434,6 +434,7 @@ pub fn run_with(initial_file: Option<String>) {
             ai_proxy::ai_has_key,
             ai_proxy::ai_clear_key,
             ai_proxy::ai_rewrite,
+            ai_proxy::ai_chat,
             ai_proxy::ai_cancel,
             ai_proxy::ai_verify_key,
             pandoc::pandoc_detect,

@@ -3,15 +3,18 @@
  * v4.0 pillar 1 — Inline Agent Panel.
  *
  * Right-side first-class panel: chat-with-vault routed through the existing
- * AI provider stack and (eventually) the MCP tool surface. This skeleton
- * commit ships the UI shell + empty/disabled states + Pinia store wiring.
- * AI streaming, MCP tool calls, citation parsing, and per-run persistence
- * land in subsequent commits on `feat/v4-panel`.
+ * 14-provider AI stack via the `ai_chat` Tauri command. This commit lights
+ * up the multi-turn chat loop (input → streamed reply → history). MCP tool
+ * calls, [[citation]] parsing, and per-run persistence land in subsequent
+ * commits on `feat/v4-panel`.
  */
-import { computed } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { invoke } from '@tauri-apps/api/core';
+import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useSettingsStore } from '../stores/settings';
 import { useAgentPanelStore } from '../stores/agentPanel';
+import { providerById, type ProviderId } from '../lib/ai-providers';
 import { useI18n } from '../i18n';
 
 const emit = defineEmits<{
@@ -23,6 +26,19 @@ const settings = useSettingsStore();
 const agent = useAgentPanelStore();
 const { t } = useI18n();
 
+const draft = ref('');
+const errorMsg = ref<string | null>(null);
+const messagesRef = ref<HTMLUListElement | null>(null);
+const inputRef = ref<HTMLTextAreaElement | null>(null);
+
+/**
+ * Default system prompt the panel injects before each chat. Kept generic
+ * here; the next commit on `feat/v4-panel` adds vault-aware context (RAG
+ * snippets + active note path) before the user's message.
+ */
+const SYSTEM_PROMPT =
+  'You are a helpful writing and research assistant inside SoloMD, a local-first markdown editor. The user is chatting with you about their notes. Be concise and accurate. Use markdown formatting in replies when helpful. If the user asks about specific notes you have not been shown, ask which note they mean rather than fabricating content.';
+
 const hasFolder = computed(() => !!workspace.currentFolder);
 const aiConfigured = computed(() => settings.aiEnabled);
 
@@ -33,9 +49,142 @@ const stateKey = computed<StateKey>(() => {
   return 'ready';
 });
 
+const canSend = computed(() => draft.value.trim().length > 0 && !agent.isStreaming);
+
 function onOpenAiSettings() {
   emit('open-settings', 'integrations');
 }
+
+function autoscroll() {
+  void nextTick(() => {
+    const el = messagesRef.value;
+    if (el) el.scrollTop = el.scrollHeight;
+  });
+}
+
+async function send() {
+  const prompt = draft.value.trim();
+  if (!prompt || agent.isStreaming) return;
+  errorMsg.value = null;
+
+  // Push user message + empty assistant placeholder. Chunks stream into the
+  // placeholder via the `solomd://ai-chunk` listener below.
+  agent.addMessage({ role: 'user', content: prompt });
+  agent.addMessage({ role: 'assistant', content: '' });
+  draft.value = '';
+  autoscroll();
+
+  const cfg = providerById(settings.aiProvider as ProviderId);
+  const apiFormat = cfg?.apiFormat || 'openai';
+  const model = settings.aiModel || cfg?.defaultModel || '';
+  const baseUrl = settings.aiBaseUrl || cfg?.defaultBaseUrl || null;
+
+  // Compose conversation: system + history (excluding the empty placeholder).
+  const history = agent.messages
+    .slice(0, -1)
+    .filter((m) => m.role === 'user' || m.role === 'assistant')
+    .map((m) => ({ role: m.role, content: m.content }));
+
+  const messages = [
+    { role: 'system', content: SYSTEM_PROMPT },
+    ...history,
+  ];
+
+  agent.isStreaming = true;
+  try {
+    const requestId = await invoke<string>('ai_chat', {
+      request: {
+        provider: settings.aiProvider,
+        api_format: apiFormat,
+        model,
+        messages,
+        base_url: baseUrl,
+      },
+    });
+    agent.currentRunId = requestId;
+  } catch (err) {
+    agent.isStreaming = false;
+    agent.currentRunId = null;
+    errorMsg.value = String(err);
+    // Drop the empty placeholder when the request never reached the wire.
+    const last = agent.messages[agent.messages.length - 1];
+    if (last && last.role === 'assistant' && last.content === '') {
+      agent.messages.pop();
+    }
+  }
+}
+
+async function stop() {
+  const id = agent.currentRunId;
+  if (id) {
+    try {
+      await invoke('ai_cancel', { requestId: id });
+    } catch {
+      /* best-effort */
+    }
+  }
+  agent.isStreaming = false;
+  agent.currentRunId = null;
+}
+
+function onKeydown(e: KeyboardEvent) {
+  // Enter sends; Shift+Enter inserts newline. Cmd/Ctrl+Enter also sends
+  // (mirrors the AI rewrite overlay convention) for single-key power users.
+  if (e.key === 'Enter') {
+    const wantsSend = !e.shiftKey || e.metaKey || e.ctrlKey;
+    if (wantsSend && canSend.value) {
+      e.preventDefault();
+      void send();
+    }
+  }
+}
+
+// --- Streaming event listeners ------------------------------------------
+let unlistenChunk: UnlistenFn | null = null;
+let unlistenDone: UnlistenFn | null = null;
+let unlistenError: UnlistenFn | null = null;
+
+onMounted(async () => {
+  unlistenChunk = await listen<{ request_id: string; chunk: string }>(
+    'solomd://ai-chunk',
+    (e) => {
+      if (!agent.currentRunId || e.payload.request_id !== agent.currentRunId) return;
+      agent.appendToLastAssistant(e.payload.chunk);
+      autoscroll();
+    },
+  );
+  unlistenDone = await listen<{ request_id: string; full_text: string }>(
+    'solomd://ai-done',
+    (e) => {
+      if (!agent.currentRunId || e.payload.request_id !== agent.currentRunId) return;
+      agent.isStreaming = false;
+      agent.currentRunId = null;
+    },
+  );
+  unlistenError = await listen<{ request_id: string; error: string }>(
+    'solomd://ai-error',
+    (e) => {
+      if (!agent.currentRunId || e.payload.request_id !== agent.currentRunId) return;
+      agent.isStreaming = false;
+      agent.currentRunId = null;
+      if (e.payload.error !== 'cancelled') {
+        errorMsg.value = e.payload.error;
+      }
+    },
+  );
+});
+
+onBeforeUnmount(() => {
+  unlistenChunk?.();
+  unlistenDone?.();
+  unlistenError?.();
+  unlistenChunk = unlistenDone = unlistenError = null;
+});
+
+// Reset transient error when the panel falls out of `ready` state.
+watch(stateKey, (k) => {
+  if (k !== 'ready') errorMsg.value = null;
+});
 </script>
 
 <template>
@@ -67,31 +216,61 @@ function onOpenAiSettings() {
     </div>
 
     <template v-else>
-      <ul v-if="agent.messages.length" class="agent-panel__messages">
+      <ul ref="messagesRef" v-if="agent.messages.length" class="agent-panel__messages">
         <li
-          v-for="m in agent.messages"
+          v-for="(m, i) in agent.messages"
           :key="m.id"
           class="agent-panel__msg"
           :class="`agent-panel__msg--${m.role}`"
         >
           <div class="agent-panel__msg-role">{{ m.role }}</div>
-          <div class="agent-panel__msg-body">{{ m.content }}</div>
+          <div class="agent-panel__msg-body">
+            <span>{{ m.content }}</span>
+            <span
+              v-if="m.role === 'assistant' && agent.isStreaming && i === agent.messages.length - 1"
+              class="agent-panel__cursor"
+              aria-hidden="true"
+            >▌</span>
+          </div>
         </li>
       </ul>
       <div v-else class="agent-panel__empty">
         {{ t('agent.empty.ready') }}
       </div>
 
+      <div v-if="errorMsg" class="agent-panel__error">{{ errorMsg }}</div>
+
       <footer class="agent-panel__compose">
         <textarea
+          ref="inputRef"
+          v-model="draft"
           class="agent-panel__input"
           :placeholder="t('agent.placeholder')"
           rows="2"
-          disabled
-          aria-disabled="true"
+          @keydown="onKeydown"
         ></textarea>
         <div class="agent-panel__compose-foot">
-          <span class="agent-panel__compose-hint">{{ t('agent.streamingComingSoon') }}</span>
+          <span class="agent-panel__compose-hint">
+            <template v-if="agent.isStreaming">{{ t('agent.streaming') }}</template>
+            <template v-else>{{ t('agent.enterToSend') }}</template>
+          </span>
+          <button
+            v-if="agent.isStreaming"
+            class="agent-panel__send agent-panel__send--stop"
+            type="button"
+            @click="stop"
+          >
+            {{ t('agent.stop') }}
+          </button>
+          <button
+            v-else
+            class="agent-panel__send"
+            type="button"
+            :disabled="!canSend"
+            @click="send"
+          >
+            {{ t('agent.send') }}
+          </button>
         </div>
       </footer>
     </template>
@@ -226,8 +405,61 @@ function onOpenAiSettings() {
 }
 .agent-panel__compose-foot {
   margin-top: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   font-size: 11px;
   color: var(--text-muted);
+}
+.agent-panel__compose-hint {
   font-style: italic;
+}
+.agent-panel__send {
+  background: var(--accent, #ff9f40);
+  border: 1px solid var(--accent, #ff9f40);
+  color: white;
+  border-radius: 6px;
+  padding: 4px 14px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  line-height: 1.4;
+}
+.agent-panel__send:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.agent-panel__send:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+.agent-panel__send--stop {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--border);
+}
+.agent-panel__send--stop:hover {
+  background: var(--bg-elev);
+}
+.agent-panel__cursor {
+  display: inline-block;
+  margin-left: 1px;
+  color: var(--accent, #ff9f40);
+  animation: agent-panel-blink 1s steps(2, start) infinite;
+}
+@keyframes agent-panel-blink {
+  to { visibility: hidden; }
+}
+.agent-panel__error {
+  margin: 0 12px 10px;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: #dc2626;
+  background: rgba(220, 38, 38, 0.08);
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  border-radius: 6px;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 </style>

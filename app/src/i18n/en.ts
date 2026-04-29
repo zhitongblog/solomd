@@ -821,7 +821,10 @@ export const en = {
       ready: 'Ask anything about your vault.',
     },
     placeholder: 'Message the agent…',
-    streamingComingSoon: 'Streaming + tool calls arrive in the next commit.',
+    enterToSend: 'Enter to send · Shift+Enter for newline',
+    streaming: 'Generating reply…',
+    send: 'Send',
+    stop: 'Stop',
     clearTitle: 'Clear chat',
   },
 };

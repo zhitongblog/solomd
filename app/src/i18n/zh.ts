@@ -810,7 +810,10 @@ export const zh: I18n = {
       ready: '想问什么都可以，关于你的笔记库。',
     },
     placeholder: '与智能体对话…',
-    streamingComingSoon: '流式响应与工具调用将在下一次提交中加入。',
+    enterToSend: 'Enter 发送 · Shift+Enter 换行',
+    streaming: '生成回复中…',
+    send: '发送',
+    stop: '停止',
     clearTitle: '清空对话',
   },
 };

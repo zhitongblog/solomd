@@ -61,6 +61,32 @@ pub struct RewriteRequest {
     pub base_url: Option<String>,
 }
 
+/// v4.0 pillar 1 — Inline Agent Panel chat message.
+///
+/// Roles follow the OpenAI chat convention: `system` / `user` / `assistant`.
+/// Tool messages are not yet routed through this struct; tool-call rendering
+/// is handled UI-side until the multi-step agent loop lands in a later
+/// commit on `feat/v4-panel`.
+#[derive(Debug, Clone, Deserialize)]
+pub struct ChatMessage {
+    pub role: String,
+    pub content: String,
+}
+
+/// Multi-turn chat request. Same provider/model/base_url plumbing as
+/// `RewriteRequest` but takes a full `messages` array — the caller is
+/// responsible for assembling history + system prompt.
+#[derive(Debug, Clone, Deserialize)]
+pub struct ChatRequest {
+    pub provider: String,
+    #[serde(default)]
+    pub api_format: Option<String>,
+    pub model: String,
+    pub messages: Vec<ChatMessage>,
+    #[serde(default)]
+    pub base_url: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 struct ChunkEvent {
     request_id: String,
@@ -287,6 +313,73 @@ pub fn ai_cancel(request_id: String) -> Result<(), String> {
 // Streaming entrypoint
 // ---------------------------------------------------------------------------
 
+/// v4.0 pillar 1 — multi-turn chat streaming entrypoint.
+///
+/// Same wire as `ai_rewrite` (returns a request id; events are emitted on
+/// `solomd://ai-chunk` / `-done` / `-error`), but takes a `messages` array
+/// instead of a system+user+selection triple. Used by the Inline Agent
+/// Panel.
+#[tauri::command]
+pub async fn ai_chat(app: AppHandle, request: ChatRequest) -> Result<String, String> {
+    let request_id = make_request_id();
+    let cancel = register_cancel_flag(&request_id);
+
+    let format = request
+        .api_format
+        .clone()
+        .unwrap_or_else(|| request.provider.clone());
+
+    let api_key = if format == "ollama" {
+        String::new()
+    } else {
+        match read_key(&request.provider) {
+            Ok(k) => k,
+            Err(e) => {
+                drop_cancel_flag(&request_id);
+                return Err(e);
+            }
+        }
+    };
+
+    let id_for_task = request_id.clone();
+    tauri::async_runtime::spawn(async move {
+        let result = match format.as_str() {
+            "openai" => {
+                run_chat_openai(&app, &id_for_task, &request, &api_key, cancel.clone()).await
+            }
+            "anthropic" => {
+                run_chat_anthropic(&app, &id_for_task, &request, &api_key, cancel.clone()).await
+            }
+            "ollama" => run_chat_ollama(&app, &id_for_task, &request, cancel.clone()).await,
+            other => Err(format!("unknown api_format: {other}")),
+        };
+
+        match result {
+            Ok(full_text) => {
+                let _ = app.emit(
+                    "solomd://ai-done",
+                    DoneEvent {
+                        request_id: id_for_task.clone(),
+                        full_text,
+                    },
+                );
+            }
+            Err(err) => {
+                let _ = app.emit(
+                    "solomd://ai-error",
+                    ErrorEvent {
+                        request_id: id_for_task.clone(),
+                        error: err,
+                    },
+                );
+            }
+        }
+        drop_cancel_flag(&id_for_task);
+    });
+
+    Ok(request_id)
+}
+
 /// Kicks off a streaming AI rewrite. Returns the synthetic request id; the
 /// caller listens for `solomd://ai-chunk`, `solomd://ai-done`, and
 /// `solomd://ai-error` events filtered by that id.
@@ -482,6 +575,98 @@ async fn run_openai(
     Ok(full)
 }
 
+async fn run_chat_openai(
+    app: &AppHandle,
+    request_id: &str,
+    req: &ChatRequest,
+    api_key: &str,
+    cancel: Arc<AtomicBool>,
+) -> Result<String, String> {
+    let base = req
+        .base_url
+        .as_ref()
+        .map(|s| s.trim_end_matches('/').to_string())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "https://api.openai.com/v1".to_string());
+    let url = format!("{base}/chat/completions");
+
+    let messages_json: Vec<serde_json::Value> = req
+        .messages
+        .iter()
+        .map(|m| serde_json::json!({"role": m.role, "content": m.content}))
+        .collect();
+
+    let body = serde_json::json!({
+        "model": req.model,
+        "stream": true,
+        "messages": messages_json,
+    });
+
+    let client = http_client()?;
+    let resp = client
+        .post(&url)
+        .bearer_auth(api_key)
+        .header("content-type", "application/json")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("openai request failed: {e}"))?;
+
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let txt = resp.text().await.unwrap_or_default();
+        return Err(format!("openai {status}: {txt}"));
+    }
+
+    let mut full = String::new();
+    let mut buf = String::new();
+    let mut stream = resp.bytes_stream();
+    while let Some(chunk) = stream.next().await {
+        if cancel.load(Ordering::SeqCst) {
+            return Err(cancelled());
+        }
+        let bytes = chunk.map_err(|e| format!("openai stream error: {e}"))?;
+        buf.push_str(&String::from_utf8_lossy(&bytes));
+        while let Some(idx) = find_event_boundary(&buf) {
+            let event = buf[..idx].to_string();
+            let after = if buf[idx..].starts_with("\r\n\r\n") {
+                idx + 4
+            } else {
+                idx + 2
+            };
+            buf = buf[after..].to_string();
+
+            for line in event.lines() {
+                let line = line.trim_start();
+                let payload = match line.strip_prefix("data:") {
+                    Some(p) => p.trim(),
+                    None => continue,
+                };
+                if payload == "[DONE]" {
+                    return Ok(full);
+                }
+                let json: serde_json::Value = match serde_json::from_str(payload) {
+                    Ok(v) => v,
+                    Err(_) => continue,
+                };
+                if let Some(content) = json
+                    .get("choices")
+                    .and_then(|c| c.get(0))
+                    .and_then(|c| c.get("delta"))
+                    .and_then(|d| d.get("content"))
+                    .and_then(|s| s.as_str())
+                {
+                    if !content.is_empty() {
+                        full.push_str(content);
+                        emit_chunk(app, request_id, content);
+                    }
+                }
+            }
+        }
+    }
+    Ok(full)
+}
+
 // --- Anthropic --------------------------------------------------------------
 
 async fn run_anthropic(
@@ -589,6 +774,125 @@ async fn run_anthropic(
     Ok(full)
 }
 
+async fn run_chat_anthropic(
+    app: &AppHandle,
+    request_id: &str,
+    req: &ChatRequest,
+    api_key: &str,
+    cancel: Arc<AtomicBool>,
+) -> Result<String, String> {
+    let base = req
+        .base_url
+        .as_ref()
+        .map(|s| s.trim_end_matches('/').to_string())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "https://api.anthropic.com".to_string());
+    let url = format!("{base}/v1/messages");
+
+    // Anthropic separates `system` from `messages`. Pull every system-role
+    // message out of the chat history into a single concatenated system
+    // string; everything else stays in `messages`. (Adjacent user / assistant
+    // alternation is the caller's responsibility.)
+    let system_str = req
+        .messages
+        .iter()
+        .filter(|m| m.role == "system")
+        .map(|m| m.content.clone())
+        .collect::<Vec<_>>()
+        .join("\n\n");
+    let chat_msgs: Vec<serde_json::Value> = req
+        .messages
+        .iter()
+        .filter(|m| m.role != "system")
+        .map(|m| serde_json::json!({"role": m.role, "content": m.content}))
+        .collect();
+
+    let body = serde_json::json!({
+        "model": req.model,
+        "system": system_str,
+        "messages": chat_msgs,
+        "stream": true,
+        "max_tokens": 4096,
+    });
+
+    let client = http_client()?;
+    let resp = client
+        .post(&url)
+        .header("x-api-key", api_key)
+        .header("anthropic-version", "2023-06-01")
+        .header("content-type", "application/json")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("anthropic request failed: {e}"))?;
+
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let txt = resp.text().await.unwrap_or_default();
+        return Err(format!("anthropic {status}: {txt}"));
+    }
+
+    let mut full = String::new();
+    let mut buf = String::new();
+    let mut stream = resp.bytes_stream();
+    while let Some(chunk) = stream.next().await {
+        if cancel.load(Ordering::SeqCst) {
+            return Err(cancelled());
+        }
+        let bytes = chunk.map_err(|e| format!("anthropic stream error: {e}"))?;
+        buf.push_str(&String::from_utf8_lossy(&bytes));
+        while let Some(idx) = find_event_boundary(&buf) {
+            let event = buf[..idx].to_string();
+            let after = if buf[idx..].starts_with("\r\n\r\n") {
+                idx + 4
+            } else {
+                idx + 2
+            };
+            buf = buf[after..].to_string();
+
+            for line in event.lines() {
+                let line = line.trim_start();
+                let payload = match line.strip_prefix("data:") {
+                    Some(p) => p.trim(),
+                    None => continue,
+                };
+                let json: serde_json::Value = match serde_json::from_str(payload) {
+                    Ok(v) => v,
+                    Err(_) => continue,
+                };
+                let kind = json.get("type").and_then(|t| t.as_str()).unwrap_or("");
+                match kind {
+                    "content_block_delta" => {
+                        if let Some(text) = json
+                            .get("delta")
+                            .and_then(|d| d.get("text"))
+                            .and_then(|s| s.as_str())
+                        {
+                            if !text.is_empty() {
+                                full.push_str(text);
+                                emit_chunk(app, request_id, text);
+                            }
+                        }
+                    }
+                    "message_stop" => {
+                        return Ok(full);
+                    }
+                    "error" => {
+                        let msg = json
+                            .get("error")
+                            .and_then(|e| e.get("message"))
+                            .and_then(|s| s.as_str())
+                            .unwrap_or("anthropic stream error");
+                        return Err(msg.to_string());
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+    Ok(full)
+}
+
 // --- Ollama -----------------------------------------------------------------
 
 async fn run_ollama(
@@ -639,6 +943,87 @@ async fn run_ollama(
         let bytes = chunk.map_err(|e| format!("ollama stream error: {e}"))?;
         buf.push_str(&String::from_utf8_lossy(&bytes));
         // Ollama emits one JSON object per line.
+        while let Some(nl) = buf.find('\n') {
+            let line = buf[..nl].trim().to_string();
+            buf = buf[nl + 1..].to_string();
+            if line.is_empty() {
+                continue;
+            }
+            let json: serde_json::Value = match serde_json::from_str(&line) {
+                Ok(v) => v,
+                Err(_) => continue,
+            };
+            if let Some(content) = json
+                .get("message")
+                .and_then(|m| m.get("content"))
+                .and_then(|s| s.as_str())
+            {
+                if !content.is_empty() {
+                    full.push_str(content);
+                    emit_chunk(app, request_id, content);
+                }
+            }
+            if json.get("done").and_then(|b| b.as_bool()).unwrap_or(false) {
+                return Ok(full);
+            }
+            if let Some(err) = json.get("error").and_then(|s| s.as_str()) {
+                return Err(format!("ollama: {err}"));
+            }
+        }
+    }
+    Ok(full)
+}
+
+async fn run_chat_ollama(
+    app: &AppHandle,
+    request_id: &str,
+    req: &ChatRequest,
+    cancel: Arc<AtomicBool>,
+) -> Result<String, String> {
+    let base = req
+        .base_url
+        .as_ref()
+        .map(|s| s.trim_end_matches('/').to_string())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "http://localhost:11434".to_string());
+    let url = format!("{base}/api/chat");
+
+    let messages_json: Vec<serde_json::Value> = req
+        .messages
+        .iter()
+        .map(|m| serde_json::json!({"role": m.role, "content": m.content}))
+        .collect();
+
+    let body = serde_json::json!({
+        "model": req.model,
+        "stream": true,
+        "messages": messages_json,
+    });
+
+    let client = http_client()?;
+    let resp = client
+        .post(&url)
+        .header("content-type", "application/json")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("ollama request failed: {e}"))?;
+
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let txt = resp.text().await.unwrap_or_default();
+        return Err(format!("ollama {status}: {txt}"));
+    }
+
+    let mut full = String::new();
+    let mut buf = String::new();
+    let mut stream = resp.bytes_stream();
+    while let Some(chunk) = stream.next().await {
+        if cancel.load(Ordering::SeqCst) {
+            return Err(cancelled());
+        }
+        let bytes = chunk.map_err(|e| format!("ollama stream error: {e}"))?;
+        buf.push_str(&String::from_utf8_lossy(&bytes));
         while let Some(nl) = buf.find('\n') {
             let line = buf[..nl].trim().to_string();
             buf = buf[nl + 1..].to_string();
