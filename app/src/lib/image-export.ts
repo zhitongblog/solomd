@@ -25,7 +25,14 @@ const IMAGE_CSS = `
   body { margin: 0; }
   .img-page {
     box-sizing: border-box;
-    width: 800px;
+    /* Width adapts to content: shrink for short notes, cap at 800px
+       so long prose still wraps cleanly. min-width keeps the card
+       from collapsing to a sliver on a single-word note. v3.6.x
+       used a fixed 800px which made every export the same width
+       regardless of content. */
+    width: fit-content;
+    max-width: 800px;
+    min-width: 480px;
     /* Bottom padding is set per-export based on whether the SoloMD
        footer is rendered. With the footer, 56px gives the watermark
        breathing room from the content above. Without it, 36px keeps
