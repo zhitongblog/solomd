@@ -815,5 +815,7 @@ export const zh: I18n = {
     send: '发送',
     stop: '停止',
     clearTitle: '清空对话',
+    includeNote: '当前笔记',
+    includeNoteTitle: '把当前笔记的内容一起作为上下文发送',
   },
 };

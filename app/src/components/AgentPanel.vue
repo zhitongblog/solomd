@@ -35,6 +35,28 @@ const errorMsg = ref<string | null>(null);
 const messagesRef = ref<HTMLUListElement | null>(null);
 const inputRef = ref<HTMLTextAreaElement | null>(null);
 
+/** Toggle: include the active note's content as additional context on each
+ *  send. Persisted across sessions in localStorage. Off by default — costs
+ *  tokens, and not every chat is about the active doc. */
+const INCLUDE_ACTIVE_NOTE_KEY = 'solomd:agent-include-active-note';
+const includeActiveNote = ref(false);
+try {
+  includeActiveNote.value = localStorage.getItem(INCLUDE_ACTIVE_NOTE_KEY) === '1';
+} catch {
+  /* localStorage unavailable — defaults to false */
+}
+watch(includeActiveNote, (v) => {
+  try {
+    localStorage.setItem(INCLUDE_ACTIVE_NOTE_KEY, v ? '1' : '0');
+  } catch {
+    /* best-effort */
+  }
+});
+
+/** Per-message ceiling for active-note injection. 8 KB ≈ ~2k tokens, which
+ *  keeps the prompt reasonable on small-context models. */
+const ACTIVE_NOTE_CHAR_LIMIT = 8192;
+
 /**
  * Default system prompt the panel injects before each chat. Kept generic
  * here; the next commit on `feat/v4-panel` adds vault-aware context (RAG
@@ -63,6 +85,26 @@ function buildVaultContext(): string {
     lines.push(`Workspace contains ${noteCount} indexed note${noteCount === 1 ? '' : 's'}.`);
   }
   return lines.join('\n');
+}
+
+/**
+ * Active-note context block — opt-in via the panel header toggle. Returns an
+ * empty string if the toggle is off, no folder is open, no active markdown
+ * tab, or the tab is unsaved/empty. Truncates to ACTIVE_NOTE_CHAR_LIMIT to
+ * keep prompts bounded.
+ */
+function buildActiveNoteContext(): string {
+  if (!includeActiveNote.value) return '';
+  const tab = tabs.activeTab;
+  if (!tab || tab.language !== 'markdown') return '';
+  const content = (tab.content || '').trim();
+  if (!content) return '';
+  const truncated =
+    content.length > ACTIVE_NOTE_CHAR_LIMIT
+      ? content.slice(0, ACTIVE_NOTE_CHAR_LIMIT) + '\n…(truncated)'
+      : content;
+  const path = tab.filePath || tab.fileName || '(untitled)';
+  return `Active note content (${path}):\n\`\`\`markdown\n${truncated}\n\`\`\``;
 }
 
 const hasFolder = computed(() => !!workspace.currentFolder);
@@ -112,9 +154,12 @@ async function send() {
     .map((m) => ({ role: m.role, content: m.content }));
 
   const ctx = buildVaultContext();
-  const systemContent = ctx ? `${SYSTEM_PROMPT}\n\n${ctx}` : SYSTEM_PROMPT;
+  const noteCtx = buildActiveNoteContext();
+  const systemParts = [SYSTEM_PROMPT];
+  if (ctx) systemParts.push(ctx);
+  if (noteCtx) systemParts.push(noteCtx);
   const messages = [
-    { role: 'system', content: systemContent },
+    { role: 'system', content: systemParts.join('\n\n') },
     ...history,
   ];
 
@@ -221,6 +266,17 @@ watch(stateKey, (k) => {
       <span class="agent-panel__title">{{ t('agent.heading') }}</span>
       <span class="agent-panel__beta">BETA</span>
       <span class="agent-panel__spacer" />
+      <button
+        v-if="stateKey === 'ready'"
+        class="agent-panel__chip"
+        :class="{ 'agent-panel__chip--on': includeActiveNote }"
+        type="button"
+        :title="t('agent.includeNoteTitle')"
+        @click="includeActiveNote = !includeActiveNote"
+      >
+        <span class="agent-panel__chip-dot" :class="{ 'agent-panel__chip-dot--on': includeActiveNote }" />
+        {{ t('agent.includeNote') }}
+      </button>
       <button
         v-if="agent.messages.length"
         class="agent-panel__icon-btn"
@@ -355,6 +411,40 @@ watch(stateKey, (k) => {
 .agent-panel__icon-btn:hover {
   background: var(--bg-elev);
   color: var(--text);
+}
+.agent-panel__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 999px;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+}
+.agent-panel__chip:hover {
+  background: var(--bg-elev);
+  color: var(--text);
+}
+.agent-panel__chip--on {
+  background: rgba(255, 159, 64, 0.12);
+  border-color: var(--accent, #ff9f40);
+  color: var(--accent, #ff9f40);
+}
+.agent-panel__chip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-faint, #888);
+  flex-shrink: 0;
+}
+.agent-panel__chip-dot--on {
+  background: var(--accent, #ff9f40);
 }
 .agent-panel__empty {
   padding: 20px 16px;

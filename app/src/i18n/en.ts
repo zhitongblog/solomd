@@ -826,6 +826,8 @@ export const en = {
     send: 'Send',
     stop: 'Stop',
     clearTitle: 'Clear chat',
+    includeNote: 'Active note',
+    includeNoteTitle: 'Include the active note\'s content as context for the next message',
   },
 };
 
