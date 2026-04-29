@@ -9,7 +9,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v3.5 · MIT · Cross-platform',
+      badge: 'v3.6 · MIT · Cross-platform',
       title1: 'A markdown editor.',
       title2: 'And the bridge to your LLM.',
       subtagline: 'Your notes live in a folder. SoloMD is the editor on top — and the MCP endpoint Claude Code, Codex, and Cursor can drive directly.',
@@ -319,7 +319,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v3.5 · MIT 协议 · 跨平台',
+      badge: 'v3.6 · MIT 协议 · 跨平台',
       title1: '一个 Markdown 编辑器,',
       title2: '也是连接 LLM 的桥。',
       subtagline: '你的笔记是一个文件夹。SoloMD 既是上面的编辑器,也是 Claude Code / Codex / Cursor 直接能接的 MCP 端点。',
