@@ -363,111 +363,108 @@ export const zh: I18n = {
     },
     mcpWriteNote:
       'write_note 与 append_to_note 默认关闭，需通过 --allow-write 启用。',
-    // ---- v4.0 P4 federation: MCP profiles (TODO(zh) — bulk translate
-    // after the v4.0 merge per the cross-pillar contract C8). -----------
-    profilesHeading: 'MCP profiles', // TODO(zh)
+    // ---- v4.0 P4 联邦：MCP 配置档 ----
+    profilesHeading: 'MCP 配置档',
     profilesIntro:
-      'Bundle multiple workspaces under a single solomd-mcp instance, then copy a ready-to-paste Claude Desktop config block. Each profile lists the workspaces (alias + path) the MCP server will expose; the first entry is the default — tool calls without an explicit `workspace` argument fall through to it.', // TODO(zh)
-    profilesEmpty: 'No profiles yet.', // TODO(zh)
-    profilesCreate: 'New profile', // TODO(zh)
-    profilesDuplicate: 'Duplicate', // TODO(zh)
-    profilesDelete: 'Delete', // TODO(zh)
-    profilesRename: 'Rename', // TODO(zh)
-    profilesNameLabel: 'Profile name', // TODO(zh)
-    profilesAllowWrite: 'Allow write (passes --allow-write)', // TODO(zh)
+      '把多个 workspace 打包到同一个 solomd-mcp 实例下，并一键复制可直接粘贴的 Claude Desktop 配置。每个配置档列出 MCP 服务器要暴露的 workspace（别名 + 路径）；第一项是默认值——工具调用没有显式指定 `workspace` 参数时会落到它上面。',
+    profilesEmpty: '暂无配置档。',
+    profilesCreate: '新建配置档',
+    profilesDuplicate: '复制',
+    profilesDelete: '删除',
+    profilesRename: '重命名',
+    profilesNameLabel: '配置档名称',
+    profilesAllowWrite: '允许写入（传入 --allow-write）',
     profilesAllowWriteHint:
-      'Off by default. Turn on only if you want the MCP client to modify notes.', // TODO(zh)
-    profilesEntriesHeading: 'Workspaces (first one is the default)', // TODO(zh)
-    profilesAddEntry: 'Add workspace', // TODO(zh)
-    profilesRemoveEntry: 'Remove', // TODO(zh)
-    profilesMoveUp: 'Move up', // TODO(zh)
-    profilesMoveDown: 'Move down', // TODO(zh)
-    profilesAliasLabel: 'Alias', // TODO(zh)
-    profilesAliasPlaceholder: 'e.g. work', // TODO(zh)
-    profilesPathLabel: 'Path', // TODO(zh)
-    profilesPathPlaceholder: '/Users/me/Documents/Notes', // TODO(zh)
-    profilesPickPath: 'Browse…', // TODO(zh)
-    profilesUseCurrentWorkspace: 'Use currently open folder', // TODO(zh)
-    profilesSave: 'Save', // TODO(zh)
-    profilesSaved: 'Profile saved.', // TODO(zh)
-    profilesDeleteConfirm: 'Delete profile "{name}"?', // TODO(zh)
-    profilesCopyConfigBtn: 'Copy Claude Desktop config', // TODO(zh)
-    profilesCopiedToast: 'Claude Desktop config copied to clipboard.', // TODO(zh)
-    profilesValidationFailed: 'Cannot save: {msg}', // TODO(zh)
-    profilesNamePlaceholder: 'work-and-home', // TODO(zh)
-    profilesNewProfileDefault: 'New profile', // TODO(zh)
+      '默认关闭。仅在希望 MCP 客户端修改笔记时打开。',
+    profilesEntriesHeading: 'Workspace（第一项为默认）',
+    profilesAddEntry: '添加 workspace',
+    profilesRemoveEntry: '移除',
+    profilesMoveUp: '上移',
+    profilesMoveDown: '下移',
+    profilesAliasLabel: '别名',
+    profilesAliasPlaceholder: '例如 work',
+    profilesPathLabel: '路径',
+    profilesPathPlaceholder: '/Users/me/Documents/Notes',
+    profilesPickPath: '浏览…',
+    profilesUseCurrentWorkspace: '使用当前打开的文件夹',
+    profilesSave: '保存',
+    profilesSaved: '配置档已保存。',
+    profilesDeleteConfirm: '删除配置档「{name}」？',
+    profilesCopyConfigBtn: '复制 Claude Desktop 配置',
+    profilesCopiedToast: '已复制 Claude Desktop 配置到剪贴板。',
+    profilesValidationFailed: '无法保存：{msg}',
+    profilesNamePlaceholder: 'work-and-home',
+    profilesNewProfileDefault: '新建配置档',
     profilesNoMcpBinary:
-      'solomd-mcp not bundled in this dev build — the snippet uses a placeholder path.', // TODO(zh)
+      '此 dev 构建未打包 solomd-mcp——配置片段中用占位路径代替。',
   },
-  // v4.0 Pillar 2 — Agent Recipes. English values for now; bulk zh
-  // translation lands after merge per C8.
-  // TODO(zh): translate these recipe panel strings.
+  // v4.0 Pillar 2 — Agent 食谱
   recipes: {
-    heading: 'Agent recipes',
+    heading: 'Agent 食谱',
     intro:
-      'Declarative agent jobs as YAML in your vault under .solomd/agents/. They run on a cron schedule, on save, on commit, on tag-add, or manually.',
-    openWorkspace: 'Open a folder first — recipes live inside the vault.',
-    list: 'Recipes',
-    listEmpty: 'No recipes yet. Click "New recipe" to create one.',
-    pendingHeading: 'Pending review',
+      '声明式 agent 任务，以 YAML 形式存放在 vault 的 .solomd/agents/ 下。可按 cron 定时、保存时、提交时、添加标签时或手动触发。',
+    openWorkspace: '请先打开一个文件夹——食谱存放于 vault 内。',
+    list: '食谱',
+    listEmpty: '暂无食谱。点击「新建食谱」创建一条。',
+    pendingHeading: '待审核',
     pendingHint:
-      'Each agent run lands on its own AutoGit branch. Review the diff, then Accept (merge to main) or Reject (delete the branch).',
-    pendingEmpty: 'No runs pending review.',
-    historyHeading: 'History',
-    historyEmpty: 'No runs yet.',
-    btnNew: 'New recipe',
-    btnRunNow: 'Run now',
-    btnEditYaml: 'Edit YAML',
-    btnDelete: 'Delete',
-    btnAccept: 'Accept (merge to main)',
-    btnReject: 'Reject (delete branch)',
-    btnViewDiff: 'View diff',
-    btnViewTrace: 'View trace',
-    btnViewRunMd: 'View transcript',
-    triggerSchedule: 'Schedule',
-    triggerOnSave: 'On save',
-    triggerOnCommit: 'On commit',
-    triggerOnTagAdd: 'On tag add',
-    triggerManual: 'Manual',
-    badgeAllowWrite: 'allow-write',
-    badgeWriteCap: 'write-cap {n}',
-    fieldName: 'Name',
-    fieldTrigger: 'Trigger',
-    fieldSchedule: 'Schedule (cron)',
-    fieldMatch: 'Match (glob)',
-    fieldTag: 'Tag',
-    fieldPrompt: 'Prompt',
-    fieldProvider: 'Provider',
-    fieldModel: 'Model',
-    fieldAllowWrite: 'Allow write',
-    fieldWriteCap: 'Write cap',
-    runStartedAt: 'Started {date}',
-    runStatusOk: 'OK · awaiting review',
-    runStatusAccepted: 'Accepted',
-    runStatusRejected: 'Rejected',
-    runStatusError: 'Error',
-    runStatusRunning: 'Running…',
-    runStatusCancelled: 'Cancelled',
+      '每次 agent 运行都落在独立的 AutoGit 分支上。查看 diff 后选择「采纳」（合并到 main）或「拒绝」（删除分支）。',
+    pendingEmpty: '没有待审核的运行。',
+    historyHeading: '历史',
+    historyEmpty: '暂无运行记录。',
+    btnNew: '新建食谱',
+    btnRunNow: '立即运行',
+    btnEditYaml: '编辑 YAML',
+    btnDelete: '删除',
+    btnAccept: '采纳（合并到 main）',
+    btnReject: '拒绝（删除分支）',
+    btnViewDiff: '查看 diff',
+    btnViewTrace: '查看 trace',
+    btnViewRunMd: '查看记录',
+    triggerSchedule: '定时',
+    triggerOnSave: '保存时',
+    triggerOnCommit: '提交时',
+    triggerOnTagAdd: '添加标签时',
+    triggerManual: '手动',
+    badgeAllowWrite: '允许写入',
+    badgeWriteCap: '写入上限 {n}',
+    fieldName: '名称',
+    fieldTrigger: '触发器',
+    fieldSchedule: '调度（cron）',
+    fieldMatch: '匹配（glob）',
+    fieldTag: '标签',
+    fieldPrompt: '提示词',
+    fieldProvider: '提供商',
+    fieldModel: '模型',
+    fieldAllowWrite: '允许写入',
+    fieldWriteCap: '写入上限',
+    runStartedAt: '开始于 {date}',
+    runStatusOk: '完成 · 待审核',
+    runStatusAccepted: '已采纳',
+    runStatusRejected: '已拒绝',
+    runStatusError: '出错',
+    runStatusRunning: '运行中…',
+    runStatusCancelled: '已取消',
     runProvider: '{provider} · {model}',
-    confirmDelete: 'Delete recipe "{name}"?',
-    confirmReject: 'Reject this run? The branch will be deleted.',
-    toastSaved: 'Recipe saved.',
-    toastDeleted: 'Recipe deleted.',
-    toastRunQueued: 'Run queued.',
-    toastAccepted: 'Run accepted; branch merged to main.',
-    toastRejected: 'Run rejected; branch deleted.',
-    wizardHeading: 'New recipe',
-    wizardSavePrompt: 'Save',
-    wizardCancel: 'Cancel',
-    wizardYamlHint: 'Generated YAML',
-    wizardSlugHint: 'File name will be {slug}.yml',
-    yamlEditorHeading: 'Edit YAML — {name}',
-    yamlSave: 'Save',
-    yamlCancel: 'Cancel',
-    diffHeading: 'Diff vs main',
-    diffEmpty: '(no changes)',
+    confirmDelete: '删除食谱「{name}」？',
+    confirmReject: '拒绝此次运行？分支将被删除。',
+    toastSaved: '食谱已保存。',
+    toastDeleted: '食谱已删除。',
+    toastRunQueued: '运行已排队。',
+    toastAccepted: '运行已采纳；分支已合并到 main。',
+    toastRejected: '运行已拒绝；分支已删除。',
+    wizardHeading: '新建食谱',
+    wizardSavePrompt: '保存',
+    wizardCancel: '取消',
+    wizardYamlHint: '生成的 YAML',
+    wizardSlugHint: '文件名将为 {slug}.yml',
+    yamlEditorHeading: '编辑 YAML — {name}',
+    yamlSave: '保存',
+    yamlCancel: '取消',
+    diffHeading: '相对 main 的 diff',
+    diffEmpty: '（无变更）',
     traceHeading: 'Trace',
-    transcriptHeading: 'Transcript',
+    transcriptHeading: '运行记录',
   },
   ai: {
     settingsHeading: 'AI 改写',

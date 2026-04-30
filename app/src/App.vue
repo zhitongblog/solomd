@@ -628,6 +628,43 @@ const showRightSidebar = computed(
     showHistoryPane.value ||
     showAgentPane.value,
 );
+
+// Side sidebar width — user-resizable via drag handle. Defaults to 260
+// for the read-only panes (outline/backlinks/tags/history), but auto-
+// bumps to 440 when the agent panel is on (chat needs real estate).
+// User resizes above the auto-bump are honored.
+const sideSidebarStyle = computed(() => {
+  const w =
+    showAgentPane.value && settings.sideSidebarWidth <= 260
+      ? 440
+      : settings.sideSidebarWidth;
+  return { width: `${w}px`, flexBasis: `${w}px` };
+});
+
+function onSidebarResize(side: 'left' | 'right', ev: MouseEvent) {
+  ev.preventDefault();
+  const startX = ev.clientX;
+  const startW = parseInt(
+    (sideSidebarStyle.value.width as string).replace('px', ''),
+    10,
+  );
+  const onMove = (m: MouseEvent) => {
+    const dx = m.clientX - startX;
+    // Right sidebar: drag left = wider. Left sidebar: drag right = wider.
+    const delta = side === 'right' ? -dx : dx;
+    settings.setSideSidebarWidth(startW + delta);
+  };
+  const onUp = () => {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  };
+  document.body.style.cursor = 'ew-resize';
+  document.body.style.userSelect = 'none';
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+}
 const basesOpen = ref(false);
 const aiHasKey = ref(false);
 async function refreshAiHasKey() {
@@ -665,7 +702,9 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
         <aside
           v-if="showRightSidebar && settings.outlineSide === 'left'"
           class="side-sidebar side-sidebar--left"
+          :style="sideSidebarStyle"
         >
+          <div class="side-sidebar__resize side-sidebar__resize--right" @mousedown="onSidebarResize('left', $event)" />
           <Outline v-if="showOutlinePane" :cursor-line="cursorLine" @goto="onOutlineGoto" />
           <BacklinksPanel v-if="showBacklinksPane" />
           <TagsPanel v-if="showTagsPane" />
@@ -679,7 +718,9 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
         <aside
           v-if="showRightSidebar && settings.outlineSide !== 'left'"
           class="side-sidebar side-sidebar--right"
+          :style="sideSidebarStyle"
         >
+          <div class="side-sidebar__resize side-sidebar__resize--left" @mousedown="onSidebarResize('right', $event)" />
           <Outline v-if="showOutlinePane" :cursor-line="cursorLine" @goto="onOutlineGoto" />
           <BacklinksPanel v-if="showBacklinksPane" />
           <TagsPanel v-if="showTagsPane" />
@@ -751,6 +792,7 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
   overflow: hidden;
 }
 .side-sidebar {
+  position: relative;
   display: flex;
   flex-direction: column;
   width: 260px;
@@ -764,11 +806,41 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
 .side-sidebar--right {
   border-left: 1px solid var(--border);
 }
+/* Drag handle for live-resize. Sits on the inner edge of the sidebar
+   (right edge of left sidebar, left edge of right sidebar) as a 5px
+   hit zone. v4.0 — agent panel chat needs more width than read-only
+   panes. */
+.side-sidebar__resize {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+  cursor: ew-resize;
+  z-index: 10;
+  background: transparent;
+}
+.side-sidebar__resize--right {
+  right: -2px;
+}
+.side-sidebar__resize--left {
+  left: -2px;
+}
+.side-sidebar__resize:hover {
+  background: var(--accent, #6366f1);
+  opacity: 0.5;
+}
 .side-sidebar > :deep(*) {
   flex: 1 1 0;
   min-height: 0;
   width: 100%;
   /* Reset Outline's own width since it now lives in a sized container. */
+}
+/* Agent Panel needs vertical room — chat scrollback, tool-call cards,
+   compose box. Give it 4× the share Outline/Backlinks/Tags/History get
+   when they coexist (so Agent ≈ 50% of sidebar height with all 5 on). */
+.side-sidebar > :deep(.agent-panel) {
+  flex: 4 1 0;
+  min-height: 240px;
 }
 .side-sidebar > :deep(.outline) {
   width: 100% !important;

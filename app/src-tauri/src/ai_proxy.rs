@@ -1264,6 +1264,12 @@ struct TurnOutcome {
     tool_uses: Vec<(String, String, Value)>,
     /// `stop_reason` (Anthropic) / `finish_reason` (OpenAI) verbatim.
     finish_reason: String,
+    /// Provider-specific passthrough fields on the tool_call object that
+    /// must be echoed back verbatim on the next turn. Today this captures
+    /// Gemini's `extra_content.google.thought_signature` (its OpenAI-compat
+    /// layer 400s on the next request without it). Keyed by tool_call_id;
+    /// only populated by the OpenAI-format streaming parser.
+    tool_extras: std::collections::HashMap<String, Value>,
 }
 
 /// Build the Anthropic-flavored `tools: [...]` array from the requested
@@ -1812,18 +1818,32 @@ async fn run_chat_openai_loop(
         }
 
         // Append assistant message with tool_calls. content may be empty.
+        // Provider-specific extras (e.g. Gemini's `extra_content` with the
+        // `thought_signature` token) are merged into each tool_call so the
+        // next turn re-sends them — without this, Gemini's OpenAI-compat
+        // layer 400s with "Function call is missing a thought_signature".
         let tool_calls_v: Vec<Value> = outcome
             .tool_uses
             .iter()
             .map(|(id, name, args)| {
-                serde_json::json!({
+                let mut tc = serde_json::json!({
                     "id": id,
                     "type": "function",
                     "function": {
                         "name": name,
                         "arguments": serde_json::to_string(args).unwrap_or_else(|_| "{}".to_string()),
                     }
-                })
+                });
+                if let Some(extras) = outcome.tool_extras.get(id) {
+                    if let (Some(obj), Some(extras_obj)) =
+                        (tc.as_object_mut(), extras.as_object())
+                    {
+                        for (k, v) in extras_obj {
+                            obj.insert(k.clone(), v.clone());
+                        }
+                    }
+                }
+                tc
             })
             .collect();
         let mut assistant_msg = serde_json::json!({
@@ -1961,6 +1981,11 @@ async fn openai_one_turn(
         id: String,
         name: String,
         arguments: String,
+        /// Provider-specific passthrough fields seen on this tool_call delta
+        /// (anything outside id / type / function). Gemini's OpenAI-compat
+        /// layer puts `extra_content.google.thought_signature` here and
+        /// requires it back on the next turn.
+        extras: serde_json::Map<String, Value>,
     }
     let mut text = String::new();
     let mut tools_acc: BTreeMap<u64, ToolAccum> = BTreeMap::new();
@@ -2000,6 +2025,11 @@ async fn openai_one_turn(
                             serde_json::from_str(&t.arguments)
                                 .unwrap_or(Value::String(t.arguments.clone()))
                         };
+                        if !t.extras.is_empty() {
+                            outcome
+                                .tool_extras
+                                .insert(t.id.clone(), Value::Object(t.extras));
+                        }
                         outcome.tool_uses.push((t.id, t.name, args));
                     }
                     return Ok(outcome);
@@ -2041,6 +2071,17 @@ async fn openai_one_turn(
                                     entry.arguments.push_str(a);
                                 }
                             }
+                            // Capture any non-standard fields (Gemini's
+                            // extra_content with thought_signature, future
+                            // provider quirks). Last-write-wins per delta —
+                            // providers tend to send these once at end-of-call.
+                            if let Some(obj) = tc.as_object() {
+                                for (k, v) in obj {
+                                    if !matches!(k.as_str(), "index" | "id" | "type" | "function") {
+                                        entry.extras.insert(k.clone(), v.clone());
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -2057,6 +2098,11 @@ async fn openai_one_turn(
         } else {
             serde_json::from_str(&t.arguments).unwrap_or(Value::String(t.arguments.clone()))
         };
+        if !t.extras.is_empty() {
+            outcome
+                .tool_extras
+                .insert(t.id.clone(), Value::Object(t.extras));
+        }
         outcome.tool_uses.push((t.id, t.name, args));
     }
     Ok(outcome)

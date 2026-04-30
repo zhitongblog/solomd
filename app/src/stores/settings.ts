@@ -75,6 +75,10 @@ interface Settings {
   // v4.0 pillar 1: max number of LLM ↔ tool round-trips per chat turn.
   // Cap protects against a runaway tool loop. C3.2 default is 8.
   agentToolLoopCap: number;
+  // Width (in px) of the right/left side sidebar that hosts Outline /
+  // Backlinks / Tags / History / Agent Panel. The agent panel needs more
+  // room than read-only browsing; user-resizable via the drag handle.
+  sideSidebarWidth: number;
   // v2.0 F4: BYOK AI rewrite. `aiProvider` is a stable id from
   // ai-providers.ts PROVIDERS — widened to string to avoid breaking when
   // new providers land.
@@ -218,6 +222,7 @@ function defaults(): Settings {
     showAgentPanel: false,
     agentAllowWrite: false,
     agentToolLoopCap: 8,
+    sideSidebarWidth: 260,
     aiEnabled: false,
     aiProvider: 'openai',
     aiModel: '',
@@ -457,6 +462,13 @@ export const useSettingsStore = defineStore('settings', {
     setAgentToolLoopCap(n: number) {
       const clean = Math.max(1, Math.min(20, Math.round(n) || 8));
       this.agentToolLoopCap = clean;
+      this.persist();
+    },
+    setSideSidebarWidth(w: number) {
+      // Reasonable bounds — narrower than 220 hides text, wider than 800
+      // eats too much editor space.
+      const clean = Math.max(220, Math.min(800, Math.round(w) || 260));
+      this.sideSidebarWidth = clean;
       this.persist();
     },
     setDailyNotesFolder(p: string) {

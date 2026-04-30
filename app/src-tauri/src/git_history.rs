@@ -365,7 +365,15 @@ pub fn git_init_workspace_inner(
 ) -> Result<(), String> {
     let path = Path::new(&folder);
     if !path.exists() {
-        return Err(format!("folder does not exist: {}", folder));
+        // Auto-create the workspace folder if the parent is reachable.
+        // Common case: user typed / pasted a path one level below an
+        // existing dir; the dialog "New folder" flow can also leave the
+        // leaf uncreated. Refusing to init here meant the user had to
+        // mkdir it manually outside the app.
+        std::fs::create_dir_all(path)
+            .map_err(|e| format!("create workspace folder: {} ({e})", folder))?;
+    } else if !path.is_dir() {
+        return Err(format!("not a folder: {}", folder));
     }
     let repo = match Repository::open(path) {
         Ok(r) => r,

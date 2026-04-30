@@ -563,7 +563,33 @@ pub fn run_with(initial_file: Option<String>) {
             // created window sometimes lands behind the Explorer window that
             // triggered it (focus-stealing prevention). Explicitly show + focus
             // the main window to bring it forward.
+            //
+            // Also clamp the restored window to the current monitor's work
+            // area: tauri-plugin-window-state happily restores the saved
+            // 2880×1560 from a 5K display, leaving the title bar / native
+            // menu off-screen on a smaller laptop. Re-fit before show().
             if let Some(win) = app.get_webview_window("main") {
+                if let Ok(Some(monitor)) = win.current_monitor() {
+                    let scale = monitor.scale_factor();
+                    let mon_w = (monitor.size().width as f64 / scale).round() as u32;
+                    let mon_h = (monitor.size().height as f64 / scale).round() as u32;
+                    if let Ok(outer) = win.outer_size() {
+                        let cur_w = (outer.width as f64 / scale).round() as u32;
+                        let cur_h = (outer.height as f64 / scale).round() as u32;
+                        // Reserve ~40px for the macOS menu bar at the top.
+                        let max_w = mon_w;
+                        let max_h = mon_h.saturating_sub(40);
+                        if cur_w > max_w || cur_h > max_h {
+                            let new_w = cur_w.min(max_w);
+                            let new_h = cur_h.min(max_h);
+                            let _ = win.set_size(tauri::LogicalSize::new(new_w, new_h));
+                            // Recenter so the title bar is reachable.
+                            let new_x = ((mon_w.saturating_sub(new_w)) / 2) as i32;
+                            let new_y = 40_i32;
+                            let _ = win.set_position(tauri::LogicalPosition::new(new_x, new_y));
+                        }
+                    }
+                }
                 let _ = win.show();
                 let _ = win.unminimize();
                 let _ = win.set_focus();
