@@ -337,6 +337,11 @@ interface AgentRunMeta {
   provider?: string;
   model?: string;
   recipe?: { name: string } | null;
+  // v4.0 — populated by ai_proxy.rs after a run finishes; stays 0 for
+  // ollama / unknown (provider, model) pairs and for runs that
+  // predate the token-counting fix.
+  tokens?: { input?: number; output?: number };
+  cost_usd_estimate?: number;
   _dir?: string;
   _run_md?: string;
 }
@@ -376,6 +381,26 @@ function fmtRunStartedAt(secs: number): string {
   } catch {
     return String(secs);
   }
+}
+
+/**
+ * Render a compact "1.2k in · 3.4k out · $0.0042" summary for a run row.
+ * Returns the empty string when no usage was captured (Ollama runs, runs
+ * that predate the token-counting fix, or aborted runs that finish'd
+ * with 0/0/0). The settings list stays clean rather than rendering
+ * a misleading "$0.0000" badge for every entry.
+ */
+function fmtRunUsage(r: AgentRunMeta): string {
+  const tin = r.tokens?.input ?? 0;
+  const tout = r.tokens?.output ?? 0;
+  const cost = r.cost_usd_estimate ?? 0;
+  if (tin === 0 && tout === 0 && cost === 0) return '';
+  const fmtTokens = (n: number) =>
+    n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
+  const parts: string[] = [];
+  if (tin || tout) parts.push(`${fmtTokens(tin)} in · ${fmtTokens(tout)} out`);
+  if (cost > 0) parts.push(`$${cost.toFixed(4)}`);
+  return parts.join(' · ');
 }
 
 async function openRunMd(run: AgentRunMeta): Promise<void> {
@@ -745,6 +770,7 @@ function onProviderChange(ev: Event): void {
                 <span :class="['ai-settings__run-pill', `ai-settings__run-pill--${r.status}`]">{{ r.status }}</span>
                 <span class="ai-settings__run-kind">{{ r.kind }}</span>
                 <span class="ai-settings__run-time">{{ fmtRunStartedAt(r.started_at) }}</span>
+                <span v-if="fmtRunUsage(r)" class="ai-settings__run-usage">{{ fmtRunUsage(r) }}</span>
               </span>
             </li>
           </ul>
@@ -970,6 +996,11 @@ function onProviderChange(ev: Event): void {
 }
 .ai-settings__run-kind {
   font-style: italic;
+}
+.ai-settings__run-usage {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  font-size: 11px;
 }
 .ai-settings__btn--small {
   padding: 4px 10px;

@@ -294,6 +294,11 @@ const totals = computed(() => {
   let tokensIn = 0;
   let tokensOut = 0;
   let provider: string | null = null;
+  // v4.0 — the Rust pricing module writes a real `cost_usd_estimate`
+  // into the `run_ended` trace line. When it's present and > 0 we use
+  // that authoritative number; otherwise we fall back to the on-the-fly
+  // per-1k rate table below for older runs that predate the fix.
+  let costFromBackend: number | null = null;
   for (const l of lines.value) {
     if (l.kind === 'run_started') provider = str(l, 'provider');
     if (l.kind === 'model_done') {
@@ -306,13 +311,18 @@ const totals = computed(() => {
       const o = num(l, 'tokens_out_total');
       if (t > 0) tokensIn = t;
       if (o > 0) tokensOut = o;
+      const c = num(l, 'cost_usd_estimate');
+      if (c > 0) costFromBackend = c;
     }
   }
-  const rate = costRateFor(provider);
-  const cost =
-    rate === null
-      ? null
-      : (tokensIn / 1000) * rate.in + (tokensOut / 1000) * rate.out;
+  let cost: number | null = costFromBackend;
+  if (cost === null) {
+    const rate = costRateFor(provider);
+    cost =
+      rate === null
+        ? null
+        : (tokensIn / 1000) * rate.in + (tokensOut / 1000) * rate.out;
+  }
   return {
     tokensIn,
     tokensOut,
