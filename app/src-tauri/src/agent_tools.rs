@@ -858,7 +858,11 @@ pub async fn dispatch_tool(
         .map_err(|e| format!("dispatch join: {e}"))?
 }
 
-fn dispatch_tool_inner(workspace: &Path, tool: &str, args: Value) -> Result<Value, String> {
+/// Sync dispatch — also the entry P2 recipes use when running outside the
+/// Tauri runtime (recipe execution may happen on a tokio task without an
+/// AppHandle in scope). Same dispatch table as `dispatch_tool`, just no
+/// thread bounce.
+pub fn dispatch_tool_inner(workspace: &Path, tool: &str, args: Value) -> Result<Value, String> {
     match tool {
         "list_notes" => tool_list_notes(workspace, &args),
         "read_note" => tool_read_note(workspace, &args),
