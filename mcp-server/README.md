@@ -13,6 +13,37 @@ solomd-mcp --workspace /Users/me/Documents/Notes
 # stderr:        human logs (use --verbose for debug)
 ```
 
+### Multiple workspaces (v4.0+)
+
+Pass `--workspace` once per vault. Each value is either a bare path (alias
+defaults to the path's last component) or `<alias>=<path>`:
+
+```
+solomd-mcp \
+  --workspace work=/Users/me/Documents/Work \
+  --workspace home=/Users/me/Documents/Home
+```
+
+The first workspace is the **default** — tool calls without an explicit
+`workspace` argument resolve to it. Existing single-`--workspace` clients
+keep working unchanged. Tools that *want* to target a non-default workspace
+pass an extra `workspace` argument:
+
+```jsonc
+// Default (first registered) workspace:
+{ "name": "list_notes", "arguments": {} }
+
+// Explicit alias:
+{ "name": "list_notes", "arguments": { "workspace": "home" } }
+
+// Or by absolute path (must match a registered workspace):
+{ "name": "list_notes", "arguments": { "workspace": "/Users/me/Documents/Home" } }
+```
+
+Each workspace's AutoGit history (`autogit_log`, `autogit_diff`,
+`autogit_rollback`) is independent — the per-workspace `.git` repo is
+opened on demand for each call.
+
 ## Tools exposed
 
 | Tool | Description | Gating |
@@ -72,6 +103,22 @@ CLI):
 }
 ```
 
+Multi-workspace profile (one MCP server, several vaults):
+
+```json
+{
+  "mcpServers": {
+    "solomd-vaults": {
+      "command": "solomd-mcp",
+      "args": [
+        "--workspace", "work=/Users/me/Documents/Work",
+        "--workspace", "home=/Users/me/Documents/Home"
+      ]
+    }
+  }
+}
+```
+
 To enable writes:
 
 ```json
@@ -103,10 +150,17 @@ Anything that speaks MCP over stdio works. Point its `command` at
 ## CLI reference
 
 ```
-solomd-mcp [OPTIONS] --workspace <DIR>
+solomd-mcp [OPTIONS] --workspace <ALIAS=DIR | DIR>...
 
-  --workspace <DIR>   Path to the notes folder. Required. Canonicalised.
-  --allow-write       Enable write_note + append_to_note. Off by default.
+  --workspace <ALIAS=DIR | DIR>
+                      Path to a notes folder. Required. Canonicalised.
+                      Repeat for multi-workspace mode. Form: `<alias>=<path>`
+                      or just `<path>` (alias defaults to the path's last
+                      component). The first workspace is the default — tool
+                      calls without an explicit `workspace` argument resolve
+                      to it (back-compat for single-workspace clients).
+  --allow-write       Enable write_note + append_to_note + autogit_rollback.
+                      Off by default.
   -v, --verbose       Debug-level stderr logs.
   -V, --version       Print version.
   -h, --help          Print help.

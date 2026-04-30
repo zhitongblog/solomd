@@ -7,7 +7,7 @@
 //! rather *omit* them entirely, build with `--allow-write` off and the
 //! checks here will refuse the call.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::sync::Arc;
 
@@ -36,20 +36,85 @@ pub struct SoloMdServer {
 }
 
 struct ServerState {
-    workspace: PathBuf,
+    /// Ordered list of `(alias, canonical_path)` workspaces. The first entry
+    /// is the *default* — tool calls without an explicit `workspace`
+    /// argument resolve to it (back-compat with single-workspace clients).
+    workspaces: Vec<(String, PathBuf)>,
     allow_write: bool,
 }
 
 impl SoloMdServer {
-    pub fn new(workspace: PathBuf, allow_write: bool) -> Self {
+    /// `workspaces` is required to be non-empty (the CLI parser enforces
+    /// this); the first entry becomes the default workspace.
+    pub fn new(workspaces: Vec<(String, PathBuf)>, allow_write: bool) -> Self {
+        assert!(
+            !workspaces.is_empty(),
+            "SoloMdServer requires at least one workspace"
+        );
         Self {
-            inner: Arc::new(ServerState { workspace, allow_write }),
+            inner: Arc::new(ServerState {
+                workspaces,
+                allow_write,
+            }),
             tool_router: Self::tool_router(),
         }
     }
 
-    fn workspace(&self) -> &std::path::Path {
-        &self.inner.workspace
+    /// Default workspace (first registered).
+    fn default_workspace(&self) -> &Path {
+        &self.inner.workspaces[0].1
+    }
+
+    /// Comma-separated list of registered aliases — used in error messages.
+    fn known_aliases(&self) -> String {
+        self.inner
+            .workspaces
+            .iter()
+            .map(|(a, _)| a.as_str())
+            .collect::<Vec<_>>()
+            .join(", ")
+    }
+
+    /// Resolve a tool argument's `workspace` field to a concrete workspace
+    /// path. Resolution order:
+    ///
+    /// 1. `None` → default workspace (back-compat).
+    /// 2. `Some(s)` matches a registered alias → that alias's path.
+    /// 3. `Some(s)` is an absolute path that canonicalises to a registered
+    ///    workspace path → that workspace.
+    /// 4. Otherwise → `Err`.
+    pub fn resolve_workspace(&self, opt: Option<&str>) -> Result<&Path, String> {
+        let s = match opt {
+            None => return Ok(self.default_workspace()),
+            Some(s) if s.is_empty() => return Ok(self.default_workspace()),
+            Some(s) => s,
+        };
+
+        // Alias match (exact, case-sensitive — aliases are user-controlled
+        // tokens, not file paths).
+        for (alias, path) in &self.inner.workspaces {
+            if alias == s {
+                return Ok(path.as_path());
+            }
+        }
+
+        // Absolute path match — canonicalise both sides so symlinks /
+        // trailing slashes don't trip us up.
+        let candidate = PathBuf::from(s);
+        if candidate.is_absolute() {
+            if let Ok(canon) = candidate.canonicalize() {
+                for (_, path) in &self.inner.workspaces {
+                    if path == &canon {
+                        return Ok(path.as_path());
+                    }
+                }
+            }
+        }
+
+        Err(format!(
+            "unknown workspace: {s}. Available aliases: {}",
+            self.known_aliases()
+        ))
     }
 }
 
@@ -65,12 +130,18 @@ pub struct ListNotesArgs {
     /// Maximum number of notes to return. Defaults to 100.
     #[serde(default)]
     pub limit: Option<u32>,
+    /// Workspace selector — alias or absolute path. Default = first workspace.
+    #[serde(default)]
+    pub workspace: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, JsonSchema)]
 pub struct ReadNoteArgs {
     /// Path to the note. May be absolute (inside the workspace) or relative.
     pub path: String,
+    /// Workspace selector — alias or absolute path. Default = first workspace.
+    #[serde(default)]
+    pub workspace: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, JsonSchema)]
@@ -83,21 +154,49 @@ pub struct SearchArgs {
     /// Cap on number of matches. Default 200.
     #[serde(default)]
     pub limit: Option<u32>,
+    /// Workspace selector — alias or absolute path. Default = first workspace.
+    #[serde(default)]
+    pub workspace: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, JsonSchema)]
 pub struct GetBacklinksArgs {
     /// Note name (file stem) to search for as a wikilink target.
     pub note_name: String,
+    /// Workspace selector — alias or absolute path. Default = first workspace.
+    #[serde(default)]
+    pub workspace: Option<String>,
+}
+
+/// Truly-empty args (no inputs, no workspace selector).
+///
+/// Currently unused — every tool now accepts an optional `workspace`. Kept
+/// in case a future tool genuinely takes nothing.
+#[allow(dead_code)]
+#[derive(Debug, Deserialize, Serialize, JsonSchema)]
+pub struct EmptyArgs {}
+
+#[derive(Debug, Deserialize, Serialize, JsonSchema)]
+pub struct ListTagsArgs {
+    /// Workspace selector — alias or absolute path. Default = first workspace.
+    #[serde(default)]
+    pub workspace: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, JsonSchema)]
-pub struct EmptyArgs {}
+pub struct SyncStatusArgs {
+    /// Workspace selector — alias or absolute path. Default = first workspace.
+    #[serde(default)]
+    pub workspace: Option<String>,
+}
 
 #[derive(Debug, Deserialize, Serialize, JsonSchema)]
 pub struct GetOutlineArgs {
     /// Path to the note.
     pub path: String,
+    /// Workspace selector — alias or absolute path. Default = first workspace.
+    #[serde(default)]
+    pub workspace: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, JsonSchema)]
@@ -109,6 +208,9 @@ pub struct WriteNoteArgs {
     /// If false (default), refuse to overwrite an existing file.
     #[serde(default)]
     pub allow_overwrite: Option<bool>,
+    /// Workspace selector — alias or absolute path. Default = first workspace.
+    #[serde(default)]
+    pub workspace: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, JsonSchema)]
@@ -118,6 +220,9 @@ pub struct AppendArgs {
     /// Text to append. A newline is added between existing content and the
     /// new text if the file does not already end with one.
     pub content: String,
+    /// Workspace selector — alias or absolute path. Default = first workspace.
+    #[serde(default)]
+    pub workspace: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -146,6 +251,9 @@ pub struct AutogitLogArgs {
     /// Max commits to return (default 50, max 500).
     #[serde(default)]
     pub limit: Option<u32>,
+    /// Workspace selector — alias or absolute path. Default = first workspace.
+    #[serde(default)]
+    pub workspace: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, JsonSchema)]
@@ -160,6 +268,9 @@ pub struct AutogitDiffArgs {
     /// arbitrary two commits.
     #[serde(default)]
     pub base: Option<String>,
+    /// Workspace selector — alias or absolute path. Default = first workspace.
+    #[serde(default)]
+    pub workspace: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, JsonSchema)]
@@ -169,12 +280,18 @@ pub struct AutogitRollbackArgs {
     /// SHA whose version of the file should overwrite the current
     /// working-tree copy.
     pub sha: String,
+    /// Workspace selector — alias or absolute path. Default = first workspace.
+    #[serde(default)]
+    pub workspace: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, JsonSchema)]
 pub struct ShareUrlArgs {
     /// Path to the note.
     pub path: String,
+    /// Workspace selector — alias or absolute path. Default = first workspace.
+    #[serde(default)]
+    pub workspace: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -195,17 +312,20 @@ impl SoloMdServer {
     /// List notes in the workspace (metadata only — content is *not* loaded).
     #[tool(
         name = "list_notes",
-        description = "List Markdown notes in the SoloMD workspace. Returns metadata only (path, name, title, mtime, size, summary). Use read_note to fetch full content."
+        description = "List Markdown notes in a SoloMD workspace. Returns metadata only (path, name, title, mtime, size, summary). Use read_note to fetch full content. Pass `workspace` (alias or absolute path) to target a non-default workspace; omit it to use the first registered workspace."
     )]
     pub async fn list_notes(
         &self,
         args: Parameters<ListNotesArgs>,
     ) -> Result<CallToolResult, McpError> {
+        let workspace = self
+            .resolve_workspace(args.0.workspace.as_deref())
+            .map_err(|e| McpError::invalid_params(e, None))?;
         let limit = args.0.limit.unwrap_or(100).min(1000) as usize;
         let folder = match args.0.folder.as_deref() {
-            Some(f) => safety::resolve_subfolder(self.workspace(), f)
+            Some(f) => safety::resolve_subfolder(workspace, f)
                 .map_err(|e| McpError::invalid_params(e, None))?,
-            None => self.workspace().to_path_buf(),
+            None => workspace.to_path_buf(),
         };
 
         let mut metas: Vec<NoteMeta> = Vec::new();
@@ -228,13 +348,16 @@ impl SoloMdServer {
     /// Read the full content + parsed metadata of a single note.
     #[tool(
         name = "read_note",
-        description = "Read a single Markdown note. Returns full content plus parsed front matter, headings, tags, and outbound wikilinks."
+        description = "Read a single Markdown note. Returns full content plus parsed front matter, headings, tags, and outbound wikilinks. Pass `workspace` (alias or absolute path) to target a non-default workspace; omit it to use the first registered workspace."
     )]
     pub async fn read_note(
         &self,
         args: Parameters<ReadNoteArgs>,
     ) -> Result<CallToolResult, McpError> {
-        let path = safety::resolve_in(self.workspace(), &args.0.path, true)
+        let workspace = self
+            .resolve_workspace(args.0.workspace.as_deref())
+            .map_err(|e| McpError::invalid_params(e, None))?;
+        let path = safety::resolve_in(workspace, &args.0.path, true)
             .map_err(|e| McpError::invalid_params(e, None))?;
         let note = workspace::read_full(&path)
             .map_err(|e| McpError::internal_error(e, None))?;
@@ -247,19 +370,22 @@ impl SoloMdServer {
     /// a Rust regex walk.
     #[tool(
         name = "search",
-        description = "Search notes for a query. Returns up to `limit` matches with 3-line context. mode defaults to \"literal\"; pass \"regex\" for a regular-expression search."
+        description = "Search notes for a query. Returns up to `limit` matches with 3-line context. mode defaults to \"literal\"; pass \"regex\" for a regular-expression search. Pass `workspace` (alias or absolute path) to target a non-default workspace; omit it to use the first registered workspace."
     )]
     pub async fn search(
         &self,
         args: Parameters<SearchArgs>,
     ) -> Result<CallToolResult, McpError> {
+        let workspace = self
+            .resolve_workspace(args.0.workspace.as_deref())
+            .map_err(|e| McpError::invalid_params(e, None))?;
         let mode = args.0.mode.as_deref().unwrap_or("literal");
         let limit = args.0.limit.unwrap_or(200).min(1000) as usize;
         let regex = matches!(mode, "regex");
         let hits = if has_rg().await {
-            search_with_rg(self.workspace(), &args.0.query, regex, limit).await
+            search_with_rg(workspace, &args.0.query, regex, limit).await
         } else {
-            search_native(self.workspace(), &args.0.query, regex, limit)
+            search_native(workspace, &args.0.query, regex, limit)
         }
         .map_err(|e| McpError::internal_error(e, None))?;
         Ok(CallToolResult::success(vec![
@@ -271,18 +397,21 @@ impl SoloMdServer {
     /// Find every place that wikilinks `[[note_name]]`.
     #[tool(
         name = "get_backlinks",
-        description = "Return wikilink-style backlinks (`[[note_name]]`) to the given note. Match is case-insensitive on the file stem."
+        description = "Return wikilink-style backlinks (`[[note_name]]`) to the given note. Match is case-insensitive on the file stem. Pass `workspace` (alias or absolute path) to target a non-default workspace; omit it to use the first registered workspace."
     )]
     pub async fn get_backlinks(
         &self,
         args: Parameters<GetBacklinksArgs>,
     ) -> Result<CallToolResult, McpError> {
+        let workspace = self
+            .resolve_workspace(args.0.workspace.as_deref())
+            .map_err(|e| McpError::invalid_params(e, None))?;
         let needle = args.0.note_name.trim().to_lowercase();
         if needle.is_empty() {
             return Err(McpError::invalid_params("note_name must not be empty", None));
         }
         let mut out: Vec<BacklinkRef> = Vec::new();
-        for path in workspace::walk_markdown_files(self.workspace()) {
+        for path in workspace::walk_markdown_files(workspace) {
             let note = match workspace::read_full(&path) {
                 Ok(n) => n,
                 Err(_) => continue,
@@ -313,15 +442,18 @@ impl SoloMdServer {
     /// Aggregated tag counts across the vault.
     #[tool(
         name = "list_tags",
-        description = "List every tag found in the workspace (body `#tag` and front-matter `tags:`), sorted by count desc."
+        description = "List every tag found in a workspace (body `#tag` and front-matter `tags:`), sorted by count desc. Pass `workspace` (alias or absolute path) to target a non-default workspace; omit it to use the first registered workspace."
     )]
     pub async fn list_tags(
         &self,
-        _args: Parameters<EmptyArgs>,
+        args: Parameters<ListTagsArgs>,
     ) -> Result<CallToolResult, McpError> {
+        let workspace = self
+            .resolve_workspace(args.0.workspace.as_deref())
+            .map_err(|e| McpError::invalid_params(e, None))?;
         use std::collections::HashMap;
         let mut by_tag: HashMap<String, (u32, Vec<String>)> = HashMap::new();
-        for path in workspace::walk_markdown_files(self.workspace()) {
+        for path in workspace::walk_markdown_files(workspace) {
             let note = match workspace::read_full(&path) {
                 Ok(n) => n,
                 Err(_) => continue,
@@ -349,13 +481,16 @@ impl SoloMdServer {
     /// Heading outline for a note.
     #[tool(
         name = "get_outline",
-        description = "Return the heading outline of a note, with level (1-6), text, and 1-based line number."
+        description = "Return the heading outline of a note, with level (1-6), text, and 1-based line number. Pass `workspace` (alias or absolute path) to target a non-default workspace; omit it to use the first registered workspace."
     )]
     pub async fn get_outline(
         &self,
         args: Parameters<GetOutlineArgs>,
     ) -> Result<CallToolResult, McpError> {
-        let path = safety::resolve_in(self.workspace(), &args.0.path, true)
+        let workspace = self
+            .resolve_workspace(args.0.workspace.as_deref())
+            .map_err(|e| McpError::invalid_params(e, None))?;
+        let path = safety::resolve_in(workspace, &args.0.path, true)
             .map_err(|e| McpError::invalid_params(e, None))?;
         let raw = std::fs::read_to_string(&path)
             .map_err(|e| McpError::internal_error(e.to_string(), None))?;
@@ -370,7 +505,7 @@ impl SoloMdServer {
     /// Write (or overwrite) a note. Gated by `--allow-write`.
     #[tool(
         name = "write_note",
-        description = "Write a Markdown note to disk. Requires the server to be started with --allow-write. Refuses to overwrite an existing file unless `allow_overwrite` is true."
+        description = "Write a Markdown note to disk. Requires the server to be started with --allow-write. Refuses to overwrite an existing file unless `allow_overwrite` is true. Pass `workspace` (alias or absolute path) to target a non-default workspace; omit it to use the first registered workspace."
     )]
     pub async fn write_note(
         &self,
@@ -382,7 +517,10 @@ impl SoloMdServer {
                 None,
             ));
         }
-        let path = safety::resolve_in(self.workspace(), &args.0.path, false)
+        let workspace = self
+            .resolve_workspace(args.0.workspace.as_deref())
+            .map_err(|e| McpError::invalid_params(e, None))?;
+        let path = safety::resolve_in(workspace, &args.0.path, false)
             .map_err(|e| McpError::invalid_params(e, None))?;
         let allow_overwrite = args.0.allow_overwrite.unwrap_or(false);
         if path.exists() && !allow_overwrite {
@@ -412,13 +550,16 @@ impl SoloMdServer {
     /// List per-note commit history from SoloMD's AutoGit repo.
     #[tool(
         name = "autogit_log",
-        description = "List the commit history for a single note from SoloMD's AutoGit repo (saves are auto-committed). Returns sha + short_sha + author + time (unix seconds) + summary, newest first."
+        description = "List the commit history for a single note from SoloMD's AutoGit repo (saves are auto-committed). Returns sha + short_sha + author + time (unix seconds) + summary, newest first. Pass `workspace` (alias or absolute path) to target a non-default workspace; omit it to use the first registered workspace."
     )]
     pub async fn autogit_log(
         &self,
         args: Parameters<AutogitLogArgs>,
     ) -> Result<CallToolResult, McpError> {
-        let workspace = self.workspace().to_path_buf();
+        let workspace = self
+            .resolve_workspace(args.0.workspace.as_deref())
+            .map_err(|e| McpError::invalid_params(e, None))?
+            .to_path_buf();
         let path = safety::resolve_in(&workspace, &args.0.path, true)
             .map_err(|e| McpError::invalid_params(e, None))?;
         let limit = args.0.limit.unwrap_or(50).min(500) as usize;
@@ -435,13 +576,16 @@ impl SoloMdServer {
     /// Show the textual diff for one note between two AutoGit commits.
     #[tool(
         name = "autogit_diff",
-        description = "Show a unified diff for one note between two AutoGit commits. Defaults: sha=HEAD, base=parent of sha. Returns the diff as a string plus the resolved sha/base."
+        description = "Show a unified diff for one note between two AutoGit commits. Defaults: sha=HEAD, base=parent of sha. Returns the diff as a string plus the resolved sha/base. Pass `workspace` (alias or absolute path) to target a non-default workspace; omit it to use the first registered workspace."
     )]
     pub async fn autogit_diff(
         &self,
         args: Parameters<AutogitDiffArgs>,
     ) -> Result<CallToolResult, McpError> {
-        let workspace = self.workspace().to_path_buf();
+        let workspace = self
+            .resolve_workspace(args.0.workspace.as_deref())
+            .map_err(|e| McpError::invalid_params(e, None))?
+            .to_path_buf();
         let path = safety::resolve_in(&workspace, &args.0.path, true)
             .map_err(|e| McpError::invalid_params(e, None))?;
         let sha = args.0.sha.clone();
@@ -460,7 +604,7 @@ impl SoloMdServer {
     /// itself becomes a new commit on top.
     #[tool(
         name = "autogit_rollback",
-        description = "Restore a note's content from a specific AutoGit commit by overwriting the working tree. Requires --allow-write. The rollback is itself a new save (and thus a new AutoGit commit), so the prior history is preserved."
+        description = "Restore a note's content from a specific AutoGit commit by overwriting the working tree. Requires --allow-write. The rollback is itself a new save (and thus a new AutoGit commit), so the prior history is preserved. Pass `workspace` (alias or absolute path) to target a non-default workspace; omit it to use the first registered workspace."
     )]
     pub async fn autogit_rollback(
         &self,
@@ -472,7 +616,10 @@ impl SoloMdServer {
                 None,
             ));
         }
-        let workspace = self.workspace().to_path_buf();
+        let workspace = self
+            .resolve_workspace(args.0.workspace.as_deref())
+            .map_err(|e| McpError::invalid_params(e, None))?
+            .to_path_buf();
         let path = safety::resolve_in(&workspace, &args.0.path, true)
             .map_err(|e| McpError::invalid_params(e, None))?;
         let sha = args.0.sha.clone();
@@ -494,10 +641,16 @@ impl SoloMdServer {
     /// Read SoloMD's GitHub-sync state for the workspace.
     #[tool(
         name = "sync_status",
-        description = "Return SoloMD's GitHub-sync configuration for this workspace: linked remote, current branch, encryption flag, last push/pull timestamps. Reads .solomd/sync.json — does not require credentials."
+        description = "Return SoloMD's GitHub-sync configuration for a workspace: linked remote, current branch, encryption flag, last push/pull timestamps. Reads .solomd/sync.json — does not require credentials. Pass `workspace` (alias or absolute path) to target a non-default workspace; omit it to use the first registered workspace."
     )]
-    pub async fn sync_status(&self) -> Result<CallToolResult, McpError> {
-        let workspace = self.workspace().to_path_buf();
+    pub async fn sync_status(
+        &self,
+        args: Parameters<SyncStatusArgs>,
+    ) -> Result<CallToolResult, McpError> {
+        let workspace = self
+            .resolve_workspace(args.0.workspace.as_deref())
+            .map_err(|e| McpError::invalid_params(e, None))?
+            .to_path_buf();
         let json = tokio::task::spawn_blocking(move || sync_status_inner(&workspace))
             .await
             .map_err(|e| McpError::internal_error(format!("join: {e}"), None))?
@@ -511,13 +664,16 @@ impl SoloMdServer {
     /// workspace is linked to a public GitHub repo).
     #[tool(
         name = "share_url",
-        description = "Return the public solomd.app/share/ URL for a note. Only resolves to a real page if the workspace's linked repo is public; for private repos the URL exists but raw.githubusercontent.com will 404. Use sync_status first to check `private`."
+        description = "Return the public solomd.app/share/ URL for a note. Only resolves to a real page if the workspace's linked repo is public; for private repos the URL exists but raw.githubusercontent.com will 404. Use sync_status first to check `private`. Pass `workspace` (alias or absolute path) to target a non-default workspace; omit it to use the first registered workspace."
     )]
     pub async fn share_url(
         &self,
         args: Parameters<ShareUrlArgs>,
     ) -> Result<CallToolResult, McpError> {
-        let workspace = self.workspace().to_path_buf();
+        let workspace = self
+            .resolve_workspace(args.0.workspace.as_deref())
+            .map_err(|e| McpError::invalid_params(e, None))?
+            .to_path_buf();
         let path = safety::resolve_in(&workspace, &args.0.path, true)
             .map_err(|e| McpError::invalid_params(e, None))?;
         let json = tokio::task::spawn_blocking(move || share_url_inner(&workspace, &path))
@@ -532,7 +688,7 @@ impl SoloMdServer {
     /// Append to an existing note. Gated by `--allow-write`.
     #[tool(
         name = "append_to_note",
-        description = "Append text to an existing note. Requires --allow-write. A newline is inserted between existing content and new text if needed."
+        description = "Append text to an existing note. Requires --allow-write. A newline is inserted between existing content and new text if needed. Pass `workspace` (alias or absolute path) to target a non-default workspace; omit it to use the first registered workspace."
     )]
     pub async fn append_to_note(
         &self,
@@ -544,7 +700,10 @@ impl SoloMdServer {
                 None,
             ));
         }
-        let path = safety::resolve_in(self.workspace(), &args.0.path, true)
+        let workspace = self
+            .resolve_workspace(args.0.workspace.as_deref())
+            .map_err(|e| McpError::invalid_params(e, None))?;
+        let path = safety::resolve_in(workspace, &args.0.path, true)
             .map_err(|e| McpError::invalid_params(e, None))?;
         let mut existing = std::fs::read_to_string(&path)
             .map_err(|e| McpError::internal_error(e.to_string(), None))?;
@@ -575,13 +734,28 @@ impl ServerHandler for SoloMdServer {
     fn get_info(&self) -> ServerInfo {
         let implementation =
             Implementation::new("solomd-mcp", env!("CARGO_PKG_VERSION")).with_title("SoloMD Vault");
+        let aliases: Vec<&str> = self
+            .inner
+            .workspaces
+            .iter()
+            .map(|(a, _)| a.as_str())
+            .collect();
+        let workspace_blurb = if aliases.len() == 1 {
+            format!("Single workspace registered: {}.", aliases[0])
+        } else {
+            format!(
+                "Multiple workspaces registered: [{}]. The first ({}) is the default; pass `workspace: \"<alias>\"` (or an absolute path) to target a different one.",
+                aliases.join(", "),
+                aliases[0]
+            )
+        };
         ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
             .with_server_info(implementation)
-            .with_instructions(
-                "Read and (optionally) write a SoloMD Markdown notes vault. \
+            .with_instructions(format!(
+                "Read and (optionally) write SoloMD Markdown notes vaults. \
                  Tools are read-only by default; restart with --allow-write to expose \
-                 write_note + append_to_note.",
-            )
+                 write_note + append_to_note + autogit_rollback. {workspace_blurb}"
+            ))
     }
 }
 
@@ -1169,5 +1343,93 @@ mod tests {
         fs::write(&note, b"# A").unwrap();
         let err = share_url_inner(&repo, &note).unwrap_err();
         assert!(err.contains("not linked"), "got: {err}");
+    }
+
+    // ----- v4.0 federation: SoloMdServer::resolve_workspace ----------------
+
+    fn fresh_dir(label: &str) -> PathBuf {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let dir = std::env::temp_dir().join(format!("solomd-mcp-rw-{label}-{nanos}"));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    #[test]
+    fn resolve_workspace_none_returns_default() {
+        let a = fresh_dir("rw-default-a").canonicalize().unwrap();
+        let b = fresh_dir("rw-default-b").canonicalize().unwrap();
+        let server = SoloMdServer::new(
+            vec![
+                ("first".into(), a.clone()),
+                ("second".into(), b.clone()),
+            ],
+            false,
+        );
+        // None falls through to the first registered workspace — back-compat
+        // with single-workspace clients.
+        assert_eq!(server.resolve_workspace(None).unwrap(), a.as_path());
+        // Empty string is treated the same as None (defensive).
+        assert_eq!(server.resolve_workspace(Some("")).unwrap(), a.as_path());
+    }
+
+    #[test]
+    fn resolve_workspace_alias_match() {
+        let a = fresh_dir("rw-alias-a").canonicalize().unwrap();
+        let b = fresh_dir("rw-alias-b").canonicalize().unwrap();
+        let server = SoloMdServer::new(
+            vec![
+                ("notes".into(), a.clone()),
+                ("scratch".into(), b.clone()),
+            ],
+            false,
+        );
+        assert_eq!(server.resolve_workspace(Some("notes")).unwrap(), a.as_path());
+        assert_eq!(server.resolve_workspace(Some("scratch")).unwrap(), b.as_path());
+    }
+
+    #[test]
+    fn resolve_workspace_absolute_path_match() {
+        let a = fresh_dir("rw-abs-a").canonicalize().unwrap();
+        let server = SoloMdServer::new(vec![("only".into(), a.clone())], false);
+        let s = a.to_string_lossy().to_string();
+        let resolved = server.resolve_workspace(Some(&s)).unwrap();
+        assert_eq!(resolved, a.as_path());
+    }
+
+    #[test]
+    fn resolve_workspace_unknown_alias_errors_with_available_list() {
+        let a = fresh_dir("rw-unknown-a").canonicalize().unwrap();
+        let server = SoloMdServer::new(vec![("home".into(), a.clone())], false);
+        let err = server.resolve_workspace(Some("bogus")).unwrap_err();
+        assert!(err.contains("unknown workspace: bogus"), "got: {err}");
+        assert!(err.contains("home"), "error should list available aliases, got: {err}");
+    }
+
+    #[test]
+    fn resolve_workspace_unregistered_absolute_path_errors() {
+        let a = fresh_dir("rw-bad-abs").canonicalize().unwrap();
+        let server = SoloMdServer::new(vec![("only".into(), a.clone())], false);
+        // /tmp itself is not a registered workspace — must reject even though
+        // it canonicalises fine.
+        let err = server.resolve_workspace(Some("/tmp")).unwrap_err();
+        assert!(err.contains("unknown workspace"), "got: {err}");
+    }
+
+    #[test]
+    fn resolve_workspace_single_workspace_back_compat() {
+        // Exactly the legacy case: one workspace, no alias arg ever passed.
+        // This is what every existing single-`--workspace` client does.
+        let a = fresh_dir("rw-legacy").canonicalize().unwrap();
+        let server = SoloMdServer::new(vec![("legacy".into(), a.clone())], false);
+        assert_eq!(server.resolve_workspace(None).unwrap(), a.as_path());
+        // And the alias still works if a curious client sends one.
+        assert_eq!(
+            server.resolve_workspace(Some("legacy")).unwrap(),
+            a.as_path()
+        );
     }
 }
