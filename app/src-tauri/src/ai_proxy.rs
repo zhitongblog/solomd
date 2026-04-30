@@ -2106,6 +2106,14 @@ async fn openai_one_turn(
         return Err(format!("openai {status}: {txt}"));
     }
 
+    // DEBUG (gemini thought_signature hunt): if the env var is set, dump
+    // every raw SSE line to that file so we can see what fields Gemini's
+    // OpenAI-compat layer puts on tool_call deltas. Set with:
+    //   SOLOMD_OPENAI_DEBUG_DUMP=/tmp/openai-stream.log pnpm tauri dev
+    let debug_dump_path: Option<std::path::PathBuf> = std::env::var("SOLOMD_OPENAI_DEBUG_DUMP")
+        .ok()
+        .map(std::path::PathBuf::from);
+
     // Streamed tool_calls come back as deltas keyed by `index`; we
     // accumulate per-index id/name + a string buffer for `arguments`.
     use std::collections::BTreeMap;
@@ -2155,6 +2163,16 @@ async fn openai_one_turn(
                     Some(p) => p.trim(),
                     None => continue,
                 };
+                if let Some(dp) = &debug_dump_path {
+                    let _ = std::fs::OpenOptions::new()
+                        .create(true)
+                        .append(true)
+                        .open(dp)
+                        .and_then(|mut f| {
+                            use std::io::Write;
+                            writeln!(f, "{payload}")
+                        });
+                }
                 if payload == "[DONE]" {
                     let mut outcome = TurnOutcome::default();
                     outcome.text = text;

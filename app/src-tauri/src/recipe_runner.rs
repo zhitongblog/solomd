@@ -1053,8 +1053,14 @@ async fn run_recipe_chat_loop(
     };
 
     // Final assistant text → append to run.md regardless of error so a
-    // partial run is inspectable.
-    if let Ok(text) = &chat_result {
+    // partial run is inspectable. Loop returns `(text, tokens_in, tokens_out)`
+    // post-P9; we only need the text here, recipes don't surface per-run
+    // tokens yet (panel chat does via meta.json's tokens block).
+    let chat_result_text: Result<String, String> = match &chat_result {
+        Ok((text, _ti, _to)) => Ok(text.clone()),
+        Err(e) => Err(e.clone()),
+    };
+    if let Ok(text) = &chat_result_text {
         if !text.is_empty() {
             let _ = handle.append_markdown(&format!("## Assistant\n\n{text}\n\n"));
         }
