@@ -16,6 +16,8 @@ use tracing_subscriber::{EnvFilter, fmt};
 
 mod safety;
 mod tools;
+// v4.0 Pillar 3 — slim trace.jsonl reader (mirrors app/src-tauri/src/trace.rs).
+mod trace_reader;
 mod workspace;
 
 #[derive(Parser, Debug)]

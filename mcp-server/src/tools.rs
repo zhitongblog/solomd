@@ -23,6 +23,7 @@ use tokio::process::Command as AsyncCommand;
 use tracing::debug;
 
 use crate::safety;
+use crate::trace_reader;
 use crate::workspace::{self, BacklinkRef, HeadingRef, NoteMeta, TagCount};
 
 // ---------------------------------------------------------------------------
@@ -175,6 +176,21 @@ pub struct AutogitRollbackArgs {
 pub struct ShareUrlArgs {
     /// Path to the note.
     pub path: String,
+}
+
+/// v4.0 Pillar 3 — args for `read_agent_trace`.
+///
+/// `workspace` is optional for back-compat with v3.x single-workspace
+/// clients; if absent we fall back to the (currently single) workspace
+/// the server was started with. P4's federation work will turn that into
+/// a real "first registered workspace" lookup; for v4.0 it's a 1:1.
+#[derive(Debug, Deserialize, Serialize, JsonSchema)]
+pub struct ReadAgentTraceArgs {
+    /// Run id under `<workspace>/.solomd/agent-runs/<run_id>/`.
+    pub run_id: String,
+    /// Optional workspace override. Defaults to the server's workspace.
+    #[serde(default)]
+    pub workspace: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -562,6 +578,48 @@ impl SoloMdServer {
         };
         Ok(CallToolResult::success(vec![
             Content::json(result).map_err(|e| McpError::internal_error(e.to_string(), None))?
+        ]))
+    }
+
+    /// v4.0 Pillar 3 — return the agent trace for a single run.
+    ///
+    /// Reads `<workspace>/.solomd/agent-runs/<run_id>/trace.jsonl` and
+    /// returns its lines as a JSON array, plus a count. Tolerates malformed
+    /// lines (skipped, not errored) so partial / crashed runs are still
+    /// inspectable. The reader is a slim duplicate of the canonical
+    /// `app/src-tauri/src/trace.rs` parser — we don't path-dep into the
+    /// app crate to keep `solomd-mcp` self-contained.
+    #[tool(
+        name = "read_agent_trace",
+        description = "Return the agent run trace as an array of step objects. Lines from `<workspace>/.solomd/agent-runs/<run_id>/trace.jsonl`. Each step has ts (unix ms), seq (1-based), kind, plus kind-specific fields (provider/model/tool/result/...). See SoloMD v4 contracts C2 for the schema."
+    )]
+    pub async fn read_agent_trace(
+        &self,
+        args: Parameters<ReadAgentTraceArgs>,
+    ) -> Result<CallToolResult, McpError> {
+        let workspace = match args.0.workspace.as_deref() {
+            Some(w) => std::path::PathBuf::from(w),
+            None => self.workspace().to_path_buf(),
+        };
+        let run_id = args.0.run_id.trim().to_string();
+        if !trace_reader::is_safe_run_id(&run_id) {
+            return Err(McpError::invalid_params(
+                format!("invalid run_id: {run_id:?}"),
+                None,
+            ));
+        }
+        let dir = workspace
+            .join(".solomd")
+            .join("agent-runs")
+            .join(&run_id);
+        let steps = tokio::task::spawn_blocking(move || trace_reader::read_trace(&dir))
+            .await
+            .map_err(|e| McpError::internal_error(format!("join: {e}"), None))?
+            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+        let count = steps.len();
+        Ok(CallToolResult::success(vec![
+            Content::json(serde_json::json!({ "steps": steps, "count": count }))
+                .map_err(|e| McpError::internal_error(e.to_string(), None))?
         ]))
     }
 }
