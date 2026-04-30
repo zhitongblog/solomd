@@ -17,9 +17,11 @@
 //! deps). When `workspace_index` already has live state for the same
 //! workspace we reuse it; otherwise we walk the disk lazily.
 
+use std::collections::HashMap;
 use std::fs;
 use std::io::Read;
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 use std::time::SystemTime;
 
 use once_cell::sync::Lazy;
@@ -33,6 +35,90 @@ use walkdir::WalkDir;
 // trees (see ai_proxy.rs comment for the same rationale).
 use super::git_history;
 use super::search;
+
+// ---------------------------------------------------------------------------
+// Recipe write-cap registry (v4.0 P2)
+// ---------------------------------------------------------------------------
+//
+// Recipes (`recipe_runner.rs`) can't intercept individual tool dispatches
+// inside `ai_proxy.rs`'s chat loops without invasive refactors. Instead,
+// before kicking off the loop the runner installs a per-workspace write
+// quota; `dispatch_tool_inner` consults that quota every time a write tool
+// (`write_note` / `append_to_note`) is requested, refusing once the recipe
+// has used its allotment. The registry is keyed by absolute workspace
+// path. Limitation: two recipes running concurrently on the same workspace
+// (different slugs) share the quota — we accept this since the existing
+// cooldown logic in `RecipesState` makes overlap rare in practice.
+//
+// Panel chats DO NOT install a guard — they're allowed unlimited writes
+// up to the user's `tool_loop_cap`, which already bounds them.
+
+#[derive(Debug, Clone)]
+struct RecipeWriteCapEntry {
+    /// Maximum number of write tool calls allowed for this run.
+    cap: u32,
+    /// How many have been consumed so far.
+    used: u32,
+}
+
+static RECIPE_WRITE_CAPS: Lazy<Mutex<HashMap<PathBuf, RecipeWriteCapEntry>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
+
+/// Install a write-cap quota for the given workspace. Subsequent
+/// `dispatch_tool` invocations from `write_note` / `append_to_note` will
+/// be refused (without dispatching) once `cap` writes have been consumed.
+/// Returns the previous entry, if any — caller should typically clear
+/// before installing.
+pub fn install_recipe_write_cap(workspace: &Path, cap: u32) -> Option<u32> {
+    let mut guard = RECIPE_WRITE_CAPS.lock().ok()?;
+    let prev = guard.get(workspace).map(|e| e.cap);
+    guard.insert(
+        workspace.to_path_buf(),
+        RecipeWriteCapEntry { cap, used: 0 },
+    );
+    prev
+}
+
+/// Remove the recipe write-cap quota for the given workspace. Returns the
+/// number of writes consumed (so the caller can record it to the trace).
+pub fn clear_recipe_write_cap(workspace: &Path) -> u32 {
+    let mut guard = match RECIPE_WRITE_CAPS.lock() {
+        Ok(g) => g,
+        Err(_) => return 0,
+    };
+    guard.remove(workspace).map(|e| e.used).unwrap_or(0)
+}
+
+/// Snapshot the current `(used, cap)` for the given workspace, or `None`
+/// if no quota is installed. Used by the recipe runner for diagnostics.
+#[allow(dead_code)]
+pub fn current_recipe_write_cap(workspace: &Path) -> Option<(u32, u32)> {
+    RECIPE_WRITE_CAPS
+        .lock()
+        .ok()
+        .and_then(|g| g.get(workspace).map(|e| (e.used, e.cap)))
+}
+
+/// Charge one write against the workspace's installed quota. Returns
+/// Ok(()) when there is room (and bumps `used`); Err with a human-readable
+/// message when the cap would be exceeded. Returns Ok(()) when no quota is
+/// installed (panel chats bypass).
+fn charge_write_cap(workspace: &Path) -> Result<(), String> {
+    let mut guard = match RECIPE_WRITE_CAPS.lock() {
+        Ok(g) => g,
+        Err(_) => return Ok(()),
+    };
+    if let Some(entry) = guard.get_mut(workspace) {
+        if entry.used >= entry.cap {
+            return Err(format!(
+                "write-cap exceeded ({}/{}) — refusing further write tool calls for this run",
+                entry.used, entry.cap
+            ));
+        }
+        entry.used += 1;
+    }
+    Ok(())
+}
 
 // ---------------------------------------------------------------------------
 // Tool list / read-vs-write classification
@@ -863,6 +949,13 @@ pub async fn dispatch_tool(
 /// AppHandle in scope). Same dispatch table as `dispatch_tool`, just no
 /// thread bounce.
 pub fn dispatch_tool_inner(workspace: &Path, tool: &str, args: Value) -> Result<Value, String> {
+    // Recipe write-cap (v4.0 P2): if a quota is installed for this
+    // workspace and we're about to call a write tool, charge it. Refusal
+    // bails before any side-effect — the loop sees an Err result and
+    // continues with the model's next turn.
+    if is_write_tool(tool) {
+        charge_write_cap(workspace)?;
+    }
     match tool {
         "list_notes" => tool_list_notes(workspace, &args),
         "read_note" => tool_read_note(workspace, &args),
