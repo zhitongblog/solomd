@@ -113,6 +113,21 @@ argon2 = "0.5"
 chacha20poly1305 = "0.10"
 rand = "0.8"
 
+# v4.0 Pillar 2 — Agent Recipes.
+# `cron` parses cron expressions for `trigger: schedule` recipes and yields
+# the next-fire UTC time so a single tokio task can sleep until any recipe
+# is due. `chrono` does the human-readable date formatting for the
+# `{{date:FMT}}` template tokens (incl. ISO week numbers — strftime `%V`)
+# and converts cron schedules to UTC instants. `globset` matches the
+# `match:` glob patterns when an on-save / on-commit trigger fires; we
+# don't reuse `walkdir`'s glob handling because we need fnmatch-style
+# `**` semantics against a single path, not a tree walk. `hex` mints the
+# 6-char run id suffix used in `<run-id>` and the agent branch name.
+cron = "0.12"
+chrono = { version = "0.4", default-features = false, features = ["clock", "serde"] }
+globset = "0.4"
+hex = "0.4"
+
 # Platform-specific deps for "Set as default editor" feature.
 [target.'cfg(target_os = "macos")'.dependencies]
 core-foundation = "0.10"
