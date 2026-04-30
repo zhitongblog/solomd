@@ -28,6 +28,15 @@ pub mod crypto;
 // edit / split modes pop a reload-vs-keep dialog.
 pub mod watcher;
 
+// v4.0 Pillar 2 — Agent Recipes. `recipes` parses the YAML schema +
+// owns the `.solomd/agents/` watcher; `agent_run` writes the C1 run dir
+// layout (meta.json + trace.jsonl + run.md); `recipe_runner` drives one
+// recipe end-to-end, hooks save / commit / cron / manual triggers, and
+// gates writes behind the AutoGit branch sandbox + write-cap.
+pub mod recipes;
+pub mod agent_run;
+pub mod recipe_runner;
+
 // v2.3 dev WebDriver bridge — debug builds only.
 #[cfg(debug_assertions)]
 pub mod dev_bridge;
@@ -44,6 +53,7 @@ pub fn run() {
 
     builder
         .manage(watcher::WatcherState::new())
+        .manage(recipe_runner::RecipesState::new())
         .setup(|app| {
             #[cfg(debug_assertions)]
             {
@@ -53,6 +63,10 @@ pub fn run() {
             {
                 let _ = app;
             }
+            // v4.0 Pillar 2 — start the cron-trigger loop. Sleeps until
+            // a `schedule` recipe is due; harmless when no recipes are
+            // loaded yet (the loop polls workspace state every minute).
+            recipe_runner::spawn_cron_loop(app.handle().clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -139,6 +153,18 @@ pub fn run() {
             crypto::crypto_decrypt_after_pull,
             watcher::watch_file,
             watcher::unwatch_file,
+            recipe_runner::recipes_list,
+            recipe_runner::recipes_get,
+            recipe_runner::recipes_save,
+            recipe_runner::recipes_delete,
+            recipe_runner::recipes_run_now,
+            recipe_runner::recipes_pending_runs,
+            recipe_runner::recipes_history,
+            recipe_runner::recipes_read_trace,
+            recipe_runner::recipes_read_run_md,
+            recipe_runner::recipes_run_diff,
+            recipe_runner::recipes_accept_run,
+            recipe_runner::recipes_reject_run,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

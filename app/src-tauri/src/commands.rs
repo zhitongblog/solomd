@@ -67,11 +67,91 @@ pub fn read_file_inner(path: String) -> Result<FileReadResult, String> {
 
 /// Write a UTF-8 string back to disk in the requested encoding.
 /// `encoding` should be a label like "UTF-8", "GBK", "UTF-16LE".
+///
+/// v4.0 Pillar 2 — also fires the `on-save` / `on-tag-add` recipe
+/// triggers if the saved file lives inside the active workspace. The
+/// dispatch is async + best-effort so a save never blocks on a recipe.
+/// `workspace` is optional; when absent, no recipe dispatch happens
+/// (this keeps callers that save scratch files outside any workspace
+/// from accidentally triggering recipes against the wrong vault).
 #[tauri::command]
-pub async fn write_file(path: String, content: String, encoding: String) -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(move || write_file_inner(path, content, encoding))
-        .await
-        .map_err(|e| format!("join: {e}"))?
+pub async fn write_file(
+    app: tauri::AppHandle,
+    path: String,
+    content: String,
+    encoding: String,
+    workspace: Option<String>,
+) -> Result<(), String> {
+    let path_for_dispatch = path.clone();
+    let content_for_dispatch = content.clone();
+    tauri::async_runtime::spawn_blocking({
+        let path = path.clone();
+        let content = content.clone();
+        move || write_file_inner(path, content, encoding)
+    })
+    .await
+    .map_err(|e| format!("join: {e}"))??;
+
+    // After a successful save, fire the on-save / on-tag-add triggers
+    // for the active workspace. We re-extract tags from the *content*
+    // we just wrote (rather than re-reading from disk) so the trigger
+    // sees the same bytes the user just saved.
+    if let Some(ws) = workspace {
+        let ws_path = std::path::PathBuf::from(&ws);
+        let new_tags = extract_tags_for_dispatch(&content_for_dispatch);
+        // Detached — we don't want the save IPC call to wait on a
+        // recipe firing.
+        tauri::async_runtime::spawn(async move {
+            super::recipe_runner::dispatch_on_save(app, ws_path, path_for_dispatch, new_tags).await;
+        });
+    }
+
+    Ok(())
+}
+
+/// Quick-and-dirty tag extraction used by the on-tag-add trigger. We
+/// reuse the same scanner shape as `mcp-server/src/workspace.rs` —
+/// duplicated here because P4 (Federation) hasn't merged yet and we
+/// don't want to depend on the mcp-server crate from inside the Tauri
+/// app. After P4 lands, swap this for the canonical helper.
+fn extract_tags_for_dispatch(body: &str) -> Vec<String> {
+    let mut tags: Vec<String> = Vec::new();
+    let mut in_fence = false;
+    for line in body.lines() {
+        if line.trim_start().starts_with("```") {
+            in_fence = !in_fence;
+            continue;
+        }
+        if in_fence {
+            continue;
+        }
+        let chars: Vec<char> = line.chars().collect();
+        let mut i = 0;
+        while i < chars.len() {
+            let c = chars[i];
+            let preceded_ok = i == 0 || chars[i - 1].is_whitespace();
+            if c == '#' && preceded_ok {
+                if i + 1 < chars.len() && chars[i + 1].is_alphanumeric() {
+                    let mut j = i + 1;
+                    while j < chars.len()
+                        && (chars[j].is_alphanumeric()
+                            || chars[j] == '_'
+                            || chars[j] == '/'
+                            || chars[j] == '-')
+                    {
+                        j += 1;
+                    }
+                    tags.push(chars[i + 1..j].iter().collect());
+                    i = j;
+                    continue;
+                }
+            }
+            i += 1;
+        }
+    }
+    tags.sort();
+    tags.dedup();
+    tags
 }
 
 pub fn write_file_inner(path: String, content: String, encoding: String) -> Result<(), String> {

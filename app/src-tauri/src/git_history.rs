@@ -418,15 +418,28 @@ pub fn git_auto_commit_inner(
 
 #[tauri::command]
 pub async fn git_auto_commit(
+    app: tauri::AppHandle,
     folder: String,
     file_path: Option<String>,
     message: Option<String>,
 ) -> Result<Option<String>, String> {
-    tauri::async_runtime::spawn_blocking(move || {
+    let folder_for_dispatch = folder.clone();
+    let file_for_dispatch = file_path.clone();
+    let result = tauri::async_runtime::spawn_blocking(move || {
         git_auto_commit_inner(folder, file_path, message)
     })
     .await
-    .map_err(|e| format!("join: {e}"))?
+    .map_err(|e| format!("join: {e}"))??;
+
+    // v4.0 Pillar 2 — fire on-commit recipe triggers when a real commit
+    // landed (commit_staged returns None when the tree was unchanged).
+    if let Some(sha) = result.clone() {
+        let ws_path = std::path::PathBuf::from(&folder_for_dispatch);
+        tauri::async_runtime::spawn(async move {
+            super::recipe_runner::dispatch_on_commit(app, ws_path, file_for_dispatch, sha).await;
+        });
+    }
+    Ok(result)
 }
 
 pub fn git_file_history_inner(

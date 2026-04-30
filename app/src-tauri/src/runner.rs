@@ -58,6 +58,18 @@ mod dev_bridge;
 #[path = "watcher.rs"]
 mod watcher;
 
+// v4.0 Pillar 2 — Agent Recipes. Declared here as well as in lib.rs so
+// the desktop binary (driven from `main.rs` → `runner.rs`) picks them
+// up; `commands.rs` and `git_history.rs` reference
+// `crate::recipe_runner::*` and that has to resolve in both compilation
+// roots (the lib AND the bin).
+#[path = "recipes.rs"]
+mod recipes;
+#[path = "agent_run.rs"]
+mod agent_run;
+#[path = "recipe_runner.rs"]
+mod recipe_runner;
+
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use tauri::menu::{
@@ -400,6 +412,7 @@ pub fn run_with(initial_file: Option<String>) {
     let app = builder
         .manage(PendingOpen(Mutex::new(pending)))
         .manage(watcher::WatcherState::new())
+        .manage(recipe_runner::RecipesState::new())
         .invoke_handler(tauri::generate_handler![
             commands::read_file,
             commands::read_binary_file,
@@ -482,6 +495,18 @@ pub fn run_with(initial_file: Option<String>) {
             crypto::crypto_decrypt_after_pull,
             watcher::watch_file,
             watcher::unwatch_file,
+            recipe_runner::recipes_list,
+            recipe_runner::recipes_get,
+            recipe_runner::recipes_save,
+            recipe_runner::recipes_delete,
+            recipe_runner::recipes_run_now,
+            recipe_runner::recipes_pending_runs,
+            recipe_runner::recipes_history,
+            recipe_runner::recipes_read_trace,
+            recipe_runner::recipes_read_run_md,
+            recipe_runner::recipes_run_diff,
+            recipe_runner::recipes_accept_run,
+            recipe_runner::recipes_reject_run,
         ])
         .on_menu_event(|app_handle, event| {
             // Forward every menu click to the frontend as a single event
@@ -518,6 +543,12 @@ pub fn run_with(initial_file: Option<String>) {
             {
                 dev_bridge::spawn(app.handle().clone());
             }
+
+            // v4.0 Pillar 2 — start the cron-trigger loop. Sleeps until
+            // a `schedule` recipe is due; harmless when no recipes are
+            // loaded yet (the loop polls workspace state every minute
+            // and recipes are loaded eagerly by `recipes_list`).
+            recipe_runner::spawn_cron_loop(app.handle().clone());
             Ok(())
         })
         .build(tauri::generate_context!())
