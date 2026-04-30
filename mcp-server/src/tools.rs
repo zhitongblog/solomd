@@ -756,10 +756,10 @@ impl SoloMdServer {
         &self,
         args: Parameters<ReadAgentTraceArgs>,
     ) -> Result<CallToolResult, McpError> {
-        let workspace = match args.0.workspace.as_deref() {
-            Some(w) => std::path::PathBuf::from(w),
-            None => self.workspace().to_path_buf(),
-        };
+        let workspace = self
+            .resolve_workspace(args.0.workspace.as_deref())
+            .map_err(|e| McpError::invalid_params(e, None))?
+            .to_path_buf();
         let run_id = args.0.run_id.trim().to_string();
         if !trace_reader::is_safe_run_id(&run_id) {
             return Err(McpError::invalid_params(

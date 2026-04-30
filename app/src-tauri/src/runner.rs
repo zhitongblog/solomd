@@ -71,6 +71,9 @@ mod agent_trace;
 // v4.0 Pillar 5 — Ollama polish (detect / pull / install-page).
 #[path = "ollama.rs"]
 mod ollama;
+// v4.0 Pillar 4 — MCP federation profile storage.
+#[path = "mcp_profiles.rs"]
+mod mcp_profiles;
 // v4.0 Pillar 2 — Agent Recipes. Declared here in addition to lib.rs so
 // the desktop binary (driven from `main.rs` → `runner.rs`) picks them
 // up. `commands.rs` and `git_history.rs` reference
@@ -526,6 +529,10 @@ pub fn run_with(initial_file: Option<String>) {
             ollama::ollama_pull,
             ollama::ollama_cancel_pull,
             ollama::open_ollama_install_page,
+            mcp_profiles::mcp_profiles_list,
+            mcp_profiles::mcp_profiles_save,
+            mcp_profiles::mcp_profiles_delete,
+            mcp_profiles::mcp_profiles_export_config,
             recipe_runner::recipes_list,
             recipe_runner::recipes_get,
             recipe_runner::recipes_save,
