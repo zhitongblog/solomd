@@ -1,0 +1,368 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+
+const lang = 'zh' as const;
+---
+
+<Layout
+  title="SoloMD Agent —— 写自己的 Recipe (v4)"
+  description="SoloMD v4 的 Agent 能力面:内置 Agent 面板、定时 Recipe、可重放 Trace、跨 vault Federation、Ollama 一等公民。五大支柱详细介绍,加上把自动写入变得「可审」的安全模型。"
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <article class="container agents-page">
+      <p class="eyebrow">v4.0 · 让 Agent 住进编辑器</p>
+      <h1>Agent in SoloMD</h1>
+      <p class="lead">
+        SoloMD v4.0 把工作区从"按需调用 AI"变成"Agent <em>持续在场</em>工作"
+        的地方。五大支柱,全部跑在你早就拥有的纯 Markdown 文件上。
+        每一次自动写入都先进 AutoGit 分支沙箱,你 Accept 或 Reject 后才会落到 main。
+      </p>
+
+      <nav class="toc">
+        <a href="#panel">1. 内置 Agent 面板</a>
+        <a href="#recipes">2. 定时 Recipe</a>
+        <a href="#trace">3. Trace + 重放</a>
+        <a href="#federation">4. 多 vault Federation</a>
+        <a href="#ollama">5. Ollama 一等公民</a>
+        <a href="#cookbook">11 个起步 Recipe</a>
+        <a href="#safety">安全模型</a>
+        <a href="#write">写自己的</a>
+      </nav>
+
+      <section id="panel">
+        <h2>1. 内置 Agent 面板</h2>
+        <p>
+          右侧一等公民面板,与 Outline / Backlinks 平级。流式输出地与整个
+          vault 对话,通过进程内 MCP 工具走 14-provider AI 栈。引用以
+          <code>[[wikilink]]</code> 芯片形式呈现,点击在新标签页打开被引用笔记。
+          tool-call 卡片 (Cursor 风格) 把每次读 / 写都展开在面板里 —— 展开卡片可看完整入参和返回。
+        </p>
+        <p>
+          运行历史以纯 markdown 持久化在
+          <code>&lt;workspace&gt;/.solomd/agent-runs/&lt;ts&gt;.md</code>。
+          可 grep,可 git。这是黑盒的反面。
+        </p>
+        <ul>
+          <li>用 <code>⌘⇧A</code> 或右栏开关呼出</li>
+          <li>
+            <strong>当前笔记</strong>开关把当前文档注入系统提示 —— 选项性,
+            默认关
+          </li>
+          <li>
+            <strong>允许写入</strong>开关按会话控制 <code>write_note</code>
+            和 <code>append_to_note</code>
+          </li>
+          <li>10 个进程内 agent 工具 —— 与内置 MCP server 同样的能力面</li>
+        </ul>
+      </section>
+
+      <section id="recipes">
+        <h2>2. 定时 Recipe</h2>
+        <p>
+          一个 Recipe 就是一个 YAML 文件,放在
+          <code>&lt;workspace&gt;/.solomd/agents/*.yml</code>。无构建步骤,
+          无插件清单。改、保存、跑。五种触发模式:
+        </p>
+        <table class="recipe-triggers">
+          <thead>
+            <tr><th>触发器</th><th>触发条件</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>schedule</code></td><td>cron 表达式匹配当前 UTC 分钟</td></tr>
+            <tr><td><code>on-save</code></td><td>匹配 <code>match:</code> 的 markdown 文件保存时 (800ms 防抖)</td></tr>
+            <tr><td><code>on-commit</code></td><td>AutoGit 提交落地且涉及 <code>match:</code></td></tr>
+            <tr><td><code>on-tag-add</code></td><td>笔记新加入与 <code>tag:</code> 匹配的 <code>#tag</code></td></tr>
+            <tr><td><code>manual</code></td><td>设置 → Recipes 里点 <em>立即运行</em></td></tr>
+          </tbody>
+        </table>
+        <p>示例 Recipe:</p>
+        <pre class="code-block"><code>{`name: 周回顾
+trigger: schedule
+schedule: "0 18 * * SUN"        # cron, UTC
+match: "daily/**/*.md"
+prompt: |
+  阅读本周 daily/ 下的笔记。
+  写到 weekly/{{date:YYYY-WW}}.md:主题 / 决定 / 未决问题。
+allow-write: true
+write-cap: 5
+provider: claude`}</code></pre>
+        <p>
+          触发器与下面的安全模型组合 —— 每次运行都先开自己的 AutoGit 分支
+          <code>agent/&lt;recipe&gt;/&lt;run-id&gt;</code>,写入是<strong>可审</strong>的,不是"魔法"。
+        </p>
+      </section>
+
+      <section id="trace">
+        <h2>3. Trace 视图 + 重放</h2>
+        <p>
+          每次运行 (Panel 对话或 Recipe) 都吐
+          <code>&lt;workspace&gt;/.solomd/agent-runs/&lt;run-id&gt;/trace.jsonl</code>
+          —— 行分隔的 JSON Lines,长任务可以边跑边 <code>tail -f</code>。
+          schema:每步一个 JSON 对象,kind 包括 <code>run_started</code> ·
+          <code>prompt</code> · <code>model_call</code> ·
+          <code>tool_call</code> · <code>tool_result</code> ·
+          <code>git_commit</code> · <code>run_ended</code>。字段含时间戳、
+          工具入参、截断后的返回 (≤ 2048 字符)、token 数、成本估算。
+        </p>
+        <p>UI 把这些渲染成可折叠步骤卡片:</p>
+        <ul>
+          <li>Panel 对话结束后 inline 展示</li>
+          <li>设置 → Recipes → 历史 (每次运行一条)</li>
+          <li>点开看完整 result body 的步骤详情抽屉</li>
+          <li>
+            <strong>从第 N 步重放</strong>会复用 trace 前缀(到第 N 步为止),
+            重新跑 model。模型在第 7 步走偏想换提示重试时很有用。
+          </li>
+          <li>
+            新的 <code>read_agent_trace(run_id)</code> MCP 工具 ——
+            agent 现在能读自己的 trace,自我纠错的 Recipe 成为可能。
+          </li>
+        </ul>
+      </section>
+
+      <section id="federation">
+        <h2>4. 多 vault Federation</h2>
+        <p>
+          内置的 <code>solomd-mcp</code> 在 v4 长出了多工作区模式。
+          通过任意多个 <code>--workspace</code> 标志在一个 MCP 会话里桥接多个 vault:
+        </p>
+        <pre class="code-block"><code>{`solomd-mcp \\
+  --workspace ~/Vaults/personal \\
+  --workspace ~/Vaults/work \\
+  --workspace ~/Vaults/research`}</code></pre>
+        <p>
+          工具签名加了可选的 <code>workspace</code> 参数。默认 = 第一个传入 (向后兼容)。
+          AutoGit 分支按工作区隔离。设置 → 集成里加了具名的
+          <strong>MCP profile</strong> —— 可一键复制对应的 Claude Desktop 配置块。
+        </p>
+        <p>
+          现在用户得开多个 Claude Code 会话才能跨两个 vault 工作。v4 一会话就够了。
+        </p>
+      </section>
+
+      <section id="ollama">
+        <h2>5. Ollama 一等公民</h2>
+        <p>
+          我们<em>不</em>内置本地 LLM 运行时。Ollama 已经在 14-provider 列表里
+          且做得很好 —— 重写一遍违反原则 #7 (写更少的我们要长期维护的代码)。
+          v4 改为打磨集成:
+        </p>
+        <ul>
+          <li>自动检测 <code>localhost:11434</code> 上的 Ollama,设置 → AI 里有绿色状态指示。</li>
+          <li>没装就出现<strong>安装 Ollama</strong>按钮 (跳 ollama.com,我们不代理下载)。</li>
+          <li><code>/api/tags</code> 内联列出已装模型;空列表时给<em>拉取推荐 (qwen2.5:1.5b, ~1 GB)</em>按钮。</li>
+          <li>3 个内置预设:<strong>rewrite</strong> (qwen2.5:7b) · <strong>quick</strong> (qwen2.5:1.5b) · <strong>CJK 友好</strong> (qwen2.5:14b)。</li>
+          <li>Recipe 可以指定 <code>provider: local</code> 作为默认,跑廉价的本机自动循环。</li>
+        </ul>
+      </section>
+
+      <section id="cookbook">
+        <h2>11 个起步 Recipe</h2>
+        <p>
+          打开 设置 → Recipes → <strong>浏览菜谱</strong>就能装下面任何一个。
+          YAML 会复制到 <code>.solomd/agents/</code> 并打开编辑。
+          可重复装 (自动加后缀)。
+        </p>
+        <ul class="cookbook-list">
+          <li><code>01-weekly-review.yml</code> —— 周日 18:00 UTC,把 <code>daily/*.md</code> 总结到 <code>weekly/YYYY-WW.md</code></li>
+          <li><code>02-todo-extract.yml</code> —— on-save 扫 <code>- [ ]</code>,累积到 <code>todo.md</code></li>
+          <li><code>03-translate-zh-to-en.yml</code> —— 手动;当前笔记中英互译</li>
+          <li><code>04-cjk-proofread.yml</code> —— on-save 用 Ollama (<code>provider: local</code>) 跑中日韩语法检查</li>
+          <li><code>05-citation-cleanup.yml</code> —— on-commit 规范化 <code>@citekey</code> 格式</li>
+          <li><code>06-meeting-notes-summary.yml</code> —— on-tag-add <code>#meeting</code> 抽决定 + 行动项</li>
+          <li><code>07-link-suggester.yml</code> —— 只读,在 trace 视图里给 <code>[[wikilink]]</code> 建议 (不改文件)</li>
+          <li><code>08-daily-summary.yml</code> —— 每晚 22:00,把 TL;DR 写到当天的 daily 笔记</li>
+          <li><code>09-orphan-notes.yml</code> —— 每周扫零反向链接的笔记,列在 <code>orphans.md</code></li>
+          <li><code>10-on-commit-changelog.yml</code> —— on-commit 给 <code>CHANGELOG.md</code> 追加一行总结</li>
+          <li><code>11-tag-classifier.yml</code> —— on-save 根据笔记内容建议 <code>#tag</code> (只读)</li>
+        </ul>
+      </section>
+
+      <section id="safety">
+        <h2>安全模型 —— AutoGit 沙箱</h2>
+        <p>每次 Recipe 运行都先做这三步:</p>
+        <ol>
+          <li>从当前 HEAD 开一条新的 AutoGit 分支 <code>agent/&lt;recipe-slug&gt;/&lt;run-id&gt;</code>。</li>
+          <li>跑 prompt + tool 循环。所有 <code>write_note</code> / <code>append_to_note</code> 调用都落在这个分支上。</li>
+          <li>成功后进入<strong>待审核</strong>,三个按钮:<em>查看 diff</em>、<em>Accept</em>(快进合到 <code>main</code>)、<em>Reject</em>(整条分支删除)。</li>
+        </ol>
+        <p>
+          被 Reject 的运行在 git 历史里完全消失。被 Accept 的运行在
+          <code>git log</code> 里像普通提交一样出现。
+        </p>
+        <p>
+          <code>write-cap</code> 在 dispatch <em>之前</em>就检查 ——
+          如果模型在 cap=5 的情况下要写 100 个文件,从第 6 个起就被拒,
+          不会出现"半成品"状态。默认 5,硬上限 50。
+        </p>
+      </section>
+
+      <section id="write">
+        <h2>写自己的</h2>
+        <p>
+          完整 schema、所有变量 (<code>{`{{path}}`}</code>、
+          <code>{`{{date:YYYY-MM-DD}}`}</code>、<code>{`{{files}}`}</code>...)、
+          agent 能调用的所有工具、生产环境真正能跑的模式 ——
+          全在仓库的 <code>docs/agents.md</code> 里:
+        </p>
+        <p>
+          <a class="cta" href="https://github.com/zhitongblog/solomd/blob/main/docs/agents.md" rel="external">
+            阅读 docs/agents.md →
+          </a>
+        </p>
+        <p>
+          Schema 的源头是
+          <a href="https://github.com/zhitongblog/solomd/blob/main/app/src-tauri/src/recipes.rs" rel="external">
+            <code>app/src-tauri/src/recipes.rs</code>
+          </a> —— Rust 类型,不是纸面规范。
+        </p>
+      </section>
+
+      <p class="lang-switch">
+        <a href="/agents/">English</a> · <a href="/zh/security/">/security</a> · <a href="/zh/">首页</a>
+      </p>
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .agents-page {
+    max-width: 820px;
+    padding: 40px 20px 80px;
+    color: var(--text, #1a1a1a);
+    line-height: 1.85;
+  }
+  .agents-page .eyebrow {
+    color: var(--accent, #ff9f40);
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin: 16px 0 0;
+  }
+  .agents-page h1 {
+    font-size: 2.4rem;
+    margin: 8px 0 14px;
+    color: var(--text, #1a1a1a);
+    letter-spacing: -0.01em;
+  }
+  .agents-page .lead {
+    font-size: 1.1rem;
+    color: var(--text-muted, #555);
+    margin-bottom: 2em;
+  }
+  .agents-page .toc {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+    padding: 14px 18px;
+    border: 1px solid var(--border, #eee);
+    border-radius: 10px;
+    background: var(--bg-elev, #fafaf7);
+    font-size: 0.92rem;
+    margin-bottom: 2.4em;
+  }
+  .agents-page .toc a {
+    color: var(--text-muted, #444);
+    text-decoration: none;
+    border-bottom: 1px dashed transparent;
+  }
+  .agents-page .toc a:hover {
+    color: var(--accent, #ff9f40);
+    border-bottom-color: currentColor;
+  }
+  .agents-page section {
+    margin-bottom: 2.4em;
+  }
+  .agents-page h2 {
+    font-size: 1.4rem;
+    margin: 2em 0 0.6em;
+    padding-top: 0.5em;
+    border-top: 1px dashed #eee;
+  }
+  .agents-page ul,
+  .agents-page ol {
+    padding-left: 1.4em;
+    margin: 0.4em 0 0.8em;
+  }
+  .agents-page li {
+    margin: 0.4em 0;
+    color: var(--text-muted, #444);
+  }
+  .agents-page code {
+    background: var(--bg-soft, #fafaf7);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    border: 1px solid #eee;
+    font-family: var(--font-mono, 'SF Mono', Menlo, Consolas, monospace);
+  }
+  .agents-page .code-block {
+    background: var(--ink, #0e0e0c);
+    color: #e8e6de;
+    padding: 14px 16px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 0.85rem;
+    line-height: 1.55;
+    margin: 0.8em 0;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .agents-page .code-block code {
+    background: transparent;
+    border: none;
+    padding: 0;
+    color: inherit;
+    font-size: inherit;
+  }
+  .agents-page table.recipe-triggers {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1em 0 1.4em;
+    font-size: 0.92rem;
+  }
+  .agents-page table.recipe-triggers th,
+  .agents-page table.recipe-triggers td {
+    padding: 8px 12px;
+    border-bottom: 1px solid #eee;
+    text-align: left;
+    vertical-align: top;
+  }
+  .agents-page table.recipe-triggers th {
+    color: var(--text-muted, #555);
+    font-weight: 600;
+  }
+  .agents-page .cookbook-list code {
+    background: transparent;
+    border: none;
+    padding: 0;
+    color: var(--accent, #ff9f40);
+    font-weight: 600;
+  }
+  .agents-page a {
+    color: var(--accent, #ff9f40);
+  }
+  .agents-page a.cta {
+    display: inline-block;
+    margin: 0.6em 0;
+    padding: 10px 20px;
+    border: 1px solid var(--accent, #ff9f40);
+    border-radius: 999px;
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .agents-page a.cta:hover {
+    background: var(--accent, #ff9f40);
+    color: #fff;
+  }
+  .lang-switch {
+    margin-top: 3em;
+    font-size: 0.9rem;
+    color: var(--text-faint, #999);
+  }
+</style>

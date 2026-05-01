@@ -78,9 +78,7 @@ const initialDownloadsText = initialDownloads > 0 ? fmtDownloads(initialDownload
         ⬇ {tr.hero.ctaPrimary}
       </a>
       <a
-        href="https://github.com/zhitongblog/solomd"
-        target="_blank"
-        rel="noopener"
+        href={lang === 'zh' ? '/zh/agents/' : '/agents/'}
         class="btn btn--secondary btn--lg"
       >
         {tr.hero.ctaSecondary}

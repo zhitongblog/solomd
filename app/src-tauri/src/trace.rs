@@ -40,6 +40,12 @@
 //! us per-line atomicity. We test this with concurrent emitters under one
 //! mutex (see `tests::concurrent_appends_do_not_interleave`).
 
+// Several items here are intentional public API surface for downstream callers
+// (the MCP server, future replay-from-step UI, the truncation contract). The
+// binary build can't see those external uses, so allow dead_code module-wide
+// rather than scatter attributes on every item.
+#![allow(dead_code)]
+
 use std::fs::{File, OpenOptions};
 use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
