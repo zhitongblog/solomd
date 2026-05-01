@@ -7,8 +7,10 @@ import { computed } from 'vue';
 import { useSettingsStore } from '../stores/settings';
 import { en } from './en';
 import { zh } from './zh';
+import { ja } from './ja';
+import { ko } from './ko';
 
-const dicts = { en, zh } as const;
+const dicts = { en, zh, ja, ko } as const;
 type Lang = keyof typeof dicts;
 
 export function useI18n() {

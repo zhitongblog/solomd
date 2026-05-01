@@ -7,10 +7,12 @@
 | App Name | SoloMD |
 | Subtitle (EN) | Minimalist Markdown editor |
 | Subtitle (zh-Hans) | 极简 Markdown 编辑器 |
+| Subtitle (ja) | ミニマルな Markdown エディタ |
+| Subtitle (ko) | 미니멀한 마크다운 에디터 |
 | Bundle ID | app.solomd |
 | SKU | solomd-ios-001 |
 | Primary Language | English (U.S.) |
-| Additional Language | Simplified Chinese |
+| Additional Languages | Simplified Chinese, Japanese, Korean |
 | Category — Primary | Productivity |
 | Category — Secondary | Developer Tools |
 | Content Rights | Does not contain, show, or access third-party content |
@@ -72,7 +74,7 @@ None.
 
 - Version: 0.1.12
 - Copyright: © 2026 xiangdong li
-- What's New: see `WHATS_NEW_en.md` / `WHATS_NEW_zh.md`
+- What's New: see `WHATS_NEW_en.md` / `WHATS_NEW_zh.md` / `WHATS_NEW_ja.md` / `WHATS_NEW_ko.md`
 
 ## Screenshots required
 
