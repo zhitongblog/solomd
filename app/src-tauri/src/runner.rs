@@ -423,6 +423,26 @@ fn drain_pending_opens(state: tauri::State<PendingOpen>) -> Vec<String> {
     std::mem::take(&mut *guard)
 }
 
+/// One-shot guard so the size/position fit-up only runs once per launch.
+/// After the plugin's restore (or the Ready-event fallback) triggers it,
+/// further user moves/resizes are left alone.
+static MAIN_FIT_DONE: AtomicBool = AtomicBool::new(false);
+
+/// Apply the size + position clamp + show + focus exactly once. Subsequent
+/// calls are cheap no-ops via the `MAIN_FIT_DONE` flag.
+fn fit_main_window_once(win: &tauri::WebviewWindow) {
+    if MAIN_FIT_DONE
+        .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+        .is_err()
+    {
+        return;
+    }
+    clamp_window_to_monitor(win);
+    let _ = win.show();
+    let _ = win.unminimize();
+    let _ = win.set_focus();
+}
+
 /// Re-fit the main window into its current monitor's work area before show.
 ///
 /// Two failure modes from `tauri-plugin-window-state` we have to defend
@@ -652,22 +672,23 @@ pub fn run_with(initial_file: Option<String>) {
             let menu = build_app_menu(app.handle(), "en")?;
             app.set_menu(menu)?;
 
-            // Windows-specific: when launched via file association, the newly
-            // created window sometimes lands behind the Explorer window that
-            // triggered it (focus-stealing prevention). Explicitly show + focus
-            // the main window to bring it forward.
-            //
-            // macOS: tauri-plugin-window-state can restore (a) a size larger
-            // than the current monitor (e.g. saved 2880×1740 from a previous
-            // 5K display, restored on a 1440p laptop), and (b) a top edge Y
-            // value that puts the title bar behind the menu bar. Both make
-            // the title bar / native menu unreachable until the user drags.
-            // We always re-fit size AND position before showing.
+            // The window-state plugin's restore_state is dispatched via
+            // `run_on_main_thread`, so it doesn't fire until AFTER setup
+            // returns AND after the run loop has started processing. Hook
+            // the main window's first Resized OR Moved event — that's the
+            // restore — and clamp at that moment. A second hook in the
+            // run-loop event match (`RunEvent::Ready` + 400ms timer) acts
+            // as a fallback when there's no saved state to restore.
             if let Some(win) = app.get_webview_window("main") {
-                clamp_window_to_monitor(&win);
-                let _ = win.show();
-                let _ = win.unminimize();
-                let _ = win.set_focus();
+                let win_clone = win.clone();
+                win.on_window_event(move |event| {
+                    if matches!(
+                        event,
+                        tauri::WindowEvent::Resized(_) | tauri::WindowEvent::Moved(_)
+                    ) {
+                        fit_main_window_once(&win_clone);
+                    }
+                });
             }
 
             // NOTE: do NOT drain PendingOpen here. The frontend calls
@@ -695,23 +716,41 @@ pub fn run_with(initial_file: Option<String>) {
 
     app.run(|app_handle, event| {
         match &event {
-            // ---- macOS launch activation ----
-            // On macOS, calling `win.set_focus()` from `setup` fires before
-            // NSApplication's run loop has finished `applicationDidFinish-
-            // Launching`, so the activation request can be silently dropped
-            // and the app launches behind whatever was previously frontmost
-            // (Finder / the parent terminal). Symptom: SoloMD's window
-            // appears, but the macOS menu bar still shows the previous app's
-            // menus until the user clicks/drags SoloMD's window. Re-issue
-            // show + focus from the `Ready` event, when the run loop has
-            // actually started.
-            #[cfg(target_os = "macos")]
+            // ---- Post-restore window setup ----
+            // `RunEvent::Ready` fires after the run loop has started, which
+            // means after `tauri-plugin-window-state` has had a chance to
+            // process its `run_on_main_thread`-queued restore_state call.
+            // Two things we do here that we can't reliably do in `setup`:
+            //
+            // 1. Clamp the restored window to the current monitor (size +
+            //    position). The plugin happily restores a saved 2556×1320
+            //    @ x=1207 from a previous multi-monitor session onto a
+            //    single 2560-wide monitor, leaving the right edge 1.2k px
+            //    off-screen. Always recenter when the saved layout is
+            //    invalid for the current monitor; preserve when valid.
+            //
+            // 2. macOS-only: re-issue show + set_focus so SoloMD becomes
+            //    frontmost. `set_focus` from `setup` fires before NSApp
+            //    has finished `applicationDidFinishLaunching` and gets
+            //    silently dropped, leaving SoloMD launched behind the
+            //    parent app (Finder / terminal) — the macOS menu bar
+            //    keeps showing the previous app's menus until the user
+            //    drags SoloMD's window.
             RunEvent::Ready => {
-                if let Some(win) = app_handle.get_webview_window("main") {
-                    let _ = win.show();
-                    let _ = win.unminimize();
-                    let _ = win.set_focus();
-                }
+                // Fallback path: when there's no saved window state for the
+                // plugin to restore (fresh install, deleted state file), no
+                // Resized/Moved event ever fires from the restore — the
+                // setup-time `on_window_event` hook would never trigger and
+                // the window would never get shown / focused. Schedule a
+                // delayed fit on a background thread; the AtomicBool guard
+                // makes it a no-op if the on_window_event hook beat us.
+                let app_handle_clone = app_handle.clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_millis(400));
+                    if let Some(win) = app_handle_clone.get_webview_window("main") {
+                        fit_main_window_once(&win);
+                    }
+                });
             }
 
             // ---- Window close: intercept and ask frontend ----
