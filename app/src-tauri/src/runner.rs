@@ -423,6 +423,56 @@ fn drain_pending_opens(state: tauri::State<PendingOpen>) -> Vec<String> {
     std::mem::take(&mut *guard)
 }
 
+/// Re-fit the main window into its current monitor's work area before show.
+///
+/// Two failure modes from `tauri-plugin-window-state` we have to defend
+/// against on every launch (not just when the saved size is too big):
+/// 1. **Oversize restore** — a saved 2880×1740 from a 5K display, restored
+///    on a 1440p laptop, leaves the bottom edge off-screen.
+/// 2. **Top-edge restore behind the menu bar** — saved Y between 0 and the
+///    macOS menu bar height (24pt) puts the title bar / traffic lights
+///    behind the menu bar, where they can't be clicked or dragged.
+///
+/// The clamp is unconditional: every launch, we re-fit size and position.
+/// 40px is reserved at the top of the primary monitor for the menu bar.
+fn clamp_window_to_monitor(win: &tauri::WebviewWindow) {
+    const MENU_BAR_RESERVE: i32 = 40;
+    const MIN_W: i32 = 480;
+    const MIN_H: i32 = 360;
+
+    let Ok(Some(monitor)) = win.current_monitor() else { return; };
+    let scale = monitor.scale_factor();
+    let mon_w = (monitor.size().width as f64 / scale).round() as i32;
+    let mon_h = (monitor.size().height as f64 / scale).round() as i32;
+    let mon_x = (monitor.position().x as f64 / scale).round() as i32;
+    let mon_y = (monitor.position().y as f64 / scale).round() as i32;
+
+    let Ok(outer) = win.outer_size() else { return; };
+    let cur_w = (outer.width as f64 / scale).round() as i32;
+    let cur_h = (outer.height as f64 / scale).round() as i32;
+
+    let max_w = mon_w;
+    let max_h = mon_h - MENU_BAR_RESERVE;
+    let new_w = cur_w.clamp(MIN_W, max_w);
+    let new_h = cur_h.clamp(MIN_H, max_h);
+    if new_w != cur_w || new_h != cur_h {
+        let _ = win.set_size(tauri::LogicalSize::new(new_w as u32, new_h as u32));
+    }
+
+    let Ok(outer_pos) = win.outer_position() else { return; };
+    let cur_x = (outer_pos.x as f64 / scale).round() as i32;
+    let cur_y = (outer_pos.y as f64 / scale).round() as i32;
+    let min_y = mon_y + MENU_BAR_RESERVE;
+    let min_x = mon_x;
+    let max_x = (mon_x + mon_w - new_w).max(min_x);
+    let max_y = (mon_y + mon_h - new_h).max(min_y);
+    let new_x = cur_x.clamp(min_x, max_x);
+    let new_y = cur_y.clamp(min_y, max_y);
+    if new_x != cur_x || new_y != cur_y {
+        let _ = win.set_position(tauri::LogicalPosition::new(new_x, new_y));
+    }
+}
+
 pub fn run_with(initial_file: Option<String>) {
     let pending: Vec<String> = initial_file.into_iter().collect();
 
@@ -592,32 +642,14 @@ pub fn run_with(initial_file: Option<String>) {
             // triggered it (focus-stealing prevention). Explicitly show + focus
             // the main window to bring it forward.
             //
-            // Also clamp the restored window to the current monitor's work
-            // area: tauri-plugin-window-state happily restores the saved
-            // 2880×1560 from a 5K display, leaving the title bar / native
-            // menu off-screen on a smaller laptop. Re-fit before show().
+            // macOS: tauri-plugin-window-state can restore (a) a size larger
+            // than the current monitor (e.g. saved 2880×1740 from a previous
+            // 5K display, restored on a 1440p laptop), and (b) a top edge Y
+            // value that puts the title bar behind the menu bar. Both make
+            // the title bar / native menu unreachable until the user drags.
+            // We always re-fit size AND position before showing.
             if let Some(win) = app.get_webview_window("main") {
-                if let Ok(Some(monitor)) = win.current_monitor() {
-                    let scale = monitor.scale_factor();
-                    let mon_w = (monitor.size().width as f64 / scale).round() as u32;
-                    let mon_h = (monitor.size().height as f64 / scale).round() as u32;
-                    if let Ok(outer) = win.outer_size() {
-                        let cur_w = (outer.width as f64 / scale).round() as u32;
-                        let cur_h = (outer.height as f64 / scale).round() as u32;
-                        // Reserve ~40px for the macOS menu bar at the top.
-                        let max_w = mon_w;
-                        let max_h = mon_h.saturating_sub(40);
-                        if cur_w > max_w || cur_h > max_h {
-                            let new_w = cur_w.min(max_w);
-                            let new_h = cur_h.min(max_h);
-                            let _ = win.set_size(tauri::LogicalSize::new(new_w, new_h));
-                            // Recenter so the title bar is reachable.
-                            let new_x = ((mon_w.saturating_sub(new_w)) / 2) as i32;
-                            let new_y = 40_i32;
-                            let _ = win.set_position(tauri::LogicalPosition::new(new_x, new_y));
-                        }
-                    }
-                }
+                clamp_window_to_monitor(&win);
                 let _ = win.show();
                 let _ = win.unminimize();
                 let _ = win.set_focus();
@@ -648,6 +680,25 @@ pub fn run_with(initial_file: Option<String>) {
 
     app.run(|app_handle, event| {
         match &event {
+            // ---- macOS launch activation ----
+            // On macOS, calling `win.set_focus()` from `setup` fires before
+            // NSApplication's run loop has finished `applicationDidFinish-
+            // Launching`, so the activation request can be silently dropped
+            // and the app launches behind whatever was previously frontmost
+            // (Finder / the parent terminal). Symptom: SoloMD's window
+            // appears, but the macOS menu bar still shows the previous app's
+            // menus until the user clicks/drags SoloMD's window. Re-issue
+            // show + focus from the `Ready` event, when the run loop has
+            // actually started.
+            #[cfg(target_os = "macos")]
+            RunEvent::Ready => {
+                if let Some(win) = app_handle.get_webview_window("main") {
+                    let _ = win.show();
+                    let _ = win.unminimize();
+                    let _ = win.set_focus();
+                }
+            }
+
             // ---- Window close: intercept and ask frontend ----
             // Only the main window gets the unsaved-tabs check. Auxiliary
             // windows (slideshow, "open file in new window" spawns labelled
