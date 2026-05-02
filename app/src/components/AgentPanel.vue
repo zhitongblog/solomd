@@ -166,9 +166,20 @@ async function send() {
     ...history,
   ];
 
+  // Generate the request id on the frontend so we can wire `currentRunId`
+  // BEFORE invoking the command. Closes a race where a fast backend
+  // failure (ollama 404 on a missing model) emits `ai-error` before the
+  // `await invoke(...)` resolves — without a pre-set `currentRunId`, the
+  // error listener's id-match check drops the event and the panel hangs
+  // on "生成回复中…" with the Stop button stuck on.
+  const requestId =
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  agent.currentRunId = requestId;
   agent.isStreaming = true;
   try {
-    const requestId = await invoke<string>('ai_chat', {
+    await invoke<string>('ai_chat', {
       request: {
         provider: settings.aiProvider,
         api_format: apiFormat,
@@ -182,9 +193,9 @@ async function send() {
         allow_write: settings.agentAllowWrite,
         tool_loop_cap: settings.agentToolLoopCap,
         workspace: workspace.currentFolder,
+        request_id: requestId,
       },
     });
-    agent.currentRunId = requestId;
   } catch (err) {
     agent.isStreaming = false;
     agent.currentRunId = null;
@@ -260,6 +271,13 @@ onMounted(async () => {
       if (!agent.currentRunId || e.payload.request_id !== agent.currentRunId) return;
       agent.isStreaming = false;
       agent.currentRunId = null;
+      // Drop the empty assistant placeholder so the error banner sits
+      // where the bubble would have been, instead of an empty bubble +
+      // a banner below it.
+      const last = agent.messages[agent.messages.length - 1];
+      if (last && last.role === 'assistant' && last.content === '') {
+        agent.messages.pop();
+      }
       if (e.payload.error !== 'cancelled') {
         errorMsg.value = e.payload.error;
       }

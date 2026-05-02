@@ -999,6 +999,10 @@ async fn run_recipe_chat_loop(
         // already clamps to [1, 20]; pick a value that lets the model
         // recover from a few read tools before its writes.
         tool_loop_cap: Some(8),
+        // Recipe runner doesn't pre-allocate a request id — let ai_proxy
+        // mint one. The Agent Panel (frontend) is the consumer of this
+        // field; recipes invoke ai_chat in-process and don't race events.
+        request_id: None,
     };
 
     // ----- 3. Pre-checkout agent branch + install write-cap -----

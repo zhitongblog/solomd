@@ -133,6 +133,15 @@ pub struct ChatRequest {
     pub workspace: Option<String>,
     #[serde(default)]
     pub tool_loop_cap: Option<u32>,
+    /// Optional caller-provided request id. When present, the backend uses
+    /// this instead of `make_request_id()` so the frontend can wire its
+    /// event listeners BEFORE invoking the command — closes a race where
+    /// a fast failure (e.g. ollama 404 on a missing model) emits
+    /// `ai-error` while the JS listener still has `currentRunId === null`
+    /// and silently drops the error, leaving the panel stuck on
+    /// "streaming…" with no visible feedback.
+    #[serde(default)]
+    pub request_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -422,7 +431,11 @@ pub fn ai_cancel(request_id: String) -> Result<(), String> {
 /// without tool calls.
 #[tauri::command]
 pub async fn ai_chat(app: AppHandle, request: ChatRequest) -> Result<String, String> {
-    let request_id = make_request_id();
+    let request_id = request
+        .request_id
+        .clone()
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(make_request_id);
     let cancel = register_cancel_flag(&request_id);
 
     let format = request
