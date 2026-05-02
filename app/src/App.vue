@@ -850,11 +850,15 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
   background: var(--accent, #6366f1);
   opacity: 0.5;
 }
-.side-sidebar > :deep(*) {
+.side-sidebar > :deep(*:not(.side-sidebar__resize)) {
   flex: 1 1 0;
   min-height: 0;
   width: 100%;
-  /* Reset Outline's own width since it now lives in a sized container. */
+  /* Reset Outline's own width since it now lives in a sized container.
+     `:not(.side-sidebar__resize)` excludes the 5px drag handle — without
+     it the handle inherits width:100% and floods the whole sidebar with
+     the hover-tinted accent color, intercepting every click via its
+     z-index:10. */
 }
 /* Agent Panel needs vertical room — chat scrollback, tool-call cards,
    compose box. Give it 4× the share Outline/Backlinks/Tags/History get
