@@ -124,6 +124,8 @@ function onInput() {
 }
 
 function onKeydown(e: KeyboardEvent) {
+  // CJK/IME guard — Enter during composition belongs to the IME.
+  if (e.isComposing || e.keyCode === 229) return;
   if (e.key === 'Enter') {
     e.preventDefault();
     if (e.shiftKey) goPrev(); else goNext();

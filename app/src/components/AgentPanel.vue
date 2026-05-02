@@ -266,6 +266,13 @@ async function stop() {
 }
 
 function onKeydown(e: KeyboardEvent) {
+  // CJK / IME guard: while the user is mid-composition (e.g. typing
+  // pinyin then pressing Enter to commit a candidate), `e.isComposing`
+  // is true and the Enter belongs to the IME, not to us. Some older
+  // engines emit `keyCode === 229` instead. Either way, never treat
+  // a composition-Enter as "send" — the message would fly out before
+  // the candidate is even inserted into the textarea.
+  if (e.isComposing || e.keyCode === 229) return;
   // Enter sends; Shift+Enter inserts newline. Cmd/Ctrl+Enter also sends
   // (mirrors the AI rewrite overlay convention) for single-key power users.
   if (e.key === 'Enter') {

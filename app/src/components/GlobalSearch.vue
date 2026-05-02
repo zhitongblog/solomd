@@ -93,6 +93,8 @@ function escapeRe(s: string) {
 }
 
 function onKey(e: KeyboardEvent) {
+  // CJK/IME guard — see CommandPalette.vue for rationale.
+  if (e.isComposing || e.keyCode === 229) return;
   if (e.key === 'Escape') {
     e.preventDefault();
     emit('close');

@@ -36,6 +36,10 @@ watch(filtered, () => {
 });
 
 function onKey(e: KeyboardEvent) {
+  // CJK/IME guard — Enter / arrows during composition belong to the IME
+  // (commit candidate, navigate candidate list); never let them act on
+  // the palette state.
+  if (e.isComposing || e.keyCode === 229) return;
   if (e.key === 'Escape') {
     e.preventDefault();
     emit('close');
