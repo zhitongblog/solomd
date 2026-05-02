@@ -1063,5 +1063,12 @@ export const zh: I18n = {
     clearTitle: '清空对话',
     includeNote: '当前笔记',
     includeNoteTitle: '把当前笔记的内容一起作为上下文发送',
+    msgInsert: '插入',
+    msgInsertTitle: '把这条回复插入到当前笔记的光标位置（如有选区则替换选区）',
+    msgInsertNoEditor: '请先在编辑器里打开一个笔记',
+    msgCopy: '复制',
+    msgCopyTitle: '把这条回复复制到剪贴板',
+    msgCopied: '已复制',
+    msgInserted: '已插入',
   },
 };

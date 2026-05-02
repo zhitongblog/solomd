@@ -14,6 +14,8 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useSettingsStore } from '../stores/settings';
 import { useTabsStore } from '../stores/tabs';
+import { useTilesStore } from '../stores/tiles';
+import { useToastsStore } from '../stores/toasts';
 import { useWorkspaceIndexStore } from '../stores/workspaceIndex';
 import { useAgentPanelStore } from '../stores/agentPanel';
 import { providerById, type ProviderId } from '../lib/ai-providers';
@@ -28,6 +30,8 @@ const emit = defineEmits<{
 const workspace = useWorkspaceStore();
 const settings = useSettingsStore();
 const tabs = useTabsStore();
+const tiles = useTilesStore();
+const toasts = useToastsStore();
 const workspaceIndex = useWorkspaceIndexStore();
 const agent = useAgentPanelStore();
 const files = useFiles();
@@ -124,6 +128,46 @@ const canSend = computed(() => draft.value.trim().length > 0 && !agent.isStreami
 
 function onOpenAiSettings() {
   emit('open-settings', 'integrations');
+}
+
+/** Whether the Insert button on an assistant message can do anything —
+ *  there must be a focused editor pane and an active markdown tab in it.
+ *  Used to grey out the button when the user is on the file tree, in
+ *  Settings, or has no note open. */
+const canInsertIntoEditor = computed(() => {
+  if (!tiles.focusedPaneId) return false;
+  return !!tabs.activeTab;
+});
+
+/** Copy a finished assistant reply to the clipboard. */
+async function copyAssistantMessage(content: string) {
+  if (!content) return;
+  try {
+    await navigator.clipboard.writeText(content);
+    toasts.success(t('agent.msgCopied'));
+  } catch (e) {
+    toasts.error(`copy failed: ${e}`);
+  }
+}
+
+/** Insert a finished assistant reply into the focused editor pane.
+ *  Reuses the existing `solomd:insert-markdown` event that PaneContent
+ *  already listens for — replaces the current selection if any, else
+ *  inserts at the cursor; the caret lands at the end of the inserted
+ *  text. */
+function insertAssistantMessage(content: string) {
+  if (!content) return;
+  const paneId = tiles.focusedPaneId;
+  if (!paneId || !tabs.activeTab) {
+    toasts.warning(t('agent.msgInsertNoEditor'));
+    return;
+  }
+  window.dispatchEvent(
+    new CustomEvent('solomd:insert-markdown', {
+      detail: { snippet: content, paneId },
+    }),
+  );
+  toasts.success(t('agent.msgInserted'));
 }
 
 function autoscroll() {
@@ -510,6 +554,31 @@ watch(stateKey, (k) => {
                 aria-hidden="true"
               >▌</span>
             </div>
+            <!-- v4.0: actions on completed assistant replies. The bridge
+                 between "agent wrote something" and "actually editing the
+                 doc" — without this the panel is just a chat tab next to
+                 the editor. Hidden while the message is still streaming
+                 (would copy/insert a half-finished reply) and on user
+                 messages (no point copying your own prompt). -->
+            <div
+              v-if="m.role === 'assistant' && m.content
+                && !(agent.isStreaming && i === agent.messages.length - 1)"
+              class="agent-panel__msg-actions"
+            >
+              <button
+                class="agent-panel__msg-action"
+                type="button"
+                :title="t('agent.msgCopyTitle')"
+                @click="copyAssistantMessage(m.content)"
+              >{{ t('agent.msgCopy') }}</button>
+              <button
+                class="agent-panel__msg-action"
+                type="button"
+                :disabled="!canInsertIntoEditor"
+                :title="canInsertIntoEditor ? t('agent.msgInsertTitle') : t('agent.msgInsertNoEditor')"
+                @click="insertAssistantMessage(m.content)"
+              >{{ t('agent.msgInsert') }}</button>
+            </div>
           </template>
         </li>
       </ul>
@@ -863,6 +932,33 @@ watch(stateKey, (k) => {
 .agent-panel__tool-pre--err {
   color: #dc2626;
   border-color: rgba(220, 38, 38, 0.3);
+}
+
+/* --- Per-assistant-reply actions (Copy / Insert) ----------------------- */
+.agent-panel__msg-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+.agent-panel__msg-action {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font: inherit;
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+  line-height: 1.6;
+}
+.agent-panel__msg-action:hover:not(:disabled) {
+  background: rgba(255, 159, 64, 0.1);
+  border-color: var(--accent, #ff9f40);
+  color: var(--accent, #ff9f40);
+}
+.agent-panel__msg-action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 /* --- Wikilink chips ---------------------------------------------------- */

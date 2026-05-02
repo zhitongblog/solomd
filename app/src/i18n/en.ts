@@ -1074,6 +1074,13 @@ export const en = {
     clearTitle: 'Clear chat',
     includeNote: 'Active note',
     includeNoteTitle: 'Include the active note\'s content as context for the next message',
+    msgInsert: 'Insert',
+    msgInsertTitle: 'Insert this reply at the cursor in the active note (replaces selection if any)',
+    msgInsertNoEditor: 'Open a note in the editor to insert',
+    msgCopy: 'Copy',
+    msgCopyTitle: 'Copy this reply to the clipboard',
+    msgCopied: 'Copied',
+    msgInserted: 'Inserted',
   },
 };
 
