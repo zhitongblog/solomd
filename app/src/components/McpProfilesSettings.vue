@@ -212,17 +212,20 @@ async function saveDraft(d: DraftProfile) {
     allow_write: d.allow_write,
   };
   try {
-    // If the user renamed, the store needs to delete the old row first
-    // so we don't end up with two entries.
+    // Save the new profile FIRST. If validation fails inside the Rust
+    // store, the old profile stays intact — earlier code removed the old
+    // name first, so a validation failure on the new one wiped both.
+    // (No `mcp_profile_rename` command exists on the Rust side, so we
+    // simulate atomic-ish rename = save-new-then-remove-old.)
+    await store.save(profile);
     if (d.originalName && d.originalName !== profile.name) {
       try {
         await store.remove(d.originalName);
       } catch {
-        // Ignore — could be that the rename and old name removal raced
-        // against another save. The save below is the source of truth.
+        // The save succeeded so the user's data is safe. A leftover old
+        // entry is annoying but recoverable; surface no error here.
       }
     }
-    await store.save(profile);
     d.originalName = profile.name;
     d.editing = false;
     toasts.success(t('integrations.profilesSaved'));

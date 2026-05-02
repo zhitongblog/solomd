@@ -34,7 +34,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use chrono::Utc;
-use git2::{BranchType, Repository, ResetType};
+use git2::{BranchType, Repository, ResetType, StatusOptions};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager};
 
@@ -47,6 +47,48 @@ use super::ai_proxy::{
 use super::recipes::{
     self, Recipe, TriggerCtx, TriggerKind, WRITE_CAP_MAX,
 };
+
+// ---------------------------------------------------------------------------
+// Run-id validation — Tauri commands that accept a `run_id` join it onto
+// a path (`.solomd/agent-runs/<run_id>/...`) and so MUST refuse anything
+// that could escape the run directory. The REST API in `rest_api.rs` does
+// the same check for the same reason; we keep the rules consistent.
+// ---------------------------------------------------------------------------
+
+/// Accept only run ids matching `YYYYMMDD-HHMMSS-<6 hex>` (the canonical
+/// shape minted by `recipes::mint_run_id`). Rejects empty input, any path
+/// separator, `..`, and anything outside the alphabet `[0-9a-f-]`.
+///
+/// Public so the integration test in `tests/recipes_e2e_test.rs` can
+/// exercise it without a Tauri runtime.
+pub fn validate_run_id(run_id: &str) -> Result<&str, String> {
+    if run_id.is_empty() {
+        return Err("bad run id: empty".to_string());
+    }
+    // Cheap substring guards first — same as rest_api.rs uses.
+    if run_id.contains('/') || run_id.contains('\\') || run_id.contains("..") {
+        return Err("bad run id: path traversal".to_string());
+    }
+    // Canonical shape: 8 digits "-" 6 digits "-" 6 hex (lowercase).
+    let bytes = run_id.as_bytes();
+    if bytes.len() != 8 + 1 + 6 + 1 + 6 {
+        return Err("bad run id: wrong length".to_string());
+    }
+    if bytes[8] != b'-' || bytes[15] != b'-' {
+        return Err("bad run id: missing separators".to_string());
+    }
+    for (i, b) in bytes.iter().enumerate() {
+        let ok = match i {
+            0..=7 | 9..=14 => b.is_ascii_digit(),
+            16..=21 => b.is_ascii_digit() || (b'a'..=b'f').contains(b),
+            _ => *b == b'-',
+        };
+        if !ok {
+            return Err("bad run id: invalid character".to_string());
+        }
+    }
+    Ok(run_id)
+}
 
 // ---------------------------------------------------------------------------
 // Shared state — one instance per app.
@@ -247,11 +289,13 @@ pub async fn recipes_history(workspace: String) -> Result<Vec<RunMeta>, String> 
 
 #[tauri::command]
 pub async fn recipes_read_trace(workspace: String, run_id: String) -> Result<String, String> {
+    validate_run_id(&run_id)?;
     agent_run::read_trace(Path::new(&workspace), &run_id)
 }
 
 #[tauri::command]
 pub async fn recipes_read_run_md(workspace: String, run_id: String) -> Result<String, String> {
+    validate_run_id(&run_id)?;
     agent_run::read_run_md(Path::new(&workspace), &run_id)
 }
 
@@ -260,6 +304,7 @@ pub async fn recipes_read_run_md(workspace: String, run_id: String) -> Result<St
 /// libgit2 directly rather than shelling out to `git diff`.
 #[tauri::command]
 pub async fn recipes_run_diff(workspace: String, run_id: String) -> Result<String, String> {
+    validate_run_id(&run_id)?;
     let ws = PathBuf::from(&workspace);
     let meta = agent_run::read_run_meta(&ws, &run_id)?;
     let recipe = meta
@@ -319,6 +364,7 @@ pub async fn recipes_accept_run(
     workspace: String,
     run_id: String,
 ) -> Result<(), String> {
+    validate_run_id(&run_id)?;
     let ws = PathBuf::from(&workspace);
     let mut meta = agent_run::read_run_meta(&ws, &run_id)?;
     let branch = meta
@@ -343,6 +389,7 @@ pub async fn recipes_reject_run(
     workspace: String,
     run_id: String,
 ) -> Result<(), String> {
+    validate_run_id(&run_id)?;
     let ws = PathBuf::from(&workspace);
     let mut meta = agent_run::read_run_meta(&ws, &run_id)?;
     let branch = meta
@@ -563,6 +610,50 @@ pub struct RunResult {
     pub status: String,
 }
 
+/// RAII guard for the per-recipe cooldown slot in `RecipesState::running`.
+/// Any panic between insertion and removal would otherwise leak the slot
+/// — that recipe would then be permanently blocked by cooldown until the
+/// daemon restarted, with no UI feedback. The guard's `Drop` impl runs on
+/// every exit path (including panic unwind) and frees the slot.
+struct CooldownGuard<'a> {
+    state: &'a RecipesState,
+    slug: String,
+}
+
+impl Drop for CooldownGuard<'_> {
+    fn drop(&mut self) {
+        if let Ok(mut running) = self.state.running.lock() {
+            running.remove(&self.slug);
+        }
+    }
+}
+
+/// Detect any uncommitted changes in the workspace (dirty WIP). We
+/// exclude IGNORED paths but include both tracked-modified and untracked.
+/// Used at recipe start to refuse running while the user has WIP — the
+/// AutoGit branch sandbox would otherwise migrate that WIP onto the agent
+/// branch and a force-restore at the end would silently destroy it.
+///
+/// Public so the integration test in `tests/recipes_e2e_test.rs` can
+/// exercise the dirty-detection logic without a Tauri runtime.
+pub fn workspace_has_dirty_changes(workspace: &Path) -> Result<bool, String> {
+    let repo = Repository::open(workspace).map_err(|e| format!("git open: {e}"))?;
+    let mut opts = StatusOptions::new();
+    opts.include_untracked(true)
+        .recurse_untracked_dirs(true)
+        .include_ignored(false);
+    let statuses = repo
+        .statuses(Some(&mut opts))
+        .map_err(|e| format!("git statuses: {e}"))?;
+    for entry in statuses.iter() {
+        let st = entry.status();
+        if !st.is_empty() && !st.contains(git2::Status::IGNORED) {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
 /// Drive a single recipe end-to-end:
 ///   1. cooldown check
 ///   2. mint run id + create AutoGit branch
@@ -629,6 +720,43 @@ pub async fn run_recipe(
         ));
     }
 
+    // From this point on the slot is reserved. The guard's Drop ensures
+    // we release it on every exit path — including panic unwind — so a
+    // panicking task can never permanently lock the recipe out.
+    let _cooldown_guard = CooldownGuard {
+        state: &*state,
+        slug: recipe.slug.clone(),
+    };
+
+    // Refuse to start when the user has uncommitted WIP. The AutoGit
+    // branch sandbox migrates uncommitted edits onto the agent branch
+    // (CheckoutBuilder::safe), the commit_branch_changes sweep would
+    // then add_all("*") them into the agent's commit, and restore_head's
+    // force checkout would silently destroy any surviving WIP. Refusing
+    // up-front closes that data-loss window cleanly.
+    match workspace_has_dirty_changes(workspace) {
+        Ok(true) => {
+            let err = "workspace has uncommitted changes; commit or stash before running recipes".to_string();
+            // Surface a stub run-finished event so the UI history shows
+            // the refusal — there's no run dir yet, but the listener only
+            // re-fetches state so the payload shape is best-effort.
+            let stub = serde_json::json!({
+                "kind": "recipe",
+                "status": "error",
+                "error": err,
+                "recipe": { "name": recipe.name, "slug": recipe.slug },
+            });
+            let _ = app.emit("solomd://recipes-run-finished", &stub);
+            return Err(err);
+        }
+        Ok(false) => {}
+        Err(e) => {
+            // Repo missing / unreadable — surfaces later in
+            // create_agent_branch with a clearer message; let it through.
+            let _ = e;
+        }
+    }
+
     let run_id = recipes::mint_run_id(Utc::now());
     // Replace our placeholder slot now that we have the real run id.
     {
@@ -640,12 +768,9 @@ pub async fn run_recipe(
     let branch_name = format!("agent/{}/{}", recipe.slug, run_id);
 
     // Create the agent branch off HEAD. If this fails we abort early —
-    // no run dir is created, no slot is left dangling.
-    let branch_create_res = create_agent_branch(workspace, &branch_name);
-    if let Err(e) = branch_create_res {
-        state.running.lock().unwrap().remove(&recipe.slug);
-        return Err(e);
-    }
+    // no run dir is created. The cooldown slot is freed automatically by
+    // `_cooldown_guard` going out of scope on return.
+    create_agent_branch(workspace, &branch_name)?;
 
     // Build initial meta.
     let now = Utc::now().timestamp();
@@ -674,13 +799,9 @@ pub async fn run_recipe(
         accepted: None,
     };
 
-    let handle = match RunHandle::create(workspace, &run_id, meta.clone()) {
-        Ok(h) => Arc::new(h),
-        Err(e) => {
-            state.running.lock().unwrap().remove(&recipe.slug);
-            return Err(e);
-        }
-    };
+    // Cooldown slot is freed automatically by `_cooldown_guard` if we
+    // bail here.
+    let handle = Arc::new(RunHandle::create(workspace, &run_id, meta.clone())?);
 
     // Emit run_started + prompt steps.
     let _ = handle.emit_run_started(&meta);
@@ -726,8 +847,7 @@ pub async fn run_recipe(
     // Emit a UI event so the Recipes panel can refresh without polling.
     let _ = app.emit("solomd://recipes-run-finished", &final_meta);
 
-    // Release cooldown slot.
-    state.running.lock().unwrap().remove(&recipe.slug);
+    // Cooldown slot is released by `_cooldown_guard`'s Drop on return.
 
     Ok(RunResult {
         run_id: run_id.clone(),
@@ -1126,6 +1246,13 @@ fn checkout_branch(workspace: &Path, branch: &str) -> Result<String, String> {
 
 /// Restore HEAD to the named branch. Best-effort — if the branch is
 /// gone (user deleted it during the run), fall back to "main" / "master".
+///
+/// Always prefers a `safe()` checkout first. The previous implementation
+/// went straight to `force()`, which silently hard-resets and destroys
+/// anything in the working tree — including edits the user typed during
+/// the recipe run. We only fall back to `force()` after re-checking that
+/// the workspace has no dirty paths (i.e. the only edits in flight were
+/// already swept into our commit by `commit_branch_changes`).
 fn restore_head(workspace: &Path, branch: &str) -> Result<(), String> {
     let repo = Repository::open(workspace).map_err(|e| format!("git open: {e}"))?;
     let target = if repo.find_branch(branch, BranchType::Local).is_ok() {
@@ -1141,13 +1268,52 @@ fn restore_head(workspace: &Path, branch: &str) -> Result<(), String> {
     let obj = repo
         .revparse_single(&target_ref)
         .map_err(|e| format!("revparse {target_ref}: {e}"))?;
-    let mut opts = git2::build::CheckoutBuilder::new();
-    opts.force();
-    repo.checkout_tree(&obj, Some(&mut opts))
-        .map_err(|e| format!("checkout_tree restore: {e}"))?;
-    repo.set_head(&target_ref)
-        .map_err(|e| format!("set_head restore: {e}"))?;
-    Ok(())
+
+    // Try safe() first — preserves any user edits that landed in the
+    // working tree mid-run.
+    let mut safe_opts = git2::build::CheckoutBuilder::new();
+    safe_opts.safe();
+    let safe_res = repo.checkout_tree(&obj, Some(&mut safe_opts));
+    match safe_res {
+        Ok(()) => {
+            repo.set_head(&target_ref)
+                .map_err(|e| format!("set_head restore: {e}"))?;
+            return Ok(());
+        }
+        Err(e) => {
+            // safe() refuses when there are dirty paths that would
+            // collide with the target tree. Re-check via the standard
+            // statuses path: if every dirty entry is one we already
+            // committed on the agent branch (i.e. nothing the user typed
+            // mid-run), force() is safe; otherwise propagate the error.
+            let mut opts = StatusOptions::new();
+            opts.include_untracked(true)
+                .recurse_untracked_dirs(true)
+                .include_ignored(false);
+            let statuses = repo
+                .statuses(Some(&mut opts))
+                .map_err(|se| format!("git statuses: {se}"))?;
+            let any_user_dirty = statuses.iter().any(|entry| {
+                let st = entry.status();
+                !st.is_empty() && !st.contains(git2::Status::IGNORED)
+            });
+            if any_user_dirty {
+                // Refuse to clobber. Caller logs this; the agent branch
+                // still holds the recipe's commits, so nothing is lost.
+                return Err(format!(
+                    "checkout_tree restore (safe): {e}; refusing force() — user-visible WIP detected"
+                ));
+            }
+            // No user-visible WIP — force() is now safe.
+            let mut force_opts = git2::build::CheckoutBuilder::new();
+            force_opts.force();
+            repo.checkout_tree(&obj, Some(&mut force_opts))
+                .map_err(|fe| format!("checkout_tree restore (force): {fe}"))?;
+            repo.set_head(&target_ref)
+                .map_err(|e| format!("set_head restore: {e}"))?;
+            Ok(())
+        }
+    }
 }
 
 /// Sweep up the working tree's changes (relative to the agent branch's

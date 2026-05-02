@@ -484,10 +484,10 @@ onMounted(async () => {
       wizardOpen.value = true;
     }, isFreshLaunch ? 800 : 0);
   }
-  // Settings → AI's "Run setup wizard again" button asks here.
-  window.addEventListener('solomd:open-agent-wizard', () => {
-    wizardOpen.value = true;
-  });
+  // Settings → AI's "Run setup wizard again" button asks here. Registered
+  // as a named handler (see `onOpenAgentWizard` below) so onBeforeUnmount
+  // can detach it — otherwise every HMR remount stacks another listener.
+  window.addEventListener('solomd:open-agent-wizard', onOpenAgentWizard);
 
   // Initialize tile layout: validate persisted state or create default
   tiles.validate(tabs.tabs);
@@ -586,6 +586,9 @@ function onOpenSettingsEvent(e: Event) {
   const section = (e as CustomEvent).detail?.section ?? null;
   openSettingsAt(section);
 }
+function onOpenAgentWizard() {
+  wizardOpen.value = true;
+}
 
 window.addEventListener('solomd:wiki-open', onWikiOpen as EventListener);
 window.addEventListener('solomd:ai-rewrite-accept', onAIRewriteAccept as EventListener);
@@ -605,6 +608,7 @@ onBeforeUnmount(() => {
   window.removeEventListener(BASES_OPEN_EVENT, onOpenBases as EventListener);
   window.removeEventListener(BASES_CLOSE_EVENT, onCloseBases as EventListener);
   window.removeEventListener('solomd:open-settings', onOpenSettingsEvent as EventListener);
+  window.removeEventListener('solomd:open-agent-wizard', onOpenAgentWizard);
   if (unlistenOpened) {
     unlistenOpened();
     unlistenOpened = null;

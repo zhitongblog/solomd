@@ -288,6 +288,20 @@ function cancelEdit() {
   editing.value = null;
 }
 
+// CJK / IME guard for the rename / new-file inline input. Mirrors the pattern
+// used by AgentPanel.vue::onKeydown — while the user is mid-composition (e.g.
+// typing pinyin and pressing Enter to commit an IME candidate), `isComposing`
+// is true (or `keyCode === 229` on older engines) and the Enter belongs to
+// the IME, not to us. Treating it as "commit" would rename/create the file
+// before the candidate is inserted.
+function onRenameKey(e: KeyboardEvent) {
+  if (e.isComposing || e.keyCode === 229) return;
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    void commitEdit();
+  }
+}
+
 async function deleteNode(node: Node) {
   closeCtx();
   const ok = window.confirm(
@@ -377,7 +391,7 @@ onBeforeUnmount(() => {
           v-model="editing.name"
           class="ftree__edit-input"
           spellcheck="false"
-          @keydown.enter.prevent="commitEdit"
+          @keydown="onRenameKey"
           @keydown.escape.prevent="cancelEdit"
           @blur="commitEdit"
         />

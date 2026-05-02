@@ -230,6 +230,17 @@ async function startAction(a: AIAction): Promise<void> {
   streaming.value = true;
   sentBanner.value = true;
   await ensureListeners();
+  // Mint the request id on the frontend so we can wire `requestId.value`
+  // BEFORE invoking the command. Same race fix as AgentPanel — a fast
+  // backend failure (404 / wrong key / unreachable host) can emit
+  // `solomd://ai-error` before `await invoke(...)` resolves; without a
+  // pre-set `requestId.value`, the error listener's id-match check drops
+  // the event and the overlay hangs on "Rewriting…" with no feedback.
+  const newRequestId =
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  requestId.value = newRequestId;
   try {
     const userPrompt = a.custom ? customPrompt.value.trim() : a.user;
     const cfg = providerById(props.provider);
@@ -241,14 +252,15 @@ async function startAction(a: AIAction): Promise<void> {
       user: userPrompt,
       selection: range.value.selection,
       base_url: props.baseUrl || cfg?.defaultBaseUrl || null,
+      request_id: newRequestId,
     };
     console.log('[ai] invoke ai_rewrite', payload);
-    const id = await invoke<string>('ai_rewrite', { request: payload });
-    console.log('[ai] ai_rewrite returned request_id', id);
-    requestId.value = id;
+    await invoke<string>('ai_rewrite', { request: payload });
+    console.log('[ai] ai_rewrite returned request_id', newRequestId);
   } catch (err) {
     console.error('[ai] ai_rewrite invoke threw', err);
     streaming.value = false;
+    requestId.value = null;
     streamingError.value = String(err);
   }
 }

@@ -20,7 +20,7 @@
 use std::collections::HashMap;
 use std::fs;
 use std::io::Read;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::sync::Mutex;
 use std::time::SystemTime;
 
@@ -172,7 +172,7 @@ pub fn tool_descriptor(name: &str) -> Option<(&'static str, Value)> {
                 "type": "object",
                 "required": ["path"],
                 "properties": {
-                    "path": { "type": "string", "description": "Workspace-relative or absolute path to a markdown file." }
+                    "path": { "type": "string", "description": "Workspace-relative path to a markdown file (e.g. 'daily/2026-04-30.md'). Absolute paths and `..` traversal are rejected." }
                 }
             }),
         ),
@@ -276,36 +276,137 @@ pub fn tool_descriptor(name: &str) -> Option<(&'static str, Value)> {
 // Path resolution
 // ---------------------------------------------------------------------------
 
-/// Resolve a possibly-relative arg path against the workspace, blocking
-/// traversal outside the workspace root. Both args are absolute by the time
-/// they reach this; we canonicalize the parent (per `git_history::rel_path`)
-/// to handle /tmp ↔ /private/tmp on macOS.
+/// Resolve a *workspace-relative* arg path against the workspace root,
+/// blocking traversal outside the workspace at the filesystem level (not just
+/// lexically). The canonical pattern lives in `mcp-server/src/safety.rs` —
+/// keep this in sync with it.
+///
+/// The previous implementation had a HIGH-severity bug (v4.0 P1): when the
+/// candidate's parent directory didn't yet exist on disk (write paths like
+/// `subdir/new.md`), `parent.canonicalize()` failed and the code fell back
+/// to the unresolved `candidate` — which still contained `..` segments.
+/// `starts_with(workspace)` then trivially passed because the path
+/// *lexically* began with the workspace prefix, but `..` segments still
+/// escaped at filesystem level when the file was later created/read.
+/// Exploit: an LLM passing `{"path": "../../tmp/pwn/x.md"}` resolved to
+/// `/tmp/pwn/x.md` and `write_note` happily mkdir-p'd + wrote there.
+///
+/// The new logic:
+/// 1. Reject any input containing a `..` component upfront.
+/// 2. Reject absolute paths (LLM tools must stay workspace-scoped).
+/// 3. For nonexistent leaves, walk up to find the deepest existing
+///    ancestor, canonicalize that, then reattach the remaining segments.
+/// 4. Re-verify the resolved path starts with the canonicalized workspace.
 fn resolve_in_workspace(workspace: &Path, arg_path: &str) -> Result<PathBuf, String> {
-    if arg_path.trim().is_empty() {
+    let trimmed = arg_path.trim();
+    if trimmed.is_empty() {
         return Err("path: empty".into());
     }
-    let candidate = if Path::new(arg_path).is_absolute() {
-        PathBuf::from(arg_path)
-    } else {
-        workspace.join(arg_path)
-    };
-    // Canonicalize the parent + reattach the file name. If the file doesn't
-    // exist yet (write path), canonicalize() would fail outright — fall back
-    // to component-by-component join.
-    let resolved = match candidate.parent().and_then(|p| p.canonicalize().ok()) {
-        Some(parent) => match candidate.file_name() {
-            Some(n) => parent.join(n),
-            None => candidate.clone(),
-        },
-        None => candidate.clone(),
-    };
+    let raw = PathBuf::from(trimmed);
+
+    // (1) reject `..` components anywhere in the input — no exceptions.
+    for c in raw.components() {
+        if matches!(c, Component::ParentDir) {
+            return Err(format!("path traversal (..) is not allowed: {arg_path}"));
+        }
+    }
+    // (2) reject absolute paths — agent tools are workspace-scoped.
+    if raw.is_absolute() {
+        return Err(format!("absolute path not allowed: {arg_path}"));
+    }
+
     let workspace_canon = workspace
         .canonicalize()
-        .unwrap_or_else(|_| workspace.to_path_buf());
-    if !resolved.starts_with(&workspace_canon) && !resolved.starts_with(workspace) {
-        return Err(format!("path escapes workspace: {arg_path}"));
+        .map_err(|e| format!("workspace not accessible: {e}"))?;
+    let candidate = workspace_canon.join(&raw);
+
+    // (3) Resolve safely whether or not the leaf / its parent exists. Walk
+    // up the candidate's ancestors until we find one that exists on disk,
+    // canonicalize that, then reattach the trailing components verbatim.
+    let resolved = if candidate.exists() {
+        candidate
+            .canonicalize()
+            .map_err(|e| format!("cannot resolve path {}: {e}", candidate.display()))?
+    } else {
+        let mut tail: Vec<&std::ffi::OsStr> = Vec::new();
+        let mut cursor: &Path = candidate.as_path();
+        let existing = loop {
+            if cursor.exists() {
+                break cursor.to_path_buf();
+            }
+            match (cursor.file_name(), cursor.parent()) {
+                (Some(name), Some(parent)) => {
+                    tail.push(name);
+                    cursor = parent;
+                }
+                _ => {
+                    return Err(format!(
+                        "cannot resolve path {}: no existing ancestor",
+                        candidate.display()
+                    ));
+                }
+            }
+        };
+        let mut resolved = existing
+            .canonicalize()
+            .map_err(|e| format!("cannot resolve {}: {e}", existing.display()))?;
+        for seg in tail.iter().rev() {
+            resolved.push(seg);
+        }
+        resolved
+    };
+
+    // (4) Final containment check against the *canonicalized* workspace.
+    if !resolved.starts_with(&workspace_canon) {
+        return Err(format!(
+            "path {} escapes workspace {}",
+            resolved.display(),
+            workspace_canon.display()
+        ));
     }
     Ok(resolved)
+}
+
+/// Validate a user-supplied agent-run identifier.
+///
+/// `read_agent_trace` joins `run_id` directly into a filesystem path
+/// (`<workspace>/.solomd/agent-runs/<run_id>/trace.jsonl`). Without this
+/// check, an LLM could pass `run_id: "../../etc/passwd"` and read
+/// arbitrary files (the `.solomd/agent-runs/` prefix only bounds *which*
+/// dir we start from — `..` walks above it).
+///
+/// We require the canonical shape used by the run writer:
+/// `YYYYMMDD-HHMMSS-<hex>` where `<hex>` is 1+ lowercase hex chars. This
+/// is a strict allow-list — nothing else (slashes, dots, spaces) gets in.
+fn validate_run_id(run_id: &str) -> Result<&str, String> {
+    let bytes = run_id.as_bytes();
+    // Minimum: 8 + 1 + 6 + 1 + 1 = 17 chars.
+    if bytes.len() < 17 {
+        return Err(format!("invalid run_id (too short): {run_id}"));
+    }
+    let is_digit = |b: u8| b.is_ascii_digit();
+    let is_hex = |b: u8| b.is_ascii_digit() || (b'a'..=b'f').contains(&b);
+
+    // YYYYMMDD
+    if !bytes[..8].iter().all(|&b| is_digit(b)) {
+        return Err(format!("invalid run_id (bad date): {run_id}"));
+    }
+    if bytes[8] != b'-' {
+        return Err(format!("invalid run_id (missing dash after date): {run_id}"));
+    }
+    // HHMMSS
+    if !bytes[9..15].iter().all(|&b| is_digit(b)) {
+        return Err(format!("invalid run_id (bad time): {run_id}"));
+    }
+    if bytes[15] != b'-' {
+        return Err(format!("invalid run_id (missing dash after time): {run_id}"));
+    }
+    // Suffix: 1+ lowercase hex chars, nothing else.
+    let suffix = &bytes[16..];
+    if suffix.is_empty() || !suffix.iter().all(|&b| is_hex(b)) {
+        return Err(format!("invalid run_id (bad suffix): {run_id}"));
+    }
+    Ok(run_id)
 }
 
 // ---------------------------------------------------------------------------
@@ -568,6 +669,12 @@ fn tool_list_notes(workspace: &Path, args: &Value) -> Result<Value, String> {
         _ => workspace.to_path_buf(),
     };
     let mut notes = Vec::new();
+    // Bug N: collect YAML front-matter parse errors so the LLM / UI can
+    // flag the offending file rather than silently treating its
+    // front-matter as null. Previously `unwrap_or(Value::Null)` swallowed
+    // unbalanced quotes / tab indent / etc. with no signal, making
+    // "why aren't my tags showing up?" reports hard to diagnose.
+    let mut frontmatter_errors: Vec<Value> = Vec::new();
     for path in walk_md_files(&scan_root) {
         if notes.len() >= limit {
             break;
@@ -582,10 +689,23 @@ fn tool_list_notes(workspace: &Path, args: &Value) -> Result<Value, String> {
         let n = read_prefix(&path, &mut buf).unwrap_or(0);
         let raw = String::from_utf8_lossy(&buf[..n]).to_string();
         let (fm, body) = split_front_matter(&raw);
+        let mut fm_error: Option<String> = None;
         let fm_v: Value = match fm {
-            Some(s) => serde_yaml::from_str::<Value>(&s).unwrap_or(Value::Null),
+            Some(s) => match serde_yaml::from_str::<Value>(&s) {
+                Ok(v) => v,
+                Err(e) => {
+                    fm_error = Some(format!("yaml parse: {e}"));
+                    Value::Null
+                }
+            },
             None => Value::Null,
         };
+        if let Some(err) = &fm_error {
+            frontmatter_errors.push(json!({
+                "path": path.to_string_lossy(),
+                "error": err,
+            }));
+        }
         let headings = extract_headings(body);
         let title = match &fm_v {
             Value::Object(map) => map.get("title").and_then(|t| t.as_str()).map(|s| s.to_string()),
@@ -594,17 +714,25 @@ fn tool_list_notes(workspace: &Path, args: &Value) -> Result<Value, String> {
         .or_else(|| headings.first().map(|h| h.text.clone()));
         let summary = extract_summary(body);
         let size = fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
-        notes.push(json!({
+        let mut note = json!({
             "path": path.to_string_lossy(),
             "name": name,
             "title": title,
             "mtime": mtime_secs(&path),
             "size": size,
             "summary": summary,
-        }));
+        });
+        if let Some(err) = fm_error {
+            note["frontmatter_error"] = Value::String(err);
+        }
+        notes.push(note);
     }
     let count = notes.len();
-    Ok(json!({"notes": notes, "count": count}))
+    let mut out = json!({"notes": notes, "count": count});
+    if !frontmatter_errors.is_empty() {
+        out["frontmatter_errors"] = Value::Array(frontmatter_errors);
+    }
+    Ok(out)
 }
 
 fn tool_read_note(workspace: &Path, args: &Value) -> Result<Value, String> {
@@ -615,8 +743,19 @@ fn tool_read_note(workspace: &Path, args: &Value) -> Result<Value, String> {
     let path = resolve_in_workspace(workspace, path_arg)?;
     let raw = fs::read_to_string(&path).map_err(|e| format!("read: {e}"))?;
     let (fm, body) = split_front_matter(&raw);
+    // Bug N: surface YAML front-matter parse errors as `frontmatter_error`
+    // instead of silently coercing to Null. The note content still loads
+    // and downstream fields (tags from body, headings, wikilinks) keep
+    // working — but the caller can now SEE that the YAML block is broken.
+    let mut fm_error: Option<String> = None;
     let fm_v: Value = match fm {
-        Some(s) => serde_yaml::from_str::<Value>(&s).unwrap_or(Value::Null),
+        Some(s) => match serde_yaml::from_str::<Value>(&s) {
+            Ok(v) => v,
+            Err(e) => {
+                fm_error = Some(format!("yaml parse: {e}"));
+                Value::Null
+            }
+        },
         None => Value::Null,
     };
     let headings = extract_headings(body);
@@ -629,7 +768,7 @@ fn tool_read_note(workspace: &Path, args: &Value) -> Result<Value, String> {
     tags.sort();
     tags.dedup();
     let wikilinks = extract_wikilinks(body);
-    Ok(json!({
+    let mut out = json!({
         "path": path.to_string_lossy(),
         "content": raw,
         "frontmatter": fm_v,
@@ -637,7 +776,11 @@ fn tool_read_note(workspace: &Path, args: &Value) -> Result<Value, String> {
         "tags": tags,
         "wikilinks": wikilinks,
         "mtime": mtime_secs(&path),
-    }))
+    });
+    if let Some(err) = fm_error {
+        out["frontmatter_error"] = Value::String(err);
+    }
+    Ok(out)
 }
 
 fn tool_search(workspace: &Path, args: &Value) -> Result<Value, String> {
@@ -741,6 +884,10 @@ fn tool_get_backlinks(workspace: &Path, args: &Value) -> Result<Value, String> {
 fn tool_list_tags(workspace: &Path, _args: &Value) -> Result<Value, String> {
     use std::collections::HashMap;
     let mut by_tag: HashMap<String, (u32, Vec<String>)> = HashMap::new();
+    // Bug N: aggregate YAML front-matter parse errors so the caller can
+    // see which files have broken YAML — those are the ones whose
+    // front-matter `tags:` arrays were silently dropped.
+    let mut frontmatter_errors: Vec<Value> = Vec::new();
     for path in walk_md_files(workspace) {
         let raw = match fs::read_to_string(&path) {
             Ok(r) => r,
@@ -748,7 +895,16 @@ fn tool_list_tags(workspace: &Path, _args: &Value) -> Result<Value, String> {
         };
         let (fm, body) = split_front_matter(&raw);
         let fm_v: Value = match fm {
-            Some(s) => serde_yaml::from_str::<Value>(&s).unwrap_or(Value::Null),
+            Some(s) => match serde_yaml::from_str::<Value>(&s) {
+                Ok(v) => v,
+                Err(e) => {
+                    frontmatter_errors.push(json!({
+                        "path": path.to_string_lossy(),
+                        "error": format!("yaml parse: {e}"),
+                    }));
+                    Value::Null
+                }
+            },
             None => Value::Null,
         };
         let mut tags = extract_body_tags(body);
@@ -773,7 +929,11 @@ fn tool_list_tags(workspace: &Path, _args: &Value) -> Result<Value, String> {
         b["count"].as_u64().unwrap_or(0).cmp(&a["count"].as_u64().unwrap_or(0))
     });
     let count = out.len();
-    Ok(json!({"tags": out, "count": count}))
+    let mut result = json!({"tags": out, "count": count});
+    if !frontmatter_errors.is_empty() {
+        result["frontmatter_errors"] = Value::Array(frontmatter_errors);
+    }
+    Ok(result)
 }
 
 fn tool_get_outline(workspace: &Path, args: &Value) -> Result<Value, String> {
@@ -900,10 +1060,14 @@ fn tool_append_to_note(workspace: &Path, args: &Value) -> Result<Value, String> 
 fn tool_read_agent_trace(workspace: &Path, args: &Value) -> Result<Value, String> {
     // P3 will land a richer reader; for now we just parse trace.jsonl
     // line-by-line into JSON values, dropping malformed lines.
-    let run_id = args
+    let run_id_raw = args
         .get("run_id")
         .and_then(|v| v.as_str())
         .ok_or("run_id: required")?;
+    // SECURITY: refuse anything that isn't the canonical run_id shape —
+    // `run_id` is interpolated directly into the filesystem path below, so
+    // an unvalidated `../../etc` would walk above `.solomd/agent-runs/`.
+    let run_id = validate_run_id(run_id_raw)?;
     let path = workspace
         .join(".solomd")
         .join("agent-runs")
@@ -1193,5 +1357,64 @@ mod tests {
         for t in all_tools() {
             assert!(tool_descriptor(t).is_some(), "missing descriptor for {t}");
         }
+    }
+
+    // -- Path-safety regression coverage (HIGH-sev fix in resolve_in_workspace) --
+
+    #[test]
+    fn resolve_in_workspace_rejects_dotdot_with_nonexistent_parent() {
+        // The pre-fix exploit: parent (`../../tmp/pwn`) doesn't exist on
+        // disk, so `parent.canonicalize()` failed and the code fell back
+        // to the unresolved candidate. `starts_with(workspace)` then
+        // trivially passed (the path *lexically* began with workspace),
+        // and write_note happily mkdir-p'd /tmp/pwn and wrote there.
+        // Post-fix: the `..` component is rejected upfront.
+        let ws = make_workspace();
+        let res = resolve_in_workspace(&ws, "../../tmp/pwn/x.md");
+        assert!(res.is_err(), "must reject `..` even with nonexistent parent");
+        let _ = fs::remove_dir_all(&ws);
+    }
+
+    #[test]
+    fn resolve_in_workspace_rejects_absolute_path() {
+        let ws = make_workspace();
+        let res = resolve_in_workspace(&ws, "/etc/passwd");
+        assert!(res.is_err(), "must reject absolute paths");
+        let _ = fs::remove_dir_all(&ws);
+    }
+
+    #[test]
+    fn resolve_in_workspace_allows_nested_nonexistent_create() {
+        // Standard write-path use case: parent doesn't exist yet — the
+        // resolver still has to produce a path under the workspace so
+        // write_note can mkdir_p + create.
+        let ws = make_workspace();
+        let res = resolve_in_workspace(&ws, "subdir/new.md").unwrap();
+        let ws_canon = ws.canonicalize().unwrap();
+        assert!(
+            res.starts_with(&ws_canon),
+            "{} must live under workspace {}",
+            res.display(),
+            ws_canon.display()
+        );
+        assert!(res.ends_with("subdir/new.md"));
+        let _ = fs::remove_dir_all(&ws);
+    }
+
+    // -- run_id validation (MEDIUM-sev fix in tool_read_agent_trace) --
+
+    #[test]
+    fn validate_run_id_rejects_traversal() {
+        assert!(validate_run_id("../../etc").is_err());
+        assert!(validate_run_id("../foo").is_err());
+        assert!(validate_run_id("foo/bar").is_err());
+        assert!(validate_run_id("20260502-130000-abc/../bad").is_err());
+    }
+
+    #[test]
+    fn validate_run_id_accepts_canonical_shape() {
+        assert!(validate_run_id("20260502-130000-abc123").is_ok());
+        // Single-char hex suffix still ok.
+        assert!(validate_run_id("20260101-000000-a").is_ok());
     }
 }

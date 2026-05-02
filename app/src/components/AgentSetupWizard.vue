@@ -13,7 +13,7 @@
  *   2b. Ollama: detect → "Install Ollama" link if missing, "Pull qwen2.5:1.5b" if no model
  *   3. Done — closes wizard, marks `agentWizardSeen` so it doesn't re-fire.
  */
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { useSettingsStore } from '../stores/settings';
@@ -103,7 +103,11 @@ const detecting = ref(false);
 const pulling = ref(false);
 const pullPct = ref(0);
 const pullStatus = ref('');
+// Hoisted to component scope so onBeforeUnmount can clean them up even if
+// the user closes the wizard mid-pull. Otherwise we leak the listener and
+// the multi-GB pull keeps running with no UI to cancel it.
 let pullUnlisten: UnlistenFn | null = null;
+let pullRequestId: string | null = null;
 
 async function detectOllama() {
   detecting.value = true;
@@ -129,7 +133,7 @@ async function pullRecommended() {
   pulling.value = true;
   pullPct.value = 0;
   pullStatus.value = '';
-  const requestId = `wiz-pull-${Date.now()}`;
+  pullRequestId = `wiz-pull-${Date.now()}`;
 
   // Subscribe BEFORE invoking to avoid missing the first events.
   if (pullUnlisten) {
@@ -143,7 +147,7 @@ async function pullRecommended() {
     total?: number;
     done: boolean;
   }>('solomd://ollama-pull', (e) => {
-    if (e.payload.request_id !== requestId) return;
+    if (e.payload.request_id !== pullRequestId) return;
     pullStatus.value = e.payload.status;
     if (
       typeof e.payload.completed === 'number' &&
@@ -155,13 +159,14 @@ async function pullRecommended() {
   });
 
   try {
-    await invoke('ollama_pull', { model: 'qwen2.5:1.5b', requestId });
+    await invoke('ollama_pull', { model: 'qwen2.5:1.5b', requestId: pullRequestId });
     toasts.success(t('wizard.ollamaPullDone'));
     await detectOllama();
   } catch (e) {
     toasts.error(`Pull: ${e}`);
   } finally {
     pulling.value = false;
+    pullRequestId = null;
     if (pullUnlisten) {
       pullUnlisten();
       pullUnlisten = null;
@@ -221,6 +226,33 @@ onMounted(() => {
     })
     .catch(() => {});
 });
+
+// Cleanup: if the user closes the wizard (or HMR remounts) while a multi-GB
+// model pull is in flight, we must unlisten the `solomd://ollama-pull`
+// subscription AND best-effort cancel the pull so it doesn't keep churning
+// disk + bandwidth in the background with no UI to stop it.
+onBeforeUnmount(() => {
+  if (pulling.value && pullRequestId) {
+    invoke('ollama_cancel_pull', { requestId: pullRequestId }).catch(() => {});
+  }
+  if (pullUnlisten) {
+    pullUnlisten();
+    pullUnlisten = null;
+  }
+  pullRequestId = null;
+});
+
+// CJK / IME guard for the cloud-key input. Same anti-pattern fix as
+// AgentPanel.vue::onKeydown — pinyin commit Enter must not be treated as
+// "submit". On a clean Enter press we fire saveCloudKey() so users don't
+// have to reach for the mouse.
+function onCloudKeyKey(e: KeyboardEvent) {
+  if (e.isComposing || e.keyCode === 229) return;
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    if (!verifying.value) void saveCloudKey();
+  }
+}
 </script>
 
 <template>
@@ -284,6 +316,7 @@ onMounted(() => {
             class="wiz__inp"
             :placeholder="t('wizard.keyPlaceholder')"
             spellcheck="false"
+            @keydown="onCloudKeyKey"
           />
         </div>
 

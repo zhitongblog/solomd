@@ -84,6 +84,15 @@ pub struct RewriteRequest {
     /// non-default Ollama port). Empty / missing = provider default.
     #[serde(default)]
     pub base_url: Option<String>,
+    /// Optional caller-provided request id. When present, the backend uses
+    /// this instead of `make_request_id()` so the frontend can wire its
+    /// event listeners BEFORE invoking the command — closes a race where
+    /// a fast failure (e.g. ollama 404 on a missing model) emits
+    /// `ai-error` while the JS listener still has `requestId === null`
+    /// and silently drops the error, leaving the inline rewrite overlay
+    /// stuck on "Rewriting…" with no visible feedback.
+    #[serde(default)]
+    pub request_id: Option<String>,
 }
 
 /// v4.0 pillar 1 — Inline Agent Panel chat message.
@@ -199,6 +208,38 @@ struct RunStartedEvent {
 
 static CANCEL_FLAGS: Lazy<Mutex<HashMap<String, Arc<AtomicBool>>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
+
+/// Bug O: per-(provider, base_url) memo of OpenAI-compat servers that
+/// reject `stream_options.include_usage` with a 400. Some older self-hosted
+/// vLLM forks and a couple of SiliconFlow tiers don't recognise the field
+/// and respond `{"error": "unknown body param: stream_options"}`. The
+/// streaming path retries once without the field on first 400 and caches
+/// the key here so subsequent requests skip directly to the no-options
+/// body. Keyed as `"<provider>|<base_url>"`. In-memory only — re-checks
+/// once per process restart, no persistence.
+static STREAM_OPTIONS_UNSUPPORTED: std::sync::OnceLock<Mutex<std::collections::HashSet<String>>> =
+    std::sync::OnceLock::new();
+
+fn stream_options_cache_key(provider: &str, base_url: &str) -> String {
+    format!("{provider}|{base_url}")
+}
+
+fn stream_options_unsupported(key: &str) -> bool {
+    STREAM_OPTIONS_UNSUPPORTED
+        .get_or_init(|| Mutex::new(std::collections::HashSet::new()))
+        .lock()
+        .map(|s| s.contains(key))
+        .unwrap_or(false)
+}
+
+fn mark_stream_options_unsupported(key: &str) {
+    if let Ok(mut s) = STREAM_OPTIONS_UNSUPPORTED
+        .get_or_init(|| Mutex::new(std::collections::HashSet::new()))
+        .lock()
+    {
+        s.insert(key.to_string());
+    }
+}
 
 /// Monotonic suffix so two requests created in the same millisecond don't
 /// collide on `request_id`.
@@ -608,7 +649,11 @@ pub async fn ai_chat(app: AppHandle, request: ChatRequest) -> Result<String, Str
 /// `solomd://ai-error` events filtered by that id.
 #[tauri::command]
 pub async fn ai_rewrite(app: AppHandle, request: RewriteRequest) -> Result<String, String> {
-    let request_id = make_request_id();
+    let request_id = request
+        .request_id
+        .clone()
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(make_request_id);
     let cancel = register_cancel_flag(&request_id);
 
     // Resolve which wire format to use: explicit `api_format` from the
@@ -2088,35 +2133,78 @@ async fn openai_one_turn(
         .unwrap_or_else(|| "https://api.openai.com/v1".to_string());
     let url = format!("{base}/chat/completions");
 
-    let mut body = serde_json::json!({
-        "model": req.model,
-        "stream": true,
-        "messages": history,
-        // OpenAI-compat servers only emit the final `usage` block when the
-        // client opts in via `stream_options.include_usage`. The Chat
-        // Completions API has accepted this since mid-2024; older self-
-        // hosted forks ignore it harmlessly. Without this, Gemini /
-        // DeepSeek / etc. silently drop usage and we book $0 for the run.
-        "stream_options": {"include_usage": true},
-    });
-    if tools.as_array().map(|a| !a.is_empty()).unwrap_or(false) {
-        body["tools"] = tools.clone();
-    }
+    // Bug O: build the body, omitting `stream_options` if a previous
+    // request to this (provider, base_url) returned 400 because the
+    // server didn't recognise the field. See STREAM_OPTIONS_UNSUPPORTED.
+    let cache_key = stream_options_cache_key(&req.provider, &base);
+    let include_stream_options = !stream_options_unsupported(&cache_key);
+    let build_body = |with_options: bool| -> Value {
+        let mut b = serde_json::json!({
+            "model": req.model,
+            "stream": true,
+            "messages": history,
+        });
+        if with_options {
+            // OpenAI-compat servers only emit the final `usage` block when
+            // the client opts in via `stream_options.include_usage`. The
+            // Chat Completions API has accepted this since mid-2024;
+            // older self-hosted forks (older vLLM, certain SiliconFlow
+            // tiers) reject it with a 400 — handled below.
+            b["stream_options"] = serde_json::json!({"include_usage": true});
+        }
+        if tools.as_array().map(|a| !a.is_empty()).unwrap_or(false) {
+            b["tools"] = tools.clone();
+        }
+        b
+    };
 
     let client = http_client()?;
-    let resp = client
-        .post(&url)
-        .bearer_auth(api_key)
-        .header("content-type", "application/json")
-        .json(&body)
-        .send()
-        .await
-        .map_err(|e| format!("openai request failed: {e}"))?;
+    let send_once = |body: Value| {
+        let url = url.clone();
+        let api_key = api_key.to_string();
+        let client = client.clone();
+        async move {
+            client
+                .post(&url)
+                .bearer_auth(&api_key)
+                .header("content-type", "application/json")
+                .json(&body)
+                .send()
+                .await
+                .map_err(|e| format!("openai request failed: {e}"))
+        }
+    };
+
+    let mut resp = send_once(build_body(include_stream_options)).await?;
 
     if !resp.status().is_success() {
         let status = resp.status();
-        let txt = resp.text().await.unwrap_or_default();
-        return Err(format!("openai {status}: {txt}"));
+        // Retry once without `stream_options` if the server complained
+        // about it — single substring match keeps detection cheap and
+        // robust across "unknown body param", "unknown field",
+        // "include_usage not supported", etc. Cache the result so we
+        // skip the bad first request next time.
+        if status == reqwest::StatusCode::BAD_REQUEST && include_stream_options {
+            let txt = resp.text().await.unwrap_or_default();
+            let lower = txt.to_lowercase();
+            if lower.contains("stream_options")
+                || lower.contains("include_usage")
+                || lower.contains("unknown")
+            {
+                mark_stream_options_unsupported(&cache_key);
+                resp = send_once(build_body(false)).await?;
+                if !resp.status().is_success() {
+                    let s = resp.status();
+                    let t = resp.text().await.unwrap_or_default();
+                    return Err(format!("openai {s}: {t}"));
+                }
+            } else {
+                return Err(format!("openai {status}: {txt}"));
+            }
+        } else {
+            let txt = resp.text().await.unwrap_or_default();
+            return Err(format!("openai {status}: {txt}"));
+        }
     }
 
     // DEBUG (gemini thought_signature hunt): if the env var is set, dump
@@ -2329,5 +2417,61 @@ mod tests {
         for id in ["openai", "anthropic", "ollama", "deepseek", "qwen"] {
             assert_eq!(resolve_provider(id), id, "provider {id} should not be rewritten");
         }
+    }
+
+    /// Bug C — `ai_rewrite` must reuse a caller-provided `request_id` so
+    /// the frontend can wire its event listeners BEFORE invoking the
+    /// command. We can't drive the network from a unit test, so we
+    /// exercise the same `unwrap_or_else(make_request_id)` selector on a
+    /// constructed `RewriteRequest` and confirm the supplied id wins.
+    #[test]
+    fn rewrite_request_uses_caller_provided_request_id() {
+        fn pick(req: &RewriteRequest) -> String {
+            req.request_id
+                .clone()
+                .filter(|s| !s.is_empty())
+                .unwrap_or_else(make_request_id)
+        }
+
+        let with_id = RewriteRequest {
+            provider: "openai".to_string(),
+            api_format: Some("openai".to_string()),
+            model: "gpt-4o-mini".to_string(),
+            system: "s".to_string(),
+            user: "u".to_string(),
+            selection: "sel".to_string(),
+            base_url: None,
+            request_id: Some("xyz".to_string()),
+        };
+        assert_eq!(pick(&with_id), "xyz");
+
+        // Empty string falls through to the generated id (treat empty as
+        // "none" — matches the same rule applied to ChatRequest).
+        let empty = RewriteRequest {
+            request_id: Some(String::new()),
+            ..with_id.clone()
+        };
+        let id = pick(&empty);
+        assert!(id.starts_with("req-"), "expected generated id, got {id}");
+
+        // Missing field → generated id.
+        let missing = RewriteRequest {
+            request_id: None,
+            ..with_id
+        };
+        let id = pick(&missing);
+        assert!(id.starts_with("req-"), "expected generated id, got {id}");
+    }
+
+    /// Bug O — the per-(provider, base_url) cache flips a server from
+    /// "try with stream_options" to "skip it" after a single failure.
+    #[test]
+    fn stream_options_cache_marks_and_reads_back() {
+        let key = stream_options_cache_key("test-provider", "http://localhost:9999");
+        // OnceLock-backed sets persist for the test process; pick a key
+        // that no other test touches.
+        assert!(!stream_options_unsupported(&key));
+        mark_stream_options_unsupported(&key);
+        assert!(stream_options_unsupported(&key));
     }
 }

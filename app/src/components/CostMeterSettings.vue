@@ -38,7 +38,10 @@ async function refresh() {
   try {
     meter.value = await invoke<CostMeter>('cost_meter_get');
   } catch (e) {
-    console.warn('cost_meter_get failed', e);
+    // Match the toast pattern used by onToggleEnabled / onReset below —
+    // a silent console.warn means the user has no idea why the table is
+    // stale after they hit "Refresh".
+    toasts.error(t('cost.refreshFailed', { err: String(e) }));
   }
 }
 

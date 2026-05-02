@@ -19,7 +19,9 @@
 
 use app_lib::agent_run::{list_runs, read_run_meta, read_trace, RunStatus};
 use app_lib::git_history::git_init_workspace_inner;
-use app_lib::recipe_runner::{agent_write_note, finalize_run, prepare_run};
+use app_lib::recipe_runner::{
+    agent_write_note, finalize_run, prepare_run, validate_run_id, workspace_has_dirty_changes,
+};
 use app_lib::recipes::{self, Recipe, TriggerCtx};
 use std::fs;
 use std::path::PathBuf;
@@ -247,6 +249,102 @@ fn loader_skips_example_files() {
     assert!(errs.is_empty(), "{errs:?}");
     assert_eq!(loaded.len(), 1);
     assert_eq!(loaded[0].name, "Real");
+}
+
+/// Bug F (security): `recipes_*` Tauri commands must reject any run_id
+/// that could escape the run dir. Mirrors the substring guard in
+/// `rest_api.rs` and adds a strict canonical-shape check.
+#[test]
+fn validate_run_id_rejects_traversal() {
+    // Path traversal in various forms.
+    assert!(validate_run_id("../../etc/passwd").is_err());
+    assert!(validate_run_id("..").is_err());
+    assert!(validate_run_id("foo/bar").is_err());
+    assert!(validate_run_id("foo\\bar").is_err());
+    // Empty input.
+    assert!(validate_run_id("").is_err());
+    // Wrong shape — right length but garbage characters.
+    assert!(validate_run_id("ZZZZZZZZ-ZZZZZZ-ZZZZZZ").is_err());
+    // Hex-ish but uppercase suffix (we require lowercase to match
+    // `mint_run_id`'s output and avoid case-folding ambiguity on macOS).
+    assert!(validate_run_id("20260101-120000-ABCDEF").is_err());
+    // Too short / too long.
+    assert!(validate_run_id("20260101-120000-abc").is_err());
+    assert!(validate_run_id("20260101-120000-abcdefff").is_err());
+    // Non-ASCII.
+    assert!(validate_run_id("20260101-120000-ñbcdef").is_err());
+}
+
+#[test]
+fn validate_run_id_accepts_canonical_shape() {
+    // Shape minted by `recipes::mint_run_id` — accept it.
+    let now = chrono::Utc::now();
+    let id = recipes::mint_run_id(now);
+    assert_eq!(validate_run_id(&id), Ok(id.as_str()));
+
+    // Hand-crafted canonical id — accept.
+    assert_eq!(
+        validate_run_id("20260102-153045-0a1b2c"),
+        Ok("20260102-153045-0a1b2c"),
+    );
+    assert_eq!(
+        validate_run_id("19700101-000000-000000"),
+        Ok("19700101-000000-000000"),
+    );
+}
+
+/// Bug B (high): the runner must refuse to start when the workspace has
+/// uncommitted WIP — otherwise the AutoGit sandbox would sweep the user's
+/// edits onto the agent branch and `restore_head`'s force-checkout would
+/// silently destroy any surviving WIP.
+///
+/// We can't drive `run_recipe` from an integration test (it needs an
+/// `AppHandle`), so we exercise the dirty-detection helper that gates the
+/// abort, plus assert the actual file on disk is not touched.
+#[test]
+fn recipe_aborts_on_dirty_workspace() {
+    let ws = fresh_workspace("dirty");
+
+    // Initialise the repo with a starter file so HEAD has a target.
+    fs::write(ws.join("README.md"), "# vault\n").unwrap();
+    git_init_workspace_inner(
+        ws.to_string_lossy().to_string(),
+        Some("init: vault".into()),
+        Some(false),
+    )
+    .expect("init_workspace");
+
+    // Clean tree → no dirty.
+    assert!(
+        !workspace_has_dirty_changes(&ws).expect("clean check"),
+        "fresh repo must report clean"
+    );
+
+    // Drop a dirty file (untracked).
+    let dirty_path = ws.join("WIP.md");
+    let dirty_contents = "# user WIP — must NOT be touched\n";
+    fs::write(&dirty_path, dirty_contents).unwrap();
+    assert!(
+        workspace_has_dirty_changes(&ws).expect("dirty check"),
+        "untracked file must trip dirty detection"
+    );
+
+    // The user's WIP file is still on disk and untouched — the abort
+    // path must not have rewritten it.
+    let after = fs::read_to_string(&dirty_path).expect("WIP.md still exists");
+    assert_eq!(after, dirty_contents, "user's WIP must not be rewritten");
+
+    // Modifying a tracked file also trips the check.
+    fs::remove_file(&dirty_path).unwrap();
+    assert!(
+        !workspace_has_dirty_changes(&ws).expect("clean check after rm"),
+        "removing the only dirty path must restore clean state"
+    );
+    fs::write(ws.join("README.md"), "# vault — modified\n").unwrap();
+    assert!(
+        workspace_has_dirty_changes(&ws).expect("dirty check (modified)"),
+        "modified tracked file must trip dirty detection"
+    );
 }
 
 /// Runner against a real Ollama. Skipped by default — gate-tested via

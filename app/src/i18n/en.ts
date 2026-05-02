@@ -704,6 +704,7 @@ export const en = {
     disabled: 'Cost meter disabled — no new totals will be recorded',
     since: 'Since {ts}',
     refresh: 'Refresh',
+    refreshFailed: 'Cost meter refresh failed: {err}',
     reset: 'Reset',
     resetDone: 'Cost meter reset',
     provider: 'Provider',

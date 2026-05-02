@@ -15,6 +15,7 @@
 
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
+import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { useRecipesStore, type RecipeSummary, type RunMeta } from '../stores/recipes';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useToastsStore } from '../stores/toasts';
@@ -39,12 +40,34 @@ watch(folder, async (f) => {
   await store.refresh(f);
 }, { immediate: true });
 
+// Map slug -> run_id so we can clear the "running" lock when the matching
+// `solomd://recipes-run-finished` event arrives. Without this the button
+// only stayed disabled during the (very brief) `recipes_run_now` invoke,
+// so a user could mash it and queue the same recipe many times in a row.
+const slugByRunId = ref<Map<string, string>>(new Map());
+let unlistenRunFinished: UnlistenFn | null = null;
+
 onMounted(async () => {
   await store.subscribe(() => folder.value);
+  unlistenRunFinished = await listen<RunMeta>(
+    'solomd://recipes-run-finished',
+    (e) => {
+      const slug = slugByRunId.value.get(e.payload.run_id);
+      if (slug) {
+        runningSlugs.value.delete(slug);
+        runningSlugs.value = new Set(runningSlugs.value);
+        slugByRunId.value.delete(e.payload.run_id);
+      }
+    },
+  );
 });
 
 onBeforeUnmount(() => {
   void store.unsubscribe();
+  if (unlistenRunFinished) {
+    unlistenRunFinished();
+    unlistenRunFinished = null;
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -99,13 +122,20 @@ const runningSlugs = ref<Set<string>>(new Set());
 
 async function runNow(r: RecipeSummary) {
   if (!folder.value) return;
+  if (runningSlugs.value.has(r.slug)) return;
   runningSlugs.value.add(r.slug);
+  // Force template reactivity for the `Set` (Vue tracks identity, not contents).
+  runningSlugs.value = new Set(runningSlugs.value);
   const id = await store.runNow(folder.value, r.slug);
-  runningSlugs.value.delete(r.slug);
   if (id) {
+    // Keep the lock until the matching run-finished event clears it.
+    slugByRunId.value.set(id, r.slug);
     toasts.success(t('recipes.toastRunQueued'));
-  } else if (store.lastError) {
-    toasts.error(store.lastError);
+  } else {
+    // The invoke itself failed — release the lock immediately, no event coming.
+    runningSlugs.value.delete(r.slug);
+    runningSlugs.value = new Set(runningSlugs.value);
+    if (store.lastError) toasts.error(store.lastError);
   }
 }
 

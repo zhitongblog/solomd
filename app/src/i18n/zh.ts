@@ -701,6 +701,7 @@ export const zh: I18n = {
     disabled: '已关闭费用计量——不再记录新数据',
     since: '统计自 {ts}',
     refresh: '刷新',
+    refreshFailed: '费用计量刷新失败：{err}',
     reset: '清零',
     resetDone: '费用计量已清零',
     provider: 'Provider',
