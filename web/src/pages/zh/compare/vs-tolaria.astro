@@ -27,7 +27,7 @@ const lang = 'zh' as const;
       <h2>30 秒看完</h2>
       <table class="compare-detail">
         <thead>
-          <tr><th>&nbsp;</th><th>SoloMD</th><th>Tolaria</th></tr>
+          <tr><th>&nbsp;</th><th>SoloMD v4.0</th><th>Tolaria</th></tr>
         </thead>
         <tbody>
           <tr><th>价格</th><td><strong>免费</strong> / MIT</td><td><strong>免费</strong> / 开源</td></tr>
@@ -35,6 +35,12 @@ const lang = 'zh' as const;
           <tr><th>支持平台</th><td>macOS · Windows · Linux x64/ARM64 · <strong>iPad</strong></td><td>macOS · Linux <em>（无 Windows）</em></td></tr>
           <tr><th>安装包大小</th><td>~15 MB</td><td>~25 MB</td></tr>
           <tr><th>编辑模型</th><td>CodeMirror 源码模式 + 实时预览 + 分屏</td><td>Notion 式块编辑器 + 斜杠命令</td></tr>
+          <tr><th>内置 Agent 面板（chat-with-vault）</th><td>✅ <strong>v4.0</strong> · 流式多轮 · 工具卡 · [[wikilink]] 引用 · 插入/复制</td><td>🟡 仅外部 MCP 客户端（无 in-app 面板）</td></tr>
+          <tr><th>定时 Agent Recipe</th><td>✅ <strong>v4.0</strong> · cron / on-save / on-commit / on-tag · 11 个起步模板</td><td>❌</td></tr>
+          <tr><th>AutoGit 分支沙箱 + accept/reject 评审</th><td>✅ <strong>v4.0</strong> · 每次运行独立分支 · write-cap（默认 5）· 工作区脏时拒启动</td><td>❌（agent 直接提交到 main）</td></tr>
+          <tr><th>可重放的 Agent Trace</th><td>✅ <strong>v4.0</strong> · 按步 jsonl · 从第 N 步重放</td><td>❌</td></tr>
+          <tr><th>多 vault MCP Federation</th><td>✅ <strong>v4.0</strong> · <code>--workspace</code> 可重复 · MCP profile UI</td><td>❌ 单 workspace</td></tr>
+          <tr><th>Ollama 一等公民</th><td>✅ <strong>v4.0</strong> · 自动检测 · 3 个模型预设 · <code>provider: local</code></td><td>🟡 BYOK 手动</td></tr>
           <tr><th>多标签 + 分屏</th><td>✅ 标签页 + 任意分屏</td><td>❌ 单面板</td></tr>
           <tr><th>双向链接 <code>[[note]]</code></th><td>✅ 自动补全 + Backlinks 面板</td><td>✅ 自动补全 + Backlinks</td></tr>
           <tr><th>本地语义搜索</th><td>✅ <strong>v2.3</strong> · ⌘⇧F · 设备本地,不下模型</td><td>❌</td></tr>

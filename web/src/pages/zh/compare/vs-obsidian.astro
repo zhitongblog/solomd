@@ -28,22 +28,31 @@ const lang = 'zh' as const;
       <h2>30 秒速览</h2>
       <table class="compare-detail">
         <thead>
-          <tr><th>&nbsp;</th><th>SoloMD</th><th>Obsidian</th></tr>
+          <tr><th>&nbsp;</th><th>SoloMD v4.0</th><th>Obsidian 1.x</th></tr>
         </thead>
         <tbody>
-          <tr><th>定位</th><td>文档编辑器 + AI / 搜索 / 历史 工具集</td><td>vault / 知识库 + 插件市场</td></tr>
+          <tr><th>定位</th><td>文档编辑器 + Agent 一等公民 + AI / 搜索 / 历史 工具集</td><td>vault / 知识库 + 插件市场</td></tr>
           <tr><th>价格</th><td><strong>免费</strong> (MIT)</td><td>个人免费 · 商用 $50/年 · Sync $96/年</td></tr>
           <tr><th>开源</th><td>✅</td><td>❌ 核心闭源,插件开源</td></tr>
           <tr><th>安装包大小</th><td>~15 MB</td><td>~130 MB</td></tr>
           <tr><th>空闲内存</th><td>~150 MB</td><td>~400 MB</td></tr>
+          <tr><th>内置 Agent 面板（chat-with-vault）</th><td>✅ <strong>v4.0</strong> · 流式多轮 · 工具卡 · [[wikilink]] 引用 · 插入/复制到当前笔记</td><td>🟡 付费插件 (Smart Composer, Copilot)</td></tr>
+          <tr><th>定时 Agent Recipe</th><td>✅ <strong>v4.0</strong> · cron / on-save / on-commit / on-tag / 手动 · 11 个起步模板</td><td>❌</td></tr>
+          <tr><th>AutoGit 分支沙箱 + accept/reject 评审</th><td>✅ <strong>v4.0</strong> · 每次运行独立分支 · write-cap（默认 5）· 工作区脏时拒绝启动</td><td>❌</td></tr>
+          <tr><th>可重放的 Agent Trace</th><td>✅ <strong>v4.0</strong> · 按步 jsonl · 从第 N 步重放 · <code>read_agent_trace</code> MCP 工具</td><td>❌</td></tr>
+          <tr><th>多 vault MCP Federation</th><td>✅ <strong>v4.0</strong> · <code>--workspace</code> 可重复 · MCP profile UI</td><td>❌</td></tr>
+          <tr><th>Ollama 一等公民</th><td>✅ <strong>v4.0</strong> · 自动检测 · 3 个模型预设 · recipe 用 <code>provider: local</code></td><td>🟡 插件 (Smart Connections 等)</td></tr>
+          <tr><th>本地 REST API（localhost + token 鉴权）</th><td>✅ <strong>v4.0</strong></td><td>🟡 Local REST API 社区插件</td></tr>
+          <tr><th>BYOK 成本计</th><td>✅ <strong>v4.0</strong></td><td>🟡 看插件自身</td></tr>
           <tr><th>本地语义搜索</th><td>✅ <strong>v2.3</strong> · 核心内置,设备本地不下模型</td><td>🟡 付费插件 (Smart Connections 等)</td></tr>
           <tr><th>WYSIWYG 实时编辑</th><td>✅ <strong>v2.3</strong></td><td>✅ Live Preview</td></tr>
           <tr><th>AutoGit 版本历史</th><td>✅ <strong>v2.2</strong> · 每次保存快照,核心内置</td><td>❌ (需手动配 Obsidian Git 插件)</td></tr>
           <tr><th>内置 MCP server</th><td>✅ <strong>v2.2</strong> · 1.5 MB sidecar</td><td>❌</td></tr>
           <tr><th>14 个 AI provider · BYOK</th><td>✅ 核心内置 · key 存系统钥匙串</td><td>❌ (每个 AI 插件 1–2 个)</td></tr>
-          <tr><th>反向链接 / 图谱</th><td>❌</td><td>✅ 核心功能</td></tr>
+          <tr><th>反向链接</th><td>✅ <strong>v2.0</strong> · 侧栏面板</td><td>✅ 核心功能</td></tr>
+          <tr><th>图谱视图</th><td>❌（明确不做 — 见 roadmap）</td><td>✅ 核心功能</td></tr>
           <tr><th>插件系统</th><td>❌ (支持自定义 CSS)</td><td>✅ 数千个</td></tr>
-          <tr><th>Wiki 双向链接</th><td>❌</td><td>✅ <code>[[file]]</code></td></tr>
+          <tr><th>Wiki 双向链接</th><td>✅ <strong>v2.0</strong> · <code>[[file]]</code></td><td>✅ <code>[[file]]</code></td></tr>
           <tr><th>支持单文件打开</th><td>✅ 任意 .md</td><td>⚠️ 偏向 vault 文件夹</td></tr>
           <tr><th>多编码 (GBK/Big5)</th><td>✅</td><td>⚠️ 仅 UTF-8</td></tr>
           <tr><th>iPad</th><td>🟡 已提交,审核中</td><td>✅ App Store</td></tr>

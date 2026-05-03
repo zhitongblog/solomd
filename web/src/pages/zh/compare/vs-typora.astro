@@ -20,15 +20,16 @@ const lang = 'zh' as const;
 
       <h1>SoloMD vs Typora：选哪个？</h1>
       <p class="lead">
-        对比基于 <strong>SoloMD v3.5.0</strong> 与 <strong>Typora 1.13</strong>（2026 年 4 月）。
-        想要一个 <strong>LLM 客户端能直接驱动的 markdown vault</strong>（自带 MCP）选 SoloMD；
-        想要最完整的<strong>单一 WYSIWYG</strong> 体验、不需要 AI / 同步 / 版本历史在核心，Typora 仍是好选择。
+        对比基于 <strong>SoloMD v4.0</strong> 与 <strong>Typora 1.13</strong>（2026 年 5 月）。
+        想要一个开源编辑器、Agent 是一等公民（chat-with-vault 面板、定时 recipe、AutoGit
+        分支沙箱使写入可审），SoloMD；想要最完整的<strong>单一 WYSIWYG</strong>
+        体验、不需要 AI / 同步 / 版本历史 / agent 在核心，Typora 仍是好选择。
       </p>
 
       <h2>30 秒速览</h2>
       <table class="compare-detail">
         <thead>
-          <tr><th>&nbsp;</th><th>SoloMD v3.5</th><th>Typora 1.13</th></tr>
+          <tr><th>&nbsp;</th><th>SoloMD v4.0</th><th>Typora 1.13</th></tr>
         </thead>
         <tbody>
           <tr><th>价格</th><td><strong>免费</strong>（MIT）</td><td>$14.99 美元（买断，3 设备）</td></tr>
@@ -36,6 +37,14 @@ const lang = 'zh' as const;
           <tr><th>开源</th><td>✅ GitHub</td><td>❌ 闭源</td></tr>
           <tr><th>支持平台</th><td>macOS · Windows · Linux · iPad</td><td>macOS · Windows · Linux</td></tr>
           <tr><th>AI 改写内建</th><td>✅ <strong>14 个 BYOK provider</strong> · ⌘J · key 存系统钥匙串</td><td>❌</td></tr>
+          <tr><th>内置 Agent 面板（chat-with-vault）</th><td>✅ <strong>v4.0</strong> · 流式多轮 · 工具卡 · [[wikilink]] 引用 · 插入/复制到当前笔记</td><td>❌</td></tr>
+          <tr><th>定时 Agent Recipe</th><td>✅ <strong>v4.0</strong> · cron / on-save / on-commit / on-tag / 手动 · 11 个起步模板</td><td>❌</td></tr>
+          <tr><th>AutoGit 分支沙箱 + accept/reject 评审</th><td>✅ <strong>v4.0</strong> · 每次运行独立分支 · write-cap（默认 5）· 工作区脏时拒绝启动</td><td>❌</td></tr>
+          <tr><th>可重放的 Agent Trace</th><td>✅ <strong>v4.0</strong> · 按步 jsonl · 从第 N 步重放 · <code>read_agent_trace</code> MCP 工具</td><td>❌</td></tr>
+          <tr><th>多 vault MCP Federation</th><td>✅ <strong>v4.0</strong> · <code>--workspace</code> 可重复 · MCP profile UI</td><td>❌</td></tr>
+          <tr><th>Ollama 一等公民</th><td>✅ <strong>v4.0</strong> · 自动检测 · 3 个模型预设 · recipe 用 <code>provider: local</code></td><td>❌</td></tr>
+          <tr><th>本地 REST API（localhost + token 鉴权）</th><td>✅ <strong>v4.0</strong> · 和 MCP 同套接口给非 MCP 客户端</td><td>❌</td></tr>
+          <tr><th>BYOK 成本计</th><td>✅ <strong>v4.0</strong> · 按 provider 累计 token 数, opt-in</td><td>❌</td></tr>
           <tr><th>内置 MCP server</th><td>✅ <strong>v3.1</strong> · 13 工具，5 个 SoloMD 独家（autogit/sync/share）</td><td>❌</td></tr>
           <tr><th><code>solomd agent</code> CLI</th><td>✅ <strong>v3.1</strong> · 把 prompt 接给 Claude Code / Codex，MCP 已预连</td><td>❌</td></tr>
           <tr><th>GitHub 同步（自己的库）</th><td>✅ <strong>v3.0</strong> · libgit2 + 系统钥匙串</td><td>❌</td></tr>
