@@ -1,0 +1,351 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import Header from '../../../components/Header.astro';
+import Footer from '../../../components/Footer.astro';
+import Giscus from '../../../components/Giscus.astro';
+
+const lang = 'zh' as const;
+---
+
+<Layout
+  title="SoloMD v4.0 — 让 Agent 住进来的编辑器"
+  description="v4.0 是 agent-native author 大版本。五大支柱:内置 Agent 面板（流式 chat-with-vault）、定时 Recipe（cron / on-save / on-commit, AutoGit 分支沙箱 + accept/reject）、可重放 Trace View、多 vault MCP Federation、Ollama 一等公民。同时:REST API、BYOK 成本计、11 个 Recipe 模板、首次启动向导。安全护栏不可妥协 —— 每次 agent 运行都要先评审才能合入 main。"
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <article class="container blog-article">
+      <nav class="breadcrumbs">
+        <a href="/zh/">首页</a> / <a href="/zh/blog/">博客</a> / <span>v4.0</span>
+      </nav>
+      <time>2026-05-03</time>
+      <h1>v4.0 — 让 Agent 住进来的编辑器</h1>
+      <p class="lead">
+        SoloMD 一直是同一份产品的两半:把纯 <code>.md</code>
+        写到磁盘上的编辑器,加上指向同一个 vault 的 MCP server。
+        v4.0 加了第三半 —— <strong>编辑器内一等公民的 Agent
+        面板</strong>,有完整的安全护栏 (AutoGit 分支沙箱、
+        单次 write-cap、accept/reject UI),让自动写入是
+        <em>"可审"</em> 而不是 <em>"可怕"</em>。
+      </p>
+
+      <p>
+        品牌也跟着进化:从 <em>"编辑器 + MCP 端点"</em> 变成
+        <em>"让 Agent 住进来的编辑器"</em>。
+      </p>
+
+      <h2>这一版为什么憋了 12 周</h2>
+      <p>
+        v3.6 已经功能稳定了。下面 5 个支柱本来可以分成 5 个
+        minor 版本在春天里陆续发出去。我们故意没这么干 ——
+        在 <code>main</code> 上进入静默期 (3.6.2 之后只接补丁),
+        把 v4.0 当作下一次架构跃迁来对待。代价:12 周没有零碎的
+        marketing 节点。收益:每一个支柱都跑同一份安全契约 ——
+        同一个 run handle、同一个 trace 格式、同一个 write-cap
+        registry。Agent 面板、Recipe、REST API、MCP Federation
+        —— 入口不同,信任模型只有一份。
+      </p>
+      <p>
+        这 12 周里大约 6 周写代码,2 周做菜谱、向导、ja/ko
+        本地化骨架,最后 4 周是 dogfood —— 在真实 vault 上跑
+        v4-beta build,找集成测试漏掉的 bug。v4.0 大约三分之一的
+        commit 落在了最后这个窗口里。
+      </p>
+
+      <h2>五大支柱</h2>
+
+      <h3>1. 内置 Agent 面板</h3>
+      <p>
+        右侧一等公民面板,跟大纲 / 反向链接 / 标签 / 历史平级。
+        通过进程内 MCP 接口和已有 14 家 AI provider
+        组成 streamed chat-with-vault。<code>[[wikilink]]</code>
+        引用解析为真正的笔记跳转,点开就跳。每次 agent 调工具的
+        卡片在对话流里展开,看得到读取了什么、写入了什么、
+        参数和结果都看得见。回复太长?<strong>插入</strong>
+        把整段塞进当前编辑器的光标处 (有选区就替换);
+        <strong>复制</strong> 直接进剪贴板。运行历史以纯 markdown
+        形式存在 <code>.solomd/agent-runs/</code> 下 —— 可 grep、
+        可被 git 追踪、几个月后还能审。
+      </p>
+
+      <h3>2. Agent Recipe / 定时运行</h3>
+      <p>
+        声明式 agent 任务,YAML 文件放在
+        <code>&lt;workspace&gt;/.solomd/agents/*.yml</code>。触发器:
+        <code>schedule</code> (cron)、<code>on-save</code>、
+        <code>on-commit</code>、<code>on-tag-add</code>、手动。
+        <strong>安全护栏不可妥协</strong>:
+      </p>
+      <ul>
+        <li>
+          每次运行都开自己的 AutoGit 分支
+          <code>agent/&lt;recipe&gt;/&lt;run-id&gt;</code>。Recipe
+          runner 在工作区脏的时候直接拒绝启动 —— 你的 WIP
+          永远不会被扫进 agent 的 commit。
+        </li>
+        <li>
+          所有写入只落在分支上。accept/reject UI 把 diff
+          摆出来再决定要不要合入 <code>main</code>。
+        </li>
+        <li>
+          单次 <code>write-cap</code> (默认 5,硬上限 50)
+          防止失控循环。模型在 cap 是 5 的情况下要写 50 个文件,
+          从第 6 次工具调用就被拒,不会出现"半成品"状态。
+        </li>
+        <li>
+          被 Reject 的运行分支被 hard-delete —— git 历史里
+          完全看不到这次运行。
+        </li>
+      </ul>
+      <p>
+        自带 <strong>11 个 Recipe 模板</strong>:周报、日报、
+        TODO 抽取、翻译过一遍、引用清理、CJK 校对 agent、
+        链接腐烂检测、front-matter 规范化、大纲转博客、
+        重构过一遍、周度 tag 整理。设置 → Recipes → 浏览菜谱
+        里挑一个,改 prompt,运行。
+      </p>
+
+      <h3>3. Agent Trace View</h3>
+      <p>
+        每次运行 (无论是 Panel 对话还是 Recipe) 都按步生成
+        <code>trace.jsonl</code>:
+        <code>prompt</code> / <code>model_call</code> /
+        <code>tool_call</code> / <code>tool_result</code> /
+        <code>git_commit</code> / <code>done</code>。步骤卡片
+        可展开看 args、结果、token 数、成本估算、AutoGit
+        分支引用。<strong>从第 N 步重放</strong> 把运行回退到
+        第 N 步,改输入后从那里重新跑 —— 这是 self-correcting
+        recipe 的入口。新增 MCP 工具
+        <code>read_agent_trace(run_id)</code>,把 trace
+        暴露给其他 agent 读取,所以 recipe 可以读自己之前的
+        失败、改个思路再来一遍。
+      </p>
+
+      <h3>4. 多 Vault MCP Federation</h3>
+      <p>
+        <code>solomd-mcp --workspace path1 --workspace path2 --workspace path3</code>
+        —— 一个 MCP 会话,多个 vault。工具签名加了可选
+        <code>workspace</code> 参数,默认 = 第一个传入的
+        (单 vault 客户端继续工作不受影响)。AutoGit 分支按
+        workspace 隔离。<strong>设置 → 集成</strong> 里有
+        MCP profile UI:把多个 vault 命名打包,一键复制 Claude
+        Desktop 的配置片段。从此不用开 3 个 Claude Code
+        会话来桥接两个 vault —— 一个会话,同时看两个。
+      </p>
+
+      <h3>5. Ollama 一等公民</h3>
+      <p>
+        我们 <strong>不</strong> 自己捆绑本地 LLM 运行时
+        —— Ollama 已经做得很好,重新发明轮子违反"少写需要
+        永久维护的代码"原则。v4.0 只是把集成磨得更顺:
+      </p>
+      <ul>
+        <li>自动检测 <code>localhost:11434</code> (设置 → AI 里有绿色状态灯)。</li>
+        <li>未安装时一键引导安装 (跳到 ollama.com —— 我们不代理下载)。</li>
+        <li>三个模型预设:<code>rewrite</code> → qwen2.5:7b · <code>quick</code> → qwen2.5:1.5b · <code>cjk</code> → qwen2.5:14b。</li>
+        <li>空模型列表 → 内联"推荐 pull (Qwen2.5 1.5B,~1 GB)"按钮。</li>
+        <li>Recipe 可以 <code>provider: local</code> (ollama 别名),用零云成本跑自动化循环。</li>
+      </ul>
+      <p>
+        <em>你的笔记永不离开机器</em> —— 通过 BYOK Ollama
+        从 v2.2 起这一直是真的;v4.0 只是把这条路在第一天
+        就让你看得到。
+      </p>
+
+      <h2>质量条 —— 看不见但用得到的部分</h2>
+      <ul>
+        <li>
+          <strong>首次启动向导。</strong>新装用户 60 秒内见到
+          Agent 面板。引导你填 BYOK key 或装 Ollama。后续可从
+          帮助 重新打开。
+        </li>
+        <li>
+          <strong>本地 REST API</strong>(只监听 localhost,
+          token 鉴权)。和 MCP 同一套接口,给那些还没接 MCP
+          的客户端用 —— Alfred / Raycast / n8n / 你自己的脚本。
+        </li>
+        <li>
+          <strong>BYOK 成本计。</strong>按 provider 累计已花
+          token 数,opt-in。设置 → 集成。
+        </li>
+        <li>
+          <strong>本地化。</strong>ja / ko 翻译骨架在 README +
+          iPad 商店元信息里。en/zh 仍是 UI 全覆盖语言。
+        </li>
+        <li>
+          <strong>MCP server 加了 <code>--workspace</code>
+          参数</strong>(可重复)。原来单 workspace 的 MCP 客户端
+          继续工作不受影响;federation 行为是可选加入的。
+        </li>
+      </ul>
+
+      <h2>Dogfood 抓出来的(所以你不用再踩)</h2>
+      <p>
+        Dogfood 阶段 —— 在真机上、真 vault 里、用真 BYOK
+        key 把 build 跑起来 —— 暴露出了 262 个单测 + 集成测
+        没抓到的 bug:
+      </p>
+      <ul>
+        <li>
+          <strong>macOS 启动 UX。</strong>启动激活时机错位
+          —— 在 <code>setup</code> 里调
+          <code>set_focus()</code> 时 NSApp 的 run loop
+          还没跑完启动流程,激活请求被吞了,SoloMD 启动后藏在
+          前一个 frontmost app 后面。改成在
+          <code>RunEvent::Ready</code> + 等 window-state plugin
+          的第一次 restore 信号才激活,问题解决。
+        </li>
+        <li>
+          <strong>侧栏 resize handle hover 灌满整片。</strong>
+          5px 宽的拖动条 <code>position: absolute; top: 0;
+          bottom: 0</code>,被一个全局
+          <code>:deep(*)</code> 规则把
+          <code>width: 5px</code> 覆盖成 <code>100%</code>。
+          再叠上 hover 时半透明 accent 背景 +
+          <code>z-index: 10</code>,整片侧栏被刷成橙色,
+          所有点击都被这片 div 接走了。看起来像卡住的浮层,
+          其实是被拉伸的 div。
+        </li>
+        <li>
+          <strong>"生成中..." 卡死无错误。</strong>Ollama
+          模型名打错时 OpenAI-compat 层会返回 HTTP 404,
+          Rust 端正确发了 <code>solomd://ai-error</code>,
+          但 JS 监听器靠 <code>currentRunId</code> 匹配,
+          这个值是在 <code>await invoke()</code> resolve
+          <em>之后</em> 才赋的 —— 而 404 太快,错误事件
+          先到、<code>currentRunId</code> 还是 null 就被丢掉了。
+          修法:在前端 mint request id,通过 invoke payload
+          传给后端,这样监听器在任何后端事件可能发出之前已经
+          武装好了。
+        </li>
+        <li>
+          <strong>7 个输入面板的 IME 守卫。</strong>拼音用户、
+          日文 kana、韩文谚文 —— 按回车确认候选词触发了
+          发送 / 重命名 / 打开,而不是让 IME 处理。给
+          AgentPanel、FileTree 重命名、命令面板、快速切换、
+          全文搜索、RAG 搜索、预览搜索都加了
+          <code>e.isComposing</code> 守卫。
+        </li>
+        <li>
+          <strong>agent_tools 路径穿越。</strong>父目录不存在时
+          <code>resolve_in_workspace</code> fallback 到原始
+          candidate,<code>..</code> 段绕过
+          <code>starts_with(workspace)</code> 检查,在文件系统
+          层面真的逃出了 workspace。已确认 exploit:
+          <code>{'{"path": "../../tmp/pwn/x.md"}'}</code> 真的能
+          写到 workspace 外。重写以对齐
+          <code>mcp-server::safety::resolve_in</code> ——
+          前置拒绝 <code>..</code> 段和绝对路径,canonicalize
+          到最深的存在祖先。
+        </li>
+        <li>
+          <strong>AutoGit recipe 沙箱吃掉用户 WIP。</strong>
+          checkout 把未提交的修改迁到 agent 分支,
+          <code>add_all(["*"])</code> 把 WIP 一起扫进 agent
+          的 commit,force-restore 还可能销毁 in-flight 修改。
+          Recipe runner 现在工作区脏时直接拒绝启动,
+          <code>restore_head</code> 优先用 safe checkout。
+        </li>
+      </ul>
+      <p>
+        最后这一类是这次发布最在意的事。Agent
+        往你的笔记里写东西是个 <em>赌数据</em> 的功能。如果某次
+        recipe 安静地改坏了一段、你下周才发现,整个产品就废了。
+        所以 AutoGit 分支沙箱、write-cap、accept/reject UI、
+        路径穿越加固、脏检查 —— 五重不变量守同一条防线。
+      </p>
+
+      <h2>v4.0 明确不做的</h2>
+      <p>说"不"也是产品的一部分。下面这些被认真考虑过、明确不做:</p>
+      <ul>
+        <li>
+          <strong>自带本地 LLM 运行时。</strong>Ollama 已经做得很好。
+          重新发明轮子违反"少写需要永久维护的代码"原则。
+          BYOK provider 仍是路径。
+        </li>
+        <li>
+          <strong>线上 Recipe 市场。</strong>服务器运维 + 内容审核 = 偏离主线。
+          菜谱直接打进发行版。
+        </li>
+        <li>
+          <strong>多人 / 团队 agent。</strong>违反"一个窗口,一个写者"。
+          这个产品给单作者用;协作属于另一个产品。
+        </li>
+        <li>
+          <strong>Copilot 风格的鬼字补全。</strong>不同的品牌定位。
+          鬼字补全会稀释作者自己的声音;我们的 agent 工作单位是 vault,
+          写入是批量 + 可审 + 走分支的。
+        </li>
+      </ul>
+
+      <h2>升级须知</h2>
+      <p>
+        没有文件格式变更。已有的 <code>.md</code>、AutoGit
+        历史、同步配置、BYOK key 全部原样保留。Agent 面板首次
+        启动自动开 (一次性迁移 —— v3.6.x 用户因为 v4-beta
+        期间脚手架的默认值,会有一个隐藏的
+        <code>showAgentPanel: false</code>)。不想要可以
+        <code>⌘⇧P → View: Toggle Agent Panel</code> 关掉,
+        以后会一直关着。
+      </p>
+
+      <h2>接下来</h2>
+      <p>
+        <em>v4.x 及之后</em> 的开放方向都在
+        <a href="https://github.com/zhitongblog/solomd/blob/main/docs/roadmap.md">roadmap</a>
+        上:沙盒化的脚本 API (capability-scoped,Trilium 那种
+        "我想写脚本定制工作流")、CLI v2 (终端里 rewrite /
+        commit / 语义搜索 / 触发 recipe)、以及一直拖着的
+        <em>"SoloMD 要不要做成商业产品?"</em> 问题
+        —— v3.0 时代的老问题,还没答,这块的工程不会动。
+      </p>
+      <p>
+        现在:下载 <a href="/zh/whats-new/">v4.0</a>,
+        指向一个 vault,周日试试 cookbook 里的"周报"recipe。
+        如果它碰了不该碰的,accept/reject UI 会拦下来。如果它
+        做对了,你刚刚用 30 秒装好了一个每周自动跑、不用你管的东西。
+      </p>
+
+      <p class="thanks-row">
+        感谢所有在静默期内跑 v4-beta build 的人。上面这些 bug
+        能进 release notes 是因为 dogfood 把它们抓出来了;
+        没进 release notes 的那些 bug,才是这一切能跑起来的
+        真正原因。Issue 反馈:<a href="https://github.com/zhitongblog/solomd/issues">GitHub</a>。
+      </p>
+    </article>
+    <Giscus lang={lang} />
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .blog-article { max-width: 820px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .blog-article time { font-size: 13px; color: var(--text-muted); }
+  .blog-article h1 { font-size: clamp(2rem, 4vw, 2.8rem); line-height: 1.15; margin: 8px 0 22px; }
+  .blog-article h2 { font-size: clamp(1.4rem, 2.6vw, 1.8rem); margin: 48px 0 14px; }
+  .blog-article h3 { font-size: 1.15rem; margin: 30px 0 8px; color: var(--accent); }
+  .blog-article .lead { font-size: 1.12rem; color: var(--text-muted); line-height: 1.65; margin-bottom: 22px; }
+  .blog-article p { line-height: 1.75; margin: 12px 0; }
+  .blog-article ul, .blog-article ol { padding-left: 22px; }
+  .blog-article li { margin: 6px 0; line-height: 1.7; }
+  .blog-article code {
+    background: var(--bg-soft);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.92em;
+    font-family: var(--font-mono);
+    color: var(--accent-deep);
+  }
+  .blog-article a:not(.btn) { color: var(--accent); }
+  .thanks-row {
+    margin-top: 56px;
+    padding-top: 22px;
+    border-top: 1px solid var(--border);
+    font-size: 14px;
+    color: var(--text-muted);
+  }
+</style>
+</content>
+</invoke>

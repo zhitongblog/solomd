@@ -5,32 +5,32 @@ import Footer from '../../components/Footer.astro';
 import Giscus from '../../components/Giscus.astro';
 
 const lang = 'zh' as const;
-const VERSION = '3.6.2';
+const VERSION = '4.0.0';
 const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERSION}`;
 ---
 
 <Layout
-  title="SoloMD v3.6 新功能"
-  description="实时编辑模式下的图片 / 表格内联渲染（#44）—— 一直留着的缺口补齐了。同时打包 5 处打磨：AI 按钮跳转、PNG 导出尺寸、可选水印、文件夹记忆、Mac 工具栏溢出。v3.6.1 同日 hotfix 回退两个 v3.6.0 出去后才发现的回归 —— 图片导出和工具栏下拉都恢复正常。"
+  title="SoloMD v4.0 更新 — 让 Agent 住进来的编辑器"
+  description="v4.0 是 agent-native author 大版本。五大支柱:内置 Agent 面板（流式 chat-with-vault）、定时 Recipe（cron / on-save / on-commit, AutoGit 分支沙箱 + accept/reject）、可重放 Trace View、多 vault MCP Federation、Ollama 一等公民。同时:REST API、BYOK 成本计、11 个 Recipe 模板、首次启动向导、ja/ko 本地化。"
   lang={lang}
 >
   <Header lang={lang} />
   <main>
     <article class="container whats-new">
       <nav class="breadcrumbs">
-        <a href="/zh/">首页</a> / <span>新功能</span>
+        <a href="/zh/">首页</a> / <span>更新</span>
       </nav>
 
       <p class="version-row">
         <span class="version-tag">v{VERSION}</span>
-        <time>2026 年 4 月</time>
+        <time>2026 年 5 月</time>
       </p>
-      <h1>实时编辑下的块级渲染，加 5 处打磨。</h1>
+      <h1>让 Agent 住进来的编辑器。</h1>
       <p class="lead">
-        v3.6 补齐 v2.3 起一直留着的实时编辑缺口（<strong>整行图片
-        和 GFM 表格的内联渲染</strong>，issue #44），并打包了 v3.5.5
-        之后用户反馈攒下的 <strong>5 处打磨</strong>。v3.6.1 是
-        v3.6.0 当天发现的两个回归的 hotfix —— 都已经完整回退，详见下方。
+        v4.0 是 <strong>agent-native author</strong> 大版本。Agent 从
+        "外部 CLI 偶尔调用一下" 变成了编辑器内的一等公民 ——
+        持续在场、跨多个 vault 工作、完整的可见性、可重放、可回滚。
+        下面所有项都在内核里,不用装插件。安装包还是 ~15 MB。
       </p>
 
       <div class="cta-row">
@@ -40,79 +40,260 @@ const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERS
       </div>
 
       <section>
-        <h2>🔨 #44 —— 实时编辑下的图片 / 表格块</h2>
+        <h2>五大支柱</h2>
         <p>
-          实时编辑模式下，markdown 源码自带格式实时渲染。但有两类
-          块级元素之前没渲染：
+          每个都在内核里,可在设置里开关。完全兼容你已有的笔记 ——
+          没有数据库迁移、没有新文件格式、不强制云账号。
         </p>
-        <ul>
-          <li>整行只是一张图片（<code>![alt](url)</code>，前后没有别的文字）的行，会折叠成一个真的 <code>&lt;img&gt;</code>。图片 src 走预览面板同款的解析管线。</li>
-          <li>表头 + 分隔线 + 至少一行内容的 GFM 表格块，会折叠成真正的 <code>&lt;table&gt;</code>，markdown-it 渲染。</li>
-        </ul>
-        <p>
-          光标进入匹配区任意一行 → widget 立刻卸载，源码恢复。不需要
-          切换视图模式。
-        </p>
+        <div class="pillars">
+          <div class="pillar">
+            <h3>1 · 内置 Agent 面板</h3>
+            <p>
+              右侧一等公民面板,跟大纲 / 反向链接 / 标签 / 历史平级。
+              通过进程内 MCP 接口和已有 14 家 AI provider
+              组成 streamed chat-with-vault。<code>[[wikilink]]</code>
+              引用解析为真正的笔记跳转;每次 agent 调工具的卡片
+              在对话流里展开,看得到读取了什么、写入了什么。
+              回复太长?<strong>插入</strong> 和
+              <strong>复制</strong> 按钮把整段塞进当前编辑器
+              —— 有选区就替换,没选区就插到光标处。运行历史以纯
+              markdown 形式存在 <code>.solomd/agent-runs/</code>
+              下,可 grep、可被 git 追踪。
+            </p>
+          </div>
+          <div class="pillar">
+            <h3>2 · Agent Recipe / 定时运行</h3>
+            <p>
+              声明式 agent 任务,YAML 文件放在
+              <code>&lt;workspace&gt;/.solomd/agents/*.yml</code>。
+              触发器:<code>schedule</code> (cron)、<code>on-save</code>、
+              <code>on-commit</code>、<code>on-tag-add</code>、手动。
+              <strong>安全护栏不可妥协</strong>:每次运行都开自己的
+              AutoGit 分支 <code>agent/&lt;recipe&gt;/&lt;run-id&gt;</code>,
+              所有写入只落到分支上,通过 accept / reject UI
+              评审后再合入 main;单次 <code>write-cap</code>
+              (默认 5,硬上限 50) 防止失控循环;Reject 之后分支被
+              hard-delete,git 历史里完全看不到这次运行。自带
+              <strong>11 个 Recipe 模板</strong>(周报、日志整理、
+              TODO 抽取、翻译、引用清理、CJK 校对、…) ——
+              安装、改 prompt、运行,三步走完。
+            </p>
+          </div>
+          <div class="pillar">
+            <h3>3 · Agent Trace View</h3>
+            <p>
+              每次运行 (无论是 Panel 对话还是 Recipe) 都按步生成
+              <code>trace.jsonl</code>:
+              <code>prompt</code> / <code>model_call</code> /
+              <code>tool_call</code> / <code>tool_result</code> /
+              <code>git_commit</code> / <code>done</code>。
+              步骤卡片可展开看 args、结果、token 数、成本估算、
+              AutoGit 分支引用。<strong>从第 N 步重放</strong>
+              按钮把运行回退到第 N 步,改输入后从那里重新跑 ——
+              这是 self-correcting recipe 的入口。新增 MCP 工具
+              <code>read_agent_trace(run_id)</code>,把 trace
+              暴露给其他 agent 读取。
+            </p>
+          </div>
+          <div class="pillar">
+            <h3>4 · 多 Vault MCP Federation</h3>
+            <p>
+              <code>solomd-mcp --workspace path1 --workspace path2 --workspace path3</code>
+              —— 一个 MCP 会话,多个 vault。工具签名加了可选
+              <code>workspace</code> 参数,默认 = 第一个传入的
+              (完全向后兼容单 vault 客户端)。AutoGit 分支按
+              workspace 隔离。<strong>设置 → 集成</strong>
+              里有 MCP profile UI:把多个 vault 命名打包,一键
+              复制 Claude Desktop 配置片段。
+            </p>
+          </div>
+          <div class="pillar">
+            <h3>5 · Ollama 一等公民</h3>
+            <p>
+              我们 <strong>不</strong> 自己捆绑本地 LLM 运行时
+              —— Ollama 已经做得很好。v4.0 只是把集成磨得更顺:
+              自动检测 <code>localhost:11434</code> (设置 → AI
+              里有绿色状态灯)、未安装时一键引导安装、内置三个
+              模型预设 (<code>rewrite</code> → qwen2.5:7b ·
+              <code>quick</code> → qwen2.5:1.5b ·
+              <code>cjk</code> → qwen2.5:14b)、空模型列表时
+              内联推荐 pull。Recipe 可以 <code>provider: local</code>
+              (ollama 别名),用零云成本跑自动化循环。
+              <em>你的笔记永不离开机器</em> —— 通过 BYOK
+              Ollama 这一直是真的,v4.0 把它做成 discoverable
+              的入口。
+            </p>
+          </div>
+        </div>
       </section>
 
       <section>
-        <h2>✅ 5 处打磨</h2>
-        <ol>
-          <li><strong>AI 按钮跳错设置位置。</strong>工具栏 AI 没启用时跳转，现在直接落到「集成」分类，不再是默认的「基础」。</li>
-          <li><strong>图片导出按内容裁剪。</strong>短笔记导出后高度严格匹配实际渲染区域，不再有底部留白。</li>
-          <li><strong>"Created with SoloMD" 水印做成选项。</strong>默认开（适度宣传），<strong>设置 → 导出</strong>可以关。</li>
-          <li><strong>文件夹选择器记住上次工作区。</strong>系统对话框现在打开在 SoloMD 已经加载的工作区位置。</li>
-          <li><strong>Mac 窄窗口工具栏溢出。</strong>右侧关键按钮（AI / Sponsor / 设置）在任意窗口宽度都能触达。<em>（注意：这条修复在 v3.6.1 被回退了 —— 见下方。）</em></li>
-        </ol>
-      </section>
-
-      <section>
-        <h2>🩹 v3.6.1 hotfix</h2>
-        <p>
-          有两个回归 v3.6.0 自测时漏掉了。都在 v3.6.1 完整回退，
-          同日发出：
-        </p>
+        <h2>🛡️ 安全护栏 (别人都没做的部分)</h2>
         <ul>
           <li>
-            <strong>图片导出空白。</strong>所有平台都炸了，不只是 Win。
-            v3.6 给 html2canvas 显式传了
-            <code>windowWidth/Height</code>，跟 article 在
-            <code>left: -10000px</code> 的 off-screen 渲染技巧冲突，
-            导出回来是空白 PNG。回退到 html2canvas 默认行为；
-            "短笔记底部留白"的需求其实早被 watermark 选项覆盖了
-            （footer + bottom padding 都跟着开关变）。
+            <strong>AutoGit 分支沙箱。</strong>每次 Recipe
+            运行都开自己的分支。在你点 Accept 之前,
+            <code>main</code> 一动不动。Reject 的运行
+            <em>什么也不留</em> —— 分支删除,文件树回退。
           </li>
           <li>
-            <strong>工具栏下拉点击穿透到编辑器。</strong>所有下拉
-            菜单 —— 新建 / 打开 / 插入 / 复制 / 导出 —— 弹出来但点击
-            落到编辑器上。原因是为修 #181（Mac 窄窗口）加在
-            <code>.toolbar</code> 上的 <code>overflow-x: auto</code>，
-            浏览器把 <code>overflow-y</code> 一并降级成 clip，绝对
-            定位的下拉被剪掉。回退；#181 改用
-            <code>&lt;Teleport&gt;</code> 的方案排到 v3.7。
+            <strong>单次写盘上限。</strong>模型在 cap 是 5
+            的情况下要写 50 个文件,从第 6 次工具调用开始就被拒。
+            不会出现"半成品"状态、不会出现意外的批量改动。
+          </li>
+          <li>
+            <strong>工作区脏时拒绝启动。</strong>你有未提交的修改时
+            Recipe 触发会直接报错退出,不会把你的 WIP
+            扫进 agent 的 commit 里。
+          </li>
+          <li>
+            <strong>路径穿越加固。</strong>进程内工具接口和所有
+            接受用户传入 <code>run_id</code> / <code>path</code>
+            的 Tauri 命令,现在都会前置拒绝
+            <code>..</code> 段和绝对路径。Agent
+            从代码层就写不出 workspace。
+          </li>
+          <li>
+            <strong>可重放的 trace。</strong>每一步都按行 JSON
+            落盘。Panel 行为可疑?走 trace,定位坏步,改输入,
+            从第 N–1 步重放。
           </li>
         </ul>
-        <p>
-          自测从此变成 tag push 之前的硬性流程 —— v3.6.1 出去前两个
-          flow 都在真实浏览器里跑过。
-        </p>
       </section>
 
       <section>
-        <h2>🔮 下一步 —— v3.7</h2>
+        <h2>质量条</h2>
+        <ul>
+          <li>
+            <strong>首次启动向导。</strong>新装用户 60 秒内见到
+            Agent 面板 —— 引导你填 BYOK key 或装 Ollama。
+            后续可从 帮助 重新打开。
+          </li>
+          <li>
+            <strong>Recipe 菜谱(11 个起步模板)。</strong>
+            设置 → Recipes → 浏览菜谱。周报、日报、TODO 抽取、
+            翻译过一遍、引用清理、CJK 校对 agent、链接腐烂检测、
+            front-matter 规范化、大纲转博客、重构过一遍、
+            周度 tag 整理。安装、改 prompt、运行。
+          </li>
+          <li>
+            <strong>本地 REST API</strong>(只监听 localhost,
+            token 鉴权)。和 MCP 同一套接口,给那些还没接 MCP
+            的客户端用 —— Alfred / Raycast / n8n / 你自己的脚本。
+          </li>
+          <li>
+            <strong>BYOK 成本计。</strong>按 provider
+            累计已花 token 数,opt-in。设置 → 集成。
+          </li>
+          <li>
+            <strong>本地化。</strong>ja / ko 翻译骨架在 README +
+            iPad 商店元信息里。en/zh 仍是 UI 全覆盖语言。
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>第一天就能感受到的 UX 打磨</h2>
+        <ul>
+          <li>
+            <strong>到处的 IME 守卫。</strong>拼音用户打中文、
+            日文 kana 模式、韩文谚文 —— 按回车确认候选词不会再
+            误触发对话发送 / 文件树重命名 / 命令面板执行 / 搜索打开。
+            一次性修了 <strong>7 个输入面板</strong>。
+          </li>
+          <li>
+            <strong>Assistant 回复的 插入 / 复制 按钮。</strong>
+            每条完成的回复下方两个按钮。插入会感知当前编辑器选区
+            (有选区就替换),没选区就插到光标处。复制就是普通
+            剪贴板。
+          </li>
+          <li>
+            <strong>macOS 启动 UX。</strong>启动激活时机修对了
+            —— SoloMD 冷启动会真正到前台,不会再藏在 Finder
+            后面。窗口位置恢复时永远落在当前显示器工作区里;
+            副屏断开后从坏存档恢复时会自动重新居中,而不是开到
+            屏幕外。
+          </li>
+          <li>
+            <strong>"生成中..." 卡死无错误。</strong>修了。
+            provider 配错 (例如 Ollama 选了未拉取的模型) 之前会
+            让面板挂死。现在你会看到红色错误条带后端的实际响应,
+            发送按钮也会回来。
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>v4.0 明确不做的(以及为什么)</h2>
+        <p>说"不"也是产品的一部分。下面这些被认真考虑过、明确不做:</p>
+        <ul>
+          <li>
+            <strong>自带本地 LLM 运行时。</strong>Ollama 已经做得很好;
+            重新发明轮子违反"少写需要永久维护的代码"原则。
+            BYOK provider 仍是路径。
+          </li>
+          <li>
+            <strong>线上 Recipe 市场。</strong>服务器运维 + 内容审核 = 偏离主线。
+            菜谱直接打进发行版,跟着工具一起更新。
+          </li>
+          <li>
+            <strong>多人 / 团队 agent。</strong>违反"一个窗口,一个写者"。
+            这个产品给单作者用;协作属于另一个产品。
+          </li>
+          <li>
+            <strong>Copilot 风格的鬼字补全。</strong>不同的品牌定位。
+            鬼字补全会稀释作者自己的声音;我们的 agent 工作单位是 vault,
+            写入是批量 + 可审 + 走分支的。
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>升级须知</h2>
+        <ul>
+          <li>
+            <strong>没有文件格式变更。</strong>已有的 <code>.md</code>、
+            AutoGit 历史、同步配置、BYOK key 全部原样保留。
+          </li>
+          <li>
+            <strong>Agent 面板首次启动自动开。</strong>v3.6.x
+            用户因为 v4-beta 期间脚手架的默认值,会有一个隐藏的
+            <code>showAgentPanel: false</code>;一次性迁移会把它
+            翻成 true,你才会真正看到这个主打功能。不想要可以
+            <code>⌘⇧P → View: Toggle Agent Panel</code> 关掉。
+          </li>
+          <li>
+            <strong>设置面板新增 <em>Recipes</em> 和 <em>成本计</em>
+            两个分页</strong>,在 <em>集成</em> 下。已有的设置位置不变。
+          </li>
+          <li>
+            <strong>MCP server (<code>solomd-mcp</code>) 加了
+            <code>--workspace</code> 参数</strong>(可重复)。
+            原来单 workspace 的 MCP 客户端继续工作不受影响;
+            federation 行为是可选加入的。
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>🔮 接下来</h2>
         <p>
-          排首位：用 <code>&lt;Teleport&gt;</code> 重做 Mac 窄窗口
-          菜单修复；iPad / Mac App Store 重新提交；以及
-          <a href="https://github.com/zhitongblog/solomd/discussions">Discussions</a>
-          + <a href="https://github.com/zhitongblog/solomd/issues">issues</a>
-          里下一周期攒到的内容。
+          5 大支柱 + 质量条是这次的主要内容。<em>v4.x
+          及之后</em> 的开放方向都在
+          <a href="https://github.com/zhitongblog/solomd/blob/main/docs/roadmap.md">roadmap</a>
+          上:沙盒化的脚本 API、CLI v2 (终端里 rewrite / commit /
+          语义搜索 / 触发 recipe)、以及一直拖着的
+          <em>"SoloMD 要不要做成商业产品?"</em> 问题
+          (付费同步 —— v3.0 时代的老问题,还没答,
+          没决定之前不会动这块的工程)。
         </p>
       </section>
 
       <p class="thanks-row">
-        感谢 <strong>@beihai23</strong>（v3.5.5 PR #48）和
-        <strong>@sparkdonn-netizen</strong>（#43 截图）。早期版本 →
-        <a href="/zh/blog/">浏览博客 →</a>
+        感谢所有在静默期内提交 issue / 发 PR / 用真实 vault
+        跑 v4-beta build 的人。v4.0 能 ship 是因为 dogfood
+        把集成测试漏掉的 bug 一个个揪出来了。
+        早期版本:<a href="/zh/blog/">看博客 →</a>
       </p>
     </article>
     <Giscus lang={lang} />
@@ -121,7 +302,7 @@ const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERS
 </Layout>
 
 <style>
-  .whats-new { max-width: 820px; padding: 40px 20px 80px; }
+  .whats-new { max-width: 880px; padding: 40px 20px 80px; }
   .breadcrumbs { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; }
   .breadcrumbs a { color: inherit; }
   .version-row { display: flex; align-items: center; gap: 12px; margin: 0 0 14px; }
@@ -140,10 +321,11 @@ const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERS
   .whats-new time { font-size: 13px; color: var(--text-muted); }
   .whats-new h1 { font-size: clamp(2.2rem, 5vw, 3.4rem); line-height: 1.1; margin: 0 0 22px; }
   .whats-new h2 { font-size: clamp(1.5rem, 3vw, 1.9rem); margin: 56px 0 16px; }
+  .whats-new h3 { font-size: 1.1rem; margin: 0 0 8px; color: var(--accent); }
   .whats-new .lead { font-size: 1.15rem; color: var(--text-muted); line-height: 1.65; margin-bottom: 28px; }
   .whats-new p { line-height: 1.75; margin: 12px 0; }
   .whats-new ul, .whats-new ol { padding-left: 22px; }
-  .whats-new li { margin: 6px 0; line-height: 1.7; }
+  .whats-new li { margin: 8px 0; line-height: 1.7; }
   .whats-new code {
     background: var(--bg-soft);
     padding: 2px 6px;
@@ -159,6 +341,19 @@ const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERS
     gap: 12px;
     margin: 28px 0 8px;
   }
+  .pillars {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 22px;
+    margin-top: 22px;
+  }
+  .pillar {
+    padding: 18px 22px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-soft);
+  }
+  .pillar p { margin: 0; }
   .thanks-row {
     margin-top: 64px;
     padding-top: 22px;
@@ -167,3 +362,5 @@ const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERS
     color: var(--text-muted);
   }
 </style>
+</content>
+</invoke>

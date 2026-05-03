@@ -9,7 +9,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v4.0 preview · MIT · Cross-platform',
+      badge: 'v4.0 · just shipped · MIT · Cross-platform',
       title1: 'The editor where',
       title2: 'agents live.',
       subtagline: 'Inline Agent Panel. Scheduled Recipes. Replayable Trace. Multi-vault Federation. All on top of plain `.md` files you already own — every autonomous write reviewed before it lands.',
@@ -347,7 +347,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v4.0 预览 · MIT 协议 · 跨平台',
+      badge: 'v4.0 · 正式发布 · MIT 协议 · 跨平台',
       title1: '一个让 Agent',
       title2: '住进来的编辑器。',
       subtagline: '内置 Agent 面板、定时 Recipe、可重放的 Trace、跨多 vault 的 Federation —— 全部跑在你早就拥有的纯 .md 文件上,每一次自动写入都先审后入。',

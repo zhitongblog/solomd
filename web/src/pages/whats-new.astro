@@ -5,13 +5,13 @@ import Footer from '../components/Footer.astro';
 import Giscus from '../components/Giscus.astro';
 
 const lang = 'en' as const;
-const VERSION = '3.6.2';
+const VERSION = '4.0.0';
 const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERSION}`;
 ---
 
 <Layout
-  title="What's new in SoloMD v3.6"
-  description="Live-edit image and table inline rendering (#44) — the long-standing live-edit gap is closed. Plus 5 polish fixes batched in: AI button routing, image export crop-to-content, optional watermark, folder picker memory, and Mac toolbar overflow. (v3.6.1 hotfix patches two regressions discovered after v3.6.0 shipped — image export and toolbar dropdowns are working again.)"
+  title="What's new in SoloMD v4.0 — the editor where agents live"
+  description="v4.0 is the agent-native author release. Five pillars: Inline Agent Panel (streamed chat-with-vault), Scheduled Recipes (cron / on-save / on-commit, AutoGit branch sandbox + accept/reject), Trace View (replayable JSONL), Multi-workspace MCP Federation, and Ollama first-class polish. Plus: REST API, BYOK cost meter, recipe cookbook (11 starters), first-run wizard, ja/ko localization."
   lang={lang}
 >
   <Header lang={lang} />
@@ -23,16 +23,15 @@ const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERS
 
       <p class="version-row">
         <span class="version-tag">v{VERSION}</span>
-        <time>April 2026</time>
+        <time>May 2026</time>
       </p>
-      <h1>Live-edit blocks, plus 5 polish fixes.</h1>
+      <h1>The editor where agents live.</h1>
       <p class="lead">
-        v3.6 closes the long-standing live-edit gap (<strong>image &
-        table inline rendering</strong>, issue #44) and bundles
-        <strong>five polish fixes</strong> batched in from rapid
-        feedback after v3.5.5. v3.6.1 is a hotfix patch for two
-        regressions caught the same day v3.6.0 went out — both fully
-        reverted, see below.
+        v4.0 is the <strong>agent-native author</strong> release. The
+        agent goes from "external tool you run a CLI for" to a
+        first-class editor surface — works continuously, across multiple
+        vaults, with full visibility, replay, and rollback. Everything
+        below is in core. No plugin tax. ~15 MB still.
       </p>
 
       <div class="cta-row">
@@ -42,83 +41,284 @@ const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERS
       </div>
 
       <section>
-        <h2>🔨 #44 — Live-edit image & table block widgets</h2>
+        <h2>The five pillars</h2>
         <p>
-          In live-edit view (the toolbar's pen-on-paper icon), markdown
-          source has rich formatting applied inline. Until v3.6, two
-          block-level kinds didn't render in place:
+          Each is in core. Toggleable via a setting. Built to play
+          nicely with your existing notes — no schema migration, no
+          new file format, no required cloud account.
         </p>
+        <div class="pillars">
+          <div class="pillar">
+            <h3>1 · Inline Agent Panel</h3>
+            <p>
+              Right-side first-class panel (peer to Outline / Backlinks /
+              Tags / History). Streamed chat-with-vault routed through
+              the in-process MCP surface and your existing 14-provider
+              AI stack. <code>[[wikilink]]</code> citations resolve to
+              real notes; tool-call cards expand inline showing every
+              read/write the agent makes. Reply too long? <strong>Insert</strong>
+              and <strong>Copy</strong> buttons drop it into the active
+              editor — replaces selection if any, else inserts at the
+              cursor. Run history persists as plain markdown under
+              <code>.solomd/agent-runs/</code> — grep-able,
+              git-trackable.
+            </p>
+          </div>
+          <div class="pillar">
+            <h3>2 · Agent Recipes / Scheduled Runs</h3>
+            <p>
+              Declarative agent jobs as YAML in your vault:
+              <code>&lt;workspace&gt;/.solomd/agents/*.yml</code>.
+              Triggers: <code>schedule</code> (cron), <code>on-save</code>,
+              <code>on-commit</code>, <code>on-tag-add</code>, manual.
+              <strong>Safety rails are non-negotiable</strong>: every
+              run gets its own AutoGit branch <code>agent/&lt;recipe&gt;/&lt;run-id&gt;</code>,
+              writes are reviewable via accept / reject UI before
+              merging, and a per-run <code>write-cap</code> (default 5,
+              hard ceiling 50) prevents runaway loops. Rejected runs
+              have the branch hard-deleted — zero residue. Ships with
+              an <strong>11-recipe cookbook</strong> (weekly review,
+              daily summary, TODO extraction, translation, citation
+              cleanup, CJK proofread agent, …) — install one, edit it,
+              run it.
+            </p>
+          </div>
+          <div class="pillar">
+            <h3>3 · Agent Trace View</h3>
+            <p>
+              Every run (Panel chat OR Recipe) emits a
+              <code>trace.jsonl</code> per step:
+              <code>prompt</code> / <code>model_call</code> /
+              <code>tool_call</code> / <code>tool_result</code> /
+              <code>git_commit</code> / <code>done</code>. Step cards
+              expand to show args, results, token counts, cost
+              estimate, AutoGit branch refs.
+              <strong>Replay-from-step</strong> button rewinds the run
+              to step N and re-executes from there with edited inputs —
+              the path to self-correcting recipes. New MCP tool
+              <code>read_agent_trace(run_id)</code> exposes traces to
+              other agents.
+            </p>
+          </div>
+          <div class="pillar">
+            <h3>4 · Workspace Federation</h3>
+            <p>
+              <code>solomd-mcp --workspace path1 --workspace path2 --workspace path3</code>
+              — one MCP session, many vaults. Tool signatures gain an
+              optional <code>workspace</code> parameter; default = first
+              passed (fully back-compat with single-workspace clients).
+              AutoGit branches stay isolated per workspace. <strong>Settings
+              → Integrations</strong> adds an MCP profiles UI: name a
+              bundle of vaults, copy the Claude Desktop config snippet
+              with one click.
+            </p>
+          </div>
+          <div class="pillar">
+            <h3>5 · Ollama first-class</h3>
+            <p>
+              We do <strong>NOT</strong> bundle a local LLM runtime —
+              Ollama already does that well. v4.0 polishes the
+              integration: auto-detect at <code>localhost:11434</code>
+              (green status indicator in Settings → AI), one-click
+              install hint when not found, three model presets
+              (<code>rewrite</code> → qwen2.5:7b · <code>quick</code> →
+              qwen2.5:1.5b · <code>cjk</code> → qwen2.5:14b),
+              recommended pull from inline UI when no models installed.
+              Recipes can specify <code>provider: local</code> (alias
+              of ollama) for cheap autonomous loops with zero cloud
+              cost. <em>Your notes never leave the machine</em> — true
+              today via BYOK Ollama; v4.0 makes it discoverable.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>🛡️ Safety rails (the bit nobody else does)</h2>
         <ul>
-          <li>A line whose <em>entire content</em> is an image (<code>![alt](url)</code> with no surrounding prose) collapses to an actual <code>&lt;img&gt;</code> widget. Image source resolves through the same pipeline as the Preview pane.</li>
-          <li>A header row + separator + at least one body row collapses to a real <code>&lt;table&gt;</code>, rendered through markdown-it.</li>
+          <li>
+            <strong>AutoGit branch sandbox.</strong> Every recipe run
+            starts on its own branch. Your <code>main</code> stays
+            untouched until you click Accept. A rejected run leaves
+            <em>nothing</em> in your history — branch deleted, file
+            tree reverted.
+          </li>
+          <li>
+            <strong>Per-run write cap.</strong> A model that asks to
+            write 50 files when the cap is 5 gets refusals at the 6th
+            tool call. No half-applied state, no surprise mass-edits.
+          </li>
+          <li>
+            <strong>Refuses to start on a dirty workspace.</strong> If
+            you have uncommitted edits when a recipe fires, it errors
+            out cleanly instead of sweeping your work-in-progress into
+            an agent commit.
+          </li>
+          <li>
+            <strong>Path-traversal hardening.</strong> Both the
+            in-process tool surface and every Tauri command that joins
+            user-supplied <code>run_id</code> / <code>path</code>
+            arguments now reject <code>..</code> segments and absolute
+            paths upfront. The agent literally can't write outside its
+            workspace.
+          </li>
+          <li>
+            <strong>Replayable trace.</strong> Every step on disk in
+            line-delimited JSON. Suspicious behavior in the panel? Walk
+            the trace, find the bad step, replay from N–1 with edited
+            inputs.
+          </li>
         </ul>
-        <p>
-          Both widgets unmount the moment the cursor enters any line
-          inside the matched block range — no view-mode switch needed.
-        </p>
       </section>
 
       <section>
-        <h2>✅ Five polish fixes</h2>
-        <ol>
-          <li><strong>AI button → wrong settings location.</strong> Toolbar AI fallback now opens the <em>Integrations</em> tab directly, not the default <em>Basics</em>.</li>
-          <li><strong>Image export crop-to-content.</strong> Short notes export at their actual rendered height, not with empty space below.</li>
-          <li><strong>"Created with SoloMD" watermark — now a setting.</strong> Default ON for mild brand visibility; toggle off in <strong>Settings → Export</strong>.</li>
-          <li><strong>Folder picker remembers last workspace.</strong> The OS folder dialog now opens at the workspace SoloMD already has loaded.</li>
-          <li><strong>Mac narrow-window toolbar overflow.</strong> Right-side critical buttons (AI / Sponsor / Settings) reachable at any window width. <em>(Note: this fix was reverted in v3.6.1 — see below.)</em></li>
-        </ol>
+        <h2>Quality bar</h2>
+        <ul>
+          <li>
+            <strong>First-run wizard.</strong> New install meets the
+            Agent Panel within 60 seconds — guides you through BYOK key
+            entry OR Ollama setup. Re-launchable from Help.
+          </li>
+          <li>
+            <strong>Recipe cookbook (11 starters).</strong> Settings →
+            Recipes → Browse cookbook. Weekly review, daily summary,
+            TODO extraction, translation pass, citation cleanup, CJK
+            proofread agent, link-rot detector, frontmatter normalizer,
+            outline-to-blog, refactor pass, weekly tag triage. Install
+            one, edit the prompt, run it.
+          </li>
+          <li>
+            <strong>Public REST API</strong> (localhost only, token
+            auth). Same surface as MCP for clients that don't speak MCP
+            yet — Alfred / Raycast / n8n / your own scripts.
+          </li>
+          <li>
+            <strong>BYOK cost meter.</strong> Per-provider running
+            tokens-spent counter, opt-in. Settings → Integrations.
+          </li>
+          <li>
+            <strong>Localization.</strong> ja / ko translations
+            scaffolded for README + iPad metadata. en/zh remain the
+            full-coverage UI languages.
+          </li>
+        </ul>
       </section>
 
       <section>
-        <h2>🩹 v3.6.1 hotfix</h2>
+        <h2>UX polish you'll notice on day one</h2>
+        <ul>
+          <li>
+            <strong>IME composition guard everywhere.</strong> Pinyin
+            users typing Chinese, Japanese kana mode, Korean Hangul —
+            pressing Enter to commit a candidate no longer fires "send"
+            in chat / "rename" in file tree / "open" in command palette
+            and search. Fixed across <strong>7 input surfaces</strong>.
+          </li>
+          <li>
+            <strong>Insert / Copy on assistant replies.</strong> Two
+            buttons under each completed reply. Insert respects the
+            current editor selection (replaces it) or falls back to
+            cursor insertion. Copy is plain clipboard.
+          </li>
+          <li>
+            <strong>Window UX on macOS.</strong> Launch activation
+            timing is right — SoloMD becomes frontmost on cold start
+            instead of opening behind Finder. Restored window position
+            stays inside the current monitor work area; bad saved
+            state from a now-disconnected secondary monitor recenters
+            cleanly instead of opening off-screen.
+          </li>
+          <li>
+            <strong>Stuck "streaming…" with no error.</strong> Fixed.
+            A misconfigured provider (e.g. Ollama with a model that
+            isn't pulled) used to hang the panel forever. Now you see
+            a red error banner with the actual response from the
+            backend, and the Send button comes back.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>What v4.0 explicitly skips (and why)</h2>
         <p>
-          Two regressions made it past my v3.6.0 self-test. Both fully
-          reverted in v3.6.1, shipped same day:
+          Saying "no" is part of the product. These were considered
+          and consciously not shipped:
         </p>
         <ul>
           <li>
-            <strong>Image export blank.</strong> Universal — not just
-            Windows. The new <code>windowWidth/Height</code> hint to
-            html2canvas conflicted with the off-screen render trick;
-            output came back blank. Reverted to default html2canvas
-            auto-sizing. The crop-to-content concern was already
-            handled by the watermark toggle (footer + bottom padding).
+            <strong>Bundled local LLM runtime.</strong> Ollama already
+            covers this; re-implementing violates "write less code we
+            maintain forever." BYOK provider stays the path.
           </li>
           <li>
-            <strong>Toolbar dropdowns clicked through to editor.</strong>
-            Every dropdown — New / Open / Insert / Copy / Export —
-            opened but clicks fell through to the editor below. The
-            <code>overflow-x: auto</code> rule on <code>.toolbar</code>
-            (added for the Mac narrow-window fix #181) caused browsers
-            to escalate <code>overflow-y</code> to clip too. Reverted;
-            #181 is re-queued for v3.7 with a <code>&lt;Teleport&gt;</code>-based
-            dropdown approach that doesn't need overflow on the
-            toolbar.
+            <strong>Online recipe marketplace.</strong> Server ops +
+            moderation = off-mission. Cookbook ships in-tree.
+          </li>
+          <li>
+            <strong>Multi-user / team agents.</strong> Violates "one
+            window, one writer." This product is for the single
+            author; collaboration belongs to a different product.
+          </li>
+          <li>
+            <strong>Copilot-style ghost-text autocomplete.</strong>
+            Different brand. Ghost-text dilutes the writer's voice;
+            our agents work at vault granularity instead, with batched
+            reviewable writes.
           </li>
         </ul>
-        <p>
-          Self-test is now a hard step before any tag push — both
-          flows verified in a real browser session before v3.6.1
-          went out.
-        </p>
       </section>
 
       <section>
-        <h2>🔮 What's next — v3.7</h2>
+        <h2>Upgrade notes</h2>
+        <ul>
+          <li>
+            <strong>No file-format changes.</strong> Your existing
+            <code>.md</code> files, AutoGit history, sync setup, BYOK
+            keys all carry over untouched.
+          </li>
+          <li>
+            <strong>Agent Panel auto-enables on first launch.</strong>
+            v3.6.x users had a hidden <code>showAgentPanel: false</code>
+            from the v4-beta scaffolding period; a one-time migration
+            flips it on so you actually see the marquee feature.
+            Toggle off via <code>⌘⇧P → View: Toggle Agent Panel</code>
+            if you don't want it.
+          </li>
+          <li>
+            <strong>Settings layout adds <em>Recipes</em> and
+            <em>Cost meter</em> tabs</strong> under
+            <em>Integrations</em>. Existing settings keep their
+            previous tabs.
+          </li>
+          <li>
+            <strong>The MCP server (<code>solomd-mcp</code>) gained a
+            <code>--workspace</code> flag</strong> (repeatable). Older
+            MCP clients with a single workspace argument keep working
+            unchanged; the federation behavior is opt-in.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>🔮 What's next</h2>
         <p>
-          Top of the queue: re-do the Mac narrow-window menu fix
-          properly (with <code>&lt;Teleport&gt;</code>), iPad / Mac
-          App Store resubmission, and whatever lands in
-          <a href="https://github.com/zhitongblog/solomd/discussions">Discussions</a>
-          + <a href="https://github.com/zhitongblog/solomd/issues">issues</a>
-          over the next cycle.
+          The 5 pillars + quality bar are the headline drop. The
+          <em>v4.x and beyond</em> open directions on the
+          <a href="https://github.com/zhitongblog/solomd/blob/main/docs/roadmap.md">roadmap</a>:
+          a sandboxed scripting API, a CLI v2 (rewrite / commit /
+          semantic search / recipe-trigger from terminal), and the
+          long-deferred <em>"should SoloMD become a business?"</em>
+          question (paid sync — original v3.0 question, still
+          unanswered, no engineering until decided).
         </p>
       </section>
 
       <p class="thanks-row">
-        Thanks <strong>@beihai23</strong> (PR #48 in v3.5.5) and
-        <strong>@sparkdonn-netizen</strong> (#43 screenshots) for the
-        prior cycle. Earlier: <a href="/blog/">browse the blog →</a>
+        Thanks to everyone who filed issues, opened PRs, and ran the
+        v4-beta builds through real vaults during the quiet phase.
+        v4.0 shipped because dogfooding caught the bugs that
+        integration tests didn't.
+        Earlier: <a href="/blog/">browse the blog →</a>
       </p>
     </article>
     <Giscus lang={lang} />
@@ -127,7 +327,7 @@ const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERS
 </Layout>
 
 <style>
-  .whats-new { max-width: 820px; padding: 40px 20px 80px; }
+  .whats-new { max-width: 880px; padding: 40px 20px 80px; }
   .breadcrumbs { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; }
   .breadcrumbs a { color: inherit; }
   .version-row { display: flex; align-items: center; gap: 12px; margin: 0 0 14px; }
@@ -146,10 +346,11 @@ const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERS
   .whats-new time { font-size: 13px; color: var(--text-muted); }
   .whats-new h1 { font-size: clamp(2.2rem, 5vw, 3.4rem); line-height: 1.1; margin: 0 0 22px; }
   .whats-new h2 { font-size: clamp(1.5rem, 3vw, 1.9rem); margin: 56px 0 16px; }
+  .whats-new h3 { font-size: 1.1rem; margin: 0 0 8px; color: var(--accent); }
   .whats-new .lead { font-size: 1.15rem; color: var(--text-muted); line-height: 1.65; margin-bottom: 28px; }
   .whats-new p { line-height: 1.75; margin: 12px 0; }
   .whats-new ul, .whats-new ol { padding-left: 22px; }
-  .whats-new li { margin: 6px 0; line-height: 1.7; }
+  .whats-new li { margin: 8px 0; line-height: 1.7; }
   .whats-new code {
     background: var(--bg-soft);
     padding: 2px 6px;
@@ -165,6 +366,19 @@ const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERS
     gap: 12px;
     margin: 28px 0 8px;
   }
+  .pillars {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 22px;
+    margin-top: 22px;
+  }
+  .pillar {
+    padding: 18px 22px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-soft);
+  }
+  .pillar p { margin: 0; }
   .thanks-row {
     margin-top: 64px;
     padding-top: 22px;
@@ -173,3 +387,5 @@ const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERS
     color: var(--text-muted);
   }
 </style>
+</content>
+</invoke>
