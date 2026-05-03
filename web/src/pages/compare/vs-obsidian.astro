@@ -28,22 +28,31 @@ const lang = 'en' as const;
       <h2>Quick verdict</h2>
       <table class="compare-detail">
         <thead>
-          <tr><th>&nbsp;</th><th>SoloMD</th><th>Obsidian</th></tr>
+          <tr><th>&nbsp;</th><th>SoloMD v4.0</th><th>Obsidian 1.x</th></tr>
         </thead>
         <tbody>
-          <tr><th>Mental model</th><td>Document editor + AI / search / history toolkit</td><td>Vault / knowledge base + plugin marketplace</td></tr>
+          <tr><th>Mental model</th><td>Document editor + agent surface + AI / search / history toolkit</td><td>Vault / knowledge base + plugin marketplace</td></tr>
           <tr><th>Price</th><td><strong>Free</strong> (MIT)</td><td>Free personal · $50/yr commercial · $96/yr Sync</td></tr>
           <tr><th>Open source</th><td>✅</td><td>❌ core closed; plugins open</td></tr>
           <tr><th>Installer size</th><td>~15 MB</td><td>~130 MB</td></tr>
           <tr><th>RAM at idle</th><td>~150 MB</td><td>~400 MB</td></tr>
+          <tr><th>Inline Agent Panel (chat-with-vault)</th><td>✅ <strong>v4.0</strong> · streamed multi-turn · tool-call cards · [[wikilink]] citations · Insert / Copy to active note</td><td>🟡 paid plugins (Smart Composer, Copilot)</td></tr>
+          <tr><th>Scheduled agent recipes</th><td>✅ <strong>v4.0</strong> · cron / on-save / on-commit / on-tag / manual · 11-recipe cookbook</td><td>❌</td></tr>
+          <tr><th>AutoGit branch sandbox + accept/reject for agent writes</th><td>✅ <strong>v4.0</strong> · per-run branch · write-cap (default 5) · refuses to start on dirty workspace</td><td>❌</td></tr>
+          <tr><th>Replayable agent trace</th><td>✅ <strong>v4.0</strong> · jsonl per step · replay-from-step · <code>read_agent_trace</code> MCP tool</td><td>❌</td></tr>
+          <tr><th>Multi-workspace MCP federation</th><td>✅ <strong>v4.0</strong> · <code>--workspace</code> repeatable · MCP profiles UI</td><td>❌</td></tr>
+          <tr><th>Ollama first-class</th><td>✅ <strong>v4.0</strong> · auto-detect · 3 model presets · <code>provider: local</code> in recipes</td><td>🟡 plugin (Smart Connections etc.)</td></tr>
+          <tr><th>Public REST API (localhost, token auth)</th><td>✅ <strong>v4.0</strong></td><td>🟡 Local REST API plugin (community)</td></tr>
+          <tr><th>BYOK cost meter</th><td>✅ <strong>v4.0</strong></td><td>🟡 per-plugin if any</td></tr>
           <tr><th>Local semantic search</th><td>✅ <strong>v2.3</strong> · core, on-device, no model download</td><td>🟡 paid plugins (Smart Connections etc.)</td></tr>
           <tr><th>WYSIWYG live edit mode</th><td>✅ <strong>v2.3</strong></td><td>✅ Live Preview</td></tr>
           <tr><th>AutoGit version history</th><td>✅ <strong>v2.2</strong> · per-save snapshots in core</td><td>❌ (set up Obsidian Git plugin manually)</td></tr>
           <tr><th>MCP server bundled</th><td>✅ <strong>v2.2</strong> · 1.5 MB sidecar</td><td>❌</td></tr>
           <tr><th>14 AI providers, BYOK</th><td>✅ in core · keys in OS keychain</td><td>❌ (1–2 per AI plugin)</td></tr>
-          <tr><th>Backlinks / graph</th><td>❌</td><td>✅ core feature</td></tr>
+          <tr><th>Backlinks</th><td>✅ <strong>v2.0</strong> · sidebar panel</td><td>✅ core feature</td></tr>
+          <tr><th>Graph view</th><td>❌ (intentionally skipped — see roadmap)</td><td>✅ core feature</td></tr>
           <tr><th>Plugins</th><td>❌ (Custom CSS yes)</td><td>✅ thousands</td></tr>
-          <tr><th>Wiki-style links</th><td>❌</td><td>✅ <code>[[file]]</code></td></tr>
+          <tr><th>Wiki-style links</th><td>✅ <strong>v2.0</strong> · <code>[[file]]</code></td><td>✅ <code>[[file]]</code></td></tr>
           <tr><th>Works with single files</th><td>✅ open any .md</td><td>⚠️ prefers a vault folder</td></tr>
           <tr><th>Multi-encoding (GBK/Big5)</th><td>✅</td><td>⚠️ UTF-8 only</td></tr>
           <tr><th>iPad</th><td>🟡 submitted, in review</td><td>✅ App Store</td></tr>

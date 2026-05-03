@@ -31,7 +31,7 @@ const lang = 'en' as const;
       <h2>The 30-second verdict</h2>
       <table class="compare-detail">
         <thead>
-          <tr><th>&nbsp;</th><th>SoloMD</th><th>Tolaria</th></tr>
+          <tr><th>&nbsp;</th><th>SoloMD v4.0</th><th>Tolaria</th></tr>
         </thead>
         <tbody>
           <tr><th>Price</th><td><strong>Free</strong> (MIT)</td><td><strong>Free</strong> (open source)</td></tr>
@@ -39,6 +39,12 @@ const lang = 'en' as const;
           <tr><th>Platforms</th><td>macOS · Windows · Linux x64/ARM64 · <strong>iPad</strong></td><td>macOS · Linux <em>(no Windows)</em></td></tr>
           <tr><th>Installer size</th><td>~15 MB</td><td>~25 MB</td></tr>
           <tr><th>Editor model</th><td>CodeMirror source-mode + live preview + split</td><td>Block-based slash-command editor (Notion-style)</td></tr>
+          <tr><th>Inline Agent Panel (chat-with-vault)</th><td>✅ <strong>v4.0</strong> · streamed multi-turn · tool-call cards · [[wikilink]] citations · Insert / Copy</td><td>🟡 external MCP clients only (no in-app surface)</td></tr>
+          <tr><th>Scheduled agent recipes</th><td>✅ <strong>v4.0</strong> · cron / on-save / on-commit / on-tag · 11-recipe cookbook</td><td>❌</td></tr>
+          <tr><th>AutoGit branch sandbox + accept/reject for agent writes</th><td>✅ <strong>v4.0</strong> · per-run branch · write-cap (default 5) · refuses to start dirty</td><td>❌ (agent writes commit directly)</td></tr>
+          <tr><th>Replayable agent trace</th><td>✅ <strong>v4.0</strong> · jsonl per step · replay-from-step</td><td>❌</td></tr>
+          <tr><th>Multi-workspace MCP federation</th><td>✅ <strong>v4.0</strong> · <code>--workspace</code> repeatable · MCP profiles UI</td><td>❌ single workspace</td></tr>
+          <tr><th>Ollama first-class</th><td>✅ <strong>v4.0</strong> · auto-detect · 3 model presets · <code>provider: local</code></td><td>🟡 BYOK manual</td></tr>
           <tr><th>Multi-tab + split panes</th><td>✅ tabs + tile splitting</td><td>❌ single-pane</td></tr>
           <tr><th>Wikilinks <code>[[note]]</code></th><td>✅ auto-complete + backlinks panel</td><td>✅ auto-complete + backlinks</td></tr>
           <tr><th>Local semantic search</th><td>✅ <strong>v2.3</strong> · ⌘⇧F · on-device, no model download</td><td>❌</td></tr>
