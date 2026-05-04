@@ -31,6 +31,13 @@ interface Settings {
   showOutline: boolean;
   outlineSide: 'left' | 'right';
   showFileTree: boolean;
+  /** Master toggle that hides the right side sidebar (Outline / Backlinks /
+   *  Tags / History / Agent Panel) without forgetting which individual panes
+   *  the user had on. Default false (= sidebar visible whenever any pane is
+   *  enabled, i.e. legacy behavior). Set true via the toolbar close button,
+   *  the ⌥⌘B shortcut, or the command palette to hide it; toggling again
+   *  restores all previously-enabled panes in their previous state. */
+  rightSidebarHidden: boolean;
   livePreview: boolean;
   // Editor super features
   spellCheck: boolean;
@@ -201,6 +208,7 @@ function defaults(): Settings {
     showOutline: false,
     outlineSide: 'right',
     showFileTree: false,
+    rightSidebarHidden: false,
     livePreview: true,
     spellCheck: true,
     focusMode: false,
@@ -418,6 +426,10 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleFileTree() {
       this.showFileTree = !this.showFileTree;
+      this.persist();
+    },
+    toggleRightSidebar() {
+      this.rightSidebarHidden = !this.rightSidebarHidden;
       this.persist();
     },
     toggleLivePreview() {

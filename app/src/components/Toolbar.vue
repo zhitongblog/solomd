@@ -292,6 +292,14 @@ onBeforeUnmount(() => {
       >
         <Icon name="sidebar" />
       </button>
+      <button
+        class="icon-btn"
+        @click="settings.toggleRightSidebar"
+        :class="{ active: !settings.rightSidebarHidden }"
+        :title="t('toolbar.rightSidebarTooltip')"
+      >
+        <Icon name="sidebar-right" />
+      </button>
     </div>
 
     <div class="toolbar__group" v-if="isMarkdown">

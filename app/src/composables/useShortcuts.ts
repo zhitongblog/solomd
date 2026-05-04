@@ -139,9 +139,14 @@ export function useShortcuts(hooks: Hooks = {}) {
           detail: { paneId: tiles.focusedPaneId },
         }));
       }
-    } else if (k === 'b') {
+    } else if (k === 'b' && !e.altKey) {
       e.preventDefault();
       settings.toggleFileTree();
+    } else if (k === 'b' && e.altKey) {
+      // ⌥⌘B mirrors ⌘B on the right side: hide / show the Outline /
+      // Backlinks / Tags / History / Agent panel strip wholesale.
+      e.preventDefault();
+      settings.toggleRightSidebar();
     } else if (k === 'l' && e.altKey) {
       e.preventDefault();
       runById('format.markdown');

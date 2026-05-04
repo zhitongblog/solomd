@@ -67,6 +67,7 @@ export const en = {
     spellCheckTooltip: 'Spell check',
     cjkProofreadTooltip: 'CJK proofread (⌘⇧J) — flag Chinese typography typos',
     fileTreeTooltip: 'Toggle file tree (Ctrl+B)',
+    rightSidebarTooltip: 'Toggle right sidebar (Ctrl+Alt+B) — Outline / Backlinks / Tags / History / Agent panel',
     outlineTooltip: 'Toggle outline (Ctrl+Shift+O)',
     searchTooltip: 'Search in folder (Ctrl+Shift+F)',
     paletteTooltip: 'Command palette (Ctrl+Shift+K)',

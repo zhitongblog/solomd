@@ -69,6 +69,7 @@ export const zh: I18n = {
     spellCheckTooltip: '拼写检查',
     cjkProofreadTooltip: '中文校对 (⌘⇧J) — 一键挑出常见错别字与排版问题',
     fileTreeTooltip: '切换文件树 (Ctrl+B)',
+    rightSidebarTooltip: '切换右侧栏 (Ctrl+Alt+B) — 大纲 / 反向链接 / 标签 / 历史 / 智能体',
     outlineTooltip: '切换大纲 (Ctrl+Shift+O)',
     searchTooltip: '在文件夹中搜索 (Ctrl+Shift+F)',
     paletteTooltip: '命令面板 (Ctrl+Shift+K)',

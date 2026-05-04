@@ -644,14 +644,19 @@ const showHistoryPane = computed(
 // v4.0 pillar 1: Agent Panel — workspace-level visibility (not per-tab).
 // Toggled via command palette `view.toggleAgentPanel`; persists in settings.
 const showAgentPane = computed(() => settings.showAgentPanel);
-const showRightSidebar = computed(
-  () =>
+const showRightSidebar = computed(() => {
+  // Master "hide" toggle wins over individual panes — preserves which panes
+  // the user had on while still letting them dismiss the whole strip with
+  // a single action (toolbar close button / ⌥⌘B / command palette).
+  if (settings.rightSidebarHidden) return false;
+  return (
     showOutlinePane.value ||
     showBacklinksPane.value ||
     showTagsPane.value ||
     showHistoryPane.value ||
-    showAgentPane.value,
-);
+    showAgentPane.value
+  );
+});
 
 // Side sidebar width — user-resizable via drag handle. Defaults to 260
 // for the read-only panes (outline/backlinks/tags/history), but auto-
