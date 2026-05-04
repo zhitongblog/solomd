@@ -14,8 +14,11 @@ const {
   lang = 'en',
 } = Astro.props;
 
-const htmlLang = lang === 'zh' ? 'zh-CN' : 'en';
-const path = lang === 'zh' ? '/zh/' : '/';
+const HTML_LANG = { en: 'en', zh: 'zh-CN', ja: 'ja', ko: 'ko' } as const;
+const OG_LOCALE = { en: 'en_US', zh: 'zh_CN', ja: 'ja_JP', ko: 'ko_KR' } as const;
+const htmlLang = HTML_LANG[lang];
+const path = lang === 'en' ? '/' : `/${lang}/`;
+const ogLocale = OG_LOCALE[lang];
 ---
 
 <!doctype html>
@@ -29,6 +32,8 @@ const path = lang === 'zh' ? '/zh/' : '/';
 
     <link rel="alternate" hreflang="en" href="https://solomd.app/" />
     <link rel="alternate" hreflang="zh-CN" href="https://solomd.app/zh/" />
+    <link rel="alternate" hreflang="ja" href="https://solomd.app/ja/" />
+    <link rel="alternate" hreflang="ko" href="https://solomd.app/ko/" />
     <link rel="alternate" hreflang="x-default" href="https://solomd.app/" />
     <link rel="canonical" href={`https://solomd.app${path}`} />
 
@@ -38,7 +43,7 @@ const path = lang === 'zh' ? '/zh/' : '/';
     <meta property="og:type" content="website" />
     <meta property="og:url" content={`https://solomd.app${path}`} />
     <meta property="og:site_name" content="SoloMD" />
-    <meta property="og:locale" content={htmlLang === 'zh-CN' ? 'zh_CN' : 'en_US'} />
+    <meta property="og:locale" content={ogLocale} />
     <meta property="og:image" content="https://solomd.app/og-image.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
@@ -73,7 +78,9 @@ const path = lang === 'zh' ? '/zh/' : '/';
       "@type": "BreadcrumbList",
       "itemListElement": [
         { "@type": "ListItem", "position": 1, "name": "SoloMD", "item": "https://solomd.app/" },
-        ...(path === '/zh/' ? [{ "@type": "ListItem", "position": 2, "name": "中文", "item": "https://solomd.app/zh/" }] : []),
+        ...(lang === 'zh' ? [{ "@type": "ListItem", "position": 2, "name": "中文", "item": "https://solomd.app/zh/" }] : []),
+        ...(lang === 'ja' ? [{ "@type": "ListItem", "position": 2, "name": "日本語", "item": "https://solomd.app/ja/" }] : []),
+        ...(lang === 'ko' ? [{ "@type": "ListItem", "position": 2, "name": "한국어", "item": "https://solomd.app/ko/" }] : []),
       ]
     })} />
 
@@ -124,7 +131,7 @@ const path = lang === 'zh' ? '/zh/' : '/';
         "Custom CSS theme",
         "Cross-platform native menus",
       ],
-      "inLanguage": ["en", "zh-CN"],
+      "inLanguage": ["en", "zh-CN", "ja", "ko"],
     })} />
 
     <!-- Google AdSense -->

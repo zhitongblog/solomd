@@ -1,0 +1,36 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Hero from '../../components/Hero.astro';
+import UseCases from '../../components/UseCases.astro';
+import Principles from '../../components/Principles.astro';
+import Features from '../../components/Features.astro';
+import Compare from '../../components/Compare.astro';
+import Download from '../../components/Download.astro';
+import Faq from '../../components/Faq.astro';
+import Contact from '../../components/Contact.astro';
+import Sponsor from '../../components/Sponsor.astro';
+import Footer from '../../components/Footer.astro';
+
+const lang = 'ko' as const;
+---
+
+<Layout
+  title="SoloMD — Agent가 머무는 Markdown 에디터: Agent 패널 + 정시 Recipe + Trace + MCP"
+  description="가벼운 Markdown 에디터 (~15 MB, MIT). v4.0에 내장 Agent 패널, 정시 Recipe, 재생 가능한 Trace, 다중 vault MCP Federation 추가. AutoGit 브랜치 샌드박스로 자동 쓰기는 승인/거부 필수. 14개 BYOK AI Provider (Ollama 포함)."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <Hero lang={lang} />
+    <UseCases lang={lang} />
+    <Principles lang={lang} />
+    <Features lang={lang} />
+    <Compare lang={lang} />
+    <Download lang={lang} />
+    <Faq lang={lang} />
+    <Contact lang={lang} />
+    <Sponsor lang={lang} />
+  </main>
+  <Footer lang={lang} />
+</Layout>

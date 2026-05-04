@@ -3,23 +3,49 @@ import type { Lang } from '../i18n/translations';
 interface Props { lang: Lang }
 const { lang } = Astro.props;
 
-const heading = lang === 'zh' ? '联系作者 / 加群' : 'Contact / Join the room';
-const lead = lang === 'zh'
-  ? '一个开发者,直接微信或 Telegram 找我。GitHub Discussions 也是一个等价入口 —— 见下面。'
-  : "One maintainer, two front doors. WeChat for the Chinese community, Telegram channel for everyone else. GitHub Discussions works too — link below.";
-
-const wechatLabel = lang === 'zh' ? '个人微信' : 'WeChat (personal)';
-const wechatHint = lang === 'zh' ? '扫码加好友。注明 "SoloMD" 直接通过。' : 'Scan to add me on WeChat. Mention "SoloMD" so I know it\'s you.';
-
-const telegramLabel = lang === 'zh' ? 'Telegram 频道 @SOLOMDAPP' : 'Telegram channel @SOLOMDAPP';
-const telegramHint = lang === 'zh'
-  ? '点击或扫码进入频道,发布更新和讨论都在这里。'
-  : 'Click or scan to join. Release announcements + chat live here.';
-
-const discussionsLabel = lang === 'zh' ? 'GitHub Discussions' : 'GitHub Discussions';
-const discussionsHint = lang === 'zh'
-  ? '不想加私聊? 可在 GitHub 公开频道讨论 —— 同一作者,异步。'
-  : "Async, public, searchable — same maintainer, no DM required.";
+const STR = {
+  en: {
+    heading: 'Contact / Join the room',
+    lead: 'One maintainer, two front doors. WeChat for the Chinese community, Telegram channel for everyone else. GitHub Discussions works too — link below.',
+    wechatLabel: 'WeChat (personal)',
+    wechatHint: 'Scan to add me on WeChat. Mention "SoloMD" so I know it\'s you.',
+    telegramLabel: 'Telegram channel @SOLOMDAPP',
+    telegramHint: 'Click or scan to join. Release announcements + chat live here.',
+    discussionsLabel: 'GitHub Discussions',
+    discussionsHint: 'Async, public, searchable — same maintainer, no DM required.',
+  },
+  zh: {
+    heading: '联系作者 / 加群',
+    lead: '一个开发者,直接微信或 Telegram 找我。GitHub Discussions 也是一个等价入口 —— 见下面。',
+    wechatLabel: '个人微信',
+    wechatHint: '扫码加好友。注明 "SoloMD" 直接通过。',
+    telegramLabel: 'Telegram 频道 @SOLOMDAPP',
+    telegramHint: '点击或扫码进入频道,发布更新和讨论都在这里。',
+    discussionsLabel: 'GitHub Discussions',
+    discussionsHint: '不想加私聊? 可在 GitHub 公开频道讨论 —— 同一作者,异步。',
+  },
+  ja: {
+    heading: 'お問い合わせ / コミュニティ',
+    lead: 'メンテナは 1 人、入り口は 2 つ。中国語コミュニティは WeChat、それ以外は Telegram チャンネル。GitHub Discussions も動きます —— 下にリンク。',
+    wechatLabel: 'WeChat (個人)',
+    wechatHint: 'WeChat 友達追加用 QR。「SoloMD」と書いてもらえると承認します。',
+    telegramLabel: 'Telegram チャンネル @SOLOMDAPP',
+    telegramHint: 'クリックまたはスキャンで参加。リリース告知とチャットはここ。',
+    discussionsLabel: 'GitHub Discussions',
+    discussionsHint: '非同期、公開、検索可能 —— 同じメンテナ、DM 不要。',
+  },
+  ko: {
+    heading: '문의 / 커뮤니티',
+    lead: '메인테이너 1명, 입구 2개. 중국어 커뮤니티는 WeChat, 그 외는 Telegram 채널. GitHub Discussions도 가능 —— 아래 링크.',
+    wechatLabel: 'WeChat (개인)',
+    wechatHint: 'WeChat 친구 추가용 QR. "SoloMD"라고 적어주시면 승인합니다.',
+    telegramLabel: 'Telegram 채널 @SOLOMDAPP',
+    telegramHint: '클릭하거나 스캔하여 참여. 릴리스 공지 + 채팅이 여기 있습니다.',
+    discussionsLabel: 'GitHub Discussions',
+    discussionsHint: '비동기, 공개, 검색 가능 —— 같은 메인테이너, DM 불필요.',
+  },
+}[lang];
+const { heading, lead, wechatLabel, wechatHint, telegramLabel, telegramHint, discussionsLabel, discussionsHint } = STR;
 ---
 
 <section id="contact" class="contact">

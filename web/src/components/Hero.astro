@@ -7,7 +7,11 @@ const tr = getT(lang);
 const VERSION = '4.0.0';
 const REPO = 'zhitongblog/solomd';
 const baseUrl = `https://github.com/${REPO}/releases/download/v${VERSION}`;
-const whatsNewHref = lang === 'zh' ? '/zh/whats-new/' : '/whats-new/';
+const langPrefix = lang === 'en' ? '' : `/${lang}`;
+const whatsNewHref = `${langPrefix}/whats-new/`;
+// /agents/ sub-page exists only in en + zh; ja/ko link to en.
+const agentsHref = lang === 'zh' ? '/zh/agents/' : '/agents/';
+const ONE_LINE_LABEL = { en: 'Or one-line install', zh: '或一键安装命令', ja: 'またはワンラインインストール', ko: '또는 한 줄 설치' }[lang];
 
 // Default (SSR / no-JS / unknown OS) → mac dmg link
 const defaultDownload = `${baseUrl}/SoloMD_${VERSION}_universal.dmg`;
@@ -78,7 +82,7 @@ const initialDownloadsText = initialDownloads > 0 ? fmtDownloads(initialDownload
         ⬇ {tr.hero.ctaPrimary}
       </a>
       <a
-        href={lang === 'zh' ? '/zh/agents/' : '/agents/'}
+        href={agentsHref}
         class="btn btn--secondary btn--lg"
       >
         {tr.hero.ctaSecondary}
@@ -86,7 +90,7 @@ const initialDownloadsText = initialDownloads > 0 ? fmtDownloads(initialDownload
     </div>
     <div class="hero__install">
       <div class="hero__install-label">
-        ⚡ {lang === 'zh' ? '或一键安装命令' : 'Or one-line install'}
+        ⚡ {ONE_LINE_LABEL}
       </div>
       <div class="hero__install-tabs">
         <button class="hi-tab hi-tab--active" data-hi-tab="unix">macOS / Linux</button>

@@ -1,0 +1,36 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Hero from '../../components/Hero.astro';
+import UseCases from '../../components/UseCases.astro';
+import Principles from '../../components/Principles.astro';
+import Features from '../../components/Features.astro';
+import Compare from '../../components/Compare.astro';
+import Download from '../../components/Download.astro';
+import Faq from '../../components/Faq.astro';
+import Contact from '../../components/Contact.astro';
+import Sponsor from '../../components/Sponsor.astro';
+import Footer from '../../components/Footer.astro';
+
+const lang = 'ja' as const;
+---
+
+<Layout
+  title="SoloMD — Agent が住みつく Markdown エディタ:Agent パネル + 定時 Recipe + Trace + MCP"
+  description="軽量 Markdown エディタ (~15 MB、MIT)。v4.0 で内蔵 Agent パネル、定時 Recipe、リプレイ可能な Trace、多 vault MCP Federation を追加。AutoGit ブランチサンドボックスで自動書き込みは accept/reject 必須。14 の BYOK AI Provider (Ollama 含む)。"
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <Hero lang={lang} />
+    <UseCases lang={lang} />
+    <Principles lang={lang} />
+    <Features lang={lang} />
+    <Compare lang={lang} />
+    <Download lang={lang} />
+    <Faq lang={lang} />
+    <Contact lang={lang} />
+    <Sponsor lang={lang} />
+  </main>
+  <Footer lang={lang} />
+</Layout>

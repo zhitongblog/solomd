@@ -1,18 +1,33 @@
 ---
-import { getT, type Lang } from '../i18n/translations';
+import { getT, LANGS, type Lang } from '../i18n/translations';
 interface Props { lang: Lang }
 const { lang } = Astro.props;
 const tr = getT(lang);
-const homeHref = lang === 'zh' ? '/zh/' : '/';
+
+const langPrefix = lang === 'en' ? '' : `/${lang}`;
+const homeHref = langPrefix + '/';
+// Sub-pages currently exist only in en + zh. ja/ko fall back to the
+// corresponding en page rather than 404 — partial localization.
+const subPrefix = lang === 'zh' ? '/zh' : '';
+const NAV = {
+  en: { agents: 'Agents', sync: 'Sync', compare: 'Compare', docs: 'Docs', blog: 'Blog', contact: 'Contact', sponsor: 'Sponsor', supportTitle: 'Support the developer' },
+  zh: { agents: 'Agent', sync: '同步', compare: '对比', docs: '文档', blog: '博客', contact: '联系我们', sponsor: '赞助', supportTitle: '支持开发者' },
+  ja: { agents: 'Agent', sync: '同期', compare: '比較', docs: 'ドキュメント', blog: 'ブログ', contact: 'お問い合わせ', sponsor: 'スポンサー', supportTitle: '開発者をサポート' },
+  ko: { agents: 'Agent', sync: '동기화', compare: '비교', docs: '문서', blog: '블로그', contact: '문의', sponsor: '후원', supportTitle: '개발자 후원' },
+}[lang];
+
+const TOPBAR = {
+  en: 'Try our AI novel writing platform',
+  zh: '试试我们的 AI 小说写作平台',
+  ja: 'AI 小説執筆プラットフォームをお試しください',
+  ko: 'AI 소설 작성 플랫폼을 사용해보세요',
+}[lang];
 ---
 
 <div class="topbar">
   <div class="container topbar__inner">
     <span class="topbar__text">
-      ✨ {lang === 'zh'
-        ? '试试我们的 AI 小说写作平台'
-        : 'Try our AI novel writing platform'}
-      →
+      ✨ {TOPBAR} →
       <a href="https://storyalter.com" target="_blank" rel="noopener">StoryAlter.com</a>
     </span>
   </div>
@@ -25,26 +40,50 @@ const homeHref = lang === 'zh' ? '/zh/' : '/';
     </a>
     <nav class="header__nav">
       <a href={homeHref + '#features'}>{tr.nav.features}</a>
-      <a href={lang === 'zh' ? '/zh/agents/' : '/agents/'} class="header__nav-new">{lang === 'zh' ? 'Agent' : 'Agents'} <sup>v4</sup></a>
-      <a href={lang === 'zh' ? '/zh/sync/' : '/sync/'}>{lang === 'zh' ? '同步' : 'Sync'}</a>
-      <a href={lang === 'zh' ? '/zh/compare/' : '/compare/'}>{lang === 'zh' ? '对比' : 'Compare'}</a>
-      <a href={lang === 'zh' ? '/zh/docs/' : '/docs/'}>{lang === 'zh' ? '文档' : 'Docs'}</a>
-      <a href={lang === 'zh' ? '/zh/blog/' : '/blog/'}>{lang === 'zh' ? '博客' : 'Blog'}</a>
-      <a href={homeHref + '#contact'}>{lang === 'zh' ? '联系我们' : 'Contact'}</a>
+      <a href={subPrefix + '/agents/'} class="header__nav-new">{NAV.agents} <sup>v4</sup></a>
+      <a href={subPrefix + '/sync/'}>{NAV.sync}</a>
+      <a href={subPrefix + '/compare/'}>{NAV.compare}</a>
+      <a href={subPrefix + '/docs/'}>{NAV.docs}</a>
+      <a href={subPrefix + '/blog/'}>{NAV.blog}</a>
+      <a href={homeHref + '#contact'}>{NAV.contact}</a>
       <a href={homeHref + '#download'}>{tr.nav.download}</a>
-      <a href={homeHref + '#sponsor'} class="header__sponsor" title={lang === 'zh' ? '支持开发者' : 'Support the developer'}>
+      <a href={homeHref + '#sponsor'} class="header__sponsor" title={NAV.supportTitle}>
         <span class="header__sponsor-heart">♥</span>
-        {lang === 'zh' ? '赞助' : 'Sponsor'}
+        {NAV.sponsor}
       </a>
       <a href="https://github.com/zhitongblog/solomd" target="_blank" rel="noopener">
         {tr.nav.github}
       </a>
-      <a href={tr.langSwitchHref} class="header__lang">
-        {tr.langSwitch}
-      </a>
+      <div class="header__lang-wrap">
+        <button type="button" class="header__lang" aria-haspopup="true" aria-expanded="false">
+          {tr.langSwitch} ▾
+        </button>
+        <div class="header__lang-menu" role="menu">
+          {LANGS.map((L) => (
+            <a href={L.href} role="menuitem" class={L.code === lang ? 'is-active' : ''}>{L.label}</a>
+          ))}
+        </div>
+      </div>
     </nav>
   </div>
 </header>
+
+<script is:inline>
+  document.addEventListener('click', (e) => {
+    const wrap = document.querySelector('.header__lang-wrap');
+    if (!wrap) return;
+    const btn = wrap.querySelector('.header__lang');
+    const menu = wrap.querySelector('.header__lang-menu');
+    if (!btn || !menu) return;
+    if (btn.contains(e.target)) {
+      const open = menu.classList.toggle('is-open');
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    } else if (!menu.contains(e.target)) {
+      menu.classList.remove('is-open');
+      btn.setAttribute('aria-expanded', 'false');
+    }
+  });
+</script>
 
 <style>
   .topbar {
@@ -121,16 +160,53 @@ const homeHref = lang === 'zh' ? '/zh/' : '/';
     letter-spacing: 0.04em;
     vertical-align: middle;
   }
+  .header__lang-wrap {
+    position: relative;
+  }
   .header__lang {
     border: 1px solid var(--border);
     border-radius: 999px;
     padding: 4px 12px;
-    font-size: 12px !important;
-    color: var(--text) !important;
+    font-size: 12px;
+    color: var(--text);
+    background: transparent;
+    cursor: pointer;
+    font-family: inherit;
   }
   .header__lang:hover {
     border-color: var(--accent);
+    color: var(--accent);
+  }
+  .header__lang-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    min-width: 140px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px;
+    display: none;
+    flex-direction: column;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    z-index: 60;
+  }
+  .header__lang-menu.is-open {
+    display: flex;
+  }
+  .header__lang-menu a {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--text) !important;
+  }
+  .header__lang-menu a:hover {
+    background: var(--bg-soft);
     color: var(--accent) !important;
+  }
+  .header__lang-menu a.is-active {
+    color: var(--accent) !important;
+    font-weight: 600;
   }
   .header__sponsor {
     display: inline-flex;
@@ -158,5 +234,6 @@ const homeHref = lang === 'zh' ? '/zh/' : '/';
     .header__nav a:not(.header__lang):not(.header__sponsor):not([href*='github']) {
       display: none;
     }
+    .header__lang-wrap { display: block; }
   }
 </style>

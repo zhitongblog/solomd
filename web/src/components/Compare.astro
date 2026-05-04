@@ -4,20 +4,33 @@ interface Props { lang: Lang }
 const { lang } = Astro.props;
 const tr = getT(lang);
 
+// /compare/ sub-pages exist only in en + zh; ja/ko link to en.
 const compareIndex = lang === 'zh' ? '/zh/compare/' : '/compare/';
-const moreLabel = lang === 'zh' ? '看每款逐项对比 →' : 'See each editor side-by-side →';
+const moreLabel = { en: 'See each editor side-by-side →', zh: '看每款逐项对比 →', ja: 'エディタごとに横並び比較 →', ko: '에디터별로 나란히 비교 →' }[lang];
 
-const wins = lang === 'zh'
-  ? [
-      { icon: '🔍', title: '本地语义搜索', desc: 'Obsidian / Typora / MarkText 都不在核心里。SoloMD ⌘⇧F 一键开,本地嵌入,不下模型,不联网。' },
-      { icon: '📜', title: 'AutoGit 版本历史', desc: '每次 ⌘S 都是一次本地 .git 快照,侧栏一键回滚。同类编辑器都得手动配 git。' },
-      { icon: '🔌', title: 'MCP server 内置', desc: '1.5 MB 二进制,8 个只读工具。把 vault 接入 Claude Desktop / Cursor / Codex CLI。' },
-    ]
-  : [
-      { icon: '🔍', title: 'Local semantic search', desc: 'Obsidian, Typora and MarkText all skip this in core. SoloMD ⌘⇧F: on-device embedder, no model download, no network call.' },
-      { icon: '📜', title: 'AutoGit version history', desc: 'Every ⌘S becomes a local .git snapshot — sidebar history panel restores in one click. Competitors leave you to wire git manually.' },
-      { icon: '🔌', title: 'MCP server bundled', desc: '1.5 MB binary, 8 read-only tools. Plug your vault into Claude Desktop, Cursor, or Codex CLI.' },
-    ];
+const winsAll = {
+  en: [
+    { icon: '🔍', title: 'Local semantic search', desc: 'Obsidian, Typora and MarkText all skip this in core. SoloMD ⌘⇧F: on-device embedder, no model download, no network call.' },
+    { icon: '📜', title: 'AutoGit version history', desc: 'Every ⌘S becomes a local .git snapshot — sidebar history panel restores in one click. Competitors leave you to wire git manually.' },
+    { icon: '🔌', title: 'MCP server bundled', desc: '1.5 MB binary, 8 read-only tools. Plug your vault into Claude Desktop, Cursor, or Codex CLI.' },
+  ],
+  zh: [
+    { icon: '🔍', title: '本地语义搜索', desc: 'Obsidian / Typora / MarkText 都不在核心里。SoloMD ⌘⇧F 一键开,本地嵌入,不下模型,不联网。' },
+    { icon: '📜', title: 'AutoGit 版本历史', desc: '每次 ⌘S 都是一次本地 .git 快照,侧栏一键回滚。同类编辑器都得手动配 git。' },
+    { icon: '🔌', title: 'MCP server 内置', desc: '1.5 MB 二进制,8 个只读工具。把 vault 接入 Claude Desktop / Cursor / Codex CLI。' },
+  ],
+  ja: [
+    { icon: '🔍', title: 'ローカルセマンティック検索', desc: 'Obsidian / Typora / MarkText はどれも core に含まない。SoloMD は ⌘⇧F でオン、デバイス内 embedder、モデルダウンロードなし、ネットワークコールなし。' },
+    { icon: '📜', title: 'AutoGit バージョン履歴', desc: '毎回の ⌘S がローカル .git スナップショット — サイドバー履歴パネルから 1 クリックで復元。同類は手動 git 配線。' },
+    { icon: '🔌', title: 'MCP サーバー内蔵', desc: '1.5 MB バイナリ、8 個の読み取り専用ツール。vault を Claude Desktop / Cursor / Codex CLI に接続。' },
+  ],
+  ko: [
+    { icon: '🔍', title: '로컬 시맨틱 검색', desc: 'Obsidian / Typora / MarkText 모두 core에 없음. SoloMD ⌘⇧F: 기기 내 embedder, 모델 다운로드 없음, 네트워크 호출 없음.' },
+    { icon: '📜', title: 'AutoGit 버전 기록', desc: '⌘S마다 로컬 .git 스냅샷 — 사이드바 기록 패널에서 원클릭 복원. 동급 에디터는 git 수동 연결 필요.' },
+    { icon: '🔌', title: 'MCP 서버 내장', desc: '1.5 MB 바이너리, 8개 읽기 전용 도구. vault를 Claude Desktop / Cursor / Codex CLI에 연결.' },
+  ],
+};
+const wins = winsAll[lang];
 ---
 
 <section id="compare">

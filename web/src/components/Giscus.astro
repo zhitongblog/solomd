@@ -52,7 +52,8 @@ const GISCUS_CATEGORY = category;
 const GISCUS_CATEGORY_ID = ''; // <-- TODO: paste from giscus.app after running their wizard
 
 const isConfigured = GISCUS_REPO_ID !== '' && GISCUS_CATEGORY_ID !== '';
-const giscusLang = lang === 'zh' ? 'zh-CN' : 'en';
+const giscusLang = ({ en: 'en', zh: 'zh-CN', ja: 'ja', ko: 'ko' } as const)[lang];
+const openLabel = { en: 'Open on GitHub Discussions →', zh: '前往 GitHub Discussions →', ja: 'GitHub Discussions を開く →', ko: 'GitHub Discussions 열기 →' }[lang];
 const discussionsUrl = `https://github.com/${GISCUS_REPO}/discussions`;
 ---
 
@@ -89,7 +90,7 @@ const discussionsUrl = `https://github.com/${GISCUS_REPO}/discussions`;
         >
           <p class="giscus-placeholder__msg">{tr.giscus.placeholder}</p>
           <a class="giscus-placeholder__cta" href={discussionsUrl} target="_blank" rel="noopener">
-            {lang === 'zh' ? '前往 GitHub Discussions →' : 'Open on GitHub Discussions →'}
+            {openLabel}
           </a>
         </div>
       )}
