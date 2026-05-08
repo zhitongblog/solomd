@@ -400,12 +400,23 @@ async function buildBody(tokens: Token[], imageRoot: string | null, filePath?: s
       case 'blockquote_open': {
         const end = findMatchingClose(tokens, i, 'blockquote_open', 'blockquote_close');
         const inner = tokens.slice(i + 1, end);
-        const innerBlocks = await buildBody(inner, imageRoot, filePath);
-        for (const block of innerBlocks) {
-          if (block instanceof Paragraph) {
+        // Build runs directly from each inner paragraph's inline tokens
+        // instead of round-tripping through buildBody → Paragraph and
+        // trying to re-extract `.options.children`. The `docx` library's
+        // Paragraph instances don't expose constructor children publicly,
+        // so the old extraction returned [] and produced empty
+        // bordered paragraphs (issue: blockquotes vanished on docx export).
+        let j = 0;
+        while (j < inner.length) {
+          const t = inner[j];
+          if (t.type === 'paragraph_open') {
+            const inlineTok = inner[j + 1];
+            const runs = inlineTok && inlineTok.type === 'inline'
+              ? buildRuns(inlineTok)
+              : [];
             out.push(
               new Paragraph({
-                children: ((block as any).options?.children ?? []) as TextRun[],
+                children: runs.length > 0 ? (runs as TextRun[]) : [new TextRun({ text: ' ' })],
                 alignment: AlignmentType.LEFT,
                 indent: { left: 360 },
                 spacing: { before: 80, after: 80 },
@@ -414,8 +425,23 @@ async function buildBody(tokens: Token[], imageRoot: string | null, filePath?: s
                 },
               })
             );
+            // Skip paragraph_open, inline, paragraph_close
+            j += 3;
           } else {
-            out.push(block);
+            // Non-paragraph children (nested lists, fenced code, headings,
+            // tables) — recurse so they keep their structure. They render
+            // without the blockquote indent, which matches how most docx
+            // renderers handle nested non-paragraph blockquoted content.
+            const sliceEnd = (() => {
+              if (t.type.endsWith('_open')) {
+                const closeType = t.type.replace(/_open$/, '_close');
+                return findMatchingClose(inner, j, t.type, closeType) + 1;
+              }
+              return j + 1;
+            })();
+            const nestedBlocks = await buildBody(inner.slice(j, sliceEnd), imageRoot, filePath);
+            for (const b of nestedBlocks) out.push(b);
+            j = sliceEnd;
           }
         }
         i = end + 1;
