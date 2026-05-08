@@ -295,6 +295,30 @@ pub struct ShareUrlArgs {
     pub workspace: Option<String>,
 }
 
+/// v4.1 — args for `export_note`. Drives `app/scripts/solomd-export.mjs`,
+/// the same headless export tool the `solomd export` CLI uses, so MCP
+/// clients can produce .docx / .html / .txt artifacts in a CI / agent
+/// loop without a running SoloMD GUI. Engine parity with the in-app GUI
+/// export — same markdown-it config, same `docx` library.
+#[derive(Debug, Deserialize, Serialize, JsonSchema)]
+pub struct ExportNoteArgs {
+    /// Path to the source `.md` (relative to the workspace, or absolute
+    /// inside it).
+    pub path: String,
+    /// Output format. One of: `html`, `md`, `txt`, `docx`. Defaults to
+    /// `html`.
+    #[serde(default)]
+    pub format: Option<String>,
+    /// Where to write the result. Defaults to a sibling file next to
+    /// `path` with the format-appropriate extension. Pass an absolute
+    /// path or a workspace-relative path to override.
+    #[serde(default)]
+    pub output_path: Option<String>,
+    /// Workspace selector — alias or absolute path. Default = first workspace.
+    #[serde(default)]
+    pub workspace: Option<String>,
+}
+
 /// v4.0 Pillar 3 — args for `read_agent_trace`.
 ///
 /// `workspace` is optional for back-compat with v3.x single-workspace
@@ -744,6 +768,103 @@ impl SoloMdServer {
     ///
     /// Reads `<workspace>/.solomd/agent-runs/<run_id>/trace.jsonl` and
     /// returns its lines as a JSON array, plus a count. Tolerates malformed
+    /// v4.1 — Headless export. Shells out to
+    /// `app/scripts/solomd-export.mjs` (Node) so we share the engine the
+    /// `solomd export` CLI uses + the in-app GUI's markdown-it config.
+    ///
+    /// Read-only by default: the `output_path` is allowed to live OUTSIDE
+    /// the workspace (e.g. `/tmp/foo.docx`) without requiring
+    /// `--allow-write`. We treat exports as derived artifacts, not as
+    /// modifications of the vault. Writing to a path INSIDE the
+    /// workspace IS gated by `allow_write` for safety.
+    #[tool(
+        name = "export_note",
+        description = "Export a Markdown note to html / md / txt / docx. Engine-parity with the SoloMD GUI export. Args: `path` (workspace-relative), `format` (default html), optional `output_path` (default: sibling file next to `path` with format-appropriate extension). Returns the absolute output path. Requires Node.js + `pnpm install` in the SoloMD repo's app/ directory."
+    )]
+    pub async fn export_note(
+        &self,
+        args: Parameters<ExportNoteArgs>,
+    ) -> Result<CallToolResult, McpError> {
+        let workspace = self
+            .resolve_workspace(args.0.workspace.as_deref())
+            .map_err(|e| McpError::invalid_params(e, None))?
+            .to_path_buf();
+        let input_path = safety::resolve_in(&workspace, &args.0.path, true)
+            .map_err(|e| McpError::invalid_params(e, None))?;
+
+        let fmt = args.0.format.as_deref().unwrap_or("html").to_lowercase();
+        if !matches!(fmt.as_str(), "html" | "md" | "txt" | "docx") {
+            return Err(McpError::invalid_params(
+                format!("unknown format: {fmt} (try html|md|txt|docx)"),
+                None,
+            ));
+        }
+
+        // Resolve output path. If user gave one, take it as-is — but if
+        // it falls inside the workspace, we treat it as a write op and
+        // require allow_write.
+        let output_path = match args.0.output_path.as_deref() {
+            Some(p) => {
+                let pb = PathBuf::from(p);
+                if pb.is_absolute() {
+                    pb
+                } else {
+                    workspace.join(p)
+                }
+            }
+            None => {
+                let stem = input_path.file_stem().unwrap_or_default();
+                let mut sibling = input_path.clone();
+                sibling.set_file_name(format!("{}.{}", stem.to_string_lossy(), fmt));
+                sibling
+            }
+        };
+        let output_canonical_parent = output_path
+            .parent()
+            .and_then(|p| p.canonicalize().ok())
+            .unwrap_or_else(|| output_path.clone());
+        let inside_workspace = output_canonical_parent.starts_with(&workspace);
+        if inside_workspace && !self.inner.allow_write {
+            return Err(McpError::invalid_params(
+                "output_path lives inside the workspace; writes require --allow-write".to_string(),
+                None,
+            ));
+        }
+
+        let script = find_export_script().map_err(|e| {
+            McpError::internal_error(format!("export script not found: {e}"), None)
+        })?;
+        let script_dir = script.parent().unwrap_or_else(|| Path::new(".")).to_path_buf();
+
+        let out = AsyncCommand::new("node")
+            .arg(&script)
+            .arg(&input_path)
+            .arg("--format").arg(&fmt)
+            .arg("--output").arg(&output_path)
+            .current_dir(&script_dir)
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .output()
+            .await
+            .map_err(|e| McpError::internal_error(format!("spawn node: {e}"), None))?;
+        if !out.status.success() {
+            let stderr = String::from_utf8_lossy(&out.stderr);
+            return Err(McpError::internal_error(
+                format!("export failed: {stderr}"),
+                None,
+            ));
+        }
+
+        Ok(CallToolResult::success(vec![
+            Content::json(serde_json::json!({
+                "output_path": output_path.to_string_lossy(),
+                "format": fmt,
+            }))
+            .map_err(|e| McpError::internal_error(e.to_string(), None))?
+        ]))
+    }
+
     /// lines (skipped, not errored) so partial / crashed runs are still
     /// inspectable. The reader is a slim duplicate of the canonical
     /// `app/src-tauri/src/trace.rs` parser — we don't path-dep into the
@@ -1242,6 +1363,50 @@ fn urlencode(s: &str) -> String {
 // sync.json, smart default for autogit_diff, branch-with-slash for share
 // URL, etc.) without spinning up the JSON-RPC server.
 // ---------------------------------------------------------------------------
+
+/// Locate `app/scripts/solomd-export.mjs`, the Node tool that backs the
+/// `export_note` MCP tool and the `solomd export` CLI subcommand.
+///
+/// Search order:
+///   1. `$SOLOMD_EXPORT_SCRIPT` env var (explicit override).
+///   2. `<exe-dir>/../app/scripts/solomd-export.mjs` (running from the
+///      SoloMD repo's release build, e.g. `mcp-server/target/release/`).
+///   3. `<exe-dir>/../../app/scripts/solomd-export.mjs` (running from a
+///      monorepo dev build).
+///   4. `<cwd>/app/scripts/solomd-export.mjs` (running from repo root).
+///   5. `~/.solomd/solomd-export.mjs` (manually installed).
+fn find_export_script() -> Result<PathBuf, String> {
+    if let Ok(p) = std::env::var("SOLOMD_EXPORT_SCRIPT") {
+        let pb = PathBuf::from(p);
+        if pb.is_file() {
+            return Ok(pb);
+        }
+    }
+    let exe = std::env::current_exe().ok();
+    let mut candidates: Vec<PathBuf> = Vec::new();
+    if let Some(exe) = exe {
+        if let Some(parent) = exe.parent() {
+            candidates.push(parent.join("../app/scripts/solomd-export.mjs"));
+            candidates.push(parent.join("../../app/scripts/solomd-export.mjs"));
+        }
+    }
+    if let Ok(cwd) = std::env::current_dir() {
+        candidates.push(cwd.join("app/scripts/solomd-export.mjs"));
+        candidates.push(cwd.join("../app/scripts/solomd-export.mjs"));
+    }
+    if let Some(home) = std::env::var_os("HOME") {
+        candidates.push(PathBuf::from(home).join(".solomd/solomd-export.mjs"));
+    }
+    for c in &candidates {
+        if c.is_file() {
+            return c.canonicalize().map_err(|e| e.to_string());
+        }
+    }
+    Err(format!(
+        "tried {} candidate paths; set SOLOMD_EXPORT_SCRIPT to point at app/scripts/solomd-export.mjs",
+        candidates.len()
+    ))
+}
 
 #[cfg(test)]
 mod tests {

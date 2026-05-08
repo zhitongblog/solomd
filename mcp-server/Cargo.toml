@@ -44,6 +44,12 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # Error handling
 anyhow = "1"
 
+[dev-dependencies]
+# v4.1 — used by tests/export_test.rs to crack the .docx (a ZIP) and
+# inspect word/document.xml without shelling out to `unzip` (which
+# isn't available everywhere CI runs).
+zip = { version = "0.6", default-features = false, features = ["deflate"] }
+
 [profile.release]
 opt-level = "z"
 lto = true
