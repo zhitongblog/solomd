@@ -25,6 +25,7 @@ import { useI18n } from '../i18n';
 
 const emit = defineEmits<{
   (e: 'open-settings', section?: string): void;
+  (e: 'close'): void;
 }>();
 
 const workspace = useWorkspaceStore();
@@ -484,8 +485,14 @@ watch(stateKey, (k) => {
         :title="t('agent.clearTitle')"
         @click="agent.clear()"
       >
-        ×
+        ⌫
       </button>
+      <button
+        class="rs-pane-close"
+        type="button"
+        :title="t('rightSidebar.hidePane')"
+        @click="emit('close')"
+      >×</button>
     </header>
 
     <div v-if="stateKey === 'no-folder'" class="agent-panel__empty">

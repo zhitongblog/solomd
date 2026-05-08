@@ -15,6 +15,7 @@ import BacklinksPanel from './components/BacklinksPanel.vue';
 import TagsPanel from './components/TagsPanel.vue';
 import HistoryPanel from './components/HistoryPanel.vue';
 import AgentPanel from './components/AgentPanel.vue';
+import RsSplitter from './components/RsSplitter.vue';
 import { useAutoCommit } from './composables/useAutoCommit';
 import { useGithubSync } from './composables/useGithubSync';
 import { useSessionRestore } from './composables/useSessionRestore';
@@ -649,12 +650,12 @@ const showTagsPane = computed(
   () => settings.showTagsPanel && !!workspace.currentFolder,
 );
 const showHistoryPane = computed(
-  // One concept, one switch: AutoGit on = panel visible. The legacy
-  // `showHistoryPanel` field is kept in the store for back-compat with
-  // older persisted state but is no longer surfaced as a separate
-  // toggle in Settings.
+  // v4.0.2 — decoupled from autoGitEnabled (#55). Hiding the pane via
+  // its × button no longer disables git sync; users can keep snapshots
+  // running in the background while reclaiming vertical space.
   () =>
     settings.autoGitEnabled &&
+    settings.showHistoryPanel &&
     tabs.activeTab?.language === 'markdown' &&
     !!workspace.currentFolder,
 );
@@ -674,6 +675,29 @@ const showRightSidebar = computed(() => {
     showAgentPane.value
   );
 });
+
+// v4.0.2 — ordered list of currently-visible right-sidebar panes. Drives
+// the v-for that interleaves <RsSplitter> between adjacent panes (#6 / #52).
+const visibleRsPanes = computed(() => {
+  const panes: { id: 'outline' | 'backlinks' | 'tags' | 'history' | 'agent' }[] = [];
+  if (showOutlinePane.value) panes.push({ id: 'outline' });
+  if (showBacklinksPane.value) panes.push({ id: 'backlinks' });
+  if (showTagsPane.value) panes.push({ id: 'tags' });
+  if (showHistoryPane.value) panes.push({ id: 'history' });
+  if (showAgentPane.value) panes.push({ id: 'agent' });
+  return panes;
+});
+
+// Per-pane height map → inline flex-basis. Panes without a stored height
+// fall back to the CSS flex defaults (1× for read-only panes, 4× for
+// Agent so chat keeps room when no splitter has been touched).
+function paneStyle(id: string) {
+  const h = settings.rightSidebarPaneHeights[id];
+  if (h && h > 0) {
+    return { flex: `0 0 ${h}px`, height: `${h}px` };
+  }
+  return {};
+}
 
 // Side sidebar width — user-resizable via drag handle. Defaults to 260
 // for the read-only panes (outline/backlinks/tags/history), but auto-
@@ -751,11 +775,20 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
           :style="sideSidebarStyle"
         >
           <div class="side-sidebar__resize side-sidebar__resize--right" @mousedown="onSidebarResize('left', $event)" />
-          <Outline v-if="showOutlinePane" :cursor-line="cursorLine" @goto="onOutlineGoto" />
-          <BacklinksPanel v-if="showBacklinksPane" />
-          <TagsPanel v-if="showTagsPane" />
-          <HistoryPanel v-if="showHistoryPane" />
-          <AgentPanel v-if="showAgentPane" @open-settings="(section?: string) => openSettingsAt(section ?? 'integrations')" />
+          <template v-for="(p, idx) in visibleRsPanes" :key="p.id">
+            <RsSplitter v-if="idx > 0" :above="visibleRsPanes[idx-1].id" :below="p.id" />
+            <div :data-rs-pane="p.id" :class="['rs-pane-host', `rs-pane-host--${p.id}`]" :style="paneStyle(p.id)">
+              <Outline v-if="p.id === 'outline'" :cursor-line="cursorLine" @goto="onOutlineGoto" />
+              <BacklinksPanel v-if="p.id === 'backlinks'" @close="settings.toggleBacklinks()" />
+              <TagsPanel v-if="p.id === 'tags'" @close="settings.toggleTagsPanel()" />
+              <HistoryPanel v-if="p.id === 'history'" @close="settings.toggleHistoryPanel()" />
+              <AgentPanel
+                v-if="p.id === 'agent'"
+                @open-settings="(section?: string) => openSettingsAt(section ?? 'integrations')"
+                @close="settings.toggleAgentPanel()"
+              />
+            </div>
+          </template>
         </aside>
         <div class="content">
           <BasesView v-if="basesOpen" />
@@ -767,11 +800,20 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
           :style="sideSidebarStyle"
         >
           <div class="side-sidebar__resize side-sidebar__resize--left" @mousedown="onSidebarResize('right', $event)" />
-          <Outline v-if="showOutlinePane" :cursor-line="cursorLine" @goto="onOutlineGoto" />
-          <BacklinksPanel v-if="showBacklinksPane" />
-          <TagsPanel v-if="showTagsPane" />
-          <HistoryPanel v-if="showHistoryPane" />
-          <AgentPanel v-if="showAgentPane" @open-settings="(section?: string) => openSettingsAt(section ?? 'integrations')" />
+          <template v-for="(p, idx) in visibleRsPanes" :key="p.id">
+            <RsSplitter v-if="idx > 0" :above="visibleRsPanes[idx-1].id" :below="p.id" />
+            <div :data-rs-pane="p.id" :class="['rs-pane-host', `rs-pane-host--${p.id}`]" :style="paneStyle(p.id)">
+              <Outline v-if="p.id === 'outline'" :cursor-line="cursorLine" @goto="onOutlineGoto" />
+              <BacklinksPanel v-if="p.id === 'backlinks'" @close="settings.toggleBacklinks()" />
+              <TagsPanel v-if="p.id === 'tags'" @close="settings.toggleTagsPanel()" />
+              <HistoryPanel v-if="p.id === 'history'" @close="settings.toggleHistoryPanel()" />
+              <AgentPanel
+                v-if="p.id === 'agent'"
+                @open-settings="(section?: string) => openSettingsAt(section ?? 'integrations')"
+                @close="settings.toggleAgentPanel()"
+              />
+            </div>
+          </template>
         </aside>
       </div>
       <StatusBar :line="cursorLine" :col="cursorCol" />
@@ -876,36 +918,40 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
   background: var(--accent, #6366f1);
   opacity: 0.5;
 }
-.side-sidebar > :deep(*:not(.side-sidebar__resize)) {
+/* v4.0.2 — each pane lives inside an .rs-pane-host wrapper so the
+   <RsSplitter> can find adjacent panes via [data-rs-pane] and resize
+   them. Direct children of .side-sidebar are now: the resize handle,
+   .rs-pane-host wrappers, and .rs-splitter elements between them. */
+.rs-pane-host {
   flex: 1 1 0;
   min-height: 0;
   width: 100%;
-  /* Reset Outline's own width since it now lives in a sized container.
-     `:not(.side-sidebar__resize)` excludes the 5px drag handle — without
-     it the handle inherits width:100% and floods the whole sidebar with
-     the hover-tinted accent color, intercepting every click via its
-     z-index:10. */
+  display: flex;
+  flex-direction: column;
 }
 /* Agent Panel needs vertical room — chat scrollback, tool-call cards,
    compose box. Give it 4× the share Outline/Backlinks/Tags/History get
-   when they coexist (so Agent ≈ 50% of sidebar height with all 5 on). */
-.side-sidebar > :deep(.agent-panel) {
+   when they coexist (so Agent ≈ 50% of sidebar height with all 5 on
+   AND no splitter has been touched yet). Once the user drags a
+   splitter the inline style overrides this. */
+.rs-pane-host--agent {
   flex: 4 1 0;
   min-height: 240px;
 }
-.side-sidebar > :deep(.outline) {
+.rs-pane-host > :deep(*) {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+}
+.rs-pane-host :deep(.outline) {
   width: 100% !important;
   border-left: 0;
   border-right: 0;
 }
-.side-sidebar > :deep(.backlinks) {
-  border-top: 1px solid var(--border);
+.rs-pane-host :deep(.backlinks) {
   border-left: 0;
   border-right: 0;
-}
-.side-sidebar > :deep(*:first-child:nth-last-child(1)) {
-  /* When only one panel is shown, ensure no top-border leak */
-  border-top: 0;
 }
 .content {
   flex: 1;

@@ -1069,4 +1069,8 @@ export const ja: I18n = {
     msgCopied: 'コピーしました',
     msgInserted: '挿入しました',
   },
+  rightSidebar: {
+    hidePane: 'このパネルを隠す',
+    dragToResize: 'ドラッグでサイズ変更 · ダブルクリックでリセット',
+  },
 };

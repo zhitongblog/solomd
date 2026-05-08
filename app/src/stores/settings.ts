@@ -109,7 +109,17 @@ interface Settings {
   // v2.2: AutoGit per-note version history
   autoGitEnabled: boolean;
   autoGitDebounceSeconds: number;
+  /** Show the History pane in the right sidebar. v4.0.2: decoupled from
+   *  autoGitEnabled so users can hide just the panel without disabling git
+   *  sync entirely (issue #55 — Agent + History fighting for vertical space
+   *  during conflict resolution). Defaults to true so existing AutoGit
+   *  users see no behavior change. */
   showHistoryPanel: boolean;
+  /** v4.0.2 — per-pane heights in the right sidebar (issue #6 / #52 / #55).
+   *  Map of pane id → flex-basis pixels. Panes without an entry use
+   *  proportional flex grow (legacy behavior). Once the user drags a
+   *  splitter the touched panes get explicit pixel heights. */
+  rightSidebarPaneHeights: Record<string, number>;
   // v2.3: Local RAG / semantic search. Off by default — when on, the
   // workspace is scanned + embedded into <workspace>/.solomd/embeddings.sqlite.
   ragEnabled: boolean;
@@ -259,7 +269,8 @@ function defaults(): Settings {
     workspaceCsl: '',
     autoGitEnabled: false,
     autoGitDebounceSeconds: 30,
-    showHistoryPanel: false,
+    showHistoryPanel: true,
+    rightSidebarPaneHeights: {},
     ragEnabled: false,
     readingByDefaultOnMobile: (() => {
       try {
@@ -558,14 +569,26 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleAutoGit() {
       this.autoGitEnabled = !this.autoGitEnabled;
-      // Tie panel visibility to the AutoGit toggle — there's only one
-      // user-facing concept ("version history is on / off") and the
-      // panel showing matches that mental model.
-      this.showHistoryPanel = this.autoGitEnabled;
+      // v4.0.2: panel visibility decoupled from autoGit (#55) — hiding the
+      // pane no longer disables sync. Re-enabling sync surfaces the panel
+      // again only if the user hasn't explicitly hidden it.
+      if (this.autoGitEnabled && !this.showHistoryPanel) this.showHistoryPanel = true;
       this.persist();
     },
     toggleHistoryPanel() {
       this.showHistoryPanel = !this.showHistoryPanel;
+      this.persist();
+    },
+    setRightSidebarPaneHeight(paneId: string, px: number) {
+      const clean = Math.max(80, Math.min(2000, Math.round(px) || 0));
+      // Allocate a fresh object so Vue reactivity picks up the mutation
+      // (the persist() write would catch it, but watchers keyed on the
+      // map need the identity change to fire).
+      this.rightSidebarPaneHeights = { ...this.rightSidebarPaneHeights, [paneId]: clean };
+      this.persist();
+    },
+    clearRightSidebarPaneHeights() {
+      this.rightSidebarPaneHeights = {};
       this.persist();
     },
     setAutoGitDebounceSeconds(n: number) {

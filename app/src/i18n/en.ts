@@ -1084,6 +1084,10 @@ export const en = {
     msgCopied: 'Copied',
     msgInserted: 'Inserted',
   },
+  rightSidebar: {
+    hidePane: 'Hide this pane',
+    dragToResize: 'Drag to resize · double-click to reset',
+  },
 };
 
 export type I18n = typeof en;

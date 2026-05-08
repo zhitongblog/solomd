@@ -1073,4 +1073,8 @@ export const zh: I18n = {
     msgCopied: '已复制',
     msgInserted: '已插入',
   },
+  rightSidebar: {
+    hidePane: '隐藏此面板',
+    dragToResize: '拖动调整大小 · 双击重置',
+  },
 };

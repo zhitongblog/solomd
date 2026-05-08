@@ -1069,4 +1069,8 @@ export const ko: I18n = {
     msgCopied: '복사됨',
     msgInserted: '삽입됨',
   },
+  rightSidebar: {
+    hidePane: '이 창 숨기기',
+    dragToResize: '드래그로 크기 조정 · 더블클릭으로 초기화',
+  },
 };

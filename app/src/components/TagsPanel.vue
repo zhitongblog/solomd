@@ -29,6 +29,7 @@ const { t } = useI18n();
 
 const emit = defineEmits<{
   (e: 'filter-tag', tag: string): void;
+  (e: 'close'): void;
 }>();
 
 /** Sorted tags: descending count, then alphabetical for stable display. */
@@ -73,6 +74,12 @@ function onTomorrow() {
           @click="onTomorrow"
         >›</button>
       </div>
+      <button
+        class="rs-pane-close"
+        type="button"
+        :title="t('rightSidebar.hidePane')"
+        @click="emit('close')"
+      >×</button>
     </header>
 
     <div v-if="!hasFolder" class="tags-panel__empty">{{ t('tags.openFolder') }}</div>

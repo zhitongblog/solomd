@@ -1069,4 +1069,8 @@ export const de: I18n = {
     msgCopied: 'Kopiert',
     msgInserted: 'Eingefügt',
   },
+  rightSidebar: {
+    hidePane: 'Diesen Bereich ausblenden',
+    dragToResize: 'Ziehen zum Anpassen · Doppelklick zum Zurücksetzen',
+  },
 };

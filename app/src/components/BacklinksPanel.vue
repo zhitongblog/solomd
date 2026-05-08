@@ -10,6 +10,8 @@ const idx = useWorkspaceIndexStore();
 const files = useFiles();
 const { t } = useI18n();
 
+const emit = defineEmits<{ close: [] }>();
+
 const refs = ref<BacklinkRef[]>([]);
 const loading = ref(false);
 
@@ -70,6 +72,12 @@ onBeforeUnmount(() => {});
     <header class="backlinks__head">
       <span class="backlinks__title">{{ t('backlinks.heading') }}</span>
       <span v-if="!loading" class="backlinks__count">{{ refs.length }}</span>
+      <button
+        class="rs-pane-close"
+        type="button"
+        :title="t('rightSidebar.hidePane')"
+        @click="emit('close')"
+      >×</button>
     </header>
 
     <div v-if="loading" class="backlinks__empty">{{ t('backlinks.loading') }}</div>

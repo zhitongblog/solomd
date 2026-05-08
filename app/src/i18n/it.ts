@@ -1069,4 +1069,8 @@ export const it: I18n = {
     msgCopied: 'Copiato',
     msgInserted: 'Inserito',
   },
+  rightSidebar: {
+    hidePane: 'Nascondi questo pannello',
+    dragToResize: 'Trascina per ridimensionare · doppio clic per reimpostare',
+  },
 };
