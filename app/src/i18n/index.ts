@@ -14,8 +14,13 @@ import { fr } from './fr';
 import { es } from './es';
 import { pt } from './pt';
 import { it } from './it';
+import { pl } from './pl';
+import { nl } from './nl';
+import { tr } from './tr';
+import { sv } from './sv';
+import { uk } from './uk';
 
-const dicts = { en, zh, ja, ko, de, fr, es, pt, it } as const;
+const dicts = { en, zh, ja, ko, de, fr, es, pt, it, pl, nl, tr, sv, uk } as const;
 type Lang = keyof typeof dicts;
 
 export function useI18n() {
