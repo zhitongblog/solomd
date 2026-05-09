@@ -7,6 +7,7 @@ import { rewriteImageUrls } from '../lib/image-resolve';
 import { openImageOverlay, type OverlayStrings } from '../lib/image-overlay';
 import { useI18n } from '../i18n';
 import { useSettingsStore } from '../stores/settings';
+import { useFiles } from '../composables/useFiles';
 import PreviewSearch from './PreviewSearch.vue';
 
 const props = withDefaults(
@@ -25,6 +26,7 @@ const props = withDefaults(
   { skin: 'default' },
 );
 const settings = useSettingsStore();
+const files = useFiles();
 const { t } = useI18n();
 const host = ref<HTMLDivElement | null>(null);
 const searchOpen = ref(false);
@@ -145,9 +147,24 @@ function handleLinkClick(e: MouseEvent) {
   if (href.startsWith('#')) return;
   e.preventDefault();
   e.stopPropagation();
-  openUrl(href).catch(() => {
-    // Silently fail if opener can't handle the URL
-  });
+  // External URL: open in system browser
+  if (/^(https?|mailto|tel):/i.test(href)) {
+    openUrl(href).catch((err) => {
+      console.warn('[Preview] openUrl failed:', href, err);
+    });
+    return;
+  }
+  // Relative path: resolve against current file's directory and open in app
+  if (props.filePath) {
+    const sep = props.filePath.lastIndexOf('/');
+    const dir = sep >= 0 ? props.filePath.substring(0, sep + 1) : '';
+    // Normalise: strip leading ./
+    const cleaned = href.replace(/^\.\//, '');
+    const resolved = dir + cleaned;
+    files.openPath(resolved, { bypassNewWindow: true }).catch((err) => {
+      console.warn('[Preview] openPath failed:', resolved, err);
+    });
+  }
 }
 
 onMounted(async () => {
