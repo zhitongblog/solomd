@@ -176,5 +176,11 @@ defineProps<{ name: string; size?: number }>();
       <path d="M2 5h7a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H2z" />
       <path d="M22 5h-7a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h8z" />
     </template>
+    <template v-else-if="name === 'external'">
+      <!-- Open in external app: a square with an arrow pointing out -->
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+      <polyline points="15 3 21 3 21 9" />
+      <line x1="10" y1="14" x2="21" y2="3" />
+    </template>
   </svg>
 </template>

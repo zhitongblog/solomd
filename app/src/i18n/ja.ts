@@ -47,6 +47,8 @@ export const ja: I18n = {
     insertDivider: '区切り線',
     copyTooltip: 'リッチテキスト HTML としてコピー (Cmd+Shift+C)',
     copyFormats: 'コピー形式オプション',
+    openExternal: 'Open in external editor',
+    openExternalTooltip: 'Open file with system default editor',
     editMode: '編集',
     splitMode: '分割',
     previewMode: 'プレビュー',
@@ -254,6 +256,7 @@ export const ja: I18n = {
     converting: 'Markdown に変換中…',
     converted: 'Markdown に変換しました',
     conversionFailed: '変換に失敗しました',
+    openExternalNoFile: 'Save the file first before opening in an external editor',
   },
   overlay: {
     close: '閉じる',

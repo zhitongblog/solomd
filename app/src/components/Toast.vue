@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useToastsStore } from '../stores/toasts';
+import { useToastsStore, type Toast } from '../stores/toasts';
 
 const toasts = useToastsStore();
 
@@ -9,6 +9,10 @@ const icons: Record<string, string> = {
   info: 'ℹ',
   warning: '!',
 };
+
+function onToastClick(t: Toast) {
+  navigator.clipboard.writeText(t.message).catch(() => {});
+}
 </script>
 
 <template>
@@ -19,7 +23,7 @@ const icons: Record<string, string> = {
         :key="t.id"
         class="toast"
         :class="`toast--${t.kind}`"
-        @click="toasts.dismiss(t.id)"
+        @click="onToastClick(t)"
       >
         <span class="toast__icon">{{ icons[t.kind] }}</span>
         <span class="toast__msg">{{ t.message }}</span>

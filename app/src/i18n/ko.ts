@@ -47,6 +47,8 @@ export const ko: I18n = {
     insertDivider: '구분선',
     copyTooltip: '서식 있는 HTML로 복사(Cmd+Shift+C)',
     copyFormats: '복사 형식 옵션',
+    openExternal: 'Open in external editor',
+    openExternalTooltip: 'Open file with system default editor',
     editMode: '편집',
     splitMode: '분할',
     previewMode: '미리 보기',
@@ -254,6 +256,7 @@ export const ko: I18n = {
     converting: 'Markdown으로 변환 중…',
     converted: 'Markdown으로 변환됨',
     conversionFailed: '변환 실패',
+    openExternalNoFile: 'Save the file first before opening in an external editor',
   },
   overlay: {
     close: '닫기',

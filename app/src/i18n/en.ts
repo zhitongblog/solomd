@@ -45,6 +45,8 @@ export const en = {
     insertDivider: 'Divider',
     copyTooltip: 'Copy as rich text HTML (Cmd+Shift+C)',
     copyFormats: 'Copy format options',
+    openExternal: 'Open in external editor',
+    openExternalTooltip: 'Open file with system default editor',
     editMode: 'Edit',
     splitMode: 'Split',
     previewMode: 'Preview',
@@ -252,6 +254,7 @@ export const en = {
     converting: 'Converting to Markdown…',
     converted: 'Converted to Markdown',
     conversionFailed: 'Conversion failed',
+    openExternalNoFile: 'Save the file first before opening in an external editor',
   },
   overlay: {
     close: 'Close',

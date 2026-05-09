@@ -4,6 +4,7 @@ import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
+import { openPath } from '@tauri-apps/plugin-opener';
 import Toolbar from './components/Toolbar.vue';
 import TelemetryBanner from './components/TelemetryBanner.vue';
 import TileRoot from './components/TileRoot.vue';
@@ -392,6 +393,19 @@ function onFilterTag(tag: string) {
 let unlistenOpened: UnlistenFn | null = null;
 let unlistenMenu: UnlistenFn | null = null;
 
+async function openExternalFile() {
+  const filePath = tabs.activeTab?.filePath;
+  if (!filePath) {
+    console.warn('openExternal: no file path');
+    return;
+  }
+  try {
+    await openPath(filePath);
+  } catch (e) {
+    console.warn('openExternal failed', e);
+  }
+}
+
 function dispatchMenuAction(id: string) {
   switch (id) {
     case 'file.new':
@@ -411,6 +425,9 @@ function dispatchMenuAction(id: string) {
       break;
     case 'file.saveAs':
       files.saveActiveAs();
+      break;
+    case 'file.openExternal':
+      openExternalFile();
       break;
     case 'file.print':
       exporter.exportPdfPrint();

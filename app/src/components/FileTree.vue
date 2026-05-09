@@ -385,7 +385,7 @@ onBeforeUnmount(() => {
 
       <!-- Inline new/rename input — appears at the top of the tree. -->
       <div v-if="editing" class="ftree__edit">
-        <span class="ftree__icon">{{ editing.kind === 'new-dir' ? '▸' : editing.kind === 'rename' ? '·' : '·' }}</span>
+        <span class="ftree__icon">{{ editing.kind === 'new-dir' ? '▸' : editing.kind === 'rename' ? '•' : '•' }}</span>
         <input
           ref="editInput"
           v-model="editing.name"
@@ -506,7 +506,7 @@ export const FileTreeNode = defineComponent({
             title: n.path,
           },
           [
-            h('span', { class: 'ftree__icon' }, n.is_dir ? (n.expanded ? '▾' : '▸') : '·'),
+            h('span', { class: 'ftree__icon' }, n.is_dir ? (n.expanded ? '▾' : '▸') : '•'),
             h('span', { class: 'ftree__name' }, n.name),
             !n.is_dir && props.inboxPaths.has(n.path)
               ? h('span', { class: 'ftree__inbox-dot', title: 'inbox' }, '●')
@@ -623,15 +623,28 @@ export const FileTreeNode = defineComponent({
   background: var(--bg-hover, color-mix(in srgb, var(--accent) 10%, transparent));
 }
 :deep(.ftree__icon) {
-  width: 12px;
+  width: 14px;
   flex-shrink: 0;
+  text-align: center;
   color: var(--text-faint);
   font-size: 10px;
+}
+:deep(.ftree__item--dir .ftree__icon) {
+  color: var(--accent);
+  font-size: 11px;
+}
+:deep(.ftree__item--file .ftree__icon) {
+  color: var(--text-muted);
+  font-size: 9px;
 }
 :deep(.ftree__name) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+:deep(.ftree__item--dir .ftree__name) {
+  font-weight: 600;
+  color: var(--text);
 }
 :deep(.ftree__inbox-dot) {
   color: var(--accent);

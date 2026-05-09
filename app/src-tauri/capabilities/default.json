@@ -14,6 +14,7 @@
     "core:webview:default",
     "core:webview:allow-create-webview-window",
     "opener:default",
+    "opener:allow-open-path",
     "dialog:default",
     "dialog:allow-open",
     "dialog:allow-save",
@@ -25,5 +26,12 @@
     "clipboard-manager:allow-write-image",
     "clipboard-manager:allow-read-image",
     "window-state:default"
-  ]
+  ],
+  "scope": {
+    "opener": {
+      "allow": [
+        { "path": "$HOME/**" }
+      ]
+    }
+  }
 }

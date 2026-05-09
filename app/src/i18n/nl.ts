@@ -47,6 +47,8 @@ export const nl: I18n = {
     insertDivider: 'Scheidingslijn',
     copyTooltip: 'Kopiëren als rich-text HTML (Cmd+Shift+C)',
     copyFormats: 'Kopieer-opties',
+    openExternal: 'Open in external editor',
+    openExternalTooltip: 'Open file with system default editor',
     editMode: 'Bewerken',
     splitMode: 'Splitsen',
     previewMode: 'Voorvertoning',
@@ -254,6 +256,7 @@ export const nl: I18n = {
     converting: 'Bezig met converteren naar Markdown…',
     converted: 'Geconverteerd naar Markdown',
     conversionFailed: 'Conversie mislukt',
+    openExternalNoFile: 'Save the file first before opening in an external editor',
   },
   overlay: {
     close: 'Sluiten',

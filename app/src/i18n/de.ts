@@ -47,6 +47,8 @@ export const de: I18n = {
     insertDivider: 'Trennlinie',
     copyTooltip: 'Als Rich-Text-HTML kopieren (Cmd+Umschalt+C)',
     copyFormats: 'Kopierformat-Optionen',
+    openExternal: 'Open in external editor',
+    openExternalTooltip: 'Open file with system default editor',
     editMode: 'Bearbeiten',
     splitMode: 'Geteilt',
     previewMode: 'Vorschau',
@@ -254,6 +256,7 @@ export const de: I18n = {
     converting: 'Wird zu Markdown konvertiert…',
     converted: 'Zu Markdown konvertiert',
     conversionFailed: 'Konvertierung fehlgeschlagen',
+    openExternalNoFile: 'Save the file first before opening in an external editor',
   },
   overlay: {
     close: 'Schließen',

@@ -12,6 +12,7 @@ import { useExport } from '../composables/useExport';
 import { useToastsStore } from '../stores/toasts';
 import { cleanAIArtifacts } from '../lib/clean-ai';
 import { useI18n } from '../i18n';
+import { openPath } from '@tauri-apps/plugin-opener';
 
 const { t } = useI18n();
 
@@ -101,6 +102,19 @@ function onAIRewrite() {
       detail: { selection, from, to },
     }),
   );
+}
+
+async function onOpenExternal() {
+  const path = tabs.activeTab?.filePath;
+  if (!path) {
+    toasts.warning(t('toast.openExternalNoFile'));
+    return;
+  }
+  try {
+    await openPath(path);
+  } catch (e) {
+    toasts.warning(`Failed: ${e}`);
+  }
 }
 
 const recentOpen = ref(false);
@@ -241,6 +255,9 @@ onBeforeUnmount(() => {
       </button>
       <button class="icon-btn" @click="files.saveActiveAs" :title="t('toolbar.saveAsTooltip')">
         <Icon name="save-as" />
+      </button>
+      <button class="icon-btn" @click="onOpenExternal" :title="t('toolbar.openExternalTooltip')">
+        <Icon name="external" />
       </button>
       <div class="dropdown">
         <button

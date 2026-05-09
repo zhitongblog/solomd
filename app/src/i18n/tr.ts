@@ -47,6 +47,8 @@ export const tr: I18n = {
     insertDivider: 'Ayraç',
     copyTooltip: 'Zengin metin HTML olarak kopyala (Cmd+Shift+C)',
     copyFormats: 'Kopyalama biçimi seçenekleri',
+    openExternal: 'Open in external editor',
+    openExternalTooltip: 'Open file with system default editor',
     editMode: 'Düzenle',
     splitMode: 'Bölünmüş',
     previewMode: 'Önizleme',
@@ -254,6 +256,7 @@ export const tr: I18n = {
     converting: 'Markdown\'a dönüştürülüyor…',
     converted: 'Markdown\'a dönüştürüldü',
     conversionFailed: 'Dönüştürme başarısız',
+    openExternalNoFile: 'Save the file first before opening in an external editor',
   },
   overlay: {
     close: 'Kapat',

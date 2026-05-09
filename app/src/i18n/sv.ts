@@ -47,6 +47,8 @@ export const sv: I18n = {
     insertDivider: 'Avgränsare',
     copyTooltip: 'Kopiera som rik text-HTML (Cmd+Shift+C)',
     copyFormats: 'Kopieringsformat',
+    openExternal: 'Open in external editor',
+    openExternalTooltip: 'Open file with system default editor',
     editMode: 'Redigera',
     splitMode: 'Delad',
     previewMode: 'Förhandsgranska',
@@ -254,6 +256,7 @@ export const sv: I18n = {
     converting: 'Konverterar till Markdown…',
     converted: 'Konverterat till Markdown',
     conversionFailed: 'Konvertering misslyckades',
+    openExternalNoFile: 'Save the file first before opening in an external editor',
   },
   overlay: {
     close: 'Stäng',

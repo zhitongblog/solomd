@@ -15,6 +15,7 @@ import {
 import { cleanAIArtifacts, stripMarkdownToPlain } from '../lib/clean-ai';
 import { openWelcomeTour } from '../lib/welcome-tour';
 import { formatMarkdown } from '../lib/markdown-format';
+import { openPath } from '@tauri-apps/plugin-opener';
 import { useDailyNotes } from './useDailyNotes';
 import { usePandocExport } from './usePandocExport';
 import { useBasesView } from './useBasesView';
@@ -94,6 +95,26 @@ export function useCommands(): Command[] {
       run: () => files.openFolder(),
     },
     { id: 'file.closeTab', title: 'Close Tab', shortcut: 'Ctrl+W', run: () => tabs.activeId && files.closeTabSafe(tabs.activeId) },
+
+    // v4.0.3 — Open active document in system default editor
+    {
+      id: 'file.openExternal',
+      title: 'Open in External Editor',
+      hint: 'Open file with system default editor',
+      run: async () => {
+        const tab = useTabsStore().activeTab;
+        const path = tab?.filePath;
+        if (!path) {
+          toasts.warning('Save the file first before opening in an external editor');
+          return;
+        }
+        try {
+          await openPath(path);
+        } catch (e) {
+          toasts.warning(`Failed: ${e}`);
+        }
+      },
+    },
 
     { id: 'view.editor', title: 'View: Edit Only', run: () => settings.setViewMode('edit') },
     { id: 'view.split', title: 'View: Split', run: () => settings.setViewMode('split') },

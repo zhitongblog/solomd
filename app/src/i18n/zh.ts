@@ -47,6 +47,8 @@ export const zh: I18n = {
     insertDivider: '分隔线',
     copyTooltip: '复制为富文本 HTML (⇧⌘C)',
     copyFormats: '复制格式选项',
+    openExternal: '用外部编辑器打开',
+    openExternalTooltip: '使用系统默认编辑器打开当前文件',
     editMode: '编辑',
     splitMode: '分栏',
     previewMode: '预览',
@@ -253,6 +255,7 @@ export const zh: I18n = {
     converting: '正在转换为 Markdown…',
     converted: '已转换为 Markdown',
     conversionFailed: '转换失败',
+    openExternalNoFile: '请先保存文件后再用外部编辑器打开',
   },
   overlay: {
     close: '关闭',

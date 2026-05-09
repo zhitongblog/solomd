@@ -47,6 +47,8 @@ export const uk: I18n = {
     insertDivider: 'Розділювач',
     copyTooltip: 'Копіювати як форматований HTML (Cmd+Shift+C)',
     copyFormats: 'Параметри формату копіювання',
+    openExternal: 'Open in external editor',
+    openExternalTooltip: 'Open file with system default editor',
     editMode: 'Редагування',
     splitMode: 'Розділений',
     previewMode: 'Перегляд',
@@ -254,6 +256,7 @@ export const uk: I18n = {
     converting: 'Перетворення на Markdown…',
     converted: 'Перетворено на Markdown',
     conversionFailed: 'Помилка перетворення',
+    openExternalNoFile: 'Save the file first before opening in an external editor',
   },
   overlay: {
     close: 'Закрити',

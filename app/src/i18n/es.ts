@@ -47,6 +47,8 @@ export const es: I18n = {
     insertDivider: 'Separador',
     copyTooltip: 'Copiar como HTML enriquecido (Cmd+Mayús+C)',
     copyFormats: 'Opciones de formato de copia',
+    openExternal: 'Open in external editor',
+    openExternalTooltip: 'Open file with system default editor',
     editMode: 'Editar',
     splitMode: 'Dividido',
     previewMode: 'Vista previa',
@@ -254,6 +256,7 @@ export const es: I18n = {
     converting: 'Convirtiendo a Markdown…',
     converted: 'Convertido a Markdown',
     conversionFailed: 'Conversión fallida',
+    openExternalNoFile: 'Save the file first before opening in an external editor',
   },
   overlay: {
     close: 'Cerrar',

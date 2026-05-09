@@ -182,6 +182,7 @@ struct MenuStrings {
     print_item: &'static str,
     close_tab: &'static str,
     new_window: &'static str,
+    open_external: &'static str,
     toggle_theme: &'static str,
     toggle_sidebar: &'static str,
     toggle_outline: &'static str,
@@ -209,6 +210,7 @@ fn strings_for(lang: &str) -> MenuStrings {
             print_item: "打印…",
             close_tab: "关闭标签页",
             new_window: "新建窗口",
+            open_external: "用外部编辑器打开",
             toggle_theme: "切换主题",
             toggle_sidebar: "切换文件树",
             toggle_outline: "切换大纲",
@@ -234,6 +236,7 @@ fn strings_for(lang: &str) -> MenuStrings {
             print_item: "Print…",
             close_tab: "Close Tab",
             new_window: "New Window",
+            open_external: "Open in External Editor",
             toggle_theme: "Toggle Theme",
             toggle_sidebar: "Toggle File Tree",
             toggle_outline: "Toggle Outline",
@@ -278,6 +281,9 @@ fn build_app_menu<R: tauri::Runtime>(
     let new_window = MenuItemBuilder::with_id("window.new", s.new_window)
         .accelerator("CmdOrCtrl+Shift+N")
         .build(app)?;
+    let open_external = MenuItemBuilder::with_id("file.openExternal", s.open_external)
+        .accelerator("CmdOrCtrl+Shift+E")
+        .build(app)?;
 
     let file_submenu = SubmenuBuilder::new(app, s.file)
         .item(&new_md)
@@ -288,6 +294,8 @@ fn build_app_menu<R: tauri::Runtime>(
         .separator()
         .item(&save)
         .item(&save_as)
+        .separator()
+        .item(&open_external)
         .separator()
         .item(&print_item)
         .separator()
