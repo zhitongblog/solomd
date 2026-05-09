@@ -79,6 +79,8 @@ function tagComplete(context: CompletionContext): CompletionResult | null {
   const partial = match.text.slice(1).toLowerCase();
   // Don't autoshow on a bare `#` (too noisy); user can hit Ctrl+Space.
   if (!context.explicit && partial.length === 0) return null;
+  // 6-char pure hex → likely a CSS colour code, not a tag.
+  if (/^[0-9a-f]{6}$/.test(partial)) return null;
 
   let tags: { tag: string; count: number }[] = [];
   try {
