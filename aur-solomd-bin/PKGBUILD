@@ -1,6 +1,6 @@
 # Maintainer: zhitong <dev@solomd.local>
 pkgname=solomd-bin
-pkgver=4.0.0
+pkgver=4.1.0
 pkgrel=1
 pkgdesc='A lightweight Markdown and plain text editor built with Tauri 2'
 arch=('x86_64')
@@ -16,7 +16,7 @@ conflicts=('solomd')
 options=('!strip' '!debug')
 source=("${pkgname}-${pkgver}.AppImage::https://github.com/zhitongblog/solomd/releases/download/v${pkgver}/SoloMD_${pkgver}_amd64.AppImage"
         "solomd.desktop")
-sha256sums=('8032ade6a2fa1ecb17bab3cfa638dc0b9a7558329a61d5a94fd5d094e3599f2f'
+sha256sums=('1cf92f74be3d05ca3f7d418d71dc76095684a161939f144c7c304191e7af7d0f'
             'SKIP')
 
 prepare() {
