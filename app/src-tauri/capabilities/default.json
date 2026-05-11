@@ -24,7 +24,8 @@
     "clipboard-manager:allow-write-text",
     "clipboard-manager:allow-write-html",
     "clipboard-manager:allow-write-image",
-    "clipboard-manager:allow-read-image"
+    "clipboard-manager:allow-read-image",
+    "deep-link:default"
   ],
   "scope": {
     "opener": {

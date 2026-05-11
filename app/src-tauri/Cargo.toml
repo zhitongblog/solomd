@@ -1,6 +1,6 @@
 [package]
 name = "solomd"
-version = "4.1.1"
+version = "4.1.2"
 description = "SoloMD — a lightweight, cross-platform Markdown + plain text editor"
 authors = ["zhitong"]
 edition = "2021"
@@ -130,6 +130,7 @@ cron = "0.12"
 chrono = { version = "0.4", default-features = false, features = ["clock", "serde"] }
 globset = "0.4"
 hex = "0.4"
+tauri-plugin-deep-link = "2"
 
 # window-state plugin is desktop-only — kept at the very end of the
 # dependency tables to avoid bleeding the platform constraint onto every

@@ -501,6 +501,38 @@ onMounted(async () => {
     console.warn('opened-file listener not available', err);
   }
 
+  // iOS / Android — tauri-plugin-deep-link delivers incoming files
+  // (Files app "Open with…", Mail attachments, AirDrop) as a list of URL
+  // strings. file:// URLs point into our app's Documents dir (the OS
+  // already copied the file there before launching us, or it's a
+  // bookmark into a third-party cloud-folder we asked to open in place).
+  try {
+    const { onOpenUrl, getCurrent } = await import('@tauri-apps/plugin-deep-link');
+    const handleUrls = async (urls: string[] | null | undefined) => {
+      if (!urls) return;
+      for (const raw of urls) {
+        try {
+          const path = raw.startsWith('file://')
+            ? decodeURIComponent(raw.slice('file://'.length))
+            : raw;
+          await files.openPath(path, { bypassNewWindow: true });
+        } catch (err) {
+          console.warn('deep-link openPath failed', raw, err);
+        }
+      }
+    };
+    // Live listener — files arriving while the app is already open.
+    await onOpenUrl(handleUrls);
+    // Initial payload — file that LAUNCHED the app (iOS cold start with
+    // tap-on-file from Files / Mail).
+    const initial = await getCurrent();
+    await handleUrls(initial);
+  } catch (err) {
+    // Plugin only present on mobile + matching platforms; harmless to
+    // skip on macOS/Linux/Windows (those use 'solomd://opened-file' above).
+    console.debug('deep-link plugin not active', err);
+  }
+
   try {
     const pending = await invoke<string[]>('drain_pending_opens');
     for (const p of pending || []) {

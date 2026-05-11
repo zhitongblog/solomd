@@ -79,7 +79,13 @@ pub fn run() {
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_clipboard_manager::init());
+        .plugin(tauri_plugin_clipboard_manager::init())
+        // tauri-plugin-deep-link: receive incoming files / URLs from
+        // iOS "Open with" / Files app / Mail attachments. On iOS the
+        // plugin hooks `application:openURL:` automatically and emits
+        // a `deep-link://new-url` event over Tauri's event bus, which
+        // App.vue's onMounted handler picks up to spawn a new tab.
+        .plugin(tauri_plugin_deep_link::init());
 
     #[cfg(desktop)]
     let builder = builder.plugin(
