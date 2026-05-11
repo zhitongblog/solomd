@@ -89,6 +89,15 @@ export const pl: I18n = {
     settings: 'Ustawienia',
     help: 'Pomoc',
   },
+  explorer: {
+    newFile: 'Nowy plik',
+    newFolder: 'Nowy folder',
+    rename: 'Zmień nazwę',
+    delete: 'Usuń',
+    reveal: 'Pokaż w Finderze',
+    refresh: 'Odśwież',
+    openFolder: 'Otwórz folder…',
+  },
   statusbar: {
     ln: 'Wrs',
     col: 'Kol',
@@ -213,6 +222,7 @@ export const pl: I18n = {
     closeOthers: 'Zamknij pozostałe karty',
     closeSaved: 'Zamknij wszystkie zapisane',
     closeAll: 'Zamknij wszystkie karty',
+    revealInFolder: 'Pokaż w Finderze',
   },
   unsaved: {
     title: 'Niezapisane zmiany',

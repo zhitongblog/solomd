@@ -89,6 +89,15 @@ export const fr: I18n = {
     settings: 'Paramètres',
     help: 'Aide',
   },
+  explorer: {
+    newFile: 'Nouveau fichier',
+    newFolder: 'Nouveau dossier',
+    rename: 'Renommer',
+    delete: 'Supprimer',
+    reveal: 'Afficher dans le Finder',
+    refresh: 'Actualiser',
+    openFolder: 'Ouvrir le dossier…',
+  },
   statusbar: {
     ln: 'Lg',
     col: 'Col',
@@ -213,6 +222,7 @@ export const fr: I18n = {
     closeOthers: 'Fermer les autres onglets',
     closeSaved: 'Fermer tous les enregistrés',
     closeAll: 'Fermer tous les onglets',
+    revealInFolder: 'Afficher dans le Finder',
   },
   unsaved: {
     title: 'Modifications non enregistrées',

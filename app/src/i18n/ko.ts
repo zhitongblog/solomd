@@ -89,6 +89,15 @@ export const ko: I18n = {
     settings: '설정',
     help: '도움말',
   },
+  explorer: {
+    newFile: '새 파일',
+    newFolder: '새 폴더',
+    rename: '이름 변경',
+    delete: '삭제',
+    reveal: 'Finder에서 표시',
+    refresh: '새로 고침',
+    openFolder: '폴더 열기…',
+  },
   statusbar: {
     ln: '행',
     col: '열',
@@ -213,6 +222,7 @@ export const ko: I18n = {
     closeOthers: '다른 탭 닫기',
     closeSaved: '저장된 탭 모두 닫기',
     closeAll: '모든 탭 닫기',
+    revealInFolder: 'Finder에서 표시',
   },
   unsaved: {
     title: '저장되지 않은 변경 사항',

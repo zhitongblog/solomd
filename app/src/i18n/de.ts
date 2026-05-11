@@ -89,6 +89,15 @@ export const de: I18n = {
     settings: 'Einstellungen',
     help: 'Hilfe',
   },
+  explorer: {
+    newFile: 'Neue Datei',
+    newFolder: 'Neuer Ordner',
+    rename: 'Umbenennen',
+    delete: 'Löschen',
+    reveal: 'Im Finder anzeigen',
+    refresh: 'Aktualisieren',
+    openFolder: 'Ordner öffnen…',
+  },
   statusbar: {
     ln: 'Z',
     col: 'Sp',
@@ -213,6 +222,7 @@ export const de: I18n = {
     closeOthers: 'Andere Tabs schließen',
     closeSaved: 'Alle gespeicherten schließen',
     closeAll: 'Alle Tabs schließen',
+    revealInFolder: 'Im Finder anzeigen',
   },
   unsaved: {
     title: 'Ungespeicherte Änderungen',

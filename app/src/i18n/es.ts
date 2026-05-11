@@ -89,6 +89,15 @@ export const es: I18n = {
     settings: 'Ajustes',
     help: 'Ayuda',
   },
+  explorer: {
+    newFile: 'Nuevo archivo',
+    newFolder: 'Nueva carpeta',
+    rename: 'Renombrar',
+    delete: 'Eliminar',
+    reveal: 'Mostrar en Finder',
+    refresh: 'Actualizar',
+    openFolder: 'Abrir carpeta…',
+  },
   statusbar: {
     ln: 'Lín',
     col: 'Col',
@@ -213,6 +222,7 @@ export const es: I18n = {
     closeOthers: 'Cerrar otras pestañas',
     closeSaved: 'Cerrar todas las guardadas',
     closeAll: 'Cerrar todas las pestañas',
+    revealInFolder: 'Mostrar en Finder',
   },
   unsaved: {
     title: 'Cambios sin guardar',

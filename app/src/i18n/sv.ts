@@ -89,6 +89,15 @@ export const sv: I18n = {
     settings: 'Inställningar',
     help: 'Hjälp',
   },
+  explorer: {
+    newFile: 'Ny fil',
+    newFolder: 'Ny mapp',
+    rename: 'Byt namn',
+    delete: 'Radera',
+    reveal: 'Visa i Finder',
+    refresh: 'Uppdatera',
+    openFolder: 'Öppna mapp…',
+  },
   statusbar: {
     ln: 'Rad',
     col: 'Kol',
@@ -213,6 +222,7 @@ export const sv: I18n = {
     closeOthers: 'Stäng övriga flikar',
     closeSaved: 'Stäng alla sparade',
     closeAll: 'Stäng alla flikar',
+    revealInFolder: 'Visa i Finder',
   },
   unsaved: {
     title: 'Osparade ändringar',

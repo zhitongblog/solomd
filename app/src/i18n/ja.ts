@@ -89,6 +89,15 @@ export const ja: I18n = {
     settings: '設定',
     help: 'ヘルプ',
   },
+  explorer: {
+    newFile: '新規ファイル',
+    newFolder: '新規フォルダ',
+    rename: '名前変更',
+    delete: '削除',
+    reveal: 'Finder で表示',
+    refresh: '更新',
+    openFolder: 'フォルダを開く…',
+  },
   statusbar: {
     ln: '行',
     col: '列',
@@ -213,6 +222,7 @@ export const ja: I18n = {
     closeOthers: '他のタブを閉じる',
     closeSaved: '保存済みをすべて閉じる',
     closeAll: 'すべてのタブを閉じる',
+    revealInFolder: 'Finder で表示',
   },
   unsaved: {
     title: '保存されていない変更',

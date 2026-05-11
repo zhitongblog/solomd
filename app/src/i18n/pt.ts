@@ -91,6 +91,15 @@ export const pt: I18n = {
     settings: 'Configurações',
     help: 'Ajuda',
   },
+  explorer: {
+    newFile: 'Novo arquivo',
+    newFolder: 'Nova pasta',
+    rename: 'Renomear',
+    delete: 'Excluir',
+    reveal: 'Mostrar no Finder',
+    refresh: 'Atualizar',
+    openFolder: 'Abrir pasta…',
+  },
   statusbar: {
     ln: 'Lin',
     col: 'Col',
@@ -215,6 +224,7 @@ export const pt: I18n = {
     closeOthers: 'Fechar outras abas',
     closeSaved: 'Fechar todas as salvas',
     closeAll: 'Fechar todas as abas',
+    revealInFolder: 'Mostrar no Finder',
   },
   unsaved: {
     title: 'Alterações não salvas',

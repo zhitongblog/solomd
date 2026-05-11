@@ -89,6 +89,15 @@ export const tr: I18n = {
     settings: 'Ayarlar',
     help: 'Yardım',
   },
+  explorer: {
+    newFile: 'Yeni dosya',
+    newFolder: 'Yeni klasör',
+    rename: 'Yeniden adlandır',
+    delete: 'Sil',
+    reveal: 'Finder\'da göster',
+    refresh: 'Yenile',
+    openFolder: 'Klasör aç…',
+  },
   statusbar: {
     ln: 'Sat',
     col: 'Sütun',
@@ -213,6 +222,7 @@ export const tr: I18n = {
     closeOthers: 'Diğer Sekmeleri Kapat',
     closeSaved: 'Kaydedilenleri Kapat',
     closeAll: 'Tüm Sekmeleri Kapat',
+    revealInFolder: 'Finder\'da göster',
   },
   unsaved: {
     title: 'Kaydedilmemiş Değişiklikler',

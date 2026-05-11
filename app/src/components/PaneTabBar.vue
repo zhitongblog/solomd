@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
+import { revealItemInDir } from '@tauri-apps/plugin-opener';
 import { useTabsStore } from '../stores/tabs';
 import { useTilesStore } from '../stores/tiles';
 import { useFiles } from '../composables/useFiles';
@@ -59,12 +60,17 @@ const ctxFlags = computed(() => {
   const list = tabs.tabs;
   const idx = list.findIndex((t) => t.id === ctxMenu.value!.tabId);
   if (idx < 0) return null;
+  const target = list[idx];
   return {
     hasLeft: idx > 0,
     hasRight: idx < list.length - 1,
     hasOthers: list.length > 1,
     hasSaved: list.some((x) => x.id !== ctxMenu.value!.tabId && x.content === x.savedContent),
     hasAny: list.length > 0,
+    // Issue #64 — "Open Enclosing Folder" only meaningful when the tab
+    // is backed by a real on-disk path. Untitled / unsaved buffers have
+    // no path, so the menu item is rendered disabled.
+    hasFilePath: !!target?.filePath,
   };
 });
 
@@ -75,13 +81,19 @@ async function closeMany(ids: string[]) {
   }
 }
 
-async function onTabAction(action: 'close' | 'closeLeft' | 'closeRight' | 'closeOthers' | 'closeSaved' | 'closeAll') {
+async function onTabAction(action: 'close' | 'closeLeft' | 'closeRight' | 'closeOthers' | 'closeSaved' | 'closeAll' | 'revealInFolder') {
   const m = ctxMenu.value;
   closeCtxMenu();
   if (!m) return;
   const list = tabs.tabs;
   const idx = list.findIndex((t) => t.id === m.tabId);
   if (idx < 0) return;
+  if (action === 'revealInFolder') {
+    const path = list[idx]?.filePath;
+    if (!path) return;
+    try { await revealItemInDir(path); } catch (e) { console.warn('reveal failed', e); }
+    return;
+  }
   const ids = (() => {
     switch (action) {
       case 'close':       return [m.tabId];
@@ -91,6 +103,7 @@ async function onTabAction(action: 'close' | 'closeLeft' | 'closeRight' | 'close
       case 'closeSaved':  return list.filter((x) => x.content === x.savedContent).map((x) => x.id);
       case 'closeAll':    return list.map((x) => x.id);
     }
+    return [];
   })();
   await closeMany(ids);
 }
@@ -161,6 +174,8 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
         <div class="ctx-sep" />
         <button class="ctx-item" :disabled="!ctxFlags?.hasSaved" @click="onTabAction('closeSaved')">{{ t('tabMenu.closeSaved') }}</button>
         <button class="ctx-item" :disabled="!ctxFlags?.hasAny"   @click="onTabAction('closeAll')">{{ t('tabMenu.closeAll') }}</button>
+        <div class="ctx-sep" />
+        <button class="ctx-item" :disabled="!ctxFlags?.hasFilePath" @click="onTabAction('revealInFolder')">{{ t('tabMenu.revealInFolder') }}</button>
         <div class="ctx-sep" />
         <button class="ctx-item" @click="splitPane('horizontal')">Split Right</button>
         <button class="ctx-item" @click="splitPane('vertical')">Split Down</button>

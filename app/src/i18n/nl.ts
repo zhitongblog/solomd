@@ -89,6 +89,15 @@ export const nl: I18n = {
     settings: 'Instellingen',
     help: 'Hulp',
   },
+  explorer: {
+    newFile: 'Nieuw bestand',
+    newFolder: 'Nieuwe map',
+    rename: 'Naam wijzigen',
+    delete: 'Verwijderen',
+    reveal: 'Toon in Finder',
+    refresh: 'Vernieuwen',
+    openFolder: 'Map openen…',
+  },
   statusbar: {
     ln: 'Rg',
     col: 'Kol',
@@ -213,6 +222,7 @@ export const nl: I18n = {
     closeOthers: 'Andere tabbladen sluiten',
     closeSaved: 'Alle opgeslagen sluiten',
     closeAll: 'Alle tabbladen sluiten',
+    revealInFolder: 'Toon in Finder',
   },
   unsaved: {
     title: 'Niet-opgeslagen wijzigingen',

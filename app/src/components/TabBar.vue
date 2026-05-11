@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { revealItemInDir } from '@tauri-apps/plugin-opener';
 import { useTabsStore } from '../stores/tabs';
 import { useFiles } from '../composables/useFiles';
 import { useI18n } from '../i18n';
@@ -40,12 +41,16 @@ const menuFlags = computed(() => {
   const list = tabs.tabs;
   const idx = list.findIndex((t) => t.id === menu.value!.tabId);
   if (idx < 0) return null;
+  const target = list[idx];
   return {
     hasLeft: idx > 0,
     hasRight: idx < list.length - 1,
     hasOthers: list.length > 1,
     hasSaved: list.some((t) => t.id !== menu.value!.tabId && t.content === t.savedContent),
     hasAll: list.length > 0,
+    // Issue #64 — "Reveal in Finder" disabled when the tab is unsaved
+    // (no on-disk path yet).
+    hasFilePath: !!target?.filePath,
   };
 });
 
@@ -58,13 +63,19 @@ async function closeMany(ids: string[]) {
   }
 }
 
-async function onMenu(action: 'close' | 'closeLeft' | 'closeRight' | 'closeOthers' | 'closeSaved' | 'closeAll') {
+async function onMenu(action: 'close' | 'closeLeft' | 'closeRight' | 'closeOthers' | 'closeSaved' | 'closeAll' | 'revealInFolder') {
   const m = menu.value;
   closeMenu();
   if (!m) return;
   const list = tabs.tabs;
   const idx = list.findIndex((t) => t.id === m.tabId);
   if (idx < 0) return;
+  if (action === 'revealInFolder') {
+    const path = list[idx]?.filePath;
+    if (!path) return;
+    try { await revealItemInDir(path); } catch (e) { console.warn('reveal failed', e); }
+    return;
+  }
   const ids = (() => {
     switch (action) {
       case 'close':       return [m.tabId];
@@ -74,6 +85,7 @@ async function onMenu(action: 'close' | 'closeLeft' | 'closeRight' | 'closeOther
       case 'closeSaved':  return list.filter((t) => t.content === t.savedContent).map((t) => t.id);
       case 'closeAll':    return list.map((t) => t.id);
     }
+    return [];
   })();
   await closeMany(ids);
 }
@@ -137,6 +149,8 @@ watch(
       <li class="tab-menu__sep"></li>
       <li><button :disabled="!menuFlags?.hasSaved" @mousedown.prevent="onMenu('closeSaved')">{{ t('tabMenu.closeSaved') }}</button></li>
       <li><button :disabled="!menuFlags?.hasAll"   @mousedown.prevent="onMenu('closeAll')">{{ t('tabMenu.closeAll') }}</button></li>
+      <li class="tab-menu__sep"></li>
+      <li><button :disabled="!menuFlags?.hasFilePath" @mousedown.prevent="onMenu('revealInFolder')">{{ t('tabMenu.revealInFolder') }}</button></li>
     </ul>
   </div>
 </template>

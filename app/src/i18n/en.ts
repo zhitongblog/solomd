@@ -87,6 +87,15 @@ export const en = {
     settings: 'Settings',
     help: 'Help',
   },
+  explorer: {
+    newFile: 'New file',
+    newFolder: 'New folder',
+    rename: 'Rename',
+    delete: 'Delete',
+    reveal: 'Reveal in Finder',
+    refresh: 'Refresh',
+    openFolder: 'Open folder…',
+  },
   statusbar: {
     ln: 'Ln',
     col: 'Col',
@@ -211,6 +220,7 @@ export const en = {
     closeOthers: 'Close Other Tabs',
     closeSaved: 'Close All Saved',
     closeAll: 'Close All Tabs',
+    revealInFolder: 'Reveal in Finder',
   },
   unsaved: {
     title: 'Unsaved Changes',

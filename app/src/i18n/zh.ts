@@ -89,6 +89,15 @@ export const zh: I18n = {
     settings: '设置',
     help: '帮助',
   },
+  explorer: {
+    newFile: '新建文件',
+    newFolder: '新建文件夹',
+    rename: '重命名',
+    delete: '删除',
+    reveal: '在文件管理器中显示',
+    refresh: '刷新',
+    openFolder: '打开文件夹…',
+  },
   statusbar: {
     ln: '行',
     col: '列',
@@ -212,6 +221,7 @@ export const zh: I18n = {
     closeOthers: '关闭其他标签',
     closeSaved: '关闭所有已保存',
     closeAll: '关闭所有标签',
+    revealInFolder: '在文件管理器中显示',
   },
   unsaved: {
     title: '有未保存的修改',

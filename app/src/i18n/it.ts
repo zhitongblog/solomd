@@ -89,6 +89,15 @@ export const it: I18n = {
     settings: 'Impostazioni',
     help: 'Aiuto',
   },
+  explorer: {
+    newFile: 'Nuovo file',
+    newFolder: 'Nuova cartella',
+    rename: 'Rinomina',
+    delete: 'Elimina',
+    reveal: 'Mostra nel Finder',
+    refresh: 'Aggiorna',
+    openFolder: 'Apri cartella…',
+  },
   statusbar: {
     ln: 'R',
     col: 'Col',
@@ -213,6 +222,7 @@ export const it: I18n = {
     closeOthers: 'Chiudi altre schede',
     closeSaved: 'Chiudi tutte le salvate',
     closeAll: 'Chiudi tutte le schede',
+    revealInFolder: 'Mostra nel Finder',
   },
   unsaved: {
     title: 'Modifiche non salvate',

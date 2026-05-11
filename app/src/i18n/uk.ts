@@ -89,6 +89,15 @@ export const uk: I18n = {
     settings: 'Налаштування',
     help: 'Довідка',
   },
+  explorer: {
+    newFile: 'Новий файл',
+    newFolder: 'Нова тека',
+    rename: 'Перейменувати',
+    delete: 'Видалити',
+    reveal: 'Показати у Finder',
+    refresh: 'Оновити',
+    openFolder: 'Відкрити теку…',
+  },
   statusbar: {
     ln: 'Ряд',
     col: 'Кол',
@@ -213,6 +222,7 @@ export const uk: I18n = {
     closeOthers: 'Закрити інші вкладки',
     closeSaved: 'Закрити всі збережені',
     closeAll: 'Закрити всі вкладки',
+    revealInFolder: 'Показати у Finder',
   },
   unsaved: {
     title: 'Незбережені зміни',
