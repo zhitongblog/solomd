@@ -45,7 +45,7 @@ fi
 : "${MAS_PROVISIONING_PROFILE:?Set MAS_PROVISIONING_PROFILE (path to .provisionprofile)}"
 
 MAS_VERSION="${MAS_VERSION:-1.0.0}"
-MAS_BUILD_NUMBER="${MAS_BUILD_NUMBER:-1.0.1}"
+MAS_BUILD_NUMBER="${MAS_BUILD_NUMBER:-1.0.2}"
 
 if [ ! -f "$MAS_PROVISIONING_PROFILE" ]; then
   echo "ERROR: provisioning profile not found at $MAS_PROVISIONING_PROFILE" >&2
@@ -101,6 +101,16 @@ echo "==> Embedding privacy manifest"
 # rejection in the next pipeline. Bake it in to avoid the round-trip.
 cp app/src-tauri/PrivacyInfo.xcprivacy "app/$APP/Contents/Resources/PrivacyInfo.xcprivacy"
 
+echo "==> Stripping ALL extended attributes from the bundle"
+# Files downloaded via Safari (the provisioning profile, icons, etc.) carry
+# the com.apple.quarantine xattr which Apple's distribution validator
+# REJECTS with error 91109 ("Invalid package contents... not permitted in
+# macOS apps distributed on TestFlight or the App Store"). xattr -cr also
+# removes com.apple.metadata, com.apple.macl, and any other extended attrs
+# that might have leaked in during the build. Safe to run on every file
+# since codesign re-creates its own metadata.
+xattr -cr "app/$APP"
+
 echo "==> Stripping existing signatures so we can re-sign with MAS identity"
 # `--remove-signature` on the wrapper isn't enough — Tauri's build pipeline
 # already signed every nested binary (frameworks, sidecar). We strip all of
@@ -115,6 +125,12 @@ echo "==> Signing sidecar binaries with MAS identity"
 # Sidecars in Contents/MacOS/ — solomd-mcp universal binary. Must be signed
 # with the same identity as the parent or library validation rejects it.
 # Entitlements are the same since they inherit the sandbox from the parent.
+#
+# IMPORTANT: do NOT pass a custom --identifier for child binaries — Apple's
+# MAS validator rejects sub-identifiers like "app.solomd.solomd-mcp" with
+# ITMS errors. Let codesign derive the identifier from the binary name.
+# Also no --options runtime: hardened runtime conflicts with MAS sandbox
+# enforcement (Apple wants one security model per submission, not both).
 for bin in app/$APP/Contents/MacOS/*; do
   [ -f "$bin" ] || continue
   # Skip the main executable — it gets signed last (after frameworks).
@@ -122,7 +138,6 @@ for bin in app/$APP/Contents/MacOS/*; do
   echo "    signing sidecar: $(basename "$bin")"
   codesign --force --sign "$MAS_SIGNING_IDENTITY" \
     --entitlements "$ENTITLEMENTS" \
-    --identifier "app.solomd.$(basename "$bin")" \
     "$bin"
 done
 
@@ -136,10 +151,12 @@ if [ -d "app/$APP/Contents/Frameworks" ]; then
 fi
 
 echo "==> Signing .app bundle"
+# No --options runtime: MAS uses app-sandbox as the security model, hardened
+# runtime is for Developer ID notarization. Combining them causes Apple's
+# distribution validator to flag the binary on upload.
 codesign --force --sign "$MAS_SIGNING_IDENTITY" \
   --entitlements "$ENTITLEMENTS" \
   --identifier app.solomd \
-  --options runtime \
   "app/$APP"
 
 echo "==> Verifying signature"
