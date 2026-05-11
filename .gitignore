@@ -45,3 +45,7 @@ winget-pkgs
 CLAUDE.md
 .claude/
 app/src-tauri/embedded.provisionprofile
+
+# Mac App Store distribution artifacts
+dist-mas/
+app/src-tauri/*.provisionprofile

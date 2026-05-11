@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- SoloMD collects zero user data. No tracking, no third-party SDKs. -->
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+
+	<!-- "Required reason" API declarations per Apple's 2026 privacy policy.
+	     Each API we touch must list its reason code from Apple's allowed set:
+	     https://developer.apple.com/documentation/bundleresources/privacy_manifest_files -->
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<!-- We read note file timestamps to (a) sort the notes list by last
+		     modified, and (b) populate the "Modified … ago" status badge. -->
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<!-- C617.1 — display to the user as part of the app's UI. -->
+				<string>C617.1</string>
+				<!-- DDA9.1 — perform inside the app, no data leaves the device. -->
+				<string>DDA9.1</string>
+			</array>
+		</dict>
+		<!-- All of SoloMD's settings + window state + recent files live in
+		     LocalStorage / UserDefaults inside the app container. -->
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<!-- CA92.1 — read app preferences set by the user. -->
+				<string>CA92.1</string>
+			</array>
+		</dict>
+		<!-- AutoGit and the local semantic-search index check available disk
+		     space before writing large embedding databases or repacking
+		     pack-files, to avoid leaving the workspace in a half-written
+		     state when the disk fills up mid-write. -->
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryDiskSpace</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<!-- E174.1 — display free space / surface storage-related UI. -->
+				<string>E174.1</string>
+				<!-- 85F4.1 — check free space before writing app data. -->
+				<string>85F4.1</string>
+			</array>
+		</dict>
+		<!-- System boot time is used by recent telemetry plumbing (still
+		     opt-in, content-free) to detect cold launches versus relaunches.
+		     If telemetry stays off it's a no-op, but the API is technically
+		     reachable, so we declare it. -->
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategorySystemBootTime</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<!-- 35F9.1 — used by app to determine app lifecycle / cold start. -->
+				<string>35F9.1</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

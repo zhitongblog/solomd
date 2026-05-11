@@ -2,13 +2,64 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- Mac App Store sandbox is mandatory. -->
 	<key>com.apple.security.app-sandbox</key>
 	<true/>
+
+	<!-- TestFlight + App Store Connect require the bundle's signature to
+	     declare the same application-identifier + team-identifier that the
+	     provisioning profile carries. Without these, altool emits warning
+	     90886 ("missing an application identifier but has [it] in the
+	     provisioning profile"). Non-fatal for App Store sales but blocks
+	     TestFlight distribution. Match what the profile declares:
+	       TeamID = 6NQM3XP5RF, BundleID = app.solomd -->
+	<key>com.apple.application-identifier</key>
+	<string>6NQM3XP5RF.app.solomd</string>
+	<key>com.apple.developer.team-identifier</key>
+	<string>6NQM3XP5RF</string>
+	<key>keychain-access-groups</key>
+	<array>
+		<string>6NQM3XP5RF.*</string>
+	</array>
+
+	<!-- WKWebView runs Vue 3 / Vite-bundled JS via JavaScriptCore JIT.
+	     Without these two, WebKit refuses to JIT-compile scripts and the
+	     Vue app silently fails to mount, leaving a blank window. This was
+	     the root cause of MAS v1.0.0's "did not load any content on launch"
+	     rejection. -->
+	<key>com.apple.security.cs.allow-jit</key>
+	<true/>
+	<key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+	<true/>
+
+	<!-- Outbound network for:
+	       * Hero "stars" / "downloads" stats fetch
+	       * GitHub-sync (libgit2 over HTTPS)
+	       * BYOK AI provider calls (Claude / OpenAI / etc.)
+	       * Optional update check (off by default in Settings)
+	       * Google Fonts (Source Serif 4 on /landing pages) — though the
+	         desktop app strips this; safety net. -->
+	<key>com.apple.security.network.client</key>
+	<true/>
+
+	<!-- File pickers (Open Folder, Save As, attachment dialogs) grant
+	     read-write to whatever path the user picks via NSOpenPanel /
+	     NSSavePanel. Bookmarks let us remember the user's vault across
+	     launches without re-prompting. -->
 	<key>com.apple.security.files.user-selected.read-write</key>
 	<true/>
 	<key>com.apple.security.files.bookmarks.app-scope</key>
 	<true/>
+
+	<!-- Print-to-PDF / Pandoc PDF export pipeline. -->
 	<key>com.apple.security.print</key>
+	<true/>
+
+	<!-- Bundled `solomd-mcp` Rust sidecar is launched as a child process
+	     for MCP stdio JSON-RPC. Without this entitlement on the parent,
+	     Gatekeeper kills the child for "library validation failed" because
+	     the sidecar is signed with our team's cert (not Apple's). -->
+	<key>com.apple.security.cs.disable-library-validation</key>
 	<true/>
 </dict>
 </plist>
