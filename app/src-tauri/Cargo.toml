@@ -55,9 +55,6 @@ walkdir = "2.5.0"
 #  needed for the rest of the app's async work.)
 tokio = { version = "1", features = ["rt-multi-thread", "net", "io-util", "sync", "time", "macros"] }
 
-[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
-tauri-plugin-window-state = "2"
-
 # File-to-Markdown conversion (built-in, no Python needed)
 htmd = "0.5"
 zip = "2"
@@ -133,6 +130,14 @@ cron = "0.12"
 chrono = { version = "0.4", default-features = false, features = ["clock", "serde"] }
 globset = "0.4"
 hex = "0.4"
+
+# window-state plugin is desktop-only — kept at the very end of the
+# dependency tables to avoid bleeding the platform constraint onto every
+# subsequent dep (TOML sections continue until the next [header]).
+# This caught us once already — see 94bd87a / 2026-04-21 broke iOS for
+# 3 weeks because window-state was placed mid-file with a blank line.
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-window-state = "2"
 
 # Platform-specific deps for "Set as default editor" feature.
 [target.'cfg(target_os = "macos")'.dependencies]
