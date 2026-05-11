@@ -12,7 +12,7 @@ import { useExport } from '../composables/useExport';
 import { useToastsStore } from '../stores/toasts';
 import { cleanAIArtifacts } from '../lib/clean-ai';
 import { useI18n } from '../i18n';
-import { openPath } from '@tauri-apps/plugin-opener';
+import { openInExternalEditor } from '../lib/external-editor';
 
 const { t } = useI18n();
 
@@ -111,7 +111,7 @@ async function onOpenExternal() {
     return;
   }
   try {
-    await openPath(path);
+    await openInExternalEditor(path);
   } catch (e) {
     toasts.warning(`Failed: ${e}`);
   }

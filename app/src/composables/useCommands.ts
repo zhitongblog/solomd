@@ -15,7 +15,7 @@ import {
 import { cleanAIArtifacts, stripMarkdownToPlain } from '../lib/clean-ai';
 import { openWelcomeTour } from '../lib/welcome-tour';
 import { formatMarkdown } from '../lib/markdown-format';
-import { openPath } from '@tauri-apps/plugin-opener';
+import { openInExternalEditor } from '../lib/external-editor';
 import { useDailyNotes } from './useDailyNotes';
 import { usePandocExport } from './usePandocExport';
 import { useBasesView } from './useBasesView';
@@ -109,7 +109,7 @@ export function useCommands(): Command[] {
           return;
         }
         try {
-          await openPath(path);
+          await openInExternalEditor(path);
         } catch (e) {
           toasts.warning(`Failed: ${e}`);
         }

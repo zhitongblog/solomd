@@ -3,6 +3,7 @@ use encoding_rs::{Encoding, UTF_8};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
+use std::process::Command;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct FileReadResult {
@@ -390,4 +391,28 @@ pub async fn list_dir(path: String) -> Result<Vec<DirEntry>, String> {
     tauri::async_runtime::spawn_blocking(move || list_dir_inner(path))
         .await
         .map_err(|e| format!("join: {e}"))?
+}
+
+/// Open a file in a user-configured external editor.
+/// `editor` can be a bare command (e.g. "code", "vim") or an absolute path,
+/// optionally with flags (e.g. "code --new-window"). Uses `.spawn()` so the
+/// editor runs independently — we do not wait for it to exit.
+#[tauri::command]
+pub async fn open_in_external_editor(editor: String, file_path: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let parts: Vec<&str> = editor.split_whitespace().collect();
+        if parts.is_empty() {
+            return Err("Editor command is empty".into());
+        }
+        let mut cmd = Command::new(parts[0]);
+        for arg in &parts[1..] {
+            cmd.arg(arg);
+        }
+        cmd.arg(&file_path);
+        cmd.spawn()
+            .map_err(|e| format!("Failed to launch '{}': {}", parts[0], e))?;
+        Ok(())
+    })
+    .await
+    .map_err(|e| format!("join: {e}"))?
 }

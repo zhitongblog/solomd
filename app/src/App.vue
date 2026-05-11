@@ -4,7 +4,7 @@ import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
-import { openPath } from '@tauri-apps/plugin-opener';
+import { openInExternalEditor } from './lib/external-editor';
 import Toolbar from './components/Toolbar.vue';
 import TelemetryBanner from './components/TelemetryBanner.vue';
 import TileRoot from './components/TileRoot.vue';
@@ -400,7 +400,7 @@ async function openExternalFile() {
     return;
   }
   try {
-    await openPath(filePath);
+    await openInExternalEditor(filePath);
   } catch (e) {
     console.warn('openExternal failed', e);
   }

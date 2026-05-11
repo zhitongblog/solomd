@@ -114,6 +114,7 @@ pub fn run() {
             commands::print_webview,
             commands::copy_file,
             commands::list_dir,
+            commands::open_in_external_editor,
             commands::fs_create_file,
             commands::fs_create_dir,
             commands::fs_delete,

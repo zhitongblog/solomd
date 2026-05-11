@@ -897,6 +897,18 @@ function onSelectPdfFont(v: string) {
           </div>
         </section>
 
+        <section data-cat="advanced">
+          <label>{{ t('settings.externalEditor') }}</label>
+          <input
+            type="text"
+            :value="settings.externalEditorPath"
+            @input="settings.setExternalEditorPath(($event.target as HTMLInputElement).value)"
+            :placeholder="t('settings.externalEditorPlaceholder')"
+            style="padding: 6px 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px; font: inherit;"
+          />
+          <p class="setting-hint">{{ t('settings.externalEditorHint') }}</p>
+        </section>
+
         <!-- v2.4 Integrations: HTTP capture endpoint. -->
         <div data-cat="integrations"><CaptureEndpointSettings /></div>
 

@@ -51,6 +51,9 @@ interface Settings {
   previewFitWidth: boolean;
   // Custom CSS theme override (path to a .css file on disk)
   customCssPath: string;
+  // External editor command (e.g. "code", "vim", "/usr/local/bin/micro").
+  // Empty = use OS default handler via tauri-plugin-opener.
+  externalEditorPath: string;
   // Anonymous telemetry (Aptabase). Defaults true but user can opt out.
   telemetryEnabled: boolean;
   // First-run banner dismissal. Shown once, never again.
@@ -249,6 +252,7 @@ function defaults(): Settings {
     })() as 'en' | 'zh' | 'ja' | 'ko' | 'de' | 'fr' | 'es' | 'pt' | 'it' | 'pl' | 'nl' | 'tr' | 'sv' | 'uk',
     previewFitWidth: false,
     customCssPath: '',
+    externalEditorPath: '',
     telemetryEnabled: true,
     telemetryNoticeAck: false,
     restoreSession: true,
@@ -615,6 +619,10 @@ export const useSettingsStore = defineStore('settings', {
     },
     setCustomCssPath(p: string) {
       this.customCssPath = p;
+      this.persist();
+    },
+    setExternalEditorPath(p: string) {
+      this.externalEditorPath = p;
       this.persist();
     },
     togglePreviewFitWidth() {
