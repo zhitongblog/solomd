@@ -1,0 +1,65 @@
+Categories:
+  - Writing
+  - Office
+License: MIT
+AuthorName: zhitong
+AuthorEmail: lixd220@gmail.com
+WebSite: https://solomd.app
+SourceCode: https://github.com/zhitongblog/solomd
+IssueTracker: https://github.com/zhitongblog/solomd/issues
+Changelog: https://github.com/zhitongblog/solomd/releases
+
+AutoName: SoloMD
+Summary: Lightweight Markdown + plain-text editor
+
+Description: |-
+    SoloMD is a distraction-free Markdown + plain-text editor for phones,
+    tablets, and desktops.
+
+    One file. One window. Just write.
+
+    Features:
+
+    * Live Markdown preview with KaTeX math, Mermaid diagrams, and syntax
+      highlighting
+    * Wikilinks, backlinks, tags, and per-note outline
+    * Local semantic search (RAG) over your workspace
+    * Spell-check (Hunspell-compatible, Latin + CJK)
+    * Themes, focus mode, typewriter mode, Pomodoro timer
+    * Optional BYOK AI: bring your own OpenAI / Anthropic / DeepSeek key
+      to use the AI rewrite + chat-with-vault panel. The app makes no
+      paid calls of its own.
+    * Import / export: HTML, DOCX, PDF, plain text
+    * 14-language UI: English, Chinese (Simplified), Japanese, Korean,
+      German, French, Spanish, Italian, Portuguese, Polish, Dutch,
+      Turkish, Swedish, Ukrainian
+
+RepoType: git
+Repo: https://github.com/zhitongblog/solomd.git
+
+Builds:
+  - versionName: 4.1.8
+    versionCode: 4001008
+    commit: HEAD
+    subdir: app
+    sudo:
+      - apt-get update
+      - apt-get install -y openjdk-17-jdk
+    rm:
+      - app/src-tauri/binaries/*-apple-*
+      - app/src-tauri/binaries/*-linux-*
+      - app/src-tauri/binaries/*-windows-*
+    prebuild:
+      - corepack enable
+      - corepack prepare pnpm@latest --activate
+      - pnpm install --frozen-lockfile
+      - rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
+    gradle:
+      - yes
+    build: pnpm tauri android build --apk --aab
+    output: src-tauri/gen/android/app/build/outputs/apk/${ARCH}/release/app-${ARCH}-release-unsigned.apk
+
+AutoUpdateMode: Version v%v
+UpdateCheckMode: Tags ^v[0-9.]+$
+CurrentVersion: 4.1.8
+CurrentVersionCode: 4001008

@@ -8,6 +8,12 @@ pub mod ai_proxy;
 // top of the existing chat runner in ai_proxy. Pure additive.
 pub mod ollama;
 pub mod pandoc;
+// AutoGit + GitHub sync rely on libgit2 (vendored). Cross-compiling libgit2
+// + openssl through the NDK is painful and these are desktop-class features
+// (the user shouldn't be pushing to GitHub from a phone). Gate them out of
+// Android — frontend already hides any UI that calls into these commands
+// when the Tauri command resolution fails.
+#[cfg(not(target_os = "android"))]
 pub mod git_history;
 pub mod rag;
 // v2.4 inbound HTTP capture endpoint — production-grade, opt-in via Settings.
@@ -32,6 +38,8 @@ pub mod cjk_proofread;
 pub mod themes;
 // v2.6 GitHub-backed sync — extends v2.2 AutoGit with push/pull to a
 // user-owned GitHub repo. PAT in OS keychain, config in .solomd/sync.json.
+// Same git2 dep → same Android gate as git_history.
+#[cfg(not(target_os = "android"))]
 pub mod github_sync;
 // v2.6.1 cloud-folder detection (iCloud / Dropbox / OneDrive / Google Drive)
 // + cross-device session restore via per-device JSON.
@@ -65,6 +73,11 @@ pub mod agent_trace;
 // end-to-end, hooks save / commit / cron / manual triggers, and gates
 // writes behind the AutoGit branch sandbox + write-cap.
 pub mod recipes;
+// recipe_runner uses git2 for the branch sandbox — gate out of Android
+// alongside git_history / github_sync. Without the runner the Recipes
+// YAML loader (recipes module) still parses files for the CLI / MCP, but
+// in-app cron triggers and run dispatch are desktop-only anyway.
+#[cfg(not(target_os = "android"))]
 pub mod recipe_runner;
 // v4.0 — bundled recipe cookbook (10+ ready-to-edit YAML templates).
 // Shipped as `include_str!` content compiled into the binary; commands
@@ -95,9 +108,10 @@ pub fn run() {
             .build(),
     );
 
+    let builder = builder.manage(watcher::WatcherState::new());
+    #[cfg(not(target_os = "android"))]
+    let builder = builder.manage(recipe_runner::RecipesState::new());
     builder
-        .manage(watcher::WatcherState::new())
-        .manage(recipe_runner::RecipesState::new())
         .setup(|app| {
             #[cfg(debug_assertions)]
             {
@@ -110,7 +124,9 @@ pub fn run() {
             // v4.0 Pillar 2 — start the cron-trigger loop. Sleeps until
             // a `schedule` recipe is due; harmless when no recipes are
             // loaded yet (the loop polls workspace state every minute).
-            // Skipped in App Store builds (no AI / Agent / Recipe surface).
+            // Skipped in App Store builds (no AI / Agent / Recipe surface)
+            // and on Android (recipe_runner gated out — needs libgit2).
+            #[cfg(not(target_os = "android"))]
             if !app_build::IS_APP_STORE {
                 recipe_runner::spawn_cron_loop(app.handle().clone());
             }
@@ -154,12 +170,19 @@ pub fn run() {
             ollama::open_ollama_install_page,
             pandoc::pandoc_detect,
             pandoc::pandoc_export,
+            #[cfg(not(target_os = "android"))]
             git_history::git_workspace_status,
+            #[cfg(not(target_os = "android"))]
             git_history::git_init_workspace,
+            #[cfg(not(target_os = "android"))]
             git_history::git_auto_commit,
+            #[cfg(not(target_os = "android"))]
             git_history::git_file_history,
+            #[cfg(not(target_os = "android"))]
             git_history::git_file_diff,
+            #[cfg(not(target_os = "android"))]
             git_history::git_file_at_version,
+            #[cfg(not(target_os = "android"))]
             git_history::git_rollback_file,
             rag::rag_set_enabled,
             rag::rag_index_status,
@@ -190,21 +213,37 @@ pub fn run() {
             themes::theme_install,
             themes::theme_uninstall,
             themes::theme_list_installed,
+            #[cfg(not(target_os = "android"))]
             github_sync::github_set_token,
+            #[cfg(not(target_os = "android"))]
             github_sync::github_clear_token,
+            #[cfg(not(target_os = "android"))]
             github_sync::github_has_token,
+            #[cfg(not(target_os = "android"))]
             github_sync::github_user,
+            #[cfg(not(target_os = "android"))]
             github_sync::github_list_repos,
+            #[cfg(not(target_os = "android"))]
             github_sync::github_create_vault_repo,
+            #[cfg(not(target_os = "android"))]
             github_sync::github_link_workspace,
+            #[cfg(not(target_os = "android"))]
             github_sync::github_set_config,
+            #[cfg(not(target_os = "android"))]
             github_sync::github_unlink_workspace,
+            #[cfg(not(target_os = "android"))]
             github_sync::github_enable_encryption,
+            #[cfg(not(target_os = "android"))]
             github_sync::github_sync_status,
+            #[cfg(not(target_os = "android"))]
             github_sync::github_push,
+            #[cfg(not(target_os = "android"))]
             github_sync::github_pull,
+            #[cfg(not(target_os = "android"))]
             github_sync::github_resolve_conflict,
+            #[cfg(not(target_os = "android"))]
             github_sync::proxy_get,
+            #[cfg(not(target_os = "android"))]
             github_sync::proxy_set,
             cloud_folder::cloud_folder_detect,
             cloud_folder::device_id_get_or_create,
@@ -233,17 +272,29 @@ pub fn run() {
             agent_trace::agent_trace_read,
             agent_trace::agent_trace_list,
             agent_trace::agent_trace_replay_from,
+            #[cfg(not(target_os = "android"))]
             recipe_runner::recipes_list,
+            #[cfg(not(target_os = "android"))]
             recipe_runner::recipes_get,
+            #[cfg(not(target_os = "android"))]
             recipe_runner::recipes_save,
+            #[cfg(not(target_os = "android"))]
             recipe_runner::recipes_delete,
+            #[cfg(not(target_os = "android"))]
             recipe_runner::recipes_run_now,
+            #[cfg(not(target_os = "android"))]
             recipe_runner::recipes_pending_runs,
+            #[cfg(not(target_os = "android"))]
             recipe_runner::recipes_history,
+            #[cfg(not(target_os = "android"))]
             recipe_runner::recipes_read_trace,
+            #[cfg(not(target_os = "android"))]
             recipe_runner::recipes_read_run_md,
+            #[cfg(not(target_os = "android"))]
             recipe_runner::recipes_run_diff,
+            #[cfg(not(target_os = "android"))]
             recipe_runner::recipes_accept_run,
+            #[cfg(not(target_os = "android"))]
             recipe_runner::recipes_reject_run,
             cookbook::cookbook_list,
             cookbook::cookbook_get,

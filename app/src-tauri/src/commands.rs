@@ -96,6 +96,7 @@ pub async fn write_file(
     // for the active workspace. We re-extract tags from the *content*
     // we just wrote (rather than re-reading from disk) so the trigger
     // sees the same bytes the user just saved.
+    #[cfg(not(target_os = "android"))]
     if let Some(ws) = workspace {
         let ws_path = std::path::PathBuf::from(&ws);
         let new_tags = extract_tags_for_dispatch(&content_for_dispatch);
@@ -104,6 +105,10 @@ pub async fn write_file(
         tauri::async_runtime::spawn(async move {
             super::recipe_runner::dispatch_on_save(app, ws_path, path_for_dispatch, new_tags).await;
         });
+    }
+    #[cfg(target_os = "android")]
+    {
+        let _ = (workspace, content_for_dispatch, path_for_dispatch, app);
     }
 
     Ok(())

@@ -49,3 +49,11 @@ app/src-tauri/embedded.provisionprofile
 # Mac App Store distribution artifacts
 dist-mas/
 app/src-tauri/*.provisionprofile
+
+# Android release keystore — never commit
+.keystore/
+*.jks
+*.keystore
+
+# Android distribution artifacts (APK + AAB ship via GitHub Releases)
+dist-android/

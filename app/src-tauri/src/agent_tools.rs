@@ -33,6 +33,7 @@ use walkdir::WalkDir;
 
 // `super::` paths so this module compiles under both lib + bin mount
 // trees (see ai_proxy.rs comment for the same rationale).
+#[cfg(not(target_os = "android"))]
 use super::git_history;
 use super::search;
 
@@ -948,6 +949,12 @@ fn tool_get_outline(workspace: &Path, args: &Value) -> Result<Value, String> {
     Ok(json!({"outline": outline}))
 }
 
+#[cfg(target_os = "android")]
+fn tool_autogit_log(_workspace: &Path, _args: &Value) -> Result<Value, String> {
+    Err("autogit_log is not available on Android (AutoGit / libgit2 is gated out)".to_string())
+}
+
+#[cfg(not(target_os = "android"))]
 fn tool_autogit_log(workspace: &Path, args: &Value) -> Result<Value, String> {
     let path_arg = args
         .get("path")
@@ -966,6 +973,12 @@ fn tool_autogit_log(workspace: &Path, args: &Value) -> Result<Value, String> {
     Ok(json!({"commits": arr, "count": count}))
 }
 
+#[cfg(target_os = "android")]
+fn tool_autogit_diff(_workspace: &Path, _args: &Value) -> Result<Value, String> {
+    Err("autogit_diff is not available on Android (AutoGit / libgit2 is gated out)".to_string())
+}
+
+#[cfg(not(target_os = "android"))]
 fn tool_autogit_diff(workspace: &Path, args: &Value) -> Result<Value, String> {
     let path_arg = args
         .get("path")
