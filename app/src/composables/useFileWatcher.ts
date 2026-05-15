@@ -47,12 +47,20 @@ export function useFileWatcher(showDialog: ShowDialog) {
 
   async function reloadTab(tabId: string, filePath: string) {
     const result = await invoke<FileReadResult>('read_file', { path: filePath });
-    tabs.setContent(tabId, result.content);
+    // Normalize CRLF→LF so reloads behave like fresh opens (CodeMirror
+    // does the same normalization internally, otherwise a re-read of a
+    // CRLF file leaves savedContent=CRLF but the editor's doc=LF and
+    // dirty flips on without edits — same bug as openFromDisk).
+    const normalized = result.content.includes('\r\n')
+      ? result.content.replace(/\r\n/g, '\n')
+      : result.content;
+    tabs.setContent(tabId, normalized);
     const tab = tabs.tabs.find((t) => t.id === tabId);
     if (tab) {
       tab.encoding = result.encoding;
       tab.hadBom = result.had_bom;
-      tab.savedContent = result.content;
+      tab.savedContent = normalized;
+      tab.lineEnding = result.content.includes('\r\n') ? 'crlf' : 'lf';
     }
   }
 
@@ -84,9 +92,11 @@ export function useFileWatcher(showDialog: ShowDialog) {
         if (action === 'reload') {
           await reloadTab(tab.id, filePath);
         } else if (action === 'overwrite') {
+          const payload =
+            tab.lineEnding === 'crlf' ? tab.content.replace(/\n/g, '\r\n') : tab.content;
           await invoke('write_file', {
             path: tab.filePath,
-            content: tab.content,
+            content: payload,
             encoding: tab.encoding || 'UTF-8',
           });
           tabs.markSaved(tab.id, tab.filePath!);

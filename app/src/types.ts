@@ -27,6 +27,12 @@ export interface Tab {
   encoding: string;
   language: Language;
   hadBom: boolean;
+  // Line-ending of the file on disk. CodeMirror normalizes everything to
+  // LF internally, so we track the original here and re-apply on save —
+  // otherwise a Windows file (CRLF) would silently become LF the moment
+  // the user touches the editor (and the dirty flag would lock in even
+  // without edits because content drifts from savedContent).
+  lineEnding?: 'lf' | 'crlf';
   showOutline?: boolean;
 }
 

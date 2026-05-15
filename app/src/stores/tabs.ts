@@ -95,15 +95,27 @@ export const useTabsStore = defineStore('tabs', {
       }
       const fileName = payload.filePath.split(/[\\/]/).pop() ?? 'Untitled';
       const settings = useSettingsStore();
+      // CodeMirror normalizes \r\n → \n when the doc is created. Mirror
+      // that normalization here so content and savedContent stay in
+      // lock-step — otherwise opening a Windows-saved file makes the
+      // tab "dirty" the moment any docChanged transaction fires
+      // (cursor click, extension dispatch) and closing prompts to
+      // save even though the user didn't edit anything.
+      const lineEnding: 'lf' | 'crlf' = payload.content.includes('\r\n')
+        ? 'crlf'
+        : 'lf';
+      const normalized =
+        lineEnding === 'crlf' ? payload.content.replace(/\r\n/g, '\n') : payload.content;
       const tab: Tab = {
         id: newId(),
         filePath: payload.filePath,
         fileName,
-        content: payload.content,
-        savedContent: payload.content,
+        content: normalized,
+        savedContent: normalized,
         encoding: payload.encoding,
         language: payload.language,
         hadBom: payload.hadBom,
+        lineEnding,
         showOutline: payload.language === 'markdown' && settings.showOutline,
       };
       this.tabs.push(tab);

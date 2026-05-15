@@ -176,9 +176,14 @@ export function useFiles() {
       return saveTabAs(tab);
     }
     try {
+      // Restore the file's original line endings on write — we
+      // normalize CRLF→LF on open so CodeMirror behaves, but the user
+      // expects a Windows-saved file to stay Windows-saved.
+      const payload =
+        tab.lineEnding === 'crlf' ? tab.content.replace(/\n/g, '\r\n') : tab.content;
       await invoke('write_file', {
         path,
-        content: tab.content,
+        content: payload,
         encoding: tab.encoding || 'UTF-8',
       });
       tabs.markSaved(tab.id, path);
@@ -219,9 +224,11 @@ export function useFiles() {
       if (!path) return false;
     }
     try {
+      const payload =
+        tab.lineEnding === 'crlf' ? tab.content.replace(/\n/g, '\r\n') : tab.content;
       await invoke('write_file', {
         path,
-        content: tab.content,
+        content: payload,
         encoding: tab.encoding || 'UTF-8',
       });
       tabs.markSaved(tab.id, path);
