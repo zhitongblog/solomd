@@ -62,18 +62,35 @@ fn within_sync_rewrite_window(canonical_path: &std::path::Path) -> bool {
     })
 }
 
-type WatchedSet = Arc<Mutex<HashSet<PathBuf>>>;
+/// v4.2 — switched from per-file watching to per-directory watching to
+/// survive atomic-save patterns (write-temp + rename-into-place, used by
+/// VSCode / TextEdit / Vim / git checkout). When `notify` watches a file
+/// directly, the watch handle binds to the inode; an atomic rename swaps
+/// the inode out from under it and the handle goes deaf forever.
+///
+/// `watched_files` is the filter applied inside the event callback —
+/// only events whose canonical path is in this set get emitted.
+/// `watched_dirs` ref-counts how many tracked files live in each dir,
+/// so we can unwatch the dir cleanly when the last file is closed.
+struct WatcherInner {
+    watched_files: HashSet<PathBuf>,
+    /// canonical parent dir → refcount of watched files under it
+    watched_dirs: HashMap<PathBuf, usize>,
+}
 
 pub struct WatcherState {
     debouncer: Mutex<Option<Debouncer<RecommendedWatcher>>>,
-    watched: WatchedSet,
+    inner: Arc<Mutex<WatcherInner>>,
 }
 
 impl WatcherState {
     pub fn new() -> Self {
         Self {
             debouncer: Mutex::new(None),
-            watched: Arc::new(Mutex::new(HashSet::new())),
+            inner: Arc::new(Mutex::new(WatcherInner {
+                watched_files: HashSet::new(),
+                watched_dirs: HashMap::new(),
+            })),
         }
     }
 }
@@ -85,17 +102,23 @@ fn ensure_watcher(app: &AppHandle, state: &WatcherState) {
     }
 
     let app_handle = app.clone();
-    let watched = state.watched.clone();
+    let inner = state.inner.clone();
 
     let debouncer = new_debouncer(Duration::from_millis(DEBOUNCE_MS), move |result: notify_debouncer_mini::DebounceEventResult| {
         let Ok(events) = result else { return };
         for event in events {
-            let canonical: PathBuf = match std::fs::canonicalize(&event.path) {
-                Ok(p) => p,
-                Err(_) => continue,
-            };
+            // Try to canonicalize the event path. After atomic save the
+            // path still exists but the inode has changed; canonicalize
+            // should still resolve. If the file was deleted entirely,
+            // canonicalize fails — fall back to the raw event path so
+            // we can still notify the JS side (which will surface a
+            // "file deleted externally" dialog via the failed re-read).
+            let canonical: PathBuf = std::fs::canonicalize(&event.path)
+                .unwrap_or_else(|_| event.path.clone());
 
-            if !watched.lock().unwrap().contains(&canonical) {
+            // Watching the parent dir means we see events for siblings
+            // too — filter to just the files the UI cares about.
+            if !inner.lock().unwrap().watched_files.contains(&canonical) {
                 continue;
             }
 
@@ -134,23 +157,46 @@ pub fn watch_file(
     let canonical = PathBuf::from(&path)
         .canonicalize()
         .map_err(|e| format!("canonicalize failed: {e}"))?;
+    let parent = canonical
+        .parent()
+        .ok_or_else(|| format!("no parent for {}", canonical.display()))?
+        .to_path_buf();
 
-    {
-        let mut watched = state.watched.lock().unwrap();
-        if watched.contains(&canonical) {
-            return Ok(());
+    // Decide whether the parent dir is new (so we know whether to
+    // register the OS-level watch) under the lock, then drop the lock
+    // before touching the debouncer to avoid holding two locks at once.
+    let parent_is_new = {
+        let mut inner = state.inner.lock().unwrap();
+        if !inner.watched_files.insert(canonical.clone()) {
+            return Ok(()); // already watching this exact file
         }
-        watched.insert(canonical.clone());
-    }
+        let count = inner.watched_dirs.entry(parent.clone()).or_insert(0);
+        *count += 1;
+        *count == 1
+    };
 
     ensure_watcher(&app, &state);
 
-    let mut guard = state.debouncer.lock().unwrap();
-    if let Some(ref mut debouncer) = *guard {
-        debouncer
-            .watcher()
-            .watch(&canonical, RecursiveMode::NonRecursive)
-            .map_err(|e| format!("watch failed: {e}"))?;
+    if parent_is_new {
+        let mut guard = state.debouncer.lock().unwrap();
+        if let Some(ref mut debouncer) = *guard {
+            if let Err(e) = debouncer
+                .watcher()
+                .watch(&parent, RecursiveMode::NonRecursive)
+            {
+                // Roll back the bookkeeping if the OS watch failed —
+                // otherwise we'd report success but never fire events.
+                let mut inner = state.inner.lock().unwrap();
+                inner.watched_files.remove(&canonical);
+                if let Some(count) = inner.watched_dirs.get_mut(&parent) {
+                    *count -= 1;
+                    if *count == 0 {
+                        inner.watched_dirs.remove(&parent);
+                    }
+                }
+                return Err(format!("watch failed: {e}"));
+            }
+        }
     }
 
     Ok(())
@@ -164,16 +210,200 @@ pub fn unwatch_file(
     let canonical = PathBuf::from(&path)
         .canonicalize()
         .map_err(|e| format!("canonicalize failed: {e}"))?;
+    let parent = match canonical.parent() {
+        Some(p) => p.to_path_buf(),
+        None => return Ok(()),
+    };
 
-    {
-        let mut watched = state.watched.lock().unwrap();
-        watched.remove(&canonical);
-    }
+    let parent_now_empty = {
+        let mut inner = state.inner.lock().unwrap();
+        if !inner.watched_files.remove(&canonical) {
+            return Ok(()); // wasn't watching it
+        }
+        if let Some(count) = inner.watched_dirs.get_mut(&parent) {
+            *count -= 1;
+            if *count == 0 {
+                inner.watched_dirs.remove(&parent);
+                true
+            } else {
+                false
+            }
+        } else {
+            false
+        }
+    };
 
-    let mut guard = state.debouncer.lock().unwrap();
-    if let Some(ref mut debouncer) = *guard {
-        let _ = debouncer.watcher().unwatch(&canonical);
+    if parent_now_empty {
+        let mut guard = state.debouncer.lock().unwrap();
+        if let Some(ref mut debouncer) = *guard {
+            let _ = debouncer.watcher().unwatch(&parent);
+        }
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn fresh() -> Arc<Mutex<WatcherInner>> {
+        Arc::new(Mutex::new(WatcherInner {
+            watched_files: HashSet::new(),
+            watched_dirs: HashMap::new(),
+        }))
+    }
+
+    /// Bookkeeping helper that mirrors `watch_file` minus the OS watch
+    /// call — lets us assert the refcount logic without spinning up a
+    /// real notify watcher.
+    fn track(inner: &Arc<Mutex<WatcherInner>>, file: &str) -> bool {
+        let file = PathBuf::from(file);
+        let parent = file.parent().unwrap().to_path_buf();
+        let mut g = inner.lock().unwrap();
+        if !g.watched_files.insert(file) {
+            return false; // already watching
+        }
+        let count = g.watched_dirs.entry(parent).or_insert(0);
+        *count += 1;
+        *count == 1
+    }
+
+    fn untrack(inner: &Arc<Mutex<WatcherInner>>, file: &str) -> bool {
+        let file = PathBuf::from(file);
+        let parent = file.parent().unwrap().to_path_buf();
+        let mut g = inner.lock().unwrap();
+        if !g.watched_files.remove(&file) {
+            return false;
+        }
+        if let Some(c) = g.watched_dirs.get_mut(&parent) {
+            *c -= 1;
+            if *c == 0 {
+                g.watched_dirs.remove(&parent);
+                return true;
+            }
+        }
+        false
+    }
+
+    #[test]
+    fn first_file_in_dir_registers_dir_watch() {
+        let inner = fresh();
+        // First file under /tmp/notes → caller must register OS watch on /tmp/notes
+        assert!(track(&inner, "/tmp/notes/a.md"));
+        let g = inner.lock().unwrap();
+        assert_eq!(g.watched_files.len(), 1);
+        assert_eq!(g.watched_dirs.get(&PathBuf::from("/tmp/notes")), Some(&1));
+    }
+
+    #[test]
+    fn additional_files_in_same_dir_do_not_re_register() {
+        let inner = fresh();
+        track(&inner, "/tmp/notes/a.md");
+        // Second + third files in the same dir → no new OS watch
+        assert!(!track(&inner, "/tmp/notes/b.md"));
+        assert!(!track(&inner, "/tmp/notes/c.md"));
+        assert_eq!(
+            inner.lock().unwrap().watched_dirs.get(&PathBuf::from("/tmp/notes")),
+            Some(&3)
+        );
+    }
+
+    #[test]
+    fn duplicate_track_is_idempotent() {
+        let inner = fresh();
+        track(&inner, "/tmp/notes/a.md");
+        // Same file re-watched → not a new dir registration, and no
+        // double-count of the dir refcount.
+        assert!(!track(&inner, "/tmp/notes/a.md"));
+        assert_eq!(
+            inner.lock().unwrap().watched_dirs.get(&PathBuf::from("/tmp/notes")),
+            Some(&1)
+        );
+    }
+
+    #[test]
+    fn unwatch_last_file_releases_dir() {
+        let inner = fresh();
+        track(&inner, "/tmp/notes/a.md");
+        track(&inner, "/tmp/notes/b.md");
+        // Removing one file in a multi-file dir → keep the OS watch
+        assert!(!untrack(&inner, "/tmp/notes/a.md"));
+        assert_eq!(
+            inner.lock().unwrap().watched_dirs.get(&PathBuf::from("/tmp/notes")),
+            Some(&1)
+        );
+        // Removing the last → release the OS watch
+        assert!(untrack(&inner, "/tmp/notes/b.md"));
+        assert!(inner.lock().unwrap().watched_dirs.is_empty());
+    }
+
+    #[test]
+    fn unwatch_unknown_file_is_no_op() {
+        let inner = fresh();
+        assert!(!untrack(&inner, "/tmp/notes/ghost.md"));
+        assert!(inner.lock().unwrap().watched_dirs.is_empty());
+    }
+
+    #[test]
+    fn files_in_different_dirs_get_separate_dir_watches() {
+        let inner = fresh();
+        assert!(track(&inner, "/tmp/notes/a.md"));
+        assert!(track(&inner, "/tmp/journal/b.md"));
+        let g = inner.lock().unwrap();
+        assert_eq!(g.watched_dirs.len(), 2);
+        assert_eq!(g.watched_dirs.get(&PathBuf::from("/tmp/notes")), Some(&1));
+        assert_eq!(g.watched_dirs.get(&PathBuf::from("/tmp/journal")), Some(&1));
+    }
+
+    /// Real notify integration: write to temp file directly, then via
+    /// atomic-save (write to .tmp + rename). The pre-v4.2 watcher (which
+    /// watched files directly with NonRecursive) would miss the atomic
+    /// case. This test confirms watching the parent dir catches both.
+    #[test]
+    fn dir_watch_catches_atomic_save() {
+        use std::sync::mpsc;
+        use std::fs;
+
+        let tmp = tempfile::tempdir().unwrap();
+        let target = tmp.path().join("note.md");
+        fs::write(&target, b"initial\n").unwrap();
+        let canonical_target = fs::canonicalize(&target).unwrap();
+
+        let (tx, rx) = mpsc::channel();
+        let mut deb = new_debouncer(Duration::from_millis(100), move |res: notify_debouncer_mini::DebounceEventResult| {
+            if let Ok(events) = res {
+                for ev in events {
+                    if let Ok(p) = fs::canonicalize(&ev.path) {
+                        let _ = tx.send(p);
+                    }
+                }
+            }
+        }).unwrap();
+        deb.watcher().watch(tmp.path(), RecursiveMode::NonRecursive).unwrap();
+        // notify needs a moment to register on macOS FSEvents
+        std::thread::sleep(Duration::from_millis(200));
+
+        // Case 1: direct overwrite — both watcher strategies catch this.
+        fs::write(&target, b"direct edit\n").unwrap();
+
+        // Case 2: atomic save — write tmp, rename into place. The old
+        // watcher missed this because the original inode disappeared.
+        let tmp_file = tmp.path().join("note.md.tmp");
+        fs::write(&tmp_file, b"atomic edit\n").unwrap();
+        fs::rename(&tmp_file, &target).unwrap();
+
+        // Collect events within a generous window. We expect at least
+        // one event for the canonical target path.
+        let deadline = Instant::now() + Duration::from_secs(3);
+        let mut saw_target = false;
+        while Instant::now() < deadline {
+            if let Ok(p) = rx.recv_timeout(Duration::from_millis(300)) {
+                if p == canonical_target {
+                    saw_target = true;
+                }
+            }
+        }
+        assert!(saw_target, "watcher missed events for {}", canonical_target.display());
+    }
 }

@@ -199,6 +199,10 @@ export const pl: I18n = {
     language: 'Język / Language',
     restoreSession: 'Przywróć poprzednie karty i panele przy starcie',
     restoreSessionHint: 'Wyłącz, aby zawsze startować z pustym oknem.',
+
+    autoReloadExternalChanges: 'Automatyczne odświeżanie plików zmienionych przez inne aplikacje',
+
+    autoReloadExternalChangesHint: 'Gdy włączone (domyślnie), edytor przeładowuje plik w miejscu, jeśli inny program (inny edytor, git checkout, klient synchronizacji) go zapisze. Niezapisane karty zawsze pokazują okno dialogowe — Twoje zmiany nigdy nie znikają po cichu.',
     openFileInNewWindow: 'Otwieraj pliki w nowym oknie',
     openFileInNewWindowHint: 'Gdy włączone, „Otwórz plik” otwiera nowe okno zamiast dodawać kartę do bieżącego.',
     revealInFileTreeOnOpen: 'Pokaż plik w drzewie plików przy otwieraniu',

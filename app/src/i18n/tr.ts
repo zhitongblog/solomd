@@ -199,6 +199,10 @@ export const tr: I18n = {
     language: 'Dil / 语言',
     restoreSession: 'Başlangıçta önceki sekmeleri ve panelleri geri yükle',
     restoreSessionHint: 'Her seferinde boş bir pencereyle başlamak için kapatın.',
+
+    autoReloadExternalChanges: 'Diğer uygulamalar tarafından değiştirilen dosyaları otomatik yenile',
+
+    autoReloadExternalChangesHint: 'Etkinleştirildiğinde (varsayılan), başka bir program (diğer editör, git checkout, eşitleme istemcisi) açık dosyayı yazarsa editör yerinde yeniden yükler. Kaydedilmemiş sekmeler her zaman iletişim kutusu gösterir — düzenlemeleriniz asla sessizce kaybolmaz.',
     openFileInNewWindow: 'Dosyaları yeni pencerede aç',
     openFileInNewWindowHint: 'Açıkken "Dosya Aç" mevcut pencereye sekme eklemek yerine yeni pencere açar.',
     revealInFileTreeOnOpen: 'Açılan dosyayı dosya ağacında göster',

@@ -199,6 +199,10 @@ export const es: I18n = {
     language: 'Idioma / Language',
     restoreSession: 'Restaurar pestañas y paneles previos al iniciar',
     restoreSessionHint: 'Desactivar para iniciar con ventana en blanco cada vez.',
+
+    autoReloadExternalChanges: 'Refrescar automáticamente los archivos cambiados por otras apps',
+
+    autoReloadExternalChangesHint: 'Cuando está activado (por defecto), el editor recarga en su lugar si otro programa (otro editor, git checkout, cliente de sincronización) escribe el archivo abierto. Las pestañas no guardadas siempre muestran un diálogo — tus ediciones nunca se pierden en silencio.',
     openFileInNewWindow: 'Abrir archivos en una ventana nueva',
     openFileInNewWindowHint: 'Si está activo, "Abrir archivo" lanza una ventana nueva en lugar de añadir una pestaña a la actual.',
     revealInFileTreeOnOpen: 'Mostrar archivo en el árbol al abrir',

@@ -197,6 +197,10 @@ export const en = {
     language: 'Language / 语言',
     restoreSession: 'Restore previous tabs and panes on startup',
     restoreSessionHint: 'Turn off to start with a blank window every time.',
+
+    autoReloadExternalChanges: 'Auto-refresh files changed by other apps',
+
+    autoReloadExternalChangesHint: 'When on (default), the editor reloads in place if another program writes the file you have open (other editors, git checkout, sync clients). Unsaved tabs always prompt — your edits are never silently lost.',
     openFileInNewWindow: 'Open files in a new window',
     openFileInNewWindowHint: 'When on, "Open File" spawns a new window instead of adding a tab to the current one.',
     revealInFileTreeOnOpen: 'Reveal file in file tree on open',

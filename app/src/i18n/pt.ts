@@ -201,6 +201,10 @@ export const pt: I18n = {
     language: 'Idioma / Language',
     restoreSession: 'Restaurar abas e painéis anteriores ao iniciar',
     restoreSessionHint: 'Desligue para iniciar com janela em branco a cada vez.',
+
+    autoReloadExternalChanges: 'Recarregar automaticamente arquivos alterados por outros apps',
+
+    autoReloadExternalChangesHint: 'Quando ativado (padrão), o editor recarrega no lugar se outro programa (outro editor, git checkout, cliente de sincronização) escrever o arquivo aberto. Abas não salvas sempre mostram um diálogo — suas edições nunca são perdidas em silêncio.',
     openFileInNewWindow: 'Abrir arquivos em nova janela',
     openFileInNewWindowHint: 'Quando ativo, "Abrir arquivo" lança uma nova janela em vez de adicionar uma aba à atual.',
     revealInFileTreeOnOpen: 'Revelar arquivo na árvore ao abrir',

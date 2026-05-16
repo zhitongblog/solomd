@@ -199,6 +199,10 @@ export const ja: I18n = {
     language: '言語 / Language',
     restoreSession: '起動時に前回のタブとペインを復元',
     restoreSessionHint: 'オフにすると、毎回空のウィンドウで起動します。',
+
+    autoReloadExternalChanges: '他のアプリで変更されたファイルを自動再読み込み',
+
+    autoReloadExternalChangesHint: 'オン（既定）にすると、別のプログラム（他のエディタ、git checkout、同期クライアント）が現在開いているファイルを書き換えた場合に、エディタが内容をその場で再読み込みします。未保存のタブは常に確認ダイアログを出します —— 編集が黙って失われることはありません。',
     openFileInNewWindow: 'ファイルを新しいウィンドウで開く',
     openFileInNewWindowHint: 'オンの場合、「ファイルを開く」は現在のウィンドウにタブを追加せず新しいウィンドウを開きます。',
     revealInFileTreeOnOpen: 'ファイルを開いた時にファイルツリーで表示',

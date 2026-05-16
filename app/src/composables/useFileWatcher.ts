@@ -75,8 +75,13 @@ export function useFileWatcher(showDialog: ShowDialog) {
 
     for (const tab of matching) {
       const isDirty = tab.content !== tab.savedContent;
+      // Settings → "auto-refresh externally-modified files" (default on).
+      // Preview mode always auto-reloads — nothing to lose. Dirty tabs
+      // always show the dialog — we never silently throw away unsaved
+      // edits regardless of this preference.
+      const autoReload = settings.autoReloadExternalChanges !== false;
 
-      if (!isDirty || isPreview) {
+      if (!isDirty && (isPreview || autoReload)) {
         try {
           await reloadTab(tab.id, filePath);
         } catch (e) {

@@ -199,6 +199,10 @@ export const fr: I18n = {
     language: 'Langue / Language',
     restoreSession: 'Restaurer les onglets et volets précédents au démarrage',
     restoreSessionHint: 'Désactiver pour démarrer avec une fenêtre vide à chaque fois.',
+
+    autoReloadExternalChanges: 'Rafraîchir automatiquement les fichiers modifiés par d\'autres apps',
+
+    autoReloadExternalChangesHint: 'Lorsqu\'activé (par défaut), l\'éditeur recharge en place si un autre programme (autre éditeur, git checkout, client de synchronisation) écrit le fichier ouvert. Les onglets non enregistrés affichent toujours une boîte de dialogue — vos modifications ne sont jamais perdues silencieusement.',
     openFileInNewWindow: 'Ouvrir les fichiers dans une nouvelle fenêtre',
     openFileInNewWindowHint: 'Si activé, « Ouvrir un fichier » lance une nouvelle fenêtre au lieu d\'ajouter un onglet à la fenêtre actuelle.',
     revealInFileTreeOnOpen: 'Afficher le fichier dans l\'arborescence à l\'ouverture',

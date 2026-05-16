@@ -199,6 +199,10 @@ export const it: I18n = {
     language: 'Lingua / Language',
     restoreSession: 'Ripristina schede e pannelli precedenti all\'avvio',
     restoreSessionHint: 'Disattiva per avviare con finestra vuota ogni volta.',
+
+    autoReloadExternalChanges: 'Ricarica automatica dei file modificati da altre app',
+
+    autoReloadExternalChangesHint: 'Quando attivo (predefinito), l\'editor ricarica sul posto se un altro programma (altro editor, git checkout, client di sincronizzazione) scrive il file aperto. Le schede non salvate mostrano sempre una finestra di dialogo — le tue modifiche non vengono mai perse silenziosamente.',
     openFileInNewWindow: 'Apri file in nuova finestra',
     openFileInNewWindowHint: 'Quando attivo, "Apri file" apre una nuova finestra invece di aggiungere una scheda a quella corrente.',
     revealInFileTreeOnOpen: 'Rivela file nell\'albero all\'apertura',

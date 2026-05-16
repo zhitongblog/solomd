@@ -199,6 +199,10 @@ export const zh: I18n = {
     language: '语言 / Language',
     restoreSession: '启动时恢复上次的标签页和分屏',
     restoreSessionHint: '关闭后，每次启动都是空白，不会自动打开之前的文档。',
+
+    autoReloadExternalChanges: '自动刷新被外部修改的文件',
+
+    autoReloadExternalChangesHint: '默认开启：当其他程序（其他编辑器、git checkout、同步客户端）修改了你正在打开的文件时,SoloMD 会原地刷新内容。有未保存改动的标签页仍会弹窗确认 —— 永远不会悄悄丢失你的编辑。',
     openFileInNewWindow: '用新窗口打开文件',
     openFileInNewWindowHint: '开启后，从「打开文件」菜单/工具栏选文件时会开新窗口，而不是在当前窗口加标签页。',
     revealInFileTreeOnOpen: '打开文件后自动切到所在文件夹',

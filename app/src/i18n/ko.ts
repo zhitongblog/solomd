@@ -199,6 +199,10 @@ export const ko: I18n = {
     language: '언어 / Language',
     restoreSession: '시작 시 이전 탭과 패널 복원',
     restoreSessionHint: '꺼두면 매번 빈 창으로 시작합니다.',
+
+    autoReloadExternalChanges: '다른 앱이 변경한 파일 자동 새로고침',
+
+    autoReloadExternalChangesHint: '켜져 있으면(기본값) 다른 프로그램(다른 에디터, git checkout, 동기화 클라이언트)이 열려 있는 파일을 수정했을 때 에디터가 자동으로 내용을 새로고침합니다. 저장되지 않은 탭은 항상 확인 대화상자를 표시합니다 —— 편집 내용이 조용히 사라지지 않습니다.',
     openFileInNewWindow: '파일을 새 창으로 열기',
     openFileInNewWindowHint: '켜두면 "파일 열기"가 현재 창에 탭을 추가하지 않고 새 창을 엽니다.',
     revealInFileTreeOnOpen: '파일 열 때 파일 트리에서 표시',

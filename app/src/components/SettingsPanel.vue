@@ -838,6 +838,16 @@ function onSelectPdfFont(v: string) {
           </div>
         </section>
 
+        <section data-cat="advanced">
+          <label>
+            <input type="checkbox" :checked="settings.autoReloadExternalChanges" @change="settings.toggleAutoReloadExternalChanges()" />
+            {{ t('settings.autoReloadExternalChanges') }}
+          </label>
+          <div style="font-size: 11px; color: var(--text-faint); margin-top: 4px; line-height: 1.5;">
+            {{ t('settings.autoReloadExternalChangesHint') }}
+          </div>
+        </section>
+
         <section v-if="!isMobilePlatform" data-cat="advanced">
           <label>
             <input type="checkbox" :checked="settings.openFileInNewWindow" @change="settings.toggleOpenFileInNewWindow()" />

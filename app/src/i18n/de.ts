@@ -199,6 +199,10 @@ export const de: I18n = {
     language: 'Sprache / Language',
     restoreSession: 'Vorherige Tabs und Bereiche beim Start wiederherstellen',
     restoreSessionHint: 'Ausschalten, um jedes Mal mit einem leeren Fenster zu starten.',
+
+    autoReloadExternalChanges: 'Von anderen Apps geänderte Dateien automatisch neu laden',
+
+    autoReloadExternalChangesHint: 'Wenn aktiviert (Standard), lädt der Editor die Datei direkt neu, falls ein anderes Programm (Editor, git checkout, Sync-Client) sie ändert. Tabs mit ungespeicherten Änderungen zeigen immer einen Dialog — Ihre Bearbeitungen gehen nie still verloren.',
     openFileInNewWindow: 'Dateien in neuem Fenster öffnen',
     openFileInNewWindowHint: 'Wenn aktiviert, öffnet "Datei öffnen" ein neues Fenster, statt einen Tab im aktuellen hinzuzufügen.',
     revealInFileTreeOnOpen: 'Datei beim Öffnen im Dateibaum anzeigen',

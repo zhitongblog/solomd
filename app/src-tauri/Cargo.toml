@@ -155,3 +155,6 @@ objc2-foundation = { version = "0.2", features = ["NSArray", "NSString", "NSUser
 [target.'cfg(target_os = "windows")'.dependencies]
 winreg = "0.52"
 
+
+[dev-dependencies]
+tempfile = "3"

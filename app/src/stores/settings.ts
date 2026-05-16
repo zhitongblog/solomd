@@ -57,6 +57,12 @@ interface Settings {
   telemetryNoticeAck: boolean;
   // Restore previously-open tabs + pane layout at startup (default: true).
   restoreSession: boolean;
+  // When a file watched by SoloMD is modified by another program (other
+  // editor, git checkout, sync client), reload the buffer automatically
+  // if the tab has no unsaved changes. Default on. Dirty tabs always
+  // show the reload/overwrite/cancel dialog regardless of this setting —
+  // we never silently throw away the user's in-progress edits.
+  autoReloadExternalChanges: boolean;
   // Opening a file from the toolbar/menu spawns a new Tauri window instead
   // of a new tab in the current window. Default off.
   openFileInNewWindow: boolean;
@@ -252,6 +258,7 @@ function defaults(): Settings {
     telemetryEnabled: true,
     telemetryNoticeAck: false,
     restoreSession: true,
+    autoReloadExternalChanges: true,
     openFileInNewWindow: false,
     revealInFileTreeOnOpen: false,
     welcomeShown: false,
@@ -487,6 +494,10 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleRestoreSession() {
       this.restoreSession = !this.restoreSession;
+      this.persist();
+    },
+    toggleAutoReloadExternalChanges() {
+      this.autoReloadExternalChanges = !this.autoReloadExternalChanges;
       this.persist();
     },
     toggleOpenFileInNewWindow() {
