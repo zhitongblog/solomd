@@ -25,6 +25,8 @@ interface Settings {
   theme: Theme;
   viewMode: ViewMode;
   fontSize: number;
+  previewFontSize: number;
+  uiZoom: number;
   fontFamily: string;
   wordWrap: boolean;
   showLineNumbers: boolean;
@@ -218,6 +220,8 @@ function defaults(): Settings {
     theme: prefersDark ? 'dark' : 'light',
     viewMode: 'edit',
     fontSize: 14,
+    previewFontSize: 15,
+    uiZoom: 1.0,
     fontFamily: 'JetBrains Mono',
     wordWrap: true,
     showLineNumbers: true,
@@ -430,6 +434,14 @@ export const useSettingsStore = defineStore('settings', {
     },
     setFontSize(n: number) {
       this.fontSize = Math.max(10, Math.min(28, n));
+      this.persist();
+    },
+    setPreviewFontSize(n: number) {
+      this.previewFontSize = Math.max(10, Math.min(32, n));
+      this.persist();
+    },
+    setUiZoom(n: number) {
+      this.uiZoom = Math.max(0.5, Math.min(3.0, n));
       this.persist();
     },
     setFontFamily(f: string) {
