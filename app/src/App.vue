@@ -264,6 +264,12 @@ watchEffect(() => {
   document.documentElement.style.setProperty('--ui-font-size', `${settings.uiFontSize}px`);
 });
 
+// Preview/ReadingView font size — independent axis from the editor.
+// ⌘⇧=/⌘⇧- target the editor; ⌘⌥=/⌘⌥- target the preview.
+watchEffect(() => {
+  document.documentElement.style.setProperty('--content-font-size', `${settings.previewFontSize}px`);
+});
+
 // Sync native menu bar language
 watchEffect(() => {
   invoke('set_menu_language', { lang: settings.language }).catch(() => {});
@@ -407,6 +413,15 @@ async function openExternalFile() {
   }
 }
 
+async function applyUiZoom(level: number) {
+  settings.setUiZoom(level);
+  try {
+    await getCurrentWebview().setZoom(settings.uiZoom);
+  } catch (e) {
+    console.warn('setZoom failed', e);
+  }
+}
+
 function dispatchMenuAction(id: string) {
   switch (id) {
     case 'file.new':
@@ -450,6 +465,33 @@ function dispatchMenuAction(id: string) {
       break;
     case 'view.cycleView':
       settings.cycleViewMode();
+      break;
+    case 'view.zoomUiIn':
+      applyUiZoom(settings.uiZoom + 0.2);
+      break;
+    case 'view.zoomUiOut':
+      applyUiZoom(settings.uiZoom - 0.2);
+      break;
+    case 'view.zoomUiReset':
+      applyUiZoom(1.0);
+      break;
+    case 'view.zoomEditorIn':
+      settings.setFontSize(settings.fontSize + 1);
+      break;
+    case 'view.zoomEditorOut':
+      settings.setFontSize(settings.fontSize - 1);
+      break;
+    case 'view.zoomEditorReset':
+      settings.setFontSize(14);
+      break;
+    case 'view.zoomPreviewIn':
+      settings.setPreviewFontSize(settings.previewFontSize + 1);
+      break;
+    case 'view.zoomPreviewOut':
+      settings.setPreviewFontSize(settings.previewFontSize - 1);
+      break;
+    case 'view.zoomPreviewReset':
+      settings.setPreviewFontSize(15);
       break;
     case 'view.cmdPalette':
       paletteOpen.value = true;
@@ -603,6 +645,13 @@ onMounted(async () => {
     });
   } catch (err) {
     console.warn('menu listener not available', err);
+  }
+
+  // Restore persisted UI zoom on startup.
+  try {
+    await getCurrentWebview().setZoom(settings.uiZoom);
+  } catch (e) {
+    console.warn('initial setZoom failed', e);
   }
 
   // Drag-drop file open

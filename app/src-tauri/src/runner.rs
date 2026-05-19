@@ -187,6 +187,15 @@ struct MenuStrings {
     toggle_sidebar: &'static str,
     toggle_outline: &'static str,
     cycle_view: &'static str,
+    ui_zoom_in: &'static str,
+    ui_zoom_out: &'static str,
+    ui_zoom_reset: &'static str,
+    editor_zoom_in: &'static str,
+    editor_zoom_out: &'static str,
+    editor_zoom_reset: &'static str,
+    preview_zoom_in: &'static str,
+    preview_zoom_out: &'static str,
+    preview_zoom_reset: &'static str,
     palette: &'static str,
     global_search: &'static str,
     settings_menu: &'static str,
@@ -215,6 +224,15 @@ fn strings_for(lang: &str) -> MenuStrings {
             toggle_sidebar: "切换文件树",
             toggle_outline: "切换大纲",
             cycle_view: "切换视图模式 (编辑/分栏/预览)",
+            ui_zoom_in: "整体界面：放大",
+            ui_zoom_out: "整体界面：缩小",
+            ui_zoom_reset: "整体界面：复位",
+            editor_zoom_in: "编辑器：放大字号",
+            editor_zoom_out: "编辑器：缩小字号",
+            editor_zoom_reset: "编辑器：复位字号",
+            preview_zoom_in: "预览：放大字号",
+            preview_zoom_out: "预览：缩小字号",
+            preview_zoom_reset: "预览：复位字号",
             palette: "命令面板",
             global_search: "在文件夹中搜索…",
             settings_menu: "设置…",
@@ -241,6 +259,15 @@ fn strings_for(lang: &str) -> MenuStrings {
             toggle_sidebar: "Toggle File Tree",
             toggle_outline: "Toggle Outline",
             cycle_view: "Cycle Edit/Split/Preview",
+            ui_zoom_in: "UI: Zoom In",
+            ui_zoom_out: "UI: Zoom Out",
+            ui_zoom_reset: "UI: Reset Zoom",
+            editor_zoom_in: "Editor: Zoom In",
+            editor_zoom_out: "Editor: Zoom Out",
+            editor_zoom_reset: "Editor: Reset Zoom",
+            preview_zoom_in: "Preview: Zoom In",
+            preview_zoom_out: "Preview: Zoom Out",
+            preview_zoom_reset: "Preview: Reset Zoom",
             palette: "Command Palette",
             global_search: "Search in Folder…",
             settings_menu: "Settings…",
@@ -323,6 +350,33 @@ fn build_app_menu<R: tauri::Runtime>(
     let cycle_view = MenuItemBuilder::with_id("view.cycleView", s.cycle_view)
         .accelerator("CmdOrCtrl+Shift+P")
         .build(app)?;
+    let ui_zoom_in = MenuItemBuilder::with_id("view.zoomUiIn", s.ui_zoom_in)
+        .accelerator("CmdOrCtrl+=")
+        .build(app)?;
+    let ui_zoom_out = MenuItemBuilder::with_id("view.zoomUiOut", s.ui_zoom_out)
+        .accelerator("CmdOrCtrl+-")
+        .build(app)?;
+    let ui_zoom_reset = MenuItemBuilder::with_id("view.zoomUiReset", s.ui_zoom_reset)
+        .accelerator("CmdOrCtrl+0")
+        .build(app)?;
+    let editor_zoom_in = MenuItemBuilder::with_id("view.zoomEditorIn", s.editor_zoom_in)
+        .accelerator("CmdOrCtrl+Shift+=")
+        .build(app)?;
+    let editor_zoom_out = MenuItemBuilder::with_id("view.zoomEditorOut", s.editor_zoom_out)
+        .accelerator("CmdOrCtrl+Shift+-")
+        .build(app)?;
+    let editor_zoom_reset = MenuItemBuilder::with_id("view.zoomEditorReset", s.editor_zoom_reset)
+        .accelerator("CmdOrCtrl+Shift+0")
+        .build(app)?;
+    let preview_zoom_in = MenuItemBuilder::with_id("view.zoomPreviewIn", s.preview_zoom_in)
+        .accelerator("CmdOrCtrl+Control+=")
+        .build(app)?;
+    let preview_zoom_out = MenuItemBuilder::with_id("view.zoomPreviewOut", s.preview_zoom_out)
+        .accelerator("CmdOrCtrl+Control+-")
+        .build(app)?;
+    let preview_zoom_reset = MenuItemBuilder::with_id("view.zoomPreviewReset", s.preview_zoom_reset)
+        .accelerator("CmdOrCtrl+Control+0")
+        .build(app)?;
     let palette = MenuItemBuilder::with_id("view.cmdPalette", s.palette)
         .accelerator("CmdOrCtrl+Shift+K")
         .build(app)?;
@@ -339,6 +393,18 @@ fn build_app_menu<R: tauri::Runtime>(
         .item(&toggle_sidebar)
         .item(&toggle_outline)
         .item(&cycle_view)
+        .separator()
+        .item(&ui_zoom_in)
+        .item(&ui_zoom_out)
+        .item(&ui_zoom_reset)
+        .separator()
+        .item(&editor_zoom_in)
+        .item(&editor_zoom_out)
+        .item(&editor_zoom_reset)
+        .separator()
+        .item(&preview_zoom_in)
+        .item(&preview_zoom_out)
+        .item(&preview_zoom_reset)
         .separator()
         .item(&palette)
         .item(&global_search)
