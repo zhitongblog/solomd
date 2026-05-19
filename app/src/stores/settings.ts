@@ -165,6 +165,13 @@ interface Settings {
   // for a free MIT app), but explicitly toggleable in Settings → Export
   // for users who don't want the watermark on screenshots they share.
   imageExportBranding: boolean;
+  // Transient (not persisted) — remembers pane visibility before sidebar hide
+  _rsPanesBeforeHide: {
+    showBacklinks: boolean;
+    showTagsPanel: boolean;
+    showHistoryPanel: boolean;
+    showAgentPanel: boolean;
+  } | null;
 }
 
 /** v2.5 PDF / print export defaults. */
@@ -305,6 +312,7 @@ function defaults(): Settings {
     pomodoroDefaultMinutes: 25,
     slashCommandsEnabled: true,
     imageExportBranding: true,
+    _rsPanesBeforeHide: null,
   };
 }
 
@@ -371,7 +379,8 @@ export const useSettingsStore = defineStore('settings', {
   actions: {
     persist() {
       try {
-        localStorage.setItem(LS_KEY, JSON.stringify(this.$state));
+        const { _rsPanesBeforeHide, ...rest } = this.$state as any;
+        localStorage.setItem(LS_KEY, JSON.stringify(rest));
       } catch {}
     },
     setTheme(theme: Theme) {
@@ -457,8 +466,45 @@ export const useSettingsStore = defineStore('settings', {
       this.persist();
     },
     toggleRightSidebar() {
-      this.rightSidebarHidden = !this.rightSidebarHidden;
+      if (!this.rightSidebarHidden) {
+        // Hiding: save current pane state for later restore
+        this._rsPanesBeforeHide = {
+          showBacklinks: this.showBacklinks,
+          showTagsPanel: this.showTagsPanel,
+          showHistoryPanel: this.showHistoryPanel,
+          showAgentPanel: this.showAgentPanel,
+        };
+        this.rightSidebarHidden = true;
+      } else {
+        // Showing: restore saved pane state, then ensure at least one pane is on
+        this.rightSidebarHidden = false;
+        const saved = this._rsPanesBeforeHide;
+        if (saved) {
+          this.showBacklinks = saved.showBacklinks;
+          this.showTagsPanel = saved.showTagsPanel;
+          this.showHistoryPanel = saved.showHistoryPanel;
+          this.showAgentPanel = saved.showAgentPanel;
+          this._rsPanesBeforeHide = null;
+        }
+        // Fallback: if no panes are visible after restore, enable defaults
+        if (!this.showBacklinks && !this.showTagsPanel && !this.showHistoryPanel && !this.showAgentPanel) {
+          this.showBacklinks = true;
+          this.showTagsPanel = true;
+        }
+      }
       this.persist();
+    },
+    /** Called from sidebar context menu when last pane is toggled off. */
+    hideRightSidebarFromPane(paneBeforeToggle: { showBacklinks: boolean; showTagsPanel: boolean; showHistoryPanel: boolean; showAgentPanel: boolean }) {
+      this._rsPanesBeforeHide = paneBeforeToggle;
+      this.rightSidebarHidden = true;
+      this.persist();
+    },
+    /** Ensure sidebar is visible (used when toggling a pane ON from context menu). */
+    ensureRightSidebarVisible() {
+      if (this.rightSidebarHidden) {
+        this.rightSidebarHidden = false;
+      }
     },
     toggleLivePreview() {
       this.livePreview = !this.livePreview;

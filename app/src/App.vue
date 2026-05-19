@@ -103,6 +103,41 @@ const searchOpen = ref(false);
 // from TagsPanel prefill `#tag` into the search box; the watcher in
 // GlobalSearch refocuses on every prefill change.
 const searchPrefill = ref<string | undefined>(undefined);
+// Right-sidebar context menu — toggle individual pane modules
+const sidebarCtx = ref<{ x: number; y: number } | null>(null);
+function openSidebarCtx(e: MouseEvent) {
+  e.preventDefault();
+  sidebarCtx.value = { x: e.clientX, y: e.clientY };
+}
+function closeSidebarCtx() { sidebarCtx.value = null; }
+
+/** Helper: snapshot current settings-level pane visibility. */
+function rsPaneSnapshot() {
+  return {
+    showBacklinks: settings.showBacklinks,
+    showTagsPanel: settings.showTagsPanel,
+    showHistoryPanel: settings.showHistoryPanel,
+    showAgentPanel: settings.showAgentPanel,
+  };
+}
+/** Toggle a pane from the context menu and sync sidebar state. */
+function ctxToggle(toggleFn: () => void) {
+  const before = rsPaneSnapshot();
+  toggleFn();
+  const noPanesVisible =
+    !searchOpen.value &&
+    !showOutlinePane.value &&
+    !settings.showBacklinks &&
+    !settings.showTagsPanel &&
+    !settings.showHistoryPanel &&
+    (IS_APP_STORE_BUILD || !settings.showAgentPanel);
+  if (noPanesVisible) {
+    settings.hideRightSidebarFromPane(before);
+  } else if (settings.rightSidebarHidden) {
+    settings.ensureRightSidebarVisible();
+  }
+  closeSidebarCtx();
+}
 const ragSearchOpen = ref(false);
 const cjkProofreadOpen = ref(false);
 const aboutOpen = ref(false);
@@ -171,7 +206,8 @@ useFileWatcher(showFileChangedDialog);
 // Esc closes the topmost modal
 function onEsc(e: KeyboardEvent) {
   if (e.key !== 'Escape') return;
-  if (aboutOpen.value) aboutOpen.value = false;
+  if (sidebarCtx.value) sidebarCtx.value = null;
+  else if (aboutOpen.value) aboutOpen.value = false;
   else if (cjkProofreadOpen.value) cjkProofreadOpen.value = false;
   else if (ragSearchOpen.value) ragSearchOpen.value = false;
   else if (fileChangedOpen.value) fileChangedOpen.value = false;
@@ -864,6 +900,7 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
           v-if="showRightSidebar && settings.outlineSide === 'left'"
           class="side-sidebar side-sidebar--left"
           :style="sideSidebarStyle"
+          @contextmenu.prevent="openSidebarCtx"
         >
           <div class="side-sidebar__resize side-sidebar__resize--right" @mousedown="onSidebarResize('left', $event)" />
           <template v-for="(p, idx) in visibleRsPanes" :key="p.id">
@@ -875,17 +912,17 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
                 @close="searchOpen = false"
               />
               <Outline v-if="p.id === 'outline'" :cursor-line="cursorLine" @goto="onOutlineGoto" />
-              <BacklinksPanel v-if="p.id === 'backlinks'" @close="settings.toggleBacklinks()" />
+              <BacklinksPanel v-if="p.id === 'backlinks'" @close="ctxToggle(() => settings.toggleBacklinks())" />
               <TagsPanel
                 v-if="p.id === 'tags'"
-                @close="settings.toggleTagsPanel()"
+                @close="ctxToggle(() => settings.toggleTagsPanel())"
                 @filter-tag="onFilterTag"
               />
-              <HistoryPanel v-if="p.id === 'history'" @close="settings.toggleHistoryPanel()" />
+              <HistoryPanel v-if="p.id === 'history'" @close="ctxToggle(() => settings.toggleHistoryPanel())" />
               <AgentPanel
                 v-if="p.id === 'agent'"
                 @open-settings="(section?: string) => openSettingsAt(section ?? 'integrations')"
-                @close="settings.toggleAgentPanel()"
+                @close="ctxToggle(() => settings.toggleAgentPanel())"
               />
             </div>
           </template>
@@ -898,14 +935,9 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
           v-if="showRightSidebar && settings.outlineSide !== 'left'"
           class="side-sidebar side-sidebar--right"
           :style="sideSidebarStyle"
+          @contextmenu.prevent="openSidebarCtx"
         >
           <div class="side-sidebar__resize side-sidebar__resize--left" @mousedown="onSidebarResize('right', $event)" />
-          <button
-            class="side-sidebar__close"
-            @click="settings.toggleRightSidebar"
-            title="Close right sidebar (⌥⌘B)"
-            aria-label="Close right sidebar"
-          >×</button>
           <template v-for="(p, idx) in visibleRsPanes" :key="p.id">
             <RsSplitter v-if="idx > 0" :above="visibleRsPanes[idx-1].id" :below="p.id" />
             <div :data-rs-pane="p.id" :class="['rs-pane-host', `rs-pane-host--${p.id}`]" :style="paneStyle(p.id)">
@@ -915,23 +947,58 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
                 @close="searchOpen = false"
               />
               <Outline v-if="p.id === 'outline'" :cursor-line="cursorLine" @goto="onOutlineGoto" />
-              <BacklinksPanel v-if="p.id === 'backlinks'" @close="settings.toggleBacklinks()" />
+              <BacklinksPanel v-if="p.id === 'backlinks'" @close="ctxToggle(() => settings.toggleBacklinks())" />
               <TagsPanel
                 v-if="p.id === 'tags'"
-                @close="settings.toggleTagsPanel()"
+                @close="ctxToggle(() => settings.toggleTagsPanel())"
                 @filter-tag="onFilterTag"
               />
-              <HistoryPanel v-if="p.id === 'history'" @close="settings.toggleHistoryPanel()" />
+              <HistoryPanel v-if="p.id === 'history'" @close="ctxToggle(() => settings.toggleHistoryPanel())" />
               <AgentPanel
                 v-if="p.id === 'agent'"
                 @open-settings="(section?: string) => openSettingsAt(section ?? 'integrations')"
-                @close="settings.toggleAgentPanel()"
+                @close="ctxToggle(() => settings.toggleAgentPanel())"
               />
             </div>
           </template>
         </aside>
       </div>
       <StatusBar :line="cursorLine" :col="cursorCol" />
+      <!-- Right-sidebar context menu: toggle individual pane modules -->
+      <Teleport to="body">
+        <div
+          v-if="sidebarCtx"
+          class="sidebar-ctx"
+          :style="{ left: sidebarCtx.x + 'px', top: sidebarCtx.y + 'px' }"
+          @click.stop
+        >
+          <label class="sidebar-ctx__item" @click="ctxToggle(() => { searchOpen = !searchOpen })">
+            <span class="sidebar-ctx__check">{{ searchOpen ? '✓' : '' }}</span>
+            Search
+          </label>
+          <label class="sidebar-ctx__item" @click="ctxToggle(() => { if (tabs.activeTab) tabs.toggleOutline(tabs.activeTab.id) })">
+            <span class="sidebar-ctx__check">{{ showOutlinePane ? '✓' : '' }}</span>
+            Outline
+          </label>
+          <label class="sidebar-ctx__item" @click="ctxToggle(() => { settings.toggleBacklinks() })">
+            <span class="sidebar-ctx__check">{{ settings.showBacklinks ? '✓' : '' }}</span>
+            Backlinks
+          </label>
+          <label class="sidebar-ctx__item" @click="ctxToggle(() => { settings.toggleTagsPanel() })">
+            <span class="sidebar-ctx__check">{{ settings.showTagsPanel ? '✓' : '' }}</span>
+            Tags
+          </label>
+          <label class="sidebar-ctx__item" @click="ctxToggle(() => { settings.toggleHistoryPanel() })">
+            <span class="sidebar-ctx__check">{{ settings.showHistoryPanel ? '✓' : '' }}</span>
+            History
+          </label>
+          <label v-if="!IS_APP_STORE_BUILD" class="sidebar-ctx__item" @click="ctxToggle(() => { settings.toggleAgentPanel() })">
+            <span class="sidebar-ctx__check">{{ settings.showAgentPanel ? '✓' : '' }}</span>
+            Agent
+          </label>
+        </div>
+        <div v-if="sidebarCtx" class="sidebar-ctx__backdrop" @click="closeSidebarCtx" />
+      </Teleport>
     </template>
 
     <AIRewriteOverlay
@@ -1033,29 +1100,6 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
   background: var(--accent, #6366f1);
   opacity: 0.5;
 }
-.side-sidebar__close {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 22px;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: none;
-  border-radius: 4px;
-  color: var(--text-muted);
-  cursor: pointer;
-  font-size: 16px;
-  line-height: 1;
-  z-index: 11;
-  padding: 0;
-}
-.side-sidebar__close:hover {
-  background: var(--hover-bg);
-  color: var(--text);
-}
 /* v4.0.2 — each pane lives inside an .rs-pane-host wrapper so the
    <RsSplitter> can find adjacent panes via [data-rs-pane] and resize
    them. Direct children of .side-sidebar are now: the resize handle,
@@ -1097,5 +1141,48 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
   min-width: 0;
   overflow: hidden;
   position: relative;
+}
+/* Right-sidebar context menu */
+.sidebar-ctx {
+  position: fixed;
+  z-index: 9999;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px 0;
+  min-width: 160px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  font-size: 13px;
+  user-select: none;
+}
+.sidebar-ctx__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 12px;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  box-sizing: border-box;
+}
+.sidebar-ctx__item:hover {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.sidebar-ctx__check {
+  display: inline-block;
+  width: 16px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.sidebar-ctx__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
 }
 </style>
