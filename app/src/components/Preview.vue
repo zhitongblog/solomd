@@ -264,7 +264,9 @@ defineExpose({ scrollToLine, openSearch });
   padding: 28px 36px 64px;
   color: var(--text);
   font-family: var(--font-ui);
-  font-size: 15px;
+  /* v4.2.5 PR #74 — preview-only font size; driven by settings.previewFontSize
+     via the `--content-font-size` CSS custom property set in App.vue. */
+  font-size: var(--content-font-size, 15px);
   line-height: 1.7;
 }
 .preview-content--fit {

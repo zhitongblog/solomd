@@ -181,6 +181,11 @@ interface Settings {
   // (newly added in a future release) get appended to the end so the user's
   // saved layout isn't blown away by a SoloMD update. Issue #57b.
   rsPaneOrder: string[];
+  // v4.2.5: preview-pane font size (px). Decoupled from editor `fontSize`
+  // so users can tune editor density and preview readability separately
+  // (PR #74 — yzcj105). Bound to ⌃⌘+/⌃⌘-/⌃⌘0; the editor axis (existing
+  // `fontSize`) is bound to ⌘⇧+/⌘⇧-/⌘⇧0. Range 10–32.
+  previewFontSize: number;
 }
 
 /** v2.5 PDF / print export defaults. */
@@ -324,6 +329,7 @@ function defaults(): Settings {
     globalZoom: 1,
     codeBlockLineNumbers: false,
     rsPaneOrder: ['search', 'outline', 'backlinks', 'tags', 'history', 'agent'],
+    previewFontSize: 15,
   };
 }
 
@@ -735,5 +741,19 @@ export const useSettingsStore = defineStore('settings', {
       this.rsPaneOrder = ['search', 'outline', 'backlinks', 'tags', 'history', 'agent'];
       this.persist();
     },
+    /** v4.2.5 PR #74 — preview-only font size. Editor font is the existing
+     *  `setFontSize`; this one drives `--content-font-size` (Preview.vue). */
+    setPreviewFontSize(n: number) {
+      this.previewFontSize = Math.max(10, Math.min(32, Math.round(n || 15)));
+      this.persist();
+    },
+    previewFontIn() { this.setPreviewFontSize((this.previewFontSize || 15) + 1); },
+    previewFontOut() { this.setPreviewFontSize((this.previewFontSize || 15) - 1); },
+    resetPreviewFontSize() { this.setPreviewFontSize(15); },
+    /** v4.2.5 PR #74 — editor-only font size convenience wrappers. The
+     *  underlying field is the existing `fontSize`. */
+    editorFontIn() { this.setFontSize((this.fontSize || 14) + 1); },
+    editorFontOut() { this.setFontSize((this.fontSize || 14) - 1); },
+    resetEditorFontSize() { this.setFontSize(14); },
   },
 });

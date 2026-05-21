@@ -173,27 +173,42 @@ useFileWatcher(showFileChangedDialog);
 
 // Esc closes the topmost modal
 function onZoomShortcut(e: KeyboardEvent): boolean {
-  // v4.2.5 issue #72 — Cmd/Ctrl + / Cmd/Ctrl - / Cmd/Ctrl 0
-  // We intercept `=` and `+` for zoom-in (typical zoom shortcut works on both
-  // Shift-= and the plus key) and `-` for zoom-out. `0` resets to 1.0.
-  const mod = e.metaKey || e.ctrlKey;
-  if (!mod || e.altKey) return false;
-  if (e.key === '=' || e.key === '+') {
-    e.preventDefault();
-    settings.zoomIn();
-    return true;
+  // Three independent zoom axes (v4.2.5 issue #72 + PR #74 yzcj105):
+  //   ⌘= / ⌘- / ⌘0           → globalZoom (whole app, CSS zoom)
+  //   ⌘⇧= / ⌘⇧- / ⌘⇧0        → editor font size only
+  //   ⌃⌘= / ⌃⌘- / ⌃⌘0        → preview font size only
+  // On macOS the same shortcuts are also exposed via native View menu
+  // accelerators (runner.rs) — this JS handler covers Linux/Windows and
+  // catches keys before the WebView's built-in browser zoom intercepts them.
+  const cmd = e.metaKey;          // macOS Cmd
+  const ctrlOnly = e.ctrlKey && !e.metaKey; // Linux/Win Ctrl (no Cmd present)
+  if (!cmd && !ctrlOnly) return false;
+  if (e.altKey) return false;
+
+  // Identify axis: Shift = editor; Cmd+Ctrl (both) = preview; otherwise UI.
+  let axis: 'ui' | 'editor' | 'preview' = 'ui';
+  if (e.shiftKey && !(e.metaKey && e.ctrlKey)) axis = 'editor';
+  else if (e.metaKey && e.ctrlKey) axis = 'preview';
+
+  const isIn = e.key === '=' || e.key === '+';
+  const isOut = e.key === '-' || e.key === '_';
+  const isReset = e.key === '0';
+  if (!isIn && !isOut && !isReset) return false;
+  e.preventDefault();
+  if (axis === 'editor') {
+    if (isIn) settings.editorFontIn();
+    else if (isOut) settings.editorFontOut();
+    else settings.resetEditorFontSize();
+  } else if (axis === 'preview') {
+    if (isIn) settings.previewFontIn();
+    else if (isOut) settings.previewFontOut();
+    else settings.resetPreviewFontSize();
+  } else {
+    if (isIn) settings.zoomIn();
+    else if (isOut) settings.zoomOut();
+    else settings.resetZoom();
   }
-  if (e.key === '-' || e.key === '_') {
-    e.preventDefault();
-    settings.zoomOut();
-    return true;
-  }
-  if (e.key === '0') {
-    e.preventDefault();
-    settings.resetZoom();
-    return true;
-  }
-  return false;
+  return true;
 }
 
 function onEsc(e: KeyboardEvent) {
@@ -303,6 +318,15 @@ watchEffect(() => {
 watchEffect(() => {
   const z = settings.globalZoom || 1;
   (document.documentElement.style as any).zoom = String(z);
+});
+
+// v4.2.5 (PR #74 — yzcj105): preview-pane font size, surfaced as a CSS
+// custom property so Preview.vue can read it without re-rendering content.
+watchEffect(() => {
+  document.documentElement.style.setProperty(
+    '--content-font-size',
+    `${settings.previewFontSize || 15}px`,
+  );
 });
 
 // Sync native menu bar language
@@ -491,6 +515,34 @@ function dispatchMenuAction(id: string) {
       break;
     case 'view.cycleView':
       settings.cycleViewMode();
+      break;
+    // v4.2.5 PR #74 — 3-axis zoom from the native View menu.
+    case 'view.zoomUiIn':
+      settings.zoomIn();
+      break;
+    case 'view.zoomUiOut':
+      settings.zoomOut();
+      break;
+    case 'view.zoomUiReset':
+      settings.resetZoom();
+      break;
+    case 'view.zoomEditorIn':
+      settings.editorFontIn();
+      break;
+    case 'view.zoomEditorOut':
+      settings.editorFontOut();
+      break;
+    case 'view.zoomEditorReset':
+      settings.resetEditorFontSize();
+      break;
+    case 'view.zoomPreviewIn':
+      settings.previewFontIn();
+      break;
+    case 'view.zoomPreviewOut':
+      settings.previewFontOut();
+      break;
+    case 'view.zoomPreviewReset':
+      settings.resetPreviewFontSize();
       break;
     case 'view.cmdPalette':
       paletteOpen.value = true;
