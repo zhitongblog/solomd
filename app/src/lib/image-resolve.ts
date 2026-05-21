@@ -111,3 +111,44 @@ export function rewriteImageUrls(
     },
   );
 }
+
+/**
+ * v4.2.5 issue #77 — local-file `<a href=…>` URLs in rendered markdown
+ * resolve against the webview's base URL (`http://tauri.localhost/`),
+ * which then bakes into exported PDFs / DOCX / images as a useless
+ * `http://tauri.localhost/foo.factoryio` link.
+ *
+ * This rewrites local-file hrefs to absolute `file://` URLs so the link
+ * (a) still works on the original machine and (b) shows a meaningful
+ * file-system path when the PDF is shared. Remote schemes (http/https/
+ * mailto/tel/data/etc.) and in-page anchors (`#section`) are left alone.
+ */
+export function rewriteLinkUrls(
+  rawHtml: string,
+  imageRoot: string | null,
+  filePath?: string,
+): string {
+  return rawHtml.replace(
+    /(<a\b[^>]*\bhref=)(["'])([^"']*)\2/gi,
+    (_match, prefix: string, q: string, href: string) => {
+      // Leave anchors / remote / data-style URLs as-is.
+      if (!href) return `${prefix}${q}${q}`;
+      if (href.startsWith('#')) return `${prefix}${q}${href}${q}`;
+      if (/^(https?|mailto|tel|sms|data|blob|asset|tauri|ftp|file):/i.test(href)) {
+        return `${prefix}${q}${href}${q}`;
+      }
+      // Decode the path so `%20` etc. don't go through resolution twice.
+      let decoded: string;
+      try { decoded = decodeURI(href); } catch { decoded = href; }
+      const resolved = resolveImagePath(decoded, imageRoot, filePath);
+      const isAbs = resolved.startsWith('/') || /^[a-zA-Z]:[\\/]/.test(resolved);
+      if (!isAbs) return `${prefix}${q}${href}${q}`;
+      // Build a `file://` URL — encodeURI keeps the path readable while
+      // escaping spaces / unicode. Windows drives need an extra `/`.
+      const fileUrl = /^[a-zA-Z]:/.test(resolved)
+        ? `file:///${encodeURI(resolved.replace(/\\/g, '/'))}`
+        : `file://${encodeURI(resolved)}`;
+      return `${prefix}${q}${fileUrl}${q}`;
+    },
+  );
+}

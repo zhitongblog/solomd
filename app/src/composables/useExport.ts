@@ -7,7 +7,8 @@ import { isIOS } from '../lib/platform';
 import { markdownToDocxBlob } from '../lib/docx-export';
 import { markdownToPdfBlob } from '../lib/pdf-export';
 import { markdownToImageBlob } from '../lib/image-export';
-import { renderMarkdown } from '../lib/markdown';
+import { renderMarkdown, extractImageRoot } from '../lib/markdown';
+import { rewriteLinkUrls, rewriteImageUrls } from '../lib/image-resolve';
 import { useTabsStore } from '../stores/tabs';
 import { useSettingsStore } from '../stores/settings';
 import { useToastsStore } from '../stores/toasts';
@@ -298,7 +299,16 @@ export function useExport() {
     const filename = `${ctx.baseName}.html`;
     const path = await pickWritePath(filename, [{ name: 'HTML', extensions: ['html'] }]);
     if (!path) return;
-    const html = HTML_TEMPLATE(ctx.baseName, renderMarkdown(ctx.content));
+    // v4.2.5 issue #77 — rewrite local-file `href` / `src` URLs to
+    // absolute `file://` paths so the exported HTML doesn't bake in
+    // `http://tauri.localhost/...` references that break when shared.
+    const imageRoot = extractImageRoot(ctx.content);
+    const body = rewriteLinkUrls(
+      rewriteImageUrls(renderMarkdown(ctx.content), imageRoot, ctx.filePath),
+      imageRoot,
+      ctx.filePath,
+    );
+    const html = HTML_TEMPLATE(ctx.baseName, body);
     try {
       await invoke('write_file', { path, content: html, encoding: 'UTF-8' });
       toasts.success(isIOS() ? iosSavedToast(filename) : 'Exported to HTML');
@@ -373,7 +383,15 @@ export function useExport() {
     // Strip YAML front matter before rendering — users don't want the
     // metadata block to show up in the printed output.
     const source = ctx.content.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '');
-    const body = renderMarkdown(source);
+    // v4.2.5 issue #77 — same link/image rewriting as the file-export path,
+    // so the print overlay (and therefore the resulting PDF from the system
+    // print dialog) doesn't show `http://tauri.localhost/...` links.
+    const imageRoot = extractImageRoot(source);
+    const body = rewriteLinkUrls(
+      rewriteImageUrls(renderMarkdown(source), imageRoot, ctx.filePath),
+      imageRoot,
+      ctx.filePath,
+    );
 
     let overlay = document.getElementById('solomd-print-overlay') as HTMLDivElement | null;
     if (!overlay) {

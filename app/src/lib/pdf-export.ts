@@ -16,7 +16,7 @@ import html2pdf from 'html2pdf.js';
 import mermaid from 'mermaid';
 import { renderMarkdown, extractImageRoot } from './markdown';
 import type { ResolvedPdfOptions } from './pdf-options';
-import { rewriteImageUrls } from './image-resolve';
+import { rewriteImageUrls, rewriteLinkUrls } from './image-resolve';
 
 const EXPORT_TIMEOUT_MS = 30_000;
 
@@ -193,7 +193,14 @@ export async function markdownToPdfBlob(
   filePath?: string,
 ): Promise<Blob> {
   const rawHtml = renderMarkdown(source || '');
-  const html = rewriteImageUrls(rawHtml, extractImageRoot(source || ''), filePath);
+  // v4.2.5 issue #77 — also rewrite link hrefs so local-file links
+  // don't bake in `http://tauri.localhost/...` URLs.
+  const imageRoot = extractImageRoot(source || '');
+  const html = rewriteLinkUrls(
+    rewriteImageUrls(rawHtml, imageRoot, filePath),
+    imageRoot,
+    filePath,
+  );
 
   // Build an off-screen container that mimics the preview look.
   const styleEl = document.createElement('style');
