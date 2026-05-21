@@ -113,7 +113,7 @@ export function rewriteImageUrls(
 }
 
 /**
- * v4.2.5 issue #77 — local-file `<a href=…>` URLs in rendered markdown
+ * v4.3.0 issue #77 — local-file `<a href=…>` URLs in rendered markdown
  * resolve against the webview's base URL (`http://tauri.localhost/`),
  * which then bakes into exported PDFs / DOCX / images as a useless
  * `http://tauri.localhost/foo.factoryio` link.

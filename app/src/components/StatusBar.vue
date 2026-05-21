@@ -34,7 +34,7 @@ const lineCount = computed(() => {
   const c = tabs.activeTab?.content ?? '';
   return c ? c.split('\n').length : 0;
 });
-// v4.2.5 issue #70: stats for the current editor selection. Shown only when
+// v4.3.0 issue #70: stats for the current editor selection. Shown only when
 // non-empty; uses the same cjkWordCount tokenizer as the document totals so
 // CJK + Latin counts line up.
 const selStats = computed(() => {

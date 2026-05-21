@@ -165,28 +165,28 @@ interface Settings {
   // for a free MIT app), but explicitly toggleable in Settings → Export
   // for users who don't want the watermark on screenshots they share.
   imageExportBranding: boolean;
-  // v4.2.5: global UI zoom (scales the entire app — editor, preview, chrome,
+  // v4.3.0: global UI zoom (scales the entire app — editor, preview, chrome,
   // sidebars, modals). Helpful on high-DPI screens where everything renders
   // too small even at the OS default scale. Range 0.75x – 2.5x. Wired via
   // `document.documentElement.style.zoom`, which Chromium / WebKit / wry all
   // support. Bound to ⌘=, ⌘-, ⌘0 shortcuts. Issue #72.
   globalZoom: number;
-  // v4.2.5: show line numbers next to each line of code in the rendered
+  // v4.3.0: show line numbers next to each line of code in the rendered
   // preview (and Pandoc/PDF/PNG exports — they all share the preview HTML).
   // Default off so existing exports don't surprise anyone. Issue #65.
   codeBlockLineNumbers: boolean;
-  // v4.2.5: user-customisable order of the right-sidebar panes. Each entry
+  // v4.3.0: user-customisable order of the right-sidebar panes. Each entry
   // is a pane id (search / outline / backlinks / tags / history / agent).
-  // Default matches the pre-v4.2.5 hardcoded order. Panes not in the list
+  // Default matches the pre-v4.3.0 hardcoded order. Panes not in the list
   // (newly added in a future release) get appended to the end so the user's
   // saved layout isn't blown away by a SoloMD update. Issue #57b.
   rsPaneOrder: string[];
-  // v4.2.5: preview-pane font size (px). Decoupled from editor `fontSize`
+  // v4.3.0: preview-pane font size (px). Decoupled from editor `fontSize`
   // so users can tune editor density and preview readability separately
   // (PR #74 — yzcj105). Bound to ⌃⌘+/⌃⌘-/⌃⌘0; the editor axis (existing
   // `fontSize`) is bound to ⌘⇧+/⌘⇧-/⌘⇧0. Range 10–32.
   previewFontSize: number;
-  // v4.2.5 PR #75 (beihai23) — transient (not persisted) snapshot of the
+  // v4.3.0 PR #75 (beihai23) — transient (not persisted) snapshot of the
   // right-sidebar pane visibility taken when the sidebar is hidden, so
   // toggling it back on can restore the exact previous layout instead of
   // leaving the user with a blank sidebar.
@@ -407,7 +407,7 @@ export const useSettingsStore = defineStore('settings', {
   actions: {
     persist() {
       try {
-        // v4.2.5 PR #75 — drop transient `_rsPanesBeforeHide` from disk;
+        // v4.3.0 PR #75 — drop transient `_rsPanesBeforeHide` from disk;
         // it's only meaningful for the current session.
         const { _rsPanesBeforeHide, ...rest } = this.$state as any;
         void _rsPanesBeforeHide;
@@ -497,7 +497,7 @@ export const useSettingsStore = defineStore('settings', {
       this.persist();
     },
     toggleRightSidebar() {
-      // v4.2.5 PR #75 — when hiding, snapshot the current pane visibility so
+      // v4.3.0 PR #75 — when hiding, snapshot the current pane visibility so
       // toggling back on can restore the exact layout instead of a blank
       // sidebar; when restoring, ensure at least one pane is on so the
       // sidebar isn't empty.
@@ -526,7 +526,7 @@ export const useSettingsStore = defineStore('settings', {
       }
       this.persist();
     },
-    /** v4.2.5 PR #75 — called when the user toggles off the last visible
+    /** v4.3.0 PR #75 — called when the user toggles off the last visible
      *  pane via the right-click context menu; auto-hides the sidebar and
      *  remembers the pre-toggle layout for later restore. */
     hideRightSidebarFromPane(paneBeforeToggle: {
@@ -539,7 +539,7 @@ export const useSettingsStore = defineStore('settings', {
       this.rightSidebarHidden = true;
       this.persist();
     },
-    /** v4.2.5 PR #75 — ensure the sidebar is visible (used when toggling a
+    /** v4.3.0 PR #75 — ensure the sidebar is visible (used when toggling a
      *  pane ON from the context menu while the sidebar was auto-hidden). */
     ensureRightSidebarVisible() {
       if (this.rightSidebarHidden) {
@@ -785,7 +785,7 @@ export const useSettingsStore = defineStore('settings', {
       this.codeBlockLineNumbers = !this.codeBlockLineNumbers;
       this.persist();
     },
-    /** v4.2.5 issue #57b — reorder the right sidebar by moving a pane id to
+    /** v4.3.0 issue #57b — reorder the right sidebar by moving a pane id to
      *  a new index. Tolerates out-of-range targets (clamps), no-ops for
      *  unknown ids. */
     moveRsPane(paneId: string, targetIdx: number) {
@@ -802,7 +802,7 @@ export const useSettingsStore = defineStore('settings', {
       this.rsPaneOrder = ['search', 'outline', 'backlinks', 'tags', 'history', 'agent'];
       this.persist();
     },
-    /** v4.2.5 PR #74 — preview-only font size. Editor font is the existing
+    /** v4.3.0 PR #74 — preview-only font size. Editor font is the existing
      *  `setFontSize`; this one drives `--content-font-size` (Preview.vue). */
     setPreviewFontSize(n: number) {
       this.previewFontSize = Math.max(10, Math.min(32, Math.round(n || 15)));
@@ -811,7 +811,7 @@ export const useSettingsStore = defineStore('settings', {
     previewFontIn() { this.setPreviewFontSize((this.previewFontSize || 15) + 1); },
     previewFontOut() { this.setPreviewFontSize((this.previewFontSize || 15) - 1); },
     resetPreviewFontSize() { this.setPreviewFontSize(15); },
-    /** v4.2.5 PR #74 — editor-only font size convenience wrappers. The
+    /** v4.3.0 PR #74 — editor-only font size convenience wrappers. The
      *  underlying field is the existing `fontSize`. */
     editorFontIn() { this.setFontSize((this.fontSize || 14) + 1); },
     editorFontOut() { this.setFontSize((this.fontSize || 14) - 1); },

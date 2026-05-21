@@ -136,7 +136,7 @@ const BLOCK_OPEN_TYPES = new Set([
   'html_block',
   'math_block',
 ]);
-// v4.2.5 issue #65: wrap each line of a rendered fence in a <span
+// v4.3.0 issue #65: wrap each line of a rendered fence in a <span
 // class="cb-line"> so a CSS counter can display line numbers when the
 // `codeBlockLineNumbers` setting is on. The CSS is gated by a
 // `cb-numbered` class added to <pre> here and `cb-numbered-on` on the

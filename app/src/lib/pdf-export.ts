@@ -193,7 +193,7 @@ export async function markdownToPdfBlob(
   filePath?: string,
 ): Promise<Blob> {
   const rawHtml = renderMarkdown(source || '');
-  // v4.2.5 issue #77 — also rewrite link hrefs so local-file links
+  // v4.3.0 issue #77 — also rewrite link hrefs so local-file links
   // don't bake in `http://tauri.localhost/...` URLs.
   const imageRoot = extractImageRoot(source || '');
   const html = rewriteLinkUrls(

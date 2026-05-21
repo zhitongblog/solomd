@@ -187,7 +187,7 @@ struct MenuStrings {
     toggle_sidebar: &'static str,
     toggle_outline: &'static str,
     cycle_view: &'static str,
-    // v4.2.5 PR #74 — 3-axis zoom (UI / Editor / Preview).
+    // v4.3.0 PR #74 — 3-axis zoom (UI / Editor / Preview).
     ui_zoom_in: &'static str,
     ui_zoom_out: &'static str,
     ui_zoom_reset: &'static str,
@@ -351,7 +351,7 @@ fn build_app_menu<R: tauri::Runtime>(
     let cycle_view = MenuItemBuilder::with_id("view.cycleView", s.cycle_view)
         .accelerator("CmdOrCtrl+Shift+P")
         .build(app)?;
-    // v4.2.5 PR #74 — three independent zoom axes wired through native
+    // v4.3.0 PR #74 — three independent zoom axes wired through native
     // menu accelerators (more reliable than JS keyboard handlers on macOS,
     // which the WKWebView can sometimes intercept). Action ids are
     // dispatched in App.vue's `dispatchMenuAction`.

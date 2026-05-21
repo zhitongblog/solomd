@@ -299,7 +299,7 @@ export function useExport() {
     const filename = `${ctx.baseName}.html`;
     const path = await pickWritePath(filename, [{ name: 'HTML', extensions: ['html'] }]);
     if (!path) return;
-    // v4.2.5 issue #77 — rewrite local-file `href` / `src` URLs to
+    // v4.3.0 issue #77 — rewrite local-file `href` / `src` URLs to
     // absolute `file://` paths so the exported HTML doesn't bake in
     // `http://tauri.localhost/...` references that break when shared.
     const imageRoot = extractImageRoot(ctx.content);
@@ -383,7 +383,7 @@ export function useExport() {
     // Strip YAML front matter before rendering — users don't want the
     // metadata block to show up in the printed output.
     const source = ctx.content.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '');
-    // v4.2.5 issue #77 — same link/image rewriting as the file-export path,
+    // v4.3.0 issue #77 — same link/image rewriting as the file-export path,
     // so the print overlay (and therefore the resulting PDF from the system
     // print dialog) doesn't show `http://tauri.localhost/...` links.
     const imageRoot = extractImageRoot(source);

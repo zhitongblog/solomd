@@ -174,7 +174,7 @@ const fontSizeTheme = (px: number, family: string) =>
     '.cm-activeLineGutter': { backgroundColor: 'transparent', color: 'var(--accent)' },
     '.cm-cursor': { borderLeftColor: 'var(--accent)', borderLeftWidth: '2px' },
     '.cm-selectionBackground, ::selection': { backgroundColor: 'rgba(255,159,64,0.25) !important' },
-    // v4.2.5 issue #67: distinct current-match highlight for the Cmd+F search
+    // v4.3.0 issue #67: distinct current-match highlight for the Cmd+F search
     // panel. CM6 marks the active result with `.cm-searchMatch-selected` —
     // by default it's the same translucent color as the other matches so the
     // user can't tell which one they're on. Brighten it to the accent color
@@ -246,7 +246,7 @@ function buildExtensions() {
         const head = u.state.selection.main.head;
         const line = u.state.doc.lineAt(head);
         emit('cursor', line.number, head - line.from + 1);
-        // v4.2.5 issue #70: emit selection text so StatusBar can show
+        // v4.3.0 issue #70: emit selection text so StatusBar can show
         // selected word/char count. Empty string when nothing's selected.
         const sel = u.state.selection.main;
         emit('selection', sel.empty ? '' : u.state.sliceDoc(sel.from, sel.to));

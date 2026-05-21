@@ -86,7 +86,7 @@ const { t } = useI18n();
 
 const cursorLine = ref(1);
 const cursorCol = ref(1);
-// v4.2.5 issue #70: selection text from the editor, surfaced in StatusBar
+// v4.3.0 issue #70: selection text from the editor, surfaced in StatusBar
 // as "selected: N words / M chars". Empty string when nothing is selected.
 const selectionText = ref('');
 const paletteOpen = ref(false);
@@ -107,7 +107,7 @@ const searchOpen = ref(false);
 // GlobalSearch refocuses on every prefill change.
 const searchPrefill = ref<string | undefined>(undefined);
 
-// v4.2.5 PR #75 (beihai23) — right-click context menu on the sidebar gives
+// v4.3.0 PR #75 (beihai23) — right-click context menu on the sidebar gives
 // quick access to per-pane visibility toggles. Toggling off the last
 // visible pane auto-hides the whole sidebar (snapshotting the layout for
 // restore on next open); toggling one on while hidden brings it back.
@@ -213,7 +213,7 @@ useFileWatcher(showFileChangedDialog);
 
 // Esc closes the topmost modal
 function onZoomShortcut(e: KeyboardEvent): boolean {
-  // Three independent zoom axes (v4.2.5 issue #72 + PR #74 yzcj105):
+  // Three independent zoom axes (v4.3.0 issue #72 + PR #74 yzcj105):
   //   ⌘= / ⌘- / ⌘0           → globalZoom (whole app, CSS zoom)
   //   ⌘⇧= / ⌘⇧- / ⌘⇧0        → editor font size only
   //   ⌃⌘= / ⌃⌘- / ⌃⌘0        → preview font size only
@@ -352,7 +352,7 @@ watchEffect(() => {
   document.documentElement.style.setProperty('--ui-font-size', `${settings.uiFontSize}px`);
 });
 
-// v4.2.5 (issue #72): global zoom — scales everything for high-DPI screens.
+// v4.3.0 (issue #72): global zoom — scales everything for high-DPI screens.
 // Uses CSS `zoom` so layout reflows rather than being scaled with transform
 // (which would clip + break click targets). wry's webview on every platform
 // supports it.
@@ -361,7 +361,7 @@ watchEffect(() => {
   (document.documentElement.style as any).zoom = String(z);
 });
 
-// v4.2.5 (PR #74 — yzcj105): preview-pane font size, surfaced as a CSS
+// v4.3.0 (PR #74 — yzcj105): preview-pane font size, surfaced as a CSS
 // custom property so Preview.vue can read it without re-rendering content.
 watchEffect(() => {
   document.documentElement.style.setProperty(
@@ -557,7 +557,7 @@ function dispatchMenuAction(id: string) {
     case 'view.cycleView':
       settings.cycleViewMode();
       break;
-    // v4.2.5 PR #74 — 3-axis zoom from the native View menu.
+    // v4.3.0 PR #74 — 3-axis zoom from the native View menu.
     case 'view.zoomUiIn':
       settings.zoomIn();
       break;
@@ -892,7 +892,7 @@ const showRightSidebar = computed(() => {
 // Search slots in at the top because users typically want results visible
 // while scanning the rest of the sidebar context.
 const visibleRsPanes = computed(() => {
-  // v4.2.5 issue #57b — order driven by settings.rsPaneOrder so users can
+  // v4.3.0 issue #57b — order driven by settings.rsPaneOrder so users can
   // drag-reorder. Unknown ids (newly-shipped future panes) get appended at
   // the end so a SoloMD update doesn't blow away an existing user layout.
   const all: Record<'search' | 'outline' | 'backlinks' | 'tags' | 'history' | 'agent', boolean> = {
@@ -916,7 +916,7 @@ const visibleRsPanes = computed(() => {
     .map((id) => ({ id: id as 'search' | 'outline' | 'backlinks' | 'tags' | 'history' | 'agent' }));
 });
 
-// v4.2.5 issue #57b — HTML5 drag state for right-sidebar pane reordering.
+// v4.3.0 issue #57b — HTML5 drag state for right-sidebar pane reordering.
 // Holding null = nothing dragging; a string = the pane id currently being
 // dragged. The drop target index is computed by the dragover handler.
 const draggingPaneId = ref<string | null>(null);
@@ -1152,7 +1152,7 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
         </aside>
       </div>
       <StatusBar :line="cursorLine" :col="cursorCol" :selection-text="selectionText" />
-      <!-- v4.2.5 PR #75 — right-click context menu for sidebar pane toggles. -->
+      <!-- v4.3.0 PR #75 — right-click context menu for sidebar pane toggles. -->
       <Teleport to="body">
         <div
           v-if="sidebarCtx"
@@ -1288,7 +1288,7 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
   background: var(--accent, #6366f1);
   opacity: 0.5;
 }
-/* v4.2.5 PR #75 — right-click context menu floats over the workspace via
+/* v4.3.0 PR #75 — right-click context menu floats over the workspace via
    <Teleport to="body">. Toolbar's master-toggle is the canonical hide
    action; the per-sidebar × close button is gone, since the menu doubles
    as a hide path (uncheck every pane = sidebar auto-hides). */
@@ -1369,7 +1369,7 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
   border-left: 0;
   border-right: 0;
 }
-/* v4.2.5 issue #57b — drag grip + drop-target highlight for right-sidebar
+/* v4.3.0 issue #57b — drag grip + drop-target highlight for right-sidebar
    reordering. Grip is intentionally subtle (8px dotted strip at the top of
    each pane); hovering surfaces it more clearly. Only the grip is draggable
    so text selection inside the pane still works. */

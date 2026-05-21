@@ -31,7 +31,7 @@ import { resolveImageSrc } from './image-resolve';
 import { renderMarkdown, extractImageRoot } from './markdown';
 import mermaid from 'mermaid';
 
-// v4.2.5 issue #57a — live-render math + Mermaid blocks in the editor.
+// v4.3.0 issue #57a — live-render math + Mermaid blocks in the editor.
 // Mermaid is async; we render lazily into a counter-keyed cache so the
 // widget toDOM() can pull a ready SVG without re-rendering. The cache is
 // keyed on source text → SVG so the same diagram across multiple panes
@@ -137,7 +137,7 @@ class TableWidget extends WidgetType {
   }
 }
 
-// v4.2.5 issue #57a — block math (`$$...$$`). Goes through markdown-it so
+// v4.3.0 issue #57a — block math (`$$...$$`). Goes through markdown-it so
 // it picks up the same KaTeX renderer used in the preview pane. We render
 // the wrapping `$$\n…\n$$` literal so markdown-it-katex sees it as block
 // math and emits `<span class="katex-display">`.
@@ -167,7 +167,7 @@ class MathWidget extends WidgetType {
   }
 }
 
-// v4.2.5 issue #57a — mermaid fenced blocks. Mermaid is async so we render
+// v4.3.0 issue #57a — mermaid fenced blocks. Mermaid is async so we render
 // into a module-level cache; toDOM() pulls the SVG when available, falls
 // back to a "rendering…" placeholder, then dispatches `solomd:cm-relayout`
 // to ask the editor to rebuild decorations once the cache fills.
@@ -274,7 +274,7 @@ export function liveBlocksPlugin(opts: BlockOptions = {}) {
             continue;
           }
 
-          // v4.2.5 issue #57a — block math (`$$…$$`).
+          // v4.3.0 issue #57a — block math (`$$…$$`).
           // Recognise either inline `$$E=mc^2$$` on a single line OR a
           // multi-line block opened with a `$$` line and closed with a `$$`
           // line. We only collapse if the cursor is outside.
@@ -324,7 +324,7 @@ export function liveBlocksPlugin(opts: BlockOptions = {}) {
             }
           }
 
-          // v4.2.5 issue #57a — ```mermaid fenced block. Pre-render to SVG
+          // v4.3.0 issue #57a — ```mermaid fenced block. Pre-render to SVG
           // via the mermaid cache; the widget waits for the SVG and asks
           // CM to rebuild decorations once ready.
           if (/^\s*```\s*mermaid\s*$/i.test(line.text)) {
@@ -438,7 +438,7 @@ export const liveBlocksTheme = EditorView.theme({
     background: 'var(--bg-soft)',
     fontWeight: '600',
   },
-  // v4.2.5 issue #57a
+  // v4.3.0 issue #57a
   '.cm-live-block--math': {
     padding: '0.4em 0',
     overflowX: 'auto',

@@ -149,7 +149,7 @@ function bindScrollSync() {
   syncPreviewScroll = () => preview.removeEventListener('scroll', onPreviewScroll);
 }
 
-// v4.2.5 issue #67: preserve scroll position across view-mode switches.
+// v4.3.0 issue #67: preserve scroll position across view-mode switches.
 // User flow: scrolls down in preview → finds typo → flips to edit mode →
 // previously snapped back to line 1, forcing them to find the spot again.
 // We snapshot the "current top line" from whichever view is leaving the DOM,
