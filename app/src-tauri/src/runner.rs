@@ -601,8 +601,18 @@ pub fn run_with(initial_file: Option<String>) {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_clipboard_manager::init());
 
+    // v4.3.x — issue #56 reopen: the original fix landed in `lib.rs::run`
+    // but `main.rs` calls `runner::run_with` instead, so the StateFlags::all()
+    // call there was never reached. The plugin's default StateFlags is
+    // `POSITION | SIZE` — missing MAXIMIZED + FULLSCREEN + DECORATIONS,
+    // which is why Windows users kept seeing the maximized state forgotten
+    // on relaunch. Patch this site (the live one) too.
     #[cfg(desktop)]
-    let builder = builder.plugin(tauri_plugin_window_state::Builder::default().build());
+    let builder = builder.plugin(
+        tauri_plugin_window_state::Builder::default()
+            .with_state_flags(tauri_plugin_window_state::StateFlags::all())
+            .build(),
+    );
 
     let app = builder
         .manage(PendingOpen(Mutex::new(pending)))
