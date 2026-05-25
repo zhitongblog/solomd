@@ -122,21 +122,32 @@ const liveTheme = EditorView.theme({
   '.cm-line': {
     fontVariantLigatures: 'none',
   },
-  // Block-level: code fences look like real code blocks. We use
-  // box-shadow inset instead of background-color so it paints UNDER
-  // the selection layer (.cm-selectionBackground), keeping the
-  // text-selection highlight visible inside code fences (issue #).
+  // Block-level: code fences look like real code blocks. v4.3.x issue
+  // #82 — was using `box-shadow inset 0 0 0 9999px` which paints in the
+  // border/background paint phase and ends up visually OVER the CM6
+  // selection layer (CM6 selection sits on `.cm-selectionLayer` which
+  // is positioned-absolute but in the same stacking context as the
+  // line). Real `background-color` + `position: relative` to create a
+  // proper stacking context fixes it — the selection-layer z-index
+  // bump below then takes effect inside code blocks too.
   '.cm-line:has(.tok-monospace)': {
-    boxShadow: 'inset 0 0 0 9999px var(--bg-hover)',
+    backgroundColor: 'var(--bg-hover)',
+    position: 'relative',
   },
   '.tok-meta, .cm-formatting, .ͼe': {
     color: 'var(--text-faint)',
   },
-  // Selection layer must paint over the inline-code background too —
-  // bump z-index so .cm-selectionBackground sits above .tok-monospace
-  // span backgrounds (issue: 在 `` 中选择字符没有高亮).
-  '.cm-selectionLayer': { zIndex: '1' },
-  '.cm-selectionBackground': { zIndex: '1' },
+  // v4.3.x issue #82 — make the selection background more saturated
+  // (45% vs the editor-wide 25%) AND ensure it paints above any code-
+  // block backgrounds via z-index. 25% orange on top of `--bg-hover`
+  // was effectively invisible — the selected text looked identical to
+  // unselected. 45% pops over both the code-fence bg and the inline
+  // `.tok-monospace` chip bg.
+  '.cm-selectionLayer': { zIndex: '2' },
+  '.cm-selectionBackground': {
+    zIndex: '2',
+    backgroundColor: 'rgba(255,159,64,0.45) !important',
+  },
 });
 
 /** Full live-preview extension bundle. Pass `[]` to disable. */

@@ -35,13 +35,38 @@ export function useSessionRestore() {
   let lastSavedAt = 0;
   let started = false;
 
+  /**
+   * v4.3.x issue #81 — compute a workspace-relative path when `filePath`
+   * lives inside `workspaceRoot`. Returns null when the file is outside
+   * the workspace or paths can't be compared meaningfully (different
+   * drive letters etc.). Treats `/` and `\` as separators on both
+   * platforms so OneDrive-synced workspaces resolve correctly when
+   * machine A saves with `/` and machine B reads on Windows with `\`.
+   */
+  function workspaceRelative(filePath: string, workspaceRoot: string): string | null {
+    if (!filePath || !workspaceRoot) return null;
+    const norm = (s: string) => s.replace(/\\/g, '/').replace(/\/+$/, '');
+    const root = norm(workspaceRoot);
+    const fp = norm(filePath);
+    // Case-insensitive compare on Windows where the same path can use
+    // different cases; case-sensitive elsewhere. Cheap heuristic: if
+    // root contains a Windows drive letter, treat as case-insensitive.
+    const ci = /^[a-zA-Z]:\//.test(root);
+    const rootForCmp = ci ? root.toLowerCase() : root;
+    const fpForCmp = ci ? fp.toLowerCase() : fp;
+    if (!fpForCmp.startsWith(rootForCmp + '/') && fpForCmp !== rootForCmp) return null;
+    return fp.slice(root.length + 1) || null;
+  }
+
   function snapshot(): SessionPayload | null {
     if (!cloud.deviceId) return null;
+    const root = workspace.currentFolder || '';
     const sessionTabs: SessionTab[] = tabs.tabs.map((t) => ({
       file_path: t.filePath ?? null,
       file_name: t.fileName,
       cursor_line: null,
       cursor_col: null,
+      rel_path: t.filePath ? workspaceRelative(t.filePath, root) : null,
     }));
     return {
       device_id: cloud.deviceId,

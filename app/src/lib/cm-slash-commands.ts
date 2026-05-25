@@ -167,20 +167,31 @@ function renderPopup(view: EditorView, initial: SlashState): TooltipView {
 
   let lastQuery = '<NEVER>';
   let lastSelectedIndex = -1;
+  let rowEls: HTMLDivElement[] = [];
 
-  const repaint = (s: SlashState) => {
-    const filtered = filterBlocks(SLASH_BLOCKS, s.query);
-    if (s.query === lastQuery && s.selectedIndex === lastSelectedIndex) {
-      return;
-    }
-    lastQuery = s.query;
-    lastSelectedIndex = clampIndex(s.selectedIndex, filtered.length);
+  // v4.3.x issue #80 — distinguish "user moved the mouse onto this row"
+  // from "the row materialised under a stationary cursor after a keyboard
+  // ↑/↓ press". We only honor mouseenter selection when the mouse has
+  // actually moved within the last 80ms; otherwise the keyboard nav gets
+  // overridden every time we repaint.
+  let lastMouseMoveAt = 0;
+  root.addEventListener('mousemove', () => { lastMouseMoveAt = Date.now(); });
+
+  /**
+   * Build the row DOM ONCE per filter-result change. Selected-index updates
+   * (the keyboard hot path) just toggle the active class on the existing
+   * rows so synthetic mouseenter events don't fire under a stationary
+   * cursor (issue #80). The active row also scrollIntoView so users can
+   * see what's highlighted when the list is taller than the popup.
+   */
+  const rebuildRows = (filtered: SlashBlock[]) => {
     root.replaceChildren();
+    rowEls = [];
 
     if (filtered.length === 0) {
       const empty = document.createElement('div');
       empty.className = 'cm-slash-empty';
-      empty.textContent = emptyHintFor(s.query);
+      empty.textContent = emptyHintFor(lastQuery);
       root.appendChild(empty);
       return;
     }
@@ -188,10 +199,8 @@ function renderPopup(view: EditorView, initial: SlashState): TooltipView {
     filtered.forEach((b, i) => {
       const row = document.createElement('div');
       row.className = 'cm-slash-row';
-      if (i === lastSelectedIndex) row.classList.add('cm-slash-row--active');
       row.setAttribute('role', 'option');
       row.setAttribute('data-id', b.id);
-      row.setAttribute('aria-selected', i === lastSelectedIndex ? 'true' : 'false');
 
       const icon = document.createElement('span');
       icon.className = 'cm-slash-icon';
@@ -218,6 +227,13 @@ function renderPopup(view: EditorView, initial: SlashState): TooltipView {
         insertBlock(view, cur, b);
       });
       row.addEventListener('mouseenter', () => {
+        // v4.3.x issue #80 — ignore mouseenter events that fire within
+        // 80ms of the popup last rebuilding rows (e.g. after a query
+        // change). Real user mouse-over has a fresh mousemove signal;
+        // a synthetic mouseenter from a row materialising under the
+        // cursor does not. Without this guard, keyboard ↑/↓ navigation
+        // is immediately overridden by the current mouse position.
+        if (Date.now() - lastMouseMoveAt > 80) return;
         const cur = view.state.field(slashStateField, false);
         if (!cur) return;
         view.dispatch({
@@ -226,7 +242,39 @@ function renderPopup(view: EditorView, initial: SlashState): TooltipView {
       });
 
       root.appendChild(row);
+      rowEls.push(row);
     });
+  };
+
+  const setActive = (idx: number) => {
+    for (let i = 0; i < rowEls.length; i++) {
+      const active = i === idx;
+      rowEls[i].classList.toggle('cm-slash-row--active', active);
+      rowEls[i].setAttribute('aria-selected', active ? 'true' : 'false');
+      if (active) {
+        // v4.3.x issue #80 — keep the highlighted row in view when the
+        // user pages through a list taller than the popup. `nearest`
+        // scrolls only when needed (avoids jitter on every keystroke).
+        rowEls[i].scrollIntoView({ block: 'nearest' });
+      }
+    }
+  };
+
+  const repaint = (s: SlashState) => {
+    const filtered = filterBlocks(SLASH_BLOCKS, s.query);
+    const clamped = clampIndex(s.selectedIndex, filtered.length);
+    const queryChanged = s.query !== lastQuery;
+    const indexChanged = clamped !== lastSelectedIndex;
+    if (!queryChanged && !indexChanged) return;
+    if (queryChanged) {
+      lastQuery = s.query;
+      rebuildRows(filtered);
+      // The new list of rows means we have to re-apply the active class.
+      setActive(clamped);
+    } else {
+      setActive(clamped);
+    }
+    lastSelectedIndex = clamped;
   };
 
   repaint(initial);
@@ -245,6 +293,7 @@ function renderPopup(view: EditorView, initial: SlashState): TooltipView {
     destroy: () => {
       lastQuery = '<NEVER>';
       lastSelectedIndex = -1;
+      rowEls = [];
     },
   };
 }

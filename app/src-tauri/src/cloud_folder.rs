@@ -193,6 +193,14 @@ pub struct SessionTab {
     /// focused yet.
     pub cursor_line: Option<u32>,
     pub cursor_col: Option<u32>,
+    /// v4.3.x issue #81 — path RELATIVE to the workspace root, when the tab
+    /// lives inside the workspace folder. Lets the same `session.<dev>.json`
+    /// resolve to the right file on machine B even if the workspace root is
+    /// mounted at a different absolute path (OneDrive on Mac vs Windows).
+    /// `None` for tabs whose file lives outside the workspace, or for
+    /// pre-v4.3.x session files written before this field existed.
+    #[serde(default)]
+    pub rel_path: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -341,6 +349,7 @@ mod tests {
                 file_name: "foo.md".into(),
                 cursor_line: Some(12),
                 cursor_col: Some(3),
+                rel_path: Some("foo.md".into()),
             }],
         };
         session_save(dir.to_string_lossy().into_owned(), payload).unwrap();

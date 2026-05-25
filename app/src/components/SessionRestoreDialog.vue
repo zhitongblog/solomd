@@ -16,12 +16,14 @@ import { onMounted, onBeforeUnmount, ref } from 'vue';
 import { useCloudSyncStore, type SessionPayload, type SiblingSession } from '../stores/cloudSync';
 import { useTabsStore } from '../stores/tabs';
 import { useToastsStore } from '../stores/toasts';
+import { useWorkspaceStore } from '../stores/workspace';
 import { useFiles } from '../composables/useFiles';
 import { useI18n } from '../i18n';
 
 const cloud = useCloudSyncStore();
 const tabs = useTabsStore();
 const toasts = useToastsStore();
+const workspace = useWorkspaceStore();
 const files = useFiles();
 const { t } = useI18n();
 
@@ -46,6 +48,27 @@ function onAvailable(e: Event) {
   visible.value = true;
 }
 
+/**
+ * v4.3.x issue #81 — resolve a SessionTab against our local workspace.
+ * Prefer `rel_path` joined against the current workspace root (works
+ * across machines where the absolute root differs — e.g. OneDrive on
+ * Mac vs Windows). Fall back to the saved absolute `file_path` when no
+ * rel_path was recorded (pre-v4.3.x sessions, or tabs that pointed at
+ * files outside the workspace).
+ */
+function resolveSessionTabPath(sib: { file_path: string | null; rel_path?: string | null }): string | null {
+  const root = workspace.currentFolder || '';
+  if (sib.rel_path && root) {
+    // Choose separator from the workspace root: Windows roots use '\',
+    // POSIX roots use '/'. Pure heuristic on the leading char.
+    const sep = /^[a-zA-Z]:[\\/]/.test(root) ? '\\' : '/';
+    const cleanRoot = root.replace(/[\\/]+$/, '');
+    const cleanRel = sib.rel_path.replace(/^[\\/]+/, '').replace(/[\\/]/g, sep);
+    return `${cleanRoot}${sep}${cleanRel}`;
+  }
+  return sib.file_path;
+}
+
 async function applySession(payload: SessionPayload) {
   // Open every tab the sibling had. If we already have a tab for that
   // path, leave it (preserves any unsaved edits). For tabs we don't have,
@@ -54,21 +77,25 @@ async function applySession(payload: SessionPayload) {
     tabs.tabs.map((t) => t.filePath).filter(Boolean) as string[],
   );
   for (const sib of payload.tabs) {
-    if (!sib.file_path) continue;
-    if (havePath.has(sib.file_path)) continue;
+    const path = resolveSessionTabPath(sib);
+    if (!path) continue;
+    if (havePath.has(path)) continue;
     try {
       // bypassNewWindow keeps the restored tabs in the current window
       // even if the user has "open in new window" preference enabled.
-      await files.openPath(sib.file_path, { bypassNewWindow: true });
+      await files.openPath(path, { bypassNewWindow: true });
     } catch (e) {
-      console.warn('failed to open from sibling session', sib.file_path, e);
+      console.warn('failed to open from sibling session', path, e);
     }
   }
   // Switch to the sibling's active tab if we can find it.
   const target = payload.tabs[payload.active_index];
-  if (target?.file_path) {
-    const localTab = tabs.tabs.find((t) => t.filePath === target.file_path);
-    if (localTab) tabs.activeId = localTab.id;
+  if (target) {
+    const targetPath = resolveSessionTabPath(target);
+    if (targetPath) {
+      const localTab = tabs.tabs.find((t) => t.filePath === targetPath);
+      if (localTab) tabs.activeId = localTab.id;
+    }
   }
 }
 

@@ -24,6 +24,12 @@ export interface SessionTab {
   file_name: string;
   cursor_line: number | null;
   cursor_col: number | null;
+  /** v4.3.x issue #81 — path relative to the workspace root when the tab
+   *  lives inside the workspace folder. Lets session restore on a different
+   *  machine resolve the file correctly even when the absolute workspace
+   *  path differs (OneDrive on Mac vs Windows). Optional: present from
+   *  v4.3.x onward; older session files don't have it. */
+  rel_path?: string | null;
 }
 
 export interface SessionPayload {

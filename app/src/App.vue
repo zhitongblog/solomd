@@ -1243,6 +1243,16 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
   width: 100vw;
   background: var(--bg);
   color: var(--text);
+  /* v4.3.x issue #73 — respect mobile system-bar insets so the toolbar
+     doesn't render under the Android status bar (carrier signal / battery
+     / clock) and the bottom status bar doesn't overlap the gesture-nav
+     bar. `env(safe-area-inset-*)` returns 0 on desktops where the
+     property isn't defined, so this is a no-op there. */
+  padding-top: env(safe-area-inset-top, 0);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  padding-left: env(safe-area-inset-left, 0);
+  padding-right: env(safe-area-inset-right, 0);
+  box-sizing: border-box;
 }
 .workspace {
   flex: 1;
