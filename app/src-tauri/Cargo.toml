@@ -1,6 +1,6 @@
 [package]
 name = "solomd"
-version = "4.3.0"
+version = "4.3.1"
 description = "SoloMD — a lightweight, cross-platform Markdown + plain text editor"
 authors = ["zhitong"]
 edition = "2021"
@@ -19,7 +19,7 @@ autobins = false
 name = "SoloMD"
 path = "src/main.rs"
 
-# v4.3.0 issue #73 — size-optimised release profile. Most of the Android
+# v4.3.1 issue #73 — size-optimised release profile. Most of the Android
 # APK weight (22 MB out of 26 MB on arm64-v8a) is `libapp_lib.so` —
 # the Rust shared library with all native deps bundled. Default cargo
 # release config (opt-level=3, no LTO, codegen-units=16) optimises for
