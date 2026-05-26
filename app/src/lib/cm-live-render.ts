@@ -128,7 +128,23 @@ function buildDecorations(view: EditorView): DecorationSet {
         // ---- Marker hiding (off-line only) ----
         if (HIDDEN_MARK_NODES.has(name)) {
           if (!caretTouches && nTo > nFrom) {
-            ranges.push(hideDeco.range(nFrom, nTo));
+            // v4.3.5 #83 — for ATX heading marks (`#`, `##`, …) also hide
+            // the single trailing space that separates the marker from
+            // the heading text. Without this, the space character remains
+            // and renders at the heading line's font-size, so H1 (1.85em
+            // space) visibly indents further than H4 (1.1em space) etc.
+            // Headings end up looking left-staggered instead of aligned.
+            let hideTo = nTo;
+            if (name === 'HeaderMark') {
+              const line = view.state.doc.lineAt(nFrom);
+              // Setext headings put `HeaderMark` on the underline (---/===)
+              // line, with no following space to eat. Only widen for ATX.
+              if (line.from === nFrom && nTo - nFrom <= 6) {
+                const after = view.state.doc.sliceString(nTo, Math.min(nTo + 1, view.state.doc.length));
+                if (after === ' ') hideTo = nTo + 1;
+              }
+            }
+            ranges.push(hideDeco.range(nFrom, hideTo));
           }
           return;
         }

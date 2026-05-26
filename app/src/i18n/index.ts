@@ -27,14 +27,23 @@ export function useI18n() {
   const settings = useSettingsStore();
   const dict = computed(() => dicts[settings.language as Lang] || en);
 
-  function t(key: string, params?: Record<string, string | number>): string {
-    const parts = key.split('.');
-    let cur: any = dict.value;
+  function lookup(d: any, parts: string[]): string | undefined {
+    let cur: any = d;
     for (const p of parts) {
-      if (cur == null) break;
+      if (cur == null) return undefined;
       cur = cur[p];
     }
-    let str = typeof cur === 'string' ? cur : key;
+    return typeof cur === 'string' ? cur : undefined;
+  }
+
+  function t(key: string, params?: Record<string, string | number>): string {
+    const parts = key.split('.');
+    // v4.3.5: try active language first, then fall back to English, then to
+    // the raw key. Previously missing keys returned the key itself, which
+    // made any partially-translated feature look broken in non-en/zh locales.
+    // The English fallback means new strings ship in 14 langs immediately
+    // (as English) and the proper translations can land in the next minor.
+    let str = lookup(dict.value, parts) ?? lookup(en, parts) ?? key;
     if (params) {
       for (const [k, v] of Object.entries(params)) {
         str = str.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v));

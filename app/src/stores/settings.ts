@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import type { Theme, ViewMode } from '../types';
-import { isIOS } from '../lib/platform';
+import { isIOS, isMobile } from '../lib/platform';
 
 const LS_KEY = 'solomd.settings.v1';
 
@@ -31,6 +31,13 @@ interface Settings {
   showOutline: boolean;
   outlineSide: 'left' | 'right';
   showFileTree: boolean;
+  /** v4.3.x release marker: set on first launch after the default flipped
+   *  from `false` → `true` (desktop). If absent on load, `load()` force-enables
+   *  `showFileTree` once for desktop users so the flip actually reaches the
+   *  existing install base; mobile is left alone (file tree on a phone would
+   *  crowd the editor). After the migration the user is free to toggle it
+   *  off via the toolbar / ⌘B / command palette and the choice persists. */
+  fileTreeDefaultDesktopMigrated: boolean;
   /** Master toggle that hides the right side sidebar (Outline / Backlinks /
    *  Tags / History / Agent Panel) without forgetting which individual panes
    *  the user had on. Default false (= sidebar visible whenever any pane is
@@ -265,7 +272,10 @@ function defaults(): Settings {
     showLineNumbers: true,
     showOutline: false,
     outlineSide: 'right',
-    showFileTree: false,
+    showFileTree: !isMobile(),
+    // Fresh installs already see the new default — mark migration done so
+    // load()'s one-time force-on path is a no-op for them.
+    fileTreeDefaultDesktopMigrated: true,
     rightSidebarHidden: false,
     livePreview: true,
     spellCheck: true,
@@ -407,6 +417,15 @@ function load(): Settings {
       if (!parsed.v4AgentPanelMigrated) {
         merged.showAgentPanel = true;
         merged.v4AgentPanelMigrated = true;
+      }
+      // v4.3.x — file tree default flipped to "on" for desktop. Existing
+      // installs (where the saved blob has the key as `false`) get the
+      // sidebar opened once on next launch; mobile is skipped so phones
+      // keep the editor full-width. Marker prevents re-applying after the
+      // user explicitly closes it.
+      if (!parsed.fileTreeDefaultDesktopMigrated) {
+        if (!isMobile()) merged.showFileTree = true;
+        merged.fileTreeDefaultDesktopMigrated = true;
       }
       return merged;
     }

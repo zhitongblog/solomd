@@ -66,7 +66,20 @@ const liveMarkdownPlugin = ViewPlugin.fromClass(
             const line = view.state.doc.lineAt(node.from).number;
             // Keep markers visible on the line(s) the cursor / selection touches.
             if (line >= fromLine && line <= toLine) return;
-            builder.add(node.from, node.to, hideDeco);
+            // v4.3.5 #83 — gulp the single trailing space after the ATX
+            // marker so H1..H6 text aligns at the same visual column. Each
+            // heading line has its own font-size; a leftover " " character
+            // at 1.85em vs 1.1em prints visibly different widths and made
+            // the headings look staggered.
+            let to_ = node.to;
+            if (node.name === 'HeaderMark') {
+              const lineObj = view.state.doc.lineAt(node.from);
+              if (lineObj.from === node.from && node.to - node.from <= 6) {
+                const after = view.state.doc.sliceString(node.to, Math.min(node.to + 1, view.state.doc.length));
+                if (after === ' ') to_ = node.to + 1;
+              }
+            }
+            builder.add(node.from, to_, hideDeco);
           },
         });
       }
