@@ -309,7 +309,92 @@ pub fn fs_rename(from: String, to: String) -> Result<(), String> {
     if to_p.exists() {
         return Err(format!("target already exists: {to}"));
     }
-    fs::rename(from_p, to_p).map_err(|e| format!("rename failed: {e}"))
+
+    // v4.3.5 — per-file `.assets/` follow-along. If a sibling directory
+    // named `<from-stem>.assets/` exists next to the file we're renaming,
+    // move it alongside so the per-file attachment layout survives the
+    // rename. `_assets/` (the shared mode) is deliberately untouched —
+    // it's shared across every md in that directory.
+    //
+    // We compute the assets-rename target up front, attempt the primary
+    // rename first, then the assets rename, then the link rewrite.
+    // Any step beyond the primary that fails is logged but non-fatal:
+    // the user's file rename succeeded; we don't want to revert it just
+    // because the assets folder rename hit a permission edge case.
+    let from_assets = sibling_assets_dir(from_p);
+    let to_assets = sibling_assets_dir(to_p);
+    let stems_differ = from_assets
+        .as_ref()
+        .zip(to_assets.as_ref())
+        .map(|(a, b)| {
+            a.file_name() != b.file_name()
+        })
+        .unwrap_or(false);
+
+    fs::rename(from_p, to_p).map_err(|e| format!("rename failed: {e}"))?;
+
+    if let (Some(fa), Some(ta)) = (from_assets, to_assets) {
+        if fa.is_dir() && !ta.exists() {
+            if let Err(e) = fs::rename(&fa, &ta) {
+                eprintln!("[fs_rename] assets folder rename failed: {e}");
+            } else if stems_differ && is_markdown_path(to_p) {
+                // Stem changed → relative refs inside the body now point at
+                // a folder that no longer exists. Rewrite them in place.
+                if let Err(e) = rewrite_assets_refs(to_p, &fa, &ta) {
+                    eprintln!("[fs_rename] body rewrite failed: {e}");
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Given a path like `/a/b/foo.md`, return `/a/b/foo.assets`. Returns None
+/// if the path has no stem (e.g. `/`, an empty string).
+fn sibling_assets_dir(p: &Path) -> Option<std::path::PathBuf> {
+    let stem = p.file_stem()?.to_string_lossy().to_string();
+    if stem.is_empty() {
+        return None;
+    }
+    let parent = p.parent()?;
+    Some(parent.join(format!("{stem}.assets")))
+}
+
+fn is_markdown_path(p: &Path) -> bool {
+    matches!(
+        p.extension().and_then(|e| e.to_str()).map(|s| s.to_ascii_lowercase()).as_deref(),
+        Some("md") | Some("markdown") | Some("mdown") | Some("mkd")
+    )
+}
+
+/// Rewrite `<old_stem>.assets/` references inside the file body to
+/// `<new_stem>.assets/`. Reads as UTF-8 (which markdown effectively is for
+/// our purposes — link paths are always ASCII-safe), does a literal
+/// substring replace, and writes back. Best-effort: if the file isn't
+/// readable as UTF-8 or has no matches, the original bytes are preserved.
+fn rewrite_assets_refs(file: &Path, old_assets: &Path, new_assets: &Path) -> Result<(), String> {
+    let old_name = old_assets
+        .file_name()
+        .and_then(|s| s.to_str())
+        .ok_or_else(|| "old assets name missing".to_string())?;
+    let new_name = new_assets
+        .file_name()
+        .and_then(|s| s.to_str())
+        .ok_or_else(|| "new assets name missing".to_string())?;
+    let bytes = fs::read(file).map_err(|e| format!("read for rewrite: {e}"))?;
+    let body = match std::str::from_utf8(&bytes) {
+        Ok(s) => s,
+        Err(_) => return Ok(()), // non-UTF-8 body, skip rewrite
+    };
+    // Match the assets folder followed by `/` so we don't accidentally
+    // rewrite occurrences inside prose (`foo.assets` mentioned in text).
+    let old_pat = format!("{old_name}/");
+    let new_pat = format!("{new_name}/");
+    if !body.contains(&old_pat) {
+        return Ok(());
+    }
+    let rewritten = body.replace(&old_pat, &new_pat);
+    fs::write(file, rewritten).map_err(|e| format!("write back: {e}"))
 }
 
 fn sniff_bom(bytes: &[u8]) -> Option<(&'static Encoding, usize)> {

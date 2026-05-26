@@ -186,6 +186,17 @@ interface Settings {
   // (PR #74 — yzcj105). Bound to ⌃⌘+/⌃⌘-/⌃⌘0; the editor axis (existing
   // `fontSize`) is bound to ⌘⇧+/⌘⇧-/⌘⇧0. Range 10–32.
   previewFontSize: number;
+  /** v4.3.5 — where to write images pasted/dropped into the editor.
+   *  - `shared` (default): one `_assets/` folder per directory. All notes in
+   *    that dir share it. Matches pre-v4.3.5 behavior; safe for legacy vaults.
+   *  - `per-file`: each note gets its own `<basename>.assets/` folder next to
+   *    the .md. Moving / renaming the note moves the folder with it
+   *    (handled in `fs_rename` on the Rust side, which also rewrites
+   *    `<oldStem>.assets/...` link refs inside the file body when the stem
+   *    changes). Better when notes get reshuffled often; clutters the file
+   *    tree if every note has images. Issue: user feedback 2026-05-26.
+   */
+  attachmentMode: 'shared' | 'per-file';
   // v4.3.0 PR #75 (beihai23) — transient (not persisted) snapshot of the
   // right-sidebar pane visibility taken when the sidebar is hidden, so
   // toggling it back on can restore the exact previous layout instead of
@@ -340,6 +351,7 @@ function defaults(): Settings {
     codeBlockLineNumbers: false,
     rsPaneOrder: ['search', 'outline', 'backlinks', 'tags', 'history', 'agent'],
     previewFontSize: 15,
+    attachmentMode: 'shared',
     _rsPanesBeforeHide: null,
   };
 }
@@ -811,6 +823,12 @@ export const useSettingsStore = defineStore('settings', {
     previewFontIn() { this.setPreviewFontSize((this.previewFontSize || 15) + 1); },
     previewFontOut() { this.setPreviewFontSize((this.previewFontSize || 15) - 1); },
     resetPreviewFontSize() { this.setPreviewFontSize(15); },
+    /** v4.3.5 — flip between `shared` (`_assets/`) and `per-file`
+     *  (`<basename>.assets/`) attachment storage layouts. */
+    setAttachmentMode(mode: 'shared' | 'per-file') {
+      this.attachmentMode = mode === 'per-file' ? 'per-file' : 'shared';
+      this.persist();
+    },
     /** v4.3.0 PR #74 — editor-only font size convenience wrappers. The
      *  underlying field is the existing `fontSize`. */
     editorFontIn() { this.setFontSize((this.fontSize || 14) + 1); },

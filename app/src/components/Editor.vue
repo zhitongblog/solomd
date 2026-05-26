@@ -211,6 +211,7 @@ function buildExtensions() {
     imagePasteExtension({
       getFilePath: () => props.tab.filePath,
       getDocContent: () => props.tab.content,
+      getAttachmentMode: () => settings.attachmentMode,
     }),
     ...(props.tab.language === 'markdown'
       ? [
@@ -457,6 +458,7 @@ async function insertImageFromPath(srcPath: string): Promise<void> {
   await cmInsertImageFromPath(view, srcPath, {
     getFilePath: () => props.tab.filePath,
     getDocContent: () => props.tab.content,
+    getAttachmentMode: () => settings.attachmentMode,
   });
 }
 

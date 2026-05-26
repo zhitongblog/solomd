@@ -5,10 +5,12 @@
  * image data. Saves each image to disk (via the `write_binary_file` Tauri
  * command), then inserts a markdown image reference at the cursor.
  *
- * Save location:
- *   - If the current tab has a file path, images go into
- *     `<dirname-of-file>/_assets/`.
- *   - Otherwise (untitled tab) they go into a temp directory.
+ * Save location (only when the tab has a file path; otherwise → temp dir):
+ *   - `shared` (default): `<dirname>/_assets/<filename>` — one shared
+ *     folder per directory. Pre-v4.3.5 behavior; safe for legacy vaults.
+ *   - `per-file`: `<dirname>/<basename>.assets/<filename>` — each .md gets
+ *     its own assets folder. `fs_rename` on the Rust side moves the folder
+ *     along with the file and rewrites link refs when the basename changes.
  */
 
 import { EditorView } from '@codemirror/view';
@@ -21,6 +23,10 @@ export interface ImagePasteOptions {
   getDocContent?: () => string;
   /** Override temp directory (mainly for tests). */
   tempDir?: string;
+  /** v4.3.5 — `shared` (`_assets/`) vs `per-file` (`<stem>.assets/`).
+   *  Defaults to `shared` if absent (back-compat for callers that haven't
+   *  been updated yet). */
+  getAttachmentMode?: () => 'shared' | 'per-file';
 }
 
 /** Minimal front-matter imageRoot parser (kept local to avoid import cycles). */
@@ -85,6 +91,33 @@ function dirnameOf(p: string, sepCh: string): string {
   return p.slice(0, i) || sepCh;
 }
 
+/** Basename of a path without its extension. `/a/b/foo.md` → `foo`. Used
+ *  in per-file attachment mode to derive `<basename>.assets/`. */
+function basenameNoExt(p: string): string {
+  let start = p.length - 1;
+  while (start >= 0 && p[start] !== '/' && p[start] !== '\\') start--;
+  const base = p.slice(start + 1);
+  const dot = base.lastIndexOf('.');
+  return dot > 0 ? base.slice(0, dot) : base;
+}
+
+/** Compute the assets directory + URL-encodable folder segment for the
+ *  current attachment mode. Returns `null` when there's no file path (caller
+ *  must fall back to the temp-dir branch). */
+function resolveAssetsDir(
+  filePath: string,
+  sepCh: string,
+  mode: 'shared' | 'per-file',
+): { dir: string; urlPrefix: string } {
+  const parent = dirnameOf(filePath, sepCh);
+  if (mode === 'per-file') {
+    const stem = basenameNoExt(filePath);
+    const folder = `${stem}.assets`;
+    return { dir: joinPath(parent, folder, sepCh), urlPrefix: folder };
+  }
+  return { dir: joinPath(parent, '_assets', sepCh), urlPrefix: '_assets' };
+}
+
 function joinPath(a: string, b: string, sepCh: string): string {
   if (!a) return b;
   if (a.endsWith('/') || a.endsWith('\\')) return a + b;
@@ -136,10 +169,10 @@ async function saveAndInsert(
     fullPath = joinPath(rootDir, filename, sepCh);
     insertText = `![](${filename})`;
   } else if (filePath) {
-    const dir = dirnameOf(filePath, sepCh);
-    const assetsDir = joinPath(dir, '_assets', sepCh);
+    const mode = opts.getAttachmentMode ? opts.getAttachmentMode() : 'shared';
+    const { dir: assetsDir, urlPrefix } = resolveAssetsDir(filePath, sepCh, mode);
     fullPath = joinPath(assetsDir, filename, sepCh);
-    insertText = `![](_assets/${filename})`;
+    insertText = `![](${urlPrefix}/${filename})`;
   } else {
     const t = await resolveTempDir(opts.tempDir);
     const solomdDir = joinPath(t, 'solomd', sepCh);
@@ -254,10 +287,10 @@ export async function insertImageFromPath(
     dstPath = joinPath(rootDir, filename, sepCh);
     insertText = `![](${filename})`;
   } else if (filePath) {
-    const dir = dirnameOf(filePath, sepCh);
-    const assetsDir = joinPath(dir, '_assets', sepCh);
+    const mode = opts.getAttachmentMode ? opts.getAttachmentMode() : 'shared';
+    const { dir: assetsDir, urlPrefix } = resolveAssetsDir(filePath, sepCh, mode);
     dstPath = joinPath(assetsDir, filename, sepCh);
-    insertText = `![](_assets/${filename})`;
+    insertText = `![](${urlPrefix}/${filename})`;
   } else {
     const t = await resolveTempDir(opts.tempDir);
     const solomdDir = joinPath(t, 'solomd', sepCh);

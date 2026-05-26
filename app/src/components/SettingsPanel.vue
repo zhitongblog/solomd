@@ -732,6 +732,18 @@ function onSelectPdfFont(v: string) {
           <p class="setting-hint">{{ t('settings.imageExportBrandingHint') }}</p>
         </section>
 
+        <section data-cat="editor">
+          <label>{{ t('settings.attachmentMode') }}</label>
+          <select
+            :value="settings.attachmentMode"
+            @change="settings.setAttachmentMode(($event.target as HTMLSelectElement).value as 'shared' | 'per-file')"
+          >
+            <option value="shared">{{ t('settings.attachmentModeShared') }}</option>
+            <option value="per-file">{{ t('settings.attachmentModePerFile') }}</option>
+          </select>
+          <p class="setting-hint">{{ t('settings.attachmentModeHint') }}</p>
+        </section>
+
         <section data-cat="advanced">
           <label>{{ t('settings.dailyNotesFolder') }}</label>
           <input

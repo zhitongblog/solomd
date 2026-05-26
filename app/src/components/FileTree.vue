@@ -7,6 +7,7 @@ import { useWorkspaceStore } from '../stores/workspace';
 import { useFiles } from '../composables/useFiles';
 import { useInbox } from '../composables/useInbox';
 import { useToastsStore } from '../stores/toasts';
+import { useTabsStore } from '../stores/tabs';
 import { useI18n } from '../i18n';
 
 interface Entry {
@@ -27,6 +28,7 @@ const workspace = useWorkspaceStore();
 const files = useFiles();
 const inbox = useInbox();
 const toasts = useToastsStore();
+const tabs = useTabsStore();
 const { t } = useI18n();
 
 const root = ref<Node | null>(null);
@@ -278,6 +280,23 @@ async function commitEdit() {
       await invoke('fs_rename', { from: e.original, to: target });
       editing.value = null;
       scheduleRefresh();
+      // v4.3.5 — if the renamed file is open in a tab, point the tab at the
+      // new path and (when content might have changed on disk via the
+      // per-file `.assets/` link rewrite) reload from disk for clean tabs.
+      // Dirty tabs keep their in-memory content; user resolves on save.
+      try {
+        const tab = tabs.tabs.find((t: { filePath?: string }) => t.filePath === e.original);
+        if (tab) {
+          tabs.markSaved(tab.id, target);
+          if (tab.savedContent === tab.content) {
+            const fr = await invoke<{ content: string }>('read_file', { path: target });
+            tabs.setContent(tab.id, fr.content);
+            tabs.markSaved(tab.id, target);
+          }
+        }
+      } catch (err) {
+        console.warn('[FileTree.rename] tab refresh failed', err);
+      }
     }
   } catch (err) {
     toasts.error(String(err));
