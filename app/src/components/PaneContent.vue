@@ -97,8 +97,33 @@ function bindScrollSync() {
   const preview = paneEl.querySelector('.pane--preview .preview-host') as HTMLElement | null;
   if (!editor || !preview) return;
 
+  // Driver lock: only the pane the user is actively scrolling syncs to the
+  // other. The one-frame `syncGuard` alone is too short — a programmatic
+  // scroll spawns its own 'scroll' events a frame or two later, after the
+  // guard clears, so the two handlers echo each other. That's most visible
+  // at the bottom, where the line↔pixel mappings can't both be satisfied:
+  // the echoes never converge and the view scrolls forever / bounces. By
+  // tracking which pane the user actually drives (wheel / pointer / touch /
+  // key) and ignoring the passive pane's induced scrolls, the loop can't
+  // form. The window resets on each intent event so continuous scrolling and
+  // momentum keep the same driver.
+  let activePane: 'editor' | 'preview' | null = null;
+  let activeTimer: ReturnType<typeof setTimeout> | null = null;
+  const markActive = (which: 'editor' | 'preview') => {
+    activePane = which;
+    if (activeTimer) clearTimeout(activeTimer);
+    activeTimer = setTimeout(() => { activePane = null; }, 250);
+  };
+  const intentEvents = ['wheel', 'pointerdown', 'touchstart', 'keydown'] as const;
+  const editorIntent = () => markActive('editor');
+  const previewIntent = () => markActive('preview');
+  for (const ev of intentEvents) {
+    editor.addEventListener(ev, editorIntent, { passive: true });
+    preview.addEventListener(ev, previewIntent, { passive: true });
+  }
+
   const onEditorScroll = () => {
-    if (syncGuard) return;
+    if (syncGuard || activePane === 'preview') return;
     const cmRef = editorRef.value as any;
     let currentLine: number | null = null;
     if (cmRef?.getViewLine) {
@@ -126,7 +151,7 @@ function bindScrollSync() {
   };
 
   const onPreviewScroll = () => {
-    if (syncGuard) return;
+    if (syncGuard || activePane === 'editor') return;
     const previewLines = getPreviewElementsByLine(preview);
     const wrapTop = preview.getBoundingClientRect().top;
     let targetLine: number | null = null;
@@ -145,8 +170,15 @@ function bindScrollSync() {
 
   editor.addEventListener('scroll', onEditorScroll, { passive: true });
   preview.addEventListener('scroll', onPreviewScroll, { passive: true });
-  syncEditorScroll = () => editor.removeEventListener('scroll', onEditorScroll);
-  syncPreviewScroll = () => preview.removeEventListener('scroll', onPreviewScroll);
+  syncEditorScroll = () => {
+    editor.removeEventListener('scroll', onEditorScroll);
+    for (const ev of intentEvents) editor.removeEventListener(ev, editorIntent);
+  };
+  syncPreviewScroll = () => {
+    preview.removeEventListener('scroll', onPreviewScroll);
+    for (const ev of intentEvents) preview.removeEventListener(ev, previewIntent);
+    if (activeTimer) clearTimeout(activeTimer);
+  };
 }
 
 // v4.3.0 issue #67: preserve scroll position across view-mode switches.
