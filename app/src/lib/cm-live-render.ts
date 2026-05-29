@@ -378,6 +378,20 @@ const liveEditTheme = EditorView.theme({
     backgroundColor: 'var(--md-code-bg)',
     fontFamily: 'var(--font-mono)',
   },
+
+  // #82 / #44 — selection highlight inside code was invisible in live-edit.
+  // Inline `.cm-md-code` and `.cm-md-fenced-line` paint an opaque
+  // `--md-code-bg`, and CM6's `layer` extension writes inline
+  // `style="z-index: -2"` on `.cm-selectionLayer`, parking the selection
+  // BENEATH those backgrounds. `!important` beats the inline style so the
+  // selection layer sits above the code bg; 45% alpha keeps the code text
+  // readable through the highlight. (The same fix already lives in
+  // cm-live-preview.ts — the earlier patches only covered that mode, not
+  // this one, which is the WYSIWYG "live edit" the reporters actually use.)
+  '.cm-selectionLayer': { zIndex: '2 !important' },
+  '.cm-selectionBackground': {
+    backgroundColor: 'rgba(255,159,64,0.45) !important',
+  },
 });
 
 /**
