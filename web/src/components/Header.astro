@@ -251,7 +251,12 @@ const TOPBAR = {
     line-height: 1;
   }
   @media (max-width: 720px) {
-    .header__nav a:not(.header__lang):not(.header__sponsor):not([href*='github']) {
+    /* Use a direct-child combinator so the selector only hides the top-level
+       nav links (Features / Agents / Sync / ...) and not the <a> menuitems
+       inside .header__lang-wrap > .header__lang-menu — the descendant form
+       was also matching the 14 language items, making the mobile dropdown
+       open into an empty 14px-tall sliver. */
+    .header__nav > a:not(.header__sponsor):not([href*='github']) {
       display: none;
     }
     .header__lang-wrap { display: block; }
