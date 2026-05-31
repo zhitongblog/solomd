@@ -1,0 +1,18 @@
+name: Find orphan notes
+trigger: schedule
+schedule: "0 9 * * MON"
+allow-write: true
+write-cap: 1
+prompt: |
+  An "orphan" is a note that no other note links to via [[wikilink]]
+  AND that has no #tags. Walk the workspace using list_notes +
+  get_backlinks to find them.
+
+  Write the result to reports/orphans-{{date:YYYY-MM-DD}}.md with one
+  bullet per orphan, sorted by newest mtime first:
+
+    - [[note-name]] (last modified YYYY-MM-DD) — first 80 chars of body
+
+  Cap the list at 50 entries. Past that, append
+  "(N more — re-run with a higher cap to see them)" instead of
+  truncating silently.

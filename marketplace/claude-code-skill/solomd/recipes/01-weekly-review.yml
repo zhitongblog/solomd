@@ -1,0 +1,17 @@
+name: Weekly review
+trigger: schedule
+schedule: "0 18 * * SUN"
+match: "daily/**/*.md"
+allow-write: true
+write-cap: 5
+prompt: |
+  Read every file under daily/ that was modified in the last 7 days.
+  Group what you find into three sections:
+    1. Themes — recurring topics or tags.
+    2. Decisions — anything stated as a conclusion, plan, or commitment.
+    3. Open threads — questions, TODOs, items left unresolved.
+
+  Write the result to weekly/{{date:YYYY-WW}}.md as a single new file.
+  Use level-2 headings for the three sections. Keep each bullet
+  under one sentence; link back to the source daily note with [[name]]
+  the first time you cite it.

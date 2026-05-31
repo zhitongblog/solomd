@@ -1,0 +1,14 @@
+name: Translate Chinese note to English
+trigger: manual
+allow-write: true
+write-cap: 1
+prompt: |
+  Translate {{path}} from Simplified Chinese to natural English.
+  - Preserve YAML front matter unchanged.
+  - Preserve all [[wikilinks]] and #tags verbatim.
+  - Preserve code blocks verbatim.
+  - Keep heading levels and list structure identical.
+  - Match the tone (formal / casual) of the source.
+
+  Write the result to the same path with a `.en.md` suffix
+  (e.g. `notes/foo.md` → `notes/foo.en.md`). Do not modify the original.

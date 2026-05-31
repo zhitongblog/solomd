@@ -1,0 +1,17 @@
+name: CJK proofread
+trigger: manual
+allow-write: true
+write-cap: 1
+provider: ollama
+model: qwen2.5:7b
+prompt: |
+  Proofread {{path}} (Chinese / mixed CJK content) for:
+    - 错别字 / typos
+    - 全角半角混用 (full-width vs half-width punctuation)
+    - 中英文之间空格缺失 (missing space between CJK and Latin)
+    - 句末标点遗漏
+
+  Return the corrected file via write_note (overwrite the original).
+  Do NOT change paragraph structure, code blocks, or YAML front matter.
+  If a phrase is ambiguous, leave it and add a `<!-- review: … -->`
+  comment immediately after it instead of guessing.

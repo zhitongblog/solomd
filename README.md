@@ -129,6 +129,28 @@ winget install solomd
 
 [App Store](https://apps.apple.com/app/solomd/id6762498874) — same engine, native iPad UI.
 
+## Marketplaces & integrations
+
+The bundled `solomd-mcp` server runs against any folder of Markdown files — you don't need to install SoloMD itself to drive your vault from Claude / Cursor / Cline / Continue / Zed. Install snippets for each:
+
+| Client | Config snippet |
+|---|---|
+| **Claude Desktop** | [`marketplace/client-docs/claude-desktop.md`](marketplace/client-docs/claude-desktop.md) |
+| **Claude Code** | [`marketplace/client-docs/claude-code.md`](marketplace/client-docs/claude-code.md) |
+| **Cursor** | [`marketplace/client-docs/cursor.md`](marketplace/client-docs/cursor.md) |
+| **Cline** (VS Code) | [`marketplace/client-docs/cline.md`](marketplace/client-docs/cline.md) |
+| **Continue.dev** | [`marketplace/client-docs/continue.md`](marketplace/client-docs/continue.md) |
+| **Zed** | [`marketplace/client-docs/zed.md`](marketplace/client-docs/zed.md) |
+
+Available as:
+
+- **[Skill Pack](https://github.com/zhitongblog/solomd/releases/latest/download/solomd-skills-v4.4.1.zip)** — 11 reference Agent Recipes (weekly review, todo extract, link suggester, …) you can drop into `<vault>/.solomd/agents/`. Ships with every release.
+- **[Claude Code Skill](marketplace/claude-code-skill/)** — `SKILL.md` + `install.sh` that wires `solomd-mcp` into `~/.claude/mcp.json` and exposes the 13 tools to Claude Code with patterns and starter recipes.
+- **Smithery** — `smithery.yaml` + Dockerfile at [`marketplace/smithery/`](marketplace/smithery/) (submission pending).
+- **modelcontextprotocol/servers** — entry + PR draft at [`marketplace/mcp-servers/`](marketplace/mcp-servers/) (submission pending).
+
+Full overview + submission status: [`marketplace/README.md`](marketplace/README.md).
+
 ## Compared
 
 | | SoloMD v4.0 | Obsidian | Typora | Tolaria |

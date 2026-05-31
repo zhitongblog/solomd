@@ -1,0 +1,16 @@
+name: TODO extract
+trigger: on-save
+match: "daily/**/*.md"
+allow-write: true
+write-cap: 1
+prompt: |
+  The user just saved {{path}}. Scan it for action items: lines that
+  start with `- [ ]`, lines containing the word "TODO", and any sentence
+  that reads as a future commitment ("I should …", "Need to …",
+  "Follow up on …").
+
+  Append a `## Open TODOs` section (or update it if already present) to
+  inbox/todos.md with one bullet per item. Each bullet:
+    - Quotes the item verbatim.
+    - Ends with the source note in the form `([[note]])`.
+    - Ignores items already present in inbox/todos.md (don't duplicate).
