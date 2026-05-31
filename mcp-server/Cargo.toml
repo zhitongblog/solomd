@@ -2,10 +2,15 @@
 name = "solomd-mcp"
 version = "0.4.1"
 edition = "2021"
-description = "Model Context Protocol server for SoloMD vaults — exposes a Markdown notes folder to Claude Code, Codex CLI, and other MCP clients"
+description = "Model Context Protocol server for SoloMD vaults — exposes a Markdown notes folder to Claude Code, Codex CLI, Cursor, Cline, Continue, Zed, and any other MCP client"
 license = "MIT"
 repository = "https://github.com/zhitongblog/solomd"
+homepage = "https://solomd.app"
+documentation = "https://github.com/zhitongblog/solomd/blob/main/docs/agents.md"
 readme = "README.md"
+keywords = ["mcp", "markdown", "agent", "note-taking", "knowledge-base"]
+categories = ["command-line-utilities", "text-processing"]
+authors = ["Alex Li <lixd220@gmail.com>"]
 
 [[bin]]
 name = "solomd-mcp"

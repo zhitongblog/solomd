@@ -15,7 +15,7 @@ in OS keychain, 14 language UI).
 | Target | Path | What it ships | Status |
 |---|---|---|---|
 | **Smithery** ([smithery.ai](https://smithery.ai)) | [`smithery/`](smithery/) | `smithery.yaml` + Dockerfile + listing copy | ⏳ Ready to submit |
-| **modelcontextprotocol/servers** ([repo](https://github.com/modelcontextprotocol/servers)) | [`mcp-servers/`](mcp-servers/) | PR body + entry markdown for the third-party section | ⏳ Ready to submit |
+| **Awesome MCP Servers** (×3 community indices) | [`awesome-mcp/`](awesome-mcp/) | PR entries for `punkpeye/`, `appcypher/`, `wong2/` awesome-mcp-servers (~14k forks combined). Replaces the now-deprecated `modelcontextprotocol/servers` community section. | ⏳ Ready to submit |
 | **Claude Code Skills** ([anthropic.com/claude-code](https://anthropic.com/claude-code)) | [`claude-code-skill/`](claude-code-skill/) | `solomd/SKILL.md` — installs `solomd-mcp` + documents the 11 recipes | ⏳ Ready to submit |
 | **Per-client install docs** (Cursor / Cline / Continue / Claude Desktop / Zed) | [`client-docs/`](client-docs/) | One copy-paste `mcp.json` snippet per client | ✅ Live on README |
 | **PulseMCP / MCP.so / community lists** | (auto-crawl) | Root README badges + GitHub topics | ✅ Live |

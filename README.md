@@ -147,7 +147,7 @@ Available as:
 - **[Skill Pack](https://github.com/zhitongblog/solomd/releases/latest/download/solomd-skills-v4.4.1.zip)** — 11 reference Agent Recipes (weekly review, todo extract, link suggester, …) you can drop into `<vault>/.solomd/agents/`. Ships with every release.
 - **[Claude Code Skill](marketplace/claude-code-skill/)** — `SKILL.md` + `install.sh` that wires `solomd-mcp` into `~/.claude/mcp.json` and exposes the 13 tools to Claude Code with patterns and starter recipes.
 - **Smithery** — `smithery.yaml` + Dockerfile at [`marketplace/smithery/`](marketplace/smithery/) (submission pending).
-- **modelcontextprotocol/servers** — entry + PR draft at [`marketplace/mcp-servers/`](marketplace/mcp-servers/) (submission pending).
+- **Awesome MCP Servers** — PR entries for the three biggest community indices (`punkpeye/`, `appcypher/`, `wong2/awesome-mcp-servers`, ~14k forks combined) at [`marketplace/awesome-mcp/`](marketplace/awesome-mcp/).
 
 Full overview + submission status: [`marketplace/README.md`](marketplace/README.md).
 
