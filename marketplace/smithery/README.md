@@ -2,9 +2,26 @@
 
 ## Status
 
-⏳ **Ready to submit.** Smithery accepts `smithery.yaml` PRs into
-[smithery-ai/registry](https://github.com/smithery-ai/registry) — that's
-the inventory repo their indexer reads.
+⏸️ **Deferred** (as of 2026-05-31). Smithery's current
+[web publish form](https://smithery.ai/new) requires an HTTP-accessible
+MCP endpoint (`https://your-server.com/mcp`). `solomd-mcp` is **stdio
+JSON-RPC** only — the same transport every reference MCP server uses, and
+the one Claude Desktop / Claude Code / Cursor / Cline / Continue / Zed
+all drive natively over a child process.
+
+Two paths to re-enable this market:
+
+1. **Build an HTTP/SSE transport wrapper** for `solomd-mcp` — a small
+   sidecar that bridges HTTP requests to the stdio handler. Tracked for
+   v4.5.
+2. **Wait for Smithery to re-open stdio submissions** — `smithery-ai/registry`
+   used to take PRs but is now described as an issue tracker only. They
+   may reintroduce a CLI publish path; the `smithery.yaml` at repo root
+   stays so we're ready when they do.
+
+The materials below are still useful for either path — the yaml file
+describes the server's tool inventory, config schema, and binary
+distribution exactly the same way Smithery wants it.
 
 ## What's here
 

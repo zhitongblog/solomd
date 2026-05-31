@@ -14,7 +14,7 @@ in OS keychain, 14 language UI).
 
 | Target | Path | What it ships | Status |
 |---|---|---|---|
-| **Smithery** ([smithery.ai](https://smithery.ai)) | [`smithery/`](smithery/) | `smithery.yaml` + Dockerfile + listing copy | ⏳ Ready to submit |
+| **Smithery** ([smithery.ai](https://smithery.ai)) | [`smithery/`](smithery/) | `smithery.yaml` + Dockerfile + listing copy | ⏸️ **Deferred** — Smithery's web publish flow now requires an HTTP-accessible MCP endpoint (`https://your-server.com/mcp`); `solomd-mcp` is stdio JSON-RPC only. Revisit after we ship an HTTP/SSE transport wrapper. The `smithery.yaml` at repo root stays in place for any future passive discovery. |
 | **Awesome MCP Servers** (×3 community indices) | [`awesome-mcp/`](awesome-mcp/) | PR entries for `punkpeye/`, `appcypher/`, `wong2/` awesome-mcp-servers (~14k forks combined). Replaces the now-deprecated `modelcontextprotocol/servers` community section. | ⏳ Ready to submit |
 | **Claude Code Skills** ([anthropic.com/claude-code](https://anthropic.com/claude-code)) | [`claude-code-skill/`](claude-code-skill/) | `solomd/SKILL.md` — installs `solomd-mcp` + documents the 11 recipes | ⏳ Ready to submit |
 | **Per-client install docs** (Cursor / Cline / Continue / Claude Desktop / Zed) | [`client-docs/`](client-docs/) | One copy-paste `mcp.json` snippet per client | ✅ Live on README |
