@@ -19,12 +19,12 @@ write accept/reject UI**, **AutoGit branch sandbox per agent run**, and
 
 | | Download |
 |---|---|
-| 🍎 **macOS** (universal — Apple Silicon + Intel) | [`SoloMD_4.4.1_universal.dmg`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.4.1_universal.dmg) |
-| 🪟 **Windows** (x64) | [`SoloMD_4.4.1_x64_en-US.msi`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.4.1_x64_en-US.msi) |
-| 🪟 **Windows on ARM** (Snapdragon X / Copilot+ PCs) | [`SoloMD_4.4.1_arm64_en-US.msi`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.4.1_arm64_en-US.msi) |
-| 🐧 **Linux** (Debian / Ubuntu) | [`SoloMD_4.4.1_amd64.deb`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.4.1_amd64.deb) · [arm64](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.4.1_arm64.deb) |
-| 🐧 **Linux** (Fedora / RHEL) | [`SoloMD-4.4.1-1.x86_64.rpm`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD-4.4.1-1.x86_64.rpm) · [aarch64](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD-4.4.1-1.aarch64.rpm) |
-| 🐧 **Linux** (portable) | [`SoloMD_4.4.1_amd64.AppImage`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.4.1_amd64.AppImage) · [aarch64](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.4.1_aarch64.AppImage) |
+| 🍎 **macOS** (universal — Apple Silicon + Intel) | [`SoloMD_4.4.2_universal.dmg`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.4.2_universal.dmg) |
+| 🪟 **Windows** (x64) | [`SoloMD_4.4.2_x64_en-US.msi`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.4.2_x64_en-US.msi) |
+| 🪟 **Windows on ARM** (Snapdragon X / Copilot+ PCs) | [`SoloMD_4.4.2_arm64_en-US.msi`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.4.2_arm64_en-US.msi) |
+| 🐧 **Linux** (Debian / Ubuntu) | [`SoloMD_4.4.2_amd64.deb`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.4.2_amd64.deb) · [arm64](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.4.2_arm64.deb) |
+| 🐧 **Linux** (Fedora / RHEL) | [`SoloMD-4.4.2-1.x86_64.rpm`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD-4.4.2-1.x86_64.rpm) · [aarch64](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD-4.4.2-1.aarch64.rpm) |
+| 🐧 **Linux** (portable) | [`SoloMD_4.4.2_amd64.AppImage`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.4.2_amd64.AppImage) · [aarch64](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.4.2_aarch64.AppImage) |
 | 🤖 **Android** | [APKs on releases](https://github.com/zhitongblog/solomd/releases/latest) · Google Play closed beta — email `lixd220@gmail.com` |
 | 📱 **iOS / iPadOS** | App Store — [solomd.app/ios](https://solomd.app) |
 
