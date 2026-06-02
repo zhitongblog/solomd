@@ -8,6 +8,15 @@ const emit = defineEmits<{ (e: 'close'): void }>();
 const query = ref('');
 const selectedIdx = ref(0);
 const inputRef = ref<HTMLInputElement | null>(null);
+const listRef = ref<HTMLUListElement | null>(null);
+// #92 — itemRefs are populated by the template's :ref="..." callback so
+// we can scrollIntoView the active item when the keyboard moves selection.
+// Without this the viewport stayed pinned to the top and the user couldn't
+// see what they had highlighted past the first ~8 visible rows.
+const itemRefs = ref<(HTMLElement | null)[]>([]);
+function setItemRef(el: Element | unknown, i: number) {
+  itemRefs.value[i] = (el as HTMLElement) ?? null;
+}
 const allCommands = useCommands();
 
 const filtered = computed<Command[]>(() => {
@@ -33,6 +42,16 @@ watch(
 
 watch(filtered, () => {
   selectedIdx.value = 0;
+});
+
+// #92 — scroll the selected item into view when arrow-key navigation moves
+// selection. block: 'nearest' avoids the "yank to centre" jump that a
+// plain scrollIntoView() would do every keypress. We only fire after a
+// nextTick so the DOM has settled when filtered just changed.
+watch(selectedIdx, async () => {
+  await nextTick();
+  const el = itemRefs.value[selectedIdx.value];
+  if (el) el.scrollIntoView({ block: 'nearest' });
 });
 
 function onKey(e: KeyboardEvent) {
@@ -74,14 +93,15 @@ async function runIdx(i: number) {
         placeholder="Type a command…"
         spellcheck="false"
       />
-      <ul class="palette__list" v-if="filtered.length">
+      <ul class="palette__list" ref="listRef" v-if="filtered.length">
         <li
           v-for="(c, i) in filtered"
           :key="c.id"
+          :ref="(el) => setItemRef(el, i)"
           class="palette__item"
           :class="{ 'palette__item--active': i === selectedIdx }"
           @click="runIdx(i)"
-          @mouseenter="selectedIdx = i"
+          @mousemove="selectedIdx = i"
         >
           <span class="palette__title">{{ c.title }}</span>
           <span class="palette__shortcut" v-if="c.shortcut">{{ c.shortcut }}</span>

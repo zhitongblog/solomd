@@ -284,11 +284,18 @@ async function commitEdit() {
       // new path and (when content might have changed on disk via the
       // per-file `.assets/` link rewrite) reload from disk for clean tabs.
       // Dirty tabs keep their in-memory content; user resolves on save.
+      //
+      // #91 fix: the dirty check has to run BEFORE we call markSaved —
+      // markSaved sets savedContent = content as part of its bookkeeping,
+      // so the comparison was always true and dirty tabs lost their
+      // in-memory edits to whatever was on disk. Snapshot first, reload
+      // only if it was already clean.
       try {
         const tab = tabs.tabs.find((t: { filePath?: string }) => t.filePath === e.original);
         if (tab) {
+          const wasClean = tab.savedContent === tab.content;
           tabs.markSaved(tab.id, target);
-          if (tab.savedContent === tab.content) {
+          if (wasClean) {
             const fr = await invoke<{ content: string }>('read_file', { path: target });
             tabs.setContent(tab.id, fr.content);
             tabs.markSaved(tab.id, target);
