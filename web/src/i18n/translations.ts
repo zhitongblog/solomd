@@ -90,6 +90,7 @@ export const t = {
       platforms: {
         macos: { name: 'macOS', note: 'Universal · Apple Silicon + Intel · Notarized', primary: 'Download .dmg' },
         windows: { name: 'Windows', note: 'x64 · Windows 10/11', primary: 'Download .msi', secondary: '.exe installer' },
+        windowsArm: { name: 'Windows (ARM64)', note: 'ARM64 · Snapdragon X · Copilot+ PCs · Win on Apple Silicon', primary: 'Download .msi', secondary: '.exe installer' },
         linux: { name: 'Linux', note: 'x64 · .AppImage / .deb / .rpm', primary: 'Download .AppImage', secondary: '.deb (Debian/Ubuntu)', tertiary: '.rpm (Fedora/RHEL)' },
         linuxArm: { name: 'Linux (ARM64)', note: 'aarch64 · Raspberry Pi 4/5 · ARM servers', primary: 'Download .AppImage', secondary: '.deb (arm64)', tertiary: '.rpm (aarch64)' },
         android: { name: 'Android', note: 'API 24+ · ARM64 · x86_64 · F-Droid / Play Store', primary: 'Download universal .apk', secondary: '.apk (arm64-v8a)', tertiary: '.apk (armv7)' },
@@ -430,6 +431,7 @@ export const t = {
       platforms: {
         macos: { name: 'macOS', note: '通用版 · Apple Silicon + Intel · 已 Notarize', primary: '下载 .dmg' },
         windows: { name: 'Windows', note: 'x64 · Windows 10/11', primary: '下载 .msi', secondary: '.exe 安装程序' },
+        windowsArm: { name: 'Windows (ARM64)', note: 'ARM64 · 骁龙 X · Copilot+ PC · Apple Silicon 上跑 Win', primary: '下载 .msi', secondary: '.exe 安装程序' },
         linux: { name: 'Linux', note: 'x64 · .AppImage / .deb / .rpm', primary: '下载 .AppImage', secondary: '.deb (Debian/Ubuntu)', tertiary: '.rpm (Fedora/RHEL)' },
         linuxArm: { name: 'Linux (ARM64)', note: 'aarch64 · 树莓派 4/5 · ARM 服务器', primary: '下载 .AppImage', secondary: '.deb (arm64)', tertiary: '.rpm (aarch64)' },
         android: { name: 'Android', note: 'API 24+ · ARM64 · x86_64 · F-Droid / Play 商店', primary: '下载通用 .apk', secondary: '.apk (arm64-v8a)', tertiary: '.apk (armv7)' },
@@ -770,6 +772,7 @@ export const t = {
       platforms: {
         macos: { name: 'macOS', note: 'ユニバーサル · Apple Silicon + Intel · Notarize 済み', primary: '.dmg をダウンロード' },
         windows: { name: 'Windows', note: 'x64 · Windows 10/11', primary: '.msi をダウンロード', secondary: '.exe インストーラ' },
+        windowsArm: { name: 'Windows (ARM64)', note: 'ARM64 · Snapdragon X · Copilot+ PC · Apple Silicon 上の Win', primary: '.msi をダウンロード', secondary: '.exe インストーラ' },
         linux: { name: 'Linux', note: 'x64 · .AppImage / .deb / .rpm', primary: '.AppImage をダウンロード', secondary: '.deb (Debian/Ubuntu)', tertiary: '.rpm (Fedora/RHEL)' },
         linuxArm: { name: 'Linux (ARM64)', note: 'aarch64 · Raspberry Pi 4/5 · ARM サーバー', primary: '.AppImage をダウンロード', secondary: '.deb (arm64)', tertiary: '.rpm (aarch64)' },
         android: { name: 'Android', note: 'API 24+ · ARM64 · x86_64 · F-Droid / Play ストア', primary: '.apk をダウンロード', secondary: '.apk (arm64-v8a)', tertiary: '.apk (armv7)' },
@@ -1006,6 +1009,7 @@ export const t = {
       platforms: {
         macos: { name: 'macOS', note: '유니버설 · Apple Silicon + Intel · Notarize 완료', primary: '.dmg 다운로드' },
         windows: { name: 'Windows', note: 'x64 · Windows 10/11', primary: '.msi 다운로드', secondary: '.exe 인스톨러' },
+        windowsArm: { name: 'Windows (ARM64)', note: 'ARM64 · Snapdragon X · Copilot+ PC · Apple Silicon에서 Win', primary: '.msi 다운로드', secondary: '.exe 인스톨러' },
         linux: { name: 'Linux', note: 'x64 · .AppImage / .deb / .rpm', primary: '.AppImage 다운로드', secondary: '.deb (Debian/Ubuntu)', tertiary: '.rpm (Fedora/RHEL)' },
         linuxArm: { name: 'Linux (ARM64)', note: 'aarch64 · Raspberry Pi 4/5 · ARM 서버', primary: '.AppImage 다운로드', secondary: '.deb (arm64)', tertiary: '.rpm (aarch64)' },
         android: { name: 'Android', note: 'API 24+ · ARM64 · x86_64 · F-Droid / Play 스토어', primary: '.apk 다운로드', secondary: '.apk (arm64-v8a)', tertiary: '.apk (armv7)' },
@@ -1242,6 +1246,7 @@ export const t = {
       platforms: {
         macos: { name: 'macOS', note: 'Universal · Apple Silicon + Intel · notarisiert', primary: '.dmg herunterladen' },
         windows: { name: 'Windows', note: 'x64 · Windows 10/11', primary: '.msi herunterladen', secondary: '.exe Installer' },
+        windowsArm: { name: 'Windows (ARM64)', note: 'ARM64 · Snapdragon X · Copilot+ PCs · Win auf Apple Silicon', primary: '.msi herunterladen', secondary: '.exe Installer' },
         linux: { name: 'Linux', note: 'x64 · .AppImage / .deb / .rpm', primary: '.AppImage herunterladen', secondary: '.deb (Debian/Ubuntu)', tertiary: '.rpm (Fedora/RHEL)' },
         linuxArm: { name: 'Linux (ARM64)', note: 'aarch64 · Raspberry Pi 4/5 · ARM-Server', primary: '.AppImage herunterladen', secondary: '.deb (arm64)', tertiary: '.rpm (aarch64)' },
         android: { name: 'Android', note: 'API 24+ · ARM64 · x86_64 · F-Droid / Play Store', primary: 'Universal .apk herunterladen', secondary: '.apk (arm64-v8a)', tertiary: '.apk (armv7)' },
@@ -1478,6 +1483,7 @@ export const t = {
       platforms: {
         macos: { name: 'macOS', note: 'Universal · Apple Silicon + Intel · notarisé', primary: 'Télécharger .dmg' },
         windows: { name: 'Windows', note: 'x64 · Windows 10/11', primary: 'Télécharger .msi', secondary: 'Installateur .exe' },
+        windowsArm: { name: 'Windows (ARM64)', note: 'ARM64 · Snapdragon X · PC Copilot+ · Win sur Apple Silicon', primary: 'Télécharger .msi', secondary: 'Installateur .exe' },
         linux: { name: 'Linux', note: 'x64 · .AppImage / .deb / .rpm', primary: 'Télécharger .AppImage', secondary: '.deb (Debian/Ubuntu)', tertiary: '.rpm (Fedora/RHEL)' },
         linuxArm: { name: 'Linux (ARM64)', note: 'aarch64 · Raspberry Pi 4/5 · serveurs ARM', primary: 'Télécharger .AppImage', secondary: '.deb (arm64)', tertiary: '.rpm (aarch64)' },
         android: { name: 'Android', note: 'API 24+ · ARM64 · x86_64 · F-Droid / Play Store', primary: 'Télécharger .apk universel', secondary: '.apk (arm64-v8a)', tertiary: '.apk (armv7)' },
@@ -1714,6 +1720,7 @@ export const t = {
       platforms: {
         macos: { name: 'macOS', note: 'Universal · Apple Silicon + Intel · notarizado', primary: 'Descargar .dmg' },
         windows: { name: 'Windows', note: 'x64 · Windows 10/11', primary: 'Descargar .msi', secondary: 'Instalador .exe' },
+        windowsArm: { name: 'Windows (ARM64)', note: 'ARM64 · Snapdragon X · PCs Copilot+ · Win en Apple Silicon', primary: 'Descargar .msi', secondary: 'Instalador .exe' },
         linux: { name: 'Linux', note: 'x64 · .AppImage / .deb / .rpm', primary: 'Descargar .AppImage', secondary: '.deb (Debian/Ubuntu)', tertiary: '.rpm (Fedora/RHEL)' },
         linuxArm: { name: 'Linux (ARM64)', note: 'aarch64 · Raspberry Pi 4/5 · servidores ARM', primary: 'Descargar .AppImage', secondary: '.deb (arm64)', tertiary: '.rpm (aarch64)' },
         android: { name: 'Android', note: 'API 24+ · ARM64 · x86_64 · F-Droid / Play Store', primary: 'Descargar .apk universal', secondary: '.apk (arm64-v8a)', tertiary: '.apk (armv7)' },
@@ -1950,6 +1957,7 @@ export const t = {
       platforms: {
         macos: { name: 'macOS', note: 'Universal · Apple Silicon + Intel · notarizado', primary: 'Baixar .dmg' },
         windows: { name: 'Windows', note: 'x64 · Windows 10/11', primary: 'Baixar .msi', secondary: 'Instalador .exe' },
+        windowsArm: { name: 'Windows (ARM64)', note: 'ARM64 · Snapdragon X · PCs Copilot+ · Win em Apple Silicon', primary: 'Baixar .msi', secondary: 'Instalador .exe' },
         linux: { name: 'Linux', note: 'x64 · .AppImage / .deb / .rpm', primary: 'Baixar .AppImage', secondary: '.deb (Debian/Ubuntu)', tertiary: '.rpm (Fedora/RHEL)' },
         linuxArm: { name: 'Linux (ARM64)', note: 'aarch64 · Raspberry Pi 4/5 · servidores ARM', primary: 'Baixar .AppImage', secondary: '.deb (arm64)', tertiary: '.rpm (aarch64)' },
         android: { name: 'Android', note: 'API 24+ · ARM64 · x86_64 · F-Droid / Play Store', primary: 'Baixar .apk universal', secondary: '.apk (arm64-v8a)', tertiary: '.apk (armv7)' },
@@ -2186,6 +2194,7 @@ export const t = {
       platforms: {
         macos: { name: 'macOS', note: 'Universal · Apple Silicon + Intel · notarizzato', primary: 'Scarica .dmg' },
         windows: { name: 'Windows', note: 'x64 · Windows 10/11', primary: 'Scarica .msi', secondary: 'Installer .exe' },
+        windowsArm: { name: 'Windows (ARM64)', note: 'ARM64 · Snapdragon X · PC Copilot+ · Win su Apple Silicon', primary: 'Scarica .msi', secondary: 'Installer .exe' },
         linux: { name: 'Linux', note: 'x64 · .AppImage / .deb / .rpm', primary: 'Scarica .AppImage', secondary: '.deb (Debian/Ubuntu)', tertiary: '.rpm (Fedora/RHEL)' },
         linuxArm: { name: 'Linux (ARM64)', note: 'aarch64 · Raspberry Pi 4/5 · server ARM', primary: 'Scarica .AppImage', secondary: '.deb (arm64)', tertiary: '.rpm (aarch64)' },
         android: { name: 'Android', note: 'API 24+ · ARM64 · x86_64 · F-Droid / Play Store', primary: 'Scarica .apk universale', secondary: '.apk (arm64-v8a)', tertiary: '.apk (armv7)' },
@@ -2422,6 +2431,7 @@ export const t = {
       platforms: {
         macos: { name: 'macOS', note: 'Universal · Apple Silicon + Intel · notarized', primary: 'Pobierz .dmg' },
         windows: { name: 'Windows', note: 'x64 · Windows 10/11', primary: 'Pobierz .msi', secondary: 'Instalator .exe' },
+        windowsArm: { name: 'Windows (ARM64)', note: 'ARM64 · Snapdragon X · komputery Copilot+ · Win na Apple Silicon', primary: 'Pobierz .msi', secondary: 'Instalator .exe' },
         linux: { name: 'Linux', note: 'x64 · .AppImage / .deb / .rpm', primary: 'Pobierz .AppImage', secondary: '.deb (Debian/Ubuntu)', tertiary: '.rpm (Fedora/RHEL)' },
         linuxArm: { name: 'Linux (ARM64)', note: 'aarch64 · Raspberry Pi 4/5 · serwery ARM', primary: 'Pobierz .AppImage', secondary: '.deb (arm64)', tertiary: '.rpm (aarch64)' },
         android: { name: 'Android', note: 'API 24+ · ARM64 · x86_64 · F-Droid / Sklep Play', primary: 'Pobierz uniwersalny .apk', secondary: '.apk (arm64-v8a)', tertiary: '.apk (armv7)' },
@@ -2658,6 +2668,7 @@ export const t = {
       platforms: {
         macos: { name: 'macOS', note: 'Universal · Apple Silicon + Intel · genotariseerd', primary: 'Download .dmg' },
         windows: { name: 'Windows', note: 'x64 · Windows 10/11', primary: 'Download .msi', secondary: '.exe-installer' },
+        windowsArm: { name: 'Windows (ARM64)', note: 'ARM64 · Snapdragon X · Copilot+ PCs · Win op Apple Silicon', primary: 'Download .msi', secondary: '.exe-installer' },
         linux: { name: 'Linux', note: 'x64 · .AppImage / .deb / .rpm', primary: 'Download .AppImage', secondary: '.deb (Debian/Ubuntu)', tertiary: '.rpm (Fedora/RHEL)' },
         linuxArm: { name: 'Linux (ARM64)', note: 'aarch64 · Raspberry Pi 4/5 · ARM-servers', primary: 'Download .AppImage', secondary: '.deb (arm64)', tertiary: '.rpm (aarch64)' },
         android: { name: 'Android', note: 'API 24+ · ARM64 · x86_64 · F-Droid / Play Store', primary: 'Universele .apk downloaden', secondary: '.apk (arm64-v8a)', tertiary: '.apk (armv7)' },
@@ -2894,6 +2905,7 @@ export const t = {
       platforms: {
         macos: { name: 'macOS', note: 'Universal · Apple Silicon + Intel · noter onaylı', primary: '.dmg indir' },
         windows: { name: 'Windows', note: 'x64 · Windows 10/11', primary: '.msi indir', secondary: '.exe yükleyici' },
+        windowsArm: { name: 'Windows (ARM64)', note: 'ARM64 · Snapdragon X · Copilot+ PC · Apple Silicon\'da Win', primary: '.msi indir', secondary: '.exe yükleyici' },
         linux: { name: 'Linux', note: 'x64 · .AppImage / .deb / .rpm', primary: '.AppImage indir', secondary: '.deb (Debian/Ubuntu)', tertiary: '.rpm (Fedora/RHEL)' },
         linuxArm: { name: 'Linux (ARM64)', note: 'aarch64 · Raspberry Pi 4/5 · ARM sunucular', primary: '.AppImage indir', secondary: '.deb (arm64)', tertiary: '.rpm (aarch64)' },
         android: { name: 'Android', note: 'API 24+ · ARM64 · x86_64 · F-Droid / Play Store', primary: 'Evrensel .apk indir', secondary: '.apk (arm64-v8a)', tertiary: '.apk (armv7)' },
@@ -3130,6 +3142,7 @@ export const t = {
       platforms: {
         macos: { name: 'macOS', note: 'Universal · Apple Silicon + Intel · notariserad', primary: 'Ladda ner .dmg' },
         windows: { name: 'Windows', note: 'x64 · Windows 10/11', primary: 'Ladda ner .msi', secondary: '.exe-installer' },
+        windowsArm: { name: 'Windows (ARM64)', note: 'ARM64 · Snapdragon X · Copilot+ PCs · Win på Apple Silicon', primary: 'Ladda ner .msi', secondary: '.exe-installer' },
         linux: { name: 'Linux', note: 'x64 · .AppImage / .deb / .rpm', primary: 'Ladda ner .AppImage', secondary: '.deb (Debian/Ubuntu)', tertiary: '.rpm (Fedora/RHEL)' },
         linuxArm: { name: 'Linux (ARM64)', note: 'aarch64 · Raspberry Pi 4/5 · ARM-servrar', primary: 'Ladda ner .AppImage', secondary: '.deb (arm64)', tertiary: '.rpm (aarch64)' },
         android: { name: 'Android', note: 'API 24+ · ARM64 · x86_64 · F-Droid / Play Store', primary: 'Ladda ner universell .apk', secondary: '.apk (arm64-v8a)', tertiary: '.apk (armv7)' },
@@ -3366,6 +3379,7 @@ export const t = {
       platforms: {
         macos: { name: 'macOS', note: 'Universal · Apple Silicon + Intel · нотаризовано', primary: 'Завантажити .dmg' },
         windows: { name: 'Windows', note: 'x64 · Windows 10/11', primary: 'Завантажити .msi', secondary: 'Інсталятор .exe' },
+        windowsArm: { name: 'Windows (ARM64)', note: 'ARM64 · Snapdragon X · Copilot+ PC · Win на Apple Silicon', primary: 'Завантажити .msi', secondary: 'Інсталятор .exe' },
         linux: { name: 'Linux', note: 'x64 · .AppImage / .deb / .rpm', primary: 'Завантажити .AppImage', secondary: '.deb (Debian/Ubuntu)', tertiary: '.rpm (Fedora/RHEL)' },
         linuxArm: { name: 'Linux (ARM64)', note: 'aarch64 · Raspberry Pi 4/5 · ARM-сервери', primary: 'Завантажити .AppImage', secondary: '.deb (arm64)', tertiary: '.rpm (aarch64)' },
         android: { name: 'Android', note: 'API 24+ · ARM64 · x86_64 · F-Droid / Play Маркет', primary: 'Завантажити універсальний .apk', secondary: '.apk (arm64-v8a)', tertiary: '.apk (armv7)' },
