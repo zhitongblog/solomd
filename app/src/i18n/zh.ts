@@ -402,6 +402,23 @@ export const zh: I18n = {
     },
     mcpWriteNote:
       'write_note 与 append_to_note 默认关闭，需通过 --allow-write 启用。',
+    // ---- v4.4.5: 6 个 AI 客户端的 MCP 一键注入 ----
+    aiClientsTitle: '一键接入你机器上的 AI 客户端',
+    aiClientsIntro:
+      '一次点击，SoloMD 把自己的 MCP 服务器条目写进我们识别到的每一个 AI 客户端的 config。每次都是 JSON 原地合并（不影响你已有的条目），写之前会把原 config 备份到 <path>.bak.<时间戳>。',
+    aiClientsNotInstalled: '未安装',
+    aiClientsAlreadyConfigured: '已接入 ✓',
+    aiClientsReady: '可注入',
+    aiClientsOpenConfigBtn: '打开 config',
+    aiClientsRemoveBtn: '移除',
+    aiClientsAllowWrite: '允许写入（给 MCP server 加 --allow-write）',
+    aiClientsInjectBtn: '注入到 {n} 个客户端',
+    aiClientsInjectBtnZero: '没有可注入的客户端',
+    aiClientsInjectedToast:
+      '✓ 已注入到 {n} 个客户端。重启对应 AI 客户端即可加载新 MCP server。',
+    aiClientsRemovedToast: '✓ 已从 {name} 移除 SoloMD 条目。',
+    aiClientsRestartHint:
+      '注入完成后，重启对应 AI 客户端（或用它的 "Reload MCP servers" 命令）让新 server 生效。',
     // ---- v4.0 P4 联邦：MCP 配置档 ----
     profilesHeading: 'MCP 配置档',
     profilesIntro:

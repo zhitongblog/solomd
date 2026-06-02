@@ -405,6 +405,25 @@ export const ko: I18n = {
     },
     mcpWriteNote:
       'write_note + append_to_note는 기본 꺼짐. --allow-write로 옵트인하세요.',
+    // ---- v4.4.5: MCP auto-install across 6 AI clients (EN backfill) ----
+    aiClientsTitle: 'Hook SoloMD into your AI clients',
+    aiClientsIntro:
+      'One click and SoloMD writes its MCP server entry into the config of every AI client we recognise on this machine. Each write is JSON-merged in place (existing entries are preserved) and the original config is backed up to <path>.bak.<timestamp> before any change.',
+    aiClientsNotInstalled: 'not installed',
+    aiClientsAlreadyConfigured: 'configured ✓',
+    aiClientsReady: 'ready to inject',
+    aiClientsOpenConfigBtn: 'Open config',
+    aiClientsRemoveBtn: 'Remove',
+    aiClientsAllowWrite:
+      'Allow writes (--allow-write on the MCP server)',
+    aiClientsInjectBtn: 'Inject SoloMD into {n} client(s)',
+    aiClientsInjectBtnZero: 'Nothing to inject',
+    aiClientsInjectedToast:
+      '✓ Injected SoloMD into {n} client(s). Restart the AI client(s) for the new MCP server to load.',
+    aiClientsRemovedToast: '✓ Removed SoloMD entry from {name}.',
+    aiClientsRestartHint:
+      'After injecting, restart the AI client (or use its "Reload MCP servers" command if it has one) for the new server to load.'
+,
     profilesHeading: 'MCP 프로필',
     profilesIntro:
       '여러 워크스페이스를 하나의 solomd-mcp 인스턴스로 묶고, 붙여넣을 수 있는 Claude Desktop 설정 블록을 복사할 수 있습니다. 각 프로필은 MCP 서버가 노출하는 워크스페이스(별칭 + 경로)를 나열합니다. 첫 번째 항목이 기본값 — `workspace` 인자 없이 호출되는 도구는 여기로 폴스루됩니다.',

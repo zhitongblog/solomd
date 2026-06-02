@@ -405,6 +405,25 @@ export const fr: I18n = {
     },
     mcpWriteNote:
       'write_note + append_to_note sont désactivés par défaut. Passer --allow-write pour activer.',
+    // ---- v4.4.5: MCP auto-install across 6 AI clients (EN backfill) ----
+    aiClientsTitle: 'Hook SoloMD into your AI clients',
+    aiClientsIntro:
+      'One click and SoloMD writes its MCP server entry into the config of every AI client we recognise on this machine. Each write is JSON-merged in place (existing entries are preserved) and the original config is backed up to <path>.bak.<timestamp> before any change.',
+    aiClientsNotInstalled: 'not installed',
+    aiClientsAlreadyConfigured: 'configured ✓',
+    aiClientsReady: 'ready to inject',
+    aiClientsOpenConfigBtn: 'Open config',
+    aiClientsRemoveBtn: 'Remove',
+    aiClientsAllowWrite:
+      'Allow writes (--allow-write on the MCP server)',
+    aiClientsInjectBtn: 'Inject SoloMD into {n} client(s)',
+    aiClientsInjectBtnZero: 'Nothing to inject',
+    aiClientsInjectedToast:
+      '✓ Injected SoloMD into {n} client(s). Restart the AI client(s) for the new MCP server to load.',
+    aiClientsRemovedToast: '✓ Removed SoloMD entry from {name}.',
+    aiClientsRestartHint:
+      'After injecting, restart the AI client (or use its "Reload MCP servers" command if it has one) for the new server to load.'
+,
     profilesHeading: 'Profils MCP',
     profilesIntro:
       'Regrouper plusieurs workspaces dans une seule instance solomd-mcp, puis copier un bloc de config Claude Desktop prêt à coller. Chaque profil liste les workspaces (alias + chemin) que le serveur MCP exposera ; la première entrée est le défaut — les appels d\'outil sans argument `workspace` explicite y aboutissent.',

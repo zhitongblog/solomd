@@ -101,6 +101,15 @@ mod recipe_runner;
 #[path = "cookbook.rs"]
 mod cookbook;
 
+// v2.4 — integrations panel (CLI status, MCP path, AI-client config
+// discovery) + v4.4.5 MCP auto-install (detect_ai_clients / inject_mcp /
+// remove_mcp). Was historically only declared in lib.rs (the mobile entry
+// point), so the desktop binary's frontend couldn't reach any of the
+// commands. Adding the path here too is the same dual-declaration trick
+// recipe_runner and rest_api use to live in both compilation roots.
+#[path = "integrations.rs"]
+mod integrations;
+
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use tauri::menu::{
@@ -772,6 +781,12 @@ pub fn run_with(initial_file: Option<String>) {
             mcp_profiles::mcp_profiles_save,
             mcp_profiles::mcp_profiles_delete,
             mcp_profiles::mcp_profiles_export_config,
+            integrations::cli_status,
+            integrations::mcp_path,
+            integrations::mcp_claude_desktop_config_path,
+            integrations::detect_ai_clients,
+            integrations::inject_mcp,
+            integrations::remove_mcp,
             recipe_runner::recipes_list,
             recipe_runner::recipes_get,
             recipe_runner::recipes_save,

@@ -163,6 +163,104 @@ async function openCliDocs() {
 }
 
 // ---------------------------------------------------------------------------
+// v4.4.5 MCP auto-install — detect / inject / remove across 6 AI clients.
+// ---------------------------------------------------------------------------
+
+interface AiClient {
+  id: string;
+  display_name: string;
+  config_path: string;
+  config_exists: boolean;
+  config_dir_exists: boolean;
+  has_solomd_entry: boolean;
+}
+
+const clients = ref<AiClient[]>([]);
+const checked = ref<Record<string, boolean>>({});
+const injectAllowWrite = ref(false);
+const injectBusy = ref(false);
+
+async function refreshClients() {
+  try {
+    const list = await invoke<AiClient[]>('detect_ai_clients');
+    clients.value = list;
+    // Default: tick every client whose config dir already exists AND that
+    // doesn't already have a solomd entry. Skips clients that aren't
+    // installed (avoids creating empty config files on disk just because
+    // the wizard ran) and skips ones already wired up (idempotent UX).
+    const next: Record<string, boolean> = {};
+    for (const c of list) {
+      next[c.id] = c.config_dir_exists && !c.has_solomd_entry;
+    }
+    checked.value = next;
+  } catch (e) {
+    toasts.error(String(e));
+  }
+}
+
+onMounted(refreshClients);
+
+const injectableCount = computed(
+  () => Object.values(checked.value).filter(Boolean).length,
+);
+
+async function injectChecked() {
+  if (!workspace.currentFolder) {
+    toasts.info(t('integrations.mcpNoWorkspace'));
+    return;
+  }
+  injectBusy.value = true;
+  try {
+    const targets = clients.value.filter((c) => checked.value[c.id]);
+    let okCount = 0;
+    for (const c of targets) {
+      try {
+        await invoke<string>('inject_mcp', {
+          clientId: c.id,
+          workspace: workspace.currentFolder,
+          allowWrite: injectAllowWrite.value,
+        });
+        okCount += 1;
+      } catch (e) {
+        toasts.error(`${c.display_name}: ${e}`);
+      }
+    }
+    if (okCount > 0) {
+      toasts.success(
+        t('integrations.aiClientsInjectedToast', { n: String(okCount) }),
+      );
+      await refreshClients();
+    }
+  } finally {
+    injectBusy.value = false;
+  }
+}
+
+async function removeOne(c: AiClient) {
+  try {
+    await invoke('remove_mcp', { clientId: c.id });
+    toasts.success(
+      t('integrations.aiClientsRemovedToast', { name: c.display_name }),
+    );
+    await refreshClients();
+  } catch (e) {
+    toasts.error(String(e));
+  }
+}
+
+async function openClientConfig(c: AiClient) {
+  try {
+    await openPath(c.config_path);
+  } catch {
+    try {
+      await revealItemInDir(c.config_path);
+    } catch {
+      toasts.info(c.config_path);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Static lists (kept here so the template can `v-for` over a typed array
 // rather than `Object.keys(t(...))` which is awkward in Vue templates).
 // ---------------------------------------------------------------------------
@@ -292,6 +390,82 @@ const mcpToolKeys = [
       <!-- v4.0 P4 federation: named bundles of workspaces, each with a -->
       <!-- one-click "Copy Claude Desktop config" button.                -->
       <McpProfilesSettings />
+    </div>
+
+    <!-- ────────────────────────────────────────────────────────────── -->
+    <!-- v4.4.5 — AI clients auto-install                                -->
+    <!-- ────────────────────────────────────────────────────────────── -->
+    <div class="ic-card" data-testid="integrations-ai-clients">
+      <div class="ic-card__title">{{ t('integrations.aiClientsTitle') }}</div>
+      <p class="ic-intro-small">{{ t('integrations.aiClientsIntro') }}</p>
+
+      <ul class="ai-clients">
+        <li v-for="c in clients" :key="c.id" class="ai-client">
+          <label class="ai-client__row">
+            <input
+              type="checkbox"
+              v-model="checked[c.id]"
+              :disabled="!c.config_dir_exists || injectBusy"
+            />
+            <span class="ai-client__name">{{ c.display_name }}</span>
+            <span
+              v-if="!c.config_dir_exists"
+              class="ai-client__badge ai-client__badge--off"
+            >
+              {{ t('integrations.aiClientsNotInstalled') }}
+            </span>
+            <span
+              v-else-if="c.has_solomd_entry"
+              class="ai-client__badge ai-client__badge--ok"
+            >
+              {{ t('integrations.aiClientsAlreadyConfigured') }}
+            </span>
+            <span
+              v-else
+              class="ai-client__badge ai-client__badge--pending"
+            >
+              {{ t('integrations.aiClientsReady') }}
+            </span>
+          </label>
+          <div class="ai-client__actions">
+            <button class="ic-btn ic-btn--small" @click="openClientConfig(c)">
+              {{ t('integrations.aiClientsOpenConfigBtn') }}
+            </button>
+            <button
+              v-if="c.has_solomd_entry"
+              class="ic-btn ic-btn--small ic-btn--danger"
+              @click="removeOne(c)"
+            >
+              {{ t('integrations.aiClientsRemoveBtn') }}
+            </button>
+          </div>
+          <div class="ai-client__path">{{ c.config_path }}</div>
+        </li>
+      </ul>
+
+      <div class="ai-clients__controls">
+        <label class="ai-clients__allow-write">
+          <input type="checkbox" v-model="injectAllowWrite" />
+          {{ t('integrations.aiClientsAllowWrite') }}
+        </label>
+        <button
+          class="ic-btn ic-btn--primary"
+          :disabled="injectableCount === 0 || injectBusy"
+          @click="injectChecked"
+        >
+          {{
+            injectableCount === 0
+              ? t('integrations.aiClientsInjectBtnZero')
+              : t('integrations.aiClientsInjectBtn', {
+                  n: String(injectableCount),
+                })
+          }}
+        </button>
+      </div>
+
+      <p class="ic-write-note">
+        {{ t('integrations.aiClientsRestartHint') }}
+      </p>
     </div>
   </section>
 </template>
@@ -453,5 +627,95 @@ const mcpToolKeys = [
   color: var(--text-faint);
   margin: 6px 0 0;
   line-height: 1.5;
+}
+
+/* v4.4.5 AI-clients card --------------------------------------------------- */
+.ic-intro-small {
+  font-size: 11px;
+  color: var(--text-faint);
+  margin: 0 0 10px;
+  line-height: 1.5;
+}
+.ai-clients {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ai-client {
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: var(--bg-soft);
+}
+.ai-client__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.ai-client__row input[type='checkbox']:disabled {
+  cursor: not-allowed;
+}
+.ai-client__name {
+  font-weight: 500;
+  font-size: 12px;
+}
+.ai-client__badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  margin-left: auto;
+}
+.ai-client__badge--off {
+  background: var(--bg);
+  color: var(--text-faint);
+}
+.ai-client__badge--ok {
+  background: rgba(40, 167, 69, 0.15);
+  color: #28a745;
+}
+.ai-client__badge--pending {
+  background: rgba(255, 159, 64, 0.15);
+  color: #d97700;
+}
+.ai-client__actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+}
+.ic-btn--small {
+  font-size: 10px;
+  padding: 3px 8px;
+}
+.ic-btn--danger {
+  color: #d33;
+  border-color: #d33;
+}
+.ic-btn--primary {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+.ai-client__path {
+  font-family: monospace;
+  font-size: 10px;
+  color: var(--text-faint);
+  margin-top: 2px;
+  word-break: break-all;
+}
+.ai-clients__controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+.ai-clients__allow-write {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  cursor: pointer;
 }
 </style>

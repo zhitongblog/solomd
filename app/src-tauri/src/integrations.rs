@@ -26,6 +26,7 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use serde::Serialize;
+use serde_json::{json, Value as JsonValue};
 use tauri::{AppHandle, Manager};
 
 // ---------------------------------------------------------------------------
@@ -239,6 +240,340 @@ fn strip_ansi(s: &str) -> String {
     out
 }
 
+// ---------------------------------------------------------------------------
+// v4.4.5 MCP auto-install — detect + inject + remove across 6 AI clients.
+//
+// One-shot user flow:
+//
+//   1. First-run wizard calls `detect_ai_clients()`.
+//   2. UI shows checklist with which configs already exist and whether
+//      they already mention solomd.
+//   3. User picks workspace + allow-write, clicks "Inject".
+//   4. UI calls `inject_mcp(client_id, workspace, allow_write)` per
+//      checked client. Each call backs up the original config
+//      (`<path>.bak.<unix_seconds>`) and merges in the solomd entry.
+//   5. User restarts the AI client (we surface a reminder in the UI).
+//
+// Each client has its own config schema — Claude Desktop, Claude Code, and
+// Cursor share `mcpServers.<name> = { command, args }`; Cline adds
+// `disabled` + `autoApprove`; Continue uses `mcp: [{ name, ... }]` (an
+// array, not a map); Zed uses `context_servers.<name> = { command: {
+// path, args }, settings: {} }`. The injection function dispatches on
+// `client_id`.
+
+#[derive(Serialize, Debug, Clone)]
+pub struct AiClient {
+    pub id: &'static str,
+    pub display_name: &'static str,
+    pub config_path: String,
+    pub config_exists: bool,
+    pub config_dir_exists: bool,
+    pub has_solomd_entry: bool,
+}
+
+/// Resolve a client's MCP config path. Returns `None` when we can't infer
+/// it (eg. Linux + Claude Desktop, which doesn't ship for Linux).
+fn ai_client_config_path(client_id: &str, app: &AppHandle) -> Option<PathBuf> {
+    let home = app.path().home_dir().ok();
+
+    match client_id {
+        "claude-desktop" => {
+            if cfg!(target_os = "macos") {
+                home.map(|h| h.join("Library/Application Support/Claude/claude_desktop_config.json"))
+            } else if cfg!(target_os = "windows") {
+                std::env::var_os("APPDATA")
+                    .map(|a| PathBuf::from(a).join("Claude/claude_desktop_config.json"))
+            } else {
+                // Claude Desktop has no Linux build as of writing — return
+                // the conventional path anyway so the UI can still surface
+                // "expected here when it lands".
+                home.map(|h| h.join(".config/Claude/claude_desktop_config.json"))
+            }
+        }
+        "claude-code" => home.map(|h| h.join(".claude/mcp.json")),
+        "cursor" => home.map(|h| h.join(".cursor/mcp.json")),
+        "cline" => {
+            // VS Code globalStorage. Path varies by OS but follows the same
+            // shape under each platform's user-data dir.
+            if cfg!(target_os = "macos") {
+                home.map(|h| h.join(
+                    "Library/Application Support/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json",
+                ))
+            } else if cfg!(target_os = "windows") {
+                std::env::var_os("APPDATA").map(|a| {
+                    PathBuf::from(a).join(
+                        "Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json",
+                    )
+                })
+            } else {
+                home.map(|h| h.join(
+                    ".config/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json",
+                ))
+            }
+        }
+        "continue" => home.map(|h| h.join(".continue/config.json")),
+        "zed" => {
+            if cfg!(target_os = "macos") || cfg!(target_os = "linux") {
+                home.map(|h| h.join(".config/zed/settings.json"))
+            } else if cfg!(target_os = "windows") {
+                std::env::var_os("APPDATA").map(|a| PathBuf::from(a).join("Zed/settings.json"))
+            } else {
+                None
+            }
+        }
+        _ => None,
+    }
+}
+
+const AI_CLIENTS: &[(&str, &str)] = &[
+    ("claude-desktop", "Claude Desktop"),
+    ("claude-code", "Claude Code"),
+    ("cursor", "Cursor"),
+    ("cline", "Cline (VS Code)"),
+    ("continue", "Continue.dev"),
+    ("zed", "Zed"),
+];
+
+/// List every supported AI client, whether its config file / directory
+/// already exists on this machine, and whether the config already mentions
+/// "solomd" (cheap substring check — avoids parsing JSON just for the
+/// summary view).
+#[tauri::command]
+pub fn detect_ai_clients(app: AppHandle) -> Vec<AiClient> {
+    AI_CLIENTS
+        .iter()
+        .filter_map(|(id, display)| {
+            let path = ai_client_config_path(id, &app)?;
+            let config_exists = path.is_file();
+            let config_dir_exists = path.parent().map(|p| p.is_dir()).unwrap_or(false);
+            let has_solomd_entry = if config_exists {
+                std::fs::read_to_string(&path)
+                    .map(|s| s.contains("solomd"))
+                    .unwrap_or(false)
+            } else {
+                false
+            };
+            Some(AiClient {
+                id,
+                display_name: display,
+                config_path: path.to_string_lossy().to_string(),
+                config_exists,
+                config_dir_exists,
+                has_solomd_entry,
+            })
+        })
+        .collect()
+}
+
+/// Build the solomd-mcp command line for a given client's config schema.
+/// `mcp_path` is the absolute path to the bundled `solomd-mcp` binary;
+/// `workspace` and `allow_write` come from the UI.
+fn build_solomd_args(workspace: &str, allow_write: bool) -> Vec<String> {
+    let mut args = vec!["--workspace".to_string(), workspace.to_string()];
+    if allow_write {
+        args.push("--allow-write".to_string());
+    }
+    args
+}
+
+/// Read JSON from disk, returning an empty `{}` if the file doesn't exist.
+/// Any parse error is surfaced — we deliberately refuse to silently clobber
+/// a config file the user has hand-edited into something we can't read.
+fn read_json_or_empty(path: &PathBuf) -> Result<JsonValue, String> {
+    if !path.exists() {
+        return Ok(json!({}));
+    }
+    let raw = std::fs::read_to_string(path).map_err(|e| format!("read {}: {e}", path.display()))?;
+    if raw.trim().is_empty() {
+        return Ok(json!({}));
+    }
+    serde_json::from_str(&raw).map_err(|e| format!("parse {}: {e}", path.display()))
+}
+
+/// Write JSON back with two-space pretty-printing. Creates parent
+/// directories as needed. Backs up the original (when present) to
+/// `<path>.bak.<unix_seconds>` so the user can recover from any
+/// botched merge.
+fn write_json_with_backup(path: &PathBuf, value: &JsonValue) -> Result<(), String> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| format!("mkdir {}: {e}", parent.display()))?;
+    }
+    if path.exists() {
+        let ts = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        let backup = path.with_extension(format!("bak.{ts}"));
+        std::fs::copy(path, &backup)
+            .map_err(|e| format!("backup {} -> {}: {e}", path.display(), backup.display()))?;
+    }
+    let body = serde_json::to_string_pretty(value).map_err(|e| format!("serialize: {e}"))?;
+    std::fs::write(path, body + "\n").map_err(|e| format!("write {}: {e}", path.display()))?;
+    Ok(())
+}
+
+/// Build the solomd MCP server entry in the shape the given client
+/// expects. Returns the value to set under the client's MCP-server map
+/// (or, for Continue's array, the single element to insert).
+fn build_solomd_entry(client_id: &str, mcp_path: &str, args: &[String]) -> JsonValue {
+    match client_id {
+        "zed" => json!({
+            "command": { "path": mcp_path, "args": args },
+            "settings": {}
+        }),
+        "cline" => json!({
+            "command": mcp_path,
+            "args": args,
+            "disabled": false,
+            // Pre-approve the read-only tools so Cline doesn't ask the user
+            // for confirmation on every list_notes / read_note. Writes still
+            // prompt because the user only sees them after the wizard
+            // chose to opt in to --allow-write.
+            "autoApprove": [
+                "list_notes", "read_note", "search",
+                "get_outline", "get_backlinks", "list_tags",
+                "autogit_log", "autogit_diff", "sync_status",
+                "share_url", "read_agent_trace"
+            ]
+        }),
+        "continue" => json!({
+            "name": "solomd",
+            "command": mcp_path,
+            "args": args
+        }),
+        _ => json!({
+            "command": mcp_path,
+            "args": args
+        }),
+    }
+}
+
+/// Surgical insert/update of the solomd entry under whichever top-level
+/// key the client uses.
+fn splice_solomd_entry(
+    client_id: &str,
+    config: &mut JsonValue,
+    entry: JsonValue,
+) -> Result<(), String> {
+    match client_id {
+        "claude-desktop" | "claude-code" | "cursor" => {
+            let map = config
+                .as_object_mut()
+                .ok_or("root is not a JSON object")?;
+            let servers = map
+                .entry("mcpServers")
+                .or_insert_with(|| json!({}))
+                .as_object_mut()
+                .ok_or("mcpServers is not a JSON object")?;
+            servers.insert("solomd".to_string(), entry);
+        }
+        "cline" => {
+            let map = config
+                .as_object_mut()
+                .ok_or("root is not a JSON object")?;
+            let servers = map
+                .entry("mcpServers")
+                .or_insert_with(|| json!({}))
+                .as_object_mut()
+                .ok_or("mcpServers is not a JSON object")?;
+            servers.insert("solomd".to_string(), entry);
+        }
+        "continue" => {
+            let map = config
+                .as_object_mut()
+                .ok_or("root is not a JSON object")?;
+            let list = map
+                .entry("mcp")
+                .or_insert_with(|| json!([]))
+                .as_array_mut()
+                .ok_or("mcp is not a JSON array")?;
+            // Replace existing solomd entry if present; otherwise append.
+            if let Some(existing) = list
+                .iter_mut()
+                .find(|e| e.get("name").and_then(|n| n.as_str()) == Some("solomd"))
+            {
+                *existing = entry;
+            } else {
+                list.push(entry);
+            }
+        }
+        "zed" => {
+            let map = config
+                .as_object_mut()
+                .ok_or("root is not a JSON object")?;
+            let servers = map
+                .entry("context_servers")
+                .or_insert_with(|| json!({}))
+                .as_object_mut()
+                .ok_or("context_servers is not a JSON object")?;
+            servers.insert("solomd".to_string(), entry);
+        }
+        _ => return Err(format!("unknown client_id: {client_id}")),
+    }
+    Ok(())
+}
+
+/// Frontend command: merge a solomd entry into one client's config.
+#[tauri::command]
+pub fn inject_mcp(
+    app: AppHandle,
+    client_id: String,
+    workspace: String,
+    allow_write: bool,
+) -> Result<String, String> {
+    let config_path = ai_client_config_path(&client_id, &app)
+        .ok_or_else(|| format!("no config path for {client_id} on this OS"))?;
+    let mcp_path = resolve_mcp_path(&app)
+        .ok_or_else(|| "bundled solomd-mcp not found".to_string())?
+        .to_string_lossy()
+        .to_string();
+    let args = build_solomd_args(&workspace, allow_write);
+    let entry = build_solomd_entry(&client_id, &mcp_path, &args);
+
+    let mut config = read_json_or_empty(&config_path)?;
+    splice_solomd_entry(&client_id, &mut config, entry)?;
+    write_json_with_backup(&config_path, &config)?;
+    Ok(config_path.to_string_lossy().to_string())
+}
+
+/// Frontend command: remove the solomd entry from one client's config
+/// (used by uninstall + by the wizard's "undo last inject" affordance).
+#[tauri::command]
+pub fn remove_mcp(app: AppHandle, client_id: String) -> Result<(), String> {
+    let config_path = ai_client_config_path(&client_id, &app)
+        .ok_or_else(|| format!("no config path for {client_id} on this OS"))?;
+    if !config_path.exists() {
+        return Ok(());
+    }
+    let mut config = read_json_or_empty(&config_path)?;
+    match client_id.as_str() {
+        "claude-desktop" | "claude-code" | "cursor" | "cline" => {
+            if let Some(servers) = config
+                .get_mut("mcpServers")
+                .and_then(|v| v.as_object_mut())
+            {
+                servers.remove("solomd");
+            }
+        }
+        "continue" => {
+            if let Some(list) = config.get_mut("mcp").and_then(|v| v.as_array_mut()) {
+                list.retain(|e| e.get("name").and_then(|n| n.as_str()) != Some("solomd"));
+            }
+        }
+        "zed" => {
+            if let Some(servers) = config
+                .get_mut("context_servers")
+                .and_then(|v| v.as_object_mut())
+            {
+                servers.remove("solomd");
+            }
+        }
+        _ => return Err(format!("unknown client_id: {client_id}")),
+    }
+    write_json_with_backup(&config_path, &config)?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -248,5 +583,55 @@ mod tests {
         assert_eq!(strip_ansi("\x1b[0;32mok\x1b[0m"), "ok");
         assert_eq!(strip_ansi("plain"), "plain");
         assert_eq!(strip_ansi("\x1b[1mbold\x1b[0m + \x1b[31mred\x1b[0m"), "bold + red");
+    }
+
+    #[test]
+    fn splice_claude_desktop_into_empty() {
+        let mut c = json!({});
+        let entry = json!({ "command": "/bin/solomd-mcp", "args": ["--workspace", "/notes"] });
+        splice_solomd_entry("claude-desktop", &mut c, entry.clone()).unwrap();
+        assert_eq!(c["mcpServers"]["solomd"], entry);
+    }
+
+    #[test]
+    fn splice_claude_desktop_preserves_other_servers() {
+        let mut c = json!({
+            "mcpServers": {
+                "other": { "command": "/bin/other", "args": [] }
+            },
+            "globalShortcut": "Cmd+Shift+J"
+        });
+        let entry = json!({ "command": "/bin/solomd-mcp", "args": [] });
+        splice_solomd_entry("claude-desktop", &mut c, entry.clone()).unwrap();
+        assert_eq!(c["mcpServers"]["solomd"], entry);
+        assert!(c["mcpServers"]["other"].is_object());
+        assert_eq!(c["globalShortcut"], "Cmd+Shift+J");
+    }
+
+    #[test]
+    fn splice_continue_replaces_existing_solomd() {
+        let mut c = json!({
+            "mcp": [
+                { "name": "solomd", "command": "/old/path", "args": [] },
+                { "name": "other", "command": "/bin/other", "args": [] }
+            ]
+        });
+        let entry = json!({ "name": "solomd", "command": "/new/path", "args": ["--allow-write"] });
+        splice_solomd_entry("continue", &mut c, entry.clone()).unwrap();
+        let arr = c["mcp"].as_array().unwrap();
+        assert_eq!(arr.len(), 2);
+        let solomd = arr.iter().find(|e| e["name"] == "solomd").unwrap();
+        assert_eq!(solomd["command"], "/new/path");
+    }
+
+    #[test]
+    fn splice_zed_uses_nested_command_object() {
+        let mut c = json!({});
+        let entry = json!({
+            "command": { "path": "/bin/solomd-mcp", "args": ["--workspace", "/notes"] },
+            "settings": {}
+        });
+        splice_solomd_entry("zed", &mut c, entry.clone()).unwrap();
+        assert_eq!(c["context_servers"]["solomd"], entry);
     }
 }
