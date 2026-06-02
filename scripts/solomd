@@ -100,7 +100,8 @@ cmd_help() {
     printf "  ${GREEN}%-22s${NC} %s\n" "cat <title|path>" "Print file content"
     printf "  ${GREEN}%-22s${NC} %s\n" "export <file> -f FMT" "Export to html / md / txt / docx"
     printf "  ${GREEN}%-22s${NC} %s\n" "agent <prompt…>" "Run an LLM agent against the vault via MCP"
-    printf "  ${GREEN}%-22s${NC} %s\n" "mcp-config" "Print the MCP config snippet for your AI client"
+    printf "  ${GREEN}%-22s${NC} %s\n" "mcp <sub>" "Manage MCP integration (mcp help for subcommands)"
+    printf "  ${GREEN}%-22s${NC} %s\n" "mcp-config" "Print the MCP config snippet (back-compat alias)"
     printf "  ${GREEN}%-22s${NC} %s\n" "help" "Show this help"
     printf "\n${BLUE}NOTES DIR${NC}\n"
     printf "  ${DIM}%s${NC}\n" "$NOTES_DIR"
@@ -277,6 +278,250 @@ cmd_mcp_config() {
 EOF
 }
 
+# ---- v4.4.5 — auto-inject solomd-mcp into 6 AI clients' configs ---------
+# Mirror of Rust `integrations.rs` so CLI users (no GUI running) can do the
+# same flow as Settings → Integrations → "Hook SoloMD into your AI clients".
+# Requires `jq` for safe JSON merging — refuse to write if it's missing.
+
+ai_client_path() {
+    local client="$1"
+    local os
+    os="$(uname -s)"
+    case "$client" in
+        claude-desktop)
+            case "$os" in
+                Darwin) echo "$HOME/Library/Application Support/Claude/claude_desktop_config.json" ;;
+                Linux)  echo "$HOME/.config/Claude/claude_desktop_config.json" ;;
+                *)      echo "${APPDATA:-$HOME/AppData/Roaming}/Claude/claude_desktop_config.json" ;;
+            esac ;;
+        claude-code) echo "$HOME/.claude/mcp.json" ;;
+        cursor)      echo "$HOME/.cursor/mcp.json" ;;
+        cline)
+            case "$os" in
+                Darwin) echo "$HOME/Library/Application Support/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json" ;;
+                Linux)  echo "$HOME/.config/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json" ;;
+                *)      echo "${APPDATA:-$HOME/AppData/Roaming}/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json" ;;
+            esac ;;
+        continue)    echo "$HOME/.continue/config.json" ;;
+        zed)
+            case "$os" in
+                Darwin|Linux) echo "$HOME/.config/zed/settings.json" ;;
+                *)            echo "${APPDATA:-$HOME/AppData/Roaming}/Zed/settings.json" ;;
+            esac ;;
+        *) return 1 ;;
+    esac
+}
+
+ai_clients=(claude-desktop claude-code cursor cline continue zed)
+ai_client_label() {
+    case "$1" in
+        claude-desktop) echo "Claude Desktop" ;;
+        claude-code)    echo "Claude Code" ;;
+        cursor)         echo "Cursor" ;;
+        cline)          echo "Cline (VS Code)" ;;
+        continue)       echo "Continue.dev" ;;
+        zed)            echo "Zed" ;;
+    esac
+}
+
+cmd_mcp_list() {
+    printf "${BLUE}AI clients on this machine${NC}\n\n"
+    printf "  %-18s %-4s %-13s %s\n" "CLIENT" "DIR" "HAS SOLOMD" "PATH"
+    printf "  %-18s %-4s %-13s %s\n" "------" "---" "----------" "----"
+    local client path dir_color dir_text entry_color entry_text
+    for client in "${ai_clients[@]}"; do
+        path="$(ai_client_path "$client")"
+        if [[ -d "$(dirname "$path")" ]]; then
+            dir_color="$GREEN"; dir_text="yes"
+        else
+            dir_color="$DIM"; dir_text="no"
+        fi
+        if [[ -f "$path" ]] && grep -q '"solomd"\|"name": "solomd"' "$path" 2>/dev/null; then
+            entry_color="$GREEN"; entry_text="configured"
+        else
+            entry_color="$DIM"; entry_text="—"
+        fi
+        # Put colors in the format string so printf interprets the escapes.
+        # %b would also work for arg values, but format-string is cleaner.
+        printf "  %-18s ${dir_color}%-4s${NC} ${entry_color}%-13s${NC} ${DIM}%s${NC}\n" \
+            "$(ai_client_label "$client")" "$dir_text" "$entry_text" "$path"
+    done
+}
+
+# jq is the only safe way to do a "preserve user's hand-edits + insert
+# solomd" merge across this many client schemas. Bail out loudly when it
+# isn't available so the user doesn't end up with a corrupted config.
+require_jq() {
+    if ! command -v jq >/dev/null 2>&1; then
+        printf "${YELLOW}solomd mcp install needs jq.${NC} Install it:\n" >&2
+        printf "  ${DIM}macOS:${NC}   brew install jq\n" >&2
+        printf "  ${DIM}Debian:${NC}  sudo apt-get install jq\n" >&2
+        printf "  ${DIM}Fedora:${NC}  sudo dnf install jq\n" >&2
+        exit 1
+    fi
+}
+
+inject_one_client() {
+    local client="$1" mcp_bin="$2" workspace="$3" allow_write="$4"
+    local path
+    path="$(ai_client_path "$client")"
+    mkdir -p "$(dirname "$path")"
+    # Backup any existing file before touching it.
+    if [[ -f "$path" ]]; then
+        cp "$path" "$path.bak.$(date +%s)"
+    fi
+    # Build the args array — JSON-safe via jq's --args.
+    local args=("--workspace" "$workspace")
+    [[ "$allow_write" == "true" ]] && args+=("--allow-write")
+    local existing="{}"
+    [[ -s "$path" ]] && existing="$(cat "$path")"
+    local merged
+    case "$client" in
+        claude-desktop|claude-code|cursor|cline)
+            local entry
+            if [[ "$client" == "cline" ]]; then
+                entry="$(jq -n \
+                    --arg cmd "$mcp_bin" \
+                    --args \
+                    '{command:$cmd, args:$ARGS.positional, disabled:false, autoApprove:["list_notes","read_note","search","get_outline","get_backlinks","list_tags","autogit_log","autogit_diff","sync_status","share_url","read_agent_trace"]}' \
+                    -- "${args[@]}")"
+            else
+                entry="$(jq -n --arg cmd "$mcp_bin" --args '{command:$cmd, args:$ARGS.positional}' -- "${args[@]}")"
+            fi
+            merged="$(echo "$existing" | jq --argjson entry "$entry" '. + {mcpServers: ((.mcpServers // {}) + {solomd: $entry})}')"
+            ;;
+        continue)
+            local entry
+            entry="$(jq -n --arg cmd "$mcp_bin" --args '{name:"solomd", command:$cmd, args:$ARGS.positional}' -- "${args[@]}")"
+            merged="$(echo "$existing" | jq --argjson entry "$entry" '. + {mcp: ((.mcp // []) | map(select(.name != "solomd")) + [$entry])}')"
+            ;;
+        zed)
+            local entry
+            entry="$(jq -n --arg cmd "$mcp_bin" --args '{command:{path:$cmd, args:$ARGS.positional}, settings:{}}' -- "${args[@]}")"
+            merged="$(echo "$existing" | jq --argjson entry "$entry" '. + {context_servers: ((.context_servers // {}) + {solomd: $entry})}')"
+            ;;
+    esac
+    printf "%s\n" "$merged" > "$path"
+    printf "  ${GREEN}✓${NC} %s — %s\n" "$(ai_client_label "$client")" "$path"
+}
+
+remove_one_client() {
+    local client="$1" path
+    path="$(ai_client_path "$client")"
+    if [[ ! -f "$path" ]]; then
+        printf "  ${DIM}–${NC} %s — no config to clean\n" "$(ai_client_label "$client")"
+        return
+    fi
+    cp "$path" "$path.bak.$(date +%s)"
+    local cleaned
+    case "$client" in
+        claude-desktop|claude-code|cursor|cline)
+            cleaned="$(jq 'if .mcpServers then .mcpServers |= del(.solomd) else . end' "$path")" ;;
+        continue)
+            cleaned="$(jq 'if .mcp then .mcp |= map(select(.name != "solomd")) else . end' "$path")" ;;
+        zed)
+            cleaned="$(jq 'if .context_servers then .context_servers |= del(.solomd) else . end' "$path")" ;;
+    esac
+    printf "%s\n" "$cleaned" > "$path"
+    printf "  ${GREEN}✓${NC} %s — solomd entry removed\n" "$(ai_client_label "$client")"
+}
+
+cmd_mcp_install() {
+    require_jq
+    local mcp_bin
+    if ! mcp_bin="$(detect_mcp_bin)"; then
+        printf "${YELLOW}solomd-mcp not found.${NC} Install SoloMD first.\n" >&2
+        exit 1
+    fi
+    local workspace="${SOLOMD_NOTES:-$HOME/Documents/SoloMD}"
+    local allow_write="false"
+    local targets=()
+    # Parse flags + positional client list.
+    while (( $# )); do
+        case "$1" in
+            --workspace) workspace="$2"; shift 2 ;;
+            --workspace=*) workspace="${1#*=}"; shift ;;
+            --allow-write) allow_write="true"; shift ;;
+            --all) targets=("${ai_clients[@]}"); shift ;;
+            -h|--help)
+                printf "Usage: solomd mcp install [CLIENT…] [--workspace PATH] [--allow-write] [--all]\n"
+                printf "  CLIENT: %s\n" "${ai_clients[*]}"
+                exit 0 ;;
+            *) targets+=("$1"); shift ;;
+        esac
+    done
+    if [[ ${#targets[@]} -eq 0 ]]; then
+        # Default: install into every client whose config DIR already exists.
+        for c in "${ai_clients[@]}"; do
+            [[ -d "$(dirname "$(ai_client_path "$c")")" ]] && targets+=("$c")
+        done
+    fi
+    if [[ ${#targets[@]} -eq 0 ]]; then
+        printf "${YELLOW}No AI client detected on this machine.${NC} Pass a client name or --all to override.\n"
+        exit 1
+    fi
+    printf "${BLUE}Installing SoloMD MCP server for ${#targets[@]} client(s)${NC}\n"
+    printf "  ${DIM}binary:    %s${NC}\n" "$mcp_bin"
+    printf "  ${DIM}workspace: %s${NC}\n" "$workspace"
+    printf "  ${DIM}--allow-write: %s${NC}\n\n" "$allow_write"
+    for c in "${targets[@]}"; do
+        inject_one_client "$c" "$mcp_bin" "$workspace" "$allow_write"
+    done
+    printf "\n${YELLOW}Restart the AI client(s) for the new MCP server to load.${NC}\n"
+}
+
+cmd_mcp_uninstall() {
+    require_jq
+    local targets=()
+    while (( $# )); do
+        case "$1" in
+            --all) targets=("${ai_clients[@]}"); shift ;;
+            -h|--help)
+                printf "Usage: solomd mcp uninstall [CLIENT…] [--all]\n"
+                printf "  CLIENT: %s\n" "${ai_clients[*]}"
+                exit 0 ;;
+            *) targets+=("$1"); shift ;;
+        esac
+    done
+    if [[ ${#targets[@]} -eq 0 ]]; then
+        # Default: clean every config that already has a solomd entry.
+        for c in "${ai_clients[@]}"; do
+            local p
+            p="$(ai_client_path "$c")"
+            [[ -f "$p" ]] && grep -q '"solomd"\|"name": "solomd"' "$p" 2>/dev/null && targets+=("$c")
+        done
+    fi
+    if [[ ${#targets[@]} -eq 0 ]]; then
+        printf "${DIM}Nothing to uninstall — no client has a solomd entry.${NC}\n"
+        exit 0
+    fi
+    printf "${BLUE}Removing SoloMD MCP entry from ${#targets[@]} client(s)${NC}\n"
+    for c in "${targets[@]}"; do
+        remove_one_client "$c"
+    done
+}
+
+cmd_mcp() {
+    local sub="${1:-list}"; shift || true
+    case "$sub" in
+        list|ls)          cmd_mcp_list "$@" ;;
+        install|add)      cmd_mcp_install "$@" ;;
+        uninstall|rm)     cmd_mcp_uninstall "$@" ;;
+        config)           cmd_mcp_config "$@" ;;   # back-compat with old `solomd mcp-config`
+        -h|--help|help)
+            printf "${BLUE}solomd mcp${NC} — manage SoloMD's MCP server entry across your AI clients\n\n"
+            printf "${BLUE}USAGE${NC}\n  solomd mcp <subcommand> [args]\n\n"
+            printf "${BLUE}SUBCOMMANDS${NC}\n"
+            printf "  ${GREEN}%-20s${NC} %s\n" "list" "Show which AI clients are present + status"
+            printf "  ${GREEN}%-20s${NC} %s\n" "install [CLIENT…]" "Inject solomd into the named clients"
+            printf "  ${GREEN}%-20s${NC} %s\n" "uninstall [CLIENT…]" "Remove solomd from the named clients"
+            printf "  ${GREEN}%-20s${NC} %s\n" "config" "Print generic Claude Desktop snippet (back-compat)"
+            printf "\n${BLUE}CLIENTS${NC}\n  ${DIM}%s${NC}\n" "${ai_clients[*]}"
+            ;;
+        *) printf "${YELLOW}Unknown mcp subcommand:${NC} %s\n" "$sub"; exit 1 ;;
+    esac
+}
+
 # `solomd agent <prompt>` — hand the prompt off to whichever LLM CLI is on
 # PATH (claude / codex / aider), with solomd-mcp pre-wired. We deliberately
 # do not implement an LLM loop ourselves: the user already has Claude Code,
@@ -365,6 +610,7 @@ case "${1:-help}" in
     export)     shift; cmd_export "$@" ;;
     agent)      shift; cmd_agent "$@" ;;
     mcp-config) shift; cmd_mcp_config "$@" ;;
+    mcp)        shift; cmd_mcp "$@" ;;
     help|--help|-h) cmd_help ;;
     *) printf "${YELLOW}Unknown command:${NC} %s\n\n" "$1"; cmd_help; exit 1 ;;
 esac
