@@ -18,13 +18,34 @@ path = "src/main.rs"
 
 [dependencies]
 # MCP SDK — current 1.x line. server + macros + stdio transport.
-rmcp = { version = "1.5", features = ["server", "macros", "transport-io"] }
+# v4.5: also `server-side-http` so we can offer a Streamable HTTP transport
+# alongside stdio. Stdio stays the default; HTTP is opt-in via --transport
+# http for hosted clients (Smithery, Claude.ai remote MCP, ChatGPT custom
+# connectors, Cloudflare AI Gateway) that can't shell out to a binary.
+rmcp = { version = "1.5", features = [
+    "server",
+    "macros",
+    "transport-io",
+    "server-side-http",
+    "transport-streamable-http-server",
+] }
+
+# axum hosts the StreamableHttpService tower::Service over a real HTTP
+# server. Picked over plain hyper because the Bearer-token middleware is
+# trivial as an axum middleware fn.
+axum = { version = "0.7", default-features = false, features = [
+    "http1",
+    "tokio",
+    "tower-log",
+] }
+tower = "0.5"
 
 # Async runtime
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-std", "io-util", "fs", "process", "signal"] }
 
-# CLI parsing
-clap = { version = "4", features = ["derive"] }
+# CLI parsing — `env` feature lets us read SOLOMD_MCP_TOKEN out of the
+# environment for the HTTP transport's bearer-token gate.
+clap = { version = "4", features = ["derive", "env"] }
 
 # Serialisation
 serde = { version = "1", features = ["derive"] }

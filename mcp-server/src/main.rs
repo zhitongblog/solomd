@@ -17,9 +17,10 @@
 
 use std::collections::HashSet;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use anyhow::{Context, Result};
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use rmcp::{ServiceExt, transport::stdio};
 use tracing_subscriber::{EnvFilter, fmt};
 
@@ -60,6 +61,32 @@ struct Cli {
     /// Verbose stderr logging (debug level).
     #[arg(long, short = 'v', default_value_t = false)]
     verbose: bool,
+
+    /// Transport: `stdio` (default — JSON-RPC over stdin/stdout, used by
+    /// Claude Desktop / Cursor / Cline / Codex) or `http` (Streamable HTTP
+    /// per the MCP spec, used by hosted clients like Smithery, Claude.ai
+    /// remote MCP, ChatGPT custom connectors, Cloudflare AI Gateway).
+    #[arg(long, value_enum, default_value_t = Transport::Stdio)]
+    transport: Transport,
+
+    /// HTTP bind address — only used with `--transport http`. Defaults
+    /// to 127.0.0.1:8765 (loopback) so the server is unreachable until
+    /// the operator explicitly opens it up.
+    #[arg(long, default_value = "127.0.0.1:8765")]
+    bind: String,
+
+    /// HTTP bearer-token gate — only used with `--transport http`. When
+    /// set, requests must carry `Authorization: Bearer <TOKEN>`. Leave
+    /// empty for unauthenticated access (only sensible on a strictly
+    /// private network).
+    #[arg(long, env = "SOLOMD_MCP_TOKEN")]
+    auth_token: Option<String>,
+}
+
+#[derive(Copy, Clone, Debug, ValueEnum)]
+enum Transport {
+    Stdio,
+    Http,
 }
 
 /// Parse one `--workspace` argument into `(alias, canonical_path)`.
@@ -179,7 +206,13 @@ async fn main() -> Result<()> {
 
     let server = tools::SoloMdServer::new(workspaces, cli.allow_write);
 
-    // Hand the server its stdio transport and run until the client disconnects.
+    match cli.transport {
+        Transport::Stdio => run_stdio(server).await,
+        Transport::Http => run_http(server, &cli.bind, cli.auth_token).await,
+    }
+}
+
+async fn run_stdio(server: tools::SoloMdServer) -> Result<()> {
     let service = server
         .serve(stdio())
         .await
@@ -190,6 +223,73 @@ async fn main() -> Result<()> {
         .await
         .context("MCP service exited with error")?;
     tracing::info!(?quit_reason, "solomd-mcp shutting down");
+    Ok(())
+}
+
+async fn run_http(server: tools::SoloMdServer, bind: &str, auth_token: Option<String>) -> Result<()> {
+    use axum::{
+        extract::Request,
+        http::StatusCode,
+        middleware::{self, Next},
+        response::Response,
+        Router,
+    };
+    use rmcp::transport::streamable_http_server::{
+        session::local::LocalSessionManager,
+        tower::{StreamableHttpServerConfig, StreamableHttpService},
+    };
+
+    // SoloMdServer is cheap to clone (it's all Arc<…> internally), so a
+    // fresh service per HTTP session keeps state isolated without forcing
+    // global locking. The factory closure captures `server` and returns a
+    // clone on every new MCP session.
+    let server_factory = Arc::new(server);
+    let svc = StreamableHttpService::new(
+        {
+            let server_factory = server_factory.clone();
+            move || Ok::<_, std::io::Error>((*server_factory).clone())
+        },
+        Arc::new(LocalSessionManager::default()),
+        StreamableHttpServerConfig::default(),
+    );
+
+    // route_service mounts a tower::Service directly (no Handler wrapping).
+    let mut router = Router::new().route_service("/mcp", svc);
+    if let Some(token) = auth_token.clone() {
+        // Simple bearer-token gate. The token never lands in logs because
+        // we only ever compare it; no field is `#[derive(Debug)]`-printed.
+        let expected = format!("Bearer {token}");
+        let layer = middleware::from_fn(move |req: Request, next: Next| {
+            let expected = expected.clone();
+            async move {
+                let ok = req
+                    .headers()
+                    .get(axum::http::header::AUTHORIZATION)
+                    .and_then(|h| h.to_str().ok())
+                    .map(|h| h == expected)
+                    .unwrap_or(false);
+                if ok {
+                    Ok::<Response, StatusCode>(next.run(req).await)
+                } else {
+                    Err(StatusCode::UNAUTHORIZED)
+                }
+            }
+        });
+        router = router.layer(layer);
+    }
+
+    tracing::info!(
+        bind = %bind,
+        auth = if auth_token.is_some() { "bearer" } else { "none" },
+        "solomd-mcp HTTP transport listening — POST /mcp speaks Streamable HTTP"
+    );
+
+    let listener = tokio::net::TcpListener::bind(bind)
+        .await
+        .with_context(|| format!("bind {bind} failed"))?;
+    axum::serve(listener, router)
+        .await
+        .context("HTTP server exited with error")?;
     Ok(())
 }
 
