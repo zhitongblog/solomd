@@ -1,4 +1,5 @@
 import { save as saveDialog } from '@tauri-apps/plugin-dialog';
+import { EditorView } from '@codemirror/view';
 import { invoke } from '@tauri-apps/api/core';
 import { writeText, writeHtml, writeImage } from '@tauri-apps/plugin-clipboard-manager';
 import { Image } from '@tauri-apps/api/image';
@@ -206,8 +207,49 @@ function stripMarkdown(src: string): string {
  * `@mousedown.prevent` (focus preserved), or a plain `@click` button (focus
  * lost — but the selection range survives).
  */
+/**
+ * Read the active editor selection straight from CodeMirror's `EditorView`
+ * state — the source of truth. This is required for **rectangular / column
+ * selections** (#90): those are *multiple* selection ranges, which Chromium /
+ * WebView2's single-range `window.getSelection()` can't represent, so the old
+ * DOM-based reader saw a collapsed/empty selection and callers fell back to
+ * the *whole document* ("select a block, copy → got everything"). Reading the
+ * ranges from CM state also survives the editor losing DOM focus when a
+ * toolbar Copy button is clicked (CM keeps the selection in state).
+ *
+ * Ranges are joined with the document's own line break, matching CodeMirror's
+ * native multi-selection copy.
+ */
+function cmSelectionText(): string | null {
+  const editors = Array.from(document.querySelectorAll<HTMLElement>('.cm-editor'));
+  if (!editors.length) return null;
+  // Prefer the focused editor; fall back to any editor that holds a non-empty
+  // selection (covers blur-on-toolbar-click and split panes / tiles).
+  const focused = document.querySelector<HTMLElement>('.cm-editor.cm-focused');
+  const ordered = focused ? [focused, ...editors.filter((e) => e !== focused)] : editors;
+  for (const el of ordered) {
+    const view = EditorView.findFromDOM(el);
+    if (!view) continue;
+    const parts: string[] = [];
+    for (const r of view.state.selection.ranges) {
+      if (r.empty) continue;
+      parts.push(view.state.sliceDoc(r.from, r.to));
+    }
+    if (parts.length) {
+      const text = parts.join(view.state.lineBreak);
+      return text.trim() ? text : null;
+    }
+  }
+  return null;
+}
+
 function getEditorSelectionMd(): string | null {
   if (typeof document === 'undefined') return null;
+  // Primary: CodeMirror state (handles normal + rectangular selections).
+  const cmText = cmSelectionText();
+  if (cmText) return cmText;
+  // Fallback: DOM selection — for rendered text in the preview pane, which
+  // is not a CodeMirror editor.
   const sel = window.getSelection();
   if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return null;
   const range = sel.getRangeAt(0);
