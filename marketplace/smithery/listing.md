@@ -32,12 +32,12 @@ write accept/reject UI**, **AutoGit branch sandbox per agent run**, and
 
 | | Download |
 |---|---|
-| 🍎 **macOS** (universal — Apple Silicon + Intel) | [`SoloMD_4.4.3_universal.dmg`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.4.3_universal.dmg) |
-| 🪟 **Windows** (x64) | [`SoloMD_4.4.3_x64_en-US.msi`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.4.3_x64_en-US.msi) |
-| 🪟 **Windows on ARM** (Snapdragon X / Copilot+ PCs) | [`SoloMD_4.4.3_arm64_en-US.msi`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.4.3_arm64_en-US.msi) |
-| 🐧 **Linux** (Debian / Ubuntu) | [`.deb`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.4.3_amd64.deb) · [arm64](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.4.3_arm64.deb) |
-| 🐧 **Linux** (Fedora / RHEL) | [`.rpm`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD-4.4.3-1.x86_64.rpm) · [aarch64](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD-4.4.3-1.aarch64.rpm) |
-| 🐧 **Linux** (portable) | [`.AppImage`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.4.3_amd64.AppImage) · [aarch64](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.4.3_aarch64.AppImage) |
+| 🍎 **macOS** (universal — Apple Silicon + Intel) | [`SoloMD_4.5.0_universal.dmg`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.5.0_universal.dmg) |
+| 🪟 **Windows** (x64) | [`SoloMD_4.5.0_x64_en-US.msi`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.5.0_x64_en-US.msi) |
+| 🪟 **Windows on ARM** (Snapdragon X / Copilot+ PCs) | [`SoloMD_4.5.0_arm64_en-US.msi`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.5.0_arm64_en-US.msi) |
+| 🐧 **Linux** (Debian / Ubuntu) | [`.deb`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.5.0_amd64.deb) · [arm64](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.5.0_arm64.deb) |
+| 🐧 **Linux** (Fedora / RHEL) | [`.rpm`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD-4.5.0-1.x86_64.rpm) · [aarch64](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD-4.5.0-1.aarch64.rpm) |
+| 🐧 **Linux** (portable) | [`.AppImage`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.5.0_amd64.AppImage) · [aarch64](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.5.0_aarch64.AppImage) |
 | 🤖 **Android / iPad** | See [solomd.app](https://solomd.app) |
 
 All builds are signed (macOS Developer ID + notarised, Android v2 + v3
@@ -92,7 +92,7 @@ Without a `workspace` argument the first one registered is the default.
 
 ## Skill Pack — 11 ready-made agent recipes
 
-Drop [`solomd-skills-v4.4.3.zip`](https://github.com/zhitongblog/solomd/releases/latest/download/solomd-skills-v4.4.3.zip)
+Drop [`solomd-skills-v4.5.0.zip`](https://github.com/zhitongblog/solomd/releases/latest/download/solomd-skills-v4.5.0.zip)
 into any vault to seed `.solomd/agents/` with 11 starter recipes:
 
 - `01-weekly-review` — schedule Sundays 18:00, summarise the week's daily/ notes.
