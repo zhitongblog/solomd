@@ -16,6 +16,7 @@ import { openPath } from '@tauri-apps/plugin-opener';
 import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
 import { isIOS } from '../lib/platform';
 import { IS_APP_STORE_BUILD } from '../lib/app-build';
+import { EditorView } from '@codemirror/view';
 
 const { t } = useI18n();
 
@@ -96,24 +97,35 @@ function onAIRewrite() {
   // click event reaches this handler the .cm-focused class is briefly
   // absent — but the DOM Selection is unchanged. Accept any .cm-editor
   // on the page; the selection check below is what matters.
-  const cm = document.querySelector('.cm-editor.cm-focused')
-    ?? document.querySelector('.cm-editor');
-  const sel = window.getSelection();
-  if (!cm || !sel || sel.rangeCount === 0 || sel.isCollapsed) {
+  // Read the selection from CodeMirror's state — NOT window.getSelection().
+  // On Windows WebView2 the DOM Selection comes back empty for the CM editor
+  // (its drawSelection-managed selection isn't exposed via getSelection), so
+  // the old read made AI rewrite wrongly report "Select some text first" even
+  // with text selected. CM state is the source of truth and matches the ⌘J
+  // path (cm-ai-rewrite.ts dispatchOpen). Also lets us pass the real from/to
+  // instead of 0/0.
+  const editors = [
+    document.querySelector<HTMLElement>('.cm-editor.cm-focused'),
+    ...Array.from(document.querySelectorAll<HTMLElement>('.cm-editor')),
+  ].filter((e): e is HTMLElement => e != null);
+  let picked: { selection: string; from: number; to: number } | null = null;
+  for (const el of editors) {
+    const view = EditorView.findFromDOM(el);
+    if (!view) continue;
+    const main = view.state.selection.main;
+    if (main.empty) continue;
+    const text = view.state.sliceDoc(main.from, main.to);
+    if (text.trim()) {
+      picked = { selection: text, from: main.from, to: main.to };
+      break;
+    }
+  }
+  if (!picked) {
     toasts.info('Select some text first, then click AI rewrite (or press ⌘J).');
     return;
   }
-  const selection = sel.toString();
-  if (!selection.trim()) {
-    toasts.info('Select some text first, then click AI rewrite (or press ⌘J).');
-    return;
-  }
-  const from = 0;
-  const to = 0;
   window.dispatchEvent(
-    new CustomEvent('solomd:ai-rewrite-open', {
-      detail: { selection, from, to },
-    }),
+    new CustomEvent('solomd:ai-rewrite-open', { detail: picked }),
   );
 }
 

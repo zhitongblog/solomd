@@ -243,19 +243,80 @@ function cmSelectionText(): string | null {
   return null;
 }
 
-function getEditorSelectionMd(): string | null {
-  if (typeof document === 'undefined') return null;
-  // Primary: CodeMirror state (handles normal + rectangular selections).
-  const cmText = cmSelectionText();
-  if (cmText) return cmText;
-  // Fallback: DOM selection — for rendered text in the preview pane, which
-  // is not a CodeMirror editor.
+/** Nearest ancestor element carrying a source-line annotation, walking up. */
+function elementWithSourceLine(node: Node | null): HTMLElement | null {
+  let n: Node | null = node;
+  while (n && n.nodeType === Node.TEXT_NODE) n = n.parentNode;
+  let el = n as HTMLElement | null;
+  while (el && el.nodeType === Node.ELEMENT_NODE) {
+    if (el.hasAttribute?.('data-source-line') || el.hasAttribute?.('data-line')) return el;
+    el = el.parentElement;
+  }
+  return null;
+}
+
+function sourceLineOf(el: HTMLElement): number {
+  return Number(el.getAttribute('data-source-line') || el.getAttribute('data-line') || 0);
+}
+
+/**
+ * Map a selection inside the rendered **preview pane** back to the Markdown
+ * source. The preview blocks are annotated with `data-source-line` (1-indexed)
+ * by `renderMarkdown`, so we slice `content` from the first selected block to
+ * the end of the last selected block (block-granular — selecting part of a
+ * paragraph copies the whole paragraph's source, which is the sensible
+ * "Copy as Markdown" behaviour). Returns null when the selection isn't in the
+ * preview, so callers fall through to other strategies.
+ *
+ * Fixes: in preview/reading mode, "select a region, copy" used to copy the
+ * **whole document** — the old DOM fallback required the selection to be inside
+ * a `.cm-editor` and bailed for the preview pane.
+ */
+function previewSelectionToSource(content: string): string | null {
   const sel = window.getSelection();
   if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return null;
   const range = sel.getRangeAt(0);
-  // Walk up from the selection's common ancestor to find a `.cm-editor`.
-  // Use Element.closest where available; fall back to manual walk for text
-  // nodes (which don't have closest()).
+  let anc: Node | null = range.commonAncestorContainer;
+  while (anc && anc.nodeType === Node.TEXT_NODE) anc = anc.parentNode;
+  const previewRoot = (anc as Element | null)?.closest?.('.preview-content');
+  if (!previewRoot) return null;
+  const startEl = elementWithSourceLine(range.startContainer);
+  if (!startEl) return null;
+  const endEl = elementWithSourceLine(range.endContainer) ?? startEl;
+  const startLine = sourceLineOf(startEl);
+  if (!startLine) return null;
+  const endLineAttr = sourceLineOf(endEl) || startLine;
+  // Bound the last block: slice up to just before the next annotated block.
+  const nextLines = Array.from(
+    previewRoot.querySelectorAll<HTMLElement>('[data-source-line],[data-line]'),
+  )
+    .map(sourceLineOf)
+    .filter((n) => n > endLineAttr)
+    .sort((a, b) => a - b);
+  const lines = content.split(/\r?\n/);
+  const endLine = nextLines.length ? nextLines[0] - 1 : lines.length;
+  const slice = lines.slice(startLine - 1, Math.max(startLine, endLine)).join('\n');
+  return slice.trim() ? slice : null;
+}
+
+/**
+ * Markdown source for the active selection, or null. Tries, in order:
+ *  1. CodeMirror state — editor selections (normal + rectangular).
+ *  2. Preview pane — map the rendered selection to source lines (needs the
+ *     document `content`, passed by callers).
+ *  3. Raw DOM selection text inside a `.cm-editor` (last-resort).
+ */
+function getEditorSelectionMd(content?: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const cmText = cmSelectionText();
+  if (cmText) return cmText;
+  if (content != null) {
+    const previewText = previewSelectionToSource(content);
+    if (previewText) return previewText;
+  }
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return null;
+  const range = sel.getRangeAt(0);
   let node: Node | null = range.commonAncestorContainer;
   while (node && node.nodeType === Node.TEXT_NODE) node = node.parentNode;
   const inEditor = (node as Element | null)?.closest?.('.cm-editor');
@@ -295,7 +356,7 @@ export function useExport() {
   function copySource(): { source: string; isSelection: boolean } | null {
     const ctx = activeOr();
     if (!ctx) return null;
-    const sel = getEditorSelectionMd();
+    const sel = getEditorSelectionMd(ctx.content);
     return sel !== null
       ? { source: sel, isSelection: true }
       : { source: ctx.content, isSelection: false };
@@ -554,7 +615,7 @@ export function useExport() {
     track('file_exported', { format: 'image' });
     const ctx = activeOr();
     if (!ctx) return;
-    const sel = getEditorSelectionMd();
+    const sel = getEditorSelectionMd(ctx.content);
     const source = sel ?? ctx.content;
     const isSelection = sel !== null;
     const filename = isSelection
@@ -587,7 +648,7 @@ export function useExport() {
   async function copyAsImage() {
     const ctx = activeOr();
     if (!ctx) return;
-    const sel = getEditorSelectionMd();
+    const sel = getEditorSelectionMd(ctx.content);
     const source = sel ?? ctx.content;
     const isSelection = sel !== null;
     const tid = toasts.info(isSelection ? 'Capturing selection…' : 'Capturing image…', 0);
