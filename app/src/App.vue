@@ -315,15 +315,34 @@ watch(
 // Window title — keep "<filename> — SoloMD" so the OS taskbar /
 // dock / Cmd-Tab can distinguish multiple SoloMD windows. Falls back
 // to "SoloMD" when no document is active. Issue #53.
+//
+// Win11-ARM regression (v4.5 report, but pre-existing since v4.4.x — the
+// cold-start-with-file path is byte-identical): the document loaded but
+// the title stayed "SoloMD". On Windows the JS `setTitle()` issued during
+// the cold-start mount burst didn't land (the window isn't ready to accept
+// it yet, and the rejected promise was swallowed), whereas macOS WKWebView
+// applied it fine. Two-pronged, platform-agnostic fix:
+//   1. Set `document.title` too — on Windows, WebView2 mirrors the native
+//      window title from the page title, so this lands even when the
+//      direct `setTitle()` call is dropped. (Also fixes the stale
+//      "Tauri + Vue …" placeholder that index.html shipped with.)
+//   2. Await `setTitle()` so a rejection is actually caught + logged,
+//      instead of floating off as an unhandled promise.
+const applyWindowTitle = async (name?: string) => {
+  const title = name ? `${name} — SoloMD` : 'SoloMD';
+  document.title = title;
+  try {
+    await getCurrentWindow().setTitle(title);
+  } catch (err) {
+    // Non-Tauri context (Vitest, SSR) — or a window not yet ready to
+    // accept it; document.title above is the cross-platform fallback.
+    console.debug('setTitle failed (document.title fallback applied)', err);
+  }
+};
 watch(
   () => tabs.activeTab?.fileName,
   (name) => {
-    const title = name ? `${name} — SoloMD` : 'SoloMD';
-    try {
-      void getCurrentWindow().setTitle(title);
-    } catch {
-      // Non-Tauri context (Vitest, SSR) — silently no-op.
-    }
+    void applyWindowTitle(name);
   },
   { immediate: true },
 );
