@@ -169,6 +169,22 @@ md.renderer.rules.fence = function (tokens, idx, options, env, self) {
     .replace(/<pre>/, '<pre class="cb-numbered">');
 };
 
+// v4.6 — editable display math. Wrap every `$$…$$` block in a container that
+// carries its 1-indexed source line, so Preview.vue can map a double-clicked
+// formula back to its source range and open an inline LaTeX editor (like
+// Tolaria's "editable math source panel"). The default markdown-it-katex
+// math_block renderer doesn't propagate token attrs, so we wrap explicitly.
+const defaultMathBlock = md.renderer.rules.math_block;
+md.renderer.rules.math_block = function (tokens, idx, options, env, self) {
+  const html = defaultMathBlock
+    ? defaultMathBlock(tokens, idx, options, env, self)
+    : self.renderToken(tokens, idx, options);
+  const tok = tokens[idx];
+  const line = tok.map && tok.map.length > 0 ? tok.map[0] + 1 : 0;
+  if (!line) return html;
+  return `<div class="md-math-block" data-source-line="${line}">${html}</div>`;
+};
+
 md.core.ruler.push('source_line_map', (state) => {
   for (const tok of state.tokens) {
     if (!BLOCK_OPEN_TYPES.has(tok.type)) continue;

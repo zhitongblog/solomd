@@ -305,6 +305,7 @@ function onPreviewSearchEvent(e: Event) {
         ref="previewRef"
         :source="tab.content"
         :file-path="tab.filePath"
+        :tab-id="tab.id"
       />
     </div>
   </div>

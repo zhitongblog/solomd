@@ -41,6 +41,7 @@ function exit() {
       <Preview
         :source="tab.content"
         :file-path="tab.filePath"
+        :tab-id="tab.id"
         skin="reading"
       />
     </div>

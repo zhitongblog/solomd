@@ -7,6 +7,7 @@ import { rewriteImageUrls } from '../lib/image-resolve';
 import { openImageOverlay, type OverlayStrings } from '../lib/image-overlay';
 import { useI18n } from '../i18n';
 import { useSettingsStore } from '../stores/settings';
+import { useTabsStore } from '../stores/tabs';
 import { useFiles } from '../composables/useFiles';
 import PreviewSearch from './PreviewSearch.vue';
 
@@ -14,6 +15,12 @@ const props = withDefaults(
   defineProps<{
     source: string;
     filePath?: string;
+    /**
+     * v4.6 — id of the tab this preview renders. Needed to write back edits
+     * (editable display-math) to the right tab via the store. Omitted in
+     * read-only contexts (e.g. Slideshow), which disables in-place editing.
+     */
+    tabId?: string;
     /**
      * v2.4: which "skin" the rendered prose should use.
      *  - `default` — the standard editor preview pane (constrained max-width
@@ -26,11 +33,99 @@ const props = withDefaults(
   { skin: 'default' },
 );
 const settings = useSettingsStore();
+const tabs = useTabsStore();
 const files = useFiles();
 const { t } = useI18n();
 const host = ref<HTMLDivElement | null>(null);
 const searchOpen = ref(false);
 const searchRef = ref<InstanceType<typeof PreviewSearch> | null>(null);
+
+// ── Editable display math (double-click a $$…$$ formula to edit its LaTeX) ──
+const mathEdit = ref<
+  null | { fromLine: number; toLine: number; top: number; left: number; width: number }
+>(null);
+const mathDraft = ref('');
+const mathTextarea = ref<HTMLTextAreaElement | null>(null);
+
+/**
+ * Locate the `$$…$$` block whose opening `$$` is at/near 1-indexed `startLine`
+ * and return its 0-indexed inclusive line range plus the inner LaTeX.
+ */
+function findMathBlock(
+  source: string,
+  startLine: number,
+): { from: number; to: number; latex: string } | null {
+  const lines = source.split('\n');
+  let openIdx = -1;
+  for (let k = startLine - 1; k >= 0 && k < Math.min(lines.length, startLine + 1); k++) {
+    if (k >= 0 && lines[k]?.includes('$$')) { openIdx = k; break; }
+  }
+  if (openIdx === -1) return null;
+  const openLine = lines[openIdx];
+  const openPos = openLine.indexOf('$$');
+  const afterOpen = openLine.slice(openPos + 2);
+  // Single-line: $$ latex $$
+  const sameClose = afterOpen.indexOf('$$');
+  if (sameClose !== -1) {
+    return { from: openIdx, to: openIdx, latex: afterOpen.slice(0, sameClose).trim() };
+  }
+  // Multi-line: find the closing $$
+  let closeIdx = -1;
+  for (let k = openIdx + 1; k < lines.length; k++) {
+    if (lines[k].includes('$$')) { closeIdx = k; break; }
+  }
+  if (closeIdx === -1) return null;
+  const closeLine = lines[closeIdx];
+  const tail = closeLine.slice(0, closeLine.indexOf('$$'));
+  const latex = [afterOpen, ...lines.slice(openIdx + 1, closeIdx), tail]
+    .join('\n')
+    .replace(/^\s*\n|\n\s*$/g, '')
+    .trim();
+  return { from: openIdx, to: closeIdx, latex };
+}
+
+function onPreviewDblClick(e: MouseEvent) {
+  if (!props.tabId) return;
+  const block = (e.target as HTMLElement).closest('.md-math-block') as HTMLElement | null;
+  if (!block) return;
+  const startLine = Number(block.getAttribute('data-source-line') || 0);
+  if (!startLine) return;
+  const found = findMathBlock(props.source || '', startLine);
+  if (!found) return;
+  e.preventDefault();
+  e.stopPropagation();
+  const rect = block.getBoundingClientRect();
+  mathEdit.value = {
+    fromLine: found.from,
+    toLine: found.to,
+    top: rect.bottom + 6,
+    left: rect.left,
+    width: Math.min(Math.max(rect.width, 300), 620),
+  };
+  mathDraft.value = found.latex;
+  nextTick(() => {
+    mathTextarea.value?.focus();
+    mathTextarea.value?.select();
+  });
+}
+
+function saveMathEdit() {
+  if (!mathEdit.value || !props.tabId) return;
+  const lines = (props.source || '').split('\n');
+  const replacement = ('$$\n' + mathDraft.value.trim() + '\n$$').split('\n');
+  lines.splice(mathEdit.value.fromLine, mathEdit.value.toLine - mathEdit.value.fromLine + 1, ...replacement);
+  tabs.setContent(props.tabId, lines.join('\n'));
+  mathEdit.value = null;
+}
+
+function cancelMathEdit() {
+  mathEdit.value = null;
+}
+
+function onMathKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape') { e.preventDefault(); cancelMathEdit(); }
+  else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); saveMathEdit(); }
+}
 
 let mermaidIdSeq = 0;
 
@@ -118,6 +213,8 @@ function attachImageOverlayHandlers() {
 }
 
 watch(html, async () => {
+  // A re-render (incl. our own math write-back) invalidates popup geometry.
+  mathEdit.value = null;
   await nextTick();
   await processMermaid();
   attachImageOverlayHandlers();
@@ -172,10 +269,12 @@ onMounted(async () => {
   await processMermaid();
   attachImageOverlayHandlers();
   host.value?.addEventListener('click', handleLinkClick);
+  host.value?.addEventListener('dblclick', onPreviewDblClick);
 });
 
 onBeforeUnmount(() => {
   host.value?.removeEventListener('click', handleLinkClick);
+  host.value?.removeEventListener('dblclick', onPreviewDblClick);
 });
 
 function openSearch() {
@@ -240,6 +339,31 @@ defineExpose({ scrollToLine, openSearch });
       }"
       v-html="html"
     ></article>
+
+    <!-- v4.6 — editable display math: inline LaTeX editor opened by
+         double-clicking a rendered $$…$$ formula. -->
+    <template v-if="mathEdit">
+      <div class="math-edit-backdrop" @mousedown="cancelMathEdit"></div>
+      <div
+        class="math-edit-popover"
+        :style="{ top: `${mathEdit.top}px`, left: `${mathEdit.left}px`, width: `${mathEdit.width}px` }"
+        @mousedown.stop
+      >
+        <div class="math-edit-head"><span>LaTeX</span></div>
+        <textarea
+          ref="mathTextarea"
+          v-model="mathDraft"
+          class="math-edit-area"
+          spellcheck="false"
+          rows="3"
+          @keydown="onMathKeydown"
+        ></textarea>
+        <div class="math-edit-actions">
+          <button class="math-edit-btn" @mousedown.prevent="cancelMathEdit">{{ t('unsaved.cancel') }}</button>
+          <button class="math-edit-btn math-edit-btn--primary" @mousedown.prevent="saveMathEdit">{{ t('unsaved.save') }} <span class="math-edit-kbd">⌘↵</span></button>
+        </div>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -510,5 +634,91 @@ defineExpose({ scrollToLine, openSearch });
     padding: 32px 18px 64px;
     font-size: 17px;
   }
+}
+
+/* ── Editable display math (v4.6) ───────────────────────────────────── */
+/* The formula container lives inside v-html, so scope it to .preview-content. */
+:where(.preview-content) .md-math-block {
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.12s ease;
+}
+:where(.preview-content) .md-math-block:hover {
+  background: color-mix(in srgb, var(--accent, #ff9f40) 12%, transparent);
+}
+/* Popover + backdrop are Preview's own nodes (not v-html). */
+.math-edit-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+.math-edit-popover {
+  position: fixed;
+  z-index: 41;
+  max-width: 90vw;
+  background: var(--bg, #fff);
+  border: 1px solid var(--border, #ddd);
+  border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.math-edit-head {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted, #888);
+  padding: 0 2px;
+}
+.math-edit-area {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 64px;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text, #222);
+  background: var(--bg-elevated, var(--bg, #fff));
+  border: 1px solid var(--border, #ddd);
+  border-radius: 6px;
+  padding: 8px;
+  outline: none;
+}
+.math-edit-area:focus {
+  border-color: var(--accent, #ff9f40);
+}
+.math-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.math-edit-btn {
+  font-size: 13px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border, #ddd);
+  background: transparent;
+  color: var(--text, #222);
+  cursor: pointer;
+}
+.math-edit-btn:hover {
+  background: color-mix(in srgb, var(--text, #000) 6%, transparent);
+}
+.math-edit-btn--primary {
+  background: var(--accent, #ff9f40);
+  border-color: var(--accent, #ff9f40);
+  color: #000;
+}
+.math-edit-btn--primary:hover {
+  filter: brightness(0.96);
+}
+.math-edit-kbd {
+  opacity: 0.6;
+  font-size: 11px;
+  margin-left: 2px;
 }
 </style>
