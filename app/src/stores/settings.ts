@@ -218,7 +218,12 @@ interface Settings {
    *    changes). Better when notes get reshuffled often; clutters the file
    *    tree if every note has images. Issue: user feedback 2026-05-26.
    */
-  attachmentMode: 'shared' | 'per-file';
+  attachmentMode: 'shared' | 'per-file' | 'custom';
+  // #7 (顾河) — Typora-style custom path template for `custom` attachment mode.
+  // Supports `${filename}` (the note's name without extension). Relative
+  // templates (`./images/${filename}/`, `assets/`) resolve against the note's
+  // folder; an absolute path is used as-is. Default mirrors Typora's default.
+  attachmentCustomPath: string;
   // #88 — folder name for `shared` attachment mode (default `_assets`). Used
   // only when attachmentMode is 'shared'; per-file mode always uses
   // `<stem>.assets/`. Empty string falls back to `_assets`.
@@ -385,6 +390,7 @@ function defaults(): Settings {
     previewFontSize: 15,
     attachmentMode: 'shared',
     assetsDirName: '_assets',
+    attachmentCustomPath: './images/${filename}/',
     _rsPanesBeforeHide: null,
   };
 }
@@ -879,8 +885,15 @@ export const useSettingsStore = defineStore('settings', {
     resetPreviewFontSize() { this.setPreviewFontSize(15); },
     /** v4.3.5 — flip between `shared` (`_assets/`) and `per-file`
      *  (`<basename>.assets/`) attachment storage layouts. */
-    setAttachmentMode(mode: 'shared' | 'per-file') {
-      this.attachmentMode = mode === 'per-file' ? 'per-file' : 'shared';
+    setAttachmentMode(mode: 'shared' | 'per-file' | 'custom') {
+      this.attachmentMode =
+        mode === 'per-file' ? 'per-file' : mode === 'custom' ? 'custom' : 'shared';
+      this.persist();
+    },
+    // #7 — Typora-style custom path template (used when attachmentMode==='custom').
+    setAttachmentCustomPath(tpl: string) {
+      const cleaned = (tpl || '').trim();
+      this.attachmentCustomPath = cleaned || './images/${filename}/';
       this.persist();
     },
     setAssetsDirName(name: string) {

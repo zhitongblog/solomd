@@ -222,6 +222,7 @@ function buildExtensions() {
       getDocContent: () => props.tab.content,
       getAttachmentMode: () => settings.attachmentMode,
       getAssetsDirName: () => settings.assetsDirName,
+      getCustomPath: () => settings.attachmentCustomPath,
     }),
     ...(props.tab.language === 'markdown'
       ? [

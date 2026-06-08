@@ -736,10 +736,11 @@ function onSelectPdfFont(v: string) {
           <label>{{ t('settings.attachmentMode') }}</label>
           <select
             :value="settings.attachmentMode"
-            @change="settings.setAttachmentMode(($event.target as HTMLSelectElement).value as 'shared' | 'per-file')"
+            @change="settings.setAttachmentMode(($event.target as HTMLSelectElement).value as 'shared' | 'per-file' | 'custom')"
           >
             <option value="shared">{{ t('settings.attachmentModeShared') }}</option>
             <option value="per-file">{{ t('settings.attachmentModePerFile') }}</option>
+            <option value="custom">{{ t('settings.attachmentModeCustom') }}</option>
           </select>
           <p class="setting-hint">{{ t('settings.attachmentModeHint') }}</p>
         </section>
@@ -754,6 +755,18 @@ function onSelectPdfFont(v: string) {
             style="padding: 6px 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px; font: inherit;"
           />
           <p class="setting-hint">{{ t('settings.assetsDirNameHint') }}</p>
+        </section>
+
+        <section data-cat="writing" v-if="settings.attachmentMode === 'custom'">
+          <label>{{ t('settings.attachmentCustomPath') }}</label>
+          <input
+            type="text"
+            :value="settings.attachmentCustomPath"
+            @change="settings.setAttachmentCustomPath(($event.target as HTMLInputElement).value)"
+            placeholder="./images/${filename}/"
+            style="padding: 6px 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px; font: inherit;"
+          />
+          <p class="setting-hint">{{ t('settings.attachmentCustomPathHint') }}</p>
         </section>
 
         <section data-cat="advanced">

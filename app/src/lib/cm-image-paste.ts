@@ -26,10 +26,14 @@ export interface ImagePasteOptions {
   /** v4.3.5 — `shared` (`_assets/`) vs `per-file` (`<stem>.assets/`).
    *  Defaults to `shared` if absent (back-compat for callers that haven't
    *  been updated yet). */
-  getAttachmentMode?: () => 'shared' | 'per-file';
+  getAttachmentMode?: () => 'shared' | 'per-file' | 'custom';
   /** #88 — folder name for the `shared` attachment mode (default `_assets`).
    *  `per-file` mode always uses `<stem>.assets/` regardless of this. */
   getAssetsDirName?: () => string;
+  /** #7 (顾河) — Typora-style path template for the `custom` attachment mode.
+   *  Supports `${filename}` (note stem). Relative templates resolve against
+   *  the note's folder; absolute paths are used as-is. */
+  getCustomPath?: () => string;
 }
 
 /** Minimal front-matter imageRoot parser (kept local to avoid import cycles). */
@@ -110,14 +114,39 @@ function basenameNoExt(p: string): string {
 function resolveAssetsDir(
   filePath: string,
   sepCh: string,
-  mode: 'shared' | 'per-file',
+  mode: 'shared' | 'per-file' | 'custom',
   sharedDirName: string,
+  customPath?: string,
 ): { dir: string; urlPrefix: string } {
   const parent = dirnameOf(filePath, sepCh);
   if (mode === 'per-file') {
     const stem = basenameNoExt(filePath);
     const folder = `${stem}.assets`;
     return { dir: joinPath(parent, folder, sepCh), urlPrefix: folder };
+  }
+  if (mode === 'custom') {
+    // #7 — Typora-style template, e.g. `./images/${filename}/`. Expand the
+    // `${filename}` token (note stem) and normalize to forward slashes for the
+    // markdown URL; the on-disk dir is rebuilt with the platform separator.
+    const stem = basenameNoExt(filePath);
+    const raw = (customPath || './images/${filename}/').trim();
+    const urlPrefix = raw
+      .replace(/\$\{filename\}/g, stem)
+      .replace(/\\/g, '/')
+      .replace(/\/+$/, ''); // drop trailing slash; `${urlPrefix}/${file}` re-adds it
+    // Absolute? (`/…`, `~…`, or `C:\…`) → use as-is; otherwise join onto the
+    // note's folder. `./` and `.` segments are dropped when building the dir.
+    const isAbs = /^([/~]|[A-Za-z]:[\\/])/.test(raw);
+    let dir: string;
+    if (isAbs) {
+      dir = urlPrefix.replace(/\//g, sepCh);
+    } else {
+      const segs = urlPrefix.split('/').filter((s) => s !== '' && s !== '.');
+      dir = parent;
+      for (const s of segs) dir = joinPath(dir, s, sepCh);
+    }
+    if (!dir.endsWith(sepCh)) dir += sepCh;
+    return { dir, urlPrefix };
   }
   return { dir: joinPath(parent, sharedDirName, sepCh), urlPrefix: sharedDirName };
 }
@@ -175,7 +204,8 @@ async function saveAndInsert(
   } else if (filePath) {
     const mode = opts.getAttachmentMode ? opts.getAttachmentMode() : 'shared';
     const sharedDir = opts.getAssetsDirName ? (opts.getAssetsDirName() || '_assets') : '_assets';
-    const { dir: assetsDir, urlPrefix } = resolveAssetsDir(filePath, sepCh, mode, sharedDir);
+    const customPath = opts.getCustomPath ? opts.getCustomPath() : undefined;
+    const { dir: assetsDir, urlPrefix } = resolveAssetsDir(filePath, sepCh, mode, sharedDir, customPath);
     fullPath = joinPath(assetsDir, filename, sepCh);
     insertText = `![](${urlPrefix}/${filename})`;
   } else {
@@ -300,7 +330,8 @@ export async function insertImageFromPath(
   } else if (filePath) {
     const mode = opts.getAttachmentMode ? opts.getAttachmentMode() : 'shared';
     const sharedDir = opts.getAssetsDirName ? (opts.getAssetsDirName() || '_assets') : '_assets';
-    const { dir: assetsDir, urlPrefix } = resolveAssetsDir(filePath, sepCh, mode, sharedDir);
+    const customPath = opts.getCustomPath ? opts.getCustomPath() : undefined;
+    const { dir: assetsDir, urlPrefix } = resolveAssetsDir(filePath, sepCh, mode, sharedDir, customPath);
     dstPath = joinPath(assetsDir, filename, sepCh);
     insertText = `![](${urlPrefix}/${filename})`;
   } else {
