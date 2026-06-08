@@ -2,7 +2,6 @@
 import { onMounted, onBeforeUnmount, ref, watch, watchEffect, computed, provide, nextTick } from 'vue';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
 import { openPath } from '@tauri-apps/plugin-opener';
@@ -725,53 +724,29 @@ onMounted(async () => {
     }
   } catch {}
 
-  // #103 — auxiliary-window persistence.
+  // #103 follow-up — auxiliary windows ("Open file in new window") close
+  // independently of the main window (handled in runner.rs, the original #103
+  // fix). We intentionally do NOT auto-resurrect them on launch.
   //
-  // The "Open file in new window" feature spawns extra windows with stable
-  // `solomd-window-N` labels (useFiles.spawnAuxWindow). For those windows to
-  // survive an app restart we maintain a shared registry (windows store) that
-  // the main window reads on startup to re-spawn them.
+  // An earlier version re-spawned every *registered* aux window on every
+  // start. Entries left behind by a force-quit (onCloseRequested never fires)
+  // or by a since-deleted/temp file were never pruned, so a "ghost" window
+  // reappeared on every launch — even for paths that no longer exist (user
+  // report: "每次打开都冒出一个额外窗口"). Closed windows now stay closed.
+  //
+  // On the main window we also clear any stale registry entries so users
+  // already affected by the old behavior stop seeing the ghost window after
+  // updating. (spawnAuxWindow still works for the current session; the
+  // registry simply isn't replayed across restarts anymore.)
   try {
-    const myLabel = getCurrentWindow().label;
-    if (isAuxLabel(myLabel)) {
-      // This IS an auxiliary window. Make sure it's recorded in the registry
-      // (it normally is — registered at spawn time — but re-asserting here
-      // covers windows restored by tauri-plugin-window-state without going
-      // through spawnAuxWindow). Then track its close so the user explicitly
-      // closing it removes the entry and it doesn't resurrect next launch.
-      if (initialPath) {
-        windowsStore.register(myLabel, {
-          path: initialPath,
-          folder: workspace.currentFolder,
-        });
-      }
-      try {
-        await getCurrentWindow().onCloseRequested(() => {
-          windowsStore.unregister(myLabel);
-        });
-      } catch (err) {
-        console.warn('aux-window close tracking unavailable', err);
-      }
-    } else {
-      // This is the MAIN window. Re-spawn every registered auxiliary window
-      // that isn't already open. We compare against the live window list so
-      // a window the plugin already restored isn't duplicated.
+    if (!isAuxLabel(getCurrentWindow().label)) {
       windowsStore.reload();
-      const open = new Set((await WebviewWindow.getAll()).map((w) => w.label));
-      for (const label of windowsStore.auxLabels) {
-        if (open.has(label)) continue;
-        const entry = windowsStore.registry[label];
-        if (!entry) continue;
-        try {
-          const url = `/?path=${encodeURIComponent(entry.path)}`;
-          new WebviewWindow(label, { url, title: 'SoloMD', width: 1000, height: 700 });
-        } catch (err) {
-          console.warn('failed to restore aux window', label, err);
-        }
+      for (const label of [...windowsStore.auxLabels]) {
+        windowsStore.unregister(label);
       }
     }
   } catch (err) {
-    console.warn('aux-window registry handling failed', err);
+    console.warn('aux-window registry cleanup failed', err);
   }
 
   // First-launch welcome tour: only when there are no tabs at all (fresh
