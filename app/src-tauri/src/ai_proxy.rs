@@ -34,6 +34,7 @@ use tauri::{AppHandle, Emitter};
 // mod ai_proxy` in runner.rs). Both put our siblings one scope up.
 use super::agent_run::{RunHandle, RunKind, TraceStep};
 use super::agent_tools;
+use super::ai_keystore;
 use super::pricing;
 
 // ---------------------------------------------------------------------------
@@ -269,13 +270,14 @@ fn drop_cancel_flag(id: &str) {
 }
 
 // ---------------------------------------------------------------------------
-// Keychain commands
+// Key storage commands
 // ---------------------------------------------------------------------------
-
-fn keychain_entry(provider: &str) -> Result<keyring::Entry, String> {
-    keyring::Entry::new("solomd", &format!("ai-{provider}"))
-        .map_err(|e| format!("keychain entry failed: {e}"))
-}
+//
+// #102 — key storage is abstracted behind `ai_keystore`: the OS keyring on
+// macOS / Windows / Linux, an encrypted file in `app_config_dir` on Android
+// (where keyring has no backend and silently dropped keys on restart). The
+// command wrappers below just prime the config dir (so the file backend can
+// resolve its path) and delegate.
 
 /// Make a minimal call to the provider to confirm the key + base_url work.
 /// Returns Ok with a short message (e.g. model count) on success, Err with
@@ -387,47 +389,31 @@ fn truncate(s: &str, n: usize) -> String {
 }
 
 #[tauri::command]
-pub fn ai_set_key(provider: String, key: String) -> Result<(), String> {
-    let entry = keychain_entry(&provider)?;
-    entry
-        .set_password(&key)
-        .map_err(|e| format!("failed to store key: {e}"))
+pub fn ai_set_key(app: AppHandle, provider: String, key: String) -> Result<(), String> {
+    ai_keystore::prime_config_dir(&app);
+    ai_keystore::set_key(&provider, &key)
 }
 
 #[tauri::command]
-pub fn ai_has_key(provider: String) -> Result<bool, String> {
-    let entry = keychain_entry(&provider)?;
-    match entry.get_password() {
-        Ok(_) => Ok(true),
-        Err(keyring::Error::NoEntry) => Ok(false),
-        Err(e) => Err(format!("keychain read failed: {e}")),
-    }
+pub fn ai_has_key(app: AppHandle, provider: String) -> Result<bool, String> {
+    ai_keystore::prime_config_dir(&app);
+    ai_keystore::has_key(&provider)
 }
 
 #[tauri::command]
-pub fn ai_clear_key(provider: String) -> Result<(), String> {
-    let entry = keychain_entry(&provider)?;
-    match entry.delete_credential() {
-        Ok(()) => Ok(()),
-        Err(keyring::Error::NoEntry) => Ok(()),
-        Err(e) => Err(format!("keychain delete failed: {e}")),
-    }
+pub fn ai_clear_key(app: AppHandle, provider: String) -> Result<(), String> {
+    ai_keystore::prime_config_dir(&app);
+    ai_keystore::clear_key(&provider)
 }
 
 fn read_key(provider: &str) -> Result<String, String> {
-    let entry = keychain_entry(provider)?;
-    entry
-        .get_password()
-        .map_err(|e| match e {
-            keyring::Error::NoEntry => "no API key set for provider".to_string(),
-            other => format!("keychain read failed: {other}"),
-        })
+    ai_keystore::read_key(provider)
 }
 
 /// Public counterpart of `read_key`. The recipe runner (and any future
 /// outside-of-`ai_chat` caller that wants to drive `run_chat_*_loop`) needs
 /// this to fetch the per-provider key the same way the streaming
-/// entrypoint does. No new logic — just reuses the keychain entry helper.
+/// entrypoint does. No new logic — just delegates to the keystore.
 pub fn get_api_key(provider: &str) -> Result<String, String> {
     read_key(provider)
 }
@@ -472,6 +458,9 @@ pub fn ai_cancel(request_id: String) -> Result<(), String> {
 /// without tool calls.
 #[tauri::command]
 pub async fn ai_chat(app: AppHandle, request: ChatRequest) -> Result<String, String> {
+    // #102 — prime the config dir so the Android encrypted-file key backend
+    // can resolve its path before `read_key` runs below.
+    ai_keystore::prime_config_dir(&app);
     let request_id = request
         .request_id
         .clone()
@@ -649,6 +638,9 @@ pub async fn ai_chat(app: AppHandle, request: ChatRequest) -> Result<String, Str
 /// `solomd://ai-error` events filtered by that id.
 #[tauri::command]
 pub async fn ai_rewrite(app: AppHandle, request: RewriteRequest) -> Result<String, String> {
+    // #102 — prime the config dir so the Android encrypted-file key backend
+    // can resolve its path before `read_key` runs below.
+    ai_keystore::prime_config_dir(&app);
     let request_id = request
         .request_id
         .clone()

@@ -16,6 +16,10 @@ mod workspace_index;
 #[path = "spellcheck.rs"]
 mod spellcheck;
 
+// #102 — AI key storage abstraction; declared before ai_proxy which uses it.
+#[path = "ai_keystore.rs"]
+mod ai_keystore;
+
 #[path = "ai_proxy.rs"]
 mod ai_proxy;
 
@@ -921,8 +925,11 @@ pub fn run_with(initial_file: Option<String>) {
             // ---- Window close: intercept and ask frontend ----
             // Only the main window gets the unsaved-tabs check. Auxiliary
             // windows (slideshow, "open file in new window" spawns labelled
-            // `solomd-…`) close directly, otherwise their close event would
-            // trigger the main window's listener and shut down the editor.
+            // `solomd-window-N` — #103) close directly: their frontend
+            // (App.vue's onCloseRequested for aux labels) removes them from
+            // the shared windows registry so they don't resurrect next launch.
+            // Routing them through the main window's listener would instead
+            // shut down the editor.
             RunEvent::WindowEvent {
                 event: tauri::WindowEvent::CloseRequested { api, .. },
                 label,
@@ -938,6 +945,23 @@ pub fn run_with(initial_file: Option<String>) {
                 // Prevent the close and ask the frontend to check unsaved tabs.
                 api.prevent_close();
                 let _ = app_handle.emit("solomd://close-requested", ());
+            }
+
+            // ---- Auxiliary window destroyed ----
+            // #103 — when an auxiliary window is fully torn down, tell any
+            // window still alive so it can reconcile the shared windows
+            // registry. The destroyed window's own `onCloseRequested` handler
+            // already unregisters it in the normal path; this event is the
+            // backstop for teardowns that bypass CloseRequested, keeping the
+            // registry from resurrecting a window the user actually closed.
+            RunEvent::WindowEvent {
+                event: tauri::WindowEvent::Destroyed,
+                label,
+                ..
+            } => {
+                if label != "main" {
+                    let _ = app_handle.emit("solomd://window-destroyed", label.clone());
+                }
             }
 
             // ---- macOS file open via double-click / Finder ----

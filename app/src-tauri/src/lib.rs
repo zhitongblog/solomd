@@ -3,6 +3,9 @@ pub mod commands;
 pub mod search;
 pub mod workspace_index;
 pub mod spellcheck;
+// #102 — cross-platform AI key storage (OS keyring + Android encrypted-file
+// fallback). Declared before ai_proxy, which delegates to it.
+pub mod ai_keystore;
 pub mod ai_proxy;
 // v4.0 Pillar 5: Ollama polish — detect / pull / install-page commands on
 // top of the existing chat runner in ai_proxy. Pure additive.
