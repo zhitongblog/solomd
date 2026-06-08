@@ -218,15 +218,15 @@ function renderPopup(view: EditorView, initial: SlashState): TooltipView {
         if (!cur) return;
         insertBlock(view, cur, b);
       });
-      row.addEventListener('mouseenter', () => {
-        // v4.3.x issue #80 — the keyboard-nav-hijacked-by-mouse bug is
-        // already prevented by NOT rebuilding rows on selectedIndex
-        // change (see repaint()). Without rebuild, no synthetic
-        // mouseenter fires under a stationary cursor when ↑/↓ is
-        // pressed, so the row's hover handler only runs on real
-        // mouse movement. Keep this handler simple — accepting any
-        // mouseenter is the correct "mouse hover updates selection"
-        // UX users expect.
+      row.addEventListener('mousemove', () => {
+        // v4.5.x issue #93 — use mousemove (not mouseenter) so that
+        // wheel-scrolling the popup doesn't hijack the selection. With
+        // mouseenter, rows moving under a stationary cursor during a
+        // scroll fire synthetic enter events and the highlight jumps
+        // around. mousemove only fires on real pointer movement, so
+        // scrolling stays smooth while genuine hover still updates the
+        // selection — the "mouse hover updates selection" UX users
+        // expect. (Same fix applied to CommandPalette.vue in f5f47a8.)
         const cur = view.state.field(slashStateField, false);
         if (!cur) return;
         view.dispatch({
