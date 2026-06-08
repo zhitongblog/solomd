@@ -220,6 +220,52 @@ function onTabClick(tabId: string) {
   tiles.setActiveTab(props.paneId, tabId);
 }
 
+// ---- Horizontal scroll: mouse wheel over the tab strip (#106) ----
+// The bar hides its scrollbar, so without this hidden/overflowing tabs are
+// unreachable on a trackpad/mouse. Translate vertical wheel deltas into
+// horizontal scroll; honor native horizontal deltas (deltaX) as-is.
+function onTabsWheel(e: WheelEvent) {
+  const el = tabsEl.value;
+  if (!el) return;
+  const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+  el.scrollLeft += delta;
+}
+
+// ---- Middle-button: drag-to-pan, or close on a clean click (#106) ----
+// #89 added middle-click-to-close. To also restore middle-drag panning we
+// distinguish the two: motion past DRAG_THRESHOLD pans the strip and cancels
+// the close; a middle press with no real movement closes the tab on release.
+let middleStart: { x: number; scrollLeft: number; tabId: string } | null = null;
+let middleDragging = false;
+
+function onMiddlePointerDown(e: MouseEvent, tabId: string) {
+  // Prevent the OS auto-scroll affordance some platforms attach to middle-press.
+  e.preventDefault();
+  middleStart = { x: e.clientX, scrollLeft: tabsEl.value?.scrollLeft ?? 0, tabId };
+  middleDragging = false;
+  window.addEventListener('mousemove', onMiddleMove);
+  window.addEventListener('mouseup', onMiddleUp);
+}
+
+function onMiddleMove(e: MouseEvent) {
+  if (!middleStart) return;
+  const dx = e.clientX - middleStart.x;
+  if (!middleDragging && Math.abs(dx) < DRAG_THRESHOLD) return;
+  middleDragging = true;
+  // Drag right reveals tabs to the right: pulling the strip with the cursor.
+  if (tabsEl.value) tabsEl.value.scrollLeft = middleStart.scrollLeft - dx;
+}
+
+function onMiddleUp() {
+  window.removeEventListener('mousemove', onMiddleMove);
+  window.removeEventListener('mouseup', onMiddleUp);
+  const start = middleStart;
+  middleStart = null;
+  // No real motion → treat as a click and close the tab (#89 behavior).
+  if (!middleDragging && start) files.closeTabSafe(start.tabId);
+  middleDragging = false;
+}
+
 // Close context menu on click outside
 function onDocClick() {
   if (ctxMenu.value) closeCtxMenu();
@@ -231,12 +277,14 @@ onBeforeUnmount(() => {
   document.removeEventListener('click', onDocClick);
   // Drop any drag listeners still attached if the bar unmounts mid-drag.
   teardownPointer();
+  window.removeEventListener('mousemove', onMiddleMove);
+  window.removeEventListener('mouseup', onMiddleUp);
 });
 </script>
 
 <template>
   <div class="pane-tabbar">
-    <div class="tabs" ref="tabsEl">
+    <div class="tabs" ref="tabsEl" @wheel.prevent="onTabsWheel">
       <div
         v-for="t in tabs.tabs"
         :key="t.id"
@@ -245,7 +293,7 @@ onBeforeUnmount(() => {
         :class="{ 'tab--active': t.id === activeTabId, 'tab--dragging': tiles.dragTabId === t.id }"
         @click="onTabClick(t.id)"
         @pointerdown="onTabPointerDown($event, t.id)"
-        @mousedown.middle.prevent="files.closeTabSafe(t.id)"
+        @mousedown.middle="onMiddlePointerDown($event, t.id)"
         @contextmenu="onContextMenu($event, t.id)"
         :title="t.filePath || t.fileName"
       >
