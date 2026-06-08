@@ -38,6 +38,7 @@ const relayoutEffect = StateEffect.define<null>();
 import { resolveImageSrc } from './image-resolve';
 import { renderMarkdown, extractImageRoot } from './markdown';
 import mermaid from 'mermaid';
+import katex from 'katex';
 
 // v4.3.0 issue #57a — live-render math + Mermaid blocks in the editor.
 // Mermaid is async; we render lazily into a counter-keyed cache so the
@@ -176,6 +177,94 @@ class MathWidget extends WidgetType {
   ignoreEvent(): boolean {
     return false;
   }
+}
+
+// v4.5.5 — inline math (`$…$`). Standard markdown parsers don't emit
+// inline-math nodes, so cm-live-render's syntax-tree pass can't see them.
+// We detect spans with inlineMathSpans() below and replace each with a
+// KaTeX render while the caret is off the line (click in → source returns).
+class InlineMathWidget extends WidgetType {
+  constructor(private readonly tex: string) {
+    super();
+  }
+
+  eq(other: InlineMathWidget): boolean {
+    return other.tex === this.tex;
+  }
+
+  toDOM(): HTMLElement {
+    const span = document.createElement('span');
+    span.className = 'cm-live-inline-math';
+    try {
+      span.innerHTML = katex.renderToString(this.tex, {
+        throwOnError: false,
+        displayMode: false,
+      });
+    } catch {
+      span.classList.add('cm-live-inline-math--broken');
+      span.textContent = `$${this.tex}$`;
+    }
+    return span;
+  }
+
+  ignoreEvent(): boolean {
+    return false;
+  }
+}
+
+// Detect inline math `$…$` spans within a single line. Offsets are relative
+// to the line start. Guards against the common false positives so prose isn't
+// mangled:
+//   - `$$` block-math delimiters are skipped (handled as block widgets).
+//   - `$` inside inline code spans (`` `…$…` ``) is ignored.
+//   - escaped `\$` neither opens nor closes.
+//   - currency like `$5` / `$5 and $10`: an opening `$` can't be followed by
+//     whitespace, and a closing `$` followed by a digit is rejected.
+//   - empty or space-padded content (`$ $`, `$x $`) is rejected.
+function inlineMathSpans(text: string): Array<{ start: number; end: number; tex: string }> {
+  const spans: Array<{ start: number; end: number; tex: string }> = [];
+  const n = text.length;
+  // Mask out inline-code spans (matched backtick runs of equal length).
+  const code = new Array<boolean>(n).fill(false);
+  for (let p = 0; p < n; ) {
+    if (text[p] === '`') {
+      let len = 1;
+      while (p + len < n && text[p + len] === '`') len++;
+      let q = p + len;
+      let closed = -1;
+      while (q < n) {
+        if (text[q] === '`') {
+          let len2 = 1;
+          while (q + len2 < n && text[q + len2] === '`') len2++;
+          if (len2 === len) { closed = q + len2; break; }
+          q += len2;
+        } else q++;
+      }
+      if (closed >= 0) { for (let k = p; k < closed; k++) code[k] = true; p = closed; }
+      else p += len;
+    } else p++;
+  }
+  let i = 0;
+  while (i < n) {
+    if (text[i] !== '$' || code[i]) { i++; continue; }
+    if (i > 0 && text[i - 1] === '\\') { i++; continue; }          // escaped \$
+    if (text[i + 1] === '$') { i += 2; continue; }                  // $$ block delimiter
+    if (i + 1 >= n || /\s/.test(text[i + 1])) { i++; continue; }    // opening must hug content
+    let j = i + 1;
+    let close = -1;
+    while (j < n) {
+      if (text[j] === '\\') { j += 2; continue; }
+      if (text[j] === '$' && !code[j]) { close = j; break; }
+      j++;
+    }
+    if (close < 0) { i++; continue; }
+    const content = text.slice(i + 1, close);
+    if (!content.trim() || /\s$/.test(content)) { i = close + 1; continue; }   // empty / space-padded
+    if (close + 1 < n && /\d/.test(text[close + 1])) { i = close + 1; continue; } // currency $5
+    spans.push({ start: i, end: close + 1, tex: content });
+    i = close + 1;
+  }
+  return spans;
 }
 
 // v4.3.0 issue #57a — mermaid fenced blocks. Mermaid is async so we render
@@ -389,6 +478,20 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
                 i = tableEnd + 1;
                 continue;
               }
+            }
+          }
+
+          // v4.5.5 — inline math `$…$` on an otherwise-plain line. Render each
+          // span while the caret is off this line (same reveal model as the
+          // block widgets above: move the caret onto the line to edit source).
+          const inlineCursorHere = i >= cursorLine && i <= cursorLineEnd;
+          if (!inlineCursorHere) {
+            for (const span of inlineMathSpans(line.text)) {
+              builder.add(
+                line.from + span.start,
+                line.from + span.end,
+                Decoration.replace({ widget: new InlineMathWidget(span.tex) }),
+              );
             }
           }
 
