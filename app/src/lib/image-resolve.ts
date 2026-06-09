@@ -107,7 +107,18 @@ export function rewriteImageUrls(
   return rawHtml.replace(
     /(<img[^>]*\bsrc=)(["'])([^"']*)\2/gi,
     (_match, prefix: string, q: string, src: string) => {
-      return `${prefix}${q}${resolveImageSrc(src, imageRoot, filePath)}${q}`;
+      // markdown-it percent-encodes non-ASCII in image URLs (`感` → `%E6%84%9F`).
+      // Passing that straight to convertFileSrc encodes the `%` again, yielding
+      // `%25E6…` — a double-encoded path that 404s, so images under a Chinese
+      // (or space-containing) folder never load (顾河 report, Typora `./images/
+      // <笔记名>/` paths). Decode the local path first so it's encoded exactly
+      // once — mirroring rewriteLinkUrls. Remote/data/asset URLs are left alone.
+      if (!src || /^(https?|data|blob|asset|tauri):/i.test(src)) {
+        return `${prefix}${q}${src}${q}`;
+      }
+      let decoded: string;
+      try { decoded = decodeURI(src); } catch { decoded = src; }
+      return `${prefix}${q}${resolveImageSrc(decoded, imageRoot, filePath)}${q}`;
     },
   );
 }
