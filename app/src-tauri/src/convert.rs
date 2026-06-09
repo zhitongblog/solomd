@@ -10,6 +10,20 @@
 use std::io::Read;
 use std::path::Path;
 use std::process::Command;
+
+/// Build a `Command` that never flashes a console window on Windows
+/// (CREATE_NO_WINDOW). markitdown detection/conversion spawns would otherwise
+/// pop a black cmd window for a frame. No-op off Windows.
+fn no_window_command(program: impl AsRef<std::ffi::OsStr>) -> Command {
+    #[allow(unused_mut)]
+    let mut c = Command::new(program);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        c.creation_flags(0x0800_0000);
+    }
+    c
+}
 use chardetng::{EncodingDetector, Iso2022JpDetection, Utf8Detection};
 use encoding_rs::UTF_8;
 
@@ -554,9 +568,9 @@ fn extract_pptx_texts(xml: &str) -> Vec<String> {
 fn convert_via_markitdown(path: &str) -> Result<String, String> {
     // Check if markitdown is installed
     let which = if cfg!(target_os = "windows") {
-        Command::new("where").arg("markitdown").output()
+        no_window_command("where").arg("markitdown").output()
     } else {
-        Command::new("which").arg("markitdown").output()
+        no_window_command("which").arg("markitdown").output()
     };
 
     match which {
@@ -574,7 +588,7 @@ fn convert_via_markitdown(path: &str) -> Result<String, String> {
         }
     }
 
-    let output = Command::new("markitdown")
+    let output = no_window_command("markitdown")
         .arg(path)
         .output()
         .map_err(|e| format!("Failed to run markitdown: {e}"))?;

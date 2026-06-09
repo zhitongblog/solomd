@@ -19,6 +19,20 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::process::Command;
 
+/// Build a `Command` that never flashes a console window on Windows
+/// (CREATE_NO_WINDOW). Pandoc detection/conversion spawns would otherwise pop
+/// a black cmd window for a frame. No-op off Windows.
+fn no_window_command(program: impl AsRef<std::ffi::OsStr>) -> Command {
+    #[allow(unused_mut)]
+    let mut c = Command::new(program);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        c.creation_flags(0x0800_0000);
+    }
+    c
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PandocInfo {
     pub path: String,
@@ -63,7 +77,7 @@ pub fn pandoc_detect() -> Result<Option<PandocInfo>, String> {
 
     // Read `pandoc --version` to confirm it's actually pandoc and not a
     // broken shim. First line looks like "pandoc 3.1.11.1".
-    let out = Command::new(&path)
+    let out = no_window_command(&path)
         .arg("--version")
         .output()
         .map_err(|e| format!("pandoc found at {path:?} but failed to run: {e}"))?;
@@ -90,7 +104,7 @@ pub fn pandoc_detect() -> Result<Option<PandocInfo>, String> {
 fn locate_pandoc() -> Option<PathBuf> {
     // Try `which` (POSIX). Don't use a shell — direct exec keeps PATH
     // semantics inherited from the Tauri app process.
-    let out = Command::new("which").arg("pandoc").output().ok()?;
+    let out = no_window_command("which").arg("pandoc").output().ok()?;
     if !out.status.success() {
         return None;
     }
@@ -116,7 +130,7 @@ fn locate_pandoc() -> Option<PathBuf> {
 #[cfg(target_os = "windows")]
 fn locate_pandoc() -> Option<PathBuf> {
     // `where pandoc` may print multiple lines — first hit wins.
-    let out = Command::new("where").arg("pandoc").output().ok()?;
+    let out = no_window_command("where").arg("pandoc").output().ok()?;
     if !out.status.success() {
         return None;
     }
@@ -162,7 +176,7 @@ pub fn pandoc_export_inner(args: ExportArgs) -> Result<(), String> {
         .map_err(|e| format!("could not write temp input file: {e}"))?;
 
     // Build argv.
-    let mut cmd = Command::new(&pandoc_path);
+    let mut cmd = no_window_command(&pandoc_path);
     cmd.arg(&tmp_path);
     cmd.arg("-o").arg(&args.output_path);
 

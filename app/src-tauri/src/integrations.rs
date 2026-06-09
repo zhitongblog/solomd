@@ -25,6 +25,22 @@
 use std::path::PathBuf;
 use std::process::Command;
 
+/// Build a `Command` that never flashes a console window on Windows.
+/// Without `CREATE_NO_WINDOW` (0x08000000) every probe (`where`, `solomd
+/// --version`, …) pops a black cmd window for a frame — very visible when the
+/// Integrations settings tab runs its status checks (顾河 report). No-op off
+/// Windows.
+fn no_window_command(program: impl AsRef<std::ffi::OsStr>) -> Command {
+    #[allow(unused_mut)]
+    let mut c = Command::new(program);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        c.creation_flags(0x0800_0000);
+    }
+    c
+}
+
 use serde::Serialize;
 use serde_json::{json, Value as JsonValue};
 use tauri::{AppHandle, Manager};
@@ -63,9 +79,9 @@ pub fn cli_status_inner() -> Result<CliStatus, String> {
     // `which` (Unix) / `where` (Windows). On Windows there's no PATHEXT
     // helper either way; we just check stdout for a valid file.
     #[cfg(target_os = "windows")]
-    let probe = Command::new("where").arg("solomd").output();
+    let probe = no_window_command("where").arg("solomd").output();
     #[cfg(not(target_os = "windows"))]
-    let probe = Command::new("/usr/bin/env").args(["which", "solomd"]).output();
+    let probe = no_window_command("/usr/bin/env").args(["which", "solomd"]).output();
 
     let path = match probe {
         Ok(out) if out.status.success() => {
@@ -98,7 +114,7 @@ pub fn cli_status_inner() -> Result<CliStatus, String> {
     // upgrade and try help as a fallback so the panel can show *something*
     // confirming the binary is reachable.
     let version = path.as_ref().and_then(|p| {
-        let out = Command::new(p).arg("--version").output().ok()?;
+        let out = no_window_command(p).arg("--version").output().ok()?;
         if out.status.success() {
             let s = String::from_utf8_lossy(&out.stdout)
                 .lines()
@@ -108,7 +124,7 @@ pub fn cli_status_inner() -> Result<CliStatus, String> {
             return s;
         }
         // Fall back to a known-good subcommand.
-        let out = Command::new(p).arg("help").output().ok()?;
+        let out = no_window_command(p).arg("help").output().ok()?;
         if !out.status.success() {
             return None;
         }
