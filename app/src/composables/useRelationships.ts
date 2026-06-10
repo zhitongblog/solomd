@@ -18,6 +18,7 @@
  * when its editor buffer is clean — a dirty buffer is saved first (so a panel
  * edit never races the editor autosave or clobbers unsaved body changes).
  */
+import { computed, type ComputedRef } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { useTabsStore } from '../stores/tabs';
 import { useWorkspaceStore } from '../stores/workspace';
@@ -28,7 +29,20 @@ import {
   extractRelationships,
   setRelationshipInBlock,
   parseWikilinkTarget,
+  isReservedKey,
 } from '../lib/relationships';
+
+/** Editability of the active document for relationship edits. `clean` is only
+ *  true when the buffer matches what's on disk (a dirty buffer must be saved
+ *  first so a panel edit never clobbers unsaved body changes). */
+export interface RelEditability {
+  /** A markdown note is active (regardless of dirty state). */
+  isMarkdown: boolean;
+  /** The active note's buffer is clean (safe to edit relationships). */
+  clean: boolean;
+  /** Convenience: `isMarkdown && clean`. */
+  canEdit: boolean;
+}
 
 /** Cache of referenced-by promises keyed by the entries array identity, so a
  *  stable entries array reuses in-flight / resolved lookups; a fresh entries
@@ -75,16 +89,34 @@ export function useRelationships() {
   const idx = useWorkspaceIndexStore();
   const toasts = useToastsStore();
 
-  /** Forward typed relationships for the entry at `path` (from the index;
-   *  falls back to parsing the active tab's frontmatter object isn't needed —
-   *  the index already carries the parsed `relationships` map). */
+  /** Reactive editability of the active note (drives the panel's "save first"
+   *  banner so the guard is *visible* before a click, not just an error after). */
+  const editability: ComputedRef<RelEditability> = computed(() => {
+    const tab = tabs.activeTab;
+    const isMarkdown = !!tab?.filePath && tab.language === 'markdown';
+    const clean = !!tab && tab.content === tab.savedContent;
+    return { isMarkdown, clean, canEdit: isMarkdown && clean };
+  });
+
+  /**
+   * Forward typed relationships for the entry at `path`.
+   *
+   * Prefer deriving from the entry's parsed `frontmatter` (serde_json emits a
+   * `BTreeMap`, so keys arrive in a *stable, deterministic* order) over the
+   * server `relationships` map (a Rust `HashMap`, whose JSON key order is
+   * nondeterministic and would make the panel's group order flicker between
+   * index refreshes). Both paths run the identical extraction rules
+   * (`extractRelationships` mirrors the Rust extractor), so the *content* is
+   * the same — we only choose the source with a stable iteration order. Falls
+   * back to the index `relationships` map for entries whose frontmatter wasn't
+   * cached, and to `{}` for unknown paths.
+   */
   function forwardFor(path: string | null): Record<string, string[]> {
     if (!path) return {};
     const e = idx.byPath.get(path);
-    if (e?.relationships) return e.relationships;
-    // Fallback: derive from raw frontmatter if the index predates F3.
-    if (e?.frontmatter) return extractRelationships(e.frontmatter);
-    return {};
+    if (!e) return {};
+    if (e.frontmatter) return extractRelationships(e.frontmatter);
+    return e.relationships ?? {};
   }
 
   /** Inverse edges pointing at `stem`, memoized off `idx.entries` identity. */
@@ -210,17 +242,30 @@ export function useRelationships() {
     );
   }
 
-  /** Introduce a brand-new relationship key with a first target ref. */
+  /** Introduce a brand-new relationship key with a first target ref. Rejects
+   *  empty / reserved (`title`, `tags`, …, `_`-prefixed) and already-present
+   *  keys so the YAML never grows a structural-key collision. */
   function addRelationshipKey(key: string, targetStem: string): Promise<boolean> {
     const cleanKey = key.trim();
     if (!cleanKey) {
       toasts.error('Relationship name cannot be empty.');
       return Promise.resolve(false);
     }
+    if (isReservedKey(cleanKey)) {
+      toasts.error(`"${cleanKey}" is a reserved key and can't be a relationship.`);
+      return Promise.resolve(false);
+    }
+    const path = tabs.activeTab?.filePath ?? null;
+    const existing = forwardFor(path);
+    if (Object.keys(existing).some((k) => k.toLowerCase() === cleanKey.toLowerCase())) {
+      toasts.error('That relationship already exists.');
+      return Promise.resolve(false);
+    }
     return addRef(cleanKey, targetStem);
   }
 
   return {
+    editability,
     forwardFor,
     referencedByFor,
     addRef,
