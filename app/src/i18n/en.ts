@@ -653,10 +653,30 @@ export const en = {
     heading: 'Inbox',
     pill: 'Inbox',
     pillTooltip: 'This note is in your inbox. Click or press ⌘E to remove.',
+    pillTooltipOrganize: 'In your inbox. Click or press ⌘E to mark organized and advance to the next note.',
     markedInbox: 'Marked as inbox',
     unmarkedInbox: 'Removed from inbox',
     filterOn: 'Show inbox notes only',
     filterOff: 'Show all files',
+    // v4.6 F6 — dedicated Inbox workflow view.
+    openView: 'Open the Inbox workflow',
+    viewHeading: 'Inbox',
+    back: 'Back to editor',
+    periodWeek: 'Week',
+    periodMonth: 'Month',
+    periodAll: 'All',
+    linkCount: '{n} links',
+    organizeHint: 'Press ⌘E to mark the active note organized and advance to the next.',
+    zero: 'Inbox zero — nothing left to organize',
+    zeroTitle: 'Inbox zero',
+    zeroSub: 'Nothing left to organize. New captures will show up here.',
+    // Settings (Editor) — inbox workflow toggles.
+    workflowSetting: 'Inbox workflow',
+    workflowSettingHint:
+      'Review notes flagged `inbox: true` in a dedicated view, mark them organized with ⌘E, and reach inbox zero. Turn off to hide the inbox row, pill, and view.',
+    autoAdvanceSetting: 'Auto-advance after organizing',
+    autoAdvanceSettingHint:
+      'When you mark a note organized (⌘E) inside the Inbox view or filter, jump straight to the next inbox note.',
     captureHeading: 'HTTP capture endpoint',
     enableCapture: 'Enable capture endpoint',
     enableCaptureHint:

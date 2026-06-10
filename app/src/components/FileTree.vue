@@ -6,6 +6,8 @@ import { revealItemInDir } from '@tauri-apps/plugin-opener';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useFiles } from '../composables/useFiles';
 import { useInbox } from '../composables/useInbox';
+import { useInboxView } from '../composables/useInboxView';
+import { useSettingsStore } from '../stores/settings';
 import { useToastsStore } from '../stores/toasts';
 import { useTabsStore } from '../stores/tabs';
 import { useI18n } from '../i18n';
@@ -27,6 +29,8 @@ interface Node extends Entry {
 const workspace = useWorkspaceStore();
 const files = useFiles();
 const inbox = useInbox();
+const inboxView = useInboxView();
+const settings = useSettingsStore();
 const toasts = useToastsStore();
 const tabs = useTabsStore();
 const { t } = useI18n();
@@ -503,20 +507,33 @@ onBeforeUnmount(() => {
         />
       </div>
 
-      <!-- v2.4: Inbox row. Clicking toggles the inbox-only filter so the
-           tree below shows only docs with `inbox: true` in their YAML. -->
-      <button
+      <!-- v2.4 / v4.6 F6: Inbox row. The chevron toggles the inbox-only tree
+           filter (so the tree below shows only `inbox: true` docs); clicking
+           the name opens the dedicated InboxView workflow. Gated on the
+           v4.6 inbox-workflow opt-out. -->
+      <div
+        v-if="settings.inboxWorkflowEnabled"
         class="ftree__inbox"
         :class="{ 'ftree__inbox--active': showInboxOnly }"
-        :title="showInboxOnly ? t('inbox.filterOff') : t('inbox.filterOn')"
-        @click="inbox.toggleFilter()"
       >
-        <span class="ftree__icon">{{ showInboxOnly ? '▾' : '▸' }}</span>
-        <span class="ftree__name">{{ t('inbox.heading') }}</span>
+        <button
+          class="ftree__inbox-toggle"
+          :title="showInboxOnly ? t('inbox.filterOff') : t('inbox.filterOn')"
+          @click="inbox.toggleFilter()"
+        >
+          <span class="ftree__icon">{{ showInboxOnly ? '▾' : '▸' }}</span>
+        </button>
+        <button
+          class="ftree__inbox-open"
+          :title="t('inbox.openView')"
+          @click="inboxView.openInbox()"
+        >
+          <span class="ftree__name">{{ t('inbox.heading') }}</span>
+        </button>
         <span class="ftree__badge" v-if="inbox.inboxCount.value > 0">
           {{ inbox.inboxCount.value }}
         </span>
-      </button>
+      </div>
 
       <div v-if="root.loading" class="ftree__loading">
         <span class="ftree__spinner" aria-hidden="true"></span>
@@ -875,7 +892,6 @@ export const FileTreeNode = defineComponent({
   color: var(--text-muted);
   background: transparent;
   border: none;
-  cursor: pointer;
   text-align: left;
   border-radius: 0;
 }
@@ -885,6 +901,23 @@ export const FileTreeNode = defineComponent({
 }
 .ftree__inbox--active {
   color: var(--accent);
+}
+.ftree__inbox-toggle,
+.ftree__inbox-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+.ftree__inbox-open {
+  flex: 1;
+  min-width: 0;
 }
 .ftree__badge {
   margin-left: auto;

@@ -24,6 +24,8 @@ import SessionRestoreDialog from './components/SessionRestoreDialog.vue';
 import AIRewriteOverlay from './components/AIRewriteOverlay.vue';
 import BasesView from './components/BasesView.vue';
 import { BASES_OPEN_EVENT, BASES_CLOSE_EVENT } from './composables/useBasesView';
+import InboxView from './components/InboxView.vue';
+import { INBOX_OPEN_EVENT, INBOX_CLOSE_EVENT } from './composables/useInboxView';
 import FileTree from './components/FileTree.vue';
 import SettingsPanel from './components/SettingsPanel.vue';
 import MarkdownHelp from './components/MarkdownHelp.vue';
@@ -877,6 +879,8 @@ function onAIRewriteCancel() {
 }
 function onOpenBases() { basesOpen.value = true; }
 function onCloseBases() { basesOpen.value = false; }
+function onOpenInbox() { inboxViewOpen.value = true; }
+function onCloseInbox() { inboxViewOpen.value = false; }
 
 async function onWikiOpen(e: Event) {
   const detail = (e as CustomEvent).detail || {};
@@ -908,6 +912,8 @@ window.addEventListener('solomd:ai-rewrite-accept', onAIRewriteAccept as EventLi
 window.addEventListener('solomd:ai-rewrite-cancel', onAIRewriteCancel as EventListener);
 window.addEventListener(BASES_OPEN_EVENT, onOpenBases as EventListener);
 window.addEventListener(BASES_CLOSE_EVENT, onCloseBases as EventListener);
+window.addEventListener(INBOX_OPEN_EVENT, onOpenInbox as EventListener);
+window.addEventListener(INBOX_CLOSE_EVENT, onCloseInbox as EventListener);
 window.addEventListener('solomd:open-settings', onOpenSettingsEvent as EventListener);
 
 onBeforeUnmount(() => {
@@ -921,6 +927,8 @@ onBeforeUnmount(() => {
   window.removeEventListener('solomd:ai-rewrite-cancel', onAIRewriteCancel as EventListener);
   window.removeEventListener(BASES_OPEN_EVENT, onOpenBases as EventListener);
   window.removeEventListener(BASES_CLOSE_EVENT, onCloseBases as EventListener);
+  window.removeEventListener(INBOX_OPEN_EVENT, onOpenInbox as EventListener);
+  window.removeEventListener(INBOX_CLOSE_EVENT, onCloseInbox as EventListener);
   window.removeEventListener('solomd:open-settings', onOpenSettingsEvent as EventListener);
   window.removeEventListener('solomd:open-agent-wizard', onOpenAgentWizard);
   if (unlistenOpened) {
@@ -1108,6 +1116,7 @@ function onSidebarResize(side: 'left' | 'right', ev: MouseEvent) {
   document.addEventListener('mouseup', onUp);
 }
 const basesOpen = ref(false);
+const inboxViewOpen = ref(false);
 const aiHasKey = ref(false);
 async function refreshAiHasKey() {
   if (!settings.aiEnabled) { aiHasKey.value = false; return; }
@@ -1193,6 +1202,7 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
         </aside>
         <div class="content">
           <BasesView v-if="basesOpen" />
+          <InboxView v-else-if="inboxViewOpen" />
           <TileRoot v-else :node="tiles.root" @cursor="onCursor" @selection="onSelection" />
         </div>
         <aside

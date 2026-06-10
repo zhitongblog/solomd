@@ -19,6 +19,8 @@ import { openPath } from '@tauri-apps/plugin-opener';
 import { useDailyNotes } from './useDailyNotes';
 import { usePandocExport } from './usePandocExport';
 import { useBasesView } from './useBasesView';
+import { useInboxView } from './useInboxView';
+import { useInbox } from './useInbox';
 import { useAutoCommit } from './useAutoCommit';
 import { useWorkspaceIndexStore } from '../stores/workspaceIndex';
 import { useGitHistoryStore } from '../stores/gitHistory';
@@ -45,6 +47,8 @@ export function useCommands(): Command[] {
   const daily = useDailyNotes();
   const pandoc = usePandocExport();
   const bases = useBasesView();
+  const inboxView = useInboxView();
+  const inbox = useInbox();
   const auto = useAutoCommit();
   const gh = useGitHistoryStore();
   const ws = useWorkspaceStore();
@@ -452,6 +456,33 @@ export function useCommands(): Command[] {
         } catch (e) {
           console.error('failed to create window', e);
         }
+      },
+    },
+
+    // v4.6 F6 — Inbox workflow command-palette entries.
+    {
+      id: 'inbox.open',
+      title: 'Open Inbox',
+      hint: 'Review notes flagged `inbox: true` — Week / Month / All, ⌘E to organize & advance',
+      run: () => {
+        if (!settings.inboxWorkflowEnabled) {
+          toasts.info('Enable the Inbox workflow in Settings first');
+          return;
+        }
+        inboxView.openInbox();
+      },
+    },
+    {
+      id: 'inbox.organizeAndAdvance',
+      title: 'Inbox: Mark Organized & Advance',
+      shortcut: 'Ctrl+E',
+      hint: 'Set `inbox: false` on the active note and jump to the next inbox note',
+      run: () => {
+        if (!settings.inboxWorkflowEnabled) {
+          inbox.toggleActive();
+          return;
+        }
+        void inbox.organizeAndAdvance();
       },
     },
   ];

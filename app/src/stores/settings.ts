@@ -228,6 +228,16 @@ interface Settings {
   // only when attachmentMode is 'shared'; per-file mode always uses
   // `<stem>.assets/`. Empty string falls back to `_assets`.
   assetsDirName: string;
+  // v4.6 F6 — Inbox workflow. Master opt-out for the whole inbox surface
+  // (file-tree row, status-bar pill, dedicated InboxView, ⌘E auto-advance).
+  // Default on — mirrors Tolaria's per-vault InboxConfig.explicitOrganization,
+  // but stored locally (not in files). When off, ⌘E falls back to the plain
+  // `inbox: true|false` toggle and the InboxView / inbox filter are hidden.
+  inboxWorkflowEnabled: boolean;
+  // v4.6 F6 — when on, marking a note organized (⌘E) inside the inbox context
+  // (InboxView open or inbox filter active) auto-advances to the next inbox
+  // note. Default on. Matches Tolaria's auto_advance_inbox_after_organize.
+  autoAdvanceInboxAfterOrganize: boolean;
   // v4.3.0 PR #75 (beihai23) — transient (not persisted) snapshot of the
   // right-sidebar pane visibility taken when the sidebar is hidden, so
   // toggling it back on can restore the exact previous layout instead of
@@ -391,6 +401,8 @@ function defaults(): Settings {
     attachmentMode: 'shared',
     assetsDirName: '_assets',
     attachmentCustomPath: './images/${filename}/',
+    inboxWorkflowEnabled: true,
+    autoAdvanceInboxAfterOrganize: true,
     _rsPanesBeforeHide: null,
   };
 }
@@ -910,5 +922,14 @@ export const useSettingsStore = defineStore('settings', {
     editorFontIn() { this.setFontSize((this.fontSize || 14) + 1); },
     editorFontOut() { this.setFontSize((this.fontSize || 14) - 1); },
     resetEditorFontSize() { this.setFontSize(14); },
+    // v4.6 F6 — Inbox workflow toggles.
+    toggleInboxWorkflow() {
+      this.inboxWorkflowEnabled = !this.inboxWorkflowEnabled;
+      this.persist();
+    },
+    toggleAutoAdvanceInbox() {
+      this.autoAdvanceInboxAfterOrganize = !this.autoAdvanceInboxAfterOrganize;
+      this.persist();
+    },
   },
 });

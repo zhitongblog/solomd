@@ -54,8 +54,15 @@ const showTodayTotal = computed(
 );
 
 function onPillClick() {
-  // Click toggles off — same affordance as ⌘E.
-  inbox.toggleActive();
+  // Click is the same affordance as ⌘E. v4.6 F6: when the inbox workflow is
+  // on, route through organizeAndAdvance so clicking the pill from inside the
+  // InboxView / inbox filter marks the note organized and advances; otherwise
+  // it's the plain toggle.
+  if (settings.inboxWorkflowEnabled) {
+    void inbox.organizeAndAdvance();
+  } else {
+    inbox.toggleActive();
+  }
 }
 </script>
 
@@ -95,7 +102,7 @@ function onPillClick() {
     <button
       v-if="inbox.activeIsInbox.value"
       class="seg seg--inbox"
-      :title="t('inbox.pillTooltip')"
+      :title="settings.inboxWorkflowEnabled ? t('inbox.pillTooltipOrganize') : t('inbox.pillTooltip')"
       @click="onPillClick"
     >
       {{ t('inbox.pill') }}

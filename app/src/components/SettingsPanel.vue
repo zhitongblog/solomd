@@ -903,6 +903,24 @@ function onSelectPdfFont(v: string) {
           </label>
         </section>
 
+        <!-- v4.6 F6 — Inbox workflow -->
+        <section data-cat="writing">
+          <label>
+            <input type="checkbox" :checked="settings.inboxWorkflowEnabled" @change="settings.toggleInboxWorkflow()" />
+            {{ t('inbox.workflowSetting') }}
+          </label>
+          <div style="font-size: 11px; color: var(--text-faint); margin-top: 4px; line-height: 1.5;">
+            {{ t('inbox.workflowSettingHint') }}
+          </div>
+          <label v-if="settings.inboxWorkflowEnabled" style="margin-top: 8px;">
+            <input type="checkbox" :checked="settings.autoAdvanceInboxAfterOrganize" @change="settings.toggleAutoAdvanceInbox()" />
+            {{ t('inbox.autoAdvanceSetting') }}
+          </label>
+          <div v-if="settings.inboxWorkflowEnabled" style="font-size: 11px; color: var(--text-faint); margin-top: 4px; line-height: 1.5;">
+            {{ t('inbox.autoAdvanceSettingHint') }}
+          </div>
+        </section>
+
         <section data-cat="advanced">
           <label>
             <input type="checkbox" :checked="settings.restoreSession" @change="settings.toggleRestoreSession()" />

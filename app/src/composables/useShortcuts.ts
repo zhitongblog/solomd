@@ -167,8 +167,17 @@ export function useShortcuts(hooks: Hooks = {}) {
       runById('daily.openToday');
     } else if (k === 'e' && !e.shiftKey && !e.altKey) {
       // v2.4: ⌘E toggles `inbox: true|false` in the active doc's front matter.
+      // v4.6 F6: route through organizeAndAdvance — inside the inbox context
+      // (InboxView open / inbox filter on) with auto-advance enabled this
+      // marks the note organized and jumps to the next inbox note; everywhere
+      // else it degrades to the plain toggle. Disabled entirely when the
+      // workflow is opted out.
       e.preventDefault();
-      inbox.toggleActive();
+      if (settings.inboxWorkflowEnabled) {
+        void inbox.organizeAndAdvance();
+      } else {
+        inbox.toggleActive();
+      }
     } else if (k === 'z' && e.shiftKey && !e.altKey) {
       // v2.5 F4: ⌘⇧Z = "Zen" — start the last-used preset (or the
       // settings default if no last-used). If a session is already
