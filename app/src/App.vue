@@ -31,6 +31,11 @@ import { BASES_OPEN_EVENT, BASES_CLOSE_EVENT } from './composables/useBasesView'
 import InboxView from './components/InboxView.vue';
 import { INBOX_OPEN_EVENT, INBOX_CLOSE_EVENT } from './composables/useInboxView';
 import FileTree from './components/FileTree.vue';
+// v4.6 F5 — Saved filtered views (sidebar panel + filtered list + editor).
+import ViewsPanel from './components/ViewsPanel.vue';
+import ViewNoteList from './components/ViewNoteList.vue';
+import ViewEditorDialog from './components/ViewEditorDialog.vue';
+import { VIEW_OPEN_EVENT, VIEW_CLOSE_EVENT } from './composables/useSavedViews';
 import SettingsPanel from './components/SettingsPanel.vue';
 import MarkdownHelp from './components/MarkdownHelp.vue';
 import GlobalSearch from './components/GlobalSearch.vue';
@@ -893,10 +898,13 @@ function onAIRewriteAccept(e: Event) {
 function onAIRewriteCancel() {
   // No-op for now; AIRewriteOverlay self-closes.
 }
-function onOpenBases() { basesOpen.value = true; }
+function onOpenBases() { basesOpen.value = true; viewOpen.value = false; }
 function onCloseBases() { basesOpen.value = false; }
 function onOpenInbox() { inboxViewOpen.value = true; }
 function onCloseInbox() { inboxViewOpen.value = false; }
+// v4.6 F5 — saved-view content swap.
+function onOpenView() { viewOpen.value = true; basesOpen.value = false; }
+function onCloseView() { viewOpen.value = false; }
 
 async function onWikiOpen(e: Event) {
   const detail = (e as CustomEvent).detail || {};
@@ -930,6 +938,8 @@ window.addEventListener(BASES_OPEN_EVENT, onOpenBases as EventListener);
 window.addEventListener(BASES_CLOSE_EVENT, onCloseBases as EventListener);
 window.addEventListener(INBOX_OPEN_EVENT, onOpenInbox as EventListener);
 window.addEventListener(INBOX_CLOSE_EVENT, onCloseInbox as EventListener);
+window.addEventListener(VIEW_OPEN_EVENT, onOpenView as EventListener);
+window.addEventListener(VIEW_CLOSE_EVENT, onCloseView as EventListener);
 window.addEventListener('solomd:open-settings', onOpenSettingsEvent as EventListener);
 
 onBeforeUnmount(() => {
@@ -945,6 +955,8 @@ onBeforeUnmount(() => {
   window.removeEventListener(BASES_CLOSE_EVENT, onCloseBases as EventListener);
   window.removeEventListener(INBOX_OPEN_EVENT, onOpenInbox as EventListener);
   window.removeEventListener(INBOX_CLOSE_EVENT, onCloseInbox as EventListener);
+  window.removeEventListener(VIEW_OPEN_EVENT, onOpenView as EventListener);
+  window.removeEventListener(VIEW_CLOSE_EVENT, onCloseView as EventListener);
   window.removeEventListener('solomd:open-settings', onOpenSettingsEvent as EventListener);
   window.removeEventListener('solomd:open-agent-wizard', onOpenAgentWizard);
   if (unlistenOpened) {
@@ -1168,6 +1180,9 @@ function onSidebarResize(side: 'left' | 'right', ev: MouseEvent) {
 }
 const basesOpen = ref(false);
 const inboxViewOpen = ref(false);
+// v4.6 F5 — when a saved view is opened from the sidebar, the content area
+// swaps to ViewNoteList (mirrors the basesOpen pattern).
+const viewOpen = ref(false);
 const aiHasKey = ref(false);
 async function refreshAiHasKey() {
   if (!settings.aiEnabled) { aiHasKey.value = false; return; }
@@ -1201,7 +1216,10 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
       />
       <TelemetryBanner />
       <div class="workspace">
-        <FileTree v-if="settings.showFileTree" />
+        <div v-if="settings.showFileTree || settings.showViewsPanel" class="left-stack">
+          <FileTree v-if="settings.showFileTree" />
+          <ViewsPanel v-if="settings.showViewsPanel" />
+        </div>
         <aside
           v-if="showRightSidebar && settings.outlineSide === 'left'"
           class="side-sidebar side-sidebar--left"
@@ -1265,6 +1283,7 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
         <div class="content">
           <BasesView v-if="basesOpen" />
           <InboxView v-else-if="inboxViewOpen" />
+          <ViewNoteList v-else-if="viewOpen" />
           <TileRoot v-else :node="tiles.root" @cursor="onCursor" @selection="onSelection" />
         </div>
         <aside
@@ -1413,6 +1432,8 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
       @cancel="onUnsavedAction('cancel')"
     />
     <SessionRestoreDialog />
+    <!-- v4.6 F5 — saved-view create/edit modal (self-mounts via window events). -->
+    <ViewEditorDialog />
     <FileChangedDialog
       :open="fileChangedOpen"
       :file-name="fileChangedFileName"
@@ -1448,6 +1469,18 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
   display: flex;
   min-height: 0;
   overflow: hidden;
+}
+/* v4.6 F5 — left column stacks the file tree above the Saved Views panel. */
+.left-stack {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 0 0 auto;
+}
+.left-stack > :deep(.ftree) {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
 }
 .side-sidebar {
   position: relative;

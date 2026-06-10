@@ -42,6 +42,10 @@ interface Settings {
    *  crowd the editor). After the migration the user is free to toggle it
    *  off via the toolbar / ⌘B / command palette and the choice persists. */
   fileTreeDefaultDesktopMigrated: boolean;
+  /** v4.6 F5 — show the Saved Views panel (left sidebar, below the file tree).
+   *  Lists persistent filtered note lists from `.solomd/views/*.yml`. Default
+   *  off so the panel only appears once the user opts in / creates a view. */
+  showViewsPanel: boolean;
   /** Master toggle that hides the right side sidebar (Outline / Backlinks /
    *  Tags / History / Agent Panel) without forgetting which individual panes
    *  the user had on. Default false (= sidebar visible whenever any pane is
@@ -325,6 +329,7 @@ function defaults(): Settings {
     // Fresh installs already see the new default — mark migration done so
     // load()'s one-time force-on path is a no-op for them.
     fileTreeDefaultDesktopMigrated: true,
+    showViewsPanel: false,
     rightSidebarHidden: false,
     livePreview: true,
     spellCheck: true,
@@ -588,6 +593,10 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleFileTree() {
       this.showFileTree = !this.showFileTree;
+      this.persist();
+    },
+    toggleViewsPanel() {
+      this.showViewsPanel = !this.showViewsPanel;
       this.persist();
     },
     toggleRightSidebar() {

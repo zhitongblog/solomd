@@ -1257,6 +1257,54 @@ export const en = {
     hitCount: '{n} hits',
     keyHint: '↑↓ navigate · ↵ open · Esc close',
   },
+  views: {
+    heading: 'Views',
+    newView: 'New view',
+    newViewTitle: 'Create a saved filtered view',
+    edit: 'Edit view',
+    duplicate: 'Duplicate',
+    delete: 'Delete view',
+    deleteConfirm: 'Delete the view "{name}"? This removes its .yml file.',
+    empty: 'No saved views yet.',
+    emptyHint: 'Create a view to pin a recurring filtered note list.',
+    openFolder: 'Open a folder to use saved views.',
+    matchCount: '{n}',
+    untitled: 'Untitled view',
+    back: 'Back',
+    noMatches: 'No notes match this view.',
+    // Editor dialog
+    editorNew: 'New View',
+    editorEdit: 'Edit View',
+    name: 'Name',
+    namePlaceholder: 'e.g. Active projects',
+    icon: 'Icon',
+    color: 'Color',
+    sort: 'Sort',
+    sortBy: 'Sort by',
+    sortDir: 'Direction',
+    asc: 'Ascending',
+    desc: 'Descending',
+    columns: 'Display columns',
+    columnsHint: 'Shown as muted chips on each note row.',
+    filters: 'Filters',
+    save: 'Save',
+    cancel: 'Cancel',
+    // Filter builder
+    matchAll: 'Match all',
+    matchAny: 'Match any',
+    addCondition: '+ Condition',
+    addGroup: '+ Group',
+    removeRow: 'Remove',
+    field: 'Field',
+    operator: 'Operator',
+    value: 'Value',
+    valuePlaceholder: 'value',
+    relativeDate: 'Relative date',
+    regexInvalid: 'Invalid or unsafe pattern',
+  },
 };
 
-export type I18n = typeof en;
+// `views` (v4.6 F5) is typed OPTIONAL so the 13 non-English locale files don't
+// have to ship the section the same day — the runtime `t()` lookup already
+// falls back to English for any missing key. Translations land in a later minor.
+export type I18n = Omit<typeof en, 'views'> & { views?: typeof en['views'] };
