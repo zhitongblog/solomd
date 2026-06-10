@@ -4,11 +4,139 @@ import Header from '../../components/Header.astro';
 import Footer from '../../components/Footer.astro';
 
 const lang = 'en' as const;
+
+const tolariaVersion = '2026.6.6';
+
+// Each row: [Tolaria capability (html), Tolaria mark, SoloMD mark+note (html)]
+const featureGroups: { title: string; rows: [string, string, string][] }[] = [
+  {
+    title: 'Editor & writing',
+    rows: [
+      ['Block editor (BlockNote, slash commands)', '✅', '🟡 WYSIWYG live-edit view, but CodeMirror source under the hood'],
+      ['Raw Markdown mode (<code>⌘\\</code>)', '✅', '✅ source view + split'],
+      ['Slash-command block menu', '✅', '✅ 20-item palette (toggleable)'],
+      ['Wikilinks <code>[[note]]</code> + autocomplete', '✅', '✅'],
+      ['Inline / block math (KaTeX)', '✅', '✅ + editable source (v4.5.3)'],
+      ['Mermaid diagrams', '✅', '✅ Mermaid 11'],
+      ['Markdown-backed whiteboards (tldraw)', '✅', '❌ <em>roadmap</em>'],
+      ['Tables with in-editor navigation', '✅', '✅ GFM tables'],
+      ['Table-of-contents / outline panel', '✅', '✅ outline with line-jump'],
+      ['Note width: normal / wide', '✅', '✅ preview fit-to-width'],
+      ['Find in note (<code>⌘F</code>)', '✅', '✅'],
+      ['Media / PDF / audio / video preview', '✅', '✅'],
+      ['Auto-save (idle debounce)', '✅', '✅ per-save commit'],
+      ['Multi-tab + split panes', '❌ single tab per vault', '✅ tabs + tile splitting'],
+      ['Vim mode', '❌', '✅'],
+      ['Presentation / slideshow mode', '❌', '✅ reveal.js (<code>⌘⌥P</code>)'],
+      ['Typewriter / focus / zen mode', '❌', '✅ + Pomodoro timer'],
+    ],
+  },
+  {
+    title: 'Vault, files & organization',
+    rows: [
+      ['Plain <code>.md</code> + YAML frontmatter, files-first', '✅', '✅'],
+      ['Multiple vaults / workspaces', '✅', '✅ + MCP federation'],
+      ['Unified cross-vault graph + wikilink aliases', '✅', '🟡 federation via MCP, not a unified UI graph'],
+      ['Type system — <code>type:</code> drives sidebar sections', '✅', '🟡 Bases table view; folders/tabs are primary nav'],
+      ['Typed relationships (<code>belongs_to</code>/<code>related_to</code>/<code>has</code> + inverses)', '✅', '🟡 wikilinks + backlinks'],
+      ['Relationship graph ("Neighborhood")', '✅', '❌ <em>roadmap</em>'],
+      ['Properties inspector (date / relationship pickers)', '✅', '🟡 raw YAML + Bases columns'],
+      ['Saved filtered views in the sidebar', '✅', '🟡 Bases query view'],
+      ['Inbox workflow + mark-organized (<code>⌘E</code>)', '✅', '❌ <em>roadmap</em>'],
+      ['Favorites / pin (<code>⌘D</code>)', '✅', '🟡 quick switcher pins'],
+      ['Folders, nested', '✅', '✅ file-tree sidebar'],
+      ['Tags panel', '🟡 frontmatter only', '✅ <code>#tag</code> aggregation panel'],
+      ['Daily notes', '❌', '✅ folder + format + template'],
+      ['Attachments / paste-to-assets', '✅', '✅ 3 attachment modes (shared / per-file / custom)'],
+      ['Hide git-ignored files toggle', '✅', '🟡 file-tree respects ignore'],
+      ['File import (DOCX / PDF / XLSX / PPTX → md)', '❌', '✅ drag-in via Pandoc'],
+      ['Multi-encoding open (GBK / Big5 / Shift-JIS)', '❌ UTF-8 only', '✅ auto-detect'],
+    ],
+  },
+  {
+    title: 'Git & version control',
+    rows: [
+      ['Commit / pull / push / history in-app', '✅', '✅'],
+      ['Per-note history + diff', '✅', '✅ History panel + rollback'],
+      ['AutoGit auto-checkpoint commits', '✅ idle/inactive thresholds', '✅ per-save commits'],
+      ['Conflict resolver UI (side-by-side merge)', '✅', '🟡 resolve in your own git client'],
+      ['Git activity feed ("Pulse")', '✅', '🟡 History panel'],
+      ['System-git auth (SSH / credential helper)', '✅', '✅ libgit2, no system git needed'],
+      ['End-to-end-encrypted sync', '❌', '✅ Argon2id + XChaCha20-Poly1305'],
+      ['Public read-only share link', '❌', '✅ <code>solomd.app/share/…</code>'],
+    ],
+  },
+  {
+    title: 'AI & agents',
+    rows: [
+      ['Docked AI chat panel (<code>⌘⇧L</code>)', '✅ multi-chat, streaming, action cards', '✅ inline panel + tool-call cards + [[citations]]'],
+      ['In-app CLI coding agents', '✅ 6: Claude Code · Codex · OpenCode · Pi · Gemini · Kiro', '🟡 <code>solomd agent</code> handoff to Claude Code / Codex'],
+      ['Vault-Safe / Power-User permission modes', '✅', '🟡 read-only default + write toggle'],
+      ['Direct model providers (BYOK)', '✅ OpenAI · Anthropic · Gemini · OpenRouter · Ollama · LM Studio · custom', '✅ <strong>14</strong> incl. DeepSeek · Qwen · GLM · Kimi · 火山方舟'],
+      ['Inline AI prompt from editor', '✅ <code>⌘K</code> space', '✅ <code>⌘J</code> rewrite + streaming diff'],
+      ['MCP server (vault as a tool)', '✅ 15 tools + UI bridge', '✅ 15 tools (8 read + 2 write + 5 SoloMD-only)'],
+      ['Scheduled agent recipes (cron / on-save / on-commit)', '❌', '✅ 11-recipe cookbook'],
+      ['AutoGit branch sandbox + accept/reject for agent writes', '❌ writes commit directly', '✅ per-run branch + write-cap'],
+      ['Replayable agent trace (jsonl, replay-from-step)', '❌', '✅'],
+      ['Local semantic search (on-device RAG)', '❌', '✅ <code>⌘⇧F</code>'],
+    ],
+  },
+  {
+    title: 'Export & interoperability',
+    rows: [
+      ['PDF export', '✅', '✅ + page/margin/font presets'],
+      ['Pandoc export (EPUB / ODT / LaTeX / RTF)', '❌', '✅'],
+      ['DOCX / HTML / PNG / plain-text export', '❌', '✅'],
+      ['<code>@citekey</code> citations + .bib / CSL', '❌', '✅'],
+      ['Copy as rich HTML (WeChat / 公众号 / Notion)', '❌', '✅'],
+      ['CLI tool', '❌', '✅ <code>solomd</code> (open / new / search / export / agent)'],
+    ],
+  },
+  {
+    title: 'UI, platforms & polish',
+    rows: [
+      ['Command palette (<code>⌘K</code>)', '✅', '✅ + slash commands'],
+      ['Quick open (<code>⌘P</code>)', '✅', '✅ quick switcher'],
+      ['Themes: light / dark / system', '✅', '✅ + theme marketplace + custom CSS'],
+      ['Multiple windows / pop-out', '✅', '✅'],
+      ['UI zoom', '✅', '✅ <code>⌘=</code>/<code>⌘-</code>'],
+      ['Date-format options (US / EU / ISO / friendly)', '✅', '🟡'],
+      ['UI languages', '✅ 4 (en · zh-Hant · id · be)', '✅ <strong>14</strong>'],
+      ['Desktop: macOS · Windows · Linux', '✅', '✅'],
+      ['Mobile: iPad / iOS / Android', '❌ desktop only', '✅'],
+      ['Telemetry opt-out', '✅', '✅'],
+    ],
+  },
+];
+
+// [Tolaria setting (html), SoloMD equivalent (html)]
+const settingsRows: [string, string][] = [
+  ['<strong>Appearance</strong> — theme (light/dark/system)', '✅ <code>theme</code> + system auto-detect'],
+  ['Appearance — UI language', '✅ 14 languages'],
+  ['Appearance — editor zoom (0.8–1.5)', '✅ global zoom 0.75–2.5× + separate editor/preview font sizes'],
+  ['<strong>Content</strong> — note width (normal/wide)', '✅ preview fit-to-width'],
+  ['Content — date display format (us / eu / iso / friendly)', '🟡 locale-driven'],
+  ['Content — sidebar type pluralization', 'n/a (no type sidebar yet — <em>roadmap</em>)'],
+  ['Content — auto-rename file on first H1', '🟡 manual rename'],
+  ['Content — hide git-ignored files', '🟡 file-tree respects ignore rules'],
+  ['Content — show images / PDFs / unsupported in All-Notes', '✅ file-tree shows all; preview on open'],
+  ['<strong>Sync</strong> — enable Git', '✅ AutoGit toggle'],
+  ['<strong>AutoGit</strong> — enable + idle / inactive thresholds', '✅ AutoGit + debounce seconds'],
+  ['<strong>Vaults</strong> — paths, labels, aliases, colours, mounted, default-new-note vault', '✅ multi-workspace + per-workspace tabs'],
+  ['<strong>AI</strong> — enable AI', '✅ <code>aiEnabled</code>'],
+  ['AI — default agent (Claude Code / Codex / …)', '✅ provider + model selectors (14 providers)'],
+  ['AI — provider API keys', '✅ stored in OS keychain (not a settings file)'],
+  ['AI — permission mode (safe / power-user)', '🟡 read-only default + agent write-cap sandbox'],
+  ['<strong>Workflow</strong> — inbox enabled + auto-advance', '❌ <em>roadmap</em> (no inbox yet)'],
+  ['Workflow — release channel (stable / beta)', '✅ auto-update channel'],
+  ['<strong>Privacy</strong> — telemetry', '✅ opt-out telemetry'],
+  ['<em>SoloMD adds beyond Tolaria:</em>', 'Vim mode · slideshow · Pomodoro · daily-notes · RAG toggle · attachment modes · PDF export presets · bibliography/CSL · custom CSS · scheduled recipes · sidebar pane order/height · image-export branding — none of which Tolaria exposes.'],
+];
 ---
 
 <Layout
   title="SoloMD vs Tolaria — Tauri Markdown Editors Compared (2026)"
-  description="Two Tauri-based open-source Markdown editors. SoloMD: iPad + mobile, 14 AI providers, CJK encoding, Pandoc/citation export, semantic search, scheduled agent recipes + AutoGit sandbox. Tolaria: desktop Notion-style block editor with tldraw whiteboards and built-in AI. Detailed comparison."
+  description="Two Tauri-based open-source Markdown editors, with Tolaria's complete feature & settings reference. SoloMD: iPad + mobile, 14 AI providers, CJK encoding, Pandoc/citation export, semantic search, scheduled agent recipes + AutoGit sandbox. Tolaria: desktop Notion-style block editor with tldraw whiteboards, type-driven sidebar, relationship graph, and 6 built-in CLI agents. Line-by-line comparison."
   lang={lang}
 >
   <Header lang={lang} />
@@ -48,7 +176,8 @@ const lang = 'en' as const;
           <tr><th>Installer size</th><td>~15 MB</td><td>~25 MB</td></tr>
           <tr><th>Editor model</th><td>CodeMirror source-mode + live preview + split</td><td>Block-based slash-command editor (Notion-style)</td></tr>
           <tr><th>Built-in AI providers (BYOK)</th><td>✅ <code>⌘J</code> · <strong>14 providers</strong> · OS keychain · streaming diff overlay</td><td>✅ direct: OpenAI · Anthropic · Gemini · OpenRouter · Ollama · LM Studio · custom</td></tr>
-          <tr><th>Inline streamed chat-with-vault panel</th><td>✅ <strong>v4.0</strong> · multi-turn · tool-call cards · [[wikilink]] citations · Insert / Copy</td><td>🟡 agent integrations (Claude / Codex / Pi / OpenCode) + providers; no SoloMD-style inline panel</td></tr>
+          <tr><th>Inline streamed chat-with-vault panel</th><td>✅ <strong>v4.0</strong> · multi-turn · tool-call cards · [[wikilink]] citations · Insert / Copy</td><td>✅ docked AI panel (<code>⌘⇧L</code>) · multi-chat · streaming · action cards · target picker</td></tr>
+          <tr><th>CLI coding agents</th><td>🟡 <code>solomd agent</code> hands the vault to Claude Code / Codex with MCP pre-wired</td><td>✅ <strong>6 agents</strong> in-app: Claude Code · Codex · OpenCode · Pi · Gemini CLI · Kiro, with Vault-Safe / Power-User modes</td></tr>
           <tr><th>Scheduled agent recipes</th><td>✅ <strong>v4.0</strong> · cron / on-save / on-commit / on-tag · 11-recipe cookbook</td><td>❌</td></tr>
           <tr><th>AutoGit branch sandbox + accept/reject for agent writes</th><td>✅ <strong>v4.0</strong> · per-run branch · write-cap (default 5) · refuses to start dirty</td><td>❌ (agent writes commit directly)</td></tr>
           <tr><th>Replayable agent trace</th><td>✅ <strong>v4.0</strong> · jsonl per step · replay-from-step</td><td>❌</td></tr>
@@ -70,9 +199,65 @@ const lang = 'en' as const;
           <tr><th>Vim mode</th><td>✅</td><td>❌</td></tr>
           <tr><th>Spell-check (Hunspell)</th><td>✅ opt-in</td><td>🟡 OS-level only</td></tr>
           <tr><th>Properties / table view</th><td>✅ Bases (YAML-driven)</td><td>✅ Types-as-lenses (drives nav)</td></tr>
+          <tr><th>Type-driven sidebar (custom icon / colour / columns per note type)</th><td>🟡 Bases gives a table view; folders / tabs are the primary nav</td><td>✅ <code>type:</code> notes become first-class sidebar sections</td></tr>
+          <tr><th>Typed relationships (<code>belongs_to</code> / <code>related_to</code> / <code>has</code> with inverses)</th><td>🟡 wikilinks + backlinks panel only</td><td>✅ first-class relationship fields with automatic inverses</td></tr>
+          <tr><th>Relationship graph ("Neighborhood" view)</th><td>❌</td><td>✅ per-note graph of outgoing + inverse links</td></tr>
+          <tr><th>Properties panel (rich frontmatter editor — date / relationship pickers)</th><td>🟡 raw YAML + Bases columns</td><td>✅ dedicated inspector (<code>⌘⇧I</code>)</td></tr>
+          <tr><th>Saved filtered views in the sidebar</th><td>🟡 Bases query view</td><td>✅ persistent views (type / status / date / regex filters)</td></tr>
+          <tr><th>Inbox workflow (mark-organized, inbox-zero)</th><td>❌</td><td>✅ <code>⌘E</code> + auto-advance</td></tr>
+          <tr><th>Git conflict resolver UI (side-by-side merge)</th><td>🟡 AutoGit is local-only; conflicts handled in your own git client</td><td>✅ in-app conflict resolver</td></tr>
+          <tr><th>Git activity feed ("Pulse")</th><td>🟡 History panel (per-note log + diff)</td><td>✅ chronological vault-wide commit feed</td></tr>
+          <tr><th>End-to-end-encrypted sync</th><td>✅ Argon2id + XChaCha20-Poly1305, fail-closed</td><td>❌ (plain git remotes)</td></tr>
+          <tr><th>Public read-only share link</th><td>✅ <code>solomd.app/share/…</code></td><td>❌</td></tr>
+          <tr><th>Daily notes</th><td>✅ folder + format + template</td><td>❌</td></tr>
+          <tr><th>Tags panel (<code>#tag</code> aggregation)</th><td>✅</td><td>🟡 tags live in frontmatter; no dedicated panel</td></tr>
           <tr><th>CLI tool</th><td>✅ <code>solomd</code></td><td>❌</td></tr>
           <tr><th>UI languages</th><td>✅ 14 languages (en · zh-Hans · ja · ko · …)</td><td>✅ en + zh-Hant · id · be · pl · vi</td></tr>
           <tr><th>Default file format</th><td>plain <code>.md</code></td><td>plain <code>.md</code></td></tr>
+        </tbody>
+      </table>
+
+      <h2>Everything Tolaria ships — and where SoloMD stands</h2>
+      <p class="lead" style="font-size:1rem;">
+        We went deep on Tolaria <strong>{tolariaVersion}</strong>: installed it,
+        clicked through every menu, command, setting and panel, and read the
+        source. Here is its <strong>complete</strong> feature &amp; settings
+        surface, grouped by area, with an honest ✅ / 🟡 / ❌ for SoloMD on every
+        line. Nothing hidden — if Tolaria does something we don't, it's marked
+        ❌ and on our roadmap.
+      </p>
+
+      {featureGroups.map((group) => (
+        <>
+          <h3>{group.title}</h3>
+          <table class="compare-detail compare-ref">
+            <thead>
+              <tr><th>Tolaria capability</th><th>Tolaria</th><th>SoloMD</th></tr>
+            </thead>
+            <tbody>
+              {group.rows.map((r) => (
+                <tr>
+                  <th set:html={r[0]} />
+                  <td class="mark">{r[1]}</td>
+                  <td class="mark" set:html={r[2]} />
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      ))}
+
+      <h3>Tolaria's settings, one by one</h3>
+      <p>Every preference Tolaria exposes (Settings → eight sections), and the
+        SoloMD equivalent:</p>
+      <table class="compare-detail compare-ref">
+        <thead>
+          <tr><th>Tolaria setting</th><th>SoloMD equivalent</th></tr>
+        </thead>
+        <tbody>
+          {settingsRows.map((r) => (
+            <tr><th set:html={r[0]} /><td set:html={r[1]} /></tr>
+          ))}
         </tbody>
       </table>
 
@@ -97,11 +282,14 @@ const lang = 'en' as const;
       </ul>
       <p>
         The gap has narrowed: MCP server, AutoGit version history, multi-vault,
-        Windows, and built-in AI providers all now ship in <em>both</em>. SoloMD's
-        remaining edges are mobile, CJK encodings, Pandoc/citation export, file
-        import, on-device semantic search, and the agent-workflow layer
-        (recipes + sandbox + trace); Tolaria's are the block editor, tldraw
-        whiteboards, and type-driven nav.
+        Windows, a docked AI chat panel, and built-in AI providers all now ship
+        in <em>both</em>. SoloMD's remaining edges are mobile, CJK encodings,
+        Pandoc/citation export, file import, on-device semantic search, and the
+        agent-workflow layer (recipes + sandbox + trace). Tolaria's are the
+        polished block editor, tldraw whiteboards, type-driven sidebar, typed
+        relationships with a graph view, the Inbox workflow, and in-app CLI
+        agents — the structural / knowledge-graph half of the product, which is
+        exactly where our roadmap is now pointed.
       </p>
 
       <h2>Both editors share</h2>
@@ -178,6 +366,9 @@ const lang = 'en' as const;
   .compare-detail th, .compare-detail td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #eee; }
   .compare-detail thead th { background: #fafafa; font-weight: 600; }
   .compare-detail tbody th { font-weight: 500; width: 32%; }
+  .compare-ref tbody th { width: 56%; font-weight: 500; }
+  .compare-ref .mark { width: 22%; white-space: normal; }
+  .compare-ref td.mark { font-size: 13px; }
   .compare-cta { display: flex; gap: 12px; margin-top: 40px; }
   .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; }
   .btn--primary { background: #ff9f40; color: #000; }

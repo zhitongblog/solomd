@@ -4,11 +4,139 @@ import Header from '../../../components/Header.astro';
 import Footer from '../../../components/Footer.astro';
 
 const lang = 'zh' as const;
+
+const tolariaVersion = '2026.6.6';
+
+// 每行：[Tolaria 能力(html), Tolaria 标记, SoloMD 标记+说明(html)]
+const featureGroups: { title: string; rows: [string, string, string][] }[] = [
+  {
+    title: '编辑器与写作',
+    rows: [
+      ['块编辑器（BlockNote、斜杠命令）', '✅', '🟡 有 WYSIWYG 实时编辑视图,但底层是 CodeMirror 源码'],
+      ['Raw Markdown 模式（<code>⌘\\</code>）', '✅', '✅ 源码视图 + 分屏'],
+      ['斜杠命令块菜单', '✅', '✅ 20 项命令面板（可关）'],
+      ['双向链接 <code>[[note]]</code> + 自动补全', '✅', '✅'],
+      ['行内 / 块级公式（KaTeX）', '✅', '✅ + 可编辑源码（v4.5.3）'],
+      ['Mermaid 图', '✅', '✅ Mermaid 11'],
+      ['Markdown 白板（tldraw）', '✅', '❌ <em>路线图中</em>'],
+      ['表格 + 编辑内导航', '✅', '✅ GFM 表格'],
+      ['目录 / 大纲面板', '✅', '✅ 大纲 + 跳行'],
+      ['笔记宽度：正常 / 加宽', '✅', '✅ 预览适配宽度'],
+      ['笔记内查找（<code>⌘F</code>）', '✅', '✅'],
+      ['媒体 / PDF / 音视频预览', '✅', '✅'],
+      ['自动保存（空闲去抖）', '✅', '✅ 每次保存即提交'],
+      ['多标签 + 分屏', '❌ 每 vault 单标签', '✅ 标签页 + 任意分屏'],
+      ['Vim 模式', '❌', '✅'],
+      ['演讲 / 幻灯片模式', '❌', '✅ reveal.js（<code>⌘⌥P</code>）'],
+      ['打字机 / 专注 / 禅模式', '❌', '✅ + 番茄钟'],
+    ],
+  },
+  {
+    title: '仓库、文件与组织',
+    rows: [
+      ['纯 <code>.md</code> + YAML、文件优先', '✅', '✅'],
+      ['多 vault / 工作区', '✅', '✅ + MCP Federation'],
+      ['统一跨 vault 图谱 + wikilink 别名', '✅', '🟡 通过 MCP 联邦,非统一 UI 图谱'],
+      ['类型系统 —— <code>type:</code> 驱动侧栏分区', '✅', '🟡 Bases 表格视图;导航主靠文件夹/标签'],
+      ['类型化关系（<code>belongs_to</code>/<code>related_to</code>/<code>has</code> + 反向）', '✅', '🟡 双向链接 + Backlinks'],
+      ['关系图谱（"Neighborhood"）', '✅', '❌ <em>路线图中</em>'],
+      ['属性检查器（日期 / 关系选择器）', '✅', '🟡 raw YAML + Bases 列'],
+      ['侧栏内保存的过滤视图', '✅', '🟡 Bases 查询视图'],
+      ['Inbox 工作流 + 标记已整理（<code>⌘E</code>）', '✅', '❌ <em>路线图中</em>'],
+      ['收藏 / 置顶（<code>⌘D</code>）', '✅', '🟡 快速切换器置顶'],
+      ['嵌套文件夹', '✅', '✅ 文件树侧栏'],
+      ['标签面板', '🟡 仅 frontmatter', '✅ <code>#tag</code> 聚合面板'],
+      ['每日笔记', '❌', '✅ 文件夹 + 格式 + 模板'],
+      ['附件 / 粘贴到 assets', '✅', '✅ 3 种附件模式（共享 / 单文件 / 自定义）'],
+      ['隐藏 git-ignored 文件开关', '✅', '🟡 文件树遵守忽略规则'],
+      ['文件导入（DOCX / PDF / XLSX / PPTX → md）', '❌', '✅ 拖入即转，走 Pandoc'],
+      ['多编码打开（GBK / Big5 / Shift-JIS）', '❌ 仅 UTF-8', '✅ 自动识别'],
+    ],
+  },
+  {
+    title: 'Git 与版本控制',
+    rows: [
+      ['应用内 commit / pull / push / 历史', '✅', '✅'],
+      ['每篇笔记历史 + diff', '✅', '✅ 历史面板 + 回滚'],
+      ['AutoGit 自动检查点提交', '✅ 空闲/非活跃阈值', '✅ 每次保存提交'],
+      ['冲突解决 UI（并排合并）', '✅', '🟡 在你自己的 git 客户端解决'],
+      ['Git 活动流（"Pulse"）', '✅', '🟡 历史面板'],
+      ['系统 git 鉴权（SSH / 凭据助手）', '✅', '✅ libgit2,无需系统 git'],
+      ['端到端加密同步', '❌', '✅ Argon2id + XChaCha20-Poly1305'],
+      ['公开只读分享链接', '❌', '✅ <code>solomd.app/share/…</code>'],
+    ],
+  },
+  {
+    title: 'AI 与 Agent',
+    rows: [
+      ['内置 AI 聊天面板（<code>⌘⇧L</code>）', '✅ 多会话、流式、动作卡', '✅ 内嵌面板 + 工具卡 + [[引用]]'],
+      ['应用内 CLI 编码 Agent', '✅ 6 个：Claude Code · Codex · OpenCode · Pi · Gemini · Kiro', '🟡 <code>solomd agent</code> 转交 Claude Code / Codex'],
+      ['Vault-Safe / Power-User 权限模式', '✅', '🟡 默认只读 + 写开关'],
+      ['直连模型 provider（BYOK）', '✅ OpenAI · Anthropic · Gemini · OpenRouter · Ollama · LM Studio · 自定义', '✅ <strong>14 个</strong>，含 DeepSeek · 通义 · GLM · Kimi · 火山方舟'],
+      ['编辑器内联 AI 提示', '✅ <code>⌘K</code> 空格', '✅ <code>⌘J</code> 改写 + 流式 diff'],
+      ['MCP server（vault 作为工具）', '✅ 15 工具 + UI 桥', '✅ 15 工具（8 读 + 2 写 + 5 个 SoloMD 专属）'],
+      ['定时 Agent recipe（cron / on-save / on-commit）', '❌', '✅ 11 个起步模板'],
+      ['AutoGit 分支沙箱 + accept/reject 评审', '❌ 直接提交', '✅ 每次运行独立分支 + write-cap'],
+      ['可重放 Agent trace（jsonl、从第 N 步重放）', '❌', '✅'],
+      ['本地语义搜索（设备本地 RAG）', '❌', '✅ <code>⌘⇧F</code>'],
+    ],
+  },
+  {
+    title: '导出与互通',
+    rows: [
+      ['PDF 导出', '✅', '✅ + 页面/边距/字体预设'],
+      ['Pandoc 导出（EPUB / ODT / LaTeX / RTF）', '❌', '✅'],
+      ['DOCX / HTML / PNG / 纯文本导出', '❌', '✅'],
+      ['<code>@citekey</code> 引用 + .bib / CSL', '❌', '✅'],
+      ['复制为富文本 HTML（公众号 / Notion）', '❌', '✅'],
+      ['CLI 命令行工具', '❌', '✅ <code>solomd</code>（open / new / search / export / agent）'],
+    ],
+  },
+  {
+    title: 'UI、平台与打磨',
+    rows: [
+      ['命令面板（<code>⌘K</code>）', '✅', '✅ + 斜杠命令'],
+      ['快速打开（<code>⌘P</code>）', '✅', '✅ 快速切换器'],
+      ['主题：浅色 / 深色 / 跟随系统', '✅', '✅ + 主题市场 + 自定义 CSS'],
+      ['多窗口 / 弹出窗口', '✅', '✅'],
+      ['UI 缩放', '✅', '✅ <code>⌘=</code>/<code>⌘-</code>'],
+      ['日期格式选项（美 / 欧 / ISO / 友好）', '✅', '🟡'],
+      ['UI 语言', '✅ 4 种（en · 繁中 · id · be）', '✅ <strong>14 种</strong>'],
+      ['桌面端：macOS · Windows · Linux', '✅', '✅'],
+      ['移动端：iPad / iOS / Android', '❌ 仅桌面', '✅'],
+      ['遥测可关闭', '✅', '✅'],
+    ],
+  },
+];
+
+// [Tolaria 设置(html), SoloMD 对应(html)]
+const settingsRows: [string, string][] = [
+  ['<strong>外观</strong> —— 主题（浅 / 深 / 系统）', '✅ <code>theme</code> + 系统自动'],
+  ['外观 —— UI 语言', '✅ 14 种语言'],
+  ['外观 —— 编辑器缩放（0.8–1.5）', '✅ 全局缩放 0.75–2.5× + 编辑/预览字号分离'],
+  ['<strong>内容</strong> —— 笔记宽度（正常/加宽）', '✅ 预览适配宽度'],
+  ['内容 —— 日期显示格式（美 / 欧 / ISO / 友好）', '🟡 跟随 locale'],
+  ['内容 —— 侧栏类型复数化', 'n/a（暂无类型侧栏 —— <em>路线图中</em>）'],
+  ['内容 —— 首个 H1 自动重命名文件', '🟡 手动重命名'],
+  ['内容 —— 隐藏 git-ignored 文件', '🟡 文件树遵守忽略规则'],
+  ['内容 —— 全部笔记中显示图片 / PDF / 不支持类型', '✅ 文件树全显示;打开即预览'],
+  ['<strong>同步</strong> —— 启用 Git', '✅ AutoGit 开关'],
+  ['<strong>AutoGit</strong> —— 启用 + 空闲 / 非活跃阈值', '✅ AutoGit + 去抖秒数'],
+  ['<strong>仓库</strong> —— 路径、标签、别名、颜色、挂载、默认新建笔记仓库', '✅ 多工作区 + 每工作区标签'],
+  ['<strong>AI</strong> —— 启用 AI', '✅ <code>aiEnabled</code>'],
+  ['AI —— 默认 Agent（Claude Code / Codex / …）', '✅ provider + 模型选择（14 provider）'],
+  ['AI —— provider API key', '✅ 存 OS 钥匙串（不落配置文件）'],
+  ['AI —— 权限模式（safe / power-user）', '🟡 默认只读 + agent write-cap 沙箱'],
+  ['<strong>工作流</strong> —— Inbox 启用 + 自动前进', '❌ <em>路线图中</em>（暂无 Inbox）'],
+  ['工作流 —— 发布通道（stable / beta）', '✅ 自动更新通道'],
+  ['<strong>隐私</strong> —— 遥测', '✅ 可关闭遥测'],
+  ['<em>SoloMD 在 Tolaria 之外还多：</em>', 'Vim 模式 · 幻灯片 · 番茄钟 · 每日笔记 · RAG 开关 · 附件模式 · PDF 导出预设 · 参考文献/CSL · 自定义 CSS · 定时 recipe · 侧栏面板顺序/高度 · 图片导出水印 —— 这些 Tolaria 都没有。'],
+];
 ---
 
 <Layout
   title="SoloMD vs Tolaria —— 两款 Tauri Markdown 编辑器对比 (2026)"
-  description="两个 Tauri 开源 Markdown 编辑器的并排对比。SoloMD：iPad/移动端、14 AI provider、CJK 编码识别、Pandoc/引用导出、本地语义搜索、定时 Agent recipe + AutoGit 沙箱;Tolaria：桌面端 Notion 式块编辑器,带 tldraw 白板和内置 AI。详细对比。"
+  description="两个 Tauri 开源 Markdown 编辑器的并排对比,含 Tolaria 完整功能与设置清单。SoloMD：iPad/移动端、14 AI provider、CJK 编码识别、Pandoc/引用导出、本地语义搜索、定时 Agent recipe + AutoGit 沙箱;Tolaria：桌面端 Notion 式块编辑器,带 tldraw 白板、类型驱动侧栏、关系图谱和 6 个内置 CLI agent。逐项对比。"
   lang={lang}
 >
   <Header lang={lang} />
@@ -39,7 +167,8 @@ const lang = 'zh' as const;
           <tr><th>安装包大小</th><td>~15 MB</td><td>~25 MB</td></tr>
           <tr><th>编辑模型</th><td>CodeMirror 源码模式 + 实时预览 + 分屏</td><td>Notion 式块编辑器 + 斜杠命令</td></tr>
           <tr><th>内置 AI provider（BYOK）</th><td>✅ <code>⌘J</code> · <strong>14 个</strong> · OS 钥匙串 · 流式 diff 浮层</td><td>✅ 直连：OpenAI · Anthropic · Gemini · OpenRouter · Ollama · LM Studio · 自定义</td></tr>
-          <tr><th>内置流式 chat-with-vault 面板</th><td>✅ <strong>v4.0</strong> · 多轮 · 工具卡 · [[wikilink]] 引用 · 插入/复制</td><td>🟡 agent 集成（Claude / Codex / Pi / OpenCode）+ provider；无 SoloMD 式内嵌面板</td></tr>
+          <tr><th>内置流式 chat-with-vault 面板</th><td>✅ <strong>v4.0</strong> · 多轮 · 工具卡 · [[wikilink]] 引用 · 插入/复制</td><td>✅ 内置 AI 面板（<code>⌘⇧L</code>）· 多会话 · 流式 · 动作卡 · 目标选择器</td></tr>
+          <tr><th>应用内 CLI 编码 Agent</th><td>🟡 <code>solomd agent</code> 把 vault 交给 Claude Code / Codex（已接好 MCP）</td><td>✅ <strong>6 个 agent</strong> 应用内：Claude Code · Codex · OpenCode · Pi · Gemini CLI · Kiro，带 Vault-Safe / Power-User 模式</td></tr>
           <tr><th>定时 Agent Recipe</th><td>✅ <strong>v4.0</strong> · cron / on-save / on-commit / on-tag · 11 个起步模板</td><td>❌</td></tr>
           <tr><th>AutoGit 分支沙箱 + accept/reject 评审</th><td>✅ <strong>v4.0</strong> · 每次运行独立分支 · write-cap（默认 5）· 工作区脏时拒启动</td><td>❌（agent 直接提交）</td></tr>
           <tr><th>可重放的 Agent Trace</th><td>✅ <strong>v4.0</strong> · 按步 jsonl · 从第 N 步重放</td><td>❌</td></tr>
@@ -61,9 +190,62 @@ const lang = 'zh' as const;
           <tr><th>Vim 模式</th><td>✅</td><td>❌</td></tr>
           <tr><th>拼写检查（Hunspell）</th><td>✅ opt-in</td><td>🟡 仅依赖系统</td></tr>
           <tr><th>属性 / 表格视图</th><td>✅ Bases（基于 YAML）</td><td>✅ Types-as-lenses（驱动导航）</td></tr>
+          <tr><th>类型驱动侧栏（每种类型自定义图标 / 颜色 / 列）</th><td>🟡 Bases 给表格视图;导航主靠文件夹 / 标签</td><td>✅ <code>type:</code> 笔记成为侧栏一级分区</td></tr>
+          <tr><th>类型化关系（<code>belongs_to</code> / <code>related_to</code> / <code>has</code> 带反向）</th><td>🟡 仅双向链接 + Backlinks 面板</td><td>✅ 一级关系字段，自动反向</td></tr>
+          <tr><th>关系图谱（"Neighborhood" 视图）</th><td>❌</td><td>✅ 每篇笔记的出链 + 反向链接图</td></tr>
+          <tr><th>属性面板（富 frontmatter 编辑器 —— 日期 / 关系选择器）</th><td>🟡 raw YAML + Bases 列</td><td>✅ 专用检查器（<code>⌘⇧I</code>）</td></tr>
+          <tr><th>侧栏内保存的过滤视图</th><td>🟡 Bases 查询视图</td><td>✅ 持久视图（类型 / 状态 / 日期 / 正则过滤）</td></tr>
+          <tr><th>Inbox 工作流（标记已整理、Inbox Zero）</th><td>❌</td><td>✅ <code>⌘E</code> + 自动前进</td></tr>
+          <tr><th>Git 冲突解决 UI（并排合并）</th><td>🟡 AutoGit 本地;冲突在自己的 git 客户端处理</td><td>✅ 应用内冲突解决器</td></tr>
+          <tr><th>Git 活动流（"Pulse"）</th><td>🟡 历史面板（每篇日志 + diff）</td><td>✅ 全 vault 时间线提交流</td></tr>
+          <tr><th>端到端加密同步</th><td>✅ Argon2id + XChaCha20-Poly1305、fail-closed</td><td>❌（普通 git 远端）</td></tr>
+          <tr><th>公开只读分享链接</th><td>✅ <code>solomd.app/share/…</code></td><td>❌</td></tr>
+          <tr><th>每日笔记</th><td>✅ 文件夹 + 格式 + 模板</td><td>❌</td></tr>
+          <tr><th>标签面板（<code>#tag</code> 聚合）</th><td>✅</td><td>🟡 标签存 frontmatter;无专用面板</td></tr>
           <tr><th>CLI 命令行工具</th><td>✅ <code>solomd</code></td><td>❌</td></tr>
           <tr><th>UI 语言</th><td>✅ 14 种（en · zh-Hans · ja · ko · …）</td><td>✅ en + 繁中 · id · be · pl · vi</td></tr>
           <tr><th>默认文件格式</th><td>纯 <code>.md</code></td><td>纯 <code>.md</code></td></tr>
+        </tbody>
+      </table>
+
+      <h2>Tolaria 支持的全部功能 —— 以及 SoloMD 的对应情况</h2>
+      <p class="lead" style="font-size:1rem;">
+        我们把 Tolaria <strong>{tolariaVersion}</strong> 装下来,点过了每一个菜单、命令、设置和面板,
+        还读了源码。下面是它<strong>完整</strong>的功能 &amp; 设置清单,按区域分组,
+        每一行都给出 SoloMD 诚实的 ✅ / 🟡 / ❌。不藏着掖着 ——
+        凡是 Tolaria 有而我们没有的,都标 ❌ 并已列入路线图。
+      </p>
+
+      {featureGroups.map((group) => (
+        <>
+          <h3>{group.title}</h3>
+          <table class="compare-detail compare-ref">
+            <thead>
+              <tr><th>Tolaria 能力</th><th>Tolaria</th><th>SoloMD</th></tr>
+            </thead>
+            <tbody>
+              {group.rows.map((r) => (
+                <tr>
+                  <th set:html={r[0]} />
+                  <td class="mark">{r[1]}</td>
+                  <td class="mark" set:html={r[2]} />
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      ))}
+
+      <h3>Tolaria 的设置项，逐条对照</h3>
+      <p>Tolaria 暴露的每一个偏好设置（设置 → 八个分区），以及 SoloMD 的对应：</p>
+      <table class="compare-detail compare-ref">
+        <thead>
+          <tr><th>Tolaria 设置</th><th>SoloMD 对应</th></tr>
+        </thead>
+        <tbody>
+          {settingsRows.map((r) => (
+            <tr><th set:html={r[0]} /><td set:html={r[1]} /></tr>
+          ))}
         </tbody>
       </table>
 
@@ -87,7 +269,7 @@ const lang = 'zh' as const;
         <li>你想要 Tiago Forte 式的 <strong>Inbox 工作流</strong> + 显式 organized 标记。</li>
       </ul>
       <p>
-        差距已经缩小：MCP server、AutoGit 版本历史、多 vault、Windows、内置 AI provider 现在<em>两者都有</em>。SoloMD 仍领先的是：移动端、CJK 编码、Pandoc/引用导出、文件导入、设备本地语义搜索,以及 Agent 工作流层（recipe + 沙箱 + trace）；Tolaria 领先的是：块编辑器、tldraw 白板、类型驱动导航。
+        差距已经缩小：MCP server、AutoGit 版本历史、多 vault、Windows、内置 AI 聊天面板、内置 AI provider 现在<em>两者都有</em>。SoloMD 仍领先的是：移动端、CJK 编码、Pandoc/引用导出、文件导入、设备本地语义搜索,以及 Agent 工作流层（recipe + 沙箱 + trace）。Tolaria 领先的是：打磨过的块编辑器、tldraw 白板、类型驱动侧栏、带图谱视图的类型化关系、Inbox 工作流,以及应用内 CLI agent —— 也就是产品里"结构化 / 知识图谱"的那一半,而这正是我们路线图现在的方向。
       </p>
 
       <h2>两者共同点</h2>
@@ -147,6 +329,9 @@ const lang = 'zh' as const;
   .compare-detail th, .compare-detail td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #eee; }
   .compare-detail thead th { background: #fafafa; font-weight: 600; }
   .compare-detail tbody th { font-weight: 500; width: 32%; }
+  .compare-ref tbody th { width: 56%; font-weight: 500; }
+  .compare-ref .mark { width: 22%; white-space: normal; }
+  .compare-ref td.mark { font-size: 13px; }
   .compare-cta { display: flex; gap: 12px; margin-top: 40px; }
   .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; }
   .btn--primary { background: #ff9f40; color: #000; }
