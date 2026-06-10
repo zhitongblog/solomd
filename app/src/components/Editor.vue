@@ -27,6 +27,7 @@ import type { Tab } from '../types';
 import { livePreviewExtension, richHighlightOnly } from '../lib/cm-live-preview';
 import { liveEditExtension } from '../lib/cm-live-render';
 import { liveBlocksExtension, liveBlocksTheme, extractImageRoot } from '../lib/cm-live-blocks';
+import { replaceBoardSnapshot } from '../lib/tldraw-board';
 import { dragAwareExtension } from '../lib/cm-drag-aware';
 import { imagePasteExtension, insertImageFromPath as cmInsertImageFromPath } from '../lib/cm-image-paste';
 import { focusModeExtension, typewriterModeExtension } from '../lib/cm-focus-mode';
@@ -154,6 +155,18 @@ function richExtensionsFor(tab: Tab) {
       liveBlocksExtension({
         getImageRoot: () => extractImageRoot(tab.content || ''),
         getFilePath: () => tab.filePath,
+        // F7 — live tldraw whiteboard theme + writeback.
+        getBoardTheme: () => ({
+          colorScheme: settings.theme === 'dark' ? 'dark' : 'light',
+          locale: settings.language || 'en',
+        }),
+        getTabId: () => tab.id,
+        onBoardEdit: (boardId, snapshotJson) => {
+          const cur = tabs.tabs.find((x) => x.id === tab.id);
+          if (!cur) return;
+          const next = replaceBoardSnapshot(cur.content || '', boardId, snapshotJson);
+          if (next !== cur.content) tabs.setContent(tab.id, next);
+        },
       }),
       liveBlocksTheme,
     ]);

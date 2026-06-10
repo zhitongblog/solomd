@@ -956,6 +956,7 @@ export const en = {
       math_block: 'Math block',
       math_inline: 'Inline math',
       mermaid: 'Mermaid diagram',
+      whiteboard: 'Whiteboard',
       link: 'Link',
       image: 'Image',
       bold: 'Bold',
@@ -978,6 +979,7 @@ export const en = {
       math_block: '$$ … $$',
       math_inline: '$x$',
       mermaid: 'flowchart',
+      whiteboard: 'tldraw board',
       link: '[text](url)',
       image: '![alt](src)',
       bold: '**text**',
@@ -986,6 +988,15 @@ export const en = {
       inline_code: '`code`',
       frontmatter: '--- yaml ---',
     },
+  },
+  whiteboard: {
+    // F7 — Markdown-backed tldraw whiteboards.
+    loading: 'Loading whiteboard…',
+    empty: 'Empty whiteboard',
+    loadFailed: 'Whiteboard failed to load',
+    openFull: 'Open fullscreen',
+    closeFull: 'Close',
+    insert: 'Insert whiteboard',
   },
   cloudSync: {
     detectedTitle: 'Workspace is in {label}',

@@ -148,9 +148,13 @@ md.renderer.rules.fence = function (tokens, idx, options, env, self) {
     ? defaultFenceRenderer(tokens, idx, options, env, self)
     : self.renderToken(tokens, idx, options);
   // Skip mermaid — Preview.vue replaces these blocks with rendered SVGs.
+  // Skip tldraw (F7) the same way — Preview.vue swaps the ```tldraw fence for
+  // a static board SVG thumbnail (the language class survives so the
+  // post-processor can find it).
   const tok = tokens[idx];
   const info = (tok.info || '').trim().toLowerCase();
-  if (info === 'mermaid') return html;
+  const lang = info.split(/\s+/)[0];
+  if (lang === 'mermaid' || lang === 'tldraw') return html;
   // Inject .cb-line wrappers on each line. We do this on the rendered HTML
   // because the highlight has already produced <span class="hljs-..."> spans
   // that may straddle multiple lines (most don't, but a few hljs grammars do

@@ -159,6 +159,43 @@ async function processMermaid() {
   }
 }
 
+// v4.6 F7 — render ```tldraw fences as static board thumbnails in the preview.
+// The fence body is a TLStoreSnapshot; we ask the runtime adapter (dynamic
+// import) to export it to a printable SVG so non-editing surfaces stay light.
+// The board class survives markdown-it as `code.language-tldraw`.
+async function processWhiteboards() {
+  if (!host.value) return;
+  const blocks = host.value.querySelectorAll('pre > code.language-tldraw');
+  if (blocks.length === 0) return;
+  const { boardToSvg } = await import('../lib/tldraw-runtime');
+  const theme = {
+    colorScheme: (settings.theme === 'dark' ? 'dark' : 'light') as 'dark' | 'light',
+    locale: settings.language || 'en',
+  };
+  for (const block of Array.from(blocks)) {
+    const pre = block.parentElement as HTMLElement | null;
+    if (!pre || pre.dataset.rendered === '1') continue;
+    pre.dataset.rendered = '1';
+    const snapshot = (block.textContent || '').trim();
+    const wrap = document.createElement('div');
+    wrap.className = 'whiteboard-block';
+    try {
+      const svg = await boardToSvg(snapshot, theme);
+      if (svg) {
+        wrap.innerHTML = svg;
+      } else {
+        wrap.classList.add('whiteboard-block--empty');
+        wrap.textContent = t('whiteboard.empty');
+      }
+      pre.replaceWith(wrap);
+    } catch {
+      wrap.classList.add('whiteboard-block--empty');
+      wrap.textContent = t('whiteboard.loadFailed');
+      pre.replaceWith(wrap);
+    }
+  }
+}
+
 watch(
   () => settings.theme,
   (t) => {
@@ -217,6 +254,7 @@ watch(html, async () => {
   mathEdit.value = null;
   await nextTick();
   await processMermaid();
+  await processWhiteboards();
   attachImageOverlayHandlers();
 });
 
@@ -267,6 +305,7 @@ function handleLinkClick(e: MouseEvent) {
 onMounted(async () => {
   await nextTick();
   await processMermaid();
+  await processWhiteboards();
   attachImageOverlayHandlers();
   host.value?.addEventListener('click', handleLinkClick);
   host.value?.addEventListener('dblclick', onPreviewDblClick);
@@ -525,6 +564,24 @@ defineExpose({ scrollToLine, openSearch });
   color: var(--danger);
   background: rgba(214, 69, 69, 0.08);
   border-left: 3px solid var(--danger);
+}
+/* F7 — static whiteboard thumbnail in preview/reading/export. */
+:where(.preview-content) .whiteboard-block {
+  display: flex;
+  justify-content: center;
+  margin: 1.5em 0;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+:where(.preview-content) .whiteboard-block svg {
+  max-width: 100%;
+  height: auto;
+}
+:where(.preview-content) .whiteboard-block--empty {
+  color: var(--text-faint);
+  font-style: italic;
 }
 :where(.preview-content) .katex-display {
   overflow-x: auto;
