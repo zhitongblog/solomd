@@ -373,7 +373,13 @@ export const en = {
     keyPlaceholder: 'Relationship name (e.g. cites)',
     remove: 'Remove',
     cancel: 'Cancel',
+    add: 'Add',
     inverseOf: 'Inverse of {key}',
+    suggested: 'Suggested',
+    unresolved: 'Unresolved — no note named “{target}” in this folder',
+    saveFirst: 'Save the document to edit its relationships.',
+    noMatches: 'No matching notes.',
+    keyExists: 'That relationship already exists.',
   },
   spellcheck: {
     suggestions: 'Suggestions',
