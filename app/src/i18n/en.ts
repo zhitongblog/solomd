@@ -319,6 +319,7 @@ export const en = {
     inverse: 'Inverse',
     backlinks: 'Backlinks',
     back: 'Back',
+    showMore: 'Show {n} more',
   },
   types: {
     heading: 'Types',
