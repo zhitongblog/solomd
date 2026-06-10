@@ -14,7 +14,7 @@ import { cleanAIArtifacts } from '../lib/clean-ai';
 import { useI18n } from '../i18n';
 import { openPath } from '@tauri-apps/plugin-opener';
 import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
-import { isIOS } from '../lib/platform';
+import { isIOS, isMacOS } from '../lib/platform';
 import { IS_APP_STORE_BUILD } from '../lib/app-build';
 import { EditorView } from '@codemirror/view';
 
@@ -36,6 +36,15 @@ const exporter = useExport();
 const toasts = useToastsStore();
 
 const isMarkdown = computed(() => tabs.activeTab?.language === 'markdown');
+
+// v4.6 unified title bar (macOS only). With `titleBarStyle: "Overlay"` in
+// tauri.conf, the red/yellow/green traffic lights float over the top-left of
+// our toolbar instead of sitting in a separate native title bar above it —
+// one combined bar (Tolaria-style). We reserve ~72px on the left for them and
+// make the bar background draggable. Windows / Linux keep native decorations
+// and get neither the pad nor the drag region. Computed once at module init
+// (platform doesn't change at runtime).
+const macTitleBar = isMacOS();
 
 /**
  * v2.5 F6 — open the CJK proofread panel. App.vue listens for this
@@ -306,8 +315,15 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="toolbar">
-    <div class="toolbar__brand">
+  <div
+    class="toolbar"
+    :class="{ 'toolbar--mac': macTitleBar }"
+    :data-tauri-drag-region="macTitleBar ? '' : undefined"
+  >
+    <div
+      class="toolbar__brand"
+      :data-tauri-drag-region="macTitleBar ? '' : undefined"
+    >
       <span class="brand__hash">#</span><span class="brand__md">MD</span>
     </div>
 
@@ -559,7 +575,10 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <div class="toolbar__spacer"></div>
+    <div
+      class="toolbar__spacer"
+      :data-tauri-drag-region="macTitleBar ? '' : undefined"
+    ></div>
 
     <div class="toolbar__group" v-if="isMarkdown">
       <button
@@ -722,6 +741,14 @@ onBeforeUnmount(() => {
      #181 fix needs to be redone with `<Teleport>` for dropdowns or a
      media-query-based group collapse. Tracked for v3.7. */
 }
+/* v4.6 unified title bar — macOS only. The native traffic-light buttons are
+   overlaid at the top-left by `titleBarStyle: "Overlay"`; reserve room for
+   them so they don't sit on top of the brand / New button. ~72px clears the
+   three 12px lights + their inset. Windows / Linux keep native decorations
+   and never get this class, so their toolbar starts flush-left as before. */
+.toolbar--mac {
+  padding-left: 72px;
+}
 .toolbar > * { flex-shrink: 0; }
 .toolbar__brand {
   font-family: var(--font-mono);
@@ -730,8 +757,11 @@ onBeforeUnmount(() => {
   letter-spacing: 0.02em;
   margin-right: 4px;
 }
-.brand__hash { color: var(--accent); }
-.brand__md { color: var(--text); }
+/* Let drag events bubble up to .toolbar__brand (which carries the drag-region
+   attr on macOS) — Tauri reads the exact mousedown target, so the inner spans
+   must be click-through for the brand to be draggable. */
+.brand__hash { color: var(--accent); pointer-events: none; }
+.brand__md { color: var(--text); pointer-events: none; }
 
 .toolbar__group {
   display: flex;
@@ -906,9 +936,9 @@ onBeforeUnmount(() => {
   min-width: 280px;
   background: var(--bg-elev);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
-  z-index: 100;
+  border-radius: var(--r-md);
+  box-shadow: var(--sh-pop);
+  z-index: var(--z-pop);
   padding: 4px;
   max-height: 360px;
   overflow-y: auto;

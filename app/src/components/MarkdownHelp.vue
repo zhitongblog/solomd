@@ -1,11 +1,17 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { DsModal, DsTabs, DsInput } from '../ui';
 
 const props = defineProps<{ open: boolean }>();
 const emit = defineEmits<{ (e: 'close'): void }>();
 
 type Tab = 'syntax' | 'shortcuts' | 'cli';
 const activeTab = ref<Tab>('syntax');
+const helpTabs = [
+  { value: 'syntax', label: 'Markdown 语法' },
+  { value: 'shortcuts', label: '快捷键' },
+  { value: 'cli', label: 'CLI' },
+];
 const query = ref('');
 const today = new Date().toISOString().slice(0, 10);
 const cliExampleNew = `solomd new "daily-${today}" "今日待办："`;
@@ -359,23 +365,29 @@ async function copyExample(text: string) {
 </script>
 
 <template>
-  <div v-if="props.open" class="help__backdrop" @click.self="emit('close')">
-    <div class="help" role="dialog" aria-label="SoloMD help">
-      <header class="help__header">
-        <div class="help__tabs">
-          <button :class="{ active: activeTab === 'syntax' }" @click="activeTab = 'syntax'">Markdown 语法</button>
-          <button :class="{ active: activeTab === 'shortcuts' }" @click="activeTab = 'shortcuts'">快捷键</button>
-          <button :class="{ active: activeTab === 'cli' }" @click="activeTab = 'cli'">CLI</button>
-        </div>
-        <input
+  <DsModal
+    :model-value="props.open"
+    width="820px"
+    @update:model-value="emit('close')"
+  >
+    <template #header>
+      <div class="help__hdr">
+        <DsTabs
+          :model-value="activeTab"
+          :tabs="helpTabs"
+          class="help__tabs"
+          @update:model-value="activeTab = ($event as Tab)"
+        />
+        <DsInput
           v-if="activeTab === 'syntax'"
-          v-model="query"
+          :model-value="query"
+          size="sm"
           class="help__search"
           placeholder="搜索语法 / Search syntax…"
-          spellcheck="false"
+          @update:model-value="query = $event"
         />
-        <button class="help__close" @click="emit('close')">×</button>
-      </header>
+      </div>
+    </template>
       <div class="help__body">
         <template v-if="activeTab === 'syntax'">
           <section v-for="cat in categories" :key="cat" class="help__section">
@@ -458,71 +470,45 @@ async function copyExample(text: string) {
           </section>
         </template>
       </div>
-      <footer class="help__footer">
+    <template #footer>
+      <div class="help__footer">
         点击代码块可复制 · 按 <kbd>Esc</kbd> 或点击外部关闭<br />
         Click any code block to copy · Press <kbd>Esc</kbd> or click outside to close
-      </footer>
-    </div>
-  </div>
+      </div>
+    </template>
+  </DsModal>
 </template>
 
 <style scoped>
-.help__backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-.help {
-  background: var(--bg-elev);
-  width: min(820px, 94vw);
-  max-height: 86vh;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.4);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-.help__header {
+/* Header row inside DsModal's header slot: tab strip on the left, the
+   syntax search box on the right. */
+.help__hdr {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--border);
+  flex: 1;
+  min-width: 0;
 }
-.help__header h2 {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
+.help__tabs {
   flex-shrink: 0;
+}
+/* DsTabs always renders a (here empty) panel under the tablist — collapse it
+   since we host the real content in the modal body. */
+.help__tabs :deep(.ds-tabs__panel) {
+  display: none;
+}
+.help__tabs :deep(.ds-tabs__list) {
+  border-bottom: none;
 }
 .help__search {
   flex: 1;
-  background: var(--bg);
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 6px 10px;
-  font: 12px var(--font-ui);
-  outline: none;
-}
-.help__search:focus {
-  border-color: var(--accent);
-}
-.help__close {
-  font-size: 22px;
-  line-height: 1;
-  padding: 0 6px;
-  color: var(--text-muted);
+  min-width: 0;
+  max-width: 320px;
 }
 .help__body {
-  padding: 18px 22px 8px;
-  overflow-y: auto;
-  flex: 1;
+  /* DsModal body already provides padding + scroll; just trim the top so the
+     first section sits closer to the header. */
+  margin: -4px 0 0;
 }
 .help__section {
   margin-bottom: 22px;

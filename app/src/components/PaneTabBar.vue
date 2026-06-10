@@ -452,13 +452,13 @@ onBeforeUnmount(() => {
 }
 .ctx-menu {
   position: fixed;
-  z-index: 9999;
+  z-index: var(--z-pop);
   background: var(--bg-elev);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--r-md);
   padding: 4px 0;
   min-width: 140px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  box-shadow: var(--sh-pop);
 }
 .ctx-item {
   display: block;

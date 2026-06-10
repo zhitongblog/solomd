@@ -13,18 +13,30 @@ import CommandPalette from './components/CommandPalette.vue';
 import QuickSwitcher from './components/QuickSwitcher.vue';
 import Outline from './components/Outline.vue';
 import BacklinksPanel from './components/BacklinksPanel.vue';
+import NeighborhoodPanel from './components/NeighborhoodPanel.vue';
+import RelationshipsPanel from './components/RelationshipsPanel.vue';
 import TagsPanel from './components/TagsPanel.vue';
+import TypesPanel from './components/TypesPanel.vue';
 import HistoryPanel from './components/HistoryPanel.vue';
+import PropertiesInspector from './components/PropertiesInspector.vue';
 import AgentPanel from './components/AgentPanel.vue';
 import RsSplitter from './components/RsSplitter.vue';
 import { useAutoCommit } from './composables/useAutoCommit';
 import { useGithubSync } from './composables/useGithubSync';
 import { useSessionRestore } from './composables/useSessionRestore';
 import SessionRestoreDialog from './components/SessionRestoreDialog.vue';
+import WhiteboardOverlay from './components/WhiteboardOverlay.vue';
 import AIRewriteOverlay from './components/AIRewriteOverlay.vue';
 import BasesView from './components/BasesView.vue';
 import { BASES_OPEN_EVENT, BASES_CLOSE_EVENT } from './composables/useBasesView';
+import InboxView from './components/InboxView.vue';
+import { INBOX_OPEN_EVENT, INBOX_CLOSE_EVENT } from './composables/useInboxView';
 import FileTree from './components/FileTree.vue';
+// v4.6 F5 — Saved filtered views (sidebar panel + filtered list + editor).
+import ViewsPanel from './components/ViewsPanel.vue';
+import ViewNoteList from './components/ViewNoteList.vue';
+import ViewEditorDialog from './components/ViewEditorDialog.vue';
+import { VIEW_OPEN_EVENT, VIEW_CLOSE_EVENT } from './composables/useSavedViews';
 import SettingsPanel from './components/SettingsPanel.vue';
 import MarkdownHelp from './components/MarkdownHelp.vue';
 import GlobalSearch from './components/GlobalSearch.vue';
@@ -54,6 +66,12 @@ import { useWorkspaceStore } from './stores/workspace';
 import { useWorkspaceIndexStore } from './stores/workspaceIndex';
 import { useRagStore } from './stores/rag';
 import { IS_APP_STORE_BUILD } from './lib/app-build';
+import UiPreview from './components/UiPreview.vue';
+
+/* v4.6 dev-only UI gallery. `?uikit` renders ONLY the design-system preview
+ * and skips the normal app, so the token layer can be eyeballed in isolation.
+ * Pure read of location.search at module init — no effect on normal startup. */
+const showUiKit = new URLSearchParams(location.search).has('uikit');
 
 const tabs = useTabsStore();
 const settings = useSettingsStore();
@@ -123,7 +141,10 @@ function closeSidebarCtx() { sidebarCtx.value = null; }
 function rsPaneSnapshot() {
   return {
     showBacklinks: settings.showBacklinks,
+    showRelationships: settings.showRelationships,
     showTagsPanel: settings.showTagsPanel,
+    showNeighborhood: settings.showNeighborhood,
+    showTypesPanel: settings.showTypesPanel,
     showHistoryPanel: settings.showHistoryPanel,
     showAgentPanel: settings.showAgentPanel,
   };
@@ -137,7 +158,10 @@ function ctxToggle(toggleFn: () => void) {
     !searchOpen.value &&
     !showOutlinePane.value &&
     !settings.showBacklinks &&
+    !settings.showRelationships &&
     !settings.showTagsPanel &&
+    !showNeighborhoodPane.value &&
+    !settings.showTypesPanel &&
     !settings.showHistoryPanel &&
     (IS_APP_STORE_BUILD || !settings.showAgentPanel);
   if (noPanesVisible) {
@@ -875,8 +899,13 @@ function onAIRewriteAccept(e: Event) {
 function onAIRewriteCancel() {
   // No-op for now; AIRewriteOverlay self-closes.
 }
-function onOpenBases() { basesOpen.value = true; }
+function onOpenBases() { basesOpen.value = true; viewOpen.value = false; }
 function onCloseBases() { basesOpen.value = false; }
+function onOpenInbox() { inboxViewOpen.value = true; }
+function onCloseInbox() { inboxViewOpen.value = false; }
+// v4.6 F5 — saved-view content swap.
+function onOpenView() { viewOpen.value = true; basesOpen.value = false; }
+function onCloseView() { viewOpen.value = false; }
 
 async function onWikiOpen(e: Event) {
   const detail = (e as CustomEvent).detail || {};
@@ -908,6 +937,10 @@ window.addEventListener('solomd:ai-rewrite-accept', onAIRewriteAccept as EventLi
 window.addEventListener('solomd:ai-rewrite-cancel', onAIRewriteCancel as EventListener);
 window.addEventListener(BASES_OPEN_EVENT, onOpenBases as EventListener);
 window.addEventListener(BASES_CLOSE_EVENT, onCloseBases as EventListener);
+window.addEventListener(INBOX_OPEN_EVENT, onOpenInbox as EventListener);
+window.addEventListener(INBOX_CLOSE_EVENT, onCloseInbox as EventListener);
+window.addEventListener(VIEW_OPEN_EVENT, onOpenView as EventListener);
+window.addEventListener(VIEW_CLOSE_EVENT, onCloseView as EventListener);
 window.addEventListener('solomd:open-settings', onOpenSettingsEvent as EventListener);
 
 onBeforeUnmount(() => {
@@ -921,6 +954,10 @@ onBeforeUnmount(() => {
   window.removeEventListener('solomd:ai-rewrite-cancel', onAIRewriteCancel as EventListener);
   window.removeEventListener(BASES_OPEN_EVENT, onOpenBases as EventListener);
   window.removeEventListener(BASES_CLOSE_EVENT, onCloseBases as EventListener);
+  window.removeEventListener(INBOX_OPEN_EVENT, onOpenInbox as EventListener);
+  window.removeEventListener(INBOX_CLOSE_EVENT, onCloseInbox as EventListener);
+  window.removeEventListener(VIEW_OPEN_EVENT, onOpenView as EventListener);
+  window.removeEventListener(VIEW_CLOSE_EVENT, onCloseView as EventListener);
   window.removeEventListener('solomd:open-settings', onOpenSettingsEvent as EventListener);
   window.removeEventListener('solomd:open-agent-wizard', onOpenAgentWizard);
   if (unlistenOpened) {
@@ -946,8 +983,26 @@ const showBacklinksPane = computed(
     tabs.activeTab?.language === 'markdown' &&
     !!workspace.currentFolder,
 );
+const showRelationshipsPane = computed(
+  () =>
+    settings.showRelationships &&
+    tabs.activeTab?.language === 'markdown' &&
+    !!workspace.currentFolder,
+);
 const showTagsPane = computed(
   () => settings.showTagsPanel && !!workspace.currentFolder,
+);
+// v4.6 F4 — Neighborhood relationship explorer. Markdown-only, needs a folder
+// (frontmatter wikilink groups are resolved against the workspace index).
+const showNeighborhoodPane = computed(
+  () =>
+    settings.showNeighborhood &&
+    tabs.activeTab?.language === 'markdown' &&
+    !!workspace.currentFolder,
+);
+// v4.6 F2 — Types pane (types-as-lenses). Workspace-scoped like Tags.
+const showTypesPane = computed(
+  () => settings.showTypesPanel && !!workspace.currentFolder,
 );
 const showHistoryPane = computed(
   // v4.0.2 — decoupled from autoGitEnabled (#55). Hiding the pane via
@@ -956,6 +1011,15 @@ const showHistoryPane = computed(
   () =>
     settings.autoGitEnabled &&
     settings.showHistoryPanel &&
+    tabs.activeTab?.language === 'markdown' &&
+    !!workspace.currentFolder,
+);
+// v4.6 F1: Properties inspector — frontmatter editor for the active markdown
+// note. Toggled via ⌘⇧I / command palette `view.toggleInspector`. Requires an
+// open folder (reads parsed frontmatter from the workspace index).
+const showInspectorPane = computed(
+  () =>
+    settings.showInspector &&
     tabs.activeTab?.language === 'markdown' &&
     !!workspace.currentFolder,
 );
@@ -976,8 +1040,12 @@ const showRightSidebar = computed(() => {
     showSearchPane.value ||
     showOutlinePane.value ||
     showBacklinksPane.value ||
+    showRelationshipsPane.value ||
     showTagsPane.value ||
+    showNeighborhoodPane.value ||
+    showTypesPane.value ||
     showHistoryPane.value ||
+    showInspectorPane.value ||
     showAgentPane.value
   );
 });
@@ -990,15 +1058,19 @@ const visibleRsPanes = computed(() => {
   // v4.3.0 issue #57b — order driven by settings.rsPaneOrder so users can
   // drag-reorder. Unknown ids (newly-shipped future panes) get appended at
   // the end so a SoloMD update doesn't blow away an existing user layout.
-  const all: Record<'search' | 'outline' | 'backlinks' | 'tags' | 'history' | 'agent', boolean> = {
+  const all: Record<'search' | 'outline' | 'backlinks' | 'relationships' | 'tags' | 'neighborhood' | 'types' | 'history' | 'inspector' | 'agent', boolean> = {
     search: showSearchPane.value,
     outline: showOutlinePane.value,
     backlinks: showBacklinksPane.value,
+    relationships: showRelationshipsPane.value,
     tags: showTagsPane.value,
+    neighborhood: showNeighborhoodPane.value,
+    types: showTypesPane.value,
     history: showHistoryPane.value,
+    inspector: showInspectorPane.value,
     agent: showAgentPane.value,
   };
-  const known = ['search', 'outline', 'backlinks', 'tags', 'history', 'agent'] as const;
+  const known = ['search', 'outline', 'backlinks', 'relationships', 'tags', 'neighborhood', 'types', 'history', 'inspector', 'agent'] as const;
   const ordered: string[] = [];
   for (const id of settings.rsPaneOrder || []) {
     if (id in all && !ordered.includes(id)) ordered.push(id);
@@ -1008,7 +1080,7 @@ const visibleRsPanes = computed(() => {
   }
   return ordered
     .filter((id) => all[id as keyof typeof all])
-    .map((id) => ({ id: id as 'search' | 'outline' | 'backlinks' | 'tags' | 'history' | 'agent' }));
+    .map((id) => ({ id: id as 'search' | 'outline' | 'backlinks' | 'relationships' | 'tags' | 'neighborhood' | 'types' | 'history' | 'inspector' | 'agent' }));
 });
 
 // v4.3.0 issue #57b — HTML5 drag state for right-sidebar pane reordering.
@@ -1108,6 +1180,10 @@ function onSidebarResize(side: 'left' | 'right', ev: MouseEvent) {
   document.addEventListener('mouseup', onUp);
 }
 const basesOpen = ref(false);
+const inboxViewOpen = ref(false);
+// v4.6 F5 — when a saved view is opened from the sidebar, the content area
+// swaps to ViewNoteList (mirrors the basesOpen pattern).
+const viewOpen = ref(false);
 const aiHasKey = ref(false);
 async function refreshAiHasKey() {
   if (!settings.aiEnabled) { aiHasKey.value = false; return; }
@@ -1121,7 +1197,8 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
 </script>
 
 <template>
-  <div class="app" :class="{ 'app--reading': settings.viewMode === 'reading' }">
+  <UiPreview v-if="showUiKit" />
+  <div v-else class="app" :class="{ 'app--reading': settings.viewMode === 'reading' }">
     <!--
       v2.4 reading mode swaps out the entire toolbar / sidebar / status-bar
       stack for a single ReadingView component. We keep all the modal
@@ -1140,7 +1217,10 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
       />
       <TelemetryBanner />
       <div class="workspace">
-        <FileTree v-if="settings.showFileTree" />
+        <div v-if="settings.showFileTree || settings.showViewsPanel" class="left-stack">
+          <FileTree v-if="settings.showFileTree" />
+          <ViewsPanel v-if="settings.showViewsPanel" />
+        </div>
         <aside
           v-if="showRightSidebar && settings.outlineSide === 'left'"
           class="side-sidebar side-sidebar--left"
@@ -1177,12 +1257,22 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
               />
               <Outline v-if="p.id === 'outline'" :cursor-line="cursorLine" @goto="onOutlineGoto" />
               <BacklinksPanel v-if="p.id === 'backlinks'" @close="ctxToggle(() => settings.toggleBacklinks())" />
+              <RelationshipsPanel v-if="p.id === 'relationships'" @close="ctxToggle(() => settings.toggleRelationships())" />
               <TagsPanel
                 v-if="p.id === 'tags'"
                 @close="ctxToggle(() => settings.toggleTagsPanel())"
                 @filter-tag="onFilterTag"
               />
+              <NeighborhoodPanel
+                v-if="p.id === 'neighborhood'"
+                @close="ctxToggle(() => settings.toggleNeighborhood())"
+              />
+              <TypesPanel
+                v-if="p.id === 'types'"
+                @close="ctxToggle(() => settings.toggleTypesPanel())"
+              />
               <HistoryPanel v-if="p.id === 'history'" @close="ctxToggle(() => settings.toggleHistoryPanel())" />
+              <PropertiesInspector v-if="p.id === 'inspector'" @close="ctxToggle(() => settings.toggleInspector())" />
               <AgentPanel
                 v-if="p.id === 'agent'"
                 @open-settings="(section?: string) => openSettingsAt(section ?? 'integrations')"
@@ -1193,6 +1283,8 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
         </aside>
         <div class="content">
           <BasesView v-if="basesOpen" />
+          <InboxView v-else-if="inboxViewOpen" />
+          <ViewNoteList v-else-if="viewOpen" />
           <TileRoot v-else :node="tiles.root" @cursor="onCursor" @selection="onSelection" />
         </div>
         <aside
@@ -1231,12 +1323,22 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
               />
               <Outline v-if="p.id === 'outline'" :cursor-line="cursorLine" @goto="onOutlineGoto" />
               <BacklinksPanel v-if="p.id === 'backlinks'" @close="ctxToggle(() => settings.toggleBacklinks())" />
+              <RelationshipsPanel v-if="p.id === 'relationships'" @close="ctxToggle(() => settings.toggleRelationships())" />
               <TagsPanel
                 v-if="p.id === 'tags'"
                 @close="ctxToggle(() => settings.toggleTagsPanel())"
                 @filter-tag="onFilterTag"
               />
+              <NeighborhoodPanel
+                v-if="p.id === 'neighborhood'"
+                @close="ctxToggle(() => settings.toggleNeighborhood())"
+              />
+              <TypesPanel
+                v-if="p.id === 'types'"
+                @close="ctxToggle(() => settings.toggleTypesPanel())"
+              />
               <HistoryPanel v-if="p.id === 'history'" @close="ctxToggle(() => settings.toggleHistoryPanel())" />
+              <PropertiesInspector v-if="p.id === 'inspector'" @close="ctxToggle(() => settings.toggleInspector())" />
               <AgentPanel
                 v-if="p.id === 'agent'"
                 @open-settings="(section?: string) => openSettingsAt(section ?? 'integrations')"
@@ -1267,9 +1369,21 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
             <span class="sidebar-ctx__check">{{ settings.showBacklinks ? '✓' : '' }}</span>
             {{ t('rsPane.backlinks') }}
           </label>
+          <label class="sidebar-ctx__item" @click="ctxToggle(() => { settings.toggleRelationships() })">
+            <span class="sidebar-ctx__check">{{ settings.showRelationships ? '✓' : '' }}</span>
+            {{ t('rsPane.relationships') }}
+          </label>
           <label class="sidebar-ctx__item" @click="ctxToggle(() => { settings.toggleTagsPanel() })">
             <span class="sidebar-ctx__check">{{ settings.showTagsPanel ? '✓' : '' }}</span>
             {{ t('rsPane.tags') }}
+          </label>
+          <label class="sidebar-ctx__item" @click="ctxToggle(() => { settings.toggleNeighborhood() })">
+            <span class="sidebar-ctx__check">{{ settings.showNeighborhood ? '✓' : '' }}</span>
+            {{ t('rsPane.neighborhood') }}
+          </label>
+          <label class="sidebar-ctx__item" @click="ctxToggle(() => { settings.toggleTypesPanel() })">
+            <span class="sidebar-ctx__check">{{ settings.showTypesPanel ? '✓' : '' }}</span>
+            {{ t('rsPane.types') }}
           </label>
           <label class="sidebar-ctx__item" @click="ctxToggle(() => { settings.toggleHistoryPanel() })">
             <span class="sidebar-ctx__check">{{ settings.showHistoryPanel ? '✓' : '' }}</span>
@@ -1319,6 +1433,9 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
       @cancel="onUnsavedAction('cancel')"
     />
     <SessionRestoreDialog />
+    <!-- v4.6 F5 — saved-view create/edit modal (self-mounts via window events). -->
+    <ViewEditorDialog />
+    <WhiteboardOverlay />
     <FileChangedDialog
       :open="fileChangedOpen"
       :file-name="fileChangedFileName"
@@ -1354,6 +1471,18 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
   display: flex;
   min-height: 0;
   overflow: hidden;
+}
+/* v4.6 F5 — left column stacks the file tree above the Saved Views panel. */
+.left-stack {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 0 0 auto;
+}
+.left-stack > :deep(.ftree) {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
 }
 .side-sidebar {
   position: relative;
@@ -1471,6 +1600,10 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
   border-right: 0;
 }
 .rs-pane-host :deep(.backlinks) {
+  border-left: 0;
+  border-right: 0;
+}
+.rs-pane-host :deep(.rel) {
   border-left: 0;
   border-right: 0;
 }

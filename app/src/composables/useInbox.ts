@@ -11,9 +11,19 @@
  */
 import { computed, ref } from 'vue';
 import { useTabsStore } from '../stores/tabs';
-import { useWorkspaceIndexStore } from '../stores/workspaceIndex';
+import { useWorkspaceIndexStore, type IndexEntry } from '../stores/workspaceIndex';
 import { useToastsStore } from '../stores/toasts';
+import { useSettingsStore } from '../stores/settings';
+import { useFiles } from './useFiles';
 import { useI18n } from '../i18n';
+import {
+  countInboxByPeriod,
+  filterInboxEntries,
+  nextInboxEntryAfter,
+  type InboxPeriod,
+} from '../lib/inbox-filter';
+
+export type { InboxPeriod } from '../lib/inbox-filter';
 
 /**
  * Read the `inbox` flag from a markdown body's YAML front matter.
@@ -101,11 +111,17 @@ function fmEndIndex(body: string): number {
 // ---------------------------------------------------------------------------
 
 const filterMode = ref(false);
+/** v4.6 F6 — shared across composable instances: true while the dedicated
+ *  InboxView is mounted. Module-level so InboxView (which sets it) and
+ *  useShortcuts (which reads it for ⌘E gating) see the same value. */
+const inboxViewOpen = ref(false);
 
 export function useInbox() {
   const tabs = useTabsStore();
   const index = useWorkspaceIndexStore();
   const toasts = useToastsStore();
+  const settings = useSettingsStore();
+  const files = useFiles();
   const { t } = useI18n();
 
   const activeIsInbox = computed(() => {
@@ -166,11 +182,96 @@ export function useInbox() {
     filterMode.value = !filterMode.value;
   }
 
+  // -------------------------------------------------------------------------
+  // v4.6 F6 — period-aware listing + organize-and-advance.
+  // -------------------------------------------------------------------------
+
+  /** Inbox entries for the InboxView, newest-captured first, clipped to the
+   *  given period. Pure delegation to lib/inbox-filter so it's unit-testable. */
+  function inboxEntries(period: InboxPeriod): IndexEntry[] {
+    return filterInboxEntries(index.entries, period);
+  }
+
+  /** Live { week, month, all } counts for the InboxView period pills. */
+  const countByPeriod = computed(() => countInboxByPeriod(index.entries));
+
+  /**
+   * Is the inbox workflow currently the user's active context? True when the
+   * dedicated InboxView is open OR the file-tree inbox filter is on. ⌘E only
+   * auto-advances inside this context; everywhere else it stays a plain
+   * toggle so existing v2.4 muscle memory is preserved.
+   */
+  function setInboxViewOpen(v: boolean) {
+    inboxViewOpen.value = v;
+  }
+  const inboxContextActive = computed(
+    () => inboxViewOpen.value || filterMode.value,
+  );
+
+  /**
+   * ⌘E handler. Marks the active note organized (`inbox: false`) and, when
+   * `autoAdvanceInboxAfterOrganize` is on and the inbox context is active,
+   * snapshots the next inbox entry BEFORE the write and opens it afterwards.
+   * Marking the last note ⇒ nothing to advance to ⇒ inbox-zero.
+   *
+   * Outside the inbox context (or with auto-advance off) it degrades to the
+   * plain ⌘E toggle, so capture (mark unorganized) still works from anywhere.
+   */
+  async function organizeAndAdvance() {
+    const tab = tabs.activeTab;
+    if (!tab) {
+      toasts.info(t('toast.noActiveDoc'));
+      return;
+    }
+
+    const wasInbox = readInboxFlag(tab.content) === true;
+    const advancing =
+      wasInbox &&
+      settings.autoAdvanceInboxAfterOrganize &&
+      inboxContextActive.value;
+
+    // Snapshot the advance target from the CURRENT visible list (still
+    // containing this note) before we flip the flag — matches Tolaria's
+    // capture-before-write ordering so the index round-trip can't move the
+    // target out from under us.
+    const targetPath = advancing
+      ? nextInboxEntryAfter(inboxEntries('all'), tab.filePath ?? '')?.path ?? null
+      : null;
+    const fromPath = tab.filePath;
+
+    // Optimistic local flip drives the UI immediately (don't wait for the
+    // index round-trip); the autosave path persists `inbox: false` to disk.
+    const next = setInboxFlag(tab.content, !wasInbox);
+    tabs.setContent(tab.id, next);
+    toasts.success(
+      !wasInbox ? t('inbox.markedInbox') : t('inbox.unmarkedInbox'),
+    );
+
+    if (!advancing) return;
+
+    // Guard against the user navigating away mid-write (Tolaria's
+    // isStillFocusedOnPath): only advance if focus is still on the note we
+    // just organized.
+    if (tabs.activeTab?.filePath !== fromPath) return;
+
+    if (targetPath) {
+      await files.openPath(targetPath, { bypassNewWindow: true });
+    } else {
+      // Inbox-zero: nothing left to advance to.
+      toasts.success(t('inbox.zero'));
+    }
+  }
+
   return {
     activeIsInbox,
     inboxCount,
     inboxPaths,
     toggleActive,
+    organizeAndAdvance,
+    inboxEntries,
+    countByPeriod,
+    inboxContextActive,
+    setInboxViewOpen,
     filterMode: computed(() => filterMode.value),
     setFilter,
     toggleFilter,

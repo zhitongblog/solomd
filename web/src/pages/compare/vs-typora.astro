@@ -137,6 +137,37 @@ const lang = 'en' as const;
         <li>Encoding auto-detection for legacy Chinese/Japanese files</li>
       </ul>
 
+      <h2>Typora's own most-requested features — shipped in SoloMD</h2>
+      <p>
+        These are among the highest-upvoted, still-open requests on Typora's own
+        public tracker (<a href="https://github.com/typora/typora-issues/issues" rel="external">typora/typora-issues</a>),
+        some open since 2016–2018. SoloMD already ships every one of them — free
+        and on every platform:
+      </p>
+      <table class="compare-detail">
+        <thead>
+          <tr><th>Long-requested on Typora's tracker</th><th>SoloMD</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Multi-tab on Windows / Linux (open since 2017)</td><td>✅ tabs on every platform</td></tr>
+          <tr><td>Open in same tab / new tab / new window</td><td>✅ configurable</td></tr>
+          <tr><td>Source-control integration</td><td>✅ built-in AutoGit (per-note history, diff, rollback) + GitHub sync</td></tr>
+          <tr><td>Wiki-style <code>[[links]]</code></td><td>✅ wikilinks + backlinks panel</td></tr>
+          <tr><td>Presentation / slideshow mode</td><td>✅ full reveal.js (<code>⌘⌥P</code>)</td></tr>
+          <tr><td>Academic referencing / citations</td><td>✅ <code>@citekey</code> + .bib / CSL</td></tr>
+          <tr><td>Vim bindings</td><td>✅ Vim mode</td></tr>
+          <tr><td>More diagram formats</td><td>✅ Mermaid 11.14 (+ KaTeX)</td></tr>
+          <tr><td>Plugin / extensibility</td><td>✅ MCP endpoint + scriptable CLI + agent recipes (any LLM client can drive your vault)</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:0.95rem;color:var(--text-muted);">
+        Your existing Typora notes open unchanged: SoloMD reads Typora's
+        <code>./images/&lt;note&gt;/</code> attachment layout (set it in Settings →
+        Writing → Attachment mode) and renders images even under Chinese / spaced
+        folder names. Nothing is converted or locked in — they stay plain
+        <code>.md</code> in your folder.
+      </p>
+
       <h2>Both editors do well</h2>
       <ul>
         <li>KaTeX math (inline <code>$a^2+b^2=c^2$</code> and block <code>$$...$$</code>)</li>

@@ -1,0 +1,15 @@
+{
+  "_comment": "Competitor registry for the competitor-feedback skill. GitHub-hosted competitors are pulled via `gh` (reliable, structured). Closed-source ones (Typora/Obsidian/Bear/iA Writer/Tolaria/Moraya) have no public issue tracker — their `web` URLs are scanned via WebSearch/WebFetch. Edit this file to add/remove competitors.",
+  "competitors": [
+    { "name": "Logseq",   "github": "logseq/logseq",            "note": "outliner, very active issues" },
+    { "name": "SiYuan",   "github": "siyuan-note/siyuan",       "note": "CN power-users, block-based; direct CJK rival" },
+    { "name": "AFFiNE",   "github": "toeverything/AFFiNE",      "note": "canvas + docs" },
+    { "name": "Joplin",   "github": "laurent22/joplin",         "note": "cross-platform notes, large user base" },
+    { "name": "Zettlr",   "github": "Zettlr/Zettlr",            "note": "academic markdown writer" },
+    { "name": "MarkText", "github": "marktext/marktext",        "note": "Typora-like WYSIWYG; mostly stalled (mine for migration pain)" },
+    { "name": "MiaoYan",  "github": "tw93/MiaoYan",             "note": "lightweight Mac md editor, CN" },
+    { "name": "Khoj",     "github": "khoj-ai/khoj",             "note": "RAG-over-notes; AI-feature rival" },
+    { "name": "Typora",   "github": null, "web": ["https://forum.typora.io/c/bug-report/6", "https://www.reddit.com/r/Typora/"], "note": "closed-source; THE migration source for SoloMD users" },
+    { "name": "Obsidian", "github": null, "web": ["https://forum.obsidian.md/c/bug-reports/3", "https://www.reddit.com/r/ObsidianMD/"], "note": "closed-source; biggest md vault competitor" }
+  ]
+}

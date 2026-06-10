@@ -19,6 +19,8 @@
  * v2.5 — bonus feature from GitHub Discussion #30.
  */
 
+import { newBoardId } from './tldraw-markdown';
+
 export interface SlashBlock {
   /** Stable id, e.g. `h1`, `code`, `table`. Used for i18n keys + tests. */
   id: string;
@@ -162,6 +164,17 @@ export const SLASH_BLOCKS: SlashBlock[] = [
       '```mermaid\nflowchart TD\n  A[${cursor}] --> B[End]\n```',
     keywords: ['mermaid', 'diagram', 'flowchart', 'graph'],
   },
+  {
+    id: 'whiteboard',
+    icon: '🖊',
+    label: 'Whiteboard',
+    hint: 'tldraw board',
+    // An empty ```tldraw fence with a fresh uuid. `${uuid}` is expanded to a
+    // new board id at insert time (see expandSnippet); the body is `{}` (a
+    // fresh empty board). The cursor lands on the blank line after the fence.
+    snippet: '```tldraw id="${uuid}" height="520" width=""\n{}\n```\n${cursor}',
+    keywords: ['whiteboard', 'tldraw', 'board', 'draw', 'canvas', 'sketch', 'diagram'],
+  },
 
   // -------- Links + media --------
   {
@@ -253,6 +266,16 @@ export interface ExpandedSnippet {
 export function expandSnippet(snippet: string, selection: string): ExpandedSnippet {
   const SELECTION_TOKEN = '${selection}';
   const CURSOR_TOKEN = '${cursor}';
+  const UUID_TOKEN = '${uuid}';
+
+  // Expand every ${uuid} to a fresh board id first (the whiteboard insert
+  // path). Each occurrence gets its own id so inserting two boards never
+  // collides.
+  if (snippet.includes(UUID_TOKEN)) {
+    while (snippet.includes(UUID_TOKEN)) {
+      snippet = snippet.replace(UUID_TOKEN, newBoardId());
+    }
+  }
 
   // If the template uses ${selection} and we have no selection, treat
   // ${selection} like ${cursor} (caret lands where the wrapped text

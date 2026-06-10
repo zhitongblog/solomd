@@ -41,7 +41,90 @@ const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERS
       </div>
 
       <section>
-        <h2>The five pillars</h2>
+        <p class="version-row" style="margin-top:8px;">
+          <span class="version-tag">v4.6</span>
+          <time>June 2026</time>
+        </p>
+        <h2 style="margin-top:8px;">4.6 — the knowledge-graph half, built.</h2>
+        <p class="lead">
+          A full <strong>design-system + Vue component-library rebuild</strong>
+          (warm-neutral surfaces, orange <code>#ff9f40</code> accent) and a
+          <strong>unified macOS title bar</strong> (traffic lights inlined into
+          the toolbar) — plus the seven structural features that used to be the
+          one thing a knowledge-graph editor like Tolaria did and SoloMD didn't.
+          All on disk as plain <code>.md</code> / YAML. No new file format.
+        </p>
+        <div class="pillars">
+          <div class="pillar">
+            <h3>Properties inspector (<code>⌘⇧I</code>)</h3>
+            <p>
+              A dedicated frontmatter editor — date, relation, status and tag
+              pickers — instead of hand-editing YAML. Writes straight back to
+              the note's front-matter.
+            </p>
+          </div>
+          <div class="pillar">
+            <h3>Type-driven sidebar</h3>
+            <p>
+              <code>type:&lt;Name&gt;</code> notes become first-class
+              collapsible sidebar sections (types-as-lenses), each with a custom
+              icon, color, order, and pinned properties.
+            </p>
+          </div>
+          <div class="pillar">
+            <h3>Typed relationships</h3>
+            <p>
+              <code>belongs_to</code> / <code>related_to</code> /
+              <code>has</code> frontmatter fields with <strong>automatic
+              inverses</strong> — declare one side, the other resolves itself.
+            </p>
+          </div>
+          <div class="pillar">
+            <h3>Relationship graph ("Neighborhood")</h3>
+            <p>
+              A per-note explorer of outgoing <em>and</em> inverse
+              relationships — walk the graph one hop at a time from whatever
+              note you're in.
+            </p>
+          </div>
+          <div class="pillar">
+            <h3>Saved filtered views</h3>
+            <p>
+              Persistent sidebar views stored as
+              <code>.solomd/views/*.yml</code> — filter by type, status, date,
+              or regex, and they stay put across launches.
+            </p>
+          </div>
+          <div class="pillar">
+            <h3>Inbox workflow</h3>
+            <p>
+              <code>⌘E</code> marks the current note organized and
+              auto-advances to the next — a real inbox-zero loop for triaging
+              captured notes.
+            </p>
+          </div>
+          <div class="pillar">
+            <h3>tldraw whiteboards</h3>
+            <p>
+              Markdown-backed boards via a <code>```tldraw</code> fence —
+              durable in the note's <code>.md</code>, and cross-compatible with
+              Tolaria's on-disk board format.
+            </p>
+          </div>
+          <div class="pillar">
+            <h3>Design-system UI + unified title bar</h3>
+            <p>
+              A warm-neutral surface palette with an orange
+              <code>#ff9f40</code> accent, rebuilt on a proper Vue component
+              library, and a unified macOS title bar that inlines the traffic
+              lights into the toolbar.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>The five pillars (v4.0)</h2>
         <p>
           Each is in core. Toggleable via a setting. Built to play
           nicely with your existing notes — no schema migration, no

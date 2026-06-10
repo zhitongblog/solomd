@@ -33,21 +33,84 @@ export interface ColumnDef {
   fmKey?: string;
 }
 
+/**
+ * The full operator set. The first group is the original v2.0 vocabulary
+ * (kept verbatim for backward compatibility); the second group is the
+ * Tolaria-parity extension added in v4.6.
+ */
 export type FilterOp =
+  // --- original v2.0 operators (do not rename / remove) ---
   | 'contains'
   | 'equals'
   | 'starts-with'
   | '>'
   | '<'
   | 'is-empty'
-  | 'has-tag';
+  | 'has-tag'
+  // --- v4.6 Tolaria-parity extension ---
+  | 'eq'
+  | 'neq'
+  | 'notContains'
+  | 'startsWith'
+  | 'endsWith'
+  | 'gt'
+  | 'gte'
+  | 'lt'
+  | 'lte'
+  | 'isEmpty'
+  | 'isNotEmpty'
+  | 'matches' // regex
+  | 'before' // date <
+  | 'after' // date >
+  | 'on' // date ==
+  | 'inLast'; // relative date window, e.g. "7d", "2w", "3mo"
 
 export interface Filter {
   /** Column id this filter applies to. */
   column: string;
   op: FilterOp;
   /** Value to compare against. Type depends on op. */
-  value: unknown;
+  value?: unknown;
+}
+
+/**
+ * A single predicate in a recursive filter tree. Structurally identical to
+ * the flat {@link Filter}, so any `Filter` is already a valid `FilterLeaf`.
+ *
+ * `column` is the canonical key (a {@link ColumnDef} id such as `mtime` or
+ * `fm:status`). When deserializing external YAML/JSON that used `key`
+ * instead, {@link normalizeFilterGroup} maps `key` → `column`.
+ */
+export interface FilterLeaf {
+  /** Column id (a.k.a. `key` in serialized form) this predicate reads. */
+  column: string;
+  op: FilterOp;
+  value?: unknown;
+}
+
+export type Combinator = 'all' | 'any';
+
+/**
+ * A recursive filter tree node. `all` = logical AND of children, `any` =
+ * logical OR. Children may themselves be groups, so nesting is unbounded.
+ * Plain serializable object: no class instances, no functions — round-trips
+ * cleanly through `JSON.parse(JSON.stringify(group))` and YAML.
+ */
+export interface FilterGroup {
+  combinator: Combinator;
+  children: FilterNode[];
+}
+
+export type FilterNode = FilterGroup | FilterLeaf;
+
+/** Type guard: is this node a group (vs. a leaf)? */
+export function isFilterGroup(node: FilterNode): node is FilterGroup {
+  return (
+    typeof node === 'object' &&
+    node != null &&
+    'combinator' in node &&
+    Array.isArray((node as FilterGroup).children)
+  );
 }
 
 export interface SortSpec {
@@ -59,7 +122,18 @@ export interface SavedView {
   name: string;
   /** Column ids in display order. Empty array means "auto" (all inferred). */
   columns: string[];
+  /**
+   * Flat AND filter list (v2.0 shape, still the canonical form for the
+   * current BasesView UI). For richer all/any trees (F5 saved views) use
+   * {@link filterGroup}; when present it takes precedence over `filters`.
+   */
   filters: Filter[];
+  /**
+   * Optional recursive filter tree. Serializable plain object; round-trips
+   * to/from `.solomd/views/*.yml`. When set, evaluate via
+   * {@link applyFilterGroup}; `filters` is the flat-fallback projection.
+   */
+  filterGroup?: FilterGroup;
   sort: SortSpec | null;
 }
 
@@ -261,9 +335,55 @@ function isEmpty(v: unknown): boolean {
   return false;
 }
 
+/** True when a column is date-like (a `date` kind or the builtin mtime). */
+function isDateColumn(col: ColumnDef): boolean {
+  return col.kind === 'date' || (col.source === 'builtin' && col.id === 'mtime');
+}
+
+/**
+ * Parse a relative-duration token used by the `inLast` operator into a
+ * millisecond span. Accepts e.g. `7d`, `2w`, `3mo`, `1y`, `12h`, `30m`,
+ * or a bare number (interpreted as days). Returns null if unparseable.
+ */
+export function parseRelativeDuration(v: unknown): number | null {
+  if (typeof v === 'number' && Number.isFinite(v)) {
+    return v * 24 * 3600 * 1000; // bare number → days
+  }
+  if (typeof v !== 'string') return null;
+  const m = v.trim().toLowerCase().match(/^(\d+(?:\.\d+)?)\s*(mo|ms|[smhdwy])?$/);
+  if (!m) return null;
+  const n = Number(m[1]);
+  if (!Number.isFinite(n)) return null;
+  const unit = m[2] ?? 'd';
+  const SEC = 1000;
+  const MIN = 60 * SEC;
+  const HOUR = 60 * MIN;
+  const DAY = 24 * HOUR;
+  switch (unit) {
+    case 'ms':
+      return n;
+    case 's':
+      return n * SEC;
+    case 'm':
+      return n * MIN;
+    case 'h':
+      return n * HOUR;
+    case 'd':
+      return n * DAY;
+    case 'w':
+      return n * 7 * DAY;
+    case 'mo':
+      return n * 30 * DAY;
+    case 'y':
+      return n * 365 * DAY;
+    default:
+      return null;
+  }
+}
+
 function matchFilter(
   entry: IndexEntry,
-  filter: Filter,
+  filter: FilterLeaf,
   columns: ColumnDef[],
 ): boolean {
   const col = columns.find((c) => c.id === filter.column);
@@ -271,23 +391,63 @@ function matchFilter(
   const raw = getRawValue(entry, col);
 
   switch (filter.op) {
+    // ---- emptiness ----
     case 'is-empty':
+    case 'isEmpty':
       return isEmpty(raw);
+    case 'isNotEmpty':
+      return !isEmpty(raw);
+
+    // ---- substring / affix ----
     case 'contains': {
       const needle = String(filter.value ?? '').toLowerCase();
       if (!needle) return true;
       return asString(raw).toLowerCase().includes(needle);
     }
-    case 'starts-with': {
+    case 'notContains': {
+      const needle = String(filter.value ?? '').toLowerCase();
+      if (!needle) return true;
+      return !asString(raw).toLowerCase().includes(needle);
+    }
+    case 'starts-with':
+    case 'startsWith': {
       const needle = String(filter.value ?? '').toLowerCase();
       if (!needle) return true;
       return asString(raw).toLowerCase().startsWith(needle);
     }
-    case 'equals': {
+    case 'endsWith': {
+      const needle = String(filter.value ?? '').toLowerCase();
+      if (!needle) return true;
+      return asString(raw).toLowerCase().endsWith(needle);
+    }
+
+    // ---- equality ----
+    case 'equals':
+    case 'eq': {
       const want = filter.value;
       if (Array.isArray(raw)) return raw.some((x) => String(x) === String(want));
       return String(raw ?? '') === String(want ?? '');
     }
+    case 'neq': {
+      const want = filter.value;
+      if (Array.isArray(raw)) return !raw.some((x) => String(x) === String(want));
+      return String(raw ?? '') !== String(want ?? '');
+    }
+
+    // ---- regex ----
+    case 'matches': {
+      const pattern = String(filter.value ?? '');
+      if (!pattern) return true;
+      let re: RegExp;
+      try {
+        re = new RegExp(pattern, 'i');
+      } catch {
+        return false; // invalid regex never matches
+      }
+      return re.test(asString(raw));
+    }
+
+    // ---- tags (OR-membership) ----
     case 'has-tag': {
       // `value` may be a single tag string or an array (multi-select).
       const tags = Array.isArray(raw)
@@ -303,9 +463,11 @@ function matchFilter(
       // Match if entry has ANY of the wanted tags (multi-select OR semantics).
       return wanted.some((w) => tags.includes(w));
     }
-    case '>': {
-      // Date or number depending on column kind.
-      if (col.kind === 'date' || (col.source === 'builtin' && col.id === 'mtime')) {
+
+    // ---- ordered comparisons (date- or number-aware) ----
+    case '>':
+    case 'gt': {
+      if (isDateColumn(col)) {
         const a = toEpochMs(raw);
         const b = toEpochMs(filter.value);
         if (a == null || b == null) return false;
@@ -316,8 +478,21 @@ function matchFilter(
       if (a == null || b == null) return false;
       return a > b;
     }
-    case '<': {
-      if (col.kind === 'date' || (col.source === 'builtin' && col.id === 'mtime')) {
+    case 'gte': {
+      if (isDateColumn(col)) {
+        const a = toEpochMs(raw);
+        const b = toEpochMs(filter.value);
+        if (a == null || b == null) return false;
+        return a >= b;
+      }
+      const a = asNumber(raw);
+      const b = asNumber(filter.value);
+      if (a == null || b == null) return false;
+      return a >= b;
+    }
+    case '<':
+    case 'lt': {
+      if (isDateColumn(col)) {
         const a = toEpochMs(raw);
         const b = toEpochMs(filter.value);
         if (a == null || b == null) return false;
@@ -328,7 +503,154 @@ function matchFilter(
       if (a == null || b == null) return false;
       return a < b;
     }
+    case 'lte': {
+      if (isDateColumn(col)) {
+        const a = toEpochMs(raw);
+        const b = toEpochMs(filter.value);
+        if (a == null || b == null) return false;
+        return a <= b;
+      }
+      const a = asNumber(raw);
+      const b = asNumber(filter.value);
+      if (a == null || b == null) return false;
+      return a <= b;
+    }
+
+    // ---- explicit date operators (always epoch-compared) ----
+    case 'after': {
+      const a = toEpochMs(raw);
+      const b = toEpochMs(filter.value);
+      if (a == null || b == null) return false;
+      return a > b;
+    }
+    case 'before': {
+      const a = toEpochMs(raw);
+      const b = toEpochMs(filter.value);
+      if (a == null || b == null) return false;
+      return a < b;
+    }
+    case 'on': {
+      // Same calendar day (compare on the date portion only).
+      const a = toEpochMs(raw);
+      const b = toEpochMs(filter.value);
+      if (a == null || b == null) return false;
+      const da = new Date(a);
+      const db = new Date(b);
+      return (
+        da.getFullYear() === db.getFullYear() &&
+        da.getMonth() === db.getMonth() &&
+        da.getDate() === db.getDate()
+      );
+    }
+    case 'inLast': {
+      const span = parseRelativeDuration(filter.value);
+      if (span == null) return false;
+      const a = toEpochMs(raw);
+      if (a == null) return false;
+      const now = Date.now();
+      return a >= now - span && a <= now;
+    }
+
+    default:
+      return true; // unknown op → don't filter
   }
+}
+
+/**
+ * Recursively evaluate a {@link FilterGroup} against one entry.
+ *   - `all`  → every child must match (logical AND). Empty group → true.
+ *   - `any`  → at least one child must match (logical OR). Empty group → false.
+ *
+ * Leaves and nested groups are dispatched structurally. `columns` is the
+ * resolved column set (so each leaf can look up its column kind once).
+ */
+export function matchesGroup(
+  entry: IndexEntry,
+  group: FilterGroup,
+  columns: ColumnDef[],
+): boolean {
+  const children = group.children ?? [];
+  if (group.combinator === 'any') {
+    if (children.length === 0) return false;
+    return children.some((child) =>
+      isFilterGroup(child)
+        ? matchesGroup(entry, child, columns)
+        : matchFilter(entry, child, columns),
+    );
+  }
+  // 'all' (default)
+  return children.every((child) =>
+    isFilterGroup(child)
+      ? matchesGroup(entry, child, columns)
+      : matchFilter(entry, child, columns),
+  );
+}
+
+/**
+ * Coerce arbitrary (possibly partial / external) input into a well-formed
+ * {@link FilterGroup} tree. Accepts:
+ *   - a flat `Filter[]` array       → `{ combinator:'all', children:[...] }`
+ *   - an already-shaped group       → normalized recursively
+ *   - a single leaf object          → wrapped in an `all` group
+ *   - null/undefined/garbage        → empty `all` group
+ *
+ * Leaves accept either `column` or `key` for the field id (the latter is the
+ * shape F5's `.solomd/views/*.yml` may use); output always uses `column`.
+ * Always returns plain serializable objects.
+ */
+export function normalizeFilterGroup(raw: unknown): FilterGroup {
+  const EMPTY: FilterGroup = { combinator: 'all', children: [] };
+
+  // Flat array of leaves (the legacy Filter[] shape).
+  if (Array.isArray(raw)) {
+    return {
+      combinator: 'all',
+      children: raw.map(normalizeNode).filter((n): n is FilterNode => n != null),
+    };
+  }
+
+  if (typeof raw !== 'object' || raw == null) return EMPTY;
+
+  const obj = raw as Record<string, unknown>;
+
+  // Group shape.
+  if ('combinator' in obj || 'children' in obj) {
+    const combinator: Combinator = obj.combinator === 'any' ? 'any' : 'all';
+    const childrenRaw = Array.isArray(obj.children) ? obj.children : [];
+    return {
+      combinator,
+      children: childrenRaw
+        .map(normalizeNode)
+        .filter((n): n is FilterNode => n != null),
+    };
+  }
+
+  // Single leaf → wrap.
+  const leaf = normalizeLeaf(obj);
+  return leaf ? { combinator: 'all', children: [leaf] } : EMPTY;
+}
+
+function normalizeNode(raw: unknown): FilterNode | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+  const obj = raw as Record<string, unknown>;
+  if ('combinator' in obj || 'children' in obj) {
+    return normalizeFilterGroup(obj);
+  }
+  return normalizeLeaf(obj);
+}
+
+function normalizeLeaf(obj: Record<string, unknown>): FilterLeaf | null {
+  const column =
+    typeof obj.column === 'string'
+      ? obj.column
+      : typeof obj.key === 'string'
+        ? obj.key
+        : undefined;
+  if (!column) return null;
+  const op = (obj.op as FilterOp) ?? 'contains';
+  const leaf: FilterLeaf = { column, op };
+  if ('value' in obj) leaf.value = obj.value;
+  return leaf;
 }
 
 /** Convert a cell value or filter value to epoch ms, or null if not a date. */
@@ -345,17 +667,36 @@ function toEpochMs(v: unknown): number | null {
 }
 
 /**
- * Apply all filters (AND-combined). The caller passes columns so we can look
- * up each filter's column kind once.
+ * Apply a flat AND-combined filter list. Back-compat entry point: a
+ * `Filter[]` is treated as `{ combinator:'all', children:[...] }`. Thin
+ * wrapper over {@link matchesGroup} so the flat and tree paths share one
+ * evaluator. Signature is unchanged from v2.0.
  */
 export function applyFilters(
   entries: IndexEntry[],
   filters: Filter[],
   columns?: ColumnDef[],
 ): IndexEntry[] {
-  if (filters.length === 0) return entries;
+  if (!filters || filters.length === 0) return entries;
   const cols = columns ?? inferColumns(entries);
-  return entries.filter((e) => filters.every((f) => matchFilter(e, f, cols)));
+  const group: FilterGroup = { combinator: 'all', children: filters };
+  return entries.filter((e) => matchesGroup(e, group, cols));
+}
+
+/**
+ * Apply a recursive {@link FilterGroup} tree (the v4.6 generalized path used
+ * by saved filtered views). Accepts either a flat array or a tree via
+ * {@link normalizeFilterGroup}, so callers can pass loosely-typed input.
+ */
+export function applyFilterGroup(
+  entries: IndexEntry[],
+  group: FilterGroup | Filter[] | unknown,
+  columns?: ColumnDef[],
+): IndexEntry[] {
+  const tree = normalizeFilterGroup(group);
+  if (tree.children.length === 0) return entries;
+  const cols = columns ?? inferColumns(entries);
+  return entries.filter((e) => matchesGroup(e, tree, cols));
 }
 
 // ---------- sorting ----------

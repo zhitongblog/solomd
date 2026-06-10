@@ -42,6 +42,10 @@ interface Settings {
    *  crowd the editor). After the migration the user is free to toggle it
    *  off via the toolbar / ⌘B / command palette and the choice persists. */
   fileTreeDefaultDesktopMigrated: boolean;
+  /** v4.6 F5 — show the Saved Views panel (left sidebar, below the file tree).
+   *  Lists persistent filtered note lists from `.solomd/views/*.yml`. Default
+   *  off so the panel only appears once the user opts in / creates a view. */
+  showViewsPanel: boolean;
   /** Master toggle that hides the right side sidebar (Outline / Backlinks /
    *  Tags / History / Agent Panel) without forgetting which individual panes
    *  the user had on. Default false (= sidebar visible whenever any pane is
@@ -98,6 +102,8 @@ interface Settings {
   agentWizardSeen: boolean;
   // v2.0 F1: show the Backlinks panel (right of editor) for markdown docs.
   showBacklinks: boolean;
+  // v4.6 F3: show the Relationships panel (typed forward + inverse edges).
+  showRelationships: boolean;
   // v2.0 F2: CodeMirror Hunspell spell-check (separate from browser-native `spellCheck` above).
   spellcheckEnabled: boolean;
   // v2.0 F3: daily notes
@@ -105,6 +111,12 @@ interface Settings {
   dailyNotesFormat: string;
   dailyNotesTemplate: string;
   showTagsPanel: boolean;
+  // v4.6 F4: Neighborhood — per-note relationship explorer pane (frontmatter
+  // wikilink groups + inverse scan + body backlinks).
+  showNeighborhood: boolean;
+  // v4.6 F2: Types sidebar pane (types-as-lenses). Notes with `type:<Name>`
+  // grouped into collapsible first-class sidebar sections.
+  showTypesPanel: boolean;
   // v4.0 pillar 1: Inline Agent Panel — chat-with-vault sidebar.
   showAgentPanel: boolean;
   // v4.0 release migration marker: set on first launch after upgrading
@@ -143,6 +155,9 @@ interface Settings {
    *  during conflict resolution). Defaults to true so existing AutoGit
    *  users see no behavior change. */
   showHistoryPanel: boolean;
+  /** v4.6 F1 — show the Properties inspector pane (frontmatter editor) in the
+   *  right sidebar. Toggled via ⌘⇧I / command palette. */
+  showInspector: boolean;
   /** v4.0.2 — per-pane heights in the right sidebar (issue #6 / #52 / #55).
    *  Map of pane id → flex-basis pixels. Panes without an entry use
    *  proportional flex grow (legacy behavior). Once the user drags a
@@ -228,13 +243,26 @@ interface Settings {
   // only when attachmentMode is 'shared'; per-file mode always uses
   // `<stem>.assets/`. Empty string falls back to `_assets`.
   assetsDirName: string;
+  // v4.6 F6 — Inbox workflow. Master opt-out for the whole inbox surface
+  // (file-tree row, status-bar pill, dedicated InboxView, ⌘E auto-advance).
+  // Default on — mirrors Tolaria's per-vault InboxConfig.explicitOrganization,
+  // but stored locally (not in files). When off, ⌘E falls back to the plain
+  // `inbox: true|false` toggle and the InboxView / inbox filter are hidden.
+  inboxWorkflowEnabled: boolean;
+  // v4.6 F6 — when on, marking a note organized (⌘E) inside the inbox context
+  // (InboxView open or inbox filter active) auto-advances to the next inbox
+  // note. Default on. Matches Tolaria's auto_advance_inbox_after_organize.
+  autoAdvanceInboxAfterOrganize: boolean;
   // v4.3.0 PR #75 (beihai23) — transient (not persisted) snapshot of the
   // right-sidebar pane visibility taken when the sidebar is hidden, so
   // toggling it back on can restore the exact previous layout instead of
   // leaving the user with a blank sidebar.
   _rsPanesBeforeHide: {
     showBacklinks: boolean;
+    showRelationships: boolean;
     showTagsPanel: boolean;
+    showNeighborhood: boolean;
+    showTypesPanel: boolean;
     showHistoryPanel: boolean;
     showAgentPanel: boolean;
   } | null;
@@ -301,6 +329,7 @@ function defaults(): Settings {
     // Fresh installs already see the new default — mark migration done so
     // load()'s one-time force-on path is a no-op for them.
     fileTreeDefaultDesktopMigrated: true,
+    showViewsPanel: false,
     rightSidebarHidden: false,
     livePreview: true,
     spellCheck: true,
@@ -343,11 +372,14 @@ function defaults(): Settings {
     welcomeShown: false,
     agentWizardSeen: false,
     showBacklinks: true,
+    showRelationships: false,
     spellcheckEnabled: false,
     dailyNotesFolder: 'Daily',
     dailyNotesFormat: 'YYYY-MM-DD.md',
     dailyNotesTemplate: '',
     showTagsPanel: true,
+    showNeighborhood: false,
+    showTypesPanel: false,
     showAgentPanel: true,
     // True for fresh installs (defaults are already v4.0). Existing
     // localStorage blobs from v3.6.x / v4-beta won't have this key, so
@@ -366,6 +398,7 @@ function defaults(): Settings {
     autoGitEnabled: false,
     autoGitDebounceSeconds: 30,
     showHistoryPanel: true,
+    showInspector: false,
     rightSidebarPaneHeights: {},
     ragEnabled: false,
     readingByDefaultOnMobile: (() => {
@@ -386,11 +419,13 @@ function defaults(): Settings {
     imageExportBranding: true,
     globalZoom: 1,
     codeBlockLineNumbers: false,
-    rsPaneOrder: ['search', 'outline', 'backlinks', 'tags', 'history', 'agent'],
+    rsPaneOrder: ['search', 'outline', 'backlinks', 'relationships', 'tags', 'neighborhood', 'types', 'history', 'inspector', 'agent'],
     previewFontSize: 15,
     attachmentMode: 'shared',
     assetsDirName: '_assets',
     attachmentCustomPath: './images/${filename}/',
+    inboxWorkflowEnabled: true,
+    autoAdvanceInboxAfterOrganize: true,
     _rsPanesBeforeHide: null,
   };
 }
@@ -560,6 +595,10 @@ export const useSettingsStore = defineStore('settings', {
       this.showFileTree = !this.showFileTree;
       this.persist();
     },
+    toggleViewsPanel() {
+      this.showViewsPanel = !this.showViewsPanel;
+      this.persist();
+    },
     toggleRightSidebar() {
       // v4.3.0 PR #75 — when hiding, snapshot the current pane visibility so
       // toggling back on can restore the exact layout instead of a blank
@@ -568,7 +607,10 @@ export const useSettingsStore = defineStore('settings', {
       if (!this.rightSidebarHidden) {
         this._rsPanesBeforeHide = {
           showBacklinks: this.showBacklinks,
+          showRelationships: this.showRelationships,
           showTagsPanel: this.showTagsPanel,
+          showNeighborhood: this.showNeighborhood,
+          showTypesPanel: this.showTypesPanel,
           showHistoryPanel: this.showHistoryPanel,
           showAgentPanel: this.showAgentPanel,
         };
@@ -578,12 +620,15 @@ export const useSettingsStore = defineStore('settings', {
         const saved = this._rsPanesBeforeHide;
         if (saved) {
           this.showBacklinks = saved.showBacklinks;
+          this.showRelationships = saved.showRelationships;
           this.showTagsPanel = saved.showTagsPanel;
+          this.showNeighborhood = saved.showNeighborhood;
+          this.showTypesPanel = saved.showTypesPanel;
           this.showHistoryPanel = saved.showHistoryPanel;
           this.showAgentPanel = saved.showAgentPanel;
           this._rsPanesBeforeHide = null;
         }
-        if (!this.showBacklinks && !this.showTagsPanel && !this.showHistoryPanel && !this.showAgentPanel) {
+        if (!this.showBacklinks && !this.showRelationships && !this.showTagsPanel && !this.showTypesPanel && !this.showNeighborhood && !this.showHistoryPanel && !this.showAgentPanel) {
           this.showBacklinks = true;
           this.showTagsPanel = true;
         }
@@ -595,7 +640,10 @@ export const useSettingsStore = defineStore('settings', {
      *  remembers the pre-toggle layout for later restore. */
     hideRightSidebarFromPane(paneBeforeToggle: {
       showBacklinks: boolean;
+      showRelationships: boolean;
       showTagsPanel: boolean;
+      showNeighborhood: boolean;
+      showTypesPanel: boolean;
       showHistoryPanel: boolean;
       showAgentPanel: boolean;
     }) {
@@ -682,12 +730,25 @@ export const useSettingsStore = defineStore('settings', {
       this.showBacklinks = !this.showBacklinks;
       this.persist();
     },
+    toggleRelationships() {
+      this.showRelationships = !this.showRelationships;
+      this.persist();
+    },
     toggleSpellcheckEnabled() {
       this.spellcheckEnabled = !this.spellcheckEnabled;
       this.persist();
     },
     toggleTagsPanel() {
       this.showTagsPanel = !this.showTagsPanel;
+      this.persist();
+    },
+    toggleNeighborhood() {
+      this.showNeighborhood = !this.showNeighborhood;
+      this.persist();
+    },
+    // v4.6 F2 — toggle the Types (types-as-lenses) sidebar pane.
+    toggleTypesPanel() {
+      this.showTypesPanel = !this.showTypesPanel;
       this.persist();
     },
     toggleAgentPanel() {
@@ -756,6 +817,11 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleHistoryPanel() {
       this.showHistoryPanel = !this.showHistoryPanel;
+      this.persist();
+    },
+    /** v4.6 F1 — toggle the Properties inspector pane (⌘⇧I). */
+    toggleInspector() {
+      this.showInspector = !this.showInspector;
       this.persist();
     },
     setRightSidebarPaneHeight(paneId: string, px: number) {
@@ -871,7 +937,7 @@ export const useSettingsStore = defineStore('settings', {
       this.persist();
     },
     resetRsPaneOrder() {
-      this.rsPaneOrder = ['search', 'outline', 'backlinks', 'tags', 'history', 'agent'];
+      this.rsPaneOrder = ['search', 'outline', 'backlinks', 'relationships', 'tags', 'neighborhood', 'types', 'history', 'inspector', 'agent'];
       this.persist();
     },
     /** v4.3.0 PR #74 — preview-only font size. Editor font is the existing
@@ -910,5 +976,14 @@ export const useSettingsStore = defineStore('settings', {
     editorFontIn() { this.setFontSize((this.fontSize || 14) + 1); },
     editorFontOut() { this.setFontSize((this.fontSize || 14) - 1); },
     resetEditorFontSize() { this.setFontSize(14); },
+    // v4.6 F6 — Inbox workflow toggles.
+    toggleInboxWorkflow() {
+      this.inboxWorkflowEnabled = !this.inboxWorkflowEnabled;
+      this.persist();
+    },
+    toggleAutoAdvanceInbox() {
+      this.autoAdvanceInboxAfterOrganize = !this.autoAdvanceInboxAfterOrganize;
+      this.persist();
+    },
   },
 });

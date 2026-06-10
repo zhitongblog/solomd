@@ -39,6 +39,11 @@ import { resolveImageSrc } from './image-resolve';
 import { renderMarkdown, extractImageRoot } from './markdown';
 import mermaid from 'mermaid';
 import katex from 'katex';
+import {
+  parseTldrawFence,
+  TLDRAW_DEFAULT_HEIGHT,
+  type BoardThemeTokens,
+} from './tldraw-board';
 
 // v4.3.0 issue #57a — live-render math + Mermaid blocks in the editor.
 // Mermaid is async; we render lazily into a counter-keyed cache so the
@@ -309,11 +314,173 @@ class MermaidWidget extends WidgetType {
   }
 }
 
+// v4.6 F7 — ```tldraw fenced whiteboard. Unlike mermaid (which collapses only
+// when the cursor leaves), the board ALWAYS replaces the fence: the JSON is
+// never meant to be hand-edited. The widget mounts a LIVE tldraw editor via the
+// dynamic-import adapter (tldraw-runtime.ts) so the rest of the app compiles
+// without the dep. Edits debounce 350ms inside the adapter, then splice ONLY
+// the fence body back through the writeback callback (→ tabs.setContent),
+// exactly like Tolaria's onSnapshotChange → tldrawMarkdown round-trip.
+class TldrawWidget extends WidgetType {
+  constructor(
+    private readonly boardId: string,
+    private readonly height: string,
+    private readonly width: string,
+    private readonly snapshot: string,
+    private readonly opts: BlockOptions,
+  ) {
+    super();
+  }
+
+  // Re-mount only when the board IDENTITY or stored snapshot changes — NOT on
+  // every keystroke elsewhere in the doc. This is what makes the always-render
+  // model viable: a relayout that doesn't touch this fence reuses the same
+  // widget DOM (eq → true) so the tldraw instance is never torn down (avoids
+  // the canvas remounting on every keystroke near it, per the plan's risks).
+  eq(other: TldrawWidget): boolean {
+    return (
+      other.boardId === this.boardId &&
+      other.height === this.height &&
+      other.width === this.width &&
+      other.snapshot === this.snapshot
+    );
+  }
+
+  toDOM(): HTMLElement {
+    const wrap = document.createElement('div');
+    wrap.className = 'cm-live-block cm-live-block--tldraw';
+    wrap.setAttribute('data-board-id', this.boardId);
+    const h = parseInt(this.height, 10);
+    wrap.style.height = `${Number.isFinite(h) && h > 0 ? h : 520}px`;
+    if (this.width) wrap.style.maxWidth = `${this.width}px`;
+
+    // Overflow toolbar: a fullscreen toggle that pops the board into the
+    // WhiteboardOverlay (full-window editor). The board id + current snapshot
+    // are handed off so the overlay edits the SAME fence.
+    const toolbar = document.createElement('div');
+    toolbar.className = 'cm-tldraw-toolbar';
+    const fullBtn = document.createElement('button');
+    fullBtn.className = 'cm-tldraw-fullscreen';
+    fullBtn.type = 'button';
+    fullBtn.title = 'Fullscreen';
+    fullBtn.textContent = '⛶';
+    fullBtn.addEventListener('mousedown', (ev) => ev.preventDefault());
+    fullBtn.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const handle = (wrap as unknown as { __boardHandle?: { getSnapshotString(): string } })
+        .__boardHandle;
+      const snap = handle?.getSnapshotString?.() ?? this.snapshot;
+      window.dispatchEvent(
+        new CustomEvent('solomd:whiteboard-open', {
+          detail: {
+            boardId: this.boardId,
+            tabId: this.opts.getTabId?.() ?? '',
+            snapshot: snap,
+          },
+        }),
+      );
+    });
+    toolbar.appendChild(fullBtn);
+    wrap.appendChild(toolbar);
+
+    const surface = document.createElement('div');
+    surface.className = 'cm-tldraw-surface';
+    wrap.appendChild(surface);
+
+    const placeholder = document.createElement('div');
+    placeholder.className = 'cm-tldraw-loading';
+    placeholder.textContent = '⌛ Loading whiteboard…';
+    surface.appendChild(placeholder);
+
+    // Mount asynchronously — the adapter dynamic-imports tldraw on first use.
+    const theme: BoardThemeTokens = this.opts.getBoardTheme?.() ?? {
+      colorScheme: 'light',
+      locale: 'en',
+    };
+    const boardId = this.boardId;
+    let destroyed = false;
+    void import('./tldraw-runtime')
+      .then(({ mountBoard }) =>
+        mountBoard(surface, {
+          snapshot: this.snapshot,
+          theme,
+          onSnapshotChange: (snapshotJson) => {
+            // Splice the new snapshot back into the note's Markdown. We resolve
+            // the fence by board id at write time (positions drift as the doc
+            // is edited), keeping height/width attributes intact.
+            this.opts.onBoardEdit?.(boardId, snapshotJson);
+          },
+        }),
+      )
+      .then((handle) => {
+        if (destroyed) {
+          handle.destroy();
+          return;
+        }
+        placeholder.remove();
+        (wrap as unknown as { __boardHandle?: unknown }).__boardHandle = handle;
+        // Expose the live board instance for the dev-bridge self-test.
+        try {
+          const reg =
+            ((window as any).__solomdBoards ||= new Map<string, unknown>());
+          reg.set(boardId, handle);
+        } catch {
+          /* dev-only */
+        }
+      })
+      .catch((e) => {
+        placeholder.className = 'cm-tldraw-loading cm-live-block--broken';
+        placeholder.textContent = `Whiteboard failed to load: ${(e as Error).message}`;
+      });
+
+    // Stash a teardown hook the widget's destroy() path can call.
+    (wrap as unknown as { __destroyBoard?: () => void }).__destroyBoard = () => {
+      destroyed = true;
+      const handle = (wrap as unknown as { __boardHandle?: { destroy(): void } })
+        .__boardHandle;
+      try {
+        handle?.destroy();
+      } catch {
+        /* already gone */
+      }
+      try {
+        (window as any).__solomdBoards?.delete(boardId);
+      } catch {
+        /* dev-only */
+      }
+    };
+
+    return wrap;
+  }
+
+  destroy(dom: HTMLElement): void {
+    // CM calls destroy() when the widget DOM is removed (relayout / unmount).
+    // Tear down the tldraw React root so we don't leak an editor per relayout.
+    (dom as unknown as { __destroyBoard?: () => void }).__destroyBoard?.();
+  }
+
+  // The board owns all pointer/keyboard interaction inside its canvas — let
+  // those events through to tldraw rather than routing them to CodeMirror.
+  ignoreEvent(): boolean {
+    return true;
+  }
+}
+
 interface BlockOptions {
   /** Workspace context for resolving relative image paths. */
   getImageRoot?: () => string | null;
   /** Active note's filesystem path so relative paths resolve to its dir. */
   getFilePath?: () => string | undefined;
+  /** Theme/locale tokens handed to a mounted tldraw board (F7). */
+  getBoardTheme?: () => BoardThemeTokens;
+  /** Active tab id — the fullscreen overlay writes edits back to it (F7). */
+  getTabId?: () => string;
+  /**
+   * F7 writeback: a whiteboard's snapshot changed. `snapshotJson` is the fresh
+   * pretty-printed body to splice into the ```tldraw fence with `boardId`.
+   */
+  onBoardEdit?: (boardId: string, snapshotJson: string) => void;
 }
 
 function buildBlockDecorations(state: EditorState, opts: BlockOptions): DecorationSet {
@@ -403,6 +570,53 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
                   }),
                 );
               }
+              i = endI + 1;
+              continue;
+            }
+          }
+
+          // v4.6 F7 — ```tldraw fenced whiteboard. The fence carries
+          // id/height/width attributes and a variable-length backtick run
+          // (3+, grown past backticks inside the JSON). Unlike every other
+          // block here there is NO cursor-inside gating: the board always
+          // replaces the fence (the JSON is never hand-edited), so the canvas
+          // stays mounted while you type around it.
+          const tldrawOpen = /^\s*(`{3,})\s*tldraw\b([^\n]*)$/i.exec(line.text);
+          if (tldrawOpen) {
+            const ticks = tldrawOpen[1].length;
+            const closeRe = new RegExp(`^\\s*\`{${ticks},}\\s*$`);
+            let endI = i + 1;
+            while (endI <= lastLine && !closeRe.test(doc.line(endI).text)) {
+              endI += 1;
+            }
+            if (endI <= lastLine) {
+              const info = `tldraw${tldrawOpen[2]}`;
+              let body = '';
+              for (let k = i + 1; k < endI; k++) {
+                body += (k > i + 1 ? '\n' : '') + doc.line(k).text;
+              }
+              const fence = parseTldrawFence(info, body) ?? {
+                boardId: '',
+                height: TLDRAW_DEFAULT_HEIGHT,
+                width: '',
+                snapshot: body.trim(),
+              };
+              const blockFrom = doc.line(i).from;
+              const blockTo = doc.line(endI).to;
+              builder.add(
+                blockFrom,
+                blockTo,
+                Decoration.replace({
+                  widget: new TldrawWidget(
+                    fence.boardId,
+                    fence.height,
+                    fence.width,
+                    fence.snapshot,
+                    opts,
+                  ),
+                  block: true,
+                }),
+              );
               i = endI + 1;
               continue;
             }
@@ -596,6 +810,53 @@ export const liveBlocksTheme = EditorView.theme({
   '.cm-live-block--mermaid svg': {
     maxWidth: '100%',
     height: 'auto',
+  },
+  // v4.6 F7 — tldraw whiteboard card. A bordered surface hosting the live
+  // canvas; the inner `.cm-tldraw-surface` fills it so tldraw can measure.
+  '.cm-live-block--tldraw': {
+    position: 'relative',
+    width: '100%',
+    border: '1px solid var(--border)',
+    borderRadius: '8px',
+    overflow: 'hidden',
+    background: 'var(--bg)',
+    margin: '0.6em 0',
+  },
+  '.cm-tldraw-surface': {
+    position: 'absolute',
+    inset: '0',
+  },
+  '.cm-tldraw-loading': {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100%',
+    color: 'var(--text-faint)',
+    fontStyle: 'italic',
+  },
+  '.cm-tldraw-toolbar': {
+    position: 'absolute',
+    top: '6px',
+    right: '6px',
+    zIndex: '5',
+    display: 'flex',
+    gap: '4px',
+  },
+  '.cm-tldraw-fullscreen': {
+    appearance: 'none',
+    border: '1px solid var(--border)',
+    background: 'var(--bg)',
+    color: 'var(--text)',
+    borderRadius: '6px',
+    width: '26px',
+    height: '26px',
+    lineHeight: '1',
+    cursor: 'pointer',
+    fontSize: '14px',
+    opacity: '0.85',
+  },
+  '.cm-tldraw-fullscreen:hover': {
+    opacity: '1',
   },
 });
 

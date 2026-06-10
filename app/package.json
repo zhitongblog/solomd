@@ -1,7 +1,7 @@
 {
   "name": "solomd",
   "private": true,
-  "version": "4.5.6",
+  "version": "4.6.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -56,7 +56,10 @@
     "pinia": "^3.0.4",
     "pinyin-pro": "^3.28.0",
     "prettier": "^3.8.3",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
     "reveal.js": "^6.0.1",
+    "tldraw": "^4.5.12",
     "vue": "^3.5.13"
   },
   "devDependencies": {
@@ -64,6 +67,8 @@
     "@types/js-yaml": "^4.0.9",
     "@types/markdown-it": "^14.1.2",
     "@types/markdown-it-footnote": "^3.0.4",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-vue": "^5.2.1",
     "typescript": "~5.6.2",
     "vite": "^6.0.3",

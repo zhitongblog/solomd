@@ -19,6 +19,7 @@ import { useToastsStore } from '../stores/toasts';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useFiles } from '../composables/useFiles';
 import { useI18n } from '../i18n';
+import { DsModal, DsButton } from '../ui';
 
 const cloud = useCloudSyncStore();
 const tabs = useTabsStore();
@@ -132,79 +133,36 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div v-if="visible" class="srd__backdrop" @click.self="dismiss">
-    <div class="srd" role="dialog" aria-modal="true">
-      <h3 class="srd__title">{{ t('cloudSync.restoreTitle') }}</h3>
-      <p class="srd__lead">
-        {{ t('cloudSync.restoreLead', {
-          device: sibling?.device_label ?? '?',
-          ago: sibling ? timeAgoLabel(sibling.saved_at) : '',
-          tabs: String(sibling?.tab_count ?? 0),
-        }) }}
-      </p>
-      <div class="srd__actions">
-        <button class="srd__btn" :disabled="restoring" @click="dismiss">
-          {{ t('cloudSync.keepMineBtn') }}
-        </button>
-        <button class="srd__btn srd__btn--primary" :disabled="restoring" @click="restore">
-          {{ restoring ? t('cloudSync.restoring') : t('cloudSync.restoreBtn') }}
-        </button>
-      </div>
-    </div>
-  </div>
+  <DsModal
+    :model-value="visible"
+    :title="t('cloudSync.restoreTitle')"
+    width="440px"
+    :close-on-backdrop="!restoring"
+    @update:model-value="dismiss"
+  >
+    <p class="srd__lead">
+      {{ t('cloudSync.restoreLead', {
+        device: sibling?.device_label ?? '?',
+        ago: sibling ? timeAgoLabel(sibling.saved_at) : '',
+        tabs: String(sibling?.tab_count ?? 0),
+      }) }}
+    </p>
+    <template #footer>
+      <DsButton variant="ghost" :disabled="restoring" @click="dismiss">
+        {{ t('cloudSync.keepMineBtn') }}
+      </DsButton>
+      <DsButton variant="primary" :disabled="restoring" @click="restore">
+        {{ restoring ? t('cloudSync.restoring') : t('cloudSync.restoreBtn') }}
+      </DsButton>
+    </template>
+  </DsModal>
 </template>
 
 <style scoped>
-.srd__backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.42);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1100;
-}
-.srd {
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 22px 26px;
-  width: min(440px, 90vw);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-}
-.srd__title {
-  margin: 0 0 8px;
-  font-size: 14px;
-  color: var(--text);
-}
 .srd__lead {
-  margin: 0 0 16px;
+  margin: 0;
   font-size: 12px;
   color: var(--text-muted);
   line-height: 1.6;
-}
-.srd__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-.srd__btn {
-  padding: 6px 12px;
-  font-size: 12px;
-  border-radius: 5px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
-  cursor: pointer;
-  font: inherit;
-}
-.srd__btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.srd__btn--primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-text, #000);
 }
 </style>

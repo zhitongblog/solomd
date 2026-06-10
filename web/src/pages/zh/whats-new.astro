@@ -40,7 +40,81 @@ const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERS
       </div>
 
       <section>
-        <h2>五大支柱</h2>
+        <p class="version-row" style="margin-top:8px;">
+          <span class="version-tag">v4.6</span>
+          <time>2026 年 6 月</time>
+        </p>
+        <h2 style="margin-top:8px;">4.6 —— 知识图谱那一半，建好了。</h2>
+        <p class="lead">
+          一次彻底的<strong>设计系统 + Vue 组件库重构</strong>（暖中性表面、橙色
+          <code>#ff9f40</code> 强调色）和<strong>统一的 macOS 标题栏</strong>
+          （红绿灯按钮内联进工具栏）—— 外加过去像 Tolaria 这类知识图谱编辑器有、
+          而 SoloMD 没有的那 7 个结构化功能。全部以纯 <code>.md</code> / YAML 落盘,
+          没有新文件格式。
+        </p>
+        <div class="pillars">
+          <div class="pillar">
+            <h3>属性检查器（<code>⌘⇧I</code>）</h3>
+            <p>
+              专用的 frontmatter 编辑器 —— 日期、关系、状态、标签选择器,
+              不用再手写 YAML。改动直接写回笔记的 front-matter。
+            </p>
+          </div>
+          <div class="pillar">
+            <h3>类型驱动侧栏</h3>
+            <p>
+              <code>type:&lt;名称&gt;</code> 笔记成为侧栏一级可折叠分区
+              （types-as-lenses），每种类型可自定义图标、颜色、排序与置顶属性。
+            </p>
+          </div>
+          <div class="pillar">
+            <h3>类型化关系</h3>
+            <p>
+              <code>belongs_to</code> / <code>related_to</code> /
+              <code>has</code> frontmatter 字段,带<strong>自动反向</strong> ——
+              声明一边,另一边自动成立。
+            </p>
+          </div>
+          <div class="pillar">
+            <h3>关系图谱（"Neighborhood"）</h3>
+            <p>
+              每篇笔记的出链<em>与</em>反向关系浏览器 —— 从当前笔记出发,
+              一跳一跳走图谱。
+            </p>
+          </div>
+          <div class="pillar">
+            <h3>保存的过滤视图</h3>
+            <p>
+              持久化的侧栏视图,存为 <code>.solomd/views/*.yml</code> ——
+              按类型 / 状态 / 日期 / 正则过滤,重启后依旧保留。
+            </p>
+          </div>
+          <div class="pillar">
+            <h3>Inbox 工作流</h3>
+            <p>
+              <code>⌘E</code> 把当前笔记标记为已整理并自动前进到下一篇 ——
+              真正的 Inbox Zero 闭环,用来分拣随手捕获的笔记。
+            </p>
+          </div>
+          <div class="pillar">
+            <h3>tldraw 白板</h3>
+            <p>
+              通过 <code>```tldraw</code> 围栏实现 Markdown 白板 ——
+              持久存在笔记的 <code>.md</code> 里,且与 Tolaria 的磁盘白板格式互通。
+            </p>
+          </div>
+          <div class="pillar">
+            <h3>设计系统 UI + 统一标题栏</h3>
+            <p>
+              暖中性表面配色 + 橙色 <code>#ff9f40</code> 强调色,基于一套正式的
+              Vue 组件库重建;统一的 macOS 标题栏把红绿灯按钮内联进工具栏。
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>五大支柱（v4.0）</h2>
         <p>
           每个都在内核里,可在设置里开关。完全兼容你已有的笔记 ——
           没有数据库迁移、没有新文件格式、不强制云账号。

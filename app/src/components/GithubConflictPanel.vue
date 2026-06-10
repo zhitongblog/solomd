@@ -98,9 +98,9 @@ async function pushAfterResolve() {
 
 <style scoped>
 .ghc {
-  border: 1px solid #d12;
-  background: rgba(221, 17, 34, 0.04);
-  border-radius: 6px;
+  border: 1px solid var(--danger);
+  background: color-mix(in srgb, var(--danger) 5%, transparent);
+  border-radius: var(--r-md);
   padding: 10px 12px;
   display: flex;
   flex-direction: column;
@@ -114,7 +114,7 @@ async function pushAfterResolve() {
   color: var(--text);
 }
 .ghc__icon {
-  color: #d12;
+  color: var(--danger);
 }
 .ghc__intro {
   font-size: 11px;

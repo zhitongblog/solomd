@@ -52,6 +52,22 @@ pub struct IndexEntry {
     pub summary: String,
     /// First H1 heading text (used for resolution by-title).
     pub title: Option<String>,
+    /// F3 (v4.6) typed relationships: map `frontmatter key → list of canonical
+    /// `[[ref]]`s`. Any non-reserved front-matter key whose value contains a
+    /// wikilink. Mirrors `app/src/lib/relationships.ts::extractRelationships`.
+    /// Defaults to empty for entries deserialized from an older index cache
+    /// that predates this field.
+    #[serde(default)]
+    pub relationships: HashMap<String, Vec<String>>,
+}
+
+/// F3 — one inverse (referenced-by) edge resolved over the in-memory index.
+#[derive(Debug, Clone, Serialize)]
+pub struct ReferencedByRef {
+    pub from_path: String,
+    pub from_name: String,
+    /// The forward-relationship front-matter key on the source note.
+    pub via_key: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -186,6 +202,107 @@ pub fn workspace_index_backlinks(target: String) -> Result<Vec<BacklinkRef>, Str
     }
     out.sort_by(|a, b| a.from_name.cmp(&b.from_name));
     Ok(out)
+}
+
+/// F3 — inverse relationships: notes whose front matter has a typed
+/// relationship key pointing at `target`. Resolution mirrors
+/// `workspace_index_resolve`'s precedence (stem → title → alias →
+/// path-suffix), case-insensitive; the source note is self-excluded.
+#[tauri::command]
+pub fn workspace_index_referenced_by(target: String) -> Result<Vec<ReferencedByRef>, String> {
+    let s = STATE.read().map_err(|e| e.to_string())?;
+    let needle = target.trim().to_lowercase();
+    if needle.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    // Resolve which entry `target` names (so refs by title/alias/stem all
+    // collapse to one path). First-match wins, mirroring resolve precedence.
+    let resolved_path: Option<String> = {
+        let by_stem = s
+            .entries
+            .values()
+            .find(|e| e.stem.to_lowercase() == needle);
+        let by_title = || {
+            s.entries.values().find(|e| {
+                e.title
+                    .as_ref()
+                    .map(|t| t.to_lowercase() == needle)
+                    .unwrap_or(false)
+            })
+        };
+        let by_alias = || {
+            s.entries.values().find(|e| {
+                if let serde_json::Value::Object(map) = &e.frontmatter {
+                    if let Some(a) = map.get("aliases").or_else(|| map.get("alias")) {
+                        let mut names = Vec::new();
+                        collect_alias_names(a, &mut names);
+                        return names.iter().any(|n| n.to_lowercase() == needle);
+                    }
+                }
+                false
+            })
+        };
+        by_stem
+            .or_else(by_title)
+            .or_else(by_alias)
+            .map(|e| e.path.clone())
+    };
+
+    let mut out: Vec<ReferencedByRef> = Vec::new();
+    for entry in s.entries.values() {
+        for (via_key, refs) in &entry.relationships {
+            for reference in refs {
+                let ref_target = parse_ref_target(reference).to_lowercase();
+                // A ref matches if it names this target directly (stem/title/
+                // alias) — compare to both the literal needle AND the resolved
+                // entry's stem so e.g. `[[The Title]]` resolves to the file.
+                let matches_needle = ref_target == needle;
+                let matches_resolved = match &resolved_path {
+                    Some(p) => s
+                        .entries
+                        .get(&PathBuf::from(p))
+                        .map(|te| te.stem.to_lowercase() == ref_target)
+                        .unwrap_or(false),
+                    None => false,
+                };
+                if !(matches_needle || matches_resolved) {
+                    continue;
+                }
+                // Self-exclusion: a note referencing itself isn't an inverse.
+                if let Some(p) = &resolved_path {
+                    if &entry.path == p {
+                        continue;
+                    }
+                }
+                out.push(ReferencedByRef {
+                    from_path: entry.path.clone(),
+                    from_name: entry.name.clone(),
+                    via_key: via_key.clone(),
+                });
+            }
+        }
+    }
+    out.sort_by(|a, b| {
+        a.via_key
+            .cmp(&b.via_key)
+            .then_with(|| a.from_name.cmp(&b.from_name))
+    });
+    out.dedup_by(|a, b| a.from_path == b.from_path && a.via_key == b.via_key);
+    Ok(out)
+}
+
+/// Collect alias names from a front-matter `aliases` value (string or array).
+fn collect_alias_names(value: &serde_json::Value, out: &mut Vec<String>) {
+    match value {
+        serde_json::Value::String(s) => out.push(s.trim().to_string()),
+        serde_json::Value::Array(arr) => {
+            for v in arr {
+                collect_alias_names(v, out);
+            }
+        }
+        _ => {}
+    }
 }
 
 #[tauri::command]
@@ -341,6 +458,7 @@ fn scan_file(path: &Path) -> Result<IndexEntry, String> {
     let headings = extract_headings(body);
     let title = extract_title(&frontmatter_json, &headings);
     let summary = extract_summary(body);
+    let relationships = extract_relationships(&frontmatter_json);
 
     Ok(IndexEntry {
         path: path.to_string_lossy().to_string(),
@@ -354,7 +472,117 @@ fn scan_file(path: &Path) -> Result<IndexEntry, String> {
         headings,
         summary,
         title,
+        relationships,
     })
+}
+
+// ---------------------------------------------------------------------------
+// F3 — typed relationships extraction (mirrors lib/relationships.ts).
+// ---------------------------------------------------------------------------
+
+/// Front-matter keys that are structural and never count as a typed
+/// relationship even if they contain a wikilink. Must stay byte-for-byte in
+/// sync with `RESERVED_RELATIONSHIP_KEYS` in `app/src/lib/relationships.ts`.
+/// `_`-prefixed keys are also reserved (handled in `is_reserved_key`).
+const RESERVED_RELATIONSHIP_KEYS: &[&str] = &[
+    "title",
+    "aliases",
+    "alias",
+    "tags",
+    "tag",
+    "status",
+    "date",
+    "created",
+    "modified",
+    "updated",
+    "icon",
+    "color",
+    "colour",
+    "cssclass",
+    "cssclasses",
+    "publish",
+    "permalink",
+    "inbox",
+];
+
+fn is_reserved_key(key: &str) -> bool {
+    let k = key.trim();
+    if k.is_empty() || k.starts_with('_') {
+        return true;
+    }
+    let lc = k.to_lowercase();
+    RESERVED_RELATIONSHIP_KEYS.iter().any(|r| *r == lc)
+}
+
+/// Collect every wikilink in `text`, returning each in canonical `[[target]]`
+/// form (alias / heading stripped). Mirrors the regex used by
+/// `extract_wikilinks`.
+fn refs_in_str(text: &str, out: &mut Vec<String>) {
+    static RE: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"\[\[([^\[\]\n]+?)\]\]").expect("wikilink regex"));
+    for cap in RE.captures_iter(text) {
+        let inner = cap.get(1).map(|m| m.as_str()).unwrap_or("");
+        let target_raw = match inner.split_once('|') {
+            Some((t, _)) => t.trim().to_string(),
+            None => inner.trim().to_string(),
+        };
+        let target = match target_raw.split_once('#') {
+            Some((t, _)) => t.trim().to_string(),
+            None => target_raw,
+        };
+        if !target.is_empty() {
+            out.push(format!("[[{target}]]"));
+        }
+    }
+}
+
+/// Recurse into a front-matter value collecting wikilink refs (string scalars
+/// and arrays of strings, at any depth).
+fn collect_refs(value: &serde_json::Value, out: &mut Vec<String>) {
+    match value {
+        serde_json::Value::String(s) => refs_in_str(s, out),
+        serde_json::Value::Array(arr) => {
+            for v in arr {
+                collect_refs(v, out);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Extract typed relationships from parsed front matter: every non-reserved
+/// key whose value contains at least one wikilink, mapped to its canonical
+/// `[[ref]]` list. Mirrors `extractRelationships` in `lib/relationships.ts`.
+fn extract_relationships(fm: &serde_json::Value) -> HashMap<String, Vec<String>> {
+    let mut out: HashMap<String, Vec<String>> = HashMap::new();
+    if let serde_json::Value::Object(map) = fm {
+        for (key, value) in map {
+            if is_reserved_key(key) {
+                continue;
+            }
+            let mut refs = Vec::new();
+            collect_refs(value, &mut refs);
+            if !refs.is_empty() {
+                out.insert(key.clone(), refs);
+            }
+        }
+    }
+    out
+}
+
+/// Strip `[[ ]]` (and any `#heading` / `|alias`) from a ref, returning the
+/// bare target stem.
+fn parse_ref_target(reference: &str) -> String {
+    let mut v = Vec::new();
+    refs_in_str(reference, &mut v);
+    if let Some(first) = v.first() {
+        // first is `[[target]]`
+        return first
+            .trim_start_matches("[[")
+            .trim_end_matches("]]")
+            .to_string();
+    }
+    reference.trim().to_string()
 }
 
 fn split_front_matter(raw: &str) -> (Option<String>, &str) {
@@ -655,6 +883,167 @@ mod tests {
             "hex color codes inside backticks should NOT be tags, but found: {:?}",
             hex_tags
         );
+    }
+
+    // -----------------------------------------------------------------------
+    // F3 — typed relationships extraction (mirrors lib/relationships.ts).
+    // -----------------------------------------------------------------------
+
+    fn fm(yaml: &str) -> serde_json::Value {
+        serde_yaml::from_str::<serde_json::Value>(yaml).unwrap_or(serde_json::Value::Null)
+    }
+
+    #[test]
+    fn relationships_scalar_and_array() {
+        let v = fm("belongs_to: \"[[b]]\"\ncites:\n  - \"[[a]]\"\n  - \"[[c]]\"");
+        let rel = extract_relationships(&v);
+        assert_eq!(rel.get("belongs_to").unwrap(), &vec!["[[b]]".to_string()]);
+        assert_eq!(
+            rel.get("cites").unwrap(),
+            &vec!["[[a]]".to_string(), "[[c]]".to_string()]
+        );
+    }
+
+    #[test]
+    fn relationships_arbitrary_custom_key() {
+        let v = fm("author: \"[[jane]]\"");
+        let rel = extract_relationships(&v);
+        assert_eq!(rel.get("author").unwrap(), &vec!["[[jane]]".to_string()]);
+    }
+
+    #[test]
+    fn relationships_reserved_keys_excluded() {
+        let v = fm("title: \"[[x]]\"\ntags:\n  - \"[[y]]\"\nrelated_to: \"[[z]]\"");
+        let rel = extract_relationships(&v);
+        assert!(!rel.contains_key("title"));
+        assert!(!rel.contains_key("tags"));
+        assert_eq!(rel.get("related_to").unwrap(), &vec!["[[z]]".to_string()]);
+    }
+
+    #[test]
+    fn relationships_underscore_prefixed_excluded() {
+        let v = fm("_internal: \"[[a]]\"\ncites: \"[[b]]\"");
+        let rel = extract_relationships(&v);
+        assert!(!rel.contains_key("_internal"));
+        assert!(rel.contains_key("cites"));
+    }
+
+    #[test]
+    fn relationships_non_wikilink_ignored() {
+        let v = fm("status: draft\ncount: 3\nbelongs_to: \"[[b]]\"");
+        let rel = extract_relationships(&v);
+        assert_eq!(rel.len(), 1);
+        assert!(rel.contains_key("belongs_to"));
+    }
+
+    #[test]
+    fn relationships_alias_heading_collapse() {
+        let v = fm("ref: \"[[Paper A|the paper]]\"\nsee: \"[[Doc#Heading]]\"");
+        let rel = extract_relationships(&v);
+        assert_eq!(rel.get("ref").unwrap(), &vec!["[[Paper A]]".to_string()]);
+        assert_eq!(rel.get("see").unwrap(), &vec!["[[Doc]]".to_string()]);
+    }
+
+    #[test]
+    fn is_reserved_key_matches_ts_set() {
+        assert!(is_reserved_key("_foo"));
+        assert!(is_reserved_key("Title"));
+        assert!(is_reserved_key("CSSClass"));
+        assert!(!is_reserved_key("belongs_to"));
+        assert!(!is_reserved_key("cites"));
+    }
+
+    #[test]
+    fn parse_ref_target_strips_brackets() {
+        assert_eq!(parse_ref_target("[[b]]"), "b");
+        assert_eq!(parse_ref_target("[[a|alias]]"), "a");
+        assert_eq!(parse_ref_target("[[a#h]]"), "a");
+        assert_eq!(parse_ref_target("plain"), "plain");
+    }
+
+    /// Build a synthetic index in STATE and assert referenced_by resolves the
+    /// inverse edges (stem + self-exclusion). Uses the real STATE lock so the
+    /// command path is exercised end-to-end.
+    #[test]
+    fn referenced_by_resolves_inverse_with_self_exclusion() {
+        fn entry(stem: &str, fm_yaml: &str) -> IndexEntry {
+            let fmv = fm(fm_yaml);
+            IndexEntry {
+                path: format!("/{stem}.md"),
+                name: format!("{stem}.md"),
+                stem: stem.to_string(),
+                mtime: 0,
+                size: 0,
+                relationships: extract_relationships(&fmv),
+                frontmatter: fmv,
+                wikilinks: vec![],
+                tags: vec![],
+                headings: vec![],
+                summary: String::new(),
+                title: None,
+            }
+        }
+        {
+            let mut s = STATE.write().unwrap();
+            s.entries.clear();
+            for e in [
+                entry("a", "belongs_to: \"[[b]]\"\ncites: \"[[c]]\"\nself: \"[[a]]\""),
+                entry("b", ""),
+                entry("c", ""),
+            ] {
+                s.entries.insert(PathBuf::from(&e.path), e);
+            }
+        }
+
+        let b_inv = workspace_index_referenced_by("b".into()).unwrap();
+        assert_eq!(b_inv.len(), 1);
+        assert_eq!(b_inv[0].from_path, "/a.md");
+        assert_eq!(b_inv[0].via_key, "belongs_to");
+
+        let c_inv = workspace_index_referenced_by("c".into()).unwrap();
+        assert_eq!(c_inv.len(), 1);
+        assert_eq!(c_inv[0].via_key, "cites");
+
+        // a.md's self-reference must NOT show up as an inverse on a.md.
+        let a_inv = workspace_index_referenced_by("a".into()).unwrap();
+        assert!(a_inv.is_empty(), "self-reference must be excluded: {a_inv:?}");
+
+        // --- Second scenario (same test fn so the two never race over the
+        // shared STATE lock, which cargo would otherwise run in parallel) ---
+        fn entry_titled(stem: &str, title: Option<&str>, fm_yaml: &str) -> IndexEntry {
+            let fmv = fm(fm_yaml);
+            IndexEntry {
+                path: format!("/{stem}.md"),
+                name: format!("{stem}.md"),
+                stem: stem.to_string(),
+                mtime: 0,
+                size: 0,
+                relationships: extract_relationships(&fmv),
+                frontmatter: fmv,
+                wikilinks: vec![],
+                tags: vec![],
+                headings: vec![],
+                summary: String::new(),
+                title: title.map(|s| s.to_string()),
+            }
+        }
+        {
+            let mut s = STATE.write().unwrap();
+            s.entries.clear();
+            for e in [
+                entry_titled("a", None, "related_to: \"[[The Topic]]\""),
+                entry_titled("t", Some("The Topic"), ""),
+            ] {
+                s.entries.insert(PathBuf::from(&e.path), e);
+            }
+        }
+        let t_inv = workspace_index_referenced_by("The Topic".into()).unwrap();
+        assert_eq!(t_inv.len(), 1, "title resolution: {t_inv:?}");
+        assert_eq!(t_inv[0].from_path, "/a.md");
+        assert_eq!(t_inv[0].via_key, "related_to");
+
+        // Cleanup so we don't leak state into other tests.
+        STATE.write().unwrap().entries.clear();
     }
 }
 

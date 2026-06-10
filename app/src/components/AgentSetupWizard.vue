@@ -256,6 +256,7 @@ function onCloudKeyKey(e: KeyboardEvent) {
 </script>
 
 <template>
+  <Teleport to="body">
   <div v-if="props.open" class="wiz-backdrop" @click.self="finish">
     <div class="wiz" role="dialog" aria-modal="true">
       <button class="wiz__close" @click="finish" :title="t('wizard.close')">×</button>
@@ -431,6 +432,7 @@ function onCloudKeyKey(e: KeyboardEvent) {
       </div>
     </div>
   </div>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -441,7 +443,7 @@ function onCloudKeyKey(e: KeyboardEvent) {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: var(--z-modal);
   backdrop-filter: blur(2px);
 }
 .wiz {

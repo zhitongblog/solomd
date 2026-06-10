@@ -128,6 +128,35 @@ const lang = 'zh' as const;
         <li>多编码自动识别</li>
       </ul>
 
+      <h2>Typora 社区自己最想要的功能 —— SoloMD 已全部交付</h2>
+      <p>
+        以下是 Typora 官方反馈区（<a href="https://github.com/typora/typora-issues/issues" rel="external">typora/typora-issues</a>）
+        里点赞最高、至今仍未实现的请求，有些从 2016–2018 年开着到现在。SoloMD
+        早已全部交付 —— 免费，且全平台：
+      </p>
+      <table class="compare-detail">
+        <thead>
+          <tr><th>Typora 社区长期请求</th><th>SoloMD</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Windows / Linux 上的多标签（2017 年至今）</td><td>✅ 全平台多标签</td></tr>
+          <tr><td>在当前标签 / 新标签 / 新窗口打开</td><td>✅ 可配置</td></tr>
+          <tr><td>源码管理集成</td><td>✅ 内置 AutoGit（逐笔历史、diff、回滚）+ GitHub 同步</td></tr>
+          <tr><td>Wiki 式 <code>[[链接]]</code></td><td>✅ wikilink + 反向链接面板</td></tr>
+          <tr><td>演示 / 幻灯片模式</td><td>✅ 完整 reveal.js（<code>⌘⌥P</code>）</td></tr>
+          <tr><td>学术引用 / 参考文献</td><td>✅ <code>@citekey</code> + .bib / CSL</td></tr>
+          <tr><td>Vim 键位</td><td>✅ Vim 模式</td></tr>
+          <tr><td>更多图表格式</td><td>✅ Mermaid 11.14（+ KaTeX）</td></tr>
+          <tr><td>插件 / 可扩展性</td><td>✅ MCP 端点 + 可脚本化 CLI + agent recipes（任何 LLM 客户端都能驱动你的笔记库）</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:0.95rem;color:var(--text-muted);">
+        你现有的 Typora 笔记原样打开：SoloMD 读 Typora 的
+        <code>./images/&lt;笔记名&gt;/</code> 附件布局（设置 → 写作 → 附件模式里选），
+        中文 / 带空格的目录名下图片也能正常渲染。不转换、不锁定 —— 仍是你文件夹里的纯
+        <code>.md</code>。
+      </p>
+
       <h2>两者都做得好的</h2>
       <ul>
         <li>KaTeX 数学（行内 <code>$a^2+b^2=c^2$</code> 和块 <code>$$...$$</code>）</li>

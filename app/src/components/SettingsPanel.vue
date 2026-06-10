@@ -27,6 +27,7 @@ import CloudFolderBanner from './CloudFolderBanner.vue';
 import ProxySettings from './ProxySettings.vue';
 import ThemeMarketplace from './ThemeMarketplace.vue';
 import { isIOS } from '../lib/platform';
+import { DsModal } from '../ui';
 import type { Theme } from '../types';
 
 const isMobilePlatform = isIOS();
@@ -250,12 +251,13 @@ function onSelectPdfFont(v: string) {
 </script>
 
 <template>
-  <div v-if="open" class="settings__backdrop" @click.self="emit('close')">
-    <div class="settings" role="dialog" aria-label="Settings">
-      <header class="settings__header">
-        <h2>{{ t('settings.title') }}</h2>
-        <button class="settings__close" @click="emit('close')">×</button>
-      </header>
+  <DsModal
+    :model-value="open"
+    :title="t('settings.title')"
+    width="820px"
+    class="settings-modal"
+    @update:model-value="emit('close')"
+  >
       <div class="settings__layout">
         <!-- v3.0 — left-side category nav. Click switches the right-side
              content panel; only one category visible at a time. -->
@@ -903,6 +905,24 @@ function onSelectPdfFont(v: string) {
           </label>
         </section>
 
+        <!-- v4.6 F6 — Inbox workflow -->
+        <section data-cat="writing">
+          <label>
+            <input type="checkbox" :checked="settings.inboxWorkflowEnabled" @change="settings.toggleInboxWorkflow()" />
+            {{ t('inbox.workflowSetting') }}
+          </label>
+          <div style="font-size: 11px; color: var(--text-faint); margin-top: 4px; line-height: 1.5;">
+            {{ t('inbox.workflowSettingHint') }}
+          </div>
+          <label v-if="settings.inboxWorkflowEnabled" style="margin-top: 8px;">
+            <input type="checkbox" :checked="settings.autoAdvanceInboxAfterOrganize" @change="settings.toggleAutoAdvanceInbox()" />
+            {{ t('inbox.autoAdvanceSetting') }}
+          </label>
+          <div v-if="settings.inboxWorkflowEnabled" style="font-size: 11px; color: var(--text-faint); margin-top: 4px; line-height: 1.5;">
+            {{ t('inbox.autoAdvanceSettingHint') }}
+          </div>
+        </section>
+
         <section data-cat="advanced">
           <label>
             <input type="checkbox" :checked="settings.restoreSession" @change="settings.toggleRestoreSession()" />
@@ -1037,34 +1057,22 @@ function onSelectPdfFont(v: string) {
         <div data-cat="integrations"><RestApiSettings /></div>
       </div>
       </div>
-    </div>
     <!-- v2.5: theme marketplace modal. Lives outside settings__body so it
-         overlays the entire viewport, but inside the settings backdrop so
-         closing settings closes it too. -->
+         overlays the entire viewport; it self-teleports to body so closing
+         settings (which unmounts DsModal) closes it too. -->
     <ThemeMarketplace
       :open="themeMarketplaceOpen"
       @close="themeMarketplaceOpen = false"
     />
-  </div>
+  </DsModal>
 </template>
 
 <style scoped>
-.settings__backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-.settings {
-  background: var(--bg-elev);
-  width: min(820px, 94vw);
-  height: min(640px, 84vh);
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
+/* DsModal supplies the backdrop / frame / header (title + close). Zero its
+   body padding so the two-column nav+body layout fills the panel edge-to-edge,
+   and give the panel a fixed working height like the old shell. */
+.settings-modal :deep(.ds-modal__body) {
+  padding: 0;
   display: flex;
   flex-direction: column;
 }
@@ -1072,6 +1080,7 @@ function onSelectPdfFont(v: string) {
   flex: 1;
   display: flex;
   min-height: 0;
+  height: min(560px, 78vh);
 }
 .settings__nav {
   width: 160px;
@@ -1131,24 +1140,6 @@ function onSelectPdfFont(v: string) {
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-.settings__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border);
-}
-.settings__header h2 {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-}
-.settings__close {
-  font-size: 20px;
-  line-height: 1;
-  padding: 0 6px;
-  color: var(--text-muted);
 }
 .settings__body {
   flex: 1;

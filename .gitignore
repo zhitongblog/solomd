@@ -58,3 +58,6 @@ app/src-tauri/*.provisionprofile
 # Android distribution artifacts (APK + AAB ship via GitHub Releases)
 dist-android/
 dist/
+
+# local-only strategy / scratch (never commit — public repo)
+.local/

@@ -19,6 +19,9 @@ import { openPath } from '@tauri-apps/plugin-opener';
 import { useDailyNotes } from './useDailyNotes';
 import { usePandocExport } from './usePandocExport';
 import { useBasesView } from './useBasesView';
+import { useInboxView } from './useInboxView';
+import { useInbox } from './useInbox';
+import { useSavedViews } from './useSavedViews';
 import { useAutoCommit } from './useAutoCommit';
 import { useWorkspaceIndexStore } from '../stores/workspaceIndex';
 import { useGitHistoryStore } from '../stores/gitHistory';
@@ -45,6 +48,9 @@ export function useCommands(): Command[] {
   const daily = useDailyNotes();
   const pandoc = usePandocExport();
   const bases = useBasesView();
+  const inboxView = useInboxView();
+  const inbox = useInbox();
+  const savedViews = useSavedViews();
   const auto = useAutoCommit();
   const gh = useGitHistoryStore();
   const ws = useWorkspaceStore();
@@ -126,8 +132,13 @@ export function useCommands(): Command[] {
     { id: 'view.toggleRightSidebar', title: 'View: Toggle Right Sidebar', hint: 'Hide / show the Outline / Backlinks / Tags / History / Agent strip without losing per-pane preferences', shortcut: 'Ctrl+Alt+B', run: () => settings.toggleRightSidebar() },
     { id: 'view.toggleAgentPanel', title: 'View: Toggle Agent Panel', hint: 'Right-side chat-with-vault panel — streamed multi-turn AI with tool-call cards, persisted run history, and trace replay', run: () => settings.toggleAgentPanel() },
     { id: 'view.toggleBacklinks', title: 'View: Toggle Backlinks Pane', run: () => settings.toggleBacklinks() },
+    { id: 'view.relationships', title: 'View: Toggle Relationships Pane', hint: 'Typed relationships — forward edges authored in YAML front matter plus computed inverses (Referenced by)', run: () => settings.toggleRelationships() },
     { id: 'view.toggleTagsPanel', title: 'View: Toggle Tags Pane', run: () => settings.toggleTagsPanel() },
+    { id: 'view.toggleNeighborhood', title: 'View: Toggle Neighborhood Pane', hint: 'Per-note relationship explorer — frontmatter wikilink groups, inverse relationships, and backlinks; click to open, ⌘/Ctrl-click to pivot', run: () => settings.toggleNeighborhood() },
+    { id: 'view.toggleTypesPanel', title: 'View: Toggle Types Pane', hint: 'Type-driven sidebar — notes with `type:<Name>` grouped into collapsible first-class sections (types-as-lenses)', run: () => settings.toggleTypesPanel() },
+    { id: 'type.create', title: 'Types: New Type…', hint: 'Create a type-definition note (`type: Type`) so its members get a first-class sidebar section', run: () => { if (!settings.showTypesPanel) settings.toggleTypesPanel(); window.dispatchEvent(new CustomEvent('solomd:create-type')); } },
     { id: 'view.toggleHistoryPanel', title: 'View: Toggle History Pane', hint: 'Show / hide the per-note version history pane (does not disable Auto-Git)', run: () => settings.toggleHistoryPanel() },
+    { id: 'view.toggleInspector', title: 'View: Toggle Properties Inspector', shortcut: 'Ctrl+Shift+I', hint: 'Edit the active note’s YAML frontmatter as typed properties (text / number / date / status / tags / relation)', run: () => settings.toggleInspector() },
     { id: 'view.resetSidebarPanes', title: 'View: Reset Sidebar Pane Heights', hint: 'Clear stored per-pane heights so the right sidebar returns to even-share flex layout', run: () => settings.clearRightSidebarPaneHeights() },
     { id: 'view.toggleWrap', title: 'View: Toggle Word Wrap', run: () => settings.toggleWordWrap() },
     { id: 'view.toggleLineNumbers', title: 'View: Toggle Line Numbers', run: () => settings.toggleLineNumbers() },
@@ -323,6 +334,18 @@ export function useCommands(): Command[] {
       run: () => bases.openBases(),
     },
     {
+      id: 'views.toggle',
+      title: 'View: Toggle Saved Views Panel',
+      hint: 'Show / hide the Saved Views section in the left sidebar',
+      run: () => settings.toggleViewsPanel(),
+    },
+    {
+      id: 'views.create',
+      title: 'View: Create Saved View…',
+      hint: 'Define a persistent filtered note list (saved to .solomd/views/)',
+      run: () => savedViews.newView(),
+    },
+    {
       id: 'history.initWorkspace',
       title: 'History: Initialize Git History',
       hint: 'Run `git init` + initial commit of all .md/.txt files in this workspace',
@@ -452,6 +475,33 @@ export function useCommands(): Command[] {
         } catch (e) {
           console.error('failed to create window', e);
         }
+      },
+    },
+
+    // v4.6 F6 — Inbox workflow command-palette entries.
+    {
+      id: 'inbox.open',
+      title: 'Open Inbox',
+      hint: 'Review notes flagged `inbox: true` — Week / Month / All, ⌘E to organize & advance',
+      run: () => {
+        if (!settings.inboxWorkflowEnabled) {
+          toasts.info('Enable the Inbox workflow in Settings first');
+          return;
+        }
+        inboxView.openInbox();
+      },
+    },
+    {
+      id: 'inbox.organizeAndAdvance',
+      title: 'Inbox: Mark Organized & Advance',
+      shortcut: 'Ctrl+E',
+      hint: 'Set `inbox: false` on the active note and jump to the next inbox note',
+      run: () => {
+        if (!settings.inboxWorkflowEnabled) {
+          inbox.toggleActive();
+          return;
+        }
+        void inbox.organizeAndAdvance();
       },
     },
   ];
