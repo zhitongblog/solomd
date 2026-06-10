@@ -110,6 +110,7 @@ async function openIdx(i: number) {
 </script>
 
 <template>
+  <Teleport to="body">
   <div v-if="open" class="quick-switcher__backdrop" @click.self="emit('close')">
     <div class="quick-switcher" role="dialog" aria-label="Quick file switcher">
       <input
@@ -139,25 +140,26 @@ async function openIdx(i: number) {
       </div>
     </div>
   </div>
+  </Teleport>
 </template>
 
 <style scoped>
 .quick-switcher__backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.4);
   display: flex;
   justify-content: center;
   align-items: flex-start;
   padding-top: 12vh;
-  z-index: 1000;
+  z-index: var(--z-modal);
 }
 .quick-switcher {
   width: min(620px, 92vw);
   background: var(--bg-elev);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-pop);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -189,7 +191,7 @@ async function openIdx(i: number) {
   overflow: hidden;
 }
 .quick-switcher__item--active {
-  background: var(--bg-active);
+  background: var(--accent-soft);
 }
 .quick-switcher__name {
   color: var(--text);

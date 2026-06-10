@@ -7,8 +7,16 @@ const props = withDefaults(
     title?: string;
     closeOnBackdrop?: boolean;
     width?: string;
+    /**
+     * Whether to teleport the modal to <body>. Defaults to true (the modal
+     * self-teleports, so callers don't need their own <Teleport> wrapper).
+     * Pass `false` when the caller is already inside a <Teleport to="body">
+     * (e.g. a dialog mounted under an existing teleport in App.vue) to avoid
+     * a redundant nested teleport.
+     */
+    teleport?: boolean;
   }>(),
-  { closeOnBackdrop: true, width: '480px' },
+  { closeOnBackdrop: true, width: '480px', teleport: true },
 );
 
 const emit = defineEmits<{ 'update:modelValue': [boolean] }>();
@@ -81,7 +89,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <Teleport to="body">
+  <Teleport to="body" :disabled="!teleport">
     <div v-if="modelValue" class="ds-modal" role="presentation">
       <div class="ds-modal__backdrop" @click="onBackdrop" />
       <div

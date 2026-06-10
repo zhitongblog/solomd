@@ -83,6 +83,7 @@ async function runIdx(i: number) {
 </script>
 
 <template>
+  <Teleport to="body">
   <div v-if="open" class="palette__backdrop" @click.self="emit('close')">
     <div class="palette" role="dialog" aria-label="Command palette">
       <input
@@ -110,25 +111,26 @@ async function runIdx(i: number) {
       <div class="palette__empty" v-else>No matching command</div>
     </div>
   </div>
+  </Teleport>
 </template>
 
 <style scoped>
 .palette__backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.4);
   display: flex;
   justify-content: center;
   align-items: flex-start;
   padding-top: 12vh;
-  z-index: 1000;
+  z-index: var(--z-modal);
 }
 .palette {
   width: min(560px, 92vw);
   background: var(--bg-elev);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-pop);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -158,7 +160,7 @@ async function runIdx(i: number) {
   cursor: pointer;
 }
 .palette__item--active {
-  background: var(--bg-active);
+  background: var(--accent-soft);
 }
 .palette__shortcut {
   color: var(--text-faint);

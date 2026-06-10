@@ -128,7 +128,7 @@ function onPillClick() {
   background: var(--accent);
   color: var(--bg-elev);
   padding: 1px 8px;
-  border-radius: 999px;
+  border-radius: var(--r-full);
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.04em;

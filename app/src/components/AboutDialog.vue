@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue';
 import { getVersion } from '@tauri-apps/api/app';
 import { openUrl } from '@tauri-apps/plugin-opener';
+import { DsModal } from '../ui';
 
 defineProps<{ open: boolean }>();
 const emit = defineEmits<{ (e: 'close'): void }>();
@@ -34,10 +35,17 @@ async function visit(url: string) {
 </script>
 
 <template>
-  <div v-if="open" class="about__backdrop" @click.self="emit('close')">
-    <div class="about" role="dialog" aria-label="About SoloMD">
-      <button class="about__close" @click="emit('close')" aria-label="Close">×</button>
+  <DsModal
+    :model-value="open"
+    width="440px"
+    @update:model-value="emit('close')"
+  >
+    <!-- Empty header slot keeps DsModal's × close button without a title bar,
+         since the About content is centered branding rather than a labelled
+         form. -->
+    <template #header><span class="about__hdr" aria-label="About SoloMD"></span></template>
 
+    <div class="about">
       <div class="about__brand">
         <span class="brand"><span class="brand__h">#</span><span class="brand__md">MD</span></span>
       </div>
@@ -91,48 +99,15 @@ async function visit(url: string) {
         Tauri 2 · Vue 3 · CodeMirror 6 · Rust
       </div>
     </div>
-  </div>
+  </DsModal>
 </template>
 
 <style scoped>
-.about__backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-  backdrop-filter: blur(4px);
-}
 .about {
-  background: var(--bg-elev);
-  width: min(440px, 92vw);
-  max-height: 90vh;
-  border-radius: 14px;
-  border: 1px solid var(--border);
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
-  padding: 28px 32px 24px;
   text-align: center;
-  position: relative;
-  overflow-y: auto;
 }
-.about__close {
-  position: absolute;
-  top: 12px;
-  right: 14px;
-  font-size: 22px;
-  line-height: 1;
-  padding: 4px 8px;
-  color: var(--text-faint);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  border-radius: 6px;
-}
-.about__close:hover {
-  color: var(--text);
-  background: var(--bg-hover);
+.about__hdr {
+  flex: 1;
 }
 .about__brand {
   display: flex;

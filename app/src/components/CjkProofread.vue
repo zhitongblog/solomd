@@ -264,6 +264,7 @@ void lang;
 </script>
 
 <template>
+  <Teleport to="body">
   <div v-if="open" class="proof__backdrop" @click.self="emit('close')">
     <div class="proof" role="dialog" aria-label="CJK Proofread">
       <header class="proof__head">
@@ -352,6 +353,7 @@ void lang;
       </div>
     </div>
   </div>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -359,7 +361,7 @@ void lang;
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.42);
-  z-index: 1000;
+  z-index: var(--z-modal);
   display: flex;
   justify-content: center;
   align-items: flex-start;
