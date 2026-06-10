@@ -98,8 +98,8 @@ async function loadMods(): Promise<any> {
  * id + colorScheme + locale; we keep a stable id per session so prefs persist
  * across remounts but don't leak between vaults.
  */
-function userPrefsFor(theme: BoardThemeTokens): any {
-  return {
+function userPrefsFor(tldraw: any, theme: BoardThemeTokens): any {
+  const prefs = {
     id: 'solomd-board-user',
     colorScheme: theme.colorScheme,
     locale: theme.locale,
@@ -109,6 +109,24 @@ function userPrefsFor(theme: BoardThemeTokens): any {
     edgeScrollSpeed: 0,
     animationSpeed: 0,
   };
+  // tldraw's <Tldraw user={…}> wants a TLUser (a signal-backed preferences
+  // manager with `.userPreferences.get()`), NOT a raw prefs object — passing
+  // the bare object throws "userPreferences.get is undefined" at mount. Build
+  // a real TLUser via createTLUser + atom; fall back to the raw object only on
+  // a tldraw build that lacks those exports.
+  try {
+    const { createTLUser, atom } = tldraw;
+    if (typeof createTLUser === 'function' && typeof atom === 'function') {
+      const prefsAtom = atom('solomd-board-prefs', prefs);
+      return createTLUser({
+        userPreferences: prefsAtom,
+        setUserPreferences: (next: unknown) => prefsAtom.set(next),
+      });
+    }
+  } catch {
+    /* fall through to raw prefs */
+  }
+  return prefs;
 }
 
 /**
@@ -154,7 +172,10 @@ export async function mountBoard(
   // savedSnapshotRef: the last JSON we serialized OR loaded. Used to (a)
   // de-dupe programmatic loads from user edits and (b) skip change events
   // that don't actually alter the document (matches Tolaria).
-  let savedSnapshotRef = serialize();
+  // Seed with a safe default BEFORE the first serialize() — serialize()'s
+  // catch branch reads savedSnapshotRef, so calling it during this `let`'s
+  // own initializer would hit the temporal dead zone if getSnapshot throws.
+  let savedSnapshotRef = '{}';
 
   function serialize(): string {
     try {
@@ -163,6 +184,8 @@ export async function mountBoard(
       return savedSnapshotRef ?? '{}';
     }
   }
+
+  savedSnapshotRef = serialize();
 
   // ---- debounced user-edit listener ----
   let theme = opts.theme;
@@ -195,7 +218,7 @@ export async function mountBoard(
       root.render(
         React.createElement(Tldraw, {
           store,
-          user: userPrefsFor(theme),
+          user: userPrefsFor(tldraw, theme),
           // Hide chrome entirely for read-only thumbnails.
           hideUi: !!opts.readOnly,
           // Tauri/zoom: don't let tldraw grab pointer capture aggressively.
@@ -337,7 +360,7 @@ export async function boardToSvg(
       root.render(
         React.createElement(Tldraw, {
           store,
-          user: userPrefsFor(theme),
+          user: userPrefsFor(tldraw, theme),
           hideUi: true,
           onMount: async (editor: any) => {
             try {
