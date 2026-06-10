@@ -110,6 +110,9 @@ interface Settings {
   // v4.6 F4: Neighborhood — per-note relationship explorer pane (frontmatter
   // wikilink groups + inverse scan + body backlinks).
   showNeighborhood: boolean;
+  // v4.6 F2: Types sidebar pane (types-as-lenses). Notes with `type:<Name>`
+  // grouped into collapsible first-class sidebar sections.
+  showTypesPanel: boolean;
   // v4.0 pillar 1: Inline Agent Panel — chat-with-vault sidebar.
   showAgentPanel: boolean;
   // v4.0 release migration marker: set on first launch after upgrading
@@ -255,6 +258,7 @@ interface Settings {
     showRelationships: boolean;
     showTagsPanel: boolean;
     showNeighborhood: boolean;
+    showTypesPanel: boolean;
     showHistoryPanel: boolean;
     showAgentPanel: boolean;
   } | null;
@@ -370,6 +374,7 @@ function defaults(): Settings {
     dailyNotesTemplate: '',
     showTagsPanel: true,
     showNeighborhood: false,
+    showTypesPanel: false,
     showAgentPanel: true,
     // True for fresh installs (defaults are already v4.0). Existing
     // localStorage blobs from v3.6.x / v4-beta won't have this key, so
@@ -409,7 +414,7 @@ function defaults(): Settings {
     imageExportBranding: true,
     globalZoom: 1,
     codeBlockLineNumbers: false,
-    rsPaneOrder: ['search', 'outline', 'backlinks', 'relationships', 'tags', 'neighborhood', 'history', 'inspector', 'agent'],
+    rsPaneOrder: ['search', 'outline', 'backlinks', 'relationships', 'tags', 'neighborhood', 'types', 'history', 'inspector', 'agent'],
     previewFontSize: 15,
     attachmentMode: 'shared',
     assetsDirName: '_assets',
@@ -596,6 +601,7 @@ export const useSettingsStore = defineStore('settings', {
           showRelationships: this.showRelationships,
           showTagsPanel: this.showTagsPanel,
           showNeighborhood: this.showNeighborhood,
+          showTypesPanel: this.showTypesPanel,
           showHistoryPanel: this.showHistoryPanel,
           showAgentPanel: this.showAgentPanel,
         };
@@ -608,11 +614,12 @@ export const useSettingsStore = defineStore('settings', {
           this.showRelationships = saved.showRelationships;
           this.showTagsPanel = saved.showTagsPanel;
           this.showNeighborhood = saved.showNeighborhood;
+          this.showTypesPanel = saved.showTypesPanel;
           this.showHistoryPanel = saved.showHistoryPanel;
           this.showAgentPanel = saved.showAgentPanel;
           this._rsPanesBeforeHide = null;
         }
-        if (!this.showBacklinks && !this.showRelationships && !this.showTagsPanel && !this.showNeighborhood && !this.showHistoryPanel && !this.showAgentPanel) {
+        if (!this.showBacklinks && !this.showRelationships && !this.showTagsPanel && !this.showTypesPanel && !this.showNeighborhood && !this.showHistoryPanel && !this.showAgentPanel) {
           this.showBacklinks = true;
           this.showTagsPanel = true;
         }
@@ -627,6 +634,7 @@ export const useSettingsStore = defineStore('settings', {
       showRelationships: boolean;
       showTagsPanel: boolean;
       showNeighborhood: boolean;
+      showTypesPanel: boolean;
       showHistoryPanel: boolean;
       showAgentPanel: boolean;
     }) {
@@ -727,6 +735,11 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleNeighborhood() {
       this.showNeighborhood = !this.showNeighborhood;
+      this.persist();
+    },
+    // v4.6 F2 — toggle the Types (types-as-lenses) sidebar pane.
+    toggleTypesPanel() {
+      this.showTypesPanel = !this.showTypesPanel;
       this.persist();
     },
     toggleAgentPanel() {
@@ -915,7 +928,7 @@ export const useSettingsStore = defineStore('settings', {
       this.persist();
     },
     resetRsPaneOrder() {
-      this.rsPaneOrder = ['search', 'outline', 'backlinks', 'relationships', 'tags', 'neighborhood', 'history', 'inspector', 'agent'];
+      this.rsPaneOrder = ['search', 'outline', 'backlinks', 'relationships', 'tags', 'neighborhood', 'types', 'history', 'inspector', 'agent'];
       this.persist();
     },
     /** v4.3.0 PR #74 — preview-only font size. Editor font is the existing

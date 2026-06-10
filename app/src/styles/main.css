@@ -35,6 +35,16 @@
   --accent-fg: #1a1a1a;
   --danger: #d64545;
 
+  /* v4.6 F2 — type-section accent palette (types-as-lenses). Six fixed
+     hues so a type's `color:` key tints its sidebar section consistently
+     across themes. Light values here; dark overrides below. */
+  --type-orange: #d9831f;
+  --type-red: #d64545;
+  --type-purple: #8b5cd6;
+  --type-blue: #2f7fd4;
+  --type-green: #3a9d4e;
+  --type-yellow: #c9a227;
+
   /* Markdown element colors (light) */
   --md-h1: #1a1a1a;
   --md-h2: #232323;
@@ -102,6 +112,15 @@
   --text-faint: #7f776d;
   --accent: #ffa54d;
   --accent-fg: #1a1a1a;
+
+  /* v4.6 F2 — type-section accent palette (dark, slightly lifted for
+     contrast on the dark sidebar background). */
+  --type-orange: #f0a64a;
+  --type-red: #e86d6d;
+  --type-purple: #b18cf0;
+  --type-blue: #6bb0f0;
+  --type-green: #6cc77f;
+  --type-yellow: #e0c350;
 
   /* Markdown element colors (dark) */
   --md-h1: #ffffff;

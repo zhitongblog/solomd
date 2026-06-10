@@ -16,6 +16,7 @@ import BacklinksPanel from './components/BacklinksPanel.vue';
 import NeighborhoodPanel from './components/NeighborhoodPanel.vue';
 import RelationshipsPanel from './components/RelationshipsPanel.vue';
 import TagsPanel from './components/TagsPanel.vue';
+import TypesPanel from './components/TypesPanel.vue';
 import HistoryPanel from './components/HistoryPanel.vue';
 import PropertiesInspector from './components/PropertiesInspector.vue';
 import AgentPanel from './components/AgentPanel.vue';
@@ -137,6 +138,7 @@ function rsPaneSnapshot() {
     showRelationships: settings.showRelationships,
     showTagsPanel: settings.showTagsPanel,
     showNeighborhood: settings.showNeighborhood,
+    showTypesPanel: settings.showTypesPanel,
     showHistoryPanel: settings.showHistoryPanel,
     showAgentPanel: settings.showAgentPanel,
   };
@@ -153,6 +155,7 @@ function ctxToggle(toggleFn: () => void) {
     !settings.showRelationships &&
     !settings.showTagsPanel &&
     !showNeighborhoodPane.value &&
+    !settings.showTypesPanel &&
     !settings.showHistoryPanel &&
     (IS_APP_STORE_BUILD || !settings.showAgentPanel);
   if (noPanesVisible) {
@@ -984,6 +987,10 @@ const showNeighborhoodPane = computed(
     tabs.activeTab?.language === 'markdown' &&
     !!workspace.currentFolder,
 );
+// v4.6 F2 — Types pane (types-as-lenses). Workspace-scoped like Tags.
+const showTypesPane = computed(
+  () => settings.showTypesPanel && !!workspace.currentFolder,
+);
 const showHistoryPane = computed(
   // v4.0.2 — decoupled from autoGitEnabled (#55). Hiding the pane via
   // its × button no longer disables git sync; users can keep snapshots
@@ -1023,6 +1030,7 @@ const showRightSidebar = computed(() => {
     showRelationshipsPane.value ||
     showTagsPane.value ||
     showNeighborhoodPane.value ||
+    showTypesPane.value ||
     showHistoryPane.value ||
     showInspectorPane.value ||
     showAgentPane.value
@@ -1037,18 +1045,19 @@ const visibleRsPanes = computed(() => {
   // v4.3.0 issue #57b — order driven by settings.rsPaneOrder so users can
   // drag-reorder. Unknown ids (newly-shipped future panes) get appended at
   // the end so a SoloMD update doesn't blow away an existing user layout.
-  const all: Record<'search' | 'outline' | 'backlinks' | 'relationships' | 'tags' | 'neighborhood' | 'history' | 'inspector' | 'agent', boolean> = {
+  const all: Record<'search' | 'outline' | 'backlinks' | 'relationships' | 'tags' | 'neighborhood' | 'types' | 'history' | 'inspector' | 'agent', boolean> = {
     search: showSearchPane.value,
     outline: showOutlinePane.value,
     backlinks: showBacklinksPane.value,
     relationships: showRelationshipsPane.value,
     tags: showTagsPane.value,
     neighborhood: showNeighborhoodPane.value,
+    types: showTypesPane.value,
     history: showHistoryPane.value,
     inspector: showInspectorPane.value,
     agent: showAgentPane.value,
   };
-  const known = ['search', 'outline', 'backlinks', 'relationships', 'tags', 'neighborhood', 'history', 'inspector', 'agent'] as const;
+  const known = ['search', 'outline', 'backlinks', 'relationships', 'tags', 'neighborhood', 'types', 'history', 'inspector', 'agent'] as const;
   const ordered: string[] = [];
   for (const id of settings.rsPaneOrder || []) {
     if (id in all && !ordered.includes(id)) ordered.push(id);
@@ -1058,7 +1067,7 @@ const visibleRsPanes = computed(() => {
   }
   return ordered
     .filter((id) => all[id as keyof typeof all])
-    .map((id) => ({ id: id as 'search' | 'outline' | 'backlinks' | 'relationships' | 'tags' | 'neighborhood' | 'history' | 'inspector' | 'agent' }));
+    .map((id) => ({ id: id as 'search' | 'outline' | 'backlinks' | 'relationships' | 'tags' | 'neighborhood' | 'types' | 'history' | 'inspector' | 'agent' }));
 });
 
 // v4.3.0 issue #57b — HTML5 drag state for right-sidebar pane reordering.
@@ -1239,6 +1248,10 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
                 v-if="p.id === 'neighborhood'"
                 @close="ctxToggle(() => settings.toggleNeighborhood())"
               />
+              <TypesPanel
+                v-if="p.id === 'types'"
+                @close="ctxToggle(() => settings.toggleTypesPanel())"
+              />
               <HistoryPanel v-if="p.id === 'history'" @close="ctxToggle(() => settings.toggleHistoryPanel())" />
               <PropertiesInspector v-if="p.id === 'inspector'" @close="ctxToggle(() => settings.toggleInspector())" />
               <AgentPanel
@@ -1300,6 +1313,10 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
                 v-if="p.id === 'neighborhood'"
                 @close="ctxToggle(() => settings.toggleNeighborhood())"
               />
+              <TypesPanel
+                v-if="p.id === 'types'"
+                @close="ctxToggle(() => settings.toggleTypesPanel())"
+              />
               <HistoryPanel v-if="p.id === 'history'" @close="ctxToggle(() => settings.toggleHistoryPanel())" />
               <PropertiesInspector v-if="p.id === 'inspector'" @close="ctxToggle(() => settings.toggleInspector())" />
               <AgentPanel
@@ -1343,6 +1360,10 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
           <label class="sidebar-ctx__item" @click="ctxToggle(() => { settings.toggleNeighborhood() })">
             <span class="sidebar-ctx__check">{{ settings.showNeighborhood ? '✓' : '' }}</span>
             {{ t('rsPane.neighborhood') }}
+          </label>
+          <label class="sidebar-ctx__item" @click="ctxToggle(() => { settings.toggleTypesPanel() })">
+            <span class="sidebar-ctx__check">{{ settings.showTypesPanel ? '✓' : '' }}</span>
+            {{ t('rsPane.types') }}
           </label>
           <label class="sidebar-ctx__item" @click="ctxToggle(() => { settings.toggleHistoryPanel() })">
             <span class="sidebar-ctx__check">{{ settings.showHistoryPanel ? '✓' : '' }}</span>
