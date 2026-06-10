@@ -67,6 +67,7 @@ import { track } from './lib/telemetry';
 import { openWelcomeTour } from './lib/welcome-tour';
 import { useWorkspaceStore } from './stores/workspace';
 import { useWorkspaceIndexStore } from './stores/workspaceIndex';
+import { usePropertiesStore } from './stores/properties';
 import { useRagStore } from './stores/rag';
 import { IS_APP_STORE_BUILD } from './lib/app-build';
 import UiPreview from './components/UiPreview.vue';
@@ -84,6 +85,7 @@ const files = useFiles();
 const exporter = useExport();
 const workspace = useWorkspaceStore();
 const workspaceIndex = useWorkspaceIndexStore();
+const properties = usePropertiesStore();
 const rag = useRagStore();
 const autoCommit = useAutoCommit();
 autoCommit.start();
@@ -431,6 +433,13 @@ watchEffect(() => {
 // v2.0: keep the Rust workspace index in sync with the active folder.
 watchEffect(() => {
   workspaceIndex.setFolder(workspace.currentFolder).catch(() => {});
+});
+
+// v4.6.1 F1: bind the properties store to the workspace so display-mode
+// overrides + pinned list load/save from .solomd/properties.json (the store
+// shipped in 4.6 but setFolder was never called → persistence silently no-op'd).
+watchEffect(() => {
+  properties.setFolder(workspace.currentFolder).catch(() => {});
 });
 
 // v2.4: push the active folder into the capture endpoint's view of the

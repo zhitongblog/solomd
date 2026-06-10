@@ -709,6 +709,13 @@ pub fn run_with(initial_file: Option<String>) {
             workspace_index::workspace_index_tags,
             workspace_index::workspace_index_resolve,
             workspace_index::workspace_index_rescan,
+            // v4.6 — these were only registered in the dead-code lib.rs::run();
+            // the desktop binary uses runner::run_with(), so the F1 property
+            // writes + F3 inverse-relationship lookup 404'd at runtime until
+            // registered here too. (Same class as the #94 rag::* omission.)
+            workspace_index::workspace_index_referenced_by,
+            commands::update_frontmatter_property,
+            commands::delete_frontmatter_property,
             spellcheck::spellcheck_init,
             spellcheck::spellcheck_check,
             spellcheck::spellcheck_suggest,
