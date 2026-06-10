@@ -6,11 +6,13 @@
 import { ref, computed, watch, nextTick } from 'vue';
 import { DsPopover, DsChip, DsInput } from '../../../ui';
 import { usePropertiesStore } from '../../../stores/properties';
+import { useI18n } from '../../../i18n';
 
 const props = defineProps<{ value: unknown }>();
 const emit = defineEmits<{ update: [string] }>();
 
 const store = usePropertiesStore();
+const { t } = useI18n();
 
 const current = computed<string>(() => {
   const v = props.value;
@@ -75,7 +77,7 @@ watch(
         ref="inputRef"
         v-model="draft"
         size="sm"
-        placeholder="Status…"
+        :placeholder="t('inspector.statusPlaceholder')"
         @keydown.enter.prevent="commitTyped"
         @keydown.esc.prevent="popRef?.close()"
       />

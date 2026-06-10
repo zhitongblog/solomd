@@ -288,6 +288,12 @@ const activeName = computed(() => tabs.activeTab?.fileName ?? null);
   color: var(--text);
   background: var(--bg-hover);
 }
+.inspector__suggested-chip:focus-visible,
+.inspector__add:focus-visible,
+.rs-pane-close:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
 .inspector__add {
   align-self: flex-start;
   background: transparent;
@@ -326,6 +332,10 @@ const activeName = computed(() => tabs.activeTab?.fileName ?? null);
 }
 .prop-value-trigger:hover {
   background: var(--bg-hover);
+}
+.prop-value-trigger:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
 }
 .prop-value-trigger--empty {
   color: var(--text-muted);

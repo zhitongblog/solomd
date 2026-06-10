@@ -6,11 +6,13 @@
 import { ref, computed, nextTick } from 'vue';
 import { DsChip, DsInput } from '../../../ui';
 import { usePropertiesStore } from '../../../stores/properties';
+import { useI18n } from '../../../i18n';
 
 const props = defineProps<{ value: unknown; propKey: string }>();
 const emit = defineEmits<{ update: [string[]] }>();
 
 const store = usePropertiesStore();
+const { t } = useI18n();
 
 const items = computed<string[]>(() => {
   const v = props.value;
@@ -63,6 +65,13 @@ function commitDraft() {
 function remove(tag: string) {
   emit('update', items.value.filter((x) => x !== tag));
 }
+
+/** Backspace on an empty add-input removes the last chip (Tolaria parity). */
+function onBackspace() {
+  if (draft.value === '' && items.value.length) {
+    emit('update', items.value.slice(0, -1));
+  }
+}
 </script>
 
 <template>
@@ -80,9 +89,10 @@ function remove(tag: string) {
         ref="inputRef"
         v-model="draft"
         size="sm"
-        placeholder="Add…"
+        :placeholder="t('inspector.addTag')"
         @keydown.enter.prevent="commitDraft"
         @keydown.esc.prevent="adding = false"
+        @keydown.delete="onBackspace"
         @blur="adding = false"
       />
       <ul v-if="suggestions.length" class="prop-tags-cell__sugg">
@@ -152,5 +162,10 @@ function remove(tag: string) {
   border-style: solid;
   color: var(--text);
   background: var(--bg-hover);
+}
+.prop-tags-cell__plus:focus-visible,
+.prop-tags-cell__sugg-item:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
 }
 </style>
