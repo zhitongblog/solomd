@@ -241,6 +241,18 @@ export const useTabsStore = defineStore('tabs', {
       const t = this.tabs.find((x) => x.id === id);
       if (t) t.content = content;
     },
+    /** v4.6 F1 — apply content that was just written to disk by an external
+     *  path (the Properties inspector's Rust frontmatter round-trip). Sets both
+     *  `content` (so the editor reflows) and `savedContent` (so the tab is NOT
+     *  left falsely dirty, since the bytes already match disk). Unlike
+     *  `markSaved` this does no goal-stamping — the on-disk file IS the source
+     *  of truth here and must stay byte-identical to what the editor shows. */
+    applyExternalSave(id: string, content: string) {
+      const t = this.tabs.find((x) => x.id === id);
+      if (!t) return;
+      t.content = content;
+      t.savedContent = content;
+    },
     /** #91 — repoint a tab at a new path WITHOUT touching `savedContent`.
      *  Used when a file is renamed while it has unsaved edits: the on-disk
      *  file (now at `filePath`) still holds the old, last-saved bytes, which

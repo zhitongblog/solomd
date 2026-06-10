@@ -499,3 +499,242 @@ pub async fn list_dir(path: String) -> Result<Vec<DirEntry>, String> {
         .await
         .map_err(|e| format!("join: {e}"))?
 }
+
+// ---------------------------------------------------------------------------
+// Frontmatter property editing (v4.6 F1 — Properties inspector).
+//
+// The YAML frontmatter block at the top of a note is the ONLY source of truth
+// for the Properties inspector. These two commands perform a *surgical* edit:
+// they parse the `---`…`---` block into an order-preserving `serde_yaml`
+// `Mapping`, mutate exactly one key (preserving the order of all other keys
+// and the existing key's position on update), then re-emit only the
+// frontmatter block. The note BODY (everything after the closing `---`) is
+// preserved byte-for-byte by slicing it out before the edit and re-appending
+// it verbatim — never re-serialized — so `---` rules, code fences, trailing
+// whitespace etc. are untouched and git diffs stay minimal.
+//
+// `serde_yaml::Mapping` is backed by an insertion-ordered map, so iterating /
+// re-emitting keeps the author's key order. New keys are appended at the end.
+// ---------------------------------------------------------------------------
+
+/// Detected frontmatter layout of a file. `body` is the verbatim slice that
+/// must be preserved unchanged; `map` is the parsed mapping (empty if there
+/// was no frontmatter block).
+struct SplitFm {
+    /// Parsed mapping (insertion-ordered). Empty mapping if no FM block.
+    map: serde_yaml::Mapping,
+    /// `true` when the source actually had a `---`…`---` block.
+    had_block: bool,
+    /// Everything after the frontmatter block, byte-for-byte (includes the
+    /// blank line(s) that followed the closing `---`). When there was no FM
+    /// block this is the entire original file.
+    body: String,
+}
+
+/// Split a raw file into (parsed frontmatter mapping, verbatim body).
+///
+/// Recognizes a frontmatter block only when the file *starts* with a line that
+/// is exactly `---` and a later line that is exactly `---` or `...` closes it.
+/// Anything else is treated as a file with no frontmatter (the whole content
+/// is the body).
+fn split_frontmatter(raw: &str) -> Result<SplitFm, String> {
+    let starts = raw.starts_with("---\n") || raw.starts_with("---\r\n");
+    if !starts {
+        return Ok(SplitFm {
+            map: serde_yaml::Mapping::new(),
+            had_block: false,
+            body: raw.to_string(),
+        });
+    }
+    let after_open_idx = if raw.starts_with("---\r\n") { 5 } else { 4 };
+    let rest = &raw[after_open_idx..];
+    // Locate a line that is exactly `---` or `...`.
+    let mut offset = 0usize; // byte offset into `rest`
+    let mut close_start: Option<usize> = None;
+    let mut close_len = 0usize;
+    for line in rest.split_inclusive('\n') {
+        let trimmed = line.trim_end_matches(['\n', '\r']);
+        if trimmed == "---" || trimmed == "..." {
+            close_start = Some(offset);
+            close_len = line.len();
+            break;
+        }
+        offset += line.len();
+    }
+    let close_start = match close_start {
+        Some(c) => c,
+        // Unterminated frontmatter → treat the whole file as body (don't
+        // destroy content we can't safely parse).
+        None => {
+            return Ok(SplitFm {
+                map: serde_yaml::Mapping::new(),
+                had_block: false,
+                body: raw.to_string(),
+            })
+        }
+    };
+    let yaml_src = &rest[..close_start];
+    let body = &rest[close_start + close_len..];
+
+    let map: serde_yaml::Mapping = if yaml_src.trim().is_empty() {
+        serde_yaml::Mapping::new()
+    } else {
+        match serde_yaml::from_str::<serde_yaml::Value>(yaml_src) {
+            Ok(serde_yaml::Value::Mapping(m)) => m,
+            // Non-mapping or null frontmatter: keep an empty mapping but still
+            // treat the block as present so we rewrite cleanly.
+            Ok(_) => serde_yaml::Mapping::new(),
+            Err(e) => return Err(format!("invalid frontmatter YAML: {e}")),
+        }
+    };
+
+    Ok(SplitFm {
+        map,
+        had_block: true,
+        body: body.to_string(),
+    })
+}
+
+/// Re-emit a file from a (possibly mutated) frontmatter mapping + verbatim body.
+///
+/// - If `map` is empty we drop the frontmatter block entirely (deleting the
+///   last key leaves just the body).
+/// - When the map is non-empty we serialize it with `serde_yaml` (which emits
+///   in insertion order) and wrap it in `---`…`---`.
+/// - A note with NO prior frontmatter that gains its first key gets a block
+///   synthesized at the very top, ahead of any leading `# H1`, with a single
+///   blank line separating it from the body.
+fn rebuild_file(split: &SplitFm) -> Result<String, String> {
+    if split.map.is_empty() {
+        // Deleting the last key (or an empty block): drop the frontmatter
+        // entirely, leaving just the verbatim body.
+        return Ok(split.body.clone());
+    }
+
+    let yaml = serde_yaml::to_string(&serde_yaml::Value::Mapping(split.map.clone()))
+        .map_err(|e| format!("serialize frontmatter: {e}"))?;
+    // `serde_yaml::to_string` ends with a single trailing newline already.
+    let yaml = yaml.trim_end_matches('\n');
+
+    let mut out = String::with_capacity(yaml.len() + split.body.len() + 16);
+    out.push_str("---\n");
+    out.push_str(yaml);
+    out.push_str("\n---\n");
+
+    if split.had_block {
+        // Preserve the original body bytes exactly.
+        out.push_str(&split.body);
+    } else {
+        // Synthesizing a brand-new block at the top of a note that had none.
+        // The closing `---\n` already terminates the block's line, so the body
+        // follows directly — no extra blank line is inserted (that would push a
+        // spurious empty line ahead of a leading `# H1`). Any leading newlines
+        // the original body carried are trimmed so we don't double them.
+        if !split.body.is_empty() {
+            out.push_str(split.body.trim_start_matches('\n'));
+        }
+    }
+    Ok(out)
+}
+
+/// Convert an incoming JSON value (from the JS side, where typing survives) to
+/// a YAML value so quoting/typing is decided by serde_yaml's emitter:
+/// numbers stay bare, booleans stay bare, strings get quoted only if needed,
+/// arrays become sequences per serde_yaml defaults.
+fn json_to_yaml(v: &serde_json::Value) -> serde_yaml::Value {
+    match v {
+        serde_json::Value::Null => serde_yaml::Value::Null,
+        serde_json::Value::Bool(b) => serde_yaml::Value::Bool(*b),
+        serde_json::Value::Number(n) => {
+            if let Some(i) = n.as_i64() {
+                serde_yaml::Value::Number(i.into())
+            } else if let Some(u) = n.as_u64() {
+                serde_yaml::Value::Number(u.into())
+            } else if let Some(f) = n.as_f64() {
+                serde_yaml::Value::Number(f.into())
+            } else {
+                serde_yaml::Value::String(n.to_string())
+            }
+        }
+        serde_json::Value::String(s) => serde_yaml::Value::String(s.clone()),
+        serde_json::Value::Array(a) => {
+            serde_yaml::Value::Sequence(a.iter().map(json_to_yaml).collect())
+        }
+        serde_json::Value::Object(o) => {
+            let mut m = serde_yaml::Mapping::new();
+            for (k, val) in o {
+                m.insert(serde_yaml::Value::String(k.clone()), json_to_yaml(val));
+            }
+            serde_yaml::Value::Mapping(m)
+        }
+    }
+}
+
+/// Set (insert or update) a single frontmatter key, preserving key order and
+/// the verbatim body. Returns the full rewritten file content. Pure function
+/// over strings so it's unit-testable without Tauri/IO — see
+/// `tests/frontmatter_edit_test.rs`.
+pub fn set_frontmatter_property_str(
+    raw: &str,
+    key: &str,
+    value: &serde_json::Value,
+) -> Result<String, String> {
+    if key.trim().is_empty() {
+        return Err("frontmatter key must not be empty".into());
+    }
+    let mut split = split_frontmatter(raw)?;
+    let yk = serde_yaml::Value::String(key.to_string());
+    let yv = json_to_yaml(value);
+    // `Mapping::insert` updates in place when the key exists (keeping its
+    // position) and appends at the end otherwise — exactly the semantics we
+    // want for stable diffs.
+    split.map.insert(yk, yv);
+    rebuild_file(&split)
+}
+
+/// Delete a single frontmatter key, preserving the order of the rest and the
+/// verbatim body. A missing key just leaves the map untouched. Returns the
+/// full rewritten file content.
+pub fn delete_frontmatter_property_str(raw: &str, key: &str) -> Result<String, String> {
+    let mut split = split_frontmatter(raw)?;
+    let yk = serde_yaml::Value::String(key.to_string());
+    split.map.remove(&yk);
+    rebuild_file(&split)
+}
+
+/// Tauri command: surgically set a frontmatter property on `path` and persist
+/// it to disk, returning the rewritten file content so the caller can reflow
+/// the open editor without a re-read. Body bytes + key order are preserved.
+#[tauri::command]
+pub async fn update_frontmatter_property(
+    path: String,
+    key: String,
+    value: serde_json::Value,
+) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let raw = fs::read_to_string(&path).map_err(|e| e.to_string())?;
+        let next = set_frontmatter_property_str(&raw, &key, &value)?;
+        fs::write(&path, &next).map_err(|e| e.to_string())?;
+        Ok(next)
+    })
+    .await
+    .map_err(|e| format!("join: {e}"))?
+}
+
+/// Tauri command: surgically delete a frontmatter property on `path` and
+/// persist it, returning the rewritten file content. Body bytes + key order
+/// of the remaining keys are preserved.
+#[tauri::command]
+pub async fn delete_frontmatter_property(
+    path: String,
+    key: String,
+) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let raw = fs::read_to_string(&path).map_err(|e| e.to_string())?;
+        let next = delete_frontmatter_property_str(&raw, &key)?;
+        fs::write(&path, &next).map_err(|e| e.to_string())?;
+        Ok(next)
+    })
+    .await
+    .map_err(|e| format!("join: {e}"))?
+}

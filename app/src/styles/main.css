@@ -1,5 +1,9 @@
 /* SoloMD brand styles + theme variables */
 
+/* v4.6 design-token layer. Imported FIRST so main.css + the 8 named themes
+ * cascade after it and win where they must. See styles/tokens.css. */
+@import "./tokens.css";
+
 :root {
   /* v4.3.0 issue #78 — tell native form controls (most importantly
      <select>) to render in the LIGHT palette by default. Without this,

@@ -311,6 +311,20 @@ export const de: I18n = {
     noActive: 'Kein aktives Dokument.',
     noResults: 'Noch keine Notizen verlinken hierher.',
   },
+  inspector: {
+    heading: "Properties",
+    openFolder: "Open a folder to edit properties.",
+    noActive: "No active document.",
+    notMarkdown: "Save this file as Markdown to edit properties.",
+    noProps: "No properties yet. Add one below.",
+    suggested: "Suggested",
+    addProperty: "Add property",
+  },
+  properties: {
+    saveFirst: "Save the file before editing properties.",
+    emptyKey: "Property name can’t be empty.",
+    writeFailed: "Couldn’t update property: {error}",
+  },
   spellcheck: {
     suggestions: 'Vorschläge',
     addToDict: 'Zum Wörterbuch hinzufügen',

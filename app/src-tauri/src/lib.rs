@@ -317,6 +317,8 @@ pub fn run() {
             cookbook::cookbook_list,
             cookbook::cookbook_get,
             cookbook::cookbook_install,
+            commands::update_frontmatter_property,
+            commands::delete_frontmatter_property,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -129,6 +129,10 @@ export function useShortcuts(hooks: Hooks = {}) {
     } else if (k === 'k' && e.shiftKey) {
       e.preventDefault();
       hooks.openPalette?.();
+    } else if (k === 'i' && e.shiftKey) {
+      // v4.6 F1: ⌘⇧I toggles the Properties inspector (frontmatter editor).
+      e.preventDefault();
+      settings.toggleInspector();
     } else if (k === 'j' && e.shiftKey) {
       // v2.5 F6: ⌘⇧J — CJK proofread panel. Shift differentiates from
       // ⌘J (CodeMirror "AI rewrite", bound inside the editor keymap).

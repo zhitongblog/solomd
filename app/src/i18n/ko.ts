@@ -311,6 +311,20 @@ export const ko: I18n = {
     noActive: '활성 문서가 없습니다.',
     noResults: '아직 이 노트로 연결된 노트가 없습니다.',
   },
+  inspector: {
+    heading: "Properties",
+    openFolder: "Open a folder to edit properties.",
+    noActive: "No active document.",
+    notMarkdown: "Save this file as Markdown to edit properties.",
+    noProps: "No properties yet. Add one below.",
+    suggested: "Suggested",
+    addProperty: "Add property",
+  },
+  properties: {
+    saveFirst: "Save the file before editing properties.",
+    emptyKey: "Property name can’t be empty.",
+    writeFailed: "Couldn’t update property: {error}",
+  },
   spellcheck: {
     suggestions: '제안',
     addToDict: '사전에 추가',

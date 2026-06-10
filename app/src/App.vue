@@ -15,6 +15,7 @@ import Outline from './components/Outline.vue';
 import BacklinksPanel from './components/BacklinksPanel.vue';
 import TagsPanel from './components/TagsPanel.vue';
 import HistoryPanel from './components/HistoryPanel.vue';
+import PropertiesInspector from './components/PropertiesInspector.vue';
 import AgentPanel from './components/AgentPanel.vue';
 import RsSplitter from './components/RsSplitter.vue';
 import { useAutoCommit } from './composables/useAutoCommit';
@@ -959,6 +960,15 @@ const showHistoryPane = computed(
     tabs.activeTab?.language === 'markdown' &&
     !!workspace.currentFolder,
 );
+// v4.6 F1: Properties inspector — frontmatter editor for the active markdown
+// note. Toggled via ⌘⇧I / command palette `view.toggleInspector`. Requires an
+// open folder (reads parsed frontmatter from the workspace index).
+const showInspectorPane = computed(
+  () =>
+    settings.showInspector &&
+    tabs.activeTab?.language === 'markdown' &&
+    !!workspace.currentFolder,
+);
 // v4.0 pillar 1: Agent Panel — workspace-level visibility (not per-tab).
 // Toggled via command palette `view.toggleAgentPanel`; persists in settings.
 // App Store builds strip the AI/Agent surface entirely (Apple 3.1.1).
@@ -978,6 +988,7 @@ const showRightSidebar = computed(() => {
     showBacklinksPane.value ||
     showTagsPane.value ||
     showHistoryPane.value ||
+    showInspectorPane.value ||
     showAgentPane.value
   );
 });
@@ -990,15 +1001,16 @@ const visibleRsPanes = computed(() => {
   // v4.3.0 issue #57b — order driven by settings.rsPaneOrder so users can
   // drag-reorder. Unknown ids (newly-shipped future panes) get appended at
   // the end so a SoloMD update doesn't blow away an existing user layout.
-  const all: Record<'search' | 'outline' | 'backlinks' | 'tags' | 'history' | 'agent', boolean> = {
+  const all: Record<'search' | 'outline' | 'backlinks' | 'tags' | 'history' | 'inspector' | 'agent', boolean> = {
     search: showSearchPane.value,
     outline: showOutlinePane.value,
     backlinks: showBacklinksPane.value,
     tags: showTagsPane.value,
     history: showHistoryPane.value,
+    inspector: showInspectorPane.value,
     agent: showAgentPane.value,
   };
-  const known = ['search', 'outline', 'backlinks', 'tags', 'history', 'agent'] as const;
+  const known = ['search', 'outline', 'backlinks', 'tags', 'history', 'inspector', 'agent'] as const;
   const ordered: string[] = [];
   for (const id of settings.rsPaneOrder || []) {
     if (id in all && !ordered.includes(id)) ordered.push(id);
@@ -1008,7 +1020,7 @@ const visibleRsPanes = computed(() => {
   }
   return ordered
     .filter((id) => all[id as keyof typeof all])
-    .map((id) => ({ id: id as 'search' | 'outline' | 'backlinks' | 'tags' | 'history' | 'agent' }));
+    .map((id) => ({ id: id as 'search' | 'outline' | 'backlinks' | 'tags' | 'history' | 'inspector' | 'agent' }));
 });
 
 // v4.3.0 issue #57b — HTML5 drag state for right-sidebar pane reordering.
@@ -1183,6 +1195,7 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
                 @filter-tag="onFilterTag"
               />
               <HistoryPanel v-if="p.id === 'history'" @close="ctxToggle(() => settings.toggleHistoryPanel())" />
+              <PropertiesInspector v-if="p.id === 'inspector'" @close="ctxToggle(() => settings.toggleInspector())" />
               <AgentPanel
                 v-if="p.id === 'agent'"
                 @open-settings="(section?: string) => openSettingsAt(section ?? 'integrations')"
@@ -1237,6 +1250,7 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
                 @filter-tag="onFilterTag"
               />
               <HistoryPanel v-if="p.id === 'history'" @close="ctxToggle(() => settings.toggleHistoryPanel())" />
+              <PropertiesInspector v-if="p.id === 'inspector'" @close="ctxToggle(() => settings.toggleInspector())" />
               <AgentPanel
                 v-if="p.id === 'agent'"
                 @open-settings="(section?: string) => openSettingsAt(section ?? 'integrations')"

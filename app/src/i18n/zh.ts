@@ -310,6 +310,20 @@ export const zh: I18n = {
     noActive: '当前没有打开文档。',
     noResults: '还没有其他笔记引用本文档。',
   },
+  inspector: {
+    heading: "属性",
+    openFolder: "打开文件夹以编辑属性。",
+    noActive: "没有活动文档。",
+    notMarkdown: "将此文件保存为 Markdown 以编辑属性。",
+    noProps: "暂无属性，在下方添加。",
+    suggested: "建议",
+    addProperty: "添加属性",
+  },
+  properties: {
+    saveFirst: "请先保存文件再编辑属性。",
+    emptyKey: "属性名不能为空。",
+    writeFailed: "无法更新属性：{error}",
+  },
   spellcheck: {
     suggestions: '拼写建议',
     addToDict: '添加到词典',
