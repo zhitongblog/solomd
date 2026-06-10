@@ -54,6 +54,12 @@ import { useWorkspaceStore } from './stores/workspace';
 import { useWorkspaceIndexStore } from './stores/workspaceIndex';
 import { useRagStore } from './stores/rag';
 import { IS_APP_STORE_BUILD } from './lib/app-build';
+import UiPreview from './components/UiPreview.vue';
+
+/* v4.6 dev-only UI gallery. `?uikit` renders ONLY the design-system preview
+ * and skips the normal app, so the token layer can be eyeballed in isolation.
+ * Pure read of location.search at module init — no effect on normal startup. */
+const showUiKit = new URLSearchParams(location.search).has('uikit');
 
 const tabs = useTabsStore();
 const settings = useSettingsStore();
@@ -1121,7 +1127,8 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
 </script>
 
 <template>
-  <div class="app" :class="{ 'app--reading': settings.viewMode === 'reading' }">
+  <UiPreview v-if="showUiKit" />
+  <div v-else class="app" :class="{ 'app--reading': settings.viewMode === 'reading' }">
     <!--
       v2.4 reading mode swaps out the entire toolbar / sidebar / status-bar
       stack for a single ReadingView component. We keep all the modal

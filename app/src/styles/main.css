@@ -1,5 +1,9 @@
 /* SoloMD brand styles + theme variables */
 
+/* v4.6 design-token layer. Imported FIRST so main.css + the 8 named themes
+ * cascade after it and win where they must. See styles/tokens.css. */
+@import "./tokens.css";
+
 :root {
   /* v4.3.0 issue #78 — tell native form controls (most importantly
      <select>) to render in the LIGHT palette by default. Without this,
@@ -15,15 +19,18 @@
   --brand-fg: #ffffff;
   --brand-accent: #ff9f40;
 
-  /* light theme (default) */
-  --bg: #fafaf7;
-  --bg-elev: #ffffff;
+  /* light theme (default) — v4.6 warm-neutral surfaces (plan §2.4).
+     --bg / --bg-elev / --border / --text / --text-muted are seeded in
+     tokens.css; re-stated here so the cascade order stays explicit and
+     legible. --bg-hover / --bg-active / --text-faint stay SoloMD-tuned. */
+  --bg: #ffffff;
+  --bg-elev: #f7f6f3;
   --bg-hover: #f0eee8;
   --bg-active: #ebe9e2;
-  --border: #e5e3dc;
-  --text: #1a1a1a;
-  --text-muted: #8a8a8a;
-  --text-faint: #b8b6ad;
+  --border: #e9e9e7;
+  --text: #37352f;
+  --text-muted: #787774;
+  --text-faint: #b4b4b4;
   --accent: #ff9f40;
   --accent-fg: #1a1a1a;
   --danger: #d64545;
@@ -84,15 +91,16 @@
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #1a1a1a;
-  --bg-elev: #232323;
+  /* v4.6 warm-neutral dark surfaces (plan §2.4) — warm black, not pure #000 */
+  --bg: #1f1e1b;
+  --bg-elev: #23221f;
   --bg-hover: #2a2a2a;
   --bg-active: #333333;
-  --border: #333333;
-  --text: #f0f0ed;
-  --text-muted: #8a8a8a;
-  --text-faint: #555;
-  --accent: #ff9f40;
+  --border: #34322d;
+  --text: #e6e1d8;
+  --text-muted: #b8b1a6;
+  --text-faint: #7f776d;
+  --accent: #ffa54d;
   --accent-fg: #1a1a1a;
 
   /* Markdown element colors (dark) */
