@@ -359,10 +359,16 @@ class TldrawWidget extends WidgetType {
     // are handed off so the overlay edits the SAME fence.
     const toolbar = document.createElement('div');
     toolbar.className = 'cm-tldraw-toolbar';
+    const strings = this.opts.getBoardStrings?.() ?? {
+      loading: 'Loading whiteboard…',
+      openFull: 'Open fullscreen',
+      loadFailed: 'Whiteboard failed to load',
+    };
     const fullBtn = document.createElement('button');
     fullBtn.className = 'cm-tldraw-fullscreen';
     fullBtn.type = 'button';
-    fullBtn.title = 'Fullscreen';
+    fullBtn.title = strings.openFull;
+    fullBtn.setAttribute('aria-label', strings.openFull);
     fullBtn.textContent = '⛶';
     fullBtn.addEventListener('mousedown', (ev) => ev.preventDefault());
     fullBtn.addEventListener('click', (ev) => {
@@ -390,7 +396,12 @@ class TldrawWidget extends WidgetType {
 
     const placeholder = document.createElement('div');
     placeholder.className = 'cm-tldraw-loading';
-    placeholder.textContent = '⌛ Loading whiteboard…';
+    const spinner = document.createElement('span');
+    spinner.className = 'cm-tldraw-spinner';
+    spinner.setAttribute('aria-hidden', 'true');
+    const loadingLabel = document.createElement('span');
+    loadingLabel.textContent = strings.loading;
+    placeholder.append(spinner, loadingLabel);
     surface.appendChild(placeholder);
 
     // Mount asynchronously — the adapter dynamic-imports tldraw on first use.
@@ -431,7 +442,7 @@ class TldrawWidget extends WidgetType {
       })
       .catch((e) => {
         placeholder.className = 'cm-tldraw-loading cm-live-block--broken';
-        placeholder.textContent = `Whiteboard failed to load: ${(e as Error).message}`;
+        placeholder.textContent = `${strings.loadFailed}: ${(e as Error).message}`;
       });
 
     // Stash a teardown hook the widget's destroy() path can call.
@@ -481,6 +492,12 @@ interface BlockOptions {
    * pretty-printed body to splice into the ```tldraw fence with `boardId`.
    */
   onBoardEdit?: (boardId: string, snapshotJson: string) => void;
+  /**
+   * F7 i18n: localized strings for the inline board chrome (loading text,
+   * fullscreen button tooltip, load-failure prefix). Optional — sensible
+   * English fallbacks are used when absent so the widget never shows a raw key.
+   */
+  getBoardStrings?: () => { loading: string; openFull: string; loadFailed: string };
 }
 
 function buildBlockDecorations(state: EditorState, opts: BlockOptions): DecorationSet {
@@ -830,9 +847,23 @@ export const liveBlocksTheme = EditorView.theme({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: '8px',
     height: '100%',
     color: 'var(--text-faint)',
     fontStyle: 'italic',
+    fontSize: '13px',
+  },
+  '.cm-tldraw-spinner': {
+    width: '14px',
+    height: '14px',
+    border: '2px solid var(--border)',
+    borderTopColor: 'var(--accent, var(--text-faint))',
+    borderRadius: '50%',
+    animation: 'cm-tldraw-spin 0.7s linear infinite',
+    flex: '0 0 auto',
+  },
+  '@keyframes cm-tldraw-spin': {
+    to: { transform: 'rotate(360deg)' },
   },
   '.cm-tldraw-toolbar': {
     position: 'absolute',
