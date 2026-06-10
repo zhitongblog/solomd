@@ -98,6 +98,8 @@ interface Settings {
   agentWizardSeen: boolean;
   // v2.0 F1: show the Backlinks panel (right of editor) for markdown docs.
   showBacklinks: boolean;
+  // v4.6 F3: show the Relationships panel (typed forward + inverse edges).
+  showRelationships: boolean;
   // v2.0 F2: CodeMirror Hunspell spell-check (separate from browser-native `spellCheck` above).
   spellcheckEnabled: boolean;
   // v2.0 F3: daily notes
@@ -234,6 +236,7 @@ interface Settings {
   // leaving the user with a blank sidebar.
   _rsPanesBeforeHide: {
     showBacklinks: boolean;
+    showRelationships: boolean;
     showTagsPanel: boolean;
     showHistoryPanel: boolean;
     showAgentPanel: boolean;
@@ -343,6 +346,7 @@ function defaults(): Settings {
     welcomeShown: false,
     agentWizardSeen: false,
     showBacklinks: true,
+    showRelationships: false,
     spellcheckEnabled: false,
     dailyNotesFolder: 'Daily',
     dailyNotesFormat: 'YYYY-MM-DD.md',
@@ -386,7 +390,7 @@ function defaults(): Settings {
     imageExportBranding: true,
     globalZoom: 1,
     codeBlockLineNumbers: false,
-    rsPaneOrder: ['search', 'outline', 'backlinks', 'tags', 'history', 'agent'],
+    rsPaneOrder: ['search', 'outline', 'backlinks', 'relationships', 'tags', 'history', 'agent'],
     previewFontSize: 15,
     attachmentMode: 'shared',
     assetsDirName: '_assets',
@@ -568,6 +572,7 @@ export const useSettingsStore = defineStore('settings', {
       if (!this.rightSidebarHidden) {
         this._rsPanesBeforeHide = {
           showBacklinks: this.showBacklinks,
+          showRelationships: this.showRelationships,
           showTagsPanel: this.showTagsPanel,
           showHistoryPanel: this.showHistoryPanel,
           showAgentPanel: this.showAgentPanel,
@@ -578,12 +583,19 @@ export const useSettingsStore = defineStore('settings', {
         const saved = this._rsPanesBeforeHide;
         if (saved) {
           this.showBacklinks = saved.showBacklinks;
+          this.showRelationships = saved.showRelationships;
           this.showTagsPanel = saved.showTagsPanel;
           this.showHistoryPanel = saved.showHistoryPanel;
           this.showAgentPanel = saved.showAgentPanel;
           this._rsPanesBeforeHide = null;
         }
-        if (!this.showBacklinks && !this.showTagsPanel && !this.showHistoryPanel && !this.showAgentPanel) {
+        if (
+          !this.showBacklinks &&
+          !this.showRelationships &&
+          !this.showTagsPanel &&
+          !this.showHistoryPanel &&
+          !this.showAgentPanel
+        ) {
           this.showBacklinks = true;
           this.showTagsPanel = true;
         }
@@ -595,6 +607,7 @@ export const useSettingsStore = defineStore('settings', {
      *  remembers the pre-toggle layout for later restore. */
     hideRightSidebarFromPane(paneBeforeToggle: {
       showBacklinks: boolean;
+      showRelationships: boolean;
       showTagsPanel: boolean;
       showHistoryPanel: boolean;
       showAgentPanel: boolean;
@@ -680,6 +693,10 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleBacklinks() {
       this.showBacklinks = !this.showBacklinks;
+      this.persist();
+    },
+    toggleRelationships() {
+      this.showRelationships = !this.showRelationships;
       this.persist();
     },
     toggleSpellcheckEnabled() {
@@ -871,7 +888,7 @@ export const useSettingsStore = defineStore('settings', {
       this.persist();
     },
     resetRsPaneOrder() {
-      this.rsPaneOrder = ['search', 'outline', 'backlinks', 'tags', 'history', 'agent'];
+      this.rsPaneOrder = ['search', 'outline', 'backlinks', 'relationships', 'tags', 'history', 'agent'];
       this.persist();
     },
     /** v4.3.0 PR #74 — preview-only font size. Editor font is the existing

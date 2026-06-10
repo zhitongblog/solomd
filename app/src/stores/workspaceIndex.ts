@@ -36,6 +36,13 @@ export interface IndexEntry {
   headings: string[];
   summary: string;
   title?: string | null;
+  /**
+   * F3 (v4.6) typed relationships: map `frontmatter key → list of canonical
+   * `[[ref]]`s`. Populated server-side by the Rust extractor (mirrors
+   * `lib/relationships.ts::extractRelationships`). Reserved/structural keys
+   * are excluded. May be absent on entries served from an older index cache.
+   */
+  relationships?: Record<string, string[]>;
 }
 
 export interface BacklinkRef {
@@ -43,6 +50,15 @@ export interface BacklinkRef {
   from_name: string;
   line: number;
   context: string[];
+}
+
+/** F3 — one inverse (referenced-by) edge resolved server-side over the
+ *  in-memory index by `workspace_index_referenced_by`. */
+export interface ReferencedByRef {
+  from_path: string;
+  from_name: string;
+  /** The forward-relationship frontmatter key on the source note. */
+  via_key: string;
 }
 
 export interface TagCount {
@@ -86,6 +102,17 @@ export const useWorkspaceIndexStore = defineStore('workspaceIndex', {
       const m = new Map<string, IndexEntry>();
       for (const e of state.entries) m.set(e.path, e);
       return m;
+    },
+    /**
+     * F3 — forward typed relationships for the entry at `path`, as a map of
+     * `frontmatter key → [[ref]] list`. Returns `{}` when the entry is
+     * unknown or has none.
+     */
+    relationshipsFor(state) {
+      return (path: string): Record<string, string[]> => {
+        const e = state.entries.find((x) => x.path === path);
+        return e?.relationships ?? {};
+      };
     },
   },
   actions: {
@@ -136,6 +163,20 @@ export const useWorkspaceIndexStore = defineStore('workspaceIndex', {
     async backlinksFor(target: string): Promise<BacklinkRef[]> {
       try {
         return await invoke<BacklinkRef[]>('workspace_index_backlinks', { target });
+      } catch {
+        return [];
+      }
+    },
+
+    /**
+     * F3 — inverse relationships: notes whose front matter has a typed
+     * relationship key pointing at `target` (resolved server-side over the
+     * in-memory index by stem / title / alias / path-suffix). `target` is a
+     * wikilink target stem (e.g. the active doc's filename stem).
+     */
+    async referencedBy(target: string): Promise<ReferencedByRef[]> {
+      try {
+        return await invoke<ReferencedByRef[]>('workspace_index_referenced_by', { target });
       } catch {
         return [];
       }
