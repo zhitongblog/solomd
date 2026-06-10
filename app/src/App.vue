@@ -13,6 +13,7 @@ import CommandPalette from './components/CommandPalette.vue';
 import QuickSwitcher from './components/QuickSwitcher.vue';
 import Outline from './components/Outline.vue';
 import BacklinksPanel from './components/BacklinksPanel.vue';
+import NeighborhoodPanel from './components/NeighborhoodPanel.vue';
 import TagsPanel from './components/TagsPanel.vue';
 import HistoryPanel from './components/HistoryPanel.vue';
 import AgentPanel from './components/AgentPanel.vue';
@@ -124,6 +125,7 @@ function rsPaneSnapshot() {
   return {
     showBacklinks: settings.showBacklinks,
     showTagsPanel: settings.showTagsPanel,
+    showNeighborhood: settings.showNeighborhood,
     showHistoryPanel: settings.showHistoryPanel,
     showAgentPanel: settings.showAgentPanel,
   };
@@ -138,6 +140,7 @@ function ctxToggle(toggleFn: () => void) {
     !showOutlinePane.value &&
     !settings.showBacklinks &&
     !settings.showTagsPanel &&
+    !showNeighborhoodPane.value &&
     !settings.showHistoryPanel &&
     (IS_APP_STORE_BUILD || !settings.showAgentPanel);
   if (noPanesVisible) {
@@ -949,6 +952,14 @@ const showBacklinksPane = computed(
 const showTagsPane = computed(
   () => settings.showTagsPanel && !!workspace.currentFolder,
 );
+// v4.6 F4 — Neighborhood relationship explorer. Markdown-only, needs a folder
+// (frontmatter wikilink groups are resolved against the workspace index).
+const showNeighborhoodPane = computed(
+  () =>
+    settings.showNeighborhood &&
+    tabs.activeTab?.language === 'markdown' &&
+    !!workspace.currentFolder,
+);
 const showHistoryPane = computed(
   // v4.0.2 — decoupled from autoGitEnabled (#55). Hiding the pane via
   // its × button no longer disables git sync; users can keep snapshots
@@ -977,6 +988,7 @@ const showRightSidebar = computed(() => {
     showOutlinePane.value ||
     showBacklinksPane.value ||
     showTagsPane.value ||
+    showNeighborhoodPane.value ||
     showHistoryPane.value ||
     showAgentPane.value
   );
@@ -990,15 +1002,16 @@ const visibleRsPanes = computed(() => {
   // v4.3.0 issue #57b — order driven by settings.rsPaneOrder so users can
   // drag-reorder. Unknown ids (newly-shipped future panes) get appended at
   // the end so a SoloMD update doesn't blow away an existing user layout.
-  const all: Record<'search' | 'outline' | 'backlinks' | 'tags' | 'history' | 'agent', boolean> = {
+  const all: Record<'search' | 'outline' | 'backlinks' | 'tags' | 'neighborhood' | 'history' | 'agent', boolean> = {
     search: showSearchPane.value,
     outline: showOutlinePane.value,
     backlinks: showBacklinksPane.value,
     tags: showTagsPane.value,
+    neighborhood: showNeighborhoodPane.value,
     history: showHistoryPane.value,
     agent: showAgentPane.value,
   };
-  const known = ['search', 'outline', 'backlinks', 'tags', 'history', 'agent'] as const;
+  const known = ['search', 'outline', 'backlinks', 'tags', 'neighborhood', 'history', 'agent'] as const;
   const ordered: string[] = [];
   for (const id of settings.rsPaneOrder || []) {
     if (id in all && !ordered.includes(id)) ordered.push(id);
@@ -1008,7 +1021,7 @@ const visibleRsPanes = computed(() => {
   }
   return ordered
     .filter((id) => all[id as keyof typeof all])
-    .map((id) => ({ id: id as 'search' | 'outline' | 'backlinks' | 'tags' | 'history' | 'agent' }));
+    .map((id) => ({ id: id as 'search' | 'outline' | 'backlinks' | 'tags' | 'neighborhood' | 'history' | 'agent' }));
 });
 
 // v4.3.0 issue #57b — HTML5 drag state for right-sidebar pane reordering.
@@ -1182,6 +1195,10 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
                 @close="ctxToggle(() => settings.toggleTagsPanel())"
                 @filter-tag="onFilterTag"
               />
+              <NeighborhoodPanel
+                v-if="p.id === 'neighborhood'"
+                @close="ctxToggle(() => settings.toggleNeighborhood())"
+              />
               <HistoryPanel v-if="p.id === 'history'" @close="ctxToggle(() => settings.toggleHistoryPanel())" />
               <AgentPanel
                 v-if="p.id === 'agent'"
@@ -1236,6 +1253,10 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
                 @close="ctxToggle(() => settings.toggleTagsPanel())"
                 @filter-tag="onFilterTag"
               />
+              <NeighborhoodPanel
+                v-if="p.id === 'neighborhood'"
+                @close="ctxToggle(() => settings.toggleNeighborhood())"
+              />
               <HistoryPanel v-if="p.id === 'history'" @close="ctxToggle(() => settings.toggleHistoryPanel())" />
               <AgentPanel
                 v-if="p.id === 'agent'"
@@ -1270,6 +1291,10 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
           <label class="sidebar-ctx__item" @click="ctxToggle(() => { settings.toggleTagsPanel() })">
             <span class="sidebar-ctx__check">{{ settings.showTagsPanel ? '✓' : '' }}</span>
             {{ t('rsPane.tags') }}
+          </label>
+          <label class="sidebar-ctx__item" @click="ctxToggle(() => { settings.toggleNeighborhood() })">
+            <span class="sidebar-ctx__check">{{ settings.showNeighborhood ? '✓' : '' }}</span>
+            {{ t('rsPane.neighborhood') }}
           </label>
           <label class="sidebar-ctx__item" @click="ctxToggle(() => { settings.toggleHistoryPanel() })">
             <span class="sidebar-ctx__check">{{ settings.showHistoryPanel ? '✓' : '' }}</span>

@@ -127,6 +127,7 @@ export function useCommands(): Command[] {
     { id: 'view.toggleAgentPanel', title: 'View: Toggle Agent Panel', hint: 'Right-side chat-with-vault panel — streamed multi-turn AI with tool-call cards, persisted run history, and trace replay', run: () => settings.toggleAgentPanel() },
     { id: 'view.toggleBacklinks', title: 'View: Toggle Backlinks Pane', run: () => settings.toggleBacklinks() },
     { id: 'view.toggleTagsPanel', title: 'View: Toggle Tags Pane', run: () => settings.toggleTagsPanel() },
+    { id: 'view.toggleNeighborhood', title: 'View: Toggle Neighborhood Pane', hint: 'Per-note relationship explorer — frontmatter wikilink groups, inverse relationships, and backlinks; click to open, ⌘/Ctrl-click to pivot', run: () => settings.toggleNeighborhood() },
     { id: 'view.toggleHistoryPanel', title: 'View: Toggle History Pane', hint: 'Show / hide the per-note version history pane (does not disable Auto-Git)', run: () => settings.toggleHistoryPanel() },
     { id: 'view.resetSidebarPanes', title: 'View: Reset Sidebar Pane Heights', hint: 'Clear stored per-pane heights so the right sidebar returns to even-share flex layout', run: () => settings.clearRightSidebarPaneHeights() },
     { id: 'view.toggleWrap', title: 'View: Toggle Word Wrap', run: () => settings.toggleWordWrap() },
