@@ -1,17 +1,23 @@
 <script setup lang="ts">
 /**
- * F3 — Typed relationships panel (v4.6).
+ * F3 — Typed relationships panel (v4.6, design-system rebuild in v4.6.1).
  *
- * Two stacked sections in one right-sidebar pane (cloned from
- * BacklinksPanel.vue, styled entirely with the existing design tokens):
+ * Two stacked sections in one right-sidebar pane, built entirely on the `ui/`
+ * design system (DsPanel / DsButton / DsInput / DsChip / DsListRow / DsTooltip)
+ * — no raw hex, no ad-hoc CSS islands — matching NeighborhoodPanel / InboxView /
+ * TypesPanel for density and focus rings:
  *   1. "Relationships" — editable FORWARD edges authored in the active doc's
  *      YAML front matter: one group per relationship key (humanized label),
- *      clickable ref chips with a hover-X to remove, an inline note-search
- *      "add target" control per group, plus an "Add relationship" key+target
- *      form. Suggested starter keys (belongs_to / related_to / has) appear as
- *      faint placeholder slots when absent.
+ *      clickable removable ref chips (DsChip), an inline note-search "add target"
+ *      control per group, plus an "Add relationship" key+target form. Suggested
+ *      starter keys (belongs_to / related_to / has) appear as faint placeholder
+ *      slots when absent.
  *   2. "Referenced by" — read-only DERIVED inverse edges, grouped by resolved
- *      inverse label (Children / Referenced by / ← Custom).
+ *      inverse label (Children / Referenced by / ← Custom), rows via DsListRow.
+ *
+ * Dirty guard: when the active buffer is dirty (`editability.canEdit === false`)
+ * a "save the doc first" banner shows and every edit affordance is disabled, so
+ * the guard is *visible* before a click — not just a toast after the failed write.
  *
  * All edits go through useRelationships → write_file; after the watcher emits
  * `solomd://index-updated`, idx.entries refreshes and both sections recompute.
@@ -32,6 +38,7 @@ import {
   parseWikilinkTarget,
 } from '../lib/relationships';
 import { useI18n } from '../i18n';
+import { DsPanel, DsButton, DsInput, DsChip, DsListRow, DsTooltip } from '../ui';
 
 const tabs = useTabsStore();
 const idx = useWorkspaceIndexStore();
@@ -39,7 +46,7 @@ const files = useFiles();
 const rel = useRelationships();
 const { t } = useI18n();
 
-defineEmits<{ close: [] }>();
+const emit = defineEmits<{ close: [] }>();
 
 /** Suggested starter relationship keys, shown as placeholder slots when the
  *  active doc doesn't already declare them. */
@@ -47,11 +54,16 @@ const SUGGESTED_KEYS = ['belongs_to', 'related_to', 'has'];
 
 const activePath = computed(() => tabs.activeTab?.filePath ?? null);
 const activeStem = computed(() => {
-  const t = tabs.activeTab;
-  if (!t || !t.fileName) return null;
-  return t.fileName.replace(/\.[^.]+$/, '');
+  const tab = tabs.activeTab;
+  if (!tab || !tab.fileName) return null;
+  return tab.fileName.replace(/\.[^.]+$/, '');
 });
 const isMarkdown = computed(() => tabs.activeTab?.language === 'markdown');
+
+/** Reactive editability — drives the dirty-guard banner and disables every
+ *  edit affordance while the active buffer has unsaved changes. */
+const editability = rel.editability;
+const canEdit = computed(() => editability.value.canEdit);
 
 // --- Forward relationships (reactive off the index) -------------------------
 
@@ -123,22 +135,32 @@ watch(activeStem, reloadInverse);
 watch(() => idx.entries, reloadInverse);
 onMounted(reloadInverse);
 
+/** Whether the forward section is entirely empty (no groups, no suggestions). */
+const forwardEmpty = computed(
+  () => forwardKeys.value.length === 0 && suggestedAbsent.value.length === 0,
+);
+
 // --- Inline "add target" search per relationship key ------------------------
 
 const addOpenKey = ref<string | null>(null);
 const addQuery = ref('');
 const addHighlight = ref(0);
-const addInputEl = ref<HTMLInputElement | null>(null);
+const addInputEl = ref<InstanceType<typeof DsInput> | null>(null);
 
 function openAdd(key: string) {
+  if (!canEdit.value) return;
   addOpenKey.value = key;
   addQuery.value = '';
   addHighlight.value = 0;
-  nextTick(() => addInputEl.value?.focus());
+  nextTick(() => focusAddInput());
 }
 function closeAdd() {
   addOpenKey.value = null;
   addQuery.value = '';
+}
+function focusAddInput() {
+  const root = (addInputEl.value as unknown as { $el?: HTMLElement } | null)?.$el;
+  root?.querySelector?.('input')?.focus();
 }
 
 /** Note-search candidates over the index, filtered by stem/title, excluding
@@ -188,6 +210,7 @@ async function commitAdd(stem: string) {
 }
 
 async function onRemove(key: string, ref: string) {
+  if (!canEdit.value) return;
   await rel.removeRef(key, ref);
 }
 
@@ -199,6 +222,7 @@ const newTargetQuery = ref('');
 const newTargetHighlight = ref(0);
 
 function openAddRel() {
+  if (!canEdit.value) return;
   addRelOpen.value = true;
   newKey.value = '';
   newTargetQuery.value = '';
@@ -246,234 +270,270 @@ async function commitAddRel(stem: string) {
 </script>
 
 <template>
-  <div class="rel">
-    <header class="rel__head">
-      <span class="rel__title">{{ t('relationships.heading') }}</span>
-      <button
-        class="rs-pane-close"
-        type="button"
-        :title="t('rightSidebar.hidePane')"
-        @click="$emit('close')"
-      >×</button>
-    </header>
+  <DsPanel grip @close="emit('close')">
+    <template #title>{{ t('relationships.heading') }}</template>
 
-    <div v-if="!idx.ready" class="rel__empty">{{ t('relationships.openFolder') }}</div>
-    <div v-else-if="!activePath || !isMarkdown" class="rel__empty">{{ t('relationships.noActive') }}</div>
+    <div v-if="!idx.ready" class="rel__empty">
+      <div class="rel__empty-icon" aria-hidden="true">🔗</div>
+      <p class="rel__empty-title">{{ t('relationships.openFolder') }}</p>
+    </div>
+    <div v-else-if="!activePath || !isMarkdown" class="rel__empty">
+      <div class="rel__empty-icon" aria-hidden="true">📄</div>
+      <p class="rel__empty-title">{{ t('relationships.noActive') }}</p>
+    </div>
 
     <div v-else class="rel__body">
-      <!-- SECTION 1 — Forward (editable) -->
-      <section class="rel__section">
-        <div class="rel__section-head">{{ t('relationships.forward') }}</div>
+      <!-- Dirty guard: visible "save first" banner; edits disabled while dirty -->
+      <div v-if="!canEdit" class="rel__guard" role="status">
+        {{ t('relationships.saveFirst') }}
+      </div>
 
-        <div v-if="forwardKeys.length === 0 && suggestedAbsent.length === 0" class="rel__empty">
+      <!-- SECTION 1 — Forward (editable) -->
+      <section class="rel__region">
+        <div class="rel__region-label">{{ t('relationships.forward') }}</div>
+
+        <div v-if="forwardEmpty" class="rel__region-empty">
           {{ t('relationships.noForward') }}
         </div>
 
         <div v-for="key in forwardKeys" :key="key" class="rel__group">
           <div class="rel__group-label">{{ humanizeKey(key) }}</div>
-          <ul class="rel__chips">
-            <li v-for="ref in forward[key]" :key="ref" class="rel__chip">
-              <button class="rel__chip-link" :title="refTarget(ref)" @click="openRef(ref)">
+          <div class="rel__chips">
+            <DsChip
+              v-for="ref in forward[key]"
+              :key="ref"
+              size="sm"
+              :removable="canEdit"
+              :title="refTarget(ref)"
+              class="rel__chip"
+              @remove="onRemove(key, ref)"
+            >
+              <button class="rel__chip-link" type="button" @click="openRef(ref)">
                 {{ refTitle(ref) }}
               </button>
-              <button
-                class="rel__chip-x"
-                type="button"
-                :title="t('relationships.remove')"
-                @click="onRemove(key, ref)"
-              >×</button>
-            </li>
-          </ul>
+            </DsChip>
+          </div>
           <!-- inline add-target -->
           <div v-if="addOpenKey === key" class="rel__add">
-            <input
+            <DsInput
               ref="addInputEl"
               v-model="addQuery"
-              class="rel__add-input"
+              size="sm"
               :placeholder="t('relationships.searchNote')"
               @keydown="onAddKeydown"
               @blur="closeAdd"
             />
-            <ul v-if="addCandidates.length" class="rel__add-list">
-              <li
+            <ul v-if="addCandidates.length" class="rel__add-list" role="listbox">
+              <DsListRow
                 v-for="(c, i) in addCandidates"
                 :key="c.path"
-                :class="['rel__add-item', i === addHighlight ? 'rel__add-item--active' : '']"
+                as="div"
+                :active="i === addHighlight"
                 @mousedown.prevent="commitAdd(c.stem)"
                 @mouseenter="addHighlight = i"
               >
                 {{ c.title || c.stem }}
-              </li>
+              </DsListRow>
             </ul>
           </div>
-          <button v-else class="rel__add-btn" type="button" @click="openAdd(key)">
+          <DsButton
+            v-else
+            variant="ghost"
+            size="sm"
+            :disabled="!canEdit"
+            class="rel__add-btn"
+            @click="openAdd(key)"
+          >
             + {{ t('relationships.addTarget') }}
-          </button>
+          </DsButton>
         </div>
 
         <!-- Suggested placeholder slots -->
-        <div v-for="key in suggestedAbsent" :key="`sug-${key}`" class="rel__group rel__group--ghost">
+        <div
+          v-for="key in suggestedAbsent"
+          :key="`sug-${key}`"
+          class="rel__group rel__group--ghost"
+        >
           <div class="rel__group-label rel__group-label--ghost">{{ humanizeKey(key) }}</div>
-          <button class="rel__add-btn rel__add-btn--ghost" type="button" @click="openAdd(key)">
+          <DsButton
+            variant="ghost"
+            size="sm"
+            :disabled="!canEdit"
+            class="rel__add-btn rel__add-btn--ghost"
+            @click="openAdd(key)"
+          >
             + {{ t('relationships.addTarget') }}
-          </button>
+          </DsButton>
         </div>
 
         <!-- Add new relationship key -->
         <div class="rel__addrel">
-          <button v-if="!addRelOpen" class="rel__addrel-btn" type="button" @click="openAddRel">
+          <DsButton
+            v-if="!addRelOpen"
+            variant="subtle"
+            size="sm"
+            block
+            :disabled="!canEdit"
+            class="rel__addrel-btn"
+            @click="openAddRel"
+          >
             + {{ t('relationships.addRelationship') }}
-          </button>
+          </DsButton>
           <div v-else class="rel__addrel-form">
-            <input
+            <DsInput
               v-model="newKey"
-              class="rel__add-input"
+              size="sm"
               :placeholder="t('relationships.keyPlaceholder')"
             />
-            <input
+            <DsInput
               v-model="newTargetQuery"
-              class="rel__add-input"
+              size="sm"
               :placeholder="t('relationships.searchNote')"
               @keydown="onNewTargetKeydown"
             />
-            <ul v-if="newTargetCandidates.length" class="rel__add-list">
-              <li
+            <ul v-if="newTargetCandidates.length" class="rel__add-list" role="listbox">
+              <DsListRow
                 v-for="(c, i) in newTargetCandidates"
                 :key="c.path"
-                :class="['rel__add-item', i === newTargetHighlight ? 'rel__add-item--active' : '']"
+                as="div"
+                :active="i === newTargetHighlight"
                 @mousedown.prevent="commitAddRel(c.stem)"
                 @mouseenter="newTargetHighlight = i"
               >
                 {{ c.title || c.stem }}
-              </li>
+              </DsListRow>
             </ul>
-            <button class="rel__add-btn" type="button" @click="closeAddRel">
+            <DsButton variant="ghost" size="sm" @click="closeAddRel">
               {{ t('relationships.cancel') }}
-            </button>
+            </DsButton>
           </div>
         </div>
       </section>
 
       <!-- SECTION 2 — Referenced by (read-only, derived) -->
-      <section class="rel__section">
-        <div class="rel__section-head">{{ t('relationships.referencedBy') }}</div>
-        <div v-if="loadingInverse" class="rel__empty">{{ t('relationships.loading') }}</div>
-        <div v-else-if="inverseGroups.length === 0" class="rel__empty">
+      <section class="rel__region">
+        <div class="rel__region-label">{{ t('relationships.referencedBy') }}</div>
+        <div v-if="loadingInverse" class="rel__region-empty">
+          {{ t('relationships.loading') }}
+        </div>
+        <div v-else-if="inverseGroups.length === 0" class="rel__region-empty">
           {{ t('relationships.noReferencedBy') }}
         </div>
         <div v-for="g in inverseGroups" :key="g.label" class="rel__group">
           <div class="rel__group-label">{{ g.label }}</div>
-          <ul class="rel__inv-list">
-            <li
+          <div class="rel__inv-list" role="list">
+            <DsTooltip
               v-for="(r, i) in g.items"
               :key="`${r.from_path}-${i}`"
-              class="rel__inv-item"
+              :label="t('relationships.inverseOf', { key: humanizeKey(r.via_key) })"
+              placement="bottom"
             >
-              <button
-                class="rel__inv-link"
-                :title="t('relationships.inverseOf', { key: humanizeKey(r.via_key) })"
+              <DsListRow
+                class="rel__inv-row"
+                :title="r.from_path"
                 @click="openInverse(r)"
               >
                 {{ r.from_name }}
-              </button>
-            </li>
-          </ul>
+              </DsListRow>
+            </DsTooltip>
+          </div>
         </div>
       </section>
     </div>
-  </div>
+  </DsPanel>
 </template>
 
 <style scoped>
-.rel {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  background: var(--bg);
-  border-left: 1px solid var(--border);
-  overflow: hidden;
-}
-.rel__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-soft);
-}
-.rel__title {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
 .rel__body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 6px;
+  padding: var(--sp-2);
 }
-.rel__section + .rel__section {
-  margin-top: 10px;
-  border-top: 1px solid var(--border);
-  padding-top: 8px;
-}
-.rel__section-head {
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  padding: 2px 8px 6px;
-}
+
+/* Empty / loading state ----------------------------------------------------*/
 .rel__empty {
-  padding: 16px;
+  padding: var(--sp-6) var(--sp-4);
   text-align: center;
   color: var(--text-faint);
-  font-size: 12px;
-  line-height: 1.6;
 }
+.rel__empty-icon {
+  font-size: 28px;
+  opacity: 0.5;
+  margin-bottom: var(--sp-3);
+}
+.rel__empty-title {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* Dirty guard banner -------------------------------------------------------*/
+.rel__guard {
+  margin: 0 var(--sp-1) var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--accent-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+/* Regions ------------------------------------------------------------------*/
+.rel__region + .rel__region {
+  margin-top: var(--sp-3);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--border);
+}
+.rel__region-label {
+  padding: var(--sp-1) var(--sp-2);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+}
+.rel__region-empty {
+  padding: var(--sp-2) var(--sp-2) var(--sp-3);
+  font-size: 12px;
+  color: var(--text-faint);
+  line-height: 1.5;
+}
+
+/* Groups -------------------------------------------------------------------*/
 .rel__group {
-  padding: 6px 8px;
-  border-radius: 6px;
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-sm);
 }
 .rel__group + .rel__group {
-  margin-top: 2px;
+  margin-top: var(--sp-1);
+}
+.rel__group--ghost {
+  opacity: 0.75;
 }
 .rel__group-label {
   font-size: 11px;
   font-weight: 600;
   color: var(--text);
-  margin-bottom: 4px;
+  margin-bottom: var(--sp-1);
 }
 .rel__group-label--ghost {
   color: var(--text-faint);
   font-weight: 500;
 }
-.rel__group--ghost {
-  opacity: 0.75;
-}
+
+/* Forward chips ------------------------------------------------------------*/
 .rel__chips {
-  list-style: none;
-  margin: 0 0 4px;
-  padding: 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: var(--sp-1);
+  margin-bottom: var(--sp-1);
 }
-.rel__chip {
-  display: inline-flex;
-  align-items: center;
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  overflow: hidden;
-}
+/* DsChip wraps the clickable title; the chip itself carries the surface. */
 .rel__chip-link {
   background: transparent;
   border: none;
-  padding: 2px 4px 2px 10px;
-  font-size: 12px;
+  padding: 0;
+  font: inherit;
   color: var(--accent);
   cursor: pointer;
   max-width: 160px;
@@ -484,111 +544,48 @@ async function commitAddRel(stem: string) {
 .rel__chip-link:hover {
   text-decoration: underline;
 }
-.rel__chip-x {
-  background: transparent;
-  border: none;
-  padding: 2px 8px 2px 4px;
-  font-size: 13px;
-  line-height: 1;
-  color: var(--text-faint);
-  cursor: pointer;
+.rel__chip-link:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+  border-radius: var(--r-sm);
 }
-.rel__chip-x:hover {
-  color: var(--text);
-}
+
+/* Add-target / add-relationship --------------------------------------------*/
 .rel__add {
   position: relative;
 }
-.rel__add-input {
-  width: 100%;
-  box-sizing: border-box;
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  padding: 4px 8px;
-  font-size: 12px;
-  color: var(--text);
-}
-.rel__add-input:focus {
-  outline: none;
-  border-color: var(--accent);
-}
-.rel__add-input + .rel__add-input {
-  margin-top: 4px;
-}
 .rel__add-list {
   list-style: none;
-  margin: 4px 0 0;
-  padding: 4px;
+  margin: var(--sp-1) 0 0;
+  padding: var(--sp-1);
   background: var(--bg-elev);
   border: 1px solid var(--border);
-  border-radius: 6px;
-}
-.rel__add-item {
-  padding: 4px 8px;
-  font-size: 12px;
-  color: var(--text);
-  border-radius: 4px;
-  cursor: pointer;
-}
-.rel__add-item--active {
-  background: var(--bg-hover);
+  border-radius: var(--r-md);
+  box-shadow: var(--sh-1);
 }
 .rel__add-btn {
-  background: transparent;
-  border: none;
-  padding: 2px 4px;
-  font-size: 11px;
-  color: var(--text-muted);
-  cursor: pointer;
-}
-.rel__add-btn:hover {
-  color: var(--accent);
+  margin-left: calc(-1 * var(--sp-2));
 }
 .rel__add-btn--ghost {
   color: var(--text-faint);
 }
 .rel__addrel {
-  padding: 6px 8px;
-  margin-top: 4px;
+  padding: var(--sp-1) var(--sp-2);
+  margin-top: var(--sp-2);
 }
-.rel__addrel-btn {
-  background: transparent;
-  border: 1px dashed var(--border);
-  border-radius: 6px;
-  width: 100%;
-  padding: 6px;
-  font-size: 11px;
-  color: var(--text-muted);
-  cursor: pointer;
+.rel__addrel-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
 }
-.rel__addrel-btn:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-}
+
+/* Referenced-by list -------------------------------------------------------*/
 .rel__inv-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
 }
-.rel__inv-item + .rel__inv-item {
-  margin-top: 2px;
-}
-.rel__inv-link {
-  display: block;
-  width: 100%;
-  text-align: left;
-  background: transparent;
-  border: 1px solid transparent;
-  padding: 5px 8px;
-  border-radius: 6px;
+.rel__inv-row {
   font-size: 12px;
-  color: var(--text);
-  cursor: pointer;
-  transition: background 0.12s, border-color 0.12s;
-}
-.rel__inv-link:hover {
-  background: var(--bg-hover);
-  border-color: var(--border);
 }
 </style>
