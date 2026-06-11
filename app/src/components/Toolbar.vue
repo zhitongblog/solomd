@@ -194,7 +194,6 @@ async function onOpenExternal() {
 const recentOpen = ref(false);
 const exportOpen = ref(false);
 const newOpen = ref(false);
-const copyOpen = ref(false);
 const insertOpen = ref(false);
 const pomoOpen = ref(false);
 
@@ -202,8 +201,6 @@ const newBtnRef = ref<HTMLElement | null>(null);
 const recentBtnRef = ref<HTMLElement | null>(null);
 const exportBtnRef = ref<HTMLElement | null>(null);
 const insertBtnRef = ref<HTMLElement | null>(null);
-const copyBtnRef = ref<HTMLElement | null>(null);
-
 const menuPos = ref<{ top: number; left?: number; right?: number } | null>(null);
 const floatStyle = computed<Record<string, string | number> | undefined>(() => {
   if (!menuPos.value) return undefined;
@@ -268,24 +265,21 @@ function closeAllDropdowns() {
   newOpen.value = false;
   recentOpen.value = false;
   exportOpen.value = false;
-  copyOpen.value = false;
   insertOpen.value = false;
   pomoOpen.value = false;
 }
 // Exclusive open: opening one dropdown closes others.
-function toggleDropdown(name: 'new' | 'recent' | 'export' | 'copy' | 'insert') {
+function toggleDropdown(name: 'new' | 'recent' | 'export' | 'insert') {
   const isOpen =
     (name === 'new' && newOpen.value) ||
     (name === 'recent' && recentOpen.value) ||
     (name === 'export' && exportOpen.value) ||
-    (name === 'copy' && copyOpen.value) ||
     (name === 'insert' && insertOpen.value);
   closeAllDropdowns();
   if (!isOpen) {
     if (name === 'new') { positionMenuFromButton(newBtnRef.value); newOpen.value = true; }
     else if (name === 'recent') { positionMenuFromButton(recentBtnRef.value); recentOpen.value = true; }
     else if (name === 'export') { positionMenuFromButton(exportBtnRef.value); exportOpen.value = true; }
-    else if (name === 'copy') { positionMenuFromButton(copyBtnRef.value, 'right'); copyOpen.value = true; }
     else if (name === 'insert') { positionMenuFromButton(insertBtnRef.value); insertOpen.value = true; }
   }
 }
@@ -437,6 +431,9 @@ onBeforeUnmount(() => {
             <button class="dropdown__item dropdown__item--single" @mousedown.prevent="exporter.copyAsMarkdown(); exportOpen = false">
               <span class="dropdown__name">{{ t('toolbar.copyMarkdown') }}</span>
             </button>
+            <button class="dropdown__item dropdown__item--single" @mousedown.prevent="exporter.copyAsImage(); exportOpen = false">
+              <span class="dropdown__name">{{ t('toolbar.copyImage') }}</span>
+            </button>
           </div>
         </Teleport>
       </div>
@@ -533,46 +530,6 @@ onBeforeUnmount(() => {
         <span class="ai-rewrite-label">AI</span>
         <span class="ai-rewrite-spark">✨</span>
       </button>
-    </div>
-
-    <div class="toolbar__group">
-      <div class="copy-split">
-        <button
-          class="copy-split__main"
-          @click="exporter.copyAsHtml()"
-          :title="t('toolbar.copyTooltip')"
-        >
-          <Icon name="export" :size="14" />
-          {{ t('toolbar.copy') }}
-        </button>
-        <div class="dropdown">
-          <button
-            ref="copyBtnRef"
-            class="copy-split__arrow"
-            @click="toggleDropdown('copy')"
-            :title="t('toolbar.copyFormats')"
-          >
-            <Icon name="chevron-down" :size="10" />
-          </button>
-          <Teleport to="body">
-            <div v-if="copyOpen" class="dropdown__menu dropdown__menu--narrow copy-dropdown" :style="floatStyle">
-              <button class="dropdown__item dropdown__item--single" @mousedown.prevent="exporter.copyAsHtml(); copyOpen = false">
-                <span class="dropdown__name">{{ '📋 ' + t('toolbar.copyHtml') }}</span>
-                <span class="dropdown__shortcut">⇧⌘C</span>
-              </button>
-              <button class="dropdown__item dropdown__item--single" @mousedown.prevent="exporter.copyAsMarkdown(); copyOpen = false">
-                <span class="dropdown__name">{{ '📝 ' + t('toolbar.copyMarkdown') }}</span>
-              </button>
-              <button class="dropdown__item dropdown__item--single" @mousedown.prevent="exporter.copyAsPlainText(); copyOpen = false">
-                <span class="dropdown__name">{{ '📄 ' + t('toolbar.copyPlain') }}</span>
-              </button>
-              <button class="dropdown__item dropdown__item--single" @mousedown.prevent="exporter.copyAsImage(); copyOpen = false">
-                <span class="dropdown__name">{{ '🖼 ' + t('toolbar.copyImage') }}</span>
-              </button>
-            </div>
-          </Teleport>
-        </div>
-      </div>
     </div>
 
     <div
@@ -862,59 +819,6 @@ onBeforeUnmount(() => {
   display: inline-block;
 }
 
-/* Split copy button: [Copy | ▾] */
-.copy-split {
-  display: inline-flex;
-  align-items: stretch;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  /* NOTE: no overflow:hidden here — it would clip the dropdown menu */
-  position: relative;
-}
-.copy-split__main {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 10px !important;
-  font-size: 12px !important;
-  color: var(--text-muted);
-  border: none;
-  border-radius: 6px 0 0 6px;
-  transition: all 0.15s;
-}
-.copy-split__main:hover {
-  color: var(--accent);
-  background: var(--bg-hover);
-}
-.copy-split__arrow {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  padding: 0 !important;
-  border: none;
-  border-left: 1px solid var(--border);
-  border-radius: 0 6px 6px 0;
-  color: var(--text-faint);
-}
-.copy-split__arrow:hover {
-  color: var(--accent);
-  background: var(--bg-hover);
-}
-/* The menu lives inside `.copy-split > .dropdown`, but if `.dropdown`
- * is `position: relative` here the menu anchors to the 22 px chevron
- * arrow and looks misaligned (issue #31). Demote that one `.dropdown`
- * to static so the menu falls back to the wrapping `.copy-split`
- * (which is relative), letting `right: 0` line up with the right edge
- * of the whole Copy + chevron widget. */
-.copy-split > .dropdown {
-  position: static;
-}
-.copy-dropdown {
-  right: 0;
-  left: auto;
-  min-width: 220px;
-}
 .toolbar__spacer { flex: 1 1 0; min-width: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .toolbar__doc-name {
   font-size: 12px;
