@@ -5,6 +5,7 @@
  *  PropertiesInspector wires to the properties store / Rust round-trip. */
 import { computed } from 'vue';
 import type { DisplayMode } from '../../lib/property-types';
+import { useI18n } from '../../i18n';
 import DisplayModeMenu from './DisplayModeMenu.vue';
 import TextCell from './value-cells/TextCell.vue';
 import NumberCell from './value-cells/NumberCell.vue';
@@ -29,6 +30,8 @@ const emit = defineEmits<{
   togglePin: [];
 }>();
 
+const { t } = useI18n();
+
 const isPlaceholder = computed(() => props.value == null || props.value === '');
 </script>
 
@@ -39,13 +42,21 @@ const isPlaceholder = computed(() => props.value == null || props.value === '');
         type="button"
         class="prop-row__pin"
         :class="{ 'prop-row__pin--on': pinned }"
-        :title="pinned ? 'Unpin' : 'Pin'"
+        :title="pinned ? t('inspector.unpin') : t('inspector.pin')"
+        :aria-label="pinned ? t('inspector.unpin') : t('inspector.pin')"
+        :aria-pressed="pinned"
         @click="emit('togglePin')"
       >★</button>
       <span class="prop-row__key" :title="propKey">{{ propKey }}</span>
       <span class="prop-row__meta">
         <DisplayModeMenu :effective-mode="mode" :value="value" @recast="emit('recast', $event)" />
-        <button type="button" class="prop-row__del" title="Delete property" @click="emit('remove')">×</button>
+        <button
+          type="button"
+          class="prop-row__del"
+          :title="t('inspector.deleteProperty')"
+          :aria-label="t('inspector.deleteProperty')"
+          @click="emit('remove')"
+        >×</button>
       </span>
     </div>
 
@@ -92,8 +103,15 @@ const isPlaceholder = computed(() => props.value == null || props.value === '');
   transition: opacity var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
 }
 .prop-row:hover .prop-row__pin,
+.prop-row:focus-within .prop-row__pin,
 .prop-row__pin--on {
   opacity: 1;
+}
+.prop-row__pin:focus-visible,
+.prop-row__del:focus-visible {
+  outline: none;
+  opacity: 1;
+  box-shadow: var(--ring);
 }
 .prop-row__pin--on {
   color: var(--warning);
@@ -113,7 +131,8 @@ const isPlaceholder = computed(() => props.value == null || props.value === '');
   opacity: 0;
   transition: opacity var(--dur-fast) var(--ease);
 }
-.prop-row:hover .prop-row__meta {
+.prop-row:hover .prop-row__meta,
+.prop-row:focus-within .prop-row__meta {
   opacity: 1;
 }
 .prop-row__del {

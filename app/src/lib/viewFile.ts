@@ -7,12 +7,18 @@
  *
  * The filter schema REUSES the already-generalized `bases.ts` engine: a view's
  * `filters` is a {@link FilterGroup} (`combinator: 'all' | 'any'`, recursive
- * `children`). We deliberately do NOT re-implement matching here — the store
- * evaluates with `bases.matchesGroup`. This module only owns:
- *   - the `ViewFile` shape,
- *   - slug derivation,
+ * `children`). As of v4.6 M0c `bases.ts` owns the recursive all/any tree, the
+ * full operator set, and the `matchesGroup` evaluator, so this module NO LONGER
+ * reimplements matching. It keeps only the view-layer concerns:
+ *   - the `ViewFile` shape + slug derivation,
  *   - YAML <-> object serialization (stable, round-trippable),
- *   - normalization of loosely-typed parsed YAML into a well-formed ViewFile.
+ *   - normalization of loosely-typed parsed YAML into a well-formed ViewFile,
+ *   - the friendlier view op VOCABULARY (`not_contains`, `any_of`, `regex`, …)
+ *     which is translated down to bases' canonical ops before evaluation,
+ *   - ReDoS-safe regex compilation (the view UI accepts raw user patterns).
+ *
+ * `matchesGroup` / `matchesLeaf` below are thin adapters: they lower a view
+ * `FilterGroup` into a bases `FilterGroup` and delegate to `bases.matchesGroup`.
  *
  * Relationship operators (`linksTo` / `backlinksTo`) live on the leaf as
  * regular ops; bases.ts doesn't evaluate them, so the store rewrites those
@@ -21,23 +27,23 @@
  */
 import yaml from 'js-yaml';
 import {
-  getRawValue,
+  matchesGroup as basesMatchesGroup,
   type ColumnDef,
   type SortSpec,
+  type FilterGroup as BasesFilterGroup,
+  type FilterNode as BasesFilterNode,
+  type FilterLeaf as BasesFilterLeaf,
+  type FilterOp as BasesFilterOp,
 } from './bases';
 import type { IndexEntry } from '../stores/workspaceIndex';
 
 // ---------------------------------------------------------------------------
-// Recursive all/any filter tree (the Tolaria-parity layer on top of bases.ts).
-//
-// `bases.ts` only knows a flat `Filter[]` AND-list and a fixed op set. Rather
-// than touch the read-only engine, the recursive `FilterGroup` model + the
-// extended op set (any_of / none_of / before / after / regex + relationship
-// ops) live HERE and evaluate against bases' exported `getRawValue`. The store
-// pre-pass lowers relationship + relative-date leaves before evaluation.
+// Recursive all/any filter tree (the Tolaria-parity vocabulary on top of
+// bases.ts). The TREE SHAPE is structurally identical to bases'; only the
+// op vocabulary differs, and `toBasesNode` translates it.
 // ---------------------------------------------------------------------------
 
-/** Extended operator set understood by the view engine. */
+/** Extended operator set understood by the view layer (a friendly alias set). */
 export type ViewOp =
   | 'contains'
   | 'not_contains'
@@ -110,8 +116,18 @@ export function isRelationshipOp(op: string): op is RelationshipOp {
 }
 
 // ---------------------------------------------------------------------------
-// Filter evaluation
+// Operator vocabulary (UI)
 // ---------------------------------------------------------------------------
+
+/** Whether an op compares ordered values (date / number). */
+export function opIsOrdered(op: ViewOp): boolean {
+  return op === 'before' || op === 'after';
+}
+
+/** Whether an op takes a list (comma-separated) value. */
+export function opIsMultiValue(op: ViewOp): boolean {
+  return op === 'any_of' || op === 'none_of';
+}
 
 /** Operators the value/op dropdowns offer, grouped for the builder UI. */
 export const VIEW_OPS: { value: ViewOp; label: string; needsValue: boolean }[] = [
@@ -132,32 +148,8 @@ export const VIEW_OPS: { value: ViewOp; label: string; needsValue: boolean }[] =
   { value: 'backlinksTo', label: 'is linked from', needsValue: true },
 ];
 
-function asString(v: unknown): string {
-  if (v == null) return '';
-  if (Array.isArray(v)) return v.join(', ');
-  return String(v);
-}
-
-function isEmptyValue(v: unknown): boolean {
-  if (v == null) return true;
-  if (typeof v === 'string') return v.trim() === '';
-  if (Array.isArray(v)) return v.length === 0;
-  return false;
-}
-
-/** Coerce a cell/filter value to epoch ms, or null if not date-like. */
-function toEpochMs(v: unknown): number | null {
-  if (v == null || v === '') return null;
-  if (typeof v === 'number' && Number.isFinite(v)) return v < 1e12 ? v * 1000 : v;
-  if (typeof v === 'string') {
-    const d = new Date(v);
-    if (!isNaN(d.getTime())) return d.getTime();
-  }
-  return null;
-}
-
 /** Split a multi-value (`any_of`) input into a trimmed string list. */
-function toList(v: unknown): string[] {
+export function toList(v: unknown): string[] {
   if (Array.isArray(v)) return v.map((x) => String(x).trim()).filter(Boolean);
   return String(v ?? '')
     .split(',')
@@ -186,119 +178,169 @@ export function compileSafeUserRegex(src: string): RegExp | null {
   }
 }
 
-/** Evaluate a single leaf against an entry, given the resolved columns. */
+/**
+ * True when a regex leaf's source is non-empty AND fails the ReDoS-safety
+ * gate. Used by the builder to flag a bad pattern in the UI.
+ */
+export function isRegexLeafInvalid(leaf: FilterLeaf): boolean {
+  if (leaf.op !== 'regex') return false;
+  const v = String(leaf.value ?? '');
+  return v.length > 0 && compileSafeUserRegex(v) === null;
+}
+
+// ---------------------------------------------------------------------------
+// View → bases translation. The view vocabulary is a friendly superset of
+// bases' canonical ops; we lower it so the SINGLE bases engine does matching.
+// ---------------------------------------------------------------------------
+
+/** A sentinel that can never equal a real file name (always-false leaf). */
+const NEVER_LEAF: BasesFilterLeaf = { column: 'name', op: 'eq', value: ' __no_match__' };
+/**
+ * Always-TRUE leaf (a file `name` is never empty). Used to lower a "no-op"
+ * view leaf — an empty `any_of`/`none_of`/`regex` value — so it doesn't filter
+ * anything out (the historical F5 semantics: a blank value = no constraint).
+ */
+const ALWAYS_LEAF: BasesFilterLeaf = { column: 'name', op: 'isNotEmpty' };
+
+/**
+ * Lower a single view leaf into a bases `FilterNode`. Most ops are a direct
+ * alias; `any_of`/`none_of` expand into a nested group; `regex` is validated
+ * (a dangerous/invalid pattern becomes an always-false leaf so it can't hang
+ * or accidentally match); relationship ops should already be lowered by the
+ * store, so any that slip through here become always-false.
+ */
+function leafToBases(leaf: FilterLeaf): BasesFilterNode {
+  const { column, value } = leaf;
+  switch (leaf.op) {
+    case 'contains':
+      return { column, op: 'contains', value };
+    case 'not_contains':
+      return { column, op: 'notContains', value };
+    case 'equals':
+      return { column, op: 'eq', value };
+    case 'not_equals':
+      return { column, op: 'neq', value };
+    case 'starts-with':
+      return { column, op: 'startsWith', value };
+    case 'has-tag':
+      return { column, op: 'has-tag', value };
+    case 'is-empty':
+      return { column, op: 'isEmpty' };
+    case 'is-not-empty':
+      return { column, op: 'isNotEmpty' };
+    // `before`/`after` are date-OR-number aware in bases via `lt`/`gt`.
+    case 'before':
+      return { column, op: 'lt', value };
+    case 'after':
+      return { column, op: 'gt', value };
+    case 'any_of': {
+      const wanted = toList(value);
+      if (wanted.length === 0) return { ...ALWAYS_LEAF }; // empty list → no constraint
+      return {
+        combinator: 'any',
+        children: wanted.map((w) => ({ column, op: 'eq' as BasesFilterOp, value: w })),
+      };
+    }
+    case 'none_of': {
+      const wanted = toList(value);
+      if (wanted.length === 0) return { ...ALWAYS_LEAF };
+      return {
+        combinator: 'all',
+        children: wanted.map((w) => ({ column, op: 'neq' as BasesFilterOp, value: w })),
+      };
+    }
+    case 'regex': {
+      const src = String(value ?? '');
+      if (src === '') return { ...ALWAYS_LEAF }; // empty regex → no constraint
+      // ReDoS-safe gate. A dangerous/invalid pattern matches nothing.
+      return compileSafeUserRegex(src)
+        ? { column, op: 'matches', value: src }
+        : { ...NEVER_LEAF };
+    }
+    case 'linksTo':
+    case 'backlinksTo':
+      // Should have been lowered by the store; if not, never match.
+      return { ...NEVER_LEAF };
+    default:
+      return { ...ALWAYS_LEAF };
+  }
+}
+
+/**
+ * Recursively lower a view `FilterGroup` into a bases `FilterGroup`.
+ *
+ * View semantics differ from bases for the empty case: an empty view group
+ * matches EVERYTHING regardless of combinator ("an empty filter = all notes",
+ * at any nesting depth). bases' empty `any` group is false, so we lower an
+ * empty group to a single always-true leaf rather than an empty group, keeping
+ * the historical F5 behavior while still using the one bases engine to match.
+ */
+export function toBasesGroup(group: FilterGroup): BasesFilterGroup {
+  const rawChildren = group.children ?? [];
+  if (rawChildren.length === 0) {
+    return { combinator: 'all', children: [{ ...ALWAYS_LEAF }] };
+  }
+  const children: BasesFilterNode[] = rawChildren.map((child) =>
+    isFilterGroup(child) ? toBasesGroup(child) : leafToBases(child),
+  );
+  return { combinator: group.combinator, children };
+}
+
+// ---------------------------------------------------------------------------
+// Evaluation — thin adapters that delegate to the single bases engine.
+// ---------------------------------------------------------------------------
+
+/** Evaluate a single leaf against an entry (lowered to bases, then matched). */
 export function matchesLeaf(
   entry: IndexEntry,
   leaf: FilterLeaf,
   columns: ColumnDef[],
 ): boolean {
-  const col = columns.find((c) => c.id === leaf.column);
-  if (!col) return true; // unknown column → non-filtering, like bases.ts
-  const raw = getRawValue(entry, col);
-  const isDate = col.kind === 'date' || (col.source === 'builtin' && col.id === 'mtime');
-
-  switch (leaf.op) {
-    case 'is-empty':
-      return isEmptyValue(raw);
-    case 'is-not-empty':
-      return !isEmptyValue(raw);
-    case 'contains': {
-      const n = String(leaf.value ?? '').toLowerCase();
-      return n === '' ? true : asString(raw).toLowerCase().includes(n);
-    }
-    case 'not_contains': {
-      const n = String(leaf.value ?? '').toLowerCase();
-      return n === '' ? true : !asString(raw).toLowerCase().includes(n);
-    }
-    case 'starts-with': {
-      const n = String(leaf.value ?? '').toLowerCase();
-      return n === '' ? true : asString(raw).toLowerCase().startsWith(n);
-    }
-    case 'equals': {
-      const want = leaf.value;
-      if (Array.isArray(raw)) return raw.some((x) => String(x) === String(want));
-      return String(raw ?? '') === String(want ?? '');
-    }
-    case 'not_equals': {
-      const want = leaf.value;
-      if (Array.isArray(raw)) return !raw.some((x) => String(x) === String(want));
-      return String(raw ?? '') !== String(want ?? '');
-    }
-    case 'has-tag': {
-      const tags = Array.isArray(raw)
-        ? raw.map((x) => String(x))
-        : asString(raw).split(',').map((s) => s.trim()).filter(Boolean);
-      const wanted = toList(leaf.value);
-      return wanted.length === 0 ? true : wanted.some((w) => tags.includes(w));
-    }
-    case 'any_of': {
-      const wanted = toList(leaf.value).map((s) => s.toLowerCase());
-      if (wanted.length === 0) return true;
-      const have = Array.isArray(raw)
-        ? raw.map((x) => String(x).toLowerCase())
-        : [asString(raw).toLowerCase()];
-      return wanted.some((w) => have.includes(w));
-    }
-    case 'none_of': {
-      const wanted = toList(leaf.value).map((s) => s.toLowerCase());
-      if (wanted.length === 0) return true;
-      const have = Array.isArray(raw)
-        ? raw.map((x) => String(x).toLowerCase())
-        : [asString(raw).toLowerCase()];
-      return !wanted.some((w) => have.includes(w));
-    }
-    case 'before': {
-      if (isDate) {
-        const a = toEpochMs(raw);
-        const b = toEpochMs(leaf.value);
-        return a == null || b == null ? false : a < b;
-      }
-      const a = Number(asString(raw));
-      const b = Number(asString(leaf.value));
-      return Number.isFinite(a) && Number.isFinite(b) ? a < b : false;
-    }
-    case 'after': {
-      if (isDate) {
-        const a = toEpochMs(raw);
-        const b = toEpochMs(leaf.value);
-        return a == null || b == null ? false : a > b;
-      }
-      const a = Number(asString(raw));
-      const b = Number(asString(leaf.value));
-      return Number.isFinite(a) && Number.isFinite(b) ? a > b : false;
-    }
-    case 'regex': {
-      const re = compileSafeUserRegex(String(leaf.value ?? ''));
-      return re ? re.test(asString(raw)) : false;
-    }
-    // Relationship ops are lowered to membership predicates by the store before
-    // they reach this matcher; if one slips through, treat it as non-matching.
-    case 'linksTo':
-    case 'backlinksTo':
-      return false;
-    default:
-      return true;
-  }
+  const node = leafToBases(leaf);
+  const group: BasesFilterGroup = isBasesGroup(node)
+    ? node
+    : { combinator: 'all', children: [node] };
+  // An empty lowered group (e.g. empty regex / empty any_of) is a no-op → true.
+  if (group.children.length === 0) return true;
+  return basesMatchesGroup(entry, group, columns);
 }
 
-/** Recursively evaluate a filter group (all = AND, any = OR). */
+/**
+ * Recursively evaluate a view filter group. Translates the whole tree once,
+ * then defers all matching to `bases.matchesGroup` — there is no separate
+ * matching engine here.
+ *
+ * Note: a view `all`/`any` group with ZERO children matches EVERYTHING (the
+ * historical F5 semantics: "an empty filter = all notes"). bases' `any` with
+ * zero children would be false, so we short-circuit empties to true here
+ * before delegating, preserving the documented view behavior.
+ */
 export function matchesGroup(
   entry: IndexEntry,
   group: FilterGroup,
   columns: ColumnDef[],
 ): boolean {
-  const children = group.children ?? [];
-  if (children.length === 0) return true; // empty group matches everything
-  const test = (node: FilterNode): boolean =>
-    isFilterGroup(node)
-      ? matchesGroup(entry, node, columns)
-      : matchesLeaf(entry, node, columns);
-  return group.combinator === 'any' ? children.some(test) : children.every(test);
+  if (!group.children || group.children.length === 0) return true;
+  return basesMatchesGroup(entry, toBasesGroup(group), columns);
 }
+
+function isBasesGroup(node: BasesFilterNode): node is BasesFilterGroup {
+  return (
+    typeof node === 'object' &&
+    node != null &&
+    'combinator' in node &&
+    Array.isArray((node as BasesFilterGroup).children)
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Normalization of loosely-typed parsed YAML.
+// ---------------------------------------------------------------------------
 
 /**
  * Coerce arbitrary parsed input into a well-formed FilterGroup. Accepts:
  *   - a real group `{combinator, children}` (recursed),
+ *   - a Tolaria-style `{all:[...]}` / `{any:[...]}` shorthand,
  *   - a bare array of leaves (wrapped as `{all: [...]}` — bases back-compat),
  *   - anything else → an empty `all` group.
  */
@@ -333,9 +375,12 @@ function normalizeNode(raw: unknown): FilterNode | null {
   if ('combinator' in o || 'children' in o || Array.isArray(o.all) || Array.isArray(o.any)) {
     return normalizeFilterGroup(o);
   }
-  // A leaf — require a column + op.
-  if (typeof o.column === 'string' && typeof o.op === 'string') {
-    const leaf: FilterLeaf = { column: o.column, op: o.op as ViewOp };
+  // A leaf — require a column + op. Accept `key` as an alias for `column`
+  // (matches bases' tolerant deserialization of external YAML/JSON).
+  const column =
+    typeof o.column === 'string' ? o.column : typeof o.key === 'string' ? o.key : undefined;
+  if (column && typeof o.op === 'string') {
+    const leaf: FilterLeaf = { column, op: o.op as ViewOp };
     if ('value' in o) leaf.value = o.value;
     return leaf;
   }

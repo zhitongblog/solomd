@@ -161,6 +161,11 @@ function richExtensionsFor(tab: Tab) {
           locale: settings.language || 'en',
         }),
         getTabId: () => tab.id,
+        getBoardStrings: () => ({
+          loading: t('whiteboard.loading'),
+          openFull: t('whiteboard.openFull'),
+          loadFailed: t('whiteboard.loadFailed'),
+        }),
         onBoardEdit: (boardId, snapshotJson) => {
           const cur = tabs.tabs.find((x) => x.id === tab.id);
           if (!cur) return;

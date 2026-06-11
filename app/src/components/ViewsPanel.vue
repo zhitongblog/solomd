@@ -8,7 +8,9 @@
  * editor; rows open the filtered list, and a per-row context menu offers
  * edit / duplicate / delete. Rows drag-reorder, persisting `order` to disk.
  *
- * Built entirely from the FileTree BEM/token vocabulary — no raw hex.
+ * Rows are design-system DsListRow + DsChip; the header uses DsButton. The
+ * context menu is a tokenized popover (no raw hex). Re-evaluates badges on
+ * `solomd://index-updated` so counts stay live as notes change on disk.
  */
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
@@ -17,6 +19,7 @@ import { useWorkspaceStore } from '../stores/workspace';
 import { useSavedViewsStore } from '../stores/savedViews';
 import { useSavedViews } from '../composables/useSavedViews';
 import { uniqueSlug, type ViewFile } from '../lib/viewFile';
+import { DsButton, DsChip, DsListRow } from '../ui';
 
 const { t } = useI18n();
 const workspace = useWorkspaceStore();
@@ -77,8 +80,10 @@ async function onDuplicate(slug: string) {
   await store.save(copy);
 }
 
-async function onDelete(view: ViewFile) {
+async function onDelete(slug: string) {
   closeCtx();
+  const view = store.views.find((v) => v.slug === slug);
+  if (!view) return;
   const ok = window.confirm(t('views.deleteConfirm', { name: view.name }));
   if (!ok) return;
   await store.remove(view.slug);
@@ -145,13 +150,13 @@ onBeforeUnmount(() => {
         <span class="vpanel__caret" aria-hidden="true">{{ collapsed ? '▸' : '▾' }}</span>
         <span>{{ t('views.heading') }}</span>
       </button>
-      <button
-        class="vpanel__hbtn"
-        type="button"
-        :title="t('views.newViewTitle')"
+      <DsButton
+        variant="ghost"
+        size="sm"
         :disabled="!workspace.currentFolder"
+        :title="t('views.newViewTitle')"
         @click="newView"
-      >＋</button>
+      >＋</DsButton>
     </div>
 
     <div v-if="!collapsed" class="vpanel__body">
@@ -164,26 +169,31 @@ onBeforeUnmount(() => {
         <li
           v-for="view in views"
           :key="view.slug"
-          class="vpanel__item"
-          :class="{
-            'vpanel__item--active': isActive(view),
-            'vpanel__item--over': overSlug === view.slug,
-          }"
+          class="vpanel__li"
+          :class="{ 'vpanel__li--over': overSlug === view.slug }"
           draggable="true"
-          :title="view.name"
-          @click="onRowClick(view)"
-          @contextmenu="openCtx($event, view)"
           @dragstart="onDragStart(view.slug, $event)"
           @dragover="onDragOver(view.slug, $event)"
           @drop="onDrop(view.slug)"
           @dragend="onDragEnd"
+          @contextmenu="openCtx($event, view)"
         >
-          <span
-            class="vpanel__swatch"
-            :style="view.color ? { color: view.color } : undefined"
-          >{{ view.icon || '🔖' }}</span>
-          <span class="vpanel__name">{{ view.name }}</span>
-          <span class="vpanel__badge">{{ badge(view) }}</span>
+          <DsListRow
+            :active="isActive(view)"
+            :title="view.name"
+            @click="onRowClick(view)"
+          >
+            <template #leading>
+              <span
+                class="vpanel__swatch"
+                :style="view.color ? { color: view.color } : undefined"
+              >{{ view.icon || '🔖' }}</span>
+            </template>
+            <span class="vpanel__name">{{ view.name }}</span>
+            <template #trailing>
+              <DsChip size="sm">{{ badge(view) }}</DsChip>
+            </template>
+          </DsListRow>
         </li>
       </ul>
     </div>
@@ -204,7 +214,7 @@ onBeforeUnmount(() => {
       <button
         class="vpanel__ctx-item vpanel__ctx-item--danger"
         type="button"
-        @click="onDelete(store.views.find((v) => v.slug === ctx!.slug)!)"
+        @click="onDelete(ctx.slug)"
       >🗑 {{ t('views.delete') }}</button>
     </div>
   </aside>
@@ -212,7 +222,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .vpanel {
-  border-top: 1px solid var(--border);
+  border-top: var(--bd);
   background: var(--bg-elev);
   user-select: none;
   display: flex;
@@ -223,13 +233,13 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 14px;
+  padding: var(--sp-2) var(--sp-4);
   color: var(--text-muted);
 }
 .vpanel__title-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-2);
   background: transparent;
   border: 0;
   cursor: pointer;
@@ -241,49 +251,22 @@ onBeforeUnmount(() => {
   color: var(--text-muted);
 }
 .vpanel__caret { font-size: 9px; color: var(--text-faint); }
-.vpanel__hbtn {
-  padding: 0 6px;
-  font-size: 13px;
-  color: var(--text-muted);
-  background: transparent;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  line-height: 1.6;
-}
-.vpanel__hbtn:hover:not(:disabled) {
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-}
-.vpanel__hbtn:disabled { opacity: 0.35; cursor: not-allowed; }
-.vpanel__body { overflow-y: auto; padding-bottom: 8px; }
+.vpanel__body { overflow-y: auto; padding: 0 var(--sp-2) var(--sp-2); }
 .vpanel__empty {
-  padding: 12px 14px;
+  padding: var(--sp-3) var(--sp-3);
   font-size: 12px;
   color: var(--text-faint);
 }
 .vpanel__empty-hint {
-  margin-top: 4px;
+  margin-top: var(--sp-1);
   font-size: 11px;
   color: var(--text-faint);
 }
 .vpanel__list { list-style: none; margin: 0; padding: 0; }
-.vpanel__item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 14px 4px 10px;
-  font-size: 13px;
-  cursor: pointer;
-  color: var(--text);
+.vpanel__li {
+  border-radius: var(--r-sm);
 }
-.vpanel__item:hover {
-  background: var(--bg-hover, color-mix(in srgb, var(--accent) 10%, transparent));
-}
-.vpanel__item--active {
-  background: var(--bg-active);
-}
-.vpanel__item--over {
+.vpanel__li--over {
   outline: 1px dashed var(--accent);
   outline-offset: -1px;
 }
@@ -299,24 +282,14 @@ onBeforeUnmount(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.vpanel__badge {
-  margin-left: auto;
-  background: var(--accent);
-  color: var(--accent-fg);
-  font-size: 10px;
-  font-weight: 600;
-  padding: 1px 6px;
-  border-radius: 999px;
-  flex: 0 0 auto;
-}
 .vpanel__ctx {
   position: fixed;
-  z-index: 200;
+  z-index: var(--z-pop);
   background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-  padding: 4px 0;
+  border: var(--bd);
+  border-radius: var(--r-md);
+  box-shadow: var(--sh-pop);
+  padding: var(--sp-1) 0;
   min-width: 160px;
   font-size: 13px;
 }
@@ -324,7 +297,7 @@ onBeforeUnmount(() => {
   display: block;
   width: 100%;
   text-align: left;
-  padding: 6px 14px;
+  padding: var(--sp-2) var(--sp-4);
   background: transparent;
   border: none;
   color: var(--text);
@@ -332,11 +305,11 @@ onBeforeUnmount(() => {
   font: inherit;
 }
 .vpanel__ctx-item:hover {
-  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  background: var(--bg-hover);
 }
 .vpanel__ctx-item--danger { color: var(--danger); }
 .vpanel__ctx-item--danger:hover {
   background: color-mix(in srgb, var(--danger) 14%, transparent);
 }
-.vpanel__ctx-sep { height: 1px; background: var(--border); margin: 4px 0; }
+.vpanel__ctx-sep { height: 1px; background: var(--border); margin: var(--sp-1) 0; }
 </style>

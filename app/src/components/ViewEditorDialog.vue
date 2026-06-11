@@ -4,8 +4,13 @@
  *
  * Opened by the `solomd:new-view` / `solomd:edit-view` window events (see
  * useSavedViews). Hosts {@link FilterBuilder} plus name / icon / color / sort
- * / column-visibility controls. On save it persists through the savedViews
- * store (disk write) and, for a brand-new view, opens it in the content area.
+ * / column-visibility controls, and a LIVE match-count badge that re-evaluates
+ * the draft tree against the index as you type. On save it persists through the
+ * savedViews store (disk write) and, for a brand-new view, opens it in the
+ * content area.
+ *
+ * Built from the design-system primitives in `@/ui` (DsModal / DsInput /
+ * DsSelect / DsButton / DsChip) — no raw hex, consistent with the other panes.
  */
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { useI18n } from '../i18n';
@@ -19,6 +24,7 @@ import {
   type ViewFile,
 } from '../lib/viewFile';
 import { inferColumns, type SortSpec } from '../lib/bases';
+import { DsButton, DsChip, DsInput, DsModal, DsSelect, type DsSelectOption } from '../ui';
 import FilterBuilder from './FilterBuilder.vue';
 
 const { t } = useI18n();
@@ -34,10 +40,27 @@ const draft = reactive<ViewFile>(emptyView('view', ''));
 
 const columns = computed(() => inferColumns(index.entries));
 
-/** Sort options = built-in + frontmatter columns, plus a "default" sentinel. */
-const sortColumns = computed(() => columns.value);
+/** Sort options = a "default (mtime desc)" sentinel + every column. */
+const sortOptions = computed<DsSelectOption[]>(() => [
+  { value: '', label: t('views.sortDefault') },
+  ...columns.value.map((c) => ({ value: c.id, label: c.label })),
+]);
+const dirOptions = computed<DsSelectOption[]>(() => [
+  { value: 'asc', label: t('views.asc') },
+  { value: 'desc', label: t('views.desc') },
+]);
 
 const isEditing = computed(() => editingSlug.value !== null);
+
+/** Live count of notes matching the draft tree (re-evaluates reactively). */
+const liveCount = computed<number>(() => {
+  void index.entries.length; // touch for reactivity
+  try {
+    return store.countMatches(draft.filters);
+  } catch {
+    return 0;
+  }
+});
 
 function loadDraft(v: ViewFile) {
   draft.slug = v.slug;
@@ -47,7 +70,7 @@ function loadDraft(v: ViewFile) {
   draft.order = v.order;
   draft.columns = [...v.columns];
   draft.sort = v.sort ? { ...v.sort } : null;
-  // Deep-ish clone of the filter tree so edits don't mutate the store copy.
+  // Deep clone of the filter tree so edits don't mutate the store copy.
   draft.filters = JSON.parse(JSON.stringify(v.filters));
 }
 
@@ -71,6 +94,10 @@ function close() {
   open.value = false;
 }
 
+function onModalUpdate(v: boolean) {
+  open.value = v;
+}
+
 // ---- sort controls ---------------------------------------------------------
 
 const sortColumn = computed<string>({
@@ -80,10 +107,10 @@ const sortColumn = computed<string>({
     else draft.sort = { column: col, dir: draft.sort?.dir ?? 'desc' };
   },
 });
-const sortDir = computed<'asc' | 'desc'>({
+const sortDir = computed<string>({
   get: () => draft.sort?.dir ?? 'desc',
   set: (dir) => {
-    if (draft.sort) draft.sort = { ...draft.sort, dir } as SortSpec;
+    if (draft.sort) draft.sort = { ...draft.sort, dir: dir as 'asc' | 'desc' } as SortSpec;
   },
 });
 
@@ -91,6 +118,10 @@ function toggleColumn(id: string) {
   const i = draft.columns.indexOf(id);
   if (i >= 0) draft.columns.splice(i, 1);
   else draft.columns.push(id);
+}
+
+function setFilters(g: ViewFile['filters']) {
+  draft.filters = g;
 }
 
 // ---- save ------------------------------------------------------------------
@@ -121,8 +152,9 @@ async function save() {
       filters: JSON.parse(JSON.stringify(draft.filters)),
     };
     const saved = await store.save(toSave);
+    const wasEditing = editingSlug.value !== null;
     open.value = false;
-    if (!editingSlug.value) openView(saved.slug);
+    if (!wasEditing) openView(saved.slug);
   } catch (e) {
     console.error('[ViewEditorDialog] save failed', e);
   } finally {
@@ -130,172 +162,138 @@ async function save() {
   }
 }
 
-function onKey(e: KeyboardEvent) {
-  if (!open.value) return;
-  if (e.key === 'Escape') { e.stopPropagation(); close(); }
-}
-
 onMounted(() => {
   window.addEventListener(VIEW_NEW_EVENT, onNew as EventListener);
   window.addEventListener(VIEW_EDIT_EVENT, onEdit as EventListener);
-  window.addEventListener('keydown', onKey, true);
 });
 onBeforeUnmount(() => {
   window.removeEventListener(VIEW_NEW_EVENT, onNew as EventListener);
   window.removeEventListener(VIEW_EDIT_EVENT, onEdit as EventListener);
-  window.removeEventListener('keydown', onKey, true);
 });
 </script>
 
 <template>
-  <Teleport to="body">
-    <div v-if="open" class="ved__backdrop" @click.self="close">
-      <div class="ved" role="dialog" aria-modal="true">
-        <div class="ved__head">
-          <h2 class="ved__title">{{ isEditing ? t('views.editorEdit') : t('views.editorNew') }}</h2>
-          <button class="ved__x" type="button" :title="t('views.cancel')" @click="close">✕</button>
-        </div>
+  <DsModal
+    :model-value="open"
+    :width="'600px'"
+    @update:model-value="onModalUpdate"
+  >
+    <template #header>
+      <h2 class="ved__title">{{ isEditing ? t('views.editorEdit') : t('views.editorNew') }}</h2>
+      <span class="ved__live" :title="t('views.liveMatchTitle')">
+        {{ t('views.liveMatch', { n: liveCount }) }}
+      </span>
+    </template>
 
-        <div class="ved__body">
-          <!-- Name / icon / color row -->
-          <div class="ved__grid">
-            <label class="ved__field ved__field--grow">
-              <span class="ved__label">{{ t('views.name') }}</span>
-              <input
-                v-model="draft.name"
-                class="ved__input"
-                :placeholder="t('views.namePlaceholder')"
-                spellcheck="false"
-              />
-            </label>
-            <label class="ved__field ved__field--icon">
-              <span class="ved__label">{{ t('views.icon') }}</span>
-              <input v-model="draft.icon" class="ved__input ved__input--icon" maxlength="2" placeholder="🔖" />
-            </label>
-            <label class="ved__field ved__field--color">
-              <span class="ved__label">{{ t('views.color') }}</span>
-              <input v-model="draft.color" type="color" class="ved__color" />
-            </label>
-          </div>
+    <div class="ved__body">
+      <!-- Name / icon / color row -->
+      <div class="ved__grid">
+        <label class="ved__field ved__field--grow">
+          <span class="ved__label">{{ t('views.name') }}</span>
+          <DsInput
+            v-model="draft.name"
+            :placeholder="t('views.namePlaceholder')"
+          />
+        </label>
+        <label class="ved__field ved__field--icon">
+          <span class="ved__label">{{ t('views.icon') }}</span>
+          <DsInput v-model="draft.icon" class="ved__input--icon" placeholder="🔖" />
+        </label>
+        <label class="ved__field ved__field--color">
+          <span class="ved__label">{{ t('views.color') }}</span>
+          <input v-model="draft.color" type="color" class="ved__color" :aria-label="t('views.color')" />
+        </label>
+      </div>
 
-          <!-- Sort -->
-          <div class="ved__grid">
-            <label class="ved__field ved__field--grow">
-              <span class="ved__label">{{ t('views.sortBy') }}</span>
-              <select v-model="sortColumn" class="ved__input">
-                <option value="">{{ t('views.desc') }} — {{ 'mtime' }}</option>
-                <option v-for="c in sortColumns" :key="c.id" :value="c.id">{{ c.label }}</option>
-              </select>
-            </label>
-            <label class="ved__field" v-if="draft.sort">
-              <span class="ved__label">{{ t('views.sortDir') }}</span>
-              <select v-model="sortDir" class="ved__input">
-                <option value="asc">{{ t('views.asc') }}</option>
-                <option value="desc">{{ t('views.desc') }}</option>
-              </select>
-            </label>
-          </div>
+      <!-- Sort -->
+      <div class="ved__grid">
+        <label class="ved__field ved__field--grow">
+          <span class="ved__label">{{ t('views.sortBy') }}</span>
+          <DsSelect v-model="sortColumn" :options="sortOptions" />
+        </label>
+        <label class="ved__field ved__field--dir" v-if="draft.sort">
+          <span class="ved__label">{{ t('views.sortDir') }}</span>
+          <DsSelect v-model="sortDir" :options="dirOptions" />
+        </label>
+      </div>
 
-          <!-- Display columns -->
-          <div class="ved__field">
-            <span class="ved__label">{{ t('views.columns') }}</span>
-            <div class="ved__chips">
-              <button
-                v-for="c in columns"
-                :key="c.id"
-                type="button"
-                class="ved__chip"
-                :class="{ 'ved__chip--on': draft.columns.includes(c.id) }"
-                @click="toggleColumn(c.id)"
-              >{{ c.label }}</button>
-            </div>
-            <span class="ved__hint">{{ t('views.columnsHint') }}</span>
-          </div>
-
-          <!-- Filters -->
-          <div class="ved__field">
-            <span class="ved__label">{{ t('views.filters') }}</span>
-            <FilterBuilder v-model="draft.filters" :columns="columns" :depth="0" />
-          </div>
-        </div>
-
-        <div class="ved__foot">
-          <button class="ved__btn" type="button" @click="close">{{ t('views.cancel') }}</button>
-          <button class="ved__btn ved__btn--primary" type="button" :disabled="saving" @click="save">
-            {{ t('views.save') }}
+      <!-- Display columns -->
+      <div class="ved__field">
+        <span class="ved__label">{{ t('views.columns') }}</span>
+        <div class="ved__chips">
+          <button
+            v-for="c in columns"
+            :key="c.id"
+            type="button"
+            class="ved__chipbtn"
+            @click="toggleColumn(c.id)"
+          >
+            <DsChip size="sm" :color="draft.columns.includes(c.id) ? 'var(--accent)' : undefined">
+              {{ c.label }}
+            </DsChip>
           </button>
         </div>
+        <span class="ved__hint">{{ t('views.columnsHint') }}</span>
+      </div>
+
+      <!-- Filters -->
+      <div class="ved__field">
+        <span class="ved__label">{{ t('views.filters') }}</span>
+        <FilterBuilder
+          :model-value="draft.filters"
+          :columns="columns"
+          :depth="0"
+          :max-depth="3"
+          @update:model-value="setFilters"
+        />
       </div>
     </div>
-  </Teleport>
+
+    <template #footer>
+      <DsButton variant="ghost" @click="close">{{ t('views.cancel') }}</DsButton>
+      <DsButton variant="primary" :loading="saving" @click="save">{{ t('views.save') }}</DsButton>
+    </template>
+  </DsModal>
 </template>
 
 <style scoped>
-.ved__backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 400;
-  background: color-mix(in srgb, var(--text) 30%, transparent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-}
-.ved {
-  width: 560px;
-  max-width: 100%;
-  max-height: 86vh;
-  display: flex;
-  flex-direction: column;
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.3);
-}
-.ved__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--border);
-}
 .ved__title {
   margin: 0;
   font-size: 15px;
   font-weight: 600;
   color: var(--text);
 }
-.ved__x {
-  border: 0;
-  background: transparent;
+.ved__live {
+  margin-left: auto;
+  margin-right: var(--sp-3);
+  font-size: 11px;
+  font-weight: 600;
   color: var(--text-muted);
-  cursor: pointer;
-  font-size: 14px;
-  border-radius: 4px;
-  padding: 2px 6px;
+  background: var(--bg-hover);
+  border-radius: var(--r-full);
+  padding: 2px var(--sp-2);
+  white-space: nowrap;
 }
-.ved__x:hover { color: var(--text); background: var(--bg-hover); }
 .ved__body {
-  padding: 16px 18px;
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--sp-4);
 }
 .ved__grid {
   display: flex;
-  gap: 12px;
+  gap: var(--sp-3);
   align-items: flex-end;
 }
 .ved__field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--sp-1);
   min-width: 0;
 }
 .ved__field--grow { flex: 1 1 auto; }
-.ved__field--icon { flex: 0 0 56px; }
+.ved__field--icon { flex: 0 0 64px; }
 .ved__field--color { flex: 0 0 56px; }
+.ved__field--dir { flex: 0 0 140px; }
 .ved__label {
   font-size: 11px;
   font-weight: 600;
@@ -307,22 +305,14 @@ onBeforeUnmount(() => {
   font-size: 11px;
   color: var(--text-faint);
 }
-.ved__input {
-  font: inherit;
-  font-size: 13px;
-  padding: 6px 8px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg);
-  color: var(--text);
-  min-width: 0;
+.ved__input--icon :deep(.ds-input) {
+  text-align: center;
 }
-.ved__input--icon { text-align: center; }
 .ved__color {
-  height: 32px;
+  height: 34px;
   width: 100%;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  border: var(--bd);
+  border-radius: var(--r-md);
   background: var(--bg);
   cursor: pointer;
   padding: 2px;
@@ -330,45 +320,12 @@ onBeforeUnmount(() => {
 .ved__chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--sp-2);
 }
-.ved__chip {
-  font-size: 11px;
-  padding: 3px 9px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
+.ved__chipbtn {
+  border: 0;
   background: transparent;
-  color: var(--text-muted);
+  padding: 0;
   cursor: pointer;
 }
-.ved__chip--on {
-  background: var(--accent);
-  color: var(--accent-fg);
-  border-color: var(--accent);
-}
-.ved__foot {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  padding: 12px 18px;
-  border-top: 1px solid var(--border);
-}
-.ved__btn {
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 6px 14px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg);
-  color: var(--text);
-  cursor: pointer;
-}
-.ved__btn:hover { background: var(--bg-hover); }
-.ved__btn--primary {
-  background: var(--accent);
-  color: var(--accent-fg);
-  border-color: var(--accent);
-}
-.ved__btn--primary:disabled { opacity: 0.5; cursor: default; }
 </style>

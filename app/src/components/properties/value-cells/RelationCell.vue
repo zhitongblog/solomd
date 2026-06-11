@@ -10,10 +10,12 @@ import { DsChip, DsInput } from '../../../ui';
 import { extractWikilinks, chipLabel, type Wikilink } from '../../../lib/wikilinks';
 import { useWorkspaceIndexStore } from '../../../stores/workspaceIndex';
 import { useFiles } from '../../../composables/useFiles';
+import { useI18n } from '../../../i18n';
 
 const props = defineProps<{ value: unknown }>();
 const emit = defineEmits<{ update: [string | string[]] }>();
 
+const { t } = useI18n();
 const idx = useWorkspaceIndexStore();
 const files = useFiles();
 
@@ -111,7 +113,7 @@ watch(
       ref="inputRef"
       v-model="draft"
       size="sm"
-      placeholder="[[Note]]"
+      :placeholder="t('inspector.relationPlaceholder')"
       @keydown.enter.prevent="commit"
       @keydown.esc.prevent="cancel"
       @blur="commit"
@@ -126,7 +128,7 @@ watch(
           :class="{ 'prop-relation-cell__chip--unresolved': !link.resolvedPath }"
           @click="open(link)"
         >{{ chipLabel(link) }}</DsChip>
-        <button type="button" class="prop-relation-cell__edit" title="Edit" @click="startEdit">✎</button>
+        <button type="button" class="prop-relation-cell__edit" :title="t('inspector.editValue')" :aria-label="t('inspector.editValue')" @click="startEdit">✎</button>
       </template>
       <button
         v-else
@@ -174,5 +176,10 @@ watch(
 .prop-relation-cell__edit:hover {
   background: var(--bg-hover);
   color: var(--text);
+}
+.prop-relation-cell__edit:focus-visible,
+.prop-relation-cell__chip:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
 }
 </style>

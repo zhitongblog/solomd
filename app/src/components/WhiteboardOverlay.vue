@@ -38,9 +38,14 @@ const settings = useSettingsStore();
 const tabs = useTabsStore();
 
 const open = ref(false);
+const loading = ref(false);
 const surface = ref<HTMLDivElement | null>(null);
 let handle: BoardHandle | null = null;
 let current: WhiteboardOpenDetail | null = null;
+// Bumped on every open/close so a slow async mount that resolves after the
+// overlay was re-opened (or closed) tears itself down instead of leaking a
+// second tldraw React root onto the surface.
+let mountToken = 0;
 
 function theme(): BoardThemeTokens {
   return {
@@ -52,29 +57,58 @@ function theme(): BoardThemeTokens {
 async function onOpen(e: Event) {
   const detail = (e as CustomEvent<WhiteboardOpenDetail>).detail;
   if (!detail) return;
+  // Re-opening while a board is live: tear the old one down first.
+  if (handle) {
+    try {
+      handle.destroy();
+    } catch {
+      /* already gone */
+    }
+    handle = null;
+  }
   current = detail;
   open.value = true;
+  loading.value = true;
+  const token = ++mountToken;
   // Wait a tick so the surface div renders, then mount the board.
   await Promise.resolve();
   requestAnimationFrame(async () => {
-    if (!surface.value || !current) return;
-    const { mountBoard } = await import('../lib/tldraw-runtime');
-    handle = await mountBoard(surface.value, {
-      snapshot: current.snapshot,
-      theme: theme(),
-      onSnapshotChange: (snapshotJson) => {
-        if (!current) return;
-        const tab = tabs.tabs.find((x) => x.id === current!.tabId);
-        if (!tab) return;
-        const next = replaceBoardSnapshot(tab.content || '', current.boardId, snapshotJson);
-        if (next !== tab.content) tabs.setContent(current.tabId, next);
-      },
-    });
+    if (token !== mountToken || !surface.value || !current) return;
+    try {
+      const { mountBoard } = await import('../lib/tldraw-runtime');
+      const mounted = await mountBoard(surface.value, {
+        snapshot: current.snapshot,
+        theme: theme(),
+        onSnapshotChange: (snapshotJson) => {
+          if (!current) return;
+          const tab = tabs.tabs.find((x) => x.id === current!.tabId);
+          if (!tab) return;
+          const next = replaceBoardSnapshot(tab.content || '', current.boardId, snapshotJson);
+          if (next !== tab.content) tabs.setContent(current.tabId, next);
+        },
+      });
+      // The overlay was closed / re-opened while tldraw was loading — discard.
+      if (token !== mountToken) {
+        try {
+          mounted.destroy();
+        } catch {
+          /* no-op */
+        }
+        return;
+      }
+      handle = mounted;
+    } catch {
+      /* mount failed (corrupt snapshot / dep) — leave the empty surface */
+    } finally {
+      if (token === mountToken) loading.value = false;
+    }
   });
 }
 
 function close() {
+  mountToken++;
   open.value = false;
+  loading.value = false;
   current = null;
   try {
     handle?.destroy();
@@ -106,9 +140,17 @@ onBeforeUnmount(() => {
 <template>
   <div v-if="open" class="wb-overlay">
     <div class="wb-overlay__bar">
-      <button class="wb-overlay__close" @click="close">{{ t('whiteboard.closeFull') }}</button>
+      <span class="wb-overlay__title">{{ t('whiteboard.insert') }}</span>
+      <button class="wb-overlay__close" @click="close" :title="t('whiteboard.closeFull')">
+        {{ t('whiteboard.closeFull') }}
+      </button>
     </div>
-    <div ref="surface" class="wb-overlay__surface"></div>
+    <div ref="surface" class="wb-overlay__surface">
+      <div v-if="loading" class="wb-overlay__loading">
+        <span class="wb-overlay__spinner" aria-hidden="true"></span>
+        <span>{{ t('whiteboard.loading') }}</span>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -123,10 +165,16 @@ onBeforeUnmount(() => {
 }
 .wb-overlay__bar {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
   padding: 8px 12px;
   border-bottom: 1px solid var(--border);
   background: var(--bg-soft, var(--bg));
+}
+.wb-overlay__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
 }
 .wb-overlay__close {
   appearance: none;
@@ -145,5 +193,31 @@ onBeforeUnmount(() => {
   position: relative;
   flex: 1 1 auto;
   min-height: 0;
+}
+.wb-overlay__loading {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-faint);
+  font-size: 13px;
+  font-style: italic;
+  pointer-events: none;
+}
+.wb-overlay__spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent, var(--text-faint));
+  border-radius: 50%;
+  animation: wb-overlay-spin 0.7s linear infinite;
+}
+@keyframes wb-overlay-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

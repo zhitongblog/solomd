@@ -9,28 +9,35 @@
  * `lib/types-registry.ts` via the `types` store, so it refreshes for free on
  * every `solomd://index-updated` event.
  *
- * Structure mirrors TagsPanel.vue (same chrome + design tokens):
- *   - uppercase muted header with a `+` (create type) and the rs-pane × close
- *   - one collapsible section per type: icon (tinted by `--type-<color>`),
+ * v4.6.1 — migrated to the `ui/` design system (DsPanel / DsButton / DsListRow
+ * / DsChip), and a type section can now be expanded into a full-pane lens
+ * (TypeLensView) by clicking the section's "view all" affordance.
+ *
+ * Structure (design-system tokens only, no raw hex):
+ *   - DsPanel shell: uppercase title, `+` create action, host × close
+ *   - one collapsible section per type: caret, icon (tinted by `--type-<color>`),
  *     label (sidebar_label || pluralized name), tabular-nums count chip,
- *     hover gear → TypeCustomizePopover
- *   - member rows; clicking opens the note via files.openPath
- *   - pinned-property chips per member (read-only value formatting)
+ *     "open lens" + gear actions on hover
+ *   - member rows (DsListRow); clicking opens the note via files.openPath
+ *   - pinned-property chips per member (DsChip; read-only bases value formatting)
  *
  * i18n keys (en.ts): types.heading, types.empty, types.openFolder,
- *   types.newTypeTooltip, types.customizeTooltip
+ *   types.newTypeTooltip, types.customizeTooltip, types.openLensTooltip
  */
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import Icons from './Icons.vue';
 import CreateTypeDialog from './CreateTypeDialog.vue';
 import TypeCustomizePopover from './TypeCustomizePopover.vue';
+import { DsPanel, DsButton, DsChip, DsListRow } from '../ui';
 import { useTypesStore } from '../stores/types';
 import { useFiles } from '../composables/useFiles';
+import { useTypeLens } from '../composables/useTypeLens';
 import { useI18n } from '../i18n';
 import type { TypeMember, TypeSection } from '../lib/types-registry';
 
 const types = useTypesStore();
 const files = useFiles();
+const lens = useTypeLens();
 const { t } = useI18n();
 
 defineEmits<{ (e: 'close'): void }>();
@@ -71,6 +78,12 @@ function openCustomize(section: TypeSection, ev: MouseEvent) {
   customizeOpen.value = true;
 }
 
+/** Expand a type into the full-pane lens (TypeLensView). */
+function openLens(section: TypeSection, ev: MouseEvent) {
+  ev.stopPropagation();
+  lens.openTypeLens(section.name);
+}
+
 function openMember(m: TypeMember) {
   files.openPath(m.path);
 }
@@ -78,7 +91,8 @@ function openMember(m: TypeMember) {
 /**
  * Read-only value formatting for a pinned-property chip. Kept local + tiny —
  * arrays join, everything else stringifies. (Bases' richer ColumnDef
- * formatting needs a column descriptor per key; not worth it for chips.)
+ * formatting needs a column descriptor per key; the lens view uses that, but
+ * for compact sidebar chips this is enough.)
  */
 function pinnedValue(m: TypeMember, key: string): string {
   const v = m.frontmatter[key];
@@ -102,23 +116,15 @@ function memberPinned(
 </script>
 
 <template>
-  <div class="types-panel">
-    <header class="types-panel__head">
-      <span class="types-panel__title">{{ t('types.heading') }}</span>
-      <div class="types-panel__actions">
-        <button
-          class="types-panel__btn"
-          :title="t('types.newTypeTooltip')"
-          @click="createOpen = true"
-        >+</button>
-      </div>
-      <button
-        class="rs-pane-close"
-        type="button"
-        :title="t('rightSidebar.hidePane')"
-        @click="$emit('close')"
-      >×</button>
-    </header>
+  <DsPanel grip :title="t('types.heading')" @close="$emit('close')">
+    <template #actions>
+      <DsButton
+        size="sm"
+        variant="ghost"
+        :title="t('types.newTypeTooltip')"
+        @click="createOpen = true"
+      >+</DsButton>
+    </template>
 
     <div v-if="!hasFolder" class="types-panel__empty">
       {{ t('types.openFolder') }}
@@ -143,9 +149,16 @@ function memberPinned(
             <Icons :name="sec.icon" :size="15" />
           </span>
           <span class="types-panel__label">{{ sec.label }}</span>
-          <span class="types-panel__count">{{ sec.members.length }}</span>
+          <DsChip size="sm" class="types-panel__count">{{ sec.members.length }}</DsChip>
           <button
-            class="types-panel__gear"
+            class="types-panel__act"
+            type="button"
+            :title="t('types.openLensTooltip')"
+            @click="openLens(sec, $event)"
+          >⤢</button>
+          <button
+            class="types-panel__act"
+            type="button"
             :title="t('types.customizeTooltip')"
             @click="openCustomize(sec, $event)"
           >⚙</button>
@@ -158,22 +171,23 @@ function memberPinned(
           <li
             v-for="m in sec.members"
             :key="m.path"
-            class="types-panel__member"
           >
-            <button class="types-panel__member-row" @click="openMember(m)">
-              <span class="types-panel__member-title">{{ m.title }}</span>
-              <span
-                v-if="memberPinned(m, sec.pinned).length"
-                class="types-panel__chips"
-              >
+            <DsListRow @click="openMember(m)">
+              <span class="types-panel__member-body">
+                <span class="types-panel__member-title">{{ m.title }}</span>
                 <span
-                  v-for="chip in memberPinned(m, sec.pinned)"
-                  :key="chip.key"
-                  class="types-panel__chip"
-                  :title="`${chip.key}: ${chip.value}`"
-                >{{ chip.value }}</span>
+                  v-if="memberPinned(m, sec.pinned).length"
+                  class="types-panel__chips"
+                >
+                  <DsChip
+                    v-for="chip in memberPinned(m, sec.pinned)"
+                    :key="chip.key"
+                    size="sm"
+                    :title="`${chip.key}: ${chip.value}`"
+                  >{{ chip.value }}</DsChip>
+                </span>
               </span>
-            </button>
+            </DsListRow>
           </li>
         </ul>
       </section>
@@ -186,65 +200,19 @@ function memberPinned(
       :anchor="customizeAnchor"
       @close="customizeOpen = false"
     />
-  </div>
+  </DsPanel>
 </template>
 
 <style scoped>
-.types-panel {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  background: var(--bg);
-  border-left: 1px solid var(--border);
-  overflow: hidden;
-}
-.types-panel__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-soft);
-  gap: 8px;
-}
-.types-panel__title {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-.types-panel__actions {
-  display: flex;
-  gap: 4px;
-  margin-left: auto;
-}
-.types-panel__btn {
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  border-radius: 4px;
-  padding: 0 8px;
-  font-size: 14px;
-  line-height: 18px;
-  cursor: pointer;
-  transition: background 0.12s, color 0.12s, border-color 0.12s;
-}
-.types-panel__btn:hover {
-  background: var(--bg-hover);
-  color: var(--text);
-}
 .types-panel__empty {
-  padding: 24px 16px;
+  padding: var(--sp-5) var(--sp-4);
   text-align: center;
   color: var(--text-faint);
   font-size: 12px;
   line-height: 1.6;
 }
 .types-panel__list {
-  overflow-y: auto;
-  flex: 1;
-  padding: 4px;
+  padding: var(--sp-1);
 }
 .types-panel__section {
   margin-bottom: 2px;
@@ -252,11 +220,11 @@ function memberPinned(
 .types-panel__section-head {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 8px;
-  border-radius: 6px;
+  gap: var(--sp-2);
+  padding: var(--sp-2);
+  border-radius: var(--r-md);
   cursor: pointer;
-  transition: background 0.12s;
+  transition: background var(--dur-fast) var(--ease);
 }
 .types-panel__section-head:hover {
   background: var(--bg-hover);
@@ -264,7 +232,7 @@ function memberPinned(
 .types-panel__caret {
   font-size: 9px;
   color: var(--text-faint);
-  transition: transform 0.12s;
+  transition: transform var(--dur-fast) var(--ease);
   flex-shrink: 0;
   width: 10px;
   text-align: center;
@@ -288,60 +256,48 @@ function memberPinned(
   text-overflow: ellipsis;
 }
 .types-panel__count {
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 1px 8px;
-  font-size: 11px;
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
   flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
 }
-.types-panel__gear {
+.types-panel__act {
   background: transparent;
   border: none;
   color: var(--text-faint);
   cursor: pointer;
   font-size: 12px;
-  padding: 0 2px;
+  line-height: 1;
+  padding: 2px 3px;
+  border-radius: var(--r-sm);
   opacity: 0;
   flex-shrink: 0;
-  transition: opacity 0.12s, color 0.12s;
+  transition: opacity var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease),
+    background var(--dur-fast) var(--ease);
 }
-.types-panel__section-head:hover .types-panel__gear {
+.types-panel__section-head:hover .types-panel__act {
   opacity: 1;
 }
-.types-panel__gear:hover {
+.types-panel__act:hover {
   color: var(--text);
+  background: var(--bg-elev);
 }
 .types-panel__members {
   list-style: none;
   margin: 0;
-  padding: 2px 0 4px 18px;
+  padding: 2px 0 var(--sp-1) 18px;
 }
 .types-panel__member-empty {
   font-size: 11px;
   color: var(--text-faint);
   font-style: italic;
-  padding: 4px 10px;
+  padding: var(--sp-1) var(--sp-3);
 }
-.types-panel__member-row {
+.types-panel__member-body {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 3px;
+  min-width: 0;
   width: 100%;
-  background: transparent;
-  border: 1px solid transparent;
-  padding: 5px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-  text-align: left;
-  transition: background 0.12s, border-color 0.12s;
-}
-.types-panel__member-row:hover {
-  background: var(--bg-hover);
-  border-color: var(--border);
 }
 .types-panel__member-title {
   font-size: 12px;
@@ -354,18 +310,6 @@ function memberPinned(
 .types-panel__chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-}
-.types-panel__chip {
-  font-size: 10px;
-  padding: 1px 6px;
-  border-radius: 4px;
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  max-width: 120px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  gap: var(--sp-1);
 }
 </style>

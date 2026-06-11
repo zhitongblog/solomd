@@ -19,7 +19,7 @@
  */
 import { defineStore } from 'pinia';
 import { invoke } from '@tauri-apps/api/core';
-import { inferColumns, applySort, type ColumnDef } from '../lib/bases';
+import { inferColumns, applySort, type ColumnDef, type SortSpec } from '../lib/bases';
 import {
   parseViewFile,
   serializeViewFile,
@@ -220,22 +220,41 @@ export const useSavedViewsStore = defineStore('savedViews', {
      * matched + sorted entries. Pure read — safe to call from getters/render.
      */
     evaluate(view: ViewFile): IndexEntry[] {
+      return this.evaluateTree(
+        view.filters,
+        view.sort ?? { column: 'mtime', dir: 'desc' },
+      );
+    },
+
+    /**
+     * Evaluate an arbitrary filter tree (+ optional sort) against the current
+     * index. Shared by {@link evaluate} and the editor's live preview, so the
+     * dialog can show a match count for a DRAFT that isn't saved yet. Resolves
+     * relationship + relative-date leaves first, then defers all matching to
+     * the single `bases.matchesGroup` engine (via viewFile's adapter).
+     */
+    evaluateTree(filters: FilterGroup, sort?: SortSpec | null): IndexEntry[] {
       const index = useWorkspaceIndexStore();
       const entries = index.entries;
       const columns = inferColumns(entries);
       const adjacency = buildAdjacency(entries);
       const now = new Date();
-      const tree = prepareGroup(view.filters, adjacency, now);
+      const tree = prepareGroup(filters, adjacency, now);
       const matched =
         tree.children.length === 0
           ? entries
           : entries.filter((e) => matchesGroup(e, tree, columns));
-      return applySort(matched, view.sort ?? { column: 'mtime', dir: 'desc' }, columns);
+      return applySort(matched, sort ?? { column: 'mtime', dir: 'desc' }, columns);
     },
 
     /** Match-count for the sidebar badge (cheap: reuses evaluate). */
     matchCount(view: ViewFile): number {
       return this.evaluate(view).length;
+    },
+
+    /** Live match-count for a draft filter tree (editor preview). */
+    countMatches(filters: FilterGroup): number {
+      return this.evaluateTree(filters, null).length;
     },
   },
 });

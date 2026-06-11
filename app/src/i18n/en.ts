@@ -319,6 +319,7 @@ export const en = {
     inverse: 'Inverse',
     backlinks: 'Backlinks',
     back: 'Back',
+    showMore: 'Show {n} more',
   },
   types: {
     heading: 'Types',
@@ -348,9 +349,25 @@ export const en = {
     openFolder: 'Open a folder to edit properties.',
     noActive: 'No active document.',
     notMarkdown: 'Save this file as Markdown to edit properties.',
-    noProps: 'No properties yet. Add one below.',
+    noProps: 'No properties yet — add one below or pick a suggestion.',
     suggested: 'Suggested',
     addProperty: 'Add property',
+    pin: 'Pin to top',
+    unpin: 'Unpin',
+    deleteProperty: 'Delete property',
+    changeType: 'Change type',
+    propertyName: 'Property name',
+    cancel: 'Cancel',
+    add: 'Add',
+    valuePlaceholder: 'Value',
+    addTag: 'Add…',
+    statusPlaceholder: 'Status…',
+    openLink: 'Open link',
+    editValue: 'Edit',
+    today: 'Today',
+    prevMonth: 'Previous month',
+    nextMonth: 'Next month',
+    relationPlaceholder: '[[Note]]',
   },
   properties: {
     saveFirst: 'Save the file before editing properties.',
@@ -372,7 +389,13 @@ export const en = {
     keyPlaceholder: 'Relationship name (e.g. cites)',
     remove: 'Remove',
     cancel: 'Cancel',
+    add: 'Add',
     inverseOf: 'Inverse of {key}',
+    suggested: 'Suggested',
+    unresolved: 'Unresolved — no note named “{target}” in this folder',
+    saveFirst: 'Save the document to edit its relationships.',
+    noMatches: 'No matching notes.',
+    keyExists: 'That relationship already exists.',
   },
   spellcheck: {
     suggestions: 'Suggestions',
@@ -734,10 +757,14 @@ export const en = {
     periodMonth: 'Month',
     periodAll: 'All',
     linkCount: '{n} links',
+    organizeAction: 'Mark organized & advance',
     organizeHint: 'Press ⌘E to mark the active note organized and advance to the next.',
     zero: 'Inbox zero — nothing left to organize',
     zeroTitle: 'Inbox zero',
     zeroSub: 'Nothing left to organize. New captures will show up here.',
+    periodEmptyTitle: 'Nothing in this window',
+    periodEmptySub: 'No inbox notes captured in this period. {n} waiting under All.',
+    showAll: 'Show all',
     // Settings (Editor) — inbox workflow toggles.
     workflowSetting: 'Inbox workflow',
     workflowSettingHint:
@@ -1300,9 +1327,13 @@ export const en = {
     filters: 'Filters',
     save: 'Save',
     cancel: 'Cancel',
+    sortDefault: 'Default (modified, newest first)',
+    liveMatch: '{n} match',
+    liveMatchTitle: 'Notes currently matching this filter',
     // Filter builder
     matchAll: 'Match all',
     matchAny: 'Match any',
+    combinator: 'Combine conditions',
     addCondition: '+ Condition',
     addGroup: '+ Group',
     removeRow: 'Remove',
@@ -1310,12 +1341,19 @@ export const en = {
     operator: 'Operator',
     value: 'Value',
     valuePlaceholder: 'value',
+    listPlaceholder: 'comma, separated, values',
+    datePlaceholder: 'YYYY-MM-DD or @7d',
+    regexPlaceholder: 'regular expression',
+    pickDate: 'Relative…',
+    emptyGroup: 'No conditions — matches all notes.',
+    dragToReorder: 'Drag to reorder',
     relativeDate: 'Relative date',
+    regexToggle: 'Toggle regular-expression matching',
     regexInvalid: 'Invalid or unsafe pattern',
   },
 };
 
-// `views` (v4.6 F5) is typed OPTIONAL so the 13 non-English locale files don't
-// have to ship the section the same day — the runtime `t()` lookup already
-// falls back to English for any missing key. Translations land in a later minor.
-export type I18n = Omit<typeof en, 'views'> & { views?: typeof en['views'] };
+// `views` (v4.6 F5) is now a REQUIRED section: all 14 locales ship a full
+// translation (v4.6.1). The runtime `t()` lookup still falls back to English
+// for any individual key that a locale happens to miss.
+export type I18n = typeof en;

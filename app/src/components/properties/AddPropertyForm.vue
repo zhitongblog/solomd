@@ -6,6 +6,7 @@
  *  cancels. The parent owns the write + the (optional) mode override. */
 import { ref, computed, nextTick, onMounted } from 'vue';
 import { DsInput, DsSelect, DsButton, type DsSelectOption } from '../../ui';
+import { useI18n } from '../../i18n';
 import {
   DISPLAY_MODES,
   DISPLAY_MODE_LABELS,
@@ -17,6 +18,8 @@ const emit = defineEmits<{
   confirm: [{ key: string; mode: DisplayMode; value: unknown }];
   cancel: [];
 }>();
+
+const { t } = useI18n();
 
 const key = ref('');
 const mode = ref<DisplayMode>('text');
@@ -49,7 +52,7 @@ function placeholderFor(m: DisplayMode): string {
     case 'status':
       return 'todo';
     default:
-      return 'Value';
+      return t('inspector.valuePlaceholder');
   }
 }
 
@@ -72,17 +75,25 @@ function confirm() {
         ref="nameRef"
         v-model="key"
         size="sm"
-        placeholder="Property name"
+        :placeholder="t('inspector.propertyName')"
         @keydown.enter.prevent="confirm"
       />
       <DsSelect v-model="mode" size="sm" :options="modeOptions" />
     </div>
 
     <div class="prop-add__row">
-      <label v-if="mode === 'boolean'" class="prop-add__bool">
-        <input type="checkbox" v-model="boolValue" />
+      <button
+        v-if="mode === 'boolean'"
+        type="button"
+        class="prop-add__bool"
+        role="switch"
+        :aria-checked="boolValue"
+        :class="{ 'prop-add__bool--on': boolValue }"
+        @click="boolValue = !boolValue"
+      >
+        <span class="prop-add__bool-track"><span class="prop-add__bool-thumb" /></span>
         <span>{{ boolValue ? 'true' : 'false' }}</span>
-      </label>
+      </button>
       <DsInput
         v-else
         v-model="rawValue"
@@ -93,8 +104,8 @@ function confirm() {
     </div>
 
     <div class="prop-add__actions">
-      <DsButton size="sm" variant="ghost" @click="emit('cancel')">Cancel</DsButton>
-      <DsButton size="sm" variant="primary" :disabled="!canConfirm()" @click="confirm">Add</DsButton>
+      <DsButton size="sm" variant="ghost" @click="emit('cancel')">{{ t('inspector.cancel') }}</DsButton>
+      <DsButton size="sm" variant="primary" :disabled="!canConfirm()" @click="confirm">{{ t('inspector.add') }}</DsButton>
     </div>
   </div>
 </template>
@@ -123,6 +134,47 @@ function confirm() {
   gap: var(--sp-2);
   font-size: 12px;
   color: var(--text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: var(--sp-1) 0;
+}
+.prop-add__bool-track {
+  width: 30px;
+  height: 18px;
+  border-radius: var(--r-full);
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  position: relative;
+  flex-shrink: 0;
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.prop-add__bool-thumb {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--r-full);
+  background: var(--text-muted);
+  transition: transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+.prop-add__bool--on .prop-add__bool-track {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.prop-add__bool--on .prop-add__bool-thumb {
+  transform: translateX(12px);
+  background: var(--accent);
+}
+.prop-add__bool--on span:last-child {
+  color: var(--text);
+}
+.prop-add__bool:focus-visible {
+  outline: none;
+}
+.prop-add__bool:focus-visible .prop-add__bool-track {
+  box-shadow: var(--ring);
 }
 .prop-add__actions {
   display: flex;

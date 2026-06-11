@@ -168,21 +168,55 @@ async function processWhiteboards() {
   const blocks = host.value.querySelectorAll('pre > code.language-tldraw');
   if (blocks.length === 0) return;
   const { boardToSvg } = await import('../lib/tldraw-runtime');
+  // Parse the source fences once so each preview block can recover its stable
+  // boardId/snapshot for the click-to-fullscreen affordance. markdown-it drops
+  // the fence attributes (id/height), so we match preview blocks to source
+  // fences positionally (same document order).
+  const { findTldrawFences } = await import('../lib/tldraw-board');
+  const fences = findTldrawFences(props.source || '');
   const theme = {
     colorScheme: (settings.theme === 'dark' ? 'dark' : 'light') as 'dark' | 'light',
     locale: settings.language || 'en',
   };
-  for (const block of Array.from(blocks)) {
+  const list = Array.from(blocks);
+  for (let idx = 0; idx < list.length; idx++) {
+    const block = list[idx];
     const pre = block.parentElement as HTMLElement | null;
     if (!pre || pre.dataset.rendered === '1') continue;
     pre.dataset.rendered = '1';
     const snapshot = (block.textContent || '').trim();
+    const fence = fences[idx];
     const wrap = document.createElement('div');
     wrap.className = 'whiteboard-block';
+    const makeEditable = (svg: string) => {
+      wrap.innerHTML = svg;
+      // Only the editor preview can write back — read-only skins (slideshow,
+      // export) omit tabId, so the thumbnail stays a static image there.
+      if (fence && props.tabId) {
+        wrap.classList.add('whiteboard-block--clickable');
+        wrap.setAttribute('role', 'button');
+        wrap.setAttribute('tabindex', '0');
+        wrap.title = t('whiteboard.openFull');
+        const openFull = () => {
+          window.dispatchEvent(
+            new CustomEvent('solomd:whiteboard-open', {
+              detail: { boardId: fence.boardId, tabId: props.tabId, snapshot: fence.snapshot },
+            }),
+          );
+        };
+        wrap.addEventListener('click', openFull);
+        wrap.addEventListener('keydown', (ev) => {
+          if (ev.key === 'Enter' || ev.key === ' ') {
+            ev.preventDefault();
+            openFull();
+          }
+        });
+      }
+    };
     try {
       const svg = await boardToSvg(snapshot, theme);
       if (svg) {
-        wrap.innerHTML = svg;
+        makeEditable(svg);
       } else {
         wrap.classList.add('whiteboard-block--empty');
         wrap.textContent = t('whiteboard.empty');
@@ -578,6 +612,18 @@ defineExpose({ scrollToLine, openSearch });
 :where(.preview-content) .whiteboard-block svg {
   max-width: 100%;
   height: auto;
+}
+:where(.preview-content) .whiteboard-block--clickable {
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+:where(.preview-content) .whiteboard-block--clickable:hover {
+  border-color: var(--accent, #ff9f40);
+  box-shadow: 0 0 0 1px var(--accent, #ff9f40);
+}
+:where(.preview-content) .whiteboard-block--clickable:focus-visible {
+  outline: 2px solid var(--accent, #ff9f40);
+  outline-offset: 2px;
 }
 :where(.preview-content) .whiteboard-block--empty {
   color: var(--text-faint);

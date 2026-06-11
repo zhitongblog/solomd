@@ -7,9 +7,12 @@
  *  is built here from DS tokens (no raw hex / ad-hoc palette). */
 import { ref, computed, watch } from 'vue';
 import { DsPopover, DsInput } from '../../../ui';
+import { useI18n } from '../../../i18n';
 
 const props = defineProps<{ value: unknown }>();
 const emit = defineEmits<{ update: [string] }>();
+
+const { t } = useI18n();
 
 const popRef = ref<InstanceType<typeof DsPopover> | null>(null);
 
@@ -112,9 +115,9 @@ function commitTyped() {
         @keydown.esc.prevent="popRef?.close()"
       />
       <div class="prop-cal__head">
-        <button type="button" class="prop-cal__nav" @click="stepMonth(-1)" aria-label="Previous month">‹</button>
+        <button type="button" class="prop-cal__nav" @click="stepMonth(-1)" :aria-label="t('inspector.prevMonth')">‹</button>
         <span class="prop-cal__month">{{ monthLabel }}</span>
-        <button type="button" class="prop-cal__nav" @click="stepMonth(1)" aria-label="Next month">›</button>
+        <button type="button" class="prop-cal__nav" @click="stepMonth(1)" :aria-label="t('inspector.nextMonth')">›</button>
       </div>
       <div class="prop-cal__grid">
         <span v-for="(w, i) in weekdays" :key="`w${i}`" class="prop-cal__dow">{{ w }}</span>
@@ -132,7 +135,7 @@ function commitTyped() {
         >{{ cell.date.getDate() }}</button>
       </div>
       <div class="prop-cal__foot">
-        <button type="button" class="prop-cal__today" @click="pick(todayIso)">Today</button>
+        <button type="button" class="prop-cal__today" @click="pick(todayIso)">{{ t('inspector.today') }}</button>
       </div>
     </div>
   </DsPopover>
@@ -193,6 +196,12 @@ function commitTyped() {
 }
 .prop-cal__day:hover {
   background: var(--bg-hover);
+}
+.prop-cal__day:focus-visible,
+.prop-cal__nav:focus-visible,
+.prop-cal__today:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
 }
 .prop-cal__day--muted {
   color: var(--text-muted);

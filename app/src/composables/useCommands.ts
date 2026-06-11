@@ -77,6 +77,38 @@ export function useCommands(): Command[] {
     return `https://solomd.app${lang}/share/?repo=${m[1]}/${m[2]}&path=${encodeURIComponent(rel)}`;
   }
 
+  /**
+   * Repository-backed Git URL for the active note (Tolaria-parity "Copy Note
+   * Git URL"). Builds `<host>/<owner>/<repo>/blob/<branch>/<path>` from the
+   * linked remote + default branch, normalising ssh/https remotes. GitHub +
+   * GitLab (which uses `/-/blob/`) are handled; other hosts fall through to the
+   * GitHub-style `/blob/` path. Returns null when not in a git-linked workspace
+   * or no note is open.
+   */
+  function activeGitUrl(): string | null {
+    const folder = ws.currentFolder;
+    const tab = tabs.activeTab;
+    if (!folder || !tab?.filePath) return null;
+    const remote = ghSync.status?.remote_url ?? '';
+    // host + owner/repo from either git@host:owner/repo.git or https://host/owner/repo(.git)
+    const m = remote.match(/(?:@|:\/\/)([^/:]+)[:/]([^/]+)\/(.+?)(?:\.git)?$/i);
+    if (!m) return null;
+    const [, host, owner, repo] = m;
+    const branch = 'main';
+    const sep = tab.filePath.includes('\\') ? '\\' : '/';
+    const folderNorm = folder.endsWith(sep) ? folder : folder + sep;
+    if (!tab.filePath.startsWith(folderNorm)) return null;
+    const rel = tab.filePath
+      .slice(folderNorm.length)
+      .split('\\')
+      .join('/')
+      .split('/')
+      .map(encodeURIComponent)
+      .join('/');
+    const blobSeg = /gitlab/i.test(host) ? '/-/blob/' : '/blob/';
+    return `https://${host}/${owner}/${repo}${blobSeg}${branch}/${rel}`;
+  }
+
   /** Replace the active editor's content (used for the Chinese conversion commands). */
   function transformActive(fn: (s: string) => string, successMsg: string) {
     const t = tabs.activeTab;
@@ -401,6 +433,20 @@ export function useCommands(): Command[] {
         }
         await writeText(url);
         toasts.success('Share link copied. Note must be in a public GitHub repo to render.');
+      },
+    },
+    {
+      id: 'note.copyGitUrl',
+      title: 'Copy Note Git URL',
+      hint: 'Copy the repository-backed URL (host/owner/repo/blob/main/path) for the active note',
+      run: async () => {
+        const url = activeGitUrl();
+        if (!url) {
+          toasts.warning('Open a note in a Git-linked workspace first.');
+          return;
+        }
+        await writeText(url);
+        toasts.success('Git URL copied to clipboard.');
       },
     },
 

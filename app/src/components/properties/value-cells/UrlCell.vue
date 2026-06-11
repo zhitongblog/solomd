@@ -5,9 +5,12 @@
 import { ref, watch, nextTick } from 'vue';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { DsInput } from '../../../ui';
+import { useI18n } from '../../../i18n';
 
 const props = defineProps<{ value: unknown }>();
 const emit = defineEmits<{ update: [string] }>();
+
+const { t } = useI18n();
 
 const editing = ref(false);
 const draft = ref('');
@@ -87,8 +90,8 @@ watch(
         v-if="display() !== ''"
         type="button"
         class="prop-url-cell__open"
-        title="Open link"
-        aria-label="Open link"
+        :title="t('inspector.openLink')"
+        :aria-label="t('inspector.openLink')"
         @click="open"
       >↗</button>
     </template>

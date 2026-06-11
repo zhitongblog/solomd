@@ -7,12 +7,15 @@
  *  the value so the persisted frontmatter matches the new mode. */
 import { computed } from 'vue';
 import { DsDropdown, type DsDropdownItem } from '../../ui';
+import { useI18n } from '../../i18n';
 import {
   DISPLAY_MODES,
   DISPLAY_MODE_LABELS,
   coerceForMode,
   type DisplayMode,
 } from '../../lib/property-types';
+
+const { t } = useI18n();
 
 const props = defineProps<{ effectiveMode: DisplayMode; value: unknown }>();
 const emit = defineEmits<{ recast: [DisplayMode] }>();
@@ -34,7 +37,7 @@ defineExpose({ coerceForMode });
 <template>
   <DsDropdown :items="items" align="start" @select="onSelect">
     <template #trigger>
-      <button type="button" class="prop-mode-btn" :title="DISPLAY_MODE_LABELS[effectiveMode]">
+      <button type="button" class="prop-mode-btn" :title="t('inspector.changeType')" :aria-label="t('inspector.changeType')">
         <span class="prop-mode-btn__label">{{ DISPLAY_MODE_LABELS[effectiveMode] }}</span>
         <span class="prop-mode-btn__chevron">▾</span>
       </button>
@@ -65,6 +68,10 @@ defineExpose({ coerceForMode });
 .prop-mode-btn:hover {
   background: var(--bg-hover);
   color: var(--text);
+}
+.prop-mode-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
 }
 .prop-mode-btn__chevron {
   font-size: 8px;

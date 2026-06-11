@@ -22,7 +22,7 @@
  * All resolution reuses the index's `byStem` map + `lib/wikilinks.ts` so
  * behavior matches existing wikilink/backlink features. No new Tauri command.
  */
-import type { IndexEntry } from '../stores/workspaceIndex';
+import type { IndexEntry, ReferencedByRef } from '../stores/workspaceIndex';
 import { extractWikilinks } from '../lib/wikilinks';
 
 /** Frontmatter keys that are never treated as relationships. */
@@ -109,15 +109,53 @@ function isRelationshipEntry(key: string, value: unknown): boolean {
   return wikilinkTargetsFromValue(value).length > 0;
 }
 
+/** A ref string from the server `relationships` map may be a bare stem/title
+ *  or a `[[wikilink]]`. Normalize to lowercased lookup stems. */
+function refStringTargets(ref: string): string[] {
+  const links = extractWikilinks(ref);
+  if (links.length > 0) return links.map((w) => w.target.toLowerCase());
+  const bare = ref.trim();
+  return bare ? [bare.toLowerCase()] : [];
+}
+
 /**
  * Build the focal note's outgoing relationship groups: one group per
  * relationship key, resolved (via byStem) to target entries. Self-links and
  * duplicate paths within a group are dropped; unresolved targets are skipped.
+ *
+ * Prefers the server-precomputed `focal.relationships` map (extracted Rust-side
+ * with the same reserved-key rules) so we don't re-parse frontmatter on the
+ * client. Falls back to a frontmatter scan for entries served from an older
+ * index cache that predates the `relationships` field.
  */
 function buildOutgoing(
   focal: IndexEntry,
   byStem: Map<string, IndexEntry>,
 ): NeighborGroup[] {
+  const rel = focal.relationships;
+  if (rel && Object.keys(rel).length > 0) {
+    const groups: NeighborGroup[] = [];
+    const keys = Object.keys(rel).sort((a, b) => a.localeCompare(b));
+    for (const key of keys) {
+      if (RESERVED_KEYS.has(key.toLowerCase())) continue;
+      const seen = new Set<string>();
+      const refs: NeighborRef[] = [];
+      for (const ref of rel[key]) {
+        for (const stem of refStringTargets(ref)) {
+          const target = byStem.get(stem);
+          if (!target) continue;
+          if (target.path === focal.path) continue; // self
+          if (seen.has(target.path)) continue;
+          seen.add(target.path);
+          refs.push(toRef(target));
+        }
+      }
+      if (refs.length > 0) groups.push({ key, label: humanizeKey(key), refs });
+    }
+    return groups;
+  }
+
+  // Fallback: scan raw frontmatter (older index cache without `relationships`).
   const fm = focal.frontmatter;
   if (!fm) return [];
   const groups: NeighborGroup[] = [];
@@ -194,9 +232,102 @@ function buildInverse(
 }
 
 /**
+ * Group server-resolved inverse edges (`workspace_index_referenced_by`) into
+ * display groups, relabeling each `via_key` like Tolaria
+ * (`belongs_to → Children`, `related_to → Referenced by`, else `← Key`). This
+ * is the PRODUCTION inverse path: the O(n) reverse scan happens once in Rust
+ * over the precomputed relationships index instead of on the client.
+ *
+ * `byPath` resolves each source's display title; refs are deduped per label.
+ */
+export function groupReferencedBy(
+  refs: ReferencedByRef[],
+  byPath: Map<string, IndexEntry>,
+): NeighborGroup[] {
+  const byLabel = new Map<string, { refs: NeighborRef[]; seen: Set<string> }>();
+  const order: string[] = [];
+  for (const r of refs) {
+    const label = inverseLabelFor(r.via_key);
+    let bucket = byLabel.get(label);
+    if (!bucket) {
+      bucket = { refs: [], seen: new Set() };
+      byLabel.set(label, bucket);
+      order.push(label);
+    }
+    if (bucket.seen.has(r.from_path)) continue;
+    bucket.seen.add(r.from_path);
+    const e = byPath.get(r.from_path);
+    bucket.refs.push(
+      e
+        ? toRef(e)
+        : {
+            path: r.from_path,
+            title: r.from_name.replace(/\.[^.]+$/, ''),
+            mtime: 0,
+          },
+    );
+  }
+  // Stable label order: Children / Referenced by first, then ← keys A→Z.
+  const rank = (l: string) =>
+    l === 'Children' ? 0 : l === 'Referenced by' ? 1 : 2;
+  order.sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+  return order.map((label) => ({
+    key: label,
+    label,
+    refs: byLabel.get(label)!.refs.sort((a, b) => a.title.localeCompare(b.title)),
+  }));
+}
+
+// ---------------------------------------------------------------------------
+// Outgoing memoization. The outgoing computation is pure over
+// `(focal, byStem)`; the panel calls it on every reactive tick. We cache the
+// last result keyed on focal PATH + the `entries` array identity (which Pinia
+// replaces wholesale on every `solomd://index-updated`) so steady-state
+// renders are O(1). Single-slot cache is enough: the panel only ever computes
+// one focal at a time.
+// ---------------------------------------------------------------------------
+interface OutgoingCache {
+  focalPath: string;
+  entriesRef: unknown;
+  groups: NeighborGroup[];
+}
+let _outgoingCache: OutgoingCache | null = null;
+
+/**
+ * Memoized outgoing groups for a focal note. `entriesRef` is the identity
+ * token to invalidate on (pass the Pinia `entries` array); when it or the
+ * focal path is unchanged we return the cached groups without recomputing.
+ */
+export function outgoingFor(
+  focal: IndexEntry,
+  byStem: Map<string, IndexEntry>,
+  entriesRef: unknown,
+): NeighborGroup[] {
+  if (
+    _outgoingCache &&
+    _outgoingCache.focalPath === focal.path &&
+    _outgoingCache.entriesRef === entriesRef
+  ) {
+    return _outgoingCache.groups;
+  }
+  const groups = buildOutgoing(focal, byStem);
+  _outgoingCache = { focalPath: focal.path, entriesRef, groups };
+  return groups;
+}
+
+/** Test/teardown hook — drop the memo slot. */
+export function clearNeighborhoodCache(): void {
+  _outgoingCache = null;
+}
+
+/**
  * Compute the full neighborhood (outgoing + inverse groups) for a focal note.
  * Backlinks (body links) are fetched separately by the panel because they
  * come from the Rust `workspace_index_backlinks` command, not frontmatter.
+ *
+ * This is the client-only path (inverse via local scan). The panel prefers the
+ * server `referencedBy` + {@link groupReferencedBy} for the inverse section on
+ * large vaults; this function remains for tests and offline fallback.
  *
  * Pure & memoizable: callers should memoize on `(focal.path, entries identity)`.
  */

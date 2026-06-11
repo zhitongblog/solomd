@@ -9,6 +9,8 @@ import { useInbox } from '../composables/useInbox';
 import { useInboxView } from '../composables/useInboxView';
 import { useSettingsStore } from '../stores/settings';
 import { useToastsStore } from '../stores/toasts';
+import { useGithubSyncStore } from '../stores/githubSync';
+import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { useTabsStore } from '../stores/tabs';
 import { useI18n } from '../i18n';
 
@@ -32,6 +34,27 @@ const inbox = useInbox();
 const inboxView = useInboxView();
 const settings = useSettingsStore();
 const toasts = useToastsStore();
+const ghSync = useGithubSyncStore();
+
+/** v4.6.1 — Tolaria-parity "Copy Git URL": repository-backed blob URL for a
+ *  file node, built from the linked remote + relative path (branch=main). */
+async function copyGitUrl(node: Node) {
+  const folder = workspace.currentFolder;
+  const remote = ghSync.status?.remote_url ?? '';
+  const m = remote.match(/(?:@|:\/\/)([^/:]+)[:/]([^/]+)\/(.+?)(?:\.git)?$/i);
+  if (!folder || !m) {
+    toasts.warning(t('explorer.copyGitUrlNoRepo') || 'This workspace has no linked Git remote.');
+    return;
+  }
+  const [, host, owner, repo] = m;
+  const sep = node.path.includes('\\') ? '\\' : '/';
+  const folderNorm = folder.endsWith(sep) ? folder : folder + sep;
+  const rel = node.path.slice(folderNorm.length).split('\\').join('/').split('/').map(encodeURIComponent).join('/');
+  const blobSeg = /gitlab/i.test(host) ? '/-/blob/' : '/blob/';
+  await writeText(`https://${host}/${owner}/${repo}${blobSeg}main/${rel}`);
+  toasts.success(t('explorer.copyGitUrlDone') || 'Git URL copied to clipboard.');
+  closeCtx();
+}
 const tabs = useTabsStore();
 const { t } = useI18n();
 
@@ -580,6 +603,9 @@ onBeforeUnmount(() => {
       </button>
       <button v-if="ctx.node" class="ftree__ctx-item ftree__ctx-item--danger" @click="deleteNode(ctx.node)">
         🗑 {{ t('explorer.delete') || 'Delete' }}
+      </button>
+      <button v-if="ctx.node && !ctx.node.is_dir" class="ftree__ctx-item" @click="copyGitUrl(ctx.node)">
+        🔗 {{ t('explorer.copyGitUrl') || 'Copy Git URL' }}
       </button>
       <div class="ftree__ctx-sep"></div>
       <button class="ftree__ctx-item" @click="revealNode(ctx.node ?? root!)">
