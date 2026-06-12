@@ -412,6 +412,18 @@ function onSelectPdfFont(v: string) {
         </section>
 
         <section data-cat="basics">
+          <label>{{ t('settings.outlineMarker') }}</label>
+          <select
+            :value="settings.outlineMarker"
+            @change="settings.setOutlineMarker(($event.target as HTMLSelectElement).value as 'jump' | 'number' | 'none')"
+          >
+            <option value="jump">{{ t('settings.outlineMarkerJump') }}</option>
+            <option value="number">{{ t('settings.outlineMarkerNumber') }}</option>
+            <option value="none">{{ t('settings.outlineMarkerNone') }}</option>
+          </select>
+        </section>
+
+        <section data-cat="basics">
           <label>
             <input type="checkbox" :checked="settings.previewFitWidth" @change="settings.togglePreviewFitWidth()" />
             {{ t('settings.previewFitWidth') }}

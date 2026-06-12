@@ -34,6 +34,10 @@ interface Settings {
   showLineNumbers: boolean;
   showOutline: boolean;
   outlineSide: 'left' | 'right';
+  // v4.6.2 — outline heading marker style. 'jump' = a/b/c… keyboard-jump labels
+  // (default; mixes letters + digits past 25 headings); 'number' = clean
+  // sequential 1/2/3…; 'none' = hidden.
+  outlineMarker: 'jump' | 'number' | 'none';
   showFileTree: boolean;
   /** v4.3.x release marker: set on first launch after the default flipped
    *  from `false` → `true` (desktop). If absent on load, `load()` force-enables
@@ -325,6 +329,7 @@ function defaults(): Settings {
     showLineNumbers: true,
     showOutline: false,
     outlineSide: 'right',
+    outlineMarker: 'jump',
     showFileTree: !isMobile(),
     // Fresh installs already see the new default — mark migration done so
     // load()'s one-time force-on path is a no-op for them.
@@ -589,6 +594,10 @@ export const useSettingsStore = defineStore('settings', {
     },
     setOutlineSide(side: 'left' | 'right') {
       this.outlineSide = side;
+      this.persist();
+    },
+    setOutlineMarker(marker: 'jump' | 'number' | 'none') {
+      this.outlineMarker = marker;
       this.persist();
     },
     toggleFileTree() {
