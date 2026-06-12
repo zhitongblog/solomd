@@ -45,6 +45,7 @@ import {
   ViewPlugin,
   type ViewUpdate,
 } from '@codemirror/view';
+import { frozenDuringComposition } from './cm-ime-guard';
 import { tags as t } from '@lezer/highlight';
 import { isDragging, isDragEndTransaction } from './cm-drag-aware';
 
@@ -253,6 +254,14 @@ const liveRenderPlugin = ViewPlugin.fromClass(
     }
 
     update(u: ViewUpdate) {
+      // IME composition guard (#108) — don't rebuild decorations on the
+      // composing line while a Windows IME (Sogou) candidate window is open,
+      // or the mid-composition DOM swap drops the composition ("吃字").
+      const frozen = frozenDuringComposition(u, this.decorations);
+      if (frozen) {
+        this.decorations = frozen;
+        return;
+      }
       // See cm-drag-aware.ts — freeze marker toggles during pointer drag
       // so Windows WebView2 doesn't lose pointer capture mid-selection.
       const dragEnded = u.transactions.some(isDragEndTransaction);

@@ -20,6 +20,7 @@ import {
   ViewUpdate,
   WidgetType,
 } from '@codemirror/view';
+import { frozenDuringComposition } from './cm-ime-guard';
 
 const TOGGLE_EVENT = 'solomd-task-toggle';
 
@@ -130,6 +131,12 @@ export function taskListExtension() {
       }
 
       update(update: ViewUpdate) {
+        // IME composition guard (#108) — see cm-ime-guard.ts.
+        const frozen = frozenDuringComposition(update, this.decorations);
+        if (frozen) {
+          this.decorations = frozen;
+          return;
+        }
         if (
           update.docChanged ||
           update.viewportChanged ||

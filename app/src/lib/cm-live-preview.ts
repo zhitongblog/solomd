@@ -22,6 +22,7 @@ import {
   ViewPlugin,
   ViewUpdate,
 } from '@codemirror/view';
+import { frozenDuringComposition } from './cm-ime-guard';
 import { tags as t } from '@lezer/highlight';
 import { isDragging, isDragEndTransaction } from './cm-drag-aware';
 
@@ -46,6 +47,14 @@ const liveMarkdownPlugin = ViewPlugin.fromClass(
     }
 
     update(update: ViewUpdate) {
+      // IME composition guard (#108) — see cm-ime-guard.ts. Rebuilding the
+      // marker-hiding decorations on the composing line aborts the Sogou IME
+      // on Windows; freeze + map-through-changes until composition commits.
+      const frozen = frozenDuringComposition(update, this.decorations);
+      if (frozen) {
+        this.decorations = frozen;
+        return;
+      }
       // Skip marker-toggle rebuilds during pointer drag-selection — see
       // cm-drag-aware.ts for the Windows WebView2 pointer-capture reason.
       const dragEnded = update.transactions.some(isDragEndTransaction);

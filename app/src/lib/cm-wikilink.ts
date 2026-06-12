@@ -20,6 +20,7 @@ import {
   ViewUpdate,
   WidgetType,
 } from '@codemirror/view';
+import { frozenDuringComposition } from './cm-ime-guard';
 import type { DecorationSet } from '@codemirror/view';
 import type {
   CompletionContext,
@@ -105,6 +106,12 @@ class WikilinkPluginValue {
     this.decorations = wikilinkMatcher.createDeco(view);
   }
   update(update: ViewUpdate) {
+    // IME composition guard (#108) — see cm-ime-guard.ts.
+    const frozen = frozenDuringComposition(update, this.decorations);
+    if (frozen) {
+      this.decorations = frozen;
+      return;
+    }
     this.decorations = wikilinkMatcher.updateDeco(update, this.decorations);
   }
 }
