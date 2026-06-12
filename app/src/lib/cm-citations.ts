@@ -57,6 +57,8 @@ export function citationsExtension(_getEntries: () => CitationEntry[]): Extensio
 
 export function citationCompleteSource(getEntries: () => CitationEntry[]) {
   return function complete(context: CompletionContext): CompletionResult | null {
+    // #108: bail during IME composition — see cm-wikilink.ts wikilinkComplete.
+    if (context.view?.composing) return null;
     const match = context.matchBefore(/@[\w:.\-]*/);
     if (!match) return null;
     if (match.from > 0) {

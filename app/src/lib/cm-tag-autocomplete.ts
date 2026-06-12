@@ -56,6 +56,8 @@ function inCodeContext(doc: DocLike, pos: number): boolean {
 }
 
 function tagComplete(context: CompletionContext): CompletionResult | null {
+  // #108: bail during IME composition — see cm-wikilink.ts wikilinkComplete.
+  if (context.view?.composing) return null;
   // Match `#partial` immediately before the cursor. The regex captures the
   // partial after `#` so we can use it as both filter and the `from` anchor.
   const match = context.matchBefore(/#[\p{L}\p{N}_/\-]*/u);
