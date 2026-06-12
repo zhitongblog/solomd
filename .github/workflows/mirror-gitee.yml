@@ -45,6 +45,11 @@ jobs:
         run: |
           set -euo pipefail
           REMOTE="git@gitee.com:${GITEE_USER}/solomd.git"
-          # `--prune` removes refs on Gitee that no longer exist on GitHub.
-          # `--mirror` pushes branches AND tags AND deletes anything stale.
-          git push --prune --mirror "$REMOTE"
+          # Not `--mirror`: in an Actions checkout that also pushes
+          # refs/remotes/origin/* ("deny updating a hidden ref" on Gitee).
+          # Mirror GitHub's branches (origin/*) and tags explicitly;
+          # `--prune` deletes Gitee refs that no longer exist on GitHub.
+          git remote set-head origin -d
+          git push --prune --force "$REMOTE" \
+            "refs/remotes/origin/*:refs/heads/*" \
+            "refs/tags/*:refs/tags/*"
