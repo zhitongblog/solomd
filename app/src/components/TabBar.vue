@@ -101,11 +101,26 @@ watch(
     el?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   },
 );
+
+// #106 — the tab strip is `overflow-x: auto` with the scrollbar hidden, so
+// when more tabs are open than fit, off-screen tabs were unreachable: a
+// vertical mouse wheel did nothing and there's no visible scrollbar. Map
+// wheel delta (whichever axis is larger) to horizontal scroll, same as
+// PaneTabBar.vue. (Middle-click already closes tabs here, so we don't add
+// middle-drag panning — wheel scroll is the fix.)
+function onTabsWheel(e: WheelEvent) {
+  const el = tabsRef.value;
+  if (!el) return;
+  const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+  if (delta === 0) return;
+  el.scrollLeft += delta;
+  e.preventDefault();
+}
 </script>
 
 <template>
   <div class="tabbar">
-    <div class="tabs" ref="tabsRef">
+    <div class="tabs" ref="tabsRef" @wheel="onTabsWheel">
       <div
         v-for="tab in tabs.tabs"
         :key="tab.id"

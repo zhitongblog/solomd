@@ -18,6 +18,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { useSettingsStore } from '../stores/settings';
 import { useToastsStore } from '../stores/toasts';
+import { providerById } from '../lib/ai-providers';
 import { useI18n } from '../i18n';
 
 const props = defineProps<{ open: boolean }>();
@@ -58,11 +59,20 @@ async function saveCloudKey() {
       provider: cloudProvider.value,
       key: cloudKey.value.trim(),
     });
-    // Quick verify — same command the AI Settings panel uses.
+    // Quick verify — same command (and SAME ARGS) the AI Settings panel
+    // uses. `ai_verify_key` switches on the wire format, not the brand id:
+    // without `apiFormat` it falls back to the provider id ("deepseek",
+    // "gemini", …) and errors `unknown api_format: <id>` for every provider
+    // whose id isn't literally "openai"/"anthropic"/"ollama". Pass the
+    // provider config's apiFormat + defaultBaseUrl (and the key directly,
+    // avoiding a keystore read race) so DeepSeek/Gemini/etc. verify cleanly.
+    const cfg = providerById(cloudProvider.value);
     try {
       await invoke('ai_verify_key', {
         provider: cloudProvider.value,
-        model: cloudModels[cloudProvider.value],
+        key: cloudKey.value.trim(),
+        apiFormat: cfg?.apiFormat || 'openai',
+        baseUrl: cfg?.defaultBaseUrl || null,
       });
       verifyResult.value = 'ok';
       verifyMessage.value = t('wizard.verifyOk');

@@ -49,6 +49,15 @@ watch(query, () => {
   debounceTimer = window.setTimeout(doSearch, 220);
 });
 
+// #92 — keep the keyboard-selected hit scrolled into view, matching the
+// CommandPalette / QuickSwitcher behaviour (arrow-down past the fold was
+// hiding the highlighted result here).
+watch(selectedIdx, async () => {
+  await nextTick();
+  const item = document.querySelectorAll<HTMLElement>('.rag__results .rag__hit')[selectedIdx.value];
+  item?.scrollIntoView({ block: 'nearest' });
+});
+
 async function doSearch() {
   const q = query.value.trim();
   if (!q) {

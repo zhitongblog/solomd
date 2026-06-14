@@ -100,6 +100,14 @@ const typewriterPlugin = ViewPlugin.fromClass(
       // Only react to selection moves (docChanged usually implies
       // selectionSet too; filter redundant scrolls).
       if (!update.selectionSet) return;
+      // IME composition guard (#108 class): a transaction dispatched while
+      // `view.composing` aborts the IME composition on Windows/WebView2 —
+      // the same root cause that dropped Sogou pinyin. Typing moves the
+      // cursor every keystroke, so without this the typewriter recenter
+      // fires a (scroll-only) dispatch mid-composition and can eat the
+      // character/punctuation being committed. Selection settles after
+      // compositionend, which fires its own update — we recenter then.
+      if (update.view.composing) return;
       const view = update.view;
       const head = update.state.selection.main.head;
       // Defer to avoid re-entrant dispatch inside an update pass.

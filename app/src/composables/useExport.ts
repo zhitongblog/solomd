@@ -535,13 +535,18 @@ export function useExport() {
     await new Promise((r) => setTimeout(r, 200));
     try {
       await invoke('print_webview');
+      // The native print sheet is modal; by the time invoke resolves,
+      // the user has already dismissed it. Safe to tear down shortly after.
+      setTimeout(cleanup, 100);
     } catch (e) {
       console.error('[print] failed', e);
+      // #115 — tear down the print DOM (the full-screen #solomd-print-overlay
+      // + `body.solomd-printing`) SYNCHRONOUSLY on error. The old code only
+      // scheduled cleanup via setTimeout in `finally`; if the print invoke
+      // rejected, the editor was left under the print-mode body state and
+      // felt unresponsive ("mouse input dead after an export error" on macOS).
+      cleanup();
       toasts.error(`Print failed: ${e}`);
-    } finally {
-      // The native print sheet is modal; by the time invoke resolves,
-      // the user has already dismissed it. Safe to tear down now.
-      setTimeout(cleanup, 100);
     }
   }
 

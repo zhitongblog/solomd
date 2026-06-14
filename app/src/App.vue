@@ -950,6 +950,26 @@ async function onWikiOpen(e: Event) {
   const detail = (e as CustomEvent).detail || {};
   const target: string = detail.target || '';
   if (!target) return;
+  // #116 — a path-like target (`./sub/foo.md`, `../notes/bar.md`, `dir/x.md`)
+  // is a RELATIVE reference, not a bare wiki stem. Resolve it against the
+  // active file's directory and open directly — the same logic Preview.vue
+  // uses for rendered links. workspaceIndex.resolve() only matches bare
+  // stems/titles, so it silently failed for these (the reported bug).
+  if (/[\\/]/.test(target) || target.startsWith('.')) {
+    const cur = tabs.activeTab?.filePath;
+    if (cur) {
+      const sep = Math.max(cur.lastIndexOf('/'), cur.lastIndexOf('\\'));
+      const dir = sep >= 0 ? cur.slice(0, sep + 1) : '';
+      const cleaned = target.replace(/^\.\//, '');
+      try {
+        await files.openPath(dir + cleaned, { bypassNewWindow: true });
+        return;
+      } catch (err) {
+        console.warn('[wiki-open] relative openPath failed:', dir + cleaned, err);
+        // fall through to stem resolution as a best effort
+      }
+    }
+  }
   const path = await workspaceIndex.resolve(target);
   if (path) {
     await files.openPath(path, { bypassNewWindow: true });
