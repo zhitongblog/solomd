@@ -257,6 +257,7 @@ export const fr: I18n = {
     closeSaved: 'Fermer tous les enregistrés',
     closeAll: 'Fermer tous les onglets',
     revealInFolder: 'Afficher dans le Finder',
+    revealInFileTree: 'Afficher dans l\'arborescence',
   },
   unsaved: {
     title: 'Modifications non enregistrées',

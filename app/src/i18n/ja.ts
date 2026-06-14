@@ -257,6 +257,7 @@ export const ja: I18n = {
     closeSaved: '保存済みをすべて閉じる',
     closeAll: 'すべてのタブを閉じる',
     revealInFolder: 'Finder で表示',
+    revealInFileTree: 'ファイルツリーで表示',
   },
   unsaved: {
     title: '保存されていない変更',

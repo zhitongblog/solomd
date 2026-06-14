@@ -257,6 +257,7 @@ export const de: I18n = {
     closeSaved: 'Alle gespeicherten schließen',
     closeAll: 'Alle Tabs schließen',
     revealInFolder: 'Im Finder anzeigen',
+    revealInFileTree: 'In Dateibaum anzeigen',
   },
   unsaved: {
     title: 'Ungespeicherte Änderungen',

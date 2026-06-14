@@ -257,6 +257,7 @@ export const ko: I18n = {
     closeSaved: '저장된 탭 모두 닫기',
     closeAll: '모든 탭 닫기',
     revealInFolder: 'Finder에서 표시',
+    revealInFileTree: '파일 트리에서 표시',
   },
   unsaved: {
     title: '저장되지 않은 변경 사항',

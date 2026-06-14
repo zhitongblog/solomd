@@ -257,6 +257,7 @@ export const es: I18n = {
     closeSaved: 'Cerrar todas las guardadas',
     closeAll: 'Cerrar todas las pestañas',
     revealInFolder: 'Mostrar en Finder',
+    revealInFileTree: 'Mostrar en árbol de archivos',
   },
   unsaved: {
     title: 'Cambios sin guardar',

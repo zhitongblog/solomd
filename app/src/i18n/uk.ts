@@ -257,6 +257,7 @@ export const uk: I18n = {
     closeSaved: 'Закрити всі збережені',
     closeAll: 'Закрити всі вкладки',
     revealInFolder: 'Показати у Finder',
+    revealInFileTree: 'Показати в дереві файлів',
   },
   unsaved: {
     title: 'Незбережені зміни',

@@ -257,6 +257,7 @@ export const nl: I18n = {
     closeSaved: 'Alle opgeslagen sluiten',
     closeAll: 'Alle tabbladen sluiten',
     revealInFolder: 'Toon in Finder',
+    revealInFileTree: 'Toon in bestandsboom',
   },
   unsaved: {
     title: 'Niet-opgeslagen wijzigingen',

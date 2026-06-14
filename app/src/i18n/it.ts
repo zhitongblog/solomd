@@ -257,6 +257,7 @@ export const it: I18n = {
     closeSaved: 'Chiudi tutte le salvate',
     closeAll: 'Chiudi tutte le schede',
     revealInFolder: 'Mostra nel Finder',
+    revealInFileTree: 'Mostra nell\'albero file',
   },
   unsaved: {
     title: 'Modifiche non salvate',

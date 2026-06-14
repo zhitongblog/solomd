@@ -259,6 +259,7 @@ export const pt: I18n = {
     closeSaved: 'Fechar todas as salvas',
     closeAll: 'Fechar todas as abas',
     revealInFolder: 'Mostrar no Finder',
+    revealInFileTree: 'Mostrar na árvore de arquivos',
   },
   unsaved: {
     title: 'Alterações não salvas',

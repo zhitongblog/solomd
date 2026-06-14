@@ -257,6 +257,7 @@ export const pl: I18n = {
     closeSaved: 'Zamknij wszystkie zapisane',
     closeAll: 'Zamknij wszystkie karty',
     revealInFolder: 'Pokaż w Finderze',
+    revealInFileTree: 'Pokaż w drzewie plików',
   },
   unsaved: {
     title: 'Niezapisane zmiany',

@@ -256,6 +256,7 @@ export const zh: I18n = {
     closeSaved: '关闭所有已保存',
     closeAll: '关闭所有标签',
     revealInFolder: '在文件管理器中显示',
+    revealInFileTree: '在文件树中定位',
   },
   unsaved: {
     title: '有未保存的修改',

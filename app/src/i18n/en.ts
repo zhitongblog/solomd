@@ -255,6 +255,7 @@ export const en = {
     closeSaved: 'Close All Saved',
     closeAll: 'Close All Tabs',
     revealInFolder: 'Reveal in Finder',
+    revealInFileTree: 'Reveal in File Tree',
   },
   unsaved: {
     title: 'Unsaved Changes',

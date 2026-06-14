@@ -257,6 +257,7 @@ export const tr: I18n = {
     closeSaved: 'Kaydedilenleri Kapat',
     closeAll: 'Tüm Sekmeleri Kapat',
     revealInFolder: 'Finder\'da göster',
+    revealInFileTree: 'Dosya ağacında göster',
   },
   unsaved: {
     title: 'Kaydedilmemiş Değişiklikler',

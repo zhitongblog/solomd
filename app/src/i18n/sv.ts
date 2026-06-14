@@ -257,6 +257,7 @@ export const sv: I18n = {
     closeSaved: 'Stäng alla sparade',
     closeAll: 'Stäng alla flikar',
     revealInFolder: 'Visa i Finder',
+    revealInFileTree: 'Visa i filträd',
   },
   unsaved: {
     title: 'Osparade ändringar',

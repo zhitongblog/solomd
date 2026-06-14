@@ -3,6 +3,8 @@ import { computed, nextTick, ref, watch } from 'vue';
 import { revealItemInDir } from '@tauri-apps/plugin-opener';
 import { useTabsStore } from '../stores/tabs';
 import { useTilesStore } from '../stores/tiles';
+import { useSettingsStore } from '../stores/settings';
+import { useWorkspaceStore } from '../stores/workspace';
 import { useFiles } from '../composables/useFiles';
 import { useI18n } from '../i18n';
 import type { SplitDirection } from '../types';
@@ -14,6 +16,8 @@ const props = defineProps<{
 
 const tabs = useTabsStore();
 const tiles = useTilesStore();
+const settings = useSettingsStore();
+const workspace = useWorkspaceStore();
 const files = useFiles();
 const { t } = useI18n();
 
@@ -81,7 +85,7 @@ async function closeMany(ids: string[]) {
   }
 }
 
-async function onTabAction(action: 'close' | 'closeLeft' | 'closeRight' | 'closeOthers' | 'closeSaved' | 'closeAll' | 'revealInFolder') {
+async function onTabAction(action: 'close' | 'closeLeft' | 'closeRight' | 'closeOthers' | 'closeSaved' | 'closeAll' | 'revealInFolder' | 'revealInFileTree') {
   const m = ctxMenu.value;
   closeCtxMenu();
   if (!m) return;
@@ -92,6 +96,16 @@ async function onTabAction(action: 'close' | 'closeLeft' | 'closeRight' | 'close
     const path = list[idx]?.filePath;
     if (!path) return;
     try { await revealItemInDir(path); } catch (e) { console.warn('reveal failed', e); }
+    return;
+  }
+  if (action === 'revealInFileTree') {
+    const path = list[idx]?.filePath;
+    if (!path) return;
+    const parent = path.replace(/[\\/][^\\/]+$/, '');
+    if (parent && parent !== path) {
+      if (!settings.showFileTree) settings.toggleFileTree();
+      workspace.setFolder(parent);
+    }
     return;
   }
   const ids = (() => {
@@ -333,6 +347,7 @@ onBeforeUnmount(() => {
         <button class="ctx-item" :disabled="!ctxFlags?.hasAny"   @click="onTabAction('closeAll')">{{ t('tabMenu.closeAll') }}</button>
         <div class="ctx-sep" />
         <button class="ctx-item" :disabled="!ctxFlags?.hasFilePath" @click="onTabAction('revealInFolder')">{{ t('tabMenu.revealInFolder') }}</button>
+        <button class="ctx-item" :disabled="!ctxFlags?.hasFilePath" @click="onTabAction('revealInFileTree')">{{ t('tabMenu.revealInFileTree') }}</button>
         <div class="ctx-sep" />
         <button class="ctx-item" @click="splitPane('horizontal')">Split Right</button>
         <button class="ctx-item" @click="splitPane('vertical')">Split Down</button>
