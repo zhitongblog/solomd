@@ -25,6 +25,21 @@ export function frozenDuringComposition(
   update: ViewUpdate,
   current: DecorationSet,
 ): DecorationSet | null {
-  if (!update.view.composing) return null;
-  return current.map(update.changes);
+  // (1) While the IME candidate window is open, never rebuild — the
+  // mid-composition DOM swap silently drops the active composition on
+  // WebView2 (the original #108 "吃字" symptom).
+  if (update.view.composing) return current.map(update.changes);
+  // (2) ALSO defer the rebuild on the composition-COMMIT transaction itself.
+  // CodeMirror marks the commit `docChanged` with userEvent
+  // `input.type.compose`, and it arrives the tick `view.composing` has just
+  // flipped back to false — so guard (1) misses it. Rebuilding here swaps the
+  // line's DOM and collides with the *next* rapid composition, which WebView2
+  // then aborts. With Sogou that dropped every other Chinese-punctuation
+  // press → "中文标点符号要输入两次" (must type twice). We map positions
+  // through the change instead; the next non-composition update (a cursor
+  // move, the next character) rebuilds the decorations cleanly one tick later.
+  if (update.transactions.some((tr) => tr.isUserEvent('input.type.compose'))) {
+    return current.map(update.changes);
+  }
+  return null;
 }
