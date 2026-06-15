@@ -20,24 +20,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Windows x64
-          - platform: windows-latest
-            args: ''
-            rust_targets: ''
-          # Windows ARM64 — for Snapdragon X / Copilot+ PCs and Apple Silicon
-          # Macs running Windows 11 ARM in a VM. Native build avoids the x64
-          # emulation layer Windows-on-ARM would otherwise use.
+          # TEST BRANCH: ARM64-only build for the Win11-ARM VM (#108 IME fix).
           - platform: windows-11-arm
-            args: ''
-            rust_targets: ''
-          # Linux x64 (.deb / .AppImage / .rpm)
-          - platform: ubuntu-22.04
-            args: ''
-            rust_targets: ''
-          # Linux ARM64 — for Raspberry Pi 4/5, Mac users running Linux VMs,
-          # Ampere servers, and ARM Chromebooks.
-          # Cross-compiled from x86_64 runner via aarch64 toolchain.
-          - platform: ubuntu-22.04-arm
             args: ''
             rust_targets: ''
           # NOTE: macOS removed from CI matrix.
