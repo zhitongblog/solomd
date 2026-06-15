@@ -34,7 +34,7 @@ import { focusModeExtension, typewriterModeExtension } from '../lib/cm-focus-mod
 import { wikilinkExtension, wikilinkComplete } from '../lib/cm-wikilink';
 import { tagAutocompleteExtension, tagComplete } from '../lib/cm-tag-autocomplete';
 import { citationsExtension, citationCompleteSource } from '../lib/cm-citations';
-import { autocompletion } from '@codemirror/autocomplete';
+import { autocompletion, completionStatus, startCompletion } from '@codemirror/autocomplete';
 import { aiRewriteExtension } from '../lib/cm-ai-rewrite';
 import { IS_APP_STORE_BUILD } from '../lib/app-build';
 import { slashCommandsExtension } from '../lib/cm-slash-commands';
@@ -49,6 +49,7 @@ import {
   readSession,
   clearSession,
 } from '../lib/cm-session-restore';
+import { shouldAutoStartMarkdownCompletion } from '../lib/cm-markdown-completion';
 
 const codeLanguages = [
   LanguageDescription.of({ name: 'javascript', alias: ['js', 'jsx'], support: javascript({ jsx: true }) }),
@@ -257,7 +258,35 @@ function buildExtensions() {
               citationCompleteSource(() => cachedCitations),
             ],
             defaultKeymap: true,
-            activateOnTyping: true,
+            // #108: must stay false. With activateOnTyping:true CM6 classifies
+            // every IME `input.type` transaction as UpdateType.Activate, so the
+            // completion machinery churns on each pinyin keystroke. That drives
+            // the plugin's composition state to ChangedAndMoved, which makes its
+            // compositionend handler dispatch a startCompletion transaction
+            // ~20ms after each commit, landing as the NEXT char begins
+            // composing in WebView2 and aborting it. Net effect on Windows:
+            // the first Chinese character and Chinese punctuation needed two
+            // presses ("吃字"). We keep auto-popup via the IME-safe trigger
+            // below instead (ASCII [[ / # / @ only, never while composing).
+            activateOnTyping: false,
+          }),
+          // IME-safe replacement for activateOnTyping: open the popup only
+          // from an ASCII markdown trigger and only when completion is idle.
+          // CJK query chars can still use explicit Ctrl+Space; we don't
+          // dispatch in response to a Chinese composition commit.
+          EditorView.updateListener.of((u) => {
+            if (!u.docChanged) return;
+            const view = u.view;
+            if (view.composing || view.compositionStarted) return;
+            const head = u.state.selection.main.head;
+            const line = u.state.doc.lineAt(head);
+            const before = line.text.slice(0, head - line.from);
+            if (!shouldAutoStartMarkdownCompletion(before, completionStatus(u.state))) return;
+            queueMicrotask(() => {
+              if (view.composing || view.compositionStarted) return;
+              if (completionStatus(view.state) !== null) return;
+              startCompletion(view);
+            });
           }),
           ...(IS_APP_STORE_BUILD ? [] : [aiRewriteExtension()]),
           spellcheckExtension({ enabled: () => settings.spellcheckEnabled }),

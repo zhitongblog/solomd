@@ -165,11 +165,12 @@ const wikilinkTheme = EditorView.theme({
 // ---- Autocomplete ---------------------------------------------------------
 
 function wikilinkComplete(context: CompletionContext): CompletionResult | null {
-  // #108: never run completion while an IME composition is active. With
-  // autocompletion's activateOnTyping, every pinyin keystroke would start a
-  // query whose accept() dispatches a transaction mid-composition, which
-  // aborts the Sogou IME on Windows/WebView2 (intermittent "吃字"). Verified
-  // via live trace: guarding the sources here eliminates the dropped chars.
+  // #108: never run completion while an IME composition is active. Defense in
+  // depth: Editor.vue now sets activateOnTyping:false and only opens the popup
+  // from a non-composing ASCII trigger, but if completion is ever started
+  // (Ctrl+Space, or a stray path) during composition, running the source here
+  // would dispatch a transaction mid-composition and abort Sogou on
+  // Windows/WebView2 (intermittent "吃字"). Bail while composing.
   if (context.view?.composing) return null;
   // Match `[[query` up to cursor.
   const match = context.matchBefore(/\[\[([^\[\]\n]*)$/);
