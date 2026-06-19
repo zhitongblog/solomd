@@ -373,6 +373,13 @@ function splitPlainMarkdownBlocks(
       },
     ];
   }
+  // A document that ends with a newline has an empty final line. Represent it as
+  // its own (zero-width) block so the caret has somewhere to land when the user
+  // presses Enter at the end of the last line — otherwise the newline is absorbed
+  // as a separator with no following block and the caret appears not to move.
+  if (src.endsWith('\n')) {
+    blocks.push({ start: src.length, end: src.length, text: '', hasTrailingNewline: false });
+  }
   return blocks;
 }
 
@@ -623,13 +630,21 @@ function updatePlainBlock(index: number, text: string, caret?: number) {
   plainText.value = next;
   tabs.setContent(props.tab.id, next);
   const nextBlocks = splitPlainMarkdownBlocks(next);
-  // Locate the block that now holds the caret. If it can't be matched (should
-  // not happen), stay on the block being edited rather than snapping to block 0
-  // — snapping to 0 deactivated the edited block, flipping it into preview mode.
-  const found = nextBlocks.findIndex(
-    (candidate) => nextCaret >= candidate.start && nextCaret <= candidate.end,
+  // Locate the block that now holds the caret. Use a half-open range
+  // [start, end): when the caret sits exactly on a block boundary (e.g. after
+  // pressing Enter at a line end) it belongs to the *following* block — the new
+  // line — not the end of the previous one, otherwise the caret appears stuck.
+  // Fall back to the block being edited (clamped) when nothing matches — e.g.
+  // the caret is at the very document end — rather than snapping to block 0,
+  // which would deactivate the edited block and flip it into preview mode.
+  let found = nextBlocks.findIndex(
+    (candidate) => nextCaret >= candidate.start && nextCaret < candidate.end,
   );
-  const nextIndex = found >= 0 ? found : Math.min(index, nextBlocks.length - 1);
+  // A half-open search can't match the caret when it sits at the very end of the
+  // document (including the zero-width trailing empty-line block) — land it on
+  // the last block there.
+  if (found < 0) found = nextBlocks.length - 1;
+  const nextIndex = found;
   const nextBlock = nextBlocks[nextIndex];
   plainActiveBlock.value = nextIndex;
   // Fast path only when the block is structurally unchanged. We must also
@@ -647,11 +662,11 @@ function updatePlainBlock(index: number, text: string, caret?: number) {
     const activeBlock = plainBlocks.value[plainActiveBlock.value];
     const el = plainBlockEditors.value[plainActiveBlock.value];
     if (!el) return;
-    // The active block changed (re-split moved the caret into a different
-    // block), so Vue mounted a fresh <textarea>. Restore focus to it —
-    // otherwise focus falls to <body> and subsequent keystrokes are dropped
-    // (e.g. heading → Enter → typing body silently loses all but the first char).
-    el.focus();
+    // The active block changed to a different <textarea> (e.g. a re-split moved
+    // the caret into another block, or Enter created a new line). The old
+    // textarea unmounted, dropping focus to <body>, which leaves the caret
+    // invisible and swallows subsequent keystrokes — so re-focus the new one.
+    if (document.activeElement !== el) el.focus();
     autoSizePlainBlock(el);
     if (activeBlock) {
       const pos = Math.max(0, Math.min(nextCaret - activeBlock.start, el.value.length));
