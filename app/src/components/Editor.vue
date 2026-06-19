@@ -1856,7 +1856,7 @@ const cls = computed(() => ({
 <template>
   <div v-if="!usePlainWindowsEditor" :class="cls" ref="host"></div>
   <div v-else class="plain-host">
-    <div v-if="plainLiveEnabled" ref="plainLiveHost" :class="[cls, 'plain-block-editor', { 'plain-focus': props.focusMode }]" :style="plainEditorStyle">
+    <div v-if="plainLiveEnabled" ref="plainLiveHost" :class="[cls, 'plain-block-editor']" :style="plainEditorStyle">
       <div
         v-for="(block, index) in plainBlocks"
         :key="block.id"
@@ -2098,10 +2098,6 @@ const cls = computed(() => ({
   white-space: pre-wrap;
   overflow-wrap: break-word;
   overflow-x: hidden;
-}
-.plain-block-editor.plain-focus .plain-block:not(.plain-block--active) {
-  opacity: 0.35;
-  transition: opacity 0.25s ease;
 }
 .plain-block-editor {
   overflow: auto;
