@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>WebView2 CJK IME bug — contentEditable vs textarea</title>
+<style>
+  body { font: 14px/1.6 system-ui, "Segoe UI", sans-serif; margin: 24px; color: #1a1a1a; }
+  h1 { font-size: 18px; }
+  .row { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 16px; }
+  .box { flex: 1 1 360px; }
+  .label { font-weight: 600; margin-bottom: 6px; }
+  .bug { color: #c0392b; }
+  .ok { color: #1e8449; }
+  [contenteditable], textarea {
+    width: 100%; min-height: 120px; box-sizing: border-box; padding: 10px;
+    border: 1px solid #bbb; border-radius: 6px; font: 16px/1.7 "Microsoft YaHei", sans-serif;
+    white-space: pre-wrap; outline: none;
+  }
+  [contenteditable]:focus, textarea:focus { border-color: #2980b9; }
+  pre { background: #f4f4f4; padding: 10px; border-radius: 6px; max-height: 220px; overflow: auto; font-size: 12px; }
+  .env { color: #555; font-size: 12px; margin-top: 8px; }
+  ol { padding-left: 20px; }
+</style>
+</head>
+<body>
+  <h1>WebView2 中文输入法 (CJK IME) bug — contentEditable vs &lt;textarea&gt;</h1>
+
+  <p><strong>How to reproduce:</strong></p>
+  <ol>
+    <li>Open this page in a WebView2 host (or in Microsoft Edge for comparison).</li>
+    <li>Switch to a Chinese IME — <strong>Sogou Pinyin (搜狗拼音) shows it most severely</strong>; Microsoft Pinyin may be milder.</li>
+    <li>Click the <span class="bug">contentEditable</span> box and type a sentence with punctuation, e.g. <code>nihao，shijie。</code> (pinyin + space to commit, then Chinese comma/period).</li>
+    <li>Do the same in the <span class="ok">textarea</span> box.</li>
+  </ol>
+
+  <p><strong>Observed in contentEditable (BUG):</strong> the <em>first</em> character after focusing is dropped (“吃字”), and Chinese punctuation must be typed twice before it commits. The same input in the plain <code>&lt;textarea&gt;</code> works correctly.</p>
+
+  <div class="row">
+    <div class="box">
+      <div class="label bug">contentEditable (BUG here)</div>
+      <div id="ce" contenteditable="true"></div>
+    </div>
+    <div class="box">
+      <div class="label ok">&lt;textarea&gt; (works correctly)</div>
+      <textarea id="ta"></textarea>
+    </div>
+  </div>
+
+  <div class="label" style="margin-top:18px;">contentEditable IME event log (composition / beforeinput / input)</div>
+  <pre id="log"></pre>
+
+  <div class="env" id="env"></div>
+
+  <script>
+    const ce = document.getElementById('ce');
+    const log = document.getElementById('log');
+    const lines = [];
+    function rec(type, ev) {
+      const data = ev && ('data' in ev) ? JSON.stringify(ev.data) : '';
+      const it = ev && ev.inputType ? ' inputType=' + ev.inputType : '';
+      const ic = ev && ('isComposing' in ev) ? ' isComposing=' + ev.isComposing : '';
+      lines.push(`${type}${it}${ic} data=${data} text=${JSON.stringify(ce.textContent)}`);
+      if (lines.length > 200) lines.shift();
+      log.textContent = lines.join('\n');
+      log.scrollTop = log.scrollHeight;
+    }
+    ['compositionstart','compositionupdate','compositionend','beforeinput','input','keydown']
+      .forEach(e => ce.addEventListener(e, ev => rec(e, ev), true));
+
+    // Environment info to paste into the bug report.
+    const env = [
+      'userAgent: ' + navigator.userAgent,
+      'platform: ' + navigator.platform,
+      'languages: ' + (navigator.languages || []).join(', '),
+    ].join('\n');
+    document.getElementById('env').textContent = env;
+  </script>
+</body>
+</html>
