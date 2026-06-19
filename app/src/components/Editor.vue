@@ -30,7 +30,7 @@ import { liveEditExtension } from '../lib/cm-live-render';
 import { liveBlocksExtension, liveBlocksTheme, extractImageRoot } from '../lib/cm-live-blocks';
 import { findTldrawFences, replaceBoardSnapshot } from '../lib/tldraw-board';
 import { dragAwareExtension } from '../lib/cm-drag-aware';
-import { imagePasteExtension, insertImageFromPath as cmInsertImageFromPath } from '../lib/cm-image-paste';
+import { imagePasteExtension, insertImageFromPath as cmInsertImageFromPath, handleTextareaImagePaste } from '../lib/cm-image-paste';
 import { focusModeExtension, typewriterModeExtension } from '../lib/cm-focus-mode';
 import { wikilinkExtension, wikilinkComplete } from '../lib/cm-wikilink';
 import { tagAutocompleteExtension, tagComplete } from '../lib/cm-tag-autocomplete';
@@ -184,7 +184,12 @@ function renderPlainBlock(src: string): string {
   const cached = plainRenderCache.get(key);
   if (cached != null) return cached;
   const html = rewriteImageUrls(
-    renderMarkdown(src || '\n', { breaks: true }),
+    // Drop `disabled` on task checkboxes so they can be clicked to toggle in the
+    // preview (handled by activatePlainBlockFromClick → togglePlainTask).
+    renderMarkdown(src || '\n', { breaks: true }).replace(
+      /(<input class="task-list-item-checkbox" type="checkbox"[^>]*?)\s+disabled=""/g,
+      '$1',
+    ),
     root,
     props.tab.filePath,
   );
@@ -495,6 +500,22 @@ function syncPlainLiveScroll() {
   emitPlainCursorAndSelection();
 }
 
+function handlePlainPaste(event: ClipboardEvent) {
+  // Clipboard image paste (Ctrl+V of a screenshot). Text paste falls through to
+  // the textarea's native handling. plainInsertText records its own undo step.
+  void handleTextareaImagePaste(
+    event,
+    {
+      getFilePath: () => props.tab.filePath,
+      getDocContent: () => props.tab.content,
+      getAttachmentMode: () => settings.attachmentMode,
+      getAssetsDirName: () => settings.assetsDirName,
+      getCustomPath: () => settings.attachmentCustomPath,
+    },
+    (text) => plainInsertText(text),
+  );
+}
+
 function plainInsertText(snippet: string) {
   if (plainLiveEnabled.value) {
     const index = plainActiveBlock.value;
@@ -508,6 +529,7 @@ function plainInsertText(snippet: string) {
   }
   const el = plainEditor.value;
   if (!el) return;
+  recordPlainHistory();
   const start = el.selectionStart ?? 0;
   const end = el.selectionEnd ?? 0;
   const next = `${el.value.slice(0, start)}${snippet}${el.value.slice(end)}`;
@@ -804,8 +826,45 @@ function estimatePlainBlockCaretFromClick(index: number, event: MouseEvent): num
 }
 
 function activatePlainBlockFromClick(index: number, event: MouseEvent) {
+  // Clicking a rendered task checkbox toggles its source marker instead of
+  // entering edit mode.
+  const target = event.target as HTMLElement | null;
+  if (
+    target instanceof HTMLInputElement &&
+    target.type === 'checkbox' &&
+    target.classList.contains('task-list-item-checkbox')
+  ) {
+    const render = (event.currentTarget as HTMLElement).querySelector('.plain-block__render');
+    const boxes = render
+      ? Array.from(render.querySelectorAll('input.task-list-item-checkbox'))
+      : [];
+    const ordinal = boxes.indexOf(target);
+    event.preventDefault();
+    if (ordinal >= 0) togglePlainTask(index, ordinal);
+    return;
+  }
   if (index === plainActiveBlock.value) return;
   activatePlainBlock(index, estimatePlainBlockCaretFromClick(index, event));
+}
+
+/** Flip the `ordinal`-th task checkbox marker in a block's source, in place. */
+function togglePlainTask(index: number, ordinal: number) {
+  const block = plainBlocks.value[index];
+  if (!block) return;
+  let n = -1;
+  const re = /^(\s*(?:[-*+]|\d+[.)])\s+\[)([ xX])(\])/gm;
+  const newText = block.text.replace(re, (m, pre, mark, post) => {
+    n += 1;
+    if (n !== ordinal) return m;
+    return `${pre}${mark === ' ' ? 'x' : ' '}${post}`;
+  });
+  if (newText === block.text) return;
+  recordPlainHistory();
+  const tail = block.hasTrailingNewline ? '\n' : '';
+  const next =
+    plainText.value.slice(0, block.start) + newText + tail + plainText.value.slice(block.end);
+  plainText.value = next;
+  tabs.setContent(props.tab.id, next);
 }
 
 function activatePlainBlock(index: number, caret?: number) {
@@ -1454,6 +1513,7 @@ const cls = computed(() => ({
         :spellcheck="props.spellCheck"
         :wrap="settings.wordWrap ? 'soft' : 'off'"
         @keydown="(event) => handlePlainBlockKeydown(index, event)"
+        @paste="handlePlainPaste"
         @input="(event) => handlePlainBlockInput(index, event)"
         @compositionstart="handlePlainBlockCompositionStart"
         @compositionend="(event) => handlePlainBlockCompositionEnd(index, event)"
@@ -1478,6 +1538,7 @@ const cls = computed(() => ({
       :spellcheck="props.spellCheck"
       :wrap="settings.wordWrap ? 'soft' : 'off'"
       @keydown="handlePlainEditorKeydown"
+      @paste="handlePlainPaste"
       @input="handlePlainInput"
       @keyup="emitPlainCursorAndSelection"
       @mouseup="emitPlainCursorAndSelection"

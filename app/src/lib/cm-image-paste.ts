@@ -177,6 +177,25 @@ async function saveAndInsert(
   ext: string,
   opts: ImagePasteOptions,
 ): Promise<void> {
+  const insertText = await saveImageBytes(bytes, ext, opts);
+  if (!insertText) return;
+  const pos = view.state.selection.main.head;
+  view.dispatch({
+    changes: { from: pos, insert: insertText },
+    selection: { anchor: pos + insertText.length },
+  });
+}
+
+/**
+ * Persist image bytes to the right location (front-matter imageRoot / assets dir
+ * / temp) and return the markdown link to insert, or null on failure. Shared by
+ * the CodeMirror editor and the Windows plain-textarea editor.
+ */
+export async function saveImageBytes(
+  bytes: Uint8Array,
+  ext: string,
+  opts: ImagePasteOptions,
+): Promise<string | null> {
   let sepCh: string;
   try {
     sepCh = sep();
@@ -229,14 +248,40 @@ async function saveAndInsert(
   } catch (err) {
     // Best-effort: log and abort this image.
     console.error('[cm-image-paste] failed to write image', err);
-    return;
+    return null;
   }
 
-  const pos = view.state.selection.main.head;
-  view.dispatch({
-    changes: { from: pos, insert: insertText },
-    selection: { anchor: pos + insertText.length },
-  });
+  return insertText;
+}
+
+/**
+ * Clipboard image paste for a plain `<textarea>` editor. Extracts image items,
+ * saves them, and calls `insert` with each markdown link. Returns true if it
+ * handled (and consumed) the paste.
+ */
+export async function handleTextareaImagePaste(
+  event: ClipboardEvent,
+  opts: ImagePasteOptions,
+  insert: (text: string) => void,
+): Promise<boolean> {
+  const cd = event.clipboardData;
+  if (!cd || !cd.items) return false;
+  const images: Array<{ blob: Blob; ext: string }> = [];
+  for (let i = 0; i < cd.items.length; i++) {
+    const item = cd.items[i];
+    if (item.kind === 'file' && item.type.startsWith('image/')) {
+      const f = item.getAsFile();
+      if (f) images.push({ blob: f, ext: extFromName(f.name) || extFromMime(item.type) });
+    }
+  }
+  if (images.length === 0) return false;
+  event.preventDefault();
+  for (const img of images) {
+    const bytes = await readFileAsUint8(img.blob);
+    const text = await saveImageBytes(bytes, img.ext, opts);
+    if (text) insert(text);
+  }
+  return true;
 }
 
 async function handlePaste(
