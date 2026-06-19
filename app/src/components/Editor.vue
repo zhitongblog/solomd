@@ -552,11 +552,76 @@ function handlePlainInput(event: Event) {
   nextTick(syncPlainLiveScroll);
 }
 
+/**
+ * Greedily align the visible (rendered) text prefix back to the Markdown source
+ * so a click in the preview maps to a source caret offset. Markdown syntax that
+ * is hidden in the preview (`#`, `*`, `` ` ``, `[`, `](url)`, …) is skipped in
+ * the source while the visible characters are matched one-for-one. Plain prose
+ * maps exactly; formatted text degrades to a near-by position.
+ */
+function mapRenderedPrefixToSource(source: string, renderedPrefix: string): number {
+  let si = 0;
+  let ri = 0;
+  while (si < source.length && ri < renderedPrefix.length) {
+    if (source[si] === renderedPrefix[ri]) {
+      si += 1;
+      ri += 1;
+    } else {
+      // Source character is hidden Markdown syntax (or a skipped newline).
+      si += 1;
+    }
+  }
+  return si;
+}
+
+/** Visible text from the start of `render` up to the click point, or null. */
+function renderedPrefixAtPoint(render: HTMLElement, x: number, y: number): string | null {
+  const doc = document as Document & {
+    caretRangeFromPoint?: (x: number, y: number) => Range | null;
+    caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null;
+  };
+  let node: Node | null = null;
+  let offset = 0;
+  if (typeof doc.caretRangeFromPoint === 'function') {
+    const r = doc.caretRangeFromPoint(x, y);
+    if (r) {
+      node = r.startContainer;
+      offset = r.startOffset;
+    }
+  } else if (typeof doc.caretPositionFromPoint === 'function') {
+    const p = doc.caretPositionFromPoint(x, y);
+    if (p) {
+      node = p.offsetNode;
+      offset = p.offset;
+    }
+  }
+  if (!node || !render.contains(node)) return null;
+  const pre = document.createRange();
+  pre.selectNodeContents(render);
+  try {
+    pre.setEnd(node, offset);
+  } catch {
+    return null;
+  }
+  return pre.toString();
+}
+
 function estimatePlainBlockCaretFromClick(index: number, event: MouseEvent): number | undefined {
   const block = plainBlocks.value[index];
   const target = event.currentTarget as HTMLElement | null;
   const render = target?.querySelector('.plain-block__render') as HTMLElement | null;
   if (!block || !render) return undefined;
+
+  // Preferred: map the exact click point in the rendered preview back to a
+  // source offset, so a single click lands the caret where the user clicked
+  // instead of snapping to the line start.
+  const renderedPrefix = renderedPrefixAtPoint(render, event.clientX, event.clientY);
+  if (renderedPrefix != null) {
+    return mapRenderedPrefixToSource(block.text, renderedPrefix);
+  }
+
+  // Fallback: estimate the clicked line from the vertical position and place
+  // the caret at that line's start.
   const lines = block.text.split('\n');
   if (lines.length <= 1) return 0;
   const rect = render.getBoundingClientRect();
