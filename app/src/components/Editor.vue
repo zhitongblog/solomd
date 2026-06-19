@@ -128,6 +128,12 @@ const typewriterCompartment = new Compartment();
 const vimCompartment = new Compartment();
 const slashCompartment = new Compartment();
 const isWindows = typeof navigator !== 'undefined' && /Win/i.test(navigator.platform);
+// Windows uses the plain-textarea editor: WebView2 + contentEditable drops the
+// first IME character and doubles CJK punctuation (worst on Sogou), and even
+// freezing CodeMirror's decorations during composition does not fix it — the
+// bug is in WebView2's contentEditable IME handling itself. A plain <textarea>
+// relies on the browser's native IME path and avoids both. (Verified: a
+// CodeMirror spike on Windows still ate the first char + doubled punctuation.)
 const usePlainWindowsEditor = isWindows;
 
 function syncEditorContentSoon(text: string) {
@@ -546,10 +552,174 @@ function syncPlainEditorAfterModeSwitch() {
 function handlePlainInput(event: Event) {
   if (plainLiveEnabled.value) return;
   const el = event.target as HTMLTextAreaElement;
+  if (!plainComposing) recordPlainHistory();
   plainText.value = el.value;
   tabs.setContent(props.tab.id, el.value);
   emitPlainCursorAndSelection();
   nextTick(syncPlainLiveScroll);
+}
+
+// ---- Plain editor: document-level undo/redo (the WebView2-safe textarea path
+// has no CodeMirror history). Snapshots are the whole document + an absolute
+// caret offset, with rapid edits coalesced into one step. ----
+type PlainSnapshot = { content: string; caret: number };
+const plainUndoStack: PlainSnapshot[] = [];
+let plainRedoStack: PlainSnapshot[] = [];
+let plainHistoryTs = 0;
+
+function plainAbsoluteCaret(): number {
+  if (plainLiveEnabled.value) {
+    const el = plainBlockEditors.value[plainActiveBlock.value];
+    const block = plainBlocks.value[plainActiveBlock.value];
+    if (!el || !block) return plainText.value.length;
+    return block.start + (el.selectionStart ?? 0);
+  }
+  const el = plainEditor.value;
+  return el ? el.selectionStart ?? el.value.length : plainText.value.length;
+}
+
+function recordPlainHistory() {
+  const now = Date.now();
+  const top = plainUndoStack[plainUndoStack.length - 1];
+  if (top && top.content === plainText.value) {
+    plainHistoryTs = now;
+    return;
+  }
+  // Coalesce bursts of typing into a single undo step.
+  if (plainUndoStack.length && now - plainHistoryTs < 500) {
+    plainHistoryTs = now;
+    return;
+  }
+  plainUndoStack.push({ content: plainText.value, caret: plainAbsoluteCaret() });
+  if (plainUndoStack.length > 300) plainUndoStack.shift();
+  plainRedoStack = [];
+  plainHistoryTs = now;
+}
+
+function applyPlainContent(content: string, caret: number) {
+  plainText.value = content;
+  tabs.setContent(props.tab.id, content);
+  const safe = Math.max(0, Math.min(caret, content.length));
+  if (!plainLiveEnabled.value) {
+    nextTick(() => {
+      const el = plainEditor.value;
+      if (el) {
+        if (el.value !== content) el.value = content;
+        el.focus();
+        el.setSelectionRange(safe, safe);
+      }
+      emitPlainCursorAndSelection();
+    });
+    return;
+  }
+  nextTick(() => plainSetCaret(safe));
+}
+
+function plainUndo() {
+  if (!plainUndoStack.length) return;
+  plainRedoStack.push({ content: plainText.value, caret: plainAbsoluteCaret() });
+  const prev = plainUndoStack.pop() as PlainSnapshot;
+  plainHistoryTs = 0;
+  applyPlainContent(prev.content, prev.caret);
+}
+
+function plainRedo() {
+  if (!plainRedoStack.length) return;
+  plainUndoStack.push({ content: plainText.value, caret: plainAbsoluteCaret() });
+  const next = plainRedoStack.pop() as PlainSnapshot;
+  plainHistoryTs = 0;
+  applyPlainContent(next.content, next.caret);
+}
+
+/** Compute a Tab/Shift+Tab indent edit over the textarea's current selection. */
+function computePlainTabEdit(
+  el: HTMLTextAreaElement,
+  outdent: boolean,
+): { value: string; selStart: number; selEnd: number } {
+  const INDENT = '  ';
+  const v = el.value;
+  const s = el.selectionStart ?? 0;
+  const e = el.selectionEnd ?? 0;
+  if (!outdent && s === e) {
+    return { value: v.slice(0, s) + INDENT + v.slice(e), selStart: s + INDENT.length, selEnd: s + INDENT.length };
+  }
+  const lineStart = v.lastIndexOf('\n', s - 1) + 1;
+  const nl = v.indexOf('\n', e);
+  const lineEnd = nl < 0 ? v.length : nl;
+  const region = v.slice(lineStart, lineEnd);
+  const lines = region.split('\n');
+  let deltaFirst = 0;
+  let deltaTotal = 0;
+  const newLines = lines.map((ln, i) => {
+    if (outdent) {
+      const m = ln.match(/^( {1,2}|\t)/);
+      const removed = m ? m[0].length : 0;
+      if (i === 0) deltaFirst = -removed;
+      deltaTotal -= removed;
+      return ln.slice(removed);
+    }
+    if (i === 0) deltaFirst = INDENT.length;
+    deltaTotal += INDENT.length;
+    return INDENT + ln;
+  });
+  const value = v.slice(0, lineStart) + newLines.join('\n') + v.slice(lineEnd);
+  const selStart = Math.max(lineStart, s + deltaFirst);
+  const selEnd = Math.max(selStart, e + deltaTotal);
+  return { value, selStart, selEnd };
+}
+
+/** Shared keydown handling (undo/redo, Tab indent) for the plain editors. */
+function handlePlainKeydownShared(event: KeyboardEvent): boolean {
+  const mod = event.ctrlKey || event.metaKey;
+  if (mod && !event.altKey && (event.key === 'z' || event.key === 'Z')) {
+    event.preventDefault();
+    if (event.shiftKey) plainRedo();
+    else plainUndo();
+    return true;
+  }
+  if (mod && !event.altKey && (event.key === 'y' || event.key === 'Y')) {
+    event.preventDefault();
+    plainRedo();
+    return true;
+  }
+  return false;
+}
+
+function handlePlainBlockKeydown(index: number, event: KeyboardEvent) {
+  if (plainComposing) return;
+  if (handlePlainKeydownShared(event)) return;
+  if (event.key === 'Tab') {
+    event.preventDefault();
+    const el = event.target as HTMLTextAreaElement;
+    const edit = computePlainTabEdit(el, event.shiftKey);
+    updatePlainBlock(index, edit.value, edit.selStart);
+    // updatePlainBlock's fast path may skip caret restore (block text unchanged
+    // in length-mapping terms); force the selection so the caret follows the
+    // indent and a range stays selected for repeated Tab.
+    nextTick(() => {
+      const e2 = plainBlockEditors.value[plainActiveBlock.value];
+      if (e2) {
+        e2.focus();
+        e2.setSelectionRange(edit.selStart, edit.selEnd);
+      }
+    });
+  }
+}
+
+function handlePlainEditorKeydown(event: KeyboardEvent) {
+  if (plainComposing) return;
+  if (handlePlainKeydownShared(event)) return;
+  if (event.key === 'Tab') {
+    event.preventDefault();
+    const el = event.target as HTMLTextAreaElement;
+    const edit = computePlainTabEdit(el, event.shiftKey);
+    recordPlainHistory();
+    el.value = edit.value;
+    el.setSelectionRange(edit.selStart, edit.selEnd);
+    plainText.value = edit.value;
+    tabs.setContent(props.tab.id, edit.value);
+    emitPlainCursorAndSelection();
+  }
 }
 
 /**
@@ -687,6 +857,8 @@ function handlePlainBlockCompositionEnd(index: number, event: CompositionEvent) 
 function updatePlainBlock(index: number, text: string, caret?: number) {
   const block = plainBlocks.value[index];
   if (!block) return;
+  // Snapshot the pre-edit document for undo (coalesced) before we mutate it.
+  if (!plainComposing) recordPlainHistory();
   const nextCaret = block.start + (caret ?? text.length);
   // Re-attach the block separator that splitPlainMarkdownBlocks stripped from
   // the editable text, so neighbouring blocks don't merge on every edit.
@@ -1279,8 +1451,9 @@ const cls = computed(() => ({
         :ref="(el) => setPlainBlockEditor(index, el as HTMLTextAreaElement | null)"
         class="plain-block__textarea"
         :class="{ 'plain-textarea--wrap': settings.wordWrap }"
-        spellcheck="false"
+        :spellcheck="props.spellCheck"
         :wrap="settings.wordWrap ? 'soft' : 'off'"
+        @keydown="(event) => handlePlainBlockKeydown(index, event)"
         @input="(event) => handlePlainBlockInput(index, event)"
         @compositionstart="handlePlainBlockCompositionStart"
         @compositionend="(event) => handlePlainBlockCompositionEnd(index, event)"
@@ -1302,8 +1475,9 @@ const cls = computed(() => ({
       ref="plainEditor"
       class="plain-editor"
       :class="{ 'plain-textarea--wrap': settings.wordWrap }"
-      spellcheck="false"
+      :spellcheck="props.spellCheck"
       :wrap="settings.wordWrap ? 'soft' : 'off'"
+      @keydown="handlePlainEditorKeydown"
       @input="handlePlainInput"
       @keyup="emitPlainCursorAndSelection"
       @mouseup="emitPlainCursorAndSelection"
