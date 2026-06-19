@@ -153,11 +153,6 @@ const plainBlockEditors = ref<Record<number, HTMLTextAreaElement | null>>({});
 const plainText = ref(props.tab.content || '');
 const plainActiveBlock = ref(0);
 let plainComposing = false;
-// Reactive twin of plainComposing for the template: while an IME composition is
-// active we must show the REAL textarea text (and hide the syntax-highlight
-// overlay), otherwise the composing pinyin/candidates are invisible (the overlay
-// makes textarea text transparent) and CJK input looks broken.
-const plainImeActive = ref(false);
 let plainMermaidIdSeq = 0;
 const plainRenderCache = new Map<string, string>();
 
@@ -206,51 +201,6 @@ function renderPlainBlock(src: string): string {
   return html;
 }
 
-// Live source of the active block's textarea, mirrored for the syntax-highlight
-// overlay. Updated on input / activation (including mid-composition).
-const plainActiveSource = ref('');
-
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
-/**
- * Lightweight Markdown syntax highlighter for the active block's source. Returns
- * HTML (already escaped) with token spans. Deliberately conservative — a few
- * non-overlapping inline rules so it never mangles text; it sits behind a
- * transparent <textarea>, so it only needs to colour, not be a full parser.
- */
-function highlightMarkdownSource(src: string): string {
-  let inFence = false;
-  const lines = src.split('\n').map((raw) => {
-    const fence = /^\s*(```|~~~)/.test(raw);
-    if (fence) {
-      inFence = !inFence;
-      return `<span class="md-fence">${escapeHtml(raw)}</span>`;
-    }
-    if (inFence) return `<span class="md-code">${escapeHtml(raw)}</span>`;
-    if (/^#{1,6}\s/.test(raw)) return `<span class="md-heading">${escapeHtml(raw)}</span>`;
-    if (/^\s*(---|\*\*\*|___)\s*$/.test(raw)) return `<span class="md-hr">${escapeHtml(raw)}</span>`;
-
-    let e = escapeHtml(raw);
-    // Blockquote marker (escaped '>').
-    e = e.replace(/^(\s*)(&gt;)/, '$1<span class="md-quote">$2</span>');
-    // List / ordered-list marker.
-    e = e.replace(/^(\s*)([-*+]|\d+[.)])(\s)/, '$1<span class="md-list">$2</span>$3');
-    // Images then links (image first so the leading ! is included).
-    e = e.replace(/(!?\[[^\]\n]*\]\([^)\n]*\))/g, '<span class="md-link">$1</span>');
-    // Inline code.
-    e = e.replace(/(`[^`\n]+`)/g, '<span class="md-code">$1</span>');
-    // Bold (** or __). Skipped inside already-wrapped spans is acceptable.
-    e = e.replace(/(\*\*[^*\n]+\*\*|__[^_\n]+__)/g, '<span class="md-strong">$1</span>');
-    // Strikethrough.
-    e = e.replace(/(~~[^~\n]+~~)/g, '<span class="md-del">$1</span>');
-    return e;
-  });
-  return lines.join('\n');
-}
-
-const plainActiveHighlight = computed(() => highlightMarkdownSource(plainActiveSource.value));
 
 async function processPlainLiveRenderedBlocks() {
   if (!plainLiveEnabled.value || !plainLiveHost.value) return;
@@ -898,31 +848,14 @@ function buildAcItems(kind: AcKind, query: string): AcItem[] {
     .map((c) => ({ label: `@${c.key}`, hint: (c.title ? String(c.title).slice(0, 32) : ''), insert: `@${c.key} `, cursorOffset: c.key.length + 2 }));
 }
 
-function caretRectFromHighlight(caret: number): { left: number; bottom: number } | null {
+function caretRectFromHighlight(_caret: number): { left: number; bottom: number } | null {
+  // Anchor the autocomplete popup to the active block's textarea (bottom-left).
+  // A textarea can't give per-caret pixel coords without a mirror element, and
+  // blocks are short, so anchoring below the block is accurate enough.
   const el = plainBlockEditors.value[plainActiveBlock.value];
-  const pre = el?.closest('.plain-block__edit')?.querySelector('.plain-block__highlight') as HTMLElement | null;
-  if (!pre) return null;
-  let remaining = caret;
-  let target: Node | null = null;
-  let local = 0;
-  const walker = document.createTreeWalker(pre, NodeFilter.SHOW_TEXT);
-  let n: Node | null = walker.nextNode();
-  while (n) {
-    const len = n.textContent?.length ?? 0;
-    if (remaining <= len) { target = n; local = remaining; break; }
-    remaining -= len;
-    n = walker.nextNode();
-  }
-  const range = document.createRange();
-  try {
-    if (target) range.setStart(target, Math.min(local, target.textContent?.length ?? 0));
-    else { range.selectNodeContents(pre); range.collapse(false); }
-    range.collapse(true);
-  } catch {
-    return null;
-  }
-  const r = range.getBoundingClientRect();
-  return { left: r.left, bottom: r.bottom };
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  return { left: r.left, bottom: r.top + Math.min(r.height, 24) };
 }
 
 function maybeOpenPlainAutocomplete(el: HTMLTextAreaElement) {
@@ -1295,7 +1228,6 @@ function setPlainBlockEditor(index: number, el: HTMLTextAreaElement | null) {
   if (!el) return;
   const block = plainBlocks.value[index];
   if (block && el.value !== block.text) el.value = block.text;
-  if (index === plainActiveBlock.value) plainActiveSource.value = el.value;
   nextTick(() => autoSizePlainBlock(el));
 }
 
@@ -1307,7 +1239,6 @@ function autoSizePlainBlock(el: HTMLTextAreaElement) {
 function handlePlainBlockInput(index: number, event: Event) {
   const el = event.target as HTMLTextAreaElement;
   autoSizePlainBlock(el);
-  plainActiveSource.value = el.value; // keep the highlight overlay in sync (also mid-composition)
   if (plainComposing) return;
   updatePlainBlock(index, el.value, el.selectionStart ?? el.value.length);
   maybeOpenPlainAutocomplete(el);
@@ -1315,12 +1246,10 @@ function handlePlainBlockInput(index: number, event: Event) {
 
 function handlePlainBlockCompositionStart() {
   plainComposing = true;
-  plainImeActive.value = true;
 }
 
 function handlePlainBlockCompositionEnd(index: number, event: CompositionEvent) {
   plainComposing = false;
-  plainImeActive.value = false;
   const el = event.target as HTMLTextAreaElement;
   autoSizePlainBlock(el);
   updatePlainBlock(index, el.value, el.selectionStart ?? el.value.length);
@@ -1935,31 +1864,24 @@ const cls = computed(() => ({
         :class="{ 'plain-block--active': index === plainActiveBlock }"
         @click="(event) => activatePlainBlockFromClick(index, event)"
       >
-        <div v-if="index === plainActiveBlock" class="plain-block__edit" :class="{ 'plain-block__edit--composing': plainImeActive }">
-          <pre
-            class="plain-block__highlight"
-            :class="{ 'plain-textarea--wrap': settings.wordWrap }"
-            aria-hidden="true"
-            v-html="plainActiveHighlight"
-          ></pre>
-          <textarea
-            :ref="(el) => setPlainBlockEditor(index, el as HTMLTextAreaElement | null)"
-            class="plain-block__textarea plain-block__textarea--overlay"
-            :class="{ 'plain-textarea--wrap': settings.wordWrap }"
-            :spellcheck="props.spellCheck"
-            :wrap="settings.wordWrap ? 'soft' : 'off'"
-            @keydown="(event) => handlePlainBlockKeydown(index, event)"
-            @paste="handlePlainPaste"
-            @input="(event) => handlePlainBlockInput(index, event)"
-            @compositionstart="handlePlainBlockCompositionStart"
-            @compositionend="(event) => handlePlainBlockCompositionEnd(index, event)"
-            @click.stop
-            @keyup="emitPlainCursorAndSelection"
-            @mouseup="emitPlainCursorAndSelection"
-            @select="emitPlainCursorAndSelection"
-            @focus="emitPlainCursorAndSelection"
-          ></textarea>
-        </div>
+        <textarea
+          v-if="index === plainActiveBlock"
+          :ref="(el) => setPlainBlockEditor(index, el as HTMLTextAreaElement | null)"
+          class="plain-block__textarea"
+          :class="{ 'plain-textarea--wrap': settings.wordWrap }"
+          :spellcheck="props.spellCheck"
+          :wrap="settings.wordWrap ? 'soft' : 'off'"
+          @keydown="(event) => handlePlainBlockKeydown(index, event)"
+          @paste="handlePlainPaste"
+          @input="(event) => handlePlainBlockInput(index, event)"
+          @compositionstart="handlePlainBlockCompositionStart"
+          @compositionend="(event) => handlePlainBlockCompositionEnd(index, event)"
+          @click.stop
+          @keyup="emitPlainCursorAndSelection"
+          @mouseup="emitPlainCursorAndSelection"
+          @select="emitPlainCursorAndSelection"
+          @focus="emitPlainCursorAndSelection"
+        ></textarea>
         <div
           v-else
           class="plain-block__render"
@@ -2222,61 +2144,6 @@ const cls = computed(() => ({
 .plain-block__textarea::selection {
   background: rgba(255, 159, 64, 0.28);
 }
-/* Syntax-highlight overlay: a coloured <pre> behind a transparent <textarea>.
-   Both MUST share identical text metrics so the caret lines up with the glyphs. */
-.plain-block__edit {
-  position: relative;
-}
-.plain-block__highlight {
-  position: absolute;
-  inset: 0;
-  margin: 0;
-  border: 0;
-  padding: 0;
-  box-sizing: border-box;
-  width: 100%;
-  overflow: hidden;
-  pointer-events: none;
-  font: inherit;
-  line-height: inherit;
-  tab-size: 2;
-  white-space: pre;
-  color: var(--text);
-  background: transparent;
-  z-index: 0;
-}
-.plain-block__highlight.plain-textarea--wrap {
-  white-space: pre-wrap;
-  overflow-wrap: break-word;
-}
-.plain-block__textarea--overlay {
-  position: relative;
-  z-index: 1;
-  background: transparent;
-  color: transparent;
-  -webkit-text-fill-color: transparent;
-  caret-color: var(--accent);
-}
-/* During IME composition show the real textarea text and hide the highlight
-   overlay, so composing pinyin / candidates are visible (transparent text would
-   make CJK input look broken). */
-.plain-block__edit--composing .plain-block__textarea--overlay {
-  color: var(--text);
-  -webkit-text-fill-color: var(--text);
-}
-.plain-block__edit--composing .plain-block__highlight {
-  visibility: hidden;
-}
-/* Markdown token colours (mirror the CodeMirror highlight palette roughly). */
-.plain-block__highlight .md-heading { color: var(--accent, #ff9f40); font-weight: 600; }
-.plain-block__highlight .md-strong { color: var(--text); font-weight: 700; }
-.plain-block__highlight .md-del { color: var(--text-faint, #888); }
-.plain-block__highlight .md-code,
-.plain-block__highlight .md-fence { color: #4ec9b0; }
-.plain-block__highlight .md-link { color: #4aa3ff; }
-.plain-block__highlight .md-list,
-.plain-block__highlight .md-quote { color: var(--accent, #ff9f40); }
-.plain-block__highlight .md-hr { color: var(--text-faint, #888); }
 .plain-block__render {
   color: var(--text);
   overflow: visible;
