@@ -653,6 +653,120 @@ function plainRedo() {
   applyPlainContent(next.content, next.caret);
 }
 
+// ---- Plain editor: in-document find / replace (the textarea path has no
+// CodeMirror search panel). Matches are computed over the whole document;
+// navigating selects the match in the right block. ----
+const plainFindOpen = ref(false);
+const plainFindQuery = ref('');
+const plainReplaceValue = ref('');
+const plainFindCaseSensitive = ref(false);
+const plainFindInput = ref<HTMLInputElement | null>(null);
+const plainMatches = ref<Array<{ start: number; end: number }>>([]);
+const plainMatchIndex = ref(0);
+
+function runPlainSearch() {
+  const q = plainFindQuery.value;
+  if (!q) {
+    plainMatches.value = [];
+    plainMatchIndex.value = 0;
+    return;
+  }
+  const hay = plainFindCaseSensitive.value ? plainText.value : plainText.value.toLowerCase();
+  const needle = plainFindCaseSensitive.value ? q : q.toLowerCase();
+  const out: Array<{ start: number; end: number }> = [];
+  let i = hay.indexOf(needle);
+  while (i >= 0) {
+    out.push({ start: i, end: i + q.length });
+    i = hay.indexOf(needle, i + Math.max(1, q.length));
+  }
+  plainMatches.value = out;
+  if (plainMatchIndex.value >= out.length) plainMatchIndex.value = 0;
+}
+
+function openPlainFind() {
+  plainFindOpen.value = true;
+  const selected = plainSelectionText();
+  if (selected && !selected.includes('\n')) plainFindQuery.value = selected;
+  nextTick(() => {
+    plainFindInput.value?.focus();
+    plainFindInput.value?.select();
+    runPlainSearch();
+    if (plainMatches.value.length) gotoPlainMatch(0);
+  });
+}
+
+function closePlainFind() {
+  plainFindOpen.value = false;
+}
+
+function selectPlainRange(start: number, end: number) {
+  if (plainLiveEnabled.value) {
+    const blocks = plainBlocks.value;
+    const bi = blocks.findIndex((b) => start >= b.start && start < b.end);
+    plainActiveBlock.value = bi < 0 ? Math.max(0, blocks.length - 1) : bi;
+    nextTick(() => {
+      const el = plainBlockEditors.value[plainActiveBlock.value];
+      const b = plainBlocks.value[plainActiveBlock.value];
+      if (!el || !b) return;
+      el.focus();
+      const s = Math.max(0, Math.min(start - b.start, el.value.length));
+      const e = Math.max(s, Math.min(end - b.start, el.value.length));
+      el.setSelectionRange(s, e);
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      emitPlainCursorAndSelection();
+    });
+    return;
+  }
+  const el = plainEditor.value;
+  if (!el) return;
+  el.focus();
+  el.setSelectionRange(start, end);
+  emitPlainCursorAndSelection();
+}
+
+function gotoPlainMatch(delta: number) {
+  if (!plainMatches.value.length) {
+    runPlainSearch();
+    if (!plainMatches.value.length) return;
+  }
+  const n = plainMatches.value.length;
+  plainMatchIndex.value = ((plainMatchIndex.value + delta) % n + n) % n;
+  const m = plainMatches.value[plainMatchIndex.value];
+  if (m) selectPlainRange(m.start, m.end);
+}
+
+function replacePlainCurrent() {
+  const m = plainMatches.value[plainMatchIndex.value];
+  if (!m) return;
+  recordPlainHistory();
+  const r = plainReplaceValue.value;
+  const next = plainText.value.slice(0, m.start) + r + plainText.value.slice(m.end);
+  applyPlainContent(next, m.start + r.length);
+  nextTick(() => {
+    runPlainSearch();
+    if (plainMatches.value.length) {
+      if (plainMatchIndex.value >= plainMatches.value.length) plainMatchIndex.value = 0;
+      const nm = plainMatches.value[plainMatchIndex.value];
+      if (nm) selectPlainRange(nm.start, nm.end);
+    }
+  });
+}
+
+function replacePlainAll() {
+  if (!plainFindQuery.value || !plainMatches.value.length) return;
+  recordPlainHistory();
+  const r = plainReplaceValue.value;
+  let result = '';
+  let last = 0;
+  for (const m of plainMatches.value) {
+    result += plainText.value.slice(last, m.start) + r;
+    last = m.end;
+  }
+  result += plainText.value.slice(last);
+  applyPlainContent(result, result.length);
+  nextTick(runPlainSearch);
+}
+
 /** Compute a Tab/Shift+Tab indent edit over the textarea's current selection. */
 function computePlainTabEdit(
   el: HTMLTextAreaElement,
@@ -693,6 +807,11 @@ function computePlainTabEdit(
 /** Shared keydown handling (undo/redo, Tab indent) for the plain editors. */
 function handlePlainKeydownShared(event: KeyboardEvent): boolean {
   const mod = event.ctrlKey || event.metaKey;
+  if (mod && !event.altKey && (event.key === 'f' || event.key === 'F')) {
+    event.preventDefault();
+    openPlainFind();
+    return true;
+  }
   if (mod && !event.altKey && (event.key === 'z' || event.key === 'Z')) {
     event.preventDefault();
     if (event.shiftKey) plainRedo();
@@ -1497,54 +1616,92 @@ const cls = computed(() => ({
 
 <template>
   <div v-if="!usePlainWindowsEditor" :class="cls" ref="host"></div>
-  <div v-else-if="plainLiveEnabled" ref="plainLiveHost" :class="[cls, 'plain-block-editor']" :style="plainEditorStyle">
-    <div
-      v-for="(block, index) in plainBlocks"
-      :key="block.id"
-      class="plain-block"
-      :class="{ 'plain-block--active': index === plainActiveBlock }"
-      @click="(event) => activatePlainBlockFromClick(index, event)"
-    >
+  <div v-else class="plain-host">
+    <div v-if="plainLiveEnabled" ref="plainLiveHost" :class="[cls, 'plain-block-editor']" :style="plainEditorStyle">
+      <div
+        v-for="(block, index) in plainBlocks"
+        :key="block.id"
+        class="plain-block"
+        :class="{ 'plain-block--active': index === plainActiveBlock }"
+        @click="(event) => activatePlainBlockFromClick(index, event)"
+      >
+        <textarea
+          v-if="index === plainActiveBlock"
+          :ref="(el) => setPlainBlockEditor(index, el as HTMLTextAreaElement | null)"
+          class="plain-block__textarea"
+          :class="{ 'plain-textarea--wrap': settings.wordWrap }"
+          :spellcheck="props.spellCheck"
+          :wrap="settings.wordWrap ? 'soft' : 'off'"
+          @keydown="(event) => handlePlainBlockKeydown(index, event)"
+          @paste="handlePlainPaste"
+          @input="(event) => handlePlainBlockInput(index, event)"
+          @compositionstart="handlePlainBlockCompositionStart"
+          @compositionend="(event) => handlePlainBlockCompositionEnd(index, event)"
+          @click.stop
+          @keyup="emitPlainCursorAndSelection"
+          @mouseup="emitPlainCursorAndSelection"
+          @select="emitPlainCursorAndSelection"
+          @focus="emitPlainCursorAndSelection"
+        ></textarea>
+        <div
+          v-else
+          class="plain-block__render"
+          v-html="block.html"
+        ></div>
+      </div>
+    </div>
+    <div v-else :class="cls" :style="plainEditorStyle">
       <textarea
-        v-if="index === plainActiveBlock"
-        :ref="(el) => setPlainBlockEditor(index, el as HTMLTextAreaElement | null)"
-        class="plain-block__textarea"
+        ref="plainEditor"
+        class="plain-editor"
         :class="{ 'plain-textarea--wrap': settings.wordWrap }"
         :spellcheck="props.spellCheck"
         :wrap="settings.wordWrap ? 'soft' : 'off'"
-        @keydown="(event) => handlePlainBlockKeydown(index, event)"
+        @keydown="handlePlainEditorKeydown"
         @paste="handlePlainPaste"
-        @input="(event) => handlePlainBlockInput(index, event)"
-        @compositionstart="handlePlainBlockCompositionStart"
-        @compositionend="(event) => handlePlainBlockCompositionEnd(index, event)"
-        @click.stop
+        @input="handlePlainInput"
         @keyup="emitPlainCursorAndSelection"
         @mouseup="emitPlainCursorAndSelection"
         @select="emitPlainCursorAndSelection"
         @focus="emitPlainCursorAndSelection"
       ></textarea>
-      <div
-        v-else
-        class="plain-block__render"
-        v-html="block.html"
-      ></div>
     </div>
-  </div>
-  <div v-else :class="cls" :style="plainEditorStyle">
-    <textarea
-      ref="plainEditor"
-      class="plain-editor"
-      :class="{ 'plain-textarea--wrap': settings.wordWrap }"
-      :spellcheck="props.spellCheck"
-      :wrap="settings.wordWrap ? 'soft' : 'off'"
-      @keydown="handlePlainEditorKeydown"
-      @paste="handlePlainPaste"
-      @input="handlePlainInput"
-      @keyup="emitPlainCursorAndSelection"
-      @mouseup="emitPlainCursorAndSelection"
-      @select="emitPlainCursorAndSelection"
-      @focus="emitPlainCursorAndSelection"
-    ></textarea>
+
+    <!-- In-document find / replace (Ctrl+F). The textarea path has no CodeMirror
+         search panel, so this provides one. -->
+    <div v-if="plainFindOpen" class="plain-find" @keydown.esc.prevent.stop="closePlainFind">
+      <div class="plain-find__row">
+        <input
+          ref="plainFindInput"
+          class="plain-find__input"
+          :value="plainFindQuery"
+          placeholder="Find"
+          @input="(e) => { plainFindQuery = (e.target as HTMLInputElement).value; runPlainSearch(); }"
+          @keydown.enter.prevent="gotoPlainMatch(1)"
+        />
+        <span class="plain-find__count">{{ plainMatches.length ? (plainMatchIndex + 1) + '/' + plainMatches.length : '0/0' }}</span>
+        <button class="plain-find__btn" title="Previous (Shift+Enter)" @click="gotoPlainMatch(-1)">‹</button>
+        <button class="plain-find__btn" title="Next (Enter)" @click="gotoPlainMatch(1)">›</button>
+        <button
+          class="plain-find__btn"
+          :class="{ 'plain-find__btn--on': plainFindCaseSensitive }"
+          title="Match case"
+          @click="plainFindCaseSensitive = !plainFindCaseSensitive; runPlainSearch()"
+        >Aa</button>
+        <button class="plain-find__btn" title="Close (Esc)" @click="closePlainFind">✕</button>
+      </div>
+      <div class="plain-find__row">
+        <input
+          class="plain-find__input"
+          :value="plainReplaceValue"
+          placeholder="Replace"
+          @input="(e) => plainReplaceValue = (e.target as HTMLInputElement).value"
+          @keydown.enter.prevent="replacePlainCurrent"
+        />
+        <button class="plain-find__btn plain-find__btn--text" @click="replacePlainCurrent">Replace</button>
+        <button class="plain-find__btn plain-find__btn--text" @click="replacePlainAll">All</button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -1561,6 +1718,71 @@ const cls = computed(() => ({
 }
 :deep(.cm-editor.cm-focused) {
   outline: none;
+}
+.plain-host {
+  position: relative;
+  height: 100%;
+  width: 100%;
+}
+.plain-find {
+  position: absolute;
+  top: 8px;
+  right: 16px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--bg-elevated, var(--bg));
+  border: 1px solid var(--border, rgba(127, 127, 127, 0.35));
+  border-radius: 8px;
+  padding: 6px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+.plain-find__row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.plain-find__input {
+  width: 200px;
+  padding: 4px 8px;
+  border: 1px solid var(--border, rgba(127, 127, 127, 0.35));
+  border-radius: 5px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  outline: none;
+}
+.plain-find__input:focus {
+  border-color: var(--accent, #ff9f40);
+}
+.plain-find__count {
+  font-size: 12px;
+  color: var(--text-faint, #888);
+  min-width: 40px;
+  text-align: center;
+}
+.plain-find__btn {
+  min-width: 26px;
+  height: 26px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+.plain-find__btn:hover {
+  background: var(--bg-hover, rgba(127, 127, 127, 0.15));
+}
+.plain-find__btn--on {
+  color: var(--accent, #ff9f40);
+  border-color: var(--accent, #ff9f40);
+}
+.plain-find__btn--text {
+  font-size: 12px;
 }
 .plain-editor {
   height: 100%;
