@@ -1278,8 +1278,9 @@ const cls = computed(() => ({
         v-if="index === plainActiveBlock"
         :ref="(el) => setPlainBlockEditor(index, el as HTMLTextAreaElement | null)"
         class="plain-block__textarea"
+        :class="{ 'plain-textarea--wrap': settings.wordWrap }"
         spellcheck="false"
-        wrap="off"
+        :wrap="settings.wordWrap ? 'soft' : 'off'"
         @input="(event) => handlePlainBlockInput(index, event)"
         @compositionstart="handlePlainBlockCompositionStart"
         @compositionend="(event) => handlePlainBlockCompositionEnd(index, event)"
@@ -1300,8 +1301,9 @@ const cls = computed(() => ({
     <textarea
       ref="plainEditor"
       class="plain-editor"
+      :class="{ 'plain-textarea--wrap': settings.wordWrap }"
       spellcheck="false"
-      wrap="off"
+      :wrap="settings.wordWrap ? 'soft' : 'off'"
       @input="handlePlainInput"
       @keyup="emitPlainCursorAndSelection"
       @mouseup="emitPlainCursorAndSelection"
@@ -1342,6 +1344,11 @@ const cls = computed(() => ({
   white-space: pre;
   overflow: auto;
 }
+.plain-editor.plain-textarea--wrap {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  overflow-x: hidden;
+}
 .plain-block-editor {
   overflow: auto;
   padding: 12px 16px 80px;
@@ -1375,6 +1382,10 @@ const cls = computed(() => ({
   line-height: inherit;
   tab-size: 2;
   white-space: pre;
+}
+.plain-block__textarea.plain-textarea--wrap {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
 }
 .plain-block__textarea::selection {
   background: rgba(255, 159, 64, 0.28);
