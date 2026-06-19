@@ -134,6 +134,21 @@ return { pass: el.getAttribute('wrap')==='soft'&&cs.whiteSpace==='pre-wrap', det
   @{ n='spellcheck enabled'; seed='teh recieve'; body=@'
 const el=A(); return { pass: el.getAttribute('spellcheck')==='true', detail:{spellcheck:el.getAttribute('spellcheck')} };
 '@ }
+  @{ n='smart Enter: continue bullet list'; seed='- 项一'; body=@'
+let el=A(); el.setSelectionRange(el.value.length,el.value.length); key(el,'Enter'); await sleep(200); el=A();
+return { pass: el.value==='- 项一\n- '&&el.selectionStart===el.value.length, detail:{val:JSON.stringify(el.value),caret:el.selectionStart} };
+'@ }
+  @{ n='smart Enter: end list on empty item'; seed='- 项一'; body=@'
+let el=A(); el.setSelectionRange(el.value.length,el.value.length); key(el,'Enter'); await sleep(200); el=A();
+key(el,'Enter'); await sleep(250);
+const cur=A(); const endedEmpty = !!cur && cur.value==='';
+const txt=blocks().map(b=>(b.querySelector('.plain-block__render')?.textContent||b.querySelector('textarea')?.value||''));
+return { pass: endedEmpty && txt.some(t=>t.includes('项一')) && !txt.some(t=>/项一[\s\S]*-\s*$/.test(t)), detail:{endedEmpty,txt} };
+'@ }
+  @{ n='smart Enter: ordered list increments'; seed='1. 甲'; body=@'
+let el=A(); el.setSelectionRange(el.value.length,el.value.length); key(el,'Enter'); await sleep(200); el=A();
+return { pass: el.value==='1. 甲\n2. ', detail:{val:JSON.stringify(el.value)} };
+'@ }
   @{ n='slash command: popup + filter + insert'; seed=$null; body=@'
 await waitEditor(); let el=A(); el.focus();
 setV(el,'/'); el.setSelectionRange(1,1); el.dispatchEvent(new InputEvent('input',{bubbles:true,inputType:'insertText',data:'/'})); await sleep(200);

@@ -482,6 +482,7 @@ function emitPlainCursorAndSelection() {
     const col = lines[lines.length - 1]?.length ?? 0;
     emit('cursor', line, col + 1);
     emit('selection', plainSelectionText());
+    maybeTypewriterScroll();
     return;
   }
   const el = plainEditor.value;
@@ -492,6 +493,21 @@ function emitPlainCursorAndSelection() {
   const col = lines[lines.length - 1]?.length ?? 0;
   emit('cursor', line, col + 1);
   emit('selection', plainSelectionText());
+}
+
+// Typewriter mode: keep the active block vertically centred (matches the
+// CodeMirror typewriterModeExtension).
+function maybeTypewriterScroll() {
+  if (!props.typewriterMode || !plainLiveEnabled.value) return;
+  nextTick(() => {
+    const host = plainLiveHost.value;
+    const el = plainBlockEditors.value[plainActiveBlock.value];
+    if (!host || !el) return;
+    const hostRect = host.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    const delta = elRect.top + elRect.height / 2 - (hostRect.top + hostRect.height / 2);
+    if (Math.abs(delta) > 1) host.scrollTop += delta;
+  });
 }
 
 function plainSetCaret(pos: number) {
@@ -1016,6 +1032,40 @@ function handlePlainKeydownShared(event: KeyboardEvent): boolean {
   return false;
 }
 
+/**
+ * Markdown list / quote continuation on Enter (matches CodeMirror's behaviour):
+ * Enter at the end of a list/quote item starts the next item (ordered numbers
+ * increment); Enter on an empty item removes the marker and ends the list.
+ * Returns the new {value, caret} or null to let the textarea handle Enter.
+ */
+function computeSmartEnter(el: HTMLTextAreaElement): { value: string; caret: number } | null {
+  if (el.selectionStart !== el.selectionEnd) return null;
+  const v = el.value;
+  const caret = el.selectionStart ?? 0;
+  const lineStart = v.lastIndexOf('\n', caret - 1) + 1;
+  const nl = v.indexOf('\n', caret);
+  const lineEnd = nl < 0 ? v.length : nl;
+  const line = v.slice(lineStart, lineEnd);
+
+  const ul = line.match(/^(\s*)([-*+])\s+(\[[ xX]\]\s+)?(.*)$/);
+  const ol = line.match(/^(\s*)(\d+)([.)])\s+(.*)$/);
+  const bq = line.match(/^(\s*)(>)\s?(.*)$/);
+  let marker: string | null = null;
+  let content = '';
+  if (ul) { marker = `${ul[1]}${ul[2]} ${ul[3] ? '[ ] ' : ''}`; content = ul[4]; }
+  else if (ol) { marker = `${ol[1]}${Number(ol[2]) + 1}${ol[3]} `; content = ol[4]; }
+  else if (bq) { marker = `${bq[1]}> `; content = bq[3]; }
+  if (marker === null) return null;
+
+  // Empty item → remove the marker (end the list), leaving a blank line.
+  if (content.trim() === '') {
+    return { value: v.slice(0, lineStart) + v.slice(caret), caret: lineStart };
+  }
+  // Continue the list/quote with a fresh marker.
+  const insert = `\n${marker}`;
+  return { value: v.slice(0, caret) + insert + v.slice(caret), caret: caret + insert.length };
+}
+
 function handlePlainBlockKeydown(index: number, event: KeyboardEvent) {
   if (plainComposing) return;
   if (handleAutocompleteKeydown(event)) return;
@@ -1035,6 +1085,23 @@ function handlePlainBlockKeydown(index: number, event: KeyboardEvent) {
         e2.setSelectionRange(edit.selStart, edit.selEnd);
       }
     });
+    return;
+  }
+  if (event.key === 'Enter' && !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey) {
+    const el = event.target as HTMLTextAreaElement;
+    const smart = computeSmartEnter(el);
+    if (smart) {
+      event.preventDefault();
+      updatePlainBlock(index, smart.value, smart.caret);
+      nextTick(() => {
+        const e2 = plainBlockEditors.value[plainActiveBlock.value];
+        if (e2) {
+          e2.focus();
+          const p = Math.min(smart.caret, e2.value.length);
+          e2.setSelectionRange(p, p);
+        }
+      });
+    }
   }
 }
 
@@ -1827,7 +1894,7 @@ const cls = computed(() => ({
 <template>
   <div v-if="!usePlainWindowsEditor" :class="cls" ref="host"></div>
   <div v-else class="plain-host">
-    <div v-if="plainLiveEnabled" ref="plainLiveHost" :class="[cls, 'plain-block-editor']" :style="plainEditorStyle">
+    <div v-if="plainLiveEnabled" ref="plainLiveHost" :class="[cls, 'plain-block-editor', { 'plain-focus': props.focusMode }]" :style="plainEditorStyle">
       <div
         v-for="(block, index) in plainBlocks"
         :key="block.id"
@@ -2076,6 +2143,10 @@ const cls = computed(() => ({
   white-space: pre-wrap;
   overflow-wrap: break-word;
   overflow-x: hidden;
+}
+.plain-block-editor.plain-focus .plain-block:not(.plain-block--active) {
+  opacity: 0.35;
+  transition: opacity 0.25s ease;
 }
 .plain-block-editor {
   overflow: auto;
