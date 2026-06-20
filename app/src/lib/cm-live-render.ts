@@ -42,7 +42,7 @@ import type { Range } from '@codemirror/state';
 // Minimal structural view of a lezer `SyntaxNode`. `@lezer/common` is only a
 // transitive dependency (not in our package.json), so we describe just the
 // tree-walk fields we touch rather than importing the real type.
-interface MdSyntaxNode {
+export interface MdSyntaxNode {
   name: string;
   parent: MdSyntaxNode | null;
   firstChild: MdSyntaxNode | null;
@@ -111,6 +111,9 @@ const hideDeco = Decoration.replace({});
 //                                       (rendered by cm-task-list.ts) leads.
 //   - `---` / `***` / `___`           → a real <hr> rule.
 // ---------------------------------------------------------------------------
+// Widgets carry their own inline styling so they render correctly under BOTH
+// the liveEdit theme (here) and the edit-mode livePreview extension
+// (cm-live-preview.ts), which reuses these via the exports below.
 class BulletWidget extends WidgetType {
   eq() {
     return true;
@@ -119,6 +122,8 @@ class BulletWidget extends WidgetType {
     const span = document.createElement('span');
     span.className = 'cm-md-bullet';
     span.textContent = '•';
+    span.style.color = 'var(--md-list)';
+    span.style.fontWeight = '700';
     span.setAttribute('aria-hidden', 'true');
     return span;
   }
@@ -134,17 +139,24 @@ class HrWidget extends WidgetType {
   toDOM() {
     const hr = document.createElement('hr');
     hr.className = 'cm-md-hr';
+    hr.style.display = 'inline-block';
+    hr.style.width = '100%';
+    hr.style.height = '0';
+    hr.style.margin = '0.2em 0';
+    hr.style.border = 'none';
+    hr.style.borderTop = '1px solid var(--border)';
+    hr.style.verticalAlign = 'middle';
     return hr;
   }
 }
 
-const bulletDeco = Decoration.replace({ widget: new BulletWidget() });
-const hrDeco = Decoration.replace({ widget: new HrWidget() });
+export const bulletDeco = Decoration.replace({ widget: new BulletWidget() });
+export const hrDeco = Decoration.replace({ widget: new HrWidget() });
 
 // Does the `ListMark`'s ListItem hold a GFM TaskMarker (`[ ]` / `[x]`)?
 // Those are already rendered as a checkbox by cm-task-list.ts, so we hide the
 // leading dash instead of swapping in a bullet.
-function listItemHasTask(listMark: MdSyntaxNode): boolean {
+export function listItemHasTask(listMark: MdSyntaxNode): boolean {
   const item = listMark.parent; // ListItem
   if (!item) return false;
   for (let child = item.firstChild; child; child = child.nextSibling) {

@@ -25,6 +25,7 @@ import {
 import { frozenDuringComposition, isImeSafeFlushTransaction } from './cm-ime-guard';
 import { tags as t } from '@lezer/highlight';
 import { isDragging, isDragEndTransaction } from './cm-drag-aware';
+import { bulletDeco, hrDeco, listItemHasTask, type MdSyntaxNode } from './cm-live-render';
 
 // Marker node names (from @lezer/markdown) we want to hide off-line.
 // LinkMark (brackets) and CodeMark (backticks) intentionally kept visible —
@@ -80,24 +81,55 @@ const liveMarkdownPlugin = ViewPlugin.fromClass(
           from,
           to,
           enter: (node) => {
-            if (!HIDDEN_MARK_NODES.has(node.name)) return;
+            const name = node.name;
             const line = view.state.doc.lineAt(node.from).number;
-            // Keep markers visible on the line(s) the cursor / selection touches.
-            if (line >= fromLine && line <= toLine) return;
-            // v4.3.5 #83 — gulp the single trailing space after the ATX
-            // marker so H1..H6 text aligns at the same visual column. Each
-            // heading line has its own font-size; a leftover " " character
-            // at 1.85em vs 1.1em prints visibly different widths and made
-            // the headings look staggered.
-            let to_ = node.to;
-            if (node.name === 'HeaderMark') {
-              const lineObj = view.state.doc.lineAt(node.from);
-              if (lineObj.from === node.from && node.to - node.from <= 6) {
-                const after = view.state.doc.sliceString(node.to, Math.min(node.to + 1, view.state.doc.length));
-                if (after === ' ') to_ = node.to + 1;
+            // Keep everything raw on the line(s) the cursor / selection touches.
+            const onCaretLine = line >= fromLine && line <= toLine;
+
+            if (HIDDEN_MARK_NODES.has(name)) {
+              if (onCaretLine) return;
+              // v4.3.5 #83 — gulp the single trailing space after the ATX
+              // marker so H1..H6 text aligns at the same visual column. Each
+              // heading line has its own font-size; a leftover " " character
+              // at 1.85em vs 1.1em prints visibly different widths and made
+              // the headings look staggered.
+              let to_ = node.to;
+              if (name === 'HeaderMark') {
+                const lineObj = view.state.doc.lineAt(node.from);
+                if (lineObj.from === node.from && node.to - node.from <= 6) {
+                  const after = view.state.doc.sliceString(node.to, Math.min(node.to + 1, view.state.doc.length));
+                  if (after === ' ') to_ = node.to + 1;
+                }
               }
+              builder.add(node.from, to_, hideDeco);
+              return;
             }
-            builder.add(node.from, to_, hideDeco);
+
+            // v4.7.1 — same list / horizontal-rule rendering as the liveEdit
+            // extension (cm-live-render.ts), so the edit-mode livePreview toggle
+            // is consistent: a heading that renders shouldn't sit above a bullet
+            // list that doesn't.
+            if (name === 'ListMark') {
+              if (onCaretLine || node.to <= node.from) return;
+              const mark = view.state.doc.sliceString(node.from, node.to);
+              const isBullet = mark === '-' || mark === '*' || mark === '+';
+              if (!isBullet) return; // ordered list keeps its number
+              if (listItemHasTask(node.node as unknown as MdSyntaxNode)) {
+                const after = view.state.doc.sliceString(
+                  node.to,
+                  Math.min(node.to + 1, view.state.doc.length),
+                );
+                builder.add(node.from, after === ' ' ? node.to + 1 : node.to, hideDeco);
+              } else {
+                builder.add(node.from, node.to, bulletDeco);
+              }
+              return;
+            }
+            if (name === 'HorizontalRule') {
+              if (onCaretLine || node.to <= node.from) return;
+              builder.add(node.from, node.to, hrDeco);
+              return;
+            }
           },
         });
       }
