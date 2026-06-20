@@ -38,12 +38,23 @@
 
 import { syntaxTree, HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import type { Range } from '@codemirror/state';
+
+// Minimal structural view of a lezer `SyntaxNode`. `@lezer/common` is only a
+// transitive dependency (not in our package.json), so we describe just the
+// tree-walk fields we touch rather than importing the real type.
+interface MdSyntaxNode {
+  name: string;
+  parent: MdSyntaxNode | null;
+  firstChild: MdSyntaxNode | null;
+  nextSibling: MdSyntaxNode | null;
+}
 import {
   Decoration,
   type DecorationSet,
   EditorView,
   ViewPlugin,
   type ViewUpdate,
+  WidgetType,
 } from '@codemirror/view';
 import { frozenDuringComposition, isImeSafeFlushTransaction } from './cm-ime-guard';
 import { tags as t } from '@lezer/highlight';
@@ -88,6 +99,59 @@ const fencedLine = lineClass('cm-md-fenced-line');
 const headingLine = (level: number) => lineClass(`cm-md-heading-line cm-md-heading-line-${level}`);
 
 const hideDeco = Decoration.replace({});
+
+// ---------------------------------------------------------------------------
+// List + horizontal-rule rendering (v4.7.1). Off the caret line we render
+// the markdown the way a preview would; on the caret line the raw source is
+// revealed so it stays editable — same model as the inline marks above.
+//   - `- item` / `* item` / `+ item` → the marker becomes a • bullet glyph.
+//   - `1. item`                       → number kept (it IS the visual), just
+//                                       styled; not replaced.
+//   - `- [ ] item`                    → the dash is hidden so the checkbox
+//                                       (rendered by cm-task-list.ts) leads.
+//   - `---` / `***` / `___`           → a real <hr> rule.
+// ---------------------------------------------------------------------------
+class BulletWidget extends WidgetType {
+  eq() {
+    return true;
+  }
+  toDOM() {
+    const span = document.createElement('span');
+    span.className = 'cm-md-bullet';
+    span.textContent = '•';
+    span.setAttribute('aria-hidden', 'true');
+    return span;
+  }
+  ignoreEvent() {
+    return false;
+  }
+}
+
+class HrWidget extends WidgetType {
+  eq() {
+    return true;
+  }
+  toDOM() {
+    const hr = document.createElement('hr');
+    hr.className = 'cm-md-hr';
+    return hr;
+  }
+}
+
+const bulletDeco = Decoration.replace({ widget: new BulletWidget() });
+const hrDeco = Decoration.replace({ widget: new HrWidget() });
+
+// Does the `ListMark`'s ListItem hold a GFM TaskMarker (`[ ]` / `[x]`)?
+// Those are already rendered as a checkbox by cm-task-list.ts, so we hide the
+// leading dash instead of swapping in a bullet.
+function listItemHasTask(listMark: MdSyntaxNode): boolean {
+  const item = listMark.parent; // ListItem
+  if (!item) return false;
+  for (let child = item.firstChild; child; child = child.nextSibling) {
+    if (child.name === 'TaskMarker' || child.name === 'Task') return true;
+  }
+  return false;
+}
 
 // Heading nodes 1..6 → level
 const HEADING_LEVELS: Record<string, number> = {
@@ -236,6 +300,35 @@ function buildDecorations(view: EditorView): DecorationSet {
           }
           return;
         }
+
+        // ---- List markers (v4.7.1) ----
+        // Bullets (`-`/`*`/`+`) become a • glyph; ordered numbers stay; a
+        // task item's dash is hidden so the checkbox widget leads. Revealed
+        // (raw) on the caret line so the marker stays editable.
+        if (name === 'ListMark') {
+          if (caretTouches || nTo <= nFrom) return;
+          const mark = view.state.doc.sliceString(nFrom, nTo);
+          const isBullet = mark === '-' || mark === '*' || mark === '+';
+          if (!isBullet) return; // ordered list ("1.", "2)") keeps its number
+          if (listItemHasTask(node.node as unknown as MdSyntaxNode)) {
+            // Hide "- " (dash + trailing space) — the checkbox renders the item.
+            const after = view.state.doc.sliceString(
+              nTo,
+              Math.min(nTo + 1, view.state.doc.length),
+            );
+            ranges.push(hideDeco.range(nFrom, after === ' ' ? nTo + 1 : nTo));
+          } else {
+            ranges.push(bulletDeco.range(nFrom, nTo));
+          }
+          return;
+        }
+
+        // ---- Horizontal rule (v4.7.1): `---` / `***` / `___` → <hr> ----
+        if (name === 'HorizontalRule') {
+          if (caretTouches || nTo <= nFrom) return;
+          ranges.push(hrDeco.range(nFrom, nTo));
+          return;
+        }
       },
     });
   }
@@ -378,6 +471,24 @@ const liveEditTheme = EditorView.theme({
     textUnderlineOffset: '2px',
   },
 
+  // v4.7.1 — bullet glyph that replaces a `-`/`*`/`+` list marker off-line.
+  '.cm-md-bullet': {
+    color: 'var(--md-list)',
+    fontWeight: '700',
+  },
+
+  // v4.7.1 — `---` / `***` / `___` rendered as a real rule off-line. The
+  // widget replaces the whole marker run, so make it span the text column.
+  '.cm-md-hr': {
+    display: 'inline-block',
+    width: '100%',
+    height: '0',
+    margin: '0.2em 0',
+    border: 'none',
+    borderTop: '1px solid var(--border)',
+    verticalAlign: 'middle',
+  },
+
   '.cm-md-quote-line': {
     borderLeft: '3px solid var(--border)',
     paddingLeft: '12px',
@@ -456,4 +567,6 @@ export const LIVE_EDIT_CLASSES = [
   'cm-md-link',
   'cm-md-quote-line',
   'cm-md-fenced-line',
+  'cm-md-bullet',
+  'cm-md-hr',
 ] as const;
