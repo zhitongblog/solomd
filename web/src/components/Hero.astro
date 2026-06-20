@@ -84,6 +84,15 @@ const initialDownloadsText = initialDownloads > 0 ? fmtDownloads(initialDownload
   <span class="android-beta-banner__text">{tr.hero.androidBeta}</span>
 </a>
 
+<a class="release-banner" href={whatsNewHref}>
+  <span class="release-banner__tag">v4.7</span>
+  <span class="release-banner__text">{
+    lang === 'zh'
+      ? 'Windows 换上全新编辑器 —— 修复中文 / 输入法吞掉首字与双标点（仅 Windows，其他平台不变）。查看更新 →'
+      : 'Windows now ships a rebuilt editor that fixes CJK / IME first-character drop and doubled punctuation (Windows only — other platforms unchanged). What’s new →'
+  }</span>
+</a>
+
 <section class="hero">
   <div class="container hero__inner">
     <div class="hero__badge">{tr.hero.badge} · <span id="hero-stars">{initialStarsText}</span> · <span id="hero-dl-count">{initialDownloadsText}</span></div>
@@ -284,6 +293,43 @@ const initialDownloadsText = initialDownloads > 0 ? fmtDownloads(initialDownload
   .android-beta-banner__text { display: inline-block; }
   @media (max-width: 640px) {
     .android-beta-banner { font-size: 13px; padding: 10px 14px; }
+  }
+
+  /* v4.7 release announcement — a calmer info bar under the orange Android
+     banner. Calls out the Windows-only editor rebuild so visitors learn
+     about it without having to open the What's-new page. */
+  .release-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    text-decoration: none;
+    padding: 10px 20px;
+    background: color-mix(in srgb, var(--accent) 9%, var(--bg-elev));
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    font-size: 13.5px;
+    line-height: 1.4;
+    transition: background 0.15s;
+  }
+  .release-banner:hover {
+    background: color-mix(in srgb, var(--accent) 16%, var(--bg-elev));
+  }
+  .release-banner__tag {
+    flex: none;
+    padding: 2px 9px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #1a1a1a;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  .release-banner__text { font-weight: 500; }
+  @media (max-width: 640px) {
+    .release-banner { font-size: 12.5px; padding: 9px 14px; gap: 8px; }
   }
 
   /* Flat cream hero — the orange radial-gradient that used to bloom
