@@ -204,6 +204,45 @@ export function livePreviewExtension() {
 }
 
 /** Just the rich highlight style without hiding markers (raw source mode). */
+// Plain-source highlight used when the livePreview toggle is OFF. Unlike
+// `markdownRichStyle` it applies NO font-size / font-weight / italic changes
+// to markdown structure — headings stay body-sized, `**bold**` and `# head`
+// read as literal source. Only light token COLORS remain (plus full syntax
+// highlighting inside fenced code, which is genuinely code). This keeps the
+// source ↔ live toggle meaningfully distinct: "off" is plain editing, "on" is
+// a rendered preview — instead of both looking like a preview. (User ask,
+// 2026-06-20: "没打开实时预览时标题还是被预览了 / 两个按钮等于一样了".)
+export const markdownPlainStyle = HighlightStyle.define([
+  { tag: t.heading1, color: 'var(--md-h1)' },
+  { tag: t.heading2, color: 'var(--md-h2)' },
+  { tag: t.heading3, color: 'var(--md-h3)' },
+  { tag: t.heading4, color: 'var(--md-h4)' },
+  { tag: t.heading5, color: 'var(--md-h5)' },
+  { tag: t.heading6, color: 'var(--md-h6)' },
+  { tag: t.strong, color: 'var(--md-strong)' },
+  { tag: t.emphasis, color: 'var(--md-em)' },
+  { tag: t.strikethrough, color: 'var(--text-muted)' },
+  { tag: t.link, color: 'var(--md-link)' },
+  { tag: t.url, color: 'var(--md-url)' },
+  { tag: t.monospace, fontFamily: 'var(--font-mono)', color: 'var(--md-code)' },
+  { tag: t.quote, color: 'var(--md-quote)' },
+  { tag: t.list, color: 'var(--md-list)' },
+  { tag: t.processingInstruction, color: 'var(--text-faint)' },
+  { tag: t.contentSeparator, color: 'var(--md-hr)' },
+  // Fenced-code syntax — genuinely code, keep the colors (no size changes).
+  { tag: t.keyword, color: 'var(--syn-keyword)' },
+  { tag: t.string, color: 'var(--syn-string)' },
+  { tag: t.number, color: 'var(--syn-number)' },
+  { tag: t.comment, color: 'var(--syn-comment)' },
+  { tag: t.function(t.variableName), color: 'var(--syn-function)' },
+  { tag: t.variableName, color: 'var(--syn-variable)' },
+  { tag: t.typeName, color: 'var(--syn-type)' },
+  { tag: t.propertyName, color: 'var(--syn-property)' },
+  { tag: t.operator, color: 'var(--syn-operator)' },
+  { tag: t.punctuation, color: 'var(--text-muted)' },
+  { tag: t.bracket, color: 'var(--text-muted)' },
+]);
+
 export function richHighlightOnly() {
-  return [syntaxHighlighting(markdownRichStyle)];
+  return [syntaxHighlighting(markdownPlainStyle)];
 }
