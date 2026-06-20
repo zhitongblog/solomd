@@ -61,7 +61,7 @@ import { useExport } from './composables/useExport';
 import { useShortcuts } from './composables/useShortcuts';
 import { useFileWatcher } from './composables/useFileWatcher';
 import { loadCustomTheme } from './lib/custom-theme';
-import { isIOS } from './lib/platform';
+import { isIOS, isMacOS } from './lib/platform';
 import { useI18n } from './i18n';
 import { track } from './lib/telemetry';
 import { openWelcomeTour } from './lib/welcome-tour';
@@ -374,6 +374,13 @@ watch(
 const applyWindowTitle = async (name?: string) => {
   const title = name ? `${name} — SoloMD` : 'SoloMD';
   document.title = title;
+  // macOS uses `titleBarStyle: "Overlay"` + `hiddenTitle: true` — the
+  // document name is shown in the in-app toolbar (#MD brand + filename).
+  // Calling setTitle() here would un-hide the native macOS title bar text,
+  // which overlaps and obscures the in-app toolbar's document name.
+  // Skip the native call on macOS; document.title above is enough for
+  // taskbar / mission-control / window-switcher labels.
+  if (isMacOS()) return;
   try {
     await getCurrentWindow().setTitle(title);
   } catch (err) {

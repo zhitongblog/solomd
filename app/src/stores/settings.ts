@@ -143,6 +143,8 @@ interface Settings {
   // Backlinks / Tags / History / Agent Panel. The agent panel needs more
   // room than read-only browsing; user-resizable via the drag handle.
   sideSidebarWidth: number;
+  // Width (in px) of the left file tree sidebar. User-resizable via drag handle.
+  fileTreeWidth: number;
   // v2.0 F4: BYOK AI rewrite. `aiProvider` is a stable id from
   // ai-providers.ts PROVIDERS — widened to string to avoid breaking when
   // new providers land.
@@ -398,6 +400,7 @@ function defaults(): Settings {
     agentAllowWrite: false,
     agentToolLoopCap: 8,
     sideSidebarWidth: 260,
+    fileTreeWidth: 240,
     aiEnabled: false,
     aiProvider: 'openai',
     aiModel: '',
@@ -782,6 +785,13 @@ export const useSettingsStore = defineStore('settings', {
       // eats too much editor space.
       const clean = Math.max(220, Math.min(800, Math.round(w) || 260));
       this.sideSidebarWidth = clean;
+      this.persist();
+    },
+    setFileTreeWidth(w: number) {
+      // Reasonable bounds — narrower than 180 hides text, wider than 600
+      // eats too much editor space.
+      const clean = Math.max(180, Math.min(600, Math.round(w) || 240));
+      this.fileTreeWidth = clean;
       this.persist();
     },
     setDailyNotesFolder(p: string) {
