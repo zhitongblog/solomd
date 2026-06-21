@@ -5,7 +5,7 @@ import Footer from '../../components/Footer.astro';
 import Giscus from '../../components/Giscus.astro';
 
 const lang = 'zh' as const;
-const VERSION = '4.7.1';
+const VERSION = '4.7.2';
 const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERSION}`;
 ---
 
@@ -62,6 +62,12 @@ const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERS
         <p style="opacity:.8;">
           <strong>macOS、Linux、iOS 和 Android 不受影响</strong> —— 继续使用现有的
           CodeMirror 编辑器。4.7 还修复了:命令面板在悬停或滚轮滚动列表时不再乱跳（#93）。
+        </p>
+        <p style="margin-top:14px;">
+          <strong>4.7.2</strong> —— 文件树支持<strong>拖拽调节侧边栏宽度</strong>
+          （拖边缘,180–600&nbsp;px）、<strong>按文件类型显示图标</strong>、长文件名
+          中间省略;macOS 标题栏不再与应用内工具栏重叠（#121）。另外修复 PDF 导出:
+          <strong>正文段落和列表项不再在分页处被横向切断</strong>。
         </p>
         <p style="margin-top:14px;">
           <strong>4.7.1</strong> —— 实时预览现在不只渲染标题,无序列表（•）、任务复选框、
