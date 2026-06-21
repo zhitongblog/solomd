@@ -306,7 +306,19 @@ export async function markdownToPdfBlob(
         },
         pagebreak: {
           mode: ['css', 'legacy'],
-          avoid: ['pre', '.mermaid-block', 'table', 'blockquote', 'h1', 'h2', 'h3'],
+          // html2canvas rasterises the whole document and jsPDF slices it by
+          // page height, so a page break can shear a line of body text in
+          // half. `avoid` makes html2pdf's element-level pass push these whole
+          // elements onto the next page instead. Body paragraphs (`p`), list
+          // items (`li`) and images (`img`) were missing — that left running
+          // text getting cut across the page boundary. (We deliberately keep
+          // `ul`/`ol` OUT: avoiding those would treat a whole multi-page list
+          // as one unsplittable block; we break between `li`s instead.)
+          avoid: [
+            'pre', '.mermaid-block', 'table', 'blockquote',
+            'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+            'p', 'li', 'img',
+          ],
         },
       };
       const worker = html2pdf().set(opts).from(page);
