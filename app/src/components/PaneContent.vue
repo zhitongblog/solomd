@@ -93,7 +93,15 @@ function bindScrollSync() {
 
   const paneEl = document.querySelector(`[data-pane-id="${props.paneId}"]`);
   if (!paneEl) return;
-  const editor = paneEl.querySelector('.pane--editor .cm-scroller') as HTMLElement | null;
+  // The editor's scroll container differs by platform: CodeMirror exposes
+  // `.cm-scroller`, but on Windows the live editor is the native-textarea plain
+  // editor (`usePlainWindowsEditor`, v4.7) which has no CodeMirror — it scrolls
+  // via `.plain-editor` (source/split) or `.plain-block-editor` (live). Matching
+  // only `.cm-scroller` silently dropped scroll-sync on Windows. The exposed
+  // `getViewLine()` / `scrollToLine()` already handle both editor paths.
+  const editor = paneEl.querySelector(
+    '.pane--editor .cm-scroller, .pane--editor .plain-block-editor, .pane--editor .plain-editor',
+  ) as HTMLElement | null;
   const preview = paneEl.querySelector('.pane--preview .preview-host') as HTMLElement | null;
   if (!editor || !preview) return;
 
