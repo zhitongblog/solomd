@@ -5,7 +5,7 @@ import Footer from '../../components/Footer.astro';
 import Giscus from '../../components/Giscus.astro';
 
 const lang = 'zh' as const;
-const VERSION = '4.7.2';
+const VERSION = '4.7.3';
 const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERSION}`;
 ---
 
@@ -62,6 +62,12 @@ const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERS
         <p style="opacity:.8;">
           <strong>macOS、Linux、iOS 和 Android 不受影响</strong> —— 继续使用现有的
           CodeMirror 编辑器。4.7 还修复了:命令面板在悬停或滚轮滚动列表时不再乱跳（#93）。
+        </p>
+        <p style="margin-top:14px;">
+          <strong>4.7.3</strong> —— <strong>PDF 导出</strong>不再因主题或内容使用现代
+          CSS 颜色函数（<code>color()</code>、<code>oklch()</code>、<code>color-mix()</code>）
+          而报错,导出失败也不再导致界面卡死或可缩放（#115）。另外:<strong>分屏同步滚动</strong>
+          在 Windows 上恢复正常 —— 4.7 重写 Windows 编辑器后,编辑区与预览不再互相跟随的问题已修复。
         </p>
         <p style="margin-top:14px;">
           <strong>4.7.2</strong> —— 文件树支持<strong>拖拽调节侧边栏宽度</strong>
