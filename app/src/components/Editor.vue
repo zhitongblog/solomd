@@ -1039,6 +1039,45 @@ function handlePlainBlockKeydown(index: number, event: KeyboardEvent) {
   if (plainComposing) return;
   if (handleAutocompleteKeydown(event)) return;
   if (handlePlainKeydownShared(event)) return;
+  // Block-boundary Backspace / Delete. Each block is a standalone <textarea>, so
+  // native Backspace at offset 0 (or Delete at the end) can't reach the
+  // neighbouring block — it silently no-ops at every block edge, which users
+  // experience as Backspace/Delete "时灵时不灵". We fold the deletion onto the
+  // full source instead: deleting the single separator char before/after the
+  // block transparently removes a blank line or joins two paragraphs, exactly
+  // as a single whole-document <textarea> would. (Plain key only — let the
+  // browser keep word-delete / selection-delete.)
+  if (
+    (event.key === 'Backspace' || event.key === 'Delete') &&
+    !event.ctrlKey && !event.metaKey && !event.altKey
+  ) {
+    const el = event.target as HTMLTextAreaElement;
+    const block = plainBlocks.value[index];
+    const selStart = el.selectionStart ?? 0;
+    const selEnd = el.selectionEnd ?? 0;
+    if (block && selStart === selEnd) {
+      if (event.key === 'Backspace' && selStart === 0 && block.start > 0) {
+        event.preventDefault();
+        const delAt = block.start - 1; // the separator/char before this block
+        applyPlainFullEdit(
+          plainText.value.slice(0, delAt) + plainText.value.slice(delAt + 1),
+          delAt,
+        );
+        return;
+      }
+      if (event.key === 'Delete' && selStart === el.value.length) {
+        const delAt = block.start + el.value.length; // separator after visible text
+        if (delAt < plainText.value.length) {
+          event.preventDefault();
+          applyPlainFullEdit(
+            plainText.value.slice(0, delAt) + plainText.value.slice(delAt + 1),
+            delAt,
+          );
+          return;
+        }
+      }
+    }
+  }
   if (event.key === 'Tab') {
     event.preventDefault();
     const el = event.target as HTMLTextAreaElement;
@@ -1258,6 +1297,37 @@ function handlePlainBlockCompositionEnd(index: number, event: CompositionEvent) 
   const el = event.target as HTMLTextAreaElement;
   autoSizePlainBlock(el);
   updatePlainBlock(index, el.value, el.selectionStart ?? el.value.length);
+}
+
+/**
+ * Apply an edit expressed against the FULL document source (not a single block)
+ * and restore the caret at an absolute offset. Used by block-boundary
+ * Backspace / Delete, where the deletion crosses a block separator and so can't
+ * be modelled as a single-block `updatePlainBlock`. Mirrors updatePlainBlock's
+ * re-split + caret-restore tail so the active <textarea> follows the caret.
+ */
+function applyPlainFullEdit(next: string, absoluteCaret: number) {
+  if (!plainComposing) recordPlainHistory();
+  plainText.value = next;
+  tabs.setContent(props.tab.id, next);
+  const nextBlocks = splitPlainMarkdownBlocks(next);
+  let found = nextBlocks.findIndex(
+    (candidate) => absoluteCaret >= candidate.start && absoluteCaret < candidate.end,
+  );
+  if (found < 0) found = nextBlocks.length - 1;
+  plainActiveBlock.value = found;
+  nextTick(() => {
+    const activeBlock = plainBlocks.value[plainActiveBlock.value];
+    const el = plainBlockEditors.value[plainActiveBlock.value];
+    if (!el) return;
+    if (document.activeElement !== el) el.focus();
+    autoSizePlainBlock(el);
+    if (activeBlock) {
+      const pos = Math.max(0, Math.min(absoluteCaret - activeBlock.start, el.value.length));
+      el.setSelectionRange(pos, pos);
+    }
+    emitPlainCursorAndSelection();
+  });
 }
 
 function updatePlainBlock(index: number, text: string, caret?: number) {
