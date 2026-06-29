@@ -1,6 +1,6 @@
 [package]
 name = "solomd"
-version = "4.7.5"
+version = "4.8.0"
 description = "SoloMD — a lightweight, cross-platform Markdown + plain text editor"
 authors = ["zhitong"]
 edition = "2021"
