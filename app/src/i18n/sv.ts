@@ -1171,6 +1171,10 @@ export const sv: I18n = {
     pullFailed: 'Pull misslyckades',
     pullConflicts: 'Pull mergad med {n} konflikt(er) — lös i historikpanelen.',
     notLinked: 'Den här arbetsytan är inte länkad till något GitHub-repo.',
+    tokenExpired: 'GitHub-inloggningen har gått ut — återanslut i Inställningar → Sync.',
+    tokenExpiredTitle: 'GitHub-anslutningen har gått ut',
+    tokenExpiredBanner: 'Din sparade GitHub-token avvisades (utgången eller återkallad), så synkroniseringen är pausad. Återanslut med en ny token för att återuppta.',
+    reconnectBtn: 'Återanslut',
 
     advanced: 'Avancerat',
     autoPushLabel: 'Auto-pusha efter varje sparning',

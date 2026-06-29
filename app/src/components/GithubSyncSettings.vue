@@ -96,8 +96,18 @@ onMounted(async () => {
   }
   if (sync.hasToken && !sync.isLinked) {
     await Promise.all([sync.refreshUser(), sync.listRepos().catch(() => {})]);
+  } else if (sync.hasToken && sync.isLinked) {
+    // Linked + has a token: proactively verify it so opening Settings flags an
+    // expired / revoked PAT (sets sync.tokenInvalid) even before the next sync.
+    void sync.refreshUser();
   }
 });
+
+/** Reconnect after the saved token went bad: drop the dead credential so the
+ *  sign-in form reappears (the workspace ↔ repo link is kept). */
+async function reconnect() {
+  await sync.clearToken();
+}
 
 watch(
   () => workspace.currentFolder,
@@ -323,6 +333,19 @@ const linkedRepoLabel = computed(() => {
         <strong>{{ t('githubSync.keychainHintTitle') }}</strong>
         <p>{{ t('githubSync.keychainHintBody') }}</p>
       </div>
+    </div>
+
+    <!-- Token-expired banner: the saved PAT was rejected by GitHub (401 /
+         Bad credentials). Sync is paused until the user reconnects. -->
+    <div v-if="sync.tokenInvalid" class="ghs-authwarn">
+      <span class="ghs-authwarn__icon">⚠️</span>
+      <div class="ghs-authwarn__body">
+        <strong>{{ t('githubSync.tokenExpiredTitle') }}</strong>
+        <p>{{ t('githubSync.tokenExpiredBanner') }}</p>
+      </div>
+      <button class="ghs-btn ghs-btn--primary" @click="reconnect">
+        {{ t('githubSync.reconnectBtn') }}
+      </button>
     </div>
 
     <!-- ──────────────────────────────────────────────────────────────── -->
@@ -961,6 +984,36 @@ const linkedRepoLabel = computed(() => {
   margin-bottom: 4px;
 }
 .ghs-keychain-hint p {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+/* Token-expired warning banner — uses the danger hue, not the accent. */
+.ghs-authwarn {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  background: color-mix(in srgb, var(--danger, #e5484d) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--danger, #e5484d) 35%, transparent);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin: 0 0 12px;
+}
+.ghs-authwarn__icon {
+  font-size: 18px;
+  line-height: 1;
+}
+.ghs-authwarn__body {
+  flex: 1;
+}
+.ghs-authwarn__body strong {
+  display: block;
+  font-size: 12px;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.ghs-authwarn__body p {
   margin: 0;
   font-size: 11px;
   color: var(--text-muted);

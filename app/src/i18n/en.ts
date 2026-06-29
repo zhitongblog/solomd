@@ -1171,6 +1171,10 @@ export const en = {
     pullFailed: 'Pull failed',
     pullConflicts: 'Pull merged with {n} conflict(s) — resolve in History panel.',
     notLinked: 'This workspace is not linked to a GitHub repo.',
+    tokenExpired: 'GitHub login expired — reconnect in Settings → Sync.',
+    tokenExpiredTitle: 'GitHub connection expired',
+    tokenExpiredBanner: 'Your saved GitHub token was rejected (expired or revoked), so sync is paused. Reconnect with a fresh token to resume.',
+    reconnectBtn: 'Reconnect',
 
     advanced: 'Advanced',
     autoPushLabel: 'Auto-push after every save',

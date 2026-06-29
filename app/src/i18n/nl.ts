@@ -1171,6 +1171,10 @@ export const nl: I18n = {
     pullFailed: 'Pull mislukt',
     pullConflicts: 'Pull samengevoegd met {n} conflict(en) — los op in het Geschiedenis-paneel.',
     notLinked: 'Deze werkruimte is niet gekoppeld aan een GitHub-repo.',
+    tokenExpired: 'GitHub-aanmelding verlopen — verbind opnieuw via Instellingen → Sync.',
+    tokenExpiredTitle: 'GitHub-verbinding verlopen',
+    tokenExpiredBanner: 'Je opgeslagen GitHub-token is geweigerd (verlopen of ingetrokken), dus de synchronisatie is gepauzeerd. Verbind opnieuw met een nieuw token om te hervatten.',
+    reconnectBtn: 'Opnieuw verbinden',
 
     advanced: 'Geavanceerd',
     autoPushLabel: 'Auto-push na elke opslag',

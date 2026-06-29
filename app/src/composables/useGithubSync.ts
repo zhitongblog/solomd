@@ -11,7 +11,7 @@
  * the mistake in v2.6.
  */
 import { watch } from 'vue';
-import { useGithubSyncStore } from '../stores/githubSync';
+import { useGithubSyncStore, isGithubAuthError } from '../stores/githubSync';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useToastsStore } from '../stores/toasts';
 import { useI18n } from '../i18n';
@@ -21,6 +21,25 @@ export function useGithubSync() {
   const workspace = useWorkspaceStore();
   const toasts = useToastsStore();
   const { t } = useI18n();
+
+  /**
+   * Turn a sync failure into a toast. If it's an auth failure (expired /
+   * revoked token), flag it on the store (drives the Settings reconnect
+   * banner) and show ONE clear, actionable message — not the raw
+   * `GitHub API 401: Bad credentials`, and not once per auto-pull tick.
+   * Returns true if it was handled as an auth error.
+   */
+  function reportSyncError(e: unknown, fallbackKey: string): void {
+    if (isGithubAuthError(e)) {
+      const wasInvalid = sync.tokenInvalid;
+      sync.tokenInvalid = true;
+      // Only surface the toast on the first detection, so the periodic
+      // auto-pull doesn't spam an expired-token banner every N minutes.
+      if (!wasInvalid) toasts.error(t('githubSync.tokenExpired'), 6000);
+      return;
+    }
+    toasts.error(`${t(fallbackKey)}: ${e}`);
+  }
 
   let listening = false;
   let pulling = false;
@@ -42,7 +61,7 @@ export function useGithubSync() {
       await sync.push(folder);
       toasts.success(t('githubSync.pushedToast'));
     } catch (e) {
-      toasts.error(`${t('githubSync.pushFailed')}: ${e}`);
+      reportSyncError(e, 'githubSync.pushFailed');
     }
   }
 
@@ -81,7 +100,7 @@ export function useGithubSync() {
         // `sync.status.has_conflicts` is true.
       }
     } catch (e) {
-      toasts.error(`${t('githubSync.pullFailed')}: ${e}`);
+      reportSyncError(e, 'githubSync.pullFailed');
     } finally {
       pulling = false;
     }
@@ -160,7 +179,7 @@ export function useGithubSync() {
       await sync.push(folder);
       toasts.success(t('githubSync.pushedToast'));
     } catch (e) {
-      toasts.error(`${t('githubSync.pushFailed')}: ${e}`);
+      reportSyncError(e, 'githubSync.pushFailed');
     }
   }
 

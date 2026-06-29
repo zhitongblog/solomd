@@ -1171,6 +1171,10 @@ export const pl: I18n = {
     pullFailed: 'Pull nie powiódł się',
     pullConflicts: 'Pull scalony z {n} konfliktami — rozwiąż w panelu Historia.',
     notLinked: 'Ten obszar roboczy nie jest połączony z repo GitHub.',
+    tokenExpired: 'Logowanie do GitHub wygasło — połącz ponownie w Ustawienia → Sync.',
+    tokenExpiredTitle: 'Połączenie z GitHub wygasło',
+    tokenExpiredBanner: 'Zapisany token GitHub został odrzucony (wygasł lub został unieważniony), więc synchronizacja jest wstrzymana. Połącz ponownie przy użyciu nowego tokenu, aby wznowić.',
+    reconnectBtn: 'Połącz ponownie',
 
     advanced: 'Zaawansowane',
     autoPushLabel: 'Auto-push po każdym zapisie',

@@ -79,6 +79,19 @@ interface State {
   pushing: boolean;
   pulling: boolean;
   lastError: string | null;
+  /** Set when GitHub rejects the stored token (401 / Bad credentials), i.e.
+   *  the PAT expired or was revoked. Drives a "reconnect" banner + toast so the
+   *  user isn't left staring at a raw `GitHub API 401` on their next sync. */
+  tokenInvalid: boolean;
+}
+
+/** Does this error indicate the GitHub token is no longer valid (expired /
+ *  revoked)? The Rust side surfaces `GitHub API 401 Unauthorized: {...Bad
+ *  credentials...}`; match on either signal. Exported so the auto-sync glue
+ *  reuses the exact same classification. */
+export function isGithubAuthError(e: unknown): boolean {
+  const s = String((e as { message?: string })?.message ?? e ?? '');
+  return /\b401\b|bad credentials/i.test(s);
 }
 
 export const useGithubSyncStore = defineStore('githubSync', {
@@ -92,6 +105,7 @@ export const useGithubSyncStore = defineStore('githubSync', {
     pushing: false,
     pulling: false,
     lastError: null,
+    tokenInvalid: false,
   }),
 
   getters: {
@@ -125,14 +139,19 @@ export const useGithubSyncStore = defineStore('githubSync', {
       this.hasToken = false;
       this.user = null;
       this.repos = [];
+      this.tokenInvalid = false;
     },
 
     async refreshUser(): Promise<void> {
       try {
         this.user = await invoke<GitHubUser>('github_user');
+        // A successful /user call proves the token is good again — clear any
+        // stale "expired" flag (e.g. after the user reconnects).
+        this.tokenInvalid = false;
       } catch (e) {
         this.lastError = String(e);
         this.user = null;
+        if (isGithubAuthError(e)) this.tokenInvalid = true;
       }
     },
 
@@ -140,10 +159,12 @@ export const useGithubSyncStore = defineStore('githubSync', {
       this.loading = true;
       try {
         this.repos = await invoke<GitHubRepo[]>('github_list_repos');
+        this.tokenInvalid = false;
         return this.repos;
       } catch (e) {
         this.lastError = String(e);
         this.repos = [];
+        if (isGithubAuthError(e)) this.tokenInvalid = true;
         throw e;
       } finally {
         this.loading = false;

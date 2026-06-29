@@ -1160,6 +1160,10 @@ export const zh: I18n = {
     pullFailed: '拉取失败',
     pullConflicts: '已合并，有 {n} 个冲突需要在历史面板里解决。',
     notLinked: '此工作区尚未绑定 GitHub 仓库。',
+    tokenExpired: 'GitHub 登录已失效 —— 请在 设置 → 同步 中重新连接。',
+    tokenExpiredTitle: 'GitHub 连接已失效',
+    tokenExpiredBanner: '保存的 GitHub token 被拒绝（已过期或被吊销），同步已暂停。请用新的 token 重新连接以恢复。',
+    reconnectBtn: '重新连接',
 
     advanced: '高级',
     autoPushLabel: '保存后自动推送',

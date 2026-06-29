@@ -1171,6 +1171,10 @@ export const tr: I18n = {
     pullFailed: 'Pull başarısız',
     pullConflicts: 'Pull {n} çakışma ile birleştirildi — Geçmiş panelinden çözün.',
     notLinked: 'Bu çalışma alanı bir GitHub deposuna bağlı değil.',
+    tokenExpired: 'GitHub oturumunun süresi doldu — Ayarlar → Sync\'ten yeniden bağlanın.',
+    tokenExpiredTitle: 'GitHub bağlantısının süresi doldu',
+    tokenExpiredBanner: 'Kayıtlı GitHub token\'ınız reddedildi (süresi doldu veya iptal edildi), bu yüzden eşitleme duraklatıldı. Devam etmek için yeni bir token ile yeniden bağlanın.',
+    reconnectBtn: 'Yeniden bağlan',
 
     advanced: 'Gelişmiş',
     autoPushLabel: 'Her kayıttan sonra otomatik push',
