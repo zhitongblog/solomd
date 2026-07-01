@@ -85,6 +85,19 @@ fi
 # Idempotent sed: only removes the line if present
 /usr/bin/sed -i.bak '/^      - path: Externals$/d' "$PROJECT_YML" && rm "$PROJECT_YML.bak"
 
+# Force LSSupportsOpeningDocumentsInPlace = false. When true, iOS opens files
+# tapped in the Files app (iCloud Drive / other apps / other "On My iPhone"
+# locations) in place as security-scoped URLs, which Rust's std::fs can't read
+# without startAccessingSecurityScopedResource() — so read_file fails with
+# "No such file or directory" and every Files-app open errors on iPad/iPhone.
+# false makes iOS copy the doc into our sandbox and hand us a readable path.
+# Idempotent: rewrites the value whether the current line says true or false.
+if grep -q "LSSupportsOpeningDocumentsInPlace:" "$PROJECT_YML"; then
+  /usr/bin/sed -i.bak \
+    's|^\( *\)LSSupportsOpeningDocumentsInPlace: .*$|\1LSSupportsOpeningDocumentsInPlace: false|' \
+    "$PROJECT_YML" && rm "$PROJECT_YML.bak"
+fi
+
 echo "==> Patching ExportOptions.plist for app-store-connect + Manual"
 cat > "$EXPORT_PLIST" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
