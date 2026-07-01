@@ -36,7 +36,12 @@ import {
 // view plugin. `relayoutEffect` lets the async Mermaid render (and any other
 // out-of-band trigger) ask the field to recompute.
 const relayoutEffect = StateEffect.define<null>();
-import { resolveImageSrc } from './image-resolve';
+import {
+  installSvgImageFallbacks,
+  isLocalSvgPath,
+  resolveImagePath,
+  resolveImageSrc,
+} from './image-resolve';
 import { renderMarkdown, extractImageRoot } from './markdown';
 import mermaid from 'mermaid';
 import 'katex/contrib/mhchem';
@@ -99,12 +104,13 @@ class ImageWidget extends WidgetType {
   constructor(
     private readonly src: string,
     private readonly alt: string,
+    private readonly localPath: string | null = null,
   ) {
     super();
   }
 
   eq(other: ImageWidget): boolean {
-    return other.src === this.src && other.alt === this.alt;
+    return other.src === this.src && other.alt === this.alt && other.localPath === this.localPath;
   }
 
   toDOM(): HTMLElement {
@@ -115,14 +121,17 @@ class ImageWidget extends WidgetType {
     img.alt = this.alt;
     img.loading = 'lazy';
     img.draggable = false;
+    if (this.localPath) img.dataset.solomdLocalSrc = this.localPath;
     img.onerror = () => {
       // Image failed to load — fall back to a small "broken image" caption
       // rather than a giant empty box. The source text is one cursor-move
       // away regardless.
+      if (this.localPath) return;
       wrap.classList.add('cm-live-block--broken');
       wrap.textContent = `🖼 ${this.alt || this.src}`;
     };
     wrap.appendChild(img);
+    installSvgImageFallbacks(wrap);
     return wrap;
   }
 
@@ -531,11 +540,12 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
               const root = opts.getImageRoot?.() ?? null;
               const filePath = opts.getFilePath?.();
               const src = resolveImageSrc(rawSrc, root, filePath);
+              const localPath = resolveImagePath(rawSrc, root, filePath);
               builder.add(
                 line.from,
                 line.to,
                 Decoration.replace({
-                  widget: new ImageWidget(src, alt),
+                  widget: new ImageWidget(src, alt, isLocalSvgPath(localPath) ? localPath : null),
                   block: true,
                 }),
               );

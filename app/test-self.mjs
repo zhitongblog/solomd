@@ -1,6 +1,7 @@
 // Self-test for SoloMD pure libs (run with: npx tsx test-self.mjs)
 import { simplifiedToTraditional, traditionalToSimplified, pinyin, cjkWordCount } from './src/lib/chinese.ts';
 import { extractOutline, renderMarkdown } from './src/lib/markdown.ts';
+import { rewriteImageUrls, svgTextToDataUrl } from './src/lib/image-resolve.ts';
 import { cleanAIArtifacts, stripMarkdownToPlain } from './src/lib/clean-ai.ts';
 
 let pass = 0, fail = 0;
@@ -28,6 +29,26 @@ ok('renders mark highlight', html.includes('<mark>'));
 ok('renders footnote', html.includes('footnote'));
 ok('task-list-item class', html.includes('task-list-item'));
 ok('contains-task-list class', html.includes('contains-task-list'));
+
+globalThis.window = {
+  __TAURI_INTERNALS__: {
+    convertFileSrc: (filePath, protocol = 'asset') => `${protocol}://localhost/${encodeURIComponent(filePath)}`,
+  },
+};
+const svgHtml = rewriteImageUrls(
+  '<p><img src="../../assets/l2-s7-modules.svg" alt="S7"></p>',
+  null,
+  '/vault/specs/l2/section.md',
+);
+ok('local svg gets asset URL', svgHtml.includes('src="asset://localhost/'));
+ok('local svg keeps resolved path for fallback', svgHtml.includes('data-solomd-local-src="/vault/assets/l2-s7-modules.svg"'));
+const pngHtml = rewriteImageUrls(
+  '<p><img src="./pic.png" alt="pic"></p>',
+  null,
+  '/vault/specs/l2/section.md',
+);
+ok('non-svg image does not get svg fallback metadata', !pngHtml.includes('data-solomd-local-src'));
+ok('svg data URL encodes XML', svgTextToDataUrl('<svg><text>中 & A</text></svg>').startsWith('data:image/svg+xml;charset=utf-8,%3Csvg%3E'));
 
 const fmHtml = renderMarkdown('---\ntitle: Test\nauthor: Alex\n---\n\n# body');
 ok('frontmatter parsed', fmHtml.includes('md-frontmatter'));

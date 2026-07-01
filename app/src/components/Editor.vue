@@ -54,7 +54,7 @@ import {
   clearSession,
 } from '../lib/cm-session-restore';
 import { renderMarkdown, extractImageRoot as extractMarkdownImageRoot } from '../lib/markdown';
-import { rewriteImageUrls } from '../lib/image-resolve';
+import { installSvgImageFallbacks, rewriteImageUrls } from '../lib/image-resolve';
 import { SLASH_BLOCKS, filterBlocks, expandSnippet } from '../lib/slash-blocks';
 import { useWorkspaceIndexStore } from '../stores/workspaceIndex';
 
@@ -241,6 +241,7 @@ async function processPlainLiveRenderedBlocks() {
   if (!plainLiveEnabled.value || !plainLiveHost.value) return;
   await nextTick();
   const hostEl = plainLiveHost.value;
+  installSvgImageFallbacks(hostEl);
 
   const mermaidBlocks = hostEl.querySelectorAll('.plain-block__render pre > code.language-mermaid');
   for (const block of Array.from(mermaidBlocks)) {

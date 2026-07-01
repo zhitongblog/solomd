@@ -3,7 +3,7 @@ import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import mermaid from 'mermaid';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { renderMarkdown, extractImageRoot } from '../lib/markdown';
-import { rewriteImageUrls } from '../lib/image-resolve';
+import { installSvgImageFallbacks, rewriteImageUrls } from '../lib/image-resolve';
 import { openImageOverlay, type OverlayStrings } from '../lib/image-overlay';
 import { useI18n } from '../i18n';
 import { useSettingsStore } from '../stores/settings';
@@ -250,6 +250,8 @@ function overlayStrings(): OverlayStrings {
 
 function attachImageOverlayHandlers() {
   if (!host.value) return;
+
+  installSvgImageFallbacks(host.value);
 
   const images = host.value.querySelectorAll('img');
   for (const img of Array.from(images)) {

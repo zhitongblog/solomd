@@ -4,7 +4,7 @@
  * to convert local image paths into URLs the webview can load or bytes for embedding.
  */
 
-import { convertFileSrc } from '@tauri-apps/api/core';
+import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 
 /**
  * Normalize a filesystem path so `convertFileSrc` produces a URL the
@@ -53,6 +53,15 @@ function decodeHtmlAttr(value: string): string {
     .replace(/&gt;/g, '>');
 }
 
+function encodeHtmlAttr(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 function decodeUriOnce(value: string): string {
   try {
     return decodeURIComponent(value);
@@ -84,6 +93,14 @@ function cleanLocalImageSrc(src: string): string {
   const attr = decodeHtmlAttr(src.trim());
   const withoutUrlSuffix = stripLocalImageUrlSuffix(attr);
   return fileUrlToPath(decodeUriOnce(withoutUrlSuffix));
+}
+
+export function isLocalSvgPath(value: string): boolean {
+  return /\.svg$/i.test(stripLocalImageUrlSuffix(value));
+}
+
+export function svgTextToDataUrl(svg: string): string {
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
 /**
@@ -142,6 +159,25 @@ export function resolveImageSrc(
   }
 }
 
+export function resolveImageSrcWithMeta(
+  src: string,
+  imageRoot: string | null,
+  filePath?: string,
+): { src: string; localPath: string | null } {
+  if (!src || /^(https?|data|blob|asset|tauri):/i.test(src)) {
+    return { src, localPath: null };
+  }
+  const localPath = resolveImagePath(src, imageRoot, filePath);
+  if (/^(https?|data|blob|asset|tauri):/i.test(localPath)) {
+    return { src: localPath, localPath: null };
+  }
+  try {
+    return { src: convertFileSrc(localPath), localPath };
+  } catch {
+    return { src, localPath };
+  }
+}
+
 /** Rewrite all `<img src=…>` URLs in the rendered markdown HTML. */
 export function rewriteImageUrls(
   rawHtml: string,
@@ -160,9 +196,43 @@ export function rewriteImageUrls(
       if (!src || /^(https?|data|blob|asset|tauri):/i.test(src)) {
         return `${prefix}${q}${src}${q}`;
       }
-      return `${prefix}${q}${resolveImageSrc(src, imageRoot, filePath)}${q}`;
+      const resolved = resolveImageSrcWithMeta(src, imageRoot, filePath);
+      const nextPrefix = resolved.localPath && isLocalSvgPath(resolved.localPath)
+        ? prefix.replace(/^<img\b/i, `<img data-solomd-local-src="${encodeHtmlAttr(resolved.localPath)}"`)
+        : prefix;
+      return `${nextPrefix}${q}${resolved.src}${q}`;
     },
   );
+}
+
+async function loadLocalSvgDataUrl(path: string): Promise<string | null> {
+  try {
+    const result = await invoke<{ content: string }>('read_file', { path });
+    const svg = result.content.trimStart();
+    if (!svg.startsWith('<svg') && !svg.startsWith('<?xml')) return null;
+    return svgTextToDataUrl(result.content);
+  } catch {
+    return null;
+  }
+}
+
+export function installSvgImageFallbacks(root: ParentNode): void {
+  const images = root.querySelectorAll<HTMLImageElement>('img[data-solomd-local-src]');
+  for (const img of Array.from(images)) {
+    if (img.dataset.solomdSvgFallbackBound === '1') continue;
+    const path = img.dataset.solomdLocalSrc || '';
+    if (!isLocalSvgPath(path)) continue;
+    img.dataset.solomdSvgFallbackBound = '1';
+    const fallback = async () => {
+      if (img.src.startsWith('data:image/svg+xml')) return;
+      const dataUrl = await loadLocalSvgDataUrl(path);
+      if (dataUrl) img.src = dataUrl;
+    };
+    img.addEventListener('error', fallback, { once: true });
+    if (img.complete && img.naturalWidth === 0) {
+      void fallback();
+    }
+  }
 }
 
 /**
