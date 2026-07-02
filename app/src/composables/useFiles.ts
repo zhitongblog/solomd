@@ -118,6 +118,46 @@ export function useFiles() {
   }
 
   async function openPath(path: string, opts: { bypassNewWindow?: boolean } = {}) {
+    // #139 — normalize `file://` URLs to a plain filesystem path here, at the
+    // single shared entry point. On iOS a Files-app open arrives via the
+    // `solomd://opened-file` channel as a raw, percent-encoded file URL
+    // (e.g. file:///private/var/.../tmp/app.solomd-Inbox/Markdown%20%E8%AF%AD….md)
+    // and was handed straight to Rust's fs::read, which then failed with
+    // "No such file or directory" because the scheme + %-encoding made it a
+    // bogus path. iOS already copied the file into our sandbox (readable), so
+    // the only bug was the un-decoded URL. Stripping the scheme + decoding
+    // fixes it; desktop absolute paths (no scheme) pass through untouched, and
+    // the deep-link channel that already strips is a harmless no-op here.
+    if (path.startsWith('file://')) {
+      const stripped = path.replace(/^file:\/\/(localhost)?/, '');
+      try {
+        path = decodeURIComponent(stripped);
+      } catch {
+        path = stripped;
+      }
+    }
+
+    // #139 — iOS app-container paths embed a per-install UUID
+    // (/…/Data/Application/<UUID>/…) that iOS CHANGES on every app update, so
+    // an absolute path persisted in "recent files" (or a restored tab) points
+    // at a dead container after any update — the reporter saw "Documents
+    // unreadable" for recents whose UUID no longer matched. Re-anchor any
+    // stored container path onto the CURRENT container root before reading.
+    // (A fresh in-session path re-maps to itself — harmless no-op.)
+    // Anchor on `/Data/Application/` (lazy `.*?` = first occurrence): a greedy
+    // bare `/Application/` match would eat a user folder literally named
+    // "Application" below Documents, and would also mis-rewrite app-BUNDLE
+    // paths (/…/Bundle/Application/<UUID>/…), which are not ours to re-anchor.
+    if (isIOS() && /\/Data\/Application\/[^/]+\//.test(path)) {
+      try {
+        const docDir = await documentDir(); // …/Data/Application/<current>/Documents
+        const curRoot = docDir.replace(/\/Documents\/?$/, '');
+        path = path.replace(/^.*?\/Data\/Application\/[^/]+/, curRoot);
+      } catch {
+        /* documentDir unavailable — leave path as-is */
+      }
+    }
+
     // #98 — image files open in the fullscreen overlay viewer, never as a
     // tab and never in a new window (an overlay isn't document content, so
     // routing it through the markitdown converter just toasts an error).
@@ -228,13 +268,19 @@ export function useFiles() {
     // iOS behaviour and pin the workspace to the app's Documents dir.
     // The user can drop .md files into that folder via the Files app
     // ("On My Device > SoloMD"); SoloMD reads them back on next open.
-    if (isAndroid()) {
+    // #139 — neither Android nor iOS surfaces a usable OS folder picker
+    // through Tauri's dialog plugin (`openDialog({directory:true})` resolves to
+    // null), so the "Open Folder" button looked dead on both. Mirror the
+    // Android behaviour on iOS: pin the workspace to the app's own Documents
+    // dir ("On My iPhone/iPad › SoloMD" via UIFileSharingEnabled). Users drop
+    // .md files there through the Files app and they show up in the tree.
+    if (isAndroid() || isIOS()) {
       try {
         const dir = await documentDir();
         workspace.setFolder(dir);
         if (!settings.showFileTree) settings.toggleFileTree();
         toasts.info(
-          `Workspace pinned to On My Device › SoloMD. Drop .md files there via Files / a file manager and they'll show up here.`,
+          `Workspace pinned to the SoloMD folder. Drop .md files there via the Files app and they'll show up here.`,
         );
       } catch (e) {
         toasts.error(String(e));

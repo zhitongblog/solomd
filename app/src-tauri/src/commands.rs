@@ -26,7 +26,56 @@ pub async fn read_file(path: String) -> Result<FileReadResult, String> {
 }
 
 pub fn read_file_inner(path: String) -> Result<FileReadResult, String> {
-    let bytes = fs::read(&path).map_err(|e| format!("read failed: {e}"))?;
+    // #139 — iOS delivers a Files-app open as a copy in the app's volatile
+    // `tmp/<bundleid>-Inbox/` dir. That copy can lag behind the open event or
+    // be reclaimed by the system, so a single `fs::read` intermittently hit
+    // ENOENT ("looked successful sometimes"). Retry briefly on NotFound to win
+    // the race; if it still fails, attach the parent-dir listing so the cause
+    // (empty dir = gone, other name = mismatch, missing dir = bad path) is
+    // visible in the diagnostic. iOS-only: on desktop a missing file is just
+    // missing (stale recent, moved in Finder) and should fail fast, not stall
+    // a spawn_blocking slot for 800ms. Non-NotFound errors return immediately.
+    let bytes = match fs::read(&path) {
+        Ok(b) => b,
+        #[cfg(target_os = "ios")]
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            // Keep the LAST error, not the initial NotFound: if the file shows
+            // up mid-retry but with a transient permission/IO error, that is
+            // the truthful cause to report.
+            let mut last_err = e;
+            let mut recovered: Option<Vec<u8>> = None;
+            for _ in 0..8 {
+                std::thread::sleep(std::time::Duration::from_millis(100));
+                match fs::read(&path) {
+                    Ok(b) => {
+                        recovered = Some(b);
+                        break;
+                    }
+                    Err(re) => last_err = re,
+                }
+            }
+            match recovered {
+                Some(b) => b,
+                None => {
+                    let listing = match Path::new(&path).parent() {
+                        Some(dir) => match fs::read_dir(dir) {
+                            Ok(rd) => {
+                                let names: Vec<String> = rd
+                                    .filter_map(|e| e.ok())
+                                    .map(|e| e.file_name().to_string_lossy().into_owned())
+                                    .collect();
+                                format!("dir {} => [{}]", dir.display(), names.join(", "))
+                            }
+                            Err(de) => format!("dir {} unreadable: {de}", dir.display()),
+                        },
+                        None => "no parent dir".to_string(),
+                    };
+                    return Err(format!("read failed: {last_err} | {listing}"));
+                }
+            }
+        }
+        Err(e) => return Err(format!("read failed: {e}")),
+    };
 
     // Try BOM first.
     let (encoding, had_bom, body) = if let Some((enc, bom_len)) = sniff_bom(&bytes) {

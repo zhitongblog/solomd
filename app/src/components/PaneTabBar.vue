@@ -374,6 +374,9 @@ onBeforeUnmount(() => {
   flex: 1;
   overflow-x: auto;
   scrollbar-width: none;
+  /* Momentum + horizontal touch panning for the overflowing strip on iOS. */
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
 }
 .tabs::-webkit-scrollbar { display: none; }
 
@@ -389,9 +392,13 @@ onBeforeUnmount(() => {
   color: var(--text-muted);
   white-space: nowrap;
   position: relative;
-  /* Pointer-based drag (#86): keep touch gestures from scrolling/zooming the
-     bar mid-drag, and don't let the OS start a text selection. */
-  touch-action: none;
+  /* Pointer-based drag (#86): block vertical pan / pinch-zoom during a drag,
+     but ALLOW horizontal panning. Tabs fill the whole strip, so a touch always
+     lands on a `.tab`; `touch-action: none` here meant a finger swipe could
+     never scroll an overflowing tab bar on iOS/iPad — the bar was stuck (the
+     user's #139 follow-up). `pan-x` lets the finger scroll the strip while a
+     mouse drag (unaffected by touch-action) still reorders on desktop. */
+  touch-action: pan-x;
 }
 .tab:hover {
   background: var(--bg-hover);

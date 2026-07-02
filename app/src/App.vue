@@ -784,10 +784,8 @@ onMounted(async () => {
       if (!urls) return;
       for (const raw of urls) {
         try {
-          const path = raw.startsWith('file://')
-            ? decodeURIComponent(raw.slice('file://'.length))
-            : raw;
-          await files.openPath(path, { bypassNewWindow: true });
+          // openPath normalizes file:// → path itself (#139); pass raw through.
+          await files.openPath(raw, { bypassNewWindow: true });
         } catch (err) {
           console.warn('deep-link openPath failed', raw, err);
         }

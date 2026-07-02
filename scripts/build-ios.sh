@@ -97,6 +97,14 @@ if grep -q "LSSupportsOpeningDocumentsInPlace:" "$PROJECT_YML"; then
     's|^\( *\)LSSupportsOpeningDocumentsInPlace: .*$|\1LSSupportsOpeningDocumentsInPlace: false|' \
     "$PROJECT_YML" && rm "$PROJECT_YML.bak"
 fi
+# ...and UISupportsDocumentBrowser MUST be false too: when true it IMPLIES
+# open-in-place and overrides the flag above, which is what made the 4.8.2 fix
+# no-op on device (#139). SoloMD never uses a document browser.
+if grep -q "UISupportsDocumentBrowser:" "$PROJECT_YML"; then
+  /usr/bin/sed -i.bak \
+    's|^\( *\)UISupportsDocumentBrowser: .*$|\1UISupportsDocumentBrowser: false|' \
+    "$PROJECT_YML" && rm "$PROJECT_YML.bak"
+fi
 
 echo "==> Patching ExportOptions.plist for app-store-connect + Manual"
 cat > "$EXPORT_PLIST" <<EOF
