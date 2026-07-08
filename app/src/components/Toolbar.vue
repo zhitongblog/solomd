@@ -7,6 +7,7 @@ import { useSettingsStore } from '../stores/settings';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useTilesStore } from '../stores/tiles';
 import { track } from '../lib/telemetry';
+import { getPlainSelection } from '../lib/plain-selection';
 import { useFiles } from '../composables/useFiles';
 import { useExport } from '../composables/useExport';
 import { useToastsStore } from '../stores/toasts';
@@ -168,8 +169,15 @@ function onAIRewrite() {
       break;
     }
   }
+  // #126 — Windows has NO CodeMirror view since the 4.6.4 plain-editor swap,
+  // so the scan above finds nothing there; ask the plain editor's selection
+  // registry before giving up (textareas keep selectionStart/End on blur).
   if (!picked) {
-    toasts.info('Select some text first, then click AI rewrite (or press ⌘J).');
+    picked = getPlainSelection();
+  }
+  if (!picked) {
+    const jChord = isMacOS() ? '⌘J' : 'Ctrl+J';
+    toasts.info(`Select some text first, then click AI rewrite (or press ${jChord}).`);
     return;
   }
   window.dispatchEvent(
@@ -416,12 +424,20 @@ onBeforeUnmount(() => {
             <button
               v-for="p in workspace.recentFiles"
               :key="p"
-              class="dropdown__item"
+              class="dropdown__item dropdown__item--recent"
               @mousedown.prevent="files.openPath(p); recentOpen = false"
               :title="p"
             >
               <span class="dropdown__name">{{ shortPath(p) }}</span>
               <span class="dropdown__path">{{ p }}</span>
+              <!-- #112 — remove ONE stale entry without touching the file
+                   (the only management before this was nuke-the-whole-list). -->
+              <span
+                class="dropdown__remove"
+                role="button"
+                :title="t('toolbar.removeRecent')"
+                @mousedown.stop.prevent="workspace.removeRecent(p)"
+              >✕</span>
             </button>
             <div v-if="workspace.recentFiles.length" class="dropdown__sep"></div>
             <button
@@ -952,6 +968,31 @@ onBeforeUnmount(() => {
 .dropdown__item--muted {
   color: var(--text-muted);
   font-size: 11px;
+}
+/* #112 — per-entry recents removal. Hidden until the row is hovered so the
+   list stays clean; sits over the right edge of the (column-flex) row. */
+.dropdown__item--recent {
+  position: relative;
+  padding-right: 26px;
+}
+.dropdown__remove {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  display: none;
+  padding: 2px 4px;
+  border-radius: 3px;
+  color: var(--text-faint);
+  font-size: 11px;
+  line-height: 1;
+}
+.dropdown__item--recent:hover .dropdown__remove {
+  display: inline-block;
+}
+.dropdown__remove:hover {
+  color: var(--text);
+  background: var(--bg-hover);
 }
 .dropdown__item--single {
   flex-direction: row;

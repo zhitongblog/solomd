@@ -165,7 +165,14 @@ function buildRuns(inlineToken: Token, style: RunStyle = {}): (TextRun | Externa
         if (tok.content) push(new TextRun({ text: tok.content, ...toRunOpts(cur) }));
         break;
       case 'softbreak':
-        push(new TextRun({ text: ' ', ...toRunOpts(cur) }));
+        // #141 — DOCX builds from tokens, so markdown-it's `breaks` renderer
+        // option doesn't apply here; honor it manually to match the preview
+        // (hard breaks on → single newline is a real line break).
+        if (md.options.breaks) {
+          push(new TextRun({ text: '', break: 1, ...toRunOpts(cur) }));
+        } else {
+          push(new TextRun({ text: ' ', ...toRunOpts(cur) }));
+        }
         break;
       case 'hardbreak':
         push(new TextRun({ text: '', break: 1, ...toRunOpts(cur) }));

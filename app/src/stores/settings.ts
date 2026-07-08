@@ -46,6 +46,13 @@ interface Settings {
    *  crowd the editor). After the migration the user is free to toggle it
    *  off via the toolbar / ⌘B / command palette and the choice persists. */
   fileTreeDefaultDesktopMigrated: boolean;
+  /** #143 (4.8.10) — one-time sync of a stale `previewFontSize`. The #133 fix
+   *  only synced preview size when the slider was MOVED again, so installs
+   *  whose `fontSize` predates 4.8.0 kept the old preview default (15) forever
+   *  — "font size doesn't apply to the preview". On first load after upgrade,
+   *  a previewFontSize still at the old default is aligned to fontSize once;
+   *  the ⌃⌘+/− preview-zoom axis can still diverge it afterwards. */
+  v4810PreviewFontSynced: boolean;
   /** v4.6 F5 — show the Saved Views panel (left sidebar, below the file tree).
    *  Lists persistent filtered note lists from `.solomd/views/*.yml`. Default
    *  off so the panel only appears once the user opts in / creates a view. */
@@ -221,6 +228,12 @@ interface Settings {
   // preview (and Pandoc/PDF/PNG exports — they all share the preview HTML).
   // Default off so existing exports don't surprise anyone. Issue #65.
   codeBlockLineNumbers: boolean;
+  // #141 (4.8.10): render a single newline as a real line break (Typora-like)
+  // in preview / live editor / every export. Default ON — CJK users write
+  // one-sentence-per-line and expect it to hold; standard blank-line
+  // paragraphs render identically either way. OFF = strict CommonMark
+  // soft-break (newline collapses to a space).
+  markdownHardBreaks: boolean;
   // v4.3.0: user-customisable order of the right-sidebar panes. Each entry
   // is a pane id (search / outline / backlinks / tags / history / agent).
   // Default matches the pre-v4.3.0 hardcoded order. Panes not in the list
@@ -373,6 +386,7 @@ function defaults(): Settings {
     // Fresh installs already see the new default — mark migration done so
     // load()'s one-time force-on path is a no-op for them.
     fileTreeDefaultDesktopMigrated: true,
+    v4810PreviewFontSynced: true,
     showViewsPanel: false,
     rightSidebarHidden: false,
     livePreview: true,
@@ -465,6 +479,7 @@ function defaults(): Settings {
     imageExportBranding: true,
     globalZoom: 1,
     codeBlockLineNumbers: false,
+    markdownHardBreaks: true,
     rsPaneOrder: ['search', 'outline', 'backlinks', 'relationships', 'tags', 'neighborhood', 'types', 'history', 'inspector', 'agent'],
     previewFontSize: 15,
     attachmentMode: 'shared',
@@ -555,6 +570,16 @@ function load(): Settings {
       if (!parsed.fileTreeDefaultDesktopMigrated) {
         if (!isMobile()) merged.showFileTree = true;
         merged.fileTreeDefaultDesktopMigrated = true;
+      }
+      // #143 — align a stale preview font size (see v4810PreviewFontSynced doc).
+      // Only when the user actually customized the editor size (≠ the 14
+      // default) while the preview is still at its own old default (15) —
+      // untouched installs keep their 14/15 pair unchanged.
+      if (!parsed.v4810PreviewFontSynced) {
+        if ((parsed.previewFontSize ?? 15) === 15 && merged.fontSize !== 14) {
+          merged.previewFontSize = Math.max(10, Math.min(32, merged.fontSize));
+        }
+        merged.v4810PreviewFontSynced = true;
       }
       return merged;
     }
@@ -1007,6 +1032,10 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleCodeBlockLineNumbers() {
       this.codeBlockLineNumbers = !this.codeBlockLineNumbers;
+      this.persist();
+    },
+    toggleMarkdownHardBreaks() {
+      this.markdownHardBreaks = !this.markdownHardBreaks;
       this.persist();
     },
     /** v4.3.0 issue #57b — reorder the right sidebar by moving a pane id to

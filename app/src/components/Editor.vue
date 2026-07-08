@@ -22,6 +22,7 @@ import { sql } from '@codemirror/lang-sql';
 import { xml } from '@codemirror/lang-xml';
 import { vim } from '@replit/codemirror-vim';
 import { cmThemeFor } from '../lib/themes';
+import { registerPlainSelectionGetter } from '../lib/plain-selection';
 import { useTabsStore } from '../stores/tabs';
 import { useSettingsStore, buildEditorFontStack } from '../stores/settings';
 import { useToastsStore } from '../stores/toasts';
@@ -141,6 +142,7 @@ watch(
 const host = ref<HTMLDivElement | null>(null);
 let view: EditorView | null = null;
 let cleanupRelayout: (() => void) | null = null;
+let cleanupPlainSelection: (() => void) | null = null;
 let contentSyncTimer: ReturnType<typeof setTimeout> | null = null;
 
 const themeCompartment = new Compartment();
@@ -182,6 +184,15 @@ const plainLiveHost = ref<HTMLDivElement | null>(null);
 const plainBlockEditors = ref<Record<number, HTMLTextAreaElement | null>>({});
 const plainText = ref(props.tab.content || '');
 const plainActiveBlock = ref(0);
+// Select-all in the block live editor (user feedback, 4.8.10): native Ctrl+A
+// inside the active block's <textarea> can only reach that block, so "全选"
+// was impossible in live edit. While this flag is on, plainBlocks collapses
+// the document into a single active block (see the computed below).
+const plainSelectAll = ref(false);
+// Entry runs across a nextTick (mount the merged textarea, then select()).
+// Events firing in between (the Ctrl+A keyup, the focus emit) see a collapsed
+// selection and must not be mistaken for "user collapsed it — exit".
+let plainSelectAllPending = false;
 let plainComposing = false;
 let plainMermaidIdSeq = 0;
 const plainRenderCache = new Map<string, string>();
@@ -204,6 +215,15 @@ const plainEditorStyle = computed(() => ({
 
 const plainBlocks = computed<PlainBlock[]>(() => {
   if (!plainLiveEnabled.value) return [];
+  // Select-all mode (user feedback, 4.8.10): the whole document is presented
+  // as ONE active block so the <textarea>'s native selection can span it.
+  // Every selection consumer then works untouched — Ctrl+C/X, Delete,
+  // type-over, IME composition-over-selection (a WebView2 minefield we must
+  // not reimplement), and the toolbar/⌘J AI-rewrite absolute offsets.
+  if (plainSelectAll.value) {
+    const src = plainText.value || '';
+    return [{ id: 'select-all', start: 0, end: src.length, text: src, hasTrailingNewline: false, html: '' }];
+  }
   return splitPlainMarkdownBlocks(plainText.value || '').map((block, index) => ({
     ...block,
     id: `${block.start}:${index}`,
@@ -218,13 +238,17 @@ function renderPlainBlock(src: string): string {
   // Emit the <hr> directly.
   if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(src)) return '<hr>';
   const root = extractMarkdownImageRoot(plainText.value || '');
-  const key = `${props.tab.filePath || ''}\u0000${root}\u0000${src}`;
+  // #141 — the hard-breaks flag is part of the cache key so toggling the
+  // setting invalidates previously rendered blocks. The per-call `breaks`
+  // override is gone: the shared md singleton now follows the setting, so
+  // the live editor, preview pane and exports all agree.
+  const key = `${settings.markdownHardBreaks ? 'hb' : 'sb'}\u0000${props.tab.filePath || ''}\u0000${root}\u0000${src}`;
   const cached = plainRenderCache.get(key);
   if (cached != null) return cached;
   const html = rewriteImageUrls(
     // Drop `disabled` on task checkboxes so they can be clicked to toggle in the
     // preview (handled by activatePlainBlockFromClick → togglePlainTask).
-    renderMarkdown(src || '\n', { breaks: true }).replace(
+    renderMarkdown(src || '\n').replace(
       /(<input class="task-list-item-checkbox" type="checkbox"[^>]*?)\s+disabled=""/g,
       '$1',
     ),
@@ -463,6 +487,10 @@ function plainSelectionText(): string {
 
 function emitPlainCursorAndSelection() {
   if (plainLiveEnabled.value) {
+    // Select-all mode ends the moment the user collapses the selection
+    // (click into the text, arrow key); this is the single choke point all
+    // the textarea's selection-ish events (keyup/mouseup/select) run through.
+    maybeExitPlainSelectAll();
     const el = plainBlockEditors.value[plainActiveBlock.value];
     const block = plainBlocks.value[plainActiveBlock.value];
     if (!el || !block) return;
@@ -993,6 +1021,14 @@ function handlePlainKeydownShared(event: KeyboardEvent): boolean {
     plainRedo();
     return true;
   }
+  // Ctrl/Cmd+A — whole-document select-all. Only the block live editor needs
+  // the override (its native select-all stops at the current block); the
+  // single-textarea path already holds the full document.
+  if (mod && !event.altKey && (event.key === 'a' || event.key === 'A') && plainLiveEnabled.value) {
+    event.preventDefault();
+    enterPlainSelectAll();
+    return true;
+  }
   // Ctrl/Cmd+J — AI rewrite of the selection (matches cm-ai-rewrite). The
   // overlay + accept path are shared with the CodeMirror editor; accept replaces
   // the (retained) selection via the insert-markdown channel.
@@ -1060,6 +1096,15 @@ function handlePlainBlockKeydown(index: number, event: KeyboardEvent) {
   if (plainComposing) return;
   if (handleAutocompleteKeydown(event)) return;
   if (handlePlainKeydownShared(event)) return;
+  // Esc dismisses a select-all (parks the caret at the selection end).
+  if (plainSelectAll.value && event.key === 'Escape') {
+    event.preventDefault();
+    const el = event.target as HTMLTextAreaElement;
+    const pos = el.selectionEnd ?? 0;
+    el.setSelectionRange(pos, pos);
+    maybeExitPlainSelectAll();
+    return;
+  }
   // Block-boundary Backspace / Delete. Each block is a standalone <textarea>, so
   // native Backspace at offset 0 (or Delete at the end) can't reach the
   // neighbouring block — it silently no-ops at every block edge, which users
@@ -1328,6 +1373,7 @@ function handlePlainBlockCompositionEnd(index: number, event: CompositionEvent) 
  * re-split + caret-restore tail so the active <textarea> follows the caret.
  */
 function applyPlainFullEdit(next: string, absoluteCaret: number) {
+  plainSelectAll.value = false; // full edits land in normal block view
   if (!plainComposing) recordPlainHistory();
   plainText.value = next;
   tabs.setContent(props.tab.id, next);
@@ -1351,9 +1397,76 @@ function applyPlainFullEdit(next: string, absoluteCaret: number) {
   });
 }
 
+/** Enter select-all mode: merge the doc into one block and native-select it. */
+function enterPlainSelectAll() {
+  if (plainSelectAll.value) {
+    // Repeated Ctrl+A after the user collapsed part of the selection by
+    // shift-arrowing etc. — just re-select within the merged textarea.
+    plainBlockEditors.value[plainActiveBlock.value]?.select();
+    return;
+  }
+  plainSelectAllPending = true;
+  plainSelectAll.value = true;
+  plainActiveBlock.value = 0;
+  nextTick(() => {
+    const el = plainBlockEditors.value[0];
+    if (!el) {
+      plainSelectAllPending = false;
+      plainSelectAll.value = false;
+      return;
+    }
+    // Order matters: focus() synchronously dispatches a focus event, which
+    // funnels into maybeExitPlainSelectAll — the still-collapsed selection
+    // must not read as "user dismissed it". Keep `pending` up until the
+    // range is actually set.
+    el.focus();
+    el.select();
+    plainSelectAllPending = false;
+    autoSizePlainBlock(el);
+    emitPlainCursorAndSelection();
+  });
+}
+
+/**
+ * Leave select-all mode once the selection collapses (click / arrow key / Esc):
+ * re-split into blocks and land the caret in the block that now contains it.
+ * Editing while everything is selected exits through updatePlainBlock /
+ * applyPlainFullEdit instead (the native input event replaces the selection).
+ */
+function maybeExitPlainSelectAll() {
+  if (!plainSelectAll.value || plainSelectAllPending) return;
+  const el = plainBlockEditors.value[plainActiveBlock.value];
+  if (!el) return;
+  const caret = el.selectionStart ?? 0;
+  if (caret !== (el.selectionEnd ?? 0)) return; // still a range — stay
+  plainSelectAll.value = false;
+  const blocks = splitPlainMarkdownBlocks(plainText.value || '');
+  let found = blocks.findIndex((b) => caret >= b.start && caret < b.end);
+  if (found < 0) found = blocks.length - 1;
+  plainActiveBlock.value = found;
+  nextTick(() => {
+    const activeBlock = plainBlocks.value[plainActiveBlock.value];
+    const el2 = plainBlockEditors.value[plainActiveBlock.value];
+    if (!el2) return;
+    if (document.activeElement !== el2) el2.focus();
+    autoSizePlainBlock(el2);
+    if (activeBlock) {
+      const pos = Math.max(0, Math.min(caret - activeBlock.start, el2.value.length));
+      el2.setSelectionRange(pos, pos);
+    }
+    emitPlainCursorAndSelection();
+  });
+}
+
 function updatePlainBlock(index: number, text: string, caret?: number) {
   const block = plainBlocks.value[index];
   if (!block) return;
+  // An edit while everything is selected (type-over, Ctrl+X, Delete via native
+  // selection replacement) ends select-all mode; the re-split below then runs
+  // against normal block boundaries. `block` above was captured from the
+  // merged view, so offsets stay consistent for this edit.
+  const wasSelectAll = plainSelectAll.value;
+  plainSelectAll.value = false;
   // Snapshot the pre-edit document for undo (coalesced) before we mutate it.
   if (!plainComposing) recordPlainHistory();
   const nextCaret = block.start + (caret ?? text.length);
@@ -1388,7 +1501,13 @@ function updatePlainBlock(index: number, text: string, caret?: number) {
   // :ref re-runs setPlainBlockEditor and rewrites el.value to the now-shorter
   // block text, which collapses the caret to the line end — so we must fall
   // through to the nextTick branch and restore the caret explicitly.
-  if (nextIndex === index && nextBlock?.start === block.start && nextBlock?.text === text) {
+  // Never fast-path out of select-all mode: the merged block's :key
+  // ('select-all') differs from the re-split block's, so the <textarea>
+  // REMOUNTS even when index/start/text all match (e.g. select-all → delete
+  // everything, or type-over a doc that re-splits to one block). Skipping the
+  // nextTick would leave focus on <body> and swallow every subsequent
+  // keystroke — caught by real-key testing in the Windows VM.
+  if (!wasSelectAll && nextIndex === index && nextBlock?.start === block.start && nextBlock?.text === text) {
     emitPlainCursorAndSelection();
     return;
   }
@@ -1624,6 +1743,13 @@ onMounted(() => {
     maybeRestoreSession();
     void processPlainLiveRenderedBlocks();
     focusPlainEditor();
+    // #126 — let the toolbar AI-rewrite button read this editor's selection
+    // (no CodeMirror view exists on this path for it to scan).
+    cleanupPlainSelection = registerPlainSelectionGetter(() => {
+      const sel = plainAbsoluteSelection();
+      const text = plainSelectionText();
+      return sel && text ? { selection: text, from: sel.from, to: sel.to } : null;
+    });
     return;
   }
   if (!host.value) return;
@@ -1666,6 +1792,8 @@ function openFind(): void {
 
 onBeforeUnmount(() => {
   cleanupRelayout?.();
+  cleanupPlainSelection?.();
+  cleanupPlainSelection = null;
   if (contentSyncTimer) {
     clearTimeout(contentSyncTimer);
     contentSyncTimer = null;
@@ -1680,13 +1808,41 @@ onBeforeUnmount(() => {
 
 // Switching tabs: replace doc (and rebuild extensions so the
 // session-restore plugin is recreated with the new tab id).
+// #144 — per-tab caret + scroll memory (runtime-only, per editor pane; a tab
+// shown in two split panes keeps an independent position in each). Without
+// this, switching tabs dropped the position: the plain textarea's `el.value =`
+// re-sync moves the caret to the END of the document, and the CodeMirror
+// `setState` reset it to 0.
+const tabCaretMemory = new Map<string, { caret: number; scrollTop: number }>();
+
 watch(
   () => props.tab.id,
-  () => {
+  (newId, oldId) => {
+    // Snapshot the OUTGOING tab first — at this point the editor DOM/state
+    // still holds the old document (re-sync happens below).
+    if (oldId) {
+      if (usePlainWindowsEditor) {
+        const el = plainEditor.value;
+        if (el && !plainLiveEnabled.value) {
+          tabCaretMemory.set(oldId, {
+            caret: el.selectionStart ?? 0,
+            scrollTop: el.scrollTop,
+          });
+        }
+      } else if (view) {
+        tabCaretMemory.set(oldId, {
+          caret: view.state.selection.main.head,
+          scrollTop: view.scrollDOM.scrollTop,
+        });
+      }
+    }
+    const saved = newId ? tabCaretMemory.get(newId) : undefined;
     if (usePlainWindowsEditor) {
       // The Editor component is reused across tabs (no :key), so switching to /
       // creating a document must re-sync content, reset per-document state, and
       // re-focus — otherwise the new doc shows stale text and can't be typed in.
+      plainSelectAll.value = false;
+      plainSelectAllPending = false;
       plainActiveBlock.value = 0;
       plainUndoStack.length = 0;
       plainRedoStack = [];
@@ -1696,13 +1852,28 @@ watch(
       maybeRestoreSession();
       void processPlainLiveRenderedBlocks();
       focusPlainEditor();
+      // Restore the caret/scroll (default: document START, not end — the
+      // `el.value =` assignment above parked it at the end). Block live-edit
+      // manages per-block focus itself, so only the single-textarea path
+      // restores here.
+      const el = plainEditor.value;
+      if (el && !plainLiveEnabled.value) {
+        const pos = Math.min(saved?.caret ?? 0, el.value.length);
+        el.setSelectionRange(pos, pos);
+        el.scrollTop = saved?.scrollTop ?? 0;
+      }
       return;
     }
     if (!view) return;
     view.setState(
-      EditorState.create({ doc: props.tab.content, extensions: buildExtensions() })
+      EditorState.create({
+        doc: props.tab.content,
+        extensions: buildExtensions(),
+        selection: { anchor: Math.min(saved?.caret ?? 0, props.tab.content.length) },
+      })
     );
     maybeRestoreSession();
+    if (saved) view.scrollDOM.scrollTop = saved.scrollTop;
   }
 );
 
@@ -1826,6 +1997,13 @@ watch(
     void processPlainLiveRenderedBlocks();
   }
 );
+
+// A stale select-all must not survive leaving live edit (the merged single
+// block would greet the user on re-entry).
+watch(plainLiveEnabled, () => {
+  plainSelectAll.value = false;
+  plainSelectAllPending = false;
+});
 
 watch(
   () => [plainLiveEnabled.value, plainText.value, plainActiveBlock.value, settings.theme, settings.language],
@@ -2362,8 +2540,12 @@ const cls = computed(() => ({
 .plain-block__render {
   color: var(--text);
   overflow: visible;
-  font-family: var(--font-ui);
-  font-size: var(--plain-preview-font-size, 15px);
+  /* #143 — rendered (non-focused) blocks must use the SAME user-configured
+     editor font as the focused textarea block, or live-edit looks like two
+     different documents (only the focused line honored 字体/字号). Fall back
+     to the old values for safety. */
+  font-family: var(--plain-editor-font-family, var(--font-ui));
+  font-size: var(--plain-editor-font-size, 15px);
   line-height: 1.7;
   padding: 0.05em 0;
 }

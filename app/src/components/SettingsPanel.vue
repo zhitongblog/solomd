@@ -39,6 +39,13 @@ const { t } = useI18n();
 // split into 6 groups so the user navigates by category, not by scroll.
 type SettingsCategory = 'basics' | 'writing' | 'sync' | 'integrations' | 'export' | 'advanced';
 const activeCategory = ref<SettingsCategory>('basics');
+// #144 — all six category pages share the single scrolling `.settings__body`
+// (pages are toggled via CSS display), so one page's scrollTop leaked into
+// every other page. Reset to top on each category switch.
+const bodyEl = ref<HTMLElement | null>(null);
+watch(activeCategory, () => {
+  bodyEl.value?.scrollTo({ top: 0 });
+});
 const categories: { id: SettingsCategory; icon: string; labelKey: string }[] = [
   { id: 'basics', icon: '⚙️', labelKey: 'settings.catBasics' },
   { id: 'writing', icon: '✍️', labelKey: 'settings.catWriting' },
@@ -273,7 +280,7 @@ function onSelectPdfFont(v: string) {
             <span class="settings__nav-label">{{ t(c.labelKey) }}</span>
           </button>
         </nav>
-      <div class="settings__body" :data-active-cat="activeCategory">
+      <div ref="bodyEl" class="settings__body" :data-active-cat="activeCategory">
         <section data-cat="basics">
           <label>{{ t('settings.language') }}</label>
           <select
@@ -447,6 +454,18 @@ function onSelectPdfFont(v: string) {
             {{ t('settings.codeBlockLineNumbers') }}
           </label>
           <p class="setting-hint">{{ t('settings.codeBlockLineNumbersHint') }}</p>
+        </section>
+
+        <section data-cat="basics">
+          <label>
+            <input
+              type="checkbox"
+              :checked="settings.markdownHardBreaks"
+              @change="settings.toggleMarkdownHardBreaks()"
+            />
+            {{ t('settings.markdownHardBreaks') }}
+          </label>
+          <p class="setting-hint">{{ t('settings.markdownHardBreaksHint') }}</p>
         </section>
 
         <section data-cat="basics">

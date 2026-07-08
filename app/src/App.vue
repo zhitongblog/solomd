@@ -5,6 +5,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
 import { openPath } from '@tauri-apps/plugin-opener';
+import { setMarkdownHardBreaks } from './lib/markdown';
 import Toolbar from './components/Toolbar.vue';
 import TelemetryBanner from './components/TelemetryBanner.vue';
 import TileRoot from './components/TileRoot.vue';
@@ -463,6 +464,12 @@ watchEffect(() => {
   );
 });
 
+// #141 — keep the markdown-it singleton's `breaks` option in lockstep with
+// the setting (runs once on hydration and again on every toggle).
+watchEffect(() => {
+  setMarkdownHardBreaks(settings.markdownHardBreaks);
+});
+
 // #133 — the rendered preview previously ignored the editor `fontFamily`
 // setting (it was hardcoded to the UI font), so in split view the two panes
 // used different typefaces. Surface the chosen face — with the same CJK
@@ -737,16 +744,23 @@ onMounted(async () => {
   // persisted last-used `viewMode`). Empty/null = resume whatever the user
   // left in, as before.
   // #128 — a pinned "reading" mode with nothing to show (restore-tabs off, or
-  // no tabs persisted → just a blank Untitled) lands on a blank reading window.
-  // Skip forcing reading when there's no real document to read (no saved file
-  // and no typed content); editor / split are fine empty.
+  // no tabs persisted → just a blank Untitled) lands on a blank reading window,
+  // so reading is deferred until there's a real document to read.
+  // #144(B) — but the #128 gate must not silently DROP the pin (that made the
+  // setting look dead whenever restore-tabs was off: last-used mode always
+  // won). Defer instead: apply reading the moment the first readable tab
+  // appears (file opened / first text typed), then stop watching.
   if (settings.startupViewMode && settings.startupViewMode !== settings.viewMode) {
-    const hasReadable = tabs.tabs.some(
-      (t) => t.filePath || (t.content && t.content.trim().length > 0),
-    );
-    const nothingToRead = settings.startupViewMode === 'reading' && !hasReadable;
-    if (!nothingToRead) {
+    const hasReadable = () =>
+      tabs.tabs.some((t) => t.filePath || (t.content && t.content.trim().length > 0));
+    if (settings.startupViewMode !== 'reading' || hasReadable()) {
       settings.setViewMode(settings.startupViewMode);
+    } else {
+      const stop = watch(hasReadable, (ok) => {
+        if (!ok) return;
+        settings.setViewMode('reading');
+        stop();
+      });
     }
   }
 

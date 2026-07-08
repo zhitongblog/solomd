@@ -13,6 +13,7 @@ import { useGithubSyncStore } from '../stores/githubSync';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { useTabsStore } from '../stores/tabs';
 import { useI18n } from '../i18n';
+import { isMobile } from '../lib/platform';
 
 interface Entry {
   name: string;
@@ -415,10 +416,15 @@ function onRenameKey(e: KeyboardEvent) {
 
 async function deleteNode(node: Node) {
   closeCtx();
+  // #112 — desktop deletes now go to the OS trash (recoverable); mobile has
+  // no user-visible trash, so keep the permanent-delete wording there.
+  const suffix = isMobile()
+    ? 'This cannot be undone.'
+    : 'It will be moved to the system Trash / Recycle Bin.';
   const ok = window.confirm(
     node.is_dir
-      ? `Delete folder "${node.name}" and everything inside?\n\nThis cannot be undone.`
-      : `Delete "${node.name}"?\n\nThis cannot be undone.`,
+      ? `Delete folder "${node.name}" and everything inside?\n\n${suffix}`
+      : `Delete "${node.name}"?\n\n${suffix}`,
   );
   if (!ok) return;
   try {
