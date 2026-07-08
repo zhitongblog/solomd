@@ -1,0 +1,161 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import Giscus from '../../components/Giscus.astro';
+
+const lang = 'en' as const;
+---
+
+<Layout
+  title="The bug we couldn't fix in JavaScript — why SoloMD's Windows editor left contentEditable"
+  description="Chinese IME input was intermittently broken in SoloMD on Windows: first character dropped, punctuation doubled, worst with Sogou Pinyin. We chased it through CodeMirror's autocomplete, proved the real defect lives in WebView2's contentEditable TSF integration, filed it upstream (WebView2Feedback#5625), and ultimately rewrote the Windows editor on native textarea blocks. Engineering notes from a month of IME debugging."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <article class="container blog-article">
+      <nav class="breadcrumbs">
+        <a href="/">Home</a> / <a href="/blog/">Blog</a> / <span>Leaving contentEditable</span>
+      </nav>
+      <time>2026-07-08</time>
+      <h1>The bug we couldn't fix in JavaScript — why SoloMD's Windows editor left contentEditable</h1>
+      <p class="lead">
+        In June a user reported that typing Chinese in SoloMD on Windows was
+        "sometimes fine, sometimes broken" — characters silently dropped,
+        punctuation needing two keypresses, worst with Sogou Pinyin
+        (<a href="https://github.com/zhitongblog/solomd/issues/108" rel="external">#108</a>).
+        A month later the fix shipped, and it wasn't a patch: SoloMD v4.7
+        replaced CodeMirror on Windows with a block editor built on native
+        <code>&lt;textarea&gt;</code> elements. This post is the debugging trail
+        that justified something that drastic.
+      </p>
+
+      <h2>The first suspect: our own autocomplete</h2>
+      <p>
+        IME composition is a fragile dance: between
+        <code>compositionstart</code> and <code>compositionend</code>, the
+        browser owns a small piece of the DOM, and the editor must not disturb
+        it. CodeMirror 6 knows this and freezes what it can. But tracing every
+        composition event from a real Windows WebView2 into a log receiver
+        showed <em>something</em> dispatching transactions mid-composition —
+        and the stack pointed at autocompletion.
+      </p>
+      <p>
+        With <code>activateOnTyping: true</code>, CodeMirror's autocomplete
+        plugin classifies every IME keystroke as an activation: it churns the
+        completion machinery on each pinyin letter, and its
+        <code>compositionend</code> handler schedules a
+        <code>startCompletion</code> transaction ~20&nbsp;ms after each commit.
+        That post-commit dispatch aborts the <em>next</em> composition —
+        WebView2 gives up and commits raw pinyin. Guarding our completion
+        sources wasn't enough (the plugin activates regardless); turning
+        <code>activateOnTyping</code> off and re-triggering popups from an
+        explicit character whitelist was. That fix was real, and it removed the
+        <em>intermittent</em> failures.
+      </p>
+
+      <h2>The defect underneath</h2>
+      <p>
+        Two symptoms survived every JavaScript mitigation we tried: the
+        <strong>first character of a composition was dropped</strong> (吃字),
+        and <strong>full-width punctuation</strong> (，。？！)
+        <strong>required two keypresses</strong>. We could reproduce both in a
+        page with no editor at all — a bare <code>contentEditable</code> div
+        with event logging. Suppressing all DOM mutations on the composing node
+        during composition changed nothing, which told us the bug lives below
+        the DOM/JS layer, in WebView2's TSF (Text Services Framework)
+        integration.
+      </p>
+      <p>
+        The decisive contrast: <strong>the same keystrokes, same IME, same
+        session, typed into a plain <code>&lt;textarea&gt;</code> on the same
+        page, worked perfectly.</strong> The native text-input path is fine;
+        only <code>contentEditable</code> is broken. That means every
+        contentEditable-based editor — CodeMirror&nbsp;6, ProseMirror, Slate —
+        inherits the bug inside WebView2, and none of them can fix it from
+        JavaScript.
+      </p>
+      <p>
+        We reduced it to a self-contained <code>repro.html</code> (a
+        contentEditable box and a textarea side by side, with composition /
+        <code>beforeinput</code> / <code>input</code> logging) and filed it
+        upstream:
+        <a href="https://github.com/MicrosoftEdge/WebView2Feedback/issues/5625" rel="external">
+          MicrosoftEdge/WebView2Feedback#5625</a> — "WebView2 drops first CJK
+        IME character &amp; doubles Chinese punctuation in contentEditable"
+        (reproduced on Evergreen runtime 149.0.4022.69, Windows 11).
+      </p>
+
+      <h2>The rewrite: native textareas, one block at a time</h2>
+      <p>
+        Once the defect is below JavaScript, an app has two honest options:
+        wait for Microsoft, or stop standing on the broken floor. Chinese input
+        is not an edge case for a Markdown editor with a large CJK user base,
+        so v4.7 moved SoloMD's Windows live editor onto the input surface we
+        had just proven correct: the document is split into Markdown blocks,
+        inactive blocks render as HTML, and the active block is a real
+        <code>&lt;textarea&gt;</code> — the native IME path, no
+        contentEditable anywhere. macOS, Linux, iOS and Android keep
+        CodeMirror; their webviews don't have this bug.
+      </p>
+      <p>
+        The cost of that decision is feature parity, re-implemented by hand:
+        live preview with markers fading per block, autocomplete and slash
+        commands, focus and typewriter modes, smart list continuation, AI
+        rewrite, in-document find &amp; replace, clipboard image paste,
+        task-checkbox toggling, undo/redo coalescing, Tab indent, spellcheck,
+        word wrap. A block editor also has seams a single buffer doesn't:
+        Backspace at a block boundary used to no-op (fixed in 4.7.4 by folding
+        boundary deletes onto the full document), and Ctrl+A could only select
+        inside one block (fixed in 4.8.10 by collapsing the document into one
+        merged block under a native full selection).
+      </p>
+
+      <h2>What we'd tell other editor authors</h2>
+      <ul>
+        <li><strong>Trace, don't guess.</strong> The autocomplete abort and the TSF defect produced the same user-visible symptom. Without event-level traces from the real engine we would have shipped the small fix and called the big bug fixed.</li>
+        <li><strong>Test against the real engine.</strong> Edge on Windows is the same WebView2 Chromium — a dev server opened in Edge inside a Windows VM reproduces what macOS never will. Our worst regression (a focus loss after select-all) was only caught by real key events, because synthetic test events kept politely re-focusing.</li>
+        <li><strong>The native path is a feature.</strong> <code>&lt;textarea&gt;</code> gives you IME, selection, clipboard and undo semantics for free, maintained by the OS. Rebuilding WYSIWYG around it costs real work, but you stop owning bugs you cannot fix.</li>
+        <li><strong>File it upstream anyway.</strong> If your users hit it, so do others — the WebView2 report exists so the next team can skip a month of tracing.</li>
+      </ul>
+
+      <p>
+        SoloMD is a free, MIT-licensed Markdown editor for macOS, Windows,
+        Linux, iOS and Android — <a href="/">solomd.app</a>. The Windows block
+        editor ships since v4.7; the full change log is on the
+        <a href="/whats-new/">what's new</a> page.
+      </p>
+
+      <Giscus />
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<script type="application/ld+json" set:html={JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'BlogPosting',
+  headline: "The bug we couldn't fix in JavaScript — why SoloMD's Windows editor left contentEditable",
+  datePublished: '2026-07-08',
+  dateModified: '2026-07-08',
+  author: { '@type': 'Person', name: 'xiangdong li', url: 'https://github.com/zhitongblog' },
+  publisher: { '@type': 'Person', name: 'xiangdong li' },
+  url: 'https://solomd.app/blog/webview2-ime-why-we-left-contenteditable/',
+  description: 'Chinese IME input was intermittently broken in SoloMD on Windows. We chased it through CodeMirror autocomplete, proved the real defect lives in WebView2 contentEditable TSF integration, filed WebView2Feedback#5625, and rewrote the Windows editor on native textarea blocks.',
+  about: ['WebView2', 'IME', 'contentEditable', 'CodeMirror', 'Markdown editor', 'CJK input', 'Sogou Pinyin'],
+})} />
+
+<style>
+  .blog-article { max-width: 780px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .blog-article time { font-size: 13px; color: var(--text-muted, #8a8a8a); }
+  .blog-article h1 { font-size: 2rem; line-height: 1.25; margin: 10px 0 18px; }
+  .blog-article h2 { font-size: 1.45rem; margin: 34px 0 12px; }
+  .blog-article .lead { font-size: 1.08rem; color: var(--text-muted, #555); }
+  .blog-article p { line-height: 1.75; margin: 12px 0; }
+  .blog-article ul { padding-left: 22px; }
+  .blog-article li { margin: 8px 0; line-height: 1.7; }
+  .blog-article code { background: #f5f5f0; padding: 1px 6px; border-radius: 4px; font-size: 0.92em; }
+</style>

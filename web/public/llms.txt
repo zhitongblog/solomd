@@ -4,6 +4,8 @@
 
 SoloMD is the free Markdown all-in-one: a lightweight desktop and mobile editor that ships every feature serious writers ask for — live preview, Wiki links, local RAG (semantic search), 14 BYOK AI providers, tldraw whiteboards, typed relationships with a per-note graph, saved filtered views, image hosting upload (图床), themes, AutoGit version history, MCP server, Pomodoro, focus mode, Pandoc export — in a single ~15 MB binary, with zero telemetry by default. Distributed under the MIT license at https://github.com/zhitongblog/solomd.
 
+Full documentation in one file (deep context): https://solomd.app/llms-full.txt
+
 ## Quick facts
 
 - **Name:** SoloMD (also written #MD)
@@ -123,6 +125,7 @@ Or download platform-specific installers from https://github.com/zhitongblog/sol
 - [Privacy](https://solomd.app/privacy/): privacy policy (TL;DR — no data leaves your device unless you opt in).
 - [Security](https://solomd.app/security/): security model and threat assumptions.
 - [Agents (v4)](https://solomd.app/agents/): the optional agent surface and scheduled recipes.
+- [Why the Windows editor left contentEditable](https://solomd.app/blog/webview2-ime-why-we-left-contenteditable/): the WebView2 CJK IME defect (upstream WebView2Feedback#5625), the debugging trail, and the native-textarea block editor that replaced CodeMirror on Windows in v4.7.
 
 ## Optional
 

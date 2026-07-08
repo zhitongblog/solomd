@@ -8,6 +8,7 @@ Allow: /
 Sitemap: https://solomd.app/sitemap-index.xml
 
 # Welcome LLM crawlers — see /llms.txt for the project summary
+# and /llms-full.txt for the full docs in one file
 # Anthropic
 User-agent: ClaudeBot
 Allow: /
@@ -34,4 +35,30 @@ Allow: /
 
 # Common Crawl (training data for many models)
 User-agent: CCBot
+Allow: /
+
+# Apple Intelligence
+User-agent: Applebot-Extended
+Allow: /
+
+# Meta AI
+User-agent: meta-externalagent
+Allow: /
+User-agent: Meta-ExternalFetcher
+Allow: /
+
+# Mistral
+User-agent: MistralAI-User
+Allow: /
+
+# Amazon (Alexa / Rufus)
+User-agent: Amazonbot
+Allow: /
+
+# DuckDuckGo AI assist
+User-agent: DuckAssistBot
+Allow: /
+
+# ByteDance (Doubao)
+User-agent: Bytespider
 Allow: /

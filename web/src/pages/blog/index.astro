@@ -7,6 +7,13 @@ const lang = 'en' as const;
 
 const posts = [
   {
+    slug: 'webview2-ime-why-we-left-contenteditable',
+    title: "The bug we couldn't fix in JavaScript — why SoloMD's Windows editor left contentEditable",
+    date: '2026-07-08',
+    lead:
+      'Chinese IME input was intermittently broken on Windows: first character dropped, punctuation doubled, worst with Sogou Pinyin. We chased it through CodeMirror autocomplete, proved the real defect lives in WebView2 contentEditable TSF integration, filed it upstream (WebView2Feedback#5625), and rewrote the Windows editor on native textarea blocks. The debugging trail behind v4.7.',
+  },
+  {
     slug: 'v4-0-0-how-we-built-it',
     title: 'How we built v4.0 — engineering notes from a 12-week quiet phase',
     date: '2026-05-03',
