@@ -1,0 +1,108 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout
+  title="隐私政策 — SoloMD"
+  description="SoloMD 是一款本地优先的 Markdown 编辑器，不收集任何个人数据。你的笔记永远不会离开你的设备。"
+  lang="zh"
+>
+  <main class="privacy">
+    <article>
+      <h1>隐私政策</h1>
+      <p class="updated">最后更新：2026-04-18</p>
+
+      <h2>摘要</h2>
+      <p>
+        SoloMD 是一款本地优先的 Markdown 编辑器，
+        <strong>不收集任何个人数据</strong>。你的笔记永远不会离开你的设备。
+      </p>
+
+      <h2>我们收集的数据</h2>
+      <p>
+        <strong>没有。</strong>SoloMD 不收集、存储、传输或分享任何个人数据或设备标识符。
+        应用没有账号系统，没有统计分析，没有广告，没有遥测。
+      </p>
+
+      <h2>你创建的数据</h2>
+      <p>
+        所有你在 SoloMD 中创建或打开的文本、图片和文件都保存在你本地的设备上——
+        iOS 上保存在应用沙箱内，macOS / Windows / Linux 上保存在你自己选择的文件夹里。
+        SoloMD 不会把这些内容传输到任何服务器。
+      </p>
+
+      <h2>我们请求的权限</h2>
+      <p>SoloMD 只使用编辑核心功能所必需的系统权限：</p>
+      <ul>
+        <li><strong>本地文件访问</strong>——用于打开、读取与保存你选择的文件。</li>
+        <li>
+          <strong>相册</strong>（仅在你通过图片选择器插入图片时）——
+          用于读取你选择的那一张图片。
+        </li>
+      </ul>
+      <p>
+        我们不会请求通讯录、位置、麦克风、相机、日历、蓝牙，或任何其他权限。
+      </p>
+
+      <h2>第三方</h2>
+      <p>
+        SoloMD 没有嵌入任何第三方统计、广告、崩溃上报或社交 SDK。
+        应用源码完全开源在
+        <a href="https://github.com/zhitongblog/solomd">github.com/zhitongblog/solomd</a>（MIT 协议）。
+      </p>
+
+      <h2>儿童</h2>
+      <p>
+        SoloMD 适合所有年龄段使用，且不会有意收集儿童数据。
+      </p>
+
+      <h2>政策变更</h2>
+      <p>
+        任何实质性变更都会在本页面反映，并在应用更新日志中标注。
+      </p>
+
+      <h2>联系我们</h2>
+      <p>
+        有问题？发邮件到 <a href="mailto:slushy@139.com">slushy@139.com</a>，或在
+        <a href="https://github.com/zhitongblog/solomd/issues">github.com/zhitongblog/solomd/issues</a>
+        提 issue。
+      </p>
+
+      <p class="lang-switch">
+        <a href="/privacy">English</a>
+      </p>
+    </article>
+  </main>
+</Layout>
+
+<style>
+  .privacy {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 4rem 1.5rem 6rem;
+    color: var(--text, #1a1a1a);
+    line-height: 1.8;
+  }
+  .privacy h1 {
+    font-size: 2.25rem;
+    margin: 0 0 0.25em;
+  }
+  .privacy h2 {
+    font-size: 1.25rem;
+    margin: 2em 0 0.5em;
+  }
+  .privacy .updated {
+    color: var(--text-muted, #777);
+    margin: 0 0 2em;
+  }
+  .privacy a {
+    color: var(--accent, #ff9f40);
+  }
+  .privacy ul {
+    padding-left: 1.6em;
+  }
+  .lang-switch {
+    margin-top: 3em;
+    font-size: 0.9rem;
+  }
+</style>

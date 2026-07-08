@@ -1,0 +1,55 @@
+# Mirror the GitHub repo to Gitee on every push.
+#
+# Requires repo secrets:
+#   GITEE_PRIVATE_KEY  — ed25519 private key registered on Gitee
+#   GITEE_USERNAME     — Gitee username (e.g. zhitong45)
+#
+# Branches + tags both push. Force-mirror so Gitee tracks GitHub
+# 1:1 (any out-of-band edits on Gitee are overwritten — that's the point).
+
+name: Mirror to Gitee
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch: {}
+
+concurrency:
+  group: mirror-gitee
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout (full history, all refs)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Add Gitee SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.GITEE_PRIVATE_KEY }}
+
+      - name: Trust gitee.com host key
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -t ed25519 -H gitee.com >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Push everything to Gitee
+        env:
+          GITEE_USER: ${{ secrets.GITEE_USERNAME }}
+        run: |
+          set -euo pipefail
+          REMOTE="git@gitee.com:${GITEE_USER}/solomd.git"
+          # Not `--mirror`: in an Actions checkout that also pushes
+          # refs/remotes/origin/* ("deny updating a hidden ref" on Gitee).
+          # Mirror GitHub's branches (origin/*) and tags explicitly;
+          # `--prune` deletes Gitee refs that no longer exist on GitHub.
+          git remote set-head origin -d
+          git push --prune --force "$REMOTE" \
+            "refs/remotes/origin/*:refs/heads/*" \
+            "refs/tags/*:refs/tags/*"

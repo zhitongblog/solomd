@@ -1,0 +1,198 @@
+/* SoloMD landing page — brand-aligned */
+
+:root {
+  /* Background shifted from #fafaf7 to #f8f8f6 — same warm-cream family
+     as Anthropic's claude.com, slightly more neutral than a true beige. */
+  --bg: #f8f8f6;
+  --bg-elev: #ffffff;
+  --bg-soft: #efeee9;
+  /* v4.6 — warm the text to match the app's design-system ink (#37352f),
+     so the marketing site and the product read as one warm-neutral family
+     instead of the old cooler near-black (#121212). */
+  --text: #37352f;
+  --text-muted: #787774;
+  --text-faint: #9c9890;
+  --border: #e9e9e7;
+  --accent: #ff9f40;
+  --accent-soft: #ffe7cc;
+  --accent-deep: #c97a20;
+  --ink: #2a2824;
+  --ink-soft: #44413a;
+
+  /* Headings get a display serif (Source Serif 4 from Google Fonts,
+     loaded in Layout.astro). Falls through to system serifs on slow
+     networks via font-display: swap — both have the same vertical
+     metrics so reflow is minimal. */
+  --font-serif: "Source Serif 4", "Source Serif Pro", "New York", "Charter",
+    Georgia, "Times New Roman", serif;
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", Roboto,
+    "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+    "Noto Sans CJK SC", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", "Cascadia Code", Menlo, Consolas,
+    monospace;
+
+  --content-width: 1100px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* v4.6 — warm dark surfaces to match the app (#1f1e1b / #23221f / #e6e1d8). */
+    --bg: #1f1e1b;
+    --bg-elev: #23221f;
+    --bg-soft: #2a2925;
+    --text: #e6e1d8;
+    --text-muted: #b8b1a6;
+    --text-faint: #7f776d;
+    --border: #34322d;
+    --accent: #ff9f40;
+    --accent-soft: rgba(255, 159, 64, 0.18);
+    --accent-deep: #ffb874;
+    --ink: #ffffff;
+    --ink-soft: #d6d6d3;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text);
+  background: var(--bg);
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+h1, h2, h3, h4 {
+  font-weight: 600;
+  line-height: 1.1;
+  margin: 0 0 0.5em;
+  color: var(--ink);
+  font-family: var(--font-serif);
+  letter-spacing: -0.02em;
+}
+
+/* H1 is intentionally large + tight — display serif at this size needs
+   a tight tracking + line-height to read as a single confident phrase
+   instead of a stack of words. Anthropic's hero uses similar metrics. */
+h1 { font-size: clamp(2.6rem, 6vw, 4.8rem); letter-spacing: -0.03em; line-height: 1.05; }
+h2 { font-size: clamp(1.8rem, 3.5vw, 2.6rem); }
+h3 { font-size: 1.3rem; font-family: var(--font-ui); letter-spacing: -0.005em; font-weight: 600; }
+h4 { font-size: 1.05rem; font-family: var(--font-ui); letter-spacing: 0; }
+
+p { margin: 0 0 1em; }
+
+code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  background: var(--bg-soft);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+  color: var(--accent-deep);
+}
+
+.container {
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 24px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 14px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s, border-color 0.18s;
+  text-decoration: none;
+  letter-spacing: -0.005em;
+}
+/* Primary CTA is now ink-on-cream (Anthropic-style) instead of orange.
+   Orange is reserved for sponsorship + inline links so the page has
+   a clear primary surface and a single accent color of attention.
+   `a.btn` selector forces specificity over per-page article rules
+   like `.whats-new a` (which set color to --accent for inline links
+   and would otherwise inherit-override the CTA's cream label). */
+a.btn--primary,
+.btn--primary {
+  background: var(--ink);
+  color: var(--bg);
+}
+a.btn--primary:hover,
+.btn--primary:hover {
+  background: var(--ink-soft);
+  color: var(--bg);
+  text-decoration: none;
+}
+a.btn--secondary,
+.btn--secondary {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--border);
+}
+a.btn--secondary:hover,
+.btn--secondary:hover {
+  background: var(--bg-soft);
+  color: var(--text);
+  border-color: var(--ink);
+  text-decoration: none;
+}
+/* Reserved for places that genuinely should pop in brand color —
+   namely the Sponsor button. Keep its use minimal. */
+a.btn--accent,
+.btn--accent {
+  background: var(--accent);
+  color: #1a1a1a;
+}
+a.btn--accent:hover,
+.btn--accent:hover {
+  background: var(--accent-deep);
+  color: #1a1a1a;
+  text-decoration: none;
+}
+
+.brand-mark {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.brand-mark .h { color: var(--accent); }
+.brand-mark .md { color: var(--text); }
+
+/* Generous vertical rhythm — sections breathe. The previous 80px felt
+   tight against the new larger H1. Borders between sections also
+   removed in favor of negative space so the page reads as a long
+   document rather than a stack of cards. */
+section {
+  padding: 112px 0;
+}
+@media (max-width: 720px) {
+  section { padding: 72px 0; }
+}
+
+.lead {
+  font-size: clamp(1.1rem, 2.2vw, 1.35rem);
+  color: var(--text-muted);
+  max-width: 680px;
+  line-height: 1.55;
+}

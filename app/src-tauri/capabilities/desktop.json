@@ -1,0 +1,10 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "desktop",
+  "description": "Capabilities scoped to desktop platforms only — used by plugins that are gated behind #[cfg(desktop)] in lib.rs (window-state). Mobile builds skip this file entirely so the iOS / Android permission resolver doesn't choke on permissions for plugins it never loads.",
+  "platforms": ["macOS", "windows", "linux"],
+  "windows": ["main", "solomd-*"],
+  "permissions": [
+    "window-state:default"
+  ]
+}

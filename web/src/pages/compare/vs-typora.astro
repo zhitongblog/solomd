@@ -1,0 +1,248 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+
+const lang = 'en' as const;
+---
+
+<Layout
+  title="SoloMD vs Typora — Lightweight Markdown Editor Comparison 2026"
+  description="Detailed side-by-side comparison of SoloMD and Typora Markdown editors. Price, size, features, cross-platform support, and why free-and-open-source matters."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main class="compare-page">
+    <article class="container compare-article">
+      <nav class="breadcrumbs">
+        <a href="/">Home</a> / <a href="/compare">Compare</a> / <span>vs Typora</span>
+      </nav>
+
+      <h1>SoloMD vs Typora: Which Markdown Editor Should You Use?</h1>
+      <p class="lead">
+        Refreshed against <strong>SoloMD v4.5</strong> and <strong>Typora 1.13</strong> (mid-2026).
+        Quick answer: <strong>SoloMD</strong> if you want an open-source editor where AI agents
+        live as a first-class surface — chat-with-vault panel, scheduled recipes, replayable
+        traces — all under an AutoGit branch sandbox so writes are reviewable.
+        <strong>Typora</strong> if you want the most polished single-mode WYSIWYG experience and
+        don't need AI / sync / version history / agents in core.
+      </p>
+
+      <h2>The 30-second verdict</h2>
+      <table class="compare-detail">
+        <thead>
+          <tr><th>&nbsp;</th><th>SoloMD v4.5</th><th>Typora 1.13</th></tr>
+        </thead>
+        <tbody>
+          <tr><th>Price</th><td><strong>Free</strong> (MIT)</td><td>$14.99 USD (one-time, 3 devices)</td></tr>
+          <tr><th>Installer size</th><td>~15 MB</td><td>~70 MB</td></tr>
+          <tr><th>Open source</th><td>✅ on GitHub</td><td>❌ closed source</td></tr>
+          <tr><th>Platforms</th><td>macOS · Windows · Linux · iPad</td><td>macOS · Windows · Linux</td></tr>
+          <tr><th>Built-in AI rewrite</th><td>✅ <strong>14 BYOK providers</strong> · ⌘J · keys in OS keychain</td><td>❌</td></tr>
+          <tr><th>Inline Agent Panel (chat-with-vault)</th><td>✅ <strong>v4.0</strong> · streamed multi-turn · tool-call cards · [[wikilink]] citations · Insert / Copy to active note</td><td>❌</td></tr>
+          <tr><th>Scheduled agent recipes</th><td>✅ <strong>v4.0</strong> · cron / on-save / on-commit / on-tag / manual · 11-recipe cookbook</td><td>❌</td></tr>
+          <tr><th>AutoGit branch sandbox + accept/reject for agent writes</th><td>✅ <strong>v4.0</strong> · per-run branch · write-cap (default 5) · refuses to start on dirty workspace</td><td>❌</td></tr>
+          <tr><th>Replayable agent trace</th><td>✅ <strong>v4.0</strong> · jsonl per step · replay-from-step · <code>read_agent_trace</code> MCP tool</td><td>❌</td></tr>
+          <tr><th>Multi-workspace MCP federation</th><td>✅ <strong>v4.0</strong> · <code>--workspace</code> repeatable · MCP profiles UI</td><td>❌</td></tr>
+          <tr><th>Ollama first-class</th><td>✅ <strong>v4.0</strong> · auto-detect · 3 model presets · <code>provider: local</code> in recipes</td><td>❌</td></tr>
+          <tr><th>Public REST API (localhost, token auth)</th><td>✅ <strong>v4.0</strong> · same surface as MCP for non-MCP clients</td><td>❌</td></tr>
+          <tr><th>BYOK cost meter</th><td>✅ <strong>v4.0</strong> · per-provider tokens-spent counter, opt-in</td><td>❌</td></tr>
+          <tr><th>MCP server bundled</th><td>✅ <strong>v3.1</strong> · 13 tools, 5 SoloMD-only (autogit / sync / share)</td><td>❌</td></tr>
+          <tr><th><code>solomd agent &lt;prompt&gt;</code> CLI</th><td>✅ <strong>v3.1</strong> · hands off to Claude Code / Codex with MCP pre-wired</td><td>❌</td></tr>
+          <tr><th>GitHub-backed sync (your repo)</th><td>✅ <strong>v3.0</strong> · libgit2 + OS keychain</td><td>❌</td></tr>
+          <tr><th>End-to-end encryption</th><td>✅ <strong>v3.0</strong> · Argon2id + XChaCha20-Poly1305 on your repo</td><td>❌</td></tr>
+          <tr><th>Cloud-folder mode (iCloud / Dropbox / OneDrive)</th><td>✅ <strong>v3.0</strong> · auto-detect + cross-device session restore</td><td>❌</td></tr>
+          <tr><th>Public read-only share page</th><td>✅ <strong>v3.0</strong> · <code>solomd.app/share/</code></td><td>❌</td></tr>
+          <tr><th>AutoGit version history</th><td>✅ <strong>v2.2</strong> · per-save snapshots, sidebar restore</td><td>❌</td></tr>
+          <tr><th>Local semantic search (RAG)</th><td>✅ <strong>v2.3</strong> · ⌘⇧F · on-device, no model download</td><td>❌</td></tr>
+          <tr><th>Slideshow / presentation</th><td>✅ <strong>v3.5: full reveal.js</strong> · backgrounds, transitions, fragments, vertical sub-slides</td><td>❌</td></tr>
+          <tr><th>Outline keyboard jump</th><td>✅ <strong>v3.1.x</strong> · letter labels per heading + <code>g&lt;N&gt;</code> line jump</td><td>⚠️ outline panel, no jump</td></tr>
+          <tr><th>WYSIWYG live edit mode</th><td>✅ <strong>v2.3</strong> · 4th view mode you can toggle</td><td>✅ always on (only mode)</td></tr>
+          <tr><th>Live preview</th><td>✅ toggleable</td><td>✅ always on</td></tr>
+          <tr><th>Raw source mode</th><td>✅</td><td>⚠️ limited</td></tr>
+          <tr><th>Split view (edit + preview)</th><td>✅</td><td>❌</td></tr>
+          <tr><th>Multi-tab</th><td>✅</td><td>❌ one window per file</td></tr>
+          <tr><th>Math (KaTeX vs MathJax v4)</th><td>KaTeX ~280 KB</td><td>✅ <strong>MathJax v4</strong> · richer (line-break <code>\\</code>, more TeX packages)</td></tr>
+          <tr><th>Mermaid version</th><td>✅ <strong>11.14</strong> (newer)</td><td>11.13 (Venn + Ishikawa just added)</td></tr>
+          <tr><th>Export PDF / DOCX / HTML / PNG</th><td>✅</td><td>✅</td></tr>
+          <tr><th>Pandoc export (EPUB / ODT / LaTeX)</th><td>🟡 yes — needs Pandoc on PATH</td><td>🟡 yes — needs Pandoc on PATH</td></tr>
+          <tr><th>Multi-encoding (GBK / Big5 / Shift-JIS)</th><td>✅ auto-detect (chardetng)</td><td>⚠️ UTF-8 only</td></tr>
+          <tr><th>CJK proofread (中文标点)</th><td>✅ <strong>v2.5</strong></td><td>❌</td></tr>
+          <tr><th>Vim mode</th><td>✅</td><td>❌</td></tr>
+          <tr><th>CLI tool</th><td>✅ <code>solomd open / new / list / search / cat / agent / mcp-config</code></td><td>❌</td></tr>
+          <tr><th>VS Code / Cursor integration</th><td>✅ via bundled MCP server (LLM clients drive vault directly)</td><td>✅ "Open in Typora" extension (1.13)</td></tr>
+          <tr><th>Format Markdown (Prettier)</th><td>✅ <code>⌘⌥L</code></td><td>❌</td></tr>
+          <tr><th>Theme marketplace</th><td>✅ <strong>v2.5</strong> · curated, click-install</td><td>✅ paid + free themes</td></tr>
+          <tr><th>Welcome tour</th><td>✅</td><td>❌</td></tr>
+          <tr><th>Built on</th><td>Tauri 2 (Rust + webview)</td><td>Electron</td></tr>
+          <tr><th>RAM at idle</th><td>~150 MB</td><td>~300 MB</td></tr>
+        </tbody>
+      </table>
+
+      <h2>When to pick SoloMD</h2>
+      <ul>
+        <li>You want an editor whose <strong>vault any LLM client can drive directly</strong> via MCP — Claude Code, Codex CLI, Cursor — with 5 SoloMD-only tools nobody else has (per-note git history, sync state, share URLs).</li>
+        <li>You use AI in writing and want to <strong>bring your own keys</strong> across 14 providers (Claude, OpenAI, DeepSeek, Qwen, GLM, Kimi, Doubao, etc.) instead of the editor renting access for you.</li>
+        <li>You want <strong>open source and free forever</strong> — no licence key, no nag screen.</li>
+        <li>You want sync that goes to <strong>your own GitHub repo</strong> (optionally end-to-end encrypted) instead of a vendor's cloud.</li>
+        <li>You work with CJK / legacy text files and need auto-detection of GBK / Big5 / Shift-JIS, plus Chinese punctuation proofread.</li>
+        <li>You like split view, multi-tab, Vim mode, and an outline panel with letter-jump shortcuts.</li>
+        <li>You edit on an iPad (SoloMD ships on the iPad App Store, Typora doesn't).</li>
+      </ul>
+
+      <h2>When to pick Typora</h2>
+      <ul>
+        <li>You want a <strong>single always-on WYSIWYG view</strong> with no view-mode switcher. SoloMD has a WYSIWYG mode (v2.3) but it lives alongside source / split / preview as one of four modes — you switch to it explicitly.</li>
+        <li>You write papers heavy in math and need <strong>MathJax v4</strong> specifically (line-break <code>\\</code>, more TeX packages). SoloMD uses KaTeX which is ~5× smaller but a tighter feature set.</li>
+        <li>You're already used to Typora's specific shortcut set and don't want to retrain.</li>
+        <li>You don't need AI / sync / version history in core — Typora 1.13 has chosen not to enter those spaces.</li>
+      </ul>
+
+      <h2>Install size & memory — why it matters</h2>
+      <p>
+        Typora is built on Electron, which means every install ships its own copy of
+        Chromium (~70 MB). SoloMD uses Tauri 2, which embeds the OS's native webview
+        (WKWebView on Mac, WebView2 on Win, WebKitGTK on Linux), so the binary is
+        just the Rust core + your Vue/TS bundle. The result: **~4× smaller install,
+        ~2× less RAM** in typical use.
+      </p>
+
+      <h2>Feature depth</h2>
+      <h3>Live preview</h3>
+      <p>
+        Both editors render Markdown inline as you type. Typora hides the raw markers
+        always; SoloMD hides them only on lines that don't touch the cursor, and keeps
+        image link brackets + inline code backticks visible so you always see structure.
+      </p>
+
+      <h3>Export</h3>
+      <p>
+        Both support PDF, DOCX, HTML, and PNG. SoloMD adds:
+      </p>
+      <ul>
+        <li><strong>Copy as rich HTML</strong> — paste styled into WeChat / 公众号 / Notion / Confluence.</li>
+        <li><strong>Print via system dialog</strong> — uses native NSPrintOperation (macOS) / WebView2 (Win).</li>
+        <li><strong>Copy as image</strong> — screenshot-style PNG of the rendered markdown.</li>
+      </ul>
+
+      <h3>Editor features SoloMD has that Typora doesn't</h3>
+      <ul>
+        <li>Tabs (multiple files in one window)</li>
+        <li>Split panes (drag a tab to split horizontally)</li>
+        <li>Outline panel with cursor-synced heading highlight</li>
+        <li>File tree sidebar for folder mode</li>
+        <li>Vim keybindings</li>
+        <li>Global search across a folder (Ctrl+Shift+F)</li>
+        <li>Clean-AI button — strips citations / curly quotes / zero-width chars from pasted ChatGPT / Claude output</li>
+        <li>Encoding auto-detection for legacy Chinese/Japanese files</li>
+      </ul>
+
+      <h2>Typora's own most-requested features — shipped in SoloMD</h2>
+      <p>
+        These are among the highest-upvoted, still-open requests on Typora's own
+        public tracker (<a href="https://github.com/typora/typora-issues/issues" rel="external">typora/typora-issues</a>),
+        some open since 2016–2018. SoloMD already ships every one of them — free
+        and on every platform:
+      </p>
+      <table class="compare-detail">
+        <thead>
+          <tr><th>Long-requested on Typora's tracker</th><th>SoloMD</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Multi-tab on Windows / Linux (open since 2017)</td><td>✅ tabs on every platform</td></tr>
+          <tr><td>Open in same tab / new tab / new window</td><td>✅ configurable</td></tr>
+          <tr><td>Source-control integration</td><td>✅ built-in AutoGit (per-note history, diff, rollback) + GitHub sync</td></tr>
+          <tr><td>Wiki-style <code>[[links]]</code></td><td>✅ wikilinks + backlinks panel</td></tr>
+          <tr><td>Presentation / slideshow mode</td><td>✅ full reveal.js (<code>⌘⌥P</code>)</td></tr>
+          <tr><td>Academic referencing / citations</td><td>✅ <code>@citekey</code> + .bib / CSL</td></tr>
+          <tr><td>Vim bindings</td><td>✅ Vim mode</td></tr>
+          <tr><td>More diagram formats</td><td>✅ Mermaid 11.14 (+ KaTeX)</td></tr>
+          <tr><td>Plugin / extensibility</td><td>✅ MCP endpoint + scriptable CLI + agent recipes (any LLM client can drive your vault)</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:0.95rem;color:var(--text-muted);">
+        Your existing Typora notes open unchanged: SoloMD reads Typora's
+        <code>./images/&lt;note&gt;/</code> attachment layout (set it in Settings →
+        Writing → Attachment mode) and renders images even under Chinese / spaced
+        folder names. Nothing is converted or locked in — they stay plain
+        <code>.md</code> in your folder.
+      </p>
+
+      <h2>Both editors do well</h2>
+      <ul>
+        <li>KaTeX math (inline <code>$a^2+b^2=c^2$</code> and block <code>$$...$$</code>)</li>
+        <li>Mermaid diagrams</li>
+        <li>Syntax-highlighted code fences</li>
+        <li>GFM tables, task lists, strikethrough</li>
+        <li>Front-matter (YAML)</li>
+      </ul>
+
+      <h2>Pricing</h2>
+      <p>
+        SoloMD is free and MIT-licensed — clone the repo, build yourself if you like, or
+        <a href="/#download">download the installer</a>. No account, no subscription,
+        no data collection beyond an optional anonymous usage counter (off with one click).
+      </p>
+      <p>
+        Typora is $14.99 USD one-time per user, up to 3 devices. There's no free tier
+        since v1.0 (2021).
+      </p>
+
+      <h2>Migration — Typora to SoloMD</h2>
+      <p>
+        Your <code>.md</code> files are just text; both editors read the same format, so
+        "migration" means installing SoloMD and opening your folder. Caveats:
+      </p>
+      <ul>
+        <li>Typora-specific extensions like <code>==highlight==</code>,
+          <code>^superscript^</code>, and <code>~subscript~</code> aren't in SoloMD yet.
+          Standard CommonMark + GFM works 100%.</li>
+        <li>If you used Typora's "image copy to assets folder" feature, SoloMD has the
+          same thing — paste or drop an image and it's saved to <code>./_assets/</code>
+          next to the document.</li>
+      </ul>
+
+      <h2>FAQ</h2>
+      <h3>Is SoloMD really free?</h3>
+      <p>Yes. MIT license, no ads, no telemetry by default. Source on
+        <a href="https://github.com/zhitongblog/solomd" rel="external">GitHub</a>.</p>
+
+      <h3>Can I use SoloMD on work computers?</h3>
+      <p>Yes — Mac build is notarized, Windows installer is EV-signed-adjacent
+        (Microsoft SmartScreen only flags new publishers briefly until reputation builds).
+        Linux AppImage / deb / rpm all ship unsigned per distro convention.</p>
+
+      <h3>Does SoloMD support Typora themes?</h3>
+      <p>Not out-of-the-box (different CSS selectors), but you can paste any CSS file
+        via Settings → Custom CSS and override most styles.</p>
+
+      <div class="compare-cta">
+        <a href="/#download" class="btn btn--primary">Download SoloMD</a>
+        <a href="https://github.com/zhitongblog/solomd" class="btn btn--secondary" rel="external">View on GitHub</a>
+      </div>
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .compare-article { max-width: 820px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .compare-article h1 { font-size: 2.2rem; line-height: 1.2; margin: 10px 0 20px; }
+  .compare-article h2 { font-size: 1.55rem; margin: 36px 0 14px; }
+  .compare-article h3 { font-size: 1.15rem; margin: 24px 0 10px; }
+  .compare-article .lead { font-size: 1.1rem; color: var(--text-muted, #555); margin-bottom: 32px; }
+  .compare-detail { width: 100%; border-collapse: collapse; margin: 20px 0 28px; font-size: 14px; }
+  .compare-detail th, .compare-detail td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #eee; }
+  .compare-detail thead th { background: #fafafa; font-weight: 600; }
+  .compare-detail tbody th { font-weight: 500; width: 32%; }
+  .compare-cta { display: flex; gap: 12px; margin-top: 40px; }
+  .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  .btn--primary { background: #ff9f40; color: #000; }
+  .btn--secondary { background: #111; color: #fff; }
+  .compare-article ul { padding-left: 22px; }
+  .compare-article li { margin: 6px 0; line-height: 1.6; }
+  .compare-article p { line-height: 1.7; margin: 12px 0; }
+  .compare-article code { background: #f5f5f0; padding: 1px 6px; border-radius: 4px; font-size: 0.92em; }
+</style>

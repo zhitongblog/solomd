@@ -1,0 +1,557 @@
+---
+import { getT, type Lang } from '../i18n/translations';
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const tr = getT(lang);
+
+const VERSION = '4.8.9';
+const REPO = 'zhitongblog/solomd';
+const baseUrl = `https://github.com/${REPO}/releases/download/v${VERSION}`;
+const langPrefix = lang === 'en' ? '' : `/${lang}`;
+const whatsNewHref = `${langPrefix}/whats-new/`;
+// /agents/ sub-page exists only in en + zh; ja/ko link to en.
+const agentsHref = lang === 'zh' ? '/zh/agents/' : '/agents/';
+const ONE_LINE_LABEL = {
+  en: 'Or one-line install',
+  zh: '或一键安装命令',
+  ja: 'またはワンラインインストール',
+  ko: '또는 한 줄 설치',
+  de: 'Oder Ein-Zeilen-Installation',
+  fr: 'Ou installation en une ligne',
+  es: 'O instalación en una línea',
+  pt: 'Ou instalação em uma linha',
+  it: 'O installazione in una riga',
+  pl: 'Lub instalacja w jednej linii',
+  nl: 'Of installatie in één regel',
+  tr: 'Veya tek satırlık kurulum',
+  sv: 'Eller enradsinstallation',
+  uk: 'Або встановлення одним рядком',
+}[lang];
+
+// Default (SSR / no-JS / unknown OS) → mac dmg link
+const defaultDownload = `${baseUrl}/SoloMD_${VERSION}_universal.dmg`;
+
+// ---- Fetch stats at BUILD time (Cloudflare Pages runs this fresh) ----
+// This guarantees the numbers render even if the client-side API call
+// gets rate-limited. Client-side JS can still update to a newer value.
+//
+// Auth header (when GITHUB_TOKEN env is present) bumps the rate limit
+// from 60/hr (anon, per IP) to 5000/hr (authed). Without it, multiple
+// builds in the same hour can exhaust the limit and cause empty
+// downloads to be SSR'd into the static HTML — bug seen 2026-05-04.
+let initialStars = 0;
+let initialDownloads = 0;
+const GH_TOKEN = (typeof process !== 'undefined' && process.env && process.env.GITHUB_TOKEN) || '';
+const GH_HEADERS: Record<string, string> = {
+  'User-Agent': 'SoloMD-build-stats',
+  Accept: 'application/vnd.github+json',
+};
+if (GH_TOKEN) GH_HEADERS.Authorization = `Bearer ${GH_TOKEN}`;
+try {
+  const [repoRes, relRes] = await Promise.all([
+    fetch(`https://api.github.com/repos/${REPO}`, { headers: GH_HEADERS }),
+    fetch(`https://api.github.com/repos/${REPO}/releases?per_page=100`, { headers: GH_HEADERS }),
+  ]);
+  if (repoRes.ok) {
+    const r = await repoRes.json();
+    initialStars = r.stargazers_count || 0;
+  }
+  if (relRes.ok) {
+    const rels = await relRes.json();
+    if (Array.isArray(rels)) {
+      for (const rel of rels) {
+        for (const a of rel.assets || []) {
+          initialDownloads += a.download_count || 0;
+        }
+      }
+    }
+  }
+} catch {
+  // Build will just render empty badges; JS will try to fill them.
+}
+
+function fmtStars(n: number): string {
+  return n >= 1000 ? `⭐ ${(n / 1000).toFixed(1)}k` : `⭐ ${n}`;
+}
+function fmtDownloads(n: number): string {
+  return n >= 1000 ? `${(n / 1000).toFixed(1)}k downloads` : `${n} downloads`;
+}
+const initialStarsText = initialStars > 0 ? fmtStars(initialStars) : '';
+const initialDownloadsText = initialDownloads > 0 ? fmtDownloads(initialDownloads) : '';
+---
+
+<a class="android-beta-banner" href="mailto:lixd220@gmail.com?subject=SoloMD%20Android%20Beta%20Signup&body=Please%20add%20me%20to%20the%20Android%20closed%20testing.%20Google%20account%20email%3A%20">
+  <span class="android-beta-banner__text">{tr.hero.androidBeta}</span>
+</a>
+
+<a class="release-banner" href={whatsNewHref}>
+  <span class="release-banner__tag">v4.7</span>
+  <span class="release-banner__text">{
+    lang === 'zh'
+      ? 'Windows 换上全新编辑器 —— 修复中文 / 输入法吞掉首字与双标点（仅 Windows，其他平台不变）。查看更新 →'
+      : 'Windows now ships a rebuilt editor that fixes CJK / IME first-character drop and doubled punctuation (Windows only — other platforms unchanged). What’s new →'
+  }</span>
+</a>
+
+<section class="hero">
+  <div class="container hero__inner">
+    <div class="hero__badge">{tr.hero.badge} · <span id="hero-stars">{initialStarsText}</span> · <span id="hero-dl-count">{initialDownloadsText}</span></div>
+    <h1>
+      {tr.hero.title1}<br />
+      <span class="hero__accent">{tr.hero.title2}</span>
+    </h1>
+    <p class="hero__subtagline">{tr.hero.subtagline}</p>
+    <p class="lead">{tr.hero.lead}</p>
+    <div class="hero__whatsnew-row">
+      <a href={whatsNewHref} class="hero__whatsnew">{tr.hero.ctaWhatsNew}</a>
+    </div>
+    <div class="hero__cta">
+      <a
+        id="hero-download"
+        href={defaultDownload}
+        class="btn btn--primary btn--lg"
+        data-default-text={tr.hero.ctaPrimary}
+        data-mac-text={tr.hero.ctaForMac}
+        data-win-text={tr.hero.ctaForWindows}
+        data-linux-text={tr.hero.ctaForLinux}
+        data-mac-href={`${baseUrl}/SoloMD_${VERSION}_universal.dmg`}
+        data-win-href={`${baseUrl}/SoloMD_${VERSION}_x64_en-US.msi`}
+        data-linux-href={`${baseUrl}/SoloMD_${VERSION}_amd64.AppImage`}
+      >
+        ⬇ {tr.hero.ctaPrimary}
+      </a>
+      <a
+        href="#features"
+        class="btn btn--secondary btn--lg"
+      >
+        {tr.hero.ctaSecondary}
+      </a>
+    </div>
+    <div class="hero__install">
+      <div class="hero__install-label">
+        ⚡ {ONE_LINE_LABEL}
+      </div>
+      <div class="hero__install-tabs">
+        <button class="hi-tab hi-tab--active" data-hi-tab="unix">macOS / Linux</button>
+        <button class="hi-tab" data-hi-tab="win">Windows</button>
+      </div>
+      <div class="hi-panel hi-panel--active" data-hi-panel="unix">
+        <code class="hi-code">curl -fsSL https://solomd.app/install.sh | bash</code>
+        <button class="hi-copy" data-hi-copy="curl -fsSL https://solomd.app/install.sh | bash" title="Copy">📋</button>
+      </div>
+      <div class="hi-panel" data-hi-panel="win">
+        <code class="hi-code">irm https://solomd.app/install.ps1 | iex</code>
+        <button class="hi-copy" data-hi-copy="irm https://solomd.app/install.ps1 | iex" title="Copy">📋</button>
+      </div>
+    </div>
+    <a href="#download" class="hero__all-platforms">{tr.hero.ctaAllPlatforms}</a>
+    {lang === 'zh' && (
+      <a
+        href={`https://gitee.com/zhitong45/solomd/releases/tag/v${VERSION}`}
+        class="hero__gitee"
+        rel="noopener"
+      >
+        🪞 国内用户：从 Gitee 镜像下载（更快）→
+      </a>
+    )}
+    <div class="hero__chips">
+      {tr.hero.chips.map((c) => <span class="chip">{c}</span>)}
+    </div>
+
+    <div class="hero__demo">
+      <img
+        class="hero__demo-media"
+        src="/demo/solomd-demo.svg"
+        alt={tr.hero.demoAlt}
+        width="1280"
+        height="800"
+        loading="lazy"
+      />
+    </div>
+  </div>
+</section>
+
+<script is:inline>
+  // Fetch live stars + downloads from our own /api/stats endpoint.
+  // Cloudflare Pages Functions proxies GitHub API server-side with a 5-min
+  // edge cache, so clients are never rate-limited and numbers update every
+  // ~5 minutes automatically (no redeploy needed).
+  (function () {
+    fetch('/api/stats')
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (stats) {
+        if (!stats) return;
+        // Guard with > 0, NOT != null. The /api/stats fallback used to
+        // serve {stars: 0, downloads: 0} on GitHub failure — that's
+        // numerically valid but visually meaningless ("⭐ 0 · 0
+        // downloads" makes the project look dead) and it would clobber
+        // the build-time SSR value already on screen.
+        // Bug seen 2026-04-28; same fix mirrored in functions/api/stats.ts.
+        if (typeof stats.stars === 'number' && stats.stars > 0) {
+          var el = document.getElementById('hero-stars');
+          if (el) {
+            el.textContent = stats.stars >= 1000
+              ? '⭐ ' + (stats.stars / 1000).toFixed(1) + 'k'
+              : '⭐ ' + stats.stars;
+          }
+        }
+        if (typeof stats.downloads === 'number' && stats.downloads > 0) {
+          var text = stats.downloads >= 1000
+            ? (stats.downloads / 1000).toFixed(1) + 'k downloads'
+            : stats.downloads + ' downloads';
+          var el2 = document.getElementById('hero-dl-count');
+          if (el2) el2.textContent = text;
+          var el3 = document.getElementById('dl-section-count');
+          if (el3) el3.textContent = stats.downloads.toLocaleString() + '+';
+        }
+      })
+      .catch(function () { /* fall back to the build-time numbers in HTML */ });
+  })();
+
+  // Detect the visitor's OS and rewrite the hero download button to point at
+  // the right artifact directly. Falls back gracefully to the universal mac
+  // dmg if detection fails or the user has scripting disabled.
+  (function () {
+    var btn = document.getElementById('hero-download');
+    if (!btn) return;
+    var ua = navigator.userAgent || '';
+    var platform = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '';
+    var os = 'mac';
+    if (/Win/i.test(ua) || /Windows/i.test(platform)) os = 'win';
+    else if (/Linux/i.test(ua) && !/Android/i.test(ua)) os = 'linux';
+    else if (/Mac|iPhone|iPad/i.test(ua) || /Mac/i.test(platform)) os = 'mac';
+    var href = btn.getAttribute('data-' + os + '-href');
+    var text = btn.getAttribute('data-' + os + '-text');
+    if (href) btn.setAttribute('href', href);
+    if (text) btn.innerHTML = '⬇ ' + text;
+
+    // Also switch the one-line install block to Windows if user is on Windows
+    if (os === 'win') {
+      var winTab = document.querySelector('.hi-tab[data-hi-tab="win"]');
+      if (winTab) winTab.click();
+    }
+  })();
+
+  // One-line install: tab switch + copy-to-clipboard
+  (function () {
+    var tabs = document.querySelectorAll('.hi-tab');
+    var panels = document.querySelectorAll('.hi-panel');
+    tabs.forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        var target = tab.getAttribute('data-hi-tab');
+        tabs.forEach(function (t) { t.classList.remove('hi-tab--active'); });
+        tab.classList.add('hi-tab--active');
+        panels.forEach(function (p) {
+          if (p.getAttribute('data-hi-panel') === target) {
+            p.classList.add('hi-panel--active');
+          } else {
+            p.classList.remove('hi-panel--active');
+          }
+        });
+      });
+    });
+    var copyBtns = document.querySelectorAll('.hi-copy');
+    copyBtns.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var text = btn.getAttribute('data-hi-copy') || '';
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function () {
+            var orig = btn.textContent;
+            btn.classList.add('copied');
+            btn.textContent = '✓';
+            setTimeout(function () {
+              btn.classList.remove('copied');
+              btn.textContent = orig;
+            }, 1500);
+          });
+        }
+      });
+    });
+  })();
+</script>
+
+<style>
+  /* Top recruitment banner — sits above the hero, full-bleed, accent
+     gradient so it reads as a real call to action without overwhelming
+     the hero typography below. */
+  .android-beta-banner {
+    display: block;
+    text-align: center;
+    text-decoration: none;
+    padding: 12px 20px;
+    background: linear-gradient(90deg, #d97706 0%, #f59e0b 50%, #d97706 100%);
+    color: #1a1a1a;
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: 0.01em;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    transition: filter 0.15s;
+  }
+  .android-beta-banner:hover {
+    filter: brightness(1.06);
+  }
+  .android-beta-banner__text { display: inline-block; }
+  @media (max-width: 640px) {
+    .android-beta-banner { font-size: 13px; padding: 10px 14px; }
+  }
+
+  /* v4.7 release announcement — a calmer info bar under the orange Android
+     banner. Calls out the Windows-only editor rebuild so visitors learn
+     about it without having to open the What's-new page. */
+  .release-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    text-decoration: none;
+    padding: 10px 20px;
+    background: color-mix(in srgb, var(--accent) 9%, var(--bg-elev));
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    font-size: 13.5px;
+    line-height: 1.4;
+    transition: background 0.15s;
+  }
+  .release-banner:hover {
+    background: color-mix(in srgb, var(--accent) 16%, var(--bg-elev));
+  }
+  .release-banner__tag {
+    flex: none;
+    padding: 2px 9px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #1a1a1a;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  .release-banner__text { font-weight: 500; }
+  @media (max-width: 640px) {
+    .release-banner { font-size: 12.5px; padding: 9px 14px; gap: 8px; }
+  }
+
+  /* Flat cream hero — the orange radial-gradient that used to bloom
+     across the top of the page made the whole site read as a marketing
+     splash. The H1 + serif typography now carries the visual weight. */
+  .hero {
+    padding: 120px 0 80px;
+    text-align: center;
+    background: var(--bg);
+  }
+  .hero__inner { max-width: 880px; }
+  .hero__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 28px;
+    font-family: var(--font-mono);
+    letter-spacing: 0.01em;
+  }
+  /* H1 size now comes from global.css clamp(2.6rem, 6vw, 4.8rem). */
+  .hero h1 {
+    margin-bottom: 24px;
+    max-width: 14ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .hero__accent {
+    color: var(--accent);
+    font-style: italic;
+    font-weight: 400;
+  }
+  /* Subtagline kept but the orange-pill chrome dropped; now just an
+     italic serif phrase under the H1, in the same color family. */
+  .hero__subtagline {
+    max-width: 640px;
+    margin: 0 auto 14px;
+    color: var(--text-muted);
+    font-family: var(--font-serif);
+    font-size: clamp(1.1rem, 2.2vw, 1.4rem);
+    font-style: italic;
+    line-height: 1.45;
+    letter-spacing: -0.005em;
+  }
+  .hero__whatsnew-row {
+    margin: 0 0 22px;
+  }
+  .hero__whatsnew {
+    display: inline-block;
+    color: var(--accent);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    border-bottom: 1px dashed color-mix(in srgb, var(--accent) 60%, transparent);
+    padding-bottom: 1px;
+  }
+  .hero__whatsnew:hover {
+    border-bottom-style: solid;
+  }
+  .hero .lead { margin: 0 auto 28px; }
+  .hero__cta {
+    display: flex;
+    gap: 14px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+  .btn--lg {
+    padding: 15px 30px;
+    font-size: 15px;
+    border-radius: 999px;
+  }
+  .hero__all-platforms {
+    display: inline-block;
+    color: var(--text-muted);
+    font-size: 13px;
+    text-decoration: none;
+    margin: 18px 0 12px;
+  }
+  /* zh-only Gitee mirror hint, sits right below the "all platforms"
+     link. Subtle red-orange to evoke Gitee's brand without competing
+     with the primary CTA. */
+  .hero__gitee {
+    display: inline-block;
+    color: #c71d23;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    border-bottom: 1px dashed #c71d23;
+    padding: 0 0 1px;
+    margin: 0 0 36px;
+  }
+  .hero__gitee:hover {
+    border-bottom-style: solid;
+  }
+  .hero__all-platforms:hover {
+    color: var(--accent);
+  }
+
+  /* One-line install block in Hero */
+  .hero__install {
+    max-width: 620px;
+    margin: 22px auto 0;
+    text-align: left;
+  }
+  .hero__install-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-align: center;
+    margin-bottom: 8px;
+    letter-spacing: 0.02em;
+  }
+  .hero__install-tabs {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    margin-bottom: 8px;
+  }
+  .hi-tab {
+    padding: 4px 12px;
+    font-size: 11px;
+    font-weight: 500;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .hi-tab:hover { color: var(--text); }
+  .hi-tab--active {
+    background: var(--bg-elev);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .hi-panel {
+    display: none;
+    position: relative;
+  }
+  .hi-panel--active { display: block; }
+  .hi-code {
+    display: block;
+    padding: 12px 50px 12px 16px;
+    background: var(--ink, #0e0e0c);
+    color: #e8e6de;
+    border-radius: 8px;
+    font-family: var(--font-mono, 'SF Mono', Menlo, Consolas, monospace);
+    font-size: 13px;
+    overflow-x: auto;
+    white-space: nowrap;
+    text-align: left;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .hi-copy {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    font-size: 14px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 5px;
+    color: #e8e6de;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .hi-copy:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #000;
+  }
+  .hi-copy.copied {
+    background: #2ea043;
+    border-color: #2ea043;
+    color: white;
+  }
+  .hero__chips {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .chip {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .hero__demo {
+    margin: 56px auto 0;
+    max-width: 1100px;
+    width: 100%;
+    border-radius: 14px;
+    overflow: hidden;
+    /* Softer shadow — the previous 30px / 0.35-opacity drop felt heavy
+       against the calmer cream bg. Anthropic-style flat aesthetic. */
+    box-shadow: 0 16px 40px -22px rgba(20, 20, 15, 0.18);
+    border: 1px solid var(--border);
+    background: var(--bg-elev);
+    aspect-ratio: 16 / 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .hero__demo-media {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  @media (max-width: 720px) {
+    .hero__demo { margin-top: 32px; aspect-ratio: 4 / 3; }
+  }
+</style>

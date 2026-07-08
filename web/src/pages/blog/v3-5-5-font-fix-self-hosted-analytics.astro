@@ -1,0 +1,225 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import Giscus from '../../components/Giscus.astro';
+
+const lang = 'en' as const;
+---
+
+<Layout
+  title="SoloMD v3.5.5 — Win UI font fix, self-hosted analytics, PR #48 polish"
+  description="A 6-week-old Windows UI font regression finally diagnosed and fixed. Telemetry migrated off Aptabase to a self-hosted Cloudflare D1 endpoint. Plus PR #48 from @beihai23 with PDF export timeout, outline-in-tab, mermaid overlay contrast."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <article class="container blog-article">
+      <nav class="breadcrumbs">
+        <a href="/">Home</a> / <a href="/blog/">Blog</a> / <span>v3.5.5</span>
+      </nav>
+      <time>2026-04-29</time>
+      <h1>v3.5.5 — Win font fix, self-hosted analytics, PR #48 polish</h1>
+      <p class="lead">
+        Three things rolled into one patch: a <strong>6-week-old Windows UI
+        font regression</strong> finally diagnosed and fixed, telemetry
+        migrated <strong>off Aptabase to our own Cloudflare D1</strong>
+        endpoint (zero third-party SaaS in the data path), and a
+        <strong>polish PR from @beihai23</strong> covering PDF export
+        timeout, outline button location, and mermaid overlay contrast.
+      </p>
+
+      <h2>🇨🇳 The Windows UI font fix (issue #43)</h2>
+      <p>
+        A Win11 user (<a href="https://github.com/sparkdonn-netizen" rel="external">@sparkdonn-netizen</a>)
+        reported that since v0.1.12 the UI Chinese characters had gone
+        slightly thin and inconsistent — not blurry exactly, but visibly
+        different from native Win ClearType rendering. The picture made it
+        obvious. The cause took longer to find.
+      </p>
+      <p>
+        Back in v0.1.12, commit
+        <a href="https://github.com/zhitongblog/solomd/commit/12b82c7" rel="external"><code>12b82c7</code></a>
+        ("feat(ios): iPad v0.1.11 feature integration + CJK font fix")
+        bundled a 43&nbsp;KB LXGW WenKai subset as
+        <code>"SoloMD CJK"</code> — a deliberately-soft handwritten font we
+        embed for the iOS Simulator (which has no PingFang). The intent was
+        a fallback. But the implementation put it <em>first</em> in the
+        font-family chain, like this:
+      </p>
+      <pre><code>--font-ui: "SoloMD CJK", system-ui, -apple-system, ..., "Microsoft YaHei", ...</code></pre>
+      <p>
+        Combined with the <code>@font-face</code> rule's
+        <code>unicode-range: U+3400-9FFF</code>, this told every Chromium /
+        WebView2 / WKWebView: "for any CJK character, prefer SoloMD CJK
+        over everything that follows." So Windows YaHei was bypassed for
+        Chinese. Mac PingFang was bypassed. Linux Noto Sans CJK was
+        bypassed. Everywhere fell through to the bundled handwritten font,
+        which has thinner strokes than YaHei and looks visibly different
+        especially at small UI sizes (toolbar buttons, sidebar items, menu
+        text).
+      </p>
+      <p>
+        The Settings → Font picker didn't help because that picker only
+        controls the <strong>editor</strong> font (the CodeMirror pane),
+        not the UI chrome. The UI uses <code>--font-ui</code>, which
+        SoloMD CJK had hijacked.
+      </p>
+      <p>
+        <strong>The fix</strong>: move <code>"SoloMD CJK"</code> from
+        position 1 to last in the chain, no other changes. The
+        <code>unicode-range</code> still triggers a download only when the
+        bundled font is needed. On every real platform, the cascade now
+        finds a system CJK font first:
+      </p>
+      <ul>
+        <li>Windows → Microsoft YaHei (ClearType subpixel rendering)</li>
+        <li>macOS → PingFang SC (Quartz hinting)</li>
+        <li>Linux → Noto Sans CJK SC</li>
+        <li>Real iPad → PingFang</li>
+        <li>iOS Simulator → falls through to bundled SoloMD CJK (its original purpose)</li>
+      </ul>
+      <p>
+        Lesson saved internally: a bundled <code>@font-face</code> with
+        <code>unicode-range</code> always goes <em>last</em> in the chain.
+        The unicode-range gates download, not preference; chain order
+        determines which font wins.
+      </p>
+
+      <h2>📊 Self-hosted analytics — Aptabase → Cloudflare D1</h2>
+      <p>
+        We had been using <a href="https://aptabase.com" rel="external">Aptabase</a> —
+        a privacy-respecting analytics service — to count app launches
+        and feature usage. The dashboard showed ~2 active users despite
+        3,400+ downloads, which made it hard to reason about anything.
+        Rather than diagnose the third-party SaaS, we ripped it out
+        entirely.
+      </p>
+      <p>
+        The replacement is a single Cloudflare Pages Function backed by
+        <a href="https://developers.cloudflare.com/d1/" rel="external">Cloudflare D1</a>:
+      </p>
+      <ul>
+        <li>
+          Desktop app POSTs to <code>solomd.app/api/track</code>. Same data
+          shape as before — event name, anonymous device UUID
+          (localStorage), app version, OS, locale, a few small props.
+          <strong>No IP, no User-Agent, no fingerprint.</strong>
+        </li>
+        <li>
+          Validator drops anything PII-shaped: oversized props, weird
+          event names, malformed UUIDs. Returns 204 in every case so a
+          flaky build can't probe the endpoint.
+        </li>
+        <li>
+          Storage in D1's free tier covers us by 3× at current volume
+          (5M reads/day, 100k writes/day, 5GB storage).
+        </li>
+        <li>
+          A token-protected dashboard at <code>solomd.app/admin/</code>
+          shows daily activity, event breakdown, version distribution, OS,
+          locale. Bearer token in <code>sessionStorage</code>, never in
+          a cookie or URL.
+        </li>
+      </ul>
+      <p>
+        The Tauri side dropped <code>tauri-plugin-aptabase</code>
+        entirely — including the runtime workaround for that plugin's
+        Windows launch crash. The frontend's
+        <code>track()</code> wrapper is now a 100-line fire-and-forget
+        fetch with a 2-second timeout. Opt-out toggle stays in
+        Settings → 发送匿名使用数据 (default on).
+      </p>
+      <p>
+        Architecture writeup is at <code>web/ANALYTICS.md</code> in the
+        repo. The whole change is a single commit you can read end-to-end.
+      </p>
+
+      <h2>🐛 PR #48 — @beihai23 polish, four small wins</h2>
+      <p>
+        Big thanks to <a href="https://github.com/beihai23" rel="external">@beihai23 (王志刚)</a>
+        — third PR from this contributor, all of them quality fixes:
+      </p>
+      <ol>
+        <li>
+          <strong>PDF export 30-second timeout.</strong>
+          <code>markdownToPdfBlob</code> now wraps its work in a
+          <code>Promise.race</code> against a 30s timer, so html2pdf.js or
+          Mermaid getting stuck no longer freezes the UI indefinitely. The
+          DOM cleanup path is also idempotent now, eliminating
+          double-remove exceptions on early errors.
+        </li>
+        <li>
+          <strong>Outline button moved into the tab bar.</strong> The old
+          floating ≌ button at the top-left of the editor area is gone.
+          Each markdown tab now has its own ≌ icon — click it to toggle
+          the outline pane for that tab specifically. Active state is
+          accent-colored, non-active fades on hover.
+        </li>
+        <li>
+          <strong>Mermaid SVG overlay contrast.</strong> When you click a
+          Mermaid diagram to open it in the lightbox, the SVG now gets a
+          theme-matching background card (white on light theme, dark
+          slate on dark theme). Solves the "Mermaid lines invisible in
+          dark mode lightbox" bug.
+        </li>
+        <li>
+          <strong>HTML cleanup.</strong> The <code>&lt;table&gt;</code>
+          elements in MarkdownHelp and Slideshow now wrap rows in
+          <code>&lt;tbody&gt;</code>, eliminating a Vite build warning.
+        </li>
+      </ol>
+
+      <h2>📥 Download</h2>
+      <p>
+        <a class="btn btn--primary" href="https://github.com/zhitongblog/solomd/releases/tag/v3.5.5">Download v3.5.5 →</a>
+        &nbsp;
+        <a class="btn" href="https://github.com/zhitongblog/solomd/releases">All releases</a>
+      </p>
+      <p>
+        v3.0.x+ users will see an in-app update prompt within 24h. On
+        macOS, <code>brew upgrade --cask solomd</code> works too.
+      </p>
+
+      <h2>What's next — v3.6</h2>
+      <p>
+        Issue <a href="https://github.com/zhitongblog/solomd/issues/44" rel="external">#44</a>
+        — image and table inline rendering inside live edit mode — is
+        next up. It's not a CSS change; it needs a CodeMirror
+        block-decoration extension that intercepts image-syntax lines and
+        renders the actual image inline (collapsing the source
+        <code>![]()</code> when the cursor isn't on that line). Same
+        treatment for tables: render the formatted table when not
+        editing, expand to source when the caret enters.
+      </p>
+      <p>
+        Beyond #44: iPad / Mac App Store resubmission gates are queued,
+        and the v4 thrust on agent-endpoint surfaces (CLI + MCP +
+        BYOK as the public surface for "any LLM can drive this vault")
+        continues.
+      </p>
+    </article>
+    <Giscus lang={lang} />
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .blog-article { max-width: 760px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .blog-article time { font-size: 13px; color: var(--text-muted, #888); }
+  .blog-article h1 { font-size: 2.2rem; line-height: 1.2; margin: 8px 0 18px; }
+  .blog-article h2 { font-size: 1.4rem; margin: 36px 0 12px; }
+  .blog-article .lead { color: var(--text-muted, #555); font-size: 1.1rem; line-height: 1.6; margin-bottom: 28px; }
+  .blog-article p { line-height: 1.75; margin: 14px 0; }
+  .blog-article ul, .blog-article ol { padding-left: 22px; }
+  .blog-article li { margin: 6px 0; line-height: 1.7; }
+  .blog-article code { background: #f5f5f0; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+  .blog-article pre { background: #f5f5f0; padding: 14px 18px; border-radius: 8px; overflow-x: auto; }
+  .blog-article pre code { background: transparent; padding: 0; }
+  .blog-article a:not(.btn) { color: #ff9f40; }
+  .blog-article kbd { background: #f5f5f0; border: 1px solid #ddd; border-radius: 3px; padding: 1px 6px; font-family: ui-monospace, Menlo, monospace; font-size: 0.85em; }
+  .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  .btn--primary { background: #ff9f40; color: #000 !important; }
+</style>

@@ -1,0 +1,188 @@
+[package]
+name = "solomd"
+version = "4.8.9"
+description = "SoloMD — a lightweight, cross-platform Markdown + plain text editor"
+authors = ["zhitong"]
+edition = "2021"
+# Disable auto-discovery of bins so Cargo only produces the explicit
+# [[bin]] "SoloMD" below (instead of also building an implicit "solomd"
+# binary from src/main.rs + package.name).
+autobins = false
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+# Force the binary name to "SoloMD" so it matches tauri.conf.json's
+# `mainBinaryName`. Without this, Cargo would produce `solomd.exe` (lowercase
+# from [package].name) while Tauri's NSIS template was creating shortcuts
+# pointing to a different name, causing the Windows shortcut to break.
+[[bin]]
+name = "SoloMD"
+path = "src/main.rs"
+
+# v4.3.1 issue #73 — size-optimised release profile. Most of the Android
+# APK weight (22 MB out of 26 MB on arm64-v8a) is `libapp_lib.so` —
+# the Rust shared library with all native deps bundled. Default cargo
+# release config (opt-level=3, no LTO, codegen-units=16) optimises for
+# speed; this overrides for size. Compile time goes from ~2 min to
+# ~5-8 min but runtime cost is negligible for SoloMD because the hot
+# path is the WebView (JS / KaTeX / Mermaid), not Rust. Rust only
+# handles boundary ops (file I/O, git, RAG embedder, encryption);
+# none are tight inner loops sensitive to opt-level.
+#
+# We do NOT set `panic = "abort"` even though it would save another
+# 5-10% — Tauri's command error path expects unwinding to convert a
+# panicking handler into a JS-side error; abort would crash the whole
+# process instead.
+[profile.release]
+opt-level = "z"
+lto = "fat"
+codegen-units = 1
+strip = "symbols"
+incremental = false
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["protocol-asset"] }
+tauri-plugin-opener = "2"
+# #86/#87(1) — single-instance: a second launch reactivates the existing
+# window instead of starting a duplicate process. Desktop only.
+tauri-plugin-single-instance = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chardetng = "1.0.0"
+encoding_rs = "0.8.35"
+tauri-plugin-dialog = "2.7.0"
+tauri-plugin-clipboard-manager = "2.3.2"
+walkdir = "2.5.0"
+# tokio: rt-multi-thread is needed by reqwest streaming + tauri::async_runtime.
+# net/io-util/sync/time/macros are debug-only deps for the dev-bridge
+# WebDriver localhost server (gated by `#[cfg(debug_assertions)]`). Cargo
+# doesn't have a stable target spec for "debug only", so we just enable
+# the features unconditionally — they're tokio's lightweight modules and
+# don't add measurable bytes to the release binary, while letting us keep
+# the bridge code in a single conditional module rather than juggling a
+# whole separate crate.
+#
+# (Telemetry used to live in `tauri-plugin-aptabase` and pinned this list
+#  for its plugin-setup `tokio::spawn` calls. We migrated telemetry to a
+#  pure-frontend POST to solomd.app/api/track so the plugin is gone, but
+#  the runtime entry in main.rs and these features stay — they're still
+#  needed for the rest of the app's async work.)
+tokio = { version = "1", features = ["rt-multi-thread", "net", "io-util", "sync", "time", "macros"] }
+
+# File-to-Markdown conversion (built-in, no Python needed)
+htmd = "0.5"
+zip = "2"
+quick-xml = "0.37"
+calamine = "0.26"
+csv = "1.3"
+regex-lite = "0.1"             # Lightweight regex for HTML tag stripping
+pdf-extract = "0.7"            # PDF text extraction
+
+# v2.0 workspace index (F1 wikilinks, F3 tags, F6 bases)
+# + file-change watcher for tab reload
+notify = "8"
+notify-debouncer-mini = "0.7"
+serde_yaml = "0.9"
+sha2 = "0.10"                  # cache key hashing + image-bed S3 SigV4 payload hash
+# v4.8 image bed — S3 SigV4 signing (HMAC-SHA256 key chain) + GitHub contents
+# API base64 body. `hex` / `chrono` (clock) are already in the tree below.
+hmac = "0.12"
+base64 = "0.22"
+once_cell = "1"                # global index state
+
+# v2.0 spellcheck (F2): Hunspell wrapped in pure-Rust port
+spellbook = "0.3"              # MIT, no GPL deps; ships with English+Latin support
+
+# v2.0 AI rewrite (F4): provider keys in OS keychain + streaming HTTP
+# keyring v3 ships with NO default backend — without these features it
+# silently falls back to an in-process mock store, which is why keys
+# appeared to "save" but never persisted across sessions and never
+# landed in the real OS Keychain. Enable the real backends explicitly.
+keyring = { version = "3", default-features = false, features = [
+  "apple-native",
+  "windows-native",
+  "sync-secret-service",
+  "crypto-rust",
+] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls", "multipart"] }
+futures-util = "0.3"           # for stream consumption in ai_proxy
+async-stream = "0.3"           # streaming responses to the frontend
+
+# v2.3 RAG / semantic search: vectors stored in a single SQLite file per
+# workspace. `bundled` ships libsqlite3 so we don't depend on a system
+# library — same invariant as `git2` above.
+rusqlite = { version = "0.32", features = ["bundled", "blob"] }
+
+# v2.6.3 E2EE: passphrase-derived key (Argon2id) + AEAD (XChaCha20-Poly1305).
+# Pure-Rust, RustCrypto project. We never send the passphrase or the key
+# anywhere; only ciphertext touches the network.
+argon2 = "0.5"
+chacha20poly1305 = "0.10"
+rand = "0.8"
+
+# v4.0 Pillar 3 — agent trace emitter logs malformed-line skips through
+# `tracing` so they show up in the same diagnostic stream Tauri itself
+# uses. The crate is already in the dependency tree (pulled by tauri /
+# tao); listing it here just unlocks the macros.
+tracing = "0.1"
+
+# v4.0 Pillar 2 — Agent Recipes.
+# `cron` parses cron expressions for `trigger: schedule` recipes and yields
+# the next-fire UTC time so a single tokio task can sleep until any recipe
+# is due. `chrono` does the human-readable date formatting for the
+# `{{date:FMT}}` template tokens (incl. ISO week numbers — strftime `%V`)
+# and converts cron schedules to UTC instants. `globset` matches the
+# `match:` glob patterns when an on-save / on-commit trigger fires; we
+# don't reuse `walkdir`'s glob handling because we need fnmatch-style
+# `**` semantics against a single path, not a tree walk. `hex` mints the
+# 6-char run id suffix used in `<run-id>` and the agent branch name.
+cron = "0.12"
+chrono = { version = "0.4", default-features = false, features = ["clock", "serde"] }
+globset = "0.4"
+hex = "0.4"
+tauri-plugin-deep-link = "2"
+
+# window-state plugin is desktop-only — kept at the very end of the
+# dependency tables to avoid bleeding the platform constraint onto every
+# subsequent dep (TOML sections continue until the next [header]).
+# This caught us once already — see 94bd87a / 2026-04-21 broke iOS for
+# 3 weeks because window-state was placed mid-file with a blank line.
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-window-state = "2"
+
+# v2.2 AutoGit per-note history + v3.0 GitHub sync: libgit2 bindings for
+# cross-platform git access (no shelling out). `vendored-libgit2` ships the
+# library so we don't depend on a system one. `https` + `vendored-openssl`
+# enable the libgit2 HTTPS transport — without them v3.0 push/pull dies
+# with "there is no TLS stream available; class=Ssl (16)" against
+# api.github.com. v2.2 didn't need this because all its ops were local.
+# Android: cross-compiling libgit2 + openssl through the NDK is a 30-min
+# yak shave and AutoGit / GitHub sync are desktop-class features (the
+# user shouldn't be pushing to GitHub from a phone). The whole AutoGit /
+# GitHub sync surface is cfg-gated to non-android targets to match.
+[target.'cfg(not(target_os = "android"))'.dependencies]
+git2 = { version = "0.19", default-features = false, features = ["vendored-libgit2", "https", "vendored-openssl"] }
+
+# Platform-specific deps for "Set as default editor" feature.
+[target.'cfg(target_os = "macos")'.dependencies]
+core-foundation = "0.10"
+core-foundation-sys = "0.8"
+objc2 = "0.5"
+objc2-foundation = { version = "0.2", features = ["NSArray", "NSString", "NSUserDefaults"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+winreg = "0.52"
+
+
+[dev-dependencies]
+tempfile = "3"

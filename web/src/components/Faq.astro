@@ -1,0 +1,95 @@
+---
+import { getT, type Lang } from '../i18n/translations';
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const tr = getT(lang);
+
+const faqJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: tr.faq.items.map((it) => ({
+    '@type': 'Question',
+    name: it.q,
+    acceptedAnswer: {
+      '@type': 'Answer',
+      text: it.a,
+    },
+  })),
+};
+---
+
+<section id="faq">
+  <div class="container">
+    <div class="faq__header">
+      <h2>{tr.faq.heading}</h2>
+    </div>
+    <div class="faq__list">
+      {tr.faq.items.map((item) => (
+        <details class="faq__item">
+          <summary>{item.q}</summary>
+          <p>{item.a}</p>
+        </details>
+      ))}
+    </div>
+  </div>
+</section>
+
+<script type="application/ld+json" set:html={JSON.stringify(faqJsonLd)} />
+
+<style>
+  .faq__header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  .faq__list {
+    max-width: 760px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .faq__item {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0;
+    overflow: hidden;
+    transition: border-color 0.15s;
+  }
+  .faq__item[open] {
+    border-color: var(--accent);
+  }
+  .faq__item summary {
+    cursor: pointer;
+    padding: 16px 22px;
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--text);
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    transition: color 0.15s;
+  }
+  .faq__item summary:hover { color: var(--accent); }
+  .faq__item summary::-webkit-details-marker { display: none; }
+  .faq__item summary::after {
+    content: '+';
+    font-size: 22px;
+    color: var(--text-faint);
+    transition: transform 0.2s;
+    flex-shrink: 0;
+  }
+  .faq__item[open] summary::after {
+    transform: rotate(45deg);
+    color: var(--accent);
+  }
+  .faq__item p {
+    padding: 0 22px 18px;
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 14px;
+    line-height: 1.65;
+  }
+</style>

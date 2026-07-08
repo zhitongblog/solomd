@@ -1,0 +1,87 @@
+/* SoloMD 4.6 design token layer — single source of truth for the design system.
+ *
+ * Imported FIRST from main.css so that main.css and the 8 named themes still
+ * cascade AFTER this file and win where they must. This file:
+ *   1. Adds the brand-new proportional scales that never existed before
+ *      (spacing / radius / shadow / z-index / motion / focus-ring).
+ *   2. Re-seeds ONLY the default (`:root`, i.e. light) and dark semantic
+ *      surface colors with Tolaria's warm-neutral palette (plan §2.4).
+ *      The other 7 themes (nord / solarized-light / solarized-dark / monokai
+ *      / github-light / dracula …) override these same vars later in main.css
+ *      and are deliberately untouched here.
+ *
+ * Hard rule for everything under app/src/ui/: consume these tokens, never
+ * inline a raw hex / px-shadow magic value.
+ */
+
+:root {
+  /* Spacing scale — 4 / 8 / 12 / 16 / 24 / 32 (8pt base) */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+
+  /* Radius — base tone is 8px */
+  --r-sm: 4px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-full: 999px;
+
+  /* Shadow — restrained, never garish */
+  --sh-1: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --sh-2: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --sh-pop: 0 8px 28px rgba(0, 0, 0, 0.12);
+
+  /* Border shorthand */
+  --bd: 1px solid var(--border);
+
+  /* z-index layers */
+  --z-pane: 10;
+  --z-sticky: 50;
+  --z-pop: 1000;
+  --z-modal: 2000;
+  --z-toast: 3000;
+
+  /* Motion */
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --dur-fast: 120ms;
+  --dur: 180ms;
+
+  /* Accent — warm orange brand, locked */
+  --accent: #ff9f40;
+  --accent-fg: #1a1a1a;
+  --accent-soft: rgba(255, 159, 64, 0.1);
+  --accent-ring: rgba(255, 159, 64, 0.45);
+
+  /* Focus ring — 2px gap then 2px accent halo (the "premium" detail) */
+  --ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent-ring);
+
+  /* Semantic status colors (shared across light/dark; themes may override) */
+  --danger: #e53e3e;
+  --danger-fg: #ffffff;
+  --success: #38a169;
+  --warning: #d4a017;
+
+  /* Warm-neutral surfaces (plan §2.4) — DEFAULT / light.
+   * Only :root and :root[data-theme="dark"] adopt these; the named themes
+   * keep their own palettes via later overrides in main.css. */
+  --bg: #ffffff;
+  --bg-elev: #f7f6f3;
+  --border: #e9e9e7;
+  --text: #37352f;
+  --text-muted: #787774;
+}
+
+:root[data-theme="dark"] {
+  --accent: #ffa54d;
+  --accent-fg: #1a1a1a;
+
+  /* Warm-neutral dark surfaces (plan §2.4) — warm black, not pure #000 */
+  --bg: #1f1e1b;
+  --bg-elev: #23221f;
+  --border: #34322d;
+  --text: #e6e1d8;
+  --text-muted: #b8b1a6;
+}

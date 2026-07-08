@@ -1,0 +1,340 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+
+const lang = 'en' as const;
+---
+
+<Layout
+  title="SoloMD Sync — your vault, on your GitHub. Free, optional, end-to-end encrypted."
+  description="The v3.0 sync layer. Push your notes to your own GitHub repo. Optional E2EE. Cloud-folder mode for iCloud / Dropbox / OneDrive. No SoloMD server, no subscription."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <section class="sync-hero">
+      <div class="container">
+        <span class="sync-tag">v3.0</span>
+        <h1>Sync.<br/><span class="muted">Your vault. Your GitHub. Free.</span></h1>
+        <p class="sync-lead">
+          We waited until v3.0 to ship sync because we didn't want to be a SaaS.
+          The shape we landed on instead: <strong>SoloMD is a git client</strong>. Your data lives on your own GitHub account.
+          <br/>No SoloMD server. No subscription. No account.
+        </p>
+        <div class="sync-cta">
+          <a class="btn btn--primary" href="/whats-new/">Read the v3.0 launch →</a>
+          <a class="btn" href="/#download">Download SoloMD</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="sync-pillars">
+      <div class="container">
+        <div class="sync-pillar">
+          <span class="sync-pillar__icon">☁️</span>
+          <h2>GitHub-backed sync</h2>
+          <p>
+            Paste a Personal Access Token (kept in your OS keychain). Pick an
+            existing repo or let SoloMD create a fresh private one. Auto-push
+            5s after every save, auto-pull on a 5/15/30/60min interval.
+            Conflict resolver in the History panel: Use Mine / Use GitHub /
+            Keep Both, per file.
+          </p>
+          <p class="sync-pillar__sub">
+            Built on <code>libgit2</code> + the v2.2 AutoGit foundation. No
+            system git binary needed. GitLab, Gitea, or any HTTPS git URL
+            also works — the underlying push / pull is provider-agnostic.
+          </p>
+        </div>
+
+        <div class="sync-pillar">
+          <span class="sync-pillar__icon">🔒</span>
+          <h2>End-to-end encrypted (optional)</h2>
+          <p>
+            Tick "Encrypt before push" + set a passphrase. The remote sees
+            only ciphertext: <code>SLMD</code> magic, 24-byte XChaCha20
+            nonce, 16-byte Poly1305 tag. Argon2id derives the key.
+          </p>
+          <p class="sync-pillar__sub">
+            Plaintext stays on your device — search, RAG, AI rewrite all keep
+            working. Salt + KDF params travel inside the encrypted repo, so
+            a second device with the same passphrase derives the same key.
+          </p>
+        </div>
+
+        <div class="sync-pillar">
+          <span class="sync-pillar__icon">🗂️</span>
+          <h2>Already in iCloud / Dropbox / OneDrive?</h2>
+          <p>
+            v3.0 detects when your workspace is inside a known cloud-sync
+            folder and surfaces a banner — Apple / Dropbox / Microsoft are
+            already doing the file-level sync.
+          </p>
+          <p class="sync-pillar__sub">
+            We add per-device session restore on top:
+            <code>.solomd/session.&lt;deviceId&gt;.json</code> tracks open tabs;
+            another device opens the same workspace and gets a one-click
+            "Restore tabs from <em>Mac mini</em>" prompt.
+          </p>
+        </div>
+
+        <div class="sync-pillar">
+          <span class="sync-pillar__icon">🌐</span>
+          <h2>Public read-only share</h2>
+          <p>
+            One command-palette entry copies a
+            <code>solomd.app/share/?repo=you/notes&amp;path=note.md</code>
+            link. Anyone with the URL gets a clean Markdown render — fetched
+            from <code>raw.githubusercontent.com</code>, sanitized via
+            DOMPurify, no SoloMD server in the loop.
+          </p>
+          <p class="sync-pillar__sub">
+            Public repos only — for private notes, the page surfaces a clear
+            "may be private" message instead of silently 404-ing.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="sync-vs">
+      <div class="container">
+        <h2>vs. the alternatives</h2>
+        <table>
+          <thead>
+            <tr><th></th><th>SoloMD v3.0</th><th>Obsidian Sync</th><th>iCloud-only</th></tr>
+          </thead>
+          <tbody>
+            <tr><th>Data lives on</th><td>Your GitHub</td><td>Obsidian's servers</td><td>Apple's servers</td></tr>
+            <tr><th>Price</th><td>Free</td><td>$96 / year</td><td>Free up to 5 GB</td></tr>
+            <tr><th>End-to-end encrypted</th><td>✅ optional</td><td>✅ optional</td><td>❌</td></tr>
+            <tr><th>Per-file version history</th><td>Full git log</td><td>1 year</td><td>30 days</td></tr>
+            <tr><th>Multi-provider</th><td>GitHub / GitLab / Gitea / custom</td><td>Obsidian only</td><td>Apple only</td></tr>
+            <tr><th>Subscription</th><td>No</td><td>Yes</td><td>Past 5 GB</td></tr>
+            <tr><th>Public share link</th><td>✅ built in</td><td>✅ Obsidian Publish ($120/yr)</td><td>❌</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="sync-howto">
+      <div class="container">
+        <h2>Get started in 60 seconds</h2>
+        <ol>
+          <li>Open SoloMD → <strong>Settings → GitHub Sync</strong>.</li>
+          <li>Click <strong>Get a token</strong> — opens GitHub's token page with the right scope (<code>repo</code>) pre-filled.</li>
+          <li>Paste the <code>ghp_…</code> token, save.</li>
+          <li>Pick an existing repo or click <strong>Create &amp; link</strong> for a fresh private one.</li>
+          <li>(Optional) Tick <strong>Encrypt before push</strong> + set passphrase.</li>
+          <li>Save a note. Watch the toast: "Pushed to GitHub." That's it.</li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="sync-faq">
+      <div class="container">
+        <h2>Honest answers</h2>
+        <div class="faq">
+          <h3>What if I lose my passphrase?</h3>
+          <p>Your encrypted vault is unrecoverable. We can't help — that's the entire point of E2EE. Write the passphrase down somewhere safe BEFORE you encrypt anything.</p>
+        </div>
+        <div class="faq">
+          <h3>What if SoloMD shuts down?</h3>
+          <p>Your vault is a normal git repo on GitHub. Clone it with <code>git clone</code>. Open the <code>.md</code> files in any editor. Even with E2EE on, the format is documented above and the encryption is standard XChaCha20-Poly1305 — you can write a 30-line decrypt script if you have to.</p>
+        </div>
+        <div class="faq">
+          <h3>Why GitHub specifically?</h3>
+          <p>Because everyone in our user base already has a GitHub account. We considered self-hosted options (NextCloud, custom S3) — they all add a setup step we don't want to be on the hook for. GitLab + Gitea are first-class fallbacks for users who don't trust GitHub.</p>
+        </div>
+        <div class="faq">
+          <h3>Will sync ever cost money?</h3>
+          <p>The sync feature won't. There's no SoloMD-side infrastructure that needs paying for — your data flows between you and GitHub, and we just orchestrate. (GitHub itself charges for &gt;1 GB private storage; that's between you and them.)</p>
+        </div>
+        <div class="faq">
+          <h3>Does sync work on iPad?</h3>
+          <p>Not in v3.0. The iPad app is gated until the v3.0 desktop story is stable; we'll tackle it next. For now, iCloud Drive is the iPad sync path — our cloud-folder mode picks that up when you eventually open the same vault on macOS.</p>
+        </div>
+        <div class="faq">
+          <h3>The first time I push, macOS asks me for my password — what is that?</h3>
+          <p>That's macOS Keychain Access asking SoloMD's permission to read your saved GitHub token. Two prompts may appear: one for the GitHub token, one for the encryption key (only if you turned on E2EE). <strong>Click "Always Allow" (not "Allow")</strong> on each — that whitelists SoloMD permanently and you'll never see the prompt again. If you click "Allow" once, every push re-prompts because Keychain treats one-time authorization literally.</p>
+          <p>SoloMD never sends your password anywhere. It's macOS's authorization dialog, not ours; we don't even see what you typed.</p>
+        </div>
+        <div class="faq">
+          <h3>I'm in China and push times out — what do I do?</h3>
+          <p>github.com is unreliable from mainland China. SoloMD has a built-in proxy field: <strong>Settings → GitHub Sync → Advanced → HTTPS proxy</strong>. Paste your local proxy URL like <code>http://127.0.0.1:7897</code> (Clash/Surge default) or <code>socks5://127.0.0.1:1080</code>. push and pull will route through that proxy.</p>
+          <p>Don't bother with shell <code>HTTPS_PROXY</code> exports — Tauri apps launched from Finder/Dock don't inherit shell env. The Settings field is the right place.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .sync-hero {
+    padding: 60px 0 40px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .sync-tag {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #ff9f40 0%, #ffd166 100%);
+    color: #000;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 18px;
+  }
+  .sync-hero h1 {
+    font-size: 3rem;
+    line-height: 1.1;
+    margin: 0 0 18px;
+  }
+  .sync-hero h1 .muted {
+    color: var(--text-muted, #555);
+    font-weight: 500;
+  }
+  .sync-lead {
+    max-width: 640px;
+    margin: 0 auto 30px;
+    font-size: 1.1rem;
+    line-height: 1.7;
+    color: var(--text-muted, #555);
+  }
+  .sync-cta {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .sync-pillars {
+    padding: 60px 0;
+  }
+  .sync-pillars .container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 26px;
+  }
+  .sync-pillar {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 26px 26px 22px;
+    display: flex;
+    flex-direction: column;
+  }
+  .sync-pillar__icon {
+    font-size: 36px;
+    margin-bottom: 14px;
+  }
+  .sync-pillar h2 {
+    font-size: 1.25rem;
+    margin: 0 0 12px;
+  }
+  .sync-pillar p {
+    margin: 0 0 12px;
+    line-height: 1.7;
+    font-size: 14px;
+    color: var(--text);
+  }
+  .sync-pillar__sub {
+    color: var(--text-muted) !important;
+    font-size: 13px !important;
+  }
+  .sync-pillar code {
+    background: var(--bg-soft, var(--bg));
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-size: 0.88em;
+    font-family: var(--font-mono);
+  }
+  .sync-vs {
+    padding: 50px 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-soft, transparent);
+  }
+  .sync-vs h2 {
+    font-size: 1.6rem;
+    margin: 0 0 22px;
+    text-align: center;
+  }
+  .sync-vs table {
+    width: 100%;
+    max-width: 880px;
+    margin: 0 auto;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  .sync-vs th, .sync-vs td {
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .sync-vs thead th {
+    font-weight: 600;
+    background: var(--bg);
+  }
+  .sync-vs tbody th {
+    font-weight: 500;
+    color: var(--text-muted);
+    width: 28%;
+  }
+  .sync-howto {
+    padding: 60px 0;
+  }
+  .sync-howto h2 {
+    font-size: 1.6rem;
+    margin: 0 0 22px;
+    text-align: center;
+  }
+  .sync-howto ol {
+    max-width: 620px;
+    margin: 0 auto;
+    padding-left: 26px;
+    line-height: 2;
+    font-size: 15px;
+  }
+  .sync-howto code {
+    background: var(--bg-soft, var(--bg));
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+  }
+  .sync-faq {
+    padding: 60px 0 100px;
+    border-top: 1px solid var(--border);
+  }
+  .sync-faq h2 {
+    font-size: 1.6rem;
+    margin: 0 0 24px;
+    text-align: center;
+  }
+  .faq {
+    max-width: 720px;
+    margin: 0 auto 22px;
+  }
+  .faq h3 {
+    font-size: 1rem;
+    margin: 0 0 8px;
+    color: var(--text);
+  }
+  .faq p {
+    margin: 0;
+    line-height: 1.75;
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+  .faq code {
+    background: var(--bg-soft, var(--bg));
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 0.88em;
+  }
+</style>

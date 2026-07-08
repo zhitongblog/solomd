@@ -1,0 +1,211 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import Header from '../../../components/Header.astro';
+import Footer from '../../../components/Footer.astro';
+import Giscus from '../../../components/Giscus.astro';
+
+const lang = 'zh' as const;
+---
+
+<Layout
+  title="SoloMD v3.5.5 —— Win 中文字体修复、自建匿名遥测、PR #48 polish"
+  description="一个潜伏 6 周的 Win UI 中文字体回退终于被定位并修了。匿名遥测从 Aptabase 整体迁到自建 Cloudflare D1 端点，数据通路里再无第三方 SaaS。还有 @beihai23 的 PR #48：PDF 导出超时、outline 按钮换位、Mermaid 浮窗对比度。"
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <article class="container blog-article">
+      <nav class="breadcrumbs">
+        <a href="/zh/">首页</a> / <a href="/zh/blog/">博客</a> / <span>v3.5.5</span>
+      </nav>
+      <time>2026-04-29</time>
+      <h1>v3.5.5 —— Win 字体修复、自建遥测、PR #48 polish</h1>
+      <p class="lead">
+        三件事打包发了一个 patch：潜伏 <strong>6 周的 Win UI 中文字体
+        回退</strong>终于被定位并修了；匿名遥测整体<strong>从
+        Aptabase 迁到自建 Cloudflare D1</strong> 端点（数据通路里
+        没有任何第三方 SaaS）；还有 <strong>@beihai23 的一个 polish PR</strong>
+        覆盖 PDF 导出超时、outline 按钮位置、Mermaid 浮窗对比度。
+      </p>
+
+      <h2>🇨🇳 Win UI 中文字体修复（issue #43）</h2>
+      <p>
+        Win11 的用户
+        <a href="https://github.com/sparkdonn-netizen" rel="external">@sparkdonn-netizen</a>
+        反馈，从 v0.1.12 起 UI 里的中文变细变虚，跟原生 Win
+        ClearType 渲染不一样。截图非常清楚，但找根因花了点时间。
+      </p>
+      <p>
+        v0.1.12 里的 commit
+        <a href="https://github.com/zhitongblog/solomd/commit/12b82c7" rel="external"><code>12b82c7</code></a>（"feat(ios): iPad
+        v0.1.11 feature integration + CJK font fix"）打包了一个
+        43&nbsp;KB 的 LXGW WenKai 子集，命名为 <code>"SoloMD CJK"</code> ——
+        这是为 iOS 模拟器（没有 PingFang）准备的兜底字体，手写楷书风格、
+        笔画刻意做得软。<strong>它的设计意图是兜底。</strong>但实现上
+        把它放到了 font-family chain 的<em>第一位</em>：
+      </p>
+      <pre><code>--font-ui: "SoloMD CJK", system-ui, -apple-system, ..., "Microsoft YaHei", ...</code></pre>
+      <p>
+        加上 <code>@font-face</code> 里的
+        <code>unicode-range: U+3400-9FFF</code>，这等于是告诉所有 Chromium /
+        WebView2 / WKWebView：「凡是中文字符，优先用 SoloMD CJK，
+        后面的全跳过。」于是 Win 的 YaHei 被绕过了，Mac 的 PingFang 被绕过了，
+        Linux 的 Noto Sans CJK 也被绕过了，所有平台都在用那个 LXGW 子集 ——
+        小字号下笔画细于 YaHei，所以 UI 里看起来"虚 + 不一致"，工具栏按钮、
+        侧边栏、菜单文本尤其明显。
+      </p>
+      <p>
+        设置面板里那个"字体"选项也帮不上忙 —— 那个只控制
+        <strong>编辑器</strong>（CodeMirror）字体，UI 部分（菜单 / 工具栏 /
+        侧边栏 / 设置面板自身）走的是另一条 <code>--font-ui</code>
+        chain，已经被 SoloMD CJK 抢走了。
+      </p>
+      <p>
+        <strong>修复方案</strong>：把 <code>"SoloMD CJK"</code> 从第 1 位
+        挪到 chain 末尾，其他不变。<code>unicode-range</code> 还是只在
+        需要时才下载这个字体。在每个真实平台上，cascade 现在都会先找到
+        系统 CJK 字体：
+      </p>
+      <ul>
+        <li>Windows → Microsoft YaHei（ClearType 子像素渲染）</li>
+        <li>macOS → PingFang SC（Quartz 提示）</li>
+        <li>Linux → Noto Sans CJK SC</li>
+        <li>真 iPad → PingFang</li>
+        <li>iOS 模拟器 → 回落到 SoloMD CJK（这是它本来的目的）</li>
+      </ul>
+      <p>
+        内部教训记一笔：带 <code>unicode-range</code> 的自带
+        <code>@font-face</code> 永远放在 chain <em>末尾</em>。unicode-range
+        控制的是<em>下载触发</em>，不是<em>优先级</em>；优先级看的是
+        chain 顺序。
+      </p>
+
+      <h2>📊 自建匿名遥测 —— Aptabase → Cloudflare D1</h2>
+      <p>
+        我们之前一直用
+        <a href="https://aptabase.com" rel="external">Aptabase</a>
+        ——一个尊重隐私的统计服务 —— 来记录启动数 + 功能使用频率。
+        但 dashboard 显示只有约 2 个活跃用户，跟 3,400+ 下载量对不上，
+        基本拿不到任何有用结论。与其去查这家 SaaS 哪里出了问题，不如
+        把整个第三方依赖砍掉。
+      </p>
+      <p>
+        替代方案是一个 Cloudflare Pages Function +
+        <a href="https://developers.cloudflare.com/d1/" rel="external">Cloudflare D1</a> 的组合：
+      </p>
+      <ul>
+        <li>
+          桌面端 POST 到 <code>solomd.app/api/track</code>。数据 shape
+          没变 —— 事件名、匿名设备 UUID（localStorage）、应用版本、OS、
+          locale、几个小 props。<strong>没有 IP，没有 User-Agent，没有
+          指纹。</strong>
+        </li>
+        <li>
+          服务端 validator 会丢弃任何疑似 PII 的数据：超长 props、奇怪
+          事件名、格式错误的 UUID。一律返 204，让有 bug 的客户端无法
+          通过返回码探测端点状态。
+        </li>
+        <li>
+          D1 免费额度按当前体量绰绰有余（5M reads/day、100k writes/day、
+          5GB 存储）。
+        </li>
+        <li>
+          管理面板 <code>solomd.app/admin/</code> 用 Bearer token 鉴权，
+          看每日活跃 / 事件分布 / 版本分布 / OS / locale。token 在
+          <code>sessionStorage</code>，不用 cookie 不进 URL。
+        </li>
+      </ul>
+      <p>
+        Tauri 那边整个 <code>tauri-plugin-aptabase</code> 删了，包括为了
+        绕过它在 Win 上启动崩溃所写的那段 tokio runtime 兜底代码。
+        前端的 <code>track()</code> 现在是 100 来行的 fire-and-forget
+        fetch，2 秒超时。退订开关还在 Settings → 发送匿名使用数据
+        （默认开）。
+      </p>
+      <p>
+        架构说明在仓库的 <code>web/ANALYTICS.md</code>，整个改动是单个
+        commit，可以一口气读完。
+      </p>
+
+      <h2>🐛 PR #48 —— @beihai23 的 4 处 polish</h2>
+      <p>
+        感谢
+        <a href="https://github.com/beihai23" rel="external">@beihai23（王志刚）</a> ——
+        这是来自 Ta 的第三个 PR，每个都是高质量修复：
+      </p>
+      <ol>
+        <li>
+          <strong>PDF 导出 30 秒超时。</strong>
+          <code>markdownToPdfBlob</code> 现在用 <code>Promise.race</code>
+          套住整个流程，html2pdf.js 或 Mermaid 渲染卡住时不会再无限冻结
+          UI。DOM 清理逻辑也改成幂等的，避免提前出错时双重 remove。
+        </li>
+        <li>
+          <strong>Outline 按钮搬到 Tab。</strong>原本编辑区左上角的浮动 ≌
+          按钮去掉了，现在每个 Markdown tab 上自带一个 ≌ 图标 —— 点一下
+          切换该 tab 的大纲面板。激活态用强调色高亮，非激活态 hover
+          时浮现。
+        </li>
+        <li>
+          <strong>Mermaid 浮窗对比度。</strong>点开一张 Mermaid 图进入
+          lightbox 时，SVG 会自动套上一层主题适配的背景卡片（浅色模式
+          白底，深色模式深石板色）。解决"暗色模式下 lightbox 里 Mermaid
+          线条看不见"的问题。
+        </li>
+        <li>
+          <strong>HTML 规范。</strong>MarkdownHelp、Slideshow 里的
+          <code>&lt;table&gt;</code> 现在都用 <code>&lt;tbody&gt;</code>
+          包裹了行，消掉一条 Vite 构建警告。
+        </li>
+      </ol>
+
+      <h2>📥 下载</h2>
+      <p>
+        <a class="btn btn--primary" href="https://github.com/zhitongblog/solomd/releases/tag/v3.5.5">下载 v3.5.5 →</a>
+        &nbsp;
+        <a class="btn" href="https://github.com/zhitongblog/solomd/releases">所有版本</a>
+      </p>
+      <p>
+        v3.0.x 及以上的用户会在 24 小时内看到应用内升级提示。
+        macOS 也可以 <code>brew upgrade --cask solomd</code>。
+      </p>
+
+      <h2>下一步 —— v3.6</h2>
+      <p>
+        Issue <a href="https://github.com/zhitongblog/solomd/issues/44" rel="external">#44</a>
+        —— 实时编辑模式下图片和表格的内联渲染 —— 是下一个要做的。
+        这不是改 CSS 能解决的，需要写一个 CodeMirror block-decoration
+        扩展：拦截图片语法行，把实际图片渲染在原位（光标不在该行时
+        把 <code>![]()</code> 折起来）。表格同理：不编辑时显示渲染后的
+        表格，光标进入时展开成源文。
+      </p>
+      <p>
+        #44 之后：iPad / Mac App Store 重新提交还排着队；v4 主线继续
+        是 agent endpoint —— CLI + MCP + BYOK，做"任意 LLM 客户端
+        都能驱动的 markdown 端点"这个公共接口。
+      </p>
+    </article>
+    <Giscus lang={lang} />
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .blog-article { max-width: 760px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .blog-article time { font-size: 13px; color: var(--text-muted, #888); }
+  .blog-article h1 { font-size: 2.2rem; line-height: 1.2; margin: 8px 0 18px; }
+  .blog-article h2 { font-size: 1.4rem; margin: 36px 0 12px; }
+  .blog-article .lead { color: var(--text-muted, #555); font-size: 1.1rem; line-height: 1.6; margin-bottom: 28px; }
+  .blog-article p { line-height: 1.75; margin: 14px 0; }
+  .blog-article ul, .blog-article ol { padding-left: 22px; }
+  .blog-article li { margin: 6px 0; line-height: 1.7; }
+  .blog-article code { background: #f5f5f0; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+  .blog-article pre { background: #f5f5f0; padding: 14px 18px; border-radius: 8px; overflow-x: auto; }
+  .blog-article pre code { background: transparent; padding: 0; }
+  .blog-article a:not(.btn) { color: #ff9f40; }
+  .blog-article kbd { background: #f5f5f0; border: 1px solid #ddd; border-radius: 3px; padding: 1px 6px; font-family: ui-monospace, Menlo, monospace; font-size: 0.85em; }
+  .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  .btn--primary { background: #ff9f40; color: #000 !important; }
+</style>

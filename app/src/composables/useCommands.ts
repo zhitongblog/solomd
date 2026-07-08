@@ -1,0 +1,595 @@
+import { useFiles } from './useFiles';
+import { useSettingsStore } from '../stores/settings';
+import { useTabsStore } from '../stores/tabs';
+import { useTilesStore } from '../stores/tiles';
+import { useExport } from './useExport';
+import { useToastsStore } from '../stores/toasts';
+import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
+import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
+import { writeText } from '@tauri-apps/plugin-clipboard-manager';
+import {
+  simplifiedToTraditional,
+  traditionalToSimplified,
+  pinyin,
+} from '../lib/chinese';
+import { cleanAIArtifacts, stripMarkdownToPlain } from '../lib/clean-ai';
+import { openWelcomeTour } from '../lib/welcome-tour';
+import { formatMarkdown } from '../lib/markdown-format';
+import { openPath } from '@tauri-apps/plugin-opener';
+import { useDailyNotes } from './useDailyNotes';
+import { usePandocExport } from './usePandocExport';
+import { useBasesView } from './useBasesView';
+import { useInboxView } from './useInboxView';
+import { useInbox } from './useInbox';
+import { useSavedViews } from './useSavedViews';
+import { useAutoCommit } from './useAutoCommit';
+import { useWorkspaceIndexStore } from '../stores/workspaceIndex';
+import { useGitHistoryStore } from '../stores/gitHistory';
+import { useWorkspaceStore } from '../stores/workspace';
+import { useGithubSyncStore } from '../stores/githubSync';
+import { useGithubSync } from './useGithubSync';
+import { IS_APP_STORE_BUILD } from '../lib/app-build';
+
+export interface Command {
+  id: string;
+  title: string;
+  hint?: string;
+  shortcut?: string;
+  run: () => void | Promise<void>;
+}
+
+export function useCommands(): Command[] {
+  const files = useFiles();
+  const settings = useSettingsStore();
+  const tabs = useTabsStore();
+  const tiles = useTilesStore();
+  const exporter = useExport();
+  const toasts = useToastsStore();
+  const daily = useDailyNotes();
+  const pandoc = usePandocExport();
+  const bases = useBasesView();
+  const inboxView = useInboxView();
+  const inbox = useInbox();
+  const savedViews = useSavedViews();
+  const auto = useAutoCommit();
+  const gh = useGitHistoryStore();
+  const ws = useWorkspaceStore();
+  const ghSync = useGithubSyncStore();
+  const ghSyncOps = useGithubSync();
+
+  /** Build a solomd.app/share/?repo=...&path=...&branch=main URL for the
+   *  active tab, if it's inside a workspace linked to a public-looking
+   *  GitHub remote. Returns null if any precondition fails — caller is
+   *  responsible for surfacing a helpful toast. */
+  function activeShareUrl(): string | null {
+    const folder = ws.currentFolder;
+    const tab = tabs.activeTab;
+    if (!folder || !tab?.filePath) return null;
+    const remote = ghSync.status?.remote_url ?? '';
+    const m = remote.match(/github\.com[:/]([^/]+)\/([^/]+?)(?:\.git)?$/i);
+    if (!m) return null;
+    // Compute file path relative to the workspace root.
+    const sep = tab.filePath.includes('\\') ? '\\' : '/';
+    const folderNorm = folder.endsWith(sep) ? folder : folder + sep;
+    if (!tab.filePath.startsWith(folderNorm)) return null;
+    const rel = tab.filePath.slice(folderNorm.length).split('\\').join('/');
+    const lang = settings.language === 'zh' ? '/zh' : '';
+    return `https://solomd.app${lang}/share/?repo=${m[1]}/${m[2]}&path=${encodeURIComponent(rel)}`;
+  }
+
+  /**
+   * Repository-backed Git URL for the active note (Tolaria-parity "Copy Note
+   * Git URL"). Builds `<host>/<owner>/<repo>/blob/<branch>/<path>` from the
+   * linked remote + default branch, normalising ssh/https remotes. GitHub +
+   * GitLab (which uses `/-/blob/`) are handled; other hosts fall through to the
+   * GitHub-style `/blob/` path. Returns null when not in a git-linked workspace
+   * or no note is open.
+   */
+  function activeGitUrl(): string | null {
+    const folder = ws.currentFolder;
+    const tab = tabs.activeTab;
+    if (!folder || !tab?.filePath) return null;
+    const remote = ghSync.status?.remote_url ?? '';
+    // host + owner/repo from either git@host:owner/repo.git or https://host/owner/repo(.git)
+    const m = remote.match(/(?:@|:\/\/)([^/:]+)[:/]([^/]+)\/(.+?)(?:\.git)?$/i);
+    if (!m) return null;
+    const [, host, owner, repo] = m;
+    const branch = 'main';
+    const sep = tab.filePath.includes('\\') ? '\\' : '/';
+    const folderNorm = folder.endsWith(sep) ? folder : folder + sep;
+    if (!tab.filePath.startsWith(folderNorm)) return null;
+    const rel = tab.filePath
+      .slice(folderNorm.length)
+      .split('\\')
+      .join('/')
+      .split('/')
+      .map(encodeURIComponent)
+      .join('/');
+    const blobSeg = /gitlab/i.test(host) ? '/-/blob/' : '/blob/';
+    return `https://${host}/${owner}/${repo}${blobSeg}${branch}/${rel}`;
+  }
+
+  /** Replace the active editor's content (used for the Chinese conversion commands). */
+  function transformActive(fn: (s: string) => string, successMsg: string) {
+    const t = tabs.activeTab;
+    if (!t) {
+      toasts.warning('No active document');
+      return;
+    }
+    const next = fn(t.content);
+    tabs.setContent(t.id, next);
+    toasts.success(successMsg);
+  }
+
+  const all: Command[] = [
+    { id: 'file.new', title: 'New Markdown File', shortcut: 'Ctrl+N', run: () => files.newFile() },
+    { id: 'file.newText', title: 'New Plain Text File', shortcut: 'Ctrl+Alt+N', run: () => files.newTextFile() },
+    { id: 'file.open', title: 'Open File…', shortcut: 'Ctrl+O', run: () => files.openFile() },
+    { id: 'file.save', title: 'Save', shortcut: 'Ctrl+S', run: () => files.saveActive() },
+    { id: 'file.saveAs', title: 'Save As…', shortcut: 'Ctrl+Shift+S', run: () => files.saveActiveAs() },
+    {
+      id: 'file.openFolder',
+      title: 'Open Folder…',
+      hint: 'Browse files in the sidebar',
+      run: () => files.openFolder(),
+    },
+    { id: 'file.closeTab', title: 'Close Tab', shortcut: 'Ctrl+W', run: () => tabs.activeId && files.closeTabSafe(tabs.activeId) },
+
+    // v4.0.3 — Open active document in system default editor
+    {
+      id: 'file.openExternal',
+      title: 'Open in External Editor',
+      hint: 'Open file with system default editor',
+      run: async () => {
+        const tab = useTabsStore().activeTab;
+        const path = tab?.filePath;
+        if (!path) {
+          toasts.warning('Save the file first before opening in an external editor');
+          return;
+        }
+        try {
+          await openPath(path);
+        } catch (e) {
+          toasts.warning(`Failed: ${e}`);
+        }
+      },
+    },
+
+    { id: 'view.editor', title: 'View: Edit Only', run: () => settings.setViewMode('edit') },
+    { id: 'view.split', title: 'View: Split', run: () => settings.setViewMode('split') },
+    { id: 'view.preview', title: 'View: Preview Only', run: () => settings.setViewMode('preview') },
+    { id: 'view.cycleView', title: 'View: Cycle Mode', shortcut: 'Ctrl+Shift+P', run: () => settings.cycleViewMode() },
+    { id: 'view.toggleOutline', title: 'View: Toggle Outline', shortcut: 'Ctrl+Shift+O', run: () => { const tabs = useTabsStore(); if (tabs.activeId) tabs.toggleOutline(tabs.activeId); } },
+    { id: 'view.toggleFileTree', title: 'View: Toggle File Tree', shortcut: 'Ctrl+B', run: () => settings.toggleFileTree() },
+    { id: 'view.toggleRightSidebar', title: 'View: Toggle Right Sidebar', hint: 'Hide / show the Outline / Backlinks / Tags / History / Agent strip without losing per-pane preferences', shortcut: 'Ctrl+Alt+B', run: () => settings.toggleRightSidebar() },
+    { id: 'view.toggleAgentPanel', title: 'View: Toggle Agent Panel', hint: 'Right-side chat-with-vault panel — streamed multi-turn AI with tool-call cards, persisted run history, and trace replay', run: () => settings.toggleAgentPanel() },
+    { id: 'view.toggleBacklinks', title: 'View: Toggle Backlinks Pane', run: () => settings.toggleBacklinks() },
+    { id: 'view.relationships', title: 'View: Toggle Relationships Pane', hint: 'Typed relationships — forward edges authored in YAML front matter plus computed inverses (Referenced by)', run: () => settings.toggleRelationships() },
+    { id: 'view.toggleTagsPanel', title: 'View: Toggle Tags Pane', run: () => settings.toggleTagsPanel() },
+    { id: 'view.toggleNeighborhood', title: 'View: Toggle Neighborhood Pane', hint: 'Per-note relationship explorer — frontmatter wikilink groups, inverse relationships, and backlinks; click to open, ⌘/Ctrl-click to pivot', run: () => settings.toggleNeighborhood() },
+    { id: 'view.toggleTypesPanel', title: 'View: Toggle Types Pane', hint: 'Type-driven sidebar — notes with `type:<Name>` grouped into collapsible first-class sections (types-as-lenses)', run: () => settings.toggleTypesPanel() },
+    { id: 'type.create', title: 'Types: New Type…', hint: 'Create a type-definition note (`type: Type`) so its members get a first-class sidebar section', run: () => { if (!settings.showTypesPanel) settings.toggleTypesPanel(); window.dispatchEvent(new CustomEvent('solomd:create-type')); } },
+    { id: 'view.toggleHistoryPanel', title: 'View: Toggle History Pane', hint: 'Show / hide the per-note version history pane (does not disable Auto-Git)', run: () => settings.toggleHistoryPanel() },
+    { id: 'view.toggleInspector', title: 'View: Toggle Properties Inspector', shortcut: 'Ctrl+Shift+I', hint: 'Edit the active note’s YAML frontmatter as typed properties (text / number / date / status / tags / relation)', run: () => settings.toggleInspector() },
+    { id: 'view.resetSidebarPanes', title: 'View: Reset Sidebar Pane Heights', hint: 'Clear stored per-pane heights so the right sidebar returns to even-share flex layout', run: () => settings.clearRightSidebarPaneHeights() },
+    { id: 'view.toggleWrap', title: 'View: Toggle Word Wrap', run: () => settings.toggleWordWrap() },
+    { id: 'view.toggleLineNumbers', title: 'View: Toggle Line Numbers', run: () => settings.toggleLineNumbers() },
+    { id: 'view.toggleTheme', title: 'View: Toggle Theme', run: () => settings.toggleTheme() },
+    { id: 'view.toggleLivePreview', title: 'View: Toggle Live Preview / Raw Source (Markdown)', run: () => settings.toggleLivePreview() },
+    { id: 'view.toggleSpellCheck', title: 'View: Toggle Spell Check', run: () => settings.toggleSpellCheck() },
+    { id: 'view.toggleFocusMode', title: 'View: Toggle Focus Mode', run: () => settings.toggleFocusMode() },
+    { id: 'view.toggleTypewriter', title: 'View: Toggle Typewriter Mode', run: () => settings.toggleTypewriterMode() },
+
+    // ---- Tile layout ----
+    { id: 'tile.splitRight', title: 'Split Editor Right', shortcut: 'Ctrl+\\', run: () => tiles.splitPane(tiles.focusedPaneId, 'horizontal') },
+    { id: 'tile.splitDown', title: 'Split Editor Down', shortcut: 'Ctrl+Shift+\\', run: () => tiles.splitPane(tiles.focusedPaneId, 'vertical') },
+    { id: 'tile.closePane', title: 'Close Pane', run: () => tiles.closePane(tiles.focusedPaneId) },
+    { id: 'tile.focusNext', title: 'Focus Next Pane', shortcut: 'Ctrl+Alt+Right', run: () => tiles.focusNextPane() },
+    { id: 'tile.focusPrev', title: 'Focus Previous Pane', shortcut: 'Ctrl+Alt+Left', run: () => tiles.focusPrevPane() },
+
+    {
+      id: 'search.global',
+      title: 'Search in Folder…',
+      shortcut: 'Ctrl+Shift+F',
+      hint: 'Search across all .md / .txt files in the open folder',
+      run: () => window.dispatchEvent(new CustomEvent('solomd:open-global-search')),
+    },
+
+    {
+      id: 'theme.customCss',
+      title: 'Theme: Set Custom CSS File…',
+      hint: 'Pick a .css file to override SoloMD styles',
+      run: async () => {
+        const path = await openFileDialog({
+          multiple: false,
+          filters: [{ name: 'CSS', extensions: ['css'] }],
+        });
+        if (path && typeof path === 'string') {
+          settings.setCustomCssPath(path);
+          toasts.success('Custom CSS theme loaded');
+        }
+      },
+    },
+    {
+      id: 'theme.clearCustomCss',
+      title: 'Theme: Clear Custom CSS',
+      run: () => {
+        settings.setCustomCssPath('');
+        toasts.info('Custom CSS theme cleared');
+      },
+    },
+
+    {
+      id: 'cn.s2t',
+      title: 'Chinese: Simplified → Traditional',
+      hint: 'Convert document content',
+      run: () => transformActive(simplifiedToTraditional, 'Converted to Traditional'),
+    },
+    {
+      id: 'cn.t2s',
+      title: 'Chinese: Traditional → Simplified',
+      run: () => transformActive(traditionalToSimplified, 'Converted to Simplified'),
+    },
+    {
+      id: 'cn.copyPinyin',
+      title: 'Chinese: Copy Active Document as Pinyin',
+      run: async () => {
+        const t = tabs.activeTab;
+        if (!t) {
+          toasts.warning('No active document');
+          return;
+        }
+        await writeText(pinyin(t.content));
+        toasts.success('Pinyin copied to clipboard');
+      },
+    },
+
+    // v2.5 F6: CJK proofread — flag common Chinese typos in the
+    // active doc. The actual panel is owned by App.vue; we dispatch
+    // a custom event because useCommands has no DOM/component
+    // handles (same pattern as `help.markdown` and `search.global`).
+    {
+      id: 'proofread.cjk',
+      title: 'CJK Proofread — flag Chinese typos',
+      shortcut: 'Ctrl+Shift+J',
+      hint: 'Half-/full-width punct, 的/地/得 misuse, repeats, spacing',
+      run: () => window.dispatchEvent(new CustomEvent('solomd:open-cjk-proofread')),
+    },
+
+    {
+      id: 'editor.find',
+      title: 'Find / Replace in note…',
+      shortcut: 'Ctrl+F',
+      hint: 'Open the find & replace bar in the current editor',
+      run: () =>
+        window.dispatchEvent(
+          new CustomEvent('solomd:editor-find', { detail: { paneId: tiles.focusedPaneId } }),
+        ),
+    },
+
+    {
+      id: 'editor.insertImage',
+      title: 'Insert image…',
+      hint: 'Pick an image — it is copied into the note’s attachments folder and a Markdown image link is inserted',
+      run: async () => {
+        if (!tabs.activeTab) {
+          toasts.warning('No active document');
+          return;
+        }
+        const sel = await openFileDialog({
+          multiple: false,
+          filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'avif', 'tiff'] }],
+        });
+        if (typeof sel !== 'string') return;
+        window.dispatchEvent(
+          new CustomEvent('solomd:insert-image-path', {
+            detail: { path: sel, paneId: tiles.focusedPaneId },
+          }),
+        );
+      },
+    },
+
+    {
+      id: 'editor.insertImageUrl',
+      title: 'Image from URL…',
+      hint: 'Insert a Markdown image link for an external image URL (image host / 图床)',
+      run: () => window.dispatchEvent(new CustomEvent('solomd:open-image-url-dialog')),
+    },
+
+    {
+      id: 'image.uploadLocalImages',
+      title: 'Upload local images to image host…',
+      hint: 'Upload every local image in this note to the configured image host and rewrite the links',
+      run: () => {
+        if (!tabs.activeTab) {
+          toasts.warning('No active document');
+          return;
+        }
+        window.dispatchEvent(
+          new CustomEvent('solomd:upload-local-images', {
+            detail: { paneId: tiles.focusedPaneId },
+          }),
+        );
+      },
+    },
+
+    {
+      id: 'format.markdown',
+      title: 'Format Markdown (Prettier)',
+      shortcut: 'Ctrl+Alt+L',
+      hint: 'Reformat the active document — normalize lists, tables, spacing',
+      run: async () => {
+        const t = tabs.activeTab;
+        if (!t) {
+          toasts.warning('No active document');
+          return;
+        }
+        if (t.language !== 'markdown') {
+          toasts.warning('Format works on Markdown files only');
+          return;
+        }
+        try {
+          const next = await formatMarkdown(t.content);
+          if (next === t.content) {
+            toasts.info('Already formatted');
+            return;
+          }
+          tabs.setContent(t.id, next);
+          toasts.success('Formatted');
+        } catch (e) {
+          console.error('format failed', e);
+          toasts.warning('Format failed — check syntax');
+        }
+      },
+    },
+
+    // ---- AI text cleanup ----
+    {
+      id: 'clean.aiArtifacts',
+      title: 'Clean AI Artifacts (smart quotes, em-dashes, invisible chars)',
+      hint: 'Strip junk Unicode that LLM chat interfaces leak into copied text',
+      run: () => transformActive(cleanAIArtifacts, 'AI artifacts cleaned'),
+    },
+    {
+      id: 'clean.stripMarkdown',
+      title: 'Strip All Markdown to Plain Text',
+      hint: 'Remove headings, bold, lists, code fences — leave only prose',
+      run: () => transformActive(stripMarkdownToPlain, 'Stripped to plain text'),
+    },
+
+    { id: 'export.html', title: 'Export to HTML…', run: () => exporter.exportHtml() },
+    { id: 'export.docx', title: 'Export to Word (DOCX)…', run: () => exporter.exportDocx() },
+    { id: 'export.pdf', title: 'Export to PDF…', run: () => exporter.exportPdf() },
+    { id: 'export.pdfPrint', title: 'Export to PDF via System Print…', shortcut: 'Ctrl+Shift+Alt+P', run: () => exporter.exportPdfPrint() },
+    { id: 'export.image', title: 'Export to Image (PNG)…', run: () => exporter.exportImage() },
+    { id: 'export.epub', title: 'Export to EPUB…', hint: 'via Pandoc', run: () => pandoc.exportTo('epub') },
+    { id: 'export.odt', title: 'Export to ODT…', hint: 'via Pandoc', run: () => pandoc.exportTo('odt') },
+    { id: 'export.latex', title: 'Export to LaTeX…', hint: 'via Pandoc', run: () => pandoc.exportTo('latex') },
+    { id: 'export.rtf', title: 'Export to RTF…', hint: 'via Pandoc', run: () => pandoc.exportTo('rtf') },
+    { id: 'export.pandocCustom', title: 'Export via Pandoc Template…', run: () => pandoc.exportTo('custom') },
+    { id: 'export.copyHtml', title: 'Copy as HTML', shortcut: 'Ctrl+Shift+C', run: () => exporter.copyAsHtml() },
+    { id: 'export.copyPlain', title: 'Copy as Plain Text', run: () => exporter.copyAsPlainText() },
+    { id: 'export.copyMd', title: 'Copy as Markdown', run: () => exporter.copyAsMarkdown() },
+    { id: 'export.copyImage', title: 'Copy as Image (PNG)', run: () => exporter.copyAsImage() },
+
+    {
+      id: 'daily.openToday',
+      title: "Open Today's Daily Note",
+      shortcut: 'Ctrl+D',
+      hint: 'Create / open today\'s note in the workspace daily folder',
+      run: () => daily.openTodayNote(),
+    },
+    {
+      id: 'daily.openYesterday',
+      title: "Open Yesterday's Daily Note",
+      run: () => daily.openYesterday(),
+    },
+    {
+      id: 'daily.openTomorrow',
+      title: "Open Tomorrow's Daily Note",
+      run: () => daily.openTomorrow(),
+    },
+    {
+      id: 'tags.refresh',
+      title: 'Refresh Tag Index',
+      run: () => useWorkspaceIndexStore().rescan(),
+    },
+    {
+      id: 'bases.open',
+      title: 'Workspace: Properties Table (Bases)',
+      hint: 'Browse all notes as a sortable / filterable table',
+      run: () => bases.openBases(),
+    },
+    {
+      id: 'views.toggle',
+      title: 'View: Toggle Saved Views Panel',
+      hint: 'Show / hide the Saved Views section in the left sidebar',
+      run: () => settings.toggleViewsPanel(),
+    },
+    {
+      id: 'views.create',
+      title: 'View: Create Saved View…',
+      hint: 'Define a persistent filtered note list (saved to .solomd/views/)',
+      run: () => savedViews.newView(),
+    },
+    {
+      id: 'history.initWorkspace',
+      title: 'History: Initialize Git History',
+      hint: 'Run `git init` + initial commit of all .md/.txt files in this workspace',
+      run: async () => {
+        if (!ws.currentFolder) {
+          toasts.warning('Open a folder first');
+          return;
+        }
+        try {
+          await gh.init(ws.currentFolder);
+          toasts.success('Git history initialized');
+        } catch (e) {
+          toasts.warning(`Init failed: ${e}`);
+        }
+      },
+    },
+    {
+      id: 'history.commitNow',
+      title: 'History: Save Snapshot Now',
+      hint: 'Force an auto-commit immediately (skips the debounce window)',
+      run: () => auto.commitNow(),
+    },
+    {
+      id: 'history.toggleAutoGit',
+      title: 'History: Toggle Auto-Commit on Save',
+      run: () => settings.toggleAutoGit(),
+    },
+
+    // v2.6 — GitHub sync command-palette entries.
+    {
+      id: 'sync.pushNow',
+      title: 'GitHub Sync: Push Now',
+      hint: 'Push commits to the linked GitHub repo, even if auto-push is off',
+      run: () => ghSyncOps.pushNow(),
+    },
+    {
+      id: 'sync.pullNow',
+      title: 'GitHub Sync: Pull Now',
+      hint: 'Fetch + merge / fast-forward from the linked GitHub repo',
+      run: () => ghSyncOps.pullNow(),
+    },
+    {
+      id: 'sync.copyShareLink',
+      title: 'GitHub Sync: Copy Share Link for This Note',
+      hint: 'Public share via solomd.app/share — works only for public repos',
+      run: async () => {
+        const url = activeShareUrl();
+        if (!url) {
+          toasts.warning(
+            'Open a note in a GitHub-linked workspace first, then push it.',
+          );
+          return;
+        }
+        await writeText(url);
+        toasts.success('Share link copied. Note must be in a public GitHub repo to render.');
+      },
+    },
+    {
+      id: 'note.copyGitUrl',
+      title: 'Copy Note Git URL',
+      hint: 'Copy the repository-backed URL (host/owner/repo/blob/main/path) for the active note',
+      run: async () => {
+        const url = activeGitUrl();
+        if (!url) {
+          toasts.warning('Open a note in a Git-linked workspace first.');
+          return;
+        }
+        await writeText(url);
+        toasts.success('Git URL copied to clipboard.');
+      },
+    },
+
+    {
+      id: 'help.welcomeTour',
+      title: 'Open Welcome Tour',
+      hint: 'Open 4 in-memory tutorial tabs (Welcome, Syntax, Slideshow, Shortcuts)',
+      run: () => {
+        openWelcomeTour();
+        toasts.success(settings.language === 'zh' ? '已打开教程' : 'Welcome tour opened');
+      },
+    },
+    {
+      id: 'help.markdown',
+      title: 'Markdown Cheatsheet',
+      shortcut: 'F1 / Ctrl+/',
+      hint: 'Quick reference for Markdown syntax',
+      run: () => {
+        // Triggered via App-level event since useCommands has no DOM access.
+        window.dispatchEvent(new CustomEvent('solomd:open-help'));
+      },
+    },
+    {
+      id: 'view.slideshow',
+      title: 'Present Slideshow',
+      shortcut: 'Ctrl+Alt+P',
+      hint: 'Render the active document as a fullscreen slideshow (split on `---`)',
+      run: async () => {
+        const t = tabs.activeTab;
+        if (!t) {
+          toasts.warning('No active document');
+          return;
+        }
+        try {
+          localStorage.setItem('solomd:slideshow:content', t.content || '');
+          localStorage.setItem(
+            'solomd:slideshow:title',
+            t.fileName || 'Untitled',
+          );
+        } catch {}
+        const label = `solomd-slideshow-${Date.now()}`;
+        try {
+          const win = new WebviewWindow(label, {
+            url: '/?slideshow=1',
+            title: 'SoloMD — Slideshow',
+            width: 1200,
+            height: 800,
+            decorations: true,
+            resizable: true,
+          });
+          win.once('tauri://error', (e) => console.error('slideshow window error', e));
+        } catch (e) {
+          console.error('failed to open slideshow', e);
+          toasts.warning('Failed to open slideshow window');
+        }
+      },
+    },
+    {
+      id: 'window.new',
+      title: 'New Window',
+      shortcut: 'Ctrl+Shift+N',
+      run: async () => {
+        const label = `solomd-${Date.now()}`;
+        try {
+          const win = new WebviewWindow(label, {
+            url: '/',
+            title: 'SoloMD',
+            width: 1000,
+            height: 700,
+          });
+          win.once('tauri://error', (e) => console.error('window error', e));
+        } catch (e) {
+          console.error('failed to create window', e);
+        }
+      },
+    },
+
+    // v4.6 F6 — Inbox workflow command-palette entries.
+    {
+      id: 'inbox.open',
+      title: 'Open Inbox',
+      hint: 'Review notes flagged `inbox: true` — Week / Month / All, ⌘E to organize & advance',
+      run: () => {
+        if (!settings.inboxWorkflowEnabled) {
+          toasts.info('Enable the Inbox workflow in Settings first');
+          return;
+        }
+        inboxView.openInbox();
+      },
+    },
+    {
+      id: 'inbox.organizeAndAdvance',
+      title: 'Inbox: Mark Organized & Advance',
+      shortcut: 'Ctrl+E',
+      hint: 'Set `inbox: false` on the active note and jump to the next inbox note',
+      run: () => {
+        if (!settings.inboxWorkflowEnabled) {
+          inbox.toggleActive();
+          return;
+        }
+        void inbox.organizeAndAdvance();
+      },
+    },
+  ];
+
+  // App Store builds strip AI / Agent commands (Apple 3.1.1).
+  if (IS_APP_STORE_BUILD) {
+    return all.filter((c) => c.id !== 'view.toggleAgentPanel');
+  }
+  return all;
+}

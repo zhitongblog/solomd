@@ -1,0 +1,256 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
+
+const lang = 'zh' as const;
+
+interface ThemeEntry {
+  id: string;
+  name: string;
+  author: string;
+  description: string;
+  url: string;
+  preview?: string;
+  tags?: string[];
+  license?: string;
+}
+
+interface ThemeManifest {
+  version: number;
+  themes: ThemeEntry[];
+}
+
+const __dir = dirname(fileURLToPath(import.meta.url));
+const manifestPath = resolve(__dir, '../../../public/themes/index.json');
+const manifest: ThemeManifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+
+const allTags = Array.from(
+  new Set(manifest.themes.flatMap((t) => t.tags ?? [])),
+).sort();
+---
+
+<Layout
+  title="主题市场 — SoloMD"
+  description="SoloMD 社区精选 .css 主题。一键在 App 内安装，或直接下载 .css 文件。"
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <section class="container themes-page">
+      <h1>主题市场</h1>
+      <p class="lead">
+        轻量、零插件机制。每个主题都只是一份 <code>.css</code>，覆盖 SoloMD
+        预定义的 CSS 变量 —— 不会执行任何 JavaScript。可以在 App 内
+        <strong>设置 → 浏览社区主题</strong> 一键安装，也可以直接下载
+        <code>.css</code> 文件后在「自定义 CSS」里选中它。
+      </p>
+
+      {allTags.length > 0 && (
+        <p class="tags-line">
+          <span class="tags-label">标签：</span>
+          {allTags.map((t) => (
+            <span class="tag-chip">#{t}</span>
+          ))}
+        </p>
+      )}
+
+      <ul class="themes">
+        {manifest.themes.map((theme) => (
+          <li class="theme-card">
+            <a class="theme-card__preview" href={theme.url} rel="external">
+              {theme.preview ? (
+                <img src={theme.preview} alt={`${theme.name} 预览`} loading="lazy" />
+              ) : (
+                <div class="theme-card__placeholder" />
+              )}
+            </a>
+            <div class="theme-card__meta">
+              <h2 class="theme-card__name">{theme.name}</h2>
+              <p class="theme-card__author">作者：{theme.author}</p>
+              <p class="theme-card__desc">{theme.description}</p>
+              {theme.tags && theme.tags.length > 0 && (
+                <p class="theme-card__tags">
+                  {theme.tags.map((t) => (
+                    <span class="tag-chip tag-chip--small">#{t}</span>
+                  ))}
+                </p>
+              )}
+              <p class="theme-card__actions">
+                <a class="btn btn--primary" href={theme.url} rel="external">
+                  下载 .css
+                </a>
+                {theme.license && (
+                  <span class="theme-card__license">许可：{theme.license}</span>
+                )}
+              </p>
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      <section class="publish">
+        <h2>想发布自己的主题？</h2>
+        <p>
+          主题是经过审核的 —— 我们维护一份 <code>index.json</code>
+          清单，列出所有主题的元信息和 CSS 文件 URL。提交流程：
+        </p>
+        <ol>
+          <li>
+            写一份 <code>.css</code>，只覆盖
+            <a href="https://github.com/zhitongblog/solomd/blob/main/app/src/styles/main.css" rel="external">styles/main.css</a>
+            里定义好的 CSS 变量。不要用 <code>!important</code> 或选择器 hack ——
+            仅靠改变量就能整体换肤。
+          </li>
+          <li>
+            生成一张 600×400 的预览截图。纯色占位也可以。
+          </li>
+          <li>
+            向
+            <a
+              href="https://github.com/zhitongblog/solomd/blob/main/web/public/themes/index.json"
+              rel="external"
+            >
+              <code>web/public/themes/index.json</code>
+            </a>
+            提 PR，添加你的
+            <code>{`{ id, name, author, description, url, preview, tags, license }`}</code>
+            条目，并把对应的 <code>.css</code> + 预览图也放进同一个
+            <code>web/public/themes/</code> 目录。
+          </li>
+          <li>
+            合并后 5 分钟内（App 内置缓存 TTL），所有用户在
+            <strong>设置 → 浏览社区主题</strong> 就能看到新主题。
+          </li>
+        </ol>
+        <p class="publish-note">
+          审核说明：我会检查可读性（正文对比度 ≥ 4.5:1）、许可证清晰
+          （MIT / CC0 等）、以及整体审美。闭源或不适合工作场合的主题不会合并 ——
+          请自行 fork 本页并维护你自己的目录。
+        </p>
+      </section>
+    </section>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .themes-page { max-width: 960px; padding: 40px 20px 80px; }
+  .themes-page h1 { font-size: 2rem; margin: 10px 0 14px; color: #ff9f40; }
+  .themes-page .lead {
+    font-size: 1.05rem;
+    line-height: 1.7;
+    color: var(--text-muted, #555);
+    margin-bottom: 24px;
+  }
+  .themes-page code {
+    background: var(--bg-soft, #f5f3ec);
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 0.9em;
+  }
+  .tags-line {
+    margin: 0 0 28px;
+    font-size: 0.9rem;
+    color: var(--text-muted, #555);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+  .tags-label { color: var(--text-faint, #888); }
+  .tag-chip {
+    background: var(--bg-soft, #f5f3ec);
+    border: 1px solid #eee;
+    color: var(--text-muted, #555);
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+  }
+  .tag-chip--small { font-size: 0.72rem; padding: 1px 7px; }
+  .themes {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 48px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 18px;
+  }
+  .theme-card {
+    border: 1px solid #eaeaea;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+  }
+  .theme-card__preview {
+    display: block;
+    aspect-ratio: 3 / 2;
+    background: #fafafa;
+    overflow: hidden;
+  }
+  .theme-card__preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .theme-card__placeholder {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #f5f5f5, #eee);
+  }
+  .theme-card__meta { padding: 14px 16px; flex: 1; display: flex; flex-direction: column; gap: 4px; }
+  .theme-card__name { margin: 0; font-size: 1rem; }
+  .theme-card__author { margin: 0; font-size: 0.85rem; color: var(--text-faint, #888); }
+  .theme-card__desc {
+    margin: 6px 0 0;
+    color: var(--text-muted, #555);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    flex: 1;
+  }
+  .theme-card__tags { margin: 6px 0 0; display: flex; flex-wrap: wrap; gap: 4px; }
+  .theme-card__actions {
+    margin: 12px 0 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+  }
+  .theme-card__license {
+    font-size: 0.78rem;
+    color: var(--text-faint, #888);
+  }
+  .btn {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 5px;
+    font-size: 0.88rem;
+    text-decoration: none;
+    border: 1px solid #ddd;
+    background: #fff;
+    color: var(--text, #333);
+  }
+  .btn--primary {
+    background: #ff9f40;
+    color: #1a1a1a;
+    border-color: #ff9f40;
+    font-weight: 600;
+  }
+  .publish {
+    margin-top: 40px;
+    padding: 24px;
+    background: var(--bg-soft, #fafaf7);
+    border-radius: 10px;
+    border: 1px solid #eee;
+  }
+  .publish h2 { margin: 0 0 12px; font-size: 1.15rem; }
+  .publish p { margin: 8px 0; line-height: 1.7; color: var(--text-muted, #555); }
+  .publish ol { margin: 12px 0; padding-left: 22px; line-height: 1.8; color: var(--text-muted, #555); }
+  .publish-note { font-size: 0.88rem; color: var(--text-faint, #888); margin-top: 14px; }
+</style>

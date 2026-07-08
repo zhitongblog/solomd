@@ -1,0 +1,98 @@
+/*
+ * highlight.js theme — maps hljs token classes to SoloMD's --syn-*
+ * CSS variables so syntax colors follow the active app theme
+ * (Light / Dark / Nord / Solarized / Monokai / GitHub Light / Dracula).
+ *
+ * Reference: https://highlightjs.readthedocs.io/en/latest/css-classes-reference.html
+ */
+
+.hljs {
+  display: block;
+  color: var(--syn-variable);
+  background: transparent;
+}
+
+.hljs-comment,
+.hljs-quote {
+  color: var(--syn-comment);
+  font-style: italic;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-meta .hljs-keyword,
+.hljs-doctag,
+.hljs-literal {
+  color: var(--syn-keyword);
+}
+
+.hljs-string,
+.hljs-regexp,
+.hljs-template-tag,
+.hljs-template-variable,
+.hljs-addition {
+  color: var(--syn-string);
+}
+
+.hljs-number,
+.hljs-symbol,
+.hljs-bullet {
+  color: var(--syn-number);
+}
+
+.hljs-function,
+.hljs-title,
+.hljs-title.function_,
+.hljs-title.class_,
+.hljs-built_in,
+.hljs-class .hljs-title {
+  color: var(--syn-function);
+}
+
+.hljs-type,
+.hljs-class,
+.hljs-params {
+  color: var(--syn-type);
+}
+
+.hljs-property,
+.hljs-attr,
+.hljs-attribute,
+.hljs-selector-attr,
+.hljs-selector-pseudo,
+.hljs-selector-class,
+.hljs-selector-id {
+  color: var(--syn-property);
+}
+
+.hljs-operator,
+.hljs-punctuation {
+  color: var(--syn-operator);
+}
+
+.hljs-variable,
+.hljs-name,
+.hljs-tag {
+  color: var(--syn-variable);
+}
+
+.hljs-meta {
+  color: var(--syn-comment);
+}
+
+.hljs-deletion {
+  color: var(--danger, #d64545);
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: bold;
+}
+
+.hljs-link {
+  color: var(--accent);
+  text-decoration: underline;
+}

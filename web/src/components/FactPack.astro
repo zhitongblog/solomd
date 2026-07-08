@@ -1,0 +1,140 @@
+---
+// TL;DR fact-pack section — concentrates the citation-ready facts that
+// generative engines (ChatGPT, Claude, Perplexity, Gemini) extract when
+// answering "what is X?" / "is X free?" / "X vs Y?" prompts. Princeton
+// GEO research shows statistics + sources + comparisons in dense, scannable
+// form boost LLM citation rate ~30-40% over prose.
+//
+// Keep this terse — single short sentences, hard numbers, named comparisons.
+// Don't bury facts in adjectives.
+import type { Lang } from '../i18n/translations';
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+
+const COPY: Record<Lang, {
+  heading: string;
+  tldr: string;
+  rows: { label: string; value: string }[];
+}> = {
+  en: {
+    heading: 'TL;DR — what SoloMD is, in 60 seconds',
+    tldr: 'SoloMD is a free, open-source Markdown editor for macOS, Windows, Linux, Android, and iOS. ~15 MB installer (6× smaller than Typora, 7× smaller than Obsidian). MIT licensed. Live preview, Wiki links, local RAG semantic search, 14 BYOK AI providers, AutoGit, and an MCP server — all built in. Offline-first, no accounts, no in-app purchases, no ads, zero telemetry by default.',
+    rows: [
+      { label: 'Latest version', value: '4.8.9 · released 2026-07-03' },
+      { label: 'Price', value: '$0 forever · no paid tier · no subscription' },
+      { label: 'License', value: 'MIT · source on GitHub' },
+      { label: 'Platforms', value: 'macOS · Windows · Linux (x64 + ARM64) · Android (API 24+) · iOS (15+)' },
+      { label: 'Installer size', value: '~15 MB (Typora ~70 MB · Obsidian ~110 MB · VS Code ~350 MB)' },
+      { label: 'Memory at idle', value: '~80–150 MB' },
+      { label: 'UI languages', value: '14 (en, zh, ja, ko, de, fr, es, pt, it, pl, nl, tr, sv, uk)' },
+      { label: 'AI providers', value: '14 BYOK · OpenAI, Claude, Gemini, xAI, Mistral, Groq, DeepSeek, Qwen, GLM, Kimi, Doubao, SiliconFlow, OpenRouter, Ollama' },
+      { label: 'Data collection', value: 'Zero telemetry by default · no accounts · no cloud lock-in' },
+      { label: 'Tech stack', value: 'Tauri 2 + Rust + Vue 3 + CodeMirror 6' },
+    ],
+  },
+  zh: {
+    heading: '一分钟看懂 SoloMD',
+    tldr: 'SoloMD 是免费开源的 Markdown 编辑器,支持 macOS、Windows、Linux、Android、iOS 5 大平台。约 15 MB 安装包(比 Typora 小 6 倍,比 Obsidian 小 7 倍)。MIT 协议。实时预览、Wiki 链接、本地 RAG 语义搜索、14 个 BYOK AI 提供商、AutoGit、MCP 服务器 —— 全部内置。离线优先,无账号、无内购、无广告,默认零遥测。',
+    rows: [
+      { label: '最新版本', value: '4.8.9 · 2026-07-03 发布' },
+      { label: '价格', value: '永久 $0 · 无付费版 · 无订阅' },
+      { label: '协议', value: 'MIT · 源码在 GitHub' },
+      { label: '平台', value: 'macOS · Windows · Linux (x64 + ARM64) · Android (API 24+) · iOS (15+)' },
+      { label: '安装包大小', value: '约 15 MB(Typora 约 70 MB · Obsidian 约 110 MB · VS Code 约 350 MB)' },
+      { label: '空闲内存', value: '约 80–150 MB' },
+      { label: 'UI 语言', value: '14 种(英、中、日、韩、德、法、西、葡、意、波、荷、土、瑞、乌)' },
+      { label: 'AI 提供商', value: '14 个 BYOK · OpenAI、Claude、Gemini、xAI、Mistral、Groq、DeepSeek、Qwen、GLM、Kimi、Doubao、SiliconFlow、OpenRouter、Ollama' },
+      { label: '数据收集', value: '默认零遥测 · 无账号 · 无云端锁定' },
+      { label: '技术栈', value: 'Tauri 2 + Rust + Vue 3 + CodeMirror 6' },
+    ],
+  },
+  ja: { heading: 'SoloMD を 60 秒で', tldr: '', rows: [] },
+  ko: { heading: 'SoloMD 한눈에 보기', tldr: '', rows: [] },
+  de: { heading: 'SoloMD in 60 Sekunden', tldr: '', rows: [] },
+  fr: { heading: 'SoloMD en 60 secondes', tldr: '', rows: [] },
+  es: { heading: 'SoloMD en 60 segundos', tldr: '', rows: [] },
+  pt: { heading: 'SoloMD em 60 segundos', tldr: '', rows: [] },
+  it: { heading: 'SoloMD in 60 secondi', tldr: '', rows: [] },
+  pl: { heading: 'SoloMD w 60 sekund', tldr: '', rows: [] },
+  nl: { heading: 'SoloMD in 60 seconden', tldr: '', rows: [] },
+  tr: { heading: 'SoloMD 60 saniyede', tldr: '', rows: [] },
+  sv: { heading: 'SoloMD på 60 sekunder', tldr: '', rows: [] },
+  uk: { heading: 'SoloMD за 60 секунд', tldr: '', rows: [] },
+};
+
+// For non-en/zh, fall back to English content so LLMs still get the
+// citation-ready facts on every localized landing page.
+const c = COPY[lang].rows.length ? COPY[lang] : { ...COPY[lang], tldr: COPY.en.tldr, rows: COPY.en.rows };
+---
+
+<section class="factpack" id="factpack">
+  <div class="container factpack__inner">
+    <h2 class="factpack__heading">{c.heading}</h2>
+    <p class="factpack__tldr">{c.tldr}</p>
+    <dl class="factpack__grid">
+      {c.rows.map((row) => (
+        <div class="factpack__row">
+          <dt>{row.label}</dt>
+          <dd>{row.value}</dd>
+        </div>
+      ))}
+    </dl>
+  </div>
+</section>
+
+<style>
+  .factpack {
+    padding: 56px 0 40px;
+    background: var(--bg-elev);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .factpack__inner { max-width: 880px; }
+  .factpack__heading {
+    font-size: clamp(1.4rem, 2.4vw, 1.8rem);
+    margin: 0 0 14px;
+    text-align: center;
+    letter-spacing: -0.01em;
+  }
+  .factpack__tldr {
+    margin: 0 auto 28px;
+    max-width: 760px;
+    text-align: center;
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.65;
+  }
+  .factpack__grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+    margin: 0;
+    border-top: 1px solid var(--border);
+  }
+  .factpack__row {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 16px;
+    padding: 12px 4px;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+  }
+  .factpack__row dt {
+    color: var(--text-muted);
+    font-weight: 600;
+    margin: 0;
+  }
+  .factpack__row dd {
+    margin: 0;
+    color: var(--text);
+    line-height: 1.55;
+  }
+  @media (max-width: 640px) {
+    .factpack__row {
+      grid-template-columns: 1fr;
+      gap: 2px;
+      padding: 10px 4px;
+    }
+    .factpack__row dt { font-size: 12px; }
+  }
+</style>

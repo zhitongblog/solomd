@@ -1,0 +1,241 @@
+---
+import { getT, type Lang } from '../i18n/translations';
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const tr = getT(lang);
+
+// /compare/ sub-pages exist only in en + zh; ja/ko link to en.
+const compareIndex = lang === 'zh' ? '/zh/compare/' : '/compare/';
+const moreLabel = {
+  en: 'See each editor side-by-side →',
+  zh: '看每款逐项对比 →',
+  ja: 'エディタごとに横並び比較 →',
+  ko: '에디터별로 나란히 비교 →',
+  de: 'Jeden Editor nebeneinander sehen →',
+  fr: 'Voir chaque éditeur côte à côte →',
+  es: 'Ver cada editor lado a lado →',
+  pt: 'Ver cada editor lado a lado →',
+  it: 'Vedi ogni editor a confronto →',
+  pl: 'Zobacz każdy edytor obok siebie →',
+  nl: 'Zie elke editor naast elkaar →',
+  tr: 'Her editörü yan yana görün →',
+  sv: 'Se varje editor sida vid sida →',
+  uk: 'Подивитися кожен редактор поруч →',
+}[lang];
+
+const winsAll = {
+  en: [
+    { icon: '🔍', title: 'Local semantic search', desc: 'Obsidian, Typora and MarkText all skip this in core. SoloMD ⌘⇧F: on-device embedder, no model download, no network call.' },
+    { icon: '📜', title: 'AutoGit version history', desc: 'Every ⌘S becomes a local .git snapshot — sidebar history panel restores in one click. Competitors leave you to wire git manually.' },
+    { icon: '🔌', title: 'MCP server bundled', desc: '1.5 MB binary, 8 read-only tools. Plug your vault into Claude Desktop, Cursor, or Codex CLI.' },
+  ],
+  zh: [
+    { icon: '🔍', title: '本地语义搜索', desc: 'Obsidian / Typora / MarkText 都不在核心里。SoloMD ⌘⇧F 一键开,本地嵌入,不下模型,不联网。' },
+    { icon: '📜', title: 'AutoGit 版本历史', desc: '每次 ⌘S 都是一次本地 .git 快照,侧栏一键回滚。同类编辑器都得手动配 git。' },
+    { icon: '🔌', title: 'MCP server 内置', desc: '1.5 MB 二进制,8 个只读工具。把 vault 接入 Claude Desktop / Cursor / Codex CLI。' },
+  ],
+  ja: [
+    { icon: '🔍', title: 'ローカルセマンティック検索', desc: 'Obsidian / Typora / MarkText はどれも core に含まない。SoloMD は ⌘⇧F でオン、デバイス内 embedder、モデルダウンロードなし、ネットワークコールなし。' },
+    { icon: '📜', title: 'AutoGit バージョン履歴', desc: '毎回の ⌘S がローカル .git スナップショット — サイドバー履歴パネルから 1 クリックで復元。同類は手動 git 配線。' },
+    { icon: '🔌', title: 'MCP サーバー内蔵', desc: '1.5 MB バイナリ、8 個の読み取り専用ツール。vault を Claude Desktop / Cursor / Codex CLI に接続。' },
+  ],
+  ko: [
+    { icon: '🔍', title: '로컬 시맨틱 검색', desc: 'Obsidian / Typora / MarkText 모두 core에 없음. SoloMD ⌘⇧F: 기기 내 embedder, 모델 다운로드 없음, 네트워크 호출 없음.' },
+    { icon: '📜', title: 'AutoGit 버전 기록', desc: '⌘S마다 로컬 .git 스냅샷 — 사이드바 기록 패널에서 원클릭 복원. 동급 에디터는 git 수동 연결 필요.' },
+    { icon: '🔌', title: 'MCP 서버 내장', desc: '1.5 MB 바이너리, 8개 읽기 전용 도구. vault를 Claude Desktop / Cursor / Codex CLI에 연결.' },
+  ],
+  de: [
+    { icon: '🔍', title: 'Lokale semantische Suche', desc: 'Obsidian, Typora und MarkText überspringen das alle im Kern. SoloMD ⌘⇧F: On-Device-Embedder, kein Modell-Download, kein Netzwerkaufruf.' },
+    { icon: '📜', title: 'AutoGit Versionsverlauf', desc: 'Jedes ⌘S wird ein lokaler .git-Snapshot — Sidebar-Verlaufspanel stellt mit einem Klick wieder her. Konkurrenten lassen Sie git manuell verdrahten.' },
+    { icon: '🔌', title: 'MCP-Server gebündelt', desc: '1,5 MB Binary, 8 Nur-Lese-Tools. Stecken Sie Ihren Vault in Claude Desktop, Cursor oder Codex CLI.' },
+  ],
+  fr: [
+    { icon: '🔍', title: 'Recherche sémantique locale', desc: 'Obsidian, Typora et MarkText l\'omettent tous du core. SoloMD ⌘⇧F : embedder sur l\'appareil, pas de téléchargement de modèle, pas d\'appel réseau.' },
+    { icon: '📜', title: 'Historique de versions AutoGit', desc: 'Chaque ⌘S devient un snapshot .git local — panneau d\'historique sidebar restaure en un clic. Les concurrents vous laissent câbler git manuellement.' },
+    { icon: '🔌', title: 'Serveur MCP empaqueté', desc: '1,5 Mo de binaire, 8 outils en lecture seule. Branchez votre vault dans Claude Desktop, Cursor ou Codex CLI.' },
+  ],
+  es: [
+    { icon: '🔍', title: 'Búsqueda semántica local', desc: 'Obsidian, Typora y MarkText todos lo omiten en el core. SoloMD ⌘⇧F: embedder en dispositivo, sin descarga de modelo, sin llamada de red.' },
+    { icon: '📜', title: 'Historial de versiones AutoGit', desc: 'Cada ⌘S se vuelve un snapshot .git local — panel de historial en sidebar restaura en un clic. Los competidores te dejan cablear git manualmente.' },
+    { icon: '🔌', title: 'Servidor MCP empaquetado', desc: '1,5 MB de binario, 8 herramientas de solo lectura. Conecta tu vault a Claude Desktop, Cursor o Codex CLI.' },
+  ],
+  pt: [
+    { icon: '🔍', title: 'Busca semântica local', desc: 'Obsidian, Typora e MarkText todos omitem do core. SoloMD ⌘⇧F: embedder no dispositivo, sem download de modelo, sem chamada de rede.' },
+    { icon: '📜', title: 'Histórico de versões AutoGit', desc: 'Cada ⌘S vira um snapshot .git local — painel de histórico em sidebar restaura em um clique. Concorrentes te deixam ligar git manualmente.' },
+    { icon: '🔌', title: 'Servidor MCP empacotado', desc: '1,5 MB de binário, 8 ferramentas somente leitura. Plugue seu vault em Claude Desktop, Cursor ou Codex CLI.' },
+  ],
+  it: [
+    { icon: '🔍', title: 'Ricerca semantica locale', desc: 'Obsidian, Typora e MarkText la saltano tutti nel core. SoloMD ⌘⇧F: embedder on-device, nessun download di modello, nessuna chiamata di rete.' },
+    { icon: '📜', title: 'Cronologia versioni AutoGit', desc: 'Ogni ⌘S diventa uno snapshot .git locale — pannello cronologia in sidebar ripristina con un clic. I concorrenti ti lasciano cablare git manualmente.' },
+    { icon: '🔌', title: 'Server MCP empacchettato', desc: '1,5 MB di binario, 8 strumenti sola lettura. Collega il tuo vault a Claude Desktop, Cursor o Codex CLI.' },
+  ],
+  pl: [
+    { icon: '🔍', title: 'Lokalne wyszukiwanie semantyczne', desc: 'Obsidian, Typora i MarkText wszystkie pomijają to w core. SoloMD ⌘⇧F: embedder na urządzeniu, brak pobierania modelu, brak wywołań sieciowych.' },
+    { icon: '📜', title: 'Historia wersji AutoGit', desc: 'Każde ⌘S staje się lokalnym snapshotem .git — panel historii w pasku bocznym przywraca jednym kliknięciem. Konkurenci zostawiają cię z ręcznym podłączeniem git.' },
+    { icon: '🔌', title: 'Wbudowany serwer MCP', desc: 'Binarka 1,5 MB, 8 narzędzi tylko do odczytu. Podłącz swój vault do Claude Desktop, Cursor lub Codex CLI.' },
+  ],
+  nl: [
+    { icon: '🔍', title: 'Lokale semantische zoekfunctie', desc: 'Obsidian, Typora en MarkText slaan dit allemaal over in de core. SoloMD ⌘⇧F: embedder op het apparaat, geen modeldownload, geen netwerkoproep.' },
+    { icon: '📜', title: 'AutoGit versiegeschiedenis', desc: 'Elke ⌘S wordt een lokale .git-snapshot — sidebargeschiedenispaneel herstelt met één klik. Concurrenten laten je git handmatig bedraden.' },
+    { icon: '🔌', title: 'MCP-server gebundeld', desc: 'Binary van 1,5 MB, 8 alleen-lezen-tools. Sluit je vault aan op Claude Desktop, Cursor of Codex CLI.' },
+  ],
+  tr: [
+    { icon: '🔍', title: 'Yerel semantik arama', desc: 'Obsidian, Typora ve MarkText hepsi çekirdekte atlıyor. SoloMD ⌘⇧F: cihaz üstünde embedder, model indirme yok, ağ çağrısı yok.' },
+    { icon: '📜', title: 'AutoGit sürüm geçmişi', desc: 'Her ⌘S yerel bir .git anlık görüntüsü olur — sidebar geçmiş paneli tek tıkla geri yükler. Rakipler git\'i elle bağlamanı bekler.' },
+    { icon: '🔌', title: 'Paketlenmiş MCP sunucusu', desc: '1,5 MB ikili, 8 salt-okunur araç. Vault\'unuzu Claude Desktop, Cursor veya Codex CLI\'ya bağlayın.' },
+  ],
+  sv: [
+    { icon: '🔍', title: 'Lokal semantisk sökning', desc: 'Obsidian, Typora och MarkText hoppar alla över detta i kärnan. SoloMD ⌘⇧F: embedder på enheten, ingen modellnedladdning, inget nätverksanrop.' },
+    { icon: '📜', title: 'AutoGit versionshistorik', desc: 'Varje ⌘S blir en lokal .git-snapshot — sidopanel-historik återställer med ett klick. Konkurrenter lämnar dig att koppla git manuellt.' },
+    { icon: '🔌', title: 'MCP-server medföljer', desc: '1,5 MB binär, 8 läs-endast-verktyg. Anslut din vault till Claude Desktop, Cursor eller Codex CLI.' },
+  ],
+  uk: [
+    { icon: '🔍', title: 'Локальний семантичний пошук', desc: 'Obsidian, Typora та MarkText — усі пропускають це у core. SoloMD ⌘⇧F: embedder на пристрої, без завантаження моделі, без мережевих викликів.' },
+    { icon: '📜', title: 'Історія версій AutoGit', desc: 'Кожне ⌘S стає локальним .git-снапшотом — панель історії у бічній панелі відновлює одним кліком. Конкуренти залишають вам підключати git вручну.' },
+    { icon: '🔌', title: 'Сервер MCP у комплекті', desc: 'Бінарник 1,5 МБ, 8 інструментів лише для читання. Підключіть свій vault до Claude Desktop, Cursor або Codex CLI.' },
+  ],
+};
+const wins = winsAll[lang];
+---
+
+<section id="compare">
+  <div class="container">
+    <div class="compare__header">
+      <h2>{tr.compare.heading}</h2>
+      <p class="lead">{tr.compare.lead}</p>
+    </div>
+
+    <div class="compare__wins">
+      {wins.map((w) => (
+        <div class="compare__win">
+          <div class="compare__win-icon">{w.icon}</div>
+          <h3>{w.title}</h3>
+          <p>{w.desc}</p>
+        </div>
+      ))}
+    </div>
+
+    <div class="compare__table-wrap">
+      <table class="compare__table">
+        <thead>
+          <tr>
+            <th></th>
+            <th class="compare__highlight">{tr.compare.headers.solomd}</th>
+            <th>{tr.compare.headers.typora}</th>
+            <th>{tr.compare.headers.marktext}</th>
+            <th>{tr.compare.headers.obsidian}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {tr.compare.rows.map((row) => (
+            <tr>
+              <th scope="row">{row[0]}</th>
+              <td class="compare__highlight">{row[1]}</td>
+              <td>{row[2]}</td>
+              <td>{row[3]}</td>
+              <td>{row[4]}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    <div class="compare__more">
+      <a href={compareIndex}>{moreLabel}</a>
+    </div>
+  </div>
+</section>
+
+<style>
+  .compare__header {
+    text-align: center;
+    margin-bottom: 32px;
+    max-width: 720px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .compare__header .lead { margin: 16px auto 0; }
+
+  .compare__wins {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+    margin: 0 0 36px;
+  }
+  .compare__win {
+    background: var(--bg-elev);
+    border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
+    border-radius: 12px;
+    padding: 20px 22px;
+  }
+  .compare__win-icon {
+    font-size: 26px;
+    margin-bottom: 8px;
+    line-height: 1;
+  }
+  .compare__win h3 {
+    font-size: 1rem;
+    margin: 0 0 8px;
+  }
+  .compare__win p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  .compare__table-wrap {
+    overflow-x: auto;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+  }
+  .compare__table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--bg-elev);
+    font-size: 14px;
+    min-width: 640px;
+  }
+  .compare__table thead th {
+    background: var(--bg-soft);
+    padding: 14px 16px;
+    text-align: center;
+    font-weight: 600;
+    color: var(--text);
+    border-bottom: 1px solid var(--border);
+  }
+  .compare__table tbody th {
+    text-align: left;
+    padding: 12px 16px;
+    font-weight: 500;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .compare__table tbody td {
+    text-align: center;
+    padding: 12px 16px;
+    color: var(--text);
+    border-bottom: 1px solid var(--border);
+  }
+  .compare__table tbody tr:last-child th,
+  .compare__table tbody tr:last-child td {
+    border-bottom: none;
+  }
+  .compare__highlight {
+    background: var(--accent-soft) !important;
+    color: var(--text) !important;
+    font-weight: 600;
+  }
+
+  .compare__more {
+    text-align: center;
+    margin-top: 24px;
+  }
+  .compare__more a {
+    color: var(--accent);
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .compare__more a:hover { text-decoration: underline; }
+</style>

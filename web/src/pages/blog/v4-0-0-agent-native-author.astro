@@ -1,0 +1,375 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import Giscus from '../../components/Giscus.astro';
+
+const lang = 'en' as const;
+---
+
+<Layout
+  title="SoloMD v4.0 — The editor where agents live"
+  description="v4.0 is the agent-native author release. Five pillars in core: Inline Agent Panel (streamed chat-with-vault), Scheduled Recipes (cron / on-save / on-commit, AutoGit branch sandbox + accept/reject), Trace View, Multi-workspace MCP Federation, and Ollama first-class polish. Plus REST API, BYOK cost meter, recipe cookbook (11 starters), first-run wizard. Safety rails non-negotiable — every agent run is reviewable before it touches main."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <article class="container blog-article">
+      <nav class="breadcrumbs">
+        <a href="/">Home</a> / <a href="/blog/">Blog</a> / <span>v4.0</span>
+      </nav>
+      <time>2026-05-03</time>
+      <h1>v4.0 — The editor where agents live</h1>
+      <p class="lead">
+        SoloMD has always been two halves of one product: an editor
+        that writes plain <code>.md</code> to disk, plus a bundled MCP
+        server pointing at the same vault. v4.0 adds a third half — a
+        first-class <strong>agent surface inside the editor</strong>,
+        with safety rails (AutoGit branch sandbox, per-run write-cap,
+        accept/reject UI) that make autonomous writes <em>reviewable</em>
+        instead of scary.
+      </p>
+
+      <p>
+        The brand evolves with it: from <em>"the editor + the MCP
+        endpoint"</em> to <em>"the editor where agents live."</em>
+      </p>
+
+      <h2>Why this drop took 12 weeks</h2>
+      <p>
+        v3.6 was already feature-stable. The 5 pillars below could
+        have shipped as five separate minor versions across the
+        spring. We deliberately didn't — held them under a quiet phase
+        on <code>main</code> (patch-only since 3.6.2) and treated v4.0
+        as the next architectural-shift moment instead. The trade-off:
+        no incremental marketing wins for 12 weeks, but every pillar
+        gets shipped against the same safety contract, with the same
+        run handle, the same trace format, the same write-cap registry.
+        Agent Panel, Recipes, REST API, MCP Federation — different
+        entry points, one trust model.
+      </p>
+      <p>
+        Six weeks of that was code; two were finishing the cookbook,
+        wizard, and ja/ko scaffolding; the last four were dogfooding
+        — running v4-beta on real vaults, finding the bugs that
+        integration tests miss. About a third of v4.0's commits
+        landed in that final dogfood window.
+      </p>
+
+      <h2>The five pillars</h2>
+
+      <h3>1. Inline Agent Panel</h3>
+      <p>
+        Right-side first-class panel, peer to Outline / Backlinks /
+        Tags / History. Streamed chat-with-vault routed through the
+        in-process MCP surface and the existing 14-provider AI stack.
+        <code>[[wikilink]]</code> citations resolve to real notes —
+        click to open. Tool-call cards expand inline showing every
+        read/write the agent makes, args and results visible. Reply
+        too long? <strong>Insert</strong> drops it into the active
+        editor at the cursor (or replaces selection); <strong>Copy</strong>
+        sends it to the clipboard. Run history persists as plain
+        markdown under <code>.solomd/agent-runs/</code> — grep-able,
+        git-trackable, auditable months later.
+      </p>
+
+      <h3>2. Agent Recipes / Scheduled Runs</h3>
+      <p>
+        Declarative agent jobs as YAML in your vault:
+        <code>&lt;workspace&gt;/.solomd/agents/*.yml</code>. Triggers:
+        <code>schedule</code> (cron), <code>on-save</code>,
+        <code>on-commit</code>, <code>on-tag-add</code>, manual.
+        <strong>Safety rails are non-negotiable</strong>:
+      </p>
+      <ul>
+        <li>
+          Every run gets its own AutoGit branch
+          <code>agent/&lt;recipe&gt;/&lt;run-id&gt;</code>. The
+          recipe runner refuses to start on a dirty workspace —
+          your work-in-progress is never swept into an agent commit.
+        </li>
+        <li>
+          Writes land on that branch only. The accept/reject UI
+          shows the diff before merging to <code>main</code>.
+        </li>
+        <li>
+          A per-run <code>write-cap</code> (default 5, hard
+          ceiling 50) prevents runaway loops. A model that asks to
+          write 50 files when the cap is 5 gets refusals at the 6th
+          tool call, with no half-applied state.
+        </li>
+        <li>
+          Rejected runs have the branch hard-deleted — zero residue
+          in your history.
+        </li>
+      </ul>
+      <p>
+        Ships with an <strong>11-recipe cookbook</strong>: weekly
+        review, daily summary, TODO extraction, translation pass,
+        citation cleanup, CJK proofread agent, link-rot detector,
+        frontmatter normalizer, outline-to-blog, refactor pass,
+        weekly tag triage. Browse it in Settings → Recipes → Browse
+        cookbook. Install one, edit the prompt, run it.
+      </p>
+
+      <h3>3. Agent Trace View</h3>
+      <p>
+        Every run (Panel chat OR Recipe) emits a
+        <code>trace.jsonl</code> per step:
+        <code>prompt</code> / <code>model_call</code> /
+        <code>tool_call</code> / <code>tool_result</code> /
+        <code>git_commit</code> / <code>done</code>. Step cards
+        expand to show args, results, token counts, cost estimate,
+        AutoGit branch refs. <strong>Replay-from-step</strong> rewinds
+        the run to step <em>N</em> and re-executes from there with
+        edited inputs — the path to self-correcting recipes. New MCP
+        tool <code>read_agent_trace(run_id)</code> exposes traces to
+        other agents, so a recipe can read its own previous failures
+        and try again differently.
+      </p>
+
+      <h3>4. Workspace Federation</h3>
+      <p>
+        <code>solomd-mcp --workspace path1 --workspace path2 --workspace path3</code>
+        — one MCP session, many vaults. Tool signatures gain an
+        optional <code>workspace</code> parameter; default = first
+        passed (single-workspace clients keep working unchanged).
+        AutoGit branches stay isolated per workspace. <strong>Settings
+        → Integrations</strong> adds an MCP profiles UI: name a
+        bundle of vaults, copy the Claude Desktop config snippet
+        with one click. Stops being three Claude Code sessions to
+        bridge two vaults — it's one session, point at both.
+      </p>
+
+      <h3>5. Ollama first-class</h3>
+      <p>
+        We do <strong>NOT</strong> bundle a local LLM runtime —
+        Ollama already does that well, and re-implementing it
+        violates "write less code we maintain forever." v4.0
+        polishes the integration:
+      </p>
+      <ul>
+        <li>Auto-detect at <code>localhost:11434</code> (green status indicator in Settings → AI).</li>
+        <li>One-click install hint when not found (links to ollama.com — we don't proxy the download).</li>
+        <li>Three model presets: <code>rewrite</code> → qwen2.5:7b · <code>quick</code> → qwen2.5:1.5b · <code>cjk</code> → qwen2.5:14b.</li>
+        <li>Empty model list → "Pull recommended (Qwen2.5 1.5B, ~1 GB)" inline button.</li>
+        <li>Recipes can specify <code>provider: local</code> (alias of ollama) for cheap autonomous loops at zero cloud cost.</li>
+      </ul>
+      <p>
+        <em>Your notes never leave the machine</em> — a true claim
+        through BYOK Ollama since v2.2; v4.0 just makes that path
+        discoverable on day one.
+      </p>
+
+      <h2>Quality bar — the part nobody sees but everybody feels</h2>
+      <ul>
+        <li>
+          <strong>First-run wizard.</strong> New install meets the
+          Agent Panel within 60 seconds. Guides you through BYOK key
+          entry OR Ollama setup. Re-launchable from Help.
+        </li>
+        <li>
+          <strong>Public REST API</strong> (localhost only, token
+          auth). Same surface as MCP for clients that don't speak
+          MCP yet — Alfred / Raycast / n8n / your own scripts.
+        </li>
+        <li>
+          <strong>BYOK cost meter.</strong> Per-provider running
+          tokens-spent counter, opt-in. Settings → Integrations.
+        </li>
+        <li>
+          <strong>Localization.</strong> ja / ko translations
+          scaffolded for README + iPad metadata. en/zh remain the
+          full-coverage UI languages.
+        </li>
+        <li>
+          <strong>The MCP server gained a <code>--workspace</code>
+          flag</strong> (repeatable). Older single-workspace MCP
+          clients keep working; federation is opt-in.
+        </li>
+      </ul>
+
+      <h2>What dogfooding caught (so you don't)</h2>
+      <p>
+        The dogfood window — opening the build on a real machine,
+        with a real workspace, with a real BYOK key — surfaced bugs
+        that 262 unit + integration tests didn't:
+      </p>
+      <ul>
+        <li>
+          <strong>Window UX on macOS.</strong> Launch activation
+          timing was wrong — <code>set_focus()</code> from
+          <code>setup</code> fired before NSApp's run loop had
+          finished launching, so the activation request got dropped
+          and SoloMD opened behind whatever was previously frontmost.
+          Fixed by deferring to <code>RunEvent::Ready</code> + the
+          window-state plugin's first restore signal.
+        </li>
+        <li>
+          <strong>Sidebar resize handle hover flooded the panel.</strong>
+          A 5px drag handle with <code>position: absolute; top: 0;
+          bottom: 0</code> got swept up by a global
+          <code>:deep(*)</code> rule that overrode <code>width: 5px</code>
+          to <code>100%</code>. With a translucent accent
+          background-on-hover and <code>z-index: 10</code>, this
+          turned the entire sidebar orange and intercepted every
+          click. Looked like a stuck modal; was a stretched div.
+        </li>
+        <li>
+          <strong>Stuck "streaming…" with no error.</strong> A
+          mistyped Ollama model name made the OpenAI-compat layer
+          return HTTP 404, the Rust side correctly emitted
+          <code>solomd://ai-error</code>, but the JS listener gated
+          on <code>currentRunId</code> which was set <em>after</em>
+          the <code>await invoke()</code> resolved — and 404 came
+          back so fast that the error event arrived before
+          <code>currentRunId</code> existed. Fixed by minting the
+          request id on the frontend and passing it in via the
+          invoke payload, so the listener is armed before any
+          backend event can fire.
+        </li>
+        <li>
+          <strong>IME composition Enter on 7 input surfaces.</strong>
+          Pinyin user typing Chinese, Japanese kana mode, Korean
+          Hangul — pressing Enter to commit a candidate triggered
+          send / rename / open instead of letting the IME handle it.
+          Added <code>e.isComposing</code> guards to AgentPanel,
+          FileTree rename, command palette, quick switcher, global
+          search, RAG search, preview search.
+        </li>
+        <li>
+          <strong>Path traversal in agent_tools.</strong> When a
+          parent directory didn't exist, <code>resolve_in_workspace</code>
+          fell back to the unresolved candidate path; <code>..</code>
+          segments survived the <code>starts_with(workspace)</code>
+          check and escaped at filesystem level. Confirmed exploit:
+          <code>{'{"path": "../../tmp/pwn/x.md"}'}</code> wrote outside
+          the workspace. Rewrote to mirror
+          <code>mcp-server::safety::resolve_in</code> — reject
+          <code>..</code> and absolute paths upfront, walk to the
+          deepest existing ancestor before canonicalising.
+        </li>
+        <li>
+          <strong>AutoGit recipe sandbox swept user WIP.</strong> The
+          checkout migrated uncommitted edits onto the agent branch,
+          <code>add_all(["*"])</code> swept them into the agent's
+          commit, and a force-restore could destroy in-flight
+          edits. Recipe runner now refuses to start on a dirty
+          workspace, and <code>restore_head</code> tries safe checkout
+          first.
+        </li>
+      </ul>
+      <p>
+        That last category is the thing this drop is most carefully
+        about. Agents writing to your notes is a <em>data-stake</em>
+        feature. The whole product fails if a recipe quietly
+        corrupts a paragraph and you don't notice until next week.
+        Hence the AutoGit branch sandbox, the write-cap, the
+        accept/reject UI, the path-traversal hardening, the dirty
+        check. Five different invariants holding the same line.
+      </p>
+
+      <h2>What v4.0 explicitly skips</h2>
+      <p>
+        Saying "no" is part of the product. These were considered
+        and consciously not shipped:
+      </p>
+      <ul>
+        <li>
+          <strong>Bundled local LLM runtime.</strong> Ollama already
+          covers this. Re-implementing violates "write less code we
+          maintain forever." BYOK provider stays the path.
+        </li>
+        <li>
+          <strong>Online recipe marketplace.</strong> Server ops +
+          moderation = off-mission. Cookbook ships in-tree.
+        </li>
+        <li>
+          <strong>Multi-user / team agents.</strong> Violates "one
+          window, one writer." This product is for the single
+          author; collaboration belongs to a different product.
+        </li>
+        <li>
+          <strong>Copilot-style ghost-text autocomplete.</strong>
+          Different brand. Ghost-text dilutes the writer's voice;
+          our agents work at vault granularity instead, with
+          batched reviewable writes.
+        </li>
+      </ul>
+
+      <h2>Upgrade notes</h2>
+      <p>
+        No file-format changes. Your existing <code>.md</code>,
+        AutoGit history, sync setup, BYOK keys all carry over
+        untouched. The Agent Panel is auto-enabled on first launch
+        via a one-shot migration (v3.6.x users had a hidden
+        <code>showAgentPanel: false</code> from the v4-beta
+        scaffolding period). Don't want it? <code>⌘⇧P → View:
+        Toggle Agent Panel</code> turns it off and the choice
+        sticks.
+      </p>
+
+      <h2>What's next</h2>
+      <p>
+        The <em>v4.x and beyond</em> open directions on the
+        <a href="https://github.com/zhitongblog/solomd/blob/main/docs/roadmap.md">roadmap</a>:
+        a sandboxed scripting API (capability-scoped, Trilium-style
+        "I want to script my workflow"), CLI v2 (rewrite / commit /
+        semantic search / recipe-trigger from terminal), and the
+        long-deferred <em>"should SoloMD become a business?"</em>
+        question — the original v3.0 paid-sync question, still
+        unanswered, still gates any engineering on the sync tier.
+      </p>
+      <p>
+        For now: download <a href="/whats-new/">v4.0</a>, point it
+        at a vault, and try the cookbook's "Weekly review" recipe
+        on a Sunday. If it touches something it shouldn't, the
+        accept/reject UI catches it. If it does what you wanted,
+        you've just spent 30 seconds setting up a thing that runs
+        every week without you.
+      </p>
+
+      <p class="thanks-row">
+        Thanks to everyone who ran the v4-beta builds during the
+        quiet phase. The bugs above made it into the release notes
+        because dogfooding caught them; the bugs that <em>didn't</em>
+        make it into the release notes are the reason any of this
+        works at all. Issues: <a href="https://github.com/zhitongblog/solomd/issues">on GitHub</a>.
+      </p>
+    </article>
+    <Giscus lang={lang} />
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .blog-article { max-width: 820px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .blog-article time { font-size: 13px; color: var(--text-muted); }
+  .blog-article h1 { font-size: clamp(2rem, 4vw, 2.8rem); line-height: 1.15; margin: 8px 0 22px; }
+  .blog-article h2 { font-size: clamp(1.4rem, 2.6vw, 1.8rem); margin: 48px 0 14px; }
+  .blog-article h3 { font-size: 1.15rem; margin: 30px 0 8px; color: var(--accent); }
+  .blog-article .lead { font-size: 1.12rem; color: var(--text-muted); line-height: 1.65; margin-bottom: 22px; }
+  .blog-article p { line-height: 1.75; margin: 12px 0; }
+  .blog-article ul, .blog-article ol { padding-left: 22px; }
+  .blog-article li { margin: 6px 0; line-height: 1.7; }
+  .blog-article code {
+    background: var(--bg-soft);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.92em;
+    font-family: var(--font-mono);
+    color: var(--accent-deep);
+  }
+  .blog-article a:not(.btn) { color: var(--accent); }
+  .thanks-row {
+    margin-top: 56px;
+    padding-top: 22px;
+    border-top: 1px solid var(--border);
+    font-size: 14px;
+    color: var(--text-muted);
+  }
+</style>
+</content>
+</invoke>

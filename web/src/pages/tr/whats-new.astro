@@ -1,0 +1,389 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import Giscus from '../../components/Giscus.astro';
+
+const lang = 'tr' as const;
+const VERSION = '4.1.0';
+const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERSION}`;
+---
+
+<Layout
+  title="SoloMD v4.0 güncellemesi — Agent'ların yaşadığı editör"
+  description="v4.0, agent-native author büyük sürümüdür. Beş sütun: entegre Agent paneli (akışlı vault ile sohbet), zamanlanmış recipe'ler (cron / on-save / on-commit, AutoGit branch sandbox'ı + accept/reject), tekrarlanabilir Trace görünümü, çoklu vault MCP federasyonu, birinci sınıf Ollama. Artı: REST API, BYOK maliyet sayacı, 11 Recipe şablonu, ilk çalıştırma sihirbazı, çok dilli yerelleştirme."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <article class="container whats-new">
+      <nav class="breadcrumbs">
+        <a href="/tr/">Ana Sayfa</a> / <span>Güncelleme</span>
+      </nav>
+
+      <p class="version-row">
+        <span class="version-tag">v{VERSION}</span>
+        <time>Mayıs 2026</time>
+      </p>
+      <h1>Editör — agent'ların içinde yaşadığı yer.</h1>
+      <p class="lead">
+        v4.0, <strong>agent-native author</strong> büyük sürümüdür. Agent'lar
+        "ara sıra çağrılan harici CLI"den editörün içinde birinci sınıf
+        vatandaşlara dönüştü — sürekli mevcut, birden fazla vault'ta çalışan,
+        tam görünürlüklü, tekrarlanabilir, geri alınabilir. Aşağıdakilerin hepsi
+        çekirdektedir, plugin gerekmez. Yükleyici hâlâ ~15 MB.
+      </p>
+
+      <div class="cta-row">
+        <a class="btn btn--primary btn--lg" href={`${baseUrl}/SoloMD_${VERSION}_universal.dmg`}>⬇ v{VERSION} indir (Mac)</a>
+        <a class="btn btn--secondary btn--lg" href={`${baseUrl}/SoloMD_${VERSION}_x64_en-US.msi`}>İndir (Windows)</a>
+        <a class="btn btn--secondary btn--lg" href={`https://github.com/zhitongblog/solomd/releases/tag/v${VERSION}`}>Tüm platformlar →</a>
+      </div>
+
+      <section>
+        <h2>Beş sütun</h2>
+        <p>
+          Her biri çekirdektedir, ayarlardan açılıp kapatılabilir. Mevcut
+          notlarınla tamamen uyumlu — DB migrasyonu yok, yeni dosya formatı yok,
+          zorunlu bulut hesabı yok.
+        </p>
+        <div class="pillars">
+          <div class="pillar">
+            <h3>1 · Entegre Agent Paneli</h3>
+            <p>
+              Sağda birinci sınıf bir panel, Outline / Backlinks / Tags / History
+              ile aynı seviyede. Süreç içi MCP arayüzü ve mevcut 14 sağlayıcılı
+              AI yığını üzerinden akışlı vault ile sohbet.
+              <code>[[wikilink]]</code> alıntıları gerçek not atlamalarına
+              dönüşür; her agent araç çağrısı kartı sohbet akışı içinde açılır
+              — neyin okunduğunu, neyin yazıldığını gör. Yanıt çok mu uzun?
+              Her bitmiş yanıtın altındaki <strong>Ekle</strong> ve
+              <strong>Kopyala</strong> düğmeleri tüm paragrafı geçerli editöre
+              bırakır — seçim varsa onu değiştirir, yoksa imleç konumuna ekler.
+              Çalıştırma geçmişi <code>.solomd/agent-runs/</code> altında düz
+              markdown olarak saklanır, grep edilebilir, git ile izlenebilir.
+            </p>
+          </div>
+          <div class="pillar">
+            <h3>2 · Agent Recipe / zamanlanmış çalıştırma</h3>
+            <p>
+              Bildirimsel agent işleri,
+              <code>&lt;workspace&gt;/.solomd/agents/*.yml</code> altında YAML
+              dosyaları.
+              Trigger'lar: <code>schedule</code> (cron), <code>on-save</code>,
+              <code>on-commit</code>, <code>on-tag-add</code>, manuel.
+              <strong>Pazarlık edilemez güvenlik korumaları</strong>: her
+              çalıştırma kendi AutoGit branch'ında başlar
+              <code>agent/&lt;recipe&gt;/&lt;run-id&gt;</code>, tüm yazmalar
+              yalnızca branch'a iner, main'e merge edilmeden önce accept /
+              reject arayüzünden geçer;
+              çalıştırma başına <code>write-cap</code> (varsayılan 5, sert tavan
+              50) kontrolden çıkmış döngüleri önler; Reject branch'ı sert
+              siler, o çalıştırma git geçmişinde tamamen görünmez. Beraberinde
+              <strong>11 Recipe şablonu</strong> (haftalık inceleme, log
+              temizleme, TODO çıkarma, çeviri, alıntı temizleme, CJK incelemesi,
+              …) — yükle, prompt'u düzenle, çalıştır.
+            </p>
+          </div>
+          <div class="pillar">
+            <h3>3 · Agent Trace görünümü</h3>
+            <p>
+              Her çalıştırma (Panel sohbeti veya Recipe) adım başına
+              <code>trace.jsonl</code> üretir:
+              <code>prompt</code> / <code>model_call</code> /
+              <code>tool_call</code> / <code>tool_result</code> /
+              <code>git_commit</code> / <code>done</code>.
+              Adım kartları açılarak args, sonuçlar, token sayıları, maliyet
+              tahminleri, AutoGit branch referansları gösterilir.
+              <strong>Replay-from-step</strong> düğmesi çalıştırmayı N. adıma
+              geri sarar, girdiyi değiştirir ve oradan yeniden çalıştırır — bu,
+              kendini düzelten recipe'lerin giriş kapısıdır. Yeni MCP aracı
+              <code>read_agent_trace(run_id)</code> trace'i diğer agent'lara
+              açar.
+            </p>
+          </div>
+          <div class="pillar">
+            <h3>4 · Çoklu vault MCP federasyonu</h3>
+            <p>
+              <code>solomd-mcp --workspace path1 --workspace path2 --workspace path3</code>
+              —— bir MCP oturumu, birden fazla vault. Araç imzaları opsiyonel
+              <code>workspace</code> parametresi kazandı, varsayılan = ilk
+              geçirilen (single-vault MCP istemcileriyle tamamen back-compat).
+              AutoGit branch'ları workspace başına izole edilir.
+              <strong>Ayarlar → Entegrasyonlar</strong> MCP profil arayüzüne
+              sahip: birden fazla adlandırılmış vault'u paketle, Claude Desktop
+              config snippet'ini tek tıkla kopyala.
+            </p>
+          </div>
+          <div class="pillar">
+            <h3>5 · Birinci sınıf Ollama</h3>
+            <p>
+              <strong>Yerel LLM çalışma zamanını kendimiz paketlemiyoruz</strong>
+              —— Ollama bunu zaten iyi yapıyor. v4.0 yalnızca entegrasyonu
+              cilaladı: <code>localhost:11434</code> üzerinde otomatik algılama
+              (Ayarlar → AI yeşil bir durum göstergesine sahip), yüklü değilse
+              tek tıkla kurulum kılavuzu, 3 yerleşik model preseti
+              (<code>rewrite</code> → qwen2.5:7b ·
+              <code>quick</code> → qwen2.5:1.5b ·
+              <code>cjk</code> → qwen2.5:14b), model listesi boşsa satır içi
+              önerilen pull. Recipe'ler bulut maliyeti olmayan otomasyon
+              döngüleri için <code>provider: local</code> (Ollama takma adı)
+              belirtebilir.
+              <em>Notların asla makineyi terk etmez</em> —— BYOK Ollama
+              aracılığıyla bu her zaman doğruydu, v4.0 bunu keşfedilebilir bir
+              giriş noktası haline getiriyor.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>🛡️ Güvenlik korumaları (başka kimsenin yapmadığı)</h2>
+        <ul>
+          <li>
+            <strong>AutoGit branch sandbox'ı.</strong> Her Recipe çalıştırması
+            kendi branch'ında başlar. Kabul Et'e tıklayana kadar,
+            <code>main</code> hareket etmez. Reject edilen çalıştırmalar
+            <em>arkasında hiçbir şey bırakmaz</em> —— branch silinir, dosya
+            ağacı geri sarılır.
+          </li>
+          <li>
+            <strong>Çalıştırma başına yazma tavanı.</strong> Model 50 dosya
+            yazmak istiyor, cap 5 ise, 6. araç çağrısından itibaren reddedilir.
+            "Yarı bitmiş" durum yok, kazara toplu değişiklik yok.
+          </li>
+          <li>
+            <strong>Workspace dirty olduğunda başlamayı reddet.</strong> Commit
+            edilmemiş değişikliklerin var, Recipe trigger'ı tetiklendi, hatayla
+            çıkar, WIP'in agent commit'lerine süpürülmez.
+          </li>
+          <li>
+            <strong>Path-traversal sertleştirmesi.</strong> Süreç içi araç
+            arayüzü ve kullanıcı tarafından sağlanan
+            <code>run_id</code> / <code>path</code> kabul eden tüm Tauri
+            komutları artık <code>..</code> segmentlerini ve mutlak yolları
+            erkenden reddeder. Kod düzeyinde, agent workspace dışına yazamaz.
+          </li>
+          <li>
+            <strong>Tekrarlanabilir trace.</strong> Her adım diske JSON satırı
+            olarak iner. Şüpheli Panel davranışı? Trace'i takip et, kötü adımı
+            bul, girdiyi değiştir, N–1 adımdan itibaren yeniden üret.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Kalite çıtası</h2>
+        <ul>
+          <li>
+            <strong>İlk çalıştırma sihirbazı.</strong> Yeni kullanıcılar Agent
+            panelini 60 saniyeden kısa sürede görür —— BYOK anahtarı girmen veya
+            Ollama yüklemen için yönlendirir. Daha sonra Yardım menüsünden tekrar
+            aç.
+          </li>
+          <li>
+            <strong>Recipe cookbook (11 başlangıç şablonu).</strong>
+            Ayarlar → Recipes → Cookbook'a göz at. Haftalık inceleme, günlük
+            log, TODO çıkarma, çeviri geçişi, alıntı temizleme, CJK inceleme
+            agent'ı, link rot dedektörü, frontmatter normalleştirici,
+            outline-to-blog, refactor geçişi, haftalık etiket triage. Yükle,
+            prompt'u düzenle, çalıştır.
+          </li>
+          <li>
+            <strong>Yerel REST API</strong> (yalnızca localhost'ta dinler,
+            token kimlik doğrulaması). MCP ile aynı arayüz, henüz MCP
+            konuşmayan istemciler için — Alfred / Raycast / n8n / kendi
+            script'lerin.
+          </li>
+          <li>
+            <strong>BYOK maliyet sayacı.</strong> Sağlayıcı başına biriken
+            harcanan token, opt-in. Ayarlar → Entegrasyonlar.
+          </li>
+          <li>
+            <strong>Yerelleştirme.</strong> 9 UI dilinde tam kapsam
+            (en/zh/ja/ko/de/fr/es/pt/it). Bu sürüm 5 Avrupa dili ekledi
+            — Almanca, Fransızca, İspanyolca, Portekizce, İtalyanca — hepsi
+            en/zh ile aynı sözlük anahtar paritesinde.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>İlk günden hissedilen UX cilası</h2>
+        <ul>
+          <li>
+            <strong>Her yerde IME koruması.</strong> Çince Pinyin, Japonca kana
+            modu, Korece Hangul — aday kelimeleri onaylamak için Enter artık
+            yanlışlıkla sohbet gönderme / dosya ağacı yeniden adlandırma /
+            komut paleti çalıştırma / arama açma tetiklemiyor.
+            <strong>7 input panelinde</strong> tek bir düzeltme.
+          </li>
+          <li>
+            <strong>Assistant yanıtları için Ekle / Kopyala düğmeleri.</strong>
+            Her bitmiş yanıtın altında iki düğme. Ekle, editör seçim
+            farkındalıdır (seçim varken değiştirir), seçim yokken imleç
+            konumuna ekler. Kopyala normal panodur.
+          </li>
+          <li>
+            <strong>macOS başlatma UX'i.</strong> Başlangıçta aktivasyon
+            zamanlaması düzeltildi —— SoloMD soğuk başlangıç gerçekten ön plana
+            gelir, artık Finder'ın arkasında saklanmaz. Pencere konumu geri
+            yükleme her zaman geçerli ekranın workspace'ine iner; ikincil ekran
+            bağlantısı kesildikten sonra kötü cache'den geri yükleme, ekran
+            dışında açmak yerine otomatik olarak yeniden ortalanır.
+          </li>
+          <li>
+            <strong>"Üretiliyor..." hatasız takılma.</strong> Düzeltildi.
+            Sağlayıcı yapılandırma hatası (örn. indirilmemiş modelle Ollama)
+            paneli askıda bırakıyordu. Şimdi gerçek backend yanıtıyla kırmızı
+            bir hata çubuğu görüyorsun, gönder düğmesi de geri geliyor.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>v4.0'ın açıkça yapmadığı şeyler (ve neden)</h2>
+        <p>Hayır demek de ürünün bir parçasıdır. Bunlar ciddi olarak değerlendirildi ve açıkça yapılmadı:</p>
+        <ul>
+          <li>
+            <strong>Kendi yerel LLM çalışma zamanımızı getirmek.</strong>
+            Ollama bunu zaten iyi yapıyor; tekerleği yeniden icat etmek
+            "sürekli sürdürmek için daha az kod yaz" ilkesini ihlal eder.
+            BYOK sağlayıcı yol olmaya devam eder.
+          </li>
+          <li>
+            <strong>Çevrimiçi Recipe pazaryeri.</strong> Sunucu işletmesi +
+            içerik moderasyonu = ana hattan sapma. Cookbook'lar doğrudan
+            sürümlere paketlenir, araçla birlikte güncellenir.
+          </li>
+          <li>
+            <strong>Çok kullanıcılı / takım agent'ları.</strong>
+            "Bir pencere, bir yazar"ı ihlal eder. Bu ürün tek yazar içindir;
+            iş birliği başka bir ürüne aittir.
+          </li>
+          <li>
+            <strong>Copilot tarzı ghost-text tamamlama.</strong> Farklı marka
+            konumlandırması. Ghost-text yazarın sesini sulandırır; bizim
+            agent'larımız vault birimlerinde çalışır, yazmalar batch'tir +
+            incelenebilir + branch tabanlıdır.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Yükseltme notları</h2>
+        <ul>
+          <li>
+            <strong>Dosya formatı değişikliği yok.</strong> Mevcut
+            <code>.md</code>'lerin, AutoGit geçmişin, sync yapılandırması, BYOK
+            anahtarları olduğu gibi korunur.
+          </li>
+          <li>
+            <strong>İlk çalıştırmada Agent paneli otomatik açıldı.</strong>
+            v3.6.x kullanıcıları, v4-beta dönemindeki scaffold varsayılanı
+            nedeniyle gizli bir <code>showAgentPanel: false</code>'a sahip
+            olabilir; tek seferlik migrasyon onu true'ya çevirir, ana özelliği
+            gerçekten görürsün. İstemiyorsan
+            <code>⌘⇧P → View: Toggle Agent Panel</code> üzerinden kapatabilirsin.
+          </li>
+          <li>
+            <strong>Ayarlar paneli iki yeni sekme kazandı: <em>Recipes</em> ve <em>Maliyet sayacı</em></strong>,
+            <em>Entegrasyonlar</em> altında. Mevcut ayar konumları değişmedi.
+          </li>
+          <li>
+            <strong>MCP sunucusu (<code>solomd-mcp</code>) yeni bir
+            <code>--workspace</code> parametresi kazandı</strong> (tekrarlanabilir).
+            Mevcut single-workspace MCP istemcileri çalışmaya devam eder;
+            federasyon davranışı opt-in'dir.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>🔮 Sırada ne var</h2>
+        <p>
+          5 ana sütun + kalite çıtası bu seferki ana içerik. <em>v4.x ve
+          ötesi için açık yönler</em> hepsi
+          <a href="https://github.com/zhitongblog/solomd/blob/main/docs/roadmap.md">yol haritasında</a>:
+          sandbox'lı script API, CLI v2 (rewrite / commit / anlamsal arama /
+          terminalden Recipe tetikleme) ve sürekli ertelenen soru
+          <em>"SoloMD ticari bir ürüne dönüşmeli mi?"</em>
+          (ücretli sync — eski v3.0 dönemi sorusu, hâlâ yanıtsız, karar
+          verilene kadar bu alanda hiçbir mühendislik yapılmayacak).
+        </p>
+      </section>
+
+      <p class="thanks-row">
+        Sessiz dönem boyunca issue gönderen / PR gönderen / v4-beta build'leri
+        gerçek vault'larla çalıştıran herkese teşekkürler. v4.0
+        gönderilebildi çünkü dogfood, entegrasyon testlerinin kaçırdığı
+        bug'ları ortaya çıkardı.
+        Önceki sürümler: <a href="/blog/">Blog'a bak (en) →</a>
+      </p>
+    </article>
+    <Giscus lang={lang} />
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .whats-new { max-width: 880px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .version-row { display: flex; align-items: center; gap: 12px; margin: 0 0 14px; }
+  .version-tag {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #000;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .whats-new time { font-size: 13px; color: var(--text-muted); }
+  .whats-new h1 { font-size: clamp(2.2rem, 5vw, 3.4rem); line-height: 1.1; margin: 0 0 22px; }
+  .whats-new h2 { font-size: clamp(1.5rem, 3vw, 1.9rem); margin: 56px 0 16px; }
+  .whats-new h3 { font-size: 1.1rem; margin: 0 0 8px; color: var(--accent); }
+  .whats-new .lead { font-size: 1.15rem; color: var(--text-muted); line-height: 1.65; margin-bottom: 28px; }
+  .whats-new p { line-height: 1.75; margin: 12px 0; }
+  .whats-new ul, .whats-new ol { padding-left: 22px; }
+  .whats-new li { margin: 8px 0; line-height: 1.7; }
+  .whats-new code {
+    background: var(--bg-soft);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.92em;
+    font-family: var(--font-mono);
+    color: var(--accent-deep);
+  }
+  .whats-new a:not(.btn) { color: var(--accent); }
+  .cta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 28px 0 8px;
+  }
+  .pillars {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 22px;
+    margin-top: 22px;
+  }
+  .pillar {
+    padding: 18px 22px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-soft);
+  }
+  .pillar p { margin: 0; }
+  .thanks-row {
+    margin-top: 64px;
+    padding-top: 22px;
+    border-top: 1px solid var(--border);
+    font-size: 14px;
+    color: var(--text-muted);
+  }
+</style>

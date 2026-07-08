@@ -1,0 +1,22 @@
+name: Meeting notes summary
+trigger: on-tag-add
+tag: meeting
+allow-write: true
+write-cap: 1
+prompt: |
+  The user just tagged {{path}} with #meeting. Read the file and
+  rewrite the YAML front matter to add three keys (creating them if
+  missing, replacing them if already present):
+
+    summary: <one-sentence summary>
+    decisions:
+      - <decision 1>
+      - <decision 2>
+    action_items:
+      - owner: <name>
+        item: <action>
+        due: <YYYY-MM-DD or "—" if not specified>
+
+  Then append a `## TL;DR` section at the very top of the body
+  (between the front matter and the existing first heading) with a
+  3-bullet recap. Do not touch the rest of the body.

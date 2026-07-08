@@ -1,0 +1,12 @@
+[Desktop Entry]
+Name=SoloMD
+GenericName=Markdown Editor
+Comment=Lightweight Markdown and plain text editor
+Exec=solomd %U
+Icon=solomd
+Terminal=false
+Type=Application
+Categories=TextEditor;Utility;Development;
+MimeType=text/markdown;text/x-markdown;text/plain;
+Keywords=markdown;editor;text;md;
+StartupWMClass=SoloMD

@@ -1,0 +1,8 @@
+node_modules/
+dist/
+dist-tsc/
+web-ext-artifacts/
+*.log
+.DS_Store
+.env
+test/.tmp/

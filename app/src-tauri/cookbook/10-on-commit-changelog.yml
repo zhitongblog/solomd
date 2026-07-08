@@ -1,0 +1,17 @@
+name: AutoGit changelog
+trigger: on-commit
+match: "**/*.md"
+allow-write: true
+write-cap: 1
+prompt: |
+  An AutoGit commit just landed (sha = {{sha}}, files = {{files}}).
+  Use autogit_diff to read the diff for each file. Summarize what
+  changed in plain prose — one sentence per file, max.
+
+  Append the result to CHANGELOG.md under a `## YYYY-MM-DD` heading
+  for today's date (creating that heading if missing). Format each
+  entry as:
+
+    - **path** — one-sentence summary
+
+  Skip files where the diff is purely whitespace / formatting.

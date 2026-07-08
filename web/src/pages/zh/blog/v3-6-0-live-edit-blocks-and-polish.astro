@@ -1,0 +1,151 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import Header from '../../../components/Header.astro';
+import Footer from '../../../components/Footer.astro';
+import Giscus from '../../../components/Giscus.astro';
+
+const lang = 'zh' as const;
+---
+
+<Layout
+  title="SoloMD v3.6 —— 实时编辑模式下的图片 / 表格内联渲染，加 5 处打磨"
+  description="实时编辑模式补齐了一直留着的缺口：整行图片和 GFM 表格现在能在编辑器里直接渲染，光标进入时源代码立刻回来。另外 5 处快速打磨：AI 按钮跳转、PNG 导出尺寸、水印做选项、文件夹记忆、Mac 工具栏溢出修复。"
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <article class="container blog-article">
+      <nav class="breadcrumbs">
+        <a href="/zh/">首页</a> / <a href="/zh/blog/">博客</a> / <span>v3.6</span>
+      </nav>
+      <time>2026-04-29</time>
+      <h1>v3.6 —— 实时编辑模式的块级渲染，加 5 处打磨</h1>
+      <p class="lead">
+        v3.6 补齐 v2.3 起一直留着的实时编辑缺口：<strong>整行图片和
+        GFM 表格现在能在编辑器里直接渲染</strong>，光标进入即源代码恢复。
+        随这个特性一起带 <strong>5 处打磨</strong> ——
+        都是 v3.5.5 之后用户反馈拢一拢的：AI 设置跳转、PNG 导出尺寸、
+        可选水印、文件夹记忆、Mac 工具栏溢出。
+      </p>
+
+      <h2>🔨 #44 —— 实时编辑下的图片 / 表格块</h2>
+      <p>
+        实时编辑模式（工具栏那个笔尖图标）会把 markdown 源码直接套上格式
+        显示在编辑器里。但有两类块级元素一直没渲染：仅含
+        <code>![alt](url)</code> 的整行图片显示成裸源码，GFM 表格也只是
+        竖线分隔的纯文本。
+      </p>
+      <p>
+        v3.6 加了一个新的 CodeMirror 6 块级 decoration 扩展，文件在
+        <code>app/src/lib/cm-live-blocks.ts</code>：
+      </p>
+      <ul>
+        <li>
+          <em>整行内容</em>是图片（前后没有别的文字）的行，会折叠成
+          一个真的 <code>&lt;img&gt;</code>。图片 src 走预览面板同款的
+          <code>resolveImageSrc</code>，相对路径相对工作区 + 当前笔记
+          所在目录解析。
+        </li>
+        <li>
+          表头行 + 分隔线（<code>|---|</code> / <code>|:---:|</code>）+
+          至少一行内容的 GFM 表格块，会折叠成真正的
+          <code>&lt;table&gt;</code>，跟预览面板走同一条 markdown-it
+          管线。
+        </li>
+      </ul>
+      <p>
+        两种 widget 在光标进入匹配区任意一行的瞬间就会卸载 —— 不需要切换
+        视图模式，编辑时看源、移走光标看渲染。decoration 在文档变更、
+        选区变化、视口滚动时都会重新生成，反应即时。
+      </p>
+      <p>
+        为什么图片只匹配整行而不是行内？因为替换行内图片会把一段话
+        在中间劈开，破坏源码的自然阅读流。实时编辑的整个意义就是源码
+        始终一个光标距离 —— 突然把行内图片折叠掉反而违背这个直觉。
+      </p>
+
+      <h2>✅ 5 处打磨</h2>
+      <p>每一项都不大，但 v3.5.5 之后这些堆得太多了，一并解决：</p>
+      <ol>
+        <li>
+          <strong>AI 按钮跳错设置位置。</strong>之前 AI 没启用时点工具栏
+          AI 按钮，会跳到设置面板的默认<em>基础</em>分类 —— 但 AI 开关
+          实际住在<em>集成</em>分类。<code>solomd:open-settings</code>
+          事件现在带可选的 <code>detail.section</code>，AI 入口（工具栏
+          + AI 改写浮窗）都传 <code>'integrations'</code>，直接落到 AI
+          这一块。
+        </li>
+        <li>
+          <strong>图片导出按内容裁剪。</strong>短笔记导出时底部会有大块
+          空白 —— 之前 html2canvas 抓的范围超出了渲染区域。修法：从
+          <code>getBoundingClientRect()</code> 显式拿
+          <code>width / height / windowWidth / windowHeight</code>
+          传给 html2canvas，画布尺寸严格匹配 DOM。
+        </li>
+        <li>
+          <strong>"Created with SoloMD" 水印做成选项。</strong>之前是硬编
+          码在每张导出 PNG 上的。免费 MIT 应用做点温和宣传不过分，但
+          应该让用户可以关，而不是强制。新设置
+          <code>imageExportBranding</code>（默认开），在
+          <strong>设置 → 导出</strong>里可关；关掉后导出就不带 footer，
+          底部 padding 也收紧，短笔记不再带幻觉留白。
+        </li>
+        <li>
+          <strong>文件夹选择器记住上次工作区。</strong><code>useFiles.openFolder()</code>
+          现在把 <code>defaultPath: workspace.currentFolder</code> 传给
+          Tauri 文件夹对话框。之前没传，每次开 picker 都从系统默认位置
+          开始，无视 SoloMD 已经加载的工作区。
+        </li>
+        <li>
+          <strong>Mac 窄窗口工具栏溢出。</strong>当窗口窄到工具栏自然宽度
+          放不下时，右侧关键按钮（AI / Sponsor / 设置）会被默默裁掉。
+          <code>.toolbar</code> 现在 <code>overflow-x: auto</code>
+          + 隐藏滚动条 + 每个子项 <code>flex-shrink: 0</code>；
+          任意窗口宽度下右侧按钮都能用双指滑触达。
+        </li>
+      </ol>
+
+      <h2>📥 下载</h2>
+      <p>
+        <a class="btn btn--primary" href="https://github.com/zhitongblog/solomd/releases/tag/v3.6.0">下载 v3.6.0 →</a>
+        &nbsp;
+        <a class="btn" href="https://github.com/zhitongblog/solomd/releases">所有版本</a>
+      </p>
+      <p>
+        v3.0.x 及以上的用户会在 24 小时内看到应用内升级提示。Mac 也可以
+        <code>brew upgrade --cask solomd</code>。CLI / MCP server 同步
+        bump 到 3.6.0。
+      </p>
+
+      <h2>下一步 —— v3.7</h2>
+      <p>
+        iPad / Mac App Store 重新提交是接下来的优先项。再往后 v4 主线
+        继续 agent endpoint 思路（CLI + MCP + BYOK）—— 关注
+        <a href="https://github.com/zhitongblog/solomd/discussions">Discussions</a>
+        看动向。
+      </p>
+    </article>
+    <Giscus lang={lang} />
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .blog-article { max-width: 760px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .blog-article time { font-size: 13px; color: var(--text-muted, #888); }
+  .blog-article h1 { font-size: 2.2rem; line-height: 1.2; margin: 8px 0 18px; }
+  .blog-article h2 { font-size: 1.4rem; margin: 36px 0 12px; }
+  .blog-article .lead { color: var(--text-muted, #555); font-size: 1.1rem; line-height: 1.6; margin-bottom: 28px; }
+  .blog-article p { line-height: 1.75; margin: 14px 0; }
+  .blog-article ul, .blog-article ol { padding-left: 22px; }
+  .blog-article li { margin: 6px 0; line-height: 1.7; }
+  .blog-article code { background: #f5f5f0; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+  .blog-article pre { background: #f5f5f0; padding: 14px 18px; border-radius: 8px; overflow-x: auto; }
+  .blog-article pre code { background: transparent; padding: 0; }
+  .blog-article a:not(.btn) { color: #ff9f40; }
+  .blog-article kbd { background: #f5f5f0; border: 1px solid #ddd; border-radius: 3px; padding: 1px 6px; font-family: ui-monospace, Menlo, monospace; font-size: 0.85em; }
+  .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  .btn--primary { background: #ff9f40; color: #000 !important; }
+</style>

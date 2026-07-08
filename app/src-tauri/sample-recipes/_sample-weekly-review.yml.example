@@ -1,0 +1,52 @@
+# Sample SoloMD Agent Recipe — Weekly review
+#
+# Drop a copy of this file (without the `.example` suffix) under
+# `<your vault>/.solomd/agents/` to enable it. SoloMD watches that
+# directory and reloads recipes on save.
+#
+# This recipe is the canonical example from the v4.0 spec. Adjust the
+# `match:`, the `prompt:`, and the provider/model to taste.
+
+name: Weekly review
+trigger: schedule
+# Standard 5-field cron (min hour day-of-month month day-of-week).
+# Sundays at 18:00 local time. SoloMD also accepts 6/7-field expressions
+# with seconds / year if you need finer-grained control.
+schedule: "0 18 * * SUN"
+
+# Optional — narrows which on-save / on-commit triggers fire. Ignored
+# for `trigger: schedule`, but harmless to leave in place.
+match: "daily/**/*.md"
+
+prompt: |
+  Read this week's daily/ notes.
+
+  Write weekly/{{date:YYYY-WW}}.md with three sections:
+    * Themes — what kept coming up?
+    * Decisions — what did I commit to?
+    * Open threads — what's unresolved?
+
+  Reference each daily note as a [[wikilink]] so I can jump back.
+
+# Writes are gated. Off by default; turn on only after you trust the
+# prompt. The `write-cap` is a hard ceiling — exceeding it aborts the
+# run with status=error before any further file lands. Max is 50.
+allow-write: true
+write-cap: 5
+
+# Provider id matches the AI Settings entries. Use `local` to alias
+# Ollama (a privacy-friendly default for autonomous loops). Empty =
+# fall back to your Default AI provider.
+provider: claude
+model: claude-sonnet-4-6
+
+# Tool allow-list. Defaults to the read-only set; add write tools only
+# when `allow-write: true`. Full list:
+#   read_note · list_notes · search · get_backlinks · list_tags ·
+#   get_outline · autogit_log · autogit_diff · write_note ·
+#   append_to_note · read_agent_trace
+tools:
+  - read_note
+  - list_notes
+  - search
+  - write_note

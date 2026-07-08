@@ -1,0 +1,267 @@
+---
+// /admin — minimal dashboard for /api/admin/stats.
+//
+// The page is fully static (Astro pre-render). The bearer token lives
+// in sessionStorage in the browser, never in the URL or in a cookie.
+// Token is prompted for on first load and persists for the tab.
+//
+// Why no SSR auth: the static Pages output is fronted by the same
+// project, so the token never leaves the user's browser. The /api/
+// route does the real auth check.
+
+const noindex = 'noindex,nofollow,noarchive,nosnippet';
+---
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content={noindex} />
+    <title>SoloMD admin · stats</title>
+    <style>
+      :root {
+        --bg: #0f1115;
+        --panel: #161a22;
+        --panel-2: #1d2230;
+        --fg: #e7ecf3;
+        --muted: #8a93a4;
+        --accent: #ff9f40;
+        --border: #262c3a;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font: 14px/1.5 -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+        background: var(--bg);
+        color: var(--fg);
+      }
+      .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 20px 80px; }
+      header {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-bottom: 18px;
+      }
+      h1 { font-size: 18px; font-weight: 600; margin: 0; }
+      h2 { font-size: 13px; font-weight: 600; color: var(--muted); margin: 0 0 8px; text-transform: uppercase; letter-spacing: .04em; }
+      select, button, input[type=password] {
+        background: var(--panel); color: var(--fg);
+        border: 1px solid var(--border); border-radius: 6px;
+        padding: 6px 10px; font: inherit;
+      }
+      button { cursor: pointer; }
+      button:hover { border-color: var(--accent); }
+      .controls { display: flex; gap: 8px; align-items: center; }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-bottom: 22px;
+      }
+      .kpi {
+        background: var(--panel); border: 1px solid var(--border);
+        border-radius: 10px; padding: 14px 16px;
+      }
+      .kpi .label { color: var(--muted); font-size: 12px; }
+      .kpi .value { font-size: 26px; font-weight: 600; margin-top: 4px; font-variant-numeric: tabular-nums; }
+      .panel {
+        background: var(--panel); border: 1px solid var(--border);
+        border-radius: 10px; padding: 16px; margin-bottom: 16px;
+      }
+      .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+      table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+      th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+      th { color: var(--muted); font-weight: 500; font-size: 12px; }
+      td.num, th.num { text-align: right; }
+      .empty { color: var(--muted); padding: 12px; text-align: center; }
+      .err { color: #ff6b6b; padding: 8px 12px; background: rgba(255, 107, 107, .08); border-radius: 6px; }
+      .bar {
+        height: 6px; background: var(--accent); border-radius: 3px; opacity: .7;
+        display: inline-block; vertical-align: middle; margin-left: 6px;
+      }
+      footer { color: var(--muted); font-size: 12px; margin-top: 30px; text-align: center; }
+      @media (max-width: 720px) {
+        .grid { grid-template-columns: repeat(2, 1fr); }
+        .row { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <h1>SoloMD analytics</h1>
+        <div class="controls">
+          <select id="range">
+            <option value="1h">1h</option>
+            <option value="24h">24h</option>
+            <option value="7d" selected>7d</option>
+            <option value="30d">30d</option>
+            <option value="90d">90d</option>
+          </select>
+          <button id="reload">Reload</button>
+          <button id="logout" title="Forget the admin token">Logout</button>
+        </div>
+      </header>
+
+      <div id="status"></div>
+
+      <div class="grid" id="kpis"></div>
+
+      <div class="panel">
+        <h2>Daily activity</h2>
+        <div id="daily"></div>
+      </div>
+
+      <div class="row">
+        <div class="panel">
+          <h2>Events</h2>
+          <div id="events"></div>
+        </div>
+        <div class="panel">
+          <h2>Versions</h2>
+          <div id="versions"></div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="panel">
+          <h2>OS</h2>
+          <div id="os"></div>
+        </div>
+        <div class="panel">
+          <h2>Locale</h2>
+          <div id="locales"></div>
+        </div>
+      </div>
+
+      <footer>
+        Backed by Cloudflare D1 · token stored in sessionStorage · never logged
+      </footer>
+    </div>
+
+    <script is:inline>
+      (() => {
+        const TOKEN_KEY = 'solomd.adminToken';
+
+        const $ = (id) => document.getElementById(id);
+
+        function getToken() {
+          let t = sessionStorage.getItem(TOKEN_KEY);
+          if (!t) {
+            t = prompt('Admin token');
+            if (t) sessionStorage.setItem(TOKEN_KEY, t);
+          }
+          return t;
+        }
+
+        function fmt(n) {
+          if (n == null) return '–';
+          if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
+          if (n >= 1_000) return (n / 1_000).toFixed(1) + 'k';
+          return String(n);
+        }
+
+        function renderKpis(t) {
+          $('kpis').innerHTML = `
+            <div class="kpi"><div class="label">Events (range)</div><div class="value">${fmt(t.events)}</div></div>
+            <div class="kpi"><div class="label">Unique devices (range)</div><div class="value">${fmt(t.unique_devices)}</div></div>
+            <div class="kpi"><div class="label">Active today (UTC)</div><div class="value">${fmt(t.active_today)}</div></div>
+            <div class="kpi"><div class="label">Active 7d</div><div class="value">${fmt(t.active_7d)}</div></div>
+          `;
+        }
+
+        function table(rows, cols) {
+          if (!rows || rows.length === 0) return '<div class="empty">no data</div>';
+          const max = Math.max(...rows.map((r) => Number(r[cols[1].key]) || 0)) || 1;
+          const head = cols.map((c) => `<th class="${c.num ? 'num' : ''}">${c.label}</th>`).join('');
+          const body = rows
+            .map((r) => {
+              return (
+                '<tr>' +
+                cols
+                  .map((c, i) => {
+                    const v = r[c.key];
+                    if (c.bar) {
+                      const w = Math.max(2, Math.round((Number(v) / max) * 80));
+                      return `<td class="num">${fmt(v)}<span class="bar" style="width:${w}px"></span></td>`;
+                    }
+                    if (c.num) return `<td class="num">${fmt(v)}</td>`;
+                    return `<td>${escapeHtml(String(v ?? ''))}</td>`;
+                  })
+                  .join('') +
+                '</tr>'
+              );
+            })
+            .join('');
+          return `<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+        }
+
+        function escapeHtml(s) {
+          return s.replace(/[&<>"']/g, (c) => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+          })[c]);
+        }
+
+        async function load() {
+          const token = getToken();
+          if (!token) {
+            $('status').innerHTML = '<div class="err">No token. Reload to enter.</div>';
+            return;
+          }
+          $('status').innerHTML = '<div class="empty">Loading…</div>';
+          const range = $('range').value;
+          let res;
+          try {
+            res = await fetch('/api/admin/stats?range=' + encodeURIComponent(range), {
+              headers: { Authorization: 'Bearer ' + token },
+            });
+          } catch (e) {
+            $('status').innerHTML = '<div class="err">Network error: ' + escapeHtml(String(e)) + '</div>';
+            return;
+          }
+          if (res.status === 401) {
+            sessionStorage.removeItem(TOKEN_KEY);
+            $('status').innerHTML = '<div class="err">Unauthorized — reload to re-enter token.</div>';
+            return;
+          }
+          if (!res.ok) {
+            $('status').innerHTML = '<div class="err">HTTP ' + res.status + '</div>';
+            return;
+          }
+          const data = await res.json();
+          $('status').innerHTML = '';
+          renderKpis(data.totals);
+
+          $('daily').innerHTML = table(data.daily, [
+            { key: 'day', label: 'Day' },
+            { key: 'events', label: 'Events', num: true, bar: true },
+            { key: 'unique_devices', label: 'Devices', num: true },
+          ]);
+          $('events').innerHTML = table(data.events, [
+            { key: 'event', label: 'Event' },
+            { key: 'count', label: 'Count', num: true, bar: true },
+            { key: 'unique_devices', label: 'Devices', num: true },
+          ]);
+          $('versions').innerHTML = table(data.versions, [
+            { key: 'app_version', label: 'Version' },
+            { key: 'count', label: 'Events', num: true, bar: true },
+          ]);
+          $('os').innerHTML = table(data.os, [
+            { key: 'os', label: 'OS' },
+            { key: 'count', label: 'Events', num: true, bar: true },
+          ]);
+          $('locales').innerHTML = table(data.locales, [
+            { key: 'locale', label: 'Locale' },
+            { key: 'count', label: 'Events', num: true, bar: true },
+          ]);
+        }
+
+        $('reload').addEventListener('click', load);
+        $('range').addEventListener('change', load);
+        $('logout').addEventListener('click', () => {
+          sessionStorage.removeItem(TOKEN_KEY);
+          location.reload();
+        });
+
+        load();
+      })();
+    </script>
+  </body>
+</html>

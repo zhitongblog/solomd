@@ -1,0 +1,122 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import Header from '../../../components/Header.astro';
+import Footer from '../../../components/Footer.astro';
+import Giscus from '../../../components/Giscus.astro';
+
+const lang = 'zh' as const;
+---
+
+<Layout
+  title="SoloMD MCP 服务 — 让 Claude Desktop / Codex / Cursor 直接读写你的笔记"
+  description="SoloMD 自带 MCP（Model Context Protocol）边车进程，任何兼容 MCP 的 AI 客户端都能列出、搜索、读写你的笔记。"
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <article class="container docs-article">
+      <nav class="breadcrumbs">
+        <a href="/zh/">首页</a> / <a href="/zh/docs/">文档</a> / <span>MCP 服务</span>
+      </nav>
+
+      <h1>SoloMD MCP 服务</h1>
+      <p class="lead">
+        每个 SoloMD 发行版都附带 <code>solomd-mcp</code> —— 一个支持
+        <a href="https://modelcontextprotocol.io" rel="external">Model Context Protocol</a>
+        的边车二进制。把 Claude Desktop、Codex CLI、Cursor 等 MCP 客户端指向它，
+        AI 就可以直接列出、搜索、读取、写入你的笔记仓库 —— 不必复制粘贴。
+      </p>
+
+      <h2>为什么这件事重要</h2>
+      <p>
+        大多数笔记工具把 AI 当作编辑器里的一个功能：粘贴一段、改写一段。SoloMD 反过来：
+        把你的整个仓库交给 AI 客户端，于是你可以让模型回答「帮我总结所有 Q2 规划相关的笔记」
+        或「帮我接着上周会议的笔记起草一份后续邮件」—— 模型直接读真实文件。
+      </p>
+
+      <h2>快速接入 — Claude Desktop</h2>
+      <ol>
+        <li>打开 SoloMD → <strong>设置 → 集成 → MCP 服务</strong>。</li>
+        <li>点击 <strong>复制 Claude Desktop 配置</strong>。生成的 JSON 已经
+          自带边车二进制路径和你当前打开的工作区目录。</li>
+        <li>点击 <strong>打开 Claude Desktop 配置文件</strong>，粘贴进
+          <code>"mcpServers"</code> 节，保存。</li>
+        <li>重启 Claude Desktop —— <code>solomd-vault</code> 出现在工具菜单里，搞定。</li>
+      </ol>
+
+      <h2>模型可以调用的工具</h2>
+      <table class="kb-table">
+        <thead><tr><th>工具</th><th>用途</th></tr></thead>
+        <tbody>
+          <tr><th><code>list_notes</code></th><td>列出工作区里所有 Markdown 文件。</td></tr>
+          <tr><th><code>read_note</code></th><td>按相对路径读取一篇笔记，返回正文 + Front Matter。</td></tr>
+          <tr><th><code>search</code></th><td>全文搜索，返回排序后的片段。</td></tr>
+          <tr><th><code>get_backlinks</code></th><td>列出所有 <code>[[wiki 链接]]</code> 指向目标笔记的笔记。</td></tr>
+          <tr><th><code>list_tags</code></th><td>列出仓库里所有 <code>#标签</code> 及使用次数。</td></tr>
+          <tr><th><code>get_outline</code></th><td>返回一篇笔记的标题树 —— 长文件改之前先取大纲很有用。</td></tr>
+          <tr><th><code>write_note</code></th><td>新建或覆盖文件。<strong>默认禁用</strong>，见下文。</td></tr>
+          <tr><th><code>append_to_note</code></th><td>在现有笔记末尾追加内容。<strong>默认禁用。</strong></td></tr>
+        </tbody>
+      </table>
+
+      <h2>默认只读</h2>
+      <p>
+        <code>solomd-mcp</code> 只在加 <code>--allow-write</code> 启动时才暴露写入工具。
+        设置面板复制出来的默认配置是只读的。要打开写入权限，编辑 <code>args</code>：
+      </p>
+      <pre class="code"><code>{`{
+  "mcpServers": {
+    "solomd-vault": {
+      "command": "/path/to/solomd-mcp",
+      "args": ["--workspace", "/path/to/your/notes", "--allow-write"]
+    }
+  }
+}`}</code></pre>
+      <p>
+        把读和写拆成两个开关，是为了让一次「搜索」请求绝对不会顺手改掉你的笔记 ——
+        必须自己显式开。
+      </p>
+
+      <h2>其他客户端</h2>
+      <p>
+        任何会 MCP 的客户端都能用：Codex CLI、Cursor、Continue、Zed 的 MCP 客户端、
+        开源的 <code>mcp-cli</code> —— 它们的配置形态完全一样，把 <code>command</code>
+        和 <code>args</code> 指向同一个二进制即可。
+      </p>
+
+      <h2>二进制在哪儿</h2>
+      <p>
+        macOS 上边车在 <code>SoloMD.app/Contents/MacOS/solomd-mcp</code> 里；
+        Windows 和 Linux 上则在主程序旁边。设置面板里
+        <strong>已捆绑于 …</strong> 一栏会显示绝对路径，不用自己找。
+      </p>
+
+      <p class="docs-footer">
+        发现 bug 或想要新工具？欢迎到
+        <a href="https://github.com/zhitongblog/solomd/issues" rel="external">GitHub</a>
+        提 issue —— 写入相关的工具我们刻意保持小集合，但只要场景明确，加新的没问题。
+      </p>
+    </article>
+    <Giscus lang={lang} />
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .docs-article { max-width: 820px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .docs-article h1 { font-size: 2rem; margin: 10px 0 16px; }
+  .docs-article h2 { font-size: 1.4rem; margin: 32px 0 12px; }
+  .docs-article .lead { color: var(--text-muted, #555); margin-bottom: 24px; line-height: 1.6; }
+  .docs-article p { line-height: 1.7; margin: 12px 0; }
+  .docs-article ol { padding-left: 20px; line-height: 1.8; }
+  .kb-table { width: 100%; border-collapse: collapse; margin: 14px 0 20px; font-size: 14px; }
+  .kb-table th, .kb-table td { text-align: left; padding: 9px 12px; border-bottom: 1px solid #eee; }
+  .kb-table thead th { background: #fafafa; font-weight: 600; }
+  .kb-table tbody th { font-weight: 500; width: 30%; }
+  .docs-article code { background: #f5f5f0; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+  .code { background: #f5f5f0; padding: 16px 18px; border-radius: 8px; overflow-x: auto; font-size: 13px; line-height: 1.55; margin: 14px 0; }
+  .code code { background: transparent; padding: 0; }
+  .docs-footer { margin-top: 40px; font-size: 0.95rem; color: var(--text-muted, #555); }
+</style>

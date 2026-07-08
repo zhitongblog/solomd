@@ -1,0 +1,52 @@
+/*
+ * Nord Light — community theme for SoloMD.
+ * The Nord palette tuned for daylight. Cool blues over the snow-storm
+ * background, with frost accents.
+ *
+ * Author:  alex
+ * License: MIT
+ * Source palette: https://www.nordtheme.com/ (snow-storm + frost)
+ */
+:root,
+:root[data-theme="light"],
+:root[data-theme="dark"] {
+  --bg: #eceff4;          /* nord6 snow-storm */
+  --bg-elev: #e5e9f0;     /* nord5 */
+  --bg-hover: #d8dee9;    /* nord4 */
+  --bg-active: #c8d0dc;
+  --border: #d8dee9;
+  --text: #2e3440;        /* nord0 polar-night */
+  --text-muted: #4c566a;  /* nord3 */
+  --text-faint: #7b8294;
+  --accent: #5e81ac;      /* nord10 frost */
+  --accent-fg: #eceff4;
+  --danger: #bf616a;      /* nord11 aurora */
+
+  /* Markdown element colors */
+  --md-h1: #2e3440;
+  --md-h2: #3b4252;
+  --md-h3: #434c5e;
+  --md-h4: #4c566a;
+  --md-h5: #4c566a;
+  --md-h6: #7b8294;
+  --md-strong: #2e3440;
+  --md-em: #5e81ac;
+  --md-link: #5e81ac;
+  --md-url: #88c0d0;
+  --md-code: #bf616a;
+  --md-code-bg: #e5e9f0;
+  --md-quote: #7b8294;
+  --md-list: #d08770;
+  --md-hr: #d8dee9;
+
+  /* Code block syntax — Nord aurora colors */
+  --syn-keyword: #5e81ac;
+  --syn-string: #a3be8c;
+  --syn-number: #b48ead;
+  --syn-comment: #7b8294;
+  --syn-function: #88c0d0;
+  --syn-variable: #2e3440;
+  --syn-type: #8fbcbb;
+  --syn-property: #5e81ac;
+  --syn-operator: #81a1c1;
+}

@@ -1,0 +1,35 @@
+{
+    "version": "1.2.1",
+    "description": "A lightweight, cross-platform Markdown editor with live preview",
+    "homepage": "https://solomd.app",
+    "license": "MIT",
+    "architecture": {
+        "64bit": {
+            "url": "https://github.com/zhitongblog/solomd/releases/download/v1.2.1/SoloMD_1.2.1_x64-setup.exe#/dl.7z",
+            "hash": "7177315e349e0a7ea7c0f1a405141e8cad3861da9164d156daf1d2004f84b1dc"
+        }
+    },
+    "installer": {
+        "script": [
+            "Start-Process -Wait -FilePath \"$dir\\SoloMD_1.2.1_x64-setup.exe\" -ArgumentList '/S', \"/D=$dir\""
+        ]
+    },
+    "uninstaller": {
+        "script": [
+            "Start-Process -Wait -FilePath \"$dir\\Uninstall SoloMD.exe\" -ArgumentList '/S'"
+        ]
+    },
+    "shortcuts": [
+        ["SoloMD.exe", "SoloMD"]
+    ],
+    "checkver": {
+        "github": "https://github.com/zhitongblog/solomd"
+    },
+    "autoupdate": {
+        "architecture": {
+            "64bit": {
+                "url": "https://github.com/zhitongblog/solomd/releases/download/v$version/SoloMD_$version_x64-setup.exe#/dl.7z"
+            }
+        }
+    }
+}

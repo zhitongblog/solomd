@@ -1,0 +1,261 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
+
+const lang = 'en' as const;
+
+interface ThemeEntry {
+  id: string;
+  name: string;
+  author: string;
+  description: string;
+  url: string;
+  preview?: string;
+  tags?: string[];
+  license?: string;
+}
+
+interface ThemeManifest {
+  version: number;
+  themes: ThemeEntry[];
+}
+
+// Build-time read of the same manifest the in-app marketplace fetches at
+// runtime. Single source of truth for both surfaces — the JSON, the in-app
+// modal, and this page never disagree.
+const __dir = dirname(fileURLToPath(import.meta.url));
+const manifestPath = resolve(__dir, '../../public/themes/index.json');
+const manifest: ThemeManifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+
+const allTags = Array.from(
+  new Set(manifest.themes.flatMap((t) => t.tags ?? [])),
+).sort();
+---
+
+<Layout
+  title="Theme marketplace — SoloMD"
+  description="Curated community .css themes for SoloMD. Click-install in-app or download the file directly."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <section class="container themes-page">
+      <h1>Theme marketplace</h1>
+      <p class="lead">
+        Lightweight, plugins-without-plugins. Each theme is a single
+        <code>.css</code> file that overrides SoloMD's CSS variables — no
+        JavaScript runs. Install from inside the app
+        (<strong>Settings → Browse community themes</strong>) or just
+        download the file and point Custom CSS at it.
+      </p>
+
+      {allTags.length > 0 && (
+        <p class="tags-line">
+          <span class="tags-label">Tags:</span>
+          {allTags.map((t) => (
+            <span class="tag-chip">#{t}</span>
+          ))}
+        </p>
+      )}
+
+      <ul class="themes">
+        {manifest.themes.map((theme) => (
+          <li class="theme-card">
+            <a class="theme-card__preview" href={theme.url} rel="external">
+              {theme.preview ? (
+                <img src={theme.preview} alt={`${theme.name} preview`} loading="lazy" />
+              ) : (
+                <div class="theme-card__placeholder" />
+              )}
+            </a>
+            <div class="theme-card__meta">
+              <h2 class="theme-card__name">{theme.name}</h2>
+              <p class="theme-card__author">by {theme.author}</p>
+              <p class="theme-card__desc">{theme.description}</p>
+              {theme.tags && theme.tags.length > 0 && (
+                <p class="theme-card__tags">
+                  {theme.tags.map((t) => (
+                    <span class="tag-chip tag-chip--small">#{t}</span>
+                  ))}
+                </p>
+              )}
+              <p class="theme-card__actions">
+                <a class="btn btn--primary" href={theme.url} rel="external">
+                  Download .css
+                </a>
+                {theme.license && (
+                  <span class="theme-card__license">License: {theme.license}</span>
+                )}
+              </p>
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      <section class="publish">
+        <h2>Want to publish your own theme?</h2>
+        <p>
+          Themes are curated — we ship a single <code>index.json</code>
+          manifest that lists every theme + its CSS URL. To add yours:
+        </p>
+        <ol>
+          <li>
+            Author a <code>.css</code> file that overrides only the CSS
+            variables in <a href="https://github.com/zhitongblog/solomd/blob/main/app/src/styles/main.css" rel="external">styles/main.css</a>.
+            Don't use <code>!important</code> or selector hacks — the
+            variables alone restyle the whole app.
+          </li>
+          <li>
+            Render a 600×400 preview screenshot. Solid colors are fine.
+          </li>
+          <li>
+            Open a PR against
+            <a
+              href="https://github.com/zhitongblog/solomd/blob/main/web/public/themes/index.json"
+              rel="external"
+            >
+              <code>web/public/themes/index.json</code>
+            </a>
+            adding your <code>{`{ id, name, author, description, url, preview, tags, license }`}</code>
+            entry, plus the <code>.css</code> + preview file in the same
+            <code>web/public/themes/</code> directory.
+          </li>
+          <li>
+            Once merged, the theme shows up in everyone's
+            <strong>Settings → Browse community themes</strong> within 5 minutes
+            (the in-app cache TTL).
+          </li>
+        </ol>
+        <p class="publish-note">
+          Curation note: I review themes for legibility (contrast ≥ 4.5:1
+          on body text), license clarity (MIT / CC0 / similar), and good taste.
+          Closed-source or NSFW themes won't be merged — fork the page and
+          host your own catalog if needed.
+        </p>
+      </section>
+    </section>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .themes-page { max-width: 960px; padding: 40px 20px 80px; }
+  .themes-page h1 { font-size: 2rem; margin: 10px 0 14px; color: #ff9f40; }
+  .themes-page .lead {
+    font-size: 1.05rem;
+    line-height: 1.7;
+    color: var(--text-muted, #555);
+    margin-bottom: 24px;
+  }
+  .themes-page code {
+    background: var(--bg-soft, #f5f3ec);
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 0.9em;
+  }
+  .tags-line {
+    margin: 0 0 28px;
+    font-size: 0.9rem;
+    color: var(--text-muted, #555);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+  .tags-label { color: var(--text-faint, #888); }
+  .tag-chip {
+    background: var(--bg-soft, #f5f3ec);
+    border: 1px solid #eee;
+    color: var(--text-muted, #555);
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+  }
+  .tag-chip--small { font-size: 0.72rem; padding: 1px 7px; }
+  .themes {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 48px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 18px;
+  }
+  .theme-card {
+    border: 1px solid #eaeaea;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+  }
+  .theme-card__preview {
+    display: block;
+    aspect-ratio: 3 / 2;
+    background: #fafafa;
+    overflow: hidden;
+  }
+  .theme-card__preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .theme-card__placeholder {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #f5f5f5, #eee);
+  }
+  .theme-card__meta { padding: 14px 16px; flex: 1; display: flex; flex-direction: column; gap: 4px; }
+  .theme-card__name { margin: 0; font-size: 1rem; }
+  .theme-card__author { margin: 0; font-size: 0.85rem; color: var(--text-faint, #888); }
+  .theme-card__desc {
+    margin: 6px 0 0;
+    color: var(--text-muted, #555);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    flex: 1;
+  }
+  .theme-card__tags { margin: 6px 0 0; display: flex; flex-wrap: wrap; gap: 4px; }
+  .theme-card__actions {
+    margin: 12px 0 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+  }
+  .theme-card__license {
+    font-size: 0.78rem;
+    color: var(--text-faint, #888);
+  }
+  .btn {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 5px;
+    font-size: 0.88rem;
+    text-decoration: none;
+    border: 1px solid #ddd;
+    background: #fff;
+    color: var(--text, #333);
+  }
+  .btn--primary {
+    background: #ff9f40;
+    color: #1a1a1a;
+    border-color: #ff9f40;
+    font-weight: 600;
+  }
+  .publish {
+    margin-top: 40px;
+    padding: 24px;
+    background: var(--bg-soft, #fafaf7);
+    border-radius: 10px;
+    border: 1px solid #eee;
+  }
+  .publish h2 { margin: 0 0 12px; font-size: 1.15rem; }
+  .publish p { margin: 8px 0; line-height: 1.7; color: var(--text-muted, #555); }
+  .publish ol { margin: 12px 0; padding-left: 22px; line-height: 1.8; color: var(--text-muted, #555); }
+  .publish-note { font-size: 0.88rem; color: var(--text-faint, #888); margin-top: 14px; }
+</style>

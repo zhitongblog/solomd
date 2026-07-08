@@ -1,0 +1,356 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import Giscus from '../../components/Giscus.astro';
+
+const lang = 'ko' as const;
+const VERSION = '4.1.0';
+const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERSION}`;
+---
+
+<Layout
+  title="SoloMD v4.0 업데이트 — Agent가 머무는 에디터"
+  description="v4.0은 agent-native author 메이저 릴리스. 5가지 기둥: 내장 Agent 패널(스트리밍 chat-with-vault), 정시 Recipe(cron / on-save / on-commit, AutoGit 브랜치 샌드박스 + 승인/거부), 재생 가능한 Trace View, 다중 vault MCP Federation, Ollama 일등 시민. 또한: REST API, BYOK 비용 미터, 11개 Recipe 템플릿, 첫 실행 마법사, ja/ko 로컬라이제이션."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <article class="container whats-new">
+      <nav class="breadcrumbs">
+        <a href="/ko/">홈</a> / <span>업데이트</span>
+      </nav>
+
+      <p class="version-row">
+        <span class="version-tag">v{VERSION}</span>
+        <time>2026년 5월</time>
+      </p>
+      <h1>Agent가 머무는 에디터.</h1>
+      <p class="lead">
+        v4.0은 <strong>agent-native author</strong> 메이저 릴리스입니다.
+        Agent는 "외부 CLI에서 가끔 호출"에서 에디터 안 일등 시민으로 바뀌었습니다 ——
+        상주, 다중 vault 가로지르며 작업, 완전한 가시성, 재생 가능, 롤백 가능.
+        아래 모든 것은 core 안, 플러그인 불필요. 인스톨러는 여전히 ~15 MB.
+      </p>
+
+      <div class="cta-row">
+        <a class="btn btn--primary btn--lg" href={`${baseUrl}/SoloMD_${VERSION}_universal.dmg`}>⬇ v{VERSION} 다운로드 (Mac)</a>
+        <a class="btn btn--secondary btn--lg" href={`${baseUrl}/SoloMD_${VERSION}_x64_en-US.msi`}>다운로드 (Windows)</a>
+        <a class="btn btn--secondary btn--lg" href={`https://github.com/zhitongblog/solomd/releases/tag/v${VERSION}`}>모든 플랫폼 →</a>
+      </div>
+
+      <section>
+        <h2>5가지 기둥</h2>
+        <p>
+          각 기능은 core에 있고 설정에서 토글 가능. 기존 노트와 완벽 호환 ——
+          DB 마이그레이션 없음, 새 파일 형식 없음, 클라우드 계정 강제 없음.
+        </p>
+        <div class="pillars">
+          <div class="pillar">
+            <h3>1 · 내장 Agent 패널</h3>
+            <p>
+              오른쪽 사이드 일등 시민 패널, Outline / Backlinks / Tags / History와
+              같은 레벨. 프로세스 내 MCP 인터페이스와 기존 14개 AI Provider로
+              스트리밍 chat-with-vault 구성.
+              <code>[[wikilink]]</code> 참조는 실제 노트 점프로 해결;
+              agent가 도구를 호출할 때마다 그 카드가 대화 흐름에 펼쳐져
+              무엇을 읽고 무엇을 썼는지 보입니다. 답변이 너무 길면?
+              <strong>삽입</strong>과 <strong>복사</strong> 버튼으로 단락 전체를
+              현재 에디터에 —— 선택 영역이 있으면 대체, 없으면 커서 위치에 삽입.
+              실행 기록은 평범한 markdown으로
+              <code>.solomd/agent-runs/</code>에 저장, grep 가능, git 추적 가능.
+            </p>
+          </div>
+          <div class="pillar">
+            <h3>2 · Agent Recipe / 정시 실행</h3>
+            <p>
+              선언적 agent 작업, YAML 파일을
+              <code>&lt;workspace&gt;/.solomd/agents/*.yml</code>에 배치.
+              트리거: <code>schedule</code> (cron), <code>on-save</code>,
+              <code>on-commit</code>, <code>on-tag-add</code>, 수동.
+              <strong>안전 가드는 타협 없음</strong>: 각 실행은 자체 AutoGit
+              브랜치 <code>agent/&lt;recipe&gt;/&lt;run-id&gt;</code>에 착지,
+              모든 쓰기는 브랜치에만, 승인 / 거부 UI로 검토 후 main에 병합;
+              실행당 <code>write-cap</code> (기본 5, 하드 상한 50)으로 폭주 루프 방지;
+              거부 후 브랜치 hard-delete, git 기록에 이 실행은 흔적 없음.
+              <strong>11개 Recipe 템플릿</strong> 동봉
+              (주간 보고, 로그 정리, TODO 추출, 번역, 인용 정리, CJK 교정, …) ——
+              설치, prompt 편집, 실행 3단계.
+            </p>
+          </div>
+          <div class="pillar">
+            <h3>3 · Agent Trace View</h3>
+            <p>
+              각 실행 (Panel 채팅이든 Recipe든) 단계별로
+              <code>trace.jsonl</code> 생성:
+              <code>prompt</code> / <code>model_call</code> /
+              <code>tool_call</code> / <code>tool_result</code> /
+              <code>git_commit</code> / <code>done</code>.
+              단계 카드는 args, 결과, 토큰 수, 비용 추정, AutoGit 브랜치
+              참조를 펼칠 수 있습니다. <strong>단계 N에서 재생</strong>
+              버튼으로 실행을 단계 N까지 되돌리고 입력을 바꿔 거기서 다시 실행 ——
+              self-correcting recipe의 입구. 새 MCP 도구
+              <code>read_agent_trace(run_id)</code>로 다른 agent에 trace 노출.
+            </p>
+          </div>
+          <div class="pillar">
+            <h3>4 · 다중 Vault MCP Federation</h3>
+            <p>
+              <code>solomd-mcp --workspace path1 --workspace path2 --workspace path3</code>
+              —— 한 MCP 세션, 여러 vault. 도구 시그니처에 선택적
+              <code>workspace</code> 매개변수, 기본값 = 처음 전달된 vault
+              (단일 vault 클라이언트와 완벽 후방 호환). AutoGit 브랜치는
+              workspace별로 분리. <strong>설정 → 통합</strong>에 MCP
+              프로필 UI: 여러 vault에 이름을 붙여 묶고, 원클릭으로
+              Claude Desktop 설정 스니펫을 복사.
+            </p>
+          </div>
+          <div class="pillar">
+            <h3>5 · Ollama 일등 시민</h3>
+            <p>
+              로컬 LLM 런타임을 <strong>자체</strong> 동봉하지 않습니다 ——
+              Ollama가 이미 잘 만들었습니다. v4.0은 통합을 매끄럽게 다듬었습니다:
+              <code>localhost:11434</code> 자동 감지 (설정 → AI에 녹색 상태 표시),
+              미설치 시 원클릭 설치 안내, 내장 3개 모델 프리셋
+              (<code>rewrite</code> → qwen2.5:7b ·
+              <code>quick</code> → qwen2.5:1.5b ·
+              <code>cjk</code> → qwen2.5:14b), 모델 목록이 비어 있을 때 인라인
+              추천 pull. Recipe에서 <code>provider: local</code> (ollama 별칭)
+              지정으로 클라우드 비용 0의 자동화 루프 실행.
+              <em>당신의 노트는 기기를 떠나지 않습니다</em> ——
+              BYOK Ollama로 이는 항상 사실이었지만 v4.0은 이를 발견 가능한
+              입구로 만들었습니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>🛡️ 안전 가드 (타사가 만들지 않은 부분)</h2>
+        <ul>
+          <li>
+            <strong>AutoGit 브랜치 샌드박스.</strong>각 Recipe 실행은
+            자체 브랜치에. 승인 클릭 전까지 <code>main</code>은 부동.
+            거부된 실행은 <em>아무것도 남기지 않음</em> —— 브랜치 삭제,
+            파일 트리 되돌림.
+          </li>
+          <li>
+            <strong>실행당 쓰기 상한.</strong>cap 5인 모델이 50 파일에 쓰려고 하면
+            6번째 도구 호출에서 거부. 반쪽 적용 상태 없음, 의도치 않은 일괄 변경 없음.
+          </li>
+          <li>
+            <strong>워크스페이스가 더러우면 실행 거부.</strong>커밋되지 않은 변경이
+            있을 때 Recipe 트리거가 발생하면 오류 종료, 당신의 WIP를
+            agent 커밋에 휩쓸리지 않습니다.
+          </li>
+          <li>
+            <strong>경로 트래버설 강화.</strong>프로세스 내 도구 인터페이스와
+            사용자 입력 <code>run_id</code> / <code>path</code>를 받는 모든
+            Tauri 명령이 이제 <code>..</code> 세그먼트와 절대 경로를 선제 거부.
+            Agent는 코드 레벨에서 workspace 밖에 쓸 수 없습니다.
+          </li>
+          <li>
+            <strong>재생 가능한 trace.</strong>단계마다 한 줄 JSON으로 디스크에.
+            Panel 동작이 의심스럽다면? trace 따라가서 나쁜 단계 식별, 입력 변경,
+            단계 N–1에서 재생.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>품질 기준</h2>
+        <ul>
+          <li>
+            <strong>첫 실행 마법사.</strong>새 사용자는 60초 내에 Agent 패널을
+            봅니다 —— BYOK 키 입력이나 Ollama 설치 안내. 도움말에서 나중에 다시 열기 가능.
+          </li>
+          <li>
+            <strong>Recipe 쿡북 (11개 스타터).</strong>설정 → Recipes → 쿡북 둘러보기.
+            주간 보고, 일일 로그, TODO 추출, 번역 패스, 인용 정리, CJK 교정 agent,
+            링크 부패 감지, front-matter 정규화, 개요 → 블로그, 리팩토링 패스,
+            주간 태그 정리. 설치, prompt 편집, 실행.
+          </li>
+          <li>
+            <strong>로컬 REST API</strong> (localhost만, 토큰 인증).
+            MCP와 동일한 인터페이스, 아직 MCP를 말하지 않는 클라이언트용
+            —— Alfred / Raycast / n8n / 자작 스크립트.
+          </li>
+          <li>
+            <strong>BYOK 비용 미터.</strong>Provider별 누적 사용 토큰, 옵트인.
+            설정 → 통합.
+          </li>
+          <li>
+            <strong>로컬라이제이션.</strong>ja / ko 번역이 UI 완전 커버
+            (이번 릴리스에서). en/zh와 같은 사전 키 전부.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>첫날부터 느낄 수 있는 UX 다듬기</h2>
+        <ul>
+          <li>
+            <strong>곳곳의 IME 가드.</strong>병음 중국어 입력, 일본어 가나, 한글 변환 ——
+            후보 확정 Enter가 실수로 전송 / 이름 변경 / 명령 실행 / 검색 열기를
+            트리거하지 않습니다. <strong>7개 입력 면</strong>을 일괄 수정.
+          </li>
+          <li>
+            <strong>Assistant 답변의 삽입 / 복사 버튼.</strong>
+            완료된 각 답변 아래에 두 버튼. 삽입은 현재 에디터 선택 영역 인식
+            (선택 영역 있으면 대체), 없으면 커서 위치에 삽입. 복사는 일반 클립보드.
+          </li>
+          <li>
+            <strong>macOS 시작 UX.</strong>시작 활성화 타이밍 수정 ——
+            SoloMD 콜드 스타트가 진짜 포그라운드로, Finder 뒤에 숨지 않습니다.
+            창 위치 복원은 항상 현재 디스플레이 워크스페이스에 착지;
+            보조 디스플레이 분리 후 깨진 상태에서 복원 시 자동 재중심화,
+            화면 밖에 열리지 않습니다.
+          </li>
+          <li>
+            <strong>"생성 중..." 오류 없는 멈춤.</strong>수정됨.
+            Provider 설정 오류 (예: Ollama에서 받지 않은 모델 선택)로 이전에는
+            패널이 멈춤. 이제 빨간 오류 바에 백엔드 실제 응답 표시,
+            전송 버튼도 돌아옵니다.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>v4.0에서 의도적으로 안 하는 것 (그리고 왜)</h2>
+        <p>NO라고 말하는 것도 제품의 일부. 아래는 진지하게 검토한 뒤 명시적으로 안 함:</p>
+        <ul>
+          <li>
+            <strong>자체 로컬 LLM 런타임.</strong>Ollama가 이미 잘 하고 있음;
+            바퀴 재발명은 "영구 유지보수할 코드를 적게 쓴다" 원칙 위반.
+            BYOK Provider는 계속 경로.
+          </li>
+          <li>
+            <strong>온라인 Recipe 마켓.</strong>서버 운영 + 콘텐츠 심사 = 본선에서 이탈.
+            쿡북은 릴리스에 직접 구워 도구와 함께 업데이트.
+          </li>
+          <li>
+            <strong>다중 사용자 / 팀 agent.</strong>"한 창, 한 작가" 원칙 위반.
+            이 제품은 단독 작가용; 협업은 다른 제품.
+          </li>
+          <li>
+            <strong>Copilot 스타일 고스트 텍스트 보완.</strong>다른 브랜드 포지셔닝.
+            고스트 텍스트는 작가의 목소리를 묽게 함; 우리 agent의 작업 단위는 vault,
+            쓰기는 일괄 + 검토 가능 + 브랜치 경유.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>업그레이드 안내</h2>
+        <ul>
+          <li>
+            <strong>파일 형식 변경 없음.</strong>기존 <code>.md</code>,
+            AutoGit 기록, 동기화 설정, BYOK 키 모두 그대로 유지.
+          </li>
+          <li>
+            <strong>Agent 패널이 첫 실행에서 자동 켜짐.</strong>v3.6.x 사용자는
+            v4-beta 기간 중 스캐폴드의 기본값으로 숨겨진
+            <code>showAgentPanel: false</code>가 있을 수 있음;
+            일회성 마이그레이션이 true로 뒤집혀 메인 기능을 실제로 보게 됩니다.
+            원하지 않으면 <code>⌘⇧P → View: Toggle Agent Panel</code>로 끔.
+          </li>
+          <li>
+            <strong>설정 패널에 <em>Recipes</em>와 <em>비용 미터</em></strong>
+            두 탭 추가, <em>통합</em> 아래. 기존 설정 위치는 변경 없음.
+          </li>
+          <li>
+            <strong>MCP 서버 (<code>solomd-mcp</code>)에
+            <code>--workspace</code> 매개변수 추가</strong> (반복 가능).
+            기존 단일 workspace MCP 클라이언트는 계속 작동;
+            federation은 옵트인.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>🔮 다음은</h2>
+        <p>
+          5대 기둥 + 품질 기준이 이번 릴리스의 주요 내용. <em>v4.x
+          및 그 이후</em>의 열린 방향은 모두
+          <a href="https://github.com/zhitongblog/solomd/blob/main/docs/roadmap.md">roadmap</a>에:
+          샌드박스화된 스크립트 API, CLI v2 (터미널에서 rewrite / commit /
+          시맨틱 검색 / Recipe 트리거), 그리고 계속 미루던 <em>"SoloMD를 상업
+          제품으로 만들어야 할까?"</em> 문제 (유료 동기화 —— v3.0 시대부터의
+          오래된 문제, 아직 답 없음, 결정 전까지는 이 영역의 엔지니어링에
+          손대지 않습니다).
+        </p>
+      </section>
+
+      <p class="thanks-row">
+        사일런트 기간 중 issue 제출, PR 보내기, 실 vault에서 v4-beta
+        빌드를 돌려준 모든 분께 감사. v4.0이 출시될 수 있었던 것은
+        dogfood가 통합 테스트의 누락을 하나하나 잡아냈기 때문입니다.
+        초기 버전: <a href="/blog/">블로그 보기 (en) →</a>
+      </p>
+    </article>
+    <Giscus lang={lang} />
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .whats-new { max-width: 880px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .version-row { display: flex; align-items: center; gap: 12px; margin: 0 0 14px; }
+  .version-tag {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #000;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .whats-new time { font-size: 13px; color: var(--text-muted); }
+  .whats-new h1 { font-size: clamp(2.2rem, 5vw, 3.4rem); line-height: 1.1; margin: 0 0 22px; }
+  .whats-new h2 { font-size: clamp(1.5rem, 3vw, 1.9rem); margin: 56px 0 16px; }
+  .whats-new h3 { font-size: 1.1rem; margin: 0 0 8px; color: var(--accent); }
+  .whats-new .lead { font-size: 1.15rem; color: var(--text-muted); line-height: 1.65; margin-bottom: 28px; }
+  .whats-new p { line-height: 1.75; margin: 12px 0; }
+  .whats-new ul, .whats-new ol { padding-left: 22px; }
+  .whats-new li { margin: 8px 0; line-height: 1.7; }
+  .whats-new code {
+    background: var(--bg-soft);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.92em;
+    font-family: var(--font-mono);
+    color: var(--accent-deep);
+  }
+  .whats-new a:not(.btn) { color: var(--accent); }
+  .cta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 28px 0 8px;
+  }
+  .pillars {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 22px;
+    margin-top: 22px;
+  }
+  .pillar {
+    padding: 18px 22px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-soft);
+  }
+  .pillar p { margin: 0; }
+  .thanks-row {
+    margin-top: 64px;
+    padding-top: 22px;
+    border-top: 1px solid var(--border);
+    font-size: 14px;
+    color: var(--text-muted);
+  }
+</style>

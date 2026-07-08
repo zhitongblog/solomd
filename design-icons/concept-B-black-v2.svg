@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#28282a"/>
+      <stop offset="1" stop-color="#0b0b0c"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.38" r="0.7">
+      <stop offset="0" stop-color="#ff9a2f" stop-opacity="0.24"/>
+      <stop offset="0.55" stop-color="#ff9a2f" stop-opacity="0.10"/>
+      <stop offset="1" stop-color="#ff9a2f" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="hash" x1="0.33" y1="0.22" x2="0.67" y2="0.82">
+      <stop offset="0" stop-color="#ffd07a"/>
+      <stop offset="0.45" stop-color="#ffb24c"/>
+      <stop offset="1" stop-color="#f57c11"/>
+    </linearGradient>
+  </defs>
+  <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#bg)"/>
+  <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#glow)"/>
+  <rect x="34" y="34" width="956" height="956" rx="222" fill="none" stroke="#fff" stroke-opacity="0.08" stroke-width="3"/>
+  <g stroke="url(#hash)" stroke-width="90" stroke-linecap="round">
+    <line x1="448" y1="760" x2="504" y2="264"/>
+    <line x1="612" y1="760" x2="668" y2="264"/>
+    <line x1="352" y1="430" x2="708" y2="430"/>
+    <line x1="332" y1="600" x2="688" y2="600"/>
+  </g>
+</svg>

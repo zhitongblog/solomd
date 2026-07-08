@@ -1,0 +1,301 @@
+---
+import type { Lang } from '../i18n/translations';
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+
+const STR = {
+  en: {
+    heading: 'Contact / Join the room',
+    lead: 'One maintainer, two front doors. WeChat for the Chinese community, Telegram channel for everyone else. GitHub Discussions works too — link below.',
+    wechatLabel: 'WeChat (personal)',
+    wechatHint: 'Scan to add me on WeChat. Mention "SoloMD" so I know it\'s you.',
+    telegramLabel: 'Telegram channel @SOLOMDAPP',
+    telegramHint: 'Click or scan to join. Release announcements + chat live here.',
+    discussionsLabel: 'GitHub Discussions',
+    discussionsHint: 'Async, public, searchable — same maintainer, no DM required.',
+  },
+  zh: {
+    heading: '联系作者 / 加群',
+    lead: '一个开发者,直接微信或 Telegram 找我。GitHub Discussions 也是一个等价入口 —— 见下面。',
+    wechatLabel: '个人微信',
+    wechatHint: '扫码加好友。注明 "SoloMD" 直接通过。',
+    telegramLabel: 'Telegram 频道 @SOLOMDAPP',
+    telegramHint: '点击或扫码进入频道,发布更新和讨论都在这里。',
+    discussionsLabel: 'GitHub Discussions',
+    discussionsHint: '不想加私聊? 可在 GitHub 公开频道讨论 —— 同一作者,异步。',
+  },
+  ja: {
+    heading: 'お問い合わせ / コミュニティ',
+    lead: 'メンテナは 1 人、入り口は 2 つ。中国語コミュニティは WeChat、それ以外は Telegram チャンネル。GitHub Discussions も動きます —— 下にリンク。',
+    wechatLabel: 'WeChat (個人)',
+    wechatHint: 'WeChat 友達追加用 QR。「SoloMD」と書いてもらえると承認します。',
+    telegramLabel: 'Telegram チャンネル @SOLOMDAPP',
+    telegramHint: 'クリックまたはスキャンで参加。リリース告知とチャットはここ。',
+    discussionsLabel: 'GitHub Discussions',
+    discussionsHint: '非同期、公開、検索可能 —— 同じメンテナ、DM 不要。',
+  },
+  ko: {
+    heading: '문의 / 커뮤니티',
+    lead: '메인테이너 1명, 입구 2개. 중국어 커뮤니티는 WeChat, 그 외는 Telegram 채널. GitHub Discussions도 가능 —— 아래 링크.',
+    wechatLabel: 'WeChat (개인)',
+    wechatHint: 'WeChat 친구 추가용 QR. "SoloMD"라고 적어주시면 승인합니다.',
+    telegramLabel: 'Telegram 채널 @SOLOMDAPP',
+    telegramHint: '클릭하거나 스캔하여 참여. 릴리스 공지 + 채팅이 여기 있습니다.',
+    discussionsLabel: 'GitHub Discussions',
+    discussionsHint: '비동기, 공개, 검색 가능 —— 같은 메인테이너, DM 불필요.',
+  },
+  de: {
+    heading: 'Kontakt / Community beitreten',
+    lead: 'Ein Maintainer, zwei Eingangstüren. WeChat für die chinesische Community, Telegram-Kanal für alle anderen. GitHub Discussions funktioniert auch — Link unten.',
+    wechatLabel: 'WeChat (persönlich)',
+    wechatHint: 'Scannen, um mich auf WeChat hinzuzufügen. Erwähnen Sie "SoloMD", damit ich weiß, dass Sie es sind.',
+    telegramLabel: 'Telegram-Kanal @SOLOMDAPP',
+    telegramHint: 'Klicken oder scannen zum Beitreten. Release-Ankündigungen + Chat leben hier.',
+    discussionsLabel: 'GitHub Discussions',
+    discussionsHint: 'Async, öffentlich, durchsuchbar — derselbe Maintainer, keine DM erforderlich.',
+  },
+  fr: {
+    heading: 'Contact / Rejoindre la communauté',
+    lead: 'Un mainteneur, deux portes d\'entrée. WeChat pour la communauté chinoise, canal Telegram pour tous les autres. GitHub Discussions fonctionne aussi — lien ci-dessous.',
+    wechatLabel: 'WeChat (personnel)',
+    wechatHint: 'Scanner pour m\'ajouter sur WeChat. Mentionnez « SoloMD » pour que je sache que c\'est vous.',
+    telegramLabel: 'Canal Telegram @SOLOMDAPP',
+    telegramHint: 'Cliquer ou scanner pour rejoindre. Annonces de release + chat vivent ici.',
+    discussionsLabel: 'GitHub Discussions',
+    discussionsHint: 'Async, public, recherchable — même mainteneur, pas de DM requis.',
+  },
+  es: {
+    heading: 'Contacto / Unirse a la comunidad',
+    lead: 'Un mantenedor, dos puertas de entrada. WeChat para la comunidad china, canal Telegram para todos los demás. GitHub Discussions también funciona — enlace abajo.',
+    wechatLabel: 'WeChat (personal)',
+    wechatHint: 'Escanear para añadirme en WeChat. Menciona "SoloMD" para que sepa que eres tú.',
+    telegramLabel: 'Canal Telegram @SOLOMDAPP',
+    telegramHint: 'Haz clic o escanea para unirte. Anuncios de release + chat viven aquí.',
+    discussionsLabel: 'GitHub Discussions',
+    discussionsHint: 'Async, público, buscable — mismo mantenedor, no se requiere DM.',
+  },
+  pt: {
+    heading: 'Contato / Entrar na comunidade',
+    lead: 'Um mantenedor, duas portas de entrada. WeChat para a comunidade chinesa, canal Telegram para todos os outros. GitHub Discussions também funciona — link abaixo.',
+    wechatLabel: 'WeChat (pessoal)',
+    wechatHint: 'Escaneie para me adicionar no WeChat. Mencione "SoloMD" para eu saber que é você.',
+    telegramLabel: 'Canal Telegram @SOLOMDAPP',
+    telegramHint: 'Clique ou escaneie para entrar. Anúncios de release + chat vivem aqui.',
+    discussionsLabel: 'GitHub Discussions',
+    discussionsHint: 'Async, público, pesquisável — mesmo mantenedor, sem DM necessário.',
+  },
+  it: {
+    heading: 'Contatto / Unisciti alla community',
+    lead: 'Un manutentore, due porte d\'ingresso. WeChat per la community cinese, canale Telegram per tutti gli altri. GitHub Discussions funziona anche — link sotto.',
+    wechatLabel: 'WeChat (personale)',
+    wechatHint: 'Scansiona per aggiungermi su WeChat. Menziona "SoloMD" così so che sei tu.',
+    telegramLabel: 'Canale Telegram @SOLOMDAPP',
+    telegramHint: 'Clicca o scansiona per unirti. Annunci di release + chat vivono qui.',
+    discussionsLabel: 'GitHub Discussions',
+    discussionsHint: 'Async, pubblico, ricercabile — stesso manutentore, nessun DM richiesto.',
+  },
+  pl: {
+    heading: 'Kontakt / Dołącz do społeczności',
+    lead: 'Jeden maintainer, dwa wejścia. WeChat dla społeczności chińskiej, kanał Telegram dla wszystkich innych. GitHub Discussions też działa — link niżej.',
+    wechatLabel: 'WeChat (osobisty)',
+    wechatHint: 'Zeskanuj, aby dodać mnie na WeChat. Wpisz "SoloMD", abym wiedział, że to ty.',
+    telegramLabel: 'Kanał Telegram @SOLOMDAPP',
+    telegramHint: 'Kliknij lub zeskanuj, aby dołączyć. Ogłoszenia release\'ów + chat odbywają się tutaj.',
+    discussionsLabel: 'GitHub Discussions',
+    discussionsHint: 'Asynchroniczne, publiczne, przeszukiwalne — ten sam maintainer, bez DM.',
+  },
+  nl: {
+    heading: 'Contact / Word lid van de community',
+    lead: 'Eén maintainer, twee voordeuren. WeChat voor de Chinese community, Telegram-kanaal voor iedereen anders. GitHub Discussions werkt ook — link hieronder.',
+    wechatLabel: 'WeChat (persoonlijk)',
+    wechatHint: 'Scan om me toe te voegen op WeChat. Vermeld "SoloMD" zodat ik weet dat jij het bent.',
+    telegramLabel: 'Telegram-kanaal @SOLOMDAPP',
+    telegramHint: 'Klik of scan om mee te doen. Release-aankondigingen + chat staan hier.',
+    discussionsLabel: 'GitHub Discussions',
+    discussionsHint: 'Async, openbaar, doorzoekbaar — dezelfde maintainer, geen DM nodig.',
+  },
+  tr: {
+    heading: 'İletişim / Topluluğa katıl',
+    lead: 'Bir bakımcı, iki kapı. Çin topluluğu için WeChat, diğer herkes için Telegram kanalı. GitHub Discussions de çalışıyor — link aşağıda.',
+    wechatLabel: 'WeChat (kişisel)',
+    wechatHint: 'WeChat\'ten beni eklemek için tara. Sen olduğunu bilmem için "SoloMD" yaz.',
+    telegramLabel: 'Telegram kanalı @SOLOMDAPP',
+    telegramHint: 'Katılmak için tıklayın veya tarayın. Sürüm duyuruları + sohbet burada yaşar.',
+    discussionsLabel: 'GitHub Discussions',
+    discussionsHint: 'Async, herkese açık, aranabilir — aynı bakımcı, DM gerekmez.',
+  },
+  sv: {
+    heading: 'Kontakt / Gå med i gemenskapen',
+    lead: 'En underhållare, två ytterdörrar. WeChat för den kinesiska gemenskapen, Telegram-kanal för alla andra. GitHub Discussions fungerar också — länk nedan.',
+    wechatLabel: 'WeChat (personlig)',
+    wechatHint: 'Skanna för att lägga till mig på WeChat. Nämn "SoloMD" så jag vet att det är du.',
+    telegramLabel: 'Telegram-kanal @SOLOMDAPP',
+    telegramHint: 'Klicka eller skanna för att gå med. Release-meddelanden + chatt bor här.',
+    discussionsLabel: 'GitHub Discussions',
+    discussionsHint: 'Async, offentlig, sökbar — samma underhållare, ingen DM krävs.',
+  },
+  uk: {
+    heading: 'Контакт / Долучитися до спільноти',
+    lead: 'Один підтримувач, два входи. WeChat для китайської спільноти, канал Telegram для всіх інших. GitHub Discussions також працює — посилання нижче.',
+    wechatLabel: 'WeChat (особистий)',
+    wechatHint: 'Скануйте, щоб додати мене у WeChat. Згадайте "SoloMD", щоб я знав, що це ви.',
+    telegramLabel: 'Канал Telegram @SOLOMDAPP',
+    telegramHint: 'Натисніть або скануйте, щоб приєднатися. Анонси релізів + чат живуть тут.',
+    discussionsLabel: 'GitHub Discussions',
+    discussionsHint: 'Async, публічно, з пошуком — той самий підтримувач, DM не потрібен.',
+  },
+}[lang];
+const { heading, lead, wechatLabel, wechatHint, telegramLabel, telegramHint, discussionsLabel, discussionsHint } = STR;
+---
+
+<section id="contact" class="contact">
+  <div class="container">
+    <div class="contact__header">
+      <h2>{heading}</h2>
+      <p class="lead">{lead}</p>
+    </div>
+
+    <div class="contact__grid">
+      <article class="contact__card">
+        <div class="contact__card-body">
+          <img
+            src="/contact/wechat.jpg"
+            alt={wechatLabel}
+            loading="lazy"
+            width="220"
+            height="270"
+          />
+          <div class="contact__card-meta">
+            <h3>{wechatLabel}</h3>
+            <p>{wechatHint}</p>
+          </div>
+        </div>
+      </article>
+
+      <article class="contact__card">
+        <div class="contact__card-body">
+          <a href="https://t.me/SOLOMDAPP" target="_blank" rel="noopener">
+            <img
+              src="/contact/telegram.jpg"
+              alt={telegramLabel}
+              loading="lazy"
+              width="220"
+              height="390"
+            />
+          </a>
+          <div class="contact__card-meta">
+            <h3>
+              <a href="https://t.me/SOLOMDAPP" target="_blank" rel="noopener">
+                @SOLOMDAPP
+              </a>
+            </h3>
+            <p>{telegramHint}</p>
+          </div>
+        </div>
+      </article>
+
+      <article class="contact__card contact__card--discussions">
+        <div class="contact__card-body">
+          <div class="contact__discussions-icon" aria-hidden="true">💬</div>
+          <div class="contact__card-meta">
+            <h3>
+              <a href="https://github.com/zhitongblog/solomd/discussions" target="_blank" rel="noopener">
+                {discussionsLabel} →
+              </a>
+            </h3>
+            <p>{discussionsHint}</p>
+          </div>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<style>
+  .contact {
+    padding: 64px 0;
+    background: var(--bg-soft);
+    border-top: 1px solid var(--border);
+  }
+  .contact__header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  .contact__header h2 {
+    font-size: 1.6rem;
+    margin: 0 0 12px;
+  }
+  .contact__header .lead {
+    color: var(--text-muted);
+    max-width: 560px;
+    margin: 0 auto;
+    font-size: 0.95rem;
+    line-height: 1.6;
+  }
+  .contact__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 18px;
+    max-width: 980px;
+    margin: 0 auto;
+  }
+  .contact__card {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 22px 22px 24px;
+    display: flex;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .contact__card:hover {
+    border-color: var(--accent);
+  }
+  .contact__card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    align-items: center;
+    text-align: center;
+    width: 100%;
+  }
+  .contact__card-body img {
+    width: 220px;
+    height: auto;
+    max-height: 280px;
+    object-fit: contain;
+    border-radius: 8px;
+    background: #fff;
+  }
+  .contact__card-meta h3 {
+    margin: 0 0 6px;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+  .contact__card-meta h3 a {
+    color: var(--text);
+    text-decoration: none;
+  }
+  .contact__card-meta h3 a:hover {
+    color: var(--accent);
+  }
+  .contact__card-meta p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    line-height: 1.55;
+  }
+
+  .contact__card--discussions {
+    background: var(--bg);
+  }
+  .contact__discussions-icon {
+    font-size: 56px;
+    line-height: 1;
+    width: 220px;
+    max-height: 280px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-faint);
+  }
+</style>

@@ -1,0 +1,18 @@
+name: Link suggester
+trigger: on-save
+match: "**/*.md"
+allow-write: false
+prompt: |
+  The user just saved {{path}}. Read its content. Then, using the
+  search and list_tags tools, find up to 5 other notes in the vault
+  that are topically relevant but NOT already linked from {{path}}.
+
+  Write a single trace step (no file writes) summarizing your
+  suggestions in the form:
+
+    ### Link candidates for [[{{path}}]]
+    - [[note-a]] — why
+    - [[note-b]] — why
+
+  This recipe is read-only on purpose: the user reviews the
+  suggestions in the trace view and hand-adds the ones they like.

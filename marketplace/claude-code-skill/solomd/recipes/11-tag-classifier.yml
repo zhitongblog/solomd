@@ -1,0 +1,17 @@
+name: Tag classifier
+trigger: on-save
+match: "inbox/**/*.md"
+allow-write: true
+write-cap: 1
+prompt: |
+  The user just saved {{path}} in the inbox. Read the content and
+  the existing tag list (list_tags) to choose 1–3 tags that best
+  classify this note. Prefer existing tags over inventing new ones.
+
+  Update the file's YAML front matter `tags:` array with your
+  selection (creating the front matter if it doesn't exist).
+  Preserve any tags already present — only add, never remove.
+
+  If you can't decide between two existing tags, pick the more
+  specific one. If nothing fits, do nothing (don't add a generic
+  #note tag just to fill space).

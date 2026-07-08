@@ -1,0 +1,97 @@
+---
+import { getT, type Lang } from '../i18n/translations';
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const tr = getT(lang);
+const year = new Date().getFullYear();
+// Sub-pages currently exist only in en + zh; ja/ko fall back to en.
+const langPrefix = lang === 'zh' ? '/zh' : '';
+const FL = {
+  en: { compare: 'Compare', docs: 'Docs', blog: 'Blog', thanks: 'Thanks', security: 'Security' },
+  zh: { compare: '对比', docs: '文档', blog: '博客', thanks: '鸣谢', security: '安全' },
+  ja: { compare: '比較', docs: 'ドキュメント', blog: 'ブログ', thanks: '謝辞', security: 'セキュリティ' },
+  ko: { compare: '비교', docs: '문서', blog: '블로그', thanks: '감사', security: '보안' },
+  de: { compare: 'Vergleich', docs: 'Docs', blog: 'Blog', thanks: 'Danksagungen', security: 'Sicherheit' },
+  fr: { compare: 'Comparer', docs: 'Docs', blog: 'Blog', thanks: 'Remerciements', security: 'Sécurité' },
+  es: { compare: 'Comparar', docs: 'Docs', blog: 'Blog', thanks: 'Agradecimientos', security: 'Seguridad' },
+  pt: { compare: 'Comparar', docs: 'Docs', blog: 'Blog', thanks: 'Agradecimentos', security: 'Segurança' },
+  it: { compare: 'Confronto', docs: 'Docs', blog: 'Blog', thanks: 'Ringraziamenti', security: 'Sicurezza' },
+  pl: { compare: 'Porównanie', docs: 'Dokumenty', blog: 'Blog', thanks: 'Podziękowania', security: 'Bezpieczeństwo' },
+  nl: { compare: 'Vergelijken', docs: 'Docs', blog: 'Blog', thanks: 'Dankbetuigingen', security: 'Beveiliging' },
+  tr: { compare: 'Karşılaştır', docs: 'Dokümanlar', blog: 'Blog', thanks: 'Teşekkürler', security: 'Güvenlik' },
+  sv: { compare: 'Jämför', docs: 'Docs', blog: 'Blog', thanks: 'Tack', security: 'Säkerhet' },
+  uk: { compare: 'Порівняння', docs: 'Документи', blog: 'Блог', thanks: 'Подяки', security: 'Безпека' },
+}[lang];
+---
+
+<footer class="footer">
+  <div class="container footer__inner">
+    <div class="footer__brand">
+      <span class="brand-mark"><span class="h">#</span><span class="md">MD</span></span>
+      <span class="footer__name">SoloMD</span>
+    </div>
+    <div class="footer__links">
+      <a href={langPrefix + '/compare/'}>{FL.compare}</a>
+      <a href={langPrefix + '/docs/'}>{FL.docs}</a>
+      <a href={langPrefix + '/blog/'}>{FL.blog}</a>
+      <a href={langPrefix + '/community/'}>{tr.footer.community}</a>
+      <a href={langPrefix + '/thanks/'}>{FL.thanks}</a>
+      <a href={langPrefix + '/security/'}>{FL.security}</a>
+      <a href="https://github.com/zhitongblog/solomd" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/zhitongblog/solomd/releases" target="_blank" rel="noopener">Releases</a>
+      <a href="https://github.com/zhitongblog/solomd/blob/main/LICENSE" target="_blank" rel="noopener">License</a>
+    </div>
+    <div class="footer__legal">
+      © {year} xiangdong li · {tr.footer.legal}
+      <br />
+      {tr.footer.stack}
+    </div>
+  </div>
+</footer>
+
+<style>
+  /* Dark footer acts as the page's visual anchor — same role Anthropic's
+     near-black footer plays. Inverts colors locally so the brand mark's
+     orange # still pops against ink, but everything else fades to a
+     calm bone-white. */
+  .footer {
+    padding: 64px 0 56px;
+    background: #14140f;
+    color: #c5c2b9;
+    border-top: none;
+  }
+  .footer__inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    text-align: center;
+  }
+  .footer__brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 18px;
+    color: #f3efe7;
+  }
+  .footer__brand .brand-mark .md { color: #f3efe7; }
+  .footer__name { font-weight: 600; }
+  .footer__links {
+    display: flex;
+    gap: 28px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .footer__links a {
+    color: #c5c2b9;
+    font-size: 13px;
+    transition: color 0.18s;
+  }
+  .footer__links a:hover { color: var(--accent); text-decoration: none; }
+  .footer__legal {
+    font-size: 11px;
+    color: #7a7770;
+    line-height: 1.8;
+    max-width: 640px;
+  }
+</style>

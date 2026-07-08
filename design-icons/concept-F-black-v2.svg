@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#252527"/>
+      <stop offset="1" stop-color="#09090a"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.42" r="0.7">
+      <stop offset="0" stop-color="#ff9b31" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#ff9b31" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="plate" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff8ee"/>
+      <stop offset="1" stop-color="#ece4d8"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0.25" y1="0.08" x2="0.8" y2="0.9">
+      <stop offset="0" stop-color="#ffcf7e"/>
+      <stop offset="1" stop-color="#f57c12"/>
+    </linearGradient>
+  </defs>
+  <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#bg)"/>
+  <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#glow)"/>
+  <rect x="34" y="34" width="956" height="956" rx="222" fill="none" stroke="#fff" stroke-opacity="0.08" stroke-width="3"/>
+  <rect x="240" y="292" width="544" height="376" rx="78" fill="url(#plate)" opacity="0.98"/>
+  <rect x="268" y="320" width="488" height="320" rx="60" fill="#f9901e" opacity="0.12"/>
+  <g fill="url(#accent)">
+    <path d="M350 560V426c0-19 15-34 34-34h18c19 0 34 15 34 34v134c0 19-15 34-34 34h-18c-19 0-34-15-34-34z"/>
+    <path d="M506 560V426c0-19 15-34 34-34h18c19 0 34 15 34 34v134c0 19-15 34-34 34h-18c-19 0-34-15-34-34z"/>
+    <path d="M333 471h244v54H333z"/>
+    <path d="M333 548h244v54H333z"/>
+  </g>
+  <path d="M680 444l82 82-82 82v-52h-66v-60h66z" fill="url(#accent)"/>
+  <rect x="236" y="288" width="552" height="384" rx="80" fill="none" stroke="#fff" stroke-opacity="0.14" stroke-width="3"/>
+</svg>

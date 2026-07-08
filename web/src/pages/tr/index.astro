@@ -1,0 +1,36 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Hero from '../../components/Hero.astro';
+import UseCases from '../../components/UseCases.astro';
+import Principles from '../../components/Principles.astro';
+import Features from '../../components/Features.astro';
+import Compare from '../../components/Compare.astro';
+import Download from '../../components/Download.astro';
+import Faq from '../../components/Faq.astro';
+import Contact from '../../components/Contact.astro';
+import Sponsor from '../../components/Sponsor.astro';
+import Footer from '../../components/Footer.astro';
+
+const lang = 'tr' as const;
+---
+
+<Layout
+  title="SoloMD — Agent'ların yaşadığı Markdown editörü: Agent Paneli + Zamanlanmış Recipe'ler + Trace + MCP"
+  description="Hafif Markdown editörü (~15 MB, MIT). v4.0; entegre Agent paneli, zamanlanmış recipe'ler, tekrarlanabilir trace ve çoklu vault MCP federasyonu ekler. AutoGit branch sandbox'ı, özerk yazmaların accept/reject edilmesini gerektirir. 14 BYOK AI sağlayıcısı (Ollama dahil)."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <Hero lang={lang} />
+    <UseCases lang={lang} />
+    <Principles lang={lang} />
+    <Features lang={lang} />
+    <Compare lang={lang} />
+    <Download lang={lang} />
+    <Faq lang={lang} />
+    <Contact lang={lang} />
+    <Sponsor lang={lang} />
+  </main>
+  <Footer lang={lang} />
+</Layout>

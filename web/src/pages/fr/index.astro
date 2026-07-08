@@ -1,0 +1,36 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Hero from '../../components/Hero.astro';
+import UseCases from '../../components/UseCases.astro';
+import Principles from '../../components/Principles.astro';
+import Features from '../../components/Features.astro';
+import Compare from '../../components/Compare.astro';
+import Download from '../../components/Download.astro';
+import Faq from '../../components/Faq.astro';
+import Contact from '../../components/Contact.astro';
+import Sponsor from '../../components/Sponsor.astro';
+import Footer from '../../components/Footer.astro';
+
+const lang = 'fr' as const;
+---
+
+<Layout
+  title="SoloMD — Éditeur Markdown où vivent les agents : Panneau Agent + Recipes planifiés + Trace + MCP"
+  description="Éditeur Markdown léger (~15 Mo, MIT). v4.0 ajoute panneau Agent intégré, recipes planifiés, trace rejouable et fédération MCP multi-vault. Sandbox de branche AutoGit signifie que les écritures autonomes doivent être accept/reject. 14 providers IA BYOK (Ollama inclus)."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <Hero lang={lang} />
+    <UseCases lang={lang} />
+    <Principles lang={lang} />
+    <Features lang={lang} />
+    <Compare lang={lang} />
+    <Download lang={lang} />
+    <Faq lang={lang} />
+    <Contact lang={lang} />
+    <Sponsor lang={lang} />
+  </main>
+  <Footer lang={lang} />
+</Layout>

@@ -1,0 +1,212 @@
+---
+import '../styles/global.css';
+import type { Lang } from '../i18n/translations';
+
+interface Props {
+  title?: string;
+  description?: string;
+  lang?: Lang;
+}
+
+const {
+  title = 'SoloMD — Lightweight Markdown editor',
+  description = 'A lightweight, cross-platform Markdown + plain text editor.',
+  lang = 'en',
+} = Astro.props;
+
+const HTML_LANG = { en: 'en', zh: 'zh-CN', ja: 'ja', ko: 'ko', de: 'de', fr: 'fr', es: 'es', pt: 'pt', it: 'it', pl: 'pl', nl: 'nl', tr: 'tr', sv: 'sv', uk: 'uk' } as const;
+const OG_LOCALE = { en: 'en_US', zh: 'zh_CN', ja: 'ja_JP', ko: 'ko_KR', de: 'de_DE', fr: 'fr_FR', es: 'es_ES', pt: 'pt_BR', it: 'it_IT', pl: 'pl_PL', nl: 'nl_NL', tr: 'tr_TR', sv: 'sv_SE', uk: 'uk_UA' } as const;
+const htmlLang = HTML_LANG[lang];
+const path = lang === 'en' ? '/' : `/${lang}/`;
+const ogLocale = OG_LOCALE[lang];
+---
+
+<!doctype html>
+<html lang={htmlLang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+
+    <link rel="alternate" hreflang="en" href="https://solomd.app/" />
+    <link rel="alternate" hreflang="zh-CN" href="https://solomd.app/zh/" />
+    <link rel="alternate" hreflang="ja" href="https://solomd.app/ja/" />
+    <link rel="alternate" hreflang="ko" href="https://solomd.app/ko/" />
+    <link rel="alternate" hreflang="de" href="https://solomd.app/de/" />
+    <link rel="alternate" hreflang="fr" href="https://solomd.app/fr/" />
+    <link rel="alternate" hreflang="es" href="https://solomd.app/es/" />
+    <link rel="alternate" hreflang="pt" href="https://solomd.app/pt/" />
+    <link rel="alternate" hreflang="it" href="https://solomd.app/it/" />
+    <link rel="alternate" hreflang="pl" href="https://solomd.app/pl/" />
+    <link rel="alternate" hreflang="nl" href="https://solomd.app/nl/" />
+    <link rel="alternate" hreflang="tr" href="https://solomd.app/tr/" />
+    <link rel="alternate" hreflang="sv" href="https://solomd.app/sv/" />
+    <link rel="alternate" hreflang="uk" href="https://solomd.app/uk/" />
+    <link rel="alternate" hreflang="x-default" href="https://solomd.app/" />
+    <link rel="canonical" href={`https://solomd.app${path}`} />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={`https://solomd.app${path}`} />
+    <meta property="og:site_name" content="SoloMD" />
+    <meta property="og:locale" content={ogLocale} />
+    <meta property="og:image" content="https://solomd.app/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/png" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content="https://solomd.app/og-image.png" />
+
+    <meta name="theme-color" content="#ff9f40" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0e0e0c" media="(prefers-color-scheme: dark)" />
+
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+
+    <!-- Marketing-site display serif. Source Serif 4 by Adobe, OFL — used
+         only on /landing and /blog headings; the desktop app does not
+         load any external font. preconnect keeps the round-trips off
+         the critical path. font-display: swap means the page renders
+         immediately in system serif if the network is slow. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" />
+
+    <!-- Sitemap discovery hint -->
+    <link rel="sitemap" type="application/xml" href="/sitemap-index.xml" />
+
+    <!-- JSON-LD: BreadcrumbList -->
+    <script type="application/ld+json" set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "SoloMD", "item": "https://solomd.app/" },
+        ...(lang === 'zh' ? [{ "@type": "ListItem", "position": 2, "name": "中文", "item": "https://solomd.app/zh/" }] : []),
+        ...(lang === 'ja' ? [{ "@type": "ListItem", "position": 2, "name": "日本語", "item": "https://solomd.app/ja/" }] : []),
+        ...(lang === 'ko' ? [{ "@type": "ListItem", "position": 2, "name": "한국어", "item": "https://solomd.app/ko/" }] : []),
+        ...(lang === 'de' ? [{ "@type": "ListItem", "position": 2, "name": "Deutsch", "item": "https://solomd.app/de/" }] : []),
+        ...(lang === 'fr' ? [{ "@type": "ListItem", "position": 2, "name": "Français", "item": "https://solomd.app/fr/" }] : []),
+        ...(lang === 'es' ? [{ "@type": "ListItem", "position": 2, "name": "Español", "item": "https://solomd.app/es/" }] : []),
+        ...(lang === 'pt' ? [{ "@type": "ListItem", "position": 2, "name": "Português", "item": "https://solomd.app/pt/" }] : []),
+        ...(lang === 'it' ? [{ "@type": "ListItem", "position": 2, "name": "Italiano", "item": "https://solomd.app/it/" }] : []),
+        ...(lang === 'pl' ? [{ "@type": "ListItem", "position": 2, "name": "Polski", "item": "https://solomd.app/pl/" }] : []),
+        ...(lang === 'nl' ? [{ "@type": "ListItem", "position": 2, "name": "Nederlands", "item": "https://solomd.app/nl/" }] : []),
+        ...(lang === 'tr' ? [{ "@type": "ListItem", "position": 2, "name": "Türkçe", "item": "https://solomd.app/tr/" }] : []),
+        ...(lang === 'sv' ? [{ "@type": "ListItem", "position": 2, "name": "Svenska", "item": "https://solomd.app/sv/" }] : []),
+        ...(lang === 'uk' ? [{ "@type": "ListItem", "position": 2, "name": "Українська", "item": "https://solomd.app/uk/" }] : []),
+      ]
+    })} />
+
+    <!-- JSON-LD: SoftwareApplication (helps Google software result cards + LLM citations) -->
+    <script type="application/ld+json" set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "SoloMD",
+      "alternateName": ["#MD", "Solo MD"],
+      "description": "Free, open-source Markdown editor for macOS, Windows, Linux, Android, and iOS. ~15 MB installer, MIT license, offline-first, no accounts, no in-app purchases, no ads. Ships live preview, Wiki links, local RAG, 14 BYOK AI providers, themes, AutoGit, MCP server, and Pomodoro in core.",
+      "applicationCategory": "ProductivityApplication",
+      "applicationSubCategory": "Markdown Editor",
+      "operatingSystem": "macOS, Windows, Linux, Android, iOS",
+      "softwareVersion": "4.8.9",
+      "datePublished": "2026-05-17",
+      "fileSize": "15MB",
+      "url": "https://solomd.app",
+      "downloadUrl": "https://github.com/zhitongblog/solomd/releases/latest",
+      "license": "https://opensource.org/licenses/MIT",
+      "softwareRequirements": "macOS 11+ · Windows 10+ · Linux x64/ARM64 · Android 7+ (API 24) · iOS 15+",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD",
+        "availability": "https://schema.org/InStock",
+      },
+      "author": {
+        "@type": "Person",
+        "name": "xiangdong li",
+        "url": "https://github.com/zhitongblog",
+      },
+      "publisher": {
+        "@type": "Person",
+        "name": "xiangdong li",
+      },
+      "featureList": [
+        "Live Preview Markdown editor (Typora-style WYSIWYG)",
+        "Wiki links with outline + backlinks panel",
+        "Local RAG / semantic search (on-device embedder, zero cloud calls)",
+        "14 BYOK AI providers — OpenAI, Claude, Gemini, xAI, Mistral, Groq, DeepSeek, Qwen, GLM, Kimi, Doubao, SiliconFlow, OpenRouter, Ollama",
+        "AutoGit — every save becomes a local commit with one-click restore",
+        "MCP server bundled for Claude Desktop / Cursor / Codex CLI",
+        "Pomodoro timer with writing goals and streak counter",
+        "8 built-in themes plus custom CSS injection",
+        "KaTeX math + Mermaid diagrams + 13-language syntax highlighting",
+        "Image paste & drag-drop (auto-saves to _assets/)",
+        "Slideshow mode (Cmd+Opt+P renders active doc as slides)",
+        "Vim mode with full emulation including macros and registers",
+        "Pandoc export to PDF, DOCX, EPUB, ODT, LaTeX, RTF",
+        "Markdown converter for .docx / .pdf / .xlsx / .pptx / .csv input",
+        "Multi-encoding support (UTF-8, UTF-16, GBK, GB18030, Big5, Shift_JIS auto-detect)",
+        "Chinese-first: CJK word count, Simplified ↔ Traditional, pinyin export",
+        "Multi-window + tabs + file tree + ripgrep global search",
+        "Command palette (Cmd+Shift+K)",
+        "Zero telemetry by default",
+        "Offline-first: no accounts, no cloud lock-in",
+      ],
+      "inLanguage": ["en", "zh-CN", "ja", "ko", "de", "fr", "es", "pt", "it", "pl", "nl", "tr", "sv", "uk"],
+    })} />
+
+    <!-- JSON-LD: HowTo (install SoloMD) — helps Google + LLMs cite install steps -->
+    <script type="application/ld+json" set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "HowTo",
+      "name": "How to install SoloMD",
+      "description": "Install SoloMD, the free open-source Markdown editor, on macOS, Windows, Linux, Android, or iOS.",
+      "totalTime": "PT2M",
+      "supply": [{ "@type": "HowToSupply", "name": "A terminal (macOS/Linux) or PowerShell (Windows)" }],
+      "tool": [{ "@type": "HowToTool", "name": "curl or PowerShell" }],
+      "step": [
+        {
+          "@type": "HowToStep",
+          "position": 1,
+          "name": "macOS / Linux — one-line install",
+          "text": "Open a terminal and run: curl -fsSL https://solomd.app/install.sh | bash. The script auto-detects your OS and CPU architecture, downloads the latest .dmg / .deb / .AppImage from GitHub Releases, and installs it.",
+          "url": "https://solomd.app/install.sh",
+        },
+        {
+          "@type": "HowToStep",
+          "position": 2,
+          "name": "Windows — one-line install",
+          "text": "Open PowerShell and run: irm https://solomd.app/install.ps1 | iex. Downloads SoloMD_4.8.9_x64_en-US.msi from GitHub Releases and runs the installer.",
+          "url": "https://solomd.app/install.ps1",
+        },
+        {
+          "@type": "HowToStep",
+          "position": 3,
+          "name": "Android — sideload or Play Store",
+          "text": "Download SoloMD_4.8.9_universal.apk from https://github.com/zhitongblog/solomd/releases/latest and tap to install (Settings → enable Install from Unknown Sources). Or join the closed Play Store beta by emailing lixd220@gmail.com.",
+          "url": "https://github.com/zhitongblog/solomd/releases/latest",
+        },
+        {
+          "@type": "HowToStep",
+          "position": 4,
+          "name": "iOS — App Store",
+          "text": "Search 'SoloMD' on the App Store and tap Install. iOS 15+ required.",
+          "url": "https://apps.apple.com/app/solomd",
+        },
+      ],
+    })} />
+
+    <!-- Google AdSense -->
+    <meta name="google-adsense-account" content="ca-pub-7786364053868586">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7786364053868586" crossorigin="anonymous"></script>
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

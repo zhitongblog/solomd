@@ -1,0 +1,171 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import Giscus from '../../components/Giscus.astro';
+
+const lang = 'en' as const;
+---
+
+<Layout
+  title="SoloMD v3.6 — Live-edit image/table widgets and 5 polish fixes"
+  description="The long-standing live-edit gap is closed: standalone image lines and GFM tables now render in place inside the editor, with the source coming back the moment the cursor enters. Plus AI button routing, image export crop-to-content, optional watermark, folder picker memory, and a Mac toolbar overflow fix."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <article class="container blog-article">
+      <nav class="breadcrumbs">
+        <a href="/">Home</a> / <a href="/blog/">Blog</a> / <span>v3.6</span>
+      </nav>
+      <time>2026-04-29</time>
+      <h1>v3.6 — Live-edit blocks, plus 5 polish fixes</h1>
+      <p class="lead">
+        v3.6 closes a live-edit gap that has been awkward since v2.3:
+        <strong>standalone image lines and GFM tables now render in
+        place</strong>, source returning the moment the cursor enters.
+        Bundled with that: <strong>five polish fixes</strong> rolled in
+        from rapid feedback after v3.5.5 — AI settings routing, PNG
+        export sizing, an optional watermark, folder-picker memory, and
+        a Mac toolbar overflow fix.
+      </p>
+
+      <h2>🔨 #44 — Live-edit blocks for images and tables</h2>
+      <p>
+        In live-edit view (the toolbar's pen-on-paper icon), markdown
+        source is shown inline with formatting applied. Until v3.6, two
+        block-level kinds didn't render in place: a line containing only
+        <code>![alt](url)</code> sat as raw source, and a GFM table
+        block read as plain pipe-separated text.
+      </p>
+      <p>
+        v3.6 adds a new CodeMirror 6 block-decoration extension at
+        <code>app/src/lib/cm-live-blocks.ts</code>:
+      </p>
+      <ul>
+        <li>
+          A line whose <em>entire content</em> is an image
+          (<code>![alt](url)</code> with no surrounding prose) collapses
+          to an actual <code>&lt;img&gt;</code> element. Image source
+          flows through the same <code>resolveImageSrc</code> path the
+          Preview pane uses, so relative paths resolve against the
+          workspace + the active note's directory.
+        </li>
+        <li>
+          A header row plus separator (<code>|---|</code> / <code>|:---:|</code>)
+          plus at least one body row collapses to a real
+          <code>&lt;table&gt;</code>, rendered through the same
+          markdown-it pipeline as Preview.
+        </li>
+      </ul>
+      <p>
+        Both widgets unmount the moment the cursor enters any line
+        inside the matched block range. No view-mode switch needed —
+        edit, see source; move on, see render. The decoration is
+        rebuilt on doc change, selection change, or viewport scroll, so
+        feedback feels instantaneous.
+      </p>
+      <p>
+        Why a strict whole-line match for images rather than inline?
+        Because replacing inline images would split a paragraph in the
+        middle of a sentence and break the natural reading flow of the
+        source. Live-edit's whole point is to keep the source one
+        cursor-move away — surprise inline collapses fight that.
+      </p>
+
+      <h2>✅ Five polish fixes</h2>
+      <p>All small individually, but they were stacking up after v3.5.5:</p>
+      <ol>
+        <li>
+          <strong>AI button → wrong settings location.</strong> Clicking
+          the toolbar AI button when AI was disabled used to open the
+          Settings panel on the default <em>Basics</em> tab — not where
+          the AI toggle actually lives. The
+          <code>solomd:open-settings</code> event now carries an
+          optional <code>detail.section</code>, and AI entry points
+          (toolbar + AI rewrite overlay) pass <code>'integrations'</code>
+          so users land directly on the AI block.
+        </li>
+        <li>
+          <strong>Image export crop-to-content.</strong> Short notes
+          used to export with empty space below them — html2canvas was
+          capturing more than the rendered article's bounding box. Fix:
+          pass explicit
+          <code>width / height / windowWidth / windowHeight</code> from
+          <code>getBoundingClientRect()</code> so the canvas matches
+          the rendered DOM exactly.
+        </li>
+        <li>
+          <strong>"Created with SoloMD" watermark — now a setting.</strong>
+          Previously hardcoded as a footer on every PNG export.
+          Reasonable default for a free MIT app, but it should be
+          opt-out, not forced. New setting <code>imageExportBranding</code>
+          (default ON) is toggleable in <strong>Settings → Export</strong>;
+          when off, exports skip the footer + use tighter bottom
+          padding so short notes don't carry phantom space.
+        </li>
+        <li>
+          <strong>Folder picker remembers last workspace.</strong>
+          <code>useFiles.openFolder()</code> now passes
+          <code>defaultPath: workspace.currentFolder</code> to the
+          Tauri folder dialog. Without it, the OS picker reopened at
+          the system default each time, ignoring the workspace SoloMD
+          already had loaded.
+        </li>
+        <li>
+          <strong>Mac narrow-window toolbar overflow.</strong> When the
+          window was narrow enough that the toolbar's natural width
+          exceeded it, right-side buttons (AI / Sponsor / Settings)
+          were silently clipped. <code>.toolbar</code> is now
+          <code>overflow-x: auto</code> with a hidden scrollbar +
+          <code>flex-shrink: 0</code> on every child group; right-edge
+          buttons stay reachable via two-finger swipe at any window
+          width.
+        </li>
+      </ol>
+
+      <h2>📥 Download</h2>
+      <p>
+        <a class="btn btn--primary" href="https://github.com/zhitongblog/solomd/releases/tag/v3.6.0">Download v3.6.0 →</a>
+        &nbsp;
+        <a class="btn" href="https://github.com/zhitongblog/solomd/releases">All releases</a>
+      </p>
+      <p>
+        Existing v3.0.x+ users see the in-app update prompt within 24h.
+        On Mac, <code>brew upgrade --cask solomd</code> works too.
+        CLI / MCP server are bumped to 3.6.0 in lockstep.
+      </p>
+
+      <h2>What's next — v3.7</h2>
+      <p>
+        iPad and Mac App Store resubmission gates are next on the
+        list. Beyond that, v4 continues the agent-endpoint thrust
+        (CLI + MCP + BYOK) — keep an eye on
+        <a href="https://github.com/zhitongblog/solomd/discussions">Discussions</a>
+        for direction.
+      </p>
+    </article>
+    <Giscus lang={lang} />
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .blog-article { max-width: 760px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .blog-article time { font-size: 13px; color: var(--text-muted, #888); }
+  .blog-article h1 { font-size: 2.2rem; line-height: 1.2; margin: 8px 0 18px; }
+  .blog-article h2 { font-size: 1.4rem; margin: 36px 0 12px; }
+  .blog-article .lead { color: var(--text-muted, #555); font-size: 1.1rem; line-height: 1.6; margin-bottom: 28px; }
+  .blog-article p { line-height: 1.75; margin: 14px 0; }
+  .blog-article ul, .blog-article ol { padding-left: 22px; }
+  .blog-article li { margin: 6px 0; line-height: 1.7; }
+  .blog-article code { background: #f5f5f0; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+  .blog-article pre { background: #f5f5f0; padding: 14px 18px; border-radius: 8px; overflow-x: auto; }
+  .blog-article pre code { background: transparent; padding: 0; }
+  .blog-article a:not(.btn) { color: #ff9f40; }
+  .blog-article kbd { background: #f5f5f0; border: 1px solid #ddd; border-radius: 3px; padding: 1px 6px; font-family: ui-monospace, Menlo, monospace; font-size: 0.85em; }
+  .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  .btn--primary { background: #ff9f40; color: #000 !important; }
+</style>

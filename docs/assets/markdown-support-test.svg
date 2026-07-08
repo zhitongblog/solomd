@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="220" viewBox="0 0 640 220" role="img" aria-labelledby="title desc">
+  <title id="title">SoloMD Markdown test image</title>
+  <desc id="desc">A simple SVG used by the Markdown support test document.</desc>
+  <rect width="640" height="220" rx="18" fill="#f6f8fa"/>
+  <rect x="24" y="24" width="592" height="172" rx="14" fill="#ffffff" stroke="#d0d7de"/>
+  <circle cx="92" cy="110" r="48" fill="#0969da"/>
+  <path d="M74 111l13 13 29-36" fill="none" stroke="#ffffff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="166" y="98" font-family="Segoe UI, Arial, sans-serif" font-size="30" font-weight="700" fill="#24292f">Markdown image loaded</text>
+  <text x="166" y="136" font-family="Segoe UI, Arial, sans-serif" font-size="18" fill="#57606a">Relative SVG asset for SoloMD preview/export checks</text>
+</svg>

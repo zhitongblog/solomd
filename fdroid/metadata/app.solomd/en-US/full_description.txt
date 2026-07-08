@@ -1,0 +1,18 @@
+SoloMD is a lightweight, distraction-free editor for Markdown and plain text. One file. One window. Just write.
+
+Features
+========
+
+* Live Markdown preview — KaTeX math, Mermaid diagrams, syntax highlighting, Wardley maps, mindmaps.
+* Wikilinks, backlinks, tags, per-note outline, full-text + semantic search.
+* Local RAG: vector search over your workspace, stored entirely on-device. No data leaves your phone unless you opt in.
+* Hunspell-compatible spell-check (English + CJK out of the box; add dictionaries from the marketplace).
+* Themes (light / dark / community-contributed), focus mode, typewriter mode, Pomodoro timer.
+* Optional BYOK AI: bring your own OpenAI / Anthropic / DeepSeek / Ollama key to use AI rewrite + chat-with-vault. The app makes no paid calls of its own. The key stays on-device.
+* Import / export to HTML, DOCX, PDF, image, plain text.
+* 14-language UI: English, Chinese, Japanese, Korean, German, French, Spanish, Italian, Portuguese, Polish, Dutch, Turkish, Swedish, Ukrainian.
+
+Privacy
+=======
+
+SoloMD does no analytics by default — the optional anonymous "did the app start up" pings can be turned off in Settings. Files live on your device, in a folder you pick. The optional GitHub sync feature pushes to a repo you own; SoloMD itself has no cloud.

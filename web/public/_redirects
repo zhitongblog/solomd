@@ -1,0 +1,157 @@
+# Cloudflare Pages redirects — fix 404s flagged by Google Search Console.
+# Only `zh` has a full localized content tree (blog/security/compare/docs/...).
+# All other langs only ship `/` and `/whats-new/`; subpath requests fall
+# back to the English equivalent.
+
+# Specific blog post that exists only in English (referenced from zh README)
+/zh/blog/v4-0-0-how-we-built-it    /blog/v4-0-0-how-we-built-it/    301
+/zh/blog/v4-0-0-how-we-built-it/   /blog/v4-0-0-how-we-built-it/    301
+
+# Non-zh localized subpaths fall back to the English page.
+# Pattern: /<lang>/<path>  →  /<path>
+/ja/blog/*         /blog/:splat        301
+/ja/security/*     /security/:splat    301
+/ja/security       /security/          301
+/ja/docs/*         /docs/:splat        301
+/ja/compare/*      /compare/:splat     301
+/ja/community/*    /community/:splat   301
+/ja/agents/*       /agents/:splat      301
+/ja/themes/*       /themes/:splat      301
+/ja/sync/*         /sync/:splat        301
+/ja/share/*        /share/:splat       301
+/ja/thanks/*       /thanks/:splat      301
+/ja/privacy/*      /privacy/:splat     301
+/ja/ios-shortcuts/* /ios-shortcuts/:splat 301
+
+/ko/blog/*         /blog/:splat        301
+/ko/security/*     /security/:splat    301
+/ko/security       /security/          301
+/ko/docs/*         /docs/:splat        301
+/ko/compare/*      /compare/:splat     301
+/ko/community/*    /community/:splat   301
+/ko/agents/*       /agents/:splat      301
+/ko/themes/*       /themes/:splat      301
+/ko/sync/*         /sync/:splat        301
+/ko/share/*        /share/:splat       301
+/ko/thanks/*       /thanks/:splat      301
+/ko/privacy/*      /privacy/:splat     301
+
+/de/blog/*         /blog/:splat        301
+/de/security/*     /security/:splat    301
+/de/docs/*         /docs/:splat        301
+/de/compare/*      /compare/:splat     301
+/de/community/*    /community/:splat   301
+/de/agents/*       /agents/:splat      301
+/de/themes/*       /themes/:splat      301
+/de/sync/*         /sync/:splat        301
+/de/share/*        /share/:splat       301
+/de/thanks/*       /thanks/:splat      301
+/de/privacy/*      /privacy/:splat     301
+
+/fr/blog/*         /blog/:splat        301
+/fr/security/*     /security/:splat    301
+/fr/docs/*         /docs/:splat        301
+/fr/compare/*      /compare/:splat     301
+/fr/community/*    /community/:splat   301
+/fr/agents/*       /agents/:splat      301
+/fr/themes/*       /themes/:splat      301
+/fr/sync/*         /sync/:splat        301
+/fr/share/*        /share/:splat       301
+/fr/thanks/*       /thanks/:splat      301
+/fr/privacy/*      /privacy/:splat     301
+
+/es/blog/*         /blog/:splat        301
+/es/security/*     /security/:splat    301
+/es/docs/*         /docs/:splat        301
+/es/compare/*      /compare/:splat     301
+/es/community/*    /community/:splat   301
+/es/agents/*       /agents/:splat      301
+/es/themes/*       /themes/:splat      301
+/es/sync/*         /sync/:splat        301
+/es/share/*        /share/:splat       301
+/es/thanks/*       /thanks/:splat      301
+/es/privacy/*      /privacy/:splat     301
+
+/pt/blog/*         /blog/:splat        301
+/pt/security/*     /security/:splat    301
+/pt/docs/*         /docs/:splat        301
+/pt/compare/*      /compare/:splat     301
+/pt/community/*    /community/:splat   301
+/pt/agents/*       /agents/:splat      301
+/pt/themes/*       /themes/:splat      301
+/pt/sync/*         /sync/:splat        301
+/pt/share/*        /share/:splat       301
+/pt/thanks/*       /thanks/:splat      301
+/pt/privacy/*      /privacy/:splat     301
+
+/it/blog/*         /blog/:splat        301
+/it/security/*     /security/:splat    301
+/it/docs/*         /docs/:splat        301
+/it/compare/*      /compare/:splat     301
+/it/community/*    /community/:splat   301
+/it/agents/*       /agents/:splat      301
+/it/themes/*       /themes/:splat      301
+/it/sync/*         /sync/:splat        301
+/it/share/*        /share/:splat       301
+/it/thanks/*       /thanks/:splat      301
+/it/privacy/*      /privacy/:splat     301
+
+/pl/blog/*         /blog/:splat        301
+/pl/security/*     /security/:splat    301
+/pl/docs/*         /docs/:splat        301
+/pl/compare/*      /compare/:splat     301
+/pl/community/*    /community/:splat   301
+/pl/agents/*       /agents/:splat      301
+/pl/themes/*       /themes/:splat      301
+/pl/sync/*         /sync/:splat        301
+/pl/share/*        /share/:splat       301
+/pl/thanks/*       /thanks/:splat      301
+/pl/privacy/*      /privacy/:splat     301
+
+/nl/blog/*         /blog/:splat        301
+/nl/security/*     /security/:splat    301
+/nl/docs/*         /docs/:splat        301
+/nl/compare/*      /compare/:splat     301
+/nl/community/*    /community/:splat   301
+/nl/agents/*       /agents/:splat      301
+/nl/themes/*       /themes/:splat      301
+/nl/sync/*         /sync/:splat        301
+/nl/share/*        /share/:splat       301
+/nl/thanks/*       /thanks/:splat      301
+/nl/privacy/*      /privacy/:splat     301
+
+/tr/blog/*         /blog/:splat        301
+/tr/security/*     /security/:splat    301
+/tr/docs/*         /docs/:splat        301
+/tr/compare/*      /compare/:splat     301
+/tr/community/*    /community/:splat   301
+/tr/agents/*       /agents/:splat      301
+/tr/themes/*       /themes/:splat      301
+/tr/sync/*         /sync/:splat        301
+/tr/share/*        /share/:splat       301
+/tr/thanks/*       /thanks/:splat      301
+/tr/privacy/*      /privacy/:splat     301
+
+/sv/blog/*         /blog/:splat        301
+/sv/security/*     /security/:splat    301
+/sv/docs/*         /docs/:splat        301
+/sv/compare/*      /compare/:splat     301
+/sv/community/*    /community/:splat   301
+/sv/agents/*       /agents/:splat      301
+/sv/themes/*       /themes/:splat      301
+/sv/sync/*         /sync/:splat        301
+/sv/share/*        /share/:splat       301
+/sv/thanks/*       /thanks/:splat      301
+/sv/privacy/*      /privacy/:splat     301
+
+/uk/blog/*         /blog/:splat        301
+/uk/security/*     /security/:splat    301
+/uk/docs/*         /docs/:splat        301
+/uk/compare/*      /compare/:splat     301
+/uk/community/*    /community/:splat   301
+/uk/agents/*       /agents/:splat      301
+/uk/themes/*       /themes/:splat      301
+/uk/sync/*         /sync/:splat        301
+/uk/share/*        /share/:splat       301
+/uk/thanks/*       /thanks/:splat      301
+/uk/privacy/*      /privacy/:splat     301

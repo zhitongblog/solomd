@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <!-- v4.3.x issue #73 — `viewport-fit=cover` is required for mobile
+         WebViews (iOS WKWebView, Android wry) to expose system-bar insets
+         via `env(safe-area-inset-*)` CSS variables. Without it the SoloMD
+         toolbar draws under the carrier-signal / battery status bar on
+         Android and the bottom status bar overlaps the system nav bar.
+         `user-scalable=no` because the app provides its own ⌘+/⌘-/⌘0
+         zoom controls; pinch-zoom would break editor selection. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+    <title>SoloMD</title>
+  </head>
+
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

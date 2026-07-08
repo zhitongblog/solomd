@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <filter id="shadow" x="-8%" y="-8%" width="116%" height="116%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="16"/>
+      <feOffset dx="0" dy="14" result="offsetblur"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.16"/>
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <g filter="url(#shadow)">
+    <path
+      d="M 200 112 L 706 112 L 884 290 L 884 898 Q 884 928 854 928 L 230 928 Q 200 928 200 898 Z"
+      fill="#F7FBFF"
+      stroke="#246A73"
+      stroke-width="18"
+      stroke-linejoin="round"/>
+
+    <path
+      d="M 706 112 L 884 290 L 706 290 Z"
+      fill="#CFECEF"
+      stroke="#246A73"
+      stroke-width="18"
+      stroke-linejoin="round"/>
+
+    <path
+      d="M 236 640 L 848 640 L 848 898 Q 848 892 842 892 L 236 892 Z"
+      fill="#E8F5F6"
+      opacity="0.72"/>
+  </g>
+
+  <g transform="translate(542,505)" text-anchor="middle">
+    <text
+      x="-128"
+      y="26"
+      font-family="ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, monospace"
+      font-size="350"
+      font-weight="900"
+      fill="#F39C38">#</text>
+    <text
+      x="116"
+      y="28"
+      font-family="Inter, system-ui, -apple-system, 'Segoe UI', sans-serif"
+      font-size="268"
+      font-weight="900"
+      fill="#116A78">MD</text>
+  </g>
+
+  <g stroke="#74A6AC" stroke-width="14" stroke-linecap="round">
+    <line x1="306" y1="714" x2="762" y2="714"/>
+    <line x1="306" y1="774" x2="710" y2="774"/>
+    <line x1="306" y1="834" x2="626" y2="834"/>
+  </g>
+</svg>

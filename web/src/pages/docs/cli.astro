@@ -1,0 +1,114 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import Giscus from '../../components/Giscus.astro';
+
+const lang = 'en' as const;
+---
+
+<Layout
+  title="SoloMD CLI — Open, Search, Write Your Notes from the Terminal"
+  description="The solomd CLI lets you create notes, search the vault, and pipe Markdown around without leaving the shell."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <article class="container docs-article">
+      <nav class="breadcrumbs">
+        <a href="/">Home</a> / <a href="/docs/">Docs</a> / <span>CLI</span>
+      </nav>
+
+      <h1>SoloMD CLI</h1>
+      <p class="lead">
+        <code>solomd</code> is a small binary that exercises the same domain
+        functions as the GUI — open a note, create one, search the vault, list
+        files, print to stdout. Built for shell pipelines, cron jobs, and
+        muscle-memory ops.
+      </p>
+
+      <h2>Install</h2>
+      <p>
+        macOS / Linux — paste this in your terminal:
+      </p>
+      <pre class="code"><code>curl -fsSL https://raw.githubusercontent.com/zhitongblog/solomd/main/scripts/install-cli.sh | bash</code></pre>
+      <p>
+        It drops a <code>solomd</code> binary into <code>/usr/local/bin</code>.
+        Windows users can grab the standalone <code>solomd.exe</code> from
+        <a href="https://github.com/zhitongblog/solomd/releases" rel="external">the releases page</a>
+        and add it to <code>%PATH%</code>.
+      </p>
+
+      <h2>Subcommands</h2>
+      <table class="kb-table">
+        <thead><tr><th>Command</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><th><code>solomd open &lt;title|path&gt;</code></th><td>Open a note in SoloMD. Title-as-arg uses fuzzy match against the vault.</td></tr>
+          <tr><th><code>solomd new &lt;title&gt; [text]</code></th><td>Create a new note with the given title and optional body, then open it.</td></tr>
+          <tr><th><code>solomd list [folder]</code></th><td>List Markdown files in the workspace (or a sub-folder).</td></tr>
+          <tr><th><code>solomd search &lt;query&gt;</code></th><td>Grep your notes. Returns paths + matching lines.</td></tr>
+          <tr><th><code>solomd cat &lt;title|path&gt;</code></th><td>Print a note to stdout — pipe into <code>pandoc</code>, <code>fzf</code>, anything.</td></tr>
+          <tr><th><code>solomd help</code></th><td>Show the full subcommand list.</td></tr>
+        </tbody>
+      </table>
+
+      <h2>Examples</h2>
+      <pre class="code"><code>{`# Quick capture from anywhere
+solomd new "standup 2026-04-26" "$(pbpaste)"
+
+# Find every note that mentions "rust"
+solomd search rust
+
+# Pipe a note through pandoc
+solomd cat "weekly-review" | pandoc -t docx -o weekly-review.docx
+
+# Cron: append a daily journal stub each morning
+solomd new "$(date +%F)" "## $(date +%A)\n\n- [ ] "`}</code></pre>
+
+      <h2>How it finds your vault</h2>
+      <p>
+        The CLI reads the same <code>solomd-language</code> /
+        <code>solomd-workspace</code> preference files the GUI writes. If
+        you've opened a folder in SoloMD recently, the CLI will use that as
+        its workspace. To override, set <code>SOLOMD_WORKSPACE</code>:
+      </p>
+      <pre class="code"><code>SOLOMD_WORKSPACE=/path/to/notes solomd list</code></pre>
+
+      <h2>Combined with the MCP server</h2>
+      <p>
+        The CLI is what the user types; <code>solomd-mcp</code> is what the AI
+        calls. They share the same workspace state, so a model can write a new
+        note via MCP and you can immediately <code>solomd open</code> it from
+        the terminal — no reload, no race.
+      </p>
+      <p>
+        See <a href="/docs/mcp/">MCP server</a> for the AI side.
+      </p>
+
+      <p class="docs-footer">
+        Bug or missing subcommand? Open an issue on
+        <a href="https://github.com/zhitongblog/solomd/issues" rel="external">GitHub</a>.
+      </p>
+    </article>
+    <Giscus lang={lang} />
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .docs-article { max-width: 820px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .docs-article h1 { font-size: 2rem; margin: 10px 0 16px; }
+  .docs-article h2 { font-size: 1.4rem; margin: 32px 0 12px; }
+  .docs-article .lead { color: var(--text-muted, #555); margin-bottom: 24px; line-height: 1.6; }
+  .docs-article p { line-height: 1.7; margin: 12px 0; }
+  .kb-table { width: 100%; border-collapse: collapse; margin: 14px 0 20px; font-size: 14px; }
+  .kb-table th, .kb-table td { text-align: left; padding: 9px 12px; border-bottom: 1px solid #eee; }
+  .kb-table thead th { background: #fafafa; font-weight: 600; }
+  .kb-table tbody th { font-weight: 500; width: 38%; font-family: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace; font-size: 13px; }
+  .docs-article code { background: #f5f5f0; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+  .code { background: #f5f5f0; padding: 16px 18px; border-radius: 8px; overflow-x: auto; font-size: 13px; line-height: 1.55; margin: 14px 0; white-space: pre; }
+  .code code { background: transparent; padding: 0; }
+  .docs-footer { margin-top: 40px; font-size: 0.95rem; color: var(--text-muted, #555); }
+</style>

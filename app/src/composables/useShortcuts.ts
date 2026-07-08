@@ -1,0 +1,235 @@
+import { onMounted, onUnmounted } from 'vue';
+import { useFiles } from './useFiles';
+import { useExport } from './useExport';
+import { useSettingsStore } from '../stores/settings';
+import { useTabsStore } from '../stores/tabs';
+import { useTilesStore } from '../stores/tiles';
+import { useCommands } from './useCommands';
+import { useInbox } from './useInbox';
+import { usePomodoroStore, getLastPreset } from '../stores/pomodoro';
+
+interface Hooks {
+  openPalette?: () => void;
+  openSettings?: () => void;
+  openHelp?: () => void;
+  openGlobalSearch?: () => void;
+  /** v2.3: open the RAG / semantic-search panel. */
+  openRagSearch?: () => void;
+  /** v2.5: open the VSCode-style ⌘P quick file switcher. */
+  openQuickSwitcher?: () => void;
+  /** v2.5 F6: open the CJK proofread panel (⌘⇧J — J for "句"/sentence). */
+  openCjkProofread?: () => void;
+}
+
+export function useShortcuts(hooks: Hooks = {}) {
+  const files = useFiles();
+  const exporter = useExport();
+  const settings = useSettingsStore();
+  const tabs = useTabsStore();
+  const tiles = useTilesStore();
+  const commands = useCommands();
+  const inbox = useInbox();
+  const pomodoro = usePomodoroStore();
+
+  function runById(id: string) {
+    const cmd = commands.find((c) => c.id === id);
+    if (cmd) cmd.run();
+  }
+
+  /** #106 — cycle the focused pane to the previous/next tab in the bar.
+   *  Routes through tiles.setActiveTab so the pane's activeTabId stays in
+   *  lock-step with tabs.activeId (the same path a click takes). Wraps
+   *  around the ends so the shortcut never dead-ends. */
+  function activateTabByOffset(offset: 1 | -1) {
+    const list = tabs.tabs;
+    if (list.length < 2) return;
+    const cur = list.findIndex((t) => t.id === tabs.activeId);
+    const idx = cur < 0 ? 0 : (cur + offset + list.length) % list.length;
+    tiles.setActiveTab(tiles.focusedPaneId, list[idx].id);
+  }
+
+  function handler(e: KeyboardEvent) {
+    // F1 (no modifier) opens markdown help
+    if (e.key === 'F1') {
+      e.preventDefault();
+      hooks.openHelp?.();
+      return;
+    }
+
+    const mod = e.ctrlKey || e.metaKey;
+    if (!mod) return;
+    const k = e.key.toLowerCase();
+
+    // Ctrl+,  (settings)
+    if (e.key === ',') {
+      e.preventDefault();
+      hooks.openSettings?.();
+      return;
+    }
+
+    // Ctrl+/  (help)
+    if (e.key === '/') {
+      e.preventDefault();
+      hooks.openHelp?.();
+      return;
+    }
+
+    if (k === 'n' && e.shiftKey) {
+      e.preventDefault();
+      runById('window.new');
+    } else if (k === 'n' && e.altKey) {
+      e.preventDefault();
+      files.newTextFile();
+    } else if (k === 'n') {
+      e.preventDefault();
+      files.newFile();
+    } else if (k === 'o' && e.shiftKey) {
+      e.preventDefault();
+      runById('view.toggleOutline');
+    } else if (k === 'o') {
+      e.preventDefault();
+      files.openFile();
+    } else if (k === 'c' && e.shiftKey) {
+      e.preventDefault();
+      exporter.copyAsHtml();
+    } else if (k === 's' && e.shiftKey) {
+      e.preventDefault();
+      files.saveActiveAs();
+    } else if (k === 's') {
+      e.preventDefault();
+      files.saveActive();
+    } else if (k === 'w') {
+      e.preventDefault();
+      if (tabs.activeId) files.closeTabSafe(tabs.activeId);
+    } else if (k === 't' && !e.shiftKey && !e.altKey) {
+      // v2.4.2: ⌘T mirrors Chrome / Obsidian "new tab" muscle memory.
+      // Same effect as ⌘N — both create a fresh markdown tab.
+      e.preventDefault();
+      files.newFile();
+    } else if (k === 'p' && e.shiftKey && e.altKey) {
+      // v2.5: PDF-print moved to ⌘⌥⇧P so plain ⌘P can host the new
+      // VSCode-style quick file switcher (#1 v2.5 feature).
+      e.preventDefault();
+      runById('export.pdfPrint');
+    } else if (k === 'p' && e.shiftKey) {
+      e.preventDefault();
+      settings.cycleViewMode();
+    } else if (k === 'p' && e.altKey) {
+      e.preventDefault();
+      runById('view.slideshow');
+    } else if (k === 'p') {
+      // v2.5: ⌘P opens the quick file switcher (VSCode-style).
+      e.preventDefault();
+      hooks.openQuickSwitcher?.();
+    } else if (k === 'r' && e.shiftKey) {
+      // v2.4: Cmd/Ctrl+Shift+R toggles reading mode. Pressing the same
+      // combo while already in reading mode restores the previous mode.
+      e.preventDefault();
+      settings.toggleReadingMode();
+    } else if (k === 'k' && e.shiftKey) {
+      e.preventDefault();
+      hooks.openPalette?.();
+    } else if (k === 'i' && e.shiftKey) {
+      // v4.6 F1: ⌘⇧I toggles the Properties inspector (frontmatter editor).
+      e.preventDefault();
+      settings.toggleInspector();
+    } else if (k === 'j' && e.shiftKey) {
+      // v2.5 F6: ⌘⇧J — CJK proofread panel. Shift differentiates from
+      // ⌘J (CodeMirror "AI rewrite", bound inside the editor keymap).
+      e.preventDefault();
+      hooks.openCjkProofread?.();
+    } else if (k === 'f' && e.shiftKey) {
+      e.preventDefault();
+      // v2.3: ⌘⇧F prefers semantic search when the user has opted in;
+      // otherwise we keep the legacy keyword search behaviour so muscle
+      // memory carries over.
+      if (settings.ragEnabled) {
+        hooks.openRagSearch?.();
+      } else {
+        hooks.openGlobalSearch?.();
+      }
+    } else if (k === 'f' && !e.shiftKey) {
+      if (settings.viewMode === 'preview' && tabs.activeTab?.language === 'markdown') {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('solomd:preview-search', {
+          detail: { paneId: tiles.focusedPaneId },
+        }));
+      }
+    } else if (k === 'b' && !e.altKey) {
+      e.preventDefault();
+      settings.toggleFileTree();
+    } else if (k === 'b' && e.altKey) {
+      // ⌥⌘B mirrors ⌘B on the right side: hide / show the Outline /
+      // Backlinks / Tags / History / Agent panel strip wholesale.
+      e.preventDefault();
+      settings.toggleRightSidebar();
+    } else if (k === 'l' && e.altKey) {
+      e.preventDefault();
+      runById('format.markdown');
+    } else if (k === 'd' && !e.shiftKey && !e.altKey) {
+      e.preventDefault();
+      runById('daily.openToday');
+    } else if (k === 'e' && !e.shiftKey && !e.altKey) {
+      // v2.4: ⌘E toggles `inbox: true|false` in the active doc's front matter.
+      // v4.6 F6: route through organizeAndAdvance — inside the inbox context
+      // (InboxView open / inbox filter on) with auto-advance enabled this
+      // marks the note organized and jumps to the next inbox note; everywhere
+      // else it degrades to the plain toggle. Disabled entirely when the
+      // workflow is opted out.
+      e.preventDefault();
+      if (settings.inboxWorkflowEnabled) {
+        void inbox.organizeAndAdvance();
+      } else {
+        inbox.toggleActive();
+      }
+    } else if (k === 'z' && e.shiftKey && !e.altKey) {
+      // v2.5 F4: ⌘⇧Z = "Zen" — start the last-used preset (or the
+      // settings default if no last-used). If a session is already
+      // running this is a no-op so the shortcut doesn't accidentally
+      // restart and lose the in-progress writing window.
+      e.preventDefault();
+      if (!pomodoro.active) {
+        const last = getLastPreset();
+        const min = Number.isFinite(last) && last > 0 ? last : settings.pomodoroDefaultMinutes;
+        pomodoro.start(min, { notify: true });
+      }
+    }
+
+    // #106 — ⌘[ / ⌘] cycle to the previous / next tab (Chrome/VSCode muscle
+    // memory). Matched on e.key so it's keyboard-layout precise.
+    if (e.key === '[') {
+      e.preventDefault();
+      activateTabByOffset(-1);
+      return;
+    }
+    if (e.key === ']') {
+      e.preventDefault();
+      activateTabByOffset(1);
+      return;
+    }
+
+    // Tile layout shortcuts
+    if (e.key === '\\') {
+      e.preventDefault();
+      if (e.shiftKey) {
+        tiles.splitPane(tiles.focusedPaneId, 'vertical');
+      } else {
+        tiles.splitPane(tiles.focusedPaneId, 'horizontal');
+      }
+      return;
+    }
+    if (k === 'arrowright' && e.altKey) {
+      e.preventDefault();
+      tiles.focusNextPane();
+      return;
+    }
+    if (k === 'arrowleft' && e.altKey) {
+      e.preventDefault();
+      tiles.focusPrevPane();
+      return;
+    }
+  }
+
+  onMounted(() => window.addEventListener('keydown', handler));
+  onUnmounted(() => window.removeEventListener('keydown', handler));
+}

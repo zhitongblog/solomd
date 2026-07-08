@@ -1,0 +1,8 @@
+{"ts":1714486987001,"run_id":"20260430-142307-a3f9c1","seq":1,"kind":"run_started","run_kind":"panel","provider":"anthropic","model":"claude-sonnet-4-6"}
+{"ts":1714486987120,"run_id":"20260430-142307-a3f9c1","seq":2,"kind":"prompt","role":"user","content":"summarize this week"}
+{"ts":1714486987130,"run_id":"20260430-142307-a3f9c1","seq":3,"kind":"model_call","provider":"anthropic","model":"claude-sonnet-4-6","messages_n":1,"tools_n":4}
+{"ts":1714486988050,"run_id":"20260430-142307-a3f9c1","seq":4,"kind":"tool_call","tool":"read_note","tool_call_id":"tc_a1","args":{"path":"weekly/2026-W17.md"}}
+{"ts":1714486988200,"run_id":"20260430-142307-a3f9c1","seq":5,"kind":"tool_result","tool_call_id":"tc_a1","result":"# Week 17\n- Decision: ship v4 panel\n","result_bytes":34,"result_chars":34}
+this line is intentionally malformed and the reader must skip it
+{"ts":1714486989500,"run_id":"20260430-142307-a3f9c1","seq":6,"kind":"model_done","text":"You decided to ship the v4 panel.","tokens_in":120,"tokens_out":42,"finish_reason":"stop"}
+{"ts":1714486989510,"run_id":"20260430-142307-a3f9c1","seq":7,"kind":"run_ended","status":"ok","tokens_in_total":120,"tokens_out_total":42,"cost_usd_estimate":0.0021}

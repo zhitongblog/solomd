@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#272728"/>
+      <stop offset="1" stop-color="#09090a"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.38" r="0.72">
+      <stop offset="0" stop-color="#ff9a2f" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#ff9a2f" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#bg)"/>
+  <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#glow)"/>
+  <rect x="34" y="34" width="956" height="956" rx="222" fill="none" stroke="#fff" stroke-opacity="0.08" stroke-width="3"/>
+  <text x="512" y="438" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Arial, sans-serif" font-size="184" font-weight="700" letter-spacing="-5" fill="#f5f1ea">Solo</text>
+  <text x="512" y="712" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Arial, sans-serif" font-size="286" font-weight="800" letter-spacing="1" fill="#ff8e1a">MD</text>
+  <path d="M364 502h296" stroke="#ffb351" stroke-width="8" stroke-linecap="round" opacity="0.28"/>
+</svg>

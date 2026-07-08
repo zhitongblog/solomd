@@ -1,0 +1,319 @@
+name: Release SoloMD
+
+# Trigger: push a tag that starts with `v`, e.g.
+#   git tag v0.1.0 && git push --tags
+# This kicks off a matrix build across macOS / Windows / Linux and uploads
+# the bundles to a draft GitHub Release named after the tag. The release
+# stays a draft so you can review the artifacts before flipping the
+# "Publish" switch.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch: # also allows manual triggering from the Actions tab
+
+jobs:
+  publish:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Windows x64
+          - platform: windows-latest
+            args: ''
+            rust_targets: ''
+          # Windows ARM64 — for Snapdragon X / Copilot+ PCs and Apple Silicon
+          # Macs running Windows 11 ARM in a VM. Native build avoids the x64
+          # emulation layer Windows-on-ARM would otherwise use.
+          - platform: windows-11-arm
+            args: ''
+            rust_targets: ''
+          # Linux x64 (.deb / .AppImage / .rpm)
+          - platform: ubuntu-22.04
+            args: ''
+            rust_targets: ''
+          # Linux ARM64 — for Raspberry Pi 4/5, Mac users running Linux VMs,
+          # Ampere servers, and ARM Chromebooks.
+          # Cross-compiled from x86_64 runner via aarch64 toolchain.
+          - platform: ubuntu-22.04-arm
+            args: ''
+            rust_targets: ''
+          # NOTE: macOS removed from CI matrix.
+          # Build locally with `./scripts/build-mac.sh` (full sign + notarize)
+          # then upload the resulting .dmg manually to the GitHub release.
+          # Reason: notarytool can hang indefinitely on GitHub-hosted runners
+          # without producing a clear error, burning hours of CI time.
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_targets }}
+
+      - name: Cache cargo
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: app/src-tauri -> target
+
+      - name: Install Linux build dependencies
+        if: startsWith(matrix.platform, 'ubuntu-')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libssl-dev \
+            libdbus-1-dev \
+            xdg-utils \
+            file \
+            fuse \
+            libfuse2
+
+      - name: Install frontend dependencies
+        run: cd app && pnpm install --frozen-lockfile
+
+      # Tauri's build.rs verifies externalBin presence at COMPILE time
+      # (not at bundle time), so the sidecar must exist before tauri-action
+      # runs cargo build. beforeBundleCommand can't help here — it runs
+      # after the rust build. Pre-build the sidecar for this matrix's
+      # rust triple, matching what tauri-action's TAURI_ENV_TARGET_TRIPLE
+      # will be.
+      - name: Pre-build solomd-mcp sidecar
+        shell: bash
+        run: |
+          set -euo pipefail
+          TRIPLE="$(rustc -vV | sed -n 's/^host: //p')"
+          echo "host triple: $TRIPLE"
+          bash scripts/build-mcp-sidecar.sh "$TRIPLE"
+
+      - name: Build & release with tauri-action
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # macOS signing/notarization secrets are no longer wired here —
+          # the macOS build is done locally on the maintainer's machine via
+          # scripts/build-mac.sh. See scripts/README.md.
+        with:
+          projectPath: app
+          tagName: ${{ github.ref_name }}
+          releaseName: 'SoloMD ${{ github.ref_name }}'
+          releaseBody: |
+            ## SoloMD ${{ github.ref_name }}
+
+            See assets below for downloads.
+
+            ### Install / 安装
+
+            - **macOS**: download `.dmg`, drag SoloMD to `/Applications`
+            - **Windows**: download `.msi`. On first launch you may see "Windows protected your PC" → click **More info** → **Run anyway** (one-time, until SmartScreen reputation builds). 首次运行点 "更多信息" → "仍要运行" 即可
+            - **Linux**: download `.AppImage` (`chmod +x` and run) or `.deb` / `.rpm`
+
+            🤖 Auto-built by GitHub Actions
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
+
+      # ----------------------------------------------------------------------
+      # v2.4: solomd-mcp standalone tarballs.
+      #
+      # `tauri-action` already ran `scripts/build-mcp-sidecar.sh` (via
+      # `beforeBundleCommand` in tauri.conf.json) and embedded the binary
+      # into the .app / .msi / .deb. We now repackage *that exact same
+      # binary* into a standalone tarball so users who don't want the
+      # desktop app (e.g. running a headless MCP server on a homelab box)
+      # can `curl install-mcp.sh | bash` and get the matched build.
+      #
+      # Linux x64:    solomd-mcp-linux-x64.tar.gz
+      # Linux arm64:  solomd-mcp-linux-arm64.tar.gz
+      # Windows x64:  solomd-mcp-win-x64.zip
+      # macOS:        produced locally via scripts/build-mac.sh, since
+      #               macOS isn't in this matrix anymore.
+      # ----------------------------------------------------------------------
+      - name: Pack solomd-mcp tarball (Linux)
+        if: startsWith(matrix.platform, 'ubuntu-')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # Map runner -> arch label install-mcp.sh expects.
+          case "${{ matrix.platform }}" in
+            ubuntu-22.04-arm) ARCH="arm64" ;;
+            ubuntu-22.04)     ARCH="x64" ;;
+            *) echo "unknown linux runner: ${{ matrix.platform }}"; exit 1 ;;
+          esac
+          ASSET="solomd-mcp-linux-${ARCH}.tar.gz"
+          # Tauri's externalBin produced the binary under
+          # mcp-server/target/<triple>/release/solomd-mcp via our pre-bundle
+          # script. Find it portably without hardcoding the triple.
+          BIN="$(find mcp-server/target -type f -name solomd-mcp -path '*/release/*' | head -1)"
+          if [[ -z "$BIN" || ! -x "$BIN" ]]; then
+            echo "Missing solomd-mcp release binary — beforeBundleCommand didn't run"
+            ls -la mcp-server/target || true
+            exit 1
+          fi
+          STAGE="$(mktemp -d)"
+          cp "$BIN" "$STAGE/solomd-mcp"
+          chmod +x "$STAGE/solomd-mcp"
+          tar -C "$STAGE" -czf "$ASSET" solomd-mcp
+          gh release upload "${{ github.ref_name }}" "$ASSET" --clobber
+
+      # ----------------------------------------------------------------------
+      # Windows portable .zip (issue #27) — same .exe Tauri produces, just
+      # zipped without the NSIS installer wrapper. Modern Win10/11 already
+      # has WebView2; users without it see a runtime prompt the first time.
+      # Skipped on non-Windows runners. Uploaded to the same draft release.
+      #
+      # Also packs solomd-mcp.exe into a separate `.zip` for `install-mcp.sh`.
+      # ----------------------------------------------------------------------
+      - name: Build Windows portable .zip
+        if: matrix.platform == 'windows-latest' || matrix.platform == 'windows-11-arm'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Architecture suffix matches what tauri-action picks for installer
+          # names (x64 vs arm64). install-mcp.sh expects the matching mcp zip.
+          $arch = if ("${{ matrix.platform }}" -eq "windows-11-arm") { "arm64" } else { "x64" }
+          $version = (Get-Content app/package.json -Raw | ConvertFrom-Json).version
+          $exe = "app/src-tauri/target/release/SoloMD.exe"
+          if (-Not (Test-Path $exe)) {
+            Write-Error "Missing $exe — Tauri build did not run as expected"
+            exit 1
+          }
+          # Locate the solomd-mcp.exe Tauri's externalBin built before the bundle.
+          $mcpExe = Get-ChildItem -Path "mcp-server/target" -Recurse -Filter "solomd-mcp.exe" |
+                    Where-Object { $_.FullName -match "\\release\\" } |
+                    Select-Object -First 1
+          $stage = "SoloMD_${version}_${arch}-portable"
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          Copy-Item $exe -Destination "$stage/SoloMD.exe"
+          if ($mcpExe) { Copy-Item $mcpExe.FullName -Destination "$stage/solomd-mcp.exe" }
+          # Tiny README the user finds inside the zip.
+          @"
+          SoloMD ${version} — portable build (${arch})
+
+          Just run SoloMD.exe. No installation required.
+          Settings + recents are stored in %APPDATA%\app.solomd as usual.
+
+          Requires Microsoft Edge WebView2 (preinstalled on Windows 10/11).
+          If launch fails with a WebView2 missing error, install from
+          https://go.microsoft.com/fwlink/p/?LinkId=2124703
+          "@ | Set-Content -Path "$stage/README.txt" -Encoding UTF8
+          $zip = "SoloMD_${version}_${arch}-portable.zip"
+          Compress-Archive -Path "$stage/*" -DestinationPath $zip -Force
+          gh release upload "${{ github.ref_name }}" $zip --clobber
+
+          # solomd-mcp standalone .zip (install-mcp.sh on Windows expects this).
+          if ($mcpExe) {
+            $mcpStage = "solomd-mcp-win-${arch}"
+            New-Item -ItemType Directory -Force -Path $mcpStage | Out-Null
+            Copy-Item $mcpExe.FullName -Destination "$mcpStage/solomd-mcp.exe"
+            $mcpZip = "solomd-mcp-win-${arch}.zip"
+            Compress-Archive -Path "$mcpStage/*" -DestinationPath $mcpZip -Force
+            gh release upload "${{ github.ref_name }}" $mcpZip --clobber
+          }
+
+      # ----------------------------------------------------------------------
+      # Verify install-mcp.sh's extract+place+chmod logic against the just-
+      # packed tarball. Uses LOCAL_TARBALL to bypass the GitHub releases CDN —
+      # at this point in the workflow the release is still draft, and the
+      # public download URL returns 404 for anonymous curl. Linux only —
+      # Windows tarballs are smoke-tested in the build step above.
+      # ----------------------------------------------------------------------
+      - name: Verify install-mcp.sh self-test
+        if: startsWith(matrix.platform, 'ubuntu-')
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "${{ matrix.platform }}" in
+            ubuntu-22.04-arm) ARCH="arm64" ;;
+            ubuntu-22.04)     ARCH="x64" ;;
+          esac
+          ASSET="solomd-mcp-linux-${ARCH}.tar.gz"
+          export LOCAL_TARBALL="$PWD/$ASSET"
+          if [[ ! -f "$LOCAL_TARBALL" ]]; then
+            echo "tarball missing at $LOCAL_TARBALL"; ls -la; exit 1
+          fi
+          export VERSION="${{ github.ref_name }}"
+          export INSTALL_DIR="$RUNNER_TEMP/mcp-self-test/bin"
+          bash scripts/install-mcp.sh
+          "$INSTALL_DIR/solomd-mcp" --version
+          echo "self-test ok"
+
+  # ---------------------------------------------------------------------------
+  # v2.4 web-clipper — Chrome MV3 + Firefox MV2 WebExtension. Independent job:
+  # the source is ~30 KB of TS, the build is 30 s, and it's fully decoupled
+  # from the desktop matrix. Uploads two store-ready zips + a source zip
+  # (the third is for Mozilla AMO's source-review requirement) to the same
+  # draft release.
+  # ---------------------------------------------------------------------------
+  web-clipper:
+    # Wait for the draft release to exist (one of the publish jobs creates it
+    # via tauri-action's `release: true`). Without `needs:`, we race against
+    # the matrix and fail with `release not found` when we land first.
+    needs: publish
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install web-clipper deps
+        working-directory: web-clipper
+        run: pnpm install --frozen-lockfile
+
+      - name: Type-check
+        working-directory: web-clipper
+        run: pnpm typecheck
+
+      - name: Build Chrome + Firefox bundles
+        working-directory: web-clipper
+        run: pnpm build
+
+      - name: Rename for release
+        working-directory: web-clipper/dist
+        run: |
+          cp chrome.zip solomd-clipper-chrome.zip
+          cp firefox.zip solomd-clipper-firefox.zip
+          cp source.zip solomd-clipper-source.zip
+
+      - name: Upload to GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.ref_name }}" \
+            web-clipper/dist/solomd-clipper-chrome.zip \
+            web-clipper/dist/solomd-clipper-firefox.zip \
+            web-clipper/dist/solomd-clipper-source.zip \
+            --clobber

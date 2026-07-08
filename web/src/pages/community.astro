@@ -1,0 +1,20 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import Community from '../components/Community.astro';
+
+const lang = 'en' as const;
+---
+
+<Layout
+  title="SoloMD Community — GitHub Discussions"
+  description="Ideas, polls, show-and-tell and Q&A from the SoloMD community. All threads live on GitHub Discussions — sign in once with your GitHub account."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <Community lang={lang} />
+  </main>
+  <Footer lang={lang} />
+</Layout>

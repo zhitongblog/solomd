@@ -1,0 +1,523 @@
+/* SoloMD brand styles + theme variables */
+
+/* v4.6 design-token layer. Imported FIRST so main.css + the 8 named themes
+ * cascade after it and win where they must. See styles/tokens.css. */
+@import "./tokens.css";
+
+:root {
+  /* v4.3.0 issue #78 — tell native form controls (most importantly
+     <select>) to render in the LIGHT palette by default. Without this,
+     webkit2gtk on KDE6 / Linux delegates select rendering to the system
+     theme, which on user's Plasma 6 dark setup painted the selected
+     text in a near-invisible color over our dark UI background. macOS
+     / Windows webviews honor `color-scheme` too and switch their form
+     widget palettes accordingly. Dark themes override this below. */
+  color-scheme: light;
+
+  /* brand */
+  --brand-bg: #000000;
+  --brand-fg: #ffffff;
+  --brand-accent: #ff9f40;
+
+  /* light theme (default) — v4.6 warm-neutral surfaces (plan §2.4).
+     --bg / --bg-elev / --border / --text / --text-muted are seeded in
+     tokens.css; re-stated here so the cascade order stays explicit and
+     legible. --bg-hover / --bg-active / --text-faint stay SoloMD-tuned. */
+  --bg: #ffffff;
+  --bg-elev: #f7f6f3;
+  --bg-hover: #f0eee8;
+  --bg-active: #ebe9e2;
+  --border: #e9e9e7;
+  --text: #37352f;
+  --text-muted: #787774;
+  --text-faint: #b4b4b4;
+  --accent: #ff9f40;
+  --accent-fg: #1a1a1a;
+  --danger: #d64545;
+
+  /* v4.6 F2 — type-section accent palette (types-as-lenses). Six fixed
+     hues so a type's `color:` key tints its sidebar section consistently
+     across themes. Light values here; dark overrides below. */
+  --type-orange: #d9831f;
+  --type-red: #d64545;
+  --type-purple: #8b5cd6;
+  --type-blue: #2f7fd4;
+  --type-green: #3a9d4e;
+  --type-yellow: #c9a227;
+
+  /* Markdown element colors (light) */
+  --md-h1: #1a1a1a;
+  --md-h2: #232323;
+  --md-h3: #2f2f2f;
+  --md-h4: #3a3a3a;
+  --md-h5: #4a4a4a;
+  --md-h6: #6a6a6a;
+  --md-strong: #1a1a1a;
+  --md-em: #444444;
+  --md-link: #ff9f40;
+  --md-url: #c97a20;
+  --md-code: #c0392b;
+  --md-code-bg: #f3efe7;
+  --md-quote: #6a6a6a;
+  --md-list: #c97a20;
+  --md-hr: #c0bdb3;
+
+  /* Code block syntax (light) — gentle, not garish */
+  --syn-keyword: #a626a4;
+  --syn-string: #50a14f;
+  --syn-number: #986801;
+  --syn-comment: #a0a1a7;
+  --syn-function: #4078f2;
+  --syn-variable: #383a42;
+  --syn-type: #c18401;
+  --syn-property: #e45649;
+  --syn-operator: #0184bc;
+
+  /* SoloMD CJK is at the END of every chain on purpose. It's a 43 KB
+     LXGW WenKai subset (unicode-range U+3400-9FFF + CJK punctuation)
+     that we ship only as a last-resort fallback for environments with
+     no system CJK font — most notably the iOS Simulator (no PingFang).
+     On Windows / macOS / Linux / real iPad the cascade hits Microsoft
+     YaHei / PingFang / Noto Sans CJK first, preserving native ClearType
+     / Quartz hinting. v3.5.0 and earlier put SoloMD CJK FIRST, which
+     overrode Windows YaHei everywhere with the (deliberately soft,
+     handwritten) LXGW glyphs and made the UI look thin/blurry — see
+     issue #43. */
+  --font-ui: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "PingFang SC", "PingFang TC", "Hiragino Sans GB", "Heiti SC",
+    "Microsoft YaHei", "Inter", Roboto, "Helvetica Neue", sans-serif,
+    "SoloMD CJK", "Apple Color Emoji", "Segoe UI Emoji",
+    "Noto Color Emoji";
+  --font-mono: "JetBrains Mono", "SF Mono", "Cascadia Code", "Menlo",
+    "Consolas", "Fira Code", "Source Code Pro", "DejaVu Sans Mono",
+    "Liberation Mono", "Ubuntu Mono", "Noto Sans Mono",
+    "PingFang SC", "Hiragino Sans GB", monospace, "SoloMD CJK",
+    "Apple Color Emoji", "Segoe UI Emoji";
+
+  --titlebar-h: 36px;
+  --tabbar-h: 34px;
+  --statusbar-h: 24px;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  /* v4.6 warm-neutral dark surfaces (plan §2.4) — warm black, not pure #000 */
+  --bg: #1f1e1b;
+  --bg-elev: #23221f;
+  --bg-hover: #2a2a2a;
+  --bg-active: #333333;
+  --border: #34322d;
+  --text: #e6e1d8;
+  --text-muted: #b8b1a6;
+  --text-faint: #7f776d;
+  --accent: #ffa54d;
+  --accent-fg: #1a1a1a;
+
+  /* v4.6 F2 — type-section accent palette (dark, slightly lifted for
+     contrast on the dark sidebar background). */
+  --type-orange: #f0a64a;
+  --type-red: #e86d6d;
+  --type-purple: #b18cf0;
+  --type-blue: #6bb0f0;
+  --type-green: #6cc77f;
+  --type-yellow: #e0c350;
+
+  /* Markdown element colors (dark) */
+  --md-h1: #ffffff;
+  --md-h2: #f0f0ed;
+  --md-h3: #e2e2dc;
+  --md-h4: #cccccc;
+  --md-h5: #a8a8a8;
+  --md-h6: #888888;
+  --md-strong: #ffffff;
+  --md-em: #d8d8d8;
+  --md-link: #ff9f40;
+  --md-url: #ffb874;
+  --md-code: #ff9f9f;
+  --md-code-bg: #2a2a2a;
+  --md-quote: #888888;
+  --md-list: #ff9f40;
+  --md-hr: #444444;
+
+  /* Code block syntax (dark) */
+  --syn-keyword: #c678dd;
+  --syn-string: #98c379;
+  --syn-number: #d19a66;
+  --syn-comment: #5c6370;
+  --syn-function: #61afef;
+  --syn-variable: #e06c75;
+  --syn-type: #e5c07b;
+  --syn-property: #e06c75;
+  --syn-operator: #56b6c2;
+}
+
+/* ---- Nord ---- */
+:root[data-theme="nord"] {
+  color-scheme: dark;
+  --bg: #2e3440;
+  --bg-elev: #3b4252;
+  --bg-hover: #434c5e;
+  --bg-active: #4c566a;
+  --border: #4c566a;
+  --text: #eceff4;
+  --text-muted: #d8dee9;
+  --text-faint: #616e88;
+  --accent: #88c0d0;
+  --accent-fg: #2e3440;
+  --md-h1: #eceff4; --md-h2: #e5e9f0; --md-h3: #d8dee9;
+  --md-h4: #c8ced8; --md-h5: #a8b0c0; --md-h6: #8890a0;
+  --md-strong: #eceff4; --md-em: #d8dee9; --md-link: #88c0d0;
+  --md-url: #5e81ac; --md-code: #bf616a; --md-code-bg: #3b4252;
+  --md-quote: #616e88; --md-list: #88c0d0; --md-hr: #4c566a;
+  --syn-keyword: #81a1c1; --syn-string: #a3be8c; --syn-number: #b48ead;
+  --syn-comment: #616e88; --syn-function: #88c0d0; --syn-variable: #d8dee9;
+  --syn-type: #8fbcbb; --syn-property: #88c0d0; --syn-operator: #81a1c1;
+}
+
+/* ---- Solarized Light ---- */
+:root[data-theme="solarized-light"] {
+  --bg: #fdf6e3;
+  --bg-elev: #eee8d5;
+  --bg-hover: #e8e1cb;
+  --bg-active: #ddd6c1;
+  --border: #d3cbb7;
+  --text: #657b83;
+  --text-muted: #839496;
+  --text-faint: #93a1a1;
+  --accent: #268bd2;
+  --accent-fg: #fdf6e3;
+  --md-h1: #073642; --md-h2: #586e75; --md-h3: #657b83;
+  --md-h4: #839496; --md-h5: #93a1a1; --md-h6: #93a1a1;
+  --md-strong: #073642; --md-em: #586e75; --md-link: #268bd2;
+  --md-url: #2aa198; --md-code: #d33682; --md-code-bg: #eee8d5;
+  --md-quote: #93a1a1; --md-list: #cb4b16; --md-hr: #d3cbb7;
+  --syn-keyword: #859900; --syn-string: #2aa198; --syn-number: #d33682;
+  --syn-comment: #93a1a1; --syn-function: #268bd2; --syn-variable: #657b83;
+  --syn-type: #b58900; --syn-property: #268bd2; --syn-operator: #657b83;
+}
+
+/* ---- Solarized Dark ---- */
+:root[data-theme="solarized-dark"] {
+  color-scheme: dark;
+  --bg: #002b36;
+  --bg-elev: #073642;
+  --bg-hover: #0a4050;
+  --bg-active: #0d4f5e;
+  --border: #0a4050;
+  --text: #839496;
+  --text-muted: #657b83;
+  --text-faint: #586e75;
+  --accent: #268bd2;
+  --accent-fg: #fdf6e3;
+  --md-h1: #93a1a1; --md-h2: #839496; --md-h3: #657b83;
+  --md-h4: #586e75; --md-h5: #586e75; --md-h6: #586e75;
+  --md-strong: #93a1a1; --md-em: #839496; --md-link: #268bd2;
+  --md-url: #2aa198; --md-code: #d33682; --md-code-bg: #073642;
+  --md-quote: #586e75; --md-list: #cb4b16; --md-hr: #0a4050;
+  --syn-keyword: #859900; --syn-string: #2aa198; --syn-number: #d33682;
+  --syn-comment: #586e75; --syn-function: #268bd2; --syn-variable: #839496;
+  --syn-type: #b58900; --syn-property: #268bd2; --syn-operator: #839496;
+}
+
+/* ---- Monokai ---- */
+:root[data-theme="monokai"] {
+  color-scheme: dark;
+  --bg: #272822;
+  --bg-elev: #3e3d32;
+  --bg-hover: #49483e;
+  --bg-active: #575648;
+  --border: #49483e;
+  --text: #f8f8f2;
+  --text-muted: #a6a68a;
+  --text-faint: #75715e;
+  --accent: #f92672;
+  --accent-fg: #ffffff;
+  --md-h1: #f8f8f2; --md-h2: #f8f8f2; --md-h3: #e8e8d2;
+  --md-h4: #a6a68a; --md-h5: #a6a68a; --md-h6: #75715e;
+  --md-strong: #f8f8f2; --md-em: #e6db74; --md-link: #66d9ef;
+  --md-url: #a6e22e; --md-code: #f92672; --md-code-bg: #3e3d32;
+  --md-quote: #75715e; --md-list: #a6e22e; --md-hr: #49483e;
+  --syn-keyword: #f92672; --syn-string: #e6db74; --syn-number: #ae81ff;
+  --syn-comment: #75715e; --syn-function: #a6e22e; --syn-variable: #f8f8f2;
+  --syn-type: #66d9ef; --syn-property: #a6e22e; --syn-operator: #f92672;
+}
+
+/* ---- GitHub Light ---- */
+:root[data-theme="github-light"] {
+  --bg: #ffffff;
+  --bg-elev: #f6f8fa;
+  --bg-hover: #eef0f2;
+  --bg-active: #e1e4e8;
+  --border: #d0d7de;
+  --text: #24292e;
+  --text-muted: #586069;
+  --text-faint: #8b949e;
+  --accent: #0366d6;
+  --accent-fg: #ffffff;
+  --md-h1: #24292e; --md-h2: #24292e; --md-h3: #586069;
+  --md-h4: #6a737d; --md-h5: #8b949e; --md-h6: #8b949e;
+  --md-strong: #24292e; --md-em: #24292e; --md-link: #0366d6;
+  --md-url: #0366d6; --md-code: #d73a49; --md-code-bg: #f6f8fa;
+  --md-quote: #6a737d; --md-list: #e36209; --md-hr: #d0d7de;
+  --syn-keyword: #d73a49; --syn-string: #032f62; --syn-number: #005cc5;
+  --syn-comment: #6a737d; --syn-function: #6f42c1; --syn-variable: #24292e;
+  --syn-type: #e36209; --syn-property: #005cc5; --syn-operator: #d73a49;
+}
+
+/* ---- Dracula ---- */
+:root[data-theme="dracula"] {
+  color-scheme: dark;
+  --bg: #282a36;
+  --bg-elev: #44475a;
+  --bg-hover: #4e5172;
+  --bg-active: #5a5d8a;
+  --border: #44475a;
+  --text: #f8f8f2;
+  --text-muted: #bfbfdc;
+  --text-faint: #6272a4;
+  --accent: #bd93f9;
+  --accent-fg: #282a36;
+  --md-h1: #f8f8f2; --md-h2: #f8f8f2; --md-h3: #bfbfdc;
+  --md-h4: #bfbfdc; --md-h5: #6272a4; --md-h6: #6272a4;
+  --md-strong: #f8f8f2; --md-em: #f1fa8c; --md-link: #8be9fd;
+  --md-url: #50fa7b; --md-code: #ff79c6; --md-code-bg: #44475a;
+  --md-quote: #6272a4; --md-list: #50fa7b; --md-hr: #44475a;
+  --syn-keyword: #ff79c6; --syn-string: #f1fa8c; --syn-number: #bd93f9;
+  --syn-comment: #6272a4; --syn-function: #50fa7b; --syn-variable: #f8f8f2;
+  --syn-type: #8be9fd; --syn-property: #50fa7b; --syn-operator: #ff79c6;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  padding: 0;
+  /* #125 — use 100% (not 100vw/100vh). The app-wide zoom sets
+     `documentElement.style.zoom`; `vw`/`vh` do NOT divide by zoom, so at
+     zoom 1.3 the root rendered ~30% wider than the window — pushing
+     right-anchored chrome (e.g. the reading-mode ✕) off-screen and making the
+     view shake as it overflowed. `100%` resolves against the real (zoomed)
+     viewport, so the layout always fits. Verified in Chromium: 100vw@1.3 →
+     scrollWidth 1872 vs window 1440 (overflow); 100%@1.3 → 1440 (fits). */
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-ui);
+  font-size: var(--ui-font-size, 13px);
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.12s;
+}
+button:hover {
+  background: var(--bg-hover);
+}
+button:active {
+  background: var(--bg-active);
+}
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 5px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-faint);
+}
+
+/* ============================================================
+ * iPad / touch-device responsive overrides.
+ * Uses `@media (pointer: coarse)` to detect touch devices.
+ * Only safe global rules here — component-specific overrides
+ * go in the component's own <style scoped> block.
+ * ============================================================ */
+
+@media (pointer: coarse) {
+  /* Hide desktop window titlebar on iOS */
+  .titlebar { display: none !important; }
+
+  /* Larger editor text on touch */
+  .cm-editor .cm-content {
+    font-size: 16px !important;
+    padding: 16px 20px;
+  }
+
+  /* iOS-friendly select/range inputs */
+  select, input[type="range"] {
+    min-height: 44px;
+    font-size: 15px;
+  }
+  input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+  }
+
+  /* Toolbar: horizontal scroll on touch so all 30+ buttons remain
+     reachable even at iPad-portrait widths. Desktop intentionally
+     does NOT set this (see Toolbar.vue's .toolbar comment) because
+     overflow-x cascades to overflow-y, truncating .dropdown__menu
+     items that anchor downward (Insert / Export / Copy / etc.).
+     On touch we accept that compromise — dropdowns mostly anchor
+     down anyway and a slightly-clipped popover beats unreachable
+     buttons. Hide the scrollbar (overscan via swipe is the affordance). */
+  .toolbar {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none; /* Firefox */
+  }
+  .toolbar::-webkit-scrollbar {
+    display: none; /* WebKit (iOS Safari + Tauri's WKWebView) */
+  }
+}
+
+/* Markdown extension styles (front-matter, task list, mark, footnotes) */
+.md-frontmatter {
+  margin: 0 0 1rem;
+  padding: 0.6rem 0.9rem;
+  border-left: 3px solid var(--accent);
+  background: var(--bg-hover);
+  font-size: 0.85rem;
+  border-radius: 0 4px 4px 0;
+}
+.md-frontmatter dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 0.9rem;
+  row-gap: 0.25rem;
+  margin: 0;
+}
+.md-frontmatter dt {
+  font-weight: 600;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+}
+.md-frontmatter dd {
+  margin: 0;
+  color: var(--text);
+}
+.md-frontmatter--raw {
+  white-space: pre-wrap;
+  font-family: var(--font-mono);
+}
+
+.contains-task-list {
+  list-style: none;
+  padding-left: 1.25rem;
+}
+.task-list-item {
+  position: relative;
+}
+.task-list-item-checkbox {
+  margin-right: 0.45rem;
+  transform: translateY(2px);
+  cursor: default;
+  accent-color: var(--accent);
+}
+
+mark {
+  background: rgba(255, 159, 64, 0.28);
+  color: inherit;
+  padding: 0 0.18em;
+  border-radius: 2px;
+}
+
+.footnote-ref a {
+  text-decoration: none;
+  font-size: 0.78em;
+  vertical-align: super;
+  color: var(--accent);
+}
+.footnotes {
+  margin-top: 2.2rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.88rem;
+  color: var(--text-muted);
+}
+.footnotes-list {
+  padding-left: 1.4rem;
+}
+.footnote-backref {
+  text-decoration: none;
+  margin-left: 0.3em;
+  color: var(--accent);
+}
+
+/* Print: hide the app shell and show the #solomd-print-overlay instead. */
+@media print {
+  body.solomd-printing #app {
+    display: none !important;
+  }
+  body.solomd-printing #solomd-print-overlay {
+    display: block !important;
+    position: static !important;
+  }
+}
+/* On-screen the overlay must be invisible — @media print flips it. */
+#solomd-print-overlay {
+  display: none;
+}
+body.solomd-printing {
+  background: white !important;
+  color: black !important;
+}
+.solomd-print-content {
+  max-width: none !important;
+  padding: 0 !important;
+  color: black !important;
+  font-family: var(--font-ui, sans-serif);
+}
+
+/* Right sidebar pane close button (issue #6 / #52 / #55).
+   Shared across BacklinksPanel, TagsPanel, HistoryPanel, AgentPanel. */
+.rs-pane-close {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  width: 22px;
+  height: 22px;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--text-faint);
+  cursor: pointer;
+  margin-left: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.rs-pane-close:hover {
+  background: var(--bg-hover, rgba(255, 159, 64, 0.12));
+  color: var(--text);
+  border-color: var(--border);
+}

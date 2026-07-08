@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "themes": [
+    {
+      "id": "amber-dark",
+      "name": "Amber Dark",
+      "author": "alex",
+      "description": "Warm amber on charcoal — easy on the eyes for late-night writing.",
+      "url": "https://solomd.app/themes/amber-dark.css",
+      "preview": "https://solomd.app/themes/preview/amber-dark.png",
+      "tags": ["dark", "warm"],
+      "license": "MIT"
+    },
+    {
+      "id": "nord-light",
+      "name": "Nord Light",
+      "author": "alex",
+      "description": "The Nord palette tuned for daytime — cool blues on a soft snow background.",
+      "url": "https://solomd.app/themes/nord-light.css",
+      "preview": "https://solomd.app/themes/preview/nord-light.png",
+      "tags": ["light", "cool"],
+      "license": "MIT"
+    },
+    {
+      "id": "pure-black-oled",
+      "name": "Pure Black (OLED)",
+      "author": "alex",
+      "description": "True #000 background. Burns zero pixels on OLED displays — pairs well with low-power mode.",
+      "url": "https://solomd.app/themes/pure-black-oled.css",
+      "preview": "https://solomd.app/themes/preview/pure-black-oled.png",
+      "tags": ["dark", "oled"],
+      "license": "MIT"
+    },
+    {
+      "id": "sepia",
+      "name": "Sepia",
+      "author": "alex",
+      "description": "Paper-like reading mode — warm cream paper, brown ink. Perfect for long-form prose.",
+      "url": "https://solomd.app/themes/sepia.css",
+      "preview": "https://solomd.app/themes/preview/sepia.png",
+      "tags": ["light", "sepia", "warm"],
+      "license": "MIT"
+    }
+  ]
+}

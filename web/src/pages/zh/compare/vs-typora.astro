@@ -1,0 +1,228 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import Header from '../../../components/Header.astro';
+import Footer from '../../../components/Footer.astro';
+
+const lang = 'zh' as const;
+---
+
+<Layout
+  title="SoloMD vs Typora —— 轻量 Markdown 编辑器对比 2026"
+  description="SoloMD 和 Typora 两款 Markdown 编辑器的详细对比：价格、体积、功能、跨平台支持，以及免费开源的意义。"
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main class="compare-page">
+    <article class="container compare-article">
+      <nav class="breadcrumbs">
+        <a href="/zh/">首页</a> / <a href="/zh/compare/">对比</a> / <span>vs Typora</span>
+      </nav>
+
+      <h1>SoloMD vs Typora：选哪个？</h1>
+      <p class="lead">
+        对比基于 <strong>SoloMD v4.5</strong> 与 <strong>Typora 1.13</strong>（2026 年中）。
+        想要一个开源编辑器、Agent 是一等公民（chat-with-vault 面板、定时 recipe、AutoGit
+        分支沙箱使写入可审），SoloMD；想要最完整的<strong>单一 WYSIWYG</strong>
+        体验、不需要 AI / 同步 / 版本历史 / agent 在核心，Typora 仍是好选择。
+      </p>
+
+      <h2>30 秒速览</h2>
+      <table class="compare-detail">
+        <thead>
+          <tr><th>&nbsp;</th><th>SoloMD v4.5</th><th>Typora 1.13</th></tr>
+        </thead>
+        <tbody>
+          <tr><th>价格</th><td><strong>免费</strong>（MIT）</td><td>$14.99 美元（买断，3 设备）</td></tr>
+          <tr><th>安装包体积</th><td>~15 MB</td><td>~70 MB</td></tr>
+          <tr><th>开源</th><td>✅ GitHub</td><td>❌ 闭源</td></tr>
+          <tr><th>支持平台</th><td>macOS · Windows · Linux · iPad</td><td>macOS · Windows · Linux</td></tr>
+          <tr><th>AI 改写内建</th><td>✅ <strong>14 个 BYOK provider</strong> · ⌘J · key 存系统钥匙串</td><td>❌</td></tr>
+          <tr><th>内置 Agent 面板（chat-with-vault）</th><td>✅ <strong>v4.0</strong> · 流式多轮 · 工具卡 · [[wikilink]] 引用 · 插入/复制到当前笔记</td><td>❌</td></tr>
+          <tr><th>定时 Agent Recipe</th><td>✅ <strong>v4.0</strong> · cron / on-save / on-commit / on-tag / 手动 · 11 个起步模板</td><td>❌</td></tr>
+          <tr><th>AutoGit 分支沙箱 + accept/reject 评审</th><td>✅ <strong>v4.0</strong> · 每次运行独立分支 · write-cap（默认 5）· 工作区脏时拒绝启动</td><td>❌</td></tr>
+          <tr><th>可重放的 Agent Trace</th><td>✅ <strong>v4.0</strong> · 按步 jsonl · 从第 N 步重放 · <code>read_agent_trace</code> MCP 工具</td><td>❌</td></tr>
+          <tr><th>多 vault MCP Federation</th><td>✅ <strong>v4.0</strong> · <code>--workspace</code> 可重复 · MCP profile UI</td><td>❌</td></tr>
+          <tr><th>Ollama 一等公民</th><td>✅ <strong>v4.0</strong> · 自动检测 · 3 个模型预设 · recipe 用 <code>provider: local</code></td><td>❌</td></tr>
+          <tr><th>本地 REST API（localhost + token 鉴权）</th><td>✅ <strong>v4.0</strong> · 和 MCP 同套接口给非 MCP 客户端</td><td>❌</td></tr>
+          <tr><th>BYOK 成本计</th><td>✅ <strong>v4.0</strong> · 按 provider 累计 token 数, opt-in</td><td>❌</td></tr>
+          <tr><th>内置 MCP server</th><td>✅ <strong>v3.1</strong> · 13 工具，5 个 SoloMD 独家（autogit/sync/share）</td><td>❌</td></tr>
+          <tr><th><code>solomd agent</code> CLI</th><td>✅ <strong>v3.1</strong> · 把 prompt 接给 Claude Code / Codex，MCP 已预连</td><td>❌</td></tr>
+          <tr><th>GitHub 同步（自己的库）</th><td>✅ <strong>v3.0</strong> · libgit2 + 系统钥匙串</td><td>❌</td></tr>
+          <tr><th>端到端加密</th><td>✅ <strong>v3.0</strong> · Argon2id + XChaCha20-Poly1305</td><td>❌</td></tr>
+          <tr><th>云盘联动（iCloud / Dropbox / OneDrive）</th><td>✅ <strong>v3.0</strong> · 自动识别 + 跨设备会话恢复</td><td>❌</td></tr>
+          <tr><th>公开只读分享</th><td>✅ <strong>v3.0</strong> · <code>solomd.app/share/</code></td><td>❌</td></tr>
+          <tr><th>AutoGit 版本历史</th><td>✅ <strong>v2.2</strong> · 每次保存快照，侧栏一键回滚</td><td>❌</td></tr>
+          <tr><th>本地语义搜索</th><td>✅ <strong>v2.3</strong> · ⌘⇧F · 不下模型</td><td>❌</td></tr>
+          <tr><th>演讲 / 幻灯片模式</th><td>✅ <strong>v3.5：完整 reveal.js</strong> · 背景图 / 转场 / fragments / 纵向子页</td><td>❌</td></tr>
+          <tr><th>大纲键盘跳转</th><td>✅ <strong>v3.1.x</strong> · 字母标签 + <code>g&lt;N&gt;</code> 跳行</td><td>⚠️ 大纲面板，无快捷跳转</td></tr>
+          <tr><th>WYSIWYG 实时编辑</th><td>✅ <strong>v2.3</strong> · 4 视图模式之一可切</td><td>✅ 默认全时（唯一模式）</td></tr>
+          <tr><th>实时预览</th><td>✅ 可切换</td><td>✅ 默认全时</td></tr>
+          <tr><th>分屏（编辑+预览）</th><td>✅</td><td>❌</td></tr>
+          <tr><th>多标签</th><td>✅</td><td>❌ 每文件独立窗口</td></tr>
+          <tr><th>数学（KaTeX vs MathJax v4）</th><td>KaTeX ~280 KB</td><td>✅ <strong>MathJax v4</strong> · 更全（<code>\\</code> 换行、更多 TeX 包）</td></tr>
+          <tr><th>Mermaid 版本</th><td>✅ <strong>11.14</strong>（更新）</td><td>11.13（刚加 Venn + Ishikawa）</td></tr>
+          <tr><th>导出 PDF / DOCX / HTML / PNG</th><td>✅</td><td>✅</td></tr>
+          <tr><th>Pandoc 导出（EPUB / ODT / LaTeX）</th><td>🟡 支持 —— 需 PATH 上装 Pandoc</td><td>🟡 支持 —— 需另装 Pandoc</td></tr>
+          <tr><th>多编码（GBK / Big5 / Shift-JIS）</th><td>✅ 自动识别（chardetng）</td><td>⚠️ 仅 UTF-8</td></tr>
+          <tr><th>中文标点校对</th><td>✅ <strong>v2.5</strong></td><td>❌</td></tr>
+          <tr><th>Vim 模式</th><td>✅</td><td>❌</td></tr>
+          <tr><th>VS Code / Cursor 集成</th><td>✅ 通过自带 MCP server（LLM 直接驱动 vault）</td><td>✅ "Open in Typora" 扩展</td></tr>
+          <tr><th>CLI 命令行工具</th><td>✅ <code>solomd</code></td><td>❌</td></tr>
+          <tr><th>Markdown 格式化（Prettier）</th><td>✅ <code>⌘⌥L</code></td><td>❌</td></tr>
+          <tr><th>欢迎教程</th><td>✅</td><td>❌</td></tr>
+          <tr><th>自定义 CSS 主题</th><td>✅ 任意 .css</td><td>✅</td></tr>
+          <tr><th>技术栈</th><td>Tauri 2（Rust + webview）</td><td>Electron</td></tr>
+          <tr><th>空闲内存</th><td>~150 MB</td><td>~300 MB</td></tr>
+        </tbody>
+      </table>
+
+      <h2>选 SoloMD 的情况</h2>
+      <ul>
+        <li>想要<strong>永久免费开源</strong>，没有 license key，没有弹窗。</li>
+        <li>电脑资源紧张。Tauri 原生 webview 比 Electron 省一半内存。</li>
+        <li>编辑 CJK / 旧版文本文件，需要自动识别 GBK / Big5 / Shift-JIS 等编码。</li>
+        <li>喜欢分屏 —— 左边源码、右边实时预览，滚动同步。</li>
+        <li>想用 Vim 快捷键写 Markdown。</li>
+        <li>在 iPad 上写作（SoloMD 有 iPad App Store 版，Typora 没有）。</li>
+      </ul>
+
+      <h2>选 Typora 的情况</h2>
+      <ul>
+        <li>已经熟悉 Typora 的快捷键，不想重新学。</li>
+        <li>你想要单一的"始终 WYSIWYG"视图,不要视图切换器（SoloMD 在 v2.3 加了 WYSIWYG 实时编辑模式,但和源码 / 分屏 / 预览并列,需要你显式切换）。</li>
+      </ul>
+
+      <h2>体积和内存 —— 为什么重要</h2>
+      <p>
+        Typora 基于 Electron，每个安装都自带一份 Chromium（~70 MB）。SoloMD 用
+        Tauri 2，直接调用操作系统原生 webview（Mac 的 WKWebView、Win 的 WebView2、
+        Linux 的 WebKitGTK），二进制只有 Rust 内核 + 前端 bundle。
+        结果：**体积小 4 倍，内存省一半**。
+      </p>
+
+      <h2>功能深度</h2>
+      <h3>实时预览</h3>
+      <p>
+        两者都支持边写边渲染。Typora 总是隐藏原始标记符；SoloMD 只在光标不在的行隐藏，
+        且保留图片链接括号和行内代码反引号，让结构始终可见。
+      </p>
+
+      <h3>导出</h3>
+      <p>两者都支持 PDF、DOCX、HTML、PNG。SoloMD 额外有：</p>
+      <ul>
+        <li><strong>复制为富文本 HTML</strong> —— 带样式粘贴到微信公众号 / Notion / 语雀。</li>
+        <li><strong>系统打印对话框</strong> —— Mac 用 NSPrintOperation、Win 用 WebView2 原生。</li>
+        <li><strong>复制为图片</strong> —— 截图样式的 PNG。</li>
+      </ul>
+
+      <h3>SoloMD 独有功能</h3>
+      <ul>
+        <li>多标签（一个窗口多个文件）</li>
+        <li>分屏（拖标签到侧边分屏）</li>
+        <li>大纲面板（光标所在标题自动高亮）</li>
+        <li>文件树侧栏（打开文件夹模式）</li>
+        <li>Vim 快捷键</li>
+        <li>文件夹全局搜索（Ctrl+Shift+F）</li>
+        <li>清除 AI 格式按钮 —— 一键清掉 ChatGPT / Claude 复制过来的引用标记、弯引号、
+          零宽字符</li>
+        <li>多编码自动识别</li>
+      </ul>
+
+      <h2>Typora 社区自己最想要的功能 —— SoloMD 已全部交付</h2>
+      <p>
+        以下是 Typora 官方反馈区（<a href="https://github.com/typora/typora-issues/issues" rel="external">typora/typora-issues</a>）
+        里点赞最高、至今仍未实现的请求，有些从 2016–2018 年开着到现在。SoloMD
+        早已全部交付 —— 免费，且全平台：
+      </p>
+      <table class="compare-detail">
+        <thead>
+          <tr><th>Typora 社区长期请求</th><th>SoloMD</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Windows / Linux 上的多标签（2017 年至今）</td><td>✅ 全平台多标签</td></tr>
+          <tr><td>在当前标签 / 新标签 / 新窗口打开</td><td>✅ 可配置</td></tr>
+          <tr><td>源码管理集成</td><td>✅ 内置 AutoGit（逐笔历史、diff、回滚）+ GitHub 同步</td></tr>
+          <tr><td>Wiki 式 <code>[[链接]]</code></td><td>✅ wikilink + 反向链接面板</td></tr>
+          <tr><td>演示 / 幻灯片模式</td><td>✅ 完整 reveal.js（<code>⌘⌥P</code>）</td></tr>
+          <tr><td>学术引用 / 参考文献</td><td>✅ <code>@citekey</code> + .bib / CSL</td></tr>
+          <tr><td>Vim 键位</td><td>✅ Vim 模式</td></tr>
+          <tr><td>更多图表格式</td><td>✅ Mermaid 11.14（+ KaTeX）</td></tr>
+          <tr><td>插件 / 可扩展性</td><td>✅ MCP 端点 + 可脚本化 CLI + agent recipes（任何 LLM 客户端都能驱动你的笔记库）</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:0.95rem;color:var(--text-muted);">
+        你现有的 Typora 笔记原样打开：SoloMD 读 Typora 的
+        <code>./images/&lt;笔记名&gt;/</code> 附件布局（设置 → 写作 → 附件模式里选），
+        中文 / 带空格的目录名下图片也能正常渲染。不转换、不锁定 —— 仍是你文件夹里的纯
+        <code>.md</code>。
+      </p>
+
+      <h2>两者都做得好的</h2>
+      <ul>
+        <li>KaTeX 数学（行内 <code>$a^2+b^2=c^2$</code> 和块 <code>$$...$$</code>）</li>
+        <li>Mermaid 图表</li>
+        <li>代码块语法高亮</li>
+        <li>GFM 表格、任务列表、删除线</li>
+        <li>Front-matter（YAML）</li>
+      </ul>
+
+      <h2>价格</h2>
+      <p>
+        SoloMD 免费 + MIT 许可 —— 克隆仓库自己编译，或
+        <a href="/zh/#download">下载安装包</a>，不用注册账号、不用订阅，默认不收集任何数据
+        （可选的匿名使用计数，设置里一键关闭）。
+      </p>
+      <p>Typora：$14.99 美元买断，每账号最多 3 台设备。自 v1.0（2021）起没有免费版。</p>
+
+      <h2>从 Typora 迁移到 SoloMD</h2>
+      <p>
+        你的 <code>.md</code> 文件就是纯文本；两者读同一格式，"迁移" = 装 SoloMD + 打开文件夹。注意事项：
+      </p>
+      <ul>
+        <li>Typora 特有的扩展语法 <code>==高亮==</code>、<code>^上标^</code>、<code>~下标~</code> 还没在 SoloMD 里支持。标准 CommonMark + GFM 完全兼容。</li>
+        <li>Typora 的"图片自动复制到 assets 目录"功能，SoloMD 有一样的 —— 粘贴或拖图片，自动保存到当前文档旁的 <code>./_assets/</code>。</li>
+      </ul>
+
+      <h2>FAQ</h2>
+      <h3>SoloMD 真的免费吗？</h3>
+      <p>是。MIT 许可，无广告，默认不收集遥测。源码见
+        <a href="https://github.com/zhitongblog/solomd" rel="external">GitHub</a>。</p>
+
+      <h3>公司电脑能装吗？</h3>
+      <p>能。Mac 版 Apple 公证，Windows 版 SmartScreen 刚上线可能会弹一次"未知发布者"，点
+        "更多信息 → 仍要运行"即可，用几次后自动加白名单。Linux 的 AppImage / deb / rpm
+        按发行版惯例不签名。</p>
+
+      <h3>支持 Typora 主题吗？</h3>
+      <p>主题 CSS 选择器不完全兼容，但 SoloMD 支持在「设置 → 自定义 CSS」里选任意 .css 文件覆盖默认样式。</p>
+
+      <div class="compare-cta">
+        <a href="/zh/#download" class="btn btn--primary">下载 SoloMD</a>
+        <a href="https://github.com/zhitongblog/solomd" class="btn btn--secondary" rel="external">GitHub</a>
+      </div>
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .compare-article { max-width: 820px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .compare-article h1 { font-size: 2.2rem; line-height: 1.2; margin: 10px 0 20px; }
+  .compare-article h2 { font-size: 1.55rem; margin: 36px 0 14px; }
+  .compare-article h3 { font-size: 1.15rem; margin: 24px 0 10px; }
+  .compare-article .lead { font-size: 1.1rem; color: var(--text-muted, #555); margin-bottom: 32px; }
+  .compare-detail { width: 100%; border-collapse: collapse; margin: 20px 0 28px; font-size: 14px; }
+  .compare-detail th, .compare-detail td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #eee; }
+  .compare-detail thead th { background: #fafafa; font-weight: 600; }
+  .compare-detail tbody th { font-weight: 500; width: 32%; }
+  .compare-cta { display: flex; gap: 12px; margin-top: 40px; }
+  .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  .btn--primary { background: #ff9f40; color: #000; }
+  .btn--secondary { background: #111; color: #fff; }
+  .compare-article ul { padding-left: 22px; }
+  .compare-article li { margin: 6px 0; line-height: 1.6; }
+  .compare-article p { line-height: 1.7; margin: 12px 0; }
+  .compare-article code { background: #f5f5f0; padding: 1px 6px; border-radius: 4px; font-size: 0.92em; }
+</style>

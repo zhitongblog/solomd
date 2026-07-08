@@ -1,0 +1,54 @@
+/*
+ * Amber Dark — community theme for SoloMD.
+ * Warm amber on charcoal. Designed for late-night writing sessions.
+ *
+ * Author:  alex
+ * License: MIT
+ *
+ * Drop-in: this file overrides only the CSS variables that the app's
+ * styles/main.css already exposes. No selector hacks, no !important —
+ * the cascade does the work.
+ */
+:root,
+:root[data-theme="light"],
+:root[data-theme="dark"] {
+  --bg: #1a1612;
+  --bg-elev: #221d17;
+  --bg-hover: #2b241c;
+  --bg-active: #382e23;
+  --border: #3a312a;
+  --text: #f4d4a0;
+  --text-muted: #c4a574;
+  --text-faint: #8a7656;
+  --accent: #ff9f40;
+  --accent-fg: #1a1612;
+  --danger: #e07a5f;
+
+  /* Markdown element colors */
+  --md-h1: #ffd89a;
+  --md-h2: #ffcd86;
+  --md-h3: #ffc474;
+  --md-h4: #f4b366;
+  --md-h5: #d49a55;
+  --md-h6: #b88345;
+  --md-strong: #ffd89a;
+  --md-em: #f4d4a0;
+  --md-link: #ff9f40;
+  --md-url: #ffb874;
+  --md-code: #ff8a5b;
+  --md-code-bg: #2b241c;
+  --md-quote: #8a7656;
+  --md-list: #ff9f40;
+  --md-hr: #3a312a;
+
+  /* Code block syntax */
+  --syn-keyword: #ff8a5b;
+  --syn-string: #d4b362;
+  --syn-number: #e8a464;
+  --syn-comment: #6f5d44;
+  --syn-function: #ffb874;
+  --syn-variable: #f4d4a0;
+  --syn-type: #ffcd86;
+  --syn-property: #ff8a5b;
+  --syn-operator: #ff9f40;
+}

@@ -1,0 +1,18 @@
+name: Citation cleanup
+trigger: manual
+allow-write: true
+write-cap: 3
+prompt: |
+  Walk every markdown file in the workspace. Find Pandoc-style
+  citations of the form `[@key]` or `@key` and check that each `key`
+  appears in workspace.bib (use the read_note tool on `workspace.bib`).
+
+  Produce a report at reports/citations-{{date:YYYY-MM-DD}}.md with
+  three sections:
+    - ## Missing keys — citations whose `key` is NOT in workspace.bib.
+    - ## Unused keys — bib entries that no note cites.
+    - ## OK — keys that match.
+
+  For each missing-key entry, list the source notes that cite it (with
+  [[wikilinks]]). Do NOT modify any source notes — this is a read +
+  report-only run.

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Entitlements for the bundled `solomd-mcp` Rust sidecar in MAS builds.
+
+  The sidecar runs as a child of the sandboxed SoloMD app. Apple's TestFlight
+  validator rejects (error ITMS-90885) any nested executable whose code
+  signature carries `com.apple.application-identifier` but lacks its own
+  embedded provisioning profile — because that combination is reserved for
+  standalone helper apps with their own App Store record.
+
+  The correct pattern for a sub-process is:
+    * `com.apple.security.app-sandbox` — declare the child as sandboxed
+    * `com.apple.security.inherit` — inherit the parent app's sandbox
+      grants (file access, network, etc.) at spawn time
+  …and explicitly NO application-identifier.
+
+  Used by `scripts/build-mas.sh` when signing `Contents/MacOS/solomd-mcp`.
+-->
+<plist version="1.0">
+<dict>
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<key>com.apple.security.inherit</key>
+	<true/>
+</dict>
+</plist>

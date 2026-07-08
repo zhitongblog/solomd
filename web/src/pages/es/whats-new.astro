@@ -1,0 +1,373 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import Giscus from '../../components/Giscus.astro';
+
+const lang = 'es' as const;
+const VERSION = '4.1.0';
+const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERSION}`;
+---
+
+<Layout
+  title="Actualización SoloMD v4.0 — El editor donde viven los agentes"
+  description="v4.0 es la release mayor agent-native author. Cinco pilares: panel Agent integrado (chat-with-vault transmitido), recipes programados (cron / on-save / on-commit, sandbox de rama AutoGit + accept/reject), vista Trace reproducible, federación MCP multi-vault, Ollama primera clase. Más: API REST, medidor de coste BYOK, 11 plantillas de Recipe, wizard de primer lanzamiento, localización multilingüe."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <article class="container whats-new">
+      <nav class="breadcrumbs">
+        <a href="/es/">Inicio</a> / <span>Actualización</span>
+      </nav>
+
+      <p class="version-row">
+        <span class="version-tag">v{VERSION}</span>
+        <time>mayo 2026</time>
+      </p>
+      <h1>El editor donde viven los agentes.</h1>
+      <p class="lead">
+        v4.0 es la release mayor <strong>agent-native author</strong>. Los agentes
+        han pasado de "CLI externo llamado ocasionalmente" a ciudadanos de primera
+        clase dentro del editor — presentes continuamente, trabajando a través de
+        múltiples vaults, visibilidad completa, reproducibles, reversibles. Todo
+        debajo está en el core, no se necesitan plugins. El instalador sigue siendo ~15 MB.
+      </p>
+
+      <div class="cta-row">
+        <a class="btn btn--primary btn--lg" href={`${baseUrl}/SoloMD_${VERSION}_universal.dmg`}>⬇ Descargar v{VERSION} (Mac)</a>
+        <a class="btn btn--secondary btn--lg" href={`${baseUrl}/SoloMD_${VERSION}_x64_en-US.msi`}>Descargar (Windows)</a>
+        <a class="btn btn--secondary btn--lg" href={`https://github.com/zhitongblog/solomd/releases/tag/v${VERSION}`}>Todas las plataformas →</a>
+      </div>
+
+      <section>
+        <h2>Cinco pilares</h2>
+        <p>
+          Cada uno está en el core, alternable en ajustes. Totalmente compatible con
+          tus notas existentes — sin migración de DB, sin nuevo formato de archivo,
+          sin cuenta cloud forzada.
+        </p>
+        <div class="pillars">
+          <div class="pillar">
+            <h3>1 · Panel Agent integrado</h3>
+            <p>
+              Panel de primera clase a la derecha, al mismo nivel que Outline / Backlinks /
+              Tags / History. Chat-with-vault transmitido vía interfaz MCP intra-proceso
+              y stack AI 14-providers existente. Citaciones <code>[[wikilink]]</code>
+              se resuelven a saltos de nota reales; cada tarjeta de llamada de herramienta
+              del agente se despliega en el flujo de conversación — ves lo que se leyó,
+              lo que se escribió. ¿Respuesta demasiado larga?
+              Botones <strong>Insertar</strong> y <strong>Copiar</strong> dejan caer
+              el párrafo entero en el editor actual — reemplaza selección si la hay,
+              si no inserta en posición del cursor. Historial de ejecución persiste
+              como markdown plano bajo <code>.solomd/agent-runs/</code>,
+              grep-able, git-trackable.
+            </p>
+          </div>
+          <div class="pillar">
+            <h3>2 · Recipe Agent / ejecución programada</h3>
+            <p>
+              Tareas de agente declarativas, archivos YAML bajo
+              <code>&lt;workspace&gt;/.solomd/agents/*.yml</code>.
+              Triggers: <code>schedule</code> (cron), <code>on-save</code>,
+              <code>on-commit</code>, <code>on-tag-add</code>, manual.
+              <strong>Barandales de seguridad innegociables</strong>: cada ejecución
+              inicia en su propia rama AutoGit
+              <code>agent/&lt;recipe&gt;/&lt;run-id&gt;</code>, todas las escrituras
+              aterrizan solo en la rama, pasan por UI accept / reject antes del merge a main;
+              <code>write-cap</code> por ejecución (por defecto 5, techo duro 50)
+              previene bucles incontrolados; Reject hard-delete la rama, esa
+              ejecución es completamente invisible en el historial git. Trae
+              <strong>11 plantillas de Recipe</strong> (revisión semanal, limpieza
+              de log, extracción TODO, traducción, limpieza de citaciones, revisión CJK,
+              …) — instalar, editar prompt, ejecutar.
+            </p>
+          </div>
+          <div class="pillar">
+            <h3>3 · Vista Trace Agent</h3>
+            <p>
+              Cada ejecución (sea conversación Panel o Recipe) genera
+              <code>trace.jsonl</code> por paso:
+              <code>prompt</code> / <code>model_call</code> /
+              <code>tool_call</code> / <code>tool_result</code> /
+              <code>git_commit</code> / <code>done</code>.
+              Tarjetas de paso se despliegan para mostrar args, resultados, conteos
+              de tokens, estimaciones de coste, referencias de rama AutoGit.
+              Botón <strong>Replay-from-step</strong> rebobina la ejecución al paso N,
+              cambia entrada y reejecuta desde ahí — esa es la entrada a recipes
+              self-correcting. Nueva herramienta MCP
+              <code>read_agent_trace(run_id)</code> expone el trace a otros agentes.
+            </p>
+          </div>
+          <div class="pillar">
+            <h3>4 · Federación MCP multi-vault</h3>
+            <p>
+              <code>solomd-mcp --workspace path1 --workspace path2 --workspace path3</code>
+              —— una sesión MCP, múltiples vaults. Las firmas de herramienta ganaron
+              parámetro <code>workspace</code> opcional, por defecto = primero pasado
+              (totalmente back-compat con clientes MCP single-vault). Ramas AutoGit
+              aisladas por workspace. <strong>Ajustes → Integraciones</strong>
+              tiene UI de perfil MCP: empaquetar múltiples vaults nombrados, copiar
+              snippet de config Claude Desktop con un clic.
+            </p>
+          </div>
+          <div class="pillar">
+            <h3>5 · Ollama primera clase</h3>
+            <p>
+              <strong>No empaquetamos</strong> el runtime LLM local nosotros mismos
+              —— Ollama ya lo hace bien. v4.0 solo pulió la integración:
+              auto-detección en <code>localhost:11434</code> (Ajustes → IA tiene
+              indicador de estado verde), guía de instalación con un clic si no instalado,
+              3 presets de modelo embebidos (<code>rewrite</code> → qwen2.5:7b ·
+              <code>quick</code> → qwen2.5:1.5b ·
+              <code>cjk</code> → qwen2.5:14b), pull recomendado inline cuando la lista
+              de modelos está vacía. Recipes pueden especificar <code>provider: local</code>
+              (alias Ollama), para bucles de automatización sin coste cloud.
+              <em>Tus notas nunca dejan la máquina</em> —— vía BYOK Ollama
+              esto siempre fue cierto, v4.0 lo hace una entrada descubrible.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>🛡️ Barandales de seguridad (lo que nadie más hace)</h2>
+        <ul>
+          <li>
+            <strong>Sandbox de rama AutoGit.</strong> Cada ejecución de Recipe
+            inicia en su propia rama. Antes de que hagas clic Aceptar,
+            <code>main</code> no se mueve. Las ejecuciones Reject <em>no dejan nada</em>
+            —— rama eliminada, árbol de archivos rebobinado.
+          </li>
+          <li>
+            <strong>Techo de escritura por ejecución.</strong> El modelo quiere escribir
+            50 archivos cuando el cap es 5, desde la 6ta llamada de herramienta es rechazado.
+            Sin estado "semi-terminado", sin modificaciones masivas accidentales.
+          </li>
+          <li>
+            <strong>Rehúsa iniciar cuando el workspace está sucio.</strong> Tienes
+            cambios sin commit, el trigger Recipe se dispara, sale con error,
+            tu WIP no es barrido en commits de agente.
+          </li>
+          <li>
+            <strong>Endurecimiento path-traversal.</strong> Interfaz de herramienta
+            intra-proceso y todos los comandos Tauri que aceptan <code>run_id</code> /
+            <code>path</code> proporcionados por el usuario ahora rechazan por adelantado
+            segmentos <code>..</code> y rutas absolutas. A nivel de código,
+            el agent no puede escribir fuera del workspace.
+          </li>
+          <li>
+            <strong>Trace reproducible.</strong> Cada paso aterriza línea por línea
+            como JSON en disco. ¿Comportamiento Panel sospechoso? Seguir el trace,
+            localizar el paso malo, cambiar entrada, reproducir desde paso N–1.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Barra de calidad</h2>
+        <ul>
+          <li>
+            <strong>Wizard de primer lanzamiento.</strong> Los nuevos usuarios ven
+            el panel Agent en menos de 60 segundos —— te guía a llenar la clave BYOK
+            o instalar Ollama. Reabrir desde Ayuda más tarde.
+          </li>
+          <li>
+            <strong>Cookbook de Recipe (11 plantillas starter).</strong>
+            Ajustes → Recipes → Explorar cookbook. Revisión semanal, log diario,
+            extracción TODO, pase de traducción, limpieza de citaciones, agente de
+            revisión CJK, detector de link rot, normalizador de frontmatter,
+            outline-a-blog, pase de refactor, triaje semanal de tags. Instalar,
+            editar prompt, ejecutar.
+          </li>
+          <li>
+            <strong>API REST local</strong> (escucha solo en localhost,
+            autenticación por token). Misma interfaz que MCP, para clientes
+            que aún no hablan MCP — Alfred / Raycast / n8n / tus propios scripts.
+          </li>
+          <li>
+            <strong>Medidor de coste BYOK.</strong> Tokens gastados acumulados por provider,
+            opt-in. Ajustes → Integraciones.
+          </li>
+          <li>
+            <strong>Localización.</strong> 9 idiomas UI cobertura completa
+            (en/zh/ja/ko/de/fr/es/pt/it). Esta release añadió 5 idiomas europeos
+            — alemán, francés, español, portugués, italiano — todos con la misma
+            paridad de claves de diccionario que en/zh.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Pulido UX sentido desde el primer día</h2>
+        <ul>
+          <li>
+            <strong>Guardas IME en todas partes.</strong> Pinyin chino, modo kana
+            japonés, hangul coreano — Enter para confirmar palabras candidatas
+            ya no dispara accidentalmente envío de conversación / renombre de file
+            tree / ejecución de paleta de comandos / apertura de búsqueda. Fix único
+            para <strong>7 paneles de entrada</strong>.
+          </li>
+          <li>
+            <strong>Botones Insert / Copy para respuestas Assistant.</strong>
+            Dos botones bajo cada respuesta terminada. Insert es editor-selección-aware
+            (con selección reemplaza), sin selección inserta en posición del cursor.
+            Copy es portapapeles normal.
+          </li>
+          <li>
+            <strong>UX de inicio macOS.</strong> Timing de activación al inicio arreglado
+            —— SoloMD inicio en frío llega de verdad al primer plano, no se esconde
+            más detrás de Finder. Restauración de posición de ventana aterriza siempre
+            en el workspace de la pantalla actual; restauración desde mal cache
+            tras desconexión de pantalla secundaria se recentra automáticamente,
+            en vez de abrir fuera de pantalla.
+          </li>
+          <li>
+            <strong>"Generación..." atascado sin error.</strong> Arreglado.
+            Error de configuración de provider (ej. Ollama con modelo no descargado)
+            dejaba el panel colgado. Ahora ves una barra de error roja con la respuesta
+            real del backend, el botón enviar también vuelve.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Lo que v4.0 explícitamente no hace (y por qué)</h2>
+        <p>Decir no también es parte del producto. Esto se consideró seriamente y no se hace explícitamente:</p>
+        <ul>
+          <li>
+            <strong>Traer nuestro propio runtime LLM local.</strong> Ollama ya lo hace bien;
+            reinventar la rueda viola el principio "escribir menos código que mantener permanentemente".
+            Provider BYOK sigue siendo el camino.
+          </li>
+          <li>
+            <strong>Marketplace de Recipe en línea.</strong> Operación de servidor + moderación de contenido = desviación de la línea principal.
+            Cookbooks empaquetados directamente en releases, actualizados con la herramienta.
+          </li>
+          <li>
+            <strong>Multi-usuario / agente de equipo.</strong> Viola "una ventana, un escritor".
+            Este producto es para autor único; la colaboración pertenece a otro producto.
+          </li>
+          <li>
+            <strong>Completado ghost-text estilo Copilot.</strong> Posicionamiento de marca diferente.
+            Ghost-text diluye la voz del escritor; nuestros agentes trabajan en unidad de vault,
+            las escrituras son por lotes + revisables + branch-based.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Notas de actualización</h2>
+        <ul>
+          <li>
+            <strong>Sin cambios de formato de archivo.</strong> <code>.md</code> existentes,
+            historial AutoGit, configuración sync, claves BYOK todos preservados como están.
+          </li>
+          <li>
+            <strong>Panel Agent encendido automáticamente al primer lanzamiento.</strong>
+            Los usuarios v3.6.x pueden tener un <code>showAgentPanel: false</code> oculto
+            debido al default del scaffold del periodo v4-beta; migración única lo
+            voltea a true, ves realmente la funcionalidad principal.
+            Si no la quieres, puedes desactivarla vía
+            <code>⌘⇧P → View: Toggle Agent Panel</code>.
+          </li>
+          <li>
+            <strong>El panel Ajustes tiene dos nuevas pestañas <em>Recipes</em> y <em>Medidor de coste</em></strong>,
+            bajo <em>Integraciones</em>. Posiciones de ajustes existentes sin cambio.
+          </li>
+          <li>
+            <strong>El servidor MCP (<code>solomd-mcp</code>) ganó nuevo parámetro
+            <code>--workspace</code></strong> (repetible).
+            Los clientes MCP single-workspace existentes siguen funcionando;
+            el comportamiento de federación es opt-in.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>🔮 Lo que sigue</h2>
+        <p>
+          5 pilares principales + barra de calidad son el contenido principal esta vez. <em>Las
+          direcciones abiertas para v4.x y más allá</em> están todas en el
+          <a href="https://github.com/zhitongblog/solomd/blob/main/docs/roadmap.md">roadmap</a>:
+          API de script sandboxeada, CLI v2 (rewrite / commit / búsqueda semántica /
+          trigger Recipe en terminal), y la pregunta siempre retrasada
+          <em>"¿Debería SoloMD volverse un producto comercial?"</em>
+          (sync de pago — pregunta vieja de la era v3.0, todavía sin respuesta,
+          hasta que se decida, no se hará ingeniería en esta área).
+        </p>
+      </section>
+
+      <p class="thanks-row">
+        Gracias a todos los que durante el periodo silencioso enviaron issues / mandaron
+        PRs / corrieron builds v4-beta con vaults reales. v4.0 pudo enviarse porque
+        el dogfood descubrió los bugs que las pruebas de integración omitieron.
+        Versiones anteriores: <a href="/blog/">Ver el blog (en) →</a>
+      </p>
+    </article>
+    <Giscus lang={lang} />
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .whats-new { max-width: 880px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .version-row { display: flex; align-items: center; gap: 12px; margin: 0 0 14px; }
+  .version-tag {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #000;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .whats-new time { font-size: 13px; color: var(--text-muted); }
+  .whats-new h1 { font-size: clamp(2.2rem, 5vw, 3.4rem); line-height: 1.1; margin: 0 0 22px; }
+  .whats-new h2 { font-size: clamp(1.5rem, 3vw, 1.9rem); margin: 56px 0 16px; }
+  .whats-new h3 { font-size: 1.1rem; margin: 0 0 8px; color: var(--accent); }
+  .whats-new .lead { font-size: 1.15rem; color: var(--text-muted); line-height: 1.65; margin-bottom: 28px; }
+  .whats-new p { line-height: 1.75; margin: 12px 0; }
+  .whats-new ul, .whats-new ol { padding-left: 22px; }
+  .whats-new li { margin: 8px 0; line-height: 1.7; }
+  .whats-new code {
+    background: var(--bg-soft);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.92em;
+    font-family: var(--font-mono);
+    color: var(--accent-deep);
+  }
+  .whats-new a:not(.btn) { color: var(--accent); }
+  .cta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 28px 0 8px;
+  }
+  .pillars {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 22px;
+    margin-top: 22px;
+  }
+  .pillar {
+    padding: 18px 22px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-soft);
+  }
+  .pillar p { margin: 0; }
+  .thanks-row {
+    margin-top: 64px;
+    padding-top: 22px;
+    border-top: 1px solid var(--border);
+    font-size: 14px;
+    color: var(--text-muted);
+  }
+</style>

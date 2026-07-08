@@ -1,0 +1,410 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import Giscus from '../../components/Giscus.astro';
+
+const lang = 'en' as const;
+---
+
+<Layout
+  title="How we built v4.0 — engineering notes from a 12-week quiet phase"
+  description="The development process behind SoloMD v4.0: why we held main on patches-only for 12 weeks, why the 5 pillars share one safety contract instead of being five separate minor releases, what 262 unit tests missed that dogfooding caught, and how the agent-paired-with-tests workflow compresses the inner loop without compromising the outer one."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <article class="container blog-article">
+      <nav class="breadcrumbs">
+        <a href="/">Home</a> / <a href="/blog/">Blog</a> / <span>How we built v4.0</span>
+      </nav>
+      <time>2026-05-03</time>
+      <h1>How we built v4.0 — engineering notes from a 12-week quiet phase</h1>
+      <p class="lead">
+        The shipped product is the
+        <a href="/blog/v4-0-0-agent-native-author/">agent-native author release</a>.
+        This post is the build log behind it — why the
+        <code>main</code> branch went into patches-only mode for 12
+        weeks, why the 5 pillars share one safety contract instead of
+        becoming five separate minor releases, what dogfooding caught
+        that 262 unit tests didn't, and how an agent-paired-with-tests
+        workflow compresses the inner loop without compromising the
+        outer one.
+      </p>
+
+      <h2>The quiet phase, and why it's not "shipping slowly"</h2>
+      <p>
+        v3.x cadence in early 2026 was bracingly fast: 5 minor
+        releases in ~2 months (3.5 / 3.5.5 / 3.6 / 3.6.1 / 3.6.2).
+        Each was substantial — semantic search, AutoGit, MCP server,
+        14 BYOK providers, full reveal.js slideshow. The user-perceived
+        signal flipped halfway through the run, though. Around 3.6.0
+        people stopped saying "exciting new feature" and started
+        saying "did the 3.5 → 3.6 update break X?" The release notes
+        looked like progress; the bug-report inbox looked like
+        regression.
+      </p>
+      <p>
+        We went quiet on <code>main</code> right after 3.6.2. Not
+        because we ran out of features to ship — the v4 pillars were
+        already half-built on feature branches — but because shipping
+        each pillar as a separate minor would have multiplied the
+        instability surface by five. The bargain: 12 weeks of zero
+        marketing wins, in exchange for one clean architectural
+        cut where every pillar trusts the same primitives.
+      </p>
+      <p>
+        The patches-only rule wasn't symbolic. v3.6.x got real bug
+        fixes during those 12 weeks. The only thing barred from
+        <code>main</code> was scope-expanding feature work.
+      </p>
+
+      <h2>Five pillars, one safety contract</h2>
+      <p>
+        The v4 surfaces look distinct: an Inline Agent Panel, a YAML
+        recipe runner, a JSONL trace view, an MCP federation flag, an
+        Ollama auto-detect. Different shapes, different file paths.
+      </p>
+      <p>
+        They aren't different code. They're five entry points into
+        one machinery:
+      </p>
+      <ul>
+        <li>
+          One <code>RunHandle</code> that mints the run id, creates
+          <code>.solomd/agent-runs/&lt;run-id&gt;/</code>, persists
+          <code>run.md</code> + <code>trace.jsonl</code>, finalises
+          status / tokens / cost on every exit path including panic.
+        </li>
+        <li>
+          One <code>trace.jsonl</code> schema —
+          <code>prompt</code> / <code>model_call</code> /
+          <code>tool_call</code> / <code>tool_result</code> /
+          <code>git_commit</code> / <code>done</code> — written by
+          both panel chats and recipes, replayable from the same MCP
+          tool by either.
+        </li>
+        <li>
+          One <code>write-cap registry</code> in <code>agent_tools</code>
+          that <code>write_note</code> / <code>append_to_note</code>
+          consult on every call. Recipes register a per-run cap;
+          panel chats register no cap (interactive — user-paced).
+          Same code path, different policy.
+        </li>
+        <li>
+          One <code>resolve_in_workspace</code> that every read /
+          write / glob path goes through. <code>..</code> rejected
+          upfront, absolute paths rejected upfront, deepest existing
+          ancestor canonicalised before reattaching the leaf. Bound
+          to one function so security review is bound to one function.
+        </li>
+        <li>
+          One <code>AutoGit branch sandbox</code> shared between
+          recipes (per-run agent branches) and the existing v2.2
+          per-save snapshots — same libgit2 calls, same vendored
+          binary, same status checks for "is the working tree dirty
+          right now?"
+        </li>
+      </ul>
+      <p>
+        Adding a feature in v4.x means picking a new entry point.
+        It does not mean building new safety primitives. That's the
+        compounding return on the quiet phase.
+      </p>
+
+      <h2>What 262 tests missed</h2>
+      <p>
+        We had 262 unit + integration tests by the end of the quiet
+        phase. They all passed. They all kept passing through the
+        12 weeks. They were not enough.
+      </p>
+      <p>
+        Things they caught: every tool dispatch path, every YAML
+        parse error, every cron expansion edge case, every Ollama
+        provider alias, every <code>--workspace</code> flag
+        combination. Path traversal — until we strengthened it. The
+        agent_tools workspace-escape regression test is the cleanest
+        case study: we wrote the test, it failed, we fixed the bug,
+        the test stayed.
+      </p>
+      <p>
+        Things they missed:
+      </p>
+      <ul>
+        <li>
+          The macOS launch sequence where <code>set_focus()</code>
+          fires before NSApplication has finished launching, so the
+          activation request gets dropped and the app opens behind
+          whatever was previously frontmost. No unit test exercises
+          NSApplication. No integration test reproduces "the user's
+          Finder is in front."
+        </li>
+        <li>
+          The sidebar resize handle that's 5px wide in CSS but 100%
+          wide because a global <code>:deep(*)</code> rule on the
+          sidebar's children matched it too. Both selectors had the
+          same specificity; source order won. No test renders the
+          sidebar with a hover and inspects the bounding box of the
+          handle.
+        </li>
+        <li>
+          The race between <code>await invoke('ai_chat')</code>
+          resolving and the spawned task emitting
+          <code>solomd://ai-error</code>. For a fast 404 from Ollama,
+          the error event arrived in JS before the IPC response with
+          the request id, so the listener's id-match check dropped
+          the event. No test simulates the IPC arrival ordering of
+          two messages from the same backend task.
+        </li>
+        <li>
+          The seven input surfaces where pressing Enter to commit a
+          pinyin candidate fired send / rename / open instead of
+          letting the IME handle it. We added <code>e.isComposing</code>
+          guards to all of them — but only after a CJK user actually
+          opened the panel and tried.
+        </li>
+      </ul>
+      <p>
+        The pattern: tests verify <em>internal contracts</em> — does
+        the function return what we think it does, given inputs we
+        expect. They do not verify <em>environment contracts</em> —
+        does the OS deliver the activation event, does the IPC layer
+        order messages we don't control, does the input method emit
+        the keydown we assume. Those bugs surface only when a real
+        person runs the real binary on a real OS with a real IME.
+      </p>
+
+      <h2>The dogfood window</h2>
+      <p>
+        Roughly four weeks before tag we cut <code>v4-beta</code>
+        builds and ran them ourselves on real vaults. Not a focus
+        group — just the maintainer, with the binary, doing the
+        thing. Notes loaded from the same workspace where these blog
+        posts live. Recipes scheduled against actual daily notes.
+      </p>
+      <p>
+        That window contributed about a third of v4.0's commits.
+        Every bug listed above was caught in it. So were a dozen
+        smaller things — <strong>the Agent Panel default-off setting</strong>
+        (the marquee feature was hidden by default, which we noticed
+        on a fresh install only after migration testing); <strong>the
+        AutoGit sandbox sweeping uncommitted edits</strong> into
+        agent commits; <strong>the silent-error UX</strong> where a
+        misconfigured provider hung the panel forever with no toast.
+      </p>
+      <p>
+        The discipline that made the dogfood window worth the four
+        weeks: <em>every observation gets a fix-and-test in the
+        same commit</em>. No "filed it; will revisit." No "small
+        thing, queue it for next patch." The dogfood log directly
+        produced the test additions in the security commit. The
+        IME guards landed with the surfaces all in one diff. The
+        agent panel migration shipped with the marker logic and a
+        unit test for the migration's idempotency.
+      </p>
+
+      <h2>The agent-paired-with-tests inner loop</h2>
+      <p>
+        SoloMD v3.6 became part of how we built v4.0. The dogfood
+        cycle inside the project's own vault used <em>itself</em>:
+        a v4-beta panel chatting with a vault that contained the
+        v4 design docs, with the recipe runner running an actual
+        weekly review on actual weekly notes.
+      </p>
+      <p>
+        The loop:
+      </p>
+      <ol>
+        <li>
+          Spot a thing — UX wart, suspicious behavior, missing
+          affordance.
+        </li>
+        <li>
+          Write the failing test first <em>or</em> reproduce the
+          symptom by hand. (Tie goes to the test.)
+        </li>
+        <li>
+          Fix; verify the test passes; verify the symptom is gone
+          in the running build.
+        </li>
+        <li>
+          Commit with a message that describes the user-visible
+          symptom, not the internal change. Future-you reads the
+          symptom; future-you searches for symptoms.
+        </li>
+      </ol>
+      <p>
+        Two things were non-negotiable about that loop. First:
+        <strong>self-test before declaring done</strong>. A code
+        change that compiles is not done. A code change that has
+        unit tests passing is not done. A code change is done when
+        the user-visible symptom is verified gone in the actual
+        running binary, on the actual platform you ship to. Step 3
+        existed because step 2's "tie goes to the test" cannot
+        verify environment contracts.
+      </p>
+      <p>
+        Second: <strong>commit messages are the search index</strong>.
+        Every fix in v4.0 has a commit message that names the
+        symptom in user words ("stuck on streaming…", "menu bar
+        keeps showing previous app"). Six months from now when
+        someone hits the same symptom, they grep the symptom and
+        find the fix and the test. Commit messages that name
+        internal refactors are searchable only by people who
+        already understand the internals.
+      </p>
+
+      <h2>Multi-agent code review at the end</h2>
+      <p>
+        Two days before tag we ran a multi-agent code review of
+        the entire v4 diff (~20K lines). Four parallel agents,
+        each with a focused brief: frontend bugs, backend bugs,
+        cross-cutting consistency, security. They returned ~24
+        findings. Twelve made it in before tag. One was deferred
+        (a low-impact cancel-flag wiring that needed a
+        <code>pub(crate)</code> visibility change in another
+        agent's territory). The rest were stylistic nits and
+        we declined them.
+      </p>
+      <p>
+        The review process is interesting in its own right but
+        less so than the structural choice: <strong>parallel
+        agents on non-overlapping scopes</strong> means you can
+        run a thorough review of a 20K-line diff in 8 minutes
+        without the agents racing to edit the same file. The
+        coordination cost is the prompt — each agent gets a clear
+        file allowlist, a precedent list of fixes already shipped
+        (so it doesn't propose them), and an output cap.
+      </p>
+      <p>
+        What it caught that we hadn't: the
+        <code>resolve_in_workspace</code> path-traversal
+        regression where the parent-doesn't-exist branch fell
+        back to the unresolved candidate. The static analysis
+        couldn't see it; a human reviewer focused on the surface
+        contract probably wouldn't either. The agent had a
+        precedent ("the in-tree <code>mcp-server::safety::resolve_in</code>
+        does this correctly") and used it to flag the
+        divergence.
+      </p>
+
+      <h2>What we said no to</h2>
+      <p>
+        Saying no is part of the process. The roadmap memorialises
+        these so they keep getting said no to:
+      </p>
+      <ul>
+        <li>
+          <strong>Bundled local LLM runtime.</strong> Ollama already
+          covers it. Re-implementing means we maintain another
+          inference loop, another model file format, another
+          quantisation pipeline. BYOK is the path.
+        </li>
+        <li>
+          <strong>Online recipe marketplace.</strong> Server ops +
+          moderation = a different company. Cookbook ships in-tree
+          and the cycle is the GitHub PR.
+        </li>
+        <li>
+          <strong>Multi-user / team agents.</strong> "One window,
+          one writer." The CRDT collab path leads to a different
+          product.
+        </li>
+        <li>
+          <strong>Copilot ghost-text.</strong> Different brand;
+          dilutes the writer's voice. Our agents work at vault
+          granularity, with batched reviewable writes.
+        </li>
+        <li>
+          <strong>Plugin marketplace.</strong> Trilium-style
+          scripting API maybe; an Obsidian-style plugin
+          ecosystem no — see principle #6 ("combination &gt;
+          single feature").
+        </li>
+      </ul>
+      <p>
+        Every one of these had a reasonable argument for shipping.
+        Each was rejected on a principle, not a case-by-case
+        judgement. Principles are the only way to say no
+        consistently — case-by-case becomes "what was I in the
+        mood for that day," which becomes feature creep.
+      </p>
+
+      <h2>What's transferable</h2>
+      <p>
+        This isn't a methodology post. SoloMD's specific cadence
+        (12-week quiet phase before a major) isn't right for every
+        project. But three things were genuinely load-bearing
+        and probably transferable:
+      </p>
+      <ol>
+        <li>
+          <strong>Make pillars share primitives, not just live
+          alongside.</strong> The discipline isn't "ship 5 things";
+          it's "ship 5 things on top of one shared substrate
+          you've thought about for 12 weeks." The cost is paid up
+          front in design; the return is paid every release after.
+        </li>
+        <li>
+          <strong>Dogfood window is non-negotiable.</strong>
+          Pre-tag, four weeks, real vault, real binary. Skip it
+          and the bug list becomes the v4.0.1 bug list, which
+          becomes the v4.0.2 bug list. Better to absorb the cost
+          in one cycle and ship clean.
+        </li>
+        <li>
+          <strong>Tests verify internal contracts; people verify
+          environment contracts.</strong> Build for both. Don't
+          mistake a green CI for a working product.
+        </li>
+      </ol>
+      <p>
+        The next post will be a v4.x retrospective in 8 weeks —
+        if dogfood discipline held, if shared primitives compounded
+        the way the design promised, and if the no-list stayed
+        on the no-list.
+      </p>
+
+      <p class="thanks-row">
+        Code: <a href="https://github.com/zhitongblog/solomd">github.com/zhitongblog/solomd</a>.
+        v4.0 release: <a href="/whats-new/">whats-new</a> ·
+        <a href="/blog/v4-0-0-agent-native-author/">launch post</a>.
+        Bugs: <a href="https://github.com/zhitongblog/solomd/issues">issues</a>.
+      </p>
+    </article>
+    <Giscus lang={lang} />
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .blog-article { max-width: 820px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .blog-article time { font-size: 13px; color: var(--text-muted); }
+  .blog-article h1 { font-size: clamp(2rem, 4vw, 2.8rem); line-height: 1.15; margin: 8px 0 22px; }
+  .blog-article h2 { font-size: clamp(1.4rem, 2.6vw, 1.8rem); margin: 48px 0 14px; }
+  .blog-article h3 { font-size: 1.15rem; margin: 30px 0 8px; color: var(--accent); }
+  .blog-article .lead { font-size: 1.12rem; color: var(--text-muted); line-height: 1.65; margin-bottom: 22px; }
+  .blog-article p { line-height: 1.75; margin: 12px 0; }
+  .blog-article ul, .blog-article ol { padding-left: 22px; }
+  .blog-article li { margin: 6px 0; line-height: 1.7; }
+  .blog-article code {
+    background: var(--bg-soft);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.92em;
+    font-family: var(--font-mono);
+    color: var(--accent-deep);
+  }
+  .blog-article a:not(.btn) { color: var(--accent); }
+  .thanks-row {
+    margin-top: 56px;
+    padding-top: 22px;
+    border-top: 1px solid var(--border);
+    font-size: 14px;
+    color: var(--text-muted);
+  }
+</style>
+</content>
+</invoke>

@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#262628"/>
+      <stop offset="1" stop-color="#09090a"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.46" cy="0.36" r="0.74">
+      <stop offset="0" stop-color="#ff9a2f" stop-opacity="0.20"/>
+      <stop offset="1" stop-color="#ff9a2f" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="paper" x1="0.1" y1="0" x2="0.9" y2="1">
+      <stop offset="0" stop-color="#fff8ef"/>
+      <stop offset="1" stop-color="#f1eadf"/>
+    </linearGradient>
+    <linearGradient id="fold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff2da"/>
+      <stop offset="1" stop-color="#e3d9cb"/>
+    </linearGradient>
+    <linearGradient id="hash" x1="0.22" y1="0.14" x2="0.78" y2="0.9">
+      <stop offset="0" stop-color="#ffd37f"/>
+      <stop offset="0.55" stop-color="#ffae42"/>
+      <stop offset="1" stop-color="#f57c12"/>
+    </linearGradient>
+    <filter id="shadow" x="0" y="0" width="1024" height="1024" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#000" flood-opacity="0.34"/>
+    </filter>
+  </defs>
+  <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#bg)"/>
+  <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#glow)"/>
+  <rect x="34" y="34" width="956" height="956" rx="222" fill="none" stroke="#fff" stroke-opacity="0.08" stroke-width="3"/>
+
+  <g filter="url(#shadow)" transform="translate(38 6) rotate(-5 512 512)">
+    <path d="M318 254h236l126 126v344c0 44-36 80-80 80H318c-44 0-80-36-80-80V334c0-44 36-80 80-80z" fill="url(#paper)"/>
+    <path d="M554 254v126h126" fill="url(#fold)"/>
+    <path d="M554 254l126 126H554z" fill="#e5dace" opacity="0.96"/>
+  </g>
+
+  <g transform="translate(30 10) rotate(-5 512 512)">
+    <g stroke="url(#hash)" stroke-width="76" stroke-linecap="round">
+      <line x1="474" y1="636" x2="474" y2="416"/>
+      <line x1="610" y1="636" x2="610" y2="416"/>
+      <line x1="432" y1="474" x2="652" y2="474"/>
+      <line x1="432" y1="560" x2="652" y2="560"/>
+    </g>
+    <path d="M332 666h410" stroke="#d9cfbf" stroke-width="12" stroke-linecap="round" opacity="0.85"/>
+    <path d="M354 714h292" stroke="#d9cfbf" stroke-width="12" stroke-linecap="round" opacity="0.68"/>
+    <path d="M330 626c74 18 146 26 222 24" stroke="#ffb351" stroke-width="10" stroke-linecap="round" opacity="0.18"/>
+  </g>
+</svg>

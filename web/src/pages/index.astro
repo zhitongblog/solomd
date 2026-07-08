@@ -1,0 +1,38 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import Hero from '../components/Hero.astro';
+import FactPack from '../components/FactPack.astro';
+import UseCases from '../components/UseCases.astro';
+import Principles from '../components/Principles.astro';
+import Features from '../components/Features.astro';
+import Compare from '../components/Compare.astro';
+import Download from '../components/Download.astro';
+import Faq from '../components/Faq.astro';
+import Contact from '../components/Contact.astro';
+import Sponsor from '../components/Sponsor.astro';
+import Footer from '../components/Footer.astro';
+
+const lang = 'en' as const;
+---
+
+<Layout
+  title="SoloMD — Free, open-source Markdown editor for macOS, Windows, Linux, Android, iOS"
+  description="SoloMD is the free Markdown all-in-one. ~15 MB installer, MIT licensed, runs on 5 platforms. Live preview, Wiki links, local RAG semantic search, 14 BYOK AI providers, AutoGit, MCP server — all built in. No accounts, no in-app purchases, no ads, zero telemetry by default."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <Hero lang={lang} />
+    <FactPack lang={lang} />
+    <UseCases lang={lang} />
+    <Principles lang={lang} />
+    <Features lang={lang} />
+    <Compare lang={lang} />
+    <Download lang={lang} />
+    <Faq lang={lang} />
+    <Contact lang={lang} />
+    <Sponsor lang={lang} />
+  </main>
+  <Footer lang={lang} />
+</Layout>

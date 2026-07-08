@@ -1,0 +1,264 @@
+---
+import { getT, LANGS, type Lang } from '../i18n/translations';
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const tr = getT(lang);
+
+const langPrefix = lang === 'en' ? '' : `/${lang}`;
+const homeHref = langPrefix + '/';
+// Sub-pages currently exist only in en + zh. ja/ko fall back to the
+// corresponding en page rather than 404 — partial localization.
+const subPrefix = lang === 'zh' ? '/zh' : '';
+const NAV = {
+  en: { agents: 'Agents', sync: 'Sync', compare: 'Compare', docs: 'Docs', blog: 'Blog', contact: 'Contact', sponsor: 'Sponsor', supportTitle: 'Support the developer' },
+  zh: { agents: 'Agent', sync: '同步', compare: '对比', docs: '文档', blog: '博客', contact: '联系我们', sponsor: '赞助', supportTitle: '支持开发者' },
+  ja: { agents: 'Agent', sync: '同期', compare: '比較', docs: 'ドキュメント', blog: 'ブログ', contact: 'お問い合わせ', sponsor: 'スポンサー', supportTitle: '開発者をサポート' },
+  ko: { agents: 'Agent', sync: '동기화', compare: '비교', docs: '문서', blog: '블로그', contact: '문의', sponsor: '후원', supportTitle: '개발자 후원' },
+  de: { agents: 'Agents', sync: 'Sync', compare: 'Vergleich', docs: 'Docs', blog: 'Blog', contact: 'Kontakt', sponsor: 'Sponsor', supportTitle: 'Entwickler unterstützen' },
+  fr: { agents: 'Agents', sync: 'Sync', compare: 'Comparer', docs: 'Docs', blog: 'Blog', contact: 'Contact', sponsor: 'Sponsor', supportTitle: 'Soutenir le développeur' },
+  es: { agents: 'Agentes', sync: 'Sync', compare: 'Comparar', docs: 'Docs', blog: 'Blog', contact: 'Contacto', sponsor: 'Patrocinar', supportTitle: 'Apoyar al desarrollador' },
+  pt: { agents: 'Agentes', sync: 'Sync', compare: 'Comparar', docs: 'Docs', blog: 'Blog', contact: 'Contato', sponsor: 'Patrocinar', supportTitle: 'Apoiar o desenvolvedor' },
+  it: { agents: 'Agent', sync: 'Sync', compare: 'Confronto', docs: 'Docs', blog: 'Blog', contact: 'Contatto', sponsor: 'Sponsor', supportTitle: 'Supporta lo sviluppatore' },
+  pl: { agents: 'Agent', sync: 'Sync', compare: 'Porównanie', docs: 'Dokumenty', blog: 'Blog', contact: 'Kontakt', sponsor: 'Wesprzyj', supportTitle: 'Wesprzyj dewelopera' },
+  nl: { agents: 'Agents', sync: 'Sync', compare: 'Vergelijken', docs: 'Docs', blog: 'Blog', contact: 'Contact', sponsor: 'Sponsor', supportTitle: 'Steun de ontwikkelaar' },
+  tr: { agents: 'Ajan', sync: 'Sync', compare: 'Karşılaştır', docs: 'Dokümanlar', blog: 'Blog', contact: 'İletişim', sponsor: 'Destek Ol', supportTitle: 'Geliştiriciyi destekle' },
+  sv: { agents: 'Agents', sync: 'Sync', compare: 'Jämför', docs: 'Docs', blog: 'Blog', contact: 'Kontakt', sponsor: 'Stöd', supportTitle: 'Stöd utvecklaren' },
+  uk: { agents: 'Агент', sync: 'Sync', compare: 'Порівняння', docs: 'Документи', blog: 'Блог', contact: 'Контакт', sponsor: 'Підтримати', supportTitle: 'Підтримати розробника' },
+}[lang];
+
+const TOPBAR = {
+  en: 'Become an AI-era PM — words → product',
+  zh: '言出法随一句话，AI 就给你做出来',
+  ja: 'AI 時代の PM になる — 一言で AI がプロダクトを作る',
+  ko: 'AI 시대의 PM 되기 — 말 한마디로 AI가 제품을 만든다',
+  de: 'Werde PM im AI-Zeitalter — sprich, und AI baut es',
+  fr: 'Devenez PM à l\'ère de l\'IA — parlez, l\'IA construit',
+  es: 'Conviértete en PM de la era IA — habla, la IA lo construye',
+  pt: 'Torne-se PM da era IA — fale, a IA constrói',
+  it: 'Diventa PM nell\'era AI — parla, l\'AI lo costruisce',
+  pl: 'Zostań PM-em ery AI — mów, AI buduje',
+  nl: 'Word PM in het AI-tijdperk — spreek, AI bouwt',
+  tr: 'AI çağının PM\'i ol — söyle, AI inşa etsin',
+  sv: 'Bli PM i AI-eran — säg det, AI bygger det',
+  uk: 'Стань PM-ом ери AI — скажи, AI побудує',
+}[lang];
+---
+
+<div class="topbar">
+  <div class="container topbar__inner">
+    <span class="topbar__text">
+      ✨ {TOPBAR} →
+      <a href="https://doaipm.com" target="_blank" rel="noopener">doAIPM.com</a>
+    </span>
+  </div>
+</div>
+<header class="header">
+  <div class="container header__inner">
+    <a href={homeHref} class="header__brand">
+      <span class="brand-mark"><span class="h">#</span><span class="md">MD</span></span>
+      <span class="header__name">SoloMD</span>
+    </a>
+    <nav class="header__nav">
+      <a href={homeHref + '#features'}>{tr.nav.features}</a>
+      <a href={subPrefix + '/agents/'} class="header__nav-new">{NAV.agents} <sup>v4</sup></a>
+      <a href={subPrefix + '/sync/'}>{NAV.sync}</a>
+      <a href={subPrefix + '/compare/'}>{NAV.compare}</a>
+      <a href={subPrefix + '/docs/'}>{NAV.docs}</a>
+      <a href={subPrefix + '/blog/'}>{NAV.blog}</a>
+      <a href={homeHref + '#contact'}>{NAV.contact}</a>
+      <a href={homeHref + '#download'}>{tr.nav.download}</a>
+      <a href={homeHref + '#sponsor'} class="header__sponsor" title={NAV.supportTitle}>
+        <span class="header__sponsor-heart">♥</span>
+        {NAV.sponsor}
+      </a>
+      <a href="https://github.com/zhitongblog/solomd" target="_blank" rel="noopener">
+        {tr.nav.github}
+      </a>
+      <div class="header__lang-wrap">
+        <button type="button" class="header__lang" aria-haspopup="true" aria-expanded="false">
+          {tr.langSwitch} ▾
+        </button>
+        <div class="header__lang-menu" role="menu">
+          {LANGS.map((L) => (
+            <a href={L.href} role="menuitem" class={L.code === lang ? 'is-active' : ''}>{L.label}</a>
+          ))}
+        </div>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<script is:inline>
+  document.addEventListener('click', (e) => {
+    const wrap = document.querySelector('.header__lang-wrap');
+    if (!wrap) return;
+    const btn = wrap.querySelector('.header__lang');
+    const menu = wrap.querySelector('.header__lang-menu');
+    if (!btn || !menu) return;
+    if (btn.contains(e.target)) {
+      const open = menu.classList.toggle('is-open');
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    } else if (!menu.contains(e.target)) {
+      menu.classList.remove('is-open');
+      btn.setAttribute('aria-expanded', 'false');
+    }
+  });
+</script>
+
+<style>
+  .topbar {
+    background: var(--ink);
+    color: #ffffff;
+    font-size: 12px;
+    text-align: center;
+    padding: 7px 0;
+  }
+  .topbar__inner {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .topbar__text {
+    color: rgba(255, 255, 255, 0.8);
+  }
+  .topbar__text a {
+    color: var(--accent);
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .topbar__text a:hover {
+    text-decoration: underline;
+  }
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    backdrop-filter: saturate(180%) blur(14px);
+    background: color-mix(in srgb, var(--bg) 80%, transparent);
+    border-bottom: 1px solid var(--border);
+  }
+  .header__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+  }
+  .header__brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    color: var(--text);
+    text-decoration: none;
+  }
+  .header__brand .brand-mark { font-size: 18px; }
+  .header__name { font-weight: 700; }
+  .header__nav {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+  }
+  .header__nav a {
+    color: var(--text-muted);
+    font-size: 14px;
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+  .header__nav a:hover { color: var(--accent); }
+  .header__nav-new {
+    color: var(--text) !important;
+    font-weight: 600;
+  }
+  .header__nav-new sup {
+    font-size: 9px;
+    background: linear-gradient(135deg, #ff9f40 0%, #ffd166 100%);
+    color: #000;
+    padding: 1px 5px;
+    border-radius: 999px;
+    margin-left: 3px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    vertical-align: middle;
+  }
+  .header__lang-wrap {
+    position: relative;
+  }
+  .header__lang {
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 4px 12px;
+    font-size: 12px;
+    color: var(--text);
+    background: transparent;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .header__lang:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .header__lang-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    min-width: 140px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px;
+    display: none;
+    flex-direction: column;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    z-index: 60;
+  }
+  .header__lang-menu.is-open {
+    display: flex;
+  }
+  .header__lang-menu a {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--text) !important;
+  }
+  .header__lang-menu a:hover {
+    background: var(--bg-soft);
+    color: var(--accent) !important;
+  }
+  .header__lang-menu a.is-active {
+    color: var(--accent) !important;
+    font-weight: 600;
+  }
+  .header__sponsor {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    border-radius: 999px;
+    padding: 4px 12px;
+    font-size: 12px !important;
+    color: var(--accent) !important;
+    font-weight: 600;
+    transition: all 0.15s;
+  }
+  .header__sponsor:hover {
+    background: color-mix(in srgb, var(--accent) 22%, transparent);
+    border-color: var(--accent);
+  }
+  .header__sponsor-heart {
+    color: #ff5a78;
+    font-size: 13px;
+    line-height: 1;
+  }
+  @media (max-width: 720px) {
+    /* Use a direct-child combinator so the selector only hides the top-level
+       nav links (Features / Agents / Sync / ...) and not the <a> menuitems
+       inside .header__lang-wrap > .header__lang-menu — the descendant form
+       was also matching the 14 language items, making the mobile dropdown
+       open into an empty 14px-tall sliver. */
+    .header__nav > a:not(.header__sponsor):not([href*='github']) {
+      display: none;
+    }
+    .header__lang-wrap { display: block; }
+  }
+</style>

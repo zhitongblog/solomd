@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFC268"/><stop offset=".55" stop-color="#FB9233"/><stop offset="1" stop-color="#EF6C0A"/></linearGradient><radialGradient id="hl" cx=".3" cy=".22" r=".9"><stop offset="0" stop-color="#fff" stop-opacity=".33"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></radialGradient><filter id="ds" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="9" stdDeviation="13" flood-color="#7a3500" flood-opacity=".28"/></filter></defs>
+<rect x="32" y="32" width="960" height="960" rx="224" fill="url(#g)"/><rect x="32" y="32" width="960" height="960" rx="224" fill="url(#hl)"/><rect x="34" y="34" width="956" height="956" rx="222" fill="none" stroke="#ffffff" stroke-opacity=".18" stroke-width="3"/><g stroke="#ffffff" stroke-width="86" stroke-linecap="round" filter="url(#ds)">
+    <line x1="436" y1="760" x2="492" y2="264"/>
+    <line x1="600" y1="760" x2="656" y2="264"/>
+    <line x1="356" y1="430" x2="712" y2="430"/>
+    <line x1="336" y1="600" x2="692" y2="600"/>
+  </g>
+</svg>

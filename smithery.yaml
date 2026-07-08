@@ -1,0 +1,146 @@
+# Smithery.ai listing for solomd-mcp.
+#
+# Schema reference: https://smithery.ai/docs/build/yaml-reference
+#
+# Smithery will read this from the root of the repo when our submission
+# PR is accepted. Mirrored at marketplace/smithery/smithery.yaml so other
+# clones can reproduce it without copying from upstream's CDN.
+
+name: solomd-mcp
+displayName: SoloMD
+description: >
+  MCP server for one or more Markdown notes folders. 13 tools: list_notes,
+  read_note, search, get_backlinks, list_tags, get_outline, autogit_log,
+  autogit_diff, sync_status, share_url, plus write tools behind --allow-write.
+  Pairs with the SoloMD desktop editor (solomd.app) but works against any
+  plain folder of .md files.
+homepage: https://solomd.app
+repository: https://github.com/zhitongblog/solomd
+license: MIT
+icon: https://solomd.app/favicon.svg
+
+# Smithery categorisation — these surface in the UI's filter sidebar.
+categories:
+  - knowledge-management
+  - file-system
+  - markdown
+  - personal-productivity
+
+# How Smithery runs the server.
+#
+# We ship prebuilt binaries for 4 platforms on every GitHub release
+# (linux-x64, linux-arm64, win-x64, win-arm64). Smithery's "binary"
+# runtime downloads and pins one per the user's OS / arch.
+runtime: binary
+binary:
+  downloads:
+    linux-x64: https://github.com/zhitongblog/solomd/releases/latest/download/solomd-mcp-linux-x64.tar.gz
+    linux-arm64: https://github.com/zhitongblog/solomd/releases/latest/download/solomd-mcp-linux-arm64.tar.gz
+    win-x64: https://github.com/zhitongblog/solomd/releases/latest/download/solomd-mcp-win-x64.zip
+    win-arm64: https://github.com/zhitongblog/solomd/releases/latest/download/solomd-mcp-win-arm64.zip
+  # On macOS the binary ships inside the SoloMD app bundle (not as a
+  # standalone tarball) — Smithery users on Mac should install via
+  # `cargo install solomd-mcp` (we publish on crates.io) or download
+  # the desktop app and point at `/Applications/SoloMD.app/Contents/MacOS/solomd-mcp`.
+  macos-fallback: |
+    cargo install solomd-mcp
+    # — or —
+    # Install SoloMD.app from solomd.app and use the bundled binary:
+    # /Applications/SoloMD.app/Contents/MacOS/solomd-mcp
+
+  entrypoint: solomd-mcp
+  args:
+    # User-configured workspace(s). At least one required.
+    # Pass alias=path to multi-mount; repeat the flag for multiple vaults.
+    - --workspace
+    - "${config.workspace}"
+    # Repeatable — set extraWorkspaces in config to enable.
+    - "${config.extraWorkspaces.map(w => `--workspace=${w}`)}"
+
+# What Smithery asks the user when they hit "Install".
+config:
+  type: object
+  required:
+    - workspace
+  properties:
+    workspace:
+      type: string
+      title: Notes folder
+      description: >
+        Absolute path to your Markdown notes folder. SoloMD's MCP serves
+        this directory and its subfolders.
+      examples:
+        - /Users/you/notes
+        - /home/you/vault
+    extraWorkspaces:
+      type: array
+      title: Additional workspaces (optional)
+      description: >
+        Extra `alias=/path` entries to federate multiple vaults in one
+        MCP session. Tool calls without an explicit `workspace` argument
+        fall back to the first workspace above.
+      items:
+        type: string
+        examples:
+          - work=/Users/you/work-notes
+          - diary=/Users/you/diary
+    allowWrite:
+      type: boolean
+      title: Allow write
+      default: false
+      description: >
+        Enable write_note, append_to_note, and autogit_rollback. Off by
+        default — turn on only if you trust the client.
+  if:
+    properties:
+      allowWrite:
+        const: true
+  then:
+    properties:
+      _: {}
+  # The transform below appends --allow-write iff the user opted in.
+  argsTransform: |
+    return args.concat(config.allowWrite ? ['--allow-write'] : []);
+
+# Smithery's structured tool inventory — surfaces in the listing UI.
+tools:
+  - name: list_notes
+    description: List .md files in a workspace.
+  - name: read_note
+    description: Read one note in full.
+  - name: search
+    description: Substring or regex search across notes.
+  - name: get_backlinks
+    description: Find every note containing [[wikilink]] to a given note.
+  - name: list_tags
+    description: Aggregate #tags with occurrence counts.
+  - name: get_outline
+    description: Heading structure of a note.
+  - name: write_note
+    description: Create or overwrite a note. Requires --allow-write.
+    writes: true
+  - name: append_to_note
+    description: Append to a note (idempotent). Requires --allow-write.
+    writes: true
+  - name: autogit_log
+    description: Per-note commit history.
+  - name: autogit_diff
+    description: Diff between two revisions of a note.
+  - name: autogit_rollback
+    description: Restore a note to a past commit. Requires --allow-write.
+    writes: true
+  - name: sync_status
+    description: Sync state with the upstream git remote.
+  - name: share_url
+    description: Generate a public read-only share link for a note.
+  - name: read_agent_trace
+    description: Replay an agent recipe run from its trace.jsonl.
+
+# Examples that surface in the listing.
+examples:
+  - title: Find every TODO across the vault
+    prompt: Use the SoloMD MCP search tool to find every "- [ ]" line in my workspace and group by folder.
+  - title: Weekly summary from daily notes
+    prompt: Read my daily/ notes from the past 7 days and write weekly/2026-W22.md with themes, decisions, and open threads.
+  - title: Audit orphan notes
+    prompt: List notes with no incoming wikilinks (no other note references them via [[name]]).

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      width: 1200px;
+      height: 630px;
+      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+      font-family: -apple-system, "Segoe UI", "Inter", sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .container {
+      display: flex;
+      align-items: center;
+      gap: 60px;
+      padding: 60px;
+    }
+
+    .icon {
+      width: 200px;
+      height: 200px;
+      background: #000;
+      border-radius: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 20px 60px rgba(255, 159, 64, 0.3);
+      flex-shrink: 0;
+    }
+
+    .icon-text {
+      font-size: 72px;
+      font-weight: 700;
+      letter-spacing: -2px;
+    }
+
+    .hash { color: #FF9F40; }
+    .md { color: #FFFFFF; }
+
+    .content {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .title {
+      font-size: 80px;
+      font-weight: 700;
+      color: #FFFFFF;
+      letter-spacing: -2px;
+    }
+
+    .tagline {
+      font-size: 32px;
+      color: #8A8A8A;
+      font-weight: 400;
+    }
+
+    .features {
+      display: flex;
+      gap: 20px;
+      margin-top: 16px;
+    }
+
+    .feature {
+      background: rgba(255, 159, 64, 0.15);
+      color: #FF9F40;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 18px;
+      font-weight: 500;
+    }
+
+    .url {
+      position: absolute;
+      bottom: 40px;
+      right: 60px;
+      font-size: 24px;
+      color: #FF9F40;
+      font-weight: 500;
+    }
+
+    /* Decorative elements */
+    .glow {
+      position: absolute;
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(circle, rgba(255, 159, 64, 0.15) 0%, transparent 70%);
+      top: -100px;
+      right: -100px;
+      pointer-events: none;
+    }
+
+    .glow2 {
+      position: absolute;
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(255, 159, 64, 0.1) 0%, transparent 70%);
+      bottom: -50px;
+      left: -50px;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="glow"></div>
+  <div class="glow2"></div>
+
+  <div class="container">
+    <div class="icon">
+      <span class="icon-text"><span class="hash">#</span><span class="md">MD</span></span>
+    </div>
+
+    <div class="content">
+      <div class="title">SoloMD</div>
+      <div class="tagline">One file. One window. Just write.</div>
+      <div class="features">
+        <span class="feature">15 MB</span>
+        <span class="feature">MIT License</span>
+        <span class="feature">Offline</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="url">solomd.app</div>
+</body>
+</html>

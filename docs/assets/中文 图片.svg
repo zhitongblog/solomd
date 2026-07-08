@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="220" viewBox="0 0 640 220" role="img" aria-labelledby="title desc">
+  <title id="title">中文路径图片</title>
+  <desc id="desc">A local SVG with Chinese characters and a space in its filename.</desc>
+  <rect width="640" height="220" rx="18" fill="#fff7ed"/>
+  <rect x="24" y="24" width="592" height="172" rx="14" fill="#ffffff" stroke="#fed7aa"/>
+  <circle cx="92" cy="110" r="48" fill="#c2410c"/>
+  <text x="92" y="122" font-family="Segoe UI, Arial, sans-serif" font-size="34" font-weight="700" text-anchor="middle" fill="#ffffff">中</text>
+  <text x="166" y="98" font-family="Segoe UI, Arial, sans-serif" font-size="30" font-weight="700" fill="#431407">中文 图片.svg</text>
+  <text x="166" y="136" font-family="Segoe UI, Arial, sans-serif" font-size="18" fill="#9a3412">Tests Unicode + space path handling in local image URLs</text>
+</svg>
