@@ -11,6 +11,7 @@ export const it: I18n = {
     recent: 'File recenti',
     noRecent: 'Nessun file recente',
     clearRecent: 'Cancella recenti',
+    removeRecent: 'Rimuovi dalla lista',
     export: 'Esporta',
     exportHtml: 'Esporta in HTML…',
     exportDocx: 'Esporta in Word (DOCX)…',
@@ -142,6 +143,8 @@ export const it: I18n = {
     globalZoomReset: 'Reimposta',
     codeBlockLineNumbers: 'Numeri di riga nei blocchi di codice',
     codeBlockLineNumbersHint: 'Aggiunge una colonna 1, 2, 3… a ogni blocco di codice recintato nell\'anteprima. Ereditato dalle esportazioni PDF/DOCX/immagine.',
+    markdownHardBreaks: 'Renderizza i singoli a capo come interruzioni di riga',
+    markdownHardBreaksHint: 'Come Typora: un solo Invio crea un a capo nell\'anteprima e in tutte le esportazioni. Disattivato = Markdown rigoroso (gli a capo singoli si fondono nel paragrafo; una riga vuota separa).',
     wordWrap: 'A capo automatico',
     lineNumbers: 'Numeri di riga',
     livePreview: 'Anteprima live (Markdown) — nascondi marcatori fuori riga, rendering titoli, grassetto ecc.',
@@ -1226,11 +1229,13 @@ export const it: I18n = {
     upgradeMismatch: 'Le due passphrase non corrispondono.',
     upgradeNotAcknowledged: 'Spunta la conferma prima di continuare.',
     providerTitle: 'Provider',
-
+    customProvider: 'URL git HTTPS personalizzato',
+    nonGithubHint:
+      'Auto-creazione + selettore repo funzionano solo per GitHub. Per GitLab / Gitea / server personalizzati, incolla l\'URL di clone sotto — push / pull usano libgit2 + il tuo token, nessuna API specifica del provider necessaria.',
     enableE2ee: 'Crittografa end-to-end prima del push',
     e2eeHint:
       'I file sono crittografati su questo dispositivo con una passphrase che imposti tu; solo il cifrato viene spinto. Ricerca / RAG / riscrittura IA funzionano ancora localmente. Il remoto vede solo blob crittografati.',
-
+    pasteUrlTitle: 'Incolla un URL di clone',
     e2eeSection: 'Passphrase di crittografia',
     e2eePromptHint:
       'Imposta la stessa passphrase usata sull\'altro dispositivo. Il salt è sincronizzato dal repo crittografato così la stessa passphrase deriva sempre la stessa chiave.',
@@ -1243,37 +1248,6 @@ export const it: I18n = {
     decrypting: 'Decifratura…',
     decryptedToast: 'Vault decifrato nel workspace.',
     decryptFailed: 'Decifratura fallita',
-    // --- Gitea-specific keys ---
-    giteaIntro:
-      'Push your vault to a Gitea server. Enter your server URL and a Personal Access Token to get started.',
-    giteaUrlTitle: 'Gitea server URL',
-    giteaUrlHint:
-      'The base URL of your Gitea instance (e.g. https://gitea.com or your own server). SoloMD will append /api/v1 automatically.',
-    giteaUrlValidateBtn: 'Validate URL',
-    giteaUrlValidating: 'Validating...',
-    giteaTokenTitle: 'Gitea Personal Access Token',
-    giteaTokenHint: 'Create a token in Gitea -> Settings -> Applications. Needs repo scope.',
-    giteaSignedInAs: 'Signed in to Gitea as @{user}',
-    backBtn: 'Back',
-    giteaPillClean: 'In sync with Gitea',
-    giteaCloneUrlTitle: 'Or paste a clone URL',
-    giteaPushedToast: 'Pushed to Gitea.',
-    giteaPulledToast: 'Pulled from Gitea.',
-    giteaRepoCreatedToast: 'Created {name} on Gitea.',
-    giteaTokenSavedToast: 'Gitea token saved.',
-    giteaTokenClearedToast: 'Gitea token removed.',
-    giteaTokenInvalid: 'Token rejected by Gitea',
-    giteaNotLinked: 'This workspace is not linked to a Gitea repo.',
-    giteaTokenExpired: 'Gitea login expired - reconnect in Settings -> Sync.',
-    giteaTokenExpiredTitle: 'Gitea connection expired',
-    giteaTokenExpiredBanner: 'Your saved Gitea token was rejected (expired or revoked), so sync is paused. Reconnect with a fresh token to resume.',
-    giteaPillBehind: '{n} to pull from Gitea - click to pull now',
-    giteaPillAhead: '{n} to push to Gitea - click to push now',
-    giteaPillConflicts: '{n} conflict(s) on Gitea - click to resolve',
-
-    // --- Commit message for push ---
-    commitMsgPlaceholder: 'Describe your changes...',
-    commitMsgEmptyError: 'Commit message is required before push.',
   },
   themes: {
     title: 'Marketplace di temi',

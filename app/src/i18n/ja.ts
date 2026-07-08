@@ -11,6 +11,7 @@ export const ja: I18n = {
     recent: '最近使ったファイル',
     noRecent: '最近のファイルはありません',
     clearRecent: '履歴をクリア',
+    removeRecent: 'リストから削除',
     export: 'エクスポート',
     exportHtml: 'HTML にエクスポート…',
     exportDocx: 'Word (DOCX) にエクスポート…',
@@ -142,6 +143,8 @@ export const ja: I18n = {
     globalZoomReset: 'リセット',
     codeBlockLineNumbers: 'コードブロックの行番号',
     codeBlockLineNumbersHint: 'プレビューの各フェンスコードブロックに 1, 2, 3… の行番号列を表示。PDF / DOCX / 画像エクスポートに引き継がれます。',
+    markdownHardBreaks: '単一の改行を改行として表示',
+    markdownHardBreaksHint: 'Typora と同様:Enter 一回でプレビューと全エクスポートで改行されます。オフ = 厳密な Markdown(単一改行は同じ段落に結合され、空行で段落を分けます)。',
     wordWrap: '行折り返し',
     lineNumbers: '行番号',
     livePreview: 'ライブプレビュー（Markdown）— 行外マーカーを隠して見出し・太字などをレンダリング',
@@ -1226,11 +1229,13 @@ export const ja: I18n = {
     upgradeMismatch: '2 つのパスフレーズが一致しません。',
     upgradeNotAcknowledged: '続行する前に確認にチェックを入れてください。',
     providerTitle: 'Provider',
-
+    customProvider: 'カスタム HTTPS git URL',
+    nonGithubHint:
+      '自動作成 + リポジトリピッカーは GitHub 専用。GitLab / Gitea / カスタムサーバーの場合は下にクローン URL を貼り付けてください — push / pull は libgit2 + あなたのトークンで動作し、Provider 固有 API は不要です。',
     enableE2ee: 'push 前にエンドツーエンド暗号化',
     e2eeHint:
       'ファイルは設定したパスフレーズでこのデバイス上で暗号化され、暗号文のみ push されます。検索 / RAG / AI 書き換えはローカルで動作します。リモートには暗号化されたブロブしか見えません。',
-
+    pasteUrlTitle: 'クローン URL を貼り付け',
     e2eeSection: '暗号化パスフレーズ',
     e2eePromptHint:
       '他のデバイスで使ったのと同じパスフレーズを設定してください。salt は暗号化されたリポジトリから同期されるので、同じパスフレーズが常に同じキーを導出します。',
@@ -1243,37 +1248,6 @@ export const ja: I18n = {
     decrypting: '復号中…',
     decryptedToast: 'vault をワークスペースに復号しました。',
     decryptFailed: '復号に失敗しました',
-    // --- Gitea-specific keys ---
-    giteaIntro:
-      'Push your vault to a Gitea server. Enter your server URL and a Personal Access Token to get started.',
-    giteaUrlTitle: 'Gitea server URL',
-    giteaUrlHint:
-      'The base URL of your Gitea instance (e.g. https://gitea.com or your own server). SoloMD will append /api/v1 automatically.',
-    giteaUrlValidateBtn: 'Validate URL',
-    giteaUrlValidating: 'Validating...',
-    giteaTokenTitle: 'Gitea Personal Access Token',
-    giteaTokenHint: 'Create a token in Gitea -> Settings -> Applications. Needs repo scope.',
-    giteaSignedInAs: 'Signed in to Gitea as @{user}',
-    backBtn: 'Back',
-    giteaPillClean: 'In sync with Gitea',
-    giteaCloneUrlTitle: 'Or paste a clone URL',
-    giteaPushedToast: 'Pushed to Gitea.',
-    giteaPulledToast: 'Pulled from Gitea.',
-    giteaRepoCreatedToast: 'Created {name} on Gitea.',
-    giteaTokenSavedToast: 'Gitea token saved.',
-    giteaTokenClearedToast: 'Gitea token removed.',
-    giteaTokenInvalid: 'Token rejected by Gitea',
-    giteaNotLinked: 'This workspace is not linked to a Gitea repo.',
-    giteaTokenExpired: 'Gitea login expired - reconnect in Settings -> Sync.',
-    giteaTokenExpiredTitle: 'Gitea connection expired',
-    giteaTokenExpiredBanner: 'Your saved Gitea token was rejected (expired or revoked), so sync is paused. Reconnect with a fresh token to resume.',
-    giteaPillBehind: '{n} to pull from Gitea - click to pull now',
-    giteaPillAhead: '{n} to push to Gitea - click to push now',
-    giteaPillConflicts: '{n} conflict(s) on Gitea - click to resolve',
-
-    // --- Commit message for push ---
-    commitMsgPlaceholder: 'Describe your changes...',
-    commitMsgEmptyError: 'Commit message is required before push.',
   },
   themes: {
     title: 'テーママーケットプレイス',

@@ -11,6 +11,7 @@ export const pl: I18n = {
     recent: 'Ostatnie pliki',
     noRecent: 'Brak ostatnich plików',
     clearRecent: 'Wyczyść listę',
+    removeRecent: 'Usuń z listy',
     export: 'Eksportuj',
     exportHtml: 'Eksportuj do HTML…',
     exportDocx: 'Eksportuj do Word (DOCX)…',
@@ -142,6 +143,8 @@ export const pl: I18n = {
     globalZoomReset: 'Resetuj',
     codeBlockLineNumbers: 'Numery wierszy w blokach kodu',
     codeBlockLineNumbersHint: 'Dodaje rynnę 1, 2, 3… do każdego ogrodzonego bloku kodu w podglądzie. Dziedziczone przez eksporty PDF/DOCX/obraz.',
+    markdownHardBreaks: 'Renderuj pojedyncze nowe linie jako łamanie wiersza',
+    markdownHardBreaksHint: 'Jak w Typorze: jedno naciśnięcie Enter tworzy łamanie wiersza w podglądzie i wszystkich eksportach. Wyłączone = ścisły Markdown (pojedyncze nowe linie łączą się w akapit; pusty wiersz rozdziela).',
     wordWrap: 'Zawijanie wierszy',
     lineNumbers: 'Numery wierszy',
     livePreview: 'Podgląd na żywo (Markdown) — ukryj znaczniki poza linią, renderuj nagłówki, pogrubienie itd.',
@@ -1239,11 +1242,13 @@ export const pl: I18n = {
 
     // v2.6.3 — multi-provider + E2EE
     providerTitle: 'Dostawca',
-
+    customProvider: 'Niestandardowy URL HTTPS git',
+    nonGithubHint:
+      'Automatyczne tworzenie i wybór repo działa tylko dla GitHub. Dla GitLab / Gitea / własnych serwerów wklej URL klonowania poniżej — push / pull używają libgit2 + Twojego tokena, bez specyficznego API dostawcy.',
     enableE2ee: 'Szyfruj end-to-end przed push',
     e2eeHint:
       'Pliki są szyfrowane na tym urządzeniu frazą, którą ustawisz; tylko tekst zaszyfrowany jest wypychany. Wyszukiwanie / RAG / przepisanie AI nadal działają lokalnie. Zdalnie widoczne są tylko zaszyfrowane bloby.',
-
+    pasteUrlTitle: 'Wklej URL klonowania',
     e2eeSection: 'Fraza szyfrująca',
     e2eePromptHint:
       'Ustaw tę samą frazę, której używałeś na innym urządzeniu. Sól jest synchronizowana z zaszyfrowanym repo, więc ta sama fraza zawsze wyprowadza ten sam klucz.',
@@ -1256,37 +1261,6 @@ export const pl: I18n = {
     decrypting: 'Odszyfrowywanie…',
     decryptedToast: 'Skarbiec odszyfrowany do obszaru roboczego.',
     decryptFailed: 'Odszyfrowanie nie powiodło się',
-    // --- Gitea-specific keys ---
-    giteaIntro:
-      'Push your vault to a Gitea server. Enter your server URL and a Personal Access Token to get started.',
-    giteaUrlTitle: 'Gitea server URL',
-    giteaUrlHint:
-      'The base URL of your Gitea instance (e.g. https://gitea.com or your own server). SoloMD will append /api/v1 automatically.',
-    giteaUrlValidateBtn: 'Validate URL',
-    giteaUrlValidating: 'Validating...',
-    giteaTokenTitle: 'Gitea Personal Access Token',
-    giteaTokenHint: 'Create a token in Gitea -> Settings -> Applications. Needs repo scope.',
-    giteaSignedInAs: 'Signed in to Gitea as @{user}',
-    backBtn: 'Back',
-    giteaPillClean: 'In sync with Gitea',
-    giteaCloneUrlTitle: 'Or paste a clone URL',
-    giteaPushedToast: 'Pushed to Gitea.',
-    giteaPulledToast: 'Pulled from Gitea.',
-    giteaRepoCreatedToast: 'Created {name} on Gitea.',
-    giteaTokenSavedToast: 'Gitea token saved.',
-    giteaTokenClearedToast: 'Gitea token removed.',
-    giteaTokenInvalid: 'Token rejected by Gitea',
-    giteaNotLinked: 'This workspace is not linked to a Gitea repo.',
-    giteaTokenExpired: 'Gitea login expired - reconnect in Settings -> Sync.',
-    giteaTokenExpiredTitle: 'Gitea connection expired',
-    giteaTokenExpiredBanner: 'Your saved Gitea token was rejected (expired or revoked), so sync is paused. Reconnect with a fresh token to resume.',
-    giteaPillBehind: '{n} to pull from Gitea - click to pull now',
-    giteaPillAhead: '{n} to push to Gitea - click to push now',
-    giteaPillConflicts: '{n} conflict(s) on Gitea - click to resolve',
-
-    // --- Commit message for push ---
-    commitMsgPlaceholder: 'Describe your changes...',
-    commitMsgEmptyError: 'Commit message is required before push.',
   },
   themes: {
     title: 'Marketplace motywów',

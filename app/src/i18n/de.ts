@@ -11,6 +11,7 @@ export const de: I18n = {
     recent: 'Zuletzt verwendet',
     noRecent: 'Keine zuletzt verwendeten Dateien',
     clearRecent: 'Verlauf leeren',
+    removeRecent: 'Aus Liste entfernen',
     export: 'Exportieren',
     exportHtml: 'Als HTML exportieren…',
     exportDocx: 'Als Word (DOCX) exportieren…',
@@ -142,6 +143,8 @@ export const de: I18n = {
     globalZoomReset: 'Zurücksetzen',
     codeBlockLineNumbers: 'Zeilennummern in Code-Blöcken',
     codeBlockLineNumbersHint: 'Fügt jedem eingezäunten Code-Block in der Vorschau eine 1, 2, 3…-Spalte hinzu. Wird in PDF/DOCX/Bild-Exporte übernommen.',
+    markdownHardBreaks: 'Einzelne Zeilenumbrüche als Umbruch rendern',
+    markdownHardBreaksHint: 'Wie Typora: Einmal Enter erzeugt in Vorschau und allen Exporten einen Zeilenumbruch. Aus = striktes Markdown (einzelne Umbrüche werden zu einem Absatz zusammengefasst; Leerzeile trennt Absätze).',
     wordWrap: 'Zeilenumbruch',
     lineNumbers: 'Zeilennummern',
     livePreview: 'Live-Vorschau (Markdown) — Marker außerhalb der Zeile ausblenden, Überschriften/Fett rendern',
@@ -1226,11 +1229,13 @@ export const de: I18n = {
     upgradeMismatch: 'Die beiden Passphrasen stimmen nicht überein.',
     upgradeNotAcknowledged: 'Bestätigung ankreuzen, bevor fortgefahren wird.',
     providerTitle: 'Provider',
-
+    customProvider: 'Benutzerdefinierte HTTPS-git-URL',
+    nonGithubHint:
+      'Auto-Erstellung + Repo-Auswahl funktionieren nur für GitHub. Für GitLab / Gitea / benutzerdefinierte Server die Klon-URL unten einfügen — Push / Pull verwenden libgit2 + Ihren Token, keine provider-spezifische API nötig.',
     enableE2ee: 'Ende-zu-Ende verschlüsseln vor Push',
     e2eeHint:
       'Dateien werden auf diesem Gerät mit einer von Ihnen festgelegten Passphrase verschlüsselt; nur Chiffretext wird gepusht. Suche / RAG / KI-Umschreibung funktionieren weiterhin lokal. Der Remote sieht nur verschlüsselte Blobs.',
-
+    pasteUrlTitle: 'Klon-URL einfügen',
     e2eeSection: 'Verschlüsselungs-Passphrase',
     e2eePromptHint:
       'Dieselbe Passphrase festlegen, die Sie auf Ihrem anderen Gerät verwendet haben. Das Salt wird vom verschlüsselten Repo synchronisiert, sodass dieselbe Passphrase immer denselben Schlüssel ableitet.',
@@ -1243,37 +1248,6 @@ export const de: I18n = {
     decrypting: 'Wird entschlüsselt…',
     decryptedToast: 'Vault in den Workspace entschlüsselt.',
     decryptFailed: 'Entschlüsselung fehlgeschlagen',
-    // --- Gitea-specific keys ---
-    giteaIntro:
-      'Push your vault to a Gitea server. Enter your server URL and a Personal Access Token to get started.',
-    giteaUrlTitle: 'Gitea server URL',
-    giteaUrlHint:
-      'The base URL of your Gitea instance (e.g. https://gitea.com or your own server). SoloMD will append /api/v1 automatically.',
-    giteaUrlValidateBtn: 'Validate URL',
-    giteaUrlValidating: 'Validating...',
-    giteaTokenTitle: 'Gitea Personal Access Token',
-    giteaTokenHint: 'Create a token in Gitea -> Settings -> Applications. Needs repo scope.',
-    giteaSignedInAs: 'Signed in to Gitea as @{user}',
-    backBtn: 'Back',
-    giteaPillClean: 'In sync with Gitea',
-    giteaCloneUrlTitle: 'Or paste a clone URL',
-    giteaPushedToast: 'Pushed to Gitea.',
-    giteaPulledToast: 'Pulled from Gitea.',
-    giteaRepoCreatedToast: 'Created {name} on Gitea.',
-    giteaTokenSavedToast: 'Gitea token saved.',
-    giteaTokenClearedToast: 'Gitea token removed.',
-    giteaTokenInvalid: 'Token rejected by Gitea',
-    giteaNotLinked: 'This workspace is not linked to a Gitea repo.',
-    giteaTokenExpired: 'Gitea login expired - reconnect in Settings -> Sync.',
-    giteaTokenExpiredTitle: 'Gitea connection expired',
-    giteaTokenExpiredBanner: 'Your saved Gitea token was rejected (expired or revoked), so sync is paused. Reconnect with a fresh token to resume.',
-    giteaPillBehind: '{n} to pull from Gitea - click to pull now',
-    giteaPillAhead: '{n} to push to Gitea - click to push now',
-    giteaPillConflicts: '{n} conflict(s) on Gitea - click to resolve',
-
-    // --- Commit message for push ---
-    commitMsgPlaceholder: 'Describe your changes...',
-    commitMsgEmptyError: 'Commit message is required before push.',
   },
   themes: {
     title: 'Design-Marktplatz',

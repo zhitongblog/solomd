@@ -1,6 +1,6 @@
 [package]
 name = "solomd"
-version = "4.8.9"
+version = "4.8.10"
 description = "SoloMD — a lightweight, cross-platform Markdown + plain text editor"
 authors = ["zhitong"]
 edition = "2021"
@@ -159,6 +159,9 @@ tauri-plugin-deep-link = "2"
 # 3 weeks because window-state was placed mid-file with a blank line.
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-window-state = "2"
+# #112 — fs_delete moves to the OS trash (Finder 废纸篓 / recycle bin) instead
+# of permanently unlinking; desktop only (mobile has no user-visible trash).
+trash = "5"
 
 # v2.2 AutoGit per-note history + v3.0 GitHub sync: libgit2 bindings for
 # cross-platform git access (no shelling out). `vendored-libgit2` ships the

@@ -35,7 +35,13 @@ export const md = new MarkdownIt({
   html: true,
   linkify: true,
   typographer: true,
-  breaks: false,
+  // #141 — `breaks` is user-controlled (settings.markdownHardBreaks, default
+  // ON = Typora-like: a single newline renders as a line break). This initial
+  // value matches that default; the live value is synced from the settings
+  // store via setMarkdownHardBreaks() (App.vue watchEffect) on hydration and
+  // on toggle. Before 4.8.10 preview/exports used `false` while the Windows
+  // live editor hardcoded `true` — the app disagreed with itself (#141).
+  breaks: true,
   highlight: (code: string, lang: string): string => {
     // Mermaid blocks are handled after-render (processMermaid in Preview.vue)
     // and must keep the `language-mermaid` class untouched. Return '' so
@@ -473,6 +479,12 @@ function normalizeListIndent(source: string): string {
     }
   }
   return out.join('\n');
+}
+
+/** #141 — flip the global soft-newline behavior (preview, exports, live
+ *  editor all share the `md` singleton). Called by the settings store sync. */
+export function setMarkdownHardBreaks(on: boolean): void {
+  md.set({ breaks: on });
 }
 
 export function renderMarkdown(source: string, options?: { breaks?: boolean }): string {

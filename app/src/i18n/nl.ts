@@ -11,6 +11,7 @@ export const nl: I18n = {
     recent: 'Recente bestanden',
     noRecent: 'Geen recente bestanden',
     clearRecent: 'Recente wissen',
+    removeRecent: 'Uit lijst verwijderen',
     export: 'Exporteren',
     exportHtml: 'Exporteren naar HTML…',
     exportDocx: 'Exporteren naar Word (DOCX)…',
@@ -142,6 +143,8 @@ export const nl: I18n = {
     globalZoomReset: 'Resetten',
     codeBlockLineNumbers: 'Regelnummers in codeblokken',
     codeBlockLineNumbersHint: 'Voegt een 1, 2, 3…-goot toe aan elk afgebakend codeblok in het voorbeeld. Overgenomen door PDF/DOCX/afbeelding-exports.',
+    markdownHardBreaks: 'Enkele regeleinden als regelafbreking weergeven',
+    markdownHardBreaksHint: 'Zoals Typora: één keer Enter geeft een regelafbreking in het voorbeeld en alle exports. Uit = strikte Markdown (enkele regeleinden smelten samen tot één alinea; lege regel scheidt).',
     wordWrap: 'Regelterugloop',
     lineNumbers: 'Regelnummers',
     livePreview: 'Live-voorvertoning (Markdown) — markers buiten regel verbergen, koppen, vetgedrukt enz. renderen',
@@ -1239,11 +1242,13 @@ export const nl: I18n = {
 
     // v2.6.3 — multi-provider + E2EE
     providerTitle: 'Aanbieder',
-
+    customProvider: 'Aangepaste HTTPS git-URL',
+    nonGithubHint:
+      'Auto-aanmaak + repo-kiezer werken alleen voor GitHub. Plak voor GitLab / Gitea / aangepaste servers de clone-URL hieronder — push / pull gebruiken libgit2 + je token, geen aanbieder-specifieke API nodig.',
     enableE2ee: 'End-to-end-versleutelen vóór push',
     e2eeHint:
       'Bestanden worden op dit apparaat versleuteld met een door jou ingestelde wachtwoordzin; alleen ciphertext wordt gepusht. Zoeken / RAG / AI Herschrijven werken nog steeds lokaal. De remote ziet alleen versleutelde blobs.',
-
+    pasteUrlTitle: 'Plak een clone-URL',
     e2eeSection: 'Encryptie-wachtwoordzin',
     e2eePromptHint:
       'Stel dezelfde wachtwoordzin in als op je andere apparaat. De salt wordt gesynchroniseerd vanuit de versleutelde repo, zodat dezelfde wachtwoordzin altijd dezelfde sleutel afleidt.',
@@ -1256,37 +1261,6 @@ export const nl: I18n = {
     decrypting: 'Ontsleutelen…',
     decryptedToast: 'Vault ontsleuteld in de werkruimte.',
     decryptFailed: 'Ontsleutelen mislukt',
-    // --- Gitea-specific keys ---
-    giteaIntro:
-      'Push your vault to a Gitea server. Enter your server URL and a Personal Access Token to get started.',
-    giteaUrlTitle: 'Gitea server URL',
-    giteaUrlHint:
-      'The base URL of your Gitea instance (e.g. https://gitea.com or your own server). SoloMD will append /api/v1 automatically.',
-    giteaUrlValidateBtn: 'Validate URL',
-    giteaUrlValidating: 'Validating...',
-    giteaTokenTitle: 'Gitea Personal Access Token',
-    giteaTokenHint: 'Create a token in Gitea -> Settings -> Applications. Needs repo scope.',
-    giteaSignedInAs: 'Signed in to Gitea as @{user}',
-    backBtn: 'Back',
-    giteaPillClean: 'In sync with Gitea',
-    giteaCloneUrlTitle: 'Or paste a clone URL',
-    giteaPushedToast: 'Pushed to Gitea.',
-    giteaPulledToast: 'Pulled from Gitea.',
-    giteaRepoCreatedToast: 'Created {name} on Gitea.',
-    giteaTokenSavedToast: 'Gitea token saved.',
-    giteaTokenClearedToast: 'Gitea token removed.',
-    giteaTokenInvalid: 'Token rejected by Gitea',
-    giteaNotLinked: 'This workspace is not linked to a Gitea repo.',
-    giteaTokenExpired: 'Gitea login expired - reconnect in Settings -> Sync.',
-    giteaTokenExpiredTitle: 'Gitea connection expired',
-    giteaTokenExpiredBanner: 'Your saved Gitea token was rejected (expired or revoked), so sync is paused. Reconnect with a fresh token to resume.',
-    giteaPillBehind: '{n} to pull from Gitea - click to pull now',
-    giteaPillAhead: '{n} to push to Gitea - click to push now',
-    giteaPillConflicts: '{n} conflict(s) on Gitea - click to resolve',
-
-    // --- Commit message for push ---
-    commitMsgPlaceholder: 'Describe your changes...',
-    commitMsgEmptyError: 'Commit message is required before push.',
   },
   themes: {
     title: 'Thema-marktplaats',

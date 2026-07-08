@@ -11,6 +11,7 @@ export const sv: I18n = {
     recent: 'Senaste filer',
     noRecent: 'Inga senaste filer',
     clearRecent: 'Rensa senaste',
+    removeRecent: 'Ta bort från listan',
     export: 'Exportera',
     exportHtml: 'Exportera till HTML…',
     exportDocx: 'Exportera till Word (DOCX)…',
@@ -142,6 +143,8 @@ export const sv: I18n = {
     globalZoomReset: 'Återställ',
     codeBlockLineNumbers: 'Radnummer i kodblock',
     codeBlockLineNumbersHint: 'Lägger till en 1, 2, 3…-ränna i varje inhägnat kodblock i förhandsvisningen. Ärvs av PDF/DOCX/bildexporter.',
+    markdownHardBreaks: 'Rendera enkla radbrytningar som radbrytningar',
+    markdownHardBreaksHint: 'Som Typora: ett Enter-tryck ger en radbrytning i förhandsvisningen och alla exporter. Av = strikt Markdown (enkla radbrytningar slås ihop till ett stycke; tom rad avgränsar).',
     wordWrap: 'Radbrytning',
     lineNumbers: 'Radnummer',
     livePreview: 'Liveförhandsgranskning (Markdown) — dölj markörer utanför raden, rendera rubriker, fetstil m.m.',
@@ -1239,11 +1242,13 @@ export const sv: I18n = {
 
     // v2.6.3 — multi-provider + E2EE
     providerTitle: 'Leverantör',
-
+    customProvider: 'Anpassad HTTPS git-URL',
+    nonGithubHint:
+      'Auto-skapande + repo-väljare fungerar bara för GitHub. För GitLab / Gitea / anpassade servrar — klistra in klon-URL:en nedan, push / pull använder libgit2 + din token, inget leverantörsspecifikt API behövs.',
     enableE2ee: 'End-to-end-kryptera före push',
     e2eeHint:
       'Filer krypteras på den här enheten med en lösenfras du sätter; bara krypterad text pushas. Sökning / RAG / AI-omskrivning fungerar fortfarande lokalt. Fjärrservern ser bara krypterade blobs.',
-
+    pasteUrlTitle: 'Klistra in en klon-URL',
     e2eeSection: 'Krypteringslösenfras',
     e2eePromptHint:
       'Sätt samma lösenfras som du använde på din andra enhet. Saltet synkas från det krypterade repot så att samma lösenfras alltid ger samma nyckel.',
@@ -1256,37 +1261,6 @@ export const sv: I18n = {
     decrypting: 'Dekrypterar…',
     decryptedToast: 'Valv dekrypterat till arbetsytan.',
     decryptFailed: 'Dekryptering misslyckades',
-    // --- Gitea-specific keys ---
-    giteaIntro:
-      'Push your vault to a Gitea server. Enter your server URL and a Personal Access Token to get started.',
-    giteaUrlTitle: 'Gitea server URL',
-    giteaUrlHint:
-      'The base URL of your Gitea instance (e.g. https://gitea.com or your own server). SoloMD will append /api/v1 automatically.',
-    giteaUrlValidateBtn: 'Validate URL',
-    giteaUrlValidating: 'Validating...',
-    giteaTokenTitle: 'Gitea Personal Access Token',
-    giteaTokenHint: 'Create a token in Gitea -> Settings -> Applications. Needs repo scope.',
-    giteaSignedInAs: 'Signed in to Gitea as @{user}',
-    backBtn: 'Back',
-    giteaPillClean: 'In sync with Gitea',
-    giteaCloneUrlTitle: 'Or paste a clone URL',
-    giteaPushedToast: 'Pushed to Gitea.',
-    giteaPulledToast: 'Pulled from Gitea.',
-    giteaRepoCreatedToast: 'Created {name} on Gitea.',
-    giteaTokenSavedToast: 'Gitea token saved.',
-    giteaTokenClearedToast: 'Gitea token removed.',
-    giteaTokenInvalid: 'Token rejected by Gitea',
-    giteaNotLinked: 'This workspace is not linked to a Gitea repo.',
-    giteaTokenExpired: 'Gitea login expired - reconnect in Settings -> Sync.',
-    giteaTokenExpiredTitle: 'Gitea connection expired',
-    giteaTokenExpiredBanner: 'Your saved Gitea token was rejected (expired or revoked), so sync is paused. Reconnect with a fresh token to resume.',
-    giteaPillBehind: '{n} to pull from Gitea - click to pull now',
-    giteaPillAhead: '{n} to push to Gitea - click to push now',
-    giteaPillConflicts: '{n} conflict(s) on Gitea - click to resolve',
-
-    // --- Commit message for push ---
-    commitMsgPlaceholder: 'Describe your changes...',
-    commitMsgEmptyError: 'Commit message is required before push.',
   },
   themes: {
     title: 'Temamarknad',

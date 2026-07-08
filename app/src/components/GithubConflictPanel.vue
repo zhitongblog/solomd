@@ -40,19 +40,11 @@ async function resolve(file: string, choice: 'local' | 'remote' | 'both') {
   }
 }
 
-function cpToast(key: string): string {
-  const gitea: Record<string, string> = {
-    pushedToast: 'giteaPushedToast',
-  };
-  const actual = sync.status?.provider === 'gitea' ? (gitea[key] ?? key) : key;
-  return `githubSync.${actual}`;
-}
-
 async function pushAfterResolve() {
   if (!workspace.currentFolder) return;
   try {
     await sync.push(workspace.currentFolder);
-    toasts.success(t(cpToast('pushedToast')));
+    toasts.success(t('githubSync.pushedToast'));
   } catch (e) {
     toasts.error(`${t('githubSync.pushFailed')}: ${e}`);
   }

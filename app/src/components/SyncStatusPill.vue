@@ -52,7 +52,7 @@ const mode = computed<Mode>(() => {
   if (s.has_conflicts) {
     return {
       glyph: `⚠${s.conflicts.length}`,
-      label: (s?.provider === 'gitea' ? t('githubSync.giteaPillConflicts', { n: String(s.conflicts.length) }) : t('githubSync.pillConflicts', { n: String(s.conflicts.length) })) || `${s.conflicts.length} conflict(s) — click to resolve`,
+      label: t('githubSync.pillConflicts', { n: String(s.conflicts.length) }) || `${s.conflicts.length} conflict(s) — click to resolve`,
       action: 'open-conflicts',
       tone: 'err',
     };
@@ -60,7 +60,7 @@ const mode = computed<Mode>(() => {
   if (s.behind > 0) {
     return {
       glyph: `↓${s.behind}`,
-      label: (s?.provider === 'gitea' ? t('githubSync.giteaPillBehind', { n: String(s.behind) }) : t('githubSync.pillBehind', { n: String(s.behind) })) || `${s.behind} to pull — click to pull now`,
+      label: t('githubSync.pillBehind', { n: String(s.behind) }) || `${s.behind} to pull — click to pull now`,
       action: 'pull',
       tone: 'warn',
     };
@@ -68,7 +68,7 @@ const mode = computed<Mode>(() => {
   if (s.ahead > 0) {
     return {
       glyph: `↑${s.ahead}`,
-      label: (s?.provider === 'gitea' ? t('githubSync.giteaPillAhead', { n: String(s.ahead) }) : t('githubSync.pillAhead', { n: String(s.ahead) })) || `${s.ahead} to push — click to push now`,
+      label: t('githubSync.pillAhead', { n: String(s.ahead) }) || `${s.ahead} to push — click to push now`,
       action: 'push',
       tone: 'warn',
     };
@@ -81,10 +81,7 @@ const mode = computed<Mode>(() => {
       tone: 'warn',
     };
   }
-  const cleanLabel = s?.provider === 'gitea'
-    ? (t('githubSync.giteaPillClean') || 'In sync with Gitea')
-    : (t('githubSync.pillClean') || 'In sync with GitHub');
-  return { glyph: '✓', label: cleanLabel, action: 'noop', tone: 'ok' };
+  return { glyph: '✓', label: t('githubSync.pillClean') || 'In sync with GitHub', action: 'noop', tone: 'ok' };
 });
 
 function fmtAgo(ts: number | null | undefined): string {

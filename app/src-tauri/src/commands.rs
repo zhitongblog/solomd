@@ -341,6 +341,17 @@ pub fn fs_delete(path: String) -> Result<(), String> {
     if !p.exists() {
         return Ok(()); // idempotent — already gone is fine
     }
+    // #112 — on desktop, deleting moves to the OS trash (Finder 废纸篓 /
+    // Windows recycle bin / XDG trash) so a mis-click is recoverable; a user
+    // permanently lost a file to the old unlink behavior. Fall back to the
+    // permanent path only if the trash service errors (e.g. a filesystem
+    // without trash support), so delete still works everywhere.
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    {
+        if trash::delete(p).is_ok() {
+            return Ok(());
+        }
+    }
     if p.is_dir() {
         fs::remove_dir_all(p).map_err(|e| format!("delete dir failed: {e}"))
     } else {

@@ -35,8 +35,7 @@ export function useGithubSync() {
       sync.tokenInvalid = true;
       // Only surface the toast on the first detection, so the periodic
       // auto-pull doesn't spam an expired-token banner every N minutes.
-      const expKey = sync.status?.provider === 'gitea' ? 'githubSync.giteaTokenExpired' : 'githubSync.tokenExpired';
-      if (!wasInvalid) toasts.error(t(expKey), 6000);
+      if (!wasInvalid) toasts.error(t('githubSync.tokenExpired'), 6000);
       return;
     }
     toasts.error(`${t(fallbackKey)}: ${e}`);
@@ -53,16 +52,6 @@ export function useGithubSync() {
     await sync.refreshStatus(folder);
   }
 
-  /** Return the provider-specific i18n key for a toast message. */
-  function syncToast(key: string): string {
-    const gitea: Record<string, string> = {
-      pushedToast: 'giteaPushedToast',
-      pulledToast: 'giteaPulledToast',
-    };
-    const actual = sync.status?.provider === 'gitea' ? (gitea[key] ?? key) : key;
-    return `githubSync.${actual}`;
-  }
-
   async function pushIfWanted(): Promise<void> {
     const folder = workspace.currentFolder;
     if (!folder) return;
@@ -70,7 +59,7 @@ export function useGithubSync() {
     if (!sync.status?.auto_push) return;
     try {
       await sync.push(folder);
-      toasts.success(t(syncToast('pushedToast')));
+      toasts.success(t('githubSync.pushedToast'));
     } catch (e) {
       reportSyncError(e, 'githubSync.pushFailed');
     }
@@ -101,7 +90,7 @@ export function useGithubSync() {
     try {
       const r = await sync.pull(folder);
       if (r.kind === 'fast_forward' || r.kind === 'merged') {
-        toasts.success(t(syncToast('pulledToast')));
+        toasts.success(t('githubSync.pulledToast'));
         // Notify the rest of the app that files changed under us so the
         // workspace index, file tree, and active editor reload from disk.
         window.dispatchEvent(new CustomEvent('solomd:remote-pulled'));
@@ -176,20 +165,19 @@ export function useGithubSync() {
   }
 
   /** Command-palette entry: push right now, even if auto_push is off. */
-  async function pushNow(commitMessage?: string): Promise<void> {
+  async function pushNow(): Promise<void> {
     const folder = workspace.currentFolder;
     if (!folder) {
       toasts.warning(t('history.noFolder'));
       return;
     }
     if (!sync.status?.linked) {
-      const key = sync.status?.provider === 'gitea' ? 'githubSync.giteaNotLinked' : 'githubSync.notLinked';
-      toasts.warning(t(key));
+      toasts.warning(t('githubSync.notLinked'));
       return;
     }
     try {
-      await sync.push(folder, commitMessage);
-      toasts.success(t(syncToast('pushedToast')));
+      await sync.push(folder);
+      toasts.success(t('githubSync.pushedToast'));
     } catch (e) {
       reportSyncError(e, 'githubSync.pushFailed');
     }

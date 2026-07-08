@@ -207,6 +207,11 @@ export function usePandocExport() {
       extraArgs.push(...spec.extraArgs);
     }
     if (opts.extraArgs) extraArgs.push(...opts.extraArgs);
+    // #141 — keep pandoc's line-break semantics in lockstep with the in-app
+    // preview: with hard breaks on, a single newline is a real line break.
+    if (settings.markdownHardBreaks) {
+      extraArgs.push('--from=markdown+hard_line_breaks');
+    }
 
     const filters =
       ext === '*'

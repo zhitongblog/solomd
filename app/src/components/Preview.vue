@@ -132,6 +132,10 @@ let mermaidIdSeq = 0;
 mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: 'default' });
 
 const html = computed(() => {
+  // #141 — establish a reactive dep on the hard-breaks toggle so flipping the
+  // setting re-renders immediately (renderMarkdown reads the md singleton's
+  // option, which isn't reactive by itself).
+  void settings.markdownHardBreaks;
   const source = props.source || '';
   return rewriteImageUrls(renderMarkdown(source), extractImageRoot(source), props.filePath);
 });
@@ -739,7 +743,10 @@ defineExpose({ scrollToLine, openSearch });
   margin: 0 auto;
   padding: 64px 32px 96px;
   font-family: var(--font-reading);
-  font-size: 18px;
+  /* #143 — scale with the user's preview font size instead of a fixed 18px
+     (the setting looked dead in reading mode). 1.2× keeps reading mode's
+     slightly-larger-than-preview feel at the 15px default (= the old 18px). */
+  font-size: calc(var(--content-font-size, 15px) * 1.2);
   line-height: 1.8;
   color: var(--text);
 }

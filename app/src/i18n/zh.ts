@@ -11,6 +11,7 @@ export const zh: I18n = {
     recent: '最近文件',
     noRecent: '暂无最近文件',
     clearRecent: '清空记录',
+    removeRecent: '从记录中移除',
     export: '导出',
     exportHtml: '导出为 HTML…',
     exportDocx: '导出为 Word (DOCX)…',
@@ -142,6 +143,8 @@ export const zh: I18n = {
     globalZoomReset: '重置',
     codeBlockLineNumbers: '代码块显示行号',
     codeBlockLineNumbersHint: '在预览中的每个围栏代码块旁显示 1, 2, 3… 行号列。PDF / DOCX / 图片导出会沿用。',
+    markdownHardBreaks: '单个换行渲染为换行',
+    markdownHardBreaksHint: '与 Typora 一致:按一次回车,预览和所有导出都换行。关闭 = 严格 Markdown(单个换行并入同一段落,需空行分段)。',
     wordWrap: '自动换行',
     lineNumbers: '显示行号',
     livePreview: '实时预览 (Markdown) — 离开行时隐藏标记符,渲染标题和粗体等',
@@ -1225,11 +1228,13 @@ export const zh: I18n = {
 
     // v2.6.3
     providerTitle: '托管平台',
-
+    customProvider: '自定义 HTTPS Git 地址',
+    nonGithubHint:
+      '自动建仓 + 仓库选择器只支持 GitHub。GitLab / Gitea / 自建 Git 服务请直接粘贴 clone 链接 —— 推拉用 libgit2 + 你的 token，不依赖平台特定 API。',
     enableE2ee: '推送前端到端加密',
     e2eeHint:
       '本机用你设置的口令加密笔记，只有密文会推到远端。本地搜索 / RAG / AI 重写仍然正常工作。远端永远只看到密文。',
-
+    pasteUrlTitle: '粘贴 clone 链接',
     e2eeSection: '加密口令',
     e2eePromptHint:
       '在另一台设备上用过的口令，原样输一遍。盐值会从加密仓库同步过来，所以同一口令在任何设备都派生出同一把钥匙。',
@@ -1242,37 +1247,6 @@ export const zh: I18n = {
     decrypting: '解密中…',
     decryptedToast: '已把密文解密到工作区。',
     decryptFailed: '解密失败',
-    // --- Gitea-specific keys ---
-    giteaIntro:
-      '将笔记仓库推送到 Gitea 服务器。输入服务器 URL 和 Personal Access Token 即可开始。',
-    giteaUrlTitle: 'Gitea 服务器 URL',
-    giteaUrlHint:
-      'Gitea 实例的基础 URL（例如 https://gitea.com 或你自己的服务器）。SoloMD 会自动附加 /api/v1。',
-    giteaUrlValidateBtn: '验证 URL',
-    giteaUrlValidating: '验证中...',
-    giteaTokenTitle: 'Gitea Personal Access Token',
-    giteaTokenHint: '在 Gitea -> 设置 -> 应用中创建令牌。需要 repo 权限。',
-    giteaSignedInAs: '以 @{user} 登录 Gitea',
-    backBtn: '返回',
-    giteaPillClean: '与 Gitea 同步',
-    giteaCloneUrlTitle: 'Or paste a clone URL',
-    giteaPushedToast: '已推送到 Gitea。',
-    giteaPulledToast: '已从 Gitea 拉取。',
-    giteaRepoCreatedToast: '已在 Gitea 创建 {name}。',
-    giteaTokenSavedToast: 'Gitea 令牌已保存。',
-    giteaTokenClearedToast: 'Gitea 令牌已清除。',
-    giteaTokenInvalid: 'Gitea 拒绝此令牌',
-    giteaNotLinked: '此工作区未关联到 Gitea 仓库。',
-    giteaTokenExpired: 'Gitea 登录已过期 - 请在设置 -> 同步中重新连接。',
-    giteaTokenExpiredTitle: 'Gitea 连接已过期',
-    giteaTokenExpiredBanner: '保存的 Gitea 令牌已被拒绝（过期或撤销），同步已暂停。请用新令牌重新连接。',
-    giteaPillBehind: '落后 {n} 个提交 - 点击拉取',
-    giteaPillAhead: '领先 {n} 个提交 - 点击推送',
-    giteaPillConflicts: 'Gitea 存在 {n} 个冲突 - 点击解决',
-
-    // --- Commit message for push ---
-    commitMsgPlaceholder: '描述你的更改...',
-    commitMsgEmptyError: '推送前必须填写提交说明。',
   },
   themes: {
     title: '主题市场',
