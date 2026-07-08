@@ -1229,13 +1229,9 @@ export const es: I18n = {
     upgradeMismatch: 'Las dos passphrases no coinciden.',
     upgradeNotAcknowledged: 'Marca la confirmación antes de continuar.',
     providerTitle: 'Provider',
-    customProvider: 'URL git HTTPS personalizada',
-    nonGithubHint:
-      'La autocreación + selector de repo solo funcionan para GitHub. Para GitLab / Gitea / servidores personalizados, pega la URL de clon abajo — push / pull usan libgit2 + tu token, no se necesita API específica del provider.',
     enableE2ee: 'Cifrado de extremo a extremo antes del push',
     e2eeHint:
       'Los archivos se cifran en este dispositivo con una passphrase que tú estableces; solo se empuja cifrado. Búsqueda / RAG / reescritura IA siguen funcionando localmente. El remoto solo ve blobs cifrados.',
-    pasteUrlTitle: 'Pega una URL de clon',
     e2eeSection: 'Passphrase de cifrado',
     e2eePromptHint:
       'Establece la misma passphrase que usaste en tu otro dispositivo. La sal se sincroniza desde el repo cifrado para que la misma passphrase siempre derive la misma clave.',
@@ -1249,6 +1245,37 @@ export const es: I18n = {
     decryptedToast: 'Vault descifrado en el workspace.',
     decryptFailed: 'Descifrado fallido',
   },
+    // --- Gitea-specific keys ---
+    giteaIntro:
+      'Push your vault to a Gitea server. Enter your server URL and a Personal Access Token to get started.',
+    giteaUrlTitle: 'Gitea server URL',
+    giteaUrlHint:
+      'The base URL of your Gitea instance (e.g. https://gitea.com or your own server). SoloMD will append /api/v1 automatically.',
+    giteaUrlValidateBtn: 'Validate URL',
+    giteaUrlValidating: 'Validating...',
+    giteaTokenTitle: 'Gitea Personal Access Token',
+    giteaTokenHint: 'Create a token in Gitea -> Settings -> Applications. Needs repo scope.',
+    giteaSignedInAs: 'Signed in to Gitea as @{user}',
+    backBtn: 'Back',
+    giteaPillClean: 'In sync with Gitea',
+    giteaCloneUrlTitle: 'Or paste a clone URL',
+    giteaPushedToast: 'Pushed to Gitea.',
+    giteaPulledToast: 'Pulled from Gitea.',
+    giteaRepoCreatedToast: 'Created {name} on Gitea.',
+    giteaTokenSavedToast: 'Gitea token saved.',
+    giteaTokenClearedToast: 'Gitea token removed.',
+    giteaTokenInvalid: 'Token rejected by Gitea',
+    giteaNotLinked: 'This workspace is not linked to a Gitea repo.',
+    giteaTokenExpired: 'Gitea login expired - reconnect in Settings -> Sync.',
+    giteaTokenExpiredTitle: 'Gitea connection expired',
+    giteaTokenExpiredBanner: 'Your saved Gitea token was rejected (expired or revoked), so sync is paused. Reconnect with a fresh token to resume.',
+    giteaPillBehind: '{n} to pull from Gitea - click to pull now',
+    giteaPillAhead: '{n} to push to Gitea - click to push now',
+    giteaPillConflicts: '{n} conflict(s) on Gitea - click to resolve',
+
+    // --- Commit message for push ---
+    commitMsgPlaceholder: 'Describe your changes...',
+    commitMsgEmptyError: 'Commit message is required before push.',
   themes: {
     title: 'Marketplace de temas',
     browseBtn: 'Explorar temas de la comunidad',

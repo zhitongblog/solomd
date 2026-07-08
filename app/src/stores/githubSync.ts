@@ -83,6 +83,15 @@ interface State {
    *  the PAT expired or was revoked. Drives a "reconnect" banner + toast so the
    *  user isn't left staring at a raw `GitHub API 401` on their next sync. */
   tokenInvalid: boolean;
+
+  // Gitea-specific state
+  giteaUrl: string;
+  hasGiteaToken: boolean;
+  giteaUser: GitHubUser | null;
+  giteaRepos: GitHubRepo[];
+  giteaLoading: boolean;
+  giteaUrlValid: boolean | null;
+  giteaTokenInvalid: boolean;
 }
 
 /** Does this error indicate the GitHub token is no longer valid (expired /
@@ -106,6 +115,15 @@ export const useGithubSyncStore = defineStore('githubSync', {
     pulling: false,
     lastError: null,
     tokenInvalid: false,
+
+    // Gitea state
+    giteaUrl: '',
+    hasGiteaToken: false,
+    giteaUser: null,
+    giteaRepos: [],
+    giteaLoading: false,
+    giteaUrlValid: null,
+    giteaTokenInvalid: false,
   }),
 
   getters: {
@@ -259,10 +277,10 @@ export const useGithubSyncStore = defineStore('githubSync', {
       }
     },
 
-    async push(folder: string): Promise<void> {
+    async push(folder: string, commitMessage?: string): Promise<void> {
       this.pushing = true;
       try {
-        await invoke('github_push', { folder });
+        await invoke('github_push', { folder, commitMessage: commitMessage ?? null });
         await this.refreshStatus(folder);
       } catch (e) {
         this.lastError = String(e);
@@ -293,6 +311,89 @@ export const useGithubSyncStore = defineStore('githubSync', {
     ): Promise<void> {
       await invoke('github_resolve_conflict', { folder, file, choice });
       await this.refreshStatus(folder);
+    },
+
+    // ─── Gitea actions ─────────────────────────────────────────
+
+    async getGiteaUrl(): Promise<string> {
+      try {
+        this.giteaUrl = await invoke<string>('gitea_get_url');
+        return this.giteaUrl;
+      } catch {
+        return '';
+      }
+    },
+
+    async setGiteaUrl(url: string): Promise<void> {
+      await invoke('gitea_set_url', { url });
+      this.giteaUrl = url;
+    },
+
+    async validateGiteaUrl(url: string): Promise<boolean> {
+      const valid = await invoke<boolean>('gitea_validate_url', { url });
+      this.giteaUrlValid = valid;
+      return valid;
+    },
+
+    async refreshHasGiteaToken(): Promise<void> {
+      try {
+        this.hasGiteaToken = await invoke<boolean>('gitea_has_token');
+      } catch {
+        this.hasGiteaToken = false;
+      }
+    },
+
+    async setGiteaToken(token: string): Promise<void> {
+      await invoke('gitea_set_token', { token });
+      this.hasGiteaToken = true;
+      if (this.giteaUrl) {
+        await this.refreshGiteaUser(this.giteaUrl);
+      }
+    },
+
+    async clearGiteaToken(): Promise<void> {
+      await invoke('gitea_clear_token');
+      this.hasGiteaToken = false;
+      this.giteaUser = null;
+      this.giteaRepos = [];
+      this.giteaTokenInvalid = false;
+    },
+
+    async refreshGiteaUser(baseUrl: string): Promise<void> {
+      try {
+        this.giteaUser = await invoke<GitHubUser>('gitea_user', { baseUrl });
+        this.giteaTokenInvalid = false;
+      } catch (e) {
+        this.lastError = String(e);
+        this.giteaUser = null;
+        this.giteaTokenInvalid = true;
+      }
+    },
+
+    async listGiteaRepos(baseUrl: string): Promise<GitHubRepo[]> {
+      this.giteaLoading = true;
+      try {
+        this.giteaRepos = await invoke<GitHubRepo[]>('gitea_list_repos', { baseUrl });
+        this.giteaTokenInvalid = false;
+        return this.giteaRepos;
+      } catch (e) {
+        this.lastError = String(e);
+        this.giteaRepos = [];
+        this.giteaTokenInvalid = true;
+        throw e;
+      } finally {
+        this.giteaLoading = false;
+      }
+    },
+
+    async createGiteaRepo(baseUrl: string, name: string, isPrivate: boolean): Promise<GitHubRepo> {
+      const repo = await invoke<GitHubRepo>('gitea_create_vault_repo', {
+        baseUrl,
+        name,
+        private: isPrivate,
+      });
+      this.giteaRepos.unshift(repo);
+      return repo;
     },
   },
 });

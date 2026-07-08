@@ -1228,13 +1228,9 @@ export const zh: I18n = {
 
     // v2.6.3
     providerTitle: '托管平台',
-    customProvider: '自定义 HTTPS Git 地址',
-    nonGithubHint:
-      '自动建仓 + 仓库选择器只支持 GitHub。GitLab / Gitea / 自建 Git 服务请直接粘贴 clone 链接 —— 推拉用 libgit2 + 你的 token，不依赖平台特定 API。',
     enableE2ee: '推送前端到端加密',
     e2eeHint:
       '本机用你设置的口令加密笔记，只有密文会推到远端。本地搜索 / RAG / AI 重写仍然正常工作。远端永远只看到密文。',
-    pasteUrlTitle: '粘贴 clone 链接',
     e2eeSection: '加密口令',
     e2eePromptHint:
       '在另一台设备上用过的口令，原样输一遍。盐值会从加密仓库同步过来，所以同一口令在任何设备都派生出同一把钥匙。',
@@ -1248,6 +1244,37 @@ export const zh: I18n = {
     decryptedToast: '已把密文解密到工作区。',
     decryptFailed: '解密失败',
   },
+    // --- Gitea-specific keys ---
+    giteaIntro:
+      'Push your vault to a Gitea server. Enter your server URL and a Personal Access Token to get started.',
+    giteaUrlTitle: 'Gitea server URL',
+    giteaUrlHint:
+      'The base URL of your Gitea instance (e.g. https://gitea.com or your own server). SoloMD will append /api/v1 automatically.',
+    giteaUrlValidateBtn: 'Validate URL',
+    giteaUrlValidating: 'Validating...',
+    giteaTokenTitle: 'Gitea Personal Access Token',
+    giteaTokenHint: 'Create a token in Gitea -> Settings -> Applications. Needs repo scope.',
+    giteaSignedInAs: 'Signed in to Gitea as @{user}',
+    backBtn: 'Back',
+    giteaPillClean: 'In sync with Gitea',
+    giteaCloneUrlTitle: 'Or paste a clone URL',
+    giteaPushedToast: 'Pushed to Gitea.',
+    giteaPulledToast: 'Pulled from Gitea.',
+    giteaRepoCreatedToast: 'Created {name} on Gitea.',
+    giteaTokenSavedToast: 'Gitea token saved.',
+    giteaTokenClearedToast: 'Gitea token removed.',
+    giteaTokenInvalid: 'Token rejected by Gitea',
+    giteaNotLinked: 'This workspace is not linked to a Gitea repo.',
+    giteaTokenExpired: 'Gitea login expired - reconnect in Settings -> Sync.',
+    giteaTokenExpiredTitle: 'Gitea connection expired',
+    giteaTokenExpiredBanner: 'Your saved Gitea token was rejected (expired or revoked), so sync is paused. Reconnect with a fresh token to resume.',
+    giteaPillBehind: '{n} to pull from Gitea - click to pull now',
+    giteaPillAhead: '{n} to push to Gitea - click to push now',
+    giteaPillConflicts: '{n} conflict(s) on Gitea - click to resolve',
+
+    // --- Commit message for push ---
+    commitMsgPlaceholder: 'Describe your changes...',
+    commitMsgEmptyError: 'Commit message is required before push.',
   themes: {
     title: '主题市场',
     browseBtn: '浏览社区主题',
