@@ -5,7 +5,7 @@ import Footer from '../components/Footer.astro';
 import Giscus from '../components/Giscus.astro';
 
 const lang = 'en' as const;
-const VERSION = '4.8.10';
+const VERSION = '4.8.11';
 const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERSION}`;
 ---
 
@@ -69,6 +69,22 @@ const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERS
           <strong>macOS, Linux, iOS and Android are unaffected</strong> — they
           keep the existing CodeMirror editor. Also in 4.7: the command palette
           no longer jumps when you hover or wheel-scroll the list (#93).
+        </p>
+        <p style="margin-top:14px;">
+          <strong>4.8.11</strong> — three reported bugs, fixed.
+          <strong>Android can open files again</strong> (#148): files handed
+          over by a file manager, "Open with", or the in-app picker arrive as
+          <code>content://</code> URIs that no filesystem call can read — they
+          now import into the SoloMD folder (keeping the original filename, or
+          naming from the doc's first heading) and open normally, mirroring the
+          iOS Files-app flow. <strong>GitHub sync no longer pushes to
+          <code>main</code> while pulling from <code>master</code></strong>
+          (#147) — a second device could get permanently stuck never seeing the
+          first device's pushes; pull now normalizes the branch the same way
+          push does, with a fallback for legacy master-only remotes.
+          And <strong>closing a tab returns to the adjacent tab</strong>
+          instead of jumping to the first one in the list (#149 — root cause
+          contributed by the reporter, thanks!).
         </p>
         <p style="margin-top:14px;">
           <strong>4.8.10</strong> — quality-of-life sweep.

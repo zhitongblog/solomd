@@ -5,7 +5,7 @@ import Footer from '../../components/Footer.astro';
 import Giscus from '../../components/Giscus.astro';
 
 const lang = 'zh' as const;
-const VERSION = '4.8.10';
+const VERSION = '4.8.11';
 const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERSION}`;
 ---
 
@@ -62,6 +62,18 @@ const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERS
         <p style="opacity:.8;">
           <strong>macOS、Linux、iOS 和 Android 不受影响</strong> —— 继续使用现有的
           CodeMirror 编辑器。4.7 还修复了:命令面板在悬停或滚轮滚动列表时不再乱跳（#93）。
+        </p>
+        <p style="margin-top:14px;">
+          <strong>4.8.11</strong> —— 三个用户上报的 bug,修复。
+          <strong>Android 能正常打开文件了</strong>（#148）:从文件管理器、
+          "打开方式"或应用内选择器送来的文件是 <code>content://</code> URI,
+          任何文件系统调用都读不了 —— 现在会自动导入 SoloMD 文件夹
+          （保留原文件名,取不到时用文档首个标题命名）并正常打开,
+          和 iOS「文件」App 的流程一致。<strong>GitHub 同步不再"推 main 拉
+          master"</strong>（#147）—— 第二台设备可能永远拉不到第一台的推送;
+          现在拉取和推送用同一套分支归一逻辑,老仓库只有 master 也有回退。
+          <strong>关闭标签页回到相邻标签</strong>,不再跳到列表第一个
+          （#149 —— 根因分析来自报告者本人,感谢!）。
         </p>
         <p style="margin-top:14px;">
           <strong>4.8.10</strong> —— 体验修复合集。Windows 实时编辑模式下
