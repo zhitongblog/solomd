@@ -3,8 +3,23 @@ import Layout from '../../layouts/Layout.astro';
 import Header from '../../components/Header.astro';
 import Footer from '../../components/Footer.astro';
 import Giscus from '../../components/Giscus.astro';
+import CompareFaq from '../../components/CompareFaq.astro';
 
 const lang = 'en' as const;
+const FAQ = [
+  {
+    q: 'Which export formats are built in, and which need Pandoc?',
+    a: 'HTML, PDF, DOCX and PNG export are built in with no external dependency. EPUB, ODT, LaTeX and RTF go through Pandoc, which SoloMD looks up on your PATH.',
+  },
+  {
+    q: 'Do math and diagrams survive export?',
+    a: 'Yes — KaTeX math and Mermaid diagrams render in HTML and PDF exports, and DOCX export preserves tables, headings, math and code as real Word structures (a true .docx, not HTML pasted into Word). Images are embedded in the .docx file.',
+  },
+  {
+    q: 'How do I paste styled content into WeChat 公众号 or Notion?',
+    a: 'Use the Copy split-button → Rich HTML. It carries the rendered styling with the content, so pasting into 公众号, Notion, Confluence or Slack keeps formatting.',
+  },
+];
 ---
 
 <Layout
@@ -76,8 +91,10 @@ const lang = 'en' as const;
         (set per-tab in the status bar), so you don't accidentally convert
         legacy files to UTF-8.
       </p>
+
+      <CompareFaq heading="Frequently asked questions" items={FAQ} />
     </article>
-    <Giscus lang={lang} />
+        <Giscus lang={lang} />
   </main>
   <Footer lang={lang} />
 </Layout>

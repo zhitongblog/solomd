@@ -1,0 +1,120 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import Giscus from '../../components/Giscus.astro';
+
+const lang = 'en' as const;
+---
+
+<Layout
+  title="v4.8 — image hosting (图床): the last step between writing and publishing"
+  description="SoloMD 4.8 uploads pasted images to your own image host and inserts the URL — five backends (PicGo, custom command, SM.MS, S3-compatible, GitHub + CDN), auto-upload on paste with a local-copy fallback, insert-from-URL, and a bulk 'upload all local images in this note' command. Why we built it BYO-infrastructure instead of running a relay."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <article class="container blog-article">
+      <nav class="breadcrumbs">
+        <a href="/">Home</a> / <a href="/blog/">Blog</a> / <span>v4.8 image hosting</span>
+      </nav>
+      <time>2026-07-09</time>
+      <h1>v4.8 — image hosting (图床): the last step between writing and publishing</h1>
+      <p class="lead">
+        Markdown's dirty secret is that images don't travel. A note that renders
+        perfectly on your machine — with screenshots saved to
+        <code>_assets/</code> — falls apart the moment you paste it into a
+        GitHub issue, a WeChat 公众号 draft, or a blog engine, because every
+        image is a local path. SoloMD 4.8 (released June 29) closes that gap:
+        paste an image and it can go straight to <em>your</em> image host, with
+        the returned URL inserted instead.
+      </p>
+
+      <h2>Five backends, zero SoloMD servers</h2>
+      <p>
+        The design constraint was the same one behind SoloMD's sync: we don't
+        want to be a SaaS, and your images shouldn't route through our
+        infrastructure. So 4.8 ships five bring-your-own backends:
+      </p>
+      <ul>
+        <li><strong>PicGo</strong> — talks to the local PicGo server, so whatever PicGo can upload to, SoloMD can too.</li>
+        <li><strong>Custom command</strong> — run any script (PicGo-Core, uPic, your own uploader) and read the URL back from stdout.</li>
+        <li><strong>SM.MS</strong> — token-based, the simplest hosted option.</li>
+        <li><strong>S3-compatible</strong> — Aliyun OSS, Tencent COS, Cloudflare R2, MinIO; endpoint + bucket + keys.</li>
+        <li><strong>GitHub repo + CDN</strong> — commit images to a repo, serve via jsDelivr-style CDN URLs.</li>
+      </ul>
+      <p>
+        Between PicGo and the custom command, anything with an uploader — 七牛,
+        又拍, Imgur, a self-hosted Chevereto — plugs in without us shipping a
+        dedicated integration.
+      </p>
+
+      <h2>The fallback is the feature</h2>
+      <p>
+        Auto-upload on paste is only trustworthy if it can't lose your image.
+        When the host is unreachable — you're offline, the token expired, the
+        bucket policy changed — SoloMD falls back to the normal local copy in
+        <code>_assets/</code> and tells you, instead of blocking the paste or
+        silently dropping the screenshot. Writing flow first; publishing
+        plumbing second. When you're back online, a single command uploads
+        <em>all local images in the current note</em> and rewrites the links,
+        so catching up after an offline stretch is one action, not a manual
+        hunt.
+      </p>
+      <p>
+        The rest of the surface is small on purpose: an "insert image from URL"
+        command for images that already live somewhere, and a keep-local-copy
+        option so uploads can double as backups — the note links to the URL,
+        but the file also stays in <code>_assets/</code>.
+      </p>
+
+      <h2>Why this matters for the CJK publishing workflow</h2>
+      <p>
+        A large share of SoloMD's users write in Chinese and publish to
+        platforms — 公众号, 知乎, 掘金, personal blogs — that all want URLs, not
+        attachments. The pre-4.8 workflow was: write in SoloMD, then round-trip
+        every screenshot through PicGo or a browser upload page, then fix the
+        links. 4.8 folds that into the paste itself. Combined with
+        "copy as rich HTML" (which already carried styles into 公众号 editors),
+        the write→publish path now has no manual image step at all.
+      </p>
+
+      <p>
+        SoloMD is a free, MIT-licensed Markdown editor for macOS, Windows,
+        Linux, iOS and Android — <a href="/">solomd.app</a>. Configure image
+        hosting in Settings → Writing; full release notes on the
+        <a href="/whats-new/">what's new</a> page.
+      </p>
+
+      <Giscus />
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<script type="application/ld+json" set:html={JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'BlogPosting',
+  headline: 'v4.8 — image hosting (图床): the last step between writing and publishing',
+  datePublished: '2026-07-09',
+  dateModified: '2026-07-09',
+  author: { '@type': 'Person', name: 'xiangdong li', url: 'https://github.com/zhitongblog' },
+  publisher: { '@type': 'Person', name: 'xiangdong li' },
+  url: 'https://solomd.app/blog/v4-8-0-image-hosting/',
+  description: 'SoloMD 4.8 uploads pasted images to your own image host (PicGo, custom command, SM.MS, S3-compatible, GitHub+CDN) with a local-copy fallback and a bulk upload command — BYO infrastructure, no SoloMD relay.',
+  about: ['image hosting', '图床', 'PicGo', 'S3', 'Markdown', 'WeChat 公众号'],
+})} />
+
+<style>
+  .blog-article { max-width: 780px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .blog-article time { font-size: 13px; color: var(--text-muted, #8a8a8a); }
+  .blog-article h1 { font-size: 2rem; line-height: 1.25; margin: 10px 0 18px; }
+  .blog-article h2 { font-size: 1.45rem; margin: 34px 0 12px; }
+  .blog-article .lead { font-size: 1.08rem; color: var(--text-muted, #555); }
+  .blog-article p { line-height: 1.75; margin: 12px 0; }
+  .blog-article ul { padding-left: 22px; }
+  .blog-article li { margin: 8px 0; line-height: 1.7; }
+  .blog-article code { background: #f5f5f0; padding: 1px 6px; border-radius: 4px; font-size: 0.92em; }
+</style>

@@ -126,6 +126,8 @@ Or download platform-specific installers from https://github.com/zhitongblog/sol
 - [Security](https://solomd.app/security/): security model and threat assumptions.
 - [Agents (v4)](https://solomd.app/agents/): the optional agent surface and scheduled recipes.
 - [Why the Windows editor left contentEditable](https://solomd.app/blog/webview2-ime-why-we-left-contenteditable/): the WebView2 CJK IME defect (upstream WebView2Feedback#5625), the debugging trail, and the native-textarea block editor that replaced CodeMirror on Windows in v4.7.
+- [v4.6 knowledge graph](https://solomd.app/blog/v4-6-0-knowledge-graph-and-design-system/): how typed relationships, the relationship graph, saved views and tldraw whiteboards ship as plain .md + YAML.
+- [v4.8 image hosting](https://solomd.app/blog/v4-8-0-image-hosting/): the five BYO image-host backends and the offline fallback design.
 
 ## Optional
 
@@ -263,6 +265,22 @@ See MCP server for the AI side.
 
 Bug or missing subcommand? Open an issue on
 GitHub.
+ 
+ 
+### Frequently asked questions
+ 
+ 
+#### How do I install the solomd CLI?
+ 
+macOS / Linux: curl -fsSL https://raw.githubusercontent.com/zhitongblog/solomd/main/scripts/install-cli.sh | bash — it drops the solomd binary into /usr/local/bin. On Windows, download solomd.exe from the GitHub releases page and add it to PATH. 
+ 
+#### What can the CLI do?
+ 
+Open a note in the app (fuzzy title match), create a note, list files, grep the vault, and print a note to stdout: solomd open / new / list / search / cat. It exercises the same domain functions as the GUI and is built for shell pipelines and cron jobs. 
+ 
+#### Can I pipe notes into other tools?
+ 
+Yes — solomd cat prints raw Markdown to stdout, so it composes with pandoc, fzf, grep, or anything else in a pipeline.
 
 
 
@@ -345,6 +363,26 @@ Bug or missing tool? Open an issue on
 GitHub
 — write-side surface area is intentionally small but we're happy to
  grow it where the use case is clear.
+ 
+ 
+### Frequently asked questions
+ 
+ 
+#### Which AI clients can connect to my vault?
+ 
+Claude Desktop, Codex CLI, Cursor — and any client that speaks the Model Context Protocol. The solomd-mcp sidecar binary ships with every SoloMD release and runs locally over stdio. 
+ 
+#### Can the model modify my notes?
+ 
+Only if you let it. The server exposes read tools by default; the write tools are gated behind an explicit opt-in, so a connected model can list, search and read notes but not change anything until you allow writes. 
+ 
+#### Does my vault content leave my machine?
+ 
+The MCP server itself is local — it reads files on disk and talks to your AI client over stdio, with no SoloMD server in the path. What the connected AI client does with the text it reads is governed by that client and the model provider you chose. 
+ 
+#### How long does setup take?
+ 
+About a minute: Settings → Integrations → MCP server → Copy Claude Desktop config → paste into the Claude Desktop config file and restart. The copied block already embeds the binary path and your current workspace.
 
 
 
@@ -499,6 +537,22 @@ SoloMD auto-detects UTF-8, GBK, Big5, Shift-JIS, EUC-KR, and a few others
  when reading files. It saves in the source file's encoding by default
  (set per-tab in the status bar), so you don't accidentally convert
  legacy files to UTF-8.
+ 
+ 
+### Frequently asked questions
+ 
+ 
+#### Which export formats are built in, and which need Pandoc?
+ 
+HTML, PDF, DOCX and PNG export are built in with no external dependency. EPUB, ODT, LaTeX and RTF go through Pandoc, which SoloMD looks up on your PATH. 
+ 
+#### Do math and diagrams survive export?
+ 
+Yes — KaTeX math and Mermaid diagrams render in HTML and PDF exports, and DOCX export preserves tables, headings, math and code as real Word structures (a true .docx, not HTML pasted into Word). Images are embedded in the .docx file. 
+ 
+#### How do I paste styled content into WeChat 公众号 or Notion?
+ 
+Use the Copy split-button → Rich HTML. It carries the rendered styling with the content, so pasting into 公众号, Notion, Confluence or Slack keeps formatting.
 
 
 

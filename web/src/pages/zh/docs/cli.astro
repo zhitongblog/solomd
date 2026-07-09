@@ -3,8 +3,23 @@ import Layout from '../../../layouts/Layout.astro';
 import Header from '../../../components/Header.astro';
 import Footer from '../../../components/Footer.astro';
 import Giscus from '../../../components/Giscus.astro';
+import CompareFaq from '../../../components/CompareFaq.astro';
 
 const lang = 'zh' as const;
+const FAQ = [
+  {
+    q: '怎么安装 solomd 命令行?',
+    a: 'macOS / Linux 一行命令:curl -fsSL https://raw.githubusercontent.com/zhitongblog/solomd/main/scripts/install-cli.sh | bash,会把 solomd 二进制装到 /usr/local/bin。Windows 从 GitHub releases 下载 solomd.exe 加进 PATH。',
+  },
+  {
+    q: 'CLI 能做什么?',
+    a: '在应用里打开笔记(标题模糊匹配)、新建笔记、列出文件、全库搜索、把笔记打印到 stdout:solomd open / new / list / search / cat。和 GUI 调用同一套领域函数,为 shell 管道和 cron 任务设计。',
+  },
+  {
+    q: '能把笔记接进其他工具吗?',
+    a: '能 —— solomd cat 输出原始 Markdown 到 stdout,可以直接接 pandoc、fzf、grep 或任何管道下游。',
+  },
+];
 ---
 
 <Layout
@@ -86,8 +101,10 @@ solomd new "$(date +%F)" "## $(date +%A)\n\n- [ ] "`}</code></pre>
         <a href="https://github.com/zhitongblog/solomd/issues" rel="external">GitHub</a>
         提 issue。
       </p>
+
+      <CompareFaq heading="常见问题" items={FAQ} />
     </article>
-    <Giscus lang={lang} />
+        <Giscus lang={lang} />
   </main>
   <Footer lang={lang} />
 </Layout>

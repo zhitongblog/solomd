@@ -126,6 +126,8 @@ Or download platform-specific installers from https://github.com/zhitongblog/sol
 - [Security](https://solomd.app/security/): security model and threat assumptions.
 - [Agents (v4)](https://solomd.app/agents/): the optional agent surface and scheduled recipes.
 - [Why the Windows editor left contentEditable](https://solomd.app/blog/webview2-ime-why-we-left-contenteditable/): the WebView2 CJK IME defect (upstream WebView2Feedback#5625), the debugging trail, and the native-textarea block editor that replaced CodeMirror on Windows in v4.7.
+- [v4.6 knowledge graph](https://solomd.app/blog/v4-6-0-knowledge-graph-and-design-system/): how typed relationships, the relationship graph, saved views and tldraw whiteboards ship as plain .md + YAML.
+- [v4.8 image hosting](https://solomd.app/blog/v4-8-0-image-hosting/): the five BYO image-host backends and the offline fallback design.
 
 ## Optional
 
