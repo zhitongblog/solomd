@@ -818,27 +818,7 @@ pub fn github_push_inner(folder: String, token: String) -> Result<(), String> {
     }
     let repo = Repository::open(&repo_dir).map_err(|e| e.to_string())?;
 
-    // One-time master → main rewrite. The init path (link_workspace)
-    // already does this for fresh inits, but a vault initialized on a
-    // different machine (or pre-v3.0 SoloMD) can land here still on
-    // `master`, which causes the same vault to push to *two* branches
-    // depending on which device pushed it (issue #55 comment).
-    //
-    // Only safe to rename when:
-    //   - HEAD points at refs/heads/master (we are on master, not detached)
-    //   - There is no existing local `main` branch (otherwise the
-    //     rename would collide; user has explicitly created both)
-    //
-    // After rename, HEAD follows the renamed branch automatically.
-    if let Ok(head_ref) = repo.find_reference("HEAD") {
-        if head_ref.symbolic_target() == Some("refs/heads/master")
-            && repo.find_branch("main", git2::BranchType::Local).is_err()
-        {
-            if let Ok(mut master) = repo.find_branch("master", git2::BranchType::Local) {
-                let _ = master.rename("main", false);
-            }
-        }
-    }
+    normalize_master_to_main(&repo);
 
     let mut origin = repo.find_remote("origin").map_err(|e| e.to_string())?;
 
@@ -871,6 +851,33 @@ pub async fn github_push(folder: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || github_push_inner(folder, token))
         .await
         .map_err(|e| e.to_string())?
+}
+
+/// One-time master → main rewrite, shared by push AND pull (#147).
+///
+/// The init path (link_workspace) does this for fresh inits, but a vault
+/// initialized on a different machine (or pre-v3.0 SoloMD) can still be on
+/// `master`. Push has always normalized before pushing — which meant the
+/// remote ends up with `main` — but pull used the raw local HEAD name, so a
+/// second device stuck on `master` fetched the nonexistent `origin/master`
+/// forever and never received the first device's pushes (issue #147).
+///
+/// Only safe to rename when:
+///   - HEAD points at refs/heads/master (we are on master, not detached)
+///   - There is no existing local `main` branch (otherwise the rename would
+///     collide; user has explicitly created both)
+///
+/// After rename, HEAD follows the renamed branch automatically.
+fn normalize_master_to_main(repo: &Repository) {
+    if let Ok(head_ref) = repo.find_reference("HEAD") {
+        if head_ref.symbolic_target() == Some("refs/heads/master")
+            && repo.find_branch("main", git2::BranchType::Local).is_err()
+        {
+            if let Ok(mut master) = repo.find_branch("master", git2::BranchType::Local) {
+                let _ = master.rename("main", false);
+            }
+        }
+    }
 }
 
 #[derive(Serialize)]
@@ -907,25 +914,64 @@ pub fn github_pull_inner(folder: String, token: String) -> Result<PullResult, St
         }
     }
         let repo = Repository::open(&path).map_err(|e| e.to_string())?;
+        // #147 — normalize the same way push does, or a device whose local
+        // repo is still on libgit2's default `master` fetches the nonexistent
+        // `origin/master` forever while every other device pushes to `main`.
+        normalize_master_to_main(&repo);
         let head = repo.head().map_err(|e| e.to_string())?;
         let branch_name = head
             .shorthand()
             .ok_or_else(|| "HEAD is detached; cannot pull".to_string())?
             .to_string();
 
-        // 1) Fetch.
+        // 1) Fetch. Legacy escape hatch: a remote that predates the
+        // master→main normalization may only have `master` — if fetching
+        // `main` yields no such remote ref, retry `master` and merge from
+        // that (same lineage; the next push then creates `main` on the
+        // remote). Note "yields no ref" ≠ fetch error: some transports
+        // (https) fail the fetch of a missing branch outright, others
+        // (file://, used by the integration tests) succeed silently and
+        // just create nothing — so success is judged by the remote-tracking
+        // ref existing afterwards, not by the fetch call's Result.
         let mut origin = repo.find_remote("origin").map_err(|e| e.to_string())?;
-        let mut fetch_opts = FetchOptions::new();
-        fetch_opts.remote_callbacks(make_callbacks(token));
-        fetch_opts.proxy_options(make_proxy_options());
-        fetch_opts.download_tags(AutotagOption::All);
-        origin
-            .fetch(&[&branch_name], Some(&mut fetch_opts), None)
-            .map_err(|e| format!("fetch failed: {}", e))?;
+        let mut upstream_branch = branch_name.clone();
+        let mut fetch_err: Option<String> = None;
+        {
+            let mut fetch_opts = FetchOptions::new();
+            fetch_opts.remote_callbacks(make_callbacks(token.clone()));
+            fetch_opts.proxy_options(make_proxy_options());
+            fetch_opts.download_tags(AutotagOption::All);
+            if let Err(e) = origin.fetch(&[&branch_name], Some(&mut fetch_opts), None) {
+                fetch_err = Some(e.to_string());
+            }
+        }
+        let ref_exists = |name: &str| {
+            repo.find_reference(&format!("refs/remotes/origin/{name}"))
+                .is_ok()
+        };
+        if !ref_exists(&upstream_branch) && branch_name == "main" {
+            let mut retry_opts = FetchOptions::new();
+            retry_opts.remote_callbacks(make_callbacks(token.clone()));
+            retry_opts.proxy_options(make_proxy_options());
+            retry_opts.download_tags(AutotagOption::All);
+            let _ = origin.fetch(&["master"], Some(&mut retry_opts), None);
+            if ref_exists("master") {
+                upstream_branch = "master".to_string();
+            }
+        }
+        if !ref_exists(&upstream_branch) {
+            return Err(match fetch_err {
+                Some(e) => format!("fetch failed: {}", e),
+                None => format!(
+                    "fetch found no '{}' branch on the remote (nor a legacy 'master')",
+                    branch_name
+                ),
+            });
+        }
 
         // 2) Look up the upstream ref we just fetched.
         let upstream_ref = repo
-            .find_reference(&format!("refs/remotes/origin/{}", branch_name))
+            .find_reference(&format!("refs/remotes/origin/{}", upstream_branch))
             .map_err(|e| e.to_string())?;
         let upstream_commit = repo
             .reference_to_annotated_commit(&upstream_ref)
@@ -1012,7 +1058,7 @@ pub fn github_pull_inner(folder: String, token: String) -> Result<PullResult, St
             Some("HEAD"),
             &sig,
             &sig,
-            &format!("Merge branch 'origin/{}' into {}", branch_name, branch_name),
+            &format!("Merge branch 'origin/{}' into {}", upstream_branch, branch_name),
             &tree,
             &[&local, &upstream_real],
         )
