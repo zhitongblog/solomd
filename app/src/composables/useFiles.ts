@@ -117,7 +117,67 @@ export function useFiles() {
     }
   }
 
+  /** #148 — Android delivers file-manager / "Open with" / picker files as SAF
+   *  `content://` URIs, which neither std::fs nor our whole path-based stack
+   *  can read (the raw URI reached fs::read and failed with os error 2).
+   *  Import the bytes through the fs plugin's ContentResolver bridge into the
+   *  SoloMD Documents folder — mirroring what iOS does with Files-app opens —
+   *  and hand back a real filesystem path for the rest of openPath. */
+  async function importContentUri(uri: string): Promise<string> {
+    const { readFile, exists } = await import('@tauri-apps/plugin-fs');
+    const bytes = await readFile(uri as unknown as string);
+    // Recover a filename where the URI encodes one ("…document/primary%3A
+    // Download%2Fnote.md"); opaque numeric document ids fall back to a
+    // timestamped name.
+    let name = '';
+    try {
+      const seg = decodeURIComponent(uri).split(/[/:]/).filter(Boolean).pop() ?? '';
+      if (/\.[A-Za-z0-9]{1,8}$/.test(seg)) name = seg.replace(/[\\/:*?"<>|]/g, '_');
+    } catch {
+      /* malformed encoding — fall through to the timestamped name */
+    }
+    // Opaque provider ids (e.g. the Downloads provider's "msf:29") carry no
+    // filename at all. For text payloads, fall back to the document's first
+    // Markdown heading — far friendlier than a timestamp when it exists.
+    if (!name) {
+      const head = new TextDecoder('utf-8', { fatal: false }).decode(bytes.slice(0, 512));
+      if (!head.includes('\u0000')) {
+        const m = head.match(/^#{1,6}[ \t]+(.{1,60})/m);
+        const stem = m?.[1]?.trim().replace(/[\\/:*?"<>|#]/g, '_');
+        if (stem) name = `${stem}.md`;
+      }
+    }
+    if (!name) name = `imported-${Date.now()}.md`;
+    const dir = await documentDir();
+    let dest = await join(dir, name);
+    // Never overwrite an existing note the user may have edited — pick a
+    // suffixed sibling instead.
+    if (await exists(dest)) {
+      const dot = name.lastIndexOf('.');
+      const stem = dot > 0 ? name.slice(0, dot) : name;
+      const ext = dot > 0 ? name.slice(dot) : '';
+      let n = 1;
+      while (await exists(dest)) {
+        dest = await join(dir, `${stem}-${n}${ext}`);
+        n += 1;
+      }
+    }
+    await invoke('write_binary_file', { path: dest, data: Array.from(bytes) });
+    return dest;
+  }
+
   async function openPath(path: string, opts: { bypassNewWindow?: boolean } = {}) {
+    // #148 — see importContentUri; must run before any path parsing below.
+    if (isAndroid() && path.startsWith('content://')) {
+      try {
+        path = await importContentUri(path);
+      } catch (e) {
+        console.error('content:// import failed', e);
+        toasts.error(`Failed to open: ${e}`);
+        return;
+      }
+    }
+
     // #139 — normalize `file://` URLs to a plain filesystem path here, at the
     // single shared entry point. On iOS a Files-app open arrives via the
     // `solomd://opened-file` channel as a raw, percent-encoded file URL

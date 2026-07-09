@@ -2,7 +2,10 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Capability for the main window",
-  "windows": ["main", "solomd-*"],
+  "windows": [
+    "main",
+    "solomd-*"
+  ],
   "permissions": [
     "core:default",
     "core:window:default",
@@ -26,12 +29,26 @@
     "clipboard-manager:allow-write-html",
     "clipboard-manager:allow-write-image",
     "clipboard-manager:allow-read-image",
-    "deep-link:default"
+    "deep-link:default",
+    "fs:allow-read-file",
+    {
+      "identifier": "fs:allow-exists",
+      "allow": [
+        {
+          "path": "$DOCUMENT"
+        },
+        {
+          "path": "$DOCUMENT/**"
+        }
+      ]
+    }
   ],
   "scope": {
     "opener": {
       "allow": [
-        { "path": "$HOME/**" }
+        {
+          "path": "$HOME/**"
+        }
       ]
     }
   }

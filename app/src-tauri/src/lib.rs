@@ -104,7 +104,13 @@ pub fn run() {
         // plugin hooks `application:openURL:` automatically and emits
         // a `deep-link://new-url` event over Tauri's event bus, which
         // App.vue's onMounted handler picks up to spawn a new tab.
-        .plugin(tauri_plugin_deep_link::init());
+        .plugin(tauri_plugin_deep_link::init())
+        // #148 — tauri-plugin-fs is registered for its Android side alone:
+        // its readFile bridges SAF `content://` URIs through ContentResolver,
+        // which std::fs can never reach. The frontend imports such deliveries
+        // into the Documents workspace (useFiles.ts importContentUri) and the
+        // rest of the app keeps operating on real filesystem paths.
+        .plugin(tauri_plugin_fs::init());
 
     #[cfg(desktop)]
     let builder = builder.plugin(

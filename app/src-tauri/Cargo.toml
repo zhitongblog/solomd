@@ -151,6 +151,7 @@ chrono = { version = "0.4", default-features = false, features = ["clock", "serd
 globset = "0.4"
 hex = "0.4"
 tauri-plugin-deep-link = "2"
+tauri-plugin-fs = "2.5.1"
 
 # window-state plugin is desktop-only — kept at the very end of the
 # dependency tables to avoid bleeding the platform constraint onto every
