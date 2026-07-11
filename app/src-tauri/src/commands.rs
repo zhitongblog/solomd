@@ -261,7 +261,12 @@ pub fn write_binary_file_inner(path: String, data: Vec<u8>) -> Result<(), String
                 .map_err(|e| format!("mkdir failed: {e}"))?;
         }
     }
-    fs::write(&path, &data).map_err(|e| format!("write failed: {e}"))
+    fs::write(&path, &data).map_err(|e| format!("write failed: {e}"))?;
+    // #148 follow-up — binary writes (content:// imports, pasted images) are
+    // our own writes too; without the mark, a late watcher event for them
+    // pops the "File Changed on Disk" dialog on the file the user just opened.
+    super::watcher::mark_self_write(&path);
+    Ok(())
 }
 
 /// Trigger the OS native print dialog for the given webview window. The

@@ -3,25 +3,37 @@ use notify_debouncer_mini::{new_debouncer, Debouncer};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, OnceLock};
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 use tauri::{AppHandle, Emitter};
 
 const DEBOUNCE_MS: u64 = 300;
 const SELF_WRITE_SUPPRESSION_MS: u64 = 500;
+/// #148 follow-up — how close the file's mtime must be to our own last write
+/// for a late event to still count as a self-write (see `mtime_matches_self_write`).
+const SELF_WRITE_MTIME_EPSILON_MS: u64 = 2_000;
+/// How long a self-write record stays useful for the mtime check. Late FUSE
+/// events on Android arrive seconds after the write; a minute is generous.
+const SELF_WRITE_RETENTION_MS: u64 = 60_000;
 /// v2.6 — `crypto_decrypt_after_pull` rewrites every encrypted file in
 /// the workspace in one batch. Per-file `mark_self_write` would race
 /// the notify debouncer (the writes finish before the marks land), so
 /// expose a coarser "this whole subtree is about to change" window.
 const SYNC_REWRITE_WINDOW_MS: u64 = 30_000;
 
-/// Global self-write timestamps, shared between write_file and the watcher callback.
-static SELF_WRITES: OnceLock<Mutex<HashMap<String, Instant>>> = OnceLock::new();
+/// Global self-write timestamps, shared between write_file and the watcher
+/// callback. Each entry keeps BOTH clocks: `Instant` for the cheap
+/// arrival-time fast path, `SystemTime` to compare against the file's mtime
+/// when the event shows up late (#148 follow-up: Android's emulated storage
+/// goes through FUSE and delivers inotify events seconds after the write, so
+/// an arrival-time-only window mistakes every auto-save for an external edit
+/// and spams "File Changed on Disk" while the user types).
+static SELF_WRITES: OnceLock<Mutex<HashMap<String, (Instant, SystemTime)>>> = OnceLock::new();
 
 /// `(workspace_root_canonical → expires_at)` — while wall-clock is below
 /// `expires_at`, any change under that root is treated as a self-write.
 static SYNC_REWRITE_WINDOWS: OnceLock<Mutex<HashMap<PathBuf, Instant>>> = OnceLock::new();
 
-fn self_writes() -> &'static Mutex<HashMap<String, Instant>> {
+fn self_writes() -> &'static Mutex<HashMap<String, (Instant, SystemTime)>> {
     SELF_WRITES.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
@@ -36,9 +48,29 @@ fn sync_windows() -> &'static Mutex<HashMap<PathBuf, Instant>> {
 /// the suppression window expires the entry is dead weight either way.
 pub fn mark_self_write(path: &str) {
     let mut map = self_writes().lock().unwrap();
-    let cutoff = Duration::from_millis(SELF_WRITE_SUPPRESSION_MS);
-    map.retain(|_, t| t.elapsed() < cutoff);
-    map.insert(path.to_string(), Instant::now());
+    let cutoff = Duration::from_millis(SELF_WRITE_RETENTION_MS);
+    map.retain(|_, (t, _)| t.elapsed() < cutoff);
+    map.insert(path.to_string(), (Instant::now(), SystemTime::now()));
+}
+
+/// #148 follow-up — late-event self-write check. A watcher event that arrives
+/// long after our own save (Android FUSE latency, debouncer batching, a busy
+/// main thread) fails the arrival-time window even though nothing external
+/// touched the file. The file's mtime doesn't lie: if it still matches the
+/// wall-clock of our own last write (± epsilon), the change was ours.
+/// A real external edit moves mtime past the epsilon and still surfaces.
+fn mtime_matches_self_write(canonical: &std::path::Path, wrote_at: SystemTime) -> bool {
+    let Ok(meta) = std::fs::metadata(canonical) else {
+        return false;
+    };
+    let Ok(mtime) = meta.modified() else {
+        return false;
+    };
+    let eps = Duration::from_millis(SELF_WRITE_MTIME_EPSILON_MS);
+    match mtime.duration_since(wrote_at) {
+        Ok(ahead) => ahead <= eps,
+        Err(e) => e.duration() <= eps,
+    }
 }
 
 /// v2.6 — call before a batch operation that legitimately rewrites many
@@ -137,20 +169,21 @@ fn ensure_watcher(app: &AppHandle, state: &WatcherState) {
             };
 
             let canonical_str = canonical.to_string_lossy().to_string();
-            let suppressed = self_writes()
-                .lock()
-                .unwrap()
-                .get(&canonical_str)
-                .map_or(false, |t| {
-                    t.elapsed().as_millis() < SELF_WRITE_SUPPRESSION_MS as u128
-                })
-                || self_writes()
-                    .lock()
-                    .unwrap()
-                    .get(&original_path)
-                    .map_or(false, |t| {
-                        t.elapsed().as_millis() < SELF_WRITE_SUPPRESSION_MS as u128
-                    });
+            // Fast path: event arrived within the classic window of our own
+            // write. Slow path (#148 follow-up): the event arrived late —
+            // seconds late on Android's FUSE-backed storage — so compare the
+            // file's mtime against the wall-clock of our last write instead
+            // of trusting the arrival time.
+            let self_write = {
+                let map = self_writes().lock().unwrap();
+                map.get(&canonical_str)
+                    .or_else(|| map.get(&original_path))
+                    .copied()
+            };
+            let suppressed = self_write.map_or(false, |(instant, wall)| {
+                instant.elapsed().as_millis() < SELF_WRITE_SUPPRESSION_MS as u128
+                    || mtime_matches_self_write(&canonical, wall)
+            });
 
             if suppressed {
                 continue;
@@ -273,6 +306,41 @@ pub fn unwatch_file(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// #148 follow-up — a self-write must stay suppressed even when the
+    /// watcher event arrives long after the arrival-time window (Android
+    /// FUSE latency): the file's mtime still matches our write clock.
+    /// A genuinely external change (mtime far from our write) must not.
+    #[test]
+    fn late_event_self_write_suppressed_by_mtime() {
+        let dir = std::env::temp_dir().join(format!(
+            "solomd-watcher-mtime-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = dir.join("note.md");
+
+        // Our own save: file written ~now, wall-clock recorded ~now.
+        std::fs::write(&file, "own save").unwrap();
+        let wrote_at = SystemTime::now();
+        assert!(
+            mtime_matches_self_write(&file, wrote_at),
+            "fresh own write must match within the epsilon"
+        );
+
+        // External edit long after our recorded write: mtime is far ahead
+        // of `wrote_at`, so the event must surface.
+        let stale_write_clock = wrote_at - Duration::from_millis(SELF_WRITE_MTIME_EPSILON_MS + 5_000);
+        assert!(
+            !mtime_matches_self_write(&file, stale_write_clock),
+            "an mtime far past our last write is an external change"
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 
     fn fresh() -> Arc<Mutex<WatcherInner>> {
         Arc::new(Mutex::new(WatcherInner {
