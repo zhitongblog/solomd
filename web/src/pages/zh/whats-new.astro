@@ -5,7 +5,7 @@ import Footer from '../../components/Footer.astro';
 import Giscus from '../../components/Giscus.astro';
 
 const lang = 'zh' as const;
-const VERSION = '4.8.11';
+const VERSION = '4.9.0';
 const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERSION}`;
 ---
 
@@ -62,6 +62,31 @@ const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERS
         <p style="opacity:.8;">
           <strong>macOS、Linux、iOS 和 Android 不受影响</strong> —— 继续使用现有的
           CodeMirror 编辑器。4.7 还修复了:命令面板在悬停或滚轮滚动列表时不再乱跳（#93）。
+        </p>
+        <p class="version-row" style="margin-top:24px;">
+          <span class="version-tag">v4.9</span>
+          <time>2026 年 7 月</time>
+        </p>
+        <h2 style="margin-top:8px;">4.9 —— Android 能打开你真正的笔记库了。</h2>
+        <p class="lead">
+          此前 Android 上 SoloMD 唯一能自由读写的文件夹是
+          <code>/Android/data</code> 下的沙箱目录,未 root 的手机上任何文件管理器
+          都进不去 —— 所以你没法把 app 指向自己真正的笔记文件夹。4.9 加入
+          <strong>「所有文件访问」权限</strong>:授权一次,
+          <strong>打开文件夹</strong>就能浏览到设备上任意位置的真实库
+          （<code>Documents</code>、Syncthing / Dropbox 目录、SD 卡),
+          <strong>原地编辑</strong> —— 不再拷进沙箱。文件树、搜索、版本历史、保存
+          全部对你的真实路径生效（#148、#151）。
+        </p>
+        <p style="margin-top:14px;">
+          4.9 同时修复了一批上报的 bug。
+          <strong>macOS 窗口终于能拖标题栏移动了</strong>（#153）——
+          统一标题栏上线以来,拖动调用一直被一个缺失的权限静默拒绝;
+          双击标题栏最大化也一并恢复。<strong>Android 上「文件已在磁盘上被修改」
+          弹窗不再打断输入</strong>（#148）—— Android 的文件事件会迟到数秒,
+          应用自己的保存被误判成外部修改;现在按文件修改时间判定。
+          更新提示改为打开 solomd.app 下载页（国内可达,含 Gitee 镜像),
+          不再跳 GitHub（#154);手机端隐藏了无效的「在 Finder 中显示」菜单项。
         </p>
         <p style="margin-top:14px;">
           <strong>4.8.11</strong> —— 三个用户上报的 bug,修复。
