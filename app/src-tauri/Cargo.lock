@@ -4918,7 +4918,7 @@ dependencies = [
 
 [[package]]
 name = "solomd"
-version = "4.8.10"
+version = "4.8.12"
 dependencies = [
  "argon2",
  "async-stream",
@@ -4938,7 +4938,9 @@ dependencies = [
  "hex",
  "hmac",
  "htmd",
+ "jni",
  "keyring",
+ "ndk-context",
  "notify",
  "notify-debouncer-mini",
  "objc2 0.5.2",

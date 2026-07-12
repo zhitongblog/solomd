@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- #148 / #151 — All files access so the user can point SoloMD at a real
+         vault folder anywhere on shared storage (…/Documents, Download, a
+         Syncthing/Dropbox dir) and edit .md files in place, instead of the
+         sandbox-only /Android/data folder no file manager can reach. Requested
+         at runtime via Settings (Environment.isExternalStorageManager). -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
 
     <!-- AndroidTV support -->
     <uses-feature android:name="android.software.leanback" android:required="false" />

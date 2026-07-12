@@ -55,6 +55,10 @@ pub mod crypto;
 // PR #24 (@beihai23) external file-change watcher — preview mode auto-reloads,
 // edit / split modes pop a reload-vs-keep dialog.
 pub mod watcher;
+// #148 / #151 — Android all-files-access (MANAGE_EXTERNAL_STORAGE) check +
+// request, so the user can point the app at a real vault folder anywhere on
+// shared storage instead of the unreachable /Android/data sandbox.
+pub mod storage_android;
 
 // v4.0 Pillar 1: in-process agent tool registry + run persistence (panel
 // chat). agent_run (RunHandle) is the canonical run-dir owner; both the
@@ -163,6 +167,8 @@ pub fn run() {
             commands::write_binary_file,
             commands::print_webview,
             commands::copy_file,
+            storage_android::android_has_all_files_access,
+            storage_android::android_request_all_files_access,
             image_upload::upload_image,
             commands::list_dir,
             commands::fs_create_file,

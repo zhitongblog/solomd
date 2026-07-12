@@ -334,7 +334,26 @@ export function useFiles() {
     // Android behaviour on iOS: pin the workspace to the app's own Documents
     // dir ("On My iPhone/iPad › SoloMD" via UIFileSharingEnabled). Users drop
     // .md files there through the Files app and they show up in the tree.
-    if (isAndroid() || isIOS()) {
+    // #148 / #151 — Android: with all-files access the user can point SoloMD
+    // at a REAL vault folder anywhere on shared storage (…/Documents, a
+    // Syncthing/Dropbox dir) and edit in place, instead of being stuck with
+    // the unreachable /Android/data sandbox. Check the permission; if missing,
+    // prompt the user to grant it in Settings (App.vue drives the request +
+    // re-check on resume); if granted, open our own folder browser.
+    if (isAndroid()) {
+      try {
+        const granted = await invoke<boolean>('android_has_all_files_access');
+        if (!granted) {
+          window.dispatchEvent(new CustomEvent('solomd:android-request-storage'));
+          return;
+        }
+        window.dispatchEvent(new CustomEvent('solomd:android-folder-picker'));
+      } catch (e) {
+        toasts.error(String(e));
+      }
+      return;
+    }
+    if (isIOS()) {
       try {
         const dir = await documentDir();
         workspace.setFolder(dir);
