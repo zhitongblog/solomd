@@ -7,7 +7,7 @@
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
     "beforeBuildCommand": "pnpm build",
-    "beforeBundleCommand": "bash ../scripts/build-mcp-sidecar.sh",
+    "beforeBundleCommand": "powershell -NoProfile -ExecutionPolicy Bypass -File ../scripts/build-mcp-sidecar.ps1",
     "frontendDist": "../dist"
   },
   "app": {

@@ -278,6 +278,25 @@ pub fn run() {
             github_sync::proxy_get,
             #[cfg(not(target_os = "android"))]
             github_sync::proxy_set,
+            // Gitea sync commands (v5.0)
+            #[cfg(not(target_os = "android"))]
+            github_sync::gitea_set_token,
+            #[cfg(not(target_os = "android"))]
+            github_sync::gitea_clear_token,
+            #[cfg(not(target_os = "android"))]
+            github_sync::gitea_has_token,
+            #[cfg(not(target_os = "android"))]
+            github_sync::gitea_get_url,
+            #[cfg(not(target_os = "android"))]
+            github_sync::gitea_set_url,
+            #[cfg(not(target_os = "android"))]
+            github_sync::gitea_validate_url,
+            #[cfg(not(target_os = "android"))]
+            github_sync::gitea_user,
+            #[cfg(not(target_os = "android"))]
+            github_sync::gitea_list_repos,
+            #[cfg(not(target_os = "android"))]
+            github_sync::gitea_create_vault_repo,
             cloud_folder::cloud_folder_detect,
             cloud_folder::device_id_get_or_create,
             cloud_folder::session_save,
