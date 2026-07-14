@@ -11,7 +11,7 @@
  * the mistake in v2.6.
  */
 import { watch } from 'vue';
-import { useGithubSyncStore, isGithubAuthError } from '../stores/githubSync';
+import { useGithubSyncStore, isGithubAuthError, classifyPushError } from '../stores/githubSync';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useToastsStore } from '../stores/toasts';
 import { useI18n } from '../i18n';
@@ -23,20 +23,24 @@ export function useGithubSync() {
   const { t } = useI18n();
 
   /**
-   * Turn a sync failure into a toast. If it's an auth failure (expired /
-   * revoked token), flag it on the store (drives the Settings reconnect
-   * banner) and show ONE clear, actionable message — not the raw
-   * `GitHub API 401: Bad credentials`, and not once per auto-pull tick.
-   * Returns true if it was handled as an auth error.
+   * Turn a sync failure into a toast. Classifies error type for actionable
+   * messages instead of raw API text.
    */
   function reportSyncError(e: unknown, fallbackKey: string): void {
     if (isGithubAuthError(e)) {
       const wasInvalid = sync.tokenInvalid;
       sync.tokenInvalid = true;
-      // Only surface the toast on the first detection, so the periodic
-      // auto-pull doesn't spam an expired-token banner every N minutes.
       const expKey = sync.status?.provider === 'gitea' ? 'githubSync.giteaTokenExpired' : 'githubSync.tokenExpired';
       if (!wasInvalid) toasts.error(t(expKey), 6000);
+      return;
+    }
+    const pushType = classifyPushError(e);
+    if (pushType === 'protected-branch') {
+      toasts.warning(t('githubSync.pushBlockedByBranchProtection'), 6000);
+      return;
+    }
+    if (pushType === 'non-fast-forward') {
+      toasts.warning(t('githubSync.pushRejectedPullFirst'), 6000);
       return;
     }
     toasts.error(`${t(fallbackKey)}: ${e}`);

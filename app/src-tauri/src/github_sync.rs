@@ -1065,9 +1065,22 @@ pub fn github_push_inner(
     let mut opts = PushOptions::new();
     opts.remote_callbacks(make_callbacks(token));
     opts.proxy_options(make_proxy_options());
-    origin
-        .push(&[refspec.as_str()], Some(&mut opts))
-        .map_err(|e| format!("push failed: {}", e))?;
+    origin.push(&[refspec.as_str()], Some(&mut opts)).map_err(|e| {
+        let msg = e.message();
+        if msg.contains("protected branch")
+            || msg.contains("refusing to allow")
+            || msg.contains("pre-receive hook")
+        {
+            format!(
+                "Protected branch on remote. Create a Pull Request instead. Details: {}",
+                msg
+            )
+        } else if msg.contains("non-fast-forward") {
+            "Remote has newer commits. Pull first, then push again.".into()
+        } else {
+            format!("push failed: {}", msg)
+        }
+    })?;
 
     // Stamp the config with the last successful push.
     if let Ok(Some(mut cfg)) = load_config(&path) {

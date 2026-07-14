@@ -13,7 +13,7 @@
  */
 import { ref, computed, onMounted, watch } from 'vue';
 import { openUrl } from '@tauri-apps/plugin-opener';
-import { useGithubSyncStore } from '../stores/githubSync';
+import { useGithubSyncStore, classifyPushError, classifyPullError } from '../stores/githubSync';
 import { useSettingsStore } from '../stores/settings';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useToastsStore } from '../stores/toasts';
@@ -293,7 +293,14 @@ async function pushNow() {
     commitMsg.value = '';
     toasts.success(tSync('pushedToast'));
   } catch (e) {
-    toasts.error(`${t('githubSync.pushFailed')}: ${e}`);
+    const errType = classifyPushError(e);
+    if (errType === 'protected-branch') {
+      toasts.warning(t('githubSync.pushBlockedByBranchProtection'), 8000);
+    } else if (errType === 'non-fast-forward') {
+      toasts.warning(t('githubSync.pushRejectedPullFirst'), 8000);
+    } else {
+      toasts.error(`${t('githubSync.pushFailed')}: ${e}`);
+    }
   }
 }
 
@@ -310,7 +317,12 @@ async function pullNow() {
       window.dispatchEvent(new CustomEvent('solomd:remote-pulled'));
     }
   } catch (e) {
-    toasts.error(`${t('githubSync.pullFailed')}: ${e}`);
+    const errType = classifyPullError(e);
+    if (errType === 'auth') {
+      // Handled by store.tokenInvalid flag → reconnect banner
+    } else {
+      toasts.error(`${t('githubSync.pullFailed')}: ${e}`);
+    }
   }
 }
 
@@ -520,6 +532,15 @@ const linkedRepoLabel = computed(() => {
       <button class="ghs-btn ghs-btn--primary" @click="reconnect">
         {{ t('githubSync.reconnectBtn') }}
       </button>
+    </div>
+
+    <!-- Branch protection push-blocked banner -->
+    <div v-if="sync.pushErrorType === 'protected-branch' && sync.isLinked" class="ghs-authwarn" style="border-color: #b45309;">
+      <span class="ghs-authwarn__icon">🛡️</span>
+      <div class="ghs-authwarn__body">
+        <strong>{{ t('githubSync.pushBlockedByBranchProtection') }}</strong>
+        <p>Go to your Gitea/GitHub server and create a Pull Request with your changes, or remove branch protection on the repository settings.</p>
+      </div>
     </div>
 
     <!-- ──────────────────────────────────────────────────────────────── -->

@@ -83,6 +83,10 @@ interface State {
    *  the PAT expired or was revoked. Drives a "reconnect" banner + toast so the
    *  user isn't left staring at a raw `GitHub API 401` on their next sync. */
   tokenInvalid: boolean;
+  /** Classified push error type after last failed push attempt. Reset on next push. */
+  pushErrorType: PushErrorType;
+  /** Classified pull error type after last failed pull attempt. Reset on next pull. */
+  pullErrorType: PullErrorType;
 
   // Gitea-specific state
   giteaUrl: string;
@@ -103,6 +107,25 @@ export function isGithubAuthError(e: unknown): boolean {
   return /\b401\b|bad credentials/i.test(s);
 }
 
+/** Classify push errors from the Rust backend. Returns a machine-readable tag. */
+export type PushErrorType = 'none' | 'auth' | 'protected-branch' | 'non-fast-forward' | 'other';
+export type PullErrorType = 'none' | 'auth' | 'conflict' | 'other';
+
+export function classifyPushError(e: unknown): PushErrorType {
+  if (isGithubAuthError(e)) return 'auth';
+  const s = String(e);
+  if (/protected branch/i.test(s) || /create a pull request/i.test(s)) return 'protected-branch';
+  if (/non-fast-forward/i.test(s) || /pull first/i.test(s)) return 'non-fast-forward';
+  return 'other';
+}
+
+export function classifyPullError(e: unknown): PullErrorType {
+  if (isGithubAuthError(e)) return 'auth';
+  const s = String(e);
+  if (/conflict/i.test(s)) return 'conflict';
+  return 'other';
+}
+
 export const useGithubSyncStore = defineStore('githubSync', {
   state: (): State => ({
     hasToken: false,
@@ -115,6 +138,8 @@ export const useGithubSyncStore = defineStore('githubSync', {
     pulling: false,
     lastError: null,
     tokenInvalid: false,
+    pushErrorType: 'none',
+    pullErrorType: 'none',
 
     // Gitea state
     giteaUrl: '',
@@ -279,11 +304,13 @@ export const useGithubSyncStore = defineStore('githubSync', {
 
     async push(folder: string, commitMessage?: string): Promise<void> {
       this.pushing = true;
+      this.pushErrorType = 'none';
       try {
         await invoke('github_push', { folder, commitMessage: commitMessage ?? null });
         await this.refreshStatus(folder);
       } catch (e) {
         this.lastError = String(e);
+        this.pushErrorType = classifyPushError(e);
         throw e;
       } finally {
         this.pushing = false;
@@ -292,12 +319,14 @@ export const useGithubSyncStore = defineStore('githubSync', {
 
     async pull(folder: string): Promise<PullResult> {
       this.pulling = true;
+      this.pullErrorType = 'none';
       try {
         const r = await invoke<PullResult>('github_pull', { folder });
         await this.refreshStatus(folder);
         return r;
       } catch (e) {
         this.lastError = String(e);
+        this.pullErrorType = classifyPullError(e);
         throw e;
       } finally {
         this.pulling = false;

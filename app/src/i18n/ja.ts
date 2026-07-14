@@ -1276,6 +1276,8 @@ export const ja: I18n = {
     // --- Commit message for push ---
     commitMsgPlaceholder: 'Describe your changes...',
     commitMsgEmptyError: 'Commit message is required before push.',
+    pushBlockedByBranchProtection: 'Push blocked by branch protection on remote. Create a Pull Request instead.',
+    pushRejectedPullFirst: 'Push rejected: remote has newer commits. Pull first, then try again.',
   themes: {
     title: 'テーママーケットプレイス',
     browseBtn: 'コミュニティテーマを閲覧',

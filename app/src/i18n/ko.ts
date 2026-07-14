@@ -1276,6 +1276,8 @@ export const ko: I18n = {
     // --- Commit message for push ---
     commitMsgPlaceholder: 'Describe your changes...',
     commitMsgEmptyError: 'Commit message is required before push.',
+    pushBlockedByBranchProtection: 'Push blocked by branch protection on remote. Create a Pull Request instead.',
+    pushRejectedPullFirst: 'Push rejected: remote has newer commits. Pull first, then try again.',
   themes: {
     title: '테마 마켓플레이스',
     browseBtn: '커뮤니티 테마 둘러보기',
