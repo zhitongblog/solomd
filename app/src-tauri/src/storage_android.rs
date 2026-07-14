@@ -78,6 +78,29 @@ pub fn android_system_insets() -> SystemInsets {
     }
 }
 
+/// #148 (follow-up) — restart the app process.
+///
+/// MANAGE_EXTERNAL_STORAGE is granted in system Settings *outside* our process.
+/// `Environment.isExternalStorageManager()` flips to true immediately, but the
+/// app's shared-storage sandbox was bind-mounted when the process launched and
+/// is **not** remounted on grant — so `std::fs` keeps returning EACCES on
+/// `/storage/emulated/0` until the process is recreated. (The emulator masked
+/// this because its shared storage is readable without the permission at all.)
+/// So after the user grants, we relaunch (see `imp::restart_app`): start a
+/// fresh-task launch intent while still foreground, then exit so a brand-new
+/// process picks up the new mount. No-op off-Android.
+#[tauri::command]
+pub fn android_restart_app() -> Result<(), String> {
+    #[cfg(target_os = "android")]
+    {
+        imp::restart_app()
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        Ok(())
+    }
+}
+
 #[cfg(target_os = "android")]
 mod imp {
     use jni::objects::{JObject, JValue};
@@ -135,6 +158,69 @@ mod imp {
             let bottom = framework_dimen(env, &res, "navigation_bar_height")?;
             Ok(super::SystemInsets { top, bottom })
         })
+    }
+
+    /// Relaunch this app so its shared-storage sandbox re-mounts.
+    ///
+    /// We must start the new activity while we're still the foreground app —
+    /// Android 10+ blocks background activity starts, so scheduling the relaunch
+    /// for *after* we die (AlarmManager/PendingIntent) silently no-ops (the
+    /// alarm fires with the app dead → the activity start is denied and nothing
+    /// comes back). Instead: build a fresh-task restart intent
+    /// (`Intent.makeRestartActivityTask`, which sets NEW_TASK|CLEAR_TASK),
+    /// `startActivity` it now (allowed — we're foreground), give the system a
+    /// beat to queue the transition, then exit. The pending activity relaunch
+    /// forces a brand-new process, which is what re-mounts storage.
+    pub fn restart_app() -> Result<(), String> {
+        with_activity(|env, activity| {
+            let pm = env
+                .call_method(
+                    activity,
+                    "getPackageManager",
+                    "()Landroid/content/pm/PackageManager;",
+                    &[],
+                )?
+                .l()?;
+            let pkg = env
+                .call_method(activity, "getPackageName", "()Ljava/lang/String;", &[])?
+                .l()?;
+            let intent = env
+                .call_method(
+                    &pm,
+                    "getLaunchIntentForPackage",
+                    "(Ljava/lang/String;)Landroid/content/Intent;",
+                    &[JValue::Object(&pkg)],
+                )?
+                .l()?;
+            let comp = env
+                .call_method(
+                    &intent,
+                    "getComponent",
+                    "()Landroid/content/ComponentName;",
+                    &[],
+                )?
+                .l()?;
+            // Intent.makeRestartActivityTask(component) → NEW_TASK|CLEAR_TASK
+            let restart_intent = env
+                .call_static_method(
+                    "android/content/Intent",
+                    "makeRestartActivityTask",
+                    "(Landroid/content/ComponentName;)Landroid/content/Intent;",
+                    &[JValue::Object(&comp)],
+                )?
+                .l()?;
+            env.call_method(
+                activity,
+                "startActivity",
+                "(Landroid/content/Intent;)V",
+                &[JValue::Object(&restart_intent)],
+            )?;
+            Ok(())
+        })?;
+        // Let the activity-start transition register before we tear the process
+        // down; the queued relaunch then spawns a fresh process. Never returns.
+        std::thread::sleep(std::time::Duration::from_millis(150));
+        std::process::exit(0);
     }
 
     pub fn has_all_files_access() -> Result<bool, String> {

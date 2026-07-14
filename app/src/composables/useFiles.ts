@@ -342,12 +342,34 @@ export function useFiles() {
     // re-check on resume); if granted, open our own folder browser.
     if (isAndroid()) {
       try {
+        // Probe REAL read access first rather than trusting
+        // Environment.isExternalStorageManager(): on some OEMs that API
+        // disagrees with actual filesystem access, and even when it reports
+        // "granted" the shared-storage sandbox only re-mounts on a fresh
+        // process, so a running process can still hit EACCES right after the
+        // user grants. Branch on what we can actually read:
+        //   - readable            → open the folder picker
+        //   - not readable, !perm → send to the grant screen
+        //   - not readable, perm  → granted but stale process → restart
+        // This also lets the picker open on devices/emulators whose storage is
+        // readable without the special permission at all.
+        let canRead = false;
+        try {
+          await invoke('list_dir', { path: '/storage/emulated/0' });
+          canRead = true;
+        } catch {
+          canRead = false;
+        }
+        if (canRead) {
+          window.dispatchEvent(new CustomEvent('solomd:android-folder-picker'));
+          return;
+        }
         const granted = await invoke<boolean>('android_has_all_files_access');
         if (!granted) {
           window.dispatchEvent(new CustomEvent('solomd:android-request-storage'));
-          return;
+        } else {
+          window.dispatchEvent(new CustomEvent('solomd:android-restart-needed'));
         }
-        window.dispatchEvent(new CustomEvent('solomd:android-folder-picker'));
       } catch (e) {
         toasts.error(String(e));
       }

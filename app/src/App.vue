@@ -93,6 +93,19 @@ const workspace = useWorkspaceStore();
 // they can react to app-resume (the all-files grant happens in system Settings,
 // outside our process).
 const androidPickerOpen = ref(false);
+// Shown after an all-files grant that didn't take effect on the running
+// process (see the resume probe in onMounted); the app must restart so shared
+// storage re-mounts.
+const androidRestartNeeded = ref(false);
+async function doAndroidRestart() {
+  androidRestartNeeded.value = false;
+  try {
+    await invoke('android_restart_app');
+  } catch (e) {
+    const toasts = (await import('./stores/toasts')).useToastsStore();
+    toasts.error(String(e));
+  }
+}
 function onAndroidFolderPick(path: string) {
   androidPickerOpen.value = false;
   workspace.setFolder(path);
@@ -101,9 +114,14 @@ function onAndroidFolderPick(path: string) {
 async function requestAndroidStorage() {
   const toasts = (await import('./stores/toasts')).useToastsStore();
   try {
+    // Mark that a grant round-trip is in flight; when we resume from Settings
+    // with the permission held, the onMounted visibilitychange handler restarts
+    // the app so the storage sandbox re-mounts (grant alone doesn't remount a
+    // running process — see android_restart_app).
+    localStorage.setItem('solomd:android-storage-pending', '1');
     await invoke('android_request_all_files_access');
     toasts.info(
-      'Turn on "Allow access to manage all files", then come back and tap Open Folder again.',
+      '打开「允许管理所有文件 / All files access」后返回,App 会自动重启以让权限生效。',
     );
   } catch (e) {
     toasts.error(String(e));
@@ -778,6 +796,49 @@ onMounted(async () => {
     } catch (e) {
       console.warn('android_system_insets failed', e);
     }
+
+    // #148 (follow-up) — the MANAGE_EXTERNAL_STORAGE grant happens in system
+    // Settings while our process is alive. isExternalStorageManager() flips to
+    // true immediately, but on many devices the shared-storage sandbox was
+    // bind-mounted at process launch and does NOT re-mount on grant — so
+    // list_dir keeps hitting EACCES until the process restarts. Other devices
+    // (and the emulator) apply it live. So when we resume from the grant screen
+    // with the permission now held, PROBE real read access before doing
+    // anything drastic: if reads work, just open the picker; only if reads
+    // still fail do we prompt a restart (a fresh process re-mounts storage).
+    // The pending flag (set in requestAndroidStorage) scopes this to a real
+    // grant round-trip and is cleared before we act, so there's no loop.
+    const maybeAfterGrant = async () => {
+      if (localStorage.getItem('solomd:android-storage-pending') !== '1') return;
+      let granted = false;
+      try {
+        granted = await invoke<boolean>('android_has_all_files_access');
+      } catch (e) {
+        console.warn('post-grant perm check failed', e);
+        return;
+      }
+      if (!granted) return; // user didn't grant yet — leave the flag, keep waiting
+      localStorage.removeItem('solomd:android-storage-pending');
+      let canRead = false;
+      try {
+        await invoke('list_dir', { path: '/storage/emulated/0' });
+        canRead = true;
+      } catch {
+        canRead = false;
+      }
+      if (canRead) {
+        // Grant took effect live — go straight to the folder picker.
+        window.dispatchEvent(new CustomEvent('solomd:android-folder-picker'));
+      } else {
+        // Grant needs a fresh process to re-mount storage — ask to restart.
+        androidRestartNeeded.value = true;
+      }
+    };
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') void maybeAfterGrant();
+    });
+    // Also cover the case where we resumed before the listener attached.
+    void maybeAfterGrant();
   }
 
   // #87(3) — if a startup view mode is pinned, force it now (overrides the
@@ -833,6 +894,9 @@ onMounted(async () => {
   });
   window.addEventListener('solomd:android-request-storage', () => {
     void requestAndroidStorage();
+  });
+  window.addEventListener('solomd:android-restart-needed', () => {
+    androidRestartNeeded.value = true;
   });
 
   // iOS / Android — tauri-plugin-deep-link delivers incoming files
@@ -1633,11 +1697,61 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
       :start="workspace.currentFolder ?? undefined"
       @pick="onAndroidFolderPick"
       @close="androidPickerOpen = false"
+      @request-permission="androidPickerOpen = false; requestAndroidStorage()"
     />
+    <!-- #148 (follow-up) — all-files access granted but not yet effective on
+         this process; a restart re-mounts shared storage. -->
+    <div v-if="androidRestartNeeded" class="arn-backdrop">
+      <div class="arn">
+        <div class="arn__title">重启一次即可读取文件夹</div>
+        <p class="arn__body">
+          文件访问权限已开启 ✅。安卓要求 App 重启后才能真正读取手机存储。<br /><br />
+          点「关闭 SoloMD」→ 从后台任务里划掉 → 重新打开 App,再点「打开文件夹」就能选你的笔记文件夹了。
+        </p>
+        <div class="arn__foot">
+          <button class="arn__btn" @click="androidRestartNeeded = false">稍后</button>
+          <button class="arn__btn arn__btn--primary" @click="doAndroidRestart">关闭 SoloMD</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
+/* #148 (follow-up) — post-grant restart prompt. */
+.arn-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: var(--z-modal, 2000);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.arn {
+  background: var(--bg, #fff);
+  color: var(--text, #111);
+  border-radius: var(--r-lg, 12px);
+  width: 100%;
+  max-width: 380px;
+  box-shadow: var(--sh-pop, 0 8px 28px rgba(0, 0, 0, 0.12));
+  padding: 18px 18px 14px;
+}
+.arn__title { font-weight: 600; font-size: 16px; margin-bottom: 10px; }
+.arn__body { font-size: 14px; line-height: 1.6; color: var(--text-muted, #555); margin: 0 0 16px; }
+.arn__foot { display: flex; gap: 10px; justify-content: flex-end; }
+.arn__btn {
+  border: var(--bd, 1px solid var(--border, #ddd));
+  background: var(--bg-hover, #f5f5f5);
+  border-radius: var(--r-sm, 6px);
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 14px;
+  color: inherit;
+}
+.arn__btn--primary { background: var(--accent, #ff9f40); color: #000; border-color: transparent; font-weight: 600; }
+
 .app {
   display: flex;
   flex-direction: column;

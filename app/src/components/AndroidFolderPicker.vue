@@ -12,23 +12,35 @@ import { ref, watch } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 
 const props = defineProps<{ open: boolean; start?: string }>();
-const emit = defineEmits<{ (e: 'pick', path: string): void; (e: 'close'): void }>();
+const emit = defineEmits<{
+  (e: 'pick', path: string): void;
+  (e: 'close'): void;
+  (e: 'request-permission'): void;
+}>();
 
 const ROOT = '/storage/emulated/0';
 const cwd = ref(ROOT);
 const dirs = ref<{ name: string; path: string }[]>([]);
 const loading = ref(false);
 const error = ref('');
+// EACCES despite the app believing it holds all-files access — usually the
+// grant hasn't taken effect on this still-running process yet. Surface a
+// re-grant CTA (which drives the request + auto-restart) instead of a raw
+// "Permission denied (os error 13)".
+const permDenied = ref(false);
 
 async function load(path: string) {
   loading.value = true;
   error.value = '';
+  permDenied.value = false;
   try {
     const entries = await invoke<{ name: string; path: string; is_dir: boolean }[]>('list_dir', { path });
     dirs.value = entries.filter((e) => e.is_dir).map((e) => ({ name: e.name, path: e.path }));
     cwd.value = path;
   } catch (e) {
-    error.value = String(e);
+    const msg = String(e);
+    error.value = msg;
+    permDenied.value = /permission denied|os error 13|EACCES/i.test(msg);
     dirs.value = [];
   } finally {
     loading.value = false;
@@ -67,6 +79,12 @@ function shortCwd(): string {
       </div>
       <div class="afp__list">
         <div v-if="loading" class="afp__msg">Loading…</div>
+        <div v-else-if="permDenied" class="afp__msg afp__perm">
+          <p>需要「所有文件访问」权限才能浏览手机里的文件夹。</p>
+          <button class="afp__btn afp__btn--primary" @click="emit('request-permission')">
+            去开启权限
+          </button>
+        </div>
         <div v-else-if="error" class="afp__msg afp__msg--err">{{ error }}</div>
         <div v-else-if="!dirs.length" class="afp__msg">No sub-folders here.</div>
         <button
@@ -151,6 +169,8 @@ function shortCwd(): string {
 .afp__item:hover { background: var(--bg-hover, #f2f2f2); }
 .afp__msg { padding: 20px 16px; color: var(--text-muted, #888); font-size: 14px; }
 .afp__msg--err { color: var(--danger, #d33); white-space: pre-wrap; }
+.afp__perm { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.afp__perm p { margin: 0; color: var(--text, #333); font-size: 14px; }
 .afp__foot {
   display: flex;
   gap: 10px;
