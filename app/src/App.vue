@@ -64,7 +64,7 @@ import { useExport } from './composables/useExport';
 import { useShortcuts } from './composables/useShortcuts';
 import { useFileWatcher } from './composables/useFileWatcher';
 import { loadCustomTheme } from './lib/custom-theme';
-import { isIOS, isMacOS } from './lib/platform';
+import { isIOS, isMacOS, isAndroid } from './lib/platform';
 import { useI18n } from './i18n';
 import { track } from './lib/telemetry';
 import { openWelcomeTour } from './lib/welcome-tour';
@@ -763,6 +763,23 @@ function onWindowBlur() {
 }
 
 onMounted(async () => {
+  // #153 (mobile) — Android's WebView reports env(safe-area-inset-top) as 0
+  // under forced edge-to-edge, so the toolbar rendered under the status bar
+  // and was untappable. Read the real bar heights natively and inject them as
+  // CSS vars (the .app padding uses max(env, var)). Physical px → CSS px via
+  // devicePixelRatio. Runs only on Android; failures leave the vars unset (0).
+  if (isAndroid()) {
+    try {
+      const insets = await invoke<{ top: number; bottom: number }>('android_system_insets');
+      const dpr = window.devicePixelRatio || 1;
+      const root = document.documentElement;
+      root.style.setProperty('--android-safe-top', `${Math.round((insets.top || 0) / dpr)}px`);
+      root.style.setProperty('--android-safe-bottom', `${Math.round((insets.bottom || 0) / dpr)}px`);
+    } catch (e) {
+      console.warn('android_system_insets failed', e);
+    }
+  }
+
   // #87(3) — if a startup view mode is pinned, force it now (overrides the
   // persisted last-used `viewMode`). Empty/null = resume whatever the user
   // left in, as before.
@@ -1635,9 +1652,15 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
      doesn't render under the Android status bar (carrier signal / battery
      / clock) and the bottom status bar doesn't overlap the gesture-nav
      bar. `env(safe-area-inset-*)` returns 0 on desktops where the
-     property isn't defined, so this is a no-op there. */
-  padding-top: env(safe-area-inset-top, 0);
-  padding-bottom: env(safe-area-inset-bottom, 0);
+     property isn't defined, so this is a no-op there.
+     #153 (mobile) — Android 15 forces edge-to-edge (targetSdk 36, can't opt
+     out), but Android's WebView reports `env(safe-area-inset-top)` as 0, so
+     the toolbar rendered UNDER the status bar and was untappable. We read the
+     real bar heights natively (android_system_insets) and inject
+     `--android-safe-top/bottom`; `max()` uses whichever is larger so iOS (env)
+     and Android (native var) both work, and desktop stays 0. */
+  padding-top: max(env(safe-area-inset-top, 0px), var(--android-safe-top, 0px));
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), var(--android-safe-bottom, 0px));
   padding-left: env(safe-area-inset-left, 0);
   padding-right: env(safe-area-inset-right, 0);
   box-sizing: border-box;

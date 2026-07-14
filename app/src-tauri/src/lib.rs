@@ -169,6 +169,7 @@ pub fn run() {
             commands::copy_file,
             storage_android::android_has_all_files_access,
             storage_android::android_request_all_files_access,
+            storage_android::android_system_insets,
             image_upload::upload_image,
             commands::list_dir,
             commands::fs_create_file,

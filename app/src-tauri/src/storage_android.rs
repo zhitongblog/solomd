@@ -47,6 +47,37 @@ pub fn android_request_all_files_access() -> Result<(), String> {
     }
 }
 
+/// System-bar inset heights in **physical pixels** (status bar top,
+/// navigation bar bottom).
+#[derive(serde::Serialize, Default)]
+pub struct SystemInsets {
+    pub top: i32,
+    pub bottom: i32,
+}
+
+/// #153 (mobile) — status-bar / nav-bar heights so the web layer can keep the
+/// toolbar out from under the Android system bars.
+///
+/// Android 15 (targetSdk 35+) forces edge-to-edge and it can't be turned off,
+/// so the WebView draws behind the status bar. The CSS `env(safe-area-inset-*)`
+/// that would normally carry the inset returns **0** in Android's WebView
+/// (unlike iOS WKWebView), so the toolbar rendered under the clock/battery and
+/// became untappable. Reading the heights natively and injecting them as a CSS
+/// var (see App.vue) sidesteps the broken `env()` entirely. Returns physical
+/// px; the frontend divides by `devicePixelRatio` for CSS px. Zeroes
+/// off-Android (desktop `env()` is 0 anyway → no-op).
+#[tauri::command]
+pub fn android_system_insets() -> SystemInsets {
+    #[cfg(target_os = "android")]
+    {
+        imp::system_insets().unwrap_or_default()
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        SystemInsets::default()
+    }
+}
+
 #[cfg(target_os = "android")]
 mod imp {
     use jni::objects::{JObject, JValue};
@@ -63,6 +94,47 @@ mod imp {
         let activity = unsafe { JObject::from_raw(ctx.context().cast()) };
         let mut env = vm.attach_current_thread().map_err(|e| e.to_string())?;
         f(&mut env, &activity).map_err(|e| e.to_string())
+    }
+
+    /// Read a `dimen` from the framework's `android` resource package (e.g.
+    /// `status_bar_height`, `navigation_bar_height`) → physical px, or 0 if
+    /// the identifier doesn't resolve on this device.
+    fn framework_dimen(
+        env: &mut jni::JNIEnv,
+        res: &JObject,
+        name: &str,
+    ) -> Result<i32, jni::errors::Error> {
+        let jname = env.new_string(name)?;
+        let jtype = env.new_string("dimen")?;
+        let jpkg = env.new_string("android")?;
+        let id = env
+            .call_method(
+                res,
+                "getIdentifier",
+                "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)I",
+                &[
+                    JValue::Object(&jname),
+                    JValue::Object(&jtype),
+                    JValue::Object(&jpkg),
+                ],
+            )?
+            .i()?;
+        if id <= 0 {
+            return Ok(0);
+        }
+        env.call_method(res, "getDimensionPixelSize", "(I)I", &[JValue::Int(id)])?
+            .i()
+    }
+
+    pub fn system_insets() -> Result<super::SystemInsets, String> {
+        with_activity(|env, activity| {
+            let res = env
+                .call_method(activity, "getResources", "()Landroid/content/res/Resources;", &[])?
+                .l()?;
+            let top = framework_dimen(env, &res, "status_bar_height")?;
+            let bottom = framework_dimen(env, &res, "navigation_bar_height")?;
+            Ok(super::SystemInsets { top, bottom })
+        })
     }
 
     pub fn has_all_files_access() -> Result<bool, String> {
