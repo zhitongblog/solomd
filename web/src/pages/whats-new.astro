@@ -5,13 +5,13 @@ import Footer from '../components/Footer.astro';
 import Giscus from '../components/Giscus.astro';
 
 const lang = 'en' as const;
-const VERSION = '4.8.10';
+const VERSION = '4.9.0';
 const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERSION}`;
 ---
 
 <Layout
-  title="What's new in SoloMD v4.0 — the editor where agents live"
-  description="v4.0 is the agent-native author release. Five pillars: Inline Agent Panel (streamed chat-with-vault), Scheduled Recipes (cron / on-save / on-commit, AutoGit branch sandbox + accept/reject), Trace View (replayable JSONL), Multi-workspace MCP Federation, and Ollama first-class polish. Plus: REST API, BYOK cost meter, recipe cookbook (11 starters), first-run wizard, ja/ko localization."
+  title={`What's new in SoloMD ${VERSION} — release notes v4.0 – v4.8`}
+  description={`SoloMD ${VERSION} release notes. v4.8: image hosting (PicGo / SM.MS / S3 / GitHub) + quality-of-life fixes (select-all, trash-safe delete, unified line breaks). v4.7: Windows editor rewritten on native textareas — CJK IME finally reliable. v4.6: knowledge graph (typed relationships, saved views, properties inspector) + tldraw whiteboards. v4.0: the agent-native author release — Inline Agent Panel, Scheduled Recipes, Trace View, MCP Federation.`}
   lang={lang}
 >
   <Header lang={lang} />
@@ -69,6 +69,53 @@ const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERS
           <strong>macOS, Linux, iOS and Android are unaffected</strong> — they
           keep the existing CodeMirror editor. Also in 4.7: the command palette
           no longer jumps when you hover or wheel-scroll the list (#93).
+        </p>
+        <p class="version-row" style="margin-top:24px;">
+          <span class="version-tag">v4.9</span>
+          <time>July 2026</time>
+        </p>
+        <h2 style="margin-top:8px;">4.9 — Android opens your real vault.</h2>
+        <p class="lead">
+          On Android, SoloMD's only freely-readable folder used to be a
+          sandbox under <code>/Android/data</code> that no file manager can
+          reach on an unrooted phone — so you could never point the app at
+          your actual notes folder. 4.9 adds <strong>All-files access</strong>:
+          grant it once and <strong>Open Folder</strong> lets you browse to a
+          real vault anywhere on the device (<code>Documents</code>, a
+          Syncthing / Dropbox folder, an SD card) and <strong>edit files in
+          place</strong> — no copying into the sandbox. The file tree, search,
+          version history and save all work against your real paths (#148,
+          #151).
+        </p>
+        <p style="margin-top:14px;">
+          Also in 4.9, a sweep of reported bugs.
+          <strong>The macOS window can be dragged by its title bar again</strong>
+          (#153) — the drag call had been silently rejected by a missing
+          permission ever since the unified title bar shipped; double-click
+          to zoom is back too. <strong>The "File Changed on Disk" dialog no
+          longer interrupts typing on Android</strong> (#148) — the app's own
+          saves were mistaken for external edits because Android delivers
+          file events seconds late; changes are now judged by the file's
+          modification time instead. The update-available notice now opens
+          the solomd.app download page (reachable in mainland China, with the
+          Gitee mirror) instead of GitHub (#154), and the no-op
+          "Reveal in Finder" menu item is hidden on phones.
+        </p>
+        <p style="margin-top:14px;">
+          <strong>4.8.11</strong> — three reported bugs, fixed.
+          <strong>Android can open files again</strong> (#148): files handed
+          over by a file manager, "Open with", or the in-app picker arrive as
+          <code>content://</code> URIs that no filesystem call can read — they
+          now import into the SoloMD folder (keeping the original filename, or
+          naming from the doc's first heading) and open normally, mirroring the
+          iOS Files-app flow. <strong>GitHub sync no longer pushes to
+          <code>main</code> while pulling from <code>master</code></strong>
+          (#147) — a second device could get permanently stuck never seeing the
+          first device's pushes; pull now normalizes the branch the same way
+          push does, with a fallback for legacy master-only remotes.
+          And <strong>closing a tab returns to the adjacent tab</strong>
+          instead of jumping to the first one in the list (#149 — root cause
+          contributed by the reporter, thanks!).
         </p>
         <p style="margin-top:14px;">
           <strong>4.8.10</strong> — quality-of-life sweep.

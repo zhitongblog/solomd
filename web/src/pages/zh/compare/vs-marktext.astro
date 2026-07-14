@@ -2,8 +2,27 @@
 import Layout from '../../../layouts/Layout.astro';
 import Header from '../../../components/Header.astro';
 import Footer from '../../../components/Footer.astro';
+import CompareFaq from '../../../components/CompareFaq.astro';
 
 const lang = 'zh' as const;
+const FAQ = [
+  {
+    q: '都是免费 MIT 开源,为什么选 SoloMD 而不是 MarkText?',
+    a: 'SoloMD 有 MarkText 一直没有的东西:原生 iOS / Android 应用、内置 AI(14 个自带 Key 提供商)、本地语义搜索、AutoGit 版本历史、MCP 服务器、tldraw 白板和知识图谱。体积上是 Tauri 2 的约 15 MB 对 MarkText Electron 的约 80 MB。',
+  },
+  {
+    q: 'MarkText 还在维护吗?',
+    a: 'MarkText 在沉寂数年后于 2026 年 5 月恢复维护,这对生态是好事。SoloMD 由活跃维护者每月发布多个修复版本,更新日志在 solomd.app/zh/whats-new。',
+  },
+  {
+    q: 'Windows 上中文输入体验怎么样?',
+    a: 'SoloMD 的 Windows 实时编辑器专门改用原生 textarea 块,就是为了绕开 Chromium contentEditable 的输入法问题(吞第一个字、标点打两次才出来,搜狗最严重)。SoloMD 作者已把底层 WebView2 缺陷报给微软(WebView2Feedback#5625)。另外还自动识别 GBK / Big5 / Shift_JIS 编码,中文字数统计准确。',
+  },
+  {
+    q: 'SoloMD 有 MarkText 那样的源码和所见即所得模式吗?',
+    a: '有 —— SoloMD 有四种视图:源码、Typora 式实时编辑(所见即所得)、编辑+预览分栏、阅读模式。',
+  },
+];
 ---
 
 <Layout
@@ -28,7 +47,7 @@ const lang = 'zh' as const;
       <h2>30 秒速览</h2>
       <table class="compare-detail">
         <thead>
-          <tr><th>&nbsp;</th><th>SoloMD v4.5</th><th>MarkText</th></tr>
+          <tr><th>&nbsp;</th><th>SoloMD v4.8</th><th>MarkText</th></tr>
         </thead>
         <tbody>
           <tr><th>许可证</th><td>MIT</td><td>MIT</td></tr>
@@ -96,6 +115,8 @@ const lang = 'zh' as const;
         两者都读写同样的 Markdown 方言 —— CommonMark + GitHub-Flavored (GFM) + KaTeX 公式 + Mermaid 图表 + front-matter。
         文件可以无缝切换,无需转换。
       </p>
+
+      <CompareFaq heading="常见问题" items={FAQ} />
 
       <div class="compare-cta">
         <a href="/zh/#download" class="btn btn--primary">下载 SoloMD</a>

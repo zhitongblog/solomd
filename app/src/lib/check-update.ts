@@ -112,10 +112,17 @@ export async function checkForUpdate(): Promise<UpdateResult> {
   };
 }
 
-/** Open the release page in the system browser. */
-export async function openReleaseUrl(url: string): Promise<void> {
+/** #154 — the "update available" toast used to open the GitHub release page,
+ *  which is unreachable for many users in mainland China, making the whole
+ *  update check look broken. The solomd.app download section serves everyone
+ *  (Cloudflare edge) and links BOTH GitHub and the Gitee CN mirror, so send
+ *  users there instead. The `_url` param is kept for call-site compatibility
+ *  and as documentation of the release the toast referred to. */
+const DOWNLOAD_PAGE = 'https://solomd.app/#download';
+
+export async function openReleaseUrl(_url: string): Promise<void> {
   try {
-    await openUrl(url);
+    await openUrl(DOWNLOAD_PAGE);
   } catch {
     /* ignore */
   }

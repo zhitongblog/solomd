@@ -2,6 +2,26 @@
 import Layout from '../../../layouts/Layout.astro';
 import Header from '../../../components/Header.astro';
 import Footer from '../../../components/Footer.astro';
+import CompareFaq from '../../../components/CompareFaq.astro';
+
+const FAQ = [
+  {
+    q: 'SoloMD 和 Tolaria 的核心区别是什么?',
+    a: 'Tolaria 是桌面端 Notion 式块编辑器(基于 BlockNote);SoloMD 是 Markdown 优先的编辑器。v4.6 起 SoloMD 补齐了同样的知识图谱能力 —— 自动反向的类型化关系、单篇笔记关系图、类型侧边栏、保存视图、属性面板和 tldraw 白板 —— 且磁盘上始终是纯 .md + YAML,并覆盖包括 iOS / Android 在内的 5 个平台。',
+  },
+  {
+    q: '两者的白板兼容吗?',
+    a: '都用 tldraw。SoloMD 把白板以 ```tldraw 围栏存在笔记内部,和 Tolaria 的磁盘白板格式互相兼容。',
+  },
+  {
+    q: '哪个能在手机上用?',
+    a: 'SoloMD 有原生 iOS 和 Android 应用;Tolaria 只有桌面端。',
+  },
+  {
+    q: '都是离线纯文件吗?',
+    a: '是 —— 两者都离线优先、基于文件、无需账号。SoloMD 是 MIT 协议(约 15 MB);Tolaria 是 AGPL(约 25 MB)。',
+  },
+];
 
 const lang = 'zh' as const;
 
@@ -162,7 +182,7 @@ const settingsRows: [string, string][] = [
       <h2>30 秒看完</h2>
       <table class="compare-detail">
         <thead>
-          <tr><th>&nbsp;</th><th>SoloMD v4.6</th><th>Tolaria（2026 年中）</th></tr>
+          <tr><th>&nbsp;</th><th>SoloMD v4.8</th><th>Tolaria（2026 年中）</th></tr>
         </thead>
         <tbody>
           <tr><th>价格</th><td><strong>免费</strong> / MIT</td><td><strong>免费</strong> / 开源（AGPL）</td></tr>
@@ -314,6 +334,8 @@ const settingsRows: [string, string][] = [
 
       <h3>能两个都用吗？</h3>
       <p>可以 —— 都读同样的 <code>.md</code> 文件,也都把 vault 当 git repo。常见组合：桌面跑 Tolaria,路上 iPad / 手机跑 SoloMD,都指向同一个 git 同步的 vault。</p>
+
+      <CompareFaq heading="常见问题" items={FAQ} />
 
       <div class="compare-cta">
         <a href="/#download" class="btn btn--primary">下载 SoloMD</a>

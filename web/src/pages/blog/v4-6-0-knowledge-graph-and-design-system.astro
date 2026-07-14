@@ -1,0 +1,130 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import Giscus from '../../components/Giscus.astro';
+
+const lang = 'en' as const;
+---
+
+<Layout
+  title="v4.6 — closing the knowledge-graph gap without inventing a file format"
+  description="How SoloMD 4.6 shipped seven Tolaria-class features (typed relationships, relationship graph, type-driven sidebar, properties inspector, saved views, inbox workflow, tldraw whiteboards) plus a full design-system rebuild in one release — with every byte still plain .md + YAML, and a written token contract as the only coordination point between parallel build agents."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main>
+    <article class="container blog-article">
+      <nav class="breadcrumbs">
+        <a href="/">Home</a> / <a href="/blog/">Blog</a> / <span>v4.6 knowledge graph</span>
+      </nav>
+      <time>2026-07-09</time>
+      <h1>v4.6 — closing the knowledge-graph gap without inventing a file format</h1>
+      <p class="lead">
+        SoloMD 4.6 shipped on June 10 with the seven features that used to be
+        the one honest answer to "why not SoloMD?" for knowledge-graph users —
+        typed relationships, a per-note relationship graph, a type-driven
+        sidebar, a properties inspector, saved filtered views, an inbox
+        workflow, and tldraw whiteboards — plus a ground-up design-system
+        rebuild. This post is about the two constraints that shaped it.
+      </p>
+
+      <h2>Constraint one: no new file format, ever</h2>
+      <p>
+        Every 4.6 feature reads and writes things that already existed:
+        YAML front-matter, fenced code blocks, and a <code>.solomd/</code>
+        sidecar folder for view definitions. Typed relationships are
+        front-matter fields (<code>belongs_to</code> / <code>related_to</code> /
+        <code>has</code>) with inverses resolved at index time — declare one
+        side, the other side materializes. Whiteboards are a
+        <code>```tldraw</code> fence inside the note, so the drawing travels
+        with the Markdown file through git, sync, and any other editor.
+        The acceptance test we held ourselves to: a vault must open in both
+        SoloMD and Tolaria (the app whose feature set we were closing on)
+        without either breaking the other.
+      </p>
+      <p>
+        This is the difference between a knowledge graph you can leave and one
+        you're stored in. If SoloMD disappears tomorrow, the relationships are
+        still legible YAML at the top of your files.
+      </p>
+
+      <h2>Constraint two: a written design contract before any feature code</h2>
+      <p>
+        The audit that started 4.6 was unflattering: 56 components each carrying
+        their own <code>&lt;style scoped&gt;</code>, the same dropdown markup
+        copied five times, magic <code>rgba()</code> values inline, no spacing
+        or radius or z-index scale at all. The app had 11 color tokens and 8
+        themes — and no system underneath them.
+      </p>
+      <p>
+        So the first artifact of 4.6 wasn't a feature; it was
+        <code>tokens.css</code> — an 8pt spacing scale, a radius scale keyed to
+        8px, three shadow levels, a z-index ladder, motion curves, and a focus
+        ring, plus a small Vue component library on top. That file mattered
+        beyond aesthetics: the seven features were built <em>in parallel by
+        separate agents in separate git worktrees</em>, and the written token
+        contract was the only trunk they shared. Every agent pulled colors and
+        components from the spec instead of inventing their own, which is the
+        only reason seven simultaneous features merged without the UI turning
+        into seven dialects.
+      </p>
+
+      <h2>What actually shipped</h2>
+      <ul>
+        <li><strong>Properties inspector</strong> (⌘⇧I) — a real front-matter editor with date, relation, status and tag pickers, writing straight back to YAML.</li>
+        <li><strong>Type-driven sidebar</strong> — <code>type:&lt;Name&gt;</code> notes become collapsible sidebar sections with custom icon, color, order, and pinned properties.</li>
+        <li><strong>Typed relationships</strong> — front-matter links with automatic inverses.</li>
+        <li><strong>Neighborhood</strong> — a per-note explorer of outgoing and inverse relationships; walk the graph one hop at a time.</li>
+        <li><strong>Saved views</strong> — persistent filtered lists in <code>.solomd/views/*.yml</code>: filter by type, status, date, or regex.</li>
+        <li><strong>Inbox workflow</strong> — ⌘E marks a note organized and advances to the next; an actual inbox-zero loop.</li>
+        <li><strong>tldraw whiteboards</strong> — Markdown-backed boards, cross-compatible with Tolaria's on-disk format.</li>
+        <li><strong>The design system itself</strong> — warm-neutral surfaces, an orange <code>#ff9f40</code> accent, and a unified macOS title bar with traffic lights inlined into the toolbar.</li>
+      </ul>
+
+      <p>
+        Verification followed the house rule: every feature was driven
+        end-to-end through the internal MCP self-test bridge before it counted
+        as done — not "compiles and looks right," but "an external client
+        performed the user's workflow and the file on disk came out correct."
+      </p>
+
+      <p>
+        SoloMD is a free, MIT-licensed Markdown editor for macOS, Windows,
+        Linux, iOS and Android. The full comparison against Tolaria lives at
+        <a href="/compare/vs-tolaria/">solomd.app/compare/vs-tolaria</a>;
+        release notes at <a href="/whats-new/">what's new</a>.
+      </p>
+
+      <Giscus />
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<script type="application/ld+json" set:html={JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'BlogPosting',
+  headline: 'v4.6 — closing the knowledge-graph gap without inventing a file format',
+  datePublished: '2026-07-09',
+  dateModified: '2026-07-09',
+  author: { '@type': 'Person', name: 'xiangdong li', url: 'https://github.com/zhitongblog' },
+  publisher: { '@type': 'Person', name: 'xiangdong li' },
+  url: 'https://solomd.app/blog/v4-6-0-knowledge-graph-and-design-system/',
+  description: 'How SoloMD 4.6 shipped typed relationships, a relationship graph, saved views, a properties inspector, an inbox workflow and tldraw whiteboards in one release — all stored as plain .md + YAML, coordinated across parallel build agents by a written design-token contract.',
+  about: ['knowledge graph', 'Markdown', 'design system', 'tldraw', 'YAML frontmatter', 'typed relationships'],
+})} />
+
+<style>
+  .blog-article { max-width: 780px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .blog-article time { font-size: 13px; color: var(--text-muted, #8a8a8a); }
+  .blog-article h1 { font-size: 2rem; line-height: 1.25; margin: 10px 0 18px; }
+  .blog-article h2 { font-size: 1.45rem; margin: 34px 0 12px; }
+  .blog-article .lead { font-size: 1.08rem; color: var(--text-muted, #555); }
+  .blog-article p { line-height: 1.75; margin: 12px 0; }
+  .blog-article ul { padding-left: 22px; }
+  .blog-article li { margin: 8px 0; line-height: 1.7; }
+  .blog-article code { background: #f5f5f0; padding: 1px 6px; border-radius: 4px; font-size: 0.92em; }
+</style>

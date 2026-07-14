@@ -4918,7 +4918,7 @@ dependencies = [
 
 [[package]]
 name = "solomd"
-version = "4.8.9"
+version = "4.8.12"
 dependencies = [
  "argon2",
  "async-stream",
@@ -4938,7 +4938,9 @@ dependencies = [
  "hex",
  "hmac",
  "htmd",
+ "jni",
  "keyring",
+ "ndk-context",
  "notify",
  "notify-debouncer-mini",
  "objc2 0.5.2",
@@ -4960,6 +4962,7 @@ dependencies = [
  "tauri-plugin-clipboard-manager",
  "tauri-plugin-deep-link",
  "tauri-plugin-dialog",
+ "tauri-plugin-fs",
  "tauri-plugin-opener",
  "tauri-plugin-single-instance",
  "tauri-plugin-window-state",
@@ -5391,9 +5394,9 @@ dependencies = [
 
 [[package]]
 name = "tauri-plugin-fs"
-version = "2.5.0"
+version = "2.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "36e1ec28b79f3d0683f4507e1615c36292c0ea6716668770d4396b9b39871ed8"
+checksum = "b7ecc274121aca0c036a2b42d1cbe83d368d348f54e0bb8a735c2b1548e8f371"
 dependencies = [
  "anyhow",
  "dunce",
@@ -5409,7 +5412,7 @@ dependencies = [
  "tauri-plugin",
  "tauri-utils",
  "thiserror 2.0.18",
- "toml 0.9.12+spec-1.1.0",
+ "toml 1.1.2+spec-1.1.0",
  "url",
 ]
 

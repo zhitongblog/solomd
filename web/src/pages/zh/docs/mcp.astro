@@ -3,8 +3,27 @@ import Layout from '../../../layouts/Layout.astro';
 import Header from '../../../components/Header.astro';
 import Footer from '../../../components/Footer.astro';
 import Giscus from '../../../components/Giscus.astro';
+import CompareFaq from '../../../components/CompareFaq.astro';
 
 const lang = 'zh' as const;
+const FAQ = [
+  {
+    q: '哪些 AI 客户端能连我的笔记库?',
+    a: 'Claude Desktop、Codex CLI、Cursor —— 以及任何支持 Model Context Protocol 的客户端。solomd-mcp 是随每个 SoloMD 版本一起发布的 sidecar 二进制,本地通过 stdio 通信。',
+  },
+  {
+    q: '模型能改我的笔记吗?',
+    a: '默认不能。服务器默认只暴露读取类工具;写入类工具需要显式打开开关,在那之前连接的模型只能列出、搜索和读取笔记。',
+  },
+  {
+    q: '笔记内容会离开我的电脑吗?',
+    a: 'MCP 服务器本身完全本地:读磁盘文件,通过 stdio 和你的 AI 客户端通信,中间没有任何 SoloMD 服务器。读到的文本会被怎么用,取决于你连接的客户端和你选的模型提供商。',
+  },
+  {
+    q: '配置要多久?',
+    a: '大约一分钟:设置 → 集成 → MCP 服务器 → 复制 Claude Desktop 配置 → 粘进 Claude Desktop 配置文件并重启。复制的配置块已内嵌二进制路径和当前工作区。',
+  },
+];
 ---
 
 <Layout
@@ -96,8 +115,10 @@ const lang = 'zh' as const;
         <a href="https://github.com/zhitongblog/solomd/issues" rel="external">GitHub</a>
         提 issue —— 写入相关的工具我们刻意保持小集合，但只要场景明确，加新的没问题。
       </p>
+
+      <CompareFaq heading="常见问题" items={FAQ} />
     </article>
-    <Giscus lang={lang} />
+        <Giscus lang={lang} />
   </main>
   <Footer lang={lang} />
 </Layout>

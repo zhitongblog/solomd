@@ -2,6 +2,26 @@
 import Layout from '../../layouts/Layout.astro';
 import Header from '../../components/Header.astro';
 import Footer from '../../components/Footer.astro';
+import CompareFaq from '../../components/CompareFaq.astro';
+
+const FAQ = [
+  {
+    q: 'What is the core difference between SoloMD and Tolaria?',
+    a: 'Tolaria is a desktop Notion-style block editor built on BlockNote; SoloMD is a Markdown-first editor. Since v4.6 SoloMD ships the same knowledge-graph feature set — typed relationships with automatic inverses, a per-note relationship graph, type-driven sidebar, saved filtered views, properties inspector, and tldraw whiteboards — while staying plain .md + YAML on disk and running on five platforms including iOS and Android.',
+  },
+  {
+    q: 'Are the whiteboards compatible between the two?',
+    a: 'Both use tldraw. SoloMD stores boards inside the note as a ```tldraw fence and is cross-compatible with Tolaria’s on-disk board format.',
+  },
+  {
+    q: 'Which one works on mobile?',
+    a: 'SoloMD has native iOS and Android apps. Tolaria is desktop-only.',
+  },
+  {
+    q: 'Do both work offline with plain files?',
+    a: 'Yes — both are offline-first and file-based with no account requirement. SoloMD is MIT-licensed (~15 MB); Tolaria is AGPL (~25 MB).',
+  },
+];
 
 const lang = 'en' as const;
 
@@ -177,7 +197,7 @@ const settingsRows: [string, string][] = [
       <h2>The 30-second verdict</h2>
       <table class="compare-detail">
         <thead>
-          <tr><th>&nbsp;</th><th>SoloMD v4.6</th><th>Tolaria (mid-2026)</th></tr>
+          <tr><th>&nbsp;</th><th>SoloMD v4.8</th><th>Tolaria (mid-2026)</th></tr>
         </thead>
         <tbody>
           <tr><th>Price</th><td><strong>Free</strong> (MIT)</td><td><strong>Free</strong> (open source, AGPL)</td></tr>
@@ -366,6 +386,8 @@ const settingsRows: [string, string][] = [
       <p>Yes — they read the same <code>.md</code> files and both treat the vault as a
         git repo. A common combo is Tolaria on a desktop + SoloMD on an iPad / phone
         on the road, all pointing at the same git-synced vault.</p>
+
+      <CompareFaq heading="Frequently asked questions" items={FAQ} />
 
       <div class="compare-cta">
         <a href="/#download" class="btn btn--primary">Download SoloMD</a>

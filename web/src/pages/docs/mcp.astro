@@ -3,8 +3,27 @@ import Layout from '../../layouts/Layout.astro';
 import Header from '../../components/Header.astro';
 import Footer from '../../components/Footer.astro';
 import Giscus from '../../components/Giscus.astro';
+import CompareFaq from '../../components/CompareFaq.astro';
 
 const lang = 'en' as const;
+const FAQ = [
+  {
+    q: 'Which AI clients can connect to my vault?',
+    a: 'Claude Desktop, Codex CLI, Cursor — and any client that speaks the Model Context Protocol. The solomd-mcp sidecar binary ships with every SoloMD release and runs locally over stdio.',
+  },
+  {
+    q: 'Can the model modify my notes?',
+    a: 'Only if you let it. The server exposes read tools by default; the write tools are gated behind an explicit opt-in, so a connected model can list, search and read notes but not change anything until you allow writes.',
+  },
+  {
+    q: 'Does my vault content leave my machine?',
+    a: 'The MCP server itself is local — it reads files on disk and talks to your AI client over stdio, with no SoloMD server in the path. What the connected AI client does with the text it reads is governed by that client and the model provider you chose.',
+  },
+  {
+    q: 'How long does setup take?',
+    a: 'About a minute: Settings → Integrations → MCP server → Copy Claude Desktop config → paste into the Claude Desktop config file and restart. The copied block already embeds the binary path and your current workspace.',
+  },
+];
 ---
 
 <Layout
@@ -104,8 +123,10 @@ const lang = 'en' as const;
         — write-side surface area is intentionally small but we're happy to
         grow it where the use case is clear.
       </p>
+
+      <CompareFaq heading="Frequently asked questions" items={FAQ} />
     </article>
-    <Giscus lang={lang} />
+        <Giscus lang={lang} />
   </main>
   <Footer lang={lang} />
 </Layout>

@@ -2,8 +2,27 @@
 import Layout from '../../layouts/Layout.astro';
 import Header from '../../components/Header.astro';
 import Footer from '../../components/Footer.astro';
+import CompareFaq from '../../components/CompareFaq.astro';
 
 const lang = 'en' as const;
+const FAQ = [
+  {
+    q: 'Both are free and MIT-licensed — why pick SoloMD over MarkText?',
+    a: 'SoloMD adds what MarkText never shipped: native iOS and Android apps, built-in AI (14 BYOK providers), local semantic search, AutoGit version history, a bundled MCP server, tldraw whiteboards, and a knowledge graph. It is also ~15 MB on Tauri 2 versus MarkText’s ~80 MB Electron build.',
+  },
+  {
+    q: 'Is MarkText still maintained?',
+    a: 'MarkText was revived in May 2026 after several dormant years, which is good news for the ecosystem. SoloMD ships multiple patch releases a month by an active maintainer, with release notes at solomd.app/whats-new.',
+  },
+  {
+    q: 'How is Chinese/CJK input on Windows?',
+    a: 'SoloMD’s Windows live editor runs on native textarea blocks specifically to avoid Chromium contentEditable IME problems (dropped first character, doubled punctuation — worst with Sogou Pinyin). SoloMD’s author filed the underlying WebView2 bug upstream (WebView2Feedback#5625). SoloMD also auto-detects GBK / Big5 / Shift_JIS encodings and counts CJK words correctly.',
+  },
+  {
+    q: 'Can I use MarkText-style source and WYSIWYG modes in SoloMD?',
+    a: 'Yes — SoloMD has four view modes: raw source, Typora-style live edit (WYSIWYG), split edit+preview, and reading mode.',
+  },
+];
 ---
 
 <Layout
@@ -30,7 +49,7 @@ const lang = 'en' as const;
       <h2>At a glance</h2>
       <table class="compare-detail">
         <thead>
-          <tr><th>&nbsp;</th><th>SoloMD v4.5</th><th>MarkText</th></tr>
+          <tr><th>&nbsp;</th><th>SoloMD v4.8</th><th>MarkText</th></tr>
         </thead>
         <tbody>
           <tr><th>License</th><td>MIT</td><td>MIT</td></tr>
@@ -102,6 +121,8 @@ const lang = 'en' as const;
         (GFM) + KaTeX math + Mermaid diagrams + front-matter. Your files move between
         them with no conversion.
       </p>
+
+      <CompareFaq heading="Frequently asked questions" items={FAQ} />
 
       <div class="compare-cta">
         <a href="/#download" class="btn btn--primary">Download SoloMD</a>

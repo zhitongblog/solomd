@@ -3,8 +3,23 @@ import Layout from '../../layouts/Layout.astro';
 import Header from '../../components/Header.astro';
 import Footer from '../../components/Footer.astro';
 import Giscus from '../../components/Giscus.astro';
+import CompareFaq from '../../components/CompareFaq.astro';
 
 const lang = 'en' as const;
+const FAQ = [
+  {
+    q: 'How do I install the solomd CLI?',
+    a: 'macOS / Linux: curl -fsSL https://raw.githubusercontent.com/zhitongblog/solomd/main/scripts/install-cli.sh | bash — it drops the solomd binary into /usr/local/bin. On Windows, download solomd.exe from the GitHub releases page and add it to PATH.',
+  },
+  {
+    q: 'What can the CLI do?',
+    a: 'Open a note in the app (fuzzy title match), create a note, list files, grep the vault, and print a note to stdout: solomd open / new / list / search / cat. It exercises the same domain functions as the GUI and is built for shell pipelines and cron jobs.',
+  },
+  {
+    q: 'Can I pipe notes into other tools?',
+    a: 'Yes — solomd cat prints raw Markdown to stdout, so it composes with pandoc, fzf, grep, or anything else in a pipeline.',
+  },
+];
 ---
 
 <Layout
@@ -89,8 +104,10 @@ solomd new "$(date +%F)" "## $(date +%A)\n\n- [ ] "`}</code></pre>
         Bug or missing subcommand? Open an issue on
         <a href="https://github.com/zhitongblog/solomd/issues" rel="external">GitHub</a>.
       </p>
+
+      <CompareFaq heading="Frequently asked questions" items={FAQ} />
     </article>
-    <Giscus lang={lang} />
+        <Giscus lang={lang} />
   </main>
   <Footer lang={lang} />
 </Layout>

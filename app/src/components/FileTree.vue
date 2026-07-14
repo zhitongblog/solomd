@@ -693,10 +693,15 @@ onBeforeUnmount(() => {
       <button v-if="ctx.node && !ctx.node.is_dir" class="ftree__ctx-item" @click="copyGitUrl(ctx.node)">
         🔗 {{ t('explorer.copyGitUrl') || 'Copy Git URL' }}
       </button>
-      <div class="ftree__ctx-sep"></div>
-      <button class="ftree__ctx-item" @click="revealNode(ctx.node ?? root!)">
-        🔍 {{ t('explorer.reveal') || 'Reveal in Finder' }}
-      </button>
+      <!-- #148 follow-up — hidden on mobile: revealItemInDir silently no-ops
+           there (no user-reachable file manager can browse the app sandbox
+           on Android, and iOS has no Finder), so the item just looked broken. -->
+      <template v-if="!isMobile()">
+        <div class="ftree__ctx-sep"></div>
+        <button class="ftree__ctx-item" @click="revealNode(ctx.node ?? root!)">
+          🔍 {{ t('explorer.reveal') || 'Reveal in Finder' }}
+        </button>
+      </template>
     </div>
   </aside>
 </template>

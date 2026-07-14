@@ -14,6 +14,7 @@ import CommandPalette from './components/CommandPalette.vue';
 import QuickSwitcher from './components/QuickSwitcher.vue';
 import Outline from './components/Outline.vue';
 import BacklinksPanel from './components/BacklinksPanel.vue';
+import AndroidFolderPicker from './components/AndroidFolderPicker.vue';
 import NeighborhoodPanel from './components/NeighborhoodPanel.vue';
 import RelationshipsPanel from './components/RelationshipsPanel.vue';
 import TagsPanel from './components/TagsPanel.vue';
@@ -86,6 +87,28 @@ const tiles = useTilesStore();
 const files = useFiles();
 const exporter = useExport();
 const workspace = useWorkspaceStore();
+
+// #148 / #151 — Android real-folder vault picking. useFiles.openFolder()
+// dispatches these events; the picker modal + permission request live here so
+// they can react to app-resume (the all-files grant happens in system Settings,
+// outside our process).
+const androidPickerOpen = ref(false);
+function onAndroidFolderPick(path: string) {
+  androidPickerOpen.value = false;
+  workspace.setFolder(path);
+  if (!settings.showFileTree) settings.toggleFileTree();
+}
+async function requestAndroidStorage() {
+  const toasts = (await import('./stores/toasts')).useToastsStore();
+  try {
+    await invoke('android_request_all_files_access');
+    toasts.info(
+      'Turn on "Allow access to manage all files", then come back and tap Open Folder again.',
+    );
+  } catch (e) {
+    toasts.error(String(e));
+  }
+}
 const workspaceIndex = useWorkspaceIndexStore();
 const properties = usePropertiesStore();
 const rag = useRagStore();
@@ -786,6 +809,14 @@ onMounted(async () => {
   } catch (err) {
     console.warn('opened-file listener not available', err);
   }
+
+  // #148 / #151 — Android real-folder vault picking wiring.
+  window.addEventListener('solomd:android-folder-picker', () => {
+    androidPickerOpen.value = true;
+  });
+  window.addEventListener('solomd:android-request-storage', () => {
+    void requestAndroidStorage();
+  });
 
   // iOS / Android — tauri-plugin-deep-link delivers incoming files
   // (Files app "Open with…", Mail attachments, AirDrop) as a list of URL
@@ -1580,6 +1611,12 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
       @cancel="onFileChangedAction('cancel')"
     />
     <Toast />
+    <AndroidFolderPicker
+      :open="androidPickerOpen"
+      :start="workspace.currentFolder ?? undefined"
+      @pick="onAndroidFolderPick"
+      @close="androidPickerOpen = false"
+    />
   </div>
 </template>
 

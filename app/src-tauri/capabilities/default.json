@@ -2,7 +2,10 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Capability for the main window",
-  "windows": ["main", "solomd-*"],
+  "windows": [
+    "main",
+    "solomd-*"
+  ],
   "permissions": [
     "core:default",
     "core:window:default",
@@ -12,6 +15,8 @@
     "core:window:allow-inner-size",
     "core:window:allow-outer-position",
     "core:window:allow-scale-factor",
+    "core:window:allow-start-dragging",
+    "core:window:allow-toggle-maximize",
     "core:webview:default",
     "core:webview:allow-create-webview-window",
     "opener:default",
@@ -26,12 +31,26 @@
     "clipboard-manager:allow-write-html",
     "clipboard-manager:allow-write-image",
     "clipboard-manager:allow-read-image",
-    "deep-link:default"
+    "deep-link:default",
+    "fs:allow-read-file",
+    {
+      "identifier": "fs:allow-exists",
+      "allow": [
+        {
+          "path": "$DOCUMENT"
+        },
+        {
+          "path": "$DOCUMENT/**"
+        }
+      ]
+    }
   ],
   "scope": {
     "opener": {
       "allow": [
-        { "path": "$HOME/**" }
+        {
+          "path": "$HOME/**"
+        }
       ]
     }
   }

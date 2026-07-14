@@ -152,7 +152,7 @@ const lang = 'en' as const;
         </div>
         <div class="faq">
           <h3>Does sync work on iPad?</h3>
-          <p>Not in v3.0. The iPad app is gated until the v3.0 desktop story is stable; we'll tackle it next. For now, iCloud Drive is the iPad sync path — our cloud-folder mode picks that up when you eventually open the same vault on macOS.</p>
+          <p>SoloMD for iPad / iOS is on the App Store now. Notes live in the Files app, so any folder the Files app can reach — iCloud Drive first among them — syncs across devices; open the same folder on macOS and cloud-folder mode picks it up.</p>
         </div>
         <div class="faq">
           <h3>The first time I push, macOS asks me for my password — what is that?</h3>
@@ -169,6 +169,22 @@ const lang = 'en' as const;
   </main>
   <Footer lang={lang} />
 </Layout>
+
+<!-- FAQPage schema mirroring the visible "Honest answers" section above —
+     keep the two in sync when editing either. -->
+<script type="application/ld+json" set:html={JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [
+    { '@type': 'Question', name: 'What if I lose my passphrase?', acceptedAnswer: { '@type': 'Answer', text: "Your encrypted vault is unrecoverable. We can't help — that's the entire point of end-to-end encryption. Write the passphrase down somewhere safe BEFORE you encrypt anything." } },
+    { '@type': 'Question', name: 'What if SoloMD shuts down?', acceptedAnswer: { '@type': 'Answer', text: 'Your vault is a normal git repo on GitHub — clone it and open the .md files in any editor. Even with E2EE on, the format is documented and the encryption is standard XChaCha20-Poly1305 with an Argon2id-derived key; a short script can decrypt it.' } },
+    { '@type': 'Question', name: 'Why GitHub specifically?', acceptedAnswer: { '@type': 'Answer', text: "Most of the user base already has a GitHub account, and there is no SoloMD server to depend on. GitLab, Gitea, or any HTTPS git URL work as first-class fallbacks." } },
+    { '@type': 'Question', name: 'Will sync ever cost money?', acceptedAnswer: { '@type': 'Answer', text: "No — there is no SoloMD-side infrastructure to pay for. Data flows between you and GitHub. (GitHub itself charges for >1 GB private storage; that's between you and them.)" } },
+    { '@type': 'Question', name: 'Does sync work on iPad?', acceptedAnswer: { '@type': 'Answer', text: 'SoloMD for iPad / iOS is on the App Store. Notes live in the Files app, so any folder the Files app reaches — iCloud Drive first among them — syncs across devices; cloud-folder mode picks up the same folder on macOS.' } },
+    { '@type': 'Question', name: 'The first time I push, macOS asks me for my password — what is that?', acceptedAnswer: { '@type': 'Answer', text: 'That is macOS Keychain Access asking permission for SoloMD to read your saved GitHub token (and encryption key if E2EE is on). Click "Always Allow" so the prompt never returns. SoloMD never sees or sends your password.' } },
+    { '@type': 'Question', name: "I'm in China and push times out — what do I do?", acceptedAnswer: { '@type': 'Answer', text: 'Use the built-in proxy field: Settings → GitHub Sync → Advanced → HTTPS proxy, e.g. http://127.0.0.1:7897 or socks5://127.0.0.1:1080. Shell HTTPS_PROXY exports do not reach apps launched from Finder/Dock.' } },
+  ],
+})} />
 
 <style>
   .sync-hero {

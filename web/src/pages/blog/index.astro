@@ -7,6 +7,27 @@ const lang = 'en' as const;
 
 const posts = [
   {
+    slug: 'v4-8-0-image-hosting',
+    title: 'v4.8 — image hosting (图床): the last step between writing and publishing',
+    date: '2026-07-09',
+    lead:
+      'Paste an image and it goes straight to your own image host, URL inserted. Five BYO backends — PicGo, custom command, SM.MS, S3-compatible (OSS / COS / R2 / MinIO), GitHub + CDN — with a local-copy fallback when the host is unreachable and a bulk "upload all local images in this note" command. No SoloMD relay, by design.',
+  },
+  {
+    slug: 'v4-6-0-knowledge-graph-and-design-system',
+    title: 'v4.6 — closing the knowledge-graph gap without inventing a file format',
+    date: '2026-07-09',
+    lead:
+      'Seven Tolaria-class features — typed relationships with automatic inverses, a per-note relationship graph, type-driven sidebar, properties inspector, saved views, inbox workflow, tldraw whiteboards — plus a ground-up design-system rebuild. Every byte still plain .md + YAML, and a written token contract as the only trunk between parallel build agents.',
+  },
+  {
+    slug: 'webview2-ime-why-we-left-contenteditable',
+    title: "The bug we couldn't fix in JavaScript — why SoloMD's Windows editor left contentEditable",
+    date: '2026-07-08',
+    lead:
+      'Chinese IME input was intermittently broken on Windows: first character dropped, punctuation doubled, worst with Sogou Pinyin. We chased it through CodeMirror autocomplete, proved the real defect lives in WebView2 contentEditable TSF integration, filed it upstream (WebView2Feedback#5625), and rewrote the Windows editor on native textarea blocks. The debugging trail behind v4.7.',
+  },
+  {
     slug: 'v4-0-0-how-we-built-it',
     title: 'How we built v4.0 — engineering notes from a 12-week quiet phase',
     date: '2026-05-03',

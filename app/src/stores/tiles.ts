@@ -207,8 +207,18 @@ export const useTilesStore = defineStore('tiles', {
       let changed = false;
       for (const leaf of leaves) {
         if (leaf.activeTabId !== tabId) continue;
-        const other = tabs.tabs.find((t) => t.id !== tabId);
-        const newLeaf: TileLeaf = { ...leaf, activeTabId: other?.id ?? '' };
+        // #149 — closeTab already picked the ADJACENT tab as the next active
+        // (tabs.activeId); overriding it with "first remaining tab" here made
+        // every close jump to the top of the list (syncActiveTab below writes
+        // this value back over tabs.activeId). Prefer closeTab's choice; the
+        // first-remaining fallback stays for panes whose closed tab was NOT
+        // the globally active one (multi-pane splits).
+        const preferred =
+          tabs.activeId && tabs.activeId !== tabId && tabs.tabs.some((t) => t.id === tabs.activeId)
+            ? tabs.activeId
+            : undefined;
+        const other = preferred ?? tabs.tabs.find((t) => t.id !== tabId)?.id;
+        const newLeaf: TileLeaf = { ...leaf, activeTabId: other ?? '' };
         this.root = replaceNode(this.root, leaf.id, newLeaf);
         changed = true;
       }

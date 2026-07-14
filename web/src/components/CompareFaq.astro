@@ -1,0 +1,42 @@
+---
+// FAQ section for compare pages: renders the visible Q&A AND the matching
+// FAQPage JSON-LD from the same data, so the schema always mirrors on-page
+// content (a Google structured-data requirement, and the citation surface
+// generative engines lift "X vs Y" answers from).
+interface Item {
+  q: string;
+  a: string;
+}
+interface Props {
+  heading: string;
+  items: Item[];
+}
+const { heading, items } = Astro.props;
+---
+
+<section class="compare-faq">
+  <h2>{heading}</h2>
+  {items.map((it) => (
+    <div class="compare-faq__item">
+      <h3>{it.q}</h3>
+      <p>{it.a}</p>
+    </div>
+  ))}
+</section>
+
+<script type="application/ld+json" set:html={JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: items.map((it) => ({
+    '@type': 'Question',
+    name: it.q,
+    acceptedAnswer: { '@type': 'Answer', text: it.a },
+  })),
+})} />
+
+<style>
+  .compare-faq { margin-top: 44px; }
+  .compare-faq h2 { font-size: 1.55rem; margin: 0 0 14px; }
+  .compare-faq__item h3 { font-size: 1.08rem; margin: 22px 0 8px; }
+  .compare-faq__item p { line-height: 1.7; margin: 0; color: var(--text-muted, #444); }
+</style>
