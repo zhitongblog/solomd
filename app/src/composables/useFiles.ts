@@ -3,7 +3,7 @@ import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { open as openDialog, save as saveDialog } from '@tauri-apps/plugin-dialog';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { documentDir, join } from '@tauri-apps/api/path';
-import { isIOS, isAndroid } from '../lib/platform';
+import { isIOS, isAndroid, isMobile } from '../lib/platform';
 import { useTabsStore } from '../stores/tabs';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useSettingsStore } from '../stores/settings';
@@ -13,6 +13,7 @@ import { useWindowsStore } from '../stores/windows';
 import { openImageOverlay, type OverlayStrings } from '../lib/image-overlay';
 import { useI18n } from '../i18n';
 import type { FileReadResult, Tab } from '../types';
+import { isSafPath, fromSafPath, safRead, safWrite, safLaunchPicker } from '../lib/saf-fs';
 
 // Save dialogs only — opening uses no filter so any file is selectable.
 // (rfd treats `'*'` literally as the extension `*`, not as wildcard, so we
@@ -247,7 +248,12 @@ export function useFiles() {
 
     // Native open: text files, markdown, code, etc.
     try {
-      const result = await invoke<FileReadResult>('read_file', { path });
+      // #148 — SAF vault file: read through ContentResolver. The parent is
+      // already the open vault, so skip the reveal-parent dance below.
+      const isSaf = isSafPath(path);
+      const result = isSaf
+        ? await safRead(workspace.safTreeUri!, fromSafPath(path))
+        : await invoke<FileReadResult>('read_file', { path });
 
       // Reveal the file's folder in the sidebar BEFORE adding the tab.
       // Order matters: `workspace.setFolder` switches the per-workspace tab
@@ -259,7 +265,7 @@ export function useFiles() {
       // already current). That was the real "double-click opens nothing" bug.
       // Switching first means `openFromDisk` below adds the tab into the
       // already-settled workspace, so it survives and becomes active.
-      if (settings.revealInFileTreeOnOpen) {
+      if (settings.revealInFileTreeOnOpen && !isSaf) {
         const parent = path.replace(/[\\/][^\\/]+$/, '');
         if (parent && parent !== path) {
           workspace.setFolder(parent);
@@ -275,6 +281,11 @@ export function useFiles() {
         hadBom: result.had_bom,
       });
       workspace.pushRecent(path);
+      // #148 (mobile) — a phone can't show the file tree and editor
+      // side-by-side (the doc becomes an unreadable sliver), so collapse the
+      // tree once a file opens; the editor gets the full width. The toolbar
+      // folder button reopens the tree to pick another file.
+      if (isMobile() && settings.showFileTree) settings.toggleFileTree();
       const fileName = path.split(/[\\/]/).pop() ?? path;
       toasts.success(`Opened ${fileName}`);
     } catch (e) {
@@ -341,36 +352,20 @@ export function useFiles() {
     // prompt the user to grant it in Settings (App.vue drives the request +
     // re-check on resume); if granted, open our own folder browser.
     if (isAndroid()) {
+      // #148 — use the Storage Access Framework. MANAGE_EXTERNAL_STORAGE is
+      // unreliable across OEMs (grants nothing on Honor/Huawei Magic OS — the
+      // permission reads as granted but std::fs still hits EACCES even after a
+      // restart), while SAF works everywhere with no special permission. The
+      // user picks a folder in the system dialog; we read/write it via
+      // ContentResolver (see lib/saf-fs.ts).
       try {
-        // Probe REAL read access first rather than trusting
-        // Environment.isExternalStorageManager(): on some OEMs that API
-        // disagrees with actual filesystem access, and even when it reports
-        // "granted" the shared-storage sandbox only re-mounts on a fresh
-        // process, so a running process can still hit EACCES right after the
-        // user grants. Branch on what we can actually read:
-        //   - readable            → open the folder picker
-        //   - not readable, !perm → send to the grant screen
-        //   - not readable, perm  → granted but stale process → restart
-        // This also lets the picker open on devices/emulators whose storage is
-        // readable without the special permission at all.
-        let canRead = false;
-        try {
-          await invoke('list_dir', { path: '/storage/emulated/0' });
-          canRead = true;
-        } catch {
-          canRead = false;
-        }
-        if (canRead) {
-          window.dispatchEvent(new CustomEvent('solomd:android-folder-picker'));
-          return;
-        }
-        const granted = await invoke<boolean>('android_has_all_files_access');
-        if (!granted) {
-          window.dispatchEvent(new CustomEvent('solomd:android-request-storage'));
-        } else {
-          window.dispatchEvent(new CustomEvent('solomd:android-restart-needed'));
-        }
+        // Launch and mark that a pick is in flight; App.vue resolves the result
+        // on resume (the picker backgrounds our WebView, so we can't await it
+        // inline — the JS poll loop is lost across the transition).
+        localStorage.setItem('solomd:saf-picking', '1');
+        await safLaunchPicker();
       } catch (e) {
+        localStorage.removeItem('solomd:saf-picking');
         toasts.error(String(e));
       }
       return;
@@ -425,20 +420,30 @@ export function useFiles() {
       // expects a Windows-saved file to stay Windows-saved.
       const payload =
         tab.lineEnding === 'crlf' ? tab.content.replace(/\n/g, '\r\n') : tab.content;
-      await invoke('write_file', {
-        path,
-        content: payload,
-        encoding: tab.encoding || 'UTF-8',
-      });
+      // #148 — SAF vault: write through ContentResolver. Git/AutoGit can't
+      // operate on content-URI paths, so skip the recent/MFU/AutoGit hooks
+      // (they key off real filesystem paths) for SAF saves.
+      const isSaf = isSafPath(path);
+      if (isSaf) {
+        await safWrite(workspace.safTreeUri!, fromSafPath(path), payload);
+      } else {
+        await invoke('write_file', {
+          path,
+          content: payload,
+          encoding: tab.encoding || 'UTF-8',
+        });
+      }
       tabs.markSaved(tab.id, path);
-      workspace.pushRecent(path);
-      // v2.5: feed the ⌘P quick-switcher's MFU ranking.
-      recentEdits.recordEdit(path);
-      // v2.2: notify the AutoGit composable so the debounced auto-commit
-      // pipeline picks up this save. Listener is in `useAutoCommit.ts`.
-      window.dispatchEvent(
-        new CustomEvent('solomd:saved', { detail: { filePath: path } }),
-      );
+      if (!isSaf) {
+        workspace.pushRecent(path);
+        // v2.5: feed the ⌘P quick-switcher's MFU ranking.
+        recentEdits.recordEdit(path);
+        // v2.2: notify the AutoGit composable so the debounced auto-commit
+        // pipeline picks up this save. Listener is in `useAutoCommit.ts`.
+        window.dispatchEvent(
+          new CustomEvent('solomd:saved', { detail: { filePath: path } }),
+        );
+      }
       if (!opts.silent) {
         if (isIOS()) {
           const fname = path.split(/[\\/]/).pop() ?? path;

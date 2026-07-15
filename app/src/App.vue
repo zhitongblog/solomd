@@ -64,7 +64,7 @@ import { useExport } from './composables/useExport';
 import { useShortcuts } from './composables/useShortcuts';
 import { useFileWatcher } from './composables/useFileWatcher';
 import { loadCustomTheme } from './lib/custom-theme';
-import { isIOS, isMacOS, isAndroid } from './lib/platform';
+import { isIOS, isMacOS, isAndroid, isMobile } from './lib/platform';
 import { useI18n } from './i18n';
 import { track } from './lib/telemetry';
 import { openWelcomeTour } from './lib/welcome-tour';
@@ -797,48 +797,55 @@ onMounted(async () => {
       console.warn('android_system_insets failed', e);
     }
 
-    // #148 (follow-up) — the MANAGE_EXTERNAL_STORAGE grant happens in system
-    // Settings while our process is alive. isExternalStorageManager() flips to
-    // true immediately, but on many devices the shared-storage sandbox was
-    // bind-mounted at process launch and does NOT re-mount on grant — so
-    // list_dir keeps hitting EACCES until the process restarts. Other devices
-    // (and the emulator) apply it live. So when we resume from the grant screen
-    // with the permission now held, PROBE real read access before doing
-    // anything drastic: if reads work, just open the picker; only if reads
-    // still fail do we prompt a restart (a fresh process re-mounts storage).
-    // The pending flag (set in requestAndroidStorage) scopes this to a real
-    // grant round-trip and is cleared before we act, so there's no loop.
-    const maybeAfterGrant = async () => {
-      if (localStorage.getItem('solomd:android-storage-pending') !== '1') return;
-      let granted = false;
+    // #148 — restore a previously-opened SAF vault. The tree URI + name are
+    // persisted in the workspace store; the OS-level grant is separately
+    // persisted (takePersistableUriPermission). If that grant is gone (revoked,
+    // or a fresh install), drop the stale vault so the user gets a clean "Open
+    // Folder" prompt instead of a tree that errors on every read.
+    if (workspace.safTreeUri) {
       try {
-        granted = await invoke<boolean>('android_has_all_files_access');
+        const { safPersistedTrees } = await import('./lib/saf-fs');
+        const held = await safPersistedTrees();
+        if (!held.includes(workspace.safTreeUri)) {
+          workspace.setFolder(null);
+        }
       } catch (e) {
-        console.warn('post-grant perm check failed', e);
-        return;
+        console.warn('SAF vault restore check failed', e);
       }
-      if (!granted) return; // user didn't grant yet — leave the flag, keep waiting
-      localStorage.removeItem('solomd:android-storage-pending');
-      let canRead = false;
-      try {
-        await invoke('list_dir', { path: '/storage/emulated/0' });
-        canRead = true;
-      } catch {
-        canRead = false;
+    }
+
+    // #148 — resolve a SAF folder pick after the system picker returns. The
+    // picker is a separate activity that backgrounds our WebView, so the result
+    // (onActivityResult → native AtomicReference) can't be awaited inline; we
+    // drain it on resume. The 'solomd:saf-picking' flag (set in openFolder)
+    // scopes this to an in-flight pick.
+    const resolveSafPick = async () => {
+      if (localStorage.getItem('solomd:saf-picking') !== '1') return;
+      const { safResolvePicked } = await import('./lib/saf-fs');
+      for (let i = 0; i < 12; i++) {
+        let r: Awaited<ReturnType<typeof safResolvePicked>>;
+        try {
+          r = await safResolvePicked();
+        } catch {
+          return;
+        }
+        if (r === 'pending') {
+          await new Promise((res) => setTimeout(res, 300));
+          continue;
+        }
+        localStorage.removeItem('solomd:saf-picking');
+        if (r) {
+          workspace.setSafVault(r.treeUri, `saf:${r.rootDocId}`, r.name);
+          if (!settings.showFileTree) settings.toggleFileTree();
+        }
+        return; // resolved (folder or cancel)
       }
-      if (canRead) {
-        // Grant took effect live — go straight to the folder picker.
-        window.dispatchEvent(new CustomEvent('solomd:android-folder-picker'));
-      } else {
-        // Grant needs a fresh process to re-mount storage — ask to restart.
-        androidRestartNeeded.value = true;
-      }
+      // still pending after retries — leave the flag so the next resume retries
     };
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') void maybeAfterGrant();
+      if (document.visibilityState === 'visible') void resolveSafPick();
     });
-    // Also cover the case where we resumed before the listener attached.
-    void maybeAfterGrant();
+    void resolveSafPick();
   }
 
   // #87(3) — if a startup view mode is pinned, force it now (overrides the
@@ -1450,7 +1457,11 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
 
 <template>
   <UiPreview v-if="showUiKit" />
-  <div v-else class="app" :class="{ 'app--reading': settings.viewMode === 'reading' }">
+  <div
+    v-else
+    class="app"
+    :class="{ 'app--reading': settings.viewMode === 'reading', 'app--mobile': isMobile() }"
+  >
     <!--
       v2.4 reading mode swaps out the entire toolbar / sidebar / status-bar
       stack for a single ReadingView component. We keep all the modal
@@ -1796,6 +1807,17 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
   flex: 1 1 auto;
   min-height: 0;
   height: auto;
+}
+/* #148 (mobile) — on a phone the file tree takes the full width (the editor is
+   collapsed underneath while picking); opening a file hides the tree and the
+   editor gets the whole screen. Avoids the tree + editor squeezing each other
+   into unreadable slivers on a narrow viewport. */
+.app--mobile .left-stack {
+  flex: 1 1 100%;
+  width: 100%;
+}
+.app--mobile .left-stack > :deep(.ftree) {
+  width: 100%;
 }
 .side-sidebar {
   position: relative;

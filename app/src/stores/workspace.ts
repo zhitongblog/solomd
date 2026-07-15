@@ -9,6 +9,12 @@ interface WorkspaceState {
   recentFiles: string[];
   recentFolders: string[];
   currentFolder: string | null;
+  // #148 — when the current folder is a SAF (Android content-URI) vault,
+  // `currentFolder` is the virtual `saf:<rootDocId>` path and these hold the
+  // constant tree URI + display name the saf-fs layer needs. Null on ordinary
+  // filesystem workspaces (desktop/iOS).
+  safTreeUri: string | null;
+  safName: string | null;
 }
 
 function load(): WorkspaceState {
@@ -20,10 +26,12 @@ function load(): WorkspaceState {
         recentFiles: Array.isArray(parsed.recentFiles) ? parsed.recentFiles : [],
         recentFolders: Array.isArray(parsed.recentFolders) ? parsed.recentFolders : [],
         currentFolder: typeof parsed.currentFolder === 'string' ? parsed.currentFolder : null,
+        safTreeUri: typeof parsed.safTreeUri === 'string' ? parsed.safTreeUri : null,
+        safName: typeof parsed.safName === 'string' ? parsed.safName : null,
       };
     }
   } catch {}
-  return { recentFiles: [], recentFolders: [], currentFolder: null };
+  return { recentFiles: [], recentFolders: [], currentFolder: null, safTreeUri: null, safName: null };
 }
 
 export const useWorkspaceStore = defineStore('workspace', {
@@ -52,6 +60,12 @@ export const useWorkspaceStore = defineStore('workspace', {
      *  call sites. `null` (closed workspace) doesn't get pushed. */
     setFolder(folder: string | null) {
       const prev = this.currentFolder;
+      // Leaving (or replacing) a SAF vault with an ordinary folder clears the
+      // SAF context so the file layer stops routing through ContentResolver.
+      if (!folder || !folder.startsWith('saf:')) {
+        this.safTreeUri = null;
+        this.safName = null;
+      }
       this.currentFolder = folder;
       if (folder) {
         this.recentFolders = [
@@ -70,6 +84,17 @@ export const useWorkspaceStore = defineStore('workspace', {
           useTabsStore().onWorkspaceSwitched(prev, folder);
         } catch {}
       }
+    },
+    /** #148 — open a SAF (content-URI) vault. `rootPath` is `saf:<rootDocId>`. */
+    setSafVault(treeUri: string, rootPath: string, name: string) {
+      this.safTreeUri = treeUri;
+      this.safName = name;
+      // Reuse setFolder for tab-scoping/recents, but it would null out the SAF
+      // context (rootPath starts with "saf:" so it's preserved), so set after.
+      this.setFolder(rootPath);
+      this.safTreeUri = treeUri;
+      this.safName = name;
+      this.persist();
     },
     removeRecentFolder(path: string) {
       this.recentFolders = this.recentFolders.filter((p) => p !== path);

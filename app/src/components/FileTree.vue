@@ -14,6 +14,7 @@ import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { useTabsStore } from '../stores/tabs';
 import { useI18n } from '../i18n';
 import { isMobile } from '../lib/platform';
+import { isSafPath, fromSafPath, safList, safCreate } from '../lib/saf-fs';
 
 interface Entry {
   name: string;
@@ -123,6 +124,11 @@ const TRUNCATED_SENTINEL = '__solomd_truncated__';
 
 async function loadDir(path: string): Promise<{ children: Node[]; truncated: boolean }> {
   try {
+    // #148 — SAF vault: list children via ContentResolver, not std::fs.
+    if (isSafPath(path) && workspace.safTreeUri) {
+      const safChildren = await safList(workspace.safTreeUri, fromSafPath(path));
+      return { children: safChildren as Node[], truncated: false };
+    }
     const entries = await invoke<Entry[]>('list_dir', { path });
     let truncated = false;
     const filtered: Node[] = [];
@@ -147,7 +153,7 @@ async function refreshRoot() {
   }
   const path = workspace.currentFolder;
   root.value = {
-    name: path.split(/[\\/]/).pop() ?? path,
+    name: isSafPath(path) ? workspace.safName ?? 'Vault' : path.split(/[\\/]/).pop() ?? path,
     path,
     is_dir: true,
     expanded: true,
@@ -341,6 +347,16 @@ async function commitEdit() {
       // Default to .md when the user didn't type an extension — we only
       // edit md/txt anyway, so this is the right bias.
       const finalName = /\.[a-z0-9]+$/i.test(name) ? name : `${name}.md`;
+      // #148 — SAF vault: create the file via ContentResolver and open its
+      // content-URI, not a std::fs path.
+      if (isSafPath(e.parent) && workspace.safTreeUri) {
+        const { toSafPath } = await import('../lib/saf-fs');
+        const newDocId = await safCreate(workspace.safTreeUri, fromSafPath(e.parent), finalName);
+        editing.value = null;
+        scheduleRefresh();
+        await files.openPath(toSafPath(newDocId), { bypassNewWindow: true });
+        return;
+      }
       const target = joinPath(e.parent, finalName);
       await invoke('fs_create_file', { path: target, content: '' });
       editing.value = null;

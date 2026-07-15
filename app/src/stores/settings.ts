@@ -53,6 +53,9 @@ interface Settings {
    *  a previewFontSize still at the old default is aligned to fontSize once;
    *  the ⌃⌘+/− preview-zoom axis can still diverge it afterwards. */
   v4810PreviewFontSynced: boolean;
+  // #148 (mobile) — one-time: hide the right sidebar on phones so the editor
+  // isn't squeezed into an unreadable sliver.
+  v491MobileLayoutMigrated: boolean;
   /** v4.6 F5 — show the Saved Views panel (left sidebar, below the file tree).
    *  Lists persistent filtered note lists from `.solomd/views/*.yml`. Default
    *  off so the panel only appears once the user opts in / creates a view. */
@@ -387,8 +390,13 @@ function defaults(): Settings {
     // load()'s one-time force-on path is a no-op for them.
     fileTreeDefaultDesktopMigrated: true,
     v4810PreviewFontSynced: true,
+    v491MobileLayoutMigrated: true,
     showViewsPanel: false,
-    rightSidebarHidden: false,
+    // #148 (mobile) — on a phone the left tree + editor + right panels can't
+    // share the narrow width (the doc becomes an unreadable sliver), so the
+    // right sidebar starts hidden. The editor + file tree behave as mutually
+    // exclusive full-width views (opening a file collapses the tree).
+    rightSidebarHidden: isMobile(),
     livePreview: true,
     spellCheck: true,
     focusMode: false,
@@ -580,6 +588,13 @@ function load(): Settings {
           merged.previewFontSize = Math.max(10, Math.min(32, merged.fontSize));
         }
         merged.v4810PreviewFontSynced = true;
+      }
+      // #148 (mobile) — one-time: existing phone installs had the right sidebar
+      // on, squeezing the editor. Hide it once; desktop untouched. User can
+      // re-open it and that choice persists.
+      if (!parsed.v491MobileLayoutMigrated) {
+        if (isMobile()) merged.rightSidebarHidden = true;
+        merged.v491MobileLayoutMigrated = true;
       }
       return merged;
     }
