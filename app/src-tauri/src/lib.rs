@@ -59,6 +59,7 @@ pub mod watcher;
 // request, so the user can point the app at a real vault folder anywhere on
 // shared storage instead of the unreachable /Android/data sandbox.
 pub mod storage_android;
+pub mod saf_android;
 
 // v4.0 Pillar 1: in-process agent tool registry + run persistence (panel
 // chat). agent_run (RunHandle) is the canonical run-dir owner; both the
@@ -171,6 +172,16 @@ pub fn run() {
             storage_android::android_request_all_files_access,
             storage_android::android_system_insets,
             storage_android::android_restart_app,
+            saf_android::saf_pick_folder,
+            saf_android::saf_poll_picked,
+            saf_android::saf_persisted_trees,
+            saf_android::saf_tree_root,
+            saf_android::saf_tree_name,
+            saf_android::saf_list,
+            saf_android::saf_read,
+            saf_android::saf_write,
+            saf_android::saf_create,
+            saf_android::saf_delete,
             image_upload::upload_image,
             commands::list_dir,
             commands::fs_create_file,
