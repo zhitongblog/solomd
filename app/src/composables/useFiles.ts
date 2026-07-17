@@ -404,6 +404,26 @@ export function useFiles() {
     return await join(dir, fname);
   }
 
+  /** Android — write to a SAF `content://` URI through the fs plugin's
+   *  ContentResolver bridge ("wt" mode: write + truncate). Rust's std::fs
+   *  cannot open content URIs — routing them into our `write_file` command
+   *  failed with "No such file or directory (os error 2)" AFTER the SAF
+   *  save dialog had already created the (empty) document, which is how
+   *  "Save As produced a 0-byte file" happened on Android. */
+  async function writeContentUri(uri: string, payload: string): Promise<void> {
+    const { writeTextFile } = await import('@tauri-apps/plugin-fs');
+    await writeTextFile(uri as unknown as string, payload);
+  }
+
+  /** Display name for a content:// URI ("…%2Fnote.md" → "note.md"). */
+  function contentUriName(uri: string): string {
+    try {
+      return decodeURIComponent(uri).split(/[\\/:]/).filter(Boolean).pop() ?? uri;
+    } catch {
+      return uri.split(/[\\/]/).pop() ?? uri;
+    }
+  }
+
   async function saveTab(tab: Tab, opts: { silent?: boolean } = {}): Promise<boolean> {
     let path = tab.filePath;
     if (isIOS()) {
@@ -424,8 +444,14 @@ export function useFiles() {
       // operate on content-URI paths, so skip the recent/MFU/AutoGit hooks
       // (they key off real filesystem paths) for SAF saves.
       const isSaf = isSafPath(path);
+      const isContentUri = path.startsWith('content://');
       if (isSaf) {
         await safWrite(workspace.safTreeUri!, fromSafPath(path), payload);
+      } else if (isContentUri) {
+        // Android — a tab previously Saved-As through the SAF dialog keeps
+        // its content:// URI as filePath; Ctrl+S must take the same
+        // ContentResolver route as the original save.
+        await writeContentUri(path, payload);
       } else {
         await invoke('write_file', {
           path,
@@ -434,7 +460,7 @@ export function useFiles() {
         });
       }
       tabs.markSaved(tab.id, path);
-      if (!isSaf) {
+      if (!isSaf && !isContentUri) {
         workspace.pushRecent(path);
         // v2.5: feed the ⌘P quick-switcher's MFU ranking.
         recentEdits.recordEdit(path);
@@ -477,6 +503,18 @@ export function useFiles() {
     try {
       const payload =
         tab.lineEnding === 'crlf' ? tab.content.replace(/\n/g, '\r\n') : tab.content;
+      // Android — the SAF save dialog returns a content:// URI (and has
+      // already created the empty document); write the bytes through
+      // ContentResolver, not std::fs. The fs-path-keyed hooks below
+      // (recents/MFU/AutoGit) are skipped, same as SAF-vault saves.
+      const isContentUri = path.startsWith('content://');
+      if (isContentUri) {
+        await writeContentUri(path, payload);
+        tabs.markSaved(tab.id, path);
+        const fileName = contentUriName(path);
+        toasts.success(`Saved as ${fileName}`);
+        return true;
+      }
       await invoke('write_file', {
         path,
         content: payload,

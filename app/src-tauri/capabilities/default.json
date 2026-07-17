@@ -33,6 +33,7 @@
     "clipboard-manager:allow-read-image",
     "deep-link:default",
     "fs:allow-read-file",
+    "fs:allow-write-text-file",
     {
       "identifier": "fs:allow-exists",
       "allow": [

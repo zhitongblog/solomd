@@ -271,7 +271,19 @@ export const useTabsStore = defineStore('tabs', {
       const t = this.tabs.find((x) => x.id === id);
       if (!t) return;
       t.filePath = filePath;
-      t.fileName = filePath.split(/[\\/]/).pop() ?? t.fileName;
+      // Android SAF save-as hands back a content:// URI whose last '/'
+      // segment is the percent-encoded documentId ("primary%3A…%2Fnote.md");
+      // decode it so the tab shows "note.md", not the raw id.
+      if (filePath.startsWith('content://')) {
+        try {
+          t.fileName =
+            decodeURIComponent(filePath).split(/[\\/:]/).filter(Boolean).pop() ?? t.fileName;
+        } catch {
+          t.fileName = filePath.split(/[\\/]/).pop() ?? t.fileName;
+        }
+      } else {
+        t.fileName = filePath.split(/[\\/]/).pop() ?? t.fileName;
+      }
       // v2.5 — auto-stamp `goal_set_at: <today>` on the first save of any
       // doc that declares a `goal:`. This is the anchor the streak counter
       // uses. Idempotent — no-op when the field already exists or there's
