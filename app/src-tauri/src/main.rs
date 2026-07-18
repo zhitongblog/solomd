@@ -4,6 +4,18 @@
 mod runner;
 
 fn main() {
+    // Linux (#158): webkit2gtk 2.42+ uses a DMABUF renderer that fails to
+    // obtain an EGL display on some GPU / Mesa combinations (e.g. Intel on
+    // older ThinkPads), aborting at launch with
+    //   "Could not create default EGL display: EGL_BAD_PARAMETER. Aborting..."
+    // before any window appears. Disabling the DMABUF renderer falls back to a
+    // working GL path and is the upstream-recommended workaround. Set it before
+    // webkit initialises, and only when the user hasn't chosen their own value.
+    #[cfg(target_os = "linux")]
+    if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() {
+        std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+    }
+
     let initial_file: Option<String> = std::env::args()
         .skip(1)
         .find(|a| !a.starts_with('-'))
