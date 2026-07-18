@@ -1128,6 +1128,50 @@ function handlePlainBlockKeydown(index: number, event: KeyboardEvent) {
   if (plainComposing) return;
   if (handleAutocompleteKeydown(event)) return;
   if (handlePlainKeydownShared(event)) return;
+  // Block-boundary arrow navigation (#155). Each block is its own <textarea>,
+  // so the native caret dead-ends at the block edge — ↑/↓/←/→ can't cross into
+  // the neighbouring block and the cursor appears stuck. Detect the edge and
+  // hand focus to the adjacent block, preserving the column for ↑/↓. Plain
+  // arrows on a collapsed caret only (Shift keeps native text selection).
+  if (
+    (event.key === 'ArrowUp' || event.key === 'ArrowDown' ||
+      event.key === 'ArrowLeft' || event.key === 'ArrowRight') &&
+    !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey
+  ) {
+    const el = event.target as HTMLTextAreaElement;
+    if ((el.selectionStart ?? 0) === (el.selectionEnd ?? 0)) {
+      const blocks = plainBlocks.value;
+      const pos = el.selectionStart ?? 0;
+      const val = el.value;
+      const lineStart = val.lastIndexOf('\n', pos - 1) + 1;
+      const column = pos - lineStart;
+      if (event.key === 'ArrowLeft' && pos === 0 && index > 0) {
+        event.preventDefault();
+        activatePlainBlock(index - 1, blocks[index - 1]?.text.length ?? 0);
+        return;
+      }
+      if (event.key === 'ArrowRight' && pos === val.length && index < blocks.length - 1) {
+        event.preventDefault();
+        activatePlainBlock(index + 1, 0);
+        return;
+      }
+      if (event.key === 'ArrowUp' && lineStart === 0 && index > 0) {
+        event.preventDefault();
+        const prev = blocks[index - 1]?.text ?? '';
+        const lastLineStart = prev.lastIndexOf('\n') + 1;
+        activatePlainBlock(index - 1, Math.min(lastLineStart + column, prev.length));
+        return;
+      }
+      if (event.key === 'ArrowDown' && val.indexOf('\n', pos) < 0 && index < blocks.length - 1) {
+        event.preventDefault();
+        const next = blocks[index + 1]?.text ?? '';
+        const firstNl = next.indexOf('\n');
+        const firstLineLen = firstNl < 0 ? next.length : firstNl;
+        activatePlainBlock(index + 1, Math.min(column, firstLineLen));
+        return;
+      }
+    }
+  }
   // Esc dismisses a select-all (parks the caret at the selection end).
   if (plainSelectAll.value && event.key === 'Escape') {
     event.preventDefault();
