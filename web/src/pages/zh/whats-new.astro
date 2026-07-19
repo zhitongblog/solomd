@@ -5,7 +5,7 @@ import Footer from '../../components/Footer.astro';
 import Giscus from '../../components/Giscus.astro';
 
 const lang = 'zh' as const;
-const VERSION = '4.9.0';
+const VERSION = '4.9.5';
 const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERSION}`;
 ---
 
@@ -38,6 +38,27 @@ const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERS
         <a class="btn btn--secondary btn--lg" href={`${baseUrl}/SoloMD_${VERSION}_x64_en-US.msi`}>下载 (Windows)</a>
         <a class="btn btn--secondary btn--lg" href={`https://github.com/zhitongblog/solomd/releases/tag/v${VERSION}`}>所有平台 →</a>
       </div>
+
+      <section>
+        <p class="version-row" style="margin-top:8px;">
+          <span class="version-tag">v4.9</span>
+          <time>2026 年 7 月</time>
+        </p>
+        <h2 style="margin-top:8px;">4.9 —— 安卓真实文件夹 + 编辑器打磨。</h2>
+        <p class="lead">
+          4.9 让 SoloMD 在<strong>安卓上直接打开并编辑你的真实文件夹</strong>——不是沙盒副本。
+          在 Android 11+（包括荣耀 / 华为 <strong>Magic OS</strong>，那上面"所有文件"权限其实什么都不给）
+          SoloMD 改用 <strong>存储访问框架（SAF）</strong>：选一次文件夹，之后就能就地读写真正的
+          <code>.md</code> 文件，通过系统内容提供程序写回。
+        </p>
+        <ul>
+          <li><strong>安卓文件夹保管库（SAF）。</strong>打开真实文件夹、就地编辑，移动端全宽布局。</li>
+          <li><strong>修复"另存为"。</strong>之前在安卓上会存出空文件——现在内容会正确写进你选的文件里。</li>
+          <li><strong>查找（Ctrl/⌘+F）输入即定位。</strong>边打字边跳到第一个匹配，像浏览器一样——长笔记里不再"像是没找到"。</li>
+          <li><strong>实时编辑方向键跨块。</strong>Windows 分块编辑器里 ↑/↓/←/→ 现在能在段落间移动光标。</li>
+          <li><strong>Linux 启动修复。</strong>AppImage 在部分 Intel / Mesa 环境不再以 <code>EGL_BAD_PARAMETER</code> 崩溃。</li>
+        </ul>
+      </section>
 
       <section>
         <p class="version-row" style="margin-top:8px;">

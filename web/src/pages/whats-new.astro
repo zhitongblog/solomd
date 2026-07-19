@@ -5,7 +5,7 @@ import Footer from '../components/Footer.astro';
 import Giscus from '../components/Giscus.astro';
 
 const lang = 'en' as const;
-const VERSION = '4.9.0';
+const VERSION = '4.9.5';
 const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERSION}`;
 ---
 
@@ -39,6 +39,30 @@ const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERS
         <a class="btn btn--secondary btn--lg" href={`${baseUrl}/SoloMD_${VERSION}_x64_en-US.msi`}>Download (Windows)</a>
         <a class="btn btn--secondary btn--lg" href={`https://github.com/zhitongblog/solomd/releases/tag/v${VERSION}`}>All assets →</a>
       </div>
+
+      <section>
+        <p class="version-row" style="margin-top:8px;">
+          <span class="version-tag">v4.9</span>
+          <time>July 2026</time>
+        </p>
+        <h2 style="margin-top:8px;">4.9 — Android real folders + editor polish.</h2>
+        <p class="lead">
+          The 4.9 line makes SoloMD open and edit your <strong>real folders on
+          Android</strong> — not a sandboxed copy. On Android 11+ (including
+          Honor / Huawei <strong>Magic OS</strong>, where the all-files
+          permission grants nothing) SoloMD now uses the <strong>Storage Access
+          Framework</strong>: pick a folder once, then read and write the actual
+          <code>.md</code> files in place, saved back through the system content
+          provider.
+        </p>
+        <ul>
+          <li><strong>Android folder vault (SAF).</strong> Open a real folder, edit files in place, full-width mobile layout.</li>
+          <li><strong>Save As fixed.</strong> It was writing empty files on Android — now the content lands in the file you choose.</li>
+          <li><strong>Find (Ctrl/⌘+F) scrolls as you type.</strong> The editor jumps to the first match while you type, like your browser — no more "found nothing" on long notes.</li>
+          <li><strong>Live-edit arrow keys cross blocks.</strong> ↑/↓/←/→ now move the caret between paragraphs in the Windows block editor.</li>
+          <li><strong>Linux launch fix.</strong> AppImage no longer aborts with <code>EGL_BAD_PARAMETER</code> on some Intel / Mesa setups.</li>
+        </ul>
+      </section>
 
       <section>
         <p class="version-row" style="margin-top:8px;">
