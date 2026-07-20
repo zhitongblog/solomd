@@ -41,7 +41,7 @@ export const t = {
       ctaWhatsNew: "What's new in v4 →",
       chips: ['📝 Live preview', '🔗 Wiki links', '🤖 BYOK AI', '🔍 Local RAG', '🎨 Themes', '📱 Cross-platform'],
       demoAlt: 'SoloMD v4 — Agent Panel + Recipe history + Trace view',
-      androidBeta: '🤖 Android beta is recruiting testers → email lixd220@gmail.com to join',
+      androidBeta: '🤖 Android beta is recruiting testers — join the test group',
     },
     features: {
       heading1: 'A folder of markdown.',
@@ -382,7 +382,7 @@ export const t = {
       ctaWhatsNew: 'v4 新功能 →',
       chips: ['📝 实时预览', '🔗 Wiki 链接', '🤖 BYOK AI', '🔍 本地 RAG', '🎨 主题', '📱 跨平台'],
       demoAlt: 'SoloMD v4 演示 — Agent 面板 + Recipe 历史 + Trace 视图',
-      androidBeta: '🤖 Android 公测招募中 → 发邮件至 lixd220@gmail.com 报名',
+      androidBeta: '🤖 安卓测试招募中 —— 点击加入测试群组',
     },
     features: {
       heading1: '一个 Markdown 文件夹,',
@@ -723,7 +723,7 @@ export const t = {
       ctaWhatsNew: 'v4 の新機能 →',
       chips: ['📝 ライブプレビュー', '🔗 Wiki リンク', '🤖 BYOK AI', '🔍 ローカル RAG', '🎨 テーマ', '📱 クロスプラットフォーム'],
       demoAlt: 'SoloMD v4 — Agent パネル + Recipe 履歴 + Trace ビュー',
-      androidBeta: '🤖 Android ベータ版テスター募集中 → lixd220@gmail.com にメール',
+      androidBeta: '🤖 Android ベータ版テスター募集中 — テストグループに参加',
     },
     features: {
       heading1: 'Markdown のフォルダ。',
@@ -960,7 +960,7 @@ export const t = {
       ctaWhatsNew: 'v4 새 기능 →',
       chips: ['📝 라이브 미리보기', '🔗 Wiki 링크', '🤖 BYOK AI', '🔍 로컬 RAG', '🎨 테마', '📱 크로스 플랫폼'],
       demoAlt: 'SoloMD v4 — Agent 패널 + Recipe 기록 + Trace 뷰',
-      androidBeta: '🤖 Android 베타 테스터 모집 중 → lixd220@gmail.com 으로 이메일',
+      androidBeta: '🤖 Android 베타 테스터 모집 중 — 테스트 그룹 참여',
     },
     features: {
       heading1: 'Markdown 폴더.',
@@ -1197,7 +1197,7 @@ export const t = {
       ctaWhatsNew: 'Neu in v4 →',
       chips: ['📝 Live-Vorschau', '🔗 Wiki-Links', '🤖 BYOK KI', '🔍 Lokales RAG', '🎨 Themes', '📱 Plattformübergreifend'],
       demoAlt: 'SoloMD v4 — Agent-Panel + Recipe-Verlauf + Trace-Ansicht',
-      androidBeta: '🤖 Android-Beta sucht Tester → E-Mail an lixd220@gmail.com',
+      androidBeta: '🤖 Android-Beta sucht Tester — der Testgruppe beitreten',
     },
     features: {
       heading1: 'Ein Ordner mit Markdown.',
@@ -1434,7 +1434,7 @@ export const t = {
       ctaWhatsNew: 'Nouveautés v4 →',
       chips: ['📝 Aperçu en direct', '🔗 Liens Wiki', '🤖 IA BYOK', '🔍 RAG local', '🎨 Thèmes', '📱 Multiplateforme'],
       demoAlt: 'SoloMD v4 — Panneau Agent + historique Recipe + vue Trace',
-      androidBeta: '🤖 La bêta Android recrute → email à lixd220@gmail.com',
+      androidBeta: '🤖 La bêta Android recrute — rejoindre le groupe de test',
     },
     features: {
       heading1: 'Un dossier de markdown.',
@@ -1671,7 +1671,7 @@ export const t = {
       ctaWhatsNew: 'Novedades v4 →',
       chips: ['📝 Vista previa', '🔗 Enlaces Wiki', '🤖 IA BYOK', '🔍 RAG local', '🎨 Temas', '📱 Multiplataforma'],
       demoAlt: 'SoloMD v4 — Panel Agent + historial de Recipe + vista Trace',
-      androidBeta: '🤖 Beta Android busca testers → email a lixd220@gmail.com',
+      androidBeta: '🤖 Beta Android busca testers — únete al grupo de prueba',
     },
     features: {
       heading1: 'Una carpeta de markdown.',
@@ -1908,7 +1908,7 @@ export const t = {
       ctaWhatsNew: 'Novidades v4 →',
       chips: ['📝 Pré-visualização', '🔗 Links Wiki', '🤖 IA BYOK', '🔍 RAG local', '🎨 Temas', '📱 Multiplataforma'],
       demoAlt: 'SoloMD v4 — Painel Agent + histórico de Recipe + visualização de Trace',
-      androidBeta: '🤖 Beta Android recruta testers → email lixd220@gmail.com',
+      androidBeta: '🤖 Beta Android recruta testers — entrar no grupo de teste',
     },
     features: {
       heading1: 'Uma pasta de markdown.',
@@ -2145,7 +2145,7 @@ export const t = {
       ctaWhatsNew: 'Novità v4 →',
       chips: ['📝 Anteprima dal vivo', '🔗 Link Wiki', '🤖 IA BYOK', '🔍 RAG locale', '🎨 Temi', '📱 Multipiattaforma'],
       demoAlt: 'SoloMD v4 — Pannello Agent + cronologia Recipe + vista Trace',
-      androidBeta: '🤖 Beta Android cerca tester → email a lixd220@gmail.com',
+      androidBeta: '🤖 Beta Android cerca tester — unisciti al gruppo di test',
     },
     features: {
       heading1: 'Una cartella di markdown.',
@@ -2382,7 +2382,7 @@ export const t = {
       ctaWhatsNew: 'Co nowego w v4 →',
       chips: ['📝 Podgląd na żywo', '🔗 Linki Wiki', '🤖 BYOK AI', '🔍 Lokalny RAG', '🎨 Motywy', '📱 Wieloplatformowy'],
       demoAlt: 'SoloMD v4 — panel Agent + historia Recipe + widok Trace',
-      androidBeta: '🤖 Beta Android szuka testerów → email do lixd220@gmail.com',
+      androidBeta: '🤖 Beta Android szuka testerów — dołącz do grupy testowej',
     },
     features: {
       heading1: 'Jeden katalog plików markdown.',
@@ -2619,7 +2619,7 @@ export const t = {
       ctaWhatsNew: 'Nieuw in v4 →',
       chips: ['📝 Live preview', '🔗 Wiki-links', '🤖 BYOK AI', '🔍 Lokale RAG', '🎨 Themes', '📱 Cross-platform'],
       demoAlt: 'SoloMD v4 — Agent Panel + Recipe-geschiedenis + Trace-weergave',
-      androidBeta: '🤖 Android-bèta zoekt testers → email lixd220@gmail.com',
+      androidBeta: '🤖 Android-bèta zoekt testers — word lid van de testgroep',
     },
     features: {
       heading1: 'Eén map met markdown.',
@@ -2856,7 +2856,7 @@ export const t = {
       ctaWhatsNew: 'v4 yenilikleri →',
       chips: ['📝 Canlı önizleme', '🔗 Wiki bağlantıları', '🤖 BYOK AI', '🔍 Yerel RAG', '🎨 Temalar', '📱 Çoklu platform'],
       demoAlt: 'SoloMD v4 — Agent Paneli + Recipe geçmişi + Trace görünümü',
-      androidBeta: '🤖 Android beta test edici arıyor → e-posta lixd220@gmail.com',
+      androidBeta: '🤖 Android beta test edici arıyor — test grubuna katıl',
     },
     features: {
       heading1: 'Bir markdown klasörü.',
@@ -3093,7 +3093,7 @@ export const t = {
       ctaWhatsNew: 'Nyheter i v4 →',
       chips: ['📝 Live-förhandsvisning', '🔗 Wiki-länkar', '🤖 BYOK AI', '🔍 Lokal RAG', '🎨 Teman', '📱 Plattformsoberoende'],
       demoAlt: 'SoloMD v4 — Agent-panel + Recipe-historik + Trace-vy',
-      androidBeta: '🤖 Android-beta söker testare → mejla lixd220@gmail.com',
+      androidBeta: '🤖 Android-beta söker testare — gå med i testgruppen',
     },
     features: {
       heading1: 'En mapp med markdown.',
@@ -3330,7 +3330,7 @@ export const t = {
       ctaWhatsNew: 'Що нового у v4 →',
       chips: ['📝 Живий перегляд', '🔗 Wiki-посилання', '🤖 BYOK AI', '🔍 Локальний RAG', '🎨 Теми', '📱 Кросплатформенний'],
       demoAlt: 'SoloMD v4 — панель Agent + історія Recipe + перегляд Trace',
-      androidBeta: '🤖 Android бета шукає тестерів → email lixd220@gmail.com',
+      androidBeta: '🤖 Android бета шукає тестерів — приєднатися до тест-групи',
     },
     features: {
       heading1: 'Одна тека з markdown.',
