@@ -160,7 +160,7 @@ export const t = {
         },
         {
           q: 'Does SoloMD work on Android and iOS?',
-          a: 'Yes. SoloMD 4.9.5 ships native Android (API 24+, ARM64 + ARMv7 + x86_64) and iOS (15+) builds. Android is available as sideload .apk on GitHub Releases and via Google Play closed-testing beta (email lixd220@gmail.com to join). iOS is on the App Store. Both mobile builds support live preview, Wiki links, AI rewrite, and folder-based sync via iCloud / Files / SD card.',
+          a: 'Yes. SoloMD 4.9.5 ships native Android (API 24+, ARM64 + ARMv7 + x86_64) and iOS (15+) builds. Android is available as sideload .apk on GitHub Releases and via the Google Play beta (join the group groups.google.com/g/solomd-android-testers, then opt in at play.google.com/apps/testing/app.solomd). iOS is on the App Store. Both mobile builds support live preview, Wiki links, AI rewrite, and folder-based sync via iCloud / Files / SD card.',
         },
         {
           q: 'Does SoloMD work offline?',
@@ -501,7 +501,7 @@ export const t = {
         },
         {
           q: 'SoloMD 支持 Android 和 iOS 吗？',
-          a: '支持。SoloMD 4.9.5 提供原生 Android(API 24+,ARM64 + ARMv7 + x86_64)和 iOS(15+)版本。Android 可在 GitHub Releases 下载 .apk 侧载,或加入 Google Play 封闭测试(发邮件 lixd220@gmail.com 报名)。iOS 在 App Store 上架。两个移动端都支持实时预览、Wiki 链接、AI 改写,通过 iCloud / 文件 / SD 卡做文件夹同步。',
+          a: '支持。SoloMD 4.9.5 提供原生 Android(API 24+,ARM64 + ARMv7 + x86_64)和 iOS(15+)版本。Android 可在 GitHub Releases 下载 .apk 侧载,或加入 Google Play 测试(先加入群组 groups.google.com/g/solomd-android-testers，再到 play.google.com/apps/testing/app.solomd 报名)。iOS 在 App Store 上架。两个移动端都支持实时预览、Wiki 链接、AI 改写,通过 iCloud / 文件 / SD 卡做文件夹同步。',
         },
         {
           q: 'SoloMD 能离线用吗？',
