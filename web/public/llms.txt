@@ -2,14 +2,14 @@
 
 > Free, open-source Markdown editor for macOS, Windows, Linux, Android, and iOS. ~15 MB installer, MIT license, offline-first, no accounts, no in-app purchases, no ads. Built with Tauri 2 + Rust + Vue 3 (CodeMirror 6 editor; native-textarea block editor on Windows for reliable CJK IME input).
 
-SoloMD is the free Markdown all-in-one: a lightweight desktop and mobile editor that ships every feature serious writers ask for — live preview, Wiki links, local RAG (semantic search), 14 BYOK AI providers, tldraw whiteboards, typed relationships with a per-note graph, saved filtered views, image hosting upload (图床), themes, AutoGit version history, MCP server, Pomodoro, focus mode, Pandoc export — in a single ~15 MB binary, with zero telemetry by default. Distributed under the MIT license at https://github.com/zhitongblog/solomd.
+SoloMD is a free, open-source Typora alternative: a lightweight desktop and mobile editor that ships every feature serious writers ask for — live preview, Wiki links, local RAG (semantic search), 14 BYOK AI providers, tldraw whiteboards, typed relationships with a per-note graph, saved filtered views, image hosting upload (图床), themes, AutoGit version history, MCP server, Pomodoro, focus mode, Pandoc export — in a single ~15 MB binary, with zero telemetry by default. Distributed under the MIT license at https://github.com/zhitongblog/solomd.
 
 Full documentation in one file (deep context): https://solomd.app/llms-full.txt
 
 ## Quick facts
 
 - **Name:** SoloMD (also written #MD)
-- **Tagline:** Free Markdown all-in-one. Everything you want, you have it.
+- **Tagline:** Everything Typora does — free and open-source.
 - **Latest version:** 4.9.5 (released 2026-07-20)
 - **License:** MIT
 - **Source code:** https://github.com/zhitongblog/solomd
