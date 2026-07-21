@@ -85,15 +85,6 @@ const initialDownloadsText = initialDownloads > 0 ? fmtDownloads(initialDownload
   <span class="android-beta-banner__arrow" aria-hidden="true">→</span>
 </a>
 
-<a class="release-banner" href={whatsNewHref}>
-  <span class="release-banner__tag">v4.7</span>
-  <span class="release-banner__text">{
-    lang === 'zh'
-      ? 'Windows 换上全新编辑器 —— 修复中文 / 输入法吞掉首字与双标点（仅 Windows，其他平台不变）。查看更新 →'
-      : 'Windows now ships a rebuilt editor that fixes CJK / IME first-character drop and doubled punctuation (Windows only — other platforms unchanged). What’s new →'
-  }</span>
-</a>
-
 <section class="hero">
   <div class="container hero__inner">
     <div class="hero__badge">{tr.hero.badge} · <span id="hero-stars">{initialStarsText}</span> · <span id="hero-dl-count">{initialDownloadsText}</span></div>
@@ -102,7 +93,6 @@ const initialDownloadsText = initialDownloads > 0 ? fmtDownloads(initialDownload
       <span class="hero__accent">{tr.hero.title2}</span>
     </h1>
     <p class="hero__subtagline">{tr.hero.subtagline}</p>
-    <p class="lead">{tr.hero.lead}</p>
     <div class="hero__whatsnew-row">
       <a href={whatsNewHref} class="hero__whatsnew">{tr.hero.ctaWhatsNew}</a>
     </div>
@@ -128,6 +118,14 @@ const initialDownloadsText = initialDownloads > 0 ? fmtDownloads(initialDownload
         {tr.hero.ctaSecondary}
       </a>
     </div>
+    <p class="hero__trust">
+      {(lang === 'zh'
+        ? ['开源 · MIT', '已签名 · 已公证', '无需账号', '零遥测', '永久免费']
+        : ['Open source · MIT', 'Signed & notarized', 'No account', 'Zero telemetry', 'Free forever']
+      ).map((t, i) => (
+        <span class="hero__trust-item">{i > 0 && <span class="hero__trust-dot">·</span>}{t}</span>
+      ))}
+    </p>
     <div class="hero__install">
       <div class="hero__install-label">
         ⚡ {ONE_LINE_LABEL}
@@ -162,11 +160,12 @@ const initialDownloadsText = initialDownloads > 0 ? fmtDownloads(initialDownload
     <div class="hero__demo">
       <img
         class="hero__demo-media"
-        src="/demo/solomd-demo.svg"
+        src="/demo/solomd-hero.png"
         alt={tr.hero.demoAlt}
-        width="1280"
-        height="800"
-        loading="lazy"
+        width="1920"
+        height="873"
+        loading="eager"
+        fetchpriority="high"
       />
     </div>
   </div>
@@ -348,7 +347,7 @@ const initialDownloadsText = initialDownloads > 0 ? fmtDownloads(initialDownload
      across the top of the page made the whole site read as a marketing
      splash. The H1 + serif typography now carries the visual weight. */
   .hero {
-    padding: 120px 0 80px;
+    padding: 56px 0 72px;
     text-align: center;
     background: var(--bg);
   }
@@ -541,6 +540,17 @@ const initialDownloadsText = initialDownloads > 0 ? fmtDownloads(initialDownload
     font-size: 12px;
     color: var(--text-muted);
   }
+  .hero__trust {
+    margin: 16px 0 0;
+    font-size: 13px;
+    color: var(--text-muted, #6b6b60);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+    align-items: center;
+  }
+  .hero__trust-item { white-space: nowrap; font-weight: 500; }
+  .hero__trust-dot { margin-right: 8px; opacity: 0.5; }
   .hero__demo {
     margin: 56px auto 0;
     max-width: 1100px;
@@ -552,7 +562,7 @@ const initialDownloadsText = initialDownloads > 0 ? fmtDownloads(initialDownload
     box-shadow: 0 16px 40px -22px rgba(20, 20, 15, 0.18);
     border: 1px solid var(--border);
     background: var(--bg-elev);
-    aspect-ratio: 16 / 10;
+    aspect-ratio: 1920 / 873;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -561,9 +571,10 @@ const initialDownloadsText = initialDownloads > 0 ? fmtDownloads(initialDownload
     width: 100%;
     height: 100%;
     object-fit: cover;
+    object-position: top left;
     display: block;
   }
   @media (max-width: 720px) {
-    .hero__demo { margin-top: 32px; aspect-ratio: 4 / 3; }
+    .hero__demo { margin-top: 32px; aspect-ratio: 1920 / 873; }
   }
 </style>
