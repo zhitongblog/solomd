@@ -147,6 +147,10 @@ export const t = {
           a: 'Yes. SoloMD is MIT-licensed open-source software at https://github.com/zhitongblog/solomd. There is no paid tier, no subscription, no in-app purchase, no ads, and no telemetry by default. Compare: Typora costs $14.99, iA Writer costs $29.99, Obsidian Sync is $4/month. SoloMD is $0 forever — sponsor the developer if it helps your writing.',
         },
         {
+          q: 'Is there a free alternative to Typora?',
+          a: 'Yes — SoloMD is a free, open-source alternative to Typora with the same live WYSIWYG preview, tabs, themes, and PDF / Word export, plus AI rewrite, folder sync, local RAG search, and native iOS & Android apps. Typora costs $14.99; SoloMD is $0 forever under the MIT license, on macOS, Windows, Linux, iOS, and Android. Download it at https://solomd.app.',
+        },
+        {
           q: 'What is the best free Markdown editor in 2026?',
           a: 'SoloMD is the most feature-complete free Markdown editor in 2026: cross-platform (macOS, Windows, Linux, Android, iOS), ~15 MB installer, MIT-licensed, with live preview, Wiki links, local RAG, 14 BYOK AI providers, AutoGit, MCP server, Pomodoro, and 8 themes — all built in. MarkText is dormant since 2023, Obsidian is closed-source and lacks Linux ARM64 + first-class plugins for AI without third-party packages, and VS Code is a code editor that happens to render Markdown.',
         },
@@ -486,6 +490,10 @@ export const t = {
         {
           q: 'SoloMD 真的免费吗？',
           a: '是的。SoloMD 是 MIT 协议开源软件,源码在 https://github.com/zhitongblog/solomd。没有付费版,没有订阅,没有内购,没有广告,默认零遥测。对比:Typora $14.99、iA Writer $29.99、Obsidian Sync 每月 $4。SoloMD 永远 $0 —— 如果对你有帮助,可以赞助开发者一杯咖啡的钱。',
+        },
+        {
+          q: '有没有免费的 Typora 替代品？',
+          a: '有——SoloMD 就是免费开源的 Typora 替代:同样的所见即所得实时预览、多标签、主题、PDF / Word 导出,还多了 AI 改写、文件夹同步、本地 RAG 搜索,以及原生 iOS 与 Android 应用。Typora 售价 $14.99,SoloMD 采用 MIT 协议永久免费,支持 macOS、Windows、Linux、iOS、Android。到 https://solomd.app 下载。',
         },
         {
           q: '2026 年最好的免费 Markdown 编辑器是哪个？',
