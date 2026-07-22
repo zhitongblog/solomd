@@ -5,7 +5,7 @@ import Footer from '../components/Footer.astro';
 import Giscus from '../components/Giscus.astro';
 
 const lang = 'en' as const;
-const VERSION = '4.9.5';
+const VERSION = '4.9.6';
 const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERSION}`;
 ---
 
@@ -59,7 +59,10 @@ const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERS
           <li><strong>Android folder vault (SAF).</strong> Open a real folder, edit files in place, full-width mobile layout.</li>
           <li><strong>Save As fixed.</strong> It was writing empty files on Android — now the content lands in the file you choose.</li>
           <li><strong>Find (Ctrl/⌘+F) scrolls as you type.</strong> The editor jumps to the first match while you type, like your browser — no more "found nothing" on long notes.</li>
-          <li><strong>Live-edit arrow keys cross blocks.</strong> ↑/↓/←/→ now move the caret between paragraphs in the Windows block editor.</li>
+          <li><strong>Live-edit arrow keys cross blocks.</strong> ↑/↓/←/→ now move the caret between paragraphs in the Windows block editor — and as of 4.9.6 they respect soft-wrapped lines, so ↑ in a long paragraph no longer teleports over it.</li>
+          <li><strong>Line numbers on Windows (4.9.6).</strong> The "show line numbers" setting now works in the Windows editor, with a gutter that stays aligned under word wrap.</li>
+          <li><strong>Export Mermaid diagrams as PNG (4.9.6).</strong> Click a diagram → Export PNG or Copy image, at 2× resolution with a theme-matched background.</li>
+          <li><strong>Save dialog picks up your title (4.9.6).</strong> A never-saved note starting with <code># Heading</code> pre-fills "Heading.md" — stop retyping filenames.</li>
           <li><strong>Linux launch fix.</strong> AppImage no longer aborts with <code>EGL_BAD_PARAMETER</code> on some Intel / Mesa setups.</li>
         </ul>
       </section>

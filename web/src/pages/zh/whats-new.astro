@@ -5,7 +5,7 @@ import Footer from '../../components/Footer.astro';
 import Giscus from '../../components/Giscus.astro';
 
 const lang = 'zh' as const;
-const VERSION = '4.9.5';
+const VERSION = '4.9.6';
 const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERSION}`;
 ---
 
@@ -55,7 +55,10 @@ const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERS
           <li><strong>安卓文件夹保管库（SAF）。</strong>打开真实文件夹、就地编辑，移动端全宽布局。</li>
           <li><strong>修复"另存为"。</strong>之前在安卓上会存出空文件——现在内容会正确写进你选的文件里。</li>
           <li><strong>查找（Ctrl/⌘+F）输入即定位。</strong>边打字边跳到第一个匹配，像浏览器一样——长笔记里不再"像是没找到"。</li>
-          <li><strong>实时编辑方向键跨块。</strong>Windows 分块编辑器里 ↑/↓/←/→ 现在能在段落间移动光标。</li>
+          <li><strong>实时编辑方向键跨块。</strong>Windows 分块编辑器里 ↑/↓/←/→ 现在能在段落间移动光标——4.9.6 起还能识别自动换行，长段落里按 ↑ 不再整段跳过。</li>
+          <li><strong>Windows 显示行号（4.9.6）。</strong>「显示行号」设置在 Windows 编辑器里生效了，自动换行时行号依然对齐。</li>
+          <li><strong>Mermaid 图表导出 PNG（4.9.6）。</strong>点击图表 → 导出 PNG / 复制图片，2× 分辨率、背景随明暗主题。</li>
+          <li><strong>保存自动取标题（4.9.6）。</strong>未保存过的笔记若以 <code># 标题</code> 开头，保存框自动预填「标题.md」，不用再手打文件名。</li>
           <li><strong>Linux 启动修复。</strong>AppImage 在部分 Intel / Mesa 环境不再以 <code>EGL_BAD_PARAMETER</code> 崩溃。</li>
         </ul>
       </section>
