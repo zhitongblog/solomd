@@ -366,6 +366,8 @@ export const zh: I18n = {
     resetZoom: '重置',
     image: '图片',
     diagram: '图表',
+    exportPng: '导出 PNG',
+    copyImage: '复制图片',
   },
   backlinks: {
     heading: '反向链接',

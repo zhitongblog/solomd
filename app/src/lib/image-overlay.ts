@@ -17,6 +17,12 @@ export interface OverlayStrings {
   diagram: string;
 }
 
+export interface OverlayAction {
+  /** Button label (already localised by the caller). */
+  label: string;
+  onClick: () => void | Promise<void>;
+}
+
 export interface OverlayOptions {
   /** An <img> or SVG element to display in the overlay. */
   source: HTMLImageElement | SVGElement;
@@ -24,6 +30,8 @@ export interface OverlayOptions {
   title?: string;
   /** Localised UI strings. */
   strings: OverlayStrings;
+  /** Extra footer buttons (e.g. "Export PNG" for Mermaid diagrams, #162). */
+  actions?: OverlayAction[];
 }
 
 // ── Constants ───────────────────────────────────────────────────────
@@ -411,6 +419,14 @@ export function openImageOverlay(opts: OverlayOptions) {
   footer.appendChild(zoomInBtn);
   footer.appendChild(resetBtn);
 
+  const actionBtns: Array<[HTMLButtonElement, OverlayAction]> = [];
+  for (const action of opts.actions ?? []) {
+    const btn = document.createElement('button');
+    btn.textContent = action.label;
+    footer.appendChild(btn);
+    actionBtns.push([btn, action]);
+  }
+
   backdrop.appendChild(header);
   backdrop.appendChild(contentEl);
   backdrop.appendChild(footer);
@@ -467,6 +483,13 @@ export function openImageOverlay(opts: OverlayOptions) {
     e.stopPropagation();
     fitToScreen();
   }) as EventListener);
+
+  for (const [btn, action] of actionBtns) {
+    on(btn, 'click', ((e: MouseEvent) => {
+      e.stopPropagation();
+      void action.onClick();
+    }) as EventListener);
+  }
 
   // Mouse wheel zoom
   on(contentEl, 'wheel', ((e: WheelEvent) => {

@@ -367,6 +367,8 @@ export const ko: I18n = {
     resetZoom: '초기화',
     image: '이미지',
     diagram: '다이어그램',
+    exportPng: 'PNG 내보내기',
+    copyImage: '이미지 복사',
   },
   backlinks: {
     heading: '백링크',

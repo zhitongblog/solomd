@@ -365,6 +365,8 @@ export const en = {
     resetZoom: 'Reset',
     image: 'Image',
     diagram: 'Diagram',
+    exportPng: 'Export PNG',
+    copyImage: 'Copy image',
   },
   backlinks: {
     heading: 'Backlinks',

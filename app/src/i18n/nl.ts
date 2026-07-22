@@ -367,6 +367,8 @@ export const nl: I18n = {
     resetZoom: 'Herstellen',
     image: 'Afbeelding',
     diagram: 'Diagram',
+    exportPng: 'PNG exporteren',
+    copyImage: 'Afbeelding kopiëren',
   },
   backlinks: {
     heading: 'Backlinks',

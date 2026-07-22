@@ -18,6 +18,18 @@ import { isSafPath, fromSafPath, safRead, safWrite, safLaunchPicker } from '../l
 // Save dialogs only — opening uses no filter so any file is selectable.
 // (rfd treats `'*'` literally as the extension `*`, not as wildcard, so we
 // can't reliably express "all files" via filters on macOS.)
+/** #160 — pre-fill the Save dialog from the document's first heading. A
+ *  never-saved tab still carries the default "Untitled" name, so a note that
+ *  opens with `# 会议纪要` saves as `会议纪要.md` without retyping. Inert
+ *  once the tab has a real path or a user-chosen name. */
+export function deriveNameFromHeading(tab: Pick<Tab, 'filePath' | 'fileName' | 'content' | 'language'>): string | null {
+  if (tab.filePath || !/^Untitled(\.(md|txt))?$/i.test(tab.fileName ?? '')) return null;
+  const m = tab.content?.match(/^#{1,6}[ \t]+(.{1,60})/m);
+  const stem = m?.[1]?.trim().replace(/[\\/:*?"<>|#]/g, '_').replace(/^\.+/, '').trim();
+  if (!stem || /^[_\s.]*$/.test(stem)) return null;
+  return tab.language === 'markdown' ? `${stem}.md` : `${stem}.txt`;
+}
+
 const SAVE_FILTERS = [
   { name: 'Markdown', extensions: ['md', 'markdown', 'mdown', 'mkd'] },
   { name: 'Plain Text', extensions: ['txt'] },
@@ -399,10 +411,14 @@ export function useFiles() {
   // UIFileSharingEnabled set, that folder appears as "On My iPhone › SoloMD"
   // in the Files app, so users can iCloud-sync or move from there.
   async function iosResolvePath(tab: Tab): Promise<string> {
-    const fname = tab.fileName || (tab.language === 'markdown' ? 'Untitled.md' : 'Untitled.txt');
+    const fname =
+      deriveNameFromHeading(tab) ||
+      tab.fileName ||
+      (tab.language === 'markdown' ? 'Untitled.md' : 'Untitled.txt');
     const dir = await documentDir();
     return await join(dir, fname);
   }
+
 
   /** Android — write to a SAF `content://` URI through the fs plugin's
    *  ContentResolver bridge ("wt" mode: write + truncate). Rust's std::fs
@@ -487,7 +503,10 @@ export function useFiles() {
   }
 
   async function saveTabAs(tab: Tab): Promise<boolean> {
-    const defaultName = tab.fileName || (tab.language === 'markdown' ? 'Untitled.md' : 'Untitled.txt');
+    const defaultName =
+      deriveNameFromHeading(tab) ||
+      tab.fileName ||
+      (tab.language === 'markdown' ? 'Untitled.md' : 'Untitled.txt');
     let path: string | null;
     if (isIOS()) {
       // iOS: no Save-As picker UI that round-trips to Rust safely. Write

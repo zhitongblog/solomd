@@ -367,6 +367,8 @@ export const it: I18n = {
     resetZoom: 'Reimposta',
     image: 'Immagine',
     diagram: 'Diagramma',
+    exportPng: 'Esporta PNG',
+    copyImage: 'Copia immagine',
   },
   backlinks: {
     heading: 'Backlinks',

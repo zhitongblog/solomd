@@ -23,6 +23,7 @@ import { xml } from '@codemirror/lang-xml';
 import { vim } from '@replit/codemirror-vim';
 import { cmThemeFor } from '../lib/themes';
 import { registerPlainSelectionGetter } from '../lib/plain-selection';
+import { caretRowInfo, lastVisualRowStart, firstVisualRowEnd, measureLineHeights } from '../lib/textarea-metrics';
 import { useTabsStore } from '../stores/tabs';
 import { useSettingsStore, buildEditorFontStack } from '../stores/settings';
 import { useToastsStore } from '../stores/toasts';
@@ -244,6 +245,73 @@ const plainEditorStyle = computed(() => ({
   '--plain-editor-font-family': buildEditorFontStack(settings.fontFamily),
   '--plain-preview-font-size': `${settings.previewFontSize || settings.fontSize || 15}px`,
 }));
+
+// #161 — line-number gutter for the plain-textarea path. CodeMirror's
+// lineNumbers() never runs on Windows, so the 显示行号 setting silently did
+// nothing there. Numbers get mirror-measured logical-line heights so they
+// stay aligned under soft wrap, and the gutter follows the textarea's
+// scrollTop via a translateY.
+const plainLineHeights = ref<number[]>([]);
+const plainScrollTop = ref(0);
+const plainGutterEnabled = computed(
+  () => usePlainWindowsEditor && settings.showLineNumbers && !plainLiveEnabled.value,
+);
+const plainGutterWidth = computed(
+  () => `${Math.max(String(plainLineHeights.value.length).length, 2)}ch`,
+);
+let plainGutterTimer: ReturnType<typeof setTimeout> | null = null;
+let plainGutterRO: ResizeObserver | null = null;
+
+function recomputePlainGutter() {
+  if (!plainGutterEnabled.value) return;
+  const el = plainEditor.value;
+  if (!el) return;
+  try {
+    plainLineHeights.value = measureLineHeights(el, plainText.value);
+  } catch {
+    plainLineHeights.value = [];
+  }
+}
+
+function schedulePlainGutter() {
+  if (!plainGutterEnabled.value) return;
+  if (plainGutterTimer) clearTimeout(plainGutterTimer);
+  plainGutterTimer = setTimeout(() => {
+    plainGutterTimer = null;
+    recomputePlainGutter();
+  }, 120);
+}
+
+function onPlainScroll(event: Event) {
+  plainScrollTop.value = (event.target as HTMLTextAreaElement).scrollTop;
+}
+
+watch(
+  [plainGutterEnabled, plainEditor],
+  async ([on]) => {
+    plainGutterRO?.disconnect();
+    plainGutterRO = null;
+    if (!on) return;
+    await nextTick();
+    const el = plainEditor.value;
+    if (!el) return;
+    plainScrollTop.value = el.scrollTop;
+    recomputePlainGutter();
+    // Wrap width changes (window resize, sidebar toggle) re-flow soft wrap.
+    plainGutterRO = new ResizeObserver(schedulePlainGutter);
+    plainGutterRO.observe(el);
+  },
+  { immediate: true },
+);
+watch(plainText, schedulePlainGutter);
+watch(
+  () => [settings.wordWrap, settings.fontSize, settings.fontFamily],
+  () => nextTick(schedulePlainGutter),
+);
+onBeforeUnmount(() => {
+  plainGutterRO?.disconnect();
+  if (plainGutterTimer) clearTimeout(plainGutterTimer);
+});
 
 const plainBlocks = computed<PlainBlock[]>(() => {
   if (!plainLiveEnabled.value) return [];
@@ -1124,6 +1192,34 @@ function computeSmartEnter(el: HTMLTextAreaElement): { value: string; caret: num
   return { value: v.slice(0, caret) + insert + v.slice(caret), caret: caret + insert.length };
 }
 
+// Mirror-based visual-row probes with logical-line fallbacks, so a DOM
+// hiccup degrades to the pre-4.9.6 behaviour instead of eating the keypress.
+function plainCaretEdgeRows(el: HTMLTextAreaElement, val: string, pos: number) {
+  try {
+    return caretRowInfo(el, val, pos);
+  } catch {
+    const lineStart = val.lastIndexOf('\n', pos - 1) + 1;
+    return { firstRow: lineStart === 0, lastRow: val.indexOf('\n', pos) < 0 };
+  }
+}
+
+function plainLastRowStart(el: HTMLTextAreaElement, text: string): number {
+  try {
+    return lastVisualRowStart(el, text);
+  } catch {
+    return text.lastIndexOf('\n') + 1;
+  }
+}
+
+function plainFirstRowEnd(el: HTMLTextAreaElement, text: string): number {
+  try {
+    return firstVisualRowEnd(el, text);
+  } catch {
+    const firstNl = text.indexOf('\n');
+    return firstNl < 0 ? text.length : firstNl;
+  }
+}
+
 function handlePlainBlockKeydown(index: number, event: KeyboardEvent) {
   if (plainComposing) return;
   if (handleAutocompleteKeydown(event)) return;
@@ -1143,8 +1239,6 @@ function handlePlainBlockKeydown(index: number, event: KeyboardEvent) {
       const blocks = plainBlocks.value;
       const pos = el.selectionStart ?? 0;
       const val = el.value;
-      const lineStart = val.lastIndexOf('\n', pos - 1) + 1;
-      const column = pos - lineStart;
       if (event.key === 'ArrowLeft' && pos === 0 && index > 0) {
         event.preventDefault();
         activatePlainBlock(index - 1, blocks[index - 1]?.text.length ?? 0);
@@ -1155,20 +1249,27 @@ function handlePlainBlockKeydown(index: number, event: KeyboardEvent) {
         activatePlainBlock(index + 1, 0);
         return;
       }
-      if (event.key === 'ArrowUp' && lineStart === 0 && index > 0) {
-        event.preventDefault();
-        const prev = blocks[index - 1]?.text ?? '';
-        const lastLineStart = prev.lastIndexOf('\n') + 1;
-        activatePlainBlock(index - 1, Math.min(lastLineStart + column, prev.length));
-        return;
-      }
-      if (event.key === 'ArrowDown' && val.indexOf('\n', pos) < 0 && index < blocks.length - 1) {
-        event.preventDefault();
-        const next = blocks[index + 1]?.text ?? '';
-        const firstNl = next.indexOf('\n');
-        const firstLineLen = firstNl < 0 ? next.length : firstNl;
-        activatePlainBlock(index + 1, Math.min(column, firstLineLen));
-        return;
+      // ↑/↓ hand-off must key on *visual* rows, not logical lines (#155
+      // follow-up): with soft wrap on, a long paragraph is ONE logical line,
+      // so the old `lineStart === 0` test fired from any wrapped row and ↑
+      // teleported over the whole paragraph into the previous block.
+      if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+        const edge = plainCaretEdgeRows(el, val, pos);
+        if (event.key === 'ArrowUp' && edge.firstRow && index > 0) {
+          event.preventDefault();
+          const prev = blocks[index - 1]?.text ?? '';
+          // First visual row starts at 0, so the visual column is `pos`.
+          // Land on the previous block's last visual row, same column.
+          activatePlainBlock(index - 1, Math.min(plainLastRowStart(el, prev) + pos, prev.length));
+          return;
+        }
+        if (event.key === 'ArrowDown' && edge.lastRow && index < blocks.length - 1) {
+          event.preventDefault();
+          const next = blocks[index + 1]?.text ?? '';
+          const vcol = pos - plainLastRowStart(el, val);
+          activatePlainBlock(index + 1, Math.min(vcol, plainFirstRowEnd(el, next)));
+          return;
+        }
       }
     }
   }
@@ -2347,7 +2448,22 @@ const cls = computed(() => ({
         ></div>
       </div>
     </div>
-    <div v-else :class="cls" :style="plainEditorStyle">
+    <div v-else :class="[cls, 'plain-source']" :style="plainEditorStyle">
+      <div
+        v-if="plainGutterEnabled"
+        class="plain-gutter"
+        aria-hidden="true"
+        :style="{ width: `calc(${plainGutterWidth} + 20px)` }"
+      >
+        <div class="plain-gutter__inner" :style="{ transform: `translateY(${-plainScrollTop}px)` }">
+          <div
+            v-for="(h, i) in plainLineHeights"
+            :key="i"
+            class="plain-gutter__num"
+            :style="{ height: h + 'px' }"
+          >{{ i + 1 }}</div>
+        </div>
+      </div>
       <textarea
         ref="plainEditor"
         class="plain-editor"
@@ -2357,6 +2473,7 @@ const cls = computed(() => ({
         @keydown="handlePlainEditorKeydown"
         @paste="handlePlainPaste"
         @input="handlePlainInput"
+        @scroll="onPlainScroll"
         @keyup="emitPlainCursorAndSelection"
         @mouseup="emitPlainCursorAndSelection"
         @select="emitPlainCursorAndSelection"
@@ -2572,6 +2689,32 @@ const cls = computed(() => ({
   white-space: pre-wrap;
   overflow-wrap: break-word;
   overflow-x: hidden;
+}
+.plain-source {
+  display: flex;
+}
+.plain-source .plain-editor {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+}
+.plain-gutter {
+  flex: none;
+  overflow: hidden;
+  box-sizing: border-box;
+  /* Top padding must match .plain-editor's 12px or numbers drift off rows. */
+  padding: 12px 8px 12px 0;
+  border-right: 1px solid var(--border, rgba(127, 127, 127, 0.25));
+  background: var(--bg);
+  color: var(--text-faint, #999);
+  font-family: var(--plain-editor-font-family, var(--font-editor, var(--font-mono)));
+  font-size: var(--plain-editor-font-size, 14px);
+  line-height: 1.6;
+  text-align: right;
+  user-select: none;
+}
+.plain-gutter__num {
+  box-sizing: border-box;
 }
 .plain-block-editor {
   overflow: auto;

@@ -367,6 +367,8 @@ export const sv: I18n = {
     resetZoom: 'Återställ',
     image: 'Bild',
     diagram: 'Diagram',
+    exportPng: 'Exportera PNG',
+    copyImage: 'Kopiera bild',
   },
   backlinks: {
     heading: 'Bakåtlänkar',

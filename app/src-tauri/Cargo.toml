@@ -51,7 +51,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["protocol-asset"] }
+tauri = { version = "2", features = ["protocol-asset", "image-png"] }
 tauri-plugin-opener = "2"
 # #86/#87(1) — single-instance: a second launch reactivates the existing
 # window instead of starting a duplicate process. Desktop only.

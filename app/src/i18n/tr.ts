@@ -367,6 +367,8 @@ export const tr: I18n = {
     resetZoom: 'Sıfırla',
     image: 'Görsel',
     diagram: 'Diyagram',
+    exportPng: 'PNG olarak dışa aktar',
+    copyImage: 'Görseli kopyala',
   },
   backlinks: {
     heading: 'Geri Bağlantılar',

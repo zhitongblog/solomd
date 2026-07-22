@@ -5,6 +5,10 @@ import { openUrl } from '@tauri-apps/plugin-opener';
 import { renderMarkdown, extractImageRoot } from '../lib/markdown';
 import { installSvgImageFallbacks, rewriteImageUrls } from '../lib/image-resolve';
 import { openImageOverlay, type OverlayStrings } from '../lib/image-overlay';
+import { svgToPngBlob, diagramBackground } from '../lib/mermaid-export';
+import { save as saveDialog } from '@tauri-apps/plugin-dialog';
+import { invoke } from '@tauri-apps/api/core';
+import { useToastsStore } from '../stores/toasts';
 import { useI18n } from '../i18n';
 import { useSettingsStore } from '../stores/settings';
 import { useTabsStore } from '../stores/tabs';
@@ -284,8 +288,59 @@ function attachImageOverlayHandlers() {
       openImageOverlay({
         source: svg,
         strings: overlayStrings(),
+        // #162 — Mermaid renders as inline SVG, so the WebView's own
+        // "save image as" only offers HTML; give diagrams real PNG actions.
+        actions: [
+          { label: t('overlay.exportPng'), onClick: () => exportDiagramPng(svg) },
+          { label: t('overlay.copyImage'), onClick: () => copyDiagramPng(svg) },
+        ],
       });
     }) as EventListener);
+  }
+}
+
+// ── #162: single-diagram PNG export / copy ──────────────────────────
+
+function diagramExportName(): string {
+  const base = props.filePath?.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, '');
+  return base ? `${base}-diagram.png` : 'diagram.png';
+}
+
+async function exportDiagramPng(svg: SVGElement) {
+  const toasts = useToastsStore();
+  try {
+    const blob = await svgToPngBlob(svg, { scale: 2, background: diagramBackground() });
+    const path = await saveDialog({
+      defaultPath: diagramExportName(),
+      filters: [{ name: 'PNG Image', extensions: ['png'] }],
+    });
+    if (!path) return;
+    const buffer = new Uint8Array(await blob.arrayBuffer());
+    await invoke('write_binary_file', { path, data: Array.from(buffer) });
+    toasts.success(`Saved ${path.split(/[\\/]/).pop()}`);
+  } catch (err) {
+    toasts.error(`Export failed: ${err}`);
+  }
+}
+
+async function copyDiagramPng(svg: SVGElement) {
+  const toasts = useToastsStore();
+  try {
+    const blob = await svgToPngBlob(svg, { scale: 2, background: diagramBackground() });
+    try {
+      const item = new ClipboardItem({ 'image/png': blob });
+      await navigator.clipboard.write([item]);
+    } catch {
+      // WKWebView denies navigator.clipboard outside a user gesture /
+      // focused document — same fallback as useExport.copyAsImage.
+      const { writeImage } = await import('@tauri-apps/plugin-clipboard-manager');
+      const { Image } = await import('@tauri-apps/api/image');
+      const img = await Image.fromBytes(new Uint8Array(await blob.arrayBuffer()));
+      await writeImage(img);
+    }
+    toasts.success(t('overlay.copyImage') + ' ✓');
+  } catch (err) {
+    toasts.error(`Copy failed: ${err}`);
   }
 }
 

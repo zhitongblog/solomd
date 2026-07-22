@@ -367,6 +367,8 @@ export const uk: I18n = {
     resetZoom: 'Скинути',
     image: 'Зображення',
     diagram: 'Діаграма',
+    exportPng: 'Експортувати PNG',
+    copyImage: 'Копіювати зображення',
   },
   backlinks: {
     heading: 'Зворотні посилання',

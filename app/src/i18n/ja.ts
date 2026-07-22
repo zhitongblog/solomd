@@ -367,6 +367,8 @@ export const ja: I18n = {
     resetZoom: 'リセット',
     image: '画像',
     diagram: '図',
+    exportPng: 'PNG をエクスポート',
+    copyImage: '画像をコピー',
   },
   backlinks: {
     heading: 'バックリンク',
