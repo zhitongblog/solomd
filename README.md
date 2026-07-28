@@ -1,5 +1,7 @@
 # SoloMD
 
+[![MCP Toplist](https://mcptoplist.com/badge/glama%2Fzhitongblog%2Fsolomd.svg)](https://mcptoplist.com/server/glama%2Fzhitongblog%2Fsolomd)
+
 > The editor where agents live.
 
 [![Latest release](https://img.shields.io/github/v/release/zhitongblog/solomd)](https://github.com/zhitongblog/solomd/releases/latest)
