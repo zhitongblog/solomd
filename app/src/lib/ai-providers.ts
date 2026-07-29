@@ -32,6 +32,7 @@ export type ProviderId =
   | 'kimi'
   | 'volcengine'
   | 'siliconflow'
+  | 'minimax'
   // Aggregator
   | 'openrouter'
   // Local
@@ -194,6 +195,18 @@ export const PROVIDERS: ProviderConfig[] = [
     modelHint:
       'deepseek-ai/DeepSeek-V3 · Qwen/Qwen2.5-Coder-32B-Instruct · moonshotai/Kimi-K2-Instruct · meta-llama/Meta-Llama-3.1-70B-Instruct',
     signupUrl: 'https://cloud.siliconflow.cn/account/ak',
+  },
+  {
+    id: 'minimax',
+    label: 'MiniMax',
+    apiFormat: 'openai',
+    defaultModel: 'MiniMax-M3',
+    // Global OpenAI-compatible endpoint. The CN region
+    // (https://api.minimaxi.com/v1) is reachable by overriding the base URL
+    // in AI Settings — the proxy honors the per-provider base_url override.
+    defaultBaseUrl: 'https://api.minimax.io/v1',
+    modelHint: 'MiniMax-M3 · MiniMax-M2.7',
+    signupUrl: 'https://platform.minimax.io/',
   },
   // ---- Aggregator (one key, hundreds of models) ---------------------
   {
