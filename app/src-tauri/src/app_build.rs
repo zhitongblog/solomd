@@ -31,6 +31,9 @@ pub fn app_build_info() -> BuildInfo {
     BuildInfo { is_app_store: IS_APP_STORE }
 }
 
+/// App Store gate helper. Only referenced by the AI/Agent/Recipe commands
+/// when `SOLOMD_APP_STORE_BUILD=1`; dead code in regular builds.
+#[allow(dead_code)]
 pub fn app_store_disabled<T>() -> Result<T, String> {
     Err("This feature is not available in the App Store edition. Download the GitHub release for the full SoloMD experience.".to_string())
 }
