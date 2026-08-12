@@ -41,7 +41,15 @@ function log(...a) {
   import('node:fs').then(({ appendFileSync }) => appendFileSync(LOG, line + '\n'));
 }
 
-const cfgDir = join(homedir(), 'Library/Application Support/app.solomd');
+// dev-bridge writes its config into Tauri's app-config dir, which is
+// platform-specific: macOS = ~/Library/Application Support, Linux =
+// ~/.config, Windows = %APPDATA%.
+const cfgDir =
+  process.platform === 'darwin'
+    ? join(homedir(), 'Library/Application Support/app.solomd')
+    : process.platform === 'win32'
+      ? join(process.env.APPDATA ?? '', 'app.solomd')
+      : join(homedir(), '.config/app.solomd');
 function cfgFile(name) {
   return readFileSync(join(cfgDir, name), 'utf8').trim();
 }
