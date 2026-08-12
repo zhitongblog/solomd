@@ -35,6 +35,7 @@ export type ProviderId =
   | 'minimax'
   // Aggregator
   | 'openrouter'
+  | 'opencode-go'
   // Local
   | 'ollama';
 
@@ -218,6 +219,17 @@ export const PROVIDERS: ProviderConfig[] = [
     modelHint:
       'anthropic/claude-sonnet-4-6 · openai/gpt-5.5 · google/gemini-3.1-pro · deepseek/deepseek-v4 · x-ai/grok-4.20 · meta-llama/llama-4-scout',
     signupUrl: 'https://openrouter.ai/keys',
+  },
+  {
+    id: 'opencode-go',
+    label: 'OpenCode Go (订阅聚合)',
+    apiFormat: 'openai',
+    defaultModel: 'deepseek-v4-flash',
+    defaultBaseUrl: 'https://opencode.ai/zen/go/v1',
+    // Full model list from GET /zen/go/v1/models (verified 2026-08-12).
+    modelHint:
+      'deepseek-v4-flash · deepseek-v4-pro · mimo-v2.5 · mimo-v2.5-pro · mimo-v2-pro · mimo-v2-omni · qwen3.8-max · qwen3.7-max · qwen3.7-plus · qwen3.6-plus · qwen3.5-plus · glm-5.2 · glm-5.1 · glm-5 · kimi-k3 · kimi-k2.7-code · kimi-k2.6 · kimi-k2.5 · minimax-m3 · minimax-m2.7 · minimax-m2.5 · gpt-5.6-luna · grok-4.5 · hy3',
+    signupUrl: 'https://opencode.ai/auth',
   },
   // ---- Local ---------------------------------------------------------
   {
