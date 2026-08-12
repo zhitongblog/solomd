@@ -138,9 +138,9 @@ mod win_chrome;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 #[cfg(not(target_os = "windows"))]
-use tauri::menu::{
-    AboutMetadata, MenuBuilder, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder,
-};
+use tauri::menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder};
+#[cfg(target_os = "macos")]
+use tauri::menu::{AboutMetadata, PredefinedMenuItem};
 use tauri::{Emitter, Manager, RunEvent};
 
 /// Tell macOS AppKit to use the given language for native dialogs
