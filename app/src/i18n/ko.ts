@@ -284,6 +284,7 @@ export const ko: I18n = {
     typewriterMode: '타자기 모드 — 커서 가운데 고정',
     vimMode: 'Vim 모드 — hjkl 탐색, 모드, ex 명령',
     slashCommandsEnabled: '슬래시 명령(/) — 새 줄에서 /를 입력하면 Markdown 블록(제목, 목록, 코드, 표 등) 팝업',
+    customCssFixedWarning: '이 테마는 body의 background-attachment를 fixed로 변경했습니다 — body의 이 속성은 변경하지 않는 것이 좋습니다. 변경하면 오른쪽 카드를 드래그할 때 전체 화면이 깜빡입니다!',
     customCss: '사용자 지정 CSS 테마',
     pickCss: '.css 파일 선택…',
     refreshCss: '디스크에서 사용자 지정 CSS 다시 로드',

@@ -291,6 +291,7 @@ export const zh: I18n = {
     customCssLoaded: '自定义 CSS 主题已加载',
     customCssReloaded: '自定义 CSS 主题已重新加载',
     customCssReloadFailed: '自定义 CSS 主题重新加载失败',
+    customCssFixedWarning: '该主题body修改了 background-attachment：fixed ——不建议修改body的这个属性，这样会导致拖动右侧卡片时全屏闪烁！',
     clear: '清除',
     fileAssoc: '文件关联',
     setDefault: '⭐ 设为默认 Markdown 编辑器',

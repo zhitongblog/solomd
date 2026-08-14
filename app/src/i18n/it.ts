@@ -284,6 +284,7 @@ export const it: I18n = {
     typewriterMode: 'Modalità macchina da scrivere — mantieni cursore centrato',
     vimMode: 'Modalità Vim — navigazione hjkl, modi, comandi ex',
     slashCommandsEnabled: 'Comandi slash ( / ) — popup con blocchi Markdown (titolo, lista, codice, tabella…) digitando / a inizio riga',
+    customCssFixedWarning: 'Questo tema imposta background-attachment: fixed su body — non è consigliato modificare background-attachment di body, poiché provoca sfarfallio a schermo intero quando si trascina la barra laterale destra.',
     customCss: 'Tema CSS personalizzato',
     pickCss: 'Scegli file .css…',
     refreshCss: 'Ricarica CSS personalizzato dal disco',

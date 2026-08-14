@@ -313,6 +313,12 @@ body {
   font-size: var(--ui-font-size, 13px);
   color: var(--text);
   background: var(--bg);
+  /* #drag-flicker: app shell is overflow:hidden and body never scrolls, so
+     `scroll` is visually identical to `fixed` but lets the browser reuse the
+     already-painted layer instead of re-rasterizing the whole viewport every
+     frame. `!important` beats any external theme that sets `fixed`, which
+     would flicker while dragging the splitter. */
+  background-attachment: scroll !important;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
