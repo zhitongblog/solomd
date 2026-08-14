@@ -5,7 +5,7 @@ import Footer from '../components/Footer.astro';
 import Giscus from '../components/Giscus.astro';
 
 const lang = 'en' as const;
-const VERSION = '4.11.12';
+const VERSION = '4.11.13';
 const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERSION}`;
 ---
 
@@ -39,6 +39,20 @@ const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERS
         <a class="btn btn--secondary btn--lg" href={`${baseUrl}/SoloMD_${VERSION}_x64_en-US.msi`}>Download (Windows)</a>
         <a class="btn btn--secondary btn--lg" href={`https://github.com/zhitongblog/solomd/releases/tag/v${VERSION}`}>All assets →</a>
       </div>
+
+      <section>
+        <p class="version-row" style="margin-top:8px;">
+          <span class="version-tag">v4.11.13</span>
+          <time>Aug 2026</time>
+        </p>
+        <h2 style="margin-top:8px;">4.11.13 — a proper Gitea integration, 11 new themes, and two things that quietly did nothing.</h2>
+        <ul>
+          <li><strong>Gitea / Forgejo is a first-class sync target now.</strong> 4.11.12 made self-hosted sync <em>reachable</em>; this makes it real. Your Gitea token lives in its own keychain entry, so you can hold a GitHub and a Gitea token at the same time. Your server URL is remembered and checked before you commit to it. And SoloMD can now list your repositories and create the vault repo for you, instead of making you paste a clone URL. Contributed by <a href="https://github.com/JumpingY">@JumpingY</a>, verified end-to-end against a real Gitea server. (#150)</li>
+          <li><strong>11 new community themes.</strong> Aurora, Deep Blue, Deep Green, Deep Purple, Frost Blue, Graphite Gray, Ink Blue, Rose Pink, Soft UI, VSCode Modern and Warm Sand — by <a href="https://github.com/raopan2021">@raopan2021</a>, in Settings → Browse community themes. There is also a reload button next to your custom CSS file, so you can edit a theme in your editor and see it applied without restarting. (#239)</li>
+          <li><strong>Search in folder was dead if you had ever hidden the right sidebar.</strong> Ctrl/Cmd+Shift+F, the toolbar button and View → Search in Folder all did exactly nothing — and pressing again silently toggled it back off. The search panel lives in the right sidebar, and the sidebar's master hide switch outranked it, so the panel was being opened where nothing could draw it. All four entry points now un-hide the sidebar. (#209)</li>
+          <li><strong>Holding Cmd on a Mac no longer rescales the whole app by accident.</strong> Zoom-by-scroll stepped on any scroll event at all, so a trackpad under a resting finger — with Cmd held for ⌘S or ⌘Tab, as it usually is — would drift the entire UI down to minimum size. Incidental movement is now about five times less likely to zoom, while deliberate zooming is unchanged, and there is a switch in Settings → Basics to turn the gesture off completely. (#215)</li>
+        </ul>
+      </section>
 
       <section>
         <p class="version-row" style="margin-top:8px;">

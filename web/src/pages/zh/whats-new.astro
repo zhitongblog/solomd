@@ -5,7 +5,7 @@ import Footer from '../../components/Footer.astro';
 import Giscus from '../../components/Giscus.astro';
 
 const lang = 'zh' as const;
-const VERSION = '4.11.12';
+const VERSION = '4.11.13';
 const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERSION}`;
 ---
 
@@ -38,6 +38,20 @@ const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERS
         <a class="btn btn--secondary btn--lg" href={`${baseUrl}/SoloMD_${VERSION}_x64_en-US.msi`}>下载 (Windows)</a>
         <a class="btn btn--secondary btn--lg" href={`https://github.com/zhitongblog/solomd/releases/tag/v${VERSION}`}>所有平台 →</a>
       </div>
+
+      <section>
+        <p class="version-row" style="margin-top:8px;">
+          <span class="version-tag">v4.11.13</span>
+          <time>2026 年 8 月</time>
+        </p>
+        <h2 style="margin-top:8px;">4.11.13 —— 像样的 Gitea 集成、11 套新主题,以及两个一直没反应的功能。</h2>
+        <ul>
+          <li><strong>Gitea / Forgejo 成为一等公民。</strong>4.11.12 让自托管同步<em>走得通</em>,这一版让它真正好用:Gitea 令牌单独存在钥匙串里,你可以同时持有 GitHub 和 Gitea 两个令牌;服务器地址会被记住,并在你正式使用前先探活;现在还能直接列出你的仓库、替你创建笔记仓库,不用再手动粘贴克隆地址。由 <a href="https://github.com/JumpingY">@JumpingY</a> 贡献,已用真实 Gitea 服务端完整验证。(#150)</li>
+          <li><strong>新增 11 套社区主题。</strong>极光、深蓝、深绿、深紫、冰蓝、石墨灰、墨蓝、玫瑰粉、新拟态、VSCode Modern、暖沙 —— 由 <a href="https://github.com/raopan2021">@raopan2021</a> 制作,在 设置 → 浏览社区主题 里。自定义 CSS 文件旁边也加了个重新加载按钮,在编辑器里改完主题不用重启就能看到效果。(#239)</li>
+          <li><strong>只要你收起过右侧栏,「在文件夹中搜索」就是死的。</strong>Ctrl/Cmd+Shift+F、工具栏按钮、视图菜单三个入口全都毫无反应 —— 再按一次还会把状态悄悄翻回去。搜索面板本身是渲染在右侧栏里的,而右侧栏的总隐藏开关优先级更高,于是面板被打开在了一个画不出来的地方。现在四个入口都会自动展开侧栏。(#209)</li>
+          <li><strong>Mac 上按住 Cmd 不会再误缩放整个界面了。</strong>滚轮缩放原先只要有任何一点滚动就走一档,而 Cmd 又是 ⌘S、⌘Tab 时几乎一直按着的键 —— 手指搭在触控板上的轻微漂移,就足以把整个界面一路缩到最小。现在误触触发概率降到约五分之一,刻意缩放的手感完全不变,并且在 设置 → 基础 里可以把这个手势整个关掉。(#215)</li>
+        </ul>
+      </section>
 
       <section>
         <p class="version-row" style="margin-top:8px;">
