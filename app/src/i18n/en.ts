@@ -289,6 +289,7 @@ export const en = {
     typewriterMode: 'Typewriter Mode — keep cursor centered',
     vimMode: 'Vim Mode — hjkl navigation, modes, ex commands',
     slashCommandsEnabled: 'Slash commands ( / ) — popup with Markdown blocks (Heading, list, code, table…) when you type / on a new line',
+    customCssFixedWarning: 'This theme sets background-attachment: fixed on body — it’s not recommended to change body’s background-attachment, as it causes full-screen flicker when dragging the right sidebar.',
     customCss: 'Custom CSS Theme',
     pickCss: 'Pick .css file…',
     refreshCss: 'Reload custom CSS from disk',

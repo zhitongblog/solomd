@@ -289,6 +289,7 @@ export const sv: I18n = {
     typewriterMode: 'Skrivmaskinsläge — håll markören centrerad',
     vimMode: 'Vim-läge — hjkl-navigering, lägen, ex-kommandon',
     slashCommandsEnabled: 'Snedstreckskommandon ( / ) — popup med Markdown-block (rubrik, lista, kod, tabell…) när du skriver / på en ny rad',
+    customCssFixedWarning: 'Detta tema ändrar background-attachment: fixed på body — det rekommenderas inte att ändra body:s background-attachment, eftersom det orsakar helskärmsflimmer vid dragning av höger sidofält.',
     customCss: 'Anpassat CSS-tema',
     pickCss: 'Välj .css-fil…',
     refreshCss: 'Ladda om anpassad CSS från disk',

@@ -289,6 +289,7 @@ export const tr: I18n = {
     typewriterMode: 'Daktilo Modu — imleci ortada tut',
     vimMode: 'Vim Modu — hjkl gezinme, modlar, ex komutları',
     slashCommandsEnabled: 'Eğik çizgi komutları ( / ) — yeni satırda / yazdığınızda Markdown bloklarıyla (Başlık, liste, kod, tablo…) açılır pencere',
+    customCssFixedWarning: 'Bu tema body üzerinde background-attachment: fixed olarak değiştiriyor — body bu özelliğinin değiştirilmesi önerilmez, çünkü sağ kartı sürüklerken tam ekran titremeye neden olur!',
     customCss: 'Özel CSS Teması',
     pickCss: '.css dosyası seç…',
     refreshCss: 'Özel CSS\u0027i diskten yeniden yükle',

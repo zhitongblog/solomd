@@ -71,9 +71,4 @@ function startDrag(e: MouseEvent) {
   z-index: 5;
   transition: background 0.15s;
 }
-.rs-splitter:hover,
-:global(body.rs-splitter--dragging) .rs-splitter {
-  background: var(--accent, #ff9f40);
-  opacity: 0.5;
-}
 </style>

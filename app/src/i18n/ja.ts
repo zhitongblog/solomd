@@ -289,6 +289,7 @@ export const ja: I18n = {
     typewriterMode: 'タイプライターモード — カーソルを中央に固定',
     vimMode: 'Vim モード — hjkl ナビゲーション、モード、ex コマンド',
     slashCommandsEnabled: 'スラッシュコマンド ( / ) — 新しい行で / を入力すると Markdown ブロック（見出し、リスト、コード、テーブル…）のポップアップが表示',
+    customCssFixedWarning: 'このテーマは body の background-attachment を fixed に変更しています — body のこの属性は変更しないことをお勧めします。変更すると、右側カードをドラッグする際に全画面でちらつきます！',
     customCss: 'カスタム CSS テーマ',
     pickCss: '.css ファイルを選択…',
     refreshCss: 'カスタム CSS をディスクから再読み込み',

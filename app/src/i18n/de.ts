@@ -289,6 +289,7 @@ export const de: I18n = {
     typewriterMode: 'Schreibmaschinenmodus — Cursor zentriert halten',
     vimMode: 'Vim-Modus — hjkl-Navigation, Modi, ex-Befehle',
     slashCommandsEnabled: 'Slash-Befehle ( / ) — Popup mit Markdown-Blöcken (Überschrift, Liste, Code, Tabelle…), wenn Sie / am Zeilenanfang eingeben',
+    customCssFixedWarning: 'Dieses Theme setzt background-attachment: fixed auf body — es wird nicht empfohlen, background-attachment von body zu ändern, da dies beim Ziehen der rechten Seitenleiste zu Vollbild-Flackern führt.',
     customCss: 'Benutzerdefiniertes CSS-Design',
     pickCss: '.css-Datei auswählen…',
     refreshCss: 'Custom CSS von der Festplatte neu laden',

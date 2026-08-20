@@ -289,6 +289,7 @@ export const pl: I18n = {
     typewriterMode: 'Tryb maszyny do pisania — kursor wycentrowany',
     vimMode: 'Tryb Vim — nawigacja hjkl, tryby, polecenia ex',
     slashCommandsEnabled: 'Polecenia ukośnikowe ( / ) — popup z blokami Markdown (nagłówek, lista, kod, tabela…) po wpisaniu / w nowej linii',
+    customCssFixedWarning: 'Ten motyw zmienia background-attachment: fixed na body — nie zaleca się zmieniania background-attachment na body, ponieważ powoduje to migotanie całego ekranu podczas przeciągania prawego panelu.',
     customCss: 'Niestandardowy motyw CSS',
     pickCss: 'Wybierz plik .css…',
     refreshCss: 'Przeładuj niestandardowy CSS z dysku',
