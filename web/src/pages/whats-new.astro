@@ -5,7 +5,7 @@ import Footer from '../components/Footer.astro';
 import Giscus from '../components/Giscus.astro';
 
 const lang = 'en' as const;
-const VERSION = '4.11.13';
+const VERSION = '4.11.17';
 const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERSION}`;
 ---
 
@@ -15,7 +15,7 @@ const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERS
   lang={lang}
 >
   <Header lang={lang} />
-  <main>
+  <main id="main">
     <article class="container whats-new">
       <nav class="breadcrumbs">
         <a href="/">Home</a> / <span>What's new</span>
@@ -39,6 +39,60 @@ const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERS
         <a class="btn btn--secondary btn--lg" href={`${baseUrl}/SoloMD_${VERSION}_x64_en-US.msi`}>Download (Windows)</a>
         <a class="btn btn--secondary btn--lg" href={`https://github.com/zhitongblog/solomd/releases/tag/v${VERSION}`}>All assets →</a>
       </div>
+
+      <section>
+        <p class="version-row" style="margin-top:8px;">
+          <span class="version-tag">v4.11.17</span>
+          <time>Aug 2026</time>
+        </p>
+        <h2 style="margin-top:8px;">4.11.17 — the Option-key shortcuts, and one stall Linux can no longer take.</h2>
+        <ul>
+          <li><strong>Every ⌘⌥ shortcut works on macOS.</strong> macOS folds Option+letter into a different glyph before the keystroke ever reaches us — Option+N arrives as "Dead", Option+P as "π", Option+C as "ç" — and we were matching on the letter, so <kbd>⌘⌥N</kbd> (new text file), <kbd>⌘⌥P</kbd> (slideshow), <kbd>⌘⌥⇧P</kbd> (print to PDF), <kbd>⌘⌥B</kbd> and <kbd>⌘⌥L</kbd> had simply never fired on a Mac. They now match on physical key position. While we were there, <strong><kbd>⌘⌥C</kbd> copies the selection as Markdown</strong> — the one copy format people actually paste elsewhere, and the only one without a shortcut.</li>
+          <li><strong>Linux: SoloMD no longer waits on an accessibility service that isn't answering.</strong> When the desktop's AT-SPI bus accepts a call and never replies, GTK and WebKit each block the interface for their full D-Bus timeout — 25 s and 30 s — before the window can paint or take a click. SoloMD now asks that bus itself, with a two-second budget, before GTK starts: if it answers, nothing changes and screen readers work exactly as before; if it doesn't, we start without accessibility instead of waiting on it. Measured on a rig with a deliberately wedged bus, launch-to-usable went from 51 s to 3 s.<br /><strong>This is not a fix for the freezes reported on Arch and Ubuntu (<a href="https://github.com/zhitongblog/solomd/issues/253">#253</a>, <a href="https://github.com/zhitongblog/solomd/issues/200">#200</a>).</strong> Those never recover on their own; this stall always did, so it is something else, and that investigation is still open. If you are hitting one of those, the issues are the place to follow along.</li>
+        </ul>
+      </section>
+
+      <section>
+        <p class="version-row" style="margin-top:8px;">
+          <span class="version-tag">v4.11.16</span>
+          <time>Aug 2026</time>
+        </p>
+        <h2 style="margin-top:8px;">4.11.16 — the cursor stays where you put it.</h2>
+        <ul>
+          <li><strong>The caret no longer jumps away while you type on Windows.</strong> If anything touched the open file from outside — a cloud client syncing it, a sync pull, a save round-trip — SoloMD reloaded the buffer and the cursor was thrown to the other end of the document. Sometimes letters stopped going in at all, because the same event interrupted an in-flight IME composition or knocked focus out of the editor, at which point single keystrokes were being read as shortcuts. A fix for this existed since 4.11.1 but only covered the CodeMirror editor; Windows runs a native text box and never received it.</li>
+          <li><strong>Gitee sync works.</strong> It could not authenticate at all: we sent the Basic-auth username GitHub requires, and Gitee rejects it outright — so every attempt failed no matter how valid the token was. Verified end-to-end against a real Gitee repository now. (#249)</li>
+          <li><strong>The agent can actually write when you let it.</strong> "Allow the agent to write in the vault" had no effect — the write tools were never sent to the model, so it answered that it had none. And recipe runs finished on their branch but never appeared in "Pending review", so they could not be accepted or rejected. Both traced by <a href="https://github.com/jclg83">@jclg83</a>. (#247, #248)</li>
+          <li><strong>Spell-check in your language.</strong> The checker was pinned to English, which flagged every word for everyone else. Pick a dictionary in Settings → Writing, and drop any Hunspell <code>.aff</code> + <code>.dic</code> pair into the folder the button opens. (#246)</li>
+          <li><strong>Case conversion.</strong> <kbd>Shift+F3</kbd> cycles the selection — or the word under the cursor — through lower / UPPER / Title, with explicit commands in the palette. Requested on Gitee.</li>
+          <li><strong>Curly quotes are off for good.</strong> Making them opt-in in 4.11.11 only changed the default, so everyone who already had them kept seeing a wide gap after apostrophes on CJK fonts. Now cleared once, and it stays off unless you turn it back on. (#251)</li>
+        </ul>
+      </section>
+
+      <section>
+        <p class="version-row" style="margin-top:8px;">
+          <span class="version-tag">v4.11.15</span>
+          <time>Aug 2026</time>
+        </p>
+        <h2 style="margin-top:8px;">4.11.15 — three things Gitee had been telling us for weeks.</h2>
+        <ul>
+          <li><strong>Slash commands did nothing on Windows unless you were in Live Edit.</strong> Windows runs a plain text box rather than CodeMirror, because WebView2 drops characters during Chinese input — and the replacement autocomplete had only ever been wired to the Live Edit block editor. In 仅编辑 and 分栏 the popup never appeared, could not be navigated, and could not insert. It was not only the slash menu: <code>[[</code> wikilinks, <code>#</code> tags and <code>@</code> citations share the same trigger and were equally dead. All four now work in every mode, with the popup following your cursor line. (Gitee IK6JCC)</li>
+          <li><strong>The two PDF exports now say what they actually produce.</strong> "Export to PDF" rasterises the page, so the text is a picture — not selectable, not searchable, and several times larger. The export people actually wanted was sitting right below it under a name that gave no hint. They are now labelled — <em>PDF (text)</em>, real selectable text via the system print, listed first and recommended; <em>PDF (image)</em>, rasterised but saved without a dialog — in the toolbar and the command palette. (Gitee IK8QJQ)</li>
+          <li><strong>Word / EPUB / ODT / LaTeX exports match the preview again.</strong> Those formats go through Pandoc, which was being handed the raw file while the preview got a pass of leniency fixes first. A sublist indented two spaces therefore nested on screen and came out flat in a .docx. Pandoc now sees the same text you do. (Gitee IJXS8V)</li>
+        </ul>
+      </section>
+
+      <section>
+        <p class="version-row" style="margin-top:8px;">
+          <span class="version-tag">v4.11.14</span>
+          <time>Aug 2026</time>
+        </p>
+        <h2 style="margin-top:8px;">4.11.14 — the blank screen that swallowed your notes.</h2>
+        <ul>
+          <li><strong>A saved view that no longer existed could blank the whole editor, with no way back.</strong> Reported on Android as "notes won't open" — but the notes <em>were</em> opening: the toast fired, the status bar counted the lines, and then nothing appeared. The content area shows exactly one thing at a time and the editor is last in line, so a saved view marked open kept its place even after the view itself was gone. And because the pane's ‹ back button lived inside the same block that refused to render without a view, there was nothing left to click. Opening more files couldn't help — every one of them opened into a pane that couldn't draw. Android hit it most often, since a folder picked through the system file picker frequently can't read the views directory, but nothing about it was Android-only. The editor now takes over the moment a view stops resolving, and the back button always renders. (#245)</li>
+          <li><strong>The Aurora theme got a pass.</strong> Aurora-tinted hairline borders, translucent panel interiors that stay readable over the gradient, and no more full-screen strobe while dragging a panel edge. Thanks <a href="https://github.com/raopan2021">@raopan2021</a>. (#244)</li>
+          <li><strong>The Arch package is current again.</strong> <code>solomd-bin</code> is live on the AUR and the in-repo packaging (stuck at 4.1.0) now tracks the real releases. Thanks <a href="https://github.com/gonwe">@gonwe</a>. (#241)</li>
+        </ul>
+      </section>
 
       <section>
         <p class="version-row" style="margin-top:8px;">

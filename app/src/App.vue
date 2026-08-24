@@ -71,6 +71,7 @@ import { track } from './lib/telemetry';
 import { openWelcomeTour } from './lib/welcome-tour';
 import { useWorkspaceStore } from './stores/workspace';
 import { useWorkspaceIndexStore } from './stores/workspaceIndex';
+import { useSavedViewsStore } from './stores/savedViews';
 import { usePropertiesStore } from './stores/properties';
 import { useRagStore } from './stores/rag';
 import { IS_APP_STORE_BUILD } from './lib/app-build';
@@ -696,13 +697,18 @@ window.addEventListener(
   },
 );
 
-// v2.0 F2: load Hunspell dict on demand. (Lang fixed at en_US in v2.0.)
-let spellcheckLoaded = false;
+// v2.0 F2: load the Hunspell dictionary on demand.
+// #246 — the language is no longer pinned to en_US. `spellcheckLang` drives
+// it, and changing it reloads, so a user who drops es_ES into
+// `<config>/dictionaries/` and picks it gets Spanish checking immediately
+// instead of every word flagged against an English dictionary.
+let spellcheckLoadedFor: string | null = null;
 watchEffect(async () => {
-  if (settings.spellcheckEnabled && !spellcheckLoaded) {
+  const lang = settings.spellcheckLang || 'en_US';
+  if (settings.spellcheckEnabled && spellcheckLoadedFor !== lang) {
     try {
-      await invoke('spellcheck_init', { lang: 'en_US' });
-      spellcheckLoaded = true;
+      await invoke('spellcheck_init', { lang });
+      spellcheckLoadedFor = lang;
     } catch (e) {
       console.warn('spellcheck_init failed', e);
     }
@@ -1583,6 +1589,23 @@ const typeLensName = ref('');
 // v4.6 F5 — when a saved view is opened from the sidebar, the content area
 // swaps to ViewNoteList (mirrors the basesOpen pattern).
 const viewOpen = ref(false);
+/**
+ * #245 — only let a saved view displace the editor while there is actually a
+ * view to show.
+ *
+ * `ViewNoteList`'s entire template — including its ‹ back button — sits behind
+ * `v-if="view"`, and `view` is `savedViews.activeView`, which the store nulls
+ * out on reload whenever the active slug no longer exists on disk
+ * (savedViews.ts:123). Nothing told `viewOpen` about that, so the content area
+ * rendered ViewNoteList (nothing at all) while `TileRoot` stayed suppressed in
+ * the `v-else` branch: a blank pane with no way back, surviving every attempt
+ * to open a file. Files still opened — the toast fired and the status bar
+ * counted the lines — but nothing could draw them. Reported on Android, where
+ * a SAF-mounted workspace that can't read `.solomd/views/` hits it easily,
+ * though it is not Android-specific.
+ */
+const savedViewsStore = useSavedViewsStore();
+const viewPaneVisible = computed(() => viewOpen.value && !!savedViewsStore.activeView);
 const aiHasKey = ref(false);
 async function refreshAiHasKey() {
   if (!settings.aiEnabled) { aiHasKey.value = false; return; }
@@ -1683,7 +1706,7 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
           <BasesView v-if="basesOpen" />
           <InboxView v-else-if="inboxViewOpen" />
           <TypeLensView v-else-if="typeLensOpen" :type-name="typeLensName" />
-          <ViewNoteList v-else-if="viewOpen" />
+          <ViewNoteList v-else-if="viewPaneVisible" />
           <TileRoot v-else :node="tiles.root" @cursor="onCursor" @selection="onSelection" />
         </div>
         <aside

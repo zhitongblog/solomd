@@ -766,11 +766,46 @@ pub async fn github_sync_status(folder: String) -> Result<SyncStatus, String> {
 
 /// Build credential + push/fetch options that authenticate over HTTPS using
 /// our PAT. Same shape used by `gh-cli` / GitHub Codespaces.
+/// Owner segment of an HTTPS git URL — `https://host/OWNER/repo.git` → `OWNER`.
+/// Used to authenticate against forges that validate the Basic-auth username
+/// instead of ignoring it (see `make_callbacks`).
+fn owner_from_url(url: &str) -> Option<String> {
+    let after_scheme = url.split("://").nth(1)?;
+    let mut segs = after_scheme.split('/');
+    let _host = segs.next()?;
+    let owner = segs.next()?;
+    if owner.is_empty() { None } else { Some(owner.to_string()) }
+}
+
 fn make_callbacks(token: String) -> git2::RemoteCallbacks<'static> {
     let mut cb = git2::RemoteCallbacks::new();
-    cb.credentials(move |_url, _username, _allowed| {
-        // GitHub accepts the PAT as the password with literal username
-        // "x-access-token" — works regardless of the user's GH login.
+    cb.credentials(move |url, username, _allowed| {
+        // GitHub accepts the PAT as the password with the literal username
+        // "x-access-token", regardless of the user's login, and Gitea /
+        // Forgejo ignore the username field entirely — verified against a
+        // real Gitea 1.27 instance, where even a nonexistent username
+        // authenticates fine.
+        //
+        // Gitee (gitee.com) does NOT. It validates the username and answers
+        //     remote: The token username invalid
+        //     403
+        // for anything that is not the account name, which made every
+        // Gitee remote fail no matter how many times the user re-entered a
+        // working token (#249). Confirmed against a private Gitee repo:
+        // owner+token succeeds, x-access-token+token 403s.
+        //
+        // The owner segment of the remote URL is that account name, so use it
+        // for hosts that need a real one. git may also hand us a username
+        // parsed out of the URL itself — prefer that when present.
+        let host_needs_real_username = url.contains("gitee.com");
+        if host_needs_real_username {
+            if let Some(u) = username.filter(|u| !u.is_empty()) {
+                return git2::Cred::userpass_plaintext(u, &token);
+            }
+            if let Some(owner) = owner_from_url(url) {
+                return git2::Cred::userpass_plaintext(&owner, &token);
+            }
+        }
         git2::Cred::userpass_plaintext("x-access-token", &token)
     });
     cb
@@ -1471,4 +1506,33 @@ fn epoch_days_to_ymd(z: i64) -> (i32, u32, u32) {
     let m = if mp < 10 { mp + 3 } else { mp - 9 } as u32;
     let y = if m <= 2 { y + 1 } else { y };
     (y as i32, m, d)
+}
+
+#[cfg(test)]
+mod url_owner_tests {
+    use super::owner_from_url;
+
+    #[test]
+    fn extracts_the_account_segment() {
+        assert_eq!(
+            owner_from_url("https://gitee.com/zhitong45/notes.git").as_deref(),
+            Some("zhitong45")
+        );
+        assert_eq!(
+            owner_from_url("https://github.com/octocat/hello.git").as_deref(),
+            Some("octocat")
+        );
+        // Self-hosted forge under its own domain behaves the same.
+        assert_eq!(
+            owner_from_url("https://git.example.com/team/repo.git").as_deref(),
+            Some("team")
+        );
+    }
+
+    #[test]
+    fn rejects_urls_without_an_owner() {
+        assert_eq!(owner_from_url("https://gitee.com/").as_deref(), None);
+        assert_eq!(owner_from_url("https://gitee.com").as_deref(), None);
+        assert_eq!(owner_from_url("not a url").as_deref(), None);
+    }
 }

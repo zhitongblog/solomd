@@ -842,7 +842,16 @@ pub async fn run_recipe(
         }
     }
     let _ = handle.emit_run_ended(&final_meta);
-    let _ = handle.finalize(&final_meta);
+    // #248 — this used to swallow the error. When it failed (see the note in
+    // `RunHandle::finalize`) the run silently stayed "running" and vanished
+    // from Pending review, with nothing anywhere to explain why.
+    if let Err(e) = handle.finalize(&final_meta) {
+        eprintln!("recipe run {}: finalize failed: {e}", final_meta.run_id);
+        let _ = handle.append_step(serde_json::json!({
+            "kind": "note",
+            "text": format!("finalize failed: {e}"),
+        }));
+    }
 
     // Emit a UI event so the Recipes panel can refresh without polling.
     let _ = app.emit("solomd://recipes-run-finished", &final_meta);

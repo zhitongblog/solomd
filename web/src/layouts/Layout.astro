@@ -21,7 +21,20 @@ const {
 const HTML_LANG = { en: 'en', zh: 'zh-CN', ja: 'ja', ko: 'ko', de: 'de', fr: 'fr', es: 'es', pt: 'pt', it: 'it', pl: 'pl', nl: 'nl', tr: 'tr', sv: 'sv', uk: 'uk' } as const;
 const OG_LOCALE = { en: 'en_US', zh: 'zh_CN', ja: 'ja_JP', ko: 'ko_KR', de: 'de_DE', fr: 'fr_FR', es: 'es_ES', pt: 'pt_BR', it: 'it_IT', pl: 'pl_PL', nl: 'nl_NL', tr: 'tr_TR', sv: 'sv_SE', uk: 'uk_UA' } as const;
 const htmlLang = HTML_LANG[lang];
-const path = lang === 'en' ? '/' : `/${lang}/`;
+/* The real path of the page being rendered. This used to be derived from
+   `lang` alone (`/` or `/zh/`), which meant EVERY sub-page — all of /docs/,
+   /blog/, /compare/ — declared the language homepage as its canonical and its
+   og:url. That tells search engines those pages are duplicates of the home
+   page and should not be indexed on their own, and it made every shared link
+   preview show the homepage's URL. Astro.url.pathname is the actual route. */
+const path = Astro.url.pathname.endsWith('/')
+  ? Astro.url.pathname
+  : `${Astro.url.pathname}/`;
+/* The hreflang block below lists the language HOME pages, which is only true
+   for a language home page. On a sub-page it would claim, e.g., that the
+   Chinese version of /docs/sync/ is /zh/ — wrong, and worse than saying
+   nothing. So only emit it where it holds. */
+const isLangHome = path === '/' || /^\/[a-z]{2}\/$/.test(path);
 const ogLocale = OG_LOCALE[lang];
 const ogImage = lang === 'zh' ? 'https://solomd.app/og-image-zh.png' : 'https://solomd.app/og-image.png';
 ---
@@ -39,6 +52,8 @@ const ogImage = lang === 'zh' ? 'https://solomd.app/og-image-zh.png' : 'https://
       <meta name="robots" content="noindex, follow" />
     ) : (
       <>
+        {isLangHome && (
+        <>
         <link rel="alternate" hreflang="en" href="https://solomd.app/" />
         <link rel="alternate" hreflang="zh-CN" href="https://solomd.app/zh/" />
         <link rel="alternate" hreflang="ja" href="https://solomd.app/ja/" />
@@ -54,6 +69,8 @@ const ogImage = lang === 'zh' ? 'https://solomd.app/og-image-zh.png' : 'https://
         <link rel="alternate" hreflang="sv" href="https://solomd.app/sv/" />
         <link rel="alternate" hreflang="uk" href="https://solomd.app/uk/" />
         <link rel="alternate" hreflang="x-default" href="https://solomd.app/" />
+        </>
+        )}
         <link rel="canonical" href={`https://solomd.app${path}`} />
       </>
     )}
@@ -125,7 +142,7 @@ const ogImage = lang === 'zh' ? 'https://solomd.app/og-image-zh.png' : 'https://
       "applicationCategory": "ProductivityApplication",
       "applicationSubCategory": "Markdown Editor",
       "operatingSystem": "macOS, Windows, Linux, Android, iOS",
-      "softwareVersion": "4.11.13",
+      "softwareVersion": "4.11.17",
       "datePublished": "2026-05-17",
       "dateModified": "2026-08-08",
       "releaseNotes": "https://solomd.app/whats-new/",
@@ -201,14 +218,14 @@ const ogImage = lang === 'zh' ? 'https://solomd.app/og-image-zh.png' : 'https://
           "@type": "HowToStep",
           "position": 2,
           "name": "Windows — one-line install",
-          "text": "Open PowerShell and run: irm https://solomd.app/install.ps1 | iex. Downloads SoloMD_4.11.13_x64_en-US.msi from GitHub Releases and runs the installer.",
+          "text": "Open PowerShell and run: irm https://solomd.app/install.ps1 | iex. Downloads SoloMD_4.11.17_x64_en-US.msi from GitHub Releases and runs the installer.",
           "url": "https://solomd.app/install.ps1",
         },
         {
           "@type": "HowToStep",
           "position": 3,
           "name": "Android — sideload or Play Store",
-          "text": "Download SoloMD_4.11.13_universal.apk from https://github.com/zhitongblog/solomd/releases/latest and tap to install (Settings → enable Install from Unknown Sources). Or join the Play Store beta: join the group at groups.google.com/g/solomd-android-testers, then opt in at play.google.com/apps/testing/app.solomd.",
+          "text": "Download SoloMD_4.11.17_universal.apk from https://github.com/zhitongblog/solomd/releases/latest and tap to install (Settings → enable Install from Unknown Sources). Or join the Play Store beta: join the group at groups.google.com/g/solomd-android-testers, then opt in at play.google.com/apps/testing/app.solomd.",
           "url": "https://github.com/zhitongblog/solomd/releases/latest",
         },
         {
@@ -226,6 +243,9 @@ const ogImage = lang === 'zh' ? 'https://solomd.app/og-image-zh.png' : 'https://
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7786364053868586" crossorigin="anonymous"></script>
   </head>
   <body>
+    <!-- Keyboard users land on the nav on every page; this lets them jump the
+         whole header in one Tab. Visually hidden until focused. -->
+    <a class="skip-link" href="#main">{lang === 'zh' ? '跳到主要内容' : 'Skip to main content'}</a>
     <slot />
   </body>
 </html>

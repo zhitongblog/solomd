@@ -196,3 +196,46 @@ section {
   max-width: 680px;
   line-height: 1.55;
 }
+
+/* Respect a reduced-motion preference. The site has no keyframe animations,
+   but it does have 27 `transition` and 39 `transform` declarations — hover
+   lifts, panel slides, button scales — which are exactly what triggers
+   discomfort for users with vestibular disorders. Near-zero durations rather
+   than `none` so transitionend still fires and nothing that waits on it
+   stalls. `scroll-behavior: auto` cancels smooth in-page jumps too. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  html {
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Skip link — off-screen until it takes focus, then pinned top-left. Uses a
+   real off-screen position rather than `display:none`, which would remove it
+   from the tab order and defeat the point. */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 999;
+  padding: 10px 16px;
+  background: var(--accent, #ff9f40);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 0 0 6px 0;
+  text-decoration: none;
+}
+.skip-link:focus,
+.skip-link:focus-visible {
+  left: 0;
+  outline: 2px solid #fff;
+  outline-offset: -4px;
+}

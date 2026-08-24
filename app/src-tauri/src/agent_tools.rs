@@ -140,7 +140,6 @@ pub const READ_TOOLS: &[&str] = &[
 ];
 pub const WRITE_TOOLS: &[&str] = &["write_note", "append_to_note"];
 
-#[allow(dead_code)]
 pub fn all_tools() -> Vec<&'static str> {
     READ_TOOLS.iter().chain(WRITE_TOOLS.iter()).copied().collect()
 }

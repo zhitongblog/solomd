@@ -82,6 +82,7 @@ const shortcutGroups: ShortcutGroup[] = [
     items: [
       { keys: 'Ctrl+Shift+Alt+P', zh: '导出 PDF（系统打印对话框）', en: 'Export PDF (system print)' },
       { keys: 'Ctrl+Shift+C', zh: '复制为 HTML', en: 'Copy as HTML' },
+      { keys: 'Ctrl+Alt+C', zh: '复制为 Markdown', en: 'Copy as Markdown' },
       { keys: 'Ctrl+Alt+P', zh: '演讲模式（`---` 分页）', en: 'Slideshow mode (split on ---)' },
     ],
   },

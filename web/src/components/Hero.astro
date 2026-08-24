@@ -4,7 +4,7 @@ interface Props { lang: Lang }
 const { lang } = Astro.props;
 const tr = getT(lang);
 
-const VERSION = '4.11.13';
+const VERSION = '4.11.17';
 const REPO = 'zhitongblog/solomd';
 const baseUrl = `https://github.com/${REPO}/releases/download/v${VERSION}`;
 const langPrefix = lang === 'en' ? '' : `/${lang}`;
@@ -184,15 +184,21 @@ const initialDownloadsText = initialDownloads > 0 ? fmtDownloads(initialDownload
     </div>
 
     <div class="hero__demo">
-      <img
-        class="hero__demo-media"
-        src="/demo/solomd-hero.png"
-        alt={tr.hero.demoAlt}
-        width="1920"
-        height="873"
-        loading="eager"
-        fetchpriority="high"
-      />
+      <!-- Lossless WebP (40 KB) with the PNG (117 KB) as the fallback for any
+           engine without WebP. Verified pixel-identical to the PNG, so this is
+           purely a transfer-size win on the LCP image. -->
+      <picture>
+        <source srcset="/demo/solomd-hero.webp" type="image/webp" />
+        <img
+          class="hero__demo-media"
+          src="/demo/solomd-hero.png"
+          alt={tr.hero.demoAlt}
+          width="1920"
+          height="873"
+          loading="eager"
+          fetchpriority="high"
+        />
+      </picture>
     </div>
   </div>
 </section>

@@ -1,6 +1,7 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod linux_a11y;
 mod runner;
 mod windows_install_migration;
 
@@ -55,6 +56,12 @@ fn main() {
     if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() {
         std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
     }
+
+    // Linux (#253): a wedged accessibility bus makes GTK and WebKit each block
+    // the UI thread for their full D-Bus timeout before the window can appear.
+    // Ask the bus ourselves, with our own deadline, and switch accessibility
+    // off for this process only if it doesn't answer.
+    linux_a11y::guard_against_wedged_a11y_bus();
 
     let initial_file: Option<String> = std::env::args()
         .skip(1)

@@ -56,9 +56,27 @@ export function useShortcuts(hooks: Hooks = {}) {
       return;
     }
 
+    // Shift+F3 cycles the case of the selection / word under the caret
+    // (Gitee IK8QG3, Word's convention). Must be handled before the
+    // ctrl/meta gate below, since it carries neither.
+    if (e.key === 'F3' && e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      runById('editor.caseCycle');
+      return;
+    }
+
     const mod = e.ctrlKey || e.metaKey;
     if (!mod) return;
-    const k = e.key.toLowerCase();
+    // macOS composes Option+<letter> into an alternate glyph — ⌥C reports
+    // `key: "ç"`, ⌥N reports `key: "Dead"` — so every Alt combo below would
+    // silently never match if we went by `e.key`. `e.code` is the physical
+    // key position and is immune. Scope the swap to Alt combos only, so
+    // non-Latin layouts keep using `e.key` everywhere else, and so arrows /
+    // F-keys (whose `code` isn't `KeyX`) fall through untouched.
+    const k =
+      e.altKey && /^Key[A-Z]$/.test(e.code)
+        ? e.code.slice(3).toLowerCase()
+        : e.key.toLowerCase();
 
     // Ctrl+,  (settings)
     if (e.key === ',') {
@@ -92,6 +110,12 @@ export function useShortcuts(hooks: Hooks = {}) {
     } else if (k === 'c' && e.shiftKey) {
       e.preventDefault();
       exporter.copyAsHtml();
+    } else if (k === 'c' && e.altKey) {
+      // Markdown is what most people actually want to paste elsewhere
+      // (issues, chat, other editors), so it earns the second copy binding.
+      // Plain-text and PNG stay palette-only — they're one-off exports.
+      e.preventDefault();
+      exporter.copyAsMarkdown();
     } else if (k === 's' && e.shiftKey) {
       e.preventDefault();
       files.saveActiveAs();

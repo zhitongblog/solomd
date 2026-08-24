@@ -254,7 +254,76 @@ fn normalize_lang(lang: &str) -> String {
     }
 }
 
+/// Where a user drops extra Hunspell dictionaries: `<config>/dictionaries/`.
+/// #246 — only `en_US` is bundled, and the reporter's `es_ES.{dic,aff}` were
+/// copied into the app's *resources* folder, which is read-only on a signed
+/// build (and wiped on update) and was never scanned anyway. A writable,
+/// stable directory is the supported place.
+pub fn user_dicts_dir(app: &AppHandle) -> Result<PathBuf, String> {
+    let dir = app
+        .path()
+        .app_config_dir()
+        .map_err(|e| format!("app_config_dir: {e}"))?
+        .join("dictionaries");
+    Ok(dir)
+}
+
+/// Language codes with a usable `<lang>.aff` + `<lang>.dic` pair, from the
+/// user directory first and then the bundled resources. Feeds the language
+/// picker in Settings so it only ever offers dictionaries that exist.
+#[tauri::command]
+pub fn spellcheck_list_dicts(app: AppHandle) -> Result<Vec<String>, String> {
+    let mut found: Vec<String> = Vec::new();
+    let mut push = |code: String| {
+        if !found.contains(&code) {
+            found.push(code);
+        }
+    };
+
+    if let Ok(dir) = user_dicts_dir(&app) {
+        if let Ok(rd) = fs::read_dir(&dir) {
+            for e in rd.flatten() {
+                let p = e.path();
+                if p.extension().and_then(|x| x.to_str()) == Some("dic") {
+                    if let Some(stem) = p.file_stem().and_then(|x| x.to_str()) {
+                        if p.with_extension("aff").exists() {
+                            push(stem.to_string());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // The bundled one is always available even if the user dir is empty.
+    push("en_US".to_string());
+    found.sort();
+    Ok(found)
+}
+
+/// Create `<config>/dictionaries/` if needed and return it, so Settings can
+/// reveal it in the file manager — nobody should have to guess where
+/// `app_config_dir()` lands on their OS.
+#[tauri::command]
+pub fn spellcheck_dicts_dir(app: AppHandle) -> Result<String, String> {
+    let dir = user_dicts_dir(&app)?;
+    fs::create_dir_all(&dir).map_err(|e| format!("create {}: {e}", dir.display()))?;
+    Ok(dir.to_string_lossy().to_string())
+}
+
 fn resolve_dict_paths(app: &AppHandle, lang: &str) -> Result<(PathBuf, PathBuf), String> {
+    // #246 — a dictionary the user dropped into `<config>/dictionaries/` wins,
+    // so an install can gain es_ES / de_DE / fr_FR without us shipping every
+    // language (each pair is ~1 MB; bundling a dozen would bloat the download
+    // for the majority who need one).
+    if let Ok(dir) = user_dicts_dir(app) {
+        let aff_user = dir.join(format!("{lang}.aff"));
+        let dic_user = dir.join(format!("{lang}.dic"));
+        if aff_user.exists() && dic_user.exists() {
+            return Ok((aff_user, dic_user));
+        }
+    }
+
     // Tauri's resource resolver looks up files declared under
     // `bundle.resources` in tauri.conf.json. The parent will add
     // `resources/dicts/*` based on SUMMARY.md.
@@ -291,4 +360,27 @@ fn user_dict_path(app: &AppHandle, lang: &str) -> Result<PathBuf, String> {
         .app_config_dir()
         .map_err(|e| format!("app_config_dir: {e}"))?;
     Ok(dir.join(format!("user-dict-{lang}.txt")))
+}
+
+#[cfg(test)]
+mod user_dict_tests {
+    use spellbook::Dictionary;
+
+    /// #246 — the whole point of the user directory is that an arbitrary
+    /// Hunspell pair loads and judges words in that language. This proves the
+    /// parsing half end-to-end with a Spanish dictionary; path resolution
+    /// order is covered by `resolve_dict_paths` preferring the user dir.
+    #[test]
+    fn a_dropped_in_dictionary_parses_and_checks_words() {
+        let aff = "SET UTF-8\nTRY esiaonrtlcdumpbgvfqhjz\n";
+        let dic = "5\nhola\nmundo\ncómo\nestás\nmañana\n";
+        let dict = Dictionary::new(aff, dic).expect("es_ES pair must parse");
+
+        assert!(dict.check("hola"), "a Spanish word must be accepted");
+        assert!(dict.check("mañana"), "accented Spanish must be accepted");
+        assert!(
+            !dict.check("qwertyuiop"),
+            "nonsense must still be rejected, or the check is vacuous"
+        );
+    }
 }

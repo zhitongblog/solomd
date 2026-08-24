@@ -492,6 +492,49 @@ mod tests {
         assert_eq!(id.as_bytes()[15], b'-');
     }
 
+    /// #248 — a recipe run's `agent-runs/<id>/` files are committed on the
+    /// agent branch, so the cleanup checkout back to main deletes them from
+    /// the working tree before `finalize` runs. `finalize` must recreate the
+    /// directory; otherwise meta.json is never written, status stays
+    /// "running", and the run never shows up in Pending review.
+    #[test]
+    fn finalize_recreates_a_run_dir_removed_by_a_checkout() {
+        let tmp = std::env::temp_dir().join(format!("solomd-test-gone-{}", mint_run_id()));
+        fs::create_dir_all(&tmp).unwrap();
+        let h = RunHandle::start(&tmp, RunKind::Recipe, "openai", "m", None).unwrap();
+
+        // Simulate `git checkout main` wiping the committed run directory.
+        fs::remove_dir_all(&h.dir).unwrap();
+        assert!(!h.dir.exists());
+
+        let meta_raw = fs::read_to_string(tmp.join(".solomd/agent-runs").join(&h.run_id).join("meta.json"))
+            .unwrap_or_else(|_| "{}".to_string());
+        let _ = meta_raw;
+
+        let meta = RunMeta {
+            run_id: h.run_id.clone(),
+            kind: "recipe".into(),
+            started_at: 0,
+            ended_at: Some(1),
+            status: "ok".into(),
+            workspace: tmp.to_string_lossy().to_string(),
+            provider: "openai".into(),
+            model: "m".into(),
+            recipe: None,
+            tokens: TokenCounts { input: 1, output: 2 },
+            cost_usd_estimate: 0.0,
+            error: None,
+            accepted: None,
+        };
+        h.finalize(&meta).expect("finalize must survive a removed run dir");
+
+        let written: Value =
+            serde_json::from_str(&fs::read_to_string(h.dir.join("meta.json")).unwrap()).unwrap();
+        assert_eq!(written["status"], "ok", "the final status must be persisted");
+
+        let _ = fs::remove_dir_all(&tmp);
+    }
+
     #[test]
     fn start_creates_files_and_finish_updates_meta() {
         let tmp = std::env::temp_dir().join(format!("solomd-test-run-{}", mint_run_id()));
@@ -789,6 +832,15 @@ impl RunHandle {
     /// runner builds end-to-end.
     pub fn finalize(&self, meta: &RunMeta) -> Result<(), String> {
         let json = serde_json::to_string_pretty(meta).map_err(|e| format!("serialise meta: {e}"))?;
+        // #248 — a recipe run commits its `agent-runs/<id>/` files onto the
+        // agent branch, and the cleanup checkout back to main then DELETES
+        // that directory from the working tree. Writing meta.json here used
+        // to fail on the missing parent, leaving status stuck at "running"
+        // forever, so `recipes_pending_runs` (which scans the working tree)
+        // reported nothing and the run could never be reviewed. Recreate the
+        // directory rather than assume the checkout left it alone.
+        fs::create_dir_all(&self.dir)
+            .map_err(|e| format!("create run dir {}: {e}", self.dir.display()))?;
         fs::write(self.dir.join("meta.json"), json).map_err(|e| format!("write meta: {e}"))?;
         // Mirror the P1 finish path — successful recipe runs feed the
         // per-provider cost meter (opt-in; no-ops when disabled).

@@ -290,6 +290,35 @@ export function useCommands(): Command[] {
       },
     },
 
+    // Gitee IK8QG3. Acts on the selection, or the word under the caret when
+    // there is nothing selected. Shift+F3 cycles lower → UPPER → Title, which
+    // is the Word convention most writers already have in their fingers.
+    {
+      id: 'editor.caseCycle',
+      title: 'Cycle Case (lower / UPPER / Title)',
+      hint: 'Selection, or the word under the cursor',
+      shortcut: 'Shift+F3',
+      run: () => window.dispatchEvent(new CustomEvent('solomd:transform-case', { detail: { mode: 'cycle' } })),
+    },
+    {
+      id: 'editor.caseUpper',
+      title: 'UPPERCASE',
+      hint: 'Selection, or the word under the cursor',
+      run: () => window.dispatchEvent(new CustomEvent('solomd:transform-case', { detail: { mode: 'upper' } })),
+    },
+    {
+      id: 'editor.caseLower',
+      title: 'lowercase',
+      hint: 'Selection, or the word under the cursor',
+      run: () => window.dispatchEvent(new CustomEvent('solomd:transform-case', { detail: { mode: 'lower' } })),
+    },
+    {
+      id: 'editor.caseTitle',
+      title: 'Title Case',
+      hint: 'Selection, or the word under the cursor',
+      run: () => window.dispatchEvent(new CustomEvent('solomd:transform-case', { detail: { mode: 'title' } })),
+    },
+
     {
       id: 'editor.insertImageUrl',
       title: 'Image from URL…',
@@ -360,8 +389,10 @@ export function useCommands(): Command[] {
 
     { id: 'export.html', title: 'Export to HTML…', run: () => exporter.exportHtml() },
     { id: 'export.docx', title: 'Export to Word (DOCX)…', run: () => exporter.exportDocx() },
-    { id: 'export.pdf', title: 'Export to PDF…', run: () => exporter.exportPdf() },
-    { id: 'export.pdfPrint', title: 'Export to PDF via System Print…', shortcut: 'Ctrl+Shift+Alt+P', run: () => exporter.exportPdfPrint() },
+    // Gitee IK8QJQ — the raster/text distinction decides whether the output
+    // is searchable, so it belongs in the palette too, not just the toolbar.
+    { id: 'export.pdfPrint', title: 'Export to PDF (text)…', hint: 'real selectable text, via system print', shortcut: 'Ctrl+Shift+Alt+P', run: () => exporter.exportPdfPrint() },
+    { id: 'export.pdf', title: 'Export to PDF (image)…', hint: 'rasterised, text not selectable', run: () => exporter.exportPdf() },
     { id: 'export.image', title: 'Export to Image (PNG)…', run: () => exporter.exportImage() },
     { id: 'export.epub', title: 'Export to EPUB…', hint: 'via Pandoc', run: () => pandoc.exportTo('epub') },
     { id: 'export.odt', title: 'Export to ODT…', hint: 'via Pandoc', run: () => pandoc.exportTo('odt') },
@@ -370,7 +401,7 @@ export function useCommands(): Command[] {
     { id: 'export.pandocCustom', title: 'Export via Pandoc Template…', run: () => pandoc.exportTo('custom') },
     { id: 'export.copyHtml', title: 'Copy as HTML', shortcut: 'Ctrl+Shift+C', run: () => exporter.copyAsHtml() },
     { id: 'export.copyPlain', title: 'Copy as Plain Text', run: () => exporter.copyAsPlainText() },
-    { id: 'export.copyMd', title: 'Copy as Markdown', run: () => exporter.copyAsMarkdown() },
+    { id: 'export.copyMd', title: 'Copy as Markdown', shortcut: 'Ctrl+Alt+C', run: () => exporter.copyAsMarkdown() },
     { id: 'export.copyImage', title: 'Copy as Image (PNG)', run: () => exporter.copyAsImage() },
 
     {

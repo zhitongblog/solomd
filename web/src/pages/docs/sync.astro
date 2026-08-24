@@ -28,7 +28,7 @@ const FAQ = [
   lang={lang}
 >
   <Header lang={lang} />
-  <main>
+  <main id="main">
     <article class="container docs-article">
       <nav class="breadcrumbs">
         <a href="/">Home</a> / <a href="/docs/">Docs</a> / <span>Sync &amp; History</span>
@@ -100,6 +100,11 @@ const FAQ = [
         Dropbox, Syncthing, OneDrive — point SoloMD at the synced folder on each
         device. On Android, open the same folder via the system file picker; on iOS,
         use a Files-app location.
+      </p>
+      <p>
+        Using iCloud? There's a fuller walkthrough — Mac and iPhone steps, cross-device
+        session restore, and what to watch for when two machines edit at once:
+        <a href="/docs/icloud/">Sync with iCloud</a>.
       </p>
 
       <CompareFaq heading="Frequently asked questions" items={FAQ} />

@@ -28,6 +28,7 @@ import ProxySettings from './ProxySettings.vue';
 import ThemeMarketplace from './ThemeMarketplace.vue';
 import { isIOS, hasGitBackend } from '../lib/platform';
 import { loadCustomTheme } from '../lib/custom-theme';
+import { openPath } from '@tauri-apps/plugin-opener';
 import { DsModal } from '../ui';
 import type { Theme } from '../types';
 
@@ -121,6 +122,30 @@ watch(
 );
 
 const settings = useSettingsStore();
+
+// #246 — dictionaries actually present, so the picker can't offer a language
+// that would fail to load. `spellcheck_list_dicts` scans
+// `<config>/dictionaries/` and always includes the bundled en_US.
+const spellDicts = ref<string[]>(['en_US']);
+async function refreshSpellDicts() {
+  try {
+    spellDicts.value = await invoke<string[]>('spellcheck_list_dicts');
+  } catch {
+    spellDicts.value = ['en_US'];
+  }
+}
+/** Create + reveal the folder — nobody should have to guess where the OS puts
+ *  app_config_dir(). Re-scans on return so a just-added pair shows up. */
+async function openDictsFolder() {
+  try {
+    const dir = await invoke<string>('spellcheck_dicts_dir');
+    await openPath(dir);
+    setTimeout(refreshSpellDicts, 1500);
+  } catch (e) {
+    toasts.error(`${e}`);
+  }
+}
+void refreshSpellDicts();
 const tabs = useTabsStore();
 const toasts = useToastsStore();
 const workspace = useWorkspaceStore();
@@ -1171,6 +1196,23 @@ function onSelectPdfFont(v: string) {
             <input type="checkbox" :checked="settings.spellCheck" @change="settings.toggleSpellCheck()" />
             {{ t('settings.spellCheck') }}
           </label>
+          <!-- #246 — only en_US ships with the app; anything the user drops in
+               `<config>/dictionaries/` shows up here. Without this the checker
+               flagged every word for non-English writers. -->
+          <div v-if="settings.spellCheck" class="ghs-row" style="align-items:center; gap:8px; margin-top:6px;">
+            <span>{{ t('settings.spellcheckLang') }}</span>
+            <select
+              class="ghs-select"
+              :value="settings.spellcheckLang"
+              @change="settings.setSpellcheckLang(($event.target as HTMLSelectElement).value)"
+            >
+              <option v-for="code in spellDicts" :key="code" :value="code">{{ code }}</option>
+            </select>
+            <button type="button" class="link-button" @click="openDictsFolder">
+              {{ t('settings.spellcheckAddDict') }}
+            </button>
+          </div>
+          <p v-if="settings.spellCheck" class="setting-hint">{{ t('settings.spellcheckLangHint') }}</p>
         </section>
 
         <section data-cat="writing">

@@ -1,0 +1,140 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import Header from '../../../components/Header.astro';
+import Footer from '../../../components/Footer.astro';
+import Giscus from '../../../components/Giscus.astro';
+
+const lang = 'zh' as const;
+---
+
+<Layout
+  title="用 iCloud 同步笔记 — 不需要配置，把文件夹放进去就行"
+  description="SoloMD 支持通过 iCloud 云盘、Dropbox、OneDrive、Google Drive 同步笔记：无需登录、无需插件，把笔记文件夹放进云盘再用 SoloMD 打开即可。含 Mac / iPhone / iPad 设置步骤、跨设备接力、以及多设备同时编辑的冲突注意事项。"
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main id="main">
+    <article class="container docs-article">
+      <nav class="breadcrumbs">
+        <a href="/zh/">首页</a> / <a href="/zh/docs/">文档</a> / <span>iCloud 同步</span>
+      </nav>
+
+      <h1>用 iCloud 同步笔记</h1>
+      <p class="lead">不需要注册账号，也不需要装插件。把文件夹放进 iCloud，用 SoloMD 打开它，就同步好了。</p>
+
+      <h2>为什么不需要"配置同步"</h2>
+      <p>
+        SoloMD 的笔记就是硬盘上普通的 <code>.md</code> 文件，没有私有数据库、没有专有格式。
+        所以同步这件事根本不用 SoloMD 参与 —— iCloud 已经在同步那个文件夹了，
+        SoloMD 只负责读写本地文件。
+      </p>
+      <p>
+        这也意味着：<strong>同样的办法对 Dropbox、OneDrive、Google Drive、Syncthing 一样有效</strong>，
+        下面的步骤把 iCloud 换成对应的云盘目录即可。
+      </p>
+
+      <h2>Mac 上怎么设置</h2>
+      <ol>
+        <li>打开访达，点左侧边栏的 <strong>iCloud 云盘</strong></li>
+        <li>在里面新建一个文件夹，比如 <code>Notes</code></li>
+        <li>打开 SoloMD → <strong>打开文件夹</strong> → 选中刚才那个 <code>Notes</code></li>
+      </ol>
+      <p>
+        结束了。之后每次保存，iCloud 会在后台把改动同步到你的其他设备。
+      </p>
+      <p>
+        这个目录在磁盘上的真实路径是
+        <code>~/Library/Mobile Documents/com~apple~CloudDocs/</code> ——
+        访达侧边栏里的「iCloud 云盘」指的就是它。知道这一点有时有用，
+        比如你想在终端里 <code>cd</code> 进去。
+      </p>
+
+      <h2>SoloMD 会为此多做两件事</h2>
+
+      <h3>1. 自动认出云盘文件夹</h3>
+      <p>
+        打开文件夹时，SoloMD 会检查它是不是在 iCloud / Dropbox / OneDrive / Google Drive 里。
+        认出来之后：
+      </p>
+      <ul>
+        <li>顶部会出现一条提示条，告诉你这个笔记库正在被云盘同步</li>
+        <li>
+          <strong>不再提示你配置 GitHub 同步</strong> ——
+          云盘已经在做这件事了，再劝你配一套只会是干扰
+        </li>
+      </ul>
+
+      <h3>2. 跨设备接力：换台电脑接着上次继续</h3>
+      <p>
+        每台设备会在笔记库里写一个属于自己的小文件，记录你打开了哪些标签页。
+        换另一台设备打开同一个库时，如果发现别的设备有更新的记录，
+        SoloMD 会问你要不要恢复到上次的状态 —— 标签页会照原样打开。
+      </p>
+      <p>
+        这些记录放在库里的 <code>.solomd/</code> 目录，会跟着云盘一起同步。
+        <strong>它只在真正的云盘文件夹里生成</strong>：你打开一个普通的本地文件夹，
+        SoloMD 不会往里放任何东西。
+      </p>
+
+      <h2>iPhone / iPad</h2>
+      <p>
+        一样的思路：iOS 版 SoloMD 通过系统的「文件」App 访问 iCloud 云盘，
+        打开你在 Mac 上建的那个 <code>Notes</code> 文件夹即可，两边是同一份文件。
+      </p>
+      <p>
+        <strong>安卓没有 iCloud</strong>（苹果没有提供安卓端）。
+        安卓要跨设备同步，可以用 Dropbox / OneDrive 之类有安卓客户端的云盘，
+        或者走 <a href="/zh/docs/sync/">GitHub / Gitea 同步</a>。
+      </p>
+
+      <h2>需要留意的地方</h2>
+      <ul>
+        <li>
+          <strong>别在两台设备上同时编辑同一个文件。</strong>
+          iCloud 是<em>文件级</em>同步，它不会合并同一个文件里的不同改动 ——
+          真撞上了它会保留一个「冲突副本」，需要你自己手动合并。
+          日常在 A 电脑写、B 电脑看，是完全没问题的。
+        </li>
+        <li>
+          <strong>等它同步完再关电脑。</strong>
+          文件很大或网络慢时，iCloud 可能还没传完。
+          访达里文件名旁边有云朵图标就说明还在传。
+        </li>
+        <li>
+          <strong>iCloud 没有版本历史。</strong>
+          想要"改错了能回退"、"能看到每次改了什么"、"冲突有提示和处理"，
+          那是另一条路 —— 见 <a href="/zh/docs/sync/">同步、历史与备份</a>，
+          SoloMD 内置了本地快照和 GitHub / Gitea 同步，两者可以和云盘并用。
+        </li>
+        <li>
+          <strong>「优化 Mac 储存空间」可能把文件移到云端。</strong>
+          macOS 在磁盘紧张时会把不常用的文件只留在云上、本地只保留占位符。
+          笔记库通常很小，一般不会被挑中；如果遇到打开变慢，
+          可以在 系统设置 → Apple 账户 → iCloud 里关掉这个选项。
+        </li>
+      </ul>
+
+      <h2>没生效怎么办</h2>
+      <ul>
+        <li>
+          <strong>没看到云盘提示条？</strong>
+          说明 SoloMD 没认出这个路径在 iCloud 里。最常见的原因是
+          你打开的是一个指向 iCloud 的<em>替身/软链接</em>，而不是真实路径。
+          直接从访达的「iCloud 云盘」进去重新打开一次即可。
+        </li>
+        <li>
+          <strong>另一台设备看不到新笔记？</strong>
+          先确认两边打开的是同一个文件夹（不是各自本地的同名文件夹），
+          再检查 iCloud 是否登录同一个 Apple 账户、以及「iCloud 云盘」开关是否打开。
+        </li>
+        <li>
+          还是不行的话，<a href="https://github.com/zhitongblog/solomd/issues">开个 issue</a>
+          告诉我们你的路径和现象，我们跟进。
+        </li>
+      </ul>
+
+      <Giscus />
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>

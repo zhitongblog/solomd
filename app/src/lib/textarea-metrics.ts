@@ -103,6 +103,23 @@ function caretTopAt(mirror: HTMLDivElement, text: string, pos: number): number {
   return marker.offsetTop;
 }
 
+/**
+ * Caret's top offset in px, measured from the start of the text flow (so it
+ * ignores the textarea's scroll position and padding — add those back at the
+ * call site). Used to anchor the autocomplete popup to the caret's own row in
+ * the flat (non-block) plain editor, where the document is one long textarea
+ * and anchoring to the element's top would put the popup nowhere near the
+ * caret. Soft wrap is accounted for, since the mirror wraps identically.
+ */
+export function caretTopPx(el: HTMLTextAreaElement, text: string, pos: number): number {
+  const mirror = createMirror(el);
+  try {
+    return caretTopAt(mirror, text, pos);
+  } finally {
+    mirror.remove();
+  }
+}
+
 export interface CaretRowInfo {
   /** Caret is on the first *visual* row of the text. */
   firstRow: boolean;

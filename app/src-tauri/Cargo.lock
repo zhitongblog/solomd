@@ -4918,7 +4918,7 @@ dependencies = [
 
 [[package]]
 name = "solomd"
-version = "4.11.13"
+version = "4.11.17"
 dependencies = [
  "argon2",
  "async-stream",
@@ -4933,6 +4933,7 @@ dependencies = [
  "csv",
  "encoding_rs",
  "futures-util",
+ "gio",
  "git2",
  "globset",
  "hex",

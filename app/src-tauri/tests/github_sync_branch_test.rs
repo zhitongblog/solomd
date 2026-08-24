@@ -23,7 +23,13 @@ fn fresh(label: &str) -> PathBuf {
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let p = std::env::temp_dir().join(format!("solomd-branch-{label}-{nanos}"));
+    // Both tests in this file call fresh("seeder"), and cargo runs them on
+    // separate threads — a bare nanosecond stamp can collide, and then they
+    // share one git dir and one fails on `.git/config.lock: File exists`.
+    // The thread id disambiguates regardless of clock resolution.
+    let tid = format!("{:?}", std::thread::current().id())
+        .replace(|c: char| !c.is_ascii_alphanumeric(), "");
+    let p = std::env::temp_dir().join(format!("solomd-branch-{label}-{nanos}-{tid}"));
     let _ = fs::remove_dir_all(&p);
     fs::create_dir_all(&p).unwrap();
     p

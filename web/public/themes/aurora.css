@@ -4,7 +4,7 @@
  *
  * 本主题在 SoloMD 基础上做的自定义：
  * 1. 背景：--bg 为普通纯色 #0d1424；多层极光渐变（深空夜空打底 +
- *    角落绿/蓝/紫光晕）仅在 body 使用，background-attachment: fixed；
+ *    角落绿/蓝/紫光晕）仅在 body 使用，
  *    除弹窗外所有区域透明，统一透出 body 渐变。
  * 2. 区域分隔：各区域用半透明极光实色 border（上/左/中/右/下按空间顺序排列），
  *    右侧栏与预览区分割线加粗；顶部工具栏无边框。
@@ -43,7 +43,7 @@
   --bg-hover: #17202f;
   --bg-active: #1e2a3c;
   --bg-soft: #111829; /* 右侧栏 */
-  --border: #253244;
+  --border: rgba(103, 232, 185, 0.35);
   --text: #e4ecf5;
   --text-muted: #aebdd0;
   --text-faint: #8395ad;
@@ -106,20 +106,9 @@
 /* 页面背景：极光渐变（仅 body 使用，固定视口） */
 body {
   background-image: var(--bg-grad);
-  background-attachment: fixed;
-}
-/* 拖动分隔条/调整面板高度时：高频重排会触发 fixed 渐变整屏重绘，
-   在 WebView2 上表现为整屏闪烁、变亮刺眼；多层半透明光晕在合成层
-   重建瞬间 alpha 混合异常，还会呈现灰蒙蒙蒙版。
-   拖动瞬间切掉 fixed、去掉多层光晕，改用纯色打底，结束后自动恢复。 */
-body.rs-splitter--dragging {
-  background-attachment: scroll !important;
-  background-image: none !important;
-  background-color: var(--bg) !important;
 }
 
 /* 全区域透明：顶部栏/侧栏/状态栏/编辑预览/面板等全部透明，
-   统一透出 body 的 fixed 渐变，保证背景连贯。
    例外：弹窗必须不透明（见"弹窗"分区）。 */
 .app,
 .pane-host,
@@ -133,7 +122,9 @@ body.rs-splitter--dragging {
 .ftree,
 .outline,
 .side-sidebar,
-.pane-tabbar {
+.pane-tabbar,
+.nbhd__empty-code,
+.agent-panel__cta {
   background: transparent !important;
 }
 
@@ -150,15 +141,70 @@ body.rs-splitter--dragging {
 .inspector__head,
 .backlinks__head,
 .tags-panel__head,
-.agent-panel__cta,
+.tags-panel__btn,
 .agent-panel__empty,
 .agent-panel__head,
 .tags-panel__count,
-.tags-panel__btn,
 .history__head,
 .sp__head,
 .vpanel__header {
   background: transparent !important;
+  border: none !important;
+}
+
+/* 面板内依赖容器背景的元素（tag/按钮/序号/行项）：
+   容器透明后它们会失去依托变黑，给半透明深色背景，透出渐变且可读。
+   按 app 界面从上到下、从左到右排列。 */
+/* —— 大纲 Outline（右侧栏顶部） —— */
+.outline__item,              /* 大纲：列表项 */
+.outline__label,             /* 大纲：标题文字 */
+.outline__twisty,            /* 大纲：展开/折叠箭头 */
+.outline__close,             /* 大纲：关闭按钮 */
+.outline__statusbar--idle,   /* 大纲：空状态提示栏 */
+/* —— 关系 Relationships —— */
+.ds-btn--ghost,              /* 关系：添加目标/取消按钮 */
+.ds-chip__remove,            /* 关系：tag 移除按钮 */
+.rel__chip-link,             /* 关系：tag 链接 */
+.ds-list-row,                /* 关系：列表行（默认态） */
+.rel__group-label,           /* 关系：分组标签 */
+.rel__region-empty,          /* 关系：空区域提示 */
+/* —— 反向链接 Backlinks —— */
+.backlinks__row,             /* 反向链接：列表行 */
+.backlinks__count,           /* 反向链接：计数徽章 */
+/* —— 标签 Tags —— */
+.tags-panel__row,            /* 标签：列表行 */
+.nbhd__focalbar,
+.rel__guard,
+/* —— 属性 Inspector —— */
+.inspector__suggested-chip,  /* 属性：建议标签 */
+.inspector__add,             /* 属性：添加按钮 */
+/* —— 历史 History —— */
+.history__row,               /* 历史：列表行 */
+.history__restore,           /* 历史：恢复按钮 */
+.history__count,             /* 历史：计数徽章 */
+/* —— 通用 —— */
+.win-controls,
+.rs-pane-close {
+  border: none !important;
+  background: transparent !important;
+  border-radius: 999px;
+}
+
+/* 有边框、无背景 */
+/* —— 智能体 Agent —— */
+.agent-panel__icon-btn,      /* 智能体：图标按钮 */
+.agent-panel__chip,          /* 智能体：标签 */
+.agent-panel__send--stop,    /* 智能体：发送/停止按钮 */
+.outline__keylabel,
+.ds-btn--subtle {
+  background: transparent !important;
+  border: 1px solid rgba(103, 232, 185, 0.5) !important;
+}
+/* 大纲序号标签 hover/active：恢复 accent 背景，保证文字可读 */
+.outline__item:hover .outline__keylabel,
+.outline__item--active .outline__keylabel {
+  background: var(--accent) !important;
+  color: var(--accent-fg, #1a1a1a) !important;
 }
 /* #endregion */
 
@@ -359,14 +405,6 @@ body.rs-splitter--dragging {
 
 /* #region 面板与卡片 */
 /* 历史版本、反向链接计数徽章 */
-.history__count,
-.backlinks__count {
-  border: 1px solid transparent !important;
-  background:
-    linear-gradient(rgba(10, 14, 25, 0.4), rgba(10, 14, 25, 0.4)) padding-box,
-    var(--grad-border-soft) border-box !important;
-  border-radius: 999px;
-}
 /* 卡片/面板之间的分隔条 */
 .rs-splitter {
   border-top: 1px solid rgba(103, 232, 185, 0.35) !important;
@@ -436,16 +474,14 @@ body.rs-splitter--dragging .rs-splitter {
  */
 /* 工具栏 / 窗口控制 / 文件树按钮：透明背景 + 极光 border */
 .icon-btn,
-.menubar__btn,
-.win-controls__btn {
+.menubar__btn {
   background: transparent !important;
   border: 1px solid rgba(103, 232, 185, 0.35) !important;
   border-radius: 6px;
 }
 /* hover */
 .icon-btn:hover,
-.menubar__btn:hover,
-.win-controls__btn:hover {
+.menubar__btn:hover {
   background: transparent !important;
   border-color: rgba(103, 232, 185, 0.6) !important;
 }

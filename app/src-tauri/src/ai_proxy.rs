@@ -1382,8 +1382,16 @@ struct TurnOutcome {
 /// tool list. Strips write-tools when `allow_write` is false.
 fn build_anthropic_tools(req: &ChatRequest) -> Value {
     let allow_write = req.allow_write.unwrap_or(false);
+    // #247 — the default set has to follow `allow_write`. It used to be
+    // READ_TOOLS unconditionally, and the filter below can only *remove*
+    // entries, never add one — so `write_note` / `append_to_note` were never
+    // offered to the model no matter what the Agent-panel toggle said. The
+    // chat panel sends `tools: null`, which is exactly this branch; recipes
+    // pass an explicit list and so were unaffected, which is why writing
+    // worked there and only there.
     let names: Vec<String> = match &req.tools {
         Some(v) => v.clone(),
+        None if allow_write => agent_tools::all_tools().iter().map(|s| s.to_string()).collect(),
         None => agent_tools::READ_TOOLS.iter().map(|s| s.to_string()).collect(),
     };
     let arr: Vec<Value> = names
@@ -1406,8 +1414,16 @@ fn build_anthropic_tools(req: &ChatRequest) -> Value {
 /// `{"type":"function","function":{...}}`.
 fn build_openai_tools(req: &ChatRequest) -> Value {
     let allow_write = req.allow_write.unwrap_or(false);
+    // #247 — the default set has to follow `allow_write`. It used to be
+    // READ_TOOLS unconditionally, and the filter below can only *remove*
+    // entries, never add one — so `write_note` / `append_to_note` were never
+    // offered to the model no matter what the Agent-panel toggle said. The
+    // chat panel sends `tools: null`, which is exactly this branch; recipes
+    // pass an explicit list and so were unaffected, which is why writing
+    // worked there and only there.
     let names: Vec<String> = match &req.tools {
         Some(v) => v.clone(),
+        None if allow_write => agent_tools::all_tools().iter().map(|s| s.to_string()).collect(),
         None => agent_tools::READ_TOOLS.iter().map(|s| s.to_string()).collect(),
     };
     let arr: Vec<Value> = names
@@ -2397,6 +2413,76 @@ fn find_event_boundary(buf: &str) -> Option<usize> {
 
 #[cfg(test)]
 mod tests {
+    /// #247 — the Agent panel sends `tools: null` and relies on `allow_write`
+    /// to decide the default set. It used to always start from READ_TOOLS,
+    /// and the filter can only remove, so the write tools were unreachable
+    /// from the chat panel however the toggle was set.
+    fn req_with(allow_write: Option<bool>, tools: Option<Vec<String>>) -> super::ChatRequest {
+        super::ChatRequest {
+            provider: "openai".into(),
+            api_format: None,
+            model: "m".into(),
+            messages: vec![],
+            base_url: None,
+            tools,
+            allow_write,
+            run_id: None,
+            workspace: None,
+            tool_loop_cap: None,
+            request_id: None,
+        }
+    }
+
+    fn tool_names(v: &serde_json::Value) -> Vec<String> {
+        v.as_array()
+            .map(|a| {
+                a.iter()
+                    .filter_map(|t| {
+                        t.get("function")
+                            .and_then(|f| f.get("name"))
+                            .or_else(|| t.get("name"))
+                            .and_then(|n| n.as_str())
+                            .map(|s| s.to_string())
+                    })
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    #[test]
+    fn write_tools_are_offered_when_allow_write_is_on() {
+        for build in [super::build_openai_tools, super::build_anthropic_tools] {
+            let names = tool_names(&build(&req_with(Some(true), None)));
+            assert!(
+                names.iter().any(|n| n == "write_note"),
+                "write_note must be offered when allow_write is true, got {names:?}"
+            );
+            assert!(
+                names.iter().any(|n| n == "read_note"),
+                "read tools must still be present, got {names:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn write_tools_stay_hidden_when_allow_write_is_off() {
+        for build in [super::build_openai_tools, super::build_anthropic_tools] {
+            let names = tool_names(&build(&req_with(Some(false), None)));
+            assert!(
+                !names.iter().any(|n| n == "write_note" || n == "append_to_note"),
+                "no write tool may leak when allow_write is false, got {names:?}"
+            );
+            assert!(!names.is_empty(), "read tools must still be offered");
+        }
+    }
+
+    #[test]
+    fn an_explicit_tool_list_is_still_filtered_by_allow_write() {
+        let explicit = Some(vec!["read_note".to_string(), "write_note".to_string()]);
+        let names = tool_names(&super::build_openai_tools(&req_with(Some(false), explicit)));
+        assert_eq!(names, vec!["read_note".to_string()]);
+    }
+
     use super::*;
 
     #[test]

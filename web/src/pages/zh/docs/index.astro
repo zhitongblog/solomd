@@ -11,6 +11,7 @@ const docs = [
   { slug: 'images', title: '图片与附件', lead: '粘贴的截图存在哪里 —— 改名 _assets、每篇笔记独立目录、兼容 Typora 的路径模板。' },
   { slug: 'workspace', title: '工作区与组织', lead: '文件树、大纲、搜索、标签、反向链接、Bases 属性表格、保存的视图、日记与收集箱。' },
   { slug: 'sync', title: '同步、历史与备份', lead: 'GitHub 同步 + 可选端到端加密、Git 快照回滚、401 等常见错误排查。' },
+  { slug: 'icloud', title: '用 iCloud 同步', lead: '不用注册、不用插件：把笔记文件夹放进 iCloud 云盘就行。含 Mac / iPhone 步骤与冲突注意事项。' },
   { slug: 'ai', title: 'AI 功能', lead: 'BYOK 接入 14+ 家模型或本地 Ollama;智能体面板、AI 改写、定时配方、RAG 语义搜索。' },
   { slug: 'settings', title: '设置参考', lead: '外观、字体、编辑器行为、文件与会话、隐私遥测 —— 每个选项都讲清楚。' },
   { slug: 'shortcuts', title: '键盘快捷键', lead: '全部快捷键 —— 文件 / 视图 / 编辑 / 导出。' },
@@ -27,7 +28,7 @@ const docs = [
   lang={lang}
 >
   <Header lang={lang} />
-  <main>
+  <main id="main">
     <section class="container docs-index">
       <h1>文档</h1>
       <p class="lead">用好 SoloMD 需要的一切 —— 快捷键、导出选项、Markdown 语法、工作流指南。</p>

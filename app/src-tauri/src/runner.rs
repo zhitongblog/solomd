@@ -759,6 +759,8 @@ pub fn run_with(initial_file: Option<String>) {
             spellcheck::spellcheck_suggest,
             spellcheck::spellcheck_add_to_dict,
             spellcheck::spellcheck_load_user_dict,
+            spellcheck::spellcheck_list_dicts,
+            spellcheck::spellcheck_dicts_dir,
             ai_proxy::ai_set_key,
             ai_proxy::ai_has_key,
             ai_proxy::ai_clear_key,

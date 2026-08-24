@@ -28,7 +28,7 @@ const FAQ = [
   lang={lang}
 >
   <Header lang={lang} />
-  <main>
+  <main id="main">
     <article class="container docs-article">
       <nav class="breadcrumbs">
         <a href="/zh/">首页</a> / <a href="/zh/docs/">文档</a> / <span>同步与历史</span>
@@ -98,6 +98,10 @@ const FAQ = [
         因为笔记就是普通文件，任何文件夹同步工具都行：iCloud 云盘、
         Dropbox、Syncthing、OneDrive —— 在每台设备上把 SoloMD 指向同步的文件夹即可。
         Android 上通过系统文件选择器打开同一个文件夹；iOS 上使用「文件」App 中的位置。
+      </p>
+      <p>
+        用 iCloud 的话有一份更详细的指南 —— 含 Mac / iPhone 设置步骤、跨设备接力，
+        以及多设备同时编辑时要注意的冲突问题：<a href="/zh/docs/icloud/">用 iCloud 同步笔记</a>。
       </p>
 
       <CompareFaq heading="常见问题" items={FAQ} />

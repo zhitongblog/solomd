@@ -89,20 +89,34 @@ export const onRequest: PagesFunction<StatsEnv> = async ({ request, env }) => {
         published_at?: string;
         assets?: Array<{ download_count?: number }>;
       }>;
-      if (Array.isArray(releases)) {
+      // An EMPTY array is not a legitimate answer for this repo — it has had
+      // releases since v0.1.0 — so treat it as an upstream failure rather than
+      // a real zero. Observed live on 2026-08-17: `{stars: 846, downloads: 0,
+      // latest_tag: null, fresh: true}` on every (cache-busted) call, i.e. the
+      // repo endpoint answered but the releases one came back with nothing.
+      // The old code called that success, which did two harmful things: it
+      // published "0 downloads" as fresh, and it *persisted* that 0 into D1 as
+      // the new last-known-good, destroying the very fallback that exists to
+      // cover this. Requiring a non-empty list means we degrade to the cached
+      // real number instead.
+      if (Array.isArray(releases) && releases.length > 0) {
         let total = 0;
         for (const rel of releases) {
           for (const a of rel.assets || []) {
             total += a.download_count || 0;
           }
         }
-        payload.downloads = total;
+        // Same reasoning one level down: a non-empty release list whose assets
+        // sum to zero means the payload was shaped unexpectedly, not that
+        // 47k downloads vanished. Leave `downloads` null so the merge below
+        // keeps the cached value.
+        if (total > 0) payload.downloads = total;
         const stable = releases.find((r) => !r.draft && !r.prerelease);
         if (stable) {
           payload.latest_tag = (stable.tag_name || '').replace(/^v/, '') || null;
           payload.latest_url = stable.html_url || null;
         }
-        releasesOk = true;
+        releasesOk = total > 0;
       }
     }
 

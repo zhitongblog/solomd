@@ -71,7 +71,21 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="vnl" v-if="view">
+  <!-- #245 — the ‹ back button must exist even when the view doesn't resolve.
+       `view` is `savedViews.activeView`, which the store nulls out whenever the
+       active slug is no longer on disk. This template used to be entirely
+       behind `v-if="view"`, so in that state it rendered nothing while the
+       parent still suppressed the editor — a blank pane with no escape. App.vue
+       now also refuses to swap in this component without a view, so this branch
+       is the safety net rather than the only guard. -->
+  <div class="vnl" v-if="!view">
+    <div class="vnl__header">
+      <DsButton variant="ghost" size="sm" :title="t('views.back')" @click="closeView">‹</DsButton>
+      <span class="vnl__name">{{ t('views.heading') }}</span>
+    </div>
+    <div class="vnl__empty">{{ t('views.gone') }}</div>
+  </div>
+  <div class="vnl" v-else>
     <div class="vnl__header">
       <DsButton variant="ghost" size="sm" :title="t('views.back')" @click="closeView">‹</DsButton>
       <span class="vnl__icon" :style="view.color ? { color: view.color } : undefined">{{ view.icon || '🔖' }}</span>

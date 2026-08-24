@@ -703,11 +703,21 @@ onBeforeUnmount(() => {
             <button class="dropdown__item dropdown__item--single" @mousedown.prevent="exporter.exportDocx(); exportOpen = false">
               <span class="dropdown__name">{{ t('toolbar.exportDocx') }}</span>
             </button>
-            <button class="dropdown__item dropdown__item--single" @mousedown.prevent="exporter.exportPdf(); exportOpen = false">
-              <span class="dropdown__name">{{ t('toolbar.exportPdf') }}</span>
-            </button>
-            <button class="dropdown__item dropdown__item--single" @mousedown.prevent="exporter.exportPdfPrint(); exportOpen = false">
+            <!-- Gitee IK8QJQ — these two produce very different PDFs and the
+                 names alone did not say so. `exportPdf` goes through
+                 html2pdf.js (html2canvas), which rasterises the page, so the
+                 text is not selectable and files run several times larger;
+                 `exportPdfPrint` hands off to the OS print engine and yields
+                 real vector text. Both are worth keeping — the raster path
+                 saves straight to a file with no dialog — so label the
+                 tradeoff rather than hide it, and lead with the text one. -->
+            <button class="dropdown__item" @mousedown.prevent="exporter.exportPdfPrint(); exportOpen = false">
               <span class="dropdown__name">{{ t('toolbar.exportPdfPrint') }}</span>
+              <span class="dropdown__path">{{ t('toolbar.exportPdfPrintHint') }}</span>
+            </button>
+            <button class="dropdown__item" @mousedown.prevent="exporter.exportPdf(); exportOpen = false">
+              <span class="dropdown__name">{{ t('toolbar.exportPdf') }}</span>
+              <span class="dropdown__path">{{ t('toolbar.exportPdfHint') }}</span>
             </button>
             <button class="dropdown__item dropdown__item--single" @mousedown.prevent="exporter.exportImage(); exportOpen = false">
               <span class="dropdown__name">{{ t('toolbar.exportImage') }}</span>

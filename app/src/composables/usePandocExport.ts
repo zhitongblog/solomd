@@ -32,6 +32,7 @@ import {
   parseCslJson,
   type CitationEntry,
 } from '../lib/citations';
+import { preprocessMarkdown } from '../lib/markdown';
 
 export interface PandocInfo {
   path: string;
@@ -178,7 +179,18 @@ export function usePandocExport() {
   ): Promise<void> {
     const ctx = activeContext();
     if (!ctx) return;
-    const content = activeContent ?? ctx.content;
+    // Gitee IJXS8V — run the same leniency preprocessors the preview uses
+    // before handing the source to pandoc. `preprocessMarkdown` documents
+    // itself as the single source of truth that "both the HTML render path
+    // and the DOCX token path must apply identically", but the pandoc path
+    // was passing the raw buffer, so the two disagreed: a sublist indented
+    // by 2 spaces under `1. ` (which #213's normalizer re-indents to the
+    // parent's content column) nests in the preview, while pandoc follows
+    // CommonMark strictly and flattens it into a second sibling list. Same
+    // for the table-delimiter repair, the inline-HTML unwrap, and opt-in
+    // heading numbers — all of which the user can see on screen and would
+    // reasonably expect in a .docx.
+    const content = preprocessMarkdown(activeContent ?? ctx.content);
 
     // Detect pandoc up front so the user gets a clear "install pandoc"
     // error before we open the save dialog.

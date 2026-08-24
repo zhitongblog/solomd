@@ -5,7 +5,7 @@ import Footer from '../../components/Footer.astro';
 import Giscus from '../../components/Giscus.astro';
 
 const lang = 'zh' as const;
-const VERSION = '4.11.13';
+const VERSION = '4.11.17';
 const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERSION}`;
 ---
 
@@ -15,7 +15,7 @@ const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERS
   lang={lang}
 >
   <Header lang={lang} />
-  <main>
+  <main id="main">
     <article class="container whats-new">
       <nav class="breadcrumbs">
         <a href="/zh/">首页</a> / <span>更新</span>
@@ -38,6 +38,60 @@ const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERS
         <a class="btn btn--secondary btn--lg" href={`${baseUrl}/SoloMD_${VERSION}_x64_en-US.msi`}>下载 (Windows)</a>
         <a class="btn btn--secondary btn--lg" href={`https://github.com/zhitongblog/solomd/releases/tag/v${VERSION}`}>所有平台 →</a>
       </div>
+
+      <section>
+        <p class="version-row" style="margin-top:8px;">
+          <span class="version-tag">v4.11.17</span>
+          <time>2026 年 8 月</time>
+        </p>
+        <h2 style="margin-top:8px;">4.11.17 —— 找回 Option 系快捷键，以及 Linux 上少一次干等。</h2>
+        <ul>
+          <li><strong>macOS 上所有 ⌘⌥ 快捷键都能用了。</strong>macOS 会在按键送到我们手上之前，把 Option+字母 合成另一个字符——Option+N 变成 “Dead”、Option+P 变成 “π”、Option+C 变成 “ç”——而我们比对的是字母本身，于是 <kbd>⌘⌥N</kbd>（新建纯文本）、<kbd>⌘⌥P</kbd>（幻灯片）、<kbd>⌘⌥⇧P</kbd>（打印为 PDF）、<kbd>⌘⌥B</kbd>、<kbd>⌘⌥L</kbd> 在 Mac 上从来就没触发过。现在改为按物理键位匹配。顺手给<strong> <kbd>⌘⌥C</kbd> 绑上「复制为 Markdown」</strong>——这是大家真正会往别处粘的那种复制，之前偏偏没有快捷键。</li>
+          <li><strong>Linux：无障碍服务不回话时，SoloMD 不再干等它。</strong>当桌面的 AT-SPI 总线接下了请求却始终不回复，GTK 和 WebKit 会各自把界面阻塞满自己的 D-Bus 超时——25 秒和 30 秒——期间窗口画不出来、也接不了点击。现在 SoloMD 会在 GTK 初始化之前自己先问一次这条总线，预算两秒：问得到就什么都不改，读屏软件照常工作；问不到就直接以关闭无障碍的方式启动，而不是干等。在故意做成「不回包」的测试环境里，从启动到可用由 51 秒降到 3 秒。<br /><strong>这不是 Arch 和 Ubuntu 上那两个卡死报告（<a href="https://github.com/zhitongblog/solomd/issues/253">#253</a>、<a href="https://github.com/zhitongblog/solomd/issues/200">#200</a>）的修复。</strong>那两个永远不会自己恢复，而这里这种干等一定会自己恢复，所以是两回事，排查仍在进行中。如果你正遇到那两个问题，请到对应 issue 里跟进。</li>
+        </ul>
+      </section>
+
+      <section>
+        <p class="version-row" style="margin-top:8px;">
+          <span class="version-tag">v4.11.16</span>
+          <time>2026 年 8 月</time>
+        </p>
+        <h2 style="margin-top:8px;">4.11.16 —— 光标待在你放它的地方。</h2>
+        <ul>
+          <li><strong>Windows 上打字时光标不会再乱跑了。</strong>只要打开的文件被外部碰过——云盘同步、拉取更新、保存回写——SoloMD 会重新载入内容，而光标就被甩到文档另一头。有时干脆打不出字，因为同一个动作会打断正在进行的输入法组词，或者让焦点掉出编辑框——焦点一旦不在编辑器里，敲下的字母就被当成快捷键了。这个问题 4.11.1 修过，但只覆盖了 CodeMirror 编辑器，而 Windows 用的是原生文本框，一直没被修到。</li>
+          <li><strong>Gitee 同步可以用了。</strong>此前它根本无法通过认证：我们发送的是 GitHub 要求的那个用户名，而 Gitee 会直接拒绝——所以无论令牌多正确，每次都失败。现在已用真实 Gitee 仓库完整验证。(#249)</li>
+          <li><strong>允许智能体写入时，它真的能写了。</strong>「允许智能体写入笔记库」开关此前毫无作用——写入工具从未发给模型，所以它会回答自己没有这个能力。另外菜谱运行完成后停在分支上，从不出现在「待审核」里，也就无法接受或拒绝。两处均由 <a href="https://github.com/jclg83">@jclg83</a> 追踪定位。(#247, #248)</li>
+          <li><strong>拼写检查支持你的语言。</strong>此前写死为英文，对其他语言使用者来说每个词都会被标红。现在可在 设置 → 写作 里选择词典，并把任意 Hunspell 的 <code>.aff</code> + <code>.dic</code> 放进按钮打开的那个文件夹。(#246)</li>
+          <li><strong>大小写转换。</strong><kbd>Shift+F3</kbd> 在 小写 / 大写 / 首字母大写 之间循环，作用于选中内容或光标所在的词；命令面板里也有独立命令。来自 Gitee 上的需求。</li>
+          <li><strong>弯引号彻底关闭。</strong>4.11.11 把它改成可选后只动了默认值，已经开着的用户依旧会在中文字体下看到撇号后一道明显的空隙。现在会为这些用户关闭一次，除非你自己再打开。(#251)</li>
+        </ul>
+      </section>
+
+      <section>
+        <p class="version-row" style="margin-top:8px;">
+          <span class="version-tag">v4.11.15</span>
+          <time>2026 年 8 月</time>
+        </p>
+        <h2 style="margin-top:8px;">4.11.15 —— Gitee 上说了好几周的三件事。</h2>
+        <ul>
+          <li><strong>Windows 上除了实时编辑模式，斜杠命令一直毫无反应。</strong>Windows 用的是原生文本框而不是 CodeMirror，因为 WebView2 在中文输入时会丢字——而顶替上去的那套补全，只接到了实时编辑的块编辑器上。在「仅编辑」和「分栏」模式下，弹窗从不出现、不能选择、也无法插入。受影响的还不只是斜杠菜单：<code>[[</code> 双链、<code>#</code> 标签、<code>@</code> 引用共用同一个触发机制，同样全部失效。现在四种补全在所有模式下都能用，弹窗也会跟着光标所在行走。(Gitee IK6JCC)</li>
+          <li><strong>两个 PDF 导出，现在会告诉你它们各自产出什么。</strong>「导出为 PDF」是把整页转成图片，所以里面的文字其实是一张图——不能选中、不能检索、体积还大好几倍。而大家真正想要的那个导出，就在它下面一行，名字却完全看不出区别。现在都标注清楚了：<em>PDF（文字）</em>——经系统打印，文字可选中可检索，排在前面并标为推荐；<em>PDF（图片）</em>——转成图片，但不弹对话框直接存文件。工具栏和命令面板同步。(Gitee IK8QJQ)</li>
+          <li><strong>Word / EPUB / ODT / LaTeX 导出重新和预览一致了。</strong>这几种格式走的是 Pandoc，而预览会先经过一轮容错预处理，Pandoc 拿到的却是原始文件。于是一个缩进两个空格的子列表，在屏幕上是嵌套的，导出成 .docx 就散成了平级。现在 Pandoc 看到的和你看到的是同一份文本。(Gitee IJXS8V)</li>
+        </ul>
+      </section>
+
+      <section>
+        <p class="version-row" style="margin-top:8px;">
+          <span class="version-tag">v4.11.14</span>
+          <time>2026 年 8 月</time>
+        </p>
+        <h2 style="margin-top:8px;">4.11.14 —— 那个把笔记吞掉的空白页。</h2>
+        <ul>
+          <li><strong>一个已经不存在的保存视图，会让整个编辑区变成空白且退不出来。</strong>报告过来时是安卓上"笔记打不开"——但笔记其实<em>打开了</em>：提示弹了、状态栏也数出了行数字数，然后什么都没显示。主内容区同一时间只画一样东西，而编辑器排在最后，于是一个被标记为"打开中"的保存视图会一直占着位置，哪怕那个视图本身早已不存在。更糟的是，那个面板的 ‹ 返回按钮就写在"没有视图就不渲染"的同一个块里，所以连可以点的东西都没剩下。再多打开几个文件也没用——每个文件都打开进了一个画不出来的面板里。安卓最容易碰到，因为通过系统文件选择器挑的目录常常读不到视图目录，但这个问题本身和安卓无关。现在只要视图解析不出来，编辑器立刻接管，返回按钮也保证渲染。(#245)</li>
+          <li><strong>极光主题做了一轮打磨。</strong>极光色调的细边框、面板内部改为半透明以保证在渐变背景上依然清晰，拖动面板边缘时也不会再整屏闪烁。感谢 <a href="https://github.com/raopan2021">@raopan2021</a>。(#244)</li>
+          <li><strong>Arch 包重新跟上了版本。</strong><code>solomd-bin</code> 已上架 AUR，仓库内的打包配置（一直停在 4.1.0）现在跟随实际发布版本。感谢 <a href="https://github.com/gonwe">@gonwe</a>。(#241)</li>
+        </ul>
+      </section>
 
       <section>
         <p class="version-row" style="margin-top:8px;">

@@ -275,7 +275,18 @@ interface Settings {
   // (markdown-it `smartquotes`). Default OFF — CJK font fallbacks draw
   // U+2019 fullwidth ("test'　s"), and the preview should match the typed
   // source unless the user opts into typographic quotes.
+  // #246 — Hunspell dictionary to load. Only en_US ships with the app; any
+  // `<code>.aff`/`.dic` pair the user drops into `<config>/dictionaries/`
+  // becomes selectable. Kept separate from the UI `language` setting: people
+  // routinely run an English interface while writing Spanish.
+  spellcheckLang: string;
   smartQuotes: boolean;
+  // #251 — `c4ca303` (#216) flipped the *default* to false, but `load()` does
+  // `{...defaults(), ...parsed}`, so every install that already had `true`
+  // saved kept it. Those users went on seeing U+2019 drawn fullwidth by a CJK
+  // font fallback and reported the same "space after the apostrophe" bug
+  // again. One-time marker that turns it off once for them.
+  smartQuotesOptInMigrated: boolean;
   // Promote plain numbered-section lines (`6.2 出口许可证管理目录`,
   // `6.2.1 …`) to headings whose level tracks the numbering depth. Off by
   // default — the promotion is heuristic (a line opening with a decimal like
@@ -541,7 +552,9 @@ function defaults(): Settings {
     codeBlockWrap: false,
     explorerFullNames: false,
     markdownHardBreaks: true,
+    spellcheckLang: 'en_US',
     smartQuotes: false,
+    smartQuotesOptInMigrated: true,
     markdownAutoNumberHeadings: false,
     rsPaneOrder: ['search', 'outline', 'backlinks', 'relationships', 'tags', 'neighborhood', 'types', 'history', 'inspector', 'agent'],
     previewFontSize: 15,
@@ -633,6 +646,15 @@ function load(): Settings {
       if (!parsed.fileTreeDefaultDesktopMigrated) {
         if (!isMobile()) merged.showFileTree = true;
         merged.fileTreeDefaultDesktopMigrated = true;
+      }
+      // #251 — see `smartQuotesOptInMigrated`. Curly quotes were on for
+      // everyone before #216 made them opt-in; the saved `true` outlived the
+      // default change. Clear it once. Anyone who genuinely wants typographic
+      // quotes can switch it back on and that choice sticks, because the
+      // marker is written here regardless.
+      if (!parsed.smartQuotesOptInMigrated) {
+        merged.smartQuotes = false;
+        merged.smartQuotesOptInMigrated = true;
       }
       // #143 — align a stale preview font size (see v4810PreviewFontSynced doc).
       // Only when the user actually customized the editor size (≠ the 14
@@ -1151,6 +1173,10 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleMarkdownHardBreaks() {
       this.markdownHardBreaks = !this.markdownHardBreaks;
+      this.persist();
+    },
+    setSpellcheckLang(code: string) {
+      this.spellcheckLang = code || 'en_US';
       this.persist();
     },
     toggleSmartQuotes() {

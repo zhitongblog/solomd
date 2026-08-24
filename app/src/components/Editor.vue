@@ -23,7 +23,8 @@ import { xml } from '@codemirror/lang-xml';
 import { vim, Vim } from '@replit/codemirror-vim';
 import { cmThemeFor } from '../lib/themes';
 import { registerPlainSelectionGetter } from '../lib/plain-selection';
-import { caretRowInfo, lastVisualRowStart, firstVisualRowEnd, measureLineHeights } from '../lib/textarea-metrics';
+import { caretRowInfo, caretTopPx, lastVisualRowStart, firstVisualRowEnd, measureLineHeights } from '../lib/textarea-metrics';
+import { transformCase, nextCaseInCycle, caseTargetRange, type CaseMode } from '../lib/text-case';
 import { useTabsStore } from '../stores/tabs';
 import { useSettingsStore, buildEditorFontStack } from '../stores/settings';
 import { useToastsStore } from '../stores/toasts';
@@ -178,6 +179,7 @@ watch(
 const host = ref<HTMLDivElement | null>(null);
 let view: EditorView | null = null;
 let cleanupRelayout: (() => void) | null = null;
+let cleanupTransformCase: (() => void) | null = null;
 let cleanupPlainSelection: (() => void) | null = null;
 let contentSyncTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -883,11 +885,31 @@ function focusPlainEditor() {
   });
 }
 
-function syncPlainEditorFromStore(text: string) {
+function syncPlainEditorFromStore(text: string, preserveCaret = false) {
   const el = plainEditor.value;
   plainText.value = text;
   if (!el) return;
-  if (el.value !== text) el.value = text;
+  if (el.value !== text) {
+    // Assigning `.value` on a <textarea> destroys the selection, so an
+    // external content update (a cloud client touching the file, a sync pull,
+    // a save round-trip) used to yank the caret away mid-sentence. Callers
+    // that are reconciling an *external* change keep the caret where the user
+    // left it; callers that are loading a different document (tab switch,
+    // mount) pass false and position it themselves.
+    const from = el.selectionStart;
+    const to = el.selectionEnd;
+    const hadFocus = document.activeElement === el;
+    el.value = text;
+    if (preserveCaret) {
+      const a = Math.min(from ?? 0, text.length);
+      const b = Math.min(to ?? a, text.length);
+      el.setSelectionRange(a, b);
+      // Re-assert focus: some engines drop it when `.value` is replaced, and
+      // a blurred textarea sends the user's next keystrokes to the document,
+      // where single letters hit global handlers instead of being typed.
+      if (hadFocus && document.activeElement !== el) el.focus();
+    }
+  }
   nextTick(() => {
     emitPlainCursorAndSelection();
     syncPlainLiveScroll();
@@ -920,6 +942,11 @@ function handlePlainInput(event: Event) {
   plainText.value = el.value;
   tabs.setContent(props.tab.id, el.value);
   emitPlainCursorAndSelection();
+  // Gitee IK6JCC — the / ⁠[[ # @ autocomplete used to be wired only to the
+  // live-edit *block* editor, so on Windows (which is on this plain-textarea
+  // path unless Vim mode is on) it silently did nothing in 仅编辑 / 分栏 mode.
+  // Same trigger the block editor uses.
+  maybeOpenPlainAutocomplete(el);
   nextTick(syncPlainLiveScroll);
 }
 
@@ -1158,14 +1185,29 @@ function buildAcItems(kind: AcKind, query: string): AcItem[] {
     .map((c) => ({ label: `@${c.key}`, hint: (c.title ? String(c.title).slice(0, 32) : ''), insert: `@${c.key} `, cursorOffset: c.key.length + 2 }));
 }
 
-function caretRectFromHighlight(_caret: number): { left: number; bottom: number } | null {
-  // Anchor the autocomplete popup to the active block's textarea (bottom-left).
-  // A textarea can't give per-caret pixel coords without a mirror element, and
-  // blocks are short, so anchoring below the block is accurate enough.
-  const el = plainBlockEditors.value[plainActiveBlock.value];
+function caretRectFromHighlight(caret: number): { left: number; bottom: number } | null {
+  if (plainLiveEnabled.value) {
+    // Anchor the autocomplete popup to the active block's textarea (bottom-left).
+    // A textarea can't give per-caret pixel coords without a mirror element, and
+    // blocks are short, so anchoring below the block is accurate enough.
+    const el = plainBlockEditors.value[plainActiveBlock.value];
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { left: r.left, bottom: r.top + Math.min(r.height, 24) };
+  }
+  // Flat plain editor: one textarea holds the whole document, so "below the
+  // element" would be nowhere near the caret. Measure the caret's own row.
+  const el = plainEditor.value;
   if (!el) return null;
   const r = el.getBoundingClientRect();
-  return { left: r.left, bottom: r.top + Math.min(r.height, 24) };
+  const cs = window.getComputedStyle(el);
+  const padTop = Number.parseFloat(cs.paddingTop || '0') || 0;
+  const padLeft = Number.parseFloat(cs.paddingLeft || '0') || 0;
+  const top = caretTopPx(el, el.value, Math.max(0, Math.min(caret, el.value.length)));
+  return {
+    left: r.left + padLeft,
+    bottom: r.top + padTop + top - el.scrollTop + plainLineHeightPx(),
+  };
 }
 
 function maybeOpenPlainAutocomplete(el: HTMLTextAreaElement) {
@@ -1192,6 +1234,27 @@ function maybeOpenPlainAutocomplete(el: HTMLTextAreaElement) {
 }
 
 function applyPlainAutocomplete(item: AcItem) {
+  if (!plainLiveEnabled.value) {
+    // Flat plain editor — no blocks, so edit the whole-document textarea
+    // directly and push the result through the same path as normal typing.
+    const flat = plainEditor.value;
+    if (!flat || acTriggerStart < 0) { closePlainAutocomplete(); return; }
+    const caret = flat.selectionStart ?? flat.value.length;
+    const value = flat.value.slice(0, acTriggerStart) + item.insert + flat.value.slice(caret);
+    const newCaret = acTriggerStart + item.cursorOffset;
+    closePlainAutocomplete();
+    recordPlainHistory();
+    flat.value = value;
+    plainText.value = value;
+    tabs.setContent(props.tab.id, value);
+    nextTick(() => {
+      flat.focus();
+      const p = Math.max(0, Math.min(newCaret, flat.value.length));
+      flat.setSelectionRange(p, p);
+      emitPlainCursorAndSelection();
+    });
+    return;
+  }
   const el = plainBlockEditors.value[plainActiveBlock.value];
   if (!el || acTriggerStart < 0) { closePlainAutocomplete(); return; }
   const index = plainActiveBlock.value;
@@ -1559,6 +1622,9 @@ function handlePlainBlockKeydown(index: number, event: KeyboardEvent) {
 
 function handlePlainEditorKeydown(event: KeyboardEvent) {
   if (plainComposing) return;
+  // Must come before the shared handler: ↑/↓/Enter/Tab/Esc belong to the
+  // popup while it is open (Gitee IK6JCC).
+  if (handleAutocompleteKeydown(event)) return;
   if (handlePlainKeydownShared(event)) return;
   if (event.key === 'Tab') {
     event.preventDefault();
@@ -2128,6 +2194,15 @@ function maybeRestoreSession() {
 }
 
 onMounted(() => {
+  // Registered before the plain-editor early return below — this listener has
+  // to exist on ALL three editor paths, and the CodeMirror-only setup that
+  // follows is unreachable on Windows. (Putting it further down is what made
+  // the first attempt silently no-op on the plain editors.)
+  window.addEventListener('solomd:transform-case', onTransformCase as EventListener);
+  cleanupTransformCase = () => {
+    window.removeEventListener('solomd:transform-case', onTransformCase as EventListener);
+  };
+
   if (usePlainWindowsEditor) {
     syncPlainEditorFromStore(props.tab.content);
     maybeRestoreSession();
@@ -2168,6 +2243,76 @@ onMounted(() => {
 });
 
 /**
+ * Gitee IK8QG3 — upper / lower / Title case over the selection, or the word
+ * under the caret when there is no selection.
+ *
+ * Deliberately routed through the same handler for all three editors this
+ * component can be: CodeMirror, the plain block editor, and the plain flat
+ * editor. Wiring only one of them is how the slash-command autocomplete came
+ * to be dead on Windows for months (IK6JCC) — the shared decision of *what* to
+ * change lives in lib/text-case.ts, and each branch below only supplies the
+ * current text + selection and writes the result back.
+ */
+function onTransformCase(e: Event) {
+  const detail = (e as CustomEvent).detail || {};
+  const mode: CaseMode | 'cycle' = detail.mode || 'cycle';
+  // Split view mounts one Editor per pane and they all hear this event, so
+  // only the one showing the active tab may act.
+  if (props.tab.id !== tabs.activeId) return;
+
+  if (!usePlainWindowsEditor) {
+    if (!view) return;
+    const sel = view.state.selection.main;
+    const doc = view.state.doc.toString();
+    const target = caseTargetRange(doc, sel.from, sel.to);
+    if (!target) return;
+    const next = mode === 'cycle' ? nextCaseInCycle(target.text) : mode;
+    const replaced = transformCase(target.text, next);
+    if (replaced === target.text) return;
+    view.dispatch({
+      changes: { from: target.from, to: target.to, insert: replaced },
+      selection: { anchor: target.from, head: target.from + replaced.length },
+    });
+    view.focus();
+    return;
+  }
+
+  // Plain paths — the block editor edits one block's textarea, the flat one
+  // edits the whole document, so resolve the element first and then share
+  // the rest.
+  const el = plainLiveEnabled.value
+    ? plainBlockEditors.value[plainActiveBlock.value]
+    : plainEditor.value;
+  if (!el) return;
+  const target = caseTargetRange(el.value, el.selectionStart ?? 0, el.selectionEnd ?? 0);
+  if (!target) return;
+  const next = mode === 'cycle' ? nextCaseInCycle(target.text) : mode;
+  const replaced = transformCase(target.text, next);
+  if (replaced === target.text) return;
+  const value = el.value.slice(0, target.from) + replaced + el.value.slice(target.to);
+  recordPlainHistory();
+  if (plainLiveEnabled.value) {
+    updatePlainBlock(plainActiveBlock.value, value, target.from + replaced.length);
+    nextTick(() => {
+      const e2 = plainBlockEditors.value[plainActiveBlock.value];
+      if (e2) {
+        e2.focus();
+        e2.setSelectionRange(target.from, target.from + replaced.length);
+      }
+    });
+    return;
+  }
+  el.value = value;
+  plainText.value = value;
+  tabs.setContent(props.tab.id, value);
+  nextTick(() => {
+    el.focus();
+    el.setSelectionRange(target.from, target.from + replaced.length);
+    emitPlainCursorAndSelection();
+  });
+}
+
+/**
  * #137 — open the find/replace UI. The panel already exists on both editor
  * paths (CodeMirror's search panel + the plain-textarea find bar) behind
  * Ctrl+F, but had no toolbar / command-palette entry, so users thought it was
@@ -2186,6 +2331,8 @@ function openFind(): void {
 
 onBeforeUnmount(() => {
   cleanupRelayout?.();
+  cleanupTransformCase?.();
+  cleanupTransformCase = null;
   cleanupPlainSelection?.();
   cleanupPlainSelection = null;
   if (contentSyncTimer) {
@@ -2371,7 +2518,12 @@ watch(
   () => props.tab.content,
   (next) => {
     if (usePlainWindowsEditor) {
-      syncPlainEditorFromStore(next);
+      // The #186 defenses below were only ever applied to the CodeMirror
+      // branch — this one returned before reaching them, so on Windows an
+      // external content update still reset the caret and killed an in-flight
+      // IME composition. Same two guards, expressed for the textarea.
+      if (plainComposing) return;
+      syncPlainEditorFromStore(next, true);
       return;
     }
     if (!view) return;
