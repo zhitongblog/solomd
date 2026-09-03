@@ -932,6 +932,7 @@ export const pl: I18n = {
     outline: 'Konspekt',
     backlinks: 'Linki zwrotne',
     tags: 'Tagi',
+    tasks: 'Zadania',
     neighborhood: 'Neighborhood',
     history: 'Historia',
     agent: 'Agent',
@@ -1603,6 +1604,17 @@ export const pl: I18n = {
     needsMarkitdown: 'Niektóre formaty wymagają markitdown: pip install \'markitdown[all]\'',
     failed: 'Nie udało się przekonwertować {count} plik(ów): {names}',
   },
+  tasks: {
+    heading: 'ZADANIA',
+    empty: 'Brak zadań — napisz wiersz `- [ ]` w dowolnej notatce.',
+    openFolder: 'Otwórz folder, aby zebrać jego zadania.',
+    priorityOnly: 'Tylko zadania z priorytetem',
+    filter: {
+      open: 'Otwarte',
+      today: 'Termin',
+      all: 'Wszystkie',
+    },
+  },
   cmd: {
     capture: {
       quick: 'Szybki zapis…',
@@ -1641,6 +1653,7 @@ export const pl: I18n = {
       toggleBacklinks: 'Widok: Przełącz panel linków zwrotnych',
       relationships: 'Widok: Przełącz panel relacji',
       toggleTagsPanel: 'Widok: Przełącz panel tagów',
+      toggleTasksPanel: 'Widok: przełącz panel zadań',
       toggleNeighborhood: 'Widok: Przełącz panel sąsiedztwa',
       toggleTypesPanel: 'Widok: Przełącz panel typów',
       toggleHistoryPanel: 'Widok: Przełącz panel historii',

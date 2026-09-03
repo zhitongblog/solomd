@@ -929,6 +929,7 @@ export const de: I18n = {
     outline: 'Gliederung',
     backlinks: 'Rückverweise',
     tags: 'Tags',
+    tasks: 'Aufgaben',
     neighborhood: 'Neighborhood',
     history: 'Verlauf',
     agent: 'Agent',
@@ -1586,6 +1587,17 @@ export const de: I18n = {
     needsMarkitdown: 'Einige Formate brauchen markitdown: pip install \'markitdown[all]\'',
     failed: '{count} Datei(en) konnten nicht konvertiert werden: {names}',
   },
+  tasks: {
+    heading: 'AUFGABEN',
+    empty: 'Noch keine Aufgaben — schreiben Sie in einer Notiz eine `- [ ]`-Zeile.',
+    openFolder: 'Öffnen Sie einen Ordner, um dessen Aufgaben zu sammeln.',
+    priorityOnly: 'Nur Aufgaben mit Priorität',
+    filter: {
+      open: 'Offen',
+      today: 'Fällig',
+      all: 'Alle',
+    },
+  },
   cmd: {
     capture: {
       quick: 'Schnellerfassung…',
@@ -1624,6 +1636,7 @@ export const de: I18n = {
       toggleBacklinks: 'Ansicht: Backlinks-Bereich umschalten',
       relationships: 'Ansicht: Beziehungen-Bereich umschalten',
       toggleTagsPanel: 'Ansicht: Tags-Bereich umschalten',
+      toggleTasksPanel: 'Ansicht: Aufgabenbereich umschalten',
       toggleNeighborhood: 'Ansicht: Nachbarschafts-Bereich umschalten',
       toggleTypesPanel: 'Ansicht: Typen-Bereich umschalten',
       toggleHistoryPanel: 'Ansicht: Verlaufs-Bereich umschalten',

@@ -825,6 +825,10 @@ export function useFiles() {
     openFolder,
     saveActive,
     saveActiveAs,
+    // Exposed for the task panel: ticking a checkbox in a file that happens to
+    // be open has to go through the tab, not straight to disk, or the tab's
+    // in-memory copy would silently overwrite it on the next save.
+    saveTab,
     autoSaveDirtyTabs,
     closeTabSafe,
     spawnAuxWindow,

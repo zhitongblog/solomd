@@ -20,6 +20,7 @@ import AndroidFolderPicker from './components/AndroidFolderPicker.vue';
 import NeighborhoodPanel from './components/NeighborhoodPanel.vue';
 import RelationshipsPanel from './components/RelationshipsPanel.vue';
 import TagsPanel from './components/TagsPanel.vue';
+import TasksPanel from './components/TasksPanel.vue';
 import TypesPanel from './components/TypesPanel.vue';
 import HistoryPanel from './components/HistoryPanel.vue';
 import PropertiesInspector from './components/PropertiesInspector.vue';
@@ -212,6 +213,7 @@ function rsPaneSnapshot() {
     showBacklinks: settings.showBacklinks,
     showRelationships: settings.showRelationships,
     showTagsPanel: settings.showTagsPanel,
+    showTasksPanel: settings.showTasksPanel,
     showNeighborhood: settings.showNeighborhood,
     showTypesPanel: settings.showTypesPanel,
     showHistoryPanel: settings.showHistoryPanel,
@@ -229,6 +231,7 @@ function ctxToggle(toggleFn: () => void) {
     !settings.showBacklinks &&
     !settings.showRelationships &&
     !settings.showTagsPanel &&
+    !settings.showTasksPanel &&
     !showNeighborhoodPane.value &&
     !settings.showTypesPanel &&
     !settings.showHistoryPanel &&
@@ -1459,6 +1462,10 @@ const showRelationshipsPane = computed(
 const showTagsPane = computed(
   () => settings.showTagsPanel && !!workspace.currentFolder,
 );
+// Workspace-scoped like Tags: the task list is the vault's, not the note's.
+const showTasksPane = computed(
+  () => settings.showTasksPanel && !!workspace.currentFolder,
+);
 // v4.6 F4 — Neighborhood relationship explorer. Markdown-only, needs a folder
 // (frontmatter wikilink groups are resolved against the workspace index).
 const showNeighborhoodPane = computed(
@@ -1512,6 +1519,7 @@ const showRightSidebar = computed(() => {
     showBacklinksPane.value ||
     showRelationshipsPane.value ||
     showTagsPane.value ||
+    showTasksPane.value ||
     showNeighborhoodPane.value ||
     showTypesPane.value ||
     showHistoryPane.value ||
@@ -1548,19 +1556,20 @@ const visibleRsPanes = computed(() => {
   // v4.3.0 issue #57b — order driven by settings.rsPaneOrder so users can
   // drag-reorder. Unknown ids (newly-shipped future panes) get appended at
   // the end so a SoloMD update doesn't blow away an existing user layout.
-  const all: Record<'search' | 'outline' | 'backlinks' | 'relationships' | 'tags' | 'neighborhood' | 'types' | 'history' | 'inspector' | 'agent', boolean> = {
+  const all: Record<'search' | 'outline' | 'backlinks' | 'relationships' | 'tags' | 'tasks' | 'neighborhood' | 'types' | 'history' | 'inspector' | 'agent', boolean> = {
     search: showSearchPane.value,
     outline: showOutlinePane.value,
     backlinks: showBacklinksPane.value,
     relationships: showRelationshipsPane.value,
     tags: showTagsPane.value,
+    tasks: showTasksPane.value,
     neighborhood: showNeighborhoodPane.value,
     types: showTypesPane.value,
     history: showHistoryPane.value,
     inspector: showInspectorPane.value,
     agent: showAgentPane.value,
   };
-  const known = ['search', 'outline', 'backlinks', 'relationships', 'tags', 'neighborhood', 'types', 'history', 'inspector', 'agent'] as const;
+  const known = ['search', 'outline', 'backlinks', 'relationships', 'tags', 'tasks', 'neighborhood', 'types', 'history', 'inspector', 'agent'] as const;
   const ordered: string[] = [];
   for (const id of settings.rsPaneOrder || []) {
     if (id in all && !ordered.includes(id)) ordered.push(id);
@@ -1570,7 +1579,7 @@ const visibleRsPanes = computed(() => {
   }
   return ordered
     .filter((id) => all[id as keyof typeof all])
-    .map((id) => ({ id: id as 'search' | 'outline' | 'backlinks' | 'relationships' | 'tags' | 'neighborhood' | 'types' | 'history' | 'inspector' | 'agent' }));
+    .map((id) => ({ id: id as 'search' | 'outline' | 'backlinks' | 'relationships' | 'tags' | 'tasks' | 'neighborhood' | 'types' | 'history' | 'inspector' | 'agent' }));
 });
 
 // #131 — sidebar pane reordering via the ⋮⋮ grip.
@@ -1793,6 +1802,10 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
                 @close="ctxToggle(() => settings.toggleTagsPanel())"
                 @filter-tag="onFilterTag"
               />
+              <TasksPanel
+                v-if="p.id === 'tasks'"
+                @close="ctxToggle(() => settings.toggleTasksPanel())"
+              />
               <NeighborhoodPanel
                 v-if="p.id === 'neighborhood'"
                 @close="ctxToggle(() => settings.toggleNeighborhood())"
@@ -1855,6 +1868,10 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
                 @close="ctxToggle(() => settings.toggleTagsPanel())"
                 @filter-tag="onFilterTag"
               />
+              <TasksPanel
+                v-if="p.id === 'tasks'"
+                @close="ctxToggle(() => settings.toggleTasksPanel())"
+              />
               <NeighborhoodPanel
                 v-if="p.id === 'neighborhood'"
                 @close="ctxToggle(() => settings.toggleNeighborhood())"
@@ -1902,6 +1919,10 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
           <label class="sidebar-ctx__item" @click="ctxToggle(() => { settings.toggleTagsPanel() })">
             <span class="sidebar-ctx__check">{{ settings.showTagsPanel ? '✓' : '' }}</span>
             {{ t('rsPane.tags') }}
+          </label>
+          <label class="sidebar-ctx__item" @click="ctxToggle(() => { settings.toggleTasksPanel() })">
+            <span class="sidebar-ctx__check">{{ settings.showTasksPanel ? '✓' : '' }}</span>
+            {{ t('rsPane.tasks') }}
           </label>
           <label class="sidebar-ctx__item" @click="ctxToggle(() => { settings.toggleNeighborhood() })">
             <span class="sidebar-ctx__check">{{ settings.showNeighborhood ? '✓' : '' }}</span>

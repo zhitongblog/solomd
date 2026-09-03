@@ -932,6 +932,7 @@ export const sv: I18n = {
     outline: 'Disposition',
     backlinks: 'Bakåtlänkar',
     tags: 'Taggar',
+    tasks: 'Uppgifter',
     neighborhood: 'Neighborhood',
     history: 'Historik',
     agent: 'Agent',
@@ -1603,6 +1604,17 @@ export const sv: I18n = {
     needsMarkitdown: 'Vissa format kräver markitdown: pip install \'markitdown[all]\'',
     failed: '{count} fil(er) kunde inte konverteras: {names}',
   },
+  tasks: {
+    heading: 'UPPGIFTER',
+    empty: 'Inga uppgifter än — skriv en `- [ ]`-rad i en anteckning.',
+    openFolder: 'Öppna en mapp för att samla dess uppgifter.',
+    priorityOnly: 'Endast uppgifter med prioritet',
+    filter: {
+      open: 'Öppna',
+      today: 'Förfaller',
+      all: 'Alla',
+    },
+  },
   cmd: {
     capture: {
       quick: 'Snabbfångst…',
@@ -1641,6 +1653,7 @@ export const sv: I18n = {
       toggleBacklinks: 'Vy: Växla bakåtlänkspanel',
       relationships: 'Vy: Växla relationspanel',
       toggleTagsPanel: 'Vy: Växla taggpanel',
+      toggleTasksPanel: 'Vy: växla uppgiftspanelen',
       toggleNeighborhood: 'Vy: Växla närområdespanel',
       toggleTypesPanel: 'Vy: Växla typpanel',
       toggleHistoryPanel: 'Vy: Växla historikpanel',

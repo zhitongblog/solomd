@@ -28,6 +28,22 @@ use walkdir::WalkDir;
 // Public types (match the TS interface in `app/src/lib/workspace-index.ts`).
 // ---------------------------------------------------------------------------
 
+/// One `- [ ]` / `- [x]` item, as found in a file.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskRef {
+    /// 1-based line number **in the file**, front matter included.
+    ///
+    /// Deliberately not the body-relative number `WikilinkRef::line` uses: the
+    /// panel both jumps to this line and rewrites the checkbox on it, so an
+    /// off-by-front-matter number would tick the wrong box.
+    pub line: u32,
+    /// The task text, marker and leading bullet stripped. Priority and due
+    /// tokens are left in — the frontend parses those (`lib/tasks.ts`) so the
+    /// syntax lives in one place rather than being written twice.
+    pub text: String,
+    pub done: bool,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IndexEntry {
     /// Absolute filesystem path.
@@ -48,6 +64,11 @@ pub struct IndexEntry {
     pub tags: Vec<String>,
     /// Headings, e.g. `["Introduction", "Setup"]`.
     pub headings: Vec<String>,
+    /// GFM task-list items (`- [ ]` / `- [x]`), for the workspace task panel.
+    /// Defaults to empty when deserialized from an index cache written before
+    /// this field existed.
+    #[serde(default)]
+    pub tasks: Vec<TaskRef>,
     /// First non-empty body line (front matter stripped), trimmed to 200 chars.
     pub summary: String,
     /// First H1 heading text (used for resolution by-title).
@@ -493,6 +514,8 @@ fn scan_file(path: &Path) -> Result<IndexEntry, String> {
     tags.dedup();
 
     let headings = extract_headings(body);
+    // Over `raw`, not `body`: task line numbers have to match the file.
+    let tasks = extract_tasks(&raw);
     let title = extract_title(&frontmatter_json, &headings);
     let summary = extract_summary(body);
     let relationships = extract_relationships(&frontmatter_json);
@@ -507,6 +530,7 @@ fn scan_file(path: &Path) -> Result<IndexEntry, String> {
         wikilinks,
         tags,
         headings,
+        tasks,
         summary,
         title,
         relationships,
@@ -1016,6 +1040,7 @@ mod tests {
                 wikilinks: vec![],
                 tags: vec![],
                 headings: vec![],
+                tasks: vec![],
                 summary: String::new(),
                 title: None,
             }
@@ -1060,6 +1085,7 @@ mod tests {
                 wikilinks: vec![],
                 tags: vec![],
                 headings: vec![],
+                tasks: vec![],
                 summary: String::new(),
                 title: title.map(|s| s.to_string()),
             }
@@ -1100,6 +1126,53 @@ fn extract_headings(body: &str) -> Vec<String> {
             if let Some(m) = cap.get(2) {
                 out.push(m.as_str().trim().to_string());
             }
+        }
+    }
+    out
+}
+
+/// GFM task-list items, scanned over the raw file so line numbers are the
+/// file's own.
+///
+/// Skips fenced code (a `- [ ] step one` inside a shell block is
+/// documentation, not a task) and YAML front matter.
+fn extract_tasks(raw: &str) -> Vec<TaskRef> {
+    static RE: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"^\s*[-*+]\s+\[([ xX])\]\s+(.+?)\s*$").expect("task regex")
+    });
+    let mut out = Vec::new();
+    let mut in_fence = false;
+    let mut in_front_matter = false;
+    for (idx, line) in raw.lines().enumerate() {
+        let trimmed = line.trim_start();
+        if idx == 0 && line.trim_end() == "---" {
+            in_front_matter = true;
+            continue;
+        }
+        if in_front_matter {
+            if line.trim_end() == "---" || line.trim_end() == "..." {
+                in_front_matter = false;
+            }
+            continue;
+        }
+        if trimmed.starts_with("```") || trimmed.starts_with("~~~") {
+            in_fence = !in_fence;
+            continue;
+        }
+        if in_fence {
+            continue;
+        }
+        if let Some(cap) = RE.captures(line) {
+            let done = cap.get(1).map(|m| m.as_str() != " ").unwrap_or(false);
+            let text = cap.get(2).map(|m| m.as_str().trim().to_string()).unwrap_or_default();
+            if text.is_empty() {
+                continue;
+            }
+            out.push(TaskRef {
+                line: idx as u32 + 1,
+                text,
+                done,
+            });
         }
     }
     out
@@ -1300,4 +1373,54 @@ fn read_context(path: &Path, line_no: u32) -> Vec<String> {
         .iter()
         .filter_map(|x| x.map(|s| s.to_string()))
         .collect()
+}
+
+#[cfg(test)]
+mod task_scan_tests {
+    use super::extract_tasks;
+
+    #[test]
+    fn finds_open_and_done_items_with_file_line_numbers() {
+        let raw = "---\ntitle: x\n---\n\n# Heading\n\n- [ ] first\n- [x] second\n";
+        let tasks = extract_tasks(raw);
+        assert_eq!(tasks.len(), 2);
+        // Line 7 in the FILE, not line 4 of the body — the panel rewrites the
+        // checkbox on this line.
+        assert_eq!(tasks[0].line, 7);
+        assert_eq!(tasks[0].text, "first");
+        assert!(!tasks[0].done);
+        assert_eq!(tasks[1].line, 8);
+        assert!(tasks[1].done);
+    }
+
+    #[test]
+    fn ignores_task_shaped_lines_inside_fenced_code() {
+        let raw = "- [ ] real\n\n```sh\n- [ ] not a task\n```\n\n- [x] also real\n";
+        let tasks = extract_tasks(raw);
+        assert_eq!(
+            tasks.iter().map(|t| t.text.as_str()).collect::<Vec<_>>(),
+            vec!["real", "also real"]
+        );
+    }
+
+    #[test]
+    fn ignores_front_matter_and_accepts_every_bullet_marker() {
+        let raw = "---\nlist:\n  - [ ] not a task\n---\n* [ ] star\n+ [X] plus\n  - [ ] nested\n";
+        let tasks = extract_tasks(raw);
+        assert_eq!(
+            tasks.iter().map(|t| (t.line, t.text.as_str(), t.done)).collect::<Vec<_>>(),
+            vec![(5, "star", false), (6, "plus", true), (7, "nested", false)]
+        );
+    }
+
+    #[test]
+    fn a_bare_checkbox_with_no_text_is_not_a_task() {
+        assert!(extract_tasks("- [ ]\n- [ ]   \n").is_empty());
+    }
+
+    #[test]
+    fn keeps_priority_and_due_tokens_for_the_frontend_to_parse() {
+        let tasks = extract_tasks("- [ ] ship it ⏫ 📅 2026-09-10\n");
+        assert_eq!(tasks[0].text, "ship it ⏫ 📅 2026-09-10");
+    }
 }

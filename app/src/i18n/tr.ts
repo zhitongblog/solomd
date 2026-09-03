@@ -932,6 +932,7 @@ export const tr: I18n = {
     outline: 'Anahat',
     backlinks: 'Geri Bağlantılar',
     tags: 'Etiketler',
+    tasks: 'Görevler',
     neighborhood: 'Neighborhood',
     history: 'Geçmiş',
     agent: 'Aracı',
@@ -1603,6 +1604,17 @@ export const tr: I18n = {
     needsMarkitdown: 'Bazı biçimler markitdown gerektirir: pip install \'markitdown[all]\'',
     failed: '{count} dosya dönüştürülemedi: {names}',
   },
+  tasks: {
+    heading: 'GÖREVLER',
+    empty: 'Henüz görev yok — herhangi bir notta `- [ ]` satırı yazın.',
+    openFolder: 'Görevleri toplamak için bir klasör açın.',
+    priorityOnly: 'Yalnızca öncelikli görevler',
+    filter: {
+      open: 'Açık',
+      today: 'Süre',
+      all: 'Tümü',
+    },
+  },
   cmd: {
     capture: {
       quick: 'Hızlı yakalama…',
@@ -1641,6 +1653,7 @@ export const tr: I18n = {
       toggleBacklinks: 'Görünüm: Geri Bağlantılar Bölmesini Aç/Kapat',
       relationships: 'Görünüm: İlişkiler Bölmesini Aç/Kapat',
       toggleTagsPanel: 'Görünüm: Etiketler Bölmesini Aç/Kapat',
+      toggleTasksPanel: 'Görünüm: görev panelini aç/kapat',
       toggleNeighborhood: 'Görünüm: Komşuluk Bölmesini Aç/Kapat',
       toggleTypesPanel: 'Görünüm: Türler Bölmesini Aç/Kapat',
       toggleHistoryPanel: 'Görünüm: Geçmiş Bölmesini Aç/Kapat',

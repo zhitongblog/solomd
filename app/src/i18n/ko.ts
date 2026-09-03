@@ -929,6 +929,7 @@ export const ko: I18n = {
     outline: '개요',
     backlinks: '백링크',
     tags: '태그',
+    tasks: '작업',
     neighborhood: 'Neighborhood',
     history: '기록',
     agent: '에이전트',
@@ -1586,6 +1587,17 @@ export const ko: I18n = {
     needsMarkitdown: '일부 형식은 markitdown이 필요합니다: pip install \'markitdown[all]\'',
     failed: '{count}개 파일을 변환하지 못했습니다: {names}',
   },
+  tasks: {
+    heading: '작업',
+    empty: '아직 작업이 없습니다 — 아무 노트에나 `- [ ]` 줄을 쓰세요.',
+    openFolder: '폴더를 열면 작업을 모읍니다.',
+    priorityOnly: '우선순위 있는 항목만',
+    filter: {
+      open: '미완료',
+      today: '기한',
+      all: '전체',
+    },
+  },
   cmd: {
     capture: {
       quick: '빠른 캡처…',
@@ -1624,6 +1636,7 @@ export const ko: I18n = {
       toggleBacklinks: '보기: 백링크 창 토글',
       relationships: '보기: 관계 창 토글',
       toggleTagsPanel: '보기: 태그 창 토글',
+      toggleTasksPanel: '보기: 작업 패널 전환',
       toggleNeighborhood: '보기: 이웃 창 토글',
       toggleTypesPanel: '보기: 타입 창 토글',
       toggleHistoryPanel: '보기: 히스토리 창 토글',

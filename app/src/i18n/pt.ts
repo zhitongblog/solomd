@@ -931,6 +931,7 @@ export const pt: I18n = {
     outline: 'Esboço',
     backlinks: 'Backlinks',
     tags: 'Tags',
+    tasks: 'Tarefas',
     neighborhood: 'Neighborhood',
     history: 'Histórico',
     agent: 'Agente',
@@ -1588,6 +1589,17 @@ export const pt: I18n = {
     needsMarkitdown: 'Alguns formatos precisam de markitdown: pip install \'markitdown[all]\'',
     failed: 'Não foi possível converter {count} ficheiro(s): {names}',
   },
+  tasks: {
+    heading: 'TAREFAS',
+    empty: 'Ainda não há tarefas — escreva uma linha `- [ ]` em qualquer nota.',
+    openFolder: 'Abra uma pasta para reunir as suas tarefas.',
+    priorityOnly: 'Apenas tarefas com prioridade',
+    filter: {
+      open: 'Abertas',
+      today: 'Prazo',
+      all: 'Todas',
+    },
+  },
   cmd: {
     capture: {
       quick: 'Captura rápida…',
@@ -1626,6 +1638,7 @@ export const pt: I18n = {
       toggleBacklinks: 'Exibir: Alternar painel de backlinks',
       relationships: 'Exibir: Alternar painel de relações',
       toggleTagsPanel: 'Exibir: Alternar painel de tags',
+      toggleTasksPanel: 'Ver: alternar painel de tarefas',
       toggleNeighborhood: 'Exibir: Alternar painel de vizinhança',
       toggleTypesPanel: 'Exibir: Alternar painel de tipos',
       toggleHistoryPanel: 'Exibir: Alternar painel de histórico',

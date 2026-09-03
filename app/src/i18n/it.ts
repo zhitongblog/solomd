@@ -929,6 +929,7 @@ export const it: I18n = {
     outline: 'Struttura',
     backlinks: 'Retrolink',
     tags: 'Tag',
+    tasks: 'Attività',
     neighborhood: 'Neighborhood',
     history: 'Cronologia',
     agent: 'Agente',
@@ -1586,6 +1587,17 @@ export const it: I18n = {
     needsMarkitdown: 'Alcuni formati richiedono markitdown: pip install \'markitdown[all]\'',
     failed: 'Impossibile convertire {count} file: {names}',
   },
+  tasks: {
+    heading: 'ATTIVITÀ',
+    empty: 'Ancora nessuna attività: scrivi una riga `- [ ]` in una nota.',
+    openFolder: 'Apri una cartella per raccogliere le sue attività.',
+    priorityOnly: 'Solo attività con priorità',
+    filter: {
+      open: 'Aperte',
+      today: 'Scadenza',
+      all: 'Tutte',
+    },
+  },
   cmd: {
     capture: {
       quick: 'Cattura rapida…',
@@ -1624,6 +1636,7 @@ export const it: I18n = {
       toggleBacklinks: 'Vista: Attiva/disattiva pannello backlink',
       relationships: 'Vista: Attiva/disattiva pannello relazioni',
       toggleTagsPanel: 'Vista: Attiva/disattiva pannello tag',
+      toggleTasksPanel: 'Vista: mostra/nascondi pannello attività',
       toggleNeighborhood: 'Vista: Attiva/disattiva pannello vicinato',
       toggleTypesPanel: 'Vista: Attiva/disattiva pannello tipi',
       toggleHistoryPanel: 'Vista: Attiva/disattiva pannello cronologia',

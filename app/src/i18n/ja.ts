@@ -929,6 +929,7 @@ export const ja: I18n = {
     outline: 'アウトライン',
     backlinks: 'バックリンク',
     tags: 'タグ',
+    tasks: 'タスク',
     neighborhood: 'Neighborhood',
     history: '履歴',
     agent: 'エージェント',
@@ -1586,6 +1587,17 @@ export const ja: I18n = {
     needsMarkitdown: '一部の形式には markitdown が必要です: pip install \'markitdown[all]\'',
     failed: '{count} 件のファイルを変換できませんでした: {names}',
   },
+  tasks: {
+    heading: 'タスク',
+    empty: 'タスクはまだありません —— どのノートでも `- [ ]` の行を書けば表示されます。',
+    openFolder: 'フォルダを開くとタスクを集められます。',
+    priorityOnly: '優先度つきのみ表示',
+    filter: {
+      open: '未完了',
+      today: '期限',
+      all: 'すべて',
+    },
+  },
   cmd: {
     capture: {
       quick: 'クイックキャプチャ…',
@@ -1624,6 +1636,7 @@ export const ja: I18n = {
       toggleBacklinks: '表示: バックリンクペインを切り替え',
       relationships: '表示: 関係ペインを切り替え',
       toggleTagsPanel: '表示: タグペインを切り替え',
+      toggleTasksPanel: '表示: タスクパネルの切り替え',
       toggleNeighborhood: '表示: 近傍ペインを切り替え',
       toggleTypesPanel: '表示: タイプペインを切り替え',
       toggleHistoryPanel: '表示: 履歴ペインを切り替え',

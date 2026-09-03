@@ -926,6 +926,7 @@ export const zh: I18n = {
     outline: '大纲',
     backlinks: '反向链接',
     tags: '标签',
+    tasks: '任务',
     neighborhood: 'Neighborhood',
     history: '历史',
     agent: 'AI 助手',
@@ -1589,6 +1590,17 @@ export const zh: I18n = {
     needsMarkitdown: '部分格式需要 markitdown：pip install \'markitdown[all]\'',
     failed: '{count} 个文件转换失败：{names}',
   },
+  tasks: {
+    heading: '任务',
+    empty: '还没有任务 —— 在任意笔记里写一行 `- [ ]` 即可。',
+    openFolder: '打开一个文件夹后才能汇总任务。',
+    priorityOnly: '只看有优先级的任务',
+    filter: {
+      open: '未完成',
+      today: '到期',
+      all: '全部',
+    },
+  },
   cmd: {
     capture: {
       quick: '快速捕获…',
@@ -1627,6 +1639,7 @@ export const zh: I18n = {
       toggleBacklinks: '视图:显示/隐藏反向链接面板',
       relationships: '视图:显示/隐藏关系面板',
       toggleTagsPanel: '视图:显示/隐藏标签面板',
+      toggleTasksPanel: '视图：切换任务面板',
       toggleNeighborhood: '视图:显示/隐藏关联笔记面板',
       toggleTypesPanel: '视图:显示/隐藏类型面板',
       toggleHistoryPanel: '视图:显示/隐藏历史面板',

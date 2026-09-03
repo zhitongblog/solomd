@@ -929,6 +929,7 @@ export const es: I18n = {
     outline: 'Esquema',
     backlinks: 'Retroenlaces',
     tags: 'Etiquetas',
+    tasks: 'Tareas',
     neighborhood: 'Neighborhood',
     history: 'Historial',
     agent: 'Agente',
@@ -1586,6 +1587,17 @@ export const es: I18n = {
     needsMarkitdown: 'Algunos formatos necesitan markitdown: pip install \'markitdown[all]\'',
     failed: 'No se pudieron convertir {count} archivo(s): {names}',
   },
+  tasks: {
+    heading: 'TAREAS',
+    empty: 'Todavía no hay tareas: escribe una línea `- [ ]` en cualquier nota.',
+    openFolder: 'Abre una carpeta para reunir sus tareas.',
+    priorityOnly: 'Solo tareas con prioridad',
+    filter: {
+      open: 'Abiertas',
+      today: 'Vencen',
+      all: 'Todas',
+    },
+  },
   cmd: {
     capture: {
       quick: 'Captura rápida…',
@@ -1624,6 +1636,7 @@ export const es: I18n = {
       toggleBacklinks: 'Vista: Alternar panel de retroenlaces',
       relationships: 'Vista: Alternar panel de relaciones',
       toggleTagsPanel: 'Vista: Alternar panel de etiquetas',
+      toggleTasksPanel: 'Vista: alternar panel de tareas',
       toggleNeighborhood: 'Vista: Alternar panel de vecindario',
       toggleTypesPanel: 'Vista: Alternar panel de tipos',
       toggleHistoryPanel: 'Vista: Alternar panel de historial',

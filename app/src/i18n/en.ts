@@ -933,6 +933,7 @@ export const en = {
     outline: 'Outline',
     backlinks: 'Backlinks',
     tags: 'Tags',
+    tasks: 'Tasks',
     neighborhood: 'Neighborhood',
     history: 'History',
     agent: 'Agent',
@@ -1609,6 +1610,17 @@ export const en = {
     needsMarkitdown: 'Some formats need markitdown: pip install \'markitdown[all]\'',
     failed: '{count} file(s) could not be converted: {names}',
   },
+  tasks: {
+    heading: 'TASKS',
+    empty: 'No tasks yet — write a `- [ ]` line in any note.',
+    openFolder: 'Open a folder to collect its tasks.',
+    priorityOnly: 'Only tasks with a priority',
+    filter: {
+      open: 'Open',
+      today: 'Due',
+      all: 'All',
+    },
+  },
   cmd: {
     capture: {
       quick: 'Quick Capture…',
@@ -1647,6 +1659,7 @@ export const en = {
       toggleBacklinks: 'View: Toggle Backlinks Pane',
       relationships: 'View: Toggle Relationships Pane',
       toggleTagsPanel: 'View: Toggle Tags Pane',
+      toggleTasksPanel: 'View: Toggle Tasks Pane',
       toggleNeighborhood: 'View: Toggle Neighborhood Pane',
       toggleTypesPanel: 'View: Toggle Types Pane',
       toggleHistoryPanel: 'View: Toggle History Pane',

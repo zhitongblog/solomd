@@ -932,6 +932,7 @@ export const uk: I18n = {
     outline: 'Структура',
     backlinks: 'Зворотні посилання',
     tags: 'Теги',
+    tasks: 'Завдання',
     neighborhood: 'Neighborhood',
     history: 'Історія',
     agent: 'Агент',
@@ -1603,6 +1604,17 @@ export const uk: I18n = {
     needsMarkitdown: 'Деякі формати потребують markitdown: pip install \'markitdown[all]\'',
     failed: 'Не вдалося конвертувати {count} файл(ів): {names}',
   },
+  tasks: {
+    heading: 'ЗАВДАННЯ',
+    empty: 'Завдань ще немає — напишіть рядок `- [ ]` у будь-якій нотатці.',
+    openFolder: 'Відкрийте теку, щоб зібрати її завдання.',
+    priorityOnly: 'Лише завдання з пріоритетом',
+    filter: {
+      open: 'Відкриті',
+      today: 'Термін',
+      all: 'Усі',
+    },
+  },
   cmd: {
     capture: {
       quick: 'Швидкий запис…',
@@ -1641,6 +1653,7 @@ export const uk: I18n = {
       toggleBacklinks: 'Вигляд: Перемкнути панель зворотних посилань',
       relationships: 'Вигляд: Перемкнути панель зв\'язків',
       toggleTagsPanel: 'Вигляд: Перемкнути панель тегів',
+      toggleTasksPanel: 'Вигляд: перемкнути панель завдань',
       toggleNeighborhood: 'Вигляд: Перемкнути панель оточення',
       toggleTypesPanel: 'Вигляд: Перемкнути панель типів',
       toggleHistoryPanel: 'Вигляд: Перемкнути панель історії',

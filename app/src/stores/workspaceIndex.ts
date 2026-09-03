@@ -23,6 +23,14 @@ export interface WikilinkRef {
   line: number;
 }
 
+/** One `- [ ]` / `- [x]` item found by the Rust index. `line` is 1-based and
+ *  counts front matter — the task panel rewrites the checkbox on that line. */
+export interface TaskRef {
+  line: number;
+  text: string;
+  done: boolean;
+}
+
 export interface IndexEntry {
   path: string;
   name: string;
@@ -34,6 +42,9 @@ export interface IndexEntry {
   wikilinks: WikilinkRef[];
   tags: string[];
   headings: string[];
+  /** Absent on entries served from an index cache written before tasks were
+   *  indexed; treat as empty. */
+  tasks?: TaskRef[];
   summary: string;
   title?: string | null;
   /**

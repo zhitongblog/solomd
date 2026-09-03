@@ -149,6 +149,8 @@ interface Settings {
   dailyNotesFormat: string;
   dailyNotesTemplate: string;
   showTagsPanel: boolean;
+  // Workspace-wide task panel: every `- [ ]` in the vault, grouped by file.
+  showTasksPanel: boolean;
   // v4.6 F4: Neighborhood — per-note relationship explorer pane (frontmatter
   // wikilink groups + inverse scan + body backlinks).
   showNeighborhood: boolean;
@@ -526,6 +528,7 @@ function defaults(): Settings {
     dailyNotesFormat: 'YYYY-MM-DD.md',
     dailyNotesTemplate: '',
     showTagsPanel: true,
+    showTasksPanel: false,
     showNeighborhood: false,
     showTypesPanel: false,
     showAgentPanel: true,
@@ -581,7 +584,7 @@ function defaults(): Settings {
     keybindings: {},
     smartQuotesOptInMigrated: true,
     markdownAutoNumberHeadings: false,
-    rsPaneOrder: ['search', 'outline', 'backlinks', 'relationships', 'tags', 'neighborhood', 'types', 'history', 'inspector', 'agent'],
+    rsPaneOrder: ['search', 'outline', 'backlinks', 'relationships', 'tags', 'tasks', 'neighborhood', 'types', 'history', 'inspector', 'agent'],
     previewFontSize: 15,
     attachmentMode: 'shared',
     assetsDirName: '_assets',
@@ -1007,6 +1010,10 @@ export const useSettingsStore = defineStore('settings', {
       if (this.showTagsPanel) this.ensureRightSidebarVisible();
       this.persist();
     },
+    toggleTasksPanel() {
+      this.showTasksPanel = !this.showTasksPanel;
+      this.persist();
+    },
     toggleNeighborhood() {
       this.showNeighborhood = !this.showNeighborhood;
       if (this.showNeighborhood) this.ensureRightSidebarVisible();
@@ -1263,7 +1270,7 @@ export const useSettingsStore = defineStore('settings', {
       this.persist();
     },
     resetRsPaneOrder() {
-      this.rsPaneOrder = ['search', 'outline', 'backlinks', 'relationships', 'tags', 'neighborhood', 'types', 'history', 'inspector', 'agent'];
+      this.rsPaneOrder = ['search', 'outline', 'backlinks', 'relationships', 'tags', 'tasks', 'neighborhood', 'types', 'history', 'inspector', 'agent'];
       this.persist();
     },
     /** v4.3.0 PR #74 — preview-only font size. Editor font is the existing

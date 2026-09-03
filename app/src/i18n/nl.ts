@@ -932,6 +932,7 @@ export const nl: I18n = {
     outline: 'Overzicht',
     backlinks: 'Backlinks',
     tags: 'Tags',
+    tasks: 'Taken',
     neighborhood: 'Neighborhood',
     history: 'Geschiedenis',
     agent: 'Agent',
@@ -1603,6 +1604,17 @@ export const nl: I18n = {
     needsMarkitdown: 'Sommige formaten vereisen markitdown: pip install \'markitdown[all]\'',
     failed: '{count} bestand(en) konden niet worden geconverteerd: {names}',
   },
+  tasks: {
+    heading: 'TAKEN',
+    empty: 'Nog geen taken — schrijf een `- [ ]`-regel in een notitie.',
+    openFolder: 'Open een map om de taken te verzamelen.',
+    priorityOnly: 'Alleen taken met prioriteit',
+    filter: {
+      open: 'Open',
+      today: 'Vervalt',
+      all: 'Alle',
+    },
+  },
   cmd: {
     capture: {
       quick: 'Snelle notitie…',
@@ -1641,6 +1653,7 @@ export const nl: I18n = {
       toggleBacklinks: 'Weergave: Backlinks-paneel in-/uitschakelen',
       relationships: 'Weergave: Relatiepaneel in-/uitschakelen',
       toggleTagsPanel: 'Weergave: Tags-paneel in-/uitschakelen',
+      toggleTasksPanel: 'Weergave: takenpaneel aan/uit',
       toggleNeighborhood: 'Weergave: Omgevingspaneel in-/uitschakelen',
       toggleTypesPanel: 'Weergave: Typenpaneel in-/uitschakelen',
       toggleHistoryPanel: 'Weergave: Geschiedenispaneel in-/uitschakelen',

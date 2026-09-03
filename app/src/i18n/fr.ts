@@ -929,6 +929,7 @@ export const fr: I18n = {
     outline: 'Plan',
     backlinks: 'Rétroliens',
     tags: 'Tags',
+    tasks: 'Tâches',
     neighborhood: 'Neighborhood',
     history: 'Historique',
     agent: 'Agent',
@@ -1586,6 +1587,17 @@ export const fr: I18n = {
     needsMarkitdown: 'Certains formats nécessitent markitdown : pip install \'markitdown[all]\'',
     failed: '{count} fichier(s) n’ont pas pu être convertis : {names}',
   },
+  tasks: {
+    heading: 'TÂCHES',
+    empty: 'Aucune tâche pour l’instant — écrivez une ligne `- [ ]` dans une note.',
+    openFolder: 'Ouvrez un dossier pour rassembler ses tâches.',
+    priorityOnly: 'Uniquement les tâches prioritaires',
+    filter: {
+      open: 'À faire',
+      today: 'Échéance',
+      all: 'Toutes',
+    },
+  },
   cmd: {
     capture: {
       quick: 'Capture rapide…',
@@ -1624,6 +1636,7 @@ export const fr: I18n = {
       toggleBacklinks: 'Affichage : Afficher/masquer le panneau des rétroliens',
       relationships: 'Affichage : Afficher/masquer le panneau des relations',
       toggleTagsPanel: 'Affichage : Afficher/masquer le panneau des tags',
+      toggleTasksPanel: 'Affichage : panneau des tâches',
       toggleNeighborhood: 'Affichage : Afficher/masquer le panneau de voisinage',
       toggleTypesPanel: 'Affichage : Afficher/masquer le panneau des types',
       toggleHistoryPanel: 'Affichage : Afficher/masquer le panneau d\'historique',
