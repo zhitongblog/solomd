@@ -10,6 +10,7 @@ export const de: I18n = {
     newText: 'Neuer Text',
     openFile: 'Datei öffnen…',
     openFolder: 'Ordner öffnen…',
+    importDocs: 'Dokumente importieren…',
     save: 'Speichern',
     saveAs: 'Speichern unter…',
     openExternal: 'In externem Editor öffnen',
@@ -1578,6 +1579,13 @@ export const de: I18n = {
     keys: 'Enter speichert · Shift+Enter neue Zeile · Esc verwirft',
     noWorkspace: 'Öffnen Sie zuerst einen Ordner — es gibt keinen Ablageort.',
   },
+  import: {
+    progress: 'Konvertiere {name} … ({done}/{total})',
+    done: '{count} Dokument(e) nach {folder} importiert',
+    doneTabs: '{count} Dokument(e) als neue Tabs importiert',
+    needsMarkitdown: 'Einige Formate brauchen markitdown: pip install \'markitdown[all]\'',
+    failed: '{count} Datei(en) konnten nicht konvertiert werden: {names}',
+  },
   cmd: {
     capture: {
       quick: 'Schnellerfassung…',
@@ -1597,6 +1605,7 @@ export const de: I18n = {
       new: 'Neue Markdown-Datei',
       newText: 'Neue Klartextdatei',
       open: 'Datei öffnen…',
+      import: 'Dokumente importieren…',
       save: 'Speichern',
       saveAs: 'Speichern unter…',
       openFolder: 'Ordner öffnen…',

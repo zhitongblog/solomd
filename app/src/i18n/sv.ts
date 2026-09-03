@@ -10,6 +10,7 @@ export const sv: I18n = {
     newText: 'Ny vanlig text',
     openFile: 'Öppna fil…',
     openFolder: 'Öppna mapp…',
+    importDocs: 'Importera dokument…',
     save: 'Spara',
     saveAs: 'Spara som…',
     openExternal: 'Öppna i extern redigerare',
@@ -1595,6 +1596,13 @@ export const sv: I18n = {
     keys: 'Enter sparar · Skift+Enter ny rad · Esc kastar',
     noWorkspace: 'Öppna en mapp först — det finns ingenstans att lägga det.',
   },
+  import: {
+    progress: 'Konverterar {name} … ({done}/{total})',
+    done: '{count} dokument importerade till {folder}',
+    doneTabs: '{count} dokument importerade som nya flikar',
+    needsMarkitdown: 'Vissa format kräver markitdown: pip install \'markitdown[all]\'',
+    failed: '{count} fil(er) kunde inte konverteras: {names}',
+  },
   cmd: {
     capture: {
       quick: 'Snabbfångst…',
@@ -1614,6 +1622,7 @@ export const sv: I18n = {
       new: 'Ny Markdown-fil',
       newText: 'Ny oformaterad textfil',
       open: 'Öppna fil…',
+      import: 'Importera dokument…',
       save: 'Spara',
       saveAs: 'Spara som…',
       openFolder: 'Öppna mapp…',

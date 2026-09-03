@@ -219,6 +219,7 @@ struct MenuStrings {
     new_txt: &'static str,
     open_file: &'static str,
     open_folder: &'static str,
+    import_docs: &'static str,
     save: &'static str,
     save_as: &'static str,
     print_item: &'static str,
@@ -262,6 +263,7 @@ fn strings_for(lang: &str) -> MenuStrings {
             new_txt: "新建纯文本",
             open_file: "打开文件…",
             open_folder: "打开文件夹…",
+            import_docs: "导入文档…",
             save: "保存",
             save_as: "另存为…",
             print_item: "打印…",
@@ -298,6 +300,7 @@ fn strings_for(lang: &str) -> MenuStrings {
             new_txt: "New Plain Text",
             open_file: "Open File…",
             open_folder: "Open Folder…",
+            import_docs: "Import Documents…",
             save: "Save",
             save_as: "Save As…",
             print_item: "Print…",
@@ -357,6 +360,15 @@ fn build_app_menu<R: tauri::Runtime>(
     let open_file = accel!(MenuItemBuilder::with_id("file.open", s.open_file), "file.open", "CmdOrCtrl+O")
         .build(app)?;
     let open_folder = MenuItemBuilder::with_id("file.openFolder", s.open_folder).build(app)?;
+    // Converting a Word/PDF/HTML file has been possible for versions, but only
+    // by opening one — there was no entry point that said "import", which is
+    // the word people look for.
+    let import_docs = accel!(
+        MenuItemBuilder::with_id("file.import", s.import_docs),
+        "file.import",
+        "CmdOrCtrl+Shift+L"
+    )
+    .build(app)?;
     let save = accel!(MenuItemBuilder::with_id("file.save", s.save), "file.save", "CmdOrCtrl+S")
         .build(app)?;
     let save_as = accel!(MenuItemBuilder::with_id("file.saveAs", s.save_as), "file.saveAs", "CmdOrCtrl+Shift+S")
@@ -381,6 +393,7 @@ fn build_app_menu<R: tauri::Runtime>(
         .separator()
         .item(&open_file)
         .item(&open_folder)
+        .item(&import_docs)
         .separator()
         .item(&save)
         .item(&save_as)
@@ -401,6 +414,7 @@ fn build_app_menu<R: tauri::Runtime>(
         .separator()
         .item(&open_file)
         .item(&open_folder)
+        .item(&import_docs)
         .separator()
         .item(&save)
         .item(&save_as)

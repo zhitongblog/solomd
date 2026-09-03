@@ -11,6 +11,7 @@ export const zh: I18n = {
     newText: '新建纯文本',
     openFile: '打开文件…',
     openFolder: '打开文件夹…',
+    importDocs: '导入文档…',
     save: '保存',
     saveAs: '另存为…',
     openExternal: '用外部编辑器打开',
@@ -1581,6 +1582,13 @@ export const zh: I18n = {
     keys: '回车保存 · Shift+回车换行 · Esc 丢弃',
     noWorkspace: '还没有打开文件夹，无处存放。',
   },
+  import: {
+    progress: '正在转换 {name} …（{done}/{total}）',
+    done: '已导入 {count} 个文档到 {folder}',
+    doneTabs: '已把 {count} 个文档导入为新标签页',
+    needsMarkitdown: '部分格式需要 markitdown：pip install \'markitdown[all]\'',
+    failed: '{count} 个文件转换失败：{names}',
+  },
   cmd: {
     capture: {
       quick: '快速捕获…',
@@ -1600,6 +1608,7 @@ export const zh: I18n = {
       new: '新建 Markdown 文件',
       newText: '新建纯文本文件',
       open: '打开文件…',
+      import: '导入文档…',
       save: '保存',
       saveAs: '另存为…',
       openFolder: '打开文件夹…',

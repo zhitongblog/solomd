@@ -822,6 +822,9 @@ function dispatchMenuAction(id: string) {
     case 'file.openFolder':
       files.openFolder();
       break;
+    case 'file.import':
+      void files.importDocuments();
+      break;
     case 'file.save':
       files.saveActive();
       break;

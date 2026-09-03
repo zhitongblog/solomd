@@ -10,6 +10,7 @@ export const nl: I18n = {
     newText: 'Nieuwe platte tekst',
     openFile: 'Bestand openen…',
     openFolder: 'Map openen…',
+    importDocs: 'Documenten importeren…',
     save: 'Opslaan',
     saveAs: 'Opslaan als…',
     openExternal: 'Openen in externe editor',
@@ -1595,6 +1596,13 @@ export const nl: I18n = {
     keys: 'Enter bewaart · Shift+Enter nieuwe regel · Esc verwerpt',
     noWorkspace: 'Open eerst een map — er is nergens om dit op te slaan.',
   },
+  import: {
+    progress: '{name} converteren… ({done}/{total})',
+    done: '{count} document(en) geïmporteerd in {folder}',
+    doneTabs: '{count} document(en) geïmporteerd als nieuwe tabbladen',
+    needsMarkitdown: 'Sommige formaten vereisen markitdown: pip install \'markitdown[all]\'',
+    failed: '{count} bestand(en) konden niet worden geconverteerd: {names}',
+  },
   cmd: {
     capture: {
       quick: 'Snelle notitie…',
@@ -1614,6 +1622,7 @@ export const nl: I18n = {
       new: 'Nieuw Markdown-bestand',
       newText: 'Nieuw platte-tekstbestand',
       open: 'Bestand openen…',
+      import: 'Documenten importeren…',
       save: 'Opslaan',
       saveAs: 'Opslaan als…',
       openFolder: 'Map openen…',

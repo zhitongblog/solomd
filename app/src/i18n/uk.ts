@@ -10,6 +10,7 @@ export const uk: I18n = {
     newText: 'Новий звичайний текст',
     openFile: 'Відкрити файл…',
     openFolder: 'Відкрити теку…',
+    importDocs: 'Імпортувати документи…',
     save: 'Зберегти',
     saveAs: 'Зберегти як…',
     openExternal: 'Відкрити у зовнішньому редакторі',
@@ -1595,6 +1596,13 @@ export const uk: I18n = {
     keys: 'Enter зберігає · Shift+Enter новий рядок · Esc скасовує',
     noWorkspace: 'Спершу відкрийте теку — немає куди це покласти.',
   },
+  import: {
+    progress: 'Конвертація {name} … ({done}/{total})',
+    done: 'Імпортовано {count} документ(ів) до {folder}',
+    doneTabs: 'Імпортовано {count} документ(ів) як нові вкладки',
+    needsMarkitdown: 'Деякі формати потребують markitdown: pip install \'markitdown[all]\'',
+    failed: 'Не вдалося конвертувати {count} файл(ів): {names}',
+  },
   cmd: {
     capture: {
       quick: 'Швидкий запис…',
@@ -1614,6 +1622,7 @@ export const uk: I18n = {
       new: 'Новий файл Markdown',
       newText: 'Новий текстовий файл',
       open: 'Відкрити файл…',
+      import: 'Імпортувати документи…',
       save: 'Зберегти',
       saveAs: 'Зберегти як…',
       openFolder: 'Відкрити папку…',

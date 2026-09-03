@@ -10,6 +10,7 @@ export const it: I18n = {
     newText: 'Nuovo testo semplice',
     openFile: 'Apri file…',
     openFolder: 'Apri cartella…',
+    importDocs: 'Importa documenti…',
     save: 'Salva',
     saveAs: 'Salva come…',
     openExternal: 'Apri in editor esterno',
@@ -1578,6 +1579,13 @@ export const it: I18n = {
     keys: 'Invio salva · Maiusc+Invio a capo · Esc annulla',
     noWorkspace: 'Apri prima una cartella: non c’è dove archiviarlo.',
   },
+  import: {
+    progress: 'Conversione di {name} … ({done}/{total})',
+    done: '{count} documento/i importato/i in {folder}',
+    doneTabs: '{count} documento/i importato/i come nuove schede',
+    needsMarkitdown: 'Alcuni formati richiedono markitdown: pip install \'markitdown[all]\'',
+    failed: 'Impossibile convertire {count} file: {names}',
+  },
   cmd: {
     capture: {
       quick: 'Cattura rapida…',
@@ -1597,6 +1605,7 @@ export const it: I18n = {
       new: 'Nuovo file Markdown',
       newText: 'Nuovo file di testo semplice',
       open: 'Apri file…',
+      import: 'Importa documenti…',
       save: 'Salva',
       saveAs: 'Salva con nome…',
       openFolder: 'Apri cartella…',

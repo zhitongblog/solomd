@@ -63,6 +63,7 @@ export function useShortcuts(hooks: Hooks = {}) {
     'file.new': () => void files.newFile(),
     'file.newText': () => void files.newTextFile(),
     'file.open': () => void files.openFile(),
+    'file.import': () => void files.importDocuments(),
     'file.save': () => void files.saveActive(),
     'file.saveAs': () => void files.saveActiveAs(),
     'file.closeTab': () => {

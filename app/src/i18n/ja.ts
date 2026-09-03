@@ -10,6 +10,7 @@ export const ja: I18n = {
     newText: '新規プレーンテキスト',
     openFile: 'ファイルを開く…',
     openFolder: 'フォルダを開く…',
+    importDocs: 'ドキュメントを取り込む…',
     save: '保存',
     saveAs: '名前を付けて保存…',
     openExternal: '外部エディタで開く',
@@ -1578,6 +1579,13 @@ export const ja: I18n = {
     keys: 'Enter で保存 · Shift+Enter で改行 · Esc で破棄',
     noWorkspace: 'まずフォルダを開いてください。保存先がありません。',
   },
+  import: {
+    progress: '{name} を変換中…（{done}/{total}）',
+    done: '{count} 件のドキュメントを {folder} に取り込みました',
+    doneTabs: '{count} 件のドキュメントを新しいタブとして開きました',
+    needsMarkitdown: '一部の形式には markitdown が必要です: pip install \'markitdown[all]\'',
+    failed: '{count} 件のファイルを変換できませんでした: {names}',
+  },
   cmd: {
     capture: {
       quick: 'クイックキャプチャ…',
@@ -1597,6 +1605,7 @@ export const ja: I18n = {
       new: '新規 Markdown ファイル',
       newText: '新規プレーンテキストファイル',
       open: 'ファイルを開く…',
+      import: 'ドキュメントを取り込む…',
       save: '保存',
       saveAs: '名前を付けて保存…',
       openFolder: 'フォルダーを開く…',

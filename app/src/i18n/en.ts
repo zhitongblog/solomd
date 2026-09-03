@@ -10,6 +10,7 @@ export const en = {
     newText: 'New Plain Text',
     openFile: 'Open File…',
     openFolder: 'Open Folder…',
+    importDocs: 'Import Documents…',
     save: 'Save',
     saveAs: 'Save As…',
     openExternal: 'Open in External Editor',
@@ -1601,6 +1602,13 @@ export const en = {
     keys: 'Enter to save · Shift+Enter newline · Esc to discard',
     noWorkspace: 'Open a folder first — there is nowhere to file this.',
   },
+  import: {
+    progress: 'Converting {name} … ({done}/{total})',
+    done: 'Imported {count} document(s) into {folder}',
+    doneTabs: 'Imported {count} document(s) as new tabs',
+    needsMarkitdown: 'Some formats need markitdown: pip install \'markitdown[all]\'',
+    failed: '{count} file(s) could not be converted: {names}',
+  },
   cmd: {
     capture: {
       quick: 'Quick Capture…',
@@ -1620,6 +1628,7 @@ export const en = {
       new: 'New Markdown File',
       newText: 'New Plain Text File',
       open: 'Open File…',
+      import: 'Import Documents…',
       save: 'Save',
       saveAs: 'Save As…',
       openFolder: 'Open Folder…',

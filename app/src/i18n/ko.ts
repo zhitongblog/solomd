@@ -10,6 +10,7 @@ export const ko: I18n = {
     newText: '새 일반 텍스트',
     openFile: '파일 열기…',
     openFolder: '폴더 열기…',
+    importDocs: '문서 가져오기…',
     save: '저장',
     saveAs: '다른 이름으로 저장…',
     openExternal: '외부 편집기로 열기',
@@ -1578,6 +1579,13 @@ export const ko: I18n = {
     keys: 'Enter 저장 · Shift+Enter 줄바꿈 · Esc 취소',
     noWorkspace: '먼저 폴더를 여세요. 저장할 곳이 없습니다.',
   },
+  import: {
+    progress: '{name} 변환 중… ({done}/{total})',
+    done: '{count}개 문서를 {folder}에 가져왔습니다',
+    doneTabs: '{count}개 문서를 새 탭으로 열었습니다',
+    needsMarkitdown: '일부 형식은 markitdown이 필요합니다: pip install \'markitdown[all]\'',
+    failed: '{count}개 파일을 변환하지 못했습니다: {names}',
+  },
   cmd: {
     capture: {
       quick: '빠른 캡처…',
@@ -1597,6 +1605,7 @@ export const ko: I18n = {
       new: '새 Markdown 파일',
       newText: '새 일반 텍스트 파일',
       open: '파일 열기…',
+      import: '문서 가져오기…',
       save: '저장',
       saveAs: '다른 이름으로 저장…',
       openFolder: '폴더 열기…',

@@ -10,6 +10,7 @@ export const fr: I18n = {
     newText: 'Nouveau texte brut',
     openFile: 'Ouvrir un fichier…',
     openFolder: 'Ouvrir un dossier…',
+    importDocs: 'Importer des documents…',
     save: 'Enregistrer',
     saveAs: 'Enregistrer sous…',
     openExternal: 'Ouvrir dans un éditeur externe',
@@ -1578,6 +1579,13 @@ export const fr: I18n = {
     keys: 'Entrée pour enregistrer · Maj+Entrée nouvelle ligne · Échap pour annuler',
     noWorkspace: 'Ouvrez d’abord un dossier — il n’y a nulle part où classer ceci.',
   },
+  import: {
+    progress: 'Conversion de {name} … ({done}/{total})',
+    done: '{count} document(s) importé(s) dans {folder}',
+    doneTabs: '{count} document(s) importé(s) en nouveaux onglets',
+    needsMarkitdown: 'Certains formats nécessitent markitdown : pip install \'markitdown[all]\'',
+    failed: '{count} fichier(s) n’ont pas pu être convertis : {names}',
+  },
   cmd: {
     capture: {
       quick: 'Capture rapide…',
@@ -1597,6 +1605,7 @@ export const fr: I18n = {
       new: 'Nouveau fichier Markdown',
       newText: 'Nouveau fichier texte brut',
       open: 'Ouvrir un fichier…',
+      import: 'Importer des documents…',
       save: 'Enregistrer',
       saveAs: 'Enregistrer sous…',
       openFolder: 'Ouvrir un dossier…',

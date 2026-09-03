@@ -288,6 +288,14 @@ export function useCommands(): Command[] {
     },
 
     {
+      id: 'file.import',
+      title: 'Import Documents…',
+      shortcut: kb('file.import'),
+      hint: 'Convert Word / PDF / HTML / spreadsheets / slides / EPUB into Markdown notes in this workspace',
+      run: () => void files.importDocuments(),
+    },
+
+    {
       id: 'capture.quick',
       title: 'Quick Capture…',
       hint: 'Open the small capture box and file a note straight into the Inbox',

@@ -10,6 +10,7 @@ export const tr: I18n = {
     newText: 'Yeni Düz Metin',
     openFile: 'Dosya Aç…',
     openFolder: 'Klasör Aç…',
+    importDocs: 'Belgeleri içe aktar…',
     save: 'Kaydet',
     saveAs: 'Farklı Kaydet…',
     openExternal: 'Harici düzenleyicide aç',
@@ -1595,6 +1596,13 @@ export const tr: I18n = {
     keys: 'Enter kaydeder · Shift+Enter yeni satır · Esc iptal',
     noWorkspace: 'Önce bir klasör açın — kaydedilecek yer yok.',
   },
+  import: {
+    progress: '{name} dönüştürülüyor… ({done}/{total})',
+    done: '{count} belge {folder} klasörüne aktarıldı',
+    doneTabs: '{count} belge yeni sekme olarak açıldı',
+    needsMarkitdown: 'Bazı biçimler markitdown gerektirir: pip install \'markitdown[all]\'',
+    failed: '{count} dosya dönüştürülemedi: {names}',
+  },
   cmd: {
     capture: {
       quick: 'Hızlı yakalama…',
@@ -1614,6 +1622,7 @@ export const tr: I18n = {
       new: 'Yeni Markdown Dosyası',
       newText: 'Yeni Düz Metin Dosyası',
       open: 'Dosya Aç…',
+      import: 'Belgeleri içe aktar…',
       save: 'Kaydet',
       saveAs: 'Farklı Kaydet…',
       openFolder: 'Klasör Aç…',
