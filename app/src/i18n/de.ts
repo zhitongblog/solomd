@@ -224,6 +224,9 @@ export const de: I18n = {
     printThemeDark: 'Immer dunkel',
     printThemeFollow: 'App-Theme folgen',
     printThemeHint: 'Welche Palette der System-Druckdialog und der Text-PDF-Export verwenden. Unabhängig vom App-Theme — ein dunkles Theme druckt eine dunkle Fläche und verschwendet Tinte.',
+    quickCapture: 'Schnellerfassung-Hotkey',
+    quickCaptureHint: 'Ein systemweiter Tastenbefehl, der überall ein kleines Fenster öffnet: tippen, Enter — die Notiz landet im Posteingang, ohne dass die App nach vorn kommt. Tauri-Accelerator-Syntax, z. B. CmdOrCtrl+Alt+M.',
+    quickCaptureFailed: 'Nicht registriert: {error}',
     codeBlockWrap: 'Lange Zeilen in Codeblöcken umbrechen',
     codeBlockWrapHint: 'Bricht Codezeilen, die breiter als der Block sind, um statt horizontal zu scrollen. PDF/Druck bricht immer um.',
     explorerFullNames: 'Vollständige Dateinamen im Explorer',
@@ -1569,7 +1572,16 @@ export const de: I18n = {
     disabledHint: 'Das Einklappen ist unter Einstellungen → Grundlagen deaktiviert.',
     plainSourceHint: 'Die Windows-Quelltextansicht kann nicht einklappen — wechseln Sie in den Live-Bearbeitungsmodus.',
   },
+  quickCapture: {
+    placeholder: 'Einen Gedanken festhalten…',
+    destination: 'Nach {folder} / Posteingang',
+    keys: 'Enter speichert · Shift+Enter neue Zeile · Esc verwirft',
+    noWorkspace: 'Öffnen Sie zuerst einen Ordner — es gibt keinen Ablageort.',
+  },
   cmd: {
+    capture: {
+      quick: 'Schnellerfassung…',
+    },
     fold: {
       toggle: 'Einklappen: Abschnitt am Cursor',
       all: 'Einklappen: Alle Abschnitte',

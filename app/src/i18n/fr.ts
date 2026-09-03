@@ -224,6 +224,9 @@ export const fr: I18n = {
     printThemeDark: 'Toujours sombre',
     printThemeFollow: 'Suivre le thème',
     printThemeHint: 'La palette utilisée par la boîte de dialogue d’impression et l’export PDF texte. Indépendante du thème — imprimer un thème sombre couvre la page d’encre.',
+    quickCapture: 'Raccourci de capture rapide',
+    quickCaptureHint: 'Un raccourci système qui ouvre une petite fenêtre n’importe où : tapez, appuyez sur Entrée, la note arrive dans la boîte de réception sans que l’application passe au premier plan. Syntaxe d’accélérateur Tauri, p. ex. CmdOrCtrl+Alt+M.',
+    quickCaptureFailed: 'Non enregistré : {error}',
     codeBlockWrap: 'Retour à la ligne dans les blocs de code',
     codeBlockWrapHint: "Replie les lignes de code plus larges que le bloc au lieu d'afficher une barre de défilement horizontale. PDF/impression replie toujours.",
     explorerFullNames: 'Noms de fichiers complets dans l’explorateur',
@@ -1569,7 +1572,16 @@ export const fr: I18n = {
     disabledHint: 'Le repliement est désactivé dans Réglages → Général.',
     plainSourceHint: 'La vue source de Windows ne peut pas replier — passez en mode édition live.',
   },
+  quickCapture: {
+    placeholder: 'Noter une idée…',
+    destination: 'Vers {folder} / Boîte de réception',
+    keys: 'Entrée pour enregistrer · Maj+Entrée nouvelle ligne · Échap pour annuler',
+    noWorkspace: 'Ouvrez d’abord un dossier — il n’y a nulle part où classer ceci.',
+  },
   cmd: {
+    capture: {
+      quick: 'Capture rapide…',
+    },
     fold: {
       toggle: 'Replier : section au curseur',
       all: 'Replier : toutes les sections',

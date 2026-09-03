@@ -70,6 +70,7 @@ import { isIOS, isMacOS, isAndroid, isMobile } from './lib/platform';
 import { useViewport } from './composables/useViewport';
 import { nativeMenuAccelerators } from './lib/keybindings';
 import { useI18n } from './i18n';
+import { quickCaptureError } from './lib/quick-capture-status';
 import { track } from './lib/telemetry';
 import { openWelcomeTour } from './lib/welcome-tour';
 import { useWorkspaceStore } from './stores/workspace';
@@ -662,6 +663,25 @@ watchEffect(() => {
   // the "I 503 when no folder is open" contract, so they read from
   // independent state but get pushed together.
   invoke('rest_set_workspace', { folder: folder ?? null }).catch(() => {});
+});
+
+// Quick capture's hotkey is an OS-level registration owned by Rust, but the
+// setting that decides it lives in the frontend — so push it on start and on
+// every change. Passing null unregisters, which is what "off" has to mean for
+// a chord that would otherwise stay stolen from every other application.
+watchEffect(() => {
+  const accel = settings.quickCaptureEnabled ? settings.quickCaptureShortcut : null;
+  invoke('quick_capture_set_shortcut', { accelerator: accel })
+    .then(() => {
+      quickCaptureError.value = '';
+    })
+    .catch((e) => {
+      // Almost always "another app already owns this chord". Surfaced in
+      // Settings rather than as a toast: nothing is broken, and a modal
+      // complaint at every launch would be worse than the conflict.
+      quickCaptureError.value = String(e);
+      console.warn('[quickCapture] shortcut not registered', e);
+    });
 });
 
 // v2.3: keep the RAG index in sync with the toggle + active folder. When

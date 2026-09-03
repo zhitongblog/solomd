@@ -10,6 +10,7 @@ import { useRagStore } from '../stores/rag';
 import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
 import { themeLabels } from '../lib/themes';
 import { useI18n } from '../i18n';
+import { quickCaptureError } from '../lib/quick-capture-status';
 import {
   activeKeyActions,
   combosFor,
@@ -36,13 +37,17 @@ import GithubSyncSettings from './GithubSyncSettings.vue';
 import CloudFolderBanner from './CloudFolderBanner.vue';
 import ProxySettings from './ProxySettings.vue';
 import ThemeMarketplace from './ThemeMarketplace.vue';
-import { isIOS, hasGitBackend } from '../lib/platform';
+import { isIOS, isMobile, hasGitBackend } from '../lib/platform';
 import { loadCustomTheme } from '../lib/custom-theme';
 import { openPath } from '@tauri-apps/plugin-opener';
 import { DsModal } from '../ui';
 import type { Theme } from '../types';
 
 const isMobilePlatform = isIOS();
+// Quick capture needs an OS-level hotkey and a second window — neither exists
+// on Android or iOS, so the whole section stays off phones (isIOS alone would
+// still show it on Android).
+const isPhoneOrTablet = isMobile();
 const masBuild = isMasBuild();
 /**
  * #230 — the whole git-backed surface (version history, GitHub sync, proxy,
@@ -893,6 +898,30 @@ function onSelectPdfFont(v: string) {
             {{ t('settings.pdfDefaults.heading') }}
           </h3>
           <p class="setting-hint">{{ t('settings.pdfDefaults.headingHint') }}</p>
+        </section>
+
+        <section v-if="!isPhoneOrTablet" data-cat="integrations">
+          <label>
+            <input
+              type="checkbox"
+              :checked="settings.quickCaptureEnabled"
+              @change="settings.toggleQuickCapture()"
+            />
+            {{ t('settings.quickCapture') }}
+          </label>
+          <p class="setting-hint">{{ t('settings.quickCaptureHint') }}</p>
+          <input
+            type="text"
+            :value="settings.quickCaptureShortcut"
+            :disabled="!settings.quickCaptureEnabled"
+            spellcheck="false"
+            placeholder="CmdOrCtrl+Alt+M"
+            @change="settings.setQuickCaptureShortcut(($event.target as HTMLInputElement).value)"
+            style="margin-top: 6px; padding: 6px 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px; font: inherit; width: 100%;"
+          />
+          <p v-if="quickCaptureError" class="setting-hint" style="color: var(--danger);">
+            {{ t('settings.quickCaptureFailed', { error: quickCaptureError }) }}
+          </p>
         </section>
 
         <section data-cat="export">

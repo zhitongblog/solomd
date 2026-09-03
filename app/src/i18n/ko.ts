@@ -224,6 +224,9 @@ export const ko: I18n = {
     printThemeDark: '항상 어둡게',
     printThemeFollow: '앱 테마 따르기',
     printThemeHint: '시스템 인쇄 대화상자와 텍스트 PDF 내보내기에 사용할 색상. 앱 테마와 독립적입니다 — 어두운 테마로 인쇄하면 종이가 검게 나와 잉크를 낭비합니다.',
+    quickCapture: '빠른 캡처 단축키',
+    quickCaptureHint: '어느 앱에서든 작은 입력창을 여는 시스템 전역 단축키. 입력하고 Enter를 누르면 앱을 앞으로 가져오지 않고 받은 편지함에 저장됩니다. Tauri 액셀러레이터 표기(예: CmdOrCtrl+Alt+M).',
+    quickCaptureFailed: '등록하지 못했습니다: {error}',
     codeBlockWrap: '코드 블록의 긴 줄 바꿈',
     codeBlockWrapHint: '블록 너비를 넘는 코드 줄을 가로 스크롤 대신 줄 바꿈으로 표시합니다. PDF/인쇄는 항상 줄 바꿈됩니다.',
     explorerFullNames: '탐색기에 전체 파일 이름 표시',
@@ -1569,7 +1572,16 @@ export const ko: I18n = {
     disabledHint: '접기 기능이 설정 → 기본에서 꺼져 있습니다.',
     plainSourceHint: 'Windows 소스 보기에서는 접을 수 없습니다. 실시간 편집 모드로 전환하세요.',
   },
+  quickCapture: {
+    placeholder: '떠오른 생각을…',
+    destination: '{folder} / 받은 편지함에 저장',
+    keys: 'Enter 저장 · Shift+Enter 줄바꿈 · Esc 취소',
+    noWorkspace: '먼저 폴더를 여세요. 저장할 곳이 없습니다.',
+  },
   cmd: {
+    capture: {
+      quick: '빠른 캡처…',
+    },
     fold: {
       toggle: '접기: 커서 위치 섹션 토글',
       all: '접기: 모든 섹션 접기',

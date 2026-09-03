@@ -224,6 +224,9 @@ export const it: I18n = {
     printThemeDark: 'Sempre scuro',
     printThemeFollow: 'Segui il tema',
     printThemeHint: 'La palette usata dalla finestra di stampa di sistema e dall’esportazione PDF testuale. Indipendente dal tema — stampare un tema scuro riempie la pagina di inchiostro.',
+    quickCapture: 'Scorciatoia di cattura rapida',
+    quickCaptureHint: 'Una scorciatoia di sistema che apre una piccola finestra ovunque: scrivi, premi Invio e la nota finisce in posta in arrivo senza portare l’app in primo piano. Sintassi acceleratore di Tauri, es. CmdOrCtrl+Alt+M.',
+    quickCaptureFailed: 'Non registrata: {error}',
     codeBlockWrap: 'A capo automatico nei blocchi di codice',
     codeBlockWrapHint: 'Manda a capo le righe di codice più larghe del blocco invece di mostrare una barra di scorrimento orizzontale. PDF/stampa va sempre a capo.',
     explorerFullNames: 'Nomi file completi nell’esplora risorse',
@@ -1569,7 +1572,16 @@ export const it: I18n = {
     disabledHint: 'La compressione è disattivata in Impostazioni → Base.',
     plainSourceHint: 'La vista sorgente di Windows non può comprimere: passa alla modalità di modifica live.',
   },
+  quickCapture: {
+    placeholder: 'Annota un pensiero…',
+    destination: 'In {folder} / Posta in arrivo',
+    keys: 'Invio salva · Maiusc+Invio a capo · Esc annulla',
+    noWorkspace: 'Apri prima una cartella: non c’è dove archiviarlo.',
+  },
   cmd: {
+    capture: {
+      quick: 'Cattura rapida…',
+    },
     fold: {
       toggle: 'Comprimi: sezione al cursore',
       all: 'Comprimi: tutte le sezioni',

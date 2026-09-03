@@ -224,6 +224,9 @@ export const pl: I18n = {
     printThemeDark: 'Zawsze ciemny',
     printThemeFollow: 'Zgodnie z motywem',
     printThemeHint: 'Paleta używana przez systemowe okno drukowania i eksport PDF tekstowego. Niezależna od motywu — druk ciemnego motywu pokrywa stronę tuszem.',
+    quickCapture: 'Skrót szybkiego zapisu',
+    quickCaptureHint: 'Skrót systemowy otwierający małe okno w dowolnym miejscu: wpisz, naciśnij Enter, a notatka trafi do skrzynki odbiorczej bez przełączania się do aplikacji. Składnia akceleratora Tauri, np. CmdOrCtrl+Alt+M.',
+    quickCaptureFailed: 'Nie zarejestrowano: {error}',
     codeBlockWrap: 'Zawijaj długie wiersze w blokach kodu',
     codeBlockWrapHint: 'Zawija wiersze kodu szersze niż blok zamiast pokazywać poziomy pasek przewijania. PDF/druk zawsze zawija.',
     explorerFullNames: 'Pełne nazwy plików w eksploratorze',
@@ -1586,7 +1589,16 @@ export const pl: I18n = {
     disabledHint: 'Zwijanie jest wyłączone w Ustawienia → Podstawy.',
     plainSourceHint: 'Widok źródła w systemie Windows nie obsługuje zwijania — przełącz się na tryb edycji na żywo.',
   },
+  quickCapture: {
+    placeholder: 'Zapisz myśl…',
+    destination: 'Do {folder} / Skrzynka odbiorcza',
+    keys: 'Enter zapisuje · Shift+Enter nowa linia · Esc odrzuca',
+    noWorkspace: 'Najpierw otwórz folder — nie ma gdzie tego zapisać.',
+  },
   cmd: {
+    capture: {
+      quick: 'Szybki zapis…',
+    },
     fold: {
       toggle: 'Zwiń: sekcja pod kursorem',
       all: 'Zwiń: wszystkie sekcje',

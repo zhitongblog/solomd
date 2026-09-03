@@ -255,6 +255,7 @@ function onSaved() { scheduleRefresh(); }
 function onRemotePulled() { scheduleRefresh(); }
 
 let unlistenIndex: UnlistenFn | null = null;
+let unlistenCapture: UnlistenFn | null = null;
 /** Closing the window while a delete is pending: run it. The user asked for
  *  the delete and saw it happen; having the file reappear on next launch would
  *  be the surprise, not the safety. Best-effort — the IPC may not land. */
@@ -269,12 +270,18 @@ onMounted(async () => {
   try {
     unlistenIndex = await listen('solomd://index-updated', () => scheduleRefresh());
   } catch {}
+  try {
+    // A quick capture writes straight to disk from Rust; without this the new
+    // Inbox note is invisible until something else happens to refresh.
+    unlistenCapture = await listen('solomd://capture-written', () => scheduleRefresh());
+  } catch {}
 });
 onBeforeUnmount(() => {
   window.removeEventListener('solomd:saved', onSaved as EventListener);
   window.removeEventListener('solomd:remote-pulled', onRemotePulled as EventListener);
   window.removeEventListener('beforeunload', onBeforeUnload);
   if (unlistenIndex) unlistenIndex();
+  if (unlistenCapture) unlistenCapture();
   if (refreshDebounce) clearTimeout(refreshDebounce);
 });
 

@@ -224,6 +224,9 @@ export const en = {
     printThemeDark: 'Always dark',
     printThemeFollow: 'Follow app theme',
     printThemeHint: 'Which palette the system print dialog and text-PDF export use. Independent of the app theme — printing a dark theme puts a dark slab on paper and wastes ink.',
+    quickCapture: 'Quick capture hotkey',
+    quickCaptureHint: 'A system-wide chord that opens a small box anywhere — type, press Enter, and the note lands in your Inbox without the app coming forward. Tauri accelerator syntax, e.g. CmdOrCtrl+Alt+M.',
+    quickCaptureFailed: 'Not registered: {error}',
     codeBlockWrap: 'Wrap long lines in code blocks',
     codeBlockWrapHint: 'Soft-wraps code lines wider than the block instead of showing a horizontal scrollbar. PDF/print always wraps.',
     explorerFullNames: 'Full file names in Explorer',
@@ -1592,7 +1595,16 @@ export const en = {
     disabledHint: 'Folding is switched off in Settings → Basics.',
     plainSourceHint: 'The Windows source view cannot fold — switch to live edit mode.',
   },
+  quickCapture: {
+    placeholder: 'Capture a thought…',
+    destination: 'To {folder} / Inbox',
+    keys: 'Enter to save · Shift+Enter newline · Esc to discard',
+    noWorkspace: 'Open a folder first — there is nowhere to file this.',
+  },
   cmd: {
+    capture: {
+      quick: 'Quick Capture…',
+    },
     fold: {
       toggle: 'Fold: Toggle Section at Cursor',
       all: 'Fold: Collapse All Sections',

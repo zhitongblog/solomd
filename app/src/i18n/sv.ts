@@ -224,6 +224,9 @@ export const sv: I18n = {
     printThemeDark: 'Alltid mörk',
     printThemeFollow: 'Följ appens tema',
     printThemeHint: 'Paletten som systemets utskriftsdialog och text-PDF-exporten använder. Oberoende av temat — att skriva ut ett mörkt tema fyller sidan med bläck.',
+    quickCapture: 'Snabbfångst-genväg',
+    quickCaptureHint: 'En systemomfattande genväg som öppnar en liten ruta var som helst: skriv, tryck Enter, och anteckningen hamnar i Inkorgen utan att appen tas fram. Tauri-acceleratorsyntax, t.ex. CmdOrCtrl+Alt+M.',
+    quickCaptureFailed: 'Inte registrerad: {error}',
     codeBlockWrap: 'Radbryt långa rader i kodblock',
     codeBlockWrapHint: 'Radbryter kodrader som är bredare än blocket i stället för en horisontell rullningslist. PDF/utskrift radbryter alltid.',
     explorerFullNames: 'Fullständiga filnamn i utforskaren',
@@ -1586,7 +1589,16 @@ export const sv: I18n = {
     disabledHint: 'Ihopfällning är avstängd i Inställningar → Grunder.',
     plainSourceHint: 'Windows källvy kan inte fällas ihop — byt till live-redigeringsläget.',
   },
+  quickCapture: {
+    placeholder: 'Fånga en tanke…',
+    destination: 'Till {folder} / Inkorg',
+    keys: 'Enter sparar · Skift+Enter ny rad · Esc kastar',
+    noWorkspace: 'Öppna en mapp först — det finns ingenstans att lägga det.',
+  },
   cmd: {
+    capture: {
+      quick: 'Snabbfångst…',
+    },
     fold: {
       toggle: 'Fäll ihop: avsnitt vid markören',
       all: 'Fäll ihop: alla avsnitt',

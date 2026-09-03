@@ -160,6 +160,10 @@ tauri-plugin-fs = "2.5.1"
 # 3 weeks because window-state was placed mid-file with a blank line.
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-window-state = "2"
+# Quick capture's global hotkey. Desktop only — there is no system-wide
+# shortcut to register on a phone, and the mobile permission resolver would
+# choke on a plugin the build never loads.
+tauri-plugin-global-shortcut = "2"
 # #112 — fs_delete moves to the OS trash (Finder 废纸篓 / recycle bin) instead
 # of permanently unlinking; desktop only (mobile has no user-visible trash).
 trash = "5"

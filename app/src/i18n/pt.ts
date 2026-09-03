@@ -226,6 +226,9 @@ export const pt: I18n = {
     printThemeDark: 'Sempre escuro',
     printThemeFollow: 'Seguir o tema',
     printThemeHint: 'A paleta usada pela caixa de diálogo de impressão e pela exportação de PDF de texto. Independente do tema — imprimir um tema escuro cobre a página de tinta.',
+    quickCapture: 'Atalho de captura rápida',
+    quickCaptureHint: 'Um atalho de sistema que abre uma pequena janela em qualquer lado: escreva, prima Enter e a nota vai para a caixa de entrada sem trazer a app para a frente. Sintaxe de acelerador do Tauri, p. ex. CmdOrCtrl+Alt+M.',
+    quickCaptureFailed: 'Não registado: {error}',
     codeBlockWrap: 'Quebrar linhas longas em blocos de código',
     codeBlockWrapHint: 'Quebra linhas de código mais largas que o bloco em vez de mostrar uma barra de rolagem horizontal. PDF/impressão sempre quebra.',
     explorerFullNames: 'Nomes de arquivo completos no explorador',
@@ -1571,7 +1574,16 @@ export const pt: I18n = {
     disabledHint: 'O dobrar está desativado em Definições → Básico.',
     plainSourceHint: 'A vista de código do Windows não permite dobrar — mude para o modo de edição ao vivo.',
   },
+  quickCapture: {
+    placeholder: 'Anote uma ideia…',
+    destination: 'Para {folder} / Caixa de entrada',
+    keys: 'Enter guarda · Shift+Enter nova linha · Esc descarta',
+    noWorkspace: 'Abra primeiro uma pasta — não há onde arquivar isto.',
+  },
   cmd: {
+    capture: {
+      quick: 'Captura rápida…',
+    },
     fold: {
       toggle: 'Dobrar: secção no cursor',
       all: 'Dobrar: todas as secções',

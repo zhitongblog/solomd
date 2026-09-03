@@ -224,6 +224,9 @@ export const tr: I18n = {
     printThemeDark: 'Her zaman koyu',
     printThemeFollow: 'Uygulama temasını izle',
     printThemeHint: 'Sistem yazdırma penceresinin ve metin PDF dışa aktarımının kullandığı palet. Uygulama temasından bağımsızdır — koyu temayı yazdırmak sayfayı mürekkeple doldurur.',
+    quickCapture: 'Hızlı yakalama kısayolu',
+    quickCaptureHint: 'Her yerde küçük bir kutu açan sistem geneli kısayol: yazın, Enter’a basın, not uygulamayı öne getirmeden Gelen Kutusu’na düşsün. Tauri hızlandırıcı yazımı, ör. CmdOrCtrl+Alt+M.',
+    quickCaptureFailed: 'Kaydedilemedi: {error}',
     codeBlockWrap: 'Kod bloklarında uzun satırları kaydır',
     codeBlockWrapHint: 'Bloktan geniş kod satırlarını yatay kaydırma çubuğu yerine alt satıra kaydırır. PDF/yazdırma her zaman kaydırır.',
     explorerFullNames: 'Gezginde tam dosya adları',
@@ -1586,7 +1589,16 @@ export const tr: I18n = {
     disabledHint: 'Katlama, Ayarlar → Temel bölümünde kapalı.',
     plainSourceHint: 'Windows kaynak görünümü katlanamaz — canlı düzenleme moduna geçin.',
   },
+  quickCapture: {
+    placeholder: 'Bir düşünceyi not edin…',
+    destination: '{folder} / Gelen Kutusu’na',
+    keys: 'Enter kaydeder · Shift+Enter yeni satır · Esc iptal',
+    noWorkspace: 'Önce bir klasör açın — kaydedilecek yer yok.',
+  },
   cmd: {
+    capture: {
+      quick: 'Hızlı yakalama…',
+    },
     fold: {
       toggle: 'Katla: imleçteki bölüm',
       all: 'Katla: tüm bölümler',

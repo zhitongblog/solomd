@@ -258,6 +258,13 @@ interface Settings {
   // preview (and Pandoc/PDF/PNG exports — they all share the preview HTML).
   // Default off so existing exports don't surprise anyone. Issue #65.
   codeBlockLineNumbers: boolean;
+  // Quick capture: a system-wide hotkey that opens a small box, takes a line
+  // of text and files it in the Inbox without bringing the app forward. The
+  // chord is an OS-level accelerator (Tauri's spelling, e.g.
+  // `CmdOrCtrl+Alt+M`), not one of the rebindable in-app shortcuts, because
+  // it has to work while another application is focused.
+  quickCaptureEnabled: boolean;
+  quickCaptureShortcut: string;
   // Print / system-PDF palette, independent of the app theme. Printing in a
   // dark theme put a dark slab on paper and wasted ink; `light` (the default)
   // always prints on white, `dark` prints the dark palette on purpose, and
@@ -561,6 +568,8 @@ function defaults(): Settings {
     imageExportBranding: true,
     globalZoom: 1,
     wheelZoomEnabled: true,
+    quickCaptureEnabled: true,
+    quickCaptureShortcut: 'CmdOrCtrl+Alt+M',
     printTheme: 'light',
     foldingEnabled: true,
     codeBlockLineNumbers: false,
@@ -1193,6 +1202,14 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleWheelZoom() {
       this.wheelZoomEnabled = !this.wheelZoomEnabled;
+      this.persist();
+    },
+    toggleQuickCapture() {
+      this.quickCaptureEnabled = !this.quickCaptureEnabled;
+      this.persist();
+    },
+    setQuickCaptureShortcut(accel: string) {
+      this.quickCaptureShortcut = accel.trim();
       this.persist();
     },
     setPrintTheme(mode: 'light' | 'dark' | 'follow') {

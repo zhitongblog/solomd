@@ -224,6 +224,9 @@ export const es: I18n = {
     printThemeDark: 'Siempre oscuro',
     printThemeFollow: 'Seguir el tema',
     printThemeHint: 'La paleta que usan el diálogo de impresión del sistema y la exportación a PDF de texto. Independiente del tema: imprimir un tema oscuro llena la página de tinta.',
+    quickCapture: 'Atajo de captura rápida',
+    quickCaptureHint: 'Un atajo de todo el sistema que abre una pequeña ventana en cualquier parte: escribe, pulsa Intro y la nota llega a la bandeja de entrada sin traer la app al frente. Sintaxis de acelerador de Tauri, p. ej. CmdOrCtrl+Alt+M.',
+    quickCaptureFailed: 'No registrado: {error}',
     codeBlockWrap: 'Ajustar líneas largas en bloques de código',
     codeBlockWrapHint: 'Ajusta las líneas de código más anchas que el bloque en lugar de mostrar una barra de desplazamiento horizontal. PDF/impresión siempre ajusta.',
     explorerFullNames: 'Nombres de archivo completos en el explorador',
@@ -1569,7 +1572,16 @@ export const es: I18n = {
     disabledHint: 'El plegado está desactivado en Ajustes → Básicos.',
     plainSourceHint: 'La vista de código de Windows no puede plegar: cambia al modo de edición en vivo.',
   },
+  quickCapture: {
+    placeholder: 'Anota una idea…',
+    destination: 'A {folder} / Bandeja de entrada',
+    keys: 'Intro guarda · Mayús+Intro nueva línea · Esc descarta',
+    noWorkspace: 'Abre primero una carpeta: no hay dónde archivarlo.',
+  },
   cmd: {
+    capture: {
+      quick: 'Captura rápida…',
+    },
     fold: {
       toggle: 'Plegar: sección en el cursor',
       all: 'Plegar: todas las secciones',

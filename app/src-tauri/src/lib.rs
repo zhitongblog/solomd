@@ -23,6 +23,7 @@ pub mod git_history;
 pub mod rag;
 // v2.4 inbound HTTP capture endpoint — production-grade, opt-in via Settings.
 pub mod capture_endpoint;
+pub mod quick_capture;
 // v4.0 — public REST API mirroring the agent_tools surface for non-MCP
 // clients (Alfred / Raycast / n8n / shell scripts). Localhost-only,
 // bearer-token auth, opt-in via Settings → Integrations. Same wire shape
@@ -121,8 +122,15 @@ pub fn run() {
     let builder = builder.plugin(
         tauri_plugin_window_state::Builder::default()
             .with_state_flags(tauri_plugin_window_state::StateFlags::all())
+            // The quick-capture box is undecorated, fixed-size and always on
+            // top by design. Restoring a remembered geometry (decorations
+            // included — StateFlags::all) would hand it back a title bar and a
+            // stale position on the next launch.
+            .with_denylist(&[quick_capture::CAPTURE_LABEL])
             .build(),
     );
+    #[cfg(desktop)]
+    let builder = builder.plugin(tauri_plugin_global_shortcut::Builder::new().build());
 
     let builder = builder.manage(watcher::WatcherState::new());
     #[cfg(not(target_os = "android"))]
@@ -240,6 +248,10 @@ pub fn run() {
             capture_endpoint::capture_regenerate_token,
             capture_endpoint::capture_set_inbox_folder,
             capture_endpoint::capture_set_workspace,
+            quick_capture::quick_capture_open,
+            quick_capture::quick_capture_close,
+            quick_capture::quick_capture_write,
+            quick_capture::quick_capture_set_shortcut,
             rest_api::rest_get_state,
             rest_api::rest_set_enabled,
             rest_api::rest_regenerate_token,

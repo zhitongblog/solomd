@@ -36,6 +36,12 @@ mod git_history;
 #[path = "capture_endpoint.rs"]
 mod capture_endpoint;
 
+// Quick capture — global hotkey → mini window → Inbox note. Writes through
+// capture_endpoint's note builder, so it must be declared alongside it here
+// (the binary's real invoke handler lives in this file, not lib.rs).
+#[path = "quick_capture.rs"]
+mod quick_capture;
+
 // v4.0 — public REST API mirroring the agent_tools surface for non-MCP
 // clients. Declared in both lib.rs and runner.rs so the binary's compile
 // root resolves `crate::rest_api` the same way the lib does.
@@ -748,8 +754,17 @@ pub fn run_with(initial_file: Option<String>) {
                 tauri_plugin_window_state::StateFlags::all()
                     - tauri_plugin_window_state::StateFlags::DECORATIONS,
             )
+            // The quick-capture box is undecorated, fixed-size and always on
+            // top by design; restoring a remembered geometry would hand it a
+            // stale position on the next launch.
+            .with_denylist(&[quick_capture::CAPTURE_LABEL])
             .build(),
     );
+
+    // Quick capture's system-wide hotkey. Registration itself happens later,
+    // from the frontend, because the chord is a user setting.
+    #[cfg(desktop)]
+    let builder = builder.plugin(tauri_plugin_global_shortcut::Builder::new().build());
 
     let app = builder
         .manage(PendingOpen(Mutex::new(pending)))
@@ -819,6 +834,10 @@ pub fn run_with(initial_file: Option<String>) {
             capture_endpoint::capture_regenerate_token,
             capture_endpoint::capture_set_inbox_folder,
             capture_endpoint::capture_set_workspace,
+            quick_capture::quick_capture_open,
+            quick_capture::quick_capture_close,
+            quick_capture::quick_capture_write,
+            quick_capture::quick_capture_set_shortcut,
             rest_api::rest_get_state,
             rest_api::rest_set_enabled,
             rest_api::rest_regenerate_token,

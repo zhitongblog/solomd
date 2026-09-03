@@ -224,6 +224,9 @@ export const ja: I18n = {
     printThemeDark: '常にダーク',
     printThemeFollow: 'アプリのテーマに従う',
     printThemeHint: 'システムの印刷ダイアログとテキスト PDF 書き出しで使う配色。アプリのテーマとは独立です — ダークテーマのまま印刷すると紙面が黒くなりインクを浪費します。',
+    quickCapture: 'クイックキャプチャのホットキー',
+    quickCaptureHint: 'どのアプリからでも小さな入力欄を開くシステム全体のショートカット。入力して Enter を押すと、アプリを前面に出さずに受信箱へ保存されます。Tauri のアクセラレータ記法（例: CmdOrCtrl+Alt+M）。',
+    quickCaptureFailed: '登録できませんでした: {error}',
     codeBlockWrap: 'コードブロック内で長い行を折り返す',
     codeBlockWrapHint: 'ブロック幅を超えるコード行を横スクロールではなく折り返して表示します。PDF/印刷では常に折り返します。',
     explorerFullNames: 'エクスプローラーで完全なファイル名を表示',
@@ -1569,7 +1572,16 @@ export const ja: I18n = {
     disabledHint: '折りたたみは「設定 → 基本」でオフになっています。',
     plainSourceHint: 'Windows のソース表示では折りたためません。ライブ編集モードに切り替えてください。',
   },
+  quickCapture: {
+    placeholder: '思いついたことを…',
+    destination: '{folder} / 受信箱へ',
+    keys: 'Enter で保存 · Shift+Enter で改行 · Esc で破棄',
+    noWorkspace: 'まずフォルダを開いてください。保存先がありません。',
+  },
   cmd: {
+    capture: {
+      quick: 'クイックキャプチャ…',
+    },
     fold: {
       toggle: '折りたたみ: カーソル位置のセクション',
       all: '折りたたみ: すべてのセクション',

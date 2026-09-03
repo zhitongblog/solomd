@@ -1,7 +1,8 @@
+import { invoke } from '@tauri-apps/api/core';
 import { useFiles } from './useFiles';
 import { useSettingsStore } from '../stores/settings';
 import { shortcutLabel } from '../lib/keybindings';
-import { isMacOS } from '../lib/platform';
+import { isMacOS, isMobile } from '../lib/platform';
 import { useTabsStore } from '../stores/tabs';
 import { useTilesStore } from '../stores/tiles';
 import { useExport } from './useExport';
@@ -284,6 +285,19 @@ export function useCommands(): Command[] {
         window.dispatchEvent(
           new CustomEvent('solomd:editor-find', { detail: { paneId: tiles.focusedPaneId } }),
         ),
+    },
+
+    {
+      id: 'capture.quick',
+      title: 'Quick Capture…',
+      hint: 'Open the small capture box and file a note straight into the Inbox',
+      run: async () => {
+        try {
+          await invoke('quick_capture_open');
+        } catch (e) {
+          toasts.error(`Quick capture failed: ${e}`);
+        }
+      },
     },
 
     {
@@ -670,10 +684,13 @@ export function useCommands(): Command[] {
   // #230 — Android has no libgit2, so every `history.*` / `sync.*` entry would
   // resolve to a `Command … not found`. Keep them out of the palette entirely
   // rather than letting the user find a command that can only fail.
+  // Quick capture is a desktop window opened by an OS-level hotkey; neither
+  // half exists on a phone, so the command would only ever fail there.
+  const desktopOnly = isMobile() ? built.filter((c) => c.id !== 'capture.quick') : built;
   if (!hasGitBackend()) {
-    return built.filter(
+    return desktopOnly.filter(
       (c) => !c.id.startsWith('history.') && !c.id.startsWith('sync.'),
     );
   }
-  return built;
+  return desktopOnly;
 }

@@ -225,6 +225,9 @@ export const zh: I18n = {
     printThemeDark: '始终深色',
     printThemeFollow: '跟随应用主题',
     printThemeHint: '系统打印对话框和文字版 PDF 导出使用哪套配色。与应用主题独立——深色主题直接打印会在纸上印出大片黑底，很费墨。',
+    quickCapture: '快速捕获热键',
+    quickCaptureHint: '一个系统级快捷键，在任何应用里都能唤出一个小窗：输入、回车，笔记就进了收件箱，不用把主窗口切到前台。使用 Tauri 加速键写法，例如 CmdOrCtrl+Alt+M。',
+    quickCaptureFailed: '未能注册：{error}',
     codeBlockWrap: '代码块内自动换行',
     codeBlockWrapHint: '超出代码块宽度的长行自动折行显示,不再出现横向滚动条。PDF/打印始终自动换行。',
     explorerFullNames: '文件树显示完整文件名',
@@ -1572,7 +1575,16 @@ export const zh: I18n = {
     disabledHint: '折叠功能已在「设置 → 基础」中关闭。',
     plainSourceHint: 'Windows 的源码模式无法折叠，切换到实时编辑模式即可。',
   },
+  quickCapture: {
+    placeholder: '记下一个想法…',
+    destination: '存入 {folder} / 收件箱',
+    keys: '回车保存 · Shift+回车换行 · Esc 丢弃',
+    noWorkspace: '还没有打开文件夹，无处存放。',
+  },
   cmd: {
+    capture: {
+      quick: '快速捕获…',
+    },
     fold: {
       toggle: '折叠：折叠/展开光标所在节',
       all: '折叠：折叠全部标题',

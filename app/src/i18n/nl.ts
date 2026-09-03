@@ -224,6 +224,9 @@ export const nl: I18n = {
     printThemeDark: 'Altijd donker',
     printThemeFollow: 'Volg app-thema',
     printThemeHint: 'Het palet dat het systeemafdrukvenster en de tekst-PDF-export gebruiken. Onafhankelijk van het thema — een donker thema afdrukken vult de pagina met inkt.',
+    quickCapture: 'Sneltoets voor snelle notitie',
+    quickCaptureHint: 'Een systeembrede sneltoets die overal een klein venster opent: typ, druk op Enter en de notitie belandt in je Inbox zonder dat de app naar voren komt. Tauri-acceleratorsyntaxis, bijv. CmdOrCtrl+Alt+M.',
+    quickCaptureFailed: 'Niet geregistreerd: {error}',
     codeBlockWrap: 'Lange regels in codeblokken laten teruglopen',
     codeBlockWrapHint: 'Laat coderegels breder dan het blok teruglopen in plaats van een horizontale schuifbalk te tonen. PDF/afdrukken loopt altijd terug.',
     explorerFullNames: 'Volledige bestandsnamen in verkenner',
@@ -1586,7 +1589,16 @@ export const nl: I18n = {
     disabledHint: 'Inklappen staat uit in Instellingen → Basis.',
     plainSourceHint: 'De Windows-bronweergave kan niet inklappen — schakel over naar de live-bewerkmodus.',
   },
+  quickCapture: {
+    placeholder: 'Noteer een gedachte…',
+    destination: 'Naar {folder} / Inbox',
+    keys: 'Enter bewaart · Shift+Enter nieuwe regel · Esc verwerpt',
+    noWorkspace: 'Open eerst een map — er is nergens om dit op te slaan.',
+  },
   cmd: {
+    capture: {
+      quick: 'Snelle notitie…',
+    },
     fold: {
       toggle: 'Inklappen: sectie bij cursor',
       all: 'Inklappen: alle secties',
