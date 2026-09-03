@@ -72,6 +72,12 @@ interface Settings {
    *  the ⌥⌘B shortcut, or the command palette to hide it; toggling again
    *  restores all previously-enabled panes in their previous state. */
   rightSidebarHidden: boolean;
+  /** Show the native menu bar (File/Edit/View/Help). On Windows this is the
+   *  in-app menubar in the toolbar; on macOS/Linux it's the OS native menu.
+   *  Default true on desktop, hidden on mobile (where there's no menubar). */
+  showMenuBar: boolean;
+  /** One-time migration marker for showMenuBar default flip. */
+  menuBarMigrated: boolean;
   livePreview: boolean;
   // Editor super features
   spellCheck: boolean;
@@ -457,6 +463,8 @@ function defaults(): Settings {
     // right sidebar starts hidden. The editor + file tree behave as mutually
     // exclusive full-width views (opening a file collapses the tree).
     rightSidebarHidden: isMobile(),
+    showMenuBar: !isMobile(),
+    menuBarMigrated: true,
     livePreview: true,
     spellCheck: true,
     focusMode: false,
@@ -685,6 +693,11 @@ function load(): Settings {
         if (isMobile()) merged.rightSidebarHidden = true;
         merged.v491MobileLayoutMigrated = true;
       }
+      // Menu bar visibility — default on for desktop, off for mobile.
+      if (!parsed.menuBarMigrated) {
+        merged.showMenuBar = !isMobile();
+        merged.menuBarMigrated = true;
+      }
       return merged;
     }
   } catch {}
@@ -829,6 +842,10 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleFileTree() {
       this.showFileTree = !this.showFileTree;
+      this.persist();
+    },
+    toggleMenuBar() {
+      this.showMenuBar = !this.showMenuBar;
       this.persist();
     },
     toggleViewsPanel() {

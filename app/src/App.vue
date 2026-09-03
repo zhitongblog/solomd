@@ -636,6 +636,11 @@ watchEffect(() => {
   invoke('save_language_preference', { lang: settings.language }).catch(() => {});
 });
 
+// Sync native menu bar visibility (show/hide menu bar).
+watchEffect(() => {
+  invoke('set_menu_visibility', { hidden: !settings.showMenuBar }).catch(() => {});
+});
+
 watchEffect(() => {
   document.documentElement.setAttribute('data-theme', dataThemeFor(settings.theme));
 });

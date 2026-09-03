@@ -571,6 +571,35 @@ fn set_menu_config(
     Ok(())
 }
 
+/// Toggle the native menu bar visibility (macOS / Linux).
+/// On macOS, hide/show are unsupported; we use remove_menu / set_menu.
+/// On Windows, this is a no-op — the in-app menubar is gated by DOM.
+#[tauri::command]
+fn set_menu_visibility(app: tauri::AppHandle, hidden: bool) -> Result<(), String> {
+    #[cfg(target_os = "linux")]
+    {
+        if hidden {
+            app.hide_menu().map_err(|e| e.to_string())?;
+        } else {
+            app.show_menu().map_err(|e| e.to_string())?;
+        }
+    }
+    #[cfg(target_os = "macos")]
+    {
+        if hidden {
+            app.remove_menu().map_err(|e| e.to_string())?;
+        } else {
+            // Placeholder menu — frontend immediately re-applies language
+            // and accelerators via set_menu_config (App.vue watchEffect).
+            let menu = build_app_menu(&app, "en", &std::collections::HashMap::new()).map_err(|e| e.to_string())?;
+            app.set_menu(menu).map_err(|e| e.to_string())?;
+        }
+    }
+    #[cfg(target_os = "windows")]
+    let _ = (app, hidden);
+    Ok(())
+}
+
 /// Cross-platform wrapper so the frontend can report the maximize-button
 /// rect unconditionally; only Windows does anything with it.
 #[tauri::command]
@@ -773,6 +802,7 @@ pub fn run_with(initial_file: Option<String>) {
             force_close_window,
             set_menu_language,
             set_menu_config,
+            set_menu_visibility,
             set_max_button_rect,
             save_language_preference,
             set_default::set_as_default_markdown_editor,

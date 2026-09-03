@@ -92,6 +92,7 @@ export function useShortcuts(hooks: Hooks = {}) {
     'view.toggleOutline': () => runById('view.toggleOutline'),
     'view.toggleInspector': () => settings.toggleInspector(),
     'view.slideshow': () => runById('view.slideshow'),
+    'view.toggleMenuBar': () => settings.toggleMenuBar(),
 
     'palette.open': () => hooks.openPalette?.(),
     'quickSwitcher.open': () => hooks.openQuickSwitcher?.(),

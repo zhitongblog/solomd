@@ -188,6 +188,7 @@ export function useCommands(): Command[] {
     { id: 'view.toggleSpellCheck', title: 'View: Toggle Spell Check', run: () => settings.toggleSpellCheck() },
     { id: 'view.toggleFocusMode', title: 'View: Toggle Focus Mode', run: () => settings.toggleFocusMode() },
     { id: 'view.toggleTypewriter', title: 'View: Toggle Typewriter Mode', run: () => settings.toggleTypewriterMode() },
+    { id: 'view.toggleMenuBar', title: 'View: Toggle Menu Bar', shortcut: kb('view.toggleMenuBar'), run: () => settings.toggleMenuBar() },
 
     // ---- Tile layout ----
     { id: 'tile.splitRight', title: 'Split Editor Right', shortcut: kb('tile.splitRight'), run: () => tiles.splitPane(tiles.focusedPaneId, 'horizontal') },

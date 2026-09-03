@@ -434,6 +434,7 @@ const menubarMenus = computed<Record<MenubarName, MenubarEntry[]>>(() => ({
   ],
   view: [
     { id: 'view.toggleTheme', label: t('menubar.toggleTheme') },
+    { id: 'view.toggleMenuBar', label: t('menubar.toggleMenuBar'), shortcut: shortcutLabel('view.toggleMenuBar', settings.keybindings, macChord) },
     { sep: true },
     { id: 'view.toggleFileTree', label: t('menubar.toggleFileTree'), shortcut: shortcutLabel('view.toggleFileTree', settings.keybindings, macChord) },
     { id: 'view.toggleOutline', label: t('menubar.toggleOutline'), shortcut: shortcutLabel('view.toggleOutline', settings.keybindings, macChord) },
@@ -609,7 +610,7 @@ onBeforeUnmount(() => {
 
     <!-- Windows unified title bar: in-app File/Edit/View/Help menubar
          (replaces the removed native menu bar row). -->
-    <nav v-if="winTitleBar" class="menubar" data-no-drag>
+    <nav v-if="winTitleBar && settings.showMenuBar" class="menubar" data-no-drag>
       <button
         v-for="name in menubarNames"
         :key="name"
@@ -780,6 +781,14 @@ onBeforeUnmount(() => {
     <span class="toolbar__divider"></span>
 
     <div class="toolbar__group">
+      <button
+        class="icon-btn"
+        @click="settings.toggleMenuBar"
+        :class="{ active: settings.showMenuBar }"
+        :title="tip('toolbar.menuBarTooltip', 'view.toggleMenuBar')"
+      >
+        <Icon name="menu" />
+      </button>
       <button
         class="icon-btn"
         data-phone-primary

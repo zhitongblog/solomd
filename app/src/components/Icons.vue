@@ -52,6 +52,11 @@ defineProps<{ name: string; size?: number }>();
       <polyline points="17 8 12 3 7 8" />
       <line x1="12" y1="3" x2="12" y2="15" />
     </template>
+    <template v-else-if="name === 'menu'">
+      <line x1="3" y1="12" x2="21" y2="12" />
+      <line x1="3" y1="6" x2="21" y2="6" />
+      <line x1="3" y1="18" x2="21" y2="18" />
+    </template>
     <template v-else-if="name === 'sidebar'">
       <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
       <line x1="9" y1="3" x2="9" y2="21" />

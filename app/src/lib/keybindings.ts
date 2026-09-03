@@ -98,6 +98,7 @@ export const KEY_ACTIONS: KeyActionDef[] = [
   { id: 'view.toggleOutline', label: 'Toggle Outline', category: 'view', defaults: ['Mod+Shift+O'] },
   { id: 'view.toggleInspector', label: 'Toggle Properties Inspector', category: 'view', defaults: ['Mod+Shift+I'] },
   { id: 'view.slideshow', label: 'Slideshow', category: 'view', defaults: ['Mod+Alt+P'] },
+  { id: 'view.toggleMenuBar', label: 'Toggle Menu Bar', category: 'view', defaults: ['Mod+Shift+M'] },
 
   // ---- Navigate ----
   { id: 'palette.open', label: 'Command Palette', category: 'navigate', defaults: ['Mod+Shift+K'] },

@@ -750,6 +750,13 @@ function onSelectPdfFont(v: string) {
 
         <section data-cat="basics">
           <label>
+            <input type="checkbox" :checked="settings.showMenuBar" @change="settings.toggleMenuBar()" />
+            {{ t('settings.showMenuBar') }}
+          </label>
+        </section>
+
+        <section data-cat="basics">
+          <label>
             <input type="checkbox" :checked="settings.showBacklinks" @change="settings.toggleBacklinks()" />
             {{ t('settings.showBacklinks') }}
           </label>
