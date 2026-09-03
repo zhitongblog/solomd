@@ -14,6 +14,7 @@ import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { useTabsStore } from '../stores/tabs';
 import { useI18n } from '../i18n';
 import { isMobile } from '../lib/platform';
+import { usePendingDeletes, isDeletePending, UNDO_WINDOW_MS } from '../composables/usePendingDeletes';
 import { isSafPath, fromSafPath, safList, safCreate } from '../lib/saf-fs';
 
 interface Entry {
@@ -110,6 +111,7 @@ async function copyNodeRelativePath(node: Node) {
 }
 const tabs = useTabsStore();
 const { t } = useI18n();
+const pendingDeletes = usePendingDeletes();
 
 const root = ref<Node | null>(null);
 
@@ -127,7 +129,12 @@ async function loadDir(path: string): Promise<{ children: Node[]; truncated: boo
     // #148 — SAF vault: list children via ContentResolver, not std::fs.
     if (isSafPath(path) && workspace.safTreeUri) {
       const safChildren = await safList(workspace.safTreeUri, fromSafPath(path));
-      return { children: safChildren as Node[], truncated: false };
+      // A delete still inside its undo window is presented as done — the file
+      // is on disk for a few more seconds but the user has been told it is gone.
+      return {
+        children: (safChildren as Node[]).filter((c) => !isDeletePending(c.path)),
+        truncated: false,
+      };
     }
     const entries = await invoke<Entry[]>('list_dir', { path });
     let truncated = false;
@@ -137,6 +144,7 @@ async function loadDir(path: string): Promise<{ children: Node[]; truncated: boo
         truncated = true;
         continue;
       }
+      if (isDeletePending(e.path)) continue;
       filtered.push({ ...e });
     }
     return { children: filtered, truncated };
@@ -189,7 +197,16 @@ async function toggle(node: Node) {
   node.expanded = true;
 }
 
-watch(() => workspace.currentFolder, refreshRoot, { immediate: true });
+watch(
+  () => workspace.currentFolder,
+  () => {
+    // Leaving the folder ends the undo offer — the toast is about to be out of
+    // sight, and a timer that fires against another workspace is a trap.
+    void pendingDeletes.flushAll();
+    void refreshRoot();
+  },
+  { immediate: true },
+);
 
 // ---------------------------------------------------------------------------
 // v3.0: auto-refresh on save / pull / external-change
@@ -238,9 +255,17 @@ function onSaved() { scheduleRefresh(); }
 function onRemotePulled() { scheduleRefresh(); }
 
 let unlistenIndex: UnlistenFn | null = null;
+/** Closing the window while a delete is pending: run it. The user asked for
+ *  the delete and saw it happen; having the file reappear on next launch would
+ *  be the surprise, not the safety. Best-effort — the IPC may not land. */
+function onBeforeUnload() {
+  void pendingDeletes.flushAll();
+}
+
 onMounted(async () => {
   window.addEventListener('solomd:saved', onSaved as EventListener);
   window.addEventListener('solomd:remote-pulled', onRemotePulled as EventListener);
+  window.addEventListener('beforeunload', onBeforeUnload);
   try {
     unlistenIndex = await listen('solomd://index-updated', () => scheduleRefresh());
   } catch {}
@@ -248,6 +273,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   window.removeEventListener('solomd:saved', onSaved as EventListener);
   window.removeEventListener('solomd:remote-pulled', onRemotePulled as EventListener);
+  window.removeEventListener('beforeunload', onBeforeUnload);
   if (unlistenIndex) unlistenIndex();
   if (refreshDebounce) clearTimeout(refreshDebounce);
 });
@@ -358,11 +384,15 @@ async function commitEdit() {
         return;
       }
       const target = joinPath(e.parent, finalName);
+      // A pending delete on this exact path would fire later and take the new
+      // file with it. Commit it now so the two never race.
+      await pendingDeletes.flushUnder(target);
       await invoke('fs_create_file', { path: target, content: '' });
       editing.value = null;
       scheduleRefresh();
       await files.openPath(target, { bypassNewWindow: true });
     } else if (e.kind === 'new-dir') {
+      await pendingDeletes.flushUnder(joinPath(e.parent, name));
       await invoke('fs_create_dir', { path: joinPath(e.parent, name) });
       editing.value = null;
       scheduleRefresh();
@@ -372,6 +402,7 @@ async function commitEdit() {
         editing.value = null;
         return;
       }
+      await pendingDeletes.flushUnder(target);
       await invoke('fs_rename', { from: e.original, to: target });
       editing.value = null;
       scheduleRefresh();
@@ -443,13 +474,31 @@ async function deleteNode(node: Node) {
       : `Delete "${node.name}"?\n\n${suffix}`,
   );
   if (!ok) return;
-  try {
-    await invoke('fs_delete', { path: node.path });
+
+  // The delete is held for a few seconds so the toast can offer Undo. The
+  // file is untouched until then; the tree hides it in the meantime.
+  const path = node.path;
+  const name = node.name;
+  await pendingDeletes.schedule({
+    path,
+    name,
+    isDir: !!node.is_dir,
+    delayMs: UNDO_WINDOW_MS,
+    commit: async () => {
+      try {
+        await invoke('fs_delete', { path });
+      } catch (e) {
+        toasts.error(`Delete failed: ${e}`);
+      }
+      scheduleRefresh();
+    },
+  });
+  scheduleRefresh();
+  toasts.push(t('explorer.deleted', { name }), 'success', UNDO_WINDOW_MS, () => {
+    if (!pendingDeletes.undo(path)) return;
     scheduleRefresh();
-    toasts.success(`Deleted ${node.name}`);
-  } catch (e) {
-    toasts.error(`Delete failed: ${e}`);
-  }
+    toasts.info(t('explorer.deleteUndone', { name }));
+  }, { actionLabel: t('explorer.undo') });
 }
 
 async function revealNode(node: Node) {

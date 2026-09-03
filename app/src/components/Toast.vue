@@ -11,12 +11,20 @@ const icons: Record<string, string> = {
 };
 
 function onToastClick(t: Toast) {
-  if (t.onClick) {
+  // A toast with an explicit action button keeps the old copy-on-click
+  // behavior for the rest of its surface — a stray click on "Deleted x" must
+  // not be read as "undo".
+  if (t.onClick && !t.actionLabel) {
     t.onClick();
-    toasts.dismiss(t.id);
+    toasts.resolve(t.id);
     return;
   }
   navigator.clipboard.writeText(t.message).catch(() => {});
+}
+
+function onToastAction(t: Toast) {
+  t.onClick?.();
+  toasts.resolve(t.id);
 }
 </script>
 
@@ -32,6 +40,11 @@ function onToastClick(t: Toast) {
       >
         <span class="toast__icon">{{ icons[t.kind] }}</span>
         <span class="toast__msg">{{ t.message }}</span>
+        <button
+          v-if="t.onClick && t.actionLabel"
+          class="toast__action"
+          @click.stop="onToastAction(t)"
+        >{{ t.actionLabel }}</button>
       </div>
     </transition-group>
   </div>
@@ -78,6 +91,20 @@ function onToastClick(t: Toast) {
 }
 .toast__msg {
   flex: 1;
+}
+.toast__action {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.toast__action:hover {
+  background: var(--bg-hover);
 }
 .toast--success .toast__icon { background: #2ea043; }
 .toast--success { border-left: 3px solid #2ea043; }
