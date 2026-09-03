@@ -419,6 +419,17 @@ const plainBlocks = computed<PlainBlock[]>(() => {
   }));
 });
 
+function plainTocFingerprint(source: string): string {
+  // FNV-1a keeps the cache key compact even for very large documents. The
+  // source itself is still passed to renderMarkdown, but is not retained in up
+  // to 300 historical Map keys while the user edits headings.
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < source.length; i++) {
+    hash = Math.imul(hash ^ source.charCodeAt(i), 0x01000193);
+  }
+  return `${source.length}:${(hash >>> 0).toString(36)}`;
+}
+
 function renderPlainBlock(src: string): string {
   // A standalone thematic-break block ("---" / "***" / "___") would be misread
   // as a YAML front-matter fence when rendered in isolation (each block renders
@@ -430,13 +441,19 @@ function renderPlainBlock(src: string): string {
   // setting invalidates previously rendered blocks. The per-call `breaks`
   // override is gone: the shared md singleton now follows the setting, so
   // the live editor, preview pane and exports all agree.
-  const key = `${settings.markdownHardBreaks ? 'hb' : 'sb'}${settings.markdownAutoNumberHeadings ? 'nh' : ''}\u0000${props.tab.filePath || ''}\u0000${root}\u0000${src}`;
+  const isTocBlock = /^[ \t]*\[toc\][ \t]*$/i.test(src);
+  // A rendered live-edit block normally only sees its own source. TOC is the
+  // exception: it needs the whole document's headings, and the cache key must
+  // change when any of those headings changes.
+  const tocSource = isTocBlock ? plainText.value || '' : undefined;
+  const tocKey = tocSource === undefined ? '' : `\u0000toc:${plainTocFingerprint(tocSource)}`;
+  const key = `${settings.markdownHardBreaks ? 'hb' : 'sb'}${settings.markdownAutoNumberHeadings ? 'nh' : ''}\u0000${props.tab.filePath || ''}\u0000${root}\u0000${src}${tocKey}`;
   const cached = plainRenderCache.get(key);
   if (cached != null) return cached;
   const html = rewriteImageUrls(
     // Drop `disabled` on task checkboxes so they can be clicked to toggle in the
     // preview (handled by activatePlainBlockFromClick → togglePlainTask).
-    renderMarkdown(src || '\n').replace(
+    renderMarkdown(src || '\n', { tocSource }).replace(
       /(<input class="task-list-item-checkbox" type="checkbox"[^>]*?)\s+disabled=""/g,
       '$1',
     ),

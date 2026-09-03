@@ -2,6 +2,12 @@
 
 This is a working cheat sheet. Switch to **Preview** (`Ctrl+Shift+P` until you land on Preview) to see each block render.
 
+[TOC]
+
+## Table of contents
+
+Put `[TOC]` on a line by itself to generate a linked, nested list of the document's headings. The marker stays as plain text in the source and updates automatically in Preview.
+
 ## Headings
 
 ```
