@@ -98,6 +98,13 @@ export const KEY_ACTIONS: KeyActionDef[] = [
   { id: 'view.toggleOutline', label: 'Toggle Outline', category: 'view', defaults: ['Mod+Shift+O'] },
   { id: 'view.toggleInspector', label: 'Toggle Properties Inspector', category: 'view', defaults: ['Mod+Shift+I'] },
   { id: 'view.slideshow', label: 'Slideshow', category: 'view', defaults: ['Mod+Alt+P'] },
+  // Folding. The chords mirror CodeMirror's own fold keymap so the muscle
+  // memory carries over — but they are handled at app level, which is what
+  // makes them work in the Windows plain-textarea editor too (it has no
+  // CodeMirror keymap to reach).
+  { id: 'fold.toggle', label: 'Fold / Unfold Section at Cursor', category: 'view', defaults: ['Mod+Shift+BracketLeft'] },
+  { id: 'fold.all', label: 'Fold All Sections', category: 'view', defaults: ['Mod+Alt+BracketLeft'] },
+  { id: 'fold.none', label: 'Unfold All', category: 'view', defaults: ['Mod+Alt+BracketRight'] },
 
   // ---- Navigate ----
   { id: 'palette.open', label: 'Command Palette', category: 'navigate', defaults: ['Mod+Shift+K'] },

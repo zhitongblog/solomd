@@ -211,6 +211,8 @@ export const zh: I18n = {
     wheelZoomHint: '触控板双指捏合也走这个手势。如果按住 Cmd 滚动时经常误触发整体缩放，可以关掉它——⌘= / ⌘- / ⌘0 不受影响，照常可用。',
     codeBlockLineNumbers: '代码块显示行号',
     codeBlockLineNumbersHint: '在预览中的每个围栏代码块旁显示 1, 2, 3… 行号列。PDF / DOCX / 图片导出会沿用。',
+    folding: '标题折叠',
+    foldingHint: '在标题旁显示折叠箭头，并启用折叠命令（折叠当前节，或只显示到指定标题层级）。',
     codeBlockWrap: '代码块内自动换行',
     codeBlockWrapHint: '超出代码块宽度的长行自动折行显示,不再出现横向滚动条。PDF/打印始终自动换行。',
     explorerFullNames: '文件树显示完整文件名',
@@ -1551,7 +1553,25 @@ export const zh: I18n = {
     regexInvalid: '无效或不安全的模式',
   },
   // #177 — command palette titles, addressed as cmd.<group>.<name>.
+  fold: {
+    placeholder: '⋯ 已折叠 {lines} 行',
+    collapse: '折叠此节',
+    expand: '展开此节',
+    disabledHint: '折叠功能已在「设置 → 基础」中关闭。',
+    plainSourceHint: 'Windows 的源码模式无法折叠，切换到实时编辑模式即可。',
+  },
   cmd: {
+    fold: {
+      toggle: '折叠：折叠/展开光标所在节',
+      all: '折叠：折叠全部标题',
+      none: '折叠：全部展开',
+      level1: '折叠：只显示到 1 级标题',
+      level2: '折叠：只显示到 2 级标题',
+      level3: '折叠：只显示到 3 级标题',
+      level4: '折叠：只显示到 4 级标题',
+      level5: '折叠：只显示到 5 级标题',
+      level6: '折叠：只显示到 6 级标题',
+    },
     file: {
       new: '新建 Markdown 文件',
       newText: '新建纯文本文件',

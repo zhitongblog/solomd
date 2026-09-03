@@ -210,6 +210,8 @@ export const sv: I18n = {
     wheelZoomHint: 'Gäller även nyp på styrplattan. Stäng av om rullning med Cmd nedtryckt skalar om appen av misstag — ⌘= / ⌘- / ⌘0 fungerar fortfarande.',
     codeBlockLineNumbers: 'Radnummer i kodblock',
     codeBlockLineNumbersHint: 'Lägger till en 1, 2, 3…-ränna i varje inhägnat kodblock i förhandsvisningen. Ärvs av PDF/DOCX/bildexporter.',
+    folding: 'Fäll ihop rubrikavsnitt',
+    foldingHint: 'Visar ihopfällningspilar bredvid rubriker och aktiverar kommandona (fäll ihop ett avsnitt eller visa dokumentet ned till en rubriknivå).',
     codeBlockWrap: 'Radbryt långa rader i kodblock',
     codeBlockWrapHint: 'Radbryter kodrader som är bredare än blocket i stället för en horisontell rullningslist. PDF/utskrift radbryter alltid.',
     explorerFullNames: 'Fullständiga filnamn i utforskaren',
@@ -1565,7 +1567,25 @@ export const sv: I18n = {
     regexInvalid: 'Ogiltigt eller osäkert mönster',
   },
   // #177 — command palette titles, addressed as cmd.<group>.<name>.
+  fold: {
+    placeholder: '⋯ {lines} rader',
+    collapse: 'Fäll ihop avsnitt',
+    expand: 'Expandera avsnitt',
+    disabledHint: 'Ihopfällning är avstängd i Inställningar → Grunder.',
+    plainSourceHint: 'Windows källvy kan inte fällas ihop — byt till live-redigeringsläget.',
+  },
   cmd: {
+    fold: {
+      toggle: 'Fäll ihop: avsnitt vid markören',
+      all: 'Fäll ihop: alla avsnitt',
+      none: 'Fäll ihop: expandera allt',
+      level1: 'Fäll ihop: visa ned till nivå 1',
+      level2: 'Fäll ihop: visa ned till nivå 2',
+      level3: 'Fäll ihop: visa ned till nivå 3',
+      level4: 'Fäll ihop: visa ned till nivå 4',
+      level5: 'Fäll ihop: visa ned till nivå 5',
+      level6: 'Fäll ihop: visa ned till nivå 6',
+    },
     file: {
       new: 'Ny Markdown-fil',
       newText: 'Ny oformaterad textfil',

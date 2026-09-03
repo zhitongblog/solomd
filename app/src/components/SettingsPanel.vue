@@ -652,6 +652,18 @@ function onSelectPdfFont(v: string) {
           <label>
             <input
               type="checkbox"
+              :checked="settings.foldingEnabled"
+              @change="settings.toggleFolding()"
+            />
+            {{ t('settings.folding') }}
+          </label>
+          <p class="setting-hint">{{ t('settings.foldingHint') }}</p>
+        </section>
+
+        <section data-cat="basics">
+          <label>
+            <input
+              type="checkbox"
               :checked="settings.codeBlockWrap"
               @change="settings.toggleCodeBlockWrap()"
             />

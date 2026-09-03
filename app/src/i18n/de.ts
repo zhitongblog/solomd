@@ -210,6 +210,8 @@ export const de: I18n = {
     wheelZoomHint: 'Gilt auch für Trackpad-Pinch. Deaktivieren Sie dies, wenn das Scrollen mit gedrückter Cmd-Taste die App versehentlich skaliert — ⌘= / ⌘- / ⌘0 funktionieren weiterhin.',
     codeBlockLineNumbers: 'Zeilennummern in Code-Blöcken',
     codeBlockLineNumbersHint: 'Fügt jedem eingezäunten Code-Block in der Vorschau eine 1, 2, 3…-Spalte hinzu. Wird in PDF/DOCX/Bild-Exporte übernommen.',
+    folding: 'Überschriften einklappen',
+    foldingHint: 'Zeigt Pfeile neben Überschriften und aktiviert die Einklapp-Befehle (Abschnitt einklappen oder Dokument bis zu einer Überschriftenebene anzeigen).',
     codeBlockWrap: 'Lange Zeilen in Codeblöcken umbrechen',
     codeBlockWrapHint: 'Bricht Codezeilen, die breiter als der Block sind, um statt horizontal zu scrollen. PDF/Druck bricht immer um.',
     explorerFullNames: 'Vollständige Dateinamen im Explorer',
@@ -1548,7 +1550,25 @@ export const de: I18n = {
     regexInvalid: 'Ungültiges oder unsicheres Muster',
   },
   // #177 — command palette titles, addressed as cmd.<group>.<name>.
+  fold: {
+    placeholder: '⋯ {lines} Zeilen',
+    collapse: 'Abschnitt einklappen',
+    expand: 'Abschnitt ausklappen',
+    disabledHint: 'Das Einklappen ist unter Einstellungen → Grundlagen deaktiviert.',
+    plainSourceHint: 'Die Windows-Quelltextansicht kann nicht einklappen — wechseln Sie in den Live-Bearbeitungsmodus.',
+  },
   cmd: {
+    fold: {
+      toggle: 'Einklappen: Abschnitt am Cursor',
+      all: 'Einklappen: Alle Abschnitte',
+      none: 'Einklappen: Alles ausklappen',
+      level1: 'Einklappen: Bis Ebene 1 anzeigen',
+      level2: 'Einklappen: Bis Ebene 2 anzeigen',
+      level3: 'Einklappen: Bis Ebene 3 anzeigen',
+      level4: 'Einklappen: Bis Ebene 4 anzeigen',
+      level5: 'Einklappen: Bis Ebene 5 anzeigen',
+      level6: 'Einklappen: Bis Ebene 6 anzeigen',
+    },
     file: {
       new: 'Neue Markdown-Datei',
       newText: 'Neue Klartextdatei',

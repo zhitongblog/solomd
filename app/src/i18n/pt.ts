@@ -212,6 +212,8 @@ export const pt: I18n = {
     wheelZoomHint: 'Inclui o gesto de pinça do trackpad. Desative se rolar com Cmd pressionado redimensionar o app sem querer — ⌘= / ⌘- / ⌘0 continuam funcionando.',
     codeBlockLineNumbers: 'Números de linha em blocos de código',
     codeBlockLineNumbersHint: 'Adiciona uma calha 1, 2, 3… a cada bloco de código cercado na pré-visualização. Herdado por exportações PDF/DOCX/imagem.',
+    folding: 'Dobrar secções de título',
+    foldingHint: 'Mostra setas de dobragem junto aos títulos e ativa os comandos de dobragem (recolher uma secção ou mostrar o documento até um nível de título).',
     codeBlockWrap: 'Quebrar linhas longas em blocos de código',
     codeBlockWrapHint: 'Quebra linhas de código mais largas que o bloco em vez de mostrar uma barra de rolagem horizontal. PDF/impressão sempre quebra.',
     explorerFullNames: 'Nomes de arquivo completos no explorador',
@@ -1550,7 +1552,25 @@ export const pt: I18n = {
     regexInvalid: 'Padrão inválido ou inseguro',
   },
   // #177 — command palette titles, addressed as cmd.<group>.<name>.
+  fold: {
+    placeholder: '⋯ {lines} linhas',
+    collapse: 'Recolher secção',
+    expand: 'Expandir secção',
+    disabledHint: 'O dobrar está desativado em Definições → Básico.',
+    plainSourceHint: 'A vista de código do Windows não permite dobrar — mude para o modo de edição ao vivo.',
+  },
   cmd: {
+    fold: {
+      toggle: 'Dobrar: secção no cursor',
+      all: 'Dobrar: todas as secções',
+      none: 'Dobrar: expandir tudo',
+      level1: 'Dobrar: mostrar até ao nível 1',
+      level2: 'Dobrar: mostrar até ao nível 2',
+      level3: 'Dobrar: mostrar até ao nível 3',
+      level4: 'Dobrar: mostrar até ao nível 4',
+      level5: 'Dobrar: mostrar até ao nível 5',
+      level6: 'Dobrar: mostrar até ao nível 6',
+    },
     file: {
       new: 'Novo arquivo Markdown',
       newText: 'Novo arquivo de texto simples',

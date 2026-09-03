@@ -210,6 +210,8 @@ export const es: I18n = {
     wheelZoomHint: 'Incluye el gesto de pellizco del trackpad. Desactívalo si al desplazarte con Cmd pulsada la aplicación cambia de escala sin querer — ⌘= / ⌘- / ⌘0 siguen funcionando.',
     codeBlockLineNumbers: 'Números de línea en bloques de código',
     codeBlockLineNumbersHint: 'Añade una columna 1, 2, 3… a cada bloque de código vallado en la vista previa. Heredado por exportaciones PDF/DOCX/imagen.',
+    folding: 'Plegar secciones de encabezado',
+    foldingHint: 'Muestra flechas de plegado junto a los encabezados y activa los comandos de plegado (contraer una sección o mostrar el documento hasta un nivel de encabezado).',
     codeBlockWrap: 'Ajustar líneas largas en bloques de código',
     codeBlockWrapHint: 'Ajusta las líneas de código más anchas que el bloque en lugar de mostrar una barra de desplazamiento horizontal. PDF/impresión siempre ajusta.',
     explorerFullNames: 'Nombres de archivo completos en el explorador',
@@ -1548,7 +1550,25 @@ export const es: I18n = {
     regexInvalid: 'Patrón no válido o inseguro',
   },
   // #177 — command palette titles, addressed as cmd.<group>.<name>.
+  fold: {
+    placeholder: '⋯ {lines} líneas',
+    collapse: 'Contraer sección',
+    expand: 'Expandir sección',
+    disabledHint: 'El plegado está desactivado en Ajustes → Básicos.',
+    plainSourceHint: 'La vista de código de Windows no puede plegar: cambia al modo de edición en vivo.',
+  },
   cmd: {
+    fold: {
+      toggle: 'Plegar: sección en el cursor',
+      all: 'Plegar: todas las secciones',
+      none: 'Plegar: expandir todo',
+      level1: 'Plegar: mostrar hasta el nivel 1',
+      level2: 'Plegar: mostrar hasta el nivel 2',
+      level3: 'Plegar: mostrar hasta el nivel 3',
+      level4: 'Plegar: mostrar hasta el nivel 4',
+      level5: 'Plegar: mostrar hasta el nivel 5',
+      level6: 'Plegar: mostrar hasta el nivel 6',
+    },
     file: {
       new: 'Nuevo archivo Markdown',
       newText: 'Nuevo archivo de texto sin formato',

@@ -210,6 +210,8 @@ export const nl: I18n = {
     wheelZoomHint: 'Geldt ook voor knijpen op het trackpad. Schakel dit uit als scrollen met Cmd ingedrukt de app per ongeluk schaalt — ⌘= / ⌘- / ⌘0 blijven werken.',
     codeBlockLineNumbers: 'Regelnummers in codeblokken',
     codeBlockLineNumbersHint: 'Voegt een 1, 2, 3…-goot toe aan elk afgebakend codeblok in het voorbeeld. Overgenomen door PDF/DOCX/afbeelding-exports.',
+    folding: 'Kopsecties inklappen',
+    foldingHint: 'Toont inklappijlen naast koppen en schakelt de inklapopdrachten in (een sectie inklappen of het document tot een kopniveau tonen).',
     codeBlockWrap: 'Lange regels in codeblokken laten teruglopen',
     codeBlockWrapHint: 'Laat coderegels breder dan het blok teruglopen in plaats van een horizontale schuifbalk te tonen. PDF/afdrukken loopt altijd terug.',
     explorerFullNames: 'Volledige bestandsnamen in verkenner',
@@ -1565,7 +1567,25 @@ export const nl: I18n = {
     regexInvalid: 'Ongeldig of onveilig patroon',
   },
   // #177 — command palette titles, addressed as cmd.<group>.<name>.
+  fold: {
+    placeholder: '⋯ {lines} regels',
+    collapse: 'Sectie inklappen',
+    expand: 'Sectie uitklappen',
+    disabledHint: 'Inklappen staat uit in Instellingen → Basis.',
+    plainSourceHint: 'De Windows-bronweergave kan niet inklappen — schakel over naar de live-bewerkmodus.',
+  },
   cmd: {
+    fold: {
+      toggle: 'Inklappen: sectie bij cursor',
+      all: 'Inklappen: alle secties',
+      none: 'Inklappen: alles uitklappen',
+      level1: 'Inklappen: tonen tot niveau 1',
+      level2: 'Inklappen: tonen tot niveau 2',
+      level3: 'Inklappen: tonen tot niveau 3',
+      level4: 'Inklappen: tonen tot niveau 4',
+      level5: 'Inklappen: tonen tot niveau 5',
+      level6: 'Inklappen: tonen tot niveau 6',
+    },
     file: {
       new: 'Nieuw Markdown-bestand',
       newText: 'Nieuw platte-tekstbestand',

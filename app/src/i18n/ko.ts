@@ -210,6 +210,8 @@ export const ko: I18n = {
     wheelZoomHint: '트랙패드 핀치도 포함됩니다. Cmd를 누른 채 스크롤할 때 실수로 확대/축소된다면 끄세요. ⌘= / ⌘- / ⌘0은 계속 사용할 수 있습니다.',
     codeBlockLineNumbers: '코드 블록 줄 번호',
     codeBlockLineNumbersHint: '미리보기의 각 펜스 코드 블록에 1, 2, 3… 줄 번호 거터를 추가. PDF / DOCX / 이미지 내보내기에도 적용.',
+    folding: '제목 접기',
+    foldingHint: '제목 옆에 접기 화살표를 표시하고 접기 명령(현재 섹션 접기, 지정한 제목 수준까지만 표시)을 활성화합니다.',
     codeBlockWrap: '코드 블록의 긴 줄 바꿈',
     codeBlockWrapHint: '블록 너비를 넘는 코드 줄을 가로 스크롤 대신 줄 바꿈으로 표시합니다. PDF/인쇄는 항상 줄 바꿈됩니다.',
     explorerFullNames: '탐색기에 전체 파일 이름 표시',
@@ -1548,7 +1550,25 @@ export const ko: I18n = {
     regexInvalid: '유효하지 않거나 안전하지 않은 패턴',
   },
   // #177 — command palette titles, addressed as cmd.<group>.<name>.
+  fold: {
+    placeholder: '⋯ {lines}줄',
+    collapse: '섹션 접기',
+    expand: '섹션 펼치기',
+    disabledHint: '접기 기능이 설정 → 기본에서 꺼져 있습니다.',
+    plainSourceHint: 'Windows 소스 보기에서는 접을 수 없습니다. 실시간 편집 모드로 전환하세요.',
+  },
   cmd: {
+    fold: {
+      toggle: '접기: 커서 위치 섹션 토글',
+      all: '접기: 모든 섹션 접기',
+      none: '접기: 모두 펼치기',
+      level1: '접기: 1단계까지 표시',
+      level2: '접기: 2단계까지 표시',
+      level3: '접기: 3단계까지 표시',
+      level4: '접기: 4단계까지 표시',
+      level5: '접기: 5단계까지 표시',
+      level6: '접기: 6단계까지 표시',
+    },
     file: {
       new: '새 Markdown 파일',
       newText: '새 일반 텍스트 파일',

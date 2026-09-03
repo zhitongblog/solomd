@@ -210,6 +210,8 @@ export const it: I18n = {
     wheelZoomHint: 'Include il pinch del trackpad. Disattivalo se scorrere tenendo premuto Cmd ridimensiona l’app per sbaglio — ⌘= / ⌘- / ⌘0 restano attivi.',
     codeBlockLineNumbers: 'Numeri di riga nei blocchi di codice',
     codeBlockLineNumbersHint: 'Aggiunge una colonna 1, 2, 3… a ogni blocco di codice recintato nell\'anteprima. Ereditato dalle esportazioni PDF/DOCX/immagine.',
+    folding: 'Comprimi sezioni dei titoli',
+    foldingHint: 'Mostra le frecce di compressione accanto ai titoli e attiva i comandi (comprimi una sezione o mostra il documento fino a un livello di titolo).',
     codeBlockWrap: 'A capo automatico nei blocchi di codice',
     codeBlockWrapHint: 'Manda a capo le righe di codice più larghe del blocco invece di mostrare una barra di scorrimento orizzontale. PDF/stampa va sempre a capo.',
     explorerFullNames: 'Nomi file completi nell’esplora risorse',
@@ -1548,7 +1550,25 @@ export const it: I18n = {
     regexInvalid: 'Pattern non valido o non sicuro',
   },
   // #177 — command palette titles, addressed as cmd.<group>.<name>.
+  fold: {
+    placeholder: '⋯ {lines} righe',
+    collapse: 'Comprimi sezione',
+    expand: 'Espandi sezione',
+    disabledHint: 'La compressione è disattivata in Impostazioni → Base.',
+    plainSourceHint: 'La vista sorgente di Windows non può comprimere: passa alla modalità di modifica live.',
+  },
   cmd: {
+    fold: {
+      toggle: 'Comprimi: sezione al cursore',
+      all: 'Comprimi: tutte le sezioni',
+      none: 'Comprimi: espandi tutto',
+      level1: 'Comprimi: mostra fino al livello 1',
+      level2: 'Comprimi: mostra fino al livello 2',
+      level3: 'Comprimi: mostra fino al livello 3',
+      level4: 'Comprimi: mostra fino al livello 4',
+      level5: 'Comprimi: mostra fino al livello 5',
+      level6: 'Comprimi: mostra fino al livello 6',
+    },
     file: {
       new: 'Nuovo file Markdown',
       newText: 'Nuovo file di testo semplice',

@@ -66,6 +66,16 @@ export function useCommands(): Command[] {
   const ghSync = useGithubSyncStore();
   const ghSyncOps = useGithubSync();
 
+  /** Heading folding runs inside the editor component; the focused pane picks
+   *  the event up (same routing as find). */
+  function dispatchFold(action: 'toggle' | 'all' | 'none' | 'level', level?: number) {
+    window.dispatchEvent(
+      new CustomEvent('solomd:fold', {
+        detail: { action, level, paneId: tiles.focusedPaneId },
+      }),
+    );
+  }
+
   /** Build a solomd.app/share/?repo=...&path=...&branch=main URL for the
    *  active tab, if it's inside a workspace linked to a public-looking
    *  GitHub remote. Returns null if any precondition fails — caller is
@@ -275,6 +285,37 @@ export function useCommands(): Command[] {
           new CustomEvent('solomd:editor-find', { detail: { paneId: tiles.focusedPaneId } }),
         ),
     },
+
+    {
+      id: 'fold.toggle',
+      title: 'Fold: Toggle Section at Cursor',
+      shortcut: kb('fold.toggle'),
+      hint: 'Collapse (or expand) the heading section the cursor is in',
+      run: () => dispatchFold('toggle'),
+    },
+    {
+      id: 'fold.all',
+      title: 'Fold: Collapse All Sections',
+      shortcut: kb('fold.all'),
+      hint: 'Collapse every heading section in this note',
+      run: () => dispatchFold('all'),
+    },
+    {
+      id: 'fold.none',
+      title: 'Fold: Expand All',
+      shortcut: kb('fold.none'),
+      hint: 'Expand everything that is folded, including code blocks and tables',
+      run: () => dispatchFold('none'),
+    },
+    ...[1, 2, 3, 4, 5, 6].map((level) => ({
+      id: `fold.level${level}`,
+      title: `Fold: Show Down to Level ${level}`,
+      hint:
+        level === 1
+          ? 'Collapse the whole outline — only H1 headings stay visible'
+          : `Keep headings H1–H${level} visible and fold everything under them`,
+      run: () => dispatchFold('level', level),
+    })),
 
     {
       id: 'editor.insertImage',

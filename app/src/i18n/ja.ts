@@ -210,6 +210,8 @@ export const ja: I18n = {
     wheelZoomHint: 'トラックパッドのピンチも含みます。Cmd を押しながらスクロールすると誤ってズームしてしまう場合はオフにしてください。⌘= / ⌘- / ⌘0 は引き続き使えます。',
     codeBlockLineNumbers: 'コードブロックの行番号',
     codeBlockLineNumbersHint: 'プレビューの各フェンスコードブロックに 1, 2, 3… の行番号列を表示。PDF / DOCX / 画像エクスポートに引き継がれます。',
+    folding: '見出しの折りたたみ',
+    foldingHint: '見出しの横に折りたたみ矢印を表示し、折りたたみコマンド（セクションの折りたたみ、指定した見出しレベルまでの表示）を有効にします。',
     codeBlockWrap: 'コードブロック内で長い行を折り返す',
     codeBlockWrapHint: 'ブロック幅を超えるコード行を横スクロールではなく折り返して表示します。PDF/印刷では常に折り返します。',
     explorerFullNames: 'エクスプローラーで完全なファイル名を表示',
@@ -1548,7 +1550,25 @@ export const ja: I18n = {
     regexInvalid: '無効または安全でないパターン',
   },
   // #177 — command palette titles, addressed as cmd.<group>.<name>.
+  fold: {
+    placeholder: '⋯ {lines} 行',
+    collapse: 'セクションを折りたたむ',
+    expand: 'セクションを展開',
+    disabledHint: '折りたたみは「設定 → 基本」でオフになっています。',
+    plainSourceHint: 'Windows のソース表示では折りたためません。ライブ編集モードに切り替えてください。',
+  },
   cmd: {
+    fold: {
+      toggle: '折りたたみ: カーソル位置のセクション',
+      all: '折りたたみ: すべてのセクション',
+      none: '折りたたみ: すべて展開',
+      level1: '折りたたみ: レベル 1 まで表示',
+      level2: '折りたたみ: レベル 2 まで表示',
+      level3: '折りたたみ: レベル 3 まで表示',
+      level4: '折りたたみ: レベル 4 まで表示',
+      level5: '折りたたみ: レベル 5 まで表示',
+      level6: '折りたたみ: レベル 6 まで表示',
+    },
     file: {
       new: '新規 Markdown ファイル',
       newText: '新規プレーンテキストファイル',

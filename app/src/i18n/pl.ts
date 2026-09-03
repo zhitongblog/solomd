@@ -210,6 +210,8 @@ export const pl: I18n = {
     wheelZoomHint: 'Obejmuje też gest szczypania na gładziku. Wyłącz, jeśli przewijanie z wciśniętym Cmd przypadkowo skaluje aplikację — ⌘= / ⌘- / ⌘0 nadal działają.',
     codeBlockLineNumbers: 'Numery wierszy w blokach kodu',
     codeBlockLineNumbersHint: 'Dodaje rynnę 1, 2, 3… do każdego ogrodzonego bloku kodu w podglądzie. Dziedziczone przez eksporty PDF/DOCX/obraz.',
+    folding: 'Zwijanie sekcji nagłówków',
+    foldingHint: 'Dodaje strzałki zwijania obok nagłówków i włącza polecenia zwijania (zwiń sekcję lub pokaż dokument do wybranego poziomu nagłówka).',
     codeBlockWrap: 'Zawijaj długie wiersze w blokach kodu',
     codeBlockWrapHint: 'Zawija wiersze kodu szersze niż blok zamiast pokazywać poziomy pasek przewijania. PDF/druk zawsze zawija.',
     explorerFullNames: 'Pełne nazwy plików w eksploratorze',
@@ -1565,7 +1567,25 @@ export const pl: I18n = {
     regexInvalid: 'Nieprawidłowy lub niebezpieczny wzorzec',
   },
   // #177 — command palette titles, addressed as cmd.<group>.<name>.
+  fold: {
+    placeholder: '⋯ {lines} wierszy',
+    collapse: 'Zwiń sekcję',
+    expand: 'Rozwiń sekcję',
+    disabledHint: 'Zwijanie jest wyłączone w Ustawienia → Podstawy.',
+    plainSourceHint: 'Widok źródła w systemie Windows nie obsługuje zwijania — przełącz się na tryb edycji na żywo.',
+  },
   cmd: {
+    fold: {
+      toggle: 'Zwiń: sekcja pod kursorem',
+      all: 'Zwiń: wszystkie sekcje',
+      none: 'Zwiń: rozwiń wszystko',
+      level1: 'Zwiń: pokaż do poziomu 1',
+      level2: 'Zwiń: pokaż do poziomu 2',
+      level3: 'Zwiń: pokaż do poziomu 3',
+      level4: 'Zwiń: pokaż do poziomu 4',
+      level5: 'Zwiń: pokaż do poziomu 5',
+      level6: 'Zwiń: pokaż do poziomu 6',
+    },
     file: {
       new: 'Nowy plik Markdown',
       newText: 'Nowy plik tekstowy',

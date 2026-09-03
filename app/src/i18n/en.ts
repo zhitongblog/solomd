@@ -210,6 +210,8 @@ export const en = {
     wheelZoomHint: 'Also covers trackpad pinch. Turn this off if holding Cmd while scrolling keeps rescaling the app by accident — ⌘= / ⌘- / ⌘0 keep working either way.',
     codeBlockLineNumbers: 'Line numbers in fenced code blocks',
     codeBlockLineNumbersHint: 'Adds a 1, 2, 3… gutter to each fenced code block in the preview. Inherited by PDF / DOCX / image exports.',
+    folding: 'Fold heading sections',
+    foldingHint: 'Adds fold arrows beside headings and enables the Fold commands (collapse a section, or show the document down to a chosen heading level).',
     codeBlockWrap: 'Wrap long lines in code blocks',
     codeBlockWrapHint: 'Soft-wraps code lines wider than the block instead of showing a horizontal scrollbar. PDF/print always wraps.',
     explorerFullNames: 'Full file names in Explorer',
@@ -1571,7 +1573,25 @@ export const en = {
     regexInvalid: 'Invalid or unsafe pattern',
   },
   // #177 — command palette titles, addressed as cmd.<group>.<name>.
+  fold: {
+    placeholder: '⋯ {lines} lines',
+    collapse: 'Collapse section',
+    expand: 'Expand section',
+    disabledHint: 'Folding is switched off in Settings → Basics.',
+    plainSourceHint: 'The Windows source view cannot fold — switch to live edit mode.',
+  },
   cmd: {
+    fold: {
+      toggle: 'Fold: Toggle Section at Cursor',
+      all: 'Fold: Collapse All Sections',
+      none: 'Fold: Expand All',
+      level1: 'Fold: Show Down to Level 1',
+      level2: 'Fold: Show Down to Level 2',
+      level3: 'Fold: Show Down to Level 3',
+      level4: 'Fold: Show Down to Level 4',
+      level5: 'Fold: Show Down to Level 5',
+      level6: 'Fold: Show Down to Level 6',
+    },
     file: {
       new: 'New Markdown File',
       newText: 'New Plain Text File',

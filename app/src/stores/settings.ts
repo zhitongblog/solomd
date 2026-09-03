@@ -258,6 +258,11 @@ interface Settings {
   // preview (and Pandoc/PDF/PNG exports — they all share the preview HTML).
   // Default off so existing exports don't surprise anyone. Issue #65.
   codeBlockLineNumbers: boolean;
+  // Heading folding in the editor: fold arrows in the gutter, the fold
+  // keymap, and the "fold to level N" commands. On by default — a long
+  // document is barely navigable without it — but it adds a gutter column, so
+  // it can be switched off.
+  foldingEnabled: boolean;
   // #178: soft-wrap long lines inside fenced code blocks in the preview
   // instead of a horizontal scrollbar. Default off (scroll preserves exact
   // code layout); print/PDF always wraps regardless — paper can't scroll.
@@ -551,6 +556,7 @@ function defaults(): Settings {
     imageExportBranding: true,
     globalZoom: 1,
     wheelZoomEnabled: true,
+    foldingEnabled: true,
     codeBlockLineNumbers: false,
     codeBlockWrap: false,
     explorerFullNames: false,
@@ -1183,6 +1189,11 @@ export const useSettingsStore = defineStore('settings', {
       this.wheelZoomEnabled = !this.wheelZoomEnabled;
       this.persist();
     },
+    toggleFolding() {
+      this.foldingEnabled = !this.foldingEnabled;
+      this.persist();
+    },
+
     toggleCodeBlockLineNumbers() {
       this.codeBlockLineNumbers = !this.codeBlockLineNumbers;
       this.persist();

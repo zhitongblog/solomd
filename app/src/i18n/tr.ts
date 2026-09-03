@@ -210,6 +210,8 @@ export const tr: I18n = {
     wheelZoomHint: 'Trackpad kıstırma hareketini de kapsar. Cmd basılıyken kaydırmak uygulamayı yanlışlıkla ölçekliyorsa bunu kapatın — ⌘= / ⌘- / ⌘0 çalışmaya devam eder.',
     codeBlockLineNumbers: 'Kod bloklarında satır numaraları',
     codeBlockLineNumbersHint: 'Önizlemedeki her çitli kod bloğuna 1, 2, 3… sütunu ekler. PDF/DOCX/görüntü dışa aktarımları tarafından devralınır.',
+    folding: 'Başlık bölümlerini katla',
+    foldingHint: 'Başlıkların yanına katlama okları ekler ve katlama komutlarını etkinleştirir (bir bölümü daraltın veya belgeyi seçilen başlık düzeyine kadar gösterin).',
     codeBlockWrap: 'Kod bloklarında uzun satırları kaydır',
     codeBlockWrapHint: 'Bloktan geniş kod satırlarını yatay kaydırma çubuğu yerine alt satıra kaydırır. PDF/yazdırma her zaman kaydırır.',
     explorerFullNames: 'Gezginde tam dosya adları',
@@ -1565,7 +1567,25 @@ export const tr: I18n = {
     regexInvalid: 'Geçersiz veya güvenli olmayan desen',
   },
   // #177 — command palette titles, addressed as cmd.<group>.<name>.
+  fold: {
+    placeholder: '⋯ {lines} satır',
+    collapse: 'Bölümü daralt',
+    expand: 'Bölümü genişlet',
+    disabledHint: 'Katlama, Ayarlar → Temel bölümünde kapalı.',
+    plainSourceHint: 'Windows kaynak görünümü katlanamaz — canlı düzenleme moduna geçin.',
+  },
   cmd: {
+    fold: {
+      toggle: 'Katla: imleçteki bölüm',
+      all: 'Katla: tüm bölümler',
+      none: 'Katla: tümünü genişlet',
+      level1: 'Katla: 1. düzeye kadar göster',
+      level2: 'Katla: 2. düzeye kadar göster',
+      level3: 'Katla: 3. düzeye kadar göster',
+      level4: 'Katla: 4. düzeye kadar göster',
+      level5: 'Katla: 5. düzeye kadar göster',
+      level6: 'Katla: 6. düzeye kadar göster',
+    },
     file: {
       new: 'Yeni Markdown Dosyası',
       newText: 'Yeni Düz Metin Dosyası',

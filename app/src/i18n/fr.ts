@@ -210,6 +210,8 @@ export const fr: I18n = {
     wheelZoomHint: 'Inclut le pincement sur pavé tactile. Désactivez cette option si le défilement avec Cmd enfoncée redimensionne l’application par accident — ⌘= / ⌘- / ⌘0 restent disponibles.',
     codeBlockLineNumbers: 'Numéros de ligne dans les blocs de code',
     codeBlockLineNumbersHint: 'Ajoute une gouttière 1, 2, 3… à chaque bloc de code clôturé dans l\'aperçu. Hérité par les exports PDF/DOCX/image.',
+    folding: 'Replier les sections de titre',
+    foldingHint: 'Affiche des flèches de repliement près des titres et active les commandes de repliement (replier une section ou n’afficher que jusqu’à un niveau de titre).',
     codeBlockWrap: 'Retour à la ligne dans les blocs de code',
     codeBlockWrapHint: "Replie les lignes de code plus larges que le bloc au lieu d'afficher une barre de défilement horizontale. PDF/impression replie toujours.",
     explorerFullNames: 'Noms de fichiers complets dans l’explorateur',
@@ -1548,7 +1550,25 @@ export const fr: I18n = {
     regexInvalid: 'Motif invalide ou non sûr',
   },
   // #177 — command palette titles, addressed as cmd.<group>.<name>.
+  fold: {
+    placeholder: '⋯ {lines} lignes',
+    collapse: 'Replier la section',
+    expand: 'Déplier la section',
+    disabledHint: 'Le repliement est désactivé dans Réglages → Général.',
+    plainSourceHint: 'La vue source de Windows ne peut pas replier — passez en mode édition live.',
+  },
   cmd: {
+    fold: {
+      toggle: 'Replier : section au curseur',
+      all: 'Replier : toutes les sections',
+      none: 'Replier : tout déplier',
+      level1: 'Replier : afficher jusqu’au niveau 1',
+      level2: 'Replier : afficher jusqu’au niveau 2',
+      level3: 'Replier : afficher jusqu’au niveau 3',
+      level4: 'Replier : afficher jusqu’au niveau 4',
+      level5: 'Replier : afficher jusqu’au niveau 5',
+      level6: 'Replier : afficher jusqu’au niveau 6',
+    },
     file: {
       new: 'Nouveau fichier Markdown',
       newText: 'Nouveau fichier texte brut',
