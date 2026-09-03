@@ -794,10 +794,113 @@ body.solomd-printing {
   background: white !important;
   color: black !important;
 }
+/* Printing under a dark theme put a dark slab on paper: the overlay lives
+   outside #app but still inherits :root's theme tokens, so code blocks,
+   tables, quotes and syntax colors all came out dark even though the page
+   background was forced white. The print-style setting re-seeds the tokens
+   the rendered markdown actually consumes, scoped to the overlay so the app
+   itself never flashes a different palette on screen.
+
+   `follow` adds no class at all — that is the pre-#print-theme behaviour,
+   kept for anyone who deliberately prints in their theme. */
+#solomd-print-overlay.print-theme-light {
+  --bg: #ffffff;
+  --bg-elev: #f7f6f3;
+  --bg-elevated: #f7f6f3;
+  --bg-hover: #f0eee8;
+  --bg-active: #ebe9e2;
+  --border: #e9e9e7;
+  --text: #37352f;
+  --text-muted: #787774;
+  --text-faint: #b4b4b4;
+  --accent: #ff9f40;
+  --accent-fg: #1a1a1a;
+  --danger: #d64545;
+  --md-h1: #1a1a1a;
+  --md-h2: #232323;
+  --md-h3: #2f2f2f;
+  --md-h4: #3a3a3a;
+  --md-h5: #4a4a4a;
+  --md-h6: #6a6a6a;
+  --md-strong: #1a1a1a;
+  --md-em: #444444;
+  --md-link: #b45f06;
+  --md-url: #c97a20;
+  --md-code: #c0392b;
+  --md-code-bg: #f3efe7;
+  --md-quote: #6a6a6a;
+  --md-list: #c97a20;
+  --md-hr: #c0bdb3;
+  --syn-keyword: #a626a4;
+  --syn-string: #50a14f;
+  --syn-number: #986801;
+  --syn-comment: #a0a1a7;
+  --syn-function: #4078f2;
+  --syn-variable: #383a42;
+  --syn-type: #c18401;
+  --syn-property: #e45649;
+  --syn-operator: #0184bc;
+  background: #ffffff;
+  color: #37352f;
+}
+#solomd-print-overlay.print-theme-dark {
+  --bg: #1f1e1b;
+  --bg-elev: #23221f;
+  --bg-elevated: #23221f;
+  --bg-hover: #2a2a2a;
+  --bg-active: #333333;
+  --border: #34322d;
+  --text: #e6e1d8;
+  --text-muted: #b8b1a6;
+  --text-faint: #7f776d;
+  --accent: #ffa54d;
+  --accent-fg: #1a1a1a;
+  --danger: #e86d6d;
+  --md-h1: #ffffff;
+  --md-h2: #f0f0ed;
+  --md-h3: #e2e2dc;
+  --md-h4: #cccccc;
+  --md-h5: #a8a8a8;
+  --md-h6: #888888;
+  --md-strong: #ffffff;
+  --md-em: #d8d8d8;
+  --md-link: #ff9f40;
+  --md-url: #ffb874;
+  --md-code: #ff9f9f;
+  --md-code-bg: #2a2a2a;
+  --md-quote: #888888;
+  --md-list: #ff9f40;
+  --md-hr: #444444;
+  --syn-keyword: #c678dd;
+  --syn-string: #98c379;
+  --syn-number: #d19a66;
+  --syn-comment: #5c6370;
+  --syn-function: #61afef;
+  --syn-variable: #e06c75;
+  --syn-type: #e5c07b;
+  --syn-property: #e06c75;
+  --syn-operator: #56b6c2;
+  background: #1f1e1b;
+  color: #e6e1d8;
+}
+/* Browsers drop backgrounds when printing unless told otherwise, which
+   would print dark text on white paper — unreadable. Only the dark option
+   needs it; light matches the paper anyway. */
+#solomd-print-overlay.print-theme-dark,
+body.solomd-printing--dark {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+body.solomd-printing--dark {
+  background: #1f1e1b !important;
+  color: #e6e1d8 !important;
+}
 .solomd-print-content {
   max-width: none !important;
   padding: 0 !important;
-  color: black !important;
+  /* Inherit from the overlay so the print palette above decides; without a
+     palette class this lands on body's black, i.e. the old behaviour. */
+  color: inherit !important;
   font-family: var(--font-ui, sans-serif);
 }
 

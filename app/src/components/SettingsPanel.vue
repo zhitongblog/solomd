@@ -896,6 +896,19 @@ function onSelectPdfFont(v: string) {
         </section>
 
         <section data-cat="export">
+          <label>{{ t('settings.printTheme') }}</label>
+          <select
+            :value="settings.printTheme"
+            @change="settings.setPrintTheme(($event.target as HTMLSelectElement).value as 'light' | 'dark' | 'follow')"
+          >
+            <option value="light">{{ t('settings.printThemeLight') }}</option>
+            <option value="dark">{{ t('settings.printThemeDark') }}</option>
+            <option value="follow">{{ t('settings.printThemeFollow') }}</option>
+          </select>
+          <p class="setting-hint">{{ t('settings.printThemeHint') }}</p>
+        </section>
+
+        <section data-cat="export">
           <label>{{ t('settings.pdfDefaults.pageSize') }}</label>
           <select
             :value="settings.pdfDefaults.pageSize"

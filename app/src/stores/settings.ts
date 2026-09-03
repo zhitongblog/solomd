@@ -258,6 +258,11 @@ interface Settings {
   // preview (and Pandoc/PDF/PNG exports — they all share the preview HTML).
   // Default off so existing exports don't surprise anyone. Issue #65.
   codeBlockLineNumbers: boolean;
+  // Print / system-PDF palette, independent of the app theme. Printing in a
+  // dark theme put a dark slab on paper and wasted ink; `light` (the default)
+  // always prints on white, `dark` prints the dark palette on purpose, and
+  // `follow` keeps whatever theme the app is in.
+  printTheme: 'light' | 'dark' | 'follow';
   // Heading folding in the editor: fold arrows in the gutter, the fold
   // keymap, and the "fold to level N" commands. On by default — a long
   // document is barely navigable without it — but it adds a gutter column, so
@@ -556,6 +561,7 @@ function defaults(): Settings {
     imageExportBranding: true,
     globalZoom: 1,
     wheelZoomEnabled: true,
+    printTheme: 'light',
     foldingEnabled: true,
     codeBlockLineNumbers: false,
     codeBlockWrap: false,
@@ -1187,6 +1193,10 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleWheelZoom() {
       this.wheelZoomEnabled = !this.wheelZoomEnabled;
+      this.persist();
+    },
+    setPrintTheme(mode: 'light' | 'dark' | 'follow') {
+      this.printTheme = mode;
       this.persist();
     },
     toggleFolding() {

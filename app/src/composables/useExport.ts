@@ -509,7 +509,14 @@ export function useExport() {
     }
     overlay.innerHTML = `<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
 <div class="solomd-print-content preview-content">${body}</div>`;
+    // Print palette, independent of the app theme. The overlay sits outside
+    // #app but still inherits :root's tokens, so a dark theme used to put a
+    // dark code slab on paper. `follow` adds no class and keeps that.
+    const printTheme = settings.printTheme || 'light';
+    overlay.classList.remove('print-theme-light', 'print-theme-dark');
+    if (printTheme !== 'follow') overlay.classList.add(`print-theme-${printTheme}`);
     document.body.classList.add('solomd-printing');
+    document.body.classList.toggle('solomd-printing--dark', printTheme === 'dark');
 
     // v2.5 F3: inject @page / @media print stylesheet derived from
     // Settings → PDF defaults + per-doc `pdf:` front matter override.
@@ -531,7 +538,7 @@ export function useExport() {
     }
 
     const cleanup = () => {
-      document.body.classList.remove('solomd-printing');
+      document.body.classList.remove('solomd-printing', 'solomd-printing--dark');
       overlay?.remove();
       styleEl?.remove();
     };
