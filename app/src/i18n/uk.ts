@@ -163,6 +163,8 @@ export const uk: I18n = {
     copyGitUrlDone: 'Git URL скопійовано в буфер обміну.',
     copyGitUrlNoRepo: 'Ця робоча область не має підключеного віддаленого Git.',
     switchWorkspace: 'Змінити робочу область',
+    folderMissing: 'Цієї теки більше немає на цьому місці.',
+    folderMissingLocate: 'Знайти теку…',
     copyRelPathDone: 'Relative path copied.',
     closeFolder: 'Close folder',
     noRecentFolders: 'No other folders yet — open one to switch later.',

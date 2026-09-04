@@ -163,6 +163,8 @@ export const pl: I18n = {
     copyGitUrlDone: 'Adres Git skopiowany do schowka.',
     copyGitUrlNoRepo: 'Ten obszar roboczy nie ma połączonego zdalnego repozytorium Git.',
     switchWorkspace: 'Przełącz obszar roboczy',
+    folderMissing: 'Tego folderu już tu nie ma.',
+    folderMissingLocate: 'Znajdź folder…',
     copyRelPathDone: 'Relative path copied.',
     closeFolder: 'Close folder',
     noRecentFolders: 'No other folders yet — open one to switch later.',

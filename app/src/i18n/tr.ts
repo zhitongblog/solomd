@@ -163,6 +163,8 @@ export const tr: I18n = {
     copyGitUrlDone: 'Git URL’si panoya kopyalandı.',
     copyGitUrlNoRepo: 'Bu çalışma alanının bağlı bir Git uzak deposu yok.',
     switchWorkspace: 'Çalışma alanını değiştir',
+    folderMissing: 'Bu klasör artık burada değil.',
+    folderMissingLocate: 'Klasörü bul…',
     copyRelPathDone: 'Relative path copied.',
     closeFolder: 'Close folder',
     noRecentFolders: 'No other folders yet — open one to switch later.',

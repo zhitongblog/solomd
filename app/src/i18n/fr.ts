@@ -163,6 +163,8 @@ export const fr: I18n = {
     copyGitUrlDone: 'URL Git copiée dans le presse-papiers.',
     copyGitUrlNoRepo: 'Cet espace de travail n’a pas de dépôt Git distant lié.',
     switchWorkspace: 'Changer d’espace de travail',
+    folderMissing: 'Ce dossier n’est plus là.',
+    folderMissingLocate: 'Localiser le dossier…',
     copyRelPathDone: 'Relative path copied.',
     closeFolder: 'Close folder',
     noRecentFolders: 'No other folders yet — open one to switch later.',

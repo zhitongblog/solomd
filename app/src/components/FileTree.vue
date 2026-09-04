@@ -124,6 +124,11 @@ const showInboxOnly = computed(() => inbox.filterMode.value);
  * row instead of rendering it as a fake file. */
 const TRUNCATED_SENTINEL = '__solomd_truncated__';
 
+/** True when the workspace folder itself is gone (moved, deleted, unmounted
+ *  drive). Distinct from "empty": an empty tree under the folder's own name is
+ *  indistinguishable from data loss, which is how it read before. */
+const rootMissing = ref(false);
+
 async function loadDir(path: string): Promise<{ children: Node[]; truncated: boolean }> {
   try {
     // #148 — SAF vault: list children via ContentResolver, not std::fs.
@@ -147,9 +152,22 @@ async function loadDir(path: string): Promise<{ children: Node[]; truncated: boo
       if (isDeletePending(e.path)) continue;
       filtered.push({ ...e });
     }
+    // A successful listing clears the "folder is gone" state, so putting the
+    // folder back (or reconnecting the drive) recovers on the next refresh
+    // rather than needing the workspace re-picked.
+    if (path === workspace.currentFolder) rootMissing.value = false;
     return { children: filtered, truncated };
   } catch (e) {
     console.error('list_dir failed', e);
+    // Only the root's disappearance is worth a special state; a subfolder that
+    // vanished mid-expand just lists as empty.
+    if (path === workspace.currentFolder) {
+      try {
+        rootMissing.value = !(await invoke<boolean>('fs_dir_exists', { path }));
+      } catch {
+        rootMissing.value = false;
+      }
+    }
     return { children: [], truncated: false };
   }
 }
@@ -160,6 +178,7 @@ async function refreshRoot() {
     return;
   }
   const path = workspace.currentFolder;
+  rootMissing.value = false;
   root.value = {
     name: isSafPath(path) ? workspace.safName ?? 'Vault' : path.split(/[\\/]/).pop() ?? path,
     path,
@@ -671,6 +690,22 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
+      <!-- The folder itself is gone (moved in Finder, deleted, drive
+           unmounted). Saying so beats an empty tree under its own name,
+           which reads as "my notes are gone". -->
+      <div v-if="rootMissing" class="ftree__missing">
+        <p class="ftree__missing-title">{{ t('explorer.folderMissing') }}</p>
+        <p class="ftree__missing-path">{{ root.path }}</p>
+        <div class="ftree__missing-actions">
+          <button class="ftree__open-btn" @click="files.openFolder">
+            {{ t('explorer.folderMissingLocate') }}
+          </button>
+          <button class="ftree__missing-secondary" @click="workspace.setFolder(null)">
+            {{ t('explorer.closeFolder') }}
+          </button>
+        </div>
+      </div>
+
       <!-- Inline new/rename input — appears at the top of the tree. -->
       <div v-if="editing" class="ftree__edit">
         <span class="ftree__icon">{{ editing.kind === 'new-dir' ? '▸' : editing.kind === 'rename' ? '•' : '•' }}</span>
@@ -970,6 +1005,37 @@ export const FileTreeNode = defineComponent({
 .ftree__hbtn:disabled {
   opacity: 0.35;
   cursor: not-allowed;
+}
+.ftree__missing {
+  padding: 16px 14px;
+  text-align: center;
+}
+.ftree__missing-title {
+  margin: 0 0 4px;
+  font-size: 12px;
+  color: var(--danger, #d64545);
+  font-weight: 600;
+}
+.ftree__missing-path {
+  margin: 0 0 10px;
+  font-size: 10px;
+  color: var(--text-faint);
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+}
+.ftree__missing-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+}
+.ftree__missing-secondary {
+  background: transparent;
+  border: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  text-decoration: underline;
+  cursor: pointer;
 }
 .ftree__empty {
   padding: 24px 14px;

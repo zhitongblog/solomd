@@ -163,6 +163,8 @@ export const ko: I18n = {
     copyGitUrlDone: 'Git URL을 클립보드에 복사했습니다.',
     copyGitUrlNoRepo: '이 작업 공간에는 연결된 Git 원격이 없습니다.',
     switchWorkspace: '작업 공간 전환',
+    folderMissing: '이 폴더가 원래 위치에 없습니다.',
+    folderMissingLocate: '폴더 다시 찾기…',
     copyRelPathDone: 'Relative path copied.',
     closeFolder: 'Close folder',
     noRecentFolders: 'No other folders yet — open one to switch later.',

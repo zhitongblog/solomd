@@ -165,6 +165,8 @@ export const pt: I18n = {
     copyGitUrlDone: 'URL do Git copiado para a área de transferência.',
     copyGitUrlNoRepo: 'Este espaço de trabalho não tem um remoto Git ligado.',
     switchWorkspace: 'Mudar de espaço de trabalho',
+    folderMissing: 'Esta pasta já não está aqui.',
+    folderMissingLocate: 'Localizar a pasta…',
     copyRelPathDone: 'Relative path copied.',
     closeFolder: 'Close folder',
     noRecentFolders: 'No other folders yet — open one to switch later.',

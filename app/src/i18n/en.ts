@@ -159,6 +159,8 @@ export const en = {
     copyGitUrlDone: 'Git URL copied to clipboard.',
     copyGitUrlNoRepo: 'This workspace has no linked Git remote.',
     switchWorkspace: 'Switch workspace',
+    folderMissing: 'This folder is no longer here.',
+    folderMissingLocate: 'Locate folder…',
     copyRelPathDone: 'Relative path copied.',
     reveal: 'Reveal in Finder',
     refresh: 'Refresh',

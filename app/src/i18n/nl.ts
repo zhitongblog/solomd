@@ -163,6 +163,8 @@ export const nl: I18n = {
     copyGitUrlDone: 'Git-URL naar het klembord gekopieerd.',
     copyGitUrlNoRepo: 'Deze werkruimte heeft geen gekoppelde Git-remote.',
     switchWorkspace: 'Werkruimte wisselen',
+    folderMissing: 'Deze map staat hier niet meer.',
+    folderMissingLocate: 'Map zoeken…',
     copyRelPathDone: 'Relative path copied.',
     closeFolder: 'Close folder',
     noRecentFolders: 'No other folders yet — open one to switch later.',

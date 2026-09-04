@@ -163,6 +163,8 @@ export const it: I18n = {
     copyGitUrlDone: 'URL Git copiato negli appunti.',
     copyGitUrlNoRepo: 'Questo spazio di lavoro non ha un remote Git collegato.',
     switchWorkspace: 'Cambia spazio di lavoro',
+    folderMissing: 'Questa cartella non è più qui.',
+    folderMissingLocate: 'Individua la cartella…',
     copyRelPathDone: 'Relative path copied.',
     closeFolder: 'Close folder',
     noRecentFolders: 'No other folders yet — open one to switch later.',

@@ -163,6 +163,8 @@ export const es: I18n = {
     copyGitUrlDone: 'URL de Git copiada al portapapeles.',
     copyGitUrlNoRepo: 'Este espacio de trabajo no tiene un remoto de Git vinculado.',
     switchWorkspace: 'Cambiar de espacio de trabajo',
+    folderMissing: 'Esta carpeta ya no está aquí.',
+    folderMissingLocate: 'Localizar la carpeta…',
     copyRelPathDone: 'Relative path copied.',
     closeFolder: 'Close folder',
     noRecentFolders: 'No other folders yet — open one to switch later.',

@@ -160,6 +160,8 @@ export const zh: I18n = {
     copyGitUrlDone: 'Git 链接已复制到剪贴板。',
     copyGitUrlNoRepo: '这个工作区没有关联的 Git 远端。',
     switchWorkspace: '切换工作区',
+    folderMissing: '这个文件夹已经不在原来的位置了。',
+    folderMissingLocate: '重新定位文件夹…',
     copyRelPathDone: '相对路径已复制。',
     reveal: '在文件管理器中显示',
     refresh: '刷新',

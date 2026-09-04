@@ -163,6 +163,8 @@ export const de: I18n = {
     copyGitUrlDone: 'Git-URL in die Zwischenablage kopiert.',
     copyGitUrlNoRepo: 'Dieser Arbeitsbereich hat kein verknüpftes Git-Remote.',
     switchWorkspace: 'Arbeitsbereich wechseln',
+    folderMissing: 'Dieser Ordner ist nicht mehr hier.',
+    folderMissingLocate: 'Ordner suchen…',
     copyRelPathDone: 'Relative path copied.',
     closeFolder: 'Close folder',
     noRecentFolders: 'No other folders yet — open one to switch later.',

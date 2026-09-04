@@ -163,6 +163,8 @@ export const sv: I18n = {
     copyGitUrlDone: 'Git-URL kopierad till urklipp.',
     copyGitUrlNoRepo: 'Den här arbetsytan har ingen länkad Git-fjärr.',
     switchWorkspace: 'Byt arbetsyta',
+    folderMissing: 'Den här mappen finns inte längre här.',
+    folderMissingLocate: 'Hitta mappen…',
     copyRelPathDone: 'Relative path copied.',
     closeFolder: 'Close folder',
     noRecentFolders: 'No other folders yet — open one to switch later.',

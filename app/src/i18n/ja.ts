@@ -163,6 +163,8 @@ export const ja: I18n = {
     copyGitUrlDone: 'Git URL をクリップボードにコピーしました。',
     copyGitUrlNoRepo: 'このワークスペースには Git リモートがありません。',
     switchWorkspace: 'ワークスペースを切り替え',
+    folderMissing: 'このフォルダは元の場所にありません。',
+    folderMissingLocate: 'フォルダを指定し直す…',
     copyRelPathDone: 'Relative path copied.',
     closeFolder: 'Close folder',
     noRecentFolders: 'No other folders yet — open one to switch later.',
