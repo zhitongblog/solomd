@@ -12,6 +12,7 @@ import frontMatter from 'markdown-it-front-matter';
 import mark from 'markdown-it-mark';
 import cjkFriendly from 'markdown-it-cjk-friendly';
 import yaml from 'js-yaml';
+import { numberEquations } from './equations';
 
 // NOTE: `@hedgedoc/markdown-it-task-lists` is installed but unusable here —
 // its compiled ESM entry does `import Token from 'markdown-it/lib/token.js'`
@@ -814,6 +815,10 @@ function numberedSectionHeadings(source: string): string {
 export function preprocessMarkdown(source: string): string {
   let s = normalizeTableDelimiters(unwrapInlineHtmlBlocks(source || ''));
   if (autoNumberHeadings) s = numberedSectionHeadings(s);
+  // `\label` / `\eqref` are LaTeX that KaTeX does not implement — resolve
+  // them to `\tag` + anchors + links here so preview, PDF, Word and image
+  // export all number equations the same way, from one place.
+  s = numberEquations(s).text;
   return normalizeListIndent(s);
 }
 

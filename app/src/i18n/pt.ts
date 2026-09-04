@@ -1629,6 +1629,23 @@ export const pt: I18n = {
   docx: {
     contents: 'Índice',
   },
+  formulaEditor: {
+    heading: 'Fórmula',
+    displayMode: 'Em bloco',
+    placeholder: '\\frac{a}{b}',
+    previewEmpty: 'Escreva LaTeX e será apresentado aqui',
+    addLabel: '+ etiqueta',
+    hint: '⌘/Ctrl+Enter aplica · Esc cancela',
+    apply: 'Aplicar',
+    cancel: 'Cancelar',
+    group: {
+      greek: 'Grego',
+      relations: 'Relações',
+      operators: 'Operadores',
+      structures: 'Estruturas',
+      refs: 'Referências',
+    },
+  },
   cmd: {
     capture: {
       quick: 'Captura rápida…',

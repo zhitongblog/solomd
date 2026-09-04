@@ -321,6 +321,7 @@ onMounted(() => {
   window.addEventListener('solomd:preview-search', onPreviewSearchEvent);
   window.addEventListener('solomd:fold', onFoldEvent);
   window.addEventListener('solomd:edit-table', onEditTableEvent);
+  window.addEventListener('solomd:edit-formula', onEditFormulaEvent);
 });
 
 onBeforeUnmount(() => {
@@ -335,6 +336,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('solomd:preview-search', onPreviewSearchEvent);
   window.removeEventListener('solomd:fold', onFoldEvent);
   window.removeEventListener('solomd:edit-table', onEditTableEvent);
+  window.removeEventListener('solomd:edit-formula', onEditFormulaEvent);
 });
 
 defineExpose({ gotoLine, editorRef });
@@ -380,6 +382,15 @@ function onEditorFindEvent(e: Event) {
   if (!paneId && !isFocused.value) return;
   const ed = editorRef.value as unknown as { openFind?: () => void } | null;
   ed?.openFind?.();
+}
+
+/** Formula editor — same focused-pane routing as find. */
+function onEditFormulaEvent(e: Event) {
+  const { paneId } = (e as CustomEvent).detail || {};
+  if (paneId && paneId !== props.paneId) return;
+  if (!paneId && !isFocused.value) return;
+  const ed = editorRef.value as unknown as { openFormulaAtCursor?: () => void } | null;
+  ed?.openFormulaAtCursor?.();
 }
 
 /** Grid table editor — same focused-pane routing as find. */

@@ -22,6 +22,7 @@ import RelationshipsPanel from './components/RelationshipsPanel.vue';
 import TagsPanel from './components/TagsPanel.vue';
 import TasksPanel from './components/TasksPanel.vue';
 import TableEditor from './components/TableEditor.vue';
+import FormulaEditor from './components/FormulaEditor.vue';
 import TypesPanel from './components/TypesPanel.vue';
 import HistoryPanel from './components/HistoryPanel.vue';
 import PropertiesInspector from './components/PropertiesInspector.vue';
@@ -74,6 +75,7 @@ import { nativeMenuAccelerators } from './lib/keybindings';
 import { useI18n } from './i18n';
 import { quickCaptureError } from './lib/quick-capture-status';
 import { tableEditor, closeTableEditor } from './lib/table-editor-bus';
+import { formulaEditor, closeFormulaEditor } from './lib/formula-editor-bus';
 import { track } from './lib/telemetry';
 import { openWelcomeTour } from './lib/welcome-tour';
 import { useWorkspaceStore } from './stores/workspace';
@@ -1901,6 +1903,15 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
         :source="tableEditor.session.source"
         @apply="(md: string) => tableEditor.session?.apply(md)"
         @close="closeTableEditor()"
+      />
+
+      <FormulaEditor
+        v-if="formulaEditor.session"
+        :latex="formulaEditor.session.latex"
+        :display="formulaEditor.session.display"
+        :labels="formulaEditor.session.labels"
+        @apply="(latex: string, display: boolean) => formulaEditor.session?.apply(latex, display)"
+        @close="closeFormulaEditor()"
       />
 
       <!-- v4.3.0 PR #75 — right-click context menu for sidebar pane toggles. -->

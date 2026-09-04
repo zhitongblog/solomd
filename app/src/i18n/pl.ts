@@ -1644,6 +1644,23 @@ export const pl: I18n = {
   docx: {
     contents: 'Spis treści',
   },
+  formulaEditor: {
+    heading: 'Wzór',
+    displayMode: 'Blokowo',
+    placeholder: '\\frac{a}{b}',
+    previewEmpty: 'Wpisz LaTeX — podgląd pojawi się tutaj',
+    addLabel: '+ etykieta',
+    hint: '⌘/Ctrl+Enter zatwierdza · Esc anuluje',
+    apply: 'Zastosuj',
+    cancel: 'Anuluj',
+    group: {
+      greek: 'Greka',
+      relations: 'Relacje',
+      operators: 'Operatory',
+      structures: 'Struktury',
+      refs: 'Odsyłacze',
+    },
+  },
   cmd: {
     capture: {
       quick: 'Szybki zapis…',

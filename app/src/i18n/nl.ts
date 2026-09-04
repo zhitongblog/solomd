@@ -1644,6 +1644,23 @@ export const nl: I18n = {
   docx: {
     contents: 'Inhoud',
   },
+  formulaEditor: {
+    heading: 'Formule',
+    displayMode: 'Blokweergave',
+    placeholder: '\\frac{a}{b}',
+    previewEmpty: 'Typ LaTeX — het resultaat verschijnt hier',
+    addLabel: '+ label',
+    hint: '⌘/Ctrl+Enter past toe · Esc annuleert',
+    apply: 'Toepassen',
+    cancel: 'Annuleren',
+    group: {
+      greek: 'Grieks',
+      relations: 'Relaties',
+      operators: 'Operatoren',
+      structures: 'Structuren',
+      refs: 'Verwijzingen',
+    },
+  },
   cmd: {
     capture: {
       quick: 'Snelle notitie…',

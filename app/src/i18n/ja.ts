@@ -1627,6 +1627,23 @@ export const ja: I18n = {
   docx: {
     contents: '目次',
   },
+  formulaEditor: {
+    heading: '数式',
+    displayMode: 'ディスプレイ（ブロック）',
+    placeholder: '\\frac{a}{b}',
+    previewEmpty: 'LaTeX を入力するとここに描画されます',
+    addLabel: '+ ラベル',
+    hint: '⌘/Ctrl+Enter で適用 · Esc で取消',
+    apply: '適用',
+    cancel: 'キャンセル',
+    group: {
+      greek: 'ギリシャ文字',
+      relations: '関係',
+      operators: '演算',
+      structures: '構造',
+      refs: '相互参照',
+    },
+  },
   cmd: {
     capture: {
       quick: 'クイックキャプチャ…',

@@ -32,6 +32,8 @@ import {
   foldHeadingsToLevel,
 } from '../lib/cm-heading-fold';
 import { findTableSpan } from '../lib/markdown-table';
+import { findMathSpanAt, collectLabels } from '../lib/equations';
+import { openFormulaEditor } from '../lib/formula-editor-bus';
 import { openTableEditor } from '../lib/table-editor-bus';
 import {
   scanHeadings,
@@ -2565,6 +2567,56 @@ function openTableAtCursor(): void {
   });
 }
 
+/**
+ * Open the formula editor on the math under the caret, or on an empty formula
+ * when the caret is not in one — "insert a formula" and "fix this formula" are
+ * the same action from the user's side.
+ */
+function openFormulaAtCursor(): void {
+  const source = usePlainWindowsEditor ? plainText.value || '' : view?.state.doc.toString() ?? '';
+  const caret = usePlainWindowsEditor
+    ? plainCaretOffset()
+    : view
+      ? view.state.selection.main.head
+      : 0;
+  const span = findMathSpanAt(source, caret);
+  const from = span ? span.from : caret;
+  const to = span ? span.to : caret;
+
+  openFormulaEditor({
+    latex: span?.body ?? '',
+    // A new formula defaults to inline; that is the common case, and the
+    // dialog has a one-click switch for the other one.
+    display: span?.display ?? false,
+    labels: collectLabels(source),
+    apply: (latex: string, display: boolean) =>
+      replaceDocRange(from, to, formatMath(source, from, to, latex, display)),
+  });
+}
+
+/**
+ * Wrap a formula in the right delimiters for where it sits.
+ *
+ * A display formula gets its own lines only when nothing else shares them.
+ * Turning `Inline $E=mc^2$ here.` into a three-line `$$` block would split the
+ * sentence across the formula — the mid-sentence case has to stay on one line.
+ */
+function formatMath(
+  source: string,
+  from: number,
+  to: number,
+  latex: string,
+  display: boolean,
+): string {
+  if (!display) return `$${latex}$`;
+  const lineStart = source.lastIndexOf('\n', Math.max(0, from - 1)) + 1;
+  const lineEndIdx = source.indexOf('\n', to);
+  const lineEnd = lineEndIdx < 0 ? source.length : lineEndIdx;
+  const alone =
+    source.slice(lineStart, from).trim() === '' && source.slice(to, lineEnd).trim() === '';
+  return alone ? `$$\n${latex}\n$$` : `$$${latex}$$`;
+}
+
 /** Caret offset in the plain editor, in whole-document coordinates. */
 function plainCaretOffset(): number {
   if (plainLiveEnabled.value) {
@@ -3239,7 +3291,7 @@ function insertMarkdown(snippet: string): void {
   view.focus();
 }
 
-defineExpose({ gotoLine, insertImageFromPath, insertImageUrl, uploadLocalImages, getViewLine, scrollToLine, lineTopY, insertMarkdown, openFind, applyFold, openTableAtCursor });
+defineExpose({ gotoLine, insertImageFromPath, insertImageUrl, uploadLocalImages, getViewLine, scrollToLine, lineTopY, insertMarkdown, openFind, applyFold, openTableAtCursor, openFormulaAtCursor });
 
 const cls = computed(() => ({
   'cm-host': true,

@@ -1644,6 +1644,23 @@ export const uk: I18n = {
   docx: {
     contents: 'Зміст',
   },
+  formulaEditor: {
+    heading: 'Формула',
+    displayMode: 'Окремим блоком',
+    placeholder: '\\frac{a}{b}',
+    previewEmpty: 'Введіть LaTeX — результат з’явиться тут',
+    addLabel: '+ мітка',
+    hint: '⌘/Ctrl+Enter застосовує · Esc скасовує',
+    apply: 'Застосувати',
+    cancel: 'Скасувати',
+    group: {
+      greek: 'Грецькі',
+      relations: 'Відношення',
+      operators: 'Оператори',
+      structures: 'Структури',
+      refs: 'Перехресні посилання',
+    },
+  },
   cmd: {
     capture: {
       quick: 'Швидкий запис…',

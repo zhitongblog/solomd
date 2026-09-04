@@ -1627,6 +1627,23 @@ export const ko: I18n = {
   docx: {
     contents: '목차',
   },
+  formulaEditor: {
+    heading: '수식',
+    displayMode: '디스플레이(블록)',
+    placeholder: '\\frac{a}{b}',
+    previewEmpty: 'LaTeX를 입력하면 여기에 렌더링됩니다',
+    addLabel: '+ 라벨',
+    hint: '⌘/Ctrl+Enter 적용 · Esc 취소',
+    apply: '적용',
+    cancel: '취소',
+    group: {
+      greek: '그리스 문자',
+      relations: '관계',
+      operators: '연산',
+      structures: '구조',
+      refs: '상호 참조',
+    },
+  },
   cmd: {
     capture: {
       quick: '빠른 캡처…',

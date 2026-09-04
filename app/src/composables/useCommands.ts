@@ -315,6 +315,17 @@ export function useCommands(): Command[] {
     },
 
     {
+      id: 'editor.formulaEditor',
+      title: 'Edit Formula…',
+      shortcut: kb('editor.formulaEditor'),
+      hint: 'Edit the LaTeX under the cursor with a live preview and a symbol palette, or insert a new formula',
+      run: () =>
+        window.dispatchEvent(
+          new CustomEvent('solomd:edit-formula', { detail: { paneId: tiles.focusedPaneId } }),
+        ),
+    },
+
+    {
       id: 'editor.tableEditor',
       title: 'Edit Table…',
       shortcut: kb('editor.tableEditor'),

@@ -1644,6 +1644,23 @@ export const sv: I18n = {
   docx: {
     contents: 'Innehåll',
   },
+  formulaEditor: {
+    heading: 'Formel',
+    displayMode: 'Fristående (block)',
+    placeholder: '\\frac{a}{b}',
+    previewEmpty: 'Skriv LaTeX — resultatet visas här',
+    addLabel: '+ etikett',
+    hint: '⌘/Ctrl+Enter tillämpar · Esc avbryter',
+    apply: 'Tillämpa',
+    cancel: 'Avbryt',
+    group: {
+      greek: 'Grekiska',
+      relations: 'Relationer',
+      operators: 'Operatorer',
+      structures: 'Strukturer',
+      refs: 'Referenser',
+    },
+  },
   cmd: {
     capture: {
       quick: 'Snabbfångst…',

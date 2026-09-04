@@ -1644,6 +1644,23 @@ export const tr: I18n = {
   docx: {
     contents: 'İçindekiler',
   },
+  formulaEditor: {
+    heading: 'Formül',
+    displayMode: 'Blok olarak',
+    placeholder: '\\frac{a}{b}',
+    previewEmpty: 'LaTeX yazın, önizleme burada görünür',
+    addLabel: '+ etiket',
+    hint: '⌘/Ctrl+Enter uygular · Esc iptal eder',
+    apply: 'Uygula',
+    cancel: 'İptal',
+    group: {
+      greek: 'Yunan',
+      relations: 'Bağıntılar',
+      operators: 'İşleçler',
+      structures: 'Yapılar',
+      refs: 'Çapraz başvuru',
+    },
+  },
   cmd: {
     capture: {
       quick: 'Hızlı yakalama…',

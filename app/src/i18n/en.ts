@@ -1650,6 +1650,23 @@ export const en = {
   docx: {
     contents: 'Contents',
   },
+  formulaEditor: {
+    heading: 'Formula',
+    displayMode: 'Display (block)',
+    placeholder: '\\frac{a}{b}',
+    previewEmpty: 'Type LaTeX to see it rendered here',
+    addLabel: '+ label',
+    hint: '⌘/Ctrl+Enter applies · Esc cancels',
+    apply: 'Apply',
+    cancel: 'Cancel',
+    group: {
+      greek: 'Greek',
+      relations: 'Relations',
+      operators: 'Operators',
+      structures: 'Structures',
+      refs: 'References',
+    },
+  },
   cmd: {
     capture: {
       quick: 'Quick Capture…',

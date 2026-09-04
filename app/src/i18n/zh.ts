@@ -1630,6 +1630,23 @@ export const zh: I18n = {
   docx: {
     contents: '目录',
   },
+  formulaEditor: {
+    heading: '公式',
+    displayMode: '独立成行（块级）',
+    placeholder: '\\frac{a}{b}',
+    previewEmpty: '输入 LaTeX，这里会实时渲染',
+    addLabel: '+ 标签',
+    hint: '⌘/Ctrl+回车应用 · Esc 取消',
+    apply: '应用',
+    cancel: '取消',
+    group: {
+      greek: '希腊字母',
+      relations: '关系',
+      operators: '运算',
+      structures: '结构',
+      refs: '交叉引用',
+    },
+  },
   cmd: {
     capture: {
       quick: '快速捕获…',

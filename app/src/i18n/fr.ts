@@ -1627,6 +1627,23 @@ export const fr: I18n = {
   docx: {
     contents: 'Sommaire',
   },
+  formulaEditor: {
+    heading: 'Formule',
+    displayMode: 'Hors ligne (bloc)',
+    placeholder: '\\frac{a}{b}',
+    previewEmpty: 'Saisissez du LaTeX, l’aperçu s’affiche ici',
+    addLabel: '+ étiquette',
+    hint: '⌘/Ctrl+Entrée applique · Échap annule',
+    apply: 'Appliquer',
+    cancel: 'Annuler',
+    group: {
+      greek: 'Grec',
+      relations: 'Relations',
+      operators: 'Opérateurs',
+      structures: 'Structures',
+      refs: 'Renvois',
+    },
+  },
   cmd: {
     capture: {
       quick: 'Capture rapide…',
