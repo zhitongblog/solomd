@@ -226,6 +226,11 @@ export const zh: I18n = {
     printThemeDark: '始终深色',
     printThemeFollow: '跟随应用主题',
     printThemeHint: '系统打印对话框和文字版 PDF 导出使用哪套配色。与应用主题独立——深色主题直接打印会在纸上印出大片黑底，很费墨。',
+    docxPreset: 'Word（DOCX）模板',
+    docxPresetPlain: '简洁 —— 只有正文',
+    docxPresetReport: '报告 —— 封面、目录、页眉、页码',
+    docxPresetAcademic: '学术 —— 封面、目录、双倍行距、页码',
+    docxPresetHint: 'Word 导出从哪套模板开始。单篇文档可以用 front matter 里的 `docx:` 块覆盖其中任意一项（cover、toc、header、pageNumbers、font、fontSize、lineSpacing、title、author、date），写法和 `pdf:` 一样。',
     quickCapture: '快速捕获热键',
     quickCaptureHint: '一个系统级快捷键，在任何应用里都能唤出一个小窗：输入、回车，笔记就进了收件箱，不用把主窗口切到前台。使用 Tauri 加速键写法，例如 CmdOrCtrl+Alt+M。',
     quickCaptureFailed: '未能注册：{error}',
@@ -1621,6 +1626,9 @@ export const zh: I18n = {
     hint: 'Tab 在单元格间移动 · ⌘/Ctrl+回车应用 · Esc 取消',
     apply: '应用',
     cancel: '取消',
+  },
+  docx: {
+    contents: '目录',
   },
   cmd: {
     capture: {

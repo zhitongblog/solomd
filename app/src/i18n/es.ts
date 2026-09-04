@@ -225,6 +225,11 @@ export const es: I18n = {
     printThemeDark: 'Siempre oscuro',
     printThemeFollow: 'Seguir el tema',
     printThemeHint: 'La paleta que usan el diálogo de impresión del sistema y la exportación a PDF de texto. Independiente del tema: imprimir un tema oscuro llena la página de tinta.',
+    docxPreset: 'Plantilla de Word (DOCX)',
+    docxPresetPlain: 'Simple: solo el texto',
+    docxPresetReport: 'Informe: portada, índice, encabezado y números de página',
+    docxPresetAcademic: 'Académica: portada, índice, doble espacio y números de página',
+    docxPresetHint: 'El punto de partida de una exportación a Word. Un bloque `docx:` en el front matter sustituye claves concretas (cover, toc, header, pageNumbers, font, fontSize, lineSpacing, title, author, date), igual que `pdf:`.',
     quickCapture: 'Atajo de captura rápida',
     quickCaptureHint: 'Un atajo de todo el sistema que abre una pequeña ventana en cualquier parte: escribe, pulsa Intro y la nota llega a la bandeja de entrada sin traer la app al frente. Sintaxis de acelerador de Tauri, p. ej. CmdOrCtrl+Alt+M.',
     quickCaptureFailed: 'No registrado: {error}',
@@ -1618,6 +1623,9 @@ export const es: I18n = {
     hint: 'Tab cambia de celda · ⌘/Ctrl+Intro aplica · Esc cancela',
     apply: 'Aplicar',
     cancel: 'Cancelar',
+  },
+  docx: {
+    contents: 'Índice',
   },
   cmd: {
     capture: {

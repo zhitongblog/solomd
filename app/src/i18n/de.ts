@@ -225,6 +225,11 @@ export const de: I18n = {
     printThemeDark: 'Immer dunkel',
     printThemeFollow: 'App-Theme folgen',
     printThemeHint: 'Welche Palette der System-Druckdialog und der Text-PDF-Export verwenden. Unabhängig vom App-Theme — ein dunkles Theme druckt eine dunkle Fläche und verschwendet Tinte.',
+    docxPreset: 'Word-(DOCX-)Vorlage',
+    docxPresetPlain: 'Schlicht — nur Fließtext',
+    docxPresetReport: 'Bericht — Titelseite, Inhalt, Kopfzeile, Seitenzahlen',
+    docxPresetAcademic: 'Akademisch — Titelseite, Inhalt, doppelter Zeilenabstand, Seitenzahlen',
+    docxPresetHint: 'Womit ein Word-Export beginnt. Ein `docx:`-Block im Front Matter überschreibt einzelne Schlüssel (cover, toc, header, pageNumbers, font, fontSize, lineSpacing, title, author, date) — genau wie `pdf:`.',
     quickCapture: 'Schnellerfassung-Hotkey',
     quickCaptureHint: 'Ein systemweiter Tastenbefehl, der überall ein kleines Fenster öffnet: tippen, Enter — die Notiz landet im Posteingang, ohne dass die App nach vorn kommt. Tauri-Accelerator-Syntax, z. B. CmdOrCtrl+Alt+M.',
     quickCaptureFailed: 'Nicht registriert: {error}',
@@ -1618,6 +1623,9 @@ export const de: I18n = {
     hint: 'Tab wechselt die Zelle · ⌘/Strg+Enter übernimmt · Esc bricht ab',
     apply: 'Übernehmen',
     cancel: 'Abbrechen',
+  },
+  docx: {
+    contents: 'Inhalt',
   },
   cmd: {
     capture: {

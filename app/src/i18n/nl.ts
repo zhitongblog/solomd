@@ -225,6 +225,11 @@ export const nl: I18n = {
     printThemeDark: 'Altijd donker',
     printThemeFollow: 'Volg app-thema',
     printThemeHint: 'Het palet dat het systeemafdrukvenster en de tekst-PDF-export gebruiken. Onafhankelijk van het thema — een donker thema afdrukken vult de pagina met inkt.',
+    docxPreset: 'Word-(DOCX-)sjabloon',
+    docxPresetPlain: 'Eenvoudig — alleen tekst',
+    docxPresetReport: 'Rapport — omslag, inhoud, koptekst, paginanummers',
+    docxPresetAcademic: 'Academisch — omslag, inhoud, dubbele regelafstand, paginanummers',
+    docxPresetHint: 'Waar een Word-export mee begint. Een `docx:`-blok in de front matter overschrijft losse sleutels (cover, toc, header, pageNumbers, font, fontSize, lineSpacing, title, author, date), net als `pdf:`.',
     quickCapture: 'Sneltoets voor snelle notitie',
     quickCaptureHint: 'Een systeembrede sneltoets die overal een klein venster opent: typ, druk op Enter en de notitie belandt in je Inbox zonder dat de app naar voren komt. Tauri-acceleratorsyntaxis, bijv. CmdOrCtrl+Alt+M.',
     quickCaptureFailed: 'Niet geregistreerd: {error}',
@@ -1635,6 +1640,9 @@ export const nl: I18n = {
     hint: 'Tab wisselt van cel · ⌘/Ctrl+Enter past toe · Esc annuleert',
     apply: 'Toepassen',
     cancel: 'Annuleren',
+  },
+  docx: {
+    contents: 'Inhoud',
   },
   cmd: {
     capture: {

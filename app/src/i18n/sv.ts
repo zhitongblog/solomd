@@ -225,6 +225,11 @@ export const sv: I18n = {
     printThemeDark: 'Alltid mörk',
     printThemeFollow: 'Följ appens tema',
     printThemeHint: 'Paletten som systemets utskriftsdialog och text-PDF-exporten använder. Oberoende av temat — att skriva ut ett mörkt tema fyller sidan med bläck.',
+    docxPreset: 'Word-mall (DOCX)',
+    docxPresetPlain: 'Enkel — bara brödtext',
+    docxPresetReport: 'Rapport — omslag, innehåll, sidhuvud, sidnummer',
+    docxPresetAcademic: 'Akademisk — omslag, innehåll, dubbelt radavstånd, sidnummer',
+    docxPresetHint: 'Vad en Word-export utgår från. Ett `docx:`-block i front matter ersätter enskilda nycklar (cover, toc, header, pageNumbers, font, fontSize, lineSpacing, title, author, date), precis som `pdf:`.',
     quickCapture: 'Snabbfångst-genväg',
     quickCaptureHint: 'En systemomfattande genväg som öppnar en liten ruta var som helst: skriv, tryck Enter, och anteckningen hamnar i Inkorgen utan att appen tas fram. Tauri-acceleratorsyntax, t.ex. CmdOrCtrl+Alt+M.',
     quickCaptureFailed: 'Inte registrerad: {error}',
@@ -1635,6 +1640,9 @@ export const sv: I18n = {
     hint: 'Tab byter cell · ⌘/Ctrl+Enter tillämpar · Esc avbryter',
     apply: 'Tillämpa',
     cancel: 'Avbryt',
+  },
+  docx: {
+    contents: 'Innehåll',
   },
   cmd: {
     capture: {

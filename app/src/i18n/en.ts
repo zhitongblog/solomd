@@ -225,6 +225,11 @@ export const en = {
     printThemeDark: 'Always dark',
     printThemeFollow: 'Follow app theme',
     printThemeHint: 'Which palette the system print dialog and text-PDF export use. Independent of the app theme — printing a dark theme puts a dark slab on paper and wastes ink.',
+    docxPreset: 'Word (DOCX) template',
+    docxPresetPlain: 'Plain — body text only',
+    docxPresetReport: 'Report — cover, contents, running header, page numbers',
+    docxPresetAcademic: 'Academic — cover, contents, double-spaced, page numbers',
+    docxPresetHint: 'What a Word export starts from. A per-document `docx:` front-matter block overrides individual keys (cover, toc, header, pageNumbers, font, fontSize, lineSpacing, title, author, date), the same way `pdf:` does.',
     quickCapture: 'Quick capture hotkey',
     quickCaptureHint: 'A system-wide chord that opens a small box anywhere — type, press Enter, and the note lands in your Inbox without the app coming forward. Tauri accelerator syntax, e.g. CmdOrCtrl+Alt+M.',
     quickCaptureFailed: 'Not registered: {error}',
@@ -1641,6 +1646,9 @@ export const en = {
     hint: 'Tab moves between cells · ⌘/Ctrl+Enter applies · Esc cancels',
     apply: 'Apply',
     cancel: 'Cancel',
+  },
+  docx: {
+    contents: 'Contents',
   },
   cmd: {
     capture: {

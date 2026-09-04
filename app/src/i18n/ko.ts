@@ -225,6 +225,11 @@ export const ko: I18n = {
     printThemeDark: '항상 어둡게',
     printThemeFollow: '앱 테마 따르기',
     printThemeHint: '시스템 인쇄 대화상자와 텍스트 PDF 내보내기에 사용할 색상. 앱 테마와 독립적입니다 — 어두운 테마로 인쇄하면 종이가 검게 나와 잉크를 낭비합니다.',
+    docxPreset: 'Word(DOCX) 템플릿',
+    docxPresetPlain: '간단 — 본문만',
+    docxPresetReport: '보고서 — 표지·목차·머리글·쪽 번호',
+    docxPresetAcademic: '학술 — 표지·목차·2줄 간격·쪽 번호',
+    docxPresetHint: 'Word 내보내기의 기본 틀. 문서별로 front matter의 `docx:` 블록에서 개별 키(cover, toc, header, pageNumbers, font, fontSize, lineSpacing, title, author, date)를 덮어쓸 수 있습니다(`pdf:`와 동일).',
     quickCapture: '빠른 캡처 단축키',
     quickCaptureHint: '어느 앱에서든 작은 입력창을 여는 시스템 전역 단축키. 입력하고 Enter를 누르면 앱을 앞으로 가져오지 않고 받은 편지함에 저장됩니다. Tauri 액셀러레이터 표기(예: CmdOrCtrl+Alt+M).',
     quickCaptureFailed: '등록하지 못했습니다: {error}',
@@ -1618,6 +1623,9 @@ export const ko: I18n = {
     hint: 'Tab으로 셀 이동 · ⌘/Ctrl+Enter 적용 · Esc 취소',
     apply: '적용',
     cancel: '취소',
+  },
+  docx: {
+    contents: '목차',
   },
   cmd: {
     capture: {

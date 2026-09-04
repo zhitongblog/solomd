@@ -225,6 +225,11 @@ export const pl: I18n = {
     printThemeDark: 'Zawsze ciemny',
     printThemeFollow: 'Zgodnie z motywem',
     printThemeHint: 'Paleta używana przez systemowe okno drukowania i eksport PDF tekstowego. Niezależna od motywu — druk ciemnego motywu pokrywa stronę tuszem.',
+    docxPreset: 'Szablon Worda (DOCX)',
+    docxPresetPlain: 'Prosty — sam tekst',
+    docxPresetReport: 'Raport — okładka, spis treści, żywa pagina, numery stron',
+    docxPresetAcademic: 'Akademicki — okładka, spis treści, podwójna interlinia, numery stron',
+    docxPresetHint: 'Od czego zaczyna eksport do Worda. Blok `docx:` we front matter nadpisuje pojedyncze klucze (cover, toc, header, pageNumbers, font, fontSize, lineSpacing, title, author, date), tak jak `pdf:`.',
     quickCapture: 'Skrót szybkiego zapisu',
     quickCaptureHint: 'Skrót systemowy otwierający małe okno w dowolnym miejscu: wpisz, naciśnij Enter, a notatka trafi do skrzynki odbiorczej bez przełączania się do aplikacji. Składnia akceleratora Tauri, np. CmdOrCtrl+Alt+M.',
     quickCaptureFailed: 'Nie zarejestrowano: {error}',
@@ -1635,6 +1640,9 @@ export const pl: I18n = {
     hint: 'Tab zmienia komórkę · ⌘/Ctrl+Enter zatwierdza · Esc anuluje',
     apply: 'Zastosuj',
     cancel: 'Anuluj',
+  },
+  docx: {
+    contents: 'Spis treści',
   },
   cmd: {
     capture: {

@@ -225,6 +225,11 @@ export const ja: I18n = {
     printThemeDark: '常にダーク',
     printThemeFollow: 'アプリのテーマに従う',
     printThemeHint: 'システムの印刷ダイアログとテキスト PDF 書き出しで使う配色。アプリのテーマとは独立です — ダークテーマのまま印刷すると紙面が黒くなりインクを浪費します。',
+    docxPreset: 'Word（DOCX）テンプレート',
+    docxPresetPlain: 'シンプル —— 本文のみ',
+    docxPresetReport: 'レポート —— 表紙・目次・ヘッダー・ページ番号',
+    docxPresetAcademic: '学術 —— 表紙・目次・行間2.0・ページ番号',
+    docxPresetHint: 'Word 書き出しの土台。文書ごとに front matter の `docx:` ブロックで個別のキー（cover, toc, header, pageNumbers, font, fontSize, lineSpacing, title, author, date）を上書きできます（`pdf:` と同じ書き方）。',
     quickCapture: 'クイックキャプチャのホットキー',
     quickCaptureHint: 'どのアプリからでも小さな入力欄を開くシステム全体のショートカット。入力して Enter を押すと、アプリを前面に出さずに受信箱へ保存されます。Tauri のアクセラレータ記法（例: CmdOrCtrl+Alt+M）。',
     quickCaptureFailed: '登録できませんでした: {error}',
@@ -1618,6 +1623,9 @@ export const ja: I18n = {
     hint: 'Tab でセル移動 · ⌘/Ctrl+Enter で適用 · Esc で取消',
     apply: '適用',
     cancel: 'キャンセル',
+  },
+  docx: {
+    contents: '目次',
   },
   cmd: {
     capture: {

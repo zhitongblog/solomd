@@ -225,6 +225,11 @@ export const tr: I18n = {
     printThemeDark: 'Her zaman koyu',
     printThemeFollow: 'Uygulama temasını izle',
     printThemeHint: 'Sistem yazdırma penceresinin ve metin PDF dışa aktarımının kullandığı palet. Uygulama temasından bağımsızdır — koyu temayı yazdırmak sayfayı mürekkeple doldurur.',
+    docxPreset: 'Word (DOCX) şablonu',
+    docxPresetPlain: 'Sade — yalnızca metin',
+    docxPresetReport: 'Rapor — kapak, içindekiler, üst bilgi, sayfa numarası',
+    docxPresetAcademic: 'Akademik — kapak, içindekiler, çift satır aralığı, sayfa numarası',
+    docxPresetHint: 'Word dışa aktarımının başlangıç noktası. Front matter’daki `docx:` bloğu tek tek anahtarları geçersiz kılar (cover, toc, header, pageNumbers, font, fontSize, lineSpacing, title, author, date) — `pdf:` ile aynı.',
     quickCapture: 'Hızlı yakalama kısayolu',
     quickCaptureHint: 'Her yerde küçük bir kutu açan sistem geneli kısayol: yazın, Enter’a basın, not uygulamayı öne getirmeden Gelen Kutusu’na düşsün. Tauri hızlandırıcı yazımı, ör. CmdOrCtrl+Alt+M.',
     quickCaptureFailed: 'Kaydedilemedi: {error}',
@@ -1635,6 +1640,9 @@ export const tr: I18n = {
     hint: 'Tab hücre değiştirir · ⌘/Ctrl+Enter uygular · Esc iptal eder',
     apply: 'Uygula',
     cancel: 'İptal',
+  },
+  docx: {
+    contents: 'İçindekiler',
   },
   cmd: {
     capture: {

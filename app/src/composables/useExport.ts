@@ -10,6 +10,7 @@ import { markdownToPdfBlob } from '../lib/pdf-export';
 import { markdownToImageBlob } from '../lib/image-export';
 import { renderMarkdown, extractImageRoot } from '../lib/markdown';
 import { exportDefaultPath } from '../lib/export-paths';
+import { useI18n } from '../i18n';
 import { rewriteLinkUrls, rewriteImageUrls } from '../lib/image-resolve';
 import { useTabsStore } from '../stores/tabs';
 import { useSettingsStore } from '../stores/settings';
@@ -330,6 +331,7 @@ export function useExport() {
   const tabs = useTabsStore();
   const toasts = useToastsStore();
   const settings = useSettingsStore();
+  const { t } = useI18n();
 
   function activeOr(): { content: string; baseName: string; filePath?: string } | null {
     const tab = tabs.activeTab;
@@ -433,7 +435,13 @@ export function useExport() {
     const path = await pickWritePath(filename, [{ name: 'Word Document', extensions: ['docx'] }]);
     if (!path) return;
     try {
-      const blob = await markdownToDocxBlob(ctx.content, ctx.baseName, ctx.filePath);
+      const blob = await markdownToDocxBlob(
+        ctx.content,
+        ctx.baseName,
+        ctx.filePath,
+        settings.docxPreset,
+        t('docx.contents'),
+      );
       const buffer = new Uint8Array(await blob.arrayBuffer());
       // Tauri 2 serializes Uint8Array as a number array which Rust accepts as Vec<u8>.
       await invoke('write_binary_file', { path, data: Array.from(buffer) });

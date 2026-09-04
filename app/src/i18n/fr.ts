@@ -225,6 +225,11 @@ export const fr: I18n = {
     printThemeDark: 'Toujours sombre',
     printThemeFollow: 'Suivre le thème',
     printThemeHint: 'La palette utilisée par la boîte de dialogue d’impression et l’export PDF texte. Indépendante du thème — imprimer un thème sombre couvre la page d’encre.',
+    docxPreset: 'Modèle Word (DOCX)',
+    docxPresetPlain: 'Simple — texte seul',
+    docxPresetReport: 'Rapport — couverture, sommaire, en-tête, numéros de page',
+    docxPresetAcademic: 'Académique — couverture, sommaire, double interligne, numéros de page',
+    docxPresetHint: 'La base d’un export Word. Un bloc `docx:` dans le front matter remplace les clés individuelles (cover, toc, header, pageNumbers, font, fontSize, lineSpacing, title, author, date), comme `pdf:`.',
     quickCapture: 'Raccourci de capture rapide',
     quickCaptureHint: 'Un raccourci système qui ouvre une petite fenêtre n’importe où : tapez, appuyez sur Entrée, la note arrive dans la boîte de réception sans que l’application passe au premier plan. Syntaxe d’accélérateur Tauri, p. ex. CmdOrCtrl+Alt+M.',
     quickCaptureFailed: 'Non enregistré : {error}',
@@ -1618,6 +1623,9 @@ export const fr: I18n = {
     hint: 'Tab change de cellule · ⌘/Ctrl+Entrée applique · Échap annule',
     apply: 'Appliquer',
     cancel: 'Annuler',
+  },
+  docx: {
+    contents: 'Sommaire',
   },
   cmd: {
     capture: {

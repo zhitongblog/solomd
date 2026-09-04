@@ -267,6 +267,10 @@ interface Settings {
   // it has to work while another application is focused.
   quickCaptureEnabled: boolean;
   quickCaptureShortcut: string;
+  // DOCX export template: which of the built-in presets (plain / report /
+  // academic) a Word export starts from. A per-document `docx:` front-matter
+  // block overrides individual keys, the same way `pdf:` does.
+  docxPreset: 'plain' | 'report' | 'academic';
   // Print / system-PDF palette, independent of the app theme. Printing in a
   // dark theme put a dark slab on paper and wasted ink; `light` (the default)
   // always prints on white, `dark` prints the dark palette on purpose, and
@@ -573,6 +577,7 @@ function defaults(): Settings {
     wheelZoomEnabled: true,
     quickCaptureEnabled: true,
     quickCaptureShortcut: 'CmdOrCtrl+Alt+M',
+    docxPreset: 'plain',
     printTheme: 'light',
     foldingEnabled: true,
     codeBlockLineNumbers: false,
@@ -1217,6 +1222,10 @@ export const useSettingsStore = defineStore('settings', {
     },
     setQuickCaptureShortcut(accel: string) {
       this.quickCaptureShortcut = accel.trim();
+      this.persist();
+    },
+    setDocxPreset(preset: 'plain' | 'report' | 'academic') {
+      this.docxPreset = preset;
       this.persist();
     },
     setPrintTheme(mode: 'light' | 'dark' | 'follow') {

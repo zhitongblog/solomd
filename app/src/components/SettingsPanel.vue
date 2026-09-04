@@ -925,6 +925,19 @@ function onSelectPdfFont(v: string) {
         </section>
 
         <section data-cat="export">
+          <label>{{ t('settings.docxPreset') }}</label>
+          <select
+            :value="settings.docxPreset"
+            @change="settings.setDocxPreset(($event.target as HTMLSelectElement).value as 'plain' | 'report' | 'academic')"
+          >
+            <option value="plain">{{ t('settings.docxPresetPlain') }}</option>
+            <option value="report">{{ t('settings.docxPresetReport') }}</option>
+            <option value="academic">{{ t('settings.docxPresetAcademic') }}</option>
+          </select>
+          <p class="setting-hint">{{ t('settings.docxPresetHint') }}</p>
+        </section>
+
+        <section data-cat="export">
           <label>{{ t('settings.printTheme') }}</label>
           <select
             :value="settings.printTheme"

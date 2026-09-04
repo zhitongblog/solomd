@@ -225,6 +225,11 @@ export const uk: I18n = {
     printThemeDark: 'Завжди темний',
     printThemeFollow: 'За темою застосунку',
     printThemeHint: 'Палітра, яку використовують системний діалог друку та експорт текстового PDF. Незалежна від теми — друк темної теми вкриває сторінку фарбою.',
+    docxPreset: 'Шаблон Word (DOCX)',
+    docxPresetPlain: 'Простий — лише текст',
+    docxPresetReport: 'Звіт — обкладинка, зміст, колонтитул, номери сторінок',
+    docxPresetAcademic: 'Академічний — обкладинка, зміст, подвійний інтервал, номери сторінок',
+    docxPresetHint: 'З чого починається експорт у Word. Блок `docx:` у front matter перекриває окремі ключі (cover, toc, header, pageNumbers, font, fontSize, lineSpacing, title, author, date), так само як `pdf:`.',
     quickCapture: 'Гаряча клавіша швидкого запису',
     quickCaptureHint: 'Загальносистемна комбінація, що відкриває маленьке вікно будь-де: введіть текст, натисніть Enter — нотатка потрапить у Вхідні, не виводячи застосунок наперед. Синтаксис прискорювача Tauri, напр. CmdOrCtrl+Alt+M.',
     quickCaptureFailed: 'Не зареєстровано: {error}',
@@ -1635,6 +1640,9 @@ export const uk: I18n = {
     hint: 'Tab перемикає комірку · ⌘/Ctrl+Enter застосовує · Esc скасовує',
     apply: 'Застосувати',
     cancel: 'Скасувати',
+  },
+  docx: {
+    contents: 'Зміст',
   },
   cmd: {
     capture: {

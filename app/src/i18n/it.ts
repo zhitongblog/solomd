@@ -225,6 +225,11 @@ export const it: I18n = {
     printThemeDark: 'Sempre scuro',
     printThemeFollow: 'Segui il tema',
     printThemeHint: 'La palette usata dalla finestra di stampa di sistema e dall’esportazione PDF testuale. Indipendente dal tema — stampare un tema scuro riempie la pagina di inchiostro.',
+    docxPreset: 'Modello Word (DOCX)',
+    docxPresetPlain: 'Semplice — solo il testo',
+    docxPresetReport: 'Report — copertina, sommario, intestazione, numeri di pagina',
+    docxPresetAcademic: 'Accademico — copertina, sommario, interlinea doppia, numeri di pagina',
+    docxPresetHint: 'Da cosa parte un’esportazione in Word. Un blocco `docx:` nel front matter sovrascrive le singole chiavi (cover, toc, header, pageNumbers, font, fontSize, lineSpacing, title, author, date), come `pdf:`.',
     quickCapture: 'Scorciatoia di cattura rapida',
     quickCaptureHint: 'Una scorciatoia di sistema che apre una piccola finestra ovunque: scrivi, premi Invio e la nota finisce in posta in arrivo senza portare l’app in primo piano. Sintassi acceleratore di Tauri, es. CmdOrCtrl+Alt+M.',
     quickCaptureFailed: 'Non registrata: {error}',
@@ -1618,6 +1623,9 @@ export const it: I18n = {
     hint: 'Tab cambia cella · ⌘/Ctrl+Invio applica · Esc annulla',
     apply: 'Applica',
     cancel: 'Annulla',
+  },
+  docx: {
+    contents: 'Sommario',
   },
   cmd: {
     capture: {
