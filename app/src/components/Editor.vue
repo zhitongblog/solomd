@@ -31,6 +31,8 @@ import {
   unfoldAllFolds,
   foldHeadingsToLevel,
 } from '../lib/cm-heading-fold';
+import { findTableSpan } from '../lib/markdown-table';
+import { openTableEditor } from '../lib/table-editor-bus';
 import {
   scanHeadings,
   foldedCharRanges,
@@ -2517,6 +2519,75 @@ function openFind(): void {
 }
 
 /**
+ * Open the grid editor on the table the caret is in.
+ *
+ * Works off the document text and line offsets rather than either editor's
+ * internals, so the same code serves CodeMirror and the Windows plain
+ * textarea; only the write-back differs.
+ */
+function openTableAtCursor(): void {
+  const source = usePlainWindowsEditor ? plainText.value || '' : view?.state.doc.toString() ?? '';
+  if (!source) {
+    toasts.info(t('tableEditor.notInTable'));
+    return;
+  }
+  const lines = source.split('\n');
+  const caret = usePlainWindowsEditor
+    ? plainCaretOffset()
+    : view
+      ? view.state.selection.main.head
+      : 0;
+
+  // Offset → line index, plus each line's start offset for the reverse trip.
+  const starts: number[] = [];
+  let off = 0;
+  for (const line of lines) {
+    starts.push(off);
+    off += line.length + 1;
+  }
+  let caretLine = 0;
+  for (let i = 0; i < starts.length; i++) {
+    if (starts[i] <= caret) caretLine = i;
+    else break;
+  }
+
+  const span = findTableSpan(lines, caretLine);
+  if (!span) {
+    toasts.info(t('tableEditor.notInTable'));
+    return;
+  }
+  const from = starts[span.startLine];
+  const to = starts[span.endLine] + lines[span.endLine].length;
+
+  openTableEditor({
+    source: source.slice(from, to),
+    apply: (markdown: string) => replaceDocRange(from, to, markdown),
+  });
+}
+
+/** Caret offset in the plain editor, in whole-document coordinates. */
+function plainCaretOffset(): number {
+  if (plainLiveEnabled.value) {
+    const block = plainBlocks.value[plainActiveBlock.value];
+    const el = plainBlockEditors.value[plainActiveBlock.value];
+    return (block?.start ?? 0) + (el?.selectionStart ?? 0);
+  }
+  return plainEditor.value?.selectionStart ?? 0;
+}
+
+/** Replace a document range in whichever editor this pane is running. */
+function replaceDocRange(from: number, to: number, text: string): void {
+  if (usePlainWindowsEditor) {
+    const src = plainText.value || '';
+    recordPlainHistory();
+    applyPlainContent(src.slice(0, from) + text + src.slice(to), from + text.length);
+    return;
+  }
+  if (!view) return;
+  view.dispatch({ changes: { from, to, insert: text } });
+}
+
+/**
  * Heading folding, driven from the command palette / shortcuts.
  *
  * `level` only applies to `'level'`. The Windows source textarea is the one
@@ -3168,7 +3239,7 @@ function insertMarkdown(snippet: string): void {
   view.focus();
 }
 
-defineExpose({ gotoLine, insertImageFromPath, insertImageUrl, uploadLocalImages, getViewLine, scrollToLine, lineTopY, insertMarkdown, openFind, applyFold });
+defineExpose({ gotoLine, insertImageFromPath, insertImageUrl, uploadLocalImages, getViewLine, scrollToLine, lineTopY, insertMarkdown, openFind, applyFold, openTableAtCursor });
 
 const cls = computed(() => ({
   'cm-host': true,

@@ -21,6 +21,7 @@ import NeighborhoodPanel from './components/NeighborhoodPanel.vue';
 import RelationshipsPanel from './components/RelationshipsPanel.vue';
 import TagsPanel from './components/TagsPanel.vue';
 import TasksPanel from './components/TasksPanel.vue';
+import TableEditor from './components/TableEditor.vue';
 import TypesPanel from './components/TypesPanel.vue';
 import HistoryPanel from './components/HistoryPanel.vue';
 import PropertiesInspector from './components/PropertiesInspector.vue';
@@ -72,6 +73,7 @@ import { useViewport } from './composables/useViewport';
 import { nativeMenuAccelerators } from './lib/keybindings';
 import { useI18n } from './i18n';
 import { quickCaptureError } from './lib/quick-capture-status';
+import { tableEditor, closeTableEditor } from './lib/table-editor-bus';
 import { track } from './lib/telemetry';
 import { openWelcomeTour } from './lib/welcome-tour';
 import { useWorkspaceStore } from './stores/workspace';
@@ -1892,6 +1894,15 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
         </aside>
       </div>
       <StatusBar :line="cursorLine" :col="cursorCol" :selection-text="selectionText" />
+      <!-- Grid editor for the table under the caret. The pane that found the
+           table supplies the write-back closure, so this stays pane-agnostic. -->
+      <TableEditor
+        v-if="tableEditor.session"
+        :source="tableEditor.session.source"
+        @apply="(md: string) => tableEditor.session?.apply(md)"
+        @close="closeTableEditor()"
+      />
+
       <!-- v4.3.0 PR #75 — right-click context menu for sidebar pane toggles. -->
       <Teleport to="body">
         <div

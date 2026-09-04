@@ -315,6 +315,17 @@ export function useCommands(): Command[] {
     },
 
     {
+      id: 'editor.tableEditor',
+      title: 'Edit Table…',
+      shortcut: kb('editor.tableEditor'),
+      hint: 'Edit the table under the cursor as a grid — add / move / delete rows and columns, set alignment',
+      run: () =>
+        window.dispatchEvent(
+          new CustomEvent('solomd:edit-table', { detail: { paneId: tiles.focusedPaneId } }),
+        ),
+    },
+
+    {
       id: 'fold.toggle',
       title: 'Fold: Toggle Section at Cursor',
       shortcut: kb('fold.toggle'),

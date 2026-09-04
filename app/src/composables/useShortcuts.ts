@@ -75,6 +75,7 @@ export function useShortcuts(hooks: Hooks = {}) {
 
     'editor.caseCycle': () => runById('editor.caseCycle'),
     'format.markdown': () => runById('format.markdown'),
+    'editor.tableEditor': () => runById('editor.tableEditor'),
     'export.copyHtml': () => void exporter.copyAsHtml(),
     // Markdown is what most people actually want to paste elsewhere (issues,
     // chat, other editors), so it earns the second copy binding. Plain-text
