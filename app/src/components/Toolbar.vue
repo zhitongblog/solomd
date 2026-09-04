@@ -408,6 +408,7 @@ const menubarMenus = computed<Record<MenubarName, MenubarEntry[]>>(() => ({
     { sep: true },
     { id: 'file.open', label: t('menubar.openFile'), shortcut: shortcutLabel('file.open', settings.keybindings, macChord) },
     { id: 'file.openFolder', label: t('menubar.openFolder') },
+    { id: 'file.import', label: t('menubar.importDocs'), shortcut: shortcutLabel('file.import', settings.keybindings, macChord) },
     { sep: true },
     { id: 'file.save', label: t('menubar.save'), shortcut: shortcutLabel('file.save', settings.keybindings, macChord) },
     { id: 'file.saveAs', label: t('menubar.saveAs'), shortcut: shortcutLabel('file.saveAs', settings.keybindings, macChord) },

@@ -63,6 +63,7 @@ export function useShortcuts(hooks: Hooks = {}) {
     'file.new': () => void files.newFile(),
     'file.newText': () => void files.newTextFile(),
     'file.open': () => void files.openFile(),
+    'file.import': () => void files.importDocuments(),
     'file.save': () => void files.saveActive(),
     'file.saveAs': () => void files.saveActiveAs(),
     'file.closeTab': () => {
@@ -74,6 +75,8 @@ export function useShortcuts(hooks: Hooks = {}) {
 
     'editor.caseCycle': () => runById('editor.caseCycle'),
     'format.markdown': () => runById('format.markdown'),
+    'editor.tableEditor': () => runById('editor.tableEditor'),
+    'editor.formulaEditor': () => runById('editor.formulaEditor'),
     'export.copyHtml': () => void exporter.copyAsHtml(),
     // Markdown is what most people actually want to paste elsewhere (issues,
     // chat, other editors), so it earns the second copy binding. Plain-text
@@ -92,6 +95,9 @@ export function useShortcuts(hooks: Hooks = {}) {
     'view.toggleOutline': () => runById('view.toggleOutline'),
     'view.toggleInspector': () => settings.toggleInspector(),
     'view.slideshow': () => runById('view.slideshow'),
+    'fold.toggle': () => runById('fold.toggle'),
+    'fold.all': () => runById('fold.all'),
+    'fold.none': () => runById('fold.none'),
 
     'palette.open': () => hooks.openPalette?.(),
     'quickSwitcher.open': () => hooks.openQuickSwitcher?.(),

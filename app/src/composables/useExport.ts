@@ -10,6 +10,7 @@ import { markdownToPdfBlob } from '../lib/pdf-export';
 import { markdownToImageBlob } from '../lib/image-export';
 import { renderMarkdown, extractImageRoot } from '../lib/markdown';
 import { exportDefaultPath } from '../lib/export-paths';
+import { useI18n } from '../i18n';
 import { rewriteLinkUrls, rewriteImageUrls } from '../lib/image-resolve';
 import { useTabsStore } from '../stores/tabs';
 import { useSettingsStore } from '../stores/settings';
@@ -330,6 +331,7 @@ export function useExport() {
   const tabs = useTabsStore();
   const toasts = useToastsStore();
   const settings = useSettingsStore();
+  const { t } = useI18n();
 
   function activeOr(): { content: string; baseName: string; filePath?: string } | null {
     const tab = tabs.activeTab;
@@ -433,7 +435,13 @@ export function useExport() {
     const path = await pickWritePath(filename, [{ name: 'Word Document', extensions: ['docx'] }]);
     if (!path) return;
     try {
-      const blob = await markdownToDocxBlob(ctx.content, ctx.baseName, ctx.filePath);
+      const blob = await markdownToDocxBlob(
+        ctx.content,
+        ctx.baseName,
+        ctx.filePath,
+        settings.docxPreset,
+        t('docx.contents'),
+      );
       const buffer = new Uint8Array(await blob.arrayBuffer());
       // Tauri 2 serializes Uint8Array as a number array which Rust accepts as Vec<u8>.
       await invoke('write_binary_file', { path, data: Array.from(buffer) });
@@ -509,7 +517,14 @@ export function useExport() {
     }
     overlay.innerHTML = `<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
 <div class="solomd-print-content preview-content">${body}</div>`;
+    // Print palette, independent of the app theme. The overlay sits outside
+    // #app but still inherits :root's tokens, so a dark theme used to put a
+    // dark code slab on paper. `follow` adds no class and keeps that.
+    const printTheme = settings.printTheme || 'light';
+    overlay.classList.remove('print-theme-light', 'print-theme-dark');
+    if (printTheme !== 'follow') overlay.classList.add(`print-theme-${printTheme}`);
     document.body.classList.add('solomd-printing');
+    document.body.classList.toggle('solomd-printing--dark', printTheme === 'dark');
 
     // v2.5 F3: inject @page / @media print stylesheet derived from
     // Settings → PDF defaults + per-doc `pdf:` front matter override.
@@ -531,7 +546,7 @@ export function useExport() {
     }
 
     const cleanup = () => {
-      document.body.classList.remove('solomd-printing');
+      document.body.classList.remove('solomd-printing', 'solomd-printing--dark');
       overlay?.remove();
       styleEl?.remove();
     };

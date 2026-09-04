@@ -36,6 +36,12 @@ mod git_history;
 #[path = "capture_endpoint.rs"]
 mod capture_endpoint;
 
+// Quick capture — global hotkey → mini window → Inbox note. Writes through
+// capture_endpoint's note builder, so it must be declared alongside it here
+// (the binary's real invoke handler lives in this file, not lib.rs).
+#[path = "quick_capture.rs"]
+mod quick_capture;
+
 // v4.0 — public REST API mirroring the agent_tools surface for non-MCP
 // clients. Declared in both lib.rs and runner.rs so the binary's compile
 // root resolves `crate::rest_api` the same way the lib does.
@@ -213,6 +219,7 @@ struct MenuStrings {
     new_txt: &'static str,
     open_file: &'static str,
     open_folder: &'static str,
+    import_docs: &'static str,
     save: &'static str,
     save_as: &'static str,
     print_item: &'static str,
@@ -256,6 +263,7 @@ fn strings_for(lang: &str) -> MenuStrings {
             new_txt: "新建纯文本",
             open_file: "打开文件…",
             open_folder: "打开文件夹…",
+            import_docs: "导入文档…",
             save: "保存",
             save_as: "另存为…",
             print_item: "打印…",
@@ -292,6 +300,7 @@ fn strings_for(lang: &str) -> MenuStrings {
             new_txt: "New Plain Text",
             open_file: "Open File…",
             open_folder: "Open Folder…",
+            import_docs: "Import Documents…",
             save: "Save",
             save_as: "Save As…",
             print_item: "Print…",
@@ -351,6 +360,15 @@ fn build_app_menu<R: tauri::Runtime>(
     let open_file = accel!(MenuItemBuilder::with_id("file.open", s.open_file), "file.open", "CmdOrCtrl+O")
         .build(app)?;
     let open_folder = MenuItemBuilder::with_id("file.openFolder", s.open_folder).build(app)?;
+    // Converting a Word/PDF/HTML file has been possible for versions, but only
+    // by opening one — there was no entry point that said "import", which is
+    // the word people look for.
+    let import_docs = accel!(
+        MenuItemBuilder::with_id("file.import", s.import_docs),
+        "file.import",
+        "CmdOrCtrl+Shift+L"
+    )
+    .build(app)?;
     let save = accel!(MenuItemBuilder::with_id("file.save", s.save), "file.save", "CmdOrCtrl+S")
         .build(app)?;
     let save_as = accel!(MenuItemBuilder::with_id("file.saveAs", s.save_as), "file.saveAs", "CmdOrCtrl+Shift+S")
@@ -375,6 +393,7 @@ fn build_app_menu<R: tauri::Runtime>(
         .separator()
         .item(&open_file)
         .item(&open_folder)
+        .item(&import_docs)
         .separator()
         .item(&save)
         .item(&save_as)
@@ -395,6 +414,7 @@ fn build_app_menu<R: tauri::Runtime>(
         .separator()
         .item(&open_file)
         .item(&open_folder)
+        .item(&import_docs)
         .separator()
         .item(&save)
         .item(&save_as)
@@ -748,8 +768,17 @@ pub fn run_with(initial_file: Option<String>) {
                 tauri_plugin_window_state::StateFlags::all()
                     - tauri_plugin_window_state::StateFlags::DECORATIONS,
             )
+            // The quick-capture box is undecorated, fixed-size and always on
+            // top by design; restoring a remembered geometry would hand it a
+            // stale position on the next launch.
+            .with_denylist(&[quick_capture::CAPTURE_LABEL])
             .build(),
     );
+
+    // Quick capture's system-wide hotkey. Registration itself happens later,
+    // from the frontend, because the chord is a user setting.
+    #[cfg(desktop)]
+    let builder = builder.plugin(tauri_plugin_global_shortcut::Builder::new().build());
 
     let app = builder
         .manage(PendingOpen(Mutex::new(pending)))
@@ -767,6 +796,7 @@ pub fn run_with(initial_file: Option<String>) {
             commands::fs_create_file,
             commands::fs_create_dir,
             commands::fs_delete,
+            commands::fs_dir_exists,
             commands::fs_rename,
             search::search_in_dir,
             drain_pending_opens,
@@ -819,6 +849,10 @@ pub fn run_with(initial_file: Option<String>) {
             capture_endpoint::capture_regenerate_token,
             capture_endpoint::capture_set_inbox_folder,
             capture_endpoint::capture_set_workspace,
+            quick_capture::quick_capture_open,
+            quick_capture::quick_capture_close,
+            quick_capture::quick_capture_write,
+            quick_capture::quick_capture_set_shortcut,
             rest_api::rest_get_state,
             rest_api::rest_set_enabled,
             rest_api::rest_regenerate_token,

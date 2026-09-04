@@ -217,6 +217,9 @@ The "save the announce" arc. New users meet v4.0 through these surfaces, not the
 | **Multi-user / team agents** | Violates "one window, one writer." |
 | **Online recipe marketplace** | Server ops + moderation = off-mission. |
 | **Copilot-style ghost-text autocomplete** | Different brand from "writer first." |
+| **Card / grid file browser + density presets** | MarKing's answer to "browse notes visually." Bases (table over properties) and saved views already cover browsing-as-data, and nobody has asked for cards in our tracker. Revisit only if a real request arrives. |
+| **One-click vault migration** | Moving a folder is a job Finder / Explorer already do with progress, conflict handling and undo; a recursive cross-device move inside a text editor is real risk for a once-in-a-lifetime action. The half worth having — not breaking afterwards — shipped instead: the tree now says when the workspace folder is gone and offers to relocate it. |
+| **"Lightweight mode" (fast double-click open without the sidebar)** | Solves a problem we do not have. MarKing needs files imported into a library first (their #80 / #64 are literally "let me open a file without importing it"); SoloMD opens any `.md` directly from Finder, drag-drop or CLI. Startup time is a separate, real question — measure before inventing a mode for it. |
 
 ---
 
@@ -232,6 +235,7 @@ The "save the announce" arc. New users meet v4.0 through these surfaces, not the
 - **2026-04-29** — **Bundled local LLM runtime rejected.** Ollama already in 14-provider list; re-implementing violates principle #7. Pillar 5 reframed as "Ollama first-class polish" (~0.5 weeks instead of 3).
 - **2026-04-29** — **Trace View promoted to its own pillar.** Originally a 2-day "audit log" line item; expanded to ~1 week because without trace visibility, Recipes (pillar 2) become scary writes that users disable. Trace is what makes Recipes safe to ship.
 - **2026-04-29** — **`main` enters patch-only mode** until v4.0 tags. v3.7 / v3.8 skipped entirely. Patches as v3.6.3+ on demand. v4.0 work goes to `feat/v4-*` branches.
+- **2026-09-04** — **MarKing (markingmd.com) parity pass.** Closed-source Chinese competitor, ~10-day cadence, desktop-only. Shipped from its gap list: heading folding, print style independent of the app theme, undo-a-delete, global quick-capture hotkey, a real document-import entry point, a workspace task panel, a grid table editor, DOCX templates, equation numbering + a formula editor. Rejected: card browser, vault migration, lightweight mode (see "What we explicitly skip"). Their users are asking for three things we already have — git sync, live-preview WYSIWYG, and opening a file without importing it — which is marketing copy we are not using.
 - **2026-04-29** — Stale `feat/v2*` and `worktree-agent-*` branches (38 visible, all features shipped to main) audited for deletion. Cleanup pending user review.
 
 ---

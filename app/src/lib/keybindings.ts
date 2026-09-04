@@ -65,6 +65,7 @@ export const KEY_ACTIONS: KeyActionDef[] = [
   { id: 'file.new', label: 'New Note', category: 'file', defaults: ['Mod+N', 'Mod+T'] },
   { id: 'file.newText', label: 'New Plain Text File', category: 'file', defaults: ['Mod+Alt+N'] },
   { id: 'file.open', label: 'Open File…', category: 'file', defaults: ['Mod+O'] },
+  { id: 'file.import', label: 'Import Documents…', category: 'file', defaults: ['Mod+Shift+L'] },
   { id: 'file.save', label: 'Save', category: 'file', defaults: ['Mod+S'] },
   { id: 'file.saveAs', label: 'Save As…', category: 'file', defaults: ['Mod+Shift+S'] },
   { id: 'file.closeTab', label: 'Close Tab', category: 'file', defaults: ['Mod+W'] },
@@ -85,6 +86,8 @@ export const KEY_ACTIONS: KeyActionDef[] = [
   // ---- Edit ----
   { id: 'editor.caseCycle', label: 'Cycle Case of Selection', category: 'edit', defaults: ['Shift+F3'] },
   { id: 'format.markdown', label: 'Format Markdown', category: 'edit', defaults: ['Mod+Alt+L'] },
+  { id: 'editor.tableEditor', label: 'Edit Table as Grid', category: 'edit', defaults: ['Mod+Alt+T'] },
+  { id: 'editor.formulaEditor', label: 'Edit Formula', category: 'edit', defaults: ['Mod+Alt+M'] },
   { id: 'editor.aiRewrite', label: 'AI Rewrite Selection', category: 'edit', defaults: ['Mod+J'] },
   { id: 'export.copyHtml', label: 'Copy as HTML', category: 'edit', defaults: ['Mod+Shift+C'] },
   { id: 'export.copyMd', label: 'Copy as Markdown', category: 'edit', defaults: ['Mod+Alt+C'] },
@@ -98,6 +101,13 @@ export const KEY_ACTIONS: KeyActionDef[] = [
   { id: 'view.toggleOutline', label: 'Toggle Outline', category: 'view', defaults: ['Mod+Shift+O'] },
   { id: 'view.toggleInspector', label: 'Toggle Properties Inspector', category: 'view', defaults: ['Mod+Shift+I'] },
   { id: 'view.slideshow', label: 'Slideshow', category: 'view', defaults: ['Mod+Alt+P'] },
+  // Folding. The chords mirror CodeMirror's own fold keymap so the muscle
+  // memory carries over — but they are handled at app level, which is what
+  // makes them work in the Windows plain-textarea editor too (it has no
+  // CodeMirror keymap to reach).
+  { id: 'fold.toggle', label: 'Fold / Unfold Section at Cursor', category: 'view', defaults: ['Mod+Shift+BracketLeft'] },
+  { id: 'fold.all', label: 'Fold All Sections', category: 'view', defaults: ['Mod+Alt+BracketLeft'] },
+  { id: 'fold.none', label: 'Unfold All', category: 'view', defaults: ['Mod+Alt+BracketRight'] },
 
   // ---- Navigate ----
   { id: 'palette.open', label: 'Command Palette', category: 'navigate', defaults: ['Mod+Shift+K'] },
@@ -282,6 +292,7 @@ const MENU_ITEM_BY_ACTION: Record<string, string> = {
   'file.new': 'file.new',
   'file.newText': 'file.newText',
   'file.open': 'file.open',
+  'file.import': 'file.import',
   'file.save': 'file.save',
   'file.saveAs': 'file.saveAs',
   'file.closeTab': 'file.closeTab',

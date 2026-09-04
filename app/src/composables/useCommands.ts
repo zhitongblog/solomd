@@ -1,7 +1,8 @@
+import { invoke } from '@tauri-apps/api/core';
 import { useFiles } from './useFiles';
 import { useSettingsStore } from '../stores/settings';
 import { shortcutLabel } from '../lib/keybindings';
-import { isMacOS } from '../lib/platform';
+import { isMacOS, isMobile } from '../lib/platform';
 import { useTabsStore } from '../stores/tabs';
 import { useTilesStore } from '../stores/tiles';
 import { useExport } from './useExport';
@@ -65,6 +66,16 @@ export function useCommands(): Command[] {
   const ws = useWorkspaceStore();
   const ghSync = useGithubSyncStore();
   const ghSyncOps = useGithubSync();
+
+  /** Heading folding runs inside the editor component; the focused pane picks
+   *  the event up (same routing as find). */
+  function dispatchFold(action: 'toggle' | 'all' | 'none' | 'level', level?: number) {
+    window.dispatchEvent(
+      new CustomEvent('solomd:fold', {
+        detail: { action, level, paneId: tiles.focusedPaneId },
+      }),
+    );
+  }
 
   /** Build a solomd.app/share/?repo=...&path=...&branch=main URL for the
    *  active tab, if it's inside a workspace linked to a public-looking
@@ -175,6 +186,12 @@ export function useCommands(): Command[] {
     { id: 'view.toggleBacklinks', title: 'View: Toggle Backlinks Pane', run: () => settings.toggleBacklinks() },
     { id: 'view.relationships', title: 'View: Toggle Relationships Pane', hint: 'Typed relationships — forward edges authored in YAML front matter plus computed inverses (Referenced by)', run: () => settings.toggleRelationships() },
     { id: 'view.toggleTagsPanel', title: 'View: Toggle Tags Pane', run: () => settings.toggleTagsPanel() },
+    {
+      id: 'view.toggleTasksPanel',
+      title: 'View: Toggle Tasks Pane',
+      hint: 'Every unfinished `- [ ]` in this workspace, grouped by file',
+      run: () => settings.toggleTasksPanel(),
+    },
     { id: 'view.toggleNeighborhood', title: 'View: Toggle Neighborhood Pane', hint: 'Per-note relationship explorer — frontmatter wikilink groups, inverse relationships, and backlinks; click to open, ⌘/Ctrl-click to pivot', run: () => settings.toggleNeighborhood() },
     { id: 'view.toggleTypesPanel', title: 'View: Toggle Types Pane', hint: 'Type-driven sidebar — notes with `type:<Name>` grouped into collapsible first-class sections (types-as-lenses)', run: () => settings.toggleTypesPanel() },
     { id: 'type.create', title: 'Types: New Type…', hint: 'Create a type-definition note (`type: Type`) so its members get a first-class sidebar section', run: () => { if (!settings.showTypesPanel) settings.toggleTypesPanel(); window.dispatchEvent(new CustomEvent('solomd:create-type')); } },
@@ -275,6 +292,80 @@ export function useCommands(): Command[] {
           new CustomEvent('solomd:editor-find', { detail: { paneId: tiles.focusedPaneId } }),
         ),
     },
+
+    {
+      id: 'file.import',
+      title: 'Import Documents…',
+      shortcut: kb('file.import'),
+      hint: 'Convert Word / PDF / HTML / spreadsheets / slides / EPUB into Markdown notes in this workspace',
+      run: () => void files.importDocuments(),
+    },
+
+    {
+      id: 'capture.quick',
+      title: 'Quick Capture…',
+      hint: 'Open the small capture box and file a note straight into the Inbox',
+      run: async () => {
+        try {
+          await invoke('quick_capture_open');
+        } catch (e) {
+          toasts.error(`Quick capture failed: ${e}`);
+        }
+      },
+    },
+
+    {
+      id: 'editor.formulaEditor',
+      title: 'Edit Formula…',
+      shortcut: kb('editor.formulaEditor'),
+      hint: 'Edit the LaTeX under the cursor with a live preview and a symbol palette, or insert a new formula',
+      run: () =>
+        window.dispatchEvent(
+          new CustomEvent('solomd:edit-formula', { detail: { paneId: tiles.focusedPaneId } }),
+        ),
+    },
+
+    {
+      id: 'editor.tableEditor',
+      title: 'Edit Table…',
+      shortcut: kb('editor.tableEditor'),
+      hint: 'Edit the table under the cursor as a grid — add / move / delete rows and columns, set alignment',
+      run: () =>
+        window.dispatchEvent(
+          new CustomEvent('solomd:edit-table', { detail: { paneId: tiles.focusedPaneId } }),
+        ),
+    },
+
+    {
+      id: 'fold.toggle',
+      title: 'Fold: Toggle Section at Cursor',
+      shortcut: kb('fold.toggle'),
+      hint: 'Collapse (or expand) the heading section the cursor is in',
+      run: () => dispatchFold('toggle'),
+    },
+    {
+      id: 'fold.all',
+      title: 'Fold: Collapse All Sections',
+      shortcut: kb('fold.all'),
+      hint: 'Collapse every heading section in this note',
+      run: () => dispatchFold('all'),
+    },
+    {
+      id: 'fold.none',
+      title: 'Fold: Expand All',
+      shortcut: kb('fold.none'),
+      hint: 'Expand everything that is folded, including code blocks and tables',
+      run: () => dispatchFold('none'),
+    },
+    ...[1, 2, 3, 4, 5, 6].map((level) => ({
+      id: `fold.level${level}`,
+      title: `Fold: Show Down to Level ${level}`,
+      hint:
+        level === 1
+          ? 'Collapse the whole outline — only H1 headings stay visible'
+          : `Keep headings H1–H${level} visible and fold everything under them`,
+      run: () => dispatchFold('level', level),
+    })),
 
     {
       id: 'editor.insertImage',
@@ -629,10 +720,13 @@ export function useCommands(): Command[] {
   // #230 — Android has no libgit2, so every `history.*` / `sync.*` entry would
   // resolve to a `Command … not found`. Keep them out of the palette entirely
   // rather than letting the user find a command that can only fail.
+  // Quick capture is a desktop window opened by an OS-level hotkey; neither
+  // half exists on a phone, so the command would only ever fail there.
+  const desktopOnly = isMobile() ? built.filter((c) => c.id !== 'capture.quick') : built;
   if (!hasGitBackend()) {
-    return built.filter(
+    return desktopOnly.filter(
       (c) => !c.id.startsWith('history.') && !c.id.startsWith('sync.'),
     );
   }
-  return built;
+  return desktopOnly;
 }

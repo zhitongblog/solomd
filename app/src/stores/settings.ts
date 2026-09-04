@@ -149,6 +149,8 @@ interface Settings {
   dailyNotesFormat: string;
   dailyNotesTemplate: string;
   showTagsPanel: boolean;
+  // Workspace-wide task panel: every `- [ ]` in the vault, grouped by file.
+  showTasksPanel: boolean;
   // v4.6 F4: Neighborhood — per-note relationship explorer pane (frontmatter
   // wikilink groups + inverse scan + body backlinks).
   showNeighborhood: boolean;
@@ -258,6 +260,27 @@ interface Settings {
   // preview (and Pandoc/PDF/PNG exports — they all share the preview HTML).
   // Default off so existing exports don't surprise anyone. Issue #65.
   codeBlockLineNumbers: boolean;
+  // Quick capture: a system-wide hotkey that opens a small box, takes a line
+  // of text and files it in the Inbox without bringing the app forward. The
+  // chord is an OS-level accelerator (Tauri's spelling, e.g.
+  // `CmdOrCtrl+Alt+M`), not one of the rebindable in-app shortcuts, because
+  // it has to work while another application is focused.
+  quickCaptureEnabled: boolean;
+  quickCaptureShortcut: string;
+  // DOCX export template: which of the built-in presets (plain / report /
+  // academic) a Word export starts from. A per-document `docx:` front-matter
+  // block overrides individual keys, the same way `pdf:` does.
+  docxPreset: 'plain' | 'report' | 'academic';
+  // Print / system-PDF palette, independent of the app theme. Printing in a
+  // dark theme put a dark slab on paper and wasted ink; `light` (the default)
+  // always prints on white, `dark` prints the dark palette on purpose, and
+  // `follow` keeps whatever theme the app is in.
+  printTheme: 'light' | 'dark' | 'follow';
+  // Heading folding in the editor: fold arrows in the gutter, the fold
+  // keymap, and the "fold to level N" commands. On by default — a long
+  // document is barely navigable without it — but it adds a gutter column, so
+  // it can be switched off.
+  foldingEnabled: boolean;
   // #178: soft-wrap long lines inside fenced code blocks in the preview
   // instead of a horizontal scrollbar. Default off (scroll preserves exact
   // code layout); print/PDF always wraps regardless — paper can't scroll.
@@ -509,6 +532,7 @@ function defaults(): Settings {
     dailyNotesFormat: 'YYYY-MM-DD.md',
     dailyNotesTemplate: '',
     showTagsPanel: true,
+    showTasksPanel: false,
     showNeighborhood: false,
     showTypesPanel: false,
     showAgentPanel: true,
@@ -551,6 +575,11 @@ function defaults(): Settings {
     imageExportBranding: true,
     globalZoom: 1,
     wheelZoomEnabled: true,
+    quickCaptureEnabled: true,
+    quickCaptureShortcut: 'CmdOrCtrl+Alt+M',
+    docxPreset: 'plain',
+    printTheme: 'light',
+    foldingEnabled: true,
     codeBlockLineNumbers: false,
     codeBlockWrap: false,
     explorerFullNames: false,
@@ -560,7 +589,7 @@ function defaults(): Settings {
     keybindings: {},
     smartQuotesOptInMigrated: true,
     markdownAutoNumberHeadings: false,
-    rsPaneOrder: ['search', 'outline', 'backlinks', 'relationships', 'tags', 'neighborhood', 'types', 'history', 'inspector', 'agent'],
+    rsPaneOrder: ['search', 'outline', 'backlinks', 'relationships', 'tags', 'tasks', 'neighborhood', 'types', 'history', 'inspector', 'agent'],
     previewFontSize: 15,
     attachmentMode: 'shared',
     assetsDirName: '_assets',
@@ -986,6 +1015,10 @@ export const useSettingsStore = defineStore('settings', {
       if (this.showTagsPanel) this.ensureRightSidebarVisible();
       this.persist();
     },
+    toggleTasksPanel() {
+      this.showTasksPanel = !this.showTasksPanel;
+      this.persist();
+    },
     toggleNeighborhood() {
       this.showNeighborhood = !this.showNeighborhood;
       if (this.showNeighborhood) this.ensureRightSidebarVisible();
@@ -1183,6 +1216,27 @@ export const useSettingsStore = defineStore('settings', {
       this.wheelZoomEnabled = !this.wheelZoomEnabled;
       this.persist();
     },
+    toggleQuickCapture() {
+      this.quickCaptureEnabled = !this.quickCaptureEnabled;
+      this.persist();
+    },
+    setQuickCaptureShortcut(accel: string) {
+      this.quickCaptureShortcut = accel.trim();
+      this.persist();
+    },
+    setDocxPreset(preset: 'plain' | 'report' | 'academic') {
+      this.docxPreset = preset;
+      this.persist();
+    },
+    setPrintTheme(mode: 'light' | 'dark' | 'follow') {
+      this.printTheme = mode;
+      this.persist();
+    },
+    toggleFolding() {
+      this.foldingEnabled = !this.foldingEnabled;
+      this.persist();
+    },
+
     toggleCodeBlockLineNumbers() {
       this.codeBlockLineNumbers = !this.codeBlockLineNumbers;
       this.persist();
@@ -1225,7 +1279,7 @@ export const useSettingsStore = defineStore('settings', {
       this.persist();
     },
     resetRsPaneOrder() {
-      this.rsPaneOrder = ['search', 'outline', 'backlinks', 'relationships', 'tags', 'neighborhood', 'types', 'history', 'inspector', 'agent'];
+      this.rsPaneOrder = ['search', 'outline', 'backlinks', 'relationships', 'tags', 'tasks', 'neighborhood', 'types', 'history', 'inspector', 'agent'];
       this.persist();
     },
     /** v4.3.0 PR #74 — preview-only font size. Editor font is the existing

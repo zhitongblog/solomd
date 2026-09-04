@@ -22,9 +22,21 @@ import {
   TableRow,
   TableCell,
   WidthType,
+  Header,
+  Footer,
+  PageNumber,
+  PageBreak,
+  TableOfContents,
+  LineRuleType,
 } from 'docx';
 import { invoke } from '@tauri-apps/api/core';
 import { md, extractImageRoot, preprocessMarkdown } from './markdown';
+import {
+  resolveDocxTemplate,
+  renderHeaderText,
+  type DocxPreset,
+  type DocxTemplate,
+} from './docx-template';
 import { resolveImagePath } from './image-resolve';
 import type Token from 'markdown-it/lib/token.mjs';
 
@@ -577,7 +589,49 @@ function buildTable(inner: Token[]): Table | null {
   });
 }
 
-export async function markdownToDocxBlob(source: string, _title = 'Document', filePath?: string): Promise<Blob> {
+/** Title page: title, then author and date if the document names them. Ends
+ *  with a page break so the body starts on page two. */
+function buildCover(tpl: DocxTemplate): Paragraph[] {
+  const out: Paragraph[] = [
+    new Paragraph({ text: '', spacing: { before: 2400 } }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 400 },
+      children: [new TextRun({ text: tpl.title || 'Untitled', bold: true, size: 56 })],
+    }),
+  ];
+  // Empty fields are skipped rather than printed as blank lines — a cover with
+  // a stray gap where the author should be looks like a bug.
+  if (tpl.author) {
+    out.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 120 },
+        children: [new TextRun({ text: tpl.author, size: 28 })],
+      }),
+    );
+  }
+  if (tpl.date) {
+    out.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        children: [new TextRun({ text: tpl.date, size: 24 })],
+      }),
+    );
+  }
+  out.push(new Paragraph({ children: [new PageBreak()] }));
+  return out;
+}
+
+export async function markdownToDocxBlob(
+  source: string,
+  _title = 'Document',
+  filePath?: string,
+  preset: DocxPreset = 'plain',
+  /** Heading printed above the table of contents. Passed in because this
+   *  module has no access to the i18n store. */
+  contentsLabel = 'Contents',
+): Promise<Blob> {
   imageCache.clear();
   // Apply the same leniency preprocessors the HTML render path uses (malformed
   // table delimiters, list re-indent, inline-HTML blocks) so DOCX export
@@ -587,10 +641,46 @@ export async function markdownToDocxBlob(source: string, _title = 'Document', fi
   const blocks = await buildBody(tokens, imageRoot, filePath);
   if (blocks.length === 0) blocks.push(new Paragraph({ text: '' }));
 
+  const tpl = resolveDocxTemplate(preset, source ?? '', _title);
+  const headerText = renderHeaderText(tpl);
+
+  const front: BlockChild[] = [];
+  if (tpl.cover) front.push(...buildCover(tpl));
+  if (tpl.toc) {
+    // A Word TOC is a field, not text: Word fills it in and offers to update
+    // it on open. Generating a static list instead would go stale the moment
+    // anyone edited the document.
+    front.push(
+      new Paragraph({
+        heading: HeadingLevel.HEADING_1,
+        children: [new TextRun({ text: contentsLabel })],
+      }),
+      new TableOfContents(contentsLabel, { hyperlink: true, headingStyleRange: '1-3' }),
+      new Paragraph({ children: [new PageBreak()] }),
+    );
+  }
+
   const doc = new Document({
     creator: 'SoloMD',
-    title: _title,
+    title: tpl.title || _title,
     description: 'Exported from SoloMD',
+    styles: {
+      default: {
+        document: {
+          run: {
+            size: tpl.fontSizePt * 2, // docx counts half-points
+            ...(tpl.fontFamily ? { font: tpl.fontFamily } : {}),
+          },
+          paragraph: {
+            spacing: {
+              after: Math.round(tpl.paragraphSpacingPt * 20), // twips
+              line: Math.round(tpl.lineSpacing * 240),
+              lineRule: LineRuleType.AUTO,
+            },
+          },
+        },
+      },
+    },
     numbering: {
       config: [
         {
@@ -605,8 +695,41 @@ export async function markdownToDocxBlob(source: string, _title = 'Document', fi
     },
     sections: [
       {
-        properties: {},
-        children: blocks,
+        properties: {
+          // With a cover page, `titlePage` gives page one its own (empty)
+          // header and footer — a running header across the title page is
+          // the giveaway that a template was bolted on.
+          titlePage: tpl.cover,
+        },
+        headers: headerText
+          ? {
+              default: new Header({
+                children: [
+                  new Paragraph({
+                    alignment: AlignmentType.RIGHT,
+                    children: [new TextRun({ text: headerText, size: 18, color: '888888' })],
+                  }),
+                ],
+              }),
+              first: new Header({ children: [new Paragraph({ text: '' })] }),
+            }
+          : undefined,
+        footers: tpl.pageNumbers
+          ? {
+              default: new Footer({
+                children: [
+                  new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    children: [
+                      new TextRun({ children: [PageNumber.CURRENT], size: 18, color: '888888' }),
+                    ],
+                  }),
+                ],
+              }),
+              first: new Footer({ children: [new Paragraph({ text: '' })] }),
+            }
+          : undefined,
+        children: [...front, ...blocks],
       },
     ],
   });

@@ -364,6 +364,18 @@ pub fn fs_delete(path: String) -> Result<(), String> {
     }
 }
 
+/// Does this path exist and is it a directory?
+///
+/// The file tree needs to tell "the folder is empty" from "the folder is not
+/// there any more" — a moved or deleted workspace otherwise renders as an
+/// empty tree under its own name, which reads as "my notes are gone".
+/// Matching on `read_dir`'s error string would be a guess: it is localized on
+/// Windows.
+#[tauri::command]
+pub fn fs_dir_exists(path: String) -> bool {
+    Path::new(&path).is_dir()
+}
+
 #[tauri::command]
 pub fn fs_rename(from: String, to: String) -> Result<(), String> {
     let from_p = Path::new(&from);

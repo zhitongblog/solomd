@@ -194,6 +194,17 @@ pub fn capture_set_workspace(folder: Option<String>) {
         .map(PathBuf::from);
 }
 
+/// Where a capture should land right now: the open workspace plus the
+/// configured inbox folder. `None` when no workspace is open.
+///
+/// Quick capture (global hotkey) writes through the same pair as the HTTP
+/// endpoint so both agree on the destination without the caller having to
+/// pass it in — the frontend already keeps `capture_set_workspace` current.
+pub fn current_target() -> Option<(PathBuf, String)> {
+    let s = STATE.lock().expect("capture state lock");
+    s.workspace.clone().map(|w| (w, s.inbox_folder.clone()))
+}
+
 // ---------------------------------------------------------------------------
 // Server boot.
 // ---------------------------------------------------------------------------

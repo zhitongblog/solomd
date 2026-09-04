@@ -20,6 +20,9 @@ import AndroidFolderPicker from './components/AndroidFolderPicker.vue';
 import NeighborhoodPanel from './components/NeighborhoodPanel.vue';
 import RelationshipsPanel from './components/RelationshipsPanel.vue';
 import TagsPanel from './components/TagsPanel.vue';
+import TasksPanel from './components/TasksPanel.vue';
+import TableEditor from './components/TableEditor.vue';
+import FormulaEditor from './components/FormulaEditor.vue';
 import TypesPanel from './components/TypesPanel.vue';
 import HistoryPanel from './components/HistoryPanel.vue';
 import PropertiesInspector from './components/PropertiesInspector.vue';
@@ -70,6 +73,9 @@ import { isIOS, isMacOS, isAndroid, isMobile } from './lib/platform';
 import { useViewport } from './composables/useViewport';
 import { nativeMenuAccelerators } from './lib/keybindings';
 import { useI18n } from './i18n';
+import { quickCaptureError } from './lib/quick-capture-status';
+import { tableEditor, closeTableEditor } from './lib/table-editor-bus';
+import { formulaEditor, closeFormulaEditor } from './lib/formula-editor-bus';
 import { track } from './lib/telemetry';
 import { openWelcomeTour } from './lib/welcome-tour';
 import { useWorkspaceStore } from './stores/workspace';
@@ -211,6 +217,7 @@ function rsPaneSnapshot() {
     showBacklinks: settings.showBacklinks,
     showRelationships: settings.showRelationships,
     showTagsPanel: settings.showTagsPanel,
+    showTasksPanel: settings.showTasksPanel,
     showNeighborhood: settings.showNeighborhood,
     showTypesPanel: settings.showTypesPanel,
     showHistoryPanel: settings.showHistoryPanel,
@@ -228,6 +235,7 @@ function ctxToggle(toggleFn: () => void) {
     !settings.showBacklinks &&
     !settings.showRelationships &&
     !settings.showTagsPanel &&
+    !settings.showTasksPanel &&
     !showNeighborhoodPane.value &&
     !settings.showTypesPanel &&
     !settings.showHistoryPanel &&
@@ -664,6 +672,25 @@ watchEffect(() => {
   invoke('rest_set_workspace', { folder: folder ?? null }).catch(() => {});
 });
 
+// Quick capture's hotkey is an OS-level registration owned by Rust, but the
+// setting that decides it lives in the frontend — so push it on start and on
+// every change. Passing null unregisters, which is what "off" has to mean for
+// a chord that would otherwise stay stolen from every other application.
+watchEffect(() => {
+  const accel = settings.quickCaptureEnabled ? settings.quickCaptureShortcut : null;
+  invoke('quick_capture_set_shortcut', { accelerator: accel })
+    .then(() => {
+      quickCaptureError.value = '';
+    })
+    .catch((e) => {
+      // Almost always "another app already owns this chord". Surfaced in
+      // Settings rather than as a toast: nothing is broken, and a modal
+      // complaint at every launch would be worse than the conflict.
+      quickCaptureError.value = String(e);
+      console.warn('[quickCapture] shortcut not registered', e);
+    });
+});
+
 // v2.3: keep the RAG index in sync with the toggle + active folder. When
 // `ragEnabled` flips on we trigger a background scan via the Rust side
 // (`rag_set_enabled` already wraps run_indexer). When the folder
@@ -801,6 +828,9 @@ function dispatchMenuAction(id: string) {
       break;
     case 'file.openFolder':
       files.openFolder();
+      break;
+    case 'file.import':
+      void files.importDocuments();
       break;
     case 'file.save':
       files.saveActive();
@@ -1436,6 +1466,10 @@ const showRelationshipsPane = computed(
 const showTagsPane = computed(
   () => settings.showTagsPanel && !!workspace.currentFolder,
 );
+// Workspace-scoped like Tags: the task list is the vault's, not the note's.
+const showTasksPane = computed(
+  () => settings.showTasksPanel && !!workspace.currentFolder,
+);
 // v4.6 F4 — Neighborhood relationship explorer. Markdown-only, needs a folder
 // (frontmatter wikilink groups are resolved against the workspace index).
 const showNeighborhoodPane = computed(
@@ -1489,6 +1523,7 @@ const showRightSidebar = computed(() => {
     showBacklinksPane.value ||
     showRelationshipsPane.value ||
     showTagsPane.value ||
+    showTasksPane.value ||
     showNeighborhoodPane.value ||
     showTypesPane.value ||
     showHistoryPane.value ||
@@ -1525,19 +1560,20 @@ const visibleRsPanes = computed(() => {
   // v4.3.0 issue #57b — order driven by settings.rsPaneOrder so users can
   // drag-reorder. Unknown ids (newly-shipped future panes) get appended at
   // the end so a SoloMD update doesn't blow away an existing user layout.
-  const all: Record<'search' | 'outline' | 'backlinks' | 'relationships' | 'tags' | 'neighborhood' | 'types' | 'history' | 'inspector' | 'agent', boolean> = {
+  const all: Record<'search' | 'outline' | 'backlinks' | 'relationships' | 'tags' | 'tasks' | 'neighborhood' | 'types' | 'history' | 'inspector' | 'agent', boolean> = {
     search: showSearchPane.value,
     outline: showOutlinePane.value,
     backlinks: showBacklinksPane.value,
     relationships: showRelationshipsPane.value,
     tags: showTagsPane.value,
+    tasks: showTasksPane.value,
     neighborhood: showNeighborhoodPane.value,
     types: showTypesPane.value,
     history: showHistoryPane.value,
     inspector: showInspectorPane.value,
     agent: showAgentPane.value,
   };
-  const known = ['search', 'outline', 'backlinks', 'relationships', 'tags', 'neighborhood', 'types', 'history', 'inspector', 'agent'] as const;
+  const known = ['search', 'outline', 'backlinks', 'relationships', 'tags', 'tasks', 'neighborhood', 'types', 'history', 'inspector', 'agent'] as const;
   const ordered: string[] = [];
   for (const id of settings.rsPaneOrder || []) {
     if (id in all && !ordered.includes(id)) ordered.push(id);
@@ -1547,7 +1583,7 @@ const visibleRsPanes = computed(() => {
   }
   return ordered
     .filter((id) => all[id as keyof typeof all])
-    .map((id) => ({ id: id as 'search' | 'outline' | 'backlinks' | 'relationships' | 'tags' | 'neighborhood' | 'types' | 'history' | 'inspector' | 'agent' }));
+    .map((id) => ({ id: id as 'search' | 'outline' | 'backlinks' | 'relationships' | 'tags' | 'tasks' | 'neighborhood' | 'types' | 'history' | 'inspector' | 'agent' }));
 });
 
 // #131 — sidebar pane reordering via the ⋮⋮ grip.
@@ -1770,6 +1806,10 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
                 @close="ctxToggle(() => settings.toggleTagsPanel())"
                 @filter-tag="onFilterTag"
               />
+              <TasksPanel
+                v-if="p.id === 'tasks'"
+                @close="ctxToggle(() => settings.toggleTasksPanel())"
+              />
               <NeighborhoodPanel
                 v-if="p.id === 'neighborhood'"
                 @close="ctxToggle(() => settings.toggleNeighborhood())"
@@ -1832,6 +1872,10 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
                 @close="ctxToggle(() => settings.toggleTagsPanel())"
                 @filter-tag="onFilterTag"
               />
+              <TasksPanel
+                v-if="p.id === 'tasks'"
+                @close="ctxToggle(() => settings.toggleTasksPanel())"
+              />
               <NeighborhoodPanel
                 v-if="p.id === 'neighborhood'"
                 @close="ctxToggle(() => settings.toggleNeighborhood())"
@@ -1852,6 +1896,24 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
         </aside>
       </div>
       <StatusBar :line="cursorLine" :col="cursorCol" :selection-text="selectionText" />
+      <!-- Grid editor for the table under the caret. The pane that found the
+           table supplies the write-back closure, so this stays pane-agnostic. -->
+      <TableEditor
+        v-if="tableEditor.session"
+        :source="tableEditor.session.source"
+        @apply="(md: string) => tableEditor.session?.apply(md)"
+        @close="closeTableEditor()"
+      />
+
+      <FormulaEditor
+        v-if="formulaEditor.session"
+        :latex="formulaEditor.session.latex"
+        :display="formulaEditor.session.display"
+        :labels="formulaEditor.session.labels"
+        @apply="(latex: string, display: boolean) => formulaEditor.session?.apply(latex, display)"
+        @close="closeFormulaEditor()"
+      />
+
       <!-- v4.3.0 PR #75 — right-click context menu for sidebar pane toggles. -->
       <Teleport to="body">
         <div
@@ -1879,6 +1941,10 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
           <label class="sidebar-ctx__item" @click="ctxToggle(() => { settings.toggleTagsPanel() })">
             <span class="sidebar-ctx__check">{{ settings.showTagsPanel ? '✓' : '' }}</span>
             {{ t('rsPane.tags') }}
+          </label>
+          <label class="sidebar-ctx__item" @click="ctxToggle(() => { settings.toggleTasksPanel() })">
+            <span class="sidebar-ctx__check">{{ settings.showTasksPanel ? '✓' : '' }}</span>
+            {{ t('rsPane.tasks') }}
           </label>
           <label class="sidebar-ctx__item" @click="ctxToggle(() => { settings.toggleNeighborhood() })">
             <span class="sidebar-ctx__check">{{ settings.showNeighborhood ? '✓' : '' }}</span>

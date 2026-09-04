@@ -319,6 +319,9 @@ onMounted(() => {
   window.addEventListener('solomd:upload-local-images', onUploadLocalImagesEvent);
   window.addEventListener('solomd:editor-find', onEditorFindEvent);
   window.addEventListener('solomd:preview-search', onPreviewSearchEvent);
+  window.addEventListener('solomd:fold', onFoldEvent);
+  window.addEventListener('solomd:edit-table', onEditTableEvent);
+  window.addEventListener('solomd:edit-formula', onEditFormulaEvent);
 });
 
 onBeforeUnmount(() => {
@@ -331,6 +334,9 @@ onBeforeUnmount(() => {
   window.removeEventListener('solomd:upload-local-images', onUploadLocalImagesEvent);
   window.removeEventListener('solomd:editor-find', onEditorFindEvent);
   window.removeEventListener('solomd:preview-search', onPreviewSearchEvent);
+  window.removeEventListener('solomd:fold', onFoldEvent);
+  window.removeEventListener('solomd:edit-table', onEditTableEvent);
+  window.removeEventListener('solomd:edit-formula', onEditFormulaEvent);
 });
 
 defineExpose({ gotoLine, editorRef });
@@ -376,6 +382,35 @@ function onEditorFindEvent(e: Event) {
   if (!paneId && !isFocused.value) return;
   const ed = editorRef.value as unknown as { openFind?: () => void } | null;
   ed?.openFind?.();
+}
+
+/** Formula editor — same focused-pane routing as find. */
+function onEditFormulaEvent(e: Event) {
+  const { paneId } = (e as CustomEvent).detail || {};
+  if (paneId && paneId !== props.paneId) return;
+  if (!paneId && !isFocused.value) return;
+  const ed = editorRef.value as unknown as { openFormulaAtCursor?: () => void } | null;
+  ed?.openFormulaAtCursor?.();
+}
+
+/** Grid table editor — same focused-pane routing as find. */
+function onEditTableEvent(e: Event) {
+  const { paneId } = (e as CustomEvent).detail || {};
+  if (paneId && paneId !== props.paneId) return;
+  if (!paneId && !isFocused.value) return;
+  const ed = editorRef.value as unknown as { openTableAtCursor?: () => void } | null;
+  ed?.openTableAtCursor?.();
+}
+
+/** Heading folding — same focused-pane routing as find (#fold). */
+function onFoldEvent(e: Event) {
+  const { paneId, action, level } = (e as CustomEvent).detail || {};
+  if (paneId && paneId !== props.paneId) return;
+  if (!paneId && !isFocused.value) return;
+  const ed = editorRef.value as unknown as {
+    applyFold?: (a: string, l?: number) => void;
+  } | null;
+  ed?.applyFold?.(action || 'toggle', level);
 }
 
 function onPreviewSearchEvent(e: Event) {

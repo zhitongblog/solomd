@@ -14,6 +14,7 @@ import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { useTabsStore } from '../stores/tabs';
 import { useI18n } from '../i18n';
 import { isMobile } from '../lib/platform';
+import { usePendingDeletes, isDeletePending, UNDO_WINDOW_MS } from '../composables/usePendingDeletes';
 import { isSafPath, fromSafPath, safList, safCreate } from '../lib/saf-fs';
 
 interface Entry {
@@ -110,6 +111,7 @@ async function copyNodeRelativePath(node: Node) {
 }
 const tabs = useTabsStore();
 const { t } = useI18n();
+const pendingDeletes = usePendingDeletes();
 
 const root = ref<Node | null>(null);
 
@@ -122,12 +124,22 @@ const showInboxOnly = computed(() => inbox.filterMode.value);
  * row instead of rendering it as a fake file. */
 const TRUNCATED_SENTINEL = '__solomd_truncated__';
 
+/** True when the workspace folder itself is gone (moved, deleted, unmounted
+ *  drive). Distinct from "empty": an empty tree under the folder's own name is
+ *  indistinguishable from data loss, which is how it read before. */
+const rootMissing = ref(false);
+
 async function loadDir(path: string): Promise<{ children: Node[]; truncated: boolean }> {
   try {
     // #148 — SAF vault: list children via ContentResolver, not std::fs.
     if (isSafPath(path) && workspace.safTreeUri) {
       const safChildren = await safList(workspace.safTreeUri, fromSafPath(path));
-      return { children: safChildren as Node[], truncated: false };
+      // A delete still inside its undo window is presented as done — the file
+      // is on disk for a few more seconds but the user has been told it is gone.
+      return {
+        children: (safChildren as Node[]).filter((c) => !isDeletePending(c.path)),
+        truncated: false,
+      };
     }
     const entries = await invoke<Entry[]>('list_dir', { path });
     let truncated = false;
@@ -137,11 +149,25 @@ async function loadDir(path: string): Promise<{ children: Node[]; truncated: boo
         truncated = true;
         continue;
       }
+      if (isDeletePending(e.path)) continue;
       filtered.push({ ...e });
     }
+    // A successful listing clears the "folder is gone" state, so putting the
+    // folder back (or reconnecting the drive) recovers on the next refresh
+    // rather than needing the workspace re-picked.
+    if (path === workspace.currentFolder) rootMissing.value = false;
     return { children: filtered, truncated };
   } catch (e) {
     console.error('list_dir failed', e);
+    // Only the root's disappearance is worth a special state; a subfolder that
+    // vanished mid-expand just lists as empty.
+    if (path === workspace.currentFolder) {
+      try {
+        rootMissing.value = !(await invoke<boolean>('fs_dir_exists', { path }));
+      } catch {
+        rootMissing.value = false;
+      }
+    }
     return { children: [], truncated: false };
   }
 }
@@ -152,6 +178,7 @@ async function refreshRoot() {
     return;
   }
   const path = workspace.currentFolder;
+  rootMissing.value = false;
   root.value = {
     name: isSafPath(path) ? workspace.safName ?? 'Vault' : path.split(/[\\/]/).pop() ?? path,
     path,
@@ -189,7 +216,16 @@ async function toggle(node: Node) {
   node.expanded = true;
 }
 
-watch(() => workspace.currentFolder, refreshRoot, { immediate: true });
+watch(
+  () => workspace.currentFolder,
+  () => {
+    // Leaving the folder ends the undo offer — the toast is about to be out of
+    // sight, and a timer that fires against another workspace is a trap.
+    void pendingDeletes.flushAll();
+    void refreshRoot();
+  },
+  { immediate: true },
+);
 
 // ---------------------------------------------------------------------------
 // v3.0: auto-refresh on save / pull / external-change
@@ -238,17 +274,33 @@ function onSaved() { scheduleRefresh(); }
 function onRemotePulled() { scheduleRefresh(); }
 
 let unlistenIndex: UnlistenFn | null = null;
+let unlistenCapture: UnlistenFn | null = null;
+/** Closing the window while a delete is pending: run it. The user asked for
+ *  the delete and saw it happen; having the file reappear on next launch would
+ *  be the surprise, not the safety. Best-effort — the IPC may not land. */
+function onBeforeUnload() {
+  void pendingDeletes.flushAll();
+}
+
 onMounted(async () => {
   window.addEventListener('solomd:saved', onSaved as EventListener);
   window.addEventListener('solomd:remote-pulled', onRemotePulled as EventListener);
+  window.addEventListener('beforeunload', onBeforeUnload);
   try {
     unlistenIndex = await listen('solomd://index-updated', () => scheduleRefresh());
+  } catch {}
+  try {
+    // A quick capture writes straight to disk from Rust; without this the new
+    // Inbox note is invisible until something else happens to refresh.
+    unlistenCapture = await listen('solomd://capture-written', () => scheduleRefresh());
   } catch {}
 });
 onBeforeUnmount(() => {
   window.removeEventListener('solomd:saved', onSaved as EventListener);
   window.removeEventListener('solomd:remote-pulled', onRemotePulled as EventListener);
+  window.removeEventListener('beforeunload', onBeforeUnload);
   if (unlistenIndex) unlistenIndex();
+  if (unlistenCapture) unlistenCapture();
   if (refreshDebounce) clearTimeout(refreshDebounce);
 });
 
@@ -358,11 +410,15 @@ async function commitEdit() {
         return;
       }
       const target = joinPath(e.parent, finalName);
+      // A pending delete on this exact path would fire later and take the new
+      // file with it. Commit it now so the two never race.
+      await pendingDeletes.flushUnder(target);
       await invoke('fs_create_file', { path: target, content: '' });
       editing.value = null;
       scheduleRefresh();
       await files.openPath(target, { bypassNewWindow: true });
     } else if (e.kind === 'new-dir') {
+      await pendingDeletes.flushUnder(joinPath(e.parent, name));
       await invoke('fs_create_dir', { path: joinPath(e.parent, name) });
       editing.value = null;
       scheduleRefresh();
@@ -372,6 +428,7 @@ async function commitEdit() {
         editing.value = null;
         return;
       }
+      await pendingDeletes.flushUnder(target);
       await invoke('fs_rename', { from: e.original, to: target });
       editing.value = null;
       scheduleRefresh();
@@ -443,13 +500,31 @@ async function deleteNode(node: Node) {
       : `Delete "${node.name}"?\n\n${suffix}`,
   );
   if (!ok) return;
-  try {
-    await invoke('fs_delete', { path: node.path });
+
+  // The delete is held for a few seconds so the toast can offer Undo. The
+  // file is untouched until then; the tree hides it in the meantime.
+  const path = node.path;
+  const name = node.name;
+  await pendingDeletes.schedule({
+    path,
+    name,
+    isDir: !!node.is_dir,
+    delayMs: UNDO_WINDOW_MS,
+    commit: async () => {
+      try {
+        await invoke('fs_delete', { path });
+      } catch (e) {
+        toasts.error(`Delete failed: ${e}`);
+      }
+      scheduleRefresh();
+    },
+  });
+  scheduleRefresh();
+  toasts.push(t('explorer.deleted', { name }), 'success', UNDO_WINDOW_MS, () => {
+    if (!pendingDeletes.undo(path)) return;
     scheduleRefresh();
-    toasts.success(`Deleted ${node.name}`);
-  } catch (e) {
-    toasts.error(`Delete failed: ${e}`);
-  }
+    toasts.info(t('explorer.deleteUndone', { name }));
+  }, { actionLabel: t('explorer.undo') });
 }
 
 async function revealNode(node: Node) {
@@ -611,6 +686,22 @@ onBeforeUnmount(() => {
           <div class="ftree__switcher-sep"></div>
           <button class="ftree__switcher-item ftree__switcher-item--cta" @click="openFolderAndClose">
             📁 {{ t('explorer.openFolder') }}
+          </button>
+        </div>
+      </div>
+
+      <!-- The folder itself is gone (moved in Finder, deleted, drive
+           unmounted). Saying so beats an empty tree under its own name,
+           which reads as "my notes are gone". -->
+      <div v-if="rootMissing" class="ftree__missing">
+        <p class="ftree__missing-title">{{ t('explorer.folderMissing') }}</p>
+        <p class="ftree__missing-path">{{ root.path }}</p>
+        <div class="ftree__missing-actions">
+          <button class="ftree__open-btn" @click="files.openFolder">
+            {{ t('explorer.folderMissingLocate') }}
+          </button>
+          <button class="ftree__missing-secondary" @click="workspace.setFolder(null)">
+            {{ t('explorer.closeFolder') }}
           </button>
         </div>
       </div>
@@ -914,6 +1005,37 @@ export const FileTreeNode = defineComponent({
 .ftree__hbtn:disabled {
   opacity: 0.35;
   cursor: not-allowed;
+}
+.ftree__missing {
+  padding: 16px 14px;
+  text-align: center;
+}
+.ftree__missing-title {
+  margin: 0 0 4px;
+  font-size: 12px;
+  color: var(--danger, #d64545);
+  font-weight: 600;
+}
+.ftree__missing-path {
+  margin: 0 0 10px;
+  font-size: 10px;
+  color: var(--text-faint);
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+}
+.ftree__missing-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+}
+.ftree__missing-secondary {
+  background: transparent;
+  border: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  text-decoration: underline;
+  cursor: pointer;
 }
 .ftree__empty {
   padding: 24px 14px;

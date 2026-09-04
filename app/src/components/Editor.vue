@@ -24,6 +24,24 @@ import { xml } from '@codemirror/lang-xml';
 import { vim, Vim } from '@replit/codemirror-vim';
 import { cmThemeFor } from '../lib/themes';
 import { registerPlainSelectionGetter } from '../lib/plain-selection';
+import {
+  headingFoldExtension,
+  toggleHeadingFoldAtCursor,
+  foldAllHeadings,
+  unfoldAllFolds,
+  foldHeadingsToLevel,
+} from '../lib/cm-heading-fold';
+import { findTableSpan } from '../lib/markdown-table';
+import { findMathSpanAt, collectLabels } from '../lib/equations';
+import { openFormulaEditor } from '../lib/formula-editor-bus';
+import { openTableEditor } from '../lib/table-editor-bus';
+import {
+  scanHeadings,
+  foldedCharRanges,
+  remapFolds,
+  type FoldAnchor,
+  type HeadingSpan,
+} from '../lib/heading-fold';
 import { caretRowInfo, caretTopPx, lastVisualRowStart, firstVisualRowEnd, measureLineHeights } from '../lib/textarea-metrics';
 import { transformCase, nextCaseInCycle, caseTargetRange, type CaseMode } from '../lib/text-case';
 import { useTabsStore } from '../stores/tabs';
@@ -200,6 +218,7 @@ const focusCompartment = new Compartment();
 const typewriterCompartment = new Compartment();
 const vimCompartment = new Compartment();
 const slashCompartment = new Compartment();
+const foldCompartment = new Compartment();
 
 // #222 — Vim's `:w` / `:wq` / `:q` were dead: @replit/codemirror-vim ships no
 // Ex-command handlers (there is no file system in the browser), so typing `:w`
@@ -399,6 +418,81 @@ watch(
 onBeforeUnmount(() => {
   plainGutterRO?.disconnect();
   if (plainGutterTimer) clearTimeout(plainGutterTimer);
+});
+
+// ---- Heading folding, plain-textarea path --------------------------------
+// CodeMirror keeps folds in editor state; the Windows block editor has none,
+// so folds live here as heading anchors (line + heading text). Anchors survive
+// edits that shift line numbers — a bare line number would collapse whatever
+// section happened to slide into that slot.
+const plainFolds = ref<FoldAnchor[]>([]);
+
+const plainHeadings = computed<HeadingSpan[]>(() =>
+  plainLiveEnabled.value && settings.foldingEnabled ? scanHeadings(plainText.value || '') : [],
+);
+const plainFoldableByStart = computed(() => {
+  const map = new Map<number, HeadingSpan>();
+  for (const h of plainHeadings.value) if (h.foldable) map.set(h.start, h);
+  return map;
+});
+const plainFoldedLines = computed(() => new Set(plainFolds.value.map((f) => f.line)));
+const plainFoldRanges = computed(() =>
+  plainFolds.value.length ? foldedCharRanges(plainText.value || '', plainFolds.value.map((f) => f.line)) : [],
+);
+
+/** Blocks inside a folded section are not rendered. The active block is always
+ *  rendered: hiding the textarea the caret lives in would take the caret with
+ *  it, and the next keystroke would go nowhere. */
+function plainBlockHidden(block: PlainBlock, index: number): boolean {
+  if (index === plainActiveBlock.value) return false;
+  const ranges = plainFoldRanges.value;
+  if (!ranges.length) return false;
+  return ranges.some((r) => block.start > r.from && block.start < r.to);
+}
+
+function plainHeadingFor(block: PlainBlock): HeadingSpan | null {
+  return plainFoldableByStart.value.get(block.start) ?? null;
+}
+function plainHeadingFolded(block: PlainBlock): boolean {
+  const h = plainHeadingFor(block);
+  return !!h && plainFoldedLines.value.has(h.line);
+}
+/** Lines a folded heading is hiding — shown on the chevron so the collapsed
+ *  section advertises its size. */
+function plainHiddenLineCount(block: PlainBlock): number {
+  const h = plainHeadingFor(block);
+  return h ? h.endLine - h.line : 0;
+}
+function setPlainFold(span: HeadingSpan, folded: boolean) {
+  if (folded) {
+    if (plainFoldedLines.value.has(span.line)) return;
+    // Editing inside a section that is about to disappear would strand the
+    // caret in a hidden block, so move it onto the heading first.
+    const active = plainBlocks.value[plainActiveBlock.value];
+    if (active && active.start > span.headingEnd && active.start <= span.end) {
+      const headingIndex = plainBlocks.value.findIndex((b) => b.start === span.start);
+      if (headingIndex >= 0) {
+        activatePlainBlock(headingIndex, plainBlocks.value[headingIndex]?.text.length ?? 0);
+      }
+    }
+    plainFolds.value = [...plainFolds.value, { line: span.line, title: span.title }];
+  } else {
+    plainFolds.value = plainFolds.value.filter((f) => f.line !== span.line);
+  }
+}
+function togglePlainFold(block: PlainBlock) {
+  const h = plainHeadingFor(block);
+  if (h) setPlainFold(h, !plainFoldedLines.value.has(h.line));
+}
+
+// Edits move headings around; re-anchor rather than fold the wrong section.
+watch(plainText, (text) => {
+  if (!plainFolds.value.length) return;
+  const next = remapFolds(text || '', plainFolds.value);
+  const changed =
+    next.length !== plainFolds.value.length ||
+    next.some((f, i) => f.line !== plainFolds.value[i].line);
+  if (changed) plainFolds.value = next;
 });
 
 const plainBlocks = computed<PlainBlock[]>(() => {
@@ -2080,6 +2174,16 @@ function spellCheckExt(on: boolean) {
   return EditorView.contentAttributes.of({ spellcheck: on ? 'true' : 'false' });
 }
 
+/** Heading folding — off entirely when the setting is off, so a user who finds
+ *  the gutter arrows noisy gets the old editor back rather than a hidden
+ *  feature they can still trip over with a shortcut. */
+function foldExtensionFor(on: boolean) {
+  if (!on) return [];
+  return headingFoldExtension({
+    placeholderLabel: (lines) => t('fold.placeholder', { lines }),
+  });
+}
+
 // The live-edit code-block copy button lives in a CM widget, which has no
 // access to the i18n store — hand it a getter so its label tracks the UI
 // language like every other string.
@@ -2232,6 +2336,7 @@ function buildExtensions() {
         ]
       : []),
     ...(windowsImeSafeMode || markdownSafeMode ? [] : [taskListExtension()]),
+    foldCompartment.of(foldExtensionFor(settings.foldingEnabled)),
     sessionRestoreExtension(props.tab.id),
     // #167 — clicks during async widget renders (post tab-switch) must not
     // turn into phantom multi-line selections when the layout shifts.
@@ -2413,6 +2518,180 @@ function openFind(): void {
     view.focus();
     openSearchPanel(view);
   }
+}
+
+/**
+ * Open the grid editor on the table the caret is in.
+ *
+ * Works off the document text and line offsets rather than either editor's
+ * internals, so the same code serves CodeMirror and the Windows plain
+ * textarea; only the write-back differs.
+ */
+function openTableAtCursor(): void {
+  const source = usePlainWindowsEditor ? plainText.value || '' : view?.state.doc.toString() ?? '';
+  if (!source) {
+    toasts.info(t('tableEditor.notInTable'));
+    return;
+  }
+  const lines = source.split('\n');
+  const caret = usePlainWindowsEditor
+    ? plainCaretOffset()
+    : view
+      ? view.state.selection.main.head
+      : 0;
+
+  // Offset → line index, plus each line's start offset for the reverse trip.
+  const starts: number[] = [];
+  let off = 0;
+  for (const line of lines) {
+    starts.push(off);
+    off += line.length + 1;
+  }
+  let caretLine = 0;
+  for (let i = 0; i < starts.length; i++) {
+    if (starts[i] <= caret) caretLine = i;
+    else break;
+  }
+
+  const span = findTableSpan(lines, caretLine);
+  if (!span) {
+    toasts.info(t('tableEditor.notInTable'));
+    return;
+  }
+  const from = starts[span.startLine];
+  const to = starts[span.endLine] + lines[span.endLine].length;
+
+  openTableEditor({
+    source: source.slice(from, to),
+    apply: (markdown: string) => replaceDocRange(from, to, markdown),
+  });
+}
+
+/**
+ * Open the formula editor on the math under the caret, or on an empty formula
+ * when the caret is not in one — "insert a formula" and "fix this formula" are
+ * the same action from the user's side.
+ */
+function openFormulaAtCursor(): void {
+  const source = usePlainWindowsEditor ? plainText.value || '' : view?.state.doc.toString() ?? '';
+  const caret = usePlainWindowsEditor
+    ? plainCaretOffset()
+    : view
+      ? view.state.selection.main.head
+      : 0;
+  const span = findMathSpanAt(source, caret);
+  const from = span ? span.from : caret;
+  const to = span ? span.to : caret;
+
+  openFormulaEditor({
+    latex: span?.body ?? '',
+    // A new formula defaults to inline; that is the common case, and the
+    // dialog has a one-click switch for the other one.
+    display: span?.display ?? false,
+    labels: collectLabels(source),
+    apply: (latex: string, display: boolean) =>
+      replaceDocRange(from, to, formatMath(source, from, to, latex, display)),
+  });
+}
+
+/**
+ * Wrap a formula in the right delimiters for where it sits.
+ *
+ * A display formula gets its own lines only when nothing else shares them.
+ * Turning `Inline $E=mc^2$ here.` into a three-line `$$` block would split the
+ * sentence across the formula — the mid-sentence case has to stay on one line.
+ */
+function formatMath(
+  source: string,
+  from: number,
+  to: number,
+  latex: string,
+  display: boolean,
+): string {
+  if (!display) return `$${latex}$`;
+  const lineStart = source.lastIndexOf('\n', Math.max(0, from - 1)) + 1;
+  const lineEndIdx = source.indexOf('\n', to);
+  const lineEnd = lineEndIdx < 0 ? source.length : lineEndIdx;
+  const alone =
+    source.slice(lineStart, from).trim() === '' && source.slice(to, lineEnd).trim() === '';
+  return alone ? `$$\n${latex}\n$$` : `$$${latex}$$`;
+}
+
+/** Caret offset in the plain editor, in whole-document coordinates. */
+function plainCaretOffset(): number {
+  if (plainLiveEnabled.value) {
+    const block = plainBlocks.value[plainActiveBlock.value];
+    const el = plainBlockEditors.value[plainActiveBlock.value];
+    return (block?.start ?? 0) + (el?.selectionStart ?? 0);
+  }
+  return plainEditor.value?.selectionStart ?? 0;
+}
+
+/** Replace a document range in whichever editor this pane is running. */
+function replaceDocRange(from: number, to: number, text: string): void {
+  if (usePlainWindowsEditor) {
+    const src = plainText.value || '';
+    recordPlainHistory();
+    applyPlainContent(src.slice(0, from) + text + src.slice(to), from + text.length);
+    return;
+  }
+  if (!view) return;
+  view.dispatch({ changes: { from, to, insert: text } });
+}
+
+/**
+ * Heading folding, driven from the command palette / shortcuts.
+ *
+ * `level` only applies to `'level'`. The Windows source textarea is the one
+ * path that cannot fold — a <textarea> has no way to hide a line — so it says
+ * so instead of silently doing nothing.
+ */
+function applyFold(action: 'toggle' | 'all' | 'none' | 'level', level = 2): void {
+  if (!settings.foldingEnabled) {
+    toasts.info(t('fold.disabledHint'));
+    return;
+  }
+  if (props.tab.language !== 'markdown' && action !== 'none') {
+    // Non-markdown files still fold their own blocks through the gutter and
+    // CodeMirror's keymap; only the heading-level commands need a document
+    // with headings.
+    if (usePlainWindowsEditor) return;
+  }
+
+  if (usePlainWindowsEditor) {
+    if (!plainLiveEnabled.value) {
+      toasts.info(t('fold.plainSourceHint'));
+      return;
+    }
+    const text = plainText.value || '';
+    const spans = scanHeadings(text).filter((h) => h.foldable);
+    if (action === 'none') {
+      plainFolds.value = [];
+      return;
+    }
+    if (action === 'all') {
+      plainFolds.value = spans.map((h) => ({ line: h.line, title: h.title }));
+      return;
+    }
+    if (action === 'level') {
+      plainFolds.value = spans
+        .filter((h) => h.level >= level)
+        .map((h) => ({ line: h.line, title: h.title }));
+      return;
+    }
+    const caret = plainBlocks.value[plainActiveBlock.value]?.start ?? 0;
+    const enclosing = spans.filter((h) => caret >= h.start && caret <= h.end).pop();
+    if (!enclosing) return;
+    setPlainFold(enclosing, !plainFoldedLines.value.has(enclosing.line));
+    return;
+  }
+
+  if (!view) return;
+  view.focus();
+  if (action === 'toggle') toggleHeadingFoldAtCursor(view);
+  else if (action === 'all') foldAllHeadings(view);
+  else if (action === 'none') unfoldAllFolds(view);
+  else foldHeadingsToLevel(view, level);
 }
 
 onBeforeUnmount(() => {
@@ -2675,6 +2954,14 @@ watch(
   () => settings.showLineNumbers,
   (s) => {
     view?.dispatch({ effects: lineNumCompartment.reconfigure(s ? lineNumbers() : []) });
+  }
+);
+
+watch(
+  () => settings.foldingEnabled,
+  (on) => {
+    view?.dispatch({ effects: foldCompartment.reconfigure(foldExtensionFor(on)) });
+    if (!on) plainFolds.value = [];
   }
 );
 
@@ -3004,7 +3291,7 @@ function insertMarkdown(snippet: string): void {
   view.focus();
 }
 
-defineExpose({ gotoLine, insertImageFromPath, insertImageUrl, uploadLocalImages, getViewLine, scrollToLine, lineTopY, insertMarkdown, openFind });
+defineExpose({ gotoLine, insertImageFromPath, insertImageUrl, uploadLocalImages, getViewLine, scrollToLine, lineTopY, insertMarkdown, openFind, applyFold, openTableAtCursor, openFormulaAtCursor });
 
 const cls = computed(() => ({
   'cm-host': true,
@@ -3035,11 +3322,28 @@ const cls = computed(() => ({
     >
       <div
         v-for="(block, index) in plainBlocks"
+        v-show="!plainBlockHidden(block, index)"
         :key="block.id"
         class="plain-block"
-        :class="{ 'plain-block--active': index === plainActiveBlock }"
+        :class="{
+          'plain-block--active': index === plainActiveBlock,
+          'plain-block--heading': !!plainHeadingFor(block),
+        }"
         @click="(event) => activatePlainBlockFromClick(index, event)"
       >
+        <button
+          v-if="plainHeadingFor(block)"
+          class="plain-fold-toggle"
+          :class="{ 'plain-fold-toggle--folded': plainHeadingFolded(block) }"
+          :title="plainHeadingFolded(block) ? t('fold.expand') : t('fold.collapse')"
+          :aria-expanded="!plainHeadingFolded(block)"
+          @click.stop="togglePlainFold(block)"
+        >{{ plainHeadingFolded(block) ? '›' : '⌄' }}</button>
+        <span
+          v-if="plainHeadingFolded(block)"
+          class="plain-fold-count"
+          @click.stop="togglePlainFold(block)"
+        >{{ t('fold.placeholder', { lines: plainHiddenLineCount(block) }) }}</span>
         <textarea
           v-if="index === plainActiveBlock"
           :ref="(el) => setPlainBlockEditor(index, el as HTMLTextAreaElement | null)"
@@ -3349,6 +3653,45 @@ const cls = computed(() => ({
 }
 .plain-block--active {
   background: var(--bg);
+}
+/* Fold chevron for heading blocks. Sits in the left margin so it never
+   reflows the heading text; only visible on hover (or while folded) so an
+   unfolded document reads exactly as it did before folding existed. */
+.plain-fold-toggle {
+  position: absolute;
+  left: -14px;
+  top: 2px;
+  width: 14px;
+  height: 1.4em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--fg-dim, #888);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+  font-size: 12px;
+  line-height: 1;
+}
+.plain-block:hover .plain-fold-toggle,
+.plain-fold-toggle--folded,
+.plain-fold-toggle:focus-visible {
+  opacity: 1;
+}
+.plain-fold-count {
+  position: absolute;
+  right: 8px;
+  top: 2px;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: rgba(127, 127, 127, 0.18);
+  color: var(--fg-dim, #888);
+  font-size: 0.8em;
+  cursor: pointer;
+  user-select: none;
 }
 .plain-block__textarea {
   display: block;
