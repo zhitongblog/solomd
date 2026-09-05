@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  The interface ships in fourteen languages, but the bundle never said so.
+	  Apple reads the supported languages off the bundle, not off the app's own
+	  i18n files, so the App Store listed SoloMD as English-only — which is what
+	  a non-English storefront shows a person deciding whether this app is for
+	  them, and what its search index has to work with.
+
+	  Kept in step with app/src/i18n/*.ts. `zh-Hans` because that is what those
+	  strings are; Apple's plain `zh` is ambiguous between the scripts.
+	-->
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>zh-Hans</string>
+		<string>ja</string>
+		<string>ko</string>
+		<string>de</string>
+		<string>fr</string>
+		<string>es</string>
+		<string>it</string>
+		<string>nl</string>
+		<string>pl</string>
+		<string>pt</string>
+		<string>sv</string>
+		<string>tr</string>
+		<string>uk</string>
+	</array>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+</dict>
+</plist>
