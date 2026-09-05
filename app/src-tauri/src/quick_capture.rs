@@ -16,7 +16,11 @@
 //! same function the HTTP capture endpoint uses, so a hotkey capture and a
 //! browser-extension capture produce the same file in the same place.
 
-use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Emitter};
+// Every window this module touches lives behind `cfg(desktop)`, so on mobile
+// the window traits are not just unused — they have nothing to name.
+#[cfg(desktop)]
+use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 
 // `super::` rather than `crate::`: this file is compiled twice — once as a
 // top-level module of the lib, once inside `mod runner` in the binary (see the
@@ -26,6 +30,11 @@ use super::capture_endpoint::{self, capture_write_inner};
 /// Fixed label so a second press focuses the existing box instead of stacking
 /// windows. Matches the `solomd-*` capability pattern.
 pub const CAPTURE_LABEL: &str = "solomd-quick-capture";
+
+/// Quick capture is a desktop idea: a global chord and a floating box over
+/// whatever else you are doing. Neither exists on a phone.
+#[cfg(not(desktop))]
+const MOBILE_UNSUPPORTED: &str = "quick capture is desktop-only";
 
 // ---------------------------------------------------------------------------
 // Window
@@ -37,41 +46,56 @@ pub const CAPTURE_LABEL: &str = "solomd-quick-capture";
 /// window you manage. Esc dismisses it (handled in the webview).
 #[tauri::command]
 pub fn quick_capture_open(app: AppHandle) -> Result<(), String> {
-    if let Some(win) = app.get_webview_window(CAPTURE_LABEL) {
-        win.show().map_err(|e| e.to_string())?;
-        win.set_focus().map_err(|e| e.to_string())?;
-        // The box remembers nothing between uses; tell the webview to clear.
-        let _ = win.emit("solomd://quick-capture-reset", ());
-        return Ok(());
+    #[cfg(not(desktop))]
+    {
+        // `show`/`set_focus` and the window builder's `title` are desktop-only
+        // in Tauri 2 — and a second always-on-top window is not a thing a
+        // phone has anyway. The setting is hidden on mobile; this is the
+        // backstop, and it says so rather than silently reporting success.
+        let _ = app;
+        return Err(MOBILE_UNSUPPORTED.into());
     }
+    #[cfg(desktop)]
+    {
+        if let Some(win) = app.get_webview_window(CAPTURE_LABEL) {
+            win.show().map_err(|e| e.to_string())?;
+            win.set_focus().map_err(|e| e.to_string())?;
+            // The box remembers nothing between uses; tell the webview to clear.
+            let _ = win.emit("solomd://quick-capture-reset", ());
+            return Ok(());
+        }
 
-    let win = WebviewWindowBuilder::new(
-        &app,
-        CAPTURE_LABEL,
-        WebviewUrl::App("index.html?quickCapture=1".into()),
-    )
-    .title("SoloMD — Quick Capture")
-    .inner_size(560.0, 180.0)
-    .resizable(false)
-    .decorations(false)
-    .always_on_top(true)
-    .center()
-    .skip_taskbar(true)
-    .focused(true)
-    .build()
-    .map_err(|e| e.to_string())?;
+        let win = WebviewWindowBuilder::new(
+            &app,
+            CAPTURE_LABEL,
+            WebviewUrl::App("index.html?quickCapture=1".into()),
+        )
+        .title("SoloMD — Quick Capture")
+        .inner_size(560.0, 180.0)
+        .resizable(false)
+        .decorations(false)
+        .always_on_top(true)
+        .center()
+        .skip_taskbar(true)
+        .focused(true)
+        .build()
+        .map_err(|e| e.to_string())?;
 
-    let _ = win.set_focus();
-    Ok(())
+        let _ = win.set_focus();
+        Ok(())
+    }
 }
 
 /// Hide (never destroy) the box — recreating a webview on every capture is
 /// slow enough to be felt, and the whole point is that it is instant.
 #[tauri::command]
 pub fn quick_capture_close(app: AppHandle) -> Result<(), String> {
+    #[cfg(desktop)]
     if let Some(win) = app.get_webview_window(CAPTURE_LABEL) {
         win.hide().map_err(|e| e.to_string())?;
     }
+    #[cfg(not(desktop))]
+    let _ = app;
     Ok(())
 }
 
