@@ -26,7 +26,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v4.11.22 · just shipped · MIT · 5 platforms',
+      badge: 'v4.12.0 · just shipped · MIT · 5 platforms',
       title1: 'Everything Typora does.',
       title2: 'Free.',
       subtagline: 'Live WYSIWYG preview, tabs, themes, PDF / Word export — plus AI rewrite, folder sync, and native iOS & Android apps. MIT-licensed. No account, no subscription, no ads.',
@@ -165,7 +165,7 @@ export const t = {
         },
         {
           q: 'Does SoloMD work on Android and iOS?',
-          a: 'Yes. SoloMD 4.11.22 ships native Android (API 24+, ARM64 + ARMv7 + x86_64) and iOS (15+) builds. Android is available as sideload .apk on GitHub Releases and via the Google Play beta (join the group groups.google.com/g/solomd-android-testers, then opt in at play.google.com/apps/testing/app.solomd). iOS is on the App Store. Both mobile builds support live preview, Wiki links, AI rewrite, and folder-based sync via iCloud / Files / SD card.',
+          a: 'Yes. SoloMD 4.12.0 ships native Android (API 24+, ARM64 + ARMv7 + x86_64) and iOS (15+) builds. Android is available as sideload .apk on GitHub Releases and via the Google Play beta (join the group groups.google.com/g/solomd-android-testers, then opt in at play.google.com/apps/testing/app.solomd). iOS is on the App Store. Both mobile builds support live preview, Wiki links, AI rewrite, and folder-based sync via iCloud / Files / SD card.',
         },
         {
           q: 'Does SoloMD work offline?',
@@ -376,7 +376,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v4.11.22 · 正式发布 · MIT 协议 · 5 大平台',
+      badge: 'v4.12.0 · 正式发布 · MIT 协议 · 5 大平台',
       title1: 'Typora 能做的，它全能做。',
       title2: '免费。',
       subtagline: '所见即所得实时预览、多标签、主题、PDF / Word 导出 —— 还有 AI 改写、文件夹同步、原生 iOS 与 Android 应用。MIT 开源，无账号、无订阅、无广告。',
@@ -515,7 +515,7 @@ export const t = {
         },
         {
           q: 'SoloMD 支持 Android 和 iOS 吗？',
-          a: '支持。SoloMD 4.11.22 提供原生 Android(API 24+,ARM64 + ARMv7 + x86_64)和 iOS(15+)版本。Android 可在 GitHub Releases 下载 .apk 侧载,或加入 Google Play 测试(先加入群组 groups.google.com/g/solomd-android-testers，再到 play.google.com/apps/testing/app.solomd 报名)。iOS 在 App Store 上架。两个移动端都支持实时预览、Wiki 链接、AI 改写,通过 iCloud / 文件 / SD 卡做文件夹同步。',
+          a: '支持。SoloMD 4.12.0 提供原生 Android(API 24+,ARM64 + ARMv7 + x86_64)和 iOS(15+)版本。Android 可在 GitHub Releases 下载 .apk 侧载,或加入 Google Play 测试(先加入群组 groups.google.com/g/solomd-android-testers，再到 play.google.com/apps/testing/app.solomd 报名)。iOS 在 App Store 上架。两个移动端都支持实时预览、Wiki 链接、AI 改写,通过 iCloud / 文件 / SD 卡做文件夹同步。',
         },
         {
           q: 'SoloMD 能离线用吗？',
@@ -726,7 +726,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v4.11.22 · リリース · MIT · 5 プラットフォーム',
+      badge: 'v4.12.0 · リリース · MIT · 5 プラットフォーム',
       title1: '無料の Markdown',
       title2: 'フルセット。',
       subtagline: '欲しい機能、全部入り。ライブプレビュー、Wiki リンク、ローカル RAG、BYOK AI、テーマ、Pomodoro、クロスプラットフォーム同期 —— すべて内蔵。',
@@ -968,7 +968,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v4.11.22 · 출시 · MIT · 5 플랫폼',
+      badge: 'v4.12.0 · 출시 · MIT · 5 플랫폼',
       title1: '무료 Markdown',
       title2: '풀세트.',
       subtagline: '원하는 기능, 전부 내장. 라이브 미리보기, Wiki 링크, 로컬 RAG, BYOK AI, 테마, Pomodoro, 크로스 플랫폼 동기화.',
@@ -1210,7 +1210,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v4.11.22 · gerade veröffentlicht · MIT · 5 Plattformen',
+      badge: 'v4.12.0 · gerade veröffentlicht · MIT · 5 Plattformen',
       title1: 'Das kostenlose',
       title2: 'Markdown-Komplettpaket.',
       subtagline: 'Alles, was du brauchst — eingebaut. Live-Vorschau, Wiki-Links, lokales RAG, BYOK-KI, Themes, Pomodoro, plattformübergreifende Sync.',
@@ -1452,7 +1452,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v4.11.22 · vient de sortir · MIT · 5 plateformes',
+      badge: 'v4.12.0 · vient de sortir · MIT · 5 plateformes',
       title1: 'Le Markdown gratuit',
       title2: 'tout-en-un.',
       subtagline: 'Tout ce dont vous avez besoin, intégré. Aperçu en direct, liens Wiki, RAG local, IA BYOK, thèmes, Pomodoro, synchronisation multiplateforme.',
@@ -1694,7 +1694,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v4.11.22 · recién lanzado · MIT · 5 plataformas',
+      badge: 'v4.12.0 · recién lanzado · MIT · 5 plataformas',
       title1: 'El Markdown gratis',
       title2: 'todo en uno.',
       subtagline: 'Todo lo que necesitas, integrado. Vista previa en vivo, enlaces Wiki, RAG local, IA BYOK, temas, Pomodoro, sincronización multiplataforma.',
@@ -1936,7 +1936,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v4.11.22 · acabou de sair · MIT · 5 plataformas',
+      badge: 'v4.12.0 · acabou de sair · MIT · 5 plataformas',
       title1: 'O Markdown grátis',
       title2: 'pacote completo.',
       subtagline: 'Tudo o que você precisa, integrado. Pré-visualização ao vivo, links Wiki, RAG local, IA BYOK, temas, Pomodoro, sincronização multiplataforma.',
@@ -2178,7 +2178,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v4.11.22 · appena rilasciato · MIT · 5 piattaforme',
+      badge: 'v4.12.0 · appena rilasciato · MIT · 5 piattaforme',
       title1: 'Il Markdown gratuito',
       title2: 'tutto incluso.',
       subtagline: 'Tutto quello che ti serve, integrato. Anteprima dal vivo, link Wiki, RAG locale, IA BYOK, temi, Pomodoro, sincronizzazione multipiattaforma.',
@@ -2420,7 +2420,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v4.11.22 · świeża premiera · MIT · 5 platform',
+      badge: 'v4.12.0 · świeża premiera · MIT · 5 platform',
       title1: 'Darmowy Markdown',
       title2: 'wszystko w jednym.',
       subtagline: 'Wszystko, czego potrzebujesz — wbudowane. Podgląd na żywo, linki Wiki, lokalny RAG, BYOK AI, motywy, Pomodoro, synchronizacja wieloplatformowa.',
@@ -2662,7 +2662,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v4.11.22 · zojuist uitgebracht · MIT · 5 platforms',
+      badge: 'v4.12.0 · zojuist uitgebracht · MIT · 5 platforms',
       title1: 'De gratis Markdown',
       title2: 'alles-in-één.',
       subtagline: 'Alles wat je nodig hebt, ingebouwd. Live preview, Wiki-links, lokale RAG, BYOK AI, thema\'s, Pomodoro, platformoverschrijdende synchronisatie.',
@@ -2904,7 +2904,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v4.11.22 · yeni yayımlandı · MIT · 5 platform',
+      badge: 'v4.12.0 · yeni yayımlandı · MIT · 5 platform',
       title1: 'Ücretsiz Markdown',
       title2: 'tam paket.',
       subtagline: 'İhtiyacınız olan her şey, dahili. Canlı önizleme, Wiki bağlantıları, yerel RAG, BYOK AI, temalar, Pomodoro, çoklu platform senkronizasyonu.',
@@ -3146,7 +3146,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v4.11.22 · just släppt · MIT · 5 plattformar',
+      badge: 'v4.12.0 · just släppt · MIT · 5 plattformar',
       title1: 'Den gratis Markdown',
       title2: 'allt-i-ett.',
       subtagline: 'Allt du behöver, inbyggt. Live-förhandsvisning, Wiki-länkar, lokal RAG, BYOK AI, teman, Pomodoro, plattformsoberoende synk.',
@@ -3388,7 +3388,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v4.11.22 · щойно випущено · MIT · 5 платформ',
+      badge: 'v4.12.0 · щойно випущено · MIT · 5 платформ',
       title1: 'Безкоштовний Markdown',
       title2: 'все в одному.',
       subtagline: 'Усе, що вам потрібно, вбудовано. Живий перегляд, Wiki-посилання, локальний RAG, BYOK AI, теми, Pomodoro, кросплатформенна синхронізація.',

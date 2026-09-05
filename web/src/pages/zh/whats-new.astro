@@ -5,7 +5,7 @@ import Footer from '../../components/Footer.astro';
 import Giscus from '../../components/Giscus.astro';
 
 const lang = 'zh' as const;
-const VERSION = '4.11.22';
+const VERSION = '4.12.0';
 const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERSION}`;
 ---
 
@@ -38,6 +38,28 @@ const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERS
         <a class="btn btn--secondary btn--lg" href={`${baseUrl}/SoloMD_${VERSION}_x64_en-US.msi`}>下载 (Windows)</a>
         <a class="btn btn--secondary btn--lg" href={`https://github.com/zhitongblog/solomd/releases/tag/v${VERSION}`}>所有平台 →</a>
       </div>
+
+      <section>
+        <p class="version-row" style="margin-top:8px;">
+          <span class="version-tag">v4.12.0</span>
+          <time>2026 年 9 月</time>
+        </p>
+        <h2 style="margin-top:8px;">4.12.0 —— 折起来、印出来、撤回去。</h2>
+        <ul>
+          <li><strong>折叠标题，连同它下面的所有内容。</strong>点行号旁的箭头，或者用折叠命令收起当前一节、全部小节、或某一级以下的全部。折叠模型是纯文本扫描而不是 CodeMirror 的功能，所以 Windows 那套 textarea 编辑器里表现完全一致。</li>
+          <li><strong>打印不再跟着应用主题走。</strong>以前深色主题就打出深色 —— 纸上全是墨，导出的 PDF 也没法看。现在打印和 PDF 用自己的浅色配色，如果你确实想要深色，也有明确的选项。</li>
+          <li><strong>删除文件后有八秒可以撤销。</strong>做法是把删除本身推迟，而不是把文件先挪到某个巧妙的地方：在计时结束前，文件一直待在原处。任何需要文件系统先落定的操作 —— 新建、重命名、切换工作区、关窗 —— 都会先把待删除的操作执行掉再继续。</li>
+          <li><strong>随时随地快速记一笔。</strong>一个全局快捷键（默认 ⌘⌥M）在你正在做的任何事情上面弹出一个小框，输入一行、回车，它就进了收件箱，SoloMD 全程不用切到前台。</li>
+          <li><strong>任务面板。</strong>工作区里所有的 <code>- [ ]</code> 汇成一张表。优先级和截止日期两种写法都认：Obsidian Tasks 的表情符号（<code>⏫</code>、<code>📅 2026-09-10</code>）和纯 ASCII 写法（<code>!!!</code>、<code>due:2026-09-10</code>）—— 这样已有的库直接能用，也不必为了写个优先级去翻表情面板。点一条跳到那一行，勾上就写回文件。</li>
+          <li><strong>导入 Word、PDF、HTML 和表格。</strong>转换器本来就在应用里，只是没有入口。现在菜单里有了 —— 而且导入时重名不会覆盖，会自动取下一个没被占用的名字；比较是不分大小写的，因为 Windows 和 macOS 对"什么算重名"的看法并不一致。</li>
+          <li><strong>用表格编辑器改表。</strong>增删行列不用再数竖线。中日韩文字按显示宽度对齐，所以 Markdown 源码在等宽字体下不会每多一个汉字就歪一格。</li>
+          <li><strong>DOCX 模板。</strong>封面、目录、页眉、页码 —— 三套预设，也可以在 frontmatter 里用 <code>docx:</code> 按单篇设置。</li>
+          <li><strong>公式编号和交叉引用。</strong>行间公式上的 <code>\label</code> 会得到编号和锚点，<code>\eqref</code> 变成能跳过去的链接。</li>
+          <li><strong>工作区文件夹被删掉时，不再看起来像空库。</strong>如果文件夹在我们脚下消失了，文件树会用它自己的名字显示一片空 —— 和"里面的文件全丢了"完全分不出来。现在会明确说文件夹不见了，文件夹回来时提示也会自己消失。</li>
+          <li><strong>文件树右键菜单显示的是键名。</strong>有四个字符串从来没有在任何语言里定义过，所以菜单里显示的是 <code>explorer.copyGitUrl</code> 而不是一个标签 —— 十四种语言全都如此。现在都补上了。</li>
+          <li><strong>给 agent 用：MCP 增加 <code>list_tasks</code>。</strong>返回工作区里每一个复选框及其文件、行号和完成状态，和任务面板看到的是同一份 —— 这样 agent 和面板不会对"该勾哪一行"产生分歧。</li>
+        </ul>
+      </section>
 
       <section>
         <p class="version-row" style="margin-top:8px;">

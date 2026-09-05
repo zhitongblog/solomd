@@ -5,7 +5,7 @@ import Footer from '../components/Footer.astro';
 import Giscus from '../components/Giscus.astro';
 
 const lang = 'en' as const;
-const VERSION = '4.11.22';
+const VERSION = '4.12.0';
 const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERSION}`;
 ---
 
@@ -39,6 +39,28 @@ const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERS
         <a class="btn btn--secondary btn--lg" href={`${baseUrl}/SoloMD_${VERSION}_x64_en-US.msi`}>Download (Windows)</a>
         <a class="btn btn--secondary btn--lg" href={`https://github.com/zhitongblog/solomd/releases/tag/v${VERSION}`}>All assets →</a>
       </div>
+
+      <section>
+        <p class="version-row" style="margin-top:8px;">
+          <span class="version-tag">v4.12.0</span>
+          <time>Sep 2026</time>
+        </p>
+        <h2 style="margin-top:8px;">4.12.0 — fold it, print it, undo it.</h2>
+        <ul>
+          <li><strong>Fold a heading and everything under it.</strong> Click the arrow in the gutter, or use the Fold commands to collapse a section, every section, or everything below a level. The model is a plain text scan rather than a CodeMirror feature, so it works the same in the plain-textarea editor Windows uses.</li>
+          <li><strong>Printing no longer follows your app theme.</strong> A dark theme used to print dark — ink on paper, or a PDF nobody could read. Print and PDF now use their own light palette, with an explicit dark option if that is what you actually wanted.</li>
+          <li><strong>Deleting a file gives you eight seconds to undo.</strong> The delete is held rather than the file moved somewhere clever: it stays exactly where it is until the timer runs out. Anything that needs the filesystem settled first — creating, renaming, switching workspace, closing the window — flushes the pending delete before it acts.</li>
+          <li><strong>Quick capture, from anywhere.</strong> A system-wide chord (⌘⌥M by default) opens a small box over whatever you are doing. Type a line, press Enter, and it lands in your Inbox without SoloMD ever coming forward.</li>
+          <li><strong>A Tasks panel.</strong> Every <code>- [ ]</code> in the workspace, in one list. Priorities and due dates are read from either the Obsidian Tasks emoji (<code>⏫</code>, <code>📅 2026-09-10</code>) or a plain-ASCII form (<code>!!!</code>, <code>due:2026-09-10</code>), so an existing vault keeps working and nobody has to reach for an emoji picker mid-sentence. Click a task to jump to its line; tick it to write the file.</li>
+          <li><strong>Import Word, PDF, HTML and spreadsheets.</strong> The converters were already in the app with no way to reach them. There is now a menu entry — and importing a name that already exists picks the next free one instead of overwriting, compared case-insensitively, because Windows and macOS disagree about what counts as a collision.</li>
+          <li><strong>Edit a table as a grid.</strong> Add and remove rows and columns without counting pipes. CJK text is padded by display width, so the Markdown source stays aligned in a monospace font instead of drifting one column per Chinese character.</li>
+          <li><strong>DOCX templates.</strong> Cover page, table of contents, running header, page numbers — three presets, or set per document with a <code>docx:</code> block in the front matter.</li>
+          <li><strong>Numbered equations and cross-references.</strong> <code>\label</code> on a display equation gets a number and an anchor; <code>\eqref</code> becomes a link that jumps to it.</li>
+          <li><strong>A deleted workspace folder no longer looks like an empty vault.</strong> If the folder went away underneath us, the tree showed nothing under its own name — indistinguishable from having lost every file in it. It now says the folder is missing, and clears the warning by itself when the folder comes back.</li>
+          <li><strong>The file-tree context menu printed key names.</strong> Four strings were never defined in any language, so the menu showed <code>explorer.copyGitUrl</code> instead of a label — in all fourteen. Defined everywhere now.</li>
+          <li><strong>For agents: <code>list_tasks</code> in the MCP server.</strong> Every checkbox in the workspace with its file, line and done state, matching what the Tasks panel shows — so an agent and the panel cannot disagree about which line to tick.</li>
+        </ul>
+      </section>
 
       <section>
         <p class="version-row" style="margin-top:8px;">
