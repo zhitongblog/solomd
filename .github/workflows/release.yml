@@ -121,12 +121,9 @@ jobs:
           releaseBody: |
             ## SoloMD ${{ github.ref_name }}
 
-            ### Windows installer hotfix
+            ### What's new / 更新内容
 
-            - MSI is now the only installed Windows channel and uses `C:\Program Files\SoloMD`.
-            - Portable ZIP remains available for users who do not want an installation.
-            - On first MSI launch, SoloMD safely removes a verified legacy `%LOCALAPPDATA%\SoloMD` NSIS install, its stale shortcuts, and its old taskbar pin.
-            - `%APPDATA%\app.solomd`, settings, and user documents are preserved.
+            https://solomd.app/whats-new · [中文](https://solomd.app/zh/whats-new)
 
             ### Install / 安装
 

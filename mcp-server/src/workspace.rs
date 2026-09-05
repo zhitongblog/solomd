@@ -426,3 +426,94 @@ pub fn read_context(path: &Path, line_no: u32) -> Vec<String> {
         .filter_map(|x| x.map(|s| s.to_string()))
         .collect()
 }
+
+// ---------------------------------------------------------------------------
+// Tasks
+// ---------------------------------------------------------------------------
+
+/// One Markdown checkbox, located in the file as it sits on disk.
+#[derive(Debug, Clone, Serialize)]
+pub struct TaskRef {
+    /// 1-based, counted over the raw file including front matter.
+    pub line: u32,
+    pub text: String,
+    pub done: bool,
+}
+
+/// Find every `- [ ]` / `- [x]` line, skipping front matter and fenced code.
+///
+/// Kept deliberately in step with `extract_tasks` in the app's
+/// `workspace_index.rs`: an agent asking for the task list and the Tasks panel
+/// showing it must agree on what counts as a task, or toggling one through MCP
+/// writes to a line the panel never listed.
+pub fn extract_tasks(raw: &str) -> Vec<TaskRef> {
+    static RE: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"^\s*[-*+]\s+\[([ xX])\]\s+(.+?)\s*$").expect("task regex")
+    });
+    let mut out = Vec::new();
+    let mut in_fence = false;
+    let mut in_front_matter = false;
+    for (idx, line) in raw.lines().enumerate() {
+        let trimmed = line.trim_start();
+        if idx == 0 && line.trim_end() == "---" {
+            in_front_matter = true;
+            continue;
+        }
+        if in_front_matter {
+            if line.trim_end() == "---" || line.trim_end() == "..." {
+                in_front_matter = false;
+            }
+            continue;
+        }
+        if trimmed.starts_with("```") || trimmed.starts_with("~~~") {
+            in_fence = !in_fence;
+            continue;
+        }
+        if in_fence {
+            continue;
+        }
+        if let Some(cap) = RE.captures(line) {
+            let done = cap.get(1).map(|m| m.as_str() != " ").unwrap_or(false);
+            let text = cap.get(2).map(|m| m.as_str().trim().to_string()).unwrap_or_default();
+            if text.is_empty() {
+                continue;
+            }
+            out.push(TaskRef { line: idx as u32 + 1, text, done });
+        }
+    }
+    out
+}
+
+#[cfg(test)]
+mod task_tests {
+    use super::extract_tasks;
+
+    /// The three things the extractor has to get right, in one document:
+    /// front matter is not scanned, fenced code is not scanned, and the line
+    /// numbers are the ones a caller would seek to in the file on disk.
+    #[test]
+    fn skips_front_matter_and_fences_and_counts_raw_lines() {
+        let doc = "---\ntitle: Plans\ntodo: - [ ] not a task, this is front matter\n---\n\n\
+                   - [ ] buy milk\n- [x] ship 4.12\n\n\
+                   ```md\n- [ ] example inside a fence\n```\n\n\
+                   - [ ] last one\n";
+        let tasks = extract_tasks(doc);
+
+        assert_eq!(tasks.len(), 3, "front matter and fenced code must not count");
+        assert_eq!(tasks[0].text, "buy milk");
+        assert_eq!(tasks[0].line, 6, "line numbers count the front matter");
+        assert!(!tasks[0].done);
+        assert_eq!(tasks[1].text, "ship 4.12");
+        assert!(tasks[1].done);
+        assert_eq!(tasks[2].text, "last one");
+        assert_eq!(tasks[2].line, 13);
+    }
+
+    /// `*` and `+` are list markers too, and an empty box is not a task.
+    #[test]
+    fn accepts_every_list_marker_and_ignores_empty_text() {
+        let tasks = extract_tasks("* [ ] star\n+ [x] plus\n- [ ] \n  - [ ] indented\n");
+        assert_eq!(tasks.len(), 3);
+        assert_eq!(tasks[2].text, "indented");
+    }
+}

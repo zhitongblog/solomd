@@ -185,6 +185,16 @@ pub struct ListTagsArgs {
 }
 
 #[derive(Debug, Deserialize, Serialize, JsonSchema)]
+pub struct ListTasksArgs {
+    /// Workspace selector — alias or absolute path. Default = first workspace.
+    #[serde(default)]
+    pub workspace: Option<String>,
+    /// `false` for open tasks only, `true` for completed only. Omit for both.
+    #[serde(default)]
+    pub done: Option<bool>,
+}
+
+#[derive(Debug, Deserialize, Serialize, JsonSchema)]
 pub struct SyncStatusArgs {
     /// Workspace selector — alias or absolute path. Default = first workspace.
     #[serde(default)]
@@ -520,6 +530,48 @@ impl SoloMdServer {
         out.sort_by(|a, b| b.count.cmp(&a.count).then_with(|| a.tag.cmp(&b.tag)));
         Ok(CallToolResult::success(vec![
             Content::json(serde_json::json!({ "tags": out, "count": out.len() }))
+                .map_err(|e| McpError::internal_error(e.to_string(), None))?
+        ]))
+    }
+
+    /// Every checkbox in the workspace.
+    ///
+    /// The line numbers are counted over the file as it sits on disk, front
+    /// matter included — a caller that wants to toggle a box has to seek to
+    /// the same line the editor would, and counting from the body instead
+    /// would silently shift every task in a note that has front matter.
+    #[tool(
+        name = "list_tasks",
+        description = "Return every Markdown checkbox (`- [ ]` / `- [x]`) in the workspace, with its file, 1-based line number, done state, and text. Checkboxes inside fenced code blocks and front matter are skipped. Pass `done` to filter to open or completed tasks only, and `workspace` (alias or absolute path) to target a non-default workspace."
+    )]
+    pub async fn list_tasks(
+        &self,
+        args: Parameters<ListTasksArgs>,
+    ) -> Result<CallToolResult, McpError> {
+        let workspace = self
+            .resolve_workspace(args.0.workspace.as_deref())
+            .map_err(|e| McpError::invalid_params(e, None))?;
+        let want_done = args.0.done;
+        let mut out: Vec<serde_json::Value> = Vec::new();
+        for path in workspace::walk_markdown_files(workspace) {
+            let note = match workspace::read_full(&path) {
+                Ok(n) => n,
+                Err(_) => continue,
+            };
+            for task in workspace::extract_tasks(&note.content) {
+                if want_done.is_some_and(|w| w != task.done) {
+                    continue;
+                }
+                out.push(serde_json::json!({
+                    "file": note.path,
+                    "line": task.line,
+                    "done": task.done,
+                    "text": task.text,
+                }));
+            }
+        }
+        Ok(CallToolResult::success(vec![
+            Content::json(serde_json::json!({ "tasks": out, "count": out.len() }))
                 .map_err(|e| McpError::internal_error(e.to_string(), None))?
         ]))
     }

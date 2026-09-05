@@ -3,12 +3,38 @@
  * whiteboard fence (F7), mirroring Tolaria's tldrawMarkdown.test.ts.
  *
  * Pure-string: no tldraw / Vue / CodeMirror imported, so this suite runs
- * without the heavy dep. (Vitest is added to the repo in a later minor; until
- * then the same assertions run headless via
- * /tmp/tolaria/checks/whiteboard-roundtrip.mjs.)
+ * without the heavy dep.
+ *
+ * Runs on `node:test` like every other suite here. It was written against
+ * vitest, which this repo does not depend on — so for its whole life the file
+ * threw ERR_MODULE_NOT_FOUND before reaching a single assertion, while looking
+ * like 26 of them were passing. The three matchers it uses are shimmed below
+ * rather than rewritten inline, so the assertions stay byte-for-byte the ones
+ * that were reviewed.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+
+function expect(actual: unknown) {
+  return {
+    toBe: (expected: unknown) => assert.strictEqual(actual, expected),
+    toBeLessThan: (limit: number) => assert.ok(
+      (actual as number) < limit,
+      `expected ${actual} to be less than ${limit}`,
+    ),
+    toBeGreaterThanOrEqual: (limit: number) => assert.ok(
+      (actual as number) >= limit,
+      `expected ${actual} to be >= ${limit}`,
+    ),
+    toContain: (needle: string) => assert.ok(
+      String(actual).includes(needle),
+      `expected value to contain ${JSON.stringify(needle)}`,
+    ),
+    toBeNull: () => assert.strictEqual(actual, null),
+    toEqual: (expected: unknown) => assert.deepStrictEqual(actual, expected),
+  };
+}
 import {
   serializeTldrawFence,
   parseTldrawFence,
