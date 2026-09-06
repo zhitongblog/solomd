@@ -40,61 +40,90 @@ SoloMD is an asynchronous multi-platform ecosystem combining a high-performance 
 ```
                    [ Tag Push: v* ]
                           │
-       ┌──────────────────┼──────────────────┐
-       ▼ (Fan-Out)        ▼ (Fan-Out)        ▼ (Fan-Out)
- ┌───────────────┐ ┌───────────────┐ ┌───────────────┐
- │ build-desktop │ │ web-clipper   │ │ crates-io OIDC│
- │ (4 Matrix OS) │ │ (Chrome/FF)   │ │ (Ephemeral)   │
- └───────┬───────┘ └───────┬───────┘ └───────┬───────┘
-         │                 │                 │
-         └─────────┬───────┴─────────────────┘
-                   ▼ (upload-artifact)
+       ┌──────────────────┴──────────────────┐
+       ▼ (Phase 1: Fail-Fast Gate)           │
+ ┌───────────────┐                           │
+ │build-satellites│ (WebExtensions + Skills) │
+ └───────┬───────┘                           │
+         │ (Only if Phase 1 passes)          │
+         ▼ (Phase 2: Fan-Out Matrix)         │
+ ┌─────────────────────────────────────────┐ │
+ │ build-desktop                           │ │
+ │ • macOS Universal (.dmg)                │ │
+ │ • Windows x64/ARM64 (.msi, .zip)        │ │
+ │ • Linux x64/ARM64 (.AppImage, .deb, .rpm)│ │
+ └───────────────────┬─────────────────────┘ │
+                     │                       │
+                     ▼ (upload-artifact)     │
      [ GitHub Actions Internal Scratch Storage ]
-                   │
-                   ▼ (Fan-In: download-artifact)
-         ┌───────────────────┐
-         │     Job: host     │ (Single Atomic Publisher Node)
-         │  • CycloneDX SBOM │
-         │  • SHA256SUMS.txt │
-         │  • SLSA L3 Attest │
-         └─────────┬─────────┘
-                   │
-                   ▼ (1 Single Atomic HTTP Request)
-      [ gh release create "$TAG" artifacts/* ]
-                   │
-                   ▼ (Post-Release Sync)
-      ┌─────────────────────────┐
-      │ Job: publish-homebrew   │ (Updates zhitongblog/homebrew-cask)
-      └─────────────────────────┘
+                     │
+                     ▼ (Phase 3: Fan-In Publisher Node)
+         ┌─────────────────────────────────┐
+         │            Job: host            │
+         │  1. CycloneDX SBOM (JSON)       │
+         │  2. SSOT dist-manifest.json     │
+         │  3. SHA256SUMS.txt              │
+         │  4. Ruby Engine -> solomd.rb    │
+         │  5. SLSA Level 3 Attestation    │
+         └───────────────┬─────────────────┘
+                         │
+                         ▼ (1 Single Atomic HTTP Request)
+            [ gh release create "$TAG" artifacts/* ]
+                         │
+        ┌────────────────┴────────────────┐
+        ▼ (Phase 4A: Post-Release)        ▼ (Phase 4B: Post-Release)
+ ┌─────────────────────────────┐   ┌─────────────────────────────┐
+ │    publish-homebrew         │   │      publish-crates-io      │
+ │ Writes Casks/solomd.rb to   │   │ OIDC Ephemeral Token        │
+ │ zx0r/homebrew-solomd        │   │ cargo publish solomd-mcp    │
+ └─────────────────────────────┘   └─────────────────────────────┘
 ```
 
 ```mermaid
 graph TD
-    subgraph "ci.yml: Deterministic Pre-Merge Verification"
-        A[Git Push / PR] --> B[quality-frontend: Vue 3 / TS / Vite / Clipper]
-        A --> C[quality-rust: fmt / clippy --all-targets]
-        A --> D[test-suite: nextest workspace + e2e smoke]
-        A --> E[security-audit: cargo-audit + pnpm-audit]
+    Tag["Tag Push: v*.*.*"] --> Phase1["Phase 1: Fast Satellites Gate"]
+    
+    subgraph "Phase 1: Fast Component Packaging"
+        Phase1 --> Clipper["Compile WebExtensions"]
+        Phase1 --> Skills["Package Skill Pack"]
     end
-
-    subgraph "release.yml: Fan-Out / Fan-In Atomic Orchestration"
-        T[Tag Push: v*] --> M_DESK[Phase 1A: build-desktop Matrix Win/Linux]
-        T --> M_CLIP[Phase 1B: build-web-clipper Chrome/Firefox]
-        T --> M_CRATE[Phase 1C: publish-crates-io OIDC RFC 8693]
-
-        M_DESK -->|upload-artifact| ART_STORE[Actions Internal Scratch Storage]
-        M_CLIP -->|upload-artifact| ART_STORE
-
-        ART_STORE --> HOST[Phase 2: Job host Single Publisher Node]
-        M_CRATE --> HOST
-
-        HOST -->|download-artifact| HOST_RUN[Host Execution Engine]
-        HOST_RUN --> F_SBOM[Generate CycloneDX SBOM JSON]
-        HOST_RUN --> F_HASH[Compute Canonical SHA256SUMS.txt]
-        HOST_RUN --> F_SLSA[Attest Build Provenance SLSA L3 via Sigstore/Rekor]
-        HOST_RUN -->|1 Single Atomic Request| GH_REL[gh release create TAG artifacts/*]
-
-        GH_REL --> BREW[Phase 3: publish-homebrew Sync Formula]
+    
+    Clipper --> Phase2["Phase 2: Multi-Platform Fan-Out Matrix"]
+    Skills --> Phase2
+    
+    subgraph "Phase 2: Compilation Matrix"
+        Phase2 --> WinX64["Windows x64: MSI + Portable + Defender Scan"]
+        Phase2 --> WinArm["Windows ARM64: MSI + Portable"]
+        Phase2 --> LinuxX64["Linux x64: AppImage + Deb + RPM + MCP Tar"]
+        Phase2 --> LinuxArm["Linux ARM64: AppImage + Deb + RPM"]
+        Phase2 --> MacUniversal["macOS Universal: DMG Bundle"]
+    end
+    
+    WinX64 --> Phase3["Phase 3: Host Aggregator & SSOT Compiler"]
+    WinArm --> Phase3
+    LinuxX64 --> Phase3
+    LinuxArm --> Phase3
+    MacUniversal --> Phase3
+    
+    subgraph "Phase 3: Host & Attestation (Fan-In)"
+        Phase3 --> SBOM["1. CycloneDX SBOM Generation"]
+        SBOM --> Manifest["2. SSOT Manifest Compiler & Ruby Cask Engine"]
+        Manifest --> DistJSON["artifacts/dist-manifest.json"]
+        Manifest --> SHA256["artifacts/SHA256SUMS.txt"]
+        Manifest --> Cask["target/distrib/solomd.rb"]
+        DistJSON --> Attest["3. SLSA L3 Attestation via Sigstore"]
+        SHA256 --> Attest
+        Attest --> GHRelease["4. Atomic GitHub Release: gh release create"]
+    end
+    
+    GHRelease --> Phase4A["Phase 4A: Homebrew Tap Sync"]
+    GHRelease --> Phase4B["Phase 4B: Crates.io Trusted Publish"]
+    
+    subgraph "Phase 4: Post-Release Distribution"
+        Phase4A --> TapGit["Checkout zx0r/homebrew-solomd with HOMEBREW_TAP_TOKEN"]
+        TapGit --> CommitCask["Write Casks/solomd.rb & Git Commit/Push"]
+        Phase4B --> OIDC["OIDC Token Exchange RFC 8693"]
+        OIDC --> CratesPublish["cargo publish solomd-mcp"]
     end
 ```
 
@@ -485,38 +514,15 @@ jobs:
           if-no-files-found: error
 
   # ---------------------------------------------------------------------------
-  # Phase 1C: Crates.io Trusted Publishing via OIDC RFC 8693 (Fan-Out)
-  # ---------------------------------------------------------------------------
-  publish-crates-io:
-    name: "Publish MCP Crate (OIDC)"
-    runs-on: ubuntu-latest
-    environment: crates.io
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - uses: rust-lang/crates-io-auth-action@v1
-        id: auth
-
-      - name: Execute Verified Crates.io Publication
-        shell: bash
-        run: cargo publish --manifest-path mcp-server/Cargo.toml
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
-
-  # ---------------------------------------------------------------------------
-  # Phase 2: Single Atomic Release Publisher & Provenance Signer (Fan-In)
+  # Phase 3: Single Atomic Release Publisher & Provenance Signer (Fan-In)
   # ---------------------------------------------------------------------------
   host:
     name: "Publish GitHub Release & Attestations"
-    needs: [build-desktop, build-web-clipper, publish-crates-io]
+    needs: [build-satellites, build-desktop]
     runs-on: ubuntu-24.04
+    outputs:
+      manifest: ${{ steps.manifest.outputs.manifest }}
+      tag: ${{ steps.manifest.outputs.tag }}
     permissions:
       contents: write
       id-token: write
@@ -544,12 +550,125 @@ jobs:
           cargo cyclonedx --manifest-path app/src-tauri/Cargo.toml --format json --output-pattern "artifacts/solomd-app-bom.json"
           cargo cyclonedx --manifest-path mcp-server/Cargo.toml --format json --output-pattern "artifacts/solomd-mcp-bom.json"
 
-      - name: Compute Canonical Checksums Manifest (SHA256SUMS.txt)
-        working-directory: artifacts
+      - id: manifest
+        name: Compile Distribution Manifest & Homebrew Cask
+        env:
+          GH_REPO: ${{ github.repository }}
+          TAG_NAME: ${{ github.ref_name }}
         run: |
-          rm -f SHA256SUMS.txt
-          sha256sum * > SHA256SUMS.txt
-          cat SHA256SUMS.txt
+          ruby <<'EOF'
+          require 'digest'
+          require 'fileutils'
+          require 'json'
+
+          tag = ENV.fetch('TAG_NAME')
+          version = tag.sub(/^v/, '')
+          repo = ENV.fetch('GH_REPO')
+
+          # 1. Сканируем все артефакты и вычисляем SHA256
+          artifacts_map = []
+          Dir.glob('artifacts/*').sort.each do |fpath|
+            next if File.directory?(fpath)
+            fname = File.basename(fpath)
+            next if fname == 'dist-manifest.json' || fname == 'SHA256SUMS.txt'
+
+            sha256 = Digest::SHA256.file(fpath).hexdigest
+            artifacts_map << {
+              "name" => fname,
+              "path" => fname,
+              "size" => File.size(fpath),
+              "sha256" => sha256
+            }
+          end
+
+          # 2. Формируем тело релиза
+          release_body = <<~MARKDOWN
+            ## SoloMD #{tag}
+
+            ### Verification & Security
+            - **SLSA Level 3 Provenance**: All artifacts are cryptographically signed via GitHub OIDC & Sigstore.
+            - **Checksums**: Verify your download using the attached `SHA256SUMS.txt`.
+            - **SBOM**: Software Bill of Materials provided in CycloneDX JSON format (`solomd-app-bom.json`, `solomd-mcp-bom.json`).
+            - **Manifest**: Complete machine-readable distribution metadata in `dist-manifest.json`.
+
+            ### Downloads
+            - **macOS**: `.dmg` (Universal binary for Apple Silicon & Intel)
+            - **Windows**: `.msi` installer or portable `.zip` (x64 / ARM64)
+            - **Linux**: `.AppImage`, `.deb`, `.rpm` (x64 / ARM64)
+            - **Web Extension**: Chrome / Firefox WebClipper `.zip`
+            - **Skill Pack**: Pre-packaged Agent Recipes `.zip`
+            - **MCP Server**: Standalone `solomd-mcp` archive
+          MARKDOWN
+
+          manifest = {
+            "schema_version" => "1.0.0",
+            "app_name" => "solomd",
+            "app_version" => version,
+            "tag" => tag,
+            "repository" => repo,
+            "announcement_title" => "SoloMD #{tag}",
+            "announcement_body" => release_body,
+            "announcement_is_prerelease" => tag.include?('-'),
+            "artifacts" => artifacts_map
+          }
+
+          File.write('artifacts/dist-manifest.json', JSON.pretty_generate(manifest))
+          puts "[+] Created artifacts/dist-manifest.json"
+
+          File.open('artifacts/SHA256SUMS.txt', 'w') do |f|
+            artifacts_map.each { |item| f.puts "#{item['sha256']}  #{item['name']}" }
+          end
+          puts "[+] Created artifacts/SHA256SUMS.txt"
+
+          dmg_artifact = artifacts_map.find { |a| a['name'].end_with?('.dmg') }
+          if dmg_artifact
+            cask_content = <<~RUBY
+              cask "solomd" do
+                version "#{version}"
+                sha256 "#{dmg_artifact['sha256']}"
+
+                url "https://github.com/#{repo}/releases/download/#{tag}/#{dmg_artifact['name']}"
+                name "SoloMD"
+                desc "Markdown editor and bridge to your LLM"
+                homepage "https://solomd.app/"
+                auto_updates true
+
+                livecheck do
+                  url :url
+                  strategy :github_latest
+                end
+
+                depends_on macos: ">= :big_sur"
+
+                app "SoloMD.app"
+
+                zap trash: [
+                  "~/Library/Application Support/app.solomd",
+                  "~/Library/Caches/app.solomd",
+                  "~/Library/Preferences/app.solomd.plist",
+                  "~/Library/Saved Application State/app.solomd.savedState",
+                  "~/Library/WebKit/app.solomd",
+                ]
+              end
+            RUBY
+
+            FileUtils.mkdir_p('target/distrib')
+            File.write('target/distrib/solomd.rb', cask_content)
+            puts "[+] Successfully generated target/distrib/solomd.rb"
+          end
+
+          File.open(ENV['GITHUB_OUTPUT'], 'a') do |f|
+            f.puts "manifest=#{manifest.to_json}"
+            f.puts "tag=#{tag}"
+          end
+          EOF
+
+      - name: Upload Homebrew Cask Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: artifacts-homebrew-cask
+          path: target/distrib/solomd.rb
+          if-no-files-found: warn
 
       - name: Attest Build Provenance (SLSA L3 via Sigstore/Rekor)
         uses: actions/attest-build-provenance@v4
@@ -559,56 +678,84 @@ jobs:
       - name: Create Atomic GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TITLE: ${{ fromJson(steps.manifest.outputs.manifest).announcement_title }}
+          PRERELEASE: ${{ fromJson(steps.manifest.outputs.manifest).announcement_is_prerelease && '--prerelease' || '' }}
         run: |
-          TAG="${{ github.ref_name }}"
-          
-          cat << 'BODY' > /tmp/release_notes.md
-          ## SoloMD Release
-
-          ### Verification & Security
-          - **SLSA Level 3 Provenance**: All artifacts are cryptographically signed via GitHub OIDC & Sigstore.
-          - **Checksums**: Verify your download using the attached `SHA256SUMS.txt`.
-          - **SBOM**: Software Bill of Materials provided in CycloneDX JSON format.
-
-          ### Downloads
-          - **Windows**: `.msi` installer or portable `.zip`
-          - **Linux**: `.AppImage`, `.deb`, `.rpm`
-          - **Web Extension**: Chrome / Firefox WebClipper `.zip`
-          - **MCP Server**: Standalone `solomd-mcp` archive
-          BODY
-
-          echo "[+] Creating single atomic GitHub Release for $TAG with all artifacts..."
-          gh release create "$TAG" \
-            --title "SoloMD $TAG" \
+          jq -r '.announcement_body' artifacts/dist-manifest.json > /tmp/release_notes.md
+          gh release create "${{ steps.manifest.outputs.tag }}" \
+            $PRERELEASE \
+            --title "$TITLE" \
             --notes-file /tmp/release_notes.md \
             artifacts/*
 
   # ---------------------------------------------------------------------------
-  # Phase 3: Homebrew Tap & Distribution Synchronization (Post-Release)
+  # Phase 4A: Homebrew Tap & Distribution Synchronization (Post-Release)
   # ---------------------------------------------------------------------------
   publish-homebrew:
     name: "Sync Homebrew Tap Formula"
-    needs: host
+    needs: [host]
     runs-on: ubuntu-24.04
     steps:
+      - name: Download Homebrew Cask
+        uses: actions/download-artifact@v8
+        with:
+          name: artifacts-homebrew-cask
+          path: target/distrib/
+
       - name: Checkout Homebrew Tap
         uses: actions/checkout@v7
         with:
-          repository: "zhitongblog/homebrew-cask"
+          repository: "${{ github.repository_owner }}/homebrew-solomd"
           token: ${{ secrets.HOMEBREW_TAP_TOKEN || secrets.GITHUB_TOKEN }}
           persist-credentials: true
 
-      - name: Update Formula Cask
+      - name: Commit and Push Cask File
         env:
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ needs.host.outputs.tag }}
+          MANIFEST: ${{ needs.host.outputs.manifest }}
         run: |
           VERSION="${TAG#v}"
-          echo "[+] Updating Homebrew formula for SoloMD version $VERSION"
+          echo "[+] Syncing Casks/solomd.rb to homebrew-solomd for version $VERSION..."
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          if [ -f "Casks/solomd.rb" ]; then
-            sed -i "s/version \".*\"/version \"$VERSION\"/" Casks/solomd.rb || true
+          
+          if [ -f "target/distrib/solomd.rb" ]; then
+            mkdir -p Casks
+            cp target/distrib/solomd.rb Casks/solomd.rb
             git add Casks/solomd.rb
-            git commit -m "chore(release): update solomd to $VERSION" || true
-            git push || true
+            if git diff --staged --quiet; then
+              echo "[i] No changes detected in Casks/solomd.rb"
+            else
+              git commit -m "chore(release): update solomd cask to $VERSION"
+              git push
+              echo "[+] Successfully pushed updated cask to homebrew-solomd!"
+            fi
           fi
+
+  # ---------------------------------------------------------------------------
+  # Phase 4B: Crates.io Trusted Publishing via OIDC RFC 8693 (Post-Release)
+  # ---------------------------------------------------------------------------
+  publish-crates-io:
+    name: "Publish MCP Crate (OIDC)"
+    needs: [host]
+    runs-on: ubuntu-latest
+    environment: crates.io
+    continue-on-error: true
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: rust-lang/crates-io-auth-action@v1
+        id: auth
+
+      - name: Execute Verified Crates.io Publication
+        shell: bash
+        run: cargo publish --manifest-path mcp-server/Cargo.toml
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
