@@ -236,8 +236,8 @@ jobs:
   # Phase 3: Single Atomic Release Publisher & Provenance Signer (Fan-In)
   # Aggregates all Phase 1 & Phase 2 artifacts into a single GitHub Release
   # ---------------------------------------------------------------------------
-  host:
-    name: "3. Release / Host"
+  release:
+    name: "Release & Provenance"
     needs: [satellites, desktop]
     runs-on: ubuntu-24.04
     outputs:
@@ -364,15 +364,32 @@ jobs:
             artifacts/*
 
   # ---------------------------------------------------------------------------
-  # Phase 4A: Homebrew Tap & Distribution Synchronization (Post-Release)
-  # Syncs the newly minted release formulas to Homebrew Tap repository
+  # Phase 4: Downstream Distribution Matrix (Post-Release Fan-Out)
   # ---------------------------------------------------------------------------
-  publish-homebrew:
-    name: "4. Distribution / Homebrew"
-    needs: [host]
+  distribution:
+    name: ${{ matrix.name }}
+    needs: [release]
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "Homebrew"
+            target: "homebrew"
+          - name: "Crates.io"
+            target: "crates-io"
+
+    environment: ${{ matrix.target == 'crates-io' && 'crates.io' || '' }}
+    permissions:
+      contents: write
+      id-token: write
+
     steps:
+      # =========================================================================
+      # 1. Target: Homebrew Tap Cask Synchronization
+      # =========================================================================
       - name: Checkout Homebrew Tap
+        if: matrix.target == 'homebrew'
         uses: actions/checkout@v7
         with:
           repository: "${{ github.repository_owner }}/homebrew-${{ github.event.repository.name }}"
@@ -380,9 +397,10 @@ jobs:
           persist-credentials: true
 
       - name: Render and Push Cask File
+        if: matrix.target == 'homebrew'
         env:
-          TAG: ${{ needs.host.outputs.tag }}
-          MANIFEST: ${{ needs.host.outputs.manifest }}
+          TAG: ${{ needs.release.outputs.tag }}
+          MANIFEST: ${{ needs.release.outputs.manifest }}
           GH_REPO: ${{ github.repository }}
         run: |
           ruby <<'EOF'
@@ -449,66 +467,26 @@ jobs:
             fi
           fi
 
-  # ---------------------------------------------------------------------------
-  # Phase 4B: Crates.io Trusted Publishing via OIDC RFC 8693 (Post-Release)
-  # ---------------------------------------------------------------------------
-  publish-crates-io:
-    name: "4. Distribution / Crates.io"
-    needs: [host]
-    runs-on: ubuntu-24.04
-    
-    # =========================================================================
-    # 📚 OIDC TRUSTED PUBLISHING MANUAL (Best Practice)
-    # =========================================================================
-    # To securely publish to crates.io without storing permanent API tokens,
-    # follow these 4 phases. Once completed, uncomment Phase 4 in this file.
-    #
-    # --- PHASE 1: Bootstrap (Manual) -----------------------------------------
-    # crates.io requires the very first version (v0.1.0) to be published manually.
-    # 1. Generate a temporary API token at: https://crates.io/settings/tokens
-    #    (Scopes: publish-new, publish-update).
-    # 2. In your local terminal run: `cargo login <TOKEN>`
-    # 3. Publish the first version: `cargo publish`
-    # 4. REVOKE the token on crates.io. Your local machine is now clean.
-    #
-    # --- PHASE 2: GitHub Environment (Security) ------------------------------
-    # 1. Go to your repo: Settings -> Environments -> "New environment".
-    # 2. Name it EXACTLY: `crates.io`
-    # 3. (Recommended): Check "Required reviewers" and select yourself.
-    # 4. Under "Deployment branches and tags", select "Selected branches and tags".
-    #    Add rule: `v*` (Allows deployment only from release tags).
-    #
-    # --- PHASE 3: crates.io Trusted Publisher --------------------------------
-    # 1. Go to: https://crates.io/crates/solomd-mcp/settings/new-trusted-publisher
-    # 2. Select "GitHub Actions".
-    # 3. Repository: `${{ github.repository }}`
-    # 4. Workflow name: `release.yml`
-    # 5. Environment name: `crates.io` (Must match Phase 2).
-    #
-    # --- PHASE 4: Workflow Activation ----------------------------------------
-    # UNCOMMENT the `environment` and `permissions` blocks below, and replace 
-    # the dummy `echo` script with `cargo publish`.
-    # =========================================================================
-    
-    environment: crates.io
-    permissions:
-       contents: read    # Required to checkout the code
-       id-token: write   # Required to request JWT token from GitHub OIDC
-    
-    steps:
-      - name: Checkout code
+      # =========================================================================
+      # 2. Target: Crates.io Trusted Publishing via OIDC RFC 8693
+      # =========================================================================
+      - name: Checkout Code for Crates.io
+        if: matrix.target == 'crates-io'
         uses: actions/checkout@v7
         with:
           persist-credentials: false
 
-      - name: Install Rust toolchain
+      - name: Install Rust toolchain for Crates.io
+        if: matrix.target == 'crates-io'
         uses: dtolnay/rust-toolchain@stable
 
       - name: Authenticate with crates.io
+        if: matrix.target == 'crates-io'
         uses: rust-lang/crates-io-auth-action@v1.0.4
         id: auth
 
-      - name: Publish Package
+      - name: Publish Package to Crates.io
+        if: matrix.target == 'crates-io'
         shell: bash
         run: cargo publish --manifest-path mcp-server/Cargo.toml
         env:
