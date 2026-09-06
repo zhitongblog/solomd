@@ -122,6 +122,17 @@ jobs:
             app/src-tauri -> target
             mcp-server -> target
 
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10
+
+      - name: Install Frontend Node Dependencies (for Export tests & scripts)
+        run: cd app && pnpm install --frozen-lockfile
+
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-nextest
@@ -141,17 +152,8 @@ jobs:
             cargo nextest run --manifest-path mcp-server/Cargo.toml
           '
 
-      - uses: actions/setup-node@v7
-        with:
-          node-version: lts/*
-
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 10
-
       - name: Execute Shell & UI Self-Tests
         run: |
-          cd app && pnpm install --frozen-lockfile && cd ..
           node scripts/v4-ui-smoke.mjs || true
           node scripts/v25-slash-self-test.mjs || true
           bash scripts/v4-self-test.sh
