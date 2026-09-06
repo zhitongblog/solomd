@@ -1,0 +1,118 @@
+# Android Release Workflow for SoloMD (Tauri v2 Mobile)
+# Disabled by default until release signing secrets are configured.
+# To activate: rename to `.github/workflows/android.yml` and configure repository secrets.
+#
+# Required Repository Secrets:
+#   ANDROID_KEYSTORE_BASE64  - Base64-encoded release.jks / keystore file
+#   ANDROID_KEYSTORE_PASS    - Keystore password
+#   ANDROID_KEY_ALIAS        - Key alias name (e.g. solomd)
+#   ANDROID_KEY_PASS         - Key alias password
+
+name: Build Android
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build artifact type'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - apk
+          - aab
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  attestations: write
+  id-token: write
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-android:
+    name: "Build Android APK & AAB"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    # Skip if signing secret is not configured to avoid hard CI failures on forks
+    if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' || github.event_name == 'workflow_dispatch' }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install Android NDK & Build Tools
+        run: |
+          sdkmanager --install "ndk;26.1.10909125" "build-tools;34.0.0" "platforms;android-34"
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android,i686-linux-android
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            app/src-tauri -> target
+
+      - name: Install Frontend Dependencies
+        run: cd app && pnpm install --frozen-lockfile
+
+      - name: Configure Keystore
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          echo "$KEYSTORE_B64" | base64 -d > /tmp/solomd-release.jks
+          chmod 600 /tmp/solomd-release.jks
+
+      - name: Build Android Artifacts via Tauri CLI
+        env:
+          ANDROID_HOME: ${{ env.ANDROID_HOME }}
+          NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/26.1.10909125
+          ANDROID_KEYSTORE_PATH: /tmp/solomd-release.jks
+          ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS || 'solomd' }}
+          ANDROID_KEY_PASS: ${{ secrets.ANDROID_KEY_PASS }}
+        run: |
+          cd app
+          # Build signed APKs (universal + per-ABI) and AAB bundle
+          if [ -f "/tmp/solomd-release.jks" ]; then
+            pnpm tauri android build --apk --aab
+          else
+            echo "::warning::Building debug APKs (no signing secret provided)"
+            pnpm tauri android build --debug --apk
+          fi
+
+      - name: Stage Android Artifacts
+        run: |
+          mkdir -p artifacts/android
+          find app/src-tauri/gen/android/app/build/outputs -type f \( -name "*.apk" -o -name "*.aab" \) -exec cp {} artifacts/android/ \;
+          ls -la artifacts/android
+
+      - name: Upload Android Artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: artifacts-android
+          path: artifacts/android/*
+          if-no-files-found: error

@@ -17,11 +17,10 @@ concurrency:
 
 jobs:
   # ---------------------------------------------------------------------------
-  # Phase 1: Fast Component Packaging (Fail-Fast Gate)
-  # Packages WebExtension and Skill Pack before initiating heavy matrix builds
+  # Phase 1A: WebExtension Bundling (Fail-Fast Gate)
   # ---------------------------------------------------------------------------
-  build-satellites:
-    name: "Package WebExtension & Skill Pack"
+  build-web-clipper:
+    name: "Package WebExtension"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -47,17 +46,39 @@ jobs:
           cp dist/firefox.zip artifacts/solomd-clipper-firefox.zip
           cp dist/source.zip artifacts/solomd-clipper-source.zip
 
-      - name: Build SoloMD Skill Pack
-        run: |
-          bash scripts/build-skill-pack.sh
-          mkdir -p web-clipper/artifacts
-          cp dist/solomd-skills-*.zip web-clipper/artifacts/
-
-      - name: Upload Satellite Artifacts to Actions Storage
+      - name: Upload WebExtension Artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: artifacts-satellites
+          name: artifacts-web-clipper
           path: web-clipper/artifacts/*
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # Phase 1B: Agent Skill Pack Packaging (Fail-Fast Gate)
+  # ---------------------------------------------------------------------------
+  build-skill-pack:
+    name: "Package Skill Pack"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      - name: Package SoloMD Skill Pack
+        run: |
+          bash scripts/build-skill-pack.sh
+          mkdir -p artifacts
+          cp dist/solomd-skills-*.zip artifacts/
+
+      - name: Upload Skill Pack Artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: artifacts-skill-pack
+          path: artifacts/*
           if-no-files-found: error
 
   # ---------------------------------------------------------------------------
@@ -66,7 +87,7 @@ jobs:
   # ---------------------------------------------------------------------------
   build-desktop:
     name: "Build Desktop (${{ matrix.platform }})"
-    needs: [build-satellites]
+    needs: [build-web-clipper, build-skill-pack]
     strategy:
       fail-fast: false
       matrix:
@@ -211,13 +232,9 @@ jobs:
   # Phase 3: Single Atomic Release Publisher & Provenance Signer (Fan-In)
   # Aggregates all Phase 1 & Phase 2 artifacts into a single GitHub Release
   # ---------------------------------------------------------------------------
-  # ---------------------------------------------------------------------------
-  # Phase 3: Single Atomic Release Publisher & Provenance Signer (Fan-In)
-  # Aggregates all Phase 1 & Phase 2 artifacts into a single GitHub Release
-  # ---------------------------------------------------------------------------
   host:
     name: "Publish GitHub Release & Attestations"
-    needs: [build-satellites, build-desktop]
+    needs: [build-web-clipper, build-skill-pack, build-desktop]
     runs-on: ubuntu-24.04
     outputs:
       manifest: ${{ steps.manifest.outputs.manifest }}
