@@ -20,7 +20,7 @@ jobs:
   # Phase 1A: WebExtension Bundling (Fail-Fast Gate)
   # ---------------------------------------------------------------------------
   build-web-clipper:
-    name: "Package WebExtension"
+    name: "1. Satellites / WebExtension"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -57,7 +57,7 @@ jobs:
   # Phase 1B: Agent Skill Pack Packaging (Fail-Fast Gate)
   # ---------------------------------------------------------------------------
   build-skill-pack:
-    name: "Package Skill Pack"
+    name: "1. Satellites / Skill Pack"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -86,27 +86,32 @@ jobs:
   # Executed ONLY after Phase 1 passes successfully
   # ---------------------------------------------------------------------------
   build-desktop:
-    name: "Build Desktop (${{ matrix.platform }})"
+    name: "2. Desktop / ${{ matrix.name }}"
     needs: [build-web-clipper, build-skill-pack]
     strategy:
       fail-fast: false
       matrix:
         include:
-          - platform: windows-latest
-            args: '--bundles msi'
-            rust_targets: ''
-          - platform: windows-11-arm
-            args: '--bundles msi'
-            rust_targets: ''
-          - platform: ubuntu-24.04
-            args: '--bundles appimage,deb,rpm'
-            rust_targets: ''
-          - platform: ubuntu-24.04-arm
-            args: '--bundles appimage,deb,rpm'
-            rust_targets: ''
-          - platform: macos-latest
+          - name: "macOS Universal"
+            platform: macos-latest
             args: '--bundles dmg'
             rust_targets: 'aarch64-apple-darwin,x86_64-apple-darwin'
+          - name: "Windows x64"
+            platform: windows-latest
+            args: '--bundles msi'
+            rust_targets: ''
+          - name: "Windows ARM64"
+            platform: windows-11-arm
+            args: '--bundles msi'
+            rust_targets: ''
+          - name: "Linux x64"
+            platform: ubuntu-24.04
+            args: '--bundles appimage,deb,rpm'
+            rust_targets: ''
+          - name: "Linux ARM64"
+            platform: ubuntu-24.04-arm
+            args: '--bundles appimage,deb,rpm'
+            rust_targets: ''
 
     runs-on: ${{ matrix.platform }}
     timeout-minutes: 60
@@ -233,7 +238,7 @@ jobs:
   # Aggregates all Phase 1 & Phase 2 artifacts into a single GitHub Release
   # ---------------------------------------------------------------------------
   host:
-    name: "Publish GitHub Release & Attestations"
+    name: "3. Release / Host"
     needs: [build-web-clipper, build-skill-pack, build-desktop]
     runs-on: ubuntu-24.04
     outputs:
@@ -264,12 +269,15 @@ jobs:
       # 1. SBOM Generation
       - name: Generate CycloneDX SBOM (JSON)
         run: |
-          cargo cyclonedx --manifest-path app/src-tauri/Cargo.toml --format json --output-pattern "artifacts/solomd-app-bom.json"
-          cargo cyclonedx --manifest-path mcp-server/Cargo.toml --format json --output-pattern "artifacts/solomd-mcp-bom.json"
+          cargo cyclonedx --manifest-path app/src-tauri/Cargo.toml --format json --override-filename "solomd-app-bom.json"
+          cargo cyclonedx --manifest-path mcp-server/Cargo.toml --format json --override-filename "solomd-mcp-bom.json"
+          mv app/src-tauri/solomd-app-bom.json artifacts/ || true
+          mv mcp-server/solomd-mcp-bom.json artifacts/ || true
+          find . -name "*.cdx.json" -exec mv '{}' artifacts/ ';' || true
 
-      # 2. SSOT Manifest & Cask Compiler
+      # 2. SSOT Manifest Compiler
       - id: manifest
-        name: Compile Distribution Manifest & Homebrew Cask
+        name: Compile Distribution Manifest
         env:
           GH_REPO: ${{ github.repository }}
           TAG_NAME: ${{ github.ref_name }}
@@ -283,12 +291,11 @@ jobs:
           version = tag.sub(/^v/, '')
           repo = ENV.fetch('GH_REPO')
 
-          # 1. Сканируем все артефакты и вычисляем SHA256
           artifacts_map = []
           Dir.glob('artifacts/*').sort.each do |fpath|
             next if File.directory?(fpath)
             fname = File.basename(fpath)
-            next if fname == 'dist-manifest.json' || fname == 'SHA256SUMS.txt'
+            next if fname == 'dist-manifest.json'
 
             sha256 = Digest::SHA256.file(fpath).hexdigest
             artifacts_map << {
@@ -299,26 +306,23 @@ jobs:
             }
           end
 
-          # 2. Формируем тело релиза
           release_body = <<~MARKDOWN
             ## SoloMD #{tag}
 
             ### Verification & Security
-            - **SLSA Level 3 Provenance**: All artifacts are cryptographically signed via GitHub OIDC & Sigstore.
-            - **Checksums**: Verify your download using the attached `SHA256SUMS.txt`.
-            - **SBOM**: Software Bill of Materials provided in CycloneDX JSON format (`solomd-app-bom.json`, `solomd-mcp-bom.json`).
-            - **Manifest**: Complete machine-readable distribution metadata in `dist-manifest.json`.
+            - SLSA Level 3 Provenance: Cryptographically signed via GitHub OIDC & Sigstore.
+            - Manifest: Complete machine-readable distribution metadata in `dist-manifest.json`.
+            - SBOM: Software Bill of Materials in CycloneDX JSON format (`solomd-app-bom.json`, `solomd-mcp-bom.json`).
 
             ### Downloads
-            - **macOS**: `.dmg` (Universal binary for Apple Silicon & Intel)
-            - **Windows**: `.msi` installer or portable `.zip` (x64 / ARM64)
-            - **Linux**: `.AppImage`, `.deb`, `.rpm` (x64 / ARM64)
-            - **Web Extension**: Chrome / Firefox WebClipper `.zip`
-            - **Skill Pack**: Pre-packaged Agent Recipes `.zip`
-            - **MCP Server**: Standalone `solomd-mcp` archive
+            - macOS: `.dmg` (Universal binary)
+            - Windows: `.msi` installer or portable `.zip` (x64 / ARM64)
+            - Linux: `.AppImage`, `.deb`, `.rpm` (x64 / ARM64)
+            - Web Extension: Chrome / Firefox WebClipper `.zip`
+            - Skill Pack: Pre-packaged Agent Recipes `.zip`
+            - MCP Server: Standalone `solomd-mcp` archive
           MARKDOWN
 
-          # 3. Формируем единый dist-manifest.json (SSOT)
           manifest = {
             "schema_version" => "1.0.0",
             "app_name" => "solomd",
@@ -334,80 +338,28 @@ jobs:
           File.write('artifacts/dist-manifest.json', JSON.pretty_generate(manifest))
           puts "[+] Created artifacts/dist-manifest.json"
 
-          # 4. Формируем канонический SHA256SUMS.txt для CLI-проверок
-          File.open('artifacts/SHA256SUMS.txt', 'w') do |f|
-            artifacts_map.each { |item| f.puts "#{item['sha256']}  #{item['name']}" }
-          end
-          puts "[+] Created artifacts/SHA256SUMS.txt"
-
-          # 5. Генерируем Homebrew Cask для macOS DMG
-          dmg_artifact = artifacts_map.find { |a| a['name'].end_with?('.dmg') }
-          if dmg_artifact
-            cask_content = <<~RUBY
-              cask "solomd" do
-                version "#{version}"
-                sha256 "#{dmg_artifact['sha256']}"
-
-                url "https://github.com/#{repo}/releases/download/#{tag}/#{dmg_artifact['name']}"
-                name "SoloMD"
-                desc "Markdown editor and bridge to your LLM"
-                homepage "https://solomd.app/"
-                auto_updates true
-
-                livecheck do
-                  url :url
-                  strategy :github_latest
-                end
-
-                depends_on macos: ">= :big_sur"
-
-                app "SoloMD.app"
-
-                zap trash: [
-                  "~/Library/Application Support/app.solomd",
-                  "~/Library/Caches/app.solomd",
-                  "~/Library/Preferences/app.solomd.plist",
-                  "~/Library/Saved Application State/app.solomd.savedState",
-                  "~/Library/WebKit/app.solomd",
-                ]
-              end
-            RUBY
-
-            FileUtils.mkdir_p('target/distrib')
-            File.write('target/distrib/solomd.rb', cask_content)
-            puts "[+] Successfully generated target/distrib/solomd.rb"
-          end
-
-          # Экспортируем manifest в GitHub Actions outputs
           File.open(ENV['GITHUB_OUTPUT'], 'a') do |f|
             f.puts "manifest=#{manifest.to_json}"
             f.puts "tag=#{tag}"
           end
           EOF
 
-      - name: Upload Homebrew Cask Artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: artifacts-homebrew-cask
-          path: target/distrib/solomd.rb
-          if-no-files-found: warn
-
-      # 3. Cryptographic SLSA L3 Attestation of all release assets
       - name: Attest Build Provenance (SLSA L3 via Sigstore/Rekor)
         uses: actions/attest-build-provenance@v4
         with:
           subject-path: "artifacts/*"
 
-      # 4. GitHub Release Creation consuming exclusively from Manifest SSOT
       - name: Create Atomic GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TITLE: ${{ fromJson(steps.manifest.outputs.manifest).announcement_title }}
-          PRERELEASE: ${{ fromJson(steps.manifest.outputs.manifest).announcement_is_prerelease && '--prerelease' || '' }}
         run: |
+          TITLE=$(jq -r '.announcement_title' artifacts/dist-manifest.json)
+          IS_PRE=$(jq -r '.announcement_is_prerelease' artifacts/dist-manifest.json)
+          PRERELEASE_FLAG=$([ "$IS_PRE" = "true" ] && echo "--prerelease" || echo "")
           jq -r '.announcement_body' artifacts/dist-manifest.json > /tmp/release_notes.md
+
           gh release create "${{ steps.manifest.outputs.tag }}" \
-            $PRERELEASE \
+            $PRERELEASE_FLAG \
             --title "$TITLE" \
             --notes-file /tmp/release_notes.md \
             artifacts/*
@@ -417,16 +369,10 @@ jobs:
   # Syncs the newly minted release formulas to Homebrew Tap repository
   # ---------------------------------------------------------------------------
   publish-homebrew:
-    name: "Sync Homebrew Tap Formula"
+    name: "4. Distribution / Homebrew"
     needs: [host]
     runs-on: ubuntu-24.04
     steps:
-      - name: Download Homebrew Cask
-        uses: actions/download-artifact@v8
-        with:
-          name: artifacts-homebrew-cask
-          path: target/distrib/
-
       - name: Checkout Homebrew Tap
         uses: actions/checkout@v7
         with:
@@ -434,24 +380,71 @@ jobs:
           token: ${{ secrets.HOMEBREW_TAP_TOKEN || secrets.GITHUB_TOKEN }}
           persist-credentials: true
 
-      - name: Commit and Push Cask File
+      - name: Render and Push Cask File
         env:
           TAG: ${{ needs.host.outputs.tag }}
           MANIFEST: ${{ needs.host.outputs.manifest }}
+          GH_REPO: ${{ github.repository }}
         run: |
-          VERSION="${TAG#v}"
-          echo "[+] Syncing Casks/solomd.rb to homebrew-solomd for version $VERSION..."
+          ruby <<'EOF'
+          require 'json'
+          require 'fileutils'
+
+          tag = ENV.fetch('TAG')
+          version = tag.sub(/^v/, '')
+          manifest = JSON.parse(ENV.fetch('MANIFEST'))
+          repo = ENV.fetch('GH_REPO')
+
+          dmg = manifest['artifacts']&.find { |a| a['name']&.end_with?('.dmg') }
+          unless dmg
+            puts "[!] No DMG artifact found in manifest. Skipping Homebrew Cask generation."
+            exit 0
+          end
+
+          cask_content = <<~RUBY
+            cask "solomd" do
+              version "#{version}"
+              sha256 "#{dmg['sha256']}"
+
+              url "https://github.com/#{repo}/releases/download/#{tag}/#{dmg['name']}"
+              name "SoloMD"
+              desc "Markdown editor and bridge to your LLM"
+              homepage "https://solomd.app/"
+              auto_updates true
+
+              livecheck do
+                url :url
+                strategy :github_latest
+              end
+
+              depends_on macos: ">= :big_sur"
+
+              app "SoloMD.app"
+
+              zap trash: [
+                "~/Library/Application Support/app.solomd",
+                "~/Library/Caches/app.solomd",
+                "~/Library/Preferences/app.solomd.plist",
+                "~/Library/Saved Application State/app.solomd.savedState",
+                "~/Library/WebKit/app.solomd",
+              ]
+            end
+          RUBY
+
+          FileUtils.mkdir_p('Casks')
+          File.write('Casks/solomd.rb', cask_content)
+          puts "[+] Successfully rendered Casks/solomd.rb"
+          EOF
+
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
-          if [ -f "target/distrib/solomd.rb" ]; then
-            mkdir -p Casks
-            cp target/distrib/solomd.rb Casks/solomd.rb
+          if [ -f "Casks/solomd.rb" ]; then
             git add Casks/solomd.rb
             if git diff --staged --quiet; then
               echo "[i] No changes detected in Casks/solomd.rb"
             else
-              git commit -m "chore(release): update solomd cask to $VERSION"
+              git commit -m "chore(release): update solomd cask to ${TAG#v}"
               git push
               echo "[+] Successfully pushed updated cask to homebrew-solomd!"
             fi
@@ -461,7 +454,7 @@ jobs:
   # Phase 4B: Crates.io Trusted Publishing via OIDC RFC 8693 (Post-Release)
   # ---------------------------------------------------------------------------
   publish-crates-io:
-    name: Publish to crates.io
+    name: "4. Distribution / Crates.io"
     needs: [host]
     runs-on: ubuntu-24.04
     
