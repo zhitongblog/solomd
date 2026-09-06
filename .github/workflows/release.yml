@@ -17,10 +17,56 @@ concurrency:
 
 jobs:
   # ---------------------------------------------------------------------------
-  # Phase 1A: Multi-Platform Desktop Compilation Matrix (Fan-Out)
+  # Phase 1: Fast Component Packaging (Fail-Fast Gate)
+  # Packages WebExtension and Skill Pack before initiating heavy matrix builds
+  # ---------------------------------------------------------------------------
+  build-satellites:
+    name: "Package WebExtension & Skill Pack"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10
+
+      - name: Compile and Bundle Extensions
+        working-directory: web-clipper
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm typecheck
+          pnpm build
+          mkdir -p artifacts
+          cp dist/chrome.zip artifacts/solomd-clipper-chrome.zip
+          cp dist/firefox.zip artifacts/solomd-clipper-firefox.zip
+          cp dist/source.zip artifacts/solomd-clipper-source.zip
+
+      - name: Build SoloMD Skill Pack
+        run: |
+          bash scripts/build-skill-pack.sh
+          mkdir -p web-clipper/artifacts
+          cp dist/solomd-skills-*.zip web-clipper/artifacts/
+
+      - name: Upload Satellite Artifacts to Actions Storage
+        uses: actions/upload-artifact@v7
+        with:
+          name: artifacts-satellites
+          path: web-clipper/artifacts/*
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # Phase 2: Multi-Platform Desktop Compilation Matrix (Fan-Out)
+  # Executed ONLY after Phase 1 passes successfully
   # ---------------------------------------------------------------------------
   build-desktop:
     name: "Build Desktop (${{ matrix.platform }})"
+    needs: [build-satellites]
     strategy:
       fail-fast: false
       matrix:
@@ -37,6 +83,9 @@ jobs:
           - platform: ubuntu-24.04-arm
             args: '--bundles appimage,deb,rpm'
             rust_targets: ''
+          - platform: macos-latest
+            args: '--bundles dmg'
+            rust_targets: 'aarch64-apple-darwin,x86_64-apple-darwin'
 
     runs-on: ${{ matrix.platform }}
     timeout-minutes: 60
@@ -78,6 +127,8 @@ jobs:
           bash scripts/build-mcp-sidecar.sh "$TRIPLE"
 
       - name: Build Tauri Desktop Bundles
+        env:
+          APPLE_SIGNING_IDENTITY: '-'
         run: |
           cd app
           pnpm tauri build ${{ matrix.args }}
@@ -145,7 +196,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p target/artifacts
-          find app/src-tauri/target/release/bundle -type f \( -name "*.msi" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.rpm" \) -exec cp {} target/artifacts/ \;
+          find app/src-tauri/target/release/bundle -type f \( -name "*.msi" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.rpm" -o -name "*.dmg" \) -exec cp {} target/artifacts/ \;
           find . -maxdepth 1 -type f \( -name "*.zip" -o -name "*.tar.gz" \) -exec cp {} target/artifacts/ \;
           ls -la target/artifacts
 
@@ -157,74 +208,12 @@ jobs:
           if-no-files-found: error
 
   # ---------------------------------------------------------------------------
-  # Phase 1B: WebExtension Bundling (Fan-Out)
-  # ---------------------------------------------------------------------------
-  build-web-clipper:
-    name: "Package WebExtension"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: lts/*
-
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 10
-
-      - name: Compile and Bundle Extensions
-        working-directory: web-clipper
-        run: |
-          pnpm install --frozen-lockfile
-          pnpm typecheck
-          pnpm build
-          mkdir -p artifacts
-          cp dist/chrome.zip artifacts/solomd-clipper-chrome.zip
-          cp dist/firefox.zip artifacts/solomd-clipper-firefox.zip
-          cp dist/source.zip artifacts/solomd-clipper-source.zip
-
-      - name: Upload Web-Clipper Artifacts to Actions Storage
-        uses: actions/upload-artifact@v7
-        with:
-          name: artifacts-web-clipper
-          path: web-clipper/artifacts/*
-          if-no-files-found: error
-
-  # ---------------------------------------------------------------------------
-  # Phase 1C: Crates.io Trusted Publishing via OIDC RFC 8693 (Fan-Out)
-  # ---------------------------------------------------------------------------
-  publish-crates-io:
-    name: "Publish MCP Crate (OIDC)"
-    runs-on: ubuntu-latest
-    environment: crates.io
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - uses: rust-lang/crates-io-auth-action@v1
-        id: auth
-
-      - name: Execute Verified Crates.io Publication
-        shell: bash
-        run: cargo publish --manifest-path mcp-server/Cargo.toml
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
-
-  # ---------------------------------------------------------------------------
-  # Phase 2: Single Atomic Release Publisher & Provenance Signer (Fan-In)
+  # Phase 3: Single Atomic Release Publisher & Provenance Signer (Fan-In)
+  # Aggregates all Phase 1 & Phase 2 artifacts into a single GitHub Release
   # ---------------------------------------------------------------------------
   host:
     name: "Publish GitHub Release & Attestations"
-    needs: [build-desktop, build-web-clipper, publish-crates-io]
+    needs: [build-satellites, build-desktop]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -280,9 +269,11 @@ jobs:
           - **SBOM**: Software Bill of Materials provided in CycloneDX JSON format.
 
           ### Downloads
-          - **Windows**: `.msi` installer or portable `.zip`
-          - **Linux**: `.AppImage`, `.deb`, `.rpm`
+          - **macOS**: `.dmg` (Universal binary for Apple Silicon & Intel)
+          - **Windows**: `.msi` installer or portable `.zip` (x64 / ARM64)
+          - **Linux**: `.AppImage`, `.deb`, `.rpm` (x64 / ARM64)
           - **Web Extension**: Chrome / Firefox WebClipper `.zip`
+          - **Skill Pack**: Pre-packaged Agent Recipes `.zip`
           - **MCP Server**: Standalone `solomd-mcp` archive
           BODY
 
@@ -293,12 +284,12 @@ jobs:
             artifacts/*
 
   # ---------------------------------------------------------------------------
-  # Phase 3: Homebrew Tap & Distribution Synchronization (Post-Release)
+  # Phase 4A: Homebrew Tap & Distribution Synchronization (Post-Release)
   # Syncs the newly minted release formulas to Homebrew Tap repository
   # ---------------------------------------------------------------------------
   publish-homebrew:
     name: "Sync Homebrew Tap Formula"
-    needs: host
+    needs: [host]
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout Homebrew Tap
@@ -314,7 +305,6 @@ jobs:
         run: |
           VERSION="${TAG#v}"
           echo "[+] Updating Homebrew formula for SoloMD version $VERSION"
-          # Run formula calculation & update
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           if [ -f "Casks/solomd.rb" ]; then
@@ -323,3 +313,31 @@ jobs:
             git commit -m "chore(release): update solomd to $VERSION" || true
             git push || true
           fi
+
+  # ---------------------------------------------------------------------------
+  # Phase 4B: Crates.io Trusted Publishing via OIDC RFC 8693 (Post-Release)
+  # ---------------------------------------------------------------------------
+  publish-crates-io:
+    name: "Publish MCP Crate (OIDC)"
+    needs: [host]
+    runs-on: ubuntu-latest
+    environment: crates.io
+    continue-on-error: true
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: rust-lang/crates-io-auth-action@v1
+        id: auth
+
+      - name: Execute Verified Crates.io Publication
+        shell: bash
+        run: cargo publish --manifest-path mcp-server/Cargo.toml
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
