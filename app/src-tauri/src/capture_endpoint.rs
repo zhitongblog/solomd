@@ -102,7 +102,9 @@ fn random_token() -> String {
     let mut x = mix;
     for _ in 0..16 {
         s.push_str(&format!("{:02x}", (x & 0xff) as u8));
-        x = x.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        x = x
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
     }
     s
 }
@@ -238,9 +240,7 @@ async fn serve(app: AppHandle) -> Result<(), String> {
     let my_gen = STATE.lock().expect("capture state lock").shutdown_gen;
     write_port_token(&app, bound_port);
 
-    eprintln!(
-        "[capture_endpoint] listening on http://127.0.0.1:{bound_port}"
-    );
+    eprintln!("[capture_endpoint] listening on http://127.0.0.1:{bound_port}");
 
     loop {
         // Bail out if the user toggled the endpoint off.
@@ -298,10 +298,7 @@ fn write_port_token(app: &AppHandle, port: u16) {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        let _ = std::fs::set_permissions(
-            &token_path,
-            std::fs::Permissions::from_mode(0o600),
-        );
+        let _ = std::fs::set_permissions(&token_path, std::fs::Permissions::from_mode(0o600));
     }
 }
 
@@ -407,8 +404,7 @@ async fn handle_conn(mut stream: TcpStream, _app: AppHandle) -> Result<(), Strin
 
         match handle_capture(&req.body) {
             Ok(path) => {
-                let body =
-                    serde_json::json!({"ok": true, "path": path}).to_string();
+                let body = serde_json::json!({"ok": true, "path": path}).to_string();
                 let _ = write_resp(&mut stream, 200, "OK", &body).await;
             }
             Err(CaptureError::NoWorkspace) => {
@@ -421,13 +417,11 @@ async fn handle_conn(mut stream: TcpStream, _app: AppHandle) -> Result<(), Strin
                 .await;
             }
             Err(CaptureError::BadRequest(msg)) => {
-                let body =
-                    serde_json::json!({"ok": false, "error": msg}).to_string();
+                let body = serde_json::json!({"ok": false, "error": msg}).to_string();
                 let _ = write_resp(&mut stream, 400, "Bad Request", &body).await;
             }
             Err(CaptureError::Io(msg)) => {
-                let body =
-                    serde_json::json!({"ok": false, "error": msg}).to_string();
+                let body = serde_json::json!({"ok": false, "error": msg}).to_string();
                 let _ = write_resp(&mut stream, 500, "Internal Server Error", &body).await;
             }
         }
@@ -547,8 +541,8 @@ pub fn capture_append_inner(
         )));
     }
 
-    let target = resolve_safe_workspace_path(workspace, rel_path)
-        .map_err(CaptureError::BadRequest)?;
+    let target =
+        resolve_safe_workspace_path(workspace, rel_path).map_err(CaptureError::BadRequest)?;
 
     if let Some(parent) = target.parent() {
         std::fs::create_dir_all(parent)
@@ -569,8 +563,9 @@ pub fn capture_append_inner(
     f.write_all(content.as_bytes())
         .map_err(|e| CaptureError::Io(format!("write body {}: {e}", target.display())))?;
     if !content.ends_with('\n') {
-        f.write_all(b"\n")
-            .map_err(|e| CaptureError::Io(format!("write trailing nl {}: {e}", target.display())))?;
+        f.write_all(b"\n").map_err(|e| {
+            CaptureError::Io(format!("write trailing nl {}: {e}", target.display()))
+        })?;
     }
 
     Ok(target.to_string_lossy().to_string())
@@ -609,11 +604,10 @@ fn resolve_safe_workspace_path(workspace: &Path, rel_path: &str) -> Result<PathB
     // it doesn't, canonicalize the parent and assert containment from
     // there. Symlinks pointing outside the workspace are rejected by the
     // canonical-prefix check.
-    let workspace_canon = std::fs::canonicalize(workspace)
-        .map_err(|e| format!("canonicalize workspace: {e}"))?;
+    let workspace_canon =
+        std::fs::canonicalize(workspace).map_err(|e| format!("canonicalize workspace: {e}"))?;
     let resolved = if candidate.exists() {
-        std::fs::canonicalize(&candidate)
-            .map_err(|e| format!("canonicalize append_path: {e}"))?
+        std::fs::canonicalize(&candidate).map_err(|e| format!("canonicalize append_path: {e}"))?
     } else {
         let parent = candidate
             .parent()
@@ -637,8 +631,8 @@ fn resolve_safe_workspace_path(workspace: &Path, rel_path: &str) -> Result<PathB
                 _ => return Err("append_path resolves outside workspace".into()),
             }
         }
-        let canon_existing = std::fs::canonicalize(&existing)
-            .map_err(|e| format!("canonicalize parent: {e}"))?;
+        let canon_existing =
+            std::fs::canonicalize(&existing).map_err(|e| format!("canonicalize parent: {e}"))?;
         let mut out = canon_existing;
         for seg in suffix.iter().rev() {
             out.push(seg);
@@ -747,7 +741,10 @@ fn render_note(
             out.push_str(&format!("tags: [{inner}]\n"));
         }
     }
-    out.push_str(&format!("inbox: {}\n", if inbox { "true" } else { "false" }));
+    out.push_str(&format!(
+        "inbox: {}\n",
+        if inbox { "true" } else { "false" }
+    ));
     out.push_str(&format!("captured_at: {captured_at}\n"));
     out.push_str("---\n\n");
 
@@ -821,7 +818,10 @@ fn yaml_scalar(s: &str) -> String {
     if !needs_quote {
         return s.to_string();
     }
-    let escaped = s.replace('\\', "\\\\").replace('"', "\\\"").replace('\n', "\\n");
+    let escaped = s
+        .replace('\\', "\\\\")
+        .replace('"', "\\\"")
+        .replace('\n', "\\n");
     format!("\"{escaped}\"")
 }
 
@@ -1166,7 +1166,11 @@ pub async fn _test_bind_and_serve() -> Result<u16, String> {
                 if req.method == "GET" && req.path == "/capture/health" {
                     let (token, workspace, inbox_folder) = {
                         let st = STATE.lock().expect("capture state lock");
-                        (st.token.clone(), st.workspace.clone(), st.inbox_folder.clone())
+                        (
+                            st.token.clone(),
+                            st.workspace.clone(),
+                            st.inbox_folder.clone(),
+                        )
                     };
                     if !auth_ok(&req, &token) {
                         let _ = write_resp(

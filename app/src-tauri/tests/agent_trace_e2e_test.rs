@@ -21,13 +21,9 @@ fn fresh_run_dir(label: &str) -> (PathBuf, String) {
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let workspace =
-        std::env::temp_dir().join(format!("solomd-trace-e2e-{label}-{nanos}"));
+    let workspace = std::env::temp_dir().join(format!("solomd-trace-e2e-{label}-{nanos}"));
     let run_id = format!("20260430-142307-{:06x}", (nanos & 0xFFFFFF) as u32);
-    let dir = workspace
-        .join(".solomd")
-        .join("agent-runs")
-        .join(&run_id);
+    let dir = workspace.join(".solomd").join("agent-runs").join(&run_id);
     fs::create_dir_all(&dir).unwrap();
     (dir, run_id)
 }
@@ -42,7 +38,8 @@ fn end_to_end_panel_chat_run() {
         em.run_started(RunKind::Panel, "anthropic", "claude-sonnet-4-6", None, None)
             .unwrap();
         em.prompt("user", "Summarize daily/2026-04-29.md").unwrap();
-        em.model_call("anthropic", "claude-sonnet-4-6", 1, 4).unwrap();
+        em.model_call("anthropic", "claude-sonnet-4-6", 1, 4)
+            .unwrap();
         em.tool_call(
             "read_note",
             "tc_aaa",
@@ -51,7 +48,8 @@ fn end_to_end_panel_chat_run() {
         .unwrap();
         em.tool_result("tc_aaa", "# 2026-04-29\n- shipped v4 panel\n", None)
             .unwrap();
-        em.model_done("You shipped v4 panel.", 110, 14, "stop").unwrap();
+        em.model_done("You shipped v4 panel.", 110, 14, "stop")
+            .unwrap();
         em.run_ended("ok", 110, 14, 0.00033, None).unwrap();
     }
 
@@ -62,7 +60,10 @@ fn end_to_end_panel_chat_run() {
     assert_eq!(lines[0].run_id, run_id);
     assert_eq!(lines[3].kind, "tool_call");
     assert_eq!(
-        lines[3].payload.get("tool_call_id").and_then(|v| v.as_str()),
+        lines[3]
+            .payload
+            .get("tool_call_id")
+            .and_then(|v| v.as_str()),
         Some("tc_aaa"),
     );
     assert_eq!(lines[4].kind, "tool_result");
@@ -94,7 +95,10 @@ fn end_to_end_truncates_giant_tool_result() {
     );
     let on_disk = res.payload.get("result").and_then(|v| v.as_str()).unwrap();
     // Stored payload is exactly 2048 chars + the 12-char marker — no more.
-    assert_eq!(on_disk.chars().count(), 2048 + "…(truncated)".chars().count());
+    assert_eq!(
+        on_disk.chars().count(),
+        2048 + "…(truncated)".chars().count()
+    );
     // result_bytes preserves the original size so a UI can show "10,000 B".
     assert_eq!(
         res.payload.get("result_bytes").and_then(|v| v.as_u64()),

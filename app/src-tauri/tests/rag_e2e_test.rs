@@ -174,7 +174,10 @@ fn rag_search_on_empty_query_returns_empty() {
     let _ = rag_reindex_inner(folder.clone()).unwrap();
 
     let hits = rag_search_inner(folder.clone(), "   ".into(), 5).unwrap();
-    assert!(hits.is_empty(), "empty/whitespace query should yield no hits");
+    assert!(
+        hits.is_empty(),
+        "empty/whitespace query should yield no hits"
+    );
 
     let _ = fs::remove_dir_all(&ws);
 }

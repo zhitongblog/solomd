@@ -123,7 +123,8 @@ fn device_behind(bare_url: &str, local_branch: &str, x: git2::Oid) -> PathBuf {
         .unwrap();
     let x_commit = repo.find_commit(x).unwrap();
     repo.branch(local_branch, &x_commit, true).unwrap();
-    repo.set_head(&format!("refs/heads/{local_branch}")).unwrap();
+    repo.set_head(&format!("refs/heads/{local_branch}"))
+        .unwrap();
     repo.checkout_head(Some(git2::build::CheckoutBuilder::new().force()))
         .unwrap();
     // Drop the remote-tracking refs the setup fetch created, so the pull
@@ -149,7 +150,10 @@ fn pull_normalizes_local_master_when_remote_has_main() {
     let r = github_pull_inner(dev.to_string_lossy().into_owned(), "ignored".into())
         .expect("pull from a master-stuck device must succeed against a main remote");
     assert_eq!(r.kind, "fast_forward");
-    assert_eq!(fs::read_to_string(dev.join("note.md")).unwrap(), "version Y\n");
+    assert_eq!(
+        fs::read_to_string(dev.join("note.md")).unwrap(),
+        "version Y\n"
+    );
 
     // The local branch converged on `main`, same as push would have done.
     let repo = Repository::open(&dev).unwrap();
@@ -168,7 +172,10 @@ fn pull_falls_back_to_remote_master_for_legacy_repos() {
     let r = github_pull_inner(dev.to_string_lossy().into_owned(), "ignored".into())
         .expect("pull must fall back to origin/master when the remote has no main");
     assert_eq!(r.kind, "fast_forward");
-    assert_eq!(fs::read_to_string(dev.join("note.md")).unwrap(), "version Y\n");
+    assert_eq!(
+        fs::read_to_string(dev.join("note.md")).unwrap(),
+        "version Y\n"
+    );
 
     let repo = Repository::open(&dev).unwrap();
     assert_eq!(repo.head().unwrap().shorthand(), Some("main"));

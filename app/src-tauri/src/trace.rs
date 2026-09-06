@@ -49,8 +49,8 @@
 use std::fs::{File, OpenOptions};
 use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
 use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
@@ -151,10 +151,7 @@ impl Emitter {
     /// one place avoids two modules racing on `mkdir`.
     pub fn open(run_dir: &Path, run_id: String) -> io::Result<Self> {
         let path = run_dir.join("trace.jsonl");
-        let file = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&path)?;
+        let file = OpenOptions::new().create(true).append(true).open(&path)?;
         // Existing line count → resume seq from there. This matters when
         // a recipe is retried after a crash and the partial trace is
         // already on disk; we want the next line to continue from the
@@ -187,7 +184,10 @@ impl Emitter {
         let ts = now_unix_ms();
         let mut obj = serde_json::Map::new();
         obj.insert("ts".into(), serde_json::Value::from(ts));
-        obj.insert("run_id".into(), serde_json::Value::from(self.run_id.clone()));
+        obj.insert(
+            "run_id".into(),
+            serde_json::Value::from(self.run_id.clone()),
+        );
         obj.insert("seq".into(), serde_json::Value::from(next_seq));
         obj.insert("kind".into(), serde_json::Value::from(kind.as_str()));
         if let serde_json::Value::Object(map) = payload {
@@ -208,8 +208,7 @@ impl Emitter {
             // stash it under "payload" rather than throwing.
             obj.insert("payload".into(), payload);
         }
-        let mut line =
-            serde_json::to_string(&serde_json::Value::Object(obj)).map_err(io_other)?;
+        let mut line = serde_json::to_string(&serde_json::Value::Object(obj)).map_err(io_other)?;
         line.push('\n');
         let mut guard = self.file.lock().map_err(|_| io_poisoned())?;
         guard.write_all(line.as_bytes())?;
@@ -288,10 +287,7 @@ impl Emitter {
     /// `model_chunk` — streaming chunk. Optional / verbose only; production
     /// default is OFF.
     pub fn model_chunk(&self, text: &str) -> io::Result<()> {
-        self.append(
-            TraceKind::ModelChunk,
-            serde_json::json!({ "text": text }),
-        )
+        self.append(TraceKind::ModelChunk, serde_json::json!({ "text": text }))
     }
 
     /// `model_done` — LLM turn ended.
@@ -556,7 +552,8 @@ mod tests {
         em.run_started(RunKind::Panel, "anthropic", "claude-sonnet-4-6", None, None)
             .unwrap();
         em.prompt("user", "hello").unwrap();
-        em.model_call("anthropic", "claude-sonnet-4-6", 1, 0).unwrap();
+        em.model_call("anthropic", "claude-sonnet-4-6", 1, 0)
+            .unwrap();
         em.model_done("hi there", 12, 7, "stop").unwrap();
         em.run_ended("ok", 12, 7, 0.0001, None).unwrap();
         drop(em);
@@ -566,16 +563,25 @@ mod tests {
         assert_eq!(lines[0].kind, "run_started");
         assert_eq!(lines[0].seq, 1);
         assert_eq!(lines[0].run_id, "run-rt");
-        assert_eq!(lines[0].payload.get("provider").and_then(|v| v.as_str()), Some("anthropic"));
+        assert_eq!(
+            lines[0].payload.get("provider").and_then(|v| v.as_str()),
+            Some("anthropic")
+        );
         // Renamed key — `run_kind` not `kind`, so the run-level kind doesn't
         // collide with the line-level kind.
-        assert_eq!(lines[0].payload.get("run_kind").and_then(|v| v.as_str()), Some("panel"));
+        assert_eq!(
+            lines[0].payload.get("run_kind").and_then(|v| v.as_str()),
+            Some("panel")
+        );
 
         assert_eq!(lines[1].kind, "prompt");
         assert_eq!(lines[1].seq, 2);
         assert_eq!(lines[2].kind, "model_call");
         assert_eq!(lines[3].kind, "model_done");
-        assert_eq!(lines[3].payload.get("tokens_in").and_then(|v| v.as_u64()), Some(12));
+        assert_eq!(
+            lines[3].payload.get("tokens_in").and_then(|v| v.as_u64()),
+            Some(12)
+        );
         assert_eq!(lines[4].kind, "run_ended");
         // ts is monotonic-ish — at least non-decreasing.
         for w in lines.windows(2) {
@@ -599,8 +605,14 @@ mod tests {
 
         let lines = read_trace(&dir).unwrap();
         let res = lines.iter().find(|l| l.kind == "tool_result").unwrap();
-        assert_eq!(res.payload.get("truncated").and_then(|v| v.as_bool()), Some(true));
-        assert_eq!(res.payload.get("result_bytes").and_then(|v| v.as_u64()), Some(3000));
+        assert_eq!(
+            res.payload.get("truncated").and_then(|v| v.as_bool()),
+            Some(true)
+        );
+        assert_eq!(
+            res.payload.get("result_bytes").and_then(|v| v.as_u64()),
+            Some(3000)
+        );
         let written = res.payload.get("result").and_then(|v| v.as_str()).unwrap();
         // 2048 chars of payload + the 12-char "…(truncated)" marker.
         assert!(written.starts_with("xxxxxxxxxxx"));
@@ -621,9 +633,16 @@ mod tests {
         let lines = read_trace(&dir).unwrap();
         let res = &lines[0];
         // truncated is omitted (or false); we use `is_none`-or-`false`.
-        let trunc = res.payload.get("truncated").and_then(|v| v.as_bool()).unwrap_or(false);
+        let trunc = res
+            .payload
+            .get("truncated")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
         assert!(!trunc);
-        assert_eq!(res.payload.get("result").and_then(|v| v.as_str()), Some("short body"));
+        assert_eq!(
+            res.payload.get("result").and_then(|v| v.as_str()),
+            Some("short body")
+        );
     }
 
     #[test]
@@ -669,10 +688,12 @@ mod tests {
         em.run_started(RunKind::Panel, "anthropic", "claude-sonnet-4-6", None, None)
             .unwrap(); // seq 1
         em.prompt("user", "first").unwrap(); // seq 2
-        em.model_call("anthropic", "claude-sonnet-4-6", 1, 0).unwrap(); // seq 3
+        em.model_call("anthropic", "claude-sonnet-4-6", 1, 0)
+            .unwrap(); // seq 3
         em.model_done("a1", 5, 5, "stop").unwrap(); // seq 4
         em.prompt("user", "second").unwrap(); // seq 5
-        em.model_call("anthropic", "claude-sonnet-4-6", 3, 0).unwrap(); // seq 6
+        em.model_call("anthropic", "claude-sonnet-4-6", 3, 0)
+            .unwrap(); // seq 6
         drop(em);
 
         // Replay from seq=6 (the second model_call). Prefix should be 1..=5.
@@ -696,7 +717,10 @@ mod tests {
         let lines = read_trace(&dir).unwrap();
         assert_eq!(lines.len(), 3);
         assert_eq!(lines[2].seq, 3);
-        assert_eq!(lines[2].payload.get("text").and_then(|v| v.as_str()), Some("third"));
+        assert_eq!(
+            lines[2].payload.get("text").and_then(|v| v.as_str()),
+            Some("third")
+        );
     }
 
     #[test]
@@ -720,7 +744,10 @@ mod tests {
         assert_eq!(lines[0].run_id, "real-run");
         assert_eq!(lines[0].seq, 1);
         assert_eq!(lines[0].kind, "note");
-        assert_eq!(lines[0].payload.get("text").and_then(|v| v.as_str()), Some("hi"));
+        assert_eq!(
+            lines[0].payload.get("text").and_then(|v| v.as_str()),
+            Some("hi")
+        );
     }
 
     #[test]

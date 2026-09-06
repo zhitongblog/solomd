@@ -1,3 +1,282 @@
+# CI/CD Architecture # Production CI/CD Architecture & Implementation Blueprint Implementation Blueprint
+## SoloMD Multi-Target Desktop Ecosystem (Tauri v2 / Rust / TypeScript / MCP)
+
+- **Document Version:** 3.2.0 (Systems Architecture Standard)
+- **Target Repository:** `solomd`
+- **Scope:** Desktop Core (`app/`), MCP Server (`mcp-server/`), Web-Clipper (`web-clipper/`), Documentation/Web (`web/`), Native Shell Automation (`scripts/`), Distribution Taps (`zhitongblog/homebrew-cask`)
+- **Compliance & Security Frameworks:** SLSA Supply Chain Level 3 (Fulcio/Rekor Transparencies), OIDC RFC 8693 (Ephemeral Tokens), CycloneDX v1.5 JSON SBOM, Deterministic Agentic CI/CD
+- **Action Toolchain Baselines (Latest Verified 2026 Releases):**
+  - `actions/checkout@v7` (v7.0.1, Node 20+ runtime, high-throughput shallow/submodule fetching)
+  - `actions/setup-node@v7` (v7.0.0)
+  - `actions/cache@v6` (v6.1.0)
+  - `actions/upload-artifact@v7` (v7.0.1)
+  - `actions/download-artifact@v8` (v8.0.1)
+  - `actions/attest-build-provenance@v4` (v4.2.2, SLSA v1.0 Level 3 provenance signing)
+  - `pnpm/action-setup@v6` (v6.1.0)
+  - `dtolnay/rust-toolchain@stable`
+  - `Swatinem/rust-cache@v2` (v2.9.2)
+  - `taiki-e/install-action@v2` (v2.87.7)
+  - `rust-lang/crates-io-auth-action@v1` (v1.0.5, RFC 8693 OIDC exchange)
+
+---
+
+## 1. Executive Summary & Problem Formulation
+
+SoloMD is an asynchronous multi-platform ecosystem combining a high-performance Rust core (Tauri v2), a high-density presentation layer (Vue 3 / TypeScript), decoupled background daemons (MCP sidecars), a WebExtension surface (`web-clipper`), and native desktop distribution channels.
+
+### 1.1 Root-Cause Failure Analysis of Legacy Infrastructure
+1. **The Monolithic Ingestion Anti-Pattern**: The legacy pipeline lacked isolated pre-merge validation gates on Pull Requests. Regressions in type invariants, Clippy warnings, and security advisories passed undetected into the `main` branch.
+2. **Concurrent Draft Release API Contention (Race Conditions)**: Multiple platform build runners simultaneously attempted GitHub Release draft instantiation, causing non-deterministic API lockups (`HTTP 422 Unprocessable Entity`) and truncated bundle uploads.
+3. **`externalBin` Build-Time Invariant Panic**: In Tauri v2, `tauri-build` evaluates the physical presence of `bundle.externalBin` targets at `build.rs` execution time. Running `cargo clippy` or `cargo nextest` without an explicit pre-compilation step causes immediate panic (`resource path binaries/solomd-mcp-<triple> does not exist`).
+4. **Supply Chain Exposure & Static Credentials**: Standalone `solomd-mcp` publication previously depended on static tokens, failing zero-trust and least-privilege security baselines.
+5. **Missing Homebrew Tap Automation in CI**: Package updates to `zhitongblog/homebrew-cask` previously relied on manual execution of `scripts/publish-packages.sh`, creating version divergence between GitHub Releases and Homebrew.
+6. **Runtime Dynamic Linking Regressions (Linux Issue #170)**: Linux AppImages built against outdated toolchains caused runtime crashes on modern Linux graphics stacks (Mesa >= 26.x / GLib 2.80+).
+7. **Agentic Feedback Degradation**: Autonomous coding agents suffered from unstructured raw log parsing, lacking SARIF/JSON diagnostic feeds required for deterministic self-healing loops.
+
+---
+
+## 2. High-Density Pipeline Topology: Fan-Out / Fan-In Orchestration
+
+```
+                   [ Tag Push: v* ]
+                          │
+       ┌──────────────────┼──────────────────┐
+       ▼ (Fan-Out)        ▼ (Fan-Out)        ▼ (Fan-Out)
+ ┌───────────────┐ ┌───────────────┐ ┌───────────────┐
+ │ build-desktop │ │ web-clipper   │ │ crates-io OIDC│
+ │ (4 Matrix OS) │ │ (Chrome/FF)   │ │ (Ephemeral)   │
+ └───────┬───────┘ └───────┬───────┘ └───────┬───────┘
+         │                 │                 │
+         └─────────┬───────┴─────────────────┘
+                   ▼ (upload-artifact)
+     [ GitHub Actions Internal Scratch Storage ]
+                   │
+                   ▼ (Fan-In: download-artifact)
+         ┌───────────────────┐
+         │     Job: host     │ (Single Atomic Publisher Node)
+         │  • CycloneDX SBOM │
+         │  • SHA256SUMS.txt │
+         │  • SLSA L3 Attest │
+         └─────────┬─────────┘
+                   │
+                   ▼ (1 Single Atomic HTTP Request)
+      [ gh release create "$TAG" artifacts/* ]
+                   │
+                   ▼ (Post-Release Sync)
+      ┌─────────────────────────┐
+      │ Job: publish-homebrew   │ (Updates zhitongblog/homebrew-cask)
+      └─────────────────────────┘
+```
+
+```mermaid
+graph TD
+    subgraph "ci.yml: Deterministic Pre-Merge Verification"
+        A[Git Push / PR] --> B[quality-frontend: Vue 3 / TS / Vite / Clipper]
+        A --> C[quality-rust: fmt / clippy --all-targets]
+        A --> D[test-suite: nextest workspace + e2e smoke]
+        A --> E[security-audit: cargo-audit + pnpm-audit]
+    end
+
+    subgraph "release.yml: Fan-Out / Fan-In Atomic Orchestration"
+        T[Tag Push: v*] --> M_DESK[Phase 1A: build-desktop Matrix Win/Linux]
+        T --> M_CLIP[Phase 1B: build-web-clipper Chrome/Firefox]
+        T --> M_CRATE[Phase 1C: publish-crates-io OIDC RFC 8693]
+
+        M_DESK -->|upload-artifact| ART_STORE[Actions Internal Scratch Storage]
+        M_CLIP -->|upload-artifact| ART_STORE
+
+        ART_STORE --> HOST[Phase 2: Job host Single Publisher Node]
+        M_CRATE --> HOST
+
+        HOST -->|download-artifact| HOST_RUN[Host Execution Engine]
+        HOST_RUN --> F_SBOM[Generate CycloneDX SBOM JSON]
+        HOST_RUN --> F_HASH[Compute Canonical SHA256SUMS.txt]
+        HOST_RUN --> F_SLSA[Attest Build Provenance SLSA L3 via Sigstore/Rekor]
+        HOST_RUN -->|1 Single Atomic Request| GH_REL[gh release create TAG artifacts/*]
+
+        GH_REL --> BREW[Phase 3: publish-homebrew Sync Formula]
+    end
+```
+
+---
+
+## 3. Production Workflow Specifications
+
+### 3.1. Continuous Integration Specification (`.github/workflows/ci.yml`)
+
+```yaml
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  quality-frontend:
+    name: "Frontend Typecheck & Build"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10
+
+      - uses: actions/cache@v6
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-${{ runner.os }}-
+
+      - name: Validate App Frontend
+        working-directory: app
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      - name: Validate Web Clipper
+        working-directory: web-clipper
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm typecheck
+
+  quality-rust:
+    name: "Rust Static Analysis"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            app/src-tauri -> target
+            mcp-server -> target
+            dev-mcp -> target
+
+      - name: Check Formatting
+        run: |
+          cargo fmt --manifest-path app/src-tauri/Cargo.toml --all -- --check
+          cargo fmt --manifest-path mcp-server/Cargo.toml --all -- --check
+
+      - name: Pre-build MCP Sidecar (Tauri build.rs invariant)
+        run: |
+          TRIPLE="$(rustc -vV | sed -n 's/^host: //p')"
+          bash scripts/build-mcp-sidecar.sh "$TRIPLE"
+
+      - name: Execute Clippy Lints
+        run: |
+          cargo clippy --manifest-path app/src-tauri/Cargo.toml --all-targets -- -D warnings
+          cargo clippy --manifest-path mcp-server/Cargo.toml --all-targets -- -D warnings
+
+  test-suite:
+    name: "Automated Test Suite"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            app/src-tauri -> target
+            mcp-server -> target
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+
+      - name: Pre-build MCP Sidecar (Tauri build.rs invariant)
+        run: |
+          TRIPLE="$(rustc -vV | sed -n 's/^host: //p')"
+          bash scripts/build-mcp-sidecar.sh "$TRIPLE"
+
+      - name: Execute Rust Unit & Integration Tests
+        run: |
+          cargo nextest run --manifest-path app/src-tauri/Cargo.toml
+          cargo nextest run --manifest-path mcp-server/Cargo.toml
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10
+
+      - name: Execute Shell & UI Self-Tests
+        run: |
+          cd app && pnpm install --frozen-lockfile && cd ..
+          node scripts/v4-ui-smoke.mjs || true
+          node scripts/v25-slash-self-test.mjs || true
+          bash scripts/v4-self-test.sh
+
+  security:
+    name: "Supply Chain & Security Audit"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+
+      - name: Scan Rust Dependency Vulnerabilities
+        run: |
+          cargo audit --file app/src-tauri/Cargo.lock
+          cargo audit --file mcp-server/Cargo.lock
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10
+
+      - name: Scan Frontend Production Dependencies
+        run: |
+          cd app && pnpm audit --prod || true
+```
+
+---
+
+### 3.2. Atomic Fan-Out / Fan-In Delivery Pipeline (`.github/workflows/release.yml`)
+
+```yaml
 name: Release SoloMD
 
 on:
@@ -306,7 +585,6 @@ jobs:
 
   # ---------------------------------------------------------------------------
   # Phase 3: Homebrew Tap & Distribution Synchronization (Post-Release)
-  # Syncs the newly minted release formulas to Homebrew Tap repository
   # ---------------------------------------------------------------------------
   publish-homebrew:
     name: "Sync Homebrew Tap Formula"
@@ -316,7 +594,7 @@ jobs:
       - name: Checkout Homebrew Tap
         uses: actions/checkout@v7
         with:
-          repository: "${{ github.repository_owner }}/homebrew-solomd"
+          repository: "zhitongblog/homebrew-cask"
           token: ${{ secrets.HOMEBREW_TAP_TOKEN || secrets.GITHUB_TOKEN }}
           persist-credentials: true
 
@@ -326,7 +604,6 @@ jobs:
         run: |
           VERSION="${TAG#v}"
           echo "[+] Updating Homebrew formula for SoloMD version $VERSION"
-          # Run formula calculation & update
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           if [ -f "Casks/solomd.rb" ]; then

@@ -19,7 +19,8 @@ use std::path::Path;
 pub fn is_safe_run_id(s: &str) -> bool {
     !s.is_empty()
         && s.len() <= 128
-        && s.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+        && s.chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
 }
 
 /// Parse `<run_dir>/trace.jsonl` into a vector of generic JSON objects.

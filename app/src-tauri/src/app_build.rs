@@ -28,7 +28,9 @@ pub struct BuildInfo {
 
 #[tauri::command]
 pub fn app_build_info() -> BuildInfo {
-    BuildInfo { is_app_store: IS_APP_STORE }
+    BuildInfo {
+        is_app_store: IS_APP_STORE,
+    }
 }
 
 /// App Store gate helper. Only referenced by the AI/Agent/Recipe commands

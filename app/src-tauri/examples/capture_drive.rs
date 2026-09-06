@@ -19,9 +19,7 @@
 
 use std::path::PathBuf;
 
-use app_lib::capture_endpoint::{
-    _test_bind_and_serve, _test_current_token, _test_set_state,
-};
+use app_lib::capture_endpoint::{_test_bind_and_serve, _test_current_token, _test_set_state};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -31,7 +29,10 @@ fn main() {
     }
     let workspace = PathBuf::from(&args[1]);
     if !workspace.is_dir() {
-        eprintln!("error: workspace folder does not exist: {}", workspace.display());
+        eprintln!(
+            "error: workspace folder does not exist: {}",
+            workspace.display()
+        );
         std::process::exit(1);
     }
 
@@ -49,17 +50,19 @@ fn main() {
         .build()
         .expect("tokio runtime");
 
-    let port = rt.block_on(async {
-        _test_bind_and_serve()
-            .await
-            .expect("bind capture endpoint")
-    });
+    let port = rt.block_on(async { _test_bind_and_serve().await.expect("bind capture endpoint") });
 
     let actual_token = _test_current_token();
 
     println!("PORT={port}");
     println!("TOKEN={actual_token}");
-    println!("WORKSPACE={}", workspace.canonicalize().unwrap_or(workspace.clone()).display());
+    println!(
+        "WORKSPACE={}",
+        workspace
+            .canonicalize()
+            .unwrap_or(workspace.clone())
+            .display()
+    );
     println!("READY");
 
     // Keep process alive — the actual server is running on a tokio task.

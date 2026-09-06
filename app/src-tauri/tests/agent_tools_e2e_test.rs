@@ -71,8 +71,7 @@ fn list_notes_scoped_by_folder() {
 #[test]
 fn read_note_round_trips_frontmatter_and_links() {
     let ws = make_workspace("read");
-    let res: Value =
-        dispatch_tool_inner(&ws, "read_note", json!({"path": "Welcome.md"})).unwrap();
+    let res: Value = dispatch_tool_inner(&ws, "read_note", json!({"path": "Welcome.md"})).unwrap();
     assert_eq!(res["frontmatter"]["title"], "Welcome");
     let tags: Vec<String> = res["tags"]
         .as_array()
@@ -82,10 +81,7 @@ fn read_note_round_trips_frontmatter_and_links() {
         .collect();
     assert!(tags.contains(&"intro".to_string()));
     assert!(tags.contains(&"demo".to_string()));
-    assert!(res["content"]
-        .as_str()
-        .unwrap()
-        .contains("First paragraph"));
+    assert!(res["content"].as_str().unwrap().contains("First paragraph"));
     let wl = res["wikilinks"].as_array().unwrap();
     assert_eq!(wl.len(), 1);
     assert_eq!(wl[0]["target"], "Daily/2026-04-30");
@@ -95,11 +91,14 @@ fn read_note_round_trips_frontmatter_and_links() {
 #[test]
 fn search_finds_literal_match() {
     let ws = make_workspace("search");
-    let res: Value =
-        dispatch_tool_inner(&ws, "search", json!({"query": "needle"})).unwrap();
+    let res: Value = dispatch_tool_inner(&ws, "search", json!({"query": "needle"})).unwrap();
     assert!(res["count"].as_u64().unwrap() >= 1);
     let hit = &res["hits"][0];
-    assert!(hit["snippet"].as_str().unwrap().to_lowercase().contains("needle"));
+    assert!(hit["snippet"]
+        .as_str()
+        .unwrap()
+        .to_lowercase()
+        .contains("needle"));
     let _ = fs::remove_dir_all(&ws);
 }
 

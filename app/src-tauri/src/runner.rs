@@ -91,10 +91,10 @@ mod agent_tools;
 #[path = "pricing.rs"]
 mod pricing;
 // v4.0 Pillar 3 — canonical trace emitter + reader + Tauri wrappers.
-#[path = "trace.rs"]
-mod trace;
 #[path = "agent_trace.rs"]
 mod agent_trace;
+#[path = "trace.rs"]
+mod trace;
 // v4.0 Pillar 5 — Ollama polish (detect / pull / install-page).
 #[path = "ollama.rs"]
 mod ollama;
@@ -106,10 +106,10 @@ mod mcp_profiles;
 // up. `commands.rs` and `git_history.rs` reference
 // `crate::recipe_runner::*`, which must resolve in both compilation
 // roots (the lib AND the bin).
-#[path = "recipes.rs"]
-mod recipes;
 #[path = "recipe_runner.rs"]
 mod recipe_runner;
+#[path = "recipes.rs"]
+mod recipes;
 // v4.0 — bundled recipe cookbook (10+ ready-to-edit YAML templates).
 #[path = "cookbook.rs"]
 mod cookbook;
@@ -143,10 +143,10 @@ mod win_chrome;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
-#[cfg(not(target_os = "windows"))]
-use tauri::menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder};
 #[cfg(target_os = "macos")]
 use tauri::menu::{AboutMetadata, PredefinedMenuItem};
+#[cfg(not(target_os = "windows"))]
+use tauri::menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder};
 use tauri::{Emitter, Manager, RunEvent};
 
 /// Tell macOS AppKit to use the given language for native dialogs
@@ -353,12 +353,24 @@ fn build_app_menu<R: tauri::Runtime>(
         }};
     }
 
-    let new_md = accel!(MenuItemBuilder::with_id("file.new", s.new_md), "file.new", "CmdOrCtrl+N")
-        .build(app)?;
-    let new_txt = accel!(MenuItemBuilder::with_id("file.newText", s.new_txt), "file.newText", "CmdOrCtrl+Alt+N")
-        .build(app)?;
-    let open_file = accel!(MenuItemBuilder::with_id("file.open", s.open_file), "file.open", "CmdOrCtrl+O")
-        .build(app)?;
+    let new_md = accel!(
+        MenuItemBuilder::with_id("file.new", s.new_md),
+        "file.new",
+        "CmdOrCtrl+N"
+    )
+    .build(app)?;
+    let new_txt = accel!(
+        MenuItemBuilder::with_id("file.newText", s.new_txt),
+        "file.newText",
+        "CmdOrCtrl+Alt+N"
+    )
+    .build(app)?;
+    let open_file = accel!(
+        MenuItemBuilder::with_id("file.open", s.open_file),
+        "file.open",
+        "CmdOrCtrl+O"
+    )
+    .build(app)?;
     let open_folder = MenuItemBuilder::with_id("file.openFolder", s.open_folder).build(app)?;
     // Converting a Word/PDF/HTML file has been possible for versions, but only
     // by opening one — there was no entry point that said "import", which is
@@ -369,22 +381,50 @@ fn build_app_menu<R: tauri::Runtime>(
         "CmdOrCtrl+Shift+L"
     )
     .build(app)?;
-    let save = accel!(MenuItemBuilder::with_id("file.save", s.save), "file.save", "CmdOrCtrl+S")
-        .build(app)?;
-    let save_as = accel!(MenuItemBuilder::with_id("file.saveAs", s.save_as), "file.saveAs", "CmdOrCtrl+Shift+S")
-        .build(app)?;
-    let print_item = accel!(MenuItemBuilder::with_id("file.print", s.print_item), "file.print", "CmdOrCtrl+P")
-        .build(app)?;
-    let close_tab = accel!(MenuItemBuilder::with_id("file.closeTab", s.close_tab), "file.closeTab", "CmdOrCtrl+W")
-        .build(app)?;
-    let new_window = accel!(MenuItemBuilder::with_id("window.new", s.new_window), "window.new", "CmdOrCtrl+Shift+N")
-        .build(app)?;
-    let open_external = accel!(MenuItemBuilder::with_id("file.openExternal", s.open_external), "file.openExternal", "CmdOrCtrl+Shift+E")
-        .build(app)?;
+    let save = accel!(
+        MenuItemBuilder::with_id("file.save", s.save),
+        "file.save",
+        "CmdOrCtrl+S"
+    )
+    .build(app)?;
+    let save_as = accel!(
+        MenuItemBuilder::with_id("file.saveAs", s.save_as),
+        "file.saveAs",
+        "CmdOrCtrl+Shift+S"
+    )
+    .build(app)?;
+    let print_item = accel!(
+        MenuItemBuilder::with_id("file.print", s.print_item),
+        "file.print",
+        "CmdOrCtrl+P"
+    )
+    .build(app)?;
+    let close_tab = accel!(
+        MenuItemBuilder::with_id("file.closeTab", s.close_tab),
+        "file.closeTab",
+        "CmdOrCtrl+W"
+    )
+    .build(app)?;
+    let new_window = accel!(
+        MenuItemBuilder::with_id("window.new", s.new_window),
+        "window.new",
+        "CmdOrCtrl+Shift+N"
+    )
+    .build(app)?;
+    let open_external = accel!(
+        MenuItemBuilder::with_id("file.openExternal", s.open_external),
+        "file.openExternal",
+        "CmdOrCtrl+Shift+E"
+    )
+    .build(app)?;
     // Linux tiling WM has no window X button — needs discoverable Exit in native menu (Ctrl+Q).
     #[cfg(target_os = "linux")]
-    let exit_item =
-        accel!(MenuItemBuilder::with_id("file.exit", s.exit), "file.exit", "Ctrl+Q").build(app)?;
+    let exit_item = accel!(
+        MenuItemBuilder::with_id("file.exit", s.exit),
+        "file.exit",
+        "Ctrl+Q"
+    )
+    .build(app)?;
 
     #[cfg(target_os = "linux")]
     let file_submenu = SubmenuBuilder::new(app, s.file)
@@ -438,40 +478,100 @@ fn build_app_menu<R: tauri::Runtime>(
         .build()?;
 
     let toggle_theme = MenuItemBuilder::with_id("view.toggleTheme", s.toggle_theme).build(app)?;
-    let toggle_sidebar = accel!(MenuItemBuilder::with_id("view.toggleFileTree", s.toggle_sidebar), "view.toggleFileTree", "CmdOrCtrl+B")
-        .build(app)?;
-    let toggle_outline = accel!(MenuItemBuilder::with_id("view.toggleOutline", s.toggle_outline), "view.toggleOutline", "CmdOrCtrl+Shift+O")
-        .build(app)?;
-    let cycle_view = accel!(MenuItemBuilder::with_id("view.cycleView", s.cycle_view), "view.cycleView", "CmdOrCtrl+Shift+P")
-        .build(app)?;
+    let toggle_sidebar = accel!(
+        MenuItemBuilder::with_id("view.toggleFileTree", s.toggle_sidebar),
+        "view.toggleFileTree",
+        "CmdOrCtrl+B"
+    )
+    .build(app)?;
+    let toggle_outline = accel!(
+        MenuItemBuilder::with_id("view.toggleOutline", s.toggle_outline),
+        "view.toggleOutline",
+        "CmdOrCtrl+Shift+O"
+    )
+    .build(app)?;
+    let cycle_view = accel!(
+        MenuItemBuilder::with_id("view.cycleView", s.cycle_view),
+        "view.cycleView",
+        "CmdOrCtrl+Shift+P"
+    )
+    .build(app)?;
     // v4.3.0 PR #74 — three independent zoom axes wired through native
     // menu accelerators (more reliable than JS keyboard handlers on macOS,
     // which the WKWebView can sometimes intercept). Action ids are
     // dispatched in App.vue's `dispatchMenuAction`.
-    let ui_zoom_in = accel!(MenuItemBuilder::with_id("view.zoomUiIn", s.ui_zoom_in), "view.zoomUiIn", "CmdOrCtrl+=")
-        .build(app)?;
-    let ui_zoom_out = accel!(MenuItemBuilder::with_id("view.zoomUiOut", s.ui_zoom_out), "view.zoomUiOut", "CmdOrCtrl+-")
-        .build(app)?;
-    let ui_zoom_reset = accel!(MenuItemBuilder::with_id("view.zoomUiReset", s.ui_zoom_reset), "view.zoomUiReset", "CmdOrCtrl+0")
-        .build(app)?;
-    let editor_zoom_in = accel!(MenuItemBuilder::with_id("view.zoomEditorIn", s.editor_zoom_in), "view.zoomEditorIn", "CmdOrCtrl+Shift+=")
-        .build(app)?;
-    let editor_zoom_out = accel!(MenuItemBuilder::with_id("view.zoomEditorOut", s.editor_zoom_out), "view.zoomEditorOut", "CmdOrCtrl+Shift+-")
-        .build(app)?;
-    let editor_zoom_reset = accel!(MenuItemBuilder::with_id("view.zoomEditorReset", s.editor_zoom_reset), "view.zoomEditorReset", "CmdOrCtrl+Shift+0")
-        .build(app)?;
-    let preview_zoom_in = accel!(MenuItemBuilder::with_id("view.zoomPreviewIn", s.preview_zoom_in), "view.zoomPreviewIn", "CmdOrCtrl+Control+=")
-        .build(app)?;
-    let preview_zoom_out = accel!(MenuItemBuilder::with_id("view.zoomPreviewOut", s.preview_zoom_out), "view.zoomPreviewOut", "CmdOrCtrl+Control+-")
-        .build(app)?;
-    let preview_zoom_reset = accel!(MenuItemBuilder::with_id("view.zoomPreviewReset", s.preview_zoom_reset), "view.zoomPreviewReset", "CmdOrCtrl+Control+0")
-        .build(app)?;
-    let palette = accel!(MenuItemBuilder::with_id("view.cmdPalette", s.palette), "view.cmdPalette", "CmdOrCtrl+Shift+K")
-        .build(app)?;
-    let global_search = accel!(MenuItemBuilder::with_id("search.global", s.global_search), "search.global", "CmdOrCtrl+Shift+F")
-        .build(app)?;
-    let settings_item = accel!(MenuItemBuilder::with_id("view.settings", s.settings_menu), "view.settings", "CmdOrCtrl+,")
-        .build(app)?;
+    let ui_zoom_in = accel!(
+        MenuItemBuilder::with_id("view.zoomUiIn", s.ui_zoom_in),
+        "view.zoomUiIn",
+        "CmdOrCtrl+="
+    )
+    .build(app)?;
+    let ui_zoom_out = accel!(
+        MenuItemBuilder::with_id("view.zoomUiOut", s.ui_zoom_out),
+        "view.zoomUiOut",
+        "CmdOrCtrl+-"
+    )
+    .build(app)?;
+    let ui_zoom_reset = accel!(
+        MenuItemBuilder::with_id("view.zoomUiReset", s.ui_zoom_reset),
+        "view.zoomUiReset",
+        "CmdOrCtrl+0"
+    )
+    .build(app)?;
+    let editor_zoom_in = accel!(
+        MenuItemBuilder::with_id("view.zoomEditorIn", s.editor_zoom_in),
+        "view.zoomEditorIn",
+        "CmdOrCtrl+Shift+="
+    )
+    .build(app)?;
+    let editor_zoom_out = accel!(
+        MenuItemBuilder::with_id("view.zoomEditorOut", s.editor_zoom_out),
+        "view.zoomEditorOut",
+        "CmdOrCtrl+Shift+-"
+    )
+    .build(app)?;
+    let editor_zoom_reset = accel!(
+        MenuItemBuilder::with_id("view.zoomEditorReset", s.editor_zoom_reset),
+        "view.zoomEditorReset",
+        "CmdOrCtrl+Shift+0"
+    )
+    .build(app)?;
+    let preview_zoom_in = accel!(
+        MenuItemBuilder::with_id("view.zoomPreviewIn", s.preview_zoom_in),
+        "view.zoomPreviewIn",
+        "CmdOrCtrl+Control+="
+    )
+    .build(app)?;
+    let preview_zoom_out = accel!(
+        MenuItemBuilder::with_id("view.zoomPreviewOut", s.preview_zoom_out),
+        "view.zoomPreviewOut",
+        "CmdOrCtrl+Control+-"
+    )
+    .build(app)?;
+    let preview_zoom_reset = accel!(
+        MenuItemBuilder::with_id("view.zoomPreviewReset", s.preview_zoom_reset),
+        "view.zoomPreviewReset",
+        "CmdOrCtrl+Control+0"
+    )
+    .build(app)?;
+    let palette = accel!(
+        MenuItemBuilder::with_id("view.cmdPalette", s.palette),
+        "view.cmdPalette",
+        "CmdOrCtrl+Shift+K"
+    )
+    .build(app)?;
+    let global_search = accel!(
+        MenuItemBuilder::with_id("search.global", s.global_search),
+        "search.global",
+        "CmdOrCtrl+Shift+F"
+    )
+    .build(app)?;
+    let settings_item = accel!(
+        MenuItemBuilder::with_id("view.settings", s.settings_menu),
+        "view.settings",
+        "CmdOrCtrl+,"
+    )
+    .build(app)?;
 
     let view_submenu = SubmenuBuilder::new(app, s.view)
         .item(&toggle_theme)
@@ -498,8 +598,12 @@ fn build_app_menu<R: tauri::Runtime>(
         .item(&settings_item)
         .build()?;
 
-    let md_help = accel!(MenuItemBuilder::with_id("help.markdown", s.md_help), "help.markdown", "F1")
-        .build(app)?;
+    let md_help = accel!(
+        MenuItemBuilder::with_id("help.markdown", s.md_help),
+        "help.markdown",
+        "F1"
+    )
+    .build(app)?;
     let about = MenuItemBuilder::with_id("help.about", s.about).build(app)?;
 
     let help_submenu = SubmenuBuilder::new(app, s.help)
@@ -671,14 +775,18 @@ fn clamp_window_to_monitor(win: &tauri::WebviewWindow) {
     const MIN_W: i32 = 480;
     const MIN_H: i32 = 360;
 
-    let Ok(Some(monitor)) = win.current_monitor() else { return; };
+    let Ok(Some(monitor)) = win.current_monitor() else {
+        return;
+    };
     let scale = monitor.scale_factor();
     let mon_w = (monitor.size().width as f64 / scale).round() as i32;
     let mon_h = (monitor.size().height as f64 / scale).round() as i32;
     let mon_x = (monitor.position().x as f64 / scale).round() as i32;
     let mon_y = (monitor.position().y as f64 / scale).round() as i32;
 
-    let Ok(outer) = win.outer_size() else { return; };
+    let Ok(outer) = win.outer_size() else {
+        return;
+    };
     let cur_w = (outer.width as f64 / scale).round() as i32;
     let cur_h = (outer.height as f64 / scale).round() as i32;
 
@@ -688,7 +796,9 @@ fn clamp_window_to_monitor(win: &tauri::WebviewWindow) {
     let new_h = cur_h.clamp(MIN_H, max_h);
     let size_clamped = new_w != cur_w || new_h != cur_h;
 
-    let Ok(outer_pos) = win.outer_position() else { return; };
+    let Ok(outer_pos) = win.outer_position() else {
+        return;
+    };
     let cur_x = (outer_pos.x as f64 / scale).round() as i32;
     let cur_y = (outer_pos.y as f64 / scale).round() as i32;
 

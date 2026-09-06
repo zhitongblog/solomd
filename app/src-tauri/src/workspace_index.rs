@@ -240,10 +240,7 @@ pub fn workspace_index_referenced_by(target: String) -> Result<Vec<ReferencedByR
     // Resolve which entry `target` names (so refs by title/alias/stem all
     // collapse to one path). First-match wins, mirroring resolve precedence.
     let resolved_path: Option<String> = {
-        let by_stem = s
-            .entries
-            .values()
-            .find(|e| e.stem.to_lowercase() == needle);
+        let by_stem = s.entries.values().find(|e| e.stem.to_lowercase() == needle);
         let by_title = || {
             s.entries.values().find(|e| {
                 e.title
@@ -499,7 +496,9 @@ fn scan_file(path: &Path) -> Result<IndexEntry, String> {
 
     let (frontmatter, body) = split_front_matter(&raw);
     let frontmatter_json: serde_json::Value = match frontmatter {
-        Some(fm) => serde_yaml::from_str::<serde_json::Value>(&fm).unwrap_or(serde_json::Value::Null),
+        Some(fm) => {
+            serde_yaml::from_str::<serde_json::Value>(&fm).unwrap_or(serde_json::Value::Null)
+        }
         None => serde_json::Value::Null,
     };
 
@@ -667,9 +666,8 @@ fn split_front_matter(raw: &str) -> (Option<String>, &str) {
 }
 
 fn extract_wikilinks(body: &str) -> Vec<WikilinkRef> {
-    static RE: Lazy<Regex> = Lazy::new(|| {
-        Regex::new(r"\[\[([^\[\]\n]+?)\]\]").expect("wikilink regex")
-    });
+    static RE: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"\[\[([^\[\]\n]+?)\]\]").expect("wikilink regex"));
     let mut out = Vec::new();
     for (line_idx, line) in body.lines().enumerate() {
         for cap in RE.captures_iter(line) {
@@ -814,17 +812,33 @@ mod tests {
     #[test]
     fn test_strip_inline_code_basic() {
         let stripped = strip_inline_code("purple bg `#1A1033` + text `#9B7EE0`");
-        assert!(!stripped.contains('#'), "inline code should be stripped: {:?}", stripped);
+        assert!(
+            !stripped.contains('#'),
+            "inline code should be stripped: {:?}",
+            stripped
+        );
     }
 
     #[test]
     fn test_body_tags_skip_inline_code() {
         let body = "- Active item: purple bg `#1A1033` + text `#9B7EE0` + fontWeight 600\n- Inactive: no fill + text `#94A3B8`\n- Sub-item: padding `[8,12,8,40]`, fontSize 13\n\n#real-tag";
         let tags = extract_body_tags(body);
-        assert!(tags.contains(&"real-tag".to_string()), "should find #real-tag");
-        assert!(!tags.iter().any(|t| t.contains("9B7EE0")), "should NOT pick up hex color from inline code");
-        assert!(!tags.iter().any(|t| t.contains("1A1033")), "should NOT pick up hex color from inline code");
-        assert!(!tags.iter().any(|t| t.contains("94A3B8")), "should NOT pick up hex color from inline code");
+        assert!(
+            tags.contains(&"real-tag".to_string()),
+            "should find #real-tag"
+        );
+        assert!(
+            !tags.iter().any(|t| t.contains("9B7EE0")),
+            "should NOT pick up hex color from inline code"
+        );
+        assert!(
+            !tags.iter().any(|t| t.contains("1A1033")),
+            "should NOT pick up hex color from inline code"
+        );
+        assert!(
+            !tags.iter().any(|t| t.contains("94A3B8")),
+            "should NOT pick up hex color from inline code"
+        );
     }
 
     #[test]
@@ -841,7 +855,8 @@ mod tests {
             assert!(
                 !stripped.contains('#'),
                 "strip_inline_code should remove # from backtick content in: {:?} → {:?}",
-                line, stripped
+                line,
+                stripped
             );
         }
         // Full extraction should find zero tags
@@ -900,7 +915,10 @@ mod tests {
     fn table_numeric_not_tags() {
         // Rankings and issue numbers in table rows should be excluded
         let mut tags = vec![];
-        scan_tags_in_line("| P67 | #1 DeFi_Whale 12,800pts, #2 CryptoKing |", &mut tags);
+        scan_tags_in_line(
+            "| P67 | #1 DeFi_Whale 12,800pts, #2 CryptoKing |",
+            &mut tags,
+        );
         scan_tags_in_line("| #1 (center) | highest | amber |", &mut tags);
         scan_tags_in_line("| #26 Community Wizard preview |", &mut tags);
         // Non-table numeric tags still valid
@@ -938,7 +956,10 @@ mod tests {
 | 状态灰 | `#64748B` (locked/disabled) |
 ";
         let tags = extract_body_tags(body);
-        let hex_tags: Vec<&String> = tags.iter().filter(|t| t.chars().all(|c| c.is_ascii_hexdigit())).collect();
+        let hex_tags: Vec<&String> = tags
+            .iter()
+            .filter(|t| t.chars().all(|c| c.is_ascii_hexdigit()))
+            .collect();
         assert!(
             hex_tags.is_empty(),
             "hex color codes inside backticks should NOT be tags, but found: {:?}",
@@ -1049,7 +1070,10 @@ mod tests {
             let mut s = STATE.write().unwrap();
             s.entries.clear();
             for e in [
-                entry("a", "belongs_to: \"[[b]]\"\ncites: \"[[c]]\"\nself: \"[[a]]\""),
+                entry(
+                    "a",
+                    "belongs_to: \"[[b]]\"\ncites: \"[[c]]\"\nself: \"[[a]]\"",
+                ),
                 entry("b", ""),
                 entry("c", ""),
             ] {
@@ -1068,7 +1092,10 @@ mod tests {
 
         // a.md's self-reference must NOT show up as an inverse on a.md.
         let a_inv = workspace_index_referenced_by("a".into()).unwrap();
-        assert!(a_inv.is_empty(), "self-reference must be excluded: {a_inv:?}");
+        assert!(
+            a_inv.is_empty(),
+            "self-reference must be excluded: {a_inv:?}"
+        );
 
         // --- Second scenario (same test fn so the two never race over the
         // shared STATE lock, which cargo would otherwise run in parallel) ---
@@ -1111,7 +1138,8 @@ mod tests {
 }
 
 fn extract_headings(body: &str) -> Vec<String> {
-    static RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(#{1,6})\s+(.+?)\s*$").expect("heading regex"));
+    static RE: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"^(#{1,6})\s+(.+?)\s*$").expect("heading regex"));
     let mut out = Vec::new();
     let mut in_fence = false;
     for line in body.lines() {
@@ -1137,9 +1165,8 @@ fn extract_headings(body: &str) -> Vec<String> {
 /// Skips fenced code (a `- [ ] step one` inside a shell block is
 /// documentation, not a task) and YAML front matter.
 fn extract_tasks(raw: &str) -> Vec<TaskRef> {
-    static RE: Lazy<Regex> = Lazy::new(|| {
-        Regex::new(r"^\s*[-*+]\s+\[([ xX])\]\s+(.+?)\s*$").expect("task regex")
-    });
+    static RE: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"^\s*[-*+]\s+\[([ xX])\]\s+(.+?)\s*$").expect("task regex"));
     let mut out = Vec::new();
     let mut in_fence = false;
     let mut in_front_matter = false;
@@ -1164,7 +1191,10 @@ fn extract_tasks(raw: &str) -> Vec<TaskRef> {
         }
         if let Some(cap) = RE.captures(line) {
             let done = cap.get(1).map(|m| m.as_str() != " ").unwrap_or(false);
-            let text = cap.get(2).map(|m| m.as_str().trim().to_string()).unwrap_or_default();
+            let text = cap
+                .get(2)
+                .map(|m| m.as_str().trim().to_string())
+                .unwrap_or_default();
             if text.is_empty() {
                 continue;
             }
@@ -1204,10 +1234,7 @@ fn extract_summary(body: &str) -> String {
         if trimmed.is_empty() || trimmed.starts_with('#') {
             continue;
         }
-        let cleaned: String = trimmed
-            .chars()
-            .take(200)
-            .collect();
+        let cleaned: String = trimmed.chars().take(200).collect();
         return cleaned;
     }
     String::new()
@@ -1278,7 +1305,11 @@ fn handle_event(app: &AppHandle, event: Event) {
                 .filter(|p| {
                     pending
                         .get(p)
-                        .map(|t| now2.duration_since(*t).map(|d| d.as_millis() >= 180).unwrap_or(true))
+                        .map(|t| {
+                            now2.duration_since(*t)
+                                .map(|d| d.as_millis() >= 180)
+                                .unwrap_or(true)
+                        })
                         .unwrap_or(false)
                 })
                 .collect()
@@ -1408,7 +1439,10 @@ mod task_scan_tests {
         let raw = "---\nlist:\n  - [ ] not a task\n---\n* [ ] star\n+ [X] plus\n  - [ ] nested\n";
         let tasks = extract_tasks(raw);
         assert_eq!(
-            tasks.iter().map(|t| (t.line, t.text.as_str(), t.done)).collect::<Vec<_>>(),
+            tasks
+                .iter()
+                .map(|t| (t.line, t.text.as_str(), t.done))
+                .collect::<Vec<_>>(),
             vec![(5, "star", false), (6, "plus", true), (7, "nested", false)]
         );
     }

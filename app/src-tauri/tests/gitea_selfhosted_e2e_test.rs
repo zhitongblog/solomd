@@ -60,7 +60,10 @@ impl Server {
             .arg("-H")
             .arg(format!("Authorization: token {}", self.token));
         if let Some(b) = body {
-            cmd.arg("-H").arg("Content-Type: application/json").arg("-d").arg(b);
+            cmd.arg("-H")
+                .arg("Content-Type: application/json")
+                .arg("-d")
+                .arg(b);
         }
         let out = cmd.output().expect("curl");
         let text = String::from_utf8_lossy(&out.stdout).to_string();

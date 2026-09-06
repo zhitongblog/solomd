@@ -157,10 +157,7 @@ fn format_run_ts(secs: u64) -> String {
     let d = doy - (153 * mp + 2) / 5 + 1;
     let mo = if mp < 10 { mp + 3 } else { mp - 9 };
     let y = if mo <= 2 { y + 1 } else { y };
-    format!(
-        "{:04}{:02}{:02}-{:02}{:02}{:02}",
-        y, mo, d, h, m, s
-    )
+    format!("{:04}{:02}{:02}-{:02}{:02}{:02}", y, mo, d, h, m, s)
 }
 
 /// `YYYY-MM-DDTHH:MM:SSZ` ISO-8601 in UTC for `run.md` front matter.
@@ -182,10 +179,7 @@ pub fn format_run_iso(secs: u64) -> String {
     let d = doy - (153 * mp + 2) / 5 + 1;
     let mo = if mp < 10 { mp + 3 } else { mp - 9 };
     let y = if mo <= 2 { y + 1 } else { y };
-    format!(
-        "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z",
-        y, mo, d, h, m, s
-    )
+    format!("{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z", y, mo, d, h, m, s)
 }
 
 fn rand_hex6() -> String {
@@ -207,7 +201,10 @@ pub fn mint_run_id() -> String {
 pub fn mint_tool_call_id() -> String {
     let mut buf = [0u8; 4];
     rand::thread_rng().fill_bytes(&mut buf);
-    format!("tc_{:02x}{:02x}{:02x}{:02x}", buf[0], buf[1], buf[2], buf[3])
+    format!(
+        "tc_{:02x}{:02x}{:02x}{:02x}",
+        buf[0], buf[1], buf[2], buf[3]
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -342,7 +339,8 @@ impl RunHandle {
         let seq = self.next_seq();
         // Encode as a flat JSON object — start from the typed step then patch
         // in the auto fields so they always appear.
-        let mut v = serde_json::to_value(&step).unwrap_or_else(|_| Value::Object(Default::default()));
+        let mut v =
+            serde_json::to_value(&step).unwrap_or_else(|_| Value::Object(Default::default()));
         if let Value::Object(map) = &mut v {
             map.insert("ts".to_string(), Value::from(ts_ms));
             map.insert("run_id".to_string(), Value::String(self.run_id.clone()));
@@ -362,7 +360,8 @@ impl RunHandle {
     pub fn append_run_md(&self, section: &str) -> Result<(), String> {
         let mut guard = self.run_md_file.lock().unwrap();
         if let Some(f) = guard.as_mut() {
-            f.write_all(section.as_bytes()).map_err(|e| format!("run.md write: {e}"))?;
+            f.write_all(section.as_bytes())
+                .map_err(|e| format!("run.md write: {e}"))?;
             if !section.ends_with('\n') {
                 let _ = f.write_all(b"\n");
             }
@@ -428,7 +427,10 @@ impl RunHandle {
             if let Some(num) = serde_json::Number::from_f64(cost_usd) {
                 map.insert("cost_usd_estimate".to_string(), Value::Number(num));
             } else {
-                map.insert("cost_usd_estimate".to_string(), Value::from(0.0_f64.to_string()));
+                map.insert(
+                    "cost_usd_estimate".to_string(),
+                    Value::from(0.0_f64.to_string()),
+                );
             }
             if let Some(e) = error {
                 map.insert("error".to_string(), Value::String(e));
@@ -438,8 +440,11 @@ impl RunHandle {
             map.entry("started_at".to_string())
                 .or_insert(Value::from(self.started_at));
         }
-        fs::write(meta_path, serde_json::to_vec_pretty(&meta).unwrap_or_default())
-            .map_err(|e| format!("meta.json finalize: {e}"))?;
+        fs::write(
+            meta_path,
+            serde_json::to_vec_pretty(&meta).unwrap_or_default(),
+        )
+        .map_err(|e| format!("meta.json finalize: {e}"))?;
         // Roll the per-provider cost meter forward. No-op when the meter
         // is disabled (the user opt-in lives in Settings → AI). We only
         // record successful runs — failed runs cost real tokens too, but
@@ -469,9 +474,7 @@ pub fn fmt_tool_section(tool: &str, args: &Value, result_preview: &str) -> Strin
     } else {
         result_preview.to_string()
     };
-    format!(
-        "### Tool: {tool} {args_pretty}\n```\n{preview}\n```\n\n",
-    )
+    format!("### Tool: {tool} {args_pretty}\n```\n{preview}\n```\n\n",)
 }
 
 // ---------------------------------------------------------------------------
@@ -507,8 +510,12 @@ mod tests {
         fs::remove_dir_all(&h.dir).unwrap();
         assert!(!h.dir.exists());
 
-        let meta_raw = fs::read_to_string(tmp.join(".solomd/agent-runs").join(&h.run_id).join("meta.json"))
-            .unwrap_or_else(|_| "{}".to_string());
+        let meta_raw = fs::read_to_string(
+            tmp.join(".solomd/agent-runs")
+                .join(&h.run_id)
+                .join("meta.json"),
+        )
+        .unwrap_or_else(|_| "{}".to_string());
         let _ = meta_raw;
 
         let meta = RunMeta {
@@ -521,16 +528,23 @@ mod tests {
             provider: "openai".into(),
             model: "m".into(),
             recipe: None,
-            tokens: TokenCounts { input: 1, output: 2 },
+            tokens: TokenCounts {
+                input: 1,
+                output: 2,
+            },
             cost_usd_estimate: 0.0,
             error: None,
             accepted: None,
         };
-        h.finalize(&meta).expect("finalize must survive a removed run dir");
+        h.finalize(&meta)
+            .expect("finalize must survive a removed run dir");
 
         let written: Value =
             serde_json::from_str(&fs::read_to_string(h.dir.join("meta.json")).unwrap()).unwrap();
-        assert_eq!(written["status"], "ok", "the final status must be persisted");
+        assert_eq!(
+            written["status"], "ok",
+            "the final status must be persisted"
+        );
 
         let _ = fs::remove_dir_all(&tmp);
     }
@@ -738,8 +752,8 @@ impl RunHandle {
         fs::create_dir_all(&dir).map_err(|e| format!("agent_run mkdir: {e}"))?;
 
         // meta.json
-        let json = serde_json::to_string_pretty(&meta)
-            .map_err(|e| format!("serialise meta: {e}"))?;
+        let json =
+            serde_json::to_string_pretty(&meta).map_err(|e| format!("serialise meta: {e}"))?;
         fs::write(dir.join("meta.json"), json).map_err(|e| format!("meta.json write: {e}"))?;
 
         // run.md header — match P1's panel format when kind == "panel",
@@ -775,7 +789,11 @@ impl RunHandle {
             .open(dir.join("run.md"))
             .map_err(|e| format!("run.md reopen: {e}"))?;
 
-        let kind = if meta.kind == "recipe" { RunKind::Recipe } else { RunKind::Panel };
+        let kind = if meta.kind == "recipe" {
+            RunKind::Recipe
+        } else {
+            RunKind::Panel
+        };
 
         Ok(RunHandle {
             run_id: run_id.to_string(),
@@ -812,7 +830,10 @@ impl RunHandle {
             map.insert("run_id".into(), serde_json::json!(self.run_id.clone()));
         }
         let line = serde_json::to_string(&step).map_err(|e| format!("serialise step: {e}"))?;
-        let mut g = self.trace_file.lock().map_err(|_| "trace lock".to_string())?;
+        let mut g = self
+            .trace_file
+            .lock()
+            .map_err(|_| "trace lock".to_string())?;
         if let Some(f) = g.as_mut() {
             writeln!(f, "{line}").map_err(|e| format!("trace write: {e}"))?;
             f.flush().ok();
@@ -831,7 +852,8 @@ impl RunHandle {
     /// fields; this overwrites the whole meta block which the recipe
     /// runner builds end-to-end.
     pub fn finalize(&self, meta: &RunMeta) -> Result<(), String> {
-        let json = serde_json::to_string_pretty(meta).map_err(|e| format!("serialise meta: {e}"))?;
+        let json =
+            serde_json::to_string_pretty(meta).map_err(|e| format!("serialise meta: {e}"))?;
         // #248 — a recipe run commits its `agent-runs/<id>/` files onto the
         // agent branch, and the cleanup checkout back to main then DELETES
         // that directory from the working tree. Writing meta.json here used

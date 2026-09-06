@@ -44,9 +44,7 @@ use super::ai_proxy::{
     self, resolve_provider, run_chat_anthropic_loop, run_chat_ollama, run_chat_openai_loop,
     ChatMessage, ChatRequest,
 };
-use super::recipes::{
-    self, Recipe, TriggerCtx, TriggerKind, WRITE_CAP_MAX,
-};
+use super::recipes::{self, Recipe, TriggerCtx, TriggerKind, WRITE_CAP_MAX};
 
 // ---------------------------------------------------------------------------
 // Run-id validation — Tauri commands that accept a `run_id` join it onto
@@ -170,10 +168,7 @@ fn summarise(recipe: &Recipe, last: Option<&RunMeta>) -> RecipeSummary {
 }
 
 #[tauri::command]
-pub async fn recipes_list(
-    app: AppHandle,
-    workspace: String,
-) -> Result<Vec<RecipeSummary>, String> {
+pub async fn recipes_list(app: AppHandle, workspace: String) -> Result<Vec<RecipeSummary>, String> {
     let state = app.state::<RecipesState>();
     let ws_path = PathBuf::from(&workspace);
     let (recipes, errors) = recipes::load_recipes(&ws_path);
@@ -203,7 +198,7 @@ pub async fn recipes_get(workspace: String, slug: String) -> Result<String, Stri
     for ext in ["yml", "yaml"] {
         let p = dir.join(format!("{slug}.{ext}"));
         if p.exists() {
-            return std::fs::read_to_string(&p).map_err(|e| format!("read: {e}"))
+            return std::fs::read_to_string(&p).map_err(|e| format!("read: {e}"));
         }
     }
     Err(format!("recipe not found: {slug}"))
@@ -338,7 +333,9 @@ fn diff_branch_against_main(workspace: &Path, branch: &str) -> Result<String, St
     let agent_commit = agent_ref
         .peel_to_commit()
         .map_err(|e| format!("peel agent: {e}"))?;
-    let agent_tree = agent_commit.tree().map_err(|e| format!("agent tree: {e}"))?;
+    let agent_tree = agent_commit
+        .tree()
+        .map_err(|e| format!("agent tree: {e}"))?;
 
     let diff = repo
         .diff_tree_to_tree(Some(&main_tree), Some(&agent_tree), None)
@@ -360,10 +357,7 @@ fn diff_branch_against_main(workspace: &Path, branch: &str) -> Result<String, St
 }
 
 #[tauri::command]
-pub async fn recipes_accept_run(
-    workspace: String,
-    run_id: String,
-) -> Result<(), String> {
+pub async fn recipes_accept_run(workspace: String, run_id: String) -> Result<(), String> {
     validate_run_id(&run_id)?;
     let ws = PathBuf::from(&workspace);
     let mut meta = agent_run::read_run_meta(&ws, &run_id)?;
@@ -385,10 +379,7 @@ pub async fn recipes_accept_run(
 }
 
 #[tauri::command]
-pub async fn recipes_reject_run(
-    workspace: String,
-    run_id: String,
-) -> Result<(), String> {
+pub async fn recipes_reject_run(workspace: String, run_id: String) -> Result<(), String> {
     validate_run_id(&run_id)?;
     let ws = PathBuf::from(&workspace);
     let mut meta = agent_run::read_run_meta(&ws, &run_id)?;
@@ -540,9 +531,7 @@ pub async fn dispatch_on_commit(
 ) {
     let state = app.state::<RecipesState>();
     let recipes = state.recipes.lock().unwrap().clone();
-    let rel = file_abs
-        .as_ref()
-        .and_then(|p| relativize(&workspace, p));
+    let rel = file_abs.as_ref().and_then(|p| relativize(&workspace, p));
     for recipe in recipes {
         if recipe.trigger != TriggerKind::OnCommit {
             continue;
@@ -736,7 +725,8 @@ pub async fn run_recipe(
     // up-front closes that data-loss window cleanly.
     match workspace_has_dirty_changes(workspace) {
         Ok(true) => {
-            let err = "workspace has uncommitted changes; commit or stash before running recipes".to_string();
+            let err = "workspace has uncommitted changes; commit or stash before running recipes"
+                .to_string();
             // Surface a stub run-finished event so the UI history shows
             // the refusal — there's no run dir yet, but the listener only
             // re-fetches state so the payload shape is best-effort.
@@ -788,7 +778,11 @@ pub async fn run_recipe(
             path: recipe
                 .path
                 .as_ref()
-                .and_then(|p| p.strip_prefix(workspace).ok().map(|p| p.to_string_lossy().to_string()))
+                .and_then(|p| {
+                    p.strip_prefix(workspace)
+                        .ok()
+                        .map(|p| p.to_string_lossy().to_string())
+                })
                 .unwrap_or_else(|| format!(".solomd/agents/{}.yml", recipe.slug)),
             trigger: recipe.trigger.as_str().to_string(),
             branch: branch_name.clone(),
@@ -910,7 +904,11 @@ pub fn prepare_run(
             path: recipe
                 .path
                 .as_ref()
-                .and_then(|p| p.strip_prefix(workspace).ok().map(|p| p.to_string_lossy().to_string()))
+                .and_then(|p| {
+                    p.strip_prefix(workspace)
+                        .ok()
+                        .map(|p| p.to_string_lossy().to_string())
+                })
                 .unwrap_or_else(|| format!(".solomd/agents/{}.yml", recipe.slug)),
             trigger: recipe.trigger.as_str().to_string(),
             branch: branch_name.clone(),
@@ -935,7 +933,12 @@ pub fn prepare_run(
 /// Test-friendly counterpart to `run_recipe`'s tail: emit a `run_ended`
 /// step + finalize meta.json. Public for the same reason as `prepare_run`.
 #[allow(dead_code)]
-pub fn finalize_run(handle: &RunHandle, mut meta: RunMeta, status: RunStatus, error: Option<String>) -> Result<RunMeta, String> {
+pub fn finalize_run(
+    handle: &RunHandle,
+    mut meta: RunMeta,
+    status: RunStatus,
+    error: Option<String>,
+) -> Result<RunMeta, String> {
     meta.ended_at = Some(Utc::now().timestamp());
     meta.status = status.as_str().to_string();
     meta.error = error;
@@ -973,7 +976,12 @@ pub fn agent_write_note(
         std::fs::create_dir_all(parent).map_err(|e| format!("mkdir: {e}"))?;
     }
     std::fs::write(&abs, content).map_err(|e| format!("write: {e}"))?;
-    let sha = commit_on_branch(workspace, branch, rel_path, &format!("agent: write_note {rel_path}"))?;
+    let sha = commit_on_branch(
+        workspace,
+        branch,
+        rel_path,
+        &format!("agent: write_note {rel_path}"),
+    )?;
     let _ = handle.append_step(serde_json::json!({
         "kind": "git_commit",
         "branch": branch,
@@ -988,14 +996,14 @@ pub fn agent_write_note(
 /// if the workspace isn't a git repo (AutoGit not initialised).
 fn create_agent_branch(workspace: &Path, branch: &str) -> Result<(), String> {
     let repo = Repository::open(workspace).map_err(|e| {
-        format!(
-            "agent runs require AutoGit — git_init_workspace this folder first ({e})"
-        )
+        format!("agent runs require AutoGit — git_init_workspace this folder first ({e})")
     })?;
     let head = repo
         .head()
         .map_err(|e| format!("HEAD missing — workspace has no commits yet: {e}"))?;
-    let oid = head.target().ok_or_else(|| "HEAD has no target".to_string())?;
+    let oid = head
+        .target()
+        .ok_or_else(|| "HEAD has no target".to_string())?;
     let commit = repo
         .find_commit(oid)
         .map_err(|e| format!("find HEAD commit: {e}"))?;
@@ -1090,7 +1098,12 @@ async fn run_recipe_chat_loop(
     } else {
         match ai_proxy::get_api_key(&canonical_provider) {
             Ok(k) => k,
-            Err(e) => return Err(format!("recipe '{}' provider '{}': {e}", recipe.slug, canonical_provider)),
+            Err(e) => {
+                return Err(format!(
+                    "recipe '{}' provider '{}': {e}",
+                    recipe.slug, canonical_provider
+                ))
+            }
         }
     };
 
@@ -1277,7 +1290,9 @@ fn restore_head(workspace: &Path, branch: &str) -> Result<(), String> {
     } else if repo.find_branch("master", BranchType::Local).is_ok() {
         "master".to_string()
     } else {
-        return Err(format!("no branch to restore HEAD to (tried {branch}/main/master)"));
+        return Err(format!(
+            "no branch to restore HEAD to (tried {branch}/main/master)"
+        ));
     };
     let target_ref = format!("refs/heads/{target}");
     let obj = repo
@@ -1350,9 +1365,7 @@ fn commit_branch_changes(
         .add_all(["*"].iter(), git2::IndexAddOption::DEFAULT, None)
         .map_err(|e| format!("index add_all: {e}"))?;
     index.write().map_err(|e| format!("index write: {e}"))?;
-    let tree_oid = index
-        .write_tree()
-        .map_err(|e| format!("write_tree: {e}"))?;
+    let tree_oid = index.write_tree().map_err(|e| format!("write_tree: {e}"))?;
 
     // Look up the agent branch's current tip so we can:
     //   a) skip the commit when the tree is unchanged, and
@@ -1369,7 +1382,9 @@ fn commit_branch_changes(
         return Ok(());
     }
 
-    let tree = repo.find_tree(tree_oid).map_err(|e| format!("find_tree: {e}"))?;
+    let tree = repo
+        .find_tree(tree_oid)
+        .map_err(|e| format!("find_tree: {e}"))?;
     let cfg = repo.config().map_err(|e| format!("config: {e}"))?;
     let name = cfg
         .get_string("user.name")
@@ -1407,7 +1422,9 @@ fn commit_branch_changes(
 
     // Diff parent → new commit to enumerate the touched files for the
     // trace. Best-effort: failures here just mean an empty `files` list.
-    let new_commit = repo.find_commit(oid).map_err(|e| format!("find new: {e}"))?;
+    let new_commit = repo
+        .find_commit(oid)
+        .map_err(|e| format!("find new: {e}"))?;
     let new_tree = new_commit.tree().map_err(|e| format!("new tree: {e}"))?;
     let parent_tree = parent_commit
         .tree()
@@ -1457,10 +1474,10 @@ fn commit_on_branch(
         .add_path(Path::new(rel))
         .map_err(|e| format!("index add {rel}: {e}"))?;
     index.write().map_err(|e| format!("index write: {e}"))?;
-    let tree_oid = index
-        .write_tree()
-        .map_err(|e| format!("write_tree: {e}"))?;
-    let tree = repo.find_tree(tree_oid).map_err(|e| format!("find_tree: {e}"))?;
+    let tree_oid = index.write_tree().map_err(|e| format!("write_tree: {e}"))?;
+    let tree = repo
+        .find_tree(tree_oid)
+        .map_err(|e| format!("find_tree: {e}"))?;
 
     // Parent = current tip of the agent branch.
     let parent_commit = repo

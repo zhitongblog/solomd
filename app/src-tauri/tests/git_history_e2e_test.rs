@@ -6,9 +6,8 @@
 //! it before it reaches the UI.
 
 use app_lib::git_history::{
-    git_auto_commit_inner, git_file_at_version_inner, git_file_diff_inner,
-    git_file_history_inner, git_init_workspace_inner, git_rollback_file_inner,
-    git_workspace_status_inner,
+    git_auto_commit_inner, git_file_at_version_inner, git_file_diff_inner, git_file_history_inner,
+    git_init_workspace_inner, git_rollback_file_inner, git_workspace_status_inner,
 };
 use std::fs;
 use std::path::PathBuf;
@@ -64,12 +63,18 @@ fn autogit_full_flow_init_commit_history_diff_rollback() {
 
     // Tree must NOT be dirty after commit.
     let status_after = git_workspace_status_inner(folder.clone()).unwrap();
-    assert!(!status_after.dirty, "tree should be clean after auto_commit");
+    assert!(
+        !status_after.dirty,
+        "tree should be clean after auto_commit"
+    );
 
     thread::sleep(Duration::from_millis(1100));
 
     // Modify again — second commit.
-    write(&note, "# Hello\n\nv3 content with two more lines\nand even more\n");
+    write(
+        &note,
+        "# Hello\n\nv3 content with two more lines\nand even more\n",
+    );
     let v3_sha = git_auto_commit_inner(folder.clone(), Some(note_abs.clone()), None)
         .unwrap()
         .expect("third commit");
@@ -78,7 +83,12 @@ fn autogit_full_flow_init_commit_history_diff_rollback() {
     // History for the file: should have 3 entries (init + v2 + v3), newest first.
     let hist = git_file_history_inner(folder.clone(), note_abs.clone(), 50)
         .expect("file_history should succeed");
-    assert_eq!(hist.len(), 3, "expected 3 history entries, got {}", hist.len());
+    assert_eq!(
+        hist.len(),
+        3,
+        "expected 3 history entries, got {}",
+        hist.len()
+    );
     assert_eq!(hist[0].sha, v3_sha, "newest commit should be first");
     assert_eq!(hist[1].sha, v2_sha);
     assert_eq!(hist[2].sha, init_sha);
@@ -92,14 +102,15 @@ fn autogit_full_flow_init_commit_history_diff_rollback() {
         diff.unified
     );
     assert!(
-        diff.hunks.iter().any(|h| h.lines.iter().any(|l| l.kind == "add")),
+        diff.hunks
+            .iter()
+            .any(|h| h.lines.iter().any(|l| l.kind == "add")),
         "expected at least one structured 'add' line"
     );
 
     // file_at_version: read v2's content.
-    let v2_content =
-        git_file_at_version_inner(folder.clone(), note_abs.clone(), v2_sha.clone())
-            .expect("file_at_version should succeed");
+    let v2_content = git_file_at_version_inner(folder.clone(), note_abs.clone(), v2_sha.clone())
+        .expect("file_at_version should succeed");
     assert_eq!(v2_content, "# Hello\n\nv2 content with one more line\n");
 
     // Rollback the working copy to v2.

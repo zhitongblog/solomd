@@ -152,7 +152,12 @@ mod imp {
     pub fn system_insets() -> Result<super::SystemInsets, String> {
         with_activity(|env, activity| {
             let res = env
-                .call_method(activity, "getResources", "()Landroid/content/res/Resources;", &[])?
+                .call_method(
+                    activity,
+                    "getResources",
+                    "()Landroid/content/res/Resources;",
+                    &[],
+                )?
                 .l()?;
             let top = framework_dimen(env, &res, "status_bar_height")?;
             let bottom = framework_dimen(env, &res, "navigation_bar_height")?;
@@ -241,9 +246,8 @@ mod imp {
     pub fn request_all_files_access() -> Result<(), String> {
         with_activity(|env, activity| {
             // Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
-            let action = env.new_string(
-                "android.settings.MANAGE_APP_ALL_FILES_ACCESS_PERMISSION",
-            )?;
+            let action =
+                env.new_string("android.settings.MANAGE_APP_ALL_FILES_ACCESS_PERMISSION")?;
             let intent = env.new_object(
                 "android/content/Intent",
                 "(Ljava/lang/String;)V",

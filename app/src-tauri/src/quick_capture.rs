@@ -121,7 +121,9 @@ pub fn quick_capture_write(
     // A capture is rarely a document with a heading, so the shared writer's
     // "no title → Untitled" would name every note `…-untitled.md` and make the
     // inbox unreadable at a glance. The first line is the title here.
-    let derived = title.filter(|t| !t.trim().is_empty()).or_else(|| first_line_title(trimmed));
+    let derived = title
+        .filter(|t| !t.trim().is_empty())
+        .or_else(|| first_line_title(trimmed));
 
     let path = capture_write_inner(
         &workspace,
