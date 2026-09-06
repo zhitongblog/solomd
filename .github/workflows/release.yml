@@ -17,11 +17,20 @@ concurrency:
 
 jobs:
   # ---------------------------------------------------------------------------
-  # Phase 1A: WebExtension Bundling (Fail-Fast Gate)
+  # Phase 1: Satellites Matrix (WebExtension, Skill Pack)
   # ---------------------------------------------------------------------------
-  build-web-clipper:
-    name: "1. Satellites / WebExtension"
+  satellites:
+    name: ${{ matrix.name }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "WebExtension"
+            type: "web-clipper"
+          - name: "Skill Pack"
+            type: "skill-pack"
+
     steps:
       - uses: actions/checkout@v7
         with:
@@ -32,10 +41,12 @@ jobs:
           node-version: lts/*
 
       - uses: pnpm/action-setup@v6
+        if: matrix.type == 'web-clipper'
         with:
           version: 10
 
       - name: Compile and Bundle Extensions
+        if: matrix.type == 'web-clipper'
         working-directory: web-clipper
         run: |
           pnpm install --frozen-lockfile
@@ -47,34 +58,22 @@ jobs:
           cp dist/source.zip artifacts/solomd-clipper-source.zip
 
       - name: Upload WebExtension Artifacts
+        if: matrix.type == 'web-clipper'
         uses: actions/upload-artifact@v7
         with:
           name: artifacts-web-clipper
           path: web-clipper/artifacts/*
           if-no-files-found: error
 
-  # ---------------------------------------------------------------------------
-  # Phase 1B: Agent Skill Pack Packaging (Fail-Fast Gate)
-  # ---------------------------------------------------------------------------
-  build-skill-pack:
-    name: "1. Satellites / Skill Pack"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: lts/*
-
       - name: Package SoloMD Skill Pack
+        if: matrix.type == 'skill-pack'
         run: |
           bash scripts/build-skill-pack.sh
           mkdir -p artifacts
           cp dist/solomd-skills-*.zip artifacts/
 
       - name: Upload Skill Pack Artifacts
+        if: matrix.type == 'skill-pack'
         uses: actions/upload-artifact@v7
         with:
           name: artifacts-skill-pack
@@ -85,9 +84,9 @@ jobs:
   # Phase 2: Multi-Platform Desktop Compilation Matrix (Fan-Out)
   # Executed ONLY after Phase 1 passes successfully
   # ---------------------------------------------------------------------------
-  build-desktop:
-    name: "2. Desktop / ${{ matrix.name }}"
-    needs: [build-web-clipper, build-skill-pack]
+  desktop:
+    name: ${{ matrix.name }}
+    needs: [satellites]
     strategy:
       fail-fast: false
       matrix:
@@ -239,7 +238,7 @@ jobs:
   # ---------------------------------------------------------------------------
   host:
     name: "3. Release / Host"
-    needs: [build-web-clipper, build-skill-pack, build-desktop]
+    needs: [satellites, desktop]
     runs-on: ubuntu-24.04
     outputs:
       manifest: ${{ steps.manifest.outputs.manifest }}
