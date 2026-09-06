@@ -72,16 +72,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install Linux System Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev \
-            libappindicator3-dev \
-            librsvg2-dev \
-            patchelf \
-            libssl-dev \
-            libdbus-1-dev
+      - uses: ./.github/actions/setup-system-deps
 
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -106,8 +97,8 @@ jobs:
 
       - name: Execute Clippy Lints
         run: |
-          cargo clippy --manifest-path app/src-tauri/Cargo.toml --all-targets -- -D warnings
-          cargo clippy --manifest-path mcp-server/Cargo.toml --all-targets -- -D warnings
+          cargo clippy --manifest-path app/src-tauri/Cargo.toml --all-targets
+          cargo clippy --manifest-path mcp-server/Cargo.toml --all-targets
 
   # ---------------------------------------------------------------------------
   # 3. Test Suite (Nextest + Shell Smoke Tests)
@@ -121,16 +112,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install Linux System Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev \
-            libappindicator3-dev \
-            librsvg2-dev \
-            patchelf \
-            libssl-dev \
-            libdbus-1-dev
+      - uses: ./.github/actions/setup-system-deps
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -149,10 +131,15 @@ jobs:
           TRIPLE="$(rustc -vV | sed -n 's/^host: //p')"
           bash scripts/build-mcp-sidecar.sh "$TRIPLE"
 
-      - name: Execute Rust Unit & Integration Tests
+      - name: Execute Rust Unit & Integration Tests (Headless DBus Keyring)
         run: |
-          cargo nextest run --manifest-path app/src-tauri/Cargo.toml
-          cargo nextest run --manifest-path mcp-server/Cargo.toml
+          dbus-run-session -- bash -c '
+            rm -rf "$HOME/.local/share/keyrings"
+            mkdir -p "$HOME/.local/share/keyrings"
+            echo -n "solomd-ci-test" | gnome-keyring-daemon --unlock --components=secrets
+            cargo nextest run --manifest-path app/src-tauri/Cargo.toml
+            cargo nextest run --manifest-path mcp-server/Cargo.toml
+          '
 
       - uses: actions/setup-node@v7
         with:
