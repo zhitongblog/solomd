@@ -305,9 +305,24 @@ jobs:
             }
           end
 
-          release_body = <<~MARKDOWN
-            ## SoloMD #{tag}
+          # 1. Extract changelog section for this version from CHANGELOG.md (cargo-dist pattern)
+          changelog_section = ""
+          if File.exist?('CHANGELOG.md')
+            changelog_content = File.read('CHANGELOG.md')
+            pattern = /^##\s+\[?#{Regexp.escape(version)}\]?(?:\s*-\s*|\s+)[^\n]*\n(.*?)(?=^##\s+\[?|\z)/m
+            match = changelog_content.match(pattern)
+            changelog_section = match[1].strip if match
+          end
 
+          # 2. Build canonical release body
+          release_body = ""
+          if !changelog_section.empty?
+            release_body << "#{changelog_section}\n\n"
+          else
+            release_body << "## What's new / 更新内容\n\nhttps://solomd.app/whats-new · 中文\n\n"
+          end
+
+          release_body << <<~MARKDOWN
             ### Verification & Security
             - SLSA Level 3 Provenance: Cryptographically signed via GitHub OIDC & Sigstore.
             - Manifest: Complete machine-readable distribution metadata in `dist-manifest.json`.
@@ -329,7 +344,7 @@ jobs:
             "tag" => tag,
             "repository" => repo,
             "announcement_title" => "SoloMD #{tag}",
-            "announcement_body" => release_body,
+            "announcement_body" => release_body.strip,
             "announcement_is_prerelease" => tag.include?('-'),
             "artifacts" => artifacts_map
           }
@@ -469,6 +484,12 @@ jobs:
 
       # =========================================================================
       # 2. Target: Crates.io Trusted Publishing via OIDC RFC 8693
+      # =========================================================================
+      # 📚 OIDC TRUSTED PUBLISHING ARCHITECTURE
+      # 1. Bootstrap: solomd-mcp-test initial version published with API token.
+      # 2. Security: GitHub Environment `crates.io` with tag protection `v*`.
+      # 3. Trust: crates.io Trusted Publisher configured for zx0r/solomd (release.yml).
+      # 4. Supply Chain: "Require trusted publishing" enabled to reject API token attacks.
       # =========================================================================
       - name: Checkout Code for Crates.io
         if: matrix.target == 'crates-io'
