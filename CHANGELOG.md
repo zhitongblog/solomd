@@ -21,7 +21,7 @@ https://solomd.app/whats-new · 中文
 - Standalone Model Context Protocol server (`solomd-mcp`) for local LLM integration.
 
 ### Install / 安装
-- **macOS:** Download `.dmg`, drag SoloMD to `/Applications`
+- **macOS:** Download `.dmg`, drag SoloMD to `/Applications`. If Gatekeeper flags the unsigned binary ("damaged/can't be opened"), clear quarantine: `xattr -cr /Applications/SoloMD.app`
 - **Windows:** Download `.msi`. On first launch you may see "Windows protected your PC" → click *More info* → *Run anyway*
 - **Linux:** Download `.AppImage` (`chmod +x` and run) or `.deb` / `.rpm`
 - **Homebrew:** `brew install --cask zx0r/solomd/solomd`

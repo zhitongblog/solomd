@@ -70,7 +70,11 @@ SoloMD bridges local-first Markdown knowledge management with autonomous agent e
 ```bash
 brew install --cask zx0r/solomd/solomd
 ```
-Or download [`SoloMD_4.12.0_universal.dmg`](https://github.com/zx0r/solomd/releases/latest) directly (supports Apple Silicon and Intel x86_64).
+Or download [`SoloMD_4.12.0_universal.dmg`](https://github.com/zx0r/solomd/releases/latest) directly (supports Apple Silicon and Intel x86_64).  
+*Note: If macOS Gatekeeper blocks launch ("damaged and can't be opened"), clear the quarantine flag:*
+```bash
+xattr -cr /Applications/SoloMD.app
+```
 
 ### Windows
 - **Installer:** [`SoloMD_4.12.0_x64_en-US.msi`](https://github.com/zx0r/solomd/releases/latest) | [`SoloMD_4.12.0_arm64_en-US.msi`](https://github.com/zx0r/solomd/releases/latest)

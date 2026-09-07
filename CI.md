@@ -93,6 +93,15 @@ git push origin v4.12.0
 gh attestation verify dist-manifest.json --repo zx0r/solomd
 ```
 
+### Post-Install Verification & Gatekeeper Policy
+Unsigned open-source desktop artifacts can trigger OS-level quarantine filters:
+- **macOS (Gatekeeper bypass):**
+  ```bash
+  xattr -cr /Applications/SoloMD.app
+  ```
+- **Windows (SmartScreen bypass):**
+  Click *More info* → *Run anyway* upon initial `.msi` or `.exe` execution.
+
 ---
 
 ## 6. Secrets & Distribution Configuration
