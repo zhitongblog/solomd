@@ -190,10 +190,6 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_KEY_PASSWORD }}
         with:
           projectPath: app
-          tagName: ${{ github.ref_name }}
-          releaseName: 'SoloMD ${{ github.ref_name }}'
-          releaseDraft: false
-          prerelease: false
           args: ${{ matrix.args }}
 
       - name: Package Linux Standalone Tarball
