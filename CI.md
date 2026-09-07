@@ -53,11 +53,11 @@ Engineering specification and Proof of Work (PoW) for the SoloMD automated multi
 
 | Target Layer | Output Format | Security & Attestation | Target Delivery |
 | :--- | :--- | :--- | :--- |
-| **Desktop Core** | `.dmg`, `.msi`, `.AppImage`, `.deb`, `.rpm`, `.zip` | SLSA L3, SHA-256 digests, Defender gate | GitHub Releases |
-| **MCP Sidecar** | Standalone executables & `.tar.gz` / `.zip` | CycloneDX SBOM (`solomd-mcp-bom.json`) | GitHub Releases / Crates.io |
-| **Satellites** | Chrome/Firefox extensions & Skill packs | Digest verification | GitHub Releases |
-| **Homebrew Tap** | `Casks/solomd.rb` | Manifest-driven dynamic SHA-256 | `zx0r/homebrew-solomd` |
-| **Crates.io** | `solomd-mcp` crate | RFC 8693 OIDC Token (Secretless) | `crates.io/crates/solomd-mcp` |
+| **Desktop Core** | `.dmg`, `.msi`, `.AppImage`, `.deb`, `.rpm`, `.zip` | SLSA L3 provenance, SHA-256 digests | GitHub Releases |
+| **MCP Sidecar** | Standalone binaries (`.tar.gz`, `.zip`) | CycloneDX SBOM (`solomd-mcp-bom.json`) | GitHub Releases / Crates.io |
+| **Satellites** | WebExtension (`.zip`), Agent skills (`.zip`) | SHA-256 digest validation | GitHub Releases |
+| **Homebrew Tap** | `Casks/solomd.rb` | Dynamic SHA-256 injection | `zx0r/homebrew-solomd` |
+| **Crates.io** | `solomd-mcp` crate | RFC 8693 OIDC JWT attestation | `crates.io/crates/solomd-mcp` |
 
 ---
 
@@ -65,15 +65,15 @@ Engineering specification and Proof of Work (PoW) for the SoloMD automated multi
 
 | Capability | Legacy Infrastructure | Unified Architecture (`release.yml`) |
 | :--- | :--- | :--- |
-| **macOS Universal** | ❌ Omitted from CI (manual local build) | ✅ Automated Universal `.dmg` (`arm64` + `x86_64`) |
-| **Windows Targets** | ⚠️ x64 only | ✅ Dual Matrix: `x64` + native `ARM64` (Snapdragon X) |
-| **Linux Runtime** | ⚠️ `ubuntu-22.04` (Issue #170 GLib crash) | ✅ `ubuntu-24.04` (Modern Mesa / WebKitGTK 4.1) |
-| **Satellites** | ❌ Omitted from release lifecycle | ✅ Parallel `WebExtension` + `AgentSkills` |
-| **DAG Design** | ❌ Monolithic race conditions on draft release | ✅ 4-Phase Symmetric Fan-Out / Fan-In Topology |
-| **Manifest Engine** | ❌ Fragmented bash scripting | ✅ Deterministic `dist-manifest.json` SSOT |
-| **Supply Chain** | ❌ None | ✅ CycloneDX SBOM + SLSA Level 3 Attestations |
-| **Homebrew Tap** | ❌ Manual script execution | ✅ Automated dynamic push to Tap repo |
-| **Crates.io Publish** | ❌ Static API tokens | ✅ Secretless RFC 8693 OIDC Trusted Publishing |
+| **macOS Universal** | ❌ Manual local compilation | ✅ Automated universal binary (`aarch64` + `x86_64`) `.dmg` |
+| **Windows Targets** | ⚠️ `x86_64` only | ✅ Dual Matrix: `x86_64` + `aarch64` |
+| **Linux Runtime** | ⚠️ `ubuntu-22.04` (Issue #170 WebKitGTK / GLib mismatch) | ✅ `ubuntu-24.04` |
+| **Satellites** | ❌ Omitted from release workflow | ✅ Automated `WebExtension` + `AgentSkills` packaging |
+| **DAG Design** | ❌ Monolithic jobs with concurrent release draft races | ✅ 4-Phase Fan-Out / Fan-In Topology |
+| **Manifest Engine** | ❌ None | ✅ Deterministic `dist-manifest.json` SSOT |
+| **Supply Chain** | ❌ None | ✅ CycloneDX SBOM + SLSA Level 3 Attestation |
+| **Homebrew Tap** | ❌ Manual commit | ✅ Automated dynamic Cask update |
+| **Crates.io Publish** | ❌ Manual token | ✅ RFC 8693 OIDC Trusted Publishing |
 
 ---
 
