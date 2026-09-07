@@ -528,7 +528,7 @@ jobs:
           CRATE_VER=$(cargo metadata --manifest-path mcp-server/Cargo.toml --no-deps --format-version 1 | jq -r '.packages[0].version')
           
           echo "[+] Checking if ${CRATE_NAME}@${CRATE_VER} exists on crates.io..."
-          PUBLISHED=$(curl -s "https://crates.io/api/v1/crates/${CRATE_NAME}/${CRATE_VER}" | jq -r '.version.num // empty')
+          PUBLISHED=$(curl -s -H "User-Agent: solomd-release-ci" "https://crates.io/api/v1/crates/${CRATE_NAME}/${CRATE_VER}" | jq -r '.version.num // empty')
           
           if [ "$PUBLISHED" = "$CRATE_VER" ]; then
             echo "[i] Package ${CRATE_NAME}@${CRATE_VER} is already published on crates.io. Skipping publish step."
