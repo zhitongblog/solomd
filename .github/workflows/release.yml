@@ -1,4 +1,5 @@
-name: Release SoloMD
+name: release
+run-name: ${{ github.ref_name }}
 
 on:
   push:
