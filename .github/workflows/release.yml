@@ -490,7 +490,7 @@ jobs:
             if git diff --staged --quiet; then
               echo "[i] No changes detected in Casks/solomd.rb"
             else
-              git commit -m "chore(release): update solomd cask to ${TAG#v}"
+              git commit -m "ci(release): update to ${TAG#v}"
               git push
               echo "[+] Successfully pushed updated cask to homebrew-solomd!"
             fi
