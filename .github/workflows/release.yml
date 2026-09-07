@@ -524,9 +524,22 @@ jobs:
         uses: rust-lang/crates-io-auth-action@v1.0.4
         id: auth
 
-      - name: Publish Package to Crates.io
+      - name: Publish Package to Crates.io (Idempotent)
         if: matrix.target == 'crates-io'
         shell: bash
-        run: cargo publish --manifest-path mcp-server/Cargo.toml
+        run: |
+          CRATE_NAME=$(cargo metadata --manifest-path mcp-server/Cargo.toml --no-deps --format-version 1 | jq -r '.packages[0].name')
+          CRATE_VER=$(cargo metadata --manifest-path mcp-server/Cargo.toml --no-deps --format-version 1 | jq -r '.packages[0].version')
+          
+          echo "[+] Checking if ${CRATE_NAME}@${CRATE_VER} exists on crates.io..."
+          PUBLISHED=$(curl -s "https://crates.io/api/v1/crates/${CRATE_NAME}/${CRATE_VER}" | jq -r '.version.num // empty')
+          
+          if [ "$PUBLISHED" = "$CRATE_VER" ]; then
+            echo "[i] Package ${CRATE_NAME}@${CRATE_VER} is already published on crates.io. Skipping publish step."
+          else
+            echo "[+] Publishing ${CRATE_NAME}@${CRATE_VER} to crates.io via OIDC..."
+            cargo publish --manifest-path mcp-server/Cargo.toml
+            echo "[✓] Successfully published ${CRATE_NAME}@${CRATE_VER}!"
+          fi
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
