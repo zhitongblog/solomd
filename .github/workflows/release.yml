@@ -534,7 +534,7 @@ jobs:
             echo "[i] Package ${CRATE_NAME}@${CRATE_VER} is already published on crates.io. Skipping publish step."
           else
             echo "[+] Publishing ${CRATE_NAME}@${CRATE_VER} to crates.io via OIDC..."
-            cargo publish --manifest-path mcp-server/Cargo.toml
+            cargo publish --manifest-path mcp-server/Cargo.toml --allow-dirty
             echo "[✓] Successfully published ${CRATE_NAME}@${CRATE_VER}!"
           fi
         env:
