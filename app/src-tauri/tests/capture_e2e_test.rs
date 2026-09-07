@@ -27,10 +27,10 @@ fn lock() -> MutexGuard<'static, ()> {
 }
 
 use app_lib::capture_endpoint::{
-    capture_append_inner, capture_get_state, capture_regenerate_token,
-    capture_set_inbox_folder, capture_write_inner, local_iso8601_now, CaptureError,
     _test_bind_and_serve, _test_check_auth, _test_current_token, _test_handle_capture,
-    _test_resolve_safe_workspace_path, _test_set_state,
+    _test_resolve_safe_workspace_path, _test_set_state, capture_append_inner, capture_get_state,
+    capture_regenerate_token, capture_set_inbox_folder, capture_write_inner, local_iso8601_now,
+    CaptureError,
 };
 
 fn fresh_workspace(label: &str) -> PathBuf {
@@ -52,7 +52,11 @@ fn full_capture_flow() {
     // ------------------------------------------------------------------
     // (1) Set state: workspace + token. Inbox folder default ("inbox").
     // ------------------------------------------------------------------
-    _test_set_state(Some(ws.clone()), "secret-token-abc".to_string(), "inbox".to_string());
+    _test_set_state(
+        Some(ws.clone()),
+        "secret-token-abc".to_string(),
+        "inbox".to_string(),
+    );
     let snap = capture_get_state();
     assert_eq!(snap.token, "secret-token-abc");
     assert_eq!(snap.inbox_folder, "inbox");
@@ -251,13 +255,11 @@ fn live_http_round_trip() {
     std::thread::sleep(std::time::Duration::from_millis(50));
 
     // ----- (a) Unauth POST → 401 -----
-    let resp = http_post(
-        port,
-        "/capture",
-        None,
-        b"{\"content\":\"x\"}",
+    let resp = http_post(port, "/capture", None, b"{\"content\":\"x\"}");
+    assert!(
+        resp.starts_with("HTTP/1.1 401"),
+        "expected 401, got: {resp:.80}"
     );
-    assert!(resp.starts_with("HTTP/1.1 401"), "expected 401, got: {resp:.80}");
 
     // ----- (b) Authed POST → 200, file written -----
     let body = serde_json::json!({
@@ -344,7 +346,8 @@ fn append_creates_file_and_prepends_newline() {
     let ws = fresh_workspace("append-create");
 
     // First append: file does not exist → created with leading \n + body.
-    let path = capture_append_inner(&ws, "Daily/2026-04-26.md", "first line").expect("first append");
+    let path =
+        capture_append_inner(&ws, "Daily/2026-04-26.md", "first line").expect("first append");
     let raw = fs::read_to_string(&path).unwrap();
     assert_eq!(raw, "\nfirst line\n", "first append (file is new)");
 
@@ -372,10 +375,13 @@ fn append_path_rejects_traversal_and_absolute_paths() {
         r"C:\Windows\evil.md",
     ];
     for input in bad {
-        let err =
-            _test_resolve_safe_workspace_path(&ws, input).expect_err(&format!("must reject {input}"));
+        let err = _test_resolve_safe_workspace_path(&ws, input)
+            .expect_err(&format!("must reject {input}"));
         assert!(
-            err.contains("..") || err.contains("absolute") || err.contains("drive") || err.contains("outside"),
+            err.contains("..")
+                || err.contains("absolute")
+                || err.contains("drive")
+                || err.contains("outside"),
             "rejection message should explain why ({input}): {err}",
         );
     }

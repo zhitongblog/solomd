@@ -38,8 +38,7 @@ fn themes_dir(app: &AppHandle) -> Result<PathBuf, String> {
         .map_err(|e| format!("app_config_dir: {e}"))?;
     let dir = base.join("themes");
     if !dir.exists() {
-        std::fs::create_dir_all(&dir)
-            .map_err(|e| format!("mkdir {}: {e}", dir.display()))?;
+        std::fs::create_dir_all(&dir).map_err(|e| format!("mkdir {}: {e}", dir.display()))?;
     }
     Ok(dir)
 }
@@ -50,7 +49,10 @@ fn validate_id(id: &str) -> Result<(), String> {
     if id.is_empty() || id.len() > 64 {
         return Err("invalid theme id (length 1-64)".into());
     }
-    if !id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_') {
+    if !id
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+    {
         return Err("invalid theme id (allowed: a-z 0-9 - _)".into());
     }
     Ok(())
@@ -67,12 +69,15 @@ pub struct ThemeInstallResult {
 /// Write `css` to `<config_dir>/themes/<id>.css`, overwriting any prior
 /// install. Returns the absolute path.
 #[tauri::command]
-pub fn theme_install(app: AppHandle, id: String, css: String) -> Result<ThemeInstallResult, String> {
+pub fn theme_install(
+    app: AppHandle,
+    id: String,
+    css: String,
+) -> Result<ThemeInstallResult, String> {
     validate_id(&id)?;
     let dir = themes_dir(&app)?;
     let path = dir.join(format!("{id}.css"));
-    std::fs::write(&path, css.as_bytes())
-        .map_err(|e| format!("write {}: {e}", path.display()))?;
+    std::fs::write(&path, css.as_bytes()).map_err(|e| format!("write {}: {e}", path.display()))?;
     Ok(ThemeInstallResult {
         path: path.to_string_lossy().to_string(),
     })
@@ -85,8 +90,7 @@ pub fn theme_uninstall(app: AppHandle, id: String) -> Result<(), String> {
     let dir = themes_dir(&app)?;
     let path = dir.join(format!("{id}.css"));
     if path.exists() {
-        std::fs::remove_file(&path)
-            .map_err(|e| format!("remove {}: {e}", path.display()))?;
+        std::fs::remove_file(&path).map_err(|e| format!("remove {}: {e}", path.display()))?;
     }
     Ok(())
 }

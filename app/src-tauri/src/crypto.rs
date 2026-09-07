@@ -169,7 +169,9 @@ fn load_config(workspace: &Path) -> Result<Option<EncryptionConfig>, String> {
         return Ok(None);
     }
     let raw = fs::read_to_string(&path).map_err(|e| e.to_string())?;
-    serde_json::from_str(&raw).map(Some).map_err(|e| e.to_string())
+    serde_json::from_str(&raw)
+        .map(Some)
+        .map_err(|e| e.to_string())
 }
 
 fn save_config(workspace: &Path, cfg: &EncryptionConfig) -> Result<(), String> {
@@ -185,8 +187,13 @@ fn derive_key(passphrase: &str, salt: &[u8], params: &KdfParams) -> Result<[u8; 
     let argon = Argon2::new(
         Algorithm::Argon2id,
         Version::V0x13,
-        Params::new(params.mem_kib, params.iterations, params.parallelism, Some(32))
-            .map_err(|e| e.to_string())?,
+        Params::new(
+            params.mem_kib,
+            params.iterations,
+            params.parallelism,
+            Some(32),
+        )
+        .map_err(|e| e.to_string())?,
     );
     let mut out = [0u8; 32];
     argon
@@ -402,8 +409,7 @@ pub fn crypto_set_passphrase(folder: String, passphrase: String) -> Result<(), S
 
     if fresh {
         let probe = encrypt_bytes(&key, "encryption.probe", b"SoloMD probe v1")?;
-        fs::write(path.join(".solomd/encryption.probe.enc"), probe)
-            .map_err(|e| e.to_string())?;
+        fs::write(path.join(".solomd/encryption.probe.enc"), probe).map_err(|e| e.to_string())?;
     }
     Ok(())
 }
@@ -438,7 +444,11 @@ pub fn crypto_encrypt_for_push_inner(folder: String) -> Result<String, String> {
     let shadow = shadow_path(&path);
     fs::create_dir_all(&shadow).map_err(|e| e.to_string())?;
 
-    let exts: Vec<String> = cfg.encrypt_extensions.iter().map(|s| s.to_lowercase()).collect();
+    let exts: Vec<String> = cfg
+        .encrypt_extensions
+        .iter()
+        .map(|s| s.to_lowercase())
+        .collect();
 
     for entry in WalkDir::new(&path).into_iter().filter_map(|e| e.ok()) {
         let p = entry.path();

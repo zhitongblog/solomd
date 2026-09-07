@@ -173,10 +173,7 @@ fn multi_workspace_explicit_alias_targets_other() {
             "arguments": { "workspace": "wsB" }
         }
     });
-    let resps = drive(
-        &["--workspace", &arg_a, "--workspace", &arg_b],
-        &[req],
-    );
+    let resps = drive(&["--workspace", &arg_a, "--workspace", &arg_b], &[req]);
     let text = extract_text_payload(&resps[0]);
     eprintln!("alias frame: {text}");
     assert!(text.contains("beta.md"), "got: {text}");
@@ -199,10 +196,7 @@ fn multi_workspace_absolute_path_targets_other() {
             "arguments": { "workspace": ws_b.to_string_lossy() }
         }
     });
-    let resps = drive(
-        &["--workspace", &arg_a, "--workspace", &arg_b],
-        &[req],
-    );
+    let resps = drive(&["--workspace", &arg_a, "--workspace", &arg_b], &[req]);
     let text = extract_text_payload(&resps[0]);
     eprintln!("abspath frame: {text}");
     assert!(text.contains("beta.md"), "got: {text}");
@@ -224,10 +218,7 @@ fn multi_workspace_unknown_alias_errors() {
             "arguments": { "workspace": "nope" }
         }
     });
-    let resps = drive(
-        &["--workspace", &arg_a, "--workspace", &arg_b],
-        &[req],
-    );
+    let resps = drive(&["--workspace", &arg_a, "--workspace", &arg_b], &[req]);
     let resp = &resps[0];
     eprintln!("unknown frame: {resp}");
     // Two valid encodings depending on whether the macro maps it to a

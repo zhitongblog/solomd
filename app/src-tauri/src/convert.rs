@@ -112,8 +112,7 @@ fn docx_xml_to_markdown(xml: &str) -> Result<String, String> {
                     "pStyle" => {
                         for attr in e.attributes().flatten() {
                             if attr.key.as_ref() == b"w:val" {
-                                let val =
-                                    String::from_utf8_lossy(&attr.value).to_ascii_lowercase();
+                                let val = String::from_utf8_lossy(&attr.value).to_ascii_lowercase();
                                 if val.starts_with("heading") || val.starts_with("title") {
                                     heading_level = val
                                         .chars()
@@ -394,11 +393,9 @@ fn convert_pdf(path: &str) -> Result<String, String> {
         .map_err(|e| format!("PDF extraction failed: {e}"))?;
 
     if text.trim().is_empty() {
-        return Err(
-            "No text found in PDF (scanned/image PDF). \
+        return Err("No text found in PDF (scanned/image PDF). \
              For OCR, install markitdown: pip install 'markitdown[all]'"
-                .to_string(),
-        );
+            .to_string());
     }
 
     // Clean up: PDF extraction often includes garbage strings like resource
@@ -433,7 +430,10 @@ fn convert_pdf(path: &str) -> Result<String, String> {
 fn is_pdf_garbage(line: &str) -> bool {
     // Lines that are mostly hex/base64 hash-like characters (no spaces, long)
     if line.len() > 20 && !line.contains(' ') {
-        let alnum = line.chars().filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_' || *c == '~').count();
+        let alnum = line
+            .chars()
+            .filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_' || *c == '~')
+            .count();
         if alnum as f64 / line.len() as f64 > 0.85 {
             return true;
         }

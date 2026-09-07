@@ -69,8 +69,7 @@ fn pending_take(id: &str) -> Option<oneshot::Sender<JsonValue>> {
 ///
 /// Idempotent-ish: if called twice we log and ignore the second call.
 pub fn spawn(app: AppHandle) {
-    static STARTED: std::sync::atomic::AtomicBool =
-        std::sync::atomic::AtomicBool::new(false);
+    static STARTED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
     if STARTED.swap(true, std::sync::atomic::Ordering::SeqCst) {
         eprintln!("[dev_bridge] already started, ignoring second spawn");
         return;
@@ -91,7 +90,9 @@ async fn serve(app: AppHandle) -> Result<(), String> {
     let listener = TcpListener::bind("127.0.0.1:0")
         .await
         .map_err(|e| format!("bind: {e}"))?;
-    let addr = listener.local_addr().map_err(|e| format!("local_addr: {e}"))?;
+    let addr = listener
+        .local_addr()
+        .map_err(|e| format!("local_addr: {e}"))?;
     let port = addr.port();
 
     let token = random_token();
@@ -130,18 +131,14 @@ fn write_port_token(app: &AppHandle, port: u16, token: &str) -> Result<(), Strin
     let port_path = dir.join("dev-bridge.port");
     let token_path = dir.join("dev-bridge.token");
 
-    std::fs::write(&port_path, port.to_string())
-        .map_err(|e| format!("write port file: {e}"))?;
+    std::fs::write(&port_path, port.to_string()).map_err(|e| format!("write port file: {e}"))?;
     std::fs::write(&token_path, token).map_err(|e| format!("write token file: {e}"))?;
 
     // 0600 on the token file (best-effort; no-op on Windows).
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        let _ = std::fs::set_permissions(
-            &token_path,
-            std::fs::Permissions::from_mode(0o600),
-        );
+        let _ = std::fs::set_permissions(&token_path, std::fs::Permissions::from_mode(0o600));
     }
 
     eprintln!("[dev_bridge] port -> {}", port_path.display());
@@ -163,7 +160,9 @@ fn random_token() -> String {
     let mut x = mix;
     for _ in 0..16 {
         s.push_str(&format!("{:02x}", (x & 0xff) as u8));
-        x = x.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        x = x
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
     }
     s
 }
@@ -188,16 +187,24 @@ async fn handle_conn(
     let req = match read_request(&mut stream).await {
         Ok(r) => r,
         Err(e) => {
-            write_resp(&mut stream, 400, "Bad Request", &format!("{{\"error\":\"{}\"}}", e), true)
-                .await
-                .ok();
+            write_resp(
+                &mut stream,
+                400,
+                "Bad Request",
+                &format!("{{\"error\":\"{}\"}}", e),
+                true,
+            )
+            .await
+            .ok();
             return Ok(());
         }
     };
 
     // CORS preflight.
     if req.method == "OPTIONS" {
-        write_resp(&mut stream, 204, "No Content", "", true).await.ok();
+        write_resp(&mut stream, 204, "No Content", "", true)
+            .await
+            .ok();
         return Ok(());
     }
 
@@ -225,7 +232,9 @@ async fn handle_conn(
         if let Some(tx) = pending_take(&id) {
             let _ = tx.send(parsed);
         }
-        write_resp(&mut stream, 204, "No Content", "", true).await.ok();
+        write_resp(&mut stream, 204, "No Content", "", true)
+            .await
+            .ok();
         return Ok(());
     }
 
@@ -259,9 +268,15 @@ async fn handle_conn(
         return Ok(());
     }
 
-    write_resp(&mut stream, 404, "Not Found", "{\"error\":\"unknown route\"}", true)
-        .await
-        .ok();
+    write_resp(
+        &mut stream,
+        404,
+        "Not Found",
+        "{\"error\":\"unknown route\"}",
+        true,
+    )
+    .await
+    .ok();
     Ok(())
 }
 
@@ -399,7 +414,10 @@ async fn read_request(stream: &mut TcpStream) -> Result<Request, String> {
         if buf.len() > 64 * 1024 {
             return Err("headers too large".into());
         }
-        let n = stream.read(&mut tmp).await.map_err(|e| format!("read: {e}"))?;
+        let n = stream
+            .read(&mut tmp)
+            .await
+            .map_err(|e| format!("read: {e}"))?;
         if n == 0 {
             return Err("unexpected eof".into());
         }
@@ -439,7 +457,10 @@ async fn read_request(stream: &mut TcpStream) -> Result<Request, String> {
         .unwrap_or(0);
 
     while rest.len() < content_length {
-        let n = stream.read(&mut tmp).await.map_err(|e| format!("read body: {e}"))?;
+        let n = stream
+            .read(&mut tmp)
+            .await
+            .map_err(|e| format!("read body: {e}"))?;
         if n == 0 {
             break;
         }

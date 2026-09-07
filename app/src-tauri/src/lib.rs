@@ -3,8 +3,8 @@ pub mod commands;
 // Image-bed (图床) upload: PicGo / shell command / sm.ms / S3-compatible / GitHub.
 pub mod image_upload;
 pub mod search;
-pub mod workspace_index;
 pub mod spellcheck;
+pub mod workspace_index;
 // #102 — cross-platform AI key storage (OS keyring + Android encrypted-file
 // fallback). Declared before ai_proxy, which delegates to it.
 pub mod ai_keystore;
@@ -59,8 +59,8 @@ pub mod watcher;
 // #148 / #151 — Android all-files-access (MANAGE_EXTERNAL_STORAGE) check +
 // request, so the user can point the app at a real vault folder anywhere on
 // shared storage instead of the unreachable /Android/data sandbox.
-pub mod storage_android;
 pub mod saf_android;
+pub mod storage_android;
 
 // v4.0 Pillar 1: in-process agent tool registry + run persistence (panel
 // chat). agent_run (RunHandle) is the canonical run-dir owner; both the

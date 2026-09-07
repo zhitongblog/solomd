@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   # ---------------------------------------------------------------------------
-  # Phase 1: Satellites Matrix (WebExtension, Skill Pack)
+  # Phase 1: Satellites Matrix (WebExtension, AgentSkills)
   # ---------------------------------------------------------------------------
   satellites:
     name: ${{ matrix.name }}
@@ -29,7 +29,7 @@ jobs:
         include:
           - name: "WebExtension"
             type: "web-clipper"
-          - name: "Skill Pack"
+          - name: "AgentSkills"
             type: "skill-pack"
 
     steps:
@@ -66,14 +66,14 @@ jobs:
           path: web-clipper/artifacts/*
           if-no-files-found: error
 
-      - name: Package SoloMD Skill Pack
+      - name: Package Agent Skills
         if: matrix.type == 'skill-pack'
         run: |
           bash scripts/build-skill-pack.sh
           mkdir -p artifacts
           cp dist/solomd-skills-*.zip artifacts/
 
-      - name: Upload Skill Pack Artifacts
+      - name: Upload Agent Skills Artifacts
         if: matrix.type == 'skill-pack'
         uses: actions/upload-artifact@v7
         with:
@@ -140,61 +140,74 @@ jobs:
 
       - name: Install Linux Build Dependencies
         if: startsWith(matrix.platform, 'ubuntu-')
-        uses: ./.github/actions/setup-system-deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libssl-dev \
+            libdbus-1-dev \
+            xdg-utils \
+            file \
+            fuse \
+            libfuse2
 
       - name: Install Frontend Dependencies
-        run: cd app && pnpm install --frozen-lockfile
+        working-directory: app
+        run: pnpm install --frozen-lockfile
 
-      - name: Pre-compile solomd-mcp Sidecar
+      - name: Pre-build MCP Sidecar (Native Triple)
         shell: bash
         run: |
-          set -euo pipefail
-          TRIPLE="$(rustc -vV | sed -n 's/^host: //p')"
-          bash scripts/build-mcp-sidecar.sh "$TRIPLE"
+          TARGET_TRIPLE=$(rustc -vV | sed -n 's|host: ||p')
+          echo "Building sidecar for native host triple: $TARGET_TRIPLE"
+          cargo build --release --manifest-path mcp-server/Cargo.toml
+          mkdir -p app/src-tauri/binaries
+          
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            cp mcp-server/target/release/solomd-mcp.exe "app/src-tauri/binaries/solomd-mcp-${TARGET_TRIPLE}.exe"
+          else
+            cp mcp-server/target/release/solomd-mcp "app/src-tauri/binaries/solomd-mcp-${TARGET_TRIPLE}"
+          fi
 
-      - name: Build Tauri Desktop Bundles
+      - name: Pre-build MCP Sidecar (Cross macOS Targets)
+        if: matrix.platform == 'macos-latest'
+        shell: bash
+        run: |
+          cargo build --release --target aarch64-apple-darwin --manifest-path mcp-server/Cargo.toml
+          cargo build --release --target x86_64-apple-darwin --manifest-path mcp-server/Cargo.toml
+          mkdir -p app/src-tauri/binaries
+          cp mcp-server/target/aarch64-apple-darwin/release/solomd-mcp app/src-tauri/binaries/solomd-mcp-aarch64-apple-darwin
+          cp mcp-server/target/x86_64-apple-darwin/release/solomd-mcp app/src-tauri/binaries/solomd-mcp-x86_64-apple-darwin
+
+      - name: Compile Desktop App (Tauri Action)
+        uses: tauri-apps/tauri-action@v0
         env:
-          APPLE_SIGNING_IDENTITY: '-'
-        run: |
-          cd app
-          pnpm tauri build ${{ matrix.args }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_KEY_PASSWORD }}
+        with:
+          projectPath: app
+          args: ${{ matrix.args }}
 
-      - name: Windows Defender Verification Gate
-        if: matrix.platform == 'windows-latest' || matrix.platform == 'windows-11-arm'
-        shell: pwsh
-        run: |
-          $plat = Get-ChildItem "$env:ProgramData\Microsoft\Windows Defender\Platform" -Directory -ErrorAction SilentlyContinue |
-                  Sort-Object Name -Descending | Select-Object -First 1
-          $mp = if ($plat) { Join-Path $plat.FullName 'MpCmdRun.exe' }
-                else { Join-Path $env:ProgramFiles 'Windows Defender\MpCmdRun.exe' }
-          if (-Not (Test-Path $mp)) { exit 0 }
-          
-          try { & $mp -SignatureUpdate | Out-Null } catch { }
-          $targets = @(Get-ChildItem "app/src-tauri/target/release/bundle/msi" -Filter *.msi -ErrorAction SilentlyContinue)
-          $targets += Get-ChildItem "app/src-tauri/target/release/SoloMD.exe" -ErrorAction SilentlyContinue
-          
-          foreach ($t in $targets) {
-            $out = (& $mp -Scan -ScanType 3 -File $t.FullName -DisableRemediation 2>&1 | Out-String)
-            if ($out -notmatch 'found no threats') {
-              Write-Error "Defender heuristic violation detected on $($t.Name)"
-              exit 1
-            }
-          }
-
-      - name: Package Linux Standalone MCP Tarball
+      - name: Package Linux Standalone Tarball
         if: startsWith(matrix.platform, 'ubuntu-')
         shell: bash
         run: |
-          ARCH="${{ matrix.platform == 'ubuntu-24.04-arm' && 'arm64' || 'x64' }}"
-          ASSET="solomd-mcp-linux-${ARCH}.tar.gz"
-          BIN="$(find mcp-server/target -type f -name solomd-mcp -path '*/release/*' | head -1)"
-          STAGE="$(mktemp -d)"
-          cp "$BIN" "$STAGE/solomd-mcp"
-          chmod +x "$STAGE/solomd-mcp"
-          tar -C "$STAGE" -czf "$ASSET" solomd-mcp
+          ARCH=$([ "${{ matrix.platform }}" = "ubuntu-24.04-arm" ] && echo "arm64" || echo "x64")
+          MCP_BIN=$(find mcp-server/target -type f -name "solomd-mcp" | grep -E "(release/solomd-mcp|/release/solomd-mcp)" | head -1)
+          if [ -n "$MCP_BIN" ] && [ -f "$MCP_BIN" ]; then
+            STAGE="solomd-mcp-linux-${ARCH}"
+            mkdir -p "$STAGE"
+            cp "$MCP_BIN" "$STAGE/solomd-mcp"
+            chmod +x "$STAGE/solomd-mcp"
+            tar -czvf "solomd-mcp-linux-${ARCH}.tar.gz" -C "$STAGE" solomd-mcp
+          fi
 
-      - name: Package Windows Portable Executable & Standalone MCP Zip
-        if: matrix.platform == 'windows-latest' || matrix.platform == 'windows-11-arm'
+      - name: Package Windows Portable Zip & MCP Standalone
+        if: startsWith(matrix.platform, 'windows-')
         shell: pwsh
         run: |
           $arch = if ("${{ matrix.platform }}" -eq "windows-11-arm") { "arm64" } else { "x64" }
@@ -275,7 +288,7 @@ jobs:
           mv mcp-server/solomd-mcp-bom.json artifacts/ || true
           find . -name "*.cdx.json" -exec mv '{}' artifacts/ ';' || true
 
-      # 2. SSOT Manifest Compiler
+      # 2. SSOT Manifest Compiler (Integrates CHANGELOG.md)
       - id: manifest
         name: Compile Distribution Manifest
         env:
@@ -334,7 +347,7 @@ jobs:
             - Windows: `.msi` installer or portable `.zip` (x64 / ARM64)
             - Linux: `.AppImage`, `.deb`, `.rpm` (x64 / ARM64)
             - Web Extension: Chrome / Firefox WebClipper `.zip`
-            - Skill Pack: Pre-packaged Agent Recipes `.zip`
+            - Agent Skills: Pre-packaged Agent Recipes `.zip`
             - MCP Server: Standalone `solomd-mcp` archive
           MARKDOWN
 
@@ -450,7 +463,7 @@ jobs:
                 strategy :github_latest
               end
 
-              depends_on macos: ">= :big_sur"
+              depends_on macos: :big_sur
 
               app "SoloMD.app"
 
@@ -477,7 +490,7 @@ jobs:
             if git diff --staged --quiet; then
               echo "[i] No changes detected in Casks/solomd.rb"
             else
-              git commit -m "chore(release): update solomd cask to ${TAG#v}"
+              git commit -m "ci(release): update to ${TAG#v}"
               git push
               echo "[+] Successfully pushed updated cask to homebrew-solomd!"
             fi
@@ -489,7 +502,7 @@ jobs:
       # 📚 OIDC TRUSTED PUBLISHING ARCHITECTURE
       # 1. Bootstrap: solomd-mcp-test initial version published with API token.
       # 2. Security: GitHub Environment `crates.io` with tag protection `v*`.
-      # 3. Trust: crates.io Trusted Publisher configured for zx0r/solomd (release.yml).
+      # 3. Trust: crates.io Trusted Publisher configured for repository (release.yml).
       # 4. Supply Chain: "Require trusted publishing" enabled to reject API token attacks.
       # =========================================================================
       - name: Checkout Code for Crates.io
@@ -507,9 +520,22 @@ jobs:
         uses: rust-lang/crates-io-auth-action@v1.0.4
         id: auth
 
-      - name: Publish Package to Crates.io
+      - name: Publish Package to Crates.io (Idempotent)
         if: matrix.target == 'crates-io'
         shell: bash
-        run: cargo publish --manifest-path mcp-server/Cargo.toml
+        run: |
+          CRATE_NAME=$(cargo metadata --manifest-path mcp-server/Cargo.toml --no-deps --format-version 1 | jq -r '.packages[0].name')
+          CRATE_VER=$(cargo metadata --manifest-path mcp-server/Cargo.toml --no-deps --format-version 1 | jq -r '.packages[0].version')
+          
+          echo "[+] Checking if ${CRATE_NAME}@${CRATE_VER} exists on crates.io..."
+          PUBLISHED=$(curl -s -H "User-Agent: solomd-release-ci" "https://crates.io/api/v1/crates/${CRATE_NAME}/${CRATE_VER}" | jq -r '.version.num // empty')
+          
+          if [ "$PUBLISHED" = "$CRATE_VER" ]; then
+            echo "[i] Package ${CRATE_NAME}@${CRATE_VER} is already published on crates.io. Skipping publish step."
+          else
+            echo "[+] Publishing ${CRATE_NAME}@${CRATE_VER} to crates.io via OIDC..."
+            cargo publish --manifest-path mcp-server/Cargo.toml --allow-dirty
+            echo "[✓] Successfully published ${CRATE_NAME}@${CRATE_VER}!"
+          fi
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}

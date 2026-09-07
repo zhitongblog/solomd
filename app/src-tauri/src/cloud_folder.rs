@@ -55,9 +55,7 @@ fn detect_provider(path: &Path) -> CloudFolderInfo {
     // string contains this verbatim — symlink resolution is unnecessary
     // because Finder shows the user the canonical path via the "iCloud"
     // sidebar entry but the underlying path is always Mobile Documents.
-    if s.contains("/library/mobile documents/")
-        || s.contains("\\library\\mobile documents\\")
-    {
+    if s.contains("/library/mobile documents/") || s.contains("\\library\\mobile documents\\") {
         return CloudFolderInfo {
             provider: CloudProvider::ICloud,
             label: "iCloud Drive".into(),
@@ -66,8 +64,10 @@ fn detect_provider(path: &Path) -> CloudFolderInfo {
 
     // Dropbox: ~/Dropbox/ on every platform; sometimes ~/Dropbox (Personal),
     // ~/Dropbox (Work) for multi-account installs.
-    if s.contains("/dropbox/") || s.contains("/dropbox (")
-        || s.contains("\\dropbox\\") || s.contains("\\dropbox (")
+    if s.contains("/dropbox/")
+        || s.contains("/dropbox (")
+        || s.contains("\\dropbox\\")
+        || s.contains("\\dropbox (")
     {
         return CloudFolderInfo {
             provider: CloudProvider::Dropbox,
@@ -78,8 +78,10 @@ fn detect_provider(path: &Path) -> CloudFolderInfo {
     // OneDrive: ~/OneDrive/ on macOS / Linux, %USERPROFILE%\OneDrive\ on
     // Windows. Personal vs. business shows up as "OneDrive - Foo Inc" so
     // we accept the prefix match.
-    if s.contains("/onedrive/") || s.contains("/onedrive - ")
-        || s.contains("\\onedrive\\") || s.contains("\\onedrive - ")
+    if s.contains("/onedrive/")
+        || s.contains("/onedrive - ")
+        || s.contains("\\onedrive\\")
+        || s.contains("\\onedrive - ")
     {
         return CloudFolderInfo {
             provider: CloudProvider::OneDrive,
@@ -137,18 +139,12 @@ fn random_uuid() -> String {
     for (i, b) in bytes.iter_mut().enumerate() {
         // xorshift mixing — good enough for an opaque device ID, and avoids
         // adding the `uuid` / `rand` crates just for this one call.
-        let v = (nanos.wrapping_mul(0x9E3779B97F4A7C15)
-            ^ (nanos >> 32))
-            >> ((i * 5) % 32);
+        let v = (nanos.wrapping_mul(0x9E3779B97F4A7C15) ^ (nanos >> 32)) >> ((i * 5) % 32);
         *b = (v ^ std::process::id() as u128 ^ i as u128) as u8;
     }
     bytes[6] = (bytes[6] & 0x0F) | 0x40; // version 4
     bytes[8] = (bytes[8] & 0x3F) | 0x80; // variant 1
-    let h = |b: &[u8]| {
-        b.iter()
-            .map(|x| format!("{:02x}", x))
-            .collect::<String>()
-    };
+    let h = |b: &[u8]| b.iter().map(|x| format!("{:02x}", x)).collect::<String>();
     format!(
         "{}-{}-{}-{}-{}",
         h(&bytes[0..4]),
@@ -238,13 +234,18 @@ pub fn session_load(folder: String, device_id: String) -> Result<Option<SessionP
         return Ok(None);
     }
     let raw = fs::read_to_string(&target).map_err(|e| e.to_string())?;
-    serde_json::from_str(&raw).map(Some).map_err(|e| e.to_string())
+    serde_json::from_str(&raw)
+        .map(Some)
+        .map_err(|e| e.to_string())
 }
 
 /// List every device that has saved a session into this workspace, *except*
 /// our own. Caller filters / sorts by `saved_at`.
 #[tauri::command]
-pub fn session_list_others(folder: String, our_device_id: String) -> Result<Vec<SiblingSession>, String> {
+pub fn session_list_others(
+    folder: String,
+    our_device_id: String,
+) -> Result<Vec<SiblingSession>, String> {
     let dir = sessions_dir(Path::new(&folder));
     if !dir.exists() {
         return Ok(vec![]);
@@ -292,29 +293,47 @@ mod tests {
     #[test]
     fn icloud_path_detected() {
         let p = "/Users/alex/Library/Mobile Documents/com~apple~CloudDocs/Notes";
-        assert_eq!(detect_provider(Path::new(p)).provider, CloudProvider::ICloud);
+        assert_eq!(
+            detect_provider(Path::new(p)).provider,
+            CloudProvider::ICloud
+        );
     }
 
     #[test]
     fn dropbox_path_detected() {
         let p = "/Users/alex/Dropbox/Notes";
-        assert_eq!(detect_provider(Path::new(p)).provider, CloudProvider::Dropbox);
+        assert_eq!(
+            detect_provider(Path::new(p)).provider,
+            CloudProvider::Dropbox
+        );
         let p2 = "/Users/alex/Dropbox (Personal)/Notes";
-        assert_eq!(detect_provider(Path::new(p2)).provider, CloudProvider::Dropbox);
+        assert_eq!(
+            detect_provider(Path::new(p2)).provider,
+            CloudProvider::Dropbox
+        );
     }
 
     #[test]
     fn onedrive_path_detected() {
         let p = "/Users/alex/OneDrive/Notes";
-        assert_eq!(detect_provider(Path::new(p)).provider, CloudProvider::OneDrive);
+        assert_eq!(
+            detect_provider(Path::new(p)).provider,
+            CloudProvider::OneDrive
+        );
         let p2 = "/Users/alex/OneDrive - Acme Inc/Notes";
-        assert_eq!(detect_provider(Path::new(p2)).provider, CloudProvider::OneDrive);
+        assert_eq!(
+            detect_provider(Path::new(p2)).provider,
+            CloudProvider::OneDrive
+        );
     }
 
     #[test]
     fn google_drive_path_detected() {
         let p = "/Users/alex/Library/CloudStorage/GoogleDrive-me@gmail.com/My Drive/Notes";
-        assert_eq!(detect_provider(Path::new(p)).provider, CloudProvider::GoogleDrive);
+        assert_eq!(
+            detect_provider(Path::new(p)).provider,
+            CloudProvider::GoogleDrive
+        );
     }
 
     #[test]
@@ -335,7 +354,10 @@ mod tests {
     fn session_round_trip() {
         let dir = std::env::temp_dir().join(format!(
             "solomd-session-test-{}",
-            SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos()
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
         ));
         fs::create_dir_all(&dir).unwrap();
 
@@ -360,11 +382,8 @@ mod tests {
         assert_eq!(loaded.device_label, "Mac mini");
         assert_eq!(loaded.tabs.len(), 1);
 
-        let others = session_list_others(
-            dir.to_string_lossy().into_owned(),
-            "dev-A".into(),
-        )
-        .unwrap();
+        let others =
+            session_list_others(dir.to_string_lossy().into_owned(), "dev-A".into()).unwrap();
         assert!(others.is_empty(), "should exclude our own device");
 
         // Add a sibling.
@@ -376,11 +395,8 @@ mod tests {
             tabs: vec![],
         };
         session_save(dir.to_string_lossy().into_owned(), sibling).unwrap();
-        let others = session_list_others(
-            dir.to_string_lossy().into_owned(),
-            "dev-A".into(),
-        )
-        .unwrap();
+        let others =
+            session_list_others(dir.to_string_lossy().into_owned(), "dev-A".into()).unwrap();
         assert_eq!(others.len(), 1);
         assert_eq!(others[0].device_id, "dev-B");
     }

@@ -193,15 +193,14 @@ mod imp {
     }
 
     /// Call a static method returning a (nullable) java.lang.String.
-    fn call_str_opt(
-        method: &str,
-        sig: &str,
-        args: &[JValue],
-    ) -> Result<Option<String>, String> {
+    fn call_str_opt(method: &str, sig: &str, args: &[JValue]) -> Result<Option<String>, String> {
         with_env(|env| {
             let res = env.call_static_method(CLS, method, sig, args);
             check_exc(env, method)?;
-            let obj = res.map_err(|e| e.to_string())?.l().map_err(|e| e.to_string())?;
+            let obj = res
+                .map_err(|e| e.to_string())?
+                .l()
+                .map_err(|e| e.to_string())?;
             if obj.is_null() {
                 return Ok(None);
             }

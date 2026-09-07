@@ -173,10 +173,7 @@ fn format_unix_utc(secs: i64) -> String {
     let d = doy - (153 * mp + 2) / 5 + 1;
     let mo = if mp < 10 { mp + 3 } else { mp - 9 };
     let y = if mo <= 2 { y + 1 } else { y };
-    format!(
-        "{:04}-{:02}-{:02} {:02}:{:02}:{:02}",
-        y, mo, d, h, m, s
-    )
+    format!("{:04}-{:02}-{:02} {:02}:{:02}:{:02}", y, mo, d, h, m, s)
 }
 
 /// Whether the file under `path` is tracked by the repo.
@@ -273,15 +270,23 @@ fn commit_staged(
     message: &str,
 ) -> Result<Option<String>, String> {
     let mut index = repo.index().map_err(|e| format!("index: {}", e))?;
-    let tree_oid = index.write_tree().map_err(|e| format!("write_tree: {}", e))?;
-    let tree = repo.find_tree(tree_oid).map_err(|e| format!("find_tree: {}", e))?;
+    let tree_oid = index
+        .write_tree()
+        .map_err(|e| format!("write_tree: {}", e))?;
+    let tree = repo
+        .find_tree(tree_oid)
+        .map_err(|e| format!("find_tree: {}", e))?;
 
     // Collect parents (we always have 0 or 1 — no merges in autogit).
     let parents: Vec<Commit<'_>> = match repo.head() {
         Ok(head) => {
-            let oid = head.target().ok_or_else(|| "head has no target".to_string())?;
+            let oid = head
+                .target()
+                .ok_or_else(|| "head has no target".to_string())?;
             // Skip the commit if the staged tree matches HEAD's tree exactly.
-            let parent = repo.find_commit(oid).map_err(|e| format!("find HEAD: {}", e))?;
+            let parent = repo
+                .find_commit(oid)
+                .map_err(|e| format!("find HEAD: {}", e))?;
             if parent.tree_id() == tree_oid {
                 return Ok(None);
             }
@@ -328,10 +333,7 @@ pub fn git_workspace_status_inner(folder: String) -> Result<WorkspaceStatus, Str
     let (head_sha, head_message) = match repo.head() {
         Ok(h) => match h.peel_to_commit() {
             Ok(c) => {
-                let msg = c
-                    .summary()
-                    .map(|s| s.to_string())
-                    .unwrap_or_default();
+                let msg = c.summary().map(|s| s.to_string()).unwrap_or_default();
                 (Some(c.id().to_string()), Some(msg))
             }
             Err(_) => (None, None),
@@ -471,7 +473,8 @@ pub fn git_file_history_inner(
 
     let mut walk = repo.revwalk().map_err(|e| format!("revwalk: {}", e))?;
     walk.set_sorting(Sort::TIME).ok();
-    walk.push(head_oid).map_err(|e| format!("revwalk push: {}", e))?;
+    walk.push(head_oid)
+        .map_err(|e| format!("revwalk push: {}", e))?;
 
     let mut out = Vec::with_capacity(limit as usize);
     let cap = if limit == 0 { 50 } else { limit } as usize;
@@ -502,26 +505,25 @@ pub async fn git_file_history(
     file_path: String,
     limit: u32,
 ) -> Result<Vec<CommitMeta>, String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        git_file_history_inner(folder, file_path, limit)
-    })
-    .await
-    .map_err(|e| format!("join: {e}"))?
+    tauri::async_runtime::spawn_blocking(move || git_file_history_inner(folder, file_path, limit))
+        .await
+        .map_err(|e| format!("join: {e}"))?
 }
 
 fn commit_to_meta(commit: &Commit<'_>) -> CommitMeta {
     let sha = commit.id().to_string();
-    let short = if sha.len() >= 7 { sha[..7].to_string() } else { sha.clone() };
+    let short = if sha.len() >= 7 {
+        sha[..7].to_string()
+    } else {
+        sha.clone()
+    };
     let author = commit.author();
     let name = author.name().unwrap_or("?").to_string();
     let when: Time = author.when();
     CommitMeta {
         sha,
         short_sha: short,
-        message: commit
-            .summary()
-            .map(|s| s.to_string())
-            .unwrap_or_default(),
+        message: commit.summary().map(|s| s.to_string()).unwrap_or_default(),
         author: name,
         time: when.seconds(),
     }
@@ -564,7 +566,9 @@ pub fn git_file_diff_inner(
         .ok_or_else(|| format!("file is outside workspace: {}", file_path))?;
 
     let oid = Oid::from_str(&sha).map_err(|e| format!("bad sha: {}", e))?;
-    let commit = repo.find_commit(oid).map_err(|e| format!("find_commit: {}", e))?;
+    let commit = repo
+        .find_commit(oid)
+        .map_err(|e| format!("find_commit: {}", e))?;
     let tree = commit.tree().map_err(|e| format!("tree: {}", e))?;
     let parent_tree = match commit.parent(0).ok().map(|p| p.tree()) {
         Some(Ok(t)) => Some(t),
@@ -650,11 +654,9 @@ pub async fn git_file_diff(
     file_path: String,
     sha: String,
 ) -> Result<DiffResult, String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        git_file_diff_inner(folder, file_path, sha)
-    })
-    .await
-    .map_err(|e| format!("join: {e}"))?
+    tauri::async_runtime::spawn_blocking(move || git_file_diff_inner(folder, file_path, sha))
+        .await
+        .map_err(|e| format!("join: {e}"))?
 }
 
 pub fn git_file_at_version_inner(
@@ -667,7 +669,9 @@ pub fn git_file_at_version_inner(
         .ok_or_else(|| format!("file is outside workspace: {}", file_path))?;
 
     let oid = Oid::from_str(&sha).map_err(|e| format!("bad sha: {}", e))?;
-    let commit = repo.find_commit(oid).map_err(|e| format!("find_commit: {}", e))?;
+    let commit = repo
+        .find_commit(oid)
+        .map_err(|e| format!("find_commit: {}", e))?;
     let tree = commit.tree().map_err(|e| format!("tree: {}", e))?;
     let entry = tree
         .get_path(Path::new(&rel))
@@ -687,11 +691,9 @@ pub async fn git_file_at_version(
     file_path: String,
     sha: String,
 ) -> Result<String, String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        git_file_at_version_inner(folder, file_path, sha)
-    })
-    .await
-    .map_err(|e| format!("join: {e}"))?
+    tauri::async_runtime::spawn_blocking(move || git_file_at_version_inner(folder, file_path, sha))
+        .await
+        .map_err(|e| format!("join: {e}"))?
 }
 
 pub fn git_rollback_file_inner(
@@ -710,11 +712,9 @@ pub async fn git_rollback_file(
     file_path: String,
     sha: String,
 ) -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        git_rollback_file_inner(folder, file_path, sha)
-    })
-    .await
-    .map_err(|e| format!("join: {e}"))?
+    tauri::async_runtime::spawn_blocking(move || git_rollback_file_inner(folder, file_path, sha))
+        .await
+        .map_err(|e| format!("join: {e}"))?
 }
 
 // ---------------------------------------------------------------------------

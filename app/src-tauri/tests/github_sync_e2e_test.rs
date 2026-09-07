@@ -207,7 +207,8 @@ fn github_sync_surfaces_conflicts_on_concurrent_edit() {
         let repo_a = Repository::open(&dev_a).unwrap();
         commit_all(&repo_a, "A edit");
     }
-    github_push_inner(dev_a.to_string_lossy().into_owned(), "ignored".into(), None).expect("A push");
+    github_push_inner(dev_a.to_string_lossy().into_owned(), "ignored".into(), None)
+        .expect("A push");
 
     write(
         &dev_b.join("note.md"),

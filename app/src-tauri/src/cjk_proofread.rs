@@ -131,7 +131,9 @@ impl LineIndex {
                 starts.push(i + 1);
             }
         }
-        Self { line_starts: starts }
+        Self {
+            line_starts: starts,
+        }
     }
 
     /// 1-indexed line for the given byte offset.
@@ -302,10 +304,9 @@ fn detect_de_misuse(text: &str, idx: &LineIndex, out: &mut Vec<Issue>) {
     // ~30 high-confidence adverb stems. Picked for high precision —
     // these words rarely take `的` correctly. Add cautiously.
     const ADVERB_STEMS: &[&str] = &[
-        "非常", "突然", "仔细", "认真", "慢慢", "渐渐", "悄悄", "默默",
-        "轻轻", "重重", "深深", "静静", "缓缓", "匆匆", "急急", "渐次",
-        "迅速", "迅猛", "猛烈", "剧烈", "热烈", "强烈", "顺利", "完美",
-        "高兴", "愉快", "愤怒", "兴奋", "激动", "勇敢", "亲切",
+        "非常", "突然", "仔细", "认真", "慢慢", "渐渐", "悄悄", "默默", "轻轻", "重重", "深深",
+        "静静", "缓缓", "匆匆", "急急", "渐次", "迅速", "迅猛", "猛烈", "剧烈", "热烈", "强烈",
+        "顺利", "完美", "高兴", "愉快", "愤怒", "兴奋", "激动", "勇敢", "亲切",
     ];
 
     for stem in ADVERB_STEMS {
@@ -328,10 +329,7 @@ fn detect_de_misuse(text: &str, idx: &LineIndex, out: &mut Vec<Issue>) {
                         category: "de_misuse".into(),
                         original: "的".into(),
                         suggestion: "地".into(),
-                        explanation: format!(
-                            "副词 “{}” 修饰动词时应用 “地” 而非 “的”",
-                            stem
-                        ),
+                        explanation: format!("副词 “{}” 修饰动词时应用 “地” 而非 “的”", stem),
                     });
                 }
             }
@@ -433,9 +431,8 @@ fn detect_digit_unit_space(text: &str, idx: &LineIndex, out: &mut Vec<Issue>) {
     // Multi-char units must come before their substrings (`min` before `m`)
     // so the longest match wins.
     const UNITS: &[&str] = &[
-        "GB", "MB", "KB", "TB", "PB", "kg", "mg", "cm", "mm", "km",
-        "min", "sec", "ms", "us", "ns", "Hz", "kHz", "MHz", "GHz",
-        "kg", "h", "s", "m",
+        "GB", "MB", "KB", "TB", "PB", "kg", "mg", "cm", "mm", "km", "min", "sec", "ms", "us", "ns",
+        "Hz", "kHz", "MHz", "GHz", "kg", "h", "s", "m",
     ];
 
     let bytes = text.as_bytes();
@@ -470,7 +467,9 @@ fn detect_digit_unit_space(text: &str, idx: &LineIndex, out: &mut Vec<Issue>) {
         let Some(unit) = matched_unit else { continue };
         let after_unit = after_digits + unit.len();
         // Only fire if next char is Han.
-        let Some(next_char) = text[after_unit..].chars().next() else { continue };
+        let Some(next_char) = text[after_unit..].chars().next() else {
+            continue;
+        };
         if !is_han(next_char) {
             continue;
         }

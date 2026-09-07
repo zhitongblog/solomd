@@ -21,8 +21,8 @@ use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use clap::{Parser, ValueEnum};
-use rmcp::{ServiceExt, transport::stdio};
-use tracing_subscriber::{EnvFilter, fmt};
+use rmcp::{transport::stdio, ServiceExt};
+use tracing_subscriber::{fmt, EnvFilter};
 
 mod safety;
 mod tools;
@@ -105,10 +105,14 @@ pub(crate) fn parse_workspace_arg(raw: &str) -> Result<(String, PathBuf), String
         Some(idx) => {
             let (left, right) = trimmed.split_at(idx);
             let right = &right[1..]; // skip '='
-            // If `left` looks like a path (contains '/', '\\', or starts with
-            // '.' / '~'), assume the user meant a bare path that happens to
-            // contain '='. Otherwise treat `left` as the alias.
-            if left.contains('/') || left.contains('\\') || left.starts_with('.') || left.starts_with('~') {
+                                     // If `left` looks like a path (contains '/', '\\', or starts with
+                                     // '.' / '~'), assume the user meant a bare path that happens to
+                                     // contain '='. Otherwise treat `left` as the alias.
+            if left.contains('/')
+                || left.contains('\\')
+                || left.starts_with('.')
+                || left.starts_with('~')
+            {
                 (None, trimmed)
             } else if left.is_empty() {
                 return Err(format!("--workspace alias is empty in: {raw}"));
@@ -176,8 +180,8 @@ async fn main() -> Result<()> {
 
     // Logging — always to stderr so stdout stays clean for JSON-RPC.
     let default_level = if cli.verbose { "debug" } else { "info" };
-    let filter = EnvFilter::try_from_env("SOLOMD_MCP_LOG")
-        .unwrap_or_else(|_| EnvFilter::new(default_level));
+    let filter =
+        EnvFilter::try_from_env("SOLOMD_MCP_LOG").unwrap_or_else(|_| EnvFilter::new(default_level));
     fmt()
         .with_env_filter(filter)
         .with_writer(std::io::stderr)
@@ -186,8 +190,7 @@ async fn main() -> Result<()> {
         .init();
 
     // Validate + parse all workspaces up front.
-    let workspaces =
-        build_workspace_list(&cli.workspace).map_err(|e| anyhow::anyhow!(e))?;
+    let workspaces = build_workspace_list(&cli.workspace).map_err(|e| anyhow::anyhow!(e))?;
 
     for (alias, path) in &workspaces {
         tracing::info!(
@@ -226,7 +229,11 @@ async fn run_stdio(server: tools::SoloMdServer) -> Result<()> {
     Ok(())
 }
 
-async fn run_http(server: tools::SoloMdServer, bind: &str, auth_token: Option<String>) -> Result<()> {
+async fn run_http(
+    server: tools::SoloMdServer,
+    bind: &str,
+    auth_token: Option<String>,
+) -> Result<()> {
     use axum::{
         extract::Request,
         http::StatusCode,

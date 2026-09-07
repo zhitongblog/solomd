@@ -404,7 +404,9 @@ async fn openai_chat_ping(
         .map_err(|e| format!("network: {e}"))?;
     let status = res.status();
     if status.is_success() {
-        Ok(format!("OK · {model} responded (endpoint has no /models list)"))
+        Ok(format!(
+            "OK · {model} responded (endpoint has no /models list)"
+        ))
     } else {
         let txt = res.text().await.unwrap_or_default();
         Err(format!("chat ping HTTP {status}: {}", truncate(&txt, 200)))
@@ -842,9 +844,7 @@ pub async fn ai_chat(app: AppHandle, request: ChatRequest) -> Result<String, Str
                 )
                 .await
             }
-            "ollama" => {
-                run_chat_ollama(&app_clone, &id_for_task, &request, cancel.clone()).await
-            }
+            "ollama" => run_chat_ollama(&app_clone, &id_for_task, &request, cancel.clone()).await,
             other => Err(format!("unknown api_format: {other}")),
         };
 
@@ -870,7 +870,11 @@ pub async fn ai_chat(app: AppHandle, request: ChatRequest) -> Result<String, Str
             }
             Err(err) => {
                 if let Some(rh) = &run_handle {
-                    let status = if err == "cancelled" { "cancelled" } else { "error" };
+                    let status = if err == "cancelled" {
+                        "cancelled"
+                    } else {
+                        "error"
+                    };
                     // We don't have per-turn totals on the error path —
                     // the runner returned early. Persist 0/0 + 0 cost and
                     // let the user see the "error" status; partial token
@@ -1631,8 +1635,14 @@ fn build_anthropic_tools(req: &ChatRequest) -> Value {
     // worked there and only there.
     let names: Vec<String> = match &req.tools {
         Some(v) => v.clone(),
-        None if allow_write => agent_tools::all_tools().iter().map(|s| s.to_string()).collect(),
-        None => agent_tools::READ_TOOLS.iter().map(|s| s.to_string()).collect(),
+        None if allow_write => agent_tools::all_tools()
+            .iter()
+            .map(|s| s.to_string())
+            .collect(),
+        None => agent_tools::READ_TOOLS
+            .iter()
+            .map(|s| s.to_string())
+            .collect(),
     };
     let arr: Vec<Value> = names
         .iter()
@@ -1663,8 +1673,14 @@ fn build_openai_tools(req: &ChatRequest) -> Value {
     // worked there and only there.
     let names: Vec<String> = match &req.tools {
         Some(v) => v.clone(),
-        None if allow_write => agent_tools::all_tools().iter().map(|s| s.to_string()).collect(),
-        None => agent_tools::READ_TOOLS.iter().map(|s| s.to_string()).collect(),
+        None if allow_write => agent_tools::all_tools()
+            .iter()
+            .map(|s| s.to_string())
+            .collect(),
+        None => agent_tools::READ_TOOLS
+            .iter()
+            .map(|s| s.to_string())
+            .collect(),
     };
     let arr: Vec<Value> = names
         .iter()
@@ -1967,7 +1983,7 @@ async fn anthropic_one_turn(
     use std::collections::BTreeMap;
     #[derive(Default)]
     struct Block {
-        kind: String,         // "text" or "tool_use"
+        kind: String, // "text" or "tool_use"
         text: String,
         tool_id: String,
         tool_name: String,
@@ -2068,18 +2084,14 @@ async fn anthropic_one_turn(
                         let dtype = delta.get("type").and_then(|t| t.as_str()).unwrap_or("");
                         let entry = blocks.entry(i).or_insert_with(Block::default);
                         if dtype == "text_delta" {
-                            if let Some(t) =
-                                delta.get("text").and_then(|s| s.as_str())
-                            {
+                            if let Some(t) = delta.get("text").and_then(|s| s.as_str()) {
                                 if !t.is_empty() {
                                     entry.text.push_str(t);
                                     emit_chunk(app, request_id, t);
                                 }
                             }
                         } else if dtype == "input_json_delta" {
-                            if let Some(p) =
-                                delta.get("partial_json").and_then(|s| s.as_str())
-                            {
+                            if let Some(p) = delta.get("partial_json").and_then(|s| s.as_str()) {
                                 entry.partial_json.push_str(p);
                             }
                         }
@@ -2687,10 +2699,8 @@ mod tests {
             Some("https://api.example.com/api/v3"),
         );
         assert_eq!(
-            super::normalize_openai_base(
-                "https://generativelanguage.googleapis.com/v1beta/openai"
-            )
-            .as_deref(),
+            super::normalize_openai_base("https://generativelanguage.googleapis.com/v1beta/openai")
+                .as_deref(),
             Some("https://generativelanguage.googleapis.com/v1beta/openai"),
         );
         // A bare public hostname is https; a bare host:port / IP is http.
@@ -2754,7 +2764,9 @@ mod tests {
         for build in [super::build_openai_tools, super::build_anthropic_tools] {
             let names = tool_names(&build(&req_with(Some(false), None)));
             assert!(
-                !names.iter().any(|n| n == "write_note" || n == "append_to_note"),
+                !names
+                    .iter()
+                    .any(|n| n == "write_note" || n == "append_to_note"),
                 "no write tool may leak when allow_write is false, got {names:?}"
             );
             assert!(!names.is_empty(), "read tools must still be offered");
@@ -2778,7 +2790,11 @@ mod tests {
     #[test]
     fn other_providers_pass_through_unchanged() {
         for id in ["openai", "anthropic", "ollama", "deepseek", "qwen"] {
-            assert_eq!(resolve_provider(id), id, "provider {id} should not be rewritten");
+            assert_eq!(
+                resolve_provider(id),
+                id,
+                "provider {id} should not be rewritten"
+            );
         }
     }
 
@@ -2883,7 +2899,10 @@ mod tests {
         addr
     }
 
-    async fn verify_against(addr: std::net::SocketAddr, model: Option<&str>) -> Result<String, String> {
+    async fn verify_against(
+        addr: std::net::SocketAddr,
+        model: Option<&str>,
+    ) -> Result<String, String> {
         super::ai_verify_key(
             "openai-compat".into(),
             Some("k".into()),
@@ -2897,21 +2916,27 @@ mod tests {
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn models_list_is_used_when_the_endpoint_serves_one() {
         let addr = serve_openai_ish(200, 200).await;
-        let out = verify_against(addr, Some("m1")).await.expect("should verify");
+        let out = verify_against(addr, Some("m1"))
+            .await
+            .expect("should verify");
         assert!(out.contains("2 models"), "got {out}");
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn missing_models_endpoint_falls_back_to_a_chat_ping() {
         let addr = serve_openai_ish(404, 200).await;
-        let out = verify_against(addr, Some("my-model")).await.expect("should verify via ping");
+        let out = verify_against(addr, Some("my-model"))
+            .await
+            .expect("should verify via ping");
         assert!(out.contains("my-model"), "got {out}");
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn bad_key_is_still_a_failure_and_skips_the_ping() {
         let addr = serve_openai_ish(401, 200).await;
-        let err = verify_against(addr, Some("m1")).await.expect_err("401 must fail");
+        let err = verify_against(addr, Some("m1"))
+            .await
+            .expect_err("401 must fail");
         assert!(err.contains("401"), "got {err}");
         // The ping would have succeeded here; a 401 must not be masked by it.
         assert!(!err.contains("responded"), "got {err}");
@@ -2920,7 +2945,9 @@ mod tests {
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn both_failing_reports_both_errors() {
         let addr = serve_openai_ish(404, 400).await;
-        let err = verify_against(addr, Some("m1")).await.expect_err("should fail");
+        let err = verify_against(addr, Some("m1"))
+            .await
+            .expect_err("should fail");
         assert!(err.contains("404") && err.contains("400"), "got {err}");
     }
 

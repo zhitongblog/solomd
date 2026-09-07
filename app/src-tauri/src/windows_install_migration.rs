@@ -1,6 +1,5 @@
 #[cfg(target_os = "windows")]
-const LEGACY_UNINSTALL_KEY: &str =
-    r"Software\Microsoft\Windows\CurrentVersion\Uninstall\SoloMD";
+const LEGACY_UNINSTALL_KEY: &str = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\SoloMD";
 #[cfg(target_os = "windows")]
 const LEGACY_PRODUCT_KEY: &str = r"Software\zhitong\SoloMD";
 

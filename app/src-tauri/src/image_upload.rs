@@ -189,7 +189,10 @@ async fn upload_picgo(endpoint: &str, path: &str) -> Result<String, String> {
     let json: serde_json::Value = serde_json::from_str(&text)
         .map_err(|e| format!("PicGo returned non-JSON ({status}): {e}: {text}"))?;
 
-    let success = json.get("success").and_then(|v| v.as_bool()).unwrap_or(false);
+    let success = json
+        .get("success")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
     let first = json
         .get("result")
         .and_then(|v| v.as_array())
@@ -272,7 +275,10 @@ fn extract_last_url(text: &str) -> Option<String> {
             // Consume until whitespace.
             let end = rest.find(char::is_whitespace).unwrap_or(rest.len());
             let url = rest[..end].trim_end_matches(|c: char| {
-                matches!(c, '.' | ',' | ')' | ']' | '}' | '"' | '\'' | '>' | ';' | ':')
+                matches!(
+                    c,
+                    '.' | ',' | ')' | ']' | '}' | '"' | '\'' | '>' | ';' | ':'
+                )
             });
             if !url.is_empty() {
                 last = Some(url.to_string());
@@ -323,7 +329,10 @@ async fn upload_smms(token: &str, path: &str) -> Result<String, String> {
     let json: serde_json::Value = serde_json::from_str(&text)
         .map_err(|e| format!("sm.ms returned non-JSON ({status}): {e}: {text}"))?;
 
-    let success = json.get("success").and_then(|v| v.as_bool()).unwrap_or(false);
+    let success = json
+        .get("success")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
     if success {
         if let Some(url) = json
             .get("data")
@@ -362,8 +371,7 @@ async fn upload_smms(token: &str, path: &str) -> Result<String, String> {
 fn uri_encode(input: &str) -> String {
     let mut out = String::with_capacity(input.len());
     for &b in input.as_bytes() {
-        let keep =
-            b.is_ascii_alphanumeric() || matches!(b, b'-' | b'.' | b'_' | b'~' | b'/');
+        let keep = b.is_ascii_alphanumeric() || matches!(b, b'-' | b'.' | b'_' | b'~' | b'/');
         if keep {
             out.push(b as char);
         } else {
@@ -446,9 +454,8 @@ async fn upload_s3(p: S3Params<'_>) -> Result<String, String> {
 
     // Canonical request. Signed headers: host;x-amz-content-sha256;x-amz-date.
     let signed_headers = "host;x-amz-content-sha256;x-amz-date";
-    let canonical_headers = format!(
-        "host:{host}\nx-amz-content-sha256:{payload_hash}\nx-amz-date:{amz_date}\n"
-    );
+    let canonical_headers =
+        format!("host:{host}\nx-amz-content-sha256:{payload_hash}\nx-amz-date:{amz_date}\n");
     let canonical_query = ""; // no query params
     let canonical_request = format!(
         "PUT\n{canonical_uri}\n{canonical_query}\n{canonical_headers}\n{signed_headers}\n{payload_hash}"
@@ -552,6 +559,8 @@ async fn upload_github(
     if cdn == "jsdelivr" {
         Ok(format!("https://cdn.jsdelivr.net/gh/{repo}@{branch}/{key}"))
     } else {
-        Ok(format!("https://raw.githubusercontent.com/{repo}/{branch}/{key}"))
+        Ok(format!(
+            "https://raw.githubusercontent.com/{repo}/{branch}/{key}"
+        ))
     }
 }

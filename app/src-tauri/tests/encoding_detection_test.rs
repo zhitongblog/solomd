@@ -48,7 +48,10 @@ fn utf8_without_bom_survives_at_any_length() {
 /// A short GBK note is the case the ≥100-byte caveat predicts would fail.
 #[test]
 fn short_gbk_note() {
-    assert_eq!(roundtrip("gbk_short.md", GBK, "今天的会议记录"), "今天的会议记录");
+    assert_eq!(
+        roundtrip("gbk_short.md", GBK, "今天的会议记录"),
+        "今天的会议记录"
+    );
 }
 
 #[test]

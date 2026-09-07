@@ -410,8 +410,7 @@ fn normalize_cron(expr: &str) -> String {
 /// Parse a YAML string into a validated [`Recipe`]. Returns a human-
 /// readable error message ready to surface in a toast.
 pub fn parse_recipe(source: &str, path: Option<PathBuf>) -> Result<Recipe, String> {
-    let raw: RecipeRaw = serde_yaml::from_str(source)
-        .map_err(|e| format!("recipe yaml: {e}"))?;
+    let raw: RecipeRaw = serde_yaml::from_str(source).map_err(|e| format!("recipe yaml: {e}"))?;
     validate_recipe(raw, path)
 }
 
@@ -435,10 +434,12 @@ fn validate_recipe(raw: RecipeRaw, path: Option<PathBuf>) -> Result<Recipe, Stri
 
     // schedule trigger requires a parseable cron expression.
     if trigger == TriggerKind::Schedule {
-        let s = raw
-            .schedule
-            .as_deref()
-            .ok_or_else(|| format!("recipe '{}': schedule trigger requires `schedule:`", raw.name))?;
+        let s = raw.schedule.as_deref().ok_or_else(|| {
+            format!(
+                "recipe '{}': schedule trigger requires `schedule:`",
+                raw.name
+            )
+        })?;
         if normalize_cron(s).parse::<CronSchedule>().is_err() {
             return Err(format!(
                 "recipe '{}': invalid cron expression `{s}` — expected standard 5-field cron (min hour dom mon dow) or 6/7-field with seconds/year",
@@ -449,17 +450,29 @@ fn validate_recipe(raw: RecipeRaw, path: Option<PathBuf>) -> Result<Recipe, Stri
 
     // on-save / on-commit require a glob.
     if matches!(trigger, TriggerKind::OnSave | TriggerKind::OnCommit) {
-        let g = raw
-            .match_glob
-            .as_deref()
-            .ok_or_else(|| format!("recipe '{}': {} trigger requires `match:`", raw.name, trigger.as_str()))?;
+        let g = raw.match_glob.as_deref().ok_or_else(|| {
+            format!(
+                "recipe '{}': {} trigger requires `match:`",
+                raw.name,
+                trigger.as_str()
+            )
+        })?;
         Glob::new(g).map_err(|e| format!("recipe '{}': bad glob `{g}`: {e}", raw.name))?;
     }
 
     // on-tag-add requires both a tag and a glob (so we know which files to scan).
     if trigger == TriggerKind::OnTagAdd {
-        if raw.tag.as_deref().map(|s| s.trim()).unwrap_or("").is_empty() {
-            return Err(format!("recipe '{}': on-tag-add trigger requires `tag:`", raw.name));
+        if raw
+            .tag
+            .as_deref()
+            .map(|s| s.trim())
+            .unwrap_or("")
+            .is_empty()
+        {
+            return Err(format!(
+                "recipe '{}': on-tag-add trigger requires `tag:`",
+                raw.name
+            ));
         }
         // `match:` is optional for on-tag-add — falls back to `**/*.md`.
         if let Some(g) = raw.match_glob.as_deref() {
@@ -854,11 +867,15 @@ tools:
         // (which can flip ±1 day across some TZs but never across years
         // for noon UTC) and verify shape, not exact local digits.
         let now = Utc.with_ymd_and_hms(2024, 1, 1, 12, 34, 56).unwrap();
-        let ctx = TriggerCtx { workspace: ws.clone(), now: Some(now), ..Default::default() };
+        let ctx = TriggerCtx {
+            workspace: ws.clone(),
+            now: Some(now),
+            ..Default::default()
+        };
         let s = Recipe::variables_resolve("y={{date:YYYY}} m={{date:MM}} d={{date:DD}}", &ctx);
         assert!(s.starts_with("y=2024 "), "got: {s}");
         assert!(s.contains(" m=01 ") || s.contains(" m=12 "), "got: {s}"); // local TZ might roll back to Dec 31
-        // workspace token
+                                                                           // workspace token
         let ws_s = Recipe::variables_resolve("path={{workspace}}", &ctx);
         assert_eq!(ws_s, format!("path={}", ws.to_string_lossy()));
     }
@@ -867,7 +884,10 @@ tools:
     fn variables_resolve_iso_week() {
         // 2024-01-01 is a Monday — ISO week 1.
         let now = Utc.with_ymd_and_hms(2024, 1, 1, 12, 0, 0).unwrap();
-        let ctx = TriggerCtx { now: Some(now), ..Default::default() };
+        let ctx = TriggerCtx {
+            now: Some(now),
+            ..Default::default()
+        };
         let s = Recipe::variables_resolve("{{date:YYYY-WW}}", &ctx);
         // Local TZ may push us to 2023-W52 in pacific time → accept either.
         assert!(s == "2024-01" || s == "2023-52", "got: {s}");

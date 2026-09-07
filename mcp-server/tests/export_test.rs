@@ -50,7 +50,10 @@ fn have_node() -> bool {
 }
 
 fn fresh_dir(label: &str) -> PathBuf {
-    let nanos = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
     let dir = std::env::temp_dir().join(format!("solomd-mcp-export-{label}-{nanos}"));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
@@ -59,9 +62,14 @@ fn fresh_dir(label: &str) -> PathBuf {
 
 /// Drive an `initialize` → `export_note` round-trip and return the
 /// matching response frame.
-fn drive_export(workspace: &Path, args_json: serde_json::Value, script_path: &Path) -> serde_json::Value {
+fn drive_export(
+    workspace: &Path,
+    args_json: serde_json::Value,
+    script_path: &Path,
+) -> serde_json::Value {
     let mut child = Command::new(binary_path())
-        .arg("--workspace").arg(workspace)
+        .arg("--workspace")
+        .arg(workspace)
         .env("SOLOMD_EXPORT_SCRIPT", script_path)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -70,7 +78,11 @@ fn drive_export(workspace: &Path, args_json: serde_json::Value, script_path: &Pa
         .expect("spawn solomd-mcp");
     let mut stdin = child.stdin.take().unwrap();
     writeln!(stdin, r#"{{"jsonrpc":"2.0","id":0,"method":"initialize","params":{{"protocolVersion":"2025-11-25","capabilities":{{}},"clientInfo":{{"name":"export-test","version":"0"}}}}}}"#).unwrap();
-    writeln!(stdin, r#"{{"jsonrpc":"2.0","method":"notifications/initialized"}}"#).unwrap();
+    writeln!(
+        stdin,
+        r#"{{"jsonrpc":"2.0","method":"notifications/initialized"}}"#
+    )
+    .unwrap();
     let req = serde_json::json!({
         "jsonrpc": "2.0",
         "id": 1,
@@ -99,7 +111,9 @@ fn drive_export(workspace: &Path, args_json: serde_json::Value, script_path: &Pa
 fn extract_document_xml(docx_path: &Path) -> String {
     let f = std::fs::File::open(docx_path).expect("open docx");
     let mut zip = zip::ZipArchive::new(f).expect("zip parse");
-    let mut entry = zip.by_name("word/document.xml").expect("document.xml in docx");
+    let mut entry = zip
+        .by_name("word/document.xml")
+        .expect("document.xml in docx");
     let mut s = String::new();
     entry.read_to_string(&mut s).expect("read document.xml");
     s
@@ -138,14 +152,30 @@ fn export_note_docx_preserves_blockquote_text() {
         &script,
     );
 
-    assert!(resp.get("error").is_none(), "export_note returned an error: {resp}");
+    assert!(
+        resp.get("error").is_none(),
+        "export_note returned an error: {resp}"
+    );
     assert!(out.exists(), "docx output not written: {}", out.display());
 
     let xml = extract_document_xml(&out);
-    assert!(xml.contains("first quoted line"), "blockquote line 1 missing from document.xml; got len={}", xml.len());
-    assert!(xml.contains("second quoted line"), "blockquote line 2 missing from document.xml");
-    assert!(xml.contains("Normal paragraph"), "non-quoted text also missing — likely a broader regression");
-    assert!(xml.contains("After the quote"), "post-blockquote paragraph missing");
+    assert!(
+        xml.contains("first quoted line"),
+        "blockquote line 1 missing from document.xml; got len={}",
+        xml.len()
+    );
+    assert!(
+        xml.contains("second quoted line"),
+        "blockquote line 2 missing from document.xml"
+    );
+    assert!(
+        xml.contains("Normal paragraph"),
+        "non-quoted text also missing — likely a broader regression"
+    );
+    assert!(
+        xml.contains("After the quote"),
+        "post-blockquote paragraph missing"
+    );
 }
 
 /// Sanity: the simpler html path should also include the blockquote text
@@ -174,10 +204,19 @@ fn export_note_html_preserves_blockquote_text() {
         &script,
     );
 
-    assert!(resp.get("error").is_none(), "export_note returned an error: {resp}");
+    assert!(
+        resp.get("error").is_none(),
+        "export_note returned an error: {resp}"
+    );
     let html = std::fs::read_to_string(&out).expect("read html");
-    assert!(html.contains("hello quoted"), "blockquote text missing from html");
-    assert!(html.contains("<blockquote"), "no <blockquote> element in html");
+    assert!(
+        html.contains("hello quoted"),
+        "blockquote text missing from html"
+    );
+    assert!(
+        html.contains("<blockquote"),
+        "no <blockquote> element in html"
+    );
 }
 
 /// Safety guard: writing INSIDE the workspace requires --allow-write.
@@ -203,5 +242,8 @@ fn export_note_rejects_workspace_internal_write_without_flag() {
     );
     let err = resp.get("error").unwrap_or(&serde_json::Value::Null);
     let msg = err.get("message").and_then(|m| m.as_str()).unwrap_or("");
-    assert!(msg.contains("allow-write"), "expected allow-write guard, got: {err}");
+    assert!(
+        msg.contains("allow-write"),
+        "expected allow-write guard, got: {err}"
+    );
 }

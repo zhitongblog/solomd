@@ -209,7 +209,11 @@ pub async fn detect(override_base: Option<&str>) -> Detection {
         .and_then(|m| m.as_array())
         .map(|arr| {
             arr.iter()
-                .filter_map(|m| m.get("name").and_then(|n| n.as_str()).map(|s| s.to_string()))
+                .filter_map(|m| {
+                    m.get("name")
+                        .and_then(|n| n.as_str())
+                        .map(|s| s.to_string())
+                })
                 .collect::<Vec<_>>()
         })
         .unwrap_or_default();
@@ -313,11 +317,8 @@ where
             let total = json.get("total").and_then(|n| n.as_u64());
             // Newer Ollama servers emit `done:true` on the terminal line;
             // older ones rely on the `"status":"success"` text. Accept both.
-            let done_flag = json
-                .get("done")
-                .and_then(|b| b.as_bool())
-                .unwrap_or(false)
-                || status == "success";
+            let done_flag =
+                json.get("done").and_then(|b| b.as_bool()).unwrap_or(false) || status == "success";
 
             on_chunk(PullProgress {
                 status,
@@ -492,13 +493,18 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn detect_happy_path_returns_models() {
-        let addr =
-            serve_fixture(r#"{"models":[{"name":"qwen2.5:1.5b"},{"name":"llama3.2"}]}"#, "200 OK")
-                .await;
+        let addr = serve_fixture(
+            r#"{"models":[{"name":"qwen2.5:1.5b"},{"name":"llama3.2"}]}"#,
+            "200 OK",
+        )
+        .await;
         let _g = EnvGuard::set(format!("http://{addr}"));
         let d = detect(None).await;
         assert!(d.ok, "expected ok detection, got {d:?}");
-        assert_eq!(d.models, vec!["qwen2.5:1.5b".to_string(), "llama3.2".to_string()]);
+        assert_eq!(
+            d.models,
+            vec!["qwen2.5:1.5b".to_string(), "llama3.2".to_string()]
+        );
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
