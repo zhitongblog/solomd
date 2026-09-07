@@ -11,6 +11,37 @@
 
 ---
 
+## Engineering Case Study: Multi-Target Release Pipeline & Supply-Chain Hardening
+
+> **Context:** Architectural refactoring of the compilation, packaging, and downstream distribution pipeline for a multi-component desktop ecosystem (Tauri v2 + Rust MCP Sidecar + Vue 3 / TypeScript + WebExtension + Homebrew Tap + Crates.io).
+
+### 1. Objective
+Replace fragmented, platform-specific build scripts with a deterministic, zero-credential 4-phase Directed Acyclic Graph (DAG) release pipeline supporting:
+- Parallel multi-target cross-compilation across 5 operating systems and CPU architectures.
+- Cryptographic supply-chain security (SLSA Level 3 build provenance, CycloneDX SBOM, Sigstore / Rekor attestation).
+- Manifest-driven downstream distribution (automated Homebrew Tap Cask sync, RFC 8693 OIDC publishing to Crates.io).
+
+### 2. Architecture & Implementation
+
+```text
+Phase 1: Satellites ────────► [ WebExtension (.zip) + AgentSkills (.zip) ]
+Phase 2: Desktop Matrix ────► [ macOS Universal, Win x64/ARM64, Linux x64/ARM64 ]
+                                            │
+                                            ▼
+Phase 3: Release Gate ──────► [ dist-manifest.json + CycloneDX SBOM + SLSA L3 (Sigstore) ]
+                                            │
+                                            ▼
+Phase 4: Distribution ──────► [ Homebrew Tap Sync + Crates.io OIDC Publishing (RFC 8693) ]
+```
+
+- **Matrix Compilation Decoupling:** Separated native binary compilation from release creation to eliminate race conditions in multi-runner matrices.
+- **Universal macOS Packaging:** Automated single-bundle Universal `.dmg` packaging (Apple Silicon `aarch64` + Intel `x86_64`) with Gatekeeper quarantine bypass instructions.
+- **Supply-Chain Hardening:** Cryptographically signed all 20 binary assets with SLSA Level 3 provenance via GitHub Actions OIDC and Sigstore/Rekor; generated machine-readable CycloneDX JSON SBOMs (`solomd-app-bom.json`, `solomd-mcp-bom.json`).
+- **Single Source of Truth (SSOT):** Standardized `dist-manifest.json` generation with SHA-256 digests, payload sizes, and Keep-a-Changelog AST extraction.
+- **Zero-Static-Credential Distribution:** Implemented RFC 8693 OIDC Trusted Publishing for Crates.io with idempotent registry pre-checks; automated Homebrew Cask AST generation with `depends_on macos: :big_sur`.
+
+---
+
 ## 1. Architectural Overview
 
 SoloMD bridges local-first Markdown knowledge management with autonomous agent execution environments. It exposes an active local filesystem vault simultaneously to human interactive editing and LLM client tooling via an embedded Model Context Protocol (MCP) server.
