@@ -24,7 +24,7 @@ https://solomd.app/whats-new · 中文
 - **macOS:** Download `.dmg`, drag SoloMD to `/Applications`. If Gatekeeper flags the unsigned binary ("damaged/can't be opened"), clear quarantine: `xattr -cr /Applications/SoloMD.app`
 - **Windows:** Download `.msi`. On first launch you may see "Windows protected your PC" → click *More info* → *Run anyway*
 - **Linux:** Download `.AppImage` (`chmod +x` and run) or `.deb` / `.rpm`
-- **Homebrew:** `brew install --cask zx0r/solomd/solomd`
+- **Homebrew:** `brew install --cask zhitongblog/solomd/solomd`
 
 ### Verify / 校验
 - SLSA Level 3 Provenance cryptographically signed via GitHub OIDC & Sigstore.

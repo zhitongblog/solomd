@@ -1,5 +1,5 @@
 [package]
-name = "solomd-mcp-test"
+name = "solomd-mcp"
 version = "0.4.2"
 edition = "2021"
 description = "Model Context Protocol server for SoloMD vaults — exposes a Markdown notes folder to Claude Code, Codex CLI, Cursor, Cline, Continue, Zed, and any other MCP client"

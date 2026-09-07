@@ -56,7 +56,7 @@ Engineering specification and Proof of Work (PoW) for the SoloMD automated multi
 | **Desktop Core** | `.dmg`, `.msi`, `.AppImage`, `.deb`, `.rpm`, `.zip` | SLSA L3 provenance, SHA-256 digests | GitHub Releases |
 | **MCP Sidecar** | Standalone binaries (`.tar.gz`, `.zip`) | CycloneDX SBOM (`solomd-mcp-bom.json`) | GitHub Releases / Crates.io |
 | **Satellites** | WebExtension (`.zip`), Agent skills (`.zip`) | SHA-256 digest validation | GitHub Releases |
-| **Homebrew Tap** | `Casks/solomd.rb` | Dynamic SHA-256 injection | `zx0r/homebrew-solomd` |
+| **Homebrew Tap** | `Casks/solomd.rb` | Dynamic SHA-256 injection | `zhitongblog/homebrew-solomd` |
 | **Crates.io** | `solomd-mcp` crate | RFC 8693 OIDC JWT attestation | `crates.io/crates/solomd-mcp` |
 
 ---
@@ -90,7 +90,7 @@ git push origin v4.12.0
 ### Local Provenance Verification
 ```bash
 # Verify artifact against Sigstore / Rekor transparency log
-gh attestation verify dist-manifest.json --repo zx0r/solomd
+gh attestation verify dist-manifest.json --repo zhitongblog/solomd
 ```
 
 ### Post-Install Verification & Gatekeeper Policy
@@ -123,10 +123,10 @@ Unsigned open-source desktop artifacts can trigger OS-level quarantine filters:
 1. **Generate Fine-grained PAT:**
    - Go to: **GitHub Settings** -> **Developer settings** -> **Personal access tokens** -> **Fine-grained tokens**.
    - **Token name:** `HOMEBREW_TAP_SYNC`
-   - **Repository access:** Selected repositories -> `zx0r/homebrew-solomd`.
+   - **Repository access:** Selected repositories -> `zhitongblog/homebrew-solomd`.
    - **Permissions:** `Repository permissions` -> `Contents: Read and write`.
 2. **Add Secret to Repository:**
-   - In `zx0r/solomd`: **Settings** -> **Secrets and variables** -> **Actions** -> **New repository secret**.
+   - In `zhitongblog/solomd`: **Settings** -> **Secrets and variables** -> **Actions** -> **New repository secret**.
    - **Name:** `HOMEBREW_TAP_TOKEN`
    - **Value:** `<YOUR_FINE_GRAINED_PAT>`
 
@@ -135,14 +135,14 @@ Unsigned open-source desktop artifacts can trigger OS-level quarantine filters:
 ### Crates.io Trusted Publishing Setup (`publish-crates-io`)
 
 1. **Create GitHub Environment:**
-   - In `zx0r/solomd`: **Settings** -> **Environments** -> **New environment**.
+   - In `zhitongblog/solomd`: **Settings** -> **Environments** -> **New environment**.
    - **Name:** `crates.io`
    - **Deployment branches and tags:** Selected branches/tags -> Add rule `v*`.
 2. **Configure Trusted Publisher on Crates.io:**
    - Bootstrap: Publish initial crate version (`0.1.0`) once manually with a temporary token if newly created.
    - Go to: `https://crates.io/crates/solomd-mcp/settings` -> **Trusted Publishers**.
    - Click **Add GitHub Actions workflow**:
-     - **Repository Owner:** `zx0r`
+     - **Repository Owner:** `zhitongblog`
      - **Repository Name:** `solomd`
      - **Workflow filename:** `release.yml`
      - **Environment name:** `crates.io`

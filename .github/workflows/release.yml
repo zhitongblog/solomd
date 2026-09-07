@@ -502,7 +502,7 @@ jobs:
       # 📚 OIDC TRUSTED PUBLISHING ARCHITECTURE
       # 1. Bootstrap: solomd-mcp-test initial version published with API token.
       # 2. Security: GitHub Environment `crates.io` with tag protection `v*`.
-      # 3. Trust: crates.io Trusted Publisher configured for zx0r/solomd (release.yml).
+      # 3. Trust: crates.io Trusted Publisher configured for repository (release.yml).
       # 4. Supply Chain: "Require trusted publishing" enabled to reject API token attacks.
       # =========================================================================
       - name: Checkout Code for Crates.io

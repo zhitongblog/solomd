@@ -2,9 +2,9 @@
 
 > Local-first, agent-native Markdown IDE and Model Context Protocol (MCP) knowledge engine.
 
-[![Latest Release](https://img.shields.io/github/v/release/zx0r/solomd)](https://github.com/zx0r/solomd/releases/latest)
+[![Latest Release](https://img.shields.io/github/v/release/zhitongblog/solomd)](https://github.com/zhitongblog/solomd/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Downloads](https://img.shields.io/github/downloads/zx0r/solomd/total)](https://github.com/zx0r/solomd/releases)
+[![Downloads](https://img.shields.io/github/downloads/zhitongblog/solomd/total)](https://github.com/zhitongblog/solomd/releases)
 [![Website](https://img.shields.io/badge/website-solomd.app-orange.svg)](https://solomd.app)
 
 🌐 **[Translations](docs/translations/)** · [中文](docs/translations/README.zh.md) · [日本語](docs/translations/README.ja.md) · [한국어](docs/translations/README.ko.md) · [Deutsch](docs/translations/README.de.md) · [Français](docs/translations/README.fr.md) · [Español](docs/translations/README.es.md) · [Português](docs/translations/README.pt.md) · [Italiano](docs/translations/README.it.md) · [Polski](docs/translations/README.pl.md) · [Nederlands](docs/translations/README.nl.md) · [Türkçe](docs/translations/README.tr.md) · [Svenska](docs/translations/README.sv.md) · [Українська](docs/translations/README.uk.md)
@@ -68,24 +68,24 @@ SoloMD bridges local-first Markdown knowledge management with autonomous agent e
 
 ### macOS (Universal DMG)
 ```bash
-brew install --cask zx0r/solomd/solomd
+brew install --cask zhitongblog/solomd/solomd
 ```
-Or download [`SoloMD_4.12.0_universal.dmg`](https://github.com/zx0r/solomd/releases/latest) directly (supports Apple Silicon and Intel x86_64).  
+Or download [`SoloMD_4.12.0_universal.dmg`](https://github.com/zhitongblog/solomd/releases/latest) directly (supports Apple Silicon and Intel x86_64).  
 *Note: If macOS Gatekeeper blocks launch ("damaged and can't be opened"), clear the quarantine flag:*
 ```bash
 xattr -cr /Applications/SoloMD.app
 ```
 
 ### Windows
-- **Installer:** [`SoloMD_4.12.0_x64_en-US.msi`](https://github.com/zx0r/solomd/releases/latest) | [`SoloMD_4.12.0_arm64_en-US.msi`](https://github.com/zx0r/solomd/releases/latest)
-- **Standalone:** [`SoloMD_4.12.0_x64-portable.zip`](https://github.com/zx0r/solomd/releases/latest) | [`SoloMD_4.12.0_arm64-portable.zip`](https://github.com/zx0r/solomd/releases/latest)
+- **Installer:** [`SoloMD_4.12.0_x64_en-US.msi`](https://github.com/zhitongblog/solomd/releases/latest) | [`SoloMD_4.12.0_arm64_en-US.msi`](https://github.com/zhitongblog/solomd/releases/latest)
+- **Standalone:** [`SoloMD_4.12.0_x64-portable.zip`](https://github.com/zhitongblog/solomd/releases/latest) | [`SoloMD_4.12.0_arm64-portable.zip`](https://github.com/zhitongblog/solomd/releases/latest)
 
 ```powershell
-winget install zx0r.solomd
+winget install zhitongblog.solomd
 ```
 
 ### Linux
-- **Packages:** `.AppImage`, `.deb`, `.rpm`, `.tar.gz` for both `x86_64` and `aarch64` architectures available in [GitHub Releases](https://github.com/zx0r/solomd/releases/latest).
+- **Packages:** `.AppImage`, `.deb`, `.rpm`, `.tar.gz` for both `x86_64` and `aarch64` architectures available in [GitHub Releases](https://github.com/zhitongblog/solomd/releases/latest).
 
 ---
 
@@ -125,7 +125,7 @@ solomd-mcp --workspace /path/to/vault
 
 ```bash
 # Clone repository
-git clone https://github.com/zx0r/solomd.git
+git clone https://github.com/zhitongblog/solomd.git
 cd solomd
 
 # Build desktop application
@@ -147,7 +147,7 @@ All release artifacts are validated through cryptographic attestations:
 - **Software Bill of Materials (SBOM):** Generated in CycloneDX JSON format for all dependencies.
 - **Verification:**
   ```bash
-  gh attestation verify dist-manifest.json --repo zx0r/solomd
+  gh attestation verify dist-manifest.json --repo zhitongblog/solomd
   ```
 
 ---
