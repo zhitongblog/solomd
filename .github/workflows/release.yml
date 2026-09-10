@@ -88,7 +88,8 @@ jobs:
             xdg-utils \
             file \
             fuse \
-            libfuse2
+            libfuse2 \
+            squashfs-tools
 
       - name: Install frontend dependencies
         run: cd app && pnpm install --frozen-lockfile
@@ -229,6 +230,41 @@ jobs:
       # macOS:        produced locally via scripts/build-mac.sh, since
       #               macOS isn't in this matrix anymore.
       # ----------------------------------------------------------------------
+      # ----------------------------------------------------------------------
+      # #291 — tauri-bundler writes the AppImage's `.DirIcon` as an ABSOLUTE
+      # symlink into the build directory it happened to run in:
+      #
+      #   .DirIcon -> /home/runner/work/solomd/solomd/app/src-tauri/target/\
+      #               release/bundle/appimage/SoloMD.AppDir/SoloMD.png
+      #
+      # Launching the AppImage never touches it, so this shipped unnoticed for
+      # every Linux release so far — but installers that unpack the AppDir
+      # (AppManager, Gear Lever) reject the package outright: "Symlink target
+      # not found". Repair it here, on the artifact tauri-action just built and
+      # uploaded, and put the fixed image back on the draft release.
+      #
+      # Idempotent by design: the day tauri-bundler emits a relative link, this
+      # step reports it and repacks nothing.
+      # ----------------------------------------------------------------------
+      - name: Repair AppImage .DirIcon (Linux)
+        if: startsWith(matrix.platform, 'ubuntu-')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          IMAGES=(app/src-tauri/target/release/bundle/appimage/*.AppImage)
+          if [ ${#IMAGES[@]} -eq 0 ]; then
+            echo "::error::No AppImage was produced — the bundle layout moved and this repair is now blind"
+            ls -la app/src-tauri/target/release/bundle || true
+            exit 1
+          fi
+          bash scripts/fix-appimage-diricon.sh "${IMAGES[@]}"
+          for img in "${IMAGES[@]}"; do
+            gh release upload "${{ github.ref_name }}" "$img" --clobber
+          done
+
       - name: Pack solomd-mcp tarball (Linux)
         if: startsWith(matrix.platform, 'ubuntu-')
         shell: bash

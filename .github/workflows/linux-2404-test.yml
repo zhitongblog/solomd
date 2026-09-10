@@ -65,7 +65,8 @@ jobs:
             xdg-utils \
             file \
             fuse \
-            libfuse2t64
+            libfuse2t64 \
+            squashfs-tools
 
       - name: Record toolchain versions
         run: |
@@ -88,6 +89,17 @@ jobs:
 
       - name: Build bundles
         run: cd app && pnpm tauri build --bundles appimage,deb
+
+      # #291 — same .DirIcon repair the release workflow applies, so what this
+      # job tests is byte-for-byte the shape users install.
+      - name: Repair AppImage .DirIcon
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          IMAGES=(app/src-tauri/target/release/bundle/appimage/*.AppImage)
+          [ ${#IMAGES[@]} -gt 0 ] || { echo "::error::no AppImage produced"; exit 1; }
+          bash scripts/fix-appimage-diricon.sh "${IMAGES[@]}"
 
       - name: Show what got bundled
         run: |

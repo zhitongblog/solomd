@@ -136,6 +136,35 @@ exists: an existing version is reused rather than recreated, and an open
 `READY_FOR_REVIEW` submission is added to rather than duplicated. That is why
 reads are retried on a dropped connection and writes are not.
 
+### `fix-appimage-diricon.sh <file.AppImage> [...]`
+
+Repairs the dangling `.DirIcon` symlink tauri-bundler bakes into every
+AppImage it builds (#291). The bundler writes it as an absolute path into the
+directory the build happened to run in —
+
+```
+.DirIcon -> /home/runner/work/solomd/solomd/app/src-tauri/target/release/bundle/appimage/SoloMD.AppDir/SoloMD.png
+```
+
+— which exists on no user's machine. Launching the AppImage never resolves it,
+so this shipped unnoticed for a long time, but installers that unpack the
+AppDir (AppManager, Gear Lever) reject the package: *Symlink target not found*.
+The sibling `SoloMD.png` link right next to it is relative and correct.
+
+A squashfs is immutable, so the image is rebuilt: the original ELF runtime
+bytes are kept verbatim, the AppDir is re-packed with the same compressor and
+block size read back off the image, and the two are concatenated — what
+`appimagetool` does for a type-2 image, minus the FUSE dependency, which is why
+this also runs (and can be tested) on macOS. The rebuild is verified before it
+replaces anything: same runtime length, same entry count, `.DirIcon` relative
+and resolving.
+
+Idempotent — an image whose `.DirIcon` is already relative is reported and left
+alone, so it turns into a no-op the day tauri-bundler fixes this upstream.
+
+Wired into both Linux CI workflows; run it by hand only for a locally built
+bundle.
+
 ## Required GitHub Actions secrets
 
 Go to **Settings → Secrets and variables → Actions → New repository secret** for each:
