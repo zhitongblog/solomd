@@ -4,10 +4,12 @@ import en from './en';
 import zh from './zh';
 import de from './de';
 import es from './es';
+import fr from './fr';
 
 export const whatsNew: Partial<Record<string, WhatsNewData>> & { en: WhatsNewData } = {
   en,
   zh,
   de,
   es,
+  fr,
 };
