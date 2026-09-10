@@ -71,4 +71,28 @@ function startDrag(e: MouseEvent) {
   z-index: 5;
   transition: background 0.15s;
 }
+/* #294 — the divider used to be a 4px transparent line with no feedback of
+   any kind, so "can the outline be resized?" was a fair question: nothing on
+   screen said yes. Hovering now paints the accent and shows a short grip, the
+   same vocabulary the sidebar's width handle already uses. */
+.rs-splitter:hover,
+body.rs-splitter--dragging .rs-splitter {
+  background: var(--accent);
+}
+.rs-splitter::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 28px;
+  height: 2px;
+  transform: translate(-50%, -50%);
+  border-radius: 1px;
+  background: var(--text-faint);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.rs-splitter:hover::after {
+  opacity: 0.9;
+}
 </style>

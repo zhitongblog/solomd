@@ -1646,9 +1646,30 @@ watch(visibleRsPanes, () => {
 // fall back to the CSS flex defaults (1× for read-only panes, 4× for
 // Agent so chat keeps room when no splitter has been touched).
 function paneStyle(id: string) {
-  const h = settings.rightSidebarPaneHeights[id];
+  const panes = visibleRsPanes.value;
+  // #294 — a pane's stored height outlives the stack it was measured in.
+  // Drag the splitter while Outline shares the sidebar with Backlinks, then
+  // close Backlinks, and Outline stays pinned to that old height with dead
+  // space under it — and no splitter left to drag, because splitters only
+  // exist *between* panes. A pane that owns the sidebar alone therefore
+  // ignores the stored height and fills it, which is also the default
+  // `.rs-pane-host { flex: 1 1 0 }` behaviour before any drag.
+  if (panes.length < 2) return {};
+  // A stack nobody has dragged keeps the stylesheet's proportional shares
+  // (Agent asks for 4×) — only once a height has actually been pinned does
+  // this take over the sizing.
+  const stored = settings.rightSidebarPaneHeights;
+  if (!panes.some((p) => (stored[p.id] ?? 0) > 0)) return {};
+  // Then the bottom pane absorbs whatever the panes above leave over, so the
+  // stack always reaches the bottom edge no matter how stale the stored
+  // heights are or how much the window has been resized since.
+  if (panes[panes.length - 1]?.id === id) return { flex: '1 1 auto', minHeight: '80px' };
+  const h = stored[id];
   if (h && h > 0) {
-    return { flex: `0 0 ${h}px`, height: `${h}px` };
+    // `0 1` rather than `0 0`: heights are stored in pixels, so a window that
+    // later got shorter must be able to squeeze them instead of pushing the
+    // last pane off the bottom.
+    return { flex: `0 1 ${h}px`, height: `${h}px`, minHeight: '80px' };
   }
   return {};
 }
