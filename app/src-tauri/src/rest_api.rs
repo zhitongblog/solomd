@@ -97,7 +97,9 @@ fn random_token() -> String {
     let mut x = mix;
     for _ in 0..16 {
         s.push_str(&format!("{:02x}", (x & 0xff) as u8));
-        x = x.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        x = x
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
     }
     s
 }
@@ -479,7 +481,11 @@ async fn handle_conn(mut stream: TcpStream, _app: AppHandle) -> Result<(), Strin
         };
         // Disallow path traversal — run_id is meant to be the YYYYMMDD-HHMMSS-XXXXXX
         // form, so we refuse anything with a slash or `..`.
-        if run_id.is_empty() || run_id.contains('/') || run_id.contains('\\') || run_id.contains("..") {
+        if run_id.is_empty()
+            || run_id.contains('/')
+            || run_id.contains('\\')
+            || run_id.contains("..")
+        {
             write_err(&mut stream, 400, "bad run id").await;
             return Ok(());
         }
@@ -499,7 +505,14 @@ async fn handle_conn(mut stream: TcpStream, _app: AppHandle) -> Result<(), Strin
                 Ok(t) => write_text(&mut stream, 200, "OK", &t).await,
                 Err(e) => write_err(&mut stream, 404, &e).await,
             },
-            other => write_err(&mut stream, 404, &format!("unknown run sub-resource: {other}")).await,
+            other => {
+                write_err(
+                    &mut stream,
+                    404,
+                    &format!("unknown run sub-resource: {other}"),
+                )
+                .await
+            }
         }
         return Ok(());
     }
@@ -546,7 +559,10 @@ async fn read_request(stream: &mut TcpStream) -> Result<Request, String> {
         if buf.len() > 64 * 1024 {
             return Err("headers too large".into());
         }
-        let n = stream.read(&mut tmp).await.map_err(|e| format!("read: {e}"))?;
+        let n = stream
+            .read(&mut tmp)
+            .await
+            .map_err(|e| format!("read: {e}"))?;
         if n == 0 {
             return Err("unexpected eof".into());
         }
@@ -618,7 +634,12 @@ fn find_double_crlf(buf: &[u8]) -> Option<usize> {
     None
 }
 
-async fn write_resp(stream: &mut TcpStream, code: u16, reason: &str, body: &str) -> Result<(), String> {
+async fn write_resp(
+    stream: &mut TcpStream,
+    code: u16,
+    reason: &str,
+    body: &str,
+) -> Result<(), String> {
     let head = format!(
         "HTTP/1.1 {code} {reason}\r\n\
          Content-Type: application/json\r\n\
@@ -630,8 +651,14 @@ async fn write_resp(stream: &mut TcpStream, code: u16, reason: &str, body: &str)
          \r\n",
         body.len()
     );
-    stream.write_all(head.as_bytes()).await.map_err(|e| format!("write head: {e}"))?;
-    stream.write_all(body.as_bytes()).await.map_err(|e| format!("write body: {e}"))?;
+    stream
+        .write_all(head.as_bytes())
+        .await
+        .map_err(|e| format!("write head: {e}"))?;
+    stream
+        .write_all(body.as_bytes())
+        .await
+        .map_err(|e| format!("write body: {e}"))?;
     let _ = stream.shutdown().await;
     Ok(())
 }
@@ -877,7 +904,10 @@ mod tests {
     async fn write_tool_403_when_allow_write_false() {
         let _g = TEST_LOCK.lock().unwrap();
         // Spin a temp workspace so we don't 503 on missing workspace.
-        let tmp = std::env::temp_dir().join(format!("solomd-rest-test-{}", super::super::agent_run::mint_run_id()));
+        let tmp = std::env::temp_dir().join(format!(
+            "solomd-rest-test-{}",
+            super::super::agent_run::mint_run_id()
+        ));
         fs::create_dir_all(&tmp).unwrap();
         _test_set("tok-C", false, Some(tmp.clone()));
         let port = _test_bind().await.unwrap();
@@ -897,19 +927,15 @@ mod tests {
     async fn read_tool_round_trips_via_http() {
         let _g = TEST_LOCK.lock().unwrap();
         // Seed a tiny workspace with one markdown file so list_notes returns it.
-        let tmp = std::env::temp_dir().join(format!("solomd-rest-rt-{}", super::super::agent_run::mint_run_id()));
+        let tmp = std::env::temp_dir().join(format!(
+            "solomd-rest-rt-{}",
+            super::super::agent_run::mint_run_id()
+        ));
         fs::create_dir_all(&tmp).unwrap();
         fs::write(tmp.join("note.md"), "# title\n\nhello\n").unwrap();
         _test_set("tok-D", false, Some(tmp.clone()));
         let port = _test_bind().await.unwrap();
-        let (code, body) = http(
-            port,
-            "POST",
-            "/tools/list_notes",
-            Some("tok-D"),
-            Some("{}"),
-        )
-        .await;
+        let (code, body) = http(port, "POST", "/tools/list_notes", Some("tok-D"), Some("{}")).await;
         assert_eq!(code, 200, "body: {body}");
         let v: Value = serde_json::from_str(&body).unwrap();
         assert_eq!(v["ok"], true);

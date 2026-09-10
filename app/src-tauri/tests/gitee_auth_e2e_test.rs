@@ -33,8 +33,17 @@ fn push_to_gitee_authenticates() {
     fs::write(ws.join("note.md"), "# from the gitee auth e2e test\n").unwrap();
 
     let git = |args: &[&str]| {
-        let out = Command::new("git").args(args).current_dir(&ws).output().unwrap();
-        assert!(out.status.success(), "git {:?} failed: {}", args, String::from_utf8_lossy(&out.stderr));
+        let out = Command::new("git")
+            .args(args)
+            .current_dir(&ws)
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "git {:?} failed: {}",
+            args,
+            String::from_utf8_lossy(&out.stderr)
+        );
     };
     git(&["init", "-q"]);
     git(&["config", "user.email", "e2e@example.com"]);

@@ -105,10 +105,7 @@ tools:
     }
 
     // Run dir + meta.json + trace.jsonl + run.md should exist.
-    let run_dir = ws
-        .join(".solomd")
-        .join("agent-runs")
-        .join(&meta.run_id);
+    let run_dir = ws.join(".solomd").join("agent-runs").join(&meta.run_id);
     assert!(run_dir.join("meta.json").exists(), "meta.json");
     assert!(run_dir.join("trace.jsonl").exists(), "trace.jsonl");
     assert!(run_dir.join("run.md").exists(), "run.md");
@@ -179,11 +176,9 @@ tools:
             .is_ok(),
         "weekly/2024-W01.md should be on agent branch"
     );
-    assert!(
-        agent_tree
-            .get_path(std::path::Path::new("weekly/2024-W02.md"))
-            .is_ok()
-    );
+    assert!(agent_tree
+        .get_path(std::path::Path::new("weekly/2024-W02.md"))
+        .is_ok());
 
     // Finalize.
     meta.tokens.input = 42;

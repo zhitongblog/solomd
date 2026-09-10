@@ -141,7 +141,11 @@ pub const READ_TOOLS: &[&str] = &[
 pub const WRITE_TOOLS: &[&str] = &["write_note", "append_to_note"];
 
 pub fn all_tools() -> Vec<&'static str> {
-    READ_TOOLS.iter().chain(WRITE_TOOLS.iter()).copied().collect()
+    READ_TOOLS
+        .iter()
+        .chain(WRITE_TOOLS.iter())
+        .copied()
+        .collect()
 }
 
 pub fn is_write_tool(name: &str) -> bool {
@@ -392,14 +396,18 @@ fn validate_run_id(run_id: &str) -> Result<&str, String> {
         return Err(format!("invalid run_id (bad date): {run_id}"));
     }
     if bytes[8] != b'-' {
-        return Err(format!("invalid run_id (missing dash after date): {run_id}"));
+        return Err(format!(
+            "invalid run_id (missing dash after date): {run_id}"
+        ));
     }
     // HHMMSS
     if !bytes[9..15].iter().all(|&b| is_digit(b)) {
         return Err(format!("invalid run_id (bad time): {run_id}"));
     }
     if bytes[15] != b'-' {
-        return Err(format!("invalid run_id (missing dash after time): {run_id}"));
+        return Err(format!(
+            "invalid run_id (missing dash after time): {run_id}"
+        ));
     }
     // Suffix: 1+ lowercase hex chars, nothing else.
     let suffix = &bytes[16..];
@@ -449,7 +457,8 @@ fn split_front_matter(raw: &str) -> (Option<String>, &str) {
 }
 
 fn extract_headings(body: &str) -> Vec<HeadingRef> {
-    static RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(#{1,6})\s+(.+?)\s*$").expect("heading regex"));
+    static RE: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"^(#{1,6})\s+(.+?)\s*$").expect("heading regex"));
     let mut out = Vec::new();
     let mut in_fence = false;
     for (line_idx, line) in body.lines().enumerate() {
@@ -644,7 +653,11 @@ fn walk_md_files(root: &Path) -> impl Iterator<Item = PathBuf> + '_ {
                 .map(|s| s.to_lowercase())
                 .map(|s| matches!(s.as_str(), "md" | "markdown" | "mdown"))
                 .unwrap_or(false);
-            if ext_ok { Some(p) } else { None }
+            if ext_ok {
+                Some(p)
+            } else {
+                None
+            }
         })
 }
 
@@ -708,7 +721,10 @@ fn tool_list_notes(workspace: &Path, args: &Value) -> Result<Value, String> {
         }
         let headings = extract_headings(body);
         let title = match &fm_v {
-            Value::Object(map) => map.get("title").and_then(|t| t.as_str()).map(|s| s.to_string()),
+            Value::Object(map) => map
+                .get("title")
+                .and_then(|t| t.as_str())
+                .map(|s| s.to_string()),
             _ => None,
         }
         .or_else(|| headings.first().map(|h| h.text.clone()));
@@ -825,11 +841,7 @@ fn tool_search(workspace: &Path, args: &Value) -> Result<Value, String> {
         return Ok(json!({"hits": hits, "count": count}));
     }
     // literal
-    let hits = search::search_in_dir_inner(
-        workspace.to_string_lossy().to_string(),
-        query,
-        limit,
-    )?;
+    let hits = search::search_in_dir_inner(workspace.to_string_lossy().to_string(), query, limit)?;
     let arr: Vec<Value> = hits
         .iter()
         .map(|h| json!({"file": h.file, "line": h.line, "snippet": h.snippet}))
@@ -926,7 +938,10 @@ fn tool_list_tags(workspace: &Path, _args: &Value) -> Result<Value, String> {
         .map(|(tag, (count, files))| json!({"tag": tag, "count": count, "files": files}))
         .collect();
     out.sort_by(|a, b| {
-        b["count"].as_u64().unwrap_or(0).cmp(&a["count"].as_u64().unwrap_or(0))
+        b["count"]
+            .as_u64()
+            .unwrap_or(0)
+            .cmp(&a["count"].as_u64().unwrap_or(0))
     });
     let count = out.len();
     let mut result = json!({"tags": out, "count": count});
@@ -988,9 +1003,8 @@ fn tool_autogit_diff(workspace: &Path, args: &Value) -> Result<Value, String> {
     let sha = match args.get("sha").and_then(|v| v.as_str()) {
         Some(s) if !s.is_empty() => s.to_string(),
         _ => {
-            let st = git_history::git_workspace_status_inner(
-                workspace.to_string_lossy().to_string(),
-            )?;
+            let st =
+                git_history::git_workspace_status_inner(workspace.to_string_lossy().to_string())?;
             st.head_sha.unwrap_or_else(|| "".to_string())
         }
     };
@@ -1309,20 +1323,14 @@ mod tests {
     #[test]
     fn write_then_read_roundtrips() {
         let ws = make_workspace();
-        let res = tool_write_note(
-            &ws,
-            &json!({"path": "out/new.md", "content": "# New file"}),
-        )
-        .unwrap();
+        let res =
+            tool_write_note(&ws, &json!({"path": "out/new.md", "content": "# New file"})).unwrap();
         assert_eq!(res["ok"], true);
         let read_back = tool_read_note(&ws, &json!({"path": "out/new.md"})).unwrap();
         assert!(read_back["content"].as_str().unwrap().contains("New file"));
 
         // Default refuses to clobber.
-        let dup = tool_write_note(
-            &ws,
-            &json!({"path": "out/new.md", "content": "x"}),
-        );
+        let dup = tool_write_note(&ws, &json!({"path": "out/new.md", "content": "x"}));
         assert!(dup.is_err(), "should not overwrite without allow_overwrite");
 
         // With allow_overwrite, succeeds.
@@ -1383,7 +1391,10 @@ mod tests {
         // Post-fix: the `..` component is rejected upfront.
         let ws = make_workspace();
         let res = resolve_in_workspace(&ws, "../../tmp/pwn/x.md");
-        assert!(res.is_err(), "must reject `..` even with nonexistent parent");
+        assert!(
+            res.is_err(),
+            "must reject `..` even with nonexistent parent"
+        );
         let _ = fs::remove_dir_all(&ws);
     }
 

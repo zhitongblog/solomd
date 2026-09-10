@@ -17,7 +17,11 @@ fn halfwidth_comma_after_han_flagged() {
         .iter()
         .filter(|i| i.category == "punct_halfwidth")
         .collect();
-    assert_eq!(punct.len(), 1, "expected one halfwidth flag, got {issues:#?}");
+    assert_eq!(
+        punct.len(),
+        1,
+        "expected one halfwidth flag, got {issues:#?}"
+    );
     let issue = punct[0];
     assert_eq!(issue.severity, "high");
     assert_eq!(issue.original, ",");
@@ -63,7 +67,11 @@ fn feichang_de_followed_by_han_flagged_as_di() {
         .iter()
         .filter(|i| i.category == "de_misuse")
         .collect();
-    assert_eq!(de.len(), 1, "expected one de_misuse flag, issues={issues:#?}");
+    assert_eq!(
+        de.len(),
+        1,
+        "expected one de_misuse flag, issues={issues:#?}"
+    );
     assert_eq!(de[0].severity, "medium");
     assert_eq!(de[0].original, "的");
     assert_eq!(de[0].suggestion, "地");
@@ -76,10 +84,7 @@ fn feichang_de_followed_by_han_flagged_as_di() {
 #[test]
 fn doubled_de_flagged_low() {
     let issues = proofread("这是的的一个测试");
-    let r: Vec<_> = issues
-        .iter()
-        .filter(|i| i.category == "repeat")
-        .collect();
+    let r: Vec<_> = issues.iter().filter(|i| i.category == "repeat").collect();
     assert!(!r.is_empty(), "expected repeat flag, issues={issues:#?}");
     assert_eq!(r[0].severity, "low");
     assert_eq!(r[0].original, "的的");
@@ -99,7 +104,10 @@ fn cjk_then_latin_flagged_with_thin_space() {
         .collect();
     // We expect TWO boundaries: 字↔a and c↔汉. The doubled-flag is
     // intentional — it lets the user fix each side independently.
-    assert!(s.len() >= 2, "expected >=2 spacing flags, issues={issues:#?}");
+    assert!(
+        s.len() >= 2,
+        "expected >=2 spacing flags, issues={issues:#?}"
+    );
     for issue in &s {
         assert_eq!(issue.severity, "low");
         assert!(
@@ -121,7 +129,11 @@ fn digit_unit_then_han_flagged() {
         .iter()
         .filter(|i| i.category == "digit_unit_space")
         .collect();
-    assert_eq!(u.len(), 1, "expected one digit_unit flag, issues={issues:#?}");
+    assert_eq!(
+        u.len(),
+        1,
+        "expected one digit_unit flag, issues={issues:#?}"
+    );
     assert_eq!(u[0].severity, "low");
     assert_eq!(u[0].original, "5GB硬");
     assert_eq!(u[0].suggestion, "5 GB 硬");

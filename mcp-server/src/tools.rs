@@ -12,11 +12,10 @@ use std::process::Stdio;
 use std::sync::Arc;
 
 use rmcp::{
-    ErrorData as McpError, ServerHandler,
     handler::server::{router::tool::ToolRouter, wrapper::Parameters},
     model::{CallToolResult, Content, Implementation, ServerCapabilities, ServerInfo},
     schemars::{self, JsonSchema},
-    tool, tool_handler, tool_router,
+    tool, tool_handler, tool_router, ErrorData as McpError, ServerHandler,
 };
 use serde::{Deserialize, Serialize};
 use tokio::process::Command as AsyncCommand;
@@ -396,9 +395,9 @@ impl SoloMdServer {
         }
         metas.sort_by(|a, b| b.mtime.cmp(&a.mtime));
         let json = serde_json::json!({ "notes": metas, "count": metas.len() });
-        Ok(CallToolResult::success(vec![
-            Content::json(json).map_err(|e| McpError::internal_error(e.to_string(), None))?
-        ]))
+        Ok(CallToolResult::success(vec![Content::json(json).map_err(
+            |e| McpError::internal_error(e.to_string(), None),
+        )?]))
     }
 
     /// Read the full content + parsed metadata of a single note.
@@ -415,11 +414,10 @@ impl SoloMdServer {
             .map_err(|e| McpError::invalid_params(e, None))?;
         let path = safety::resolve_in(workspace, &args.0.path, true)
             .map_err(|e| McpError::invalid_params(e, None))?;
-        let note = workspace::read_full(&path)
-            .map_err(|e| McpError::internal_error(e, None))?;
-        Ok(CallToolResult::success(vec![
-            Content::json(note).map_err(|e| McpError::internal_error(e.to_string(), None))?
-        ]))
+        let note = workspace::read_full(&path).map_err(|e| McpError::internal_error(e, None))?;
+        Ok(CallToolResult::success(vec![Content::json(note).map_err(
+            |e| McpError::internal_error(e.to_string(), None),
+        )?]))
     }
 
     /// Search across notes. Prefers `rg` if on PATH, otherwise falls back to
@@ -428,10 +426,7 @@ impl SoloMdServer {
         name = "search",
         description = "Search notes for a query. Returns up to `limit` matches with 3-line context. mode defaults to \"literal\"; pass \"regex\" for a regular-expression search. Pass `workspace` (alias or absolute path) to target a non-default workspace; omit it to use the first registered workspace."
     )]
-    pub async fn search(
-        &self,
-        args: Parameters<SearchArgs>,
-    ) -> Result<CallToolResult, McpError> {
+    pub async fn search(&self, args: Parameters<SearchArgs>) -> Result<CallToolResult, McpError> {
         let workspace = self
             .resolve_workspace(args.0.workspace.as_deref())
             .map_err(|e| McpError::invalid_params(e, None))?;
@@ -444,10 +439,10 @@ impl SoloMdServer {
             search_native(workspace, &args.0.query, regex, limit)
         }
         .map_err(|e| McpError::internal_error(e, None))?;
-        Ok(CallToolResult::success(vec![
-            Content::json(serde_json::json!({ "hits": hits, "count": hits.len() }))
-                .map_err(|e| McpError::internal_error(e.to_string(), None))?
-        ]))
+        Ok(CallToolResult::success(vec![Content::json(
+            serde_json::json!({ "hits": hits, "count": hits.len() }),
+        )
+        .map_err(|e| McpError::internal_error(e.to_string(), None))?]))
     }
 
     /// Find every place that wikilinks `[[note_name]]`.
@@ -464,7 +459,10 @@ impl SoloMdServer {
             .map_err(|e| McpError::invalid_params(e, None))?;
         let needle = args.0.note_name.trim().to_lowercase();
         if needle.is_empty() {
-            return Err(McpError::invalid_params("note_name must not be empty", None));
+            return Err(McpError::invalid_params(
+                "note_name must not be empty",
+                None,
+            ));
         }
         let mut out: Vec<BacklinkRef> = Vec::new();
         for path in workspace::walk_markdown_files(workspace) {
@@ -489,10 +487,10 @@ impl SoloMdServer {
             }
         }
         out.sort_by(|a, b| a.from_name.cmp(&b.from_name));
-        Ok(CallToolResult::success(vec![
-            Content::json(serde_json::json!({ "backlinks": out, "count": out.len() }))
-                .map_err(|e| McpError::internal_error(e.to_string(), None))?
-        ]))
+        Ok(CallToolResult::success(vec![Content::json(
+            serde_json::json!({ "backlinks": out, "count": out.len() }),
+        )
+        .map_err(|e| McpError::internal_error(e.to_string(), None))?]))
     }
 
     /// Aggregated tag counts across the vault.
@@ -528,10 +526,10 @@ impl SoloMdServer {
             .map(|(tag, (count, files))| TagCount { tag, count, files })
             .collect();
         out.sort_by(|a, b| b.count.cmp(&a.count).then_with(|| a.tag.cmp(&b.tag)));
-        Ok(CallToolResult::success(vec![
-            Content::json(serde_json::json!({ "tags": out, "count": out.len() }))
-                .map_err(|e| McpError::internal_error(e.to_string(), None))?
-        ]))
+        Ok(CallToolResult::success(vec![Content::json(
+            serde_json::json!({ "tags": out, "count": out.len() }),
+        )
+        .map_err(|e| McpError::internal_error(e.to_string(), None))?]))
     }
 
     /// Every checkbox in the workspace.
@@ -570,10 +568,10 @@ impl SoloMdServer {
                 }));
             }
         }
-        Ok(CallToolResult::success(vec![
-            Content::json(serde_json::json!({ "tasks": out, "count": out.len() }))
-                .map_err(|e| McpError::internal_error(e.to_string(), None))?
-        ]))
+        Ok(CallToolResult::success(vec![Content::json(
+            serde_json::json!({ "tasks": out, "count": out.len() }),
+        )
+        .map_err(|e| McpError::internal_error(e.to_string(), None))?]))
     }
 
     /// Heading outline for a note.
@@ -594,10 +592,10 @@ impl SoloMdServer {
             .map_err(|e| McpError::internal_error(e.to_string(), None))?;
         let (_fm, body) = workspace::split_front_matter(&raw);
         let headings: Vec<HeadingRef> = workspace::extract_headings(body);
-        Ok(CallToolResult::success(vec![
-            Content::json(serde_json::json!({ "outline": headings }))
-                .map_err(|e| McpError::internal_error(e.to_string(), None))?
-        ]))
+        Ok(CallToolResult::success(vec![Content::json(
+            serde_json::json!({ "outline": headings }),
+        )
+        .map_err(|e| McpError::internal_error(e.to_string(), None))?]))
     }
 
     /// Write (or overwrite) a note. Gated by `--allow-write`.
@@ -638,9 +636,10 @@ impl SoloMdServer {
             bytes_written: bytes,
             path: path.to_string_lossy().to_string(),
         };
-        Ok(CallToolResult::success(vec![
-            Content::json(result).map_err(|e| McpError::internal_error(e.to_string(), None))?
-        ]))
+        Ok(CallToolResult::success(vec![Content::json(result)
+            .map_err(|e| {
+                McpError::internal_error(e.to_string(), None)
+            })?]))
     }
 
     // ---- v3.1 SoloMD-only tools (autogit / sync / share) -----------------
@@ -661,14 +660,15 @@ impl SoloMdServer {
         let path = safety::resolve_in(&workspace, &args.0.path, true)
             .map_err(|e| McpError::invalid_params(e, None))?;
         let limit = args.0.limit.unwrap_or(50).min(500) as usize;
-        let commits = tokio::task::spawn_blocking(move || autogit_log_inner(&workspace, &path, limit))
-            .await
-            .map_err(|e| McpError::internal_error(format!("join: {e}"), None))?
-            .map_err(|e| McpError::internal_error(e, None))?;
+        let commits =
+            tokio::task::spawn_blocking(move || autogit_log_inner(&workspace, &path, limit))
+                .await
+                .map_err(|e| McpError::internal_error(format!("join: {e}"), None))?
+                .map_err(|e| McpError::internal_error(e, None))?;
         let json = serde_json::json!({ "commits": commits, "count": commits.len() });
-        Ok(CallToolResult::success(vec![
-            Content::json(json).map_err(|e| McpError::internal_error(e.to_string(), None))?
-        ]))
+        Ok(CallToolResult::success(vec![Content::json(json).map_err(
+            |e| McpError::internal_error(e.to_string(), None),
+        )?]))
     }
 
     /// Show the textual diff for one note between two AutoGit commits.
@@ -688,13 +688,16 @@ impl SoloMdServer {
             .map_err(|e| McpError::invalid_params(e, None))?;
         let sha = args.0.sha.clone();
         let base = args.0.base.clone();
-        let result = tokio::task::spawn_blocking(move || autogit_diff_inner(&workspace, &path, sha.as_deref(), base.as_deref()))
-            .await
-            .map_err(|e| McpError::internal_error(format!("join: {e}"), None))?
-            .map_err(|e| McpError::internal_error(e, None))?;
-        Ok(CallToolResult::success(vec![
-            Content::json(result).map_err(|e| McpError::internal_error(e.to_string(), None))?
-        ]))
+        let result = tokio::task::spawn_blocking(move || {
+            autogit_diff_inner(&workspace, &path, sha.as_deref(), base.as_deref())
+        })
+        .await
+        .map_err(|e| McpError::internal_error(format!("join: {e}"), None))?
+        .map_err(|e| McpError::internal_error(e, None))?;
+        Ok(CallToolResult::success(vec![Content::json(result)
+            .map_err(|e| {
+                McpError::internal_error(e.to_string(), None)
+            })?]))
     }
 
     /// Restore a note's content from a specific AutoGit commit. Gated by
@@ -722,18 +725,20 @@ impl SoloMdServer {
             .map_err(|e| McpError::invalid_params(e, None))?;
         let sha = args.0.sha.clone();
         let path_str = path.to_string_lossy().to_string();
-        let bytes = tokio::task::spawn_blocking(move || autogit_rollback_inner(&workspace, &path, &sha))
-            .await
-            .map_err(|e| McpError::internal_error(format!("join: {e}"), None))?
-            .map_err(|e| McpError::internal_error(e, None))?;
+        let bytes =
+            tokio::task::spawn_blocking(move || autogit_rollback_inner(&workspace, &path, &sha))
+                .await
+                .map_err(|e| McpError::internal_error(format!("join: {e}"), None))?
+                .map_err(|e| McpError::internal_error(e, None))?;
         let result = WriteResult {
             ok: true,
             bytes_written: bytes,
             path: path_str,
         };
-        Ok(CallToolResult::success(vec![
-            Content::json(result).map_err(|e| McpError::internal_error(e.to_string(), None))?
-        ]))
+        Ok(CallToolResult::success(vec![Content::json(result)
+            .map_err(|e| {
+                McpError::internal_error(e.to_string(), None)
+            })?]))
     }
 
     /// Read SoloMD's GitHub-sync state for the workspace.
@@ -753,9 +758,9 @@ impl SoloMdServer {
             .await
             .map_err(|e| McpError::internal_error(format!("join: {e}"), None))?
             .map_err(|e| McpError::internal_error(e, None))?;
-        Ok(CallToolResult::success(vec![
-            Content::json(json).map_err(|e| McpError::internal_error(e.to_string(), None))?
-        ]))
+        Ok(CallToolResult::success(vec![Content::json(json).map_err(
+            |e| McpError::internal_error(e.to_string(), None),
+        )?]))
     }
 
     /// Compute the public share URL for a note (only valid if the
@@ -778,9 +783,9 @@ impl SoloMdServer {
             .await
             .map_err(|e| McpError::internal_error(format!("join: {e}"), None))?
             .map_err(|e| McpError::internal_error(e, None))?;
-        Ok(CallToolResult::success(vec![
-            Content::json(json).map_err(|e| McpError::internal_error(e.to_string(), None))?
-        ]))
+        Ok(CallToolResult::success(vec![Content::json(json).map_err(
+            |e| McpError::internal_error(e.to_string(), None),
+        )?]))
     }
 
     /// Append to an existing note. Gated by `--allow-write`.
@@ -817,9 +822,10 @@ impl SoloMdServer {
             bytes_written: bytes,
             path: path.to_string_lossy().to_string(),
         };
-        Ok(CallToolResult::success(vec![
-            Content::json(result).map_err(|e| McpError::internal_error(e.to_string(), None))?
-        ]))
+        Ok(CallToolResult::success(vec![Content::json(result)
+            .map_err(|e| {
+                McpError::internal_error(e.to_string(), None)
+            })?]))
     }
 
     /// v4.0 Pillar 3 — return the agent trace for a single run.
@@ -889,16 +895,20 @@ impl SoloMdServer {
             ));
         }
 
-        let script = find_export_script().map_err(|e| {
-            McpError::internal_error(format!("export script not found: {e}"), None)
-        })?;
-        let script_dir = script.parent().unwrap_or_else(|| Path::new(".")).to_path_buf();
+        let script = find_export_script()
+            .map_err(|e| McpError::internal_error(format!("export script not found: {e}"), None))?;
+        let script_dir = script
+            .parent()
+            .unwrap_or_else(|| Path::new("."))
+            .to_path_buf();
 
         let mut cmd = AsyncCommand::new("node");
         cmd.arg(&script)
             .arg(&input_path)
-            .arg("--format").arg(&fmt)
-            .arg("--output").arg(&output_path);
+            .arg("--format")
+            .arg(&fmt)
+            .arg("--output")
+            .arg(&output_path);
         if args.0.number_headings.unwrap_or(false) {
             cmd.arg("--number-headings");
         }
@@ -918,13 +928,13 @@ impl SoloMdServer {
             ));
         }
 
-        Ok(CallToolResult::success(vec![
-            Content::json(serde_json::json!({
+        Ok(CallToolResult::success(vec![Content::json(
+            serde_json::json!({
                 "output_path": output_path.to_string_lossy(),
                 "format": fmt,
-            }))
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?
-        ]))
+            }),
+        )
+        .map_err(|e| McpError::internal_error(e.to_string(), None))?]))
     }
 
     /// lines (skipped, not errored) so partial / crashed runs are still
@@ -950,19 +960,16 @@ impl SoloMdServer {
                 None,
             ));
         }
-        let dir = workspace
-            .join(".solomd")
-            .join("agent-runs")
-            .join(&run_id);
+        let dir = workspace.join(".solomd").join("agent-runs").join(&run_id);
         let steps = tokio::task::spawn_blocking(move || trace_reader::read_trace(&dir))
             .await
             .map_err(|e| McpError::internal_error(format!("join: {e}"), None))?
             .map_err(|e| McpError::internal_error(e.to_string(), None))?;
         let count = steps.len();
-        Ok(CallToolResult::success(vec![
-            Content::json(serde_json::json!({ "steps": steps, "count": count }))
-                .map_err(|e| McpError::internal_error(e.to_string(), None))?
-        ]))
+        Ok(CallToolResult::success(vec![Content::json(
+            serde_json::json!({ "steps": steps, "count": count }),
+        )
+        .map_err(|e| McpError::internal_error(e.to_string(), None))?]))
     }
 }
 
@@ -1074,7 +1081,10 @@ async fn search_with_rg(
             .and_then(|s| s.as_str())
             .unwrap_or("")
             .to_string();
-        let line_no = data.get("line_number").and_then(|n| n.as_u64()).unwrap_or(0) as u32;
+        let line_no = data
+            .get("line_number")
+            .and_then(|n| n.as_u64())
+            .unwrap_or(0) as u32;
         let column = data
             .pointer("/submatches/0/start")
             .and_then(|n| n.as_u64())
@@ -1143,8 +1153,8 @@ fn autogit_log_inner(
     note_path: &std::path::Path,
     limit: usize,
 ) -> Result<Vec<AutogitCommitMeta>, String> {
-    let repo = git2::Repository::open(workspace)
-        .map_err(|e| format!("not an AutoGit workspace: {e}"))?;
+    let repo =
+        git2::Repository::open(workspace).map_err(|e| format!("not an AutoGit workspace: {e}"))?;
     let rel = note_path
         .strip_prefix(workspace)
         .map_err(|_| "note is outside the workspace".to_string())?;
@@ -1218,8 +1228,8 @@ fn autogit_diff_inner(
     sha: Option<&str>,
     base: Option<&str>,
 ) -> Result<serde_json::Value, String> {
-    let repo = git2::Repository::open(workspace)
-        .map_err(|e| format!("not an AutoGit workspace: {e}"))?;
+    let repo =
+        git2::Repository::open(workspace).map_err(|e| format!("not an AutoGit workspace: {e}"))?;
     let rel = note_path
         .strip_prefix(workspace)
         .map_err(|_| "note is outside the workspace".to_string())?;
@@ -1307,8 +1317,8 @@ fn autogit_rollback_inner(
     note_path: &std::path::Path,
     sha: &str,
 ) -> Result<usize, String> {
-    let repo = git2::Repository::open(workspace)
-        .map_err(|e| format!("not an AutoGit workspace: {e}"))?;
+    let repo =
+        git2::Repository::open(workspace).map_err(|e| format!("not an AutoGit workspace: {e}"))?;
     let rel = note_path
         .strip_prefix(workspace)
         .map_err(|_| "note is outside the workspace".to_string())?;
@@ -1360,15 +1370,15 @@ fn share_url_inner(
         return Err("workspace is not linked to a GitHub repo".into());
     }
     let raw = std::fs::read_to_string(&cfg_path).map_err(|e| e.to_string())?;
-    let cfg: serde_json::Value = serde_json::from_str(&raw)
-        .map_err(|e| format!("sync.json corrupted: {e}"))?;
+    let cfg: serde_json::Value =
+        serde_json::from_str(&raw).map_err(|e| format!("sync.json corrupted: {e}"))?;
     let remote = cfg
         .get("remote_url")
         .and_then(|v| v.as_str())
         .ok_or_else(|| "remote_url missing in sync.json".to_string())?;
     // Accept both https://github.com/<owner>/<repo>.git and the bare form.
-    let owner_repo = parse_owner_repo(remote)
-        .ok_or_else(|| format!("not a GitHub remote: {remote}"))?;
+    let owner_repo =
+        parse_owner_repo(remote).ok_or_else(|| format!("not a GitHub remote: {remote}"))?;
     let branch = cfg
         .get("branch")
         .and_then(|v| v.as_str())
@@ -1395,7 +1405,10 @@ fn share_url_inner(
 
 fn parse_owner_repo(remote: &str) -> Option<String> {
     let trimmed = remote.trim().trim_end_matches('/').trim_end_matches(".git");
-    let after = trimmed.split("github.com").nth(1)?.trim_start_matches([':', '/']);
+    let after = trimmed
+        .split("github.com")
+        .nth(1)?
+        .trim_start_matches([':', '/']);
     let parts: Vec<&str> = after.split('/').filter(|s| !s.is_empty()).collect();
     if parts.len() >= 2 {
         Some(format!("{}/{}", parts[0], parts[1]))
@@ -1487,9 +1500,21 @@ mod tests {
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         // git init + identity (avoid test depending on user's git config)
-        Command::new("git").args(["init", "-q", "-b", "main"]).current_dir(&dir).status().unwrap();
-        Command::new("git").args(["config", "user.email", "test@local"]).current_dir(&dir).status().unwrap();
-        Command::new("git").args(["config", "user.name", "Test"]).current_dir(&dir).status().unwrap();
+        Command::new("git")
+            .args(["init", "-q", "-b", "main"])
+            .current_dir(&dir)
+            .status()
+            .unwrap();
+        Command::new("git")
+            .args(["config", "user.email", "test@local"])
+            .current_dir(&dir)
+            .status()
+            .unwrap();
+        Command::new("git")
+            .args(["config", "user.name", "Test"])
+            .current_dir(&dir)
+            .status()
+            .unwrap();
         dir
     }
 
@@ -1499,8 +1524,16 @@ mod tests {
             fs::create_dir_all(parent).unwrap();
         }
         fs::write(&full, body).unwrap();
-        Command::new("git").args(["add", "."]).current_dir(repo).status().unwrap();
-        Command::new("git").args(["commit", "-q", "-m", msg]).current_dir(repo).status().unwrap();
+        Command::new("git")
+            .args(["add", "."])
+            .current_dir(repo)
+            .status()
+            .unwrap();
+        Command::new("git")
+            .args(["commit", "-q", "-m", msg])
+            .current_dir(repo)
+            .status()
+            .unwrap();
     }
 
     #[test]
@@ -1509,7 +1542,12 @@ mod tests {
         commit(&repo, "notes/foo.md", "v1\n", "initial: foo");
         // Sleep 1s so author times differ deterministically.
         std::thread::sleep(std::time::Duration::from_secs(1));
-        commit(&repo, "notes/bar.md", "bar\n", "add: bar (does not touch foo)");
+        commit(
+            &repo,
+            "notes/bar.md",
+            "bar\n",
+            "add: bar (does not touch foo)",
+        );
         std::thread::sleep(std::time::Duration::from_secs(1));
         commit(&repo, "notes/foo.md", "v2\n", "edit: foo round 2");
 
@@ -1534,8 +1572,14 @@ mod tests {
         let foo = repo.join("notes/foo.md");
         let result = autogit_diff_inner(&repo, &foo, None, None).unwrap();
         let diff = result.get("diff").unwrap().as_str().unwrap();
-        assert!(diff.contains("-v1"), "expected the foo edit diff, got: {diff}");
-        assert!(diff.contains("+v2"), "expected the foo edit diff, got: {diff}");
+        assert!(
+            diff.contains("-v1"),
+            "expected the foo edit diff, got: {diff}"
+        );
+        assert!(
+            diff.contains("+v2"),
+            "expected the foo edit diff, got: {diff}"
+        );
     }
 
     #[test]
@@ -1543,7 +1587,12 @@ mod tests {
         let repo = fresh_repo("roll");
         commit(&repo, "notes/foo.md", "first\n", "initial");
         let initial_sha = String::from_utf8(
-            Command::new("git").args(["rev-parse", "HEAD"]).current_dir(&repo).output().unwrap().stdout,
+            Command::new("git")
+                .args(["rev-parse", "HEAD"])
+                .current_dir(&repo)
+                .output()
+                .unwrap()
+                .stdout,
         )
         .unwrap()
         .trim()
@@ -1614,9 +1663,18 @@ mod tests {
 
     #[test]
     fn parse_owner_repo_handles_https_ssh_with_or_without_dot_git() {
-        assert_eq!(parse_owner_repo("https://github.com/owner/repo.git"), Some("owner/repo".into()));
-        assert_eq!(parse_owner_repo("https://github.com/owner/repo"), Some("owner/repo".into()));
-        assert_eq!(parse_owner_repo("git@github.com:owner/repo.git"), Some("owner/repo".into()));
+        assert_eq!(
+            parse_owner_repo("https://github.com/owner/repo.git"),
+            Some("owner/repo".into())
+        );
+        assert_eq!(
+            parse_owner_repo("https://github.com/owner/repo"),
+            Some("owner/repo".into())
+        );
+        assert_eq!(
+            parse_owner_repo("git@github.com:owner/repo.git"),
+            Some("owner/repo".into())
+        );
         assert_eq!(parse_owner_repo("https://gitlab.com/owner/repo.git"), None);
     }
 
@@ -1648,10 +1706,7 @@ mod tests {
         let a = fresh_dir("rw-default-a").canonicalize().unwrap();
         let b = fresh_dir("rw-default-b").canonicalize().unwrap();
         let server = SoloMdServer::new(
-            vec![
-                ("first".into(), a.clone()),
-                ("second".into(), b.clone()),
-            ],
+            vec![("first".into(), a.clone()), ("second".into(), b.clone())],
             false,
         );
         // None falls through to the first registered workspace — back-compat
@@ -1666,14 +1721,17 @@ mod tests {
         let a = fresh_dir("rw-alias-a").canonicalize().unwrap();
         let b = fresh_dir("rw-alias-b").canonicalize().unwrap();
         let server = SoloMdServer::new(
-            vec![
-                ("notes".into(), a.clone()),
-                ("scratch".into(), b.clone()),
-            ],
+            vec![("notes".into(), a.clone()), ("scratch".into(), b.clone())],
             false,
         );
-        assert_eq!(server.resolve_workspace(Some("notes")).unwrap(), a.as_path());
-        assert_eq!(server.resolve_workspace(Some("scratch")).unwrap(), b.as_path());
+        assert_eq!(
+            server.resolve_workspace(Some("notes")).unwrap(),
+            a.as_path()
+        );
+        assert_eq!(
+            server.resolve_workspace(Some("scratch")).unwrap(),
+            b.as_path()
+        );
     }
 
     #[test]
@@ -1691,7 +1749,10 @@ mod tests {
         let server = SoloMdServer::new(vec![("home".into(), a.clone())], false);
         let err = server.resolve_workspace(Some("bogus")).unwrap_err();
         assert!(err.contains("unknown workspace: bogus"), "got: {err}");
-        assert!(err.contains("home"), "error should list available aliases, got: {err}");
+        assert!(
+            err.contains("home"),
+            "error should list available aliases, got: {err}"
+        );
     }
 
     #[test]

@@ -81,7 +81,9 @@ pub fn cli_status_inner() -> Result<CliStatus, String> {
     #[cfg(target_os = "windows")]
     let probe = no_window_command("where").arg("solomd").output();
     #[cfg(not(target_os = "windows"))]
-    let probe = no_window_command("/usr/bin/env").args(["which", "solomd"]).output();
+    let probe = no_window_command("/usr/bin/env")
+        .args(["which", "solomd"])
+        .output();
 
     let path = match probe {
         Ok(out) if out.status.success() => {
@@ -243,7 +245,7 @@ fn strip_ansi(s: &str) -> String {
     while let Some(c) = chars.next() {
         if c == '\x1b' && chars.peek() == Some(&'[') {
             chars.next(); // consume '['
-            // Skip until letter (the "final byte" of CSI).
+                          // Skip until letter (the "final byte" of CSI).
             for c2 in chars.by_ref() {
                 if c2.is_ascii_alphabetic() {
                     break;
@@ -295,7 +297,9 @@ fn ai_client_config_path(client_id: &str, app: &AppHandle) -> Option<PathBuf> {
     match client_id {
         "claude-desktop" => {
             if cfg!(target_os = "macos") {
-                home.map(|h| h.join("Library/Application Support/Claude/claude_desktop_config.json"))
+                home.map(|h| {
+                    h.join("Library/Application Support/Claude/claude_desktop_config.json")
+                })
             } else if cfg!(target_os = "windows") {
                 std::env::var_os("APPDATA")
                     .map(|a| PathBuf::from(a).join("Claude/claude_desktop_config.json"))
@@ -520,9 +524,7 @@ fn splice_solomd_entry(
 ) -> Result<(), String> {
     match client_id {
         "claude-desktop" | "claude-code" | "cursor" => {
-            let map = config
-                .as_object_mut()
-                .ok_or("root is not a JSON object")?;
+            let map = config.as_object_mut().ok_or("root is not a JSON object")?;
             let servers = map
                 .entry("mcpServers")
                 .or_insert_with(|| json!({}))
@@ -531,9 +533,7 @@ fn splice_solomd_entry(
             servers.insert("solomd".to_string(), entry);
         }
         "cline" => {
-            let map = config
-                .as_object_mut()
-                .ok_or("root is not a JSON object")?;
+            let map = config.as_object_mut().ok_or("root is not a JSON object")?;
             let servers = map
                 .entry("mcpServers")
                 .or_insert_with(|| json!({}))
@@ -542,9 +542,7 @@ fn splice_solomd_entry(
             servers.insert("solomd".to_string(), entry);
         }
         "continue" => {
-            let map = config
-                .as_object_mut()
-                .ok_or("root is not a JSON object")?;
+            let map = config.as_object_mut().ok_or("root is not a JSON object")?;
             let list = map
                 .entry("mcp")
                 .or_insert_with(|| json!([]))
@@ -561,9 +559,7 @@ fn splice_solomd_entry(
             }
         }
         "zed" => {
-            let map = config
-                .as_object_mut()
-                .ok_or("root is not a JSON object")?;
+            let map = config.as_object_mut().ok_or("root is not a JSON object")?;
             let servers = map
                 .entry("context_servers")
                 .or_insert_with(|| json!({}))
@@ -611,10 +607,7 @@ pub fn remove_mcp(app: AppHandle, client_id: String) -> Result<(), String> {
     let mut config = read_json_or_empty(&config_path)?;
     match client_id.as_str() {
         "claude-desktop" | "claude-code" | "cursor" | "cline" => {
-            if let Some(servers) = config
-                .get_mut("mcpServers")
-                .and_then(|v| v.as_object_mut())
-            {
+            if let Some(servers) = config.get_mut("mcpServers").and_then(|v| v.as_object_mut()) {
                 servers.remove("solomd");
             }
         }
@@ -645,7 +638,10 @@ mod tests {
     fn strip_ansi_drops_csi() {
         assert_eq!(strip_ansi("\x1b[0;32mok\x1b[0m"), "ok");
         assert_eq!(strip_ansi("plain"), "plain");
-        assert_eq!(strip_ansi("\x1b[1mbold\x1b[0m + \x1b[31mred\x1b[0m"), "bold + red");
+        assert_eq!(
+            strip_ansi("\x1b[1mbold\x1b[0m + \x1b[31mred\x1b[0m"),
+            "bold + red"
+        );
     }
 
     #[test]

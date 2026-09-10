@@ -103,7 +103,11 @@ pub fn walk_markdown_files(root: &Path) -> impl Iterator<Item = PathBuf> + '_ {
                 .map(|s| s.to_lowercase())
                 .map(|s| matches!(s.as_str(), "md" | "markdown" | "mdown"))
                 .unwrap_or(false);
-            if ext_ok { Some(p) } else { None }
+            if ext_ok {
+                Some(p)
+            } else {
+                None
+            }
         })
 }
 
@@ -129,7 +133,9 @@ pub fn scan_meta(path: &Path) -> Result<NoteMeta, String> {
 
     let (frontmatter, body) = split_front_matter(&raw);
     let frontmatter_json: serde_json::Value = match frontmatter {
-        Some(fm) => serde_yaml::from_str::<serde_json::Value>(&fm).unwrap_or(serde_json::Value::Null),
+        Some(fm) => {
+            serde_yaml::from_str::<serde_json::Value>(&fm).unwrap_or(serde_json::Value::Null)
+        }
         None => serde_json::Value::Null,
     };
     let headings = extract_headings(body);
@@ -182,7 +188,9 @@ pub fn read_full(path: &Path) -> Result<Note, String> {
 
     let (frontmatter, body) = split_front_matter(&raw);
     let frontmatter_json: serde_json::Value = match frontmatter {
-        Some(fm) => serde_yaml::from_str::<serde_json::Value>(&fm).unwrap_or(serde_json::Value::Null),
+        Some(fm) => {
+            serde_yaml::from_str::<serde_json::Value>(&fm).unwrap_or(serde_json::Value::Null)
+        }
         None => serde_json::Value::Null,
     };
 
@@ -350,7 +358,8 @@ pub fn collect_yaml_tags(value: &serde_json::Value, out: &mut Vec<String>) {
 }
 
 pub fn extract_headings(body: &str) -> Vec<HeadingRef> {
-    static RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(#{1,6})\s+(.+?)\s*$").expect("heading regex"));
+    static RE: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"^(#{1,6})\s+(.+?)\s*$").expect("heading regex"));
     let mut out = Vec::new();
     let mut in_fence = false;
     for (line_idx, line) in body.lines().enumerate() {
@@ -447,9 +456,8 @@ pub struct TaskRef {
 /// showing it must agree on what counts as a task, or toggling one through MCP
 /// writes to a line the panel never listed.
 pub fn extract_tasks(raw: &str) -> Vec<TaskRef> {
-    static RE: Lazy<Regex> = Lazy::new(|| {
-        Regex::new(r"^\s*[-*+]\s+\[([ xX])\]\s+(.+?)\s*$").expect("task regex")
-    });
+    static RE: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"^\s*[-*+]\s+\[([ xX])\]\s+(.+?)\s*$").expect("task regex"));
     let mut out = Vec::new();
     let mut in_fence = false;
     let mut in_front_matter = false;
@@ -474,11 +482,18 @@ pub fn extract_tasks(raw: &str) -> Vec<TaskRef> {
         }
         if let Some(cap) = RE.captures(line) {
             let done = cap.get(1).map(|m| m.as_str() != " ").unwrap_or(false);
-            let text = cap.get(2).map(|m| m.as_str().trim().to_string()).unwrap_or_default();
+            let text = cap
+                .get(2)
+                .map(|m| m.as_str().trim().to_string())
+                .unwrap_or_default();
             if text.is_empty() {
                 continue;
             }
-            out.push(TaskRef { line: idx as u32 + 1, text, done });
+            out.push(TaskRef {
+                line: idx as u32 + 1,
+                text,
+                done,
+            });
         }
     }
     out
@@ -499,7 +514,11 @@ mod task_tests {
                    - [ ] last one\n";
         let tasks = extract_tasks(doc);
 
-        assert_eq!(tasks.len(), 3, "front matter and fenced code must not count");
+        assert_eq!(
+            tasks.len(),
+            3,
+            "front matter and fenced code must not count"
+        );
         assert_eq!(tasks[0].text, "buy milk");
         assert_eq!(tasks[0].line, 6, "line numbers count the front matter");
         assert!(!tasks[0].done);

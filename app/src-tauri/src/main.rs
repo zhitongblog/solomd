@@ -20,9 +20,8 @@ fn windows_app_user_model_id_wide() -> Vec<u16> {
 fn set_windows_app_user_model_id() {
     let app_id = windows_app_user_model_id_wide();
     unsafe {
-        let _ = windows_sys::Win32::UI::Shell::SetCurrentProcessExplicitAppUserModelID(
-            app_id.as_ptr(),
-        );
+        let _ =
+            windows_sys::Win32::UI::Shell::SetCurrentProcessExplicitAppUserModelID(app_id.as_ptr());
     }
 }
 

@@ -88,7 +88,8 @@ pub fn read_file_inner(path: String) -> Result<FileReadResult, String> {
         (enc, false, bytes.as_slice())
     };
 
-    let (cow, _used_enc, had_errors) = encoding.decode_without_bom_handling_and_without_replacement(body)
+    let (cow, _used_enc, had_errors) = encoding
+        .decode_without_bom_handling_and_without_replacement(body)
         .map(|c| (c, encoding, false))
         .unwrap_or_else(|| {
             let (c, used, errs) = encoding.decode(body);
@@ -257,8 +258,7 @@ pub async fn write_binary_file(path: String, data: Vec<u8>) -> Result<(), String
 pub fn write_binary_file_inner(path: String, data: Vec<u8>) -> Result<(), String> {
     if let Some(parent) = Path::new(&path).parent() {
         if !parent.as_os_str().is_empty() {
-            fs::create_dir_all(parent)
-                .map_err(|e| format!("mkdir failed: {e}"))?;
+            fs::create_dir_all(parent).map_err(|e| format!("mkdir failed: {e}"))?;
         }
     }
     fs::write(&path, &data).map_err(|e| format!("write failed: {e}"))?;
@@ -305,8 +305,7 @@ pub async fn copy_file(src: String, dst: String) -> Result<(), String> {
 pub fn copy_file_inner(src: String, dst: String) -> Result<(), String> {
     if let Some(parent) = Path::new(&dst).parent() {
         if !parent.as_os_str().is_empty() {
-            fs::create_dir_all(parent)
-                .map_err(|e| format!("mkdir failed: {e}"))?;
+            fs::create_dir_all(parent).map_err(|e| format!("mkdir failed: {e}"))?;
         }
     }
     fs::copy(&src, &dst).map_err(|e| format!("copy failed: {e}"))?;
@@ -327,8 +326,7 @@ pub fn fs_create_file(path: String, content: Option<String>) -> Result<(), Strin
             fs::create_dir_all(parent).map_err(|e| format!("mkdir failed: {e}"))?;
         }
     }
-    fs::write(p, content.unwrap_or_default().as_bytes())
-        .map_err(|e| format!("create failed: {e}"))
+    fs::write(p, content.unwrap_or_default().as_bytes()).map_err(|e| format!("create failed: {e}"))
 }
 
 #[tauri::command]
@@ -403,9 +401,7 @@ pub fn fs_rename(from: String, to: String) -> Result<(), String> {
     let stems_differ = from_assets
         .as_ref()
         .zip(to_assets.as_ref())
-        .map(|(a, b)| {
-            a.file_name() != b.file_name()
-        })
+        .map(|(a, b)| a.file_name() != b.file_name())
         .unwrap_or(false);
 
     fs::rename(from_p, to_p).map_err(|e| format!("rename failed: {e}"))?;
@@ -439,7 +435,10 @@ fn sibling_assets_dir(p: &Path) -> Option<std::path::PathBuf> {
 
 fn is_markdown_path(p: &Path) -> bool {
     matches!(
-        p.extension().and_then(|e| e.to_str()).map(|s| s.to_ascii_lowercase()).as_deref(),
+        p.extension()
+            .and_then(|e| e.to_str())
+            .map(|s| s.to_ascii_lowercase())
+            .as_deref(),
         Some("md") | Some("markdown") | Some("mdown") | Some("mkd")
     )
 }
@@ -662,8 +661,7 @@ fn top_level_key_of(line: &str) -> Option<String> {
 fn unquote_key(raw: &str) -> String {
     let t = raw.trim();
     if t.len() >= 2
-        && ((t.starts_with('"') && t.ends_with('"'))
-            || (t.starts_with('\'') && t.ends_with('\'')))
+        && ((t.starts_with('"') && t.ends_with('"')) || (t.starts_with('\'') && t.ends_with('\'')))
     {
         if let Ok(serde_yaml::Value::Mapping(m)) =
             serde_yaml::from_str::<serde_yaml::Value>(&format!("{t}: 0"))
@@ -766,15 +764,12 @@ fn key_spans(inner: &[String]) -> Vec<KeySpan> {
             let mut end = i + 1;
             while end < inner.len() {
                 let l = &inner[end];
-                let is_continuation = l.is_empty()
-                    || l.starts_with([' ', '\t'])
-                    || l.starts_with('-'); // top-level sequence item
-                // A blank line is only a continuation if a real continuation
-                // follows it; otherwise it's a separator and the key ends here.
+                let is_continuation =
+                    l.is_empty() || l.starts_with([' ', '\t']) || l.starts_with('-'); // top-level sequence item
+                                                                                      // A blank line is only a continuation if a real continuation
+                                                                                      // follows it; otherwise it's a separator and the key ends here.
                 if l.is_empty() {
-                    let next_real = inner[end + 1..]
-                        .iter()
-                        .find(|x| !x.is_empty());
+                    let next_real = inner[end + 1..].iter().find(|x| !x.is_empty());
                     let follows = next_real
                         .map(|x| x.starts_with([' ', '\t', '-']))
                         .unwrap_or(false);
@@ -955,10 +950,7 @@ pub async fn update_frontmatter_property(
 /// persist it, returning the rewritten file content. Body bytes + key order
 /// of the remaining keys are preserved.
 #[tauri::command]
-pub async fn delete_frontmatter_property(
-    path: String,
-    key: String,
-) -> Result<String, String> {
+pub async fn delete_frontmatter_property(path: String, key: String) -> Result<String, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let raw = fs::read_to_string(&path).map_err(|e| e.to_string())?;
         let next = delete_frontmatter_property_str(&raw, &key)?;

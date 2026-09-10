@@ -50,7 +50,10 @@ pub fn resolve_in(workspace: &Path, input: &str, must_exist: bool) -> Result<Pat
             .parent()
             .ok_or_else(|| "path has no parent".to_string())?;
         if !parent.exists() {
-            return Err(format!("parent directory does not exist: {}", parent.display()));
+            return Err(format!(
+                "parent directory does not exist: {}",
+                parent.display()
+            ));
         }
         let parent_canon = parent
             .canonicalize()

@@ -141,7 +141,11 @@ unsafe extern "system" fn subclass_proc(
             // DefWindowProc does nothing useful for a synthetic caption
             // button; perform the maximize/restore ourselves. Posted so the
             // state change happens outside this proc invocation.
-            let cmd = if IsZoomed(hwnd) != 0 { SC_RESTORE } else { SC_MAXIMIZE };
+            let cmd = if IsZoomed(hwnd) != 0 {
+                SC_RESTORE
+            } else {
+                SC_MAXIMIZE
+            };
             PostMessageW(hwnd, WM_SYSCOMMAND, cmd as WPARAM, 0);
             0
         }

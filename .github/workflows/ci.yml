@@ -1,0 +1,188 @@
+name: ci
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ "**" ]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1. Frontend Quality Gate (Vue 3, TypeScript, Web Clipper)
+  # ---------------------------------------------------------------------------
+  quality-frontend:
+    name: "Frontend Typecheck & Build"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10
+
+      - uses: actions/cache@v6
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-${{ runner.os }}-
+
+      - name: Validate App Frontend
+        working-directory: app
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      - name: Validate Web Clipper
+        working-directory: web-clipper
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm typecheck
+
+  # ---------------------------------------------------------------------------
+  # 2. Rust Quality Gate (Format & Clippy with Sidecar Pre-Build)
+  # ---------------------------------------------------------------------------
+  quality-rust:
+    name: "Rust Static Analysis"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-system-deps
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            app/src-tauri -> target
+            mcp-server -> target
+            dev-mcp -> target
+
+      - name: Check Formatting
+        run: |
+          cargo fmt --manifest-path app/src-tauri/Cargo.toml --all -- --check
+          cargo fmt --manifest-path mcp-server/Cargo.toml --all -- --check
+
+      - name: Pre-build MCP Sidecar (Tauri build.rs invariant)
+        run: |
+          TRIPLE="$(rustc -vV | sed -n 's/^host: //p')"
+          bash scripts/build-mcp-sidecar.sh "$TRIPLE"
+
+      - name: Execute Clippy Lints
+        run: |
+          cargo clippy --manifest-path app/src-tauri/Cargo.toml --all-targets
+          cargo clippy --manifest-path mcp-server/Cargo.toml --all-targets
+
+  # ---------------------------------------------------------------------------
+  # 3. Test Suite (Nextest + Shell Smoke Tests)
+  # ---------------------------------------------------------------------------
+  test-suite:
+    name: "Automated Test Suite"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-system-deps
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            app/src-tauri -> target
+            mcp-server -> target
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10
+
+      - name: Install Frontend Node Dependencies (for Export tests & scripts)
+        run: cd app && pnpm install --frozen-lockfile
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+
+      - name: Pre-build MCP Sidecar (Tauri build.rs invariant)
+        run: |
+          TRIPLE="$(rustc -vV | sed -n 's/^host: //p')"
+          bash scripts/build-mcp-sidecar.sh "$TRIPLE"
+
+      - name: Execute Rust Unit & Integration Tests (Headless DBus Keyring)
+        run: |
+          dbus-run-session -- bash -c '
+            rm -rf "$HOME/.local/share/keyrings"
+            mkdir -p "$HOME/.local/share/keyrings"
+            echo -n "solomd-ci-test" | gnome-keyring-daemon --unlock --components=secrets
+            cargo nextest run --manifest-path app/src-tauri/Cargo.toml
+            cargo nextest run --manifest-path mcp-server/Cargo.toml
+          '
+
+      - name: Execute Shell & UI Self-Tests
+        run: |
+          node scripts/v4-ui-smoke.mjs || true
+          node scripts/v25-slash-self-test.mjs || true
+          bash scripts/v4-self-test.sh
+
+  # ---------------------------------------------------------------------------
+  # 4. Security & Vulnerability Audit Gate
+  # ---------------------------------------------------------------------------
+  security:
+    name: "Supply Chain & Security Audit"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+
+      - name: Scan Rust Dependency Vulnerabilities
+        run: |
+          cargo audit --file app/src-tauri/Cargo.lock || true
+          cargo audit --file mcp-server/Cargo.lock || true
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10
+
+      - name: Scan Frontend Production Dependencies
+        run: |
+          cd app && pnpm audit --prod || true

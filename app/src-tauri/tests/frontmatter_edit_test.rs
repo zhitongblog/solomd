@@ -17,7 +17,10 @@ use serde_json::json;
 /// Re-parse the frontmatter block of `s` back into a JSON value for value
 /// assertions that don't care about exact YAML spelling.
 fn fm_json(s: &str) -> serde_json::Value {
-    assert!(s.starts_with("---\n"), "expected a frontmatter block, got:\n{s}");
+    assert!(
+        s.starts_with("---\n"),
+        "expected a frontmatter block, got:\n{s}"
+    );
     let rest = &s[4..];
     let close = rest.find("\n---\n").or_else(|| {
         if rest.ends_with("\n---") {
@@ -222,10 +225,7 @@ fn editing_one_key_preserves_comments() {
 fn editing_preserves_block_style_array_neighbor() {
     let src = "---\nlist:\n  - one\n  - two\nother: keep\n---\nbody\n";
     let out = set_frontmatter_property_str(src, "other", &json!("changed")).unwrap();
-    assert_eq!(
-        block_of(&out),
-        "list:\n  - one\n  - two\nother: changed"
-    );
+    assert_eq!(block_of(&out), "list:\n  - one\n  - two\nother: changed");
 }
 
 #[test]
@@ -266,7 +266,10 @@ fn no_frontmatter_synthesis_has_no_blank_line_before_h1() {
     let src = "# My Note\n\nSome body text.\n";
     let out = set_frontmatter_property_str(src, "status", &json!("draft")).unwrap();
     // Block closes with `---\n` directly followed by the H1 — NO blank line.
-    assert_eq!(out, "---\nstatus: draft\n---\n# My Note\n\nSome body text.\n");
+    assert_eq!(
+        out,
+        "---\nstatus: draft\n---\n# My Note\n\nSome body text.\n"
+    );
 }
 
 #[test]

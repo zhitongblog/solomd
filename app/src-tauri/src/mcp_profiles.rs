@@ -91,17 +91,16 @@ fn load_file(app: &AppHandle) -> Result<McpProfilesFile, String> {
     if !path.exists() {
         return Ok(McpProfilesFile::default());
     }
-    let raw = std::fs::read_to_string(&path)
-        .map_err(|e| format!("read {}: {e}", path.display()))?;
-    let parsed: McpProfilesFile = serde_json::from_str(&raw)
-        .map_err(|e| format!("mcp-profiles.json corrupted: {e}"))?;
+    let raw =
+        std::fs::read_to_string(&path).map_err(|e| format!("read {}: {e}", path.display()))?;
+    let parsed: McpProfilesFile =
+        serde_json::from_str(&raw).map_err(|e| format!("mcp-profiles.json corrupted: {e}"))?;
     Ok(parsed)
 }
 
 fn save_file(app: &AppHandle, file: &McpProfilesFile) -> Result<(), String> {
     let path = profiles_path(app)?;
-    let raw = serde_json::to_string_pretty(file)
-        .map_err(|e| format!("serialize: {e}"))?;
+    let raw = serde_json::to_string_pretty(file).map_err(|e| format!("serialize: {e}"))?;
     std::fs::write(&path, raw).map_err(|e| format!("write {}: {e}", path.display()))?;
     Ok(())
 }
@@ -138,7 +137,10 @@ fn validate_alias(alias: &str) -> Result<(), String> {
 fn validate_profile(p: &McpProfile) -> Result<(), String> {
     validate_profile_name(&p.name)?;
     if p.entries.is_empty() {
-        return Err(format!("profile '{}' must have at least one workspace", p.name));
+        return Err(format!(
+            "profile '{}' must have at least one workspace",
+            p.name
+        ));
     }
     let mut seen: std::collections::HashSet<&str> = std::collections::HashSet::new();
     for e in &p.entries {

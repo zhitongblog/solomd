@@ -53,10 +53,7 @@ pub struct RunSummary {
 // --------------------------------------------------------------------------
 
 #[tauri::command]
-pub async fn agent_trace_read(
-    workspace: String,
-    run_id: String,
-) -> Result<Vec<TraceLine>, String> {
+pub async fn agent_trace_read(workspace: String, run_id: String) -> Result<Vec<TraceLine>, String> {
     let dir = resolve_run_dir(&workspace, &run_id).map_err(|e| e.to_string())?;
     trace::read_trace(&dir).map_err(|e| format!("read_trace: {e}"))
 }
@@ -72,8 +69,7 @@ pub async fn agent_trace_list(workspace: String) -> Result<Vec<RunSummary>, Stri
         return Ok(Vec::new());
     }
     let mut out: Vec<RunSummary> = Vec::new();
-    let entries =
-        std::fs::read_dir(&runs_dir).map_err(|e| format!("read_dir agent-runs: {e}"))?;
+    let entries = std::fs::read_dir(&runs_dir).map_err(|e| format!("read_dir agent-runs: {e}"))?;
     for entry in entries.flatten() {
         let path = entry.path();
         if !path.is_dir() {
@@ -151,8 +147,7 @@ pub async fn agent_trace_replay_from(
     // Copy the prefix lines verbatim — but rewrite each line's `run_id`
     // and `seq` so they're consistent with the new run. Then append the
     // `run_started` line that documents the replay origin.
-    let em = Emitter::open(&new_dir, new_id.clone())
-        .map_err(|e| format!("open emitter: {e}"))?;
+    let em = Emitter::open(&new_dir, new_id.clone()).map_err(|e| format!("open emitter: {e}"))?;
     for line in &prefix {
         // Rebuild the payload sans the canonical fields, then re-emit
         // through `append` so the new line gets a fresh ts + new seq.
@@ -170,7 +165,8 @@ pub async fn agent_trace_replay_from(
             "run_ended" => super::trace::TraceKind::RunEnded,
             _ => super::trace::TraceKind::Note, // unknown → keep as note
         };
-        em.append(kind, payload).map_err(|e| format!("append: {e}"))?;
+        em.append(kind, payload)
+            .map_err(|e| format!("append: {e}"))?;
     }
     // Mark the replay origin. We over-write the last `run_started`-style
     // anchor by emitting a fresh `note` line that the UI can render as
@@ -212,7 +208,8 @@ fn resolve_run_dir(workspace: &str, run_id: &str) -> Result<PathBuf, String> {
 fn is_safe_run_id(s: &str) -> bool {
     !s.is_empty()
         && s.len() <= 128
-        && s.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+        && s.chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
 }
 
 fn mint_run_id() -> String {

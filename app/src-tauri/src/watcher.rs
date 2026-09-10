@@ -83,15 +83,17 @@ pub fn mark_workspace_rewrite_window(workspace: &std::path::Path) {
     let mut map = sync_windows().lock().unwrap();
     let now = Instant::now();
     map.retain(|_, expires| *expires >= now);
-    map.insert(canonical, now + Duration::from_millis(SYNC_REWRITE_WINDOW_MS));
+    map.insert(
+        canonical,
+        now + Duration::from_millis(SYNC_REWRITE_WINDOW_MS),
+    );
 }
 
 fn within_sync_rewrite_window(canonical_path: &std::path::Path) -> bool {
     let map = sync_windows().lock().unwrap();
     let now = Instant::now();
-    map.iter().any(|(root, expires)| {
-        *expires >= now && canonical_path.starts_with(root)
-    })
+    map.iter()
+        .any(|(root, expires)| *expires >= now && canonical_path.starts_with(root))
 }
 
 /// v4.2 — switched from per-file watching to per-directory watching to
@@ -144,58 +146,61 @@ fn ensure_watcher(app: &AppHandle, state: &WatcherState) {
     let app_handle = app.clone();
     let inner = state.inner.clone();
 
-    let debouncer = new_debouncer(Duration::from_millis(DEBOUNCE_MS), move |result: notify_debouncer_mini::DebounceEventResult| {
-        let Ok(events) = result else { return };
-        for event in events {
-            // Try to canonicalize the event path. After atomic save the
-            // path still exists but the inode has changed; canonicalize
-            // should still resolve. If the file was deleted entirely,
-            // canonicalize fails — fall back to the raw event path so
-            // we can still notify the JS side (which will surface a
-            // "file deleted externally" dialog via the failed re-read).
-            let canonical: PathBuf = std::fs::canonicalize(&event.path)
-                .unwrap_or_else(|_| event.path.clone());
+    let debouncer = new_debouncer(
+        Duration::from_millis(DEBOUNCE_MS),
+        move |result: notify_debouncer_mini::DebounceEventResult| {
+            let Ok(events) = result else { return };
+            for event in events {
+                // Try to canonicalize the event path. After atomic save the
+                // path still exists but the inode has changed; canonicalize
+                // should still resolve. If the file was deleted entirely,
+                // canonicalize fails — fall back to the raw event path so
+                // we can still notify the JS side (which will surface a
+                // "file deleted externally" dialog via the failed re-read).
+                let canonical: PathBuf =
+                    std::fs::canonicalize(&event.path).unwrap_or_else(|_| event.path.clone());
 
-            // Watching the parent dir means we see events for siblings
-            // too — filter to just the files the UI cares about. Look
-            // up the original user-supplied path while we hold the lock
-            // so the emit downstream uses the form the JS side stored.
-            let original_path = {
-                let g = inner.lock().unwrap();
-                match g.watched_files.get(&canonical) {
-                    Some(p) => p.clone(),
-                    None => continue,
+                // Watching the parent dir means we see events for siblings
+                // too — filter to just the files the UI cares about. Look
+                // up the original user-supplied path while we hold the lock
+                // so the emit downstream uses the form the JS side stored.
+                let original_path = {
+                    let g = inner.lock().unwrap();
+                    match g.watched_files.get(&canonical) {
+                        Some(p) => p.clone(),
+                        None => continue,
+                    }
+                };
+
+                let canonical_str = canonical.to_string_lossy().to_string();
+                // Fast path: event arrived within the classic window of our own
+                // write. Slow path (#148 follow-up): the event arrived late —
+                // seconds late on Android's FUSE-backed storage — so compare the
+                // file's mtime against the wall-clock of our last write instead
+                // of trusting the arrival time.
+                let self_write = {
+                    let map = self_writes().lock().unwrap();
+                    map.get(&canonical_str)
+                        .or_else(|| map.get(&original_path))
+                        .copied()
+                };
+                let suppressed = self_write.map_or(false, |(instant, wall)| {
+                    instant.elapsed().as_millis() < SELF_WRITE_SUPPRESSION_MS as u128
+                        || mtime_matches_self_write(&canonical, wall)
+                });
+
+                if suppressed {
+                    continue;
                 }
-            };
 
-            let canonical_str = canonical.to_string_lossy().to_string();
-            // Fast path: event arrived within the classic window of our own
-            // write. Slow path (#148 follow-up): the event arrived late —
-            // seconds late on Android's FUSE-backed storage — so compare the
-            // file's mtime against the wall-clock of our last write instead
-            // of trusting the arrival time.
-            let self_write = {
-                let map = self_writes().lock().unwrap();
-                map.get(&canonical_str)
-                    .or_else(|| map.get(&original_path))
-                    .copied()
-            };
-            let suppressed = self_write.map_or(false, |(instant, wall)| {
-                instant.elapsed().as_millis() < SELF_WRITE_SUPPRESSION_MS as u128
-                    || mtime_matches_self_write(&canonical, wall)
-            });
+                if within_sync_rewrite_window(&canonical) {
+                    continue;
+                }
 
-            if suppressed {
-                continue;
+                let _ = app_handle.emit("solomd://file-changed", original_path);
             }
-
-            if within_sync_rewrite_window(&canonical) {
-                continue;
-            }
-
-            let _ = app_handle.emit("solomd://file-changed", original_path);
-        }
-    });
+        },
+    );
 
     if let Ok(d) = debouncer {
         *guard = Some(d);
@@ -263,10 +268,7 @@ pub fn watch_file(
 }
 
 #[tauri::command]
-pub fn unwatch_file(
-    state: tauri::State<'_, WatcherState>,
-    path: String,
-) -> Result<(), String> {
+pub fn unwatch_file(state: tauri::State<'_, WatcherState>, path: String) -> Result<(), String> {
     let canonical = PathBuf::from(&path)
         .canonicalize()
         .map_err(|e| format!("canonicalize failed: {e}"))?;
@@ -333,7 +335,8 @@ mod tests {
 
         // External edit long after our recorded write: mtime is far ahead
         // of `wrote_at`, so the event must surface.
-        let stale_write_clock = wrote_at - Duration::from_millis(SELF_WRITE_MTIME_EPSILON_MS + 5_000);
+        let stale_write_clock =
+            wrote_at - Duration::from_millis(SELF_WRITE_MTIME_EPSILON_MS + 5_000);
         assert!(
             !mtime_matches_self_write(&file, stale_write_clock),
             "an mtime far past our last write is an external change"
@@ -407,7 +410,11 @@ mod tests {
         assert!(!track(&inner, "/tmp/notes/b.md"));
         assert!(!track(&inner, "/tmp/notes/c.md"));
         assert_eq!(
-            inner.lock().unwrap().watched_dirs.get(&PathBuf::from("/tmp/notes")),
+            inner
+                .lock()
+                .unwrap()
+                .watched_dirs
+                .get(&PathBuf::from("/tmp/notes")),
             Some(&3)
         );
     }
@@ -420,7 +427,11 @@ mod tests {
         // double-count of the dir refcount.
         assert!(!track(&inner, "/tmp/notes/a.md"));
         assert_eq!(
-            inner.lock().unwrap().watched_dirs.get(&PathBuf::from("/tmp/notes")),
+            inner
+                .lock()
+                .unwrap()
+                .watched_dirs
+                .get(&PathBuf::from("/tmp/notes")),
             Some(&1)
         );
     }
@@ -433,7 +444,11 @@ mod tests {
         // Removing one file in a multi-file dir → keep the OS watch
         assert!(!untrack(&inner, "/tmp/notes/a.md"));
         assert_eq!(
-            inner.lock().unwrap().watched_dirs.get(&PathBuf::from("/tmp/notes")),
+            inner
+                .lock()
+                .unwrap()
+                .watched_dirs
+                .get(&PathBuf::from("/tmp/notes")),
             Some(&1)
         );
         // Removing the last → release the OS watch
@@ -465,8 +480,8 @@ mod tests {
     /// case. This test confirms watching the parent dir catches both.
     #[test]
     fn dir_watch_catches_atomic_save() {
-        use std::sync::mpsc;
         use std::fs;
+        use std::sync::mpsc;
 
         let tmp = tempfile::tempdir().unwrap();
         let target = tmp.path().join("note.md");
@@ -474,16 +489,22 @@ mod tests {
         let canonical_target = fs::canonicalize(&target).unwrap();
 
         let (tx, rx) = mpsc::channel();
-        let mut deb = new_debouncer(Duration::from_millis(100), move |res: notify_debouncer_mini::DebounceEventResult| {
-            if let Ok(events) = res {
-                for ev in events {
-                    if let Ok(p) = fs::canonicalize(&ev.path) {
-                        let _ = tx.send(p);
+        let mut deb = new_debouncer(
+            Duration::from_millis(100),
+            move |res: notify_debouncer_mini::DebounceEventResult| {
+                if let Ok(events) = res {
+                    for ev in events {
+                        if let Ok(p) = fs::canonicalize(&ev.path) {
+                            let _ = tx.send(p);
+                        }
                     }
                 }
-            }
-        }).unwrap();
-        deb.watcher().watch(tmp.path(), RecursiveMode::NonRecursive).unwrap();
+            },
+        )
+        .unwrap();
+        deb.watcher()
+            .watch(tmp.path(), RecursiveMode::NonRecursive)
+            .unwrap();
         // notify needs a moment to register on macOS FSEvents
         std::thread::sleep(Duration::from_millis(200));
 
@@ -507,6 +528,10 @@ mod tests {
                 }
             }
         }
-        assert!(saw_target, "watcher missed events for {}", canonical_target.display());
+        assert!(
+            saw_target,
+            "watcher missed events for {}",
+            canonical_target.display()
+        );
     }
 }

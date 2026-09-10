@@ -395,12 +395,11 @@ CREATE TABLE IF NOT EXISTS rag_files (
 
 fn open_db(path: &Path) -> Result<Connection, String> {
     if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)
-            .map_err(|e| format!("create dir {}: {e}", parent.display()))?;
+        fs::create_dir_all(parent).map_err(|e| format!("create dir {}: {e}", parent.display()))?;
     }
-    let conn = Connection::open(path)
-        .map_err(|e| format!("open db at {}: {e}", path.display()))?;
-    conn.execute_batch(SCHEMA).map_err(|e| format!("schema: {e}"))?;
+    let conn = Connection::open(path).map_err(|e| format!("open db at {}: {e}", path.display()))?;
+    conn.execute_batch(SCHEMA)
+        .map_err(|e| format!("schema: {e}"))?;
 
     // Wipe + start fresh if INDEX_VERSION moved.
     let stored: Option<String> = conn
@@ -412,10 +411,8 @@ fn open_db(path: &Path) -> Result<Connection, String> {
         .ok();
     let want = INDEX_VERSION.to_string();
     if stored.as_deref() != Some(want.as_str()) {
-        conn.execute_batch(
-            "DELETE FROM rag_chunks; DELETE FROM rag_files;",
-        )
-        .map_err(|e| format!("reset on version bump: {e}"))?;
+        conn.execute_batch("DELETE FROM rag_chunks; DELETE FROM rag_files;")
+            .map_err(|e| format!("reset on version bump: {e}"))?;
         conn.execute(
             "INSERT OR REPLACE INTO rag_meta(key, value) VALUES('index_version', ?1)",
             params![want],
@@ -552,7 +549,10 @@ fn run_indexer(folder: &Path, full: bool) -> Result<(), String> {
     }
 
     let live = list_markdown(folder);
-    let live_set: HashSet<String> = live.iter().map(|p| p.to_string_lossy().to_string()).collect();
+    let live_set: HashSet<String> = live
+        .iter()
+        .map(|p| p.to_string_lossy().to_string())
+        .collect();
 
     // Drop stale rows for files that no longer exist.
     for path in known.keys() {
@@ -668,11 +668,7 @@ pub fn rag_reindex_inner(folder: String) -> Result<RagStatus, String> {
     rag_index_status_inner(folder)
 }
 
-pub fn rag_search_inner(
-    folder: String,
-    query: String,
-    limit: u32,
-) -> Result<Vec<RagHit>, String> {
+pub fn rag_search_inner(folder: String, query: String, limit: u32) -> Result<Vec<RagHit>, String> {
     if folder.is_empty() {
         return Err("workspace folder not set".into());
     }
@@ -690,9 +686,7 @@ pub fn rag_search_inner(
     let qv = embed(q);
 
     let mut stmt = conn
-        .prepare(
-            "SELECT path, chunk_idx, char_start, char_end, snippet, embedding FROM rag_chunks",
-        )
+        .prepare("SELECT path, chunk_idx, char_start, char_end, snippet, embedding FROM rag_chunks")
         .map_err(|e| format!("prepare scan: {e}"))?;
     let rows = stmt
         .query_map([], |row| {
@@ -735,7 +729,11 @@ pub fn rag_search_inner(
         }
     }
     let mut hits: Vec<RagHit> = best.into_values().collect();
-    hits.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    hits.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     hits.truncate(cap);
     Ok(hits)
 }
@@ -749,9 +747,7 @@ pub fn rag_reindex_file_inner(folder: String, file_path: String) -> Result<(), S
     if !enabled {
         return Ok(());
     }
-    let _g = INDEX_LOCK
-        .lock()
-        .map_err(|e| format!("index lock: {e}"))?;
+    let _g = INDEX_LOCK.lock().map_err(|e| format!("index lock: {e}"))?;
     let db_p = db_path_for(Path::new(&folder));
     let conn = open_db(&db_p)?;
     let p = Path::new(&file_path);

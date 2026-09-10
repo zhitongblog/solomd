@@ -244,7 +244,9 @@ pub fn gitea_clear_token() -> Result<(), String> {
 
 #[tauri::command]
 pub fn gitea_has_token() -> Result<bool, String> {
-    Ok(gitea_token_marker_path().map(|p| p.exists()).unwrap_or(false))
+    Ok(gitea_token_marker_path()
+        .map(|p| p.exists())
+        .unwrap_or(false))
 }
 
 // ---------------------------------------------------------------------------
@@ -324,7 +326,11 @@ pub async fn github_user() -> Result<GitHubUser, String> {
 pub async fn github_list_repos() -> Result<Vec<GitHubRepo>, String> {
     let token = read_token()?.ok_or("no GitHub token set")?;
     // 100 most-recently-updated owned repos. Plenty for picker UX.
-    api_get("/user/repos?per_page=100&sort=updated&affiliation=owner", &token).await
+    api_get(
+        "/user/repos?per_page=100&sort=updated&affiliation=owner",
+        &token,
+    )
+    .await
 }
 
 #[derive(Serialize)]
@@ -409,7 +415,9 @@ fn load_config(workspace: &Path) -> Result<Option<SyncConfig>, String> {
         return Ok(None);
     }
     let raw = fs::read_to_string(&path).map_err(|e| e.to_string())?;
-    serde_json::from_str(&raw).map(Some).map_err(|e| e.to_string())
+    serde_json::from_str(&raw)
+        .map(Some)
+        .map_err(|e| e.to_string())
 }
 
 fn save_config(workspace: &Path, cfg: &SyncConfig) -> Result<(), String> {
@@ -481,7 +489,8 @@ pub async fn github_link_workspace(
         if repo.find_remote("origin").is_ok() {
             repo.remote_delete("origin").map_err(|e| e.to_string())?;
         }
-        repo.remote("origin", &remote_url).map_err(|e| e.to_string())?;
+        repo.remote("origin", &remote_url)
+            .map_err(|e| e.to_string())?;
 
         let cfg = SyncConfig {
             remote_url: remote_url.clone(),
@@ -517,8 +526,7 @@ pub async fn github_set_config(
 ) -> Result<SyncConfig, String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<SyncConfig, String> {
         let path = PathBuf::from(&folder);
-        let mut cfg = load_config(&path)?
-            .ok_or("workspace not linked")?;
+        let mut cfg = load_config(&path)?.ok_or("workspace not linked")?;
         cfg.auto_push = auto_push;
         cfg.auto_pull_minutes = auto_pull_minutes;
         save_config(&path, &cfg)?;
@@ -552,14 +560,10 @@ pub async fn github_set_config(
 /// the force-push to the user before invoking. This command does not
 /// re-confirm; it's a power-user action.
 #[tauri::command]
-pub async fn github_enable_encryption(
-    folder: String,
-    passphrase: String,
-) -> Result<(), String> {
+pub async fn github_enable_encryption(folder: String, passphrase: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
         let path = PathBuf::from(&folder);
-        let cfg = load_config(&path)?
-            .ok_or("workspace is not linked to a remote")?;
+        let cfg = load_config(&path)?.ok_or("workspace is not linked to a remote")?;
         if cfg.encrypted {
             return Err("workspace is already encrypted".into());
         }
@@ -774,7 +778,11 @@ fn owner_from_url(url: &str) -> Option<String> {
     let mut segs = after_scheme.split('/');
     let _host = segs.next()?;
     let owner = segs.next()?;
-    if owner.is_empty() { None } else { Some(owner.to_string()) }
+    if owner.is_empty() {
+        None
+    } else {
+        Some(owner.to_string())
+    }
 }
 
 fn make_callbacks(token: String) -> git2::RemoteCallbacks<'static> {
@@ -916,7 +924,11 @@ fn read_gitea_url() -> Option<String> {
     let p = gitea_url_path()?;
     let raw = fs::read_to_string(&p).ok()?;
     let trimmed = raw.trim().to_string();
-    if trimmed.is_empty() { None } else { Some(trimmed) }
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed)
+    }
 }
 
 #[tauri::command]
@@ -1100,22 +1112,24 @@ pub fn github_push_inner(
     let mut opts = PushOptions::new();
     opts.remote_callbacks(make_callbacks(token));
     opts.proxy_options(make_proxy_options());
-    origin.push(&[refspec.as_str()], Some(&mut opts)).map_err(|e| {
-        let msg = e.message();
-        if msg.contains("protected branch")
-            || msg.contains("refusing to allow")
-            || msg.contains("pre-receive hook")
-        {
-            format!(
-                "Protected branch on remote. Create a Pull Request instead. Details: {}",
-                msg
-            )
-        } else if msg.contains("non-fast-forward") {
-            "Remote has newer commits. Pull first, then push again.".into()
-        } else {
-            format!("push failed: {}", msg)
-        }
-    })?;
+    origin
+        .push(&[refspec.as_str()], Some(&mut opts))
+        .map_err(|e| {
+            let msg = e.message();
+            if msg.contains("protected branch")
+                || msg.contains("refusing to allow")
+                || msg.contains("pre-receive hook")
+            {
+                format!(
+                    "Protected branch on remote. Create a Pull Request instead. Details: {}",
+                    msg
+                )
+            } else if msg.contains("non-fast-forward") {
+                "Remote has newer commits. Pull first, then push again.".into()
+            } else {
+                format!("push failed: {}", msg)
+            }
+        })?;
 
     // Stamp the config with the last successful push.
     if let Ok(Some(mut cfg)) = load_config(&path) {
@@ -1126,10 +1140,7 @@ pub fn github_push_inner(
 }
 
 #[tauri::command]
-pub async fn github_push(
-    folder: String,
-    commit_message: Option<String>,
-) -> Result<(), String> {
+pub async fn github_push(folder: String, commit_message: Option<String>) -> Result<(), String> {
     let path = PathBuf::from(&folder);
     let cfg = load_config(&path)?.unwrap_or_default();
     let token = match cfg.provider.as_str() {
@@ -1201,156 +1212,159 @@ pub fn github_pull_inner(folder: String, token: String) -> Result<PullResult, St
             commit_shadow_if_dirty(&path, "encrypted: workspace state at pull")?;
         }
     }
-        let repo = Repository::open(&path).map_err(|e| e.to_string())?;
-        // #147 — normalize the same way push does, or a device whose local
-        // repo is still on libgit2's default `master` fetches the nonexistent
-        // `origin/master` forever while every other device pushes to `main`.
-        normalize_master_to_main(&repo);
-        let head = repo.head().map_err(|e| e.to_string())?;
-        let branch_name = head
-            .shorthand()
-            .ok_or_else(|| "HEAD is detached; cannot pull".to_string())?
-            .to_string();
+    let repo = Repository::open(&path).map_err(|e| e.to_string())?;
+    // #147 — normalize the same way push does, or a device whose local
+    // repo is still on libgit2's default `master` fetches the nonexistent
+    // `origin/master` forever while every other device pushes to `main`.
+    normalize_master_to_main(&repo);
+    let head = repo.head().map_err(|e| e.to_string())?;
+    let branch_name = head
+        .shorthand()
+        .ok_or_else(|| "HEAD is detached; cannot pull".to_string())?
+        .to_string();
 
-        // 1) Fetch. Legacy escape hatch: a remote that predates the
-        // master→main normalization may only have `master` — if fetching
-        // `main` yields no such remote ref, retry `master` and merge from
-        // that (same lineage; the next push then creates `main` on the
-        // remote). Note "yields no ref" ≠ fetch error: some transports
-        // (https) fail the fetch of a missing branch outright, others
-        // (file://, used by the integration tests) succeed silently and
-        // just create nothing — so success is judged by the remote-tracking
-        // ref existing afterwards, not by the fetch call's Result.
-        let mut origin = repo.find_remote("origin").map_err(|e| e.to_string())?;
-        let mut upstream_branch = branch_name.clone();
-        let mut fetch_err: Option<String> = None;
-        {
-            let mut fetch_opts = FetchOptions::new();
-            fetch_opts.remote_callbacks(make_callbacks(token.clone()));
-            fetch_opts.proxy_options(make_proxy_options());
-            fetch_opts.download_tags(AutotagOption::All);
-            if let Err(e) = origin.fetch(&[&branch_name], Some(&mut fetch_opts), None) {
-                fetch_err = Some(e.to_string());
-            }
+    // 1) Fetch. Legacy escape hatch: a remote that predates the
+    // master→main normalization may only have `master` — if fetching
+    // `main` yields no such remote ref, retry `master` and merge from
+    // that (same lineage; the next push then creates `main` on the
+    // remote). Note "yields no ref" ≠ fetch error: some transports
+    // (https) fail the fetch of a missing branch outright, others
+    // (file://, used by the integration tests) succeed silently and
+    // just create nothing — so success is judged by the remote-tracking
+    // ref existing afterwards, not by the fetch call's Result.
+    let mut origin = repo.find_remote("origin").map_err(|e| e.to_string())?;
+    let mut upstream_branch = branch_name.clone();
+    let mut fetch_err: Option<String> = None;
+    {
+        let mut fetch_opts = FetchOptions::new();
+        fetch_opts.remote_callbacks(make_callbacks(token.clone()));
+        fetch_opts.proxy_options(make_proxy_options());
+        fetch_opts.download_tags(AutotagOption::All);
+        if let Err(e) = origin.fetch(&[&branch_name], Some(&mut fetch_opts), None) {
+            fetch_err = Some(e.to_string());
         }
-        let ref_exists = |name: &str| {
-            repo.find_reference(&format!("refs/remotes/origin/{name}"))
-                .is_ok()
-        };
-        if !ref_exists(&upstream_branch) && branch_name == "main" {
-            let mut retry_opts = FetchOptions::new();
-            retry_opts.remote_callbacks(make_callbacks(token.clone()));
-            retry_opts.proxy_options(make_proxy_options());
-            retry_opts.download_tags(AutotagOption::All);
-            let _ = origin.fetch(&["master"], Some(&mut retry_opts), None);
-            if ref_exists("master") {
-                upstream_branch = "master".to_string();
-            }
+    }
+    let ref_exists = |name: &str| {
+        repo.find_reference(&format!("refs/remotes/origin/{name}"))
+            .is_ok()
+    };
+    if !ref_exists(&upstream_branch) && branch_name == "main" {
+        let mut retry_opts = FetchOptions::new();
+        retry_opts.remote_callbacks(make_callbacks(token.clone()));
+        retry_opts.proxy_options(make_proxy_options());
+        retry_opts.download_tags(AutotagOption::All);
+        let _ = origin.fetch(&["master"], Some(&mut retry_opts), None);
+        if ref_exists("master") {
+            upstream_branch = "master".to_string();
         }
-        if !ref_exists(&upstream_branch) {
-            return Err(match fetch_err {
-                Some(e) => format!("fetch failed: {}", e),
-                None => format!(
-                    "fetch found no '{}' branch on the remote (nor a legacy 'master')",
-                    branch_name
-                ),
-            });
-        }
+    }
+    if !ref_exists(&upstream_branch) {
+        return Err(match fetch_err {
+            Some(e) => format!("fetch failed: {}", e),
+            None => format!(
+                "fetch found no '{}' branch on the remote (nor a legacy 'master')",
+                branch_name
+            ),
+        });
+    }
 
-        // 2) Look up the upstream ref we just fetched.
-        let upstream_ref = repo
-            .find_reference(&format!("refs/remotes/origin/{}", upstream_branch))
-            .map_err(|e| e.to_string())?;
-        let upstream_commit = repo
-            .reference_to_annotated_commit(&upstream_ref)
-            .map_err(|e| e.to_string())?;
-
-        // 3) Decide what to do.
-        let analysis = repo
-            .merge_analysis(&[&upstream_commit])
-            .map_err(|e| e.to_string())?;
-
-        if analysis.0.is_up_to_date() {
-            stamp_pull(&workspace);
-            // No remote changes to decrypt back, but if E2EE is on and the
-            // workspace had local edits we just committed in the shadow,
-            // they're already in the shadow — no action needed.
-            return Ok(PullResult {
-                kind: "up_to_date".into(),
-                conflicts: vec![],
-            });
-        }
-
-        if analysis.0.is_fast_forward() {
-            // FF: move HEAD to the upstream commit and check out the tree.
-            let mut head_ref = repo
-                .find_reference(&format!("refs/heads/{}", branch_name))
-                .map_err(|e| e.to_string())?;
-            let upstream_oid = upstream_commit.id();
-            head_ref
-                .set_target(upstream_oid, "fast-forward via SoloMD GitHub sync")
-                .map_err(|e| e.to_string())?;
-            repo.set_head(&format!("refs/heads/{}", branch_name))
-                .map_err(|e| e.to_string())?;
-            repo.checkout_head(Some(git2::build::CheckoutBuilder::new().force()))
-                .map_err(|e| e.to_string())?;
-            stamp_pull(&workspace);
-            finalize_decrypt(&cfg, &workspace)?;
-            return Ok(PullResult {
-                kind: "fast_forward".into(),
-                conflicts: vec![],
-            });
-        }
-
-        // Diverged: try a normal merge. If it produces conflicts we
-        // surface the list and stop — the writer-class user wants a UI,
-        // not a bare merge marker file.
-        let local_commit = repo
-            .reference_to_annotated_commit(&head)
-            .map_err(|e| e.to_string())?;
-        repo.merge(&[&upstream_commit], None, None)
-            .map_err(|e| format!("merge failed: {}", e))?;
-
-        let mut index = repo.index().map_err(|e| e.to_string())?;
-        if index.has_conflicts() {
-            let conflicts: Vec<String> = index
-                .conflicts()
-                .into_iter()
-                .flatten()
-                .filter_map(|c| c.ok())
-                .filter_map(|c| {
-                    c.our
-                        .as_ref()
-                        .or(c.their.as_ref())
-                        .or(c.ancestor.as_ref())
-                        .map(|e| String::from_utf8_lossy(&e.path).to_string())
-                })
-                .collect();
-            return Ok(PullResult {
-                kind: "conflicts".into(),
-                conflicts,
-            });
-        }
-
-        // No conflicts — write the merge commit ourselves.
-        let tree_oid = index.write_tree().map_err(|e| e.to_string())?;
-        let tree = repo.find_tree(tree_oid).map_err(|e| e.to_string())?;
-        let local = repo
-            .find_commit(local_commit.id())
-            .map_err(|e| e.to_string())?;
-        let upstream_real = repo
-            .find_commit(upstream_commit.id())
-            .map_err(|e| e.to_string())?;
-        let sig = signature(&repo)?;
-        repo.commit(
-            Some("HEAD"),
-            &sig,
-            &sig,
-            &format!("Merge branch 'origin/{}' into {}", upstream_branch, branch_name),
-            &tree,
-            &[&local, &upstream_real],
-        )
+    // 2) Look up the upstream ref we just fetched.
+    let upstream_ref = repo
+        .find_reference(&format!("refs/remotes/origin/{}", upstream_branch))
         .map_err(|e| e.to_string())?;
+    let upstream_commit = repo
+        .reference_to_annotated_commit(&upstream_ref)
+        .map_err(|e| e.to_string())?;
+
+    // 3) Decide what to do.
+    let analysis = repo
+        .merge_analysis(&[&upstream_commit])
+        .map_err(|e| e.to_string())?;
+
+    if analysis.0.is_up_to_date() {
+        stamp_pull(&workspace);
+        // No remote changes to decrypt back, but if E2EE is on and the
+        // workspace had local edits we just committed in the shadow,
+        // they're already in the shadow — no action needed.
+        return Ok(PullResult {
+            kind: "up_to_date".into(),
+            conflicts: vec![],
+        });
+    }
+
+    if analysis.0.is_fast_forward() {
+        // FF: move HEAD to the upstream commit and check out the tree.
+        let mut head_ref = repo
+            .find_reference(&format!("refs/heads/{}", branch_name))
+            .map_err(|e| e.to_string())?;
+        let upstream_oid = upstream_commit.id();
+        head_ref
+            .set_target(upstream_oid, "fast-forward via SoloMD GitHub sync")
+            .map_err(|e| e.to_string())?;
+        repo.set_head(&format!("refs/heads/{}", branch_name))
+            .map_err(|e| e.to_string())?;
+        repo.checkout_head(Some(git2::build::CheckoutBuilder::new().force()))
+            .map_err(|e| e.to_string())?;
+        stamp_pull(&workspace);
+        finalize_decrypt(&cfg, &workspace)?;
+        return Ok(PullResult {
+            kind: "fast_forward".into(),
+            conflicts: vec![],
+        });
+    }
+
+    // Diverged: try a normal merge. If it produces conflicts we
+    // surface the list and stop — the writer-class user wants a UI,
+    // not a bare merge marker file.
+    let local_commit = repo
+        .reference_to_annotated_commit(&head)
+        .map_err(|e| e.to_string())?;
+    repo.merge(&[&upstream_commit], None, None)
+        .map_err(|e| format!("merge failed: {}", e))?;
+
+    let mut index = repo.index().map_err(|e| e.to_string())?;
+    if index.has_conflicts() {
+        let conflicts: Vec<String> = index
+            .conflicts()
+            .into_iter()
+            .flatten()
+            .filter_map(|c| c.ok())
+            .filter_map(|c| {
+                c.our
+                    .as_ref()
+                    .or(c.their.as_ref())
+                    .or(c.ancestor.as_ref())
+                    .map(|e| String::from_utf8_lossy(&e.path).to_string())
+            })
+            .collect();
+        return Ok(PullResult {
+            kind: "conflicts".into(),
+            conflicts,
+        });
+    }
+
+    // No conflicts — write the merge commit ourselves.
+    let tree_oid = index.write_tree().map_err(|e| e.to_string())?;
+    let tree = repo.find_tree(tree_oid).map_err(|e| e.to_string())?;
+    let local = repo
+        .find_commit(local_commit.id())
+        .map_err(|e| e.to_string())?;
+    let upstream_real = repo
+        .find_commit(upstream_commit.id())
+        .map_err(|e| e.to_string())?;
+    let sig = signature(&repo)?;
+    repo.commit(
+        Some("HEAD"),
+        &sig,
+        &sig,
+        &format!(
+            "Merge branch 'origin/{}' into {}",
+            upstream_branch, branch_name
+        ),
+        &tree,
+        &[&local, &upstream_real],
+    )
+    .map_err(|e| e.to_string())?;
     repo.cleanup_state().map_err(|e| e.to_string())?;
     stamp_pull(&workspace);
     finalize_decrypt(&cfg, &workspace)?;
