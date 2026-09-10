@@ -135,12 +135,40 @@ const slashStateField = StateField.define<SlashState | null>({
 
 let activeConfig: SlashCommandsConfig | null = null;
 
+/**
+ * Gitee IK9BC3 — this MUST stay one stable function reference.
+ *
+ * CM6's tooltip manager decides whether it can keep an existing popup alive
+ * by comparing the new tooltip's `create` against the old one *by identity*.
+ * This used to be an inline arrow, so every keystroke produced a fresh
+ * closure, nothing ever matched, and the whole popup was destroyed and
+ * rebuilt on each ArrowDown. Two visible consequences, both reported:
+ *
+ *   - `scrollTop` went back to 0 on every state change, so a list the user
+ *     had scrolled snapped straight back to the top ("鼠标拖下去会自动回弹")
+ *   - the `update()` path below — which reuses the rows and scrolls the
+ *     active one into view — never ran at all. `create` ran instead, and the
+ *     scrollIntoView inside it fires against a popup that is not in the
+ *     document yet, so it does nothing. The highlight walked off the bottom
+ *     edge and appeared to stop at the last visible row ("键盘是到分割线后
+ *     没有自动列表上移"), leaving everything below it — 白板 included —
+ *     unreachable by keyboard.
+ *
+ * Reading the state here rather than closing over it is what makes the
+ * reference hoistable; `create` only ever runs when the popup is opening,
+ * and the field is non-null for as long as a tooltip is being shown.
+ */
+const createSlashPopup = (view: EditorView): TooltipView => {
+  const s = view.state.field(slashStateField, false);
+  return renderPopup(view, s ?? { triggerPos: 0, end: 0, query: '', selectedIndex: 0 });
+};
+
 function buildTooltip(state: SlashState): Tooltip {
   return {
     pos: state.triggerPos,
     above: false,
     arrow: false,
-    create: (view) => renderPopup(view, state),
+    create: createSlashPopup,
   };
 }
 
