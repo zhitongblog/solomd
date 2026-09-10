@@ -150,3 +150,79 @@ test('#213 嵌套:4 空格 / 三层深 / 9→10 变宽标记', () => {
 test('#213 回归:无序列表嵌套不受影响', () => {
   assert.equal(nestsSublist(renderMarkdown('- a\n  - b\n  - c\n- d\n')), true);
 });
+
+// ---- 正文 `[TOC]` 自动目录 -------------------------------------------------
+
+test('[TOC] 生成带锚点和层级的正文目录', () => {
+  const html = renderMarkdown(`[TOC]
+
+# 项目概览
+
+## 安装与使用
+
+### Windows
+
+## 常见问题`);
+  assert.match(html, /<nav class="md-toc"[^>]*aria-label="Table of contents"/);
+  assert.match(html, /<a href="#%E9%A1%B9%E7%9B%AE%E6%A6%82%E8%A7%88" class="md-toc__link">项目概览<\/a>/);
+  assert.match(html, /<a href="#%E5%AE%89%E8%A3%85%E4%B8%8E%E4%BD%BF%E7%94%A8" class="md-toc__link">安装与使用<\/a>/);
+  assert.equal((html.match(/class="md-toc__list"/g) || []).length, 3);
+  assert.doesNotMatch(html, /\[TOC\]/i);
+});
+
+test('[TOC] 与实际标题共用重复 slug，并保留原始 source line', () => {
+  const html = renderMarkdown(`[toc]
+
+# Repeat
+
+# Repeat`);
+  assert.match(html, /href="#repeat"/);
+  assert.match(html, /href="#repeat-1"/);
+  assert.match(html, /<h1 id="repeat"[^>]*data-source-line="3">/);
+  assert.match(html, /<h1 id="repeat-1"[^>]*data-source-line="5">/);
+});
+
+test('[TOC] 支持 Setext 和格式化标题文本', () => {
+  const html = renderMarkdown(`[TOC]
+
+Main *Title*
+============
+
+## Use \`code\``);
+  assert.match(html, /href="#main-title"[^>]*>Main Title<\/a>/);
+  assert.match(html, /href="#use-code"[^>]*>Use code<\/a>/);
+});
+
+test('代码块、行内文本和列表中的 [TOC] 不会展开', () => {
+  const html = renderMarkdown(`\`\`\`
+[TOC]
+\`\`\`
+
+这里有 [TOC] 文本。
+
+- [TOC]
+
+# Heading`);
+  assert.doesNotMatch(html, /<nav class="md-toc"/);
+  assert.match(html, /<code[^>]*>.*\[TOC\]/s);
+  assert.match(html, /这里有 \[TOC\] 文本/);
+});
+
+test('无标题文档中的 [TOC] 不显示空标记', () => {
+  const html = renderMarkdown('[TOC]\n\n正文');
+  assert.doesNotMatch(html, /\[TOC\]|<nav class="md-toc"/i);
+  assert.match(html, /<p[^>]*>正文<\/p>/);
+});
+
+test('分块实时预览可从完整文档生成 [TOC]，且不泄漏 front matter', () => {
+  const html = renderMarkdown('[TOC]', {
+    tocSource: `---
+title: Full document
+---
+
+# 全文标题`,
+  });
+  assert.match(html, /<nav class="md-toc"/);
+  assert.match(html, /href="#%E5%85%A8%E6%96%87%E6%A0%87%E9%A2%98"/);
+  assert.doesNotMatch(html, /md-frontmatter|Full document/);
+});

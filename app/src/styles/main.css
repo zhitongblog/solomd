@@ -738,6 +738,34 @@ button:disabled {
   accent-color: var(--accent);
 }
 
+/* `[TOC]` document table of contents. Global so the main preview, Windows
+   live-edit blocks, image/PDF capture and the print overlay share one skin. */
+.md-toc {
+  margin: 1.2em 0 1.5em;
+  padding: 0.9em 1.1em;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-hover) 65%, transparent);
+}
+.md-toc .md-toc__list {
+  margin: 0.25em 0 0;
+  padding-left: 1.4em;
+}
+.md-toc > .md-toc__list {
+  margin-top: 0;
+}
+.md-toc__item {
+  margin: 0.15em 0;
+}
+.md-toc .md-toc__link {
+  color: var(--text-muted);
+  text-decoration: none;
+}
+.md-toc .md-toc__link:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
 mark {
   background: rgba(255, 159, 64, 0.28);
   color: inherit;
@@ -784,6 +812,10 @@ mark {
     overflow-wrap: break-word;
     word-break: break-word;
     overflow-x: visible !important;
+  }
+  body.solomd-printing .md-toc {
+    break-inside: avoid-page;
+    background: transparent;
   }
 }
 /* On-screen the overlay must be invisible — @media print flips it. */
