@@ -1401,7 +1401,7 @@ export const ko: I18n = {
     giteaSignedInAs: 'Signed in to Gitea as @{user}',
     backBtn: 'Back',
     giteaPillClean: 'In sync with Gitea',
-    giteaCloneUrlTitle: 'Or paste a clone URL',
+    giteaCloneUrlTitle: '또는 클론 URL 붙여넣기',
     giteaPushedToast: 'Pushed to Gitea.',
     giteaPulledToast: 'Pulled from Gitea.',
     giteaRepoCreatedToast: 'Created {name} on Gitea.',

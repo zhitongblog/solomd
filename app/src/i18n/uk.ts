@@ -1414,7 +1414,7 @@ export const uk: I18n = {
     giteaSignedInAs: 'Signed in to Gitea as @{user}',
     backBtn: 'Back',
     giteaPillClean: 'In sync with Gitea',
-    giteaCloneUrlTitle: 'Or paste a clone URL',
+    giteaCloneUrlTitle: 'Або вставте URL для клонування',
     giteaPushedToast: 'Pushed to Gitea.',
     giteaPulledToast: 'Pulled from Gitea.',
     giteaRepoCreatedToast: 'Created {name} on Gitea.',

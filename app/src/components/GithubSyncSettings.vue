@@ -42,6 +42,12 @@ const showAdvanced = ref(false);
 // still reachable through the clone-URL path below.
 const providerChoice = ref<'github' | 'gitlab' | 'gitea' | 'custom'>('github');
 const giteaCloneUrl = ref('');
+// Gitee IKEQJ5 — GitLab and custom HTTPS remotes have no repo-list API to
+// browse, so pasting a clone URL is the ONLY way to link one. There was no
+// field for it: picking "Custom HTTPS git URL" led to a token box and then an
+// empty panel, while the hint right above it told the user to paste a clone
+// link. This is the field that hint was talking about.
+const manualCloneUrl = ref('');
 const enableE2ee = ref(false);
 const passphraseInput = ref('');
 const passphraseSaving = ref(false);
@@ -243,6 +249,13 @@ async function link(remoteUrl: string) {
   } finally {
     linking.value = false;
   }
+}
+
+async function linkManualClone() {
+  const url = manualCloneUrl.value.trim();
+  if (!url) return;
+  await link(url);
+  manualCloneUrl.value = '';
 }
 
 async function linkGiteaClone() {
@@ -716,6 +729,36 @@ const linkedRepoLabel = computed(() => {
           </div>
         </div>
 
+        <!-- GitLab / custom HTTPS — paste a clone URL.
+             Neither has a repo-list API we can browse the way GitHub's is
+             browsed, and there is no create-repo call either, so this is the
+             whole flow for them. Without it the panel was a dead end. -->
+        <div
+          v-if="providerChoice === 'gitlab' || providerChoice === 'custom'"
+          class="ghs-subblock"
+        >
+          <div class="ghs-sub-title">{{ t('githubSync.giteaCloneUrlTitle') }}</div>
+          <div class="ghs-row">
+            <input
+              v-model="manualCloneUrl"
+              type="text"
+              class="ghs-input ghs-input--mono"
+              :placeholder="providerChoice === 'gitlab'
+                ? 'https://gitlab.com/owner/repo.git'
+                : 'https://git.example.com/owner/repo.git'"
+            />
+          </div>
+          <div class="ghs-row">
+            <button
+              class="ghs-btn ghs-btn--primary"
+              :disabled="linking || !manualCloneUrl.trim()"
+              @click="linkManualClone"
+            >
+              {{ t('githubSync.linkBtn') }}
+            </button>
+          </div>
+        </div>
+
         <!-- Gitea — repo picker (token ready) -->
         <div v-if="providerChoice === 'gitea' && giteaStep === 'ready'" class="ghs-subblock">
           <div class="ghs-sub-title">{{ t('githubSync.giteaSignedInAs', { user: sync.giteaUser?.login ?? '…' }) }}</div>
@@ -830,11 +873,15 @@ const linkedRepoLabel = computed(() => {
           </ul>
         </div>
 
-        <div v-if="providerChoice === 'github'" class="ghs-row">
+        <!-- Sign-out is not GitHub-specific: `clearToken` drops whichever
+             provider's token is saved. Gating it on GitHub stranded GitLab /
+             custom users with a token they could not remove. Refreshing the
+             repo list stays GitHub-only — it is the only provider we list. -->
+        <div v-if="providerChoice !== 'gitea'" class="ghs-row">
           <button class="ghs-btn ghs-btn--ghost" @click="clearToken">
             {{ t('githubSync.signOutBtn') }}
           </button>
-          <button class="ghs-btn ghs-btn--ghost" @click="refreshRepos">
+          <button v-if="providerChoice === 'github'" class="ghs-btn ghs-btn--ghost" @click="refreshRepos">
             {{ t('githubSync.refreshRepos') }}
           </button>
         </div>

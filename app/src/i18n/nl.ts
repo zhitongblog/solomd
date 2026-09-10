@@ -1414,7 +1414,7 @@ export const nl: I18n = {
     giteaSignedInAs: 'Signed in to Gitea as @{user}',
     backBtn: 'Back',
     giteaPillClean: 'In sync with Gitea',
-    giteaCloneUrlTitle: 'Or paste a clone URL',
+    giteaCloneUrlTitle: 'Of plak een kloon-URL',
     giteaPushedToast: 'Pushed to Gitea.',
     giteaPulledToast: 'Pulled from Gitea.',
     giteaRepoCreatedToast: 'Created {name} on Gitea.',
