@@ -776,6 +776,12 @@ mark {
     display: block !important;
     position: static !important;
   }
+  /* #293 — the same "paper can't scroll" argument for prose: a paragraph
+   * whose words are joined by NO-BREAK SPACE (Word / web / chat pastes) is
+   * one unbreakable run to the layout engine and runs off the page. */
+  body.solomd-printing .solomd-print-content {
+    overflow-wrap: break-word;
+  }
   /* #178: paper can't scroll — always wrap code lines in print/PDF so
    * anything wider than the page isn't silently cut off. Applies
    * regardless of the on-screen codeBlockWrap setting. */

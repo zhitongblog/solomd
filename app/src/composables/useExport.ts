@@ -53,6 +53,10 @@ const HTML_TEMPLATE = (title: string, body: string) => `<!doctype html>
     color: var(--ink);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    /* #293 — words joined by NO-BREAK SPACE (Word / web / chat pastes) form a
+       single unbreakable run; without this the exported page overflows its
+       760px column exactly the way the preview used to. */
+    overflow-wrap: break-word;
   }
   h1, h2, h3, h4, h5, h6 {
     line-height: 1.25;

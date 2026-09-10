@@ -674,6 +674,16 @@ defineExpose({ scrollToLine, openSearch });
      via the `--content-font-size` CSS custom property set in App.vue. */
   font-size: var(--content-font-size, 15px);
   line-height: 1.7;
+  /* #293 — prose must never push past the column. Text pasted out of Word, a
+     web page or a chat transcript often joins its words with NO-BREAK SPACE
+     (U+00A0) instead of U+0020; the reporter's file had 119 of them against 23
+     real spaces. A run glued together that way is one unbreakable "word" to the
+     layout engine, so without this the paragraph simply overflows to the right
+     and is clipped (on paper) or needs horizontal scrolling (on screen). Live
+     edit looked fine throughout because CodeMirror's line-wrapping already
+     carries its own overflow-wrap. `break-word` only splits runs that cannot
+     fit on a line of their own, so ordinary text still breaks at its spaces. */
+  overflow-wrap: break-word;
 }
 .preview-content--fit {
   max-width: none;

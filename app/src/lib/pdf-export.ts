@@ -34,6 +34,12 @@ const PDF_CSS = `
       "Noto Sans CJK SC", "WenQuanYi Micro Hei",
       system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
+    /* #293 — paper cannot scroll, so anything the layout engine refuses to
+       break is lost off the right edge. Text carrying NO-BREAK SPACE between
+       its words (a Word / web / chat paste) is exactly that: one unbreakable
+       run as far as wrapping is concerned. Same reasoning as the pre rule
+       below, applied to prose. */
+    overflow-wrap: break-word;
   }
   .pdf-page h1, .pdf-page h2, .pdf-page h3,
   .pdf-page h4, .pdf-page h5, .pdf-page h6 {
