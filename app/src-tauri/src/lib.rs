@@ -197,6 +197,8 @@ pub fn run() {
             commands::fs_delete,
             commands::fs_dir_exists,
             commands::fs_rename,
+            commands::fs_move,
+            commands::fs_list_dirs,
             search::search_in_dir,
             workspace_index::workspace_index_init,
             workspace_index::workspace_index_files,

@@ -798,6 +798,8 @@ pub fn run_with(initial_file: Option<String>) {
             commands::fs_delete,
             commands::fs_dir_exists,
             commands::fs_rename,
+            commands::fs_move,
+            commands::fs_list_dirs,
             search::search_in_dir,
             drain_pending_opens,
             force_close_window,

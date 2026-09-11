@@ -16,6 +16,17 @@ import { useI18n } from '../i18n';
 import { isMobile } from '../lib/platform';
 import { usePendingDeletes, isDeletePending, UNDO_WINDOW_MS } from '../composables/usePendingDeletes';
 import { isSafPath, fromSafPath, safList, safCreate } from '../lib/saf-fs';
+import MoveToDialog from './MoveToDialog.vue';
+import {
+  dragPath,
+  dragIsDir,
+  dropTarget,
+  endDrag,
+  suppressClick,
+  canDropInto,
+  baseName,
+  sepOf,
+} from '../composables/useTreeDrag';
 
 interface Entry {
   name: string;
@@ -386,6 +397,291 @@ function joinPath(parent: string, name: string): string {
   return parent.endsWith(sep) ? parent + name : parent + sep + name;
 }
 
+// ---------------------------------------------------------------------------
+// #290 / #267 — moving files and folders between folders.
+//
+// Two entry points, one implementation: drag a node onto a folder, or pick
+// "Move to…" from the context menu. The picker is not a nicety — the drag is
+// mouse-only (on a touchscreen a press-and-drag over a scrollable list is a
+// scroll) and isn't reachable from the keyboard at all, so without the picker
+// the feature wouldn't exist on mobile.
+// ---------------------------------------------------------------------------
+
+/** SAF vaults (#148, Android) address files by content-URI and there is no
+ *  ContentResolver move, so the tree doesn't offer moving there at all rather
+ *  than letting a drag fail at the IPC boundary. */
+const canMove = computed(
+  () => !!workspace.currentFolder && !isSafPath(workspace.currentFolder),
+);
+
+/** Point an open tab at a path that just moved on disk.
+ *
+ *  #91 again: the dirty check has to be snapshotted BEFORE markSaved, which
+ *  sets savedContent = content as part of its bookkeeping — comparing after
+ *  it always says "clean" and a dirty tab loses its unsaved edits to whatever
+ *  is on disk. Clean tabs are reloaded because a move can rewrite the body
+ *  (relative links get re-anchored to the new folder). */
+async function repointTab(
+  tab: { id: string; filePath?: string; content?: string; savedContent?: string },
+  next: string,
+) {
+  const wasClean = tab.savedContent === tab.content;
+  if (!wasClean) {
+    tabs.renamePath(tab.id, next);
+    return;
+  }
+  tabs.markSaved(tab.id, next);
+  try {
+    const fr = await invoke<{ content: string }>('read_file', { path: next });
+    tabs.setContent(tab.id, fr.content);
+    tabs.markSaved(tab.id, next);
+  } catch (err) {
+    console.warn('[FileTree] tab reload after move failed', err);
+  }
+}
+
+/** Every tab under the moved path follows it — a folder move has to repoint
+ *  each open note inside it, not just an exact match. */
+function repointTabs(from: string, to: string, isDir: boolean) {
+  const prefixes = isDir ? [from + '/', from + '\\'] : [];
+  for (const tab of [...tabs.tabs] as { id: string; filePath?: string }[]) {
+    const fp = tab.filePath;
+    if (!fp) continue;
+    let next: string | null = null;
+    if (fp === from) {
+      next = to;
+    } else if (prefixes.some((pre) => fp.startsWith(pre))) {
+      next = to + fp.slice(from.length);
+    }
+    if (next) void repointTab(tab, next);
+  }
+}
+
+function rootRelative(p: string): string {
+  const rootPath = workspace.currentFolder ?? '';
+  const sep = sepOf(rootPath);
+  const norm = rootPath.endsWith(sep) ? rootPath : rootPath + sep;
+  return p.startsWith(norm) ? p.slice(norm.length).split('\\').join('/') : '';
+}
+
+function rootLabel(): string {
+  return t('explorer.vaultRoot') || 'Vault root';
+}
+
+async function moveNode(from: string, destDir: string, isDir: boolean) {
+  if (!canDropInto(from, destDir)) return;
+  const name = baseName(from);
+  const target = joinPath(destDir, name);
+  try {
+    // A pending delete on the destination path would fire later and take the
+    // moved file with it. Same race the new-file path guards against.
+    await pendingDeletes.flushUnder(target);
+    await invoke('fs_move', { from, to: target });
+  } catch (err) {
+    // By far the likeliest failure, and the raw Rust string is half English
+    // and half absolute path — say it in the user's language instead.
+    const exists = String(err).includes('target already exists');
+    toasts.error(
+      exists
+        ? t('explorer.moveExists', { name, dest: rootRelative(destDir) || rootLabel() })
+        : t('explorer.moveFailed', { name, error: String(err) }),
+    );
+    return;
+  }
+  repointTabs(from, target, isDir);
+  scheduleRefresh();
+  toasts.push(
+    t('explorer.moved', { name, dest: rootRelative(destDir) || rootLabel() }),
+    'success',
+    UNDO_WINDOW_MS,
+    () => {
+      void undoMove(target, from, isDir, name);
+    },
+    { actionLabel: t('explorer.undo') },
+  );
+}
+
+/** Undo is the same move run backwards, which also puts the rewritten
+ *  relative links back the way they were. */
+async function undoMove(current: string, original: string, isDir: boolean, name: string) {
+  try {
+    await invoke('fs_move', { from: current, to: original });
+  } catch (err) {
+    toasts.error(
+      t('explorer.moveFailed', { name, error: String(err) }) ||
+        `Could not move ${name}: ${err}`,
+    );
+    return;
+  }
+  repointTabs(current, original, isDir);
+  scheduleRefresh();
+  toasts.info(t('explorer.moveUndone', { name }));
+}
+
+// --- "Move to…" picker -----------------------------------------------------
+
+const moveDialog = ref<{ node: Node; dirs: string[] } | null>(null);
+
+async function startMoveTo(node: Node) {
+  closeCtx();
+  const rootPath = workspace.currentFolder;
+  if (!rootPath || !canMove.value) return;
+  try {
+    const dirs = await invoke<string[]>('fs_list_dirs', { root: rootPath });
+    moveDialog.value = { node, dirs };
+  } catch (err) {
+    toasts.error(String(err));
+  }
+}
+
+async function onMovePicked(relDir: string) {
+  const pending = moveDialog.value;
+  moveDialog.value = null;
+  const rootPath = workspace.currentFolder;
+  if (!pending || !rootPath) return;
+  const dest =
+    relDir === ''
+      ? rootPath
+      : relDir.split('/').reduce((acc, seg) => joinPath(acc, seg), rootPath);
+  await moveNode(pending.node.path, dest, !!pending.node.is_dir);
+}
+
+// --- the drag itself -------------------------------------------------------
+//
+// Pointer events, NOT the HTML5 Drag and Drop API — see the note in
+// useTreeDrag.ts. The short version: `dragDropEnabled: true` (which the app
+// needs for "drop a file from Finder to open it") makes the native handler
+// swallow in-page drags, and `dragstart` still fires, so the breakage is
+// invisible until you actually try to drop something. #86 and #131 both
+// learned this the hard way.
+
+const DRAG_THRESHOLD = 4; // px of movement before a press counts as a drag
+const AUTO_EXPAND_MS = 600;
+const SCROLL_EDGE = 28; // px from the tree's edge that starts auto-scrolling
+
+const treeBody = ref<HTMLElement | null>(null);
+
+let pointerStart: { x: number; y: number; node: Node } | null = null;
+let dragActive = false;
+let expandTimer: ReturnType<typeof setTimeout> | null = null;
+let expandArmedFor = '';
+
+function findNode(path: string, nodes?: Node[]): Node | null {
+  for (const n of nodes ?? root.value?.children ?? []) {
+    if (n.path === path) return n;
+    if (n.children) {
+      const hit = findNode(path, n.children);
+      if (hit) return hit;
+    }
+  }
+  return null;
+}
+
+/** Which folder the pointer is currently over, or null. Files are not drop
+ *  targets: filing into a file's parent reads as "dropped into the file" and
+ *  there is no honest way to highlight that. */
+function destinationAt(x: number, y: number): string | null {
+  const el = document.elementFromPoint(x, y) as HTMLElement | null;
+  if (!el) return null;
+  const row = el.closest('.ftree__item') as HTMLElement | null;
+  if (row) return row.dataset.dir === '1' ? (row.dataset.path ?? null) : null;
+  // The workspace row and the empty space under the tree both mean "the
+  // vault root" — otherwise there is no way to drag something back to the top.
+  if (el.closest('.ftree__root') || el.closest('.ftree__list')) {
+    return root.value?.path ?? null;
+  }
+  return null;
+}
+
+/** Spring-loaded folders: resting on a collapsed folder opens it, so a drag
+ *  can reach a nested target without being abandoned halfway. */
+function armAutoExpand(dest: string | null) {
+  if (dest === expandArmedFor) return;
+  expandArmedFor = dest ?? '';
+  if (expandTimer) clearTimeout(expandTimer);
+  expandTimer = null;
+  if (!dest) return;
+  const node = findNode(dest);
+  if (!node || !node.is_dir || node.expanded) return;
+  expandTimer = setTimeout(() => {
+    expandTimer = null;
+    if (dragActive && !node.expanded) void toggle(node);
+  }, AUTO_EXPAND_MS);
+}
+
+function autoScroll(y: number) {
+  const body = treeBody.value;
+  if (!body) return;
+  const r = body.getBoundingClientRect();
+  if (y < r.top + SCROLL_EDGE) body.scrollTop -= 12;
+  else if (y > r.bottom - SCROLL_EDGE) body.scrollTop += 12;
+}
+
+/** Mouse only. On a touchscreen a press-and-drag over a scrollable list is
+ *  a scroll, so touch users get "Move to…" instead of a drag they'd trigger
+ *  by accident. */
+function onNodePress(e: PointerEvent, node: Node) {
+  // Clear any suppression left over from a previous drag BEFORE deciding
+  // whether this press starts one. When a drag ends on a different row than
+  // it started on, the browser dispatches the trailing `click` on the two
+  // rows' common ancestor — the <ul> — so no row handler ever consumes the
+  // flag, and without this it would swallow the user's *next* click instead.
+  suppressClick.value = false;
+  if (e.button !== 0 || e.pointerType !== 'mouse' || !canMove.value) return;
+  pointerStart = { x: e.clientX, y: e.clientY, node };
+  window.addEventListener('pointermove', onDragMove);
+  window.addEventListener('pointerup', onDragUp);
+  window.addEventListener('pointercancel', onDragCancel);
+}
+
+function onDragMove(e: PointerEvent) {
+  if (!pointerStart) return;
+  if (!dragActive) {
+    const moved = Math.abs(e.clientX - pointerStart.x) + Math.abs(e.clientY - pointerStart.y);
+    if (moved < DRAG_THRESHOLD) return;
+    dragActive = true;
+    dragPath.value = pointerStart.node.path;
+    dragIsDir.value = !!pointerStart.node.is_dir;
+    document.body.style.cursor = 'grabbing';
+    document.body.style.userSelect = 'none';
+  }
+  const dest = destinationAt(e.clientX, e.clientY);
+  const legal = dest && canDropInto(dragPath.value ?? '', dest) ? dest : null;
+  dropTarget.value = legal;
+  armAutoExpand(legal);
+  autoScroll(e.clientY);
+}
+
+function teardownDrag() {
+  window.removeEventListener('pointermove', onDragMove);
+  window.removeEventListener('pointerup', onDragUp);
+  window.removeEventListener('pointercancel', onDragCancel);
+  if (expandTimer) clearTimeout(expandTimer);
+  expandTimer = null;
+  expandArmedFor = '';
+  pointerStart = null;
+  dragActive = false;
+  document.body.style.cursor = '';
+  document.body.style.userSelect = '';
+  endDrag();
+}
+
+function onDragCancel() {
+  teardownDrag();
+}
+
+function onDragUp() {
+  const from = dragPath.value;
+  const dest = dropTarget.value;
+  const isDir = dragIsDir.value;
+  const wasDrag = dragActive;
+  teardownDrag();
+  if (!wasDrag) return;
+  // The click that follows this pointerup belongs to the drag, not to the row.
+  suppressClick.value = true;
+  if (from && dest) void moveNode(from, dest, isDir);
+}
+
 async function commitEdit() {
   const e = editing.value;
   if (!e) return;
@@ -432,34 +728,13 @@ async function commitEdit() {
       await invoke('fs_rename', { from: e.original, to: target });
       editing.value = null;
       scheduleRefresh();
-      // v4.3.5 — if the renamed file is open in a tab, point the tab at the
-      // new path and (when content might have changed on disk via the
-      // per-file `.assets/` link rewrite) reload from disk for clean tabs.
-      // Dirty tabs keep their in-memory content; user resolves on save.
-      //
-      // #91 fix: the dirty check has to run BEFORE we call markSaved —
-      // markSaved sets savedContent = content as part of its bookkeeping,
-      // so the comparison was always true and dirty tabs lost their
-      // in-memory edits to whatever was on disk. Snapshot first, reload
-      // only if it was already clean.
+      // v4.3.5 — if the renamed file is open in a tab, the tab follows it.
+      // repointTab is shared with the move path: it keeps a dirty tab's
+      // unsaved edits and reloads a clean one, which picks up any per-file
+      // `.assets/` link rewrite the rename triggered (#91).
       try {
         const tab = tabs.tabs.find((t: { filePath?: string }) => t.filePath === e.original);
-        if (tab) {
-          const wasClean = tab.savedContent === tab.content;
-          if (wasClean) {
-            // Clean tab: safe to repoint + reload from disk (picks up any
-            // per-file `.assets/` link rewrite the rename triggered).
-            tabs.markSaved(tab.id, target);
-            const fr = await invoke<{ content: string }>('read_file', { path: target });
-            tabs.setContent(tab.id, fr.content);
-            tabs.markSaved(tab.id, target);
-          } else {
-            // Dirty tab: repoint to the new path but KEEP the unsaved edits
-            // AND the dirty flag. markSaved() here would clear savedContent
-            // and silently lose the edits when the tab is later closed (#91).
-            tabs.renamePath(tab.id, target);
-          }
-        }
+        if (tab) await repointTab(tab, target);
       } catch (err) {
         console.warn('[FileTree.rename] tab refresh failed', err);
       }
@@ -652,13 +927,16 @@ onBeforeUnmount(() => {
     <div v-if="!root" class="ftree__empty">
       <button class="ftree__open-btn" @click="files.openFolder">Open Folder…</button>
     </div>
-    <div v-else class="ftree__body">
+    <div v-else ref="treeBody" class="ftree__body">
       <!-- v4.3.5: root display doubles as the workspace switcher. Click
            opens a dropdown listing recent folders + "Open folder…". -->
       <div class="ftree__root-wrap">
         <button
           class="ftree__root ftree__root--btn"
-          :class="{ 'ftree__root--open': switcherOpen }"
+          :class="{
+            'ftree__root--open': switcherOpen,
+            'ftree__root--drop': dropTarget === root.path,
+          }"
           :title="(t('explorer.switchWorkspace') || 'Switch workspace') + ' · ' + root.path"
           @click.stop="toggleSwitcher"
           @contextmenu.prevent="openCtx($event, root)"
@@ -752,7 +1030,7 @@ onBeforeUnmount(() => {
         <span class="ftree__spinner" aria-hidden="true"></span>
         <span>Loading…</span>
       </div>
-      <ul v-else class="ftree__list">
+      <ul v-else class="ftree__list" :class="{ 'ftree__list--drop': dropTarget === root.path }">
         <FileTreeNode
           v-for="child in root.children"
           :key="child.path"
@@ -762,6 +1040,7 @@ onBeforeUnmount(() => {
           :inbox-paths="inbox.inboxPaths.value"
           @toggle="toggle"
           @contextmenu="openCtx"
+          @press="onNodePress"
         />
         <li v-if="root.truncated" class="ftree__truncated" :title="`This folder has more than 10,000 entries; showing the first batch. Move groups into subfolders to see them all.`">
           + 10,000+ more —— folder is huge
@@ -789,6 +1068,13 @@ onBeforeUnmount(() => {
       <button v-if="ctx.node" class="ftree__ctx-item" @click="startRename(ctx.node)">
         ✎ {{ t('explorer.rename') || 'Rename' }}
       </button>
+      <button
+        v-if="ctx.node && canMove && ctx.node.path !== root?.path"
+        class="ftree__ctx-item"
+        @click="startMoveTo(ctx.node)"
+      >
+        ↪ {{ t('explorer.moveTo') || 'Move to…' }}
+      </button>
       <button v-if="ctx.node" class="ftree__ctx-item ftree__ctx-item--danger" @click="deleteNode(ctx.node)">
         🗑 {{ t('explorer.delete') || 'Delete' }}
       </button>
@@ -811,6 +1097,16 @@ onBeforeUnmount(() => {
         </button>
       </template>
     </div>
+
+    <MoveToDialog
+      :open="!!moveDialog"
+      :node-name="moveDialog?.node.name ?? ''"
+      :dirs="moveDialog?.dirs ?? []"
+      :current-dir="moveDialog ? rootRelative(moveDialog.node.path).replace(/\/?[^/]+$/, '') : ''"
+      :self-dir="moveDialog?.node.is_dir ? rootRelative(moveDialog.node.path) : null"
+      @confirm="onMovePicked"
+      @cancel="moveDialog = null"
+    />
   </aside>
 </template>
 
@@ -825,7 +1121,7 @@ export const FileTreeNode = defineComponent({
     inboxOnly: { type: Boolean, default: false },
     inboxPaths: { type: Object as () => Set<string>, default: () => new Set() },
   },
-  emits: ['toggle', 'contextmenu'],
+  emits: ['toggle', 'contextmenu', 'press'],
   setup(props, { emit }) {
     // #182 — the full-names toggle lives in settings; this inner component is
     // module-scoped so it can't close over <script setup>'s store instance.
@@ -922,9 +1218,27 @@ export const FileTreeNode = defineComponent({
         h(
           'li',
           {
-            class: ['ftree__item', n.is_dir ? 'ftree__item--dir' : 'ftree__item--file'],
+            class: [
+              'ftree__item',
+              n.is_dir ? 'ftree__item--dir' : 'ftree__item--file',
+              dragPath.value === n.path ? 'ftree__item--dragging' : '',
+              n.is_dir && dropTarget.value === n.path ? 'ftree__item--drop' : '',
+            ],
             style: { paddingLeft: indent + 'px' },
-            onClick: () => emit('toggle', n),
+            // Hit-testing during a drag reads these off whatever row is under
+            // the pointer, so the drag logic never has to walk the tree.
+            'data-path': n.path,
+            'data-dir': n.is_dir ? '1' : '0',
+            onPointerdown: (e: PointerEvent) => emit('press', e, n),
+            onClick: () => {
+              // Swallow the click that ends a drag, or dropping a file would
+              // also open it and dropping a folder would toggle it.
+              if (suppressClick.value) {
+                suppressClick.value = false;
+                return;
+              }
+              emit('toggle', n);
+            },
             onContextmenu: (e: MouseEvent) => {
               e.preventDefault();
               e.stopPropagation();
@@ -951,6 +1265,7 @@ export const FileTreeNode = defineComponent({
               inboxPaths: props.inboxPaths,
               onToggle: (target: any) => emit('toggle', target),
               onContextmenu: (event: MouseEvent, target: any) => emit('contextmenu', event, target),
+              onPress: (event: PointerEvent, target: any) => emit('press', event, target),
             })
           );
         }
@@ -1206,6 +1521,9 @@ export const FileTreeNode = defineComponent({
   list-style: none;
   margin: 0;
   padding: 0;
+  /* Gives the empty area under a short tree enough body to be a drop target
+     for "move to the vault root". */
+  min-height: 48px;
 }
 :deep(.ftree__item) {
   display: flex;
@@ -1219,6 +1537,24 @@ export const FileTreeNode = defineComponent({
 }
 :deep(.ftree__item:hover) {
   background: var(--bg-hover, color-mix(in srgb, var(--accent) 10%, transparent));
+}
+
+/* #290 / #267 — drag to move. The node being dragged fades; the folder that
+   would receive it gets a ring rather than a fill, so it stays distinguishable
+   from plain hover while a drag is in flight. */
+:deep(.ftree__item--dragging) {
+  opacity: 0.45;
+}
+:deep(.ftree__item--drop) {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+  border-radius: 4px;
+}
+.ftree__root--drop {
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.ftree__list--drop {
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
 }
 :deep(.ftree__icon) {
   width: 14px;
