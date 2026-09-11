@@ -136,6 +136,32 @@ exists: an existing version is reused rather than recreated, and an open
 `READY_FOR_REVIEW` submission is added to rather than duplicated. That is why
 reads are retried on a dropped connection and writes are not.
 
+### `upload-release-assets.sh <tag> <file> [...]`
+
+Uploads the locally-built assets (dmg, APKs, AAB, skill pack) to a release —
+normally while it is still a draft — with a watchdog around every attempt.
+
+Plain `gh release upload` is not enough here. Everything leaves this machine
+through a local proxy, and large files sometimes stall it outright: the socket
+stays open, no bytes move, and gh's own timeout is long enough that it never
+returns. A `cmd || retry` loop cannot rescue that — gh never exits, so the loop
+never advances. One upload once sat like that for half an hour having logged
+zero retries. Each attempt therefore runs in the background and is killed if it
+goes quiet past the deadline; a fresh invocation almost always walks straight
+through, because the stall is a one-off connection rather than a broken file.
+
+Success is judged by the release's own asset list, **by name and byte size** —
+never by gh's exit code, which lies in both directions here. Size matters
+because a killed upload can leave a short asset behind, and `--clobber` then
+makes the retry look like a no-op. Already-complete assets are skipped, so
+re-running after a partial run costs nothing.
+
+Draft-aware: a draft answers `releases/tags/{tag}` with 404 and is only
+reachable through the releases list, so the id is resolved by tag first. That is
+the whole point — the run that needs this happens before publication.
+
+`UPLOAD_DEADLINE` (default 240s) and `UPLOAD_TRIES` (default 6) are tunable.
+
 ### `fix-appimage-diricon.sh <file.AppImage> [...]`
 
 Repairs the dangling `.DirIcon` symlink tauri-bundler bakes into every
