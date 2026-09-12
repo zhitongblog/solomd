@@ -248,6 +248,8 @@ export const ja: I18n = {
     codeBlockWrapHint: 'ブロック幅を超えるコード行を横スクロールではなく折り返して表示します。PDF/印刷では常に折り返します。',
     explorerFullNames: 'エクスプローラーで完全なファイル名を表示',
     explorerFullNamesHint: 'サイドバーのツリーで長いファイル名を中央省略せず、折り返して完全に表示します。',
+    explorerShowHidden: '隠しファイルを表示',
+    explorerShowHiddenHint: 'ドットで始まるファイルとフォルダー（.git、.obsidian、.gitignore など）をファイルツリーに表示します。',
     markdownHardBreaks: '単一の改行を改行として表示',
     markdownHardBreaksHint: 'Typora と同様:Enter 一回でプレビューと全エクスポートで改行されます。オフ = 厳密な Markdown(単一改行は同じ段落に結合され、空行で段落を分けます)。',
     smartQuotes: 'スマート引用符',

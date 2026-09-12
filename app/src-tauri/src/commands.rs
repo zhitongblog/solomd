@@ -870,19 +870,23 @@ fn relink_moved_tree(new_root: &Path, old_root: &Path, moved_roots: &[Vec<String
 ///
 /// The tree itself only knows about folders the user has expanded, and a
 /// picker limited to those is useless for the case it exists to serve: filing
-/// a note into a folder you haven't visited today. Hidden folders, the usual
-/// build junk, and attachment folders are pruned along with their subtrees —
-/// nobody files a note into `_assets`.
+/// a note into a folder you haven't visited today. Build junk and attachment
+/// folders are pruned along with their subtrees — nobody files a note into
+/// `_assets`. Hidden folders follow the Explorer's own "show hidden files"
+/// setting, except `.git`, which is always pruned: walking an entire object
+/// store to fill a picker is pure cost, and a note filed in there would be
+/// invisible to the app anyway.
 #[tauri::command]
-pub async fn fs_list_dirs(root: String) -> Result<Vec<String>, String> {
-    tauri::async_runtime::spawn_blocking(move || fs_list_dirs_inner(root))
+pub async fn fs_list_dirs(root: String, show_hidden: Option<bool>) -> Result<Vec<String>, String> {
+    let show_hidden = show_hidden.unwrap_or(false);
+    tauri::async_runtime::spawn_blocking(move || fs_list_dirs_inner(root, show_hidden))
         .await
         .map_err(|e| format!("join: {e}"))?
 }
 
-pub fn fs_list_dirs_inner(root: String) -> Result<Vec<String>, String> {
+pub fn fs_list_dirs_inner(root: String, show_hidden: bool) -> Result<Vec<String>, String> {
     const CAP: usize = 20_000;
-    const SKIP: &[&str] = &["node_modules", "target", "dist", "_assets"];
+    const SKIP: &[&str] = &["node_modules", "target", "dist", "_assets", ".git"];
     let root_p = Path::new(&root);
     if !root_p.is_dir() {
         return Err(format!("not a folder: {root}"));
@@ -895,7 +899,9 @@ pub fn fs_list_dirs_inner(root: String) -> Result<Vec<String>, String> {
                 return true;
             }
             let name = e.file_name().to_string_lossy().to_string();
-            !name.starts_with('.') && !SKIP.contains(&name.as_str()) && !name.ends_with(".assets")
+            (show_hidden || !name.starts_with('.'))
+                && !SKIP.contains(&name.as_str())
+                && !name.ends_with(".assets")
         })
         .filter_map(|e| e.ok())
     {
@@ -944,8 +950,13 @@ pub struct DirEntry {
     pub is_dir: bool,
 }
 
-/// List immediate children of a directory. Hidden entries (starting with `.`)
-/// are filtered out. Sorted: dirs first, then files, both alphabetical.
+/// List immediate children of a directory. Sorted: dirs first, then files,
+/// both alphabetical.
+///
+/// Entries starting with `.` are filtered out unless `show_hidden` is set.
+/// They were unconditionally skipped until a user pointed out that a vault
+/// full of `.config`-style notes (or anyone wanting to see `.gitignore`) had
+/// no way to reach them from inside the app at all.
 ///
 /// Whether each child is a directory comes from `e.file_type()`, NOT
 /// `e.metadata()`. On Windows the difference is enormous: `file_type()`
@@ -956,7 +967,7 @@ pub struct DirEntry {
 /// "instant" and "10 seconds with the antivirus also doing on-access
 /// scanning". Reported by user 2026-04-26 as "Win 下打开一个文件比较多
 /// 的目录还是有些卡顿".
-pub fn list_dir_inner(path: String) -> Result<Vec<DirEntry>, String> {
+pub fn list_dir_inner(path: String, show_hidden: bool) -> Result<Vec<DirEntry>, String> {
     let read = fs::read_dir(&path).map_err(|e| format!("read_dir failed: {e}"))?;
     const HARD_CAP: usize = 10_000;
     let mut entries: Vec<DirEntry> = Vec::new();
@@ -967,7 +978,7 @@ pub fn list_dir_inner(path: String) -> Result<Vec<DirEntry>, String> {
             break;
         }
         let name = e.file_name().to_string_lossy().to_string();
-        if name.starts_with('.') {
+        if !show_hidden && name.starts_with('.') {
             continue;
         }
         // file_type() uses the dir-scan's cached entry type — no extra
@@ -1010,8 +1021,9 @@ pub fn list_dir_inner(path: String) -> Result<Vec<DirEntry>, String> {
 /// (reproduced as "toggle file tree → app crashes" on Win11). Same fix as
 /// git_history: hand off to the blocking pool.
 #[tauri::command]
-pub async fn list_dir(path: String) -> Result<Vec<DirEntry>, String> {
-    tauri::async_runtime::spawn_blocking(move || list_dir_inner(path))
+pub async fn list_dir(path: String, show_hidden: Option<bool>) -> Result<Vec<DirEntry>, String> {
+    let show_hidden = show_hidden.unwrap_or(false);
+    tauri::async_runtime::spawn_blocking(move || list_dir_inner(path, show_hidden))
         .await
         .map_err(|e| format!("join: {e}"))?
 }

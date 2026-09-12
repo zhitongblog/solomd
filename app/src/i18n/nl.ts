@@ -248,6 +248,8 @@ export const nl: I18n = {
     codeBlockWrapHint: 'Laat coderegels breder dan het blok teruglopen in plaats van een horizontale schuifbalk te tonen. PDF/afdrukken loopt altijd terug.',
     explorerFullNames: 'Volledige bestandsnamen in verkenner',
     explorerFullNamesHint: 'Laat lange bestandsnamen in de zijbalkboom teruglopen in plaats van ze in het midden af te korten.',
+    explorerShowHidden: 'Verborgen bestanden tonen',
+    explorerShowHiddenHint: 'Toont bestanden en mappen die met een punt beginnen (.git, .obsidian, .gitignore) in de verkennerboom.',
     markdownHardBreaks: 'Enkele regeleinden als regelafbreking weergeven',
     markdownHardBreaksHint: 'Zoals Typora: één keer Enter geeft een regelafbreking in het voorbeeld en alle exports. Uit = strikte Markdown (enkele regeleinden smelten samen tot één alinea; lege regel scheidt).',
     smartQuotes: 'Typografische aanhalingstekens',

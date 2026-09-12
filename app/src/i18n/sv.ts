@@ -248,6 +248,8 @@ export const sv: I18n = {
     codeBlockWrapHint: 'Radbryter kodrader som är bredare än blocket i stället för en horisontell rullningslist. PDF/utskrift radbryter alltid.',
     explorerFullNames: 'Fullständiga filnamn i utforskaren',
     explorerFullNamesHint: 'Radbryter långa filnamn i sidofältsträdet i stället för att korta dem med ellips i mitten.',
+    explorerShowHidden: 'Visa dolda filer',
+    explorerShowHiddenHint: 'Visar filer och mappar som börjar med punkt (.git, .obsidian, .gitignore) i filträdet.',
     markdownHardBreaks: 'Rendera enkla radbrytningar som radbrytningar',
     markdownHardBreaksHint: 'Som Typora: ett Enter-tryck ger en radbrytning i förhandsvisningen och alla exporter. Av = strikt Markdown (enkla radbrytningar slås ihop till ett stycke; tom rad avgränsar).',
     smartQuotes: 'Typografiska citattecken',

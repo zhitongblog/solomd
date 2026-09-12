@@ -248,6 +248,8 @@ export const es: I18n = {
     codeBlockWrapHint: 'Ajusta las líneas de código más anchas que el bloque en lugar de mostrar una barra de desplazamiento horizontal. PDF/impresión siempre ajusta.',
     explorerFullNames: 'Nombres de archivo completos en el explorador',
     explorerFullNamesHint: 'Ajusta los nombres largos en el árbol lateral en lugar de acortarlos con puntos suspensivos en el medio.',
+    explorerShowHidden: 'Mostrar archivos ocultos',
+    explorerShowHiddenHint: 'Muestra archivos y carpetas que empiezan por punto (.git, .obsidian, .gitignore) en el árbol del explorador.',
     markdownHardBreaks: 'Renderizar saltos de línea simples como saltos',
     markdownHardBreaksHint: 'Como Typora: una sola pulsación de Enter crea un salto de línea en la vista previa y todas las exportaciones. Desactivado = Markdown estricto (los saltos simples se funden en un párrafo; usa una línea en blanco para separar).',
     smartQuotes: 'Comillas tipográficas',

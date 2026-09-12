@@ -209,3 +209,51 @@ fn refuses_a_collision_a_missing_source_and_a_folder_into_itself() {
     assert!(err.contains("inside itself"), "{err}");
     assert!(root.join("a/note.md").is_file());
 }
+
+// --------------------------------------------------------------------------
+// Listing: hidden entries and the "Move to…" picker's folder list
+// --------------------------------------------------------------------------
+
+#[test]
+fn hidden_entries_are_listed_only_when_asked_for() {
+    use app_lib::commands::list_dir_inner;
+    let root = tmp("hidden");
+    fs::create_dir_all(root.join(".config")).unwrap();
+    fs::write(root.join(".gitignore"), b"x").unwrap();
+    fs::write(root.join("visible.md"), b"x").unwrap();
+
+    let plain = list_dir_inner(root.to_string_lossy().to_string(), false).unwrap();
+    assert_eq!(
+        plain.iter().map(|e| e.name.as_str()).collect::<Vec<_>>(),
+        vec!["visible.md"]
+    );
+
+    let all = list_dir_inner(root.to_string_lossy().to_string(), true).unwrap();
+    let names: Vec<&str> = all.iter().map(|e| e.name.as_str()).collect();
+    // Dirs still sort ahead of files.
+    assert_eq!(names, vec![".config", ".gitignore", "visible.md"]);
+}
+
+#[test]
+fn the_folder_picker_prunes_junk_and_follows_the_hidden_setting() {
+    use app_lib::commands::fs_list_dirs_inner;
+    let root = tmp("dirs");
+    for d in [
+        "Notes/Deep",
+        "_assets/nested",
+        "note.assets",
+        "node_modules/pkg",
+        ".git/objects",
+        ".config",
+    ] {
+        fs::create_dir_all(root.join(d)).unwrap();
+    }
+
+    let plain = fs_list_dirs_inner(root.to_string_lossy().to_string(), false).unwrap();
+    assert_eq!(plain, vec!["Notes", "Notes/Deep"]);
+
+    let with_hidden = fs_list_dirs_inner(root.to_string_lossy().to_string(), true).unwrap();
+    // `.config` shows up, `.git` never does — walking an object store to fill
+    // a picker is pure cost.
+    assert_eq!(with_hidden, vec![".config", "Notes", "Notes/Deep"]);
+}

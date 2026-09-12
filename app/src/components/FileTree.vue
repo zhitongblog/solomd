@@ -147,12 +147,20 @@ async function loadDir(path: string): Promise<{ children: Node[]; truncated: boo
       const safChildren = await safList(workspace.safTreeUri, fromSafPath(path));
       // A delete still inside its undo window is presented as done — the file
       // is on disk for a few more seconds but the user has been told it is gone.
+      // The hidden-file filter is applied here rather than in the Kotlin
+      // lister, so the setting means the same thing on a SAF vault as on a
+      // plain folder.
       return {
-        children: (safChildren as Node[]).filter((c) => !isDeletePending(c.path)),
+        children: (safChildren as Node[]).filter(
+          (c) => !isDeletePending(c.path) && (settings.explorerShowHidden || !c.name.startsWith('.')),
+        ),
         truncated: false,
       };
     }
-    const entries = await invoke<Entry[]>('list_dir', { path });
+    const entries = await invoke<Entry[]>('list_dir', {
+      path,
+      showHidden: settings.explorerShowHidden,
+    });
     let truncated = false;
     const filtered: Node[] = [];
     for (const e of entries) {
@@ -236,6 +244,15 @@ watch(
     void refreshRoot();
   },
   { immediate: true },
+);
+
+// Flipping "show hidden files" changes what every already-loaded directory
+// should contain, so the whole tree is re-listed — expanded folders included.
+watch(
+  () => settings.explorerShowHidden,
+  () => {
+    void refreshTreePreservingExpansion();
+  },
 );
 
 // ---------------------------------------------------------------------------
@@ -527,7 +544,10 @@ async function startMoveTo(node: Node) {
   const rootPath = workspace.currentFolder;
   if (!rootPath || !canMove.value) return;
   try {
-    const dirs = await invoke<string[]>('fs_list_dirs', { root: rootPath });
+    const dirs = await invoke<string[]>('fs_list_dirs', {
+      root: rootPath,
+      showHidden: settings.explorerShowHidden,
+    });
     moveDialog.value = { node, dirs };
   } catch (err) {
     toasts.error(String(err));

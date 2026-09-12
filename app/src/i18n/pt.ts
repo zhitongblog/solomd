@@ -250,6 +250,8 @@ export const pt: I18n = {
     codeBlockWrapHint: 'Quebra linhas de código mais largas que o bloco em vez de mostrar uma barra de rolagem horizontal. PDF/impressão sempre quebra.',
     explorerFullNames: 'Nomes de arquivo completos no explorador',
     explorerFullNamesHint: 'Quebra nomes longos na árvore lateral em vez de encurtá-los com reticências no meio.',
+    explorerShowHidden: 'Mostrar arquivos ocultos',
+    explorerShowHiddenHint: 'Lista arquivos e pastas que começam com ponto (.git, .obsidian, .gitignore) na árvore do explorador.',
     markdownHardBreaks: 'Renderizar quebras de linha simples como quebras',
     markdownHardBreaksHint: 'Como o Typora: um único Enter cria uma quebra de linha na pré-visualização e em todas as exportações. Desligado = Markdown estrito (quebras simples se fundem no parágrafo; use uma linha em branco para separar).',
     smartQuotes: 'Aspas tipográficas',

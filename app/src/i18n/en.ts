@@ -248,6 +248,8 @@ export const en = {
     codeBlockWrapHint: 'Soft-wraps code lines wider than the block instead of showing a horizontal scrollbar. PDF/print always wraps.',
     explorerFullNames: 'Full file names in Explorer',
     explorerFullNamesHint: 'Wraps long file names across lines in the sidebar tree instead of shortening them with a middle ellipsis.',
+    explorerShowHidden: 'Show hidden files',
+    explorerShowHiddenHint: 'Lists dot-files and dot-folders (.git, .obsidian, .gitignore) in the Explorer tree.',
     markdownHardBreaks: 'Render single newlines as line breaks',
     markdownHardBreaksHint: 'Typora-like: pressing Enter once starts a new line in the preview and all exports. Off = strict Markdown (single newlines collapse into one paragraph; use a blank line to separate).',
     smartQuotes: 'Smart quotes',

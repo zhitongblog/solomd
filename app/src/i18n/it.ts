@@ -248,6 +248,8 @@ export const it: I18n = {
     codeBlockWrapHint: 'Manda a capo le righe di codice più larghe del blocco invece di mostrare una barra di scorrimento orizzontale. PDF/stampa va sempre a capo.',
     explorerFullNames: 'Nomi file completi nell’esplora risorse',
     explorerFullNamesHint: 'Manda a capo i nomi lunghi nell’albero laterale invece di abbreviarli con i puntini centrali.',
+    explorerShowHidden: 'Mostra i file nascosti',
+    explorerShowHiddenHint: 'Elenca file e cartelle che iniziano con un punto (.git, .obsidian, .gitignore) nell’albero laterale.',
     markdownHardBreaks: 'Renderizza i singoli a capo come interruzioni di riga',
     markdownHardBreaksHint: 'Come Typora: un solo Invio crea un a capo nell\'anteprima e in tutte le esportazioni. Disattivato = Markdown rigoroso (gli a capo singoli si fondono nel paragrafo; una riga vuota separa).',
     smartQuotes: 'Virgolette tipografiche',

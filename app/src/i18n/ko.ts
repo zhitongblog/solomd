@@ -248,6 +248,8 @@ export const ko: I18n = {
     codeBlockWrapHint: '블록 너비를 넘는 코드 줄을 가로 스크롤 대신 줄 바꿈으로 표시합니다. PDF/인쇄는 항상 줄 바꿈됩니다.',
     explorerFullNames: '탐색기에 전체 파일 이름 표시',
     explorerFullNamesHint: '사이드바 트리에서 긴 파일 이름을 중간 생략 대신 줄 바꿈하여 전체 표시합니다.',
+    explorerShowHidden: '숨김 파일 표시',
+    explorerShowHiddenHint: '점으로 시작하는 파일과 폴더(.git, .obsidian, .gitignore)를 파일 트리에 표시합니다.',
     markdownHardBreaks: '단일 줄바꿈을 줄바꿈으로 렌더링',
     markdownHardBreaksHint: 'Typora와 동일: Enter 한 번으로 미리보기와 모든 내보내기에서 줄이 바뀝니다. 끄면 = 엄격한 Markdown(단일 줄바꿈은 같은 문단으로 합쳐지며 빈 줄로 문단을 구분).',
     smartQuotes: '스마트 따옴표',

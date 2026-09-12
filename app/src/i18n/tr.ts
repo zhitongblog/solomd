@@ -248,6 +248,8 @@ export const tr: I18n = {
     codeBlockWrapHint: 'Bloktan geniş kod satırlarını yatay kaydırma çubuğu yerine alt satıra kaydırır. PDF/yazdırma her zaman kaydırır.',
     explorerFullNames: 'Gezginde tam dosya adları',
     explorerFullNamesHint: 'Kenar çubuğu ağacındaki uzun dosya adlarını ortadan kısaltmak yerine alt satıra kaydırarak tam gösterir.',
+    explorerShowHidden: 'Gizli dosyaları göster',
+    explorerShowHiddenHint: 'Nokta ile başlayan dosya ve klasörleri (.git, .obsidian, .gitignore) dosya ağacında listeler.',
     markdownHardBreaks: 'Tek satır sonlarını satır sonu olarak göster',
     markdownHardBreaksHint: 'Typora gibi: bir kez Enter, önizlemede ve tüm dışa aktarmalarda satır sonu oluşturur. Kapalı = katı Markdown (tek satır sonları aynı paragrafta birleşir; boş satır ayırır).',
     smartQuotes: 'Akıllı tırnak işaretleri',

@@ -693,6 +693,18 @@ function onSelectPdfFont(v: string) {
           <label>
             <input
               type="checkbox"
+              :checked="settings.explorerShowHidden"
+              @change="settings.toggleExplorerShowHidden()"
+            />
+            {{ t('settings.explorerShowHidden') }}
+          </label>
+          <p class="setting-hint">{{ t('settings.explorerShowHiddenHint') }}</p>
+        </section>
+
+        <section data-cat="basics">
+          <label>
+            <input
+              type="checkbox"
               :checked="settings.markdownHardBreaks"
               @change="settings.toggleMarkdownHardBreaks()"
             />

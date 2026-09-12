@@ -288,6 +288,10 @@ interface Settings {
   // #182: show full file names in the Explorer tree (wrapped across lines)
   // instead of the default middle-ellipsis truncation.
   explorerFullNames: boolean;
+  // Show dot-files / dot-folders in the Explorer tree. Off by default: a
+  // vault's `.git`, `.obsidian` and friends are noise for most people. On,
+  // they're reachable from inside the app instead of only from Finder.
+  explorerShowHidden: boolean;
   // #141 (4.8.10): render a single newline as a real line break (Typora-like)
   // in preview / live editor / every export. Default ON — CJK users write
   // one-sentence-per-line and expect it to hold; standard blank-line
@@ -583,6 +587,7 @@ function defaults(): Settings {
     codeBlockLineNumbers: false,
     codeBlockWrap: false,
     explorerFullNames: false,
+    explorerShowHidden: false,
     markdownHardBreaks: true,
     spellcheckLang: 'en_US',
     smartQuotes: false,
@@ -1247,6 +1252,10 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleExplorerFullNames() {
       this.explorerFullNames = !this.explorerFullNames;
+      this.persist();
+    },
+    toggleExplorerShowHidden() {
+      this.explorerShowHidden = !this.explorerShowHidden;
       this.persist();
     },
     toggleMarkdownHardBreaks() {

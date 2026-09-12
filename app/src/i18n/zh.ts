@@ -249,6 +249,8 @@ export const zh: I18n = {
     codeBlockWrapHint: '超出代码块宽度的长行自动折行显示,不再出现横向滚动条。PDF/打印始终自动换行。',
     explorerFullNames: '文件树显示完整文件名',
     explorerFullNamesHint: '侧边栏文件树中的长文件名换行完整显示,不再用省略号截断中段。',
+    explorerShowHidden: '显示隐藏文件',
+    explorerShowHiddenHint: '在文件树里列出以点开头的文件和文件夹（.git、.obsidian、.gitignore 等）。',
     markdownHardBreaks: '单个换行渲染为换行',
     markdownHardBreaksHint: '与 Typora 一致:按一次回车,预览和所有导出都换行。关闭 = 严格 Markdown(单个换行并入同一段落,需空行分段)。',
     smartQuotes: '智能引号',

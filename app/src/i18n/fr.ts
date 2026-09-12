@@ -248,6 +248,8 @@ export const fr: I18n = {
     codeBlockWrapHint: "Replie les lignes de code plus larges que le bloc au lieu d'afficher une barre de défilement horizontale. PDF/impression replie toujours.",
     explorerFullNames: 'Noms de fichiers complets dans l’explorateur',
     explorerFullNamesHint: 'Replie les noms de fichiers longs dans l’arborescence au lieu de les raccourcir par une ellipse centrale.',
+    explorerShowHidden: 'Afficher les fichiers masqués',
+    explorerShowHiddenHint: 'Affiche les fichiers et dossiers commençant par un point (.git, .obsidian, .gitignore) dans l’arborescence.',
     markdownHardBreaks: 'Rendre les sauts de ligne simples comme des retours',
     markdownHardBreaksHint: 'Comme Typora : une seule pression sur Entrée crée un retour à la ligne dans l\'aperçu et tous les exports. Désactivé = Markdown strict (les sauts simples fusionnent dans le paragraphe ; une ligne vide sépare).',
     smartQuotes: 'Guillemets typographiques',
