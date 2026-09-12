@@ -246,6 +246,89 @@ watch(
   { immediate: true },
 );
 
+// ---------------------------------------------------------------------------
+// #282 — "文件树可否增加文件格式过滤，例如我只想显示该文件夹下面的 txt 或者是
+// md 文档". The checkbox list offers what the vault actually contains, not a
+// canned list of twenty formats.
+//
+// The filter persists, which makes a hidden filter the obvious failure mode:
+// "my files are gone". So whenever it's set the tree shows a banner naming
+// the active types with a one-click clear, and the header button changes
+// state — see [blank-pane traps]: a persisted flag that hides content must
+// never be invisible.
+// ---------------------------------------------------------------------------
+
+const filterOpen = ref(false);
+const extList = ref<{ ext: string; count: number }[]>([]);
+const extFilter = computed<string[]>(() => settings.explorerExtFilter ?? []);
+
+/** Absolute paths of folders whose subtree holds a match, or null when no
+ *  filter is active. The tree is lazy, so this can't be derived from the
+ *  loaded nodes — it comes from one backend walk per filter change. */
+const filterDirs = ref<Set<string> | null>(null);
+
+const filterLabel = computed(() =>
+  extFilter.value
+    .map((e) => (e === '' ? t('explorer.filterNoExt') || 'no extension' : '.' + e))
+    .join('、'),
+);
+
+async function refreshFilterDirs() {
+  const rootPath = workspace.currentFolder;
+  if (!rootPath || extFilter.value.length === 0 || isSafPath(rootPath)) {
+    filterDirs.value = null;
+    return;
+  }
+  try {
+    const rels = await invoke<string[]>('fs_dirs_with_extensions', {
+      root: rootPath,
+      exts: extFilter.value,
+      showHidden: settings.explorerShowHidden,
+    });
+    filterDirs.value = new Set(
+      rels.map((rel) => rel.split('/').reduce((acc, seg) => joinPath(acc, seg), rootPath)),
+    );
+  } catch (err) {
+    console.warn('[FileTree] dirs-with-extensions failed', err);
+    // Failing open beats hiding folders we could not verify.
+    filterDirs.value = null;
+  }
+}
+
+async function openFilter() {
+  filterOpen.value = !filterOpen.value;
+  if (!filterOpen.value) return;
+  const rootPath = workspace.currentFolder;
+  if (!rootPath || isSafPath(rootPath)) {
+    extList.value = [];
+    return;
+  }
+  try {
+    extList.value = await invoke<{ ext: string; count: number }[]>('fs_list_extensions', {
+      root: rootPath,
+      showHidden: settings.explorerShowHidden,
+    });
+  } catch (err) {
+    toasts.error(String(err));
+    extList.value = [];
+  }
+}
+
+function extLabel(ext: string): string {
+  return ext === '' ? t('explorer.filterNoExt') || 'no extension' : '.' + ext;
+}
+
+// `immediate` matters: on startup the workspace folder is restored before
+// this watcher exists, so without it a filter that survived the last session
+// would sit there with its banner showing while the tree stayed unfiltered
+// until the next manual refresh.
+watch(
+  [extFilter, () => settings.explorerShowHidden, () => workspace.currentFolder],
+  () => {
+    void refreshFilterDirs();
+  },
+  { immediate: true },
+);
 // Flipping "show hidden files" changes what every already-loaded directory
 // should contain, so the whole tree is re-listed — expanded folders included.
 watch(
@@ -296,6 +379,11 @@ async function refreshTreePreservingExpansion() {
     root.value.truncated = truncated;
     root.value.loading = false;
   }
+  // Creating / deleting / moving a file can change which folders hold a match
+  // for the extension filter (#282). This runs after every tree refresh
+  // rather than on a `watch(root)`, because the refresh mutates the root node
+  // in place — the ref identity never changes and a watcher would never fire.
+  if (extFilter.value.length) void refreshFilterDirs();
 }
 
 function onSaved() { scheduleRefresh(); }
@@ -424,12 +512,15 @@ function joinPath(parent: string, name: string): string {
 // the feature wouldn't exist on mobile.
 // ---------------------------------------------------------------------------
 
-/** SAF vaults (#148, Android) address files by content-URI and there is no
- *  ContentResolver move, so the tree doesn't offer moving there at all rather
- *  than letting a drag fail at the IPC boundary. */
-const canMove = computed(
+/** A plain filesystem vault, i.e. not a SAF one (#148, Android), where files
+ *  are addressed by content-URI and the std::fs-backed commands don't apply.
+ *  Two features are gated on it: moving (there is no ContentResolver move, so
+ *  a drag would fail at the IPC boundary) and the file-type filter (both of
+ *  its backend walks need real paths). Gating beats offering a dead control. */
+const localVault = computed(
   () => !!workspace.currentFolder && !isSafPath(workspace.currentFolder),
 );
+const canMove = localVault;
 
 /** Point an open tab at a path that just moved on disk.
  *
@@ -881,6 +972,7 @@ function closeFolder() {
 
 // Close the context menu on any outside click / escape.
 function onWindowClick() {
+  filterOpen.value = false;
   if (switcherOpen.value) closeSwitcher();
   if (!ctx.value) return;
   closeCtx();
@@ -889,6 +981,7 @@ function onWindowKey(e: KeyboardEvent) {
   if (e.key === 'Escape') {
     closeCtx();
     closeSwitcher();
+    filterOpen.value = false;
     if (editing.value) editing.value = null;
   }
 }
@@ -924,6 +1017,42 @@ onBeforeUnmount(() => {
           @click="root && startNewFile(root.path)"
           :disabled="!root"
         >＋</button>
+        <div class="ftree__filter-wrap">
+          <button
+            v-if="localVault"
+            class="ftree__hbtn"
+            :class="{ 'ftree__hbtn--on': extFilter.length > 0 }"
+            :title="t('explorer.filterByType') || 'Filter by file type'"
+            @click.stop="openFilter"
+            :disabled="!root"
+          >{{ extFilter.length ? '▼' : '▽' }}</button>
+          <div v-if="filterOpen" class="ftree__filter-pop" @click.stop>
+            <div class="ftree__filter-label">{{ t('explorer.filterByType') || 'Filter by file type' }}</div>
+            <button
+              class="ftree__filter-item"
+              :class="{ 'ftree__filter-item--active': extFilter.length === 0 }"
+              @click="settings.clearExplorerExtFilter()"
+            >
+              <span class="ftree__filter-check">{{ extFilter.length === 0 ? '✓' : '' }}</span>
+              <span class="ftree__filter-name">{{ t('explorer.filterAll') || 'All files' }}</span>
+            </button>
+            <div class="ftree__filter-sep"></div>
+            <button
+              v-for="e in extList"
+              :key="e.ext || '__noext__'"
+              class="ftree__filter-item"
+              :class="{ 'ftree__filter-item--active': extFilter.includes(e.ext) }"
+              @click="settings.toggleExplorerExt(e.ext)"
+            >
+              <span class="ftree__filter-check">{{ extFilter.includes(e.ext) ? '✓' : '' }}</span>
+              <span class="ftree__filter-name">{{ extLabel(e.ext) }}</span>
+              <span class="ftree__filter-count">{{ e.count }}</span>
+            </button>
+            <div v-if="extList.length === 0" class="ftree__filter-empty">
+              {{ t('explorer.filterNoTypes') || 'Nothing to filter yet.' }}
+            </div>
+          </div>
+        </div>
         <button
           class="ftree__hbtn"
           :title="t('explorer.refresh') || 'Refresh'"
@@ -1046,6 +1175,16 @@ onBeforeUnmount(() => {
         </span>
       </div>
 
+      <!-- A persisted filter that hides files must never be invisible. -->
+      <div v-if="extFilter.length" class="ftree__filter-banner">
+        <span class="ftree__filter-banner-text">
+          {{ t('explorer.filterActive', { types: filterLabel }) }}
+        </span>
+        <button class="ftree__filter-banner-clear" @click="settings.clearExplorerExtFilter()">
+          {{ t('explorer.filterClear') || 'Clear' }}
+        </button>
+      </div>
+
       <div v-if="root.loading" class="ftree__loading">
         <span class="ftree__spinner" aria-hidden="true"></span>
         <span>Loading…</span>
@@ -1058,6 +1197,8 @@ onBeforeUnmount(() => {
           :depth="0"
           :inbox-only="showInboxOnly"
           :inbox-paths="inbox.inboxPaths.value"
+          :ext-filter="extFilter"
+          :filter-dirs="filterDirs"
           @toggle="toggle"
           @contextmenu="openCtx"
           @press="onNodePress"
@@ -1140,6 +1281,12 @@ export const FileTreeNode = defineComponent({
     depth: { type: Number, default: 0 },
     inboxOnly: { type: Boolean, default: false },
     inboxPaths: { type: Object as () => Set<string>, default: () => new Set() },
+    /** #282 — lower-case extensions without the dot ('' = no extension).
+     *  Empty means no filtering. */
+    extFilter: { type: Array as () => string[], default: () => [] },
+    /** Absolute paths of folders whose subtree holds a match, or null when
+     *  no filter is active (or the backend walk failed — we fail open). */
+    filterDirs: { type: Object as () => Set<string> | null, default: null },
   },
   emits: ['toggle', 'contextmenu', 'press'],
   setup(props, { emit }) {
@@ -1150,6 +1297,14 @@ export const FileTreeNode = defineComponent({
       if (!node.is_dir) return props.inboxPaths.has(node.path);
       if (!node.children) return false;
       return node.children.some(subtreeHasInbox);
+    };
+
+    // The extension the way `Path::extension()` sees it, so the tree filter
+    // and the backend's extension index agree: no dot, lower-cased, and a
+    // leading-dot name like `.gitignore` has NO extension (it's all stem).
+    const extensionOf = (name: string): string => {
+      const dot = name.lastIndexOf('.');
+      return dot <= 0 ? '' : name.slice(dot + 1).toLowerCase();
     };
 
     // Get file icon based on extension
@@ -1227,6 +1382,13 @@ export const FileTreeNode = defineComponent({
         if (!n.is_dir && !props.inboxPaths.has(n.path)) return [];
         if (n.is_dir && n.children && !subtreeHasInbox(n)) return [];
       }
+      if (props.extFilter.length) {
+        if (!n.is_dir) {
+          if (!props.extFilter.includes(extensionOf(n.name))) return [];
+        } else if (props.filterDirs && !props.filterDirs.has(n.path)) {
+          return [];
+        }
+      }
       const indent = 8 + props.depth * 12;
 
       // Use truncated name for display, full name in tooltip. #182 — the
@@ -1283,6 +1445,8 @@ export const FileTreeNode = defineComponent({
               depth: props.depth + 1,
               inboxOnly: props.inboxOnly,
               inboxPaths: props.inboxPaths,
+              extFilter: props.extFilter,
+              filterDirs: props.filterDirs,
               onToggle: (target: any) => emit('toggle', target),
               onContextmenu: (event: MouseEvent, target: any) => emit('contextmenu', event, target),
               onPress: (event: PointerEvent, target: any) => emit('press', event, target),
@@ -1537,6 +1701,112 @@ export const FileTreeNode = defineComponent({
   background: var(--border);
   margin: 4px 0;
 }
+/* #282 — file-type filter: header popover + the always-visible banner that
+   keeps a persisted filter from reading as missing files. */
+.ftree__filter-wrap {
+  position: relative;
+  display: flex;
+}
+.ftree__hbtn--on {
+  color: var(--accent);
+}
+.ftree__filter-pop {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 40;
+  min-width: 190px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 4px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
+}
+.ftree__filter-label {
+  padding: 6px 8px 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+.ftree__filter-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 5px 8px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.ftree__filter-item:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.ftree__filter-item--active {
+  color: var(--accent);
+}
+.ftree__filter-check {
+  width: 10px;
+  flex: none;
+  font-size: 10px;
+}
+.ftree__filter-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ftree__filter-count {
+  flex: none;
+  color: var(--text-faint);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.ftree__filter-sep {
+  height: 1px;
+  margin: 4px 2px;
+  background: var(--border);
+}
+.ftree__filter-empty {
+  padding: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.ftree__filter-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 8px 4px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  font-size: 11px;
+  color: var(--text);
+}
+.ftree__filter-banner-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ftree__filter-banner-clear {
+  flex: none;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font-size: 11px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
 .ftree__list {
   list-style: none;
   margin: 0;

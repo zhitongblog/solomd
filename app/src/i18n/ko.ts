@@ -145,6 +145,12 @@ export const ko: I18n = {
     insertNetworkImage: 'URL에서 이미지…',
   },
   explorer: {
+    filterByType: '파일 종류로 필터',
+    filterAll: '모든 파일',
+    filterNoExt: '확장자 없음',
+    filterNoTypes: '아직 필터할 종류가 없습니다.',
+    filterActive: '{types}만 표시 중',
+    filterClear: '해제',
     moveTo: '이동 위치…',
     moveToTitle: '“{name}” 이동 위치…',
     moveToFilter: '폴더 검색…',

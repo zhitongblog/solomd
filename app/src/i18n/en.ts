@@ -145,6 +145,12 @@ export const en = {
     insertNetworkImage: 'Image from URL…',
   },
   explorer: {
+    filterByType: 'Filter by file type',
+    filterAll: 'All files',
+    filterNoExt: 'no extension',
+    filterNoTypes: 'Nothing to filter yet.',
+    filterActive: 'Showing only {types}',
+    filterClear: 'Clear',
     moveTo: 'Move to…',
     moveToTitle: 'Move “{name}” to…',
     moveToFilter: 'Filter folders…',

@@ -145,6 +145,12 @@ export const it: I18n = {
     insertNetworkImage: 'Immagine da URL…',
   },
   explorer: {
+    filterByType: 'Filtra per tipo di file',
+    filterAll: 'Tutti i file',
+    filterNoExt: 'senza estensione',
+    filterNoTypes: 'Non c’è ancora nulla da filtrare.',
+    filterActive: 'Mostro solo {types}',
+    filterClear: 'Azzera',
     moveTo: 'Sposta in…',
     moveToTitle: 'Sposta «{name}» in…',
     moveToFilter: 'Filtra cartelle…',

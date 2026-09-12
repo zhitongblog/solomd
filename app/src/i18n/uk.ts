@@ -145,6 +145,12 @@ export const uk: I18n = {
     insertNetworkImage: 'Зображення з URL…',
   },
   explorer: {
+    filterByType: 'Фільтрувати за типом файлу',
+    filterAll: 'Усі файли',
+    filterNoExt: 'без розширення',
+    filterNoTypes: 'Поки немає чого фільтрувати.',
+    filterActive: 'Показано лише {types}',
+    filterClear: 'Очистити',
     moveTo: 'Перемістити до…',
     moveToTitle: 'Перемістити «{name}» до…',
     moveToFilter: 'Фільтрувати теки…',

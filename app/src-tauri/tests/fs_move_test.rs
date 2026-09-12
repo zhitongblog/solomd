@@ -257,3 +257,74 @@ fn the_folder_picker_prunes_junk_and_follows_the_hidden_setting() {
     // a picker is pure cost.
     assert_eq!(with_hidden, vec![".config", "Notes", "Notes/Deep"]);
 }
+
+// --------------------------------------------------------------------------
+// #282 — the file-tree extension filter
+// --------------------------------------------------------------------------
+
+#[test]
+fn extensions_are_counted_most_common_first() {
+    use app_lib::commands::fs_list_extensions_inner;
+    let root = tmp("exts");
+    fs::create_dir_all(root.join("sub")).unwrap();
+    fs::create_dir_all(root.join(".git")).unwrap();
+    fs::create_dir_all(root.join("node_modules")).unwrap();
+    for f in ["a.md", "b.md", "c.txt", "Makefile", "d.MD"] {
+        fs::write(root.join(f), b"x").unwrap();
+    }
+    fs::write(root.join("sub/e.md"), b"x").unwrap();
+    fs::write(root.join(".hidden.md"), b"x").unwrap();
+    fs::write(root.join(".git/config"), b"x").unwrap();
+    fs::write(root.join("node_modules/pkg.json"), b"x").unwrap();
+
+    let got = fs_list_extensions_inner(root.to_string_lossy().to_string(), false).unwrap();
+    let pairs: Vec<(&str, usize)> = got.iter().map(|e| (e.ext.as_str(), e.count)).collect();
+    // `.MD` folds into `md`; no-extension files get their own bucket; the
+    // hidden file, .git and node_modules are all out.
+    assert_eq!(pairs, vec![("md", 4), ("", 1), ("txt", 1)]);
+
+    let with_hidden = fs_list_extensions_inner(root.to_string_lossy().to_string(), true).unwrap();
+    assert_eq!(
+        with_hidden.iter().find(|e| e.ext == "md").map(|e| e.count),
+        Some(5)
+    );
+}
+
+#[test]
+fn dirs_with_extensions_reports_every_ancestor_of_a_match() {
+    use app_lib::commands::fs_dirs_with_extensions_inner;
+    let root = tmp("extdirs");
+    fs::create_dir_all(root.join("a/b/c")).unwrap();
+    fs::create_dir_all(root.join("only-md")).unwrap();
+    fs::create_dir_all(root.join("empty")).unwrap();
+    fs::write(root.join("a/b/c/deep.txt"), b"x").unwrap();
+    fs::write(root.join("only-md/note.md"), b"x").unwrap();
+    fs::write(root.join("top.txt"), b"x").unwrap();
+
+    let dirs = fs_dirs_with_extensions_inner(
+        root.to_string_lossy().to_string(),
+        vec!["txt".to_string()],
+        false,
+    )
+    .unwrap();
+    // The whole chain above the match is kept; folders holding only .md or
+    // nothing at all are not. A match at the vault root adds no entry.
+    assert_eq!(dirs, vec!["a", "a/b", "a/b/c"]);
+
+    // A leading dot on the requested extension is accepted.
+    let dotted = fs_dirs_with_extensions_inner(
+        root.to_string_lossy().to_string(),
+        vec![".MD".to_string()],
+        false,
+    )
+    .unwrap();
+    assert_eq!(dotted, vec!["only-md"]);
+
+    let none = fs_dirs_with_extensions_inner(
+        root.to_string_lossy().to_string(),
+        vec!["canvas".to_string()],
+        false,
+    )
+    .unwrap();
+    assert!(none.is_empty());
+}

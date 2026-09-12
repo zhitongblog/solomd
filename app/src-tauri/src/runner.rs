@@ -800,6 +800,8 @@ pub fn run_with(initial_file: Option<String>) {
             commands::fs_rename,
             commands::fs_move,
             commands::fs_list_dirs,
+            commands::fs_list_extensions,
+            commands::fs_dirs_with_extensions,
             search::search_in_dir,
             drain_pending_opens,
             force_close_window,

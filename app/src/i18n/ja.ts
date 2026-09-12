@@ -145,6 +145,12 @@ export const ja: I18n = {
     insertNetworkImage: 'URL から画像…',
   },
   explorer: {
+    filterByType: 'ファイル種類で絞り込み',
+    filterAll: 'すべてのファイル',
+    filterNoExt: '拡張子なし',
+    filterNoTypes: '絞り込める種類がまだありません。',
+    filterActive: '{types} のみ表示中',
+    filterClear: '解除',
     moveTo: '移動先…',
     moveToTitle: '「{name}」の移動先…',
     moveToFilter: 'フォルダーを絞り込み…',

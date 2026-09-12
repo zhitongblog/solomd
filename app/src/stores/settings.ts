@@ -292,6 +292,11 @@ interface Settings {
   // vault's `.git`, `.obsidian` and friends are noise for most people. On,
   // they're reachable from inside the app instead of only from Finder.
   explorerShowHidden: boolean;
+  // #282: show only these file extensions in the Explorer tree (lower-case,
+  // no dot; '' is the no-extension bucket). Empty = show everything. It
+  // persists, so the tree carries a permanent banner whenever it is set —
+  // a filter you can't see is indistinguishable from missing files.
+  explorerExtFilter: string[];
   // #141 (4.8.10): render a single newline as a real line break (Typora-like)
   // in preview / live editor / every export. Default ON — CJK users write
   // one-sentence-per-line and expect it to hold; standard blank-line
@@ -588,6 +593,7 @@ function defaults(): Settings {
     codeBlockWrap: false,
     explorerFullNames: false,
     explorerShowHidden: false,
+    explorerExtFilter: [] as string[],
     markdownHardBreaks: true,
     spellcheckLang: 'en_US',
     smartQuotes: false,
@@ -1256,6 +1262,17 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleExplorerShowHidden() {
       this.explorerShowHidden = !this.explorerShowHidden;
+      this.persist();
+    },
+    toggleExplorerExt(ext: string) {
+      const next = new Set(this.explorerExtFilter);
+      if (next.has(ext)) next.delete(ext);
+      else next.add(ext);
+      this.explorerExtFilter = [...next].sort();
+      this.persist();
+    },
+    clearExplorerExtFilter() {
+      this.explorerExtFilter = [];
       this.persist();
     },
     toggleMarkdownHardBreaks() {

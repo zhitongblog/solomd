@@ -145,6 +145,12 @@ export const nl: I18n = {
     insertNetworkImage: 'Afbeelding van URL…',
   },
   explorer: {
+    filterByType: 'Filteren op bestandstype',
+    filterAll: 'Alle bestanden',
+    filterNoExt: 'zonder extensie',
+    filterNoTypes: 'Nog niets om te filteren.',
+    filterActive: 'Alleen {types} worden getoond',
+    filterClear: 'Wissen',
     moveTo: 'Verplaatsen naar…',
     moveToTitle: '“{name}” verplaatsen naar…',
     moveToFilter: 'Mappen filteren…',

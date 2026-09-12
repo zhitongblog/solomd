@@ -146,6 +146,12 @@ export const zh: I18n = {
     insertNetworkImage: '网络图片（URL）…',
   },
   explorer: {
+    filterByType: '按文件类型过滤',
+    filterAll: '全部文件',
+    filterNoExt: '无扩展名',
+    filterNoTypes: '还没有可过滤的类型。',
+    filterActive: '只显示 {types}',
+    filterClear: '清除',
     moveTo: '移动到…',
     moveToTitle: '把「{name}」移动到…',
     moveToFilter: '筛选文件夹…',

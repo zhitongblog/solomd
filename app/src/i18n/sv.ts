@@ -145,6 +145,12 @@ export const sv: I18n = {
     insertNetworkImage: 'Bild från URL…',
   },
   explorer: {
+    filterByType: 'Filtrera på filtyp',
+    filterAll: 'Alla filer',
+    filterNoExt: 'utan filändelse',
+    filterNoTypes: 'Inget att filtrera ännu.',
+    filterActive: 'Visar bara {types}',
+    filterClear: 'Rensa',
     moveTo: 'Flytta till…',
     moveToTitle: 'Flytta ”{name}” till…',
     moveToFilter: 'Filtrera mappar…',

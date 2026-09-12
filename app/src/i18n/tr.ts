@@ -145,6 +145,12 @@ export const tr: I18n = {
     insertNetworkImage: 'URL\'den görsel…',
   },
   explorer: {
+    filterByType: 'Dosya türüne göre süz',
+    filterAll: 'Tüm dosyalar',
+    filterNoExt: 'uzantısız',
+    filterNoTypes: 'Henüz süzülecek bir tür yok.',
+    filterActive: 'Yalnızca {types} gösteriliyor',
+    filterClear: 'Temizle',
     moveTo: 'Şuraya taşı…',
     moveToTitle: '“{name}” şuraya taşı…',
     moveToFilter: 'Klasörleri süz…',

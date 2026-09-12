@@ -147,6 +147,12 @@ export const pt: I18n = {
     insertNetworkImage: 'Imagem de URL…',
   },
   explorer: {
+    filterByType: 'Filtrar por tipo de arquivo',
+    filterAll: 'Todos os arquivos',
+    filterNoExt: 'sem extensão',
+    filterNoTypes: 'Ainda não há nada para filtrar.',
+    filterActive: 'Mostrando apenas {types}',
+    filterClear: 'Limpar',
     moveTo: 'Mover para…',
     moveToTitle: 'Mover “{name}” para…',
     moveToFilter: 'Filtrar pastas…',
