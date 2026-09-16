@@ -67,6 +67,9 @@ fn price_table() -> &'static [(&'static str, &'static str, f64, f64)] {
         // ---- Doubao (Volcengine) ----------------------------------------
         ("doubao", "doubao-pro", 0.8, 2.0),
         ("volcengine", "doubao-pro", 0.8, 2.0),
+        // ---- MiniMax ----------------------------------------------------
+        ("minimax", "minimax-m3", 0.6, 2.4),
+        ("minimax", "minimax-m2.7", 0.3, 1.2),
         // ---- Aggregators / local: 0 default; per-model best effort can
         // ----                      be added over time.
         // siliconflow / openrouter / mistral / groq / xai / ollama → 0
@@ -76,6 +79,26 @@ fn price_table() -> &'static [(&'static str, &'static str, f64, f64)] {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn minimax_rates_and_cost_estimates() {
+        assert_eq!(rates_for("minimax", "MiniMax-M3"), (0.6, 2.4));
+        let cost = estimate_cost_usd("minimax", "MiniMax-M3", 1_000, 500);
+        assert!((cost - 0.0018).abs() < 1e-12, "got {cost}");
+        assert_eq!(rates_for("minimax", "MiniMax-M2.7"), (0.3, 1.2));
+        let cost = estimate_cost_usd("minimax", "MiniMax-M2.7", 1_000, 500);
+        assert!((cost - 0.0009).abs() < 1e-12, "got {cost}");
+    }
+
+    #[test]
+    fn minimax_preserves_lookup_and_zero_cost_fallbacks() {
+        assert_eq!(rates_for("minimax", "MINIMAX-M3-20260901"), (0.6, 2.4));
+        assert_eq!(rates_for("minimax", "MINIMAX-M2.7-20260901"), (0.3, 1.2));
+        assert_eq!(rates_for("minimax", "unknown"), (0.0, 0.0));
+        assert_eq!(estimate_cost_usd("minimax", "unknown", 1_000, 500), 0.0);
+        assert_eq!(rates_for("unknown", "MiniMax-M3"), (0.0, 0.0));
+        assert_eq!(estimate_cost_usd("minimax", "MiniMax-M3", 0, 0), 0.0);
+    }
 
     #[test]
     fn exact_match_returns_published_rate() {
