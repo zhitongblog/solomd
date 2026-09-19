@@ -1,3 +1,6 @@
+import { installRAFFallback } from './lib/rafFallback';
+installRAFFallback();
+
 import { createApp, defineAsyncComponent } from 'vue';
 import { createPinia } from 'pinia';
 import App from './App.vue';
