@@ -281,6 +281,7 @@ const COST_PER_1K: Record<string, { in: number; out: number }> = {
   volcengine: { in: 0.0004, out: 0.0012 },
   siliconflow: { in: 0.0004, out: 0.0012 },
   openrouter: { in: 0.003, out: 0.012 },
+  requesty: { in: 0.003, out: 0.012 },
   // Local models — no cost.
   ollama: { in: 0, out: 0 },
 };

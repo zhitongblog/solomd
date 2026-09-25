@@ -35,6 +35,7 @@ export type ProviderId =
   | 'minimax'
   // Aggregator
   | 'openrouter'
+  | 'requesty'
   | 'opencode-go'
   // Local
   | 'ollama'
@@ -226,6 +227,19 @@ export const PROVIDERS: ProviderConfig[] = [
     modelHint:
       'anthropic/claude-sonnet-4-6 · openai/gpt-5.5 · google/gemini-3.1-pro · deepseek/deepseek-v4 · x-ai/grok-4.20 · meta-llama/llama-4-scout',
     signupUrl: 'https://openrouter.ai/keys',
+  },
+  {
+    id: 'requesty',
+    label: 'Requesty (聚合,700+ 模型)',
+    apiFormat: 'openai',
+    defaultModel: 'anthropic/claude-sonnet-4-6',
+    // EU endpoint (https://router.eu.requesty.ai/v1) is reachable by
+    // overriding the base URL in AI Settings. Ids without a vendor prefix
+    // (claude-sonnet-4-6, gpt-5.5@eu) are Requesty managed policies.
+    defaultBaseUrl: 'https://router.requesty.ai/v1',
+    modelHint:
+      'anthropic/claude-sonnet-4-6 · openai/gpt-5.5 · google/gemini-3.1-pro-preview · deepseek/deepseek-v4.1-flash · xai/grok-4.5 · moonshot/kimi-k3 · claude-sonnet-4-6@eu',
+    signupUrl: 'https://app.requesty.ai/api-keys',
   },
   {
     id: 'opencode-go',

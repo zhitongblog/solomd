@@ -13,7 +13,7 @@
 //! rather than wrong.
 //!
 //! Local providers (Ollama) and aggregators where the per-call cost
-//! depends on the routed model (OpenRouter, SiliconFlow, Groq, Mistral
+//! depends on the routed model (OpenRouter, Requesty, SiliconFlow, Groq, Mistral
 //! mixed pool, xAI rate-limited tiers) intentionally fall through to 0.
 
 /// Returns `(input_per_1m_usd, output_per_1m_usd)` for the given
@@ -69,7 +69,7 @@ fn price_table() -> &'static [(&'static str, &'static str, f64, f64)] {
         ("volcengine", "doubao-pro", 0.8, 2.0),
         // ---- Aggregators / local: 0 default; per-model best effort can
         // ----                      be added over time.
-        // siliconflow / openrouter / mistral / groq / xai / ollama → 0
+        // siliconflow / openrouter / requesty / mistral / groq / xai / ollama → 0
     ]
 }
 
@@ -119,6 +119,8 @@ mod tests {
         assert_eq!((i2, o2), (0.0, 0.0));
         let (i3, o3) = rates_for("openrouter", "anthropic/claude-sonnet");
         assert_eq!((i3, o3), (0.0, 0.0));
+        let (i4, o4) = rates_for("requesty", "anthropic/claude-sonnet-4-6");
+        assert_eq!((i4, o4), (0.0, 0.0));
     }
 
     #[test]
