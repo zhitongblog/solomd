@@ -467,6 +467,7 @@ export const de: I18n = {
       "Der native Editor nutzt das Windows-eigene Textfeld und funktioniert zuverlässig mit chinesischen, japanischen und koreanischen Eingabemethoden. CodeMirror bietet Markdown-Syntaxhervorhebung und eine Live-Bearbeitung, die nicht zwischen gerendertem Text und Quelltext springt, kann unter WebView2 mit manchen Eingabemethoden aber das erste Zeichen verlieren oder Satzzeichen doppeln. Dann zurück auf „Nativ“ stellen.",
     windowsEditorEngineVimHint: "Im Vim-Modus wird immer CodeMirror verwendet. Zum Auswählen den Vim-Modus ausschalten.",
     slashCommandsEnabled: 'Slash-Befehle ( / ) — Popup mit Markdown-Blöcken (Überschrift, Liste, Code, Tabelle…), wenn Sie / am Zeilenanfang eingeben',
+    fenceLanguageSuggestions: 'Codeblock-Sprachen nach ``` vorschlagen',
     customCssFixedWarning: 'Dieses Theme setzt background-attachment: fixed auf body — es wird nicht empfohlen, background-attachment von body zu ändern, da dies beim Ziehen der rechten Seitenleiste zu Vollbild-Flackern führt.',
     customCss: 'Benutzerdefiniertes CSS-Design',
     customThemeOverrides: 'Die Farben kommen vom benutzerdefinierten Design „{name}“ – ein Wechsel des integrierten Designs bleibt möglicherweise ohne sichtbare Wirkung.',

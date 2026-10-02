@@ -469,6 +469,7 @@ export const zh: I18n = {
       "原生编辑器使用 Windows 自带的文本框，搜狗等中文、日文、韩文输入法都能稳定输入。CodeMirror 提供 Markdown 语法着色，实时编辑时不会在渲染和源码之间来回跳动；但在 WebView2 下，部分输入法可能吞掉第一个字或重复标点。遇到这种情况请切回「原生」。",
     windowsEditorEngineVimHint: "开启 Vim 模式时总是使用 CodeMirror。关闭 Vim 模式后可以选择。",
     slashCommandsEnabled: '斜杠命令 ( / ) —— 在空行输入 / 时弹出菜单，可快速插入标题、列表、代码块、表格等 Markdown 块',
+    fenceLanguageSuggestions: '输入 ``` 后建议代码块语言',
     customCss: '自定义 CSS 主题',
     customThemeOverrides: '配色目前由自定义主题「{name}」提供，切换内置主题可能不会有任何变化。',
     customThemeDisable: '停用它',

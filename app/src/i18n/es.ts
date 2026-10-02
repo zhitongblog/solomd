@@ -467,6 +467,7 @@ export const es: I18n = {
       "El editor nativo usa el cuadro de texto de Windows y funciona de forma fiable con métodos de entrada chinos, japoneses y coreanos. CodeMirror añade resaltado de sintaxis Markdown y una edición en vivo que no salta entre el texto renderizado y el código, pero en WebView2 algunos métodos de entrada pueden perder el primer carácter o duplicar la puntuación. Si ocurre, vuelve a «Nativo».",
     windowsEditorEngineVimHint: "El modo Vim siempre usa CodeMirror. Desactiva el modo Vim para elegir.",
     slashCommandsEnabled: 'Comandos slash ( / ) — popup con bloques Markdown (título, lista, código, tabla…) al escribir / al inicio de línea',
+    fenceLanguageSuggestions: 'Sugerir lenguajes de bloques de código después de ```',
     customCssFixedWarning: 'Este tema establece background-attachment: fixed en body — no se recomienda cambiar background-attachment de body, ya que causa parpadeo a pantalla completa al arrastrar la barra lateral derecha.',
     customCss: 'Tema CSS personalizado',
     customThemeOverrides: 'Los colores los aporta el tema personalizado «{name}», así que cambiar el tema integrado puede no verse reflejado.',

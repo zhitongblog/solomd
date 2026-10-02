@@ -1905,7 +1905,7 @@ function maybeOpenPlainAutocomplete(el: HTMLTextAreaElement) {
     // two editors cannot disagree about what counts as an opener — and the
     // same "already inside a fence" test, so typing the *closing* fence never
     // pops a list whose Enter would insert a language into it.
-    const opener = matchFenceOpener(before);
+    const opener = settings.fenceLanguageSuggestions ? matchFenceOpener(before) : null;
     if (opener && !isInsideFenceBefore(before.slice(0, before.lastIndexOf('\n') + 1))) {
       kind = 'fence';
       query = opener.query;
@@ -3253,7 +3253,7 @@ function buildExtensions() {
           tagAutocompleteExtension(),
           citationsExtension(() => cachedCitations),
           // #297 — opens itself on the third backtick of a fence opener.
-          fenceLanguageExtension(),
+          fenceLanguageExtension(() => settings.fenceLanguageSuggestions),
           // Single autocompletion config combining all 4 markdown sources
           // (wikilinks `[[`, tags `#`, citations `@`, fence languages ```).
           // CM6 disallows multiple `autocompletion({ override })` extensions.

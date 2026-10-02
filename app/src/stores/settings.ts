@@ -259,6 +259,7 @@ interface Settings {
   // editor. Default ON — can be turned off for users who don't like
   // the keyboard interception.
   slashCommandsEnabled: boolean;
+  fenceLanguageSuggestions: boolean;
   // v3.6: PNG export — show "Created with SoloMD · solomd.app" footer
   // under the rendered note. Default ON (mild self-promotion is fine
   // for a free MIT app), but explicitly toggleable in Settings → Export
@@ -667,6 +668,7 @@ function defaults(): Settings {
     pomodoroAutoEngageFocus: true,
     pomodoroDefaultMinutes: 25,
     slashCommandsEnabled: true,
+    fenceLanguageSuggestions: true,
     imageExportBranding: true,
     globalZoom: 1,
     wheelZoomEnabled: true,
@@ -1360,6 +1362,10 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleSlashCommandsEnabled() {
       this.slashCommandsEnabled = !this.slashCommandsEnabled;
+      this.persist();
+    },
+    toggleFenceLanguageSuggestions() {
+      this.fenceLanguageSuggestions = !this.fenceLanguageSuggestions;
       this.persist();
     },
     toggleImageExportBranding() {
