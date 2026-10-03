@@ -467,6 +467,7 @@ export const ja: I18n = {
       "ネイティブは Windows 標準のテキストボックスを使い、中国語・日本語・韓国語の IME で安定して入力できます。CodeMirror は Markdown のシンタックスハイライトと、表示とソースが切り替わって跳ねないライブ編集を提供しますが、WebView2 では一部の IME で最初の文字が消えたり句読点が重複したりすることがあります。その場合は「ネイティブ」に戻してください。",
     windowsEditorEngineVimHint: "Vim モードでは常に CodeMirror を使います。選択するには Vim モードをオフにしてください。",
     slashCommandsEnabled: 'スラッシュコマンド ( / ) — 新しい行で / を入力すると Markdown ブロック（見出し、リスト、コード、テーブル…）のポップアップが表示',
+    fenceLanguageSuggestions: '``` の入力後にコードブロックの言語を提案する',
     customCssFixedWarning: 'このテーマは body の background-attachment を fixed に変更しています — body のこの属性は変更しないことをお勧めします。変更すると、右側カードをドラッグする際に全画面でちらつきます！',
     customCss: 'カスタム CSS テーマ',
     customThemeOverrides: '配色はカスタムテーマ「{name}」が提供しているため、内蔵テーマを切り替えても見た目が変わらないことがあります。',

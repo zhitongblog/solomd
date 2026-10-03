@@ -467,6 +467,7 @@ export const ko: I18n = {
       "네이티브는 Windows 기본 텍스트 상자를 사용해 중국어·일본어·한국어 입력기로 안정적으로 입력할 수 있습니다. CodeMirror는 Markdown 구문 강조와, 렌더링과 원문 사이를 오가며 튀지 않는 실시간 편집을 제공하지만 WebView2에서 일부 입력기는 첫 글자가 사라지거나 문장부호가 중복될 수 있습니다. 그런 경우 「네이티브」로 되돌리세요.",
     windowsEditorEngineVimHint: "Vim 모드에서는 항상 CodeMirror를 사용합니다. 선택하려면 Vim 모드를 끄세요.",
     slashCommandsEnabled: '슬래시 명령(/) — 새 줄에서 /를 입력하면 Markdown 블록(제목, 목록, 코드, 표 등) 팝업',
+    fenceLanguageSuggestions: '``` 입력 후 코드 블록 언어 제안',
     customCssFixedWarning: '이 테마는 body의 background-attachment를 fixed로 변경했습니다 — body의 이 속성은 변경하지 않는 것이 좋습니다. 변경하면 오른쪽 카드를 드래그할 때 전체 화면이 깜빡입니다!',
     customCss: '사용자 지정 CSS 테마',
     customThemeOverrides: '색상은 사용자 지정 테마 “{name}”이(가) 제공하므로 기본 테마를 바꿔도 화면이 달라지지 않을 수 있습니다.',

@@ -467,6 +467,7 @@ export const fr: I18n = {
       "L’éditeur natif utilise la zone de texte de Windows et fonctionne de façon fiable avec les méthodes de saisie chinoises, japonaises et coréennes. CodeMirror ajoute la coloration syntaxique Markdown et une édition en direct qui ne saute pas entre rendu et source, mais sous WebView2 certaines méthodes de saisie peuvent perdre le premier caractère ou doubler la ponctuation. Dans ce cas, revenez à « Natif ».",
     windowsEditorEngineVimHint: "Le mode Vim utilise toujours CodeMirror. Désactivez le mode Vim pour choisir.",
     slashCommandsEnabled: 'Commandes slash ( / ) — popup avec blocs Markdown (titre, liste, code, tableau…) lors de la saisie de / en début de ligne',
+    fenceLanguageSuggestions: 'Suggérer des langages de bloc de code après ```',
     customCssFixedWarning: 'Ce thème définit background-attachment: fixed sur body — il n’est pas recommandé de modifier background-attachment de body, car cela provoque un scintillement plein écran lors du glissement de la barre latérale droite.',
     customCss: 'Thème CSS personnalisé',
     customThemeOverrides: 'Les couleurs viennent du thème personnalisé « {name} » : changer de thème intégré peut ne rien changer à l’écran.',

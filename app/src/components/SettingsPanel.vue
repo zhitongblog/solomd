@@ -2061,6 +2061,13 @@ function onSelectPdfFont(v: string) {
           </label>
         </section>
 
+        <section data-cat="writing">
+          <label>
+            <input type="checkbox" :checked="settings.fenceLanguageSuggestions" @change="settings.toggleFenceLanguageSuggestions()" />
+            {{ t('settings.fenceLanguageSuggestions') }}
+          </label>
+        </section>
+
         <!-- v4.6 F6 — Inbox workflow -->
         <section data-cat="writing">
           <label>

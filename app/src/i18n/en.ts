@@ -470,6 +470,7 @@ export const en = {
       "The native editor uses Windows' own text box, which works reliably with Chinese, Japanese and Korean input methods such as Sogou. CodeMirror adds Markdown syntax highlighting and a live edit that doesn't jump between rendered and source text, but under some input methods in WebView2 it can drop the first character or double punctuation. If that happens, switch back to Native.",
     windowsEditorEngineVimHint: "Vim mode always uses CodeMirror. Turn Vim mode off to choose.",
     slashCommandsEnabled: 'Slash commands ( / ) — popup with Markdown blocks (Heading, list, code, table…) when you type / on a new line',
+    fenceLanguageSuggestions: 'Suggest code-block languages after ```',
     customCssFixedWarning: 'This theme sets background-attachment: fixed on body — it’s not recommended to change body’s background-attachment, as it causes full-screen flicker when dragging the right sidebar.',
     customCss: 'Custom CSS Theme',
     customThemeOverrides: 'The custom theme “{name}” is supplying the colours, so the built-in theme may have no visible effect.',

@@ -60,17 +60,17 @@ export function fenceLanguageComplete(context: CompletionContext): CompletionRes
  * config in Editor.vue deliberately turned off. This only ever fires for the
  * one keystroke that opens a fence.
  */
-export function fenceLanguageExtension(): Extension {
+export function fenceLanguageExtension(enabled: () => boolean = () => true): Extension {
   return [
     EditorView.updateListener.of((update) => {
-      if (!update.docChanged || update.view.composing) return;
+      if (!enabled() || !update.docChanged || update.view.composing) return;
 
       const view = update.view;
       // Dispatching straight from an update listener is unsupported, so defer
       // a frame — the same deferral the incremental-find listener in Editor.vue
       // uses for the same reason.
       requestAnimationFrame(() => {
-        if (!view.dom.isConnected) return;
+        if (!enabled() || !view.dom.isConnected) return;
         const pos = view.state.selection.main.head;
         const line = view.state.doc.lineAt(pos);
         const opener = matchFenceOpener(view.state.doc.sliceString(line.from, pos));
