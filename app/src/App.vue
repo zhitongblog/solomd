@@ -690,6 +690,8 @@ watchEffect(() => {
 let themeAppliedOnce = false;
 watchEffect(() => {
   document.documentElement.setAttribute('data-theme', dataThemeFor(settings.theme, !!settings.customCssPath));
+  // 5.0 tokens: the exact default palette stays out of a marketplace theme's way.
+  document.documentElement.toggleAttribute('data-custom-theme', !!settings.customCssPath);
   const overriddenBy = settings.customCssPath;
   if (!themeAppliedOnce) {
     themeAppliedOnce = true;

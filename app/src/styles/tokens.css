@@ -1,87 +1,150 @@
-/* SoloMD 4.6 design token layer — single source of truth for the design system.
+/* SoloMD design tokens — 5.0 (docs/v5-ui-spec.md §2).
  *
- * Imported FIRST from main.css so that main.css and the 8 named themes still
- * cascade AFTER this file and win where they must. This file:
- *   1. Adds the brand-new proportional scales that never existed before
- *      (spacing / radius / shadow / z-index / motion / focus-ring).
- *   2. Re-seeds ONLY the default (`:root`, i.e. light) and dark semantic
- *      surface colors with Tolaria's warm-neutral palette (plan §2.4).
- *      The other 7 themes (nord / solarized-light / solarized-dark / monokai
- *      / github-light / dracula …) override these same vars later in main.css
- *      and are deliberately untouched here.
+ * Imported FIRST from main.css, so main.css and the named themes cascade after
+ * this file. Three layers:
  *
- * Hard rule for everything under app/src/ui/: consume these tokens, never
- * inline a raw hex / px-shadow magic value.
+ *   1. Scales that do not depend on colour (spacing, radius, motion, z-index).
+ *   2. 5.0 semantic tokens DERIVED from the long-standing theme variables
+ *      (--bg, --bg-elev, --text, --text-muted, --accent, --border). These are
+ *      what the seven other built-in themes and every marketplace theme get:
+ *      those themes only ever set the old variables, so anything new has to
+ *      fall out of them or it would paint the default palette into Nord.
+ *   3. The exact 5.0 palette for the default light and dark themes, scoped
+ *      away from the named themes and from custom (marketplace) CSS themes —
+ *      App.vue sets `data-custom-theme` on <html> while one is active.
+ *
+ * Rule for everything under app/src/ui/ and every 5.0 surface: consume these
+ * tokens, never inline a hex or a shadow.
  */
 
 :root {
-  /* Spacing scale — 4 / 8 / 12 / 16 / 24 / 32 (8pt base) */
+  /* ── 1. scales ─────────────────────────────────────────────────────── */
   --sp-1: 4px;
   --sp-2: 8px;
   --sp-3: 12px;
   --sp-4: 16px;
   --sp-5: 24px;
   --sp-6: 32px;
+  --sp-7: 48px;
 
-  /* Radius — base tone is 8px */
-  --r-sm: 4px;
+  --r-xs: 4px;
+  --r-sm: 6px;
   --r-md: 8px;
-  --r-lg: 12px;
+  --r-lg: 10px;
+  --r-xl: 14px;
   --r-full: 999px;
 
-  /* Shadow — restrained, never garish */
-  --sh-1: 0 1px 2px rgba(0, 0, 0, 0.06);
-  --sh-2: 0 4px 12px rgba(0, 0, 0, 0.08);
-  --sh-pop: 0 8px 28px rgba(0, 0, 0, 0.12);
+  /* Hairline: 1px, halved on 2x screens below — what AppKit draws. */
+  --hair-w: 1px;
 
-  /* Border shorthand */
-  --bd: 1px solid var(--border);
-
-  /* z-index layers */
   --z-pane: 10;
   --z-sticky: 50;
   --z-pop: 1000;
   --z-modal: 2000;
   --z-toast: 3000;
 
-  /* Motion */
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
   --dur-fast: 120ms;
   --dur: 180ms;
+  --dur-slow: 220ms;
 
-  /* Accent — warm orange brand, locked */
-  --accent: #ff9f40;
-  --accent-fg: #1a1a1a;
-  --accent-soft: rgba(255, 159, 64, 0.1);
-  --accent-ring: rgba(255, 159, 64, 0.45);
+  /* Header / chrome geometry */
+  --header-h: 52px;
+  --win-titlebar-h: 44px;
+  --sidebar-w: 260px;
+  --measure: 680px;
 
-  /* Focus ring — 2px gap then 2px accent halo (the "premium" detail) */
+  /* ── 2. derived 5.0 tokens (all themes) ─────────────────────────────── */
+  --bg-sidebar: var(--bg-elev);
+  --bg-pop: var(--bg);
+  --fill-1: color-mix(in srgb, var(--text) 6%, transparent);
+  --fill-2: color-mix(in srgb, var(--text) 10%, transparent);
+  --hairline: color-mix(in srgb, var(--text) 10%, transparent);
+  --text-2: var(--text-muted);
+  --text-3: color-mix(in srgb, var(--text-muted) 80%, var(--bg));
+  --accent-text: var(--accent);
+  --accent-strong: var(--accent);
+  --accent-strong-fg: var(--accent-fg);
+  --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
+  --select-inactive: color-mix(in srgb, var(--text) 9%, transparent);
+
+  --sh-1: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --sh-2: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --sh-pop: 0 12px 32px rgba(0, 0, 0, 0.14), 0 1px 3px rgba(0, 0, 0, 0.08);
+  --sh-modal: 0 24px 64px rgba(0, 0, 0, 0.2), 0 2px 8px rgba(0, 0, 0, 0.08);
+  --sh-thumb: 0 1px 2px rgba(0, 0, 0, 0.12), 0 0 0 0.5px rgba(0, 0, 0, 0.04);
+
+  --bd: var(--hair-w) solid var(--border);
+  --bd-hair: var(--hair-w) solid var(--hairline);
+
+  --accent-ring: color-mix(in srgb, var(--accent) 45%, transparent);
   --ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent-ring);
 
-  /* Semantic status colors (shared across light/dark; themes may override) */
-  --danger: #e53e3e;
+  --danger: #d64545;
   --danger-fg: #ffffff;
-  --success: #38a169;
-  --warning: #d4a017;
+  --success: #3a9d4e;
+  --warning: #c9a227;
 
-  /* Warm-neutral surfaces (plan §2.4) — DEFAULT / light.
-   * Only :root and :root[data-theme="dark"] adopt these; the named themes
-   * keep their own palettes via later overrides in main.css. */
+  /* Defaults for the long-standing variables (light). main.css re-states
+     them; the named themes override them. */
   --bg: #ffffff;
   --bg-elev: #f7f6f3;
-  --border: #e9e9e7;
-  --text: #37352f;
-  --text-muted: #787774;
+  --border: #e9e8e4;
+  --text: #1f1e1c;
+  --text-muted: #5e5b55;
+  --accent: #e07b39;
+  --accent-fg: #1a1a1a;
 }
 
-:root[data-theme="dark"] {
-  --accent: #ffa54d;
-  --accent-fg: #1a1a1a;
+@media (min-resolution: 2dppx) {
+  :root {
+    --hair-w: 0.5px;
+  }
+}
 
-  /* Warm-neutral dark surfaces (plan §2.4) — warm black, not pure #000 */
-  --bg: #1f1e1b;
-  --bg-elev: #23221f;
-  --border: #34322d;
-  --text: #e6e1d8;
-  --text-muted: #b8b1a6;
+/* ── 3a. exact 5.0 palette — default light ─────────────────────────────── */
+:root:not([data-custom-theme]):is(:not([data-theme]), [data-theme="light"]) {
+  --bg-sidebar: #f4f3f0;
+  --bg-pop: #ffffff;
+  --fill-1: rgba(31, 30, 28, 0.05);
+  --fill-2: rgba(31, 30, 28, 0.08);
+  --hairline: rgba(31, 30, 28, 0.08);
+  --text-2: #5e5b55;
+  --text-3: #78756e;
+  --accent-text: #b4561b;
+  --accent-strong: #b9561f;
+  --accent-strong-fg: #ffffff;
+  --accent-soft: rgba(224, 123, 57, 0.13);
+  --select-inactive: rgba(31, 30, 28, 0.08);
+}
+
+/* ── 3b. exact 5.0 palette — default dark ──────────────────────────────── */
+:root[data-theme="dark"]:not([data-custom-theme]) {
+  --bg-sidebar: #232325;
+  --bg-pop: #2c2c2f;
+  --fill-1: rgba(255, 255, 255, 0.07);
+  --fill-2: rgba(255, 255, 255, 0.11);
+  --hairline: rgba(255, 255, 255, 0.08);
+  --text-2: #a9a6a0;
+  --text-3: #8c8984;
+  --accent-text: #f4a26b;
+  --accent-strong: #e07b39;
+  --accent-strong-fg: #ffffff;
+  --accent-soft: rgba(240, 150, 90, 0.18);
+  --select-inactive: rgba(255, 255, 255, 0.1);
+
+  --sh-1: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --sh-2: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --sh-pop: 0 12px 32px rgba(0, 0, 0, 0.36), 0 0 0 0.5px rgba(255, 255, 255, 0.08);
+  --sh-modal: 0 24px 64px rgba(0, 0, 0, 0.5), 0 0 0 0.5px rgba(255, 255, 255, 0.08);
+  --sh-thumb: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0ms;
+    --dur: 0ms;
+    --dur-slow: 0ms;
+  }
 }

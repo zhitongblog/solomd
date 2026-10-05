@@ -221,5 +221,131 @@ defineProps<{ name: string; size?: number }>();
       <line x1="12" y1="4" x2="12" y2="20" />
       <line x1="9" y1="20" x2="15" y2="20" />
     </template>
+    <template v-else-if="name === 'today'">
+      <circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5" />
+    </template>
+    <template v-else-if="name === 'inbox'">
+      <path d="M4 13l2-8h12l2 8" /><path d="M4 13v5a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5h-5a3 3 0 0 1-6 0H4z" />
+    </template>
+    <template v-else-if="name === 'chevron-right'">
+      <path d="M9 6l6 6-6 6" />
+    </template>
+    <template v-else-if="name === 'chevron-left'">
+      <path d="M15 6l-6 6 6 6" />
+    </template>
+    <template v-else-if="name === 'more'">
+      <circle cx="5" cy="12" r="1.2" /><circle cx="12" cy="12" r="1.2" /><circle cx="19" cy="12" r="1.2" />
+    </template>
+    <template v-else-if="name === 'bold'">
+      <path d="M7 5h6a3.5 3.5 0 0 1 0 7H7z" /><path d="M7 12h7a3.5 3.5 0 0 1 0 7H7z" />
+    </template>
+    <template v-else-if="name === 'italic'">
+      <path d="M14 5h-4M14 19h-4M14 5l-4 14" />
+    </template>
+    <template v-else-if="name === 'code'">
+      <path d="M8 8l-4 4 4 4M16 8l4 4-4 4" />
+    </template>
+    <template v-else-if="name === 'link'">
+      <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1" /><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" />
+    </template>
+    <template v-else-if="name === 'heading'">
+      <path d="M6 5v14M18 5v14M6 12h12" />
+    </template>
+    <template v-else-if="name === 'list'">
+      <path d="M9 6h11M9 12h11M9 18h11" /><circle cx="4.5" cy="6" r="1" /><circle cx="4.5" cy="12" r="1" /><circle cx="4.5" cy="18" r="1" />
+    </template>
+    <template v-else-if="name === 'task'">
+      <rect x="4" y="4" width="16" height="16" rx="4" /><path d="M8 12l3 3 5-6" />
+    </template>
+    <template v-else-if="name === 'image'">
+      <rect x="3" y="5" width="18" height="14" rx="3" /><circle cx="9" cy="10" r="1.6" /><path d="M21 16l-5-5-8 8" />
+    </template>
+    <template v-else-if="name === 'undo'">
+      <path d="M9 14L4 9l5-5" /><path d="M4 9h11a5 5 0 0 1 0 10h-3" />
+    </template>
+    <template v-else-if="name === 'redo'">
+      <path d="M15 14l5-5-5-5" /><path d="M20 9H9a5 5 0 0 0 0 10h3" />
+    </template>
+    <template v-else-if="name === 'keyboard-hide'">
+      <rect x="2" y="5" width="20" height="11" rx="2" /><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M7 12.5h10M9 19.5l3 2 3-2" />
+    </template>
+    <template v-else-if="name === 'sparkle'">
+      <path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z" />
+    </template>
+    <template v-else-if="name === 'sync'">
+      <path d="M20 11a8 8 0 0 0-14.3-4.9L4 8" /><path d="M4 4v4h4" /><path d="M4 13a8 8 0 0 0 14.3 4.9L20 16" /><path d="M20 20v-4h-4" />
+    </template>
+    <template v-else-if="name === 'check-circle'">
+      <circle cx="12" cy="12" r="9" /><path d="M8.5 12.5l2.5 2.5 4.5-5" />
+    </template>
+    <template v-else-if="name === 'tag'">
+      <path d="M3 12V5a2 2 0 0 1 2-2h7l9 9-9 9-9-9z" /><circle cx="8" cy="8" r="1.4" />
+    </template>
+    <template v-else-if="name === 'plus'">
+      <path d="M12 5v14M5 12h14" />
+    </template>
+    <template v-else-if="name === 'sort'">
+      <path d="M7 4v16M4 7l3-3 3 3M17 20V4M14 17l3 3 3-3" />
+    </template>
+    <template v-else-if="name === 'filter'">
+      <path d="M4 5h16l-6 8v5l-4 2v-7z" />
+    </template>
+    <template v-else-if="name === 'refresh'">
+      <path d="M20 11a8 8 0 1 0-2.3 5.7" /><path d="M20 4v7h-7" />
+    </template>
+    <template v-else-if="name === 'home'">
+      <path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1v-8z" />
+    </template>
+    <template v-else-if="name === 'share'">
+      <path d="M12 3v12M8 7l4-4 4 4" /><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" />
+    </template>
+    <template v-else-if="name === 'file'">
+      <path d="M7 3h7l5 5v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" /><path d="M14 3v5h5" />
+    </template>
+    <template v-else-if="name === 'folder-sm'">
+      <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />
+    </template>
+    <template v-else-if="name === 'eye'">
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" />
+    </template>
+    <template v-else-if="name === 'pencil'">
+      <path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+    </template>
+    <template v-else-if="name === 'trash'">
+      <path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" />
+    </template>
+    <template v-else-if="name === 'quote'">
+      <path d="M7 7h4v4c0 3-2 5-4 6M15 7h4v4c0 3-2 5-4 6" />
+    </template>
+    <template v-else-if="name === 'command'">
+      <path d="M9 6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3z" />
+    </template>
+    <template v-else-if="name === 'globe'">
+      <circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
+    </template>
+    <template v-else-if="name === 'cloud'">
+      <path d="M7 18a4.5 4.5 0 0 1-.5-9A6 6 0 0 1 18 8.5 4.75 4.75 0 0 1 17.5 18z" />
+    </template>
+    <template v-else-if="name === 'plug'">
+      <path d="M9 3v5M15 3v5M7 8h10v3a5 5 0 0 1-10 0zM12 16v5" />
+    </template>
+    <template v-else-if="name === 'keyboard'">
+      <rect x="2" y="6" width="20" height="12" rx="2" /><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10" />
+    </template>
+    <template v-else-if="name === 'wrench'">
+      <path d="M14.7 6.3a4 4 0 0 0 5 5L21 13l-8 8-2-2 1.3-1.3a4 4 0 0 0-5-5L3 11l2-2 1.3 1.3" />
+    </template>
+    <template v-else-if="name === 'type'">
+      <path d="M5 6V5h14v1M12 5v14M9 19h6" />
+    </template>
+    <template v-else-if="name === 'cpu'">
+      <rect x="6" y="6" width="12" height="12" rx="2" /><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4" />
+    </template>
+    <template v-else-if="name === 'info'">
+      <circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" />
+    </template>
+    <template v-else-if="name === 'download'">
+      <path d="M12 3v12M8 11l4 4 4-4" /><path d="M5 19h14" />
+    </template>
   </svg>
 </template>
