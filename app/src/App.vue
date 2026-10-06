@@ -42,9 +42,8 @@ import { INBOX_OPEN_EVENT, INBOX_CLOSE_EVENT } from './composables/useInboxView'
 // v4.6.1 F2 — Type lens (center-pane filtered view of one type's members).
 const TypeLensView = defineAsyncComponent(() => import('./components/TypeLensView.vue'));
 import { TYPE_LENS_OPEN_EVENT, TYPE_LENS_CLOSE_EVENT } from './composables/useTypeLens';
-import FileTree from './components/FileTree.vue';
+import Sidebar from './components/Sidebar.vue';
 // v4.6 F5 — Saved filtered views (sidebar panel + filtered list + editor).
-import ViewsPanel from './components/ViewsPanel.vue';
 import ViewNoteList from './components/ViewNoteList.vue';
 import ViewEditorDialog from './components/ViewEditorDialog.vue';
 import { VIEW_OPEN_EVENT, VIEW_CLOSE_EVENT } from './composables/useSavedViews';
@@ -1985,10 +1984,15 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
           aria-hidden="true"
           @click="closeNarrowDrawer"
         />
-        <div v-if="settings.showFileTree || settings.showViewsPanel" class="left-stack">
-          <FileTree v-if="settings.showFileTree" />
-          <ViewsPanel v-if="settings.showViewsPanel" />
-        </div>
+        <Sidebar
+          v-if="settings.showFileTree"
+          class="left-stack"
+          :mac-inset="false"
+          @toggle="settings.toggleFileTree()"
+          @open-settings="openSettingsAt()"
+          @open-quick-switcher="quickSwitcherOpen = true"
+          @filter-tag="onFilterTag"
+        />
         <aside
           v-if="showRightSidebar && settings.outlineSide === 'left'"
           class="side-sidebar side-sidebar--left"
