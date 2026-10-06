@@ -556,8 +556,8 @@ pub fn fs_delete(path: String) -> Result<(), String> {
 /// Matching on `read_dir`'s error string would be a guess: it is localized on
 /// Windows.
 /// Version of the system webview (WebView2 on Windows, e.g. "154.0.4258.48").
-/// The frontend's opt-in "auto" Windows editor engine picks CodeMirror from
-/// WebView2 154 on (where Microsoft Pinyin types correctly in it).
+/// The frontend picks the Windows editor engine from it: CodeMirror's
+/// input-method problems were WebView2-side and are gone from 154 on.
 #[tauri::command]
 pub fn webview_runtime_version() -> Option<String> {
     tauri::webview_version().ok()

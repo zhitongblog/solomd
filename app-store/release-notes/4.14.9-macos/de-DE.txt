@@ -1,0 +1,9 @@
+Schnellerer Start: rund die Hälfte der Startarbeit entfällt – Sie können früher losschreiben.
+
+Jeder Befehl der Befehlspalette ist jetzt auch in den Menüs zu finden, darunter Schnellnotiz, Tagesnotizen, Eingang, Sync & Verlauf sowie Groß-/Kleinschreibung und Chinesisch-Umwandlung.
+
+Das × oben im Dateibaum blendet jetzt nur den Baum aus, statt Ihr Dokument zu schließen; „Ordner schließen“ steckt im Menü des Ordnernamens.
+
+Mit „Beim Öffnen zum Ordner wechseln“ erscheint ein ausgeblendeter Dateibaum nicht mehr von selbst.
+
+Danke an unseren Tester 张工, dessen Bericht diese Änderungen angestoßen hat.

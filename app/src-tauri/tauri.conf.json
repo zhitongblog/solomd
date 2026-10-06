@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "SoloMD",
-  "version": "4.14.8",
+  "version": "4.14.9",
   "identifier": "app.solomd",
   "build": {
     "beforeDevCommand": "pnpm dev",
@@ -21,7 +21,8 @@
         "visible": false,
         "center": true,
         "titleBarStyle": "Overlay",
-        "hiddenTitle": true
+        "hiddenTitle": true,
+        "trafficLightPosition": { "x": 20, "y": 20 }
       }
     ],
     "security": {

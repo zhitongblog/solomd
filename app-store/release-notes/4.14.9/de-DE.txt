@@ -1,0 +1,5 @@
+Schnellerer Start: rund die Hälfte der Startarbeit entfällt – Sie können früher losschreiben.
+
+Das × oben im Dateibaum blendet jetzt nur den Baum aus, statt Ihr Dokument zu schließen; „Ordner schließen“ steckt im Menü des Ordnernamens.
+
+Danke an unseren Tester 张工, dessen Bericht diese Änderungen angestoßen hat.

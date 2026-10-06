@@ -11,6 +11,7 @@ import { eventToCombo, resolveBindings } from '../lib/keybindings';
 import { FORMAT_KINDS, type FormatKind } from '../lib/md-format';
 import { MARKDOWN_ONLY_COMMANDS, type EditorCommand } from '../lib/editor-commands';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { IS_APP_STORE_BUILD } from '../lib/app-build';
 
 interface Hooks {
   openPalette?: () => void;
@@ -24,6 +25,10 @@ interface Hooks {
   /** v2.5 F6: open the CJK proofread panel (⌘⇧J — J for "句"/sentence). */
   openCjkProofread?: () => void;
 }
+
+/** Bound in CodeMirror's keymap too; the global handler only covers the
+ *  places CodeMirror isn't (the native editor, panels, the file tree). */
+const CM_HANDLED = new Set(['editor.aiRewrite']);
 
 export function useShortcuts(hooks: Hooks = {}) {
   const files = useFiles();
@@ -115,6 +120,15 @@ export function useShortcuts(hooks: Hooks = {}) {
     'file.exit': () => void getCurrentWindow().close(),
 
     'editor.caseCycle': () => runById('editor.caseCycle'),
+    // 张工 4.14.8 report #5: AI rewrite was bound only inside CodeMirror's
+    // keymap, so in the Windows native editor (and with focus anywhere else)
+    // Ctrl+J fell through to WebView2, which opened its downloads page. Here
+    // it runs the toolbar's AI rewrite, which reads the selection from either
+    // editor. CodeMirror keeps handling it itself — see CM_HANDLED below.
+    'editor.aiRewrite': () => {
+      if (IS_APP_STORE_BUILD) return false;
+      window.dispatchEvent(new CustomEvent('solomd:toolbar-ai-rewrite'));
+    },
     'editor.selectWord': () => editorCommand('selectWord'),
     'editor.deleteWord': () => editorCommand('deleteWord'),
     'editor.selectLine': () => editorCommand('selectLine'),
@@ -215,6 +229,9 @@ export function useShortcuts(hooks: Hooks = {}) {
     const bindings = resolveBindings(settings.keybindings);
     const actionId = bindings.get(combo);
     if (!actionId) return;
+    // Actions CodeMirror's own keymap already ran (it calls preventDefault):
+    // running them again here would open the same overlay twice.
+    if (e.defaultPrevented && CM_HANDLED.has(actionId)) return;
     const run = actions[actionId];
     if (!run) return;
     if (run() === false) return; // action declined — leave the event alone

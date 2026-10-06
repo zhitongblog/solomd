@@ -1,0 +1,5 @@
+Faster launch: about half the startup work is gone, so you can start writing sooner after the window appears.
+
+The × in the file tree's corner now just hides the tree instead of closing your document; Close Folder moved into the folder name's menu.
+
+Thank you to our tester 张工, whose report led to these changes.

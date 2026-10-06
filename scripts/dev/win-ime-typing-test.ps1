@@ -1,4 +1,4 @@
-param([string]$Exe = "notepad.exe", [string]$Title = "", [switch]$NewTab, [string]$ExeArgs = "", [string]$WinText = "", [int]$AfterEnterMs = 300, [int]$BeforeEnterMs = 300, [string]$Out = "C:\Users\Public\ime-result.txt", [int]$Settle = 4)
+﻿param([string]$Exe = "notepad.exe", [string]$Title = "", [switch]$NewTab, [string]$ExeArgs = "", [string]$WinText = "", [int]$AfterEnterMs = 300, [int]$BeforeEnterMs = 300, [string]$Out = "C:\Users\Public\ime-result.txt", [int]$Settle = 4, [switch]$MidInsert, [string]$MidClick = "", [switch]$Blocks)
 $ErrorActionPreference = "Continue"
 Add-Type @"
 using System; using System.Runtime.InteropServices; using System.Text;
@@ -79,7 +79,29 @@ $tid = [W]::GetWindowThreadProcessId($target, [IntPtr]::Zero)
 L ("hkl=0x{0:X}" -f [int64][W]::GetKeyboardLayout($tid))
 # the test text: each line = pinyin + space (pick first candidate), punctuation via , and .
 $lines = @("zheshi diyihang ", "nihao shijie ", "women shi pengyou ", "zhege zi bu neng diu ", "jintian tianqi henhao ,", "zaijian ", "shuru fa ceshi ", "zuihou yihang ,,, ..")
-foreach ($ln in $lines) { $parts = $ln -split "~"; for ($pi = 0; $pi -lt $parts.Count; $pi++) { if ($pi % 2 -eq 1) { Set-Clipboard -Value $parts[$pi]; Start-Sleep -Milliseconds 150; Combo @(0x11) 0x56; Start-Sleep -Milliseconds 300 } else { TypeAscii $parts[$pi] } }; Start-Sleep -Milliseconds $BeforeEnterMs; Key 0x0D; Start-Sleep -Milliseconds $AfterEnterMs }
+foreach ($ln in $lines) { $parts = $ln -split "~"; for ($pi = 0; $pi -lt $parts.Count; $pi++) { if ($pi % 2 -eq 1) { Set-Clipboard -Value $parts[$pi]; Start-Sleep -Milliseconds 150; Combo @(0x11) 0x56; Start-Sleep -Milliseconds 300 } else { TypeAscii $parts[$pi] } }; Start-Sleep -Milliseconds $BeforeEnterMs; Key 0x0D; if ($Blocks) { Start-Sleep -Milliseconds 200; Key 0x0D }; Start-Sleep -Milliseconds $AfterEnterMs }
+# 张工 4.14.8 report #1: typing Chinese in the middle of a paragraph must
+# land at the caret, not at the end of the document. Go to the start of line 3
+# ("我们是朋友") and commit 插入 there — expected "插入我们是朋友".
+if ($MidInsert) {
+  Start-Sleep -Milliseconds 600
+  Combo @(0x11) 0x24; Start-Sleep -Milliseconds 300
+  Key 0x28; Start-Sleep -Milliseconds 200; Key 0x28; Start-Sleep -Milliseconds 200
+  Key 0x24; Start-Sleep -Milliseconds 300
+  L "mid-insert at line 3"
+  TypeAscii "charu "; Start-Sleep -Milliseconds 400
+  TypeAscii "ceshi "; Start-Sleep -Milliseconds 400
+}
+# 张工's exact steps: place the caret with the MOUSE inside a paragraph (no
+# selection), then type Chinese. -MidClick "x,y" are screen coordinates.
+if ($MidClick) {
+  Start-Sleep -Milliseconds 600
+  $xy = $MidClick.Split(','); [W]::SetCursorPos([int]$xy[0], [int]$xy[1]) | Out-Null
+  [W]::mouse_event(2, 0, 0, 0, [UIntPtr]::Zero); Start-Sleep -Milliseconds 60; [W]::mouse_event(4, 0, 0, 0, [UIntPtr]::Zero)
+  Start-Sleep -Milliseconds 500; L "mid-click at $MidClick"
+  TypeAscii "charu "; Start-Sleep -Milliseconds 500
+  TypeAscii "ceshi "; Start-Sleep -Milliseconds 500
+}
 Start-Sleep -Milliseconds 800
 Add-Type -AssemblyName System.Windows.Forms, System.Drawing
 $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds; $bmp = New-Object Drawing.Bitmap $b.Width, $b.Height

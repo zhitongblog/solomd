@@ -1897,7 +1897,7 @@ onBeforeUnmount(() => {
           @click="closeFolder"
         >
           <span class="ftree__menu-check"></span>
-          <span class="ftree__menu-name">{{ t('sidebar.closeFolder') }}</span>
+          <span class="ftree__menu-name">{{ t('explorer.closeFolder') }}</span>
         </button>
       </div>
       <div
