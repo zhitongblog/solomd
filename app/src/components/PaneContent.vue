@@ -630,24 +630,27 @@ function onPreviewSearchEvent(e: Event) {
   height: 100%;
 }
 .pane--editor + .pane--preview {
-  border-left: 1px solid var(--border);
+  border-left: var(--bd-hair);
 }
 /* The divider is the line between the panes now; without this the preview
    host's own left border doubles it. */
 .split-divider + .pane--preview :deep(.preview-host) {
   border-left: none;
 }
-/* #367 — 1px of layout (the line between the panes) with a 9px invisible
-   hit zone over it, so the editor's `splitRatio`% stays exact. */
+/* #367 / 5.0 — a hairline with a small, always-visible grip in the middle
+   (docs/v5-ui-spec.md, split board). 1px of layout so the editor's
+   `splitRatio`% stays exact; the ::before is a 9px invisible hit zone. Hover
+   and drag deepen the line and the grip rather than painting the accent —
+   the divider is furniture, not a call to action. */
 .split-divider {
-  flex: 0 0 1px;
+  flex: 0 0 var(--hair-w, 1px);
   position: relative;
   z-index: 6;
-  background: var(--border);
+  background: var(--hairline);
   cursor: col-resize;
   touch-action: none;
   outline: none;
-  transition: background 0.15s;
+  transition: background var(--dur-fast) var(--ease-out);
 }
 .split-divider::before {
   content: '';
@@ -662,22 +665,23 @@ function onPreviewSearchEvent(e: Event) {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 3px;
+  width: 5px;
   height: 28px;
   transform: translate(-50%, -50%);
-  border-radius: 2px;
-  background: var(--text-faint);
-  opacity: 0;
-  transition: opacity 0.15s;
+  border-radius: 3px;
+  background: var(--fill-2);
+  transition: background var(--dur-fast) var(--ease-out), height var(--dur-fast) var(--ease-out);
 }
 .split-divider:hover,
-.split-divider:focus-visible,
 .split-divider--active {
-  background: var(--accent);
+  background: var(--fill-2);
 }
 .split-divider:hover::after,
-.split-divider:focus-visible::after,
 .split-divider--active::after {
-  opacity: 0.9;
+  background: var(--text-3);
+  height: 36px;
+}
+.split-divider:focus-visible::after {
+  background: var(--accent);
 }
 </style>

@@ -135,6 +135,7 @@ export const nl: I18n = {
   header: {
     segLive: "Live",
     segSource: "Bron",
+    segSplit: "Gesplitst",
     segPreview: "Voorbeeld",
     viewModes: "Weergavemodus",
     more: "Meer",

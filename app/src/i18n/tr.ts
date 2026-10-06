@@ -135,6 +135,7 @@ export const tr: I18n = {
   header: {
     segLive: "Canlı",
     segSource: "Kaynak",
+    segSplit: "Bölünmüş",
     segPreview: "Önizleme",
     viewModes: "Görünüm modu",
     more: "Daha fazla",

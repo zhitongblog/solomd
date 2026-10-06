@@ -135,6 +135,7 @@ export const ja: I18n = {
   header: {
     segLive: "ライブ",
     segSource: "ソース",
+    segSplit: "分割",
     segPreview: "プレビュー",
     viewModes: "表示モード",
     more: "その他",

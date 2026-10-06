@@ -135,6 +135,7 @@ export const it: I18n = {
   header: {
     segLive: "Dal vivo",
     segSource: "Sorgente",
+    segSplit: "Diviso",
     segPreview: "Anteprima",
     viewModes: "Modalità vista",
     more: "Altro",

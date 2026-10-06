@@ -135,6 +135,7 @@ export const sv: I18n = {
   header: {
     segLive: "Live",
     segSource: "Källa",
+    segSplit: "Delad",
     segPreview: "Förhandsvisning",
     viewModes: "Visningsläge",
     more: "Mer",

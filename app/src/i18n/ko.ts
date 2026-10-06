@@ -135,6 +135,7 @@ export const ko: I18n = {
   header: {
     segLive: "실시간",
     segSource: "소스",
+    segSplit: "분할",
     segPreview: "미리보기",
     viewModes: "보기 모드",
     more: "더 보기",

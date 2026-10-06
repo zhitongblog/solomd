@@ -135,6 +135,7 @@ export const fr: I18n = {
   header: {
     segLive: "Direct",
     segSource: "Source",
+    segSplit: "Côte à côte",
     segPreview: "Aperçu",
     viewModes: "Mode d’affichage",
     more: "Plus",

@@ -135,6 +135,7 @@ export const ru: I18n = {
   header: {
     segLive: "Живой",
     segSource: "Исходник",
+    segSplit: "Разделить",
     segPreview: "Просмотр",
     viewModes: "Режим просмотра",
     more: "Ещё",

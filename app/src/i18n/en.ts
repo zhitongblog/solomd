@@ -135,6 +135,7 @@ export const en = {
   header: {
     segLive: "Live",
     segSource: "Source",
+    segSplit: "Split",
     segPreview: "Preview",
     viewModes: "View mode",
     more: "More",

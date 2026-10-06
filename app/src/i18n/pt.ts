@@ -137,6 +137,7 @@ export const pt: I18n = {
   header: {
     segLive: "Ao vivo",
     segSource: "Fonte",
+    segSplit: "Dividido",
     segPreview: "Prévia",
     viewModes: "Modo de visualização",
     more: "Mais",

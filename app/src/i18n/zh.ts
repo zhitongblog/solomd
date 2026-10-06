@@ -136,6 +136,7 @@ export const zh: I18n = {
   header: {
     segLive: "实时",
     segSource: "源码",
+    segSplit: "分栏",
     segPreview: "预览",
     viewModes: "视图模式",
     more: "更多",

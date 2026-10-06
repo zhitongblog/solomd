@@ -135,6 +135,7 @@ export const uk: I18n = {
   header: {
     segLive: "Наживо",
     segSource: "Код",
+    segSplit: "Поділ",
     segPreview: "Перегляд",
     viewModes: "Режим перегляду",
     more: "Більше",
