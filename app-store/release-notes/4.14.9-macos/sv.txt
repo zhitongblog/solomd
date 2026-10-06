@@ -1,0 +1,9 @@
+Snabbare start: ungefär hälften av startarbetet är borta, så du kan börja skriva tidigare.
+
+Alla kommandon i kommandopaletten finns nu också i menyerna, bland annat snabbanteckning, dagsanteckningar, inkorg, Synk och historik, versaler och kinesisk konvertering.
+
+× i filträdets hörn döljer nu bara trädet i stället för att stänga dokumentet; ”Stäng mapp” finns i mappnamnets meny.
+
+Med ”Gå till mappen vid öppning” påslaget visas inte längre ett filträd som du har dolt när du öppnar en fil.
+
+Tack till vår testare 张工, vars rapport ledde till ändringarna.

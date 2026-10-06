@@ -1,0 +1,9 @@
+Inicio más rápido: desaparece cerca de la mitad del trabajo de arranque y puedes empezar a escribir antes.
+
+Todos los comandos de la paleta tienen ahora su lugar en los menús, incluidos la captura rápida, las notas diarias, la bandeja de entrada, Sincronización e historial, mayúsculas y conversión de chino.
+
+La × del árbol de archivos ahora solo oculta el árbol en lugar de cerrar tu documento; «Cerrar carpeta» pasó al menú del nombre de la carpeta.
+
+Con «Ir a la carpeta al abrir» activado, abrir un archivo ya no vuelve a mostrar un árbol que ocultaste.
+
+Gracias a nuestro tester 张工, cuyo informe dio pie a estos cambios.

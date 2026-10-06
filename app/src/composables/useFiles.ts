@@ -1,9 +1,10 @@
 import { inject } from 'vue';
+import { windowChromeOptions } from '../lib/window-chrome-options';
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { open as openDialog, save as saveDialog } from '@tauri-apps/plugin-dialog';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { documentDir, desktopDir, homeDir, join } from '@tauri-apps/api/path';
-import { isIOS, isAndroid, isWindowsDesktop } from '../lib/platform';
+import { isIOS, isAndroid } from '../lib/platform';
 import { isNarrowViewport } from './useViewport';
 import { useTabsStore } from '../stores/tabs';
 import { useWorkspaceStore } from '../stores/workspace';
@@ -70,7 +71,7 @@ export function useFiles() {
         title: 'SoloMD',
         width: 1000,
         height: 700,
-        decorations: !isWindowsDesktop(),
+        ...windowChromeOptions(),
       });
       windowsStore.register(label, { path, folder: workspace.currentFolder });
       return label;
@@ -346,8 +347,10 @@ export function useFiles() {
       if (settings.revealInFileTreeOnOpen && !isSaf) {
         const parent = path.replace(/[\\/][^\\/]+$/, '');
         if (parent && parent !== path) {
+          // 张工 4.14.8 report #3: this used to also re-open a tree the user
+          // had hidden, on every file open. Switching the folder is the
+          // setting's job; whether the tree is shown is the user's.
           workspace.setFolder(parent);
-          if (!settings.showFileTree) settings.toggleFileTree();
         }
       }
 

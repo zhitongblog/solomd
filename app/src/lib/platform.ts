@@ -95,17 +95,21 @@ export function isWindowsEditorRuntime(): boolean {
   );
 }
 
-/** Which editor Windows uses: the native textarea (default), CodeMirror
- *  (#328, #344), or `auto` — CodeMirror on WebView2 154+, the textarea below. */
+/** Which editor Windows uses: the native textarea, CodeMirror (#328, #344),
+ *  or `auto` — CodeMirror on WebView2 154+, the textarea below that. */
 export type WindowsEditorEngine = 'auto' | 'native' | 'codemirror';
 
 /**
- * WebView2 major version from which the opt-in `auto` engine picks CodeMirror.
+ * First WebView2 major version on which CodeMirror is the default on Windows.
  * The native textarea exists because CodeMirror dropped or doubled characters
- * under IMEs in WebView2 (WebView2Feedback#5625). On 154 Microsoft Pinyin
- * types correctly in CodeMirror, but Sogou Pinyin still drops the first letter
- * after a commit (VM test 2026-10-05) — so native stays the default and
- * `auto` is only a choice.
+ * under IMEs in WebView2 (WebView2Feedback#5625), a Chromium-side defect that
+ * is gone in 154. Below it the textarea stays the safe default.
+ *
+ * Evidence (Win11-ARM VM, WebView2 154.0.4258.53, real keystrokes through the
+ * IME): Microsoft Pinyin clean (2026-10-05); Sogou Pinyin 14/14 clean on
+ * 2026-10-06 — steady state, typing 3 s after launch, and right after a cold
+ * boot, incl. inserting mid-paragraph. Sogou drops seen on 10-05 (4/5 runs)
+ * could not be reproduced the next day on either that build or a newer one.
  */
 export const CODEMIRROR_SAFE_WEBVIEW2_MAJOR = 154;
 
@@ -137,9 +141,15 @@ export function resolveWindowsEditorEngine(
 export function shouldUsePlainWindowsEditor(
   windowsRuntime: boolean,
   vimMode: boolean,
-  engine: WindowsEditorEngine = 'native',
+  engine: WindowsEditorEngine = 'auto',
   webviewVersion: string | null = currentWebviewVersion(),
 ): boolean {
+  // DEV-only QA hook, the counterpart of `?forcePlain`: a plain browser on
+  // Windows has no WebView2 version to read, so `auto` would always pick the
+  // textarea there. `?forceCodeMirror` lets the IME harness test CodeMirror.
+  if (import.meta.env?.DEV && typeof location !== 'undefined' && location.search.includes('forceCodeMirror')) {
+    return false;
+  }
   return windowsRuntime && !vimMode && resolveWindowsEditorEngine(engine, webviewVersion) === 'native';
 }
 

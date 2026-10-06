@@ -1,4 +1,5 @@
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
+import { windowChromeOptions } from './window-chrome-options';
 
 /**
  * #280 — open a second SoloMD window.
@@ -23,6 +24,7 @@ export function openNewWindow(): Promise<void> {
         title: 'SoloMD',
         width: 1000,
         height: 700,
+        ...windowChromeOptions(),
       });
     } catch (e) {
       reject(e);

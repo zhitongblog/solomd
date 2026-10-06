@@ -100,10 +100,9 @@ interface Settings {
   /** Hint keys already shown — `bold`, `heading`, … Never shown twice. */
   formatHintsSeen: string[];
   vimMode: boolean;
-  /** Windows only: 'native' textarea (default — IME-safe), 'codemirror', or
-   *  'auto' (CodeMirror on WebView2 154+, native below) — #328, #344. Vim mode
-   *  forces CodeMirror regardless. Ignored elsewhere. Native stays default:
-   *  Sogou Pinyin still drops characters in CodeMirror on WebView2 154. */
+  /** Windows only: 'auto' (default — CodeMirror on WebView2 154+, the
+   *  IME-safe native textarea below that), 'native' or 'codemirror' (#328,
+   *  #344). Vim mode forces CodeMirror regardless. Ignored elsewhere. */
   windowsEditorEngine: WindowsEditorEngine;
   /** True once the user picked native/CodeMirror themselves. Before `auto`
    *  existed every install stored 'native' (the old default), so a stored
@@ -597,7 +596,7 @@ function defaults(): Settings {
     formatHints: true,
     formatHintsSeen: [],
     vimMode: false,
-    windowsEditorEngine: 'native',
+    windowsEditorEngine: 'auto',
     windowsEditorEngineExplicit: false,
     uiFontSize: 13,
     autoCheckUpdate: true,
@@ -798,12 +797,13 @@ function load(): Settings {
       merged.pdfDefaults = mergePdfDefaults(parsed.pdfDefaults);
       // #180 — keybindings is a free-form map, so a tampered or older blob
       // could put anything here; keep only string/null values.
-      // Native stays the default: on WebView2 154 Sogou Pinyin still drops the
-      // first letter after a commit in CodeMirror (VM test 2026-10-05), while
-      // the native textarea is unaffected. 'auto' and 'codemirror' are kept
-      // only when the user chose them.
-      if (merged.windowsEditorEngine !== 'codemirror' && merged.windowsEditorEngine !== 'auto') {
-        merged.windowsEditorEngine = 'native';
+      // 'codemirror' was always a choice; 'native' only counts as one when the
+      // user picked it after 'auto' existed; anything else follows WebView2.
+      if (merged.windowsEditorEngine === 'native' && parsed.windowsEditorEngineExplicit === true) {
+        merged.windowsEditorEngineExplicit = true;
+      } else if (merged.windowsEditorEngine !== 'codemirror') {
+        merged.windowsEditorEngine = 'auto';
+        merged.windowsEditorEngineExplicit = false;
       }
       merged.explorerSortByFolder = {};
       if (parsed.explorerSortByFolder && typeof parsed.explorerSortByFolder === 'object') {

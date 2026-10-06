@@ -4,7 +4,7 @@ interface Props { lang: Lang }
 const { lang } = Astro.props;
 const tr = getT(lang);
 
-const VERSION = '4.14.8';
+const VERSION = '4.14.9';
 const REPO = 'zhitongblog/solomd';
 // The Store ships both x64 and arm64 and picks for the machine, and it keeps
 // the app updated — worth offering next to the MSI rather than only below it.
@@ -19,7 +19,7 @@ const MS_STORE = 'https://apps.microsoft.com/detail/9nxghk2ll1q4';
 // or block because Microsoft's catalogue is slow, so an unreachable endpoint
 // just leaves the last known-good value in place. Bump it with each store
 // submission; the live read above is what visitors normally see.
-const MS_STORE_VERSION_PIN = '4.14.6';
+const MS_STORE_VERSION_PIN = '4.14.8';
 
 async function readStoreVersion(): Promise<string> {
   const url =

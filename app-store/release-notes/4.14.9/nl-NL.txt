@@ -1,0 +1,5 @@
+Sneller opstarten: ongeveer de helft van het opstartwerk is weg, zodat je eerder kunt schrijven.
+
+Het × in de hoek van de bestandsboom verbergt nu alleen de boom in plaats van je document te sluiten; ‘Map sluiten’ zit in het menu van de mapnaam.
+
+Dank aan onze tester 张工, wiens rapport tot deze wijzigingen leidde.

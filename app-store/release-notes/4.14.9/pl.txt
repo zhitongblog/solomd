@@ -1,0 +1,5 @@
+Szybsze uruchamianie: zniknęła mniej więcej połowa pracy przy starcie, więc szybciej zaczniesz pisać.
+
+× w rogu drzewa plików teraz tylko ukrywa drzewo zamiast zamykać dokument; „Zamknij folder” przeniesiono do menu nazwy folderu.
+
+Dziękujemy testerowi 张工, którego raport doprowadził do tych zmian.

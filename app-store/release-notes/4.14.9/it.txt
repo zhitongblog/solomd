@@ -1,0 +1,5 @@
+Avvio più rapido: circa metà del lavoro di avvio è sparito, così puoi iniziare a scrivere prima.
+
+La × nell’angolo dell’albero dei file ora nasconde solo l’albero invece di chiudere il documento; «Chiudi cartella» è nel menu del nome della cartella.
+
+Grazie al nostro tester 张工, dalla cui segnalazione nascono queste modifiche.
