@@ -1,0 +1,9 @@
+Sneller opstarten: ongeveer de helft van het opstartwerk is weg, zodat je eerder kunt schrijven.
+
+Elke opdracht uit het opdrachtpalet staat nu ook in de menu’s, waaronder snelle notitie, dagnotities, inbox, Sync en geschiedenis, hoofdletters en Chinese conversie.
+
+Het × in de hoek van de bestandsboom verbergt nu alleen de boom in plaats van je document te sluiten; ‘Map sluiten’ zit in het menu van de mapnaam.
+
+Met ‘Bij openen naar de map gaan’ aan, laat het openen van een bestand een verborgen bestandsboom niet meer verschijnen.
+
+Dank aan onze tester 张工, wiens rapport tot deze wijzigingen leidde.

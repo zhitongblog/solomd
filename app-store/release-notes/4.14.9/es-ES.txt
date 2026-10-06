@@ -1,0 +1,5 @@
+Inicio más rápido: desaparece cerca de la mitad del trabajo de arranque y puedes empezar a escribir antes.
+
+La × del árbol de archivos ahora solo oculta el árbol en lugar de cerrar tu documento; «Cerrar carpeta» pasó al menú del nombre de la carpeta.
+
+Gracias a nuestro tester 张工, cuyo informe dio pie a estos cambios.

@@ -1,0 +1,5 @@
+Snabbare start: ungefär hälften av startarbetet är borta, så du kan börja skriva tidigare.
+
+× i filträdets hörn döljer nu bara trädet i stället för att stänga dokumentet; ”Stäng mapp” finns i mappnamnets meny.
+
+Tack till vår testare 张工, vars rapport ledde till ändringarna.

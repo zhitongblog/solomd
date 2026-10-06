@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, watch, watchEffect, computed, provide, nextTick, defineAsyncComponent } from 'vue';
 import { useLazyComponent } from './composables/useLazyComponent';
+import { winTitleBar } from './lib/chrome';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
@@ -1056,6 +1057,13 @@ try {
 // `autoSaveOnBlur` setting (default off) inside autoSaveDirtyTabs().
 function onWindowBlur() {
   void files.autoSaveDirtyTabs();
+  // 5.0 — selections and the sidebar highlight go neutral grey while the
+  // window is in the background, as in Finder / Notes (tokens.css
+  // --select-inactive).
+  document.documentElement.classList.add('window-inactive');
+}
+function onWindowFocus() {
+  document.documentElement.classList.remove('window-inactive');
 }
 
 /**
@@ -1230,6 +1238,7 @@ onMounted(async () => {
   document.addEventListener('auxclick', onStrayLinkClick);
   window.addEventListener('wheel', onWheelZoom, { passive: false, capture: true });
   window.addEventListener('blur', onWindowBlur);
+  window.addEventListener('focus', onWindowFocus);
   window.addEventListener('solomd:open-help', onOpenHelpEvent as EventListener);
   window.addEventListener('solomd:open-global-search', onOpenSearchEvent as EventListener);
   window.addEventListener('solomd:open-cjk-proofread', onOpenCjkProofreadEvent as EventListener);
@@ -1584,6 +1593,7 @@ onBeforeUnmount(() => {
   document.removeEventListener('auxclick', onStrayLinkClick);
   window.removeEventListener('wheel', onWheelZoom, { capture: true } as EventListenerOptions);
   window.removeEventListener('blur', onWindowBlur);
+  window.removeEventListener('focus', onWindowFocus);
   window.removeEventListener('solomd:open-help', onOpenHelpEvent as EventListener);
   window.removeEventListener('solomd:open-global-search', onOpenSearchEvent as EventListener);
   window.removeEventListener('solomd:open-cjk-proofread', onOpenCjkProofreadEvent as EventListener);
@@ -1971,14 +1981,20 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
       <ReadingView />
     </template>
     <template v-else>
+      <!-- 5.0 window (docs/v5-ui-spec.md §3): on Windows a 44px frameless title
+           bar spans the window; below it — and on every other platform at the
+           top — the sidebar runs full height beside a column holding the 52px
+           header and the workspace. On macOS the traffic lights sit in the
+           sidebar's top inset, or over the header when the sidebar is hidden. -->
       <Toolbar
+        v-if="winTitleBar"
+        variant="titlebar"
         @open-palette="paletteOpen = true"
         @open-settings="openSettingsAt()"
         @open-help="helpOpen = true"
         @open-search="toggleGlobalSearch()"
       />
-      <TelemetryBanner />
-      <div class="workspace">
+      <div class="shell">
         <!-- #168 — on a phone the side panes float over the editor instead of
              stealing its width; this catches the tap that dismisses them. -->
         <div
@@ -1991,6 +2007,15 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
           <FileTree v-if="settings.showFileTree" />
           <ViewsPanel v-if="settings.showViewsPanel" />
         </div>
+        <div class="main-col">
+      <Toolbar
+        @open-palette="paletteOpen = true"
+        @open-settings="openSettingsAt()"
+        @open-help="helpOpen = true"
+        @open-search="toggleGlobalSearch()"
+      />
+      <TelemetryBanner />
+      <div class="workspace">
         <aside
           v-if="showRightSidebar && settings.outlineSide === 'left'"
           class="side-sidebar side-sidebar--left"
@@ -2118,6 +2143,8 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
         </aside>
       </div>
       <StatusBar :line="cursorLine" :col="cursorCol" :selection-text="selectionText" />
+        </div>
+      </div>
       <!-- Grid editor for the table under the caret. The pane that found the
            table supplies the write-back closure, so this stays pane-agnostic. -->
       <TableEditor
@@ -2337,6 +2364,20 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
   padding-right: env(safe-area-inset-right, 0);
   box-sizing: border-box;
 }
+/* 5.0 shell: sidebar column (full height) | main column (header + workspace). */
+.shell {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  position: relative;
+}
+.main-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
 .workspace {
   flex: 1;
   display: flex;
@@ -2359,6 +2400,15 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
  * ============================================================ */
 .app--narrow .workspace {
   position: relative;
+}
+.app--narrow .shell > .left-stack {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 40;
+  width: min(86vw, 320px);
+  box-shadow: var(--sh-modal);
 }
 .app--narrow .left-stack,
 .app--narrow .side-sidebar {
@@ -2425,13 +2475,13 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
   width: 260px;
   flex: 0 0 260px;
   min-width: 240px;
-  background: var(--bg-soft, var(--bg));
+  background: var(--bg);
 }
 .side-sidebar--left {
-  border-right: 1px solid var(--border);
+  border-right: var(--bd-hair);
 }
 .side-sidebar--right {
-  border-left: 1px solid var(--border);
+  border-left: var(--bd-hair);
 }
 /* Drag handle for live-resize. Sits on the inner edge of the sidebar
    (right edge of left sidebar, left edge of right sidebar) as a 5px
@@ -2453,8 +2503,8 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
   left: -4px;
 }
 .side-sidebar__resize:hover {
-  background: var(--accent, #6366f1);
-  opacity: 0.5;
+  background: var(--accent);
+  opacity: 0.35;
 }
 /* v4.3.0 PR #75 — right-click context menu floats over the workspace via
    <Teleport to="body">. Toolbar's master-toggle is the canonical hide

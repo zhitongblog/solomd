@@ -1,0 +1,9 @@
+Daha hızlı açılış: başlangıç işinin yaklaşık yarısı kalktı, pencere açılınca daha erken yazmaya başlarsınız.
+
+Komut paletindeki her komut artık menülerde de var: hızlı not, günlük notlar, gelen kutusu, Eşitleme ve geçmiş, büyük/küçük harf ve Çince dönüştürme dahil.
+
+Dosya ağacının köşesindeki × artık belgenizi kapatmak yerine yalnızca ağacı gizliyor; “Klasörü kapat” klasör adı menüsüne taşındı.
+
+“Açınca klasöre git” açıkken bir dosya açmak, gizlediğiniz dosya ağacını artık yeniden göstermiyor.
+
+Bu değişikliklere yol açan raporu için test eden 张工'a teşekkürler.

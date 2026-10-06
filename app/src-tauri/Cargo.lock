@@ -4936,7 +4936,7 @@ dependencies = [
 
 [[package]]
 name = "solomd"
-version = "4.14.8"
+version = "4.14.9"
 dependencies = [
  "argon2",
  "async-stream",
@@ -4992,6 +4992,8 @@ dependencies = [
  "tracing",
  "trash",
  "walkdir",
+ "webview2-com",
+ "windows-core 0.61.2",
  "windows-sys 0.61.2",
  "winreg 0.52.0",
  "zip",

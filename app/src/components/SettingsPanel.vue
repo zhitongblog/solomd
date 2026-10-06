@@ -2087,9 +2087,9 @@ function onSelectPdfFont(v: string) {
             :disabled="settings.vimMode"
             @change="settings.setWindowsEditorEngine(($event.target as HTMLSelectElement).value as WindowsEditorEngine)"
           >
+            <option value="auto">{{ t('settings.windowsEditorEngineAuto', { current: autoEngineName }) }}</option>
             <option value="native">{{ t('settings.windowsEditorEngineNative') }}</option>
             <option value="codemirror">{{ t('settings.windowsEditorEngineCodeMirror') }}</option>
-            <option value="auto">{{ t('settings.windowsEditorEngineAuto', { current: autoEngineName }) }}</option>
           </select>
           <p class="setting-hint">
             {{ settings.vimMode ? t('settings.windowsEditorEngineVimHint') : t('settings.windowsEditorEngineHint') }}

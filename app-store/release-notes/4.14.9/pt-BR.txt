@@ -1,0 +1,5 @@
+Abertura mais rápida: cerca de metade do trabalho de inicialização saiu, e você começa a escrever mais cedo.
+
+O × no canto da árvore de arquivos agora só oculta a árvore, em vez de fechar o documento; “Fechar pasta” foi para o menu do nome da pasta.
+
+Obrigado ao nosso testador 张工, cujo relatório levou a estas mudanças.

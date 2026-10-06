@@ -1857,11 +1857,16 @@ onBeforeUnmount(() => {
           :title="t('explorer.openFolder') || 'Open folder…'"
           @click="files.openFolder"
         >📁</button>
+        <!-- 张工 4.14.8 report #2: an × in a panel's corner reads as "close this
+             panel". It used to close the FOLDER, which swaps the open tabs for
+             the no-folder set and looked like the document had been closed.
+             The × now hides the tree; closing the folder lives in the folder
+             switcher (the root button's menu). -->
         <button
-          v-if="workspace.currentFolder"
           class="ftree__hbtn"
-          :title="t('explorer.closeFolder') || 'Close folder'"
-          @click="closeFolder"
+          :title="t('explorer.hideTree')"
+          :aria-label="t('explorer.hideTree')"
+          @click="settings.toggleFileTree()"
         >✕</button>
       </div>
     </div>
@@ -1906,6 +1911,9 @@ onBeforeUnmount(() => {
           <div class="ftree__switcher-sep"></div>
           <button class="ftree__switcher-item ftree__switcher-item--cta" @click="openFolderAndClose">
             📁 {{ t('explorer.openFolder') }}
+          </button>
+          <button class="ftree__switcher-item ftree__switcher-item--cta" @click="closeFolder">
+            {{ t('explorer.closeFolder') }}
           </button>
         </div>
       </div>

@@ -1,0 +1,9 @@
+Faster launch: about half the startup work is gone, so you can start writing sooner after the window appears.
+
+Every command in the command palette now also has a home in the menus, including Quick Capture, daily notes, Inbox, Sync & History, case and Chinese conversion.
+
+The × in the file tree's corner now just hides the tree instead of closing your document; Close Folder moved into the folder name's menu.
+
+With “Reveal file's folder on open” turned on, opening a file no longer brings back a file tree you have hidden.
+
+Thank you to our tester 张工, whose report led to these changes.
