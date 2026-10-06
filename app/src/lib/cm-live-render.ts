@@ -776,6 +776,10 @@ const liveEditTheme = EditorView.theme({
     borderBottomLeftRadius: 'var(--r-lg)',
     borderBottomRightRadius: 'var(--r-lg)',
   },
+  // A code block's first and last lines are its (hidden) fences, which are
+  // already a line of air each — the card needs no extra inset there.
+  '.cm-md-fenced-line.cm-md-block-first': { paddingTop: '2px' },
+  '.cm-md-fenced-line.cm-md-block-last': { paddingBottom: '2px' },
 
   // v4.11.18 — code-block copy button. Same visual language as the preview
   // pane's `.code-copy-button` (styles/main.css), sized down a notch so it

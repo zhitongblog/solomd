@@ -5158,10 +5158,12 @@ const cls = computed(() => ({
   margin-left: auto;
   margin-right: auto;
 }
+/* The flat textarea is its own scroller: centre the text with padding rather
+   than a max-width, so the scrollbar stays at the pane edge. (% padding
+   resolves against the pane, which is the textarea's width.) */
 .cm-host--limit-width :deep(.plain-editor) {
-  max-width: calc(var(--measure) + 64px);
-  margin-left: auto;
-  margin-right: auto;
+  padding-left: max(32px, calc((100% - var(--measure)) / 2));
+  padding-right: max(32px, calc((100% - var(--measure)) / 2));
 }
 :deep(.cm-editor) {
   height: 100%;
@@ -5521,10 +5523,12 @@ const cls = computed(() => ({
 }
 .plain-block__render :deep(a) {
   color: var(--accent-text);
-  text-decoration: none;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent-text) 35%, transparent);
+  text-underline-offset: 3px;
 }
 .plain-block__render :deep(a:hover) {
-  text-decoration: underline;
+  text-decoration-color: currentColor;
 }
 .plain-block__render :deep(code) {
   font-family: var(--font-mono);

@@ -440,11 +440,6 @@ onBeforeUnmount(() => {
           </button>
         </span>
       </div>
-      <!-- Empty strip space: in the header this is what drags the window. -->
-      <div
-        class="tabs__filler"
-        :data-tauri-drag-region="placement === 'header' ? '' : undefined"
-      ></div>
     </div>
     <div class="tabbar__actions">
       <button
@@ -466,23 +461,29 @@ onBeforeUnmount(() => {
       >
         <Icon name="plus" :size="16" />
       </button>
-      <button
-        v-if="canClosePane"
-        class="tabbar__btn"
-        :title="t('cmd.tile.closePane')"
-        :aria-label="t('cmd.tile.closePane')"
-        @click.stop="tiles.closePane(paneId)"
-      >
-        <!-- A pane with an × through it — a tab's own × is right next to it
-             and closes the document, which is not what this does. `.stop`:
-             the pane's own click handler would otherwise re-focus the pane that
-             was just closed. -->
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <rect x="3" y="4" width="18" height="16" rx="2.5" />
-          <path d="M9.5 9.5l5 5M14.5 9.5l-5 5" />
-        </svg>
-      </button>
     </div>
+    <!-- Empty strip space after the "+" (browser-style). In the header this
+         is what drags the window; the tabs themselves never do. -->
+    <div
+      class="tabs__filler"
+      :data-tauri-drag-region="placement === 'header' ? '' : undefined"
+    ></div>
+    <button
+      v-if="canClosePane"
+      class="tabbar__btn tabbar__close-pane"
+      :title="t('cmd.tile.closePane')"
+      :aria-label="t('cmd.tile.closePane')"
+      @click.stop="tiles.closePane(paneId)"
+    >
+      <!-- A pane with an × through it — a tab's own × is right next to it
+           and closes the document, which is not what this does. `.stop`:
+           the pane's own click handler would otherwise re-focus the pane that
+           was just closed. -->
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="3" y="4" width="18" height="16" rx="2.5" />
+        <path d="M9.5 9.5l5 5M14.5 9.5l-5 5" />
+      </svg>
+    </button>
 
     <!-- #218 — all open tabs -->
     <Teleport to="body">
@@ -575,7 +576,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 2px;
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
   height: 100%;
   overflow-x: auto;
@@ -586,8 +587,12 @@ onBeforeUnmount(() => {
 }
 .tabs::-webkit-scrollbar { display: none; }
 .tabs__filler {
-  flex: 1 0 16px;
+  flex: 1 1 0;
+  min-width: 0;
   align-self: stretch;
+}
+.pane-tabbar--header .tabs__filler {
+  min-width: 24px;
 }
 
 .tab {
@@ -687,6 +692,7 @@ onBeforeUnmount(() => {
   flex: 0 0 auto;
 }
 .tabbar__btn {
+  flex: 0 0 auto;
   width: 28px;
   height: 28px;
   padding: 0;

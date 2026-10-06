@@ -27,3 +27,35 @@
 :root.window-inactive .plain-block__render ::selection {
   background: var(--select-inactive);
 }
+
+/* Rendered task checkboxes are `disabled` (preview is read-only), and the
+ * browser paints a disabled box grey whatever `accent-color` says. Draw them:
+ * a hairline box, accent fill + white tick when done. */
+input.task-list-item-checkbox {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 15px;
+  height: 15px;
+  margin: 0 0.5em 0 0;
+  vertical-align: -2px;
+  transform: none;
+  border: 1.5px solid var(--text-3);
+  border-radius: 4px;
+  background: transparent;
+  opacity: 1;
+}
+input.task-list-item-checkbox:checked {
+  border-color: var(--accent);
+  background: var(--accent)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8.5l2.6 2.5L12 5.5' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    center / 12px no-repeat;
+}
+
+/* Tables: body text runs at 1.8; rows read better a little tighter. */
+.preview-content table,
+.plain-block__render table {
+  line-height: 1.6;
+}
+.preview-content thead th {
+  background: var(--bg-elev);
+}
