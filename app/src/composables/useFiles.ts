@@ -347,8 +347,10 @@ export function useFiles() {
       if (settings.revealInFileTreeOnOpen && !isSaf) {
         const parent = path.replace(/[\\/][^\\/]+$/, '');
         if (parent && parent !== path) {
+          // 张工 4.14.8 report #3: this used to also re-open a tree the user
+          // had hidden, on every file open. Switching the folder is the
+          // setting's job; whether the tree is shown is the user's.
           workspace.setFolder(parent);
-          if (!settings.showFileTree) settings.toggleFileTree();
         }
       }
 

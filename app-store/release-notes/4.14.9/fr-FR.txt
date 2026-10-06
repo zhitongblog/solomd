@@ -1,0 +1,5 @@
+Lancement plus rapide : environ la moitié du travail de démarrage a disparu, vous écrivez plus tôt.
+
+Le × en haut de l’arborescence masque désormais l’arborescence au lieu de fermer votre document ; « Fermer le dossier » se trouve dans le menu du nom de dossier.
+
+Merci à notre testeur 张工, dont le rapport est à l’origine de ces changements.

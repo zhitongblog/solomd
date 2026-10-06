@@ -382,6 +382,30 @@ pub fn run_with(initial_file: Option<String>) {
 
     let builder = tauri::Builder::default();
 
+    // 张工 4.14.8 report #5 — WebView2 answers its own browser shortcuts when
+    // the page doesn't: Ctrl+J opened the Edge downloads page over the editor,
+    // F5 / Ctrl+R reload the app and throw away whatever isn't saved yet,
+    // Ctrl+H / Ctrl+U / Ctrl+Shift+O open browser pages that make no sense
+    // here. AreBrowserAcceleratorKeysEnabled=false turns those off and nothing
+    // else: editing keys (copy, paste, undo, select all) and the app's own
+    // shortcuts keep working, and zoom is a separate setting. Release builds
+    // only, so dev builds keep F5 and the devtools shortcuts.
+    #[cfg(all(windows, not(debug_assertions)))]
+    let builder = builder.on_page_load(|webview, payload| {
+        if payload.event() != tauri::webview::PageLoadEvent::Started {
+            return;
+        }
+        let _ = webview.with_webview(|platform| unsafe {
+            use webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2Settings3;
+            use windows_core::Interface;
+            let Ok(core) = platform.controller().CoreWebView2() else { return };
+            let Ok(settings) = core.Settings() else { return };
+            if let Ok(settings3) = settings.cast::<ICoreWebView2Settings3>() {
+                let _ = settings3.SetAreBrowserAcceleratorKeysEnabled(false);
+            }
+        });
+    });
+
     // #86/#87(1) — single-instance must register BEFORE any other plugin so
     // its handler hooks into the OS' "another instance launching" signal
     // before the rest of the app starts initialising. The second launch

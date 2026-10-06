@@ -1,0 +1,5 @@
+Daha hızlı açılış: başlangıç işinin yaklaşık yarısı kalktı, pencere açılınca daha erken yazmaya başlarsınız.
+
+Dosya ağacının köşesindeki × artık belgenizi kapatmak yerine yalnızca ağacı gizliyor; “Klasörü kapat” klasör adı menüsüne taşındı.
+
+Bu değişikliklere yol açan raporu için test eden 张工'a teşekkürler.
