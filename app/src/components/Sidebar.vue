@@ -298,7 +298,8 @@ onBeforeUnmount(() => {
 
     <footer class="sb__foot">
       <div class="sb__foot-sync">
-        <SyncStatusPill variant="footer" />
+        <!-- Sync belongs to the open folder: nothing to report without one. -->
+        <SyncStatusPill v-if="hasFolder" variant="footer" />
       </div>
       <button
         class="sb__icon-btn"
