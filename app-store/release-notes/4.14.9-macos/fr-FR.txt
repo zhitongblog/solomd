@@ -1,0 +1,9 @@
+Lancement plus rapide : environ la moitié du travail de démarrage a disparu, vous écrivez plus tôt.
+
+Chaque commande de la palette a désormais sa place dans les menus, dont la capture rapide, les notes du jour, la boîte de réception, Sync et historique, la casse et la conversion du chinois.
+
+Le × en haut de l’arborescence masque désormais l’arborescence au lieu de fermer votre document ; « Fermer le dossier » se trouve dans le menu du nom de dossier.
+
+Avec « Aller au dossier à l’ouverture », ouvrir un fichier ne réaffiche plus une arborescence que vous avez masquée.
+
+Merci à notre testeur 张工, dont le rapport est à l’origine de ces changements.

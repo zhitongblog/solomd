@@ -1,0 +1,9 @@
+Szybsze uruchamianie: zniknęła mniej więcej połowa pracy przy starcie, więc szybciej zaczniesz pisać.
+
+Każde polecenie z palety jest teraz także w menu, w tym szybka notatka, notatki dzienne, skrzynka odbiorcza, Synchronizacja i historia, wielkość liter i konwersja chińskiego.
+
+× w rogu drzewa plików teraz tylko ukrywa drzewo zamiast zamykać dokument; „Zamknij folder” przeniesiono do menu nazwy folderu.
+
+Przy włączonym „Przejdź do folderu po otwarciu” otwarcie pliku nie pokazuje już ukrytego drzewa plików.
+
+Dziękujemy testerowi 张工, którego raport doprowadził do tych zmian.

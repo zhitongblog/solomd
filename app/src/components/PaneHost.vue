@@ -21,6 +21,10 @@ const tabs = useTabsStore();
 const tiles = useTilesStore();
 
 const activeTab = computed(() => tabs.tabs.find((t) => t.id === props.activeTabId));
+
+// 5.0 (spec §3) — with one pane its tabs live in the window header; with a
+// split each pane keeps its own strip so it's clear which tabs are whose.
+const tabsInHeader = computed(() => tiles.root.type === 'leaf');
 const paneContentRef = ref<InstanceType<typeof PaneContent> | null>(null);
 
 // ---- Drop-zone overlay for drag-to-split ----
@@ -52,7 +56,13 @@ function onSelection(text: string) {
     @focusin="onFocusIn"
     @click="tiles.setFocusedPane(paneId)"
   >
-    <PaneTabBar :pane-id="paneId" :active-tab-id="activeTabId" />
+    <Teleport to="#header-tabs" :disabled="!tabsInHeader" defer>
+      <PaneTabBar
+        :pane-id="paneId"
+        :active-tab-id="activeTabId"
+        :placement="tabsInHeader ? 'header' : 'pane'"
+      />
+    </Teleport>
     <PaneContent
       ref="paneContentRef"
       :pane-id="paneId"

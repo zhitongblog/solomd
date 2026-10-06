@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "solomd-mcp",
   "display_name": "SoloMD",
-  "version": "4.14.8",
+  "version": "4.14.9",
   "description": "Read and search a folder of Markdown notes from an MCP client: notes, full-text search, backlinks, tags, tasks, outlines and version history.",
   "long_description": "The MCP server that ships with SoloMD, a free, open-source Markdown editor (solomd.app). It works on any plain folder of .md files, with or without the editor installed. Tools list and read notes, search them (literal or regex), follow wikilink backlinks, collect tags and checkbox tasks, return heading outlines, export a note to HTML, Markdown, text or Word, and read SoloMD's per-note AutoGit history and diffs. This bundle is read-only: writing, appending and rolling back need the server started with --allow-write, which you can add to the arguments yourself.",
   "author": {

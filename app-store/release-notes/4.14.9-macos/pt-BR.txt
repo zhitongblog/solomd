@@ -1,0 +1,9 @@
+Abertura mais rápida: cerca de metade do trabalho de inicialização saiu, e você começa a escrever mais cedo.
+
+Todo comando da paleta agora também está nos menus, incluindo captura rápida, notas diárias, caixa de entrada, Sincronização e histórico, maiúsculas e conversão de chinês.
+
+O × no canto da árvore de arquivos agora só oculta a árvore, em vez de fechar o documento; “Fechar pasta” foi para o menu do nome da pasta.
+
+Com “Ir para a pasta ao abrir” ativado, abrir um arquivo não reexibe mais uma árvore que você ocultou.
+
+Obrigado ao nosso testador 张工, cujo relatório levou a estas mudanças.

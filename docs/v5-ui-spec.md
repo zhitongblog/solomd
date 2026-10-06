@@ -124,6 +124,11 @@ one sentence, primary button, secondary "最近" list.
 
 ## 5. Editor
 
+Windows: since 4.14.9 CodeMirror is the default editor on WebView2 154+ (Sogou / Microsoft Pinyin
+verified in the VM); the native textarea editor remains the fallback for older WebView2 and for
+users who chose it, so every editing surface below still has to work in both (`?forcePlain`).
+
+
 - Live edit is the default mode for new installs; line numbers off by default in live edit.
 - Text column `max-width: 680px`, centred, 56 px top padding; follows the "fit width"
   setting when on.
