@@ -1,0 +1,523 @@
+/* SoloMD 5.0 — ONE menu style (docs/v5-ui-spec.md §6).
+ *
+ * Every dropdown, context menu and popover in the app reads the same:
+ *   surface  --bg-pop, radius 10, padding 4, --sh-pop + hairline border
+ *   rows     28px, radius 6, 13px --text, hover --fill-1, disabled --text-3
+ *   chords   right-aligned, --text-3, no box
+ *   headings 11/600 --text-3      separators --hairline, 4px vertical margin
+ *   checks   a fixed 16px column
+ *   motion   120ms fade + scale .98→1 from the anchor; off with reduced motion
+ *
+ * The menus live in components with SCOPED styles (`.ctx-item[data-v-…]`,
+ * 0,2,0 — and up to 0,4,0 for the compound ones), injected after this file.
+ * A bare class here would tie and lose on source order, so every rule is
+ * prefixed with `:root:not(#_)` — the `:not(#id)` adds ID-level specificity
+ * (1,1,0) without matching anything extra. That makes this sheet the single
+ * source of truth for how a menu looks; components keep only geometry
+ * (position, min-width, max-height) and behaviour. Inline `style` (the
+ * teleported menus' computed top/left) still wins, as it should.
+ *
+ * Surfaces covered — add new menus to these lists rather than restyling them
+ * locally:
+ *   Toolbar ............ .dropdown__menu (+ --narrow, --sub, .menubar__menu)
+ *   ui/DsDropdown ...... .ds-dropdown__menu
+ *   ui/DsPopover ....... .ds-popover__panel            (popover: no rows)
+ *   PaneTabBar ......... .ctx-menu (tab menu + "all tabs" list)
+ *   TabBar ............. .tab-menu
+ *   App ................ .sidebar-ctx
+ *   FileTree ........... .ftree__ctx, .ftree__filter-pop, .ftree__switcher
+ *   EditorContextMenu .. .editor-ctx
+ *   ViewsPanel ......... .vpanel__ctx
+ *   SpellcheckMenu ..... .spellcheck-menu
+ *   PomodoroPill ....... .pomo-pill__menu
+ *   PomodoroPopover .... .pomo-popover
+ *   BasesView .......... .bases__col-menu
+ *   WritingGoals ....... .writing-goals__popover        (popover: no rows)
+ *   Preview ............ .math-edit-popover             (popover: no rows)
+ *   CodeMirror ......... .cm-tooltip-autocomplete, .cm-slash-popup
+ */
+
+/* ── surface ──────────────────────────────────────────────────────────── */
+:root:not(#_) :is(
+  .dropdown__menu,
+  .ds-dropdown__menu,
+  .ds-popover__panel,
+  .ctx-menu,
+  .tab-menu,
+  .sidebar-ctx,
+  .ftree__ctx,
+  .ftree__filter-pop,
+  .ftree__switcher,
+  .editor-ctx,
+  .vpanel__ctx,
+  .spellcheck-menu,
+  .pomo-pill__menu,
+  .pomo-popover,
+  .bases__col-menu,
+  .writing-goals__popover,
+  .math-edit-popover,
+  .cm-slash-popup
+) {
+  background: var(--bg-pop);
+  color: var(--text);
+  border: var(--bd-hair);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-pop);
+  padding: var(--sp-1);
+  font-family: var(--font-ui, inherit);
+  font-size: 13px;
+  line-height: 1.3;
+  user-select: none;
+  -webkit-user-select: none;
+  transform-origin: top left;
+  animation: sm-menu-in var(--dur-fast) var(--ease-out);
+}
+/* Popovers that hold content rather than rows get room to breathe. */
+:root:not(#_) :is(.ds-popover__panel, .writing-goals__popover) {
+  padding: var(--sp-3);
+  user-select: text;
+  -webkit-user-select: text;
+}
+:root:not(#_) .math-edit-popover {
+  padding: var(--sp-2);
+}
+/* Menus anchored by their right edge grow from the right. */
+:root:not(#_) .ctx-menu.tablist {
+  transform-origin: top right;
+}
+:root:not(#_) .writing-goals__popover {
+  transform-origin: bottom right;
+}
+/* The Windows menubar's sub-menu flies out sideways. */
+:root:not(#_) .dropdown__menu--sub {
+  transform-origin: top left;
+}
+
+/* Uses the individual `scale` property, not `transform`, so it composes with
+   any transform a component already puts on its menu. */
+@keyframes sm-menu-in {
+  from {
+    opacity: 0;
+    scale: 0.98;
+  }
+}
+
+/* Dialogs (ui/DsModal, the command palette, quick switcher, About, the AI
+   wizard, …) open with a 180ms fade + scale .98→1 and their backdrop fades
+   in. Components reference these names from scoped styles — Vue leaves a
+   keyframe name it did not declare itself untouched. */
+@keyframes sm-dialog-in {
+  from {
+    opacity: 0;
+    scale: 0.98;
+  }
+}
+@keyframes sm-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* ── rows ─────────────────────────────────────────────────────────────── */
+:root:not(#_) :is(
+  .dropdown__item,
+  .ds-dropdown__item,
+  .ctx-item,
+  .tab-menu button,
+  .sidebar-ctx__item,
+  .ftree__ctx-item,
+  .ftree__filter-item,
+  .ftree__switcher-item,
+  .editor-ctx__item,
+  .vpanel__ctx-item,
+  .spellcheck-menu__item,
+  .pomo-pill__menu-item,
+  .pomo-popover__row,
+  .bases__col-menu-item,
+  .cm-slash-row
+) {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 28px;
+  margin: 0;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.3;
+  text-align: left;
+  cursor: default;
+  opacity: 1;
+  transition: none;
+}
+/* Single-line rows: label left, everything else pushed right. */
+:root:not(#_) :is(
+  .dropdown__item--single,
+  .ctx-item,
+  .tab-menu button,
+  .sidebar-ctx__item,
+  .ftree__ctx-item,
+  .ftree__filter-item,
+  .editor-ctx__item,
+  .vpanel__ctx-item,
+  .spellcheck-menu__item,
+  .pomo-pill__menu-item,
+  .pomo-popover__row,
+  .bases__col-menu-item,
+  .cm-slash-row
+) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+/* Two-line rows (recent files with their path, export with a hint). */
+:root:not(#_) .dropdown__item:not(.dropdown__item--single),
+:root:not(#_) .ftree__switcher-item {
+  justify-content: center;
+  gap: 1px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
+:root:not(#_) :is(
+  .dropdown__item,
+  .ds-dropdown__item,
+  .ctx-item,
+  .tab-menu button,
+  .sidebar-ctx__item,
+  .ftree__ctx-item,
+  .ftree__filter-item,
+  .ftree__switcher-item,
+  .editor-ctx__item,
+  .vpanel__ctx-item,
+  .spellcheck-menu__item,
+  .pomo-pill__menu-item,
+  .pomo-popover__row,
+  .bases__col-menu-item
+):is(:hover, :focus-visible):not(:disabled, .dropdown__item--disabled, .ds-dropdown__item--disabled) {
+  background: var(--fill-1);
+  color: var(--text);
+  outline: none;
+}
+/* Keyboard / submenu-open / current-row highlight. */
+:root:not(#_) :is(
+  .ds-dropdown__item--active,
+  .dropdown__item--sub.active,
+  .cm-slash-row--active
+) {
+  background: var(--fill-1);
+}
+:root:not(#_) :is(
+  .dropdown__item,
+  .ds-dropdown__item,
+  .ctx-item,
+  .tab-menu button,
+  .sidebar-ctx__item,
+  .ftree__ctx-item,
+  .ftree__filter-item,
+  .ftree__switcher-item,
+  .editor-ctx__item,
+  .vpanel__ctx-item,
+  .pomo-pill__menu-item,
+  .pomo-popover__row
+):active:not(:disabled, .dropdown__item--disabled) {
+  background: var(--fill-2);
+}
+
+/* disabled */
+:root:not(#_) :is(
+  .dropdown__item--disabled,
+  .ds-dropdown__item--disabled,
+  .ctx-item:disabled,
+  .tab-menu button:disabled,
+  .ftree__ctx-item:disabled,
+  .ftree__filter-item:disabled,
+  .editor-ctx__item:disabled,
+  .vpanel__ctx-item:disabled
+),
+:root:not(#_) .dropdown__item--disabled .dropdown__name {
+  color: var(--text-3);
+  background: transparent;
+  opacity: 1;
+  cursor: default;
+}
+
+/* danger (delete) */
+:root:not(#_) :is(.ftree__ctx-item--danger, .vpanel__ctx-item--danger) {
+  color: var(--danger);
+}
+:root:not(#_) :is(.ftree__ctx-item--danger, .vpanel__ctx-item--danger):is(:hover, :focus-visible) {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
+}
+
+/* "selected" rows (current folder, current tab in the all-tabs list) read as
+   the current item, not as an accent-coloured link. */
+:root:not(#_) :is(.ftree__switcher-item--active, .tablist__item--active) {
+  background: transparent;
+  font-weight: 600;
+}
+:root:not(#_) :is(.ftree__filter-item--active, .dropdown__item--check.is-checked .dropdown__name) {
+  color: var(--text);
+}
+/* A call-to-action row ("Open folder…") is a normal row. */
+:root:not(#_) .ftree__switcher-item--cta {
+  color: var(--text);
+  font-weight: 400;
+}
+:root:not(#_) .editor-ctx__item--suggestion {
+  font-weight: 600;
+}
+
+/* ── row parts ────────────────────────────────────────────────────────── */
+:root:not(#_) :is(.dropdown__name, .ftree__switcher-name, .ftree__filter-name, .tablist__name) {
+  color: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+:root:not(#_) .dropdown__item--single .dropdown__name,
+:root:not(#_) .ftree__filter-name {
+  flex: 1 1 auto;
+}
+/* secondary line: path / hint */
+:root:not(#_) :is(.dropdown__path, .ftree__switcher-path) {
+  color: var(--text-3);
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+/* shortcuts / chords / counts — right-aligned caption, never boxed */
+:root:not(#_) :is(
+  .dropdown__shortcut,
+  .dropdown__kbd,
+  .ftree__ctx-kbd,
+  .editor-ctx__key,
+  .ftree__filter-count,
+  .pomo-popover__row-min,
+  .cm-slash-hint
+) {
+  margin-left: auto;
+  padding: 0 0 0 16px;
+  flex: none;
+  color: var(--text-3);
+  background: none;
+  border: 0;
+  box-shadow: none;
+  font-family: var(--font-ui, inherit);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* check-mark column: fixed 16px whether or not the row is ticked */
+:root:not(#_) :is(.dropdown__check, .sidebar-ctx__check, .ftree__filter-check) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 16px;
+  width: 16px;
+  margin: 0 -2px 0 -4px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* headings */
+:root:not(#_) :is(
+  .dropdown__heading,
+  .ftree__filter-label,
+  .ftree__switcher-label,
+  .spellcheck-menu__header,
+  .pomo-popover__head,
+  .writing-goals__popover-header
+) {
+  margin: 0;
+  padding: 6px 8px 4px;
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+/* separators */
+:root:not(#_) :is(
+  .dropdown__sep,
+  .ctx-sep,
+  .tab-menu__sep,
+  .ftree__ctx-sep,
+  .ftree__filter-sep,
+  .ftree__switcher-sep,
+  .editor-ctx__sep,
+  .vpanel__ctx-sep,
+  .spellcheck-menu__divider,
+  .pomo-popover__sep
+) {
+  height: var(--hair-w);
+  margin: 4px 8px;
+  padding: 0;
+  border: 0;
+  background: var(--hairline);
+}
+
+/* empty states */
+:root:not(#_) :is(
+  .dropdown__empty,
+  .ftree__switcher-empty,
+  .ftree__filter-empty,
+  .spellcheck-menu__empty,
+  .cm-slash-empty
+) {
+  padding: 6px 8px;
+  color: var(--text-3);
+  font-size: 12px;
+  font-style: normal;
+  text-align: left;
+}
+
+/* recents: per-row remove button */
+:root:not(#_) .dropdown__remove {
+  color: var(--text-3);
+  background: transparent;
+  border-radius: var(--r-xs);
+}
+:root:not(#_) .dropdown__remove:hover {
+  color: var(--text);
+  background: var(--fill-2);
+}
+
+/* a tab's dirty dot in the all-tabs list */
+:root:not(#_) .tablist__dot {
+  margin-left: auto;
+  color: var(--text-3);
+  font-size: 8px;
+}
+
+/* lists inside menus */
+:root:not(#_) .tab-menu {
+  list-style: none;
+  margin: 0;
+}
+:root:not(#_) .ds-dropdown__menu {
+  list-style: none;
+  margin: 0;
+}
+
+/* ── CodeMirror popups ────────────────────────────────────────────────── */
+/* Autocomplete (wiki-links, tags, emoji shortcodes…): CM's base theme draws
+   a grey box with a blue selection — make it a SoloMD menu. */
+:root:not(#_) .cm-tooltip.cm-tooltip-autocomplete {
+  background: var(--bg-pop);
+  border: var(--bd-hair);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-pop);
+  padding: var(--sp-1);
+  overflow: hidden;
+  animation: sm-menu-in var(--dur-fast) var(--ease-out);
+}
+:root:not(#_) .cm-tooltip.cm-tooltip-autocomplete > ul {
+  font-family: var(--font-ui, inherit);
+  font-size: 13px;
+  max-height: 280px;
+}
+:root:not(#_) .cm-tooltip.cm-tooltip-autocomplete > ul > li {
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--r-sm);
+  color: var(--text);
+  line-height: 1.3;
+}
+:root:not(#_) .cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] {
+  background: var(--fill-2);
+  color: var(--text);
+}
+:root:not(#_) .cm-tooltip.cm-tooltip-autocomplete .cm-completionDetail {
+  margin-left: auto;
+  padding-left: 16px;
+  color: var(--text-3);
+  font-style: normal;
+}
+:root:not(#_) .cm-tooltip.cm-tooltip-autocomplete .cm-completionMatchedText {
+  text-decoration: none;
+  font-weight: 600;
+}
+:root:not(#_) .cm-tooltip.cm-completionInfo {
+  background: var(--bg-pop);
+  border: var(--bd-hair);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-pop);
+  padding: var(--sp-2) var(--sp-3);
+  color: var(--text-2);
+  font-size: 12px;
+}
+:root:not(#_) .cm-slash-popup {
+  width: 280px;
+}
+:root:not(#_) .cm-slash-icon {
+  background: var(--fill-1);
+  color: var(--text-2);
+  border-radius: var(--r-sm);
+  font-family: var(--font-ui, inherit);
+}
+
+/* ── touch ────────────────────────────────────────────────────────────── */
+@media (pointer: coarse) {
+  :root:not(#_) :is(
+    .dropdown__item,
+    .ds-dropdown__item,
+    .ctx-item,
+    .tab-menu button,
+    .sidebar-ctx__item,
+    .ftree__ctx-item,
+    .ftree__filter-item,
+    .ftree__switcher-item,
+    .editor-ctx__item,
+    .vpanel__ctx-item,
+    .spellcheck-menu__item,
+    .pomo-pill__menu-item,
+    .pomo-popover__row,
+    .bases__col-menu-item
+  ) {
+    min-height: 40px;
+    font-size: 15px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root:not(#_) :is(
+    .dropdown__menu,
+    .ds-dropdown__menu,
+    .ds-popover__panel,
+    .ctx-menu,
+    .tab-menu,
+    .sidebar-ctx,
+    .ftree__ctx,
+    .ftree__filter-pop,
+    .ftree__switcher,
+    .editor-ctx,
+    .vpanel__ctx,
+    .spellcheck-menu,
+    .pomo-pill__menu,
+    .pomo-popover,
+    .bases__col-menu,
+    .writing-goals__popover,
+    .math-edit-popover,
+    .cm-slash-popup,
+    .cm-tooltip-autocomplete
+  ) {
+    animation: none;
+  }
+}

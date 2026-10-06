@@ -75,6 +75,9 @@
   --sh-modal: 0 24px 64px rgba(0, 0, 0, 0.2), 0 2px 8px rgba(0, 0, 0, 0.08);
   --sh-thumb: 0 1px 2px rgba(0, 0, 0, 0.12), 0 0 0 0.5px rgba(0, 0, 0, 0.04);
 
+  /* Dialog backdrop (spec §6): .28 on light themes, .5 on dark ones (below). */
+  --scrim: rgba(0, 0, 0, 0.28);
+
   --bd: var(--hair-w) solid var(--border);
   --bd-hair: var(--hair-w) solid var(--hairline);
 
@@ -139,6 +142,17 @@
   --sh-pop: 0 12px 32px rgba(0, 0, 0, 0.36), 0 0 0 0.5px rgba(255, 255, 255, 0.08);
   --sh-modal: 0 24px 64px rgba(0, 0, 0, 0.5), 0 0 0 0.5px rgba(255, 255, 255, 0.08);
   --sh-thumb: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* Every dark built-in theme dims the window behind a dialog harder. */
+:root:is(
+  [data-theme="dark"],
+  [data-theme="nord"],
+  [data-theme="solarized-dark"],
+  [data-theme="monokai"],
+  [data-theme="dracula"]
+) {
+  --scrim: rgba(0, 0, 0, 0.5);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 
 export interface DsTab {
   value: string;
@@ -15,6 +15,43 @@ const props = defineProps<{
 const emit = defineEmits<{ 'update:modelValue': [string] }>();
 
 const tablistRef = ref<HTMLElement | null>(null);
+
+/* The segmented thumb is one element that slides between segments (spec §1:
+ * "Thumb slides between segments (180 ms)"). It is measured from the active
+ * button, so segments can have any width. `ready` stays false until the
+ * first measurement so the thumb does not animate in from x=0 on mount. */
+const thumb = ref<{ x: number; w: number } | null>(null);
+const ready = ref(false);
+
+function measure() {
+  const list = tablistRef.value;
+  if (!list) return;
+  const btn = list.querySelector<HTMLElement>(`[data-tab="${CSS.escape(props.modelValue)}"]`);
+  if (!btn) {
+    thumb.value = null;
+    return;
+  }
+  thumb.value = { x: btn.offsetLeft, w: btn.offsetWidth };
+}
+
+let ro: ResizeObserver | null = null;
+onMounted(async () => {
+  await nextTick();
+  measure();
+  requestAnimationFrame(() => (ready.value = true));
+  if (typeof ResizeObserver !== 'undefined' && tablistRef.value) {
+    ro = new ResizeObserver(() => measure());
+    ro.observe(tablistRef.value);
+  }
+});
+onBeforeUnmount(() => ro?.disconnect());
+watch(
+  () => [props.modelValue, props.tabs.map((t) => t.label).join('\u0000')],
+  async () => {
+    await nextTick();
+    measure();
+  },
+);
 
 function select(tab: DsTab) {
   if (tab.disabled) return;
@@ -37,7 +74,7 @@ function onKeydown(e: KeyboardEvent) {
   emit('update:modelValue', target.value);
   requestAnimationFrame(() => {
     tablistRef.value
-      ?.querySelector<HTMLElement>(`[data-tab="${target.value}"]`)
+      ?.querySelector<HTMLElement>(`[data-tab="${CSS.escape(target.value)}"]`)
       ?.focus();
   });
 }
@@ -46,6 +83,13 @@ function onKeydown(e: KeyboardEvent) {
 <template>
   <div class="ds-tabs">
     <div ref="tablistRef" class="ds-tabs__list" role="tablist" @keydown="onKeydown">
+      <span
+        v-if="thumb"
+        class="ds-tabs__thumb"
+        :class="{ 'ds-tabs__thumb--ready': ready }"
+        aria-hidden="true"
+        :style="{ width: `${thumb.w}px`, transform: `translateX(${thumb.x}px)` }"
+      />
       <button
         v-for="tab in tabs"
         :key="tab.value"
@@ -62,63 +106,87 @@ function onKeydown(e: KeyboardEvent) {
         {{ tab.label }}
       </button>
     </div>
-    <div class="ds-tabs__panel" role="tabpanel">
+    <div v-if="$slots.default" class="ds-tabs__panel" role="tabpanel">
       <slot :active="modelValue" />
     </div>
   </div>
 </template>
 
 <style scoped>
+/* 5.0 segmented control: --fill-1 track (radius 8), a --bg thumb (radius 6,
+   --sh-thumb) that slides between segments in 180ms. */
 .ds-tabs {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
 }
 .ds-tabs__list {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-1);
-  border-bottom: 1px solid var(--border);
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+  gap: 0;
+  height: 28px;
+  padding: 2px;
+  box-sizing: border-box;
+  background: var(--fill-1);
+  border-radius: var(--r-md);
+  isolation: isolate;
+}
+.ds-tabs__thumb {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 0;
+  z-index: 0;
+  background: var(--bg);
+  border-radius: var(--r-sm);
+  box-shadow: var(--sh-thumb);
+  pointer-events: none;
+}
+.ds-tabs__thumb--ready {
+  transition: transform var(--dur) var(--ease-out), width var(--dur) var(--ease-out);
 }
 .ds-tabs__tab {
   position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 56px;
+  padding: 0 12px;
   background: transparent;
-  border: none;
-  font-family: inherit;
-  font-size: 13px;
+  border: 0;
+  border-radius: var(--r-sm);
+  font-family: var(--font-ui, inherit);
+  font-size: 12px;
   font-weight: 500;
-  color: var(--text-muted);
-  padding: var(--sp-2) var(--sp-3);
-  cursor: pointer;
-  border-radius: var(--r-sm) var(--r-sm) 0 0;
-  transition: color var(--dur-fast) var(--ease),
-    background var(--dur-fast) var(--ease);
+  color: var(--text-2);
+  cursor: default;
+  transition: color var(--dur-fast) var(--ease);
 }
 .ds-tabs__tab:hover:not(:disabled) {
+  background: transparent;
   color: var(--text);
-  background: var(--bg-hover);
 }
+/* Same weight as the idle segments: a bolder label would change the segment's
+   width under the sliding thumb. */
 .ds-tabs__tab--active {
   color: var(--text);
 }
-.ds-tabs__tab--active::after {
-  content: '';
-  position: absolute;
-  left: var(--sp-2);
-  right: var(--sp-2);
-  bottom: -1px;
-  height: 2px;
-  background: var(--accent);
-  border-radius: var(--r-full);
-}
 .ds-tabs__tab:disabled {
-  opacity: 0.5;
-  cursor: default;
+  opacity: 0.45;
 }
 .ds-tabs__tab:focus-visible {
   outline: none;
   box-shadow: var(--ring);
 }
 .ds-tabs__panel {
+  align-self: stretch;
   padding: var(--sp-4) 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ds-tabs__thumb--ready {
+    transition: none;
+  }
 }
 </style>

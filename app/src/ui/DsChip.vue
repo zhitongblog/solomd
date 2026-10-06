@@ -22,7 +22,6 @@ const style = computed(() => {
     '--chip-color': props.color,
     background: `color-mix(in srgb, ${props.color} 14%, transparent)`,
     color: props.color,
-    borderColor: `color-mix(in srgb, ${props.color} 30%, transparent)`,
   } as Record<string, string>;
 });
 </script>
@@ -45,46 +44,57 @@ const style = computed(() => {
 </template>
 
 <style scoped>
+/* 5.0: radius 999, quiet --fill-1 capsule; a tinted chip when a colour is given. */
 .ds-chip {
   display: inline-flex;
   align-items: center;
-  gap: var(--sp-1);
-  border: 1px solid transparent;
+  gap: 4px;
+  box-sizing: border-box;
+  border: 0;
   border-radius: var(--r-full);
+  font-family: var(--font-ui, inherit);
   font-weight: 500;
   line-height: 1;
   white-space: nowrap;
 }
 .ds-chip--neutral {
-  background: var(--bg-hover);
-  border-color: var(--border);
-  color: var(--text-muted);
+  background: var(--fill-1);
+  color: var(--text-2);
 }
 .ds-chip--sm {
   height: 20px;
-  padding: 0 var(--sp-2);
+  padding: 0 8px;
   font-size: 11px;
 }
 .ds-chip--md {
   height: 24px;
-  padding: 0 var(--sp-3);
+  padding: 0 10px;
   font-size: 12px;
 }
 .ds-chip__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-right: -4px;
+  padding: 0;
   background: transparent;
-  border: none;
+  border: 0;
   color: inherit;
-  cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1;
-  opacity: 0.7;
+  opacity: 0.6;
   border-radius: var(--r-full);
+  cursor: default;
 }
 .ds-chip__remove:hover {
   opacity: 1;
+  background: var(--fill-2);
 }
 .ds-chip__remove:focus-visible {
   outline: none;
   box-shadow: var(--ring);
 }
 </style>
+
