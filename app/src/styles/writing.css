@@ -1,0 +1,29 @@
+/* SoloMD 5.0 — writing surface rules shared by every editor engine and the
+ * rendered views (docs/v5-ui-spec.md §5). Component sheets own their layout;
+ * this file holds what has to be identical across CodeMirror, the Windows
+ * native editor, the preview and reading view.
+ */
+
+/* Task checkboxes: the accent mark, in every surface. */
+.cm-task-checkbox,
+.task-list-item-checkbox,
+.plain-block__render input[type="checkbox"] {
+  accent-color: var(--accent);
+}
+
+/* Text selection — accent wash while the window is key, neutral grey when it
+ * is not (what Finder and Notes do). The shell toggles `.window-inactive` on
+ * <html> on window blur/focus. CodeMirror's theme rules are `!important` at
+ * two classes; these win on specificity. */
+.preview-content ::selection,
+.plain-block__render ::selection {
+  background: var(--accent-soft);
+}
+:root.window-inactive .cm-editor .cm-selectionLayer .cm-selectionBackground,
+:root.window-inactive .cm-editor .cm-content ::selection {
+  background-color: var(--select-inactive) !important;
+}
+:root.window-inactive .preview-content ::selection,
+:root.window-inactive .plain-block__render ::selection {
+  background: var(--select-inactive);
+}

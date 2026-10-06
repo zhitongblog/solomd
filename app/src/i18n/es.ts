@@ -1167,6 +1167,20 @@ export const es: I18n = {
     disabledHeading:
       'La búsqueda semántica está desactivada. Actívala en Ajustes para construir un índice local de este workspace.',
   },
+  statsPill: {
+    title: 'Estadísticas del documento',
+    words: '{n} palabras',
+    cjk: '{n} caracteres',
+    position: 'Posición',
+    lines: 'Líneas',
+    wordsLabel: 'Palabras',
+    cjkLabel: 'Caracteres CJK',
+    charsLabel: 'Caracteres',
+    selection: 'Selección',
+    selectedShort: '{n} seleccionadas',
+    lineEnding: 'Fin de línea',
+    today: 'Hoy',
+  },
   statusBar: {
     selection: 'selección: {words} palabras / {chars} caracteres',
     selectionTooltip: 'Recuento de palabras y caracteres de la selección',

@@ -15,7 +15,7 @@ import { ensureSpellDict } from './lib/spell-suggest';
 import Toolbar from './components/Toolbar.vue';
 import TelemetryBanner from './components/TelemetryBanner.vue';
 import TileRoot from './components/TileRoot.vue';
-import StatusBar from './components/StatusBar.vue';
+import StatsPill from './components/StatsPill.vue';
 import Outline from './components/Outline.vue';
 import BacklinksPanel from './components/BacklinksPanel.vue';
 const NeighborhoodPanel = defineAsyncComponent(() => import('./components/NeighborhoodPanel.vue'));
@@ -2054,6 +2054,7 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
           <TypeLensView v-else-if="typeLensOpen" :type-name="typeLensName" />
           <ViewNoteList v-else-if="viewPaneVisible" />
           <TileRoot v-else :node="tiles.root" @cursor="onCursor" @selection="onSelection" />
+          <StatsPill v-if="!basesOpen && !inboxViewOpen && !typeLensOpen && !viewPaneVisible" :line="cursorLine" :col="cursorCol" :selection-text="selectionText" />
         </div>
         <aside
           v-if="showRightSidebar && settings.outlineSide !== 'left'"
@@ -2115,7 +2116,6 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
           </template>
         </aside>
       </div>
-      <StatusBar :line="cursorLine" :col="cursorCol" :selection-text="selectionText" />
       <!-- Grid editor for the table under the caret. The pane that found the
            table supplies the write-back closure, so this stays pane-agnostic. -->
       <TableEditor

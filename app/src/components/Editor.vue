@@ -925,12 +925,12 @@ function plainLineHeightPx(): number {
   const editor = plainLiveEnabled.value
     ? plainBlockEditors.value[plainActiveBlock.value]
     : plainEditor.value;
-  if (!editor) return Math.max(16, (settings.fontSize || 14) * 1.6);
+  if (!editor) return Math.max(16, (settings.fontSize || 16) * 1.8);
   const style = window.getComputedStyle(editor);
   const n = Number.parseFloat(style.lineHeight);
   if (Number.isFinite(n) && n > 0) return n;
   const fs = Number.parseFloat(style.fontSize);
-  return Number.isFinite(fs) && fs > 0 ? fs * 1.6 : 24;
+  return Number.isFinite(fs) && fs > 0 ? fs * 1.8 : 29;
 }
 
 function plainSelectionText(): string {
@@ -2468,7 +2468,7 @@ function estimatePlainBlockCaretFromClick(index: number, event: MouseEvent): num
   if (lines.length <= 1) return 0;
   const rect = render.getBoundingClientRect();
   const style = window.getComputedStyle(render);
-  const lineHeight = Number.parseFloat(style.lineHeight) || (Number.parseFloat(style.fontSize) || 15) * 1.7;
+  const lineHeight = Number.parseFloat(style.lineHeight) || (Number.parseFloat(style.fontSize) || 16) * 1.8;
   const lineIndex = Math.max(0, Math.min(lines.length - 1, Math.floor((event.clientY - rect.top) / lineHeight)));
   let caret = 0;
   for (let i = 0; i < lineIndex; i++) caret += lines[i].length + 1;
@@ -3594,8 +3594,10 @@ function activeLineExtension(on: boolean) {
 const fontSizeTheme = (px: number, family: string) =>
   EditorView.theme({
     '&': { fontSize: `${px}px`, height: '100%' },
-    '.cm-scroller': { fontFamily: buildEditorFontStack(family), lineHeight: '1.6' },
-    '.cm-content': { padding: '12px 16px' },
+    // 5.0 §5 — body 16/1.8 (the size is the user's; 1.8 is CJK-comfortable),
+    // 56px above the first line, room to scroll the last line up to the eye.
+    '.cm-scroller': { fontFamily: buildEditorFontStack(family), lineHeight: '1.8' },
+    '.cm-content': { padding: '56px 32px 30vh', caretColor: 'var(--accent)' },
     '.cm-gutters': {
       backgroundColor: 'transparent',
       border: 'none',
@@ -3604,7 +3606,8 @@ const fontSizeTheme = (px: number, family: string) =>
     '.cm-activeLine': { backgroundColor: 'transparent' },
     '.cm-activeLineGutter': { backgroundColor: 'transparent', color: 'var(--accent)' },
     '.cm-cursor': { borderLeftColor: 'var(--accent)', borderLeftWidth: '2px' },
-    '.cm-selectionBackground, ::selection': { backgroundColor: 'rgba(255,159,64,0.25) !important' },
+    // Inactive window → neutral grey: styles/writing.css (:root.window-inactive).
+    '.cm-selectionBackground, ::selection': { backgroundColor: 'var(--accent-soft) !important' },
     // v4.3.0 issue #67: distinct current-match highlight for the Cmd+F search
     // panel. CM6 marks the active result with `.cm-searchMatch-selected` —
     // by default it's the same translucent color as the other matches so the
@@ -4865,7 +4868,8 @@ const cls = computed(() => ({
   'cm-host': true,
   'cm-host--dark': settings.theme === 'dark',
   // #109 — constrain the editing column to a centered readable width.
-  'cm-host--limit-width': settings.limitEditorWidth,
+  // 5.0 §5 — the column follows "fit to window width" when that is on.
+  'cm-host--limit-width': settings.limitEditorWidth && !settings.previewFitWidth,
   // #211 — soft-wrap fenced code in the LIVE-rendered blocks too. Only
   // Preview.vue carried `cb-wrap-on` before, so the code-block-wrap setting
   // silently did nothing in Live Edit (CodeMirror live blocks + the Windows
@@ -5140,19 +5144,22 @@ const cls = computed(() => ({
   overflow: hidden;
   background: var(--bg);
 }
-/* #109 — readable editing column. Centre the CodeMirror content (and the
-   Windows plain-block editor) instead of letting long lines run full-bleed.
-   Width matches the preview pane's readable column (760px) so editor and
-   preview line up. */
+/* #109 / 5.0 §5 — readable editing column: `--measure` (680px) of text,
+   centred. .cm-content is border-box with 32px side padding plus CodeMirror's
+   own 6px+2px line padding, hence the arithmetic. The Windows plain editors
+   get the same column so both engines set the text identically. */
 .cm-host--limit-width :deep(.cm-content) {
-  max-width: 760px;
+  max-width: calc(var(--measure) + 72px);
   margin-left: auto;
   margin-right: auto;
 }
-.cm-host--limit-width.plain-block-editor :deep(.plain-block),
-.cm-host--limit-width.plain-block-editor :deep(.plain-block__textarea),
+.cm-host--limit-width.plain-block-editor :deep(.plain-block) {
+  max-width: var(--measure);
+  margin-left: auto;
+  margin-right: auto;
+}
 .cm-host--limit-width :deep(.plain-editor) {
-  max-width: 760px;
+  max-width: calc(var(--measure) + 64px);
   margin-left: auto;
   margin-right: auto;
 }
@@ -5286,12 +5293,14 @@ const cls = computed(() => ({
   border: 0;
   outline: none;
   box-sizing: border-box;
-  padding: 12px 16px;
+  /* 5.0 §5 — same surface as CodeMirror: 56px top, 32px sides, 30vh tail. */
+  padding: 56px 32px 30vh;
   background: var(--bg);
   color: var(--text);
-  font-family: var(--plain-editor-font-family, var(--font-editor, var(--font-mono)));
-  font-size: var(--plain-editor-font-size, 14px);
-  line-height: 1.6;
+  caret-color: var(--accent);
+  font-family: var(--plain-editor-font-family, var(--font-editor, var(--font-ui)));
+  font-size: var(--plain-editor-font-size, 16px);
+  line-height: 1.8;
   tab-size: 2;
   white-space: pre;
   overflow: auto;
@@ -5346,14 +5355,14 @@ const cls = computed(() => ({
   flex: none;
   overflow: hidden;
   box-sizing: border-box;
-  /* Top padding must match .plain-editor's 12px or numbers drift off rows. */
-  padding: 12px 8px 12px 0;
+  /* Top padding must match .plain-editor's 56px or numbers drift off rows. */
+  padding: 56px 8px 12px 0;
   border-right: 1px solid var(--border, rgba(127, 127, 127, 0.25));
   background: var(--bg);
   color: var(--text-faint, #999);
-  font-family: var(--plain-editor-font-family, var(--font-editor, var(--font-mono)));
-  font-size: var(--plain-editor-font-size, 14px);
-  line-height: 1.6;
+  font-family: var(--plain-editor-font-family, var(--font-editor, var(--font-ui)));
+  font-size: var(--plain-editor-font-size, 16px);
+  line-height: 1.8;
   text-align: right;
   user-select: none;
 }
@@ -5364,15 +5373,15 @@ const cls = computed(() => ({
   overflow: auto;
   /* Anchors the drawn caret (#316). */
   position: relative;
-  padding: 12px 16px 80px;
+  padding: 56px 32px 30vh;
   box-sizing: border-box;
-  font-family: var(--plain-editor-font-family, var(--font-editor, var(--font-mono)));
-  font-size: var(--plain-editor-font-size, 14px);
-  line-height: 1.6;
+  font-family: var(--plain-editor-font-family, var(--font-editor, var(--font-ui)));
+  font-size: var(--plain-editor-font-size, 16px);
+  line-height: 1.8;
 }
 .plain-block {
   position: relative;
-  min-height: 1.6em;
+  min-height: 1.8em;
   padding: 1px 0;
 }
 .plain-block--active {
@@ -5430,7 +5439,7 @@ const cls = computed(() => ({
 .plain-block__textarea {
   display: block;
   width: 100%;
-  min-height: 1.6em;
+  min-height: 1.8em;
   resize: none;
   border: 0;
   outline: none;
@@ -5443,8 +5452,9 @@ const cls = computed(() => ({
   font: inherit;
   /* #366 — same line pitch as the rendered block (.plain-block__render), so a
      paragraph keeps its height when clicked into. At the inherited 1.6 every
-     line shrank by 1.4px on activation: a 24-line block jumped ~34px. */
-  line-height: 1.7;
+     line shrank by 1.4px on activation: a 24-line block jumped ~34px.
+     5.0: both at the editor's 1.8. */
+  line-height: 1.8;
   tab-size: 2;
   white-space: pre;
 }
@@ -5452,8 +5462,13 @@ const cls = computed(() => ({
   white-space: pre-wrap;
   overflow-wrap: break-word;
 }
-.plain-block__textarea::selection {
-  background: rgba(255, 159, 64, 0.28);
+.plain-block__textarea::selection,
+.plain-editor::selection {
+  background: var(--accent-soft);
+}
+:root.window-inactive .plain-block__textarea::selection,
+:root.window-inactive .plain-editor::selection {
+  background: var(--select-inactive);
 }
 .plain-block__render {
   color: var(--text);
@@ -5463,31 +5478,34 @@ const cls = computed(() => ({
      different documents (only the focused line honored 字体/字号). Fall back
      to the old values for safety. */
   font-family: var(--plain-editor-font-family, var(--font-ui));
-  font-size: var(--plain-editor-font-size, 15px);
-  line-height: 1.7;
+  font-size: var(--plain-editor-font-size, 16px);
+  line-height: 1.8;
   padding: 0.05em 0;
 }
 .plain-block__render :deep(h1),
 .plain-block__render :deep(h2),
 .plain-block__render :deep(h3),
-.plain-block__render :deep(h4) {
-  font-weight: 700;
+.plain-block__render :deep(h4),
+.plain-block__render :deep(h5),
+.plain-block__render :deep(h6) {
+  font-weight: 600;
   line-height: 1.25;
   margin: 1.1em 0 0.45em;
 }
-.plain-block__render :deep(h1),
-.plain-block__render :deep(h2) {
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 0.25em;
-}
+/* 5.0 §2 type scale, in em of the body (30 / 20 / 17 at 16px) so a user's
+   font size still scales the whole page. Same values as Preview.vue and the
+   CodeMirror live view (lib/cm-live-render.ts). */
 .plain-block__render :deep(h1) {
-  font-size: 2em;
+  font-size: 1.875em;
+  font-weight: 650;
+  letter-spacing: -0.015em;
 }
 .plain-block__render :deep(h2) {
-  font-size: 1.5em;
+  font-size: 1.25em;
+  font-weight: 620;
 }
 .plain-block__render :deep(h3) {
-  font-size: 1.2em;
+  font-size: 1.0625em;
 }
 .plain-block__render :deep(p),
 .plain-block__render :deep(ul),
@@ -5502,7 +5520,7 @@ const cls = computed(() => ({
   white-space: pre-wrap;
 }
 .plain-block__render :deep(a) {
-  color: var(--accent);
+  color: var(--accent-text);
   text-decoration: none;
 }
 .plain-block__render :deep(a:hover) {
@@ -5510,20 +5528,24 @@ const cls = computed(() => ({
 }
 .plain-block__render :deep(code) {
   font-family: var(--font-mono);
-  font-size: 0.9em;
-  background: var(--bg-hover);
-  padding: 0.15em 0.4em;
-  border-radius: 4px;
+  font-size: 0.875em;
+  color: var(--text);
+  background: var(--fill-1);
+  padding: 0.12em 0.35em;
+  border-radius: var(--r-xs);
 }
 .plain-block__render :deep(pre) {
   font-family: var(--font-mono);
-  background: var(--bg-hover);
+  font-size: 0.8125em;
+  line-height: 1.6;
+  background: var(--bg-elev);
   padding: 14px 16px;
-  border-radius: 6px;
+  border-radius: var(--r-lg);
   overflow-x: auto;
 }
 .plain-block__render :deep(pre code) {
   display: block;
+  font-size: inherit;
   background: transparent;
   padding: 0;
 }
@@ -5575,13 +5597,22 @@ const cls = computed(() => ({
   -webkit-user-select: none;
 }
 .plain-block__render :deep(blockquote) {
-  border-left: 3px solid var(--accent);
-  padding: 0.2em 1em;
-  color: var(--text-muted);
+  margin-left: 0;
+  margin-right: 0;
+  padding: 12px 16px;
+  background: var(--bg-elev);
+  border-radius: var(--r-lg);
+  color: var(--text-2);
+}
+.plain-block__render :deep(blockquote > :last-child) {
+  margin-bottom: 0;
 }
 .plain-block__render :deep(ul),
 .plain-block__render :deep(ol) {
   padding-left: 1.6em;
+}
+.plain-block__render :deep(li::marker) {
+  color: var(--text-3);
 }
 .plain-block__render :deep(table) {
   border-collapse: collapse;
@@ -5593,12 +5624,12 @@ const cls = computed(() => ({
   padding: 6px 12px;
 }
 .plain-block__render :deep(thead th) {
-  background: var(--bg-soft);
+  background: var(--bg-elev);
   font-weight: 600;
 }
 .plain-block__render :deep(hr) {
   border: none;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--hairline);
   margin: 1.6em 0;
 }
 .plain-block__render :deep(img) {

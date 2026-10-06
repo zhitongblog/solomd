@@ -1162,6 +1162,20 @@ export const ru: I18n = {
     disabledHeading:
       'Смысловой поиск выключен. Включите его в настройках, чтобы построить локальный индекс этой рабочей папки.',
   },
+  statsPill: {
+    title: 'Статистика документа',
+    words: '{n} слов',
+    cjk: '{n} символов',
+    position: 'Позиция',
+    lines: 'Строки',
+    wordsLabel: 'Слова',
+    cjkLabel: 'Символы CJK',
+    charsLabel: 'Символы',
+    selection: 'Выделение',
+    selectedShort: 'выделено {n}',
+    lineEnding: 'Концы строк',
+    today: 'Сегодня',
+  },
   statusBar: {
     selection: 'выделено: слов {words} / символов {chars}',
     selectionTooltip: 'Число слов и символов в выделении',

@@ -23,6 +23,11 @@ export function buildEditorFontStack(face: string): string {
   return `${quoted}, ${CJK_FALLBACK}, "JetBrains Mono", Menlo, Consolas, monospace`;
 }
 
+/** 5.0 default editor face: the "System Sans" preset in Settings (same value,
+ *  so the picker shows it selected) — SF Pro + PingFang on Apple, Segoe UI +
+ *  YaHei on Windows via buildEditorFontStack's CJK tail. */
+export const DEFAULT_EDITOR_FONT = '-apple-system, "Segoe UI", system-ui, sans-serif';
+
 interface Settings {
   theme: Theme;
   viewMode: ViewMode;
@@ -556,12 +561,15 @@ function defaults(): Settings {
     window.matchMedia('(prefers-color-scheme: dark)').matches;
   return {
     theme: prefersDark ? 'dark' : 'light',
-    viewMode: 'edit',
+    // 5.0 (docs/v5-ui-spec.md §5) — new installs open in live edit, in the
+    // system face at 16px, without line numbers. Saved settings are never
+    // rewritten: these only fill keys a stored blob does not have.
+    viewMode: 'liveEdit',
     startupViewMode: null,
-    fontSize: 14,
-    fontFamily: 'JetBrains Mono',
+    fontSize: 16,
+    fontFamily: DEFAULT_EDITOR_FONT,
     wordWrap: true,
-    showLineNumbers: true,
+    showLineNumbers: false,
     solidCursor: false,
     alwaysShowMarkers: false,
     highlightCurrentLine: false,
@@ -616,10 +624,10 @@ function defaults(): Settings {
       } catch { return 'en'; }
     })() as 'en' | 'zh' | 'ja' | 'ko' | 'de' | 'fr' | 'es' | 'pt' | 'it' | 'pl' | 'nl' | 'tr' | 'sv' | 'uk' | 'ru',
     previewFitWidth: false,
-    previewMaxWidth: 760,
+    previewMaxWidth: 680,
     plantumlEnabled: false,
     plantumlServer: 'https://www.plantuml.com/plantuml',
-    limitEditorWidth: false,
+    limitEditorWidth: true,
     customCssPath: '',
     telemetryEnabled: true,
     telemetryNoticeAck: false,
@@ -671,7 +679,7 @@ function defaults(): Settings {
         return false;
       }
     })(),
-    lastNonReadingViewMode: 'edit',
+    lastNonReadingViewMode: 'liveEdit',
     showWritingStats: true,
     showWorkspaceDailyTotal: false,
     pdfDefaults: defaultPdfDefaults(),
@@ -707,7 +715,7 @@ function defaults(): Settings {
     pdfPageSizeAutoMigrated: true,
     markdownAutoNumberHeadings: false,
     rsPaneOrder: ['search', 'outline', 'backlinks', 'relationships', 'tags', 'tasks', 'neighborhood', 'types', 'history', 'inspector', 'agent'],
-    previewFontSize: 15,
+    previewFontSize: 16,
     attachmentMode: 'shared',
     assetsDirName: '_assets',
     attachmentCustomPath: './images/${filename}/',

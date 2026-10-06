@@ -1167,6 +1167,20 @@ export const fr: I18n = {
     disabledHeading:
       'La recherche sémantique est désactivée. L\'activer dans les Paramètres pour construire un index local de ce workspace.',
   },
+  statsPill: {
+    title: 'Statistiques du document',
+    words: '{n} mots',
+    cjk: '{n} caractères',
+    position: 'Position',
+    lines: 'Lignes',
+    wordsLabel: 'Mots',
+    cjkLabel: 'Caractères CJK',
+    charsLabel: 'Caractères',
+    selection: 'Sélection',
+    selectedShort: '{n} sélectionnés',
+    lineEnding: 'Fins de ligne',
+    today: 'Aujourd’hui',
+  },
   statusBar: {
     selection: 'sélection : {words} mots / {chars} caractères',
     selectionTooltip: 'Nombre de mots et caractères de la sélection',

@@ -1170,6 +1170,20 @@ export const tr: I18n = {
     disabledHeading:
       'Anlamsal arama kapalı. Bu çalışma alanının yerel dizinini oluşturmak için Ayarlar\'dan etkinleştirin.',
   },
+  statsPill: {
+    title: 'Belge istatistikleri',
+    words: '{n} sözcük',
+    cjk: '{n} karakter',
+    position: 'Konum',
+    lines: 'Satırlar',
+    wordsLabel: 'Sözcükler',
+    cjkLabel: 'CJK karakterleri',
+    charsLabel: 'Karakterler',
+    selection: 'Seçim',
+    selectedShort: '{n} seçili',
+    lineEnding: 'Satır sonları',
+    today: 'Bugün',
+  },
   statusBar: {
     selection: 'seçim: {words} kelime / {chars} karakter',
     selectionTooltip: 'Seçimin kelime ve karakter sayısı',

@@ -1167,6 +1167,20 @@ export const ko: I18n = {
     disabledHeading:
       '시맨틱 검색이 꺼져 있습니다. 설정에서 활성화하여 이 워크스페이스의 로컬 인덱스를 빌드하세요.',
   },
+  statsPill: {
+    title: '문서 통계',
+    words: '{n} 단어',
+    cjk: '{n} 자',
+    position: '위치',
+    lines: '줄 수',
+    wordsLabel: '단어',
+    cjkLabel: 'CJK 문자',
+    charsLabel: '문자 수',
+    selection: '선택 영역',
+    selectedShort: '{n} 선택됨',
+    lineEnding: '줄 바꿈',
+    today: '오늘',
+  },
   statusBar: {
     selection: '선택: {words} 단어 / {chars} 문자',
     selectionTooltip: '선택한 텍스트의 단어 수 및 문자 수',

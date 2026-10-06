@@ -1170,6 +1170,20 @@ export const sv: I18n = {
     disabledHeading:
       'Semantisk sökning är avstängd. Aktivera den i Inställningar för att bygga ett lokalt index av denna arbetsyta.',
   },
+  statsPill: {
+    title: 'Dokumentstatistik',
+    words: '{n} ord',
+    cjk: '{n} tecken',
+    position: 'Position',
+    lines: 'Rader',
+    wordsLabel: 'Ord',
+    cjkLabel: 'CJK-tecken',
+    charsLabel: 'Tecken',
+    selection: 'Markering',
+    selectedShort: '{n} markerade',
+    lineEnding: 'Radslut',
+    today: 'Idag',
+  },
   statusBar: {
     selection: 'valt: {words} ord / {chars} tecken',
     selectionTooltip: 'Antal ord och tecken i markeringen',

@@ -16,7 +16,9 @@ function mkTheme(
       '&': { backgroundColor: bg, color: fg },
       '.cm-content': { caretColor: cursor },
       '.cm-cursor, .cm-dropCursor': { borderLeftColor: cursor },
-      '.cm-selectionBackground, ::selection': { backgroundColor: `${selection} !important` },
+      // 5.0 §5 — selection is the accent wash for every theme (--accent-soft
+      // derives from each theme's --accent); `selection` stays as a fallback.
+      '.cm-selectionBackground, ::selection': { backgroundColor: `var(--accent-soft, ${selection}) !important` },
       '.cm-gutters': { backgroundColor: bg, color: gutter, border: 'none' },
       '.cm-activeLineGutter': { color: cursor },
     },

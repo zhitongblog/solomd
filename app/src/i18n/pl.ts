@@ -1170,6 +1170,20 @@ export const pl: I18n = {
     disabledHeading:
       'Wyszukiwanie semantyczne jest wyłączone. Włącz je w Ustawieniach, aby zbudować lokalny indeks tego obszaru roboczego.',
   },
+  statsPill: {
+    title: 'Statystyki dokumentu',
+    words: '{n} słów',
+    cjk: '{n} znaków',
+    position: 'Pozycja',
+    lines: 'Wiersze',
+    wordsLabel: 'Słowa',
+    cjkLabel: 'Znaki CJK',
+    charsLabel: 'Znaki',
+    selection: 'Zaznaczenie',
+    selectedShort: '{n} zaznaczonych',
+    lineEnding: 'Końce wierszy',
+    today: 'Dziś',
+  },
   statusBar: {
     selection: 'zaznaczenie: {words} słów / {chars} znaków',
     selectionTooltip: 'Liczba słów i znaków w zaznaczeniu',

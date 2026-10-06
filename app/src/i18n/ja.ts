@@ -1167,6 +1167,20 @@ export const ja: I18n = {
     disabledHeading:
       'セマンティック検索はオフです。設定で有効化して、このワークスペースのローカルインデックスを構築してください。',
   },
+  statsPill: {
+    title: '文書の統計',
+    words: '{n} 語',
+    cjk: '{n} 字',
+    position: '位置',
+    lines: '行数',
+    wordsLabel: '単語',
+    cjkLabel: 'CJK 文字',
+    charsLabel: '文字数',
+    selection: '選択範囲',
+    selectedShort: '{n} 選択中',
+    lineEnding: '改行コード',
+    today: '今日',
+  },
   statusBar: {
     selection: '選択中: {words} 語 / {chars} 文字',
     selectionTooltip: '選択範囲の語数と文字数',
