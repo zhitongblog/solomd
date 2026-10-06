@@ -36,6 +36,8 @@ interface Settings {
   showLineNumbers: boolean;
   // #193 — non-blinking (solid) caret in the editor.
   solidCursor: boolean;
+  // 5.0 — floating format bar over a text selection (desktop only).
+  selectionBubble: boolean;
   // #353 — keep Markdown markers (`#`, `**`, …) visible in the CodeMirror
   // live views instead of hiding them off the caret line, so clicking a line
   // doesn't reflow it. Styling (heading size, bold) still applies.
@@ -563,6 +565,7 @@ function defaults(): Settings {
     wordWrap: true,
     showLineNumbers: true,
     solidCursor: false,
+    selectionBubble: true,
     alwaysShowMarkers: false,
     highlightCurrentLine: false,
     codeFontFamily: '',
@@ -983,6 +986,10 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleSolidCursor() {
       this.solidCursor = !this.solidCursor;
+      this.persist();
+    },
+    toggleSelectionBubble() {
+      this.selectionBubble = !this.selectionBubble;
       this.persist();
     },
     toggleAlwaysShowMarkers() {

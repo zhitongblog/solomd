@@ -451,6 +451,8 @@ export const ko: I18n = {
     wordWrap: '자동 줄바꿈',
     lineNumbers: '행 번호',
     solidCursor: '커서 깜박임 없음(고정 커서)',
+    selectionBubble: "선택한 텍스트 위에 서식 막대 표시",
+    selectionBubbleHint: "라이브 및 소스 모드에서 선택 영역 위에 굵게, 기울임, 코드, 링크, 제목, 목록 버튼을 표시합니다. 각 버튼은 해당 단축키와 같은 명령을 실행합니다.",
     alwaysShowMarkers: "Markdown 기호 항상 표시",
     alwaysShowMarkersHint: "편집 중에도 #, ** 같은 기호를 흐리게 표시하고, 커서가 없는 줄에서 숨기지 않습니다. 서식은 그대로 보이며 줄을 클릭해도 화면이 튀지 않습니다. 이미지는 해당 줄 아래에 표시되고 표·수식·다이어그램은 소스로 유지됩니다. CodeMirror 편집기에 적용됩니다.",
     highlightCurrentLine: "현재 줄 강조",
@@ -2107,5 +2109,13 @@ export const ko: I18n = {
       startLast: "글쓰기 세션 시작",
       open: "집중 세션(뽀모도로)…",
     },
+  },
+  // 5.0 — selection bubble + touch keyboard bar
+  formatBar: {
+    label: "서식",
+    heading: "제목",
+    image: "이미지 삽입",
+    undo: "실행 취소",
+    hideKeyboard: "키보드 숨기기",
   },
 };

@@ -53,6 +53,8 @@ import ReadingView from './components/ReadingView.vue';
 import UnsavedDialog from './components/UnsavedDialog.vue';
 import FileChangedDialog from './components/FileChangedDialog.vue';
 import Toast from './components/Toast.vue';
+import KeyboardBar from './components/KeyboardBar.vue';
+import { forceKeyboardBarPreview } from './lib/platform';
 import { useTabsStore } from './stores/tabs';
 import { useSettingsStore, buildEditorFontStack, setRightSidebarShell } from './stores/settings';
 import { useWindowsStore, isAuxLabel } from './stores/windows';
@@ -2244,6 +2246,8 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
       @cancel="onFileChangedAction('cancel')"
     />
     <Toast />
+    <!-- 5.0 — format bar above the software keyboard (phones / tablets). -->
+    <KeyboardBar v-if="isMobile() || forceKeyboardBarPreview()" />
     <component
       :is="AndroidFolderPickerC"
       v-if="AndroidFolderPickerC"

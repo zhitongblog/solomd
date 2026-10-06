@@ -451,6 +451,8 @@ export const sv: I18n = {
     wordWrap: 'Radbrytning',
     lineNumbers: 'Radnummer',
     solidCursor: 'Fast markör (utan blinkning)',
+    selectionBubble: "Visa ett formatfält över markerad text",
+    selectionBubbleHint: "Fetstil, kursiv, kod, länk, rubriker och listor direkt ovanför markeringen, i live- och källkodsläge. Varje knapp kör samma kommando som sitt kortkommando.",
     alwaysShowMarkers: "Visa alltid Markdown-tecken",
     alwaysShowMarkersHint: "#, ** och andra tecken förblir synliga (nedtonade) när du redigerar, i stället för att döljas på rader utan markör. Formateringen syns och ett klick på en rad får den inte längre att hoppa. Bilder visas under sin rad; tabeller, formler och diagram förblir källkod. Gäller CodeMirror-redigeraren.",
     highlightCurrentLine: "Markera aktuell rad",
@@ -2124,5 +2126,13 @@ export const sv: I18n = {
       startLast: "Starta skrivpass",
       open: "Skrivpass (Pomodoro)…",
     },
+  },
+  // 5.0 — selection bubble + touch keyboard bar
+  formatBar: {
+    label: "Formatering",
+    heading: "Rubrik",
+    image: "Infoga bild",
+    undo: "Ångra",
+    hideKeyboard: "Dölj tangentbord",
   },
 };

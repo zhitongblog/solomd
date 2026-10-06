@@ -453,6 +453,8 @@ export const zh: I18n = {
     wordWrap: '自动换行',
     lineNumbers: '显示行号',
     solidCursor: '光标不闪烁(实心光标)',
+    selectionBubble: "选中文字时显示格式栏",
+    selectionBubbleHint: "在实时和源码模式下，选中文字后在其上方显示加粗、斜体、代码、链接、标题和列表按钮。每个按钮与对应快捷键执行同一命令。",
     alwaysShowMarkers: "始终显示 Markdown 标记",
     alwaysShowMarkersHint: "编辑时保留 #、** 等标记（淡色显示），不再在光标不在的行上隐藏。格式照常显示，点击某一行时不会再跳动。图片显示在所在行下方；表格、公式和图表保持源码。适用于 CodeMirror 编辑器。",
     highlightCurrentLine: "高亮当前行",
@@ -2111,5 +2113,13 @@ export const zh: I18n = {
       startLast: "开始专注写作",
       open: "专注计时…",
     },
+  },
+  // 5.0 — selection bubble + touch keyboard bar
+  formatBar: {
+    label: "格式",
+    heading: "标题",
+    image: "插入图片",
+    undo: "撤销",
+    hideKeyboard: "收起键盘",
   },
 };

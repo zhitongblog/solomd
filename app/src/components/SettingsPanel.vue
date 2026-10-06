@@ -1300,6 +1300,16 @@ function onSelectPdfFont(v: string) {
           </label>
         </section>
 
+        <!-- 5.0 — the floating format bar over a selection. Desktop only:
+             phones and tablets use the bar above the keyboard instead. -->
+        <section v-if="!isMobile()" data-cat="writing">
+          <label>
+            <input type="checkbox" :checked="settings.selectionBubble" @change="settings.toggleSelectionBubble()" />
+            {{ t('settings.selectionBubble') }}
+          </label>
+          <p class="setting-hint">{{ t('settings.selectionBubbleHint') }}</p>
+        </section>
+
         <section data-cat="writing">
           <h3 style="font-size: 13px; font-weight: 600; color: var(--text); margin: 18px 0 6px;">
             {{ t('writingStats.settingsHeading') }}

@@ -451,6 +451,8 @@ export const tr: I18n = {
     wordWrap: 'Sözcük Kaydırma',
     lineNumbers: 'Satır Numaraları',
     solidCursor: 'Sabit imleç (yanıp sönme yok)',
+    selectionBubble: "Seçili metnin üzerinde biçim çubuğu göster",
+    selectionBubbleHint: "Canlı ve kaynak modunda seçimin hemen üstünde kalın, italik, kod, bağlantı, başlık ve liste düğmeleri. Her düğme kısayoluyla aynı komutu çalıştırır.",
     alwaysShowMarkers: "Markdown işaretlerini her zaman göster",
     alwaysShowMarkersHint: "Düzenlerken #, ** ve diğer işaretler imleç olmayan satırlarda gizlenmek yerine soluk olarak görünür kalır. Biçimlendirme sürer ve bir satıra tıklamak artık onu kaydırmaz. Görseller kendi satırının altında görünür; tablolar, formüller ve diyagramlar kaynak olarak kalır. CodeMirror düzenleyicisi için geçerlidir.",
     highlightCurrentLine: "Geçerli satırı vurgula",
@@ -2124,5 +2126,13 @@ export const tr: I18n = {
       startLast: "Yazma oturumu başlat",
       open: "Yazma oturumu (Pomodoro)…",
     },
+  },
+  // 5.0 — selection bubble + touch keyboard bar
+  formatBar: {
+    label: "Biçimlendirme",
+    heading: "Başlık",
+    image: "Görsel ekle",
+    undo: "Geri al",
+    hideKeyboard: "Klavyeyi gizle",
   },
 };

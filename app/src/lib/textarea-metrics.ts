@@ -179,6 +179,50 @@ export function caretPointPx(el: HTMLTextAreaElement, text: string, pos: number)
   }
 }
 
+export interface SelectionBoxPx {
+  /** All four in px from the top-left of the text flow (padding and scroll excluded). */
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+/**
+ * The bounding box of `text[from, to)` as the textarea lays it out — what the
+ * 5.0 selection bubble centres itself on (the textarea path has no
+ * coordsAtPos()). Callers add back the padding and subtract the scroll.
+ */
+export function selectionBoxPx(el: HTMLTextAreaElement, text: string, from: number, to: number): SelectionBoxPx {
+  const mirror = createMirror(el);
+  try {
+    const a = Math.max(0, Math.min(from, to, text.length));
+    const b = Math.max(a, Math.min(Math.max(from, to), text.length));
+    const before = document.createElement('span');
+    before.textContent = text.slice(0, a);
+    const mid = document.createElement('span');
+    mid.textContent = text.slice(a, b) || '​';
+    const after = document.createElement('span');
+    after.textContent = text.slice(b);
+    mirror.append(before, mid, after);
+    const base = mirror.getBoundingClientRect();
+    const rects = Array.from(mid.getClientRects()).filter((r) => r.width > 0 || r.height > 0);
+    if (!rects.length) rects.push(mid.getBoundingClientRect());
+    let left = Infinity;
+    let right = -Infinity;
+    let top = Infinity;
+    let bottom = -Infinity;
+    for (const r of rects) {
+      left = Math.min(left, r.left);
+      right = Math.max(right, r.right);
+      top = Math.min(top, r.top);
+      bottom = Math.max(bottom, r.bottom);
+    }
+    return { left: left - base.left, top: top - base.top, right: right - base.left, bottom: bottom - base.top };
+  } finally {
+    mirror.remove();
+  }
+}
+
 export interface CaretRowInfo {
   /** Caret is on the first *visual* row of the text. */
   firstRow: boolean;

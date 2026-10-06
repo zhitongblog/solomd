@@ -451,6 +451,8 @@ export const ja: I18n = {
     wordWrap: '行折り返し',
     lineNumbers: '行番号',
     solidCursor: 'カーソルを点滅させない',
+    selectionBubble: "選択したテキストの上に書式バーを表示",
+    selectionBubbleHint: "ライブ／ソースモードで、選択範囲の上に太字・斜体・コード・リンク・見出し・リストのボタンを表示します。各ボタンはショートカットと同じコマンドを実行します。",
     alwaysShowMarkers: "Markdown 記号を常に表示",
     alwaysShowMarkersHint: "編集中も #、** などの記号を（薄く）表示し、カーソルのない行で隠さないようにします。書式はそのまま表示され、行をクリックしても表示が動きません。画像は行の下に表示され、表・数式・図はソースのままです。CodeMirror エディタに適用されます。",
     highlightCurrentLine: "現在の行をハイライト",
@@ -2107,5 +2109,13 @@ export const ja: I18n = {
       startLast: "執筆セッションを開始",
       open: "執筆セッション（ポモドーロ）…",
     },
+  },
+  // 5.0 — selection bubble + touch keyboard bar
+  formatBar: {
+    label: "書式",
+    heading: "見出し",
+    image: "画像を挿入",
+    undo: "元に戻す",
+    hideKeyboard: "キーボードを閉じる",
   },
 };
