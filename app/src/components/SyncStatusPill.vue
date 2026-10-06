@@ -24,6 +24,11 @@ import { useGithubSync } from '../composables/useGithubSync';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useToastsStore } from '../stores/toasts';
 import { useI18n } from '../i18n';
+import Icon from './Icons.vue';
+
+/** 'pill' — the status-bar pill. 'footer' — the 5.0 sidebar footer: a line
+ *  icon + a short word (已同步 / 未同步 / 同步中 / 有冲突), same click actions. */
+const props = withDefaults(defineProps<{ variant?: 'pill' | 'footer' }>(), { variant: 'pill' });
 
 const sync = useGithubSyncStore();
 const ops = useGithubSync();
@@ -97,6 +102,15 @@ const mode = computed<Mode>(() => {
   return { glyph: '✓', label: cleanLabel, action: 'noop', tone: 'ok' };
 });
 
+/** Short state word + icon for the sidebar footer. */
+const footer = computed<{ icon: string; text: string }>(() => {
+  const tone = mode.value.tone;
+  if (tone === 'busy') return { icon: 'sync', text: t('sidebar.syncing') };
+  if (tone === 'err') return { icon: 'sync', text: t('sidebar.syncConflicts') };
+  if (tone === 'warn') return { icon: 'cloud', text: t('sidebar.unsynced') };
+  return { icon: 'check-circle', text: t('sidebar.synced') };
+});
+
 function fmtAgo(ts: number | null | undefined): string {
   if (!ts) return t('githubSync.never') || 'never';
   const dt = Date.now() / 1000 - ts;
@@ -163,7 +177,18 @@ async function onClick() {
 
 <template>
   <button
-    v-if="visible"
+    v-if="visible && props.variant === 'footer'"
+    class="sync-foot"
+    :class="`sync-foot--${mode.tone}`"
+    type="button"
+    :title="tooltip"
+    @click="onClick"
+  >
+    <Icon :name="footer.icon" :size="14" class="sync-foot__icon" />
+    <span class="sync-foot__text">{{ footer.text }}</span>
+  </button>
+  <button
+    v-else-if="visible"
     class="sync-pill"
     :class="`sync-pill--${mode.tone}`"
     :title="tooltip"
@@ -175,6 +200,44 @@ async function onClick() {
 </template>
 
 <style scoped>
+.sync-foot {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: 24px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-3);
+  font: inherit;
+  font-size: 12px;
+  cursor: default;
+}
+.sync-foot:hover {
+  background: var(--fill-1);
+  color: var(--text-2);
+}
+.sync-foot__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sync-foot--warn .sync-foot__icon {
+  color: var(--accent);
+}
+.sync-foot--err {
+  color: var(--danger);
+}
+.sync-foot--busy .sync-foot__icon {
+  animation: sync-spin 1s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sync-foot--busy .sync-foot__icon {
+    animation: none;
+  }
+}
 .sync-pill {
   display: inline-flex;
   align-items: center;

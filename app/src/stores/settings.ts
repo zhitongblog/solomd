@@ -650,7 +650,7 @@ function defaults(): Settings {
     agentAllowWrite: false,
     agentToolLoopCap: 8,
     sideSidebarWidth: 260,
-    fileTreeWidth: 240,
+    fileTreeWidth: 260,
     aiEnabled: false,
     aiProvider: 'openai',
     aiModel: '',
@@ -1259,7 +1259,7 @@ export const useSettingsStore = defineStore('settings', {
     setFileTreeWidth(w: number) {
       // Reasonable bounds — narrower than 180 hides text, wider than 600
       // eats too much editor space.
-      const clean = Math.max(180, Math.min(600, Math.round(w) || 240));
+      const clean = Math.max(180, Math.min(600, Math.round(w) || 260));
       this.fileTreeWidth = clean;
       this.persist();
     },

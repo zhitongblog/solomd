@@ -24,6 +24,7 @@ import {
 } from '../composables/useFileTreeReveal';
 import { newFileInTreeRequest, clearNewFileInTreeRequest } from '../composables/useFileTreeNewFile';
 import MoveToDialog from './MoveToDialog.vue';
+import Icon from './Icons.vue';
 import { DsButton, DsModal } from '../ui';
 import { parentDirOf, setTreeSelection } from '../lib/new-file-target';
 import {
@@ -71,35 +72,10 @@ const settings = useSettingsStore();
 const toasts = useToastsStore();
 const ghSync = useGithubSyncStore();
 
-// v4.6.x — sidebar width resize state
-const isResizing = ref(false);
-const startX = ref(0);
-const startWidth = ref(0);
-
-function onResizeStart(e: MouseEvent) {
-  e.preventDefault();
-  isResizing.value = true;
-  startX.value = e.clientX;
-  startWidth.value = settings.fileTreeWidth;
-  document.body.style.cursor = 'ew-resize';
-  document.body.style.userSelect = 'none';
-
-  const onMove = (m: MouseEvent) => {
-    const dx = m.clientX - startX.value;
-    settings.setFileTreeWidth(startWidth.value + dx);
-  };
-
-  const onUp = () => {
-    document.removeEventListener('mousemove', onMove);
-    document.removeEventListener('mouseup', onUp);
-    document.body.style.cursor = '';
-    document.body.style.userSelect = '';
-    isResizing.value = false;
-  };
-
-  document.addEventListener('mousemove', onMove);
-  document.addEventListener('mouseup', onUp);
-}
+/** 5.0 — inside Sidebar.vue the tree drops its own chrome: the sidebar owns
+ *  the width, the resize handle, the background and the scrolling, and the
+ *  Inbox row lives in the sidebar's nav. */
+const props = defineProps<{ embedded?: boolean }>();
 
 /** v4.6.1 — Tolaria-parity "Copy Git URL": repository-backed blob URL for a
  *  file node, built from the linked remote + relative path (branch=main). */
@@ -169,7 +145,7 @@ watch(
   { immediate: true },
 );
 
-/** Folder the header ＋ / context menu creates in: the selected folder, the
+/** Folder the section row's + / context menu creates in: the selected folder, the
  *  selected file's folder, else the vault root. Only rows that are actually in
  *  the tree count — a selected document can live outside the open workspace,
  *  and an entry created there would have no row to appear in (#321). */
@@ -495,14 +471,31 @@ async function refreshFilterDirs() {
   }
 }
 
-function toggleSortMenu() {
-  sortOpen.value = !sortOpen.value;
-  filterOpen.value = false;
+// 5.0 — the sort / filter / workspace popovers are `position: fixed`, placed
+// under the button that opened them. They used to be absolute inside the
+// header, which a scrolling sidebar would clip.
+const popPos = ref<{ x: number; y: number }>({ x: 0, y: 0 });
+const POP_MIN_W = 200;
+function anchorPop(ev?: Event, alignWidth = false) {
+  const el = (ev?.currentTarget as HTMLElement | null) ?? null;
+  if (!el) return;
+  const r = el.getBoundingClientRect();
+  const x = alignWidth ? r.left : Math.min(r.left, window.innerWidth - POP_MIN_W - 8);
+  popPos.value = { x: Math.max(8, Math.round(x)), y: Math.round(r.bottom + 4) };
 }
 
-async function openFilter() {
+function toggleSortMenu(ev?: Event) {
+  sortOpen.value = !sortOpen.value;
+  filterOpen.value = false;
+  switcherOpen.value = false;
+  if (sortOpen.value) anchorPop(ev);
+}
+
+async function openFilter(ev?: Event) {
   sortOpen.value = false;
+  switcherOpen.value = false;
   filterOpen.value = !filterOpen.value;
+  if (filterOpen.value) anchorPop(ev);
   if (!filterOpen.value) return;
   const rootPath = workspace.currentFolder;
   if (!rootPath || isSafPath(rootPath)) {
@@ -670,10 +663,11 @@ const editInTree = computed(() => {
 function renderEditRow(depth: number) {
   const e = editing.value;
   if (!e) return null;
-  return hEdit('li', { class: 'ftree__edit', style: { paddingLeft: `${8 + depth * 12}px` } }, [
+  const isDir = e.kind === 'new-dir' || (e.kind === 'rename' && !!e.original && !!findNode(e.original)?.is_dir);
+  return hEdit('li', { class: 'ftree__edit', style: { paddingLeft: `${INDENT_BASE + depth * INDENT_STEP}px` } }, [
     ...indentGuides(depth),
-    hEdit('span', { class: 'ftree__caret' }, e.kind === 'new-dir' ? '›' : ''),
-    hEdit('span', { class: 'ftree__icon' }, e.kind === 'new-dir' ? '📁' : e.kind === 'new-file' ? '📝' : '•'),
+    hEdit('span', { class: 'ftree__caret' }),
+    hEdit('span', { class: 'ftree__icon' }, [hEdit(Icon, { name: isDir ? 'folder-sm' : 'file', size: 16 })]),
     hEdit('input', {
       ref: (el: unknown) => {
         if (el) editInput.value = el as HTMLInputElement;
@@ -1213,7 +1207,7 @@ function destinationAt(x: number, y: number): string | null {
   if (row) return row.dataset.dir === '1' ? (row.dataset.path ?? null) : null;
   // The workspace row and the empty space under the tree both mean "the
   // vault root" — otherwise there is no way to drag something back to the top.
-  if (el.closest('.ftree__root') || el.closest('.ftree__list')) {
+  if (el.closest('.ftree__root') || el.closest('.ftree__section') || el.closest('.ftree__list')) {
     return root.value?.path ?? null;
   }
   return null;
@@ -1235,8 +1229,20 @@ function armAutoExpand(dest: string | null) {
   }, AUTO_EXPAND_MS);
 }
 
+/** The element that actually scrolls the rows: the tree's own body when it
+ *  stands alone, the sidebar's scroll area when embedded. */
+function scrollHost(): HTMLElement | null {
+  let el: HTMLElement | null = treeBody.value;
+  while (el) {
+    const oy = getComputedStyle(el).overflowY;
+    if ((oy === 'auto' || oy === 'scroll') && el.scrollHeight > el.clientHeight) return el;
+    el = el.parentElement;
+  }
+  return treeBody.value;
+}
+
 function autoScroll(y: number) {
-  const body = treeBody.value;
+  const body = scrollHost();
   if (!body) return;
   const r = body.getBoundingClientRect();
   if (y < r.top + SCROLL_EDGE) body.scrollTop -= 12;
@@ -1703,8 +1709,11 @@ const switcherList = computed(() => {
   return out;
 });
 
-function toggleSwitcher() {
+function toggleSwitcher(ev?: Event) {
   switcherOpen.value = !switcherOpen.value;
+  sortOpen.value = false;
+  filterOpen.value = false;
+  if (switcherOpen.value) anchorPop(ev, true);
 }
 function closeSwitcher() {
   switcherOpen.value = false;
@@ -1765,156 +1774,191 @@ onBeforeUnmount(() => {
     class="ftree"
     tabindex="-1"
     @keydown="onTreeKey"
-    :class="{ 'ftree--fullnames': settings.explorerFullNames }"
-    :style="{ '--file-tree-width': settings.fileTreeWidth + 'px' }"
+    :class="{ 'ftree--fullnames': settings.explorerFullNames, 'ftree--embedded': props.embedded }"
+    :style="props.embedded ? undefined : { '--file-tree-width': settings.fileTreeWidth + 'px' }"
     @contextmenu.prevent="openCtx($event, null)"
   >
-    <!-- Width resize handle -->
-    <div
-      class="ftree__resize-handle"
-      :class="{ 'ftree__resize-handle--active': isResizing }"
-      @mousedown="onResizeStart"
-    />
-    <div class="ftree__header">
-      <span>{{ t('explorer.heading') }}</span>
-      <div class="ftree__header-btns">
-        <button
-          class="ftree__hbtn"
-          :title="t('explorer.newFile') || 'New file'"
-          @click="root && startNewFile(newEntryParent())"
-          :disabled="!root"
-        >＋</button>
-        <div class="ftree__filter-wrap">
-          <button
-            v-if="localVault"
-            class="ftree__hbtn"
-            :class="{ 'ftree__hbtn--on': extFilter.length > 0 }"
-            :title="t('explorer.filterByType') || 'Filter by file type'"
-            @click.stop="openFilter"
-            :disabled="!root"
-          >{{ extFilter.length ? '▼' : '▽' }}</button>
-          <div v-if="filterOpen" class="ftree__filter-pop" @click.stop>
-            <div class="ftree__filter-label">{{ t('explorer.filterByType') || 'Filter by file type' }}</div>
-            <button
-              class="ftree__filter-item"
-              :class="{ 'ftree__filter-item--active': extFilter.length === 0 }"
-              @click="settings.clearExplorerExtFilter()"
-            >
-              <span class="ftree__filter-check">{{ extFilter.length === 0 ? '✓' : '' }}</span>
-              <span class="ftree__filter-name">{{ t('explorer.filterAll') || 'All files' }}</span>
-            </button>
-            <div class="ftree__filter-sep"></div>
-            <button
-              v-for="e in extList"
-              :key="e.ext || '__noext__'"
-              class="ftree__filter-item"
-              :class="{ 'ftree__filter-item--active': extFilter.includes(e.ext) }"
-              @click="settings.toggleExplorerExt(e.ext)"
-            >
-              <span class="ftree__filter-check">{{ extFilter.includes(e.ext) ? '✓' : '' }}</span>
-              <span class="ftree__filter-name">{{ extLabel(e.ext) }}</span>
-              <span class="ftree__filter-count">{{ e.count }}</span>
-            </button>
-            <div v-if="extList.length === 0" class="ftree__filter-empty">
-              {{ t('explorer.filterNoTypes') || 'Nothing to filter yet.' }}
-            </div>
-          </div>
-        </div>
-        <div class="ftree__filter-wrap">
-          <button
-            class="ftree__hbtn"
-            :class="{ 'ftree__hbtn--on': sortMode !== 'name-asc' }"
-            :title="(t('explorer.sortBy') || 'Sort') + ' · ' + sortLabel(sortMode)"
-            @click.stop="toggleSortMenu"
-            :disabled="!root"
-          >⇅</button>
-          <div v-if="sortOpen" class="ftree__filter-pop" @click.stop>
-            <div class="ftree__filter-label">{{ t('explorer.sortBy') || 'Sort' }}</div>
-            <button
-              v-for="m in TREE_SORT_MODES"
-              :key="m"
-              class="ftree__filter-item"
-              :class="{ 'ftree__filter-item--active': sortMode === m }"
-              :disabled="m === 'manual' && !localVault"
-              @click="setSortMode(m)"
-            >
-              <span class="ftree__filter-check">{{ sortMode === m ? '✓' : '' }}</span>
-              <span class="ftree__filter-name">{{ sortLabel(m) }}</span>
-            </button>
-            <div v-if="sortMode === 'manual'" class="ftree__filter-empty">
-              {{ t('explorer.sortManualHint') }}
-            </div>
-          </div>
-        </div>
-        <button
-          class="ftree__hbtn"
-          :title="t('explorer.refresh') || 'Refresh'"
-          @click="scheduleRefresh"
-          :disabled="!root"
-        >↻</button>
-        <button
-          class="ftree__hbtn"
-          :title="t('explorer.openFolder') || 'Open folder…'"
-          @click="files.openFolder"
-        >📁</button>
-        <!-- 张工 4.14.8 report #2: an × in a panel's corner reads as "close this
-             panel". It used to close the FOLDER, which swaps the open tabs for
-             the no-folder set and looked like the document had been closed.
-             The × now hides the tree; closing the folder lives in the folder
-             switcher (the root button's menu). -->
-        <button
-          class="ftree__hbtn"
-          :title="t('explorer.hideTree')"
-          :aria-label="t('explorer.hideTree')"
-          @click="settings.toggleFileTree()"
-        >✕</button>
-      </div>
-    </div>
-
     <div v-if="!root" class="ftree__empty">
       <button class="ftree__open-btn" @click="files.openFolder">{{ t('explorer.openFolder') }}</button>
     </div>
     <div v-else ref="treeBody" class="ftree__body">
-      <!-- v4.3.5: root display doubles as the workspace switcher. Click
-           opens a dropdown listing recent folders + "Open folder…". -->
-      <div class="ftree__root-wrap">
+      <!-- 5.0 section row (spec §4). The label doubles as the workspace
+           switcher; the icon buttons on the right appear on hover, and stay
+           visible while their popover is open or their state is non-default
+           (a persisted sort / filter must never be invisible). It is also the
+           "vault root" drop target and right-click target, as the old root
+           pill was. -->
+      <div
+        class="ftree__section"
+        :class="{
+          'ftree__section--active': switcherOpen || sortOpen || filterOpen,
+          'ftree__section--drop': dropTarget === root.path,
+        }"
+        @contextmenu.prevent.stop="openCtx($event, root)"
+      >
         <button
-          class="ftree__root ftree__root--btn"
-          :class="{
-            'ftree__root--open': switcherOpen,
-            'ftree__root--drop': dropTarget === root.path,
-          }"
+          class="ftree__ws"
+          :class="{ 'ftree__ws--open': switcherOpen }"
+          type="button"
+          aria-haspopup="menu"
+          :aria-expanded="switcherOpen"
           :title="(t('explorer.switchWorkspace') || 'Switch workspace') + ' · ' + root.path"
-          @click.stop="toggleSwitcher"
-          @contextmenu.prevent="openCtx($event, root)"
+          @click.stop="toggleSwitcher($event)"
         >
-          <span class="ftree__root-vicon" aria-hidden="true">🗂</span>
-          <span class="ftree__root-name">{{ root.name }}</span>
-          <span class="ftree__root-caret" aria-hidden="true">▾</span>
+          <span class="ftree__section-label">{{ t('sidebar.folders') }}</span>
+          <span class="ftree__ws-name">{{ root.name }}</span>
+          <Icon name="chevron-down" :size="12" class="ftree__ws-caret" />
         </button>
-        <div v-if="switcherOpen" class="ftree__switcher" @click.stop>
-          <div class="ftree__switcher-label">{{ t('explorer.recentFolders') }}</div>
+        <div class="ftree__tools">
           <button
-            v-for="folder in switcherList"
-            :key="folder.path"
-            class="ftree__switcher-item"
-            :class="{ 'ftree__switcher-item--active': folder.path === root.path }"
-            :title="folder.path"
-            @click="pickRecentFolder(folder.path)"
+            class="ftree__tool"
+            type="button"
+            :title="t('explorer.newFile') || 'New file'"
+            :aria-label="t('explorer.newFile') || 'New file'"
+            @click.stop="startNewFile(newEntryParent())"
           >
+            <Icon name="plus" :size="16" />
+          </button>
+          <button
+            class="ftree__tool"
+            type="button"
+            :class="{ 'ftree__tool--on': sortMode !== 'name-asc', 'ftree__tool--open': sortOpen }"
+            :title="(t('explorer.sortBy') || 'Sort') + ' · ' + sortLabel(sortMode)"
+            :aria-label="t('explorer.sortBy') || 'Sort'"
+            aria-haspopup="menu"
+            :aria-expanded="sortOpen"
+            @click.stop="toggleSortMenu($event)"
+          >
+            <Icon name="sort" :size="16" />
+          </button>
+          <button
+            v-if="localVault"
+            class="ftree__tool"
+            type="button"
+            :class="{ 'ftree__tool--on': extFilter.length > 0, 'ftree__tool--open': filterOpen }"
+            :title="t('explorer.filterByType') || 'Filter by file type'"
+            :aria-label="t('explorer.filterByType') || 'Filter by file type'"
+            aria-haspopup="menu"
+            :aria-expanded="filterOpen"
+            @click.stop="openFilter($event)"
+          >
+            <Icon name="filter" :size="16" />
+          </button>
+          <button
+            class="ftree__tool"
+            type="button"
+            :title="t('explorer.refresh') || 'Refresh'"
+            :aria-label="t('explorer.refresh') || 'Refresh'"
+            @click.stop="scheduleRefresh"
+          >
+            <Icon name="refresh" :size="16" />
+          </button>
+        </div>
+      </div>
+
+      <!-- Popovers: one menu style (spec §6), fixed-positioned under the
+           button that opened them. -->
+      <div
+        v-if="switcherOpen"
+        class="ftree__menu ftree__menu--switcher"
+        role="menu"
+        :style="{ left: popPos.x + 'px', top: popPos.y + 'px' }"
+        @click.stop
+      >
+        <div class="ftree__menu-label">{{ t('explorer.recentFolders') }}</div>
+        <button
+          v-for="folder in switcherList"
+          :key="folder.path"
+          class="ftree__menu-item ftree__menu-item--two"
+          :class="{ 'ftree__menu-item--active': folder.path === root.path }"
+          role="menuitemradio"
+          :aria-checked="folder.path === root.path"
+          :title="folder.path"
+          @click="pickRecentFolder(folder.path)"
+        >
+          <span class="ftree__menu-check">{{ folder.path === root.path ? '✓' : '' }}</span>
+          <span class="ftree__menu-text">
             <span class="ftree__switcher-name">{{ folder.name }}</span>
             <span class="ftree__switcher-path">{{ folder.parent }}</span>
-          </button>
-          <div v-if="switcherList.length === 0" class="ftree__switcher-empty">
-            {{ t('explorer.noRecentFolders') }}
-          </div>
-          <div class="ftree__switcher-sep"></div>
-          <button class="ftree__switcher-item ftree__switcher-item--cta" @click="openFolderAndClose">
-            📁 {{ t('explorer.openFolder') }}
-          </button>
-          <button class="ftree__switcher-item ftree__switcher-item--cta" @click="closeFolder">
-            {{ t('explorer.closeFolder') }}
-          </button>
+          </span>
+        </button>
+        <div v-if="switcherList.length === 0" class="ftree__menu-empty">
+          {{ t('explorer.noRecentFolders') }}
+        </div>
+        <div class="ftree__menu-sep"></div>
+        <button class="ftree__menu-item" role="menuitem" @click="openFolderAndClose">
+          <span class="ftree__menu-check"></span>
+          <span class="ftree__menu-name">{{ t('explorer.openFolder') }}</span>
+        </button>
+        <button
+          v-if="workspace.currentFolder"
+          class="ftree__menu-item"
+          role="menuitem"
+          @click="closeFolder"
+        >
+          <span class="ftree__menu-check"></span>
+          <span class="ftree__menu-name">{{ t('explorer.closeFolder') }}</span>
+        </button>
+      </div>
+      <div
+        v-if="sortOpen"
+        class="ftree__menu"
+        role="menu"
+        :style="{ left: popPos.x + 'px', top: popPos.y + 'px' }"
+        @click.stop
+      >
+        <div class="ftree__menu-label">{{ t('explorer.sortBy') || 'Sort' }}</div>
+        <button
+          v-for="m in TREE_SORT_MODES"
+          :key="m"
+          class="ftree__menu-item"
+          :class="{ 'ftree__menu-item--active': sortMode === m }"
+          role="menuitemradio"
+          :aria-checked="sortMode === m"
+          :disabled="m === 'manual' && !localVault"
+          @click="setSortMode(m)"
+        >
+          <span class="ftree__menu-check">{{ sortMode === m ? '✓' : '' }}</span>
+          <span class="ftree__menu-name">{{ sortLabel(m) }}</span>
+        </button>
+        <div v-if="sortMode === 'manual'" class="ftree__menu-empty">
+          {{ t('explorer.sortManualHint') }}
+        </div>
+      </div>
+      <div
+        v-if="filterOpen"
+        class="ftree__menu ftree__menu--scroll"
+        role="menu"
+        :style="{ left: popPos.x + 'px', top: popPos.y + 'px' }"
+        @click.stop
+      >
+        <div class="ftree__menu-label">{{ t('explorer.filterByType') || 'Filter by file type' }}</div>
+        <button
+          class="ftree__menu-item"
+          :class="{ 'ftree__menu-item--active': extFilter.length === 0 }"
+          role="menuitemcheckbox"
+          :aria-checked="extFilter.length === 0"
+          @click="settings.clearExplorerExtFilter()"
+        >
+          <span class="ftree__menu-check">{{ extFilter.length === 0 ? '✓' : '' }}</span>
+          <span class="ftree__menu-name">{{ t('explorer.filterAll') || 'All files' }}</span>
+        </button>
+        <div class="ftree__menu-sep"></div>
+        <button
+          v-for="e in extList"
+          :key="e.ext || '__noext__'"
+          class="ftree__menu-item"
+          :class="{ 'ftree__menu-item--active': extFilter.includes(e.ext) }"
+          role="menuitemcheckbox"
+          :aria-checked="extFilter.includes(e.ext)"
+          @click="settings.toggleExplorerExt(e.ext)"
+        >
+          <span class="ftree__menu-check">{{ extFilter.includes(e.ext) ? '✓' : '' }}</span>
+          <span class="ftree__menu-name">{{ extLabel(e.ext) }}</span>
+          <span class="ftree__menu-count">{{ e.count }}</span>
+        </button>
+        <div v-if="extList.length === 0" class="ftree__menu-empty">
+          {{ t('explorer.filterNoTypes') || 'Nothing to filter yet.' }}
         </div>
       </div>
 
@@ -1938,7 +1982,7 @@ onBeforeUnmount(() => {
       <!-- Inline new/rename input. Normally drawn in the tree itself (#321,
            see renderEditRow); here only when a filter hides its target. -->
       <div v-if="editing && !editInTree" class="ftree__edit">
-        <span class="ftree__icon">{{ editing.kind === 'new-dir' ? '▸' : editing.kind === 'rename' ? '•' : '•' }}</span>
+        <span class="ftree__icon"><Icon :name="editing.kind === 'new-dir' ? 'folder-sm' : 'file'" :size="16" /></span>
         <input
           ref="editInput"
           v-model="editing.name"
@@ -1950,12 +1994,11 @@ onBeforeUnmount(() => {
         />
       </div>
 
-      <!-- v2.4 / v4.6 F6: Inbox row. The chevron toggles the inbox-only tree
-           filter (so the tree below shows only `inbox: true` docs); clicking
-           the name opens the dedicated InboxView workflow. Gated on the
-           v4.6 inbox-workflow opt-out. -->
+      <!-- v2.4 / v4.6 F6: Inbox row — standalone tree only. Inside the 5.0
+           sidebar the Inbox lives in the nav rows above (Sidebar.vue), which
+           also carries the inbox-only filter toggle. -->
       <div
-        v-if="settings.inboxWorkflowEnabled"
+        v-if="settings.inboxWorkflowEnabled && !props.embedded"
         class="ftree__inbox"
         :class="{ 'ftree__inbox--active': showInboxOnly }"
       >
@@ -1964,7 +2007,7 @@ onBeforeUnmount(() => {
           :title="showInboxOnly ? t('inbox.filterOff') : t('inbox.filterOn')"
           @click="inbox.toggleFilter()"
         >
-          <span class="ftree__icon">{{ showInboxOnly ? '▾' : '▸' }}</span>
+          <Icon :name="showInboxOnly ? 'chevron-down' : 'chevron-right'" :size="12" />
         </button>
         <button
           class="ftree__inbox-open"
@@ -1976,6 +2019,14 @@ onBeforeUnmount(() => {
         <span class="ftree__badge" v-if="inbox.inboxCount.value > 0">
           {{ inbox.inboxCount.value }}
         </span>
+      </div>
+
+      <!-- The inbox-only filter hides files too: same rule as below. -->
+      <div v-if="showInboxOnly" class="ftree__filter-banner">
+        <span class="ftree__filter-banner-text">{{ t('sidebar.inboxFilterActive') }}</span>
+        <button class="ftree__filter-banner-clear" @click="inbox.setFilter(false)">
+          {{ t('explorer.filterClear') || 'Clear' }}
+        </button>
       </div>
 
       <!-- A persisted filter that hides files must never be invisible. -->
@@ -2021,16 +2072,17 @@ onBeforeUnmount(() => {
     <div
       v-if="ctx"
       ref="ctxEl"
-      class="ftree__ctx"
+      class="ftree__menu ftree__ctx"
+      role="menu"
       :style="{ left: ctx.x + 'px', top: ctx.y + 'px' }"
       @click.stop
     >
       <template v-if="!ctx.node || ctx.node.is_dir">
         <button class="ftree__ctx-item" @click="startNewFile(ctx.node ? ctx.node.path : newEntryParent())">
-          📄 {{ t('explorer.newFile') || 'New File' }}
+          {{ t('explorer.newFile') || 'New File' }}
         </button>
         <button class="ftree__ctx-item" @click="startNewFolder(ctx.node ? ctx.node.path : newEntryParent())">
-          📁 {{ t('explorer.newFolder') || 'New Folder' }}
+          {{ t('explorer.newFolder') || 'New Folder' }}
         </button>
       </template>
       <!-- Only between the "new file / folder" section (folders) and the rest:
@@ -2042,7 +2094,7 @@ onBeforeUnmount(() => {
         aria-keyshortcuts="F2"
         @click="startRename(ctx.node)"
       >
-        <span>✎ {{ t('explorer.rename') || 'Rename' }}</span>
+        <span>{{ t('explorer.rename') || 'Rename' }}</span>
         <kbd v-if="!isMobile()" class="ftree__ctx-kbd">{{ renameKbd }}</kbd>
       </button>
       <button
@@ -2050,7 +2102,7 @@ onBeforeUnmount(() => {
         class="ftree__ctx-item"
         @click="startMoveTo(ctx.node)"
       >
-        ↪ {{ t('explorer.moveTo') || 'Move to…' }}
+        {{ t('explorer.moveTo') || 'Move to…' }}
       </button>
       <button
         v-if="ctx.node"
@@ -2058,17 +2110,18 @@ onBeforeUnmount(() => {
         :aria-keyshortcuts="macKeys ? 'Meta+Backspace' : 'Delete'"
         @click="deleteNode(ctx.node)"
       >
-        <span>🗑 {{ t('explorer.delete') || 'Delete' }}</span>
+        <span>{{ t('explorer.delete') || 'Delete' }}</span>
         <kbd v-if="!isMobile()" class="ftree__ctx-kbd">{{ deleteKbd }}</kbd>
       </button>
+      <div v-if="ctx.node" class="ftree__ctx-sep"></div>
       <button v-if="ctx.node" class="ftree__ctx-item" @click="copyNodePath(ctx.node)">
-        📋 {{ t('explorer.copyPath') || 'Copy Path' }}
+        {{ t('explorer.copyPath') || 'Copy Path' }}
       </button>
       <button v-if="ctx.node" class="ftree__ctx-item" @click="copyNodeRelativePath(ctx.node)">
-        📋 {{ t('explorer.copyRelPath') || 'Copy Relative Path' }}
+        {{ t('explorer.copyRelPath') || 'Copy Relative Path' }}
       </button>
       <button v-if="ctx.node && !ctx.node.is_dir" class="ftree__ctx-item" @click="copyGitUrl(ctx.node)">
-        🔗 {{ t('explorer.copyGitUrl') || 'Copy Git URL' }}
+        {{ t('explorer.copyGitUrl') || 'Copy Git URL' }}
       </button>
       <!-- #148 follow-up — hidden on mobile: revealItemInDir silently no-ops
            there (no user-reachable file manager can browse the app sandbox
@@ -2076,7 +2129,7 @@ onBeforeUnmount(() => {
       <template v-if="!isMobile()">
         <div class="ftree__ctx-sep"></div>
         <button class="ftree__ctx-item" @click="revealNode(ctx.node ?? root!)">
-          🔍 {{ t('explorer.reveal') || 'Reveal in Finder' }}
+          {{ t('explorer.reveal') || 'Reveal in Finder' }}
         </button>
       </template>
     </div>
@@ -2135,7 +2188,7 @@ onBeforeUnmount(() => {
         data-testid="ftree-drag-ghost"
       >
         <div class="ftree-ghost__name">
-          <span class="ftree-ghost__icon" aria-hidden="true">{{ dragGhost.isDir ? '📁' : '📄' }}</span>
+          <Icon class="ftree-ghost__icon" :name="dragGhost.isDir ? 'folder-sm' : 'file'" :size="14" aria-hidden="true" />
           <span class="ftree-ghost__label">{{ dragGhost.name }}</span>
         </div>
         <div class="ftree-ghost__action">{{ dragGhost.action }}</div>
@@ -2155,10 +2208,13 @@ interface FtreeEditApi {
   renderEditRow: (depth: number) => VNode | null;
 }
 
-// The indent geometry, in one place: a row's own left padding is
-// `8 + depth * 12`, so level `i`'s guide line sits at `8 + i * 12`.
-const INDENT_BASE = 8;
-const INDENT_STEP = 12;
+// The indent geometry, in one place (5.0: 16 px per level). A row's own left
+// padding is `INDENT_BASE + depth * INDENT_STEP`; its 12 px chevron starts
+// there, so level `i`'s guide line runs through the middle of that level's
+// chevron, at `INDENT_BASE + i * INDENT_STEP + GUIDE_X`.
+const INDENT_BASE = 6;
+const INDENT_STEP = 16;
+const GUIDE_X = 6;
 
 /**
  * The visual tree: one dotted vertical line per ancestor level, plus the short
@@ -2177,7 +2233,7 @@ function indentGuides(depth: number): VNode[] {
     guides.push(
       h('i', {
         class: 'ftree__guide',
-        style: { left: `${INDENT_BASE + i * INDENT_STEP}px` },
+        style: { left: `${INDENT_BASE + i * INDENT_STEP + GUIDE_X}px` },
         'aria-hidden': 'true',
       }),
     );
@@ -2185,7 +2241,7 @@ function indentGuides(depth: number): VNode[] {
   guides.push(
     h('i', {
       class: 'ftree__stub',
-      style: { left: `${INDENT_BASE + (depth - 1) * INDENT_STEP}px` },
+      style: { left: `${INDENT_BASE + (depth - 1) * INDENT_STEP + GUIDE_X}px` },
       'aria-hidden': 'true',
     }),
   );
@@ -2229,47 +2285,6 @@ export const FileTreeNode = defineComponent({
       return dot <= 0 ? '' : name.slice(dot + 1).toLowerCase();
     };
 
-    // Get file icon based on extension
-    const getFileIcon = (name: string): string => {
-      const ext = name.split('.').pop()?.toLowerCase() || '';
-      const iconMap: Record<string, string> = {
-        // Notes & docs — the markdown family is unified on one glyph so a
-        // vault of .md / .markdown / .mdx reads as one consistent type.
-        'md': '📝', 'markdown': '📝', 'mdx': '📝', 'org': '📝',
-        'txt': '📄', 'text': '📄', 'rtf': '📄', 'tex': '📄',
-        'pdf': '📕', 'epub': '📖',
-        'doc': '📘', 'docx': '📘',
-        'ppt': '📙', 'pptx': '📙', 'key': '📙',
-        'xls': '📊', 'xlsx': '📊', 'csv': '📊', 'tsv': '📊',
-        'canvas': '🗺', 'bib': '📚',
-        // Images
-        'jpg': '🖼', 'jpeg': '🖼', 'png': '🖼', 'gif': '🖼',
-        'webp': '🖼', 'svg': '🖼', 'ico': '🖼', 'bmp': '🖼', 'avif': '🖼',
-        // Audio / video
-        'mp3': '🎵', 'wav': '🎵', 'flac': '🎵', 'm4a': '🎵', 'aac': '🎵', 'ogg': '🎵',
-        'mp4': '🎬', 'mov': '🎬', 'avi': '🎬', 'mkv': '🎬', 'webm': '🎬',
-        // Archives
-        'zip': '📦', 'rar': '📦', '7z': '📦', 'tar': '📦', 'gz': '📦',
-        // Data & config
-        'json': '📋', 'xml': '📋', 'yaml': '📋', 'yml': '📋',
-        'toml': '📋', 'ini': '📋', 'cfg': '📋', 'conf': '📋',
-        'log': '📋', 'sql': '🗃', 'db': '🗃', 'sqlite': '🗃',
-        'env': '🔑', 'lock': '🔒',
-        // Web & code
-        'html': '🌐', 'htm': '🌐',
-        'css': '🎨', 'scss': '🎨', 'less': '🎨',
-        'js': '📜', 'mjs': '📜', 'cjs': '📜', 'jsx': '📜',
-        'ts': '📜', 'tsx': '📜', 'vue': '💚',
-        'py': '🐍', 'java': '☕', 'rb': '💎', 'php': '🐘',
-        'c': '⚙', 'h': '⚙', 'cpp': '⚙', 'cc': '⚙', 'hpp': '⚙',
-        'go': '🐹', 'rs': '🦀',
-        'sh': '🐚', 'bash': '🐚', 'zsh': '🐚',
-        // Extension-less well-known names (split('.').pop() returns the name)
-        'makefile': '🔧', 'dockerfile': '🐳', 'license': '📜', 'gitignore': '🚫',
-      };
-      return iconMap[ext] || '📄';
-    };
-
     // #259 — split "name" and ".ext" so CSS can truncate the name to whatever
     // width the sidebar has, keeping the extension visible. This used to be a
     // fixed 30-character cut in JS, so widening the sidebar never showed more.
@@ -2292,7 +2307,7 @@ export const FileTreeNode = defineComponent({
           return [];
         }
       }
-      const indent = 8 + props.depth * 12;
+      const indent = INDENT_BASE + props.depth * INDENT_STEP;
 
       // Full name in the tooltip. #182 — the full-names setting wraps
       // instead of truncating.
@@ -2350,11 +2365,12 @@ export const FileTreeNode = defineComponent({
             // and every file sits visibly to the right of the folders at its
             // level (the file emoji used to be further left than the folder's
             // small caret, which read as "files are the parents").
-            h('span', { class: ['ftree__caret', n.is_dir && n.expanded ? 'ftree__caret--open' : ''] }, n.is_dir ? '›' : ''),
-            h('span', { class: 'ftree__icon' }, n.is_dir ? (n.expanded ? '📂' : '📁') : getFileIcon(n.name)),
+            h('span', { class: ['ftree__caret', n.is_dir && n.expanded ? 'ftree__caret--open' : ''] },
+              n.is_dir ? [h(Icon, { name: 'chevron-right', size: 12 })] : []),
+            h('span', { class: 'ftree__icon' }, [h(Icon, { name: n.is_dir ? 'folder-sm' : 'file', size: 16 })]),
             nameNode,
             !n.is_dir && props.inboxPaths.has(n.path)
-              ? h('span', { class: 'ftree__inbox-dot', title: 'inbox' }, '●')
+              ? h('span', { class: 'ftree__inbox-dot', title: 'inbox' })
               : null,
             // Touch screens only (CSS): the row's menu, findable without a
             // long-press or a right-click.
@@ -2368,7 +2384,7 @@ export const FileTreeNode = defineComponent({
                 const r = (ev.currentTarget as HTMLElement).getBoundingClientRect();
                 emit('contextmenu', { clientX: r.left, clientY: r.bottom, preventDefault() {}, stopPropagation() {} } as unknown as MouseEvent, n);
               },
-            }, '⋯'),
+            }, [h(Icon, { name: 'more', size: 16 })]),
           ]
         ),
       ];
@@ -2399,19 +2415,43 @@ export const FileTreeNode = defineComponent({
 </script>
 
 <style scoped>
+/* 5.0 — spec §4 (sidebar tree) and §6 (menus). Tokens only. */
 .ftree:focus {
   outline: none;
 }
 .ftree {
-  width: var(--file-tree-width, 240px);
+  width: var(--file-tree-width, var(--sidebar-w));
   height: 100%;
-  background: var(--bg-elev);
-  border-right: 1px solid var(--border);
+  background: var(--bg-sidebar);
+  border-right: var(--bd-hair);
   display: flex;
   flex-direction: column;
   user-select: none;
   position: relative;
+  font-size: 13px;
+  color: var(--text);
 }
+/* Inside Sidebar.vue: the sidebar owns width, background, border and the
+   scrolling; the tree is a block in its scroll area that fills what is left,
+   so the space under a short tree is still "the vault root" for a drop or a
+   right-click. */
+.ftree--embedded {
+  width: auto;
+  height: auto;
+  flex: 1 0 auto;
+  background: transparent;
+  border-right: 0;
+}
+.ftree--embedded .ftree__body {
+  overflow: visible;
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+.ftree--embedded .ftree__list {
+  flex: 1 0 auto;
+}
+
 /* #342 — manual-sort insertion line, drawn on the row a drop would land
    before or after. :deep() because the rows are rendered by FileTreeNode,
    which scoped styles don't reach otherwise (same as the rules below). */
@@ -2432,54 +2472,294 @@ export const FileTreeNode = defineComponent({
 }
 :deep(.ftree__item--insert-before)::after { top: -1px; }
 :deep(.ftree__item--insert-after)::after { bottom: -1px; }
-.ftree__header {
+
+/* ── Section row: 文件夹 · <workspace> ▾ ……… [+][sort][filter][refresh] ── */
+.ftree__section {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 8px 14px;
+  gap: var(--sp-1);
+  height: 28px;
+  margin: var(--sp-3) var(--sp-2) 2px;
+  padding: 0 2px 0 0;
+  border-radius: var(--r-sm);
+}
+.ftree__section--drop {
+  box-shadow: inset 0 0 0 1px var(--accent);
+  background: var(--accent-soft);
+}
+.ftree__ws {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-3);
+  font: inherit;
+  text-align: left;
+  cursor: default;
+}
+.ftree__ws:hover,
+.ftree__ws--open {
+  background: var(--fill-1);
+}
+.ftree__ws:focus-visible,
+.ftree__tool:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+.ftree__section-label {
+  flex: none;
   font-size: 11px;
   font-weight: 600;
-  text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--text-muted);
-  border-bottom: 1px solid var(--border);
+  text-transform: uppercase;
 }
-.ftree__header-btns {
+.ftree__ws-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-3);
+}
+.ftree__ws-name::before {
+  content: '·';
+  margin-right: 6px;
+}
+.ftree__ws-caret {
+  flex: none;
+  color: var(--text-3);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.ftree__ws--open .ftree__ws-caret {
+  transform: rotate(180deg);
+}
+.ftree__tools {
+  flex: none;
   display: flex;
-  gap: 2px;
+  align-items: center;
+  gap: 0;
 }
-.ftree__hbtn {
-  padding: 0 6px;
-  font-size: 13px;
-  color: var(--text-muted);
+.ftree__tool {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sm);
   background: transparent;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  line-height: 1.6;
+  color: var(--text-3);
+  cursor: default;
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
 }
-.ftree__hbtn:hover:not(:disabled) {
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
+/* Revealed on hover / keyboard focus; a tool whose state is non-default
+   (sorted, filtered) or whose popover is open stays visible. */
+.ftree__section:hover .ftree__tool,
+.ftree__section:focus-within .ftree__tool,
+.ftree__section--active .ftree__tool,
+.ftree__tool--on,
+.ftree__tool--open {
+  opacity: 1;
 }
-.ftree__hbtn:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
+.ftree__tool:hover,
+.ftree__tool--open {
+  background: var(--fill-1);
+  color: var(--text-2);
 }
+.ftree__tool--on {
+  color: var(--accent-text);
+}
+/* Touch screens have no hover: keep the tools visible. */
+@media (hover: none) {
+  .ftree__tool {
+    opacity: 1;
+  }
+}
+
+/* ── One menu style for every popover here (spec §6) ── */
+.ftree__menu {
+  position: fixed;
+  z-index: var(--z-pop);
+  min-width: 200px;
+  max-width: min(320px, calc(100vw - 16px));
+  padding: var(--sp-1);
+  background: var(--bg-pop);
+  border: var(--bd-hair);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-pop);
+  font-size: 13px;
+  color: var(--text);
+  user-select: none;
+  transform-origin: top left;
+  animation: ftree-pop var(--dur-fast) var(--ease-out);
+}
+@keyframes ftree-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+.ftree__menu--switcher,
+.ftree__menu--scroll {
+  max-height: min(60vh, 420px);
+  overflow-y: auto;
+}
+.ftree__menu-label {
+  padding: 6px 8px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.ftree__menu-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 28px;
+  padding: 0 10px 0 6px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: default;
+}
+.ftree__menu-item--two {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+.ftree__menu-item:hover:not(:disabled) {
+  background: var(--fill-1);
+}
+.ftree__menu-item:disabled {
+  color: var(--text-3);
+}
+.ftree__menu-check {
+  flex: none;
+  width: 14px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text);
+}
+.ftree__menu-name,
+.ftree__menu-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ftree__menu-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.ftree__menu-count {
+  flex: none;
+  color: var(--text-3);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.ftree__menu-sep {
+  height: var(--hair-w);
+  margin: var(--sp-1) 6px;
+  background: var(--hairline);
+}
+.ftree__menu-empty {
+  padding: 6px 8px 6px 26px;
+  color: var(--text-3);
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: normal;
+}
+.ftree__switcher-name {
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ftree__switcher-path {
+  font-size: 11px;
+  color: var(--text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+  text-align: left;
+}
+
+/* Context menu: same style, its own item class kept for the tests and
+   the keyboard-chord layout. */
+.ftree__ctx {
+  min-width: 200px;
+}
+.ftree__ctx-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: default;
+}
+.ftree__ctx-item--kbd {
+  justify-content: space-between;
+}
+/* #355 — the chord beside Rename / Delete. */
+.ftree__ctx-kbd {
+  font: inherit;
+  font-size: 12px;
+  color: var(--text-3);
+  white-space: nowrap;
+  margin-left: 16px;
+}
+.ftree__ctx-item:hover {
+  background: var(--fill-1);
+}
+.ftree__ctx-item--danger {
+  color: var(--danger);
+}
+.ftree__ctx-item--danger:hover {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+.ftree__ctx-sep {
+  height: var(--hair-w);
+  background: var(--hairline);
+  margin: var(--sp-1) 6px;
+}
+
+/* ── States: missing folder, empty, loading ── */
 .ftree__missing {
-  padding: 16px 14px;
+  padding: var(--sp-4) 14px;
   text-align: center;
 }
 .ftree__missing-title {
   margin: 0 0 4px;
   font-size: 12px;
-  color: var(--danger, #d64545);
+  color: var(--danger);
   font-weight: 600;
 }
 .ftree__missing-path {
   margin: 0 0 10px;
-  font-size: 10px;
-  color: var(--text-faint);
+  font-size: 11px;
+  color: var(--text-3);
   overflow-wrap: anywhere;
   font-family: var(--font-mono);
 }
@@ -2492,268 +2772,45 @@ export const FileTreeNode = defineComponent({
 .ftree__missing-secondary {
   background: transparent;
   border: 0;
-  color: var(--text-muted);
-  font-size: 11px;
+  color: var(--text-2);
+  font-size: 12px;
   text-decoration: underline;
   cursor: pointer;
 }
 .ftree__empty {
-  padding: 24px 14px;
+  padding: var(--sp-5) 14px;
   text-align: center;
 }
 .ftree__open-btn {
-  border: 1px solid var(--border);
-  padding: 6px 12px;
-  font-size: 12px;
+  height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: var(--fill-1);
   color: var(--text);
-  background: var(--bg);
-  border-radius: 4px;
-  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  cursor: default;
+}
+.ftree__open-btn:hover {
+  background: var(--fill-2);
 }
 .ftree__body {
   flex: 1;
   overflow-y: auto;
-  padding-bottom: 12px;
+  padding-bottom: var(--sp-2);
 }
-.ftree__root-wrap {
-  position: relative;
-}
-.ftree__root {
-  padding: 8px 14px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-/* v4.6 — workspace switcher reads as an obviously-clickable control
-   (distinct pill + folder glyph + caret), not a static section label. */
-.ftree__root--btn {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  width: calc(100% - 16px);
-  margin: 6px 8px 4px;
-  padding: 7px 10px;
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md, 8px);
-  text-align: left;
-  cursor: pointer;
-  font: inherit;
-  color: var(--text);
-  text-transform: none;
-  letter-spacing: normal;
-  font-size: 12.5px;
-  font-weight: 600;
-  transition: background var(--dur-fast, 120ms) var(--ease),
-    border-color var(--dur-fast, 120ms) var(--ease);
-}
-.ftree__root--btn:hover {
-  background: var(--bg-hover);
-  border-color: var(--accent);
-}
-.ftree__root--btn:focus-visible {
-  outline: none;
-  box-shadow: var(--ring);
-}
-.ftree__root--open {
-  background: var(--accent-soft, rgba(255, 159, 64, 0.1));
-  border-color: var(--accent);
-}
-.ftree__root-vicon {
-  flex: 0 0 auto;
-  font-size: 13px;
-  line-height: 1;
-}
-.ftree__root-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1 1 auto;
-}
-.ftree__root-caret {
-  font-size: 11px;
-  color: var(--text-muted);
-  flex: 0 0 auto;
-  transition: transform var(--dur-fast, 120ms) var(--ease),
-    color var(--dur-fast, 120ms) var(--ease);
-}
-.ftree__root--btn:hover .ftree__root-caret,
-.ftree__root--open .ftree__root-caret {
-  color: var(--accent);
-}
-.ftree__root--open .ftree__root-caret {
-  transform: rotate(180deg);
-}
-.ftree__switcher {
-  position: absolute;
-  top: 100%;
-  left: 6px;
-  right: 6px;
-  z-index: 30;
-  margin-top: 2px;
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
-  padding: 4px;
-  max-height: 60vh;
-  overflow-y: auto;
-}
-.ftree__switcher-label {
-  padding: 6px 8px 4px;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-}
-.ftree__switcher-item {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 1px;
-  width: 100%;
-  padding: 6px 8px;
-  background: transparent;
-  border: 0;
-  text-align: left;
-  cursor: pointer;
-  font: inherit;
-  color: var(--text);
-  border-radius: 4px;
-}
-.ftree__switcher-item:hover {
-  background: var(--bg-hover);
-}
-.ftree__switcher-item--active {
-  background: var(--bg-hover);
-  font-weight: 600;
-}
-.ftree__switcher-item--cta {
-  color: var(--accent, #ff9f40);
-  font-weight: 600;
-}
-.ftree__switcher-name {
-  font-size: 13px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 100%;
-}
-.ftree__switcher-path {
-  font-size: 11px;
-  color: var(--text-faint);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 100%;
-  direction: rtl;
-  text-align: left;
-}
-.ftree__switcher-empty {
-  padding: 6px 8px;
-  font-size: 12px;
-  color: var(--text-faint);
-}
-.ftree__switcher-sep {
-  height: 1px;
-  background: var(--border);
-  margin: 4px 0;
-}
-/* #282 — file-type filter: header popover + the always-visible banner that
-   keeps a persisted filter from reading as missing files. */
-.ftree__filter-wrap {
-  position: relative;
-  display: flex;
-}
-.ftree__hbtn--on {
-  color: var(--accent);
-}
-.ftree__filter-pop {
-  position: absolute;
-  top: 100%;
-  /* Anchored to the button's LEFT edge, not its right. The Explorer's header
-     buttons sit ~150px from the window edge, so a right-aligned 190px popover
-     hangs off-screen and every label loses its first characters — caught on
-     the Windows VM, and it would have looked identical on a narrow macOS
-     sidebar. Opening rightwards keeps it on screen at any sidebar width. */
-  left: 0;
-  z-index: 40;
-  min-width: 190px;
-  max-height: 320px;
-  overflow-y: auto;
-  padding: 4px;
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
-}
-.ftree__filter-label {
-  padding: 6px 8px 4px;
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-muted);
-}
-.ftree__filter-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  padding: 5px 8px;
-  border: none;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--text);
-  font-size: 12px;
-  text-align: left;
-  cursor: pointer;
-}
-.ftree__filter-item:hover {
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
-}
-.ftree__filter-item--active {
-  color: var(--accent);
-}
-.ftree__filter-check {
-  width: 10px;
-  flex: none;
-  font-size: 10px;
-}
-.ftree__filter-name {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.ftree__filter-count {
-  flex: none;
-  color: var(--text-faint);
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-}
-.ftree__filter-sep {
-  height: 1px;
-  margin: 4px 2px;
-  background: var(--border);
-}
-.ftree__filter-empty {
-  padding: 8px;
-  color: var(--text-muted);
-  font-size: 12px;
-}
+
+/* #282 — a persisted filter must never be invisible. */
 .ftree__filter-banner {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 2px 8px 4px;
+  margin: 2px var(--sp-2) 4px;
   padding: 5px 8px;
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-  font-size: 11px;
+  border-radius: var(--r-sm);
+  background: var(--accent-soft);
+  font-size: 12px;
   color: var(--text);
 }
 .ftree__filter-banner-text {
@@ -2767,16 +2824,20 @@ export const FileTreeNode = defineComponent({
   padding: 0;
   border: none;
   background: transparent;
-  color: var(--accent);
-  font-size: 11px;
+  color: var(--accent-text);
+  font: inherit;
+  font-size: 12px;
   cursor: pointer;
+}
+.ftree__filter-banner-clear:hover {
   text-decoration: underline;
 }
 
+/* ── Rows (spec §4): 28 px, 7 px radius, 16 px per level ── */
 .ftree__list {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 0 var(--sp-2);
   /* Gives the empty area under a short tree enough body to be a drop target
      for "move to the vault root". */
   min-height: 48px;
@@ -2784,332 +2845,107 @@ export const FileTreeNode = defineComponent({
 :deep(.ftree__item) {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 3px 14px 3px 8px;
+  gap: 4px;
+  min-height: 28px;
+  padding: 0 8px 0 6px;
   font-size: 13px;
-  cursor: pointer;
+  cursor: default;
   color: var(--text);
-  border-radius: 0;
+  border-radius: 7px;
   /* Anchors the indent guides drawn by indentGuides(). */
   position: relative;
 }
 :deep(.ftree__item:hover) {
-  background: var(--bg-hover, color-mix(in srgb, var(--accent) 10%, transparent));
+  background: var(--fill-1);
 }
 
-/* Indent guides — dotted lines down each ancestor level plus the stub joining
-   the row to its parent's line (see indentGuides()). Absolutely positioned, so
-   every row keeps the geometry it had before they existed. */
+/* Indent guides — one hairline per ancestor level, through the middle of
+   that level's chevron (see indentGuides()). Absolutely positioned, so the
+   row geometry and hit-testing are unaffected. */
 :deep(.ftree__guide) {
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 1px;
-  border-left: 1px dotted var(--tree-guide, color-mix(in srgb, var(--text-faint) 65%, transparent));
+  width: 0;
+  border-left: var(--hair-w) solid var(--tree-guide, var(--hairline));
   pointer-events: none;
 }
 :deep(.ftree__stub) {
-  position: absolute;
-  top: 50%;
-  width: 10px;
-  border-top: 1px dotted var(--tree-guide, color-mix(in srgb, var(--text-faint) 65%, transparent));
-  pointer-events: none;
+  display: none;
 }
-/* The row "new file" is aimed at: a folder for a folder selection, the file's
-   own folder for a file selection. Louder than hover so it reads as a state,
-   not as the pointer happening to be there. */
-:deep(.ftree__item--selected) {
-  background: color-mix(in srgb, var(--accent) 18%, transparent);
-  border-radius: 4px;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 42%, transparent);
+/* The selected row — the open document, or the row last clicked, which is
+   also where "new file" goes. */
+:deep(.ftree__item--selected),
+:deep(.ftree__item--selected:hover) {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+:deep(.ftree__item--selected .ftree__icon),
+:deep(.ftree__item--selected .ftree__caret) {
+  color: var(--accent-text);
 }
 
 /* #290 / #267 — drag to move. The node being dragged fades; the folder that
-   would receive it gets a ring rather than a fill, so it stays distinguishable
-   from plain hover while a drag is in flight. */
+   would receive it gets a ring rather than a fill. */
 :deep(.ftree__item--dragging) {
   opacity: 0.45;
 }
 :deep(.ftree__item--drop) {
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  background: var(--accent-soft);
   box-shadow: inset 0 0 0 1px var(--accent);
-  border-radius: 4px;
 }
-/* "Reveal in File Tree" (tab context menu). A colour-only tint can be
-   indistinguishable from the row background in a low-contrast theme, so the
-   row gets a fill *and* a ring, at full strength first and then fading out
-   over ~3s — long enough to catch the eye after the tree has scrolled. */
+/* "Reveal in File Tree": a fill *and* a ring that fade over ~3 s, so it
+   reads in a theme whose accent is close to the row colour. */
 :deep(.ftree__item--revealed) {
-  border-radius: 4px;
   box-shadow: inset 0 0 0 1px var(--accent);
   animation: ftree-reveal 3.2s ease-out forwards;
 }
 @keyframes ftree-reveal {
   0% {
-    background: color-mix(in srgb, var(--accent) 42%, transparent);
+    background: color-mix(in srgb, var(--accent) 36%, transparent);
   }
   60% {
-    background: color-mix(in srgb, var(--accent) 26%, transparent);
+    background: color-mix(in srgb, var(--accent) 22%, transparent);
   }
   100% {
     background: transparent;
     box-shadow: inset 0 0 0 1px transparent;
   }
 }
-.ftree__root--drop {
-  box-shadow: inset 0 0 0 1px var(--accent);
-}
 .ftree__list--drop {
   background: color-mix(in srgb, var(--accent) 7%, transparent);
+  border-radius: 7px;
 }
 :deep(.ftree__icon) {
-  width: 14px;
+  width: 16px;
+  height: 16px;
   flex-shrink: 0;
-  text-align: center;
-  color: var(--text-faint);
-  font-size: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-3);
 }
 :deep(.ftree__caret) {
-  width: 10px;
+  width: 12px;
+  height: 12px;
   flex-shrink: 0;
-  margin-right: -3px;
-  text-align: center;
-  color: var(--text-muted);
-  font-size: 15px;
-  line-height: 1;
-  transition: transform 0.12s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-3);
+  transition: transform var(--dur-fast) var(--ease-out);
 }
 :deep(.ftree__caret--open) {
   transform: rotate(90deg);
 }
-:deep(.ftree__item--dir .ftree__icon) {
-  font-size: 14px;
-  line-height: 1;
-}
-:deep(.ftree__item--file .ftree__icon) {
-  color: var(--text-muted);
-  font-size: 14px;
-  line-height: 1;
-}
-:deep(.ftree__name) {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  /* For very long filenames, keep the start and end visible with ellipsis in middle */
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-}
-:deep(.ftree__item--dir .ftree__name) {
-  font-weight: 600;
-  color: var(--text);
-}
-/* #182 — full-filename mode: wrap long names across lines instead of the
- * JS mid-ellipsis, so large doc sets with long shared prefixes stay
- * scannable. */
-.ftree--fullnames :deep(.ftree__name) {
-  white-space: normal;
-  overflow-wrap: break-word;
-  word-break: break-word;
-  -webkit-line-clamp: unset;
-  line-height: 1.3;
-}
-:deep(.ftree__inbox-dot) {
-  color: var(--accent);
-  font-size: 7px;
-  margin-left: auto;
-}
-.ftree__inbox {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  padding: 4px 14px 4px 8px;
-  font-size: 12px;
-  color: var(--text-muted);
-  background: transparent;
-  border: none;
-  text-align: left;
-  border-radius: 0;
-}
-.ftree__inbox:hover {
-  background: var(--bg-hover, color-mix(in srgb, var(--accent) 10%, transparent));
-  color: var(--text);
-}
-.ftree__inbox--active {
-  color: var(--accent);
-}
-.ftree__inbox-toggle,
-.ftree__inbox-open {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: transparent;
-  border: none;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-  padding: 0;
-  text-align: left;
-}
-.ftree__inbox-open {
-  flex: 1;
-  min-width: 0;
-}
-.ftree__badge {
-  margin-left: auto;
-  background: var(--accent);
-  color: #000;
-  font-size: 10px;
-  font-weight: 600;
-  padding: 1px 6px;
-  border-radius: 999px;
-}
-.ftree__loading {
-  padding: 16px 14px;
-  font-size: 12px;
-  color: var(--text-muted);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.ftree__spinner {
-  width: 12px;
-  height: 12px;
-  border: 2px solid var(--border);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: ftree-spin 0.7s linear infinite;
-}
-@keyframes ftree-spin { to { transform: rotate(360deg); } }
-.ftree__truncated {
-  padding: 6px 14px 6px 22px;
-  font-size: 11px;
-  color: var(--text-faint);
-  font-style: italic;
-}
-/* :deep because the in-folder edit row is rendered by FileTreeNode, a
-   separate component: a plain scoped rule only reached the root-level row, so
-   inside a folder the row was not a flex container, the empty caret span
-   collapsed to nothing and the whole row sat ~16px left of its siblings
-   (#321). */
-:deep(.ftree__edit) {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 14px 3px 8px;
-  /* The inline row draws the same indent guides as the rows around it. */
-  position: relative;
-}
-/* Same glyph size as a file row, so the input starts where the name will. */
-:deep(.ftree__edit .ftree__icon) {
-  color: var(--text-muted);
-  font-size: 14px;
-  line-height: 1;
-}
-.ftree__confirm-msg {
-  margin: 0;
-  font-size: 13px;
-  color: var(--text);
-  line-height: 1.5;
-  word-break: break-word;
-}
-.ftree__confirm-note {
-  margin: var(--sp-2, 8px) 0 0;
-  font-size: 12px;
-  color: var(--text-muted);
-  line-height: 1.5;
-}
-:deep(.ftree__edit-input) {
-  flex: 1;
-  font-size: 13px;
-  font-family: inherit;
-  padding: 2px 4px;
-  border: 1px solid var(--accent);
-  border-radius: 3px;
-  background: var(--bg);
-  color: var(--text);
-  outline: none;
-  min-width: 0;
-}
-.ftree__ctx {
-  position: fixed;
-  z-index: 200;
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-  padding: 4px 0;
-  min-width: 180px;
-  font-size: 13px;
-  user-select: none;
-}
-.ftree__ctx-item {
-  display: block;
-  width: 100%;
-  text-align: left;
-  padding: 6px 14px;
-  background: transparent;
-  border: none;
-  color: var(--text);
-  cursor: pointer;
-  font: inherit;
-}
-.ftree__ctx-item--kbd {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-}
-/* #355 — the chord beside Rename / Delete, the look of the toolbar menus'
-   .dropdown__kbd. */
-.ftree__ctx-kbd {
-  font: inherit;
-  font-size: 11px;
-  color: var(--text-faint);
-  white-space: nowrap;
-  margin-left: 16px;
-}
-.ftree__ctx-item:hover {
-  background: color-mix(in srgb, var(--accent) 18%, transparent);
-}
-.ftree__ctx-item--danger {
-  color: #d12;
-}
-.ftree__ctx-item--danger:hover {
-  background: rgba(221, 17, 34, 0.12);
-}
-.ftree__ctx-sep {
-  height: 1px;
-  background: var(--border);
-  margin: 4px 0;
-}
-
-/* Width resize handle */
-.ftree__resize-handle {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 6px;
-  cursor: ew-resize;
-  background: transparent;
-  z-index: 10;
-  transition: background 0.15s;
-}
-
-.ftree__resize-handle:hover,
-.ftree__resize-handle--active {
-  background: var(--accent, #ff9f40);
-  opacity: 0.4;
-}
-
 /* Long names are cut to the sidebar's current width (#259). */
 :deep(.ftree__name) {
+  flex: 1;
+  min-width: 0;
+  margin-left: 2px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  min-width: 0;
-  flex: 1;
 }
 /* A file name with an extension: the name shrinks with an ellipsis, the
    extension never does — "a-very-long-meeting-no….md". */
@@ -3126,9 +2962,152 @@ export const FileTreeNode = defineComponent({
   flex-shrink: 0;
   white-space: nowrap;
 }
+/* #182 — full-filename mode: wrap long names instead of truncating. */
+.ftree--fullnames :deep(.ftree__item) {
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+.ftree--fullnames :deep(.ftree__name) {
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  line-height: 1.3;
+}
+:deep(.ftree__inbox-dot) {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin-left: auto;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/* Standalone tree only — inside the sidebar the Inbox is a nav row. */
+.ftree__inbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  margin: 0 var(--sp-2);
+  padding: 0 8px 0 6px;
+  border-radius: 7px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+.ftree__inbox:hover {
+  background: var(--fill-1);
+  color: var(--text);
+}
+.ftree__inbox--active {
+  color: var(--accent-text);
+}
+.ftree__inbox-toggle,
+.ftree__inbox-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font: inherit;
+  cursor: default;
+  padding: 0;
+  text-align: left;
+}
+.ftree__inbox-open {
+  flex: 1;
+  min-width: 0;
+}
+.ftree__badge {
+  margin-left: auto;
+  color: var(--text-3);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.ftree__loading {
+  padding: var(--sp-4) 14px;
+  font-size: 12px;
+  color: var(--text-3);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ftree__spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--hairline);
+  border-top-color: var(--text-3);
+  border-radius: 50%;
+  animation: ftree-spin 0.7s linear infinite;
+}
+@keyframes ftree-spin { to { transform: rotate(360deg); } }
+.ftree__truncated {
+  padding: 6px 8px 6px 26px;
+  font-size: 12px;
+  color: var(--text-3);
+}
+/* :deep because the in-folder edit row is rendered by FileTreeNode (#321). */
+:deep(.ftree__edit) {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  padding: 0 8px 0 6px;
+  position: relative;
+}
+.ftree__body > .ftree__edit {
+  margin: 0 var(--sp-2);
+}
+:deep(.ftree__edit .ftree__icon) {
+  color: var(--text-3);
+}
+:deep(.ftree__edit-input) {
+  flex: 1;
+  min-width: 0;
+  height: 22px;
+  margin-left: 2px;
+  padding: 0 5px;
+  font: inherit;
+  font-size: 13px;
+  border: 0;
+  border-radius: var(--r-xs);
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-ring);
+}
+.ftree__confirm-msg {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.5;
+  word-break: break-word;
+}
+.ftree__confirm-note {
+  margin: var(--sp-2) 0 0;
+  font-size: 12px;
+  color: var(--text-3);
+  line-height: 1.5;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ftree__menu {
+    animation: none;
+  }
+}
 </style>
 
 <style>
+/* Window lost focus: the selection turns neutral, as in Finder / Notes
+   (spec §1). Unscoped so it outranks the scoped selected-row rule. */
+:root.window-inactive .ftree__item--selected,
+:root.window-inactive .ftree__item--selected:hover {
+  background: var(--select-inactive);
+  color: var(--text);
+}
+:root.window-inactive .ftree__item--selected .ftree__icon,
+:root.window-inactive .ftree__item--selected .ftree__caret {
+  color: var(--text-3);
+}
 /* #361 — drag feedback that must live outside the scoped block: the ghost is
    teleported to <body>, and the cursor override has to beat the rows' own
    `cursor: pointer` on every element for the length of the drag. */
@@ -3151,10 +3130,10 @@ html.solomd-tree-drag-invalid * {
   max-width: min(320px, calc(100vw - 16px));
   padding: 6px 10px;
   border-radius: var(--r-md, 8px);
-  background: var(--bg-elev);
+  background: var(--bg-pop);
   color: var(--text);
-  border: 1px solid var(--accent);
-  box-shadow: var(--sh-pop, 0 8px 28px rgba(0, 0, 0, 0.12));
+  border: var(--bd-hair);
+  box-shadow: var(--sh-pop);
   font-size: 12px;
   line-height: 1.35;
 }
@@ -3170,7 +3149,7 @@ html.solomd-tree-drag-invalid * {
 }
 .ftree-ghost__icon {
   flex-shrink: 0;
-  font-size: 11px;
+  color: var(--text-3);
 }
 .ftree-ghost__label,
 .ftree-ghost__action {
@@ -3180,7 +3159,7 @@ html.solomd-tree-drag-invalid * {
 }
 .ftree-ghost__action {
   margin-top: 2px;
-  color: var(--text-muted);
+  color: var(--text-2);
 }
 .ftree-ghost--invalid .ftree-ghost__action {
   color: var(--danger);
@@ -3207,12 +3186,11 @@ html.solomd-tree-drag-invalid * {
     padding: 0 6px;
     border: none;
     background: none;
-    color: var(--text-muted);
-    font-size: 18px;
+    color: var(--text-3);
     line-height: 1;
     border-radius: 6px;
     flex-shrink: 0;
   }
-  .ftree__more:active { background: var(--bg-hover); }
+  .ftree__more:active { background: var(--fill-1); }
 }
 </style>

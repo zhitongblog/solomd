@@ -2158,6 +2158,30 @@ export const en = {
       open: "Writing Session (Pomodoro)…",
     },
   },
+  // 5.0 sidebar (Sidebar.vue, docs/v5-ui-spec.md §4)
+  sidebar: {
+    search: "Search",
+    today: "Today",
+    inbox: "Inbox",
+    inboxFilterOn: "Show only inbox notes in the tree",
+    inboxFilterOff: "Show all files in the tree",
+    inboxFilterActive: "Showing inbox notes only",
+    recent: "Recent",
+    recentEmpty: "No recent files yet.",
+    folders: "Folders",
+    tags: "Tags",
+    allTags: "All",
+    collapse: "Hide sidebar",
+    emptyTitle: "Open a folder",
+    emptyBody: "Your notes stay as plain Markdown files in a folder you choose.",
+    emptyButton: "Open Folder…",
+    recentFolders: "Recent folders",
+    synced: "Synced",
+    unsynced: "Not synced",
+    syncing: "Syncing…",
+    syncConflicts: "Conflicts",
+    settings: "Settings",
+  },
 };
 
 // `views` (v4.6 F5) is now a REQUIRED section: all 14 locales ship a full
