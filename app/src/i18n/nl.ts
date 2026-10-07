@@ -1191,6 +1191,20 @@ export const nl: I18n = {
     disabledHeading:
       'Semantisch zoeken staat uit. Schakel het in via Instellingen om een lokale index van deze werkruimte op te bouwen.',
   },
+  statsPill: {
+    title: 'Documentstatistieken',
+    words: '{n} woorden',
+    cjk: '{n} tekens',
+    position: 'Positie',
+    lines: 'Regels',
+    wordsLabel: 'Woorden',
+    cjkLabel: 'CJK-tekens',
+    charsLabel: 'Tekens',
+    selection: 'Selectie',
+    selectedShort: '{n} geselecteerd',
+    lineEnding: 'Regeleinden',
+    today: 'Vandaag',
+  },
   statusBar: {
     selection: 'selectie: {words} woorden / {chars} tekens',
     selectionTooltip: 'Woord- en tekenaantal van de selectie',

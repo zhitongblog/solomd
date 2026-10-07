@@ -1188,6 +1188,20 @@ export const de: I18n = {
     disabledHeading:
       'Semantische Suche ist aus. In den Einstellungen aktivieren, um einen lokalen Index dieses Workspace zu erstellen.',
   },
+  statsPill: {
+    title: 'Dokumentstatistik',
+    words: '{n} Wörter',
+    cjk: '{n} Zeichen',
+    position: 'Position',
+    lines: 'Zeilen',
+    wordsLabel: 'Wörter',
+    cjkLabel: 'CJK-Zeichen',
+    charsLabel: 'Zeichen',
+    selection: 'Auswahl',
+    selectedShort: '{n} ausgewählt',
+    lineEnding: 'Zeilenenden',
+    today: 'Heute',
+  },
   statusBar: {
     selection: 'Auswahl: {words} Wörter / {chars} Zeichen',
     selectionTooltip: 'Wort- und Zeichenzahl der aktuellen Auswahl',

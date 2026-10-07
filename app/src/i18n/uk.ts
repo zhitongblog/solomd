@@ -1191,6 +1191,20 @@ export const uk: I18n = {
     disabledHeading:
       'Семантичний пошук вимкнено. Увімкніть його у налаштуваннях, щоб збудувати локальний індекс цього робочого простору.',
   },
+  statsPill: {
+    title: 'Статистика документа',
+    words: '{n} слів',
+    cjk: '{n} символів',
+    position: 'Позиція',
+    lines: 'Рядки',
+    wordsLabel: 'Слова',
+    cjkLabel: 'Символи CJK',
+    charsLabel: 'Символи',
+    selection: 'Виділення',
+    selectedShort: 'виділено {n}',
+    lineEnding: 'Кінці рядків',
+    today: 'Сьогодні',
+  },
   statusBar: {
     selection: 'виділено: {words} слів / {chars} символів',
     selectionTooltip: 'Кількість слів та символів виділеного тексту',

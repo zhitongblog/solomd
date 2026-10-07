@@ -1,0 +1,61 @@
+/* SoloMD 5.0 — writing surface rules shared by every editor engine and the
+ * rendered views (docs/v5-ui-spec.md §5). Component sheets own their layout;
+ * this file holds what has to be identical across CodeMirror, the Windows
+ * native editor, the preview and reading view.
+ */
+
+/* Task checkboxes: the accent mark, in every surface. */
+.cm-task-checkbox,
+.task-list-item-checkbox,
+.plain-block__render input[type="checkbox"] {
+  accent-color: var(--accent);
+}
+
+/* Text selection — accent wash while the window is key, neutral grey when it
+ * is not (what Finder and Notes do). The shell toggles `.window-inactive` on
+ * <html> on window blur/focus. CodeMirror's theme rules are `!important` at
+ * two classes; these win on specificity. */
+.preview-content ::selection,
+.plain-block__render ::selection {
+  background: var(--accent-soft);
+}
+:root.window-inactive .cm-editor .cm-selectionLayer .cm-selectionBackground,
+:root.window-inactive .cm-editor .cm-content ::selection {
+  background-color: var(--select-inactive) !important;
+}
+:root.window-inactive .preview-content ::selection,
+:root.window-inactive .plain-block__render ::selection {
+  background: var(--select-inactive);
+}
+
+/* Rendered task checkboxes are `disabled` (preview is read-only), and the
+ * browser paints a disabled box grey whatever `accent-color` says. Draw them:
+ * a hairline box, accent fill + white tick when done. */
+input.task-list-item-checkbox {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 15px;
+  height: 15px;
+  margin: 0 0.5em 0 0;
+  vertical-align: -2px;
+  transform: none;
+  border: 1.5px solid var(--text-3);
+  border-radius: 4px;
+  background: transparent;
+  opacity: 1;
+}
+input.task-list-item-checkbox:checked {
+  border-color: var(--accent);
+  background: var(--accent)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8.5l2.6 2.5L12 5.5' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    center / 12px no-repeat;
+}
+
+/* Tables: body text runs at 1.8; rows read better a little tighter. */
+.preview-content table,
+.plain-block__render table {
+  line-height: 1.6;
+}
+.preview-content thead th {
+  background: var(--bg-elev);
+}

@@ -1198,6 +1198,20 @@ export const en = {
     disabledHeading:
       'Semantic search is off. Enable it in Settings to build a local index of this workspace.',
   },
+  statsPill: {
+    title: 'Document statistics',
+    words: '{n} words',
+    cjk: '{n} characters',
+    position: 'Position',
+    lines: 'Lines',
+    wordsLabel: 'Words',
+    cjkLabel: 'CJK characters',
+    charsLabel: 'Characters',
+    selection: 'Selection',
+    selectedShort: '{n} selected',
+    lineEnding: 'Line endings',
+    today: 'Today',
+  },
   statusBar: {
     selection: 'selected: {words} words / {chars} chars',
     selectionTooltip: 'Word and character count for the current selection',
