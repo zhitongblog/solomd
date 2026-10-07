@@ -590,7 +590,9 @@ function defaults(): Settings {
     // share the narrow width (the doc becomes an unreadable sliver), so the
     // right sidebar starts hidden. The editor + file tree behave as mutually
     // exclusive full-width views (opening a file collapses the tree).
-    rightSidebarHidden: isMobile(),
+    // 5.0 — writing first: a new install opens on the text alone; the right
+    // sidebar is one click (or ⌘⌥B) away. Saved settings are untouched.
+    rightSidebarHidden: true,
     livePreview: true,
     spellCheck: true,
     focusMode: false,
