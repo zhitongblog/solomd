@@ -276,11 +276,13 @@ function goMorePage(p: MorePage) {
 const aiRewriteAvailable = computed(() => !IS_APP_STORE_BUILD && settings.aiEnabled);
 
 type ViewModeId = 'edit' | 'split' | 'liveEdit' | 'preview' | 'reading';
-/** The header's segmented switch: the three modes people move between while
- *  writing. Split and Reading stay in the View menu and the palette. */
+/** The header's segmented switch: the four modes people move between while
+ *  writing (split = source left, preview right). Reading stays in the View
+ *  menu and the palette. */
 const segModes: Array<{ mode: ViewModeId; label: string }> = [
   { mode: 'liveEdit', label: 'header.segLive' },
   { mode: 'edit', label: 'header.segSource' },
+  { mode: 'split', label: 'header.segSplit' },
   { mode: 'preview', label: 'header.segPreview' },
 ];
 const segIndex = computed(() => segModes.findIndex((m) => m.mode === settings.viewMode));
@@ -1331,7 +1333,7 @@ onBeforeUnmount(() => {
 .seg {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(3, minmax(44px, auto));
+  grid-template-columns: repeat(4, minmax(44px, 1fr));
   grid-auto-columns: 1fr;
   padding: 3px;
   gap: 0;
@@ -1345,7 +1347,7 @@ onBeforeUnmount(() => {
   top: 3px;
   bottom: 3px;
   left: 3px;
-  width: calc((100% - 6px) / 3);
+  width: calc((100% - 6px) / 4);
   border-radius: var(--r-sm);
   background: var(--bg);
   box-shadow: var(--sh-thumb);
