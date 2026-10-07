@@ -27,6 +27,8 @@ import {
 } from '../lib/property-types';
 import PropertyRow from './properties/PropertyRow.vue';
 import AddPropertyForm from './properties/AddPropertyForm.vue';
+import Icons from './Icons.vue';
+import PanelHeader from './panel/PanelHeader.vue';
 
 const emit = defineEmits<{ close: [] }>();
 
@@ -127,24 +129,22 @@ const activeName = computed(() => tabs.activeTab?.fileName ?? null);
 </script>
 
 <template>
-  <div class="inspector">
-    <header class="inspector__head">
-      <span class="inspector__title">{{ t('inspector.heading') }}</span>
-      <span v-if="props.ready.value && rows.length" class="inspector__count">{{ rows.length }}</span>
-      <button
-        class="rs-pane-close"
-        type="button"
-        :title="t('rightSidebar.hidePane')"
-        @click="emit('close')"
-      >×</button>
-    </header>
+  <div class="inspector rp">
+    <PanelHeader
+      :title="t('inspector.heading')"
+      :count="props.ready.value && rows.length ? rows.length : null"
+      @close="emit('close')"
+    />
 
-    <div v-if="!workspace.currentFolder" class="inspector__empty">{{ t('inspector.openFolder') }}</div>
-    <div v-else-if="!props.activePath.value" class="inspector__empty">{{ t('inspector.noActive') }}</div>
-    <div v-else-if="!props.ready.value" class="inspector__empty">{{ t('inspector.notMarkdown') }}</div>
+    <div v-if="!workspace.currentFolder" class="rp-empty">{{ t('inspector.openFolder') }}</div>
+    <div v-else-if="!props.activePath.value" class="rp-empty">{{ t('inspector.noActive') }}</div>
+    <div v-else-if="!props.ready.value" class="rp-empty">{{ t('inspector.notMarkdown') }}</div>
 
-    <div v-else class="inspector__body">
-      <div v-if="activeName" class="inspector__file">{{ activeName }}</div>
+    <div v-else class="inspector__body rp-body">
+      <div v-if="activeName" class="inspector__file">
+        <Icons name="file" :size="13" />
+        <span>{{ activeName }}</span>
+      </div>
 
       <div class="inspector__rows">
         <PropertyRow
@@ -159,19 +159,19 @@ const activeName = computed(() => tabs.activeTab?.fileName ?? null);
           @recast="onRecast(row.key, row.value, $event)"
           @toggle-pin="onTogglePin(row.key)"
         />
-        <p v-if="!rows.length" class="inspector__none">{{ t('inspector.noProps') }}</p>
+        <p v-if="!rows.length" class="inspector__none rp-sub">{{ t('inspector.noProps') }}</p>
       </div>
 
       <div v-if="suggested.length" class="inspector__suggested">
-        <span class="inspector__suggested-label">{{ t('inspector.suggested') }}</span>
-        <div class="inspector__suggested-chips">
+        <span class="rp-section inspector__suggested-label">{{ t('inspector.suggested') }}</span>
+        <div class="rp-chips inspector__suggested-chips">
           <button
             v-for="s in suggested"
             :key="s.key"
             type="button"
-            class="inspector__suggested-chip"
+            class="rp-chip inspector__suggested-chip"
             @click="addSuggested(s)"
-          >+ {{ s.key }}</button>
+          ><Icons name="plus" :size="11" />{{ s.key }}</button>
         </div>
       </div>
 
@@ -180,66 +180,29 @@ const activeName = computed(() => tabs.activeTab?.fileName ?? null);
         @confirm="onAddConfirm"
         @cancel="adding = false"
       />
-      <button v-else type="button" class="inspector__add" @click="adding = true">
-        + {{ t('inspector.addProperty') }}
+      <button v-else type="button" class="rp-btn rp-btn--ghost rp-btn--sm inspector__add" @click="adding = true">
+        <Icons name="plus" :size="13" />{{ t('inspector.addProperty') }}
       </button>
     </div>
   </div>
 </template>
 
 <style scoped>
-.inspector {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  background: var(--bg);
-  border-left: 1px solid var(--border);
-  overflow: hidden;
-}
-.inspector__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-2);
-  padding: var(--sp-2) var(--sp-3);
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-elev);
-}
-.inspector__title {
-  flex: 1;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-.inspector__count {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--r-full);
-  padding: 1px 8px;
-  font-size: 11px;
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
-}
-.inspector__empty {
-  padding: var(--sp-6) var(--sp-4);
-  text-align: center;
-  color: var(--text-muted);
-  font-size: 12px;
-  line-height: 1.6;
-}
 .inspector__body {
-  flex: 1;
-  overflow-y: auto;
-  padding: var(--sp-3);
   display: flex;
   flex-direction: column;
-  gap: var(--sp-3);
+  gap: 8px;
 }
 .inspector__file {
-  font-size: 11px;
-  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 0 4px;
+  font-size: 12px;
+  color: var(--text-3);
+}
+.inspector__file span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -247,67 +210,31 @@ const activeName = computed(() => tabs.activeTab?.fileName ?? null);
 .inspector__rows {
   display: flex;
   flex-direction: column;
-  gap: 2px;
 }
 .inspector__none {
   margin: 0;
-  padding: var(--sp-3) 0;
-  font-size: 12px;
-  color: var(--text-muted);
+  padding: 8px 4px;
 }
 .inspector__suggested {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-2);
-  padding-top: var(--sp-2);
-  border-top: 1px solid var(--border);
+  gap: 6px;
+  padding-top: 4px;
+  border-top: var(--bd-hair);
 }
 .inspector__suggested-label {
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  padding: 6px 4px 0;
 }
 .inspector__suggested-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-2);
+  padding: 0 4px;
 }
 .inspector__suggested-chip {
-  background: transparent;
-  border: 1px dashed var(--border);
-  border-radius: var(--r-full);
-  color: var(--text-muted);
-  font-size: 12px;
-  padding: 2px var(--sp-3);
-  cursor: pointer;
-}
-.inspector__suggested-chip:hover {
-  border-style: solid;
-  color: var(--text);
-  background: var(--bg-hover);
-}
-.inspector__suggested-chip:focus-visible,
-.inspector__add:focus-visible,
-.rs-pane-close:focus-visible {
-  outline: none;
-  box-shadow: var(--ring);
+  color: var(--text-2);
 }
 .inspector__add {
   align-self: flex-start;
-  background: transparent;
-  border: 1px dashed var(--border);
-  border-radius: var(--r-md);
-  color: var(--text-muted);
-  font-size: 12px;
-  padding: var(--sp-2) var(--sp-3);
-  cursor: pointer;
-}
-.inspector__add:hover {
-  border-style: solid;
-  color: var(--text);
-  background: var(--bg-hover);
+  margin-left: -4px;
+  color: var(--text-3);
 }
 </style>
 
@@ -317,13 +244,16 @@ const activeName = computed(() => tabs.activeTab?.fileName ?? null);
 .prop-value-trigger {
   display: inline-block;
   width: 100%;
+  min-height: 24px;
+  box-sizing: border-box;
   text-align: left;
   background: transparent;
   border: none;
   color: var(--text);
   font: inherit;
   font-size: 13px;
-  padding: 2px var(--sp-1);
+  line-height: 24px;
+  padding: 0 6px;
   border-radius: var(--r-sm);
   cursor: text;
   overflow: hidden;
@@ -331,13 +261,20 @@ const activeName = computed(() => tabs.activeTab?.fileName ?? null);
   white-space: nowrap;
 }
 .prop-value-trigger:hover {
-  background: var(--bg-hover);
+  background: var(--fill-1);
 }
 .prop-value-trigger:focus-visible {
   outline: none;
   box-shadow: var(--ring);
 }
 .prop-value-trigger--empty {
-  color: var(--text-muted);
+  color: var(--text-3);
+}
+/* In-place editor for the scalar cells: same box as the trigger so the row
+ * does not jump when editing starts. */
+.prop-cell-input.rp-input {
+  height: 24px;
+  padding: 0 6px;
+  border-radius: var(--r-sm);
 }
 </style>

@@ -27,6 +27,8 @@ export const WHITEBOARD_OPEN_EVENT = 'solomd:whiteboard-open';
 
 import { onMounted, onBeforeUnmount, ref } from 'vue';
 import { useI18n } from '../i18n';
+import Icons from './Icons.vue';
+import '../styles/panels.css';
 import { useSettingsStore } from '../stores/settings';
 import { useTabsStore } from '../stores/tabs';
 import { replaceBoardSnapshot, type BoardThemeTokens } from '../lib/tldraw-board';
@@ -139,9 +141,12 @@ onBeforeUnmount(() => {
 
 <template>
   <div v-if="open" class="wb-overlay">
-    <div class="wb-overlay__bar">
-      <span class="wb-overlay__title">{{ t('whiteboard.insert') }}</span>
-      <button class="wb-overlay__close" @click="close" :title="t('whiteboard.closeFull')">
+    <!-- Centred title so the macOS traffic lights (top-left 52 px) never sit
+         on it; the bar doubles as the window drag region like the header. -->
+    <div class="wb-overlay__bar" data-tauri-drag-region>
+      <span class="wb-overlay__title" data-tauri-drag-region>{{ t('whiteboard.insert') }}</span>
+      <button class="wb-overlay__close rp-btn" type="button" @click="close" :title="t('whiteboard.closeFull')">
+        <Icons name="close" :size="14" />
         {{ t('whiteboard.closeFull') }}
       </button>
     </div>
@@ -164,30 +169,28 @@ onBeforeUnmount(() => {
   flex-direction: column;
 }
 .wb-overlay__bar {
+  position: relative;
+  flex: 0 0 var(--header-h);
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-soft, var(--bg));
+  justify-content: flex-end;
+  padding: 0 12px;
+  border-bottom: var(--bd-hair);
+  background: var(--bg);
+  user-select: none;
+  -webkit-user-select: none;
 }
 .wb-overlay__title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 50%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 13px;
   font-weight: 600;
   color: var(--text);
-}
-.wb-overlay__close {
-  appearance: none;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
-  border-radius: 6px;
-  padding: 6px 14px;
-  font-size: 13px;
-  cursor: pointer;
-}
-.wb-overlay__close:hover {
-  background: var(--bg-hover, var(--bg-soft));
 }
 .wb-overlay__surface {
   position: relative;
@@ -202,16 +205,15 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  color: var(--text-faint);
+  color: var(--text-3);
   font-size: 13px;
-  font-style: italic;
   pointer-events: none;
 }
 .wb-overlay__spinner {
   width: 16px;
   height: 16px;
-  border: 2px solid var(--border);
-  border-top-color: var(--accent, var(--text-faint));
+  border: 2px solid var(--fill-2);
+  border-top-color: var(--accent);
   border-radius: 50%;
   animation: wb-overlay-spin 0.7s linear infinite;
 }

@@ -4,7 +4,7 @@
  *  `vaultTagsByKey[propKey]`). Emits the full updated string[] on every
  *  add/remove so the Rust side rewrites the sequence atomically. */
 import { ref, computed, nextTick } from 'vue';
-import { DsChip, DsInput } from '../../../ui';
+import Icons from '../../Icons.vue';
 import { usePropertiesStore } from '../../../stores/properties';
 import { useI18n } from '../../../i18n';
 
@@ -26,7 +26,7 @@ const items = computed<string[]>(() => {
 
 const adding = ref(false);
 const draft = ref('');
-const inputRef = ref<InstanceType<typeof DsInput> | null>(null);
+const inputRef = ref<HTMLInputElement | null>(null);
 
 const suggestions = computed<string[]>(() => {
   const pool = store.vaultTagsByKey[props.propKey] ?? [];
@@ -40,8 +40,7 @@ async function startAdd() {
   adding.value = true;
   draft.value = '';
   await nextTick();
-  const el = (inputRef.value?.$el as HTMLElement | undefined)?.querySelector?.('input');
-  el?.focus();
+  inputRef.value?.focus();
 }
 
 function add(tag: string) {
@@ -76,19 +75,21 @@ function onBackspace() {
 
 <template>
   <div class="prop-tags-cell">
-    <DsChip
-      v-for="tag in items"
-      :key="tag"
-      size="sm"
-      removable
-      @remove="remove(tag)"
-    >{{ tag }}</DsChip>
+    <span v-for="tag in items" :key="tag" class="rp-chip prop-tags-cell__chip">
+      {{ tag }}
+      <button
+        type="button"
+        class="prop-tags-cell__x"
+        aria-label="Remove"
+        @click.stop="remove(tag)"
+      ><Icons name="close" :size="10" /></button>
+    </span>
 
     <span v-if="adding" class="prop-tags-cell__add">
-      <DsInput
+      <input
         ref="inputRef"
         v-model="draft"
-        size="sm"
+        class="rp-input prop-cell-input"
         :placeholder="t('inspector.addTag')"
         @keydown.enter.prevent="commitDraft"
         @keydown.esc.prevent="adding = false"
@@ -104,7 +105,7 @@ function onBackspace() {
         >{{ s }}</li>
       </ul>
     </span>
-    <button v-else type="button" class="prop-tags-cell__plus" @click="startAdd">+</button>
+    <button v-else type="button" class="prop-tags-cell__plus" :aria-label="t('inspector.addTag')" :title="t('inspector.addTag')" @click="startAdd"><Icons name="plus" :size="12" /></button>
   </div>
 </template>
 
@@ -113,8 +114,34 @@ function onBackspace() {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--sp-1);
+  gap: 4px;
   width: 100%;
+  padding: 2px 0;
+}
+.prop-tags-cell__chip {
+  cursor: default;
+  padding-right: 3px;
+}
+.prop-tags-cell__x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-full);
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+}
+.prop-tags-cell__x:hover {
+  background: var(--fill-2);
+  color: var(--text);
+}
+.prop-tags-cell__x:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
 }
 .prop-tags-cell__add {
   position: relative;
@@ -125,12 +152,12 @@ function onBackspace() {
   position: absolute;
   top: 100%;
   left: 0;
-  margin: 2px 0 0;
-  padding: var(--sp-1);
+  margin: 4px 0 0;
+  padding: 4px;
   list-style: none;
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
+  background: var(--bg-pop);
+  border: var(--bd-hair);
+  border-radius: var(--r-lg);
   box-shadow: var(--sh-pop);
   z-index: var(--z-pop);
   min-width: 120px;
@@ -138,30 +165,34 @@ function onBackspace() {
   overflow-y: auto;
 }
 .prop-tags-cell__sugg-item {
-  padding: var(--sp-1) var(--sp-2);
+  display: flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 8px;
   border-radius: var(--r-sm);
-  font-size: 12px;
+  font-size: 13px;
   cursor: pointer;
   white-space: nowrap;
 }
 .prop-tags-cell__sugg-item:hover {
-  background: var(--bg-hover);
+  background: var(--fill-1);
 }
 .prop-tags-cell__plus {
-  width: 20px;
-  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
   border-radius: var(--r-full);
-  border: 1px dashed var(--border);
   background: transparent;
-  color: var(--text-muted);
+  color: var(--text-3);
   cursor: pointer;
-  line-height: 1;
-  font-size: 13px;
 }
 .prop-tags-cell__plus:hover {
-  border-style: solid;
   color: var(--text);
-  background: var(--bg-hover);
+  background: var(--fill-1);
 }
 .prop-tags-cell__plus:focus-visible,
 .prop-tags-cell__sugg-item:focus-visible {

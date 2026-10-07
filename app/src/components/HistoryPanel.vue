@@ -24,6 +24,8 @@ import { useGitHistoryStore, type CommitMeta, type DiffResult } from '../stores/
 import { useToastsStore } from '../stores/toasts';
 import { useI18n } from '../i18n';
 import GithubConflictPanel from './GithubConflictPanel.vue';
+import Icons from './Icons.vue';
+import PanelHeader from './panel/PanelHeader.vue';
 import { hasGitBackend } from '../lib/platform';
 
 /** #230 — no libgit2 in the Android binary; the init button would only ever
@@ -150,70 +152,67 @@ function timeAgo(unix: number): string {
 </script>
 
 <template>
-  <div class="history">
-    <header class="history__head">
-      <span class="history__title">{{ t('history.heading') }}</span>
-      <span v-if="!loading && commits.length > 0" class="history__count">{{ commits.length }}</span>
-      <button
-        class="rs-pane-close"
-        type="button"
-        :title="t('rightSidebar.hidePane')"
-        @click="emit('close')"
-      >×</button>
-    </header>
+  <div class="history rp">
+    <PanelHeader
+      :title="t('history.heading')"
+      :count="!loading && commits.length > 0 ? commits.length : null"
+      @close="emit('close')"
+    />
 
     <!-- v2.6 — GitHub sync conflict resolver. Sits above the commit list
          when a pull surfaced merge conflicts; auto-hides when empty. -->
     <GithubConflictPanel />
 
     <!-- 1. No folder open -->
-    <div v-if="!folder" class="history__empty">
+    <div v-if="!folder" class="rp-empty">
       {{ t('history.openFolder') }}
     </div>
 
     <!-- 2a. #230 — platform has no git backend at all (Android) -->
-    <div v-else-if="!gitBackend" class="history__empty">
+    <div v-else-if="!gitBackend" class="rp-empty">
       <p class="history__msg">{{ t('settings.syncUnsupportedAndroid') }}</p>
     </div>
 
     <!-- 2. Folder is not under git -->
-    <div v-else-if="!gh.isInitialized" class="history__empty">
+    <div v-else-if="!gh.isInitialized" class="rp-empty">
       <p class="history__msg">{{ t('history.notInitialized') }}</p>
-      <button class="history__init-btn" :disabled="gh.loading" @click="onInit">
+      <button class="rp-btn rp-btn--primary" :disabled="gh.loading" @click="onInit">
         {{ gh.loading ? '…' : t('history.initBtn') }}
       </button>
     </div>
 
     <!-- 3. No active file or no commits -->
-    <div v-else-if="!activeFile" class="history__empty">
+    <div v-else-if="!activeFile" class="rp-empty">
       {{ t('history.noActive') }}
     </div>
-    <div v-else-if="loading" class="history__empty">
+    <div v-else-if="loading" class="rp-empty">
       {{ t('history.loading') }}
     </div>
-    <div v-else-if="commits.length === 0" class="history__empty">
+    <div v-else-if="commits.length === 0" class="rp-empty">
       {{ t('history.empty') }}
     </div>
 
     <!-- 4. Commit list -->
-    <ul v-else class="history__list">
+    <ul v-else class="rp-body rp-list history__list">
       <li v-for="c in commits" :key="c.sha" class="history__item">
         <button
-          class="history__row"
+          class="rp-row history__row"
           :class="{ 'history__row--open': expandedSha === c.sha }"
+          :aria-expanded="expandedSha === c.sha"
           @click="toggleRow(c.sha)"
         >
-          <span class="history__sha">{{ c.short_sha }}</span>
-          <span class="history__time">{{ timeAgo(c.time) }}</span>
-          <span class="history__msg-line">{{ c.message }}</span>
+          <Icons class="rp-row__icon history__chev" name="chevron-right" :size="12" />
+          <span class="rp-row__label history__msg-line">{{ c.message }}</span>
+          <span class="rp-count history__time">{{ timeAgo(c.time) }}</span>
         </button>
 
         <div v-if="expandedSha === c.sha" class="history__diff-wrap">
           <div class="history__diff-toolbar">
-            <button class="history__restore" @click="onRestore(c.sha, c.short_sha)">
+            <button class="rp-btn rp-btn--sm history__restore" @click="onRestore(c.sha, c.short_sha)">
+              <Icons name="undo" :size="12" />
               {{ t('history.restore') }}
             </button>
-            <span class="history__author">{{ c.author }}</span>
+            <span class="history__author"><span class="history__sha">{{ c.short_sha }}</span> · {{ c.author }}</span>
           </div>
           <div v-if="diffCache[c.sha] === undefined" class="history__diff-loading">
             {{ t('history.loading') }}
@@ -232,190 +231,93 @@ function timeAgo(unix: number): string {
 </template>
 
 <style scoped>
-.history {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  background: var(--bg);
-  border-left: 1px solid var(--border);
-  overflow: hidden;
-}
-.history__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-soft);
-}
-.history__title {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-.history__count {
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 1px 8px;
-  font-size: 11px;
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
-}
-.history__empty {
-  padding: 24px 16px;
-  text-align: center;
-  color: var(--text-faint);
-  font-size: 12px;
-  line-height: 1.6;
-}
 .history__msg {
-  margin: 0 0 12px;
+  margin: 0 0 2px;
 }
-.history__init-btn {
-  background: var(--accent, #ff9f40);
-  color: white;
-  border: none;
-  border-radius: 6px;
-  padding: 6px 14px;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: opacity 0.12s;
+.history__list > li + li {
+  margin-top: 1px;
 }
-.history__init-btn:hover {
-  opacity: 0.9;
-}
-.history__init-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-.history__list {
-  list-style: none;
-  margin: 0;
-  padding: 6px;
-  overflow-y: auto;
-  flex: 1;
-}
-.history__item + .history__item {
-  margin-top: 2px;
-}
-.history__row {
-  display: grid;
-  grid-template-columns: auto auto 1fr;
-  gap: 8px;
-  align-items: baseline;
-  width: 100%;
-  background: transparent;
-  border: 1px solid transparent;
-  padding: 6px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-  text-align: left;
-  transition: background 0.12s, border-color 0.12s;
-}
-.history__row:hover {
-  background: var(--bg-hover);
-  border-color: var(--border);
+.history__chev {
+  transition: transform var(--dur-fast) var(--ease);
 }
 .history__row--open {
-  background: var(--bg-hover);
-  border-color: var(--border);
+  background: var(--fill-1);
+}
+.history__row--open .history__chev {
+  transform: rotate(90deg);
 }
 .history__sha {
   font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--accent, #ff9f40);
-  font-weight: 500;
 }
 .history__time {
-  font-size: 11px;
-  color: var(--text-faint);
-  font-variant-numeric: tabular-nums;
-}
-.history__msg-line {
-  font-size: 12px;
-  color: var(--text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 2.5em;
+  text-align: right;
 }
 .history__diff-wrap {
-  margin: 4px 4px 8px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg-soft);
+  margin: 4px 0 8px 8px;
+  border: var(--bd-hair);
+  border-radius: var(--r-md);
+  background: var(--bg-elev);
   overflow: hidden;
 }
 .history__diff-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 10px;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-elev);
-}
-.history__restore {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  color: var(--text);
-  border-radius: 4px;
-  padding: 3px 10px;
-  font-size: 11px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.12s, border-color 0.12s;
-}
-.history__restore:hover {
-  background: var(--bg-hover);
-  border-color: var(--accent, #ff9f40);
-  color: var(--accent, #ff9f40);
+  gap: 8px;
+  padding: 6px 8px;
+  border-bottom: var(--bd-hair);
 }
 .history__author {
-  font-size: 10px;
-  color: var(--text-faint);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--text-3);
 }
 .history__diff-loading,
 .history__diff-empty {
   padding: 12px;
-  font-size: 11px;
-  color: var(--text-faint);
+  font-size: 12px;
+  color: var(--text-3);
   text-align: center;
 }
 .history__diff {
   margin: 0;
   padding: 8px 10px;
   font-family: var(--font-mono);
-  font-size: 11px;
-  line-height: 1.5;
+  /* The template's literal newlines between the block-level line spans
+     would each add an empty line; zero-size them, the spans restore it. */
+  font-size: 0;
+  line-height: 1.55;
   white-space: pre;
-  overflow-x: auto;
+  overflow: auto;
   max-height: 360px;
-  overflow-y: auto;
   color: var(--text);
+}
+.history__hunk-hdr,
+.history__line {
+  font-size: 11px;
 }
 .history__hunk-hdr {
   display: block;
-  color: var(--text-faint);
-  background: var(--bg-elev);
-  padding: 0 4px;
-  border-radius: 3px;
   margin: 2px 0;
+  color: var(--text-3);
 }
 .history__line {
   display: block;
 }
 .history__line--add {
-  background: rgba(46, 160, 67, 0.18);
-  color: #2ea043;
+  background: color-mix(in srgb, var(--success) 14%, transparent);
+  color: color-mix(in srgb, var(--success) 80%, var(--text));
 }
 .history__line--remove {
-  background: rgba(248, 81, 73, 0.18);
-  color: #f85149;
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  color: color-mix(in srgb, var(--danger) 80%, var(--text));
 }
 .history__line--context {
-  color: var(--text-muted);
+  color: var(--text-2);
 }
 </style>

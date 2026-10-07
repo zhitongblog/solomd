@@ -4,7 +4,7 @@
  *  text to edit inline. Enter saves, Esc cancels. */
 import { ref, watch, nextTick } from 'vue';
 import { openUrl } from '@tauri-apps/plugin-opener';
-import { DsInput } from '../../../ui';
+import Icons from '../../Icons.vue';
 import { useI18n } from '../../../i18n';
 
 const props = defineProps<{ value: unknown }>();
@@ -14,7 +14,7 @@ const { t } = useI18n();
 
 const editing = ref(false);
 const draft = ref('');
-const inputRef = ref<InstanceType<typeof DsInput> | null>(null);
+const inputRef = ref<HTMLInputElement | null>(null);
 
 function display(): string {
   const v = props.value;
@@ -32,9 +32,8 @@ async function startEdit() {
   draft.value = display();
   editing.value = true;
   await nextTick();
-  const el = (inputRef.value?.$el as HTMLElement | undefined)?.querySelector?.('input');
-  el?.focus();
-  el?.select();
+  inputRef.value?.focus();
+  inputRef.value?.select();
 }
 
 function commit() {
@@ -67,11 +66,11 @@ watch(
 
 <template>
   <div class="prop-url-cell">
-    <DsInput
+    <input
       v-if="editing"
       ref="inputRef"
       v-model="draft"
-      size="sm"
+      class="rp-input prop-cell-input"
       type="url"
       @keydown.enter.prevent="commit"
       @keydown.esc.prevent="cancel"
@@ -93,7 +92,7 @@ watch(
         :title="t('inspector.openLink')"
         :aria-label="t('inspector.openLink')"
         @click="open"
-      >↗</button>
+      ><Icons name="external" :size="13" /></button>
     </template>
   </div>
 </template>
@@ -102,7 +101,7 @@ watch(
 .prop-url-cell {
   display: flex;
   align-items: center;
-  gap: var(--sp-1);
+  gap: 2px;
   width: 100%;
 }
 .prop-url-cell__text {
@@ -111,22 +110,25 @@ watch(
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .prop-url-cell__open {
   flex-shrink: 0;
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  font-size: 13px;
-  line-height: 1;
-  padding: 2px 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
   border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
 }
 .prop-url-cell__open:hover {
-  background: var(--bg-hover);
-  color: var(--accent);
+  background: var(--fill-1);
+  color: var(--accent-text);
 }
 .prop-url-cell__open:focus-visible {
   outline: none;

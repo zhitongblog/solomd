@@ -40,37 +40,36 @@ function toggle() {
   background: transparent;
   border: none;
   cursor: pointer;
-  padding: var(--sp-1) 0;
-  color: var(--text-muted);
+  padding: 2px 0;
+  color: var(--text-3);
+  font: inherit;
   font-size: 12px;
 }
 .prop-bool__track {
-  width: 30px;
-  height: 18px;
+  width: 28px;
+  height: 16px;
   border-radius: var(--r-full);
-  background: var(--bg-hover);
-  border: 1px solid var(--border);
+  background: var(--fill-2);
   position: relative;
   transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
   flex-shrink: 0;
 }
 .prop-bool__thumb {
   position: absolute;
-  top: 1px;
-  left: 1px;
-  width: 14px;
-  height: 14px;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
   border-radius: var(--r-full);
-  background: var(--text-muted);
+  background: var(--bg);
+  box-shadow: var(--sh-thumb);
   transition: transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
 }
 .prop-bool--on .prop-bool__track {
-  background: var(--accent-soft);
-  border-color: var(--accent);
+  background: var(--accent);
 }
 .prop-bool--on .prop-bool__thumb {
   transform: translateX(12px);
-  background: var(--accent);
 }
 .prop-bool--on .prop-bool__label {
   color: var(--text);

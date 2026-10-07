@@ -19,6 +19,8 @@ import { useSettingsStore } from '../stores/settings';
 import { useWritingSessionStore, computeStreakDays } from '../stores/writingSession';
 import { useWritingGoals } from '../composables/useWritingGoals';
 import { useI18n } from '../i18n';
+import Icons from './Icons.vue';
+import '../styles/panels.css';
 
 const { t } = useI18n();
 const tabs = useTabsStore();
@@ -191,7 +193,7 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onDocClick, true
       <span class="writing-goals__bar"></span>
       <span class="writing-goals__label">
         {{ pillText }}
-        <span v-if="wg.reachedGoal.value" class="writing-goals__check">✓</span>
+        <Icons v-if="wg.reachedGoal.value" class="writing-goals__check" name="check-circle" :size="12" />
       </span>
     </button>
 
@@ -235,7 +237,7 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onDocClick, true
 
       <button
         type="button"
-        class="writing-goals__reset"
+        class="rp-btn rp-btn--sm writing-goals__reset"
         @click="onResetSession"
       >
         {{ t('writingStats.resetSession') }}
@@ -255,38 +257,38 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onDocClick, true
   position: relative;
   display: inline-flex;
   align-items: center;
-  height: 18px;
+  height: 22px;
   padding: 0 10px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  border-radius: var(--r-full);
+  border: 0;
+  background: var(--fill-1);
+  color: var(--text-2);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
   cursor: pointer;
   overflow: hidden;
-  font-family: inherit;
-  line-height: 1;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
 }
 .writing-goals__pill:hover {
-  border-color: var(--accent);
+  background: var(--fill-2);
+  color: var(--text);
+}
+.writing-goals__pill:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
 }
 
-/*
- * The progress fill is a separate absolutely-positioned span so it can sit
- * *behind* the label text without affecting layout. Width is driven by the
- * --wg-progress CSS var the script supplies.
- */
+/* Progress fill sits behind the label; width from --wg-progress. */
 .writing-goals__bar {
   position: absolute;
   inset: 0;
   width: var(--wg-progress, 0%);
-  background: var(--accent);
-  opacity: 0.18;
-  border-radius: 999px;
+  background: var(--accent-soft);
   pointer-events: none;
-  transition: width 200ms ease-out;
+  transition: width var(--dur) var(--ease-out);
 }
 
 .writing-goals__label {
@@ -299,74 +301,83 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onDocClick, true
 }
 
 .writing-goals__check {
-  color: #16a34a;
-  font-weight: 700;
+  color: var(--success);
 }
 
 .writing-goals__pill--complete {
-  border-color: #16a34a;
-  color: #166534;
+  color: var(--text);
 }
 .writing-goals__pill--complete .writing-goals__bar {
-  background: #16a34a;
-  opacity: 0.2;
+  background: color-mix(in srgb, var(--success) 16%, transparent);
 }
 
 @keyframes wg-pulse {
   0% {
-    box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.55);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--success) 50%, transparent);
     transform: scale(1);
   }
   35% {
-    box-shadow: 0 0 0 10px rgba(22, 163, 74, 0);
-    transform: scale(1.06);
+    box-shadow: 0 0 0 8px color-mix(in srgb, var(--success) 0%, transparent);
+    transform: scale(1.04);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(22, 163, 74, 0);
+    box-shadow: 0 0 0 0 transparent;
     transform: scale(1);
   }
 }
 
 .writing-goals__pill--pulse {
-  animation: wg-pulse 1.6s ease-out 1;
+  animation: wg-pulse 1.6s var(--ease-out) 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .writing-goals__pill--pulse {
+    animation: none;
+  }
 }
 
-/* ---------- Popover ---------- */
+/* ---------- Popover (spec §6 menu style) ---------- */
 
 .writing-goals__popover {
   position: absolute;
   bottom: calc(100% + 6px);
   right: 0;
-  min-width: 240px;
-  padding: 10px 12px;
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
-  z-index: 100;
-  font-size: 11px;
+  min-width: 248px;
+  padding: 10px 12px 12px;
+  background: var(--bg-pop);
+  border: var(--bd-hair);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-pop);
+  z-index: var(--z-pop);
+  font-size: 13px;
   color: var(--text);
+  transform-origin: bottom right;
+  animation: wg-pop-in var(--dur-fast) var(--ease-out);
+}
+@keyframes wg-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
 }
 
 .writing-goals__popover-header {
+  margin-bottom: 4px;
   font-size: 11px;
   font-weight: 600;
-  margin-bottom: 8px;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
 }
 
 .writing-goals__row {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
   gap: 12px;
-  padding: 4px 0;
+  min-height: 28px;
 }
 
 .writing-goals__row-label {
-  color: var(--text-muted);
+  color: var(--text-2);
 }
 .writing-goals__row-value {
   color: var(--text);
@@ -374,18 +385,7 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onDocClick, true
 }
 
 .writing-goals__reset {
-  margin-top: 10px;
+  margin-top: 8px;
   width: 100%;
-  padding: 6px 10px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
-  border-radius: 4px;
-  font-size: 11px;
-  cursor: pointer;
-}
-.writing-goals__reset:hover {
-  border-color: var(--accent);
-  color: var(--accent);
 }
 </style>

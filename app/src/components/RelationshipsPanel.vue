@@ -38,7 +38,9 @@ import {
   parseWikilinkTarget,
 } from '../lib/relationships';
 import { useI18n } from '../i18n';
-import { DsPanel, DsButton, DsInput, DsChip, DsListRow, DsTooltip } from '../ui';
+import { DsTooltip } from '../ui';
+import Icons from './Icons.vue';
+import PanelHeader from './panel/PanelHeader.vue';
 
 const tabs = useTabsStore();
 const idx = useWorkspaceIndexStore();
@@ -145,7 +147,7 @@ const forwardEmpty = computed(
 const addOpenKey = ref<string | null>(null);
 const addQuery = ref('');
 const addHighlight = ref(0);
-const addInputEl = ref<InstanceType<typeof DsInput> | null>(null);
+const addInputEl = ref<HTMLInputElement | HTMLInputElement[] | null>(null);
 
 function openAdd(key: string) {
   if (!canEdit.value) return;
@@ -159,8 +161,9 @@ function closeAdd() {
   addQuery.value = '';
 }
 function focusAddInput() {
-  const root = (addInputEl.value as unknown as { $el?: HTMLElement } | null)?.$el;
-  root?.querySelector?.('input')?.focus();
+  // The input sits inside a v-for, so the template ref is an array.
+  const v = addInputEl.value;
+  (Array.isArray(v) ? v[0] : v)?.focus();
 }
 
 /** Note-search candidates over the index, filtered by stem/title, excluding
@@ -270,82 +273,84 @@ async function commitAddRel(stem: string) {
 </script>
 
 <template>
-  <DsPanel grip @close="emit('close')">
-    <template #title>{{ t('relationships.heading') }}</template>
+  <div class="rel rp">
+    <PanelHeader :title="t('relationships.heading')" @close="emit('close')" />
 
-    <div v-if="!idx.ready" class="rel__empty">
-      <div class="rel__empty-icon" aria-hidden="true">🔗</div>
-      <p class="rel__empty-title">{{ t('relationships.openFolder') }}</p>
-    </div>
-    <div v-else-if="!activePath || !isMarkdown" class="rel__empty">
-      <div class="rel__empty-icon" aria-hidden="true">📄</div>
-      <p class="rel__empty-title">{{ t('relationships.noActive') }}</p>
-    </div>
+    <div v-if="!idx.ready" class="rp-empty">{{ t('relationships.openFolder') }}</div>
+    <div v-else-if="!activePath || !isMarkdown" class="rp-empty">{{ t('relationships.noActive') }}</div>
 
-    <div v-else class="rel__body">
+    <div v-else class="rel__body rp-body">
       <!-- Dirty guard: visible "save first" banner; edits disabled while dirty -->
       <div v-if="!canEdit" class="rel__guard" role="status">
-        {{ t('relationships.saveFirst') }}
+        <Icons name="info" :size="14" />
+        <span>{{ t('relationships.saveFirst') }}</span>
       </div>
 
       <!-- SECTION 1 — Forward (editable) -->
       <section class="rel__region">
-        <div class="rel__region-label">{{ t('relationships.forward') }}</div>
+        <div class="rp-section">{{ t('relationships.forward') }}</div>
 
-        <div v-if="forwardEmpty" class="rel__region-empty">
+        <div v-if="forwardEmpty" class="rel__region-empty rp-sub">
           {{ t('relationships.noForward') }}
         </div>
 
         <div v-for="key in forwardKeys" :key="key" class="rel__group">
           <div class="rel__group-label">{{ humanizeKey(key) }}</div>
-          <div class="rel__chips">
-            <DsChip
+          <div class="rp-chips rel__chips">
+            <span
               v-for="ref in forward[key]"
               :key="ref"
-              size="sm"
-              :removable="canEdit"
+              class="rp-chip rel__chip"
               :title="refTarget(ref)"
-              class="rel__chip"
-              @remove="onRemove(key, ref)"
             >
               <button class="rel__chip-link" type="button" @click="openRef(ref)">
                 {{ refTitle(ref) }}
               </button>
-            </DsChip>
+              <button
+                v-if="canEdit"
+                class="rel__chip-x"
+                type="button"
+                aria-label="Remove"
+                @click.stop="onRemove(key, ref)"
+              >
+                <Icons name="close" :size="11" />
+              </button>
+            </span>
           </div>
           <!-- inline add-target -->
           <div v-if="addOpenKey === key" class="rel__add">
-            <DsInput
+            <input
               ref="addInputEl"
               v-model="addQuery"
-              size="sm"
+              class="rp-input"
               :placeholder="t('relationships.searchNote')"
               @keydown="onAddKeydown"
               @blur="closeAdd"
             />
             <ul v-if="addCandidates.length" class="rel__add-list" role="listbox">
-              <DsListRow
+              <li
                 v-for="(c, i) in addCandidates"
                 :key="c.path"
-                as="div"
-                :active="i === addHighlight"
+                class="rp-row"
+                :class="{ 'is-hover': i === addHighlight }"
+                role="option"
                 @mousedown.prevent="commitAdd(c.stem)"
                 @mouseenter="addHighlight = i"
               >
-                {{ c.title || c.stem }}
-              </DsListRow>
+                <Icons class="rp-row__icon" name="file" :size="14" />
+                <span class="rp-row__label">{{ c.title || c.stem }}</span>
+              </li>
             </ul>
           </div>
-          <DsButton
+          <button
             v-else
-            variant="ghost"
-            size="sm"
+            type="button"
+            class="rp-btn rp-btn--ghost rp-btn--sm rel__add-btn"
             :disabled="!canEdit"
-            class="rel__add-btn"
             @click="openAdd(key)"
           >
-            + {{ t('relationships.addTarget') }}
-          </DsButton>
+            <Icons name="plus" :size="12" />{{ t('relationships.addTarget') }}
+          </button>
         </div>
 
         <!-- Suggested placeholder slots -->
@@ -354,69 +359,70 @@ async function commitAddRel(stem: string) {
           :key="`sug-${key}`"
           class="rel__group rel__group--ghost"
         >
-          <div class="rel__group-label rel__group-label--ghost">{{ humanizeKey(key) }}</div>
-          <DsButton
-            variant="ghost"
-            size="sm"
+          <div class="rel__group-label">{{ humanizeKey(key) }}</div>
+          <button
+            type="button"
+            class="rp-btn rp-btn--ghost rp-btn--sm rel__add-btn"
             :disabled="!canEdit"
-            class="rel__add-btn rel__add-btn--ghost"
             @click="openAdd(key)"
           >
-            + {{ t('relationships.addTarget') }}
-          </DsButton>
+            <Icons name="plus" :size="12" />{{ t('relationships.addTarget') }}
+          </button>
         </div>
 
         <!-- Add new relationship key -->
         <div class="rel__addrel">
-          <DsButton
+          <button
             v-if="!addRelOpen"
-            variant="subtle"
-            size="sm"
-            block
+            type="button"
+            class="rp-btn rel__addrel-btn"
             :disabled="!canEdit"
-            class="rel__addrel-btn"
             @click="openAddRel"
           >
-            + {{ t('relationships.addRelationship') }}
-          </DsButton>
+            <Icons name="plus" :size="13" />{{ t('relationships.addRelationship') }}
+          </button>
           <div v-else class="rel__addrel-form">
-            <DsInput
+            <input
               v-model="newKey"
-              size="sm"
+              class="rp-input"
               :placeholder="t('relationships.keyPlaceholder')"
             />
-            <DsInput
+            <input
               v-model="newTargetQuery"
-              size="sm"
+              class="rp-input"
               :placeholder="t('relationships.searchNote')"
               @keydown="onNewTargetKeydown"
             />
             <ul v-if="newTargetCandidates.length" class="rel__add-list" role="listbox">
-              <DsListRow
+              <li
                 v-for="(c, i) in newTargetCandidates"
                 :key="c.path"
-                as="div"
-                :active="i === newTargetHighlight"
+                class="rp-row"
+                :class="{ 'is-hover': i === newTargetHighlight }"
+                role="option"
                 @mousedown.prevent="commitAddRel(c.stem)"
                 @mouseenter="newTargetHighlight = i"
               >
-                {{ c.title || c.stem }}
-              </DsListRow>
+                <Icons class="rp-row__icon" name="file" :size="14" />
+                <span class="rp-row__label">{{ c.title || c.stem }}</span>
+              </li>
             </ul>
-            <DsButton variant="ghost" size="sm" @click="closeAddRel">
-              {{ t('relationships.cancel') }}
-            </DsButton>
+            <div class="rel__addrel-actions">
+              <button type="button" class="rp-btn rp-btn--ghost rp-btn--sm" @click="closeAddRel">
+                {{ t('relationships.cancel') }}
+              </button>
+            </div>
           </div>
         </div>
       </section>
 
       <!-- SECTION 2 — Referenced by (read-only, derived) -->
       <section class="rel__region">
-        <div class="rel__region-label">{{ t('relationships.referencedBy') }}</div>
-        <div v-if="loadingInverse" class="rel__region-empty">
+        <div class="rp-section">{{ t('relationships.referencedBy') }}</div>
+        <div v-if="loadingInverse" class="rel__region-empty rp-sub">
           {{ t('relationships.loading') }}
         </div>
-        <div v-else-if="inverseGroups.length === 0" class="rel__region-empty">
+        <div v-else-if="inverseGroups.length === 0" class="rel__region-empty rp-sub">
           {{ t('relationships.noReferencedBy') }}
         </div>
         <div v-for="g in inverseGroups" :key="g.label" class="rel__group">
@@ -428,164 +434,156 @@ async function commitAddRel(stem: string) {
               :label="t('relationships.inverseOf', { key: humanizeKey(r.via_key) })"
               placement="bottom"
             >
-              <DsListRow
-                class="rel__inv-row"
+              <button
+                type="button"
+                class="rp-row rel__inv-row"
                 :title="r.from_path"
                 @click="openInverse(r)"
               >
-                {{ r.from_name }}
-              </DsListRow>
+                <Icons class="rp-row__icon" name="file" :size="14" />
+                <span class="rp-row__label">{{ r.from_name }}</span>
+              </button>
             </DsTooltip>
           </div>
         </div>
       </section>
     </div>
-  </DsPanel>
+  </div>
 </template>
 
 <style scoped>
-.rel__body {
-  padding: var(--sp-2);
-}
-
-/* Empty / loading state ----------------------------------------------------*/
-.rel__empty {
-  padding: var(--sp-6) var(--sp-4);
-  text-align: center;
-  color: var(--text-faint);
-}
-.rel__empty-icon {
-  font-size: 28px;
-  opacity: 0.5;
-  margin-bottom: var(--sp-3);
-}
-.rel__empty-title {
-  margin: 0;
-  font-size: 12px;
-  color: var(--text-muted);
-  line-height: 1.5;
-}
-
-/* Dirty guard banner -------------------------------------------------------*/
+/* Dirty guard banner */
 .rel__guard {
-  margin: 0 var(--sp-1) var(--sp-2);
-  padding: var(--sp-2) var(--sp-3);
-  background: var(--accent-soft);
-  border: 1px solid var(--border);
-  border-radius: var(--r-sm);
-  font-size: 11px;
-  line-height: 1.4;
-  color: var(--text-muted);
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border-radius: var(--r-md);
+  background: var(--fill-1);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-2);
+}
+.rel__guard :deep(svg) {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--accent-text);
 }
 
-/* Regions ------------------------------------------------------------------*/
 .rel__region + .rel__region {
-  margin-top: var(--sp-3);
-  padding-top: var(--sp-3);
-  border-top: 1px solid var(--border);
-}
-.rel__region-label {
-  padding: var(--sp-1) var(--sp-2);
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-faint);
+  margin-top: 8px;
+  padding-top: 4px;
+  border-top: var(--bd-hair);
 }
 .rel__region-empty {
-  padding: var(--sp-2) var(--sp-2) var(--sp-3);
-  font-size: 12px;
-  color: var(--text-faint);
-  line-height: 1.5;
+  padding: 2px 8px 8px;
 }
 
-/* Groups -------------------------------------------------------------------*/
 .rel__group {
-  padding: var(--sp-1) var(--sp-2);
-  border-radius: var(--r-sm);
-}
-.rel__group + .rel__group {
-  margin-top: var(--sp-1);
-}
-.rel__group--ghost {
-  opacity: 0.75;
+  padding: 4px 8px 6px;
 }
 .rel__group-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text);
-  margin-bottom: var(--sp-1);
-}
-.rel__group-label--ghost {
-  color: var(--text-faint);
+  margin-bottom: 4px;
+  font-size: 12px;
   font-weight: 500;
+  color: var(--text-2);
+}
+.rel__group--ghost .rel__group-label {
+  color: var(--text-3);
+  font-weight: 400;
 }
 
-/* Forward chips ------------------------------------------------------------*/
 .rel__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-1);
-  margin-bottom: var(--sp-1);
+  margin-bottom: 2px;
 }
-/* DsChip wraps the clickable title; the chip itself carries the surface. */
+.rel__chip {
+  max-width: 100%;
+  cursor: default;
+}
+.rel__chip:has(.rel__chip-x) {
+  padding-right: 3px;
+}
 .rel__chip-link {
-  background: transparent;
-  border: none;
-  padding: 0;
-  font: inherit;
-  color: var(--accent);
-  cursor: pointer;
   max-width: 160px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: var(--text);
+  cursor: pointer;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .rel__chip-link:hover {
-  text-decoration: underline;
+  color: var(--accent-text);
 }
-.rel__chip-link:focus-visible {
+.rel__chip-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-full);
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+}
+.rel__chip-x:hover {
+  background: var(--fill-2);
+  color: var(--text);
+}
+.rel__chip-link:focus-visible,
+.rel__chip-x:focus-visible {
   outline: none;
   box-shadow: var(--ring);
   border-radius: var(--r-sm);
 }
 
-/* Add-target / add-relationship --------------------------------------------*/
 .rel__add {
   position: relative;
+  margin-top: 4px;
 }
 .rel__add-list {
   list-style: none;
-  margin: var(--sp-1) 0 0;
-  padding: var(--sp-1);
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  box-shadow: var(--sh-1);
+  margin: 4px 0 0;
+  padding: 4px;
+  background: var(--bg-pop);
+  border: var(--bd-hair);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-pop);
+}
+.rel__add-list .rp-row {
+  border-radius: var(--r-sm);
+}
+.rel__add-list .rp-row.is-hover {
+  background: var(--fill-1);
 }
 .rel__add-btn {
-  margin-left: calc(-1 * var(--sp-2));
-}
-.rel__add-btn--ghost {
-  color: var(--text-faint);
+  margin-left: -8px;
+  color: var(--text-3);
 }
 .rel__addrel {
-  padding: var(--sp-1) var(--sp-2);
-  margin-top: var(--sp-2);
+  padding: 8px 8px 4px;
+}
+.rel__addrel-btn {
+  width: 100%;
 }
 .rel__addrel-form {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-2);
+  gap: 6px;
 }
-
-/* Referenced-by list -------------------------------------------------------*/
+.rel__addrel-actions {
+  display: flex;
+  justify-content: flex-end;
+}
 .rel__inv-list {
   display: flex;
   flex-direction: column;
-  gap: 1px;
-}
-.rel__inv-row {
-  font-size: 12px;
+  margin: 0 -8px;
 }
 </style>

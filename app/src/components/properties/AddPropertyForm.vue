@@ -5,7 +5,7 @@
  *  boolean, string[] for tags/relation, string otherwise). Enter submits, Esc
  *  cancels. The parent owns the write + the (optional) mode override. */
 import { ref, computed, nextTick, onMounted } from 'vue';
-import { DsInput, DsSelect, DsButton, type DsSelectOption } from '../../ui';
+import { DsSelect, type DsSelectOption } from '../../ui';
 import { useI18n } from '../../i18n';
 import {
   DISPLAY_MODES,
@@ -25,7 +25,7 @@ const key = ref('');
 const mode = ref<DisplayMode>('text');
 const rawValue = ref('');
 const boolValue = ref(false);
-const nameRef = ref<InstanceType<typeof DsInput> | null>(null);
+const nameRef = ref<HTMLInputElement | null>(null);
 
 const modeOptions = computed<DsSelectOption[]>(() =>
   DISPLAY_MODES.map((m) => ({ value: m, label: DISPLAY_MODE_LABELS[m] })),
@@ -33,8 +33,7 @@ const modeOptions = computed<DsSelectOption[]>(() =>
 
 onMounted(async () => {
   await nextTick();
-  const el = (nameRef.value?.$el as HTMLElement | undefined)?.querySelector?.('input');
-  el?.focus();
+  nameRef.value?.focus();
 });
 
 function placeholderFor(m: DisplayMode): string {
@@ -71,10 +70,10 @@ function confirm() {
 <template>
   <div class="prop-add" @keydown.esc.prevent="emit('cancel')">
     <div class="prop-add__row">
-      <DsInput
+      <input
         ref="nameRef"
         v-model="key"
-        size="sm"
+        class="rp-input"
         :placeholder="t('inspector.propertyName')"
         @keydown.enter.prevent="confirm"
       />
@@ -94,18 +93,18 @@ function confirm() {
         <span class="prop-add__bool-track"><span class="prop-add__bool-thumb" /></span>
         <span>{{ boolValue ? 'true' : 'false' }}</span>
       </button>
-      <DsInput
+      <input
         v-else
         v-model="rawValue"
-        size="sm"
+        class="rp-input"
         :placeholder="placeholderFor(mode)"
         @keydown.enter.prevent="confirm"
       />
     </div>
 
     <div class="prop-add__actions">
-      <DsButton size="sm" variant="ghost" @click="emit('cancel')">{{ t('inspector.cancel') }}</DsButton>
-      <DsButton size="sm" variant="primary" :disabled="!canConfirm()" @click="confirm">{{ t('inspector.add') }}</DsButton>
+      <button type="button" class="rp-btn rp-btn--sm" @click="emit('cancel')">{{ t('inspector.cancel') }}</button>
+      <button type="button" class="rp-btn rp-btn--sm rp-btn--primary" :disabled="!canConfirm()" @click="confirm">{{ t('inspector.add') }}</button>
     </div>
   </div>
 </template>
@@ -114,10 +113,10 @@ function confirm() {
 .prop-add {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-2);
-  padding: var(--sp-3);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
+  gap: 8px;
+  padding: 10px;
+  border: var(--bd-hair);
+  border-radius: var(--r-lg);
   background: var(--bg-elev);
 }
 .prop-add__row {
@@ -132,40 +131,39 @@ function confirm() {
   display: inline-flex;
   align-items: center;
   gap: var(--sp-2);
+  font: inherit;
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--text-3);
   background: transparent;
   border: none;
   cursor: pointer;
-  padding: var(--sp-1) 0;
+  padding: 4px 0;
 }
 .prop-add__bool-track {
-  width: 30px;
-  height: 18px;
+  width: 28px;
+  height: 16px;
   border-radius: var(--r-full);
-  background: var(--bg-hover);
-  border: 1px solid var(--border);
+  background: var(--fill-2);
   position: relative;
   flex-shrink: 0;
   transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
 }
 .prop-add__bool-thumb {
   position: absolute;
-  top: 1px;
-  left: 1px;
-  width: 14px;
-  height: 14px;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
   border-radius: var(--r-full);
-  background: var(--text-muted);
+  background: var(--bg);
+  box-shadow: var(--sh-thumb);
   transition: transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
 }
 .prop-add__bool--on .prop-add__bool-track {
-  background: var(--accent-soft);
-  border-color: var(--accent);
+  background: var(--accent);
 }
 .prop-add__bool--on .prop-add__bool-thumb {
   transform: translateX(12px);
-  background: var(--accent);
 }
 .prop-add__bool--on span:last-child {
   color: var(--text);

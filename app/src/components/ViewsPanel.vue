@@ -8,8 +8,8 @@
  * editor; rows open the filtered list, and a per-row context menu offers
  * edit / duplicate / delete. Rows drag-reorder, persisting `order` to disk.
  *
- * Rows are design-system DsListRow + DsChip; the header uses DsButton. The
- * context menu is a tokenized popover (no raw hex). Re-evaluates badges on
+ * 5.0: rows / header use the shared panel anatomy (styles/panels.css); the
+ * context menu follows the spec §6 menu style (tokens only). Re-evaluates badges on
  * `solomd://index-updated` so counts stay live as notes change on disk.
  */
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
@@ -19,7 +19,8 @@ import { useWorkspaceStore } from '../stores/workspace';
 import { useSavedViewsStore } from '../stores/savedViews';
 import { useSavedViews } from '../composables/useSavedViews';
 import { uniqueSlug, type ViewFile } from '../lib/viewFile';
-import { DsButton, DsChip, DsListRow } from '../ui';
+import Icons from './Icons.vue';
+import '../styles/panels.css';
 
 const { t } = useI18n();
 const workspace = useWorkspaceStore();
@@ -144,28 +145,39 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <aside class="vpanel">
-    <div class="vpanel__header">
-      <button class="vpanel__title-btn" type="button" @click="collapsed = !collapsed">
-        <span class="vpanel__caret" aria-hidden="true">{{ collapsed ? '▸' : '▾' }}</span>
+  <aside class="vpanel rp">
+    <div class="rp-head vpanel__header">
+      <button
+        class="vpanel__title-btn rp-title"
+        type="button"
+        :aria-expanded="!collapsed"
+        @click="collapsed = !collapsed"
+      >
         <span>{{ t('views.heading') }}</span>
+        <Icons
+          class="vpanel__caret"
+          :class="{ 'vpanel__caret--collapsed': collapsed }"
+          name="chevron-down"
+          :size="11"
+        />
       </button>
-      <DsButton
-        variant="ghost"
-        size="sm"
+      <button
+        type="button"
+        class="rp-icon-btn"
         :disabled="!workspace.currentFolder"
         :title="t('views.newViewTitle')"
+        :aria-label="t('views.newViewTitle')"
         @click="newView"
-      >＋</DsButton>
+      ><Icons name="plus" :size="14" /></button>
     </div>
 
-    <div v-if="!collapsed" class="vpanel__body">
-      <div v-if="!workspace.currentFolder" class="vpanel__empty">{{ t('views.openFolder') }}</div>
-      <div v-else-if="views.length === 0" class="vpanel__empty">
+    <div v-if="!collapsed" class="vpanel__body rp-body">
+      <div v-if="!workspace.currentFolder" class="vpanel__empty rp-sub">{{ t('views.openFolder') }}</div>
+      <div v-else-if="views.length === 0" class="vpanel__empty rp-sub">
         <div>{{ t('views.empty') }}</div>
         <div class="vpanel__empty-hint">{{ t('views.emptyHint') }}</div>
       </div>
-      <ul v-else class="vpanel__list">
+      <ul v-else class="rp-list vpanel__list">
         <li
           v-for="view in views"
           :key="view.slug"
@@ -178,22 +190,23 @@ onBeforeUnmount(() => {
           @dragend="onDragEnd"
           @contextmenu="openCtx($event, view)"
         >
-          <DsListRow
-            :active="isActive(view)"
+          <button
+            type="button"
+            class="rp-row"
+            :class="{ 'is-active': isActive(view) }"
             :title="view.name"
             @click="onRowClick(view)"
           >
-            <template #leading>
-              <span
-                class="vpanel__swatch"
-                :style="view.color ? { color: view.color } : undefined"
-              >{{ view.icon || '🔖' }}</span>
-            </template>
-            <span class="vpanel__name">{{ view.name }}</span>
-            <template #trailing>
-              <DsChip size="sm">{{ badge(view) }}</DsChip>
-            </template>
-          </DsListRow>
+            <span
+              class="rp-row__icon vpanel__swatch"
+              :style="view.color ? { color: view.color } : undefined"
+            >
+              <template v-if="view.icon">{{ view.icon }}</template>
+              <Icons v-else name="filter" :size="14" />
+            </span>
+            <span class="rp-row__label vpanel__name">{{ view.name }}</span>
+            <span class="rp-count">{{ badge(view) }}</span>
+          </button>
         </li>
       </ul>
     </div>
@@ -201,115 +214,141 @@ onBeforeUnmount(() => {
     <div
       v-if="ctx"
       class="vpanel__ctx"
+      role="menu"
       :style="{ left: ctx.x + 'px', top: ctx.y + 'px' }"
       @click.stop
     >
-      <button class="vpanel__ctx-item" type="button" @click="onEdit(ctx.slug)">
-        ✎ {{ t('views.edit') }}
+      <button class="vpanel__ctx-item" type="button" role="menuitem" @click="onEdit(ctx.slug)">
+        <Icons name="pencil" :size="14" />{{ t('views.edit') }}
       </button>
-      <button class="vpanel__ctx-item" type="button" @click="onDuplicate(ctx.slug)">
-        ⧉ {{ t('views.duplicate') }}
+      <button class="vpanel__ctx-item" type="button" role="menuitem" @click="onDuplicate(ctx.slug)">
+        <Icons name="new" :size="14" />{{ t('views.duplicate') }}
       </button>
       <div class="vpanel__ctx-sep"></div>
       <button
         class="vpanel__ctx-item vpanel__ctx-item--danger"
         type="button"
+        role="menuitem"
         @click="onDelete(ctx.slug)"
-      >🗑 {{ t('views.delete') }}</button>
+      ><Icons name="trash" :size="14" />{{ t('views.delete') }}</button>
     </div>
   </aside>
 </template>
 
 <style scoped>
-.vpanel {
-  border-top: var(--bd);
-  background: var(--bg-elev);
-  user-select: none;
-  display: flex;
-  flex-direction: column;
+.vpanel.rp {
+  height: auto;
   max-height: 40%;
+  flex: 0 1 auto;
+  border-top: var(--bd-hair);
+  user-select: none;
+  -webkit-user-select: none;
 }
 .vpanel__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--sp-2) var(--sp-4);
-  color: var(--text-muted);
+  padding-left: 12px;
 }
 .vpanel__title-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: var(--sp-2);
-  background: transparent;
+  gap: 4px;
+  flex: 1 1 auto;
+  height: 24px;
+  padding: 0;
   border: 0;
+  background: transparent;
+  text-align: left;
   cursor: pointer;
-  font: inherit;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-muted);
 }
-.vpanel__caret { font-size: 9px; color: var(--text-faint); }
-.vpanel__body { overflow-y: auto; padding: 0 var(--sp-2) var(--sp-2); }
+.vpanel__title-btn:hover {
+  color: var(--text-2);
+}
+.vpanel__title-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+  border-radius: var(--r-xs);
+}
+.vpanel__caret {
+  flex: 0 0 auto;
+  opacity: 0;
+  transition: transform var(--dur-fast) var(--ease), opacity var(--dur-fast) var(--ease);
+}
+.vpanel__header:hover .vpanel__caret,
+.vpanel__caret--collapsed {
+  opacity: 1;
+}
+.vpanel__caret--collapsed {
+  transform: rotate(-90deg);
+}
 .vpanel__empty {
-  padding: var(--sp-3) var(--sp-3);
-  font-size: 12px;
-  color: var(--text-faint);
+  padding: 4px 8px 8px;
 }
 .vpanel__empty-hint {
-  margin-top: var(--sp-1);
-  font-size: 11px;
-  color: var(--text-faint);
+  margin-top: 2px;
 }
-.vpanel__list { list-style: none; margin: 0; padding: 0; }
 .vpanel__li {
-  border-radius: var(--r-sm);
+  border-radius: 7px;
 }
 .vpanel__li--over {
-  outline: 1px dashed var(--accent);
-  outline-offset: -1px;
+  box-shadow: inset 0 2px 0 var(--accent);
 }
 .vpanel__swatch {
   width: 16px;
-  text-align: center;
-  flex-shrink: 0;
-  font-size: 12px;
-}
-.vpanel__name {
-  flex: 1 1 auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  justify-content: center;
+  font-size: 13px;
+  line-height: 1;
 }
 .vpanel__ctx {
   position: fixed;
   z-index: var(--z-pop);
-  background: var(--bg-elev);
-  border: var(--bd);
-  border-radius: var(--r-md);
+  min-width: 168px;
+  padding: 4px;
+  background: var(--bg-pop);
+  border: var(--bd-hair);
+  border-radius: var(--r-lg);
   box-shadow: var(--sh-pop);
-  padding: var(--sp-1) 0;
-  min-width: 160px;
   font-size: 13px;
+  transform-origin: top left;
+  animation: vpanel-pop var(--dur-fast) var(--ease-out);
+}
+@keyframes vpanel-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
 }
 .vpanel__ctx-item {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   width: 100%;
-  text-align: left;
-  padding: var(--sp-2) var(--sp-4);
+  height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--r-sm);
   background: transparent;
-  border: none;
   color: var(--text);
-  cursor: pointer;
   font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.vpanel__ctx-item :deep(svg) {
+  color: var(--text-3);
 }
 .vpanel__ctx-item:hover {
-  background: var(--bg-hover);
+  background: var(--fill-1);
 }
-.vpanel__ctx-item--danger { color: var(--danger); }
-.vpanel__ctx-item--danger:hover {
-  background: color-mix(in srgb, var(--danger) 14%, transparent);
+.vpanel__ctx-item--danger,
+.vpanel__ctx-item--danger :deep(svg) {
+  color: var(--danger);
 }
-.vpanel__ctx-sep { height: 1px; background: var(--border); margin: var(--sp-1) 0; }
+.vpanel__ctx-sep {
+  height: 0;
+  margin: 4px 0;
+  border-top: var(--bd-hair);
+}
+@media (prefers-reduced-motion: reduce) {
+  .vpanel__ctx {
+    animation: none;
+  }
+}
 </style>

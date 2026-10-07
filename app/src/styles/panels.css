@@ -1,0 +1,643 @@
+/* SoloMD 5.0 — right-sidebar panel + full-page view anatomy
+ * (docs/v5-ui-spec.md §2, §6).
+ *
+ * One vocabulary for every inspector pane (Outline, Backlinks, Tags, Tasks,
+ * History, Inspector, Agent, …) and every full-page view (Bases, Inbox, Type
+ * lens, saved views, Trace). Components import this file directly
+ * (`import '../styles/panels.css'`); Vite de-duplicates the import.
+ *
+ * Tokens only — no hex, no shadows other than the --sh-* scale. Every class
+ * is prefixed `rp-` (panel) or `pg-` (page) so nothing here leaks into the
+ * editor or the other chrome.
+ */
+
+/* ── Panel frame ─────────────────────────────────────────────────────── */
+.rp {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 13px;
+}
+
+.rp-head {
+  flex: 0 0 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 8px 0 12px;
+  min-width: 0;
+  box-sizing: border-box;
+}
+/* Section label: 11 / 600 / .06em. No text-transform — CJK has no case and
+   the Latin labels read calmer in sentence case at this size. */
+.rp-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.rp-title__count {
+  margin-left: 6px;
+  font-weight: 500;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 24 px icon button (header actions, row actions). */
+.rp-icon-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  font: inherit;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.rp-icon-btn:hover:not(:disabled) {
+  background: var(--fill-1);
+  color: var(--text);
+}
+.rp-icon-btn:active:not(:disabled) {
+  background: var(--fill-2);
+}
+.rp-icon-btn.is-on {
+  color: var(--accent-text);
+}
+.rp-icon-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.rp-icon-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Lists (declared before .rp-body so `class="rp-body rp-list"` keeps the
+   body padding). */
+.rp-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Scrolling body. */
+.rp-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 8px 12px;
+}
+.rp-pad {
+  padding: 0 12px;
+}
+
+/* Sub-heading inside a panel body. */
+.rp-section {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 10px 8px 2px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+}
+.rp-section:first-child {
+  padding-top: 2px;
+}
+
+/* ── Rows ────────────────────────────────────────────────────────────── */
+.rp-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 28px;
+  padding: 0 8px;
+  box-sizing: border-box;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.35;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.rp-row:hover {
+  background: var(--fill-1);
+}
+.rp-row.is-active,
+.rp-row[aria-selected='true'] {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.rp-row.is-active .rp-row__icon,
+.rp-row.is-active .rp-count {
+  color: var(--accent-text);
+}
+/* Two-line row (title + snippet). */
+.rp-row--tall {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+}
+.rp-row__icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  color: var(--text-3);
+}
+.rp-row__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rp-row__actions {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease);
+}
+.rp-row:hover .rp-row__actions,
+.rp-row:focus-within .rp-row__actions {
+  opacity: 1;
+}
+
+/* Secondary text and right-aligned counts. */
+.rp-sub {
+  font-size: 12px;
+  color: var(--text-3);
+  line-height: 1.45;
+}
+.rp-count {
+  flex: 0 0 auto;
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.rp-snippet {
+  width: 100%;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-3);
+  white-space: pre-wrap;
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── Empty state ─────────────────────────────────────────────────────── */
+.rp-empty {
+  padding: 28px 16px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-3);
+}
+.rp-empty .rp-btn {
+  margin-top: 10px;
+}
+
+/* ── Controls ────────────────────────────────────────────────────────── */
+.rp-input,
+.rp-select,
+.rp-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  height: 28px;
+  padding: 0 9px;
+  border: var(--bd-hair);
+  border-radius: var(--r-md);
+  background: var(--fill-1);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease),
+    background var(--dur-fast) var(--ease);
+}
+.rp-textarea {
+  height: auto;
+  min-height: 64px;
+  padding: 7px 9px;
+  line-height: 1.5;
+  resize: vertical;
+}
+.rp-input::placeholder,
+.rp-textarea::placeholder {
+  color: var(--text-3);
+}
+.rp-input:focus,
+.rp-select:focus,
+.rp-textarea:focus {
+  background: var(--bg);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+/* Search field with a leading glass. */
+.rp-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.rp-search > svg {
+  position: absolute;
+  left: 8px;
+  color: var(--text-3);
+  pointer-events: none;
+}
+.rp-search > .rp-input {
+  padding-left: 28px;
+}
+
+.rp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  border: 0;
+  border-radius: var(--r-md);
+  background: var(--fill-1);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), opacity var(--dur-fast) var(--ease);
+}
+.rp-btn:hover:not(:disabled) {
+  background: var(--fill-2);
+}
+.rp-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.rp-btn--primary {
+  background: var(--accent-strong);
+  color: var(--accent-strong-fg);
+}
+.rp-btn--primary:hover:not(:disabled) {
+  background: var(--accent-strong);
+  opacity: 0.9;
+}
+.rp-btn--ghost {
+  background: transparent;
+  color: var(--text-2);
+}
+.rp-btn--ghost:hover:not(:disabled) {
+  background: var(--fill-1);
+  color: var(--text);
+}
+.rp-btn--danger {
+  color: var(--danger);
+}
+.rp-btn--sm {
+  height: 24px;
+  padding: 0 8px;
+  font-size: 12px;
+  border-radius: var(--r-sm);
+}
+
+.rp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px;
+  box-sizing: border-box;
+  border: 0;
+  border-radius: var(--r-full);
+  background: var(--fill-1);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+button.rp-chip:hover,
+a.rp-chip:hover {
+  background: var(--fill-2);
+  color: var(--text);
+}
+.rp-chip.is-active {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.rp-chip__count {
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.rp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.rp-check {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  border: 1.4px solid var(--text-3);
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  display: inline-grid;
+  place-content: center;
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.rp-check:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.rp-check:checked::after {
+  content: '';
+  width: 7px;
+  height: 4px;
+  border: 1.6px solid var(--accent-strong-fg);
+  border-top: 0;
+  border-right: 0;
+  transform: translateY(-1px) rotate(-45deg);
+}
+
+.rp-sep {
+  height: 0;
+  border: 0;
+  border-top: var(--bd-hair);
+  margin: 6px 8px;
+}
+
+/* Keyboard focus, everywhere in this vocabulary. */
+.rp-row:focus-visible,
+.rp-icon-btn:focus-visible,
+.rp-btn:focus-visible,
+.rp-chip:focus-visible,
+.rp-check:focus-visible,
+.pg-icon-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+/* ── Segmented control (shared with SegControl.vue) ─────────────────── */
+.rp-seg {
+  --seg-n: 2;
+  --seg-i: 0;
+  position: relative;
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  align-items: stretch;
+  height: 28px;
+  padding: 2px;
+  box-sizing: border-box;
+  border-radius: var(--r-md);
+  background: var(--fill-1);
+  user-select: none;
+  -webkit-user-select: none;
+}
+.rp-seg__thumb {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 2px;
+  width: calc((100% - 4px) / var(--seg-n));
+  border-radius: var(--r-sm);
+  background: var(--bg);
+  box-shadow: var(--sh-thumb);
+  transform: translateX(calc(100% * var(--seg-i)));
+  transition: transform var(--dur) var(--ease-out);
+}
+.rp-seg__opt {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 0;
+  padding: 0 10px;
+  border: 0;
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  border-radius: var(--r-sm);
+  transition: color var(--dur-fast) var(--ease);
+}
+.rp-seg__opt:hover {
+  color: var(--text);
+}
+.rp-seg__opt.is-on {
+  color: var(--text);
+}
+.rp-seg__opt:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+/* ── Full-page views ─────────────────────────────────────────────────── */
+.pg {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 13px;
+}
+.pg-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 20px 24px 12px;
+}
+.pg-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 620;
+  line-height: 1.3;
+  letter-spacing: -0.005em;
+  color: var(--text);
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pg-subtitle {
+  font-size: 12px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.pg-spacer {
+  flex: 1 1 auto;
+}
+.pg-toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 24px 12px;
+}
+.pg-icon-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.pg-icon-btn:hover:not(:disabled) {
+  background: var(--fill-1);
+  color: var(--text);
+}
+.pg-icon-btn:active:not(:disabled) {
+  background: var(--fill-2);
+}
+.pg-icon-btn.is-on {
+  color: var(--accent-text);
+  background: var(--accent-soft);
+}
+.pg-icon-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.pg-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 24px 32px;
+}
+.pg-body--flush {
+  padding: 0;
+}
+
+/* Data table: hairline row separators, 32 px rows, sticky header. */
+.pg-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.pg-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  height: 32px;
+  padding: 0 12px;
+  background: var(--bg-sidebar);
+  border-bottom: var(--bd-hair);
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.pg-table td {
+  height: 32px;
+  padding: 0 12px;
+  border-bottom: var(--bd-hair);
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 360px;
+}
+.pg-table tbody tr {
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease);
+}
+.pg-table tbody tr:hover td {
+  background: var(--fill-1);
+}
+.pg-table tbody tr.is-active td {
+  background: var(--accent-soft);
+}
+
+/* Cards (board / gallery / inbox items). */
+.pg-card {
+  border-radius: var(--r-lg);
+  border: var(--bd-hair);
+  background: var(--bg);
+  padding: 10px 12px;
+  transition: background var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease);
+}
+.pg-card:hover {
+  box-shadow: var(--sh-2);
+}
+.pg-card.is-active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.pg-empty {
+  padding: 64px 24px;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-3);
+}
+.pg-empty__title {
+  margin-bottom: 4px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-2);
+}

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue';
 import { useI18n } from '../i18n';
 import { useSettingsStore } from '../stores/settings';
 
@@ -11,6 +12,7 @@ const props = defineProps<{
 
 const { t } = useI18n();
 const settings = useSettingsStore();
+const dragging = ref(false);
 
 function startDrag(e: MouseEvent) {
   e.preventDefault();
@@ -22,6 +24,7 @@ function startDrag(e: MouseEvent) {
   const startAboveH = aboveEl.getBoundingClientRect().height;
   const startBelowH = belowEl.getBoundingClientRect().height;
   document.body.classList.add('rs-splitter--dragging');
+  dragging.value = true;
 
   function onMove(ev: MouseEvent) {
     const dy = ev.clientY - startY;
@@ -44,6 +47,7 @@ function startDrag(e: MouseEvent) {
     document.removeEventListener('mousemove', onMove);
     document.removeEventListener('mouseup', onUp);
     document.body.classList.remove('rs-splitter--dragging');
+    dragging.value = false;
   }
 
   document.addEventListener('mousemove', onMove);
@@ -54,6 +58,7 @@ function startDrag(e: MouseEvent) {
 <template>
   <div
     class="rs-splitter"
+    :class="{ 'rs-splitter--active': dragging }"
     :title="t('rightSidebar.dragToResize')"
     @mousedown="startDrag"
     @dblclick="settings.clearRightSidebarPaneHeights()"
@@ -61,38 +66,46 @@ function startDrag(e: MouseEvent) {
 </template>
 
 <style scoped>
+/* 5.0 — the divider between stacked panes is a hairline (what every
+   inspector in a Mac app draws); the 9 px hit area lives in ::before so the
+   line stays thin without being hard to grab. #294's "can this be resized?"
+   answer is kept: hovering (after a short delay, so a pointer passing over
+   doesn't flash) or dragging shows a 2 px accent bar. Double-click resets. */
 .rs-splitter {
-  flex: 0 0 4px;
-  height: 4px;
-  cursor: row-resize;
-  background: transparent;
-  border-top: 1px solid var(--border);
+  flex: 0 0 var(--hair-w);
+  height: var(--hair-w);
   position: relative;
   z-index: 5;
-  transition: background 0.15s;
+  cursor: row-resize;
+  background: var(--hairline);
 }
-/* #294 — the divider used to be a 4px transparent line with no feedback of
-   any kind, so "can the outline be resized?" was a fair question: nothing on
-   screen said yes. Hovering now paints the accent and shows a short grip, the
-   same vocabulary the sidebar's width handle already uses. */
-.rs-splitter:hover,
-body.rs-splitter--dragging .rs-splitter {
-  background: var(--accent);
+.rs-splitter::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -4px;
+  bottom: -4px;
 }
 .rs-splitter::after {
   content: '';
   position: absolute;
-  left: 50%;
+  left: 0;
+  right: 0;
   top: 50%;
-  width: 28px;
   height: 2px;
-  transform: translate(-50%, -50%);
-  border-radius: 1px;
-  background: var(--text-faint);
+  transform: translateY(-50%);
+  background: var(--accent);
   opacity: 0;
-  transition: opacity 0.15s;
+  transition: opacity var(--dur-fast) var(--ease) 0ms;
+  pointer-events: none;
 }
 .rs-splitter:hover::after {
-  opacity: 0.9;
+  opacity: 1;
+  transition-delay: 150ms;
+}
+body.rs-splitter--dragging .rs-splitter--active::after {
+  opacity: 1;
+  transition-delay: 0ms;
 }
 </style>

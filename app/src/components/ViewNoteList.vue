@@ -17,7 +17,8 @@ import { useWorkspaceIndexStore, type IndexEntry } from '../stores/workspaceInde
 import { useSavedViews } from '../composables/useSavedViews';
 import { useFiles } from '../composables/useFiles';
 import { inferColumns, getCellValue, formatMtime, type ColumnDef } from '../lib/bases';
-import { DsButton, DsChip, DsListRow } from '../ui';
+import Icons from './Icons.vue';
+import '../styles/panels.css';
 
 const { t } = useI18n();
 const store = useSavedViewsStore();
@@ -71,103 +72,129 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <!-- #245 — the ‹ back button must exist even when the view doesn't resolve.
+  <!-- #245 — the back button must exist even when the view doesn't resolve.
        `view` is `savedViews.activeView`, which the store nulls out whenever the
        active slug is no longer on disk. This template used to be entirely
        behind `v-if="view"`, so in that state it rendered nothing while the
        parent still suppressed the editor — a blank pane with no escape. App.vue
        now also refuses to swap in this component without a view, so this branch
        is the safety net rather than the only guard. -->
-  <div class="vnl" v-if="!view">
-    <div class="vnl__header">
-      <DsButton variant="ghost" size="sm" :title="t('views.back')" @click="closeView">‹</DsButton>
-      <span class="vnl__name">{{ t('views.heading') }}</span>
+  <div class="vnl pg" v-if="!view">
+    <div class="vnl__header pg-head">
+      <button class="pg-icon-btn" type="button" :title="t('views.back')" :aria-label="t('views.back')" @click="closeView">
+        <Icons name="chevron-left" :size="18" />
+      </button>
+      <h1 class="vnl__name pg-title">{{ t('views.heading') }}</h1>
     </div>
-    <div class="vnl__empty">{{ t('views.gone') }}</div>
+    <div class="vnl__empty pg-empty">{{ t('views.gone') }}</div>
   </div>
-  <div class="vnl" v-else>
-    <div class="vnl__header">
-      <DsButton variant="ghost" size="sm" :title="t('views.back')" @click="closeView">‹</DsButton>
-      <span class="vnl__icon" :style="view.color ? { color: view.color } : undefined">{{ view.icon || '🔖' }}</span>
-      <span class="vnl__name">{{ view.name }}</span>
-      <DsChip size="sm" color="var(--accent)">{{ rows.length }}</DsChip>
+  <div class="vnl pg" v-else>
+    <div class="vnl__header pg-head">
+      <button class="pg-icon-btn" type="button" :title="t('views.back')" :aria-label="t('views.back')" @click="closeView">
+        <Icons name="chevron-left" :size="18" />
+      </button>
+      <span class="vnl__icon" :style="view.color ? { color: view.color } : undefined">
+        <template v-if="view.icon">{{ view.icon }}</template>
+        <Icons v-else name="filter" :size="18" />
+      </span>
+      <h1 class="vnl__name pg-title">{{ view.name }}</h1>
+      <span class="pg-subtitle vnl__count">{{ rows.length }}</span>
     </div>
 
-    <div v-if="rows.length === 0" class="vnl__empty">{{ t('views.noMatches') }}</div>
+    <div v-if="rows.length === 0" class="vnl__empty pg-empty">{{ t('views.noMatches') }}</div>
 
-    <ul v-else class="vnl__list">
+    <ul v-else class="vnl__list pg-body">
       <li v-for="entry in rows" :key="entry.path" class="vnl__li">
-        <DsListRow as="div" :title="entry.path" @click="open(entry)">
-          <div class="vnl__row-body">
-            <div class="vnl__row-main">
-              <span class="vnl__row-name">{{ entry.title || entry.name }}</span>
-              <span class="vnl__row-mtime">{{ formatMtime(entry.mtime) }}</span>
-            </div>
-            <div v-if="chipColumns.length" class="vnl__chips">
-              <template v-for="col in chipColumns" :key="col.id">
-                <DsChip v-if="chipText(entry, col)" size="sm">{{ chipText(entry, col) }}</DsChip>
-              </template>
-            </div>
-          </div>
-        </DsListRow>
+        <button type="button" class="vnl__row" :title="entry.path" @click="open(entry)">
+          <span class="vnl__row-main">
+            <span class="vnl__row-name">{{ entry.title || entry.name }}</span>
+            <span class="vnl__row-mtime">{{ formatMtime(entry.mtime) }}</span>
+          </span>
+          <span v-if="chipColumns.length" class="vnl__chips">
+            <template v-for="col in chipColumns" :key="col.id">
+              <span v-if="chipText(entry, col)" class="rp-chip">{{ chipText(entry, col) }}</span>
+            </template>
+          </span>
+        </button>
       </li>
     </ul>
   </div>
 </template>
 
 <style scoped>
-.vnl {
-  height: 100%;
-  overflow-y: auto;
-  background: var(--bg);
-  color: var(--text);
-}
 .vnl__header {
-  display: flex;
+  padding-left: 16px;
+  gap: 8px;
+  border-bottom: var(--bd-hair);
+}
+.vnl__icon {
+  display: inline-flex;
   align-items: center;
-  gap: var(--sp-2);
-  padding: var(--sp-3) var(--sp-4);
-  border-bottom: var(--bd);
-  position: sticky;
-  top: 0;
-  background: var(--bg);
-  z-index: var(--z-sticky);
+  font-size: 17px;
+  line-height: 1;
+  color: var(--text-2);
+  margin-left: 2px;
 }
-.vnl__icon { font-size: 15px; }
 .vnl__name {
-  font-size: 15px;
-  font-weight: 600;
-  flex: 1 1 auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  flex: 0 1 auto;
 }
-.vnl__empty {
-  padding: var(--sp-6) var(--sp-4);
-  text-align: center;
-  color: var(--text-muted);
-  font-size: 13px;
+.vnl__count {
+  padding-top: 4px;
 }
 .vnl__list {
   list-style: none;
   margin: 0;
-  padding: var(--sp-1) var(--sp-2);
+  padding-top: 8px;
+  padding-left: 16px;
+  padding-right: 16px;
 }
 .vnl__li {
-  border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+  position: relative;
 }
-.vnl__row-body {
+.vnl__li + .vnl__li::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 12px;
+  right: 12px;
+  border-top: var(--bd-hair);
+  pointer-events: none;
+}
+.vnl__li:hover::before,
+.vnl__li:hover + .vnl__li::before {
+  border-color: transparent;
+}
+.vnl__row {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-1);
+  gap: 6px;
   width: 100%;
-  min-width: 0;
+  min-height: 44px;
+  justify-content: center;
+  padding: 8px 12px;
+  box-sizing: border-box;
+  border: 0;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease);
+}
+.vnl__row:hover {
+  background: var(--fill-1);
+}
+.vnl__row:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
 }
 .vnl__row-main {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: var(--sp-3);
+  min-width: 0;
 }
 .vnl__row-name {
   font-size: 13px;
@@ -177,13 +204,17 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 .vnl__row-mtime {
-  font-size: 11px;
-  color: var(--text-faint);
+  font-size: 12px;
+  color: var(--text-3);
   flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
 }
 .vnl__chips {
   display: flex;
   flex-wrap: wrap;
   gap: var(--sp-1);
+}
+.vnl__chips .rp-chip {
+  cursor: inherit;
 }
 </style>

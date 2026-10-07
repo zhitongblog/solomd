@@ -12,6 +12,7 @@ import { isMacOS } from '../lib/platform';
 import { useSettingsStore } from '../stores/settings';
 import { usePomodoroStore } from '../stores/pomodoro';
 import { useI18n } from '../i18n';
+import '../styles/panels.css';
 
 const props = defineProps<{ open: boolean }>();
 const emit = defineEmits<{ (e: 'close'): void }>();
@@ -76,21 +77,21 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
         max="600"
         :value="customMin"
         @input="customMin = Math.max(1, Math.min(600, +($event.target as HTMLInputElement).value || 1))"
-        class="pomo-popover__num"
+        class="rp-input pomo-popover__num"
         :aria-label="t('pomodoro.customMinutes')"
       />
       <span class="pomo-popover__custom-suffix">{{ t('pomodoro.minShort') }}</span>
-      <button class="pomo-popover__start" @mousedown.prevent="startCustom">
+      <button class="rp-btn rp-btn--sm rp-btn--primary pomo-popover__start" @mousedown.prevent="startCustom">
         {{ t('pomodoro.start') }}
       </button>
     </div>
     <div class="pomo-popover__sep"></div>
     <label class="pomo-popover__toggle">
-      <input type="checkbox" v-model="autoBreak" />
+      <input type="checkbox" class="rp-check" v-model="autoBreak" />
       <span>{{ t('pomodoro.autoBreak') }}</span>
     </label>
     <label class="pomo-popover__toggle">
-      <input type="checkbox" v-model="notify" />
+      <input type="checkbox" class="rp-check" v-model="notify" />
       <span>{{ t('pomodoro.notify') }}</span>
     </label>
     <div class="pomo-popover__hint">{{ withChord('pomodoro.shortcutHint', 'pomodoro.startLast') }}</div>
@@ -98,103 +99,100 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
 </template>
 
 <style scoped>
+/* Spec §6 popover: --bg-pop, 10 px radius, 4 px padding, 28 px rows. */
 .pomo-popover {
   position: absolute;
-  top: calc(100% + 4px);
+  top: calc(100% + 6px);
   left: 0;
-  min-width: 240px;
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
-  z-index: 100;
-  padding: 6px;
+  min-width: 248px;
+  padding: 4px;
+  background: var(--bg-pop);
+  border: var(--bd-hair);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-pop);
+  z-index: var(--z-pop);
+  color: var(--text);
+  font-size: 13px;
+  transform-origin: top left;
+  animation: pomo-pop-in var(--dur-fast) var(--ease-out);
+}
+@keyframes pomo-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
 }
 .pomo-popover__head {
-  padding: 4px 8px 6px;
+  padding: 6px 10px 4px;
   font-size: 11px;
-  color: var(--text-faint);
   font-weight: 600;
-  text-transform: uppercase;
   letter-spacing: 0.06em;
+  color: var(--text-3);
 }
 .pomo-popover__row {
   display: flex;
   align-items: center;
   width: 100%;
-  padding: 6px 10px;
-  font-size: 12px;
-  text-align: left;
-  border-radius: 4px;
-  color: var(--text);
-  border: none;
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--r-sm);
   background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
   cursor: pointer;
 }
 .pomo-popover__row:hover {
-  background: var(--bg-hover, var(--bg-active));
-  color: var(--accent);
+  background: var(--fill-1);
 }
-.pomo-popover__row-name { flex: 1; }
+.pomo-popover__row-name { flex: 1; margin-right: 12px; }
 .pomo-popover__row-min {
-  color: var(--text-faint);
-  font-family: var(--font-mono);
-  font-size: 11px;
+  color: var(--text-3);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 .pomo-popover__custom {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 6px 10px;
+  gap: 6px;
+  padding: 4px 6px 4px 10px;
 }
 .pomo-popover__num {
-  width: 56px;
-  padding: 3px 6px;
-  font: inherit;
-  font-size: 12px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
-  border-radius: 4px;
+  width: 64px;
+  height: 26px;
+  font-variant-numeric: tabular-nums;
 }
 .pomo-popover__custom-suffix {
-  color: var(--text-faint);
-  font-size: 11px;
+  color: var(--text-3);
+  font-size: 12px;
 }
 .pomo-popover__start {
   margin-left: auto;
-  font-size: 11px;
-  padding: 3px 10px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--bg);
-  color: var(--text);
-  cursor: pointer;
-}
-.pomo-popover__start:hover {
-  border-color: var(--accent);
-  color: var(--accent);
 }
 .pomo-popover__sep {
-  height: 1px;
-  background: var(--border);
+  height: 0;
+  border-top: var(--bd-hair);
   margin: 4px 6px;
 }
 .pomo-popover__toggle {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  font-size: 11px;
-  color: var(--text-muted);
+  gap: 8px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--r-sm);
+  color: var(--text);
   cursor: pointer;
 }
-.pomo-popover__toggle input { margin: 0; }
+.pomo-popover__toggle:hover {
+  background: var(--fill-1);
+}
 .pomo-popover__hint {
   padding: 4px 10px 6px;
-  font-size: 10px;
-  color: var(--text-faint);
-  font-family: var(--font-mono);
+  font-size: 12px;
   line-height: 1.5;
+  color: var(--text-3);
 }
 </style>

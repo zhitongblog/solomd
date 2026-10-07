@@ -2037,7 +2037,7 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
                 class="rs-pane-grip"
                 :title="t('rsPane.dragToReorder')"
                 @pointerdown="startPaneReorder($event, p.id)"
-              >⋮⋮</div>
+              />
               <GlobalSearch
                 v-if="p.id === 'search'"
                 :prefill="searchPrefill"
@@ -2103,7 +2103,7 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
                 class="rs-pane-grip"
                 :title="t('rsPane.dragToReorder')"
                 @pointerdown="startPaneReorder($event, p.id)"
-              >⋮⋮</div>
+              />
               <GlobalSearch
                 v-if="p.id === 'search'"
                 :prefill="searchPrefill"
@@ -2587,41 +2587,66 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
   border-left: 0;
   border-right: 0;
 }
-/* v4.3.0 issue #57b — drag grip + drop-target highlight for right-sidebar
-   reordering. Grip is intentionally subtle (8px dotted strip at the top of
-   each pane); hovering surfaces it more clearly. Only the grip is draggable
-   so text selection inside the pane still works. */
+/* v4.3.0 issue #57b — drag grip for right-sidebar reordering. 5.0: no
+   longer a strip that takes height; a six-dot handle floats over the top
+   edge of the pane header, centred, and only appears while the pointer is
+   over that pane. Only the grip starts a drag, so text selection inside
+   the pane still works. */
+.rs-pane-host {
+  position: relative;
+}
 .rs-pane-grip {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 10px;
-  flex: 0 0 10px;
-  color: var(--text-faint);
-  font-size: 8px;
-  letter-spacing: 2px;
+  position: absolute;
+  top: 1px;
+  left: 50%;
+  z-index: 3;
+  width: 28px;
+  height: 12px;
+  transform: translateX(-50%);
+  border-radius: var(--r-xs);
+  color: var(--text-3);
   cursor: grab;
   user-select: none;
   -webkit-user-select: none;
   /* #131 — pointer-driven reorder: stop the browser turning a vertical drag on
      the grip into a scroll/pan gesture so pointermove tracking stays clean. */
   touch-action: none;
-  background: transparent;
-  transition: background 120ms, color 120ms;
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
+}
+/* 3 × 2 dots, 2 px, on a 4 px pitch. */
+.rs-pane-grip::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 12px;
+  height: 8px;
+  transform: translate(-50%, -50%);
+  background-image: radial-gradient(circle, currentColor 0.9px, transparent 1.3px);
+  background-size: 4px 4px;
+  background-position: 0 0;
+}
+.rs-pane-host:hover > .rs-pane-grip,
+.rs-pane-grip:focus-visible {
+  opacity: 1;
 }
 .rs-pane-grip:hover {
-  background: var(--bg-hover);
-  color: var(--text-muted);
+  background: var(--fill-1);
+  color: var(--text-2);
 }
 .rs-pane-grip:active {
   cursor: grabbing;
+  background: var(--fill-2);
 }
 .rs-pane-host--dragging {
   opacity: 0.4;
 }
 .rs-pane-host--drop-target {
-  outline: 2px dashed var(--accent);
-  outline-offset: -2px;
+  outline: 0;
+  box-shadow: inset 0 2px 0 var(--accent);
+  background: var(--accent-soft);
 }
 /* Make sure the grip + content layout share vertical space cleanly. */
 .rs-pane-host > .rs-pane-grip + :deep(*) {

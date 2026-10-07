@@ -6,7 +6,8 @@
  *  There is no DS `Calendar` primitive in the design system, so the month grid
  *  is built here from DS tokens (no raw hex / ad-hoc palette). */
 import { ref, computed, watch } from 'vue';
-import { DsPopover, DsInput } from '../../../ui';
+import { DsPopover } from '../../../ui';
+import Icons from '../../Icons.vue';
 import { useI18n } from '../../../i18n';
 
 const props = defineProps<{ value: unknown }>();
@@ -107,17 +108,17 @@ function commitTyped() {
     </template>
 
     <div class="prop-cal">
-      <DsInput
+      <input
         v-model="typed"
-        size="sm"
+        class="rp-input"
         placeholder="YYYY-MM-DD"
         @keydown.enter.prevent="commitTyped"
         @keydown.esc.prevent="popRef?.close()"
       />
       <div class="prop-cal__head">
-        <button type="button" class="prop-cal__nav" @click="stepMonth(-1)" :aria-label="t('inspector.prevMonth')">‹</button>
+        <button type="button" class="prop-cal__nav" @click="stepMonth(-1)" :aria-label="t('inspector.prevMonth')"><Icons name="chevron-left" :size="14" /></button>
         <span class="prop-cal__month">{{ monthLabel }}</span>
-        <button type="button" class="prop-cal__nav" @click="stepMonth(1)" :aria-label="t('inspector.nextMonth')">›</button>
+        <button type="button" class="prop-cal__nav" @click="stepMonth(1)" :aria-label="t('inspector.nextMonth')"><Icons name="chevron-right" :size="14" /></button>
       </div>
       <div class="prop-cal__grid">
         <span v-for="(w, i) in weekdays" :key="`w${i}`" class="prop-cal__dow">{{ w }}</span>
@@ -154,23 +155,25 @@ function commitTyped() {
   justify-content: space-between;
 }
 .prop-cal__month {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text);
 }
 .prop-cal__nav {
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  font-size: 16px;
-  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 24px;
   height: 24px;
+  padding: 0;
+  border: 0;
   border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
 }
 .prop-cal__nav:hover {
-  background: var(--bg-hover);
+  background: var(--fill-1);
   color: var(--text);
 }
 .prop-cal__grid {
@@ -180,8 +183,8 @@ function commitTyped() {
 }
 .prop-cal__dow {
   text-align: center;
-  font-size: 10px;
-  color: var(--text-muted);
+  font-size: 11px;
+  color: var(--text-3);
   padding-bottom: 2px;
 }
 .prop-cal__day {
@@ -189,13 +192,14 @@ function commitTyped() {
   border: none;
   background: transparent;
   color: var(--text);
-  font-size: 11px;
-  border-radius: var(--r-sm);
+  font: inherit;
+  font-size: 12px;
+  border-radius: var(--r-full);
   cursor: pointer;
   font-variant-numeric: tabular-nums;
 }
 .prop-cal__day:hover {
-  background: var(--bg-hover);
+  background: var(--fill-1);
 }
 .prop-cal__day:focus-visible,
 .prop-cal__nav:focus-visible,
@@ -204,32 +208,36 @@ function commitTyped() {
   box-shadow: var(--ring);
 }
 .prop-cal__day--muted {
-  color: var(--text-muted);
-  opacity: 0.5;
+  color: var(--text-3);
+  opacity: 0.6;
 }
 .prop-cal__day--today {
-  box-shadow: inset 0 0 0 1px var(--border);
+  color: var(--accent-text);
+  font-weight: 600;
 }
-.prop-cal__day--selected {
-  background: var(--accent);
-  color: var(--accent-fg);
-}
+.prop-cal__day--selected,
 .prop-cal__day--selected:hover {
-  background: var(--accent);
+  background: var(--accent-strong);
+  color: var(--accent-strong-fg);
+  font-weight: 600;
 }
 .prop-cal__foot {
   display: flex;
   justify-content: flex-end;
 }
 .prop-cal__today {
+  height: 24px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--r-sm);
   background: transparent;
-  border: none;
-  color: var(--accent);
+  color: var(--accent-text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
-  font-size: 11px;
-  padding: 2px 4px;
 }
 .prop-cal__today:hover {
-  text-decoration: underline;
+  background: var(--fill-1);
 }
 </style>

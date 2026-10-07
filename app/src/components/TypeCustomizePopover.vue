@@ -16,6 +16,7 @@
  */
 import { ref, watch, computed } from 'vue';
 import Icons from './Icons.vue';
+import '../styles/panels.css';
 import { useTypesStore } from '../stores/types';
 import { useToastsStore } from '../stores/toasts';
 import { useI18n } from '../i18n';
@@ -117,7 +118,9 @@ async function save() {
       <div class="tcp" role="dialog" :style="popoverStyle" @keydown.esc="emit('close')">
         <header class="tcp__head">
           <span class="tcp__title">{{ t('types.customize') }} · {{ typeName }}</span>
-          <button class="tcp__x" @click="emit('close')" aria-label="Cancel">×</button>
+          <button class="rp-icon-btn" type="button" aria-label="Cancel" @click="emit('close')">
+            <Icons name="close" :size="14" />
+          </button>
         </header>
 
         <div class="tcp__body">
@@ -130,9 +133,10 @@ async function save() {
               class="tcp__icon"
               :class="{ 'tcp__icon--on': icon === ic }"
               type="button"
+              :aria-pressed="icon === ic"
               @click="icon = ic"
             >
-              <Icons :name="ic" :size="18" />
+              <Icons :name="ic" :size="16" />
             </button>
           </div>
 
@@ -145,8 +149,9 @@ async function save() {
               class="tcp__swatch"
               :class="{ 'tcp__swatch--on': color === c }"
               type="button"
-              :style="{ background: `var(--type-${c})` }"
+              :style="{ '--swatch': `var(--type-${c})` }"
               :title="c"
+              :aria-pressed="color === c"
               @click="color = color === c ? null : c"
             />
           </div>
@@ -156,7 +161,7 @@ async function save() {
             <div class="tcp__col">
               <label class="tcp__label">{{ t('types.orderLabel') }}</label>
               <input
-                class="tcp__input"
+                class="rp-input"
                 type="number"
                 :value="order ?? ''"
                 @input="order = ($event.target as HTMLInputElement).value === '' ? null : Number(($event.target as HTMLInputElement).value)"
@@ -164,36 +169,37 @@ async function save() {
             </div>
             <div class="tcp__col tcp__col--grow">
               <label class="tcp__label">{{ t('types.sidebarLabelLabel') }}</label>
-              <input v-model="sidebarLabel" class="tcp__input" type="text" />
+              <input v-model="sidebarLabel" class="rp-input" type="text" />
             </div>
           </div>
 
           <!-- Pinned properties -->
           <label class="tcp__label">{{ t('types.pinnedLabel') }}</label>
-          <div v-if="availableProps.length === 0" class="tcp__hint">
+          <div v-if="availableProps.length === 0" class="rp-sub">
             {{ t('types.pinnedEmpty') }}
           </div>
-          <div v-else class="tcp__chips">
+          <div v-else class="rp-chips">
             <button
               v-for="k in availableProps"
               :key="k"
-              class="tcp__chip"
-              :class="{ 'tcp__chip--on': pinned.includes(k) }"
+              class="rp-chip"
+              :class="{ 'is-active': pinned.includes(k) }"
               type="button"
+              :aria-pressed="pinned.includes(k)"
               @click="togglePinned(k)"
             >{{ k }}</button>
           </div>
 
           <!-- Template -->
           <label class="tcp__label">{{ t('types.templateLabel') }}</label>
-          <textarea v-model="template" class="tcp__textarea" rows="3" />
+          <textarea v-model="template" class="rp-textarea tcp__textarea" rows="3" />
         </div>
 
         <footer class="tcp__foot">
-          <button class="tcp__btn tcp__btn--cancel" @click="emit('close')">
+          <button class="rp-btn" type="button" @click="emit('close')">
             {{ t('types.cancel') }}
           </button>
-          <button class="tcp__btn tcp__btn--save" :disabled="busy" @click="save">
+          <button class="rp-btn rp-btn--primary" type="button" :disabled="busy" @click="save">
             {{ t('types.save') }}
           </button>
         </footer>
@@ -206,65 +212,66 @@ async function save() {
 .tcp__backdrop {
   position: fixed;
   inset: 0;
-  z-index: 2000;
+  z-index: var(--z-modal);
 }
 .tcp {
   position: fixed;
-  z-index: 2001;
+  z-index: calc(var(--z-modal) + 1);
+  display: flex;
+  flex-direction: column;
   width: 300px;
   max-height: 80vh;
   overflow-y: auto;
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
-  display: flex;
-  flex-direction: column;
+  background: var(--bg-pop);
+  border: var(--bd-hair);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-pop);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  transform-origin: top left;
+  animation: tcp-in var(--dur-fast) var(--ease-out);
+}
+@keyframes tcp-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
 }
 .tcp__head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--border);
+  gap: 8px;
+  height: 40px;
+  padding: 0 8px 0 14px;
+  border-bottom: var(--bd-hair);
 }
 .tcp__title {
-  font-size: 12px;
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--text);
-}
-.tcp__x {
-  background: transparent;
-  border: none;
-  color: var(--text-faint);
-  font-size: 18px;
-  line-height: 1;
-  cursor: pointer;
-  border-radius: 6px;
-  padding: 2px 6px;
-}
-.tcp__x:hover {
-  color: var(--text);
-  background: var(--bg-hover);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .tcp__body {
-  padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 6px;
+  padding: 6px 14px 14px;
 }
 .tcp__label {
-  font-size: 10px;
+  margin-top: 8px;
+  font-size: 11px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-  margin-top: 6px;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
 }
 .tcp__icons {
   display: flex;
-  gap: 6px;
   flex-wrap: wrap;
+  gap: 4px;
 }
 .tcp__icon {
   display: flex;
@@ -272,40 +279,44 @@ async function save() {
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text-muted);
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-md);
+  background: var(--fill-1);
+  color: var(--text-2);
   cursor: pointer;
-  transition: all 0.12s;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
 }
 .tcp__icon:hover {
-  background: var(--bg-hover);
+  background: var(--fill-2);
   color: var(--text);
 }
-.tcp__icon--on {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: var(--bg-hover);
+.tcp__icon--on,
+.tcp__icon--on:hover {
+  background: var(--accent-soft);
+  color: var(--accent-text);
 }
 .tcp__swatches {
   display: flex;
   gap: 8px;
 }
 .tcp__swatch {
-  width: 24px;
-  height: 24px;
-  border-radius: 999px;
-  border: 2px solid transparent;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-full);
+  background: var(--swatch);
   cursor: pointer;
-  transition: transform 0.1s;
-}
-.tcp__swatch:hover {
-  transform: scale(1.1);
+  transition: box-shadow var(--dur-fast) var(--ease);
 }
 .tcp__swatch--on {
-  border-color: var(--text);
-  box-shadow: 0 0 0 2px var(--bg-elev) inset;
+  box-shadow: 0 0 0 2px var(--bg-pop), 0 0 0 3.5px var(--swatch);
+}
+.tcp__icon:focus-visible,
+.tcp__swatch:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
 }
 .tcp__row {
   display: flex;
@@ -314,97 +325,27 @@ async function save() {
 .tcp__col {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   width: 80px;
 }
 .tcp__col--grow {
   flex: 1;
   width: auto;
 }
-.tcp__input,
 .tcp__textarea {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 6px 8px;
-  font-size: 12px;
-  color: var(--text);
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  outline: none;
-  font-family: inherit;
-}
-.tcp__textarea {
-  resize: vertical;
   font-family: var(--font-mono);
-}
-.tcp__input:focus,
-.tcp__textarea:focus {
-  border-color: var(--accent);
-}
-.tcp__hint {
-  font-size: 11px;
-  color: var(--text-faint);
-  font-style: italic;
-}
-.tcp__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.tcp__chip {
-  font-size: 11px;
-  padding: 3px 9px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: all 0.12s;
-}
-.tcp__chip:hover {
-  background: var(--bg-hover);
-  color: var(--text);
-}
-.tcp__chip--on {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--accent-fg);
+  font-size: 12px;
 }
 .tcp__foot {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  padding: 10px 12px;
-  border-top: 1px solid var(--border);
+  padding: 10px 14px;
+  border-top: var(--bd-hair);
 }
-.tcp__btn {
-  padding: 6px 14px;
-  font-size: 12px;
-  font-weight: 500;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.tcp__btn--cancel {
-  background: transparent;
-  color: var(--text-muted);
-}
-.tcp__btn--cancel:hover {
-  background: var(--bg-hover);
-  color: var(--text);
-}
-.tcp__btn--save {
-  background: var(--accent);
-  color: var(--accent-fg);
-  border-color: var(--accent);
-}
-.tcp__btn--save:hover:not(:disabled) {
-  opacity: 0.9;
-}
-.tcp__btn--save:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+@media (prefers-reduced-motion: reduce) {
+  .tcp {
+    animation: none;
+  }
 }
 </style>

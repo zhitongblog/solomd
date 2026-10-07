@@ -28,7 +28,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import Icons from './Icons.vue';
 import CreateTypeDialog from './CreateTypeDialog.vue';
 import TypeCustomizePopover from './TypeCustomizePopover.vue';
-import { DsPanel, DsButton, DsChip, DsListRow } from '../ui';
+import PanelHeader from './panel/PanelHeader.vue';
 import { useTypesStore } from '../stores/types';
 import { useFiles } from '../composables/useFiles';
 import { useTypeLens } from '../composables/useTypeLens';
@@ -116,78 +116,98 @@ function memberPinned(
 </script>
 
 <template>
-  <DsPanel grip :title="t('types.heading')" @close="$emit('close')">
-    <template #actions>
-      <DsButton
-        size="sm"
-        variant="ghost"
+  <div class="types-panel rp">
+    <PanelHeader :title="t('types.heading')" @close="$emit('close')">
+      <button
+        type="button"
+        class="rp-icon-btn"
         :title="t('types.newTypeTooltip')"
+        :aria-label="t('types.newTypeTooltip')"
         @click="createOpen = true"
-      >+</DsButton>
-    </template>
+      >
+        <Icons name="plus" :size="14" />
+      </button>
+    </PanelHeader>
 
-    <div v-if="!hasFolder" class="types-panel__empty">
+    <div v-if="!hasFolder" class="rp-empty">
       {{ t('types.openFolder') }}
     </div>
-    <div v-else-if="sections.length === 0" class="types-panel__empty">
+    <div v-else-if="sections.length === 0" class="rp-empty">
       {{ t('types.empty') }}
     </div>
 
-    <div v-else class="types-panel__list">
+    <div v-else class="types-panel__list rp-body">
       <section
         v-for="sec in sections"
         :key="sec.name"
         class="types-panel__section"
         :style="{ '--type-accent': `var(--type-${sec.color})` }"
       >
-        <div class="types-panel__section-head" @click="toggle(sec.name)">
-          <span
+        <div
+          class="rp-row types-panel__section-head"
+          role="button"
+          tabindex="0"
+          :aria-expanded="!isCollapsed(sec.name)"
+          @click="toggle(sec.name)"
+          @keydown.enter.self.prevent="toggle(sec.name)"
+          @keydown.space.self.prevent="toggle(sec.name)"
+        >
+          <Icons
             class="types-panel__caret"
             :class="{ 'types-panel__caret--collapsed': isCollapsed(sec.name) }"
-          >▾</span>
+            name="chevron-down"
+            :size="12"
+          />
           <span class="types-panel__icon">
             <Icons :name="sec.icon" :size="15" />
           </span>
-          <span class="types-panel__label">{{ sec.label }}</span>
-          <DsChip size="sm" class="types-panel__count">{{ sec.members.length }}</DsChip>
-          <button
-            class="types-panel__act"
-            type="button"
-            :title="t('types.openLensTooltip')"
-            @click="openLens(sec, $event)"
-          >⤢</button>
-          <button
-            class="types-panel__act"
-            type="button"
-            :title="t('types.customizeTooltip')"
-            @click="openCustomize(sec, $event)"
-          >⚙</button>
+          <span class="rp-row__label types-panel__label">{{ sec.label }}</span>
+          <span class="rp-row__actions">
+            <button
+              class="rp-icon-btn types-panel__act"
+              type="button"
+              :title="t('types.openLensTooltip')"
+              :aria-label="t('types.openLensTooltip')"
+              @click="openLens(sec, $event)"
+            ><Icons name="external" :size="13" /></button>
+            <button
+              class="rp-icon-btn types-panel__act"
+              type="button"
+              :title="t('types.customizeTooltip')"
+              :aria-label="t('types.customizeTooltip')"
+              @click="openCustomize(sec, $event)"
+            ><Icons name="settings" :size="13" /></button>
+          </span>
+          <span class="rp-count types-panel__count">{{ sec.members.length }}</span>
         </div>
 
-        <ul v-if="!isCollapsed(sec.name)" class="types-panel__members">
-          <li v-if="sec.members.length === 0" class="types-panel__member-empty">
+        <ul v-if="!isCollapsed(sec.name)" class="rp-list types-panel__members">
+          <li v-if="sec.members.length === 0" class="rp-sub types-panel__member-empty">
             {{ t('types.sectionEmpty') }}
           </li>
           <li
             v-for="m in sec.members"
             :key="m.path"
           >
-            <DsListRow @click="openMember(m)">
-              <span class="types-panel__member-body">
-                <span class="types-panel__member-title">{{ m.title }}</span>
+            <button
+              type="button"
+              class="rp-row types-panel__member"
+              :class="{ 'rp-row--tall': memberPinned(m, sec.pinned).length > 0 }"
+              @click="openMember(m)"
+            >
+              <span class="rp-row__label types-panel__member-title">{{ m.title }}</span>
+              <span
+                v-if="memberPinned(m, sec.pinned).length"
+                class="rp-chips types-panel__chips"
+              >
                 <span
-                  v-if="memberPinned(m, sec.pinned).length"
-                  class="types-panel__chips"
-                >
-                  <DsChip
-                    v-for="chip in memberPinned(m, sec.pinned)"
-                    :key="chip.key"
-                    size="sm"
-                    :title="`${chip.key}: ${chip.value}`"
-                  >{{ chip.value }}</DsChip>
-                </span>
+                  v-for="chip in memberPinned(m, sec.pinned)"
+                  :key="chip.key"
+                  class="rp-chip types-panel__chip"
+                  :title="`${chip.key}: ${chip.value}`"
+                >{{ chip.value }}</span>
               </span>
-            </DsListRow>
+            </button>
           </li>
         </ul>
       </section>
@@ -200,42 +220,21 @@ function memberPinned(
       :anchor="customizeAnchor"
       @close="customizeOpen = false"
     />
-  </DsPanel>
+  </div>
 </template>
 
 <style scoped>
-.types-panel__empty {
-  padding: var(--sp-5) var(--sp-4);
-  text-align: center;
-  color: var(--text-faint);
-  font-size: 12px;
-  line-height: 1.6;
-}
-.types-panel__list {
-  padding: var(--sp-1);
-}
 .types-panel__section {
   margin-bottom: 2px;
 }
 .types-panel__section-head {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  padding: var(--sp-2);
-  border-radius: var(--r-md);
-  cursor: pointer;
-  transition: background var(--dur-fast) var(--ease);
-}
-.types-panel__section-head:hover {
-  background: var(--bg-hover);
+  font-weight: 500;
 }
 .types-panel__caret {
-  font-size: 9px;
-  color: var(--text-faint);
+  flex: 0 0 auto;
+  margin-right: -2px;
+  color: var(--text-3);
   transition: transform var(--dur-fast) var(--ease);
-  flex-shrink: 0;
-  width: 10px;
-  text-align: center;
 }
 .types-panel__caret--collapsed {
   transform: rotate(-90deg);
@@ -243,73 +242,38 @@ function memberPinned(
 .types-panel__icon {
   display: flex;
   align-items: center;
+  flex-shrink: 0;
   color: var(--type-accent, var(--accent));
-  flex-shrink: 0;
 }
-.types-panel__label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text);
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.types-panel__section-head .rp-row__actions {
+  margin-left: 0;
 }
-.types-panel__count {
-  flex-shrink: 0;
-  font-variant-numeric: tabular-nums;
+.types-panel__section-head .rp-count {
+  margin-left: 0;
+  min-width: 14px;
+  text-align: right;
 }
 .types-panel__act {
-  background: transparent;
-  border: none;
-  color: var(--text-faint);
-  cursor: pointer;
-  font-size: 12px;
-  line-height: 1;
-  padding: 2px 3px;
-  border-radius: var(--r-sm);
-  opacity: 0;
-  flex-shrink: 0;
-  transition: opacity var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease),
-    background var(--dur-fast) var(--ease);
-}
-.types-panel__section-head:hover .types-panel__act {
-  opacity: 1;
-}
-.types-panel__act:hover {
-  color: var(--text);
-  background: var(--bg-elev);
+  width: 22px;
+  height: 22px;
 }
 .types-panel__members {
-  list-style: none;
-  margin: 0;
-  padding: 2px 0 var(--sp-1) 18px;
+  padding: 0 0 4px 20px;
 }
 .types-panel__member-empty {
-  font-size: 11px;
-  color: var(--text-faint);
-  font-style: italic;
-  padding: var(--sp-1) var(--sp-3);
-}
-.types-panel__member-body {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 3px;
-  min-width: 0;
-  width: 100%;
+  padding: 4px 8px;
 }
 .types-panel__member-title {
-  font-size: 12px;
-  color: var(--text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
+  width: 100%;
 }
 .types-panel__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-1);
+  gap: 4px;
+  padding-bottom: 2px;
+}
+.types-panel__chip {
+  height: 18px;
+  padding: 0 6px;
+  font-size: 11px;
+  cursor: inherit;
 }
 </style>

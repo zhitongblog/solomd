@@ -31,7 +31,9 @@ import {
 } from '../stores/workspaceIndex';
 import { useFiles } from '../composables/useFiles';
 import { useI18n } from '../i18n';
-import { DsPanel, DsListRow, DsChip, DsButton, DsTooltip } from '../ui';
+import { DsTooltip } from '../ui';
+import Icons from './Icons.vue';
+import PanelHeader from './panel/PanelHeader.vue';
 import {
   outgoingFor,
   groupReferencedBy,
@@ -247,30 +249,32 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
 </script>
 
 <template>
-  <DsPanel grip @close="emit('close')">
-    <template #title>{{ t('neighborhood.heading') }}</template>
-    <template #actions>
-      <DsChip v-if="focalPath && !isEmpty" size="sm">{{ totalCount }}</DsChip>
-    </template>
+  <div class="nbhd rp">
+    <PanelHeader
+      :title="t('neighborhood.heading')"
+      :count="focalPath && !isEmpty ? totalCount : null"
+      @close="emit('close')"
+    />
 
-    <div v-if="!idx.ready" class="nbhd__empty">
-      <div class="nbhd__empty-icon" aria-hidden="true">🕸</div>
-      <p class="nbhd__empty-title">{{ t('neighborhood.openFolder') }}</p>
-    </div>
-    <div v-else-if="!focalPath" class="nbhd__empty">
-      <div class="nbhd__empty-icon" aria-hidden="true">📄</div>
-      <p class="nbhd__empty-title">{{ t('neighborhood.noActive') }}</p>
-    </div>
+    <div v-if="!idx.ready" class="rp-empty">{{ t('neighborhood.openFolder') }}</div>
+    <div v-else-if="!focalPath" class="rp-empty">{{ t('neighborhood.noActive') }}</div>
 
     <template v-else>
       <!-- Focal-note breadcrumb + back affordance (shown when pivoted). -->
       <div v-if="canGoBack(history)" class="nbhd__crumb">
         <DsTooltip :label="t('neighborhood.back')" placement="bottom">
-          <DsButton variant="ghost" size="sm" class="nbhd__back" @click="goBack">‹</DsButton>
+          <button
+            type="button"
+            class="rp-icon-btn nbhd__back"
+            :aria-label="t('neighborhood.back')"
+            @click="goBack"
+          >
+            <Icons name="chevron-left" :size="14" />
+          </button>
         </DsTooltip>
         <nav class="nbhd__trail" :aria-label="t('neighborhood.heading')">
           <template v-for="(c, i) in crumbs" :key="c.path">
-            <span v-if="i > 0" class="nbhd__trail-sep" aria-hidden="true">›</span>
+            <Icons v-if="i > 0" class="nbhd__trail-sep" name="chevron-right" :size="11" />
             <button
               class="nbhd__trail-item"
               :class="{ 'nbhd__trail-item--current': c.isCurrent }"
@@ -286,17 +290,16 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
         <span class="nbhd__focal" :title="focalPath">{{ focalTitle }}</span>
       </div>
 
-      <div v-if="isEmpty && !loading" class="nbhd__empty">
-        <div class="nbhd__empty-icon" aria-hidden="true">🪢</div>
+      <div v-if="isEmpty && !loading" class="rp-empty">
         <p class="nbhd__empty-title">{{ t('neighborhood.empty') }}</p>
         <p class="nbhd__empty-hint">{{ t('neighborhood.pivotHint') }}</p>
         <code class="nbhd__empty-code">belongs_to: "[[Parent]]"</code>
       </div>
 
-      <div v-else class="nbhd__body">
+      <div v-else class="nbhd__body rp-body">
         <!-- OUTGOING -->
         <div v-if="outgoing.length" class="nbhd__region">
-          <div class="nbhd__region-label">{{ t('neighborhood.outgoing') }}</div>
+          <div class="rp-section">{{ t('neighborhood.outgoing') }}</div>
           <NeighborhoodGroupSection
             v-for="g in outgoing"
             :key="`out-${g.key}`"
@@ -309,7 +312,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
 
         <!-- INVERSE -->
         <div v-if="inverse.length" class="nbhd__region">
-          <div class="nbhd__region-label">{{ t('neighborhood.inverse') }}</div>
+          <div class="rp-section">{{ t('neighborhood.inverse') }}</div>
           <NeighborhoodGroupSection
             v-for="g in inverse"
             :key="`inv-${g.key}`"
@@ -322,157 +325,110 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
 
         <!-- BACKLINKS (body links) -->
         <div v-if="backlinks.length" class="nbhd__region">
-          <div class="nbhd__region-label">
+          <div class="rp-section">
             {{ t('neighborhood.backlinks') }}
-            <DsChip size="sm">{{ backlinks.length }}</DsChip>
+            <span class="rp-count">{{ backlinks.length }}</span>
           </div>
           <div class="nbhd__bl-list" role="list">
-            <DsListRow
+            <button
               v-for="(b, i) in backlinks"
               :key="`${b.from_path}-${i}`"
-              class="nbhd__bl-row"
+              type="button"
+              class="rp-row nbhd__bl-row"
               :title="b.from_path"
               @click="openBacklink($event, b)"
             >
-              <span class="nbhd__bl-title">{{ b.from_name }}</span>
-              <template #trailing>
-                <span class="nbhd__bl-loc">L{{ b.line }}</span>
-              </template>
-            </DsListRow>
+              <Icons class="rp-row__icon" name="file" :size="14" />
+              <span class="rp-row__label nbhd__bl-title">{{ b.from_name }}</span>
+              <span class="rp-count nbhd__bl-loc">L{{ b.line }}</span>
+            </button>
           </div>
         </div>
       </div>
     </template>
-  </DsPanel>
+  </div>
 </template>
 
 <style scoped>
-.nbhd__empty {
-  padding: var(--sp-6) var(--sp-4);
-  text-align: center;
-  color: var(--text-faint);
-}
-.nbhd__empty-icon {
-  font-size: 28px;
-  opacity: 0.5;
-  margin-bottom: var(--sp-3);
-}
 .nbhd__empty-title {
   margin: 0;
-  font-size: 12px;
-  color: var(--text-muted);
-  line-height: 1.5;
+  color: var(--text-2);
 }
 .nbhd__empty-hint {
-  margin: var(--sp-2) 0 0;
-  font-size: 11px;
-  color: var(--text-faint);
-  line-height: 1.5;
+  margin: 6px 0 0;
 }
 .nbhd__empty-code {
   display: inline-block;
-  margin-top: var(--sp-3);
-  padding: var(--sp-1) var(--sp-2);
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
+  margin-top: 10px;
+  padding: 3px 8px;
   border-radius: var(--r-sm);
+  background: var(--fill-1);
   font-family: var(--font-mono, monospace);
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--text-2);
 }
 .nbhd__crumb {
   display: flex;
   align-items: center;
-  gap: var(--sp-1);
-  padding: var(--sp-2) var(--sp-3);
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-elev);
-}
-.nbhd__back {
-  font-size: 15px;
-  line-height: 1;
-  min-width: 0;
-  padding: 0 var(--sp-2);
+  gap: 4px;
+  min-height: 28px;
+  padding: 0 12px 6px 8px;
 }
 .nbhd__trail {
   display: flex;
   align-items: center;
-  gap: var(--sp-1);
+  gap: 2px;
   overflow: hidden;
   flex: 1;
+  min-width: 0;
 }
 .nbhd__trail-sep {
-  color: var(--text-faint);
-  font-size: 11px;
   flex-shrink: 0;
+  color: var(--text-3);
 }
 .nbhd__trail-item {
+  max-width: 120px;
+  padding: 2px 4px;
+  border: 0;
+  border-radius: var(--r-xs);
   background: transparent;
-  border: none;
-  padding: 0;
+  font: inherit;
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--text-3);
   cursor: pointer;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 120px;
 }
 .nbhd__trail-item:hover:not(:disabled) {
+  background: var(--fill-1);
   color: var(--text);
-  text-decoration: underline;
 }
 .nbhd__trail-item--current {
+  flex-shrink: 0;
   color: var(--text);
   font-weight: 600;
   cursor: default;
-  flex-shrink: 0;
+}
+.nbhd__trail-item:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
 }
 .nbhd__focalbar {
-  padding: var(--sp-2) var(--sp-3);
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-elev);
+  padding: 0 12px 6px;
 }
 .nbhd__focal {
   display: block;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.nbhd__body {
-  padding: var(--sp-2);
-}
 .nbhd__region + .nbhd__region {
-  margin-top: var(--sp-3);
-  padding-top: var(--sp-3);
-  border-top: 1px solid var(--border);
-}
-.nbhd__region-label {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  padding: var(--sp-1) var(--sp-2) var(--sp-1);
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-faint);
-}
-.nbhd__bl-list {
-  padding-left: var(--sp-2);
-}
-.nbhd__bl-row {
-  font-size: 12px;
-}
-.nbhd__bl-title {
-  font-weight: 500;
-}
-.nbhd__bl-loc {
-  font-size: 10px;
-  color: var(--text-faint);
-  font-variant-numeric: tabular-nums;
+  margin-top: 6px;
+  padding-top: 4px;
+  border-top: var(--bd-hair);
 }
 </style>

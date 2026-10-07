@@ -259,25 +259,29 @@ onBeforeUnmount(() => {
 <style scoped>
 .ved__title {
   margin: 0;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 600;
   color: var(--text);
 }
 .ved__live {
   margin-left: auto;
   margin-right: var(--sp-3);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-muted);
-  background: var(--bg-hover);
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-3);
+  background: var(--fill-1);
   border-radius: var(--r-full);
-  padding: 2px var(--sp-2);
+  padding: 0 var(--sp-2);
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 .ved__body {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-4);
+  gap: 18px;
 }
 .ved__grid {
   display: flex;
@@ -287,7 +291,7 @@ onBeforeUnmount(() => {
 .ved__field {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-1);
+  gap: 6px;
   min-width: 0;
 }
 .ved__field--grow { flex: 1 1 auto; }
@@ -295,37 +299,52 @@ onBeforeUnmount(() => {
 .ved__field--color { flex: 0 0 56px; }
 .ved__field--dir { flex: 0 0 140px; }
 .ved__label {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-2);
 }
 .ved__hint {
-  font-size: 11px;
-  color: var(--text-faint);
+  font-size: 12px;
+  color: var(--text-3);
 }
 .ved__input--icon :deep(.ds-input) {
   text-align: center;
 }
 .ved__color {
-  height: 34px;
+  height: 32px;
   width: 100%;
-  border: var(--bd);
+  border: var(--bd-hair);
   border-radius: var(--r-md);
-  background: var(--bg);
+  background: var(--fill-1);
   cursor: pointer;
-  padding: 2px;
+  padding: 3px;
+  box-sizing: border-box;
+}
+.ved__color::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+.ved__color::-webkit-color-swatch {
+  border: 0;
+  border-radius: var(--r-sm);
 }
 .ved__chips {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--sp-2);
+  gap: 6px;
 }
 .ved__chipbtn {
   border: 0;
   background: transparent;
   padding: 0;
   cursor: pointer;
+  border-radius: var(--r-full);
+  transition: opacity var(--dur-fast) var(--ease);
+}
+.ved__chipbtn:hover {
+  opacity: 0.8;
+}
+.ved__chipbtn:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
 }
 </style>

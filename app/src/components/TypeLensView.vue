@@ -29,7 +29,8 @@
 import { computed, ref } from 'vue';
 import Icons from './Icons.vue';
 import TypeCustomizePopover from './TypeCustomizePopover.vue';
-import { DsButton, DsChip, DsSelect } from '../ui';
+import { DsSelect } from '../ui';
+import '../styles/panels.css';
 import type { DsSelectOption } from '../ui';
 import { useTypesStore } from '../stores/types';
 import { useWorkspaceIndexStore, type IndexEntry } from '../stores/workspaceIndex';
@@ -152,23 +153,27 @@ function close() {
 </script>
 
 <template>
-  <div class="type-lens" :style="sectionStyle">
-    <header class="type-lens__head">
-      <div class="type-lens__head-left">
-        <DsButton size="sm" variant="ghost" @click="close">
-          {{ t('typeLens.back') }}
-        </DsButton>
-        <span class="type-lens__icon">
-          <Icons :name="section?.icon ?? 'type-generic'" :size="18" />
-        </span>
-        <strong class="type-lens__title">{{ section?.label ?? typeName }}</strong>
-        <DsChip size="sm">{{ members.length }}</DsChip>
-      </div>
-      <div class="type-lens__head-actions">
-        <DsButton size="sm" variant="subtle" @click="openCustomize">
-          {{ t('typeLens.customize') }}
-        </DsButton>
-      </div>
+  <div class="type-lens pg" :style="sectionStyle">
+    <header class="type-lens__head pg-head">
+      <button
+        class="pg-icon-btn"
+        type="button"
+        :title="t('typeLens.back')"
+        :aria-label="t('typeLens.back')"
+        @click="close"
+      >
+        <Icons name="chevron-left" :size="18" />
+      </button>
+      <span class="type-lens__icon">
+        <Icons :name="section?.icon ?? 'type-generic'" :size="20" />
+      </span>
+      <h1 class="type-lens__title pg-title">{{ section?.label ?? typeName }}</h1>
+      <span class="pg-subtitle type-lens__count">{{ members.length }}</span>
+      <span class="pg-spacer" />
+      <button class="rp-btn" type="button" @click="openCustomize">
+        <Icons name="settings" :size="14" />
+        {{ t('typeLens.customize') }}
+      </button>
     </header>
 
     <div v-if="members.length === 0" class="type-lens__zero">
@@ -182,7 +187,7 @@ function close() {
     </div>
 
     <div v-else class="type-lens__scroll">
-      <table class="type-lens__table">
+      <table class="type-lens__table pg-table">
         <thead>
           <tr>
             <th class="type-lens__th type-lens__th--name">{{ t('typeLens.name') }}</th>
@@ -240,91 +245,42 @@ function close() {
 
 <style scoped>
 .type-lens {
-  display: flex;
-  flex-direction: column;
   flex: 1;
-  min-height: 0;
-  background: var(--bg);
-  color: var(--text);
-  overflow: hidden;
 }
 .type-lens__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-3);
-  padding: var(--sp-2) var(--sp-3);
-  border-bottom: var(--bd);
-  background: var(--bg-elev);
-  flex-wrap: wrap;
-}
-.type-lens__head-left {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  min-width: 0;
+  padding-left: 16px;
+  gap: 8px;
+  border-bottom: var(--bd-hair);
 }
 .type-lens__icon {
   display: inline-flex;
   align-items: center;
   color: var(--type-accent, var(--accent));
   flex-shrink: 0;
+  margin-left: 2px;
 }
-.type-lens__title {
-  font-size: 14px;
-  color: var(--text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.type-lens__head-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-2);
+.type-lens__count {
+  padding-top: 4px;
 }
 .type-lens__scroll {
   flex: 1;
   overflow: auto;
   min-height: 0;
 }
-.type-lens__table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
+.type-lens__th:first-child,
+.type-lens__td:first-child {
+  padding-left: 24px;
 }
-.type-lens__th {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  text-align: left;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-  background: var(--bg-elev);
-  padding: var(--sp-2) var(--sp-3);
-  border-bottom: var(--bd);
-  white-space: nowrap;
-}
-.type-lens__th--type {
-  width: 168px;
-}
-.type-lens__row {
-  border-bottom: 1px solid var(--border);
-  transition: background var(--dur-fast) var(--ease);
-}
-.type-lens__row:hover {
-  background: var(--bg-hover);
-}
-.type-lens__td {
-  padding: var(--sp-1) var(--sp-3);
-  color: var(--text);
-  vertical-align: middle;
-  max-width: 280px;
-}
+.type-lens__th--type,
 .type-lens__td--type {
-  width: 168px;
+  width: 180px;
+}
+.pg-table .type-lens__td {
+  max-width: 280px;
+  height: 36px;
+}
+.pg-table .type-lens__td--type {
+  overflow: visible;
 }
 .type-lens__name-btn {
   background: transparent;
@@ -335,16 +291,16 @@ function close() {
   font-weight: 500;
   text-align: left;
   cursor: pointer;
-  padding: var(--sp-2) 0;
-  border-radius: var(--r-sm);
+  padding: 0;
+  border-radius: var(--r-xs);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 100%;
 }
+.type-lens__row:hover .type-lens__name-btn,
 .type-lens__name-btn:hover {
-  color: var(--accent);
-  text-decoration: underline;
+  color: var(--accent-text);
 }
 .type-lens__name-btn:focus-visible {
   outline: none;
@@ -356,10 +312,11 @@ function close() {
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 260px;
-  color: var(--text-muted);
+  color: var(--text-2);
+  vertical-align: middle;
 }
 .type-lens__cell-empty {
-  color: var(--text-faint);
+  color: var(--text-3);
 }
 .type-lens__zero {
   flex: 1;
@@ -367,28 +324,23 @@ function close() {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--sp-2);
+  gap: 6px;
   padding: var(--sp-6);
   text-align: center;
 }
 .type-lens__zero-icon {
-  width: 56px;
-  height: 56px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--r-full);
-  background: var(--bg-hover);
-  color: var(--type-accent, var(--accent));
+  display: inline-flex;
+  margin-bottom: 4px;
+  color: var(--text-3);
 }
 .type-lens__zero-title {
-  color: var(--text);
+  color: var(--text-2);
   font-size: 15px;
   font-weight: 600;
   margin: 0;
 }
 .type-lens__zero-sub {
-  color: var(--text-muted);
+  color: var(--text-3);
   font-size: 13px;
   margin: 0;
   max-width: 360px;

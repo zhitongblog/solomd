@@ -22,6 +22,8 @@ import { providerById, type ProviderId } from '../lib/ai-providers';
 import { parseWithWikilinks, chipLabel } from '../lib/wikilinks';
 import { useFiles } from '../composables/useFiles';
 import { useI18n } from '../i18n';
+import '../styles/panels.css';
+import Icons from './Icons.vue';
 
 const emit = defineEmits<{
   (e: 'open-settings', section?: string): void;
@@ -462,17 +464,18 @@ watch(stateKey, (k) => {
 </script>
 
 <template>
-  <div class="agent-panel">
-    <header class="agent-panel__head">
-      <span class="agent-panel__title">{{ t('agent.heading') }}</span>
-      <span class="agent-panel__beta">BETA</span>
+  <div class="agent-panel rp">
+    <header class="rp-head agent-panel__head">
+      <span class="rp-title agent-panel__title">{{ t('agent.heading') }}</span>
+      <span class="agent-panel__beta">Beta</span>
       <span class="agent-panel__spacer" />
       <button
         v-if="stateKey === 'ready'"
-        class="agent-panel__chip"
-        :class="{ 'agent-panel__chip--on': includeActiveNote }"
+        class="rp-chip agent-panel__chip"
+        :class="{ 'is-active agent-panel__chip--on': includeActiveNote }"
         type="button"
         :title="t('agent.includeNoteTitle')"
+        :aria-pressed="includeActiveNote"
         @click="includeActiveNote = !includeActiveNote"
       >
         <span class="agent-panel__chip-dot" :class="{ 'agent-panel__chip-dot--on': includeActiveNote }" />
@@ -480,28 +483,32 @@ watch(stateKey, (k) => {
       </button>
       <button
         v-if="agent.messages.length"
-        class="agent-panel__icon-btn"
+        class="rp-icon-btn agent-panel__icon-btn"
         type="button"
         :title="t('agent.clearTitle')"
+        :aria-label="t('agent.clearTitle')"
         @click="agent.clear()"
       >
-        ⌫
+        <Icons name="trash" :size="14" />
       </button>
       <button
-        class="rs-pane-close"
+        class="rp-icon-btn"
         type="button"
         :title="t('rightSidebar.hidePane')"
+        :aria-label="t('rightSidebar.hidePane')"
         @click="emit('close')"
-      >×</button>
+      >
+        <Icons name="close" :size="14" />
+      </button>
     </header>
 
-    <div v-if="stateKey === 'no-folder'" class="agent-panel__empty">
+    <div v-if="stateKey === 'no-folder'" class="rp-empty agent-panel__empty">
       {{ t('agent.empty.noFolder') }}
     </div>
 
-    <div v-else-if="stateKey === 'no-ai'" class="agent-panel__empty">
+    <div v-else-if="stateKey === 'no-ai'" class="rp-empty agent-panel__empty">
       <p>{{ t('agent.empty.noAi') }}</p>
-      <button class="agent-panel__cta" type="button" @click="onOpenAiSettings">
+      <button class="rp-btn agent-panel__cta" type="button" @click="onOpenAiSettings">
         {{ t('agent.empty.configureAi') }}
       </button>
     </div>
@@ -515,20 +522,25 @@ watch(stateKey, (k) => {
           :class="`agent-panel__msg--${m.role}`"
         >
           <!-- Tool-call card: collapsed by default. Click to expand args + result. -->
-          <template v-if="m.role === 'tool' && m.tool">
+          <div v-if="m.role === 'tool' && m.tool" class="agent-panel__tool">
             <button
               class="agent-panel__tool-head"
               :class="{ 'agent-panel__tool-head--err': !!m.tool.error, 'agent-panel__tool-head--pending': !m.tool.result && !m.tool.error }"
               type="button"
+              :aria-expanded="!!m.tool.expanded"
               @click="agent.toggleToolExpand(m.tool.toolCallId)"
             >
               <span class="agent-panel__tool-icon" aria-hidden="true">
                 <span v-if="!m.tool.result && !m.tool.error" class="agent-panel__tool-spinner" />
-                <template v-else-if="m.tool.error">⚠</template>
-                <template v-else>🔧</template>
+                <Icons v-else-if="m.tool.error" name="info" :size="14" />
+                <Icons v-else name="wrench" :size="14" />
               </span>
               <code class="agent-panel__tool-sig">{{ m.tool.name }}({{ formatArgsInline(m.tool.args) }})</code>
-              <span class="agent-panel__tool-caret">{{ m.tool.expanded ? '▾' : '▸' }}</span>
+              <Icons
+                class="agent-panel__tool-caret"
+                :name="m.tool.expanded ? 'chevron-down' : 'chevron-right'"
+                :size="12"
+              />
             </button>
             <div v-if="m.tool.expanded" class="agent-panel__tool-body">
               <div class="agent-panel__tool-section">
@@ -543,7 +555,7 @@ watch(stateKey, (k) => {
                 >{{ m.tool.error || m.tool.result || '(waiting…)' }}</pre>
               </div>
             </div>
-          </template>
+          </div>
 
           <!-- User / assistant / system text. Assistant text gets wikilink chips. -->
           <template v-else>
@@ -557,7 +569,7 @@ watch(stateKey, (k) => {
                     type="button"
                     :title="run.heading ? `${run.target}#${run.heading}` : run.target"
                     @click="openWikilink(run.target, run.heading)"
-                  >{{ chip(run) }}</button>
+                  ><Icons class="agent-panel__wiki-icon" name="link" :size="11" />{{ chip(run) }}</button>
                   <span v-else>{{ run.value }}</span>
                 </template>
               </template>
@@ -580,13 +592,13 @@ watch(stateKey, (k) => {
               class="agent-panel__msg-actions"
             >
               <button
-                class="agent-panel__msg-action"
+                class="rp-btn rp-btn--sm rp-btn--ghost agent-panel__msg-action"
                 type="button"
                 :title="t('agent.msgCopyTitle')"
                 @click="copyAssistantMessage(m.content)"
               >{{ t('agent.msgCopy') }}</button>
               <button
-                class="agent-panel__msg-action"
+                class="rp-btn rp-btn--sm rp-btn--ghost agent-panel__msg-action"
                 type="button"
                 :disabled="!canInsertIntoEditor"
                 :title="canInsertIntoEditor ? t('agent.msgInsertTitle') : t('agent.msgInsertNoEditor')"
@@ -596,7 +608,7 @@ watch(stateKey, (k) => {
           </template>
         </li>
       </ul>
-      <div v-else class="agent-panel__empty">
+      <div v-else class="rp-empty agent-panel__empty">
         {{ t('agent.empty.ready') }}
       </div>
 
@@ -606,7 +618,7 @@ watch(stateKey, (k) => {
         <textarea
           ref="inputRef"
           v-model="draft"
-          class="agent-panel__input"
+          class="rp-textarea agent-panel__input"
           :placeholder="t('agent.placeholder')"
           rows="2"
           @keydown="onKeydown"
@@ -618,7 +630,7 @@ watch(stateKey, (k) => {
           </span>
           <button
             v-if="agent.isStreaming"
-            class="agent-panel__send agent-panel__send--stop"
+            class="rp-btn agent-panel__send agent-panel__send--stop"
             type="button"
             @click="stop"
           >
@@ -626,7 +638,7 @@ watch(stateKey, (k) => {
           </button>
           <button
             v-else
-            class="agent-panel__send"
+            class="rp-btn rp-btn--primary agent-panel__send"
             type="button"
             :disabled="!canSend"
             @click="send"
@@ -640,258 +652,158 @@ watch(stateKey, (k) => {
 </template>
 
 <style scoped>
-.agent-panel {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  background: var(--bg);
-  border-left: 1px solid var(--border);
-  overflow: hidden;
-}
-.agent-panel__head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-soft);
-}
 .agent-panel__title {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  flex: 0 1 auto;
 }
 .agent-panel__beta {
-  font-size: 9px;
-  font-weight: 700;
-  background: var(--accent, #ff9f40);
-  color: white;
-  padding: 1px 6px;
-  border-radius: 4px;
-  letter-spacing: 0.04em;
-  line-height: 1.4;
-}
-.agent-panel__spacer {
-  flex: 1;
-}
-.agent-panel__icon-btn {
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  font-size: 16px;
-  line-height: 1;
-  padding: 2px 6px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-.agent-panel__icon-btn:hover {
-  background: var(--bg-elev);
-  color: var(--text);
-}
-.agent-panel__chip {
+  flex: 0 0 auto;
+  margin-left: 6px;
+  height: 18px;
+  padding: 0 7px;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  font: inherit;
+  border-radius: var(--r-full);
+  background: var(--fill-1);
+  color: var(--text-3);
   font-size: 10px;
-  font-weight: 500;
-  padding: 2px 8px;
-  border-radius: 999px;
-  cursor: pointer;
+  font-weight: 600;
   letter-spacing: 0.02em;
+  user-select: none;
+  -webkit-user-select: none;
 }
-.agent-panel__chip:hover {
-  background: var(--bg-elev);
-  color: var(--text);
+.agent-panel__spacer {
+  flex: 1 1 auto;
 }
-.agent-panel__chip--on {
-  background: rgba(255, 159, 64, 0.12);
-  border-color: var(--accent, #ff9f40);
-  color: var(--accent, #ff9f40);
+.agent-panel__chip {
+  margin-right: 2px;
 }
 .agent-panel__chip-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--text-faint, #888);
+  background: var(--text-3);
+  opacity: 0.6;
   flex-shrink: 0;
 }
 .agent-panel__chip-dot--on {
-  background: var(--accent, #ff9f40);
-}
-.agent-panel__empty {
-  padding: 20px 16px;
-  color: var(--text-muted);
-  font-size: 13px;
-  line-height: 1.6;
-  text-align: center;
+  background: var(--accent);
+  opacity: 1;
 }
 .agent-panel__empty p {
-  margin: 0 0 8px 0;
+  margin: 0;
 }
-.agent-panel__cta {
-  margin-top: 4px;
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  color: var(--text);
-  border-radius: 6px;
-  padding: 6px 14px;
-  font-size: 12px;
-  font: inherit;
-  cursor: pointer;
-}
-.agent-panel__cta:hover {
-  background: var(--bg-soft);
-}
+
+/* --- Messages ------------------------------------------------------------ */
 .agent-panel__messages {
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 4px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 .agent-panel__msg {
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
-.agent-panel__msg--assistant {
-  background: var(--bg-soft);
-}
+/* The bubble shape already says who is speaking; the role label stays only
+   for system notes, where it carries information. */
 .agent-panel__msg-role {
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-bottom: 4px;
+  display: none;
+}
+.agent-panel__msg--system .agent-panel__msg-role {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
 }
 .agent-panel__msg-body {
   font-size: 13px;
+  line-height: 1.6;
   color: var(--text);
   white-space: pre-wrap;
-  line-height: 1.5;
   word-break: break-word;
 }
-.agent-panel__compose {
-  border-top: 1px solid var(--border);
-  background: var(--bg-soft);
-  padding: 8px 10px;
+.agent-panel__msg--user {
+  align-items: flex-end;
 }
-.agent-panel__input {
-  width: 100%;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 8px 10px;
-  font: inherit;
-  font-size: 13px;
-  color: var(--text);
-  resize: none;
-  outline: none;
-  box-sizing: border-box;
+.agent-panel__msg--user .agent-panel__msg-body {
+  max-width: 88%;
+  padding: 7px 11px;
+  border-radius: var(--r-lg);
+  background: var(--fill-1);
+  line-height: 1.5;
 }
-.agent-panel__input:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-.agent-panel__compose-foot {
-  margin-top: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 11px;
-  color: var(--text-muted);
-}
-.agent-panel__compose-hint {
-  font-style: italic;
-}
-.agent-panel__send {
-  background: var(--accent, #ff9f40);
-  border: 1px solid var(--accent, #ff9f40);
-  color: white;
-  border-radius: 6px;
-  padding: 4px 14px;
-  font: inherit;
+.agent-panel__msg--system .agent-panel__msg-body {
   font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  line-height: 1.4;
-}
-.agent-panel__send:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-.agent-panel__send:hover:not(:disabled) {
-  filter: brightness(1.05);
-}
-.agent-panel__send--stop {
-  background: transparent;
-  color: var(--text);
-  border-color: var(--border);
-}
-.agent-panel__send--stop:hover {
-  background: var(--bg-elev);
+  color: var(--text-3);
 }
 .agent-panel__cursor {
   display: inline-block;
   margin-left: 1px;
-  color: var(--accent, #ff9f40);
+  color: var(--accent);
   animation: agent-panel-blink 1s steps(2, start) infinite;
 }
 @keyframes agent-panel-blink {
   to { visibility: hidden; }
 }
-/* --- Tool-call cards (v4.0) ------------------------------------------ */
-.agent-panel__msg--tool {
-  background: var(--bg-soft);
-  padding: 6px 10px;
+
+/* --- Tool-call cards ----------------------------------------------------- */
+.agent-panel__tool {
+  border: var(--bd-hair);
+  border-radius: var(--r-lg);
+  background: var(--bg-elev);
+  overflow: hidden;
 }
 .agent-panel__tool-head {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   width: 100%;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 0;
   background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 4px 8px;
   font: inherit;
   font-size: 12px;
   color: var(--text);
-  cursor: pointer;
   text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease);
 }
 .agent-panel__tool-head:hover {
-  background: var(--bg-elev);
+  background: var(--fill-1);
 }
-.agent-panel__tool-head--err {
-  border-color: rgba(220, 38, 38, 0.4);
-  color: #dc2626;
+.agent-panel__tool-head:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--accent-ring);
+}
+.agent-panel__tool-head--err .agent-panel__tool-icon {
+  color: var(--danger);
 }
 .agent-panel__tool-head--pending {
-  border-style: dashed;
-  color: var(--text-muted);
+  color: var(--text-3);
 }
 .agent-panel__tool-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   flex-shrink: 0;
-  font-size: 12px;
+  color: var(--text-3);
 }
 .agent-panel__tool-spinner {
   width: 10px;
   height: 10px;
-  border: 1.5px solid var(--text-muted);
-  border-top-color: var(--accent, #ff9f40);
+  border: 1.5px solid var(--fill-2);
+  border-top-color: var(--accent);
   border-radius: 50%;
   animation: agent-panel-spin 0.8s linear infinite;
 }
@@ -900,41 +812,41 @@ watch(stateKey, (k) => {
 }
 .agent-panel__tool-sig {
   flex: 1;
-  font-family: "JetBrains Mono", Menlo, Consolas, monospace;
-  font-size: 11px;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .agent-panel__tool-caret {
-  color: var(--text-muted);
-  font-size: 10px;
+  flex-shrink: 0;
+  color: var(--text-3);
 }
 .agent-panel__tool-body {
-  margin-top: 6px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
+  padding: 2px 10px 10px;
 }
 .agent-panel__tool-section {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
 }
 .agent-panel__tool-label {
-  font-size: 9px;
-  font-weight: 700;
-  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 600;
   letter-spacing: 0.06em;
-  color: var(--text-muted);
+  color: var(--text-3);
 }
 .agent-panel__tool-pre {
   margin: 0;
   padding: 6px 8px;
   background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  font-family: "JetBrains Mono", Menlo, Consolas, monospace;
+  border: var(--bd-hair);
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
   font-size: 11px;
   line-height: 1.5;
   color: var(--text);
@@ -944,72 +856,93 @@ watch(stateKey, (k) => {
   overflow: auto;
 }
 .agent-panel__tool-pre--err {
-  color: #dc2626;
-  border-color: rgba(220, 38, 38, 0.3);
+  color: var(--danger);
 }
 
-/* --- Per-assistant-reply actions (Copy / Insert) ----------------------- */
+/* --- Per-assistant-reply actions (Copy / Insert) ------------------------- */
 .agent-panel__msg-actions {
   display: flex;
-  gap: 6px;
-  margin-top: 6px;
+  gap: 2px;
+  margin-top: 4px;
+  margin-left: -8px;
 }
 .agent-panel__msg-action {
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 2px 8px;
-  font: inherit;
-  font-size: 11px;
-  color: var(--text-muted);
-  cursor: pointer;
-  line-height: 1.6;
-}
-.agent-panel__msg-action:hover:not(:disabled) {
-  background: rgba(255, 159, 64, 0.1);
-  border-color: var(--accent, #ff9f40);
-  color: var(--accent, #ff9f40);
-}
-.agent-panel__msg-action:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
+  color: var(--text-3);
 }
 
-/* --- Wikilink chips ---------------------------------------------------- */
+/* --- Wikilink chips ------------------------------------------------------ */
 .agent-panel__wiki {
   display: inline-flex;
   align-items: center;
-  background: rgba(99, 102, 241, 0.12);
-  border: 1px solid rgba(99, 102, 241, 0.4);
-  color: var(--accent, #6366f1);
-  border-radius: 4px;
-  padding: 0 6px;
-  margin: 0 2px;
+  gap: 3px;
+  margin: 0 1px;
+  padding: 0 7px;
+  height: 20px;
+  vertical-align: 1px;
+  border: 0;
+  border-radius: var(--r-full);
+  background: var(--accent-soft);
+  color: var(--accent-text);
   font: inherit;
   font-size: 12px;
+  line-height: 1;
   cursor: pointer;
-  line-height: 1.5;
-  text-decoration: none;
+  transition: background var(--dur-fast) var(--ease);
 }
 .agent-panel__wiki:hover {
-  background: rgba(99, 102, 241, 0.22);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
 }
-.agent-panel__wiki:before {
-  content: '🔗';
-  margin-right: 3px;
-  font-size: 9px;
-  opacity: 0.7;
+.agent-panel__wiki:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+.agent-panel__wiki-icon {
+  opacity: 0.8;
 }
 
 .agent-panel__error {
-  margin: 0 12px 10px;
+  margin: 0 12px 8px;
   padding: 8px 10px;
   font-size: 12px;
-  color: #dc2626;
-  background: rgba(220, 38, 38, 0.08);
-  border: 1px solid rgba(220, 38, 38, 0.3);
-  border-radius: 6px;
+  line-height: 1.5;
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+  border-radius: var(--r-md);
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+/* --- Compose ------------------------------------------------------------- */
+.agent-panel__compose {
+  flex: 0 0 auto;
+  padding: 10px 12px 12px;
+  border-top: var(--bd-hair);
+}
+.agent-panel__input {
+  min-height: 56px;
+  max-height: 200px;
+  resize: none;
+}
+.agent-panel__input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.agent-panel__compose-foot {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.agent-panel__compose-hint {
+  min-width: 0;
+  font-size: 12px;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.agent-panel__send {
+  flex-shrink: 0;
 }
 </style>

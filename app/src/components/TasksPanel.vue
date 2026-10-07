@@ -18,6 +18,9 @@ import { useFiles } from '../composables/useFiles';
 import { useWorkspaceIndexStore } from '../stores/workspaceIndex';
 import { useTilesStore } from '../stores/tiles';
 import { useI18n } from '../i18n';
+import Icons from './Icons.vue';
+import PanelHeader from './panel/PanelHeader.vue';
+import SegControl from './panel/SegControl.vue';
 import { isOverdue, localDateKey } from '../lib/tasks';
 
 const { tasks, toggle } = useTasks();
@@ -63,8 +66,6 @@ const groups = computed(() => {
 const openCount = computed(() => tasks.value.filter((x) => !x.done).length);
 const hasFolder = computed(() => idx.folder !== null);
 
-const PRIORITY_MARK: Record<string, string> = { high: '⏫', medium: '🔼', low: '🔽' };
-
 function overdue(task: WorkspaceTask): boolean {
   return !task.done && isOverdue(task.meta.due, today.value);
 }
@@ -84,64 +85,64 @@ async function openTask(task: WorkspaceTask) {
 </script>
 
 <template>
-  <div class="tasks-panel">
-    <header class="tasks-panel__head">
-      <span class="tasks-panel__title">{{ t('tasks.heading') }}</span>
-      <span v-if="openCount" class="tasks-panel__badge">{{ openCount }}</span>
-      <button
-        class="rs-pane-close"
-        type="button"
-        :title="t('rightSidebar.hidePane')"
-        @click="emit('close')"
-      >×</button>
-    </header>
+  <div class="tasks-panel rp">
+    <PanelHeader :title="t('tasks.heading')" :count="openCount || null" @close="emit('close')" />
 
     <div class="tasks-panel__filters">
+      <SegControl
+        v-model="filter"
+        class="tasks-panel__seg"
+        :options="(['open', 'today', 'all'] as Filter[]).map((f) => ({ value: f, label: t(`tasks.filter.${f}`) }))"
+      />
       <button
-        v-for="f in (['open', 'today', 'all'] as Filter[])"
-        :key="f"
-        class="tasks-panel__chip"
-        :class="{ 'tasks-panel__chip--on': filter === f }"
-        @click="filter = f"
-      >{{ t(`tasks.filter.${f}`) }}</button>
-      <button
-        class="tasks-panel__chip tasks-panel__chip--flag"
-        :class="{ 'tasks-panel__chip--on': priorityOnly }"
+        class="rp-icon-btn tasks-panel__flag"
+        :class="{ 'is-on': priorityOnly }"
+        type="button"
         :title="t('tasks.priorityOnly')"
+        :aria-label="t('tasks.priorityOnly')"
+        :aria-pressed="priorityOnly"
         @click="priorityOnly = !priorityOnly"
-      >⏫</button>
+      >
+        <span class="tasks-panel__bars tasks-panel__bars--high" aria-hidden="true"><i /><i /><i /></span>
+      </button>
     </div>
 
-    <div v-if="!hasFolder" class="tasks-panel__empty">{{ t('tasks.openFolder') }}</div>
-    <div v-else-if="groups.length === 0" class="tasks-panel__empty">{{ t('tasks.empty') }}</div>
+    <div v-if="!hasFolder" class="rp-empty">{{ t('tasks.openFolder') }}</div>
+    <div v-else-if="groups.length === 0" class="rp-empty">{{ t('tasks.empty') }}</div>
 
-    <div v-else class="tasks-panel__list">
+    <div v-else class="rp-body tasks-panel__list">
       <section v-for="group in groups" :key="group.path" class="tasks-panel__group">
-        <h4 class="tasks-panel__file">{{ group.fileName }}</h4>
-        <ul class="tasks-panel__items">
-          <li v-for="task in group.items" :key="`${task.path}:${task.line}`" class="tasks-panel__item">
+        <h4 class="rp-section tasks-panel__file">
+          <Icons name="file" :size="12" />
+          <span class="rp-row__label">{{ group.fileName }}</span>
+        </h4>
+        <ul class="rp-list">
+          <li
+            v-for="task in group.items"
+            :key="`${task.path}:${task.line}`"
+            class="rp-row tasks-panel__item"
+            :class="{ 'tasks-panel__item--done': task.done }"
+            @click="openTask(task)"
+          >
             <input
               type="checkbox"
-              class="tasks-panel__check"
+              class="rp-check tasks-panel__check"
               :checked="task.done"
               :aria-label="task.meta.title"
               @click.stop="toggle(task)"
             />
-            <button
-              class="tasks-panel__row"
-              :class="{ 'tasks-panel__row--done': task.done }"
-              @click="openTask(task)"
-            >
-              <span class="tasks-panel__text">{{ task.meta.title }}</span>
-              <span v-if="task.meta.priority" class="tasks-panel__prio">
-                {{ PRIORITY_MARK[task.meta.priority] }}
-              </span>
-              <span
-                v-if="task.meta.due"
-                class="tasks-panel__due"
-                :class="{ 'tasks-panel__due--overdue': overdue(task) }"
-              >{{ task.meta.due }}</span>
-            </button>
+            <span class="tasks-panel__text">{{ task.meta.title }}</span>
+            <span
+              v-if="task.meta.priority"
+              class="tasks-panel__bars"
+              :class="`tasks-panel__bars--${task.meta.priority}`"
+              :title="task.meta.priority"
+            ><i /><i /><i /></span>
+            <span
+              v-if="task.meta.due"
+              class="tasks-panel__due"
+              :class="{ 'tasks-panel__due--overdue': overdue(task) }"
+            >{{ task.meta.due }}</span>
           </li>
         </ul>
       </section>
@@ -150,145 +151,89 @@ async function openTask(task: WorkspaceTask) {
 </template>
 
 <style scoped>
-.tasks-panel {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  background: var(--bg);
-  border-left: 1px solid var(--border);
-  overflow: hidden;
-}
-.tasks-panel__head {
+.tasks-panel__filters {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-soft);
+  gap: 6px;
+  padding: 0 8px 8px 12px;
 }
-.tasks-panel__title {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  flex: 1;
+.tasks-panel__seg {
+  flex: 1 1 auto;
+  min-width: 0;
 }
-.tasks-panel__badge {
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 1px 8px;
-  font-size: 11px;
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
-}
-.tasks-panel__filters {
-  display: flex;
-  gap: 4px;
-  padding: 6px 10px;
-  border-bottom: 1px solid var(--border);
-}
-.tasks-panel__chip {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  border-radius: 999px;
-  padding: 2px 10px;
-  font-size: 11px;
-  cursor: pointer;
-}
-.tasks-panel__chip--flag {
-  padding: 2px 8px;
-  margin-left: auto;
-}
-.tasks-panel__chip--on {
-  background: var(--accent-soft, rgba(255, 159, 64, 0.12));
-  border-color: var(--accent, #ff9f40);
-  color: var(--accent, #ff9f40);
-}
-.tasks-panel__empty {
-  padding: 24px 16px;
-  text-align: center;
-  color: var(--text-faint);
-  font-size: 12px;
-  line-height: 1.6;
-}
-.tasks-panel__list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 6px;
+.tasks-panel__flag {
+  width: 28px;
+  height: 28px;
 }
 .tasks-panel__group + .tasks-panel__group {
-  margin-top: 10px;
+  margin-top: 6px;
 }
 .tasks-panel__file {
-  margin: 0 0 2px;
-  padding: 2px 8px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-faint);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.tasks-panel__items {
-  list-style: none;
   margin: 0;
-  padding: 0;
+  min-width: 0;
+  letter-spacing: 0;
+  font-weight: 500;
+  font-size: 12px;
 }
 .tasks-panel__item {
-  display: flex;
   align-items: flex-start;
-  gap: 6px;
-  padding: 2px 4px;
-  border-radius: 6px;
-}
-.tasks-panel__item:hover {
-  background: var(--bg-hover);
+  padding-top: 6px;
+  padding-bottom: 6px;
+  min-height: 28px;
+  line-height: 1.35;
 }
 .tasks-panel__check {
-  margin: 5px 0 0;
-  flex-shrink: 0;
-  cursor: pointer;
-}
-.tasks-panel__row {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  flex: 1;
-  min-width: 0;
-  background: transparent;
-  border: 0;
-  padding: 4px 4px;
-  text-align: left;
-  cursor: pointer;
-  color: var(--text);
-  font: inherit;
-  font-size: 12px;
-  line-height: 1.5;
-}
-.tasks-panel__row--done .tasks-panel__text {
-  text-decoration: line-through;
-  color: var(--text-faint);
+  margin-top: 2px;
 }
 .tasks-panel__text {
   flex: 1;
   min-width: 0;
   overflow-wrap: anywhere;
 }
-.tasks-panel__prio {
-  flex-shrink: 0;
-  font-size: 11px;
+.tasks-panel__item--done .tasks-panel__text {
+  text-decoration: line-through;
+  color: var(--text-3);
 }
 .tasks-panel__due {
   flex-shrink: 0;
-  font-size: 10px;
-  color: var(--text-faint);
+  margin-top: 1px;
+  font-size: 12px;
+  color: var(--text-3);
   font-variant-numeric: tabular-nums;
 }
 .tasks-panel__due--overdue {
-  color: var(--danger, #d64545);
-  font-weight: 600;
+  color: var(--danger);
+  font-weight: 500;
+}
+/* Priority: three ascending bars, filled by level (no emoji). */
+.tasks-panel__bars {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 1.5px;
+  height: 11px;
+  margin-top: 3px;
+}
+.tasks-panel__bars i {
+  display: block;
+  width: 2.5px;
+  border-radius: 1px;
+  background: var(--fill-2);
+}
+.tasks-panel__bars i:nth-child(1) { height: 5px; }
+.tasks-panel__bars i:nth-child(2) { height: 8px; }
+.tasks-panel__bars i:nth-child(3) { height: 11px; }
+.tasks-panel__bars--low i:nth-child(1),
+.tasks-panel__bars--medium i:nth-child(-n + 2),
+.tasks-panel__bars--high i {
+  background: var(--accent);
+}
+.tasks-panel__flag .tasks-panel__bars {
+  margin-top: 0;
+}
+.tasks-panel__flag:not(.is-on) .tasks-panel__bars i {
+  background: currentColor;
+  opacity: 0.55;
 }
 </style>

@@ -31,6 +31,8 @@
  */
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useAgentTraceStore, type TraceLine } from '../stores/agentTrace';
+import Icons from './Icons.vue';
+import '../styles/panels.css';
 
 const props = defineProps<{
   workspace: string;
@@ -61,8 +63,10 @@ interface Card {
   /** Optional pair (model_done / tool_result). */
   pair?: TraceLine;
   /** Pre-computed per-card display data — kept in the model so the
-   *  template stays readable. */
+   *  template stays readable. `icon` is an Icons.vue name. */
   icon: string;
+  /** Step failed (tool error) — tints the icon. */
+  error?: boolean;
   title: string;
   subtitle: string;
   ts: number;
@@ -141,7 +145,7 @@ function modelPairCard(call: TraceLine, done?: TraceLine): Card {
     seq: call.seq,
     primary: call,
     pair: done,
-    icon: '🧠',
+    icon: 'sparkle',
     title: done ? 'Model turn' : 'Model call (in flight)',
     subtitle,
     ts: call.ts,
@@ -162,7 +166,8 @@ function toolPairCard(call: TraceLine, result?: TraceLine): Card {
     seq: call.seq,
     primary: call,
     pair: result,
-    icon: errored ? '❌' : '🔧',
+    icon: errored ? 'info' : 'wrench',
+    error: !!errored,
     title: 'Tool call',
     subtitle,
     ts: call.ts,
@@ -172,24 +177,24 @@ function toolPairCard(call: TraceLine, result?: TraceLine): Card {
 function iconFor(kind: string): string {
   switch (kind) {
     case 'run_started':
-      return '▶️';
+      return 'chevron-right';
     case 'run_ended':
-      return '⏹';
+      return 'check-circle';
     case 'model_call':
     case 'model_done':
     case 'model_chunk':
-      return '🧠';
+      return 'sparkle';
     case 'tool_call':
     case 'tool_result':
-      return '🔧';
+      return 'wrench';
     case 'git_commit':
-      return '💾';
+      return 'save';
     case 'prompt':
-      return '💬';
+      return 'quote';
     case 'note':
-      return '📝';
+      return 'pencil';
     default:
-      return '•';
+      return 'more';
   }
 }
 
@@ -407,13 +412,19 @@ onUnmounted(() => {
         <span>Run</span>
         <code>{{ props.runId }}</code>
       </div>
-      <button v-if="$slots.close === undefined" class="trace-close" type="button" @click="emit('close')">
-        ×
+      <button
+        v-if="$slots.close === undefined"
+        class="rp-icon-btn trace-close"
+        type="button"
+        aria-label="Close"
+        @click="emit('close')"
+      >
+        <Icons name="close" :size="14" />
       </button>
     </header>
 
     <div v-if="error" class="trace-error">{{ error }}</div>
-    <div v-if="!error && lines.length === 0" class="trace-empty">
+    <div v-if="!error && lines.length === 0" class="rp-empty trace-empty">
       No steps yet.
     </div>
 
@@ -424,8 +435,15 @@ onUnmounted(() => {
         class="trace-card"
         :class="{ 'is-open': expanded.has(card.seq) }"
       >
-        <button class="trace-card-head" type="button" @click="toggle(card.seq)">
-          <span class="trace-card-icon" aria-hidden="true">{{ card.icon }}</span>
+        <button
+          class="trace-card-head"
+          type="button"
+          :aria-expanded="expanded.has(card.seq)"
+          @click="toggle(card.seq)"
+        >
+          <span class="trace-card-icon" :class="{ 'is-error': card.error }" aria-hidden="true">
+            <Icons :name="card.icon" :size="14" />
+          </span>
           <span class="trace-card-body">
             <span class="trace-card-title">
               <span class="trace-card-seq">#{{ card.seq }}</span>
@@ -434,12 +452,17 @@ onUnmounted(() => {
             <span class="trace-card-subtitle">{{ card.subtitle }}</span>
           </span>
           <span class="trace-card-ts" :title="fmtAbs(card.ts)">{{ fmtRel(card.ts) }}</span>
+          <Icons
+            class="trace-card-caret"
+            :name="expanded.has(card.seq) ? 'chevron-down' : 'chevron-right'"
+            :size="12"
+          />
         </button>
         <div v-if="expanded.has(card.seq)" class="trace-card-body-open">
           <pre class="trace-payload">{{ prettyJson(card.primary) }}</pre>
           <pre v-if="card.pair" class="trace-payload trace-payload-paired">{{ prettyJson(card.pair) }}</pre>
           <div class="trace-card-actions">
-            <button type="button" class="trace-action" @click="onReplay(card.seq)">
+            <button type="button" class="rp-btn rp-btn--sm trace-action" @click="onReplay(card.seq)">
               Replay from this step
             </button>
           </div>
@@ -458,140 +481,162 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+/* Embedded run inspector (Settings → Recipes → history). One radius-10
+   card with hairline-separated steps, the same anatomy as the 5.0 panels. */
 .trace-view {
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  border: var(--bd-hair);
+  border-radius: var(--r-lg);
   background: var(--bg);
   color: var(--text);
+  font-family: var(--font-ui);
   font-size: 13px;
 }
 .trace-header {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-soft);
+  gap: 8px;
+  height: 36px;
+  padding: 0 8px 0 12px;
+  border-bottom: var(--bd-hair);
 }
 .trace-title {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: var(--text-muted);
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
 }
 .trace-title code {
-  font-family: 'SF Mono', Menlo, monospace;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
   font-size: 12px;
-  color: var(--text);
-}
-.trace-close {
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  font-size: 18px;
-  line-height: 1;
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 4px;
-}
-.trace-close:hover {
-  background: var(--border);
+  font-weight: 400;
+  letter-spacing: 0;
   color: var(--text);
 }
 .trace-error {
   margin: 8px 12px;
   padding: 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: #b00;
-  background: var(--bg-soft);
+  border-radius: var(--r-md);
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
   font-size: 12px;
-}
-.trace-empty {
-  padding: 20px 12px;
-  color: var(--text-muted);
-  text-align: center;
+  line-height: 1.5;
 }
 .trace-list {
   list-style: none;
   margin: 0;
-  padding: 8px 0;
-  flex: 1;
+  padding: 0;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
 }
-.trace-card {
-  border-top: 1px solid var(--border);
-}
-.trace-card:first-child {
-  border-top: none;
+.trace-card + .trace-card {
+  border-top: var(--bd-hair);
 }
 .trace-card-head {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
   width: 100%;
-  padding: 8px 12px;
+  min-height: 44px;
+  padding: 6px 12px;
+  box-sizing: border-box;
+  border: 0;
   background: transparent;
-  border: none;
   color: inherit;
   text-align: left;
   cursor: pointer;
   font: inherit;
+  transition: background var(--dur-fast) var(--ease);
 }
-.trace-card-head:hover {
-  background: var(--bg-soft);
-}
+.trace-card-head:hover,
 .trace-card.is-open .trace-card-head {
-  background: var(--bg-soft);
+  background: var(--fill-1);
+}
+.trace-card-head:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--accent-ring);
 }
 .trace-card-icon {
   flex: 0 0 auto;
-  font-size: 14px;
-  line-height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--r-sm);
+  background: var(--fill-1);
+  color: var(--text-2);
+}
+.trace-card-icon.is-error {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
 }
 .trace-card-body {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
   min-width: 0;
 }
 .trace-card-title {
   display: flex;
   align-items: baseline;
   gap: 6px;
+  font-size: 13px;
   font-weight: 500;
+  color: var(--text);
 }
 .trace-card-seq {
-  font-family: 'SF Mono', Menlo, monospace;
+  font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--text-muted);
+  font-weight: 400;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
 }
 .trace-card-subtitle {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--text-3);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .trace-card-ts {
   flex: 0 0 auto;
-  font-size: 11px;
-  color: var(--text-muted);
+  font-size: 12px;
+  color: var(--text-3);
   font-variant-numeric: tabular-nums;
 }
+.trace-card-caret {
+  flex: 0 0 auto;
+  color: var(--text-3);
+}
 .trace-card-body-open {
-  padding: 4px 12px 12px 36px;
+  padding: 4px 12px 12px 46px;
 }
 .trace-payload {
   margin: 0 0 8px 0;
   padding: 8px 10px;
-  background: var(--bg-soft);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font-family: 'SF Mono', Menlo, monospace;
+  background: var(--bg-elev);
+  border: var(--bd-hair);
+  border-radius: var(--r-md);
+  font-family: var(--font-mono);
   font-size: 11px;
+  line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
   color: var(--text);
@@ -599,49 +644,41 @@ onUnmounted(() => {
   overflow: auto;
 }
 .trace-payload-paired {
-  border-left: 2px solid var(--accent);
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 .trace-card-actions {
   display: flex;
   justify-content: flex-end;
   gap: 6px;
 }
-.trace-action {
-  background: var(--bg-soft);
-  border: 1px solid var(--border);
-  color: var(--text);
-  font-size: 11px;
-  padding: 4px 10px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-.trace-action:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-}
 .trace-footer {
-  border-top: 1px solid var(--border);
-  background: var(--bg-soft);
-  padding: 8px 12px;
+  flex: 0 0 auto;
+  border-top: var(--bd-hair);
+  background: var(--bg-sidebar);
+  padding: 0 12px;
+  height: 32px;
+  display: flex;
+  align-items: center;
 }
 .trace-totals {
+  flex: 1;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 8px;
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
 }
 .trace-totals strong {
   color: var(--text);
   font-weight: 600;
 }
 .trace-totals-cost {
-  color: var(--accent);
-  font-variant-numeric: tabular-nums;
+  color: var(--accent-text);
 }
 .trace-totals-provider {
-  font-family: 'SF Mono', Menlo, monospace;
+  font-family: var(--font-mono);
   font-size: 11px;
 }
 </style>

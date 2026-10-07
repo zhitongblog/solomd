@@ -22,6 +22,8 @@ import { computed } from 'vue';
 import { useWorkspaceIndexStore } from '../stores/workspaceIndex';
 import { useDailyNotes } from '../composables/useDailyNotes';
 import { useI18n } from '../i18n';
+import Icons from './Icons.vue';
+import PanelHeader from './panel/PanelHeader.vue';
 
 const idx = useWorkspaceIndexStore();
 const daily = useDailyNotes();
@@ -55,41 +57,38 @@ function onTomorrow() {
 </script>
 
 <template>
-  <div class="tags-panel">
-    <header class="tags-panel__head">
-      <span class="tags-panel__title">{{ t('tags.heading') }}</span>
-      <div class="tags-panel__actions">
-        <button
-          class="tags-panel__btn"
-          :title="t('tags.yesterdayBtn')"
-          @click="onYesterday"
-        >‹</button>
-        <button
-          class="tags-panel__btn tags-panel__btn--primary"
-          @click="onToday"
-        >{{ t('tags.todayBtn') }}</button>
-        <button
-          class="tags-panel__btn"
-          :title="t('tags.tomorrowBtn')"
-          @click="onTomorrow"
-        >›</button>
-      </div>
+  <div class="tags-panel rp">
+    <PanelHeader :title="t('tags.heading')" @close="emit('close')">
       <button
-        class="rs-pane-close"
+        class="rp-icon-btn"
         type="button"
-        :title="t('rightSidebar.hidePane')"
-        @click="emit('close')"
-      >×</button>
-    </header>
+        :title="t('tags.yesterdayBtn')"
+        :aria-label="t('tags.yesterdayBtn')"
+        @click="onYesterday"
+      ><Icons name="chevron-left" :size="14" /></button>
+      <button
+        class="tags-panel__today"
+        type="button"
+        @click="onToday"
+      >{{ t('tags.todayBtn') }}</button>
+      <button
+        class="rp-icon-btn"
+        type="button"
+        :title="t('tags.tomorrowBtn')"
+        :aria-label="t('tags.tomorrowBtn')"
+        @click="onTomorrow"
+      ><Icons name="chevron-right" :size="14" /></button>
+    </PanelHeader>
 
-    <div v-if="!hasFolder" class="tags-panel__empty">{{ t('tags.openFolder') }}</div>
-    <div v-else-if="sortedTags.length === 0" class="tags-panel__empty">{{ t('tags.empty') }}</div>
+    <div v-if="!hasFolder" class="rp-empty">{{ t('tags.openFolder') }}</div>
+    <div v-else-if="sortedTags.length === 0" class="rp-empty">{{ t('tags.empty') }}</div>
 
-    <ul v-else class="tags-panel__list">
-      <li v-for="row in sortedTags" :key="row.tag" class="tags-panel__item">
-        <button class="tags-panel__row" @click="onClickTag(row.tag)">
-          <span class="tags-panel__pill">#{{ row.tag }}</span>
-          <span class="tags-panel__count">{{ row.count }}</span>
+    <ul v-else class="rp-body rp-list">
+      <li v-for="row in sortedTags" :key="row.tag">
+        <button class="rp-row" type="button" @click="onClickTag(row.tag)">
+          <Icons class="rp-row__icon" name="tag" :size="14" />
+          <span class="rp-row__label">{{ row.tag }}</span>
+          <span class="rp-count">{{ row.count }}</span>
         </button>
       </li>
     </ul>
@@ -97,101 +96,25 @@ function onTomorrow() {
 </template>
 
 <style scoped>
-.tags-panel {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  background: var(--bg);
-  border-left: 1px solid var(--border);
-  overflow: hidden;
-}
-.tags-panel__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-soft);
-  gap: 8px;
-}
-.tags-panel__title {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-.tags-panel__actions {
-  display: flex;
-  gap: 4px;
-}
-.tags-panel__btn {
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  border-radius: 4px;
-  padding: 2px 8px;
-  font-size: 11px;
-  cursor: pointer;
-  transition: background 0.12s, color 0.12s, border-color 0.12s;
-}
-.tags-panel__btn:hover {
-  background: var(--bg-hover);
-  color: var(--text);
-}
-.tags-panel__btn--primary {
-  color: var(--accent, #ff9f40);
-  font-weight: 600;
-}
-.tags-panel__empty {
-  padding: 24px 16px;
-  text-align: center;
-  color: var(--text-faint);
-  font-size: 12px;
-  line-height: 1.6;
-}
-.tags-panel__list {
-  list-style: none;
-  margin: 0;
-  padding: 6px;
-  overflow-y: auto;
-  flex: 1;
-}
-.tags-panel__item + .tags-panel__item {
-  margin-top: 2px;
-}
-.tags-panel__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
+.tags-panel__today {
+  height: 22px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--r-sm);
   background: transparent;
-  border: 1px solid transparent;
-  padding: 6px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 0.12s, border-color 0.12s;
-}
-.tags-panel__row:hover {
-  background: var(--bg-hover);
-  border-color: var(--border);
-}
-.tags-panel__pill {
+  color: var(--text-2);
+  font: inherit;
   font-size: 12px;
   font-weight: 500;
-  color: var(--accent, #ff9f40);
-  font-family: var(--font-mono);
-  word-break: break-all;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
 }
-.tags-panel__count {
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 1px 8px;
-  font-size: 11px;
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
-  margin-left: 8px;
-  flex-shrink: 0;
+.tags-panel__today:hover {
+  background: var(--fill-1);
+  color: var(--text);
+}
+.tags-panel__today:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
 }
 </style>

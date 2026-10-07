@@ -4,14 +4,13 @@
  * The base pattern every other scalar cell mirrors.
  */
 import { ref, watch, nextTick } from 'vue';
-import { DsInput } from '../../../ui';
 
 const props = defineProps<{ value: unknown; placeholder?: string }>();
 const emit = defineEmits<{ update: [string] }>();
 
 const editing = ref(false);
 const draft = ref('');
-const inputRef = ref<InstanceType<typeof DsInput> | null>(null);
+const inputRef = ref<HTMLInputElement | null>(null);
 
 function display(): string {
   const v = props.value;
@@ -23,10 +22,8 @@ async function startEdit() {
   draft.value = display();
   editing.value = true;
   await nextTick();
-  const el = (inputRef.value?.$el as HTMLElement | undefined)?.querySelector?.('input')
-    ?? (inputRef.value?.$el as HTMLInputElement | undefined);
-  (el as HTMLInputElement | undefined)?.focus?.();
-  (el as HTMLInputElement | undefined)?.select?.();
+  inputRef.value?.focus();
+  inputRef.value?.select();
 }
 
 function commit() {
@@ -49,11 +46,11 @@ watch(
 
 <template>
   <div class="prop-text-cell">
-    <DsInput
+    <input
       v-if="editing"
       ref="inputRef"
       v-model="draft"
-      size="sm"
+      class="rp-input prop-cell-input"
       :placeholder="placeholder"
       @keydown.enter.prevent="commit"
       @keydown.esc.prevent="cancel"

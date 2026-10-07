@@ -6,7 +6,7 @@
  *  is non-navigating) when the target stem isn't in the index. An inline editor
  *  lets you retype the raw value; Enter saves, Esc cancels. */
 import { ref, computed, watch, nextTick } from 'vue';
-import { DsChip, DsInput } from '../../../ui';
+import Icons from '../../Icons.vue';
 import { extractWikilinks, chipLabel, type Wikilink } from '../../../lib/wikilinks';
 import { useWorkspaceIndexStore } from '../../../stores/workspaceIndex';
 import { useFiles } from '../../../composables/useFiles';
@@ -62,7 +62,7 @@ async function open(link: Link) {
 // ---- raw editing ----
 const editing = ref(false);
 const draft = ref('');
-const inputRef = ref<InstanceType<typeof DsInput> | null>(null);
+const inputRef = ref<HTMLInputElement | null>(null);
 
 function displayRaw(): string {
   return rawStrings.value.join(isArray.value ? ', ' : '');
@@ -72,9 +72,8 @@ async function startEdit() {
   draft.value = displayRaw();
   editing.value = true;
   await nextTick();
-  const el = (inputRef.value?.$el as HTMLElement | undefined)?.querySelector?.('input');
-  el?.focus();
-  el?.select();
+  inputRef.value?.focus();
+  inputRef.value?.select();
 }
 
 function commit() {
@@ -108,11 +107,11 @@ watch(
 
 <template>
   <div class="prop-relation-cell">
-    <DsInput
+    <input
       v-if="editing"
       ref="inputRef"
       v-model="draft"
-      size="sm"
+      class="rp-input prop-cell-input"
       :placeholder="t('inspector.relationPlaceholder')"
       @keydown.enter.prevent="commit"
       @keydown.esc.prevent="cancel"
@@ -120,15 +119,15 @@ watch(
     />
     <template v-else>
       <template v-if="links.length">
-        <DsChip
+        <button
           v-for="(link, i) in links"
           :key="`${link.raw}-${i}`"
-          size="sm"
-          class="prop-relation-cell__chip"
+          type="button"
+          class="rp-chip prop-relation-cell__chip"
           :class="{ 'prop-relation-cell__chip--unresolved': !link.resolvedPath }"
           @click="open(link)"
-        >{{ chipLabel(link) }}</DsChip>
-        <button type="button" class="prop-relation-cell__edit" :title="t('inspector.editValue')" :aria-label="t('inspector.editValue')" @click="startEdit">✎</button>
+        >{{ chipLabel(link) }}</button>
+        <button type="button" class="prop-relation-cell__edit" :title="t('inspector.editValue')" :aria-label="t('inspector.editValue')" @click="startEdit"><Icons name="pencil" :size="12" /></button>
       </template>
       <button
         v-else
@@ -145,36 +144,46 @@ watch(
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--sp-1);
+  gap: 4px;
   width: 100%;
+  padding: 2px 0;
 }
 .prop-relation-cell__chip {
-  cursor: pointer;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text);
 }
-.prop-relation-cell__chip:hover {
-  border-color: var(--accent);
-  color: var(--accent);
+button.prop-relation-cell__chip:hover {
+  color: var(--accent-text);
 }
-.prop-relation-cell__chip--unresolved {
-  opacity: 0.55;
+.prop-relation-cell__chip--unresolved,
+button.prop-relation-cell__chip--unresolved:hover {
+  color: var(--text-3);
   cursor: default;
   text-decoration: line-through;
 }
-.prop-relation-cell__chip--unresolved:hover {
-  border-color: var(--border);
-  color: var(--text-muted);
-}
 .prop-relation-cell__edit {
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  font-size: 11px;
-  padding: 2px 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
   border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease);
+}
+.prop-relation-cell:hover .prop-relation-cell__edit,
+.prop-relation-cell__edit:focus-visible {
+  opacity: 1;
 }
 .prop-relation-cell__edit:hover {
-  background: var(--bg-hover);
+  background: var(--fill-1);
   color: var(--text);
 }
 .prop-relation-cell__edit:focus-visible,

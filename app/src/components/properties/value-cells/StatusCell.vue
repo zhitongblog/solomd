@@ -4,7 +4,7 @@
  *  drawn from vault-wide status values (the properties store's `vaultStatuses`).
  *  Enter (or picking a suggestion) saves, Esc cancels. */
 import { ref, computed, watch, nextTick } from 'vue';
-import { DsPopover, DsChip, DsInput } from '../../../ui';
+import { DsPopover } from '../../../ui';
 import { usePropertiesStore } from '../../../stores/properties';
 import { useI18n } from '../../../i18n';
 
@@ -20,7 +20,7 @@ const current = computed<string>(() => {
 });
 
 const draft = ref('');
-const inputRef = ref<InstanceType<typeof DsInput> | null>(null);
+const inputRef = ref<HTMLInputElement | null>(null);
 const popRef = ref<InstanceType<typeof DsPopover> | null>(null);
 
 /** A stable, low-saturation hue derived from the status string so the same
@@ -42,9 +42,8 @@ const suggestions = computed<string[]>(() => {
 async function onOpen() {
   draft.value = current.value;
   await nextTick();
-  const el = (inputRef.value?.$el as HTMLElement | undefined)?.querySelector?.('input');
-  el?.focus();
-  el?.select();
+  inputRef.value?.focus();
+  inputRef.value?.select();
 }
 
 function choose(v: string) {
@@ -68,15 +67,15 @@ watch(
   <DsPopover ref="popRef" align="start">
     <template #trigger="{ open }">
       <span class="prop-status-trigger" @click="open || onOpen()">
-        <DsChip v-if="current" size="sm" :color="colorFor(current)">{{ current }}</DsChip>
+        <span v-if="current" class="rp-chip prop-status-chip" :style="{ '--chip': colorFor(current) }">{{ current }}</span>
         <span v-else class="prop-value-trigger prop-value-trigger--empty">—</span>
       </span>
     </template>
     <div class="prop-status-pop">
-      <DsInput
+      <input
         ref="inputRef"
         v-model="draft"
-        size="sm"
+        class="rp-input"
         :placeholder="t('inspector.statusPlaceholder')"
         @keydown.enter.prevent="commitTyped"
         @keydown.esc.prevent="popRef?.close()"
@@ -88,7 +87,7 @@ watch(
           class="prop-status-pop__item"
           @click="choose(s)"
         >
-          <DsChip size="sm" :color="colorFor(s)">{{ s }}</DsChip>
+          <span class="rp-chip prop-status-chip" :style="{ '--chip': colorFor(s) }">{{ s }}</span>
         </li>
       </ul>
     </div>
@@ -99,6 +98,12 @@ watch(
 .prop-status-trigger {
   display: inline-flex;
   cursor: pointer;
+}
+/* Status chip: a soft tint of the status colour (token-derived, no hex). */
+.prop-status-chip {
+  background: color-mix(in srgb, var(--chip) 14%, transparent);
+  color: color-mix(in srgb, var(--chip) 78%, var(--text));
+  cursor: inherit;
 }
 .prop-status-pop {
   display: flex;
@@ -112,16 +117,19 @@ watch(
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--sp-1);
+  gap: 0;
   max-height: 200px;
   overflow-y: auto;
 }
 .prop-status-pop__item {
-  padding: var(--sp-1);
+  display: flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 6px;
   border-radius: var(--r-sm);
   cursor: pointer;
 }
 .prop-status-pop__item:hover {
-  background: var(--bg-hover);
+  background: var(--fill-1);
 }
 </style>

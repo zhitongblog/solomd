@@ -11,6 +11,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { usePomodoroStore } from '../stores/pomodoro';
 import { useI18n } from '../i18n';
+import Icons from './Icons.vue';
 
 const pomodoro = usePomodoroStore();
 const { t } = useI18n();
@@ -19,10 +20,10 @@ const menuOpen = ref(false);
 const menuX = ref(0);
 const menuY = ref(0);
 
-const tomatoEmoji = computed(() => {
-  if (pomodoro.flashing) return '✅';
-  if (pomodoro.isBreak) return '☕';
-  return '🍅';
+const phaseIcon = computed(() => {
+  if (pomodoro.flashing) return 'check-circle';
+  if (pomodoro.isBreak) return 'today';
+  return 'recent';
 });
 
 const pillTitle = computed(() => {
@@ -79,7 +80,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick, true));
     @click="onClick"
     @contextmenu="onContextMenu"
   >
-    <span class="pomo-pill__icon">{{ tomatoEmoji }}</span>
+    <Icons class="pomo-pill__icon" :name="phaseIcon" :size="12" />
     <span class="pomo-pill__time">{{ pomodoro.flashing ? t('pomodoro.done') : pomodoro.countdown }}</span>
   </button>
   <div
@@ -101,55 +102,64 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick, true));
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 1px 8px;
-  border-radius: 999px;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  background: var(--accent);
-  color: var(--bg-elev);
-  border: none;
+  height: 22px;
+  padding: 0 9px 0 7px;
+  border: 0;
+  border-radius: var(--r-full);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
-  font-family: var(--font-mono);
-  transition: background 0.15s, opacity 0.15s;
+  transition: background var(--dur-fast) var(--ease), opacity var(--dur-fast) var(--ease);
 }
-.pomo-pill:hover { filter: brightness(1.1); }
-.pomo-pill__icon { font-size: 11px; }
+.pomo-pill:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+.pomo-pill:focus-visible { outline: none; box-shadow: var(--ring); }
+.pomo-pill__icon { flex: 0 0 auto; }
 .pomo-pill__time { font-variant-numeric: tabular-nums; }
-.pomo-pill--break { background: #4d8fe0; }
+.pomo-pill--break { background: var(--fill-1); color: var(--text-2); }
+.pomo-pill--break:hover { background: var(--fill-2); color: var(--text); }
 .pomo-pill--paused { opacity: 0.6; }
 .pomo-pill--flash {
-  background: #2ea44f;
+  background: color-mix(in srgb, var(--success) 16%, transparent);
+  color: var(--success);
   animation: pomoFlash 0.6s ease-in-out infinite alternate;
 }
 @keyframes pomoFlash {
-  from { box-shadow: 0 0 0 0 rgba(46, 164, 79, 0.0); }
-  to   { box-shadow: 0 0 0 4px rgba(46, 164, 79, 0.45); }
+  from { box-shadow: 0 0 0 0 transparent; }
+  to   { box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 30%, transparent); }
 }
+@media (prefers-reduced-motion: reduce) {
+  .pomo-pill--flash { animation: none; }
+}
+/* Context menu — spec §6 menu style. */
 .pomo-pill__menu {
   position: fixed;
-  z-index: 200;
-  min-width: 120px;
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  z-index: var(--z-pop);
+  min-width: 140px;
   padding: 4px;
+  background: var(--bg-pop);
+  border: var(--bd-hair);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-pop);
 }
 .pomo-pill__menu-item {
-  display: block;
+  display: flex;
+  align-items: center;
   width: 100%;
-  text-align: left;
-  padding: 5px 10px;
-  font-size: 11px;
-  color: var(--text);
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--r-sm);
   background: transparent;
-  border: none;
-  border-radius: 4px;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
   cursor: pointer;
 }
 .pomo-pill__menu-item:hover {
-  background: var(--bg-hover, var(--bg-active));
-  color: var(--accent);
+  background: var(--fill-1);
 }
 </style>

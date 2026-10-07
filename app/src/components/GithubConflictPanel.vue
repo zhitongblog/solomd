@@ -16,6 +16,8 @@ import { useGithubSyncStore } from '../stores/githubSync';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useToastsStore } from '../stores/toasts';
 import { useI18n } from '../i18n';
+import Icons from './Icons.vue';
+import '../styles/panels.css';
 
 const sync = useGithubSyncStore();
 const workspace = useWorkspaceStore();
@@ -54,7 +56,7 @@ async function pushAfterResolve() {
 <template>
   <section v-if="sync.hasConflicts" class="ghc">
     <div class="ghc__header">
-      <span class="ghc__icon">⚠</span>
+      <Icons class="ghc__icon" name="info" :size="14" />
       <strong>{{ t('githubSync.conflictsHeading', { n: String(sync.status?.conflicts.length ?? 0) }) }}</strong>
     </div>
     <p class="ghc__intro">{{ t('githubSync.conflictsIntro') }}</p>
@@ -64,21 +66,21 @@ async function pushAfterResolve() {
         <div class="ghc__file" :title="file">{{ file }}</div>
         <div class="ghc__actions">
           <button
-            class="ghc__btn"
+            class="rp-btn rp-btn--sm"
             :disabled="!!busy[file]"
             @click="resolve(file, 'local')"
           >
             {{ t('githubSync.useLocal') }}
           </button>
           <button
-            class="ghc__btn"
+            class="rp-btn rp-btn--sm"
             :disabled="!!busy[file]"
             @click="resolve(file, 'remote')"
           >
             {{ t('githubSync.useRemote') }}
           </button>
           <button
-            class="ghc__btn"
+            class="rp-btn rp-btn--sm"
             :disabled="!!busy[file]"
             @click="resolve(file, 'both')"
           >
@@ -89,7 +91,7 @@ async function pushAfterResolve() {
     </ul>
 
     <div v-if="(sync.status?.conflicts.length ?? 0) === 0 && (sync.status?.ahead ?? 0) > 0" class="ghc__push-row">
-      <button class="ghc__btn ghc__btn--primary" @click="pushAfterResolve">
+      <button class="rp-btn rp-btn--sm rp-btn--primary" @click="pushAfterResolve">
         {{ t('githubSync.pushAfterResolve') }}
       </button>
     </div>
@@ -98,10 +100,12 @@ async function pushAfterResolve() {
 
 <style scoped>
 .ghc {
-  border: 1px solid var(--danger);
-  background: color-mix(in srgb, var(--danger) 5%, transparent);
-  border-radius: var(--r-md);
+  flex: 0 0 auto;
+  margin: 0 8px 8px;
   padding: 10px 12px;
+  border: var(--hair-w) solid color-mix(in srgb, var(--danger) 40%, transparent);
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--danger) 6%, transparent);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -110,17 +114,21 @@ async function pushAfterResolve() {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text);
 }
+.ghc__header strong {
+  font-weight: 600;
+}
 .ghc__icon {
+  flex: 0 0 auto;
   color: var(--danger);
 }
 .ghc__intro {
-  font-size: 11px;
-  color: var(--text-muted);
   margin: 0;
+  font-size: 12px;
   line-height: 1.5;
+  color: var(--text-3);
 }
 .ghc__list {
   list-style: none;
@@ -133,16 +141,16 @@ async function pushAfterResolve() {
 .ghc__item {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 6px 8px;
-  border: 1px solid var(--border);
+  gap: 6px;
+  padding: 8px;
+  border: var(--bd-hair);
+  border-radius: var(--r-md);
   background: var(--bg);
-  border-radius: 4px;
 }
 .ghc__file {
-  font-size: 11px;
+  font-family: var(--font-mono);
+  font-size: 12px;
   color: var(--text);
-  font-family: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -152,29 +160,7 @@ async function pushAfterResolve() {
   gap: 4px;
   flex-wrap: wrap;
 }
-.ghc__btn {
-  border: 1px solid var(--border);
-  background: var(--bg-elev);
-  color: var(--text);
-  padding: 4px 9px;
-  font-size: 10px;
-  border-radius: 4px;
-  cursor: pointer;
-  font: inherit;
-}
-.ghc__btn:hover:not(:disabled) {
-  background: var(--bg-active, var(--bg-elev));
-}
-.ghc__btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.ghc__btn--primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-text, #000);
-}
 .ghc__push-row {
-  margin-top: 4px;
+  margin-top: 2px;
 }
 </style>

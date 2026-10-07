@@ -7,6 +7,7 @@ import { computed } from 'vue';
 import type { DisplayMode } from '../../lib/property-types';
 import { useI18n } from '../../i18n';
 import DisplayModeMenu from './DisplayModeMenu.vue';
+import Icons from '../Icons.vue';
 import TextCell from './value-cells/TextCell.vue';
 import NumberCell from './value-cells/NumberCell.vue';
 import BooleanCell from './value-cells/BooleanCell.vue';
@@ -46,7 +47,21 @@ const isPlaceholder = computed(() => props.value == null || props.value === '');
         :aria-label="pinned ? t('inspector.unpin') : t('inspector.pin')"
         :aria-pressed="pinned"
         @click="emit('togglePin')"
-      >★</button>
+      >
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          :fill="pinned ? 'currentColor' : 'none'"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" />
+        </svg>
+      </button>
       <span class="prop-row__key" :title="propKey">{{ propKey }}</span>
       <span class="prop-row__meta">
         <DisplayModeMenu :effective-mode="mode" :value="value" @recast="emit('recast', $event)" />
@@ -56,7 +71,7 @@ const isPlaceholder = computed(() => props.value == null || props.value === '');
           :title="t('inspector.deleteProperty')"
           :aria-label="t('inspector.deleteProperty')"
           @click="emit('remove')"
-        >×</button>
+        ><Icons name="close" :size="12" /></button>
       </span>
     </div>
 
@@ -76,29 +91,38 @@ const isPlaceholder = computed(() => props.value == null || props.value === '');
 <style scoped>
 .prop-row {
   display: grid;
-  grid-template-columns: minmax(96px, 38%) 1fr;
-  column-gap: var(--sp-3);
+  grid-template-columns: minmax(92px, 38%) 1fr;
+  column-gap: 8px;
   align-items: start;
-  border-radius: var(--r-sm);
+  min-height: 28px;
+  padding: 2px 4px;
+  border-radius: 7px;
+  transition: background var(--dur-fast) var(--ease);
 }
 .prop-row:hover {
-  background: var(--bg-hover);
+  background: var(--fill-1);
 }
 .prop-row__label {
   display: flex;
   align-items: center;
-  gap: var(--sp-1);
+  gap: 2px;
   min-width: 0;
-  padding: var(--sp-1) 0;
+  min-height: 24px;
 }
 .prop-row__pin {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  margin-left: -2px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-xs);
   background: transparent;
-  border: none;
-  color: var(--border);
+  color: var(--text-3);
   cursor: pointer;
-  font-size: 11px;
-  line-height: 1;
-  padding: 0 2px;
   opacity: 0;
   transition: opacity var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
 }
@@ -107,18 +131,23 @@ const isPlaceholder = computed(() => props.value == null || props.value === '');
 .prop-row__pin--on {
   opacity: 1;
 }
+.prop-row__pin:hover {
+  color: var(--text);
+}
+.prop-row__pin--on,
+.prop-row__pin--on:hover {
+  color: var(--accent);
+}
 .prop-row__pin:focus-visible,
 .prop-row__del:focus-visible {
   outline: none;
   opacity: 1;
   box-shadow: var(--ring);
 }
-.prop-row__pin--on {
-  color: var(--warning);
-}
 .prop-row__key {
+  min-width: 0;
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--text-3);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -126,7 +155,7 @@ const isPlaceholder = computed(() => props.value == null || props.value === '');
 .prop-row__meta {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  gap: 0;
   margin-left: auto;
   opacity: 0;
   transition: opacity var(--dur-fast) var(--ease);
@@ -136,23 +165,27 @@ const isPlaceholder = computed(() => props.value == null || props.value === '');
   opacity: 1;
 }
 .prop-row__del {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-xs);
   background: transparent;
-  border: none;
-  color: var(--text-muted);
+  color: var(--text-3);
   cursor: pointer;
-  font-size: 14px;
-  line-height: 1;
-  padding: 0 2px;
-  border-radius: var(--r-sm);
 }
 .prop-row__del:hover {
+  background: var(--fill-1);
   color: var(--danger);
 }
 .prop-row__value {
   display: flex;
   align-items: center;
   min-width: 0;
-  padding: var(--sp-1) 0;
+  min-height: 24px;
   font-size: 13px;
   color: var(--text);
 }

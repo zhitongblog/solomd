@@ -11,7 +11,8 @@
  * blow out the panel.
  */
 import { computed, ref } from 'vue';
-import { DsChip, DsListRow } from '../ui';
+import Icons from './Icons.vue';
+import '../styles/panels.css';
 import { useI18n } from '../i18n';
 import type { NeighborGroup, NeighborRef } from '../composables/useNeighborhood';
 
@@ -51,35 +52,39 @@ function onRowClick(e: MouseEvent, r: NeighborRef) {
 
 <template>
   <section class="nbgroup">
-    <DsListRow class="nbgroup__head" @click="collapsed = !collapsed">
-      <template #leading>
-        <span
-          class="nbgroup__caret"
-          :class="{ 'nbgroup__caret--collapsed': collapsed }"
-          aria-hidden="true"
-        >▾</span>
-      </template>
-      <span class="nbgroup__label">{{ group.label }}</span>
-      <template #trailing>
-        <DsChip size="sm">{{ group.refs.length }}</DsChip>
-      </template>
-    </DsListRow>
+    <button
+      type="button"
+      class="rp-row nbgroup__head"
+      :aria-expanded="!collapsed"
+      @click="collapsed = !collapsed"
+    >
+      <Icons
+        class="nbgroup__caret"
+        :class="{ 'nbgroup__caret--collapsed': collapsed }"
+        name="chevron-down"
+        :size="12"
+      />
+      <span class="rp-row__label nbgroup__label">{{ group.label }}</span>
+      <span class="rp-count">{{ group.refs.length }}</span>
+    </button>
 
     <div v-if="!collapsed" class="nbgroup__list" role="list">
-      <DsListRow
+      <button
         v-for="r in visibleRefs"
         :key="r.path"
-        class="nbgroup__row"
+        type="button"
+        class="rp-row nbgroup__row"
+        :class="{ 'is-active': r.path === focalPath }"
         :title="r.path"
-        :selected="r.path === focalPath"
         @click="onRowClick($event, r)"
       >
-        <span class="nbgroup__title">{{ r.title }}</span>
-      </DsListRow>
+        <Icons class="rp-row__icon" name="file" :size="14" />
+        <span class="rp-row__label nbgroup__title">{{ r.title }}</span>
+      </button>
 
       <button
         v-if="hiddenCount > 0 && !expanded"
-        class="nbgroup__more"
+        class="rp-row nbgroup__more"
         type="button"
         @click="expanded = true"
       >{{ t('neighborhood.showMore', { n: hiddenCount }) }}</button>
@@ -89,61 +94,32 @@ function onRowClick(e: MouseEvent, r: NeighborRef) {
 
 <style scoped>
 .nbgroup {
-  margin: var(--sp-1) 0;
+  margin: 2px 0;
 }
 .nbgroup__head {
-  color: var(--text-muted);
+  color: var(--text-2);
 }
 .nbgroup__caret {
-  font-size: 10px;
-  color: var(--text-faint);
+  flex: 0 0 auto;
+  color: var(--text-3);
   transition: transform var(--dur-fast) var(--ease);
-  display: inline-block;
 }
 .nbgroup__caret--collapsed {
   transform: rotate(-90deg);
 }
 .nbgroup__label {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 500;
 }
 .nbgroup__list {
   /* Cap tall groups so a large fan-out scrolls instead of pushing the panel. */
   max-height: 320px;
   overflow-y: auto;
-  padding-left: var(--sp-2);
-}
-.nbgroup__row {
-  font-size: 12px;
-}
-.nbgroup__title {
-  font-weight: 500;
+  padding-left: 12px;
 }
 .nbgroup__more {
-  display: block;
-  width: 100%;
-  text-align: left;
-  background: transparent;
-  border: none;
-  padding: var(--sp-1) var(--sp-3);
-  margin-top: var(--sp-1);
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--accent);
-  cursor: pointer;
-  border-radius: var(--r-sm);
-}
-.nbgroup__more:hover {
-  background: var(--bg-hover);
-}
-.nbgroup__more:focus-visible {
-  outline: none;
-  box-shadow: var(--ring);
+  padding-left: 30px;
+  font-size: 12px;
+  color: var(--accent-text);
 }
 </style>

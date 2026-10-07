@@ -3,14 +3,13 @@
  *  it bare (unquoted) in YAML. Non-numeric input falls back to the raw string
  *  so the user isn't silently data-lost. */
 import { ref, watch, nextTick } from 'vue';
-import { DsInput } from '../../../ui';
 
 const props = defineProps<{ value: unknown }>();
 const emit = defineEmits<{ update: [number | string] }>();
 
 const editing = ref(false);
 const draft = ref('');
-const inputRef = ref<InstanceType<typeof DsInput> | null>(null);
+const inputRef = ref<HTMLInputElement | null>(null);
 
 function display(): string {
   const v = props.value;
@@ -22,9 +21,8 @@ async function startEdit() {
   draft.value = display();
   editing.value = true;
   await nextTick();
-  const el = (inputRef.value?.$el as HTMLElement | undefined)?.querySelector?.('input');
-  el?.focus();
-  el?.select();
+  inputRef.value?.focus();
+  inputRef.value?.select();
 }
 
 function commit() {
@@ -50,11 +48,11 @@ watch(
 
 <template>
   <div class="prop-number-cell">
-    <DsInput
+    <input
       v-if="editing"
       ref="inputRef"
       v-model="draft"
-      size="sm"
+      class="rp-input prop-cell-input"
       type="text"
       inputmode="decimal"
       @keydown.enter.prevent="commit"

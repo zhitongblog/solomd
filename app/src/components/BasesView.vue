@@ -19,6 +19,8 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useWorkspaceIndexStore, type IndexEntry } from '../stores/workspaceIndex';
 import { useFiles } from '../composables/useFiles';
 import { useI18n } from '../i18n';
+import Icons from './Icons.vue';
+import '../styles/panels.css';
 import {
   applyFilters,
   applySort,
@@ -157,7 +159,7 @@ function toggleSort(col: ColumnDef) {
 }
 function sortIndicator(col: ColumnDef): string {
   if (!sort.value || sort.value.column !== col.id) return '';
-  return sort.value.dir === 'asc' ? ' ▲' : ' ▼';
+  return sort.value.dir === 'asc' ? '↑' : '↓';
 }
 
 // ---- final rows after filter+sort ----
@@ -351,79 +353,88 @@ function toggleTagFilter(columnId: string, tag: string) {
 </script>
 
 <template>
-  <div class="bases">
-    <header class="bases__head">
-      <div class="bases__head-left">
-        <button
-          class="bases__back"
-          :title="t('bases.back')"
-          @click="closeBases"
-        >
-          {{ t('bases.back') }}
-        </button>
-        <strong class="bases__title">{{ t('bases.title') }}</strong>
-        <select
-          class="bases__view-select"
-          :value="activeViewName"
-          @change="(e) => selectView((e.target as HTMLSelectElement).value)"
-        >
-          <option v-for="v in savedViews" :key="v.name" :value="v.name">
-            {{ v.name }}
-          </option>
-        </select>
-        <button class="bases__btn" @click="newView">
-          {{ t('bases.newView') }}
-        </button>
-        <button
-          class="bases__btn"
-          :disabled="savedViews.length <= 1"
-          @click="deleteActiveView"
-        >
-          {{ t('bases.deleteView') }}
-        </button>
-      </div>
-      <div class="bases__head-right">
-        <div class="bases__col-picker">
-          <button class="bases__btn" @click="columnPickerOpen = !columnPickerOpen">
-            {{ t('bases.columns') }}
-          </button>
-          <div v-if="columnPickerOpen" class="bases__col-menu" @click.stop>
-            <label
-              v-for="c in allColumns"
-              :key="c.id"
-              class="bases__col-menu-item"
-            >
-              <input
-                type="checkbox"
-                :checked="isColumnVisible(c.id)"
-                @change="toggleColumn(c.id)"
-              />
-              <span>{{ c.label }}</span>
-              <span class="bases__kind">{{ c.kind }}</span>
-            </label>
-          </div>
-        </div>
-        <button
-          v-if="filters.length > 0"
-          class="bases__btn"
-          @click="clearFilters"
-        >
-          {{ t('bases.clearFilters') }}
-        </button>
-        <span class="bases__count">
-          {{ t('bases.rowCount', { n: processedRows.length }) }}
-        </span>
-      </div>
+  <div class="bases pg">
+    <header class="bases__head pg-head">
+      <button
+        class="bases__back pg-icon-btn"
+        :title="t('bases.back')"
+        :aria-label="t('bases.back')"
+        @click="closeBases"
+      >
+        <Icons name="chevron-left" :size="18" />
+      </button>
+      <h1 class="bases__title pg-title">{{ t('bases.title') }}</h1>
+      <span class="bases__count pg-subtitle">
+        {{ t('bases.rowCount', { n: processedRows.length }) }}
+      </span>
     </header>
+    <div class="bases__toolbar pg-toolbar">
+      <select
+        class="bases__view-select rp-select"
+        :value="activeViewName"
+        @change="(e) => selectView((e.target as HTMLSelectElement).value)"
+      >
+        <option v-for="v in savedViews" :key="v.name" :value="v.name">
+          {{ v.name }}
+        </option>
+      </select>
+      <button class="bases__btn pg-icon-btn" :title="t('bases.newView')" :aria-label="t('bases.newView')" @click="newView">
+        <Icons name="plus" />
+      </button>
+      <button
+        class="bases__btn pg-icon-btn"
+        :title="t('bases.deleteView')"
+        :aria-label="t('bases.deleteView')"
+        :disabled="savedViews.length <= 1"
+        @click="deleteActiveView"
+      >
+        <Icons name="trash" />
+      </button>
+      <span class="pg-spacer" />
+      <button
+        v-if="filters.length > 0"
+        class="bases__btn rp-btn rp-btn--ghost"
+        @click="clearFilters"
+      >
+        <Icons name="close" :size="14" />
+        {{ t('bases.clearFilters') }}
+      </button>
+      <div class="bases__col-picker">
+        <button
+          class="bases__btn rp-btn"
+          :class="{ 'is-open': columnPickerOpen }"
+          @click="columnPickerOpen = !columnPickerOpen"
+        >
+          {{ t('bases.columns') }}
+          <Icons name="chevron-down" :size="14" />
+        </button>
+        <div v-if="columnPickerOpen" class="bases__col-menu" @click.stop>
+          <label
+            v-for="c in allColumns"
+            :key="c.id"
+            class="bases__col-menu-item"
+          >
+            <input
+              type="checkbox"
+              class="rp-check"
+              :checked="isColumnVisible(c.id)"
+              @change="toggleColumn(c.id)"
+            />
+            <span>{{ c.label }}</span>
+            <span class="bases__kind">{{ c.kind }}</span>
+          </label>
+        </div>
+      </div>
+    </div>
 
-    <div v-if="!idx.ready" class="bases__empty">
+    <div v-if="!idx.ready" class="bases__empty pg-empty">
       {{ t('bases.openFolder') }}
     </div>
-    <div v-else-if="idx.entries.length === 0" class="bases__empty">
+    <div v-else-if="idx.entries.length === 0" class="bases__empty pg-empty">
       {{ t('bases.noEntries') }}
     </div>
     <div v-else class="bases__scroll" ref="scrollEl" @scroll="onScroll">
-      <table class="bases__table">
+      <table class="bases__table pg-table">
         <thead>
           <tr>
             <th
@@ -478,6 +489,7 @@ function toggleTagFilter(columnId: string, tag: string) {
                     >
                       <input
                         type="checkbox"
+                        class="rp-check"
                         :checked="selectedTagsFor(col.id).includes(v)"
                         @change="toggleTagFilter(col.id, v)"
                       />
@@ -574,137 +586,89 @@ function toggleTagFilter(columnId: string, tag: string) {
 
 <style scoped>
 .bases {
-  display: flex;
-  flex-direction: column;
   flex: 1;
-  min-height: 0;
-  background: var(--bg);
-  color: var(--text);
-  overflow: hidden;
 }
 .bases__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-soft);
-  flex-wrap: wrap;
-}
-.bases__head-left,
-.bases__head-right {
-  display: flex;
-  align-items: center;
+  padding-left: 16px;
   gap: 8px;
 }
 .bases__back {
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  color: var(--text);
-  padding: 4px 10px;
-  font-size: 12px;
-  border-radius: 4px;
+  margin-right: 2px;
+}
+.bases__count {
+  margin-left: 4px;
+  padding-top: 4px;
+}
+.bases__toolbar {
+  gap: 4px;
+  border-bottom: var(--bd-hair);
+  padding-bottom: 10px;
+}
+.bases__view-select {
+  width: auto;
+  min-width: 140px;
+  max-width: 240px;
+  margin-right: 4px;
   cursor: pointer;
-}
-.bases__back:hover {
-  background: var(--bg-hover);
-}
-.bases__title {
-  font-size: 13px;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-.bases__view-select,
-.bases__btn {
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  color: var(--text);
-  padding: 4px 8px;
-  font-size: 12px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-.bases__btn:hover:not(:disabled) {
-  background: var(--bg-hover);
-}
-.bases__btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 .bases__col-picker {
   position: relative;
+  margin-left: 4px;
+}
+.bases__btn.is-open {
+  background: var(--fill-2);
 }
 .bases__col-menu {
   position: absolute;
   top: 100%;
   right: 0;
   margin-top: 4px;
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  background: var(--bg-pop);
+  border: var(--bd-hair);
+  border-radius: var(--r-lg);
   padding: 4px;
-  min-width: 200px;
+  min-width: 220px;
   max-height: 320px;
   overflow-y: auto;
-  z-index: 20;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  z-index: var(--z-pop);
+  box-shadow: var(--sh-pop);
 }
 .bases__col-menu-item {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  font-size: 12px;
+  gap: 8px;
+  height: 28px;
+  padding: 0 8px;
+  font-size: 13px;
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: var(--r-sm);
 }
 .bases__col-menu-item:hover {
-  background: var(--bg-hover);
+  background: var(--fill-1);
 }
 .bases__kind {
   margin-left: auto;
-  font-size: 10px;
-  color: var(--text-faint);
-  text-transform: uppercase;
-}
-.bases__count {
   font-size: 11px;
-  color: var(--text-faint);
-  font-variant-numeric: tabular-nums;
-}
-.bases__empty {
-  padding: 48px 16px;
-  text-align: center;
-  color: var(--text-faint);
-  font-size: 13px;
+  color: var(--text-3);
 }
 .bases__scroll {
   flex: 1;
   overflow: auto;
   min-height: 0;
 }
+.bases__scroll::-webkit-scrollbar-corner {
+  background: transparent;
+}
 .bases__table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  font-size: 12px;
   table-layout: auto;
 }
 .bases__th {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  background: var(--bg-soft);
-  text-align: left;
-  padding: 6px 10px;
-  font-weight: 600;
-  color: var(--text-muted);
-  border-bottom: 1px solid var(--border);
   cursor: pointer;
-  white-space: nowrap;
-  user-select: none;
+  transition: color var(--dur-fast) var(--ease);
+}
+.bases__th:first-child,
+.bases__td:first-child {
+  padding-left: 24px;
 }
 .bases__th:hover {
   color: var(--text);
@@ -713,30 +677,49 @@ function toggleTagFilter(columnId: string, tag: string) {
   text-align: right;
 }
 .bases__sort {
-  font-size: 10px;
-  color: var(--accent);
-  margin-left: 2px;
+  margin-left: 4px;
+  color: var(--accent-text);
 }
 .bases__filter-row {
   position: sticky;
-  top: 28px;
+  top: 32px;
   z-index: 1;
 }
-.bases__filter-cell {
+.pg-table .bases__filter-cell {
+  height: 36px;
+  top: 32px;
+  padding: 0 8px;
   background: var(--bg);
-  padding: 4px 8px;
-  border-bottom: 1px solid var(--border);
-  vertical-align: top;
+  vertical-align: middle;
+  font-weight: 400;
 }
-.bases__filter-input {
+.pg-table .bases__filter-cell:first-child {
+  padding-left: 20px;
+}
+.bases__filter-input,
+.bases__range input,
+.bases__multi summary {
   width: 100%;
-  font-size: 11px;
-  padding: 3px 6px;
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: 3px;
+  height: 24px;
+  font: inherit;
+  font-size: 12px;
+  padding: 0 7px;
+  background: var(--fill-1);
+  border: var(--bd-hair);
+  border-radius: var(--r-sm);
   color: var(--text);
   box-sizing: border-box;
+  outline: none;
+  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+}
+.bases__filter-input::placeholder {
+  color: var(--text-3);
+}
+.bases__filter-input:focus,
+.bases__range input:focus {
+  background: var(--bg);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 .bases__range {
   display: flex;
@@ -745,95 +728,92 @@ function toggleTagFilter(columnId: string, tag: string) {
 .bases__range input {
   flex: 1;
   min-width: 0;
-  font-size: 11px;
-  padding: 3px 4px;
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  color: var(--text);
-  box-sizing: border-box;
+  padding: 0 4px;
 }
 .bases__multi {
-  font-size: 11px;
+  position: relative;
+  font-size: 12px;
 }
 .bases__multi summary {
+  display: flex;
+  align-items: center;
   cursor: pointer;
-  padding: 3px 6px;
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: 3px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   list-style: none;
+  color: var(--text-2);
 }
 .bases__multi summary::-webkit-details-marker {
   display: none;
 }
 .bases__multi-list {
-  margin-top: 2px;
+  position: absolute;
+  left: 0;
+  top: 100%;
+  min-width: 100%;
+  margin-top: 4px;
   padding: 4px;
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  max-height: 180px;
+  background: var(--bg-pop);
+  border: var(--bd-hair);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-pop);
+  max-height: 220px;
   overflow-y: auto;
+  z-index: var(--z-pop);
 }
 .bases__multi-item {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 2px 4px;
+  gap: 8px;
+  height: 28px;
+  padding: 0 8px;
   cursor: pointer;
-  border-radius: 3px;
+  border-radius: var(--r-sm);
+  font-size: 13px;
+  color: var(--text);
+  white-space: nowrap;
 }
 .bases__multi-item:hover {
-  background: var(--bg-hover);
+  background: var(--fill-1);
 }
 .bases__multi-empty {
-  padding: 6px;
+  padding: 8px;
   text-align: center;
-  color: var(--text-faint);
-}
-.bases__row:hover .bases__td {
-  background: var(--bg-hover);
+  color: var(--text-3);
 }
 .bases__td {
-  padding: 6px 10px;
-  border-bottom: 1px solid var(--border);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   max-width: 320px;
-  height: 32px;
   box-sizing: border-box;
 }
 .bases__td--number {
   text-align: right;
-  font-variant-numeric: tabular-nums;
 }
 .bases__td--date {
-  font-variant-numeric: tabular-nums;
-  color: var(--text-muted);
+  color: var(--text-2);
 }
 .bases__link {
-  color: var(--accent);
+  color: var(--text);
+  font-weight: 500;
   text-decoration: none;
   cursor: pointer;
 }
-.bases__link:hover {
-  text-decoration: underline;
+.bases__row:hover .bases__link {
+  color: var(--accent-text);
 }
 .bases__pad td {
   padding: 0;
   border: 0;
+  height: auto;
 }
-.bases__pad {
-  /* Spacer rows for virtual scrolling. Height set inline. */
+.pg-table tbody tr.bases__pad:hover td {
+  background: transparent;
 }
 .bases__empty-row {
-  padding: 32px 16px;
+  padding: 48px 16px !important;
+  height: auto !important;
   text-align: center;
-  color: var(--text-faint);
+  color: var(--text-3);
+  white-space: normal;
 }
 </style>

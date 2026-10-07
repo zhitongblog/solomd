@@ -28,7 +28,9 @@ import {
 } from '../lib/viewFile';
 import { RELATIVE_DATE_PRESETS } from '../lib/relativeDates';
 import type { ColumnDef } from '../lib/bases';
-import { DsButton, DsInput, DsSelect, type DsSelectOption } from '../ui';
+import { DsInput, DsSelect, type DsSelectOption } from '../ui';
+import Icons from './Icons.vue';
+import '../styles/panels.css';
 
 const props = withDefaults(
   defineProps<{
@@ -183,18 +185,24 @@ function asGroup(node: FilterNode): FilterGroup {
 <template>
   <div class="fb" :class="`fb--depth-${depth}`">
     <div class="fb__head">
-      <div class="fb__combi" role="tablist" :aria-label="t('views.combinator')">
+      <div
+        class="fb__combi rp-seg"
+        role="tablist"
+        :aria-label="t('views.combinator')"
+        :style="{ '--seg-n': 2, '--seg-i': modelValue.combinator === 'any' ? 1 : 0 }"
+      >
+        <span class="rp-seg__thumb" aria-hidden="true" />
         <button
-          class="fb__combi-btn"
-          :class="{ 'fb__combi-btn--on': modelValue.combinator === 'all' }"
+          class="fb__combi-btn rp-seg__opt"
+          :class="{ 'fb__combi-btn--on is-on': modelValue.combinator === 'all' }"
           type="button"
           role="tab"
           :aria-selected="modelValue.combinator === 'all'"
           @click="setCombinator('all')"
         >{{ t('views.matchAll') }}</button>
         <button
-          class="fb__combi-btn"
-          :class="{ 'fb__combi-btn--on': modelValue.combinator === 'any' }"
+          class="fb__combi-btn rp-seg__opt"
+          :class="{ 'fb__combi-btn--on is-on': modelValue.combinator === 'any' }"
           type="button"
           role="tab"
           :aria-selected="modelValue.combinator === 'any'"
@@ -219,7 +227,7 @@ function asGroup(node: FilterNode): FilterGroup {
           aria-hidden="true"
           @dragstart="onDragStart(idx, $event)"
           @dragend="onDragEnd"
-        >⠿</span>
+        ><svg width="8" height="12" viewBox="0 0 8 12" fill="currentColor"><circle cx="2" cy="2" r="1.1" /><circle cx="6" cy="2" r="1.1" /><circle cx="2" cy="6" r="1.1" /><circle cx="6" cy="6" r="1.1" /><circle cx="2" cy="10" r="1.1" /><circle cx="6" cy="10" r="1.1" /></svg></span>
 
         <!-- Nested group -->
         <FilterBuilder
@@ -314,12 +322,12 @@ function asGroup(node: FilterNode): FilterGroup {
         </template>
 
         <button
-          class="fb__del"
+          class="fb__del rp-icon-btn"
           type="button"
           :title="t('views.removeRow')"
-          aria-label="remove"
+          :aria-label="t('views.removeRow')"
           @click="removeChild(idx)"
-        >✕</button>
+        ><Icons name="close" :size="14" /></button>
       </li>
 
       <li v-if="modelValue.children.length === 0" class="fb__empty">
@@ -328,8 +336,12 @@ function asGroup(node: FilterNode): FilterGroup {
     </ul>
 
     <div class="fb__add">
-      <DsButton variant="subtle" size="sm" @click="addCondition">{{ t('views.addCondition') }}</DsButton>
-      <DsButton v-if="depth < maxDepth" variant="ghost" size="sm" @click="addGroup">{{ t('views.addGroup') }}</DsButton>
+      <button class="rp-btn rp-btn--sm" type="button" @click="addCondition">
+        <Icons name="plus" :size="14" />{{ t('views.addCondition') }}
+      </button>
+      <button v-if="depth < maxDepth" class="rp-btn rp-btn--sm rp-btn--ghost" type="button" @click="addGroup">
+        <Icons name="plus" :size="14" />{{ t('views.addGroup') }}
+      </button>
     </div>
   </div>
 </template>
@@ -340,45 +352,26 @@ export default { name: 'FilterBuilder' };
 
 <style scoped>
 .fb {
-  border: var(--bd);
-  border-radius: var(--r-md);
-  padding: var(--sp-2);
+  border: var(--bd-hair);
+  border-radius: var(--r-lg);
+  padding: 10px;
   background: var(--bg);
 }
 .fb--depth-1,
 .fb--depth-2,
 .fb--depth-3 {
-  background: var(--bg-elev);
+  background: var(--fill-1);
 }
 .fb__head {
   display: flex;
   align-items: center;
-  margin-bottom: var(--sp-2);
+  margin-bottom: 8px;
 }
 .fb__combi {
-  display: inline-flex;
-  border: var(--bd);
-  border-radius: var(--r-md);
-  overflow: hidden;
+  height: 26px;
 }
 .fb__combi-btn {
-  padding: var(--sp-1) var(--sp-3);
-  font: inherit;
-  font-size: 11px;
-  font-weight: 600;
-  background: transparent;
-  border: 0;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
-}
-.fb__combi-btn:hover:not(.fb__combi-btn--on) {
-  background: var(--bg-hover);
-  color: var(--text);
-}
-.fb__combi-btn--on {
-  background: var(--accent);
-  color: var(--accent-fg);
+  padding: 0 12px;
 }
 .fb__rows {
   list-style: none;
@@ -386,31 +379,44 @@ export default { name: 'FilterBuilder' };
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--sp-1);
+  gap: 6px;
 }
 .fb__row {
   display: flex;
   align-items: center;
-  gap: var(--sp-1);
+  gap: 6px;
+  border-radius: var(--r-sm);
 }
 .fb__row--group {
   align-items: stretch;
 }
 .fb__row--over {
-  outline: 1px dashed var(--accent);
-  outline-offset: 1px;
-  border-radius: var(--r-sm);
+  outline: 1.5px dashed var(--accent);
+  outline-offset: 2px;
 }
 .fb__grip {
-  cursor: grab;
-  color: var(--text-faint);
-  font-size: 12px;
-  user-select: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex: 0 0 auto;
-  padding: 0 2px;
+  width: 14px;
+  height: 24px;
+  cursor: grab;
+  color: var(--text-3);
+  opacity: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: opacity var(--dur-fast) var(--ease);
+}
+.fb__row:hover > .fb__grip {
+  opacity: 0.8;
 }
 .fb__grip:active {
   cursor: grabbing;
+}
+.fb__row--group > .fb__grip {
+  align-self: flex-start;
+  margin-top: 10px;
 }
 .fb__nested {
   flex: 1 1 auto;
@@ -428,7 +434,7 @@ export default { name: 'FilterBuilder' };
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
-  gap: var(--sp-1);
+  gap: 4px;
 }
 .fb__val--date .fb__rel {
   flex: 0 0 116px;
@@ -441,54 +447,46 @@ export default { name: 'FilterBuilder' };
 }
 .fb__regex {
   flex: 0 0 auto;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  min-width: 28px;
+  font-family: var(--font-mono);
   font-size: 11px;
-  font-weight: 700;
-  padding: 0 var(--sp-2);
-  border: var(--bd);
-  border-radius: var(--r-sm);
-  background: var(--bg);
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease),
-    border-color var(--dur-fast) var(--ease);
-}
-.fb__regex:hover {
-  border-color: var(--text-faint);
-  color: var(--text);
-}
-.fb__regex--on {
-  background: var(--accent);
-  color: var(--accent-fg);
-  border-color: var(--accent);
-}
-.fb__regex--bad {
-  border-color: var(--danger);
-  color: var(--danger);
-}
-.fb__del {
-  flex: 0 0 auto;
+  font-weight: 600;
+  padding: 0 6px;
   border: 0;
-  background: transparent;
-  color: var(--text-faint);
-  cursor: pointer;
-  font-size: 11px;
-  padding: var(--sp-1);
   border-radius: var(--r-sm);
+  background: var(--fill-1);
+  color: var(--text-3);
+  cursor: pointer;
   transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
 }
-.fb__del:hover {
-  color: var(--danger);
+.fb__regex:hover {
+  background: var(--fill-2);
+  color: var(--text);
+}
+.fb__regex:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+.fb__regex--on {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.fb__regex--bad {
   background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
+}
+.fb__del:hover:not(:disabled) {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
 }
 .fb__empty {
   font-size: 12px;
-  color: var(--text-faint);
-  padding: var(--sp-1) var(--sp-2);
+  color: var(--text-3);
+  padding: 4px 8px;
 }
 .fb__add {
   display: flex;
-  gap: var(--sp-2);
-  margin-top: var(--sp-2);
+  gap: 6px;
+  margin-top: 10px;
 }
 </style>
