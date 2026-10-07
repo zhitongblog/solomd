@@ -1,0 +1,3 @@
+⌘F volta a abrir a barra de busca no editor — o atalho tinha parado de responder desde a 4.14.8.
+
+Obrigado ao nosso testador 张工, cujos relatórios levaram a esta correção.

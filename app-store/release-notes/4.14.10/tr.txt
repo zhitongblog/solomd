@@ -1,0 +1,3 @@
+Düzenleyicide ⌘F yeniden arama çubuğunu açıyor — kısayol 4.14.8'den beri yanıt vermiyordu.
+
+Bu düzeltmeye yol açan raporları için test uzmanımız 张工'a teşekkürler.

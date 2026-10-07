@@ -1,0 +1,3 @@
+⌘F ouvre de nouveau la barre de recherche dans l’éditeur — le raccourci ne répondait plus depuis la 4.14.8.
+
+Merci à notre testeur 张工, dont les rapports ont mené à cette correction.

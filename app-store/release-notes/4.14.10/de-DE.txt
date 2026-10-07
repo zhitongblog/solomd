@@ -1,0 +1,3 @@
+⌘F öffnet im Editor wieder die Suchleiste – das Tastenkürzel reagierte seit 4.14.8 nicht mehr.
+
+Danke an unseren Tester 张工, dessen Berichte zu dieser Korrektur geführt haben.

@@ -1,0 +1,3 @@
+⌘F opens the find bar in the editor again — the shortcut had stopped responding since 4.14.8.
+
+Thank you to our tester 张工, whose reports led to this fix.
