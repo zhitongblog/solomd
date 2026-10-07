@@ -133,6 +133,15 @@ export const zh: I18n = {
     welcomeTour: "欢迎导览",
   },
   // 5.0 window header (Toolbar.vue)
+  // 5.0 phone shell (Sidebar variant=phone, PhoneTabBar, Toolbar)
+  phone: {
+    notes: "笔记",
+    daily: "日记",
+    count: "{n} 篇",
+    newNote: "新建笔记",
+    search: "搜索",
+    navLabel: "分区",
+  },
   header: {
     segLive: "实时",
     segSource: "源码",

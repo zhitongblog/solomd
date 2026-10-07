@@ -132,6 +132,15 @@ export const en = {
     welcomeTour: "Welcome Tour",
   },
   // 5.0 window header (Toolbar.vue)
+  // 5.0 phone shell (Sidebar variant=phone, PhoneTabBar, Toolbar)
+  phone: {
+    notes: "Notes",
+    daily: "Daily note",
+    count: "{n}",
+    newNote: "New note",
+    search: "Search",
+    navLabel: "Sections",
+  },
   header: {
     segLive: "Live",
     segSource: "Source",

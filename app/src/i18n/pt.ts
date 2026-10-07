@@ -134,6 +134,15 @@ export const pt: I18n = {
     welcomeTour: "Tour de boas-vindas",
   },
   // 5.0 window header (Toolbar.vue)
+  // 5.0 phone shell (Sidebar variant=phone, PhoneTabBar, Toolbar)
+  phone: {
+    notes: "Notas",
+    daily: "Nota diária",
+    count: "{n}",
+    newNote: "Nova nota",
+    search: "Buscar",
+    navLabel: "Seções",
+  },
   header: {
     segLive: "Ao vivo",
     segSource: "Fonte",

@@ -132,6 +132,15 @@ export const ru: I18n = {
     welcomeTour: "Приветственный тур",
   },
   // 5.0 window header (Toolbar.vue)
+  // 5.0 phone shell (Sidebar variant=phone, PhoneTabBar, Toolbar)
+  phone: {
+    notes: "Заметки",
+    daily: "Ежедневная заметка",
+    count: "{n}",
+    newNote: "Новая заметка",
+    search: "Поиск",
+    navLabel: "Разделы",
+  },
   header: {
     segLive: "Живой",
     segSource: "Исходник",

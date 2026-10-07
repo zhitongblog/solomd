@@ -18,6 +18,7 @@ import { useExport } from '../composables/useExport';
 import { useToastsStore } from '../stores/toasts';
 import { cleanAIArtifacts } from '../lib/clean-ai';
 import { useI18n } from '../i18n';
+import { usePhoneStore } from '../stores/phone';
 import { openPath } from '@tauri-apps/plugin-opener';
 import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
 import { getCurrentWindow } from '@tauri-apps/api/window';
@@ -54,6 +55,13 @@ const tabs = useTabsStore();
 const settings = useSettingsStore();
 
 const { isNarrow } = useViewport();
+// 5.0 §8 — on a phone the header is the editor screen's nav bar: back to 笔记,
+// the note's title, preview, share, more.
+const phone = usePhoneStore();
+const phoneTitle = computed(() => (tabs.activeTab?.fileName ?? '').replace(/\.(md|markdown|txt)$/i, ''));
+function togglePhonePreview() {
+  pickViewMode(settings.viewMode === 'preview' ? 'liveEdit' : 'preview');
+}
 
 // #180 — tooltips show the chord that works right now. The chord used to be
 // baked into the translated string ("Open file (Ctrl+O)"), which turned every
@@ -824,8 +832,15 @@ onBeforeUnmount(() => {
     @mousedown.capture="onTitleBarMouseDown"
     @dblclick="onTitleBarDblClick"
   >
+    <template v-if="isNarrow">
+      <button class="toolbar__back" type="button" @click="phone.show('home')">
+        <Icon name="chevron-left" :size="22" />
+        <span>{{ t('phone.notes') }}</span>
+      </button>
+      <span class="toolbar__phone-title">{{ phoneTitle }}</span>
+    </template>
     <button
-      v-if="!settings.showFileTree"
+      v-else-if="!settings.showFileTree"
       class="icon-btn toolbar__sidebar-btn"
       @click="settings.toggleFileTree"
       :title="tip('header.showSidebar', 'view.toggleFileTree')"
@@ -861,6 +876,17 @@ onBeforeUnmount(() => {
 
     <div v-if="!settings.toolbarHidden" class="toolbar__actions">
       <button
+        v-if="isNarrow && isMarkdown"
+        class="icon-btn"
+        :class="{ active: settings.viewMode === 'preview' }"
+        :title="settings.viewMode === 'preview' ? t('header.segLive') : t('header.segPreview')"
+        :aria-label="settings.viewMode === 'preview' ? t('header.segLive') : t('header.segPreview')"
+        @click="togglePhonePreview"
+      >
+        <Icon :name="settings.viewMode === 'preview' ? 'pencil' : 'eye'" />
+      </button>
+      <button
+        v-if="!isNarrow"
         class="icon-btn"
         @click="$emit('open-search')"
         :title="tip('toolbar.searchTooltip', 'search.global')"
@@ -933,6 +959,7 @@ onBeforeUnmount(() => {
       </div>
 
       <button
+        v-if="!isNarrow"
         class="icon-btn"
         :class="{ active: !settings.rightSidebarHidden }"
         @click="settings.toggleRightSidebar"
@@ -1051,6 +1078,17 @@ onBeforeUnmount(() => {
                 </button>
               </template>
               <div class="dropdown__sep"></div>
+              <button
+                v-if="isNarrow"
+                class="dropdown__item dropdown__item--single"
+                role="menuitemcheckbox"
+                :aria-checked="!settings.rightSidebarHidden"
+                tabindex="-1"
+                @mousedown.prevent="act(() => settings.toggleRightSidebar())"
+              >
+                <span class="dropdown__check">{{ settings.rightSidebarHidden ? '' : '✓' }}</span>
+                <span class="dropdown__name">{{ t('menubar.toggleRightSidebar') }}</span>
+              </button>
               <button class="dropdown__item dropdown__item--single" role="menuitem" tabindex="-1" @mousedown.prevent="act(() => $emit('open-palette'))">
                 <span class="dropdown__check"></span>
                 <span class="dropdown__name">{{ t('header.palette') }}</span>
@@ -1327,6 +1365,59 @@ onBeforeUnmount(() => {
 .icon-btn:focus-visible {
   outline: none;
   box-shadow: var(--ring);
+}
+
+/* Touch screens (iPad): finger-sized targets in the header. */
+@media (pointer: coarse) {
+  .icon-btn {
+    width: 40px;
+    height: 40px;
+  }
+  .seg__btn {
+    height: 32px;
+    padding: 0 14px;
+  }
+}
+/* ── Phone nav bar (5.0 §8) ──────────────────────────────────────────── */
+.toolbar--narrow {
+  padding: 0 4px 0 2px;
+  gap: 2px;
+}
+.toolbar--narrow .toolbar__tabs {
+  display: none;
+}
+.toolbar--narrow .icon-btn {
+  width: 44px;
+  height: 44px;
+  color: var(--accent-text);
+}
+.toolbar__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  height: 44px;
+  padding: 0 6px 0 2px;
+  border: 0;
+  background: transparent;
+  color: var(--accent-text);
+  font: inherit;
+  font-size: 16px;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.toolbar__back:active {
+  opacity: 0.5;
+}
+.toolbar__phone-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
 }
 
 /* ── Segmented 实时 / 源码 / 预览 — the thumb slides ─────────────────── */

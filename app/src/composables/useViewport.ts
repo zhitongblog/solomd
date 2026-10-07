@@ -81,3 +81,30 @@ export function isNarrowViewport(): boolean {
   evaluate();
   return narrow.value;
 }
+
+/**
+ * 5.0 §7 — a tablet held in portrait (or a narrow touch window above the phone
+ * breakpoint): wide enough for the desktop shell, too narrow for a 260 px
+ * sidebar beside the text. There the sidebar floats over the editor instead,
+ * like iPad Notes. Touch only, so a desktop window dragged to the same width
+ * keeps its sidebar in the layout.
+ */
+const TABLET_OVERLAY_QUERY =
+  `(min-width: ${NARROW_BREAKPOINT_PX + 1}px) and (max-width: 1023px) and (pointer: coarse)`;
+const tabletOverlay = ref(false);
+let tabletMql: MediaQueryList | null = null;
+function evaluateTablet(): void {
+  // DEV-only QA hook, like ?forcePlain: preview the iPad-portrait overlay in a
+  // mouse-driven browser, where `pointer: coarse` never matches.
+  const forced =
+    import.meta.env?.DEV && typeof location !== 'undefined' && location.search.includes('forceTabletOverlay');
+  tabletOverlay.value = forced || (tabletMql?.matches ?? false);
+}
+export function useTabletOverlay() {
+  if (!tabletMql && typeof window !== 'undefined' && window.matchMedia) {
+    tabletMql = window.matchMedia(TABLET_OVERLAY_QUERY);
+    tabletMql.addEventListener('change', evaluateTablet);
+  }
+  evaluateTablet();
+  return { isTabletOverlay: readonly(tabletOverlay) };
+}

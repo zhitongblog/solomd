@@ -182,6 +182,9 @@ export function useFiles() {
       });
       openImageOverlay({ source: img, title: fileName, strings: overlayStrings() });
       workspace.pushRecent(path);
+      // 5.0 §8 — the phone shell moves to its editor screen on this (opening a
+      // note that is already the active tab changes no store state).
+      window.dispatchEvent(new CustomEvent('solomd:file-opened', { detail: { path } }));
       toasts.success(`Opened ${fileName}`);
     } catch (e) {
       console.error('open image failed', e);

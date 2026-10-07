@@ -132,6 +132,15 @@ export const ja: I18n = {
     welcomeTour: "ウェルカムツアー",
   },
   // 5.0 window header (Toolbar.vue)
+  // 5.0 phone shell (Sidebar variant=phone, PhoneTabBar, Toolbar)
+  phone: {
+    notes: "ノート",
+    daily: "デイリーノート",
+    count: "{n} 件",
+    newNote: "新規ノート",
+    search: "検索",
+    navLabel: "セクション",
+  },
   header: {
     segLive: "ライブ",
     segSource: "ソース",

@@ -132,6 +132,15 @@ export const uk: I18n = {
     welcomeTour: "Вітальний тур",
   },
   // 5.0 window header (Toolbar.vue)
+  // 5.0 phone shell (Sidebar variant=phone, PhoneTabBar, Toolbar)
+  phone: {
+    notes: "Нотатки",
+    daily: "Щоденна нотатка",
+    count: "{n}",
+    newNote: "Нова нотатка",
+    search: "Пошук",
+    navLabel: "Розділи",
+  },
   header: {
     segLive: "Наживо",
     segSource: "Код",

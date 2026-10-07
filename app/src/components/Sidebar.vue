@@ -31,7 +31,14 @@ import { shortcutLabel } from '../lib/keybindings';
 import { isMacOS } from '../lib/platform';
 import { useI18n } from '../i18n';
 
-const props = withDefaults(defineProps<{ macInset?: boolean }>(), { macInset: false });
+const props = withDefaults(
+  defineProps<{ macInset?: boolean; variant?: 'desktop' | 'phone' }>(),
+  { macInset: false, variant: 'desktop' },
+);
+/** 5.0 §8 — the phone home screen (笔记) is this sidebar, full-screen: large
+ *  title, cards instead of rows, touch-sized tree rows, a new-note button. All
+ *  behaviour (folder switching, tree actions, long-press menus) is shared. */
+const phone = computed(() => props.variant === 'phone');
 const emit = defineEmits<{
   (e: 'toggle'): void;
   (e: 'open-settings'): void;
@@ -175,13 +182,14 @@ onBeforeUnmount(() => {
 <template>
   <aside
     class="sb"
-    :class="{ 'sb--inset': props.macInset, 'sb--resizing': resizing }"
+    :class="{ 'sb--inset': props.macInset && !phone, 'sb--resizing': resizing, 'sb--phone': phone }"
     :style="{ '--sb-w': settings.fileTreeWidth + 'px' }"
     data-testid="sidebar"
   >
     <!-- macOS: the traffic lights sit in this strip; it is a drag region and
          keeps its left 80 px free of controls. -->
-    <div v-if="props.macInset" class="sb__inset" data-tauri-drag-region>
+    <h1 v-if="phone" class="sb__title">{{ t('phone.notes') }}</h1>
+    <div v-else-if="props.macInset" class="sb__inset" data-tauri-drag-region>
       <button
         class="sb__icon-btn"
         type="button"
@@ -198,12 +206,34 @@ onBeforeUnmount(() => {
       <button class="sb__search" type="button" @click="emit('open-quick-switcher')">
         <Icon name="search" :size="14" class="sb__search-icon" />
         <span class="sb__search-ph">{{ t('sidebar.search') }}</span>
-        <kbd v-if="switcherChord" class="sb__chord">{{ switcherChord }}</kbd>
+        <kbd v-if="switcherChord && !phone" class="sb__chord">{{ switcherChord }}</kbd>
       </button>
     </div>
 
     <div class="sb__scroll">
-      <nav class="sb__nav">
+      <nav v-if="phone" class="sb__cards" :aria-label="t('phone.notes')">
+        <button v-if="hasFolder" class="sb__card" type="button" @click="openToday">
+          <Icon name="today" :size="20" class="sb__card-icon" />
+          <span class="sb__card-label">{{ t('sidebar.today') }}</span>
+          <span class="sb__card-sub">{{ t('phone.daily') }}</span>
+        </button>
+        <button
+          v-if="hasFolder && settings.inboxWorkflowEnabled"
+          class="sb__card"
+          type="button"
+          @click="openInbox"
+        >
+          <Icon name="inbox" :size="20" class="sb__card-icon" />
+          <span class="sb__card-label">{{ t('sidebar.inbox') }}</span>
+          <span class="sb__card-sub">{{ t('phone.count', { n: inbox.inboxCount.value }) }}</span>
+        </button>
+        <button class="sb__card" type="button" aria-haspopup="menu" :aria-expanded="recentOpen" @click.stop="toggleRecent">
+          <Icon name="recent" :size="20" class="sb__card-icon" />
+          <span class="sb__card-label">{{ t('sidebar.recent') }}</span>
+          <span class="sb__card-sub">{{ t('phone.count', { n: recentList.length }) }}</span>
+        </button>
+      </nav>
+      <nav v-else class="sb__nav">
         <button
           v-if="hasFolder"
           class="sb__row"
@@ -296,7 +326,18 @@ onBeforeUnmount(() => {
       <ViewsPanel />
     </div>
 
-    <footer class="sb__foot">
+    <button
+      v-if="phone"
+      class="sb__fab"
+      type="button"
+      :title="t('phone.newNote')"
+      :aria-label="t('phone.newNote')"
+      @click="files.newFile()"
+    >
+      <Icon name="pencil" :size="24" />
+    </button>
+
+    <footer v-if="!phone" class="sb__foot">
       <div class="sb__foot-sync">
         <!-- Sync belongs to the open folder: nothing to report without one. -->
         <SyncStatusPill v-if="hasFolder" variant="footer" />
@@ -313,6 +354,7 @@ onBeforeUnmount(() => {
     </footer>
 
     <div
+      v-if="!phone"
       class="sb__resize"
       :class="{ 'sb__resize--active': resizing }"
       @mousedown="onResizeStart"
@@ -805,5 +847,104 @@ onBeforeUnmount(() => {
   .sb__menu {
     animation: none;
   }
+}
+
+/* ── 5.0 §8 phone home (variant="phone") ─────────────────────────────── */
+.sb--phone {
+  width: 100%;
+  flex: 1 1 auto;
+  background: var(--bg);
+  border-right: 0;
+  font-size: 15px;
+}
+.sb__title {
+  margin: 0;
+  padding: 12px 20px 8px;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+.sb--phone .sb__search-wrap {
+  padding: 4px 16px 12px;
+}
+.sb--phone .sb__search {
+  height: 38px;
+  border-radius: var(--r-lg);
+  font-size: 15px;
+  padding: 0 12px;
+}
+.sb__cards {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 10px;
+  padding: 0 16px 16px;
+}
+.sb__card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  padding: 14px;
+  border: 0;
+  border-radius: var(--r-xl);
+  background: var(--bg-sidebar);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: default;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--dur-fast) var(--ease-out), background var(--dur-fast);
+}
+.sb__card:active {
+  transform: scale(0.97);
+  background: var(--fill-2);
+}
+.sb__card-icon {
+  color: var(--accent);
+}
+.sb__card-label {
+  font-size: 15px;
+  font-weight: 600;
+}
+.sb__card-sub {
+  font-size: 12px;
+  color: var(--text-3);
+}
+/* The embedded tree at finger size: 44 px rows, 16 px text. */
+.sb.sb--phone :deep(.ftree) {
+  padding: 0 8px;
+}
+/* (0,3,0) — beats FileTree's own scoped `.ftree[data-v] .ftree__item`. */
+.sb.sb--phone :deep(.ftree .ftree__item) {
+  min-height: 44px;
+  font-size: 15px;
+  border-radius: var(--r-md);
+}
+.sb--phone .sb__scroll {
+  padding-bottom: 96px;
+}
+.sb__fab {
+  position: absolute;
+  right: 20px;
+  bottom: 20px;
+  width: 56px;
+  height: 56px;
+  border: 0;
+  border-radius: 18px;
+  background: var(--accent-strong);
+  color: var(--accent-strong-fg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--accent) 35%, transparent);
+  -webkit-tap-highlight-color: transparent;
+  z-index: 5;
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.sb__fab:active {
+  transform: scale(0.94);
 }
 </style>

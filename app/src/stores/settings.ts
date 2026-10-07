@@ -2,7 +2,7 @@ import { isTreeSortMode, type TreeSortMode } from '../lib/tree-sort';
 import { defineStore } from 'pinia';
 import type { Theme, ViewMode } from '../types';
 import type { WindowsEditorEngine } from '../lib/platform';
-import { isIOS, isMobile } from '../lib/platform';
+import { isMobile } from '../lib/platform';
 
 const LS_KEY = 'solomd.settings.v1';
 
@@ -676,13 +676,10 @@ function defaults(): Settings {
     showInspector: false,
     rightSidebarPaneHeights: {},
     ragEnabled: false,
-    readingByDefaultOnMobile: (() => {
-      try {
-        return isIOS();
-      } catch {
-        return false;
-      }
-    })(),
+    // 5.0 — off for new installs: the phone editor screen has its own preview
+    // button, and reading mode's full-screen takeover hid the nav (back to
+    // 笔记, the bottom bar). Saved settings keep the user's choice.
+    readingByDefaultOnMobile: false,
     lastNonReadingViewMode: 'liveEdit',
     showWritingStats: true,
     showWorkspaceDailyTotal: false,

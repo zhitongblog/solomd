@@ -132,6 +132,15 @@ export const sv: I18n = {
     welcomeTour: "Välkomstguide",
   },
   // 5.0 window header (Toolbar.vue)
+  // 5.0 phone shell (Sidebar variant=phone, PhoneTabBar, Toolbar)
+  phone: {
+    notes: "Anteckningar",
+    daily: "Dagsanteckning",
+    count: "{n}",
+    newNote: "Ny anteckning",
+    search: "Sök",
+    navLabel: "Avsnitt",
+  },
   header: {
     segLive: "Live",
     segSource: "Källa",

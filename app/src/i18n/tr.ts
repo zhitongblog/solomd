@@ -132,6 +132,15 @@ export const tr: I18n = {
     welcomeTour: "Hoş Geldin Turu",
   },
   // 5.0 window header (Toolbar.vue)
+  // 5.0 phone shell (Sidebar variant=phone, PhoneTabBar, Toolbar)
+  phone: {
+    notes: "Notlar",
+    daily: "Günlük not",
+    count: "{n}",
+    newNote: "Yeni not",
+    search: "Ara",
+    navLabel: "Bölümler",
+  },
   header: {
     segLive: "Canlı",
     segSource: "Kaynak",

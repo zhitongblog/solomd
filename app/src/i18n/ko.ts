@@ -132,6 +132,15 @@ export const ko: I18n = {
     welcomeTour: "시작 가이드",
   },
   // 5.0 window header (Toolbar.vue)
+  // 5.0 phone shell (Sidebar variant=phone, PhoneTabBar, Toolbar)
+  phone: {
+    notes: "노트",
+    daily: "일일 노트",
+    count: "{n}개",
+    newNote: "새 노트",
+    search: "검색",
+    navLabel: "섹션",
+  },
   header: {
     segLive: "실시간",
     segSource: "소스",

@@ -44,6 +44,8 @@ import { INBOX_OPEN_EVENT, INBOX_CLOSE_EVENT } from './composables/useInboxView'
 const TypeLensView = defineAsyncComponent(() => import('./components/TypeLensView.vue'));
 import { TYPE_LENS_OPEN_EVENT, TYPE_LENS_CLOSE_EVENT } from './composables/useTypeLens';
 import Sidebar from './components/Sidebar.vue';
+import PhoneTabBar from './components/PhoneTabBar.vue';
+import { usePhoneStore } from './stores/phone';
 // v4.6 F5 — Saved filtered views (sidebar panel + filtered list + editor).
 import ViewNoteList from './components/ViewNoteList.vue';
 import ViewEditorDialog from './components/ViewEditorDialog.vue';
@@ -65,7 +67,7 @@ import { useShortcuts } from './composables/useShortcuts';
 import { useFileWatcher } from './composables/useFileWatcher';
 import { loadCustomTheme } from './lib/custom-theme';
 import { isIOS, isMacOS, isAndroid, isMobile, isWindowsDesktop } from './lib/platform';
-import { useViewport } from './composables/useViewport';
+import { useViewport, useTabletOverlay } from './composables/useViewport';
 import { toNativeSpec } from './lib/app-menu';
 import { themeFamily } from './lib/themes';
 import type { Theme, ViewMode } from './types';
@@ -1689,6 +1691,73 @@ const showSearchPane = computed(() => searchOpen.value);
 // #168 — phone shell: one flag drives the CSS and the behaviour.
 const { isNarrow } = useViewport();
 
+// 5.0 §8 — phone shell: home (笔记) / search / editor as full-screen views.
+const phone = usePhoneStore();
+// 5.0 §7 — iPad portrait: the sidebar floats over the text and steps aside
+// once a note is picked.
+const { isTabletOverlay } = useTabletOverlay();
+// DEV-only: `?layoutdebug` prints the chrome's geometry on screen, for
+// checking layouts in iOS Simulator Safari, which can't be scripted.
+const layoutDebug = ref('');
+if (import.meta.env.DEV && location.search.includes('layoutdebug')) {
+  let lastTap = '-';
+  for (const type of ['pointerdown', 'touchstart', 'click'] as const) {
+    document.addEventListener(type, (e) => {
+      const t = e.target as HTMLElement | null;
+      const pt = 'clientX' in e ? `${Math.round((e as PointerEvent).clientX)},${Math.round((e as PointerEvent).clientY)}` : '';
+      lastTap = `${type} ${pt} ${t?.tagName?.toLowerCase()}.${(t?.className && typeof t.className === 'string' ? t.className : '').split(' ')[0]}`;
+    }, true);
+  }
+  setInterval(() => {
+    const r = (sel: string) => {
+      const e = document.querySelector(sel);
+      if (!e) return '-';
+      const b = e.getBoundingClientRect();
+      return `${Math.round(b.x)},${Math.round(b.y)} ${Math.round(b.width)}x${Math.round(b.height)}`;
+    };
+    layoutDebug.value = [
+      `mode=${settings.viewMode} rdm=${settings.readingByDefaultOnMobile} view=${phone.view} narrow=${isNarrow.value} vv=${Math.round(window.visualViewport?.height ?? 0)} ih=${innerHeight}`,
+      `scrollY=${Math.round(scrollY)} body=${document.body.scrollTop} html=${document.documentElement.scrollTop}`,
+      `app ${r('.app')}`,
+      `toolbar ${r('.main-col .toolbar')}`,
+      `content ${r('.content')}`,
+      `tap ${lastTap}`,
+    ].join('\n');
+  }, 500);
+}
+function phoneShowEditor() {
+  if (isNarrow.value) phone.show('editor');
+  if (isTabletOverlay.value && settings.showFileTree) settings.toggleFileTree();
+}
+// Opening or switching to a note is what moves a phone to the editor — but
+// not the session restore at launch: a cold start lands on 笔记, the way
+// Notes does. (Opening a file from another app still goes straight to it,
+// through 'solomd:file-opened' below.)
+let phoneTabWatchArmed = false;
+onMounted(() => setTimeout(() => { phoneTabWatchArmed = true; }, 1500));
+watch(() => tabs.activeId, () => { if (phoneTabWatchArmed) phoneShowEditor(); });
+// On a phone, reading mode is the editor screen's preview: the full-screen
+// reader would drop the nav bar and leave no way back to 笔记.
+watch(
+  () => [isNarrow.value, settings.viewMode] as const,
+  ([narrow, mode]) => {
+    if (narrow && mode === 'reading') settings.setViewMode('preview');
+  },
+  { immediate: true },
+);
+window.addEventListener('solomd:file-opened', phoneShowEditor);
+// Back to 笔记 leaves any centre-pane page (inbox, Bases, type lens, saved
+// view) so the next note opens as a note.
+watch(
+  () => phone.view,
+  (v) => {
+    if (v !== 'home') return;
+    inboxViewOpen.value = false;
+    basesOpen.value = false;
+    typeLensOpen.value = false;
+  },
+);
+
 /**
  * Whether any pane in the right strip could draw something right now,
  * ignoring the master hide flag. Most panes need a workspace folder and
@@ -1966,6 +2035,7 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
       'app--reading': settings.viewMode === 'reading',
       'app--mobile': isMobile(),
       'app--narrow': isNarrow,
+      'app--tablet-overlay': isTabletOverlay && !isNarrow,
       'app--drawer-left': narrowDrawer === 'left',
       'app--drawer-right': narrowDrawer === 'right',
     }"
@@ -2002,8 +2072,26 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
           aria-hidden="true"
           @click="closeNarrowDrawer"
         />
+        <div
+          v-if="isTabletOverlay && !isNarrow && settings.showFileTree"
+          class="workspace__scrim"
+          aria-hidden="true"
+          @click="settings.toggleFileTree()"
+        />
+        <!-- 5.0 §8 — phone: 笔记 home / search screens with the bottom bar. -->
+        <div v-if="isNarrow && phone.view !== 'editor'" class="phone-screen">
+          <Sidebar
+            v-if="phone.view === 'home'"
+            variant="phone"
+            @open-settings="openSettingsAt()"
+            @open-quick-switcher="quickSwitcherOpen = true"
+            @filter-tag="(tag: string) => { searchPrefill = `#${tag}`; phone.show('search'); }"
+          />
+          <GlobalSearch v-else class="phone-search" :prefill="searchPrefill" @close="phone.show('home')" />
+          <PhoneTabBar @open-settings="openSettingsAt()" />
+        </div>
         <Sidebar
-          v-if="settings.showFileTree"
+          v-if="settings.showFileTree && !isNarrow"
           class="left-stack"
           :mac-inset="macTitleBar"
           @toggle="settings.toggleFileTree()"
@@ -2011,7 +2099,7 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
           @open-quick-switcher="quickSwitcherOpen = true"
           @filter-tag="onFilterTag"
         />
-        <div class="main-col">
+        <div v-show="!isNarrow || phone.view === 'editor'" class="main-col">
       <Toolbar
         @open-palette="paletteOpen = true"
         @open-settings="openSettingsAt()"
@@ -2277,6 +2365,7 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
       @cancel="onFileChangedAction('cancel')"
     />
     <Toast />
+    <pre v-if="layoutDebug" class="layout-debug">{{ layoutDebug }}</pre>
     <!-- 5.0 — format bar above the software keyboard (phones / tablets). -->
     <KeyboardBar v-if="isMobile() || forceKeyboardBarPreview()" />
     <component
@@ -2374,6 +2463,41 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
   display: flex;
   min-height: 0;
   position: relative;
+}
+.layout-debug {
+  position: fixed;
+  left: 8px;
+  top: 40%;
+  z-index: 99999;
+  margin: 0;
+  padding: 6px 8px;
+  font: 11px/1.4 var(--font-mono);
+  background: rgba(0, 0, 0, 0.75);
+  color: #0f0;
+  border-radius: 6px;
+  pointer-events: none;
+}
+/* 5.0 §7 — iPad portrait: the sidebar floats over the editor. */
+.app--tablet-overlay .shell > .left-stack {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 40;
+  box-shadow: var(--sh-modal);
+}
+/* 5.0 §8 — a phone home / search screen fills the window. */
+.phone-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--bg);
+}
+.phone-screen > .phone-search {
+  flex: 1;
+  min-height: 0;
 }
 .main-col {
   flex: 1;
