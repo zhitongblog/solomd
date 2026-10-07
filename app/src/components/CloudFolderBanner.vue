@@ -11,23 +11,19 @@
  */
 import { useCloudSyncStore } from '../stores/cloudSync';
 import { useI18n } from '../i18n';
+import Icon from './Icons.vue';
 
 const cloud = useCloudSyncStore();
 const { t } = useI18n();
 
-const PROVIDER_ICON: Record<string, string> = {
-  icloud: '☁️',
-  dropbox: '📦',
-  onedrive: '🪟',
-  google_drive: '🅖',
-  none: '',
-};
+// 5.0 — one line icon for every provider instead of a different emoji each;
+// the provider's name is in the banner text.
 </script>
 
 <template>
   <section v-if="cloud.isInCloudFolder" class="cfb">
     <div class="cfb__row">
-      <span class="cfb__icon" aria-hidden="true">{{ PROVIDER_ICON[cloud.cloud.provider] }}</span>
+      <Icon v-if="cloud.cloud.provider !== 'none'" name="cloud" :size="16" class="cfb__icon" aria-hidden="true" />
       <div class="cfb__copy">
         <strong>{{ t('cloudSync.detectedTitle', { label: cloud.cloud.label }) }}</strong>
         <p>{{ t('cloudSync.detectedHint') }}</p>
@@ -54,8 +50,8 @@ const PROVIDER_ICON: Record<string, string> = {
   align-items: flex-start;
 }
 .cfb__icon {
-  font-size: 22px;
-  line-height: 1;
+  flex: none;
+  color: var(--text-2);
 }
 .cfb__copy {
   display: flex;

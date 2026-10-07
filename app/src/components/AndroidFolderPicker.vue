@@ -11,6 +11,7 @@
 import { ref, watch } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { useI18n } from '../i18n';
+import Icon from './Icons.vue';
 
 const { t } = useI18n();
 
@@ -99,7 +100,8 @@ function shortCwd(): string {
           class="afp__item"
           @click="load(d.path)"
         >
-          📁 {{ d.name }}
+          <Icon name="folder-sm" :size="18" class="afp__icon" />
+          <span>{{ d.name }}</span>
         </button>
       </div>
       <div class="afp__foot">
@@ -161,8 +163,14 @@ function shortCwd(): string {
 .afp__up:disabled { opacity: 0.4; cursor: default; }
 .afp__path { font-size: 13px; color: var(--text-muted, #666); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .afp__list { overflow-y: auto; flex: 1; padding: 6px 0; }
+.afp__icon {
+  color: var(--text-3);
+  flex: none;
+}
 .afp__item {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   width: 100%;
   text-align: left;
   border: none;
