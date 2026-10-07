@@ -1813,7 +1813,7 @@ export const sv: I18n = {
   search: {
     heading: 'Sök',
     placeholder: 'Sök i filer i mappen…',
-    openFolder: 'Öppna en mapp först (Ctrl+B → Mapp)',
+    openFolder: 'Öppna en mapp först',
     typeToSearch: 'Skriv för att söka i alla .md / .txt-filer',
     noMatches: 'Inga träffar',
     hitCount: '{n} träffar',

@@ -1823,7 +1823,7 @@ export const en = {
   search: {
     heading: 'Search',
     placeholder: 'Search across files in folder…',
-    openFolder: 'Open a folder first (Ctrl+B → Folder)',
+    openFolder: 'Open a folder first',
     typeToSearch: 'Type to search across all .md / .txt files',
     noMatches: 'No matches',
     hitCount: '{n} hits',

@@ -1813,7 +1813,7 @@ export const pl: I18n = {
   search: {
     heading: 'Szukaj',
     placeholder: 'Szukaj w plikach folderu…',
-    openFolder: 'Najpierw otwórz folder (Ctrl+B → Folder)',
+    openFolder: 'Najpierw otwórz folder',
     typeToSearch: 'Pisz, aby szukać we wszystkich plikach .md / .txt',
     noMatches: 'Brak dopasowań',
     hitCount: '{n} trafień',

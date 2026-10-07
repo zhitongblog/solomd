@@ -1813,7 +1813,7 @@ export const nl: I18n = {
   search: {
     heading: 'Zoeken',
     placeholder: 'Zoeken in bestanden in map…',
-    openFolder: 'Open eerst een map (Ctrl+B → Map)',
+    openFolder: 'Open eerst een map',
     typeToSearch: 'Typ om in alle .md / .txt-bestanden te zoeken',
     noMatches: 'Geen overeenkomsten',
     hitCount: '{n} hits',

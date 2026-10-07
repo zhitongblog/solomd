@@ -1796,7 +1796,7 @@ export const ja: I18n = {
   search: {
     heading: '検索',
     placeholder: 'フォルダ内のファイルを検索…',
-    openFolder: '先にフォルダを開いてください（Ctrl+B → フォルダ）',
+    openFolder: '先にフォルダを開いてください',
     typeToSearch: 'すべての .md / .txt を検索するには入力してください',
     noMatches: '一致なし',
     hitCount: '{n} 件',

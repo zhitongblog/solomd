@@ -1813,7 +1813,7 @@ export const uk: I18n = {
   search: {
     heading: 'Пошук',
     placeholder: 'Шукати у файлах теки…',
-    openFolder: 'Спочатку відкрийте теку (Ctrl+B → Тека)',
+    openFolder: 'Спочатку відкрийте теку',
     typeToSearch: 'Введіть для пошуку по всіх файлах .md / .txt',
     noMatches: 'Збігів немає',
     hitCount: '{n} збігів',

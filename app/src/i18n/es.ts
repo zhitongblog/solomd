@@ -1796,7 +1796,7 @@ export const es: I18n = {
   search: {
     heading: 'Buscar',
     placeholder: 'Buscar en archivos de la carpeta…',
-    openFolder: 'Abre una carpeta primero (Ctrl+B → Carpeta)',
+    openFolder: 'Abre una carpeta primero',
     typeToSearch: 'Escribe para buscar en todos los .md / .txt',
     noMatches: 'Sin coincidencias',
     hitCount: '{n} resultados',

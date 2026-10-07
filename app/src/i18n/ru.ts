@@ -1788,7 +1788,7 @@ export const ru: I18n = {
   search: {
     heading: 'Поиск',
     placeholder: 'Поиск по файлам в папке…',
-    openFolder: 'Сначала откройте папку (Ctrl+B → Папка)',
+    openFolder: 'Сначала откройте папку',
     typeToSearch: 'Введите запрос для поиска по всем файлам .md / .txt',
     noMatches: 'Совпадений нет',
     hitCount: 'Совпадений: {n}',

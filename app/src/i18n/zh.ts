@@ -1800,7 +1800,7 @@ export const zh: I18n = {
   search: {
     heading: '搜索',
     placeholder: '在文件夹内搜索…',
-    openFolder: '请先打开一个文件夹（Ctrl+B → 文件夹）',
+    openFolder: '请先打开一个文件夹',
     typeToSearch: '输入关键词以搜索所有 .md / .txt 文件',
     noMatches: '没有匹配项',
     hitCount: '{n} 条结果',

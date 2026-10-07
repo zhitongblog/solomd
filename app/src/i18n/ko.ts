@@ -1796,7 +1796,7 @@ export const ko: I18n = {
   search: {
     heading: '검색',
     placeholder: '폴더 내 파일 검색…',
-    openFolder: '먼저 폴더를 여세요 (Ctrl+B → 폴더)',
+    openFolder: '먼저 폴더를 여세요',
     typeToSearch: '모든 .md / .txt 파일을 검색하려면 입력하세요',
     noMatches: '일치 항목 없음',
     hitCount: '{n}개 결과',

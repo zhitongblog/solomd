@@ -1798,7 +1798,7 @@ export const pt: I18n = {
   search: {
     heading: 'Buscar',
     placeholder: 'Buscar em arquivos da pasta…',
-    openFolder: 'Abra uma pasta primeiro (Ctrl+B → Pasta)',
+    openFolder: 'Abra uma pasta primeiro',
     typeToSearch: 'Digite para buscar em todos os .md / .txt',
     noMatches: 'Sem correspondências',
     hitCount: '{n} resultados',

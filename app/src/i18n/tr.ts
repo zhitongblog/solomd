@@ -1813,7 +1813,7 @@ export const tr: I18n = {
   search: {
     heading: 'Ara',
     placeholder: 'Klasördeki dosyalarda ara…',
-    openFolder: 'Önce bir klasör açın (Ctrl+B → Klasör)',
+    openFolder: 'Önce bir klasör açın',
     typeToSearch: 'Tüm .md / .txt dosyalarında aramak için yazın',
     noMatches: 'Eşleşme yok',
     hitCount: '{n} eşleşme',
