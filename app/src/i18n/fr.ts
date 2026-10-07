@@ -1796,7 +1796,7 @@ export const fr: I18n = {
   search: {
     heading: 'Recherche',
     placeholder: 'Rechercher dans les fichiers du dossier…',
-    openFolder: 'Ouvre d\'abord un dossier (Ctrl+B → Dossier)',
+    openFolder: 'Ouvre d\'abord un dossier',
     typeToSearch: 'Tape pour rechercher dans tous les .md / .txt',
     noMatches: 'Aucun résultat',
     hitCount: '{n} résultats',
