@@ -119,8 +119,16 @@ fn read_token() -> Result<Option<String>, String> {
     Ok(token)
 }
 
+/// Off the main thread: a keychain write can wait on a macOS access prompt
+/// (see `ai_proxy::ai_set_key`).
 #[tauri::command]
-pub fn github_set_token(token: String) -> Result<(), String> {
+pub async fn github_set_token(token: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || github_set_token_blocking(token))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+fn github_set_token_blocking(token: String) -> Result<(), String> {
     let trimmed = token.trim().to_string();
     if trimmed.is_empty() {
         return Err("token is empty".into());
@@ -138,8 +146,16 @@ pub fn github_set_token(token: String) -> Result<(), String> {
     Ok(())
 }
 
+/// Off the main thread: a keychain write can wait on a macOS access prompt
+/// (see `ai_proxy::ai_set_key`).
 #[tauri::command]
-pub fn github_clear_token() -> Result<(), String> {
+pub async fn github_clear_token() -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || github_clear_token_blocking())
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+fn github_clear_token_blocking() -> Result<(), String> {
     let entry = keyring_entry()?;
     let r = match entry.delete_credential() {
         Ok(()) => Ok(()),
@@ -212,8 +228,16 @@ fn gitea_read_token() -> Result<Option<String>, String> {
     Ok(token)
 }
 
+/// Off the main thread: a keychain write can wait on a macOS access prompt
+/// (see `ai_proxy::ai_set_key`).
 #[tauri::command]
-pub fn gitea_set_token(token: String) -> Result<(), String> {
+pub async fn gitea_set_token(token: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || gitea_set_token_blocking(token))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+fn gitea_set_token_blocking(token: String) -> Result<(), String> {
     let trimmed = token.trim().to_string();
     if trimmed.is_empty() {
         return Err("token is empty".into());
@@ -227,8 +251,16 @@ pub fn gitea_set_token(token: String) -> Result<(), String> {
     Ok(())
 }
 
+/// Off the main thread: a keychain write can wait on a macOS access prompt
+/// (see `ai_proxy::ai_set_key`).
 #[tauri::command]
-pub fn gitea_clear_token() -> Result<(), String> {
+pub async fn gitea_clear_token() -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || gitea_clear_token_blocking())
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+fn gitea_clear_token_blocking() -> Result<(), String> {
     let entry = gitea_keyring_entry()?;
     let r = match entry.delete_credential() {
         Ok(()) => Ok(()),
@@ -574,7 +606,7 @@ pub async fn github_enable_encryption(
 
         // 1. Set passphrase (also writes shadow salt + workspace metadata
         //    + keychain entry + marker file via crypto.rs side effects).
-        super::crypto::crypto_set_passphrase(folder.clone(), passphrase)?;
+        super::crypto::crypto_set_passphrase_blocking(folder.clone(), passphrase)?;
 
         // 2. Initialise the shadow as a fresh git repo with the same
         //    origin URL. The previous workspace .git/ keeps its origin

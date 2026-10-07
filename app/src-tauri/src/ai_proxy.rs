@@ -642,22 +642,41 @@ pub async fn ai_list_models(provider: String, base_url: Option<String>) -> Model
     }
 }
 
+// Keychain commands are `async` + `spawn_blocking` on purpose. A plain
+// `#[tauri::command] fn` runs on the main thread, and a keychain read can
+// block there for as long as macOS shows its "allow access" prompt — which
+// it does after any change to the app's signature (an update, a dev build).
+// The whole window froze until the prompt was answered, and the prompt is
+// easy to lose behind other windows (found 2026-10-07 opening Settings,
+// which asks `ai_has_key` straight away).
 #[tauri::command]
-pub fn ai_set_key(app: AppHandle, provider: String, key: String) -> Result<(), String> {
-    ai_keystore::prime_config_dir(&app);
-    ai_keystore::set_key(&provider, &key)
+pub async fn ai_set_key(app: AppHandle, provider: String, key: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        ai_keystore::prime_config_dir(&app);
+        ai_keystore::set_key(&provider, &key)
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
-pub fn ai_has_key(app: AppHandle, provider: String) -> Result<bool, String> {
-    ai_keystore::prime_config_dir(&app);
-    ai_keystore::has_key(&provider)
+pub async fn ai_has_key(app: AppHandle, provider: String) -> Result<bool, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        ai_keystore::prime_config_dir(&app);
+        ai_keystore::has_key(&provider)
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
-pub fn ai_clear_key(app: AppHandle, provider: String) -> Result<(), String> {
-    ai_keystore::prime_config_dir(&app);
-    ai_keystore::clear_key(&provider)
+pub async fn ai_clear_key(app: AppHandle, provider: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        ai_keystore::prime_config_dir(&app);
+        ai_keystore::clear_key(&provider)
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 fn read_key(provider: &str) -> Result<String, String> {
