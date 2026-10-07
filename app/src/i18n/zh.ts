@@ -200,7 +200,7 @@ export const zh: I18n = {
     insertImage: '图片…',
     insertQuote: '引用',
     insertDivider: '分隔线',
-    copyTooltip: '复制为富文本 HTML (⇧⌘C)',
+    copyTooltip: '复制为富文本 HTML',
     copyFormats: '复制格式选项',
     openExternal: '用外部编辑器打开',
     openExternalTooltip: '使用系统默认编辑器打开当前文件',

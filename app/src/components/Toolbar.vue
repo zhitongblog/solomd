@@ -1018,7 +1018,7 @@ onBeforeUnmount(() => {
               </button>
               <button class="dropdown__item dropdown__item--single" role="menuitem" tabindex="-1" @mousedown.prevent="act(() => files.saveActiveAs())">
                 <span class="dropdown__check"></span>
-                <span class="dropdown__name">{{ t('toolbar.saveAsTooltip') }}</span>
+                <span class="dropdown__name">{{ t('menubar.saveAs') }}</span>
                 <span v-if="chord('file.saveAs')" class="dropdown__shortcut">{{ chord('file.saveAs') }}</span>
               </button>
               <template v-if="isMarkdown">
