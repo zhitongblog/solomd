@@ -17,6 +17,10 @@
  */
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import katex from 'katex';
+// `\ce` here too: markdown.ts no longer loads mhchem up front (render-deps.ts),
+// and this panel can open before that lazy load has run. Same chunk, so it is
+// still registered once on the one KaTeX instance.
+import 'katex/contrib/mhchem';
 import { useI18n } from '../i18n';
 
 const props = defineProps<{

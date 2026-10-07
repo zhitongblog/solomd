@@ -1,44 +1,5 @@
 import MarkdownIt from 'markdown-it';
 import anchor from 'markdown-it-anchor';
-import hljs from 'highlight.js/lib/core';
-import type { LanguageFn } from 'highlight.js';
-import hl_xml from 'highlight.js/lib/languages/xml';
-import hl_bash from 'highlight.js/lib/languages/bash';
-import hl_c from 'highlight.js/lib/languages/c';
-import hl_cpp from 'highlight.js/lib/languages/cpp';
-import hl_csharp from 'highlight.js/lib/languages/csharp';
-import hl_css from 'highlight.js/lib/languages/css';
-import hl_markdown from 'highlight.js/lib/languages/markdown';
-import hl_diff from 'highlight.js/lib/languages/diff';
-import hl_ruby from 'highlight.js/lib/languages/ruby';
-import hl_go from 'highlight.js/lib/languages/go';
-import hl_graphql from 'highlight.js/lib/languages/graphql';
-import hl_ini from 'highlight.js/lib/languages/ini';
-import hl_java from 'highlight.js/lib/languages/java';
-import hl_javascript from 'highlight.js/lib/languages/javascript';
-import hl_json from 'highlight.js/lib/languages/json';
-import hl_kotlin from 'highlight.js/lib/languages/kotlin';
-import hl_less from 'highlight.js/lib/languages/less';
-import hl_lua from 'highlight.js/lib/languages/lua';
-import hl_makefile from 'highlight.js/lib/languages/makefile';
-import hl_perl from 'highlight.js/lib/languages/perl';
-import hl_objectivec from 'highlight.js/lib/languages/objectivec';
-import hl_php from 'highlight.js/lib/languages/php';
-import hl_php_template from 'highlight.js/lib/languages/php-template';
-import hl_plaintext from 'highlight.js/lib/languages/plaintext';
-import hl_python from 'highlight.js/lib/languages/python';
-import hl_python_repl from 'highlight.js/lib/languages/python-repl';
-import hl_r from 'highlight.js/lib/languages/r';
-import hl_rust from 'highlight.js/lib/languages/rust';
-import hl_scss from 'highlight.js/lib/languages/scss';
-import hl_shell from 'highlight.js/lib/languages/shell';
-import hl_sql from 'highlight.js/lib/languages/sql';
-import hl_swift from 'highlight.js/lib/languages/swift';
-import hl_yaml from 'highlight.js/lib/languages/yaml';
-import hl_typescript from 'highlight.js/lib/languages/typescript';
-import hl_vbnet from 'highlight.js/lib/languages/vbnet';
-import hl_wasm from 'highlight.js/lib/languages/wasm';
-import 'katex/contrib/mhchem';
 // @ts-ignore — types are loose
 import katex from '@vscode/markdown-it-katex';
 // @ts-ignore — no types shipped
@@ -51,6 +12,7 @@ import cjkFriendly from 'markdown-it-cjk-friendly';
 import yaml from 'js-yaml';
 import { numberEquations } from './equations';
 import { sanitizeRenderedHtml } from './sanitize-html';
+import { getHljs, getKatex } from './render-deps';
 
 // NOTE: `@hedgedoc/markdown-it-task-lists` is installed but unusable here —
 // its compiled ESM entry does `import Token from 'markdown-it/lib/token.js'`
@@ -59,6 +21,24 @@ import { sanitizeRenderedHtml } from './sanitize-html';
 // which also lets us attach `data-line` in the same pass.
 
 const katexPlugin: any = (katex as any).default ?? katex;
+
+// The plugin's parse rules are always on; only the typesetting is deferred
+// (render-deps.ts). It takes its KaTeX from `options.katex`, so it gets this
+// stand-in: the real `renderToString` once the chunk is in, the source text
+// until then — the preview and both editors re-render on load. (vite.config
+// stubs the plugin's own `require('katex')`, which would otherwise drag KaTeX
+// back into the entry chunk.)
+const escapeMathSource = (s: string) =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const lazyKatex = {
+  renderToString(tex: string, options?: { displayMode?: boolean }): string {
+    const k = getKatex();
+    if (k) return k.renderToString(tex, options as any);
+    return options?.displayMode
+      ? `<span class="math-pending math-pending--display">$$${escapeMathSource(tex)}$$</span>`
+      : `<span class="math-pending">$${escapeMathSource(tex)}$</span>`;
+  },
+};
 
 // CJK-friendly emphasis (#262 / Gitee IKA1A0). `**限制：**硬链接` renders as
 // literal asterisks under stock CommonMark, and that shape is everywhere in
@@ -72,57 +52,6 @@ const katexPlugin: any = (katex as any).default ?? katex;
 // punctuation. ASCII text keeps stock CommonMark behaviour — `**limit:**hard`
 // stays literal — because nothing CJK is adjacent.
 
-
-// Startup trim: `highlight.js/lib/common` registers its 36 grammars at module
-// load — each `registerLanguage` runs the grammar factory — although nothing
-// is highlighted until a code fence renders. Same 36 grammars, registered in
-// the same order (highlightAuto's tie-break), on the first highlight instead.
-const HLJS_LANGUAGES: [string, LanguageFn][] = [
-  ['xml', hl_xml],
-  ['bash', hl_bash],
-  ['c', hl_c],
-  ['cpp', hl_cpp],
-  ['csharp', hl_csharp],
-  ['css', hl_css],
-  ['markdown', hl_markdown],
-  ['diff', hl_diff],
-  ['ruby', hl_ruby],
-  ['go', hl_go],
-  ['graphql', hl_graphql],
-  ['ini', hl_ini],
-  ['java', hl_java],
-  ['javascript', hl_javascript],
-  ['json', hl_json],
-  ['kotlin', hl_kotlin],
-  ['less', hl_less],
-  ['lua', hl_lua],
-  ['makefile', hl_makefile],
-  ['perl', hl_perl],
-  ['objectivec', hl_objectivec],
-  ['php', hl_php],
-  ['php-template', hl_php_template],
-  ['plaintext', hl_plaintext],
-  ['python', hl_python],
-  ['python-repl', hl_python_repl],
-  ['r', hl_r],
-  ['rust', hl_rust],
-  ['scss', hl_scss],
-  ['shell', hl_shell],
-  ['sql', hl_sql],
-  ['swift', hl_swift],
-  ['yaml', hl_yaml],
-  ['typescript', hl_typescript],
-  ['vbnet', hl_vbnet],
-  ['wasm', hl_wasm],
-];
-let hljsRegistered = false;
-function ensureHljs(): typeof hljs {
-  if (!hljsRegistered) {
-    hljsRegistered = true;
-    for (const [name, lang] of HLJS_LANGUAGES) hljs.registerLanguage(name, lang);
-  }
-  return hljs;
-}
 
 // Per-render front-matter capture. markdown-it is synchronous so a
 // module-level variable is safe for sequential calls, but this is NOT
@@ -161,7 +90,10 @@ export const md = new MarkdownIt({
     // markdown-it falls through to its default HTML-escape path for this
     // lang; the class is still emitted via langPrefix on the <code> tag.
     if (lang === 'mermaid') return '';
-    const hl = ensureHljs();
+    // Not loaded yet (render-deps.ts): plain escaped code now, colours on the
+    // re-render that follows the load.
+    const hl = getHljs();
+    if (!hl) return '';
     if (lang && hl.getLanguage(lang)) {
       try {
         return hl.highlight(code, { language: lang, ignoreIllegals: true }).value;
@@ -181,7 +113,7 @@ export const md = new MarkdownIt({
     lastFrontMatterRaw = fm;
   })
   .use(anchor, { permalink: false, slugify: (s: string) => slugify(s) })
-  .use(katexPlugin, { throwOnError: false })
+  .use(katexPlugin, { throwOnError: false, katex: lazyKatex })
   .use(footnote)
   .use(mark)
   .use(cjkFriendly);
