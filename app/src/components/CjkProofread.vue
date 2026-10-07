@@ -31,6 +31,7 @@ import { useTabsStore } from '../stores/tabs';
 import { useToastsStore } from '../stores/toasts';
 import { useTilesStore } from '../stores/tiles';
 import { useI18n } from '../i18n';
+import Icons from './Icons.vue';
 import { track } from '../lib/telemetry';
 
 interface Issue {
@@ -291,7 +292,9 @@ void lang;
           >
             {{ t('proofread.applyAll') }}
           </button>
-          <button class="btn btn--close" @click="emit('close')" aria-label="Close">×</button>
+          <button class="btn btn--close" @click="emit('close')" aria-label="Close">
+            <Icons name="close" :size="14" />
+          </button>
         </div>
       </header>
 
@@ -360,40 +363,41 @@ void lang;
 .proof__backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.42);
+  background: var(--scrim);
   z-index: var(--z-modal);
   display: flex;
   justify-content: center;
   align-items: flex-start;
   padding-top: 8vh;
+  animation: sm-fade-in var(--dur) var(--ease-out);
 }
 .proof {
-  background: var(--bg);
+  background: var(--bg-pop);
   color: var(--text);
   width: min(820px, 92vw);
   max-height: 78vh;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
+  border: var(--bd-hair);
+  border-radius: var(--r-xl);
+  box-shadow: var(--sh-modal);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  animation: sm-dialog-in var(--dur) var(--ease-out);
 }
 
 .proof__head {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-soft, var(--bg));
+  padding: 16px 16px 12px 24px;
+  border-bottom: var(--bd-hair);
   flex-wrap: wrap;
 }
 .proof__title {
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 17px;
+  font-weight: 600;
   margin: 0;
-  letter-spacing: 0.02em;
+  letter-spacing: -0.01em;
 }
 .proof__counts {
   display: flex;
@@ -401,93 +405,94 @@ void lang;
   flex: 1;
 }
 .proof__pill {
-  font-size: 11px;
+  font-size: 12px;
   padding: 2px 8px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--bg-elev);
-  color: var(--text-muted);
+  border-radius: var(--r-full);
+  border: 0;
+  background: var(--fill-1);
+  color: var(--text-2);
   font-variant-numeric: tabular-nums;
 }
 .proof__pill--high {
-  border-color: rgba(220, 70, 70, 0.4);
-  color: #c0322c;
-  background: rgba(220, 70, 70, 0.08);
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
 }
 .proof__pill--medium {
-  border-color: rgba(214, 161, 0, 0.45);
-  color: #946a00;
-  background: rgba(214, 161, 0, 0.08);
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
 }
 .proof__pill--low {
-  color: var(--text-faint);
+  color: var(--text-3);
 }
 .proof__actions {
   display: flex;
   gap: 6px;
 }
 .btn {
-  font-size: 12px;
-  padding: 4px 10px;
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  background: var(--bg-elev);
+  height: 28px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 560;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: var(--fill-1);
   color: var(--text);
-  cursor: pointer;
-  transition: all 0.12s;
+  cursor: default;
 }
 .btn:hover:not(:disabled) {
-  background: var(--bg-hover);
-  border-color: var(--accent);
+  background: var(--fill-2);
 }
 .btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+  opacity: 0.45;
 }
 .btn--primary {
-  background: var(--accent);
-  color: var(--bg);
-  border-color: var(--accent);
+  background: var(--accent-strong);
+  color: var(--accent-strong-fg);
 }
 .btn--primary:hover:not(:disabled) {
-  filter: brightness(1.08);
-  background: var(--accent);
-  color: var(--bg);
+  filter: brightness(1.06);
+  background: var(--accent-strong);
+  color: var(--accent-strong-fg);
 }
 .btn--ghost {
   background: transparent;
+  color: var(--text-2);
 }
 .btn--small {
-  font-size: 11px;
-  padding: 2px 8px;
+  height: 24px;
+  font-size: 12px;
+  padding: 0 8px;
 }
 .btn--close {
-  font-size: 18px;
-  line-height: 1;
-  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  padding: 0;
   background: transparent;
-  border: none;
-  color: var(--text-faint);
+  color: var(--text-3);
 }
 .btn--apply {
-  font-size: 11px;
-  padding: 2px 8px;
+  height: 24px;
+  font-size: 12px;
+  padding: 0 8px;
   margin-left: auto;
   flex-shrink: 0;
 }
 
 .proof__legend {
   margin: 0;
-  padding: 6px 16px;
-  font-size: 11px;
-  color: var(--text-faint);
-  border-bottom: 1px solid var(--border);
+  padding: 8px 24px;
+  font-size: 12px;
+  color: var(--text-3);
+  border-bottom: var(--bd-hair);
 }
 
 .proof__empty {
   padding: 36px;
   text-align: center;
-  color: var(--text-faint);
+  color: var(--text-3);
   font-size: 13px;
 }
 
@@ -582,5 +587,11 @@ void lang;
   font-family: var(--font-mono);
   color: var(--accent);
   flex-shrink: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .proof__backdrop,
+  .proof {
+    animation: none;
+  }
 }
 </style>

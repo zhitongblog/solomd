@@ -77,6 +77,8 @@
 
   /* Dialog backdrop (spec §6): .28 on light themes, .5 on dark ones (below). */
   --scrim: rgba(0, 0, 0, 0.28);
+  /* Knob of switches and sliders (white in every theme, as in AppKit). */
+  --knob: #ffffff;
 
   --bd: var(--hair-w) solid var(--border);
   --bd-hair: var(--hair-w) solid var(--hairline);

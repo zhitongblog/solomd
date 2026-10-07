@@ -347,5 +347,19 @@ defineProps<{ name: string; size?: number }>();
     <template v-else-if="name === 'download'">
       <path d="M12 3v12M8 11l4 4 4-4" /><path d="M5 19h14" />
     </template>
+    <template v-else-if="name === 'star'">
+      <path d="M12 3.5l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.8l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z" />
+    </template>
+    <template v-else-if="name === 'heart'">
+      <path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.4 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z" />
+    </template>
+    <template v-else-if="name === 'alert'">
+      <path d="M12 4l9 16H3z" /><path d="M12 10v4M12 17h.01" />
+    </template>
+    <template v-else-if="name === 'file-changed'">
+      <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 3 14 8 19 8" />
+      <path d="M9.5 15.5a3 3 0 0 0 5-1.5M14.5 12.5a3 3 0 0 0-5 1.5" />
+    </template>
   </svg>
 </template>

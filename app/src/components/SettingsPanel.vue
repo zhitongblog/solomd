@@ -537,12 +537,15 @@ function markGroups() {
     if (!visible.includes(b)) {
       delete b.dataset.gs;
       delete b.dataset.ge;
+      delete b.dataset.gfirst;
     }
   }
   visible.forEach((b, i) => {
     const prev = visible[i - 1];
     const next = visible[i + 1];
     const solo = standalone(b);
+    if (i === 0) b.dataset.gfirst = '';
+    else delete b.dataset.gfirst;
     if (!prev || solo || standalone(prev)) b.dataset.gs = '';
     else delete b.dataset.gs;
     if (!next || solo || standalone(next)) b.dataset.ge = '';
@@ -2462,21 +2465,9 @@ function onSelectPdfFont(v: string) {
 .kb-error { color: var(--danger); font-size: 12px; margin: 8px 0 0; }
 
 /* ── shell ───────────────────────────────────────────────────────────── */
-/* DsModal supplies the backdrop / frame / header (title + close). Zero its
-   body padding so the two-column nav+body layout fills the panel edge-to-edge,
-   and give the panel a fixed working height. */
-.settings-modal :deep(.ds-modal__panel) {
-  background: var(--bg);
-}
-.settings-modal :deep(.ds-modal__head) {
-  padding-bottom: 12px;
-  border-bottom: var(--bd-hair);
-}
-.settings-modal :deep(.ds-modal__body) {
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-}
+/* DsModal frame overrides live in the unscoped <style> block at the end of
+   this file: the overlay is teleported, so a scoped selector cannot reach
+   it. */
 .settings__layout {
   flex: 1;
   display: flex;
@@ -2717,6 +2708,9 @@ function onSelectPdfFont(v: string) {
   color: var(--text);
 }
 
+.settings__body > * {
+  flex-shrink: 0;
+}
 /* Every visible block is a card row. */
 .settings__body > [data-cat] {
   box-sizing: border-box;
@@ -2730,9 +2724,11 @@ function onSelectPdfFont(v: string) {
   border-top-right-radius: var(--r-lg);
   margin-top: 16px;
 }
-.settings__body > .settings__page-title + [data-cat][data-gs],
-.settings__body > .settings__search-group + [data-cat][data-gs] {
+.settings__body > [data-cat][data-gfirst] {
   margin-top: 0;
+}
+.settings__body[data-searching] > [data-cat][data-gs] {
+  margin-top: 8px;
 }
 .settings__body > [data-cat][data-ge] {
   border-bottom-left-radius: var(--r-lg);
@@ -2747,18 +2743,18 @@ function onSelectPdfFont(v: string) {
 }
 
 /* A row: label left, control right; anything else spans the row. */
-section {
+.settings__body > section {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   column-gap: 16px;
   row-gap: 4px;
   min-height: 24px;
 }
-section > * {
+.settings__body > section > * {
   grid-column: 1 / -1;
   min-width: 0;
 }
-section > label {
+.settings__body > section > label {
   font-size: 13px;
   line-height: 1.4;
   color: var(--text);
@@ -2767,25 +2763,25 @@ section > label {
   gap: 8px;
 }
 /* A plain caption label ("Theme", "Font size: 16px") is the row's label. */
-section > label:first-child:not(:has(input, select, textarea)),
-section > label:first-child:not(:has(input, select, textarea)) {
+.settings__body > section > label:first-child:not(:has(input, select, textarea)),
+.settings__body > section > label:first-child:not(:has(input, select, textarea)) {
   grid-column: 1;
 }
 /* …and the control right after it sits on the right of the same line. */
-section > label:first-child:not(:has(input, select, textarea)) + select,
-section > label:first-child:not(:has(input, select, textarea)) + input:not([type='checkbox']):not([type='radio']),
-section > label:first-child:not(:has(input, select, textarea)) + .settings__field {
+.settings__body > section > label:first-child:not(:has(input, select, textarea)) + select,
+.settings__body > section > label:first-child:not(:has(input, select, textarea)) + input:not([type='checkbox']):not([type='radio']),
+.settings__body > section > label:first-child:not(:has(input, select, textarea)) + .settings__field {
   grid-column: 2;
   grid-row: 1;
   width: 240px;
   max-width: 100%;
 }
-section > label:first-child:not(:has(input, select, textarea)) + input[type='range'] {
+.settings__body > section > label:first-child:not(:has(input, select, textarea)) + input[type='range'] {
   width: 200px;
 }
 
 /* Checkbox rows: the text on the left, a switch on the right. */
-section > label:has(> input[type='checkbox']),
+.settings__body > section > label:has(> input[type='checkbox']),
 .kb-hints-toggle {
   justify-content: space-between;
   flex-direction: row-reverse;
@@ -2793,7 +2789,7 @@ section > label:has(> input[type='checkbox']),
   cursor: default;
   min-height: 24px;
 }
-section > label:has(> input[type='checkbox']) + label:has(> input[type='checkbox']) {
+.settings__body > section > label:has(> input[type='checkbox']) + label:has(> input[type='checkbox']) {
   padding-top: 6px;
   margin-top: 4px;
   border-top: var(--bd-hair);
@@ -2815,8 +2811,8 @@ section > label:has(> input[type='checkbox']) + label:has(> input[type='checkbox
   line-height: 1.45;
   color: var(--text-3);
 }
-section > label + .setting-hint,
-section > label + .hint {
+.settings__body > section > label + .setting-hint,
+.settings__body > section > label + .hint {
   margin-top: -2px;
 }
 .setting-hint a {
@@ -2953,14 +2949,43 @@ select:hover:not(:focus) {
   min-width: 56px;
   color: var(--text-2);
 }
+/* Slider: a hairline-thin track with a round white knob, AppKit style. */
 input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
   width: 100%;
-  accent-color: var(--accent);
+  height: 18px;
+  margin: 0;
+  background: transparent;
+  cursor: default;
+}
+input[type='range']::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: var(--r-full);
+  background: var(--fill-2);
+}
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+  border-radius: var(--r-full);
+  background: var(--knob);
+  box-shadow: var(--sh-thumb), 0 0 0 var(--hair-w) var(--hairline);
+}
+input[type='range']:focus-visible {
+  outline: none;
+}
+input[type='range']:focus-visible::-webkit-slider-thumb {
+  box-shadow: var(--ring);
+}
+input[type='range']:disabled {
+  opacity: 0.4;
 }
 
 /* Switch: a checkbox drawn as an AppKit-style toggle. Still a real checkbox
    (keyboard, label click, :checked), only painted differently. */
-section input[type='checkbox'],
+.settings__body > section input[type='checkbox'],
 .kb-hints-toggle input[type='checkbox'] {
   appearance: none;
   -webkit-appearance: none;
@@ -2975,7 +3000,7 @@ section input[type='checkbox'],
   transition: background-color var(--dur-fast) var(--ease);
   cursor: default;
 }
-section input[type='checkbox']::before,
+.settings__body > section input[type='checkbox']::before,
 .kb-hints-toggle input[type='checkbox']::before {
   content: '';
   position: absolute;
@@ -2984,33 +3009,33 @@ section input[type='checkbox']::before,
   width: 14px;
   height: 14px;
   border-radius: var(--r-full);
-  background: #fff;
+  background: var(--knob);
   box-shadow: var(--sh-thumb);
   transition: transform var(--dur) var(--ease-out);
 }
-section input[type='checkbox']:checked,
+.settings__body > section input[type='checkbox']:checked,
 .kb-hints-toggle input[type='checkbox']:checked {
   background: var(--accent);
   box-shadow: none;
 }
-section input[type='checkbox']:checked::before,
+.settings__body > section input[type='checkbox']:checked::before,
 .kb-hints-toggle input[type='checkbox']:checked::before {
   transform: translateX(12px);
 }
-section input[type='checkbox']:focus-visible,
+.settings__body > section input[type='checkbox']:focus-visible,
 .kb-hints-toggle input[type='checkbox']:focus-visible {
   outline: none;
   box-shadow: var(--ring);
 }
-section input[type='checkbox']:disabled {
+.settings__body > section input[type='checkbox']:disabled {
   opacity: 0.4;
 }
-section label:has(> input[type='checkbox']:disabled) {
+.settings__body > section label:has(> input[type='checkbox']:disabled) {
   color: var(--text-3);
 }
 @media (prefers-reduced-motion: reduce) {
-  section input[type='checkbox'],
-  section input[type='checkbox']::before {
+  .settings__body > section input[type='checkbox'],
+  .settings__body > section input[type='checkbox']::before {
     transition: none;
   }
 }
@@ -3021,7 +3046,7 @@ section label:has(> input[type='checkbox']:disabled) {
   display: flex;
   gap: 8px;
 }
-section button:not([class]),
+.settings__body > section button:not([class]),
 .row button {
   height: 28px;
   padding: 0 12px;
@@ -3034,7 +3059,7 @@ section button:not([class]),
   border-radius: var(--r-md);
   cursor: default;
 }
-section button:not([class]):hover:not(:disabled),
+.settings__body > section button:not([class]):hover:not(:disabled),
 .row button:hover:not(:disabled) {
   background: var(--fill-2);
 }
@@ -3050,7 +3075,7 @@ section button:not([class]):hover:not(:disabled),
   background: var(--accent-strong);
   filter: brightness(1.06);
 }
-section button:focus-visible,
+.settings__body > section button:focus-visible,
 .row button:focus-visible {
   outline: none;
   box-shadow: var(--ring);
@@ -3067,16 +3092,34 @@ section button:focus-visible,
 }
 
 /* Phone: one column — label above control. */
-:root.narrow-viewport section {
+:root.narrow-viewport .settings__body > section {
   grid-template-columns: minmax(0, 1fr);
 }
-:root.narrow-viewport section > * {
+:root.narrow-viewport .settings__body > section > * {
   grid-column: 1 / -1 !important;
   grid-row: auto !important;
 }
-:root.narrow-viewport section > label:first-child:not(:has(input, select, textarea)) + select,
-:root.narrow-viewport section > label:first-child:not(:has(input, select, textarea)) + input,
-:root.narrow-viewport section > label:first-child:not(:has(input, select, textarea)) + .settings__field {
+:root.narrow-viewport .settings__body > section > label:first-child:not(:has(input, select, textarea)) + select,
+:root.narrow-viewport .settings__body > section > label:first-child:not(:has(input, select, textarea)) + input,
+:root.narrow-viewport .settings__body > section > label:first-child:not(:has(input, select, textarea)) + .settings__field {
   width: 100%;
+}
+</style>
+
+<style>
+/* DsModal is teleported to <body> and forwards `class="settings-modal"` to
+   its overlay; scoped selectors cannot reach it, so the frame overrides are
+   global but namespaced. Zero the body padding so the nav + content columns
+   fill the panel edge-to-edge. */
+.ds-modal.settings-modal .ds-modal__panel {
+  background: var(--bg);
+}
+.ds-modal.settings-modal .ds-modal__head {
+  padding-bottom: 10px;
+}
+.ds-modal.settings-modal .ds-modal__body {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
 }
 </style>

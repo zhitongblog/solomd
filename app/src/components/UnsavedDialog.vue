@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, watch, onBeforeUnmount } from 'vue';
 import { DsModal, DsButton } from '../ui';
+import Icons from './Icons.vue';
 import { useI18n } from '../i18n';
 import { usesMacDialogKeys } from '../lib/platform';
 const { t } = useI18n();
@@ -150,13 +151,13 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown, true));
     @update:model-value="emit('cancel')"
   >
     <div class="ud-body">
-      <div class="ud-body__icon" aria-hidden="true">⚠️</div>
+      <div class="ud-body__icon" aria-hidden="true"><Icons name="alert" :size="22" /></div>
       <p class="ud-body__msg">
         <strong>{{ fileName }}</strong>: {{ t('unsaved.message', { file: fileName }).replace(fileName + ' ', '').replace(fileName, '') }}
       </p>
     </div>
     <template #footer>
-      <DsButton variant="ghost" data-unsaved-action="cancel" aria-keyshortcuts="Escape" @click="emit('cancel')">{{ t('unsaved.cancel') }}</DsButton>
+      <DsButton variant="secondary" data-unsaved-action="cancel" aria-keyshortcuts="Escape" @click="emit('cancel')">{{ t('unsaved.cancel') }}</DsButton>
       <DsButton
         variant="danger"
         data-unsaved-action="discard"
@@ -187,12 +188,19 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown, true));
   text-align: center;
 }
 .ud-body__icon {
-  font-size: 32px;
-  margin-bottom: var(--sp-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: var(--sp-3);
+  border-radius: var(--r-full);
+  background: var(--accent-soft);
+  color: var(--accent-text);
 }
 .ud-body__msg {
   font-size: 13px;
-  color: var(--text-muted);
+  color: var(--text-2);
   margin: 0;
   line-height: 1.5;
 }

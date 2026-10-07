@@ -2,6 +2,7 @@
 import { computed, nextTick, ref, watch } from 'vue';
 import { useCommands, type Command } from '../composables/useCommands';
 import { useI18n } from '../i18n';
+import Icons from './Icons.vue';
 import { useSettingsStore } from '../stores/settings';
 import { shortcutLabel } from '../lib/keybindings';
 import { isMacOS } from '../lib/platform';
@@ -119,14 +120,17 @@ async function runIdx(i: number) {
   <Teleport to="body">
   <div v-if="open" class="palette__backdrop" @click.self="emit('close')">
     <div class="palette" role="dialog" :aria-label="t('toolbar.paletteTitle')">
-      <input
-        ref="inputRef"
-        v-model="query"
-        @keydown="onKey"
-        class="palette__input"
-        :placeholder="t('palette.placeholder')"
-        spellcheck="false"
-      />
+      <div class="palette__field">
+        <Icons class="palette__field-icon" name="search" :size="16" aria-hidden="true" />
+        <input
+          ref="inputRef"
+          v-model="query"
+          @keydown="onKey"
+          class="palette__input"
+          :placeholder="t('palette.placeholder')"
+          spellcheck="false"
+        />
+      </div>
       <ul class="palette__list" ref="listRef" v-if="filtered.length">
         <li
           v-for="(c, i) in filtered"
@@ -148,62 +152,106 @@ async function runIdx(i: number) {
 </template>
 
 <style scoped>
+/* 5.0 (spec §6): 640px, radius 12, --sh-modal on --bg-pop; a 44px input row
+   with a search icon and 15px text; 34px rows (radius 7), the selected one
+   --fill-2; chords / paths right in --text-3; opens like a dialog (180ms fade
+   + scale, keyframes in styles/menus.css). */
 .palette__backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--scrim);
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  padding-top: 12vh;
+  padding-top: 14vh;
   z-index: var(--z-modal);
+  animation: sm-fade-in var(--dur) var(--ease-out);
 }
 .palette {
-  width: min(560px, 92vw);
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  box-shadow: var(--sh-pop);
+  width: min(640px, calc(100vw - 32px));
+  background: var(--bg-pop);
+  color: var(--text);
+  border: var(--bd-hair);
+  border-radius: 12px;
+  box-shadow: var(--sh-modal);
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  max-height: 60vh;
+  max-height: min(480px, 64vh);
+  transform-origin: top center;
+  animation: sm-dialog-in var(--dur) var(--ease-out);
+}
+.palette__field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+  height: 44px;
+  padding: 0 16px;
+  border-bottom: var(--bd-hair);
+  color: var(--text-3);
+}
+.palette__field-icon {
+  flex: none;
 }
 .palette__input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
   background: transparent;
   border: none;
   outline: none;
-  padding: 14px 16px;
-  font: 14px var(--font-ui);
+  padding: 0;
+  font: 15px var(--font-ui);
   color: var(--text);
-  border-bottom: 1px solid var(--border);
+}
+.palette__input::placeholder {
+  color: var(--text-3);
 }
 .palette__list {
   list-style: none;
   margin: 0;
-  padding: 6px 0;
+  padding: 6px;
   overflow-y: auto;
 }
 .palette__item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 8px 16px;
+  gap: 12px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 7px;
   font-size: 13px;
-  cursor: pointer;
+  color: var(--text);
+  cursor: default;
+  white-space: nowrap;
+  overflow: hidden;
 }
 .palette__item--active {
-  background: var(--accent-soft);
-}
-.palette__shortcut {
-  color: var(--text-faint);
-  font-family: var(--font-mono);
-  font-size: 11px;
+  background: var(--fill-2);
 }
 .palette__empty {
-  padding: 18px;
-  color: var(--text-muted);
+  padding: 20px 16px;
+  color: var(--text-3);
   text-align: center;
   font-size: 13px;
+}
+.palette__title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.palette__shortcut {
+  flex: none;
+  color: var(--text-3);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+@media (prefers-reduced-motion: reduce) {
+  .palette__backdrop,
+  .palette {
+    animation: none;
+  }
 }
 </style>

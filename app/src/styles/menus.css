@@ -231,6 +231,7 @@
 /* disabled */
 :root:not(#_) :is(
   .dropdown__item--disabled,
+  .dropdown__item:disabled,
   .ds-dropdown__item--disabled,
   .ctx-item:disabled,
   .tab-menu button:disabled,

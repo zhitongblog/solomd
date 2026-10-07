@@ -79,7 +79,7 @@ async function confirm() {
     />
 
     <template #footer>
-      <DsButton variant="ghost" @click="emit('close')">
+      <DsButton variant="secondary" @click="emit('close')">
         {{ t('types.cancel') }}
       </DsButton>
       <DsButton

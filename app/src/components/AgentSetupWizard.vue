@@ -26,6 +26,7 @@ import { useToastsStore } from '../stores/toasts';
 import { PROVIDERS, providerById } from '../lib/ai-providers';
 import type { ProviderId } from '../lib/ai-providers';
 import { useI18n } from '../i18n';
+import Icons from './Icons.vue';
 
 const props = defineProps<{ open: boolean }>();
 const emit = defineEmits<{ (e: 'close'): void }>();
@@ -302,7 +303,9 @@ function onCloudKeyKey(e: KeyboardEvent) {
   <Teleport to="body">
   <div v-if="props.open" class="wiz-backdrop" @click.self="finish">
     <div class="wiz" role="dialog" aria-modal="true">
-      <button class="wiz__close" @click="finish" :title="t('wizard.close')">×</button>
+      <button class="wiz__close" @click="finish" :title="t('wizard.close')" :aria-label="t('wizard.close')">
+        <Icons name="close" :size="14" />
+      </button>
 
       <!-- Step: Choose ---------------------------------------------------- -->
       <div v-if="step === 'choose'" class="wiz__step">
@@ -312,7 +315,7 @@ function onCloudKeyKey(e: KeyboardEvent) {
         <div class="wiz__cards">
           <button class="wiz-card" @click="pickCloud">
             <div class="wiz-card__head">
-              <span class="wiz-card__emoji">☁️</span>
+              <span class="wiz-card__icon" aria-hidden="true"><Icons name="cloud" :size="16" /></span>
               <span class="wiz-card__title">{{ t('wizard.cloudTitle') }}</span>
             </div>
             <p class="wiz-card__body">{{ t('wizard.cloudBody') }}</p>
@@ -321,7 +324,7 @@ function onCloudKeyKey(e: KeyboardEvent) {
 
           <button class="wiz-card" @click="pickOllama">
             <div class="wiz-card__head">
-              <span class="wiz-card__emoji">🖥️</span>
+              <span class="wiz-card__icon" aria-hidden="true"><Icons name="cpu" :size="16" /></span>
               <span class="wiz-card__title">{{ t('wizard.localTitle') }}</span>
               <span
                 v-if="ollama.ok"
@@ -489,40 +492,50 @@ function onCloudKeyKey(e: KeyboardEvent) {
 </template>
 
 <style scoped>
+/* 5.0 dialog (spec §6): --bg-pop, radius 14, padding 24, --sh-modal, title
+   17/600, --scrim backdrop; 180ms fade + scale (keyframes: styles/menus.css). */
 .wiz-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.45);
+  background: var(--scrim);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: var(--z-modal);
-  backdrop-filter: blur(2px);
+  animation: sm-fade-in var(--dur) var(--ease-out);
 }
 .wiz {
   position: relative;
-  width: min(560px, 92vw);
+  box-sizing: border-box;
+  width: min(540px, 92vw);
   max-height: 90vh;
   overflow-y: auto;
-  background: var(--bg);
+  background: var(--bg-pop);
   color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  padding: 24px 28px;
+  border: var(--bd-hair);
+  border-radius: var(--r-xl);
+  box-shadow: var(--sh-modal);
+  padding: var(--sp-5);
+  animation: sm-dialog-in var(--dur) var(--ease-out);
 }
 .wiz__close {
   position: absolute;
-  top: 8px;
-  right: 12px;
+  top: 14px;
+  right: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
   background: none;
   border: none;
-  font-size: 22px;
-  line-height: 1;
-  color: var(--text-muted);
-  cursor: pointer;
+  border-radius: var(--r-sm);
+  color: var(--text-3);
+  cursor: default;
 }
 .wiz__close:hover {
+  background: var(--fill-1);
   color: var(--text);
 }
 .wiz__step {
@@ -532,111 +545,155 @@ function onCloudKeyKey(e: KeyboardEvent) {
 }
 .wiz__title {
   margin: 0;
-  font-size: 20px;
+  padding-right: 32px;
+  font-size: 17px;
   font-weight: 600;
+  letter-spacing: -0.01em;
 }
 .wiz__sub {
   margin: 0;
   font-size: 13px;
-  color: var(--text-muted);
+  line-height: 1.5;
+  color: var(--text-2);
 }
 .wiz__hint {
   margin: 0;
   font-size: 12px;
-  color: var(--text-muted);
+  line-height: 1.45;
+  color: var(--text-3);
 }
 .wiz__err {
   margin: 0;
   font-size: 12px;
-  color: var(--danger, #c0413a);
+  color: var(--danger);
 }
 .wiz__ok {
   margin: 0;
   font-size: 12px;
-  color: var(--accent, #2da44e);
+  color: var(--success);
 }
 
 .wiz__cards {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-top: 8px;
+  gap: 10px;
+  margin-top: 4px;
 }
 .wiz-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   text-align: left;
   padding: 14px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--bg-secondary, transparent);
-  cursor: pointer;
-  transition: border-color 0.1s, transform 0.1s;
+  border: 0;
+  border-radius: var(--r-lg);
+  background: var(--bg-elev);
+  box-shadow: inset 0 0 0 var(--hair-w) var(--hairline);
+  color: var(--text);
+  font: inherit;
+  cursor: default;
+  transition: background-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
 }
 .wiz-card:hover {
-  border-color: var(--accent, #4078c0);
-  transform: translateY(-1px);
+  background: var(--bg-elev);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.wiz-card:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
 }
 .wiz-card__head {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 4px;
+  width: 100%;
+  margin-bottom: 2px;
 }
-.wiz-card__emoji {
-  font-size: 18px;
+.wiz-card__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-md);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  flex: none;
 }
 .wiz-card__title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
 }
 .wiz-card__body {
-  margin: 4px 0 0;
+  margin: 6px 0 0;
   font-size: 12px;
-  color: var(--text);
+  line-height: 1.5;
+  color: var(--text-2);
 }
 .wiz-card__meta {
-  margin: 4px 0 0;
-  font-size: 11px;
-  color: var(--text-muted);
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--text-3);
 }
 .wiz-card__badge {
   margin-left: auto;
-  font-size: 10px;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--r-full);
+  font-size: 0;
 }
 .wiz-card__badge--ok {
-  color: var(--accent, #2da44e);
+  background: var(--success);
 }
 
 .wiz__skip {
   align-self: center;
-  margin-top: 8px;
+  margin-top: 4px;
+  height: 28px;
+  padding: 0 10px;
   background: none;
   border: none;
-  color: var(--text-muted);
+  border-radius: var(--r-md);
+  color: var(--text-2);
+  font: inherit;
   font-size: 12px;
-  cursor: pointer;
-  text-decoration: underline;
+  cursor: default;
 }
 .wiz__skip:hover {
+  background: var(--fill-1);
   color: var(--text);
 }
 
 .wiz__row {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   font-size: 12px;
 }
 .wiz__row label {
-  color: var(--text-muted);
+  color: var(--text-2);
+  font-weight: 500;
 }
 .wiz__sel,
 .wiz__inp {
+  box-sizing: border-box;
+  height: 32px;
   font: inherit;
-  padding: 6px 8px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg);
+  font-size: 13px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: var(--fill-1);
   color: var(--text);
+  outline: none;
+}
+.wiz__inp::placeholder {
+  color: var(--text-3);
+}
+.wiz__sel:focus,
+.wiz__inp:focus {
+  background: var(--bg);
+  box-shadow: var(--ring);
 }
 
 .wiz__buttons {
@@ -646,36 +703,49 @@ function onCloudKeyKey(e: KeyboardEvent) {
   margin-top: 8px;
 }
 .wiz__btn {
+  height: 32px;
   font: inherit;
-  padding: 6px 14px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg);
-  cursor: pointer;
-}
-.wiz__btn:hover:not(:disabled) {
-  background: var(--bg-secondary);
-}
-.wiz__btn:disabled {
-  opacity: 0.5;
+  font-size: 13px;
+  font-weight: 560;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: var(--fill-1);
+  color: var(--text);
   cursor: default;
 }
+.wiz__btn:hover:not(:disabled) {
+  background: var(--fill-2);
+}
+.wiz__btn:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+.wiz__btn:disabled {
+  opacity: 0.45;
+}
 .wiz__btn--primary {
-  background: var(--accent, #4078c0);
-  color: white;
-  border-color: var(--accent, #4078c0);
+  background: var(--accent-strong);
+  color: var(--accent-strong-fg);
 }
 .wiz__btn--primary:hover:not(:disabled) {
-  background: var(--accent-strong, #305d99);
+  background: var(--accent-strong);
+  filter: brightness(1.06);
 }
 .wiz__btn--ghost {
   background: transparent;
+  color: var(--text-2);
+}
+.wiz__btn--ghost:hover:not(:disabled) {
+  background: var(--fill-1);
+  color: var(--text);
 }
 
 .wiz__models {
   margin: 4px 0;
   padding-left: 18px;
   font-size: 12px;
+  color: var(--text-2);
 }
 .wiz__models li {
   margin: 2px 0;
@@ -697,5 +767,16 @@ function onCloudKeyKey(e: KeyboardEvent) {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .wiz-backdrop,
+  .wiz {
+    animation: none;
+  }
+}
+@media (max-width: 520px) {
+  .wiz__cards {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

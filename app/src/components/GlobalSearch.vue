@@ -17,6 +17,7 @@ import { useTabsStore } from '../stores/tabs';
 import { useTilesStore } from '../stores/tiles';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useI18n } from '../i18n';
+import Icons from './Icons.vue';
 
 const props = defineProps<{ prefill?: string }>();
 const emit = defineEmits<{ (e: 'close'): void }>();
@@ -159,6 +160,7 @@ function onKey(e: KeyboardEvent) {
       >×</button>
     </header>
     <div class="sp__input-wrap">
+      <Icons class="sp__input-icon" name="search" :size="14" aria-hidden="true" />
       <input
         ref="inputRef"
         v-model="query"
@@ -227,20 +229,38 @@ function onKey(e: KeyboardEvent) {
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
+/* 5.0 search field: a --fill-1 well (radius 8) with a leading icon, the
+   same look as the sidebar search and the command palette's input row. */
 .sp__input-wrap {
   display: flex;
   align-items: center;
-  border-bottom: 1px solid var(--border);
-  padding: 0 12px;
+  gap: 6px;
+  height: 30px;
+  margin: 8px 10px;
+  padding: 0 10px;
+  border-radius: var(--r-md);
+  background: var(--fill-1);
+  color: var(--text-3);
+}
+.sp__input-wrap:focus-within {
+  background: var(--bg);
+  box-shadow: var(--ring);
+}
+.sp__input-icon {
+  flex: none;
 }
 .sp__input {
   flex: 1;
+  min-width: 0;
   background: transparent;
   border: none;
   outline: none;
-  padding: 10px 0;
+  padding: 0;
   font: 13px var(--font-ui);
   color: var(--text);
+}
+.sp__input::placeholder {
+  color: var(--text-3);
 }
 .sp__loading {
   color: var(--accent);

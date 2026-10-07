@@ -20,6 +20,10 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{ 'update:modelValue': [boolean] }>();
+// The root is a <Teleport>, which cannot inherit attributes — forward
+// `class` / `data-*` from the caller to the overlay element instead, so
+// `<DsModal class="settings-modal">` actually lands on the dialog.
+defineOptions({ inheritAttrs: false });
 
 const panelRef = ref<HTMLElement | null>(null);
 let lastFocused: HTMLElement | null = null;
@@ -75,10 +79,13 @@ watch(
       document.addEventListener('keydown', onKeydown, true);
       await nextTick();
       // A dialog can name its default control with `data-autofocus` (e.g. the
-      // Save button in UnsavedDialog, #357); otherwise the first focusable —
-      // which is the header × button — gets focus.
+      // Save button in UnsavedDialog, #357); otherwise its first text field;
+      // otherwise the panel itself.
       const preferred = panelRef.value?.querySelector<HTMLElement>('[data-autofocus]');
-      (preferred ?? focusables()[0] ?? panelRef.value)?.focus();
+      // Never the header ×: a focus ring on the close button would be the
+      // first thing the eye lands on otherwise.
+      const first = focusables().find((el) => el.matches('input, select, textarea'));
+      (preferred ?? first ?? panelRef.value)?.focus();
     } else {
       document.removeEventListener('keydown', onKeydown, true);
       lastFocused?.focus?.();
@@ -94,7 +101,7 @@ onBeforeUnmount(() => {
 
 <template>
   <Teleport to="body" :disabled="!teleport">
-    <div v-if="modelValue" class="ds-modal" role="presentation">
+    <div v-if="modelValue" class="ds-modal" role="presentation" v-bind="$attrs">
       <div class="ds-modal__backdrop" @click="onBackdrop" />
       <div
         ref="panelRef"
