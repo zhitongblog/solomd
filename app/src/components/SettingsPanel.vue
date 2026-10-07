@@ -3122,4 +3122,86 @@ input[type='range']:disabled {
   display: flex;
   flex-direction: column;
 }
+
+/* Sub-panels (AISettings, GithubSyncSettings, ProxySettings, Integrations…)
+   carry their own scoped styles from the 4.x era — bordered white boxes,
+   11px buttons, native-looking fields. Inside the settings cards they get
+   the 5.0 controls: --fill-1 fields with a focus ring, 28px secondary /
+   primary buttons, hairline cards. Only the look is touched, never widths
+   or layout, so each panel keeps its own arrangement. */
+.ds-modal.settings-modal .settings__body > div[data-cat] :is(
+  input[type='text'],
+  input[type='password'],
+  input[type='number'],
+  input[type='url'],
+  input[type='email'],
+  input[type='search'],
+  input:not([type]),
+  select,
+  textarea
+) {
+  box-sizing: border-box;
+  min-height: 28px;
+  padding: 4px 8px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background-color: var(--fill-1);
+  border: 0;
+  border-radius: var(--r-sm);
+  outline: none;
+  box-shadow: none;
+}
+.ds-modal.settings-modal .settings__body > div[data-cat] :is(input, select, textarea)::placeholder {
+  color: var(--text-3);
+}
+.ds-modal.settings-modal .settings__body > div[data-cat] :is(input, select, textarea):focus {
+  background-color: var(--bg);
+  box-shadow: var(--ring);
+}
+.ds-modal.settings-modal .settings__body > div[data-cat] input[type='checkbox'],
+.ds-modal.settings-modal .settings__body > div[data-cat] input[type='radio'] {
+  accent-color: var(--accent);
+}
+.ds-modal.settings-modal .settings__body > div[data-cat] :is(button[class*='btn'], button[class*='-button']):not([class*='--link']):not([class*='close']) {
+  min-height: 28px;
+  padding: 0 12px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 560;
+  color: var(--text);
+  background: var(--fill-1);
+  border: 0;
+  border-radius: var(--r-md);
+  cursor: default;
+}
+.ds-modal.settings-modal .settings__body > div[data-cat] :is(button[class*='btn'], button[class*='-button']):not([class*='--link']):not([class*='close']):hover:not(:disabled) {
+  background: var(--fill-2);
+  border-color: transparent;
+}
+.ds-modal.settings-modal .settings__body > div[data-cat] :is(button[class*='btn'], button[class*='-button'])[class*='--primary'],
+.ds-modal.settings-modal .settings__body > div[data-cat] :is(button[class*='btn'], button[class*='-button'])[class*='--primary']:hover:not(:disabled) {
+  background: var(--accent-strong);
+  color: var(--accent-strong-fg);
+}
+.ds-modal.settings-modal .settings__body > div[data-cat] :is(button[class*='btn'], button[class*='-button'])[class*='--danger'] {
+  color: var(--danger);
+}
+.ds-modal.settings-modal .settings__body > div[data-cat] :is(button[class*='btn'], button[class*='-button'])[class*='--small'] {
+  min-height: 24px;
+  padding: 0 8px;
+  font-size: 12px;
+}
+.ds-modal.settings-modal .settings__body > div[data-cat] :is(button[class*='btn'], button[class*='-button'])[class*='--ghost'] {
+  background: transparent;
+  color: var(--text-2);
+}
+.ds-modal.settings-modal .settings__body > div[data-cat] :is(.ghs-card, .ic-card) {
+  background: var(--bg);
+  border: var(--bd-hair);
+  border-radius: var(--r-lg);
+}
+.ds-modal.settings-modal .settings__body > div[data-cat] :is(h3, h4) {
+  text-align: left;
+}
 </style>

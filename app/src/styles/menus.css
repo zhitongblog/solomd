@@ -25,7 +25,9 @@
  *   PaneTabBar ......... .ctx-menu (tab menu + "all tabs" list)
  *   TabBar ............. .tab-menu
  *   App ................ .sidebar-ctx
- *   FileTree ........... .ftree__ctx, .ftree__filter-pop, .ftree__switcher
+ *   FileTree ........... .ftree__ctx, .ftree__menu (filter / sort / switcher)
+ *   Sidebar ............ .sb__menu (recent files, workspace)
+ *   StatsPill .......... .stats-pop
  *   EditorContextMenu .. .editor-ctx
  *   ViewsPanel ......... .vpanel__ctx
  *   SpellcheckMenu ..... .spellcheck-menu
@@ -46,8 +48,9 @@
   .tab-menu,
   .sidebar-ctx,
   .ftree__ctx,
-  .ftree__filter-pop,
-  .ftree__switcher,
+  .ftree__menu,
+  .sb__menu,
+  .stats-pop,
   .editor-ctx,
   .vpanel__ctx,
   .spellcheck-menu,
@@ -85,7 +88,7 @@
 :root:not(#_) .ctx-menu.tablist {
   transform-origin: top right;
 }
-:root:not(#_) .writing-goals__popover {
+:root:not(#_) :is(.writing-goals__popover, .stats-pop) {
   transform-origin: bottom right;
 }
 /* The Windows menubar's sub-menu flies out sideways. */
@@ -126,8 +129,8 @@
   .tab-menu button,
   .sidebar-ctx__item,
   .ftree__ctx-item,
-  .ftree__filter-item,
-  .ftree__switcher-item,
+  .ftree__menu-item,
+  .sb__menu-item,
   .editor-ctx__item,
   .vpanel__ctx-item,
   .spellcheck-menu__item,
@@ -161,7 +164,8 @@
   .tab-menu button,
   .sidebar-ctx__item,
   .ftree__ctx-item,
-  .ftree__filter-item,
+  .ftree__menu-item,
+  .sb__menu-item,
   .editor-ctx__item,
   .vpanel__ctx-item,
   .spellcheck-menu__item,
@@ -175,10 +179,13 @@
   gap: 8px;
 }
 /* Two-line rows (recent files with their path, export with a hint). */
-:root:not(#_) .dropdown__item:not(.dropdown__item--single),
-:root:not(#_) .ftree__switcher-item {
+:root:not(#_) .dropdown__item:not(.dropdown__item--single) {
   justify-content: center;
   gap: 1px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+:root:not(#_) .ftree__menu-item--two {
   padding-top: 5px;
   padding-bottom: 5px;
 }
@@ -190,8 +197,8 @@
   .tab-menu button,
   .sidebar-ctx__item,
   .ftree__ctx-item,
-  .ftree__filter-item,
-  .ftree__switcher-item,
+  .ftree__menu-item,
+  .sb__menu-item,
   .editor-ctx__item,
   .vpanel__ctx-item,
   .spellcheck-menu__item,
@@ -218,8 +225,8 @@
   .tab-menu button,
   .sidebar-ctx__item,
   .ftree__ctx-item,
-  .ftree__filter-item,
-  .ftree__switcher-item,
+  .ftree__menu-item,
+  .sb__menu-item,
   .editor-ctx__item,
   .vpanel__ctx-item,
   .pomo-pill__menu-item,
@@ -236,7 +243,6 @@
   .ctx-item:disabled,
   .tab-menu button:disabled,
   .ftree__ctx-item:disabled,
-  .ftree__filter-item:disabled,
   .editor-ctx__item:disabled,
   .vpanel__ctx-item:disabled
 ),
@@ -256,26 +262,21 @@
   color: var(--danger);
 }
 
-/* "selected" rows (current folder, current tab in the all-tabs list) read as
-   the current item, not as an accent-coloured link. */
-:root:not(#_) :is(.ftree__switcher-item--active, .tablist__item--active) {
+/* The current tab in the all-tabs list reads as the current item, not as an
+   accent-coloured link. */
+:root:not(#_) .tablist__item--active {
   background: transparent;
   font-weight: 600;
 }
-:root:not(#_) :is(.ftree__filter-item--active, .dropdown__item--check.is-checked .dropdown__name) {
+:root:not(#_) .dropdown__item--check.is-checked .dropdown__name {
   color: var(--text);
-}
-/* A call-to-action row ("Open folder…") is a normal row. */
-:root:not(#_) .ftree__switcher-item--cta {
-  color: var(--text);
-  font-weight: 400;
 }
 :root:not(#_) .editor-ctx__item--suggestion {
   font-weight: 600;
 }
 
 /* ── row parts ────────────────────────────────────────────────────────── */
-:root:not(#_) :is(.dropdown__name, .ftree__switcher-name, .ftree__filter-name, .tablist__name) {
+:root:not(#_) :is(.dropdown__name, .tablist__name) {
   color: inherit;
   font-size: 13px;
   font-weight: 400;
@@ -284,12 +285,11 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-:root:not(#_) .dropdown__item--single .dropdown__name,
-:root:not(#_) .ftree__filter-name {
+:root:not(#_) .dropdown__item--single .dropdown__name {
   flex: 1 1 auto;
 }
 /* secondary line: path / hint */
-:root:not(#_) :is(.dropdown__path, .ftree__switcher-path) {
+:root:not(#_) :is(.dropdown__path) {
   color: var(--text-3);
   font-size: 11px;
   line-height: 1.3;
@@ -300,8 +300,8 @@
   .dropdown__shortcut,
   .dropdown__kbd,
   .ftree__ctx-kbd,
+  .ftree__menu-count,
   .editor-ctx__key,
-  .ftree__filter-count,
   .pomo-popover__row-min,
   .cm-slash-hint
 ) {
@@ -321,7 +321,7 @@
 }
 
 /* check-mark column: fixed 16px whether or not the row is ticked */
-:root:not(#_) :is(.dropdown__check, .sidebar-ctx__check, .ftree__filter-check) {
+:root:not(#_) :is(.dropdown__check, .sidebar-ctx__check, .ftree__menu-check) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -337,9 +337,9 @@
 /* headings */
 :root:not(#_) :is(
   .dropdown__heading,
-  .ftree__filter-label,
-  .ftree__switcher-label,
   .spellcheck-menu__header,
+  .ftree__menu-label,
+  .sb__menu-label,
   .pomo-popover__head,
   .writing-goals__popover-header
 ) {
@@ -358,8 +358,8 @@
   .ctx-sep,
   .tab-menu__sep,
   .ftree__ctx-sep,
-  .ftree__filter-sep,
-  .ftree__switcher-sep,
+  .ftree__menu-sep,
+  .stats-pop__sep,
   .editor-ctx__sep,
   .vpanel__ctx-sep,
   .spellcheck-menu__divider,
@@ -375,9 +375,8 @@
 /* empty states */
 :root:not(#_) :is(
   .dropdown__empty,
-  .ftree__switcher-empty,
-  .ftree__filter-empty,
   .spellcheck-menu__empty,
+  .sb__menu-empty,
   .cm-slash-empty
 ) {
   padding: 6px 8px;
@@ -483,8 +482,8 @@
     .tab-menu button,
     .sidebar-ctx__item,
     .ftree__ctx-item,
-    .ftree__filter-item,
-    .ftree__switcher-item,
+  .ftree__menu-item,
+  .sb__menu-item,
     .editor-ctx__item,
     .vpanel__ctx-item,
     .spellcheck-menu__item,
@@ -506,8 +505,9 @@
     .tab-menu,
     .sidebar-ctx,
     .ftree__ctx,
-    .ftree__filter-pop,
-    .ftree__switcher,
+  .ftree__menu,
+  .sb__menu,
+  .stats-pop,
     .editor-ctx,
     .vpanel__ctx,
     .spellcheck-menu,
