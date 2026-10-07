@@ -48,12 +48,16 @@ function effectiveCombos(action: KeyActionDef, overrides: KeyOverrides): KeyComb
   return overrideCombos(overrides[action.id]) ?? action.defaults.map(normalizeCombo);
 }
 
+/** Settings › Shortcuts groups — one per menu-bar menu, in menu order. */
+export const KEY_CATEGORIES = ['file', 'edit', 'paragraph', 'format', 'navigate', 'view', 'help'] as const;
+export type KeyCategory = (typeof KEY_CATEGORIES)[number];
+
 export interface KeyActionDef {
   /** Stable id — matches the command registry's id where one exists. */
   id: string;
   /** Name shown in Settings. English, like the command palette's titles. */
   label: string;
-  category: 'file' | 'edit' | 'view' | 'navigate' | 'tools';
+  category: KeyCategory;
   /**
    * Defaults, in priority order. A few actions ship two chords — ⌘N and ⌘T
    * both make a note, F1 and ⌘/ both open help — because both are muscle
@@ -113,21 +117,43 @@ function activeActionById(actionId: string, platform: 'mac' | 'windows' | 'linux
  * defaults are byte-for-byte what shipped before.
  */
 export const KEY_ACTIONS: KeyActionDef[] = [
+  // Grouped and ordered as the menu bar is (lib/app-menu.ts), so Settings ›
+  // Shortcuts reads like the menus it rebinds — a tester's review (bug/,
+  // 2026-10-07) found a 工具 group no menu had.
+
   // ---- File ----
   { id: 'file.new', label: 'New Note', category: 'file', defaults: ['Mod+N', 'Mod+T'] },
-  { id: 'file.newText', label: 'New Plain Text File', category: 'file', defaults: ['Mod+Alt+N'] },
+  { id: 'file.newText', label: 'New Plain Text', category: 'file', defaults: ['Mod+Alt+N'] },
   // #338 — a note in the folder selected in the file tree (or the selected
   // file's folder).
   { id: 'file.newInFolder', label: 'New Note in Selected Folder', category: 'file', defaults: ['Mod+Alt+Shift+N'] },
+  { id: 'window.new', label: 'New Window', category: 'file', defaults: ['Mod+Shift+N'] },
+  { id: 'capture.quick', label: 'Quick Capture…', category: 'file', defaults: [] },
   { id: 'file.open', label: 'Open File…', category: 'file', defaults: ['Mod+O'] },
-  { id: 'file.import', label: 'Import Documents…', category: 'file', defaults: ['Mod+Shift+L'] },
+  // Not ⌘⇧O (the outline, and AMD's on Windows) and not Alt+O (on a Mac ⌥O
+  // types ø). Three modifiers is the price of a chord free everywhere.
+  { id: 'file.openFolder', label: 'Open Folder…', category: 'file', defaults: ['Mod+Alt+Shift+O'] },
+  { id: 'daily.openToday', label: "Open Today's Daily Note", category: 'file', defaults: ['Mod+D'] },
+  { id: 'daily.openYesterday', label: "Open Yesterday's Daily Note", category: 'file', defaults: [] },
+  { id: 'daily.openTomorrow', label: "Open Tomorrow's Daily Note", category: 'file', defaults: [] },
   { id: 'file.save', label: 'Save', category: 'file', defaults: ['Mod+S'] },
   { id: 'file.saveAs', label: 'Save As…', category: 'file', defaults: ['Mod+Shift+S'] },
+  { id: 'file.import', label: 'Import Documents…', category: 'file', defaults: ['Mod+Shift+L'] },
+  { id: 'image.uploadLocalImages', label: 'Upload Local Images to Image Host…', category: 'file', defaults: [] },
+  { id: 'export.html', label: 'Export as HTML', category: 'file', defaults: [] },
+  { id: 'export.docx', label: 'Export as Word', category: 'file', defaults: [] },
+  { id: 'export.pdfPrint', label: 'Print / PDF', category: 'file', defaults: ['Mod+Alt+Shift+P'] },
+  { id: 'export.pdf', label: 'Export as PDF (Image)', category: 'file', defaults: [] },
+  { id: 'export.image', label: 'Export as Image', category: 'file', defaults: [] },
+  { id: 'export.copyHtml', label: 'Copy as HTML', category: 'file', defaults: ['Mod+Shift+C'] },
+  { id: 'export.copyMd', label: 'Copy as Markdown', category: 'file', defaults: ['Mod+Alt+C'] },
+  { id: 'inbox.open', label: 'Open Inbox', category: 'file', defaults: [] },
+  { id: 'inbox.toggle', label: 'Toggle Inbox Flag / Organize', category: 'file', defaults: ['Mod+E'] },
+  { id: 'file.openExternal', label: 'Open in External Editor', category: 'file', defaults: ['Mod+Shift+E'] },
+  { id: 'settings.open', label: 'Settings', category: 'file', defaults: ['Mod+Comma'] },
   { id: 'file.closeTab', label: 'Close Tab', category: 'file', defaults: ['Mod+W'] },
   // B4 — Typora's "reopen closed tab". ⌘⇧T was free, so it ships bound.
   { id: 'tab.reopenClosed', label: 'Reopen Closed Tab', category: 'file', defaults: ['Mod+Shift+T'] },
-  { id: 'file.openExternal', label: 'Open in External Editor', category: 'file', defaults: ['Mod+Shift+E'] },
-  { id: 'window.new', label: 'New Window', category: 'file', defaults: ['Mod+Shift+N'] },
   // #272 — not on macOS: Quit ⌘Q belongs to the OS app menu, and the native
   // Exit item is built `#[cfg(target_os = "linux")]`, so a rebind here could
   // never reach the menu that actually owns the chord. Listing it in Settings
@@ -141,6 +167,14 @@ export const KEY_ACTIONS: KeyActionDef[] = [
   },
 
   // ---- Edit ----
+  // Find runs in whichever find is focused (the preview's, CodeMirror's, the
+  // plain editor's bar); Replace opens the same bar with the caret in the
+  // replace field. Ctrl+H is browser History inside WebView2 — release builds
+  // turn the browser accelerators off (runner.rs), which is what frees it.
+  { id: 'editor.find', label: 'Find…', category: 'edit', defaults: ['Mod+F'] },
+  { id: 'editor.replace', label: 'Replace…', category: 'edit', defaults: ['Mod+H'], platforms: ['windows', 'linux'] },
+  // ⌘H hides the app on a Mac; ⌥⌘F is where Mac editors keep Replace.
+  { id: 'editor.replace', label: 'Replace…', category: 'edit', defaults: ['Mod+Alt+F'], platforms: ['mac'] },
   { id: 'editor.caseCycle', label: 'Cycle Case of Selection', category: 'edit', defaults: ['Shift+F3'] },
   // ---- Typora-style selection commands (B4) ----
   // Each one works in all three editors (lib/editor-commands.ts decides the
@@ -151,56 +185,78 @@ export const KEY_ACTIONS: KeyActionDef[] = [
   { id: 'editor.deleteWord', label: 'Delete Word', category: 'edit', defaults: ['Mod+Shift+D'] },
   { id: 'editor.selectLine', label: 'Select Line', category: 'edit', defaults: ['Mod+L'] },
   { id: 'editor.jumpToSelection', label: 'Jump to Selection', category: 'edit', defaults: ['Mod+Alt+J'] },
-  // ---- Formatting (#296, #274) ----
+  { id: 'editor.aiRewrite', label: 'AI Rewrite Selection', category: 'edit', defaults: ['Mod+J'] },
+  { id: 'clean.aiArtifacts', label: 'Clean AI Formatting Marks', category: 'edit', defaults: [] },
+  { id: 'clean.stripMarkdown', label: 'Strip All Markdown', category: 'edit', defaults: [] },
+  { id: 'format.markdown', label: 'Format Markdown', category: 'edit', defaults: ['Mod+Alt+L'] },
+  { id: 'proofread.cjk', label: 'CJK Proofread', category: 'edit', defaults: ['Mod+Shift+J'] },
+
+  // ---- Paragraph (#296, #274) ----
+  { id: 'fmt.h1', label: 'Heading 1', category: 'paragraph', defaults: ['Mod+1'] },
+  { id: 'fmt.h2', label: 'Heading 2', category: 'paragraph', defaults: ['Mod+2'] },
+  { id: 'fmt.h3', label: 'Heading 3', category: 'paragraph', defaults: ['Mod+3'] },
+  { id: 'fmt.h4', label: 'Heading 4', category: 'paragraph', defaults: ['Mod+4'] },
+  { id: 'fmt.h5', label: 'Heading 5', category: 'paragraph', defaults: ['Mod+5'] },
+  { id: 'fmt.h6', label: 'Heading 6', category: 'paragraph', defaults: ['Mod+6'] },
+  // B4 — Typora's ⌘= / ⌘- / ⌘0. Those chords zoom the whole UI here, so the
+  // commands ship unbound and the Typora / Word preset hands them the keys.
+  { id: 'heading.promote', label: 'Increase Heading Level', category: 'paragraph', defaults: [] },
+  { id: 'heading.demote', label: 'Decrease Heading Level', category: 'paragraph', defaults: [] },
+  { id: 'heading.paragraph', label: 'Convert to Paragraph', category: 'paragraph', defaults: [] },
+  { id: 'fmt.ol', label: 'Numbered List', category: 'paragraph', defaults: ['Mod+Alt+7'] },
+  { id: 'fmt.ul', label: 'Bulleted List', category: 'paragraph', defaults: ['Mod+Alt+8'] },
+  { id: 'fmt.task', label: 'Task List', category: 'paragraph', defaults: ['Mod+Alt+9'] },
+  { id: 'fmt.quote', label: 'Blockquote', category: 'paragraph', defaults: ['Mod+Alt+Q'] },
+  { id: 'fmt.codeblock', label: 'Code Block', category: 'paragraph', defaults: ['Mod+Alt+K'] },
+  { id: 'editor.tableEditor', label: 'Edit Current Table…', category: 'paragraph', defaults: ['Mod+Alt+T'] },
+  { id: 'editor.formulaEditor', label: 'Edit Current Formula…', category: 'paragraph', defaults: ['Mod+Alt+M'] },
+
+  // ---- Format ----
   // Bold is NOT on Mod+B by default: that has toggled the file tree since
   // 1.0 (the VS Code habit), and taking it away from everyone to match the
   // Typora habit trades one group's muscle memory for another's. The writer
   // preset below swaps the two in one click instead.
-  { id: 'fmt.bold', label: 'Bold', category: 'edit', defaults: ['Mod+Shift+B'] },
-  { id: 'fmt.italic', label: 'Italic', category: 'edit', defaults: ['Mod+I'] },
-  { id: 'fmt.strike', label: 'Strikethrough', category: 'edit', defaults: ['Mod+Shift+X'] },
-  { id: 'fmt.code', label: 'Inline Code', category: 'edit', defaults: ['Mod+Shift+M'] },
-  { id: 'fmt.link', label: 'Link', category: 'edit', defaults: ['Mod+K'] },
-  { id: 'fmt.h1', label: 'Heading 1', category: 'edit', defaults: ['Mod+1'] },
-  { id: 'fmt.h2', label: 'Heading 2', category: 'edit', defaults: ['Mod+2'] },
-  { id: 'fmt.h3', label: 'Heading 3', category: 'edit', defaults: ['Mod+3'] },
-  { id: 'fmt.h4', label: 'Heading 4', category: 'edit', defaults: ['Mod+4'] },
-  { id: 'fmt.h5', label: 'Heading 5', category: 'edit', defaults: ['Mod+5'] },
-  { id: 'fmt.h6', label: 'Heading 6', category: 'edit', defaults: ['Mod+6'] },
-  // B4 — Typora's ⌘= / ⌘- / ⌘0. Those chords zoom the whole UI here, so the
-  // commands ship unbound and the Typora / Word preset hands them the keys.
-  { id: 'heading.promote', label: 'Increase Heading Level', category: 'edit', defaults: [] },
-  { id: 'heading.demote', label: 'Decrease Heading Level', category: 'edit', defaults: [] },
-  { id: 'heading.paragraph', label: 'Convert to Paragraph', category: 'edit', defaults: [] },
-  { id: 'fmt.quote', label: 'Blockquote', category: 'edit', defaults: ['Mod+Alt+Q'] },
-  { id: 'fmt.ul', label: 'Bulleted List', category: 'edit', defaults: ['Mod+Alt+8'] },
-  { id: 'fmt.ol', label: 'Numbered List', category: 'edit', defaults: ['Mod+Alt+7'] },
-  { id: 'fmt.task', label: 'Task List', category: 'edit', defaults: ['Mod+Alt+9'] },
-  { id: 'fmt.codeblock', label: 'Code Block', category: 'edit', defaults: ['Mod+Alt+K'] },
-  { id: 'format.markdown', label: 'Format Markdown', category: 'edit', defaults: ['Mod+Alt+L'] },
-  { id: 'editor.tableEditor', label: 'Edit Table as Grid', category: 'edit', defaults: ['Mod+Alt+T'] },
-  { id: 'editor.formulaEditor', label: 'Edit Formula', category: 'edit', defaults: ['Mod+Alt+M'] },
-  { id: 'editor.aiRewrite', label: 'AI Rewrite Selection', category: 'edit', defaults: ['Mod+J'] },
-  { id: 'export.copyHtml', label: 'Copy as HTML', category: 'edit', defaults: ['Mod+Shift+C'] },
-  { id: 'export.copyMd', label: 'Copy as Markdown', category: 'edit', defaults: ['Mod+Alt+C'] },
-  { id: 'export.pdfPrint', label: 'Print / PDF', category: 'edit', defaults: ['Mod+Alt+Shift+P'] },
+  { id: 'fmt.bold', label: 'Bold', category: 'format', defaults: ['Mod+Shift+B'] },
+  { id: 'fmt.italic', label: 'Italic', category: 'format', defaults: ['Mod+I'] },
+  { id: 'fmt.strike', label: 'Strikethrough', category: 'format', defaults: ['Mod+Shift+X'] },
+  { id: 'fmt.code', label: 'Inline Code', category: 'format', defaults: ['Mod+Shift+M'] },
+  { id: 'fmt.link', label: 'Link', category: 'format', defaults: ['Mod+K'] },
+
+  // ---- Navigate ----
+  { id: 'palette.open', label: 'Command Palette', category: 'navigate', defaults: ['Mod+Shift+K'] },
+  { id: 'quickSwitcher.open', label: 'Quick File Switcher', category: 'navigate', defaults: ['Mod+P'] },
+  { id: 'search.global', label: 'Search in Folder', category: 'navigate', defaults: ['Mod+Shift+F'] },
+  { id: 'tab.prev', label: 'Previous Tab', category: 'navigate', defaults: ['Mod+BracketLeft'] },
+  { id: 'tab.next', label: 'Next Tab', category: 'navigate', defaults: ['Mod+BracketRight'] },
+  { id: 'tile.splitRight', label: 'Split Pane Right', category: 'navigate', defaults: ['Mod+Backslash'] },
+  { id: 'tile.splitDown', label: 'Split Pane Down', category: 'navigate', defaults: ['Mod+Shift+Backslash'] },
+  { id: 'tile.focusNext', label: 'Focus Next Pane', category: 'navigate', defaults: ['Mod+Alt+ArrowRight'] },
+  { id: 'tile.focusPrev', label: 'Focus Previous Pane', category: 'navigate', defaults: ['Mod+Alt+ArrowLeft'] },
 
   // ---- View ----
-  { id: 'view.cycleView', label: 'Cycle Edit / Split / Preview', category: 'view', defaults: ['Mod+Shift+P'] },
   // #180: Typora users flip source <-> WYSIWYG with Ctrl+/. That chord is
   // Markdown Help here, so the default is Mod+Alt+/; rebind it to Mod+/ in
   // Settings -> Shortcuts to get Typora's muscle memory back.
-  { id: 'view.toggleLiveEdit', label: 'Toggle Live Edit / Edit Only', category: 'view', defaults: ['Mod+Alt+Slash'] },
+  { id: 'view.toggleLiveEdit', label: 'Toggle Source / Live Edit', category: 'view', defaults: ['Mod+Alt+Slash'] },
+  { id: 'view.cycleView', label: 'Cycle Edit / Split / Preview', category: 'view', defaults: ['Mod+Shift+P'] },
   { id: 'view.toggleReading', label: 'Toggle Reading Mode', category: 'view', defaults: ['Mod+Shift+R'] },
+  { id: 'view.slideshow', label: 'Slideshow', category: 'view', defaults: ['Mod+Alt+P'] },
   { id: 'view.toggleFileTree', label: 'Toggle File Tree', category: 'view', defaults: ['Mod+B'] },
   { id: 'view.toggleRightSidebar', label: 'Toggle Right Sidebar', category: 'view', defaults: ['Mod+Alt+B'] },
   { id: 'view.toggleOutline', label: 'Toggle Outline', category: 'view', defaults: ['Mod+Shift+O'] },
   { id: 'view.toggleInspector', label: 'Toggle Properties Inspector', category: 'view', defaults: ['Mod+Shift+I'] },
-  { id: 'view.toggleToolbar', label: 'Show / Hide Toolbar Buttons', category: 'view', defaults: ['Mod+Alt+Shift+T'] },
-  { id: 'view.slideshow', label: 'Slideshow', category: 'view', defaults: ['Mod+Alt+P'] },
+  // Folding. The chords mirror CodeMirror's own fold keymap so the muscle
+  // memory carries over — but they are handled at app level, which is what
+  // makes them work in the Windows plain-textarea editor too (it has no
+  // CodeMirror keymap to reach).
+  { id: 'fold.toggle', label: 'Fold / Unfold Section at Cursor', category: 'view', defaults: ['Mod+Shift+BracketLeft'] },
+  { id: 'fold.all', label: 'Fold All Sections', category: 'view', defaults: ['Mod+Alt+BracketLeft'] },
+  { id: 'fold.none', label: 'Unfold All', category: 'view', defaults: ['Mod+Alt+BracketRight'] },
   // B4 — F8 / F9 as in Typora. Both keys were free.
   { id: 'view.toggleFocusMode', label: 'Toggle Focus Mode', category: 'view', defaults: ['F8'] },
   { id: 'view.toggleTypewriter', label: 'Toggle Typewriter Mode', category: 'view', defaults: ['F9'] },
+  { id: 'pomodoro.startLast', label: 'Start Focused Writing Session', category: 'view', defaults: ['Mod+Shift+Z'] },
+  { id: 'view.toggleToolbar', label: 'Show / Hide Toolbar Buttons', category: 'view', defaults: ['Mod+Alt+Shift+T'] },
   // Zoom used to be hard-wired in App.vue. It is rebindable now because the
   // Typora / Word preset gives ⌘= / ⌘- / ⌘0 to the heading-level commands,
   // and a chord that cannot be unbound cannot be given away. The preview
@@ -212,33 +268,9 @@ export const KEY_ACTIONS: KeyActionDef[] = [
   { id: 'view.zoomEditorIn', label: 'Editor: Zoom In', category: 'view', defaults: ['Mod+Shift+Equal'] },
   { id: 'view.zoomEditorOut', label: 'Editor: Zoom Out', category: 'view', defaults: ['Mod+Shift+Minus'] },
   { id: 'view.zoomEditorReset', label: 'Editor: Reset Zoom', category: 'view', defaults: ['Mod+Shift+0'] },
-  // Folding. The chords mirror CodeMirror's own fold keymap so the muscle
-  // memory carries over — but they are handled at app level, which is what
-  // makes them work in the Windows plain-textarea editor too (it has no
-  // CodeMirror keymap to reach).
-  { id: 'fold.toggle', label: 'Fold / Unfold Section at Cursor', category: 'view', defaults: ['Mod+Shift+BracketLeft'] },
-  { id: 'fold.all', label: 'Fold All Sections', category: 'view', defaults: ['Mod+Alt+BracketLeft'] },
-  { id: 'fold.none', label: 'Unfold All', category: 'view', defaults: ['Mod+Alt+BracketRight'] },
 
-  // ---- Navigate ----
-  { id: 'palette.open', label: 'Command Palette', category: 'navigate', defaults: ['Mod+Shift+K'] },
-  { id: 'quickSwitcher.open', label: 'Quick File Switcher', category: 'navigate', defaults: ['Mod+P'] },
-  { id: 'search.global', label: 'Search in Folder', category: 'navigate', defaults: ['Mod+Shift+F'] },
-  { id: 'editor.find', label: 'Find in Preview', category: 'navigate', defaults: ['Mod+F'] },
-  { id: 'tab.prev', label: 'Previous Tab', category: 'navigate', defaults: ['Mod+BracketLeft'] },
-  { id: 'tab.next', label: 'Next Tab', category: 'navigate', defaults: ['Mod+BracketRight'] },
-  { id: 'tile.splitRight', label: 'Split Pane Right', category: 'navigate', defaults: ['Mod+Backslash'] },
-  { id: 'tile.splitDown', label: 'Split Pane Down', category: 'navigate', defaults: ['Mod+Shift+Backslash'] },
-  { id: 'tile.focusNext', label: 'Focus Next Pane', category: 'navigate', defaults: ['Mod+Alt+ArrowRight'] },
-  { id: 'tile.focusPrev', label: 'Focus Previous Pane', category: 'navigate', defaults: ['Mod+Alt+ArrowLeft'] },
-
-  // ---- Tools ----
-  { id: 'settings.open', label: 'Settings', category: 'tools', defaults: ['Mod+Comma'] },
-  { id: 'help.markdown', label: 'Markdown Help', category: 'tools', defaults: ['F1', 'Mod+Slash'] },
-  { id: 'proofread.cjk', label: 'CJK Proofread', category: 'tools', defaults: ['Mod+Shift+J'] },
-  { id: 'daily.openToday', label: "Open Today's Daily Note", category: 'tools', defaults: ['Mod+D'] },
-  { id: 'inbox.toggle', label: 'Toggle Inbox Flag / Organize', category: 'tools', defaults: ['Mod+E'] },
-  { id: 'pomodoro.startLast', label: 'Start Writing Session (Zen)', category: 'tools', defaults: ['Mod+Shift+Z'] },
+  // ---- Help ----
+  { id: 'help.markdown', label: 'Markdown Help', category: 'help', defaults: ['F1', 'Mod+Slash'] },
 ];
 
 /** Keys whose `event.key` is punctuation — spelled by code for stability. */
@@ -494,7 +526,7 @@ export function writerPresetActive(
  *   to the Ctrl+Alt family (file/edit/view/navigate rows below);
  * - ⌘B is bold and ⌘⇧B the file tree (the writer swap);
  * - ⌘E and ⌘D go back to what Word and Typora do with them (inbox and the
- *   daily note move to ⌘⌥A / ⌘⌥Y, ⌘D selects a word);
+ *   daily note move to ⌘⌥A / ⌘⌥D — ⌘⌥Y on a Mac — and ⌘D selects a word);
  * - ⌘= / ⌘- / ⌘0 change heading levels, so UI zoom keeps its menu entries
  *   but loses its chords;
  * - ⌘/ toggles source / live edit (⌘⌥/ kept as a second key), and Markdown
@@ -505,7 +537,9 @@ export function writerPresetActive(
  */
 export const TYPORA_PRESET: Record<string, KeyOverride> = {
   // File
-  'file.import': 'Mod+Alt+D',
+  // A tester's follow-up (bug/, 2026-10-07): D is for Daily, and import keeps
+  // its L — Mod+Alt+Shift+L is also where the AMD fix moves it.
+  'file.import': 'Mod+Alt+Shift+L',
   'file.saveAs': 'Mod+Alt+S',
   'file.openExternal': 'Mod+Alt+E',
   // Edit
@@ -525,7 +559,7 @@ export const TYPORA_PRESET: Record<string, KeyOverride> = {
   'search.global': 'Mod+Alt+F',
   // Tools
   'inbox.toggle': 'Mod+Alt+A',
-  'daily.openToday': 'Mod+Alt+Y',
+  'daily.openToday': 'Mod+Alt+D',
   'help.markdown': 'F1',
   // New commands (B4 section 七)
   'view.toggleFocusMode': 'F8',
@@ -548,17 +582,39 @@ export const TYPORA_PRESET: Record<string, KeyOverride> = {
  */
 const MAC_RESERVED = new Set(['Mod+Alt+D', 'Mod+Alt+H', 'Mod+H', 'Mod+M', 'Mod+Q', 'Mod+Alt+Escape']);
 
+/**
+ * Where a preset entry goes on a Mac when its Windows chord is one macOS
+ * keeps. Dropping the entry is not enough for the daily note: the preset
+ * gives ⌘D to "select word", so the note must move somewhere.
+ */
+const MAC_PRESET_FALLBACK: Record<string, KeyOverride> = {
+  'daily.openToday': 'Mod+Alt+Y',
+};
+
 /** The Typora / Word preset as it applies on one platform. */
 export function typoraPreset(
   platform: 'mac' | 'windows' | 'linux' = currentPlatform(),
 ): Record<string, KeyOverride> {
   const known = new Set(activeKeyActions(platform).map((a) => a.id));
   const out: Record<string, KeyOverride> = {};
-  for (const [id, value] of Object.entries(TYPORA_PRESET)) {
+  for (const [id, preset] of Object.entries(TYPORA_PRESET)) {
     if (!known.has(id)) continue;
-    const combos = overrideCombos(value) ?? [];
-    if (platform === 'mac' && combos.some((c) => MAC_RESERVED.has(c))) continue;
+    let value = preset;
+    if (platform === 'mac' && (overrideCombos(value) ?? []).some((c) => MAC_RESERVED.has(c))) {
+      if (!(id in MAC_PRESET_FALLBACK)) continue;
+      value = MAC_PRESET_FALLBACK[id];
+    }
     out[id] = value;
+  }
+  // The remap was written against the Windows defaults. A chord it hands out
+  // may be some other command's default on another platform (⌥⌘F is Replace
+  // on a Mac) — that entry stays where it was rather than create a clash.
+  for (const [id, value] of Object.entries(out)) {
+    const clash = (overrideCombos(value) ?? []).some((c) => {
+      const owner = conflictFor(c, id, out, platform);
+      return !!owner && !(owner in out);
+    });
+    if (clash) delete out[id];
   }
   return out;
 }
@@ -753,7 +809,10 @@ export function cmKeyOwnedByApp(
   const want = canonicalCmKey(key);
   for (const [combo, actionId] of resolveBindings(overrides, platform)) {
     // AI rewrite is itself a CodeMirror keymap entry, not a window handler.
-    if (actionId === 'editor.aiRewrite') continue;
+    // Find is app-level only in the preview: in the editor its handler
+    // declines so CodeMirror's own ⌘F opens the search panel — filtering that
+    // binding out left ⌘F doing nothing in the editor (4.14.8–4.14.9).
+    if (actionId === 'editor.aiRewrite' || actionId === 'editor.find') continue;
     if (canonicalCmKey(toCodeMirrorKey(combo)) === want) return true;
   }
   return false;

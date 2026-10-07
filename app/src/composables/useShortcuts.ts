@@ -192,6 +192,19 @@ export function useShortcuts(hooks: Hooks = {}) {
         new CustomEvent('solomd:preview-search', { detail: { paneId: tiles.focusedPaneId } }),
       );
     },
+    // Opens the same find bar with the caret in the replace field. The
+    // preview has no replace, so there it is the preview's find.
+    'editor.replace': () => {
+      if (settings.viewMode === 'preview' && tabs.activeTab?.language === 'markdown') {
+        window.dispatchEvent(
+          new CustomEvent('solomd:preview-search', { detail: { paneId: tiles.focusedPaneId } }),
+        );
+        return;
+      }
+      window.dispatchEvent(
+        new CustomEvent('solomd:editor-find', { detail: { paneId: tiles.focusedPaneId, replace: true } }),
+      );
+    },
     'tab.prev': () => activateTabByOffset(-1),
     'tab.next': () => activateTabByOffset(1),
     'tile.splitRight': () => tiles.splitPane(tiles.focusedPaneId, 'horizontal'),
@@ -232,7 +245,9 @@ export function useShortcuts(hooks: Hooks = {}) {
     // Actions CodeMirror's own keymap already ran (it calls preventDefault):
     // running them again here would open the same overlay twice.
     if (e.defaultPrevented && CM_HANDLED.has(actionId)) return;
-    const run = actions[actionId];
+    // Menu commands made bindable for the menus' sake (export, quick capture,
+    // open folder…) need no handler of their own: they run as the palette does.
+    const run = actions[actionId] ?? (commands.some((c) => c.id === actionId) ? () => runById(actionId) : undefined);
     if (!run) return;
     if (run() === false) return; // action declined — leave the event alone
     e.preventDefault();

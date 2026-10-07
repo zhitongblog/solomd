@@ -521,8 +521,8 @@ function onEditorFindEvent(e: Event) {
   // No paneId → the focused pane handles it.
   if (paneId && paneId !== props.paneId) return;
   if (!paneId && !isFocused.value) return;
-  const ed = editorRef.value as unknown as { openFind?: () => void } | null;
-  ed?.openFind?.();
+  const ed = editorRef.value as unknown as { openFind?: (replace?: boolean) => void } | null;
+  ed?.openFind?.(!!(e as CustomEvent).detail?.replace);
 }
 
 /** Formula editor — same focused-pane routing as find. */

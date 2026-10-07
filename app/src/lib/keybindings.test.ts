@@ -129,12 +129,45 @@ test('Typora / Word preset clears every AMD / IME interception', async () => {
   assert.deepEqual(interceptedBindings(typoraPreset('windows'), 'windows'), []);
 });
 
-test('Typora / Word preset on macOS skips the two chords macOS owns', async () => {
-  const { typoraPreset } = await import('./keybindings.ts');
+test('Typora / Word preset on macOS steps around the chords macOS owns', async () => {
+  const { typoraPreset, TYPORA_PRESET } = await import('./keybindings.ts');
   const mac = typoraPreset('mac');
-  assert.ok(!('file.import' in mac), '⌘⌥D is Dock hiding');
   assert.ok(!('export.copyHtml' in mac), '⌘⌥H is Hide Others');
-  assert.equal(Object.keys(mac).length, 26);
+  // ⌘⌥D is Dock hiding, but the preset gives ⌘D to "select word", so the
+  // daily note must still move — to ⌘⌥Y.
+  assert.equal(mac['daily.openToday'], 'Mod+Alt+Y');
+  assert.equal(typoraPreset('windows')['daily.openToday'], 'Mod+Alt+D');
+  assert.equal(mac['file.import'], 'Mod+Alt+Shift+L');
+  // ⌥⌘F is Replace on a Mac: search-in-folder keeps ⌘⇧F there.
+  assert.ok(!('search.global' in mac));
+  assert.equal(typoraPreset('windows')['search.global'], 'Mod+Alt+F');
+  assert.equal(Object.keys(mac).length, Object.keys(TYPORA_PRESET).length - 2);
+});
+
+test('the Typora / Word preset never creates a conflict on any platform', async () => {
+  const { typoraPreset, activeKeyActions, combosFor } = await import('./keybindings.ts');
+  for (const platform of ['windows', 'mac', 'linux'] as const) {
+    const preset = typoraPreset(platform);
+    const owners = new Map<string, string>();
+    for (const a of activeKeyActions(platform)) {
+      for (const c of combosFor(a.id, preset, platform)) {
+        assert.ok(!owners.has(c), `${platform}: ${c} on both ${owners.get(c)} and ${a.id}`);
+        owners.set(c, a.id);
+      }
+    }
+  }
+});
+
+test('Replace is ⌃H off the Mac and ⌥⌘F on it; menus and Settings share one table', async () => {
+  const { combosFor, activeKeyActions, KEY_CATEGORIES } = await import('./keybindings.ts');
+  assert.deepEqual(combosFor('editor.replace', {}, 'windows'), ['Mod+H']);
+  assert.deepEqual(combosFor('editor.replace', {}, 'mac'), ['Mod+Alt+F']);
+  assert.deepEqual(combosFor('file.openFolder', {}, 'windows'), ['Mod+Alt+Shift+O']);
+  for (const platform of ['windows', 'mac', 'linux'] as const) {
+    const actions = activeKeyActions(platform);
+    assert.equal(new Set(actions.map((a) => a.id)).size, actions.length, `${platform}: one entry per id`);
+    for (const a of actions) assert.ok((KEY_CATEGORIES as readonly string[]).includes(a.category), a.id);
+  }
 });
 
 test('the preset never takes a key the user gave to another command', async () => {
@@ -176,4 +209,11 @@ test('a list override keeps every chord', async () => {
     'Mod+Slash',
     'Mod+Alt+Slash',
   ]);
+});
+
+test('⌘F stays in CodeMirror: the app find handler defers to it in the editor', async () => {
+  const { cmKeyOwnedByApp } = await import('./keybindings.ts');
+  for (const platform of ['windows', 'mac', 'linux'] as const) {
+    assert.equal(cmKeyOwnedByApp({ key: 'Mod-f' }, {}, platform), false, platform);
+  }
 });

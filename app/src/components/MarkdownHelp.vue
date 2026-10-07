@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { useAppMenu } from '../composables/useAppMenu';
 import { computed, ref, watch } from 'vue';
-import { activeKeyActions, combosFor, filterKeyActions, formatCombo, type KeyActionDef } from '../lib/keybindings';
+import { activeKeyActions, combosFor, KEY_CATEGORIES, filterKeyActions, formatCombo, type KeyActionDef } from '../lib/keybindings';
 import { useI18n } from '../i18n';
 import { isMacOS } from '../lib/platform';
 import { useSettingsStore } from '../stores/settings';
@@ -44,12 +45,12 @@ const helpTabs = computed(() => [
   { value: 'shortcuts', label: t('menubar.helpShortcuts') },
   { value: 'cli', label: 'CLI' },
 ]);
+const appMenu = useAppMenu();
+const shortcutName = computed(() => appMenu.shortcutNamer());
 function actionName(a: KeyActionDef): string {
-  const key = `cmd.${a.id}`;
-  const translated = t(key);
-  return translated && translated !== key ? translated : a.label;
+  return shortcutName.value(a.id, a.label);
 }
-const CATEGORY_ORDER: KeyActionDef['category'][] = ['file', 'edit', 'view', 'navigate', 'tools'];
+const CATEGORY_ORDER = KEY_CATEGORIES;
 const liveGroups = computed(() => {
   const hits = filterKeyActions(activeKeyActions(), query.value, actionName, kbSettings.keybindings, macChord);
   return CATEGORY_ORDER.map((cat) => ({

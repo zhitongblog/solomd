@@ -323,12 +323,22 @@ export function useCommands(): Command[] {
 
     {
       id: 'editor.find',
-      title: 'Find / Replace in note…',
+      title: 'Find…',
       shortcut: kb('editor.find'),
       hint: 'Open the find & replace bar in the current editor',
       run: () =>
         window.dispatchEvent(
           new CustomEvent('solomd:editor-find', { detail: { paneId: tiles.focusedPaneId } }),
+        ),
+    },
+    {
+      id: 'editor.replace',
+      title: 'Replace…',
+      shortcut: kb('editor.replace'),
+      hint: 'Open the find & replace bar with the caret in the replace field',
+      run: () =>
+        window.dispatchEvent(
+          new CustomEvent('solomd:editor-find', { detail: { paneId: tiles.focusedPaneId, replace: true } }),
         ),
     },
 

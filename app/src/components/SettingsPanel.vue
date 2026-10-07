@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAppMenu } from '../composables/useAppMenu';
 import { ref, computed, watch, onUnmounted, nextTick } from 'vue';
 import { shortcutLabel } from '../lib/keybindings';
 import { invoke } from '@tauri-apps/api/core';
@@ -24,6 +25,7 @@ import {
   writerPresetActive,
   typoraPreset,
   presetActive,
+  KEY_CATEGORIES,
   planPreset,
   type KeyActionDef,
 } from '../lib/keybindings';
@@ -111,21 +113,20 @@ const macKeys = isMacOS();
 const keyQuery = ref('');
 const keyGroups = computed(() => {
   const hits = filterKeyActions(activeKeyActions(), keyQuery.value, actionLabel, settings.keybindings, macKeys);
-  return (['file', 'edit', 'view', 'navigate', 'tools'] as const)
+  return KEY_CATEGORIES
     .map((key) => ({ key, items: hits.filter((a) => a.category === key) }))
     .filter((g) => g.items.length > 0);
 });
 
 /**
- * Prefer the command palette's own translation (`cmd.<id>` — most action ids
- * *are* command ids), so the list reads in the user's language instead of
- * showing English names inside a translated panel. The table's English label
- * is the fallback for the handful of UI-only actions the palette has no
- * entry for.
+ * Each command under the name its menu item carries (useAppMenu
+ * `shortcutNamer`), else the palette's translation, else the table's English
+ * label for the handful of UI-only actions neither knows.
  */
+const appMenu = useAppMenu();
+const shortcutName = computed(() => appMenu.shortcutNamer());
 function actionLabel(action: KeyActionDef): string {
-  const translated = t(`cmd.${action.id}`);
-  return translated && translated !== `cmd.${action.id}` ? translated : action.label;
+  return shortcutName.value(action.id, action.label);
 }
 
 function actionCombos(action: KeyActionDef): string[] {

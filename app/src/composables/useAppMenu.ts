@@ -1,9 +1,9 @@
 import { useSettingsStore } from '../stores/settings';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useI18n } from '../i18n';
-import { buildAppMenu, type MenuPlatform, type TopMenu } from '../lib/app-menu';
+import { buildAppMenu, menuLabelsByAction, type MenuPlatform, type TopMenu } from '../lib/app-menu';
 import { themeFamily, themeLabels } from '../lib/themes';
-import { hasGitBackend, isMacOS } from '../lib/platform';
+import { hasGitBackend, isMacOS, isWindowsDesktop } from '../lib/platform';
 import { useTabsStore } from '../stores/tabs';
 import { IS_APP_STORE_BUILD } from '../lib/app-build';
 import { isMasBuild } from '../lib/check-update';
@@ -66,5 +66,27 @@ export function useAppMenu() {
     });
   }
 
-  return { menuFor };
+  /**
+   * Name lookup for the shortcut lists (Settings › Shortcuts, the shortcut
+   * sheet): the menu's own name where the command has a top-level menu item,
+   * else the palette's — minus its "View:" prefix, which in a list grouped
+   * under 视图 / View only repeats the heading. Other prefixes ("Fold:",
+   * "Editor:") say something and stay. Call inside a computed.
+   */
+  function shortcutNamer(): (id: string, fallback: string) => string {
+    const fromMenu = menuLabelsByAction(menuFor(isMacOS() ? 'mac' : isWindowsDesktop() ? 'windows' : 'linux'));
+    const viewPrefix = /^(.*?[:：]\s*)/.exec(t('cmd.view.cycleView'))?.[1] ?? '';
+    return (id, fallback) => {
+      const menu = fromMenu.get(id);
+      if (menu) return menu;
+      const key = `cmd.${id}`;
+      const palette = t(key);
+      if (!palette || palette === key) return fallback;
+      return viewPrefix && id.startsWith('view.') && palette.startsWith(viewPrefix)
+        ? palette.slice(viewPrefix.length)
+        : palette;
+    };
+  }
+
+  return { menuFor, shortcutNamer };
 }

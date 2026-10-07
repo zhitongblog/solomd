@@ -253,6 +253,12 @@ export function buildAppMenu(ctx: MenuContext): TopMenu[] {
     sep,
     editKey('selectAll', 'edit.selectAll', t('menubar.selectAll'), 'Ctrl+A'),
     sep,
+    // No native accelerator on purpose: a native accelerator wins over the
+    // webview, and ⌘F has to reach whichever find is focused (the editor's,
+    // the preview's, the settings search box). The webview handles both.
+    item('edit.find', t('menubar.find'), { action: 'editor.find', noNativeAccel: true }),
+    item('edit.replace', t('menubar.replace'), { action: 'editor.replace', noNativeAccel: true }),
+    sep,
     {
       type: 'submenu',
       id: 'case',
@@ -271,8 +277,10 @@ export function buildAppMenu(ctx: MenuContext): TopMenu[] {
     item('editor.selectLine', t('cmd.editor.selectLine')),
     item('editor.jumpToSelection', t('cmd.editor.jumpToSelection')),
     sep,
+    // AI first, then plain text processing — two different kinds of command.
     ...(ctx.aiAvailable ? [item('editor.aiRewrite', t('cmd.editor.aiRewrite'))] : []),
     item('clean.aiArtifacts', t('toolbar.cleanAiMarks')),
+    sep,
     item('clean.stripMarkdown', t('menubar.stripMarkdown')),
     item('format.markdown', t('cmd.format.markdown')),
     sep,
@@ -298,17 +306,20 @@ export function buildAppMenu(ctx: MenuContext): TopMenu[] {
     item('heading.demote', t('cmd.heading.demote')),
     item('heading.paragraph', t('cmd.heading.paragraph')),
     sep,
-    fmt('ul'), fmt('ol'), fmt('task'),
+    // In chord order: ⌘⌥7 / 8 / 9.
+    fmt('ol'), fmt('ul'), fmt('task'),
     sep,
     fmt('quote'), fmt('codeblock'),
     sep,
     item('editor.tableEditor', t('cmd.editor.tableEditor')),
     item('editor.formulaEditor', t('cmd.editor.formulaEditor')),
     sep,
-    item('insert.mathBlock', t('toolbar.insertMathBlock')),
-    item('insert.mermaid', t('toolbar.insertMermaid')),
-    item('insert.table', t('toolbar.insertTable')),
-    item('insert.hr', t('toolbar.insertDivider')),
+    // "Insert …" here, "Edit current …" above: the menu has both, so each
+    // label says which one it is.
+    item('insert.table', t('menubar.insertTable')),
+    item('insert.mathBlock', t('menubar.insertMathBlock')),
+    item('insert.mermaid', t('menubar.insertMermaid')),
+    item('insert.hr', t('menubar.insertDivider')),
   ];
 
   // ---- 格式 Format ----
@@ -328,10 +339,6 @@ export function buildAppMenu(ctx: MenuContext): TopMenu[] {
     item('palette.open', t('menubar.palette')),
     item('quickSwitcher.open', t('cmd.quickSwitcher.open')),
     item('search.global', t('menubar.globalSearch')),
-    // No native accelerator on purpose: a native accelerator wins over the
-    // webview, and ⌘F has to reach whichever find is focused (the editor's,
-    // the preview's, the settings search box). The webview handles it.
-    item('edit.find', t('menubar.find'), { action: 'editor.find', noNativeAccel: true }),
     sep,
     item('tab.prev', t('cmd.tab.prev')),
     item('tab.next', t('cmd.tab.next')),
@@ -400,16 +407,21 @@ export function buildAppMenu(ctx: MenuContext): TopMenu[] {
         item('view.resetSidebarPanes', t('menubar.resetSidebarPanes')),
       ],
     },
-    item('view.toggleToolbar', t('menubar.toggleToolbar')),
     sep,
-    item('fold.toggle', t('cmd.fold.toggle')),
-    item('fold.all', t('cmd.fold.all')),
-    item('fold.none', t('cmd.fold.none')),
     {
       type: 'submenu',
-      id: 'foldLevel',
-      label: t('menubar.foldToLevel'),
-      items: [1, 2, 3, 4, 5, 6].map((n) => item(`fold.level${n}`, t('menubar.foldLevelN', { n }))),
+      id: 'fold',
+      label: t('menubar.foldMenu'),
+      items: [
+        // One level deep on purpose: the Windows title-bar menu (Toolbar.vue)
+        // opens a single submenu beside its row, not a cascade.
+        item('fold.toggle', t('menubar.foldToggle')),
+        item('fold.all', t('menubar.foldAll')),
+        sep,
+        ...[1, 2, 3, 4, 5, 6].map((n) => item(`fold.level${n}`, t('menubar.foldLevelN', { n }))),
+        sep,
+        item('fold.none', t('menubar.unfoldAll')),
+      ],
     },
     sep,
     item('view.toggleFocusMode', t('menubar.focusMode'), { checked: state.focusMode }),
@@ -417,9 +429,11 @@ export function buildAppMenu(ctx: MenuContext): TopMenu[] {
     item('pomodoro.startLast', t('cmd.pomodoro.startLast')),
     item('pomodoro.open', t('menubar.writingSession')),
     sep,
+    // The editor's own settings, then the preview's.
     item('view.toggleSpellCheck', t('menubar.spellCheck'), { checked: state.spellCheck }),
     item('view.toggleWrap', t('menubar.wordWrap'), { checked: state.wordWrap }),
     item('view.toggleLineNumbers', t('menubar.lineNumbers'), { checked: state.lineNumbers }),
+    sep,
     item('view.toggleLivePreview', t('toolbar.livePreviewToggle'), { checked: state.livePreview }),
     item('view.toggleFitWidth', t('toolbar.fitWidth'), { checked: state.fitWidth }),
     sep,
@@ -435,6 +449,8 @@ export function buildAppMenu(ctx: MenuContext): TopMenu[] {
         item('theme.clearCustomCss', t('menubar.clearCustomCss')),
       ],
     },
+    // The toolbar is chrome, not a pane: it sits with the appearance items.
+    item('view.toggleToolbar', t('menubar.toggleToolbar')),
     sep,
     {
       type: 'submenu',
@@ -509,6 +525,27 @@ export function buildAppMenu(ctx: MenuContext): TopMenu[] {
     ],
   };
   return [appMenu, ...menus.slice(0, 6), windowMenu, menus[6]];
+}
+
+/**
+ * Action id → the label its top-level menu item carries.
+ *
+ * Settings › Shortcuts and the shortcut sheet name a command the way the menu
+ * does, so one rename reaches all three places (a tester's review, bug/
+ * 2026-10-07, found the same command under three names). Only top-level
+ * items: inside a submenu the label leans on the submenu's name ("今天" under
+ * 日记), which a flat list does not show — those keep the palette's name.
+ */
+export function menuLabelsByAction(menus: TopMenu[]): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const menu of menus) {
+    for (const node of menu.items) {
+      if (node.type !== 'item') continue;
+      const id = node.action ?? node.id;
+      if (!out.has(id)) out.set(id, node.label);
+    }
+  }
+  return out;
 }
 
 /** The chord an item displays: the binding in effect, or its fixed chord. */

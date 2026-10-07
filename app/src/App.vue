@@ -980,6 +980,9 @@ function dispatchMenuAction(id: string) {
         window.dispatchEvent(new CustomEvent('solomd:editor-find', { detail: { paneId: tiles.focusedPaneId } }));
       }
       return;
+    case 'edit.replace':
+      shortcuts.runAction('editor.replace');
+      return;
     // Windows unified title bar — the in-app Edit menu (Toolbar.vue). The
     // native menu uses PredefinedMenuItems here; in-app we drive the focused
     // editor directly. `execCommand` covers the Windows editors (plain

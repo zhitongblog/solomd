@@ -1472,6 +1472,7 @@ const plainFindQuery = ref('');
 const plainReplaceValue = ref('');
 const plainFindCaseSensitive = ref(false);
 const plainFindInput = ref<HTMLInputElement | null>(null);
+const plainReplaceInput = ref<HTMLInputElement | null>(null);
 const plainMatches = ref<Array<{ start: number; end: number }>>([]);
 const plainMatchIndex = ref(0);
 // Where the caret was when the find bar opened: typing a query jumps to the
@@ -1513,15 +1514,18 @@ function runPlainSearch() {
   if (plainMatchIndex.value >= out.length) plainMatchIndex.value = 0;
 }
 
-function openPlainFind() {
+function openPlainFind(replace = false) {
   const wasOpen = plainFindOpen.value;
   plainFindOpen.value = true;
   if (!wasOpen) plainFindAnchor = plainCaretDocOffset();
   const selected = plainSelectionText();
   if (selected && !selected.includes('\n')) plainFindQuery.value = selected;
   nextTick(() => {
-    plainFindInput.value?.focus();
-    plainFindInput.value?.select();
+    // Replace (Ctrl+H) lands in the replace field when there is already
+    // something to find; with an empty query it starts where the user must.
+    const target = replace && plainFindQuery.value ? plainReplaceInput.value : plainFindInput.value;
+    target?.focus();
+    target?.select();
     revealPlainMatchFromAnchor();
   });
 }
@@ -4156,14 +4160,22 @@ function onEditorCommand(e: Event) {
  * Ctrl+F, but had no toolbar / command-palette entry, so users thought it was
  * gone. PaneContent forwards `solomd:editor-find` here for the focused pane.
  */
-function openFind(): void {
+function openFind(replace = false): void {
   if (usePlainWindowsEditor) {
-    openPlainFind();
+    openPlainFind(replace);
     return;
   }
   if (view) {
     view.focus();
     openSearchPanel(view);
+    // CodeMirror's panel always carries the replace row; "Replace" (Ctrl+H)
+    // only decides which field gets the caret. With nothing to find yet the
+    // find field is the one that needs typing first.
+    if (replace && getSearchQuery(view.state).search) {
+      const field = view.dom.querySelector<HTMLInputElement>('.cm-search input[name=replace]');
+      field?.focus();
+      field?.select();
+    }
   }
 }
 
@@ -5201,6 +5213,7 @@ const cls = computed(() => ({
       </div>
       <div class="plain-find__row">
         <input
+          ref="plainReplaceInput"
           class="plain-find__input"
           :value="plainReplaceValue"
           :placeholder="t('plainFind.replacePlaceholder')"

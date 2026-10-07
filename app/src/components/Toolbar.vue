@@ -1019,7 +1019,7 @@ onBeforeUnmount(() => {
               </button>
               <button class="dropdown__item dropdown__item--single" role="menuitem" tabindex="-1" @mousedown.prevent="act(() => files.newTextFile())">
                 <span class="dropdown__check"></span>
-                <span class="dropdown__name">{{ t('toolbar.newPlainText') }}</span>
+                <span class="dropdown__name">{{ t('menubar.newText') }}</span>
                 <span v-if="chord('file.newText')" class="dropdown__shortcut">{{ chord('file.newText') }}</span>
               </button>
               <div class="dropdown__sep"></div>
@@ -1034,7 +1034,7 @@ onBeforeUnmount(() => {
               </button>
               <button class="dropdown__item dropdown__item--single dropdown__item--sub" role="menuitem" tabindex="-1" @mousedown.prevent="goMorePage('recent')">
                 <span class="dropdown__check"></span>
-                <span class="dropdown__name">{{ t('header.recent') }}</span>
+                <span class="dropdown__name">{{ t('menubar.openRecent') }}</span>
                 <span class="dropdown__shortcut"><Icon name="chevron-right" :size="12" /></span>
               </button>
               <div class="dropdown__sep"></div>
@@ -1167,7 +1167,7 @@ onBeforeUnmount(() => {
             <template v-else>
               <button class="dropdown__item dropdown__item--single dropdown__item--back" role="menuitem" tabindex="-1" @mousedown.prevent="goMorePage('root')">
                 <span class="dropdown__check"><Icon name="chevron-left" :size="12" /></span>
-                <span class="dropdown__name">{{ morePage === 'insert' ? t('header.insert') : morePage === 'recent' ? t('header.recent') : t('header.ai') }}</span>
+                <span class="dropdown__name">{{ morePage === 'insert' ? t('header.insert') : morePage === 'recent' ? t('menubar.openRecent') : t('header.ai') }}</span>
               </button>
               <div class="dropdown__sep"></div>
             </template>
