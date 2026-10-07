@@ -1219,6 +1219,8 @@ export const liveBlocksTheme = EditorView.theme({
     borderCollapse: 'collapse',
     margin: '0.4em 0',
     fontSize: '0.95em',
+    // Body text runs at 1.8; table rows read better tighter (as in preview).
+    lineHeight: '1.6',
   },
   '.cm-live-block--table th, .cm-live-block--table td': {
     border: '1px solid var(--border)',
@@ -1226,7 +1228,7 @@ export const liveBlocksTheme = EditorView.theme({
     textAlign: 'left',
   },
   '.cm-live-block--table thead th': {
-    background: 'var(--bg-soft)',
+    background: 'var(--bg-elev)',
     fontWeight: '600',
   },
   // v4.3.0 issue #57a — paddings fold in the 0.6em that used to come from the

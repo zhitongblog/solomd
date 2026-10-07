@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, watch, watchEffect, computed, provide, nextTick, defineAsyncComponent } from 'vue';
 import { useLazyComponent } from './composables/useLazyComponent';
-import { winTitleBar } from './lib/chrome';
+import { macTitleBar, winTitleBar } from './lib/chrome';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
@@ -16,7 +16,7 @@ import { ensureSpellDict } from './lib/spell-suggest';
 import Toolbar from './components/Toolbar.vue';
 import TelemetryBanner from './components/TelemetryBanner.vue';
 import TileRoot from './components/TileRoot.vue';
-import StatusBar from './components/StatusBar.vue';
+import StatsPill from './components/StatsPill.vue';
 import Outline from './components/Outline.vue';
 import BacklinksPanel from './components/BacklinksPanel.vue';
 const NeighborhoodPanel = defineAsyncComponent(() => import('./components/NeighborhoodPanel.vue'));
@@ -43,9 +43,8 @@ import { INBOX_OPEN_EVENT, INBOX_CLOSE_EVENT } from './composables/useInboxView'
 // v4.6.1 F2 — Type lens (center-pane filtered view of one type's members).
 const TypeLensView = defineAsyncComponent(() => import('./components/TypeLensView.vue'));
 import { TYPE_LENS_OPEN_EVENT, TYPE_LENS_CLOSE_EVENT } from './composables/useTypeLens';
-import FileTree from './components/FileTree.vue';
+import Sidebar from './components/Sidebar.vue';
 // v4.6 F5 — Saved filtered views (sidebar panel + filtered list + editor).
-import ViewsPanel from './components/ViewsPanel.vue';
 import ViewNoteList from './components/ViewNoteList.vue';
 import ViewEditorDialog from './components/ViewEditorDialog.vue';
 import { VIEW_OPEN_EVENT, VIEW_CLOSE_EVENT } from './composables/useSavedViews';
@@ -2001,10 +2000,15 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
           aria-hidden="true"
           @click="closeNarrowDrawer"
         />
-        <div v-if="settings.showFileTree || settings.showViewsPanel" class="left-stack">
-          <FileTree v-if="settings.showFileTree" />
-          <ViewsPanel v-if="settings.showViewsPanel" />
-        </div>
+        <Sidebar
+          v-if="settings.showFileTree"
+          class="left-stack"
+          :mac-inset="macTitleBar"
+          @toggle="settings.toggleFileTree()"
+          @open-settings="openSettingsAt()"
+          @open-quick-switcher="quickSwitcherOpen = true"
+          @filter-tag="onFilterTag"
+        />
         <div class="main-col">
       <Toolbar
         @open-palette="paletteOpen = true"
@@ -2079,6 +2083,7 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
           <TypeLensView v-else-if="typeLensOpen" :type-name="typeLensName" />
           <ViewNoteList v-else-if="viewPaneVisible" />
           <TileRoot v-else :node="tiles.root" @cursor="onCursor" @selection="onSelection" />
+          <StatsPill v-if="!basesOpen && !inboxViewOpen && !typeLensOpen && !viewPaneVisible" :line="cursorLine" :col="cursorCol" :selection-text="selectionText" />
         </div>
         <aside
           v-if="showRightSidebar && settings.outlineSide !== 'left'"
@@ -2140,7 +2145,6 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
           </template>
         </aside>
       </div>
-      <StatusBar :line="cursorLine" :col="cursorCol" :selection-text="selectionText" />
         </div>
       </div>
       <!-- Grid editor for the table under the caret. The pane that found the
