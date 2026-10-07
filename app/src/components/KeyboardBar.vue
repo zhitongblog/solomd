@@ -52,6 +52,13 @@ function onFocusOut(e: FocusEvent) {
   editorFocused.value = false;
 }
 
+/** App switch and back: the editor never lost focus inside the page, so no
+ *  focusin comes — re-read it. */
+function onWindowFocus() {
+  editorFocused.value = isEditorTarget(document.activeElement);
+  measure();
+}
+
 function measure() {
   const vv = window.visualViewport;
   const layoutH = window.innerHeight;
@@ -79,6 +86,7 @@ onMounted(() => {
   window.visualViewport?.addEventListener('scroll', measure);
   window.addEventListener('resize', measure);
   window.addEventListener('orientationchange', onOrientation);
+  window.addEventListener('focus', onWindowFocus);
   editorFocused.value = isEditorTarget(document.activeElement);
   baseline = window.innerHeight;
   measure();
@@ -90,6 +98,7 @@ onBeforeUnmount(() => {
   window.visualViewport?.removeEventListener('scroll', measure);
   window.removeEventListener('resize', measure);
   window.removeEventListener('orientationchange', onOrientation);
+  window.removeEventListener('focus', onWindowFocus);
 });
 
 const visible = computed(

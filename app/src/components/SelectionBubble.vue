@@ -62,6 +62,8 @@ const below = ref(false);
 const pos = ref<{ left: number; top: number } | null>(null);
 const sel = ref<BubbleSelection | null>(null);
 const headingOpen = ref(false);
+/** The heading menu opens away from the selection, unless that runs off the top. */
+const menuBelow = ref(false);
 const barEl = ref<HTMLElement | null>(null);
 
 let timer: ReturnType<typeof setTimeout> | null = null;
@@ -249,6 +251,11 @@ function onFocusOut() {
 function onWindowBlur() {
   hide();
 }
+/** Back to the window with the selection still there: offer the bar again. */
+function onWindowFocus() {
+  const a = document.activeElement;
+  if (props.host && a && props.host.contains(a)) schedule();
+}
 
 let bound: HTMLElement | null = null;
 function bind(host: HTMLElement | null) {
@@ -267,6 +274,7 @@ function bind(host: HTMLElement | null) {
   document.addEventListener('selectionchange', onDocSelectionChange);
   window.addEventListener('pointerup', onWindowPointerUp, true);
   window.addEventListener('blur', onWindowBlur);
+  window.addEventListener('focus', onWindowFocus);
   window.addEventListener('resize', hide);
 }
 function unbind() {
@@ -284,6 +292,7 @@ function unbind() {
   document.removeEventListener('selectionchange', onDocSelectionChange);
   window.removeEventListener('pointerup', onWindowPointerUp, true);
   window.removeEventListener('blur', onWindowBlur);
+  window.removeEventListener('focus', onWindowFocus);
   window.removeEventListener('resize', hide);
 }
 
@@ -303,7 +312,9 @@ function run(kind: FormatKind) {
   // path; re-measure once it has, so the bar follows the text it wraps.
   requestAnimationFrame(() => requestAnimationFrame(() => void show(true)));
 }
+const MENU_ROOM = 3 * 28 + 2 * 4 + 16;
 function toggleHeadingMenu() {
+  menuBelow.value = below.value || (pos.value?.top ?? 0) < MENU_ROOM;
   headingOpen.value = !headingOpen.value;
 }
 function aiRewrite() {
@@ -389,7 +400,7 @@ defineExpose({ hide });
           data-kind="heading"
           @click="toggleHeadingMenu"
         ><Icon name="heading" :size="16" /></button>
-        <div v-if="headingOpen" class="sel-bubble__menu" role="menu">
+        <div v-if="headingOpen" class="sel-bubble__menu" :class="{ 'sel-bubble__menu--below': menuBelow }" role="menu">
           <button
             v-for="h in headings"
             :key="h.kind"
@@ -523,7 +534,7 @@ defineExpose({ hide });
   animation: sel-bubble-menu-in var(--dur-fast) var(--ease-out) both;
   transform-origin: bottom left;
 }
-.sel-bubble--below .sel-bubble__menu {
+.sel-bubble__menu--below {
   bottom: auto;
   top: calc(100% + 8px);
   transform-origin: top left;
