@@ -773,6 +773,7 @@ export const nl: I18n = {
   },
   types: {
     heading: 'Types',
+    openLensTooltip: 'Openen als tabel',
     empty: 'No types yet — click + to create one, or add `type: <Name>` to a note.',
     openFolder: 'Open a folder to see types.',
     sectionEmpty: 'No notes of this type yet.',
@@ -795,7 +796,7 @@ export const nl: I18n = {
     patchFailed: 'Could not update type: {error}',
   },
   inspector: {
-    heading: 'Properties',
+    heading: 'Eigenschappen',
     openFolder: 'Open a folder to edit properties.',
     noActive: 'No active document.',
     notMarkdown: 'Save this file as Markdown to edit properties.',
@@ -1816,8 +1817,19 @@ export const nl: I18n = {
     hitCount: '{n} hits',
     keyHint: '↑↓ navigeren · ↵ openen · Esc sluiten',
   },
+  typeLens: {
+    back: 'Terug',
+    customize: 'Aanpassen',
+    name: 'Naam',
+    type: 'Type',
+    unassigned: 'Geen type',
+    reassignFailed: 'Type kon niet worden gewijzigd: {error}',
+    zeroTitle: 'Nog geen notities van dit type',
+    zeroSub: 'Voeg `type: {type}` toe aan de front matter van een notitie en die verschijnt hier.',
+  },
   views: {
     heading: 'Weergaven',
+    gone: 'Deze weergave bestaat niet meer.',
     newView: 'Nieuwe weergave',
     newViewTitle: 'Een opgeslagen gefilterde weergave maken',
     edit: 'Weergave bewerken',

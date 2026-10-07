@@ -772,7 +772,8 @@ export const sv: I18n = {
     showMore: 'Visa {n} till',
   },
   types: {
-    heading: 'Types',
+    heading: 'Typer',
+    openLensTooltip: 'Öppna som tabell',
     empty: 'No types yet — click + to create one, or add `type: <Name>` to a note.',
     openFolder: 'Open a folder to see types.',
     sectionEmpty: 'No notes of this type yet.',
@@ -795,7 +796,7 @@ export const sv: I18n = {
     patchFailed: 'Could not update type: {error}',
   },
   inspector: {
-    heading: 'Properties',
+    heading: 'Egenskaper',
     openFolder: 'Open a folder to edit properties.',
     noActive: 'No active document.',
     notMarkdown: 'Save this file as Markdown to edit properties.',
@@ -1816,8 +1817,19 @@ export const sv: I18n = {
     hitCount: '{n} träffar',
     keyHint: '↑↓ navigera · ↵ öppna · Esc stäng',
   },
+  typeLens: {
+    back: 'Tillbaka',
+    customize: 'Anpassa',
+    name: 'Namn',
+    type: 'Typ',
+    unassigned: 'Ingen typ',
+    reassignFailed: 'Kunde inte ändra typen: {error}',
+    zeroTitle: 'Inga anteckningar av den här typen än',
+    zeroSub: 'Lägg till `type: {type}` i en antecknings front matter så visas den här.',
+  },
   views: {
     heading: 'Vyer',
+    gone: 'Den här vyn finns inte längre.',
     newView: 'Ny vy',
     newViewTitle: 'Skapa en sparad filtrerad vy',
     edit: 'Redigera vy',

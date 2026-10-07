@@ -773,7 +773,8 @@ export const zh: I18n = {
     showMore: '显示其余 {n} 项',
   },
   types: {
-    heading: 'Types',
+    heading: '类型',
+    openLensTooltip: '以表格打开',
     empty: 'No types yet — click + to create one, or add `type: <Name>` to a note.',
     openFolder: 'Open a folder to see types.',
     sectionEmpty: 'No notes of this type yet.',
@@ -796,7 +797,7 @@ export const zh: I18n = {
     patchFailed: 'Could not update type: {error}',
   },
   inspector: {
-    heading: 'Properties',
+    heading: '属性',
     openFolder: 'Open a folder to edit properties.',
     noActive: 'No active document.',
     notMarkdown: 'Save this file as Markdown to edit properties.',
@@ -1803,8 +1804,19 @@ export const zh: I18n = {
     hitCount: '{n} 条结果',
     keyHint: '↑↓ 切换 · ↵ 打开 · Esc 关闭',
   },
+  typeLens: {
+    back: '返回',
+    customize: '自定义',
+    name: '名称',
+    type: '类型',
+    unassigned: '无类型',
+    reassignFailed: '无法修改类型：{error}',
+    zeroTitle: '还没有这个类型的笔记',
+    zeroSub: '在笔记的 front matter 里写上 `type: {type}`，它就会出现在这里。',
+  },
   views: {
     heading: '视图',
+    gone: '这个视图已不存在。',
     newView: '新建视图',
     newViewTitle: '创建已保存的筛选视图',
     edit: '编辑视图',

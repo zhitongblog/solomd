@@ -772,7 +772,8 @@ export const uk: I18n = {
     showMore: 'Показати ще {n}',
   },
   types: {
-    heading: 'Types',
+    heading: 'Типи',
+    openLensTooltip: 'Відкрити як таблицю',
     empty: 'No types yet — click + to create one, or add `type: <Name>` to a note.',
     openFolder: 'Open a folder to see types.',
     sectionEmpty: 'No notes of this type yet.',
@@ -795,7 +796,7 @@ export const uk: I18n = {
     patchFailed: 'Could not update type: {error}',
   },
   inspector: {
-    heading: 'Properties',
+    heading: 'Властивості',
     openFolder: 'Open a folder to edit properties.',
     noActive: 'No active document.',
     notMarkdown: 'Save this file as Markdown to edit properties.',
@@ -1816,8 +1817,19 @@ export const uk: I18n = {
     hitCount: '{n} збігів',
     keyHint: '↑↓ навігація · ↵ відкрити · Esc закрити',
   },
+  typeLens: {
+    back: 'Назад',
+    customize: 'Налаштувати',
+    name: 'Назва',
+    type: 'Тип',
+    unassigned: 'Без типу',
+    reassignFailed: 'Не вдалося змінити тип: {error}',
+    zeroTitle: 'Нотаток цього типу ще немає',
+    zeroSub: 'Додайте `type: {type}` до front matter нотатки, і вона з’явиться тут.',
+  },
   views: {
     heading: 'Подання',
+    gone: 'Цього подання більше не існує.',
     newView: 'Нове подання',
     newViewTitle: 'Створити збережене відфільтроване подання',
     edit: 'Редагувати подання',

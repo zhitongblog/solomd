@@ -772,7 +772,8 @@ export const ja: I18n = {
     showMore: '他 {n} 件を表示',
   },
   types: {
-    heading: 'Types',
+    heading: 'タイプ',
+    openLensTooltip: '表で開く',
     empty: 'No types yet — click + to create one, or add `type: <Name>` to a note.',
     openFolder: 'Open a folder to see types.',
     sectionEmpty: 'No notes of this type yet.',
@@ -795,7 +796,7 @@ export const ja: I18n = {
     patchFailed: 'Could not update type: {error}',
   },
   inspector: {
-    heading: 'Properties',
+    heading: 'プロパティ',
     openFolder: 'Open a folder to edit properties.',
     noActive: 'No active document.',
     notMarkdown: 'Save this file as Markdown to edit properties.',
@@ -1799,8 +1800,19 @@ export const ja: I18n = {
     hitCount: '{n} 件',
     keyHint: '↑↓ 移動 · ↵ 開く · Esc 閉じる',
   },
+  typeLens: {
+    back: '戻る',
+    customize: 'カスタマイズ',
+    name: '名前',
+    type: 'タイプ',
+    unassigned: 'タイプなし',
+    reassignFailed: 'タイプを変更できませんでした：{error}',
+    zeroTitle: 'このタイプのノートはまだありません',
+    zeroSub: 'ノートのフロントマターに `type: {type}` を追加すると、ここに表示されます。',
+  },
   views: {
     heading: 'ビュー',
+    gone: 'このビューはもう存在しません。',
     newView: '新規ビュー',
     newViewTitle: '保存済みフィルタービューを作成',
     edit: 'ビューを編集',

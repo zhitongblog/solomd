@@ -772,7 +772,8 @@ export const ko: I18n = {
     showMore: '{n}개 더 보기',
   },
   types: {
-    heading: 'Types',
+    heading: '유형',
+    openLensTooltip: '표로 열기',
     empty: 'No types yet — click + to create one, or add `type: <Name>` to a note.',
     openFolder: 'Open a folder to see types.',
     sectionEmpty: 'No notes of this type yet.',
@@ -795,7 +796,7 @@ export const ko: I18n = {
     patchFailed: 'Could not update type: {error}',
   },
   inspector: {
-    heading: 'Properties',
+    heading: '속성',
     openFolder: 'Open a folder to edit properties.',
     noActive: 'No active document.',
     notMarkdown: 'Save this file as Markdown to edit properties.',
@@ -1799,8 +1800,19 @@ export const ko: I18n = {
     hitCount: '{n}개 결과',
     keyHint: '↑↓ 이동 · ↵ 열기 · Esc 닫기',
   },
+  typeLens: {
+    back: '뒤로',
+    customize: '사용자 지정',
+    name: '이름',
+    type: '유형',
+    unassigned: '유형 없음',
+    reassignFailed: '유형을 변경할 수 없습니다: {error}',
+    zeroTitle: '아직 이 유형의 노트가 없습니다',
+    zeroSub: '노트의 front matter에 `type: {type}`을 추가하면 여기에 표시됩니다.',
+  },
   views: {
     heading: '뷰',
+    gone: '이 보기는 더 이상 없습니다.',
     newView: '새 뷰',
     newViewTitle: '저장된 필터 뷰 만들기',
     edit: '뷰 편집',

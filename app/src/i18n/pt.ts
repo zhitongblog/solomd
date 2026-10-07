@@ -774,7 +774,8 @@ export const pt: I18n = {
     showMore: 'Mostrar mais {n}',
   },
   types: {
-    heading: 'Types',
+    heading: 'Tipos',
+    openLensTooltip: 'Abrir como tabela',
     empty: 'No types yet — click + to create one, or add `type: <Name>` to a note.',
     openFolder: 'Open a folder to see types.',
     sectionEmpty: 'No notes of this type yet.',
@@ -797,7 +798,7 @@ export const pt: I18n = {
     patchFailed: 'Could not update type: {error}',
   },
   inspector: {
-    heading: 'Properties',
+    heading: 'Propriedades',
     openFolder: 'Open a folder to edit properties.',
     noActive: 'No active document.',
     notMarkdown: 'Save this file as Markdown to edit properties.',
@@ -1801,8 +1802,19 @@ export const pt: I18n = {
     hitCount: '{n} resultados',
     keyHint: '↑↓ navegar · ↵ abrir · Esc fechar',
   },
+  typeLens: {
+    back: 'Voltar',
+    customize: 'Personalizar',
+    name: 'Nome',
+    type: 'Tipo',
+    unassigned: 'Sem tipo',
+    reassignFailed: 'Não foi possível alterar o tipo: {error}',
+    zeroTitle: 'Ainda não há notas deste tipo',
+    zeroSub: 'Adicione `type: {type}` ao front matter de uma nota e ela aparecerá aqui.',
+  },
   views: {
     heading: 'Visões',
+    gone: 'Esta visualização não existe mais.',
     newView: 'Nova visão',
     newViewTitle: 'Criar uma visão filtrada salva',
     edit: 'Editar visão',

@@ -772,7 +772,8 @@ export const tr: I18n = {
     showMore: '{n} tane daha göster',
   },
   types: {
-    heading: 'Types',
+    heading: 'Türler',
+    openLensTooltip: 'Tablo olarak aç',
     empty: 'No types yet — click + to create one, or add `type: <Name>` to a note.',
     openFolder: 'Open a folder to see types.',
     sectionEmpty: 'No notes of this type yet.',
@@ -795,7 +796,7 @@ export const tr: I18n = {
     patchFailed: 'Could not update type: {error}',
   },
   inspector: {
-    heading: 'Properties',
+    heading: 'Özellikler',
     openFolder: 'Open a folder to edit properties.',
     noActive: 'No active document.',
     notMarkdown: 'Save this file as Markdown to edit properties.',
@@ -1816,8 +1817,19 @@ export const tr: I18n = {
     hitCount: '{n} eşleşme',
     keyHint: '↑↓ gez · ↵ aç · Esc kapat',
   },
+  typeLens: {
+    back: 'Geri',
+    customize: 'Özelleştir',
+    name: 'Ad',
+    type: 'Tür',
+    unassigned: 'Türsüz',
+    reassignFailed: 'Tür değiştirilemedi: {error}',
+    zeroTitle: 'Bu türde henüz not yok',
+    zeroSub: 'Bir notun front matter’ına `type: {type}` eklerseniz burada görünür.',
+  },
   views: {
     heading: 'Görünümler',
+    gone: 'Bu görünüm artık yok.',
     newView: 'Yeni görünüm',
     newViewTitle: 'Kaydedilmiş filtreli görünüm oluştur',
     edit: 'Görünümü düzenle',

@@ -197,7 +197,7 @@ onBeforeUnmount(() => {
         </label>
         <label class="ved__field ved__field--icon">
           <span class="ved__label">{{ t('views.icon') }}</span>
-          <DsInput v-model="draft.icon" class="ved__input--icon" placeholder="🔖" />
+          <DsInput v-model="draft.icon" class="ved__input--icon" placeholder="#" />
         </label>
         <label class="ved__field ved__field--color">
           <span class="ved__label">{{ t('views.color') }}</span>

@@ -779,6 +779,7 @@ export const en = {
   },
   types: {
     heading: 'Types',
+    openLensTooltip: 'Open as a table',
     empty: 'No types yet — click + to create one, or add `type: <Name>` to a note.',
     openFolder: 'Open a folder to see types.',
     sectionEmpty: 'No notes of this type yet.',
@@ -1826,8 +1827,19 @@ export const en = {
     hitCount: '{n} hits',
     keyHint: '↑↓ navigate · ↵ open · Esc close',
   },
+  typeLens: {
+    back: 'Back',
+    customize: 'Customize',
+    name: 'Name',
+    type: 'Type',
+    unassigned: 'No type',
+    reassignFailed: 'Could not change the type: {error}',
+    zeroTitle: 'No notes of this type yet',
+    zeroSub: 'Add `type: {type}` to a note’s front matter and it appears here.',
+  },
   views: {
     heading: 'Views',
+    gone: 'This view no longer exists.',
     newView: 'New view',
     newViewTitle: 'Create a saved filtered view',
     edit: 'Edit view',

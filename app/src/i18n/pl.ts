@@ -772,7 +772,8 @@ export const pl: I18n = {
     showMore: 'Pokaż {n} więcej',
   },
   types: {
-    heading: 'Types',
+    heading: 'Typy',
+    openLensTooltip: 'Otwórz jako tabelę',
     empty: 'No types yet — click + to create one, or add `type: <Name>` to a note.',
     openFolder: 'Open a folder to see types.',
     sectionEmpty: 'No notes of this type yet.',
@@ -795,7 +796,7 @@ export const pl: I18n = {
     patchFailed: 'Could not update type: {error}',
   },
   inspector: {
-    heading: 'Properties',
+    heading: 'Właściwości',
     openFolder: 'Open a folder to edit properties.',
     noActive: 'No active document.',
     notMarkdown: 'Save this file as Markdown to edit properties.',
@@ -1816,8 +1817,19 @@ export const pl: I18n = {
     hitCount: '{n} trafień',
     keyHint: '↑↓ nawiguj · ↵ otwórz · Esc zamknij',
   },
+  typeLens: {
+    back: 'Wstecz',
+    customize: 'Dostosuj',
+    name: 'Nazwa',
+    type: 'Typ',
+    unassigned: 'Bez typu',
+    reassignFailed: 'Nie udało się zmienić typu: {error}',
+    zeroTitle: 'Brak notatek tego typu',
+    zeroSub: 'Dodaj `type: {type}` do front matter notatki, a pojawi się tutaj.',
+  },
   views: {
     heading: 'Widoki',
+    gone: 'Ten widok już nie istnieje.',
     newView: 'Nowy widok',
     newViewTitle: 'Utwórz zapisany widok filtrowany',
     edit: 'Edytuj widok',
