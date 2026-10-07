@@ -4,6 +4,7 @@ import { initMermaid } from '../lib/mermaid-lazy';
 import { mermaidThemeFor } from '../lib/themes';
 import { openRenderedLink } from '../lib/link-open';
 import { renderMarkdown, extractImageRoot } from '../lib/markdown';
+import { useRenderDepsVersion } from '../composables/useRenderDepsVersion';
 import { plantumlSvgUrl } from '../lib/plantuml';
 import { installSvgImageFallbacks, rewriteImageUrls } from '../lib/image-resolve';
 import { openImageOverlay, type OverlayStrings } from '../lib/image-overlay';
@@ -138,6 +139,7 @@ function onMathKeydown(e: KeyboardEvent) {
 
 let mermaidIdSeq = 0;
 
+const renderDepsVersion = useRenderDepsVersion();
 
 const html = computed(() => {
   // #141 — establish a reactive dep on the hard-breaks toggle so flipping the
@@ -149,6 +151,8 @@ const html = computed(() => {
   void settings.markdownAutoNumberHeadings;
   // #216 — and for the smart-quotes toggle (md singleton rule state).
   void settings.smartQuotes;
+  // And for KaTeX / highlight.js arriving after the first render.
+  void renderDepsVersion.value;
   const source = props.source || '';
   return rewriteImageUrls(renderMarkdown(source), extractImageRoot(source), props.filePath);
 });

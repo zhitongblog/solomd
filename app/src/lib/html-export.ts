@@ -11,6 +11,7 @@ import { renderMarkdown, extractImageRoot } from './markdown';
 import { inlineLocalImages, rewriteLinkUrls, rewriteImageUrls, type BinaryReader } from './image-resolve';
 import { inlineDiagramsInHtml } from './diagram-export';
 import { hasKatex, standaloneKatexCss } from './katex-standalone';
+import { loadRenderDeps } from './render-deps';
 
 export const HTML_TEMPLATE = (title: string, body: string, headCss = '') => `<!doctype html>
 <html lang="en">
@@ -192,6 +193,8 @@ export interface StandaloneHtmlInput {
 }
 
 export async function buildStandaloneHtml(input: StandaloneHtmlInput): Promise<string> {
+  // An export is rendered once: never with placeholder math / plain code.
+  await loadRenderDeps();
   const imageRoot = extractImageRoot(input.content);
   // Local images are embedded as `data:` URLs first: a standalone .html has
   // no way to reach the app's `asset.localhost` protocol, so rewriting the

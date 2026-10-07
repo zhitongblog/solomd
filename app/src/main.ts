@@ -3,6 +3,7 @@ import { createPinia } from 'pinia';
 import App from './App.vue';
 import { reanchorIosContainerPaths } from './lib/ios-container';
 import { isWindowsDesktop } from './lib/platform';
+import { preloadRenderDeps } from './lib/render-deps';
 import './styles/cjk-font.css';
 import './styles/main.css';
 import './styles/hljs-theme.css';
@@ -54,4 +55,11 @@ void Promise.race([
     readWebviewVersion().catch(() => {}),
   ]),
   new Promise((r) => setTimeout(r, 1500)),
-]).then(() => app.mount('#app'));
+]).then(() => {
+  app.mount('#app');
+  // KaTeX + highlight.js are their own chunks (lib/render-deps.ts): fetch and
+  // compile them once the first frame is up, so they are almost always ready
+  // before a formula or code fence is on screen. The capture box never
+  // renders markdown; the slideshow awaits them itself.
+  if (rootComponent === App) preloadRenderDeps();
+});

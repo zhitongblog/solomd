@@ -16,6 +16,7 @@ const markdownToPdfBlob: typeof import('../lib/pdf-export')['markdownToPdfBlob']
 const markdownToImageBlob: typeof import('../lib/image-export')['markdownToImageBlob'] =
   async (...args) => (await import('../lib/image-export')).markdownToImageBlob(...args);
 import { renderMarkdown, extractImageRoot } from '../lib/markdown';
+import { loadRenderDeps } from '../lib/render-deps';
 // Tiny shim: the mermaid bundle itself stays behind a dynamic import inside
 // it, so touching this module costs nothing at startup.
 import { initMermaid } from '../lib/mermaid-lazy';
@@ -459,6 +460,7 @@ export function useExport() {
     // so the print overlay (and therefore the resulting PDF from the system
     // print dialog) doesn't show `http://tauri.localhost/...` links.
     const imageRoot = extractImageRoot(source);
+    await loadRenderDeps(); // printed once — no placeholder math / plain code
     const body = rewriteLinkUrls(
       rewriteImageUrls(renderMarkdown(source), imageRoot, ctx.filePath),
       imageRoot,
@@ -590,6 +592,7 @@ export function useExport() {
   async function copyAsHtml() {
     const src = copySource();
     if (!src) return;
+    await loadRenderDeps();
     const html = renderMarkdown(src.source);
     const okMsg = src.isSelection ? 'Copied selection as HTML' : 'Copied as HTML';
     // Native Clipboard API first — supports rich HTML on all desktops and on

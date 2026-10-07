@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref } from 'vue';
 import { renderMarkdown } from '../lib/markdown';
+import { loadRenderDeps } from '../lib/render-deps';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import Reveal from 'reveal.js';
 import 'reveal.js/reveal.css';
@@ -257,6 +258,9 @@ onMounted(async () => {
   // Build the DOM once into the .slides container, then init Reveal on
   // the wrapper. Reveal expects the structure to be present at init time.
   if (slidesRef.value) {
+    // Math and code colours are lazy chunks (render-deps.ts); the deck is
+    // rendered once, so wait for them rather than present placeholders.
+    await loadRenderDeps().catch(() => {});
     buildDeck(source, slidesRef.value);
   }
 

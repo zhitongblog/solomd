@@ -47,8 +47,7 @@ import { renderMarkdown, extractImageRoot } from './markdown';
 import { findHtmlBlockEnd } from './html-live-render';
 import { plantumlSvgUrl } from './plantuml';
 import { initMermaid } from './mermaid-lazy';
-import 'katex/contrib/mhchem';
-import katex from 'katex';
+import { getKatex, onRenderDepsChange, renderDepsVersion } from './render-deps';
 import {
   parseTldrawFence,
   TLDRAW_DEFAULT_HEIGHT,
@@ -142,6 +141,14 @@ function isSeparatorRow(line: string): boolean {
 const imageNaturalSizes = new Map<string, { w: number; h: number }>();
 let relayoutTimer: ReturnType<typeof setTimeout> | null = null;
 
+// KaTeX / highlight.js finished loading: rebuild, so widgets rendered without
+// them (see the `deps` field on each) remount with the real output.
+onRenderDepsChange(() => {
+  try {
+    window.dispatchEvent(new CustomEvent('solomd:cm-relayout'));
+  } catch {}
+});
+
 function scheduleImageRelayout(): void {
   if (relayoutTimer) return;
   relayoutTimer = setTimeout(() => {
@@ -219,12 +226,16 @@ class ImageWidget extends WidgetType {
 }
 
 class TableWidget extends WidgetType {
+  // Cells can hold math / code: a widget built before KaTeX or highlight.js
+  // arrived must not count as equal to the one built after (render-deps.ts).
+  private readonly deps = renderDepsVersion();
+
   constructor(private readonly source: string) {
     super();
   }
 
   eq(other: TableWidget): boolean {
-    return other.source === this.source;
+    return other.source === this.source && other.deps === this.deps;
   }
 
   toDOM(): HTMLElement {
@@ -246,6 +257,8 @@ class TableWidget extends WidgetType {
 
 /** Raw block HTML rendered with the same markdown-it pipeline as Preview.vue. */
 class HtmlBlockWidget extends WidgetType {
+  private readonly deps = renderDepsVersion();
+
   constructor(
     private readonly source: string,
     private readonly imageRoot: string | null,
@@ -258,7 +271,8 @@ class HtmlBlockWidget extends WidgetType {
     return (
       other.source === this.source &&
       other.imageRoot === this.imageRoot &&
-      other.filePath === this.filePath
+      other.filePath === this.filePath &&
+      other.deps === this.deps
     );
   }
 
@@ -285,12 +299,14 @@ class HtmlBlockWidget extends WidgetType {
 // the wrapping `$$\n…\n$$` literal so markdown-it-katex sees it as block
 // math and emits `<span class="katex-display">`.
 class MathWidget extends WidgetType {
+  private readonly deps = renderDepsVersion();
+
   constructor(private readonly source: string) {
     super();
   }
 
   eq(other: MathWidget): boolean {
-    return other.source === this.source;
+    return other.source === this.source && other.deps === this.deps;
   }
 
   toDOM(): HTMLElement {
@@ -315,17 +331,26 @@ class MathWidget extends WidgetType {
 // We detect spans with inlineMathSpans() below and replace each with a
 // KaTeX render while the caret is off the line (click in → source returns).
 class InlineMathWidget extends WidgetType {
+  private readonly deps = renderDepsVersion();
+
   constructor(private readonly tex: string) {
     super();
   }
 
   eq(other: InlineMathWidget): boolean {
-    return other.tex === this.tex;
+    return other.tex === this.tex && other.deps === this.deps;
   }
 
   toDOM(): HTMLElement {
     const span = document.createElement('span');
     span.className = 'cm-live-inline-math';
+    // KaTeX still loading (render-deps.ts): show the source, which is what
+    // the line reads without the widget; the load triggers a rebuild.
+    const katex = getKatex();
+    if (!katex) {
+      span.textContent = `$${this.tex}$`;
+      return span;
+    }
     try {
       span.innerHTML = katex.renderToString(this.tex, {
         throwOnError: false,

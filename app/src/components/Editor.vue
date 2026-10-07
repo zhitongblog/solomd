@@ -90,6 +90,7 @@ import {
   clearSession,
 } from '../lib/cm-session-restore';
 import { renderMarkdown, extractImageRoot as extractMarkdownImageRoot } from '../lib/markdown';
+import { useRenderDepsVersion } from '../composables/useRenderDepsVersion';
 import { attachCodeCopyButtons } from '../lib/code-copy';
 import { plantumlSvgUrl } from '../lib/plantuml';
 import { stableClickSelection } from '../lib/cm-stable-click';
@@ -378,6 +379,10 @@ let plainSelectAllPending = false;
 const plainComposing = ref(false);
 let plainMermaidIdSeq = 0;
 const plainRenderCache = new Map<string, string>();
+// Bumps when KaTeX / highlight.js finish loading (lib/render-deps.ts). Part
+// of the cache key below, so blocks rendered with placeholder math / plain
+// code re-render — the plainBlocks computed reads it through that key.
+const renderDepsVersion = useRenderDepsVersion();
 
 const plainLiveEnabled = computed(
   () => usePlainWindowsEditor && settings.viewMode === 'liveEdit' && props.tab.language === 'markdown',
@@ -600,7 +605,7 @@ function renderPlainBlock(src: string): string {
   // change when any of those headings changes.
   const tocSource = isTocBlock ? plainText.value || '' : undefined;
   const tocKey = tocSource === undefined ? '' : `\u0000toc:${plainTocFingerprint(tocSource)}`;
-  const key = `${settings.markdownHardBreaks ? 'hb' : 'sb'}${settings.markdownAutoNumberHeadings ? 'nh' : ''}\u0000${props.tab.filePath || ''}\u0000${root}\u0000${src}${tocKey}`;
+  const key = `${settings.markdownHardBreaks ? 'hb' : 'sb'}${settings.markdownAutoNumberHeadings ? 'nh' : ''}d${renderDepsVersion.value}\u0000${props.tab.filePath || ''}\u0000${root}\u0000${src}${tocKey}`;
   const cached = plainRenderCache.get(key);
   if (cached != null) return cached;
   const html = rewriteImageUrls(
@@ -4701,7 +4706,9 @@ watch(plainLiveEnabled, () => {
 });
 
 watch(
-  () => [plainLiveEnabled.value, plainText.value, plainActiveBlock.value, settings.theme, settings.language],
+  // renderDepsVersion: the blocks re-render when KaTeX / highlight.js land,
+  // which puts mermaid / PlantUML fences back to source — process them again.
+  () => [plainLiveEnabled.value, plainText.value, plainActiveBlock.value, settings.theme, settings.language, renderDepsVersion.value],
   () => {
     // No mermaid.initialize here any more: the render pass configures it with
     // the current theme itself, and doing it here would load the renderer for
