@@ -1,3 +1,4 @@
+import { samePath } from '../lib/path-key';
 import { defineStore } from 'pinia';
 import type { Language, Tab } from '../types';
 import { useSettingsStore } from './settings';
@@ -217,7 +218,10 @@ export const useTabsStore = defineStore('tabs', {
       language: Language;
       hadBom: boolean;
     }) {
-      const existing = this.tabs.find((t) => t.filePath === payload.filePath);
+      // One file, one tab — however the path is spelled (lib/path-key.ts):
+      // `c:\notes\a.md` and `C:\Notes\a.md` are the same document on Windows,
+      // and two buffers of it would lose whichever is saved first.
+      const existing = this.tabs.find((t) => samePath(t.filePath, payload.filePath));
       if (existing) {
         this.activeId = existing.id;
         // #317 — and adopt what the caller just read off disk. Opening a file

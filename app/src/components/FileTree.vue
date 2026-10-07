@@ -1008,7 +1008,7 @@ let expandArmedFor = '';
 
 function findNode(path: string, nodes?: Node[]): Node | null {
   for (const n of nodes ?? root.value?.children ?? []) {
-    if (n.path === path) return n;
+    if (samePath(n.path, path)) return n;
     if (n.children) {
       const hit = findNode(path, n.children);
       if (hit) return hit;
@@ -1040,16 +1040,15 @@ let revealTimer: ReturnType<typeof setTimeout> | null = null;
 function segmentsUnderRoot(path: string): string[] | null {
   const rootPath = root.value?.path;
   if (!rootPath) return null;
-  if (path === rootPath) return [];
-  const sep = path.includes('\\') ? '\\' : '/';
-  const rootNorm = rootPath.endsWith(sep) ? rootPath : rootPath + sep;
-  return path.startsWith(rootNorm) ? path.slice(rootNorm.length).split(/[\\/]+/) : null;
+  // Spelling-insensitive on Windows (lib/path-key.ts): the shell may hand us
+  // `c:\notes\a.md` for a tree rooted at `C:\Notes`.
+  return segmentsBelow(rootPath, path);
 }
 
 function rowElementFor(path: string): HTMLElement | null {
   const rows = treeBody.value?.querySelectorAll<HTMLElement>('.ftree__item');
   for (const row of rows ?? []) {
-    if (row.dataset.path === path) return row;
+    if (samePath(row.dataset.path, path)) return row;
   }
   return null;
 }
@@ -1072,8 +1071,10 @@ function flashRow(path: string, row: HTMLElement) {
  *  scrolled as far as needed to be visible, so switching between two files
  *  that are both on screen does not move the tree at all. */
 async function revealRow(path: string, quiet = false): Promise<boolean> {
+  // The row's own path, not the request's: on Windows the two may differ in
+  // spelling, and the highlight compares against the tree's.
   const show = (row: HTMLElement) =>
-    quiet ? row.scrollIntoView({ block: 'nearest' }) : flashRow(path, row);
+    quiet ? row.scrollIntoView({ block: 'nearest' }) : flashRow(row.dataset.path ?? path, row);
   // Already rendered — its ancestors are expanded. Checked first because it
   // also covers SAF vaults, whose node paths are opaque `saf:<docId>` values
   // that cannot be walked by prefix.
@@ -1084,14 +1085,15 @@ async function revealRow(path: string, quiet = false): Promise<boolean> {
   }
   const parts = segmentsUnderRoot(path);
   if (!parts || parts.length === 0 || !root.value) return false;
+  const winPaths = isWindowsStylePath(root.value.path);
   let node: Node = root.value;
   for (const seg of parts.slice(0, -1)) {
-    const dir = node.children?.find((c) => c.is_dir && c.name === seg);
+    const dir = node.children?.find((c) => c.is_dir && sameName(c.name, seg, winPaths));
     if (!dir) return false;
     if (!dir.expanded) await expandDir(dir);
     node = dir;
   }
-  if (!node.children?.some((c) => c.path === path)) return false;
+  if (!node.children?.some((c) => samePath(c.path, path))) return false;
   await nextTick();
   const row = rowElementFor(path);
   if (!row) return false;
@@ -1139,7 +1141,7 @@ watch(
       // which also dropped the highlight when the tab was opened before the
       // tree had listed. The followed file is inside this tree, so it is the
       // selection again.
-      if (ok && tabs.activeTab?.filePath === path) selected.value = { path, isDir: false };
+      if (ok && samePath(tabs.activeTab?.filePath, path)) selected.value = { path, isDir: false };
     });
   },
   { immediate: true },
@@ -2199,6 +2201,8 @@ onBeforeUnmount(() => {
 
 <script lang="ts">
 import { defineComponent, h, inject, type ComputedRef, type Ref, type VNode } from 'vue';
+// Module scope: the setup script above uses these too.
+import { isWindowsStylePath, sameName, samePath, segmentsBelow } from '../lib/path-key';
 
 /** #321 — how FileTreeNode draws the inline new/rename row in place. */
 export const FTREE_EDIT = Symbol('ftree-edit');
@@ -2329,7 +2333,7 @@ export const FileTreeNode = defineComponent({
             class: [
               'ftree__item',
               n.is_dir ? 'ftree__item--dir' : 'ftree__item--file',
-              props.selectedPath === n.path ? 'ftree__item--selected' : '',
+              samePath(props.selectedPath, n.path) ? 'ftree__item--selected' : '',
               dragPath.value === n.path ? 'ftree__item--dragging' : '',
               n.is_dir && dropTarget.value === n.path ? 'ftree__item--drop' : '',
               revealedPath.value === n.path ? 'ftree__item--revealed' : '',

@@ -1,3 +1,4 @@
+import { samePath } from '../lib/path-key';
 import { inject } from 'vue';
 import { windowChromeOptions } from '../lib/window-chrome-options';
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
@@ -98,7 +99,7 @@ export function useFiles() {
       return false;
     }
     if (rec.filePath) {
-      const open = tabs.tabs.find((x) => x.filePath === rec.filePath);
+      const open = tabs.tabs.find((x) => samePath(x.filePath, rec.filePath));
       if (open) tabs.activate(open.id);
       else await openPath(rec.filePath, { bypassNewWindow: true });
       return true;
