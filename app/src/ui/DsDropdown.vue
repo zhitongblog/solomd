@@ -189,33 +189,19 @@ onBeforeUnmount(() => {
 </style>
 
 <style>
-/* Teleported to body, so menu styles are global but namespaced. */
+/* Teleported to <body>. The menu LOOK (surface, rows, motion) comes from
+   styles/menus.css like every other menu; only geometry lives here. */
 .ds-dropdown__menu {
   position: fixed;
   z-index: var(--z-pop);
-  margin: 0;
-  padding: var(--sp-1);
-  list-style: none;
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  box-shadow: var(--sh-pop);
+  min-width: 160px;
   max-height: 60vh;
   overflow-y: auto;
 }
 .ds-dropdown__item {
-  padding: var(--sp-2) var(--sp-3);
-  border-radius: var(--r-sm);
-  font-size: 13px;
-  color: var(--text);
-  cursor: pointer;
+  display: flex;
+  align-items: center;
   white-space: nowrap;
 }
-.ds-dropdown__item--active {
-  background: var(--bg-hover);
-}
-.ds-dropdown__item--disabled {
-  color: var(--text-faint);
-  cursor: default;
-}
 </style>
+

@@ -31,43 +31,57 @@ function onDisable() {
 </template>
 
 <style scoped>
+/* 5.0: a quiet one-line bar — --bg-sidebar, 12px --text-2, a ghost and a
+   small primary button. The wording itself is required (no "zero telemetry"
+   claims), so only the look changes. */
 .telemetry-banner {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 10px 16px;
-  background: var(--bg-elev);
-  border-bottom: 1px solid var(--border);
+  gap: 12px;
+  min-height: 36px;
+  box-sizing: border-box;
+  padding: 4px 8px 4px 16px;
+  background: var(--bg-sidebar);
+  border-bottom: var(--bd-hair);
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--text-2);
 }
 .telemetry-banner__text {
   flex: 1;
-  line-height: 1.5;
+  min-width: 0;
+  line-height: 1.4;
 }
 .telemetry-banner__actions {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   flex-shrink: 0;
 }
 .telemetry-banner__btn {
-  padding: 5px 12px;
+  height: 24px;
+  padding: 0 10px;
+  font: inherit;
   font-size: 12px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
-  border-radius: 4px;
-  cursor: pointer;
+  font-weight: 560;
+  border: 0;
+  background: transparent;
+  color: var(--text-2);
+  border-radius: var(--r-sm);
+  cursor: default;
 }
 .telemetry-banner__btn:hover {
-  background: var(--bg-hover);
+  background: var(--fill-1);
+  color: var(--text);
 }
-.telemetry-banner__btn--primary {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
+.telemetry-banner__btn:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+.telemetry-banner__btn--primary,
+.telemetry-banner__btn--primary:hover {
+  background: var(--accent-strong);
+  color: var(--accent-strong-fg);
 }
 .telemetry-banner__btn--primary:hover {
-  filter: brightness(1.08);
+  filter: brightness(1.06);
 }
 </style>

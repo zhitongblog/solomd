@@ -250,7 +250,7 @@ onBeforeUnmount(() => {
     </div>
 
     <template #footer>
-      <DsButton variant="ghost" @click="close">{{ t('views.cancel') }}</DsButton>
+      <DsButton variant="secondary" @click="close">{{ t('views.cancel') }}</DsButton>
       <DsButton variant="primary" :loading="saving" @click="save">{{ t('views.save') }}</DsButton>
     </template>
   </DsModal>
@@ -259,7 +259,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .ved__title {
   margin: 0;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 600;
   color: var(--text);
 }
@@ -295,25 +295,23 @@ onBeforeUnmount(() => {
 .ved__field--color { flex: 0 0 56px; }
 .ved__field--dir { flex: 0 0 140px; }
 .ved__label {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-2);
 }
 .ved__hint {
-  font-size: 11px;
-  color: var(--text-faint);
+  font-size: 12px;
+  color: var(--text-3);
 }
 .ved__input--icon :deep(.ds-input) {
   text-align: center;
 }
 .ved__color {
-  height: 34px;
+  height: 32px;
   width: 100%;
-  border: var(--bd);
+  border: 0;
   border-radius: var(--r-md);
-  background: var(--bg);
+  background: var(--fill-1);
   cursor: pointer;
   padding: 2px;
 }

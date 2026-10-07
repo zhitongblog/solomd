@@ -52,6 +52,7 @@ import type { WindowsEditorEngine } from '../lib/platform';
 import { loadCustomTheme } from '../lib/custom-theme';
 import { openPath } from '@tauri-apps/plugin-opener';
 import { DsModal } from '../ui';
+import Icons from './Icons.vue';
 import { getDict } from '../i18n';
 import { flatten, englishFallbackNeedles, blockMatches, normalize, queryMatcher } from '../lib/settings-search';
 import type { Theme } from '../types';
@@ -245,14 +246,17 @@ function onRecordKey(e: KeyboardEvent): void {
 onUnmounted(stopRecording);
 
 const categories: { id: SettingsCategory; icon: string; labelKey: string }[] = [
-  { id: 'basics', icon: '⚙️', labelKey: 'settings.catBasics' },
-  { id: 'writing', icon: '✍️', labelKey: 'settings.catWriting' },
-  { id: 'sync', icon: '☁️', labelKey: 'settings.catSync' },
-  { id: 'integrations', icon: '🔌', labelKey: 'settings.catIntegrations' },
-  { id: 'export', icon: '📤', labelKey: 'settings.catExport' },
-  { id: 'keys', icon: '⌨️', labelKey: 'settings.catKeys' },
-  { id: 'advanced', icon: '🛠️', labelKey: 'settings.catAdvanced' },
+  { id: 'basics', icon: 'settings', labelKey: 'settings.catBasics' },
+  { id: 'writing', icon: 'pencil', labelKey: 'settings.catWriting' },
+  { id: 'sync', icon: 'cloud', labelKey: 'settings.catSync' },
+  { id: 'integrations', icon: 'plug', labelKey: 'settings.catIntegrations' },
+  { id: 'export', icon: 'export', labelKey: 'settings.catExport' },
+  { id: 'keys', icon: 'keyboard', labelKey: 'settings.catKeys' },
+  { id: 'advanced', icon: 'wrench', labelKey: 'settings.catAdvanced' },
 ];
+const activeCategoryLabelKey = computed(
+  () => categories.find((c) => c.id === activeCategory.value)?.labelKey ?? 'settings.title',
+);
 
 // Shared with Help → Check for Updates (composables/useUpdateCheck.ts).
 const { checking: checkingUpdate, manualCheckUpdate } = useUpdateCheck();
@@ -512,6 +516,58 @@ watch(
     if (searching.value && bodyEl.value) scrollerOf(bodyEl.value).scrollTo({ top: 0 });
   },
 );
+
+// 5.0 — System-Settings cards. Consecutive one-row settings of the page share
+// one card, separated by hairlines; a block that carries its own group title
+// (<h3>) or is a whole sub-panel (AISettings, GithubSyncSettings, …) gets a
+// card of its own. Which blocks are visible depends on the category, the
+// search and a dozen v-ifs, so the card edges are worked out from what is
+// actually rendered: `data-gs` (group start) / `data-ge` (group end).
+// While searching every match is its own card.
+function markGroups() {
+  const body = bodyEl.value;
+  if (!body) return;
+  const blocks = Array.from(body.children).filter(
+    (el): el is HTMLElement => el instanceof HTMLElement && !!el.dataset.cat,
+  );
+  const visible = blocks.filter((b) => b.getClientRects().length > 0);
+  const standalone = (b: HTMLElement) =>
+    searching.value || b.tagName !== 'SECTION' || b.firstElementChild?.tagName === 'H3';
+  for (const b of blocks) {
+    if (!visible.includes(b)) {
+      delete b.dataset.gs;
+      delete b.dataset.ge;
+      delete b.dataset.gfirst;
+    }
+  }
+  visible.forEach((b, i) => {
+    const prev = visible[i - 1];
+    const next = visible[i + 1];
+    const solo = standalone(b);
+    if (i === 0) b.dataset.gfirst = '';
+    else delete b.dataset.gfirst;
+    if (!prev || solo || standalone(prev)) b.dataset.gs = '';
+    else delete b.dataset.gs;
+    if (!next || solo || standalone(next)) b.dataset.ge = '';
+    else delete b.dataset.ge;
+  });
+}
+let groupObserver: MutationObserver | null = null;
+watch(
+  [() => props.open, activeCategory, searchQuery, () => settings.language],
+  async () => {
+    await nextTick();
+    markGroups();
+    groupObserver?.disconnect();
+    groupObserver = null;
+    if (props.open && bodyEl.value) {
+      groupObserver = new MutationObserver(() => markGroups());
+      groupObserver.observe(bodyEl.value, { childList: true });
+    }
+  },
+  { immediate: true },
+);
+onUnmounted(() => groupObserver?.disconnect());
 
 function pickCategory(id: SettingsCategory) {
   searchQuery.value = '';
@@ -842,7 +898,7 @@ function onSelectPdfFont(v: string) {
             :class="{ 'settings__nav-item--active': !searching && activeCategory === c.id }"
             @click="pickCategory(c.id)"
           >
-            <span class="settings__nav-icon">{{ c.icon }}</span>
+            <Icons class="settings__nav-icon" :name="c.icon" :size="16" />
             <span class="settings__nav-label">{{ t(c.labelKey) }}</span>
           </button>
         </nav>
@@ -852,6 +908,7 @@ function onSelectPdfFont(v: string) {
         :data-active-cat="searching ? undefined : activeCategory"
         :data-searching="searching ? '' : undefined"
       >
+        <h2 v-if="!searching" class="settings__page-title">{{ t(activeCategoryLabelKey) }}</h2>
         <template v-if="searching">
           <h2
             v-for="(c, i) in categories"
@@ -859,7 +916,7 @@ function onSelectPdfFont(v: string) {
             :key="'sg-' + c.id"
             class="settings__search-group"
             :style="{ order: i * 2 }"
-          >{{ c.icon }} {{ t(c.labelKey) }}</h2>
+          ><Icons class="settings__search-group-icon" :name="c.icon" :size="14" />{{ t(c.labelKey) }}</h2>
           <p v-if="searchHitCount === 0" class="settings__search-empty">
             {{ t('settings.searchEmpty', { q: searchQuery.trim() }) }}
           </p>
@@ -926,7 +983,7 @@ function onSelectPdfFont(v: string) {
             :placeholder="t('settings.customFontPlaceholder')"
             :value="customFontFamily"
             @input="onCustomFontInput(($event.target as HTMLInputElement).value)"
-            style="margin-top: 6px; padding: 6px 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px; font: inherit; width: 100%;"
+            class="settings__field settings__field--sub"
           />
           <p class="setting-hint">{{ t('settings.fontFamilyHint') }}</p>
         </section>
@@ -938,7 +995,7 @@ function onSelectPdfFont(v: string) {
             :placeholder="t('settings.codeFontFamilyPlaceholder')"
             :value="settings.codeFontFamily"
             @input="settings.setCodeFontFamily(($event.target as HTMLInputElement).value)"
-            style="padding: 6px 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px; font: inherit; width: 100%;"
+            class="settings__field"
           />
           <p class="setting-hint">{{ t('settings.codeFontFamilyHint') }}</p>
         </section>
@@ -1276,7 +1333,7 @@ function onSelectPdfFont(v: string) {
             />
             {{ t('reading.readingByDefaultOnMobile') }}
           </label>
-          <p style="font-size: 11px; color: var(--text-faint); margin: 4px 0 0; line-height: 1.5;">{{ t('reading.readingByDefaultOnMobileHint') }}</p>
+          <p class="setting-hint">{{ t('reading.readingByDefaultOnMobileHint') }}</p>
         </section>
 
         <section data-cat="basics">
@@ -1311,7 +1368,7 @@ function onSelectPdfFont(v: string) {
         </section>
 
         <section data-cat="writing">
-          <h3 style="font-size: 13px; font-weight: 600; color: var(--text); margin: 18px 0 6px;">
+          <h3 class="settings__group-title">
             {{ t('writingStats.settingsHeading') }}
           </h3>
           <label>
@@ -1331,7 +1388,7 @@ function onSelectPdfFont(v: string) {
             />
             {{ t('writingStats.showWorkspaceDailyTotal') }}
           </label>
-          <p style="font-size: 11px; color: var(--text-faint); margin: 4px 0 0; line-height: 1.5;">
+          <p class="setting-hint">
             {{ t('writingStats.frontMatterHint') }}
           </p>
         </section>
@@ -1340,23 +1397,23 @@ function onSelectPdfFont(v: string) {
              row of buttons that answer "Command … not found". Say so plainly
              instead of shipping dead controls. -->
         <section v-if="!gitBackend" data-cat="sync">
-          <h3 style="font-size: 13px; font-weight: 600; color: var(--text); margin: 18px 0 6px;">
+          <h3 class="settings__group-title">
             {{ t('settings.catSync') }}
           </h3>
-          <p style="font-size: 12px; color: var(--text-faint); margin: 0; line-height: 1.6;">
+          <p class="setting-hint">
             {{ t('settings.syncUnsupportedAndroid') }}
           </p>
         </section>
 
         <section v-if="gitBackend" data-cat="sync">
-          <h3 style="font-size: 13px; font-weight: 600; color: var(--text); margin: 18px 0 6px;">
+          <h3 class="settings__group-title">
             {{ t('settings.versionHistoryHeading') }}
           </h3>
           <label>
             <input type="checkbox" :checked="settings.autoGitEnabled" @change="settings.toggleAutoGit()" />
             {{ t('settings.autoGitEnabled') }}
           </label>
-          <p style="font-size: 11px; color: var(--text-faint); margin: 4px 0 0; line-height: 1.5;">
+          <p class="setting-hint">
             {{ withChord('settings.autoGitHelp', 'file.save') }}
           </p>
         </section>
@@ -1402,7 +1459,7 @@ function onSelectPdfFont(v: string) {
         </section>
 
         <section data-cat="integrations">
-          <h3 style="font-size: 13px; font-weight: 600; color: var(--text); margin: 18px 0 6px;">
+          <h3 class="settings__group-title">
             {{ t('rag.settingsHeading') }}
           </h3>
           <label>
@@ -1413,14 +1470,14 @@ function onSelectPdfFont(v: string) {
             />
             {{ t('rag.enable') }}
           </label>
-          <p style="font-size: 11px; color: var(--text-faint); margin: 4px 0 0; line-height: 1.5;">
+          <p class="setting-hint">
             {{ t('rag.enableHint') }}
           </p>
           <div
             v-if="settings.ragEnabled && workspace.currentFolder"
             style="margin-top: 8px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;"
           >
-            <span style="font-size: 11px; color: var(--text-muted);">
+            <span class="settings__unit">
               <template v-if="rag.status?.ready">
                 {{ t('rag.statusReady', {
                   indexed: String(rag.status.indexed_files),
@@ -1460,7 +1517,7 @@ function onSelectPdfFont(v: string) {
             spellcheck="false"
             placeholder="CmdOrCtrl+Alt+M"
             @change="settings.setQuickCaptureShortcut(($event.target as HTMLInputElement).value)"
-            style="margin-top: 6px; padding: 6px 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px; font: inherit; width: 100%;"
+            class="settings__field settings__field--sub"
           />
           <p v-if="quickCaptureError" class="setting-hint" style="color: var(--danger);">
             {{ t('settings.quickCaptureFailed', { error: quickCaptureError }) }}
@@ -1497,7 +1554,7 @@ function onSelectPdfFont(v: string) {
              above its controls; it used to be separated from them by the
              Word template and print theme, and read as an empty section. -->
         <section data-cat="export">
-          <h3 style="font-size: 13px; font-weight: 600; color: var(--text); margin: 18px 0 6px;">
+          <h3 class="settings__group-title">
             {{ t('settings.pdfDefaults.heading') }}
           </h3>
           <p class="setting-hint">{{ t('settings.pdfDefaults.headingHint') }}</p>
@@ -1529,10 +1586,10 @@ function onSelectPdfFont(v: string) {
               step="1"
               :value="settings.pdfDefaults.customWidthMm"
               @input="onCustomMmChange('customWidthMm', ($event.target as HTMLInputElement).value)"
-              style="width: 90px; padding: 6px 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px;"
+              class="settings__field settings__field--num"
               :aria-label="t('settings.pdfDefaults.widthMm')"
             />
-            <span style="font-size: 12px; color: var(--text-muted);">×</span>
+            <span class="settings__unit">×</span>
             <input
               type="number"
               min="50"
@@ -1540,10 +1597,10 @@ function onSelectPdfFont(v: string) {
               step="1"
               :value="settings.pdfDefaults.customHeightMm"
               @input="onCustomMmChange('customHeightMm', ($event.target as HTMLInputElement).value)"
-              style="width: 90px; padding: 6px 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px;"
+              class="settings__field settings__field--num"
               :aria-label="t('settings.pdfDefaults.heightMm')"
             />
-            <span style="font-size: 12px; color: var(--text-muted);">mm</span>
+            <span class="settings__unit">mm</span>
           </div>
         </section>
 
@@ -1562,45 +1619,45 @@ function onSelectPdfFont(v: string) {
             v-if="settings.pdfDefaults.margin === 'Custom'"
             style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; margin-top: 6px;"
           >
-            <label style="display: flex; align-items: center; gap: 6px; font-size: 12px;">
-              <span style="min-width: 56px; color: var(--text-muted);">{{ t('settings.pdfDefaults.marginTop') }}</span>
+            <label class="settings__mm">
+              <span class="settings__mm-label">{{ t('settings.pdfDefaults.marginTop') }}</span>
               <input
                 type="number" min="5" max="100" step="1"
                 :value="settings.pdfDefaults.customMarginTopMm"
                 @input="onCustomMmChange('customMarginTopMm', ($event.target as HTMLInputElement).value)"
-                style="width: 70px; padding: 4px 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px;"
+                class="settings__field settings__field--num"
               />
-              <span style="font-size: 11px; color: var(--text-muted);">mm</span>
+              <span class="settings__unit">mm</span>
             </label>
-            <label style="display: flex; align-items: center; gap: 6px; font-size: 12px;">
-              <span style="min-width: 56px; color: var(--text-muted);">{{ t('settings.pdfDefaults.marginRight') }}</span>
+            <label class="settings__mm">
+              <span class="settings__mm-label">{{ t('settings.pdfDefaults.marginRight') }}</span>
               <input
                 type="number" min="5" max="100" step="1"
                 :value="settings.pdfDefaults.customMarginRightMm"
                 @input="onCustomMmChange('customMarginRightMm', ($event.target as HTMLInputElement).value)"
-                style="width: 70px; padding: 4px 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px;"
+                class="settings__field settings__field--num"
               />
-              <span style="font-size: 11px; color: var(--text-muted);">mm</span>
+              <span class="settings__unit">mm</span>
             </label>
-            <label style="display: flex; align-items: center; gap: 6px; font-size: 12px;">
-              <span style="min-width: 56px; color: var(--text-muted);">{{ t('settings.pdfDefaults.marginBottom') }}</span>
+            <label class="settings__mm">
+              <span class="settings__mm-label">{{ t('settings.pdfDefaults.marginBottom') }}</span>
               <input
                 type="number" min="5" max="100" step="1"
                 :value="settings.pdfDefaults.customMarginBottomMm"
                 @input="onCustomMmChange('customMarginBottomMm', ($event.target as HTMLInputElement).value)"
-                style="width: 70px; padding: 4px 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px;"
+                class="settings__field settings__field--num"
               />
-              <span style="font-size: 11px; color: var(--text-muted);">mm</span>
+              <span class="settings__unit">mm</span>
             </label>
-            <label style="display: flex; align-items: center; gap: 6px; font-size: 12px;">
-              <span style="min-width: 56px; color: var(--text-muted);">{{ t('settings.pdfDefaults.marginLeft') }}</span>
+            <label class="settings__mm">
+              <span class="settings__mm-label">{{ t('settings.pdfDefaults.marginLeft') }}</span>
               <input
                 type="number" min="5" max="100" step="1"
                 :value="settings.pdfDefaults.customMarginLeftMm"
                 @input="onCustomMmChange('customMarginLeftMm', ($event.target as HTMLInputElement).value)"
-                style="width: 70px; padding: 4px 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px;"
+                class="settings__field settings__field--num"
               />
-              <span style="font-size: 11px; color: var(--text-muted);">mm</span>
+              <span class="settings__unit">mm</span>
             </label>
           </div>
           <p v-if="pdfMmRangeError" class="setting-hint" style="color: var(--danger, #d12);">
@@ -1698,7 +1755,7 @@ function onSelectPdfFont(v: string) {
             :value="settings.assetsDirName"
             @change="settings.setAssetsDirName(($event.target as HTMLInputElement).value)"
             placeholder="_assets"
-            style="padding: 6px 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px; font: inherit;"
+            class="settings__field"
           />
           <p class="setting-hint">{{ t('settings.assetsDirNameHint') }}</p>
         </section>
@@ -1710,7 +1767,7 @@ function onSelectPdfFont(v: string) {
             :value="settings.attachmentCustomPath"
             @change="settings.setAttachmentCustomPath(($event.target as HTMLInputElement).value)"
             placeholder="./images/${filename}/"
-            style="padding: 6px 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px; font: inherit;"
+            class="settings__field"
           />
           <p class="setting-hint">{{ t('settings.attachmentCustomPathHint') }}</p>
         </section>
@@ -1962,7 +2019,7 @@ function onSelectPdfFont(v: string) {
             :value="settings.dailyNotesFolder"
             @input="settings.setDailyNotesFolder(($event.target as HTMLInputElement).value)"
             placeholder="Daily"
-            style="padding: 6px 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px; font: inherit;"
+            class="settings__field"
           />
         </section>
 
@@ -1973,7 +2030,7 @@ function onSelectPdfFont(v: string) {
             :value="settings.dailyNotesFormat"
             @input="settings.setDailyNotesFormat(($event.target as HTMLInputElement).value)"
             placeholder="YYYY-MM-DD.md"
-            style="padding: 6px 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px; font: inherit;"
+            class="settings__field"
           />
         </section>
 
@@ -2024,7 +2081,7 @@ function onSelectPdfFont(v: string) {
         </section>
 
         <section data-cat="writing">
-          <h3 style="font-size: 13px; font-weight: 600; color: var(--text); margin: 18px 0 6px;">
+          <h3 class="settings__group-title">
             {{ t('pomodoro.settingsHeading') }}
           </h3>
           <!-- bug/C2 — the "show controls in toolbar" switch went with the
@@ -2038,7 +2095,7 @@ function onSelectPdfFont(v: string) {
             />
             {{ t('pomodoro.autoEngageFocus') }}
           </label>
-          <p style="font-size: 11px; color: var(--text-faint); margin: 4px 0 8px; line-height: 1.5;">
+          <p class="setting-hint">
             {{ t('pomodoro.autoEngageFocusHint') }}
           </p>
           <label style="display: block; margin-top: 4px;">{{ t('pomodoro.defaultDuration') }}</label>
@@ -2062,7 +2119,7 @@ function onSelectPdfFont(v: string) {
             :value="settings.pomodoroDefaultMinutes"
             @input="settings.setPomodoroDefaultMinutes(parseInt(($event.target as HTMLInputElement).value, 10) || 25)"
             :aria-label="t('pomodoro.customDurationLabel')"
-            style="margin-left: 8px; padding: 4px 6px; width: 70px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px; font: inherit;"
+            class="settings__field settings__field--num" style="margin-left: 8px;"
           />
         </section>
 
@@ -2116,14 +2173,14 @@ function onSelectPdfFont(v: string) {
             <input type="checkbox" :checked="settings.inboxWorkflowEnabled" @change="settings.toggleInboxWorkflow()" />
             {{ t('inbox.workflowSetting') }}
           </label>
-          <div style="font-size: 11px; color: var(--text-faint); margin-top: 4px; line-height: 1.5;">
+          <div class="setting-hint">
             {{ t('inbox.workflowSettingHint') }}
           </div>
           <label v-if="settings.inboxWorkflowEnabled" style="margin-top: 8px;">
             <input type="checkbox" :checked="settings.autoAdvanceInboxAfterOrganize" @change="settings.toggleAutoAdvanceInbox()" />
             {{ t('inbox.autoAdvanceSetting') }}
           </label>
-          <div v-if="settings.inboxWorkflowEnabled" style="font-size: 11px; color: var(--text-faint); margin-top: 4px; line-height: 1.5;">
+          <div v-if="settings.inboxWorkflowEnabled" class="setting-hint">
             {{ t('inbox.autoAdvanceSettingHint') }}
           </div>
         </section>
@@ -2133,7 +2190,7 @@ function onSelectPdfFont(v: string) {
             <input type="checkbox" :checked="settings.restoreSession" @change="settings.toggleRestoreSession()" />
             {{ t('settings.restoreSession') }}
           </label>
-          <div style="font-size: 11px; color: var(--text-faint); margin-top: 4px; line-height: 1.5;">
+          <div class="setting-hint">
             {{ t('settings.restoreSessionHint') }}
           </div>
         </section>
@@ -2159,7 +2216,7 @@ function onSelectPdfFont(v: string) {
             <input type="checkbox" :checked="settings.perWorkspaceTabs" @change="settings.togglePerWorkspaceTabs()" />
             {{ t('settings.perWorkspaceTabs') }}
           </label>
-          <div style="font-size: 11px; color: var(--text-faint); margin-top: 4px; line-height: 1.5;">
+          <div class="setting-hint">
             {{ t('settings.perWorkspaceTabsHint') }}
           </div>
         </section>
@@ -2169,7 +2226,7 @@ function onSelectPdfFont(v: string) {
             <input type="checkbox" :checked="settings.autoReloadExternalChanges" @change="settings.toggleAutoReloadExternalChanges()" />
             {{ t('settings.autoReloadExternalChanges') }}
           </label>
-          <div style="font-size: 11px; color: var(--text-faint); margin-top: 4px; line-height: 1.5;">
+          <div class="setting-hint">
             {{ t('settings.autoReloadExternalChangesHint') }}
           </div>
         </section>
@@ -2179,7 +2236,7 @@ function onSelectPdfFont(v: string) {
             <input type="checkbox" :checked="settings.autoSaveOnBlur" @change="settings.toggleAutoSaveOnBlur()" />
             {{ t('settings.autoSaveOnBlur') }}
           </label>
-          <div style="font-size: 11px; color: var(--text-faint); margin-top: 4px; line-height: 1.5;">
+          <div class="setting-hint">
             {{ t('settings.autoSaveOnBlurHint') }}
           </div>
         </section>
@@ -2189,7 +2246,7 @@ function onSelectPdfFont(v: string) {
             <input type="checkbox" :checked="settings.openFileInNewWindow" @change="settings.toggleOpenFileInNewWindow()" />
             {{ t('settings.openFileInNewWindow') }}
           </label>
-          <div style="font-size: 11px; color: var(--text-faint); margin-top: 4px; line-height: 1.5;">
+          <div class="setting-hint">
             {{ t('settings.openFileInNewWindowHint') }}
           </div>
         </section>
@@ -2199,7 +2256,7 @@ function onSelectPdfFont(v: string) {
             <input type="checkbox" :checked="settings.revealInFileTreeOnOpen" @change="settings.toggleRevealInFileTreeOnOpen()" />
             {{ t('settings.revealInFileTreeOnOpen') }}
           </label>
-          <div style="font-size: 11px; color: var(--text-faint); margin-top: 4px; line-height: 1.5;">
+          <div class="setting-hint">
             {{ t('settings.revealInFileTreeOnOpenHint') }}
           </div>
         </section>
@@ -2209,7 +2266,7 @@ function onSelectPdfFont(v: string) {
             <input type="checkbox" :checked="settings.openLinkedFilesExternally" @change="settings.toggleOpenLinkedFilesExternally()" />
             {{ t('settings.openLinkedFilesExternally') }}
           </label>
-          <div style="font-size: 11px; color: var(--text-faint); margin-top: 4px; line-height: 1.5;">
+          <div class="setting-hint">
             {{ t('settings.openLinkedFilesExternallyHint') }}
           </div>
         </section>
@@ -2233,7 +2290,7 @@ function onSelectPdfFont(v: string) {
             <input type="checkbox" :checked="settings.telemetryEnabled" @change="settings.toggleTelemetry()" />
             {{ t('settings.telemetry') }}
           </label>
-          <div style="font-size: 11px; color: var(--text-faint); margin-top: 4px; line-height: 1.5;">
+          <div class="setting-hint">
             {{ t('settings.telemetryHint') }}
           </div>
         </section>
@@ -2268,7 +2325,7 @@ function onSelectPdfFont(v: string) {
               {{ settingDefault ? t('settings.settingDefault') : t('settings.setDefault') }}
             </button>
           </div>
-          <div style="font-size: 11px; color: var(--text-faint); margin-top: 6px; line-height: 1.5;">
+          <div class="setting-hint">
             {{ t('settings.setDefaultHint') }}
           </div>
         </section>
@@ -2291,45 +2348,45 @@ function onSelectPdfFont(v: string) {
 </template>
 
 <style scoped>
+/* ── 5.0 Settings (spec §6): macOS System Settings feel ───────────────────
+ * 220px navigation with 16px line icons (rows 30px / radius 7, selected
+ * --accent-soft + --accent-text); content: a 20/620 page title, then group
+ * cards (--bg-elev, radius 10) whose rows are split by hairlines — label on
+ * the left, control on the right, help text 12px --text-3 underneath.
+ * Card edges come from markGroups() (data-gs / data-ge). */
+
 /* #180 shortcut editor */
 .kb-clash {
-  border: 1px solid var(--warning-border, rgba(214, 145, 22, 0.45));
-  background: var(--warning-bg, rgba(214, 145, 22, 0.08));
-  border-radius: 8px;
+  border: var(--bd-hair);
+  border-color: color-mix(in srgb, var(--warning) 45%, transparent);
+  background: color-mix(in srgb, var(--warning) 8%, transparent);
+  border-radius: var(--r-md);
   padding: 10px 12px;
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 6px;
 }
 /* Same box, no alarm: an offer rather than a warning (#296). */
 .kb-hints-toggle {
-  display: block;
-  margin: 2px 0 10px;
+  margin: 2px 0 4px;
 }
 .kb-search {
-  width: 100%;
-  box-sizing: border-box;
-  margin-bottom: 10px;
-  padding: 6px 10px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg);
-  color: var(--text);
-  font: inherit;
+  margin-bottom: 4px;
 }
 .kb-clash--neutral {
-  border-color: var(--border);
-  background: var(--bg-soft, transparent);
-  margin-bottom: 10px;
+  border-color: var(--hairline);
+  background: var(--bg);
 }
 .kb-clash__title {
   margin: 0;
   font-weight: 600;
+  font-size: 13px;
 }
 .kb-clash__body {
   margin: 0;
   font-size: 12px;
-  opacity: 0.85;
+  color: var(--text-2);
 }
 .kb-clash__list {
   margin: 0;
@@ -2341,118 +2398,144 @@ function onSelectPdfFont(v: string) {
   font-size: 12px;
 }
 .kb-clash__source {
-  opacity: 0.7;
+  color: var(--text-3);
 }
 .kb-clash__arrow {
-  opacity: 0.6;
+  color: var(--text-3);
   padding: 0 2px;
 }
 .kb-chip--intercepted {
-  border-color: var(--warning-border, rgba(214, 145, 22, 0.6));
+  color: var(--warning);
 }
 .kb-chip__warn {
   margin-left: 3px;
   font-size: 10px;
 }
-.kb-group { margin-bottom: 14px; }
+.kb-group {
+  margin-bottom: 6px;
+}
 .kb-group__title {
-  margin: 12px 0 6px;
+  margin: 14px 0 4px;
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--text-faint);
+  letter-spacing: 0.02em;
+  color: var(--text-3);
 }
 .kb-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 5px 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--border) 45%, transparent);
+  min-height: 34px;
+  border-bottom: var(--bd-hair);
+}
+.kb-group .kb-row:last-child {
+  border-bottom: 0;
 }
 .kb-row__label { flex: 1; min-width: 0; font-size: 13px; }
-.kb-row__combos { display: flex; gap: 4px; flex-shrink: 0; }
-.kb-row__unbound { font-size: 11px; color: var(--text-faint); }
+.kb-row__combos { display: flex; gap: 6px; flex-shrink: 0; }
+.kb-row__unbound { font-size: 12px; color: var(--text-3); }
+/* Chords read as text, not keycaps (same rule as the menus). */
 .kb-chip {
-  font: 11px/1.6 var(--font-mono, monospace);
-  padding: 1px 6px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--bg-soft, var(--bg));
+  font: 12px/1.6 var(--font-ui, inherit);
+  letter-spacing: 0.02em;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--r-xs);
+  background: var(--fill-1);
+  color: var(--text-2);
   white-space: nowrap;
 }
-.kb-chip--recording { border-color: var(--accent); color: var(--accent); }
-.kb-row__actions { display: flex; gap: 4px; flex-shrink: 0; }
+.kb-chip--recording {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.kb-row__actions { display: flex; gap: 2px; flex-shrink: 0; }
 .kb-btn {
-  font-size: 11px;
-  padding: 3px 8px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
+  height: 24px;
+  font-size: 12px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--r-sm);
   background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
+  color: var(--text-2);
+  cursor: default;
 }
-.kb-btn:hover:not(:disabled) { color: var(--text); border-color: var(--accent); }
-.kb-btn:disabled { opacity: 0.35; cursor: default; }
-.kb-btn--wide { margin-top: 10px; padding: 5px 12px; }
-.kb-error { color: var(--danger, #e5484d); font-size: 12px; margin: 8px 0 0; }
+.kb-btn:hover:not(:disabled) { color: var(--text); background: var(--fill-1); }
+.kb-btn:disabled { opacity: 0.35; }
+.kb-btn--wide {
+  height: 28px;
+  margin-top: 4px;
+  padding: 0 12px;
+  font-weight: 560;
+  color: var(--text);
+  background: var(--fill-1);
+  border-radius: var(--r-md);
+}
+.kb-btn--wide:hover:not(:disabled) { background: var(--fill-2); }
+.kb-error { color: var(--danger); font-size: 12px; margin: 8px 0 0; }
 
-/* DsModal supplies the backdrop / frame / header (title + close). Zero its
-   body padding so the two-column nav+body layout fills the panel edge-to-edge,
-   and give the panel a fixed working height like the old shell. */
-.settings-modal :deep(.ds-modal__body) {
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-}
+/* ── shell ───────────────────────────────────────────────────────────── */
+/* DsModal frame overrides live in the unscoped <style> block at the end of
+   this file: the overlay is teleported, so a scoped selector cannot reach
+   it. */
 .settings__layout {
   flex: 1;
   display: flex;
   min-height: 0;
-  height: min(560px, 78vh);
+  height: min(600px, 78vh);
 }
 .settings__nav {
-  width: 160px;
+  width: 220px;
   flex-shrink: 0;
-  border-right: 1px solid var(--border);
-  background: var(--bg-soft, var(--bg));
+  box-sizing: border-box;
+  border-right: var(--bd-hair);
+  background: var(--bg-sidebar);
   display: flex;
   flex-direction: column;
-  padding: 10px 6px;
-  gap: 1px;
+  padding: 12px 10px;
+  gap: 2px;
   overflow-y: auto;
 }
 .settings__nav-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
+  gap: 9px;
+  height: 30px;
+  min-height: 30px;
+  padding: 0 10px;
+  font-family: inherit;
   font-size: 13px;
-  color: var(--text-muted);
+  font-weight: 450;
+  color: var(--text);
   background: transparent;
   border: none;
-  border-radius: 6px;
-  cursor: pointer;
+  border-radius: 7px;
+  cursor: default;
   text-align: left;
-  font: inherit;
-  transition: all 0.12s;
 }
 .settings__nav-item:hover {
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
-  color: var(--text);
+  background: var(--fill-1);
 }
-.settings__nav-item--active {
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
-  color: var(--accent);
-  font-weight: 600;
+.settings__nav-item--active,
+.settings__nav-item--active:hover {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-weight: 500;
 }
 .settings__nav-icon {
-  font-size: 16px;
-  line-height: 1;
+  flex: none;
+  color: var(--text-2);
+}
+.settings__nav-item--active .settings__nav-icon {
+  color: var(--accent-text);
 }
 .settings__nav-label {
   flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
+
 /* v3.0 — single-source-of-truth visibility: each section/component
    gets data-cat="basics|writing|sync|integrations|export|keys|advanced",
    the body's data-active-cat determines which subset renders. Saves
@@ -2471,35 +2554,51 @@ function onSelectPdfFont(v: string) {
 .settings__body[data-active-cat="export"] > [data-cat="export"],
 .settings__body[data-active-cat="keys"] > [data-cat="keys"],
 .settings__body[data-active-cat="advanced"] > [data-cat="advanced"] {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display: block;
 }
+.settings__body[data-active-cat="basics"] > section[data-cat="basics"],
+.settings__body[data-active-cat="writing"] > section[data-cat="writing"],
+.settings__body[data-active-cat="sync"] > section[data-cat="sync"],
+.settings__body[data-active-cat="integrations"] > section[data-cat="integrations"],
+.settings__body[data-active-cat="export"] > section[data-cat="export"],
+.settings__body[data-active-cat="keys"] > section[data-cat="keys"],
+.settings__body[data-active-cat="advanced"] > section[data-cat="advanced"],
+.settings__body[data-searching] > section[data-cat] {
+  display: grid;
+}
+
+/* ── search ──────────────────────────────────────────────────────────── */
 .settings__search {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border);
+  padding: 0 24px 12px;
+  border-bottom: var(--bd-hair);
 }
 .settings__search-input {
   flex: 0 1 340px;
   min-width: 0;
-  padding: 6px 10px;
+  height: 28px;
+  box-sizing: border-box;
+  padding: 0 10px;
   font: inherit;
   font-size: 13px;
   color: var(--text);
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  background: var(--fill-1);
+  border: 0;
+  border-radius: var(--r-md);
   outline: none;
 }
+.settings__search-input::placeholder {
+  color: var(--text-3);
+}
 .settings__search-input:focus {
-  border-color: var(--accent);
+  background: var(--bg);
+  box-shadow: var(--ring);
 }
 .settings__search-count {
   font-size: 12px;
-  color: var(--text-faint);
+  color: var(--text-3);
   white-space: nowrap;
 }
 .settings__search-steps {
@@ -2514,19 +2613,18 @@ function onSelectPdfFont(v: string) {
   width: 26px;
   height: 26px;
   padding: 0;
-  color: var(--text-muted);
+  color: var(--text-2);
   background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  cursor: pointer;
+  border: 0;
+  border-radius: var(--r-sm);
+  cursor: default;
 }
 .settings__search-step:hover:not(:disabled) {
-  color: var(--accent);
-  border-color: var(--accent);
+  color: var(--text);
+  background: var(--fill-1);
 }
 .settings__search-step:disabled {
   opacity: 0.4;
-  cursor: default;
 }
 :root.narrow-viewport .settings__search-step {
   width: 36px;
@@ -2541,7 +2639,8 @@ function onSelectPdfFont(v: string) {
   position: sticky;
   top: calc(-1 * var(--sp-5, 24px));
   z-index: 2;
-  background: var(--bg-elev);
+  padding-top: 8px;
+  background: var(--bg);
 }
 .settings__sr-only {
   position: absolute;
@@ -2554,29 +2653,17 @@ function onSelectPdfFont(v: string) {
 /* Stepping through matches: a quiet accent ring on the current match, and a
    one-off pulse when it is reached. Reduced motion keeps the ring only. */
 .settings__body[data-searching] > [data-hit-current] {
-  /* A tinted halo 6px past the block's edge (so the ring never touches the
-     text) with a thin accent line around it. */
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--accent) 7%, transparent);
-  box-shadow:
-    0 0 0 6px color-mix(in srgb, var(--accent) 7%, transparent),
-    0 0 0 7px color-mix(in srgb, var(--accent) 40%, transparent);
+  box-shadow: 0 0 0 2px var(--accent-ring);
 }
 .settings__body[data-searching] > [data-hit-flash] {
   animation: settings-hit-pulse 1.1s ease-out;
 }
 @keyframes settings-hit-pulse {
   0% {
-    background: color-mix(in srgb, var(--accent) 24%, transparent);
-    box-shadow:
-      0 0 0 6px color-mix(in srgb, var(--accent) 24%, transparent),
-      0 0 0 9px color-mix(in srgb, var(--accent) 35%, transparent);
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 30%, transparent);
   }
   100% {
-    background: color-mix(in srgb, var(--accent) 7%, transparent);
-    box-shadow:
-      0 0 0 6px color-mix(in srgb, var(--accent) 7%, transparent),
-      0 0 0 7px color-mix(in srgb, var(--accent) 40%, transparent);
+    box-shadow: 0 0 0 2px var(--accent-ring);
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -2589,79 +2676,192 @@ function onSelectPdfFont(v: string) {
   display: none;
 }
 .settings__search-group {
-  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--text-muted);
-  margin: 6px 0 -8px;
-  padding-bottom: 4px;
-  border-bottom: 1px solid var(--border);
+  color: var(--text-2);
+  margin: 16px 0 6px;
+}
+.settings__search-group:first-child {
+  margin-top: 0;
+}
+.settings__search-group-icon {
+  color: var(--text-3);
 }
 .settings__search-empty {
   order: -1;
-  color: var(--text-faint);
+  color: var(--text-3);
   font-size: 13px;
   margin: 24px 0;
   text-align: center;
 }
+
+/* ── content ─────────────────────────────────────────────────────────── */
 .settings__body {
   flex: 1;
-  padding: 16px 22px;
+  min-width: 0;
+  padding: 20px 28px 32px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 0;
+  background: var(--bg);
 }
-section {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.settings__page-title {
+  margin: 0 0 16px;
+  font-size: 20px;
+  font-weight: 620;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  color: var(--text);
 }
-section > label {
+
+.settings__body > * {
+  flex-shrink: 0;
+}
+/* Every visible block is a card row. */
+.settings__body > [data-cat] {
+  box-sizing: border-box;
+  background: var(--bg-elev);
+  padding: 10px 14px;
+  border-top: var(--bd-hair);
+}
+.settings__body > [data-cat][data-gs] {
+  border-top: 0;
+  border-top-left-radius: var(--r-lg);
+  border-top-right-radius: var(--r-lg);
+  margin-top: 16px;
+}
+.settings__body > [data-cat][data-gfirst] {
+  margin-top: 0;
+}
+.settings__body[data-searching] > [data-cat][data-gs] {
+  margin-top: 8px;
+}
+.settings__body > [data-cat][data-ge] {
+  border-bottom-left-radius: var(--r-lg);
+  border-bottom-right-radius: var(--r-lg);
+}
+/* Whole sub-panels (AI, GitHub sync, proxy, …) get room inside their card. */
+.settings__body > div[data-cat] {
+  padding: 14px 16px;
+}
+.settings__body > div[data-cat]:empty {
+  display: none !important;
+}
+
+/* A row: label left, control right; anything else spans the row. */
+.settings__body > section {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 16px;
+  row-gap: 4px;
+  min-height: 24px;
+}
+.settings__body > section > * {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+.settings__body > section > label {
   font-size: 13px;
+  line-height: 1.4;
   color: var(--text);
   display: flex;
   align-items: center;
   gap: 8px;
 }
-section > label:has(input[type='checkbox']) {
-  display: inline-flex;
-  align-self: flex-start;
-  cursor: pointer;
+/* A plain caption label ("Theme", "Font size: 16px") is the row's label. */
+.settings__body > section > label:first-child:not(:has(input, select, textarea)),
+.settings__body > section > label:first-child:not(:has(input, select, textarea)) {
+  grid-column: 1;
 }
-section > label:not(:has(input)) {
-  font-size: 12px;
-  color: var(--text-muted);
+/* …and the control right after it sits on the right of the same line. */
+.settings__body > section > label:first-child:not(:has(input, select, textarea)) + select,
+.settings__body > section > label:first-child:not(:has(input, select, textarea)) + input:not([type='checkbox']):not([type='radio']),
+.settings__body > section > label:first-child:not(:has(input, select, textarea)) + .settings__field {
+  grid-column: 2;
+  grid-row: 1;
+  width: 240px;
+  max-width: 100%;
 }
-.setting-hint {
+.settings__body > section > label:first-child:not(:has(input, select, textarea)) + input[type='range'] {
+  width: 200px;
+}
+
+/* Checkbox rows: the text on the left, a switch on the right. */
+.settings__body > section > label:has(> input[type='checkbox']),
+.kb-hints-toggle {
+  justify-content: space-between;
+  flex-direction: row-reverse;
+  gap: 16px;
+  cursor: default;
+  min-height: 24px;
+}
+.settings__body > section > label:has(> input[type='checkbox']) + label:has(> input[type='checkbox']) {
+  padding-top: 6px;
+  margin-top: 4px;
+  border-top: var(--bd-hair);
+}
+
+/* Group title inside a card (e.g. "Writing statistics", "Version history"). */
+.settings__group-title {
+  margin: 2px 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* Help text */
+.setting-hint,
+.hint {
   margin: 0;
-  font-size: 11px;
-  color: var(--text-faint, #888);
-  line-height: 1.5;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-3);
+}
+.settings__body > section > label + .setting-hint,
+.settings__body > section > label + .hint {
+  margin-top: -2px;
 }
 .setting-hint a {
-  color: var(--accent);
+  color: var(--accent-text);
+  text-decoration: none;
+}
+.setting-hint a:hover {
   text-decoration: underline;
 }
 /* #282 — "your theme choice is not reaching the screen" is not a footnote;
    it explains why the control right above it looks broken. */
 .setting-hint--warn {
   margin-top: 6px;
-  color: var(--text-muted);
+  color: var(--text-2);
 }
-.hint-btn {
+.hint-btn,
+.link-button {
   padding: 0;
   margin-left: 4px;
-  font-size: 11px;
-  color: var(--accent);
+  font: inherit;
+  font-size: 12px;
+  color: var(--accent-text);
   background: none;
   border: none;
+  cursor: default;
+}
+.hint-btn:hover,
+.link-button:hover {
+  background: none;
   text-decoration: underline;
-  cursor: pointer;
 }
 .css-path-row {
   display: flex;
   align-items: center;
   gap: 6px;
+  font-size: 12px;
+  color: var(--text-3);
+  word-break: break-all;
+  margin-top: 4px;
 }
 .css-path-row > span {
   min-width: 0;
@@ -2675,15 +2875,14 @@ section > label:not(:has(input)) {
   padding: 0;
   flex-shrink: 0;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--r-xs);
   background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  color: var(--text-2);
+  cursor: default;
 }
 .refresh-css-btn:hover {
-  background: var(--bg-soft, rgba(0, 0, 0, 0.05));
-  color: var(--accent);
+  background: var(--fill-1);
+  color: var(--text);
 }
 .refresh-css-btn svg.is-spinning {
   animation: refresh-css-spin 0.7s linear infinite;
@@ -2692,48 +2891,327 @@ section > label:not(:has(input)) {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
-/* Image-upload (图床) text/password fields — match the inline-styled inputs
-   used elsewhere in this panel. */
-.img-field {
-  padding: 6px 8px;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
-  border-radius: 4px;
-  font: inherit;
-  width: 100%;
+
+/* ── controls (tokens; same look as ui/DsInput / DsButton) ────────────── */
+.settings__field,
+.img-field,
+.kb-search,
+select {
   box-sizing: border-box;
+  height: 28px;
+  padding: 0 8px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--fill-1);
+  border: 0;
+  border-radius: var(--r-sm);
+  outline: none;
 }
-.row {
-  display: flex;
-  gap: 4px;
-}
-.row button {
-  border: 1px solid var(--border);
-  padding: 6px 14px;
-  font-size: 12px;
-}
-.row button.active {
-  background: var(--bg-active);
-  color: var(--accent);
-  border-color: var(--accent);
-}
-select,
-input[type='range'] {
+.settings__field,
+.img-field,
+.kb-search {
   width: 100%;
+}
+.settings__field::placeholder,
+.img-field::placeholder,
+.kb-search::placeholder {
+  color: var(--text-3);
+}
+.settings__field:focus,
+.img-field:focus,
+.kb-search:focus,
+select:focus {
+  background: var(--bg);
+  box-shadow: var(--ring);
+}
+.settings__field--sub {
+  margin-top: 4px;
+}
+.settings__field--num {
+  width: 76px;
+  font-variant-numeric: tabular-nums;
 }
 select {
-  background: var(--bg);
-  color: var(--text);
-  border: 1px solid var(--border);
-  padding: 6px 8px;
-  border-radius: 4px;
-  font: inherit;
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 26px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='gray' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='8 10 12 6 16 10'/%3E%3Cpolyline points='8 14 12 18 16 14'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  cursor: default;
 }
+select:hover:not(:focus) {
+  background-color: var(--fill-2);
+}
+.settings__unit {
+  font-size: 12px;
+  color: var(--text-3);
+}
+.settings__mm {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+.settings__mm-label {
+  min-width: 56px;
+  color: var(--text-2);
+}
+/* Slider: a hairline-thin track with a round white knob, AppKit style. */
 input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 18px;
+  margin: 0;
+  background: transparent;
+  cursor: default;
+}
+input[type='range']::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: var(--r-full);
+  background: var(--fill-2);
+}
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+  border-radius: var(--r-full);
+  background: var(--knob);
+  box-shadow: var(--sh-thumb), 0 0 0 var(--hair-w) var(--hairline);
+}
+input[type='range']:focus-visible {
+  outline: none;
+}
+input[type='range']:focus-visible::-webkit-slider-thumb {
+  box-shadow: var(--ring);
+}
+input[type='range']:disabled {
+  opacity: 0.4;
+}
+
+/* Switch: a checkbox drawn as an AppKit-style toggle. Still a real checkbox
+   (keyboard, label click, :checked), only painted differently. */
+.settings__body > section input[type='checkbox'],
+.kb-hints-toggle input[type='checkbox'] {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  flex: none;
+  width: 30px;
+  height: 18px;
+  margin: 0;
+  border-radius: var(--r-full);
+  background: var(--fill-2);
+  box-shadow: inset 0 0 0 var(--hair-w) var(--hairline);
+  transition: background-color var(--dur-fast) var(--ease);
+  cursor: default;
+}
+.settings__body > section input[type='checkbox']::before,
+.kb-hints-toggle input[type='checkbox']::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--r-full);
+  background: var(--knob);
+  box-shadow: var(--sh-thumb);
+  transition: transform var(--dur) var(--ease-out);
+}
+.settings__body > section input[type='checkbox']:checked,
+.kb-hints-toggle input[type='checkbox']:checked {
+  background: var(--accent);
+  box-shadow: none;
+}
+.settings__body > section input[type='checkbox']:checked::before,
+.kb-hints-toggle input[type='checkbox']:checked::before {
+  transform: translateX(12px);
+}
+.settings__body > section input[type='checkbox']:focus-visible,
+.kb-hints-toggle input[type='checkbox']:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+.settings__body > section input[type='checkbox']:disabled {
+  opacity: 0.4;
+}
+.settings__body > section label:has(> input[type='checkbox']:disabled) {
+  color: var(--text-3);
+}
+@media (prefers-reduced-motion: reduce) {
+  .settings__body > section input[type='checkbox'],
+  .settings__body > section input[type='checkbox']::before {
+    transition: none;
+  }
+}
+
+/* Buttons inside the settings rows: secondary by default, primary when
+   marked as such. */
+.row {
+  display: flex;
+  gap: 8px;
+}
+.settings__body > section button:not([class]),
+.row button {
+  height: 28px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 560;
+  color: var(--text);
+  background: var(--fill-1);
+  border: 0;
+  border-radius: var(--r-md);
+  cursor: default;
+}
+.settings__body > section button:not([class]):hover:not(:disabled),
+.row button:hover:not(:disabled) {
+  background: var(--fill-2);
+}
+.row button.active {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.row .primary-btn {
+  background: var(--accent-strong);
+  color: var(--accent-strong-fg);
+}
+.row .primary-btn:hover:not(:disabled) {
+  background: var(--accent-strong);
+  filter: brightness(1.06);
+}
+.settings__body > section button:focus-visible,
+.row button:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+@media (pointer: coarse) {
+  select,
+  .settings__field,
+  .img-field,
+  .kb-search {
+    height: 40px;
+    font-size: 15px;
+  }
+}
+
+/* Phone: one column — label above control. */
+:root.narrow-viewport .settings__body > section {
+  grid-template-columns: minmax(0, 1fr);
+}
+:root.narrow-viewport .settings__body > section > * {
+  grid-column: 1 / -1 !important;
+  grid-row: auto !important;
+}
+:root.narrow-viewport .settings__body > section > label:first-child:not(:has(input, select, textarea)) + select,
+:root.narrow-viewport .settings__body > section > label:first-child:not(:has(input, select, textarea)) + input,
+:root.narrow-viewport .settings__body > section > label:first-child:not(:has(input, select, textarea)) + .settings__field {
+  width: 100%;
+}
+</style>
+
+<style>
+/* DsModal is teleported to <body> and forwards `class="settings-modal"` to
+   its overlay; scoped selectors cannot reach it, so the frame overrides are
+   global but namespaced. Zero the body padding so the nav + content columns
+   fill the panel edge-to-edge. */
+.ds-modal.settings-modal .ds-modal__panel {
+  background: var(--bg);
+}
+.ds-modal.settings-modal .ds-modal__head {
+  padding-bottom: 10px;
+}
+.ds-modal.settings-modal .ds-modal__body {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Sub-panels (AISettings, GithubSyncSettings, ProxySettings, Integrations…)
+   carry their own scoped styles from the 4.x era — bordered white boxes,
+   11px buttons, native-looking fields. Inside the settings cards they get
+   the 5.0 controls: --fill-1 fields with a focus ring, 28px secondary /
+   primary buttons, hairline cards. Only the look is touched, never widths
+   or layout, so each panel keeps its own arrangement. */
+.ds-modal.settings-modal .settings__body > div[data-cat] :is(
+  input[type='text'],
+  input[type='password'],
+  input[type='number'],
+  input[type='url'],
+  input[type='email'],
+  input[type='search'],
+  input:not([type]),
+  select,
+  textarea
+) {
+  box-sizing: border-box;
+  min-height: 28px;
+  padding: 4px 8px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background-color: var(--fill-1);
+  border: 0;
+  border-radius: var(--r-sm);
+  outline: none;
+  box-shadow: none;
+}
+.ds-modal.settings-modal .settings__body > div[data-cat] :is(input, select, textarea)::placeholder {
+  color: var(--text-3);
+}
+.ds-modal.settings-modal .settings__body > div[data-cat] :is(input, select, textarea):focus {
+  background-color: var(--bg);
+  box-shadow: var(--ring);
+}
+.ds-modal.settings-modal .settings__body > div[data-cat] input[type='checkbox'],
+.ds-modal.settings-modal .settings__body > div[data-cat] input[type='radio'] {
   accent-color: var(--accent);
 }
-input[type='checkbox'] {
-  accent-color: var(--accent);
+.ds-modal.settings-modal .settings__body > div[data-cat] :is(button[class*='btn'], button[class*='-button']):not([class*='--link']):not([class*='close']) {
+  min-height: 28px;
+  padding: 0 12px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 560;
+  color: var(--text);
+  background: var(--fill-1);
+  border: 0;
+  border-radius: var(--r-md);
+  cursor: default;
+}
+.ds-modal.settings-modal .settings__body > div[data-cat] :is(button[class*='btn'], button[class*='-button']):not([class*='--link']):not([class*='close']):hover:not(:disabled) {
+  background: var(--fill-2);
+  border-color: transparent;
+}
+.ds-modal.settings-modal .settings__body > div[data-cat] :is(button[class*='btn'], button[class*='-button'])[class*='--primary'],
+.ds-modal.settings-modal .settings__body > div[data-cat] :is(button[class*='btn'], button[class*='-button'])[class*='--primary']:hover:not(:disabled) {
+  background: var(--accent-strong);
+  color: var(--accent-strong-fg);
+}
+.ds-modal.settings-modal .settings__body > div[data-cat] :is(button[class*='btn'], button[class*='-button'])[class*='--danger'] {
+  color: var(--danger);
+}
+.ds-modal.settings-modal .settings__body > div[data-cat] :is(button[class*='btn'], button[class*='-button'])[class*='--small'] {
+  min-height: 24px;
+  padding: 0 8px;
+  font-size: 12px;
+}
+.ds-modal.settings-modal .settings__body > div[data-cat] :is(button[class*='btn'], button[class*='-button'])[class*='--ghost'] {
+  background: transparent;
+  color: var(--text-2);
+}
+.ds-modal.settings-modal .settings__body > div[data-cat] :is(.ghs-card, .ic-card) {
+  background: var(--bg);
+  border: var(--bd-hair);
+  border-radius: var(--r-lg);
+}
+.ds-modal.settings-modal .settings__body > div[data-cat] :is(h3, h4) {
+  text-align: left;
 }
 </style>

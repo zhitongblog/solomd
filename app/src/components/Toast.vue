@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { useToastsStore, type Toast } from '../stores/toasts';
+import Icons from './Icons.vue';
 
 const toasts = useToastsStore();
 
+/* Line icons from the shared set (spec §2: no emoji / glyph badges). */
 const icons: Record<string, string> = {
-  success: '✓',
-  error: '✕',
-  info: 'ℹ',
-  warning: '!',
+  success: 'check-circle',
+  error: 'close',
+  info: 'info',
+  warning: 'info',
 };
 
 function onToastClick(t: Toast) {
@@ -38,7 +40,7 @@ function onToastAction(t: Toast) {
         :class="`toast--${t.kind}`"
         @click="onToastClick(t)"
       >
-        <span class="toast__icon">{{ icons[t.kind] }}</span>
+        <Icons class="toast__icon" :name="icons[t.kind] ?? 'info'" :size="16" aria-hidden="true" />
         <span class="toast__msg">{{ t.message }}</span>
         <button
           v-if="t.onClick && t.actionLabel"
@@ -51,13 +53,18 @@ function onToastAction(t: Toast) {
 </template>
 
 <style scoped>
+/* 5.0: small --bg-pop capsules with --sh-pop, centred above the bottom edge
+   (the editor's bottom-right corner belongs to the stats pill). The kind is
+   carried by the icon colour alone — no coloured edge. */
 .toasts {
   position: fixed;
-  bottom: 36px;
-  right: 18px;
-  z-index: 2000;
+  left: 50%;
+  bottom: 28px;
+  translate: -50% 0;
+  z-index: var(--z-toast);
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 8px;
   pointer-events: none;
 }
@@ -65,58 +72,54 @@ function onToastAction(t: Toast) {
   pointer-events: auto;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  border-radius: 6px;
+  gap: 8px;
+  box-sizing: border-box;
+  min-height: 36px;
+  max-width: min(460px, calc(100vw - 32px));
+  padding: 7px 16px 7px 12px;
+  border-radius: var(--r-full);
   font-size: 13px;
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-  cursor: pointer;
-  min-width: 220px;
-  max-width: 380px;
+  line-height: 1.35;
+  background: var(--bg-pop);
+  border: var(--bd-hair);
+  box-shadow: var(--sh-pop);
   color: var(--text);
+  cursor: default;
+}
+.toast:has(.toast__action) {
+  padding-right: 6px;
 }
 .toast__icon {
   flex-shrink: 0;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: 700;
-  color: white;
+  color: var(--text-2);
 }
+.toast--success .toast__icon { color: var(--success); }
+.toast--error .toast__icon { color: var(--danger); }
+.toast--warning .toast__icon { color: var(--warning); }
 .toast__msg {
   flex: 1;
+  min-width: 0;
 }
 .toast__action {
   flex-shrink: 0;
-  padding: 3px 10px;
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  background: var(--bg);
-  color: var(--accent);
+  height: 24px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--r-full);
+  background: var(--fill-1);
+  color: var(--accent-text);
+  font: inherit;
   font-size: 12px;
   font-weight: 600;
-  cursor: pointer;
+  cursor: default;
 }
 .toast__action:hover {
-  background: var(--bg-hover);
+  background: var(--fill-2);
 }
-.toast--success .toast__icon { background: #2ea043; }
-.toast--success { border-left: 3px solid #2ea043; }
-.toast--error .toast__icon { background: #d64545; }
-.toast--error { border-left: 3px solid #d64545; }
-.toast--info .toast__icon { background: var(--accent); color: var(--accent-fg); }
-.toast--info { border-left: 3px solid var(--accent); }
-.toast--warning .toast__icon { background: #d4a017; }
-.toast--warning { border-left: 3px solid #d4a017; }
 
-.toast-enter-from { opacity: 0; transform: translateX(20px); }
-.toast-enter-active { transition: all 0.2s ease-out; }
-.toast-leave-to { opacity: 0; transform: translateX(20px); }
-.toast-leave-active { transition: all 0.2s ease-in; position: absolute; right: 0; }
+.toast-enter-from,
+.toast-leave-to { opacity: 0; transform: translateY(8px) scale(0.98); }
+.toast-enter-active { transition: opacity var(--dur) var(--ease-out), transform var(--dur) var(--ease-out); }
+.toast-leave-active { transition: opacity var(--dur-fast) ease-in, transform var(--dur-fast) ease-in; }
+.toast-move { transition: transform var(--dur) var(--ease-out); }
 </style>

@@ -148,7 +148,7 @@ onBeforeUnmount(() => {
       }) }}
     </p>
     <template #footer>
-      <DsButton variant="ghost" :disabled="restoring" @click="dismiss">
+      <DsButton variant="secondary" :disabled="restoring" @click="dismiss">
         {{ t('cloudSync.keepMineBtn') }}
       </DsButton>
       <DsButton variant="primary" :disabled="restoring" @click="restore">
@@ -161,8 +161,8 @@ onBeforeUnmount(() => {
 <style scoped>
 .srd__lead {
   margin: 0;
-  font-size: 12px;
-  color: var(--text-muted);
-  line-height: 1.6;
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.55;
 }
 </style>

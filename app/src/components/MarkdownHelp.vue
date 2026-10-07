@@ -522,12 +522,11 @@ async function copyExample(text: string) {
   margin-bottom: 22px;
 }
 .help__section h3 {
-  margin: 0 0 10px;
+  margin: 0 0 8px;
   font-size: 11px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--accent);
+  letter-spacing: 0.02em;
+  color: var(--text-3);
 }
 .help__grid {
   display: grid;
@@ -535,9 +534,8 @@ async function copyExample(text: string) {
   gap: 10px;
 }
 .help__item {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  background: var(--bg-elev);
+  border-radius: var(--r-lg);
   padding: 10px 12px;
   display: flex;
   flex-direction: column;
@@ -546,56 +544,51 @@ async function copyExample(text: string) {
 .help__syntax {
   font-family: var(--font-mono);
   font-size: 12px;
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 600;
 }
 .help__desc {
-  font-size: 11px;
-  line-height: 1.4;
+  font-size: 12px;
+  line-height: 1.45;
 }
 .help__desc--zh {
   color: var(--text);
 }
 .help__desc--en {
-  color: var(--text-muted);
-  font-style: italic;
+  color: var(--text-3);
 }
 .help__example {
   font-family: var(--font-mono);
-  font-size: 11px;
-  background: var(--bg-hover);
-  border-radius: 4px;
+  font-size: 12px;
+  background: var(--fill-1);
+  border-radius: var(--r-sm);
   padding: 6px 8px;
   margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
-  cursor: pointer;
+  cursor: default;
   color: var(--text);
-  transition: background 0.12s;
+  transition: background-color var(--dur-fast) var(--ease);
 }
 .help__example:hover {
-  background: var(--bg-active);
+  background: var(--fill-2);
 }
 .help__empty {
   padding: 20px;
-  color: var(--text-faint);
+  color: var(--text-3);
   text-align: center;
   font-size: 13px;
 }
 .help__footer {
   padding: 10px 18px;
-  font-size: 11px;
-  color: var(--text-faint);
-  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-3);
+  border-top: var(--bd-hair);
   text-align: center;
 }
 .help__footer kbd {
-  background: var(--bg-active);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  padding: 1px 5px;
-  font-family: var(--font-mono);
-  font-size: 10px;
+  font: inherit;
+  color: var(--text-2);
 }
 
 .help__tabs {
@@ -624,17 +617,18 @@ async function copyExample(text: string) {
 }
 .help__lead {
   margin: 0 0 16px;
-  font-size: 12px;
-  color: var(--text-muted);
-  line-height: 1.6;
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.55;
 }
 .help__lead code,
 .help__hint code {
-  background: var(--bg-hover);
+  /* 5.0 inline code: --fill-1, radius 4, --text */
+  background: var(--fill-1);
   padding: 1px 5px;
-  border-radius: 3px;
+  border-radius: var(--r-xs);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text);
 }
 .help__keys {
@@ -643,7 +637,7 @@ async function copyExample(text: string) {
   font-size: 12px;
 }
 .help__keys tr {
-  border-bottom: 1px solid var(--border);
+  border-bottom: var(--bd-hair);
 }
 .help__keys tr:last-child { border-bottom: 0; }
 .help__keys td {
@@ -655,21 +649,21 @@ async function copyExample(text: string) {
   width: 40%;
 }
 .help__keys-key kbd {
-  background: var(--bg-hover);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 2px 8px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: var(--text-2);
+  background: var(--fill-1);
+  border-radius: var(--r-xs);
+  padding: 1px 6px;
 }
 .help__keys-key code {
-  background: var(--bg-hover);
+  background: var(--fill-1);
   padding: 2px 8px;
-  border-radius: 4px;
+  border-radius: var(--r-xs);
   font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--accent);
+  font-size: 12px;
+  color: var(--accent-text);
 }
 .help__keys-desc div {
   font-size: 12px;
@@ -677,39 +671,36 @@ async function copyExample(text: string) {
   line-height: 1.4;
 }
 .help__keys-en {
-  color: var(--text-muted) !important;
-  font-style: italic;
-  font-size: 11px !important;
+  color: var(--text-3) !important;
+  font-size: 12px !important;
 }
 .help__hint {
   margin: 6px 0;
-  font-size: 11px;
-  color: var(--text-muted);
+  font-size: 12px;
+  color: var(--text-3);
   line-height: 1.5;
 }
 .help__code {
   font-family: var(--font-mono);
-  font-size: 11px;
-  background: var(--bg-hover);
-  border-radius: 4px;
+  font-size: 12px;
+  background: var(--fill-1);
+  border-radius: var(--r-sm);
   padding: 8px 10px;
   margin: 6px 0;
   white-space: pre-wrap;
   word-break: break-word;
-  cursor: pointer;
+  cursor: default;
   color: var(--text);
-  transition: background 0.12s;
 }
 .help__code:hover {
-  background: var(--bg-active);
+  background: var(--fill-2);
 }
 .help__link {
   border: 0;
   background: none;
   padding: 0;
   font: inherit;
-  color: var(--accent);
-  cursor: pointer;
-  text-decoration: underline;
+  color: var(--accent-text);
+  cursor: default;
 }
 </style>

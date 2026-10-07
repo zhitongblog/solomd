@@ -61,7 +61,7 @@ function onConfirm() {
       <DsInput v-model="alt" @keydown.enter="onConfirm" />
     </div>
     <template #footer>
-      <DsButton variant="ghost" @click="emit('cancel')">{{ t('imageUrlDialog.cancel') }}</DsButton>
+      <DsButton variant="secondary" @click="emit('cancel')">{{ t('imageUrlDialog.cancel') }}</DsButton>
       <DsButton variant="primary" :disabled="!url.trim()" @click="onConfirm">
         {{ t('imageUrlDialog.insert') }}
       </DsButton>
@@ -77,7 +77,8 @@ function onConfirm() {
 }
 .iud-label {
   font-size: 12px;
-  color: var(--text-muted, var(--text));
+  color: var(--text-2);
+  font-weight: 500;
   margin-top: 6px;
 }
 .iud-label:first-child {

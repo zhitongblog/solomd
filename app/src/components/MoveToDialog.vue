@@ -13,6 +13,7 @@
  */
 import { computed, nextTick, ref, watch } from 'vue';
 import { DsModal, DsInput } from '../ui';
+import Icons from './Icons.vue';
 import { useI18n } from '../i18n';
 
 const { t } = useI18n();
@@ -148,7 +149,7 @@ function onKeydown(e: KeyboardEvent) {
           @mousemove="active = i"
           @click="emit('confirm', d)"
         >
-          <span class="mtd__icon" aria-hidden="true">{{ d === '' ? '🗂' : '📁' }}</span>
+          <Icons class="mtd__icon" :name="d === '' ? 'home' : 'folder-sm'" :size="16" aria-hidden="true" />
           <span class="mtd__path">{{ label(d) }}</span>
         </button>
         <p v-if="filtered.length === 0" class="mtd__empty">
@@ -168,8 +169,8 @@ function onKeydown(e: KeyboardEvent) {
 .mtd__list {
   max-height: 320px;
   overflow-y: auto;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  background: var(--bg-elev);
+  border-radius: var(--r-lg);
   padding: 4px;
 }
 .mtd__row {
@@ -177,21 +178,28 @@ function onKeydown(e: KeyboardEvent) {
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 6px 8px;
+  min-height: 28px;
+  padding: 4px 8px;
   border: none;
-  border-radius: 4px;
+  border-radius: 7px;
   background: transparent;
   color: var(--text);
+  font: inherit;
   font-size: 13px;
   text-align: left;
-  cursor: pointer;
+  cursor: default;
 }
+.mtd__row:hover,
 .mtd__row--active {
-  background: var(--accent-soft, var(--bg-elev));
+  background: var(--accent-soft);
+  color: var(--accent-text);
 }
 .mtd__icon {
   flex: none;
-  font-size: 13px;
+  color: var(--text-2);
+}
+.mtd__row--active .mtd__icon {
+  color: var(--accent-text);
 }
 .mtd__path {
   overflow: hidden;
@@ -201,7 +209,7 @@ function onKeydown(e: KeyboardEvent) {
 .mtd__empty {
   margin: 0;
   padding: 12px 8px;
-  color: var(--text-muted);
+  color: var(--text-3);
   font-size: 13px;
 }
 </style>

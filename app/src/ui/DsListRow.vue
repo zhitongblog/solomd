@@ -33,37 +33,41 @@ const emit = defineEmits<{ click: [MouseEvent] }>();
 </template>
 
 <style scoped>
+/* 5.0 list row: 28px, radius 7, hover --fill-1, selected --accent-soft with
+   --accent-text label (the sidebar-row look, spec §4). */
 .ds-list-row {
   display: flex;
   align-items: center;
   gap: var(--sp-2);
+  box-sizing: border-box;
   width: 100%;
+  min-height: 28px;
+  padding: 4px 8px;
   text-align: left;
-  font-family: inherit;
+  font-family: var(--font-ui, inherit);
   font-size: 13px;
   color: var(--text);
   background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--r-sm);
-  padding: var(--sp-2) var(--sp-3);
-  cursor: pointer;
-  transition: background var(--dur-fast) var(--ease),
-    border-color var(--dur-fast) var(--ease);
+  border: 0;
+  border-radius: 7px;
+  cursor: default;
 }
-.ds-list-row:hover:not(.ds-list-row--disabled) {
-  background: var(--bg-hover);
+.ds-list-row:hover:not(.ds-list-row--disabled):not(.ds-list-row--selected) {
+  background: var(--fill-1);
 }
 .ds-list-row--active {
-  background: var(--bg-hover);
+  background: var(--fill-1);
 }
 .ds-list-row--selected {
   background: var(--accent-soft);
-  border-color: var(--accent);
-  color: var(--text);
+  color: var(--accent-text);
+}
+.ds-list-row--selected .ds-list-row__lead,
+.ds-list-row--selected .ds-list-row__trail {
+  color: var(--accent-text);
 }
 .ds-list-row--disabled {
-  opacity: 0.5;
-  cursor: default;
+  opacity: 0.45;
 }
 .ds-list-row:focus-visible {
   outline: none;
@@ -71,6 +75,7 @@ const emit = defineEmits<{ click: [MouseEvent] }>();
 }
 .ds-list-row__main {
   flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -80,6 +85,10 @@ const emit = defineEmits<{ click: [MouseEvent] }>();
   display: inline-flex;
   align-items: center;
   flex-shrink: 0;
-  color: var(--text-muted);
+  color: var(--text-3);
+}
+.ds-list-row__lead {
+  color: var(--text-2);
 }
 </style>
+

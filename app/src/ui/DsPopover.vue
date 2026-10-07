@@ -115,18 +115,13 @@ defineExpose({ close });
 </style>
 
 <style>
+/* Teleported to <body>. Surface + motion come from styles/menus.css. */
 .ds-popover__panel {
   position: fixed;
   z-index: var(--z-pop);
-  padding: var(--sp-3);
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  box-shadow: var(--sh-pop);
-  color: var(--text);
-  font-size: 13px;
 }
 .ds-popover__panel:focus-visible {
   outline: none;
 }
 </style>
+
