@@ -11,6 +11,7 @@ public class W {
   [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
   [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int c);
   [DllImport("user32.dll")] public static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
+  [DllImport("user32.dll")] public static extern uint MapVirtualKey(uint code, uint mapType);
   [DllImport("kernel32.dll")] public static extern IntPtr GetConsoleWindow();
   [DllImport("user32.dll")] public static extern bool AttachThreadInput(uint a, uint b, bool f);
   [DllImport("kernel32.dll")] public static extern uint GetCurrentThreadId();
@@ -34,12 +35,15 @@ public class W {
 [W]::ShowWindow([W]::GetConsoleWindow(), 0) | Out-Null
 $log = New-Object System.Collections.Generic.List[string]
 function L($m) { $log.Add("$(Get-Date -Format HH:mm:ss.fff) $m") }
-function Key([byte]$vk, [int]$hold = 30) { [W]::keybd_event($vk, 0, 0, [UIntPtr]::Zero); Start-Sleep -Milliseconds $hold; [W]::keybd_event($vk, 0, 2, [UIntPtr]::Zero); Start-Sleep -Milliseconds 60 }
+# Real hardware scan codes: with scan 0, WebView2 reports KeyboardEvent.code as
+# "" — a keyboard never does that, and code-based shortcuts (Ctrl+,) then miss.
+function Scan([byte]$vk) { return [byte]([W]::MapVirtualKey($vk, 0) -band 0xFF) }
+function Key([byte]$vk, [int]$hold = 30) { $sc = Scan $vk; [W]::keybd_event($vk, $sc, 0, [UIntPtr]::Zero); Start-Sleep -Milliseconds $hold; [W]::keybd_event($vk, $sc, 2, [UIntPtr]::Zero); Start-Sleep -Milliseconds 60 }
 $VK = @{ ctrl=0x11; shift=0x10; alt=0x12; enter=0x0D; esc=0x1B; tab=0x09; home=0x24; end=0x23; up=0x26; down=0x28; left=0x25; right=0x27; f4=0x73; backspace=0x08; delete=0x2E; space=0x20; comma=0xBC; period=0xBE }
 function VkOf([string]$k) { if ($VK.ContainsKey($k)) { return [byte]$VK[$k] }; return [byte][char]($k.ToUpper()) }
 function Combo([string]$c) { $parts = $c.ToLower().Split('+'); $mods = @($parts[0..($parts.Count-2)] | ? { $_ }); $k = VkOf $parts[-1]
-  foreach ($m in $mods) { [W]::keybd_event((VkOf $m), 0, 0, [UIntPtr]::Zero) }; Start-Sleep -Milliseconds 30; Key $k
-  [array]::Reverse($mods); foreach ($m in $mods) { [W]::keybd_event((VkOf $m), 0, 2, [UIntPtr]::Zero) }; Start-Sleep -Milliseconds 80 }
+  foreach ($m in $mods) { [W]::keybd_event((VkOf $m), (Scan (VkOf $m)), 0, [UIntPtr]::Zero) }; Start-Sleep -Milliseconds 30; Key $k
+  [array]::Reverse($mods); foreach ($m in $mods) { [W]::keybd_event((VkOf $m), (Scan (VkOf $m)), 2, [UIntPtr]::Zero) }; Start-Sleep -Milliseconds 80 }
 function TypeAscii([string]$s) { foreach ($c in $s.ToCharArray()) {
   if ($c -match '[a-z]') { Key ([byte][char]($c.ToString().ToUpper())) } elseif ($c -match '[0-9]') { Key ([byte][char]$c) }
   elseif ($c -eq ' ') { Key 0x20 } elseif ($c -eq ',') { Key 0xBC } elseif ($c -eq '.') { Key 0xBE } } }

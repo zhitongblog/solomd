@@ -7,7 +7,7 @@ import { useTilesStore } from '../stores/tiles';
 import { useCommands } from './useCommands';
 import { useInbox } from './useInbox';
 import { usePomodoroStore, getLastPreset } from '../stores/pomodoro';
-import { eventToCombo, resolveBindings } from '../lib/keybindings';
+import { eventToCombo, normalizeCombo, resolveBindings } from '../lib/keybindings';
 import { FORMAT_KINDS, type FormatKind } from '../lib/md-format';
 import { MARKDOWN_ONLY_COMMANDS, type EditorCommand } from '../lib/editor-commands';
 import { getCurrentWindow } from '@tauri-apps/api/window';
@@ -234,8 +234,12 @@ export function useShortcuts(hooks: Hooks = {}) {
   };
 
   function handler(e: KeyboardEvent) {
-    const combo = eventToCombo(e);
-    if (!combo) return;
+    const raw = eventToCombo(e);
+    if (!raw) return;
+    // A key event without a `code` (synthetic input, some remote-desktop and
+    // accessibility tools) spells punctuation as the character — "Mod+,"
+    // for the table's "Mod+Comma". Normalizing maps it back.
+    const combo = normalizeCombo(raw);
     // ⌃⌘= / ⌃⌘- / ⌃⌘0 is the preview zoom axis on macOS (App.vue). "Mod"
     // reads ⌃⌘ as one modifier, so without this it would also zoom the UI.
     if (e.metaKey && e.ctrlKey && /^Mod\+(Equal|Minus|0)$/.test(combo)) return;

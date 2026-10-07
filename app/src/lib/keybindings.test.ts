@@ -217,3 +217,9 @@ test('⌘F stays in CodeMirror: the app find handler defers to it in the editor'
     assert.equal(cmKeyOwnedByApp({ key: 'Mod-f' }, {}, platform), false, platform);
   }
 });
+
+test('a key event without a code still matches punctuation chords (Ctrl+,)', async () => {
+  const { eventToCombo, normalizeCombo, resolveBindings } = await import('./keybindings.ts');
+  const e = { isComposing: false, key: ',', code: '', ctrlKey: true, metaKey: false, altKey: false, shiftKey: false, keyCode: 188 } as unknown as KeyboardEvent;
+  assert.equal(resolveBindings({}, 'windows').get(normalizeCombo(eventToCombo(e)!)), 'settings.open');
+});
