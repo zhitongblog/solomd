@@ -474,6 +474,8 @@ export const pt: I18n = {
     wordWrap: 'Quebra de linha',
     lineNumbers: 'Números de linha',
     solidCursor: 'Cursor fixo (sem piscar)',
+    selectionBubble: "Mostrar uma barra de formatação sobre o texto selecionado",
+    selectionBubbleHint: "Negrito, itálico, código, link, títulos e listas logo acima da seleção, nos modos ao vivo e código-fonte. Cada botão executa o mesmo comando que o seu atalho.",
     alwaysShowMarkers: "Sempre mostrar os marcadores Markdown",
     alwaysShowMarkersHint: "Manter #, ** e outros marcadores visíveis (esmaecidos) ao editar, em vez de ocultá-los nas linhas sem cursor. A formatação continua e clicar numa linha não a faz mais pular. Imagens aparecem abaixo da linha; tabelas, fórmulas e diagramas ficam como código-fonte. Vale para o editor CodeMirror.",
     highlightCurrentLine: "Destacar a linha atual",
@@ -2156,6 +2158,14 @@ export const pt: I18n = {
       startLast: "Iniciar sessão de escrita",
       open: "Sessão de escrita (Pomodoro)…",
     },
+  },
+  // 5.0 — selection bubble + touch keyboard bar
+  formatBar: {
+    label: "Formatação",
+    heading: "Título",
+    image: "Inserir imagem",
+    undo: "Desfazer",
+    hideKeyboard: "Ocultar teclado",
   },
   // 5.0 sidebar (Sidebar.vue, docs/v5-ui-spec.md §4)
   sidebar: {

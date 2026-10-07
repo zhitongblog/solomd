@@ -20,6 +20,10 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{ 'update:modelValue': [boolean] }>();
+// The root is a <Teleport>, which cannot inherit attributes — forward
+// `class` / `data-*` from the caller to the overlay element instead, so
+// `<DsModal class="settings-modal">` actually lands on the dialog.
+defineOptions({ inheritAttrs: false });
 
 const panelRef = ref<HTMLElement | null>(null);
 let lastFocused: HTMLElement | null = null;
@@ -75,10 +79,13 @@ watch(
       document.addEventListener('keydown', onKeydown, true);
       await nextTick();
       // A dialog can name its default control with `data-autofocus` (e.g. the
-      // Save button in UnsavedDialog, #357); otherwise the first focusable —
-      // which is the header × button — gets focus.
+      // Save button in UnsavedDialog, #357); otherwise its first text field;
+      // otherwise the panel itself.
       const preferred = panelRef.value?.querySelector<HTMLElement>('[data-autofocus]');
-      (preferred ?? focusables()[0] ?? panelRef.value)?.focus();
+      // Never the header ×: a focus ring on the close button would be the
+      // first thing the eye lands on otherwise.
+      const first = focusables().find((el) => el.matches('input, select, textarea'));
+      (preferred ?? first ?? panelRef.value)?.focus();
     } else {
       document.removeEventListener('keydown', onKeydown, true);
       lastFocused?.focus?.();
@@ -94,7 +101,7 @@ onBeforeUnmount(() => {
 
 <template>
   <Teleport to="body" :disabled="!teleport">
-    <div v-if="modelValue" class="ds-modal" role="presentation">
+    <div v-if="modelValue" class="ds-modal" role="presentation" v-bind="$attrs">
       <div class="ds-modal__backdrop" @click="onBackdrop" />
       <div
         ref="panelRef"
@@ -114,7 +121,9 @@ onBeforeUnmount(() => {
             type="button"
             aria-label="Close"
             @click="close"
-          >×</button>
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="6" y1="6" x2="18" y2="18" /><line x1="18" y1="6" x2="6" y2="18" /></svg>
+          </button>
         </header>
         <div class="ds-modal__body">
           <slot />
@@ -128,6 +137,9 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+/* 5.0 (spec §6): radius 14, padding 24, title 17/600, --sh-modal on --bg-pop;
+   backdrop --scrim (.28 light / .5 dark). Opens with a 180ms fade + scale
+   .98→1 (keyframes in styles/menus.css); reduced motion turns it off. */
 .ds-modal {
   position: fixed;
   inset: 0;
@@ -140,20 +152,23 @@ onBeforeUnmount(() => {
 .ds-modal__backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  animation: ds-modal-fade var(--dur) var(--ease);
+  background: var(--scrim);
+  animation: sm-fade-in var(--dur) var(--ease-out);
 }
 .ds-modal__panel {
   position: relative;
+  box-sizing: border-box;
   max-width: calc(100vw - var(--sp-6));
   max-height: calc(100vh - var(--sp-6));
   display: flex;
   flex-direction: column;
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  box-shadow: var(--sh-pop);
-  animation: ds-modal-pop var(--dur) var(--ease);
+  background: var(--bg-pop);
+  color: var(--text);
+  border: var(--bd-hair);
+  border-radius: var(--r-xl);
+  box-shadow: var(--sh-modal);
+  overflow: hidden;
+  animation: sm-dialog-in var(--dur) var(--ease-out);
 }
 .ds-modal__panel:focus-visible {
   outline: none;
@@ -163,28 +178,33 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   gap: var(--sp-3);
-  padding: var(--sp-4) var(--sp-5);
-  border-bottom: 1px solid var(--border);
+  padding: 20px var(--sp-5) 4px;
 }
 .ds-modal__title {
   margin: 0;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
   color: var(--text);
 }
 .ds-modal__close {
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  font-size: 20px;
-  line-height: 1;
-  cursor: pointer;
-  border-radius: var(--r-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
   width: 28px;
   height: 28px;
+  margin-right: -6px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: var(--r-sm);
+  color: var(--text-3);
+  cursor: default;
 }
 .ds-modal__close:hover {
-  background: var(--bg-hover);
+  background: var(--fill-1);
   color: var(--text);
 }
 .ds-modal__close:focus-visible {
@@ -192,28 +212,26 @@ onBeforeUnmount(() => {
   box-shadow: var(--ring);
 }
 .ds-modal__body {
-  padding: var(--sp-5);
+  padding: var(--sp-3) var(--sp-5) var(--sp-5);
   overflow-y: auto;
   color: var(--text);
   font-size: 13px;
+  line-height: 1.5;
+}
+.ds-modal__panel > .ds-modal__body:first-child {
+  padding-top: var(--sp-5);
 }
 .ds-modal__foot {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: var(--sp-2);
-  padding: var(--sp-4) var(--sp-5);
-  border-top: 1px solid var(--border);
+  padding: 0 var(--sp-5) var(--sp-5);
 }
-@keyframes ds-modal-fade {
-  from {
-    opacity: 0;
-  }
-}
-@keyframes ds-modal-pop {
-  from {
-    opacity: 0;
-    transform: translateY(8px) scale(0.98);
+@media (prefers-reduced-motion: reduce) {
+  .ds-modal__backdrop,
+  .ds-modal__panel {
+    animation: none;
   }
 }
 </style>

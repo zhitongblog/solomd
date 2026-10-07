@@ -472,6 +472,8 @@ export const fr: I18n = {
     wordWrap: 'Retour à la ligne',
     lineNumbers: 'Numéros de ligne',
     solidCursor: 'Curseur fixe (sans clignotement)',
+    selectionBubble: "Afficher une barre de mise en forme sur le texte sélectionné",
+    selectionBubbleHint: "Gras, italique, code, lien, titres et listes juste au-dessus de la sélection, en mode direct et source. Chaque bouton exécute la même commande que son raccourci.",
     alwaysShowMarkers: "Toujours afficher les marqueurs Markdown",
     alwaysShowMarkersHint: "Garder #, ** et les autres marqueurs visibles (atténués) pendant l’édition, au lieu de les masquer sur les lignes sans curseur. La mise en forme reste, et cliquer sur une ligne ne la fait plus sauter. Les images s’affichent sous leur ligne ; tableaux, formules et diagrammes restent en source. S’applique à l’éditeur CodeMirror.",
     highlightCurrentLine: "Surligner la ligne courante",
@@ -2154,6 +2156,14 @@ export const fr: I18n = {
       startLast: "Démarrer une session d’écriture",
       open: "Session d’écriture (Pomodoro)…",
     },
+  },
+  // 5.0 — selection bubble + touch keyboard bar
+  formatBar: {
+    label: "Mise en forme",
+    heading: "Titre",
+    image: "Insérer une image",
+    undo: "Annuler",
+    hideKeyboard: "Masquer le clavier",
   },
   // 5.0 sidebar (Sidebar.vue, docs/v5-ui-spec.md §4)
   sidebar: {

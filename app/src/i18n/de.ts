@@ -472,6 +472,8 @@ export const de: I18n = {
     wordWrap: 'Zeilenumbruch',
     lineNumbers: 'Zeilennummern',
     solidCursor: 'Durchgehender Cursor (kein Blinken)',
+    selectionBubble: "Formatleiste über markiertem Text anzeigen",
+    selectionBubbleHint: "Fett, kursiv, Code, Link, Überschriften und Listen direkt über der Auswahl – im Live- und Quelltextmodus. Jede Schaltfläche führt denselben Befehl aus wie ihr Tastenkürzel.",
     alwaysShowMarkers: "Markdown-Zeichen immer anzeigen",
     alwaysShowMarkersHint: "#, ** und andere Zeichen bleiben beim Bearbeiten (abgeschwächt) sichtbar, statt auf Zeilen ohne Cursor ausgeblendet zu werden. Die Formatierung bleibt, und ein Klick auf eine Zeile lässt sie nicht mehr springen. Bilder erscheinen unter ihrer Zeile; Tabellen, Formeln und Diagramme bleiben Quelltext. Gilt für den CodeMirror-Editor.",
     highlightCurrentLine: "Aktuelle Zeile hervorheben",
@@ -2154,6 +2156,14 @@ export const de: I18n = {
       startLast: "Schreibsitzung starten",
       open: "Schreibsitzung (Pomodoro)…",
     },
+  },
+  // 5.0 — selection bubble + touch keyboard bar
+  formatBar: {
+    label: "Formatierung",
+    heading: "Überschrift",
+    image: "Bild einfügen",
+    undo: "Rückgängig",
+    hideKeyboard: "Tastatur ausblenden",
   },
   // 5.0 sidebar (Sidebar.vue, docs/v5-ui-spec.md §4)
   sidebar: {

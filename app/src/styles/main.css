@@ -4,6 +4,10 @@
  * cascade after it and win where they must. See styles/tokens.css. */
 @import "./tokens.css";
 @import "./writing.css";
+/* 5.0 — one menu style for every dropdown / context menu / popover, and the
+ * app-wide thin scrollbars. Both are global by design: see their headers. */
+@import "./menus.css";
+@import "./scrollbars.css";
 
 :root {
   /* v4.3.0 issue #78 — tell native form controls (most importantly
@@ -372,20 +376,7 @@ button:disabled {
   cursor: not-allowed;
 }
 
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 5px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--text-faint);
-}
+/* Scrollbars: styles/scrollbars.css (5.0). */
 
 /* ============================================================
  * #168 — phone layout.

@@ -472,6 +472,8 @@ export const it: I18n = {
     wordWrap: 'A capo automatico',
     lineNumbers: 'Numeri di riga',
     solidCursor: 'Cursore fisso (senza lampeggio)',
+    selectionBubble: "Mostra una barra di formattazione sul testo selezionato",
+    selectionBubbleHint: "Grassetto, corsivo, codice, link, titoli ed elenchi subito sopra la selezione, nelle modalità live e sorgente. Ogni pulsante esegue lo stesso comando della sua scorciatoia.",
     alwaysShowMarkers: "Mostra sempre i marcatori Markdown",
     alwaysShowMarkersHint: "Mantiene visibili (attenuati) #, ** e gli altri marcatori durante la modifica, invece di nasconderli nelle righe senza cursore. La formattazione resta e cliccare una riga non la fa più saltare. Le immagini appaiono sotto la loro riga; tabelle, formule e diagrammi restano sorgente. Vale per l’editor CodeMirror.",
     highlightCurrentLine: "Evidenzia la riga corrente",
@@ -2154,6 +2156,14 @@ export const it: I18n = {
       startLast: "Avvia sessione di scrittura",
       open: "Sessione di scrittura (Pomodoro)…",
     },
+  },
+  // 5.0 — selection bubble + touch keyboard bar
+  formatBar: {
+    label: "Formattazione",
+    heading: "Titolo",
+    image: "Inserisci immagine",
+    undo: "Annulla",
+    hideKeyboard: "Nascondi tastiera",
   },
   // 5.0 sidebar (Sidebar.vue, docs/v5-ui-spec.md §4)
   sidebar: {

@@ -472,6 +472,8 @@ export const pl: I18n = {
     wordWrap: 'Zawijanie wierszy',
     lineNumbers: 'Numery wierszy',
     solidCursor: 'Stały kursor (bez migania)',
+    selectionBubble: "Pokazuj pasek formatowania nad zaznaczonym tekstem",
+    selectionBubbleHint: "Pogrubienie, kursywa, kod, link, nagłówki i listy tuż nad zaznaczeniem, w trybie na żywo i źródłowym. Każdy przycisk wykonuje to samo polecenie co jego skrót.",
     alwaysShowMarkers: "Zawsze pokazuj znaczniki Markdown",
     alwaysShowMarkersHint: "Znaczniki #, ** i inne pozostają widoczne (przygaszone) podczas edycji zamiast znikać w wierszach bez kursora. Formatowanie zostaje, a kliknięcie wiersza nie powoduje już skoku. Obrazy są pod swoim wierszem; tabele, wzory i diagramy zostają źródłem. Dotyczy edytora CodeMirror.",
     highlightCurrentLine: "Podświetlaj bieżący wiersz",
@@ -2171,6 +2173,14 @@ export const pl: I18n = {
       startLast: "Rozpocznij sesję pisania",
       open: "Sesja pisania (Pomodoro)…",
     },
+  },
+  // 5.0 — selection bubble + touch keyboard bar
+  formatBar: {
+    label: "Formatowanie",
+    heading: "Nagłówek",
+    image: "Wstaw obraz",
+    undo: "Cofnij",
+    hideKeyboard: "Ukryj klawiaturę",
   },
   // 5.0 sidebar (Sidebar.vue, docs/v5-ui-spec.md §4)
   sidebar: {

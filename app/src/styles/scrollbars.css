@@ -1,0 +1,36 @@
+/* SoloMD 5.0 — app-wide scrollbars (docs/v5-ui-spec.md §2).
+ *
+ * Thin, overlay-looking bars: 8px gutter, a 4px pill thumb inset by a
+ * transparent border, no track. Quiet at rest (--fill-2), legible on hover
+ * (--text-3).
+ *
+ * Only the WebKit/Blink pseudo-elements are styled. Do NOT add the standard
+ * `scrollbar-width` / `scrollbar-color` here: in Chromium ≥121 (WebView2)
+ * setting either one switches off every ::-webkit-scrollbar rule on that
+ * element, and the bar falls back to the chunky system default.
+ *
+ * Components that hide a bar on purpose (`.toolbar`, `.tabbar`, …) set
+ * `::-webkit-scrollbar { width: 0; height: 0 }` with higher specificity and
+ * keep doing so.
+ */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+  background: transparent;
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: var(--fill-2);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+  border-radius: var(--r-full);
+  min-height: 32px;
+}
+::-webkit-scrollbar-thumb:hover,
+::-webkit-scrollbar-thumb:active {
+  background-color: var(--text-3);
+}

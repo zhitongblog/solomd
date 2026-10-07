@@ -475,6 +475,8 @@ export const en = {
     wordWrap: 'Word Wrap',
     lineNumbers: 'Line Numbers',
     solidCursor: 'Solid cursor (no blinking)',
+    selectionBubble: "Show a format bar over selected text",
+    selectionBubbleHint: "Bold, italic, code, link, headings and lists right above a selection, in live and source modes. Every button runs the same command as its shortcut.",
     alwaysShowMarkers: "Always show Markdown markers",
     alwaysShowMarkersHint: "Keep #, ** and other markers visible (dimmed) while editing, instead of hiding them on lines the cursor isn't on. Formatting still shows, and clicking a line no longer makes it jump. Images render below their line; tables, math and diagrams stay as source. Applies to the CodeMirror editor.",
     highlightCurrentLine: "Highlight the current line",
@@ -2183,6 +2185,14 @@ export const en = {
       startLast: "Start Writing Session (Zen)",
       open: "Writing Session (Pomodoro)…",
     },
+  },
+  // 5.0 — selection bubble + touch keyboard bar
+  formatBar: {
+    label: "Formatting",
+    heading: "Heading",
+    image: "Insert image",
+    undo: "Undo",
+    hideKeyboard: "Hide keyboard",
   },
   // 5.0 sidebar (Sidebar.vue, docs/v5-ui-spec.md §4)
   sidebar: {

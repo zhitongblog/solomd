@@ -87,6 +87,18 @@ export function forceWinChromePreview(): boolean {
   return typeof location !== 'undefined' && location.search.includes('forceWinChrome');
 }
 
+/**
+ * `?forceKeyboardBar` — dev-only QA hook (same idea as `?forcePlain` /
+ * `?forceWinChrome`) that mounts the touch formatting bar (KeyboardBar.vue)
+ * in a desktop browser and treats the software keyboard as open, so the bar
+ * can be driven without a phone. Compiled out of production builds.
+ */
+export function forceKeyboardBarPreview(): boolean {
+  // `?.` — node's test runner has no import.meta.env.
+  const dev = !!import.meta.env?.DEV;
+  return dev && typeof location !== 'undefined' && location.search.includes('forceKeyboardBar');
+}
+
 /** Windows desktop editor detection, including the forcePlain QA hook. */
 export function isWindowsEditorRuntime(): boolean {
   return (

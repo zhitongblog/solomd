@@ -250,7 +250,7 @@ onBeforeUnmount(() => {
     </div>
 
     <template #footer>
-      <DsButton variant="ghost" @click="close">{{ t('views.cancel') }}</DsButton>
+      <DsButton variant="secondary" @click="close">{{ t('views.cancel') }}</DsButton>
       <DsButton variant="primary" :loading="saving" @click="save">{{ t('views.save') }}</DsButton>
     </template>
   </DsModal>
@@ -313,7 +313,7 @@ onBeforeUnmount(() => {
 .ved__color {
   height: 32px;
   width: 100%;
-  border: var(--bd-hair);
+  border: 0;
   border-radius: var(--r-md);
   background: var(--fill-1);
   cursor: pointer;

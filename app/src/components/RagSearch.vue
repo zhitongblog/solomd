@@ -14,6 +14,7 @@ import { useWorkspaceStore } from '../stores/workspace';
 import { useSettingsStore } from '../stores/settings';
 import { useToastsStore } from '../stores/toasts';
 import { useI18n } from '../i18n';
+import Icons from './Icons.vue';
 
 const props = defineProps<{ open: boolean }>();
 const emit = defineEmits<{ (e: 'close'): void; (e: 'open-settings'): void }>();
@@ -146,7 +147,7 @@ const scoreColor = (score: number) => {
   <div v-if="open" class="rag__backdrop" @click.self="emit('close')">
     <div class="rag" role="dialog" aria-label="Semantic search">
       <div class="rag__header">
-        <span class="rag__icon" aria-hidden="true">⌕</span>
+        <Icons class="rag__icon" name="search" :size="16" aria-hidden="true" />
         <input
           ref="inputRef"
           v-model="query"
@@ -228,59 +229,75 @@ const scoreColor = (score: number) => {
 </template>
 
 <style scoped>
+/* 5.0 — the semantic-search palette: same frame as the command palette
+   (radius 12, --sh-modal, 44px input row with an icon, 15px text), wider
+   because each hit carries a snippet. */
 .rag__backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--scrim);
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  padding-top: 10vh;
+  padding-top: 12vh;
   z-index: var(--z-modal);
+  animation: sm-fade-in var(--dur) var(--ease-out);
 }
 .rag {
-  width: min(760px, 94vw);
-  max-height: 76vh;
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.4);
+  width: min(720px, calc(100vw - 32px));
+  max-height: 72vh;
+  background: var(--bg-pop);
+  color: var(--text);
+  border: var(--bd-hair);
+  border-radius: 12px;
+  box-shadow: var(--sh-modal);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transform-origin: top center;
+  animation: sm-dialog-in var(--dur) var(--ease-out);
 }
 .rag__header {
   display: flex;
   align-items: center;
-  border-bottom: 1px solid var(--border);
-  padding: 0 14px;
+  flex: none;
+  height: 44px;
+  border-bottom: var(--bd-hair);
+  padding: 0 16px;
   gap: 10px;
+  color: var(--text-3);
 }
 .rag__icon {
-  font-size: 16px;
-  color: var(--accent);
+  display: inline-flex;
+  flex: none;
+  color: var(--text-3);
 }
 .rag__input {
   flex: 1;
+  min-width: 0;
+  height: 100%;
   background: transparent;
   border: none;
   outline: none;
-  padding: 14px 0;
-  font: 14px var(--font-ui);
+  padding: 0;
+  font: 15px var(--font-ui);
   color: var(--text);
 }
+.rag__input::placeholder {
+  color: var(--text-3);
+}
 .rag__loading {
-  color: var(--accent);
-  font-size: 16px;
+  color: var(--text-3);
+  font-size: 15px;
 }
 .rag__empty {
-  padding: 32px;
-  color: var(--text-faint);
+  padding: 28px 24px;
+  color: var(--text-3);
   text-align: center;
   font-size: 13px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   align-items: center;
 }
 .rag__empty p {
@@ -288,40 +305,37 @@ const scoreColor = (score: number) => {
   line-height: 1.6;
 }
 .rag__status {
-  font-size: 11px;
-  color: var(--text-faint);
+  font-size: 12px;
+  color: var(--text-3);
 }
 .rag__results {
   flex: 1;
   overflow-y: auto;
-  padding: 6px 0;
+  padding: 6px;
 }
 .rag__hit {
-  padding: 10px 16px;
-  cursor: pointer;
-  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
-}
-.rag__hit:last-child {
-  border-bottom: none;
+  padding: 8px 10px;
+  border-radius: 7px;
+  cursor: default;
 }
 .rag__hit:hover,
 .rag__hit--active {
-  background: var(--bg-active);
+  background: var(--fill-2);
 }
 .rag__hit-row1 {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 .rag__score {
-  font-size: 10px;
-  font-family: var(--font-mono);
-  color: var(--accent-fg, white);
-  background: var(--accent);
-  padding: 2px 6px;
-  border-radius: 3px;
-  min-width: 36px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-strong-fg);
+  background: var(--accent-strong);
+  padding: 1px 6px;
+  border-radius: var(--r-full);
+  min-width: 34px;
   text-align: center;
   flex-shrink: 0;
 }
@@ -331,8 +345,8 @@ const scoreColor = (score: number) => {
   color: var(--text);
 }
 .rag__hit-path {
-  font-size: 11px;
-  color: var(--text-faint);
+  font-size: 12px;
+  color: var(--text-3);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -341,7 +355,7 @@ const scoreColor = (score: number) => {
 }
 .rag__hit-snippet {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--text-2);
   line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -352,10 +366,10 @@ const scoreColor = (score: number) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 14px;
-  font-size: 11px;
-  color: var(--text-faint);
-  border-top: 1px solid var(--border);
+  padding: 8px 16px;
+  font-size: 12px;
+  color: var(--text-3);
+  border-top: var(--bd-hair);
   gap: 10px;
 }
 .rag__hints {
@@ -364,25 +378,38 @@ const scoreColor = (score: number) => {
   gap: 12px;
 }
 .rag__btn {
-  border: 1px solid var(--border);
-  background: var(--bg);
+  height: 32px;
+  border: 0;
+  background: var(--fill-1);
   color: var(--text);
-  padding: 6px 14px;
-  font-size: 12px;
-  border-radius: 4px;
-  cursor: pointer;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 560;
+  border-radius: var(--r-md);
+  cursor: default;
+}
+.rag__btn:hover:not(:disabled) {
+  background: var(--fill-2);
 }
 .rag__btn:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: progress;
 }
-.rag__btn--primary {
-  background: var(--accent);
-  color: var(--accent-fg, white);
-  border-color: var(--accent);
+.rag__btn--primary,
+.rag__btn--primary:hover:not(:disabled) {
+  background: var(--accent-strong);
+  color: var(--accent-strong-fg);
 }
 .rag__btn--small {
-  padding: 4px 10px;
-  font-size: 11px;
+  height: 24px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rag__backdrop,
+  .rag {
+    animation: none;
+  }
 }
 </style>

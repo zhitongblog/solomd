@@ -78,23 +78,32 @@ onBeforeUnmount(() => {
 </style>
 
 <style>
+/* Teleported to <body>, so global but namespaced. 5.0: a small pop surface,
+   not an inverted chip — --text on --bg-pop, radius 6, 12px. */
 .ds-tooltip {
   position: fixed;
   z-index: var(--z-toast);
-  padding: var(--sp-1) var(--sp-2);
-  background: var(--text);
-  color: var(--bg);
-  font-size: 11px;
-  line-height: 1.4;
+  padding: 4px 8px;
+  background: var(--bg-pop);
+  color: var(--text);
+  border: var(--bd-hair);
   border-radius: var(--r-sm);
-  box-shadow: var(--sh-2);
+  box-shadow: var(--sh-pop);
+  font-family: var(--font-ui, inherit);
+  font-size: 12px;
+  line-height: 1.35;
   pointer-events: none;
   white-space: nowrap;
-  animation: ds-tip-in var(--dur-fast) var(--ease);
+  animation: ds-tip-in var(--dur-fast) var(--ease-out);
 }
 @keyframes ds-tip-in {
   from {
     opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ds-tooltip {
+    animation: none;
   }
 }
 </style>

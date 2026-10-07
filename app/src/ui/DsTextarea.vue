@@ -29,33 +29,34 @@ function onInput(e: Event) {
 
 <style scoped>
 .ds-textarea {
+  box-sizing: border-box;
   width: 100%;
-  font-family: inherit;
+  font-family: var(--font-ui, inherit);
+  color: var(--text);
+  background: var(--fill-1);
+  border: var(--bd-hair);
+  border-color: var(--hairline);
+  border-radius: var(--r-md);
+  transition: background-color var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease);
   font-size: 13px;
   line-height: 1.5;
-  color: var(--text);
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  padding: var(--sp-2) var(--sp-3);
+  padding: 7px 10px;
   resize: vertical;
-  transition: border-color var(--dur-fast) var(--ease),
-    box-shadow var(--dur-fast) var(--ease);
 }
 .ds-textarea::placeholder {
-  color: var(--text-faint);
+  color: var(--text-3);
 }
-.ds-textarea:hover:not(:disabled) {
-  border-color: var(--text-faint);
+.ds-textarea:hover:not(:disabled):not(:focus) {
+  background: var(--fill-2);
 }
 .ds-textarea:focus-visible,
 .ds-textarea:focus {
   outline: none;
-  border-color: var(--accent);
+  background: var(--bg);
   box-shadow: var(--ring);
 }
 .ds-textarea:disabled {
   opacity: 0.5;
-  cursor: default;
 }
 </style>

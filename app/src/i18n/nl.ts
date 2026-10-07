@@ -472,6 +472,8 @@ export const nl: I18n = {
     wordWrap: 'Regelterugloop',
     lineNumbers: 'Regelnummers',
     solidCursor: 'Vaste cursor (zonder knipperen)',
+    selectionBubble: "Opmaakbalk boven geselecteerde tekst tonen",
+    selectionBubbleHint: "Vet, cursief, code, link, koppen en lijsten direct boven de selectie, in live- en bronmodus. Elke knop voert hetzelfde commando uit als de sneltoets.",
     alwaysShowMarkers: "Markdown-tekens altijd tonen",
     alwaysShowMarkersHint: "#, ** en andere tekens blijven (gedimd) zichtbaar tijdens het bewerken, in plaats van te verdwijnen op regels zonder cursor. De opmaak blijft en klikken op een regel laat die niet meer verspringen. Afbeeldingen staan onder hun regel; tabellen, formules en diagrammen blijven bron. Geldt voor de CodeMirror-editor.",
     highlightCurrentLine: "Huidige regel markeren",
@@ -2171,6 +2173,14 @@ export const nl: I18n = {
       startLast: "Schrijfsessie starten",
       open: "Schrijfsessie (Pomodoro)…",
     },
+  },
+  // 5.0 — selection bubble + touch keyboard bar
+  formatBar: {
+    label: "Opmaak",
+    heading: "Kop",
+    image: "Afbeelding invoegen",
+    undo: "Ongedaan maken",
+    hideKeyboard: "Toetsenbord verbergen",
   },
   // 5.0 sidebar (Sidebar.vue, docs/v5-ui-spec.md §4)
   sidebar: {
