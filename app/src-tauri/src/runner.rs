@@ -148,6 +148,9 @@ mod portable;
 #[cfg(target_os = "windows")]
 #[path = "win_chrome.rs"]
 mod win_chrome;
+#[cfg(target_os = "windows")]
+#[path = "win_memory.rs"]
+mod win_memory;
 
 #[path = "menu_spec.rs"]
 mod menu_spec;
@@ -798,6 +801,16 @@ pub fn run_with(initial_file: Option<String>) {
                 // Prevent the close and ask the frontend to check unsaved tabs.
                 api.prevent_close();
                 let _ = app_handle.emit("solomd://close-requested", ());
+            }
+
+            // ---- Minimize: let WebView2 trim the renderer (Windows) ----
+            #[cfg(target_os = "windows")]
+            RunEvent::WindowEvent {
+                event: tauri::WindowEvent::Resized(_),
+                label,
+                ..
+            } => {
+                win_memory::on_resized(app_handle, label);
             }
 
             // ---- Auxiliary window destroyed ----
