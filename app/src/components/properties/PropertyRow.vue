@@ -99,8 +99,11 @@ const isPlaceholder = computed(() => props.value == null || props.value === '');
   border-radius: 7px;
   transition: background var(--dur-fast) var(--ease);
 }
+.prop-row {
+  --prop-row-hover: color-mix(in srgb, var(--text) 5%, var(--bg));
+}
 .prop-row:hover {
-  background: var(--fill-1);
+  background: var(--prop-row-hover);
 }
 .prop-row__label {
   display: flex;
@@ -152,17 +155,31 @@ const isPlaceholder = computed(() => props.value == null || props.value === '');
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* Row actions float over the end of the label instead of reserving room
+   for themselves — an invisible-but-present menu used to squeeze keys like
+   `status` down to "s…". They sit on the same opaque hover colour as the
+   row so a long key fades under them cleanly. */
+.prop-row__label {
+  position: relative;
+}
 .prop-row__meta {
+  position: absolute;
+  top: 50%;
+  right: 0;
   display: inline-flex;
   align-items: center;
   gap: 0;
-  margin-left: auto;
+  padding-left: 10px;
+  transform: translateY(-50%);
+  background: linear-gradient(to right, transparent, var(--prop-row-hover) 10px);
   opacity: 0;
+  pointer-events: none;
   transition: opacity var(--dur-fast) var(--ease);
 }
 .prop-row:hover .prop-row__meta,
 .prop-row:focus-within .prop-row__meta {
   opacity: 1;
+  pointer-events: auto;
 }
 .prop-row__del {
   display: inline-flex;
