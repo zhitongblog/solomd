@@ -116,9 +116,15 @@ function schedule() {
   }, STILL_MS);
 }
 
+/** The find bar lives inside the editor, but a selection made by searching
+ *  is a match, not something the user wants to format. */
+function focusInFindBar(): boolean {
+  return !!document.activeElement?.closest?.('.cm-search, .plain-find');
+}
+
 function readUsable(): BubbleSelection | null {
   if (!props.enabled || touchPlatform || lastPointerTouch) return null;
-  if (pointerDown || composing) return null;
+  if (pointerDown || composing || focusInFindBar()) return null;
   const s = props.read();
   if (!s || !isBubbleSelection(s.context.slice(s.from, s.to))) return null;
   return s;
@@ -245,7 +251,7 @@ function onFocusOut() {
   // Focus moving between the plain editor's block textareas stays inside.
   setTimeout(() => {
     const a = document.activeElement;
-    if (!props.host || !a || !props.host.contains(a)) hide();
+    if (!props.host || !a || !props.host.contains(a) || focusInFindBar()) hide();
   }, 0);
 }
 function onWindowBlur() {

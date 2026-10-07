@@ -302,6 +302,8 @@ export const en = {
     permGrant: 'Grant access',
   },
   plainFind: {
+    wholeWord: "Whole word",
+    regexp: "Regular expression",
     prev: 'Previous (Shift+Enter)',
     next: 'Next (Enter)',
     matchCase: 'Match case',
@@ -309,7 +311,7 @@ export const en = {
     findPlaceholder: 'Find',
     replacePlaceholder: 'Replace',
     replaceOne: 'Replace',
-    replaceAll: 'All',
+    replaceAll: "Replace All",
   },
   explorer: {
     heading: 'Explorer',

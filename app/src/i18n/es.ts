@@ -302,6 +302,8 @@ export const es: I18n = {
     permGrant: 'Conceder acceso',
   },
   plainFind: {
+    wholeWord: "Palabra completa",
+    regexp: "Expresión regular",
     prev: 'Anterior (Mayús+Enter)',
     next: 'Siguiente (Enter)',
     matchCase: 'Distinguir mayúsculas',
@@ -309,7 +311,7 @@ export const es: I18n = {
     findPlaceholder: 'Buscar',
     replacePlaceholder: 'Reemplazar',
     replaceOne: 'Reemplazar',
-    replaceAll: 'Todo',
+    replaceAll: "Reemplazar todo",
   },
   explorer: {
     deleteTitle: 'Eliminar',

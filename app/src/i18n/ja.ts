@@ -302,6 +302,8 @@ export const ja: I18n = {
     permGrant: '権限を許可',
   },
   plainFind: {
+    wholeWord: "単語単位",
+    regexp: "正規表現",
     prev: '前へ (Shift+Enter)',
     next: '次へ (Enter)',
     matchCase: '大文字・小文字を区別',
@@ -309,7 +311,7 @@ export const ja: I18n = {
     findPlaceholder: '検索',
     replacePlaceholder: '置換',
     replaceOne: '置換',
-    replaceAll: 'すべて',
+    replaceAll: "すべて置換",
   },
   explorer: {
     deleteTitle: '削除',

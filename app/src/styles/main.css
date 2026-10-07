@@ -8,6 +8,7 @@
  * app-wide thin scrollbars. Both are global by design: see their headers. */
 @import "./menus.css";
 @import "./scrollbars.css";
+@import "./find.css";
 
 :root {
   /* v4.3.0 issue #78 — tell native form controls (most importantly

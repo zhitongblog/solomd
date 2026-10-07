@@ -302,6 +302,8 @@ export const fr: I18n = {
     permGrant: 'Autoriser l’accès',
   },
   plainFind: {
+    wholeWord: "Mot entier",
+    regexp: "Expression régulière",
     prev: 'Précédent (Maj+Entrée)',
     next: 'Suivant (Entrée)',
     matchCase: 'Respecter la casse',
@@ -309,7 +311,7 @@ export const fr: I18n = {
     findPlaceholder: 'Rechercher',
     replacePlaceholder: 'Remplacer',
     replaceOne: 'Remplacer',
-    replaceAll: 'Tout',
+    replaceAll: "Tout remplacer",
   },
   explorer: {
     deleteTitle: 'Supprimer',

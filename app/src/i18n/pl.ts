@@ -302,6 +302,8 @@ export const pl: I18n = {
     permGrant: 'Przyznaj dostęp',
   },
   plainFind: {
+    wholeWord: "Całe słowo",
+    regexp: "Wyrażenie regularne",
     prev: 'Poprzednie (Shift+Enter)',
     next: 'Następne (Enter)',
     matchCase: 'Uwzględnij wielkość liter',
@@ -309,7 +311,7 @@ export const pl: I18n = {
     findPlaceholder: 'Szukaj',
     replacePlaceholder: 'Zamień',
     replaceOne: 'Zamień',
-    replaceAll: 'Wszystkie',
+    replaceAll: "Zamień wszystko",
   },
   explorer: {
     deleteTitle: 'Usuń',

@@ -1,0 +1,117 @@
+/*
+ * 5.0 — the editor's find bar (lib/cm-find-panel.ts). A slim strip under the
+ * header, the same weight as the header itself: hairline below, no shadow,
+ * fields in the soft fill the sidebar search uses.
+ *
+ * Selectors start at `.cm-editor .cm-find`: CodeMirror's base theme styles
+ * `.cm-textfield` (70% font size) and `.cm-search [name=close]` (absolutely
+ * positioned) with a generated scope class, which a single class loses to.
+ */
+.cm-editor .cm-panels.cm-panels {
+  background: var(--bg);
+  color: var(--text);
+}
+.cm-editor .cm-panels-top.cm-panels-top {
+  border-bottom: var(--bd-hair);
+}
+.cm-editor .cm-find {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 16px;
+  font: inherit;
+  font-family: var(--font-ui);
+  font-size: 13px;
+}
+.cm-editor .cm-find .cm-find__row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.cm-editor .cm-find .cm-find__input {
+  flex: 0 1 260px;
+  min-width: 120px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  background: var(--fill-1);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+}
+.cm-editor .cm-find .cm-find__input::placeholder {
+  color: var(--text-3);
+}
+.cm-editor .cm-find .cm-find__input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+.cm-editor .cm-find--invalid .cm-find__input[name='search'],
+.cm-editor .cm-find--none .cm-find__input[name='search'] {
+  border-color: var(--danger);
+  box-shadow: none;
+}
+.cm-editor .cm-find .cm-find__count {
+  min-width: 52px;
+  padding: 0 4px;
+  color: var(--text-3);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.cm-editor .cm-find--none .cm-find__count {
+  color: var(--danger);
+}
+.cm-editor .cm-find .cm-find__btn {
+  flex: none;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1;
+  cursor: default;
+}
+.cm-editor .cm-find .cm-find__btn:hover {
+  background: var(--fill-1);
+  color: var(--text);
+}
+.cm-editor .cm-find .cm-find__btn:active {
+  background: var(--fill-2);
+}
+.cm-editor .cm-find .cm-find__btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-ring);
+}
+.cm-editor .cm-find .cm-find__btn[aria-pressed='true'] {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.cm-editor .cm-find .cm-find__btn[name='close'] {
+  position: static;
+  margin-left: auto;
+  color: var(--text-3);
+}
+.cm-editor .cm-find .cm-find__btn--text {
+  padding: 0 10px;
+  background: var(--fill-1);
+  color: var(--text);
+}
+.cm-editor .cm-find .cm-find__btn--text:hover {
+  background: var(--fill-2);
+}
+@media (pointer: coarse) {
+  .cm-editor .cm-find .cm-find__input,
+  .cm-editor .cm-find .cm-find__btn {
+    height: 36px;
+    min-width: 36px;
+  }
+}

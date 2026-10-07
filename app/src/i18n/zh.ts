@@ -303,6 +303,8 @@ export const zh: I18n = {
     permGrant: '去开启权限',
   },
   plainFind: {
+    wholeWord: "全词匹配",
+    regexp: "正则表达式",
     prev: '上一个 (Shift+Enter)',
     next: '下一个 (Enter)',
     matchCase: '区分大小写',
@@ -310,7 +312,7 @@ export const zh: I18n = {
     findPlaceholder: '查找',
     replacePlaceholder: '替换为',
     replaceOne: '替换',
-    replaceAll: '全部',
+    replaceAll: "全部替换",
   },
   explorer: {
     heading: '文件树',

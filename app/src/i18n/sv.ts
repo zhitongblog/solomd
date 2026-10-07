@@ -302,6 +302,8 @@ export const sv: I18n = {
     permGrant: 'Ge åtkomst',
   },
   plainFind: {
+    wholeWord: "Hela ord",
+    regexp: "Reguljärt uttryck",
     prev: 'Föregående (Skift+Enter)',
     next: 'Nästa (Enter)',
     matchCase: 'Skiftlägeskänslig',
@@ -309,7 +311,7 @@ export const sv: I18n = {
     findPlaceholder: 'Sök',
     replacePlaceholder: 'Ersätt',
     replaceOne: 'Ersätt',
-    replaceAll: 'Alla',
+    replaceAll: "Ersätt alla",
   },
   explorer: {
     deleteTitle: 'Radera',
