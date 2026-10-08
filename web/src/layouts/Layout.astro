@@ -98,13 +98,9 @@ const ogImage = lang === 'zh' ? 'https://solomd.app/og-image-zh.png' : 'https://
 
     <link rel="icon" href="/favicon.svg?v=4.11.4" type="image/svg+xml" />
 
-    <!-- Marketing-site display serif. Source Serif 4 by Adobe, OFL — used
-         for headings; the desktop app does not load any external font.
-         Self-hosted since 2026-09-24: Google Fonts is unreachable from
-         mainland China, and a stylesheet link to it held up rendering for
-         exactly the visitors the Gitee mirror is for. font-display: swap
-         keeps system serif on screen until the file arrives. -->
-    <link rel="stylesheet" href="/fonts/source-serif-4/source-serif-4.css" />
+    <!-- 5.0: no web font. Headings use the system display face, as the app
+         does (styles/global.css --font-serif), so nothing waits on a font
+         file — which also mattered for visitors who cannot reach a CDN. -->
 
     <!-- Sitemap discovery hint -->
     <link rel="sitemap" type="application/xml" href="/sitemap-index.xml" />

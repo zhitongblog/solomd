@@ -1,0 +1,365 @@
+---
+/**
+ * 5.0 — what the redesign is, shown rather than listed: three real
+ * screenshots of the app (light mode; captured from the 5.0 build with a demo
+ * folder) and the same window on Windows, iPhone and iPad.
+ */
+import type { Lang } from '../i18n/translations';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+
+type Copy = {
+  eyebrow: string;
+  title: string;
+  lead: string;
+  rows: { title: string; body: string; alt: string }[];
+  platformsTitle: string;
+  platformsLead: string;
+};
+
+const COPY: Record<Lang, Copy> = {
+  en: {
+    eyebrow: 'SoloMD 5.0',
+    title: 'Writing first. Tools out of the way.',
+    lead: '5.0 redesigns every surface: a quieter window, a centered reading column, formatting right where you select — and the same feel on all five platforms.',
+    rows: [
+      { title: 'A quieter window', body: 'The toolbar folds into a single header row, the status bar becomes a small word-count pill, and your text sits in a centered column. Fold arrows show up only when you reach for them.', alt: 'SoloMD 5.0 with the sidebar hidden: a single header row and a centered column of text' },
+      { title: 'Format what you select', body: 'Select a phrase and bold, link, heading and quote float right beside it — no shortcut to remember, no menu to dig through.', alt: 'A selection toolbar floating above selected text in SoloMD 5.0' },
+      { title: 'Source and preview, side by side', body: 'Split puts your Markdown next to the rendered page, scrolling together. Live, Source, Split and Preview are one click apart.', alt: 'SoloMD 5.0 split view: Markdown source on the left, the rendered page on the right' },
+    ],
+    platformsTitle: 'Five platforms. One calm.',
+    platformsLead: 'macOS, Windows, Linux, iPhone and iPad, Android — the same window, the same shortcuts, the same Markdown files.',
+  },
+  zh: {
+    eyebrow: 'SoloMD 5.0',
+    title: '写作优先，工具让路。',
+    lead: '5.0 重新设计了每一个界面：更安静的窗口、居中的阅读栏、选中即可排版——在五个平台上是同一种感觉。',
+    rows: [
+      { title: '一个安静的窗口', body: '工具栏收进一行顶栏，状态栏换成一枚字数胶囊，文字在窗口中间安静地排开。折叠箭头只在你需要时才出现。', alt: '隐藏侧栏的 SoloMD 5.0：一行顶栏，文字居中排开' },
+      { title: '选中即排版', body: '选中一段文字，加粗、链接、标题、引用就浮在旁边——不用记快捷键，也不用去菜单里找。', alt: 'SoloMD 5.0 中浮在选中文字上方的格式条' },
+      { title: '源码与预览，并排', body: '分栏把 Markdown 源码和排版结果放在一起，滚动同步；实时、源码、分栏、预览一键切换。', alt: 'SoloMD 5.0 分栏视图：左边 Markdown 源码，右边排版结果' },
+    ],
+    platformsTitle: '五个平台，同一种安静。',
+    platformsLead: 'macOS、Windows、Linux、iPhone 和 iPad、Android——同一个窗口，同一套快捷键，同一份 Markdown 文件。',
+  },
+  ja: {
+    eyebrow: 'SoloMD 5.0',
+    title: '書くことを最優先に。道具は控えめに。',
+    lead: '5.0 ではすべての画面を作り直しました。静かなウィンドウ、中央に置かれた読みやすい本文、選択した場所での書式設定——5 つのプラットフォームで同じ使い心地です。',
+    rows: [
+      { title: '静かなウィンドウ', body: 'ツールバーは 1 行のヘッダーにまとまり、ステータスバーは小さな文字数ピルに。本文はウィンドウの中央に落ち着いて並びます。折りたたみの矢印は必要なときだけ現れます。', alt: 'サイドバーを隠した SoloMD 5.0：1 行のヘッダーと中央の本文' },
+      { title: '選んだところで書式設定', body: '文字を選ぶと、太字・リンク・見出し・引用がすぐ横に浮かびます。ショートカットを覚える必要も、メニューを探す必要もありません。', alt: 'SoloMD 5.0 で選択した文字の上に浮かぶ書式バー' },
+      { title: 'ソースとプレビューを並べて', body: '分割表示では Markdown のソースと仕上がりを並べ、スクロールも連動します。ライブ・ソース・分割・プレビューはワンクリックで切り替え。', alt: 'SoloMD 5.0 の分割表示：左に Markdown ソース、右に仕上がり' },
+    ],
+    platformsTitle: '5 つのプラットフォーム、同じ静けさ。',
+    platformsLead: 'macOS、Windows、Linux、iPhone と iPad、Android——同じウィンドウ、同じショートカット、同じ Markdown ファイル。',
+  },
+  ko: {
+    eyebrow: 'SoloMD 5.0',
+    title: '글쓰기가 먼저, 도구는 뒤로.',
+    lead: '5.0은 모든 화면을 새로 디자인했습니다. 더 조용한 창, 가운데 놓인 읽기 칼럼, 선택한 곳에서 바로 서식 지정 — 다섯 플랫폼 어디서나 같은 느낌입니다.',
+    rows: [
+      { title: '조용한 창', body: '도구 막대는 한 줄 헤더로 접히고, 상태 표시줄은 작은 글자 수 알약이 됩니다. 글은 창 가운데에 차분히 놓이고, 접기 화살표는 필요할 때만 나타납니다.', alt: '사이드바를 숨긴 SoloMD 5.0: 한 줄 헤더와 가운데 정렬된 본문' },
+      { title: '선택한 곳에서 서식 지정', body: '문장을 선택하면 굵게, 링크, 제목, 인용이 바로 옆에 떠오릅니다. 단축키를 외울 필요도, 메뉴를 뒤질 필요도 없습니다.', alt: 'SoloMD 5.0에서 선택한 텍스트 위에 떠 있는 서식 막대' },
+      { title: '소스와 미리보기를 나란히', body: '분할 보기는 Markdown 소스와 렌더링된 페이지를 나란히 놓고 함께 스크롤합니다. 실시간, 소스, 분할, 미리보기는 클릭 한 번이면 전환됩니다.', alt: 'SoloMD 5.0 분할 보기: 왼쪽은 Markdown 소스, 오른쪽은 렌더링된 페이지' },
+    ],
+    platformsTitle: '다섯 플랫폼, 같은 고요함.',
+    platformsLead: 'macOS, Windows, Linux, iPhone과 iPad, Android — 같은 창, 같은 단축키, 같은 Markdown 파일.',
+  },
+  de: {
+    eyebrow: 'SoloMD 5.0',
+    title: 'Schreiben zuerst. Werkzeuge im Hintergrund.',
+    lead: '5.0 gestaltet jede Oberfläche neu: ein ruhigeres Fenster, eine zentrierte Lesespalte, Formatierung genau dort, wo du markierst – und dasselbe Gefühl auf allen fünf Plattformen.',
+    rows: [
+      { title: 'Ein ruhigeres Fenster', body: 'Die Werkzeugleiste wird zu einer einzigen Kopfzeile, die Statusleiste zu einer kleinen Wortzahl-Pille, und dein Text steht in einer zentrierten Spalte. Falt-Pfeile erscheinen erst, wenn du sie brauchst.', alt: 'SoloMD 5.0 mit ausgeblendeter Seitenleiste: eine Kopfzeile und zentrierter Text' },
+      { title: 'Formatieren, was du markierst', body: 'Markiere einen Satz, und Fett, Link, Überschrift und Zitat schweben direkt daneben – kein Tastenkürzel merken, kein Menü durchsuchen.', alt: 'Eine Formatierungsleiste über markiertem Text in SoloMD 5.0' },
+      { title: 'Quelltext und Vorschau nebeneinander', body: 'Die geteilte Ansicht zeigt dein Markdown neben der gerenderten Seite, beide scrollen gemeinsam. Live, Quelltext, Geteilt und Vorschau sind einen Klick voneinander entfernt.', alt: 'Geteilte Ansicht in SoloMD 5.0: links Markdown-Quelltext, rechts die gerenderte Seite' },
+    ],
+    platformsTitle: 'Fünf Plattformen. Eine Ruhe.',
+    platformsLead: 'macOS, Windows, Linux, iPhone und iPad, Android – dasselbe Fenster, dieselben Tastenkürzel, dieselben Markdown-Dateien.',
+  },
+  fr: {
+    eyebrow: 'SoloMD 5.0',
+    title: 'L’écriture d’abord. Les outils en retrait.',
+    lead: 'La 5.0 redessine chaque écran : une fenêtre plus calme, une colonne de lecture centrée, la mise en forme là où vous sélectionnez — et la même sensation sur les cinq plateformes.',
+    rows: [
+      { title: 'Une fenêtre plus calme', body: 'La barre d’outils tient dans une seule ligne d’en-tête, la barre d’état devient une petite pastille de mots, et votre texte se pose dans une colonne centrée. Les flèches de repli n’apparaissent que quand vous les cherchez.', alt: 'SoloMD 5.0, barre latérale masquée : une ligne d’en-tête et un texte centré' },
+      { title: 'Mettre en forme ce que vous sélectionnez', body: 'Sélectionnez une phrase : gras, lien, titre et citation flottent juste à côté. Aucun raccourci à retenir, aucun menu à fouiller.', alt: 'Une barre de mise en forme au-dessus d’un texte sélectionné dans SoloMD 5.0' },
+      { title: 'Source et aperçu, côte à côte', body: 'La vue partagée place votre Markdown à côté de la page rendue, avec un défilement synchronisé. Direct, Source, Partagé et Aperçu sont à un clic.', alt: 'Vue partagée de SoloMD 5.0 : le Markdown à gauche, la page rendue à droite' },
+    ],
+    platformsTitle: 'Cinq plateformes. Un même calme.',
+    platformsLead: 'macOS, Windows, Linux, iPhone et iPad, Android — la même fenêtre, les mêmes raccourcis, les mêmes fichiers Markdown.',
+  },
+  es: {
+    eyebrow: 'SoloMD 5.0',
+    title: 'Primero la escritura. Las herramientas, en segundo plano.',
+    lead: 'La 5.0 rediseña cada pantalla: una ventana más tranquila, una columna de lectura centrada, el formato justo donde seleccionas — y la misma sensación en las cinco plataformas.',
+    rows: [
+      { title: 'Una ventana más tranquila', body: 'La barra de herramientas cabe en una sola fila de cabecera, la barra de estado se convierte en una pequeña píldora con el número de palabras y tu texto se coloca en una columna centrada. Las flechas de plegado solo aparecen cuando las buscas.', alt: 'SoloMD 5.0 con la barra lateral oculta: una fila de cabecera y el texto centrado' },
+      { title: 'Da formato a lo que seleccionas', body: 'Selecciona una frase y negrita, enlace, título y cita aparecen justo al lado: ningún atajo que recordar, ningún menú que recorrer.', alt: 'Una barra de formato sobre el texto seleccionado en SoloMD 5.0' },
+      { title: 'Código y vista previa, lado a lado', body: 'La vista dividida pone tu Markdown junto a la página renderizada, con desplazamiento sincronizado. En vivo, Código, Dividido y Vista previa están a un clic.', alt: 'Vista dividida de SoloMD 5.0: el Markdown a la izquierda, la página renderizada a la derecha' },
+    ],
+    platformsTitle: 'Cinco plataformas. La misma calma.',
+    platformsLead: 'macOS, Windows, Linux, iPhone y iPad, Android: la misma ventana, los mismos atajos, los mismos archivos Markdown.',
+  },
+  pt: {
+    eyebrow: 'SoloMD 5.0',
+    title: 'Escrita em primeiro lugar. Ferramentas em segundo plano.',
+    lead: 'A 5.0 redesenha cada tela: uma janela mais calma, uma coluna de leitura centralizada, formatação bem onde você seleciona — e a mesma sensação nas cinco plataformas.',
+    rows: [
+      { title: 'Uma janela mais calma', body: 'A barra de ferramentas cabe numa única linha de cabeçalho, a barra de status vira uma pequena pílula com a contagem de palavras e o texto fica numa coluna centralizada. As setas de recolher só aparecem quando você precisa.', alt: 'SoloMD 5.0 com a barra lateral oculta: uma linha de cabeçalho e o texto centralizado' },
+      { title: 'Formate o que você seleciona', body: 'Selecione uma frase e negrito, link, título e citação aparecem logo ao lado — sem atalho para decorar, sem menu para procurar.', alt: 'Uma barra de formatação sobre o texto selecionado no SoloMD 5.0' },
+      { title: 'Código e pré-visualização, lado a lado', body: 'A visão dividida coloca seu Markdown ao lado da página renderizada, com rolagem sincronizada. Ao vivo, Código, Dividido e Pré-visualização estão a um clique.', alt: 'Visão dividida do SoloMD 5.0: Markdown à esquerda, página renderizada à direita' },
+    ],
+    platformsTitle: 'Cinco plataformas. A mesma calma.',
+    platformsLead: 'macOS, Windows, Linux, iPhone e iPad, Android — a mesma janela, os mesmos atalhos, os mesmos arquivos Markdown.',
+  },
+  it: {
+    eyebrow: 'SoloMD 5.0',
+    title: 'Prima la scrittura. Gli strumenti si fanno da parte.',
+    lead: 'La 5.0 ridisegna ogni schermata: una finestra più quieta, una colonna di lettura centrata, la formattazione proprio dove selezioni — e la stessa sensazione su tutte e cinque le piattaforme.',
+    rows: [
+      { title: 'Una finestra più quieta', body: 'La barra degli strumenti sta in un’unica riga d’intestazione, la barra di stato diventa una piccola pillola con il conteggio delle parole e il testo si dispone in una colonna centrata. Le frecce di compressione compaiono solo quando servono.', alt: 'SoloMD 5.0 con la barra laterale nascosta: una riga d’intestazione e il testo centrato' },
+      { title: 'Formatta ciò che selezioni', body: 'Seleziona una frase e grassetto, link, titolo e citazione compaiono proprio accanto: nessuna scorciatoia da ricordare, nessun menu da esplorare.', alt: 'Una barra di formattazione sopra il testo selezionato in SoloMD 5.0' },
+      { title: 'Sorgente e anteprima, fianco a fianco', body: 'La vista divisa mette il tuo Markdown accanto alla pagina resa, con lo scorrimento sincronizzato. Live, Sorgente, Divisa e Anteprima sono a un clic di distanza.', alt: 'Vista divisa di SoloMD 5.0: Markdown a sinistra, pagina resa a destra' },
+    ],
+    platformsTitle: 'Cinque piattaforme. Una sola calma.',
+    platformsLead: 'macOS, Windows, Linux, iPhone e iPad, Android: la stessa finestra, le stesse scorciatoie, gli stessi file Markdown.',
+  },
+  pl: {
+    eyebrow: 'SoloMD 5.0',
+    title: 'Najpierw pisanie. Narzędzia w tle.',
+    lead: 'Wersja 5.0 projektuje na nowo każdy ekran: spokojniejsze okno, wyśrodkowaną kolumnę tekstu, formatowanie tam, gdzie zaznaczasz — i to samo odczucie na wszystkich pięciu platformach.',
+    rows: [
+      { title: 'Spokojniejsze okno', body: 'Pasek narzędzi mieści się w jednym wierszu nagłówka, pasek stanu zmienia się w małą pastylkę z liczbą słów, a tekst stoi w wyśrodkowanej kolumnie. Strzałki zwijania pojawiają się dopiero wtedy, gdy ich szukasz.', alt: 'SoloMD 5.0 z ukrytym panelem bocznym: jeden wiersz nagłówka i wyśrodkowany tekst' },
+      { title: 'Formatuj to, co zaznaczysz', body: 'Zaznacz fragment, a pogrubienie, link, nagłówek i cytat pojawią się tuż obok — bez skrótów do zapamiętania i szukania w menu.', alt: 'Pasek formatowania nad zaznaczonym tekstem w SoloMD 5.0' },
+      { title: 'Źródło i podgląd obok siebie', body: 'Widok podzielony pokazuje Markdown obok wyrenderowanej strony, z synchronicznym przewijaniem. Na żywo, Źródło, Podział i Podgląd dzieli jedno kliknięcie.', alt: 'Widok podzielony w SoloMD 5.0: Markdown po lewej, wyrenderowana strona po prawej' },
+    ],
+    platformsTitle: 'Pięć platform. Jeden spokój.',
+    platformsLead: 'macOS, Windows, Linux, iPhone i iPad, Android — to samo okno, te same skróty, te same pliki Markdown.',
+  },
+  nl: {
+    eyebrow: 'SoloMD 5.0',
+    title: 'Eerst het schrijven. Gereedschap op de achtergrond.',
+    lead: '5.0 ontwerpt elk scherm opnieuw: een rustiger venster, een gecentreerde leeskolom, opmaak precies waar je selecteert — en hetzelfde gevoel op alle vijf platforms.',
+    rows: [
+      { title: 'Een rustiger venster', body: 'De werkbalk past in één koptekstrij, de statusbalk wordt een klein pilletje met het aantal woorden en je tekst staat in een gecentreerde kolom. Inklappijlen verschijnen pas als je ze zoekt.', alt: 'SoloMD 5.0 met verborgen zijbalk: één koptekstrij en gecentreerde tekst' },
+      { title: 'Opmaken wat je selecteert', body: 'Selecteer een zin en vet, link, kop en citaat zweven er direct naast — geen sneltoets om te onthouden, geen menu om door te spitten.', alt: 'Een opmaakbalk boven geselecteerde tekst in SoloMD 5.0' },
+      { title: 'Bron en voorbeeld naast elkaar', body: 'De gesplitste weergave zet je Markdown naast de weergegeven pagina, met gelijk scrollen. Live, Bron, Gesplitst en Voorbeeld liggen één klik uit elkaar.', alt: 'Gesplitste weergave in SoloMD 5.0: Markdown links, de weergegeven pagina rechts' },
+    ],
+    platformsTitle: 'Vijf platforms. Eén rust.',
+    platformsLead: 'macOS, Windows, Linux, iPhone en iPad, Android — hetzelfde venster, dezelfde sneltoetsen, dezelfde Markdown-bestanden.',
+  },
+  tr: {
+    eyebrow: 'SoloMD 5.0',
+    title: 'Önce yazı. Araçlar geri planda.',
+    lead: '5.0 her ekranı yeniden tasarlıyor: daha sakin bir pencere, ortalanmış bir okuma sütunu, seçtiğin yerde biçimlendirme — ve beş platformda da aynı his.',
+    rows: [
+      { title: 'Daha sakin bir pencere', body: 'Araç çubuğu tek bir başlık satırına sığıyor, durum çubuğu küçük bir kelime sayısı hapına dönüşüyor ve metnin ortalanmış bir sütunda duruyor. Katlama okları yalnızca ihtiyaç duyduğunda beliriyor.', alt: 'Kenar çubuğu gizli SoloMD 5.0: tek başlık satırı ve ortalanmış metin' },
+      { title: 'Seçtiğini biçimlendir', body: 'Bir ifadeyi seç; kalın, bağlantı, başlık ve alıntı hemen yanında belirir — hatırlanacak kısayol, karıştırılacak menü yok.', alt: 'SoloMD 5.0’da seçili metnin üstünde duran biçimlendirme çubuğu' },
+      { title: 'Kaynak ve önizleme yan yana', body: 'Bölünmüş görünüm Markdown’ını işlenmiş sayfanın yanına koyar, ikisi birlikte kayar. Canlı, Kaynak, Bölünmüş ve Önizleme arasında tek tık var.', alt: 'SoloMD 5.0 bölünmüş görünüm: solda Markdown kaynağı, sağda işlenmiş sayfa' },
+    ],
+    platformsTitle: 'Beş platform. Aynı sükûnet.',
+    platformsLead: 'macOS, Windows, Linux, iPhone ve iPad, Android — aynı pencere, aynı kısayollar, aynı Markdown dosyaları.',
+  },
+  sv: {
+    eyebrow: 'SoloMD 5.0',
+    title: 'Skrivandet först. Verktygen i bakgrunden.',
+    lead: '5.0 gör om varje vy: ett lugnare fönster, en centrerad läskolumn, formatering precis där du markerar — och samma känsla på alla fem plattformar.',
+    rows: [
+      { title: 'Ett lugnare fönster', body: 'Verktygsfältet ryms i en enda rubrikrad, statusfältet blir en liten pill med antal ord och texten står i en centrerad kolumn. Hopfällningspilarna syns först när du söker dem.', alt: 'SoloMD 5.0 med dold sidopanel: en rubrikrad och centrerad text' },
+      { title: 'Formatera det du markerar', body: 'Markera en fras så svävar fetstil, länk, rubrik och citat precis bredvid — inget kortkommando att minnas, ingen meny att leta i.', alt: 'Ett formateringsfält ovanför markerad text i SoloMD 5.0' },
+      { title: 'Källa och förhandsvisning sida vid sida', body: 'Delad vy lägger din Markdown bredvid den renderade sidan, och de rullar tillsammans. Live, Källa, Delad och Förhandsvisning är ett klick ifrån varandra.', alt: 'Delad vy i SoloMD 5.0: Markdown till vänster, renderad sida till höger' },
+    ],
+    platformsTitle: 'Fem plattformar. Ett lugn.',
+    platformsLead: 'macOS, Windows, Linux, iPhone och iPad, Android — samma fönster, samma kortkommandon, samma Markdown-filer.',
+  },
+  uk: {
+    eyebrow: 'SoloMD 5.0',
+    title: 'Спершу письмо. Інструменти — у тіні.',
+    lead: 'У 5.0 перероблено кожен екран: спокійніше вікно, центрована колонка тексту, форматування просто там, де ви виділяєте, — і те саме відчуття на всіх п’яти платформах.',
+    rows: [
+      { title: 'Спокійніше вікно', body: 'Панель інструментів вміщується в один рядок заголовка, рядок стану стає маленькою пігулкою з кількістю слів, а текст стоїть у центрованій колонці. Стрілки згортання з’являються лише тоді, коли вони потрібні.', alt: 'SoloMD 5.0 із прихованою бічною панеллю: один рядок заголовка й центрований текст' },
+      { title: 'Форматуйте те, що виділили', body: 'Виділіть фразу — і жирний, посилання, заголовок та цитата з’являться поруч. Не треба пам’ятати клавіші чи шукати в меню.', alt: 'Панель форматування над виділеним текстом у SoloMD 5.0' },
+      { title: 'Код і перегляд поруч', body: 'Розділений режим ставить ваш Markdown поруч із готовою сторінкою, і вони гортаються разом. Живий, Код, Розділений і Перегляд — на відстані одного кліку.', alt: 'Розділений режим SoloMD 5.0: ліворуч Markdown, праворуч готова сторінка' },
+    ],
+    platformsTitle: 'П’ять платформ. Один спокій.',
+    platformsLead: 'macOS, Windows, Linux, iPhone та iPad, Android — те саме вікно, ті самі клавіші, ті самі файли Markdown.',
+  },
+};
+
+const c = COPY[lang] ?? COPY.en;
+// The selection shot is a crop of the editor, so the bar reads at web size;
+// it gets a card instead of a window shadow.
+const SHOTS = [
+  { src: '/v5/mac-focus.webp', w: 1600, h: 983 },
+  { src: '/v5/mac-bubble.webp', w: 1680, h: 850, crop: true },
+  { src: '/v5/mac-split.webp', w: 1600, h: 983 },
+];
+---
+
+<section class="v5" id="v5">
+  <div class="v5__head">
+    <p class="v5__eyebrow">{c.eyebrow}</p>
+    <h2 class="v5__title">{c.title}</h2>
+    <p class="v5__lead">{c.lead}</p>
+  </div>
+
+  {c.rows.map((row, i) => (
+    <div class={`v5__row ${i % 2 ? 'v5__row--flip' : ''}`}>
+      <div class="v5__text">
+        <h3>{row.title}</h3>
+        <p>{row.body}</p>
+      </div>
+      <figure class="v5__shot">
+        <img src={SHOTS[i].src} alt={row.alt} width={SHOTS[i].w} height={SHOTS[i].h} loading="lazy" decoding="async" class={SHOTS[i].crop ? 'v5__crop' : ''} />
+      </figure>
+    </div>
+  ))}
+
+  <div class="v5__platforms">
+    <h2 class="v5__title v5__title--sm">{c.platformsTitle}</h2>
+    <p class="v5__lead">{c.platformsLead}</p>
+    <div class="v5__devices">
+      <figure class="v5__device v5__device--win">
+        <img src="/v5/windows-light.webp" alt="SoloMD 5.0 on Windows" width="1496" height="815" loading="lazy" decoding="async" />
+        <figcaption>Windows</figcaption>
+      </figure>
+      <figure class="v5__device v5__device--pad">
+        <div class="v5__bezel v5__bezel--pad"><img src="/v5/ipad-portrait.webp" alt="SoloMD 5.0 on iPad" width="951" height="1368" loading="lazy" decoding="async" /></div>
+        <figcaption>iPad</figcaption>
+      </figure>
+      <figure class="v5__device v5__device--phone">
+        <div class="v5__bezel v5__bezel--phone"><img src="/v5/phone-editor.webp" alt="SoloMD 5.0 on iPhone" width="627" height="1363" loading="lazy" decoding="async" /></div>
+        <figcaption>iPhone</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<style>
+  .v5 {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 96px 24px 72px;
+  }
+  .v5__head {
+    max-width: 760px;
+    margin: 0 auto 72px;
+    text-align: center;
+  }
+  .v5__eyebrow {
+    margin: 0 0 12px;
+    color: var(--accent-deep);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  .v5__title {
+    margin: 0 0 18px;
+    font-size: clamp(2rem, 4.4vw, 3.2rem);
+    line-height: 1.1;
+    text-wrap: balance;
+  }
+  .v5__title--sm { font-size: clamp(1.7rem, 3.4vw, 2.5rem); }
+  .v5__lead {
+    margin: 0 auto;
+    max-width: 640px;
+    color: var(--text-muted);
+    font-size: clamp(1rem, 1.6vw, 1.15rem);
+    line-height: 1.6;
+    text-wrap: balance;
+  }
+
+  .v5__row {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 8fr);
+    align-items: center;
+    gap: 56px;
+    margin: 0 0 96px;
+  }
+  .v5__row--flip { grid-template-columns: minmax(0, 8fr) minmax(0, 5fr); }
+  .v5__row--flip .v5__text { order: 2; }
+  .v5__text h3 {
+    margin: 0 0 12px;
+    font-family: var(--font-serif);
+    font-size: clamp(1.4rem, 2.4vw, 1.9rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+  }
+  .v5__text p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 1.02rem;
+    line-height: 1.7;
+  }
+  .v5__shot { margin: 0; }
+  .v5__shot img.v5__crop {
+    border-radius: 16px;
+    border: 1px solid var(--hairline);
+    filter: none;
+    box-shadow: 0 18px 40px -18px rgba(31, 30, 28, 0.25);
+  }
+  .v5__shot img,
+  .v5__device--win img {
+    display: block;
+    width: 100%;
+    height: auto;
+    filter: drop-shadow(0 22px 38px rgba(31, 30, 28, 0.18)) drop-shadow(0 4px 10px rgba(31, 30, 28, 0.1));
+  }
+
+  .v5__platforms { text-align: center; }
+  .v5__devices {
+    display: grid;
+    grid-template-columns: minmax(0, 11fr) minmax(0, 4.6fr) minmax(0, 2.6fr);
+    align-items: end;
+    gap: 28px;
+    margin-top: 48px;
+  }
+  .v5__device { margin: 0; }
+  .v5__device figcaption {
+    margin-top: 14px;
+    color: var(--text-faint);
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .v5__device--win img { border-radius: 10px; }
+  /* Device bezels drawn in CSS: dark rim, generous radius. */
+  .v5__bezel {
+    padding: 10px;
+    background: #1d1d1f;
+    box-shadow: 0 22px 40px -12px rgba(31, 30, 28, 0.3), inset 0 0 0 1.5px #3a3a3c;
+  }
+  .v5__bezel img { display: block; width: 100%; height: auto; }
+  .v5__bezel--pad { border-radius: 28px; }
+  .v5__bezel--pad img { border-radius: 18px; }
+  .v5__bezel--phone { border-radius: 34px; padding: 8px; }
+  .v5__bezel--phone img { border-radius: 27px; }
+
+  @media (prefers-color-scheme: dark) {
+    .v5__shot img,
+    .v5__device--win img {
+      filter: drop-shadow(0 22px 44px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 0.5px rgba(255, 255, 255, 0.25));
+    }
+    .v5__bezel { box-shadow: 0 22px 44px -12px rgba(0, 0, 0, 0.7), inset 0 0 0 1.5px #48484a; }
+  }
+
+  @media (max-width: 860px) {
+    .v5 { padding: 72px 18px 56px; }
+    .v5__head { margin-bottom: 48px; }
+    .v5__row,
+    .v5__row--flip {
+      grid-template-columns: 1fr;
+      gap: 24px;
+      margin-bottom: 64px;
+    }
+    .v5__row--flip .v5__text { order: 0; }
+    .v5__devices {
+      grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr);
+      gap: 18px;
+    }
+    .v5__device--win { grid-column: 1 / -1; }
+  }
+</style>

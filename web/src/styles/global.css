@@ -1,54 +1,57 @@
 /* SoloMD landing page — brand-aligned */
 
 :root {
-  /* Background shifted from #fafaf7 to #f8f8f6 — same warm-cream family
-     as Anthropic's claude.com, slightly more neutral than a true beige. */
-  --bg: #f8f8f6;
+  /* 5.0 — the site wears the app's own palette (app/src/styles/tokens.css):
+     white page, warm-grey sidebar surface, near-black ink, the deeper 5.0
+     orange (#e07b39) with a darker text-safe variant for links on white. */
+  --bg: #ffffff;
   --bg-elev: #ffffff;
-  --bg-soft: #efeee9;
-  /* v4.6 — warm the text to match the app's design-system ink (#37352f),
-     so the marketing site and the product read as one warm-neutral family
-     instead of the old cooler near-black (#121212). */
-  --text: #37352f;
-  --text-muted: #787774;
-  --text-faint: #9c9890;
-  --border: #e9e9e7;
-  --accent: #ff9f40;
-  --accent-soft: #ffe7cc;
-  --accent-deep: #c97a20;
-  --ink: #2a2824;
-  --ink-soft: #44413a;
+  --bg-soft: #f4f3f0;
+  --text: #1f1e1c;
+  --text-muted: #5e5b55;
+  --text-faint: #78756e;
+  --border: rgba(31, 30, 28, 0.1);
+  --hairline: rgba(31, 30, 28, 0.08);
+  --fill-1: rgba(31, 30, 28, 0.05);
+  --accent: #e07b39;
+  --accent-soft: rgba(224, 123, 57, 0.13);
+  --accent-deep: #b4561b;
+  --ink: #1f1e1c;
+  --ink-soft: #3d3b37;
+  --shadow-shot: 0 30px 80px -20px rgba(31, 30, 28, 0.28), 0 12px 28px -12px rgba(31, 30, 28, 0.18);
 
-  /* Headings get a display serif (Source Serif 4 from Google Fonts,
-     loaded in Layout.astro). Falls through to system serifs on slow
-     networks via font-display: swap — both have the same vertical
-     metrics so reflow is minimal. */
-  --font-serif: "Source Serif 4", "Source Serif Pro", "New York", "Charter",
-    Georgia, "Times New Roman", serif;
-  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", Roboto,
-    "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+  /* `--font-serif` is kept as the heading variable every component already
+     reads, but 5.0 sets headings in the system display face, as the app
+     does — SF Pro Display / PingFang on Apple, Segoe UI Variable on
+     Windows. */
+  --font-serif: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI Variable Display",
+    "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei",
     "Noto Sans CJK SC", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", "SF Mono", "Cascadia Code", Menlo, Consolas,
-    monospace;
+  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI",
+    "Inter", Roboto, "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI",
+    "Microsoft YaHei", "Noto Sans CJK SC", system-ui, sans-serif;
+  --font-mono: "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
 
   --content-width: 1100px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    /* v4.6 — warm dark surfaces to match the app (#1f1e1b / #23221f / #e6e1d8). */
-    --bg: #1f1e1b;
-    --bg-elev: #23221f;
-    --bg-soft: #2a2925;
-    --text: #e6e1d8;
-    --text-muted: #b8b1a6;
-    --text-faint: #7f776d;
-    --border: #34322d;
-    --accent: #ff9f40;
-    --accent-soft: rgba(255, 159, 64, 0.18);
-    --accent-deep: #ffb874;
+    --bg: #1c1c1e;
+    --bg-elev: #232325;
+    --bg-soft: #232325;
+    --text: #eceae6;
+    --text-muted: #a9a6a0;
+    --text-faint: #8c8984;
+    --border: rgba(255, 255, 255, 0.1);
+    --hairline: rgba(255, 255, 255, 0.08);
+    --fill-1: rgba(255, 255, 255, 0.07);
+    --accent: #f0965a;
+    --accent-soft: rgba(240, 150, 90, 0.18);
+    --accent-deep: #f4a26b;
     --ink: #ffffff;
-    --ink-soft: #d6d6d3;
+    --ink-soft: #d6d4cf;
+    --shadow-shot: 0 30px 80px -20px rgba(0, 0, 0, 0.7), 0 12px 28px -12px rgba(0, 0, 0, 0.5);
   }
 }
 
@@ -91,8 +94,8 @@ h1, h2, h3, h4 {
 /* H1 is intentionally large + tight — display serif at this size needs
    a tight tracking + line-height to read as a single confident phrase
    instead of a stack of words. Anthropic's hero uses similar metrics. */
-h1 { font-size: clamp(2.6rem, 6vw, 4.8rem); letter-spacing: -0.03em; line-height: 1.05; }
-h2 { font-size: clamp(1.8rem, 3.5vw, 2.6rem); }
+h1 { font-size: clamp(2.6rem, 6vw, 4.8rem); font-weight: 700; letter-spacing: -0.03em; line-height: 1.05; }
+h2 { font-size: clamp(1.8rem, 3.5vw, 2.6rem); font-weight: 700; letter-spacing: -0.025em; }
 h3 { font-size: 1.3rem; font-family: var(--font-ui); letter-spacing: -0.005em; font-weight: 600; }
 h4 { font-size: 1.05rem; font-family: var(--font-ui); letter-spacing: 0; }
 

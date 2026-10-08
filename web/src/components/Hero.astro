@@ -132,9 +132,6 @@ const initialDownloadsText = initialDownloads > 0 ? fmtDownloads(initialDownload
       <span class="hero__accent">{tr.hero.title2}</span>
     </h1>
     <p class="hero__subtagline">{tr.hero.subtagline}</p>
-    <div class="hero__whatsnew-row">
-      <a href={whatsNewHref} class="hero__whatsnew">{tr.hero.ctaWhatsNew}</a>
-    </div>
     <div class="hero__cta">
       <a
         id="hero-download"
@@ -173,6 +170,27 @@ const initialDownloadsText = initialDownloads > 0 ? fmtDownloads(initialDownload
         <span class="hero__trust-item">{i > 0 && <span class="hero__trust-dot">·</span>}{t}</span>
       ))}
     </p>
+    <!-- 5.0: the product, straight under the call to action — light or
+         dark to match the visitor's system. The screenshots keep the
+         window's own transparent rounded corners, so the shadow is a
+         drop-shadow that follows them. -->
+    <div class="hero__demo">
+      <picture>
+        <source srcset="/v5/mac-dark.webp" media="(prefers-color-scheme: dark)" type="image/webp" />
+        <img
+          class="hero__demo-media"
+          src="/v5/mac-light.webp"
+          alt={tr.hero.demoAlt}
+          width="2400"
+          height="1474"
+          loading="eager"
+          fetchpriority="high"
+        />
+      </picture>
+    </div>
+    <div class="hero__whatsnew-row">
+      <a href={whatsNewHref} class="hero__whatsnew">{tr.hero.ctaWhatsNew}</a>
+    </div>
     <div class="hero__install">
       <div class="hero__install-label">
         ⚡ {ONE_LINE_LABEL}
@@ -204,23 +222,6 @@ const initialDownloadsText = initialDownloads > 0 ? fmtDownloads(initialDownload
       {tr.hero.chips.map((c) => <span class="chip">{c}</span>)}
     </div>
 
-    <div class="hero__demo">
-      <!-- Lossless WebP (40 KB) with the PNG (117 KB) as the fallback for any
-           engine without WebP. Verified pixel-identical to the PNG, so this is
-           purely a transfer-size win on the LCP image. -->
-      <picture>
-        <source srcset="/demo/solomd-hero.webp" type="image/webp" />
-        <img
-          class="hero__demo-media"
-          src="/demo/solomd-hero.png"
-          alt={tr.hero.demoAlt}
-          width="1920"
-          height="873"
-          loading="eager"
-          fetchpriority="high"
-        />
-      </picture>
-    </div>
   </div>
 </section>
 
@@ -508,36 +509,42 @@ const initialDownloadsText = initialDownloads > 0 ? fmtDownloads(initialDownload
      across the top of the page made the whole site read as a marketing
      splash. The H1 + serif typography now carries the visual weight. */
   .hero {
-    padding: 56px 0 72px;
+    padding: 72px 0 80px;
     text-align: center;
     background: var(--bg);
+    overflow-x: clip;
   }
-  .hero__inner { max-width: 880px; }
+  .hero__inner { max-width: 960px; }
   .hero__badge {
     display: inline-flex;
     align-items: center;
     gap: 8px;
     padding: 6px 14px;
     border-radius: 999px;
-    background: var(--bg-elev);
-    border: 1px solid var(--border);
-    font-size: 12px;
+    background: var(--fill-1);
+    border: 0;
+    font-size: 12.5px;
+    font-weight: 500;
     color: var(--text-muted);
     margin-bottom: 28px;
-    font-family: var(--font-mono);
-    letter-spacing: 0.01em;
+    letter-spacing: 0;
+    font-variant-numeric: tabular-nums;
   }
   /* H1 size now comes from global.css clamp(2.6rem, 6vw, 4.8rem). */
   .hero h1 {
-    margin-bottom: 24px;
-    max-width: 14ch;
+    margin-bottom: 22px;
+    max-width: 20ch;
+    font-size: clamp(2.5rem, 5.6vw, 4.4rem);
+    text-wrap: balance;
     margin-left: auto;
     margin-right: auto;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.08;
   }
+  /* Upright: a slanted CJK face is a synthetic oblique, and it looked it. */
   .hero__accent {
     color: var(--accent);
-    font-style: italic;
-    font-weight: 400;
   }
   /* Subtagline kept but the orange-pill chrome dropped; now just an
      italic serif phrase under the H1, in the same color family. */
@@ -545,11 +552,12 @@ const initialDownloadsText = initialDownloads > 0 ? fmtDownloads(initialDownload
     max-width: 640px;
     margin: 0 auto 14px;
     color: var(--text-muted);
-    font-family: var(--font-serif);
-    font-size: clamp(1.1rem, 2.2vw, 1.4rem);
-    font-style: italic;
-    line-height: 1.45;
+    font-family: var(--font-ui);
+    font-size: clamp(1.05rem, 2vw, 1.25rem);
+    line-height: 1.55;
+    text-wrap: balance;
     letter-spacing: -0.005em;
+    margin-bottom: 32px;
   }
   .hero__whatsnew-row {
     margin: 0 0 22px;
@@ -703,6 +711,7 @@ const initialDownloadsText = initialDownloads > 0 ? fmtDownloads(initialDownload
   }
   .hero__trust {
     margin: 16px 0 0;
+    justify-content: center;
     font-size: 13px;
     color: var(--text-muted, #6b6b60);
     display: flex;
@@ -712,32 +721,29 @@ const initialDownloadsText = initialDownloads > 0 ? fmtDownloads(initialDownload
   }
   .hero__trust-item { white-space: nowrap; font-weight: 500; }
   .hero__trust-dot { margin-right: 8px; opacity: 0.5; }
+  /* Wider than the text column: the product is the hero. */
   .hero__demo {
-    margin: 56px auto 0;
-    max-width: 1100px;
-    width: 100%;
-    border-radius: 14px;
-    overflow: hidden;
-    /* Softer shadow — the previous 30px / 0.35-opacity drop felt heavy
-       against the calmer cream bg. Anthropic-style flat aesthetic. */
-    box-shadow: 0 16px 40px -22px rgba(20, 20, 15, 0.18);
-    border: 1px solid var(--border);
-    background: var(--bg-elev);
-    aspect-ratio: 1920 / 873;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    position: relative;
+    left: 50%;
+    width: min(1200px, calc(100vw - 48px));
+    margin: 56px 0 8px;
+    transform: translateX(-50%);
   }
   .hero__demo-media {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    object-position: top left;
     display: block;
+    width: 100%;
+    height: auto;
+    filter: drop-shadow(0 28px 48px rgba(31, 30, 28, 0.22)) drop-shadow(0 6px 14px rgba(31, 30, 28, 0.12));
+  }
+  @media (prefers-color-scheme: dark) {
+    .hero__demo-media {
+      filter: drop-shadow(0 28px 56px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 0.5px rgba(255, 255, 255, 0.25));
+    }
   }
   @media (max-width: 720px) {
-    .hero__demo { margin-top: 32px; aspect-ratio: 1920 / 873; }
+    .hero__demo { margin-top: 36px; width: calc(100vw - 24px); }
   }
+  .hero__whatsnew-row { margin: 40px 0 0; }
 
   .hero__star {
     display: inline-flex;
