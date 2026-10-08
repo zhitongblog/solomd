@@ -11,6 +11,7 @@
  */
 import { computed, ref } from 'vue';
 import { useTabsStore } from '../stores/tabs';
+import type { Tab } from '../types';
 import { useWorkspaceIndexStore, type IndexEntry } from '../stores/workspaceIndex';
 import { useToastsStore } from '../stores/toasts';
 import { useSettingsStore } from '../stores/settings';
@@ -167,12 +168,34 @@ export function useInbox() {
       toasts.info(t('toast.noActiveDoc'));
       return;
     }
-    const cur = readInboxFlag(tab.content) === true;
-    const next = setInboxFlag(tab.content, !cur);
-    tabs.setContent(tab.id, next);
+    const cur = flipInboxFlag(tab);
     toasts.success(
       !cur ? t('inbox.markedInbox') : t('inbox.unmarkedInbox'),
     );
+    void persistFlag(tab);
+  }
+
+  /**
+   * Flip the active tab's `inbox` flag in the store. Returns the previous
+   * value. Flushes the editor's debounced doc→store sync first so the flip
+   * is applied to what is on screen, not to text a few keystrokes old.
+   */
+  function flipInboxFlag(tab: Tab): boolean {
+    window.dispatchEvent(new Event('solomd:flush-content-sync'));
+    const cur = readInboxFlag(tab.content) === true;
+    tabs.setContent(tab.id, setInboxFlag(tab.content, !cur));
+    return cur;
+  }
+
+  /**
+   * Inbox membership is read from the workspace index, i.e. from disk, so
+   * the flag only takes effect once the file is saved. Save files that have
+   * a path; an untitled tab keeps the flag until the user saves it (no
+   * Save-As dialog popping up from a ⌘E).
+   */
+  async function persistFlag(tab: Tab): Promise<void> {
+    if (!tab.filePath) return;
+    await files.saveTab(tab, { silent: true });
   }
 
   function setFilter(on: boolean) {
@@ -224,6 +247,7 @@ export function useInbox() {
       return;
     }
 
+    window.dispatchEvent(new Event('solomd:flush-content-sync'));
     const wasInbox = readInboxFlag(tab.content) === true;
     const advancing =
       wasInbox &&
@@ -239,13 +263,14 @@ export function useInbox() {
       : null;
     const fromPath = tab.filePath;
 
-    // Optimistic local flip drives the UI immediately (don't wait for the
-    // index round-trip); the autosave path persists `inbox: false` to disk.
-    const next = setInboxFlag(tab.content, !wasInbox);
-    tabs.setContent(tab.id, next);
+    // Optimistic local flip drives the UI immediately, then save so the
+    // index (read from disk) drops the note from the inbox. Saved before
+    // advancing: opening the next note must not race the write.
+    flipInboxFlag(tab);
     toasts.success(
       !wasInbox ? t('inbox.markedInbox') : t('inbox.unmarkedInbox'),
     );
+    await persistFlag(tab);
 
     if (!advancing) return;
 

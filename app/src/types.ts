@@ -34,6 +34,9 @@ export interface Tab {
   // without edits because content drifts from savedContent).
   lineEnding?: 'lf' | 'crlf';
   showOutline?: boolean;
+  /** Last caret position (1-based line and column) reported by the editor.
+   *  Persisted with the tab so a relaunch puts the caret back. */
+  cursor?: { line: number; col: number };
 }
 
 export interface FileReadResult {

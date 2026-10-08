@@ -140,6 +140,9 @@ export const useTypesStore = defineStore('types', {
         `---\ntype: Type\n---\n\n# ${trimmed}\n\n` +
         `Notes with \`type: ${trimmed}\` in their frontmatter appear in this ` +
         `type's sidebar section.\n`;
+      // A vault without a Types/ folder yet: write_file does not create
+      // parents. fs_create_dir rejects "already exists", which is fine.
+      await invoke('fs_create_dir', { path: `${folder}${sep}Types` }).catch(() => {});
       await invoke('write_file', { path, content: body, encoding: 'UTF-8' });
       await idx.rescan();
       return path;

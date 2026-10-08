@@ -24,6 +24,7 @@
  */
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import { useTabsStore } from '../stores/tabs';
+import { useTilesStore } from '../stores/tiles';
 import {
   useWorkspaceIndexStore,
   type BacklinkRef,
@@ -49,6 +50,7 @@ import {
 import NeighborhoodGroupSection from './NeighborhoodGroupSection.vue';
 
 const tabs = useTabsStore();
+const tiles = useTilesStore();
 const idx = useWorkspaceIndexStore();
 const files = useFiles();
 const { t } = useI18n();
@@ -222,7 +224,7 @@ async function openBacklink(e: MouseEvent, b: BacklinkRef) {
   setTimeout(() => {
     window.dispatchEvent(
       new CustomEvent('solomd:outline-goto', {
-        detail: { line: b.line, paneId: undefined },
+        detail: { line: b.line, paneId: tiles.focusedPaneId },
       }),
     );
   }, 200);

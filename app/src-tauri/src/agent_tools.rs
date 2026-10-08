@@ -28,6 +28,10 @@ use once_cell::sync::Lazy;
 use regex_lite::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+
+// `super::`, not `crate::`: this file is also mounted inside `mod runner` in the
+// binary (see quick_capture.rs). Only the relative path resolves in both.
+use super::workspace_index::body_line_offset;
 use tauri::AppHandle;
 use walkdir::WalkDir;
 
@@ -448,7 +452,7 @@ fn split_front_matter(raw: &str) -> (Option<String>, &str) {
     (None, raw)
 }
 
-fn extract_headings(body: &str) -> Vec<HeadingRef> {
+fn extract_headings(body: &str, line_offset: u32) -> Vec<HeadingRef> {
     static RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(#{1,6})\s+(.+?)\s*$").expect("heading regex"));
     let mut out = Vec::new();
     let mut in_fence = false;
@@ -466,7 +470,7 @@ fn extract_headings(body: &str) -> Vec<HeadingRef> {
                 out.push(HeadingRef {
                     level,
                     text: m.as_str().trim().to_string(),
-                    line: (line_idx as u32) + 1,
+                    line: line_offset + (line_idx as u32) + 1,
                 });
             }
         }
@@ -474,7 +478,7 @@ fn extract_headings(body: &str) -> Vec<HeadingRef> {
     out
 }
 
-fn extract_wikilinks(body: &str) -> Vec<WikilinkRef> {
+fn extract_wikilinks(body: &str, line_offset: u32) -> Vec<WikilinkRef> {
     static RE: Lazy<Regex> =
         Lazy::new(|| Regex::new(r"\[\[([^\[\]\n]+?)\]\]").expect("wikilink regex"));
     let mut out = Vec::new();
@@ -496,7 +500,7 @@ fn extract_wikilinks(body: &str) -> Vec<WikilinkRef> {
                 target,
                 heading,
                 alias,
-                line: (line_idx as u32) + 1,
+                line: line_offset + (line_idx as u32) + 1,
             });
         }
     }
@@ -706,7 +710,7 @@ fn tool_list_notes(workspace: &Path, args: &Value) -> Result<Value, String> {
                 "error": err,
             }));
         }
-        let headings = extract_headings(body);
+        let headings = extract_headings(body, body_line_offset(&raw, body));
         let title = match &fm_v {
             Value::Object(map) => map.get("title").and_then(|t| t.as_str()).map(|s| s.to_string()),
             _ => None,
@@ -758,7 +762,7 @@ fn tool_read_note(workspace: &Path, args: &Value) -> Result<Value, String> {
         },
         None => Value::Null,
     };
-    let headings = extract_headings(body);
+    let headings = extract_headings(body, body_line_offset(&raw, body));
     let mut tags = extract_body_tags(body);
     if let Value::Object(map) = &fm_v {
         if let Some(t) = map.get("tags") {
@@ -767,7 +771,7 @@ fn tool_read_note(workspace: &Path, args: &Value) -> Result<Value, String> {
     }
     tags.sort();
     tags.dedup();
-    let wikilinks = extract_wikilinks(body);
+    let wikilinks = extract_wikilinks(body, body_line_offset(&raw, body));
     let mut out = json!({
         "path": path.to_string_lossy(),
         "content": raw,
@@ -851,7 +855,7 @@ fn tool_get_backlinks(workspace: &Path, args: &Value) -> Result<Value, String> {
             Err(_) => continue,
         };
         let (_, body) = split_front_matter(&raw);
-        let links = extract_wikilinks(body);
+        let links = extract_wikilinks(body, body_line_offset(&raw, body));
         for link in links {
             if link.target.to_lowercase() == needle {
                 let lines: Vec<&str> = raw.lines().collect();
@@ -944,7 +948,7 @@ fn tool_get_outline(workspace: &Path, args: &Value) -> Result<Value, String> {
     let path = resolve_in_workspace(workspace, path_arg)?;
     let raw = fs::read_to_string(&path).map_err(|e| format!("read: {e}"))?;
     let (_, body) = split_front_matter(&raw);
-    let outline = extract_headings(body);
+    let outline = extract_headings(body, body_line_offset(&raw, body));
     Ok(json!({"outline": outline}))
 }
 
