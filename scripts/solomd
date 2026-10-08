@@ -9,7 +9,13 @@
 #   solomd list [folder]         List markdown files in a folder
 #   solomd search <query>        Search markdown files in CWD for a query
 #   solomd cat <title|path>      Print a markdown file's content
+#   solomd export <file> -f FMT  Export to html / md / txt / docx (source checkout)
+#   solomd agent <prompt>        Run an LLM CLI against the vault via MCP
+#   solomd mcp <sub>             Manage the MCP entry in your AI clients
 #   solomd help                  Show this help
+#   solomd --version             Print the SoloMD version
+#
+# Every subcommand accepts -h / --help.
 #
 # Notes:
 #   - Default notes directory: $SOLOMD_NOTES (or ~/Documents/SoloMD if unset)
@@ -18,12 +24,44 @@
 
 set -e
 
+# ---- Version -------------------------------------------------------------
+# Bumped with the app (see scripts/release.sh). A copy run from a source
+# checkout reads the live version from tauri.conf.json instead, so the two
+# can't drift there.
+SOLOMD_VERSION="4.14.10"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+solomd_version() {
+    local conf="$SCRIPT_DIR/../app/src-tauri/tauri.conf.json" v=""
+    if [[ -f "$conf" ]]; then
+        v="$(sed -n 's/^[[:space:]]*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$conf" | head -1)"
+    fi
+    echo "${v:-$SOLOMD_VERSION}"
+}
+
 # ---- Colors --------------------------------------------------------------
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-YELLOW='\033[0;33m'
-DIM='\033[2m'
-NC='\033[0m'
+# Only when stdout is a terminal, and never with NO_COLOR set
+# (https://no-color.org) — escapes in a pipe or a file are just noise.
+if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
+    GREEN='\033[0;32m'
+    BLUE='\033[0;34m'
+    YELLOW='\033[0;33m'
+    DIM='\033[2m'
+    NC='\033[0m'
+else
+    GREEN='' BLUE='' YELLOW='' DIM='' NC=''
+fi
+
+# `-h` / `--help` anywhere in a subcommand's arguments means "show usage":
+# it must never be taken as a title, a folder or a prompt (`new --help`
+# used to create --help.md and open it).
+wants_help() {
+    local a
+    for a in "$@"; do
+        [[ "$a" == "-h" || "$a" == "--help" ]] && return 0
+    done
+    return 1
+}
 
 # ---- Notes dir resolution ------------------------------------------------
 NOTES_DIR="${SOLOMD_NOTES:-$HOME/Documents/SoloMD}"
@@ -98,19 +136,27 @@ cmd_help() {
     printf "  ${GREEN}%-22s${NC} %s\n" "list [folder]" "List markdown files"
     printf "  ${GREEN}%-22s${NC} %s\n" "search <query>" "Search markdown for text"
     printf "  ${GREEN}%-22s${NC} %s\n" "cat <title|path>" "Print file content"
-    printf "  ${GREEN}%-22s${NC} %s\n" "export <file> -f FMT" "Export to html / md / txt / docx"
+    printf "  ${GREEN}%-22s${NC} %s\n" "export <file> -f FMT" "Export to html / md / txt / docx (needs a source checkout)"
     printf "  ${GREEN}%-22s${NC} %s\n" "agent <prompt…>" "Run an LLM agent against the vault via MCP"
     printf "  ${GREEN}%-22s${NC} %s\n" "mcp <sub>" "Manage MCP integration (mcp help for subcommands)"
     printf "  ${GREEN}%-22s${NC} %s\n" "mcp-config" "Print the MCP config snippet (back-compat alias)"
     printf "  ${GREEN}%-22s${NC} %s\n" "help" "Show this help"
+    printf "  ${GREEN}%-22s${NC} %s\n" "--version" "Print the SoloMD version"
+    printf "\n  Every command takes ${GREEN}-h${NC} / ${GREEN}--help${NC} for its own usage.\n"
     printf "\n${BLUE}NOTES DIR${NC}\n"
     printf "  ${DIM}%s${NC}\n" "$NOTES_DIR"
     printf "  ${DIM}override with SOLOMD_NOTES env var${NC}\n"
 }
 
+usage_open() {
+    echo "Usage: solomd open <title|path>"
+    echo "  Open a note in SoloMD. A bare title resolves to <notes-dir>/<title>.md."
+}
+
 cmd_open() {
+    wants_help "$@" && { usage_open; exit 0; }
     local target="$1"
-    [[ -z "$target" ]] && { echo "Usage: solomd open <title|path>" >&2; exit 1; }
+    [[ -z "$target" ]] && { usage_open >&2; exit 1; }
     local path
     path="$(resolve_path "$target")"
     if [[ ! -f "$path" ]]; then
@@ -130,10 +176,16 @@ cmd_open() {
     fi
 }
 
+usage_new() {
+    echo "Usage: solomd new <title> [text]"
+    echo "  Create <notes-dir>/<title>.md with a heading (and optional body), then open it."
+}
+
 cmd_new() {
+    wants_help "$@" && { usage_new; exit 0; }
     local title="$1"; shift || true
     local body="$*"
-    [[ -z "$title" ]] && { echo "Usage: solomd new <title> [text]" >&2; exit 1; }
+    [[ -z "$title" ]] && { usage_new >&2; exit 1; }
     ensure_notes_dir
     local path
     path="$(resolve_path "$title")"
@@ -149,13 +201,24 @@ cmd_new() {
     cmd_open "$path"
 }
 
+usage_list() {
+    echo "Usage: solomd list [folder]"
+    echo "  List every markdown file under the folder (default: notes dir), at any depth."
+    echo "  Hidden folders and node_modules are skipped."
+}
+
 cmd_list() {
+    wants_help "$@" && { usage_list; exit 0; }
     local folder="${1:-$NOTES_DIR}"
+    [[ "$folder" != "/" ]] && folder="${folder%/}"
     if [[ ! -d "$folder" ]]; then
         printf "${YELLOW}Not a folder:${NC} %s\n" "$folder" >&2
         exit 1
     fi
-    find "$folder" -maxdepth 2 -type f \( -name "*.md" -o -name "*.markdown" \) 2>/dev/null \
+    # Any depth, like the app's file tree and MCP list_notes. -mindepth 1
+    # keeps the prune test off the root itself, so `solomd list .` works.
+    find "$folder" -mindepth 1 \( -name ".*" -o -name node_modules \) -prune -o \
+            -type f \( -name "*.md" -o -name "*.markdown" \) -print 2>/dev/null \
         | sort \
         | while IFS= read -r f; do
             local rel="${f#$folder/}"
@@ -163,9 +226,15 @@ cmd_list() {
         done
 }
 
+usage_search() {
+    echo "Usage: solomd search <query>"
+    echo "  Case-insensitive search of the notes dir (rg if installed, else grep)."
+}
+
 cmd_search() {
+    wants_help "$@" && { usage_search; exit 0; }
     local query="$*"
-    [[ -z "$query" ]] && { echo "Usage: solomd search <query>" >&2; exit 1; }
+    [[ -z "$query" ]] && { usage_search >&2; exit 1; }
     local folder="$NOTES_DIR"
     [[ ! -d "$folder" ]] && folder="$PWD"
     if command -v rg >/dev/null 2>&1; then
@@ -179,9 +248,15 @@ cmd_search() {
     fi
 }
 
+usage_cat() {
+    echo "Usage: solomd cat <title|path>"
+    echo "  Print a note to stdout."
+}
+
 cmd_cat() {
+    wants_help "$@" && { usage_cat; exit 0; }
     local target="$1"
-    [[ -z "$target" ]] && { echo "Usage: solomd cat <title|path>" >&2; exit 1; }
+    [[ -z "$target" ]] && { usage_cat >&2; exit 1; }
     local path
     path="$(resolve_path "$target")"
     if [[ ! -f "$path" ]]; then
@@ -194,12 +269,22 @@ cmd_cat() {
 # `solomd export <file> [--format html|md|txt|docx] [--output <path>]`
 # Convert a markdown file to another format using the same engine the GUI
 # uses. Backs onto app/scripts/solomd-export.mjs (Node, no GUI required).
+#
+# That script and its node_modules only exist in a source checkout: the
+# app bundle doesn't ship them and install-cli.sh only downloads this file.
+# So an installed CLI says so plainly instead of pointing at a path that
+# was never going to exist. SOLOMD_EXPORT_SCRIPT points it at a checkout.
+usage_export() {
+    echo "Usage: solomd export <title|path> [--format html|md|txt|docx] [--output <path>] [--number-headings]"
+    echo "  Export with the same engine as the app. Default format html, written next to the note."
+    echo "  Needs Node.js 18+ and a SoloMD source checkout with \`pnpm install\` run in app/:"
+    echo "  run scripts/solomd from that checkout, or set SOLOMD_EXPORT_SCRIPT=<checkout>/app/scripts/solomd-export.mjs."
+}
+
 cmd_export() {
+    wants_help "$@" && { usage_export; exit 0; }
     local target="$1"; shift || true
-    [[ -z "$target" ]] && {
-        printf "Usage: solomd export <title|path> [--format html|md|txt|docx] [--output <path>]\n" >&2
-        exit 1
-    }
+    [[ -z "$target" ]] && { usage_export >&2; exit 1; }
     local path
     path="$(resolve_path "$target")"
     if [[ ! -f "$path" ]]; then
@@ -208,20 +293,26 @@ cmd_export() {
     fi
     # Locate the script + the app dir (it must run with cwd = app/ so node
     # can resolve docx + markdown-it from app/node_modules without hassle).
-    local repo_root script_dir app_dir
-    repo_root="$(cd "$(dirname "$0")/.." && pwd)"
-    app_dir="$repo_root/app"
-    local script="$app_dir/scripts/solomd-export.mjs"
+    local script="${SOLOMD_EXPORT_SCRIPT:-$SCRIPT_DIR/../app/scripts/solomd-export.mjs}"
     if [[ ! -f "$script" ]]; then
-        printf "${YELLOW}solomd-export.mjs not found at %s${NC}\n" "$script" >&2
+        printf "${YELLOW}solomd export needs a SoloMD source checkout.${NC}\n" >&2
+        printf "  It runs app/scripts/solomd-export.mjs with Node.js and the app's node_modules,\n" >&2
+        printf "  which the installed app and install-cli.sh don't include. Either:\n" >&2
+        printf "    git clone https://github.com/zhitongblog/solomd && cd solomd/app && pnpm install\n" >&2
+        printf "    then run solomd/scripts/solomd export …\n" >&2
+        printf "  or point this CLI at an existing checkout:\n" >&2
+        printf "    export SOLOMD_EXPORT_SCRIPT=/path/to/solomd/app/scripts/solomd-export.mjs\n" >&2
+        printf "  ${DIM}(In the app itself: File → Export.)${NC}\n" >&2
         exit 1
     fi
+    local app_dir
+    app_dir="$(cd "$(dirname "$script")/.." && pwd)"
     if ! command -v node >/dev/null 2>&1; then
         printf "${YELLOW}Node.js required for solomd export.${NC} Install Node 18+ (https://nodejs.org)\n" >&2
         exit 1
     fi
     if [[ ! -d "$app_dir/node_modules/docx" ]]; then
-        printf "${YELLOW}app/node_modules missing. Run \`pnpm install\` in %s/app first.${NC}\n" "$repo_root" >&2
+        printf "${YELLOW}app/node_modules missing. Run \`pnpm install\` in %s first.${NC}\n" "$app_dir" >&2
         exit 1
     fi
     (cd "$app_dir" && node "$script" "$path" "$@")
@@ -234,7 +325,12 @@ cmd_export() {
 # detect_solomd_bin().
 detect_mcp_bin() {
     if [[ "$(uname)" == "Darwin" ]]; then
+        # Tauri's externalBin lands next to the main binary in
+        # Contents/MacOS/. Resources/ is where older builds and docs said
+        # it was; kept as a fallback.
         local mac_paths=(
+            "/Applications/SoloMD.app/Contents/MacOS/solomd-mcp"
+            "$HOME/Applications/SoloMD.app/Contents/MacOS/solomd-mcp"
             "/Applications/SoloMD.app/Contents/Resources/solomd-mcp"
             "$HOME/Applications/SoloMD.app/Contents/Resources/solomd-mcp"
         )
@@ -258,7 +354,14 @@ detect_mcp_bin() {
     return 1
 }
 
+usage_mcp_config() {
+    echo "Usage: solomd mcp-config"
+    echo "  Print a Claude Desktop style mcpServers snippet for the bundled solomd-mcp."
+    echo "  The workspace is \$SOLOMD_NOTES (default ~/Documents/SoloMD)."
+}
+
 cmd_mcp_config() {
+    wants_help "$@" && { usage_mcp_config; exit 0; }
     local mcp_bin
     if ! mcp_bin="$(detect_mcp_bin)"; then
         printf "${YELLOW}solomd-mcp not found.${NC} Install SoloMD or run install-mcp.sh.\n" >&2
@@ -581,13 +684,16 @@ cmd_mcp() {
 # Codex CLI, or aider installed and configured with their BYOK keys. Our
 # job is to put a SoloMD MCP server in front of that CLI so it can read +
 # edit the vault, then pass through.
+usage_agent() {
+    echo "Usage: solomd agent <prompt>"
+    echo "  Start claude (or codex) with solomd-mcp wired to the notes dir, --allow-write on."
+    echo "  e.g. solomd agent 'rewrite this week of dailies into a weekly review'"
+}
+
 cmd_agent() {
+    wants_help "$@" && { usage_agent; exit 0; }
     local prompt="$*"
-    [[ -z "$prompt" ]] && {
-        printf "Usage: solomd agent <prompt>\n" >&2
-        printf "  e.g. solomd agent 'rewrite this week of dailies into a weekly review'\n" >&2
-        exit 1
-    }
+    [[ -z "$prompt" ]] && { usage_agent >&2; exit 1; }
 
     local mcp_bin
     if ! mcp_bin="$(detect_mcp_bin)"; then
@@ -602,6 +708,9 @@ cmd_agent() {
     # up without us touching the user's persistent config.
     local cfg_dir
     cfg_dir="$(mktemp -d -t solomd-agent.XXXXXX)"
+    # The config grants --allow-write, so it must not outlive the session.
+    # The LLM CLI runs as a child (no exec) so this trap actually fires.
+    trap "rm -rf '$cfg_dir'" EXIT
     local cfg="$cfg_dir/mcp.json"
     cat > "$cfg" <<EOF
 {
@@ -613,7 +722,6 @@ cmd_agent() {
   }
 }
 EOF
-    trap "rm -rf $cfg_dir" EXIT
 
     printf "${DIM}vault:    %s${NC}\n" "$workspace"
     printf "${DIM}mcp:      %s${NC}\n" "$mcp_bin"
@@ -624,7 +732,7 @@ EOF
         # query. `--mcp-config` registers the SoloMD MCP for that session.
         # We don't pass `-p` (non-interactive one-shot) by default — agent
         # work usually needs follow-up turns.
-        exec claude --mcp-config "$cfg" -- "$prompt"
+        claude --mcp-config "$cfg" -- "$prompt"
     elif command -v codex >/dev/null 2>&1; then
         printf "${BLUE}→ codex${NC} (Codex CLI)\n\n"
         # Codex CLI registers MCP servers via ~/.codex/config.toml, not a
@@ -633,7 +741,7 @@ EOF
         printf "  [mcp_servers.solomd]\n"
         printf "  command = \"%s\"\n" "$mcp_bin"
         printf "  args = [\"--workspace\", \"%s\", \"--allow-write\"]\n\n" "$workspace"
-        exec codex "$prompt"
+        codex "$prompt"
     elif command -v aider >/dev/null 2>&1; then
         printf "${BLUE}→ aider${NC} (no native MCP — printing recipe instead)\n\n"
         printf "  The aider CLI doesn't speak MCP. Either:\n"
@@ -665,5 +773,6 @@ case "${1:-help}" in
     mcp-config) shift; cmd_mcp_config "$@" ;;
     mcp)        shift; cmd_mcp "$@" ;;
     help|--help|-h) cmd_help ;;
+    version|--version|-V) echo "solomd $(solomd_version)" ;;
     *) printf "${YELLOW}Unknown command:${NC} %s\n\n" "$1"; cmd_help; exit 1 ;;
 esac

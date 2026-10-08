@@ -20,9 +20,14 @@
  * embedded the same way too — only the I/O backend differs (Node `fs` here,
  * Tauri `invoke('read_binary_file')` in the GUI). Remote `https://…` images
  * become a `[image: alt] (url)` placeholder in both paths.
+ *
+ * Like the GUI, html / txt / docx drop the YAML front matter (md keeps the
+ * file byte-for-byte). HTML with math carries KaTeX's stylesheet and fonts
+ * inline, and DOCX keeps display math as its LaTeX source.
  */
 
 import fs from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
@@ -89,8 +94,12 @@ Options:
 Notes:
   - Reads the same markdown-it config as the SoloMD app
     (html: true, linkify, typographer, mark, footnote, katex).
-  - DOCX export uses the same 'docx' npm library as the app.
-  - Image embedding is not yet ported (v4.1 limitation; see source).
+  - DOCX export uses the same 'docx' npm library as the app. Local images
+    (relative to the note, or to an imageRoot front-matter key) are
+    embedded; remote images become a text placeholder.
+  - YAML front matter is left out of html / txt / docx.
+  - HTML output embeds KaTeX's stylesheet when the note has math; DOCX
+    keeps display math as LaTeX source text.
 `);
 }
 
@@ -306,6 +315,40 @@ function preprocessMarkdown(source) {
 
 function renderHtml(source) {
   return md.render(preprocessMarkdown(source ?? ''));
+}
+
+// Same pattern the GUI uses before printing (useExport.ts): the metadata
+// block is for the app, not for the reader of the exported file.
+function stripFrontMatter(source) {
+  return (source ?? '').replace(/^\uFEFF?---\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/, '');
+}
+
+// ---------------------------------------------------------------------------
+// KaTeX stylesheet — mirror of app/src/lib/katex-standalone.ts. Without it
+// the browser shows KaTeX's MathML and its HTML rendering side by side, so
+// every formula appears twice. The woff2 fonts go in as data: URLs so the
+// file still renders offline; nothing points at a CDN.
+// ---------------------------------------------------------------------------
+
+function standaloneKatexCss() {
+  const require = createRequire(import.meta.url);
+  const cssPath = require.resolve('katex/dist/katex.min.css');
+  const fontsDir = path.join(path.dirname(cssPath), 'fonts');
+  const css = fs.readFileSync(cssPath, 'utf8');
+  return css.replace(/src:([^;}]*)/g, (whole, list) => {
+    const m = /url\(fonts\/([^)]+\.woff2)\)/.exec(list);
+    if (!m) return whole;
+    try {
+      const data = fs.readFileSync(path.join(fontsDir, m[1])).toString('base64');
+      return `src:url(data:font/woff2;base64,${data}) format("woff2")`;
+    } catch {
+      return whole;
+    }
+  });
+}
+
+function hasKatex(html) {
+  return html.includes('class="katex');
 }
 
 // ---------------------------------------------------------------------------
@@ -643,6 +686,22 @@ function buildBody(tokens, imageRoot, filePath) {
         i += 1;
         break;
       }
+      case 'math_block':
+      case 'math_block_eqno': {
+        // Word has no KaTeX: keep display math as its LaTeX source, one
+        // centred monospace line per source line, rather than dropping it.
+        const lines = (t.content || '').trim().split('\n');
+        out.push(new Paragraph({
+          children: lines.flatMap((line, idx) => [
+            ...(idx > 0 ? [new TextRun({ break: 1 })] : []),
+            new TextRun({ text: line, font: 'Cambria Math' }),
+          ]),
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 160, after: 160 },
+        }));
+        i += 1;
+        break;
+      }
       case 'hr':
         out.push(new Paragraph({ text: '', spacing: { before: 240, after: 240 },
           border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: 'CCCCCC' } } }));
@@ -753,8 +812,9 @@ function buildTable(inner) {
 
 async function markdownToDocxBuffer(source, title = 'Document', filePath) {
   imageCache.clear();
-  const tokens = md.parse(preprocessMarkdown(source ?? ''), {});
+  // imageRoot lives in the front matter, so read it before stripping.
   const imageRoot = extractImageRoot(source);
+  const tokens = md.parse(preprocessMarkdown(stripFrontMatter(source)), {});
   const blocks = buildBody(tokens, imageRoot, filePath);
   if (blocks.length === 0) blocks.push(new Paragraph({ text: '' }));
   const doc = new Document({
@@ -777,11 +837,11 @@ async function markdownToDocxBuffer(source, title = 'Document', filePath) {
 }
 
 // ---------------------------------------------------------------------------
-// HTML wrapper — matches app/src/composables/useExport.ts HTML_TEMPLATE
-// (slimmed: drops katex/asset CSS for the CLI use case)
+// HTML wrapper — matches app/src/lib/html-export.ts HTML_TEMPLATE
+// (slimmed styles; KaTeX CSS is passed in only when the note has math)
 // ---------------------------------------------------------------------------
 
-function htmlDoc(title, body) {
+function htmlDoc(title, body, headCss = '') {
   const esc = (s) => s.replace(/[&<>"']/g, (c) =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   return `<!doctype html>
@@ -789,7 +849,7 @@ function htmlDoc(title, body) {
 <head>
 <meta charset="utf-8">
 <title>${esc(title)}</title>
-<style>
+${headCss ? `<style>${headCss}</style>\n` : ''}<style>
   body { max-width: 760px; margin: 56px auto; padding: 0 56px 96px; font: 16px/1.75 system-ui, sans-serif; color: #1f1d1a; }
   h1 { font-size: 2.15em; border-bottom: 2px solid #ff9f40; padding-bottom: .35em; }
   h2 { font-size: 1.55em; border-bottom: 1px solid #e6e2d8; padding-bottom: .25em; }
@@ -839,8 +899,9 @@ async function main() {
 
   switch (fmt) {
     case 'html': {
-      const body = renderHtml(source);
-      fs.writeFileSync(outPath, htmlDoc(baseName, body), 'utf8');
+      const body = renderHtml(stripFrontMatter(source));
+      const headCss = hasKatex(body) ? standaloneKatexCss() : '';
+      fs.writeFileSync(outPath, htmlDoc(baseName, body, headCss), 'utf8');
       break;
     }
     case 'md': {
@@ -848,11 +909,14 @@ async function main() {
       break;
     }
     case 'txt': {
-      fs.writeFileSync(outPath, stripMarkdown(source), 'utf8');
+      fs.writeFileSync(outPath, stripMarkdown(stripFrontMatter(source)), 'utf8');
       break;
     }
     case 'docx': {
-      const buf = await markdownToDocxBuffer(source, baseName);
+      // The file path lets relative image paths resolve against the
+      // note's folder; without it every `![x](attachments/x.png)` became
+      // a text placeholder.
+      const buf = await markdownToDocxBuffer(source, baseName, inputPath);
       fs.writeFileSync(outPath, buf);
       break;
     }

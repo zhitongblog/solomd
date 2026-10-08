@@ -86,7 +86,11 @@ mkdir -p "$WORK/ws"
 VER="$VER" python3 - "$WORK" <<'PY'
 import json, os, subprocess, sys
 work = sys.argv[1]
-p = subprocess.Popen([f"{work}/b/server/solomd-mcp", "--workspace", f"{work}/ws"],
+# Run it the way the bundle runs: outside any source checkout and without
+# SOLOMD_EXPORT_SCRIPT, so export_note (Node + the repo's export script)
+# is left out exactly as it is for people who install the .mcpb.
+env = {k: v for k, v in os.environ.items() if k != "SOLOMD_EXPORT_SCRIPT"}
+p = subprocess.Popen([f"{work}/b/server/solomd-mcp", "--workspace", f"{work}/ws"], cwd=work, env=env,
                      stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
 def call(o):
     p.stdin.write(json.dumps(o) + "\n"); p.stdin.flush()

@@ -186,7 +186,14 @@ pub fn read_full(path: &Path) -> Result<Note, String> {
         None => serde_json::Value::Null,
     };
 
-    let wikilinks = extract_wikilinks(body);
+    // Parsers see the body; callers seek in the file. Shift every line
+    // number past the front matter so read_note, get_outline and
+    // get_backlinks agree with list_tasks and search.
+    let offset = body_line_offset(&raw, body);
+    let wikilinks: Vec<WikilinkRef> = extract_wikilinks(body)
+        .into_iter()
+        .map(|w| WikilinkRef { line: w.line + offset, ..w })
+        .collect();
     let mut tags = extract_body_tags(body);
     if let serde_json::Value::Object(map) = &frontmatter_json {
         if let Some(t) = map.get("tags") {
@@ -195,7 +202,10 @@ pub fn read_full(path: &Path) -> Result<Note, String> {
     }
     tags.sort();
     tags.dedup();
-    let headings = extract_headings(body);
+    let headings: Vec<HeadingRef> = extract_headings(body)
+        .into_iter()
+        .map(|h| HeadingRef { line: h.line + offset, ..h })
+        .collect();
 
     Ok(Note {
         path: path.to_string_lossy().to_string(),
@@ -229,6 +239,14 @@ pub fn split_front_matter(raw: &str) -> (Option<String>, &str) {
         return (Some(yaml.to_string()), rest);
     }
     (None, raw)
+}
+
+/// How many file lines precede `body`, the tail `split_front_matter` hands
+/// back. Add it to a body-relative line number to get the line in the file.
+pub fn body_line_offset(raw: &str, body: &str) -> u32 {
+    // `body` is always a suffix of `raw`, so the prefix is the front matter.
+    let prefix_len = raw.len().saturating_sub(body.len());
+    raw.as_bytes()[..prefix_len].iter().filter(|b| **b == b'\n').count() as u32
 }
 
 pub fn extract_wikilinks(body: &str) -> Vec<WikilinkRef> {
@@ -507,6 +525,39 @@ mod task_tests {
         assert!(tasks[1].done);
         assert_eq!(tasks[2].text, "last one");
         assert_eq!(tasks[2].line, 13);
+    }
+
+    /// Headings and wikilinks from `read_full` carry file line numbers, the
+    /// same numbering `extract_tasks` uses, even with front matter on top.
+    #[test]
+    fn read_full_counts_front_matter_in_line_numbers() {
+        let doc = "---\ntitle: Index\ntags: [a]\n---\n# Vault Index\n\nSee [[Alpha]].\n\n## Tasks\n- [ ] Review [[Alpha]]\n";
+        let dir = std::env::temp_dir().join(format!(
+            "solomd-mcp-lines-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("index.md");
+        std::fs::write(&path, doc).unwrap();
+        let note = super::read_full(&path).unwrap();
+
+        let heads: Vec<(&str, u32)> = note.headings.iter().map(|h| (h.text.as_str(), h.line)).collect();
+        assert_eq!(heads, vec![("Vault Index", 5), ("Tasks", 9)]);
+        let links: Vec<u32> = note.wikilinks.iter().map(|w| w.line).collect();
+        assert_eq!(links, vec![7, 10]);
+        assert_eq!(extract_tasks(doc)[0].line, 10, "tasks and links must agree");
+        // And the context window around a link is the link's own line.
+        assert_eq!(super::read_context(&path, 7)[1], "See [[Alpha]].");
+    }
+
+    #[test]
+    fn body_line_offset_is_zero_without_front_matter() {
+        let raw = "# T\n\ntext\n";
+        let (_fm, body) = super::split_front_matter(raw);
+        assert_eq!(super::body_line_offset(raw, body), 0);
     }
 
     /// `*` and `+` are list markers too, and an empty box is not a task.

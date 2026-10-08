@@ -57,11 +57,22 @@ fn fresh_dir(label: &str) -> PathBuf {
     dir.canonicalize().unwrap()
 }
 
-/// Drive an `initialize` → `export_note` round-trip and return the
+/// Drive an `initialize` → `export_note` round-trip on a server started
+/// with `--allow-write` (every export writes a file) and return the
 /// matching response frame.
 fn drive_export(workspace: &Path, args_json: serde_json::Value, script_path: &Path) -> serde_json::Value {
+    drive_export_flags(workspace, args_json, script_path, &["--allow-write"])
+}
+
+fn drive_export_flags(
+    workspace: &Path,
+    args_json: serde_json::Value,
+    script_path: &Path,
+    flags: &[&str],
+) -> serde_json::Value {
     let mut child = Command::new(binary_path())
         .arg("--workspace").arg(workspace)
+        .args(flags)
         .env("SOLOMD_EXPORT_SCRIPT", script_path)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -192,7 +203,7 @@ fn export_note_rejects_workspace_internal_write_without_flag() {
     let ws = fresh_dir("guard");
     std::fs::write(ws.join("note.md"), "# T\n").unwrap();
 
-    let resp = drive_export(
+    let resp = drive_export_flags(
         &ws,
         serde_json::json!({
             "path": "note.md",
@@ -200,8 +211,85 @@ fn export_note_rejects_workspace_internal_write_without_flag() {
             "output_path": ws.join("inside.docx").to_string_lossy(),
         }),
         &script,
+        &[],
     );
     let err = resp.get("error").unwrap_or(&serde_json::Value::Null);
     let msg = err.get("message").and_then(|m| m.as_str()).unwrap_or("");
     assert!(msg.contains("allow-write"), "expected allow-write guard, got: {err}");
+}
+
+/// 1×1 RGBA PNG, enough for the docx image path to embed something.
+const TINY_PNG: [u8; 70] = [
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+    0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4,
+    0x89, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9c, 0x63, 0xf8, 0xcf, 0xc0, 0xf0,
+    0x1f, 0x00, 0x05, 0x00, 0x01, 0xff, 0x89, 0x99, 0x3d, 0x1d, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45,
+    0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
+];
+
+/// 5.0 regression: a relative image was never embedded (the script did
+/// not pass the note's path, so `attachments/x.png` could not resolve),
+/// the front matter showed up as body text, and `$$…$$` vanished.
+#[test]
+fn export_note_docx_embeds_relative_images_and_keeps_math() {
+    let Some(script) = find_export_script() else {
+        return;
+    };
+    if !have_node() {
+        return;
+    }
+    let ws = fresh_dir("docx-img");
+    let out_dir = fresh_dir("docx-img-out");
+    std::fs::create_dir_all(ws.join("attachments")).unwrap();
+    std::fs::write(ws.join("attachments/x.png"), TINY_PNG).unwrap();
+    std::fs::write(
+        ws.join("note.md"),
+        "---\ntitle: Secret Meta\ntags: [a]\n---\n# Doc\n\n![x](attachments/x.png)\n\n$$\n\\int_0^1 x\\,dx\n$$\n",
+    )
+    .unwrap();
+    let out = out_dir.join("note.docx");
+    let resp = drive_export(
+        &ws,
+        serde_json::json!({ "path": "note.md", "format": "docx", "output_path": out.to_string_lossy() }),
+        &script,
+    );
+    assert!(resp.get("error").is_none(), "export_note returned an error: {resp}");
+
+    let f = std::fs::File::open(&out).unwrap();
+    let zip = zip::ZipArchive::new(f).unwrap();
+    assert!(
+        zip.file_names().any(|n| n.starts_with("word/media/") && n.ends_with(".png")),
+        "relative image not embedded; entries: {:?}",
+        zip.file_names().collect::<Vec<_>>()
+    );
+    let xml = extract_document_xml(&out);
+    assert!(!xml.contains("Secret Meta"), "front matter leaked into the body");
+    assert!(xml.contains("\\int_0^1"), "display math dropped from document.xml");
+}
+
+/// HTML: no front matter, and KaTeX's stylesheet is embedded so formulas
+/// don't render twice (MathML + HTML side by side).
+#[test]
+fn export_note_html_strips_front_matter_and_embeds_katex_css() {
+    let Some(script) = find_export_script() else {
+        return;
+    };
+    if !have_node() {
+        return;
+    }
+    let ws = fresh_dir("html-math");
+    let out_dir = fresh_dir("html-math-out");
+    std::fs::write(ws.join("note.md"), "---\ntitle: Secret Meta\n---\n# T\n\nInline $E = mc^2$.\n").unwrap();
+    let out = out_dir.join("note.html");
+    let resp = drive_export(
+        &ws,
+        serde_json::json!({ "path": "note.md", "format": "html", "output_path": out.to_string_lossy() }),
+        &script,
+    );
+    assert!(resp.get("error").is_none(), "export_note returned an error: {resp}");
+    let html = std::fs::read_to_string(&out).unwrap();
+    assert!(!html.contains("Secret Meta"), "front matter leaked into the html");
+    assert!(html.contains("class=\"katex"), "no KaTeX markup rendered");
+    assert!(html.contains(".katex-mathml{"), "KaTeX stylesheet missing");
+    assert!(!html.contains("url(fonts/"), "font URLs must be embedded, not relative");
 }

@@ -74,16 +74,12 @@
       "description": "Restore a note's content from a specific AutoGit commit by overwriting the working tree. Requires --allow-write. The rollback is itself a new save (and thus a new AutoGit commit), so the prior history is preserved. Pass `workspace` (alias or absolute path) to target a non-default workspace; omit it to use the first registered workspace."
     },
     {
-      "name": "export_note",
-      "description": "Export a Markdown note to html / md / txt / docx. Engine-parity with the SoloMD GUI export. Args: `path` (workspace-relative), `format` (default html), optional `output_path` (default: sibling file next to `path` with format-appropriate extension), optional `number_headings` (promote plain-text numbered sections like 6.2 / 6.2.1 to headings, default false). Returns the absolute output path. Requires Node.js + `pnpm install` in the SoloMD repo's app/ directory."
-    },
-    {
       "name": "get_backlinks",
       "description": "Return wikilink-style backlinks (`[[note_name]]`) to the given note. Match is case-insensitive on the file stem. Pass `workspace` (alias or absolute path) to target a non-default workspace; omit it to use the first registered workspace."
     },
     {
       "name": "get_outline",
-      "description": "Return the heading outline of a note, with level (1-6), text, and 1-based line number. Pass `workspace` (alias or absolute path) to target a non-default workspace; omit it to use the first registered workspace."
+      "description": "Return the heading outline of a note, with level (1-6), text, and 1-based line number in the file (front matter counted, same as list_tasks and search). Pass `workspace` (alias or absolute path) to target a non-default workspace; omit it to use the first registered workspace."
     },
     {
       "name": "list_notes",
@@ -99,7 +95,7 @@
     },
     {
       "name": "read_agent_trace",
-      "description": "Return the agent run trace as an array of step objects. Lines from `<workspace>/.solomd/agent-runs/<run_id>/trace.jsonl`. Each step has ts (unix ms), seq (1-based), kind, plus kind-specific fields (provider/model/tool/result/...). See SoloMD v4 contracts C2 for the schema."
+      "description": "Return the agent run trace as an array of step objects. Lines from `<workspace>/.solomd/agent-runs/<run_id>/trace.jsonl`; an unknown run id is an error. Each step has ts (unix ms), seq (1-based), kind, plus kind-specific fields (provider/model/tool/result/...). See SoloMD v4 contracts C2 for the schema."
     },
     {
       "name": "read_note",
@@ -119,7 +115,7 @@
     },
     {
       "name": "write_note",
-      "description": "Write a Markdown note to disk. Requires the server to be started with --allow-write. Refuses to overwrite an existing file unless `allow_overwrite` is true. Pass `workspace` (alias or absolute path) to target a non-default workspace; omit it to use the first registered workspace."
+      "description": "Write a Markdown note to disk. Requires the server to be started with --allow-write. Only .md, .markdown and .txt paths inside the workspace are accepted; missing folders are created. Refuses to overwrite an existing file unless `allow_overwrite` is true. Pass `workspace` (alias or absolute path) to target a non-default workspace; omit it to use the first registered workspace."
     }
   ],
   "compatibility": {

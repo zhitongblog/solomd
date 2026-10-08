@@ -1,11 +1,12 @@
 //! MCP tool definitions + handlers.
 //!
-//! All eight v2.2 tools live here. The two write tools are gated by
+//! All sixteen tools live here. The four that write to disk (`write_note`,
+//! `append_to_note`, `autogit_rollback`, `export_note`) are gated by
 //! `allow_write` — when false they return an error explaining how to enable
 //! them, and they are still listed so clients see consistent capabilities
-//! (this matches what most MCP servers do for safety toggles). If you'd
-//! rather *omit* them entirely, build with `--allow-write` off and the
-//! checks here will refuse the call.
+//! (this matches what most MCP servers do for safety toggles). The one
+//! exception is `export_note` when its Node backend is missing: then it is
+//! not listed at all, since no flag would make it work.
 
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
@@ -52,12 +53,21 @@ impl SoloMdServer {
             !workspaces.is_empty(),
             "SoloMdServer requires at least one workspace"
         );
+        let mut tool_router = Self::tool_router();
+        // `export_note` needs `app/scripts/solomd-export.mjs`, its
+        // node_modules and `node` itself. The installed app ships none of
+        // them, so advertising the tool there only produced a confusing
+        // failure on the first call. Hide it unless the backend is present.
+        if let Err(e) = export_backend() {
+            debug!("export_note hidden: {e}");
+            tool_router.remove_route("export_note");
+        }
         Self {
             inner: Arc::new(ServerState {
                 workspaces,
                 allow_write,
             }),
-            tool_router: Self::tool_router(),
+            tool_router,
         }
     }
 
@@ -212,7 +222,8 @@ pub struct GetOutlineArgs {
 
 #[derive(Debug, Deserialize, Serialize, JsonSchema)]
 pub struct WriteNoteArgs {
-    /// Path to the note. Created if it does not exist (parent must exist).
+    /// Path to the note (`.md`, `.markdown` or `.txt`). Created if it does
+    /// not exist; missing folders inside the workspace are created too.
     pub path: String,
     /// New file content (UTF-8).
     pub content: String,
@@ -321,9 +332,14 @@ pub struct ExportNoteArgs {
     pub format: Option<String>,
     /// Where to write the result. Defaults to a sibling file next to
     /// `path` with the format-appropriate extension. Pass an absolute
-    /// path or a workspace-relative path to override.
+    /// path or a workspace-relative path to override. Missing folders are
+    /// created inside the workspace only; outside it the folder must exist.
     #[serde(default)]
     pub output_path: Option<String>,
+    /// Replace the output file if it already exists. Defaults to false:
+    /// an existing file is never overwritten unless this is true.
+    #[serde(default)]
+    pub overwrite: Option<bool>,
     /// Workspace selector — alias or absolute path. Default = first workspace.
     #[serde(default)]
     pub workspace: Option<String>,
@@ -579,7 +595,7 @@ impl SoloMdServer {
     /// Heading outline for a note.
     #[tool(
         name = "get_outline",
-        description = "Return the heading outline of a note, with level (1-6), text, and 1-based line number. Pass `workspace` (alias or absolute path) to target a non-default workspace; omit it to use the first registered workspace."
+        description = "Return the heading outline of a note, with level (1-6), text, and 1-based line number in the file (front matter counted, same as list_tasks and search). Pass `workspace` (alias or absolute path) to target a non-default workspace; omit it to use the first registered workspace."
     )]
     pub async fn get_outline(
         &self,
@@ -593,7 +609,12 @@ impl SoloMdServer {
         let raw = std::fs::read_to_string(&path)
             .map_err(|e| McpError::internal_error(e.to_string(), None))?;
         let (_fm, body) = workspace::split_front_matter(&raw);
-        let headings: Vec<HeadingRef> = workspace::extract_headings(body);
+        // File line numbers, like list_tasks and search — not body-relative.
+        let offset = workspace::body_line_offset(&raw, body);
+        let headings: Vec<HeadingRef> = workspace::extract_headings(body)
+            .into_iter()
+            .map(|h| HeadingRef { line: h.line + offset, ..h })
+            .collect();
         Ok(CallToolResult::success(vec![
             Content::json(serde_json::json!({ "outline": headings }))
                 .map_err(|e| McpError::internal_error(e.to_string(), None))?
@@ -603,7 +624,7 @@ impl SoloMdServer {
     /// Write (or overwrite) a note. Gated by `--allow-write`.
     #[tool(
         name = "write_note",
-        description = "Write a Markdown note to disk. Requires the server to be started with --allow-write. Refuses to overwrite an existing file unless `allow_overwrite` is true. Pass `workspace` (alias or absolute path) to target a non-default workspace; omit it to use the first registered workspace."
+        description = "Write a Markdown note to disk. Requires the server to be started with --allow-write. Only .md, .markdown and .txt paths inside the workspace are accepted; missing folders are created. Refuses to overwrite an existing file unless `allow_overwrite` is true. Pass `workspace` (alias or absolute path) to target a non-default workspace; omit it to use the first registered workspace."
     )]
     pub async fn write_note(
         &self,
@@ -618,8 +639,22 @@ impl SoloMdServer {
         let workspace = self
             .resolve_workspace(args.0.workspace.as_deref())
             .map_err(|e| McpError::invalid_params(e, None))?;
-        let path = safety::resolve_in(workspace, &args.0.path, false)
+        // Notes only: an agent with write access should not be able to drop
+        // scripts or dotfiles into the vault under the name of a note.
+        if !is_note_extension(Path::new(&args.0.path)) {
+            return Err(McpError::invalid_params(
+                "write_note only writes .md, .markdown or .txt files",
+                None,
+            ));
+        }
+        let (path, inside) = safety::resolve_new(workspace, &args.0.path)
             .map_err(|e| McpError::invalid_params(e, None))?;
+        if !inside {
+            return Err(McpError::invalid_params(
+                format!("path {} escapes workspace {}", path.display(), workspace.display()),
+                None,
+            ));
+        }
         let allow_overwrite = args.0.allow_overwrite.unwrap_or(false);
         if path.exists() && !allow_overwrite {
             return Err(McpError::invalid_request(
@@ -629,6 +664,10 @@ impl SoloMdServer {
                 ),
                 None,
             ));
+        }
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)
+                .map_err(|e| McpError::internal_error(e.to_string(), None))?;
         }
         let bytes = args.0.content.len();
         std::fs::write(&path, args.0.content)
@@ -822,27 +861,34 @@ impl SoloMdServer {
         ]))
     }
 
-    /// v4.0 Pillar 3 — return the agent trace for a single run.
-    ///
-    /// Reads `<workspace>/.solomd/agent-runs/<run_id>/trace.jsonl` and
-    /// returns its lines as a JSON array, plus a count. Tolerates malformed
     /// v4.1 — Headless export. Shells out to
     /// `app/scripts/solomd-export.mjs` (Node) so we share the engine the
     /// `solomd export` CLI uses + the in-app GUI's markdown-it config.
     ///
-    /// Read-only by default: the `output_path` is allowed to live OUTSIDE
-    /// the workspace (e.g. `/tmp/foo.docx`) without requiring
-    /// `--allow-write`. We treat exports as derived artifacts, not as
-    /// modifications of the vault. Writing to a path INSIDE the
-    /// workspace IS gated by `allow_write` for safety.
+    /// Every export writes a file, so the tool is gated by `--allow-write`
+    /// like the other write tools, wherever `output_path` points. It used
+    /// to treat outside-the-workspace paths as harmless "derived
+    /// artifacts", which let a read-only server overwrite any file the
+    /// user could write. An existing file is never replaced unless the
+    /// caller passes `overwrite: true`, and missing folders are only
+    /// created inside the workspace.
+    ///
+    /// The tool is only listed when the script and `node` were found at
+    /// startup (see `SoloMdServer::new`): the app bundle ships neither.
     #[tool(
         name = "export_note",
-        description = "Export a Markdown note to html / md / txt / docx. Engine-parity with the SoloMD GUI export. Args: `path` (workspace-relative), `format` (default html), optional `output_path` (default: sibling file next to `path` with format-appropriate extension), optional `number_headings` (promote plain-text numbered sections like 6.2 / 6.2.1 to headings, default false). Returns the absolute output path. Requires Node.js + `pnpm install` in the SoloMD repo's app/ directory."
+        description = "Export a Markdown note to html / md / txt / docx. Engine-parity with the SoloMD GUI export. Requires --allow-write (it writes a file). Args: `path` (workspace-relative), `format` (default html), optional `output_path` (default: sibling file next to `path` with format-appropriate extension; may be outside the workspace, but then its folder must exist), optional `overwrite` (default false: an existing output file is never replaced unless this is true), optional `number_headings` (promote plain-text numbered sections like 6.2 / 6.2.1 to headings, default false). Returns the absolute output path. Needs Node.js and a SoloMD source checkout with `pnpm install` run in app/."
     )]
     pub async fn export_note(
         &self,
         args: Parameters<ExportNoteArgs>,
     ) -> Result<CallToolResult, McpError> {
+        if !self.inner.allow_write {
+            return Err(McpError::invalid_request(
+                "export_note writes a file and is disabled. Restart solomd-mcp with --allow-write to enable it.",
+                None,
+            ));
+        }
         let workspace = self
             .resolve_workspace(args.0.workspace.as_deref())
             .map_err(|e| McpError::invalid_params(e, None))?
@@ -858,35 +904,45 @@ impl SoloMdServer {
             ));
         }
 
-        // Resolve output path. If user gave one, take it as-is — but if
-        // it falls inside the workspace, we treat it as a write op and
-        // require allow_write.
-        let output_path = match args.0.output_path.as_deref() {
-            Some(p) => {
-                let pb = PathBuf::from(p);
-                if pb.is_absolute() {
-                    pb
-                } else {
-                    workspace.join(p)
-                }
-            }
+        let requested = match args.0.output_path.as_deref() {
+            Some(p) => p.to_string(),
             None => {
                 let stem = input_path.file_stem().unwrap_or_default();
                 let mut sibling = input_path.clone();
                 sibling.set_file_name(format!("{}.{}", stem.to_string_lossy(), fmt));
-                sibling
+                sibling.to_string_lossy().to_string()
             }
         };
-        let output_canonical_parent = output_path
-            .parent()
-            .and_then(|p| p.canonicalize().ok())
-            .unwrap_or_else(|| output_path.clone());
-        let inside_workspace = output_canonical_parent.starts_with(&workspace);
-        if inside_workspace && !self.inner.allow_write {
+        let (output_path, inside_workspace) = safety::resolve_new(&workspace, &requested)
+            .map_err(|e| McpError::invalid_params(e, None))?;
+        if output_path == input_path {
             return Err(McpError::invalid_params(
-                "output_path lives inside the workspace; writes require --allow-write".to_string(),
+                "output_path is the source note itself; pick another file",
                 None,
             ));
+        }
+        if output_path.exists() && !args.0.overwrite.unwrap_or(false) {
+            return Err(McpError::invalid_request(
+                format!(
+                    "{} already exists. Pass overwrite=true to replace it.",
+                    output_path.display()
+                ),
+                None,
+            ));
+        }
+        match output_path.parent() {
+            Some(parent) if inside_workspace => std::fs::create_dir_all(parent)
+                .map_err(|e| McpError::internal_error(e.to_string(), None))?,
+            Some(parent) if !parent.is_dir() => {
+                return Err(McpError::invalid_params(
+                    format!(
+                        "folder does not exist: {} (export_note only creates folders inside the workspace)",
+                        parent.display()
+                    ),
+                    None,
+                ));
+            }
+            _ => {}
         }
 
         let script = find_export_script().map_err(|e| {
@@ -927,13 +983,19 @@ impl SoloMdServer {
         ]))
     }
 
+    /// v4.0 Pillar 3 — return the agent trace for a single run.
+    ///
+    /// Reads `<workspace>/.solomd/agent-runs/<run_id>/trace.jsonl` and
+    /// returns its lines as a JSON array, plus a count. Tolerates malformed
     /// lines (skipped, not errored) so partial / crashed runs are still
-    /// inspectable. The reader is a slim duplicate of the canonical
+    /// inspectable. A run id with no trace on disk is an error, not an
+    /// empty success, so a mistyped id can't pass for a run that did
+    /// nothing. The reader is a slim duplicate of the canonical
     /// `app/src-tauri/src/trace.rs` parser — we don't path-dep into the
     /// app crate to keep `solomd-mcp` self-contained.
     #[tool(
         name = "read_agent_trace",
-        description = "Return the agent run trace as an array of step objects. Lines from `<workspace>/.solomd/agent-runs/<run_id>/trace.jsonl`. Each step has ts (unix ms), seq (1-based), kind, plus kind-specific fields (provider/model/tool/result/...). See SoloMD v4 contracts C2 for the schema."
+        description = "Return the agent run trace as an array of step objects. Lines from `<workspace>/.solomd/agent-runs/<run_id>/trace.jsonl`; an unknown run id is an error. Each step has ts (unix ms), seq (1-based), kind, plus kind-specific fields (provider/model/tool/result/...). See SoloMD v4 contracts C2 for the schema."
     )]
     pub async fn read_agent_trace(
         &self,
@@ -954,6 +1016,12 @@ impl SoloMdServer {
             .join(".solomd")
             .join("agent-runs")
             .join(&run_id);
+        if !dir.join("trace.jsonl").is_file() {
+            return Err(McpError::invalid_params(
+                format!("agent run not found: {run_id} (no .solomd/agent-runs/{run_id}/trace.jsonl)"),
+                None,
+            ));
+        }
         let steps = tokio::task::spawn_blocking(move || trace_reader::read_trace(&dir))
             .await
             .map_err(|e| McpError::internal_error(format!("join: {e}"), None))?
@@ -995,7 +1063,7 @@ impl ServerHandler for SoloMdServer {
             .with_instructions(format!(
                 "Read and (optionally) write SoloMD Markdown notes vaults. \
                  Tools are read-only by default; restart with --allow-write to expose \
-                 write_note + append_to_note + autogit_rollback. {workspace_blurb}"
+                 write_note + append_to_note + autogit_rollback + export_note. {workspace_blurb}"
             ))
     }
 }
@@ -1075,11 +1143,16 @@ async fn search_with_rg(
             .unwrap_or("")
             .to_string();
         let line_no = data.get("line_number").and_then(|n| n.as_u64()).unwrap_or(0) as u32;
-        let column = data
+        // rg reports byte offsets; clients count characters, so a match
+        // after CJK text would otherwise land several columns too far.
+        let start = data
             .pointer("/submatches/0/start")
             .and_then(|n| n.as_u64())
-            .unwrap_or(0) as u32
-            + 1;
+            .unwrap_or(0) as usize;
+        let column = match data.pointer("/lines/text").and_then(|t| t.as_str()) {
+            Some(text) => char_column(text, start),
+            None => start as u32 + 1,
+        };
         let snippet = workspace::read_context(std::path::Path::new(&path), line_no);
         hits.push(SearchHit {
             path,
@@ -1114,15 +1187,16 @@ fn search_native(
         };
         for (line_idx, line) in raw.lines().enumerate() {
             let col = if let Some(re) = &pattern {
-                re.find(line).map(|m| m.start() + 1)
+                re.find(line).map(|m| char_column(line, m.start()))
             } else {
-                line.to_lowercase().find(&needle_lower).map(|c| c + 1)
+                let lower = line.to_lowercase();
+                lower.find(&needle_lower).map(|c| char_column(&lower, c))
             };
             if let Some(column) = col {
                 hits.push(SearchHit {
                     path: path.to_string_lossy().to_string(),
                     line: (line_idx as u32) + 1,
-                    column: column as u32,
+                    column,
                     snippet: workspace::read_context(&path, (line_idx as u32) + 1),
                 });
                 if hits.len() >= limit {
@@ -1426,6 +1500,42 @@ fn urlencode(s: &str) -> String {
 // URL, etc.) without spinning up the JSON-RPC server.
 // ---------------------------------------------------------------------------
 
+/// 1-based character column of byte offset `byte` in `line`. Offsets that
+/// fall inside a character (or past the end) are clamped.
+fn char_column(line: &str, byte: usize) -> u32 {
+    let mut end = byte.min(line.len());
+    while !line.is_char_boundary(end) {
+        end -= 1;
+    }
+    line[..end].chars().count() as u32 + 1
+}
+
+/// `write_note` only creates notes; anything else is refused.
+fn is_note_extension(path: &Path) -> bool {
+    path.extension()
+        .and_then(|e| e.to_str())
+        .map(|e| matches!(e.to_ascii_lowercase().as_str(), "md" | "markdown" | "txt"))
+        .unwrap_or(false)
+}
+
+/// Is `export_note` usable here? Needs the script and a working `node`.
+/// Checked once at startup to decide whether the tool is listed.
+fn export_backend() -> Result<PathBuf, String> {
+    let script = find_export_script()?;
+    let node_ok = std::process::Command::new("node")
+        .arg("--version")
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false);
+    if !node_ok {
+        return Err("node is not on PATH".into());
+    }
+    Ok(script)
+}
+
 /// Locate `app/scripts/solomd-export.mjs`, the Node tool that backs the
 /// `export_note` MCP tool and the `solomd export` CLI subcommand.
 ///
@@ -1433,8 +1543,9 @@ fn urlencode(s: &str) -> String {
 ///   1. `$SOLOMD_EXPORT_SCRIPT` env var (explicit override).
 ///   2. `<exe-dir>/../app/scripts/solomd-export.mjs` (running from the
 ///      SoloMD repo's release build, e.g. `mcp-server/target/release/`).
-///   3. `<exe-dir>/../../app/scripts/solomd-export.mjs` (running from a
-///      monorepo dev build).
+///   3. `<exe-dir>/../../app/scripts/solomd-export.mjs` and
+///      `<exe-dir>/../../../app/…` (running from a monorepo dev build,
+///      e.g. `mcp-server/target/debug/`).
 ///   4. `<cwd>/app/scripts/solomd-export.mjs` (running from repo root).
 ///   5. `~/.solomd/solomd-export.mjs` (manually installed).
 fn find_export_script() -> Result<PathBuf, String> {
@@ -1450,6 +1561,7 @@ fn find_export_script() -> Result<PathBuf, String> {
         if let Some(parent) = exe.parent() {
             candidates.push(parent.join("../app/scripts/solomd-export.mjs"));
             candidates.push(parent.join("../../app/scripts/solomd-export.mjs"));
+            candidates.push(parent.join("../../../app/scripts/solomd-export.mjs"));
         }
     }
     if let Ok(cwd) = std::env::current_dir() {
