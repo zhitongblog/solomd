@@ -92,7 +92,11 @@ const isMarkdown = computed(() => tabs.activeTab?.language === 'markdown');
 function isInteractiveTitleBarTarget(el: EventTarget | null): boolean {
   const node = el as HTMLElement | null;
   return !!node?.closest?.(
-    'button, input, select, textarea, a, [contenteditable="true"], .dropdown__menu, [data-no-drag]',
+    // `[role="tab"]`: 5.0 moved the tab strip into this bar, and a tab is a
+    // div — so pressing one started a window drag, the OS kept the mouseup,
+    // and the click that switches tabs never fired (Windows VM, 2026-10-08).
+    // The strip's empty space still drags the window.
+    'button, input, select, textarea, a, [role="tab"], [contenteditable="true"], .dropdown__menu, [data-no-drag]',
   );
 }
 function onTitleBarMouseDown(e: MouseEvent) {
