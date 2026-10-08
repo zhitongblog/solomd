@@ -207,6 +207,13 @@ function onImageUrlConfirm(url: string, alt: string) {
 // SettingsPanel watches it and switches activeCategory accordingly.
 const settingsInitialSection = ref<string | null>(null);
 function openSettingsAt(section: string | null = null) {
+  // Every "AI isn't set up yet" path (toolbar AI, rewrite overlay, agent
+  // panel) lands here with `integrations`. Until the wizard has been seen,
+  // that first reach for AI gets the guided setup instead of a settings page.
+  if (section === 'integrations' && !IS_APP_STORE_BUILD && !settings.agentWizardSeen) {
+    wizardOpen.value = true;
+    return;
+  }
   settingsInitialSection.value = section;
   settingsOpen.value = true;
 }
@@ -1359,16 +1366,11 @@ onMounted(async () => {
     tabs.newTab();
   }
 
-  // v4.0 first-run agent setup wizard. Fires after the welcome tour on a
-  // fresh install — once. Re-openable from Settings → AI ("Run setup
-  // wizard again") for users who skipped it. We wait one tick so the
-  // welcome tour overlay (if any) shows first. App Store builds skip
-  // entirely (Apple 3.1.1 — no AI surface).
-  if (!IS_APP_STORE_BUILD && !settings.agentWizardSeen) {
-    setTimeout(() => {
-      wizardOpen.value = true;
-    }, isFreshLaunch ? 800 : 0);
-  }
+  // The agent setup wizard no longer opens by itself at first launch: 5.0
+  // starts on the page, and a modal about AI providers was the first thing
+  // a new user saw — covering the phone home screen entirely. It now opens
+  // the first time someone reaches for AI before setting it up (see
+  // `openSettingsAt`), and stays re-openable from Settings → AI.
   // Settings → AI's "Run setup wizard again" button asks here. Registered
   // as a named handler (see `onOpenAgentWizard` below) so onBeforeUnmount
   // can detach it — otherwise every HMR remount stacks another listener.
