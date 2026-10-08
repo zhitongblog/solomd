@@ -5,6 +5,7 @@ import Preview from './Preview.vue';
 import { useSettingsStore, clampSplitRatio, SPLIT_RATIO_MIN, SPLIT_RATIO_MAX } from '../stores/settings';
 import { useI18n } from '../i18n';
 import { useTilesStore } from '../stores/tiles';
+import { useTabsStore } from '../stores/tabs';
 import type { Tab } from '../types';
 import { isWindowsEditorRuntime, shouldUsePlainWindowsEditor } from '../lib/platform';
 
@@ -20,6 +21,7 @@ const emit = defineEmits<{
 
 const settings = useSettingsStore();
 const tiles = useTilesStore();
+const tabs = useTabsStore();
 const { t } = useI18n();
 
 const editorRef = ref<InstanceType<typeof Editor> | null>(null);
@@ -62,10 +64,35 @@ const editorImplementationKey = computed(() => {
 });
 
 function onCursor(line: number, col: number) {
+  // A12 — remember the caret per tab so a relaunch can put it back.
+  if (props.tab) tabs.setCursor(props.tab.id, line, col);
   if (isFocused.value) {
     emit('cursor', line, col);
   }
 }
+
+// A12 — put the caret back where it was in the previous session, once per
+// restored tab, the first time that tab is shown in the focused pane's
+// editor (preview-only mode keeps it pending until an editor shows it).
+// `setCaret(line, col)` is used when the editor exposes it; otherwise the
+// existing `gotoLine` lands on the right line (column 1).
+function restoreLaunchCursor() {
+  const tab = props.tab;
+  if (!tab || !isFocused.value || !showEditor.value) return;
+  const tabId = tab.id;
+  setTimeout(() => {
+    const ed = editorRef.value as unknown as {
+      setCaret?: (line: number, col: number) => void;
+      gotoLine?: (line: number) => void;
+    } | null;
+    if (!ed || props.tab?.id !== tabId) return;
+    const c = tabs.takeLaunchCursor(tabId);
+    if (!c) return;
+    if (ed.setCaret) ed.setCaret(c.line, c.col);
+    else ed.gotoLine?.(c.line);
+  }, 150);
+}
+watch(() => [props.tab?.id, isFocused.value, showEditor.value], restoreLaunchCursor);
 
 function onSelection(text: string) {
   if (isFocused.value) {
@@ -441,6 +468,7 @@ watch(() => props.tab?.id, async () => {
 
 onMounted(() => {
   setTimeout(bindScrollSync, 300);
+  restoreLaunchCursor();
   window.addEventListener('solomd:outline-goto', onOutlineGotoEvent);
   window.addEventListener('solomd:insert-markdown', onInsertMarkdownEvent);
   window.addEventListener('solomd:insert-image-path', onInsertImagePathEvent);

@@ -64,8 +64,8 @@ export function useSessionRestore() {
     const sessionTabs: SessionTab[] = tabs.tabs.map((t) => ({
       file_path: t.filePath ?? null,
       file_name: t.fileName,
-      cursor_line: null,
-      cursor_col: null,
+      cursor_line: t.cursor?.line ?? null,
+      cursor_col: t.cursor?.col ?? null,
       rel_path: t.filePath ? workspaceRelative(t.filePath, root) : null,
     }));
     return {

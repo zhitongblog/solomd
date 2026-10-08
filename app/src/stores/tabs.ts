@@ -179,8 +179,28 @@ export interface ClosedTabRecord {
 const CLOSED_TAB_LIMIT = 20;
 const closedTabs: ClosedTabRecord[] = [];
 
+/**
+ * A12 — caret positions to put back once, for tabs that came back from a
+ * persisted session (launch, or returning to a workspace). Snapshotted at
+ * load time so the editor's own first cursor report (line 1 on mount) cannot
+ * overwrite the remembered position before the pane gets to apply it.
+ * Non-reactive on purpose: it is consumed, never rendered.
+ */
+const launchCursors = new Map<string, { line: number; col: number }>();
+function rememberLaunchCursors(list: Tab[]) {
+  for (const t of list) {
+    const c = t.cursor;
+    if (c && Number.isFinite(c.line) && c.line >= 1) launchCursors.set(t.id, { line: c.line, col: c.col || 1 });
+  }
+}
+let cursorPersistTimer: ReturnType<typeof setTimeout> | null = null;
+
 export const useTabsStore = defineStore('tabs', {
-  state: (): PersistedState => loadPersisted(),
+  state: (): PersistedState => {
+    const s = loadPersisted();
+    rememberLaunchCursors(s.tabs);
+    return s;
+  },
   getters: {
     activeTab(state): Tab | undefined {
       return state.tabs.find((t) => t.id === state.activeId);
@@ -290,6 +310,28 @@ export const useTabsStore = defineStore('tabs', {
     setContent(id: string, content: string) {
       const t = this.tabs.find((x) => x.id === id);
       if (t) t.content = content;
+    },
+    /** A12 — record the caret (1-based line/col) the editor reports. The
+     *  auto-persist watcher in App.vue keys on content, not on the caret,
+     *  so persist here on a short debounce (one localStorage write per
+     *  pause, not per arrow key). */
+    setCursor(id: string, line: number, col: number) {
+      const t = this.tabs.find((x) => x.id === id);
+      if (!t || line < 1) return;
+      if (t.cursor && t.cursor.line === line && t.cursor.col === col) return;
+      t.cursor = { line, col };
+      if (cursorPersistTimer) clearTimeout(cursorPersistTimer);
+      cursorPersistTimer = setTimeout(() => {
+        cursorPersistTimer = null;
+        this.persist();
+      }, 800);
+    },
+    /** A12 — the caret position remembered for this tab from the previous
+     *  session, returned once (then forgotten). */
+    takeLaunchCursor(id: string): { line: number; col: number } | null {
+      const c = launchCursors.get(id) ?? null;
+      launchCursors.delete(id);
+      return c;
     },
     /** v4.6 F1 — apply content that was just written to disk by an external
      *  path (the Properties inspector's Rust frontmatter round-trip). Sets both
@@ -500,6 +542,7 @@ export const useTabsStore = defineStore('tabs', {
       // Carried tabs win (they hold the live, possibly-unsaved content).
       carried.forEach(push);
       restored.tabs.forEach(push);
+      rememberLaunchCursors(restored.tabs.filter((t) => !carried.some((c) => c.id === t.id)));
       const removed = this.tabs.filter((t) => !merged.some((m) => m.id === t.id));
       this.tabs = merged;
       // Pick an active tab: prefer the restored bucket's active, else keep
