@@ -193,9 +193,9 @@ const c = COPY[lang] ?? COPY.en;
 // The selection shot is a crop of the editor, so the bar reads at web size;
 // it gets a card instead of a window shadow.
 const SHOTS = [
-  { src: '/v5/mac-focus.webp', w: 1600, h: 983 },
-  { src: '/v5/mac-bubble.webp', w: 1680, h: 850, crop: true },
-  { src: '/v5/mac-split.webp', w: 1600, h: 983 },
+  { src: '/v5/mac-focus.webp', dark: '/v5/mac-focus-dark.webp', w: 1600, h: 983 },
+  { src: '/v5/mac-bubble.webp', dark: '/v5/mac-bubble-dark.webp', w: 1680, h: 850, crop: true },
+  { src: '/v5/mac-split.webp', dark: '/v5/mac-split-dark.webp', w: 1600, h: 983 },
 ];
 ---
 
@@ -213,7 +213,10 @@ const SHOTS = [
         <p>{row.body}</p>
       </div>
       <figure class="v5__shot">
-        <img src={SHOTS[i].src} alt={row.alt} width={SHOTS[i].w} height={SHOTS[i].h} loading="lazy" decoding="async" class={SHOTS[i].crop ? 'v5__crop' : ''} />
+        <picture>
+          <source srcset={SHOTS[i].dark} media="(prefers-color-scheme: dark)" type="image/webp" />
+          <img src={SHOTS[i].src} alt={row.alt} width={SHOTS[i].w} height={SHOTS[i].h} loading="lazy" decoding="async" class={SHOTS[i].crop ? 'v5__crop' : ''} />
+        </picture>
       </figure>
     </div>
   ))}
@@ -299,6 +302,7 @@ const SHOTS = [
   .v5__shot img.v5__crop {
     border-radius: 16px;
     border: 1px solid var(--hairline);
+    background: var(--bg);
     filter: none;
     box-shadow: 0 18px 40px -18px rgba(31, 30, 28, 0.25);
   }

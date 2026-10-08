@@ -515,10 +515,14 @@ const initialDownloadsText = initialDownloads > 0 ? fmtDownloads(initialDownload
     overflow-x: clip;
   }
   .hero__inner { max-width: 960px; }
+  /* Inline text, not inline-flex: as flex items the star and download
+     spans became separate columns once the badge wrapped on a phone. */
   .hero__badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
+    display: inline-block;
+    max-width: 100%;
+    line-height: 1.5;
+    text-wrap: balance;
+    word-break: keep-all;
     padding: 6px 14px;
     border-radius: 999px;
     background: var(--fill-1);
