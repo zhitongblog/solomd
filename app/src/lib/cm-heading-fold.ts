@@ -169,7 +169,20 @@ export function headingFoldExtension(opts: HeadingFoldOptions = {}): Extension {
         return el;
       },
     }),
-    ...(opts.gutter === false ? [] : [foldGutter({ openText: '⌄', closedText: '›' })]),
+    ...(opts.gutter === false
+      ? []
+      : [
+          foldGutter({
+            // A state class per marker, so the open ones can stay out of the
+            // way (see the theme below) while a folded section always shows.
+            markerDOM: (open) => {
+              const el = document.createElement('span');
+              el.className = open ? 'cm-fold-marker cm-fold-marker--open' : 'cm-fold-marker cm-fold-marker--closed';
+              el.textContent = open ? '⌄' : '›';
+              return el;
+            },
+          }),
+        ]),
     keymap.of(foldKeymap),
     EditorView.baseTheme({
       '.cm-heading-fold-placeholder': {
@@ -180,8 +193,16 @@ export function headingFoldExtension(opts: HeadingFoldOptions = {}): Extension {
         cursor: 'pointer',
         background: 'rgba(127,127,127,0.18)',
       },
-      '.cm-foldGutter .cm-gutterElement': { padding: '0 2px', opacity: '0.55' },
-      '.cm-foldGutter .cm-gutterElement:hover': { opacity: '1' },
+      '.cm-foldGutter .cm-gutterElement': { padding: '0 2px', cursor: 'pointer' },
+      // 5.0: with the text in a centred column the gutter sits far from it,
+      // and a column of chevrons beside every heading reads as clutter. Open
+      // markers appear while the pointer is over the gutter; a folded
+      // section's marker always shows, since it is the way back.
+      '.cm-fold-marker': { transition: 'opacity 120ms ease' },
+      '.cm-fold-marker--open': { opacity: '0' },
+      '.cm-gutters:hover .cm-fold-marker--open': { opacity: '0.55' },
+      '.cm-gutters .cm-gutterElement:hover .cm-fold-marker--open': { opacity: '1' },
+      '.cm-fold-marker--closed': { opacity: '0.7' },
     }),
   ];
 }
