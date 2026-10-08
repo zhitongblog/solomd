@@ -31,7 +31,7 @@ jobs:
       - name: System libraries
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf libssl-dev libdbus-1-dev libxdo-dev
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf libssl-dev libdbus-1-dev libxdo-dev gnome-keyring dbus-x11
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
@@ -42,4 +42,6 @@ jobs:
           mkdir -p ../dist && [ -f ../dist/index.html ] || echo '<!doctype html>' > ../dist/index.html
           # tauri.conf bundles the MCP sidecar; the build script only checks it exists.
           mkdir -p binaries && touch "binaries/solomd-mcp-$(rustc -vV | sed -n 's/^host: //p')"
-          cargo test --lib
+          # The crypto tests store a key in the platform keyring: give them a
+          # session bus with an unlocked gnome-keyring.
+          dbus-run-session -- bash -c 'echo -n ci | gnome-keyring-daemon --unlock --components=secrets >/dev/null && cargo test --lib'
