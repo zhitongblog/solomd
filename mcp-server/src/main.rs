@@ -37,8 +37,9 @@ mod workspace;
     about = "MCP server for one or more SoloMD Markdown vaults",
     long_about = "Model Context Protocol server that exposes one *or more* SoloMD Markdown notes \
                   folders as a set of tools (list_notes, read_note, search, get_backlinks, \
-                  list_tags, get_outline, autogit_log/diff/rollback, sync_status, share_url, \
-                  write_note, append_to_note) over JSON-RPC stdio.\n\n\
+                  list_tags, list_tasks, get_outline, autogit_log/diff/rollback, sync_status, \
+                  share_url, read_agent_trace, write_note, append_to_note, export_note) over \
+                  JSON-RPC stdio, or Streamable HTTP with --transport http.\n\n\
                   Pass --workspace once per vault. Each value is either:\n  \
                     /abs/path             (alias defaults to the path's last component)\n  \
                     alias=/abs/path       (explicit alias)\n\n\
@@ -46,7 +47,9 @@ mod workspace;
                   `workspace` argument resolve to it, so existing single-workspace clients \
                   keep working unchanged.\n\n\
                   Read-only by default. Pass --allow-write to enable write_note, \
-                  append_to_note, and autogit_rollback."
+                  append_to_note, autogit_rollback and export_note. export_note is only \
+                  listed when Node.js and a SoloMD source checkout's \
+                  app/scripts/solomd-export.mjs are found (or SOLOMD_EXPORT_SCRIPT is set)."
 )]
 struct Cli {
     /// Workspace to serve. Repeat for multi-workspace mode.
@@ -54,7 +57,8 @@ struct Cli {
     #[arg(long, value_name = "ALIAS=DIR | DIR", required = true, num_args = 1)]
     workspace: Vec<String>,
 
-    /// Enable write_note + append_to_note + autogit_rollback (off by default).
+    /// Enable write_note + append_to_note + autogit_rollback + export_note
+    /// (off by default).
     #[arg(long, default_value_t = false)]
     allow_write: bool,
 
