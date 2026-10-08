@@ -651,6 +651,13 @@ watch(
   },
   { flush: 'post' },
 );
+watch(
+  () => [menuPos.value, anyToolbarMenuOpen.value, menubarOpen.value],
+  () => {
+    if (anyToolbarMenuOpen.value || menubarOpen.value) keepMenuOnScreen();
+  },
+  { flush: 'post' },
+);
 
 // ── Keyboard access for the toolbar menus ────────────────────────────────────
 // Items act on `mousedown.prevent` so a mouse click never steals focus (and
