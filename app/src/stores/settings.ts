@@ -1340,9 +1340,24 @@ export const useSettingsStore = defineStore('settings', {
       this.rightSidebarPaneHeights = { ...this.rightSidebarPaneHeights, [paneId]: clean };
       this.persist();
     },
-    clearRightSidebarPaneHeights() {
+    /** Double-click on one splitter: even out the pane heights only. */
+    resetRightSidebarPaneHeights() {
       this.rightSidebarPaneHeights = {};
       this.persist();
+    },
+    /** E3 — "Reset sidebar layout": pane heights, pane order and the sidebar
+     *  width all go back to their defaults (it used to reset heights only,
+     *  leaving a reordered, 400 px sidebar looking un-reset). */
+    resetRightSidebarLayout() {
+      const d = defaults();
+      this.rightSidebarPaneHeights = {};
+      this.rsPaneOrder = [...d.rsPaneOrder];
+      this.sideSidebarWidth = d.sideSidebarWidth;
+      this.persist();
+    },
+    /** The view.resetSidebarPanes command's entry point (useCommands.ts). */
+    clearRightSidebarPaneHeights() {
+      this.resetRightSidebarLayout();
     },
     setAutoGitDebounceSeconds(n: number) {
       this.autoGitDebounceSeconds = Math.max(5, Math.min(600, Math.round(n) || 30));
@@ -1544,7 +1559,7 @@ export const useSettingsStore = defineStore('settings', {
       this.persist();
     },
     resetRsPaneOrder() {
-      this.rsPaneOrder = ['search', 'outline', 'backlinks', 'relationships', 'tags', 'tasks', 'neighborhood', 'types', 'history', 'inspector', 'agent'];
+      this.rsPaneOrder = [...defaults().rsPaneOrder];
       this.persist();
     },
     /** v4.3.0 PR #74 — preview-only font size. Editor font is the existing

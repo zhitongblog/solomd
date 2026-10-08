@@ -61,7 +61,7 @@ function startDrag(e: MouseEvent) {
     :class="{ 'rs-splitter--active': dragging }"
     :title="t('rightSidebar.dragToResize')"
     @mousedown="startDrag"
-    @dblclick="settings.clearRightSidebarPaneHeights()"
+    @dblclick="settings.resetRightSidebarPaneHeights()"
   />
 </template>
 
