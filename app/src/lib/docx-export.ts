@@ -4,6 +4,7 @@
  *
  * Supports: headings (h1-h6), paragraphs, bold, italic, inline code, links,
  * fenced code blocks, ordered/bullet lists, blockquotes, horizontal rules,
+ * math (as LaTeX source),
  * tables, and embedded images (local + remote).
  */
 
@@ -273,6 +274,11 @@ function buildRuns(inlineToken: Token, style: RunStyle = {}): (TextRun | ImageRu
       case 'code_inline':
         push(new TextRun({ text: tok.content, ...toRunOpts({ ...cur, code: true }) }));
         break;
+      case 'math_inline':
+        // LaTeX source in a math font, so it reads as a formula rather than
+        // as stray prose (Word has no KaTeX).
+        push(new TextRun({ text: tok.content, ...toRunOpts(cur), font: MATH_FONT }));
+        break;
       case 'link_open': {
         const href = tok.attrGet('href') ?? '';
         pendingLink = { href, runs: [] };
@@ -311,6 +317,21 @@ function buildRuns(inlineToken: Token, style: RunStyle = {}): (TextRun | ImageRu
     }
   }
   return out;
+}
+
+const MATH_FONT = 'Cambria Math';
+
+/** Display math as its LaTeX source: centred, one line per source line. */
+function mathBlockParagraph(latex: string): Paragraph {
+  const lines = latex.trim().split('\n');
+  return new Paragraph({
+    children: lines.flatMap((line, idx) => [
+      ...(idx > 0 ? [new TextRun({ break: 1 })] : []),
+      new TextRun({ text: line, font: MATH_FONT }),
+    ]),
+    alignment: AlignmentType.CENTER,
+    spacing: { before: 160, after: 160 },
+  });
 }
 
 function toRunOpts(s: RunStyle) {
@@ -515,6 +536,15 @@ async function buildBody(tokens: Token[], imageRoot: string | null, filePath?: s
             })
           );
         }
+        i += 1;
+        break;
+      }
+      case 'math_block':
+      case 'math_block_eqno': {
+        // Word has no KaTeX: keep display math as its LaTeX source, one
+        // centred Cambria Math line per source line, rather than dropping it
+        // (same choice as the CLI exporter, scripts/solomd-export.mjs).
+        out.push(mathBlockParagraph(tok.content || ''));
         i += 1;
         break;
       }
