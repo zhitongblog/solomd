@@ -4,6 +4,7 @@ import { initMermaid } from '../lib/mermaid-lazy';
 import { mermaidThemeFor } from '../lib/themes';
 import { openRenderedLink } from '../lib/link-open';
 import { renderMarkdown, extractImageRoot } from '../lib/markdown';
+import { togglePreviewTask } from '../lib/preview-task-toggle';
 import { useRenderDepsVersion } from '../composables/useRenderDepsVersion';
 import { plantumlSvgUrl } from '../lib/plantuml';
 import { installSvgImageFallbacks, rewriteImageUrls } from '../lib/image-resolve';
@@ -130,6 +131,41 @@ function saveMathEdit() {
 
 function cancelMathEdit() {
   mathEdit.value = null;
+}
+
+// ── Clickable task checkboxes ──
+// renderMarkdown emits them `disabled` so exported HTML/PDF stay static; the
+// in-app preview of a real tab re-enables them and writes the toggle back to
+// the tab (the editor follows the store, as for the math edit above).
+function enableTaskCheckboxes() {
+  if (!host.value || !props.tabId) return;
+  for (const box of Array.from(host.value.querySelectorAll<HTMLInputElement>('input.task-list-item-checkbox'))) {
+    box.disabled = false;
+  }
+}
+
+function onTaskCheckboxClick(e: MouseEvent) {
+  const box = e.target as HTMLElement;
+  if (!(box instanceof HTMLInputElement) || !box.classList.contains('task-list-item-checkbox')) return;
+  if (!props.tabId || !host.value) {
+    e.preventDefault();
+    return;
+  }
+  // The click has already flipped `checked`; the state the user saw is the opposite.
+  const wasChecked = !box.checked;
+  const all = Array.from(host.value.querySelectorAll('input.task-list-item-checkbox'));
+  const li = box.closest('li.task-list-item');
+  const dataLine = Number(li?.getAttribute('data-line') || 0);
+  // The editor syncs into the store on a debounce; flush first so the toggle
+  // is applied to what is on screen, not to text a few keystrokes old.
+  window.dispatchEvent(new Event('solomd:flush-content-sync'));
+  const tab = tabs.tabs.find((x) => x.id === props.tabId);
+  const next = togglePreviewTask(tab?.content ?? props.source ?? '', dataLine, all.indexOf(box), wasChecked);
+  if (next === null) {
+    e.preventDefault();
+    return;
+  }
+  tabs.setContent(props.tabId, next);
 }
 
 function onMathKeydown(e: KeyboardEvent) {
@@ -419,6 +455,7 @@ watch(html, async () => {
   await processWhiteboards();
   attachImageOverlayHandlers();
   attachCodeCopyButtons();
+  enableTaskCheckboxes();
 });
 
 // Toggling PlantUML (or changing the server) must re-render: the markdown
@@ -436,6 +473,7 @@ watch(
     await processWhiteboards();
     attachImageOverlayHandlers();
     attachCodeCopyButtons();
+    enableTaskCheckboxes();
   },
 );
 
@@ -458,12 +496,15 @@ onMounted(async () => {
   await processWhiteboards();
   attachImageOverlayHandlers();
   attachCodeCopyButtons();
+  enableTaskCheckboxes();
   host.value?.addEventListener('click', handleLinkClick);
+  host.value?.addEventListener('click', onTaskCheckboxClick);
   host.value?.addEventListener('dblclick', onPreviewDblClick);
 });
 
 onBeforeUnmount(() => {
   host.value?.removeEventListener('click', handleLinkClick);
+  host.value?.removeEventListener('click', onTaskCheckboxClick);
   host.value?.removeEventListener('dblclick', onPreviewDblClick);
 });
 
