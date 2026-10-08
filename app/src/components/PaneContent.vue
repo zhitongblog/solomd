@@ -312,31 +312,37 @@ function bindScrollSync() {
     // Bracket the viewport top between two anchors, take the pixel fraction
     // scrolled between them, and scroll the editor to the same fraction
     // between the anchors' source lines — the mirror of onEditorScroll.
-    for (let i = 0; i < previewLines.length; i++) {
-      const r = previewLines[i].el.getBoundingClientRect();
-      if (r.bottom < wrapTop) continue;
-      const a = previewLines[i];
-      let targetLine: number = a.line;
-      let t = 0;
-      let b: { line: number } | null = null;
-      if (r.top < wrapTop && i + 1 < previewLines.length) {
-        const next = previewLines[i + 1];
-        const bTop = next.el.getBoundingClientRect().top;
-        t = bTop > r.top ? Math.min(1, (wrapTop - r.top) / (bTop - r.top)) : 0;
-        b = next;
-        targetLine = a.line + t * (next.line - a.line);
-      }
-      const yA = cmRef?.lineTopY ? cmRef.lineTopY(a.line) : null;
-      const yB = b && cmRef?.lineTopY ? cmRef.lineTopY(b.line) : null;
-      syncGuard = true;
-      if (yA != null && (t === 0 || (yB != null && yB > yA))) {
-        editor.scrollTop = Math.max(0, yA + (yB != null ? t * (yB - yA) : 0) - 8);
-      } else if (cmRef?.scrollToLine) {
-        cmRef.scrollToLine(targetLine);
-      }
-      requestAnimationFrame(() => { syncGuard = false; });
-      break;
+    // The anchor at the viewport top is the *last* one starting at or above
+    // it — not the first whose box reaches it: a list, table or quote box
+    // spans its whole body, so that picked the list's first line and threw
+    // the editor back to where the list began.
+    let i = -1;
+    for (let k = 0; k < previewLines.length; k++) {
+      if (previewLines[k].el.getBoundingClientRect().top <= wrapTop) i = k;
+      else break;
     }
+    if (i < 0) i = 0;
+    const a = previewLines[i];
+    const r = a.el.getBoundingClientRect();
+    let targetLine: number = a.line;
+    let t = 0;
+    let b: { line: number } | null = null;
+    const next = previewLines.find((e, k) => k > i && e.line > a.line);
+    if (r.top < wrapTop && next) {
+      const bTop = next.el.getBoundingClientRect().top;
+      t = bTop > r.top ? Math.min(1, (wrapTop - r.top) / (bTop - r.top)) : 0;
+      b = next;
+      targetLine = a.line + t * (next.line - a.line);
+    }
+    const yA = cmRef?.lineTopY ? cmRef.lineTopY(a.line) : null;
+    const yB = b && cmRef?.lineTopY ? cmRef.lineTopY(b.line) : null;
+    syncGuard = true;
+    if (yA != null && (t === 0 || (yB != null && yB > yA))) {
+      editor.scrollTop = Math.max(0, yA + (yB != null ? t * (yB - yA) : 0) - 8);
+    } else if (cmRef?.scrollToLine) {
+      cmRef.scrollToLine(targetLine);
+    }
+    requestAnimationFrame(() => { syncGuard = false; });
   };
 
   editor.addEventListener('scroll', onEditorScroll, { passive: true });

@@ -4987,8 +4987,11 @@ function getViewLine(): number | null {
     return line;
   }
   if (!view) return null;
-  const top = view.scrollDOM.scrollTop;
-  const block = view.lineBlockAtHeight(top);
+  // Block heights are measured from the top of the document; scrollTop also
+  // counts the content's top padding above it (56px in 5.0). Mixing the two
+  // put the split panes that far apart.
+  const top = view.scrollDOM.scrollTop - docTopInScroller(view);
+  const block = view.lineBlockAtHeight(Math.max(0, top));
   const frac =
     block.height > 0 ? Math.max(0, Math.min(0.999, (top - block.top) / block.height)) : 0;
   return view.state.doc.lineAt(block.from).number + frac;
@@ -5010,7 +5013,13 @@ function lineTopY(line: number): number | null {
   }
   if (!view) return null;
   const safe = Math.max(1, Math.min(Math.floor(line), view.state.doc.lines));
-  return view.lineBlockAt(view.state.doc.line(safe).from).top;
+  return view.lineBlockAt(view.state.doc.line(safe).from).top + docTopInScroller(view);
+}
+
+/** Where the document starts in the scroller's scrollTop space — the
+ *  content's top padding. */
+function docTopInScroller(v: EditorView): number {
+  return v.documentTop - v.scrollDOM.getBoundingClientRect().top + v.scrollDOM.scrollTop;
 }
 
 /**
