@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #
-# Cut a new release: bumps version in tauri.conf.json + package.json,
+# Cut a new release: bumps version in tauri.conf.json + package.json +
+# both Cargo.toml files (app and solomd-mcp) + the CLI's fallback version,
 # commits, tags, and pushes. GitHub Actions takes over from there.
 #
 # Usage: ./scripts/release.sh 0.2.0
@@ -40,7 +41,19 @@ rm app/package.json.bak
 sed -i.bak -E "s/^version = \"[^\"]+\"/version = \"$VERSION\"/" app/src-tauri/Cargo.toml
 rm app/src-tauri/Cargo.toml.bak
 
-git add app/src-tauri/tauri.conf.json app/package.json app/src-tauri/Cargo.toml
+# solomd-mcp ships inside the app, so it reports the app's version
+# (`solomd-mcp --version`, MCP serverInfo). mcp-server/tests/version_sync.rs
+# fails if this is forgotten.
+sed -i.bak -E "s/^version = \"[^\"]+\"/version = \"$VERSION\"/" mcp-server/Cargo.toml
+rm mcp-server/Cargo.toml.bak
+(cd mcp-server && cargo update -p solomd-mcp --offline --quiet)
+
+# The bash CLI's fallback version, for copies installed outside a checkout.
+sed -i.bak -E "s/^SOLOMD_VERSION=\"[^\"]+\"/SOLOMD_VERSION=\"$VERSION\"/" scripts/solomd
+rm scripts/solomd.bak
+
+git add app/src-tauri/tauri.conf.json app/package.json app/src-tauri/Cargo.toml \
+  mcp-server/Cargo.toml mcp-server/Cargo.lock scripts/solomd
 git commit -m "chore: bump version to $VERSION"
 git tag "v$VERSION"
 
