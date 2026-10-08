@@ -28,6 +28,7 @@ import {
   replaceNext,
   setSearchQuery,
 } from '@codemirror/search';
+import type { EditorState } from '@codemirror/state';
 import { runScopeHandlers, type EditorView, type Panel, type ViewUpdate } from '@codemirror/view';
 
 export interface FindPanelLabels {
@@ -55,6 +56,37 @@ function el<K extends keyof HTMLElementTagNameMap>(
   for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
   if (text !== undefined) node.textContent = text;
   return node;
+}
+
+/** The first match starting at or after `pos`, wrapping to the top. */
+export function matchFrom(state: EditorState, query: SearchQuery, pos: number): { from: number; to: number } | null {
+  if (!query.search || !query.valid) return null;
+  for (const start of [pos, 0]) {
+    const m = query.getCursor(state, start).next();
+    if (!m.done) return { from: m.value.from, to: m.value.to };
+  }
+  return null;
+}
+
+/**
+ * Replace (one), as VS Code does it: replace the current match and go to the
+ * next. @codemirror/search's `replaceNext` only replaces a match that is
+ * *exactly* selected; with the caret merely at one — the counter already
+ * reading "1/2" — the first click just selected it and only the second
+ * replaced (5.0 regression run, C2). So select the match at / after the caret
+ * first, then let `replaceNext` replace it and move on.
+ */
+export function replaceCurrent(view: EditorView): boolean {
+  const { state } = view;
+  if (state.readOnly) return false;
+  const query = getSearchQuery(state);
+  const { from, to } = state.selection.main;
+  const target = matchFrom(state, query, from);
+  if (!target) return false;
+  if (target.from !== from || target.to !== to) {
+    view.dispatch({ selection: { anchor: target.from, head: target.to } });
+  }
+  return replaceNext(view);
 }
 
 export function createFindPanel(view: EditorView, labels: FindPanelLabels): Panel {
@@ -128,7 +160,7 @@ export function createFindPanel(view: EditorView, labels: FindPanelLabels): Pane
     const replaceRow = el('div', { class: 'cm-find__row' });
     replaceRow.append(
       replaceField,
-      textBtn('replace', labels.replaceOne, () => replaceNext(view)),
+      textBtn('replace', labels.replaceOne, () => replaceCurrent(view)),
       textBtn('replaceAll', labels.replaceAll, () => replaceAll(view)),
     );
     dom.append(replaceRow);
@@ -206,7 +238,7 @@ export function createFindPanel(view: EditorView, labels: FindPanelLabels): Pane
       (e.shiftKey ? findPrevious : findNext)(view);
     } else if (e.key === 'Enter' && e.target === replaceField) {
       e.preventDefault();
-      replaceNext(view);
+      replaceCurrent(view);
     }
   });
 
