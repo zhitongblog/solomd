@@ -223,3 +223,29 @@ test('a key event without a code still matches punctuation chords (Ctrl+,)', asy
   const e = { isComposing: false, key: ',', code: '', ctrlKey: true, metaKey: false, altKey: false, shiftKey: false, keyCode: 188 } as unknown as KeyboardEvent;
   assert.equal(resolveBindings({}, 'windows').get(normalizeCombo(eventToCombo(e)!)), 'settings.open');
 });
+
+test('no default app binding sits on a standard editing chord', async () => {
+  const { activeKeyActions, STANDARD_EDITING_CHORDS, normalizeCombo } = await import('./keybindings.ts');
+  const editing = new Set(['Mod+Z', 'Mod+Shift+Z', 'Mod+Y', 'Mod+A', 'Mod+C', 'Mod+V', 'Mod+X'].map(normalizeCombo));
+  assert.deepEqual(new Set(STANDARD_EDITING_CHORDS.map(normalizeCombo)), editing);
+  for (const platform of ['windows', 'mac', 'linux'] as const) {
+    for (const a of activeKeyActions(platform)) {
+      for (const c of a.defaults) {
+        assert.ok(!editing.has(normalizeCombo(c)), `${a.id} ships on ${c} (${platform})`);
+      }
+    }
+  }
+});
+
+test('a chord the editor already handled runs only app-level commands', async () => {
+  const { appRunsAfterEditor } = await import('./keybindings.ts');
+  // F-1: redo in CodeMirror must not also start a writing session.
+  assert.equal(appRunsAfterEditor('pomodoro.startLast', 'Mod+Shift+Z', 'mac'), false);
+  assert.equal(appRunsAfterEditor('editor.aiRewrite', 'Mod+J', 'mac'), false);
+  assert.equal(appRunsAfterEditor('fmt.bold', 'Mod+Shift+B', 'mac'), false);
+  // File / navigation commands still win (e.g. Vim's Ctrl-o on Windows).
+  assert.equal(appRunsAfterEditor('file.open', 'Mod+O', 'windows'), true);
+  assert.equal(appRunsAfterEditor('palette.open', 'Mod+Shift+K', 'windows'), true);
+  // …but never on an editing chord, even when the user rebound one there.
+  assert.equal(appRunsAfterEditor('file.save', 'Mod+Z', 'windows'), false);
+});

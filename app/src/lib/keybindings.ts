@@ -255,7 +255,10 @@ export const KEY_ACTIONS: KeyActionDef[] = [
   // B4 — F8 / F9 as in Typora. Both keys were free.
   { id: 'view.toggleFocusMode', label: 'Toggle Focus Mode', category: 'view', defaults: ['F8'] },
   { id: 'view.toggleTypewriter', label: 'Toggle Typewriter Mode', category: 'view', defaults: ['F9'] },
-  { id: 'pomodoro.startLast', label: 'Start Focused Writing Session', category: 'view', defaults: ['Mod+Shift+Z'] },
+  // Unbound by default. It shipped on ⌘⇧Z, which is redo on macOS (and in
+  // CodeMirror everywhere), so every redo also started a writing session
+  // (5.0 regression run, F-1). Bind it in Settings › Shortcuts.
+  { id: 'pomodoro.startLast', label: 'Start Focused Writing Session', category: 'view', defaults: [] },
   { id: 'view.toggleToolbar', label: 'Show / Hide Toolbar Buttons', category: 'view', defaults: ['Mod+Alt+Shift+T'] },
   // Zoom used to be hard-wired in App.vue. It is rebindable now because the
   // Typora / Word preset gives ⌘= / ⌘- / ⌘0 to the heading-level commands,
@@ -272,6 +275,37 @@ export const KEY_ACTIONS: KeyActionDef[] = [
   // ---- Help ----
   { id: 'help.markdown', label: 'Markdown Help', category: 'help', defaults: ['F1', 'Mod+Slash'] },
 ];
+
+/**
+ * The chords every text field means the same thing by — undo, redo, select
+ * all, clipboard. No app action ships on one, and when the editor has
+ * already acted on one no app action runs for it either (`appRunsAfterEditor`).
+ */
+export const STANDARD_EDITING_CHORDS: readonly KeyCombo[] = [
+  'Mod+Z', 'Mod+Shift+Z', 'Mod+Y', 'Mod+A', 'Mod+C', 'Mod+V', 'Mod+X',
+];
+
+/** File, window and navigation commands act on the app, not the text, so
+ *  they still run when the editor also used the chord (Vim's Ctrl-o, …). */
+const OVERRIDES_EDITOR: ReadonlySet<KeyCategory> = new Set(['file', 'navigate', 'help']);
+
+/**
+ * Whether the window-level shortcut handler should still run `actionId` for
+ * a keydown CodeMirror's own keymap already handled (it called
+ * preventDefault). App shortcuts listen on `window`, after the editor, so a
+ * chord in both did two things at once: ⌘⇧Z redid the edit *and* started a
+ * Pomodoro session. Editing-level actions defer to the editor; commands
+ * about files, windows and navigation still run.
+ */
+export function appRunsAfterEditor(
+  actionId: string,
+  combo: KeyCombo,
+  platform: 'mac' | 'windows' | 'linux' = currentPlatform(),
+): boolean {
+  if (STANDARD_EDITING_CHORDS.includes(normalizeCombo(combo))) return false;
+  const def = activeActionById(actionId, platform);
+  return !!def && OVERRIDES_EDITOR.has(def.category);
+}
 
 /** Keys whose `event.key` is punctuation — spelled by code for stability. */
 const PUNCT_BY_CODE: Record<string, string> = {
