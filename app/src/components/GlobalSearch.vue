@@ -201,7 +201,7 @@ function onKey(e: KeyboardEvent) {
     </div>
     <div class="sp__footer">
       <span>{{ t('search.hitCount', { n: hits.length }) }}</span>
-      <span>{{ t('search.keyHint') }}</span>
+      <span class="key-hint">{{ t('search.keyHint') }}</span>
     </div>
   </div>
 </template>

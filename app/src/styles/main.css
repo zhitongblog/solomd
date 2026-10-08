@@ -347,6 +347,39 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* 5.0 — the app's chrome behaves like native UI. A long press on a label in
+   the header, the tab strip, the sidebar or the phone's bottom bar selected
+   the text and, on iOS, lifted it as a drag preview instead of pressing the
+   button (found tapping through the iPhone simulator); on desktop a drag
+   across the header painted a selection. Content stays selectable: the
+   editor, the preview, panel text, Settings' copyable snippets. */
+button,
+.toolbar,
+.pane-tabbar,
+.sb,
+.ptab,
+.stats-pill,
+.telemetry-banner,
+.cfb {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+/* WebKit: user-select:none on an ancestor can make a field inside it
+   refuse input on iOS — fields stay editable and selectable. */
+:is(.toolbar, .pane-tabbar, .sb, .ptab, .telemetry-banner, .cfb) :is(input, textarea, [contenteditable="true"]) {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+
+/* ↑↓ / ↵ / Esc hints mean nothing on a touch screen. */
+@media (pointer: coarse) {
+  .key-hint {
+    display: none;
+  }
+}
+
 /* #367 — while the split divider is dragged, keep the resize cursor wherever
    the pointer wanders and don't select text in either pane. */
 body.split-divider--dragging,
