@@ -11,7 +11,6 @@ import { useI18n } from '../../i18n';
 import Icons from '../Icons.vue';
 import {
   DISPLAY_MODES,
-  DISPLAY_MODE_LABELS,
   coerceForMode,
   type DisplayMode,
 } from '../../lib/property-types';
@@ -22,7 +21,7 @@ const props = defineProps<{ effectiveMode: DisplayMode; value: unknown }>();
 const emit = defineEmits<{ recast: [DisplayMode] }>();
 
 const items = computed<DsDropdownItem[]>(() =>
-  DISPLAY_MODES.map((m) => ({ value: m, label: DISPLAY_MODE_LABELS[m] })),
+  DISPLAY_MODES.map((m) => ({ value: m, label: t(`inspector.modes.${m}`) })),
 );
 
 function onSelect(mode: string) {
@@ -39,7 +38,7 @@ defineExpose({ coerceForMode });
   <DsDropdown :items="items" align="start" @select="onSelect">
     <template #trigger>
       <button type="button" class="prop-mode-btn" :title="t('inspector.changeType')" :aria-label="t('inspector.changeType')">
-        <span class="prop-mode-btn__label">{{ DISPLAY_MODE_LABELS[effectiveMode] }}</span>
+        <span class="prop-mode-btn__label">{{ t(`inspector.modes.${effectiveMode}`) }}</span>
         <Icons class="prop-mode-btn__chevron" name="chevron-down" :size="10" />
       </button>
     </template>

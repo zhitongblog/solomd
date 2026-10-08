@@ -501,7 +501,8 @@ export function buildAppMenu(ctx: MenuContext): TopMenu[] {
     id: 'app',
     label: 'SoloMD',
     items: [
-      { type: 'predefined', role: 'about' },
+      // Without a label macOS falls back to its own English "About SoloMD".
+      { type: 'predefined', role: 'about', label: t('menubar.about') },
       sep,
       item('settings.open', t('menubar.settings')),
       sep,

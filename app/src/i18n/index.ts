@@ -3,7 +3,7 @@
  * reactive `t()` function driven by the settings store's `language` field.
  */
 
-import { computed } from 'vue';
+import { computed, watchEffect } from 'vue';
 import { useSettingsStore } from '../stores/settings';
 import { en } from './en';
 import { zh } from './zh';
@@ -60,4 +60,23 @@ export function useI18n() {
   }
 
   return { t, lang: computed(() => settings.language) };
+}
+
+/** BCP 47 tag for `<html lang>`; only Chinese needs a region (Simplified). */
+export function htmlLangFor(lang: string): string {
+  return lang === 'zh' ? 'zh-CN' : lang || 'en';
+}
+
+/**
+ * K4 — keep `<html lang>` on the UI language. index.html ships "en", so a
+ * Chinese UI was tagged English: WebKit picked Japanese-style glyphs for
+ * shared Han code points, and hyphenation followed English rules. Called once
+ * per window (main.ts) after Pinia is installed, so the slideshow and
+ * quick-capture windows follow too.
+ */
+export function followHtmlLang(): void {
+  const settings = useSettingsStore();
+  watchEffect(() => {
+    document.documentElement.lang = htmlLangFor(settings.language);
+  });
 }

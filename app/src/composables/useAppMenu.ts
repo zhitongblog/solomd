@@ -2,7 +2,7 @@ import { useSettingsStore } from '../stores/settings';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useI18n } from '../i18n';
 import { buildAppMenu, menuLabelsByAction, type MenuPlatform, type TopMenu } from '../lib/app-menu';
-import { themeFamily, themeLabels } from '../lib/themes';
+import { themeFamily, themeOptions } from '../lib/themes';
 import { hasGitBackend, isMacOS, isWindowsDesktop, usesCommandKey } from '../lib/platform';
 import { useTabsStore } from '../stores/tabs';
 import { IS_APP_STORE_BUILD } from '../lib/app-build';
@@ -31,7 +31,7 @@ export function useAppMenu() {
       platform,
       macKeys,
       recent: [...workspace.recentFiles],
-      themes: themeLabels,
+      themes: themeOptions(t),
       state: {
         autoSave: settings.autoSaveOnBlur,
         viewMode: settings.viewMode,
@@ -41,7 +41,7 @@ export function useAppMenu() {
         livePreview: settings.livePreview,
         fitWidth: settings.previewFitWidth,
         dark: themeFamily(settings.theme as Theme) === 'dark',
-        theme: settings.theme,
+        theme: settings.followSystemTheme ? 'system' : settings.theme,
         wordWrap: settings.wordWrap,
         lineNumbers: settings.showLineNumbers,
         autoGit: settings.autoGitEnabled,

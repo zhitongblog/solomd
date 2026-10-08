@@ -121,18 +121,18 @@ function onOpenCjkProofread() {
 }
 
 function onCleanAI() {
-  const t = tabs.activeTab;
-  if (!t) {
-    toasts.warning('No active document');
+  const tab = tabs.activeTab;
+  if (!tab) {
+    toasts.warning(t('toast.noActiveDoc'));
     return;
   }
-  const cleaned = cleanAIArtifacts(t.content);
-  if (cleaned === t.content) {
-    toasts.info('No AI artifacts found');
+  const cleaned = cleanAIArtifacts(tab.content);
+  if (cleaned === tab.content) {
+    toasts.info(t('toast.noAi'));
     return;
   }
-  tabs.setContent(t.id, cleaned);
-  toasts.success('AI artifacts cleaned');
+  tabs.setContent(tab.id, cleaned);
+  toasts.success(t('toast.aiCleaned'));
 }
 
 /**
@@ -141,13 +141,12 @@ function onCleanAI() {
  * selection so both routes funnel into AIRewriteOverlay.
  */
 function onAIRewrite() {
-  const t = tabs.activeTab;
-  if (!t) {
-    toasts.warning('No active document');
+  if (!tabs.activeTab) {
+    toasts.warning(t('toast.noActiveDoc'));
     return;
   }
   if (!settings.aiEnabled) {
-    toasts.info(t === undefined ? '' : 'Enable AI rewrite in Settings first (⌘,)');
+    toasts.info(t('toast.enableAiFirst'));
     // AI settings live under the `integrations` category in
     // SettingsPanel; pass section via event detail so the panel jumps
     // there directly instead of opening at the default `basics` tab.
@@ -203,7 +202,7 @@ function onAIRewrite() {
   }
   if (!picked) {
     const jChord = shortcutLabel('editor.aiRewrite', settings.keybindings, usesCommandKey()) || '—';
-    toasts.info(`Select some text first, then click AI rewrite (or press ${jChord}).`);
+    toasts.info(t('toast.selectTextForAi', { chord: jChord }));
     return;
   }
   window.dispatchEvent(
@@ -250,10 +249,10 @@ async function onOpenExternal() {
       // AbortError = user cancelled the share sheet; not an error.
       const name = (e as { name?: string }).name;
       if (name === 'AbortError') return;
-      toasts.warning(`Share failed: ${e}`);
+      toasts.warning(t('toast.shareFailed', { error: String(e) }));
       return;
     }
-    toasts.info('Sharing not supported on this iOS version');
+    toasts.info(t('toast.shareUnsupported'));
     return;
   }
   try {

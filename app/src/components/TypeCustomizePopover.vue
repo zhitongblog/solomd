@@ -118,7 +118,7 @@ async function save() {
       <div class="tcp" role="dialog" :style="popoverStyle" @keydown.esc="emit('close')">
         <header class="tcp__head">
           <span class="tcp__title">{{ t('types.customize') }} · {{ typeName }}</span>
-          <button class="rp-icon-btn" type="button" aria-label="Cancel" @click="emit('close')">
+          <button class="rp-icon-btn" type="button" :aria-label="t('types.cancel')" @click="emit('close')">
             <Icons name="close" :size="14" />
           </button>
         </header>

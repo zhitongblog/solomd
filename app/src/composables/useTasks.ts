@@ -11,6 +11,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { useWorkspaceIndexStore } from '../stores/workspaceIndex';
 import { useTabsStore } from '../stores/tabs';
 import { useToastsStore } from '../stores/toasts';
+import { useI18n } from '../i18n';
 import { useFiles } from './useFiles';
 import { parseTaskMeta, compareTasks, toggleTaskLine, type TaskMeta } from '../lib/tasks';
 import type { FileReadResult } from '../types';
@@ -30,6 +31,7 @@ export function useTasks() {
   const idx = useWorkspaceIndexStore();
   const tabs = useTabsStore();
   const toasts = useToastsStore();
+  const { t } = useI18n();
   const files = useFiles();
 
   const tasks = computed<WorkspaceTask[]>(() => {
@@ -88,7 +90,7 @@ export function useTasks() {
         new CustomEvent('solomd:saved', { detail: { filePath: task.path } }),
       );
     } catch (e) {
-      toasts.error(`Could not update the task: ${e}`);
+      toasts.error(t('toast.taskUpdateFailed', { error: String(e) }));
     }
   }
 

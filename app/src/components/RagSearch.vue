@@ -95,7 +95,7 @@ async function onReindex() {
     toasts.error(`RAG reindex failed: ${rag.lastError}`);
     return;
   }
-  toasts.success(`Reindexed ${rag.status?.indexed_files ?? 0} files`);
+  toasts.success(t('toast.reindexed', { n: rag.status?.indexed_files ?? 0 }));
   if (query.value) doSearch();
 }
 

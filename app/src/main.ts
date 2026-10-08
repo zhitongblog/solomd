@@ -1,6 +1,7 @@
 import { createApp, defineAsyncComponent } from 'vue';
 import { createPinia } from 'pinia';
 import App from './App.vue';
+import { followHtmlLang } from './i18n';
 import { reanchorIosContainerPaths } from './lib/ios-container';
 import { isWindowsDesktop } from './lib/platform';
 import { preloadRenderDeps } from './lib/render-deps';
@@ -35,6 +36,7 @@ if (import.meta.env.DEV && /[?&]imetrace\b/.test(location.search)) {
 
 const app = createApp(rootComponent);
 app.use(createPinia());
+followHtmlLang();
 
 // Windows: the editor engine follows the WebView2 version (platform.ts
 // resolveWindowsEditorEngine), and Editor.vue decides it once at load, so the

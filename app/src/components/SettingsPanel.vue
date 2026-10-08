@@ -9,7 +9,7 @@ import { useToastsStore } from '../stores/toasts';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useRagStore } from '../stores/rag';
 import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
-import { themeLabels } from '../lib/themes';
+import { themeOptions } from '../lib/themes';
 import { useI18n } from '../i18n';
 import { quickCaptureError } from '../lib/quick-capture-status';
 import {
@@ -690,7 +690,7 @@ async function onReindexNow() {
   if (rag.lastError) {
     toasts.error(`RAG reindex failed: ${rag.lastError}`);
   } else {
-    toasts.success(`Reindexed ${rag.status?.indexed_files ?? 0} files`);
+    toasts.success(t('toast.reindexed', { n: rag.status?.indexed_files ?? 0 }));
   }
 }
 
@@ -956,10 +956,10 @@ function onSelectPdfFont(v: string) {
         <section data-cat="basics">
           <label>{{ t('settings.theme') }}</label>
           <select
-            :value="settings.theme"
-            @change="settings.setTheme(($event.target as HTMLSelectElement).value as Theme)"
+            :value="settings.followSystemTheme ? 'system' : settings.theme"
+            @change="settings.setTheme(($event.target as HTMLSelectElement).value as Theme | 'system')"
           >
-            <option v-for="th in themeLabels" :key="th.value" :value="th.value">{{ th.label }}</option>
+            <option v-for="th in themeOptions(t)" :key="th.value" :value="th.value">{{ th.label }}</option>
           </select>
           <!-- #282 — the reporter picked "Dark (One Dark)" and the app stayed
                light (his screenshots read #e6e5e0, which is Soft UI's --bg to
@@ -2210,11 +2210,11 @@ function onSelectPdfFont(v: string) {
             @change="settings.setStartupViewMode((($event.target as HTMLSelectElement).value || null) as any)"
           >
             <option value="">{{ t('settings.startupViewModeLastUsed') }}</option>
-            <option value="edit">Edit</option>
-            <option value="liveEdit">Live edit</option>
-            <option value="split">Split</option>
-            <option value="preview">Preview</option>
-            <option value="reading">Reading</option>
+            <option value="edit">{{ t('toolbar.viewSource') }}</option>
+            <option value="liveEdit">{{ t('toolbar.viewLive') }}</option>
+            <option value="split">{{ t('toolbar.viewSplit') }}</option>
+            <option value="preview">{{ t('toolbar.viewPreview') }}</option>
+            <option value="reading">{{ t('toolbar.viewReading') }}</option>
           </select>
           <p class="setting-hint">{{ t('settings.startupViewModeHint') }}</p>
         </section>

@@ -80,7 +80,7 @@ function onBackspace() {
       <button
         type="button"
         class="prop-tags-cell__x"
-        aria-label="Remove"
+        :aria-label="t('inspector.removeTag')"
         @click.stop="remove(tag)"
       ><Icons name="close" :size="10" /></button>
     </span>

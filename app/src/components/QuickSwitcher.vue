@@ -7,12 +7,21 @@
  * ↑/↓ Enter    → navigate + open. Esc / outside-click close.
  *
  * Lists open tabs as `extra` so an unsaved Untitled tab is reachable too.
+ *
+ * 5.0 C4 — recents and save counts never hear about a rename / delete / move,
+ * so on every open the candidates are re-checked against the workspace index
+ * and the disk (lib/live-paths.ts); the dead ones are hidden at once and
+ * dropped from both stores. While typing, every indexed note in the vault is
+ * a candidate too, so a renamed file is found under its new name.
  */
 import { computed, nextTick, ref, watch } from 'vue';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useRecentEditsStore } from '../stores/recentEdits';
 import { useTabsStore } from '../stores/tabs';
 import { useFiles } from '../composables/useFiles';
+import { useWorkspaceIndexStore } from '../stores/workspaceIndex';
+import { findMissing } from '../lib/live-paths';
+import { invoke } from '@tauri-apps/api/core';
 import { useI18n } from '../i18n';
 import Icons from './Icons.vue';
 
@@ -23,6 +32,7 @@ const workspace = useWorkspaceStore();
 const recentEdits = useRecentEditsStore();
 const tabs = useTabsStore();
 const files = useFiles();
+const wsIndex = useWorkspaceIndexStore();
 const { t } = useI18n();
 
 const query = ref('');
@@ -33,9 +43,46 @@ const TOP_N = 50;
 
 const openTabPaths = computed(() => tabs.tabs.map((tab) => tab.filePath).filter((p): p is string => !!p));
 
+/** Paths found to be gone the last time the switcher opened. */
+const missing = ref<Set<string>>(new Set());
+
+const indexedPaths = computed(() => wsIndex.entries.map((e) => e.path));
+
 const results = computed<string[]>(() => {
-  return recentEdits.topN(TOP_N, query.value, workspace.recentFiles, openTabPaths.value);
+  const typing = query.value.trim() !== '';
+  const extra = typing ? [...openTabPaths.value, ...indexedPaths.value] : openTabPaths.value;
+  const gone = missing.value;
+  const open = new Set(openTabPaths.value);
+  return recentEdits
+    .topN(TOP_N + gone.size, query.value, workspace.recentFiles, extra)
+    .filter((p) => open.has(p) || !gone.has(p))
+    .slice(0, TOP_N);
 });
+
+const LIST_DIR_CAP = 10_000; // list_dir truncates at this many entries
+const NOT_FOUND = /os error (2|3)\b|not found|cannot find/i;
+
+async function listDir(dir: string): Promise<string[] | null> {
+  try {
+    const entries = await invoke<Array<{ path: string }>>('list_dir', { path: dir, showHidden: true });
+    return entries.length >= LIST_DIR_CAP ? null : entries.map((e) => e.path);
+  } catch (e) {
+    return NOT_FOUND.test(String(e)) ? [] : null;
+  }
+}
+
+async function pruneMissing() {
+  if (!('__TAURI_INTERNALS__' in window)) return;
+  const open = new Set(openTabPaths.value);
+  const candidates = [...workspace.recentFiles, ...Object.keys(recentEdits.counts)].filter((p) => !open.has(p));
+  const gone = await findMissing(candidates, wsIndex.ready ? indexedPaths.value : [], listDir);
+  if (gone.size === 0) return;
+  missing.value = gone;
+  for (const p of gone) {
+    workspace.removeRecent(p);
+    recentEdits.forget(p);
+  }
+}
 
 function basename(path: string): string {
   const idx = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
@@ -53,6 +100,7 @@ watch(
     if (v) {
       query.value = '';
       selectedIdx.value = 0;
+      void pruneMissing();
       await nextTick();
       inputRef.value?.focus();
       inputRef.value?.select();
@@ -113,7 +161,7 @@ async function openIdx(i: number) {
 <template>
   <Teleport to="body">
   <div v-if="open" class="quick-switcher__backdrop" @click.self="emit('close')">
-    <div class="quick-switcher" role="dialog" aria-label="Quick file switcher">
+    <div class="quick-switcher" role="dialog" :aria-label="t('quickSwitcher.title')">
       <div class="quick-switcher__field">
         <Icons class="quick-switcher__field-icon" name="search" :size="16" aria-hidden="true" />
         <input
