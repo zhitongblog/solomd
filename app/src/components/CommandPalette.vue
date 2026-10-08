@@ -6,6 +6,7 @@ import Icons from './Icons.vue';
 import { useSettingsStore } from '../stores/settings';
 import { shortcutLabel } from '../lib/keybindings';
 import { usesCommandKey } from '../lib/platform';
+import { fuzzyRank } from '../lib/fuzzy-match';
 
 const props = defineProps<{ open: boolean }>();
 const emit = defineEmits<{ (e: 'close'): void }>();
@@ -42,16 +43,17 @@ function localizedTitle(c: Command): string {
   return translated === key ? c.title : translated;
 }
 
-const filtered = computed<Command[]>(() => {
-  const q = query.value.trim().toLowerCase();
-  if (!q) return allCommands;
-  return allCommands.filter((c) => {
-    // Match both the localized title and the original English one, so
-    // muscle-memory queries ("outline") keep working in any language.
-    const hay = `${localizedTitle(c)} ${c.title} ${c.id} ${c.hint ?? ''}`.toLowerCase();
-    return q.split(/\s+/).every((tok) => hay.includes(tok));
-  });
-});
+// C4 — fuzzy (subsequence) matching, so "togl line" / "exprt pdf" find their
+// command. Exact / prefix / substring title hits still rank first.
+const filtered = computed<Command[]>(() =>
+  // Match both the localized title and the original English one, so
+  // muscle-memory queries ("outline") keep working in any language.
+  fuzzyRank(query.value, allCommands, (c) => ({
+    primary: [localizedTitle(c), c.title],
+    secondary: [c.id],
+    literal: [c.hint ?? ''],
+  })),
+);
 
 watch(
   () => props.open,
