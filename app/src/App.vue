@@ -689,14 +689,6 @@ watchEffect(() => {
 watchEffect(() => {
   invoke('save_language_preference', { lang: settings.language }).catch(() => {});
 });
-// K4 — <html lang> drives CJK glyph selection (a zh UI rendered as lang="en"
-// picks Japanese-style forms for shared Han code points) and hyphenation.
-// index.html ships "en"; follow the UI language from startup on.
-const HTML_LANG: Record<string, string> = { zh: 'zh-CN' };
-watchEffect(() => {
-  const lang = settings.language || 'en';
-  document.documentElement.lang = HTML_LANG[lang] ?? lang;
-});
 
 // #282 — nearly every marketplace theme declares its palette for `:root`,
 // `:root[data-theme="light"]` and `:root[data-theme="dark"]` in one rule, and
