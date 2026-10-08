@@ -57,11 +57,22 @@ fn fresh_dir(label: &str) -> PathBuf {
     dir.canonicalize().unwrap()
 }
 
-/// Drive an `initialize` → `export_note` round-trip and return the
+/// Drive an `initialize` → `export_note` round-trip on a server started
+/// with `--allow-write` (every export writes a file) and return the
 /// matching response frame.
 fn drive_export(workspace: &Path, args_json: serde_json::Value, script_path: &Path) -> serde_json::Value {
+    drive_export_flags(workspace, args_json, script_path, &["--allow-write"])
+}
+
+fn drive_export_flags(
+    workspace: &Path,
+    args_json: serde_json::Value,
+    script_path: &Path,
+    flags: &[&str],
+) -> serde_json::Value {
     let mut child = Command::new(binary_path())
         .arg("--workspace").arg(workspace)
+        .args(flags)
         .env("SOLOMD_EXPORT_SCRIPT", script_path)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -192,7 +203,7 @@ fn export_note_rejects_workspace_internal_write_without_flag() {
     let ws = fresh_dir("guard");
     std::fs::write(ws.join("note.md"), "# T\n").unwrap();
 
-    let resp = drive_export(
+    let resp = drive_export_flags(
         &ws,
         serde_json::json!({
             "path": "note.md",
@@ -200,6 +211,7 @@ fn export_note_rejects_workspace_internal_write_without_flag() {
             "output_path": ws.join("inside.docx").to_string_lossy(),
         }),
         &script,
+        &[],
     );
     let err = resp.get("error").unwrap_or(&serde_json::Value::Null);
     let msg = err.get("message").and_then(|m| m.as_str()).unwrap_or("");
