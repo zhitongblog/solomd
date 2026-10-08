@@ -214,16 +214,42 @@ fn extract_tags_for_dispatch(body: &str) -> Vec<String> {
     tags
 }
 
-pub fn write_file_inner(path: String, content: String, encoding: String) -> Result<(), String> {
+/// Encode `content` into the bytes that go on disk for `encoding`.
+///
+/// encoding_rs's `Encoding::encode` never produces UTF-16: per the WHATWG
+/// spec the *output encoding* of UTF-16LE/BE is UTF-8, so a UTF-16 file
+/// used to be silently rewritten as UTF-8. UTF-16 is therefore encoded by
+/// hand, always with a BOM — the reader only recognises UTF-16 by its BOM
+/// (chardetng never guesses UTF-16), so a BOM-less write would not reopen
+/// as UTF-16.
+pub fn encode_for_disk(content: &str, encoding: &str) -> Result<Vec<u8>, String> {
     let enc = Encoding::for_label(encoding.as_bytes()).unwrap_or(UTF_8);
-    let (cow, _, had_errors) = enc.encode(&content);
+    if enc == encoding_rs::UTF_16LE || enc == encoding_rs::UTF_16BE {
+        let le = enc == encoding_rs::UTF_16LE;
+        let mut out = Vec::with_capacity(2 + content.len() * 2);
+        out.extend_from_slice(if le { &[0xFF, 0xFE] } else { &[0xFE, 0xFF] });
+        for unit in content.encode_utf16() {
+            out.extend_from_slice(&if le {
+                unit.to_le_bytes()
+            } else {
+                unit.to_be_bytes()
+            });
+        }
+        return Ok(out);
+    }
+    let (cow, _, had_errors) = enc.encode(content);
     if had_errors {
         return Err(format!(
             "Some characters cannot be represented in {}",
             enc.name()
         ));
     }
-    fs::write(&path, cow.as_ref()).map_err(|e| format!("write failed: {e}"))?;
+    Ok(cow.into_owned())
+}
+
+pub fn write_file_inner(path: String, content: String, encoding: String) -> Result<(), String> {
+    let bytes = encode_for_disk(&content, &encoding)?;
+    fs::write(&path, &bytes).map_err(|e| format!("write failed: {e}"))?;
 
     super::watcher::mark_self_write(&path);
 
@@ -1846,5 +1872,72 @@ mod list_dir_times_tests {
         let e = DirEntry { name: "x".into(), path: "/x".into(), is_dir: false, modified: None, created: None };
         let json = serde_json::to_string(&e).unwrap();
         assert!(!json.contains("modified") && !json.contains("created"), "{json}");
+    }
+}
+
+#[cfg(test)]
+mod encoding_round_trip_tests {
+    use super::*;
+
+    /// Write `original`, open it, save it back unchanged, and return the
+    /// first read plus the bytes left on disk.
+    fn round_trip(encoding: &str, original: &[u8]) -> (FileReadResult, Vec<u8>) {
+        let dir = tempfile::tempdir().unwrap();
+        let p = dir.path().join("f.txt");
+        fs::write(&p, original).unwrap();
+        let path = p.to_string_lossy().to_string();
+        let read = read_file_inner(path.clone()).unwrap();
+        assert_eq!(read.encoding, encoding);
+        write_file_inner(path.clone(), read.content.clone(), read.encoding.clone()).unwrap();
+        let reread = read_file_inner(path).unwrap();
+        assert_eq!(reread.encoding, encoding);
+        assert_eq!(reread.content, read.content);
+        (read, fs::read(&p).unwrap())
+    }
+
+    fn utf16(text: &str, le: bool) -> Vec<u8> {
+        let mut bytes = if le { vec![0xFF, 0xFE] } else { vec![0xFE, 0xFF] };
+        for u in text.encode_utf16() {
+            bytes.extend_from_slice(&if le { u.to_le_bytes() } else { u.to_be_bytes() });
+        }
+        bytes
+    }
+
+    #[test]
+    fn utf16le_with_bom_round_trips() {
+        let text = "UTF-16 文件\nline 2 😀";
+        let bytes = utf16(text, true);
+        let (read, disk) = round_trip("UTF-16LE", &bytes);
+        assert!(read.had_bom);
+        assert_eq!(read.content, text);
+        assert_eq!(disk, bytes);
+    }
+
+    #[test]
+    fn utf16be_with_bom_round_trips() {
+        let text = "UTF-16 文件\nline 2 😀";
+        let bytes = utf16(text, false);
+        let (read, disk) = round_trip("UTF-16BE", &bytes);
+        assert!(read.had_bom);
+        assert_eq!(read.content, text);
+        assert_eq!(disk, bytes);
+    }
+
+    #[test]
+    fn gbk_round_trips() {
+        let text = "这是一个中文文件，用来测试 GBK 编码的读取和保存。\n第二行内容也是中文。";
+        let (bytes, _, _) = encoding_rs::GBK.encode(text);
+        let (read, disk) = round_trip("GBK", &bytes);
+        assert_eq!(read.content, text);
+        assert_eq!(disk, bytes.as_ref());
+    }
+
+    #[test]
+    fn big5_round_trips() {
+        let text = "這是一個繁體中文檔案，用來測試大五碼的讀取與儲存。\n第二行內容也是繁體中文。";
+        let (bytes, _, _) = encoding_rs::BIG5.encode(text);
+        let (read, disk) = round_trip("Big5", &bytes);
+        assert_eq!(read.content, text);
+        assert_eq!(disk, bytes.as_ref());
     }
 }
