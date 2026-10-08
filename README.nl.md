@@ -73,7 +73,7 @@ solomd mcp-config
 {
   "mcpServers": {
     "solomd": {
-      "command": "/Applications/SoloMD.app/Contents/Resources/solomd-mcp",
+      "command": "/Applications/SoloMD.app/Contents/MacOS/solomd-mcp",
       "args": ["--workspace", "/Users/me/Documents/SoloMD"]
     }
   }
