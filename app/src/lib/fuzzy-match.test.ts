@@ -49,6 +49,12 @@ test('word-start matches beat mid-word matches', () => {
   assert.ok(a > b, `${a} <= ${b}`);
 });
 
+test('a match never jumps into the middle of another word', () => {
+  assert.equal(fuzzyScore('line', 'View: Toggle Properties Inspector'), null);
+  assert.notEqual(fuzzyScore('tgln', 'Toggle Line Numbers'), null);
+  assert.notEqual(fuzzyScore('line', 'Outline'), null); // a mid-word start is fine
+});
+
 test('characters out of order, or missing, do not match', () => {
   assert.equal(fuzzyScore('xyz', 'Toggle Line Numbers'), null);
   assert.equal(fuzzyScore('enil', 'line'), null);

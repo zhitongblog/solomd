@@ -9,9 +9,10 @@
  *   - a matched character at a word start (after a separator, a camelCase
  *     hump, or any Han character) earns a bonus,
  *   - a run of consecutive matched characters earns a bonus,
- *   - skipping characters costs a little, and jumping into the middle of a
- *     *different* word costs a lot — that is what keeps "tl" from matching
- *     every text that happens to contain a t and later an l.
+ *   - skipping characters costs a little; after the first character a match
+ *     may only continue inside the same word or jump to a word start, never
+ *     into the middle of another word — that is what keeps "line" from
+ *     matching "toggLe propertIes iNspEctor".
  *
  * On top of the per-token score, the whole query is compared against the
  * primary texts (the titles): an exact title beats a title prefix, which
@@ -25,8 +26,8 @@
 const START_BONUS = 8;
 const CONSEC_BONUS = 5;
 const GAP_PENALTY = 1;
-const MID_JUMP_PENALTY = 6;
-/** The first matched char of a token landing mid-word ("line" in "outline"). */
+/** A token starting mid-word — allowed only as a contiguous substring
+ *  ("line" in "outline"), never as the head of a scattered match. */
 const FIRST_MID_PENALTY = 2;
 
 const SEP = /[^\p{L}\p{N}]/u;
@@ -66,8 +67,10 @@ export function fuzzyScore(query: string, text: string): number | null {
   const NEG = -Infinity;
 
   let prev = new Array<number>(n).fill(NEG);
+  const qs = q.join('');
   for (let j = 0; j < n; j++) {
     if (t[j] !== q[0]) continue;
+    if (!start[j] && t.slice(j, j + m).join('') !== qs) continue;
     prev[j] = 1 + (start[j] ? START_BONUS : -FIRST_MID_PENALTY) - Math.min(j, 20) * 0.05;
   }
   for (let i = 1; i < m; i++) {
@@ -94,7 +97,7 @@ export function fuzzyScore(query: string, text: string): number | null {
       if (start[j]) {
         best = Math.max(best, allMax + 1 + START_BONUS - GAP_PENALTY);
       } else {
-        best = Math.max(best, wordMax + 1 - GAP_PENALTY, allMax + 1 - GAP_PENALTY - MID_JUMP_PENALTY);
+        best = Math.max(best, wordMax + 1 - GAP_PENALTY);
       }
       cur[j] = best;
     }
