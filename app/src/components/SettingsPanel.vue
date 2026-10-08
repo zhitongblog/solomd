@@ -225,7 +225,8 @@ function onRecordKey(e: KeyboardEvent): void {
   const id = recordingAction.value;
   if (!id) return;
   e.preventDefault();
-  e.stopPropagation();
+  // Immediate: no other window capture listener may act on the chord either.
+  e.stopImmediatePropagation();
   if (e.key === 'Escape') {
     stopRecording();
     return;
@@ -582,6 +583,10 @@ function pickCategory(id: SettingsCategory) {
  *  Escape handler (and the app's global shortcuts). */
 function onSearchKeys(e: KeyboardEvent) {
   if (!props.open) return;
+  // A chord being recorded is the recorder's (onRecordKey), ⌘F and Esc too.
+  // Both listen on window in the capture phase and this one was added first
+  // (when the panel opened), so it used to take ⌘F before the recorder saw it.
+  if (recordingAction.value) return;
   if (e.key === 'Escape' && searchQuery.value) {
     e.preventDefault();
     e.stopImmediatePropagation();
