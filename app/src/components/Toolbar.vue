@@ -336,16 +336,15 @@ function positionMenuFromButton(btn: HTMLElement | null, align: 'left' | 'right'
   } else {
     menuPos.value = { top: rect.bottom + 4, left: Math.min(rect.left, window.innerWidth - 16) };
   }
-  void keepMenuOnScreen();
 }
 /**
  * The menu is anchored to its button, so a wide menu under a button near the
  * edge of a narrow window ran off the screen: on a phone with a large display
  * size the View menu's ✓ marks and icons were cut off on the left. Once it has
- * rendered, measure it and pin it to whichever edge it crossed.
+ * rendered, measure it and pin it to whichever edge it crossed (watcher
+ * below, after the open-flag and anchor changes have reached the DOM).
  */
-async function keepMenuOnScreen() {
-  await nextTick();
+function keepMenuOnScreen() {
   const pos = menuPos.value;
   const el = document.querySelector<HTMLElement>('.dropdown__menu[data-tb-menu], .menubar__menu');
   if (!pos || !el) return;
@@ -645,6 +644,13 @@ function openByKey(name: DropdownName) {
   void focusMenuItem('first');
 }
 const anyToolbarMenuOpen = computed(() => exportOpen.value || moreOpen.value);
+watch(
+  () => [menuPos.value, anyToolbarMenuOpen.value, menubarOpen.value],
+  () => {
+    if (anyToolbarMenuOpen.value || menubarOpen.value) keepMenuOnScreen();
+  },
+  { flush: 'post' },
+);
 
 // ── Keyboard access for the toolbar menus ────────────────────────────────────
 // Items act on `mousedown.prevent` so a mouse click never steals focus (and
