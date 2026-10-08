@@ -40,4 +40,6 @@ jobs:
         working-directory: app/src-tauri
         run: |
           mkdir -p ../dist && [ -f ../dist/index.html ] || echo '<!doctype html>' > ../dist/index.html
+          # tauri.conf bundles the MCP sidecar; the build script only checks it exists.
+          mkdir -p binaries && touch "binaries/solomd-mcp-$(rustc -vV | sed -n 's/^host: //p')"
           cargo test --lib
