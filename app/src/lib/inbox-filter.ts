@@ -45,11 +45,21 @@ export function inboxCapturedAt(entry: IndexEntry): number {
     for (const key of ['created', 'date', 'createdAt']) {
       const raw = fm[key];
       if (raw == null) continue;
-      const ms = typeof raw === 'number' ? raw : Date.parse(String(raw));
+      const ms = typeof raw === 'number' ? epochToMs(raw) : Date.parse(String(raw));
       if (Number.isFinite(ms)) return ms;
     }
   }
-  return typeof entry.mtime === 'number' ? entry.mtime : 0;
+  // `IndexEntry.mtime` is seconds since the epoch (Rust `as_secs()`).
+  return typeof entry.mtime === 'number' ? entry.mtime * 1000 : 0;
+}
+
+/**
+ * A numeric front-matter timestamp may be Unix seconds or milliseconds.
+ * Anything below 1e11 is taken as seconds (1e11 ms is 1973; 1e11 s is
+ * year 5138), so both spell the same moment.
+ */
+function epochToMs(n: number): number {
+  return Math.abs(n) < 1e11 ? n * 1000 : n;
 }
 
 /** Period cutoff in ms epoch. `all` → 0 (everything passes). */
