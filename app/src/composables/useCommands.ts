@@ -3,7 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { useFiles } from './useFiles';
 import { useSettingsStore } from '../stores/settings';
 import { shortcutLabel } from '../lib/keybindings';
-import { isMacOS, isMobile } from '../lib/platform';
+import { isMobile, usesCommandKey } from '../lib/platform';
 import { useTabsStore } from '../stores/tabs';
 import { useTilesStore } from '../stores/tiles';
 import { useExport } from './useExport';
@@ -49,7 +49,7 @@ export function useCommands(): Command[] {
   // #180 — the palette must show the chord that actually works today, not
   // the one that shipped: a rebound action would otherwise advertise a key
   // that now does something else.
-  const mac = isMacOS();
+  const mac = usesCommandKey();
   const kb = (actionId: string) => shortcutLabel(actionId, settings.keybindings, mac) || undefined;
   const tabs = useTabsStore();
   const tiles = useTilesStore();

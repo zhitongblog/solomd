@@ -1,7 +1,7 @@
 import { useSettingsStore } from '../stores/settings';
 import { useToastsStore } from '../stores/toasts';
 import { useI18n } from '../i18n';
-import { isMacOS } from '../lib/platform';
+import { usesCommandKey } from '../lib/platform';
 import { shortcutLabel } from '../lib/keybindings';
 import { detectTypedFormat, hintKey } from '../lib/format-hint';
 
@@ -24,7 +24,7 @@ export function useFormatHints() {
   const settings = useSettingsStore();
   const toasts = useToastsStore();
   const { t } = useI18n();
-  const mac = isMacOS();
+  const mac = usesCommandKey();
 
   return function noteTyped(lineBeforeCaret: string, typed: string): void {
     if (!settings.formatHints) return;

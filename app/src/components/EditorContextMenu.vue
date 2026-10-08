@@ -18,7 +18,7 @@
  */
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useI18n } from '../i18n';
-import { isMacOS } from '../lib/platform';
+import { usesCommandKey } from '../lib/platform';
 
 export type EditorMenuAction = 'copyImage' | 'cut' | 'copy' | 'paste' | 'selectAll';
 
@@ -49,7 +49,7 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const root = ref<HTMLElement | null>(null);
 const pos = ref({ left: props.x, top: props.y });
-const mod = isMacOS() ? '⌘' : 'Ctrl+';
+const mod = usesCommandKey() ? '⌘' : 'Ctrl+';
 
 type Item = { id: EditorMenuAction; label: string; key: string; disabled: boolean; sep?: boolean };
 const items = computed<Item[]>(() => [

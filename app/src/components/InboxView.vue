@@ -25,7 +25,7 @@
  */
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { shortcutLabel } from '../lib/keybindings';
-import { isMacOS } from '../lib/platform';
+import { usesCommandKey } from '../lib/platform';
 import Icons from './Icons.vue';
 import '../styles/panels.css';
 import { useInbox, type InboxPeriod } from '../composables/useInbox';
@@ -45,7 +45,7 @@ const settings = useSettingsStore();
 const idx = useWorkspaceIndexStore();
 const { t, lang } = useI18n();
 // #180 — the chord in this sentence comes from the user's bindings.
-const macChord = isMacOS();
+const macChord = usesCommandKey();
 const kbSettings = useSettingsStore();
 function withChord(key: string, actionId: string): string {
   return t(key, { key: shortcutLabel(actionId, kbSettings.keybindings, macChord) || '—' });

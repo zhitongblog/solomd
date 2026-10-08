@@ -20,7 +20,7 @@ import Icon from './Icons.vue';
 import { useI18n } from '../i18n';
 import { useSettingsStore } from '../stores/settings';
 import { shortcutLabel } from '../lib/keybindings';
-import { isMacOS, isMobile } from '../lib/platform';
+import { isMobile, usesCommandKey } from '../lib/platform';
 import { IS_APP_STORE_BUILD } from '../lib/app-build';
 import type { FormatKind } from '../lib/md-format';
 import {
@@ -52,7 +52,7 @@ const emit = defineEmits<{ (e: 'format', kind: FormatKind): void }>();
 
 const { t } = useI18n();
 const settings = useSettingsStore();
-const mac = isMacOS();
+const mac = usesCommandKey();
 const touchPlatform = isMobile();
 
 const STILL_MS = 150;

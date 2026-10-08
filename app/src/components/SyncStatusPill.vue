@@ -16,7 +16,7 @@
  * Hover surfaces last-push / last-pull / remote URL in a tooltip.
  */
 import { computed } from 'vue';
-import { isMacOS } from '../lib/platform';
+import { usesCommandKey } from '../lib/platform';
 import { useSettingsStore } from '../stores/settings';
 import { shortcutLabel } from '../lib/keybindings';
 import { useGithubSyncStore } from '../stores/githubSync';
@@ -37,7 +37,7 @@ const toasts = useToastsStore();
 const { t } = useI18n();
 // #180 — the chord in this sentence comes from the user's bindings, not from
 // a literal baked into the translation.
-const macChord = isMacOS();
+const macChord = usesCommandKey();
 const kbSettings = useSettingsStore();
 function withChord(key: string, actionId: string): string {
   return t(key, { key: shortcutLabel(actionId, kbSettings.keybindings, macChord) || '—' });

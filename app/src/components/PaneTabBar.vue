@@ -9,7 +9,7 @@ import { useWorkspaceStore } from '../stores/workspace';
 import { useFiles } from '../composables/useFiles';
 import { requestRevealInTree } from '../composables/useFileTreeReveal';
 import { shortcutLabel } from '../lib/keybindings';
-import { isMacOS } from '../lib/platform';
+import { usesCommandKey } from '../lib/platform';
 import { useI18n } from '../i18n';
 import Icon from './Icons.vue';
 import type { SplitDirection } from '../types';
@@ -31,7 +31,7 @@ const settings = useSettingsStore();
 const workspace = useWorkspaceStore();
 const files = useFiles();
 const { t } = useI18n();
-const macChord = isMacOS();
+const macChord = usesCommandKey();
 /** "New tab (Ctrl+N)" — the chord is read at render time so a rebind in
  *  Settings shows up here (same reason CommandPalette does it). */
 const newTabChord = shortcutLabel('file.new', settings.keybindings, macChord);

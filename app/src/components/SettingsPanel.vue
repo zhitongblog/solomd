@@ -29,7 +29,7 @@ import {
   planPreset,
   type KeyActionDef,
 } from '../lib/keybindings';
-import { isMacOS } from '../lib/platform';
+import { usesCommandKey } from '../lib/platform';
 import { isMasBuild } from '../lib/check-update';
 import { useUpdateCheck } from '../composables/useUpdateCheck';
 import { IS_APP_STORE_BUILD } from '../lib/app-build';
@@ -81,7 +81,7 @@ const autoEngineName = computed(() =>
 const { t } = useI18n();
 // #180 — the chord in this sentence comes from the user's bindings, not from
 // a literal baked into the translation.
-const macChord = isMacOS();
+const macChord = usesCommandKey();
 const kbSettings = useSettingsStore();
 function withChord(key: string, actionId: string): string {
   return t(key, { key: shortcutLabel(actionId, kbSettings.keybindings, macChord) || '—' });
@@ -107,7 +107,7 @@ watch(activeCategory, () => {
 // ---------------------------------------------------------------------------
 const recordingAction = ref<string | null>(null);
 const recordError = ref<string | null>(null);
-const macKeys = isMacOS();
+const macKeys = usesCommandKey();
 
 /** Sixty rows is past what anyone scans — filter by name, id or chord. */
 const keyQuery = ref('');

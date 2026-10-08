@@ -13,7 +13,7 @@
  * In focus mode it stays out of sight until the pointer comes near.
  */
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { isMacOS } from '../lib/platform';
+import { usesCommandKey } from '../lib/platform';
 import { shortcutLabel } from '../lib/keybindings';
 import { useTabsStore } from '../stores/tabs';
 import { useSettingsStore } from '../stores/settings';
@@ -69,7 +69,7 @@ const showTodayTotal = computed(
 );
 
 // ---- Inbox toggle (was the INBOX chip in the status bar) ----
-const macChord = isMacOS();
+const macChord = usesCommandKey();
 function withChord(key: string, actionId: string): string {
   return t(key, { key: shortcutLabel(actionId, settings.keybindings, macChord) || '—' });
 }

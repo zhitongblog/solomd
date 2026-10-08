@@ -3,7 +3,7 @@ import { useAppMenu } from '../composables/useAppMenu';
 import { computed, ref, watch } from 'vue';
 import { activeKeyActions, combosFor, KEY_CATEGORIES, filterKeyActions, formatCombo, type KeyActionDef } from '../lib/keybindings';
 import { useI18n } from '../i18n';
-import { isMacOS } from '../lib/platform';
+import { usesCommandKey } from '../lib/platform';
 import { useSettingsStore } from '../stores/settings';
 import { DsModal, DsTabs, DsInput } from '../ui';
 
@@ -28,7 +28,7 @@ interface Shortcut {
   zh: string;
   en: string;
 }
-const macChord = isMacOS();
+const macChord = usesCommandKey();
 const kbSettings = useSettingsStore();
 
 /**

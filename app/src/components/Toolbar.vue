@@ -24,7 +24,7 @@ import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
-import { isIOS, isMacOS, isWindowsDesktop } from '../lib/platform';
+import { isIOS, isWindowsDesktop, usesCommandKey } from '../lib/platform';
 import { macTitleBar, winTitleBar, customTitleBar } from '../lib/chrome';
 
 const hasTauriShell = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
@@ -66,7 +66,7 @@ function togglePhonePreview() {
 // #180 — tooltips show the chord that works right now. The chord used to be
 // baked into the translated string ("Open file (Ctrl+O)"), which turned every
 // tooltip into a lie the moment a user rebound anything.
-const macChord = isMacOS();
+const macChord = usesCommandKey();
 function tip(labelKey: string, actionId: string): string {
   const label = t(labelKey);
   const chord = shortcutLabel(actionId, settings.keybindings, macChord);
@@ -202,7 +202,7 @@ function onAIRewrite() {
     picked = getPlainSelection();
   }
   if (!picked) {
-    const jChord = shortcutLabel('editor.aiRewrite', settings.keybindings, isMacOS()) || '—';
+    const jChord = shortcutLabel('editor.aiRewrite', settings.keybindings, usesCommandKey()) || '—';
     toasts.info(`Select some text first, then click AI rewrite (or press ${jChord}).`);
     return;
   }
@@ -379,7 +379,9 @@ function dispatchFormat(kind: string) {
   window.dispatchEvent(new CustomEvent('solomd:format-markdown', { detail: { kind } }));
   closeAllDropdowns();
 }
+// A phone has no keyboard to press them with — the hints are just clutter.
 function chord(actionId: string): string {
+  if (isNarrow.value) return '';
   return shortcutLabel(actionId, settings.keybindings, macChord) || '';
 }
 
@@ -475,6 +477,7 @@ function menuAction(node: MenuNode) {
 }
 /** The chord shown beside an item — read at render time from the bindings. */
 function menuShortcut(node: MenuNode): string {
+  if (isNarrow.value) return '';
   return node.type === 'item' ? itemShortcut(node, { overrides: settings.keybindings, macKeys: macChord }) : '';
 }
 const menubarItems = computed<MenuNode[]>(

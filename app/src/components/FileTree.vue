@@ -13,7 +13,7 @@ import { useGithubSyncStore } from '../stores/githubSync';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { useTabsStore } from '../stores/tabs';
 import { useI18n } from '../i18n';
-import { isMacOS, isMobile } from '../lib/platform';
+import { isMobile, usesCommandKey } from '../lib/platform';
 import { usePendingDeletes, isDeletePending, UNDO_WINDOW_MS } from '../composables/usePendingDeletes';
 import { isSafPath, fromSafPath, safList, safCreate } from '../lib/saf-fs';
 import {
@@ -1520,7 +1520,7 @@ function cancelEdit() {
 // confirmation dialog, the undo toast and the inline rename are the same.
 // ---------------------------------------------------------------------------
 const treeEl = ref<HTMLElement | null>(null);
-const macKeys = isMacOS();
+const macKeys = usesCommandKey();
 const renameKbd = 'F2';
 const deleteKbd = computed(() => (macKeys ? '⌘⌫' : t('explorer.deleteKey')));
 

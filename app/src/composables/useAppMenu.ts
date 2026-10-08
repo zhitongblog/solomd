@@ -3,7 +3,7 @@ import { useWorkspaceStore } from '../stores/workspace';
 import { useI18n } from '../i18n';
 import { buildAppMenu, menuLabelsByAction, type MenuPlatform, type TopMenu } from '../lib/app-menu';
 import { themeFamily, themeLabels } from '../lib/themes';
-import { hasGitBackend, isMacOS, isWindowsDesktop } from '../lib/platform';
+import { hasGitBackend, isMacOS, isWindowsDesktop, usesCommandKey } from '../lib/platform';
 import { useTabsStore } from '../stores/tabs';
 import { IS_APP_STORE_BUILD } from '../lib/app-build';
 import { isMasBuild } from '../lib/check-update';
@@ -19,7 +19,7 @@ export function useAppMenu() {
   const workspace = useWorkspaceStore();
   const tabs = useTabsStore();
   const { t } = useI18n();
-  const macKeys = isMacOS();
+  const macKeys = usesCommandKey();
 
   function menuFor(platform: MenuPlatform): TopMenu[] {
     return buildAppMenu({

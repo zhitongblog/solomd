@@ -5,7 +5,7 @@ import { useI18n } from '../i18n';
 import Icons from './Icons.vue';
 import { useSettingsStore } from '../stores/settings';
 import { shortcutLabel } from '../lib/keybindings';
-import { isMacOS } from '../lib/platform';
+import { usesCommandKey } from '../lib/platform';
 
 const props = defineProps<{ open: boolean }>();
 const emit = defineEmits<{ (e: 'close'): void }>();
@@ -27,7 +27,7 @@ const { t } = useI18n();
 // #180 — read the chord at render time, not when the command list was built:
 // a rebind in Settings must show up here without reopening the app.
 const kbSettings = useSettingsStore();
-const macChords = isMacOS();
+const macChords = usesCommandKey();
 function chordFor(c: { id: string; shortcut?: string }): string {
   return shortcutLabel(c.id, kbSettings.keybindings, macChords) || '';
 }

@@ -8,7 +8,7 @@
  */
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { shortcutLabel } from '../lib/keybindings';
-import { isMacOS } from '../lib/platform';
+import { usesCommandKey } from '../lib/platform';
 import { useSettingsStore } from '../stores/settings';
 import { usePomodoroStore } from '../stores/pomodoro';
 import { useI18n } from '../i18n';
@@ -20,7 +20,7 @@ const emit = defineEmits<{ (e: 'close'): void }>();
 const pomodoro = usePomodoroStore();
 const { t } = useI18n();
 // #180 — the chord in this sentence comes from the user's bindings.
-const macChord = isMacOS();
+const macChord = usesCommandKey();
 const kbSettings = useSettingsStore();
 function withChord(key: string, actionId: string): string {
   return t(key, { key: shortcutLabel(actionId, kbSettings.keybindings, macChord) || '—' });

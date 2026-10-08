@@ -28,7 +28,7 @@ import { useInbox } from '../composables/useInbox';
 import { useInboxView } from '../composables/useInboxView';
 import { useDailyNotes } from '../composables/useDailyNotes';
 import { shortcutLabel } from '../lib/keybindings';
-import { isMacOS } from '../lib/platform';
+import { usesCommandKey } from '../lib/platform';
 import { useI18n } from '../i18n';
 
 const props = withDefaults(
@@ -61,7 +61,7 @@ const hasFolder = computed(() => !!workspace.currentFolder);
 // ── search field ────────────────────────────────────────────────────────────
 // The chord that works right now (#180): read from the user's bindings.
 const switcherChord = computed(
-  () => shortcutLabel('quickSwitcher.open', settings.keybindings, isMacOS()) || '',
+  () => shortcutLabel('quickSwitcher.open', settings.keybindings, usesCommandKey()) || '',
 );
 
 // ── nav rows ────────────────────────────────────────────────────────────────

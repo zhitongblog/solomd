@@ -61,6 +61,15 @@ export function isMacOS(): boolean {
   return /Macintosh|Mac OS X/.test(ua);
 }
 
+/**
+ * True where shortcuts are spelled with ⌘ — macOS and iOS/iPadOS (an iPad
+ * with a keyboard uses ⌘ too). For shortcut *labels*; `isMacOS()` stays the
+ * macOS-desktop-only check for window chrome.
+ */
+export function usesCommandKey(): boolean {
+  return isMacOS() || isIOS();
+}
+
 export function isMobile(): boolean {
   if (typeof navigator === 'undefined') return false;
   const ua = navigator.userAgent || '';
