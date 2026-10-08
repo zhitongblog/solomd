@@ -129,9 +129,21 @@ export function useCommands(): Command[] {
     return `https://${host}/${owner}/${repo}${blobSeg}${branch}/${rel}`;
   }
 
+  /**
+   * The active tab with the editor's last keystrokes in `content`. CodeMirror
+   * syncs doc→tab.content on a 350ms debounce, so a command that reads the
+   * text right after typing saw the old document — and the transforms then
+   * wrote that back over what had just been typed (5.0 regression run, F-5).
+   * Same flush `saveTab` does.
+   */
+  function freshActiveTab() {
+    window.dispatchEvent(new Event('solomd:flush-content-sync'));
+    return tabs.activeTab;
+  }
+
   /** Replace the active editor's content (used for the Chinese conversion commands). */
   function transformActive(fn: (s: string) => string, successMsg: string) {
-    const t = tabs.activeTab;
+    const t = freshActiveTab();
     if (!t) {
       toasts.warning('No active document');
       return;
@@ -299,12 +311,14 @@ export function useCommands(): Command[] {
       id: 'cn.copyPinyin',
       title: 'Chinese: Copy Active Document as Pinyin',
       run: async () => {
-        const t = tabs.activeTab;
-        if (!t) {
+        if (!tabs.activeTab) {
           toasts.warning('No active document');
           return;
         }
-        await writeText((await loadChineseConvert()).pinyin(t.content));
+        const { pinyin } = await loadChineseConvert();
+        const t = freshActiveTab();
+        if (!t) return;
+        await writeText(pinyin(t.content));
         toasts.success('Pinyin copied to clipboard');
       },
     },
@@ -527,7 +541,7 @@ export function useCommands(): Command[] {
       shortcut: kb('format.markdown'),
       hint: 'Reformat the active document — normalize lists, tables, spacing',
       run: async () => {
-        const t = tabs.activeTab;
+        const t = freshActiveTab();
         if (!t) {
           toasts.warning('No active document');
           return;
@@ -537,8 +551,15 @@ export function useCommands(): Command[] {
           return;
         }
         try {
-          const next = await formatMarkdown(t.content);
-          if (next === t.content) {
+          const src = t.content;
+          const next = await formatMarkdown(src);
+          // Prettier loads on first use: anything typed while it did would be
+          // overwritten by a result formatted from the older text.
+          if (freshActiveTab()?.id !== t.id || t.content !== src) {
+            toasts.info('The document changed while formatting — run Format again');
+            return;
+          }
+          if (next === src) {
             toasts.info('Already formatted');
             return;
           }
@@ -720,7 +741,7 @@ export function useCommands(): Command[] {
       shortcut: kb('view.slideshow'),
       hint: 'Render the active document as a fullscreen slideshow (split on `---`)',
       run: async () => {
-        const t = tabs.activeTab;
+        const t = freshActiveTab();
         if (!t) {
           toasts.warning('No active document');
           return;
