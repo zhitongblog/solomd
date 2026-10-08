@@ -213,3 +213,21 @@ export const themeLabels: { value: Theme; label: string }[] = [
   { value: 'github-light', label: 'GitHub Light' },
   { value: 'dracula', label: 'Dracula' },
 ];
+
+/**
+ * D6 — the theme choices as offered in Settings and the View › Theme menu:
+ * "System" (follow the OS appearance) first, then every built-in theme, with
+ * the two generic names localized (the rest are proper names).
+ */
+export function themeOptions(t: (key: string) => string): { value: Theme | 'system'; label: string }[] {
+  return [
+    { value: 'system', label: t('settings.themeSystem') },
+    ...themeLabels.map((th) =>
+      th.value === 'light'
+        ? { ...th, label: t('settings.themeLight') }
+        : th.value === 'dark'
+          ? { ...th, label: t('settings.themeDark') }
+          : th,
+    ),
+  ];
+}

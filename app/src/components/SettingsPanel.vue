@@ -9,7 +9,7 @@ import { useToastsStore } from '../stores/toasts';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useRagStore } from '../stores/rag';
 import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
-import { themeLabels } from '../lib/themes';
+import { themeOptions } from '../lib/themes';
 import { useI18n } from '../i18n';
 import { quickCaptureError } from '../lib/quick-capture-status';
 import {
@@ -951,10 +951,10 @@ function onSelectPdfFont(v: string) {
         <section data-cat="basics">
           <label>{{ t('settings.theme') }}</label>
           <select
-            :value="settings.theme"
-            @change="settings.setTheme(($event.target as HTMLSelectElement).value as Theme)"
+            :value="settings.followSystemTheme ? 'system' : settings.theme"
+            @change="settings.setTheme(($event.target as HTMLSelectElement).value as Theme | 'system')"
           >
-            <option v-for="th in themeLabels" :key="th.value" :value="th.value">{{ th.label }}</option>
+            <option v-for="th in themeOptions(t)" :key="th.value" :value="th.value">{{ th.label }}</option>
           </select>
           <!-- #282 — the reporter picked "Dark (One Dark)" and the app stayed
                light (his screenshots read #e6e5e0, which is Soft UI's --bg to
