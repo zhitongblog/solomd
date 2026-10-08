@@ -1,0 +1,13 @@
+SoloMD 5.0 — yazmak için daha sakin bir yer.
+
+• Yeniden tasarlanan pencere: Canlı / Kaynak / Bölünmüş / Önizleme arasında tek dokunuşla geçilen sade bir üst bar, klasörleriniz ve notlarınız için bir kenar çubuğu, hap biçimli sekmeler ve durum çubuğu yerine küçük bir kelime sayacı.
+• iPhone: notlar için bir ana ekran, altta arama ve yeni not düğmesi, tam ekran düzenleyici.
+• iPad: dikey konumda kenar çubuğu sayfayı daraltmak yerine sayfanın üzerine kayar.
+• Yeni bir bul çubuğu: yolunuza çıkmaz, konumunuzu korur; büyük/küçük harf eşleştirme, tam sözcük ve düzenli ifadeleri destekler.
+• Metin seçince bir biçimlendirme balonu çıkar; iPhone ve iPad'de klavyenin üstündeki bir çubuk başlık, liste, bağlantı ve kod ekler.
+• Uzun bir belgenin yapısını görmek için başlıkları kenar boşluğundan daraltın.
+• Menüler ve kısayollar yeniden düzenlendi; her kısayol yeniden atanabilir ve iPad'de kısayollar ⌘ gösterir.
+• Daha hızlı ilk görüntü: formüller ve kod vurgulama sayfa göründükten sonra yüklenir.
+• Çince düzeltme artık 文档.md gibi dosya adlarını veya üç noktayı noktalama hatası olarak işaretlemiyor.
+
+Bu sürümü şekillendiren haftalar süren titiz testleri için 张工'a teşekkürler.

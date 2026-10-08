@@ -1,0 +1,13 @@
+SoloMD 5.0 — un posto più tranquillo per scrivere.
+
+• Una finestra ridisegnata: un'intestazione sobria con Modifica / Sorgente / Diviso / Anteprima a un tocco di distanza, una barra laterale per cartelle e note, schede a forma di pillola e un piccolo conteggio parole al posto della barra di stato.
+• iPhone: una schermata iniziale con le note, la ricerca e un pulsante per una nuova nota in basso, e un editor a schermo intero.
+• iPad: in verticale la barra laterale scorre sopra la pagina invece di restringerla.
+• Una nuova barra di ricerca: resta in disparte, mantiene la posizione e supporta maiuscole/minuscole, parola intera ed espressioni regolari.
+• Seleziona il testo per una bolla di formattazione; su iPhone e iPad una barra sopra la tastiera aggiunge titoli, elenchi, link e codice.
+• Comprimi i titoli dal margine per vedere la struttura di un documento lungo.
+• Menu e scorciatoie riorganizzati; ogni scorciatoia può essere riassegnata e su iPad le scorciatoie mostrano ⌘.
+• Prima visualizzazione più rapida: formule ed evidenziazione del codice si caricano dopo che la pagina è comparsa.
+• La correzione del cinese non segnala più nomi di file come 文档.md o i puntini di sospensione come errori di punteggiatura.
+
+Grazie a 张工 per settimane di test accurati che hanno dato forma a questa versione.

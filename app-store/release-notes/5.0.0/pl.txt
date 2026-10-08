@@ -1,0 +1,13 @@
+SoloMD 5.0 — spokojniejsze miejsce do pisania.
+
+• Przeprojektowane okno: oszczędny nagłówek, w którym Edycja / Źródło / Podział / Podgląd dzieli jedno dotknięcie, pasek boczny na foldery i notatki, karty w kształcie pigułek oraz mały licznik słów zamiast paska stanu.
+• iPhone: ekran główny z notatkami, wyszukiwanie i przycisk nowej notatki na dole oraz edytor na pełnym ekranie.
+• iPad: w orientacji pionowej pasek boczny wysuwa się nad stronę, zamiast ją zwężać.
+• Nowy pasek wyszukiwania: nie przeszkadza, zapamiętuje miejsce i obsługuje rozróżnianie wielkości liter, całe słowa oraz wyrażenia regularne.
+• Zaznacz tekst, aby zobaczyć dymek formatowania; na iPhonie i iPadzie pasek nad klawiaturą dodaje nagłówki, listy, linki i kod.
+• Zwijaj nagłówki z marginesu, aby zobaczyć strukturę długiego dokumentu.
+• Menu i skróty zostały uporządkowane; każdy skrót można przypisać na nowo, a na iPadzie skróty pokazują ⌘.
+• Szybsze pierwsze wyświetlenie: wzory i podświetlanie kodu ładują się po pojawieniu się strony.
+• Korekta tekstu chińskiego nie oznacza już nazw plików takich jak 文档.md ani wielokropka jako błędów interpunkcji.
+
+Dziękujemy 张工 za tygodnie starannych testów, które ukształtowały to wydanie.

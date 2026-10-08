@@ -1,0 +1,13 @@
+SoloMD 5.0 — een rustigere plek om te schrijven.
+
+• Een vernieuwd venster: een rustige kopbalk met Live / Bron / Gesplitst / Voorbeeld op één tik afstand, een zijbalk voor je mappen en notities, pilvormige tabbladen en een kleine woordenteller in plaats van een statusbalk.
+• iPhone: een startscherm met notities, zoeken en een knop voor een nieuwe notitie onderaan, en een editor op volledig scherm.
+• iPad: in staande stand schuift de zijbalk over de pagina in plaats van die smaller te maken.
+• Een nieuwe zoekbalk: die blijft uit de weg, onthoudt je plek en ondersteunt hoofdlettergevoelig zoeken, hele woorden en reguliere expressies.
+• Selecteer tekst voor een opmaakballon; op iPhone en iPad voegt een balk boven het toetsenbord koppen, lijsten, links en code toe.
+• Vouw koppen in vanuit de marge om de opbouw van een lang document te zien.
+• Menu's en sneltoetsen opnieuw ingedeeld; elke sneltoets is opnieuw toe te wijzen, en sneltoetsen tonen ⌘ op iPad.
+• Sneller eerste beeld: formules en codemarkering laden nadat de pagina verschijnt.
+• De Chinese proeflezer markeert bestandsnamen zoals 文档.md of een beletselteken niet langer als interpunctiefout.
+
+Dank aan 张工 voor wekenlang zorgvuldig testen dat deze versie vorm heeft gegeven.

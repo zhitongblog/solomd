@@ -153,7 +153,7 @@ export const pt: I18n = {
     navLabel: "Seções",
   },
   header: {
-    segLive: "Ao vivo",
+    segLive: "Edição",
     segSource: "Fonte",
     segSplit: "Dividido",
     segPreview: "Prévia",

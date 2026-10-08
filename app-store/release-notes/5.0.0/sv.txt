@@ -1,0 +1,13 @@
+SoloMD 5.0 – en lugnare plats att skriva på.
+
+• Ett omgjort fönster: ett stillsamt sidhuvud där Live / Källa / Delad / Förhandsvisning ligger ett tryck ifrån varandra, ett sidofält för mappar och anteckningar, pillerformade flikar och en liten ordräknare i stället för ett statusfält.
+• iPhone: en startskärm för anteckningar, sökning och en knapp för ny anteckning längst ned, och en redigerare i helskärm.
+• iPad: i stående läge glider sidofältet över sidan i stället för att trycka ihop den.
+• Ett nytt sökfält: det håller sig undan, behåller din plats och stöder skiftlägeskänslighet, hela ord och reguljära uttryck.
+• Markera text för en formateringsbubbla; på iPhone och iPad lägger ett fält ovanför tangentbordet till rubriker, listor, länkar och kod.
+• Fäll ihop rubriker från marginalen för att se strukturen i ett långt dokument.
+• Menyer och kortkommandon har ordnats om; alla kortkommandon kan tilldelas på nytt, och på iPad visar de ⌘.
+• Snabbare första visning: formler och kodmarkering läses in efter att sidan visats.
+• Den kinesiska korrekturen markerar inte längre filnamn som 文档.md eller en ellips som skiljeteckenfel.
+
+Tack till 张工 för veckor av noggranna tester som har format den här versionen.

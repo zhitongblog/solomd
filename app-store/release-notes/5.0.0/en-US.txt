@@ -1,0 +1,13 @@
+SoloMD 5.0 — a calmer place to write.
+
+• A redesigned window: a quiet header with Live / Source / Split / Preview one tap apart, a sidebar for your folders and notes, pill-shaped tabs, and a small word-count pill instead of a status bar.
+• iPhone: a notes home screen, search and a new-note button at the bottom, and a full-screen editor.
+• iPad: in portrait the sidebar slides over the page instead of squeezing it.
+• A new find bar: it stays out of the way, keeps your place, and supports match case, whole word and regular expressions.
+• Select text for a formatting bubble; on iPhone and iPad a keyboard bar adds headings, lists, links and code.
+• Fold headings from the gutter to see the shape of a long document.
+• Menus and shortcuts reorganized; every shortcut can be rebound, and shortcuts show ⌘ on iPad.
+• Faster first paint: math and code highlighting load after the page appears.
+• Chinese proofreading no longer flags file names like 文档.md or an ellipsis as punctuation mistakes.
+
+Thanks to 张工 for weeks of careful testing that shaped this release.

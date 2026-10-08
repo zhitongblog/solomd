@@ -151,7 +151,7 @@ export const ru: I18n = {
     navLabel: "Разделы",
   },
   header: {
-    segLive: "Живой",
+    segLive: "Правка",
     segSource: "Исходник",
     segSplit: "Разделить",
     segPreview: "Просмотр",

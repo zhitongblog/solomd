@@ -151,7 +151,7 @@ export const fr: I18n = {
     navLabel: "Sections",
   },
   header: {
-    segLive: "Direct",
+    segLive: "Édition",
     segSource: "Source",
     segSplit: "Côte à côte",
     segPreview: "Aperçu",
