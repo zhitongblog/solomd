@@ -48,7 +48,7 @@ import {
 import { caretRowInfo, caretTopPx, caretPointPx, lastVisualRowStart, firstVisualRowEnd, measureLineHeights, offsetAtPoint, selectionBoxPx } from '../lib/textarea-metrics';
 import { activeParagraphLines, lineAt } from '../lib/focus-paragraph';
 import { transformCase, nextCaseInCycle, caseTargetRange, type CaseMode } from '../lib/text-case';
-import { applyFormat, FORMAT_KINDS, type FormatKind } from '../lib/md-format';
+import { applyFormat, FORMAT_KINDS, listIndentEdit, type FormatKind } from '../lib/md-format';
 import { useFormatHints } from '../composables/useFormatHints';
 import { useTabsStore } from '../stores/tabs';
 import { useSettingsStore, buildEditorFontStack } from '../stores/settings';
@@ -2040,6 +2040,11 @@ function computePlainTabEdit(
   const v = el.value;
   const s = el.selectionStart ?? 0;
   const e = el.selectionEnd ?? 0;
+  // F-7 — list items nest at their parent's content column, as in CodeMirror.
+  const list = props.tab.language === 'markdown' ? listIndentEdit(v, s, e, outdent) : null;
+  if (list) {
+    return { value: v.slice(0, list.from) + list.insert + v.slice(list.to), selStart: list.selFrom, selEnd: list.selTo };
+  }
   if (!outdent && s === e) {
     return { value: v.slice(0, s) + INDENT + v.slice(e), selStart: s + INDENT.length, selEnd: s + INDENT.length };
   }
@@ -3503,6 +3508,26 @@ function markdownExt() {
 }
 
 /**
+ * F-7 — Tab / Shift+Tab on a Markdown list item nests it at its parent's
+ * content column and renumbers (lib/md-format `listIndentEdit`); anything
+ * else falls through to indentWithTab.
+ */
+function listIndentCommand(v: EditorView, outdent: boolean): boolean {
+  if (props.tab.language !== 'markdown' || v.state.readOnly) return false;
+  if (v.state.selection.ranges.length > 1) return false;
+  const sel = v.state.selection.main;
+  const edit = listIndentEdit(v.state.doc.toString(), sel.from, sel.to, outdent);
+  if (!edit) return false;
+  v.dispatch({
+    changes: { from: edit.from, to: edit.to, insert: edit.insert },
+    selection: sel.empty ? { anchor: edit.selFrom } : { anchor: edit.selFrom, head: edit.selTo },
+    scrollIntoView: true,
+    userEvent: 'input.indent',
+  });
+  return true;
+}
+
+/**
  * Ordered-list numbers follow a line added or removed by the user — the
  * textarea editors apply the same rule at their commit points
  * (lib/list-renumber). Appended to the same transaction, so one undo step
@@ -3680,7 +3705,12 @@ function buildExtensions() {
     // App-owned chords are filtered out of CodeMirror's keymap (baseKeymap):
     // the app shortcut listens on window, after CodeMirror has already acted.
     baseKeymapCompartment.of(baseKeymap()),
-    keymap.of([...historyKeymap, indentWithTab]),
+    keymap.of([
+      ...historyKeymap,
+      { key: 'Tab', run: (v) => listIndentCommand(v, false) },
+      { key: 'Shift-Tab', run: (v) => listIndentCommand(v, true) },
+      indentWithTab,
+    ]),
     lineNumCompartment.of(settings.showLineNumbers ? lineNumbers() : []),
     wrapCompartment.of(settings.wordWrap ? EditorView.lineWrapping : []),
     langCompartment.of(
