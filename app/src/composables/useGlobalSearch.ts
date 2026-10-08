@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useToastsStore } from '../stores/toasts';
+import { useI18n } from '../i18n';
 
 export interface SearchHit {
   file: string;
@@ -11,6 +12,7 @@ export interface SearchHit {
 export function useGlobalSearch() {
   const workspace = useWorkspaceStore();
   const toasts = useToastsStore();
+  const { t } = useI18n();
 
   async function search(query: string, root?: string, maxResults = 200): Promise<SearchHit[]> {
     const folder = root ?? workspace.currentFolder;
@@ -27,7 +29,7 @@ export function useGlobalSearch() {
       });
       return hits;
     } catch (e) {
-      toasts.error(`Search failed: ${e}`);
+      toasts.error(t('toast.searchFailed', { error: String(e) }));
       return [];
     }
   }

@@ -133,9 +133,7 @@ async function requestAndroidStorage() {
     // running process — see android_restart_app).
     localStorage.setItem('solomd:android-storage-pending', '1');
     await invoke('android_request_all_files_access');
-    toasts.info(
-      '打开「允许管理所有文件 / All files access」后返回,App 会自动重启以让权限生效。',
-    );
+    toasts.info(t('toast.androidAllFilesReturn'));
   } catch (e) {
     toasts.error(String(e));
   }

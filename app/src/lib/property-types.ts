@@ -146,7 +146,8 @@ export function inferDisplayMode(key: string, value: unknown): DisplayMode {
   return 'text';
 }
 
-/** Humanized label for a display mode (English; i18n keys live in en.ts). */
+/** Humanized English label for a display mode. The UI reads the localized
+ *  `inspector.modes.<mode>` keys instead; this stays for non-UI callers. */
 export const DISPLAY_MODE_LABELS: Record<DisplayMode, string> = {
   text: 'Text',
   number: 'Number',

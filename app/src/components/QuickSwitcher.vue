@@ -161,7 +161,7 @@ async function openIdx(i: number) {
 <template>
   <Teleport to="body">
   <div v-if="open" class="quick-switcher__backdrop" @click.self="emit('close')">
-    <div class="quick-switcher" role="dialog" aria-label="Quick file switcher">
+    <div class="quick-switcher" role="dialog" :aria-label="t('quickSwitcher.title')">
       <div class="quick-switcher__field">
         <Icons class="quick-switcher__field-icon" name="search" :size="16" aria-hidden="true" />
         <input

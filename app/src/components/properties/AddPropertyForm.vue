@@ -9,7 +9,6 @@ import { DsSelect, type DsSelectOption } from '../../ui';
 import { useI18n } from '../../i18n';
 import {
   DISPLAY_MODES,
-  DISPLAY_MODE_LABELS,
   coerceForMode,
   type DisplayMode,
 } from '../../lib/property-types';
@@ -28,7 +27,7 @@ const boolValue = ref(false);
 const nameRef = ref<HTMLInputElement | null>(null);
 
 const modeOptions = computed<DsSelectOption[]>(() =>
-  DISPLAY_MODES.map((m) => ({ value: m, label: DISPLAY_MODE_LABELS[m] })),
+  DISPLAY_MODES.map((m) => ({ value: m, label: t(`inspector.modes.${m}`) })),
 );
 
 onMounted(async () => {

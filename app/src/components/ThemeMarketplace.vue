@@ -101,7 +101,7 @@ const visible = computed(() => themes.visibleThemes);
 
 <template>
   <div v-if="open" class="tm__backdrop" @click.self="emit('close')">
-    <div class="tm" role="dialog" aria-label="Theme marketplace">
+    <div class="tm" role="dialog" :aria-label="t('themes.title')">
       <header class="tm__header">
         <h2>{{ t('themes.title') }}</h2>
         <div class="tm__header-actions">

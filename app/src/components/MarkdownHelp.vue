@@ -393,12 +393,12 @@ async function copyExample(text: string) {
                 <pre
                   class="help__example"
                   @click="copyExample(it.example)"
-                  title="Click to copy / 点击复制"
+                  :title="t('help.clickToCopy')"
                 >{{ it.example }}</pre>
               </div>
             </div>
           </section>
-          <p v-if="!filtered.length" class="help__empty">No matching syntax</p>
+          <p v-if="!filtered.length" class="help__empty">{{ t('help.noMatchingSyntax') }}</p>
         </template>
 
         <template v-if="activeTab === 'shortcuts'">
@@ -443,7 +443,7 @@ async function copyExample(text: string) {
           </p>
           <section class="help__section">
             <h3>安装 / Install</h3>
-            <pre class="help__code" @click="copyExample('curl -fsSL https://raw.githubusercontent.com/zhitongblog/solomd/main/scripts/install-cli.sh | bash')" title="Click to copy">curl -fsSL https://raw.githubusercontent.com/zhitongblog/solomd/main/scripts/install-cli.sh | bash</pre>
+            <pre class="help__code" @click="copyExample('curl -fsSL https://raw.githubusercontent.com/zhitongblog/solomd/main/scripts/install-cli.sh | bash')" :title="t('help.clickToCopy')">curl -fsSL https://raw.githubusercontent.com/zhitongblog/solomd/main/scripts/install-cli.sh | bash</pre>
             <p class="help__hint">
               脚本会装到 <code>/usr/local/bin/solomd</code>（或 <code>~/.local/bin</code>）。装完直接 <code>solomd help</code>。
             </p>
@@ -466,16 +466,16 @@ async function copyExample(text: string) {
             <p class="help__hint">
               默认 <code>~/Documents/SoloMD</code>。用环境变量 <code>SOLOMD_NOTES</code> 改：
             </p>
-            <pre class="help__code" @click="copyExample('export SOLOMD_NOTES=$HOME/Notes')" title="Click to copy">export SOLOMD_NOTES=$HOME/Notes</pre>
+            <pre class="help__code" @click="copyExample('export SOLOMD_NOTES=$HOME/Notes')" :title="t('help.clickToCopy')">export SOLOMD_NOTES=$HOME/Notes</pre>
             <p class="help__hint">
               <code>title</code> 参数会自动解析为 <code>$SOLOMD_NOTES/&lt;title&gt;.md</code>；如果带 <code>/</code> 或 <code>.md</code>/<code>.txt</code> 后缀，则按路径处理。
             </p>
           </section>
           <section class="help__section">
             <h3>常用范例 / Examples</h3>
-            <pre class="help__code" @click="copyExample(cliExampleNew)" title="Click to copy">{{ cliExampleNew }}</pre>
-            <pre class="help__code" @click="copyExample('solomd search 重要')" title="Click to copy">solomd search 重要</pre>
-            <pre class="help__code" @click="copyExample('solomd open ./my-doc.md')" title="Click to copy">solomd open ./my-doc.md</pre>
+            <pre class="help__code" @click="copyExample(cliExampleNew)" :title="t('help.clickToCopy')">{{ cliExampleNew }}</pre>
+            <pre class="help__code" @click="copyExample('solomd search 重要')" :title="t('help.clickToCopy')">solomd search 重要</pre>
+            <pre class="help__code" @click="copyExample('solomd open ./my-doc.md')" :title="t('help.clickToCopy')">solomd open ./my-doc.md</pre>
           </section>
         </template>
       </div>

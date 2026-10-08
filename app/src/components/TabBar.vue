@@ -137,18 +137,18 @@ function onTabsWheel(e: WheelEvent) {
           v-if="tab.language === 'markdown'"
           class="tab__outline"
           :class="{ 'tab__outline--active': tab.showOutline }"
-          :title="tab.showOutline ? 'Hide outline' : 'Show outline'"
+          :title="t(tab.showOutline ? 'tabMenu.hideOutline' : 'tabMenu.showOutline')"
           @click.stop="tabs.toggleOutline(tab.id)"
         >≡</button>
         <span class="tab__dot" v-if="isDirty(tab.id)">●</span>
         <button
           class="tab__close"
           @click.stop="files.closeTabSafe(tab.id)"
-          aria-label="Close tab"
+          :aria-label="t('tabMenu.close')"
         >×</button>
       </div>
     </div>
-    <button class="tabbar__new" @click="files.newFile" title="New tab (Ctrl+N)">+</button>
+    <button class="tabbar__new" @click="files.newFile" :title="t('tabMenu.newTab')">+</button>
 
     <!-- Context menu portal -->
     <ul

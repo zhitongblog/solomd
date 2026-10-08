@@ -186,10 +186,10 @@ export function useFiles() {
       // 5.0 §8 — the phone shell moves to its editor screen on this (opening a
       // note that is already the active tab changes no store state).
       window.dispatchEvent(new CustomEvent('solomd:file-opened', { detail: { path } }));
-      toasts.success(`Opened ${fileName}`);
+      toasts.success(t('toast.openedFile', { name: fileName }));
     } catch (e) {
       console.error('open image failed', e);
-      toasts.error(`Failed to open image: ${e}`);
+      toasts.error(t('toast.openFailed', { error: String(e) }));
     }
   }
 
@@ -252,7 +252,7 @@ export function useFiles() {
         path = await importContentUri(path);
       } catch (e) {
         console.error('content:// import failed', e);
-        toasts.error(`Failed to open: ${e}`);
+        toasts.error(t('toast.openFailed', { error: String(e) }));
         return;
       }
     }
@@ -372,10 +372,10 @@ export function useFiles() {
       // behaves the same way the layout does.
       if (isNarrowViewport() && settings.showFileTree) settings.toggleFileTree();
       const fileName = fileNameOf(path);
-      toasts.success(`Opened ${fileName}`);
+      toasts.success(t('toast.openedFile', { name: fileName }));
     } catch (e) {
       console.error('open failed', e);
-      toasts.error(`Failed to open file: ${e}`);
+      toasts.error(t('toast.openFailed', { error: String(e) }));
     }
   }
 
@@ -407,7 +407,7 @@ export function useFiles() {
         await openWithSystemDefault(path);
       } catch (e) {
         console.error('openWithSystemDefault failed', e);
-        toasts.error(`Failed to open: ${e}`);
+        toasts.error(t('toast.openFailed', { error: String(e) }));
       }
       return;
     }
@@ -429,7 +429,7 @@ export function useFiles() {
       tabs.activate(prevId);
       return;
     }
-    const tid = toasts.info(`Converting ${fileName} to Markdown…`, 0);
+    const tid = toasts.info(t('toast.convertingFile', { name: fileName }), 0);
     try {
       const markdown = await invoke<string>('convert_file_to_markdown', { path });
       toasts.dismiss(tid);
@@ -443,7 +443,7 @@ export function useFiles() {
         tab.language = 'markdown';
         convertedTabs.set(path, tab.id);
       }
-      toasts.success(`Converted ${fileName} → Markdown`);
+      toasts.success(t('toast.convertedFile', { name: fileName }));
     } catch (e) {
       toasts.dismiss(tid);
       const msg = String(e);
@@ -454,7 +454,7 @@ export function useFiles() {
           8000,
         );
       } else {
-        toasts.error(`Conversion failed: ${msg}`);
+        toasts.error(t('toast.conversionFailedError', { error: msg }));
       }
     }
   }
@@ -859,13 +859,13 @@ export function useFiles() {
           const fname = path.split(/[\\/]/).pop() ?? path;
           toasts.success(t('iosFolder.savedAs', { name: fname }));
         } else {
-          toasts.success(`Saved ${tab.fileName}`);
+          toasts.success(t('toast.savedFile', { name: tab.fileName }));
         }
       }
       return true;
     } catch (e) {
       console.error('save failed', e);
-      toasts.error(`Failed to save: ${e}`);
+      toasts.error(t('toast.saveFailed', { error: String(e) }));
       return false;
     }
   }
@@ -908,7 +908,7 @@ export function useFiles() {
         await writeContentUri(path, payload);
         tabs.markSaved(tab.id, path);
         const fileName = contentUriName(path);
-        toasts.success(`Saved as ${fileName}`);
+        toasts.success(t('toast.savedAs', { name: fileName }));
         return true;
       }
       await invoke('write_file', {
@@ -924,11 +924,11 @@ export function useFiles() {
         new CustomEvent('solomd:saved', { detail: { filePath: path } }),
       );
       const fileName = path.split(/[\\/]/).pop() ?? path;
-      toasts.success(isIOS() ? `Saved to On My iPhone › SoloMD › ${fileName}` : `Saved as ${fileName}`);
+      toasts.success(isIOS() ? t('toast.savedToIos', { name: fileName }) : t('toast.savedAs', { name: fileName }));
       return true;
     } catch (e) {
       console.error('save-as failed', e);
-      toasts.error(`Failed to save: ${e}`);
+      toasts.error(t('toast.saveFailed', { error: String(e) }));
       return false;
     }
   }

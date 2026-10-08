@@ -1664,7 +1664,7 @@ async function confirmDelete() {
       try {
         await invoke('fs_delete', { path });
       } catch (e) {
-        toasts.error(`Delete failed: ${e}`);
+        toasts.error(t('toast.deleteFailed', { error: String(e) }));
       }
       scheduleRefresh();
     },

@@ -685,7 +685,7 @@ async function onReindexNow() {
   if (rag.lastError) {
     toasts.error(`RAG reindex failed: ${rag.lastError}`);
   } else {
-    toasts.success(`Reindexed ${rag.status?.indexed_files ?? 0} files`);
+    toasts.success(t('toast.reindexed', { n: rag.status?.indexed_files ?? 0 }));
   }
 }
 
@@ -2205,11 +2205,11 @@ function onSelectPdfFont(v: string) {
             @change="settings.setStartupViewMode((($event.target as HTMLSelectElement).value || null) as any)"
           >
             <option value="">{{ t('settings.startupViewModeLastUsed') }}</option>
-            <option value="edit">Edit</option>
-            <option value="liveEdit">Live edit</option>
-            <option value="split">Split</option>
-            <option value="preview">Preview</option>
-            <option value="reading">Reading</option>
+            <option value="edit">{{ t('toolbar.viewSource') }}</option>
+            <option value="liveEdit">{{ t('toolbar.viewLive') }}</option>
+            <option value="split">{{ t('toolbar.viewSplit') }}</option>
+            <option value="preview">{{ t('toolbar.viewPreview') }}</option>
+            <option value="reading">{{ t('toolbar.viewReading') }}</option>
           </select>
           <p class="setting-hint">{{ t('settings.startupViewModeHint') }}</p>
         </section>

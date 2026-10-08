@@ -24,6 +24,7 @@ import { useTabsStore } from '../stores/tabs';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useWorkspaceIndexStore, type IndexEntry, type ReferencedByRef } from '../stores/workspaceIndex';
 import { useToastsStore } from '../stores/toasts';
+import { useI18n } from '../i18n';
 import type { FileReadResult } from '../types';
 import {
   extractRelationships,
@@ -88,6 +89,7 @@ export function useRelationships() {
   const workspace = useWorkspaceStore();
   const idx = useWorkspaceIndexStore();
   const toasts = useToastsStore();
+  const { t } = useI18n();
 
   /** Reactive editability of the active note (drives the panel's "save first"
    *  banner so the guard is *visible* before a click, not just an error after). */
@@ -146,16 +148,16 @@ export function useRelationships() {
   > {
     const tab = tabs.activeTab;
     if (!tab || !tab.filePath) {
-      toasts.error('No active document to edit relationships on.');
+      toasts.error(t('relationships.noActiveDoc'));
       return null;
     }
     if (tab.language !== 'markdown') {
-      toasts.error('Relationships can only be edited on Markdown notes.');
+      toasts.error(t('relationships.notMarkdown'));
       return null;
     }
     if (tab.content !== tab.savedContent) {
       // Don't race the editor buffer — persist current edits first.
-      toasts.error('Save the document first, then edit relationships.');
+      toasts.error(t('relationships.saveFirst'));
       return null;
     }
     try {
@@ -168,7 +170,7 @@ export function useRelationships() {
         tabId: tab.id,
       };
     } catch (e) {
-      toasts.error(`Failed to read document: ${e}`);
+      toasts.error(t('relationships.readFailed', { error: String(e) }));
       return null;
     }
   }
@@ -197,7 +199,7 @@ export function useRelationships() {
       idx.refresh().catch(() => {});
       return true;
     } catch (e) {
-      toasts.error(`Failed to save relationship: ${e}`);
+      toasts.error(t('relationships.saveFailed', { error: String(e) }));
       return false;
     }
   }
@@ -248,7 +250,7 @@ export function useRelationships() {
   function addRelationshipKey(key: string, targetStem: string): Promise<boolean> {
     const cleanKey = key.trim();
     if (!cleanKey) {
-      toasts.error('Relationship name cannot be empty.');
+      toasts.error(t('relationships.emptyName'));
       return Promise.resolve(false);
     }
     if (isReservedKey(cleanKey)) {
@@ -258,7 +260,7 @@ export function useRelationships() {
     const path = tabs.activeTab?.filePath ?? null;
     const existing = forwardFor(path);
     if (Object.keys(existing).some((k) => k.toLowerCase() === cleanKey.toLowerCase())) {
-      toasts.error('That relationship already exists.');
+      toasts.error(t('relationships.exists'));
       return Promise.resolve(false);
     }
     return addRef(cleanKey, targetStem);
