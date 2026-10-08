@@ -192,10 +192,17 @@ fn halfwidth_to_fullwidth(c: char) -> Option<char> {
 /// to live in a mixed-language doc.
 fn detect_halfwidth_punct(text: &str, idx: &LineIndex, out: &mut Vec<Issue>) {
     let mut prev: Option<char> = None;
-    for (byte_off, c) in text.char_indices() {
+    let mut chars = text.char_indices().peekable();
+    while let Some((byte_off, c)) = chars.next() {
+        let next = chars.peek().map(|&(_, n)| n);
         if let Some(replacement) = halfwidth_to_fullwidth(c) {
             if let Some(p) = prev {
-                if is_han(p) {
+                // A `.` that runs straight into a letter or digit is not a
+                // full stop: `调试开关.ps1`, `压缩包.tar.gz`. Nor is one of a
+                // `...` ellipsis. "Fixing" either rewrote file names.
+                let not_a_full_stop =
+                    c == '.' && next.is_some_and(|n| n.is_ascii_alphanumeric() || n == '.');
+                if is_han(p) && !not_a_full_stop {
                     let len = c.len_utf8();
                     out.push(Issue {
                         line: idx.line_of(byte_off),
@@ -503,6 +510,35 @@ mod tests {
     #[test]
     fn empty_input_no_issues() {
         assert!(proofread("").is_empty());
+    }
+
+    #[test]
+    fn file_extensions_after_han_are_not_full_stops() {
+        for name in ["调试开关.ps1", "压缩包.tar.gz", "样式.module.css", "源代码.c", "组件.vue"] {
+            let issues = proofread(name);
+            assert!(
+                !issues.iter().any(|i| i.category == "punct_halfwidth"),
+                "{name}: {issues:?}"
+            );
+        }
+        // Mid-line, with a real half-width comma beside it.
+        let issues = proofread("请看日志,查看日志.log 文件");
+        let punct: Vec<_> = issues.iter().filter(|i| i.category == "punct_halfwidth").collect();
+        assert_eq!(punct.len(), 1);
+        assert_eq!(punct[0].original, ",");
+    }
+
+    #[test]
+    fn ellipsis_after_han_is_left_alone() {
+        assert!(!proofread("待续...").iter().any(|i| i.category == "punct_halfwidth"));
+    }
+
+    #[test]
+    fn sentence_end_after_han_still_flagged() {
+        let issues = proofread("这是一句中文.");
+        assert!(issues.iter().any(|i| i.category == "punct_halfwidth" && i.suggestion == "。"));
+        let issues = proofread("这是中文. 下一句");
+        assert!(issues.iter().any(|i| i.category == "punct_halfwidth"));
     }
 
     #[test]
