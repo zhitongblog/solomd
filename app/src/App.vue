@@ -1824,7 +1824,10 @@ setRightSidebarShell({
  */
 const narrowDrawer = computed<'left' | 'right' | null>(() => {
   if (!isNarrow.value) return null;
-  if (settings.showFileTree || settings.showViewsPanel) return 'left';
+  // 5.0: no left drawer on a phone — the file tree is the 笔记 home screen
+  // and the sidebar is not rendered there at all. `showFileTree` (on by
+  // default) still read as an open drawer, so the editor sat under the
+  // scrim, dimmed, with the first tap spent dismissing nothing.
   if (showRightSidebar.value) return 'right';
   return null;
 });
