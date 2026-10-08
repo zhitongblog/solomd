@@ -45,11 +45,18 @@ export function inboxCapturedAt(entry: IndexEntry): number {
     for (const key of ['created', 'date', 'createdAt']) {
       const raw = fm[key];
       if (raw == null) continue;
-      const ms = typeof raw === 'number' ? raw : Date.parse(String(raw));
+      const ms = typeof raw === 'number' ? toMs(raw) : Date.parse(String(raw));
       if (Number.isFinite(ms)) return ms;
     }
   }
-  return typeof entry.mtime === 'number' ? entry.mtime : 0;
+  return typeof entry.mtime === 'number' ? toMs(entry.mtime) : 0;
+}
+
+/** The Rust index reports `mtime` in unix *seconds*; read as ms it put every
+ *  note in January 1970 ("57 years ago", outside every Week / Month window).
+ *  Same heuristic as bases.formatMtime: below 1e12 it is seconds. */
+function toMs(t: number): number {
+  return t > 0 && t < 1e12 ? t * 1000 : t;
 }
 
 /** Period cutoff in ms epoch. `all` → 0 (everything passes). */
