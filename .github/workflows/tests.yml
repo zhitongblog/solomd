@@ -1,0 +1,35 @@
+name: Tests
+# Unit tests on every push and PR: the 370-odd frontend tests (node:test) and
+# the Rust library tests. Until 2026-10 nothing ran the frontend ones at all.
+on:
+  push:
+    branches: [main, 'feat/**']
+  pull_request:
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Run unit tests
+        working-directory: app
+        run: bash scripts/run-tests.sh
+  rust:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: System libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf libssl-dev libdbus-1-dev libxdo-dev
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: app/src-tauri
+      - name: cargo test --lib
+        working-directory: app/src-tauri
+        run: |
+          mkdir -p ../dist && [ -f ../dist/index.html ] || echo '<!doctype html>' > ../dist/index.html
+          cargo test --lib
