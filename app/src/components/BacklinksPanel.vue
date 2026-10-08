@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import { useTabsStore } from '../stores/tabs';
+import { useTilesStore } from '../stores/tiles';
 import { useWorkspaceIndexStore, type BacklinkRef } from '../stores/workspaceIndex';
 import { useFiles } from '../composables/useFiles';
 import { useI18n } from '../i18n';
@@ -8,6 +9,7 @@ import Icons from './Icons.vue';
 import PanelHeader from './panel/PanelHeader.vue';
 
 const tabs = useTabsStore();
+const tiles = useTilesStore();
 const idx = useWorkspaceIndexStore();
 const files = useFiles();
 const { t } = useI18n();
@@ -60,7 +62,7 @@ async function openBacklink(ref: BacklinkRef) {
   setTimeout(() => {
     window.dispatchEvent(
       new CustomEvent('solomd:outline-goto', {
-        detail: { line: ref.line, paneId: undefined },
+        detail: { line: ref.line, paneId: tiles.focusedPaneId },
       }),
     );
   }, 200);

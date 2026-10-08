@@ -33,7 +33,7 @@ use walkdir::WalkDir;
 pub struct TaskRef {
     /// 1-based line number **in the file**, front matter included.
     ///
-    /// Deliberately not the body-relative number `WikilinkRef::line` uses: the
+    /// Same convention as `WikilinkRef::line`: the
     /// panel both jumps to this line and rewrites the checkbox on it, so an
     /// off-by-front-matter number would tick the wrong box.
     pub line: u32,
@@ -96,7 +96,8 @@ pub struct WikilinkRef {
     pub target: String,
     pub heading: Option<String>,
     pub alias: Option<String>,
-    /// 1-based line number where the link appears.
+    /// 1-based line number **in the file** (front matter included) where the
+    /// link appears — backlinks read context from and jump to this line.
     pub line: u32,
 }
 
@@ -503,7 +504,7 @@ fn scan_file(path: &Path) -> Result<IndexEntry, String> {
         None => serde_json::Value::Null,
     };
 
-    let wikilinks = extract_wikilinks(body);
+    let wikilinks = extract_wikilinks(body, body_line_offset(&raw, body));
     let mut tags = extract_body_tags(body);
     if let serde_json::Value::Object(map) = &frontmatter_json {
         if let Some(t) = map.get("tags") {
@@ -666,7 +667,26 @@ fn split_front_matter(raw: &str) -> (Option<String>, &str) {
     (None, raw)
 }
 
-fn extract_wikilinks(body: &str) -> Vec<WikilinkRef> {
+/// Number of lines that precede `body` in `raw` — i.e. the front-matter
+/// block's height. `body` must be a sub-slice of `raw`, as returned by
+/// `split_front_matter`. Adding this to a body-relative 0-based line index
+/// yields the index in the file, which is what anything that opens the file
+/// at that line (backlinks context, jump-to-line) needs.
+pub(crate) fn body_line_offset(raw: &str, body: &str) -> u32 {
+    let start = body.as_ptr() as usize;
+    let base = raw.as_ptr() as usize;
+    if start < base || start > base + raw.len() {
+        return 0;
+    }
+    raw.as_bytes()[..start - base]
+        .iter()
+        .filter(|&&b| b == b'\n')
+        .count() as u32
+}
+
+/// `line_offset` is `body_line_offset(raw, body)`, so `WikilinkRef::line` is
+/// the 1-based line **in the file** (front matter included).
+fn extract_wikilinks(body: &str, line_offset: u32) -> Vec<WikilinkRef> {
     static RE: Lazy<Regex> = Lazy::new(|| {
         Regex::new(r"\[\[([^\[\]\n]+?)\]\]").expect("wikilink regex")
     });
@@ -690,7 +710,7 @@ fn extract_wikilinks(body: &str) -> Vec<WikilinkRef> {
                 target,
                 heading,
                 alias,
-                line: (line_idx as u32) + 1,
+                line: line_offset + (line_idx as u32) + 1,
             });
         }
     }
@@ -1373,6 +1393,33 @@ fn read_context(path: &Path, line_no: u32) -> Vec<String> {
         .iter()
         .filter_map(|x| x.map(|s| s.to_string()))
         .collect()
+}
+
+#[cfg(test)]
+mod wikilink_line_tests {
+    use super::*;
+
+    #[test]
+    fn wikilink_lines_are_file_absolute_with_front_matter() {
+        let dir = tempfile::tempdir().unwrap();
+        let p = dir.path().join("Table Note.md");
+        let raw = "---\ntitle: T\ntags: [a]\ntype: note\n---\n# Table Note\n\n| Name | Qty |\n|---|---|\n| a | 1 |\n\nBack to [[README]].\n";
+        fs::write(&p, raw).unwrap();
+        let entry = scan_file(&p).unwrap();
+        assert_eq!(entry.wikilinks.len(), 1);
+        let line = entry.wikilinks[0].line;
+        assert_eq!(line, 12);
+        let ctx = read_context(&p, line);
+        assert_eq!(ctx[1], "Back to [[README]].");
+    }
+
+    #[test]
+    fn wikilink_lines_without_front_matter_and_with_bom_crlf() {
+        assert_eq!(extract_wikilinks("a\n[[X]]\n", 0)[0].line, 2);
+        let raw = "\u{feff}---\r\na: 1\r\n---\r\nbody [[Y]]\r\n";
+        let (_, body) = split_front_matter(raw);
+        assert_eq!(extract_wikilinks(body, body_line_offset(raw, body))[0].line, 4);
+    }
 }
 
 #[cfg(test)]
