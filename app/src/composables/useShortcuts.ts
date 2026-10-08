@@ -8,6 +8,7 @@ import { useCommands } from './useCommands';
 import { useInbox } from './useInbox';
 import { usePomodoroStore, getLastPreset } from '../stores/pomodoro';
 import { eventToCombo, normalizeCombo, resolveBindings } from '../lib/keybindings';
+import { isWindowsDesktop } from '../lib/platform';
 import { FORMAT_KINDS, type FormatKind } from '../lib/md-format';
 import { MARKDOWN_ONLY_COMMANDS, type EditorCommand } from '../lib/editor-commands';
 import { getCurrentWindow } from '@tauri-apps/api/window';
@@ -264,13 +265,19 @@ export function useShortcuts(hooks: Hooks = {}) {
   // reached the page runs on keyup instead. Keydowns are noted in the capture
   // phase, before anything can stop them, so a chord already handled on
   // keydown can never run twice. (macOS sends no keyup while ⌘ is held.)
+  //
+  // Windows only. On Linux a chord that is also a native menu accelerator is
+  // taken by GTK on keydown — the menu runs the action and the page never sees
+  // that keydown — so the keyup ran it a second time: Ctrl+B bolded on press
+  // and un-bolded on release (4.14.6–4.14.10). Windows has no native menu.
+  const keyupFallback = isWindowsDesktop();
   const downCodes = new Set<string>();
   function noteKeydown(e: KeyboardEvent) {
     if (e.code) downCodes.add(e.code);
   }
   function onKeyup(e: KeyboardEvent) {
     const seen = downCodes.delete(e.code);
-    if (seen || !e.ctrlKey || e.metaKey || !e.code) return;
+    if (seen || !keyupFallback || !e.ctrlKey || e.metaKey || !e.code) return;
     handler(e);
   }
   function onBlur() {
