@@ -3880,6 +3880,7 @@ onMounted(() => {
     parent: host.value,
   });
   maybeRestoreSession();
+  focusFreshCodeMirror();
   // Expose the focused EditorView on `window` for dev-bridge / self-test
   // harnesses. Vite injects `import.meta.env.DEV === true` only in dev
   // builds; production bundles dead-code-eliminate this entire block.
@@ -4453,6 +4454,23 @@ onBeforeUnmount(() => {
 // `setState` reset it to 0.
 const tabCaretMemory = new Map<string, { caret: number; scrollTop: number }>();
 
+/**
+ * F-10 — a document file.new / file.newText just made: no file, nothing in
+ * it, and not a tab this editor has shown before (switching away records it
+ * in tabCaretMemory). Only these take focus on the CodeMirror path; opening
+ * or switching to a document leaves focus where it is, as before.
+ */
+function isFreshUntitledTab(): boolean {
+  const t = props.tab;
+  return !t.filePath && t.content === '' && t.savedContent === '' && !tabCaretMemory.has(t.id);
+}
+
+function focusFreshCodeMirror() {
+  if (!isFreshUntitledTab()) return;
+  // After the palette / menu that ran the command has closed.
+  nextTick(() => view?.focus());
+}
+
 // #169 (Windows) — one synchronous scrollTop assignment is not enough on the
 // plain paths: focusPlainEditor() focuses on nextTick, and the browser then
 // scrolls the caret back into view — line 1 when the user only scrolled and
@@ -4547,6 +4565,7 @@ watch(
       })
     );
     maybeRestoreSession();
+    focusFreshCodeMirror();
     if (saved) {
       // #169 — one synchronous assignment is not enough: async widget renders
       // (tables / images / mermaid) and CM's post-setState measure pass can
