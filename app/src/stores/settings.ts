@@ -1550,12 +1550,14 @@ export const useSettingsStore = defineStore('settings', {
     /** v4.3.0 PR #74 — preview-only font size. Editor font is the existing
      *  `setFontSize`; this one drives `--content-font-size` (Preview.vue). */
     setPreviewFontSize(n: number) {
-      this.previewFontSize = Math.max(10, Math.min(32, Math.round(n || 15)));
+      this.previewFontSize = Math.max(10, Math.min(32, Math.round(n || defaults().previewFontSize)));
       this.persist();
     },
-    previewFontIn() { this.setPreviewFontSize((this.previewFontSize || 15) + 1); },
-    previewFontOut() { this.setPreviewFontSize((this.previewFontSize || 15) - 1); },
-    resetPreviewFontSize() { this.setPreviewFontSize(15); },
+    // The fallbacks and the reset read defaults(): literals here went stale
+    // when 5.0 moved both sizes to 16 (regression run F-9).
+    previewFontIn() { this.setPreviewFontSize((this.previewFontSize || defaults().previewFontSize) + 1); },
+    previewFontOut() { this.setPreviewFontSize((this.previewFontSize || defaults().previewFontSize) - 1); },
+    resetPreviewFontSize() { this.setPreviewFontSize(defaults().previewFontSize); },
     /** v4.3.5 — flip between `shared` (`_assets/`) and `per-file`
      *  (`<basename>.assets/`) attachment storage layouts. */
     setAttachmentMode(mode: 'shared' | 'per-file' | 'custom') {
@@ -1623,9 +1625,9 @@ export const useSettingsStore = defineStore('settings', {
     },
     /** v4.3.0 PR #74 — editor-only font size convenience wrappers. The
      *  underlying field is the existing `fontSize`. */
-    editorFontIn() { this.setFontSize((this.fontSize || 14) + 1); },
-    editorFontOut() { this.setFontSize((this.fontSize || 14) - 1); },
-    resetEditorFontSize() { this.setFontSize(14); },
+    editorFontIn() { this.setFontSize((this.fontSize || defaults().fontSize) + 1); },
+    editorFontOut() { this.setFontSize((this.fontSize || defaults().fontSize) - 1); },
+    resetEditorFontSize() { this.setFontSize(defaults().fontSize); },
     // v4.6 F6 — Inbox workflow toggles.
     toggleInboxWorkflow() {
       this.inboxWorkflowEnabled = !this.inboxWorkflowEnabled;
