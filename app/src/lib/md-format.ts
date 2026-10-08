@@ -85,8 +85,51 @@ function toggleStars(doc: string, from: number, to: number, width: 1 | 2): Forma
   if (has) {
     return { from: s - width, to: e + width, insert: inner, selFrom: s - width, selTo: e - width };
   }
+  // A bare caret inside an existing span the word rule cannot see — CJK,
+  // where the "word" is empty (这是**粗|体**文字), or a Latin span of several
+  // words — takes that span's markers off instead of nesting a new pair.
+  if (from === to) {
+    const span = enclosingStarSpan(doc, from, width);
+    if (span) {
+      const [openEnd, closeStart] = span;
+      return {
+        from: openEnd - width,
+        to: closeStart + width,
+        insert: doc.slice(openEnd, closeStart),
+        selFrom: from - width,
+        selTo: from - width,
+      };
+    }
+  }
   const m = '*'.repeat(width);
   return { from: s, to: e, insert: m + inner + m, selFrom: s + width, selTo: e + width };
+}
+
+/**
+ * The `**…**` (width 2) or `*…*` (width 1) span on the caret's line that
+ * contains `pos`, as [end of the opening run, start of the closing run].
+ * Runs pair up left to right — the second run of a kind closes the first —
+ * so a caret *between* two spans is in neither. A run of 3 counts for both.
+ */
+function enclosingStarSpan(doc: string, pos: number, width: 1 | 2): [number, number] | null {
+  const ls = pos > 0 ? doc.lastIndexOf('\n', pos - 1) + 1 : 0;
+  let le = doc.indexOf('\n', pos);
+  if (le < 0) le = doc.length;
+  const runs: [number, number][] = [];
+  for (let i = ls; i < le; ) {
+    if (doc[i] !== '*') { i++; continue; }
+    let j = i;
+    while (j < le && doc[j] === '*') j++;
+    const n = j - i;
+    if (width === 2 ? n >= 2 : n % 2 === 1) runs.push([i, j]);
+    i = j;
+  }
+  for (let k = 0; k + 1 < runs.length; k += 2) {
+    const openEnd = runs[k][1];
+    const closeStart = runs[k + 1][0];
+    if (closeStart > openEnd && pos >= openEnd && pos <= closeStart) return [openEnd, closeStart];
+  }
+  return null;
 }
 
 function toggleWrap(doc: string, from: number, to: number, marker: string): FormatEdit {
@@ -189,7 +232,49 @@ function togglePrefix(
   });
 }
 
+/**
+ * The closed fenced block (``` or ~~~) whose lines contain [from, to], as
+ * offsets: opening line start, inner start, inner end, closing line end.
+ * Fences are tracked from the top of the document, so a ``` line is known to
+ * open or close.
+ */
+function enclosingFence(doc: string, from: number, to: number): [number, number, number, number] | null {
+  let open: { start: number; end: number; ch: string; len: number } | null = null;
+  let at = 0;
+  while (at <= doc.length) {
+    let end = doc.indexOf('\n', at);
+    if (end < 0) end = doc.length;
+    const line = doc.slice(at, end);
+    const m = /^\s*(`{3,}|~{3,})(.*)$/.exec(line);
+    if (m) {
+      if (!open) {
+        if (m[1][0] === '~' || !m[2].includes('`')) open = { start: at, end, ch: m[1][0], len: m[1].length };
+      } else if (m[1][0] === open.ch && m[1].length >= open.len && m[2].trim() === '') {
+        if (from >= open.start && to <= end) {
+          const innerStart = Math.min(open.end + 1, at);
+          return [open.start, innerStart, Math.max(innerStart, at - 1), end];
+        }
+        open = null;
+      }
+    }
+    if (open === null && at > to) return null;
+    at = end + 1;
+  }
+  return null;
+}
+
 function toggleCodeBlock(doc: string, from: number, to: number): FormatEdit {
+  // Inside a block — the caret on either fence line too, which is where the
+  // wrap below leaves it — the command takes the fences off.
+  const fence = enclosingFence(doc, from, to);
+  if (fence) {
+    const [blockStart, innerStart, innerEnd, blockEnd] = fence;
+    const inner = doc.slice(innerStart, innerEnd);
+    const map = (p: number) => Math.max(blockStart, Math.min(blockStart + inner.length, p - (innerStart - blockStart)));
+    return from === to
+      ? { from: blockStart, to: blockEnd, insert: inner, selFrom: map(from), selTo: map(from) }
+      : { from: blockStart, to: blockEnd, insert: inner, selFrom: blockStart, selTo: blockStart + inner.length };
+  }
   const [s, e] = lineSpan(doc, from, to);
   const body = doc.slice(s, e);
   const lines = body.split('\n');

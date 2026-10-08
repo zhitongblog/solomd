@@ -125,3 +125,30 @@ test('mixed lines are completed, not toggled off; italic does not mistake bold',
   assert.equal(run('|**a**\nb|', 'bold'), '|**a**\n**b**|');
   assert.equal(run('|**a**\n**b**|', 'italic'), '|***a***\n***b***|');
 });
+
+test('code block toggles off with the caret on a fence line or inside the block', () => {
+  // F-6A: the wrap leaves the caret on the opening fence; a second press unwraps.
+  assert.equal(run('line one|', 'codeblock'), '```|\nline one\n```');
+  assert.equal(run('```|\nline one\n```', 'codeblock'), '|line one');
+  assert.equal(run('a\n```js\nlet |x = 1;\n```\nb', 'codeblock'), 'a\nlet |x = 1;\nb');
+  assert.equal(run('```\nx\n```|', 'codeblock'), 'x|');
+  assert.equal(run('~~~\n|x|\n~~~', 'codeblock'), '|x|');
+  assert.equal(run('```|\n```', 'codeblock'), '|');
+  // Between two blocks is in neither: it wraps.
+  assert.equal(run('```\na\n```\nmid|\n```\nb\n```', 'codeblock'), '```\na\n```\n```|\nmid\n```\n```\nb\n```');
+  // A ``` inside a ~~~ block does not end it.
+  assert.equal(run('~~~\n```\nx|\n~~~', 'codeblock'), '```\nx|');
+});
+
+test('a bare caret inside an existing bold / italic span removes it, CJK too', () => {
+  // F-6B
+  assert.equal(run('这是**粗|体**文字', 'bold'), '这是粗|体文字');
+  assert.equal(run('这是*斜|体*文字', 'italic'), '这是斜|体文字');
+  assert.equal(run('这是**粗体|**文字', 'bold'), '这是粗体|文字');
+  assert.equal(run('a **two wo|rds** b', 'bold'), 'a two wo|rds b');
+  // Bold is not italic, and the space between two spans is in neither.
+  assert.equal(run('这是**粗|体**文字', 'italic'), '这是**粗*|*体**文字');
+  assert.equal(run('**甲** 中|间 **乙**', 'bold'), '**甲** 中**|**间 **乙**');
+  // Adding bold to CJK still does not swallow the clause.
+  assert.equal(run('这是重|点内容', 'bold'), '这是重**|**点内容');
+});
