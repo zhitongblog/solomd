@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import { useViewport } from '../composables/useViewport';
+// A phone has no keyboard to press ↑↓ / ↵ / Esc with (and a touch emulator
+// can report a fine pointer, so the CSS coarse-pointer rule alone missed it).
+const { isNarrow } = useViewport();
 /**
  * Global workspace search — persistent right-sidebar pane (v4.0.2).
  *
@@ -201,7 +205,7 @@ function onKey(e: KeyboardEvent) {
     </div>
     <div class="sp__footer">
       <span>{{ t('search.hitCount', { n: hits.length }) }}</span>
-      <span class="key-hint">{{ t('search.keyHint') }}</span>
+      <span v-if="!isNarrow" class="key-hint">{{ t('search.keyHint') }}</span>
     </div>
   </div>
 </template>

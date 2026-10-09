@@ -85,6 +85,7 @@ export function useFiles() {
 
   async function newFile() {
     tabs.newTab();
+    window.dispatchEvent(new CustomEvent('solomd:file-opened', { detail: {} }));
   }
 
   /**
@@ -112,6 +113,7 @@ export function useFiles() {
 
   async function newTextFile() {
     tabs.newTab({ fileName: 'Untitled.txt', language: 'plaintext' });
+    window.dispatchEvent(new CustomEvent('solomd:file-opened', { detail: {} }));
   }
 
   async function openFile() {
@@ -367,6 +369,10 @@ export function useFiles() {
         hadBom: result.had_bom,
       });
       workspace.pushRecent(path);
+      // 5.0 phone shell: opening a note shows the editor — also when it is the
+      // tab that is already active (tapping the note you just backed out of),
+      // which changes no store state for App.vue to notice.
+      window.dispatchEvent(new CustomEvent('solomd:file-opened', { detail: { path } }));
       // #148 / #168 — on a phone the tree is a drawer over the editor, so
       // close it once a file opens: picking a file means you want to read it.
       // Keyed off viewport width (not the UA) so a narrow desktop window

@@ -744,12 +744,15 @@ onMounted(() => {
   document.addEventListener('keydown', onEscapeKey, true);
   window.addEventListener('resize', onViewportChange);
   window.addEventListener('scroll', onScrollAnywhere, true);
+  // Android Back on the phone shell (App.vue) closes an open menu too.
+  window.addEventListener('solomd:close-menus', closeAllDropdowns);
   // Two Toolbars exist on Windows; only the header answers these.
   if (isTitlebar.value) return;
   window.addEventListener('solomd:open-pomodoro', onOpenPomodoroEvent);
   window.addEventListener('solomd:toolbar-ai-rewrite', onAIRewrite);
 });
 onBeforeUnmount(() => {
+  window.removeEventListener('solomd:close-menus', closeAllDropdowns);
   document.removeEventListener('click', onDocClick, true);
   document.removeEventListener('keydown', onEscapeKey, true);
   window.removeEventListener('resize', onViewportChange);

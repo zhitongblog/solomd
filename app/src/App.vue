@@ -1838,7 +1838,16 @@ function phoneShowEditor() {
 // through 'solomd:file-opened' below.)
 let phoneTabWatchArmed = false;
 onMounted(() => setTimeout(() => { phoneTabWatchArmed = true; }, 1500));
-watch(() => tabs.activeId, () => { if (phoneTabWatchArmed) phoneShowEditor(); });
+watch(() => tabs.activeId, () => {
+  if (!phoneTabWatchArmed) return;
+  // An empty Untitled that appears on its own — opening a folder starts its
+  // session with one — is not the user opening a note: picking a folder
+  // landed on a blank editor instead of the folder's notes. New notes and
+  // opened files announce themselves through 'solomd:file-opened'.
+  const t = tabs.activeTab;
+  if (t && !t.filePath && t.content === '') return;
+  phoneShowEditor();
+});
 // On a phone, reading mode is the editor screen's preview: the full-screen
 // reader would drop the nav bar and leave no way back to 笔记.
 watch(
@@ -1849,6 +1858,34 @@ watch(
   { immediate: true },
 );
 window.addEventListener('solomd:file-opened', phoneShowEditor);
+// Android's back button: the WebView goes back in its history and only
+// finishes the activity when there is none — and the phone shell never made
+// any, so Back from a note quit the app. Leaving 笔记 for the editor or
+// search pushes one entry; Back pops it and returns to 笔记. The in-app ‹
+// button pops it too, so the two stay in step.
+let phoneHistoryOps = 0; // history.back() calls of ours whose popstate is still due
+watch(
+  () => phone.view,
+  (v, old) => {
+    if (!isNarrow.value) return;
+    if (old === 'home' && v !== 'home') {
+      history.pushState({ solomdPhone: v }, '');
+    } else if (v === 'home' && old !== 'home' && history.state?.solomdPhone) {
+      phoneHistoryOps++;
+      history.back();
+    }
+  },
+);
+window.addEventListener('popstate', () => {
+  if (phoneHistoryOps > 0) {
+    phoneHistoryOps--;
+    return;
+  }
+  if (isNarrow.value && phone.view !== 'home') {
+    window.dispatchEvent(new Event('solomd:close-menus'));
+    phone.show('home');
+  }
+});
 // Back to 笔记 leaves any centre-pane page (inbox, Bases, type lens, saved
 // view) so the next note opens as a note.
 watch(

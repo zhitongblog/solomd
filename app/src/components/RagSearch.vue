@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import { useViewport } from '../composables/useViewport';
+// A phone has no keyboard to press ↑↓ / ↵ / Esc with (and a touch emulator
+// can report a fine pointer, so the CSS coarse-pointer rule alone missed it).
+const { isNarrow } = useViewport();
 /**
  * v2.3 Local RAG / semantic-search panel.
  *
@@ -213,7 +217,7 @@ const scoreColor = (score: number) => {
         <span v-if="rag.status?.ready">{{ indexLine }}</span>
         <span v-else></span>
         <span class="rag__hints">
-          <span class="key-hint">{{ t('rag.hintNav') }}</span>
+          <span v-if="!isNarrow" class="key-hint">{{ t('rag.hintNav') }}</span>
           <button
             class="rag__btn rag__btn--small"
             :disabled="rag.indexing"
