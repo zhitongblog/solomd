@@ -28,7 +28,7 @@ set -e
 # Bumped with the app (see scripts/release.sh). A copy run from a source
 # checkout reads the live version from tauri.conf.json instead, so the two
 # can't drift there.
-SOLOMD_VERSION="4.14.11"
+SOLOMD_VERSION="5.0.0"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 solomd_version() {
