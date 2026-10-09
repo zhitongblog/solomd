@@ -1,0 +1,14 @@
+# title: UTF-16LE (BOM + CRLF) file opens and saves back as UTF-16LE
+# checklist: A15
+# timeout: 150
+open:$V\utf16.md
+uia:A15.decoded|~第一行
+uclick:~第一行
+key:end
+type: 新增 line
+ms:400
+key:ctrl+s
+ms:1500
+expect:A15.bom-kept|$b = [IO.File]::ReadAllBytes("$V\utf16.md"); $b[0] -eq 0xFF -and $b[1] -eq 0xFE
+expect:A15.text-and-crlf|$b = [IO.File]::ReadAllBytes("$V\utf16.md"); [Text.Encoding]::Unicode.GetString($b, 2, $b.Length - 2) -ceq "# UTF16 测试`r`n`r`n第一行 新增 line`r`n"
+ps:$b = [IO.File]::ReadAllBytes("$V\utf16.md"); 'len=' + $b.Length + ' text=' + [Text.Encoding]::Unicode.GetString($b, 2, $b.Length - 2).Replace("`r", '\r').Replace("`n", '\n')

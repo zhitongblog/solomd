@@ -1,0 +1,46 @@
+# title: Microsoft Pinyin typing (real IME, -Settle 30) — no dropped / doubled characters
+# checklist: B14
+# engines: cm native
+# timeout: 300
+ps:Set-WinDefaultInputMethodOverride -InputTip '0804:{81D4E9C9-1D3B-41BC-9E6C-4B40BF79E35E}{FA550B04-5AD7-411F-A5AC-CA038EC515D7}'
+open:$V\ime.md
+wait:30
+uclick:@Edit
+ms:600
+imeon
+keys:zheshi diyihang 
+ms:300
+key:enter
+ms:300
+keys:nihao shijie 
+ms:300
+key:enter
+ms:300
+keys:women shi pengyou 
+ms:300
+key:enter
+ms:300
+keys:zhege zi bu neng diu 
+ms:300
+key:enter
+ms:300
+keys:jintian tianqi henhao ,
+ms:300
+key:enter
+ms:300
+keys:zaijian 
+ms:300
+key:enter
+ms:300
+keys:shuru fa ceshi 
+ms:300
+key:enter
+ms:300
+keys:zuihou yihang ,,, ..
+ms:600
+shot:typed
+imeoff
+key:ctrl+s
+ms:1500
+fileshow:ime.md
+expect:B14.exact-text|$l = @((ReadV 'ime.md') -split '\r?\n' | % { $_.Trim() } | ? { $_ }); ($l -join '/') -ceq '这是第一行/你好世界/我们是朋友/这个字不能丢/今天天气很好，/再见/输入法测试/最后一行，，， 。。'

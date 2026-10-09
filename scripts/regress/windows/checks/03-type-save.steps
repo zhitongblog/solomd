@@ -1,0 +1,16 @@
+# title: open a file, type ASCII + CJK, Ctrl+S writes the exact bytes
+# checklist: A4
+# engines: cm native
+# timeout: 150
+open:$V\save.md
+uclick:~Hello world.
+key:end
+type:\nTyped line abc 中文测试
+ms:600
+shot:typed
+key:ctrl+s
+ms:1500
+expect:A4.bytes-on-disk|(ReadV 'save.md') -cmatch '^# Save test\n\nHello world\.\n(\n)?Typed line abc 中文测试\n?$'
+expect:A4.utf8-no-bom|$b = [IO.File]::ReadAllBytes("$V\save.md"); $b[0] -eq 0x23
+fileshow:save.md
+shot:saved

@@ -1,0 +1,14 @@
+# title: Ctrl+Shift+J proofread flags "这是中文." only — file names / ... are not flagged
+# checklist: E (proofread)
+# timeout: 150
+open:$V\proof.md
+uclick:~这是中文
+key:ctrl+shift+j
+ms:2500
+shot:proof
+uia:P.panel-open|中文校对
+uia:P.high-1|高 · 1
+uia:P.medium-0|中 · 0
+uia:P.low-0|低 · 0
+ucount:P.exactly-one-issue|proof__row|1
+uia:P.flags-half-width-stop|~这是中文.@ListItem

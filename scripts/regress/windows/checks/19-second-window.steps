@@ -1,0 +1,19 @@
+# title: closing a second window (Ctrl+Shift+N) with unsaved edits prompts
+# checklist: A11
+# timeout: 200
+open:$V\win2.md
+key:ctrl+shift+n
+wait:6
+nwin:A11.second-window-opened|2
+win2
+fg
+uclick:~body
+key:end
+type: second window text
+ms:800
+shot:typed
+key:alt+f4
+ms:2000
+uia:A11.prompt-in-second-window|有未保存的修改
+nwin:A11.second-window-stays-open|2
+shot:prompt

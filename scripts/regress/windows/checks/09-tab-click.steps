@@ -1,0 +1,15 @@
+# title: clicking a tab in the title-bar row switches the active tab
+# checklist: A7
+# timeout: 150
+open:$V\tab-a.md
+open2:$V\tab-b.md
+wait:3
+title~:A7.second-file-active|^tab-b\.md
+uclick:~tab-a.md@TabItem
+ms:900
+title~:A7.click-switches-to-a|^tab-a\.md
+uia:A7.content-a-shown|~alpha file
+uclick:~tab-b.md@TabItem
+ms:900
+title~:A7.click-switches-to-b|^tab-b\.md
+uia:A7.content-b-shown|~bravo file

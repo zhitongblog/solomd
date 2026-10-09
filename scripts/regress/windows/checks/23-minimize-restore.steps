@@ -1,0 +1,26 @@
+# title: minimize trims WebView2 memory; restore renders and still edits
+# checklist: memory (747dd263)
+# timeout: 200
+open:$V\min.md
+wait:6
+mem
+set:before|$vars['mem']
+uclick:最小化@Button
+wait:12
+mem
+set:minimized|$vars['mem']
+expect:MEM.trimmed-when-minimized|[int]$vars.minimized -lt [int]$vars.before * 0.75
+taskbar:SoloMD
+wait:2
+fg
+rect
+expect:MEM.restored|-not [W]::IsIconic($script:target)
+nonblank:MEM.renders-after-restore
+uclick:~start
+key:end
+type: restored ok
+ms:400
+key:ctrl+s
+ms:1500
+filehas:MEM.edits-after-restore|min.md|start restored ok
+shot:restored

@@ -1,0 +1,25 @@
+# title: golden profile — fresh start, dismiss first-run UI, open the fixture vault (CodeMirror = default engine)
+# timeout: 240
+launch
+shot:fresh
+uclick?:稍后再设置
+uclick?:我知道了@Button
+uclick:打开文件夹…@Button
+fgdlg
+ms:800
+type:$V
+key:enter
+wait:2
+shot:dlg
+ddump:dlg
+dclick:选择文件夹
+wait:3
+fg
+uia:setup.tree-shows-vault|save.md
+shot:tree
+udump:tree
+# graceful close so WebView2 flushes localStorage (settings, workspace) to disk
+uclick:关闭@Button
+waitexit:15
+shot:afterclose
+wins

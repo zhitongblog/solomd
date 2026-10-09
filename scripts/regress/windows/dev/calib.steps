@@ -1,0 +1,7 @@
+# Calibration template: dump the UIA tree to learn element names / classes for a new check.
+#   scripts/regress/windows/run.sh --one scripts/regress/windows/dev/calib.steps cm
+#   -> out/<stamp>/logs/o-calib-uia-start.txt
+# timeout: 200
+open:$V\save.md
+udump:start
+shot:start

@@ -1,0 +1,11 @@
+# title: Ctrl+N then type at once (no click) — text lands in the new note
+# checklist: A1
+# timeout: 150
+open:$V\tab-a.md
+key:ctrl+n
+ms:700
+type:newnote focus test
+ms:600
+title~:A1.new-untitled-tab-active|Untitled
+uia:A1.typed-text-in-new-note|~newnote focus test
+shot:typed

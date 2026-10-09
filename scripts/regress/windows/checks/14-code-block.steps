@@ -1,0 +1,17 @@
+# title: Ctrl+Alt+K wraps the line in a code block and toggles it back off
+# checklist: B1
+# timeout: 150
+open:$V\code.md
+uclick:~plain line
+key:end
+key:ctrl+alt+k
+ms:700
+key:ctrl+s
+ms:1500
+fileeq:code.fenced|code.md|# Code\n\n```\nplain line\n```\n
+shot:on
+key:ctrl+alt+k
+ms:700
+key:ctrl+s
+ms:1500
+fileeq:code.unfenced|code.md|# Code\n\nplain line\n

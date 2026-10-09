@@ -1,0 +1,37 @@
+# title: in-app menubar — 文件 / 编辑 / 视图 / 帮助 open and their items run
+# checklist: L1
+# timeout: 200
+open:$V\menu.md
+uclick:文件@Button
+ms:700
+uia:L1.file-menu-open|~新建 Markdown
+shot:file
+uclick:~新建 Markdown
+ms:1200
+title~:L1.file-new-markdown-ran|Untitled
+nouia:L1.menu-closed-after-run|~新建 Markdown
+uclick:~menu.md@TabItem
+ms:800
+uclick:编辑@Button
+ms:700
+uia:L1.edit-menu-open|~查找…
+shot:edit
+uclick:~查找…
+ms:900
+uia:L1.edit-find-ran|查找@Edit
+key:esc
+ms:600
+uclick:视图@Button
+ms:700
+uia:L1.view-menu-open|~切换文件树
+shot:view
+uclick:~切换文件树
+ms:900
+nouia:L1.view-toggle-tree-ran|~\save.md@ListItem
+uclick:帮助@Button
+ms:700
+uia:L1.help-menu-open|~关于 SoloMD
+shot:help
+key:esc
+ms:500
+nouia:L1.esc-closes-menu|~关于 SoloMD

@@ -1,0 +1,15 @@
+# title: Alt+F4 right after typing quits without loss — relaunch restores the text
+# checklist: A12
+# timeout: 200
+open:$V\quit.md
+uclick:~before
+key:end
+type: quit fast 123
+key:alt+f4
+wait:5
+alive:A12.quit-without-prompt|dead
+shot:afterquit
+launch
+wait:2
+uia:A12.restored-after-relaunch|~quit fast 123
+shot:relaunch

@@ -1,0 +1,40 @@
+# title: export HTML / DOCX / PNG through 文件 → 导出 writes the files
+# checklist: F1-F3
+# timeout: 300
+open:$V\export.md
+uclick:文件@Button
+umove:导出@Button
+ms:900
+uclick:导出为 HTML…
+fgdlg
+ms:600
+type:$V\export.html
+key:enter
+wait:5
+fg
+expect:F.html-written|(Test-Path "$V\export.html") -and (Get-Item "$V\export.html").Length -gt 500
+expect:F.html-content|$h = [IO.File]::ReadAllText("$V\export.html"); $h.Contains('<strong>bold</strong>') -and $h.Contains('https://example.com/target')
+uclick:文件@Button
+umove:导出@Button
+ms:900
+uclick:导出为 Word (DOCX)…
+fgdlg
+ms:600
+type:$V\export.docx
+key:enter
+wait:6
+fg
+expect:F.docx-written|(Test-Path "$V\export.docx") -and (Get-Item "$V\export.docx").Length -gt 2000
+uclick:文件@Button
+umove:导出@Button
+ms:900
+uclick:导出为图片 (PNG)…
+fgdlg
+ms:600
+type:$V\export.png
+key:enter
+wait:8
+fg
+expect:F.png-written|$b = [IO.File]::ReadAllBytes("$V\export.png"); $b.Length -gt 5000 -and $b[1] -eq 0x50 -and $b[2] -eq 0x4E
+ps:Get-ChildItem "$V\export.*" | % { $_.Name + ' ' + $_.Length }
+shot:end

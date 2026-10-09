@@ -1,0 +1,25 @@
+# title: golden profile — switch 编辑器引擎（Windows） to 原生 (native textarea)
+# timeout: 240
+open:$V\save.md
+ucls:setup.starts-on-codemirror|cm-content
+key:ctrl+comma
+ms:1500
+uclick:搜索设置（⌘/Ctrl+F）
+type:引擎
+ms:1200
+uclick:@ComboBox
+ms:800
+key:down
+key:enter
+ms:1000
+shot:engine
+key:esc
+ms:800
+key:esc
+ms:1500
+udump:after
+shot:after
+ucls:setup.native-editor-active|textarea|plain
+noucls:setup.codemirror-gone|cm-content
+uclick:关闭@Button
+waitexit:15

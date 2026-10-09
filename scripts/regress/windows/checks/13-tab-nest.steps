@@ -1,0 +1,14 @@
+# title: Tab on the second ordered-list item nests it
+# checklist: B9
+# engines: cm native
+# timeout: 150
+open:$V\list.md
+uclick:~two
+key:end
+key:tab
+ms:700
+shot:tab
+key:ctrl+s
+ms:1500
+expect:B9.nested|(ReadV 'list.md') -match '1\. one\r?\n {2,4}(1|2)\. two'
+fileshow:list.md

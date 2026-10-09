@@ -1,0 +1,33 @@
+# title: DOCX import round trip — bold, link, tasks [ ]/[x], numbered list survive
+# checklist: A8
+# timeout: 300
+open:$V\export.md
+uclick:文件@Button
+umove:导出@Button
+ms:900
+uclick:导出为 Word (DOCX)…
+fgdlg
+ms:600
+type:$V\roundtrip.docx
+key:enter
+wait:6
+fg
+expect:A8.docx-exported|Test-Path "$V\roundtrip.docx"
+key:ctrl+shift+l
+fgdlg
+ms:600
+type:$V\roundtrip.docx
+key:enter
+wait:8
+fg
+shot:imported
+set:impname|$f = Get-ChildItem $V -Filter '*.md' | ? { $_.LastWriteTime -gt (Get-Date).AddMinutes(-3) -and $_.Name -ne 'export.md' } | sort LastWriteTime | select -Last 1; if ($f) { $f.Name } else { '' }
+set:imp|if ($vars.impname) { ReadV $vars.impname } else { '' }
+expect:A8.import-created-note|$vars.imp -ne ''
+expect:A8.heading|$vars.imp -match '(?m)^# Import test'
+expect:A8.bold|$vars.imp.Contains('with **bold** and')
+expect:A8.link|$vars.imp.Contains('[link](https://example.com/target)')
+expect:A8.task-open|$vars.imp -match '(?m)^- \[ \] task one'
+expect:A8.task-done|$vars.imp -match '(?m)^- \[x\] task two'
+expect:A8.numbered|$vars.imp -match '(?m)^1\. first\s*\r?\n2\. second\s*\r?\n3\. third'
+ps:'IMPORTED=' + $vars.imp.Replace("`r", '\r').Replace("`n", '\n')

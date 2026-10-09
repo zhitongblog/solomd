@@ -1,0 +1,31 @@
+# title: Ctrl+H replace — 替换 replaces one, 全部替换 replaces the rest
+# checklist: C2
+# engines: cm native
+# timeout: 180
+open:$V\find.md
+uclick:~alpha beta
+key:ctrl+home
+key:ctrl+h
+ms:900
+type:Hello
+ms:500
+uia:C2.zh-replace-field|替换为@Edit
+uia:C2.zh-replace-button|替换@Button
+uia:C2.zh-replace-all-button|全部替换@Button
+uclick:替换为@Edit
+type:Howdy
+ms:300
+uclick:替换@Button
+ms:600
+shot:one
+key:ctrl+s
+ms:1500
+set:afterOne|ReadV 'find.md'
+expect:C2.replace-one-not-all|([regex]::Matches($vars.afterOne, 'Hello')).Count -ge 1
+fileshow:find.md
+uclick:全部替换@Button
+ms:600
+shot:all
+key:ctrl+s
+ms:1500
+fileeq:C2.replace-all|find.md|# Find test\n\nalpha beta alpha gamma alpha\n\nHowdy one. Howdy two.\n

@@ -1,0 +1,13 @@
+# title: Ctrl+Alt+M opens the formula editor (not quick capture)
+# checklist: B5
+# timeout: 150
+open:$V\math.md
+uclick:~here.
+key:end
+key:ctrl+alt+m
+ms:1800
+shot:formula
+udump:formula
+nwin:B5.no-quick-capture-window|1
+uia:B5.formula-dialog|公式
+uia:B5.formula-apply-button|应用@Button

@@ -1,0 +1,23 @@
+# title: an invalid mermaid block shows an inline error and does not shift the UI
+# checklist: D8
+# timeout: 180
+open:$V\save.md
+uclick:分栏@RadioButton
+ms:1500
+urect:menuA|文件@Button
+urect:modesA|视图模式@Group
+urect:docA|@Document
+open2:$V\mermaid.md
+wait:4
+title~:M.mermaid-file-open|^mermaid\.md
+uia:M.text-below-still-rendered|~Below text.
+uia:M.inline-error-shown|~Mermaid error
+urect:menuB|文件@Button
+urect:modesB|视图模式@Group
+urect:docB|@Document
+expect:M.menubar-not-moved|$vars.menuA -eq $vars.menuB
+expect:M.toolbar-not-moved|$vars.modesA -eq $vars.modesB
+expect:M.document-not-moved|$vars.docA -eq $vars.docB
+nonblank:M.window-not-blank
+shot:mermaid
+udump:mermaid

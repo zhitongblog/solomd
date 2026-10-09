@@ -1,0 +1,28 @@
+# title: Ctrl+F find bar — Chinese labels, n/m counter, Enter advances, Esc closes
+# checklist: C1
+# engines: cm native
+# timeout: 150
+open:$V\find.md
+uclick:~alpha beta
+key:ctrl+home
+key:ctrl+f
+ms:800
+type:alpha
+ms:900
+shot:find
+uia:C1.zh-find-field|查找@Edit
+[cm] uia:C1.zh-next-button|下一个 (Enter)@Button
+[cm] uia:C1.zh-case-button|区分大小写@Button
+set:n1|UiaName '^\d+/\d+$'
+expect:C1.counter-n-of-3|$vars.n1 -match '^\d/3$'
+key:enter
+ms:500
+set:n2|UiaName '^\d+/\d+$'
+key:enter
+ms:500
+set:n3|UiaName '^\d+/\d+$'
+expect:C1.enter-advances|$vars.n2 -match '^[1-3]/3$' -and $vars.n3 -match '^[1-3]/3$' -and $vars.n2 -ne $vars.n3
+key:esc
+ms:700
+nouia:C1.esc-closes|查找@Edit
+shot:closed

@@ -1,0 +1,25 @@
+# title: view modes 分栏 / 预览 / 源码 / 实时 via the segmented control
+# checklist: D1
+# timeout: 180
+open:$V\export.md
+uclick:分栏@RadioButton
+ms:1500
+ucls:D1.split-editor|cm-content
+uia:D1.split-preview-rendered|link@Hyperlink
+uia:D1.split-divider|调整编辑区和预览区的宽度
+shot:split
+uclick:预览@RadioButton
+ms:1500
+noucls:D1.preview-has-no-editor|cm-content
+uia:D1.preview-rendered|link@Hyperlink
+shot:preview
+uclick:源码@RadioButton
+ms:1500
+ucls:D1.source-editor|cm-content
+nouia:D1.source-has-no-preview|link@Hyperlink
+shot:source
+uclick:实时@RadioButton
+ms:1500
+ucls:D1.live-editor|cm-content
+nouia:D1.live-has-no-separate-preview|link@Hyperlink
+shot:live

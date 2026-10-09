@@ -1,0 +1,25 @@
+# title: Ctrl+B toggles the file tree exactly once per press (no double toggle, no bold); Ctrl+Shift+B bolds once
+# checklist: D4 / B1
+# timeout: 150
+open:$V\bold.md
+uia:B.tree-visible-at-start|~\save.md@ListItem
+udbl:word
+ms:400
+key:ctrl+b
+ms:900
+nouia:B.ctrl-b-hides-tree|~\save.md@ListItem
+shot:hidden
+key:ctrl+b
+ms:900
+uia:B.ctrl-b-again-shows-tree|~\save.md@ListItem
+key:ctrl+s
+ms:1500
+fileeq:B.ctrl-b-does-not-bold|bold.md|# Bold test\n\nword\n
+udbl:word
+ms:400
+key:ctrl+shift+b
+ms:700
+key:ctrl+s
+ms:1500
+fileeq:B1.ctrl-shift-b-bolds-once|bold.md|# Bold test\n\n**word**\n
+shot:bold

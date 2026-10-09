@@ -1,0 +1,19 @@
+# title: Ctrl+W on a dirty tab asks to save; 取消 keeps the tab and the disk file
+# checklist: A6
+# timeout: 150
+open:$V\tab-a.md
+uclick:~alpha file
+key:end
+type: dirty
+ms:400
+key:ctrl+w
+ms:1200
+uia:A6.prompt-shown|有未保存的修改
+uia:A6.prompt-buttons|不保存(N)@Button
+uia:A6.prompt-names-file|~要保存吗
+shot:prompt
+uclick:取消@Button
+ms:800
+nouia:A6.prompt-closed|有未保存的修改
+uia:A6.tab-still-open|~tab-a.md@TabItem
+fileeq:A6.disk-untouched|tab-a.md|# Tab A\n\nalpha file\n

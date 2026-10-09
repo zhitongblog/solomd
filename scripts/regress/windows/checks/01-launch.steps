@@ -1,0 +1,10 @@
+# title: launch + render (window, menubar, tabs, editor, non-blank pixels)
+# checklist: L1 / A12
+# timeout: 150
+launch
+title~:launch.title|— SoloMD$
+uia:launch.menubar|文件@Button
+uia:launch.view-mode-switch|实时@RadioButton
+ucls:launch.editor-present|cm-content
+nonblank:launch.window-not-blank
+shot:window

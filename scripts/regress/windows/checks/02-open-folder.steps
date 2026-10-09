@@ -1,0 +1,23 @@
+# title: open folder through the native picker (fresh profile), tree lists the vault, click opens a file
+# checklist: A3
+# engines: fresh
+# timeout: 200
+launch
+uclick?:稍后再设置
+uclick?:我知道了@Button
+uclick:打开文件夹…@Button
+fgdlg:选择文件夹
+ms:800
+type:$V
+key:enter
+wait:2
+dclick:选择文件夹
+wait:3
+fg
+uia:A3.tree-lists-vault|~\save.md@ListItem
+uia:A3.tree-lists-utf16|~\utf16.md@ListItem
+shot:tree
+uclick:~\save.md@ListItem
+ms:1500
+title~:A3.click-opens-file|^save\.md — SoloMD
+uia:A3.content-shown|~Hello world.

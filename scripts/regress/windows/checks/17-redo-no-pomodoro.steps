@@ -1,0 +1,18 @@
+# title: Ctrl+Shift+Z does not start a pomodoro / focus session
+# checklist: B8
+# timeout: 150
+open:$V\redo.md
+uclick:~base
+key:end
+type: redo test
+ms:400
+key:ctrl+z
+ms:600
+key:ctrl+shift+z
+ms:1800
+noucls:F4.no-pomodoro-pill|pomo-pill
+nouia:F4.no-focus-session|~专注中
+shot:after
+key:ctrl+s
+ms:1200
+fileshow:redo.md
