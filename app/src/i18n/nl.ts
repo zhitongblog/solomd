@@ -143,6 +143,7 @@ export const nl: I18n = {
   // 5.0 window header (Toolbar.vue)
   // 5.0 phone shell (Sidebar variant=phone, PhoneTabBar, Toolbar)
   phone: {
+    unsaved: "Niet-opgeslagen notities",
     notes: "Notities",
     daily: "Dagnotitie",
     count: "{n}",

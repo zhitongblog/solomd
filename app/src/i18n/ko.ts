@@ -143,6 +143,7 @@ export const ko: I18n = {
   // 5.0 window header (Toolbar.vue)
   // 5.0 phone shell (Sidebar variant=phone, PhoneTabBar, Toolbar)
   phone: {
+    unsaved: "저장되지 않은 노트",
     notes: "노트",
     daily: "일일 노트",
     count: "{n}개",

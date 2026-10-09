@@ -79,6 +79,31 @@ function openInbox() {
 }
 const inboxFiltering = computed(() => inbox.filterMode.value);
 
+// Phone: notes written but not yet saved as files. With no folder open (a
+// fresh install), they had no way back once you left the editor — the phone
+// shell has no tab strip. The welcome docs are open but unmodified, so they
+// stay out of this list.
+const unsavedNotes = computed(() =>
+  tabs.tabs
+    .filter((tb) => !tb.filePath && tb.content.trim() !== '' && tb.content !== tb.savedContent)
+    .map((tb) => ({
+      id: tb.id,
+      // First line as plain text: no heading hashes, list/task markers or
+      // emphasis characters.
+      title:
+        tb.content
+          .trim()
+          .split('\n')[0]
+          .replace(/^\s*(#+|[-*+]|\d+\.)\s+(\[[ xX]\]\s+)?/, '')
+          .replace(/[*_`~]+/g, '')
+          .slice(0, 60) || tb.fileName,
+    })),
+);
+function openUnsaved(id: string) {
+  tabs.activate(id);
+  window.dispatchEvent(new CustomEvent('solomd:file-opened', { detail: {} }));
+}
+
 // 最近 — a small popover listing workspace.recentFiles (spec §6 menu style).
 const recentOpen = ref(false);
 const recentPos = ref({ x: 0, y: 0 });
@@ -277,6 +302,19 @@ onBeforeUnmount(() => {
         </button>
       </nav>
 
+      <section v-if="phone && unsavedNotes.length" class="sb__unsaved">
+        <div class="sb__label">{{ t('phone.unsaved') }}</div>
+        <button
+          v-for="n in unsavedNotes"
+          :key="n.id"
+          class="sb__row"
+          type="button"
+          @click="openUnsaved(n.id)"
+        >
+          <Icon name="new" :size="16" class="sb__row-icon" />
+          <span class="sb__row-label">{{ n.title }}</span>
+        </button>
+      </section>
       <template v-if="hasFolder">
         <FileTree embedded />
 
@@ -684,6 +722,12 @@ onBeforeUnmount(() => {
 }
 .sb__primary:active {
   filter: brightness(0.95);
+}
+.sb__unsaved {
+  padding: 0 16px 16px;
+}
+.sb__unsaved .sb__label {
+  padding-left: 4px;
 }
 .sb__empty-recent {
   align-self: stretch;

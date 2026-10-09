@@ -143,6 +143,7 @@ export const en = {
   // 5.0 window header (Toolbar.vue)
   // 5.0 phone shell (Sidebar variant=phone, PhoneTabBar, Toolbar)
   phone: {
+    unsaved: "Unsaved notes",
     notes: "Notes",
     daily: "Daily note",
     count: "{n}",

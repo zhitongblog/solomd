@@ -144,6 +144,7 @@ export const zh: I18n = {
   // 5.0 window header (Toolbar.vue)
   // 5.0 phone shell (Sidebar variant=phone, PhoneTabBar, Toolbar)
   phone: {
+    unsaved: "未保存的笔记",
     notes: "笔记",
     daily: "日记",
     count: "{n} 篇",

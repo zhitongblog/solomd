@@ -143,6 +143,7 @@ export const fr: I18n = {
   // 5.0 window header (Toolbar.vue)
   // 5.0 phone shell (Sidebar variant=phone, PhoneTabBar, Toolbar)
   phone: {
+    unsaved: "Notes non enregistrées",
     notes: "Notes",
     daily: "Note du jour",
     count: "{n}",
