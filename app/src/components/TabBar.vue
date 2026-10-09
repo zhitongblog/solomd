@@ -4,6 +4,7 @@ import { revealItemInDir } from '@tauri-apps/plugin-opener';
 import { useTabsStore } from '../stores/tabs';
 import { useFiles } from '../composables/useFiles';
 import { useI18n } from '../i18n';
+import { revealLabelKey } from '../lib/platform';
 
 const tabs = useTabsStore();
 const files = useFiles();
@@ -166,7 +167,7 @@ function onTabsWheel(e: WheelEvent) {
       <li><button :disabled="!menuFlags?.hasSaved" @mousedown.prevent="onMenu('closeSaved')">{{ t('tabMenu.closeSaved') }}</button></li>
       <li><button :disabled="!menuFlags?.hasAll"   @mousedown.prevent="onMenu('closeAll')">{{ t('tabMenu.closeAll') }}</button></li>
       <li class="tab-menu__sep"></li>
-      <li><button :disabled="!menuFlags?.hasFilePath" @mousedown.prevent="onMenu('revealInFolder')">{{ t('tabMenu.revealInFolder') }}</button></li>
+      <li><button :disabled="!menuFlags?.hasFilePath" @mousedown.prevent="onMenu('revealInFolder')">{{ t(revealLabelKey('tabMenu.revealInFolder')) }}</button></li>
     </ul>
   </div>
 </template>

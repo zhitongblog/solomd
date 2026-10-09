@@ -358,6 +358,10 @@ export const uk: I18n = {
     rename: 'Перейменувати',
     delete: 'Видалити',
     reveal: 'Показати у Finder',
+    // The Finder wording above is macOS's; Windows and Linux name their own
+    // file manager (Linux regression run).
+    revealExplorer: 'Показати у Провіднику',
+    revealFileManager: 'Показати у файловому менеджері',
     refresh: 'Оновити',
     openFolder: 'Відкрити теку…',
     recentFolders: 'Recent folders',
@@ -468,7 +472,7 @@ export const uk: I18n = {
     docxPresetAcademic: 'Академічний — обкладинка, зміст, подвійний інтервал, номери сторінок',
     docxPresetHint: 'З чого починається експорт у Word. Блок `docx:` у front matter перекриває окремі ключі (cover, toc, header, pageNumbers, font, fontSize, lineSpacing, title, author, date), так само як `pdf:`.',
     quickCapture: 'Гаряча клавіша швидкого запису',
-    quickCaptureHint: 'Загальносистемна комбінація, що відкриває маленьке вікно будь-де: введіть текст, натисніть Enter — нотатка потрапить у Вхідні, не виводячи застосунок наперед. Синтаксис прискорювача Tauri, напр. CmdOrCtrl+Alt+M.',
+    quickCaptureHint: 'Загальносистемна комбінація, що відкриває маленьке вікно будь-де: введіть текст, натисніть Enter — нотатка потрапить у Вхідні, не виводячи застосунок наперед. Синтаксис прискорювача Tauri, напр. CmdOrCtrl+Alt+Shift+M.',
     quickCaptureFailed: 'Не зареєстровано: {error}',
     codeBlockWrap: 'Переносити довгі рядки в блоках коду',
     codeBlockWrapHint: 'Переносить рядки коду, ширші за блок, замість горизонтальної прокрутки. PDF/друк завжди переносить.',

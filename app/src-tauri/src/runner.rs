@@ -42,6 +42,9 @@ mod capture_endpoint;
 #[path = "quick_capture.rs"]
 mod quick_capture;
 
+#[path = "window_labels.rs"]
+mod window_labels;
+
 // v4.0 — public REST API mirroring the agent_tools surface for non-MCP
 // clients. Declared in both lib.rs and runner.rs so the binary's compile
 // root resolves `crate::rest_api` the same way the lib does.
@@ -222,14 +225,60 @@ fn is_app_url(url: &tauri::Url) -> bool {
     }
 }
 
-/// Set to true by `force_close_window` command after the frontend confirms close.
-static FORCE_CLOSE: AtomicBool = AtomicBool::new(false);
+/// Labels whose frontend has finished its close handling (unsaved buffers
+/// persisted, or the user answered the unsaved-changes prompt) — their next
+/// CloseRequested goes through. Per label: a single global flag let one
+/// window's confirmation wave through every other window's close, and stayed
+/// set for a main window re-created after a single-instance relaunch.
+static CLOSE_CONFIRMED: Mutex<Vec<String>> = Mutex::new(Vec::new());
 
-/// Frontend calls this after user confirms "Discard & Close".
+/// Frontend calls this once its close handling is done.
 #[tauri::command]
 fn force_close_window(window: tauri::Window) {
-    FORCE_CLOSE.store(true, Ordering::Relaxed);
+    if let Ok(mut confirmed) = CLOSE_CONFIRMED.lock() {
+        confirmed.push(window.label().to_string());
+    }
     window.close().ok();
+}
+
+/// True (and consumed) when `label`'s frontend already confirmed this close.
+fn take_close_confirmation(label: &str) -> bool {
+    let Ok(mut confirmed) = CLOSE_CONFIRMED.lock() else { return false };
+    match confirmed.iter().position(|l| l == label) {
+        Some(i) => {
+            confirmed.remove(i);
+            true
+        }
+        None => false,
+    }
+}
+
+/// The main window, re-created from tauri.conf.json if it is gone.
+///
+/// Closing the main window used to leave the process running whenever another
+/// window survived it (the hidden quick-capture box, a second editor window
+/// whose close the user cancelled). A relaunch then reached that process
+/// through single-instance, which only knew how to re-show `main` — so nothing
+/// appeared and the app was unreachable until killed.
+#[cfg(desktop)]
+fn ensure_main_window(app: &tauri::AppHandle) -> Option<tauri::WebviewWindow> {
+    if let Some(win) = app.get_webview_window(window_labels::MAIN_LABEL) {
+        return Some(win);
+    }
+    let config = app
+        .config()
+        .app
+        .windows
+        .iter()
+        .find(|w| w.label == window_labels::MAIN_LABEL)?
+        .clone();
+    let win = tauri::WebviewWindowBuilder::from_config(app, &config)
+        .and_then(|b| b.build())
+        .map_err(|e| eprintln!("[single-instance] could not re-create the main window: {e}"))
+        .ok()?;
+    #[cfg(target_os = "windows")]
+    win_chrome::install(&win, app);
+    Some(win)
 }
 
 /// bug/C1 — rebuild the native menu from the frontend's spec
@@ -419,16 +468,35 @@ pub fn run_with(initial_file: Option<String>) {
     let builder = builder.plugin(tauri_plugin_single_instance::init(
         |app: &tauri::AppHandle, argv: Vec<String>, _cwd: String| {
             use tauri::Emitter;
-            if let Some(win) = app.get_webview_window("main") {
+            let files: Vec<String> = argv
+                .iter()
+                .skip(1)
+                .filter(|a| !a.is_empty() && !a.starts_with('-'))
+                .cloned()
+                .collect();
+            if let Some(win) = app.get_webview_window(window_labels::MAIN_LABEL) {
                 let _ = win.unminimize();
                 let _ = win.show();
                 let _ = win.set_focus();
-            }
-            for arg in argv.iter().skip(1) {
-                if !arg.is_empty() && !arg.starts_with('-') {
-                    let _ = app.emit("solomd://opened-file", arg.clone());
+                for f in files {
+                    let _ = app.emit("solomd://opened-file", f);
                 }
+                return;
             }
+            // No main window: build a fresh one. Its frontend is not listening
+            // yet, so file arguments wait in PendingOpen, which it drains on
+            // mount. Built off this thread — on Windows the callback runs
+            // inside the event loop, which the builder has to wait on.
+            if let Some(state) = app.try_state::<PendingOpen>() {
+                state.0.lock().unwrap().extend(files);
+            }
+            let app = app.clone();
+            std::thread::spawn(move || {
+                if let Some(win) = ensure_main_window(&app) {
+                    let _ = win.show();
+                    let _ = win.set_focus();
+                }
+            });
         },
     ));
 
@@ -779,28 +847,51 @@ pub fn run_with(initial_file: Option<String>) {
             }
 
             // ---- Window close: intercept and ask frontend ----
-            // Only the main window gets the unsaved-tabs check. Auxiliary
-            // windows (slideshow, "open file in new window" spawns labelled
-            // `solomd-window-N` — #103) close directly: their frontend
-            // (App.vue's onCloseRequested for aux labels) removes them from
-            // the shared windows registry so they don't resurrect next launch.
-            // Routing them through the main window's listener would instead
-            // shut down the editor.
+            // Every window that holds editable documents — main, "New Window"
+            // and "open in new window" — hands its close to its own frontend
+            // first (App.vue's close-requested listener): main persists its
+            // buffers for session restore; a second window asks about unsaved
+            // tabs, since nothing restores it. Second windows used to close
+            // straight away and silently drop their edits. The payload is the
+            // label, so only the window being closed reacts — the event used
+            // to be broadcast, and every window force-closed itself with main.
+            // Slideshow and quick capture have nothing to lose and close as is.
             RunEvent::WindowEvent {
                 event: tauri::WindowEvent::CloseRequested { api, .. },
                 label,
                 ..
             } => {
-                if label != "main" {
-                    return; // let the auxiliary window close itself
+                if !window_labels::is_editor_window(label) {
+                    return;
                 }
-                if FORCE_CLOSE.load(Ordering::Relaxed) {
+                if take_close_confirmation(label) {
                     // Frontend confirmed — let the close proceed.
                     return;
                 }
-                // Prevent the close and ask the frontend to check unsaved tabs.
                 api.prevent_close();
-                let _ = app_handle.emit("solomd://close-requested", ());
+                let _ = app_handle.emit("solomd://close-requested", label.clone());
+            }
+
+            // ---- Main window destroyed: the app is quitting ----
+            // Closing the main window (✕, Ctrl+Q / Exit) means quit. Windows
+            // that only make sense next to it go now — the hidden quick-capture
+            // box used to keep the process alive with no way back in. Other
+            // editor windows are asked to close through the same unsaved-
+            // changes path; one the user keeps open keeps the app running, and
+            // a relaunch re-creates the main window (single-instance above).
+            // Once nothing is left, Tauri exits on its own.
+            RunEvent::WindowEvent {
+                event: tauri::WindowEvent::Destroyed,
+                label,
+                ..
+            } if label == window_labels::MAIN_LABEL => {
+                for (other, win) in app_handle.webview_windows() {
+                    if window_labels::closes_with_main(&other) {
+                        let _ = win.destroy();
+                    } else if window_labels::is_editor_window(&other) {
+                        let _ = app_handle.emit("solomd://close-requested", other.clone());
+                    }
+                }
             }
 
             // ---- Minimize: let WebView2 trim the renderer (Windows) ----

@@ -358,6 +358,10 @@ export const fr: I18n = {
     rename: 'Renommer',
     delete: 'Supprimer',
     reveal: 'Afficher dans le Finder',
+    // The Finder wording above is macOS's; Windows and Linux name their own
+    // file manager (Linux regression run).
+    revealExplorer: 'Afficher dans l’Explorateur',
+    revealFileManager: 'Afficher dans le gestionnaire de fichiers',
     refresh: 'Actualiser',
     openFolder: 'Ouvrir le dossier…',
     recentFolders: 'Recent folders',
@@ -468,7 +472,7 @@ export const fr: I18n = {
     docxPresetAcademic: 'Académique — couverture, sommaire, double interligne, numéros de page',
     docxPresetHint: 'La base d’un export Word. Un bloc `docx:` dans le front matter remplace les clés individuelles (cover, toc, header, pageNumbers, font, fontSize, lineSpacing, title, author, date), comme `pdf:`.',
     quickCapture: 'Raccourci de capture rapide',
-    quickCaptureHint: 'Un raccourci système qui ouvre une petite fenêtre n’importe où : tapez, appuyez sur Entrée, la note arrive dans la boîte de réception sans que l’application passe au premier plan. Syntaxe d’accélérateur Tauri, p. ex. CmdOrCtrl+Alt+M.',
+    quickCaptureHint: 'Un raccourci système qui ouvre une petite fenêtre n’importe où : tapez, appuyez sur Entrée, la note arrive dans la boîte de réception sans que l’application passe au premier plan. Syntaxe d’accélérateur Tauri, p. ex. CmdOrCtrl+Alt+Shift+M.',
     quickCaptureFailed: 'Non enregistré : {error}',
     codeBlockWrap: 'Retour à la ligne dans les blocs de code',
     codeBlockWrapHint: "Replie les lignes de code plus larges que le bloc au lieu d'afficher une barre de défilement horizontale. PDF/impression replie toujours.",

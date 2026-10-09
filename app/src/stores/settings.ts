@@ -3,6 +3,10 @@ import { defineStore } from 'pinia';
 import type { Theme, ViewMode } from '../types';
 import type { WindowsEditorEngine } from '../lib/platform';
 import { isMobile } from '../lib/platform';
+import {
+  QUICK_CAPTURE_DEFAULT_SHORTCUT,
+  migrateQuickCaptureShortcut,
+} from '../lib/quick-capture-shortcut';
 
 const LS_KEY = 'solomd.settings.v1';
 
@@ -299,7 +303,7 @@ interface Settings {
   // Quick capture: a system-wide hotkey that opens a small box, takes a line
   // of text and files it in the Inbox without bringing the app forward. The
   // chord is an OS-level accelerator (Tauri's spelling, e.g.
-  // `CmdOrCtrl+Alt+M`), not one of the rebindable in-app shortcuts, because
+  // `CmdOrCtrl+Alt+Shift+M`), not one of the rebindable in-app shortcuts, because
   // it has to work while another application is focused.
   quickCaptureEnabled: boolean;
   quickCaptureShortcut: string;
@@ -699,7 +703,7 @@ function defaults(): Settings {
     globalZoom: 1,
     wheelZoomEnabled: true,
     quickCaptureEnabled: true,
-    quickCaptureShortcut: 'CmdOrCtrl+Alt+M',
+    quickCaptureShortcut: QUICK_CAPTURE_DEFAULT_SHORTCUT,
     docxPreset: 'plain',
     printTheme: 'light',
     foldingEnabled: true,
@@ -820,6 +824,10 @@ function load(): Settings {
         }
       }
       merged.splitRatio = clampSplitRatio(merged.splitRatio);
+      // The old default Ctrl+Alt+M was also the formula editor's chord, and
+      // the global registration always won. Users who never changed it move to
+      // the new default; a chord someone picked is theirs to keep.
+      merged.quickCaptureShortcut = migrateQuickCaptureShortcut(parsed.quickCaptureShortcut);
       merged.keybindings = {};
       if (parsed.keybindings && typeof parsed.keybindings === 'object') {
         for (const [k, v] of Object.entries(parsed.keybindings)) {

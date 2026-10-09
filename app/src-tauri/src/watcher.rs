@@ -116,6 +116,34 @@ struct WatcherInner {
     watched_files: HashMap<PathBuf, String>,
     /// canonical parent dir → refcount of watched files under it
     watched_dirs: HashMap<PathBuf, usize>,
+    /// canonical path → size + mtime when last seen. See `FileStamp`.
+    stamps: HashMap<PathBuf, FileStamp>,
+}
+
+/// What a file looked like when we last looked: mtime and length.
+///
+/// Linux inotify reports *opening and reading* a file (`IN_OPEN`,
+/// `IN_CLOSE_NOWRITE`, which notify 8 subscribes to), and the debouncer erases
+/// the event kind. So every read of a watched file — our own reload after
+/// "Reload from Disk", the startup and focus revalidation, the indexer —
+/// came back as "changed on disk", and a dirty tab got the dialog in the
+/// middle of typing (Linux regression run, Failure 9). An event whose stamp
+/// equals the last one seen changed nothing and is dropped.
+type FileStamp = (Option<SystemTime>, u64);
+
+fn file_stamp(path: &std::path::Path) -> Option<FileStamp> {
+    let meta = std::fs::metadata(path).ok()?;
+    Some((meta.modified().ok(), meta.len()))
+}
+
+/// Whether an event can mean new content, given the stamp recorded before it
+/// (`prev`) and the one on disk now (`now`). A file that vanished (`now` is
+/// None) or that we have no baseline for always counts.
+fn stamp_changed(prev: Option<&FileStamp>, now: Option<&FileStamp>) -> bool {
+    match (prev, now) {
+        (Some(p), Some(n)) => p != n,
+        _ => true,
+    }
 }
 
 pub struct WatcherState {
@@ -130,6 +158,7 @@ impl WatcherState {
             inner: Arc::new(Mutex::new(WatcherInner {
                 watched_files: HashMap::new(),
                 watched_dirs: HashMap::new(),
+                stamps: HashMap::new(),
             })),
         }
     }
@@ -167,6 +196,23 @@ fn ensure_watcher(app: &AppHandle, state: &WatcherState) {
                     None => continue,
                 }
             };
+
+            // Opening or reading the file is not a change (see FileStamp).
+            {
+                let now = file_stamp(&canonical);
+                let mut g = inner.lock().unwrap();
+                if !stamp_changed(g.stamps.get(&canonical), now.as_ref()) {
+                    continue;
+                }
+                match now {
+                    Some(n) => {
+                        g.stamps.insert(canonical.clone(), n);
+                    }
+                    None => {
+                        g.stamps.remove(&canonical);
+                    }
+                }
+            }
 
             let canonical_str = canonical.to_string_lossy().to_string();
             // Fast path: event arrived within the classic window of our own
@@ -230,6 +276,9 @@ pub fn watch_file(
             return Ok(());
         }
         inner.watched_files.insert(canonical.clone(), path.clone());
+        if let Some(stamp) = file_stamp(&canonical) {
+            inner.stamps.insert(canonical.clone(), stamp);
+        }
         let count = inner.watched_dirs.entry(parent.clone()).or_insert(0);
         *count += 1;
         *count == 1
@@ -280,6 +329,7 @@ pub fn unwatch_file(
         if inner.watched_files.remove(&canonical).is_none() {
             return Ok(()); // wasn't watching it
         }
+        inner.stamps.remove(&canonical);
         if let Some(count) = inner.watched_dirs.get_mut(&parent) {
             *count -= 1;
             if *count == 0 {
@@ -342,10 +392,36 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
+    /// Failure 9 — reading a file leaves its stamp alone, so the access events
+    /// Linux reports for it are dropped; writing it, even to the same length,
+    /// is a change; a deleted file always is.
+    #[test]
+    fn reading_a_file_is_not_a_change_but_writing_is() {
+        let tmp = tempfile::tempdir().unwrap();
+        let file = tmp.path().join("note.md");
+        std::fs::write(&file, "abc").unwrap();
+        let before = file_stamp(&file);
+        assert!(before.is_some());
+
+        let _ = std::fs::read_to_string(&file).unwrap();
+        let after_read = file_stamp(&file);
+        assert!(!stamp_changed(before.as_ref(), after_read.as_ref()));
+
+        std::thread::sleep(Duration::from_millis(20));
+        std::fs::write(&file, "xyz").unwrap();
+        let after_write = file_stamp(&file);
+        assert!(stamp_changed(before.as_ref(), after_write.as_ref()));
+
+        std::fs::remove_file(&file).unwrap();
+        assert!(stamp_changed(after_write.as_ref(), file_stamp(&file).as_ref()));
+        assert!(stamp_changed(None, after_write.as_ref()), "no baseline: always report");
+    }
+
     fn fresh() -> Arc<Mutex<WatcherInner>> {
         Arc::new(Mutex::new(WatcherInner {
             watched_files: HashMap::new(),
             watched_dirs: HashMap::new(),
+            stamps: HashMap::new(),
         }))
     }
 

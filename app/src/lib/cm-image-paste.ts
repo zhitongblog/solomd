@@ -396,6 +396,51 @@ async function saveAndInsert(
 }
 
 /**
+ * True when a paste event carries nothing the webview can insert: no text,
+ * no HTML, no URI list and no files. WebKitGTK (Linux) delivers exactly this
+ * when the system clipboard holds only an image — `clipboardData.types` and
+ * `.items` are both empty, so the image never reaches the page and the paste
+ * silently did nothing (Linux regression run, B4).
+ */
+export function isEmptyClipboardEvent(cd: DataTransfer | null): boolean {
+  if (!cd) return false;
+  if (cd.files && cd.files.length > 0) return false;
+  if (cd.items && cd.items.length > 0) return false;
+  return !cd.types || cd.types.length === 0;
+}
+
+/**
+ * Read an image straight off the OS clipboard through the Tauri clipboard
+ * plugin (arboard, from Rust) and re-encode it as PNG. `null` when the
+ * clipboard holds no image or the plugin is unavailable (iOS, a browser).
+ */
+export async function readClipboardImageAsPng(): Promise<Uint8Array | null> {
+  let image: { rgba(): Promise<Uint8Array>; size(): Promise<{ width: number; height: number }>; close?(): Promise<void> } | null = null;
+  try {
+    const { readImage } = await import('@tauri-apps/plugin-clipboard-manager');
+    image = await readImage();
+    const [{ width, height }, rgba] = await Promise.all([image.size(), image.rgba()]);
+    if (!width || !height || rgba.length < width * height * 4) return null;
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    ctx.putImageData(new ImageData(new Uint8ClampedArray(rgba.buffer, rgba.byteOffset, width * height * 4), width, height), 0, 0);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+    return blob ? new Uint8Array(await blob.arrayBuffer()) : null;
+  } catch {
+    return null;
+  } finally {
+    try {
+      await image?.close?.();
+    } catch {
+      /* resource already gone */
+    }
+  }
+}
+
+/**
  * Clipboard image paste for a plain `<textarea>` editor. Extracts image items,
  * saves them, and calls `insert` with each markdown link. Returns true if it
  * handled (and consumed) the paste.
@@ -406,6 +451,15 @@ export async function handleTextareaImagePaste(
   insert: (text: string) => void,
 ): Promise<boolean> {
   const cd = event.clipboardData;
+  if (isEmptyClipboardEvent(cd)) {
+    // Image-only clipboard on WebKitGTK: ask the OS clipboard directly.
+    event.preventDefault();
+    const png = await readClipboardImageAsPng();
+    if (!png) return false;
+    const text = await saveOrUploadText(png, 'png', opts);
+    if (text) insert(text);
+    return true;
+  }
   if (!cd || !cd.items) return false;
   const images: Array<{ blob: Blob; ext: string }> = [];
   for (let i = 0; i < cd.items.length; i++) {
@@ -640,6 +694,16 @@ export function imagePasteExtension(opts: ImagePasteOptions) {
       // Fire and forget — the async handler calls preventDefault() sync
       // BEFORE any awaits, so the browser never inserts the image fallback.
       const cd = event.clipboardData;
+      if (isEmptyClipboardEvent(cd)) {
+        // Image-only clipboard on WebKitGTK: the event is empty, so read the
+        // image from the OS clipboard (Tauri plugin) and insert that.
+        event.preventDefault();
+        void (async () => {
+          const png = await readClipboardImageAsPng();
+          if (png) await saveAndInsert(view, png, 'png', opts);
+        })();
+        return true;
+      }
       if (!cd || !cd.items) return false;
       let hasImage = false;
       for (let i = 0; i < cd.items.length; i++) {

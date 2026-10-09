@@ -10,6 +10,7 @@
 // html2pdf.js bundles html2canvas; we import it directly for image-only use.
 // @ts-ignore — no types
 import { initMermaid } from './mermaid-lazy';
+import { sanitizeModernColors } from './export-colors';
 import { renderMarkdown, extractImageRoot } from './markdown';
 import { loadRenderDeps } from './render-deps';
 import { rewriteImageUrls } from './image-resolve';
@@ -124,8 +125,12 @@ async function processMermaidBlocks(container: HTMLElement) {
       wrap.className = 'mermaid-block';
       wrap.innerHTML = svg;
       pre.replaceWith(wrap);
-    } catch {
-      // silently skip broken mermaid
+    } catch (e) {
+      // Say why where the diagram would have been, like Preview does.
+      const err = document.createElement('pre');
+      err.className = 'mermaid-error';
+      err.textContent = `Mermaid error: ${(e as Error).message}`;
+      pre.replaceWith(err);
     }
   }
 }
@@ -171,6 +176,9 @@ export async function markdownToImageBlob(
   try {
     await processMermaidBlocks(page);
     await new Promise((r) => setTimeout(r, 60));
+    // html2canvas throws on color()/oklch()/color-mix() computed colors —
+    // same guard as the raster PDF (export-colors.ts).
+    sanitizeModernColors(page);
 
     // Let html2canvas auto-size to the element's natural bounding box.
     // v3.6 originally passed explicit width/height/windowWidth/windowHeight

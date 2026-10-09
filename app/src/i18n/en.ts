@@ -375,6 +375,10 @@ export const en = {
     folderMissingLocate: 'Locate folder…',
     copyRelPathDone: 'Relative path copied.',
     reveal: 'Reveal in Finder',
+    // The Finder wording above is macOS's; Windows and Linux name their own
+    // file manager (Linux regression run).
+    revealExplorer: 'Show in Explorer',
+    revealFileManager: 'Show in File Manager',
     refresh: 'Refresh',
     openFolder: 'Open folder…',
     closeFolder: 'Close folder',
@@ -471,7 +475,7 @@ export const en = {
     docxPresetAcademic: 'Academic — cover, contents, double-spaced, page numbers',
     docxPresetHint: 'What a Word export starts from. A per-document `docx:` front-matter block overrides individual keys (cover, toc, header, pageNumbers, font, fontSize, lineSpacing, title, author, date), the same way `pdf:` does.',
     quickCapture: 'Quick capture hotkey',
-    quickCaptureHint: 'A system-wide chord that opens a small box anywhere — type, press Enter, and the note lands in your Inbox without the app coming forward. Tauri accelerator syntax, e.g. CmdOrCtrl+Alt+M.',
+    quickCaptureHint: 'A system-wide chord that opens a small box anywhere — type, press Enter, and the note lands in your Inbox without the app coming forward. Tauri accelerator syntax, e.g. CmdOrCtrl+Alt+Shift+M.',
     quickCaptureFailed: 'Not registered: {error}',
     codeBlockWrap: 'Wrap long lines in code blocks',
     codeBlockWrapHint: 'Soft-wraps code lines wider than the block instead of showing a horizontal scrollbar. PDF/print always wraps.',

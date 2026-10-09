@@ -27,6 +27,9 @@ pub mod rag;
 // v2.4 inbound HTTP capture endpoint — production-grade, opt-in via Settings.
 pub mod capture_endpoint;
 pub mod quick_capture;
+// Window-label classification for the close / quit / relaunch lifecycle in
+// runner.rs; declared here too so `cargo test --lib` covers it.
+pub mod window_labels;
 // v4.0 — public REST API mirroring the agent_tools surface for non-MCP
 // clients (Alfred / Raycast / n8n / shell scripts). Localhost-only,
 // bearer-token auth, opt-in via Settings → Integrations. Same wire shape

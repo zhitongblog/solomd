@@ -9,6 +9,7 @@ import { syntaxHighlighting, defaultHighlightStyle, indentOnInput, bracketMatchi
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { cjkFriendlyEmphasis } from '../lib/cm-cjk-emphasis';
 import { initMermaid } from '../lib/mermaid-lazy';
+import { parseInsertSnippet } from '../lib/insert-snippet';
 // The grammar imports and the `codeLanguages` list they feed now live in
 // `lib/code-languages.ts`: the ``` fence-language picker (#297) derives its
 // catalogue from that same list, so there is only one copy to keep in sync.
@@ -1268,14 +1269,18 @@ function handlePlainPaste(event: ClipboardEvent) {
 }
 
 function plainInsertText(snippet: string) {
+  // The Insert-menu `$|$` caret markers were inserted literally here before.
+  const parsed = parseInsertSnippet(snippet);
   if (plainLiveEnabled.value) {
     const index = plainActiveBlock.value;
     const el = plainBlockEditors.value[index];
     if (!el) return;
     const start = el.selectionStart ?? 0;
     const end = el.selectionEnd ?? 0;
-    const nextBlock = `${el.value.slice(0, start)}${snippet}${el.value.slice(end)}`;
-    updatePlainBlock(index, nextBlock, start + snippet.length);
+    const nextBlock = `${el.value.slice(0, start)}${parsed.text}${el.value.slice(end)}`;
+    // Blocks re-split after the edit, so only a caret survives here; it goes
+    // after any placeholder label.
+    updatePlainBlock(index, nextBlock, start + parsed.head);
     return;
   }
   const el = plainEditor.value;
@@ -1283,10 +1288,9 @@ function plainInsertText(snippet: string) {
   recordPlainHistory();
   const start = el.selectionStart ?? 0;
   const end = el.selectionEnd ?? 0;
-  const next = `${el.value.slice(0, start)}${snippet}${el.value.slice(end)}`;
+  const next = `${el.value.slice(0, start)}${parsed.text}${el.value.slice(end)}`;
   el.value = next;
-  const caret = start + snippet.length;
-  el.setSelectionRange(caret, caret);
+  el.setSelectionRange(start + parsed.anchor, start + parsed.head);
   plainText.value = next;
   tabs.setContent(props.tab.id, next);
   emitPlainCursorAndSelection();
@@ -5059,20 +5063,16 @@ function insertMarkdown(snippet: string): void {
     return;
   }
   if (!view) return;
-  const CURSOR = '$|$';
-  const cursorIdx = snippet.indexOf(CURSOR);
-  const finalText = cursorIdx >= 0 ? snippet.replace(CURSOR, '') : snippet;
+  const parsed = parseInsertSnippet(snippet);
   const sel = view.state.selection.main;
   // Add a leading newline if not already at the start of a line, for block-level snippets.
   const needsLeadingBreak = snippet.startsWith('\n') && sel.from > 0 &&
     view.state.doc.sliceString(sel.from - 1, sel.from) !== '\n';
-  const insertText = needsLeadingBreak ? '\n' + finalText : finalText;
-  const adjust = needsLeadingBreak ? 1 : 0;
+  const insertText = needsLeadingBreak ? '\n' + parsed.text : parsed.text;
+  const base = sel.from + (needsLeadingBreak ? 1 : 0);
   view.dispatch({
     changes: { from: sel.from, to: sel.to, insert: insertText },
-    selection: {
-      anchor: cursorIdx >= 0 ? sel.from + cursorIdx + adjust : sel.from + insertText.length,
-    },
+    selection: { anchor: base + parsed.anchor, head: base + parsed.head },
   });
   view.focus();
 }

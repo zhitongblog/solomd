@@ -9,6 +9,9 @@
  *                  stripped from the inserted text)
  *   ${selection} — replaced with the current editor selection (or
  *                  with `${cursor}` semantics if there is no selection)
+ *   ${cursor:Label} — inserts `Label` and leaves it selected, so a snippet
+ *                  can be valid as inserted (mermaid's `A[]` is a syntax
+ *                  error) while the first keystroke still replaces it
  *
  * Labels and hints are localized at render time via the i18n catalog;
  * the strings here are English fallbacks used when a key is missing.
@@ -161,7 +164,7 @@ export const SLASH_BLOCKS: SlashBlock[] = [
     label: 'Mermaid diagram',
     hint: 'flowchart',
     snippet:
-      '```mermaid\nflowchart TD\n  A[${cursor}] --> B[End]\n```',
+      '```mermaid\nflowchart TD\n  A[${cursor:Start}] --> B[End]\n```',
     keywords: ['mermaid', 'diagram', 'flowchart', 'graph'],
   },
   {
@@ -248,6 +251,8 @@ export interface ExpandedSnippet {
   text: string;
   /** Offset (within `text`) where the cursor should land after insert. */
   cursorOffset: number;
+  /** Length of a `${cursor:Label}` placeholder selected from `cursorOffset`. */
+  selectionLength?: number;
 }
 
 /**
@@ -293,6 +298,13 @@ export function expandSnippet(snippet: string, selection: string): ExpandedSnipp
         CURSOR_TOKEN +
         template.slice(idx + SELECTION_TOKEN.length).split(SELECTION_TOKEN).join('');
     }
+  }
+
+  const placeholder = /\$\{cursor:([^}]*)\}/.exec(template);
+  if (placeholder) {
+    const text = template.slice(0, placeholder.index) + placeholder[1] +
+      template.slice(placeholder.index + placeholder[0].length);
+    return { text, cursorOffset: placeholder.index, selectionLength: placeholder[1].length };
   }
 
   const cursorIdx = template.indexOf(CURSOR_TOKEN);

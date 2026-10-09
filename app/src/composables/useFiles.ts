@@ -20,6 +20,7 @@ import type { FileReadResult, Tab } from '../types';
 import { isSafPath, fromSafPath, safRead, safWrite, safLaunchPicker } from '../lib/saf-fs';
 import { baseNameOf, fileNameOf, claimImportName, joinInFolder } from '../lib/import-plan';
 import { newFileDirFor, treeSelection } from '../lib/new-file-target';
+import { noteOwnWrite } from '../lib/external-change';
 
 // Save dialogs only — opening uses no filter so any file is selectable.
 // (rfd treats `'*'` literally as the extension `*`, not as wildcard, so we
@@ -837,6 +838,9 @@ export function useFiles() {
         // ContentResolver route as the original save.
         await writeContentUri(path, payload);
       } else {
+        // Recorded first: the watcher event for this write can arrive before
+        // markSaved below, and must not read as an outside change.
+        noteOwnWrite(path, payload);
         await invoke('write_file', {
           path,
           content: payload,
@@ -911,6 +915,7 @@ export function useFiles() {
         toasts.success(t('toast.savedAs', { name: fileName }));
         return true;
       }
+      noteOwnWrite(path, payload);
       await invoke('write_file', {
         path,
         content: payload,

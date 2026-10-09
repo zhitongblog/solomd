@@ -358,6 +358,10 @@ export const es: I18n = {
     rename: 'Renombrar',
     delete: 'Eliminar',
     reveal: 'Mostrar en Finder',
+    // The Finder wording above is macOS's; Windows and Linux name their own
+    // file manager (Linux regression run).
+    revealExplorer: 'Mostrar en el Explorador',
+    revealFileManager: 'Mostrar en el gestor de archivos',
     refresh: 'Actualizar',
     openFolder: 'Abrir carpeta…',
     recentFolders: 'Recent folders',
@@ -468,7 +472,7 @@ export const es: I18n = {
     docxPresetAcademic: 'Académica: portada, índice, doble espacio y números de página',
     docxPresetHint: 'El punto de partida de una exportación a Word. Un bloque `docx:` en el front matter sustituye claves concretas (cover, toc, header, pageNumbers, font, fontSize, lineSpacing, title, author, date), igual que `pdf:`.',
     quickCapture: 'Atajo de captura rápida',
-    quickCaptureHint: 'Un atajo de todo el sistema que abre una pequeña ventana en cualquier parte: escribe, pulsa Intro y la nota llega a la bandeja de entrada sin traer la app al frente. Sintaxis de acelerador de Tauri, p. ej. CmdOrCtrl+Alt+M.',
+    quickCaptureHint: 'Un atajo de todo el sistema que abre una pequeña ventana en cualquier parte: escribe, pulsa Intro y la nota llega a la bandeja de entrada sin traer la app al frente. Sintaxis de acelerador de Tauri, p. ej. CmdOrCtrl+Alt+Shift+M.',
     quickCaptureFailed: 'No registrado: {error}',
     codeBlockWrap: 'Ajustar líneas largas en bloques de código',
     codeBlockWrapHint: 'Ajusta las líneas de código más anchas que el bloque en lugar de mostrar una barra de desplazamiento horizontal. PDF/impresión siempre ajusta.',

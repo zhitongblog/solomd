@@ -358,6 +358,10 @@ export const tr: I18n = {
     rename: 'Yeniden adlandır',
     delete: 'Sil',
     reveal: 'Finder\'da göster',
+    // The Finder wording above is macOS's; Windows and Linux name their own
+    // file manager (Linux regression run).
+    revealExplorer: 'Dosya Gezgini’nde göster',
+    revealFileManager: 'Dosya yöneticisinde göster',
     refresh: 'Yenile',
     openFolder: 'Klasör aç…',
     recentFolders: 'Recent folders',
@@ -468,7 +472,7 @@ export const tr: I18n = {
     docxPresetAcademic: 'Akademik — kapak, içindekiler, çift satır aralığı, sayfa numarası',
     docxPresetHint: 'Word dışa aktarımının başlangıç noktası. Front matter’daki `docx:` bloğu tek tek anahtarları geçersiz kılar (cover, toc, header, pageNumbers, font, fontSize, lineSpacing, title, author, date) — `pdf:` ile aynı.',
     quickCapture: 'Hızlı yakalama kısayolu',
-    quickCaptureHint: 'Her yerde küçük bir kutu açan sistem geneli kısayol: yazın, Enter’a basın, not uygulamayı öne getirmeden Gelen Kutusu’na düşsün. Tauri hızlandırıcı yazımı, ör. CmdOrCtrl+Alt+M.',
+    quickCaptureHint: 'Her yerde küçük bir kutu açan sistem geneli kısayol: yazın, Enter’a basın, not uygulamayı öne getirmeden Gelen Kutusu’na düşsün. Tauri hızlandırıcı yazımı, ör. CmdOrCtrl+Alt+Shift+M.',
     quickCaptureFailed: 'Kaydedilemedi: {error}',
     codeBlockWrap: 'Kod bloklarında uzun satırları kaydır',
     codeBlockWrapHint: 'Bloktan geniş kod satırlarını yatay kaydırma çubuğu yerine alt satıra kaydırır. PDF/yazdırma her zaman kaydırır.',

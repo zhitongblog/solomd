@@ -358,6 +358,10 @@ export const ko: I18n = {
     rename: '이름 변경',
     delete: '삭제',
     reveal: 'Finder에서 표시',
+    // The Finder wording above is macOS's; Windows and Linux name their own
+    // file manager (Linux regression run).
+    revealExplorer: '탐색기에서 표시',
+    revealFileManager: '파일 관리자에서 표시',
     refresh: '새로 고침',
     openFolder: '폴더 열기…',
     recentFolders: 'Recent folders',
@@ -468,7 +472,7 @@ export const ko: I18n = {
     docxPresetAcademic: '학술 — 표지·목차·2줄 간격·쪽 번호',
     docxPresetHint: 'Word 내보내기의 기본 틀. 문서별로 front matter의 `docx:` 블록에서 개별 키(cover, toc, header, pageNumbers, font, fontSize, lineSpacing, title, author, date)를 덮어쓸 수 있습니다(`pdf:`와 동일).',
     quickCapture: '빠른 캡처 단축키',
-    quickCaptureHint: '어느 앱에서든 작은 입력창을 여는 시스템 전역 단축키. 입력하고 Enter를 누르면 앱을 앞으로 가져오지 않고 받은 편지함에 저장됩니다. Tauri 액셀러레이터 표기(예: CmdOrCtrl+Alt+M).',
+    quickCaptureHint: '어느 앱에서든 작은 입력창을 여는 시스템 전역 단축키. 입력하고 Enter를 누르면 앱을 앞으로 가져오지 않고 받은 편지함에 저장됩니다. Tauri 액셀러레이터 표기(예: CmdOrCtrl+Alt+Shift+M).',
     quickCaptureFailed: '등록하지 못했습니다: {error}',
     codeBlockWrap: '코드 블록의 긴 줄 바꿈',
     codeBlockWrapHint: '블록 너비를 넘는 코드 줄을 가로 스크롤 대신 줄 바꿈으로 표시합니다. PDF/인쇄는 항상 줄 바꿈됩니다.',

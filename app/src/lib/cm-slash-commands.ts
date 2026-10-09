@@ -344,7 +344,10 @@ function insertBlock(view: EditorView, state: SlashState, block: SlashBlock): vo
   const expanded = expandSnippet(block.snippet, '');
   view.dispatch({
     changes: { from: replaceFrom, to: replaceTo, insert: expanded.text },
-    selection: { anchor: replaceFrom + expanded.cursorOffset },
+    selection: {
+      anchor: replaceFrom + expanded.cursorOffset,
+      head: replaceFrom + expanded.cursorOffset + (expanded.selectionLength ?? 0),
+    },
     effects: setSlashState.of(null),
     scrollIntoView: true,
   });

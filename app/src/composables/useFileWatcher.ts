@@ -4,6 +4,13 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { useTabsStore } from '../stores/tabs';
 import { useSettingsStore } from '../stores/settings';
 import type { FileReadResult } from '../types';
+import {
+  decideDiskChange,
+  lastOwnWrite,
+  noteOwnWrite,
+  normalizeDiskText,
+  typingIdleWait,
+} from '../lib/external-change';
 
 type FileChangedAction = 'reload' | 'overwrite' | 'cancel';
 type ShowDialog = (fileName: string) => Promise<FileChangedAction>;
@@ -64,10 +71,43 @@ export function useFileWatcher(showDialog: ShowDialog) {
   /** A file's current bytes, normalized the way a tab stores them. */
   async function readNormalized(filePath: string) {
     const result = await invoke<FileReadResult>('read_file', { path: filePath });
-    const normalized = result.content.includes('\r\n')
-      ? result.content.replace(/\r\n/g, '\n')
-      : result.content;
-    return { result, normalized };
+    return { result, normalized: normalizeDiskText(result.content) };
+  }
+
+  /** Last keydown anywhere in this window — the prompt waits for a pause. */
+  let lastKeyAt = 0;
+  const onAnyKey = () => {
+    lastKeyAt = Date.now();
+  };
+  async function waitForTypingPause() {
+    for (;;) {
+      const wait = typingIdleWait(Date.now() - lastKeyAt);
+      if (wait <= 0) return;
+      await new Promise((r) => setTimeout(r, wait));
+    }
+  }
+
+  /** Read the disk and decide what this event means for `tab` (Failure 9:
+   *  only bytes that are neither our baseline, our own write nor the buffer
+   *  are news). Null when the file cannot be read right now. */
+  async function decide(tab: (typeof tabs.tabs)[number], filePath: string) {
+    let disk: string;
+    try {
+      disk = (await readNormalized(filePath)).normalized;
+    } catch {
+      return null;
+    }
+    // Settings → "auto-refresh externally-modified files" (default on).
+    // Preview mode always auto-reloads clean tabs — nothing to lose. Dirty
+    // tabs always ask — we never silently throw away unsaved edits.
+    return decideDiskChange({
+      disk,
+      savedContent: tab.savedContent,
+      content: tab.content,
+      lastOwnWrite: lastOwnWrite(filePath),
+      autoReload: settings.autoReloadExternalChanges !== false,
+      preview: settings.viewMode === 'preview',
+    });
   }
 
   async function handleFileChanged(filePath: string) {
@@ -77,46 +117,57 @@ export function useFileWatcher(showDialog: ShowDialog) {
     // If a dialog is already pending for this path, skip
     if (pendingPaths.has(filePath)) return;
 
-    const isPreview = settings.viewMode === 'preview';
+    // The decision reads tab.content, which lags the editor by a debounce.
+    window.dispatchEvent(new Event('solomd:flush-content-sync'));
 
-    for (const tab of matching) {
-      const isDirty = tab.content !== tab.savedContent;
-      // Settings → "auto-refresh externally-modified files" (default on).
-      // Preview mode always auto-reloads — nothing to lose. Dirty tabs
-      // always show the dialog — we never silently throw away unsaved
-      // edits regardless of this preference.
-      const autoReload = settings.autoReloadExternalChanges !== false;
-
-      if (!isDirty && (isPreview || autoReload)) {
+    pendingPaths.add(filePath);
+    try {
+      for (const tab of matching) {
+        let decision = await decide(tab, filePath);
+        if (decision === 'prompt') {
+          // Never open the dialog between two keystrokes — it would take the
+          // second one. Wait for a pause, then look again: the user may have
+          // saved meanwhile, or the change may have been ours after all.
+          await waitForTypingPause();
+          window.dispatchEvent(new Event('solomd:flush-content-sync'));
+          if (!tabs.tabs.includes(tab)) continue;
+          decision = await decide(tab, filePath);
+        }
+        if (decision === null || decision === 'ignore') continue;
+        if (decision === 'adopt') {
+          // Disk already holds the buffer: the baseline just catches up.
+          tabs.applyExternalSave(tab.id, tab.content);
+          continue;
+        }
+        if (decision === 'reload') {
+          try {
+            await reloadTab(tab.id, filePath);
+          } catch (e) {
+            console.warn('reload failed:', e);
+          }
+          continue;
+        }
         try {
-          await reloadTab(tab.id, filePath);
+          const action = await showDialog(tab.fileName);
+          if (action === 'reload') {
+            await reloadTab(tab.id, filePath);
+          } else if (action === 'overwrite') {
+            const payload =
+              tab.lineEnding === 'crlf' ? tab.content.replace(/\n/g, '\r\n') : tab.content;
+            noteOwnWrite(filePath, payload);
+            await invoke('write_file', {
+              path: tab.filePath,
+              content: payload,
+              encoding: tab.encoding || 'UTF-8',
+            });
+            tabs.markSaved(tab.id, tab.filePath!);
+          }
         } catch (e) {
-          console.warn('reload failed:', e);
+          console.warn('file-changed dialog action failed:', e);
         }
-        continue;
       }
-
-      // Dirty tab in edit/split mode — show dialog
-      pendingPaths.add(filePath);
-      try {
-        const action = await showDialog(tab.fileName);
-        if (action === 'reload') {
-          await reloadTab(tab.id, filePath);
-        } else if (action === 'overwrite') {
-          const payload =
-            tab.lineEnding === 'crlf' ? tab.content.replace(/\n/g, '\r\n') : tab.content;
-          await invoke('write_file', {
-            path: tab.filePath,
-            content: payload,
-            encoding: tab.encoding || 'UTF-8',
-          });
-          tabs.markSaved(tab.id, tab.filePath!);
-        }
-      } catch (e) {
-        console.warn('file-changed dialog action failed:', e);
-      } finally {
-        pendingPaths.delete(filePath);
-      }
+    } finally {
+      pendingPaths.delete(filePath);
     }
   }
 
@@ -218,12 +269,14 @@ export function useFileWatcher(showDialog: ShowDialog) {
     void revalidateTabs('startup');
     window.addEventListener('focus', onWindowFocus);
     document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('keydown', onAnyKey, true);
   });
 
   onBeforeUnmount(async () => {
     stopWatcher();
     window.removeEventListener('focus', onWindowFocus);
     document.removeEventListener('visibilitychange', onVisibility);
+    window.removeEventListener('keydown', onAnyKey, true);
     if (unlisten) {
       unlisten();
       unlisten = null;

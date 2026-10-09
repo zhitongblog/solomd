@@ -92,6 +92,17 @@ export function isWindowsDesktop(): boolean {
   return /Windows NT/.test(navigator.userAgent || '');
 }
 
+/**
+ * i18n key for "show this file in the system file manager". The stock
+ * strings name the Finder, which is wrong off macOS: Windows says Explorer,
+ * Linux a generic file manager. `macKey` is the caller's existing key.
+ */
+export function revealLabelKey(macKey: string): string {
+  if (isWindowsDesktop()) return 'explorer.revealExplorer';
+  if (isMacOS() || isMobile()) return macKey;
+  return 'explorer.revealFileManager';
+}
+
 export function forceWinChromePreview(): boolean {
   return typeof location !== 'undefined' && location.search.includes('forceWinChrome');
 }

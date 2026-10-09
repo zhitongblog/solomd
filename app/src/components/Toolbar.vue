@@ -29,6 +29,7 @@ import { macTitleBar, winTitleBar, customTitleBar } from '../lib/chrome';
 
 const hasTauriShell = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 import { IS_APP_STORE_BUILD } from '../lib/app-build';
+import { MERMAID_INSERT_SNIPPET } from '../lib/insert-snippet';
 import { EditorView } from '@codemirror/view';
 
 const { t } = useI18n();
@@ -1247,7 +1248,7 @@ onBeforeUnmount(() => {
                 <span class="dropdown__check"></span>
                 <span class="dropdown__name">{{ t('toolbar.insertTable') }}</span>
               </button>
-              <button class="dropdown__item dropdown__item--single" role="menuitem" tabindex="-1" @mousedown.prevent="dispatchInsert('\n```mermaid\ngraph TD\n  A[$|$] --> B[End]\n```\n')">
+              <button class="dropdown__item dropdown__item--single" role="menuitem" tabindex="-1" @mousedown.prevent="dispatchInsert(MERMAID_INSERT_SNIPPET)">
                 <span class="dropdown__check"></span>
                 <span class="dropdown__name">{{ t('toolbar.insertMermaid') }}</span>
               </button>

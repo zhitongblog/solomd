@@ -9,7 +9,7 @@ import { useWorkspaceStore } from '../stores/workspace';
 import { useFiles } from '../composables/useFiles';
 import { requestRevealInTree } from '../composables/useFileTreeReveal';
 import { shortcutLabel } from '../lib/keybindings';
-import { usesCommandKey } from '../lib/platform';
+import { revealLabelKey, usesCommandKey } from '../lib/platform';
 import { useI18n } from '../i18n';
 import Icon from './Icons.vue';
 import type { SplitDirection } from '../types';
@@ -535,7 +535,7 @@ onBeforeUnmount(() => {
           </button>
         </template>
         <div class="ctx-sep" />
-        <button class="ctx-item" :disabled="!ctxFlags?.hasFilePath" @click="onTabAction('revealInFolder')">{{ t('tabMenu.revealInFolder') }}</button>
+        <button class="ctx-item" :disabled="!ctxFlags?.hasFilePath" @click="onTabAction('revealInFolder')">{{ t(revealLabelKey('tabMenu.revealInFolder')) }}</button>
         <button class="ctx-item" :disabled="!ctxFlags?.hasFilePath" @click="onTabAction('revealInFileTree')">{{ t('tabMenu.revealInFileTree') }}</button>
         <div class="ctx-sep" />
         <button class="ctx-item" @click="splitPane('horizontal')">{{ t('cmd.tile.splitRight') }}</button>

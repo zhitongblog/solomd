@@ -138,8 +138,17 @@ export function buildAppMenu(ctx: MenuContext): TopMenu[] {
 
   // Edit keys: the native menus use the OS's own items (they drive the
   // focused field's real undo stack); the Windows menubar drives them itself.
+  // muda has no Undo/Redo on GTK (its predefined undo/redo are "Unsupported"
+  // on Linux and silently vanish), so Linux gets ordinary items that App.vue
+  // routes to the focused editor's history. They carry no native accelerator:
+  // a GTK accelerator would swallow Ctrl+Z before the webview sees it, and
+  // the keys already work there.
+  const nativeEditRole = (role: PredefinedRole) =>
+    native && !(platform === 'linux' && (role === 'undo' || role === 'redo'));
   const editKey = (role: PredefinedRole, id: string, label: string, chord: string): MenuNode =>
-    native ? { type: 'predefined', role, label } : item(id, label, { fixedShortcut: chord });
+    nativeEditRole(role)
+      ? { type: 'predefined', role, label }
+      : item(id, label, { fixedShortcut: chord, ...(native ? { noNativeAccel: true } : {}) });
 
   const recentItems: MenuNode[] = ctx.recent.length
     ? [
@@ -565,6 +574,16 @@ const OS_EDIT_CHORDS = new Set(['Mod+Z', 'Mod+Shift+Z', 'Mod+X', 'Mod+C', 'Mod+V
 
 // ---- Native spec (what runner.rs `set_menu_spec` builds) ----
 
+/**
+ * muda reads `&` in a label as a mnemonic marker on every platform (GTK and
+ * Windows turn it into an access key, macOS strips it), so "Sync & History"
+ * came out as "Sync  History" in all 15 languages. `&&` is muda's escape for
+ * a literal ampersand. None of our labels use `&` as a mnemonic on purpose.
+ */
+export function nativeMenuText(label: string): string {
+  return label.replace(/&/g, '&&');
+}
+
 export type NativeNode =
   | { kind: 'item'; id: string; text: string; accelerator?: string; enabled: boolean }
   | { kind: 'check'; id: string; text: string; accelerator?: string; enabled: boolean; checked: boolean }
@@ -602,11 +621,13 @@ export function toNativeSpec(menus: TopMenu[], ctx: Pick<MenuContext, 'overrides
   const convert = (nodes: MenuNode[]): NativeNode[] =>
     nodes.map((n): NativeNode => {
       if (n.type === 'sep') return { kind: 'separator' };
-      if (n.type === 'predefined') return { kind: 'predefined', role: n.role, text: n.label };
-      if (n.type === 'submenu') return { kind: 'submenu', text: n.label, items: convert(n.items) };
+      if (n.type === 'predefined') {
+        return { kind: 'predefined', role: n.role, ...(n.label !== undefined ? { text: nativeMenuText(n.label) } : {}) };
+      }
+      if (n.type === 'submenu') return { kind: 'submenu', text: nativeMenuText(n.label), items: convert(n.items) };
       const accelerator = accelFor(n);
-      const base = { id: n.id, text: n.label, enabled: n.enabled !== false, ...(accelerator ? { accelerator } : {}) };
+      const base = { id: n.id, text: nativeMenuText(n.label), enabled: n.enabled !== false, ...(accelerator ? { accelerator } : {}) };
       return n.checked === undefined ? { kind: 'item', ...base } : { kind: 'check', ...base, checked: n.checked };
     });
-  return menus.map((m) => ({ text: m.label, items: convert(m.items) }));
+  return menus.map((m) => ({ text: nativeMenuText(m.label), items: convert(m.items) }));
 }

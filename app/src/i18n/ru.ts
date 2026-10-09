@@ -372,6 +372,10 @@ export const ru: I18n = {
     folderMissingLocate: 'Найти папку…',
     copyRelPathDone: 'Относительный путь скопирован.',
     reveal: 'Показать в Finder',
+    // The Finder wording above is macOS's; Windows and Linux name their own
+    // file manager (Linux regression run).
+    revealExplorer: 'Показать в Проводнике',
+    revealFileManager: 'Показать в файловом менеджере',
     refresh: 'Обновить',
     openFolder: 'Открыть папку…',
     closeFolder: 'Закрыть папку',
@@ -468,7 +472,7 @@ export const ru: I18n = {
     docxPresetAcademic: 'Академический — титульный лист, оглавление, двойной интервал, номера страниц',
     docxPresetHint: 'С чего начинается экспорт в Word. Блок `docx:` во front matter документа переопределяет отдельные ключи (cover, toc, header, pageNumbers, font, fontSize, lineSpacing, title, author, date) — так же, как `pdf:`.',
     quickCapture: 'Горячая клавиша быстрой заметки',
-    quickCaptureHint: 'Общесистемное сочетание, которое открывает небольшое окно где угодно: введите текст, нажмите Enter — и заметка попадёт во «Входящие», не выводя приложение на передний план. Синтаксис акселераторов Tauri, например CmdOrCtrl+Alt+M.',
+    quickCaptureHint: 'Общесистемное сочетание, которое открывает небольшое окно где угодно: введите текст, нажмите Enter — и заметка попадёт во «Входящие», не выводя приложение на передний план. Синтаксис акселераторов Tauri, например CmdOrCtrl+Alt+Shift+M.',
     quickCaptureFailed: 'Не зарегистрировано: {error}',
     codeBlockWrap: 'Переносить длинные строки в блоках кода',
     codeBlockWrapHint: 'Переносит строки кода шире блока вместо горизонтальной прокрутки. В PDF и при печати перенос включён всегда.',

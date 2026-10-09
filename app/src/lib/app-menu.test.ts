@@ -322,3 +322,38 @@ test('menu coverage: every fallback id really is a palette command (useCommands.
     assert.ok(declared, `${id} is not a command in useCommands.ts`);
   }
 });
+
+test('Linux: Undo/Redo are ordinary items (muda has no predefined undo/redo on GTK)', () => {
+  const c = ctx({ platform: 'linux' });
+  const spec = toNativeSpec(buildAppMenu(c), c);
+  const edit = spec.find((m) => m.text === 'Edit')!;
+  const kinds = edit.items.slice(0, 2).map((n) => (n.kind === 'item' ? n.id : n.kind));
+  assert.deepEqual(kinds, ['edit.undo', 'edit.redo']);
+  // No GTK accelerator: it would swallow Ctrl+Z before the webview's editor.
+  assert.equal(nativeAccel(spec, 'edit.undo'), undefined);
+  assert.equal(nativeAccel(spec, 'edit.redo'), undefined);
+  // Cut/Copy/Paste/Select All stay the OS items, which GTK does support.
+  assert.ok(edit.items.some((n) => n.kind === 'predefined' && n.role === 'copy'));
+  // macOS keeps the predefined undo/redo.
+  const mac = toNativeSpec(buildAppMenu(ctx({ platform: 'mac', macKeys: true })), c);
+  const macEdit = mac.find((m) => m.text === 'Edit')!;
+  assert.ok(macEdit.items.some((n) => n.kind === 'predefined' && n.role === 'undo'));
+});
+
+test('native spec escapes & so muda does not eat it as a mnemonic', () => {
+  for (const [lang, dict] of Object.entries(DICTS)) {
+    const c = ctx({ t: strictT(dict, lang), platform: 'linux' });
+    const menus = buildAppMenu(c);
+    const spec = toNativeSpec(menus, c);
+    const sync = spec.flatMap((m) => nativeWalk(m.items)).find(
+      (n) => n.kind === 'submenu' && n.items.some((x) => x.kind === 'item' && x.id === 'sync.pullNow'),
+    );
+    assert.ok(sync && sync.kind === 'submenu', lang);
+    const label = submenu(menus, 'syncHistory')!.label;
+    assert.equal(sync.text, label.replace(/&/g, '&&'), lang);
+    // muda turns `&&` back into one literal `&`.
+    assert.equal(sync.text.replace(/&&/g, '&'), label, lang);
+  }
+  const en = buildAppMenu(ctx({ platform: 'linux' }));
+  assert.equal(submenu(en, 'syncHistory')!.label, 'Sync & History', 'the in-app label stays unescaped');
+});

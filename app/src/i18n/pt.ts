@@ -360,6 +360,10 @@ export const pt: I18n = {
     rename: 'Renomear',
     delete: 'Excluir',
     reveal: 'Mostrar no Finder',
+    // The Finder wording above is macOS's; Windows and Linux name their own
+    // file manager (Linux regression run).
+    revealExplorer: 'Mostrar no Explorador',
+    revealFileManager: 'Mostrar no gerenciador de arquivos',
     refresh: 'Atualizar',
     openFolder: 'Abrir pasta…',
     recentFolders: 'Recent folders',
@@ -470,7 +474,7 @@ export const pt: I18n = {
     docxPresetAcademic: 'Académico — capa, índice, espaço duplo e números de página',
     docxPresetHint: 'O ponto de partida de uma exportação para Word. Um bloco `docx:` no front matter substitui chaves individuais (cover, toc, header, pageNumbers, font, fontSize, lineSpacing, title, author, date), tal como `pdf:`.',
     quickCapture: 'Atalho de captura rápida',
-    quickCaptureHint: 'Um atalho de sistema que abre uma pequena janela em qualquer lado: escreva, prima Enter e a nota vai para a caixa de entrada sem trazer a app para a frente. Sintaxe de acelerador do Tauri, p. ex. CmdOrCtrl+Alt+M.',
+    quickCaptureHint: 'Um atalho de sistema que abre uma pequena janela em qualquer lado: escreva, prima Enter e a nota vai para a caixa de entrada sem trazer a app para a frente. Sintaxe de acelerador do Tauri, p. ex. CmdOrCtrl+Alt+Shift+M.',
     quickCaptureFailed: 'Não registado: {error}',
     codeBlockWrap: 'Quebrar linhas longas em blocos de código',
     codeBlockWrapHint: 'Quebra linhas de código mais largas que o bloco em vez de mostrar uma barra de rolagem horizontal. PDF/impressão sempre quebra.',

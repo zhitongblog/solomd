@@ -87,6 +87,8 @@ import { usePropertiesStore } from './stores/properties';
 import { useRagStore } from './stores/rag';
 import { IS_APP_STORE_BUILD } from './lib/app-build';
 import { runWhenIdle } from './lib/idle';
+import { MERMAID_INSERT_SNIPPET } from './lib/insert-snippet';
+import { focusActiveEditorSoon } from './lib/editor-focus';
 const UiPreview = defineAsyncComponent(() => import('./components/UiPreview.vue'));
 
 /* v4.6 dev-only UI gallery. `?uikit` renders ONLY the design-system preview
@@ -354,6 +356,33 @@ function onUnsavedAction(action: 'save' | 'discard' | 'cancel') {
   }
 }
 
+/** Push every debounced edit out now: the editors' doc→store sync (350 ms)
+ *  and the session-restore snapshot (500 ms). Without it, a close or quit
+ *  landing inside those windows lost the last thing typed. */
+function flushPendingEdits() {
+  window.dispatchEvent(new Event('solomd:flush-content-sync'));
+}
+
+/** Closing a second editor window: ask about each unsaved tab, the way
+ *  closing a single tab does. False = the user cancelled (or a save failed),
+ *  so the window stays. A second ✕ while the dialog is up is ignored. */
+let closePromptOpen = false;
+async function confirmCloseWithUnsavedTabs(): Promise<boolean> {
+  if (closePromptOpen) return false;
+  closePromptOpen = true;
+  try {
+    for (const tab of tabs.tabs.filter((t) => t.content !== t.savedContent)) {
+      tabs.activate(tab.id);
+      const action = await showUnsavedDialog('window', tab.fileName, 1);
+      if (action === 'cancel') return false;
+      if (action === 'save' && !(await files.saveTab(tab))) return false;
+    }
+    return true;
+  } finally {
+    closePromptOpen = false;
+  }
+}
+
 // Expose to child composables (useFiles) via provide/inject
 provide('showUnsavedDialog', showUnsavedDialog);
 (window as any).__solomd_showUnsavedDialog = showUnsavedDialog;
@@ -498,6 +527,18 @@ watch(
 watch(
   () => JSON.stringify(tiles.root),
   () => tiles.persist(),
+);
+
+// A split focuses the new pane (tiles.splitPane), but nothing moved the
+// keyboard there, so typing right after Ctrl+\ went nowhere. Follow the
+// pane focus into its editor once that editor has mounted.
+watch(
+  () => tiles.allLeaves.length,
+  (n, prev) => {
+    if (n > prev) {
+      focusActiveEditorSoon(() => tiles.focusedPaneId, { onlyIfIdle: false, strict: true, timeoutMs: 2000 });
+    }
+  },
 );
 
 // Sync tabs.activeId changes to the focused pane's leaf.
@@ -883,9 +924,34 @@ const INSERT_SNIPPETS: Record<string, string> = {
   'insert.mathBlock': '\n$$\n$|$\n$$\n',
   'insert.mathInline': '$$|$$',
   'insert.table': '\n| $|$ | Header |\n| --- | --- |\n| cell | cell |\n',
-  'insert.mermaid': '\n```mermaid\ngraph TD\n  A[$|$] --> B[End]\n```\n',
+  'insert.mermaid': MERMAID_INSERT_SNIPPET,
   'insert.hr': '\n---\n',
 };
+
+/**
+ * Undo / Redo from a menu item (the Windows in-app menubar, and the Linux
+ * native menu, where muda has no predefined Undo/Redo). CodeMirror keeps its
+ * own history, which `execCommand('undo')` never reaches, so a focused
+ * CodeMirror editor gets its real undo/redo command; anything else (the plain
+ * Windows editor, a settings field) gets the browser's.
+ */
+async function runEditHistory(kind: 'undo' | 'redo') {
+  const active = document.activeElement;
+  const cmRoot = active instanceof HTMLElement ? active.closest<HTMLElement>('.cm-editor') : null;
+  if (cmRoot) {
+    const [{ EditorView }, { undo, redo }] = await Promise.all([
+      import('@codemirror/view'),
+      import('@codemirror/commands'),
+    ]);
+    const view = EditorView.findFromDOM(cmRoot);
+    if (view) {
+      (kind === 'undo' ? undo : redo)(view);
+      view.focus();
+      return;
+    }
+  }
+  document.execCommand(kind);
+}
 
 /**
  * Every menu click — native (`solomd://menu`) and the Windows title-bar
@@ -995,10 +1061,8 @@ function dispatchMenuAction(id: string) {
     // `mousedown.prevent` so focus never leaves the editor. (CodeMirror —
     // Vim mode on Windows — keeps its own keyboard-driven undo history.)
     case 'edit.undo':
-      document.execCommand('undo');
-      return;
     case 'edit.redo':
-      document.execCommand('redo');
+      void runEditHistory(id === 'edit.undo' ? 'undo' : 'redo');
       return;
     case 'edit.cut':
       document.execCommand('cut');
@@ -1150,6 +1214,10 @@ function scheduleStarPrompt() {
 
 onMounted(async () => {
   scheduleStarPrompt();
+  // Launch: put the keyboard in the editor once it has mounted (the
+  // CodeMirror path never focused itself, so typing went nowhere until a
+  // click). Skipped while a dialog is up or something else has focus.
+  focusActiveEditorSoon(() => tiles.focusedPaneId, { timeoutMs: 5000 });
   void reconcileIosFolder();
   // #153 (mobile) — Android's WebView reports env(safe-area-inset-top) as 0
   // under forced edge-to-edge, so the toolbar rendered under the status bar
@@ -1382,16 +1450,34 @@ onMounted(async () => {
   }
   tiles.syncActiveTab();
 
-  // Window close
+  // Window close. Rust intercepts the close of every editor window and names
+  // the one being closed in the payload — the event reaches every window, and
+  // each must only act on its own close.
   try {
-    await listen('solomd://close-requested', async () => {
-      tabs.persist?.();
-      tiles.persist();
+    await listen<string>('solomd://close-requested', async (e) => {
+      const me = getCurrentWindow().label;
+      if (e.payload && e.payload !== me) return;
+      // Editors sync their document into the store on a debounce; text typed
+      // just before the close would otherwise miss the persist below.
+      flushPendingEdits();
+      if (me !== 'main') {
+        // Nothing restores a second window's tabs on the next launch, so its
+        // unsaved edits are asked about here instead of silently dropped.
+        if (!(await confirmCloseWithUnsavedTabs())) return;
+        if (isAuxLabel(me)) windowsStore.unregister(me);
+      } else {
+        tabs.persist?.();
+        tiles.persist();
+      }
       await invoke('force_close_window');
     });
   } catch (err) {
     console.warn('close-requested listener failed', err);
   }
+  // Backstop for teardowns that skip close-requested (macOS ⌘Q terminates
+  // the app without a CloseRequested, a reload): flush and persist
+  // synchronously — the persist watcher would run too late here.
+  window.addEventListener('pagehide', onPageHide);
 
   // #103 — backstop registry cleanup. The destroyed window normally
   // unregisters itself via onCloseRequested, but a webview teardown that
@@ -1401,6 +1487,12 @@ onMounted(async () => {
   try {
     unlistenWindowDestroyed = await listen<string>('solomd://window-destroyed', (e) => {
       if (e.payload && isAuxLabel(e.payload)) windowsStore.unregister(e.payload);
+      // Back from the slideshow window: the caret was nowhere and typing
+      // went to <body> until a click. Hand the keyboard back to the editor.
+      if (e.payload?.startsWith('solomd-slideshow-')) {
+        void getCurrentWindow().setFocus().catch(() => {});
+        focusActiveEditorSoon(() => tiles.focusedPaneId, { timeoutMs: 1500 });
+      }
     });
   } catch (err) {
     console.warn('window-destroyed listener not available', err);
@@ -1591,7 +1683,15 @@ window.addEventListener(VIEW_OPEN_EVENT, onOpenView as EventListener);
 window.addEventListener(VIEW_CLOSE_EVENT, onCloseView as EventListener);
 window.addEventListener('solomd:open-settings', onOpenSettingsEvent as EventListener);
 
+function onPageHide() {
+  flushPendingEdits();
+  if (getCurrentWindow().label !== 'main') return;
+  tabs.persist?.();
+  tiles.persist();
+}
+
 onBeforeUnmount(() => {
+  window.removeEventListener('pagehide', onPageHide);
   window.removeEventListener('keydown', onEsc);
   document.removeEventListener('click', onStrayLinkClick);
   document.removeEventListener('auxclick', onStrayLinkClick);
