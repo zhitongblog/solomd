@@ -145,7 +145,7 @@ pub fn run() {
     let builder = builder.manage(watcher::WatcherState::new());
     #[cfg(not(target_os = "android"))]
     let builder = builder.manage(recipe_runner::RecipesState::new());
-    builder
+    let app = builder
         .setup(|app| {
             #[cfg(debug_assertions)]
             {
@@ -415,6 +415,12 @@ pub fn run() {
             commands::update_frontmatter_property,
             commands::delete_frontmatter_property,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application");
+    // iOS: TaoSceneDelegate exists now (build created the event loop) and the
+    // first scene connects inside App::run — so this is the only window to
+    // wrap its open-URL handling (see ios_folder::hook_scene_delegate).
+    #[cfg(target_os = "ios")]
+    ios_folder::hook_scene_delegate();
+    app.run(|_, _| {});
 }

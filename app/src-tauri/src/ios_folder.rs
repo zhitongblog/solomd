@@ -243,6 +243,31 @@ mod imp {
     type OpenUrlFn =
         unsafe extern "C" fn(*mut AnyObject, Sel, *mut AnyObject, *mut AnyObject, *mut AnyObject) -> Bool;
 
+    /// Open the security scope of a file URL iOS handed us and remember its
+    /// path. Only that NSURL carries the sandbox extension; tao reduces it to
+    /// a string right after. The scope stays open (and the URL retained) for
+    /// the life of the process, so read_file and a later save back to the
+    /// file both work.
+    unsafe fn grant_scope(url: *mut AnyObject) {
+        if url.is_null() {
+            return;
+        }
+        let is_file: Bool = msg_send![url, isFileURL];
+        if !is_file.as_bool() {
+            return;
+        }
+        let granted: Bool = msg_send![url, startAccessingSecurityScopedResource];
+        if granted.as_bool() {
+            let _: *mut AnyObject = msg_send![url, retain];
+        }
+        let path: *mut AnyObject = msg_send![url, path];
+        if let (Some(p), Ok(mut list)) = (rust_string(path), OPENED.lock()) {
+            if !list.contains(&p) {
+                list.push(p);
+            }
+        }
+    }
+
     unsafe extern "C" fn open_url_hook(
         this: *mut AnyObject,
         cmd: Sel,
@@ -250,25 +275,7 @@ mod imp {
         url: *mut AnyObject,
         options: *mut AnyObject,
     ) -> Bool {
-        if !url.is_null() {
-            let is_file: Bool = msg_send![url, isFileURL];
-            if is_file.as_bool() {
-                // Only the NSURL iOS hands us carries the sandbox extension;
-                // tao reduces it to a string right after this. The scope stays
-                // open (and the URL retained) for the life of the process, so
-                // read_file and a later save back to the file both work.
-                let granted: Bool = msg_send![url, startAccessingSecurityScopedResource];
-                if granted.as_bool() {
-                    let _: *mut AnyObject = msg_send![url, retain];
-                }
-                let path: *mut AnyObject = msg_send![url, path];
-                if let (Some(p), Ok(mut list)) = (rust_string(path), OPENED.lock()) {
-                    if !list.contains(&p) {
-                        list.push(p);
-                    }
-                }
-            }
-        }
+        grant_scope(url);
         match ORIG_OPEN_URL.load(Ordering::SeqCst) {
             0 => Bool::YES,
             f => {
@@ -295,6 +302,105 @@ mod imp {
             let hook: OpenUrlFn = open_url_hook;
             let old = method.set_implementation(std::mem::transmute(hook));
             ORIG_OPEN_URL.store(old as usize, Ordering::SeqCst);
+        }
+    }
+
+    // ── Scene lifecycle (iOS 27 SDK, Tauri 2.12 / tao 0.37) ──────────────
+    // With a UIApplicationSceneManifest, iOS no longer calls the app
+    // delegate's application:openURL:options:. A document opened from Files
+    // arrives at the scene delegate instead — scene:openURLContexts: while the
+    // app runs, and in the connection options of the first scene on a cold
+    // launch, which tao does not read at all. Both are wrapped here; the hooks
+    // must be in place before UIApplicationMain, i.e. between Builder::build
+    // (which registers TaoSceneDelegate) and App::run.
+
+    static ORIG_SCENE_OPEN: AtomicUsize = AtomicUsize::new(0);
+    static ORIG_SCENE_CONNECT: AtomicUsize = AtomicUsize::new(0);
+
+    type SceneOpenFn = unsafe extern "C" fn(*mut AnyObject, Sel, *mut AnyObject, *mut AnyObject);
+    type SceneConnectFn =
+        unsafe extern "C" fn(*mut AnyObject, Sel, *mut AnyObject, *mut AnyObject, *mut AnyObject);
+
+    /// Each UIOpenURLContext in an NSSet → its NSURL's scope opened.
+    unsafe fn grant_contexts(contexts: *mut AnyObject) {
+        if contexts.is_null() {
+            return;
+        }
+        let all: *mut AnyObject = msg_send![contexts, allObjects];
+        let n: usize = msg_send![all, count];
+        for i in 0..n {
+            let ctx: *mut AnyObject = msg_send![all, objectAtIndex: i];
+            let url: *mut AnyObject = msg_send![ctx, URL];
+            grant_scope(url);
+        }
+    }
+
+    unsafe extern "C" fn scene_open_hook(
+        this: *mut AnyObject,
+        cmd: Sel,
+        scene: *mut AnyObject,
+        contexts: *mut AnyObject,
+    ) {
+        grant_contexts(contexts);
+        let f = ORIG_SCENE_OPEN.load(Ordering::SeqCst);
+        if f != 0 {
+            let orig: SceneOpenFn = std::mem::transmute(f);
+            orig(this, cmd, scene, contexts);
+        }
+    }
+
+    unsafe extern "C" fn scene_connect_hook(
+        this: *mut AnyObject,
+        cmd: Sel,
+        scene: *mut AnyObject,
+        session: *mut AnyObject,
+        options: *mut AnyObject,
+    ) {
+        let f = ORIG_SCENE_CONNECT.load(Ordering::SeqCst);
+        if f != 0 {
+            let orig: SceneConnectFn = std::mem::transmute(f);
+            orig(this, cmd, scene, session, options);
+        }
+        // A cold launch from Files: the document is in the connection
+        // options, which tao ignores. Deliver it the way a warm open arrives,
+        // through scene:openURLContexts: (scope opened above, then tao emits
+        // RunEvent::Opened as usual).
+        if options.is_null() {
+            return;
+        }
+        let contexts: *mut AnyObject = msg_send![options, URLContexts];
+        if contexts.is_null() {
+            return;
+        }
+        let n: usize = msg_send![contexts, count];
+        if n > 0 {
+            let _: () = msg_send![this, scene: scene, openURLContexts: contexts];
+        }
+    }
+
+    /// Wrap TaoSceneDelegate's open-URL and connect methods. Call after
+    /// Builder::build and before App::run.
+    pub fn hook_scene_delegate() {
+        let Some(cls) = AnyClass::get("TaoSceneDelegate") else {
+            return;
+        };
+        unsafe {
+            if ORIG_SCENE_OPEN.load(Ordering::SeqCst) == 0 {
+                if let Some(m) = cls.instance_method(objc2::sel!(scene:openURLContexts:)) {
+                    let hook: SceneOpenFn = scene_open_hook;
+                    let old = m.set_implementation(std::mem::transmute(hook));
+                    ORIG_SCENE_OPEN.store(old as usize, Ordering::SeqCst);
+                }
+            }
+            if ORIG_SCENE_CONNECT.load(Ordering::SeqCst) == 0 {
+                if let Some(m) =
+                    cls.instance_method(objc2::sel!(scene:willConnectToSession:options:))
+                {
+                    let hook: SceneConnectFn = scene_connect_hook;
+                    let old = m.set_implementation(std::mem::transmute(hook));
+                    ORIG_SCENE_CONNECT.store(old as usize, Ordering::SeqCst);
+                }
+            }
         }
     }
 
@@ -414,6 +520,14 @@ pub fn ios_restore_folder(app: AppHandle) -> Result<Option<String>, String> {
 #[cfg(target_os = "ios")]
 pub fn hook_open_url() {
     imp::hook_open_url();
+}
+
+/// Scene-lifecycle counterpart of [`hook_open_url`]: documents opened from
+/// the Files app reach the scene delegate under the iOS 27 SDK. Must run
+/// between `Builder::build` and `App::run`.
+#[cfg(target_os = "ios")]
+pub fn hook_scene_delegate() {
+    imp::hook_scene_delegate();
 }
 
 /// Paths of documents opened in place from the Files app this session —

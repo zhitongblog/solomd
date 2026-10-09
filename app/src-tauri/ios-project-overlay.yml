@@ -36,6 +36,18 @@ merge:
           # "couldn't find" it.
           UIFileSharingEnabled: true
 
+          # iOS 27 SDK: apps linked against it are killed at launch unless
+          # they adopt the scene lifecycle, and declaring this manifest is how
+          # tao 0.37 (Tauri 2.12) knows to run on it. One scene only — SoloMD
+          # has no multi-window support on iPad, and allowing more would let
+          # iPadOS open an empty second window. Documents opened from Files
+          # then arrive at the scene delegate; ios_folder::hook_scene_delegate
+          # keeps their security scope (and handles the cold-launch case tao
+          # does not).
+          UIApplicationSceneManifest:
+            UIApplicationSupportsMultipleScenes: false
+            UISceneConfigurations: {}
+
           # Live-reload from the dev server on the Mac.
           NSLocalNetworkUsageDescription: >-
             SoloMD connects to the Tauri development server running on your Mac
