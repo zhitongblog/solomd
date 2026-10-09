@@ -1,0 +1,11 @@
+SoloMD 4.14.11 fixes problems found in a full test pass. Several of them could change or lose text, so we recommend updating.
+
+• Chinese proofreading no longer treats file names (文档.md, 压缩包.tar.gz) or an ellipsis as punctuation mistakes, so "Fix all" can't rewrite them.
+• Importing a Word document keeps bold where it was, and brings back numbered lists, task lists and links. Word export marks tasks with [ ] / [x].
+• UTF-16 files are saved back as UTF-16; Simplified/Traditional conversion no longer drops what you just typed.
+• Redo (⌘⇧Z) no longer also starts a writing session.
+• The find and replace bar follows the app's language.
+• Code blocks and bold can be turned off from inside them; Tab nests numbered list items properly; a new note is ready to type in.
+• Backlinks jump to the right line; New Type works in any folder; split view stays level when scrolling through lists; a broken Mermaid diagram no longer shifts the window.
+
+Thanks to 张工 for the testing behind this release.

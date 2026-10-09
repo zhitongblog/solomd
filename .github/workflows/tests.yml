@@ -36,7 +36,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: app/src-tauri
-      - name: cargo test --lib
+      - name: cargo test --lib + --bin (bin-only modules such as convert.rs)
         working-directory: app/src-tauri
         run: |
           mkdir -p ../dist && [ -f ../dist/index.html ] || echo '<!doctype html>' > ../dist/index.html
@@ -44,4 +44,4 @@ jobs:
           mkdir -p binaries && touch "binaries/solomd-mcp-$(rustc -vV | sed -n 's/^host: //p')"
           # The crypto tests store a key in the platform keyring: give them a
           # session bus with an unlocked gnome-keyring.
-          dbus-run-session -- bash -c 'echo -n ci | gnome-keyring-daemon --unlock --components=secrets >/dev/null && cargo test --lib'
+          dbus-run-session -- bash -c 'echo -n ci | gnome-keyring-daemon --unlock --components=secrets >/dev/null && cargo test --lib && cargo test --bin SoloMD'

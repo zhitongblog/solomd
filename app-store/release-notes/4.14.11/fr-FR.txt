@@ -1,0 +1,11 @@
+SoloMD 4.14.11 corrige des problèmes relevés lors d’une série de tests complète. Certains pouvaient modifier ou faire perdre du texte : nous recommandons donc la mise à jour.
+
+• La relecture CJK ne considère plus les noms de fichiers (文档.md, 压缩包.tar.gz) ni les points de suspension comme des fautes de ponctuation, et « Tout appliquer » ne peut plus les réécrire.
+• L’import d’un document Word garde le gras à sa place et récupère les listes numérotées, les listes de tâches et les liens. L’export Word marque les tâches avec [ ] / [x].
+• Les fichiers UTF-16 sont réenregistrés en UTF-16 ; la conversion simplifié/traditionnel ne fait plus disparaître ce que vous venez de saisir.
+• Rétablir (⌘⇧Z) ne lance plus en même temps une session d’écriture.
+• La barre Rechercher et remplacer suit la langue de l’app.
+• Les blocs de code et le gras peuvent être désactivés depuis l’intérieur ; Tab imbrique correctement les éléments de listes numérotées ; une nouvelle note est prête à la saisie.
+• Les backlinks mènent à la bonne ligne ; Nouveau type fonctionne dans n’importe quel dossier ; la vue divisée reste alignée lors du défilement dans les listes ; un diagramme Mermaid erroné ne décale plus la fenêtre.
+
+Merci à 张工 pour les tests sur lesquels repose cette version.

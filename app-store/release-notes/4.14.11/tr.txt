@@ -1,0 +1,11 @@
+SoloMD 4.14.11, kapsamlı bir test turunda bulunan sorunları düzeltir. Bunların bazıları metni değiştirebiliyor ya da kaybettirebiliyordu, bu yüzden güncellemenizi öneririz.
+
+• CJK Denetimi artık dosya adlarını (文档.md, 压缩包.tar.gz) ve üç noktayı noktalama hatası saymıyor; böylece "Tümünü uygula" bunları yeniden yazamıyor.
+• Word belgesi içe aktarılırken kalın yazı yerinde kalıyor; numaralı listeler, görev listeleri ve bağlantılar geri geliyor. Word'e dışa aktarma görevleri [ ] / [x] ile işaretliyor.
+• UTF-16 dosyalar yeniden UTF-16 olarak kaydediliyor; Basitleştirilmiş/Geleneksel dönüştürme az önce yazdıklarınızı artık silmiyor.
+• Yinele (⌘⇧Z) artık aynı anda bir yazma oturumu başlatmıyor.
+• Bul ve değiştir çubuğu uygulamanın dilini izliyor.
+• Kod blokları ve kalın yazı içlerinden de kapatılabiliyor; Tab numaralı liste öğelerini doğru şekilde iç içe yerleştiriyor; yeni bir not hemen yazmaya hazır açılıyor.
+• Geri Bağlantılar doğru satıra gidiyor; Yeni Tür her klasörde çalışıyor; bölünmüş görünüm listelerde kaydırırken hizalı kalıyor; hatalı bir Mermaid diyagramı artık pencereyi kaydırmıyor.
+
+Bu sürümün dayandığı testler için 张工'a teşekkürler.

@@ -1,7 +1,7 @@
 {
   "name": "solomd",
   "private": true,
-  "version": "4.14.10",
+  "version": "4.14.11",
   "type": "module",
   "scripts": {
     "test": "bash scripts/run-tests.sh",

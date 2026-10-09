@@ -1,6 +1,6 @@
 [package]
 name = "solomd-mcp"
-version = "4.14.10"
+version = "4.14.11"
 edition = "2021"
 description = "Model Context Protocol server for SoloMD vaults — exposes a Markdown notes folder to Claude Code, Codex CLI, Cursor, Cline, Continue, Zed, and any other MCP client"
 license = "MIT"

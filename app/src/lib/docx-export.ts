@@ -305,6 +305,13 @@ function buildRuns(inlineToken: Token, style: RunStyle = {}): (TextRun | ImageRu
         break;
       }
       case 'html_inline': {
+        // A task item's checkbox (markdown.ts task_lists rule): Word has no
+        // checkbox run, so write the ballot glyph — readable in Word, and
+        // what the DOCX importer turns back into `- [ ]` / `- [x]`.
+        if (/task-list-item-checkbox/.test(tok.content || '')) {
+          push(new TextRun({ text: /\bchecked\b/.test(tok.content) ? '☑ ' : '☐ ', ...toRunOpts(cur) }));
+          break;
+        }
         const srcs = htmlImageSrcs(tok.content || '');
         for (const src of srcs) {
           const img = srcImages.get(src);

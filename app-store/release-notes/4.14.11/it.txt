@@ -1,0 +1,11 @@
+SoloMD 4.14.11 risolve problemi emersi durante un ciclo completo di test. Alcuni potevano modificare o far perdere testo, quindi consigliamo di aggiornare.
+
+• La revisione CJK non considera più errori di punteggiatura i nomi di file (文档.md, 压缩包.tar.gz) o i puntini di sospensione, così «Applica tutto» non può più riscriverli.
+• Importando un documento Word il grassetto resta dov’era e tornano elenchi numerati, elenchi di attività e link. L’esportazione in Word segna le attività con [ ] / [x].
+• I file UTF-16 vengono salvati di nuovo come UTF-16; la conversione tra cinese semplificato e tradizionale non perde più ciò che hai appena digitato.
+• Ripeti (⌘⇧Z) non avvia più anche una sessione di scrittura.
+• La barra Trova e sostituisci segue la lingua dell’app.
+• Blocchi di codice e grassetto si possono disattivare anche dall’interno; Tab annida correttamente le voci degli elenchi numerati; una nuova nota è subito pronta per scrivere.
+• I backlinks portano alla riga giusta; Nuovo tipo funziona in qualsiasi cartella; la vista divisa resta allineata scorrendo gli elenchi; un diagramma Mermaid errato non sposta più la finestra.
+
+Grazie a 张工 per i test da cui nasce questa versione.

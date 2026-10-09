@@ -1,0 +1,11 @@
+SoloMD 4.14.11 behebt Probleme, die bei einem vollständigen Testdurchlauf gefunden wurden. Einige davon konnten Text verändern oder verlieren lassen, daher empfehlen wir das Update.
+
+• Die CJK-Korrektur wertet Dateinamen (文档.md, 压缩包.tar.gz) und Auslassungspunkte nicht mehr als Satzzeichenfehler, sodass „Alle anwenden“ sie nicht mehr umschreiben kann.
+• Beim Import eines Word-Dokuments bleibt Fettschrift an ihrer Stelle, und nummerierte Listen, Aufgabenlisten und Links kommen wieder mit. Der Word-Export kennzeichnet Aufgaben mit [ ] / [x].
+• UTF-16-Dateien werden wieder als UTF-16 gespeichert; die Umwandlung zwischen Vereinfacht und Traditionell verschluckt nicht mehr das gerade Getippte.
+• Wiederholen (⌘⇧Z) startet nicht mehr zusätzlich eine Schreibsitzung.
+• Die Leiste „Suchen und Ersetzen“ folgt der Sprache der App.
+• Codeblöcke und Fettschrift lassen sich auch von innen heraus ausschalten; Tab rückt Einträge nummerierter Listen korrekt ein; eine neue Notiz ist sofort bereit zum Tippen.
+• Backlinks springen zur richtigen Zeile; „Neuer Typ“ funktioniert in jedem Ordner; die geteilte Ansicht bleibt beim Scrollen durch Listen auf gleicher Höhe; ein fehlerhaftes Mermaid-Diagramm verschiebt das Fenster nicht mehr.
+
+Danke an 张工 für die Tests, auf denen diese Version beruht.

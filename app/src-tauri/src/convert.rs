@@ -79,125 +79,337 @@ fn convert_docx(path: &str) -> Result<String, String> {
         .map_err(|e| format!("No document.xml in DOCX: {e}"))?
         .read_to_string(&mut xml)
         .map_err(|e| format!("Read error: {e}"))?;
+    // Which list definitions are numbered rather than bulleted. Optional:
+    // a document without lists has no numbering part.
+    let mut numbering = String::new();
+    if let Ok(mut f) = archive.by_name("word/numbering.xml") {
+        let _ = f.read_to_string(&mut numbering);
+    }
 
-    docx_xml_to_markdown(&xml)
+    // Hyperlink targets live in the relationships part, keyed by r:id.
+    let mut rels = String::new();
+    if let Ok(mut f) = archive.by_name("word/_rels/document.xml.rels") {
+        let _ = f.read_to_string(&mut rels);
+    }
+
+    docx_xml_to_markdown_with_links(&xml, &docx_ordered_lists(&numbering), &docx_link_targets(&rels))
 }
 
-fn docx_xml_to_markdown(xml: &str) -> Result<String, String> {
+/// `r:id` → URL for external hyperlinks, from document.xml.rels.
+fn docx_link_targets(rels_xml: &str) -> std::collections::HashMap<String, String> {
     use quick_xml::events::Event;
     use quick_xml::Reader;
+    let mut out = std::collections::HashMap::new();
+    let mut reader = Reader::from_str(rels_xml);
+    let mut buf = Vec::new();
+    loop {
+        match reader.read_event_into(&mut buf) {
+            Ok(Event::Start(ref e)) | Ok(Event::Empty(ref e))
+                if e.local_name().as_ref() == b"Relationship" =>
+            {
+                let mut id = None;
+                let mut target = None;
+                let mut is_link = false;
+                for a in e.attributes().flatten() {
+                    let v = String::from_utf8_lossy(&a.value).to_string();
+                    match a.key.as_ref() {
+                        b"Id" => id = Some(v),
+                        b"Target" => target = Some(v),
+                        b"Type" => is_link = v.ends_with("/hyperlink"),
+                        _ => {}
+                    }
+                }
+                if let (true, Some(id), Some(t)) = (is_link, id, target) {
+                    out.insert(id, t);
+                }
+            }
+            Ok(Event::Eof) | Err(_) => break,
+            _ => {}
+        }
+        buf.clear();
+    }
+    out
+}
+
+/// `numId`s whose level-0 format is a number (`decimal`, `lowerLetter`, …)
+/// rather than `bullet`, resolved through `w:num` → `w:abstractNum`.
+fn docx_ordered_lists(numbering_xml: &str) -> std::collections::HashSet<String> {
+    use quick_xml::events::Event;
+    use quick_xml::Reader;
+    use std::collections::{HashMap, HashSet};
+
+    let mut abstract_ordered: HashMap<String, bool> = HashMap::new();
+    let mut num_to_abstract: HashMap<String, String> = HashMap::new();
+    let mut cur_abstract: Option<String> = None;
+    let mut cur_num: Option<String> = None;
+    let mut cur_lvl: Option<String> = None;
+    let mut reader = Reader::from_str(numbering_xml);
+    let mut buf = Vec::new();
+    let attr = |e: &quick_xml::events::BytesStart, key: &[u8]| -> Option<String> {
+        e.attributes()
+            .flatten()
+            .find(|a| a.key.as_ref() == key)
+            .map(|a| String::from_utf8_lossy(&a.value).to_string())
+    };
+    loop {
+        match reader.read_event_into(&mut buf) {
+            Ok(Event::Start(ref e)) | Ok(Event::Empty(ref e)) => {
+                match e.local_name().as_ref() {
+                    b"abstractNum" => cur_abstract = attr(e, b"w:abstractNumId"),
+                    b"lvl" => cur_lvl = attr(e, b"w:ilvl"),
+                    b"numFmt" => {
+                        if let (Some(a), Some("0")) = (&cur_abstract, cur_lvl.as_deref()) {
+                            let fmt = attr(e, b"w:val").unwrap_or_default();
+                            abstract_ordered.insert(a.clone(), fmt != "bullet" && fmt != "none");
+                        }
+                    }
+                    b"num" => cur_num = attr(e, b"w:numId"),
+                    b"abstractNumId" => {
+                        if let (Some(n), Some(a)) = (&cur_num, attr(e, b"w:val")) {
+                            num_to_abstract.insert(n.clone(), a);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            Ok(Event::End(ref e)) => match e.local_name().as_ref() {
+                b"abstractNum" => cur_abstract = None,
+                b"num" => cur_num = None,
+                b"lvl" => cur_lvl = None,
+                _ => {}
+            },
+            Ok(Event::Eof) | Err(_) => break,
+            _ => {}
+        }
+        buf.clear();
+    }
+    num_to_abstract
+        .into_iter()
+        .filter(|(_, a)| abstract_ordered.get(a).copied().unwrap_or(false))
+        .map(|(n, _)| n)
+        .collect::<HashSet<_>>()
+}
+
+/// Bold/italic text of one paragraph, as runs; adjacent runs with the same
+/// formatting are joined so `**a** **b**` doesn't come out as `**a****b**`.
+fn render_runs(runs: &[(String, bool, bool)]) -> String {
+    let mut merged: Vec<(String, bool, bool)> = Vec::new();
+    for (t, b, i) in runs {
+        match merged.last_mut() {
+            Some(last) if last.1 == *b && last.2 == *i => last.0.push_str(t),
+            _ => merged.push((t.clone(), *b, *i)),
+        }
+    }
+    let mut out = String::new();
+    for (t, b, i) in merged {
+        // Markers can't hug whitespace in Markdown, so keep it outside them.
+        let core = t.trim();
+        if core.is_empty() || (!b && !i) {
+            out.push_str(&t);
+            continue;
+        }
+        let lead = &t[..t.len() - t.trim_start().len()];
+        let trail = &t[t.trim_end().len()..];
+        let mark = match (b, i) {
+            (true, true) => "***",
+            (true, false) => "**",
+            _ => "*",
+        };
+        out.push_str(lead);
+        out.push_str(mark);
+        out.push_str(core);
+        out.push_str(mark);
+        out.push_str(trail);
+    }
+    out
+}
+
+#[cfg(test)]
+fn docx_xml_to_markdown(
+    xml: &str,
+    ordered_lists: &std::collections::HashSet<String>,
+) -> Result<String, String> {
+    docx_xml_to_markdown_with_links(xml, ordered_lists, &Default::default())
+}
+
+fn docx_xml_to_markdown_with_links(
+    xml: &str,
+    ordered_lists: &std::collections::HashSet<String>,
+    links: &std::collections::HashMap<String, String>,
+) -> Result<String, String> {
+    use quick_xml::events::Event;
+    use quick_xml::Reader;
+    use std::collections::HashMap;
 
     let mut reader = Reader::from_str(xml);
     let mut out = String::new();
-    let mut current_line = String::new();
+    let mut runs: Vec<(String, bool, bool)> = Vec::new();
     let mut in_table_row = false;
     let mut table_cells: Vec<String> = Vec::new();
     let mut table_started = false;
     let mut heading_level: u8 = 0;
+    // Run properties: `<w:b/>` is an empty element (no end tag), and
+    // `<w:b w:val="0"/>` turns bold *off* — so they are set per run and
+    // reset at every `<w:r>`, never left on for the rest of the document.
     let mut is_bold = false;
     let mut is_italic = false;
-    let mut is_list_item = false;
+    let mut in_run_props = false;
+    let mut list_style = false;
+    let mut num_id: Option<String> = None;
+    let mut ilvl: usize = 0;
+    let mut prev_was_list = false;
+    let mut prev_num_id: Option<String> = None;
+    // Next number per (numId, level), reset when the list ends.
+    let mut counters: HashMap<(String, usize), usize> = HashMap::new();
+    // An open <w:hyperlink>: where its runs start, and its URL if external.
+    let mut link_start: Option<(usize, Option<String>)> = None;
     let mut buf = Vec::new();
+    let val_of = |e: &quick_xml::events::BytesStart| -> Option<String> {
+        e.attributes()
+            .flatten()
+            .find(|a| a.key.as_ref() == b"w:val")
+            .map(|a| String::from_utf8_lossy(&a.value).to_string())
+    };
+    let on = |v: Option<String>| !matches!(v.as_deref(), Some("0") | Some("false") | Some("none"));
 
     loop {
         match reader.read_event_into(&mut buf) {
             Ok(Event::Start(ref e)) | Ok(Event::Empty(ref e)) => {
-                let name = String::from_utf8_lossy(e.local_name().as_ref()).to_string();
-                match name.as_str() {
-                    "p" => {
-                        current_line.clear();
+                match e.local_name().as_ref() {
+                    b"p" => {
+                        runs.clear();
                         heading_level = 0;
-                        is_list_item = false;
+                        list_style = false;
+                        num_id = None;
+                        ilvl = 0;
                     }
-                    "pStyle" => {
-                        for attr in e.attributes().flatten() {
-                            if attr.key.as_ref() == b"w:val" {
-                                let val =
-                                    String::from_utf8_lossy(&attr.value).to_ascii_lowercase();
-                                if val.starts_with("heading") || val.starts_with("title") {
-                                    heading_level = val
-                                        .chars()
-                                        .last()
-                                        .and_then(|c| c.to_digit(10))
-                                        .unwrap_or(1)
-                                        as u8;
-                                }
-                                if val.contains("list") {
-                                    is_list_item = true;
-                                }
-                            }
+                    b"r" => {
+                        is_bold = false;
+                        is_italic = false;
+                    }
+                    b"rPr" => in_run_props = true,
+                    b"pStyle" => {
+                        let val = val_of(e).unwrap_or_default().to_ascii_lowercase();
+                        if val.starts_with("heading") || val.starts_with("title") {
+                            heading_level = val
+                                .chars()
+                                .last()
+                                .and_then(|c| c.to_digit(10))
+                                .unwrap_or(1) as u8;
+                        }
+                        if val.contains("list") {
+                            list_style = true;
                         }
                     }
-                    "b" => is_bold = true,
-                    "i" => is_italic = true,
-                    "tr" => {
+                    b"numId" => num_id = val_of(e).filter(|v| v != "0"),
+                    b"ilvl" => ilvl = val_of(e).and_then(|v| v.parse().ok()).unwrap_or(0),
+                    b"b" if in_run_props => is_bold = on(val_of(e)),
+                    b"i" if in_run_props => is_italic = on(val_of(e)),
+                    b"tr" => {
                         in_table_row = true;
                         table_cells.clear();
                     }
-                    "tc" => {
-                        current_line.clear();
+                    b"tc" => runs.clear(),
+                    b"hyperlink" => {
+                        let url = e
+                            .attributes()
+                            .flatten()
+                            .find(|a| a.key.as_ref() == b"r:id")
+                            .and_then(|a| links.get(String::from_utf8_lossy(&a.value).as_ref()).cloned());
+                        link_start = Some((runs.len(), url));
                     }
                     _ => {}
                 }
             }
             Ok(Event::Text(ref e)) => {
                 if let Ok(text) = e.unescape() {
-                    let t = text.to_string();
-                    if is_bold && is_italic {
-                        current_line.push_str(&format!("***{t}***"));
-                    } else if is_bold {
-                        current_line.push_str(&format!("**{t}**"));
-                    } else if is_italic {
-                        current_line.push_str(&format!("*{t}*"));
-                    } else {
-                        current_line.push_str(&t);
-                    }
+                    runs.push((text.to_string(), is_bold, is_italic));
                 }
             }
-            Ok(Event::End(ref e)) => {
-                let name = String::from_utf8_lossy(e.local_name().as_ref()).to_string();
-                match name.as_str() {
-                    "b" => is_bold = false,
-                    "i" => is_italic = false,
-                    "p" => {
-                        let line = current_line.trim().to_string();
-                        if in_table_row {
-                            table_cells.push(line);
-                        } else if !line.is_empty() {
-                            if heading_level > 0 && heading_level <= 6 {
-                                let hashes = "#".repeat(heading_level as usize);
-                                out.push_str(&format!("{hashes} {line}\n\n"));
-                            } else if is_list_item {
-                                out.push_str(&format!("- {line}\n"));
+            Ok(Event::End(ref e)) => match e.local_name().as_ref() {
+                b"rPr" => in_run_props = false,
+                b"hyperlink" => {
+                    if let Some((start, url)) = link_start.take() {
+                        if let Some(url) = url {
+                            let text = render_runs(&runs[start.min(runs.len())..]);
+                            runs.truncate(start.min(runs.len()));
+                            runs.push((format!("[{}]({url})", text.trim()), false, false));
+                        }
+                    }
+                }
+                b"p" => {
+                    let line = render_runs(&runs).trim().to_string();
+                    let is_list = num_id.is_some() || list_style;
+                    if in_table_row {
+                        table_cells.push(line);
+                    } else if !line.is_empty() {
+                        // A blank line ends a list — and separates two
+                        // different lists, which would otherwise run together.
+                        if prev_was_list && (!is_list || num_id != prev_num_id) {
+                            out.push('\n');
+                            if !is_list {
+                                counters.clear();
+                            }
+                        }
+                        if heading_level > 0 && heading_level <= 6 {
+                            let hashes = "#".repeat(heading_level as usize);
+                            out.push_str(&format!("{hashes} {line}\n\n"));
+                        } else if is_list {
+                            let ordered =
+                                num_id.as_ref().is_some_and(|n| ordered_lists.contains(n));
+                            let indent = "  ".repeat(ilvl);
+                            // A task item exported by SoloMD starts with a ballot box.
+                            let (task, body) = if let Some(rest) = line.strip_prefix('☐') {
+                                (Some(' '), rest.trim_start())
+                            } else if let Some(rest) =
+                                line.strip_prefix('☑').or_else(|| line.strip_prefix('☒'))
+                            {
+                                (Some('x'), rest.trim_start())
                             } else {
-                                out.push_str(&format!("{line}\n\n"));
+                                (None, line.as_str())
+                            };
+                            let marker = if ordered {
+                                let key = (num_id.clone().unwrap_or_default(), ilvl);
+                                let n = counters.entry(key).or_insert(0);
+                                *n += 1;
+                                format!("{n}.")
+                            } else {
+                                "-".to_string()
+                            };
+                            match task {
+                                Some(c) => out.push_str(&format!("{indent}{marker} [{c}] {body}\n")),
+                                None => out.push_str(&format!("{indent}{marker} {body}\n")),
                             }
+                        } else {
+                            out.push_str(&format!("{line}\n\n"));
                         }
-                        current_line.clear();
+                        prev_was_list = is_list && heading_level == 0;
+                        prev_num_id = num_id.clone();
                     }
-                    "tr" => {
-                        if !table_cells.is_empty() {
-                            out.push_str("| ");
-                            out.push_str(&table_cells.join(" | "));
-                            out.push_str(" |\n");
-                            if !table_started {
-                                out.push_str("|");
-                                for _ in &table_cells {
-                                    out.push_str(" --- |");
-                                }
-                                out.push('\n');
-                                table_started = true;
-                            }
-                        }
-                        in_table_row = false;
-                    }
-                    "tbl" => {
-                        table_started = false;
-                        out.push('\n');
-                    }
-                    _ => {}
+                    runs.clear();
                 }
-            }
+                b"tr" => {
+                    if !table_cells.is_empty() {
+                        out.push_str("| ");
+                        out.push_str(&table_cells.join(" | "));
+                        out.push_str(" |\n");
+                        if !table_started {
+                            out.push('|');
+                            for _ in &table_cells {
+                                out.push_str(" --- |");
+                            }
+                            out.push('\n');
+                            table_started = true;
+                        }
+                    }
+                    in_table_row = false;
+                }
+                b"tbl" => {
+                    table_started = false;
+                    out.push('\n');
+                }
+                _ => {}
+            },
             Ok(Event::Eof) => break,
             Err(e) => return Err(format!("XML parse error: {e}")),
             _ => {}
@@ -598,5 +810,107 @@ fn convert_via_markitdown(path: &str) -> Result<String, String> {
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
         Err(format!("markitdown failed: {stderr}"))
+    }
+}
+
+#[cfg(test)]
+mod docx_import_tests {
+    use super::*;
+
+    fn p(inner: &str) -> String {
+        format!("<w:p>{inner}</w:p>")
+    }
+    fn r(text: &str, props: &str) -> String {
+        format!("<w:r><w:rPr>{props}</w:rPr><w:t xml:space=\"preserve\">{text}</w:t></w:r>")
+    }
+    fn doc(body: &str) -> String {
+        format!("<w:document><w:body>{body}</w:body></w:document>")
+    }
+    fn li(num: &str, lvl: u8, text: &str) -> String {
+        p(&format!(
+            "<w:pPr><w:numPr><w:ilvl w:val=\"{lvl}\"/><w:numId w:val=\"{num}\"/></w:numPr></w:pPr>{}",
+            r(text, "")
+        ))
+    }
+
+    #[test]
+    fn bold_from_an_empty_b_element_does_not_leak() {
+        // `<w:b/>` never gets an end tag — it used to stay on for the rest
+        // of the document ("**bold**** and a ****link**").
+        let xml = doc(&p(&format!(
+            "{}{}{}",
+            r("Intro with ", ""),
+            r("bold", "<w:b/>"),
+            r(" and plain.", "")
+        )));
+        let md = docx_xml_to_markdown(&xml, &Default::default()).unwrap();
+        assert_eq!(md, "Intro with **bold** and plain.");
+    }
+
+    #[test]
+    fn b_val_zero_turns_bold_off_and_adjacent_runs_merge() {
+        let xml = doc(&p(&format!(
+            "{}{}{}",
+            r("one ", "<w:b/>"),
+            r("two", "<w:b/>"),
+            r(" three", "<w:b w:val=\"0\"/>")
+        )));
+        let md = docx_xml_to_markdown(&xml, &Default::default()).unwrap();
+        assert_eq!(md, "**one two** three");
+    }
+
+    #[test]
+    fn ordered_and_bullet_lists_and_tasks_round_trip() {
+        let mut ordered = std::collections::HashSet::new();
+        ordered.insert("2".to_string());
+        let xml = doc(&format!(
+            "{}{}{}{}{}{}",
+            li("1", 0, "☐ open task"),
+            li("1", 0, "☑ done task"),
+            li("2", 0, "first"),
+            li("2", 0, "second"),
+            li("2", 1, "nested"),
+            p(&r("After the list.", ""))
+        ));
+        let md = docx_xml_to_markdown(&xml, &ordered).unwrap();
+        assert_eq!(
+            md,
+            "- [ ] open task\n- [x] done task\n\n1. first\n2. second\n  1. nested\n\nAfter the list."
+        );
+    }
+
+    #[test]
+    fn external_hyperlinks_keep_their_url() {
+        let mut links = std::collections::HashMap::new();
+        links.insert("rId9".to_string(), "https://example.com/target".to_string());
+        let xml = doc(&p(&format!(
+            "{}<w:hyperlink r:id=\"rId9\">{}</w:hyperlink>{}",
+            r("See ", ""),
+            r("the target", ""),
+            r(".", "")
+        )));
+        let md = docx_xml_to_markdown_with_links(&xml, &Default::default(), &links).unwrap();
+        assert_eq!(md, "See [the target](https://example.com/target).");
+    }
+
+    #[test]
+    fn rels_part_maps_hyperlink_ids() {
+        let rels = r#"<Relationships><Relationship Id="rId9" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="https://example.com/x" TargetMode="External"/><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>"#;
+        let m = docx_link_targets(rels);
+        assert_eq!(m.get("rId9").map(String::as_str), Some("https://example.com/x"));
+        assert!(!m.contains_key("rId1"));
+    }
+
+    #[test]
+    fn numbering_part_tells_numbered_from_bulleted() {
+        let numbering = r#"<w:numbering>
+          <w:abstractNum w:abstractNumId="0"><w:lvl w:ilvl="0"><w:numFmt w:val="bullet"/></w:lvl></w:abstractNum>
+          <w:abstractNum w:abstractNumId="1"><w:lvl w:ilvl="0"><w:numFmt w:val="decimal"/></w:lvl><w:lvl w:ilvl="1"><w:numFmt w:val="bullet"/></w:lvl></w:abstractNum>
+          <w:num w:numId="5"><w:abstractNumId w:val="0"/></w:num>
+          <w:num w:numId="6"><w:abstractNumId w:val="1"/></w:num>
+        </w:numbering>"#;
+        let set = docx_ordered_lists(numbering);
+        assert!(set.contains("6"));
+        assert!(!set.contains("5"));
     }
 }

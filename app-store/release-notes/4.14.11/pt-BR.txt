@@ -1,0 +1,11 @@
+O SoloMD 4.14.11 corrige problemas encontrados em uma rodada completa de testes. Alguns podiam alterar ou fazer perder texto, por isso recomendamos atualizar.
+
+• A Revisão CJK não trata mais nomes de arquivo (文档.md, 压缩包.tar.gz) nem reticências como erros de pontuação, então “Aplicar tudo” não pode mais reescrevê-los.
+• Ao importar um documento do Word, o negrito fica onde estava, e listas numeradas, listas de tarefas e links voltam. A exportação para Word marca as tarefas com [ ] / [x].
+• Arquivos UTF-16 são salvos de volta como UTF-16; a conversão entre chinês simplificado e tradicional não perde mais o que você acabou de digitar.
+• Refazer (⌘⇧Z) não inicia mais uma sessão de escrita junto.
+• A barra Localizar e substituir segue o idioma do app.
+• Blocos de código e negrito podem ser desativados de dentro deles; Tab aninha corretamente os itens de listas numeradas; uma nota nova já fica pronta para digitar.
+• Os backlinks levam à linha certa; Novo tipo funciona em qualquer pasta; a vista dividida fica alinhada ao rolar por listas; um diagrama Mermaid com erro não desloca mais a janela.
+
+Obrigado a 张工 pelos testes que deram origem a esta versão.
