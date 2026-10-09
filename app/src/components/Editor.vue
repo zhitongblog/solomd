@@ -4463,14 +4463,17 @@ onBeforeUnmount(() => {
 const tabCaretMemory = new Map<string, { caret: number; scrollTop: number }>();
 
 /**
- * F-10 — a document file.new / file.newText just made: no file, nothing in
- * it, and not a tab this editor has shown before (switching away records it
- * in tabCaretMemory). Only these take focus on the CodeMirror path; opening
- * or switching to a document leaves focus where it is, as before.
+ * F-10 — a document just made: nothing in it, and not a tab this editor has
+ * shown before (switching away records it in tabCaretMemory). That covers
+ * file.new / file.newText (no path yet) and New Note in Selected Folder,
+ * which names the file in the tree first, so it arrives with a path — it
+ * used to be left without focus and the first keystrokes went nowhere. Only
+ * these take focus on the CodeMirror path; opening or switching to a
+ * document with content leaves focus where it is, as before.
  */
 function isFreshUntitledTab(): boolean {
   const t = props.tab;
-  return !t.filePath && t.content === '' && t.savedContent === '' && !tabCaretMemory.has(t.id);
+  return t.content === '' && t.savedContent === '' && !tabCaretMemory.has(t.id);
 }
 
 function focusFreshCodeMirror() {

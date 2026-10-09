@@ -19,4 +19,8 @@ const ok = await waitFor(() => tabs.activeTab?.filePath === path('notes/' + name
 R.t(!!ok, 'new tab points at notes/' + name + '.md (active: ' + tabs.activeTab?.filePath + ')');
 R.t(await exists('notes/' + name + '.md'), 'file exists on disk');
 R.t(!!(await waitFor(() => rowOf('notes/' + name + '.md'), 3000)), 'file appears in the tree');
+// The first keystrokes after naming go into the new note, not nowhere
+// (Linux round-2 run: focus stayed on nothing after the tree's inline name).
+R.t(!!(await waitFor(() => !!document.activeElement?.closest('.cm-editor'), 2000)),
+  'caret is in the new note\'s editor after naming (active: ' + (document.activeElement?.className || document.activeElement?.tagName) + ')');
 return R.done();
