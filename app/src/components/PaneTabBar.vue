@@ -672,14 +672,22 @@ onBeforeUnmount(() => {
 }
 /* Clean tab: × shows on hover and on the active tab. Dirty tab: the dot holds
    the slot until hover, then gives way to the ×. */
-.tab:hover .tab__close,
 .tab--active:not(.tab--dirty) .tab__close,
 .tab__close:focus-visible {
   opacity: 1;
   pointer-events: auto;
 }
-.tab:hover .tab__dot {
-  display: none;
+/* Hover reveals only where hover exists: on an iPad a tap first plays the
+   hover, and because it changes what the tab shows, iOS spent the first tap
+   on it — every tab took two taps to switch (iOS 27 simulator, round 2). */
+@media (hover: hover) {
+  .tab:hover .tab__close {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .tab:hover .tab__dot {
+    display: none;
+  }
 }
 .tab__close:hover {
   background: var(--fill-2);

@@ -1736,8 +1736,17 @@ onBeforeUnmount(() => {
   border-radius: var(--r-xs);
   color: var(--text-3);
 }
-.dropdown__item--recent:hover .dropdown__remove {
-  display: inline-flex;
+@media (hover: hover) {
+  .dropdown__item--recent:hover .dropdown__remove {
+    display: inline-flex;
+  }
+}
+/* No hover on a touch screen (and a hover-reveal costs an extra tap there):
+   the remove button is simply always shown. */
+@media (hover: none) {
+  .dropdown__remove {
+    display: inline-flex;
+  }
 }
 .dropdown__remove:hover {
   color: var(--text);
