@@ -24,7 +24,8 @@
  * i18n keys (en.ts): types.heading, types.empty, types.openFolder,
  *   types.newTypeTooltip, types.customizeTooltip, types.openLensTooltip
  */
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, watch } from 'vue';
+import { createTypeRequested } from '../lib/create-type-request';
 import Icons from './Icons.vue';
 import CreateTypeDialog from './CreateTypeDialog.vue';
 import TypeCustomizePopover from './TypeCustomizePopover.vue';
@@ -58,12 +59,15 @@ function isCollapsed(name: string): boolean {
 const createOpen = ref(false);
 // The `type.create` command (command palette) dispatches this so a new type
 // can be created without having to click the panel's `+`.
-function onCreateTypeEvent() {
-  createOpen.value = true;
-}
-onMounted(() => window.addEventListener('solomd:create-type', onCreateTypeEvent));
-onBeforeUnmount(() =>
-  window.removeEventListener('solomd:create-type', onCreateTypeEvent),
+// The Types: New Type… command (see lib/create-type-request.ts).
+watch(
+  createTypeRequested,
+  (asked) => {
+    if (!asked) return;
+    createTypeRequested.value = false;
+    createOpen.value = true;
+  },
+  { immediate: true },
 );
 
 // Customize popover --------------------------------------------------------

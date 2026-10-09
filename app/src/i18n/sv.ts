@@ -882,7 +882,7 @@ export const sv: I18n = {
     openFolder: "Öppna en mapp för att redigera egenskaper.",
     noActive: "Inget aktivt dokument.",
     notMarkdown: "Spara filen som Markdown för att redigera egenskaper.",
-    noProps: 'No properties yet. Add one below.',
+    noProps: 'Inga egenskaper än – lägg till nedan eller välj ett förslag.',
     suggested: "Förslag",
     addProperty: "Lägg till egenskap",
     pin: "Fäst överst",

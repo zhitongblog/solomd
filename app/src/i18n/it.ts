@@ -882,7 +882,7 @@ export const it: I18n = {
     openFolder: "Apri una cartella per modificare le proprietà.",
     noActive: "Nessun documento attivo.",
     notMarkdown: "Salva questo file come Markdown per modificare le proprietà.",
-    noProps: 'No properties yet. Add one below.',
+    noProps: 'Nessuna proprietà — aggiungine una qui sotto o scegli un suggerimento.',
     suggested: "Suggerite",
     addProperty: "Aggiungi proprietà",
     pin: "Fissa in alto",

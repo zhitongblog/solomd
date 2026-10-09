@@ -882,7 +882,7 @@ export const fr: I18n = {
     openFolder: "Ouvrez un dossier pour modifier les propriétés.",
     noActive: "Aucun document actif.",
     notMarkdown: "Enregistrez ce fichier en Markdown pour modifier les propriétés.",
-    noProps: 'No properties yet. Add one below.',
+    noProps: 'Aucune propriété pour l’instant — ajoutez-en une ci-dessous ou choisissez une suggestion.',
     suggested: "Suggestions",
     addProperty: "Ajouter une propriété",
     pin: "Épingler en haut",

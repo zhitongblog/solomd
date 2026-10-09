@@ -882,7 +882,7 @@ export const ko: I18n = {
     openFolder: "속성을 편집하려면 폴더를 여세요.",
     noActive: "활성 문서가 없습니다.",
     notMarkdown: "속성을 편집하려면 이 파일을 Markdown으로 저장하세요.",
-    noProps: 'No properties yet. Add one below.',
+    noProps: '아직 속성이 없습니다. 아래에서 추가하거나 제안을 선택하세요.',
     suggested: "추천",
     addProperty: "속성 추가",
     pin: "맨 위에 고정",

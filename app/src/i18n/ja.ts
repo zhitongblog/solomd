@@ -882,7 +882,7 @@ export const ja: I18n = {
     openFolder: "フォルダを開くとプロパティを編集できます。",
     noActive: "アクティブなドキュメントがありません。",
     notMarkdown: "プロパティを編集するには、このファイルを Markdown として保存してください。",
-    noProps: 'No properties yet. Add one below.',
+    noProps: 'プロパティはまだありません。下で追加するか、候補から選んでください。',
     suggested: "候補",
     addProperty: "プロパティを追加",
     pin: "上部に固定",

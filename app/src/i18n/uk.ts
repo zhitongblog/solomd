@@ -882,7 +882,7 @@ export const uk: I18n = {
     openFolder: "Відкрийте теку, щоб редагувати властивості.",
     noActive: "Немає активного документа.",
     notMarkdown: "Збережіть файл як Markdown, щоб редагувати властивості.",
-    noProps: 'No properties yet. Add one below.',
+    noProps: 'Властивостей ще немає — додайте нижче або виберіть із запропонованих.',
     suggested: "Пропозиції",
     addProperty: "Додати властивість",
     pin: "Закріпити вгорі",

@@ -882,7 +882,7 @@ export const nl: I18n = {
     openFolder: "Open een map om eigenschappen te bewerken.",
     noActive: "Geen actief document.",
     notMarkdown: "Sla dit bestand op als Markdown om eigenschappen te bewerken.",
-    noProps: 'No properties yet. Add one below.',
+    noProps: 'Nog geen eigenschappen — voeg er hieronder een toe of kies een suggestie.',
     suggested: "Voorgesteld",
     addProperty: "Eigenschap toevoegen",
     pin: "Bovenaan vastzetten",

@@ -953,6 +953,9 @@ export function useFiles() {
   // failed background save isn't swallowed.
   async function autoSaveDirtyTabs(): Promise<void> {
     if (!settings.autoSaveOnBlur) return;
+    // The editor reaches tab.content ~350 ms late; without this flush a blur
+    // right after typing saved the file minus its last keystrokes.
+    window.dispatchEvent(new Event('solomd:flush-content-sync'));
     for (const tab of tabs.tabs) {
       if (tab.filePath && tabs.isDirty(tab.id)) {
         await saveTab(tab, { silent: true });

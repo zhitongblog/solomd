@@ -4846,6 +4846,27 @@ function gotoLine(line: number) {
   view.focus();
 }
 
+/** Put the caret at a 1-based line and column (session restore), both
+ *  clamped to the document, and bring it into view. */
+function setCaret(line: number, col: number) {
+  if (usePlainWindowsEditor) {
+    const start = plainLineStartOffset(line);
+    const lineText = plainText.value.slice(start).split('\n')[0] ?? '';
+    plainSetCaret(start + Math.max(0, Math.min(col - 1, lineText.length)));
+    plainScrollToLine(line);
+    return;
+  }
+  if (!view) return;
+  const safe = Math.max(1, Math.min(line, view.state.doc.lines));
+  const lineObj = view.state.doc.line(safe);
+  const pos = lineObj.from + Math.max(0, Math.min(col - 1, lineObj.length));
+  view.dispatch({
+    selection: { anchor: pos },
+    effects: EditorView.scrollIntoView(pos, { y: 'center' }),
+  });
+  view.focus();
+}
+
 async function insertImageFromPath(srcPath: string): Promise<void> {
   if (usePlainWindowsEditor) {
     // Was `plainInsertText(srcPath)`: a dropped image file landed as a bare
@@ -5077,7 +5098,7 @@ function insertMarkdown(snippet: string): void {
   view.focus();
 }
 
-defineExpose({ gotoLine, insertImageFromPath, insertImageUrl, uploadLocalImages, getViewLine, scrollToLine, lineTopY, insertMarkdown, openFind, applyFold, openTableAtCursor, openFormulaAtCursor });
+defineExpose({ gotoLine, setCaret, insertImageFromPath, insertImageUrl, uploadLocalImages, getViewLine, scrollToLine, lineTopY, insertMarkdown, openFind, applyFold, openTableAtCursor, openFormulaAtCursor });
 
 const cls = computed(() => ({
   'cm-host': true,

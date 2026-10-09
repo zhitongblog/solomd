@@ -883,7 +883,7 @@ export const zh: I18n = {
     openFolder: "打开文件夹以编辑属性。",
     noActive: "没有活动的文档。",
     notMarkdown: "将此文件保存为 Markdown 后才能编辑属性。",
-    noProps: 'No properties yet. Add one below.',
+    noProps: '还没有属性——在下方添加，或选择一个建议。',
     suggested: "建议",
     addProperty: "添加属性",
     pin: "置顶",

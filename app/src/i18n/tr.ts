@@ -882,7 +882,7 @@ export const tr: I18n = {
     openFolder: "Özellikleri düzenlemek için bir klasör açın.",
     noActive: "Etkin belge yok.",
     notMarkdown: "Özellikleri düzenlemek için bu dosyayı Markdown olarak kaydedin.",
-    noProps: 'No properties yet. Add one below.',
+    noProps: 'Henüz özellik yok — aşağıdan ekleyin veya bir öneri seçin.',
     suggested: "Öneriler",
     addProperty: "Özellik ekle",
     pin: "Üste sabitle",

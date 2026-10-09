@@ -882,7 +882,7 @@ export const de: I18n = {
     openFolder: "Öffne einen Ordner, um Eigenschaften zu bearbeiten.",
     noActive: "Kein aktives Dokument.",
     notMarkdown: "Speichere diese Datei als Markdown, um Eigenschaften zu bearbeiten.",
-    noProps: 'No properties yet. Add one below.',
+    noProps: 'Noch keine Eigenschaften – unten hinzufügen oder einen Vorschlag wählen.',
     suggested: "Vorgeschlagen",
     addProperty: "Eigenschaft hinzufügen",
     pin: "Oben anheften",
