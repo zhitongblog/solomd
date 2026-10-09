@@ -13,7 +13,7 @@ import { useGithubSyncStore } from '../stores/githubSync';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { useTabsStore } from '../stores/tabs';
 import { useI18n } from '../i18n';
-import { isMobile, revealLabelKey, usesCommandKey } from '../lib/platform';
+import { isIOS, isMobile, revealLabelKey, usesCommandKey } from '../lib/platform';
 import { usePendingDeletes, isDeletePending, UNDO_WINDOW_MS } from '../composables/usePendingDeletes';
 import { isSafPath, fromSafPath, safList, safCreate } from '../lib/saf-fs';
 import {
@@ -900,6 +900,16 @@ function rootRelative(p: string): string {
   const norm = rootPath.endsWith(sep) ? rootPath : rootPath + sep;
   return p.startsWith(norm) ? p.slice(norm.length).split('\\').join('/') : '';
 }
+
+/** The folder's name in the header. On iOS the app's own container folder is
+ *  ".../Data/Application/<uuid>/Documents", which the Files app shows as
+ *  "On My iPhone › SoloMD" — say SoloMD here too, not "Documents". */
+const rootDisplayName = computed(() => {
+  const r = root.value;
+  if (!r) return '';
+  if (isIOS() && /\/Data\/Application\/[^/]+\/Documents\/?$/.test(r.path)) return 'SoloMD';
+  return r.name;
+});
 
 function rootLabel(): string {
   return t('explorer.vaultRoot') || 'Vault root';
@@ -1808,7 +1818,7 @@ onBeforeUnmount(() => {
           @click.stop="toggleSwitcher($event)"
         >
           <span class="ftree__section-label">{{ t('sidebar.folders') }}</span>
-          <span class="ftree__ws-name">{{ root.name }}</span>
+          <span class="ftree__ws-name">{{ rootDisplayName }}</span>
           <Icon name="chevron-down" :size="12" class="ftree__ws-caret" />
         </button>
         <div class="ftree__tools">
