@@ -4,7 +4,7 @@
 import type { WhatsNewData } from './types';
 
 const data: WhatsNewData = {
-  version: "4.14.11",
+  version: "5.0.0",
   meta: {
     title: "SoloMD {VERSION} 更新 — v4.0 – v4.11 版本说明",
     description: "SoloMD {VERSION} 版本说明。v4.11:AI/PDF 导出的畸形表格自动修复并正常渲染,新增「编号章节自动转标题」（6.2 → h2,可选开启）,应用 / CLI / MCP 三端一致。v4.8:图床（PicGo / SM.MS / S3 / GitHub）+ 体验修复（全选、删除进回收站、换行统一）。v4.7:Windows 编辑器换用原生 textarea 重写,中文输入法终于稳定。v4.6:知识图谱（类型化关系、保存视图、属性面板）+ tldraw 白板。v4.0:agent-native author 大版本 —— 内置 Agent 面板、定时 Recipe、Trace View、MCP Federation。",
@@ -14,12 +14,13 @@ const data: WhatsNewData = {
     current: "更新",
   },
   hero: {
-    date: "2026 年 9 月",
-    h1: "让 Agent 住进来的编辑器。",
-    lead: "v4.0 是 <strong>agent-native author</strong> 大版本。Agent 从\n        \"外部 CLI 偶尔调用一下\" 变成了编辑器内的一等公民 ——\n        持续在场、跨多个 vault 工作、完整的可见性、可重放、可回滚。\n        下面所有项都在内核里,不用装插件。安装包还是 ~15 MB。",
+    date: "2026 年 10 月",
+    h1: "一个更安静的写作之处。",
+    lead: "5.0 重新设计了每一个界面：桌面上是一个安静的窗口，iPhone 和安卓上是真正的手机应用，iPad 上布局会主动让路。发布前在所有平台做了完整的回归测试。",
   },
   cta: ["⬇ 下载 v{VERSION} (Mac)", "下载 (Windows)", "所有平台 →"],
   sections: [
+    "<p class=\"version-row\" style=\"margin-top:8px;\">\n          <span class=\"version-tag\">v5.0.0</span>\n          <time>2026 年 10 月</time>\n        </p>\n        <h2 style=\"margin-top:8px;\">5.0 —— 一个更安静的写作之处。</h2>\n        <ul>\n          <li><strong>全新窗口：</strong> 安静的顶栏，实时 / 源码 / 分栏 / 预览一键切换；侧栏放文件夹和笔记；圆角标签页；状态栏换成小小的字数标签；浅色、深色或跟随系统。</li>\n          <li><strong>手机：</strong> 笔记首页，底部是搜索和新建按钮，编辑时全屏；安卓返回键回到笔记列表；还没保存的笔记会列在首页，随时能找回。</li>\n          <li><strong>iPad：</strong> 竖屏时侧栏浮在页面上；点一下就切换标签；接键盘可用 ⌘ 快捷键。</li>\n          <li><strong>查找栏：</strong> 不挡视线、不丢位置；区分大小写、全词匹配、正则表达式；Ctrl/⌘+H 替换。</li>\n          <li><strong>写作：</strong> 选中文字弹出格式气泡；手机和平板键盘上方有快捷栏；在行号旁折叠标题；菜单和快捷键重新整理，每个快捷键都能改绑；命令面板支持模糊搜索。</li>\n          <li><strong>更快更轻：</strong> 公式和代码高亮在页面出现后再加载；Windows 上最小化时会释放内存。</li>\n          <li><strong>iOS 27：</strong> 采用新的场景生命周期，适配最新的 iPhone 和 iPad。</li>\n          <li><strong>感谢张工</strong> ——数周细致的测试塑造了这个版本。</li>\n        </ul>",
     "<p class=\"version-row\" style=\"margin-top:8px;\">\n          <span class=\"version-tag\">v4.14.11</span>\n          <time>2026 年 10 月</time>\n        </p>\n        <h2 style=\"margin-top:8px;\">4.14.11 —— 一轮全面测试后的修复，其中多项关乎你的文字安全。</h2>\n        <ul>\n          <li><strong>文字更安全：</strong> 中文校对不再把文件名（文档.md、压缩包.tar.gz）和省略号当成错误，「全部修复」不会再改坏它们；UTF-16 文件按原编码保存；简繁转换不再吞掉刚输入的字；退出前最后输入的文字不再丢失（Windows、Linux）。</li>\n          <li><strong>导入 Word：</strong> 粗体留在原处，有序列表、任务列表和链接都能还原；导出 Word 时任务项带 ☐ / ☑。</li>\n          <li><strong>Linux：</strong> Ctrl+B 不再按下生效、松开撤销；不再误报「文件已被外部修改」并吞字；用过快速记录后能正常退出；粘贴图片、导出图片、文字版 PDF 里的公式都正常了；编辑菜单有了撤销和重做。</li>\n          <li><strong>快捷键：</strong> 重做（⌘⇧Z）不再同时开启专注写作；快速记录改为 Ctrl+Alt+Shift+M，Ctrl+Alt+M 重新用于公式编辑器。</li>\n          <li><strong>另外：</strong> 查找栏跟随界面语言；关闭第二个窗口会提醒保存；反向链接跳到正确的行；分栏滚动经过列表时不再错位；错误的 Mermaid 图不再把窗口顶上去；手机上的视图菜单不再被截断。</li>\n          <li><strong>安全：</strong> MCP 服务在没有 --allow-write 时不再能写入任何文件。</li>\n          <li><strong>感谢张工</strong> ——这一版的修复来自这些测试。</li>\n        </ul>",
     "<p class=\"version-row\" style=\"margin-top:8px;\">\n          <span class=\"version-tag\">v4.14.10</span>\n          <time>2026 年 10 月</time>\n        </p>\n        <h2 style=\"margin-top:8px;\">4.14.10 —— 编辑器里的查找回来了，Windows 文件树跟得上了。</h2>\n        <ul>\n          <li><strong>查找：</strong> 在编辑器里按 ⌘F / Ctrl+F 又能打开查找栏了——这个快捷键从 4.14.8 起失灵。</li>\n          <li><strong>Windows 文件树：</strong> 即使 Windows 传来的路径大小写不同，文件树也会跟随当前文件；同一个文件也不会再打开成两个标签页。</li>\n          <li><strong>感谢张工</strong> ——这两个修复都来自他最新的测试报告。</li>\n        </ul>",
     "<p class=\"version-row\" style=\"margin-top:8px;\">\n          <span class=\"version-tag\">v4.14.9</span>\n          <time>Oct 2026</time>\n        </p>\n        <h2 style=\"margin-top:8px;\">4.14.9 —— Windows 重新用上完整编辑器，启动更快，菜单装下所有命令。</h2>\n        <ul>\n          <li><strong>Windows 重新使用完整编辑器：</strong> 在较新的 Windows（WebView2 154 及以上）上，我们实测微软拼音、搜狗等输入法都能正常输入。自己选过「原生」编辑器的，保持你的选择。</li>\n          <li><strong>启动更快：</strong> 启动时要做的工作减少了约一半。</li>\n          <li><strong>菜单装下所有命令：</strong> 命令面板里的每个命令都有了菜单入口——快速记录、日记、收件箱、同步与历史、大小写和中文转换。</li>\n          <li><strong>文件树：</strong> 右上角的 × 现在只是隐藏文件树，不会再把文档一起关掉（「关闭文件夹」移到了文件夹名的下拉菜单）；开启「打开文件后自动切到所在文件夹」时，也不再强行显示你隐藏的文件树。</li>\n          <li><strong>Windows：</strong> Ctrl+J 执行 AI 改写，不再打开下载页；F5 不再刷新整个应用。</li>\n          <li><strong>感谢张工</strong> ——这个版本回应的是他最新的测试报告。</li>\n        </ul>",
