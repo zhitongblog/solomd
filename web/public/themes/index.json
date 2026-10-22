@@ -206,6 +206,21 @@
         "solarized"
       ],
       "license": "MIT"
+    },
+    {
+      "id": "ivory-amber",
+      "name": "Ivory Amber",
+      "author": "sakura777",
+      "description": "Warm ivory paper with burnt-orange inline code — a low-glare light theme for long writing sessions.",
+      "url": "https://solomd.app/themes/ivory-amber.css",
+      "preview": "https://solomd.app/themes/preview/ivory-amber.png",
+      "tags": [
+        "light",
+        "warm",
+        "ivory",
+        "orange"
+      ],
+      "license": "MIT"
     }
   ]
 }

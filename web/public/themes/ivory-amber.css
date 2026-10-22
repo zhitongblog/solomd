@@ -1,0 +1,105 @@
+/*
+ * Ivory Amber — community theme for SoloMD.
+ *
+ * Warm ivory paper with burnt-orange inline code. A low-glare light theme
+ * for long writing sessions. The default SoloMD light typography and
+ * syntax-highlighting colors are preserved; only the surfaces and the
+ * inline-code accent change.
+ *
+ * Author:  sakura777
+ * License: MIT
+ */
+
+:root,
+:root[data-theme="light"],
+:root[data-theme="dark"] {
+  color-scheme: light;
+
+  /* Surfaces */
+  --bg: #fdfbf7;
+  --bg-elev: #f6f3ec;
+  --bg-hover: rgba(31, 30, 28, 0.05);
+  --bg-active: rgba(31, 30, 28, 0.08);
+  --bg-sidebar: #f4f0e8;
+  --bg-pop: #fffefb;
+  --border: #e8e2d7;
+  --hairline: rgba(31, 30, 28, 0.08);
+  --fill-1: rgba(31, 30, 28, 0.05);
+  --fill-2: rgba(31, 30, 28, 0.08);
+  --select-inactive: rgba(31, 30, 28, 0.08);
+  --scrim: rgba(0, 0, 0, 0.28);
+
+  /* Text */
+  --text: #1f1e1c;
+  --text-muted: #5e5b55;
+  --text-faint: #9a978f;
+  --text-2: #5e5b55;
+  --text-3: #78756e;
+
+  /* Accent */
+  --accent: #e07b39;
+  --accent-fg: #1a1a1a;
+  --accent-text: #b4561b;
+  --accent-strong: #b9561f;
+  --accent-strong-fg: #ffffff;
+  --accent-soft: rgba(224, 123, 57, 0.13);
+  --danger: #d64545;
+
+  /* Type-section accents */
+  --type-orange: #d9831f;
+  --type-red: #d64545;
+  --type-purple: #8b5cd6;
+  --type-blue: #2f7fd4;
+  --type-green: #3a9d4e;
+  --type-yellow: #c9a227;
+
+  /* Markdown headings and inline elements */
+  --md-h1: #1f1e1c;
+  --md-h2: #1f1e1c;
+  --md-h3: #1f1e1c;
+  --md-h4: #2f2e2b;
+  --md-h5: #3f3d39;
+  --md-h6: #5e5b55;
+  --md-strong: #1f1e1c;
+  --md-em: #1f1e1c;
+  --md-link: #b4561b;
+  --md-url: #78756e;
+  --md-quote: #5e5b55;
+  --md-list: #78756e;
+  --md-hr: #dedcd6;
+
+  /* Inline code: the theme's signature */
+  --md-code: #c96a1e;
+  --inline-code-bg: #faf1e6;
+  --md-code-bg: #faf1e6;
+
+  /* Fenced-code syntax colors (default SoloMD light) */
+  --syn-keyword: #a626a4;
+  --syn-string: #50a14f;
+  --syn-number: #986801;
+  --syn-comment: #a0a1a7;
+  --syn-function: #4078f2;
+  --syn-variable: #383a42;
+  --syn-type: #c18401;
+  --syn-property: #e45649;
+  --syn-operator: #0184bc;
+}
+
+/*
+ * Inline code.
+ *
+ * SoloMD's Live Edit uses the stable `.cm-md-code` class and paints it with
+ * `var(--text)` / `var(--fill-1)`, while the preview pane hardcodes
+ * `var(--text)` too. A small rule keeps the burnt-orange accent consistent
+ * across Live Edit, Preview, the plain block editor, and print/PDF without
+ * touching fenced code blocks (`:not(pre)`).
+ */
+.cm-editor .cm-content .cm-md-code,
+.preview-content :not(pre) > code,
+.plain-block__render :not(pre) > code,
+.pdf-page :not(pre) > code,
+#solomd-print-overlay :not(pre) > code,
+.solomd-print-content :not(pre) > code {
+  color: var(--md-code);
+  background: var(--inline-code-bg);
+}
