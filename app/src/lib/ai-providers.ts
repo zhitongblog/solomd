@@ -208,12 +208,12 @@ export const PROVIDERS: ProviderConfig[] = [
     id: 'minimax',
     label: 'MiniMax',
     apiFormat: 'openai',
-    defaultModel: 'MiniMax-M3',
+    defaultModel: 'MiniMax-M3.1-Flash',
     // Global OpenAI-compatible endpoint. The CN region
     // (https://api.minimaxi.com/v1) is reachable by overriding the base URL
     // in AI Settings — the proxy honors the per-provider base_url override.
     defaultBaseUrl: 'https://api.minimax.io/v1',
-    modelHint: 'MiniMax-M3 · MiniMax-M2.7',
+    modelHint: 'MiniMax-M3.1-Flash · MiniMax-M3',
     signupUrl: 'https://platform.minimax.io/',
   },
   // ---- Aggregator (one key, hundreds of models) ---------------------
@@ -235,7 +235,7 @@ export const PROVIDERS: ProviderConfig[] = [
     defaultBaseUrl: 'https://opencode.ai/zen/go/v1',
     // Full model list from GET /zen/go/v1/models (verified 2026-08-12).
     modelHint:
-      'deepseek-v4-flash · deepseek-v4-pro · mimo-v2.5 · mimo-v2.5-pro · mimo-v2-pro · mimo-v2-omni · qwen3.8-max · qwen3.7-max · qwen3.7-plus · qwen3.6-plus · qwen3.5-plus · glm-5.2 · glm-5.1 · glm-5 · kimi-k3 · kimi-k2.7-code · kimi-k2.6 · kimi-k2.5 · minimax-m3 · minimax-m2.7 · minimax-m2.5 · gpt-5.6-luna · grok-4.5 · hy3',
+      'deepseek-v4-flash · deepseek-v4-pro · mimo-v2.5 · mimo-v2.5-pro · mimo-v2-pro · mimo-v2-omni · qwen3.8-max · qwen3.7-max · qwen3.7-plus · qwen3.6-plus · qwen3.5-plus · glm-5.2 · glm-5.1 · glm-5 · kimi-k3 · kimi-k2.7-code · kimi-k2.6 · kimi-k2.5 · minimax-m3 · gpt-5.6-luna · grok-4.5 · hy3',
     signupUrl: 'https://opencode.ai/auth',
   },
   // ---- Local ---------------------------------------------------------

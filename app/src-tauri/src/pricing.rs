@@ -68,6 +68,9 @@ fn price_table() -> &'static [(&'static str, &'static str, f64, f64)] {
         ("doubao", "doubao-pro", 0.8, 2.0),
         ("volcengine", "doubao-pro", 0.8, 2.0),
         // ---- MiniMax ----------------------------------------------------
+        // Flash standard direct API rate; keep this before the M3 prefix.
+        // https://platform.minimax.io/docs/pricing/overview#models/text
+        ("minimax", "minimax-m3.1-flash", 0.15, 0.60),
         // M3 at the rate OpenRouter publishes (the only public source we could
         // verify, 2026-09-25); the PR proposed 0.6/2.4.
         ("minimax", "minimax-m3", 0.3, 1.2),
@@ -81,6 +84,19 @@ fn price_table() -> &'static [(&'static str, &'static str, f64, f64)] {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn minimax_flash_rate_precedes_m3_prefix() {
+        for model in ["MiniMax-M3.1-Flash", "MINIMAX-M3.1-FLASH-20261020"] {
+            assert_eq!(rates_for("minimax", model), (0.15, 0.60));
+            let cost = estimate_cost_usd("minimax", model, 1_000, 500);
+            assert!((cost - 0.00045).abs() < 1e-12, "got {cost}");
+        }
+        assert_eq!(
+            rates_for("openrouter", "minimax/minimax-m3.1-flash:free"),
+            (0.0, 0.0)
+        );
+    }
 
     #[test]
     fn minimax_rates_and_cost_estimates() {

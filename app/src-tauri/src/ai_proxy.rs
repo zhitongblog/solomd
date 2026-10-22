@@ -1618,6 +1618,8 @@ pub async fn run_chat_ollama(
 #[derive(Debug, Default, Clone)]
 struct TurnOutcome {
     text: String,
+    /// MiniMax Flash returns thinking separately; replay it on tool continuations.
+    reasoning_content: String,
     /// `tool_use` blocks parsed from the stream. Empty when the model
     /// finished with text-only. Each entry: (tool_call_id, name, args_json).
     tool_uses: Vec<(String, String, Value)>,
@@ -2235,7 +2237,7 @@ pub async fn run_chat_openai_loop(
             });
         }
         let outcome = openai_one_turn(
-            app,
+            Some(app),
             request_id,
             req,
             api_key,
@@ -2305,6 +2307,7 @@ pub async fn run_chat_openai_loop(
         if !outcome.text.is_empty() {
             assistant_msg["content"] = Value::String(outcome.text.clone());
         }
+        preserve_minimax_reasoning(&req.provider, &req.model, &outcome, &mut assistant_msg);
         history.push(assistant_msg);
 
         // Dispatch each tool, append one `tool` role message per call.
@@ -2383,8 +2386,21 @@ pub async fn run_chat_openai_loop(
     Ok((last_text, tokens_in_total, tokens_out_total))
 }
 
+fn preserve_minimax_reasoning(
+    provider: &str,
+    model: &str,
+    outcome: &TurnOutcome,
+    assistant_msg: &mut Value,
+) {
+    if (provider == "minimax" || model.to_ascii_lowercase().contains("minimax"))
+        && !outcome.reasoning_content.is_empty()
+    {
+        assistant_msg["reasoning_content"] = Value::String(outcome.reasoning_content.clone());
+    }
+}
+
 async fn openai_one_turn(
-    app: &AppHandle,
+    app: Option<&AppHandle>,
     request_id: &str,
     req: &ChatRequest,
     api_key: &str,
@@ -2490,6 +2506,7 @@ async fn openai_one_turn(
         extras: serde_json::Map<String, Value>,
     }
     let mut text = String::new();
+    let mut reasoning_content = String::new();
     let mut tools_acc: BTreeMap<u64, ToolAccum> = BTreeMap::new();
     let mut finish_reason = String::new();
     // Most providers send `usage` as a separate top-level field on the
@@ -2537,6 +2554,7 @@ async fn openai_one_turn(
                 if payload == "[DONE]" {
                     let mut outcome = TurnOutcome::default();
                     outcome.text = text;
+                    outcome.reasoning_content = reasoning_content;
                     outcome.finish_reason = finish_reason;
                     outcome.tokens_in = tokens_in;
                     outcome.tokens_out = tokens_out;
@@ -2584,10 +2602,15 @@ async fn openai_one_turn(
                         }
                     }
                     let delta = c.get("delta").cloned().unwrap_or(Value::Null);
+                    if let Some(reasoning) = delta.get("reasoning_content").and_then(Value::as_str) {
+                        reasoning_content.push_str(reasoning);
+                    }
                     if let Some(content) = delta.get("content").and_then(|s| s.as_str()) {
                         if !content.is_empty() {
                             text.push_str(content);
-                            emit_chunk(app, request_id, content);
+                            if let Some(app) = app {
+                                emit_chunk(app, request_id, content);
+                            }
                         }
                     }
                     if let Some(tcs) = delta.get("tool_calls").and_then(|v| v.as_array()) {
@@ -2629,6 +2652,7 @@ async fn openai_one_turn(
 
     let mut outcome = TurnOutcome::default();
     outcome.text = text;
+    outcome.reasoning_content = reasoning_content;
     outcome.finish_reason = finish_reason;
     outcome.tokens_in = tokens_in;
     outcome.tokens_out = tokens_out;
@@ -2662,6 +2686,10 @@ fn find_event_boundary(buf: &str) -> Option<usize> {
     }
     buf.find("\n\n")
 }
+
+#[cfg(test)]
+#[path = "ai_proxy_minimax_tests.rs"]
+mod minimax_tests;
 
 #[cfg(test)]
 mod tests {
