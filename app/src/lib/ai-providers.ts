@@ -36,6 +36,7 @@ export type ProviderId =
   // Aggregator
   | 'openrouter'
   | 'opencode-go'
+  | 'runcrate'
   // Local
   | 'ollama'
   | 'openai-compat';
@@ -237,6 +238,17 @@ export const PROVIDERS: ProviderConfig[] = [
     modelHint:
       'deepseek-v4-flash · deepseek-v4-pro · mimo-v2.5 · mimo-v2.5-pro · mimo-v2-pro · mimo-v2-omni · qwen3.8-max · qwen3.7-max · qwen3.7-plus · qwen3.6-plus · qwen3.5-plus · glm-5.2 · glm-5.1 · glm-5 · kimi-k3 · kimi-k2.7-code · kimi-k2.6 · kimi-k2.5 · minimax-m3 · gpt-5.6-luna · grok-4.5 · hy3',
     signupUrl: 'https://opencode.ai/auth',
+  },
+  {
+    id: 'runcrate',
+    label: 'Runcrate',
+    apiFormat: 'openai',
+    defaultModel: 'deepseek-ai/DeepSeek-V4.1-Flash',
+    defaultBaseUrl: 'https://api.runcrate.ai/v1',
+    // Model ids from GET https://api.runcrate.ai/v1/models (verified 2026-10-28).
+    modelHint:
+      'deepseek-ai/DeepSeek-V4.1-Flash · zai-org/GLM-5.3-Flash · zai-org/GLM-5.3 · Qwen/Qwen3.8-Flash · openai/gpt-oss-120b · moonshotai/Kimi-K2.6',
+    signupUrl: 'https://www.runcrate.ai/dashboard/api-keys',
   },
   // ---- Local ---------------------------------------------------------
   {
