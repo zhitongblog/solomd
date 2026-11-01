@@ -4,6 +4,8 @@ import MarkdownIt from 'markdown-it';
 
 import {
   encodeImageDestination,
+  extractImageReferenceDefinitions,
+  findMarkdownImagesInLine,
   markdownImage,
   parseImageAltSize,
   resizeMarkdownImageLine,
@@ -108,5 +110,33 @@ test('#446: resizeMarkdownImageLine updates Markdown and HTML image lines', () =
     resizeMarkdownImageLine('<img src="a.png" width="75%" style="width: 75%;">', '100%'),
     '<img src="a.png">',
   );
+  // #506 — resize also works on list-item, blockquote, and bracketed-alt images
+  assert.equal(
+    resizeMarkdownImageLine('- ![[1] photo](https://example.com/a(1).png)', '50%'),
+    '- ![[1] photo|50%](https://example.com/a(1).png)',
+  );
+});
+
+test('#506: findMarkdownImagesInLine parses complex Markdown image forms', () => {
+  const refs = extractImageReferenceDefinitions([
+    '[fig-1]: https://cdn.example.com/ref.png "Ref Title"',
+  ]);
+  assert.equal(refs.get('fig-1'), 'https://cdn.example.com/ref.png');
+
+  const cases: Array<[string, string, string]> = [
+    ['![alt](https://example.com/a.png)', 'alt', 'https://example.com/a.png'],
+    ['- ![list](https://example.com/b.png \'title\')', 'list', 'https://example.com/b.png'],
+    ['> ![[图1] 标题](https://example.com/c(1).png)', '[图1] 标题', 'https://example.com/c(1).png'],
+    ['[![badge](https://example.com/d.svg)](https://example.com)', 'badge', 'https://example.com/d.svg'],
+    ['![angle](<https://example.com/e f.png>)', 'angle', 'https://example.com/e f.png'],
+    ['![ref caption][FIG-1]', 'ref caption', 'https://cdn.example.com/ref.png'],
+  ];
+  for (const [line, expectedAlt, expectedSrc] of cases) {
+    const spans = findMarkdownImagesInLine(line, refs);
+    assert.equal(spans.length, 1, `should match 1 image in: ${line}`);
+    assert.equal(spans[0].alt, expectedAlt);
+    assert.equal(spans[0].src, expectedSrc);
+  }
+  assert.deepEqual(findMarkdownImagesInLine('`![not-an-image](https://example.com/x.png)`'), []);
 });
 

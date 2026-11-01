@@ -234,6 +234,7 @@ export const useTilesStore = defineStore('tiles', {
       const leaf = findLeaf(this.root, this.focusedPaneId);
       if (leaf?.activeTabId) {
         tabs.activeId = leaf.activeTabId;
+        tabs.recordVisit(leaf.activeTabId);
       }
     },
 

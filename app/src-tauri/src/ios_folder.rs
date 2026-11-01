@@ -444,35 +444,33 @@ mod imp {
         })
     }
 
-    /// #425 / #461 — Synchronize `UIWindow.overrideUserInterfaceStyle`,
-    /// `tintColor`, and window/webview background colors with SoloMD's active
-    /// theme, and disable automatic `UIScrollView` content-inset adjustments on
-    /// `WKWebView.scrollView` (CSS already handles `env(safe-area-inset-*)` via
-    /// `viewport-fit=cover`, so automatic scrollView adjustments on iPadOS
-    /// caused a bottom black bar).
-    unsafe fn configure_webview_hierarchy(view: *mut AnyObject, bg: *mut AnyObject, depth: usize) {
+    /// #425 / #461 / #498 / #509 — Synchronize `TaoUIWindow.overrideUserInterfaceStyle`
+    /// and `tintColor` with SoloMD's active theme, and disable automatic
+    /// `UIScrollView` content-inset adjustments on `WKWebView.scrollView` (CSS
+    /// already handles `env(safe-area-inset-*)` via `viewport-fit=cover`, so
+    /// automatic scrollView adjustments on iPadOS caused a bottom black bar).
+    ///
+    /// IMPORTANT (#498 / #509): NEVER call `setBackgroundColor:` on windows or
+    /// views, and NEVER touch non-`TaoUIWindow` windows in `[scene windows]`.
+    /// On iPadOS 26, `[scene windows]` includes full-screen transparent system
+    /// overlay windows (`UITextEffectsWindow`, scene windowing controls) above
+    /// `TaoUIWindow`; painting them or their subviews with an opaque background
+    /// color covers the entire app with a solid `#18181b` screen when launched
+    /// from the Home Screen. `wry` already sets dynamic `systemBackgroundColor`
+    /// on `TaoUIView` and `WryWebView`, which adapts automatically via
+    /// `overrideUserInterfaceStyle`.
+    unsafe fn configure_webview_hierarchy(view: *mut AnyObject, depth: usize) {
         if view.is_null() || depth > 5 {
             return;
-        }
-        if !bg.is_null() {
-            let _: () = msg_send![view, setBackgroundColor: bg];
         }
         if let Some(wk_cls) = AnyClass::get("WKWebView") {
             let is_wk: Bool = msg_send![view, isKindOfClass: wk_cls];
             if is_wk.as_bool() {
                 let sv: *mut AnyObject = msg_send![view, scrollView];
                 if !sv.is_null() {
-                    if !bg.is_null() {
-                        let _: () = msg_send![sv, setBackgroundColor: bg];
-                    }
                     // UIScrollViewContentInsetAdjustmentNever = 2
                     let _: () = msg_send![sv, setContentInsetAdjustmentBehavior: 2isize];
                 }
-                // #498 — NEVER recurse into WKWebView's internal subviews
-                // (WKScrollView / WKContentView / iPadOS 26 transparent gesture
-                // & highlight overlay subviews). Painting those internal overlay
-                // subviews with an opaque UIColor covers the rendered web page
-                // with a solid black/dark-grey layer.
                 return;
             }
         }
@@ -483,7 +481,7 @@ mod imp {
         let count: usize = msg_send![subviews, count];
         for i in 0..count {
             let sub: *mut AnyObject = msg_send![subviews, objectAtIndex: i];
-            configure_webview_hierarchy(sub, bg, depth + 1);
+            configure_webview_hierarchy(sub, depth + 1);
         }
     }
 
@@ -507,28 +505,6 @@ mod imp {
             ],
             None => null_mut(),
         };
-        let bg: *mut AnyObject = match AnyClass::get("UIColor") {
-            Some(c) => {
-                if dark {
-                    msg_send![
-                        c,
-                        colorWithRed: 24.0f64 / 255.0f64,
-                        green: 24.0f64 / 255.0f64,
-                        blue: 27.0f64 / 255.0f64,
-                        alpha: 1.0f64
-                    ]
-                } else {
-                    msg_send![
-                        c,
-                        colorWithRed: 1.0f64,
-                        green: 1.0f64,
-                        blue: 1.0f64,
-                        alpha: 1.0f64
-                    ]
-                }
-            }
-            None => null_mut(),
-        };
         let scenes: *mut AnyObject = msg_send![app, connectedScenes];
         if scenes.is_null() {
             return;
@@ -538,6 +514,7 @@ mod imp {
         let Some(scene_cls) = AnyClass::get("UIWindowScene") else {
             return;
         };
+        let tao_win_cls = AnyClass::get("TaoUIWindow");
         for i in 0..count {
             let scene: *mut AnyObject = msg_send![all, objectAtIndex: i];
             let is_ws: Bool = msg_send![scene, isKindOfClass: scene_cls];
@@ -551,17 +528,20 @@ mod imp {
                 if w.is_null() {
                     continue;
                 }
+                if let Some(tao_cls) = tao_win_cls {
+                    let is_tao: Bool = msg_send![w, isKindOfClass: tao_cls];
+                    if !is_tao.as_bool() {
+                        continue;
+                    }
+                }
                 let _: () = msg_send![w, setOverrideUserInterfaceStyle: style];
                 if !tint.is_null() {
                     let _: () = msg_send![w, setTintColor: tint];
                 }
-                if !bg.is_null() {
-                    let _: () = msg_send![w, setBackgroundColor: bg];
-                }
                 let rvc: *mut AnyObject = msg_send![w, rootViewController];
                 if !rvc.is_null() {
                     let root_view: *mut AnyObject = msg_send![rvc, view];
-                    configure_webview_hierarchy(root_view, bg, 0);
+                    configure_webview_hierarchy(root_view, 0);
                     let _: () = msg_send![rvc, setNeedsStatusBarAppearanceUpdate];
                 }
             }

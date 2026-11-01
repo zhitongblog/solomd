@@ -2344,6 +2344,8 @@ export const sv: I18n = {
     tab: {
       prev: "Föregående flik",
       next: "Nästa flik",
+      mru: "Växla till senaste flik",
+      mruPrev: "Växla till föregående senaste flik",
       reopenClosed: "Öppna stängd flik igen",
     },
     settings: {

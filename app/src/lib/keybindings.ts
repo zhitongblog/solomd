@@ -233,6 +233,9 @@ export const KEY_ACTIONS: KeyActionDef[] = [
   { id: 'search.global', label: 'Search in Folder', category: 'navigate', defaults: ['Mod+Shift+F'] },
   { id: 'tab.prev', label: 'Previous Tab', category: 'navigate', defaults: ['Mod+BracketLeft'] },
   { id: 'tab.next', label: 'Next Tab', category: 'navigate', defaults: ['Mod+BracketRight'] },
+  // #508 — Switch between recently used tabs (MRU order) via Ctrl+Tab / Ctrl+Shift+Tab.
+  { id: 'tab.mru', label: 'Switch to Recent Tab', category: 'navigate', defaults: ['Mod+Tab'] },
+  { id: 'tab.mruPrev', label: 'Switch to Previous Recent Tab', category: 'navigate', defaults: ['Mod+Shift+Tab'] },
   { id: 'tile.splitRight', label: 'Split Pane Right', category: 'navigate', defaults: ['Mod+Backslash'] },
   { id: 'tile.splitDown', label: 'Split Pane Down', category: 'navigate', defaults: ['Mod+Shift+Backslash'] },
   { id: 'tile.focusNext', label: 'Focus Next Pane', category: 'navigate', defaults: ['Mod+Alt+ArrowRight'] },

@@ -90,7 +90,21 @@ export function useShortcuts(hooks: Hooks = {}) {
     if (list.length < 2) return;
     const cur = list.findIndex((t) => t.id === tabs.activeId);
     const idx = cur < 0 ? 0 : (cur + offset + list.length) % list.length;
+    tabs.endMruCycle();
     tiles.setActiveTab(tiles.focusedPaneId, list[idx].id);
+  }
+
+  /** #508 — switch to the most recently used tab (`Ctrl+Tab` / `Ctrl+Shift+Tab`).
+   *  When triggered while `Ctrl` / `Meta` is held down (`keepCycleOpen = true`),
+   *  repeated presses step through the MRU snapshot until the modifier key is
+   *  released (`onKeyup` / `onBlur`), so a single `Ctrl+Tab` toggles back and
+   *  forth between the two most recently edited tabs while holding `Ctrl` and
+   *  pressing `Tab` multiple times reaches older tabs. */
+  let mruKeydownActive = false;
+  function activateMruTab(offset: 1 | -1) {
+    const targetId = tabs.nextMruTabId(offset, mruKeydownActive);
+    if (!targetId) return;
+    tiles.setActiveTab(tiles.focusedPaneId, targetId);
   }
 
   /**
@@ -210,6 +224,8 @@ export function useShortcuts(hooks: Hooks = {}) {
     },
     'tab.prev': () => activateTabByOffset(-1),
     'tab.next': () => activateTabByOffset(1),
+    'tab.mru': () => activateMruTab(1),
+    'tab.mruPrev': () => activateMruTab(-1),
     'tile.splitRight': () => tiles.splitPane(tiles.focusedPaneId, 'horizontal'),
     'tile.splitDown': () => tiles.splitPane(tiles.focusedPaneId, 'vertical'),
     'tile.focusNext': () => tiles.focusNextPane(),
@@ -283,7 +299,10 @@ export function useShortcuts(hooks: Hooks = {}) {
     // open folder…) need no handler of their own: they run as the palette does.
     const run = actions[actionId] ?? (commands.some((c) => c.id === actionId) ? () => runById(actionId) : undefined);
     if (!run) return;
-    if (run() === false) return; // action declined — leave the event alone
+    mruKeydownActive = e.ctrlKey || e.metaKey;
+    const result = run();
+    mruKeydownActive = false;
+    if (result === false) return; // action declined — leave the event alone
     e.preventDefault();
   }
 
@@ -305,12 +324,16 @@ export function useShortcuts(hooks: Hooks = {}) {
     if (e.code) downCodes.add(e.code);
   }
   function onKeyup(e: KeyboardEvent) {
+    if (!e.ctrlKey && !e.metaKey) {
+      tabs.endMruCycle();
+    }
     const seen = downCodes.delete(e.code);
     if (seen || !keyupFallback || !e.ctrlKey || e.metaKey || !e.code) return;
     handler(e);
   }
   function onBlur() {
     downCodes.clear();
+    tabs.endMruCycle();
   }
 
   /**

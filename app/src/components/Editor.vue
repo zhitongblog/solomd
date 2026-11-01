@@ -60,7 +60,7 @@ import { useToastsStore } from '../stores/toasts';
 import type { Tab } from '../types';
 import { livePreviewExtension, richHighlightOnly } from '../lib/cm-live-preview';
 import { liveEditExtension, setLiveEditCopyLabel } from '../lib/cm-live-render';
-import { liveBlocksExtension, liveBlocksTheme, extractImageRoot } from '../lib/cm-live-blocks';
+import { liveBlocksExtension, liveBlocksTheme, extractImageRoot, findTableCellOffsetInLine } from '../lib/cm-live-blocks';
 import { findTldrawFences, replaceBoardSnapshot } from '../lib/tldraw-board';
 import { dragAwareExtension } from '../lib/cm-drag-aware';
 import { imagePasteExtension, insertImageFromPath as cmInsertImageFromPath, imageTextFromPath, handleTextareaImagePaste, type ImagePasteOptions } from '../lib/cm-image-paste';
@@ -2862,6 +2862,29 @@ function estimatePlainBlockCaretFromClick(index: number, event: MouseEvent): num
   const target = event.currentTarget as HTMLElement | null;
   const render = target?.querySelector('.plain-block__render') as HTMLElement | null;
   if (!block || !render) return undefined;
+
+  // #504 — When clicking a rendered table cell (`<th>` / `<td>`) in the Windows
+  // plain-block live editor, map the clicked row and column directly to the
+  // corresponding Markdown pipe-table cell offset so even empty cells or cells
+  // with repeated characters land in the exact target cell.
+  const eventTarget = event.target as HTMLElement | null;
+  const cell = eventTarget?.closest('th, td') as HTMLTableCellElement | null;
+  const row = cell?.closest('tr') as HTMLTableRowElement | null;
+  const table = row?.closest('table') as HTMLTableElement | null;
+  if (cell && row && table && render.contains(table)) {
+    const allRows = Array.from(table.querySelectorAll('tr'));
+    const rowIdx = allRows.indexOf(row);
+    const cellsInRow = Array.from(row.querySelectorAll('th, td'));
+    const colIdx = Math.max(0, cellsInRow.indexOf(cell));
+    const lines = block.text.split('\n');
+    const sourceRowIdx = rowIdx <= 0 ? 0 : Math.min(rowIdx + 1, lines.length - 1);
+    let lineStartOffset = 0;
+    for (let i = 0; i < sourceRowIdx; i++) lineStartOffset += lines[i].length + 1;
+    const rect = cell.getBoundingClientRect();
+    const clickRatio =
+      rect.width > 0 ? Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)) : 0.5;
+    return lineStartOffset + findTableCellOffsetInLine(lines[sourceRowIdx] ?? '', colIdx, clickRatio);
+  }
 
   // Preferred: map the exact click point in the rendered preview back to a
   // source offset, so a single click lands the caret where the user clicked

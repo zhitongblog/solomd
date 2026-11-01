@@ -60,7 +60,11 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 chardetng = "1.0.0"
 encoding_rs = "0.8.35"
-tauri-plugin-dialog = "2.7.0"
+# #507 — Use xdg-desktop-portal (`org.freedesktop.portal.FileChooser` over D-Bus)
+# on Linux instead of in-process GTK3 `GtkFileChooserDialog`. On KDE (e.g. Debian 13
+# + KDE Plasma), this opens the native KDE file picker out-of-process and avoids
+# crashing on Breeze SVG icons inside the AppImage's bundled gdk-pixbuf environment.
+tauri-plugin-dialog = { version = "2.7.0", default-features = false, features = ["xdg-portal"] }
 tauri-plugin-clipboard-manager = "2.3.2"
 walkdir = "2.5.0"
 # tokio: rt-multi-thread is needed by reqwest streaming + tauri::async_runtime.

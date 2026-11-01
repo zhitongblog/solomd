@@ -2327,6 +2327,8 @@ export const de: I18n = {
     tab: {
       prev: "Vorheriger Tab",
       next: "Nächster Tab",
+      mru: "Zum zuletzt verwendeten Tab wechseln",
+      mruPrev: "Zum vorigen zuletzt verwendeten Tab wechseln",
       reopenClosed: "Geschlossenen Tab wieder öffnen",
     },
     settings: {

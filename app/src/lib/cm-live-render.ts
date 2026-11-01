@@ -346,6 +346,14 @@ function buildDecorations(view: EditorView, showMarkers = false): DecorationSet 
         ).number;
         const caretTouches = lineEndAtNode >= fromLine && lineAtNode <= toLine;
 
+        // #506 — When `showMarkers` is off and the caret is off this line,
+        // `liveBlocksExtension` replaces the entire `Image` range with an
+        // `ImageWidget`. Skip emitting overlapping `hideDeco` replacements on
+        // the `![`, `]`, `(`, `URL`, `)` child nodes inside `Image`.
+        if (name === 'Image' && !showMarkers && !caretTouches) {
+          return false;
+        }
+
         // ---- Marker hiding (off-line only) ----
         if (HIDDEN_MARK_NODES.has(name)) {
           if (showMarkers) {
@@ -385,7 +393,9 @@ function buildDecorations(view: EditorView, showMarkers = false): DecorationSet 
           // GFM also emits a URL node for a URL-valued label (#395).
           // Only the URL immediately following `(` is the destination.
           const previous = node.node.prevSibling;
-          const inLabeledLink = parent?.name === 'Link' && previous?.name === 'LinkMark' &&
+          const inLabeledLink =
+            (parent?.name === 'Link' || parent?.name === 'Image') &&
+            previous?.name === 'LinkMark' &&
             view.state.doc.sliceString(previous.from, previous.to) === '(';
           if (inLabeledLink) {
             if (!showMarkers && !caretTouches && nTo > nFrom) {
@@ -721,7 +731,8 @@ const makeLiveRenderPlugin = (showMarkers: boolean) => ViewPlugin.fromClass(
       // so Windows WebView2 doesn't lose pointer capture mid-selection.
       const dragEnded = u.transactions.some(isDragEndTransaction);
       const imeFlush = u.transactions.some(isImeSafeFlushTransaction);
-      if (u.docChanged || u.viewportChanged || dragEnded || imeFlush) {
+      const treeChanged = syntaxTree(u.state) !== syntaxTree(u.startState);
+      if (u.docChanged || u.viewportChanged || dragEnded || imeFlush || treeChanged) {
         this.decorations = buildDecorations(u.view, showMarkers);
         return;
       }

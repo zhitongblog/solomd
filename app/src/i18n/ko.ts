@@ -2327,6 +2327,8 @@ export const ko: I18n = {
     tab: {
       prev: "이전 탭",
       next: "다음 탭",
+      mru: "최근 탭으로 전환",
+      mruPrev: "이전 최근 탭으로 전환",
       reopenClosed: "닫은 탭 다시 열기",
     },
     settings: {

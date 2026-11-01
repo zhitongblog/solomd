@@ -249,3 +249,92 @@ test('a chord the editor already handled runs only app-level commands', async ()
   // …but never on an editing chord, even when the user rebound one there.
   assert.equal(appRunsAfterEditor('file.save', 'Mod+Z', 'windows'), false);
 });
+
+test('#508: Ctrl+Tab and Ctrl+Shift+Tab map to MRU tab switching on all platforms', async () => {
+  const { eventToCombo, resolveBindings, appRunsAfterEditor } = await import('./keybindings.ts');
+  const ctrlTab = {
+    isComposing: false,
+    key: 'Tab',
+    code: 'Tab',
+    ctrlKey: true,
+    metaKey: false,
+    altKey: false,
+    shiftKey: false,
+    keyCode: 9,
+  } as unknown as KeyboardEvent;
+  const ctrlShiftTab = {
+    ...ctrlTab,
+    shiftKey: true,
+  } as unknown as KeyboardEvent;
+  assert.equal(eventToCombo(ctrlTab), 'Mod+Tab');
+  assert.equal(eventToCombo(ctrlShiftTab), 'Mod+Shift+Tab');
+  for (const platform of ['windows', 'mac', 'linux'] as const) {
+    const bindings = resolveBindings({}, platform);
+    assert.equal(bindings.get('Mod+Tab'), 'tab.mru');
+    assert.equal(bindings.get('Mod+Shift+Tab'), 'tab.mruPrev');
+    assert.equal(appRunsAfterEditor('tab.mru', 'Mod+Tab', platform), true);
+  }
+});
+
+test('#508: useTabsStore MRU tab switching toggles between 2 most recent tabs and cycles through history when holding Ctrl', async () => {
+  const { createPinia, setActivePinia } = await import('pinia');
+  setActivePinia(createPinia());
+  const { useTabsStore } = await import('../stores/tabs.ts');
+  const tabs = useTabsStore();
+
+  // Open 4 tabs: A, B, C, D
+  const tabA = tabs.newTab({ fileName: 'A.md' });
+  const tabB = tabs.newTab({ fileName: 'B.md' });
+  const tabC = tabs.newTab({ fileName: 'C.md' });
+  const tabD = tabs.newTab({ fileName: 'D.md' });
+
+  // Explicitly activate A then C so the 2 most recently used tabs are [C, A, D, B]
+  tabs.activate(tabA.id);
+  tabs.activate(tabC.id);
+  assert.equal(tabs.activeId, tabC.id);
+
+  // 1. Single Ctrl+Tab press + release: toggles C -> A, and a second single Ctrl+Tab toggles A -> C
+  const next1 = tabs.nextMruTabId(1, false);
+  assert.equal(next1, tabA.id);
+  tabs.activate(next1!);
+  assert.equal(tabs.activeId, tabA.id);
+
+  const next2 = tabs.nextMruTabId(1, false);
+  assert.equal(next2, tabC.id);
+  tabs.activate(next2!);
+  assert.equal(tabs.activeId, tabC.id);
+
+  // 2. Holding Ctrl and pressing Tab multiple times (keepCycleOpen = true):
+  // MRU order at start of cycle is [C, A, D, B]
+  const step1 = tabs.nextMruTabId(1, true);
+  assert.equal(step1, tabA.id);
+  tabs.activate(step1!, { mruCycle: true });
+
+  const step2 = tabs.nextMruTabId(1, true);
+  assert.equal(step2, tabD.id);
+  tabs.activate(step2!, { mruCycle: true });
+
+  const step3 = tabs.nextMruTabId(1, true);
+  assert.equal(step3, tabB.id);
+  tabs.activate(step3!, { mruCycle: true });
+
+  // Ctrl+Shift+Tab while still holding Ctrl steps backwards (B -> D)
+  const stepBack = tabs.nextMruTabId(-1, true);
+  assert.equal(stepBack, tabD.id);
+  tabs.activate(stepBack!, { mruCycle: true });
+
+  // Release Ctrl: commits D to the front of MRU ([D, C, A, B])
+  tabs.endMruCycle();
+  assert.equal(tabs.activeId, tabD.id);
+
+  // Next single Ctrl+Tab now toggles between D and C
+  const afterCommit = tabs.nextMruTabId(1, false);
+  assert.equal(afterCommit, tabC.id);
+  tabs.activate(afterCommit!);
+
+  // 3. Closing a tab removes it from MRU history so nextMruTabId never returns the closed tab
+  tabs.closeTab(tabD.id);
+  const afterClose = tabs.nextMruTabId(1, false);
+  assert.notEqual(afterClose, tabD.id);
+  assert.equal(afterClose, tabA.id);
+});

@@ -32,26 +32,44 @@ OUTDIR="$(mktemp -d)"
 OUT="$OUTDIR/SHA256SUMS.txt"
 trap 'rm -rf "$ASSETS" "$OUTDIR"' EXIT
 
-echo "Downloading assets for $TAG ..."
-gh release download "$TAG" --dir "$ASSETS" --clobber
-# Never hash a previous run's manifest into the new one.
-rm -f "$ASSETS/SHA256SUMS.txt"
+echo "Collecting SHA256 digests for $TAG ..."
+# Prefer GitHub's native asset `.digest` (`sha256:<hex>`) when all non-manifest
+# assets report one (instant, avoids downloading ~300 MB over flaky connections);
+# fall back to downloading any asset whose digest is not yet populated.
+JSON="$(gh release view "$TAG" --json assets)"
+MISSING="$(printf '%s' "$JSON" | jq -r '.assets[] | select(.name != "SHA256SUMS.txt") | select((.digest // "") | startswith("sha256:") | not) | .name')"
 
-if [[ -z "$(ls -A "$ASSETS")" ]]; then
+if [[ -z "$MISSING" ]]; then
+  printf '%s' "$JSON" \
+    | jq -r '.assets[] | select(.name != "SHA256SUMS.txt") | "\(.digest | sub("^sha256:"; ""))  \(.name)"' \
+    | LC_ALL=C sort -k2 > "$OUT"
+else
+  echo "Downloading assets for $TAG ..."
+  gh release download "$TAG" --dir "$ASSETS" --clobber
+  # Never hash a previous run's manifest into the new one.
+  rm -f "$ASSETS/SHA256SUMS.txt"
+
+  if [[ -z "$(ls -A "$ASSETS")" ]]; then
+    echo "No assets found on $TAG" >&2
+    exit 1
+  fi
+
+  # Sorted by filename so the manifest diffs cleanly from release to release.
+  # Written outside $ASSETS so the manifest can't hash itself.
+  (
+    cd "$ASSETS"
+    for f in *; do
+      printf '%s\n' "$f"
+    done | LC_ALL=C sort | while IFS= read -r f; do
+      sha "$f"
+    done
+  ) > "$OUT"
+fi
+
+if [[ ! -s "$OUT" ]]; then
   echo "No assets found on $TAG" >&2
   exit 1
 fi
-
-# Sorted by filename so the manifest diffs cleanly from release to release.
-# Written outside $ASSETS so the manifest can't hash itself.
-(
-  cd "$ASSETS"
-  for f in *; do
-    printf '%s\n' "$f"
-  done | LC_ALL=C sort | while IFS= read -r f; do
-    sha "$f"
-  done
-) > "$OUT"
 
 echo "--- SHA256SUMS.txt ---"
 cat "$OUT"

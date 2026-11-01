@@ -191,6 +191,23 @@ const CLOSED_TAB_LIMIT = 20;
 const closedTabs: ClosedTabRecord[] = [];
 
 /**
+ * #508 — Most-Recently-Used (MRU) tab order for `Ctrl+Tab` / `Ctrl+Shift+Tab`.
+ * `mruTabIds[0]` is the currently active tab; `mruTabIds[1]` is the previously
+ * active tab so a single `Ctrl+Tab` toggles between the two most recent tabs,
+ * while holding `Ctrl` and pressing `Tab` repeatedly walks `mruCycleSnapshot`.
+ */
+const mruTabIds: string[] = [];
+let mruCycleSnapshot: string[] | null = null;
+let mruCycleIndex = 0;
+
+function recordMruVisit(id: string) {
+  if (!id) return;
+  const idx = mruTabIds.indexOf(id);
+  if (idx !== -1) mruTabIds.splice(idx, 1);
+  mruTabIds.unshift(id);
+}
+
+/**
  * A12 — caret positions to put back once, for tabs that came back from a
  * persisted session (launch, or returning to a workspace). Snapshotted at
  * load time so the editor's own first cursor report (line 1 on mount) cannot
@@ -210,6 +227,7 @@ export const useTabsStore = defineStore('tabs', {
   state: (): PersistedState => {
     const s = loadPersisted();
     rememberLaunchCursors(s.tabs);
+    if (s.activeId) recordMruVisit(s.activeId);
     return s;
   },
   getters: {
@@ -242,6 +260,7 @@ export const useTabsStore = defineStore('tabs', {
       };
       this.tabs.push(tab);
       this.activeId = tab.id;
+      recordMruVisit(tab.id);
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('solomd:leave-center-overlay'));
       }
@@ -260,6 +279,7 @@ export const useTabsStore = defineStore('tabs', {
       const existing = this.tabs.find((t) => samePath(t.filePath, payload.filePath));
       if (existing) {
         this.activeId = existing.id;
+        recordMruVisit(existing.id);
         // #317 — and adopt what the caller just read off disk. Opening a file
         // that is already open used to only focus the tab and throw the fresh
         // read away, so a document another editor had changed kept showing the
@@ -302,6 +322,7 @@ export const useTabsStore = defineStore('tabs', {
       };
       this.tabs.push(tab);
       this.activeId = tab.id;
+      recordMruVisit(tab.id);
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('solomd:leave-center-overlay'));
       }
@@ -430,8 +451,13 @@ export const useTabsStore = defineStore('tabs', {
         if (closedTabs.length > CLOSED_TAB_LIMIT) closedTabs.shift();
       }
       this.tabs.splice(idx, 1);
+      const mruIdx = mruTabIds.indexOf(id);
+      if (mruIdx !== -1) mruTabIds.splice(mruIdx, 1);
+      mruCycleSnapshot = null;
+      mruCycleIndex = 0;
       if (this.activeId === id) {
         this.activeId = this.tabs[idx]?.id ?? this.tabs[idx - 1]?.id ?? '';
+        if (this.activeId) recordMruVisit(this.activeId);
       }
       // Clean up any pane references to the closed tab
       try {
@@ -449,9 +475,78 @@ export const useTabsStore = defineStore('tabs', {
     },
     activate(id: string) {
       this.activeId = id;
+      recordMruVisit(id);
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('solomd:leave-center-overlay'));
       }
+    },
+    /** #508 — Record a tab visit in the MRU stack without resetting an active
+     *  Ctrl+Tab cycle snapshot (when called by `tiles.syncActiveTab`). */
+    recordVisit(id: string) {
+      if (mruCycleSnapshot && mruCycleSnapshot.length >= 2) {
+        const rest = mruCycleSnapshot.filter((x) => x !== id);
+        mruTabIds.splice(0, mruTabIds.length, id, ...rest);
+      } else {
+        recordMruVisit(id);
+      }
+    },
+    /** #508 — Finish an active Ctrl+Tab hold cycle when Ctrl/Meta is released. */
+    endMruCycle() {
+      mruCycleSnapshot = null;
+      mruCycleIndex = 0;
+    },
+    /** #508 — Compute the next tab ID in MRU order (`offset = 1` for `Ctrl+Tab`,
+     *  `offset = -1` for `Ctrl+Shift+Tab`). When `keepCycleOpen` is true (modifier
+     *  held down), repeated presses step through the snapshot captured at the
+     *  start of the hold; releasing the modifier (`endMruCycle()`) commits the
+     *  landed tab to the front of the MRU list so the next single `Ctrl+Tab`
+     *  toggles back to the previously active tab. */
+    nextMruTabId(offset: 1 | -1 = 1, keepCycleOpen = false): string | null {
+      const openIds = new Set(this.tabs.map((t) => t.id));
+      if (openIds.size < 2) return null;
+
+      if (mruCycleSnapshot && keepCycleOpen) {
+        const snap = mruCycleSnapshot.filter((id) => openIds.has(id));
+        if (snap.length >= 2) {
+          mruCycleSnapshot = snap;
+          mruCycleIndex = (mruCycleIndex + offset + snap.length) % snap.length;
+          const targetId = snap[mruCycleIndex];
+          mruTabIds.splice(
+            0,
+            mruTabIds.length,
+            targetId,
+            ...snap.filter((id) => id !== targetId),
+          );
+          return targetId;
+        }
+      }
+
+      if (this.activeId && openIds.has(this.activeId)) {
+        recordMruVisit(this.activeId);
+      }
+      const validMru = mruTabIds.filter((id) => openIds.has(id));
+      for (const t of this.tabs) {
+        if (!validMru.includes(t.id)) validMru.push(t.id);
+      }
+      mruTabIds.splice(0, mruTabIds.length, ...validMru);
+      if (validMru.length < 2) return null;
+
+      const idx = (0 + offset + validMru.length) % validMru.length;
+      const targetId = validMru[idx];
+      if (keepCycleOpen) {
+        mruCycleSnapshot = [...validMru];
+        mruCycleIndex = idx;
+      } else {
+        mruCycleSnapshot = null;
+        mruCycleIndex = 0;
+      }
+      mruTabIds.splice(
+        0,
+        mruTabIds.length,
+        targetId,
+        ...validMru.filter((id) => id !== targetId),
+      );
+      return targetId;
     },
     /** The most recently closed tab, removed from the reopen stack. */
     popClosedTab(): ClosedTabRecord | undefined {

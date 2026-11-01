@@ -2331,6 +2331,8 @@ export const zh: I18n = {
     tab: {
       prev: "上一个标签页",
       next: "下一个标签页",
+      mru: "切换到最近的标签页",
+      mruPrev: "切换到前一个最近标签页",
       reopenClosed: "恢复关闭的标签页",
     },
     settings: {

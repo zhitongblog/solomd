@@ -2327,6 +2327,8 @@ export const fr: I18n = {
     tab: {
       prev: "Onglet précédent",
       next: "Onglet suivant",
+      mru: "Basculer vers l’onglet récent",
+      mruPrev: "Basculer vers l’onglet récent précédent",
       reopenClosed: "Rouvrir l’onglet fermé",
     },
     settings: {

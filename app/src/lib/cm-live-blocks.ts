@@ -47,7 +47,11 @@ import {
 import { renderMarkdown, extractImageRoot } from './markdown';
 import { findHtmlBlockEnd } from './html-live-render';
 import { openRenderedLink } from './link-open';
-import { parseImageAltSize } from './md-image-url';
+import {
+  extractImageReferenceDefinitions,
+  findMarkdownImagesInLine,
+  parseImageAltSize,
+} from './md-image-url';
 import { plantumlSvgUrl } from './plantuml';
 import { bindMermaidInteractions, initMermaid } from './mermaid-lazy';
 import { getKatex, onRenderDepsChange, renderDepsVersion } from './render-deps';
@@ -107,12 +111,6 @@ function ensureMermaidRendered(source: string, theme: MermaidTheme): Promise<voi
   mermaidInflight.set(key, job);
   return job;
 }
-
-// `^\s*!\[<alt>\](<url>)\s*$` — whole-line image with no surrounding prose.
-// Why whole-line: replacing inline images would split text in the middle and
-// break the natural reading flow of the source. We only collapse images that
-// are visually their own paragraph.
-const IMAGE_LINE_RE = /^\s*!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)\s*$/;
 
 // Pipe table heuristic: a header line, a separator (`---` / `:---:`), then
 // at least one body row. We don't try to parse the GFM grammar ourselves —
@@ -213,6 +211,7 @@ class ImageWidget extends WidgetType {
   private readonly alt: string;
   private readonly localPath: string | null;
   private readonly lineNumber: number;
+  private readonly inline: boolean;
   private readonly cleanAlt: string;
   private readonly width: string | null;
   private readonly height: string | null;
@@ -220,12 +219,19 @@ class ImageWidget extends WidgetType {
   // Plain field assignments, not TS parameter properties: node --test strips
   // types only and rejects parameter-property syntax, and the regression
   // tests below build real decorations through liveBlocksExtension().
-  constructor(src: string, alt: string, localPath: string | null = null, lineNumber: number = 0) {
+  constructor(
+    src: string,
+    alt: string,
+    localPath: string | null = null,
+    lineNumber: number = 0,
+    inline: boolean = false,
+  ) {
     super();
     this.src = src;
     this.alt = alt;
     this.localPath = localPath;
     this.lineNumber = lineNumber;
+    this.inline = inline;
     const parsed = parseImageAltSize(alt);
     this.cleanAlt = parsed.alt;
     this.width = parsed.width;
@@ -237,16 +243,19 @@ class ImageWidget extends WidgetType {
       other.src === this.src &&
       other.alt === this.alt &&
       other.localPath === this.localPath &&
-      other.lineNumber === this.lineNumber
+      other.lineNumber === this.lineNumber &&
+      other.inline === this.inline
     );
   }
 
   toDOM(): HTMLElement {
-    const wrap = document.createElement('div');
-    wrap.className = 'cm-live-block cm-live-block--image';
+    const wrap = document.createElement(this.inline ? 'span' : 'div');
+    wrap.className = this.inline
+      ? 'cm-live-block cm-live-block--image cm-live-block--image-inline'
+      : 'cm-live-block cm-live-block--image';
     const img = document.createElement('img');
+    img.setAttribute('referrerpolicy', 'no-referrer');
     img.referrerPolicy = 'no-referrer';
-    img.src = this.src;
     img.alt = this.cleanAlt;
     img.loading = 'lazy';
     img.draggable = false;
@@ -254,6 +263,7 @@ class ImageWidget extends WidgetType {
     if (this.height) img.style.height = this.height;
     if (this.lineNumber > 0) img.dataset.solomdLine = String(this.lineNumber);
     if (this.localPath) img.dataset.solomdLocalSrc = this.localPath;
+    img.src = this.src;
     img.onerror = () => {
       // Image failed to load — fall back to a small "broken image" caption
       // rather than a giant empty box. The source text is one cursor-move
@@ -275,6 +285,68 @@ class ImageWidget extends WidgetType {
   }
 }
 
+/**
+ * #504 — Compute the character offset within a Markdown pipe-table row line
+ * (`| col0 | col1 |`) for the `colIdx`-th cell (0-based), ignoring escaped
+ * `\|` and pipes inside inline code spans. `clickRatio` (0..1) maps the
+ * horizontal click position across the trimmed cell text.
+ */
+export function findTableCellOffsetInLine(
+  lineText: string,
+  colIdx: number,
+  clickRatio = 1,
+): number {
+  const n = lineText.length;
+  const pipes: number[] = [];
+  let p = 0;
+  while (p < n) {
+    if (lineText[p] === '`') {
+      let ticks = 1;
+      while (p + ticks < n && lineText[p + ticks] === '`') ticks++;
+      let q = p + ticks;
+      let closed = -1;
+      while (q < n) {
+        if (lineText[q] === '`') {
+          let ticks2 = 1;
+          while (q + ticks2 < n && lineText[q + ticks2] === '`') ticks2++;
+          if (ticks2 === ticks) {
+            closed = q + ticks2;
+            break;
+          }
+          q += ticks2;
+        } else {
+          q++;
+        }
+      }
+      p = closed >= 0 ? closed : p + ticks;
+      continue;
+    }
+    if (lineText[p] === '\\' && p + 1 < n) {
+      p += 2;
+      continue;
+    }
+    if (lineText[p] === '|') {
+      pipes.push(p);
+    }
+    p++;
+  }
+  if (pipes.length === 0) return n;
+  const maxCellIdx = Math.max(0, pipes.length - 2);
+  const cellIdx = Math.max(0, Math.min(colIdx, maxCellIdx));
+  const cellStart = pipes[cellIdx] + 1;
+  const cellEnd = pipes[cellIdx + 1] ?? n;
+  const rawCell = lineText.slice(cellStart, cellEnd);
+  const firstNonSpace = rawCell.search(/\S/);
+  if (firstNonSpace < 0) {
+    return Math.min(cellStart + 1, cellEnd);
+  }
+  const lastNonSpace = rawCell.trimEnd().length;
+  const contentStart = cellStart + firstNonSpace;
+  const contentEnd = cellStart + lastNonSpace;
+  const ratio = Math.max(0, Math.min(1, Number.isFinite(clickRatio) ? clickRatio : 1));
+  return contentStart + Math.round((contentEnd - contentStart) * ratio);
+}
+
 class TableWidget extends WidgetType {
   // Cells can hold math / code: a widget built before KaTeX or highlight.js
   // arrived must not count as equal to the one built after (render-deps.ts).
@@ -282,12 +354,19 @@ class TableWidget extends WidgetType {
   private readonly source: string;
   private readonly imageRoot: string | null;
   private readonly filePath?: string;
+  private readonly startLine: number;
 
-  constructor(source: string, imageRoot: string | null = null, filePath?: string) {
+  constructor(
+    source: string,
+    imageRoot: string | null = null,
+    filePath?: string,
+    startLine: number = 0,
+  ) {
     super();
     this.source = source;
     this.imageRoot = imageRoot;
     this.filePath = filePath;
+    this.startLine = startLine;
   }
 
   eq(other: TableWidget): boolean {
@@ -295,11 +374,12 @@ class TableWidget extends WidgetType {
       other.source === this.source &&
       other.imageRoot === this.imageRoot &&
       other.filePath === this.filePath &&
+      other.startLine === this.startLine &&
       other.deps === this.deps
     );
   }
 
-  toDOM(): HTMLElement {
+  toDOM(view?: EditorView): HTMLElement {
     const wrap = document.createElement('div');
     wrap.className = 'cm-live-block cm-live-block--table';
     // Render the table source through the same markdown pipeline used by the
@@ -309,10 +389,85 @@ class TableWidget extends WidgetType {
     wrap.innerHTML = rewriteImageUrls(rawHtml, this.imageRoot, this.filePath);
     installSvgImageFallbacks(wrap);
     trackImageHeights(wrap);
+
+    // #504 — Clicking a rendered table cell in Live mode places the caret at
+    // the exact Markdown table row (header or body row) and column cell offset,
+    // and anchors scrollTop so the clicked row stays under the mouse cursor
+    // instead of jumping to the very start or end of the table.
+    wrap.addEventListener('mousedown', (ev: MouseEvent) => {
+      if (ev.button !== 0 || !view || this.startLine <= 0) return;
+      const target = ev.target as Element | null;
+      if (target?.closest?.('a')) return;
+      const cell = target?.closest?.('th, td') as HTMLTableCellElement | null;
+      const tr = target?.closest?.('tr') as HTMLTableRowElement | null;
+      if (!cell && !tr) return;
+
+      let targetLineNum = this.startLine;
+      const sectionTag = tr?.parentElement?.tagName;
+      if (sectionTag === 'THEAD') {
+        targetLineNum = this.startLine;
+      } else if (sectionTag === 'TBODY' && tr?.parentElement) {
+        const rows = Array.from(tr.parentElement.children).filter((el) => el.tagName === 'TR');
+        const rowIdx = Math.max(0, rows.indexOf(tr));
+        targetLineNum = this.startLine + 2 + rowIdx;
+      } else if (tr) {
+        const table = tr.closest('table');
+        const allRows = table ? Array.from(table.querySelectorAll('tr')) : [];
+        const idx = allRows.indexOf(tr);
+        targetLineNum = idx <= 0 ? this.startLine : this.startLine + 1 + idx;
+      }
+      targetLineNum = Math.max(1, Math.min(view.state.doc.lines, targetLineNum));
+
+      const colIdx = cell ? Math.max(0, cell.cellIndex) : 0;
+      let clickRatio = 1;
+      if (cell) {
+        const rect = cell.getBoundingClientRect();
+        const innerLeft = rect.left + 12;
+        const innerWidth = Math.max(1, rect.width - 24);
+        clickRatio = Math.max(0, Math.min(1, (ev.clientX - innerLeft) / innerWidth));
+      }
+
+      const docLine = view.state.doc.line(targetLineNum);
+      const colOffset = findTableCellOffsetInLine(docLine.text, colIdx, clickRatio);
+      const targetPos = docLine.from + colOffset;
+      const clickClientY = ev.clientY;
+
+      ev.preventDefault();
+      ev.stopPropagation();
+      view.focus();
+      view.dispatch({
+        selection: { anchor: targetPos },
+        userEvent: 'select.pointer',
+      });
+      requestAnimationFrame(() => {
+        const coords = view.coordsAtPos(targetPos);
+        if (!coords) return;
+        const scroller = view.scrollDOM;
+        const scrollerRect = scroller.getBoundingClientRect();
+        const desiredY = Math.max(
+          scrollerRect.top + 24,
+          Math.min(scrollerRect.bottom - 24, clickClientY),
+        );
+        const delta = coords.top - desiredY;
+        if (Math.abs(delta) > 4) {
+          scroller.scrollTop += delta;
+        }
+      });
+    });
+
     return wrap;
   }
 
-  ignoreEvent(): boolean {
+  ignoreEvent(event: Event): boolean {
+    if (
+      event.type === 'mousedown' &&
+      event instanceof MouseEvent &&
+      event.button === 0 &&
+      !(event.target as Element | null)?.closest?.('a') &&
+      !!(event.target as Element | null)?.closest?.('th, td, tr')
+    ) {
+      return true;
+    }
     return false;
   }
 }
@@ -911,6 +1066,7 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
             }
           },
         });
+        const imageRefs = extractImageReferenceDefinitions(sourceLines, fenceBody);
         let i = 1;
         while (i <= lastLine) {
           const line = doc.line(i);
@@ -995,16 +1151,22 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
             continue;
           }
 
-          // Image line.
-          const imgMatch = IMAGE_LINE_RE.exec(line.text);
-          if (imgMatch) {
+          // #506 — Standalone Markdown image line (`![alt](url)`, `[![alt](img)](link)`,
+          // `![[1] alt](url)`, `![alt](<url>)`, `![alt][ref]`, etc.).
+          const lineImages = findMarkdownImagesInLine(line.text, imageRefs);
+          const isStandaloneImage =
+            lineImages.length === 1 &&
+            line.text.slice(0, lineImages[0].start).trim() === '' &&
+            line.text.slice(lineImages[0].end).trim() === '';
+          if (isStandaloneImage) {
+            const imgSpan = lineImages[0];
             if (keepSource) {
               // Render below the source line and leave the line alone, so
               // clicking into it changes nothing on screen.
               const root = opts.getImageRoot?.() ?? null;
               const filePath = opts.getFilePath?.();
-              const src = resolveImageSrc(imgMatch[2], root, filePath);
-              const localPath = resolveImagePath(imgMatch[2], root, filePath);
+              const src = resolveImageSrc(imgSpan.src, root, filePath);
+              const localPath = resolveImagePath(imgSpan.src, root, filePath);
               const needsFallback =
                 isLocalSvgPath(localPath) ||
                 localPath.startsWith('saf:') ||
@@ -1013,7 +1175,7 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
                 line.to,
                 line.to,
                 Decoration.widget({
-                  widget: new ImageWidget(src, imgMatch[1], needsFallback ? localPath : null, i),
+                  widget: new ImageWidget(src, imgSpan.alt, needsFallback ? localPath : null, i),
                   block: true,
                   side: 1,
                 }),
@@ -1023,8 +1185,8 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
             }
             const cursorInside = i >= cursorLine && i <= cursorLineEnd;
             if (!cursorInside) {
-              const alt = imgMatch[1];
-              const rawSrc = imgMatch[2];
+              const alt = imgSpan.alt;
+              const rawSrc = imgSpan.src;
               const root = opts.getImageRoot?.() ?? null;
               const filePath = opts.getFilePath?.();
               const src = resolveImageSrc(rawSrc, root, filePath);
@@ -1253,7 +1415,12 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
                     blockFrom,
                     blockTo,
                     Decoration.replace({
-                      widget: new TableWidget(source, opts.getImageRoot?.() ?? null, opts.getFilePath?.()),
+                      widget: new TableWidget(
+                        source,
+                        opts.getImageRoot?.() ?? null,
+                        opts.getFilePath?.(),
+                        i,
+                      ),
                       block: true,
                     }),
                   );
@@ -1264,26 +1431,86 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
             }
           }
 
-          // v4.5.5 — inline math `$…$` on an otherwise-plain line. Render each
-          // span while the caret is off this line (same reveal model as the
-          // block widgets above: move the caret onto the line to edit source).
-          // Cheap pre-check: only the (rare) lines that actually contain a `$`
-          // pay for the inline-math regex + code-span mask. Plain prose lines
-          // — the overwhelming majority in a large doc — short-circuit here, so
-          // this whole-doc pass doesn't get measurably slower (#5 perf).
+          // #506 — When `keepSource` is enabled and this non-standalone line
+          // (e.g. a list item `- ![alt](url)` or blockquote `> ![alt](url)`)
+          // carries a Markdown image, render it below the source line.
+          if (keepSource && lineImages.length > 0) {
+            const firstImg = lineImages[0];
+            const root = opts.getImageRoot?.() ?? null;
+            const filePath = opts.getFilePath?.();
+            const src = resolveImageSrc(firstImg.src, root, filePath);
+            const localPath = resolveImagePath(firstImg.src, root, filePath);
+            const needsFallback =
+              isLocalSvgPath(localPath) ||
+              localPath.startsWith('saf:') ||
+              /^\/(?:storage\/emulated\/0|sdcard)\//i.test(localPath);
+            builder.add(
+              line.to,
+              line.to,
+              Decoration.widget({
+                widget: new ImageWidget(src, firstImg.alt, needsFallback ? localPath : null, i),
+                block: true,
+                side: 1,
+              }),
+            );
+            i += 1;
+            continue;
+          }
+
+          // v4.5.5 / #506 — inline math (`$…$`) and inline / list-item /
+          // blockquote images (`- ![alt](url)`, `> ![alt](url)`, inline `![alt](url)`)
+          // on an otherwise-plain line. Render each span while the caret is
+          // off this line (same reveal model as the block widgets above: move
+          // the caret onto the line to edit source).
           const inlineCursorHere = keepSource || (i >= cursorLine && i <= cursorLineEnd);
-          if (
-            !inlineCursorHere &&
-            (line.text.indexOf('$') !== -1 ||
+          if (!inlineCursorHere) {
+            const hasMathCandidate =
+              line.text.indexOf('$') !== -1 ||
               line.text.indexOf('\\(') !== -1 ||
-              line.text.indexOf('\\[') !== -1)
-          ) {
-            for (const span of inlineMathSpans(line.text)) {
-              builder.add(
-                line.from + span.start,
-                line.from + span.end,
-                Decoration.replace({ widget: new InlineMathWidget(span.tex) }),
-              );
+              line.text.indexOf('\\[') !== -1;
+            if (lineImages.length > 0 || hasMathCandidate) {
+              const inlineSpans: Array<{ start: number; end: number; deco: Decoration }> = [];
+              const root = lineImages.length > 0 ? (opts.getImageRoot?.() ?? null) : null;
+              const filePath = lineImages.length > 0 ? opts.getFilePath?.() : undefined;
+              for (const imgSpan of lineImages) {
+                const src = resolveImageSrc(imgSpan.src, root, filePath);
+                const localPath = resolveImagePath(imgSpan.src, root, filePath);
+                const needsFallback =
+                  isLocalSvgPath(localPath) ||
+                  localPath.startsWith('saf:') ||
+                  /^\/(?:storage\/emulated\/0|sdcard)\//i.test(localPath);
+                inlineSpans.push({
+                  start: imgSpan.start,
+                  end: imgSpan.end,
+                  deco: Decoration.replace({
+                    widget: new ImageWidget(
+                      src,
+                      imgSpan.alt,
+                      needsFallback ? localPath : null,
+                      i,
+                      true,
+                    ),
+                  }),
+                });
+              }
+              if (hasMathCandidate) {
+                for (const mathSpan of inlineMathSpans(line.text)) {
+                  const overlapsImage = lineImages.some(
+                    (im) => mathSpan.start < im.end && mathSpan.end > im.start,
+                  );
+                  if (!overlapsImage) {
+                    inlineSpans.push({
+                      start: mathSpan.start,
+                      end: mathSpan.end,
+                      deco: Decoration.replace({ widget: new InlineMathWidget(mathSpan.tex) }),
+                    });
+                  }
+                }
+              }
+              inlineSpans.sort((a, b) => a.start - b.start);
+              for (const item of inlineSpans) {
+                builder.add(line.from + item.start, line.from + item.end, item.deco);
+              }
             }
           }
 
@@ -1315,6 +1542,9 @@ export function liveBlocksExtension(opts: BlockOptions = {}) {
       }
       if (isDragEndTransaction(tr)) return buildBlockDecorations(tr.state, opts);
       if (tr.selection && !isDragging(tr.state)) {
+        return buildBlockDecorations(tr.state, opts);
+      }
+      if (syntaxTree(tr.state) !== syntaxTree(tr.startState)) {
         return buildBlockDecorations(tr.state, opts);
       }
       return deco.map(tr.changes);
@@ -1449,6 +1679,12 @@ export const liveBlocksTheme = EditorView.theme({
     height: 'auto',
     borderRadius: '6px',
     display: 'block',
+  },
+  '.cm-live-block--image-inline': {
+    display: 'inline-block',
+    verticalAlign: 'middle',
+    maxWidth: '100%',
+    padding: '0.25em 0',
   },
   '.cm-live-block--html': {
     maxWidth: '100%',

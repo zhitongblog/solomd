@@ -49,6 +49,15 @@
         "en": "Deep testing and detailed user experience feedback on file tree navigation, workspace handling, table editor, and shortcuts for 4.14.x through 5.0.2.",
         "zh": "深度测试了文件树导航、工作区管理、表格编辑器及快捷键交互，为 4.14.x 到 5.0.2 提交了大量详尽的问题报告与改进建议。"
       }
+    },
+    {
+      "name": "lcfactorization",
+      "github": "lcfactorization",
+      "since": "2026-10",
+      "contribution": {
+        "en": "Extensive custom theme and plugin experimentation on Windows, with detailed feedback on live preview rendering, tab management, and developer tooling.",
+        "zh": "在 Windows 端进行了深入的自定义主题与扩展实践，针对实时预览渲染、多标签页管理及开发者调试工具提出了详尽的改进建议。"
+      }
     }
   ]
 }

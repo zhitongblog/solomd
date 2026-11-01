@@ -2327,6 +2327,8 @@ export const it: I18n = {
     tab: {
       prev: "Scheda precedente",
       next: "Scheda successiva",
+      mru: "Passa alla scheda recente",
+      mruPrev: "Passa alla scheda recente precedente",
       reopenClosed: "Riapri scheda chiusa",
     },
     settings: {
