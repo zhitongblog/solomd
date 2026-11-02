@@ -16,6 +16,16 @@ magick -background none "$BRAND_DIR/solomd-mark.svg" -resize 1024x1024 -depth 8 
   "$BRAND_DIR/solomd_icon_fullbleed.png"
 magick "$BRAND_DIR/solomd_icon_fullbleed.png" -alpha off -depth 8 -strip \
   "$REPO_DIR/app-store/icon-1024.png"
+mkdir -p "$REPO_DIR/app-store/google-play"
+grep -v 'rx="206"' "$BRAND_DIR/solomd-mark.svg" \
+  | rsvg-convert -w 512 -h 512 \
+  | magick png:- -alpha off -depth 8 -strip \
+  "$REPO_DIR/app-store/google-play/icon-512.png"
+for locale in "" "-zh"; do
+  rsvg-convert -w 1024 -h 538 "$BRAND_DIR/og-image${locale}.svg" \
+    | magick png:- -gravity center -crop 1024x500+0+0 +repage -depth 8 -strip \
+    "$REPO_DIR/app-store/google-play/feature-graphic${locale}.png"
+done
 (
   cd "$REPO_DIR/app"
   pnpm tauri icon ../brand/solomd_icon_fullbleed.png --output src-tauri/icons
@@ -48,12 +58,29 @@ for spec in mdpi:48:108 hdpi:72:162 xhdpi:96:216 xxhdpi:144:324 xxxhdpi:192:432;
     \( -size "${launcher}x${launcher}" xc:none -fill white \
        -draw "circle $half,$half $half,0" \) \
     -alpha off -compose CopyOpacity -composite -depth 8 -strip "$android_dir/ic_launcher_round.png"
-  magick "$BRAND_DIR/solomd_icon_fullbleed.png" -resize "${foreground}x${foreground}!" -depth 8 -strip \
-    "$android_dir/ic_launcher_foreground.png"
+  # Android adaptive icon foreground is a 108dp canvas masked to the inner 66dp
+  # safe zone (~66%). Render the mark without the outer squircle stroke so no
+  # launcher mask clips the arms of the `#` or shows an inner border.
+  safe=$((foreground * 66 / 100))
+  grep -v 'rx="206"' "$BRAND_DIR/solomd-mark.svg" \
+    | rsvg-convert -w "$safe" -h "$safe" \
+    | magick -size "${foreground}x${foreground}" xc:"#121110" png:- \
+      -gravity center -composite -depth 8 -strip \
+      "$android_dir/ic_launcher_foreground.png"
 done
 
 ANDROID_RES_DIR="$REPO_DIR/app/src-tauri/gen/android/app/src/main/res"
+cat > "$ICON_DIR/android/values/ic_launcher_background.xml" <<'EOF'
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <color name="ic_launcher_background">#121110</color>
+</resources>
+EOF
 if [[ -d "$ANDROID_RES_DIR" ]]; then
+  rm -f "$ANDROID_RES_DIR/drawable-v24/ic_launcher_foreground.xml" \
+        "$ANDROID_RES_DIR/drawable/ic_launcher_background.xml"
+  cp "$ICON_DIR/android/values/ic_launcher_background.xml" "$ANDROID_RES_DIR/values/ic_launcher_background.xml"
+  cp "$ICON_DIR/android/mipmap-anydpi-v26"/ic_launcher*.xml "$ANDROID_RES_DIR/mipmap-anydpi-v26/"
   for density in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
     cp "$ICON_DIR/android/mipmap-$density"/ic_launcher*.png \
       "$ANDROID_RES_DIR/mipmap-$density/"
