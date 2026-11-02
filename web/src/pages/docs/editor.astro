@@ -8,8 +8,8 @@ const lang = 'en' as const;
 ---
 
 <Layout
-  title="The SoloMD Editor — live rendering, images, tables, Vim, typewriter mode"
-  description="How SoloMD's editor works: live WYSIWYG rendering, image paste and upload, table editing, math, Mermaid, PlantUML, whiteboards, focus and typewriter modes, Vim keys, and the Windows IME-safe editor."
+  title="The SoloMD Editor — Live Rendering, Code Block Tricks, Tables, Auto-Numbered Headings & Focus"
+  description="How SoloMD's editor works: live WYSIWYG rendering, two-stage Ctrl+A and indented code blocks in lists, exact table cell click & Excel paste, auto-numbered headings, KaTeX/LaTeX math, Mermaid, whiteboards, and LanguageTool."
   lang={lang}
 >
   <Header lang={lang} />
@@ -20,69 +20,65 @@ const lang = 'en' as const;
       </nav>
 
       <h1>The Editor</h1>
-      <p class="lead">Everything between you and the text.</p>
+      <p class="lead">In-place live rendering combined with thoughtful details for code blocks, lists, tables, and long documents.</p>
 
-      <h2>Live Edit: rendered where you write</h2>
+      <h2>1. Live Edit: rendered where you write</h2>
       <p>
-        In Live Edit mode, formatting renders in place and the line under the caret
-        reveals its raw Markdown for editing — move the caret away and it renders again.
-        This applies to bold / italic / strikethrough, <code>==highlight==</code>, links,
-        headings, quotes, task lists, and also to whole blocks:
+        In Live Edit mode, formatting renders in place and only the line under the caret reveals its raw Markdown for editing — move the caret away and it renders again (or turn on <em>Always show Markdown syntax markers</em> in Settings → Writing if you prefer zero marker hiding):
       </p>
       <ul>
-        <li><strong>Tables</strong> render as real tables (malformed separator rows from AI exports are auto-repaired).</li>
-        <li><strong>Math</strong> — inline <code>$…$</code> and block <code>$$…$$</code> via KaTeX.</li>
-        <li><strong>Mermaid</strong> and <strong>PlantUML</strong> fences render as diagrams (PlantUML is opt-in — it sends diagram source to a server you configure).</li>
-        <li><strong>Images</strong> — a standalone <code>![alt](path)</code> line shows the image.</li>
-        <li><strong>Embedded HTML</strong> — block containers (<code>&lt;div&gt;</code>, <code>&lt;table&gt;</code>, <code>&lt;details&gt;</code>…) and inline tags (<code>&lt;strong&gt;</code>, <code>&lt;sup&gt;</code>, <code>&lt;kbd&gt;</code>…) render like the preview.</li>
-        <li><strong>GitHub-style callouts</strong> — <code>&gt; [!NOTE]</code> / TIP / IMPORTANT / WARNING / CAUTION.</li>
-        <li><strong>Whiteboards</strong> — a <code>```tldraw</code> fence embeds a live drawing canvas saved back into the note.</li>
+        <li><strong>Inline formatting &amp; selection bubble</strong>: bold, italic, strikethrough, <code>==highlight==</code> (<kbd>Ctrl/⌘ + Shift + H</kbd>), inline code, sub/superscripts, and clean hiding of escape backslashes like <code>\#</code>; selecting text also brings up a floating formatting bubble.</li>
+        <li><strong>Tables with exact cell click positioning</strong>: click any header or body cell in a rendered table to place the caret directly inside that row and column; supports tables inside blockquotes (<code>&gt; | a | b |</code>) and auto-repairs malformed AI table separator rows.</li>
+        <li><strong>Math (KaTeX &amp; LaTeX)</strong>: inline <code>$…$</code> / <code>\(…\)</code> and block <code>$$…$$</code> / <code>\[…\]</code>.</li>
+        <li><strong>Mermaid v11 &amp; PlantUML diagrams</strong>: fences render as crisp diagrams with automatic label quoting for special characters and hover tooltips on embedded links.</li>
+        <li><strong>Images everywhere</strong>: standalone images, images inside list items or blockquotes, linked images, reference-style images, and anti-hotlink external URLs (with automatic <code>no-referrer</code>) render directly in Live Edit.</li>
+        <li><strong>GitHub-style callouts &amp; embedded HTML</strong>: <code>&gt; [!NOTE]</code> / TIP / IMPORTANT / WARNING / CAUTION and inline/block HTML tags.</li>
+        <li><strong>tldraw Whiteboards</strong>: a <code>```tldraw</code> fence embeds a live drawing canvas saved right inside your Markdown note.</li>
       </ul>
 
-      <h2>Images</h2>
+      <h2>2. Code block power tricks</h2>
       <ul>
-        <li><strong>Paste a screenshot</strong> — it's saved next to your note (or into the folder set by <code>imageRoot</code> in front-matter / the attachment setting) and linked automatically.</li>
-        <li><strong>Drag &amp; drop</strong> image files into the editor to insert them.</li>
-        <li><strong>Image hosting</strong> — optionally upload local images to PicGo, SM.MS, S3 or GitHub from the command palette (“Upload local images to image host…”).</li>
+        <li><strong>Two-stage <kbd>Ctrl/⌘ + A</kbd> inside code fences</strong>: when the caret is inside a fenced code block, pressing <kbd>Ctrl/⌘ + A</kbd> <strong>once selects only the code block body</strong>; pressing <kbd>Ctrl/⌘ + A</kbd> a <strong>second time selects the entire document</strong>.</li>
+        <li><strong>Indented code blocks inside list items (<kbd>Shift + Enter</kbd>)</strong>: press <kbd>Shift + Enter</kbd> inside an ordered or bullet list item to create a soft line break aligned with the list item’s content, then insert a code block — it renders cleanly indented under the list item.</li>
+        <li><strong>Smart copy &amp; paste indentation</strong>:
+          <ul>
+            <li>Copying from an indented code block (via the Copy button, mouse selection, or <kbd>Ctrl/⌘ + A</kbd>) <strong>automatically strips the fence’s leading alignment spaces</strong>.</li>
+            <li>Pasting multi-line top-level code into an indented code block <strong>automatically pads every pasted line with the fence’s indentation</strong> so your code stays aligned inside the block.</li>
+          </ul>
+        </li>
+        <li><strong>Strict fence isolation</strong>: raw HTML tags (like <code>&lt;template&gt;</code> or <code>&lt;div&gt;</code>), math markers, and tables inside fenced code blocks never trigger outside widgets.</li>
       </ul>
 
-      <h2>Writing helpers</h2>
+      <h2>3. Lists &amp; automatic multi-level heading numbering</h2>
+      <ul>
+        <li><strong>List continuation &amp; group conversion</strong>: pressing <kbd>Enter</kbd> continues unordered, ordered (with auto-renumbering), and task lists; selecting multiple bullet items or contiguous non-blank lines and pressing the Ordered List shortcut converts and numbers the entire group at once; ordered lists separated by headings or horizontal rules start fresh at <code>1.</code>.</li>
+        <li><strong>Auto-Number Headings (<code>1 / 1.1 / 1.1.1</code>)</strong>:
+          <ul>
+            <li><strong>One-shot command</strong>: <em>Paragraph → Auto-Number Headings (1 / 1.1 / 1.1.1)</em>.</li>
+            <li><strong>Live automatic numbering</strong>: enable <strong>“Automatically number 1–6 headings”</strong> in <em>Settings → General</em> so hierarchical section numbers update automatically whenever headings are added, deleted, or promoted/demoted without scrolling the viewport.</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h2>4. Writing &amp; proofreading helpers</h2>
       <table class="kb-table">
         <thead><tr><th>Feature</th><th>How</th></tr></thead>
         <tbody>
-          <tr><th>Slash commands</th><td>Type <code>/</code> on an empty line for block templates — table, code fence, math, callout, …</td></tr>
-          <tr><th>Wiki links</th><td><code>[[Note name]]</code> with autocomplete; click to follow, and they power backlinks / the graph.</td></tr>
-          <tr><th>Tags</th><td><code>#tag</code> with autocomplete; browse them in the Tags pane.</td></tr>
-          <tr><th>Find / Replace</th><td><kbd>Ctrl/⌘ F</kbd> in the note; results scroll into view as you type.</td></tr>
-          <tr><th>AI rewrite</th><td>Select text → <kbd>Ctrl/⌘ J</kbd>. See <a href="/docs/ai/">AI features</a>.</td></tr>
-          <tr><th>Format document</th><td>Command palette → “Format Markdown (Prettier)”.</td></tr>
-          <tr><th>Clean AI artifacts</th><td>Command palette → normalizes smart quotes, em-dashes and invisible characters.</td></tr>
+          <tr><th>Slash commands</th><td>Type <code>/</code> on an empty line for block templates — table, code fence, math, callout, whiteboard…</td></tr>
+          <tr><th>Excel / WPS table paste</th><td>Copy cells from Excel, WPS, Numbers, or web tables and press <kbd>Ctrl/⌘ + V</kbd> to paste a formatted Markdown table.</td></tr>
+          <tr><th>Copy as Word</th><td>Edit or right-click → “Copy as Word” to paste formatted prose, lists, and native equations straight into Microsoft Word or WPS.</td></tr>
+          <tr><th>LanguageTool grammar check</th><td>Enable in <em>Settings → Language &amp; Check</em> for multi-language grammar and style checking (public API or self-hosted server).</td></tr>
+          <tr><th>CJK proofreading</th><td>Flags CJK punctuation and spacing issues while ignoring filenames and ellipses.</td></tr>
+          <tr><th>AI rewrite</th><td>Select text → <kbd>Ctrl/⌘ + J</kbd>. See <a href="/docs/ai/">AI features</a>.</td></tr>
         </tbody>
       </table>
 
-      <h2>Modes for focus</h2>
+      <h2>5. Focus modes, scroll memory &amp; CJK IME stability</h2>
       <ul>
-        <li><strong>Focus mode</strong> dims everything but the current paragraph.</li>
-        <li><strong>Typewriter mode</strong> keeps the caret line vertically centered.</li>
-        <li><strong>Vim mode</strong> (Settings → Editor) — modal editing incl. <code>j/k</code> over rendered blocks.</li>
-        <li><strong>Zoom</strong> — <kbd>Ctrl/⌘ +</kbd>/<kbd>−</kbd>/<kbd>0</kbd> zooms the whole app (system-webview zoom, so clicks stay accurate); the editor font size and preview font size have separate settings.</li>
+        <li><strong>Cross-tab &amp; cross-mode scroll memory</strong>: switching between open tabs or toggling between Live Edit, Source, Split, and Preview preserves your exact viewport line offset and caret position.</li>
+        <li><strong>Focus mode (<kbd>F8</kbd>) &amp; Typewriter mode (<kbd>F9</kbd>)</strong>: Focus mode dims everything except the active paragraph; Typewriter mode keeps the active line centered vertically; warm active-line highlighting is on by default.</li>
+        <li><strong>Full CodeMirror editor on Windows with CJK IME safety</strong>: Windows runs the full CodeMirror Live Editor by default with <code>Intl.Segmenter</code> CJK double-click word selection and reliable <kbd>Ctrl+Z / Y / F / A / J</kbd> shortcut handling even while an input method composition is active.</li>
       </ul>
-
-      <h2>Appearance</h2>
-      <ul>
-        <li>Light / dark theme toggle; custom CSS file for full theming (Settings → Appearance).</li>
-        <li>Editor font, <strong>dedicated code font</strong>, font sizes, line numbers, word wrap, editor column width limit.</li>
-        <li><strong>Solid (non-blinking) cursor</strong> option in Settings.</li>
-      </ul>
-
-      <h2>A note on Windows and Chinese/Japanese/Korean input</h2>
-      <p>
-        On Windows, SoloMD uses a purpose-built plain-text editor path that avoids
-        long-standing WebView2 IME bugs (dropped first characters, doubled punctuation).
-        Trade-off: source-mode syntax highlighting is limited there; Live Edit, Split
-        and Preview render fully. Enabling Vim mode on Windows switches to the
-        CodeMirror editor.
-      </p>
 
       <Giscus />
     </article>

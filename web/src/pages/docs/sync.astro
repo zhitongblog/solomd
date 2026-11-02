@@ -8,23 +8,27 @@ import CompareFaq from '../../components/CompareFaq.astro';
 const lang = 'en' as const;
 const FAQ = [
   {
+    q: 'Which of the three Personal Cloud Drive E2EE sync modes should I choose?',
+    a: '(1) Choose WebDAV E2EE Sync if you use Nextcloud, Synology NAS, Nutstore (坚果云), or AList/OpenList — it syncs per-note over HTTPS without any desktop client. (2) Choose Local Cloud Drive Encrypted Vault Folder if you already have iCloud Drive, OneDrive, Dropbox, Google Drive, Baidu Netdisk, Aliyun Drive, or Quark Drive installed locally — SoloMD writes .enc ciphertext into that synced folder. (3) Choose Direct Cloud Drive OpenAPI Sync if you want a clientless single-bundle encrypted backup (solomd-vault.enc) that hides even your filenames and folder structure on OneDrive, Dropbox, Baidu Netdisk, or Aliyun Drive.',
+  },
+  {
+    q: 'Why does Nutstore (坚果云) return 401 / 403 on WebDAV?',
+    a: 'Nutstore requires a dedicated Third-Party App Password rather than your account login password. Go to Nutstore Web → Account Info → Security Options → Third-Party App Management → Add App to generate a password. Use https://dav.jianguoyun.com/dav/ as the server URL, your account email as username, and the generated app password.',
+  },
+  {
+    q: 'Can I recover my vault if I forget my E2EE passphrase?',
+    a: 'No. SoloMD uses zero-knowledge Argon2id key derivation + XChaCha20-Poly1305 authenticated encryption entirely on your device. Neither cloud providers nor GitHub ever see your plaintext or passphrase. Store your passphrase safely in a password manager.',
+  },
+  {
     q: 'Why do I get a 401 error when connecting GitHub?',
-    a: '401 means GitHub rejected the token itself. In order of likelihood: the token expired (fine-grained tokens default to 30–90 days); you pasted your GitHub account password instead of a Personal Access Token (password auth was removed by GitHub in 2021); the token was revoked (regenerating a token invalidates the old one, and GitHub auto-revokes tokens it finds in leaked code); or a proxy on your network strips the Authorization header. Fix: create a fresh token (see the checklist above), paste it again in Settings → Sync, and retry.',
-  },
-  {
-    q: 'Is my token stored safely?',
-    a: 'The token is stored in the operating system keychain (macOS Keychain, Windows Credential Manager, libsecret on Linux) — never in a plain-text config file, and it never leaves your machine except in requests to github.com.',
-  },
-  {
-    q: 'What does end-to-end encryption actually encrypt?',
-    a: 'With E2EE enabled, SoloMD pushes an encrypted shadow copy of your workspace: file contents are encrypted with a key derived from your passphrase before anything leaves your machine. GitHub only ever stores ciphertext. Losing the passphrase means the remote copy cannot be decrypted — keep it safe.',
+    a: '401 means GitHub rejected the token: (1) fine-grained tokens expire after 30–90 days by default; (2) you pasted your account password instead of a Personal Access Token; (3) the token was revoked or regenerated; or (4) a network proxy stripped the Authorization header. Generate a fresh PAT with Contents: Read and write (or repo scope) and paste it into Settings → Sync.',
   },
 ];
 ---
 
 <Layout
-  title="Sync, History & Backup in SoloMD — GitHub sync, E2EE, Git snapshots"
-  description="Set up GitHub sync in SoloMD with a fine-grained personal access token, enable optional end-to-end encryption, use automatic Git history snapshots with rollback, and troubleshoot 401 / push errors."
+  title="Sync, History & Encrypted Cloud Backup in SoloMD — WebDAV, OneDrive, Dropbox, GitHub & Git"
+  description="Set up SoloMD's three zero-knowledge Personal Cloud Drive E2EE sync modes (WebDAV, Local Encrypted Vault Folder, and Direct Cloud OpenAPI), GitHub sync with E2EE, and local Git history snapshots."
   lang={lang}
 >
   <Header lang={lang} />
@@ -34,78 +38,74 @@ const FAQ = [
         <a href="/">Home</a> / <a href="/docs/">Docs</a> / <span>Sync &amp; History</span>
       </nav>
 
-      <h1>Sync, History &amp; Backup</h1>
-      <p class="lead">Your notes are plain files in a folder — these features keep that folder safe and everywhere.</p>
+      <h1>Sync, History &amp; Encrypted Cloud Backup</h1>
+      <p class="lead">
+        Your notes remain plain <code>.md</code> files on disk — and before anything leaves your device for a cloud drive or remote host, <code>Argon2id + XChaCha20-Poly1305</code> zero-knowledge encryption keeps it private.
+      </p>
 
-      <h2>Git history (local snapshots)</h2>
-      <ul>
-        <li>Settings → History → <em>Initialize Git History</em> turns the workspace into a local Git repo. No account needed; nothing leaves your machine.</li>
-        <li>With <em>auto-commit on save</em> on, every save becomes a snapshot. “Save Snapshot Now” commits on demand.</li>
-        <li>The History pane shows the timeline per note; one click compares or rolls back to any snapshot.</li>
-      </ul>
+      <h2>1. Personal Cloud Drive End-to-End Encrypted Sync (3 Modes)</h2>
+      <p>
+        Open <strong>Settings → Sync</strong> (or <strong>File → Sync &amp; History</strong>) to configure any of the three personal cloud drive sync modes:
+      </p>
 
-      <h2>GitHub sync — setup</h2>
+      <h3>Mode 1: WebDAV End-to-End Encrypted Sync (Nextcloud, Synology NAS, Nutstore, AList)</h3>
       <ol>
-        <li><strong>Create a Personal Access Token</strong> at <code>github.com → Settings → Developer settings → Personal access tokens</code>. Two kinds work:
+        <li>Open <strong>Settings → Sync → WebDAV Sync</strong>.</li>
+        <li><strong>Pick a preset or enter your WebDAV server URL</strong>:
           <ul>
-            <li><em>Fine-grained</em> (recommended): select the sync repository (or “All repositories”), and under <em>Repository permissions</em> set <strong>Contents: Read and write</strong>. Mind the expiration date you pick.</li>
-            <li><em>Classic</em>: check the <strong><code>repo</code></strong> scope.</li>
+            <li><strong>Nextcloud / ownCloud</strong>: <code>https://your-domain/remote.php/dav/files/username/</code></li>
+            <li><strong>Nutstore (坚果云)</strong>: <code>https://dav.jianguoyun.com/dav/</code> with your email and a generated <em>Third-Party App Password</em>.</li>
+            <li><strong>Synology NAS / AList / OpenList</strong>: your WebDAV endpoint URL (e.g. <code>http://host:5244/dav/</code>).</li>
           </ul>
         </li>
-        <li>In SoloMD: Settings → Sync → paste the token. SoloMD verifies it and shows your GitHub user.</li>
-        <li><strong>Link a repository</strong> — pick an existing one, or let SoloMD create a private vault repo for you.</li>
-        <li>Push / pull from the toolbar pill or the command palette; optional auto-push / auto-pull run in the background.</li>
+        <li><strong>Remote folder</strong>: e.g. <code>/SoloMD</code>.</li>
+        <li><strong>Enable End-to-End Encryption (recommended)</strong>: toggle on E2EE and set an encryption passphrase so every note is encrypted locally before upload.</li>
+        <li>Click <strong>Test Connection</strong>, then use <strong>Upload to WebDAV</strong> or <strong>Download from WebDAV</strong> across your devices.</li>
       </ol>
 
-      <h2>End-to-end encryption (optional)</h2>
+      <h3>Mode 2: Local Cloud Drive Encrypted Vault Folder (OneDrive, iCloud, Dropbox, Google Drive, Baidu, Aliyun, Quark)</h3>
       <p>
-        Enable E2EE with a passphrase and SoloMD pushes an <em>encrypted shadow copy</em>
-        instead of plaintext — GitHub stores ciphertext only. The passphrase never
-        leaves your machine; without it the remote cannot be decrypted (there is no
-        recovery). Share links are disabled for encrypted workspaces by design.
+        If you already run a desktop cloud drive client that syncs a local folder on your computer:
       </p>
+      <ol>
+        <li>Open <strong>Settings → Sync → Local Cloud Drive Encrypted Vault</strong>.</li>
+        <li>Click <strong>Auto-Detect Cloud Drive Folders</strong> (automatically finds iCloud Drive, OneDrive, Dropbox, Google Drive, Baidu Netdisk, Aliyun Drive, Quark Drive, and Nutstore folders on your machine) or pick any custom synced folder.</li>
+        <li>Set your <strong>encryption passphrase</strong>.</li>
+        <li>Click <strong>Encrypt &amp; Backup to Vault Folder</strong>: SoloMD encrypts every note in your workspace into <code>.enc</code> ciphertext inside that synced folder, and your cloud client uploads it in the background.</li>
+        <li><strong>Restore on another computer</strong>: select the synced vault folder, enter your passphrase, and click <strong>Decrypt &amp; Restore to Workspace</strong>.</li>
+      </ol>
 
-      <h2>Share links</h2>
+      <h3>Mode 3: Direct Cloud Drive OpenAPI Sync (Clientless &amp; Hides Filenames)</h3>
       <p>
-        “Copy Share Link for This Note” produces a URL that renders the note via the
-        repo — handy for sending a single note to someone without giving repo access.
+        Want cloud backup without installing a desktop sync client — and without exposing your filenames or folder hierarchy to the cloud provider?
       </p>
+      <ol>
+        <li>Open <strong>Settings → Sync → Direct Cloud Drive OpenAPI</strong>.</li>
+        <li>Select your provider: <strong>Microsoft OneDrive (Graph API)</strong>, <strong>Dropbox API</strong>, <strong>Baidu Netdisk OpenAPI</strong>, or <strong>Aliyun Drive OpenAPI</strong>.</li>
+        <li>Enter your <strong>Access Token</strong>, remote bundle path (e.g. <code>/apps/SoloMD/solomd-vault.enc</code>), and your <strong>encryption passphrase</strong>.</li>
+        <li>Click <strong>Pack, Encrypt &amp; Upload</strong>: SoloMD compresses and encrypts your entire workspace into a single <code>solomd-vault.enc</code> ciphertext bundle and uploads it directly via HTTPS API. Even your note titles, count, and directory tree remain completely hidden.</li>
+        <li>On any other device, enter the same token and passphrase and click <strong>Download &amp; Decrypt to Workspace</strong>.</li>
+      </ol>
 
-      <h2>Troubleshooting</h2>
-      <table class="kb-table">
-        <thead><tr><th>Error</th><th>Cause and fix</th></tr></thead>
-        <tbody>
-          <tr>
-            <th>401 / Bad credentials</th>
-            <td>GitHub rejected the token itself. Checklist: ① token expired — fine-grained PATs default to 30–90 days, check <code>github.com → Settings → Developer settings</code>; ② you pasted an account <em>password</em> or OAuth code instead of a PAT; ③ the token was regenerated or revoked (old value stops working immediately, and GitHub auto-revokes tokens found in public code); ④ a corporate/VPN proxy strips the <code>Authorization</code> header. Create a fresh token and paste it again — SoloMD trims stray spaces automatically.</td>
-          </tr>
-          <tr>
-            <th>403 / 404 on a private repo</th>
-            <td>The token is valid but lacks access: fine-grained PAT missing <em>Contents: Read and write</em> or not granted to that repository; classic PAT missing the <code>repo</code> scope; or an organization repo behind SAML SSO where the token hasn't been authorized for the org.</td>
-          </tr>
-          <tr>
-            <th>“Remote has newer commits”</th>
-            <td>Someone (or another device) pushed first. Pull, resolve if asked, then push again.</td>
-          </tr>
-          <tr>
-            <th>“Protected branch”</th>
-            <td>The target branch has protection rules — push to a different branch or relax the rule for your vault repo.</td>
-          </tr>
-        </tbody>
-      </table>
+      <h2>2. Local Git History (Automatic Snapshots &amp; One-Click Rollback)</h2>
+      <ul>
+        <li>Go to <strong>Settings → History → Initialize Git History</strong> to turn your workspace into a local Git repository — no account required, nothing leaves your machine.</li>
+        <li>Turn on <strong>Auto-commit on save</strong> so every save creates a snapshot, or trigger “Save Snapshot Now” anytime.</li>
+        <li>Open the <strong>History</strong> pane in the right sidebar to inspect the per-note timeline, view diffs, or roll back to any snapshot in one click.</li>
+      </ul>
 
-      <h2>Syncing without GitHub</h2>
-      <p>
-        Because notes are plain files, any folder-sync tool works: iCloud Drive,
-        Dropbox, Syncthing, OneDrive — point SoloMD at the synced folder on each
-        device. On Android, open the same folder via the system file picker; on iOS,
-        use a Files-app location.
-      </p>
-      <p>
-        Using iCloud? There's a fuller walkthrough — Mac and iPhone steps, cross-device
-        session restore, and what to watch for when two machines edit at once:
-        <a href="/docs/icloud/">Sync with iCloud</a>.
-      </p>
+      <h2>3. GitHub Sync (with Optional E2EE)</h2>
+      <ol>
+        <li><strong>Create a Personal Access Token</strong> at <code>github.com → Settings → Developer settings → Personal access tokens</code> (Fine-grained with <strong>Contents: Read and write</strong>, or Classic with <strong><code>repo</code></strong> scope).</li>
+        <li>Paste the token in <strong>Settings → Sync → GitHub</strong> and link an existing repo or let SoloMD create a private vault repository.</li>
+        <li><strong>Optional E2EE</strong>: enable a passphrase so SoloMD pushes an encrypted shadow copy to GitHub instead of plaintext.</li>
+      </ol>
+
+      <h2>4. Mobile Sync (iCloud / Android SAF / Syncthing)</h2>
+      <ul>
+        <li><strong>iPhone / iPad + Mac (iCloud)</strong>: place your notes folder in iCloud Drive and open the same folder via the Files app on iOS/iPadOS (see <a href="/docs/icloud/">Sync with iCloud</a>).</li>
+        <li><strong>Android + Desktop (Syncthing / FolderSync)</strong>: grant folder access via Android’s system folder picker; SoloMD automatically reloads externally synced changes when you return to the app.</li>
+      </ul>
 
       <CompareFaq heading="Frequently asked questions" items={FAQ} />
       <Giscus />

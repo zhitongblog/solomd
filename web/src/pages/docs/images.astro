@@ -8,8 +8,8 @@ const lang = 'en' as const;
 ---
 
 <Layout
-  title="Images & Attachments — where pasted screenshots go, and how to change it"
-  description="How SoloMD saves pasted and dropped images: the default _assets folder, renaming it to images, per-note folders, and Typora-compatible custom path templates like ./images/${filename}/."
+  title="Images, Sizing & Image Hosting — Attachment Folders, Width Presets, Typora Templates & S3/GitHub Upload"
+  description="How SoloMD saves, resizes, and uploads images: _assets and per-note folders, Typora path templates, pasted image default width presets, right-click scaling, PicGo/S3/GitHub hosting, and anti-hotlink rendering."
   lang={lang}
 >
   <Header lang={lang} />
@@ -19,104 +19,57 @@ const lang = 'en' as const;
         <a href="/">Home</a> / <a href="/docs/">Docs</a> / <span>Images &amp; Attachments</span>
       </nav>
 
-      <h1>Images &amp; Attachments</h1>
-      <p class="lead">Where pasted screenshots land — and how to put them exactly where you want.</p>
+      <h1>Images, Sizing &amp; Image Hosting</h1>
+      <p class="lead">Where pasted screenshots land, how to control their display size, and how to upload to an image host.</p>
 
-      <h2>What happens when you paste</h2>
+      <h2>1. What happens when you paste</h2>
       <p>
-        Copy a screenshot to the clipboard, put the caret in a note, press
-        <kbd>Ctrl/⌘ V</kbd> — SoloMD writes the image file to disk next to your note and
-        inserts the Markdown link for you. Dragging an image file into the editor does the
-        same. By default the file goes into an <code>_assets/</code> folder in the same
-        directory as the note:
+        Copy a screenshot to the clipboard, place the caret in a note, and press <kbd>Ctrl/⌘ + V</kbd> (or drag an image file into the window) — SoloMD writes the image next to your note and inserts a relative Markdown link (automatically encoding spaces and normalizing Windows backslashes):
       </p>
       <pre><code>my-folder/
 ├── note.md          ← you pasted here
 └── _assets/
-    └── image-20260806-093012.png</code></pre>
-      <p>
-        Everything stays local and relative — the vault remains a plain folder you can
-        sync, zip, or open in any other editor.
-      </p>
+    └── image-20261102-093012.png</code></pre>
 
-      <h2>Rename <code>_assets</code> to <code>images</code> (or anything else)</h2>
-      <p>
-        Open <strong>Settings → Writing</strong>. With
-        <em>“Where to save pasted/dropped images”</em> on its default
-        (<em>Shared <code>_assets/</code> folder per directory</em>), a
-        <strong>“Shared attachments folder name”</strong> field appears below it.
-        Type <code>images</code> and you're done — every image pasted from now on is saved
-        to <code>images/</code> next to the note, and links are inserted as
-        <code>![](images/…)</code>.
-      </p>
-      <p>
-        Slashes are stripped from this field — it's a plain folder name, not a path. For
-        paths and per-note folders, use Custom mode below.
-      </p>
-
-      <h2>The three attachment modes</h2>
+      <h2>2. Three attachment folder modes</h2>
+      <p>Open <strong>Settings → Writing</strong> and choose <em>“Where to save pasted/dropped images”</em>:</p>
       <table class="kb-table">
         <thead><tr><th>Mode</th><th>Images go to</th><th>Best for</th></tr></thead>
         <tbody>
           <tr>
             <th>Shared (default)</th>
-            <td>One folder per directory — <code>_assets/</code>, or whatever name you set above.</td>
-            <td>Simple vaults; matches SoloMD's pre-v4.3.5 layout.</td>
+            <td>One folder per directory — <code>_assets/</code> by default, or rename it to <code>images</code> (or any name) in the field below.</td>
+            <td>Simple vaults; <code>_assets</code> is hidden in the file tree by default to reduce clutter.</td>
           </tr>
           <tr>
             <th>Per-file</th>
-            <td><code>&lt;note&gt;.assets/</code> next to each note — <code>foo.md</code> gets <code>foo.assets/</code>.</td>
-            <td>Keeping each note self-contained. Rename <code>foo.md</code> → <code>bar.md</code> and SoloMD renames <code>foo.assets/</code> too, rewriting the links inside the note.</td>
+            <td><code>&lt;note&gt;.assets/</code> next to each note (e.g. <code>foo.md</code> gets <code>foo.assets/</code>).</td>
+            <td>Keeping each note self-contained; renaming <code>foo.md</code> in the file tree renames <code>foo.assets/</code> and rewrites links automatically.</td>
           </tr>
           <tr>
             <th>Custom (Typora-style)</th>
-            <td>A path template you write, e.g. <code>./images/$&#123;filename&#125;/</code>.</td>
-            <td>Migrated Typora vaults, or any layout the other two modes can't express.</td>
+            <td>A path template supporting <code>$&#123;filename&#125;</code>, such as <code>./images/$&#123;filename&#125;/</code> or <code>../attachments/</code>.</td>
+            <td>Vaults migrated from Typora.</td>
           </tr>
         </tbody>
       </table>
 
-      <h2>Custom path templates</h2>
+      <h2>3. Default pasted image width &amp; right-click resizing</h2>
+      <ul>
+        <li><strong>Default width preset</strong>: in <strong>Settings → Writing → Default pasted image width</strong>, set a default scale (e.g. <code>50%</code>, <code>67%</code>, <code>80%</code>, or a pixel width) so high-DPI screenshots don’t overwhelm the page.</li>
+        <li><strong>Right-click resize &amp; Copy Image</strong>: right-click any image in the editor to resize it on the spot (25% / 50% / 67% / 80% / 100%) or copy the bitmap back to the system clipboard.</li>
+        <li><strong>Side-by-side inline images</strong>: multiple inline <code>&lt;img&gt;</code> tags on the same line stay side by side in both Live Edit and Preview.</li>
+      </ul>
+
+      <h2>4. Image hosting (PicGo / SM.MS / S3 / R2 / GitHub)</h2>
       <p>
-        Switch <em>“Where to save pasted/dropped images”</em> to
-        <em>Custom path (Typora-style)</em> and a <strong>“Custom image path”</strong>
-        field appears. The template supports one variable —
-        <code>$&#123;filename&#125;</code>, the note's file name without extension
-        (<code>foo.md</code> → <code>foo</code>):
-      </p>
-      <table class="kb-table">
-        <thead><tr><th>Template</th><th>Result for <code>foo.md</code></th></tr></thead>
-        <tbody>
-          <tr><td><code>./images/</code></td><td>All images in the folder go to <code>images/</code> next to the note.</td></tr>
-          <tr><td><code>./images/$&#123;filename&#125;/</code></td><td>Per-note subfolder: <code>images/foo/screenshot.png</code>.</td></tr>
-          <tr><td><code>../attachments/</code></td><td>A folder one level above the note.</td></tr>
-          <tr><td><code>/Users/you/pictures/</code> or <code>C:\pictures\</code></td><td>Absolute path — one central folder for every note.</td></tr>
-        </tbody>
-      </table>
-      <p>
-        Relative templates resolve against the note's own directory. The inserted Markdown
-        link always uses forward slashes, so links render correctly on Windows too. The
-        syntax matches Typora's “copy image to custom folder” setting — vaults migrated
-        from Typora can keep their existing template as-is.
+        Configure <strong>Settings → Image Upload</strong> to upload images to <strong>PicGo</strong>, <strong>SM.MS</strong>, <strong>S3-compatible object storage (AWS S3, Cloudflare R2, MinIO, OSS, COS)</strong>, or a <strong>GitHub repository</strong>. You can upload automatically on paste or batch-upload local images in the current note from the command palette.
       </p>
 
-      <h2>Good to know</h2>
+      <h2>5. Anti-hotlink external images &amp; Android SAF support</h2>
       <ul>
-        <li>
-          <strong>Changing the setting only affects new pastes.</strong> Existing images and
-          links are left untouched. To migrate an old vault, rename the folder on disk and
-          search-and-replace <code>_assets/</code> → <code>images/</code> across your notes
-          (global search is <kbd>Ctrl/⌘ ⇧ F</kbd>).
-        </li>
-        <li>
-          <strong>Notes without a file yet</strong> (unsaved tabs) save pasted images to a
-          temp folder; the link is rewritten once you save the note.
-        </li>
-        <li>
-          <strong>Prefer an image host?</strong> SoloMD can also upload pasted images to
-          PicGo, SM.MS, S3 or GitHub and insert the URL instead — see
-          <a href="/docs/editor/">the editor guide</a> and Settings → Image upload.
-        </li>
+        <li><strong>Anti-hotlink <code>no-referrer</code></strong>: SoloMD sets <code>referrerpolicy="no-referrer"</code> before loading external images and decodes HTML-escaped <code>&amp;amp;</code> query strings, so Gitee, signed cloud URLs, and anti-hotlink image hosts render cleanly across Live Edit and Preview.</li>
+        <li><strong>Android &amp; iOS</strong>: pick photos from the system picker on Android SAF vaults and resolve relative paths (<code>./pic/foo.png</code>, <code>../assets/bar.jpg</code>) seamlessly in Live Edit, Preview, and PDF/DOCX exports.</li>
       </ul>
 
       <Giscus />

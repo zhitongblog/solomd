@@ -9,36 +9,65 @@ const lang = 'en' as const;
 type Row = [string, string, string];
 const file: Row[] = [
   ['New Markdown file', 'Ctrl + N', '⌘ N'],
+  ['New note in selected folder', 'Ctrl + Alt + Shift + N', '⌘ ⌥ ⇧ N'],
   ['New plain text file', 'Ctrl + Alt + N', '⌘ ⌥ N'],
   ['Open file', 'Ctrl + O', '⌘ O'],
   ['Save', 'Ctrl + S', '⌘ S'],
   ['Save As…', 'Ctrl + Shift + S', '⌘ ⇧ S'],
-  ['Print', 'Ctrl + P', '⌘ P'],
+  ['Print (native system dialog)', 'Ctrl + P', '⌘ P'],
   ['Close tab', 'Ctrl + W', '⌘ W'],
+  ['Reopen closed tab', 'Ctrl + Shift + T', '⌘ ⇧ T'],
   ['New window', 'Ctrl + Shift + N', '⌘ ⇧ N'],
 ];
 const view: Row[] = [
-  ['Toggle file tree', 'Ctrl + B', '⌘ B'],
+  ['Switch tabs by Most Recently Used (MRU)', 'Ctrl + Tab / Ctrl + Shift + Tab', 'Ctrl + Tab / Ctrl + Shift + Tab'],
+  ['Switch tabs by visual tab-bar order', 'Ctrl + PageUp / PageDown', '⌘ ⇧ [ / ⌘ ⇧ ]'],
+  ['Toggle file tree (default preset)', 'Ctrl + B', '⌘ B'],
   ['Toggle outline', 'Ctrl + Shift + O', '⌘ ⇧ O'],
-  ['Cycle view mode (edit / split / preview)', 'Ctrl + Shift + P', '⌘ ⇧ P'],
-  ['Split pane', 'Ctrl + \\', '⌘ \\'],
-  ['Command palette', 'Ctrl + Shift + K', '⌘ ⇧ K'],
-  ['Search in folder', 'Ctrl + Shift + F', '⌘ ⇧ F'],
+  ['Toggle right sidebar', 'Ctrl + Alt + B', '⌘ ⌥ B'],
+  ['Cycle view mode (Live / Source / Split / Preview)', 'Ctrl + Shift + P', '⌘ ⇧ P'],
+  ['Flip between Live Edit and Source mode', 'Ctrl + Alt + /', '⌘ ⌥ /'],
+  ['Toggle Preview mode', 'Ctrl + Alt + V', '⌘ ⌥ V'],
+  ['Split pane right', 'Ctrl + \\', '⌘ \\'],
+  ['Focus mode (dim other paragraphs)', 'F8', 'F8'],
+  ['Typewriter mode (keep caret centered)', 'F9', 'F9'],
+  ['Zoom UI in / out / reset (with % HUD)', 'Ctrl + + / - / 0', '⌘ + / - / 0'],
+  ['Command palette (fuzzy search all commands)', 'Ctrl + Shift + K', '⌘ ⇧ K'],
   ['Settings', 'Ctrl + ,', '⌘ ,'],
-  ['Markdown cheatsheet', 'F1', 'F1 or ⌘ /'],
+  ['Searchable shortcuts & Markdown cheatsheet', 'F1', 'F1 or ⌘ /'],
+];
+const formatting: Row[] = [
+  ['Bold (or Ctrl/⌘+B with Writer preset)', 'Ctrl + Shift + B (or Ctrl + B)', '⌘ ⇧ B (or ⌘ B)'],
+  ['Italic', 'Ctrl + I', '⌘ I'],
+  ['Strikethrough', 'Ctrl + Shift + X', '⌘ ⇧ X'],
+  ['Highlight (==text==)', 'Ctrl + Shift + H', '⌘ ⇧ H'],
+  ['Inline code (`code`)', 'Ctrl + E', '⌘ E'],
+  ['Insert link', 'Ctrl + K', '⌘ K'],
+  ['Insert fenced code block (```)', 'Ctrl + Shift + C', '⌘ ⇧ C'],
+  ['Headings 1–6 (H1–H6)', 'Ctrl + 1 … 6', '⌘ 1 … 6'],
+  ['Promote / Demote heading level', 'Ctrl + = / Ctrl + -', '⌘ = / ⌘ -'],
+  ['Convert to plain paragraph', 'Ctrl + 0', '⌘ 0'],
+  ['Blockquote (> )', 'Ctrl + Shift + Q', '⌘ ⇧ Q'],
+  ['Bullet / Ordered / Task list', 'Ctrl + Shift + U / O / L', '⌘ ⇧ U / O / L'],
+  ['Fold / Unfold current section or code block', 'Ctrl + Shift + [ / ] (rebindable)', '⌘ ⌥ [ / ] (rebindable)'],
 ];
 const editing: Row[] = [
   ['Undo / Redo', 'Ctrl + Z / Ctrl + Y', '⌘ Z / ⌘ ⇧ Z'],
-  ['Copy as rich HTML', 'Ctrl + Shift + C', '⌘ ⇧ C'],
-  ['Find in file', 'Ctrl + F', '⌘ F'],
+  ['Select All (inside code fence: 1st press selects code, 2nd selects all)', 'Ctrl + A', '⌘ A'],
+  ['Soft line break inside list item (preserves list indentation)', 'Shift + Enter', 'Shift + Enter'],
+  ['Find in file (press again to close)', 'Ctrl + F', '⌘ F'],
   ['Find & Replace', 'Ctrl + H', '⌘ ⌥ F'],
-  ['Toggle word wrap (settings)', '—', '—'],
+  ['Search in workspace folder', 'Ctrl + Shift + F', '⌘ ⇧ F'],
+  ['Open today’s daily note', 'Ctrl + D', '⌘ D'],
+  ['Quick Capture window', 'Ctrl + Alt + Shift + M', '⌘ ⌥ ⇧ M'],
+  ['Formula editor', 'Ctrl + Alt + M', '⌘ ⌥ M'],
+  ['AI rewrite selection', 'Ctrl + J', '⌘ J'],
 ];
 ---
 
 <Layout
-  title="SoloMD Keyboard Shortcuts — Complete Reference"
-  description="All keyboard shortcuts for SoloMD on Mac, Windows, and Linux. File, view, editing, and navigation commands."
+  title="SoloMD Keyboard Shortcuts — Complete Reference & Customization"
+  description="All keyboard shortcuts for SoloMD on Mac, Windows, and Linux: file operations, MRU tab switching, Writer preset (Ctrl+B bold), Markdown formatting, two-stage code block Select All, and mouse tips."
   lang={lang}
 >
   <Header lang={lang} />
@@ -49,8 +78,16 @@ const editing: Row[] = [
       </nav>
 
       <h1>Keyboard Shortcuts</h1>
-      <p class="lead">Every SoloMD shortcut, grouped by category. Windows / Linux on the left,
-        macOS on the right.</p>
+      <p class="lead">
+        Every shortcut in SoloMD can be rebound in <strong>Settings → Shortcuts</strong>, and pressing <kbd>F1</kbd> opens a searchable live table of your active bindings.
+      </p>
+
+      <h2>Prefer Ctrl/⌘ + B for Bold? (Writer Preset)</h2>
+      <p>
+        By default, <kbd>Ctrl/⌘ + B</kbd> toggles the file tree and Bold sits on <kbd>Ctrl/⌘ + Shift + B</kbd>.
+        If your hands expect Typora or Word, open <strong>Settings → Shortcuts</strong> and click the
+        <strong>“Writer (Typora / Word)” preset</strong> at the top — it swaps the two with one click (and swaps them back whenever you like).
+      </p>
 
       <h2>File operations</h2>
       <table class="kb-table">
@@ -58,29 +95,39 @@ const editing: Row[] = [
         <tbody>{file.map((r) => <tr><th>{r[0]}</th><td><code>{r[1]}</code></td><td><code>{r[2]}</code></td></tr>)}</tbody>
       </table>
 
-      <h2>View & navigation</h2>
+      <h2>View, tabs &amp; navigation</h2>
       <table class="kb-table">
         <thead><tr><th>Action</th><th>Windows / Linux</th><th>macOS</th></tr></thead>
         <tbody>{view.map((r) => <tr><th>{r[0]}</th><td><code>{r[1]}</code></td><td><code>{r[2]}</code></td></tr>)}</tbody>
       </table>
 
-      <h2>Editing</h2>
+      <h2>Markdown formatting &amp; folding</h2>
+      <p>
+        Every formatting shortcut is a toggle: press once on a selection to apply, press again to remove; with nothing selected, it acts on the word under the caret.
+        Converting a bullet list item or a contiguous group of non-blank lines to an ordered list automatically converts and renumbers the entire contiguous group.
+      </p>
+      <table class="kb-table">
+        <thead><tr><th>Action</th><th>Windows / Linux</th><th>macOS</th></tr></thead>
+        <tbody>{formatting.map((r) => <tr><th>{r[0]}</th><td><code>{r[1]}</code></td><td><code>{r[2]}</code></td></tr>)}</tbody>
+      </table>
+
+      <h2>Editing, search &amp; productivity</h2>
       <table class="kb-table">
         <thead><tr><th>Action</th><th>Windows / Linux</th><th>macOS</th></tr></thead>
         <tbody>{editing.map((r) => <tr><th>{r[0]}</th><td><code>{r[1]}</code></td><td><code>{r[2]}</code></td></tr>)}</tbody>
       </table>
 
+      <h2>Mouse tips</h2>
+      <ul>
+        <li><strong><kbd>Ctrl/⌘</kbd> + Click on a link</strong>: opens the URL directly in your default browser; a plain click places the caret inside the link text for editing.</li>
+        <li><strong>Double-click CJK text</strong>: segments Chinese, Japanese, and Korean words with <code>Intl.Segmenter</code> so double-clicking selects the word rather than the whole clause.</li>
+        <li><strong>Triple-click a line</strong>: selects the full line <strong>without its trailing newline character</strong>, so copying and pasting never inserts an unwanted blank line.</li>
+        <li><strong>Click any table cell in Live Edit</strong>: places the caret directly inside that exact row and column cell.</li>
+      </ul>
+
       <h2>Vim mode</h2>
       <p>
-        Enable in Settings → Vim mode. Once on, standard Vim modes (normal / insert /
-        visual), motions (<code>h j k l w b e</code>), and operators (<code>d y c</code>)
-        are available. Leader key is <code>\</code>.
-      </p>
-
-      <h2>Command palette</h2>
-      <p>
-        Hit <code>Ctrl + Shift + K</code> (⌘⇧K on Mac) to open the command palette —
-        fuzzy search any action. Handy for shortcuts you forgot.
+        Enable in <strong>Settings → Editor → Vim mode</strong>. Standard Vim modes (normal / insert / visual), motions (<code>h j k l w b e</code>), and operators (<code>d y c</code>) are available. Leader key is <code>\</code>.
       </p>
     </article>
     <Giscus lang={lang} />
@@ -100,5 +147,5 @@ const editing: Row[] = [
   .kb-table thead th { background: #fafafa; font-weight: 600; }
   .kb-table tbody th { font-weight: 500; width: 44%; }
   .docs-article code { background: #f5f5f0; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
-  .docs-article p { line-height: 1.7; margin: 12px 0; }
+  .docs-article p, .docs-article li { line-height: 1.7; margin: 10px 0; }
 </style>

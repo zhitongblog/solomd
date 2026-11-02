@@ -8,8 +8,8 @@ const lang = 'zh' as const;
 ---
 
 <Layout
-  title="SoloMD 工作区与组织 — 大纲、搜索、标签、反向链接、保存的视图"
-  description="用 SoloMD 组织一个 Markdown 笔记文件夹:文件树、大纲导航、工作区搜索、标签、反向链接、类型化关系、Bases 属性表格、保存的视图、日记与收集箱。"
+  title="SoloMD 工作区与组织 — 文件树排序、大纲、搜索、标签、反向链接、Bases 与手机工作区"
+  description="用 SoloMD 组织一个 Markdown 笔记文件夹：支持自定义拖拽排序的文件树、大纲跳转、工作区全文与语义搜索、标签、反向链接、Bases 属性表格、日记、收集箱以及 iOS/Android 文件夹授权。"
   lang={lang}
 >
   <Header lang={lang} />
@@ -20,66 +20,55 @@ const lang = 'zh' as const;
       </nav>
 
       <h1>工作区与组织</h1>
-      <p class="lead">打开一次文件夹，下面的一切都建立在它之上。</p>
+      <p class="lead">打开一次文件夹，文件树、大纲、双向链接、属性表与全局搜索即刻就绪。</p>
 
-      <h2>文件树</h2>
+      <h2>一、文件树（排序、拖拽、右键快捷操作）</h2>
       <ul>
-        <li><kbd>Ctrl/⌘ B</kbd> 显示 / 隐藏。就地新建、重命名、移动、删除文件和文件夹（删除会进系统回收站）。</li>
-        <li>过长的文件名默认中间省略 —— 在设置里开启<em>文件树显示完整文件名</em>可改为换行显示。</li>
-        <li>非 Markdown 文档（PDF、DOCX……）可以在打开时转换为 Markdown，也可以用系统默认应用打开。</li>
+        <li><strong>显示与隐藏</strong>：按 <kbd>Ctrl/⌘ + B</kbd>（或点击窗口顶栏左侧的侧栏收起图标）切换文件树显示。</li>
+        <li><strong>四种文件排序方式</strong>：支持按<strong>名称</strong>、<strong>创建时间</strong>、<strong>修改时间</strong>排序，或直接<strong>鼠标拖拽文件排出你自己的自定义顺序</strong>（新建文件自动排在末尾）。</li>
+        <li><strong>就地管理与快捷键</strong>：在目标文件夹内就地输入名称新建笔记（<kbd>Ctrl/⌘ + Alt + Shift + N</kbd>）或子文件夹；按 <kbd>F2</kbd> 重命名，<kbd>Del</kbd> 删除（进入系统回收站，删除前弹窗确认）；支持右键<strong>「一键展开 / 折叠全部子目录」</strong>与<strong>「复制相对路径」</strong>。</li>
+        <li><strong>贴心显示细节</strong>：已打开的文件旁显示圆点指示；可选开启<strong>「显示文件夹内文件数量角标」</strong>、<strong>「双击打开文件」</strong>；存放图片的附件目录（<code>_assets</code>、<code>*.assets</code>）默认自动隐藏保持清爽（开启「显示隐藏文件」后可见）；切换标签页时文件树自动定位并高亮当前文件（可在设置中关闭）。</li>
       </ul>
 
-      <h2>大纲</h2>
+      <h2>二、大纲与快速跳转</h2>
       <ul>
-        <li><kbd>Ctrl/⌘ Shift O</kbd> 显示 / 隐藏。点击标题跳转；小节可折叠。</li>
-        <li>跳转标记：按标题旁显示的字母即可用键盘跳转；<code>g</code> + 行号跳到指定行。标记样式（字母 / 数字 / 无）可配置。</li>
+        <li><kbd>Ctrl/⌘ + Shift + O</kbd> 显示 / 隐藏大纲面板。点击标题精准跳转（在分栏与预览下均精准对齐标题并跟随阅读位置高亮）；章节可折叠。</li>
+        <li><strong>键盘跳转标记</strong>：按标题旁显示的字母即可用键盘瞬间跳转；按 <code>g</code> + 行号跳到指定行。标记样式（字母 / 数字 / 无）及大纲停靠在左侧或右侧均可配置。</li>
       </ul>
 
-      <h2>右侧栏面板</h2>
+      <h2>三、右侧栏多功能面板</h2>
       <p>
-        右键侧栏（或用命令面板）开关各个面板；拖拽调整顺序和大小。
-        <kbd>Ctrl/⌘ Alt B</kbd> 隐藏整条右侧栏 —— 打开任意面板即可恢复。
+        右键侧栏（或用命令面板）开关各个面板；拖拽调整顺序和大小。<kbd>Ctrl/⌘ + Alt + B</kbd> 隐藏整条右侧栏。
       </p>
       <table class="kb-table">
         <thead><tr><th>面板</th><th>显示内容</th></tr></thead>
         <tbody>
-          <tr><th>搜索</th><td>工作区文件夹的全文搜索。</td></tr>
-          <tr><th>反向链接</th><td>所有链接到当前笔记的笔记。</td></tr>
-          <tr><th>关系</th><td>类型化的正向 + 反向链接（来自 front-matter 的 <code>depends_on</code>、<code>part_of</code>……）。</td></tr>
-          <tr><th>标签</th><td>工作区里的全部 <code>#标签</code>；点击筛选。</td></tr>
-          <tr><th>邻域</th><td>以当前笔记为中心的关系浏览器 —— 点击即可导航，也可切换到任意相邻笔记。</td></tr>
-          <tr><th>类型</th><td>按 <code>type</code> 属性分组的笔记，每种类型有独立视图。</td></tr>
-          <tr><th>历史</th><td>当前笔记的 Git 快照时间线（见<a href="/zh/docs/sync/">同步与历史</a>）。</td></tr>
-          <tr><th>属性</th><td>front-matter 检视器 —— 以表单方式编辑笔记属性。</td></tr>
-          <tr><th>智能体</th><td>和你的笔记仓库对话（见 <a href="/zh/docs/ai/">AI 功能</a>）。</td></tr>
+          <tr><th>搜索 (<kbd>Ctrl/⌘+Shift+F</kbd>)</th><td>工作区文件夹的 ripgrep 级极速全文搜索（支持大小写、全词、正则表达式）。</td></tr>
+          <tr><th>反向链接</th><td>所有通过 <code>[[笔记]]</code>、<code>[[文件夹/笔记]]</code> 或 <code>[[笔记.md]]</code> 链接到当前笔记的笔记（自动忽略代码块内的示例）。</td></tr>
+          <tr><th>关系与邻域图谱</th><td>解析 front-matter 中的类型化关系（如 <code>depends_on</code>、<code>part_of</code>）并提供以当前笔记为中心的交互式关系网络图。</td></tr>
+          <tr><th>标签</th><td>汇总工作区里的全部 <code>#标签</code>（支持中文标签，自动过滤表格与代码中的十六进制颜色码 <code>#fff</code>）。</td></tr>
+          <tr><th>历史</th><td>当前笔记的本地 Git 快照时间线，支持一键对比差异与回滚（见 <a href="/zh/docs/sync/">同步与历史</a>）。</td></tr>
+          <tr><th>属性</th><td>YAML front-matter 可视化表单编辑器。</td></tr>
+          <tr><th>智能体 (Agent)</th><td>与你的整个笔记仓库多轮对话、检索或生成内容（见 <a href="/zh/docs/ai/">AI 功能</a>）。</td></tr>
         </tbody>
       </table>
 
-      <h2>Bases：把笔记当表格看</h2>
-      <p>
-        命令面板 → “工作区：属性表格 (Bases)”，把每篇笔记作为一行，呈现在一张由
-        front-matter 属性构成、可排序可筛选的表格里 ——
-        相当于架在普通文件之上的轻量数据库视图。
-      </p>
-
-      <h2>保存的视图</h2>
-      <p>
-        持久化的筛选笔记列表（按标签、类型、属性、文件夹……），以
-        <code>.solomd/views/*.yml</code> 形式存放在工作区里。在命令面板创建；
-        它们会出现在左侧栏文件树的下方。
-      </p>
-
-      <h2>日记与收集箱</h2>
+      <h2>四、Bases 属性表格与保存的视图</h2>
       <ul>
-        <li><kbd>Ctrl/⌘ D</kbd> 打开今天的日记（在你配置的日记文件夹里按需创建）；昨天 / 明天各有一条命令直达。</li>
-        <li><strong>收集箱</strong>汇集各种快速捕获的内容 —— 包括浏览器扩展 Web Clipper 和 HTTP 捕获接口发进来的笔记 —— “标记已整理并前进”会带你逐条清理。</li>
+        <li><strong>Bases（把笔记库当数据库表格看）</strong>：命令面板 →「工作区：属性表格 (Bases)」，将每篇笔记作为一行，展示在一张由 front-matter 属性构成、可排序可筛选可原地编辑的表格里。</li>
+        <li><strong>保存的视图 (Saved Views)</strong>：按标签、类型、属性或文件夹保存持久化筛选视图（存放在 <code>.solomd/views/*.yml</code>），固定显示在左侧文件树下方。</li>
       </ul>
 
-      <h2>无处不在的搜索</h2>
+      <h2>五、日记、快速记录与收集箱</h2>
       <ul>
-        <li><strong>笔记内：</strong><kbd>Ctrl/⌘ F</kbd>。</li>
-        <li><strong>文件夹内：</strong>搜索面板（ripgrep 级速度，支持正则）。</li>
-        <li><strong>语义搜索 (RAG)：</strong>基于本地向量索引对整个仓库提问 —— 见 <a href="/zh/docs/ai/">AI 功能</a>。</li>
+        <li><strong>每日笔记（<kbd>Ctrl/⌘ + D</kbd>）</strong>：一键打开或按模板创建今天的日记，昨天/明天日记一键直达。</li>
+        <li><strong>快速记录（<kbd>Ctrl/⌘ + Alt + Shift + M</kbd>）与收集箱</strong>：随时呼出轻量记录窗，连同浏览器扩展 Web Clipper 剪藏的网页一起汇入收集箱，通过「标记已整理并前进」逐条归档。</li>
+      </ul>
+
+      <h2>六、iPhone / iPad 与 Android 移动工作区</h2>
+      <ul>
+        <li><strong>iPhone 与 iPad</strong>：可将系统「文件」App 中的任意文件夹（iCloud 云盘、我的 iPhone 或第三方同步盘）选为工作区并跨重启持久记忆；从「文件」App 打开的单篇笔记直接原地编辑保存；触屏长按文件树项或点击 <code>⋯</code> 即可重命名、移动、删除。</li>
+        <li><strong>Android</strong>：完整支持在 SAF 授权工作区目录内直接新建子文件夹、创建日记、粘贴保存图片到 <code>_assets/</code>，并在切回应用时自动刷新 Syncthing 等外部同步工具的修改。</li>
       </ul>
 
       <Giscus />

@@ -22,7 +22,8 @@ const lang = 'en' as const;
           In <strong>v5.0</strong>, alongside GitHub / Gitea sync, we added <strong>three zero-knowledge end-to-end encrypted personal cloud drive backup &amp; sync modes</strong> (sponsored by <em>@tyysoft 太阳雨</em>) — whether you use OneDrive, Dropbox, iCloud, Nutstore, Baidu Netdisk, Aliyun Drive, Nextcloud, or Synology NAS, your cloud provider only ever sees <code>XChaCha20-Poly1305</code> ciphertext.
         </p>
         <div class="sync-cta">
-          <a class="btn btn--primary" href="/whats-new/">Read the v5.0 release notes →</a>
+          <a class="btn btn--primary" href="/docs/sync/">Step-by-step Sync Setup Guide →</a>
+          <a class="btn" href="/whats-new/">v5.0 Release Notes</a>
           <a class="btn" href="/#download">Download SoloMD</a>
         </div>
       </div>
@@ -115,14 +116,14 @@ const lang = 'en' as const;
         <h2>vs. the alternatives</h2>
         <table>
           <thead>
-            <tr><th></th><th>SoloMD v3.0</th><th>Obsidian Sync</th><th>iCloud-only</th></tr>
+            <tr><th></th><th>SoloMD v5.0</th><th>Obsidian Sync</th><th>iCloud-only</th></tr>
           </thead>
           <tbody>
-            <tr><th>Data lives on</th><td>Your GitHub</td><td>Obsidian's servers</td><td>Apple's servers</td></tr>
+            <tr><th>Data lives on</th><td>Your Cloud Drive / WebDAV / GitHub</td><td>Obsidian's servers</td><td>Apple's servers</td></tr>
             <tr><th>Price</th><td>Free</td><td>$96 / year</td><td>Free up to 5 GB</td></tr>
-            <tr><th>End-to-end encrypted</th><td>✅ optional</td><td>✅ optional</td><td>❌</td></tr>
+            <tr><th>End-to-end encrypted</th><td>✅ Argon2id + XChaCha20-Poly1305</td><td>✅ optional</td><td>❌</td></tr>
             <tr><th>Per-file version history</th><td>Full git log</td><td>1 year</td><td>30 days</td></tr>
-            <tr><th>Multi-provider</th><td>GitHub / GitLab / Gitea / custom</td><td>Obsidian only</td><td>Apple only</td></tr>
+            <tr><th>Multi-provider</th><td>OneDrive / Dropbox / Nutstore / Baidu / Aliyun / WebDAV / GitHub</td><td>Obsidian only</td><td>Apple only</td></tr>
             <tr><th>Subscription</th><td>No</td><td>Yes</td><td>Past 5 GB</td></tr>
             <tr><th>Public share link</th><td>✅ built in</td><td>✅ Obsidian Publish ($120/yr)</td><td>❌</td></tr>
           </tbody>

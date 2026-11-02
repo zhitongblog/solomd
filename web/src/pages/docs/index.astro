@@ -9,79 +9,79 @@ const docs = [
   {
     slug: 'getting-started',
     title: 'Getting Started',
-    lead: 'Install, open a folder, tabs, view modes, saving — the three-minute tour.',
+    lead: 'Install, open a folder, MRU tab switching, the four view modes, and one-click updates — the three-minute tour.',
   },
   {
-    slug: 'linux',
-    title: 'Linux Requirements',
-    lead: 'Will SoloMD run on my Linux, and which file do I download? A flowchart and a distro table.',
+    slug: 'sync',
+    title: 'Sync, History & Encrypted Cloud Backup',
+    lead: 'Three Personal Cloud Drive E2EE sync modes (WebDAV, Local Encrypted Vault Folder, Direct Cloud OpenAPI), GitHub sync, and local Git snapshots.',
   },
   {
     slug: 'editor',
     title: 'The Editor',
-    lead: 'Live rendering, images, tables, math, diagrams, Vim, focus & typewriter modes.',
-  },
-  {
-    slug: 'images',
-    title: 'Images & Attachments',
-    lead: 'Where pasted screenshots go — rename _assets, per-note folders, Typora-style path templates.',
-  },
-  {
-    slug: 'workspace',
-    title: 'Workspace & Organization',
-    lead: 'File tree, outline, search, tags, backlinks, saved views, Bases, daily notes, inbox.',
-  },
-  {
-    slug: 'sync',
-    title: 'Sync, History & Backup',
-    lead: 'GitHub sync with optional E2EE, Git snapshots with rollback, and 401 troubleshooting.',
-  },
-  {
-    slug: 'icloud',
-    title: 'Sync with iCloud',
-    lead: 'No account, no plugin — put the notes folder in iCloud Drive. Mac / iPhone steps and conflict caveats.',
-  },
-  {
-    slug: 'ai',
-    title: 'AI Features',
-    lead: 'BYOK providers or local Ollama; agent panel, recipes, rewrite, RAG search.',
-  },
-  {
-    slug: 'settings',
-    title: 'Settings Reference',
-    lead: 'Every option explained — appearance, editor, files, privacy, and how to reset.',
+    lead: 'Live rendering, two-stage Ctrl+A & indented code blocks in lists, exact table cell clicks & Excel paste, auto-numbered headings, math, and whiteboards.',
   },
   {
     slug: 'shortcuts',
     title: 'Keyboard Shortcuts',
-    lead: 'Every shortcut — editing, navigation, view, export, file ops.',
+    lead: 'All 60+ shortcuts, the Typora / Word Writer preset (Ctrl+B for Bold), MRU tab switching, and mouse tips.',
   },
   {
     slug: 'export',
     title: 'Export & Copy',
-    lead: 'PDF, DOCX, HTML, PNG, Print, rich-text copy — when to use each.',
+    lead: 'Vector PDF (with TOC & page numbers), native DOCX, standalone HTML, PNG, Copy as Word, Rich HTML copy, and Excel/Word paste.',
+  },
+  {
+    slug: 'settings',
+    title: 'Settings Reference',
+    lead: 'Settings search with step-to-match, first-line tab titles, missing-file save check, read-only guard, custom themes, and DevTools.',
+  },
+  {
+    slug: 'images',
+    title: 'Images, Sizing & Image Hosting',
+    lead: 'Where pasted screenshots go (_assets, per-note, Typora templates), default width presets, right-click scaling, and PicGo / S3 / GitHub upload.',
+  },
+  {
+    slug: 'workspace',
+    title: 'Workspace & Organization',
+    lead: 'Custom-sortable file tree, outline, full-text search, #tags, [[backlinks]], Bases properties table, daily notes, inbox, and iOS/Android vaults.',
   },
   {
     slug: 'markdown-syntax',
     title: 'Markdown Syntax Reference',
-    lead: 'Headings, lists, tables, math, Mermaid — everything SoloMD supports.',
+    lead: 'Headings with auto-numbering, ==highlights==, sub/sup, lists, code blocks, tables, KaTeX/LaTeX math, Mermaid, callouts, WikiLinks, and whiteboards.',
+  },
+  {
+    slug: 'icloud',
+    title: 'Sync with iCloud',
+    lead: 'No account, no plugin — put the notes folder in iCloud Drive. Mac / iPhone / iPad steps and conflict caveats.',
+  },
+  {
+    slug: 'ai',
+    title: 'AI Features',
+    lead: '14+ BYOK providers or local Ollama; inline agent panel, scheduled recipes, AI rewrite, and RAG semantic search.',
   },
   {
     slug: 'mcp',
-    title: 'MCP server',
-    lead: 'Drive your notes from Claude Desktop, Codex CLI, Cursor — read, search, write your vault from any MCP-aware AI client.',
+    title: 'MCP Server',
+    lead: 'Drive your notes from Claude Desktop, Claude Code, Codex CLI, or Cursor — read, search, and write your vault from any MCP client.',
   },
   {
     slug: 'cli',
-    title: 'Command-line tool',
+    title: 'Command-Line Tool',
     lead: 'solomd: open, new, list, search, cat — pipe Markdown around in your shell.',
+  },
+  {
+    slug: 'linux',
+    title: 'Linux Requirements',
+    lead: 'Will SoloMD run on my Linux, and which package (.deb, .rpm, .AppImage) do I download? Flowchart and distro table.',
   },
 ];
 ---
 
 <Layout
-  title="SoloMD Documentation"
-  description="Keyboard shortcuts, export formats, markdown syntax reference, and guides for using SoloMD."
+  title="SoloMD Documentation — Getting Started, Encrypted Cloud Sync, Editor Tricks, Shortcuts & Export"
+  description="Complete documentation for SoloMD: three Personal Cloud Drive E2EE sync modes, code block and list tricks, keyboard shortcuts, and PDF/DOCX export guides."
   lang={lang}
 >
   <Header lang={lang} />
@@ -89,8 +89,7 @@ const docs = [
     <section class="container docs-index">
       <h1>Documentation</h1>
       <p class="lead">
-        Everything you need to use SoloMD effectively — shortcuts, export options,
-        supported Markdown syntax, and workflow guides.
+        Everything you need to use SoloMD effectively — encrypted cloud drive sync, editor power tricks, keyboard shortcuts, Word/PDF exports, and workflow guides.
       </p>
 
       <div class="docs-cards">
@@ -120,7 +119,7 @@ const docs = [
   .docs-card { display: block; padding: 20px 24px; border: 1px solid #e5e5e0; border-radius: 10px; text-decoration: none; color: inherit; position: relative; transition: transform 0.1s, border-color 0.1s; }
   .docs-card:hover { transform: translateY(-2px); border-color: #ff9f40; }
   .docs-card h2 { margin: 0 0 6px; font-size: 1.2rem; }
-  .docs-card p { margin: 0; color: var(--text-muted, #555); }
+  .docs-card p { margin: 0; color: var(--text-muted, #555); padding-right: 28px; }
   .docs-card .arrow { position: absolute; top: 50%; right: 24px; transform: translateY(-50%); color: #ff9f40; font-size: 1.4rem; }
   .docs-footer { margin-top: 40px; font-size: 0.95rem; color: var(--text-muted, #555); }
 </style>

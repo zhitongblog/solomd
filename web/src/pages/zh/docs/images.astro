@@ -8,8 +8,8 @@ const lang = 'zh' as const;
 ---
 
 <Layout
-  title="图片与附件 — 粘贴的截图存在哪里,怎么改"
-  description="SoloMD 如何保存粘贴/拖入的图片:默认的 _assets 目录、改名为 images、每篇笔记独立目录,以及兼容 Typora 的自定义路径模板(如 ./images/${filename}/)。"
+  title="图片、缩放与图床 — 粘贴截图保存位置、默认宽度预设、防盗链与图床上传"
+  description="SoloMD 如何保存与渲染图片：默认的 _assets 目录、每篇笔记独立目录、兼容 Typora 的自定义路径模板、粘贴图片默认宽度预设与右键缩放、PicGo/S3/GitHub 图床以及防盗链外链渲染。"
   lang={lang}
 >
   <Header lang={lang} />
@@ -19,93 +19,61 @@ const lang = 'zh' as const;
         <a href="/zh/">首页</a> / <a href="/zh/docs/">文档</a> / <span>图片与附件</span>
       </nav>
 
-      <h1>图片与附件</h1>
-      <p class="lead">粘贴的截图落在哪里 —— 以及怎么让它落在你想要的地方。</p>
+      <h1>图片、缩放与图床</h1>
+      <p class="lead">粘贴的截图落在哪里、怎么控制图片显示大小，以及如何接入图床或加载防盗链外链图片。</p>
 
-      <h2>粘贴时发生了什么</h2>
+      <h2>一、粘贴截图时发生了什么</h2>
       <p>
-        截图到剪贴板,把光标放进笔记,按 <kbd>Ctrl/⌘ V</kbd> —— SoloMD
-        会把图片文件写到笔记旁边的磁盘上,并自动插入 Markdown
-        链接。把图片文件拖进编辑器效果相同。默认情况下,图片存进笔记同目录的
-        <code>_assets/</code> 文件夹:
+        截图到剪贴板，把光标放进笔记，按 <kbd>Ctrl/⌘ + V</kbd>（或把图片拖进窗口）—— SoloMD 会把图片文件写到笔记旁边的磁盘上，并自动插入 Markdown 相对路径链接（即使文件夹路径含空格或 Windows 反斜杠也能自动编码与正常显示）：
       </p>
       <pre><code>我的文件夹/
 ├── 笔记.md          ← 在这里粘贴
 └── _assets/
-    └── image-20260806-093012.png</code></pre>
-      <p>
-        一切都是本地的相对路径 —— 仓库始终是一个普通文件夹,可以随意同步、打包,或用任何其他编辑器打开。
-      </p>
+    └── image-20261102-093012.png</code></pre>
 
-      <h2>把 <code>_assets</code> 改名为 <code>images</code>(或任何名字)</h2>
-      <p>
-        打开 <strong>设置 → 写作</strong>。当「<em>粘贴 / 拖入图片的保存位置</em>」保持默认的
-        「<em>共享 <code>_assets/</code> 目录(每个文件夹一个)</em>」时,下方会出现
-        <strong>「共享附件文件夹名」</strong>输入框。填入
-        <code>images</code> 即可 —— 之后粘贴的每张图片都会存到笔记同目录的
-        <code>images/</code> 下,插入的链接也是 <code>![](images/…)</code>。
-      </p>
-      <p>
-        这个输入框会自动去掉斜杠 —— 它只接受纯文件夹名,不接受路径。要用路径或每篇笔记独立目录,请看下面的自定义模式。
-      </p>
-
-      <h2>三种附件模式</h2>
+      <h2>二、三种附件保存目录模式</h2>
+      <p>打开 <strong>设置 → 写作</strong>，在「粘贴 / 拖入图片的保存位置」中任选其一：</p>
       <table class="kb-table">
-        <thead><tr><th>模式</th><th>图片存到</th><th>适合</th></tr></thead>
+        <thead><tr><th>模式</th><th>图片存到哪里</th><th>适用场景</th></tr></thead>
         <tbody>
           <tr>
-            <th>共享(默认)</th>
-            <td>每个目录一个文件夹 —— <code>_assets/</code>,或你在上面改的名字。</td>
-            <td>简单仓库;与 SoloMD v4.3.5 之前的布局一致。</td>
+            <th>共享目录（默认）</th>
+            <td>每个目录下共用一个文件夹 —— 默认为 <code>_assets/</code>，也可在下方输入框改名为 <code>images</code> 或任意名称。</td>
+            <td>清爽简洁；文件树默认自动隐藏 <code>_assets</code> 避免干扰。</td>
           </tr>
           <tr>
-            <th>每篇独立</th>
-            <td>每篇笔记旁的 <code>&lt;笔记名&gt;.assets/</code> —— <code>foo.md</code> 对应 <code>foo.assets/</code>。</td>
-            <td>让每篇笔记自包含。把 <code>foo.md</code> 改名成 <code>bar.md</code> 时,SoloMD 会同步把 <code>foo.assets/</code> 改名,并改写笔记内的引用路径。</td>
+            <th>每篇笔记独立</th>
+            <td>每篇笔记旁的 <code>&lt;笔记名&gt;.assets/</code>（如 <code>周报.md</code> 对应 <code>周报.assets/</code>）。</td>
+            <td>单篇笔记自包含；在 SoloMD 文件树中重命名笔记时，对应的 <code>.assets/</code> 文件夹与正文图片链接会自动同步改名。</td>
           </tr>
           <tr>
-            <th>自定义(兼容 Typora)</th>
-            <td>你写的路径模板,例如 <code>./images/$&#123;filename&#125;/</code>。</td>
-            <td>从 Typora 迁移的仓库,或前两种模式表达不了的布局。</td>
+            <th>自定义路径（兼容 Typora）</th>
+            <td>支持变量 <code>$&#123;filename&#125;</code> 的路径模板，如 <code>./images/$&#123;filename&#125;/</code> 或 <code>../attachments/</code>。</td>
+            <td>从 Typora 迁移过来的既有笔记库，直接沿用原路径规则。</td>
           </tr>
         </tbody>
       </table>
 
-      <h2>自定义路径模板</h2>
-      <p>
-        把「<em>粘贴 / 拖入图片的保存位置</em>」切换到「<em>自定义路径(兼容
-        Typora)</em>」,会出现<strong>「自定义图片路径」</strong>输入框。模板支持一个变量
-        —— <code>$&#123;filename&#125;</code>,即笔记文件名去掉扩展名(<code>foo.md</code> →
-        <code>foo</code>):
-      </p>
-      <table class="kb-table">
-        <thead><tr><th>模板</th><th>对 <code>foo.md</code> 的效果</th></tr></thead>
-        <tbody>
-          <tr><td><code>./images/</code></td><td>该目录所有笔记的图片都存到笔记旁的 <code>images/</code>。</td></tr>
-          <tr><td><code>./images/$&#123;filename&#125;/</code></td><td>每篇笔记一个子目录:<code>images/foo/截图.png</code>。</td></tr>
-          <tr><td><code>../attachments/</code></td><td>笔记上一级目录里的文件夹。</td></tr>
-          <tr><td><code>/Users/you/pictures/</code> 或 <code>C:\pictures\</code></td><td>绝对路径 —— 所有笔记的图片集中存到一处。</td></tr>
-        </tbody>
-      </table>
-      <p>
-        相对路径以笔记所在目录为基准解析。插入的 Markdown 链接始终使用正斜杠,在 Windows
-        上也能正常渲染。这套语法与 Typora 的「复制图片到指定路径」设置兼容 —— 从 Typora
-        迁移过来的仓库可以直接沿用原有模板。
-      </p>
-
-      <h2>注意事项</h2>
+      <h2>三、粘贴图片默认宽度预设与右键缩放</h2>
       <ul>
-        <li>
-          <strong>修改设置只影响之后新粘贴的图片。</strong>已有的图片和链接不会被改动。要迁移旧仓库,先在磁盘上把文件夹改名,再在笔记中批量替换
-          <code>_assets/</code> → <code>images/</code>(全局搜索:<kbd>Ctrl/⌘ ⇧ F</kbd>)。
-        </li>
-        <li>
-          <strong>尚未保存到文件的笔记</strong>(未保存的标签页)粘贴的图片先存到临时目录,保存笔记后链接会被改写。
-        </li>
-        <li>
-          <strong>想用图床?</strong>SoloMD 也可以把粘贴的图片上传到 PicGo、SM.MS、S3 或
-          GitHub,插入外链 —— 见<a href="/zh/docs/editor/">编辑器指南</a>和设置 → 图片上传。
-        </li>
+        <li><strong>默认宽度预设</strong>：如果觉得高分屏截图粘贴进来太大，可在 <strong>设置 → 写作 → 粘贴图片默认宽度</strong> 中设置预设比例（如 <code>50%</code>、<code>67%</code>、<code>80%</code> 或指定像素宽度），之后粘贴的图片会自动按该宽度生成。</li>
+        <li><strong>右键快速缩放与复制图片</strong>：在编辑器中右键点击任意图片，即可一键切换缩放比例（25% / 50% / 67% / 80% / 100%）或点击「复制图片」写回系统剪贴板。</li>
+        <li><strong>同行并排多张图片</strong>：同一行内连续放置多张 <code>&lt;img&gt;</code> 标签时，实时编辑与预览均支持横向并排展示。</li>
+      </ul>
+
+      <h2>四、图床自动上传（PicGo / SM.MS / S3 / R2 / GitHub）</h2>
+      <p>
+        如果你希望写博客时图片直接变成公网链接，可在 <strong>设置 → 图片上传（图床）</strong> 中配置：
+      </p>
+      <ul>
+        <li><strong>PicGo</strong>（对接本地运行的 PicGo App / PicGo-Core）、<strong>SM.MS</strong>、<strong>Amazon S3 / Cloudflare R2 / 阿里云 OSS / 腾讯云 COS 兼容存储</strong>、<strong>GitHub 仓库图床</strong>。</li>
+        <li>开启「粘贴时自动上传」后，截图按 <kbd>Ctrl/⌘ + V</kbd> 即自动上传并插入远端 URL；也可以平时存本地，发布前在命令面板执行<strong>「上传当前文档中的本地图片到图床」</strong>一键批量替换。</li>
+      </ul>
+
+      <h2>五、网络图片防盗链与移动端本地图片</h2>
+      <ul>
+        <li><strong>防盗链外链直接显示</strong>：SoloMD 在实时编辑与预览中为所有图片启用了 <code>referrerpolicy="no-referrer"</code>，并兼容含 <code>&amp;amp;</code> 签名参数的 URL，因此 Gitee 仓库外链、百度文心/BOS 签名图片及各类防盗链图床均可直接显示，不会报 403。</li>
+        <li><strong>Android 与 iOS 原生支持</strong>：Android 端支持通过相册选图插入 SAF 工作区 <code>_assets/</code> 目录，并原生解析 <code>./pic/a.png</code>、<code>../assets/b.jpg</code> 等相对路径图片，导出 PDF / Word 时同样完整内联。</li>
       </ul>
 
       <Giscus />

@@ -22,7 +22,8 @@ const lang = 'zh' as const;
           在 <strong>v5.0</strong> 中，除了 GitHub / Gitea 仓库同步，我们新增了<strong>三种个人网盘端到端加密（E2EE）备份与多端同步方案</strong>（感谢 <em>@太阳雨 tyysoft</em> 赞助支持）：无论使用百度网盘、阿里云盘、夸克网盘、坚果云、OneDrive、iCloud 还是 NAS，网盘端永远只看得到高强度密文。
         </p>
         <div class="sync-cta">
-          <a class="btn btn--primary" href="/zh/whats-new/">看 v5.0 发布说明 →</a>
+          <a class="btn btn--primary" href="/zh/docs/sync/">查看网盘与同步详细配置教程 →</a>
+          <a class="btn" href="/zh/whats-new/">看 v5.0 发布说明</a>
           <a class="btn" href="/zh/#download">下载 SoloMD</a>
         </div>
       </div>
@@ -106,14 +107,14 @@ const lang = 'zh' as const;
         <h2>对比一下</h2>
         <table>
           <thead>
-            <tr><th></th><th>SoloMD v3.0</th><th>Obsidian Sync</th><th>仅 iCloud</th></tr>
+            <tr><th></th><th>SoloMD v5.0</th><th>Obsidian Sync</th><th>仅 iCloud</th></tr>
           </thead>
           <tbody>
-            <tr><th>数据存哪</th><td>你的 GitHub</td><td>Obsidian 服务器</td><td>Apple 服务器</td></tr>
+            <tr><th>数据存哪</th><td>你的个人网盘 / WebDAV / GitHub</td><td>Obsidian 服务器</td><td>Apple 服务器</td></tr>
             <tr><th>价格</th><td>免费</td><td>$96 / 年</td><td>5 GB 内免费</td></tr>
-            <tr><th>端到端加密</th><td>✅ 可选</td><td>✅ 可选</td><td>❌</td></tr>
+            <tr><th>端到端加密</th><td>✅ Argon2id + XChaCha20-Poly1305</td><td>✅ 可选</td><td>❌</td></tr>
             <tr><th>每文件历史</th><td>完整 git log</td><td>1 年</td><td>30 天</td></tr>
-            <tr><th>多平台</th><td>GitHub / GitLab / Gitea / 自定义</td><td>仅 Obsidian</td><td>仅 Apple</td></tr>
+            <tr><th>多平台</th><td>百度 / 阿里 / 夸克 / 坚果云 / OneDrive / WebDAV / GitHub</td><td>仅 Obsidian</td><td>仅 Apple</td></tr>
             <tr><th>需要订阅</th><td>否</td><td>是</td><td>5GB 之后</td></tr>
             <tr><th>公开分享</th><td>✅ 内置</td><td>✅ Obsidian Publish ($120/年)</td><td>❌</td></tr>
           </tbody>

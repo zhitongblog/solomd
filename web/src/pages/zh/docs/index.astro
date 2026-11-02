@@ -6,33 +6,33 @@ import Footer from '../../../components/Footer.astro';
 const lang = 'zh' as const;
 
 const docs = [
-  { slug: 'getting-started', title: '快速上手', lead: '从下载到保存第一篇笔记 —— 安装、打开文件夹、标签页与视图模式。' },
-  { slug: 'linux', title: 'Linux 系统要求', lead: '我的 Linux 能装吗？该下哪个文件？一张流程图 + 常见发行版对照表。' },
-  { slug: 'editor', title: '编辑器', lead: '实时编辑、图片与图床、表格、公式、Mermaid、专注 / 打字机 / Vim 模式。' },
-  { slug: 'images', title: '图片与附件', lead: '粘贴的截图存在哪里 —— 改名 _assets、每篇笔记独立目录、兼容 Typora 的路径模板。' },
-  { slug: 'workspace', title: '工作区与组织', lead: '文件树、大纲、搜索、标签、反向链接、Bases 属性表格、保存的视图、日记与收集箱。' },
-  { slug: 'sync', title: '同步、历史与备份', lead: 'GitHub 同步 + 可选端到端加密、Git 快照回滚、401 等常见错误排查。' },
-  { slug: 'icloud', title: '用 iCloud 同步', lead: '不用注册、不用插件：把笔记文件夹放进 iCloud 云盘就行。含 Mac / iPhone 步骤与冲突注意事项。' },
-  { slug: 'ai', title: 'AI 功能', lead: 'BYOK 接入 14+ 家模型或本地 Ollama;智能体面板、AI 改写、定时配方、RAG 语义搜索。' },
-  { slug: 'settings', title: '设置参考', lead: '外观、字体、编辑器行为、文件与会话、隐私遥测 —— 每个选项都讲清楚。' },
-  { slug: 'shortcuts', title: '键盘快捷键', lead: '全部快捷键 —— 文件 / 视图 / 编辑 / 导出。' },
-  { slug: 'export', title: '导出与复制', lead: 'PDF / DOCX / HTML / PNG / 打印 / 富文本复制 —— 什么场景用哪个。' },
-  { slug: 'markdown-syntax', title: 'Markdown 语法参考', lead: '标题、列表、表格、公式、Mermaid —— SoloMD 支持的全部语法。' },
-  { slug: 'mcp', title: 'MCP 服务', lead: '让 Claude Desktop / Codex CLI / Cursor 等 AI 客户端直接读写你的笔记仓库。' },
-  { slug: 'cli', title: '命令行工具', lead: 'solomd：open / new / list / search / cat —— 在 Shell 里管道处理 Markdown。' },
+  { slug: 'getting-started', title: '快速上手', lead: '安装、打开文件夹、标签页切换、四大视图模式与一键升级 —— 三分钟全面掌握。' },
+  { slug: 'sync', title: '同步、历史与个人网盘加密备份', lead: '坚果云 WebDAV、百度/阿里/夸克/OneDrive 本地加密保险库、网盘 OpenAPI 免客户端直连、GitHub 同步与 Git 快照回滚。' },
+  { slug: 'editor', title: '编辑器详解', lead: '实时所见即所得、代码块两段式 Ctrl+A 与列表内缩进代码块、表格点击直达与 Excel 粘贴、标题自动多级编号、公式与白板。' },
+  { slug: 'shortcuts', title: '键盘快捷键大全', lead: '全部 60+ 项快捷键速查、Typora / Word 写作预设（Ctrl+B 加粗）、最近使用标签切换与鼠标技巧。' },
+  { slug: 'export', title: '导出与复制', lead: '矢量 PDF（带目录页码）、原生 Word (.docx)、独立 HTML、长图、复制为 Word、公众号富文本复制与 Excel/Word 互转。' },
+  { slug: 'settings', title: '设置参考', lead: '设置搜索与逐条跳转、首行作为标签页标题、保存前检查原文件是否存在、只读保护、自定义主题与 CSS 调试。' },
+  { slug: 'images', title: '图片、缩放与图床', lead: '粘贴截图存到哪里（_assets / 独立目录 / Typora 模板）、默认宽度预设与右键缩放、PicGo / S3 / GitHub 图床。' },
+  { slug: 'workspace', title: '工作区与组织', lead: '文件树自定义拖拽排序、大纲跳转、全文搜索、#标签、[[反向链接]]、Bases 属性表格、日记、收集箱与手机/iPad 工作区。' },
+  { slug: 'markdown-syntax', title: 'Markdown 语法参考', lead: '标题自动编号、==高亮==、上下标、列表、代码块、表格、KaTeX/LaTeX 公式、Mermaid、提示块、Wiki 链接与白板。' },
+  { slug: 'icloud', title: '用 iCloud 同步（Mac + iPhone/iPad）', lead: '不用注册、不用插件：把笔记文件夹放进 iCloud 云盘即可跨苹果设备同步。' },
+  { slug: 'ai', title: 'AI 功能', lead: 'BYOK 接入 14+ 家云端模型或本地 Ollama；智能体面板、AI 改写、定时配方、RAG 语义搜索。' },
+  { slug: 'mcp', title: 'MCP 服务', lead: '让 Claude Desktop / Claude Code / Codex CLI / Cursor 等 AI 客户端直接读写你的笔记仓库。' },
+  { slug: 'cli', title: '命令行工具', lead: 'solomd：open / new / list / search / cat —— 在终端与脚本里管道处理 Markdown。' },
+  { slug: 'linux', title: 'Linux 系统要求与安装包选择', lead: '我的 Linux 能装吗？该下 .deb、.rpm 还是 .AppImage？一张流程图 + 常见发行版对照表。' },
 ];
 ---
 
 <Layout
-  title="SoloMD 文档"
-  description="SoloMD 的键盘快捷键、导出格式、Markdown 语法参考和使用指南。"
+  title="SoloMD 帮助文档 — 快速上手、个人网盘加密同步、编辑器技巧、快捷键与导出指南"
+  description="SoloMD 完整中文帮助文档：三种个人网盘端到端加密同步配置、代码块与列表缩进技巧、键盘快捷键大全、Word/PDF 导出与复制指南。"
   lang={lang}
 >
   <Header lang={lang} />
   <main id="main">
     <section class="container docs-index">
-      <h1>文档</h1>
-      <p class="lead">用好 SoloMD 需要的一切 —— 快捷键、导出选项、Markdown 语法、工作流指南。</p>
+      <h1>帮助文档</h1>
+      <p class="lead">用好 SoloMD 需要的一切 —— 个人网盘加密同步、编辑器隐藏技巧、快捷键大全、Word / PDF 导出与工作流指南。</p>
 
       <div class="docs-cards">
         {docs.map((d) => (
@@ -62,7 +62,7 @@ const docs = [
   .docs-card { display: block; padding: 20px 24px; border: 1px solid #e5e5e0; border-radius: 10px; text-decoration: none; color: inherit; position: relative; transition: transform 0.1s, border-color 0.1s; }
   .docs-card:hover { transform: translateY(-2px); border-color: #ff9f40; }
   .docs-card h2 { margin: 0 0 6px; font-size: 1.2rem; }
-  .docs-card p { margin: 0; color: var(--text-muted, #555); }
+  .docs-card p { margin: 0; color: var(--text-muted, #555); padding-right: 28px; }
   .docs-card .arrow { position: absolute; top: 50%; right: 24px; transform: translateY(-50%); color: #ff9f40; font-size: 1.4rem; }
   .docs-footer { margin-top: 40px; font-size: 0.95rem; color: var(--text-muted, #555); }
 </style>

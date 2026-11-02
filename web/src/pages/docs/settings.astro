@@ -8,8 +8,8 @@ const lang = 'en' as const;
 ---
 
 <Layout
-  title="SoloMD Settings Reference — every option explained"
-  description="A tour of SoloMD's Settings: appearance, fonts, editor behavior, view modes, session and file handling, sync, AI, language, telemetry, and how to reset everything."
+  title="SoloMD Settings Reference — Every Option Explained"
+  description="A complete tour of SoloMD's Settings: settings search with step-to-match, first-line tab titles, missing-file save check, auto-numbering headings, pasted image width, Writer shortcut preset, E2EE cloud sync, and one-click updates."
   lang={lang}
 >
   <Header lang={lang} />
@@ -20,61 +20,57 @@ const lang = 'en' as const;
       </nav>
 
       <h1>Settings Reference</h1>
-      <p class="lead">Open Settings from the gear icon or the command palette. The highlights, section by section.</p>
-
-      <h2>Appearance</h2>
-      <ul>
-        <li><strong>Theme</strong> — light / dark; <strong>Custom CSS file</strong> re-skins the whole app.</li>
-        <li><strong>Font family</strong> (presets or any installed font) and a separate <strong>Code font</strong> for code blocks and inline code.</li>
-        <li><strong>Font size</strong>, <strong>UI font size</strong>, and a separate <strong>preview font size</strong>; <kbd>Ctrl/⌘ +/−/0</kbd> zooms the whole app on top of these.</li>
-        <li><strong>Language</strong> — 14 interface languages; the command palette follows it.</li>
-      </ul>
-
-      <h2>Editor</h2>
-      <ul>
-        <li><strong>Word wrap</strong>, <strong>line numbers</strong>, <strong>limit editor width</strong> (centered readable column).</li>
-        <li><strong>Solid cursor</strong> — stop the caret from blinking.</li>
-        <li><strong>Vim mode</strong>, <strong>focus mode</strong>, <strong>typewriter mode</strong>, <strong>spell check</strong>.</li>
-        <li><strong>Live preview</strong> toggle for edit mode, and a <strong>startup view mode</strong> override.</li>
-        <li><strong>Hard line breaks</strong> — treat a single newline as a <code>&lt;br&gt;</code> (like GitHub comments).</li>
-        <li><strong>Auto-number headings</strong> — promote plain <code>6.2 Title</code> lines to real headings (off by default).</li>
-        <li><strong>Code block wrap</strong> — soft-wrap long code lines instead of a horizontal scrollbar; <strong>code block line numbers</strong>.</li>
-      </ul>
-
-      <h2>Files &amp; session</h2>
-      <ul>
-        <li><strong>Restore session</strong> — reopen tabs and layout on launch; <strong>per-workspace tabs</strong> — each folder remembers its own tab set.</li>
-        <li><strong>Auto-reload external changes</strong> for clean tabs; dirty tabs always ask.</li>
-        <li><strong>Auto-save on window blur</strong> (off by default), <strong>open files in a new window</strong>, <strong>reveal in file tree on open</strong>.</li>
-        <li><strong>Attachment folder</strong> for pasted images (shared or per-note).</li>
-      </ul>
-
-      <h2>Panels &amp; workspace</h2>
-      <ul>
-        <li>Defaults for the outline, file tree, and every right-sidebar pane (see the <a href="/docs/workspace/">Workspace guide</a>).</li>
-        <li><strong>Outline marker style</strong> — jump letters / numbers / none; outline side left or right.</li>
-        <li><strong>Daily notes folder</strong>.</li>
-      </ul>
-
-      <h2>Sync, history &amp; AI</h2>
-      <p>
-        Covered in depth in <a href="/docs/sync/">Sync &amp; History</a> and
-        <a href="/docs/ai/">AI features</a> — tokens and API keys always live in the
-        OS keychain, never in config files.
+      <p class="lead">
+        Press <kbd>Ctrl/⌘ + ,</kbd> to open Settings. Use the search bar at the top to filter any setting or shortcut by keyword, and click the <kbd>⌵</kbd> button next to the search box to step through matches with a visible pulse highlight.
       </p>
 
-      <h2>Privacy</h2>
+      <h2>1. General &amp; File Safety</h2>
       <ul>
-        <li><strong>Telemetry</strong> — anonymous feature-usage counts (no IP, no file content, no personal data); one switch turns it off entirely.</li>
-        <li>PlantUML rendering and image hosting are opt-in because they send data to a server you configure.</li>
+        <li><strong>Use first line of document as tab title</strong> (off by default): displays the first non-empty line of the document (skipping YAML front-matter) in the tab bar instead of the filename — ideal for notes opened with temporary or UUID filenames.</li>
+        <li><strong>Check if original file exists before saving</strong> (off by default): designed for editing temporary files opened by third-party software. When enabled, if the original file on disk has been deleted or cleaned up externally, background auto-save is skipped and manual save (<kbd>Ctrl/⌘ + S</kbd>) asks for confirmation before recreating the file.</li>
+        <li><strong>Automatically number 1–6 headings</strong> (off by default): keeps hierarchical section numbers (<code>1 / 1.1 / 1.1.1</code>) updated automatically whenever headings are added, deleted, or modified.</li>
+        <li><strong>Read-only file Save As guard</strong>: attempting to save a read-only file warns you and opens “Save As” pre-filled with <code>&lt;name&gt;-copy.md</code>, and closing a modified read-only tab always prompts first.</li>
+        <li><strong>Restore session &amp; per-workspace tabs</strong>: reopens your tabs and exact viewport scroll positions on launch; each workspace folder remembers its own tab set independently.</li>
+        <li><strong>Auto-reload external changes</strong>: clean tabs reload automatically when updated on disk by external tools (Syncthing, Git); dirty tabs always ask before overwriting your edits.</li>
       </ul>
 
-      <h2>Resetting</h2>
+      <h2>2. Writing &amp; Editor</h2>
+      <ul>
+        <li><strong>Word wrap, line numbers, active-line highlight, and readable column width limit</strong>.</li>
+        <li><strong>Always show Markdown syntax markers</strong>: keeps <code>**</code>, <code>#</code>, and other markers visible at all times so lines never shift when moving the caret.</li>
+        <li><strong>Pasted image destination &amp; default width</strong>: choose shared <code>_assets/</code>, per-note <code>.assets/</code>, or Typora-compatible <code>./images/$&#123;filename&#125;/</code> templates; set a default width preset for pasted images and resize any image from the right-click menu.</li>
+        <li><strong>Code block wrap, line numbers &amp; language suggestions</strong>: soft-wrap long lines in code fences and toggle language autocomplete when typing <code>```</code>.</li>
+        <li><strong>Vim mode, Focus mode (<kbd>F8</kbd>), Typewriter mode (<kbd>F9</kbd>), and non-blinking solid cursor</strong>.</li>
+      </ul>
+
+      <h2>3. Appearance &amp; Custom Themes</h2>
+      <ul>
+        <li><strong>Theme</strong>: Light, Dark, or <strong>Follow OS appearance</strong>, plus built-in community themes like Ivory Amber.</li>
+        <li><strong>Custom CSS &amp; DevTools</strong>: write rules in <code>custom.css</code> and click “Open DevTools” (or press <kbd>F12</kbd>) to inspect live DOM elements. Active custom themes and CSS are also inlined automatically into HTML and PDF exports.</li>
+        <li><strong>Fonts &amp; independent font sizes</strong>: configure separate prose and code fonts, independent editor / UI / preview font sizes, and whole-app zoom (<kbd>Ctrl/⌘ + +/−/0</kbd>) with a centered percentage HUD. On Android, you can also load local font files from <code>/storage/emulated/0/Fonts</code>.</li>
+      </ul>
+
+      <h2>4. Shortcuts &amp; Writer Preset</h2>
+      <ul>
+        <li>Click the <strong>“Writer (Typora / Word)” preset</strong> at the top of <em>Settings → Shortcuts</em> to bind <kbd>Ctrl/⌘ + B</kbd> to Bold (moving Toggle File Tree to <kbd>Ctrl/⌘ + Shift + B</kbd>).</li>
+        <li>All 60+ commands are individually rebindable, and native menus reflect your active bindings immediately.</li>
+      </ul>
+
+      <h2>5. Sync, History, AI &amp; Grammar Check</h2>
+      <ul>
+        <li><strong>Sync</strong>: WebDAV E2EE Sync, Local Cloud Drive Encrypted Vault Folder, Direct Cloud Drive OpenAPI Sync, and GitHub Sync (see the <a href="/docs/sync/">Sync &amp; History guide</a>).</li>
+        <li><strong>Language &amp; Check</strong>: built-in spellcheck, CJK proofreading, and optional <strong>LanguageTool grammar &amp; style checking</strong> (public API or self-hosted server).</li>
+        <li><strong>AI</strong>: 14+ BYOK cloud providers and local Ollama (see <a href="/docs/ai/">AI features</a>). All API keys and cloud tokens are stored in the OS keychain.</li>
+      </ul>
+
+      <h2>6. In-App One-Click Update Installer</h2>
       <p>
-        To reset every setting to defaults, quit SoloMD and delete the app data folder —
-        <code>%APPDATA%\app.solomd</code> on Windows, <code>~/Library/Application
-        Support/app.solomd</code> on macOS, <code>~/.config/app.solomd</code> on Linux.
-        Your notes are ordinary files elsewhere and are not touched.
+        Clicking the update button in <em>Settings → About</em> (or the header update pill) downloads the native installer for your platform and architecture with live progress and launches it automatically, with automatic GitHub / Gitee mirror fallback for users in mainland China.
+      </p>
+
+      <h2>7. Resetting to Defaults</h2>
+      <p>
+        To reset all settings to factory defaults, quit SoloMD and delete the app data directory — <code>%APPDATA%\app.solomd</code> on Windows (or the <code>data/</code> folder next to <code>SoloMD.exe</code> in portable mode), <code>~/Library/Application Support/app.solomd</code> on macOS, or <code>~/.config/app.solomd</code> on Linux. Your notes are ordinary files elsewhere and are never touched.
       </p>
 
       <Giscus />

@@ -8,8 +8,8 @@ const lang = 'en' as const;
 ---
 
 <Layout
-  title="Workspace & Organization in SoloMD — outline, search, tags, backlinks, saved views"
-  description="Organize a folder of Markdown notes in SoloMD: file tree, outline navigation, workspace search, tags, backlinks, typed relationships, the Bases properties table, saved views, daily notes and the inbox."
+  title="Workspace & Organization in SoloMD — File Tree Sorting, Outline, Search, Backlinks, Bases & Mobile"
+  description="Organize a folder of Markdown notes in SoloMD: custom-sortable file tree, outline navigation, workspace search, tags, backlinks, Bases properties table, saved views, daily notes, and iOS/Android workspaces."
   lang={lang}
 >
   <Header lang={lang} />
@@ -20,67 +20,55 @@ const lang = 'en' as const;
       </nav>
 
       <h1>Workspace &amp; Organization</h1>
-      <p class="lead">Open a folder once; everything below works on top of it.</p>
+      <p class="lead">Open a folder once; the file tree, outline, backlinks, properties table, and full-text search work on top of it immediately.</p>
 
-      <h2>File tree</h2>
+      <h2>1. File tree (sorting, drag-and-drop, context actions)</h2>
       <ul>
-        <li>Toggle with <kbd>Ctrl/⌘ B</kbd>. Create, rename, move and delete files and folders inline (deletes go to the system trash).</li>
-        <li>Long names are middle-ellipsized by default — enable <em>Full file names in Explorer</em> in Settings to wrap them instead.</li>
-        <li>Non-Markdown documents (PDF, DOCX…) can be converted to Markdown on open, or opened with their default app.</li>
+        <li><strong>Toggle</strong>: press <kbd>Ctrl/⌘ + B</kbd> (or click the sidebar button in the header on macOS, Windows, and Linux).</li>
+        <li><strong>Four sorting modes</strong>: sort by <strong>Name</strong>, <strong>Creation Date</strong>, <strong>Modification Date</strong>, or <strong>drag files into your own custom manual order</strong> (new files go to the end).</li>
+        <li><strong>Inline creation &amp; keyboard shortcuts</strong>: create notes (<kbd>Ctrl/⌘ + Alt + Shift + N</kbd>) or folders right inside the selected folder; press <kbd>F2</kbd> to rename and <kbd>Del</kbd> to move to the system Trash (with confirmation); right-click to <strong>Expand / Collapse All Subfolders</strong> or <strong>Copy Relative Path</strong>.</li>
+        <li><strong>Visual indicators</strong>: open files show an indicator dot; optionally enable <strong>Folder item count badges</strong> and <strong>Double-click to open files</strong>; image attachment folders (<code>_assets</code>, <code>*.assets</code>) stay hidden unless “Show hidden files” is turned on; switching tabs automatically reveals and highlights the active file in the tree (configurable).</li>
       </ul>
 
-      <h2>Outline</h2>
+      <h2>2. Outline &amp; keyboard jump labels</h2>
       <ul>
-        <li>Toggle with <kbd>Ctrl/⌘ Shift O</kbd>. Click a heading to jump; sections collapse.</li>
-        <li>Jump labels: press the letter shown next to a heading to jump from the keyboard; <code>g</code> + line number jumps to a line. Marker style (letters / numbers / none) is configurable.</li>
+        <li>Toggle with <kbd>Ctrl/⌘ + Shift + O</kbd>. Click any heading to jump accurately in Live Edit, Split, or Preview, and collapse sections.</li>
+        <li><strong>Jump labels</strong>: press the letter shown next to a heading to jump from the keyboard, or press <code>g</code> + line number to jump to a line.</li>
       </ul>
 
-      <h2>Right-sidebar panes</h2>
+      <h2>3. Right-sidebar panes</h2>
       <p>
-        Right-click the sidebar (or use the command palette) to toggle panes; drag to
-        reorder and resize. Hide the whole strip with <kbd>Ctrl/⌘ Alt B</kbd> — opening
-        any pane brings it back.
+        Right-click the sidebar (or use the command palette) to toggle panes; drag to reorder and resize. Hide the whole strip with <kbd>Ctrl/⌘ + Alt + B</kbd>.
       </p>
       <table class="kb-table">
         <thead><tr><th>Pane</th><th>What it shows</th></tr></thead>
         <tbody>
-          <tr><th>Search</th><td>Full-text search across the workspace folder.</td></tr>
-          <tr><th>Backlinks</th><td>Every note that links to the current one.</td></tr>
-          <tr><th>Relationships</th><td>Typed forward + inverse links (<code>depends_on</code>, <code>part_of</code>, … from front-matter).</td></tr>
-          <tr><th>Tags</th><td>All <code>#tags</code> in the workspace; click to filter.</td></tr>
-          <tr><th>Neighborhood</th><td>A per-note relationship explorer — click to navigate, pivot to any neighbor.</td></tr>
-          <tr><th>Types</th><td>Notes grouped by their <code>type</code> property, with per-type views.</td></tr>
-          <tr><th>History</th><td>Git snapshot timeline for the current note (see <a href="/docs/sync/">Sync &amp; History</a>).</td></tr>
-          <tr><th>Properties</th><td>Front-matter inspector — edit note properties as a form.</td></tr>
+          <tr><th>Search (<kbd>Ctrl/⌘+Shift+F</kbd>)</th><td>Ripgrep-fast full-text search across the workspace folder (case, whole word, regex).</td></tr>
+          <tr><th>Backlinks</th><td>Every note linking to the current one via <code>[[note]]</code>, <code>[[folder/note]]</code>, or <code>[[note.md]]</code> (ignoring code fences).</td></tr>
+          <tr><th>Relationships &amp; Neighborhood</th><td>Typed forward + inverse links from front-matter and an interactive neighborhood graph explorer.</td></tr>
+          <tr><th>Tags</th><td>All <code>#tags</code> in the workspace (including CJK tags, while ignoring hex color codes like <code>#fff</code> in tables and code).</td></tr>
+          <tr><th>History</th><td>Local Git snapshot timeline per note with one-click diff and rollback (see <a href="/docs/sync/">Sync &amp; History</a>).</td></tr>
+          <tr><th>Properties</th><td>Visual form inspector for YAML front-matter properties.</td></tr>
           <tr><th>Agent</th><td>Chat with your vault (see <a href="/docs/ai/">AI features</a>).</td></tr>
         </tbody>
       </table>
 
-      <h2>Bases: your notes as a table</h2>
-      <p>
-        Command palette → “Workspace: Properties Table (Bases)” opens every note as a
-        row in a sortable, filterable table built from front-matter properties —
-        a lightweight database view over plain files.
-      </p>
-
-      <h2>Saved views</h2>
-      <p>
-        Persistent filtered note lists (by tag, type, property, folder…) stored as
-        <code>.solomd/views/*.yml</code> in the workspace. Create one from the command
-        palette; they appear in the left sidebar under the file tree.
-      </p>
-
-      <h2>Daily notes &amp; Inbox</h2>
+      <h2>4. Bases &amp; Saved Views</h2>
       <ul>
-        <li><kbd>Ctrl/⌘ D</kbd> opens today's daily note (created on demand in your configured daily folder); yesterday / tomorrow are one command away.</li>
-        <li>The <strong>Inbox</strong> collects quick captures — including notes sent in from the Web Clipper browser extension and the HTTP capture endpoint — and “Mark Organized &amp; Advance” walks you through triaging them.</li>
+        <li><strong>Bases (your notes as a table)</strong>: Command palette → “Workspace: Properties Table (Bases)” opens every note as a row in a sortable, filterable table built from front-matter properties.</li>
+        <li><strong>Saved views</strong>: persistent filtered note lists stored as <code>.solomd/views/*.yml</code> in the workspace, listed under the file tree.</li>
       </ul>
 
-      <h2>Search everywhere</h2>
+      <h2>5. Daily notes, Quick Capture &amp; Inbox</h2>
       <ul>
-        <li><strong>In the note:</strong> <kbd>Ctrl/⌘ F</kbd>.</li>
-        <li><strong>In the folder:</strong> the Search pane (ripgrep-fast, regex-capable).</li>
-        <li><strong>Semantic (RAG):</strong> ask questions against a local vector index of your vault — see <a href="/docs/ai/">AI features</a>.</li>
+        <li><strong>Daily notes (<kbd>Ctrl/⌘ + D</kbd>)</strong>: opens today’s daily note on demand; yesterday and tomorrow are one command away.</li>
+        <li><strong>Quick Capture (<kbd>Ctrl/⌘ + Alt + Shift + M</kbd>) &amp; Inbox</strong>: capture thoughts from anywhere or from the Web Clipper browser extension, and triage them with “Mark Organized &amp; Advance”.</li>
+      </ul>
+
+      <h2>6. iPhone, iPad &amp; Android Workspaces</h2>
+      <ul>
+        <li><strong>iPhone &amp; iPad</strong>: pick any folder in the Files app (iCloud Drive, On My iPhone, or third-party cloud providers) as your persistent workspace; notes opened from the Files app are edited in place; long-press or tap <code>⋯</code> in the file tree to rename, move, or delete.</li>
+        <li><strong>Android</strong>: create folders in the file tree, open Daily Notes, paste/insert images into <code>_assets/</code>, and automatically reload externally synced notes (e.g. Syncthing) inside Android SAF vaults.</li>
       </ul>
 
       <Giscus />

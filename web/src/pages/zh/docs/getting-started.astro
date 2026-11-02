@@ -8,8 +8,8 @@ const lang = 'zh' as const;
 ---
 
 <Layout
-  title="SoloMD 快速上手 — 安装、打开、书写、保存"
-  description="在 macOS、Windows、Linux、iOS 或 Android 上安装 SoloMD,打开你的第一个文件夹,理解标签页与视图模式,并且永远不丢草稿。"
+  title="SoloMD 快速上手 — 安装、打开文件夹、视图切换、一键升级与网盘加密同步"
+  description="在 macOS、Windows、Linux、iOS 或 Android 上安装 SoloMD，打开你的第一个文件夹，掌握实时/源码/分栏/预览四大模式、标签页切换、一键升级与数据安全机制。"
   lang={lang}
 >
   <Header lang={lang} />
@@ -22,73 +22,66 @@ const lang = 'zh' as const;
       <h1>快速上手</h1>
       <p class="lead">从下载到保存第一篇笔记，大约只需三分钟。</p>
 
-      <h2>1. 安装</h2>
+      <h2>1. 安装与一键升级</h2>
       <table class="kb-table">
-        <thead><tr><th>平台</th><th>方式</th></tr></thead>
+        <thead><tr><th>平台</th><th>安装方式</th></tr></thead>
         <tbody>
-          <tr><th>macOS</th><td><code>brew install --cask zhitongblog/solomd/solomd</code>，或从 <a href="/zh/">solomd.app</a> 下载已签名的通用 <code>.dmg</code>，拖进「应用程序」即可。需要 macOS 10.15+。</td></tr>
-          <tr><th>Windows</th><td>下载 <code>.msi</code>（x64 或 arm64）——安装到 <code>C:\Program Files\SoloMD</code>。不想安装的话也有便携版 ZIP。需要 Windows 10+（<a href="/zh/#faq">为什么不支持 Windows 7</a>）。</td></tr>
-          <tr><th>Linux</th><td><code>.AppImage</code>、<code>.deb</code> 或 <code>.rpm</code>，均提供 x64 与 arm64。需要 2022 年以后的系统（Ubuntu 22.04、Debian 12 或更新）——<a href="/zh/docs/linux/">不确定能不能装？看这张图</a>。</td></tr>
-          <tr><th>iOS / Android</th><td>iOS 15+ 上架 App Store；Android 7+ 可侧载 APK，或加入 Play 商店测试版。</td></tr>
+          <tr><th>macOS</th><td><code>brew install --cask zhitongblog/solomd/solomd</code>，或从 <a href="/zh/">solomd.app</a> 下载已签名并经过 Apple 公证的通用 <code>.dmg</code>，拖进「应用程序」即可（支持 Apple Silicon 与 Intel，macOS 10.15+）。</td></tr>
+          <tr><th>Windows</th><td>下载 <code>.msi</code> 安装包（x64 或 arm64），或免安装的 <code>-portable.zip</code> 便携版（便携版在 <code>SoloMD.exe</code> 同级新建 <code>data</code> 文件夹即可随 U 盘携带配置）。支持资源管理器右键「新建 → Markdown 文档」。</td></tr>
+          <tr><th>Linux</th><td>提供 <code>.AppImage</code>、<code>.deb</code> 与 <code>.rpm</code>（x64 与 arm64）。采用 <code>xdg-portal</code> 原生异步文件对话框，完美兼容 Ubuntu / Debian / Fedora / KDE Plasma Wayland（<a href="/zh/docs/linux/">发行版对照表</a>）。</td></tr>
+          <tr><th>iOS / iPadOS / Android</th><td>iPhone 与 iPad 可在 App Store 获取（支持「文件」App 原地编辑与 iPad 竖屏抽屉侧栏）；Android 提供签名 APK（支持 SAF 文件夹授权与折叠屏双栏）。</td></tr>
         </tbody>
       </table>
-
-      <h3>Windows:任务栏图标显示空白?</h3>
       <p>
-        如果升级后任务栏按钮或固定项的 SoloMD 图标是空白的,那是 Windows
-        图标缓存里残留了坏条目——卸载重装也不会清除它。在命令提示符里执行以下四行,然后重新固定即可:
+        <strong>应用内一键更新</strong>：当有新版本发布时，点击顶栏或「设置 → 关于」中的更新按钮，SoloMD 会直接在应用内下载安装包并自动拉起安装（中国大陆用户会自动路由至 Gitee 高速镜像）。
+      </p>
+
+      <h3>Windows：任务栏图标显示空白？</h3>
+      <p>
+        如果升级后任务栏固定的 SoloMD 图标变成空白，这是 Windows 图标缓存未刷新所致。在命令提示符（CMD）执行以下四行即可立即恢复：
       </p>
       <pre><code>taskkill /f /im explorer.exe
 del /f /q %LocalAppData%\IconCache.db
 del /f /q %LocalAppData%\Microsoft\Windows\Explorer\iconcache_*.db
 start explorer.exe</code></pre>
 
-      <h2>2. 直接开始打字</h2>
-      <p>
-        首次启动会打开几篇简短的欢迎文档 —— 看一眼或直接关掉都行。
-        你可以立刻开始输入：内容先保存在内存中，直到你按下
-        <kbd>Ctrl/⌘ S</kbd> 保存；未保存的草稿在应用重启后也会通过会话恢复保留下来。
-        未命名的标签页会在第一次保存时询问文件名。
-      </p>
-
-      <h2>3. 打开文件或文件夹</h2>
+      <h2>2. 打开文件或工作区文件夹</h2>
       <ul>
-        <li><strong>单个文件：</strong>文件 → 打开（<kbd>Ctrl/⌘ O</kbd>）、把文件拖进窗口，或直接双击 <code>.md</code> 文件 —— SoloMD 会注册为 Markdown 编辑器。</li>
-        <li><strong>文件夹（推荐）：</strong>文件 → 打开文件夹。这个文件夹就成了你的<em>工作区</em>：左侧出现文件树，搜索 / 标签 / 反向链接 / 关系图会索引其中的每一篇笔记，并且每个文件夹会各自记住打开过的标签页。</li>
+        <li><strong>直接开始写</strong>：启动后可直接输入，未保存的草稿在重启后也会通过会话恢复自动保留。</li>
+        <li><strong>打开单个文件</strong>：文件 → 打开（<kbd>Ctrl/⌘ + O</kbd>）、把 <code>.md</code> 拖进窗口或直接双击打开。若只打开了单个文件，左侧栏会提供<strong>「一键打开所在父文件夹」</strong>按钮。</li>
+        <li><strong>打开文件夹（推荐）</strong>：文件 → 打开文件夹。该文件夹即成为你的<strong>工作区（Workspace）</strong>：左侧展示文件树，全文搜索、<code>#标签</code>、<code>[[反向链接]]</code>、知识图谱与属性表会自动索引其中的所有笔记，且每个工作区独立记忆上次打开的标签页。</li>
       </ul>
 
-      <h2>4. 标签页与分栏</h2>
+      <h2>3. 标签页、最近使用切换与分屏</h2>
       <ul>
-        <li>每篇文档就是一个标签页。拖拽可以调整顺序，<kbd>Ctrl/⌘ W</kbd> 关闭。</li>
-        <li>在命令面板（<kbd>Ctrl/⌘ Shift K</kbd> → “向右拆分编辑器”）里可以把编辑器向右或向下拆分，并排查看两篇笔记。</li>
-        <li>命令面板列出了应用里的每一个操作及其快捷键 —— 拿不准的时候，打开它输入你想做的事就行。它会跟随你的界面语言。</li>
+        <li><strong>标签页拖拽与搜索</strong>：指针按住标签页即可平滑拖拽重排顺序；打开 2 个以上标签页时，点击标签栏右侧的 <code>⌄</code> 按钮可搜索并快速跳转到任意已打开标签。</li>
+        <li><strong>两种切换标签快捷键</strong>：按 <kbd>Ctrl + Tab</kbd> / <kbd>Ctrl + Shift + Tab</kbd> 按<strong>最近使用顺序 (MRU)</strong> 切换；按 <kbd>⌘⇧[</kbd> / <kbd>⌘⇧]</kbd>（或 <kbd>Ctrl + PageUp / PageDown</kbd>）按标签栏左右视觉顺序切换。</li>
+        <li><strong>双击固定标签与首行标题</strong>：可在设置中开启「双击固定标签页」或「将文档首行作为标签页标题」。</li>
+        <li><strong>多窗格分屏</strong>：按 <kbd>Ctrl/⌘ + \</kbd>（或把标签页拖向编辑区）即可左右或上下拆分窗格并排对照两篇笔记，点击窗格右上角关闭按钮即可合并。</li>
       </ul>
 
-      <h2>5. 选一个视图模式</h2>
+      <h2>4. 四种视图模式一键切换</h2>
+      <p>点击窗口顶栏右侧的胶囊切换栏，或按快捷键随时切换（切换时自动保持当前阅读/光标行位置）：</p>
       <table class="kb-table">
-        <thead><tr><th>模式</th><th>你看到的</th></tr></thead>
+        <thead><tr><th>模式</th><th>快捷键</th><th>特点</th></tr></thead>
         <tbody>
-          <tr><th>纯编辑</th><td>带语法高亮的 Markdown 源码。</td></tr>
-          <tr><th>实时编辑</th><td>所见即所得：格式就地渲染，光标所在行显示原始源码。表格、公式、Mermaid、图片和内嵌 HTML 都会以块的形式渲染。</td></tr>
-          <tr><th>分栏</th><td>左边源码、右边渲染预览，滚动像素级同步。</td></tr>
-          <tr><th>预览 / 阅读模式</th><td>只显示渲染结果；阅读模式是为长文准备的全宽衬线排版。</td></tr>
+          <tr><th>实时 (Live)</th><td><kbd>Ctrl/⌘ + Alt + /</kbd></td><td>默认模式：所见即所得，表格、公式、Mermaid、图片、提示块就地渲染，仅光标所在行展开源码。</td></tr>
+          <tr><th>源码 (Source)</th><td><kbd>Ctrl/⌘ + Alt + /</kbd></td><td>显示完整的原始 Markdown 标记符号与语法高亮。</td></tr>
+          <tr><th>分栏 (Split)</th><td><kbd>Ctrl/⌘ + Shift + P</kbd></td><td>左栏源码、右栏渲染预览，像素级同步滚动，中间分隔线可自由拖动宽度。</td></tr>
+          <tr><th>预览 (Preview)</th><td><kbd>Ctrl/⌘ + Alt + V</kbd></td><td>纯阅读视图，按标签页独立记忆阅读滚动进度；还支持全屏幻灯片演示（支持深/浅色主题与字号缩放）。</td></tr>
         </tbody>
       </table>
-      <p>用 <kbd>Ctrl/⌘ Shift P</kbd> 循环切换模式，或点击工具栏上的模式按钮。</p>
 
-      <h2>6. 保存与安全网</h2>
+      <h2>5. 保存、防丢失与下一步</h2>
       <ul>
-        <li><kbd>Ctrl/⌘ S</kbd> 写入磁盘。当标签页没有未保存的修改时，被其他程序改动的文件会自动重新加载 —— 有未保存修改的标签页则一定会先询问你。</li>
-        <li>可选的<em>失焦自动保存</em>和 <em>Git 历史</em>（自动快照 + 一键回滚）都在设置里 —— 见<a href="/zh/docs/sync/">同步与历史</a>。</li>
-        <li>笔记就是文件夹里的普通 <code>.md</code> 文件。没有数据库，没有锁定 —— 任何其他工具都可以直接指向同一个目录。</li>
+        <li><strong>纯本地文件</strong>：所有笔记都是普通的 <code>.md</code> 文件，无私有格式锁定。</li>
+        <li><strong>多重安全网</strong>：支持失焦自动保存、只读文件另存为保护、保存前检查原文件是否存在（可选），以及本地 Git 历史快照与三种个人网盘端到端加密同步。</li>
       </ul>
-
-      <h2>下一步</h2>
       <ul>
-        <li><a href="/zh/docs/editor/">编辑器详解</a> —— 实时渲染、图片、表格、Vim 模式、打字机模式。</li>
-        <li><a href="/zh/docs/workspace/">工作区与组织</a> —— 大纲、搜索、标签、反向链接、保存的视图。</li>
-        <li><a href="/zh/docs/sync/">同步、历史与备份</a> —— GitHub 同步，可选端到端加密。</li>
-        <li><a href="/zh/docs/ai/">AI 功能</a> —— 用自己的 API Key，或用 Ollama 完全本地运行。</li>
+        <li><a href="/zh/docs/editor/">编辑器详解</a> —— 代码块两段式全选、列表内缩进代码块、Excel 表格粘贴、标题自动编号。</li>
+        <li><a href="/zh/docs/sync/">同步、历史与个人网盘加密备份</a> —— 坚果云 WebDAV、百度/阿里/夸克网盘加密保险库、网盘 OpenAPI 直连与 GitHub 同步。</li>
+        <li><a href="/zh/docs/shortcuts/">键盘快捷键大全</a> —— 60+ 项快捷键与 Typora / Word 写作预设。</li>
+        <li><a href="/zh/docs/export/">导出与复制</a> —— 矢量 PDF、原生 Word (.docx)、复制为 Word 与公众号富文本复制。</li>
       </ul>
 
       <Giscus />

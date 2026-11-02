@@ -1,0 +1,146 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import Header from '../../../components/Header.astro';
+import Footer from '../../../components/Footer.astro';
+import Giscus from '../../../components/Giscus.astro';
+
+const lang = 'zh' as const;
+---
+
+<Layout
+  title="Markdown 语法参考 — SoloMD 支持的全部语法与扩展"
+  description="SoloMD 支持的全部 Markdown 语法速查：标题与自动多级编号、高亮、上下标、列表与任务、代码块、表格、KaTeX 与 LaTeX 数学公式、Mermaid 图表、GitHub 提示块、Wiki 双向链接、tldraw 白板与 YAML 属性。"
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main id="main">
+    <article class="container docs-article">
+      <nav class="breadcrumbs">
+        <a href="/zh/">首页</a> / <a href="/zh/docs/">文档</a> / <span>Markdown 语法参考</span>
+      </nav>
+
+      <h1>Markdown 语法参考</h1>
+      <p class="lead">
+        SoloMD 完整支持 CommonMark、GitHub Flavored Markdown (GFM) 以及常用的写作扩展语法，在「实时编辑」、「分栏」与「预览」下均可就地渲染。
+      </p>
+
+      <h2>标题与自动多级编号</h2>
+      <pre><code># 一级标题 (H1)
+## 二级标题 (H2)
+### 三级标题 (H3)
+#### 四级标题 (H4)</code></pre>
+      <p>
+        <strong>实用功能</strong>：在「段落 → 标题自动编号 (1 / 1.1 / 1.1.1)」中可一键为全文标题生成层级编号；也可以在「设置 → 基础」中开启<strong>「自动为 1–6 级标题添加多级数字编号」</strong>，新增、删除或调整标题级别时编号会自动实时更新。
+      </p>
+
+      <h2>自动目录</h2>
+      <pre><code>[TOC]</code></pre>
+      <p>在独立一行输入 <code>[TOC]</code>，SoloMD 会根据文档标题自动生成带跳转链接的层级目录。</p>
+
+      <h2>文字样式、高亮与上下标</h2>
+      <pre><code>*斜体* 或 _斜体_
+**粗体** 或 __粗体__
+***粗斜体***
+~~删除线~~
+==高亮文字==（快捷键 Ctrl/⌘ + Shift + H）
+`行内代码`
+H~2~O（下标）与 X^2^（上标）
+&lt;u&gt;下划线&lt;/u&gt; 与 &lt;kbd&gt;Ctrl+S&lt;/kbd&gt;</code></pre>
+
+      <h2>列表、任务列表与列表内代码块</h2>
+      <pre><code>- 无序列表项
+  - 二级无序列表（按 Tab 缩进，Shift+Tab 退格）
+
+1. 第一项（回车自动续写 2.，增删项自动重排编号）
+2. 第二项
+   按 Shift+Enter 软换行，可在当前列表项下插入对齐的缩进代码块：
+   ```python
+   print("自动保持列表缩进，粘贴多行代码也会自动补齐缩进")
+   ```
+
+- [x] 已完成任务
+- [ ] 待办任务 #工作 📅 2026-11-05 ⏫</code></pre>
+      <p>
+        <strong>章节独立编号</strong>：被标题、分割线、代码块或表格隔开的不同有序列表会各自独立从 <code>1.</code> 开始编号；手动输入 <code>1.</code> 也会开启新的编号序列。
+      </p>
+
+      <h2>Wiki 双向链接、普通链接与图片</h2>
+      <pre><code>[[另一篇笔记]]
+[[文件夹/笔记名|自定义显示名称]]
+[外部链接](https://solomd.app "悬停提示")
+
+![图片说明](./_assets/screenshot.png)</code></pre>
+      <p>
+        在实时编辑模式下，按住 <kbd>Ctrl</kbd>（macOS 按住 <kbd>⌘</kbd>）并左键单击链接即可在浏览器中打开；支持本地相对路径图片、防盗链外链图片、引用块/列表内图片及参考式图片。
+      </p>
+
+      <h2>GitHub 风格提示块 (Callouts) 与引用</h2>
+      <pre><code>&gt; [!NOTE]
+&gt; 这是一条提示信息（支持 NOTE / TIP / IMPORTANT / WARNING / CAUTION）。
+
+&gt; 普通引用段落，引用块内也可以直接嵌套渲染 Markdown 表格。</code></pre>
+
+      <h2>代码块与语法高亮</h2>
+      <pre><code>```rust
+fn main() &#123;
+    println!("Hello, SoloMD!");
+&#125;
+```</code></pre>
+      <p>
+        输入 <code>```</code> 后会弹出语言补全提示。代码块内的 HTML 标签（如 <code>&lt;div&gt;</code>、<code>&lt;template&gt;</code>）、公式符号与表格均受严格保护，绝不会被误渲染。在代码块内按第一次 <kbd>Ctrl/⌘ + A</kbd> 只全选当前代码块内容，按第二次全选整篇文档。
+      </p>
+
+      <h2>表格</h2>
+      <pre><code>| 左对齐 | 居中对齐 | 右对齐 |
+| :----- | :------: | -----: |
+| 单元格 |  单元格  | 单元格 |</code></pre>
+      <p>
+        实时模式下点击任意单元格即可直接进入该行该列编辑，悬浮工具栏支持一键增删行列、调整对齐或直接输入 <code>列 × 行</code> 尺寸；从 Excel / WPS 复制单元格粘贴会自动转为 Markdown 表格。
+      </p>
+
+      <h2>数学公式（KaTeX，兼容 <code>$</code> 与 LaTeX <code>\(...\)</code>）</h2>
+      <p>行内公式：<code>$E = mc^2$</code> 或 <code>\(a^2 + b^2 = c^2\)</code></p>
+      <p>块级公式（支持 <code>$$...$$</code> 或 <code>\[...\]</code>）：</p>
+      <pre><code>$$
+\int_0^\infty e^&#123;-x^2&#125; \, dx = \frac&#123;\sqrt\pi&#125;&#123;2&#125;
+$$</code></pre>
+
+      <h2>Mermaid 流程图、PlantUML 与 tldraw 手绘白板</h2>
+      <pre><code>```mermaid
+flowchart LR
+  A["开始 (支持括号与特殊字符)"] --&gt; B&#123;判断&#125;
+  B --&gt;|通过| C[完成]
+```</code></pre>
+      <ul>
+        <li><strong>Mermaid v11</strong>：内置支持流程图、时序图、类图、状态图、甘特图、思维导图等，未加引号的特殊字符节点标签会自动容错转义。</li>
+        <li><strong>tldraw 交互式白板</strong>：输入 <code>```tldraw</code>（或通过斜杠命令 <code>/whiteboard</code>）即可在笔记内嵌入一块可自由手绘、连线、框选的画布，所有笔迹直接保存在当前 Markdown 文件中。</li>
+      </ul>
+
+      <h2>脚注与 YAML Front-matter 属性</h2>
+      <pre><code>---
+title: 项目周报
+date: 2026-11-02
+tags: [周报, 研发]
+---
+
+正文引用一处脚注[^1]。
+
+[^1]: 这里是脚注的详细说明，导出 Word 与 PDF 时均会保留。</code></pre>
+    </article>
+    <Giscus lang={lang} />
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .docs-article { max-width: 820px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .docs-article h1 { font-size: 2rem; margin: 10px 0 16px; }
+  .docs-article h2 { font-size: 1.4rem; margin: 32px 0 12px; }
+  .docs-article .lead { color: var(--text-muted, #555); margin-bottom: 24px; line-height: 1.6; }
+  .docs-article code { background: #f5f5f0; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+  .docs-article pre { background: #f5f5f0; padding: 12px 16px; border-radius: 6px; overflow-x: auto; }
+  .docs-article pre code { background: none; padding: 0; }
+  .docs-article p, .docs-article li { line-height: 1.7; margin: 10px 0; }
+</style>

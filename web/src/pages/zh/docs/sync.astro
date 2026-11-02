@@ -8,23 +8,27 @@ import CompareFaq from '../../../components/CompareFaq.astro';
 const lang = 'zh' as const;
 const FAQ = [
   {
-    q: '连接 GitHub 时为什么报 401 错误?',
-    a: '401 表示 GitHub 拒绝了 token 本身。按可能性排序:token 过期了(fine-grained token 默认 30–90 天);你粘贴的是 GitHub 账号密码而不是 Personal Access Token(个人访问令牌,GitHub 已在 2021 年移除密码认证);token 被撤销(重新生成会立即让旧值失效,GitHub 也会自动撤销在泄露代码中发现的 token);或者你网络里的代理剥掉了 Authorization 请求头。解决:重新创建一个 token(见上文清单),在「设置 → 同步」重新粘贴后重试。',
+    q: '三种个人网盘加密同步方案该怎么选？',
+    a: '① 如果你有坚果云、群晖 NAS、Nextcloud 或 AList/OpenList，推荐选「方案一：WebDAV 端到端加密同步」，无需安装网盘客户端即可按文件同步；② 如果你电脑上已经装了百度网盘、阿里云盘、夸克网盘、OneDrive 或 iCloud 同步盘，推荐选「方案二：本地网盘同步目录加密保险库」，SoloMD 会把笔记加密为 .enc 密文写进同步盘目录，由网盘客户端自动上传；③ 如果你不想装任何网盘客户端，甚至希望连笔记文件名和目录结构都不暴露给网盘，选「方案三：网盘开放平台直连 API」，整库打包加密为单个 solomd-vault.enc 直传网盘。',
   },
   {
-    q: '我的 token 存储安全吗?',
-    a: 'token 存放在操作系统钥匙串里(macOS Keychain、Windows 凭据管理器、Linux 上的 libsecret)—— 从不写进明文配置文件,除了发往 github.com 的请求之外也绝不离开你的机器。',
+    q: '坚果云 (Nutstore) 连接 WebDAV 为什么报 401 / 403？',
+    a: '坚果云不允许直接用登录密码连接 WebDAV。请登录坚果云网页版 → 右上角「账户信息」→「安全选项」→「第三方应用管理」→ 点击「添加应用」生成专用应用密码；服务器地址填写 https://dav.jianguoyun.com/dav/，用户名填坚果云注册邮箱，密码填刚刚生成的应用密码。注意：坚果云要求远程子目录必须先存在（或在 SoloMD 中填 /SoloMD 让 SoloMD 自动创建）。',
   },
   {
-    q: '端到端加密到底加密了什么?',
-    a: '开启 E2EE(端到端加密)后,SoloMD 推送的是工作区的加密影子副本:文件内容在离开你的机器之前,就已用由口令派生的密钥加密。GitHub 上只存密文。口令一旦丢失,远端副本将无法解密 —— 请务必妥善保管。',
+    q: '端到端加密 (E2EE) 的主密码忘了能找回吗？',
+    a: '不能。SoloMD 采用 Argon2id 密钥派生 + XChaCha20-Poly1305 零知识认证加密，加密和解密完全在你的设备本地完成，网盘与 GitHub 服务器上只有密文，主密码绝不上传。请务必牢记或用密码管理器保存你的加密主密码。',
+  },
+  {
+    q: '连接 GitHub 时为什么报 401 Bad credentials？',
+    a: '401 表示 GitHub 拒绝了 Token：① Fine-grained Token 默认 30–90 天过期；② 误填了 GitHub 登录密码而非 Personal Access Token；③ Token 被重新生成或撤销；④ 网络代理剥离了 Authorization 请求头。重新生成一个勾选了 Contents: Read and write（或 repo 权限）的 Token 粘贴即可。',
   },
 ];
 ---
 
 <Layout
-  title="SoloMD 同步、历史与备份 — GitHub 同步、E2EE、Git 快照"
-  description="在 SoloMD 中用 fine-grained Personal Access Token 配置 GitHub 同步,开启可选的端到端加密,使用自动 Git 历史快照与回滚,并排查 401 / 推送错误。"
+  title="SoloMD 同步、历史与个人网盘加密备份指南 — WebDAV、百度/阿里/夸克网盘、GitHub 与 Git 快照"
+  description="在 SoloMD 中配置个人网盘三种端到端加密备份与多端同步（坚果云 WebDAV、百度网盘/阿里云盘/夸克网盘/OneDrive 本地加密保险库、网盘 OpenAPI 免客户端直连）、GitHub E2EE 同步与本地 Git 历史回滚。"
   lang={lang}
 >
   <Header lang={lang} />
@@ -34,77 +38,81 @@ const FAQ = [
         <a href="/zh/">首页</a> / <a href="/zh/docs/">文档</a> / <span>同步与历史</span>
       </nav>
 
-      <h1>同步、历史与备份</h1>
-      <p class="lead">你的笔记就是文件夹里的普通文件 —— 下面这些功能让这个文件夹既安全又随处可用。</p>
+      <h1>同步、历史与个人网盘加密备份</h1>
+      <p class="lead">
+        你的笔记在本地始终是普通的 <code>.md</code> 文件；离开设备进入网盘或云端前，可通过 <code>Argon2id + XChaCha20-Poly1305</code> 零知识加密保护隐私。
+      </p>
 
-      <h2>Git 历史（本地快照）</h2>
-      <ul>
-        <li>设置 → 历史 → <em>初始化 Git 历史</em>，把工作区变成一个本地 Git 仓库。不需要账号，什么都不会离开你的机器。</li>
-        <li>开启<em>保存时自动提交</em>后，每次保存都是一个快照。“立即保存快照”可随时手动提交。</li>
-        <li>历史面板按笔记显示时间线；一键对比或回滚到任意快照。</li>
-      </ul>
+      <h2>一、个人网盘端到端加密同步（三种方式任选）</h2>
+      <p>
+        打开 <strong>设置 → 同步</strong>（或菜单栏 <strong>文件 → 同步与历史</strong>），SoloMD 提供三种零知识加密网盘方案，适用于不同网盘习惯：
+      </p>
 
-      <h2>GitHub 同步 — 配置步骤</h2>
+      <h3>方案 1：WebDAV 端到端加密同步（推荐坚果云 / Nextcloud / 群晖 NAS / AList）</h3>
       <ol>
-        <li><strong>创建 Personal Access Token（个人访问令牌，PAT）</strong>：位置在 <code>github.com → Settings → Developer settings → Personal access tokens</code>。两种都可以：
+        <li>打开 <strong>设置 → 同步 → WebDAV 同步</strong>。</li>
+        <li><strong>选择预设或填写服务器地址</strong>：
           <ul>
-            <li><em>Fine-grained</em>（推荐）：选择同步用的仓库（或 “All repositories”），在 <em>Repository permissions</em> 里把 <strong>Contents 设为 Read and write</strong>。注意你选择的过期时间。</li>
-            <li><em>Classic</em>：勾选 <strong><code>repo</code></strong> 权限范围。</li>
+            <li><strong>坚果云 (Nutstore)</strong>：地址填 <code>https://dav.jianguoyun.com/dav/</code>，用户名填坚果云邮箱，密码填坚果云网页版「账户信息 → 安全选项 → 第三方应用管理」中生成的<strong>应用密码</strong>（不能填登录密码）。</li>
+            <li><strong>Nextcloud / ownCloud</strong>：地址形如 <code>https://你的域名/remote.php/dav/files/用户名/</code>。</li>
+            <li><strong>AList / OpenList</strong>：地址填 <code>http://你的地址:5244/dav/</code>（可挂载百度、阿里、夸克、115、天翼等数十种网盘）。</li>
           </ul>
         </li>
-        <li>回到 SoloMD：设置 → 同步 → 粘贴 token。SoloMD 会验证并显示你的 GitHub 用户名。</li>
-        <li><strong>关联仓库</strong> —— 选一个已有仓库，或让 SoloMD 为你新建一个私有笔记仓库。</li>
-        <li>通过工具栏胶囊按钮或命令面板推送 / 拉取；可选的自动推送 / 自动拉取在后台运行。</li>
+        <li><strong>远程目录</strong>：填写如 <code>/SoloMD</code>。</li>
+        <li><strong>开启端到端加密（推荐）</strong>：勾选「启用端到端加密 (E2EE)」并设置加密主密码。开启后，所有笔记在上传前均在本地加密，网盘后台看到的全是密文。</li>
+        <li>点击 <strong>「测试连接」</strong> 验证通过后，即可随时点击 <strong>「加密上传到 WebDAV」</strong> 或在另一台设备上填入相同配置与主密码点击 <strong>「从 WebDAV 下载并解密」</strong>。</li>
       </ol>
 
-      <h2>端到端加密（可选）</h2>
+      <h3>方案 2：本地个人网盘同步目录加密保险库（适合百度网盘 / 阿里云盘 / 夸克 / OneDrive / iCloud）</h3>
       <p>
-        用一个口令开启 E2EE（端到端加密）后，SoloMD 推送的是<em>加密影子副本</em>而非明文
-        —— GitHub 上只存密文。口令永远不离开你的机器；没有口令，远端副本无法解密
-        （没有找回机制）。出于设计考虑，加密工作区的分享链接会被禁用。
+        如果你电脑上已经安装了百度网盘、阿里云盘、夸克网盘、OneDrive、iCloud Drive 或 Dropbox 客户端并开启了本地同步文件夹：
       </p>
+      <ol>
+        <li>打开 <strong>设置 → 同步 → 本地个人网盘加密保险库</strong>。</li>
+        <li>点击 <strong>「自动检测本机网盘目录」</strong>（SoloMD 会自动扫描本机已安装的百度网盘、阿里云盘、夸克、坚果云、OneDrive、iCloud、Dropbox、Google Drive 目录），或手动点击「选择文件夹」指向任意网盘同步目录（例如 <code>~/BaiduNetdiskWorkspace/SoloMD-Vault</code>）。</li>
+        <li>输入<strong>加密主密码</strong>。</li>
+        <li>点击 <strong>「加密备份到网盘目录」</strong>：SoloMD 会将当前工作区的所有笔记加密为 <code>.enc</code> 密文写入该同步目录，随后由你的网盘客户端自动同步上云。</li>
+        <li><strong>在另一台电脑恢复</strong>：在另一台电脑把该网盘目录同步下来，在 SoloMD 中选择同一个保险库目录并输入主密码，点击 <strong>「从网盘目录解密恢复到工作区」</strong> 即可。</li>
+      </ol>
 
-      <h2>分享链接</h2>
+      <h3>方案 3：网盘开放平台直连 API 加密同步（免客户端，连文件名也完全隐藏）</h3>
       <p>
-        “复制本笔记的分享链接”会生成一个通过仓库渲染该笔记的 URL ——
-        想把单篇笔记发给别人、又不想开放仓库权限时很方便。
+        不想在电脑上安装笨重的网盘客户端？或者担心网盘扫描笔记文件名？使用开放平台直连模式：
       </p>
+      <ol>
+        <li>打开 <strong>设置 → 同步 → 网盘开放平台直连 (OpenAPI)</strong>。</li>
+        <li>选择服务商：支持 <strong>百度网盘 OpenAPI</strong>、<strong>阿里云盘 OpenAPI</strong>、<strong>Microsoft OneDrive (Graph API)</strong>、<strong>Dropbox API</strong>。</li>
+        <li>填入对应的 <strong>Access Token（访问令牌）</strong>、远程路径（如 <code>/apps/SoloMD/solomd-vault.enc</code>）以及你的<strong>加密主密码</strong>。</li>
+        <li>点击 <strong>「打包加密并上传」</strong>：SoloMD 会将整个工作区打包并加密为单个 <code>solomd-vault.enc</code> 密文包直接通过 HTTPS API 上传到网盘 —— 网盘端不仅看不到笔记正文，连你有几篇笔记、叫什么文件名、什么目录结构都完全看不见。</li>
+        <li>在任意设备上填入相同 Token 与加密主密码，点击 <strong>「下载并解密恢复」</strong> 即可完整还原整个笔记库。</li>
+      </ol>
 
-      <h2>疑难排查</h2>
-      <table class="kb-table">
-        <thead><tr><th>错误</th><th>原因与解决</th></tr></thead>
-        <tbody>
-          <tr>
-            <th>401 / Bad credentials</th>
-            <td>GitHub 拒绝了 token 本身。排查清单：① token 过期 —— fine-grained PAT 默认 30–90 天，去 <code>github.com → Settings → Developer settings</code> 查看；② 你粘贴的是账号<em>密码</em>或 OAuth 授权码而不是 PAT；③ token 被重新生成或撤销（旧值立即失效，GitHub 也会自动撤销在公开代码中发现的 token）；④ 公司 / VPN 代理剥掉了 <code>Authorization</code> 请求头。重新创建一个 token 再粘贴即可 —— SoloMD 会自动去掉多余空格。</td>
-          </tr>
-          <tr>
-            <th>私有仓库 403 / 404</th>
-            <td>token 有效但缺少权限：fine-grained PAT 缺 <em>Contents: Read and write</em>，或没有授权给该仓库；classic PAT 缺 <code>repo</code> 权限范围；或者是启用了 SAML SSO 的组织仓库，而 token 尚未为该组织授权。</td>
-          </tr>
-          <tr>
-            <th>“远端有更新的提交”</th>
-            <td>别人（或另一台设备）先推送了。先拉取，有冲突就按提示解决，再推送。</td>
-          </tr>
-          <tr>
-            <th>“受保护分支”</th>
-            <td>目标分支设置了保护规则 —— 推送到其他分支，或为你的笔记仓库放宽该规则。</td>
-          </tr>
-        </tbody>
-      </table>
+      <h2>二、Git 历史（本地自动快照与一键回滚）</h2>
+      <ul>
+        <li>打开 <strong>设置 → 历史 → 初始化 Git 历史</strong>，即可把当前文件夹变成一个本地 Git 仓库，无需注册任何账号，数据 100% 留在本地。</li>
+        <li>开启<strong>「保存时自动提交」</strong>后，每次保存笔记都会自动生成一个时间点快照；也可以随时点击「立即保存快照」。</li>
+        <li>打开右侧栏的 <strong>「历史」</strong> 面板，即可查看当前笔记的完整修改时间线，支持一键对比差异（Diff）或回滚到任意历史版本。</li>
+      </ul>
 
-      <h2>不用 GitHub 也能同步</h2>
-      <p>
-        因为笔记就是普通文件，任何文件夹同步工具都行：iCloud 云盘、
-        Dropbox、Syncthing、OneDrive —— 在每台设备上把 SoloMD 指向同步的文件夹即可。
-        Android 上通过系统文件选择器打开同一个文件夹；iOS 上使用「文件」App 中的位置。
-      </p>
-      <p>
-        用 iCloud 的话有一份更详细的指南 —— 含 Mac / iPhone 设置步骤、跨设备接力，
-        以及多设备同时编辑时要注意的冲突问题：<a href="/zh/docs/icloud/">用 iCloud 同步笔记</a>。
-      </p>
+      <h2>三、GitHub 同步（含可选端到端加密）</h2>
+      <ol>
+        <li><strong>创建 GitHub Personal Access Token (PAT)</strong>：前往 <code>github.com → Settings → Developer settings → Personal access tokens</code>：
+          <ul>
+            <li><em>Fine-grained Token</em>（推荐）：Repository permissions 中将 <strong>Contents 设为 Read and write</strong>。</li>
+            <li><em>Classic Token</em>：勾选 <strong><code>repo</code></strong> 权限。</li>
+          </ul>
+        </li>
+        <li>打开 <strong>设置 → 同步 → GitHub</strong>，粘贴 Token 并关联已有仓库（或一键新建私有仓库）。</li>
+        <li><strong>可选端到端加密</strong>：开启 E2EE 口令后，SoloMD 推送到 GitHub 的是加密影子副本，GitHub 上只存密文。</li>
+      </ol>
 
-      <CompareFaq heading="常见问题" items={FAQ} />
+      <h2>四、手机与平板同步（iCloud / Android SAF / Syncthing）</h2>
+      <ul>
+        <li><strong>iPhone / iPad + Mac (iCloud)</strong>：直接把笔记文件夹放在「iCloud 云盘」中，在 Mac 和 iOS 的「文件」App 中打开同一个文件夹即可原生实时同步（详见 <a href="/zh/docs/icloud/">用 iCloud 同步指南</a>）。</li>
+        <li><strong>Android + 电脑 (Syncthing / FolderSync)</strong>：在 Android 上通过系统文件夹选择器授权打开同步目录；当后台 Syncthing 同步更新了笔记时，切回 SoloMD 前台会自动检测并无感刷新内容。</li>
+      </ul>
+
+      <CompareFaq heading="常见问题与错误排查" items={FAQ} />
       <Giscus />
     </article>
   </main>

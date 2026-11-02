@@ -8,8 +8,8 @@ const lang = 'zh' as const;
 ---
 
 <Layout
-  title="SoloMD 编辑器 — 实时渲染、图片、表格、Vim、打字机模式"
-  description="SoloMD 编辑器工作原理:实时所见即所得渲染、图片粘贴与上传、表格编辑、数学公式、Mermaid、PlantUML、白板、专注与打字机模式、Vim 按键,以及 Windows 上对输入法安全的编辑器。"
+  title="SoloMD 编辑器详解 — 实时渲染、代码块技巧、表格、公式、标题自动编号与专注模式"
+  description="SoloMD 编辑器完整指南：实时所见即所得渲染、代码块两段式 Ctrl+A 与列表内缩进代码块、表格精确点击与 Excel 粘贴、标题自动多级编号、LaTeX/KaTeX 公式、Mermaid、白板与 LanguageTool 语法检查。"
   lang={lang}
 >
   <Header lang={lang} />
@@ -19,68 +19,66 @@ const lang = 'zh' as const;
         <a href="/zh/">首页</a> / <a href="/zh/docs/">文档</a> / <span>编辑器</span>
       </nav>
 
-      <h1>编辑器</h1>
-      <p class="lead">你和文字之间的一切。</p>
+      <h1>编辑器详解</h1>
+      <p class="lead">所见即所得的实时渲染，同时对代码块、列表缩进、表格与长文档选区做了深度打磨。</p>
 
-      <h2>实时编辑：在书写处直接渲染</h2>
+      <h2>一、实时编辑（Live Edit）：在书写处直接渲染</h2>
       <p>
-        在实时编辑模式下，格式就地渲染，光标所在行会显示原始 Markdown 供你编辑 ——
-        光标移开后又恢复渲染。粗体 / 斜体 / 删除线、<code>==高亮==</code>、链接、
-        标题、引用、任务列表都是如此，整块内容也一样：
+        在默认的「实时编辑」模式下，格式就地渲染为成品效果，仅在光标所在行展开原始 Markdown 符号供你精确修改 —— 光标移开即恢复渲染（如果你想始终显示标记符号，也可以在「设置 → 写作」中开启<em>始终显示 Markdown 标记符号</em>）：
       </p>
       <ul>
-        <li><strong>表格</strong>渲染为真正的表格（AI 导出中格式不规范的分隔行会被自动修复）。</li>
-        <li><strong>数学公式</strong> —— 行内 <code>$…$</code> 与块级 <code>$$…$$</code>，由 KaTeX 渲染。</li>
-        <li><strong>Mermaid</strong> 与 <strong>PlantUML</strong> 代码块渲染为图表（PlantUML 需手动开启 —— 它会把图表源码发送到你配置的服务器）。</li>
-        <li><strong>图片</strong> —— 独占一行的 <code>![alt](path)</code> 直接显示图片。</li>
-        <li><strong>内嵌 HTML</strong> —— 块级容器（<code>&lt;div&gt;</code>、<code>&lt;table&gt;</code>、<code>&lt;details&gt;</code>…）与行内标签（<code>&lt;strong&gt;</code>、<code>&lt;sup&gt;</code>、<code>&lt;kbd&gt;</code>…）渲染效果与预览一致。</li>
-        <li><strong>GitHub 风格提示块</strong> —— <code>&gt; [!NOTE]</code> / TIP / IMPORTANT / WARNING / CAUTION。</li>
-        <li><strong>白板</strong> —— <code>```tldraw</code> 代码块嵌入一块可实时绘制的画布，内容保存回笔记本身。</li>
+        <li><strong>行内排版与选中气泡栏</strong>：粗体、斜体、删除线、<code>==高亮==</code>（<kbd>Ctrl/⌘ + Shift + H</kbd>）、行内代码、上下标，以及隐藏如 <code>\#</code> 的转义反斜杠；选中任意文字还会浮出快捷排版气泡栏。</li>
+        <li><strong>表格（支持点击直达单元格）</strong>：实时渲染为可视化表格，点击任意数据行或表头单元格，光标直接落入所点击的那一行、那一列内部；支持引用块内嵌套表格（<code>&gt; | a | b |</code>）与 AI 畸形表格自动修复。</li>
+        <li><strong>数学公式（KaTeX &amp; LaTeX）</strong>：同时支持行内 <code>$…$</code> / <code>\(…\)</code> 与块级 <code>$$…$$</code> / <code>\[…\]</code>。</li>
+        <li><strong>Mermaid v11 与 PlantUML 图表</strong>：代码块自动渲染为矢量图表，自动容错带括号/冒号的流程图节点标签，并支持图表内超链接悬停提示。</li>
+        <li><strong>图片（含防盗链外链与列表/引用内图片）</strong>：支持本地相对路径、Windows 反斜杠路径、引用式图片以及百度文心/Gitee 等防盗链网络图片直接渲染。</li>
+        <li><strong>GitHub 提示块与内嵌 HTML</strong>：<code>&gt; [!NOTE]</code> / TIP / IMPORTANT / WARNING / CAUTION，以及块级与行内 HTML 标签。</li>
+        <li><strong>tldraw 手绘白板</strong>：输入 <code>```tldraw</code> 即可在笔记内直接画架构图或草图。</li>
       </ul>
 
-      <h2>图片</h2>
+      <h2>二、代码块高频技巧（很多人不知道的实用细节）</h2>
       <ul>
-        <li><strong>粘贴截图</strong> —— 自动保存到笔记旁边（或 front-matter 里 <code>imageRoot</code> / 附件设置指定的文件夹），并自动插入链接。</li>
-        <li><strong>拖放</strong>图片文件到编辑器即可插入。</li>
-        <li><strong>图床</strong> —— 可选择把本地图片上传到 PicGo、SM.MS、S3 或 GitHub，在命令面板执行“上传本地图片到图床…”。</li>
+        <li><strong>两段式 <kbd>Ctrl/⌘ + A</kbd> 全选</strong>：当光标位于代码块内部时，<strong>按第 1 次 <kbd>Ctrl/⌘ + A</kbd> 只全选当前代码块的正文</strong>（方便直接复制或替换这段代码）；<strong>紧接着按第 2 次 <kbd>Ctrl/⌘ + A</kbd> 才全选整篇文档</strong>。</li>
+        <li><strong>列表项内插入对齐代码块（<kbd>Shift + Enter</kbd>）</strong>：在有序或无序列表项末尾按 <kbd>Shift + Enter</kbd> 软换行，光标会自动对齐到当前列表项正文缩进位，此时输入 <code>```</code> 或插入代码块，代码块会完美按列表层级缩进渲染。</li>
+        <li><strong>缩进代码块智能复制与粘贴</strong>：
+          <ul>
+            <li>从缩进代码块（例如缩进了 4 或 8 个空格的代码块）中点击复制按钮、手动拖选复制或 <kbd>Ctrl/⌘ + A</kbd> 复制时，<strong>自动剥离每行前面的围栏对齐空格</strong>，贴到 IDE 里不会多出一截缩进。</li>
+            <li>反过来，复制一段顶格写的多行代码粘贴进缩进代码块时，<strong>后续每一行都会自动补齐代码块的起始缩进</strong>，绝不会掉出代码块外。</li>
+          </ul>
+        </li>
+        <li><strong>代码块内严格隔离</strong>：代码块内部的 <code>&lt;template&gt;</code>、<code>&lt;div&gt;</code>、<code>==</code>、<code>$$</code> 或表格竖线永远保持纯代码原貌，不会被误当作 HTML 块或公式渲染。</li>
       </ul>
 
-      <h2>写作助手</h2>
+      <h2>三、列表与标题多级自动编号</h2>
+      <ul>
+        <li><strong>有序列表自动续行与整组转换</strong>：按回车自动生成下一序号并重排后续项；选中多行无序列表或相连的多行文本按「有序列表」快捷键，会一次性把整组转为 <code>1. 2. 3.</code>；跨标题或分割线的不同列表各自独立从 <code>1.</code> 开始编号。</li>
+        <li><strong>标题多级自动编号（<code>1 / 1.1 / 1.1.1</code>）</strong>：
+          <ul>
+            <li><strong>一次性编号</strong>：点击菜单「段落 → 标题自动编号 (1 / 1.1 / 1.1.1)」。</li>
+            <li><strong>实时自动维护</strong>：在「设置 → 基础」中开启<strong>「自动为 1–6 级标题添加多级数字编号」</strong>，之后无论你在文中新增、删除还是升降级标题，全文多级编号都会自动实时重算且不跳动视野。</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h2>四、写作与校对助手</h2>
       <table class="kb-table">
         <thead><tr><th>功能</th><th>用法</th></tr></thead>
         <tbody>
-          <tr><th>斜杠命令</th><td>在空行输入 <code>/</code> 唤出块模板 —— 表格、代码块、公式、提示块……</td></tr>
-          <tr><th>Wiki 链接</th><td><code>[[笔记名]]</code>，带自动补全；点击跳转，同时驱动反向链接和关系图。</td></tr>
-          <tr><th>标签</th><td><code>#标签</code>，带自动补全；在标签面板里浏览。</td></tr>
-          <tr><th>查找 / 替换</th><td>笔记内按 <kbd>Ctrl/⌘ F</kbd>；输入的同时结果就滚动到可见位置。</td></tr>
-          <tr><th>AI 改写</th><td>选中文字 → <kbd>Ctrl/⌘ J</kbd>。见 <a href="/zh/docs/ai/">AI 功能</a>。</td></tr>
-          <tr><th>格式化文档</th><td>命令面板 → “格式化 Markdown (Prettier)”。</td></tr>
-          <tr><th>清理 AI 痕迹</th><td>命令面板 → 规范化弯引号、长破折号和不可见字符。</td></tr>
+          <tr><th>斜杠命令 (Slash)</th><td>在空行输入 <code>/</code> 唤出块模板 —— 表格、代码块、公式、提示块、白板……</td></tr>
+          <tr><th>Excel / WPS 粘贴表格</th><td>从 Excel 或 WPS 复制单元格区域直接 <kbd>Ctrl/⌘ + V</kbd> 粘贴，自动生成对齐的 Markdown 表格。</td></tr>
+          <tr><th>复制为 Word</th><td>右键或编辑菜单 →「复制为 Word」，将排版、列表与原生公式一键粘贴进 Word / WPS。</td></tr>
+          <tr><th>LanguageTool 语法检查</th><td>在「设置 → 语言与检查」中开启，支持多语种语法与文风检查（支持公共 API 或自建服务器）。</td></tr>
+          <tr><th>中文校对與简繁转换</th><td>自动标出常见中英文混排标点错误与错别字（忽略文件名与省略号），支持一键简繁转换。</td></tr>
+          <tr><th>AI 改写</th><td>选中文字 → <kbd>Ctrl/⌘ + J</kbd>，支持润色、精简、翻译、续写（见 <a href="/zh/docs/ai/">AI 功能</a>）。</td></tr>
         </tbody>
       </table>
 
-      <h2>专注写作的模式</h2>
+      <h2>五、专注模式、跨标签记忆与输入法稳定</h2>
       <ul>
-        <li><strong>专注模式</strong>把当前段落之外的内容全部调暗。</li>
-        <li><strong>打字机模式</strong>让光标所在行始终垂直居中。</li>
-        <li><strong>Vim 模式</strong>（设置 → 编辑器）—— 模态编辑，包括用 <code>j/k</code> 在渲染块上移动。</li>
-        <li><strong>缩放</strong> —— <kbd>Ctrl/⌘ +</kbd>/<kbd>−</kbd>/<kbd>0</kbd> 缩放整个应用（走系统 WebView 缩放，所以点击位置始终精确）；编辑器字号与预览字号另有独立设置。</li>
+        <li><strong>跨标签与跨模式位置记忆</strong>：在不同标签页之间切换，或在「实时 / 源码 / 分栏 / 预览」间切换时，精准保持你刚才阅读和编辑的像素级视野位置。</li>
+        <li><strong>专注模式（<kbd>F8</kbd>）与打字机模式（<kbd>F9</kbd>）</strong>：专注模式调暗非当前段落；打字机模式让当前打字行始终保持在屏幕垂直中央；默认开启柔和护眼的当前行高亮。</li>
+        <li><strong>Windows 中文输入法深度适配</strong>：在现代 Windows（WebView2）上默认启用完整 CodeMirror 实时编辑器，完美兼容微软拼音、搜狗、微信输入法等中文输入法，并在输入法激活（<code>keyCode 229</code>）时确保 <kbd>Ctrl+Z / Y / F / A / J</kbd> 等快捷键不丢失。</li>
       </ul>
-
-      <h2>外观</h2>
-      <ul>
-        <li>浅色 / 深色主题切换；自定义 CSS 文件可以完全换肤（设置 → 外观）。</li>
-        <li>编辑器字体、<strong>独立的代码字体</strong>、字号、行号、自动换行、编辑器栏宽限制。</li>
-        <li>设置中提供<strong>光标不闪烁</strong>选项。</li>
-      </ul>
-
-      <h2>关于 Windows 与中日韩输入法</h2>
-      <p>
-        在 Windows 上，SoloMD 使用一条专门打造的纯文本编辑器路径，绕开 WebView2
-        长期存在的输入法 bug（首字符丢失、标点重复）。代价是：源码模式下的语法高亮
-        受限；实时编辑、分栏和预览则完整渲染。在 Windows 上开启 Vim 模式会切换回
-        CodeMirror 编辑器。
-      </p>
 
       <Giscus />
     </article>

@@ -9,7 +9,7 @@ const lang = 'zh' as const;
 
 <Layout
   title="SoloMD 设置参考 — 每个选项都讲清楚"
-  description="逐节浏览 SoloMD 的设置:外观、字体、编辑器行为、视图模式、会话与文件处理、同步、AI、语言、遥测,以及如何重置一切。"
+  description="逐节浏览 SoloMD 的设置：搜索与逐条跳转、将首行作为标签页标题、保存前检查原文件是否存在、标题自动编号、粘贴图片预设宽度、Typora/Word 快捷键预设、网盘同步与一键升级。"
   lang={lang}
 >
   <Header lang={lang} />
@@ -20,61 +20,57 @@ const lang = 'zh' as const;
       </nav>
 
       <h1>设置参考</h1>
-      <p class="lead">通过齿轮图标或命令面板打开设置。下面按分区介绍重点。</p>
-
-      <h2>外观</h2>
-      <ul>
-        <li><strong>主题</strong> —— 浅色 / 深色；<strong>自定义 CSS 文件</strong>可以给整个应用换肤。</li>
-        <li><strong>字体</strong>（预设或任何已安装字体），代码块与行内代码另有独立的<strong>代码字体</strong>。</li>
-        <li><strong>字号</strong>、<strong>界面字号</strong>，以及独立的<strong>预览字号</strong>；在此之上 <kbd>Ctrl/⌘ +/−/0</kbd> 还能整体缩放应用。</li>
-        <li><strong>语言</strong> —— 14 种界面语言；命令面板会跟随。</li>
-      </ul>
-
-      <h2>编辑器</h2>
-      <ul>
-        <li><strong>自动换行</strong>、<strong>行号</strong>、<strong>限制编辑器宽度</strong>（居中的可读栏宽）。</li>
-        <li><strong>光标不闪烁</strong> —— 让光标停止闪动。</li>
-        <li><strong>Vim 模式</strong>、<strong>专注模式</strong>、<strong>打字机模式</strong>、<strong>拼写检查</strong>。</li>
-        <li>编辑模式的<strong>实时预览</strong>开关，以及<strong>启动视图模式</strong>覆盖项。</li>
-        <li><strong>硬换行</strong> —— 把单个换行当作 <code>&lt;br&gt;</code>（像 GitHub 评论那样）。</li>
-        <li><strong>标题自动编号</strong> —— 把普通的 <code>6.2 标题</code> 行提升为真正的标题（默认关闭）。</li>
-        <li><strong>代码块自动换行</strong> —— 长代码行软换行，不出横向滚动条；还有<strong>代码块行号</strong>。</li>
-      </ul>
-
-      <h2>文件与会话</h2>
-      <ul>
-        <li><strong>恢复会话</strong> —— 启动时重新打开标签页和布局；<strong>按工作区记住标签页</strong> —— 每个文件夹各自记住自己的一组标签页。</li>
-        <li>对无未保存修改的标签页<strong>自动重载外部改动</strong>；有未保存修改的标签页一定先询问。</li>
-        <li><strong>失焦自动保存</strong>（默认关闭）、<strong>在新窗口打开文件</strong>、<strong>打开时在文件树中定位</strong>。</li>
-        <li>粘贴图片的<strong>附件文件夹</strong>（共用或按笔记独立）。</li>
-      </ul>
-
-      <h2>面板与工作区</h2>
-      <ul>
-        <li>大纲、文件树以及每个右侧栏面板的默认状态（见<a href="/zh/docs/workspace/">工作区指南</a>）。</li>
-        <li><strong>大纲标记样式</strong> —— 跳转字母 / 数字 / 无；大纲在左侧或右侧。</li>
-        <li><strong>日记文件夹</strong>。</li>
-      </ul>
-
-      <h2>同步、历史与 AI</h2>
-      <p>
-        详见<a href="/zh/docs/sync/">同步与历史</a>和
-        <a href="/zh/docs/ai/">AI 功能</a> —— token 与 API Key 始终存放在
-        操作系统钥匙串里，绝不写进配置文件。
+      <p class="lead">
+        按 <kbd>Ctrl/⌘ + ,</kbd> 打开设置。顶部搜索框支持中文或英文关键词搜索所有配置项与快捷键，按搜索框右侧的 <kbd>⌵</kbd> 按钮可在匹配项之间逐条跳转并闪烁高亮目标行。
       </p>
 
-      <h2>隐私</h2>
+      <h2>一、基础与文件安全（常被问到的特殊选项）</h2>
       <ul>
-        <li><strong>遥测</strong> —— 匿名的功能使用计数（无 IP、无文件内容、无个人数据）；一个开关即可完全关闭。</li>
-        <li>PlantUML 渲染和图床需要手动开启，因为它们会把数据发送到你配置的服务器。</li>
+        <li><strong>将文档首行作为标签页标题</strong>（默认关闭）：开启后，标签栏优先显示文档第一行非空正文（自动跳过 YAML Front-matter），非常适合打开由第三方软件生成的随机/UUID 临时文件名笔记。</li>
+        <li><strong>保存时检查原文件是否存在</strong>（默认关闭）：专为配合第三方软件编辑临时文件设计。开启后，如果磁盘上的原始文件已被外部软件移动或清理，自动保存将静默跳过，手动保存（<kbd>Ctrl/⌘ + S</kbd>）则会弹窗询问是否重新创建文件，防止把内容存成孤立文件或被外部软件后续覆盖导致丢失。</li>
+        <li><strong>自动为 1–6 级标题添加多级数字编号</strong>（默认关闭）：开启后，新增、删除或修改标题时会自动维护全文的 <code>1 / 1.1 / 1.1.1</code> 多级章节编号。</li>
+        <li><strong>只读文件保存保护</strong>：当编辑系统只读文件并尝试保存时，SoloMD 会醒目提示并自动引导「另存为」<code>-copy.md</code> 副本；关闭含未保存修改的只读标签页时同样会弹窗确认。</li>
+        <li><strong>恢复会话与按工作区记住标签页</strong>：启动时恢复上次打开的标签页与精确滚动位置；每个工作区文件夹各自独立记住属于它的打开标签集。</li>
+        <li><strong>自动重载外部改动</strong>：当标签页没有未保存修改时，外部程序（如 Syncthing、Git）更新磁盘文件会自动无感刷新；有未保存修改时一定会先询问你。</li>
       </ul>
 
-      <h2>重置</h2>
+      <h2>二、写作与编辑器</h2>
+      <ul>
+        <li><strong>自动换行、行号、高亮当前行、限制编辑器宽度</strong>（居中可读栏宽）。</li>
+        <li><strong>始终显示 Markdown 标记符号</strong>：如果你不喜欢实时编辑下光标移开时隐藏 <code>**</code>、<code>#</code> 等符号，开启此项可让标记常驻显示，行宽绝不跳动。</li>
+        <li><strong>粘贴图片保存位置与默认显示宽度</strong>：可选共用 <code>_assets/</code>、每篇笔记独立 <code>.assets/</code> 或兼容 Typora 的 <code>./images/$&#123;filename&#125;/</code> 模板；并支持配置粘贴图片的默认显示宽度（如 60%、80% 或固定像素）及右键快速缩放图片。</li>
+        <li><strong>代码块自动换行、代码块行号与语言补全提示</strong>：长代码行可软换行，输入 <code>```</code> 时可开关语言下拉提示。</li>
+        <li><strong>Vim 模式、专注模式（<kbd>F8</kbd>）、打字机模式（<kbd>F9</kbd>）、光标不闪烁</strong>。</li>
+      </ul>
+
+      <h2>三、外观与自定义主题</h2>
+      <ul>
+        <li><strong>主题</strong>：浅色、深色或<strong>跟随操作系统外观</strong>；内置象牙珀光（Ivory Amber）等多款精选主题。</li>
+        <li><strong>自定义 CSS（带开发者工具调试）</strong>：支持编写 <code>custom.css</code> 完全定制界面与排版，点击「打开开发者工具」（或按 <kbd>F12</kbd>）即可实时审查 DOM 元素样式。自定义主题与 CSS 在导出 HTML 与 PDF 时同样会自动生效。</li>
+        <li><strong>字体与独立字号</strong>：正文与代码块可分别指定字体；编辑器字号、界面字号、预览字号各自独立，并支持 <kbd>Ctrl/⌘ + +/−/0</kbd> 全局百分比缩放（带居中胶囊百分比提示）。Android 端还支持直接加载手机本地字体文件（如 <code>/storage/emulated/0/Fonts</code>）。</li>
+      </ul>
+
+      <h2>四、快捷键与「Typora / Word 写作预设」</h2>
+      <ul>
+        <li>点击「设置 → 快捷键」顶部的 <strong>「写作预设 (Typora / Word)」</strong>，可一键将 <kbd>Ctrl/⌘ + B</kbd> 设为加粗（将开关文件树移至 <kbd>Ctrl/⌘ + Shift + B</kbd>），再点一次即可换回。</li>
+        <li>列表中的全部 60+ 项命令均支持点击录制改绑，菜单栏会自动显示你改绑后的实时快捷键。</li>
+      </ul>
+
+      <h2>五、同步、历史、AI 与语法检查</h2>
+      <ul>
+        <li><strong>同步</strong>：包含 WebDAV 端到端加密同步、本地个人网盘加密保险库、网盘 OpenAPI 免客户端直连加密同步，以及 GitHub 同步（详见 <a href="/zh/docs/sync/">同步与历史指南</a>）。</li>
+        <li><strong>语言与检查</strong>：内置拼写检查、中文标点校对，以及可选的 <strong>LanguageTool 多语言语法与文风检查</strong>（支持公共 API 与自建服务器）。</li>
+        <li><strong>AI</strong>：支持 14+ 家 BYOK 云端模型（含 DeepSeek、MiniMax M3.1-Flash、Claude、OpenAI、Gemini 等）与本地 Ollama（详见 <a href="/zh/docs/ai/">AI 功能</a>）。所有 API Key 与网盘 Token 均加密存储在系统钥匙串中。</li>
+      </ul>
+
+      <h2>六、应用内一键更新（国内自动切 Gitee 高速镜像）</h2>
       <p>
-        想把所有设置恢复默认，退出 SoloMD 后删除应用数据文件夹即可 ——
-        Windows 在 <code>%APPDATA%\app.solomd</code>，macOS 在 <code>~/Library/Application
-        Support/app.solomd</code>，Linux 在 <code>~/.config/app.solomd</code>。
-        你的笔记是存放在别处的普通文件，不会受影响。
+        在「设置 → 关于」（或顶部更新提示胶囊）中点击更新时，SoloMD 会自动识别网络所在地区：中国大陆用户优先从 <strong>Gitee 国内高速镜像</strong>下载对应架构的原生安装包（与 GitHub Release 互为自动容灾回退），下载完成后自动拉起安装向导。
+      </p>
+
+      <h2>七、恢复出厂默认设置</h2>
+      <p>
+        如需重置全部设置，退出 SoloMD 后删除配置目录即可 —— Windows 位于 <code>%APPDATA%\app.solomd</code>（便携版位于程序旁边的 <code>data/</code> 目录），macOS 位于 <code>~/Library/Application Support/app.solomd</code>，Linux 位于 <code>~/.config/app.solomd</code>。你的笔记文件存放在你自己的文件夹中，不受任何影响。
       </p>
 
       <Giscus />

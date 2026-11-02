@@ -9,92 +9,109 @@ const lang = 'en' as const;
 const FAQ = [
   {
     q: 'Which export formats are built in, and which need Pandoc?',
-    a: 'HTML, PDF, DOCX and PNG export are built in with no external dependency. EPUB, ODT, LaTeX and RTF go through Pandoc, which SoloMD looks up on your PATH.',
+    a: 'HTML, PDF (vector text and image), DOCX, and PNG export are built in with zero external dependencies across desktop and mobile (Android & iOS). EPUB, ODT, LaTeX, and RTF go through Pandoc if installed on your PATH.',
   },
   {
-    q: 'Do math and diagrams survive export?',
-    a: 'Yes — KaTeX math and Mermaid diagrams render in HTML and PDF exports, and DOCX export preserves tables, headings, math and code as real Word structures (a true .docx, not HTML pasted into Word). Images are embedded in the .docx file.',
+    q: 'Do math equations, highlights, callouts, and diagrams survive DOCX export?',
+    a: 'Yes — SoloMD generates a true .docx file where KaTeX math becomes native editable Word equations (MathML), Mermaid and PlantUML diagrams are embedded as crisp images, and ==highlights==, sub/superscripts, callouts, task checkboxes (☐/☑), footnotes, and separate ordered list numbering runs are all preserved.',
   },
   {
-    q: 'How do I paste styled content into WeChat 公众号 or Notion?',
-    a: 'Use the Copy split-button → Rich HTML. It carries the rendered styling with the content, so pasting into 公众号, Notion, Confluence or Slack keeps formatting.',
+    q: 'How do I paste styled content with equations into Microsoft Word, WPS, Notion, or WeChat?',
+    a: 'For Word, WPS, or Pages, use Edit (or right-click) → “Copy as Word”, which promotes clean MathML equations and hanging-indent lists for Word. For WeChat 公众号, Notion, Confluence, or Slack, use “Copy as Rich HTML”.',
+  },
+  {
+    q: 'Why does pasting from Excel or WPS produce a Markdown table instead of a screenshot?',
+    a: 'SoloMD inspects clipboard HTML <table> and TSV data first (including multi-line cells and colspan) and converts spreadsheet ranges directly into aligned Markdown tables rather than pasting the fallback bitmap image.',
   },
 ];
 ---
 
 <Layout
-  title="Export & Copy in SoloMD — PDF, DOCX, HTML, Print, Image"
-  description="How SoloMD exports Markdown to PDF, DOCX, HTML, PNG and prints via system dialog. Includes rich-text copy for WeChat / Notion / Confluence."
+  title="Export & Copy in SoloMD — PDF, DOCX, HTML, Print, Copy as Word & Excel Paste"
+  description="How SoloMD exports Markdown to vector PDF, native Word (.docx), standalone HTML, and PNG, plus Copy as Word, Rich HTML copy, and pasting Excel/WPS tables into Markdown."
   lang={lang}
 >
   <Header lang={lang} />
   <main id="main">
     <article class="container docs-article">
       <nav class="breadcrumbs">
-        <a href="/">Home</a> / <a href="/docs/">Docs</a> / <span>Export & Copy</span>
+        <a href="/">Home</a> / <a href="/docs/">Docs</a> / <span>Export &amp; Copy</span>
       </nav>
 
-      <h1>Export & Copy</h1>
-      <p class="lead">Six ways to get your Markdown out of SoloMD.</p>
+      <h1>Export &amp; Copy</h1>
+      <p class="lead">Get your Markdown out to PDF, Word, standalone HTML, or the clipboard — and bring tables and lists in from Excel or Word.</p>
 
-      <h2>Export menu (toolbar → Export)</h2>
+      <h2>Export menu (Toolbar → Export or File → Export)</h2>
       <table class="kb-table">
-        <thead><tr><th>Format</th><th>Best for</th><th>Notes</th></tr></thead>
+        <thead><tr><th>Format</th><th>Best for</th><th>Highlights</th></tr></thead>
         <tbody>
-          <tr><th>HTML</th><td>Publishing, archives</td><td>Single-file HTML with inlined CSS. KaTeX + Mermaid render via CDN or bundled.</td></tr>
-          <tr><th>PDF</th><td>Sharing, printing</td><td>Generated with html2pdf.js, no external dependency.</td></tr>
-          <tr><th>PDF (Print)</th><td>System print dialog</td><td>Uses <code>WebviewWindow::print()</code>. Choose a printer or "Save as PDF".</td></tr>
-          <tr><th>DOCX</th><td>Word / Office sharing</td><td>True <code>.docx</code>, not HTML-in-Word. Tables, headings, math, code preserved.</td></tr>
-          <tr><th>Image (PNG)</th><td>Social, screenshots</td><td>Full rendered preview captured as a single PNG.</td></tr>
+          <tr>
+            <th>PDF (Text)</th>
+            <td>Formal reports, searchable &amp; selectable PDFs</td>
+            <td>Native vector text and math rendering across macOS, Windows, Linux, Android, and iOS. Repeats table headers across pages, supports an optional <strong>table-of-contents page with page numbers</strong> (Settings → PDF), and inlines your active custom theme and <code>custom.css</code>.</td>
+          </tr>
+          <tr>
+            <th>PDF (Image)</th>
+            <td>Pixel-identical layout to the preview</td>
+            <td>Avoids slicing through lines of text or table rows at page breaks, and embeds web images and diagrams reliably.</td>
+          </tr>
+          <tr>
+            <th>Word (.docx)</th>
+            <td>Office collaboration &amp; formal submissions</td>
+            <td>True <code>.docx</code> structure: native Word math equations, <code>==highlight==</code>, underline, sub/superscripts, <code>&lt;kbd&gt;</code>, callouts, footnotes, embedded local/web images, Mermaid/PlantUML diagrams, and independent ordered-list numbering per section.</td>
+          </tr>
+          <tr>
+            <th>Standalone HTML</th>
+            <td>Offline sharing &amp; single-file archives</td>
+            <td>Truly self-contained: local images are embedded, Mermaid diagrams are embedded as inline SVG, and KaTeX math styles/fonts plus your custom theme CSS are inlined so it opens offline instantly.</td>
+          </tr>
+          <tr>
+            <th>Image (PNG)</th>
+            <td>Social sharing &amp; long screenshots</td>
+            <td>Captures the full rendered document as a single high-DPI PNG.</td>
+          </tr>
         </tbody>
       </table>
 
-      <h2>Copy to clipboard (toolbar → Copy split-button)</h2>
+      <h2>Copy to clipboard (Edit menu or right-click menu)</h2>
       <table class="kb-table">
-        <thead><tr><th>Format</th><th>Best for</th></tr></thead>
+        <thead><tr><th>Action</th><th>Best for</th></tr></thead>
         <tbody>
-          <tr><th>Rich HTML (default)</th><td>Paste into WeChat 公众号 / Notion / Confluence / Slack — keeps styling.</td></tr>
-          <tr><th>Markdown</th><td>Paste into another Markdown editor, GitHub issue, Discord.</td></tr>
-          <tr><th>Plain text</th><td>Strip all formatting — just the prose.</td></tr>
-          <tr><th>Image</th><td>Quick visual share to Twitter / 微博.</td></tr>
+          <tr>
+            <th>Copy as Word</th>
+            <td>Pasting straight into <strong>Microsoft Word, WPS Office, or Apple Pages</strong> with native MathML equations, clean code blocks, and proper hanging-indent lists.</td>
+          </tr>
+          <tr>
+            <th>Copy as Rich HTML</th>
+            <td>Pasting into <strong>WeChat 公众号, Notion, Confluence, Feishu, or Slack</strong> while keeping theme styling.</td>
+          </tr>
+          <tr>
+            <th>Code block copy</th>
+            <td>Clicking Copy, dragging to select, or pressing <kbd>Ctrl/⌘ A</kbd> inside an indented code block automatically strips the fence’s leading alignment spaces (and normalizes to <code>CRLF</code> on Windows for legacy Win32 apps).</td>
+          </tr>
         </tbody>
       </table>
 
-      <h2>Print (Ctrl/⌘ + P)</h2>
+      <h2>Pasting &amp; importing from Excel, WPS, and Word</h2>
+      <ul>
+        <li><strong>Excel / WPS spreadsheet cells → Markdown table</strong>: copy any multi-cell range in Excel, WPS, Numbers, or a web table and press <kbd>Ctrl/⌘ V</kbd> in SoloMD to insert a formatted Markdown table instead of a bitmap image.</li>
+        <li><strong>Word multi-level lists → Markdown lists</strong>: pasting numbered or bulleted lists from Word or WPS converts them cleanly into Markdown list syntax.</li>
+        <li><strong>Open .docx / .html files directly</strong>: opening a Word or HTML document from File → Open or the file tree imports it as clean Markdown.</li>
+      </ul>
+
+      <h2>Dedicated Print (<kbd>Ctrl/⌘ + P</kbd>)</h2>
       <p>
-        Opens the native system print dialog. On macOS uses <code>NSPrintOperation</code>;
-        on Windows uses the WebView2 print controller; on Linux uses WebKitGTK's print.
-        The content sent to the printer is a clean render of your Markdown — no toolbar,
-        no sidebar, just the document.
-      </p>
-      <p>
-        <strong>Tip:</strong> from the print dialog, choose "Save as PDF" for a
-        system-quality PDF (often better layout than the built-in PDF exporter).
+        Opens the native system print dialog across all platforms, separate from “Export as PDF”. Only the clean rendered document is sent to the printer.
       </p>
 
-      <h2>Image paste & embedding</h2>
+      <h2>CJK and legacy encodings</h2>
       <p>
-        When you paste or drag an image into SoloMD, it's saved to a
-        <code>_assets/</code> folder next to your document (if the file is saved)
-        and a relative Markdown image link is inserted:
-      </p>
-      <pre><code>![](_assets/20260423-145520.png)</code></pre>
-      <p>
-        Works with copy-from-browser, screenshots from Snipping Tool / ⌘⇧4, and
-        drag from Finder / Explorer.
-      </p>
-
-      <h2>CJK and encoding</h2>
-      <p>
-        SoloMD auto-detects UTF-8, GBK, Big5, Shift-JIS, EUC-KR, and a few others
-        when reading files. It saves in the source file's encoding by default
-        (set per-tab in the status bar), so you don't accidentally convert
-        legacy files to UTF-8.
+        SoloMD auto-detects UTF-8, UTF-16 (LE/BE), GBK / GB18030, Big5, Shift-JIS, and EUC-KR when reading files, and saves back in the source file’s original encoding by default.
       </p>
 
       <CompareFaq heading="Frequently asked questions" items={FAQ} />
     </article>
-        <Giscus lang={lang} />
+    <Giscus lang={lang} />
   </main>
   <Footer lang={lang} />
 </Layout>
@@ -109,9 +126,9 @@ const FAQ = [
   .kb-table { width: 100%; border-collapse: collapse; margin: 14px 0 20px; font-size: 14px; }
   .kb-table th, .kb-table td { text-align: left; padding: 9px 12px; border-bottom: 1px solid #eee; }
   .kb-table thead th { background: #fafafa; font-weight: 600; }
-  .kb-table tbody th { font-weight: 500; width: 28%; }
+  .kb-table tbody th { font-weight: 500; width: 24%; }
   .docs-article code { background: #f5f5f0; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
   .docs-article pre { background: #f5f5f0; padding: 12px 16px; border-radius: 6px; overflow-x: auto; }
   .docs-article pre code { background: none; padding: 0; }
-  .docs-article p { line-height: 1.7; margin: 12px 0; }
+  .docs-article p, .docs-article li { line-height: 1.7; margin: 10px 0; }
 </style>

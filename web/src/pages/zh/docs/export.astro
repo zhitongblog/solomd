@@ -1,0 +1,134 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import Header from '../../../components/Header.astro';
+import Footer from '../../../components/Footer.astro';
+import Giscus from '../../../components/Giscus.astro';
+import CompareFaq from '../../../components/CompareFaq.astro';
+
+const lang = 'zh' as const;
+const FAQ = [
+  {
+    q: '哪些导出格式是内置的，哪些需要安装 Pandoc？',
+    a: 'HTML、PDF（文字矢量版与图片版）、Word (.docx) 和长图 (.png) 完全内置，无需安装任何外部依赖，桌面端与手机端（Android / iOS）均支持。EPUB、ODT、LaTeX 与 RTF 格式则会调用系统 PATH 中的 Pandoc。',
+  },
+  {
+    q: '导出到 Word (.docx) 后，数学公式、高亮、流程图和列表编号还能保留吗？',
+    a: '全部保留。SoloMD 导出的是原生 .docx 结构：KaTeX 数学公式会转换为 Word 原生可编辑公式 (MathML)，Mermaid 与 PlantUML 图表会嵌入高清图片，==高亮==、上下标、提示块 (Callout)、任务列表 (☐/☑) 和多段独立的有序列表编号都会完整还原。',
+  },
+  {
+    q: '怎么把写好的内容带排版和公式直接粘贴到 Word、WPS 或微信公众号？',
+    a: '粘贴到 Word / WPS 请在编辑菜单或右键菜单点击「复制为 Word」——它会专门清洗 MathML 公式层与列表悬挂缩进，直接 Ctrl+V 进 Word 就是标准排版；粘贴到微信公众号、Notion、飞书或语雀请使用「复制为富文本 HTML」。',
+  },
+  {
+    q: '从 Excel、WPS 表格复制单元格粘贴到 SoloMD 为什么不会变成图片？',
+    a: 'SoloMD 会优先解析剪贴板里的 HTML <table> 与 TSV 数据（含合并单元格与单元格内换行），直接转换为对齐的 Markdown 表格，自动忽略办公软件附带的位图截图。',
+  },
+];
+---
+
+<Layout
+  title="SoloMD 导出与复制指南 — PDF、Word (.docx)、HTML、打印、复制为 Word 与 Excel 粘贴"
+  description="SoloMD 导出 Markdown 为矢量 PDF、原生 Word (.docx)、独立单文件 HTML、高清长图 PNG，以及「复制为 Word」、微信公众号富文本复制和 Excel/WPS 表格互转。"
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main id="main">
+    <article class="container docs-article">
+      <nav class="breadcrumbs">
+        <a href="/zh/">首页</a> / <a href="/zh/docs/">文档</a> / <span>导出与复制</span>
+      </nav>
+
+      <h1>导出与复制</h1>
+      <p class="lead">无论是发公众号、交 Word 报告、生成带目录页码的 PDF，还是从 Excel 粘贴表格，都可以一键完成。</p>
+
+      <h2>导出菜单（顶栏「导出」或「文件 → 导出」）</h2>
+      <table class="kb-table">
+        <thead><tr><th>导出格式</th><th>适用场景</th><th>核心特性</th></tr></thead>
+        <tbody>
+          <tr>
+            <th>PDF（文字版）</th>
+            <td>正式文档、学术报告、可搜索复制的 PDF</td>
+            <td>纯矢量文字与公式渲染，长表格跨页自动重复表头，支持在「设置 → PDF」开启自动生成<strong>带页码的目录页</strong>，自动携带当前自定义主题与 <code>custom.css</code>。macOS / Windows / Linux / Android / iOS 全平台支持。</td>
+          </tr>
+          <tr>
+            <th>PDF（图片版）</th>
+            <td>保持与屏幕预览 100% 像素级一致</td>
+            <td>智能识别文字行与表格行边界，分页处绝不把文字或表格拦腰截断；完整保留外链图片与复杂图表。</td>
+          </tr>
+          <tr>
+            <th>Word (.docx)</th>
+            <td>提交 Office 报告、与同事协作修订</td>
+            <td>生成真正的原生 <code>.docx</code> 文件：数学公式转为 Word 原生公式，保留 <code>==高亮==</code>、下划线、上下标、按键 <code>&lt;kbd&gt;</code>、提示块、脚注、本地/网络图片及 Mermaid/PlantUML 图表，不同小节的有序列表自动从 1 重新编号。</td>
+          </tr>
+          <tr>
+            <th>独立 HTML</th>
+            <td>发给他人离线阅读、网页归档</td>
+            <td>真正单文件自包含：图片转为内联数据、Mermaid 嵌入为矢量 SVG、KaTeX 公式样式与字体全部内联（无需联网加载 CDN），同时保留你的自定义主题样式。</td>
+          </tr>
+          <tr>
+            <th>长图 (PNG)</th>
+            <td>社交媒体分享、手机长图阅读</td>
+            <td>将整篇渲染后的笔记合成为一张高清 PNG 长图。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>一键复制（右键菜单或「编辑」菜单）</h2>
+      <table class="kb-table">
+        <thead><tr><th>复制方式</th><th>最佳用途与效果</th></tr></thead>
+        <tbody>
+          <tr>
+            <th>复制为 Word</th>
+            <td>专为粘贴到 <strong>Microsoft Word / WPS / Pages</strong> 打造：自动剥离 KaTeX 冗余视觉层保留纯正 MathML 公式，代码块按行对齐，多级有序/无序列表转换为规范悬挂缩进段落。</td>
+          </tr>
+          <tr>
+            <th>复制为富文本 HTML</th>
+            <td>直接粘贴到<strong>微信公众号后台、Notion、飞书、语雀、Confluence</strong>，完整保留颜色、代码块与引用样式。</td>
+          </tr>
+          <tr>
+            <th>代码块内一键复制</th>
+            <td>在缩进代码块（如列表下的代码块）内点击右上角复制按钮、手动拖选复制或按 <kbd>Ctrl/⌘ A</kbd> 复制时，会自动剥离左侧列表围栏缩进空格；在 Windows 上还会自动转换为 <code>CRLF</code> 换行，粘贴到通达信、记事本等传统软件绝不乱行。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>从 Word / Excel / WPS 导入与粘贴到 SoloMD</h2>
+      <ul>
+        <li><strong>Excel / WPS 表格直接粘贴为 Markdown 表格</strong>：在 Excel、WPS、Numbers 或网页表格中框选复制单元格，在 SoloMD 里按 <kbd>Ctrl/⌘ V</kbd>，会自动转换为排好版的 Markdown 表格（支持多行单元格 <code>&lt;br&gt;</code> 与合并单元格），不会变成图片。</li>
+        <li><strong>Word 多级列表粘贴</strong>：从 Word 或 WPS 复制带编号或项目符号的段落粘贴进 SoloMD，会自动还原为标准 Markdown 列表。</li>
+        <li><strong>直接打开 .docx / .html 文件</strong>：在文件树或「文件 → 打开」中选择 Word 或 HTML 文档，可一键导入转换为干净的 Markdown 笔记。</li>
+      </ul>
+
+      <h2>独立打印（<kbd>Ctrl/⌘ + P</kbd>）</h2>
+      <p>
+        按 <kbd>Ctrl/⌘ + P</kbd>（或点击「文件 → 打印」）直接唤起操作系统原生打印对话框，与「导出为 PDF」互不干扰。打印内容仅包含干净的正文排版，自动隐藏侧边栏与顶栏。
+      </p>
+
+      <h2>中文与传统编码自动兼容</h2>
+      <p>
+        打开文件时自动识别 UTF-8、UTF-16（LE/BE）、GBK / GB18030、Big5、Shift-JIS、EUC-KR 等编码，保存时默认保持原文件的编码格式（不会把旧系统的 GBK 或 UTF-16 文件静默改成 UTF-8）。
+      </p>
+
+      <CompareFaq heading="常见问题" items={FAQ} />
+    </article>
+    <Giscus lang={lang} />
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .docs-article { max-width: 820px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .docs-article h1 { font-size: 2rem; margin: 10px 0 16px; }
+  .docs-article h2 { font-size: 1.4rem; margin: 32px 0 12px; }
+  .docs-article .lead { color: var(--text-muted, #555); margin-bottom: 24px; line-height: 1.6; font-size: 1.05rem; }
+  .kb-table { width: 100%; border-collapse: collapse; margin: 14px 0 20px; font-size: 14px; }
+  .kb-table th, .kb-table td { text-align: left; padding: 9px 12px; border-bottom: 1px solid #eee; }
+  .kb-table thead th { background: #fafafa; font-weight: 600; }
+  .kb-table tbody th { font-weight: 500; width: 22%; }
+  .docs-article code { background: #f5f5f0; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+  .docs-article pre { background: #f5f5f0; padding: 12px 16px; border-radius: 6px; overflow-x: auto; }
+  .docs-article pre code { background: none; padding: 0; }
+  .docs-article p, .docs-article li { line-height: 1.7; margin: 10px 0; }
+</style>

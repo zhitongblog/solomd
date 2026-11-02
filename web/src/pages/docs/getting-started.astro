@@ -8,8 +8,8 @@ const lang = 'en' as const;
 ---
 
 <Layout
-  title="Getting Started with SoloMD — install, open, write, save"
-  description="Install SoloMD on macOS, Windows, Linux, iOS or Android, open your first folder, understand tabs and view modes, and never lose a draft."
+  title="Getting Started with SoloMD — Install, Open a Folder, View Modes, Updates & Encrypted Sync"
+  description="Install SoloMD on macOS, Windows, Linux, iOS, or Android, open your first folder, switch between Live, Source, Split, and Preview modes, and keep your notes safe."
   lang={lang}
 >
   <Header lang={lang} />
@@ -22,74 +22,61 @@ const lang = 'en' as const;
       <h1>Getting Started</h1>
       <p class="lead">From download to your first saved note, in about three minutes.</p>
 
-      <h2>1. Install</h2>
+      <h2>1. Install &amp; One-Click Updates</h2>
       <table class="kb-table">
-        <thead><tr><th>Platform</th><th>How</th></tr></thead>
+        <thead><tr><th>Platform</th><th>How to install</th></tr></thead>
         <tbody>
-          <tr><th>macOS</th><td><code>brew install --cask zhitongblog/solomd/solomd</code>, or download the signed universal <code>.dmg</code> from <a href="/">solomd.app</a> and drag to Applications. macOS 10.15+.</td></tr>
-          <tr><th>Windows</th><td>Download the <code>.msi</code> (x64 or arm64) — installs to <code>C:\Program Files\SoloMD</code>. A portable ZIP is available if you prefer no installation. Windows 10+ (<a href="/#faq">why not Windows 7</a>).</td></tr>
-          <tr><th>Linux</th><td><code>.AppImage</code>, <code>.deb</code>, or <code>.rpm</code>, x64 and arm64. Needs a system from 2022 or later (Ubuntu 22.04, Debian 12 or newer) — <a href="/docs/linux/">not sure yours qualifies? Follow the chart</a>.</td></tr>
-          <tr><th>iOS / Android</th><td>iOS 15+ on the App Store; Android 7+ as a sideload APK or the Play Store beta.</td></tr>
+          <tr><th>macOS</th><td><code>brew install --cask zhitongblog/solomd/solomd</code>, or download the signed &amp; notarized universal <code>.dmg</code> from <a href="/">solomd.app</a> and drag to Applications (Apple Silicon &amp; Intel, macOS 10.15+).</td></tr>
+          <tr><th>Windows</th><td>Download the <code>.msi</code> (x64 or arm64) or the no-install <code>-portable.zip</code> (create a <code>data/</code> folder next to <code>SoloMD.exe</code> for portable settings). Includes a Windows Explorer “New → Markdown Document” shell entry.</td></tr>
+          <tr><th>Linux</th><td><code>.AppImage</code>, <code>.deb</code>, or <code>.rpm</code> (x64 and arm64), using <code>xdg-portal</code> native file dialogs for smooth KDE Plasma / GNOME Wayland compatibility (<a href="/docs/linux/">distro guide</a>).</td></tr>
+          <tr><th>iOS / iPadOS / Android</th><td>iOS 15+ on the App Store (edits Files-app notes in place); Android 7+ signed APK (with SAF folder access and foldable support).</td></tr>
         </tbody>
       </table>
+      <p>
+        <strong>In-app one-click update installer</strong>: when a new release is available, click the update button in the header or <em>Settings → About</em> to download and launch the native installer directly inside the app.
+      </p>
 
       <h3>Windows: taskbar icon shows blank?</h3>
       <p>
-        If the taskbar button or a pinned SoloMD shows a blank icon after an
-        upgrade, that's Windows' icon cache holding a stale entry — reinstalling
-        doesn't clear it. Run these four lines in a Command Prompt, then re-pin:
+        If a pinned taskbar icon appears blank after an upgrade, Windows’ icon cache is holding a stale entry. Run these four lines in Command Prompt to refresh it:
       </p>
       <pre><code>taskkill /f /im explorer.exe
 del /f /q %LocalAppData%\IconCache.db
 del /f /q %LocalAppData%\Microsoft\Windows\Explorer\iconcache_*.db
 start explorer.exe</code></pre>
 
-      <h2>2. Just start typing</h2>
-      <p>
-        A fresh launch opens a set of short welcome tabs — read them or close them.
-        You can type immediately: content lives in memory until you save
-        (<kbd>Ctrl/⌘ S</kbd>), and unsaved drafts survive an app restart via session
-        restore. Untitled tabs ask for a filename on first save.
-      </p>
-
-      <h2>3. Open a file or a folder</h2>
+      <h2>2. Open a file or a workspace folder</h2>
       <ul>
-        <li><strong>One file:</strong> File → Open (<kbd>Ctrl/⌘ O</kbd>), drag &amp; drop onto the window, or double-click a <code>.md</code> file — SoloMD registers as a Markdown editor.</li>
-        <li><strong>A folder (recommended):</strong> File → Open Folder. The folder becomes your <em>workspace</em>: the file tree appears on the left, search / tags / backlinks / graph features index every note inside it, and each folder remembers its own open tabs.</li>
+        <li><strong>Start typing right away</strong>: unsaved drafts live in memory and survive app restarts via session restore.</li>
+        <li><strong>Open a single file</strong>: File → Open (<kbd>Ctrl/⌘ + O</kbd>), drag &amp; drop onto the window, or double-click a <code>.md</code> file. When editing a single file without a workspace open, the sidebar offers a one-click button to open its parent folder.</li>
+        <li><strong>Open a folder (recommended)</strong>: File → Open Folder turns that directory into your <em>workspace</em> — enabling the file tree, full-text search, <code>#tags</code>, <code>[[backlinks]]</code>, knowledge graph, and per-workspace tab memory.</li>
       </ul>
 
-      <h2>4. Tabs and panes</h2>
+      <h2>3. Tabs, MRU switching &amp; split panes</h2>
       <ul>
-        <li>Every document is a tab. Reorder by dragging; close with <kbd>Ctrl/⌘ W</kbd>.</li>
-        <li>Split the editor right or down from the command palette (<kbd>Ctrl/⌘ Shift K</kbd> → “Split Editor Right”) to view two notes side by side.</li>
-        <li>The command palette lists every action in the app with its shortcut — when in doubt, open it and type what you want to do. It follows your interface language.</li>
+        <li><strong>Drag to reorder &amp; filter open tabs</strong>: drag tabs along the strip to reorder them; when 2+ tabs are open, click the <code>⌄</code> button at the end of the tab bar to filter and jump to any open tab.</li>
+        <li><strong>Two ways to cycle tabs</strong>: press <kbd>Ctrl + Tab</kbd> / <kbd>Ctrl + Shift + Tab</kbd> to cycle in <strong>Most Recently Used (MRU)</strong> order, or <kbd>⌘⇧[</kbd> / <kbd>⌘⇧]</kbd> (<kbd>Ctrl + PageUp / PageDown</kbd>) to move in visual tab bar order.</li>
+        <li><strong>Split panes</strong>: press <kbd>Ctrl/⌘ + \</kbd> (or drag a tab onto the editor) to view two notes side by side, and close any split pane with its corner close button.</li>
       </ul>
 
-      <h2>5. Pick a view mode</h2>
+      <h2>4. Four view modes, one click apart</h2>
+      <p>Switch modes from the quiet header pill or with shortcuts — your exact viewport scroll offset and cursor position are preserved across modes:</p>
       <table class="kb-table">
-        <thead><tr><th>Mode</th><th>What you see</th></tr></thead>
+        <thead><tr><th>Mode</th><th>Shortcut</th><th>What you see</th></tr></thead>
         <tbody>
-          <tr><th>Edit Only</th><td>Plain Markdown source with syntax highlighting.</td></tr>
-          <tr><th>Live Edit</th><td>WYSIWYG: formatting renders in place; the caret line reveals its raw source. Tables, math, Mermaid, images and embedded HTML render as blocks.</td></tr>
-          <tr><th>Split</th><td>Source on the left, rendered preview on the right, scroll-synced pixel-accurately.</td></tr>
-          <tr><th>Preview / Reading</th><td>Rendered only; Reading is a full-bleed serif skin for long reads.</td></tr>
+          <tr><th>Live Edit</th><td><kbd>Ctrl/⌘ + Alt + /</kbd></td><td>Default WYSIWYG mode: formatting, tables, math, Mermaid, images, and callouts render in place; the caret line reveals raw Markdown.</td></tr>
+          <tr><th>Source</th><td><kbd>Ctrl/⌘ + Alt + /</kbd></td><td>Raw Markdown source with syntax highlighting.</td></tr>
+          <tr><th>Split</th><td><kbd>Ctrl/⌘ + Shift + P</kbd></td><td>Source on the left, rendered preview on the right, scroll-synced with a draggable divider.</td></tr>
+          <tr><th>Preview</th><td><kbd>Ctrl/⌘ + Alt + V</kbd></td><td>Clean reading view with per-tab scroll memory, plus presentation Slideshow mode (with light/dark theme toggle <kbd>T</kbd> and text zoom).</td></tr>
         </tbody>
       </table>
-      <p>Cycle modes with <kbd>Ctrl/⌘ Shift P</kbd> or click the mode buttons in the toolbar.</p>
 
-      <h2>6. Saving and safety nets</h2>
+      <h2>5. Next steps</h2>
       <ul>
-        <li><kbd>Ctrl/⌘ S</kbd> writes to disk. Files changed by another program reload automatically when your tab has no unsaved edits — dirty tabs always ask first.</li>
-        <li>Optional <em>auto-save on window blur</em> and <em>Git history</em> (automatic snapshots with one-click rollback) live in Settings — see <a href="/docs/sync/">Sync &amp; History</a>.</li>
-        <li>Notes are plain <code>.md</code> files in your folder. No database, no lock-in — point any other tool at the same directory.</li>
-      </ul>
-
-      <h2>Next steps</h2>
-      <ul>
-        <li><a href="/docs/editor/">Editor deep-dive</a> — live rendering, images, tables, Vim mode, typewriter mode.</li>
-        <li><a href="/docs/workspace/">Workspace &amp; organization</a> — outline, search, tags, backlinks, saved views.</li>
-        <li><a href="/docs/sync/">Sync, history &amp; backup</a> — GitHub sync with optional end-to-end encryption.</li>
-        <li><a href="/docs/ai/">AI features</a> — bring your own key or run fully local with Ollama.</li>
+        <li><a href="/docs/editor/">Editor deep-dive</a> — two-stage code block Select All, indented code fences in lists, Excel table paste, auto-numbered headings.</li>
+        <li><a href="/docs/sync/">Sync, history &amp; encrypted cloud backup</a> — WebDAV E2EE, Local Cloud Drive Encrypted Vault, Direct Cloud OpenAPI, and GitHub sync.</li>
+        <li><a href="/docs/shortcuts/">Keyboard shortcuts</a> — all 60+ shortcuts and the Typora / Word Writer preset.</li>
+        <li><a href="/docs/export/">Export &amp; Copy</a> — vector PDF, native DOCX, Copy as Word, and Rich HTML copy.</li>
       </ul>
 
       <Giscus />
