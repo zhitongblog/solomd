@@ -3,7 +3,13 @@ import Layout from '../../layouts/Layout.astro';
 import Header from '../../components/Header.astro';
 import Footer from '../../components/Footer.astro';
 import thanksData from '../../data/thanks.json';
-import { sponsors, promoters, testers } from '../../lib/supporters';
+import {
+  sponsors,
+  promoters,
+  testers,
+  contributors,
+  communityReporters,
+} from '../../lib/supporters';
 
 const lang = 'zh' as const;
 
@@ -26,92 +32,264 @@ const platformLabel: Record<Donor['platform'], string> = {
   github: 'GitHub Sponsors',
   other: '其他',
 };
+
+const kindBadge: Record<'code' | 'theme' | 'packaging', { icon: string; label: string }> = {
+  code: { icon: '💻', label: '代码与功能贡献' },
+  theme: { icon: '🎨', label: '社区主题创作' },
+  packaging: { icon: '📦', label: '平台打包与维护' },
+};
 ---
 
 <Layout
-  title="鸣谢 — 赞助、推广和打赏 SoloMD 的朋友"
-  description="SoloMD 是免费开源项目，感谢每一位赞助、推广和打赏支持的朋友。"
+  title="鸣谢与贡献者名单 — 感谢每一位支持、测试、贡献与推广 SoloMD 的朋友"
+  description="SoloMD 完整鸣谢与开源贡献者名单：感谢每一位赞助打赏、深度测试、提交代码/主题/打包 PR、撰写文章推广以及在 GitHub 与 Gitee 反馈问题的朋友。"
   lang={lang}
 >
   <Header lang={lang} />
   <main id="main">
     <section class="container thanks-page">
-      <h1>鸣谢 ♥</h1>
-      <p class="lead">
-        SoloMD 免费开源，下面这些朋友选择了打赏支持。他们的心意让我能继续买咖啡、续 Apple Developer 会员、给 SSL 证书续期。谢谢大家。
-      </p>
+      <div class="thanks-hero">
+        <span class="thanks-pill">♥ 社区鸣谢墙</span>
+        <h1>感谢每一位让 SoloMD 变得更好的朋友</h1>
+        <p class="lead">
+          SoloMD 是完全免费、开源的跨平台 Markdown 编辑器。从一行代码、一套主题、一次细致的桌面/移动端测试，到一篇推荐文章、一条 Issue 反馈或一杯咖啡的赞赏——每一份心意都在推动 SoloMD 持续进化。
+        </p>
 
+        <div class="thanks-stats">
+          <a href="#sponsors" class="stat-card">
+            <span class="stat-card__num">{sponsors.length + donors.length}</span>
+            <span class="stat-card__label">赞助与打赏</span>
+          </a>
+          <a href="#testers" class="stat-card">
+            <span class="stat-card__num">{testers.length}</span>
+            <span class="stat-card__label">深度测试者</span>
+          </a>
+          <a href="#contributors" class="stat-card">
+            <span class="stat-card__num">{contributors.length}</span>
+            <span class="stat-card__label">代码 / 主题 / 打包</span>
+          </a>
+          <a href="#promoters" class="stat-card">
+            <span class="stat-card__num">{promoters.length}</span>
+            <span class="stat-card__label">社区推广者</span>
+          </a>
+          <a href="#reporters" class="stat-card">
+            <span class="stat-card__num">{communityReporters.length}+</span>
+            <span class="stat-card__label">问题反馈与建议</span>
+          </a>
+        </div>
+      </div>
 
-      {sponsors.length > 0 && (
-        <section class="supporters">
-          <h2>赞助者</h2>
-          <ul class="supporters__list">
+      <!-- 1. 赞助者 & 打赏支持 -->
+      <section class="supporters" id="sponsors">
+        <div class="section-head">
+          <h2>💵 赞助者与打赏支持</h2>
+          <p class="supporters__lead">
+            感谢通过赞助或打赏支持 SoloMD 独立开发的朋友。你们的支持用于分担 Apple Developer 年费、代码签名证书、域名与 AI 研发测试成本。
+          </p>
+        </div>
+
+        {sponsors.length > 0 && (
+          <div class="sponsor-badges">
             {sponsors.map((x) => (
-              <li>{x.url ? <a href={x.url} target="_blank" rel="noopener">{x.name}</a> : x.name}<span class="supporters__since">{x.since}</span></li>
+              <div class="sponsor-highlight">
+                <div class="sponsor-highlight__main">
+                  <span class="sponsor-highlight__badge">🌟 特别赞助</span>
+                  {x.github ? (
+                    <a href={`https://github.com/${x.github}`} target="_blank" rel="noopener" class="sponsor-highlight__name">
+                      {x.name}
+                    </a>
+                  ) : x.url ? (
+                    <a href={x.url} target="_blank" rel="noopener" class="sponsor-highlight__name">
+                      {x.name}
+                    </a>
+                  ) : (
+                    <span class="sponsor-highlight__name">{x.name}</span>
+                  )}
+                </div>
+                <span class="supporters__since">自 {x.since}</span>
+              </div>
             ))}
-          </ul>
-        </section>
-      )}
+          </div>
+        )}
 
-      {testers.length > 0 && (
-        <section class="supporters">
-          <h2>测试者</h2>
-          <p class="supporters__lead">细致测试 SoloMD、提交详细问题报告的朋友——很多修复都是从他们的报告开始的。</p>
-          <ul class="supporters__list">
-            {testers.map((x) => (
-              <li>{x.github ? <a href={`https://github.com/${x.github}`} target="_blank" rel="noopener">{x.name}</a> : <strong>{x.name}</strong>}<span class="supporters__since">{x.since}</span><p class="supporters__lead">{x.contribution.zh}</p></li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      <section class="supporters">
-        <h2>推广者</h2>
-        <p class="supporters__lead" set:html={'写文章、录视频、在社区里推荐 SoloMD 的朋友。<a href="/zh/promote">怎么成为推广者 →</a>'} />
-        {promoters.length === 0 ? (
-          <p class="empty">还没有推广者——欢迎成为第一位。</p>
+        <h3 class="sub-heading" id="tips">☕ 打赏记录</h3>
+        {donors.length === 0 ? (
+          <p class="empty">暂无记录 —— 成为第一个吧！</p>
         ) : (
-          <ul class="supporters__list">
-            {promoters.map((x) => (
-              <li><a href={x.url} target="_blank" rel="noopener">{x.name}</a><span class="supporters__since">{x.platform} · {x.since}</span></li>
+          <ul class="donors">
+            {donors.map((d) => (
+              <li class="donor">
+                <div class="donor__head">
+                  <span class="donor__name">{d.name}</span>
+                  {d.amount ? <span class="donor__amount">{d.amount}</span> : null}
+                </div>
+                <div class="donor__meta">
+                  <time>{d.date}</time>
+                  <span class="donor__platform">· {platformLabel[d.platform]}</span>
+                </div>
+                {d.message ? <p class="donor__message">“{d.message}”</p> : null}
+              </li>
             ))}
           </ul>
         )}
       </section>
 
-      <h2 class="tips-heading">打赏</h2>
-      {donors.length === 0 ? (
-        <p class="empty">暂无记录 —— 成为第一个吧！</p>
-      ) : (
-        <ul class="donors">
-          {donors.map((d) => (
-            <li class="donor">
-              <div class="donor__head">
-                <span class="donor__name">{d.name}</span>
-                {d.amount ? <span class="donor__amount">{d.amount}</span> : null}
-              </div>
-              <div class="donor__meta">
-                <time>{d.date}</time>
-                <span class="donor__platform">· {platformLabel[d.platform]}</span>
-              </div>
-              {d.message ? <p class="donor__message">“{d.message}”</p> : null}
-            </li>
-          ))}
-        </ul>
+      <!-- 2. 深度测试者 -->
+      {testers.length > 0 && (
+        <section class="supporters" id="testers">
+          <div class="section-head">
+            <h2>🔍 深度测试者 ({testers.length})</h2>
+            <p class="supporters__lead">
+              长期在 Windows、macOS、Linux、iPadOS 与 Android 上细致测试 SoloMD、提供详尽复现步骤与交互分析的朋友——许多最关键的稳定性与体验修复都始于他们的反馈。
+            </p>
+          </div>
+          <div class="card-grid">
+            {testers.map((x) => (
+              <article class="person-card">
+                <div class="person-card__head">
+                  {x.github ? (
+                    <a href={`https://github.com/${x.github}`} target="_blank" rel="noopener" class="person-card__name">
+                      {x.name} ↗
+                    </a>
+                  ) : (
+                    <span class="person-card__name">{x.name}</span>
+                  )}
+                  <span class="person-card__since">{x.since}</span>
+                </div>
+                <p class="person-card__desc">{x.contribution.zh}</p>
+              </article>
+            ))}
+          </div>
+        </section>
       )}
 
+      <!-- 3. 代码、主题与打包贡献者 -->
+      {contributors.length > 0 && (
+        <section class="supporters" id="contributors">
+          <div class="section-head">
+            <h2>💻 代码、主题与打包贡献者 ({contributors.length})</h2>
+            <p class="supporters__lead">
+              直接提交 Pull Request、创作社区配色主题或维护各 Linux 发行版软件包的开源贡献者。
+            </p>
+          </div>
+          <div class="card-grid">
+            {contributors.map((c) => {
+              const badge = kindBadge[c.kind];
+              return (
+                <article class="person-card">
+                  <div class="person-card__head">
+                    <a
+                      href={`https://github.com/${c.github}`}
+                      target="_blank"
+                      rel="noopener"
+                      class="person-card__name"
+                    >
+                      {c.name} ↗
+                    </a>
+                    <span class="person-card__since">{c.since}</span>
+                  </div>
+                  <div class="person-card__tags">
+                    <span class={`kind-tag kind-tag--${c.kind}`}>
+                      {badge.icon} {badge.label}
+                    </span>
+                    {c.prs &&
+                      c.prs.map((pr) =>
+                        pr.startsWith('#') ? (
+                          <a
+                            href={`https://github.com/zhitongblog/solomd/pull/${pr.slice(1)}`}
+                            target="_blank"
+                            rel="noopener"
+                            class="pr-tag"
+                          >
+                            {pr}
+                          </a>
+                        ) : (
+                          <span class="pr-tag">{pr}</span>
+                        ),
+                      )}
+                  </div>
+                  <p class="person-card__desc">{c.contribution.zh}</p>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      <!-- 4. 推广者 -->
+      <section class="supporters" id="promoters">
+        <div class="section-head">
+          <h2>📣 社区推广者 ({promoters.length})</h2>
+          <p
+            class="supporters__lead"
+            set:html={'撰写评测文章、录制视频教程、在社交媒体分享或将 SoloMD 上架至应用商店的朋友。<a href="/zh/promote">如何成为推广者 →</a>'}
+          />
+        </div>
+        {promoters.length === 0 ? (
+          <p class="empty">还没有推广者——欢迎成为第一位。</p>
+        ) : (
+          <div class="card-grid card-grid--compact">
+            {promoters.map((x) => (
+              <article class="person-card">
+                <div class="person-card__head">
+                  <a href={x.url} target="_blank" rel="noopener" class="person-card__name">
+                    {x.name} ↗
+                  </a>
+                  <span class="person-card__since">
+                    {x.platform} · {x.since}
+                  </span>
+                </div>
+                {x.quote && <p class="person-card__quote">“{x.quote}”</p>}
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <!-- 5. 问题反馈与建议贡献者 -->
+      {communityReporters.length > 0 && (
+        <section class="supporters" id="reporters">
+          <div class="section-head">
+            <h2>🐛 问题反馈与功能建议贡献者 ({communityReporters.length}+)</h2>
+            <p class="supporters__lead">
+              感谢以下每一位在 GitHub Issues 与 Gitee Issues 中反馈 Bug、分享使用场景或提出功能想法的社区伙伴（按反馈活跃度排序）：
+            </p>
+          </div>
+          <ul class="reporter-wall">
+            {communityReporters.map((r) => (
+              <li>
+                <a href={r.url} target="_blank" rel="noopener" class="reporter-chip">
+                  <span>{r.name}</span>
+                  {r.platform === 'gitee' && <span class="reporter-chip__plat">Gitee</span>}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <!-- 6. 如何加入感谢名单 -->
       <section class="support">
-        <h2>想打赏 SoloMD？</h2>
+        <h2>想加入这份感谢名单？</h2>
         <p>
-          PayPal、微信、支付宝在
-          <a href="/zh/#sponsor">首页的赞助区域</a>。打赏后可以在
-          <a href="https://github.com/zhitongblog/solomd/issues" rel="external">
-            GitHub
-          </a>
-          开个 issue，标题写 "鸣谢列表"，附上你想显示的名字（可用昵称/"匿名"）+ 可选留言，我会加到这里。
+          无论以哪种方式参与，我们都非常乐意把你的名字记录在这里：
         </p>
+        <ul class="support-ways">
+          <li>
+            <strong>☕ 赞助或打赏</strong>：支持 PayPal、微信、支付宝及应用内「✨ 支持者徽章」（详见<a href="/zh/#sponsor">首页赞助区域</a>）。打赏后可在 <a href="https://github.com/zhitongblog/solomd/issues" target="_blank" rel="noopener">GitHub Issues</a> 或 <a href="https://gitee.com/zhitong45/solomd/issues" target="_blank" rel="noopener">Gitee Issues</a> 留言「鸣谢列表 + 你想展示的昵称与寄语」。
+          </li>
+          <li>
+            <strong>💻 提交代码或主题</strong>：欢迎在 GitHub 提交修复 PR、新插件或自定义 CSS 主题，合并后会自动收录至贡献者名单。
+          </li>
+          <li>
+            <strong>🔍 反馈问题与测试</strong>：遇到任何排版、性能或跨平台问题，随时提交 Issue，帮助所有用户获得更稳定的体验。
+          </li>
+          <li>
+            <strong>📣 推荐与分享</strong>：写文章或发帖推荐 SoloMD 后，可通过<a href="/zh/promote">推广者通道</a>提交链接。
+          </li>
+        </ul>
         <p class="privacy-note">
-          隐私说明：除非你主动要求，否则不会公开打赏金额或留言。名字填 "匿名" 就是完全不上墙，只是我私下感谢你。
+          隐私说明：除非你主动要求，否则不会公开打赏金额或留言。若希望保持匿名，填「匿名」即可。如有任何署名修改或补充需求，欢迎随时通过 Issue 告知。
         </p>
       </section>
     </section>
@@ -120,55 +298,334 @@ const platformLabel: Record<Donor['platform'], string> = {
 </Layout>
 
 <style>
-  .thanks-page { max-width: 720px; padding: 40px 20px 80px; }
-  .thanks-page h1 { font-size: 2rem; margin: 10px 0 14px; color: #ff9f40; }
+  .thanks-page {
+    max-width: 920px;
+    padding: 48px 20px 96px;
+  }
+  .thanks-hero {
+    margin-bottom: 48px;
+  }
+  .thanks-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent, #ff9f40);
+    background: color-mix(in srgb, var(--accent, #ff9f40) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent, #ff9f40) 35%, transparent);
+    margin-bottom: 12px;
+  }
+  .thanks-page h1 {
+    font-size: clamp(1.75rem, 3.2vw, 2.35rem);
+    margin: 0 0 14px;
+    line-height: 1.25;
+  }
   .thanks-page .lead {
     font-size: 1.05rem;
-    line-height: 1.7;
+    line-height: 1.75;
     color: var(--text-muted, #555);
-    margin-bottom: 32px;
+    margin: 0 0 28px;
   }
-  .empty { color: var(--text-faint, #888); font-style: italic; }
-  .donors { list-style: none; padding: 0; margin: 0 0 48px; }
+  .thanks-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+    gap: 12px;
+  }
+  .stat-card {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: var(--bg-elev, #fafaf7);
+    border: 1px solid var(--border, #e6e4dd);
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.15s, transform 0.15s;
+  }
+  .stat-card:hover {
+    border-color: var(--accent, #ff9f40);
+    transform: translateY(-2px);
+  }
+  .stat-card__num {
+    font-size: 1.5rem;
+    font-weight: 750;
+    color: var(--accent, #ff9f40);
+    font-variant-numeric: tabular-nums;
+  }
+  .stat-card__label {
+    font-size: 0.85rem;
+    color: var(--text-muted, #666);
+    font-weight: 500;
+  }
+
+  .supporters {
+    margin: 0 0 52px;
+    scroll-margin-top: 84px;
+  }
+  .section-head {
+    margin-bottom: 18px;
+  }
+  .supporters h2 {
+    font-size: 1.35rem;
+    margin: 0 0 8px;
+  }
+  .sub-heading {
+    font-size: 1.08rem;
+    margin: 24px 0 12px;
+  }
+  .supporters__lead {
+    color: var(--text-muted, #555);
+    line-height: 1.7;
+    margin: 0;
+    font-size: 0.96rem;
+  }
+  .empty {
+    color: var(--text-faint, #888);
+    font-style: italic;
+  }
+
+  .sponsor-badges {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .sponsor-highlight {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--accent, #ff9f40) 8%, var(--bg-elev, #fafaf7));
+    border: 1px solid color-mix(in srgb, var(--accent, #ff9f40) 38%, var(--border, #e6e4dd));
+  }
+  .sponsor-highlight__main {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .sponsor-highlight__badge {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 2px 9px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--accent, #ff9f40) 20%, transparent);
+    color: var(--text);
+  }
+  .sponsor-highlight__name {
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: var(--text);
+    text-decoration: none;
+  }
+  .sponsor-highlight__name:hover {
+    color: var(--accent, #ff9f40);
+  }
+
+  .donors {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 12px;
+  }
   .donor {
-    padding: 14px 0;
-    border-bottom: 1px dashed #eee;
+    padding: 16px 18px;
+    border-radius: 12px;
+    background: var(--bg-elev, #fafaf7);
+    border: 1px solid var(--border, #e6e4dd);
   }
-  .donor:last-child { border-bottom: 0; }
   .donor__head {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
     gap: 12px;
   }
-  .donor__name { font-weight: 600; font-size: 1rem; }
-  .donor__amount { color: #ff9f40; font-size: 0.95rem; font-variant-numeric: tabular-nums; }
+  .donor__name {
+    font-weight: 650;
+    font-size: 1rem;
+  }
+  .donor__amount {
+    color: var(--accent, #ff9f40);
+    font-weight: 700;
+    font-size: 0.98rem;
+    font-variant-numeric: tabular-nums;
+  }
   .donor__meta {
     font-size: 12px;
     color: var(--text-faint, #999);
-    margin-top: 2px;
+    margin-top: 3px;
   }
-  .donor__platform { margin-left: 2px; }
+  .donor__platform {
+    margin-left: 2px;
+  }
   .donor__message {
     margin: 8px 0 0;
     color: var(--text-muted, #555);
     font-style: italic;
     line-height: 1.6;
+    font-size: 0.93rem;
   }
+
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 14px;
+  }
+  .card-grid--compact {
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  }
+  .person-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px 18px;
+    border-radius: 12px;
+    background: var(--bg-elev, #fafaf7);
+    border: 1px solid var(--border, #e6e4dd);
+    transition: border-color 0.15s;
+  }
+  .person-card:hover {
+    border-color: color-mix(in srgb, var(--accent, #ff9f40) 55%, var(--border, #e6e4dd));
+  }
+  .person-card__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .person-card__name {
+    font-weight: 650;
+    font-size: 0.98rem;
+    color: var(--text);
+    text-decoration: none;
+  }
+  a.person-card__name:hover {
+    color: var(--accent, #ff9f40);
+  }
+  .person-card__since,
+  .supporters__since {
+    font-weight: 400;
+    color: var(--text-faint, #888);
+    font-size: 0.82rem;
+    white-space: nowrap;
+  }
+  .person-card__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+  .kind-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 600;
+    background: color-mix(in srgb, var(--accent, #ff9f40) 12%, transparent);
+    color: var(--text);
+  }
+  .pr-tag {
+    font-size: 11.5px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    padding: 1px 6px;
+    border-radius: 5px;
+    background: var(--bg, #fff);
+    border: 1px solid var(--border, #e6e4dd);
+    color: var(--text-muted, #666);
+    text-decoration: none;
+  }
+  a.pr-tag:hover {
+    border-color: var(--accent, #ff9f40);
+    color: var(--accent, #ff9f40);
+  }
+  .person-card__desc {
+    margin: 0;
+    font-size: 0.88rem;
+    line-height: 1.65;
+    color: var(--text-muted, #555);
+  }
+  .person-card__quote {
+    margin: 2px 0 0;
+    font-size: 0.9rem;
+    font-style: italic;
+    color: var(--text-muted, #555);
+    line-height: 1.6;
+  }
+
+  .reporter-wall {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .reporter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 11px;
+    border-radius: 999px;
+    font-size: 0.83rem;
+    font-weight: 500;
+    background: var(--bg-elev, #fafaf7);
+    border: 1px solid var(--border, #e6e4dd);
+    color: var(--text-muted, #555);
+    text-decoration: none;
+    transition: all 0.15s;
+  }
+  .reporter-chip:hover {
+    border-color: var(--accent, #ff9f40);
+    color: var(--accent, #ff9f40);
+    transform: translateY(-1px);
+  }
+  .reporter-chip__plat {
+    font-size: 10px;
+    padding: 1px 5px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--accent, #ff9f40) 15%, transparent);
+    color: var(--text);
+  }
+
   .support {
-    margin-top: 40px;
-    padding: 24px;
-    background: var(--bg-soft, #fafaf7);
-    border-radius: 10px;
-    border: 1px solid #eee;
+    margin-top: 48px;
+    padding: 28px;
+    background: var(--bg-elev, #fafaf7);
+    border-radius: 14px;
+    border: 1px solid var(--border, #e6e4dd);
   }
-  .support h2 { margin: 0 0 12px; font-size: 1.1rem; }
-  .support p { margin: 8px 0; line-height: 1.7; color: var(--text-muted, #555); }
-  .privacy-note { font-size: 0.9rem; color: var(--text-faint, #888); }
-  .supporters { margin: 0 0 32px; }
-  .supporters h2, .tips-heading { font-size: 1.2rem; margin: 0 0 12px; }
-  .supporters__lead { color: var(--text-muted, #555); line-height: 1.7; margin: 0 0 12px; }
-  .supporters__list { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
-  .supporters__list li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border, #eee); font-weight: 600; }
-  .supporters__since { font-weight: 400; color: var(--text-faint, #888); font-size: 0.9rem; }
+  .support h2 {
+    margin: 0 0 10px;
+    font-size: 1.2rem;
+  }
+  .support p {
+    margin: 8px 0;
+    line-height: 1.7;
+    color: var(--text-muted, #555);
+  }
+  .support-ways {
+    margin: 12px 0 16px;
+    padding-left: 20px;
+    display: grid;
+    gap: 8px;
+    color: var(--text-muted, #555);
+    line-height: 1.65;
+    font-size: 0.94rem;
+  }
+  .support-ways strong {
+    color: var(--text);
+  }
+  .privacy-note {
+    font-size: 0.86rem;
+    color: var(--text-faint, #888);
+    margin-top: 12px !important;
+  }
 </style>

@@ -1,7 +1,8 @@
 /**
- * The supporter lists — sponsors, promoters and testers — from the one file every
- * surface reads (public/sponsors.json: this site, the README script, the
- * app's About dialog).
+ * The supporter & contributor lists — sponsors, promoters, testers,
+ * code/theme/packaging contributors, and community issue reporters — from the
+ * single source of truth (`public/sponsors.json`: this site, the README script,
+ * and the app's About dialog).
  */
 import data from '../../public/sponsors.json';
 
@@ -35,11 +36,55 @@ export interface Tester {
   github?: string;
 }
 
+export interface Contributor {
+  name: string;
+  github: string;
+  since: string;
+  kind: 'code' | 'theme' | 'packaging';
+  prs?: string[];
+  contribution: { en: string; zh: string };
+}
+
+export interface CommunityReporter {
+  name: string;
+  url: string;
+  platform: 'github' | 'gitee';
+}
+
+type RawReporter = string | { name: string; github?: string; gitee?: string };
+
 export const sponsors: Sponsor[] = (data as { sponsors: Sponsor[] }).sponsors ?? [];
 export const promoters: Promoter[] = ((data as { promoters?: Promoter[] }).promoters ?? [])
   .slice()
   .sort((a, b) => (a.since < b.since ? 1 : -1));
 export const testers: Tester[] = (data as { testers?: Tester[] }).testers ?? [];
+export const contributors: Contributor[] = (data as { contributors?: Contributor[] }).contributors ?? [];
+
+const rawReporters: RawReporter[] =
+  (data as { communityReporters?: RawReporter[] }).communityReporters ?? [];
+
+export const communityReporters: CommunityReporter[] = rawReporters.map((item) => {
+  if (typeof item === 'string') {
+    return {
+      name: `@${item}`,
+      url: `https://github.com/${item}`,
+      platform: 'github',
+    };
+  }
+  if (item.gitee) {
+    return {
+      name: item.name,
+      url: `https://gitee.com/${item.gitee}`,
+      platform: 'gitee',
+    };
+  }
+  return {
+    name: item.name,
+    url: item.github ? `https://github.com/${item.github}` : 'https://github.com/zhitongblog/solomd/issues',
+    platform: 'github',
+  };
+});
+
 export const featuredPromoters = promoters.filter((p) => p.featured && p.quote);
 
 export const PROMOTE_ISSUE_URL =

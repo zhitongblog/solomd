@@ -1,5 +1,5 @@
 {
-  "note": "Supporters, added with their consent. The website (homepage, /thanks, /promote), the README (scripts/update-sponsors-readme.py, incl. the All Contributors table) and the app's About dialog all read this file. sponsors: name, since (YYYY-MM), optional github (username, for the README avatar) and url. promoters: name, since, platform, url (the piece itself), optional ref (their ?ref= code), github, featured + quote (shown on the homepage). testers: name, since, contribution {en, zh} — people who test SoloMD carefully and send detailed bug reports and analysis; optional github.",
+  "note": "Supporters and contributors of SoloMD. The website (homepage, /thanks, /promote), the README (scripts/update-sponsors-readme.py, incl. the All Contributors table) and the app's About dialog all read this file. sponsors: name, since (YYYY-MM), optional github (username, for the README avatar) and url. promoters: name, since, platform, url (the piece itself), optional ref (their ?ref= code), github, featured + quote (shown on the homepage). testers: name, since, contribution {en, zh} — people who test SoloMD carefully and send detailed bug reports and analysis; optional github. contributors: name, github, since, kind ('code' | 'theme' | 'packaging'), optional prs, contribution {en, zh}. communityReporters: GitHub usernames or {name, gitee} objects for everyone who submitted issue reports and feature ideas.",
   "sponsors": [
     {
       "name": "tyysoft(太阳雨)",
@@ -37,17 +37,17 @@
       "name": "张工",
       "since": "2026-10",
       "contribution": {
-        "en": "Systematic testing of the Windows editors, shortcuts, menus and toolbar, with detailed bug reports and analysis behind many fixes in 4.14.6–5.0.2.",
-        "zh": "系统地测试了 Windows 编辑器、快捷键、菜单和工具栏，提交了大量详细的问题报告和分析，4.14.6–5.0.2 版本的许多修复都来自他的测试。"
+        "en": "Systematic testing of the Windows editors, shortcuts, menus, toolbar, ordered list markers, CJK double-click selection, drag-selection autoscroll, and external temp-file save protection across v4.14.6–v5.0.12.",
+        "zh": "系统地测试了 Windows 编辑器、快捷键、菜单、工具栏、多位数有序列表排版、中英文双击选词、长文档拖拽选中滚动以及第三方软件临时文件缺失保存保护，v4.14.6–v5.0.12 的众多核心修复都来自他的深入测试。"
       }
     },
     {
       "name": "tyysoft(太阳雨)",
       "github": "tyysoft",
-      "since": "2026-10",
+      "since": "2026-09",
       "contribution": {
-        "en": "Deep testing and detailed user experience feedback on file tree navigation, workspace handling, table editor, shortcuts, and encrypted personal cloud drive backup & multi-device sync.",
-        "zh": "深度测试了文件树导航、工作区管理、表格编辑器及快捷键交互，并慷慨赞助支持研究笔记端到端加密备份至个人网盘与网盘多端同步方案。"
+        "en": "80+ detailed bug reports and UX analyses covering file tree navigation, workspace management, table editor, keyboard shortcuts, and sponsoring research into end-to-end encrypted personal cloud drive backup & multi-device sync.",
+        "zh": "提交了 80+ 份详尽的问题报告与交互分析，深度覆盖文件树导航、工作区管理、表格编辑器及快捷键交互，并慷慨赞助支持笔记端到端加密备份至个人网盘与网盘多端同步方案研究。"
       }
     },
     {
@@ -58,6 +58,457 @@
         "en": "Extensive custom theme and plugin experimentation on Windows, with detailed feedback on live preview rendering, tab management, and developer tooling.",
         "zh": "在 Windows 端进行了深入的自定义主题与扩展实践，针对实时预览渲染、多标签页管理及开发者调试工具提出了详尽的改进建议。"
       }
+    },
+    {
+      "name": "ScienceZone",
+      "github": "ScienceZone",
+      "since": "2026-10",
+      "contribution": {
+        "en": "In-depth testing of Word (.docx) export and Copy for Word formatting, multi-digit ordered list hanging indent alignment, tab-switch scroll position restoration, LaTeX math rendering, and live preview table/image edge cases.",
+        "zh": "深度测试了导出 Word 与「复制为 Word」排版一致性、多位数有序列表悬挂缩进对齐、切换标签页滚动位置恢复、LaTeX 数学公式渲染以及实时预览表格与图片边界场景。"
+      }
+    },
+    {
+      "name": "Limoncello-Zoey",
+      "github": "Limoncello-Zoey",
+      "since": "2026-06",
+      "contribution": {
+        "en": "Early systematic testing of live preview cursor navigation across blocks, preview font & size synchronization, nested list rendering, toolbar responsiveness, and in-app update checking.",
+        "zh": "早期系统测试了实时预览模式跨块光标移动、预览区字体字号同步、多级列表渲染、窄窗口工具栏自适应以及应用内版本检测更新流程。"
+      }
+    },
+    {
+      "name": "davi-jorge-art",
+      "github": "davi-jorge-art",
+      "since": "2026-05",
+      "contribution": {
+        "en": "Comprehensive Android mobile testing covering file & folder operations, image and file attachment workflows, portrait/landscape toolbar adaptation, WebDAV sync, and APK size optimization.",
+        "zh": "持续深度测试 Android 移动端，覆盖文件与文件夹操作、图片与附件插入、横竖屏工具栏适配、WebDAV 同步以及安装包体积优化。"
+      }
+    },
+    {
+      "name": "zhuhaisto",
+      "github": "zhuhaisto",
+      "since": "2026-04",
+      "contribution": {
+        "en": "Continuous feedback from early v4 releases on live preview polish, plain-text editing mode, code fence copy buttons and line wrapping, auto-title from H1 on save, and tab bar overflow navigation arrows.",
+        "zh": "从早期版本起持续反馈实时预览视觉打磨、纯文本编辑模式、代码块复制按钮与窄宽自动换行、保存时自动提取一级标题作为文件名以及多标签页溢出滚动箭头。"
+      }
+    },
+    {
+      "name": "licryle",
+      "github": "licryle",
+      "since": "2026-06",
+      "contribution": {
+        "en": "Detailed testing of Command Palette keyboard & mouse scrolling, unsaved file rename safety, AI rewrite UI polish, Android folder picker, and column/vertical selection.",
+        "zh": "细致测试了命令面板键盘与鼠标滚动跟随、未保存文件重命名防丢失保护、AI 改写界面交互、Android 文件夹选择器以及列选择（垂直块选）功能。"
+      }
+    },
+    {
+      "name": "ed-edwin",
+      "github": "ed-edwin",
+      "since": "2026-09",
+      "contribution": {
+        "en": "Dedicated iPadOS and iOS testing covering external folder access, hardware keyboard IME candidate bar positioning, and WebKit cold-start rendering.",
+        "zh": "专注于 iPadOS 与 iOS 端深度测试，覆盖外部文件夹打开授权、iPad 原生实体键盘输入法候选框定位以及 WebKit 冷启动渲染稳定性。"
+      }
+    },
+    {
+      "name": "xjfnet",
+      "github": "xjfnet",
+      "since": "2026-10",
+      "contribution": {
+        "en": "Thorough testing of custom CSS themes across HTML/PDF export, tables inside blockquotes in live preview, Vue code fence syntax highlighting, code block line numbers, and DevTools access.",
+        "zh": "深入测试了自定义 CSS 主题在 HTML/PDF 导出中的一致性、实时预览引用块内嵌表格渲染、Vue 代码块语法高亮、代码块行号显示以及开发者工具调试能力。"
+      }
+    },
+    {
+      "name": "Snowboy801",
+      "github": "Snowboy801",
+      "since": "2026-08",
+      "contribution": {
+        "en": "Testing of Windows custom titlebar controls, Vim mode keybindings, ==highlight== syntax and Typewriter Mode, Select All editing workflows, and PDF export line wrapping.",
+        "zh": "测试并反馈了 Windows 窗口控制按钮、Vim 模式按键映射、==高亮== 语法与打字机模式、全选编辑工作流以及导出 PDF 自动换行问题。"
+      }
+    }
+  ],
+  "contributors": [
+    {
+      "name": "Lance.Wang (beihai23)",
+      "github": "beihai23",
+      "since": "2026-04",
+      "kind": "code",
+      "prs": ["#8", "#9", "#10", "#12", "#21", "#48", "#113", "#142"],
+      "contribution": {
+        "en": "Built split-screen preview, toolbar document title display, 'Reveal in File Tree' tab context menu, image popup zoom, local SVG image preview across WebViews, and fixed PDF export timeout & file tree collapse behavior.",
+        "zh": "开发了分屏预览模式、工具栏文档标题显示、标签页右键「在文件树中定位」、图片弹窗缩放预览、跨平台 WebView 本地 SVG 图片渲染，并修复了 PDF 导出超时与文件树折叠交互问题。"
+      }
+    },
+    {
+      "name": "chenghaitao",
+      "github": "chenghaitao",
+      "since": "2026-07",
+      "kind": "code",
+      "prs": ["v4.14.2"],
+      "contribution": {
+        "en": "Contributed file tree UX improvements, 'Open in default app' permission fix, multi-page print PDF layout, standalone HTML image inlining, and smart list continuation on Enter.",
+        "zh": "贡献了文件树交互优化、「使用默认应用打开」权限修复、多页打印 PDF 布局优化、独立单文件 HTML 图片内联导出以及回车自动续接列表项功能。"
+      }
+    },
+    {
+      "name": "DarkModest",
+      "github": "DarkModest",
+      "since": "2026-10",
+      "kind": "code",
+      "prs": ["#471", "#472", "#473"],
+      "contribution": {
+        "en": "Prevented live-preview block-decoration scans from corrupting Vue/HTML tags inside fenced code blocks (#457), fixed AI provider dropdown overflow (#472), and added the bilingual feedback issue template (#471).",
+        "zh": "修复了实时预览块级装饰扫描误解析代码块内 Vue/HTML 标签的问题（#457）、修复了 AI 服务商下拉菜单溢出截断问题（#472），并完善了中英双语 Issue 反馈模板（#471）。"
+      }
+    },
+    {
+      "name": "SmartKeyerror (gregoreficint)",
+      "github": "gregoreficint",
+      "since": "2026-10",
+      "kind": "code",
+      "prs": ["#409"],
+      "contribution": {
+        "en": "Implemented LanguageTool multi-language grammar and style checking integration in the editor (#408 / #409).",
+        "zh": "实现了编辑器内 LanguageTool 多语言语法与文风检查集成（#408 / #409）。"
+      }
+    },
+    {
+      "name": "SYMF (raopan2021)",
+      "github": "raopan2021",
+      "since": "2026-08",
+      "kind": "theme",
+      "prs": ["#239", "#244"],
+      "contribution": {
+        "en": "Designed community themes & upgraded the Aurora theme (#239), and added the Custom CSS reload button with animated spinner (#244).",
+        "zh": "设计了社区主题并升级了极光（Aurora）主题（#239），同时为自定义 CSS 新增了带加载动画的一键重载按钮（#244）。"
+      }
+    },
+    {
+      "name": "sakura777 (xu-qian123)",
+      "github": "xu-qian123",
+      "since": "2026-10",
+      "kind": "theme",
+      "prs": ["#452"],
+      "contribution": {
+        "en": "Created and contributed the Ivory Amber (象牙珀光) warm reading & writing community theme (#452).",
+        "zh": "创作并贡献了温暖柔和的「象牙珀光（Ivory Amber）」社区主题（#452）。"
+      }
+    },
+    {
+      "name": "Octopus (octo-patch)",
+      "github": "octo-patch",
+      "since": "2026-08",
+      "kind": "code",
+      "prs": ["#176", "#445"],
+      "contribution": {
+        "en": "Added MiniMax as a built-in BYOK AI provider (#176) and upgraded the default MiniMax model to M3.1-Flash (#445).",
+        "zh": "新增了 MiniMax 内置 BYOK AI 服务商支持（#176），并将默认模型升级为 M3.1-Flash（#445）。"
+      }
+    },
+    {
+      "name": "lizhen789",
+      "github": "lizhen789",
+      "since": "2026-10",
+      "kind": "code",
+      "prs": ["#496"],
+      "contribution": {
+        "en": "Fixed Windows backslash relative image paths (e.g. .\\assets\\img.png) in Markdown rendering and preview (#496).",
+        "zh": "修复了 Windows 下反斜杠相对路径图片（如 .\\assets\\img.png）在 Markdown 中的解析与渲染问题（#496）。"
+      }
+    },
+    {
+      "name": "vishalhabib99",
+      "github": "vishalhabib99",
+      "since": "2026-10",
+      "kind": "code",
+      "prs": ["#407"],
+      "contribution": {
+        "en": "Enhanced MCP get_backlinks to match [[folder/note]] and [[note.md]] wikilinks while ignoring links inside fenced code blocks (#407).",
+        "zh": "增强了 MCP 服务器 get_backlinks 反向链接解析，支持匹配 [[folder/note]] 与 [[note.md]] 并自动跳过代码块内的伪链接（#407）。"
+      }
+    },
+    {
+      "name": "bcronje",
+      "github": "bcronje",
+      "since": "2026-09",
+      "kind": "code",
+      "prs": ["#375"],
+      "contribution": {
+        "en": "Added the editor setting to toggle automatic code fence language autocomplete suggestions (#375).",
+        "zh": "新增了用于开关代码块围栏语言自动补全建议的编辑器设置项（#375）。"
+      }
+    },
+    {
+      "name": "Esing (Zxis233)",
+      "github": "Zxis233",
+      "since": "2026-09",
+      "kind": "code",
+      "prs": ["#289"],
+      "contribution": {
+        "en": "Implemented automatic [TOC] table of contents generation and rendering in Markdown documents (#289).",
+        "zh": "实现了 Markdown 文档中 [TOC] 目录标记的自动生成与渲染支持（#289）。"
+      }
+    },
+    {
+      "name": "gonwe",
+      "github": "gonwe",
+      "since": "2026-08",
+      "kind": "packaging",
+      "prs": ["#241"],
+      "contribution": {
+        "en": "Maintains the Arch Linux AUR package (solomd-bin) and automated version sync workflow (#241).",
+        "zh": "维护 Arch Linux AUR 软件包（solomd-bin）并贡献了版本同步配置（#241）。"
+      }
+    },
+    {
+      "name": "LiRui (fengzhoujingshui)",
+      "github": "fengzhoujingshui",
+      "since": "2026-08",
+      "kind": "code",
+      "prs": ["#235"],
+      "contribution": {
+        "en": "Added OpenCode Go AI provider support and resolved Linux compilation issues (#235).",
+        "zh": "新增了 OpenCode Go AI 服务商支持并修复了 Linux 平台下的编译构建问题（#235）。"
+      }
+    },
+    {
+      "name": "jysz",
+      "github": "jysz",
+      "since": "2026-08",
+      "kind": "packaging",
+      "prs": ["#220"],
+      "contribution": {
+        "en": "Added Linux ARM64 (aarch64) architecture detection and installation support to setup.sh (#220).",
+        "zh": "为 Linux 安装脚本 setup.sh 新增了 ARM64（aarch64）架构识别与安装支持（#220）。"
+      }
+    },
+    {
+      "name": "guangtoutong",
+      "github": "guangtoutong",
+      "since": "2026-08",
+      "kind": "code",
+      "prs": ["#183"],
+      "contribution": {
+        "en": "Added automatic detection and repair for malformed Markdown table separator rows (#183).",
+        "zh": "实现了格式错误的 Markdown 表格分隔行自动检测与修复功能（#183）。"
+      }
+    },
+    {
+      "name": "JumpingY",
+      "github": "JumpingY",
+      "since": "2026-07",
+      "kind": "code",
+      "prs": ["#150"],
+      "contribution": {
+        "en": "Implemented self-hosted Gitea repository synchronization alongside GitHub and Gitee (#150).",
+        "zh": "在 GitHub 与 Gitee 之外实现了自建 Gitea 仓库同步支持（#150）。"
+      }
+    }
+  ],
+  "communityReporters": [
+    "Howard-Zhou-77",
+    "yaoxinghuo",
+    "insky122",
+    "wha4up",
+    "mouseletsean",
+    "jiangfangzheng",
+    "troublewind",
+    "cestgit",
+    "chenyajunai",
+    "JakilyWei1991",
+    "fatsen",
+    "agogoe",
+    "cnsczt",
+    "h2512915141",
+    "yanjiupeng",
+    "flyingapollo",
+    "Inverstar",
+    "Winlpl",
+    "GhostYii",
+    "Ember-Dawn",
+    "bufoon",
+    "zhiwu111",
+    "tomato-tomato",
+    "FFS-GmbH",
+    "aberezin",
+    "Chikomago",
+    "ryoshi-way",
+    "eandreaja",
+    "xrascal",
+    "PixelRaven123",
+    "cameleonh",
+    "Miracle80",
+    "FantasyOnly",
+    "cz1980",
+    "jclg83",
+    "One-sixth",
+    "elliottwcl",
+    "highwindmx",
+    "imysl0",
+    "locodarwin",
+    "jh82gh",
+    "999px",
+    "xouyou",
+    "CocoChavan",
+    "zhaomeiniu5658",
+    "dfcop1",
+    "Linate",
+    "JokerQyou",
+    "wang-xiaowu",
+    "git-dazz",
+    "DrSkyFree",
+    "WuYiLingOps",
+    "ThueWeihe",
+    "aiapienthusiast",
+    "XieyilinMain",
+    "polymathZZY",
+    "branll",
+    "dzhydong",
+    "littleicecube",
+    "Iris-sulyvahn",
+    "xyy54323",
+    "azkbzxf",
+    "jorgemfb",
+    "descendingnerdliness",
+    "ta-1-1",
+    "lizuidie",
+    "Dorl121",
+    "cameyan",
+    "wangpanli",
+    "jsycjpf",
+    "astrnox",
+    "MuZifeng1024",
+    "djKianoosh",
+    "zyw745293",
+    "zansbang",
+    "chenjo666",
+    "Omoinemie",
+    "265785",
+    "wstaery",
+    "CYN123-RGB",
+    "ZFYy1x",
+    "ewebgh33",
+    "dulcestentaciones2920-debug",
+    "lekkorn",
+    "Danie10",
+    "GilSousa81",
+    "AMDphreak",
+    "Wordius",
+    "Patrick-TS",
+    "wliustc",
+    "ZengXianTong001",
+    "weihanhan",
+    "andywf99",
+    "yanghualei188",
+    "jqstrong",
+    "mgl-pub",
+    "AnalogThomas",
+    "zendodx",
+    "nefeed",
+    "loongson-gz",
+    "raelb",
+    "starseaheart",
+    "bug3048",
+    "bei-yue",
+    "EricQiQi",
+    "jarvisqi",
+    "nrkmrvl",
+    "mysterious-duola",
+    "Headless-Chicken",
+    "tuxgirl",
+    "lee-AI14514",
+    "XiCoder",
+    "preyevates",
+    "askednature",
+    "cs50-dizzy",
+    "xbl",
+    "codeLab-chen",
+    "LiuweiXinshuo",
+    "huohuczq",
+    "xnique-hub",
+    "kirning",
+    "wilgan",
+    "YinQin257",
+    "wangxufeng",
+    "SecureInsights",
+    "JimXiongGM",
+    "aestilog",
+    "debugly",
+    "jorrellsuper",
+    "IngmarBoddington",
+    "liscx",
+    "AnKyrk",
+    "ankitkapur1992-hlido",
+    "vevan",
+    "JIUSIS",
+    "MorrisMing7",
+    "ProudRabbit",
+    "TimFruit",
+    "enola-art",
+    "baotherst",
+    "zhaomming",
+    "xiaocqaq",
+    "caioribeiroclw-pixel",
+    "jpisgeek",
+    "liyiheng",
+    "RYO-SEABA",
+    "aristotll",
+    "xnuxmwx",
+    "stelvetica",
+    "zy1acg",
+    "xbyter",
+    "d7an",
+    "wya0556",
+    "cjamierun",
+    "WangGakin",
+    "2276225819",
+    "fantasy027",
+    "xinyin025",
+    "yinxufeng",
+    "xiegoudan",
+    "zhtdbobo",
+    "4YStudio",
+    "broogreg",
+    "magic-stars",
+    "jinyue143-tech",
+    "luruibin",
+    "yar999",
+    "dfcop",
+    "tabortao",
+    "3425734131",
+    "JH-D-admin",
+    "anthonyhtang",
+    "hhseu",
+    "wangjiati",
+    "luckylew23",
+    "kkua",
+    "luanyufei",
+    "QAbot-zh",
+    "LuckyCoderOne",
+    "z-Fng",
+    "easleyclaymore",
+    "Vveeb",
+    "luming8",
+    {
+      "name": "暗石绿 (qxwxxm)",
+      "gitee": "qxwxxm"
+    },
+    {
+      "name": "sczhangtao",
+      "gitee": "sczhangtao_admin"
+    },
+    {
+      "name": "马宇 (mayu1111)",
+      "gitee": "mayu1111"
+    },
+    {
+      "name": "raphtalia123",
+      "gitee": "raphtalia123"
     }
   ]
 }

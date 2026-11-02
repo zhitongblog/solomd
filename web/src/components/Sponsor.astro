@@ -4,9 +4,10 @@ interface Props { lang: Lang }
 const { lang } = Astro.props;
 const tr = getT(lang);
 // One list for the site, the README and the in-app About dialog.
-import { sponsors as sponsorList, promoters, featuredPromoters } from '../lib/supporters';
+import { sponsors as sponsorList, promoters, featuredPromoters, testers, contributors, communityReporters } from '../lib/supporters';
 const sponsors: string[] = sponsorList.map((x) => x.name);
 const promoteHref = lang === 'zh' ? '/zh/promote' : '/promote';
+const thanksHref = lang === 'zh' ? '/zh/thanks/' : '/thanks/';
 
 // TODO: replace with real GitHub Sponsors URL once approved
 const githubSponsorUrl = 'https://github.com/sponsors/zhitongblog';
@@ -318,6 +319,14 @@ const inApp = IN_APP_COPY[lang] || IN_APP_COPY.en;
         </ul>
       </div>
     )}
+
+    <div class="thanks-wall-cta">
+      <a href={thanksHref} class="thanks-wall-cta__link">
+        {lang === 'zh'
+          ? `♥ 查看完整社区鸣谢与贡献者名单（赞助打赏 · ${testers.length} 位深度测试者 · ${contributors.length} 位代码/主题/打包贡献者 · ${communityReporters.length}+ 位问题反馈伙伴） →`
+          : `♥ View the Complete Thank-You & Contributors Wall (Sponsors · ${testers.length} Deep Testers · ${contributors.length} Code/Theme/Package Contributors · ${communityReporters.length}+ Bug Reporters) →`}
+      </a>
+    </div>
   </div>
 </section>
 
@@ -539,4 +548,24 @@ const inApp = IN_APP_COPY[lang] || IN_APP_COPY.en;
   .promote-quote__text { margin: 0; font-size: 14px; line-height: 1.6; }
   .promote-quote__who { font-size: 12px; color: var(--text-faint); }
   .sponsor__names li a { color: inherit; text-decoration: none; }
+  .thanks-wall-cta {
+    margin-top: 24px;
+  }
+  .thanks-wall-cta__link {
+    display: inline-block;
+    padding: 10px 18px;
+    border-radius: 999px;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+    text-decoration: none;
+    transition: all 0.15s;
+  }
+  .thanks-wall-cta__link:hover {
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+    border-color: var(--accent);
+    transform: translateY(-1px);
+  }
 </style>
