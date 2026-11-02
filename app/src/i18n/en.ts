@@ -518,6 +518,8 @@ export const en = {
     highlightCurrentLineHint: "Tint the background of the line the cursor is on. Applies to the CodeMirror editor.",
     tabTitleFromFirstLine: "Use first line of document as tab title",
     tabTitleFromFirstLineHint: "Show the first non-empty line of the document instead of the filename in the tab bar (useful when opened by external apps with temporary filenames). Off by default.",
+    confirmSaveMissingFile: "Check if original file exists before saving",
+    confirmSaveMissingFileHint: "When enabled, if the original file on disk no longer exists when saving (e.g. a temporary file cleaned up by a 3rd-party app), prompt to confirm creating a new file at that path to prevent silent data loss. Off by default.",
     autoNumberHeadings: "Automatically number 1–6 headings",
     autoNumberHeadingsHint: "Automatically add and refresh hierarchical section numbers (1. / 1.1 / 1.1.1) when headings are added, deleted, or modified. Off by default.",
     codeFontFamily: 'Code font',
@@ -838,6 +840,12 @@ export const en = {
     shareFailed: "Share failed: {error}",
     androidAllFilesReturn: "Turn on “All files access”, then come back — SoloMD restarts itself so the permission takes effect.",
     pinyinCopied: "Pinyin copied to clipboard",
+  },
+  dialog: {
+    missingFileTitle: "Original File Does Not Exist",
+    missingFileBody: "The original file \"{name}\" no longer exists on disk (it may have been removed or cleaned up by an external app).\n\nDo you want to create a new file and save it at the original path?\nPath: {path}",
+    missingFileConfirm: "Create & Save",
+    missingFileCancel: "Cancel",
   },
   imageUrlDialog: {
     title: 'Insert image from URL',

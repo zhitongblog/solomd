@@ -515,6 +515,8 @@ export const ru: I18n = {
     highlightCurrentLineHint: 'Подкрашивает фон строки, на которой стоит курсор. Для редактора CodeMirror.',
     tabTitleFromFirstLine: "Использовать первую строку как заголовок вкладки",
     tabTitleFromFirstLineHint: "Показывать первую непустую строку документа вместо имени файла на панели вкладок.",
+    confirmSaveMissingFile: "Check if original file exists before saving",
+    confirmSaveMissingFileHint: "When enabled, prompt to confirm creating a new file if the original file on disk no longer exists when saving. Off by default.",
     autoNumberHeadings: "Автоматическая нумерация заголовков 1–6",
     autoNumberHeadingsHint: "Автоматически добавляет и обновляет многоуровневую нумерацию разделов (1. / 1.1 / 1.1.1) при добавлении, удалении или изменении заголовков. По умолчанию выключено.",
     codeFontFamily: 'Шрифт кода',
@@ -830,6 +832,12 @@ export const ru: I18n = {
     shareFailed: "Не удалось поделиться: {error}",
     androidAllFilesReturn: "Включите «Доступ ко всем файлам» и вернитесь — SoloMD перезапустится, чтобы разрешение вступило в силу.",
     pinyinCopied: "Пиньинь скопирован в буфер обмена",
+  },
+  dialog: {
+    missingFileTitle: "Original File Does Not Exist",
+    missingFileBody: "The original file \"{name}\" no longer exists on disk.\n\nCreate a new file and save at the original path?\nPath: {path}",
+    missingFileConfirm: "Create & Save",
+    missingFileCancel: "Cancel",
   },
   imageUrlDialog: {
     title: 'Вставить изображение по URL',

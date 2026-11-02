@@ -515,6 +515,8 @@ export const ko: I18n = {
     highlightCurrentLineHint: "커서가 있는 줄의 배경에 색을 입힙니다. CodeMirror 편집기에 적용됩니다.",
     tabTitleFromFirstLine: "문서 첫 줄을 탭 제목으로 사용",
     tabTitleFromFirstLineHint: "탭 바에 파일 이름 대신 문서의 첫 번째 줄을 표시합니다(외부 프로그램에서 임시 파일명으로 호출할 때 유용). 기본값은 꺼짐입니다.",
+    confirmSaveMissingFile: "Check if original file exists before saving",
+    confirmSaveMissingFileHint: "When enabled, prompt to confirm creating a new file if the original file on disk no longer exists when saving. Off by default.",
     autoNumberHeadings: "1~6단계 제목에 다단계 번호 자동 추가",
     autoNumberHeadingsHint: "제목을 추가·삭제·수정할 때 문서 전체의 다단계 번호(1. / 1.1 / 1.1.1)를 자동으로 갱신합니다. 기본값은 꺼짐입니다.",
     codeFontFamily: '코드 글꼴',
@@ -832,6 +834,12 @@ export const ko: I18n = {
     shareFailed: "공유 실패: {error}",
     androidAllFilesReturn: "“모든 파일 액세스”를 켠 다음 돌아오세요 — 권한이 적용되도록 SoloMD가 자동으로 다시 시작됩니다.",
     pinyinCopied: "병음이 클립보드에 복사됨",
+  },
+  dialog: {
+    missingFileTitle: "Original File Does Not Exist",
+    missingFileBody: "The original file \"{name}\" no longer exists on disk.\n\nCreate a new file and save at the original path?\nPath: {path}",
+    missingFileConfirm: "Create & Save",
+    missingFileCancel: "Cancel",
   },
   imageUrlDialog: {
     title: 'URL에서 이미지 삽입',

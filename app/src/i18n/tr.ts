@@ -515,6 +515,8 @@ export const tr: I18n = {
     highlightCurrentLineHint: "İmlecin bulunduğu satırın arka planını renklendirir. CodeMirror düzenleyicisi için geçerlidir.",
     tabTitleFromFirstLine: "Sekme başlığı olarak ilk satırı kullan",
     tabTitleFromFirstLineHint: "Sekme çubuğunda dosya adı yerine belgenin ilk satırını gösterir.",
+    confirmSaveMissingFile: "Check if original file exists before saving",
+    confirmSaveMissingFileHint: "When enabled, prompt to confirm creating a new file if the original file on disk no longer exists when saving. Off by default.",
     autoNumberHeadings: "1–6 başlıkları otomatik numaralandır",
     autoNumberHeadingsHint: "Başlıklar eklendiğinde, silindiğinde veya değiştirildiğinde çok düzeyli bölüm numaralarını (1. / 1.1 / 1.1.1) otomatik olarak günceller. Varsayılan olarak kapalıdır.",
     codeFontFamily: 'Kod yazı tipi',
@@ -832,6 +834,12 @@ export const tr: I18n = {
     shareFailed: "Paylaşım başarısız: {error}",
     androidAllFilesReturn: "“Tüm dosyalara erişim”i açın ve geri dönün — iznin geçerli olması için SoloMD kendini yeniden başlatır.",
     pinyinCopied: "Pinyin panoya kopyalandı",
+  },
+  dialog: {
+    missingFileTitle: "Original File Does Not Exist",
+    missingFileBody: "The original file \"{name}\" no longer exists on disk.\n\nCreate a new file and save at the original path?\nPath: {path}",
+    missingFileConfirm: "Create & Save",
+    missingFileCancel: "Cancel",
   },
   imageUrlDialog: {
     title: 'URL\'den görsel ekle',

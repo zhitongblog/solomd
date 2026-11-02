@@ -1215,6 +1215,14 @@ function onSelectPdfFont(v: string) {
 
         <section data-cat="basics">
           <label>
+            <input type="checkbox" :checked="settings.confirmSaveMissingFile" @change="settings.toggleConfirmSaveMissingFile()" />
+            {{ t('settings.confirmSaveMissingFile') }}
+          </label>
+          <div class="hint">{{ t('settings.confirmSaveMissingFileHint') }}</div>
+        </section>
+
+        <section data-cat="basics">
+          <label>
             <input type="checkbox" :checked="settings.autoNumberHeadings" @change="settings.toggleAutoNumberHeadings()" />
             {{ t('settings.autoNumberHeadings') }}
           </label>

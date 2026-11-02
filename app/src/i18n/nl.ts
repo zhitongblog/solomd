@@ -515,6 +515,8 @@ export const nl: I18n = {
     highlightCurrentLineHint: "Kleurt de achtergrond van de regel met de cursor. Geldt voor de CodeMirror-editor.",
     tabTitleFromFirstLine: "Eerste regel gebruiken als tabbladtitel",
     tabTitleFromFirstLineHint: "Toont de eerste niet-lege regel van het document in plaats van de bestandsnaam in de tabbladbalk.",
+    confirmSaveMissingFile: "Check if original file exists before saving",
+    confirmSaveMissingFileHint: "When enabled, prompt to confirm creating a new file if the original file on disk no longer exists when saving. Off by default.",
     autoNumberHeadings: "Koppen (1–6) automatisch nummereren",
     autoNumberHeadingsHint: "Voegt automatisch hiërarchische sectienummers (1. / 1.1 / 1.1.1) toe en werkt ze bij wanneer koppen worden toegevoegd, verwijderd of gewijzigd. Standaard uitgeschakeld.",
     codeFontFamily: 'Code-lettertype',
@@ -832,6 +834,12 @@ export const nl: I18n = {
     shareFailed: "Delen mislukt: {error}",
     androidAllFilesReturn: "Zet “Toegang tot alle bestanden” aan en kom dan terug — SoloMD herstart zichzelf zodat de toestemming van kracht wordt.",
     pinyinCopied: "Pinyin naar klembord gekopieerd",
+  },
+  dialog: {
+    missingFileTitle: "Original File Does Not Exist",
+    missingFileBody: "The original file \"{name}\" no longer exists on disk.\n\nCreate a new file and save at the original path?\nPath: {path}",
+    missingFileConfirm: "Create & Save",
+    missingFileCancel: "Cancel",
   },
   imageUrlDialog: {
     title: 'Afbeelding van URL invoegen',

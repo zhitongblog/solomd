@@ -515,6 +515,8 @@ export const de: I18n = {
     highlightCurrentLineHint: "Hinterlegt die Zeile mit dem Cursor farbig. Gilt für den CodeMirror-Editor.",
     tabTitleFromFirstLine: "Erste Dokumentzeile als Tab-Titel verwenden",
     tabTitleFromFirstLineHint: "Zeigt in der Tab-Leiste die erste nicht-leere Zeile statt des Dateinamens an (hilfreich bei temporären Dateinamen externer Tools).",
+    confirmSaveMissingFile: "Check if original file exists before saving",
+    confirmSaveMissingFileHint: "When enabled, prompt to confirm creating a new file if the original file on disk no longer exists when saving. Off by default.",
     autoNumberHeadings: "Überschriften (1–6) automatisch nummerieren",
     autoNumberHeadingsHint: "Fügt beim Hinzufügen, Löschen oder Ändern von Überschriften automatisch hierarchische Abschnittsnummern (1. / 1.1 / 1.1.1) hinzu und aktualisiert sie. Standardmäßig deaktiviert.",
     codeFontFamily: 'Code-Schriftart',
@@ -832,6 +834,12 @@ export const de: I18n = {
     shareFailed: "Teilen fehlgeschlagen: {error}",
     androidAllFilesReturn: "Aktiviere „Zugriff auf alle Dateien“ und kehre dann zurück — SoloMD startet sich neu, damit die Berechtigung wirksam wird.",
     pinyinCopied: "Pinyin in die Zwischenablage kopiert",
+  },
+  dialog: {
+    missingFileTitle: "Original File Does Not Exist",
+    missingFileBody: "The original file \"{name}\" no longer exists on disk.\n\nCreate a new file and save at the original path?\nPath: {path}",
+    missingFileConfirm: "Create & Save",
+    missingFileCancel: "Cancel",
   },
   imageUrlDialog: {
     title: 'Bild aus URL einfügen',

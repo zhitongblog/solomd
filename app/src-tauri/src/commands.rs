@@ -774,6 +774,11 @@ pub fn fs_dir_exists(path: String) -> bool {
 }
 
 #[tauri::command]
+pub fn fs_file_exists(path: String) -> bool {
+    Path::new(&path).is_file()
+}
+
+#[tauri::command]
 pub fn fs_rename(from: String, to: String) -> Result<(), String> {
     let from_p = Path::new(&from);
     let to_p = Path::new(&to);

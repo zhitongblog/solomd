@@ -71,6 +71,10 @@ interface Settings {
    *  on-disk filename (off by default). Useful when a 3rd-party tool opens
    *  temporary/UUID-named files in SoloMD. */
   tabTitleFromFirstLine: boolean;
+  /** Before saving an existing file path, check whether the file still exists
+   *  on disk; if missing (e.g. a 3rd-party app cleaned up its temporary file),
+   *  prompt the user to confirm creating a new file at that path (off by default). */
+  confirmSaveMissingFile: boolean;
   /** #484 — automatically maintain hierarchical 1–6 heading numbers (`1.`, `1.1`, `1.1.1`)
    *  when headings are added, deleted, or modified (off by default). */
   autoNumberHeadings: boolean;
@@ -651,6 +655,7 @@ function defaults(): Settings {
     alwaysShowMarkers: false,
     highlightCurrentLine: true,
     tabTitleFromFirstLine: false,
+    confirmSaveMissingFile: false,
     autoNumberHeadings: false,
     v507HighlightLineMigrated: true,
     codeFontFamily: '',
@@ -1214,6 +1219,10 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleTabTitleFromFirstLine() {
       this.tabTitleFromFirstLine = !this.tabTitleFromFirstLine;
+      this.persist();
+    },
+    toggleConfirmSaveMissingFile() {
+      this.confirmSaveMissingFile = !this.confirmSaveMissingFile;
       this.persist();
     },
     toggleAutoNumberHeadings() {

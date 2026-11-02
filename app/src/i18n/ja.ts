@@ -515,6 +515,8 @@ export const ja: I18n = {
     highlightCurrentLineHint: "カーソルのある行の背景に色を付けます。CodeMirror エディタに適用されます。",
     tabTitleFromFirstLine: "タブのタイトルに文書の1行目を使用",
     tabTitleFromFirstLineHint: "タブバーにファイル名の代わりに文書の最初の行を表示します（外部アプリから一時ファイル名で開かれた場合に便利）。デフォルトはオフです。",
+    confirmSaveMissingFile: "Check if original file exists before saving",
+    confirmSaveMissingFileHint: "When enabled, prompt to confirm creating a new file if the original file on disk no longer exists when saving. Off by default.",
     autoNumberHeadings: "1〜6レベルの見出しに自動で階層番号を付与",
     autoNumberHeadingsHint: "見出しの追加・削除・変更時に文書全体の階層番号（1. / 1.1 / 1.1.1）を自動更新します。デフォルトはオフです。",
     codeFontFamily: 'コードフォント',
@@ -832,6 +834,12 @@ export const ja: I18n = {
     shareFailed: "共有に失敗しました: {error}",
     androidAllFilesReturn: "「すべてのファイルへのアクセス」をオンにしてから戻ってください — 権限を反映するため SoloMD が自動で再起動します。",
     pinyinCopied: "ピンインをクリップボードにコピーしました",
+  },
+  dialog: {
+    missingFileTitle: "Original File Does Not Exist",
+    missingFileBody: "The original file \"{name}\" no longer exists on disk.\n\nCreate a new file and save at the original path?\nPath: {path}",
+    missingFileConfirm: "Create & Save",
+    missingFileCancel: "Cancel",
   },
   imageUrlDialog: {
     title: 'URL から画像を挿入',

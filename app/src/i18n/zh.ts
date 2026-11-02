@@ -517,6 +517,8 @@ export const zh: I18n = {
     highlightCurrentLineHint: "给光标所在行加底色。适用于 CodeMirror 编辑器。",
     tabTitleFromFirstLine: "使用文档第一行内容作为标签页标题",
     tabTitleFromFirstLineHint: "开启后，标签栏将显示文档首行文字（自动去除 Markdown 符号）而非文件名，适合被第三方软件以临时文件名调用时识别文档。默认关闭。",
+    confirmSaveMissingFile: "保存时检查原始文件是否存在",
+    confirmSaveMissingFileHint: "开启后，保存已打开的文件时若发现原始文件已不存在（如被第三方软件清理的临时文件），将弹窗提示「原始文件不存在」，需手动确认是否新建文件保存，避免误以为已写回第三方软件内容库而导致内容丢失。默认关闭。",
     autoNumberHeadings: "自动为标题添加多级数字编号",
     autoNumberHeadingsHint: "在新增、删除或修改 1–6 级标题时自动刷新全文多级章节编号（1. / 1.1 / 1.1.1）。默认关闭。",
     codeFontFamily: '代码字体',
@@ -833,6 +835,12 @@ export const zh: I18n = {
     shareFailed: "分享失败：{error}",
     androidAllFilesReturn: "请开启「所有文件访问权限」后返回，SoloMD 会自动重启以使权限生效。",
     pinyinCopied: "拼音已复制到剪贴板",
+  },
+  dialog: {
+    missingFileTitle: "原始文件不存在",
+    missingFileBody: "原始文件「{name}」已不存在（可能已被外部软件移动或清理）。\n\n是否仍在原路径新建文件并保存？\n路径：{path}",
+    missingFileConfirm: "新建保存",
+    missingFileCancel: "取消",
   },
   imageUrlDialog: {
     title: '插入网络图片',

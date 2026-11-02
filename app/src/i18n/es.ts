@@ -515,6 +515,8 @@ export const es: I18n = {
     highlightCurrentLineHint: "Colorea el fondo de la línea donde está el cursor. Se aplica al editor CodeMirror.",
     tabTitleFromFirstLine: "Usar la primera línea como título de pestaña",
     tabTitleFromFirstLineHint: "Muestra la primera línea del documento en lugar del nombre de archivo en la barra de pestañas.",
+    confirmSaveMissingFile: "Check if original file exists before saving",
+    confirmSaveMissingFileHint: "When enabled, prompt to confirm creating a new file if the original file on disk no longer exists when saving. Off by default.",
     autoNumberHeadings: "Numerar automáticamente los encabezados 1–6",
     autoNumberHeadingsHint: "Añade y actualiza automáticamente la numeración jerárquica (1. / 1.1 / 1.1.1) al añadir, eliminar o modificar encabezados. Desactivado por defecto.",
     codeFontFamily: 'Fuente de código',
@@ -832,6 +834,12 @@ export const es: I18n = {
     shareFailed: "Error al compartir: {error}",
     androidAllFilesReturn: "Activa «Acceso a todos los archivos» y vuelve — SoloMD se reiniciará para que el permiso surta efecto.",
     pinyinCopied: "Pinyin copiado al portapapeles",
+  },
+  dialog: {
+    missingFileTitle: "Original File Does Not Exist",
+    missingFileBody: "The original file \"{name}\" no longer exists on disk.\n\nCreate a new file and save at the original path?\nPath: {path}",
+    missingFileConfirm: "Create & Save",
+    missingFileCancel: "Cancel",
   },
   imageUrlDialog: {
     title: 'Insertar imagen desde URL',

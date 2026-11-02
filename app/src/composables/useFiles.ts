@@ -3,7 +3,7 @@ import { requestRevealInTree } from './useFileTreeReveal';
 import { inject } from 'vue';
 import { windowChromeOptions } from '../lib/window-chrome-options';
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
-import { open as openDialog, save as saveDialog } from '@tauri-apps/plugin-dialog';
+import { open as openDialog, save as saveDialog, confirm as confirmDialog } from '@tauri-apps/plugin-dialog';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { documentDir, desktopDir, homeDir, join } from '@tauri-apps/api/path';
 import { isIOS, isAndroid, isMacOS } from '../lib/platform';
@@ -869,6 +869,24 @@ export function useFiles() {
         // ContentResolver route as the original save.
         await writeContentUri(path, payload);
       } else {
+        if (settings.confirmSaveMissingFile && !iosCopy) {
+          const exists = await invoke<boolean>('fs_file_exists', { path });
+          if (exists === false) {
+            if (opts.silent) {
+              return false;
+            }
+            const ok = await confirmDialog(
+              t('dialog.missingFileBody', { name: tab.fileName, path }),
+              {
+                title: t('dialog.missingFileTitle'),
+                kind: 'warning',
+                okLabel: t('dialog.missingFileConfirm'),
+                cancelLabel: t('dialog.missingFileCancel'),
+              },
+            );
+            if (!ok) return false;
+          }
+        }
         // Recorded first: the watcher event for this write can arrive before
         // markSaved below, and must not read as an outside change.
         noteOwnWrite(path, payload);
