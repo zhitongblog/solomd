@@ -38,7 +38,8 @@ export interface Tester {
 
 export interface Contributor {
   name: string;
-  github: string;
+  github?: string;
+  url?: string;
   since: string;
   kind: 'code' | 'theme' | 'packaging';
   prs?: string[];

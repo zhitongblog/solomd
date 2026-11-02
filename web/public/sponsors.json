@@ -1,5 +1,5 @@
 {
-  "note": "Supporters and contributors of SoloMD. The website (homepage, /thanks, /promote), the README (scripts/update-sponsors-readme.py, incl. the All Contributors table) and the app's About dialog all read this file. sponsors: name, since (YYYY-MM), optional github (username, for the README avatar) and url. promoters: name, since, platform, url (the piece itself), optional ref (their ?ref= code), github, featured + quote (shown on the homepage). testers: name, since, contribution {en, zh} — people who test SoloMD carefully and send detailed bug reports and analysis; optional github. contributors: name, github, since, kind ('code' | 'theme' | 'packaging'), optional prs, contribution {en, zh}. communityReporters: GitHub usernames or {name, gitee} objects for everyone who submitted issue reports and feature ideas.",
+  "note": "Supporters and contributors of SoloMD. The website (homepage, /thanks, /promote), the README (scripts/update-sponsors-readme.py, incl. the All Contributors table) and the app's About dialog all read this file. sponsors: name, since (YYYY-MM), optional github (username, for the README avatar) and url. promoters: name, since, platform, url (the piece itself), optional ref (their ?ref= code), github, featured + quote (shown on the homepage). testers: name, since, contribution {en, zh} — people who test SoloMD carefully and send detailed bug reports and analysis; optional github. contributors: name, optional github, optional url, since, kind ('code' | 'theme' | 'packaging'), optional prs, contribution {en, zh}. communityReporters: GitHub usernames or {name, gitee} objects for everyone who submitted issue reports and feature ideas.",
   "sponsors": [
     {
       "name": "tyysoft(太阳雨)",
@@ -134,25 +134,36 @@
   ],
   "contributors": [
     {
-      "name": "Lance.Wang (beihai23)",
-      "github": "beihai23",
-      "since": "2026-04",
-      "kind": "code",
-      "prs": ["#8", "#9", "#10", "#12", "#21", "#48", "#113", "#142"],
-      "contribution": {
-        "en": "Built split-screen preview, toolbar document title display, 'Reveal in File Tree' tab context menu, image popup zoom, local SVG image preview across WebViews, and fixed PDF export timeout & file tree collapse behavior.",
-        "zh": "开发了分屏预览模式、工具栏文档标题显示、标签页右键「在文件树中定位」、图片弹窗缩放预览、跨平台 WebView 本地 SVG 图片渲染，并修复了 PDF 导出超时与文件树折叠交互问题。"
-      }
-    },
-    {
       "name": "chenghaitao",
       "github": "chenghaitao",
       "since": "2026-07",
       "kind": "code",
-      "prs": ["v4.14.2"],
+      "prs": ["36 commits", "#297", "#317"],
       "contribution": {
-        "en": "Contributed file tree UX improvements, 'Open in default app' permission fix, multi-page print PDF layout, standalone HTML image inlining, and smart list continuation on Enter.",
-        "zh": "贡献了文件树交互优化、「使用默认应用打开」权限修复、多页打印 PDF 布局优化、独立单文件 HTML 图片内联导出以及回车自动续接列表项功能。"
+        "en": "36 commits across v4.13–v4.14: file tree indent guides, selection-driven new-file target & delete confirmation, code fence language autocomplete (#297), background tab disk-change refresh (#317), multi-page print PDF without slicing text lines, standalone HTML local image embedding, menu localization, and bundle size optimization (4.0 MB → 873 kB).",
+        "zh": "累计贡献 36 次提交（v4.13–v4.14）：包括文件树缩进引导线、按选中目录新建文件与删除确认、代码块围栏语言自动补全（#297）、后台标签页磁盘变更定时刷新（#317）、多页打印 PDF 防文字截断、单文件 HTML 本地图片内联导出、菜单本地化补全以及前端首屏包体积大幅缩减（4.0 MB → 873 kB）。"
+      }
+    },
+    {
+      "name": "Lance.Wang (beihai23)",
+      "github": "beihai23",
+      "since": "2026-04",
+      "kind": "code",
+      "prs": ["#8", "#9", "#10", "#12", "#21", "#24", "#48", "#50", "#75", "#113", "#121", "#142"],
+      "contribution": {
+        "en": "16 commits across 15 PRs: built split-screen preview (#12), preview search Ctrl+F (#21), toolbar active document title & 'Reveal in File Tree' tab menu (#113), sidebar context menu (#75), external file change watcher (#24), persistent search sidebar (#50), image popup zoom (#8), local SVG preview across WebViews (#142), and PDF export timeout fixes (#48).",
+        "zh": "累计提交 15 个 PR（16 次提交）：开发了分屏预览模式（#12）、预览模式搜索 Ctrl+F（#21）、工具栏文档标题显示与标签页右键「在文件树中定位」（#113）、侧边栏右键快捷菜单（#75）、外部文件变更监听（#24）、常驻搜索侧边栏（#50）、图片弹窗缩放预览（#8）、跨平台 WebView 本地 SVG 预览（#142）以及 PDF 导出超时修复（#48）。"
+      }
+    },
+    {
+      "name": "JukeJeew (jukejeew)",
+      "github": "jukejeew",
+      "since": "2026-08",
+      "kind": "code",
+      "prs": ["#272", "#278", "#288"],
+      "contribution": {
+        "en": "19 commits across 3 PRs: fixed folder-style wikilink resolution [[folder/note]] and Thai/Unicode path fallback (#278), added native File → Exit (Ctrl+Q) menu for Linux tiling window managers (#272), and implemented the menu bar show/hide toggle Cmd+Shift+M (#288).",
+        "zh": "累计 19 次提交（3 个 PR）：修复了带目录层级的双链 [[folder/note]] 解析与泰语/多语言路径匹配（#278）、为 Linux 平铺窗口管理器新增原生 File → Exit (Ctrl+Q) 退出菜单项（#272），并实现了菜单栏显示/隐藏切换快捷键 Cmd+Shift+M（#288）。"
       }
     },
     {
@@ -162,8 +173,52 @@
       "kind": "code",
       "prs": ["#471", "#472", "#473"],
       "contribution": {
-        "en": "Prevented live-preview block-decoration scans from corrupting Vue/HTML tags inside fenced code blocks (#457), fixed AI provider dropdown overflow (#472), and added the bilingual feedback issue template (#471).",
-        "zh": "修复了实时预览块级装饰扫描误解析代码块内 Vue/HTML 标签的问题（#457）、修复了 AI 服务商下拉菜单溢出截断问题（#472），并完善了中英双语 Issue 反馈模板（#471）。"
+        "en": "Prevented live-preview block-decoration scans from corrupting Vue/HTML tags inside fenced code blocks (#457 / #473), fixed AI provider dropdown overflow (#472), and added the bilingual feedback issue template (#471).",
+        "zh": "修复了实时预览块级装饰扫描误解析代码块内 Vue/HTML 标签的问题（#457 / #473）、修复了 AI 服务商下拉菜单溢出截断问题（#472），并完善了中英双语 Issue 反馈模板（#471）。"
+      }
+    },
+    {
+      "name": "SYMF (raopan2021)",
+      "github": "raopan2021",
+      "since": "2026-08",
+      "kind": "theme",
+      "prs": ["#239", "#242", "#244"],
+      "contribution": {
+        "en": "Designed community themes & upgraded the Aurora theme with translucent borders (#239, #244), added the Custom CSS reload button with animated spinner (#239), and fixed pane resize drag flicker (#242).",
+        "zh": "设计了社区主题并升级了极光（Aurora）主题半透明光感边框（#239、#244）、为自定义 CSS 新增带旋转动画的一键重载按钮（#239），并修复了分栏拖拽调整宽度时的闪烁问题（#242）。"
+      }
+    },
+    {
+      "name": "LiRui (fengzhoujingshui)",
+      "github": "fengzhoujingshui",
+      "since": "2026-08",
+      "kind": "code",
+      "prs": ["#235"],
+      "contribution": {
+        "en": "6 commits: added OpenCode Go AI provider support, added the ubuntu-build.sh helper script, and resolved Linux platform compilation warnings and smoke-test paths (#235).",
+        "zh": "累计 6 次提交：新增了 OpenCode Go AI 服务商支持、提供了 ubuntu-build.sh 构建辅助脚本，并修复了 Linux 平台下的编译告警与测试配置路径问题（#235）。"
+      }
+    },
+    {
+      "name": "Octopus (octo-patch)",
+      "github": "octo-patch",
+      "since": "2026-08",
+      "kind": "code",
+      "prs": ["#176", "#305", "#445"],
+      "contribution": {
+        "en": "Added MiniMax as a built-in BYOK AI provider (#176), added MiniMax token cost estimation (#305), and upgraded the default MiniMax model to M3.1-Flash (#445).",
+        "zh": "新增了 MiniMax 内置 BYOK AI 服务商支持（#176）、补充了 MiniMax Token 用量预估（#305），并将默认模型升级为 M3.1-Flash（#445）。"
+      }
+    },
+    {
+      "name": "guangtoutong",
+      "github": "guangtoutong",
+      "since": "2026-08",
+      "kind": "code",
+      "prs": ["#183"],
+      "contribution": {
+        "en": "Implemented malformed Markdown table separator row auto-repair (#183), synced table preprocessing to headless CLI/MCP export, and added the auto-convert numbered sections to headings setting.",
+        "zh": "实现了格式错误的 Markdown 表格分隔行自动检测与修复功能（#183）、同步了 CLI/MCP 无头导出的表格预处理逻辑，并新增了「编号章节自动转标题」设置项。"
       }
     },
     {
@@ -173,19 +228,8 @@
       "kind": "code",
       "prs": ["#409"],
       "contribution": {
-        "en": "Implemented LanguageTool multi-language grammar and style checking integration in the editor (#408 / #409).",
-        "zh": "实现了编辑器内 LanguageTool 多语言语法与文风检查集成（#408 / #409）。"
-      }
-    },
-    {
-      "name": "SYMF (raopan2021)",
-      "github": "raopan2021",
-      "since": "2026-08",
-      "kind": "theme",
-      "prs": ["#239", "#244"],
-      "contribution": {
-        "en": "Designed community themes & upgraded the Aurora theme (#239), and added the Custom CSS reload button with animated spinner (#244).",
-        "zh": "设计了社区主题并升级了极光（Aurora）主题（#239），同时为自定义 CSS 新增了带加载动画的一键重载按钮（#244）。"
+        "en": "Implemented LanguageTool multi-language grammar and style checking integration in the editor (supporting local server, Premium, and public API) (#408 / #409).",
+        "zh": "实现了编辑器内 LanguageTool 多语言语法与文风检查集成（支持本地服务、Premium 与公共 API）（#408 / #409）。"
       }
     },
     {
@@ -200,18 +244,7 @@
       }
     },
     {
-      "name": "Octopus (octo-patch)",
-      "github": "octo-patch",
-      "since": "2026-08",
-      "kind": "code",
-      "prs": ["#176", "#445"],
-      "contribution": {
-        "en": "Added MiniMax as a built-in BYOK AI provider (#176) and upgraded the default MiniMax model to M3.1-Flash (#445).",
-        "zh": "新增了 MiniMax 内置 BYOK AI 服务商支持（#176），并将默认模型升级为 M3.1-Flash（#445）。"
-      }
-    },
-    {
-      "name": "lizhen789",
+      "name": "Sherri Gutmann (lizhen789)",
       "github": "lizhen789",
       "since": "2026-10",
       "kind": "code",
@@ -222,7 +255,7 @@
       }
     },
     {
-      "name": "vishalhabib99",
+      "name": "Vishal Habib (vishalhabib99)",
       "github": "vishalhabib99",
       "since": "2026-10",
       "kind": "code",
@@ -233,7 +266,7 @@
       }
     },
     {
-      "name": "bcronje",
+      "name": "Beyers Cronje (bcronje)",
       "github": "bcronje",
       "since": "2026-09",
       "kind": "code",
@@ -255,6 +288,39 @@
       }
     },
     {
+      "name": "Jing Chen (yzcj105)",
+      "github": "yzcj105",
+      "since": "2026-05",
+      "kind": "code",
+      "prs": ["#74"],
+      "contribution": {
+        "en": "Contributed independent 3-axis zoom controls (Editor / Sidebar / Global UI) accessible from the View menu (#74).",
+        "zh": "贡献了通过「视图」菜单独立控制编辑器、侧边栏与全局界面的三轴缩放功能（#74）。"
+      }
+    },
+    {
+      "name": "ZHTodd223",
+      "github": "ZHTodd223",
+      "since": "2026-05",
+      "kind": "code",
+      "prs": ["#35"],
+      "contribution": {
+        "en": "Contributed collapsible outline panel support with configurable left/right sidebar placement (#35).",
+        "zh": "贡献了可折叠大纲面板及侧边栏左右位置可配置特性（#35）。"
+      }
+    },
+    {
+      "name": "JumpingY (zhangpingyang)",
+      "github": "JumpingY",
+      "since": "2026-07",
+      "kind": "code",
+      "prs": ["#150"],
+      "contribution": {
+        "en": "Implemented self-hosted Gitea repository synchronization alongside GitHub and Gitee (#150).",
+        "zh": "在 GitHub 与 Gitee 之外实现了自建 Gitea 仓库多平台同步支持（#150）。"
+      }
+    },
+    {
       "name": "gonwe",
       "github": "gonwe",
       "since": "2026-08",
@@ -263,17 +329,6 @@
       "contribution": {
         "en": "Maintains the Arch Linux AUR package (solomd-bin) and automated version sync workflow (#241).",
         "zh": "维护 Arch Linux AUR 软件包（solomd-bin）并贡献了版本同步配置（#241）。"
-      }
-    },
-    {
-      "name": "LiRui (fengzhoujingshui)",
-      "github": "fengzhoujingshui",
-      "since": "2026-08",
-      "kind": "code",
-      "prs": ["#235"],
-      "contribution": {
-        "en": "Added OpenCode Go AI provider support and resolved Linux compilation issues (#235).",
-        "zh": "新增了 OpenCode Go AI 服务商支持并修复了 Linux 平台下的编译构建问题（#235）。"
       }
     },
     {
@@ -288,30 +343,84 @@
       }
     },
     {
-      "name": "guangtoutong",
-      "github": "guangtoutong",
-      "since": "2026-08",
-      "kind": "code",
-      "prs": ["#183"],
+      "name": "^9星守辰^",
+      "url": "https://store.linyaps.org.cn/apps/app.solomd?arch=x86_64",
+      "since": "2026-04",
+      "kind": "packaging",
+      "prs": ["Linyaps"],
       "contribution": {
-        "en": "Added automatic detection and repair for malformed Markdown table separator rows (#183).",
-        "zh": "实现了格式错误的 Markdown 表格分隔行自动检测与修复功能（#183）。"
+        "en": "Packaged and maintains SoloMD (app.solomd) in the Linyaps (统信玲珑) Linux application store.",
+        "zh": "制作并维护统信玲珑（Linyaps）Linux 应用商店软件包（app.solomd）。"
       }
     },
     {
-      "name": "JumpingY",
-      "github": "JumpingY",
-      "since": "2026-07",
+      "name": "Howard-Zhou-77",
+      "github": "Howard-Zhou-77",
+      "since": "2026-09",
       "kind": "code",
-      "prs": ["#150"],
+      "prs": ["#315"],
       "contribution": {
-        "en": "Implemented self-hosted Gitea repository synchronization alongside GitHub and Gitee (#150).",
-        "zh": "在 GitHub 与 Gitee 之外实现了自建 Gitea 仓库同步支持（#150）。"
+        "en": "Submitted the Linux WebKitGTK AppImage requestAnimationFrame rendering fallback PR and detailed Linux diagnostic reports (#315).",
+        "zh": "提交了 Linux WebKitGTK AppImage 渲染回退修复 PR 及详尽的 Linux 端诊断分析（#315）。"
+      }
+    },
+    {
+      "name": "shobhitagnihotri69",
+      "github": "shobhitagnihotri69",
+      "since": "2026-09",
+      "kind": "code",
+      "prs": ["#336"],
+      "contribution": {
+        "en": "Proposed conditional KaTeX stylesheet & webfont inlining during HTML export so non-math documents stay lightweight (#336).",
+        "zh": "提出了导出 HTML 时按需内联 KaTeX 样式与字体文件的优化方案，显著减小不含公式文档的导出体积（#336）。"
+      }
+    },
+    {
+      "name": "zx0r",
+      "github": "zx0r",
+      "since": "2026-09",
+      "kind": "packaging",
+      "prs": ["#292"],
+      "contribution": {
+        "en": "Contributed CI/CD multi-target release distribution pipeline design (#292).",
+        "zh": "贡献了跨平台多目标构建与发布 CI 流水线设计方案（#292）。"
+      }
+    },
+    {
+      "name": "Thibaultjaigu",
+      "github": "Thibaultjaigu",
+      "since": "2026-09",
+      "kind": "code",
+      "prs": ["#348"],
+      "contribution": {
+        "en": "Contributed Requesty BYOK AI provider integration (#348).",
+        "zh": "贡献了 Requesty BYOK AI 服务商集成方案（#348）。"
+      }
+    },
+    {
+      "name": "aiapienthusiast",
+      "github": "aiapienthusiast",
+      "since": "2026-10",
+      "kind": "code",
+      "prs": ["#482"],
+      "contribution": {
+        "en": "Contributed Cheaper Inference BYOK AI provider integration (#482).",
+        "zh": "贡献了 Cheaper Inference BYOK AI 服务商集成方案（#482）。"
+      }
+    },
+    {
+      "name": "heydryft",
+      "github": "heydryft",
+      "since": "2026-10",
+      "kind": "code",
+      "prs": ["#485"],
+      "contribution": {
+        "en": "Contributed Runcrate BYOK AI provider integration (#485).",
+        "zh": "贡献了 Runcrate BYOK AI 服务商集成方案（#485）。"
       }
     }
   ],
   "communityReporters": [
-    "Howard-Zhou-77",
     "yaoxinghuo",
     "insky122",
     "wha4up",
@@ -364,7 +473,6 @@
     "DrSkyFree",
     "WuYiLingOps",
     "ThueWeihe",
-    "aiapienthusiast",
     "XieyilinMain",
     "polymathZZY",
     "branll",

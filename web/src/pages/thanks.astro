@@ -58,8 +58,8 @@ const kindBadge: Record<'code' | 'theme' | 'packaging', { icon: string; label: s
 
         <div class="thanks-stats">
           <a href="#sponsors" class="stat-card">
-            <span class="stat-card__num">{sponsors.length + donors.length}</span>
-            <span class="stat-card__label">Sponsors & Tips</span>
+            <span class="stat-card__num">♥</span>
+            <span class="stat-card__label">Sponsors & Tips (Opt-in)</span>
           </a>
           <a href="#testers" class="stat-card">
             <span class="stat-card__num">{testers.length}</span>
@@ -86,6 +86,13 @@ const kindBadge: Record<'code' | 'theme' | 'packaging', { icon: string; label: s
           <h2>💵 Sponsors & Tips</h2>
           <p class="supporters__lead">
             Thank you to everyone who financially supports SoloMD's independent development — funding Apple Developer membership renewals, code-signing certificates, domain costs, and AI R&D testing.
+          </p>
+        </div>
+
+        <div class="incomplete-notice">
+          <strong>📌 Note on Incomplete Sponsor & Tip Records:</strong>
+          <p>
+            The list below only includes supporters who explicitly left a display name or opted in — <strong>many more people have supported SoloMD anonymously</strong>. WeChat Pay and Alipay QR tips mask full names and provide no reply channel, and Mac App Store / iOS App Store / Google Play in-app tip jar purchases (✨ Supporter Badge) are processed completely anonymously by Apple and Google without sharing any user identity with the developer. Thank you equally to every named and anonymous supporter! If you've tipped or unlocked the Supporter Badge and would like your name and message added here, please open a <a href="https://github.com/zhitongblog/solomd/issues" target="_blank" rel="noopener">GitHub issue</a>, <a href="https://gitee.com/zhitong45/solomd/issues" target="_blank" rel="noopener">Gitee issue</a>, or email <a href="mailto:slushy@139.com">slushy@139.com</a> anytime.
           </p>
         </div>
 
@@ -179,14 +186,27 @@ const kindBadge: Record<'code' | 'theme' | 'packaging', { icon: string; label: s
               return (
                 <article class="person-card">
                   <div class="person-card__head">
-                    <a
-                      href={`https://github.com/${c.github}`}
-                      target="_blank"
-                      rel="noopener"
-                      class="person-card__name"
-                    >
-                      {c.name} ↗
-                    </a>
+                    {c.github ? (
+                      <a
+                        href={`https://github.com/${c.github}`}
+                        target="_blank"
+                        rel="noopener"
+                        class="person-card__name"
+                      >
+                        {c.name} ↗
+                      </a>
+                    ) : c.url ? (
+                      <a
+                        href={c.url}
+                        target="_blank"
+                        rel="noopener"
+                        class="person-card__name"
+                      >
+                        {c.name} ↗
+                      </a>
+                    ) : (
+                      <span class="person-card__name">{c.name}</span>
+                    )}
                     <span class="person-card__since">{c.since}</span>
                   </div>
                   <div class="person-card__tags">
@@ -393,6 +413,22 @@ const kindBadge: Record<'code' | 'theme' | 'packaging', { icon: string; label: s
     display: grid;
     gap: 12px;
     margin-bottom: 20px;
+  }
+  .incomplete-notice {
+    margin: 0 0 18px;
+    padding: 14px 18px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--accent, #ff9f40) 6%, var(--bg-elev, #fafaf7));
+    border: 1px dashed color-mix(in srgb, var(--accent, #ff9f40) 45%, var(--border, #e6e4dd));
+    font-size: 0.9rem;
+    line-height: 1.65;
+    color: var(--text-muted, #555);
+  }
+  .incomplete-notice strong {
+    color: var(--text);
+  }
+  .incomplete-notice p {
+    margin: 6px 0 0;
   }
   .sponsor-highlight {
     display: flex;

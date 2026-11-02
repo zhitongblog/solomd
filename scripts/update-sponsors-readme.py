@@ -17,17 +17,19 @@ names = [s["name"] for s in data["sponsors"]]
 TEXT = {
     "README.md": ("## Sponsors",
                   "Thank you to everyone who sponsors SoloMD: ",
-                  "No sponsors listed yet. Be the first: [solomd.app/#sponsor](https://solomd.app/#sponsor)."),
+                  "No sponsors listed yet. Be the first: [solomd.app/#sponsor](https://solomd.app/#sponsor).",
+                  "\n\n*(Note: This is a partial opt-in list — WeChat Pay, Alipay, and App Store / Google Play in-app tips are anonymous by default. If you supported SoloMD and would like your name listed, please open an issue or see [solomd.app/thanks](https://solomd.app/thanks).)*"),
     "README.zh.md": ("## 赞助者",
                      "感谢这些朋友对 SoloMD 的赞助：",
-                     "还没有赞助者。欢迎成为第一位：[solomd.app/#sponsor](https://solomd.app/#sponsor)。"),
+                     "还没有赞助者。欢迎成为第一位：[solomd.app/#sponsor](https://solomd.app/#sponsor)。",
+                     "\n\n*（注：此处仅展示主动登记署名的部分赞助者——微信/支付宝扫码打赏及 App Store / Google Play 应用内支持者徽章默认匿名。若您曾打赏支持并希望留名，欢迎随时通过 Issue 告知，完整名单见 [solomd.app/zh/thanks](https://solomd.app/zh/thanks)。）*"),
 }
 START, END = "<!-- sponsors:start -->", "<!-- sponsors:end -->"
 
-for fname, (heading, lead, empty) in TEXT.items():
+for fname, (heading, lead, empty, note) in TEXT.items():
     p = root / fname
     src = p.read_text()
-    body = (lead + " · ".join(f"**{n}**" for n in names)) if names else empty
+    body = ((lead + " · ".join(f"**{n}**" for n in names)) if names else empty) + note
     block = f"{START}\n{heading}\n\n{body}\n{END}"
     if START in src:
         a, b = src.index(START), src.index(END) + len(END)

@@ -57,8 +57,8 @@ const kindBadge: Record<'code' | 'theme' | 'packaging', { icon: string; label: s
 
         <div class="thanks-stats">
           <a href="#sponsors" class="stat-card">
-            <span class="stat-card__num">{sponsors.length + donors.length}</span>
-            <span class="stat-card__label">赞助与打赏</span>
+            <span class="stat-card__num">♥</span>
+            <span class="stat-card__label">赞助与打赏（部分登记）</span>
           </a>
           <a href="#testers" class="stat-card">
             <span class="stat-card__num">{testers.length}</span>
@@ -85,6 +85,13 @@ const kindBadge: Record<'code' | 'theme' | 'packaging', { icon: string; label: s
           <h2>💵 赞助者与打赏支持</h2>
           <p class="supporters__lead">
             感谢通过赞助或打赏支持 SoloMD 独立开发的朋友。你们的支持用于分担 Apple Developer 年费、代码签名证书、域名与 AI 研发测试成本。
+          </p>
+        </div>
+
+        <div class="incomplete-notice">
+          <strong>📌 关于赞助与打赏名单不完整的说明：</strong>
+          <p>
+            下方仅展示了主动留言或授权公开署名的部分朋友，<strong>实际支持者远不止于此</strong>：微信与支付宝扫码赞赏默认隐去全名且无回联渠道，Mac App Store / iOS App Store / Google Play 应用内打赏（✨ 支持者徽章）亦由平台完全匿名处理，开发者无法获知支持者的具体身份。感谢每一位具名与默默匿名支持的朋友！如果你曾打赏或点亮支持者徽章并希望在此留名，欢迎随时通过 <a href="https://github.com/zhitongblog/solomd/issues" target="_blank" rel="noopener">GitHub Issues</a>、<a href="https://gitee.com/zhitong45/solomd/issues" target="_blank" rel="noopener">Gitee Issues</a> 或邮件（<a href="mailto:slushy@139.com">slushy@139.com</a>）告知你想显示的昵称与寄语。
           </p>
         </div>
 
@@ -178,14 +185,27 @@ const kindBadge: Record<'code' | 'theme' | 'packaging', { icon: string; label: s
               return (
                 <article class="person-card">
                   <div class="person-card__head">
-                    <a
-                      href={`https://github.com/${c.github}`}
-                      target="_blank"
-                      rel="noopener"
-                      class="person-card__name"
-                    >
-                      {c.name} ↗
-                    </a>
+                    {c.github ? (
+                      <a
+                        href={`https://github.com/${c.github}`}
+                        target="_blank"
+                        rel="noopener"
+                        class="person-card__name"
+                      >
+                        {c.name} ↗
+                      </a>
+                    ) : c.url ? (
+                      <a
+                        href={c.url}
+                        target="_blank"
+                        rel="noopener"
+                        class="person-card__name"
+                      >
+                        {c.name} ↗
+                      </a>
+                    ) : (
+                      <span class="person-card__name">{c.name}</span>
+                    )}
                     <span class="person-card__since">{c.since}</span>
                   </div>
                   <div class="person-card__tags">
@@ -392,6 +412,22 @@ const kindBadge: Record<'code' | 'theme' | 'packaging', { icon: string; label: s
     display: grid;
     gap: 12px;
     margin-bottom: 20px;
+  }
+  .incomplete-notice {
+    margin: 0 0 18px;
+    padding: 14px 18px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--accent, #ff9f40) 6%, var(--bg-elev, #fafaf7));
+    border: 1px dashed color-mix(in srgb, var(--accent, #ff9f40) 45%, var(--border, #e6e4dd));
+    font-size: 0.9rem;
+    line-height: 1.65;
+    color: var(--text-muted, #555);
+  }
+  .incomplete-notice strong {
+    color: var(--text);
+  }
+  .incomplete-notice p {
+    margin: 6px 0 0;
   }
   .sponsor-highlight {
     display: flex;
