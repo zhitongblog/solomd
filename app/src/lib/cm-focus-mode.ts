@@ -17,6 +17,7 @@ import {
   ViewPlugin,
   ViewUpdate,
 } from '@codemirror/view';
+import { isDragging } from './cm-drag-aware';
 
 const dimmedLine = Decoration.line({ class: 'cm-line-dimmed' });
 
@@ -108,6 +109,15 @@ const typewriterPlugin = ViewPlugin.fromClass(
       // character/punctuation being committed. Selection settles after
       // compositionend, which fires its own update — we recenter then.
       if (update.view.composing) return;
+      // Never recenter the viewport while the user is drag-selecting with the
+      // pointer: centering `head` mid-drag fights edge auto-scroll and shifts
+      // the document under the pointer.
+      if (
+        isDragging(update.state) ||
+        update.transactions.some((tr) => tr.isUserEvent('select.pointer'))
+      ) {
+        return;
+      }
       const view = update.view;
       const head = update.state.selection.main.head;
       // Defer to avoid re-entrant dispatch inside an update pass.

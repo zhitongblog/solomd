@@ -43,8 +43,13 @@ DEADLINE="${UPLOAD_DEADLINE:-240}"   # seconds per attempt
 TRIES="${UPLOAD_TRIES:-6}"
 
 release_id() {
-  gh api --paginate "repos/$REPO/releases" \
-    --jq ".[] | select(.tag_name == \"$TAG\") | .id" 2>/dev/null | head -1
+  local id=""
+  for try in 1 2 3; do
+    id="$(gh api "repos/$REPO/releases?per_page=20" \
+      --jq ".[] | select(.tag_name == \"$TAG\") | .id" 2>/dev/null | head -1 || true)"
+    [ -n "$id" ] && { echo "$id"; return 0; }
+    sleep 2
+  done
 }
 
 RID="$(release_id)"
@@ -59,14 +64,14 @@ echo "release id $RID for $TAG"
 # release and never downloadable (4.14.2's universal APK) — so it has to be
 # deleted and sent again, not skipped.
 remote_size() {
-  gh api "repos/$REPO/releases/$RID/assets" --paginate \
-    --jq ".[] | select(.name == \"$1\" and .state == \"uploaded\") | .size" 2>/dev/null | head -1
+  { gh api "repos/$REPO/releases/$RID/assets" --paginate \
+    --jq ".[] | select(.name == \"$1\" and .state == \"uploaded\") | .size" 2>/dev/null || true; } | head -1
 }
 
 # id of a same-named asset stuck in any state other than "uploaded"
 stale_id() {
-  gh api "repos/$REPO/releases/$RID/assets" --paginate \
-    --jq ".[] | select(.name == \"$1\" and .state != \"uploaded\") | .id" 2>/dev/null | head -1
+  { gh api "repos/$REPO/releases/$RID/assets" --paginate \
+    --jq ".[] | select(.name == \"$1\" and .state != \"uploaded\") | .id" 2>/dev/null || true; } | head -1
 }
 
 failed=0

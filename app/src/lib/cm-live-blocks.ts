@@ -1537,11 +1537,19 @@ export function liveBlocksExtension(opts: BlockOptions = {}) {
       if (frozen) return frozen;
       if (isImeSafeFlushTransaction(tr)) return buildBlockDecorations(tr.state, opts);
       if (tr.docChanged) return buildBlockDecorations(tr.state, opts);
+      if (isDragEndTransaction(tr)) return buildBlockDecorations(tr.state, opts);
+      // Freeze block widget replacements completely during pointer drag so
+      // incremental Lezer parsing (~700 lines into a large file) or async
+      // Mermaid relayouts cannot mount/unmount widgets mid-drag and shift the
+      // document height under the pointer. `isDragEndTransaction` above flushes
+      // the final state as soon as the pointer is released.
+      if (isDragging(tr.state)) {
+        return deco.map(tr.changes);
+      }
       if (tr.effects.some((e) => e.is(relayoutEffect))) {
         return buildBlockDecorations(tr.state, opts);
       }
-      if (isDragEndTransaction(tr)) return buildBlockDecorations(tr.state, opts);
-      if (tr.selection && !isDragging(tr.state)) {
+      if (tr.selection) {
         return buildBlockDecorations(tr.state, opts);
       }
       if (syntaxTree(tr.state) !== syntaxTree(tr.startState)) {

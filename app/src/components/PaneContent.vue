@@ -281,10 +281,13 @@ function bindScrollSync() {
   // momentum keep the same driver.
   let activePane: 'editor' | 'preview' | null = null;
   let activeTimer: ReturnType<typeof setTimeout> | null = null;
+  let pointerHeldIn: 'editor' | 'preview' | null = null;
   const markActive = (which: 'editor' | 'preview', ms = 250) => {
     activePane = which;
     if (activeTimer) clearTimeout(activeTimer);
-    activeTimer = setTimeout(() => { activePane = null; }, ms);
+    activeTimer = setTimeout(() => {
+      if (!pointerHeldIn) activePane = null;
+    }, ms);
   };
   markScrollDriver = markActive;
   const releaseSyncGuard = () => {
@@ -295,12 +298,32 @@ function bindScrollSync() {
     });
   };
   const intentEvents = ['wheel', 'pointerdown', 'touchstart', 'keydown'] as const;
-  const editorIntent = () => markActive('editor');
-  const previewIntent = () => markActive('preview');
+  const editorIntent = (e: Event) => {
+    if (e.type === 'pointerdown' && (e as PointerEvent).button === 0) {
+      pointerHeldIn = 'editor';
+    }
+    markActive('editor');
+  };
+  const previewIntent = (e: Event) => {
+    if (e.type === 'pointerdown' && (e as PointerEvent).button === 0) {
+      pointerHeldIn = 'preview';
+    }
+    markActive('preview');
+  };
+  const clearPointerHeld = () => {
+    if (pointerHeldIn) {
+      const held = pointerHeldIn;
+      pointerHeldIn = null;
+      markActive(held);
+    }
+  };
   for (const ev of intentEvents) {
     editor.addEventListener(ev, editorIntent, { passive: true });
     preview.addEventListener(ev, previewIntent, { passive: true });
   }
+  window.addEventListener('pointerup', clearPointerHeld, { passive: true });
+  window.addEventListener('pointercancel', clearPointerHeld, { passive: true });
+  window.addEventListener('blur', clearPointerHeld, { passive: true });
 
   const onEditorScroll = () => {
     if (syncGuard || activePane === 'preview') return;
@@ -421,6 +444,9 @@ function bindScrollSync() {
   syncEditorScroll = () => {
     editor.removeEventListener('scroll', onEditorScroll);
     for (const ev of intentEvents) editor.removeEventListener(ev, editorIntent);
+    window.removeEventListener('pointerup', clearPointerHeld);
+    window.removeEventListener('pointercancel', clearPointerHeld);
+    window.removeEventListener('blur', clearPointerHeld);
   };
   syncPreviewScroll = () => {
     preview.removeEventListener('scroll', onPreviewScroll);

@@ -105,6 +105,7 @@ rm -f "$ZIP"
 ditto -c -k --keepParent "$APP" "$ZIP"
 xcrun notarytool submit "$ZIP" \
   "${ASC_NOTARY_AUTH[@]}" \
+  --no-s3-acceleration \
   --wait
 rm -f "$ZIP"
 
@@ -128,6 +129,7 @@ codesign --force --timestamp --sign "$APPLE_SIGNING_IDENTITY" "$DMG"
 echo "==> Notarizing + stapling dmg"
 xcrun notarytool submit "$DMG" \
   "${ASC_NOTARY_AUTH[@]}" \
+  --no-s3-acceleration \
   --wait
 xcrun stapler staple "$DMG"
 

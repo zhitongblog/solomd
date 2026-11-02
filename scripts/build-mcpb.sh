@@ -62,7 +62,7 @@ echo "==> Signing and notarizing"
 codesign --force --options runtime --timestamp \
   --sign "$APPLE_SIGNING_IDENTITY" "$WORK/b/server/solomd-mcp"
 ditto -c -k "$WORK/b/server/solomd-mcp" "$WORK/notarize.zip"
-xcrun notarytool submit "$WORK/notarize.zip" "${ASC_NOTARY_AUTH[@]}" --wait \
+xcrun notarytool submit "$WORK/notarize.zip" "${ASC_NOTARY_AUTH[@]}" --no-s3-acceleration --wait \
   | tee "$WORK/notary.log" | grep -E "status:|id:" | tail -2
 grep -q "status: Accepted" "$WORK/notary.log" || { echo "notarization not accepted" >&2; exit 1; }
 

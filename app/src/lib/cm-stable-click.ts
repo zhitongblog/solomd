@@ -31,13 +31,14 @@ export function stableClickSelection() {
     if (event.shiftKey || event.metaKey || event.ctrlKey || event.altKey) return null;
     const startX = event.clientX;
     const startY = event.clientY;
-    let startPos = view.posAtCoords({ x: startX, y: startY });
+    let startPos = view.posAtCoords({ x: startX, y: startY }, false);
     if (startPos == null) return null;
     // A press inside the current selection may be the start of a text
     // drag-and-drop — let the default style decide.
     const sel = view.state.selection.main;
     if (!sel.empty && startPos >= sel.from && startPos <= sel.to) return null;
     let dragging = false;
+    let lastHead = startPos;
     return {
       get(cur: MouseEvent) {
         if (
@@ -48,11 +49,15 @@ export function stableClickSelection() {
           dragging = true;
         }
         if (!dragging) return EditorSelection.single(startPos!);
-        const head = view.posAtCoords({ x: cur.clientX, y: cur.clientY }) ?? startPos!;
-        return EditorSelection.single(startPos!, head);
+        const pos = view.posAtCoords({ x: cur.clientX, y: cur.clientY }, false);
+        if (pos != null) lastHead = pos;
+        return EditorSelection.single(startPos!, lastHead);
       },
       update(update) {
-        if (update.docChanged) startPos = update.changes.mapPos(startPos!);
+        if (update.docChanged) {
+          startPos = update.changes.mapPos(startPos!);
+          lastHead = update.changes.mapPos(lastHead);
+        }
         return dragging;
       },
     };

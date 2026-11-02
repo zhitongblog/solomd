@@ -17,6 +17,7 @@ import { EditorView } from '@codemirror/view';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 
 import { findTableCellOffsetInLine, liveBlocksExtension } from './cm-live-blocks.ts';
+import { dragAwareExtension, dragStartEffect, dragEndEffect } from './cm-drag-aware.ts';
 import { extractImageReferenceDefinitions, findMarkdownImagesInLine } from './md-image-url.ts';
 
 interface Found {
@@ -278,4 +279,40 @@ test('#504: findTableCellOffsetInLine locates exact column offsets in Markdown t
   const emptyCellPos = findTableCellOffsetInLine(edgeLine, 1, 0.5);
   assert.ok(emptyCellPos > secondPipe && emptyCellPos <= thirdPipe);
   assert.equal(findTableCellOffsetInLine(edgeLine, 2, 0), edgeLine.indexOf('第三列'));
+});
+
+test('liveBlocksExtension stays frozen while dragging and flushes on dragEndEffect', () => {
+  const doc = ['intro', '', '![img](https://example.com/a.png)', '', 'outro'].join('\n');
+  let state = EditorState.create({
+    doc,
+    extensions: [
+      dragAwareExtension(),
+      markdown({ base: markdownLanguage, addKeymap: false }),
+      liveBlocksExtension(),
+    ],
+    selection: { anchor: 0 },
+  });
+
+  const countImageWidgets = (s: EditorState) => {
+    let n = 0;
+    for (const set of s.facet(EditorView.decorations)) {
+      set.between(0, s.doc.length, (_from, _to, deco) => {
+        const w = (deco.spec as { widget?: { constructor: { name: string } } }).widget;
+        if (w?.constructor.name === 'ImageWidget') n++;
+      });
+    }
+    return n;
+  };
+
+  assert.equal(countImageWidgets(state), 1);
+
+  // Start dragging and select across the entire document (covering line 3)
+  state = state.update({ effects: dragStartEffect.of(null) }).state;
+  state = state.update({ selection: { anchor: 0, head: doc.length } }).state;
+  // While dragging, the image widget must NOT unmount mid-drag
+  assert.equal(countImageWidgets(state), 1);
+
+  // Releasing the pointer dispatches dragEndEffect and reveals the selected block source
+  state = state.update({ effects: dragEndEffect.of(null) }).state;
+  assert.equal(countImageWidgets(state), 0);
 });

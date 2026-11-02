@@ -1221,25 +1221,29 @@ function emitPlainCursorAndSelection() {
     const el = plainBlockEditors.value[plainActiveBlock.value];
     const block = plainBlocks.value[plainActiveBlock.value];
     if (!el || !block) return;
-    const head = el.selectionStart ?? 0;
+    const head = (el.selectionDirection === 'backward' ? el.selectionStart : el.selectionEnd) ?? 0;
     const before = plainText.value.slice(0, block.start) + el.value.slice(0, head);
     const lines = before.split('\n');
     const line = lines.length;
     const col = lines[lines.length - 1]?.length ?? 0;
     emit('cursor', line, col + 1);
     emit('selection', plainSelectionText());
-    maybeTypewriterScroll();
+    if ((el.selectionStart ?? 0) === (el.selectionEnd ?? 0)) {
+      maybeTypewriterScroll();
+    }
     return;
   }
   const el = plainEditor.value;
   if (!el) return;
-  const head = el.selectionStart ?? 0;
+  const head = (el.selectionDirection === 'backward' ? el.selectionStart : el.selectionEnd) ?? 0;
   const lines = el.value.slice(0, head).split('\n');
   const line = lines.length;
   const col = lines[lines.length - 1]?.length ?? 0;
   emit('cursor', line, col + 1);
   emit('selection', plainSelectionText());
-  maybePlainTypewriterScroll(line);
+  if ((el.selectionStart ?? 0) === (el.selectionEnd ?? 0)) {
+    maybePlainTypewriterScroll(line);
+  }
 }
 
 // #199 — typewriter mode for the single-textarea (edit-only / split) plain
