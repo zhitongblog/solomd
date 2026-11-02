@@ -2004,6 +2004,307 @@ pub async fn delete_frontmatter_property(
     .map_err(|e| format!("join: {e}"))?
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct UpdateProgressPayload {
+    pub version: String,
+    pub downloaded: u64,
+    pub total: Option<u64>,
+    pub percent: Option<u8>,
+    pub source: String,
+}
+
+fn installer_asset_name(clean_ver: &str) -> Option<String> {
+    #[cfg(all(target_os = "windows", target_arch = "aarch64"))]
+    {
+        return Some(format!("SoloMD_{clean_ver}_arm64_en-US.msi"));
+    }
+    #[cfg(all(target_os = "windows", not(target_arch = "aarch64")))]
+    {
+        return Some(format!("SoloMD_{clean_ver}_x64_en-US.msi"));
+    }
+    #[cfg(target_os = "macos")]
+    {
+        return Some(format!("SoloMD_{clean_ver}_universal.dmg"));
+    }
+    #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
+    {
+        return Some(format!("SoloMD_{clean_ver}_aarch64.AppImage"));
+    }
+    #[cfg(all(target_os = "linux", not(target_arch = "aarch64")))]
+    {
+        return Some(format!("SoloMD_{clean_ver}_amd64.AppImage"));
+    }
+    #[cfg(target_os = "android")]
+    {
+        return Some(format!("SoloMD_{clean_ver}_arm64-v8a.apk"));
+    }
+    #[allow(unreachable_code)]
+    None
+}
+
+async fn probe_is_china_network(client: &reqwest::Client) -> bool {
+    for trace_url in [
+        "https://solomd.app/cdn-cgi/trace",
+        "https://www.cloudflare.com/cdn-cgi/trace",
+    ] {
+        if let Ok(resp) = client
+            .get(trace_url)
+            .timeout(std::time::Duration::from_millis(2500))
+            .send()
+            .await
+        {
+            if let Ok(text) = resp.text().await {
+                if text.lines().any(|line| line.trim() == "loc=CN") {
+                    return true;
+                }
+                if text.lines().any(|line| line.starts_with("loc=")) {
+                    return false;
+                }
+            }
+        }
+    }
+    false
+}
+
+async fn resolve_gitee_asset_url(
+    client: &reqwest::Client,
+    tag: &str,
+    asset_name: &str,
+) -> Option<String> {
+    let api_url = format!("https://gitee.com/api/v5/repos/zhitong45/solomd/releases/tags/{tag}");
+    let resp = client
+        .get(&api_url)
+        .timeout(std::time::Duration::from_secs(6))
+        .send()
+        .await
+        .ok()?;
+    if !resp.status().is_success() {
+        return None;
+    }
+    let json: serde_json::Value = resp.json().await.ok()?;
+    let assets = json.get("assets")?.as_array()?;
+    for asset in assets {
+        let name = asset.get("name").and_then(|v| v.as_str()).unwrap_or("");
+        if name == asset_name {
+            if let Some(url) = asset.get("browser_download_url").and_then(|v| v.as_str()) {
+                if !url.is_empty() {
+                    return Some(url.to_string());
+                }
+            }
+        }
+    }
+    None
+}
+
+/// Download the platform installer for `version` (switching to Gitee automatically
+/// when the visitor is in China, with cross-mirror fallback between Gitee and GitHub)
+/// and launch the installer directly.
+#[tauri::command]
+pub async fn download_and_install_update(
+    version: String,
+    prefer_cn: bool,
+    app: tauri::AppHandle,
+) -> Result<String, String> {
+    use futures_util::StreamExt;
+    use std::io::Write;
+    use tauri::Emitter;
+
+    let clean_ver = version.trim().trim_start_matches('v').to_string();
+    if clean_ver.is_empty() {
+        return Err("empty version".to_string());
+    }
+    let tag = format!("v{clean_ver}");
+    let asset_name = installer_asset_name(&clean_ver)
+        .ok_or_else(|| "direct update installer not supported on this platform".to_string())?;
+
+    let client = reqwest::Client::builder()
+        .user_agent(format!("SoloMD-Updater/{clean_ver}"))
+        .connect_timeout(std::time::Duration::from_secs(10))
+        .build()
+        .map_err(|e| format!("http client build failed: {e}"))?;
+
+    let is_cn = if prefer_cn {
+        true
+    } else {
+        probe_is_china_network(&client).await
+    };
+
+    let mut candidates: Vec<(&'static str, String)> = Vec::new();
+    let github_url = format!(
+        "https://github.com/zhitongblog/solomd/releases/download/{tag}/{asset_name}"
+    );
+    let gitee_direct_url = format!(
+        "https://gitee.com/zhitong45/solomd/releases/download/{tag}/{asset_name}"
+    );
+
+    if is_cn {
+        if let Some(api_dl) = resolve_gitee_asset_url(&client, &tag, &asset_name).await {
+            candidates.push(("Gitee", api_dl));
+        }
+        candidates.push(("Gitee", gitee_direct_url));
+        candidates.push(("GitHub", github_url));
+    } else {
+        candidates.push(("GitHub", github_url));
+        if let Some(api_dl) = resolve_gitee_asset_url(&client, &tag, &asset_name).await {
+            candidates.push(("Gitee", api_dl));
+        }
+        candidates.push(("Gitee", gitee_direct_url));
+    }
+    candidates.dedup_by(|a, b| a.1 == b.1);
+
+    let dest_dir = std::env::temp_dir();
+    let part_path = dest_dir.join(format!("{asset_name}.part"));
+    let dest_path = dest_dir.join(&asset_name);
+
+    let mut last_err = String::from("no download candidates succeeded");
+    let mut downloaded_ok = false;
+
+    for (source, url) in candidates {
+        let resp = match client.get(&url).send().await {
+            Ok(r) => r,
+            Err(e) => {
+                last_err = format!("{source} request failed: {e}");
+                continue;
+            }
+        };
+        if !resp.status().is_success() {
+            last_err = format!("{source} returned HTTP {}", resp.status());
+            continue;
+        }
+        let content_type = resp
+            .headers()
+            .get(reqwest::header::CONTENT_TYPE)
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("")
+            .to_ascii_lowercase();
+        if content_type.contains("text/html") {
+            last_err = format!("{source} returned HTML instead of binary installer");
+            continue;
+        }
+
+        let total = resp.content_length();
+        let mut file = match fs::File::create(&part_path) {
+            Ok(f) => f,
+            Err(e) => return Err(format!("create temp installer failed: {e}")),
+        };
+
+        let mut downloaded: u64 = 0;
+        let mut last_emit = std::time::Instant::now()
+            .checked_sub(std::time::Duration::from_secs(1))
+            .unwrap_or_else(std::time::Instant::now);
+        let mut stream = resp.bytes_stream();
+        let mut stream_err: Option<String> = None;
+
+        while let Some(chunk_res) = stream.next().await {
+            match chunk_res {
+                Ok(chunk) => {
+                    if let Err(e) = file.write_all(&chunk) {
+                        stream_err = Some(format!("write temp installer failed: {e}"));
+                        break;
+                    }
+                    downloaded += chunk.len() as u64;
+                    if last_emit.elapsed() >= std::time::Duration::from_millis(150) {
+                        last_emit = std::time::Instant::now();
+                        let percent = total.and_then(|t| {
+                            if t > 0 {
+                                Some(((downloaded.saturating_mul(100)) / t).min(100) as u8)
+                            } else {
+                                None
+                            }
+                        });
+                        let _ = app.emit(
+                            "solomd://update-progress",
+                            UpdateProgressPayload {
+                                version: clean_ver.clone(),
+                                downloaded,
+                                total,
+                                percent,
+                                source: source.to_string(),
+                            },
+                        );
+                    }
+                }
+                Err(e) => {
+                    stream_err = Some(format!("{source} stream interrupted: {e}"));
+                    break;
+                }
+            }
+        }
+
+        if let Some(err) = stream_err {
+            let _ = fs::remove_file(&part_path);
+            last_err = err;
+            continue;
+        }
+
+        if downloaded < 100_000 {
+            let _ = fs::remove_file(&part_path);
+            last_err = format!("{source} file too small ({downloaded} bytes)");
+            continue;
+        }
+
+        let _ = file.flush();
+        drop(file);
+        if dest_path.exists() {
+            let _ = fs::remove_file(&dest_path);
+        }
+        fs::rename(&part_path, &dest_path)
+            .map_err(|e| format!("finalize installer file failed: {e}"))?;
+
+        let _ = app.emit(
+            "solomd://update-progress",
+            UpdateProgressPayload {
+                version: clean_ver.clone(),
+                downloaded,
+                total: Some(downloaded),
+                percent: Some(100),
+                source: source.to_string(),
+            },
+        );
+        downloaded_ok = true;
+        break;
+    }
+
+    if !downloaded_ok {
+        return Err(last_err);
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("msiexec")
+            .arg("/i")
+            .arg(&dest_path)
+            .spawn()
+            .map_err(|e| format!("failed to launch MSI installer: {e}"))?;
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(&dest_path)
+            .spawn()
+            .map_err(|e| format!("failed to open DMG installer: {e}"))?;
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let _ = fs::set_permissions(&dest_path, fs::Permissions::from_mode(0o755));
+        }
+        let parent = dest_path.parent().unwrap_or(std::path::Path::new("/tmp"));
+        let _ = std::process::Command::new("xdg-open").arg(parent).spawn();
+    }
+
+    #[cfg(target_os = "android")]
+    {
+        return Err("android_use_browser_fallback".to_string());
+    }
+
+    Ok(dest_path.to_string_lossy().to_string())
+}
+
 #[cfg(test)]
 mod list_dir_times_tests {
     use super::*;

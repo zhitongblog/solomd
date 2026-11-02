@@ -12,6 +12,7 @@ import Layout from '../layouts/Layout.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import Giscus from '../components/Giscus.astro';
+import V5Showcase from '../components/V5Showcase.astro';
 import type { Lang } from '../i18n/translations';
 import { whatsNew } from '../data/whats-new';
 
@@ -22,6 +23,27 @@ const data = whatsNew[lang] ?? whatsNew.en;
 const VERSION = data.version;
 const baseUrl = `https://github.com/zhitongblog/solomd/releases/download/v${VERSION}`;
 const home = lang === 'en' ? '/' : `/${lang}/`;
+
+const v5Sections = data.sections.filter((html) => html.includes('>v5.'));
+const v4Sections = data.sections.filter((html) => !html.includes('>v5.'));
+
+const TAB_LABELS: Record<Lang, { v5: string; v4: string; all: string }> = {
+  en: { v5: 'SoloMD 5.0 (Latest)', v4: 'SoloMD 4.x Archive', all: 'All Releases' },
+  zh: { v5: 'SoloMD 5.0 新版专区', v4: 'SoloMD 4.x 历史版本', all: '全部版本' },
+  ja: { v5: 'SoloMD 5.0 (最新)', v4: 'SoloMD 4.x 履歴', all: 'すべて' },
+  ko: { v5: 'SoloMD 5.0 (최신)', v4: 'SoloMD 4.x 기록', all: '전체 버전' },
+  de: { v5: 'SoloMD 5.0 (Neu)', v4: 'SoloMD 4.x Archiv', all: 'Alle Versionen' },
+  fr: { v5: 'SoloMD 5.0 (Nouveau)', v4: 'SoloMD 4.x Archives', all: 'Toutes les versions' },
+  es: { v5: 'SoloMD 5.0 (Nuevo)', v4: 'SoloMD 4.x Archivo', all: 'Todas las versiones' },
+  pt: { v5: 'SoloMD 5.0 (Novo)', v4: 'SoloMD 4.x Arquivo', all: 'Todas as versões' },
+  it: { v5: 'SoloMD 5.0 (Nuovo)', v4: 'SoloMD 4.x Archivio', all: 'Tutte le versioni' },
+  pl: { v5: 'SoloMD 5.0 (Nowość)', v4: 'SoloMD 4.x Archiwum', all: 'Wszystkie wersje' },
+  nl: { v5: 'SoloMD 5.0 (Nieuw)', v4: 'SoloMD 4.x Archief', all: 'Alle versies' },
+  tr: { v5: 'SoloMD 5.0 (Yeni)', v4: 'SoloMD 4.x Arşiv', all: 'Tüm Sürümler' },
+  sv: { v5: 'SoloMD 5.0 (Nyhet)', v4: 'SoloMD 4.x Arkiv', all: 'Alla versioner' },
+  uk: { v5: 'SoloMD 5.0 (Нове)', v4: 'SoloMD 4.x Архів', all: 'Усі версії' },
+};
+const tabLabels = TAB_LABELS[lang] ?? TAB_LABELS.en;
 
 // Sections are rendered with set:html, so the styles below cannot be
 // component-scoped — Astro only adds its scoping attribute to elements it can
@@ -58,7 +80,31 @@ const metaDescription = fill(data.meta.description);
         <a class="btn btn--secondary btn--lg" href={`https://github.com/zhitongblog/solomd/releases/tag/v${VERSION}`}>{cta[2]}</a>
       </div>
 
-      {data.sections.map((html) => <section set:html={html} />)}
+      <div class="version-tabs" role="tablist" aria-label="Release Major Version Tabs">
+        <button type="button" class="version-tab is-active" role="tab" aria-selected="true" data-major-tab="v5">
+          {tabLabels.v5} <span class="version-tab__count">{v5Sections.length}</span>
+        </button>
+        <button type="button" class="version-tab" role="tab" aria-selected="false" data-major-tab="v4">
+          {tabLabels.v4} <span class="version-tab__count">{v4Sections.length}</span>
+        </button>
+        <button type="button" class="version-tab" role="tab" aria-selected="false" data-major-tab="all">
+          {tabLabels.all} <span class="version-tab__count">{data.sections.length}</span>
+        </button>
+      </div>
+    </article>
+
+    <div class="whats-new-v5-showcase" data-major-panel="v5">
+      <V5Showcase lang={lang} />
+    </div>
+
+    <article class="container whats-new" style="padding-top: 0;">
+      <div class="whats-new-group" data-major-panel="v5">
+        {v5Sections.map((html) => <section set:html={html} />)}
+      </div>
+
+      <div class="whats-new-group" data-major-panel="v4" hidden>
+        {v4Sections.map((html) => <section set:html={html} />)}
+      </div>
 
       {data.thanks && <p class="thanks-row" set:html={data.thanks} />}
     </article>
@@ -66,6 +112,37 @@ const metaDescription = fill(data.meta.description);
   </main>
   <Footer lang={lang} />
 </Layout>
+
+<script is:inline>
+  (function () {
+    const tabs = document.querySelectorAll('[data-major-tab]');
+    const panels = document.querySelectorAll('[data-major-panel]');
+    if (!tabs.length) return;
+    function activate(target) {
+      tabs.forEach((btn) => {
+        const active = btn.getAttribute('data-major-tab') === target;
+        btn.classList.toggle('is-active', active);
+        btn.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+      panels.forEach((panel) => {
+        const p = panel.getAttribute('data-major-panel');
+        if (target === 'all') {
+          panel.hidden = false;
+        } else {
+          panel.hidden = p !== target;
+        }
+      });
+    }
+    tabs.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const target = btn.getAttribute('data-major-tab') || 'v5';
+        activate(target);
+      });
+    });
+    if (location.hash === '#v4') activate('v4');
+    else if (location.hash === '#all') activate('all');
+  })();
+</script>
 
 <style is:global>
 
@@ -107,6 +184,46 @@ const metaDescription = fill(data.meta.description);
     flex-wrap: wrap;
     gap: 12px;
     margin: 28px 0 8px;
+  }
+  .whats-new .version-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 32px 0 8px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .whats-new .version-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 18px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--bg-soft);
+    color: var(--text-muted);
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .whats-new .version-tab:hover {
+    border-color: var(--accent);
+    color: var(--text);
+  }
+  .whats-new .version-tab.is-active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #000;
+  }
+  .whats-new .version-tab__count {
+    font-size: 11px;
+    font-family: var(--font-mono);
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.12);
+    color: inherit;
   }
   .whats-new .pillars {
     display: grid;

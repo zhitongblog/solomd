@@ -9,6 +9,13 @@
   },
   "donors": [
     {
+      "name": "太阳雨 (tyysoft)",
+      "date": "2026-11-02",
+      "platform": "wechat",
+      "amount": "¥300",
+      "message": "赞助AI Token费用，研究笔记加密备份到用户个人网盘和通过网盘多端同步，尽量尝试，方案最终不可行也没关系。"
+    },
+    {
       "name": "m*p",
       "date": "2026-04-24",
       "platform": "wechat",

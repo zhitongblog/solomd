@@ -173,12 +173,20 @@ export function selectLine(doc: string, from: number, to: number = from): Range 
 
 const HEADING = /^( {0,3})(#{1,6})([ \t]+|$)/;
 const NOT_PARAGRAPH = /^\s*(?:[-*+]\s|\d+[.)]\s|>|\||```|~~~|<|\$\$|---\s*$|\*\*\*\s*$|___\s*$)/;
-const FENCE_LINE = /^[ \t]*(?:>[ \t]?)*(`{3,}|~{3,})(.*)$/;
+const FENCE_LINE = /^([ \t]*)(?:>[ \t]?)*(`{3,}|~{3,})(.*)$/;
+
+function commonIndentPrefixLen(line: string, indent: string): number {
+  let k = 0;
+  const max = Math.min(line.length, indent.length);
+  while (k < max && line[k] === indent[k]) k++;
+  return k;
+}
 
 /**
  * When the caret or selection sits inside a fenced code block, return the
  * character range of the block's inner body (excluding the opening and closing
- * fence lines) so `Ctrl/Cmd+A` selects just the code block first.
+ * fence lines, and starting after the first body line's fence alignment indent)
+ * so `Ctrl/Cmd+A` selects just the code block first.
  *
  * Returns `null` when the selection is outside any fenced block, when the code
  * block has no body lines, or when the selection already covers the entire
@@ -191,7 +199,14 @@ export function selectCodeBlockBody(doc: string, from: number, to: number = from
   const lines = doc.split('\n');
 
   let offset = 0;
-  let openFence: { ch: string; len: number; openStart: number; bodyStart: number } | null = null;
+  let openFence: {
+    indent: string;
+    ch: string;
+    len: number;
+    openStart: number;
+    bodyStart: number;
+    firstBodyLine: string;
+  } | null = null;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -200,22 +215,26 @@ export function selectCodeBlockBody(doc: string, from: number, to: number = from
     const m = FENCE_LINE.exec(line);
 
     if (!openFence) {
-      if (m) {
+      if (m && (m[2][0] === '~' || !m[3].includes('`'))) {
         openFence = {
-          ch: m[1][0],
-          len: m[1].length,
+          indent: m[1],
+          ch: m[2][0],
+          len: m[2].length,
           openStart: lineStart,
           bodyStart: Math.min(doc.length, lineEnd + 1),
+          firstBodyLine: lines[i + 1] ?? '',
         };
       }
-    } else if (m && m[1][0] === openFence.ch && m[1].length >= openFence.len && m[2].trim() === '') {
+    } else if (m && m[2][0] === openFence.ch && m[2].length >= openFence.len && m[3].trim() === '') {
       const closeStart = lineStart;
       const closeEnd = lineEnd;
       if (selFrom >= openFence.openStart && selTo <= closeEnd) {
-        const bodyFrom = Math.min(openFence.bodyStart, closeStart);
-        const bodyTo = Math.max(bodyFrom, closeStart > openFence.bodyStart ? closeStart - 1 : closeStart);
-        if (bodyTo <= bodyFrom) return null;
-        if (selFrom === bodyFrom && selTo === bodyTo) return null;
+        const rawBodyFrom = Math.min(openFence.bodyStart, closeStart);
+        const bodyTo = Math.max(rawBodyFrom, closeStart > openFence.bodyStart ? closeStart - 1 : closeStart);
+        if (bodyTo <= rawBodyFrom) return null;
+        const firstStrip = commonIndentPrefixLen(openFence.firstBodyLine, openFence.indent);
+        const bodyFrom = rawBodyFrom + firstStrip <= bodyTo ? rawBodyFrom + firstStrip : rawBodyFrom;
+        if (selFrom >= rawBodyFrom && selFrom <= bodyFrom && selTo === bodyTo) return null;
         return { from: bodyFrom, to: bodyTo };
       }
       openFence = null;
@@ -225,14 +244,185 @@ export function selectCodeBlockBody(doc: string, from: number, to: number = from
   }
 
   if (openFence && selFrom >= openFence.openStart && selTo <= doc.length) {
-    const bodyFrom = openFence.bodyStart;
+    const rawBodyFrom = openFence.bodyStart;
     const bodyTo = doc.length;
-    if (bodyTo <= bodyFrom) return null;
-    if (selFrom === bodyFrom && selTo === bodyTo) return null;
+    if (bodyTo <= rawBodyFrom) return null;
+    const firstStrip = commonIndentPrefixLen(openFence.firstBodyLine, openFence.indent);
+    const bodyFrom = rawBodyFrom + firstStrip <= bodyTo ? rawBodyFrom + firstStrip : rawBodyFrom;
+    if (selFrom >= rawBodyFrom && selFrom <= bodyFrom && selTo === bodyTo) return null;
     return { from: bodyFrom, to: bodyTo };
   }
 
   return null;
+}
+
+/**
+ * Strip the enclosing code fence's alignment indentation from a selection
+ * inside a fenced code block (whether selected by dragging with the mouse or
+ * via `Ctrl/Cmd+A`), while preserving relative code indentation inside the block.
+ */
+export function dedentCodeBlockSelection(
+  doc: string,
+  from: number,
+  to: number,
+  rawText?: string,
+): string {
+  const selFrom = Math.max(0, Math.min(from, to, doc.length));
+  const selTo = Math.max(0, Math.min(Math.max(from, to), doc.length));
+  const text = rawText ?? doc.slice(selFrom, selTo);
+  if (!text || selFrom === selTo) return text;
+
+  const lines = doc.split('\n');
+  let offset = 0;
+  let openFence: {
+    indent: string;
+    ch: string;
+    len: number;
+    openStart: number;
+    bodyStart: number;
+  } | null = null;
+  let matchedIndent: string | null = null;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const lineStart = offset;
+    const lineEnd = offset + line.length;
+    const m = FENCE_LINE.exec(line);
+
+    if (!openFence) {
+      if (m && (m[2][0] === '~' || !m[3].includes('`'))) {
+        openFence = {
+          indent: m[1],
+          ch: m[2][0],
+          len: m[2].length,
+          openStart: lineStart,
+          bodyStart: Math.min(doc.length, lineEnd + 1),
+        };
+      }
+    } else if (m && m[2][0] === openFence.ch && m[2].length >= openFence.len && m[3].trim() === '') {
+      const closeStart = lineStart;
+      const bodyEnd = closeStart > openFence.bodyStart ? closeStart - 1 : closeStart;
+      if (selFrom >= openFence.bodyStart && selTo <= bodyEnd) {
+        matchedIndent = openFence.indent;
+        break;
+      }
+      openFence = null;
+    }
+
+    offset = lineEnd + 1;
+  }
+
+  if (matchedIndent === null && openFence && selFrom >= openFence.bodyStart && selTo <= doc.length) {
+    matchedIndent = openFence.indent;
+  }
+
+  if (!matchedIndent) return text;
+
+  const firstLineStart = selFrom > 0 ? doc.lastIndexOf('\n', selFrom - 1) + 1 : 0;
+  let firstLineEnd = doc.indexOf('\n', firstLineStart);
+  if (firstLineEnd < 0) firstLineEnd = doc.length;
+  const firstLine = doc.slice(firstLineStart, firstLineEnd);
+  const fromCol = selFrom - firstLineStart;
+  const firstLineFenceIndent = commonIndentPrefixLen(firstLine, matchedIndent);
+  const stripFirst = Math.max(0, firstLineFenceIndent - fromCol);
+
+  const selLines = text.split('\n');
+  return selLines
+    .map((line, idx) => {
+      if (idx === 0) {
+        const drop = Math.min(stripFirst, commonIndentPrefixLen(line, matchedIndent.slice(fromCol)));
+        return line.slice(drop);
+      }
+      return line.slice(commonIndentPrefixLen(line, matchedIndent));
+    })
+    .join('\n');
+}
+
+/**
+ * Align pasted text to the enclosing fenced code block's opening-fence
+ * indentation (`fenceIndent`), while preserving each pasted line's relative
+ * code indentation.
+ */
+export function indentCodeBlockPaste(
+  doc: string,
+  from: number,
+  to: number,
+  rawText: string,
+): string {
+  if (!rawText) return rawText;
+  const selFrom = Math.max(0, Math.min(from, to, doc.length));
+  const selTo = Math.max(0, Math.min(Math.max(from, to), doc.length));
+
+  const lines = doc.split('\n');
+  let offset = 0;
+  let openFence: {
+    indent: string;
+    ch: string;
+    len: number;
+    openStart: number;
+    bodyStart: number;
+  } | null = null;
+  let matchedIndent: string | null = null;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const lineStart = offset;
+    const lineEnd = offset + line.length;
+    const m = FENCE_LINE.exec(line);
+
+    if (!openFence) {
+      if (m && (m[2][0] === '~' || !m[3].includes('`'))) {
+        openFence = {
+          indent: m[1],
+          ch: m[2][0],
+          len: m[2].length,
+          openStart: lineStart,
+          bodyStart: Math.min(doc.length, lineEnd + 1),
+        };
+      }
+    } else if (m && m[2][0] === openFence.ch && m[2].length >= openFence.len && m[3].trim() === '') {
+      const closeStart = lineStart;
+      const bodyEnd = closeStart > openFence.bodyStart ? closeStart - 1 : closeStart;
+      if (selFrom >= openFence.bodyStart && selTo <= bodyEnd) {
+        matchedIndent = openFence.indent;
+        break;
+      }
+      openFence = null;
+    }
+
+    offset = lineEnd + 1;
+  }
+
+  if (matchedIndent === null && openFence && selFrom >= openFence.bodyStart && selTo <= doc.length) {
+    matchedIndent = openFence.indent;
+  }
+
+  if (!matchedIndent) return rawText;
+
+  const firstLineStart = selFrom > 0 ? doc.lastIndexOf('\n', selFrom - 1) + 1 : 0;
+  const prefixBefore = doc.slice(firstLineStart, selFrom);
+  let missingFirst = '';
+  if (
+    /^[ \t]*$/.test(prefixBefore) &&
+    prefixBefore.length < matchedIndent.length &&
+    matchedIndent.startsWith(prefixBefore)
+  ) {
+    missingFirst = matchedIndent.slice(prefixBefore.length);
+  }
+
+  const normalized = rawText.replace(/\r\n?/g, '\n');
+  const pasteLines = normalized.split('\n');
+  return pasteLines
+    .map((line, idx) => {
+      if (idx === 0) {
+        return missingFirst ? `${missingFirst}${line}` : line;
+      }
+      if (line.length === 0 && idx < pasteLines.length - 1) {
+        return '';
+      }
+      return `${matchedIndent}${line}`;
+    })
+    .join('\n');
 }
 
 /** Which lines sit inside a fenced code block (so ⌘= there does nothing). */

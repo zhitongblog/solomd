@@ -1,0 +1,72 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import Giscus from '../../components/Giscus.astro';
+import V5Showcase from '../../components/V5Showcase.astro';
+
+const lang = 'en' as const;
+---
+
+<Layout
+  title="SoloMD 5.0 — Writing first, tools out of the way, and E2EE personal cloud drive sync"
+  description="SoloMD 5.0 redesigns every surface across macOS, Windows, Linux, iPad, iPhone and Android, and introduces 3 zero-knowledge personal cloud drive encrypted backup & sync modes."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main id="main">
+    <article class="container blog-article">
+      <nav class="breadcrumbs">
+        <a href="/">Home</a> / <a href="/blog/">Blog</a> / <span>SoloMD 5.0</span>
+      </nav>
+      <time>2026-11-02</time>
+      <h1>SoloMD 5.0 — Writing first. Tools out of the way.</h1>
+      <p class="lead">
+        Over four major releases SoloMD grew from a fast native Markdown viewer into a PKM workspace with inline AI, an agent runtime, a knowledge graph, and image hosting. In 5.0 we stepped back and redesigned every screen so your words take center stage again — and added three zero-knowledge personal cloud drive encrypted backup &amp; sync modes.
+      </p>
+
+      <h2>1. A quieter window on desktop, a real mobile app on phones</h2>
+      <p>
+        On macOS, Windows, and Linux, the multi-row chrome folds into a single calm header bar with one-click switching between <strong>Live</strong>, <strong>Source</strong>, <strong>Split</strong>, and <strong>Preview</strong>. The bottom status bar becomes a subtle word-count pill, and a floating selection bubble puts bold, link, highlight, heading, and quote right next to the phrase you select.
+      </p>
+      <p>
+        On iPhone and Android, SoloMD 5.0 opens to a dedicated Notes Home Screen with instant bottom search and one-tap note creation, while iPad gets an adaptive slide-over drawer and full hardware-keyboard shortcut support.
+      </p>
+
+      <h2>2. Personal Cloud Drive E2EE Backup &amp; Multi-Device Sync (3 Modes)</h2>
+      <p>
+        Sponsored by community supporter <strong>tyysoft (太阳雨)</strong>, SoloMD 5.0 introduces three end-to-end encrypted (<code>Argon2id + XChaCha20-Poly1305</code>) personal cloud drive backup and sync workflows in <em>Settings › Sync</em>:
+      </p>
+      <ul>
+        <li><strong>Local Cloud Drive Encrypted Vault:</strong> point SoloMD at any local sync folder managed by OneDrive, iCloud Drive, Dropbox, Google Drive, Baidu Netdisk, Aliyun Drive, Quark Drive, or Nutstore. Every note is encrypted into <code>.enc</code> ciphertext before touching your cloud drive folder.</li>
+        <li><strong>Direct Cloud Drive OpenAPI:</strong> clientless, zero-knowledge archive sync (<code>solomd-vault.enc</code>, hiding even filenames and directory trees) directly against Microsoft OneDrive Graph API, Dropbox API, Baidu Netdisk OpenAPI, and Aliyun Drive OpenAPI.</li>
+        <li><strong>WebDAV E2EE Sync:</strong> end-to-end encrypted workspace sync over WebDAV for Nutstore (坚果云), Nextcloud, ownCloud, Synology NAS, and AList / OpenList.</li>
+      </ul>
+
+      <h2>3. One-click in-app updates &amp; deep editor polish</h2>
+      <p>
+        SoloMD 5.0 also brings one-click in-app installer download &amp; launch (with automatic Gitee mirror routing for users in mainland China), Excel/WPS table paste to Markdown, two-stage <code>Ctrl/⌘+A</code> and automatic fence-indentation alignment when copying or pasting inside indented code blocks, MRU tab switching (<code>Ctrl+Tab</code>), and LanguageTool grammar checking.
+      </p>
+
+      <p>
+        <a class="btn btn--primary" href="/whats-new/">Explore the full SoloMD 5.0 release notes →</a>
+      </p>
+    </article>
+
+    <V5Showcase lang={lang} />
+    <Giscus lang={lang} />
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .blog-article { max-width: 780px; padding: 40px 20px 32px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted); margin-bottom: 14px; }
+  .breadcrumbs a { color: inherit; }
+  .blog-article time { font-size: 13px; color: var(--text-muted); }
+  .blog-article h1 { font-size: clamp(2rem, 4.5vw, 3rem); line-height: 1.12; margin: 8px 0 18px; }
+  .blog-article .lead { font-size: 1.15rem; color: var(--text-muted); line-height: 1.65; margin-bottom: 28px; }
+  .blog-article h2 { font-size: 1.45rem; margin: 36px 0 12px; }
+  .blog-article p, .blog-article li { line-height: 1.75; }
+  .blog-article ul { padding-left: 22px; margin: 12px 0 20px; }
+</style>

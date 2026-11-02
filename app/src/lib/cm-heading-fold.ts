@@ -16,12 +16,11 @@
  * Windows plain-textarea editor needs too.
  */
 
-import { EditorView, keymap } from '@codemirror/view';
+import { EditorView } from '@codemirror/view';
 import type { EditorState, Extension } from '@codemirror/state';
 import {
   codeFolding,
   foldGutter,
-  foldKeymap,
   foldEffect,
   unfoldEffect,
   foldedRanges,
@@ -183,7 +182,6 @@ export function headingFoldExtension(opts: HeadingFoldOptions = {}): Extension {
             },
           }),
         ]),
-    keymap.of(foldKeymap),
     EditorView.baseTheme({
       '.cm-heading-fold-placeholder': {
         padding: '0 6px',

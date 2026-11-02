@@ -1628,19 +1628,20 @@ onMounted(async () => {
 
 async function checkForUpdatesNow(): Promise<void> {
   try {
-    const { checkForUpdateOnStartup, openReleaseUrl } = await import('./lib/check-update');
+    const { checkForUpdateOnStartup } = await import('./lib/check-update');
+    const { runDirectUpdateInstall } = await import('./composables/useUpdateCheck');
     const result = await checkForUpdateOnStartup();
-    if (result && result.hasUpdate) {
+    if (result && result.hasUpdate && result.latest) {
       const toastsStore = (await import('./stores/toasts')).useToastsStore();
       const { useI18n } = await import('./i18n');
-      const { t: tr } = useI18n();
-      // #171 — no auto-opening the browser (it yanks the user out of
-      // whatever they're writing). The toast lingers; clicking it opens
-      // the download page.
-      toastsStore.success(
+      const { t: tr, lang } = useI18n();
+      const actionLabel = lang.value === 'zh' ? '立即升级' : 'Update';
+      toastsStore.push(
         tr('settings.updateAvailable', { version: result.latest || '' }),
-        12000,
-        () => { void openReleaseUrl(result.url); },
+        'success',
+        15000,
+        () => { void runDirectUpdateInstall(result.latest!); },
+        { actionLabel },
       );
     }
   } catch { /* silent */ }

@@ -11,8 +11,10 @@
  * the mistake in v2.6.
  */
 import { watch } from 'vue';
+import { invoke } from '@tauri-apps/api/core';
 import { useGithubSyncStore, isGithubAuthError, classifyPushError } from '../stores/githubSync';
 import { useWorkspaceStore } from '../stores/workspace';
+import { useSettingsStore } from '../stores/settings';
 import { useToastsStore } from '../stores/toasts';
 import { useI18n } from '../i18n';
 import { hasGitBackend } from '../lib/platform';
@@ -20,6 +22,7 @@ import { hasGitBackend } from '../lib/platform';
 export function useGithubSync() {
   const sync = useGithubSyncStore();
   const workspace = useWorkspaceStore();
+  const settings = useSettingsStore();
   const toasts = useToastsStore();
   const { t } = useI18n();
 
@@ -71,6 +74,58 @@ export function useGithubSync() {
   async function pushIfWanted(): Promise<void> {
     const folder = workspace.currentFolder;
     if (!folder) return;
+
+    if (settings.webdavEnabled && settings.webdavAutoSync && settings.webdavUrl.trim()) {
+      try {
+        await invoke('webdav_push_workspace', {
+          workspace: folder,
+          url: settings.webdavUrl,
+          username: settings.webdavUsername,
+          password: settings.webdavPassword,
+          remotePath: settings.webdavRemotePath || '/SoloMD',
+          encrypted: settings.webdavEncrypted,
+          passphrase: settings.webdavPassphrase,
+        });
+      } catch (e) {
+        toasts.warning(`WebDAV: ${e}`);
+      }
+    }
+
+    if (
+      settings.cloudVaultAutoSync &&
+      settings.cloudVaultDir.trim() &&
+      settings.cloudVaultPassphrase.trim()
+    ) {
+      try {
+        await invoke('cloud_vault_push_workspace', {
+          workspace: folder,
+          vaultDir: settings.cloudVaultDir,
+          passphrase: settings.cloudVaultPassphrase,
+        });
+      } catch (e) {
+        toasts.warning(`Cloud Vault: ${e}`);
+      }
+    }
+
+    if (
+      settings.cloudApiAutoSync &&
+      settings.cloudApiToken.trim() &&
+      settings.cloudApiPassphrase.trim()
+    ) {
+      try {
+        await invoke('cloud_api_push_workspace', {
+          workspace: folder,
+          provider: settings.cloudApiProvider,
+          accessToken: settings.cloudApiToken,
+          remotePath: settings.cloudApiRemotePath || '/apps/SoloMD',
+          passphrase: settings.cloudApiPassphrase,
+        });
+      } catch (e) {
+        toasts.warning(`Cloud API: ${e}`);
+      }
+    }
+
+    if (!hasGitBackend()) return;
     if (!sync.status?.linked) return;
     if (!sync.status?.auto_push) return;
     try {
@@ -136,12 +191,12 @@ export function useGithubSync() {
 
   function start(): void {
     if (listening) return;
-    // #230 — no libgit2 in the Android binary, so there is nothing to push or
-    // pull. Bail before wiring the save listener / pull timer, otherwise every
-    // save and every tick fires a command that doesn't exist.
-    if (!hasGitBackend()) return;
     listening = true;
     window.addEventListener('solomd:saved', onSaved as EventListener);
+
+    // #230 — no libgit2 in the Android binary, so git push/pull is desktop/iOS
+    // only; WebDAV & Cloud Vault auto-sync above still run on all platforms.
+    if (!hasGitBackend()) return;
 
     // Whenever workspace changes, refresh the linked status. Whenever
     // the auto-pull interval changes, reschedule the timer.

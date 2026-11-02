@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { autoNumberHeadings, deleteWord, selectCodeBlockBody, selectLine, selectWord, shiftHeading, type Range, type TextEdit } from './editor-commands.ts';
+import { autoNumberHeadings, dedentCodeBlockSelection, deleteWord, indentCodeBlockPaste, selectCodeBlockBody, selectLine, selectWord, shiftHeading, type Range, type TextEdit } from './editor-commands.ts';
 
 /** `|` marks the selection ends (one `|` = a bare caret). */
 function parse(marked: string): { doc: string; from: number; to: number } {
@@ -146,9 +146,49 @@ test('selectCodeBlockBody selects the code block body first and returns null whe
   // Indented fenced code block inside a list item:
   assert.equal(
     sel('1. 列表一\n   ```ts\n   let |x = 1;\n   ```\n2. 列表二', selectCodeBlockBody),
-    '1. 列表一\n   ```ts\n|   let x = 1;|\n   ```\n2. 列表二',
+    '1. 列表一\n   ```ts\n   |let x = 1;|\n   ```\n2. 列表二',
+  );
+  assert.equal(
+    sel('1. 列表一\n   ```ts\n   |let x = 1;|\n   ```\n2. 列表二', selectCodeBlockBody),
+    null,
   );
   // Outside a code block returns null:
   assert.equal(sel('# Title|\n```js\na\n```', selectCodeBlockBody), null);
   void doc;
+});
+
+test('dedentCodeBlockSelection strips fence alignment spaces while preserving inner code indentation', () => {
+  const doc = '1. 列表一\n   ```ts\n   function foo() {\n     return 42;\n   }\n   ```\n2. 列表二';
+  // Ctrl+A selection inside the code block
+  const bodyRange = selectCodeBlockBody(doc, doc.indexOf('function'))!;
+  assert.equal(
+    dedentCodeBlockSelection(doc, bodyRange.from, bodyRange.to),
+    'function foo() {\n  return 42;\n}',
+  );
+  // Manual drag selection that includes the leading alignment spaces on line 1
+  const manualFrom = doc.indexOf('   function');
+  const manualTo = doc.lastIndexOf('\n   ```');
+  assert.equal(
+    dedentCodeBlockSelection(doc, manualFrom, manualTo),
+    'function foo() {\n  return 42;\n}',
+  );
+  // Selection outside a code block is untouched
+  assert.equal(dedentCodeBlockSelection(doc, 0, 7), '1. 列表一\n');
+});
+
+test('indentCodeBlockPaste pads subsequent pasted lines with the code fence indentation', () => {
+  const indent8 = '        ';
+  const docWithIndentedBlankLine = `1. 列表项\n${indent8}\`\`\`js\n${indent8}\n${indent8}\`\`\``;
+  const cursorAtCol8 = docWithIndentedBlankLine.indexOf(`\n${indent8}\n`) + 1 + indent8.length;
+  const snippet = 'function hello() {\n  return 1;\n}';
+
+  // Pasting when cursor is already at column 8 after the fence spaces:
+  const outAtCol8 = indentCodeBlockPaste(docWithIndentedBlankLine, cursorAtCol8, cursorAtCol8, snippet);
+  assert.equal(outAtCol8, `function hello() {\n${indent8}  return 1;\n${indent8}}`);
+
+  // Pasting when cursor is at column 0 on an empty line inside the 8-space fenced block:
+  const docWithCol0BlankLine = `1. 列表项\n${indent8}\`\`\`js\n\n${indent8}\`\`\``;
+  const cursorAtCol0 = docWithCol0BlankLine.indexOf('\n\n') + 1;
+  const outAtCol0 = indentCodeBlockPaste(docWithCol0BlankLine, cursorAtCol0, cursorAtCol0, snippet);
+  assert.equal(outAtCol0, `${indent8}function hello() {\n${indent8}  return 1;\n${indent8}}`);
 });

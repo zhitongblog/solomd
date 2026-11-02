@@ -7,23 +7,22 @@ const lang = 'en' as const;
 ---
 
 <Layout
-  title="SoloMD Sync — your vault, on your GitHub. Free, optional, end-to-end encrypted."
-  description="The v3.0 sync layer. Push your notes to your own GitHub repo. Optional E2EE. Cloud-folder mode for iCloud / Dropbox / OneDrive. No SoloMD server, no subscription."
+  title="SoloMD Sync — Personal Cloud Drive E2EE Backup, WebDAV & GitHub Sync. Free, Zero-Knowledge."
+  description="The v5.0 sync & encrypted backup layer. End-to-end encrypted sync via Baidu Netdisk, Aliyun Drive, OneDrive, Dropbox, Nutstore, WebDAV, or your own GitHub repo. No SoloMD server, no subscription."
   lang={lang}
 >
   <Header lang={lang} />
   <main id="main">
     <section class="sync-hero">
       <div class="container">
-        <span class="sync-tag">v3.0</span>
-        <h1>Sync.<br/><span class="muted">Your vault. Your GitHub. Free.</span></h1>
+        <span class="sync-tag">v5.0</span>
+        <h1>Sync &amp; Encrypted Backup.<br/><span class="muted">Your Cloud Drive. Your GitHub. Free.</span></h1>
         <p class="sync-lead">
-          We waited until v3.0 to ship sync because we didn't want to be a SaaS.
-          The shape we landed on instead: <strong>SoloMD is a git client</strong>. Your data lives on your own GitHub account.
-          <br/>No SoloMD server. No subscription. No account.
+          We never wanted SoloMD to become a subscription SaaS.
+          In <strong>v5.0</strong>, alongside GitHub / Gitea sync, we added <strong>three zero-knowledge end-to-end encrypted personal cloud drive backup &amp; sync modes</strong> (sponsored by <em>@tyysoft 太阳雨</em>) — whether you use OneDrive, Dropbox, iCloud, Nutstore, Baidu Netdisk, Aliyun Drive, Nextcloud, or Synology NAS, your cloud provider only ever sees <code>XChaCha20-Poly1305</code> ciphertext.
         </p>
         <div class="sync-cta">
-          <a class="btn btn--primary" href="/whats-new/">Read the v3.0 launch →</a>
+          <a class="btn btn--primary" href="/whats-new/">Read the v5.0 release notes →</a>
           <a class="btn" href="/#download">Download SoloMD</a>
         </div>
       </div>
@@ -31,6 +30,20 @@ const lang = 'en' as const;
 
     <section class="sync-pillars">
       <div class="container">
+        <div class="sync-pillar">
+          <span class="sync-pillar__icon">🛡️</span>
+          <h2>Personal Cloud Drive E2EE Vault &amp; Direct OpenAPI (New in v5.0)</h2>
+          <p>
+            Three end-to-end encrypted (<code>Argon2id + XChaCha20-Poly1305</code>) personal cloud drive modes built right in:
+            (1) <strong>Local Cloud Drive Encrypted Vault</strong> (point SoloMD at any folder synced by OneDrive, iCloud Drive, Dropbox, Google Drive, Baidu Netdisk, Aliyun Drive, Quark Drive, or Nutstore to write <code>.enc</code> ciphertext);
+            (2) <strong>Direct Cloud Drive OpenAPI</strong> (clientless encrypted archive <code>solomd-vault.enc</code> hiding even filenames via OneDrive Graph API, Dropbox API, Baidu Netdisk OpenAPI, or Aliyun Drive OpenAPI);
+            (3) <strong>WebDAV E2EE Sync</strong> (Nutstore, Nextcloud, Synology NAS, AList/OpenList).
+          </p>
+          <p class="sync-pillar__sub">
+            Supports automatic encrypted backup on every note save and one-click decryption across all your devices with the same passphrase.
+          </p>
+        </div>
+
         <div class="sync-pillar">
           <span class="sync-pillar__icon">☁️</span>
           <h2>GitHub-backed sync</h2>

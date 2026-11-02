@@ -137,7 +137,7 @@ fn keyring_user_for(workspace: &Path) -> String {
     workspace.to_string_lossy().to_string()
 }
 
-fn random_bytes(n: usize) -> Vec<u8> {
+pub(crate) fn random_bytes(n: usize) -> Vec<u8> {
     let mut buf = vec![0u8; n];
     rand::thread_rng().fill_bytes(&mut buf);
     buf
@@ -149,11 +149,11 @@ fn _ensure_rng_used() {
     let _ = random_bytes(1);
 }
 
-fn hex_encode(b: &[u8]) -> String {
+pub(crate) fn hex_encode(b: &[u8]) -> String {
     b.iter().map(|x| format!("{:02x}", x)).collect()
 }
 
-fn hex_decode(s: &str) -> Result<Vec<u8>, String> {
+pub(crate) fn hex_decode(s: &str) -> Result<Vec<u8>, String> {
     if s.len() % 2 != 0 {
         return Err("hex string has odd length".into());
     }
@@ -181,7 +181,7 @@ fn save_config(workspace: &Path, cfg: &EncryptionConfig) -> Result<(), String> {
     fs::write(&path, body).map_err(|e| e.to_string())
 }
 
-fn derive_key(passphrase: &str, salt: &[u8], params: &KdfParams) -> Result<[u8; 32], String> {
+pub(crate) fn derive_key(passphrase: &str, salt: &[u8], params: &KdfParams) -> Result<[u8; 32], String> {
     let argon = Argon2::new(
         Algorithm::Argon2id,
         Version::V0x13,

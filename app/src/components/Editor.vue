@@ -42,7 +42,9 @@ import {
   EDITOR_COMMANDS,
   MARKDOWN_ONLY_COMMANDS,
   autoNumberHeadings,
+  dedentCodeBlockSelection,
   deleteWord as deleteWordEdit,
+  indentCodeBlockPaste,
   selectCodeBlockBody,
   selectLine as selectLineRange,
   selectWord as selectWordRange,
@@ -115,7 +117,7 @@ import { copyImageElement } from '../lib/image-clipboard';
 import { readText as readClipboardTextPlugin, writeText as writeClipboardTextPlugin } from '@tauri-apps/plugin-clipboard-manager';
 import { computeListContinuation, computeListSoftBreak, repairIndentedFenceEdit } from '../lib/list-continuation';
 import { mapPos, renumberAfterEdit, renumberChanges } from '../lib/list-renumber';
-import { openRenderedLink } from '../lib/link-open';
+import { findMarkdownLinkAt, openMarkdownHref, openRenderedLink } from '../lib/link-open';
 
 // Incremental find. CoreMirror's search panel only scrolls to a match when you
 // press Enter / click Next — typing in the field just repaints the highlights
@@ -1165,6 +1167,48 @@ function plainSelectionText(): string {
   return from === to ? '' : el.value.slice(from, to);
 }
 
+function onPlainTextareaMouseUp(event: MouseEvent) {
+  const el = event.currentTarget as HTMLTextAreaElement | null;
+  if (el && event.button === 0 && event.detail >= 3) {
+    const start = el.selectionStart ?? 0;
+    const end = el.selectionEnd ?? 0;
+    if (end > start && el.value[end - 1] === '\n') {
+      el.setSelectionRange(start, end - 1);
+    }
+  }
+  emitPlainCursorAndSelection();
+  if (
+    el &&
+    props.tab.language === 'markdown' &&
+    event.button === 0 &&
+    (event.ctrlKey || event.metaKey) &&
+    !event.shiftKey &&
+    !event.altKey &&
+    (el.selectionStart ?? 0) === (el.selectionEnd ?? 0)
+  ) {
+    const match = findMarkdownLinkAt(el.value, el.selectionStart ?? 0);
+    if (match) {
+      openMarkdownHref(match.href, props.tab.filePath, match.wikilink);
+    }
+  }
+}
+
+function handlePlainCopy(event: ClipboardEvent) {
+  if (props.tab.language !== 'markdown') return;
+  const el = event.currentTarget as HTMLTextAreaElement | null;
+  if (!el) return;
+  const from = el.selectionStart ?? 0;
+  const to = el.selectionEnd ?? 0;
+  if (from === to) return;
+  const raw = el.value.slice(from, to);
+  const dedented = dedentCodeBlockSelection(el.value, from, to, raw);
+  if (dedented !== raw) {
+    event.preventDefault();
+    event.clipboardData?.setData('text/plain', dedented);
+    void writeClipboard(dedented);
+  }
+}
+
 function emitPlainCursorAndSelection() {
   // Every selection-ish event in both plain paths funnels through here, so
   // it is also where the focus shade and the drawn caret get repainted.
@@ -1481,6 +1525,25 @@ function syncPlainLiveScroll() {
 }
 
 function handlePlainPaste(event: ClipboardEvent) {
+  if (props.tab.language === 'markdown' && event.clipboardData) {
+    const hasImage = Array.from(event.clipboardData.items || []).some((it) =>
+      it.type.startsWith('image/'),
+    );
+    if (!hasImage) {
+      const raw = event.clipboardData.getData('text/plain');
+      const el = event.currentTarget as HTMLTextAreaElement | null;
+      if (raw && el) {
+        const from = el.selectionStart ?? 0;
+        const to = el.selectionEnd ?? 0;
+        const indented = indentCodeBlockPaste(el.value, from, to, raw);
+        if (indented !== raw) {
+          event.preventDefault();
+          plainInsertText(indented);
+          return;
+        }
+      }
+    }
+  }
   // Clipboard image paste (Ctrl+V of a screenshot). Text paste falls through to
   // the textarea's native handling. plainInsertText records its own undo step.
   void handleTextareaImagePaste(event, imagePasteOpts(), (text) => plainInsertText(text));
@@ -2936,7 +2999,12 @@ function activatePlainBlockFromClick(index: number, event: MouseEvent) {
   // webview must never follow it itself — that replaced the whole UI with the
   // page, with no way back but right-click → Back.
   const anchor = target?.closest('a') as Element | null;
-  if (anchor && (anchor.hasAttribute('href') || anchor.hasAttribute('xlink:href'))) {
+  if (
+    anchor &&
+    (anchor.hasAttribute('href') ||
+      anchor.hasAttribute('xlink:href') ||
+      anchor.classList.contains('md-wikilink'))
+  ) {
     event.preventDefault();
     if (event.ctrlKey || event.metaKey) {
       openRenderedLink(anchor, event, props.tab.filePath);
@@ -3833,13 +3901,24 @@ async function onEditorMenuAction(id: EditorMenuAction) {
       });
     } else if (id === 'copy' || id === 'cut') {
       if (sel.empty) return;
-      await writeClipboard(v.state.sliceDoc(sel.from, sel.to));
+      const raw = v.state.sliceDoc(sel.from, sel.to);
+      const out =
+        props.tab.language === 'markdown'
+          ? dedentCodeBlockSelection(v.state.doc.toString(), sel.from, sel.to, raw)
+          : raw;
+      await writeClipboard(out);
       if (id === 'cut') {
         v.dispatch({ changes: { from: sel.from, to: sel.to, insert: '' }, userEvent: 'delete.cut' });
       }
     } else if (id === 'paste') {
       const text = await readClipboard();
-      if (text) v.dispatch({ ...v.state.replaceSelection(text), userEvent: 'input.paste', scrollIntoView: true });
+      if (text) {
+        const out =
+          props.tab.language === 'markdown'
+            ? indentCodeBlockPaste(v.state.doc.toString(), sel.from, sel.to, text)
+            : text;
+        v.dispatch({ ...v.state.replaceSelection(out), userEvent: 'input.paste', scrollIntoView: true });
+      }
     }
     v.focus();
     return;
@@ -3853,8 +3932,14 @@ async function onEditorMenuAction(id: EditorMenuAction) {
   if (!el) return;
   el.focus();
   if (id === 'copy' || id === 'cut') {
-    const text = el.value.slice(el.selectionStart ?? 0, el.selectionEnd ?? 0);
-    if (!text) return;
+    const from = el.selectionStart ?? 0;
+    const to = el.selectionEnd ?? 0;
+    const raw = el.value.slice(from, to);
+    if (!raw) return;
+    const text =
+      props.tab.language === 'markdown'
+        ? dedentCodeBlockSelection(el.value, from, to, raw)
+        : raw;
     await writeClipboard(text);
     if (id === 'cut') {
       el.focus();
@@ -3865,8 +3950,12 @@ async function onEditorMenuAction(id: EditorMenuAction) {
   } else if (id === 'paste') {
     const text = await readClipboard();
     if (!text) return;
+    const out =
+      props.tab.language === 'markdown'
+        ? indentCodeBlockPaste(el.value, el.selectionStart ?? 0, el.selectionEnd ?? 0, text)
+        : text;
     el.focus();
-    document.execCommand('insertText', false, text);
+    document.execCommand('insertText', false, out);
   }
 }
 
@@ -4364,8 +4453,41 @@ function buildExtensions() {
     // turn into phantom multi-line selections when the layout shifts.
     stableClickSelection(),
     // Double-click on CJK picks a word (Intl.Segmenter, same as ⌘D), not the
-    // whole run between two punctuation marks.
+    // whole run between two punctuation marks; triple-click selects the line
+    // without its trailing newline.
     cjkDoubleClickSelection(),
+    EditorView.clipboardOutputFilter.of((text, state) => {
+      if (props.tab.language !== 'markdown' || state.selection.ranges.length !== 1) return text;
+      const sel = state.selection.main;
+      return dedentCodeBlockSelection(state.doc.toString(), sel.from, sel.to, text);
+    }),
+    EditorView.clipboardInputFilter.of((text, state) => {
+      if (props.tab.language !== 'markdown' || state.selection.ranges.length !== 1) return text;
+      const sel = state.selection.main;
+      return indentCodeBlockPaste(state.doc.toString(), sel.from, sel.to, text);
+    }),
+    EditorView.domEventHandlers({
+      mousedown(event, v) {
+        if (
+          props.tab.language !== 'markdown' ||
+          event.button !== 0 ||
+          !(event.ctrlKey || event.metaKey) ||
+          event.shiftKey ||
+          event.altKey
+        ) {
+          return false;
+        }
+        const pos = v.posAtCoords({ x: event.clientX, y: event.clientY });
+        if (pos == null) return false;
+        const match = findMarkdownLinkAt(v.state.doc.toString(), pos);
+        if (!match) return false;
+        if (openMarkdownHref(match.href, props.tab.filePath, match.wikilink)) {
+          event.preventDefault();
+          return true;
+        }
+        return false;
+      },
+    }),
     EditorView.updateListener.of((u) => {
       if (u.docChanged) {
         if (u.transactions.some((tr) => tr.isUserEvent('undo'))) {
@@ -6044,6 +6166,7 @@ const cls = computed(() => ({
           :spellcheck="props.spellCheck"
           :wrap="settings.wordWrap ? 'soft' : 'off'"
           @keydown="(event) => handlePlainBlockKeydown(index, event)"
+          @copy="handlePlainCopy"
           @paste="handlePlainPaste"
           @input="(event) => handlePlainBlockInput(index, event)"
           @compositionstart="handlePlainBlockCompositionStart"
@@ -6051,7 +6174,7 @@ const cls = computed(() => ({
           @click.stop
           @blur="handlePlainBlur"
           @keyup="emitPlainCursorAndSelection"
-          @mouseup="emitPlainCursorAndSelection"
+          @mouseup="onPlainTextareaMouseUp"
           @select="emitPlainCursorAndSelection"
           @focus="emitPlainCursorAndSelection"
         ></textarea>
@@ -6113,6 +6236,7 @@ const cls = computed(() => ({
         :spellcheck="props.spellCheck"
         :wrap="settings.wordWrap ? 'soft' : 'off'"
         @keydown="handlePlainEditorKeydown"
+        @copy="handlePlainCopy"
         @paste="handlePlainPaste"
         @input="handlePlainInput"
         @compositionstart="handlePlainBlockCompositionStart"
@@ -6121,7 +6245,7 @@ const cls = computed(() => ({
         @mousedown="$event.button === 0 && clearStrayDocumentSelection($event.currentTarget as HTMLElement)"
         @blur="handlePlainBlur"
         @keyup="emitPlainCursorAndSelection"
-        @mouseup="emitPlainCursorAndSelection"
+        @mouseup="onPlainTextareaMouseUp"
         @select="emitPlainCursorAndSelection"
         @focus="emitPlainCursorAndSelection"
       ></textarea>

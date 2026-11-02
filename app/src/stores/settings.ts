@@ -284,6 +284,21 @@ interface Settings {
   webdavUsername: string;
   webdavPassword: string;
   webdavRemotePath: string;
+  webdavEncrypted: boolean;
+  webdavPassphrase: string;
+  webdavAutoSync: boolean;
+  // Local personal cloud drive encrypted backup & sync directory (百度网盘 / 阿里云盘 / 夸克网盘 / OneDrive / iCloud / 坚果云).
+  cloudVaultDir: string;
+  cloudVaultPassphrase: string;
+  cloudVaultAutoSync: boolean;
+  // Direct Personal Cloud Drive OpenAPI encrypted backup & sync (百度网盘 OpenAPI / 阿里云盘 OpenAPI / OneDrive / Dropbox).
+  cloudApiProvider: 'baidu' | 'alipan' | 'onedrive' | 'dropbox';
+  cloudApiToken: string;
+  cloudApiClientId: string;
+  cloudApiClientSecret: string;
+  cloudApiRemotePath: string;
+  cloudApiPassphrase: string;
+  cloudApiAutoSync: boolean;
   // v2.5 F2: writing stats — show the per-doc word/char goal pill in the
   // status bar. Off-by-default-ish: the pill stays inert unless the doc's
   // YAML front matter sets a `goal:` key, so this toggle is a hard kill
@@ -751,6 +766,19 @@ function defaults(): Settings {
     webdavUsername: '',
     webdavPassword: '',
     webdavRemotePath: '/SoloMD',
+    webdavEncrypted: false,
+    webdavPassphrase: '',
+    webdavAutoSync: false,
+    cloudVaultDir: '',
+    cloudVaultPassphrase: '',
+    cloudVaultAutoSync: false,
+    cloudApiProvider: 'baidu',
+    cloudApiToken: '',
+    cloudApiClientId: '',
+    cloudApiClientSecret: '',
+    cloudApiRemotePath: '/apps/SoloMD',
+    cloudApiPassphrase: '',
+    cloudApiAutoSync: false,
     showWritingStats: true,
     showWorkspaceDailyTotal: false,
     pdfDefaults: defaultPdfDefaults(),

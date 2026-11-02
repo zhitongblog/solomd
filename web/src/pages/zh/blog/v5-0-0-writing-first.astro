@@ -1,0 +1,72 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import Header from '../../../components/Header.astro';
+import Footer from '../../../components/Footer.astro';
+import Giscus from '../../../components/Giscus.astro';
+import V5Showcase from '../../../components/V5Showcase.astro';
+
+const lang = 'zh' as const;
+---
+
+<Layout
+  title="SoloMD 5.0 —— 写作优先，工具让路，以及个人网盘三种端到端加密同步"
+  description="SoloMD 5.0 重新设计了桌面端、iPad 与手机端的每一个界面，并推出三种零知识个人网盘端到端加密备份与多端同步方案（百度网盘、阿里云盘、夸克、OneDrive、坚果云、WebDAV）。"
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main id="main">
+    <article class="container blog-article">
+      <nav class="breadcrumbs">
+        <a href="/zh/">首页</a> / <a href="/zh/blog/">博客</a> / <span>SoloMD 5.0</span>
+      </nav>
+      <time>2026-11-02</time>
+      <h1>SoloMD 5.0 —— 写作优先，工具让路。</h1>
+      <p class="lead">
+        从 1.0 到 4.0，SoloMD 陆续长出了双链知识库、14 家 AI 改写、内置 Agent 面板、知识图谱与图床。而在 5.0，我们退后一步，把所有界面重新做了一次减法，让文字重新回到窗口中央——同时带来了呼声最高的「个人网盘端到端加密备份与多端同步」。
+      </p>
+
+      <h2>1. 桌面上更安静的窗口，手机上真正的原生体验</h2>
+      <p>
+        在 macOS、Windows 和 Linux 上，原本多层的工具栏收敛成一行安静的顶栏，「实时 / 源码 / 分栏 / 预览」一键切换；底部状态栏化作一枚轻巧的字数胶囊；选中文字时，加粗、高亮、链接、标题、引用直接浮现在手边。
+      </p>
+      <p>
+        在 iPhone 和 Android 上，5.0 提供了专门设计的笔记首页、底部搜索与全屏沉浸编辑；在 iPad 竖屏下侧栏自动变为抽屉浮层，连接妙控键盘即可使用全套 <code>⌘</code> 快捷键。
+      </p>
+
+      <h2>2. 个人网盘三种端到端加密备份与多端同步（零知识加密）</h2>
+      <p>
+        特别感谢社区赞助者 <strong>太阳雨 (tyysoft)</strong> 的鼎力支持，SoloMD 5.0 在「设置 › 同步」中一次性推出了三种基于 <code>Argon2id + XChaCha20-Poly1305</code> 的个人网盘加密备份与多端同步方案：
+      </p>
+      <ul>
+        <li><strong>方案一：本地个人网盘同步目录加密保险库</strong> —— 直接选择电脑上百度网盘同步盘、阿里云盘、夸克网盘、OneDrive、iCloud Drive、坚果云等本地同步目录，SoloMD 会将笔记实时加密为 <code>.enc</code> 密文写入网盘目录，既杜绝隐私泄露与网盘扫描误封，又能通过网盘客户端在多台设备间同步并一键解密还原。</li>
+        <li><strong>方案二：网盘开放平台 API 直连（免客户端）</strong> —— 无需安装网盘客户端或搭建服务器，直接通过百度网盘 OpenAPI、阿里云盘 OpenAPI、Microsoft OneDrive、Dropbox 官方接口，将整个笔记库压缩加密为单个零知识加密包 <code>solomd-vault.enc</code>（连文件名与目录结构也完全隐藏）。</li>
+        <li><strong>方案三：WebDAV 端到端加密同步</strong> —— 支持坚果云、Nextcloud、群晖/绿联/极空间 NAS 以及通过 AList / OpenList 挂载的各类网盘开启端到端加密同步。</li>
+      </ul>
+
+      <h2>3. 应用内一键下载升级（国内自动切 Gitee）与编辑器细节打磨</h2>
+      <p>
+        5.0 还支持点击升级后直接在应用内下载安装包并拉起安装（自动识别中国大陆访问者并切换至 Gitee 高速镜像），支持 Excel / WPS 表格粘贴自动转 Markdown、缩进代码块复制自动剥离对齐空格与粘贴自动补齐围栏缩进、<code>Ctrl+Tab</code> 最近使用标签切换等数十项体验打磨。
+      </p>
+
+      <p>
+        <a class="btn btn--primary" href="/zh/whats-new/">查看 SoloMD 5.0 完整更新说明 →</a>
+      </p>
+    </article>
+
+    <V5Showcase lang={lang} />
+    <Giscus lang={lang} />
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .blog-article { max-width: 780px; padding: 40px 20px 32px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted); margin-bottom: 14px; }
+  .breadcrumbs a { color: inherit; }
+  .blog-article time { font-size: 13px; color: var(--text-muted); }
+  .blog-article h1 { font-size: clamp(2rem, 4.5vw, 3rem); line-height: 1.12; margin: 8px 0 18px; }
+  .blog-article .lead { font-size: 1.15rem; color: var(--text-muted); line-height: 1.65; margin-bottom: 28px; }
+  .blog-article h2 { font-size: 1.45rem; margin: 36px 0 12px; }
+  .blog-article p, .blog-article li { line-height: 1.75; }
+  .blog-article ul { padding-left: 22px; margin: 12px 0 20px; }
+</style>

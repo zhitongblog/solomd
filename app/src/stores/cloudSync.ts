@@ -12,7 +12,16 @@
 import { defineStore } from 'pinia';
 import { invoke } from '@tauri-apps/api/core';
 
-export type CloudProvider = 'none' | 'icloud' | 'dropbox' | 'onedrive' | 'google_drive';
+export type CloudProvider =
+  | 'none'
+  | 'icloud'
+  | 'dropbox'
+  | 'onedrive'
+  | 'google_drive'
+  | 'nutstore'
+  | 'baidu_netdisk'
+  | 'aliyun_drive'
+  | 'quark_drive';
 
 export interface CloudFolderInfo {
   provider: CloudProvider;

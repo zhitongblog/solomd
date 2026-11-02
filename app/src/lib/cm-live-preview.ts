@@ -139,6 +139,15 @@ const makeLiveMarkdownPlugin = (showMarkers: boolean) => ViewPlugin.fromClass(
               builder.add(node.from, node.to, hrDeco);
               return;
             }
+            if (name === 'Escape' && node.to - node.from >= 2) {
+              if (showMarkers) {
+                builder.add(node.from, node.from + 1, markerMark);
+                return;
+              }
+              if (onCaretLine) return;
+              builder.add(node.from, node.from + 1, hideDeco);
+              return;
+            }
           },
         });
       }

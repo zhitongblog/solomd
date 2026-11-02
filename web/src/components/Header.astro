@@ -10,20 +10,20 @@ const homeHref = langPrefix + '/';
 // corresponding en page rather than 404 — partial localization.
 const subPrefix = lang === 'zh' ? '/zh' : '';
 const NAV = {
-  en: { agents: 'Agents', sync: 'Sync', compare: 'Compare', docs: 'Docs', blog: 'Blog', contact: 'Contact', sponsor: 'Sponsor', supportTitle: 'Support the developer' },
-  zh: { agents: 'Agent', sync: '同步', compare: '对比', docs: '文档', blog: '博客', contact: '联系我们', sponsor: '赞助', supportTitle: '支持开发者' },
-  ja: { agents: 'Agent', sync: '同期', compare: '比較', docs: 'ドキュメント', blog: 'ブログ', contact: 'お問い合わせ', sponsor: 'スポンサー', supportTitle: '開発者をサポート' },
-  ko: { agents: 'Agent', sync: '동기화', compare: '비교', docs: '문서', blog: '블로그', contact: '문의', sponsor: '후원', supportTitle: '개발자 후원' },
-  de: { agents: 'Agents', sync: 'Sync', compare: 'Vergleich', docs: 'Docs', blog: 'Blog', contact: 'Kontakt', sponsor: 'Sponsor', supportTitle: 'Entwickler unterstützen' },
-  fr: { agents: 'Agents', sync: 'Sync', compare: 'Comparer', docs: 'Docs', blog: 'Blog', contact: 'Contact', sponsor: 'Sponsor', supportTitle: 'Soutenir le développeur' },
-  es: { agents: 'Agentes', sync: 'Sync', compare: 'Comparar', docs: 'Docs', blog: 'Blog', contact: 'Contacto', sponsor: 'Patrocinar', supportTitle: 'Apoyar al desarrollador' },
-  pt: { agents: 'Agentes', sync: 'Sync', compare: 'Comparar', docs: 'Docs', blog: 'Blog', contact: 'Contato', sponsor: 'Patrocinar', supportTitle: 'Apoiar o desenvolvedor' },
-  it: { agents: 'Agent', sync: 'Sync', compare: 'Confronto', docs: 'Docs', blog: 'Blog', contact: 'Contatto', sponsor: 'Sponsor', supportTitle: 'Supporta lo sviluppatore' },
-  pl: { agents: 'Agent', sync: 'Sync', compare: 'Porównanie', docs: 'Dokumenty', blog: 'Blog', contact: 'Kontakt', sponsor: 'Wesprzyj', supportTitle: 'Wesprzyj dewelopera' },
-  nl: { agents: 'Agents', sync: 'Sync', compare: 'Vergelijken', docs: 'Docs', blog: 'Blog', contact: 'Contact', sponsor: 'Sponsor', supportTitle: 'Steun de ontwikkelaar' },
-  tr: { agents: 'Ajan', sync: 'Sync', compare: 'Karşılaştır', docs: 'Dokümanlar', blog: 'Blog', contact: 'İletişim', sponsor: 'Destek Ol', supportTitle: 'Geliştiriciyi destekle' },
-  sv: { agents: 'Agents', sync: 'Sync', compare: 'Jämför', docs: 'Docs', blog: 'Blog', contact: 'Kontakt', sponsor: 'Stöd', supportTitle: 'Stöd utvecklaren' },
-  uk: { agents: 'Агент', sync: 'Sync', compare: 'Порівняння', docs: 'Документи', blog: 'Блог', contact: 'Контакт', sponsor: 'Підтримати', supportTitle: 'Підтримати розробника' },
+  en: { whatsNew: '5.0', agents: 'Agents', sync: 'Sync', compare: 'Compare', docs: 'Docs', blog: 'Blog', contact: 'Contact', sponsor: 'Sponsor', supportTitle: 'Support the developer' },
+  zh: { whatsNew: '5.0 新版', agents: 'Agent', sync: '同步', compare: '对比', docs: '文档', blog: '博客', contact: '联系我们', sponsor: '赞助', supportTitle: '支持开发者' },
+  ja: { whatsNew: '5.0 新機能', agents: 'Agent', sync: '同期', compare: '比較', docs: 'ドキュメント', blog: 'ブログ', contact: 'お問い合わせ', sponsor: 'スポンサー', supportTitle: '開発者をサポート' },
+  ko: { whatsNew: '5.0 새소식', agents: 'Agent', sync: '동기화', compare: '비교', docs: '문서', blog: '블로그', contact: '문의', sponsor: '후원', supportTitle: '개발자 후원' },
+  de: { whatsNew: '5.0 Neu', agents: 'Agents', sync: 'Sync', compare: 'Vergleich', docs: 'Docs', blog: 'Blog', contact: 'Kontakt', sponsor: 'Sponsor', supportTitle: 'Entwickler unterstützen' },
+  fr: { whatsNew: '5.0 Nouveautés', agents: 'Agents', sync: 'Sync', compare: 'Comparer', docs: 'Docs', blog: 'Blog', contact: 'Contact', sponsor: 'Sponsor', supportTitle: 'Soutenir le développeur' },
+  es: { whatsNew: '5.0 Novedades', agents: 'Agentes', sync: 'Sync', compare: 'Comparar', docs: 'Docs', blog: 'Blog', contact: 'Contacto', sponsor: 'Patrocinar', supportTitle: 'Apoyar al desarrollador' },
+  pt: { whatsNew: '5.0 Novidades', agents: 'Agentes', sync: 'Sync', compare: 'Comparar', docs: 'Docs', blog: 'Blog', contact: 'Contato', sponsor: 'Patrocinar', supportTitle: 'Apoiar o desenvolvedor' },
+  it: { whatsNew: '5.0 Novità', agents: 'Agent', sync: 'Sync', compare: 'Confronto', docs: 'Docs', blog: 'Blog', contact: 'Contatto', sponsor: 'Sponsor', supportTitle: 'Supporta lo sviluppatore' },
+  pl: { whatsNew: '5.0 Nowości', agents: 'Agent', sync: 'Sync', compare: 'Porównanie', docs: 'Dokumenty', blog: 'Blog', contact: 'Kontakt', sponsor: 'Wesprzyj', supportTitle: 'Wesprzyj dewelopera' },
+  nl: { whatsNew: '5.0 Nieuw', agents: 'Agents', sync: 'Sync', compare: 'Vergelijken', docs: 'Docs', blog: 'Blog', contact: 'Contact', sponsor: 'Sponsor', supportTitle: 'Steun de ontwikkelaar' },
+  tr: { whatsNew: '5.0 Yenilikler', agents: 'Ajan', sync: 'Sync', compare: 'Karşılaştır', docs: 'Dokümanlar', blog: 'Blog', contact: 'İletişim', sponsor: 'Destek Ol', supportTitle: 'Geliştiriciyi destekle' },
+  sv: { whatsNew: '5.0 Nyheter', agents: 'Agents', sync: 'Sync', compare: 'Jämför', docs: 'Docs', blog: 'Blog', contact: 'Kontakt', sponsor: 'Stöd', supportTitle: 'Stöd utvecklaren' },
+  uk: { whatsNew: '5.0 Нове', agents: 'Агент', sync: 'Sync', compare: 'Порівняння', docs: 'Документи', blog: 'Блог', contact: 'Контакт', sponsor: 'Підтримати', supportTitle: 'Підтримати розробника' },
 }[lang];
 
 const TOPBAR = {
@@ -60,7 +60,8 @@ const TOPBAR = {
     </a>
     <nav class="header__nav">
       <a href={homeHref + '#features'}>{tr.nav.features}</a>
-      <a href={subPrefix + '/agents/'} class="header__nav-new">{NAV.agents} <sup>v4</sup></a>
+      <a href={langPrefix + '/whats-new/'} class="header__nav-new">{NAV.whatsNew} <sup>v5</sup></a>
+      <a href={subPrefix + '/agents/'}>{NAV.agents}</a>
       <a href={subPrefix + '/sync/'}>{NAV.sync}</a>
       <a href={subPrefix + '/compare/'}>{NAV.compare}</a>
       <a href={subPrefix + '/docs/'}>{NAV.docs}</a>

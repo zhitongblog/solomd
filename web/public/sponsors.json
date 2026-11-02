@@ -46,8 +46,8 @@
       "github": "tyysoft",
       "since": "2026-10",
       "contribution": {
-        "en": "Deep testing and detailed user experience feedback on file tree navigation, workspace handling, table editor, and shortcuts for 4.14.x through 5.0.2.",
-        "zh": "深度测试了文件树导航、工作区管理、表格编辑器及快捷键交互，为 4.14.x 到 5.0.2 提交了大量详尽的问题报告与改进建议。"
+        "en": "Deep testing and detailed user experience feedback on file tree navigation, workspace handling, table editor, shortcuts, and encrypted personal cloud drive backup & multi-device sync.",
+        "zh": "深度测试了文件树导航、工作区管理、表格编辑器及快捷键交互，并慷慨赞助支持研究笔记端到端加密备份至个人网盘与网盘多端同步方案。"
       }
     },
     {

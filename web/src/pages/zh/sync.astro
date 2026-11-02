@@ -7,23 +7,22 @@ const lang = 'zh' as const;
 ---
 
 <Layout
-  title="SoloMD 同步 — 笔记在你自己的 GitHub。免费，可选，端到端加密。"
-  description="v3.0 的同步层。把笔记推到你自己的 GitHub 私库。可选端到端加密。iCloud / Dropbox / OneDrive 联动。没有 SoloMD 服务器，不收订阅。"
+  title="SoloMD 同步 — 个人网盘端到端加密备份、WebDAV 与 GitHub 多端同步。免费，零知识。"
+  description="v5.0 同步与加密备份层。支持百度网盘 / 阿里云盘 / 夸克网盘 / OneDrive / 坚果云 / WebDAV / GitHub 端到端加密（Argon2id + XChaCha20-Poly1305）多端同步。没有 SoloMD 服务器，不收订阅。"
   lang={lang}
 >
   <Header lang={lang} />
   <main id="main">
     <section class="sync-hero">
       <div class="container">
-        <span class="sync-tag">v3.0</span>
-        <h1>同步。<br/><span class="muted">笔记在你 GitHub 上。免费。</span></h1>
+        <span class="sync-tag">v5.0</span>
+        <h1>同步与加密备份。<br/><span class="muted">你的个人网盘，你的 GitHub。免费。</span></h1>
         <p class="sync-lead">
-          我们一直拖到 v3.0 才做同步，是因为不想变成一个 SaaS。
-          最后选的形态是：<strong>SoloMD 是一个 git 客户端</strong>。数据在你自己的 GitHub 账号里。
-          <br/>没有 SoloMD 服务器。没有订阅。不需要账号。
+          SoloMD 不建中心化云端，也不收订阅费。
+          在 <strong>v5.0</strong> 中，除了 GitHub / Gitea 仓库同步，我们新增了<strong>三种个人网盘端到端加密（E2EE）备份与多端同步方案</strong>（感谢 <em>@太阳雨 tyysoft</em> 赞助支持）：无论使用百度网盘、阿里云盘、夸克网盘、坚果云、OneDrive、iCloud 还是 NAS，网盘端永远只看得到高强度密文。
         </p>
         <div class="sync-cta">
-          <a class="btn btn--primary" href="/zh/whats-new/">看 v3.0 发布说明 →</a>
+          <a class="btn btn--primary" href="/zh/whats-new/">看 v5.0 发布说明 →</a>
           <a class="btn" href="/zh/#download">下载 SoloMD</a>
         </div>
       </div>
@@ -32,8 +31,22 @@ const lang = 'zh' as const;
     <section class="sync-pillars">
       <div class="container">
         <div class="sync-pillar">
+          <span class="sync-pillar__icon">🛡️</span>
+          <h2>个人网盘加密保险库 &amp; 开放平台直连 (v5.0 新增)</h2>
+          <p>
+            同时支持三种个人网盘端到端加密（<code>Argon2id + XChaCha20-Poly1305</code>）多端同步方式：
+            ① <strong>本地网盘同步目录加密库</strong>（直接选择百度网盘同步盘、阿里云盘、夸克网盘、OneDrive、iCloud、坚果云目录，自动加密为 <code>.enc</code> 密文防止隐私泄露与误封）；
+            ② <strong>网盘开放平台 API 直连</strong>（免客户端直连百度网盘 OpenAPI、阿里云盘 OpenAPI、OneDrive、Dropbox，整库打包加密为单文件 <code>solomd-vault.enc</code>，连文件名和目录结构也完全隐藏）；
+            ③ <strong>WebDAV 端到端加密同步</strong>（支持坚果云、Nextcloud、群晖 NAS 与 AList/OpenList）。
+          </p>
+          <p class="sync-pillar__sub">
+            支持保存笔记时自动加密备份，多台设备输入相同加密口令即可一键解密还原与跨端同步。
+          </p>
+        </div>
+
+        <div class="sync-pillar">
           <span class="sync-pillar__icon">☁️</span>
-          <h2>GitHub 同步</h2>
+          <h2>GitHub / Gitea 同步</h2>
           <p>
             粘个 Personal Access Token（保存到系统钥匙串）。选一个已有仓库，或者让 SoloMD 给你新建一个私库。
             保存后 5 秒自动推，5/15/30/60 分钟间隔自动拉。

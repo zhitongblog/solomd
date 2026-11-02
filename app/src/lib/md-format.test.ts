@@ -239,3 +239,19 @@ test('Tab on an unindented code fence under a list item indents the whole fenced
   );
 });
 
+test('switching a line in a list group or contiguous plain paragraph to ordered list converts and renumbers the group', () => {
+  // Unordered list group -> ordered list group
+  assert.equal(run('- a\n- b|\n- c', 'ol'), '1. a\n2. b|\n3. c');
+  // Mixed unordered + ordered list group -> ordered list group with corrected numbering
+  assert.equal(run('- a|\n1. b\n2. c', 'ol'), '1. a|\n2. b\n3. c');
+  assert.equal(run('1. a\n- b|\n2. c', 'ol'), '1. a\n2. b|\n3. c');
+  assert.equal(run('1. a\n2. b\n- c|', 'ol'), '1. a\n2. b\n3. c|');
+  // Switching the first ordered item to unordered renumbers the remaining ordered items from 1
+  assert.equal(run('1. a|\n2. b\n3. c', 'ul'), '- a|\n1. b\n2. c');
+  assert.equal(run('1. a|\n2. b', 'ul'), '- a|\n1. b');
+  // Contiguous plain lines (not separated by blank lines) convert together and auto-number
+  assert.equal(run('first\nsec|ond\nthird', 'ol'), '1. first\n2. second|\n3. third');
+  assert.equal(run('first\nsec|ond\n\nfourth', 'ol'), '1. first\n2. second|\n\nfourth');
+  assert.equal(run('1. first\nsec|ond\nthird', 'ol'), '1. first\n2. second|\n3. third');
+});
+

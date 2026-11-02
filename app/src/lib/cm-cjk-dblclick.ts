@@ -52,10 +52,49 @@ function charAtCoords(view: EditorView, x: number, y: number): number | null {
   return pos;
 }
 
+/**
+ * Range for a triple-click line selection (and optional drag across lines),
+ * excluding the trailing newline character so copying a triple-clicked line
+ * does not append an extra blank line.
+ */
+export function tripleClickLineRange(
+  state: EditorState,
+  anchorPos: number,
+  headPos: number = anchorPos,
+): { anchor: number; head: number } {
+  const aClamped = Math.max(0, Math.min(anchorPos, state.doc.length));
+  const hClamped = Math.max(0, Math.min(headPos, state.doc.length));
+  const anchorLine = state.doc.lineAt(aClamped);
+  const headLine = state.doc.lineAt(hClamped);
+  if (headLine.from < anchorLine.from) {
+    return { anchor: anchorLine.to, head: headLine.from };
+  }
+  return { anchor: anchorLine.from, head: headLine.to };
+}
+
 export function cjkDoubleClickSelection() {
   return EditorView.mouseSelectionStyle.of((view, event) => {
-    if (event.button !== 0 || event.detail !== 2) return null;
+    if (event.button !== 0) return null;
     if (event.shiftKey || event.metaKey || event.ctrlKey || event.altKey) return null;
+    if (event.detail >= 3) {
+      const startPos = view.posAtCoords({ x: event.clientX, y: event.clientY });
+      if (startPos == null) return null;
+      let anchorPos = startPos;
+      return {
+        get(cur: MouseEvent) {
+          const curPos = view.posAtCoords({ x: cur.clientX, y: cur.clientY }) ?? anchorPos;
+          const range = tripleClickLineRange(view.state, anchorPos, curPos);
+          return EditorSelection.single(range.anchor, range.head);
+        },
+        update(update) {
+          if (update.docChanged) {
+            anchorPos = update.changes.mapPos(anchorPos, 1);
+          }
+          return false;
+        },
+      };
+    }
+    if (event.detail !== 2) return null;
     const c = charAtCoords(view, event.clientX, event.clientY);
     if (c == null) return null;
     let anchor = cjkWordAt(view.state, c);

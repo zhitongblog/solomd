@@ -63,6 +63,102 @@ export function openRenderedLink(anchor: Element, e: Event, filePath?: string | 
  * `./` traversal. The result is emitted in the base path's separator style so
  * the Rust side opens it on every platform.
  */
+export interface MarkdownLinkMatch {
+  href: string;
+  wikilink?: boolean;
+}
+
+/**
+ * Find a Markdown link (`[label](url)`, `[[wikilink]]`, `<https://...>`, or bare
+ * `https?://...` URL) covering offset `pos` in `doc`. Excludes image links
+ * (`![alt](src)`).
+ */
+export function findMarkdownLinkAt(doc: string, pos: number): MarkdownLinkMatch | null {
+  if (pos < 0 || pos > doc.length) return null;
+  const lineStart = pos > 0 ? doc.lastIndexOf('\n', pos - 1) + 1 : 0;
+  let lineEnd = doc.indexOf('\n', pos);
+  if (lineEnd < 0) lineEnd = doc.length;
+  const line = doc.slice(lineStart, lineEnd);
+  const col = pos - lineStart;
+
+  // 1. Wikilinks: `[[target]]` or `[[target|alias]]`
+  const wikiRe = /\[\[([^[\]|]+?)(?:\|[^[\]]*?)?\]\]/g;
+  for (let m = wikiRe.exec(line); m; m = wikiRe.exec(line)) {
+    const start = m.index;
+    const end = start + m[0].length;
+    if (col >= start && col <= end) {
+      const target = m[1].trim();
+      if (target) return { href: target, wikilink: true };
+    }
+  }
+
+  // 2. Inline Markdown links: `[label](url)` or `[label](<url> "title")` (not `![alt](src)`)
+  const mdLinkRe = /(!?)\[(?:\\.|[^[\]\\])*\]\(\s*(?:<([^>\n]+)>|([^\s()]+(?:\([^\s()]*\)[^\s()]*)*))(?:\s+(?:"[^"]*"|'[^']*'|\([^)]*\)))?\s*\)/g;
+  for (let m = mdLinkRe.exec(line); m; m = mdLinkRe.exec(line)) {
+    if (m[1] === '!') continue;
+    const start = m.index;
+    const end = start + m[0].length;
+    if (col >= start && col <= end) {
+      const href = (m[2] ?? m[3] ?? '').trim();
+      if (href) return { href };
+    }
+  }
+
+  // 3. Angle-bracket autolinks: `<https://...>` or `<mailto:...>`
+  const autoRe = /<((?:https?|mailto|tel):[^>\s]+)>/gi;
+  for (let m = autoRe.exec(line); m; m = autoRe.exec(line)) {
+    const start = m.index;
+    const end = start + m[0].length;
+    if (col >= start && col <= end) {
+      return { href: m[1] };
+    }
+  }
+
+  // 4. Bare URLs: `https://...` or `http://...`
+  const bareUrlRe = /https?:\/\/[^\s<>()[\]"'`]+/gi;
+  for (let m = bareUrlRe.exec(line); m; m = bareUrlRe.exec(line)) {
+    const raw = m[0].replace(/[.,;:!?]+$/, '');
+    const start = m.index;
+    const end = start + raw.length;
+    if (col >= start && col <= end) {
+      return { href: raw };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Open a parsed Markdown link target (`href` or `wikilink`) using the same
+ * routing as `openRenderedLink`.
+ */
+export function openMarkdownHref(
+  href: string,
+  filePath?: string | null,
+  wikilink = false,
+): boolean {
+  if (wikilink) {
+    if (!href) return false;
+    window.dispatchEvent(new CustomEvent('solomd:wiki-open', { detail: { target: href } }));
+    return true;
+  }
+  if (!href || href.startsWith('#')) return false;
+  if (/^(https?|mailto|tel):/i.test(href)) {
+    openUrl(href).catch((err) => {
+      console.warn('[link] openUrl failed:', href, err);
+    });
+    return true;
+  }
+  if (filePath) {
+    const resolved = resolveRelativePath(filePath, href);
+    useFiles().openLinkedFile(resolved, { bypassNewWindow: true }).catch((err) => {
+      console.warn('[link] openLinkedFile failed:', resolved, err);
+    });
+    return true;
+  }
+  return false;
+}
+
 export function resolveRelativePath(basePath: string, href: string): string {
   // Strip any #fragment / ?query the anchor may carry, then decode.
   let rel = href.replace(/[#?].*$/, '');

@@ -35,6 +35,10 @@ pub enum CloudProvider {
     Dropbox,
     OneDrive,
     GoogleDrive,
+    Nutstore,
+    BaiduNetdisk,
+    AliyunDrive,
+    QuarkDrive,
 }
 
 #[derive(Serialize, Debug)]
@@ -98,6 +102,34 @@ fn detect_provider(path: &Path) -> CloudFolderInfo {
         return CloudFolderInfo {
             provider: CloudProvider::GoogleDrive,
             label: "Google Drive".into(),
+        };
+    }
+
+    if s.contains("nutstore") || s.contains("坚果云") || s.contains("我的坚果云") {
+        return CloudFolderInfo {
+            provider: CloudProvider::Nutstore,
+            label: "坚果云 (Nutstore)".into(),
+        };
+    }
+
+    if s.contains("baidunetdisk") || s.contains("百度网盘") || s.contains("百度同步盘") {
+        return CloudFolderInfo {
+            provider: CloudProvider::BaiduNetdisk,
+            label: "百度网盘 (Baidu Netdisk)".into(),
+        };
+    }
+
+    if s.contains("aliyundrive") || s.contains("adrive") || s.contains("阿里云盘") {
+        return CloudFolderInfo {
+            provider: CloudProvider::AliyunDrive,
+            label: "阿里云盘 (Aliyun Drive)".into(),
+        };
+    }
+
+    if s.contains("quark") || s.contains("夸克网盘") {
+        return CloudFolderInfo {
+            provider: CloudProvider::QuarkDrive,
+            label: "夸克网盘 (Quark Drive)".into(),
         };
     }
 
@@ -315,6 +347,26 @@ mod tests {
     fn google_drive_path_detected() {
         let p = "/Users/alex/Library/CloudStorage/GoogleDrive-me@gmail.com/My Drive/Notes";
         assert_eq!(detect_provider(Path::new(p)).provider, CloudProvider::GoogleDrive);
+    }
+
+    #[test]
+    fn chinese_cloud_drives_detected() {
+        assert_eq!(
+            detect_provider(Path::new("/Users/alex/Nutstore Files/我的坚果云/Notes")).provider,
+            CloudProvider::Nutstore
+        );
+        assert_eq!(
+            detect_provider(Path::new("/Users/alex/BaiduNetdiskWorkspace/SoloMD")).provider,
+            CloudProvider::BaiduNetdisk
+        );
+        assert_eq!(
+            detect_provider(Path::new("/Users/alex/AliyunDrive/SoloMD")).provider,
+            CloudProvider::AliyunDrive
+        );
+        assert_eq!(
+            detect_provider(Path::new("/Users/alex/QuarkDrive/SoloMD")).provider,
+            CloudProvider::QuarkDrive
+        );
     }
 
     #[test]

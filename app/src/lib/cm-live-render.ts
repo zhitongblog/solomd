@@ -660,6 +660,16 @@ function buildDecorations(view: EditorView, showMarkers = false): DecorationSet 
           ranges.push(hrDeco.range(nFrom, nTo));
           return;
         }
+
+        // ---- Backslash escapes (`\#`, `\*`, `\[`, etc.) ----
+        if (name === 'Escape' && nTo - nFrom >= 2) {
+          if (showMarkers || caretTouches) {
+            ranges.push(markerMark.range(nFrom, nFrom + 1));
+          } else {
+            ranges.push(hideDeco.range(nFrom, nFrom + 1));
+          }
+          return;
+        }
       },
     });
 
@@ -873,6 +883,7 @@ const liveEditTheme = EditorView.theme({
     textDecoration: 'underline',
     textDecorationColor: 'color-mix(in srgb, var(--accent-text) 35%, transparent)',
     textUnderlineOffset: '3px',
+    cursor: 'pointer',
   },
 
   // v4.7.1 — bullet glyph that replaces a `-`/`*`/`+` list marker off-line.

@@ -328,7 +328,7 @@ export function useShortcuts(hooks: Hooks = {}) {
       tabs.endMruCycle();
     }
     const seen = downCodes.delete(e.code);
-    if (seen || !keyupFallback || !e.ctrlKey || e.metaKey || !e.code) return;
+    if (seen || !keyupFallback || (!e.ctrlKey && !e.altKey) || e.metaKey || !e.code) return;
     handler(e);
   }
   function onBlur() {
