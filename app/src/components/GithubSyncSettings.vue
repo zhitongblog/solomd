@@ -150,7 +150,12 @@ onMounted(async () => {
 /** Reconnect after the saved token went bad: drop the dead credential so the
  *  sign-in form reappears (the workspace ↔ repo link is kept). */
 async function reconnect() {
-  await sync.clearToken();
+  if (isGiteaFamily.value) {
+    await sync.clearGiteaToken();
+    giteaStep.value = 'token';
+  } else {
+    await sync.clearToken();
+  }
 }
 
 watch(
@@ -246,7 +251,7 @@ async function link(remoteUrl: string) {
   try {
     await sync.link(workspace.currentFolder, remoteUrl, {
       encrypted: enableE2ee.value,
-      provider: providerChoice.value,
+      provider: isGiteaFamily.value ? 'gitea' : providerChoice.value,
     });
     toasts.success(t('githubSync.linkedToast'));
   } catch (e) {
@@ -679,7 +684,7 @@ const linkedRepoLabel = computed(() => {
           >
             {{ giteaTokenSaving ? t('githubSync.tokenSaving') : t('githubSync.tokenSaveBtn') }}
           </button>
-          <button class="ghs-btn" @click="giteaStep = 'url'">
+          <button v-if="providerChoice !== 'codeberg'" class="ghs-btn" @click="giteaStep = 'url'">
             {{ t('githubSync.backBtn') }}
           </button>
         </div>
@@ -896,7 +901,7 @@ const linkedRepoLabel = computed(() => {
              provider's token is saved. Gating it on GitHub stranded GitLab /
              custom users with a token they could not remove. Refreshing the
              repo list stays GitHub-only — it is the only provider we list. -->
-        <div v-if="providerChoice !== 'gitea'" class="ghs-row">
+        <div v-if="!isGiteaFamily" class="ghs-row">
           <button class="ghs-btn ghs-btn--ghost" @click="clearToken">
             {{ t('githubSync.signOutBtn') }}
           </button>

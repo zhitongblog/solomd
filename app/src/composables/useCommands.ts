@@ -882,7 +882,7 @@ export function useCommands(): Command[] {
     {
       id: 'inbox.organizeAndAdvance',
       title: 'Inbox: Mark Organized & Advance',
-      shortcut: kb('inbox.organizeAndAdvance'),
+      shortcut: kb('inbox.toggle'),
       hint: 'Set `inbox: false` on the active note and jump to the next inbox note',
       run: () => {
         if (!settings.inboxWorkflowEnabled) {
