@@ -21,7 +21,7 @@ import { useTabsStore } from '../stores/tabs';
 import PreviewSearch from './PreviewSearch.vue';
 import { attachCodeCopyButtons as attachSharedCodeCopyButtons } from '../lib/code-copy';
 import { writePngToClipboard } from '../lib/image-clipboard';
-import { previewScrollMemory, tabTopLineMemory } from '../lib/scroll-memory';
+import { previewScrollMemory, tabTopLineMemory, tabViewportAnchorMemory } from '../lib/scroll-memory';
 
 const props = withDefaults(
   defineProps<{
@@ -464,10 +464,10 @@ async function copyDiagramPng(svg: SVGElement) {
 let restoringTabScroll = false;
 let explicitLineJumped = false;
 
-function scrollToSourceLineQuiet(line: number): boolean {
+function scrollToSourceLineQuiet(line: number, offsetTop?: number): boolean {
   const article = host.value;
   const container = article?.parentElement as HTMLElement | null;
-  if (!article || !container || line <= 1) return false;
+  if (!article || !container || line < 1) return false;
   const nodes = Array.from(article.querySelectorAll<HTMLElement>('[data-source-line]'));
   if (!nodes.length) return false;
   let lo = 0;
@@ -484,8 +484,25 @@ function scrollToSourceLineQuiet(line: number): boolean {
     }
   }
   const target = nodes[best];
-  const delta = target.getBoundingClientRect().top - container.getBoundingClientRect().top;
-  container.scrollTop = Math.max(0, container.scrollTop + delta - TOP_GAP);
+  const nodeLine = Number(target.getAttribute('data-source-line') || 1);
+  const targetRect = target.getBoundingClientRect();
+  let inBlockOffset = 0;
+  if (line > nodeLine) {
+    const nextNode = best + 1 < nodes.length ? nodes[best + 1] : null;
+    const nextLine = nextNode ? Number(nextNode.getAttribute('data-source-line') || 0) : 0;
+    if (nextNode && nextLine > nodeLine) {
+      const frac = Math.max(0, Math.min(1, (line - nodeLine) / (nextLine - nodeLine)));
+      const spanPx = Math.max(0, nextNode.getBoundingClientRect().top - targetRect.top);
+      inBlockOffset = frac * spanPx;
+    } else {
+      const totalLines = Math.max(line, (props.source || '').split('\n').length);
+      const frac = Math.max(0, Math.min(1, (line - nodeLine) / Math.max(1, totalLines - nodeLine + 1)));
+      inBlockOffset = frac * targetRect.height;
+    }
+  }
+  const desiredOffset = typeof offsetTop === 'number' ? Math.max(0, offsetTop) : TOP_GAP;
+  const delta = targetRect.top + inBlockOffset - container.getBoundingClientRect().top;
+  container.scrollTop = Math.max(0, container.scrollTop + delta - desiredOffset);
   previewScrollMemory.set(props.tabId || '', container.scrollTop);
   return true;
 }
@@ -494,10 +511,11 @@ function restoreTabScroll(tabId?: string) {
   const container = host.value?.parentElement as HTMLElement | null;
   if (!container) return;
   restoringTabScroll = true;
-  const savedLine = tabId ? tabTopLineMemory.get(tabId) : undefined;
+  const anchor = tabId ? tabViewportAnchorMemory.get(tabId) : undefined;
+  const savedLine = anchor?.line ?? (tabId ? tabTopLineMemory.get(tabId) : undefined);
   const hasSavedPx = tabId ? previewScrollMemory.has(tabId) : false;
-  if (savedLine && savedLine > 1 && (!hasSavedPx || props.skin === 'reading')) {
-    scrollToSourceLineQuiet(savedLine);
+  if (savedLine && savedLine >= 1 && (!hasSavedPx || props.skin === 'reading')) {
+    scrollToSourceLineQuiet(savedLine, anchor?.offsetTop);
   } else {
     const saved = tabId ? (previewScrollMemory.get(tabId) ?? 0) : 0;
     container.scrollTop = saved;
@@ -852,7 +870,10 @@ defineExpose({ scrollToLine, openSearch });
   font-size: 1.25em;
   font-weight: 620;
 }
-:where(.preview-content) h3 { font-size: 1.0625em; }
+:where(.preview-content) h3 { font-size: 1.125em; }
+:where(.preview-content) h4 { font-size: 1.0625em; }
+:where(.preview-content) h5,
+:where(.preview-content) h6 { font-size: 1em; }
 :where(.preview-content) > :first-child { margin-top: 0; }
 :where(.preview-content) p { margin: 0.9em 0; }
 :where(.preview-content) a {

@@ -27,6 +27,7 @@ import { useI18n } from '../i18n';
 // the existing store so the shape can be augmented later without changing
 // imports here.
 import { useSettingsStore } from '../stores/settings';
+import { exportDefaultPath } from '../lib/export-paths';
 import { track } from '../lib/telemetry';
 import {
   parseBibFile,
@@ -136,7 +137,7 @@ export function usePandocExport() {
     }
   }
 
-  function activeContext(): { content: string; baseName: string } | null {
+  function activeContext(): { content: string; baseName: string; filePath: string | null } | null {
     const tab = tabs.activeTab;
     if (!tab) {
       toasts.error(t('toast.noActiveDoc'));
@@ -148,6 +149,7 @@ export function usePandocExport() {
     return {
       content: tab.content ?? '',
       baseName: name.replace(/\.[^.]+$/, ''),
+      filePath: tab.filePath ?? null,
     };
   }
 
@@ -231,8 +233,9 @@ export function usePandocExport() {
       ext === '*'
         ? [{ name: 'All Files', extensions: ['*'] }]
         : [{ name: filterName, extensions: [ext] }];
+    const filename = `${ctx.baseName}.${ext === '*' ? 'out' : ext}`;
     const outputPath = await saveDialog({
-      defaultPath: `${ctx.baseName}.${ext === '*' ? 'out' : ext}`,
+      defaultPath: exportDefaultPath(ctx.filePath, filename, settings.defaultExportDir) ?? filename,
       filters,
     });
     if (!outputPath) return;

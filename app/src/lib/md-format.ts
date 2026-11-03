@@ -282,6 +282,7 @@ function lineSpan(doc: string, from: number, to: number): [number, number] {
 
 const HEADING = /^(\s{0,3})#{1,6}\s+/;
 const QUOTE = /^(\s*)>\s?/;
+const QUOTE_PREFIX = /^((?:[ \t]*>[ \t]?)*)/;
 const TASK = /^(\s*)(?:[-*+]|\d+[.)])\s+\[[ xX]\]\s+/;
 const UL = /^(\s*)[-*+]\s+(?!\[[ xX]\]\s)/;
 const OL = /^(\s*)\d+[.)]\s+(?!\[[ xX]\]\s)/;
@@ -291,6 +292,11 @@ const THEMATIC_BREAK_LINE = /^[ \t]{0,3}(?:[-*_][ \t]*){3,}$/;
 const TABLE_ROW_LINE = /^[ \t]*\|.*\|[ \t]*$/;
 const MATH_OR_HTML_LINE =
   /^[ \t]*(?:\$\$|\\\[|<\/?(?:address|article|aside|blockquote|details|dialog|div|dl|dt|dd|fieldset|figcaption|figure|footer|form|h[1-6]|header|hr|iframe|li|main|nav|ol|p|pre|section|summary|table|tbody|td|tfoot|th|thead|tr|ul)\b|<!--)/i;
+
+function normalizeQuotePrefix(q: string): string {
+  if (!q) return '';
+  return q.endsWith('>') ? `${q} ` : q;
+}
 
 function indentWidth(ws: string): number {
   let w = 0;
@@ -342,19 +348,31 @@ function togglePrefix(
   test: RegExp,
   make: (indent: string, rest: string, index: number) => string,
   strip: RegExp,
+  preserveQuote = false,
 ): FormatEdit {
   return mapLines(doc, from, to, (lines) => {
-    const live = lines.filter((l) => l.trim() !== '');
-    const already = live.length > 0 && live.every((l) => test.test(l));
+    const stripQuote = (l: string) => {
+      if (!preserveQuote) return { qRaw: '', qNorm: '', rest: l };
+      const qRaw = QUOTE_PREFIX.exec(l)![1];
+      return { qRaw, qNorm: normalizeQuotePrefix(qRaw), rest: l.slice(qRaw.length) };
+    };
+    const isBlankLine = (l: string) => {
+      if (l.trim() === '') return true;
+      if (preserveQuote && lines.length > 1 && stripQuote(l).rest.trim() === '') return true;
+      return false;
+    };
+    const live = lines.filter((l) => !isBlankLine(l));
+    const already = live.length > 0 && live.every((l) => test.test(stripQuote(l).rest));
     let i = 0;
     return lines.map((l) => {
-      if (l.trim() === '' && lines.length > 1) return l;
-      if (already) return l.replace(test, '$1');
+      if (isBlankLine(l) && lines.length > 1) return l;
+      const { qRaw, qNorm, rest: lineRest } = stripQuote(l);
+      if (already) return qRaw + lineRest.replace(test, '$1');
       // Switching list type replaces the old marker rather than stacking
-      // "1. - item".
-      const indent = /^\s*/.exec(l)![0];
-      const rest = l.replace(strip, '').replace(/^\s*/, '');
-      return make(indent, rest, i++);
+      // "1. - item", and inside a blockquote places the list marker after `> ` (#513).
+      const indent = /^[ \t]*/.exec(lineRest)![0];
+      const rest = lineRest.replace(strip, '').replace(/^\s*/, '');
+      return qNorm + make(indent, rest, i++);
     });
   });
 }
@@ -405,12 +423,12 @@ function toggleUnorderedList(doc: string, from: number, to: number): FormatEdit 
       };
       const cur = splitLine(lines[curIdx].text);
       if (!cur.blank && !isBlockStopLine(cur.rest)) {
-        // 1. Contiguous block of plain/UL lines (at quote depth 0) with at least one plain line
-        if (cur.qDepth === 0 && (!ANY_LIST.test(cur.rest) || UL.test(cur.rest))) {
+        // 1. Contiguous block of plain/UL lines (at the same quote depth) with at least one plain line
+        if (!ANY_LIST.test(cur.rest) || UL.test(cur.rest)) {
           const isPlainOrUl = (i: number): boolean => {
             if (enclosingFence(doc, lines[i].start, lines[i].end)) return false;
             const info = splitLine(lines[i].text);
-            if (info.blank || info.qDepth !== 0 || isBlockStopLine(info.rest)) return false;
+            if (info.blank || info.qDepth !== cur.qDepth || isBlockStopLine(info.rest)) return false;
             if (info.indW !== cur.indW) return false;
             if (ANY_LIST.test(info.rest) && !UL.test(info.rest)) return false;
             return true;
@@ -430,7 +448,7 @@ function toggleUnorderedList(doc: string, from: number, to: number): FormatEdit 
             const rewritten = lines.slice(first, last + 1).map((l) => {
               const info = splitLine(l.text);
               const body = info.rest.replace(ANY_LIST, '').replace(/^[ \t]*/, '');
-              return `${info.ind}- ${body}`;
+              return `${normalizeQuotePrefix(info.q)}${info.ind}- ${body}`;
             });
             const spanStart = lines[first].start;
             const spanEnd = lines[last].end;
@@ -484,7 +502,7 @@ function toggleUnorderedList(doc: string, from: number, to: number): FormatEdit 
               if (!siblings.has(lineIdx)) return l.text;
               const info = splitLine(l.text);
               const body = info.rest.replace(ANY_LIST, '').replace(/^[ \t]*/, '');
-              return `${info.q}${info.ind}- ${body}`;
+              return `${normalizeQuotePrefix(info.q)}${info.ind}- ${body}`;
             });
             const spanStart = lines[first].start;
             const spanEnd = lines[last].end;
@@ -503,7 +521,7 @@ function toggleUnorderedList(doc: string, from: number, to: number): FormatEdit 
       }
     }
   }
-  const base = togglePrefix(doc, from, to, UL, (ind, rest) => `${ind}- ${rest}`, ANY_LIST);
+  const base = togglePrefix(doc, from, to, UL, (ind, rest) => `${ind}- ${rest}`, ANY_LIST, true);
   return withListRenumber(doc, base);
 }
 
@@ -531,12 +549,12 @@ function toggleOrderedList(doc: string, from: number, to: number): FormatEdit {
       const cur = splitLine(lines[curIdx].text);
       if (!cur.blank && !isBlockStopLine(cur.rest)) {
         // First check if `cur` is part of a contiguous block of plain/OL lines
-        // (at quote depth 0) that has at least one plain line to convert.
-        if (cur.qDepth === 0 && (!ANY_LIST.test(cur.rest) || OL.test(cur.rest))) {
+        // (at the same quote depth) that has at least one plain line to convert.
+        if (!ANY_LIST.test(cur.rest) || OL.test(cur.rest)) {
           const isPlainOrOl = (i: number): boolean => {
             if (enclosingFence(doc, lines[i].start, lines[i].end)) return false;
             const info = splitLine(lines[i].text);
-            if (info.blank || info.qDepth !== 0 || isBlockStopLine(info.rest)) return false;
+            if (info.blank || info.qDepth !== cur.qDepth || isBlockStopLine(info.rest)) return false;
             if (info.indW !== cur.indW) return false;
             if (ANY_LIST.test(info.rest) && !OL.test(info.rest)) return false;
             return true;
@@ -556,7 +574,7 @@ function toggleOrderedList(doc: string, from: number, to: number): FormatEdit {
             const rewritten = lines.slice(first, last + 1).map((l, idx) => {
               const info = splitLine(l.text);
               const body = info.rest.replace(ANY_LIST, '').replace(/^[ \t]*/, '');
-              return `${info.ind}${idx + 1}. ${body}`;
+              return `${normalizeQuotePrefix(info.q)}${info.ind}${idx + 1}. ${body}`;
             });
             const spanStart = lines[first].start;
             const spanEnd = lines[last].end;
@@ -612,7 +630,7 @@ function toggleOrderedList(doc: string, from: number, to: number): FormatEdit {
               if (!siblings.has(lineIdx)) return l.text;
               const info = splitLine(l.text);
               const body = info.rest.replace(ANY_LIST, '').replace(/^[ \t]*/, '');
-              return `${info.q}${info.ind}${num++}. ${body}`;
+              return `${normalizeQuotePrefix(info.q)}${info.ind}${num++}. ${body}`;
             });
             const spanStart = lines[first].start;
             const spanEnd = lines[last].end;
@@ -631,7 +649,7 @@ function toggleOrderedList(doc: string, from: number, to: number): FormatEdit {
       }
     }
   }
-  const base = togglePrefix(doc, from, to, OL, (ind, rest, i) => `${ind}${i + 1}. ${rest}`, ANY_LIST);
+  const base = togglePrefix(doc, from, to, OL, (ind, rest, i) => `${ind}${i + 1}. ${rest}`, ANY_LIST, true);
   return withListRenumber(doc, base);
 }
 
@@ -772,7 +790,7 @@ export function applyFormat(doc: string, from: number, to: number, kind: FormatK
     case 'ol':
       return toggleOrderedList(doc, a, b);
     case 'task':
-      return withListRenumber(doc, togglePrefix(doc, a, b, TASK, (ind, rest) => `${ind}- [ ] ${rest}`, ANY_LIST));
+      return withListRenumber(doc, togglePrefix(doc, a, b, TASK, (ind, rest) => `${ind}- [ ] ${rest}`, ANY_LIST, true));
     case 'codeblock': return toggleCodeBlock(doc, a, b);
     default:
       return toggleHeading(doc, a, b, Number(kind.slice(1)));

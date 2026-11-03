@@ -40,7 +40,8 @@ const showAdvanced = ref(false);
 // PR #150 narrowed this to 'github' | 'gitea'; restored to the full set —
 // GitLab and custom HTTPS remotes have been supported since v2.6.3 and are
 // still reachable through the clone-URL path below.
-const providerChoice = ref<'github' | 'gitlab' | 'gitea' | 'custom'>('github');
+const providerChoice = ref<'github' | 'gitlab' | 'codeberg' | 'gitea' | 'custom'>('github');
+const isGiteaFamily = computed(() => providerChoice.value === 'gitea' || providerChoice.value === 'codeberg');
 const giteaCloneUrl = ref('');
 // Gitee IKEQJ5 — GitLab and custom HTTPS remotes have no repo-list API to
 // browse, so pasting a clone URL is the ONLY way to link one. There was no
@@ -81,7 +82,7 @@ function tSync(key: string, params?: Record<string, string | number>): string {
     pulledToast: 'giteaPulledToast',
     repoCreatedToast: 'giteaRepoCreatedToast',
   };
-  const actual = providerChoice.value === 'gitea' ? (gitea[key] ?? key) : key;
+  const actual = isGiteaFamily.value ? (gitea[key] ?? key) : key;
   return t(`githubSync.${actual}`, params);
 }
 
@@ -125,13 +126,17 @@ onMounted(async () => {
   if (workspace.currentFolder) {
     await sync.refreshStatus(workspace.currentFolder);
     // Sync provider choice with the linked workspace's provider so the
-    // correct setup flow (GitHub / Gitea) is shown.
+    // correct setup flow (GitHub / Codeberg / Gitea) is shown.
     if (sync.status?.provider) {
-      providerChoice.value = sync.status.provider as any;
+      if (sync.status.provider === 'gitea' && /codeberg\.org/i.test(sync.status.remote_url ?? '')) {
+        providerChoice.value = 'codeberg';
+      } else {
+        providerChoice.value = sync.status.provider as any;
+      }
     }
   }
-  // Initialize Gitea state when the active (or linked) provider is Gitea.
-  if (sync.status?.provider === 'gitea' || providerChoice.value === 'gitea') {
+  // Initialize Gitea/Codeberg state when the active (or linked) provider is Gitea/Codeberg.
+  if (sync.status?.provider === 'gitea' || isGiteaFamily.value) {
     await initGiteaState();
   }
   // GitHub-specific preloading only when GitHub is the active provider.
@@ -158,7 +163,7 @@ watch(
 watch(
   () => providerChoice.value,
   (p) => {
-    if (p === 'gitea') {
+    if (p === 'gitea' || p === 'codeberg') {
       void initGiteaState();
     }
   },
@@ -387,6 +392,19 @@ async function initGiteaState() {
   if (_initGiteaBusy) return;
   _initGiteaBusy = true;
   try {
+    if (providerChoice.value === 'codeberg') {
+      const codebergUrl = 'https://codeberg.org';
+      giteaUrlInput.value = codebergUrl;
+      await sync.setGiteaUrl(codebergUrl);
+      await sync.refreshHasGiteaToken();
+      if (sync.hasGiteaToken) {
+        giteaStep.value = 'ready';
+        await sync.listGiteaRepos(codebergUrl).catch(() => {});
+      } else {
+        giteaStep.value = 'token';
+      }
+      return;
+    }
     const saved = await sync.getGiteaUrl();
     if (saved) {
       giteaUrlInput.value = saved;
@@ -517,8 +535,8 @@ const linkedRepoLabel = computed(() => {
 
 <template>
   <section class="ghs">
-    <h3 class="ghs__heading">{{ providerChoice === 'gitea' ? 'Gitea sync' : t('githubSync.heading') }}</h3>
-    <p class="ghs__intro">{{ providerChoice === 'gitea' ? t('githubSync.giteaIntro') : t('githubSync.intro') }}</p>
+    <h3 class="ghs__heading">{{ providerChoice === 'codeberg' ? 'Codeberg sync' : providerChoice === 'gitea' ? 'Gitea sync' : t('githubSync.heading') }}</h3>
+    <p class="ghs__intro">{{ isGiteaFamily ? t('githubSync.giteaIntro') : t('githubSync.intro') }}</p>
 
     <!-- Provider picker — always visible so the user can choose their sync
          backend before anything else happens. This is the single picker for
@@ -534,6 +552,7 @@ const linkedRepoLabel = computed(() => {
         <select v-model="providerChoice" class="ghs-select" style="flex: 1;">
           <option value="github">GitHub</option>
           <option value="gitlab">GitLab</option>
+          <option value="codeberg">Codeberg</option>
           <option value="gitea">Gitea / Forgejo (self-hosted)</option>
           <option value="custom">{{ t('githubSync.customProvider') }}</option>
         </select>
@@ -561,8 +580,8 @@ const linkedRepoLabel = computed(() => {
     <div v-if="sync.tokenInvalid || sync.giteaTokenInvalid" class="ghs-authwarn">
       <span class="ghs-authwarn__icon">⚠️</span>
       <div class="ghs-authwarn__body">
-        <strong>{{ providerChoice === 'gitea' ? t('githubSync.giteaTokenExpiredTitle') : t('githubSync.tokenExpiredTitle') }}</strong>
-        <p>{{ providerChoice === 'gitea' ? t('githubSync.giteaTokenExpiredBanner') : t('githubSync.tokenExpiredBanner') }}</p>
+        <strong>{{ isGiteaFamily ? t('githubSync.giteaTokenExpiredTitle') : t('githubSync.tokenExpiredTitle') }}</strong>
+        <p>{{ isGiteaFamily ? t('githubSync.giteaTokenExpiredBanner') : t('githubSync.tokenExpiredBanner') }}</p>
       </div>
       <button class="ghs-btn ghs-btn--primary" @click="reconnect">
         {{ t('githubSync.reconnectBtn') }}
@@ -586,7 +605,7 @@ const linkedRepoLabel = computed(() => {
          #150 had narrowed this to `providerChoice === 'github'`, which left
          GitLab / custom users with no card at all. The provider picker itself
          now lives once, at the top of the panel. -->
-    <div v-if="providerChoice !== 'gitea' && !sync.hasToken" class="ghs-card">
+    <div v-if="!isGiteaFamily && !sync.hasToken" class="ghs-card">
       <div class="ghs-card__title">{{ t('githubSync.signInTitle') }}</div>
       <p class="ghs-help">{{ t('githubSync.signInHint') }}</p>
       <p v-if="providerChoice !== 'github'" class="ghs-help">
@@ -615,8 +634,8 @@ const linkedRepoLabel = computed(() => {
       <p class="ghs-fineprint">{{ t('githubSync.tokenScopeHint') }}</p>
     </div>
 
-    <!-- ─── Gitea: no URL / no token yet ──────────────────────────── -->
-    <div v-else-if="providerChoice === 'gitea' && (!sync.hasGiteaToken || giteaStep !== 'ready')" class="ghs-card">
+    <!-- ─── Gitea / Codeberg: no URL / no token yet ───────────────── -->
+    <div v-else-if="isGiteaFamily && (!sync.hasGiteaToken || giteaStep !== 'ready')" class="ghs-card">
       <!-- Step 1: Gitea server URL -->
       <div v-if="giteaStep === 'url'">
         <div class="ghs-card__title">{{ t('githubSync.giteaUrlTitle') }}</div>
@@ -676,7 +695,7 @@ const linkedRepoLabel = computed(() => {
              comes from api.github.com, so for GitLab / custom remotes it stays
              null and "signed in as …" would be a lie (#229) — those fall back
              to a neutral title. -->
-        <template v-if="providerChoice === 'gitea'">
+        <template v-if="isGiteaFamily">
           {{ t('githubSync.giteaSignedInAs', { user: sync.giteaUser?.login ?? '…' }) }}
         </template>
         <template v-else-if="providerChoice === 'github'">
@@ -759,8 +778,8 @@ const linkedRepoLabel = computed(() => {
           </div>
         </div>
 
-        <!-- Gitea — repo picker (token ready) -->
-        <div v-if="providerChoice === 'gitea' && giteaStep === 'ready'" class="ghs-subblock">
+        <!-- Gitea / Codeberg — repo picker (token ready) -->
+        <div v-if="isGiteaFamily && giteaStep === 'ready'" class="ghs-subblock">
           <div class="ghs-sub-title">{{ t('githubSync.giteaSignedInAs', { user: sync.giteaUser?.login ?? '…' }) }}</div>
 
           <!-- Create new repo on Gitea -->

@@ -252,7 +252,7 @@ export function useExport() {
     // #260 — start in the document's own folder instead of wherever the
     // last save happened. Falls back to a bare filename for unsaved
     // buffers and virtual (SAF) paths, which is the old behaviour.
-    const defaultPath = exportDefaultPath(activeOr()?.filePath, filename) ?? filename;
+    const defaultPath = exportDefaultPath(activeOr()?.filePath, filename, settings.defaultExportDir) ?? filename;
     // Dev-only QA hook (like ?forcePlain): lets a self-test drive an export
     // end to end without a native save panel. Stripped from release builds.
     if (import.meta.env.DEV) {

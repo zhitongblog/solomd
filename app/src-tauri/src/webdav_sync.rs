@@ -26,7 +26,7 @@ const VAULT_PROBE_PLAIN: &[u8] = b"SoloMD probe v1";
 pub struct CloudVaultManifest {
     pub version: u8,
     pub salt: String,
-    pub kdf: crate::crypto::KdfParams,
+    pub kdf: super::crypto::KdfParams,
     pub probe: String,
 }
 
@@ -35,15 +35,15 @@ fn create_vault_manifest(passphrase: &str) -> Result<(CloudVaultManifest, [u8; 3
     if pass.is_empty() {
         return Err("请先设置加密口令 (Encryption passphrase is required)".into());
     }
-    let salt = crate::crypto::random_bytes(16);
-    let kdf = crate::crypto::KdfParams::default();
-    let key = crate::crypto::derive_key(pass, &salt, &kdf)?;
-    let probe_bytes = crate::crypto::encrypt_bytes(&key, VAULT_PROBE_AAD, VAULT_PROBE_PLAIN)?;
+    let salt = super::crypto::random_bytes(16);
+    let kdf = super::crypto::KdfParams::default();
+    let key = super::crypto::derive_key(pass, &salt, &kdf)?;
+    let probe_bytes = super::crypto::encrypt_bytes(&key, VAULT_PROBE_AAD, VAULT_PROBE_PLAIN)?;
     let manifest = CloudVaultManifest {
         version: 1,
-        salt: crate::crypto::hex_encode(&salt),
+        salt: super::crypto::hex_encode(&salt),
         kdf,
-        probe: crate::crypto::hex_encode(&probe_bytes),
+        probe: super::crypto::hex_encode(&probe_bytes),
     };
     Ok((manifest, key))
 }
@@ -56,10 +56,10 @@ fn unlock_vault_manifest(
     if pass.is_empty() {
         return Err("需要输入加密口令才能解密同步 (Encryption passphrase is required)".into());
     }
-    let salt = crate::crypto::hex_decode(&manifest.salt)?;
-    let key = crate::crypto::derive_key(pass, &salt, &manifest.kdf)?;
-    let probe_bytes = crate::crypto::hex_decode(&manifest.probe)?;
-    let decrypted = crate::crypto::decrypt_bytes(&key, VAULT_PROBE_AAD, &probe_bytes)
+    let salt = super::crypto::hex_decode(&manifest.salt)?;
+    let key = super::crypto::derive_key(pass, &salt, &manifest.kdf)?;
+    let probe_bytes = super::crypto::hex_decode(&manifest.probe)?;
+    let decrypted = super::crypto::decrypt_bytes(&key, VAULT_PROBE_AAD, &probe_bytes)
         .map_err(|_| "加密口令不正确，无法解密该网盘库 (Incorrect encryption passphrase)".to_string())?;
     if decrypted != VAULT_PROBE_PLAIN {
         return Err("加密口令校验失败 (Encryption probe mismatch)".into());
@@ -430,7 +430,7 @@ pub async fn webdav_push_workspace(
         let plain_bytes = std::fs::read(&full_path)
             .map_err(|e| format!("Failed to read {rel}: {e}"))?;
         let (remote_rel, upload_bytes) = if let Some(ref key) = enc_key {
-            let cipher = crate::crypto::encrypt_bytes(key, &rel, &plain_bytes)?;
+            let cipher = super::crypto::encrypt_bytes(key, &rel, &plain_bytes)?;
             (format!("{rel}.enc"), cipher)
         } else {
             (rel.clone(), plain_bytes)
@@ -596,7 +596,7 @@ pub async fn webdav_pull_workspace(
                         .bytes()
                         .await
                         .map_err(|e| format!("Read error for {child_rel}: {e}"))?;
-                    let plain_bytes = crate::crypto::decrypt_bytes(key, plain_rel, &cipher_bytes)?;
+                    let plain_bytes = super::crypto::decrypt_bytes(key, plain_rel, &cipher_bytes)?;
                     if let Some(parent) = local_target.parent() {
                         let _ = std::fs::create_dir_all(parent);
                     }
@@ -684,7 +684,7 @@ pub fn cloud_vault_push_inner(
     for (rel, full_path) in files {
         let plain_bytes = std::fs::read(&full_path)
             .map_err(|e| format!("读取 {rel} 失败: {e}"))?;
-        let cipher_bytes = crate::crypto::encrypt_bytes(&key, &rel, &plain_bytes)?;
+        let cipher_bytes = super::crypto::encrypt_bytes(&key, &rel, &plain_bytes)?;
         let enc_target = vault_dir.join(format!("{rel}.enc"));
         if let Some(parent) = enc_target.parent() {
             std::fs::create_dir_all(parent)
@@ -775,7 +775,7 @@ pub fn cloud_vault_pull_inner(
         }
         let cipher_bytes = std::fs::read(&enc_path)
             .map_err(|e| format!("读取密文 {plain_rel}.enc 失败: {e}"))?;
-        let plain_bytes = crate::crypto::decrypt_bytes(&key, &plain_rel, &cipher_bytes)?;
+        let plain_bytes = super::crypto::decrypt_bytes(&key, &plain_rel, &cipher_bytes)?;
         if let Some(parent) = local_target.parent() {
             std::fs::create_dir_all(parent)
                 .map_err(|e| format!("创建本地目录失败: {e}"))?;
@@ -882,7 +882,7 @@ pub fn pack_encrypted_vault_bundle(
     }
 
     let plain_zip = zip_buf.into_inner();
-    let cipher_zip = crate::crypto::encrypt_bytes(&key, BUNDLE_AAD, &plain_zip)?;
+    let cipher_zip = super::crypto::encrypt_bytes(&key, BUNDLE_AAD, &plain_zip)?;
 
     let manifest_len = manifest_bytes.len() as u32;
     let mut out =
@@ -927,7 +927,7 @@ pub fn unpack_encrypted_vault_bundle(
             .map_err(|e| format!("解析加密包元数据失败: {e}"))?;
     let key = unlock_vault_manifest(&manifest, passphrase)?;
     let cipher_zip = &bundle_bytes[manifest_end..];
-    let plain_zip = crate::crypto::decrypt_bytes(&key, BUNDLE_AAD, cipher_zip)?;
+    let plain_zip = super::crypto::decrypt_bytes(&key, BUNDLE_AAD, cipher_zip)?;
 
     let reader = std::io::Cursor::new(plain_zip);
     let mut archive =

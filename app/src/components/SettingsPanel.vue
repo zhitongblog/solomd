@@ -765,6 +765,17 @@ async function pickCustomCss() {
   }
 }
 
+async function pickDefaultExportDir() {
+  const path = await openFileDialog({
+    directory: true,
+    multiple: false,
+    defaultPath: settings.defaultExportDir || (await files.filePickerStartDir()),
+  });
+  if (path && typeof path === 'string') {
+    settings.setDefaultExportDir(path);
+  }
+}
+
 // Re-read the current custom CSS file from disk and re-apply it. Useful when
 // the user edits the .css file outside the app.
 const isCssRefreshing = ref(false);
@@ -1679,6 +1690,32 @@ function onSelectPdfFont(v: string) {
           <p v-if="quickCaptureError" class="setting-hint" style="color: var(--danger);">
             {{ t('settings.quickCaptureFailed', { error: quickCaptureError }) }}
           </p>
+        </section>
+
+        <section data-cat="export">
+          <label>{{ t('settings.defaultExportDir') }}</label>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <input
+              type="text"
+              :value="settings.defaultExportDir"
+              :placeholder="t('settings.defaultExportDirPlaceholder')"
+              spellcheck="false"
+              @change="settings.setDefaultExportDir(($event.target as HTMLInputElement).value)"
+              class="settings__field"
+              style="flex: 1;"
+            />
+            <button type="button" @click="pickDefaultExportDir">
+              {{ t('settings.defaultExportDirBrowse') }}
+            </button>
+            <button
+              v-if="settings.defaultExportDir"
+              type="button"
+              @click="settings.setDefaultExportDir('')"
+            >
+              {{ t('settings.defaultExportDirClear') }}
+            </button>
+          </div>
+          <p class="setting-hint">{{ t('settings.defaultExportDirHint') }}</p>
         </section>
 
         <section data-cat="export">

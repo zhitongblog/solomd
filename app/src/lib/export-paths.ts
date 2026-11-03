@@ -25,7 +25,14 @@ function separatorOf(path: string): string {
 export function exportDefaultPath(
   sourcePath: string | null | undefined,
   filename: string,
+  customExportDir?: string | null,
 ): string | null {
+  const custom = customExportDir?.trim();
+  if (custom) {
+    const sep = separatorOf(custom);
+    const trimmed = custom.replace(/[\\/]+$/, '') || sep;
+    return trimmed === sep ? `${sep}${filename}` : `${trimmed}${sep}${filename}`;
+  }
   if (!sourcePath) return null;
   if (/^[a-z][a-z0-9+.-]*:/i.test(sourcePath) && !/^[a-z]:[\\/]/i.test(sourcePath)) {
     // A scheme (saf:, content:, file:) — but not a Windows drive letter,

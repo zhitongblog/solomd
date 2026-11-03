@@ -75,6 +75,10 @@ mod github_sync;
 #[path = "cloud_folder.rs"]
 mod cloud_folder;
 
+// #458 / #501 / #510 — WebDAV, local cloud vault, and cloud drive API sync.
+#[path = "webdav_sync.rs"]
+mod webdav_sync;
+
 // v2.6.3 workspace-level E2EE.
 #[path = "crypto.rs"]
 mod crypto;
@@ -629,6 +633,7 @@ pub fn run_with(initial_file: Option<String>) {
             commands::print_webview,
             commands::print_webview_to_pdf,
             commands::copy_file,
+            commands::download_and_install_update,
             image_upload::upload_image,
             commands::list_dir,
             commands::fs_create_file,
@@ -746,6 +751,15 @@ pub fn run_with(initial_file: Option<String>) {
             cloud_folder::session_save,
             cloud_folder::session_load,
             cloud_folder::session_list_others,
+            webdav_sync::webdav_test_connection,
+            webdav_sync::webdav_push_workspace,
+            webdav_sync::webdav_pull_workspace,
+            webdav_sync::cloud_vault_push_workspace,
+            webdav_sync::cloud_vault_pull_workspace,
+            webdav_sync::cloud_api_start_device_auth,
+            webdav_sync::cloud_api_poll_device_auth,
+            webdav_sync::cloud_api_push_workspace,
+            webdav_sync::cloud_api_pull_workspace,
             crypto::crypto_status,
             crypto::crypto_set_passphrase,
             crypto::crypto_clear_passphrase,

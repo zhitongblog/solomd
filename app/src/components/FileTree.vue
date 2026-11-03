@@ -2574,7 +2574,8 @@ export const FileTreeNode = defineComponent({
   border-right: 0;
 }
 .ftree--embedded .ftree__body {
-  overflow: visible;
+  overflow-y: visible;
+  overflow-x: auto;
   flex: 1 0 auto;
   display: flex;
   flex-direction: column;
@@ -2929,7 +2930,10 @@ export const FileTreeNode = defineComponent({
 .ftree__body {
   flex: 1;
   overflow-y: auto;
+  overflow-x: auto;
   padding-bottom: var(--sp-2);
+  scrollbar-width: thin;
+  scrollbar-color: var(--fill-2) transparent;
 }
 
 /* #282 — a persisted filter must never be invisible. */
@@ -2969,9 +2973,16 @@ export const FileTreeNode = defineComponent({
   list-style: none;
   margin: 0;
   padding: 0 var(--sp-2);
+  box-sizing: border-box;
   /* Gives the empty area under a short tree enough body to be a drop target
      for "move to the vault root". */
   min-height: 48px;
+}
+/* #495 — Allow horizontal scrolling for long node names instead of "..." truncation
+   when single-line mode is active. */
+.ftree:not(.ftree--fullnames) .ftree__list {
+  min-width: 100%;
+  width: max-content;
 }
 :deep(.ftree__item) {
   display: flex;
@@ -3079,23 +3090,18 @@ export const FileTreeNode = defineComponent({
 :deep(.ftree__caret--open) {
   transform: rotate(90deg);
 }
-/* Long names are cut to the sidebar's current width (#259). */
+/* #495 — Long names expand the tree horizontally so the full name can be
+   viewed via the horizontal scrollbar without "..." truncation. */
 :deep(.ftree__name) {
-  flex: 1;
+  flex: 1 0 auto;
   min-width: 0;
   margin-left: 2px;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* A file name with an extension: the name shrinks with an ellipsis, the
-   extension never does — "a-very-long-meeting-no….md". */
 :deep(.ftree__name--split) {
   display: flex;
 }
 :deep(.ftree__name-base) {
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
   min-width: 0;
 }
@@ -3103,16 +3109,24 @@ export const FileTreeNode = defineComponent({
   flex-shrink: 0;
   white-space: nowrap;
 }
-/* #182 — full-filename mode: wrap long names instead of truncating. */
+/* #182 — full-filename mode: wrap long names instead of scrolling horizontally. */
 .ftree--fullnames :deep(.ftree__item) {
   padding-top: 5px;
   padding-bottom: 5px;
 }
 .ftree--fullnames :deep(.ftree__name) {
+  flex: 1 1 0%;
   white-space: normal;
   overflow-wrap: break-word;
   word-break: break-word;
   line-height: 1.3;
+}
+.ftree--fullnames :deep(.ftree__name--split) {
+  display: inline;
+}
+.ftree--fullnames :deep(.ftree__name-base),
+.ftree--fullnames :deep(.ftree__name-ext) {
+  white-space: normal;
 }
 :deep(.ftree__dir-count) {
   flex: none;

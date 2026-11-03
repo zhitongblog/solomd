@@ -266,3 +266,30 @@ test('switching a line in a list group or contiguous plain paragraph to ordered 
   assert.equal(run('- first\nsec|ond\nthird', 'ul'), '- first\n- second|\n- third');
 });
 
+test('unordered, ordered, and task list formatting inside blockquotes keeps > in front (#513)', () => {
+  // Single blockquote line
+  assert.equal(run('> 引用内容|', 'ol'), '> 1. 引用内容|');
+  assert.equal(run('> 引用内容|', 'ul'), '> - 引用内容|');
+  assert.equal(run('> 引用内容|', 'task'), '> - [ ] 引用内容|');
+  // Toggle off restores the plain blockquote line
+  assert.equal(run('> 1. 引用内容|', 'ol'), '> 引用内容|');
+  assert.equal(run('> - 引用内容|', 'ul'), '> 引用内容|');
+  assert.equal(run('> - [ ] 引用内容|', 'task'), '> 引用内容|');
+  // Switch between list types inside a blockquote
+  assert.equal(run('> - 引用内容|', 'ol'), '> 1. 引用内容|');
+  assert.equal(run('> 1. 引用内容|', 'ul'), '> - 引用内容|');
+  assert.equal(run('> 1. 引用内容|', 'task'), '> - [ ] 引用内容|');
+  assert.equal(run('> - [ ] 引用内容|', 'ul'), '> - 引用内容|');
+  // Contiguous lines inside a blockquote convert together
+  assert.equal(run('> 第一行\n> 第二|行\n> 第三行', 'ol'), '> 1. 第一行\n> 2. 第二行|\n> 3. 第三行');
+  assert.equal(run('> 第一行\n> 第二|行\n> 第三行', 'ul'), '> - 第一行\n> - 第二行|\n> - 第三行');
+  assert.equal(run('> 1. 第一行\n> 2. 第二|行\n> 3. 第三行', 'ul'), '> - 第一行\n> - 第二行|\n> - 第三行');
+  // Multi-line selection inside a blockquote
+  assert.equal(run('> |第一行\n> 第二行|', 'task'), '|> - [ ] 第一行\n> - [ ] 第二行|');
+  // Empty blockquote line `> `
+  assert.equal(run('> |', 'ol'), '> 1. |');
+  assert.equal(run('> |', 'ul'), '> - |');
+  assert.equal(run('> |', 'task'), '> - [ ] |');
+});
+
+

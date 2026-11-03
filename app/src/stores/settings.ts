@@ -358,6 +358,9 @@ interface Settings {
   // academic) a Word export starts from. A per-document `docx:` front-matter
   // block overrides individual keys, the same way `pdf:` does.
   docxPreset: 'plain' | 'report' | 'academic';
+  // #503 — Optional default export directory. When empty, exports default to
+  // the current note's own directory (#260).
+  defaultExportDir: string;
   // Print / system-PDF palette, independent of the app theme. Printing in a
   // dark theme put a dark slab on paper and wasted ink; `light` (the default)
   // always prints on white, `dark` prints the dark palette on purpose, and
@@ -833,6 +836,7 @@ function defaults(): Settings {
     rsPaneOrder: ['search', 'outline', 'backlinks', 'relationships', 'tags', 'tasks', 'neighborhood', 'types', 'history', 'inspector', 'agent'],
     previewFontSize: 16,
     attachmentMode: 'shared',
+    defaultExportDir: '',
     assetsDirName: '_assets',
     attachmentCustomPath: './images/${filename}/',
     imageUploader: 'none',
@@ -1831,6 +1835,10 @@ export const useSettingsStore = defineStore('settings', {
     setAttachmentMode(mode: 'shared' | 'per-file' | 'custom') {
       this.attachmentMode =
         mode === 'per-file' ? 'per-file' : mode === 'custom' ? 'custom' : 'shared';
+      this.persist();
+    },
+    setDefaultExportDir(dir: string) {
+      this.defaultExportDir = (dir || '').trim();
       this.persist();
     },
     // #7 — Typora-style custom path template (used when attachmentMode==='custom').

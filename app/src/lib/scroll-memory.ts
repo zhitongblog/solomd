@@ -28,3 +28,14 @@ export const tabCaretMemory = new Map<string, TabCaretSnapshot>();
 export const previewScrollMemory = new Map<string, number>();
 
 export const tabTopLineMemory = new Map<string, number>();
+
+export interface ViewportLineAnchor {
+  /** 1-based source line of the anchor (caret line if visible in viewport, else top visible line). */
+  line: number;
+  /** Visual distance in px from the top of the scroll container to the anchor line. */
+  offsetTop: number;
+}
+
+/** #487 — Remember the visual viewport offset of the active line when switching view modes. */
+export const tabViewportAnchorMemory = new Map<string, ViewportLineAnchor>();
+

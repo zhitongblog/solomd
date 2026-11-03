@@ -2308,29 +2308,26 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
     }"
   >
     <!--
-      v2.4 reading mode swaps out the entire toolbar / sidebar / status-bar
-      stack for a single ReadingView component. We keep all the modal
-      dialogs (settings, palette, etc.) mounted at the bottom so the user
-      can still summon them from inside reading mode if needed.
+      v2.4 reading mode shows a single ReadingView component while keeping the
+      workspace shell mounted via v-show (#512 / #516) so the editor's undo/redo
+      stack and scroll/DOM state survive entering and leaving reading mode.
     -->
-    <template v-if="settings.viewMode === 'reading'">
-      <ReadingView />
-    </template>
-    <template v-else>
-      <!-- 5.0 window (docs/v5-ui-spec.md §3): on Windows a 44px frameless title
-           bar spans the window; below it — and on every other platform at the
-           top — the sidebar runs full height beside a column holding the 52px
-           header and the workspace. On macOS the traffic lights sit in the
-           sidebar's top inset, or over the header when the sidebar is hidden. -->
-      <Toolbar
-        v-if="winTitleBar"
-        variant="titlebar"
-        @open-palette="paletteOpen = true"
-        @open-settings="openSettingsAt()"
-        @open-help="helpOpen = true"
-        @open-search="toggleGlobalSearch()"
-      />
-      <div class="shell">
+    <ReadingView v-if="settings.viewMode === 'reading'" />
+    <!-- 5.0 window (docs/v5-ui-spec.md §3): on Windows a 44px frameless title
+         bar spans the window; below it — and on every other platform at the
+         top — the sidebar runs full height beside a column holding the 52px
+         header and the workspace. On macOS the traffic lights sit in the
+         sidebar's top inset, or over the header when the sidebar is hidden. -->
+    <Toolbar
+      v-if="winTitleBar"
+      v-show="settings.viewMode !== 'reading'"
+      variant="titlebar"
+      @open-palette="paletteOpen = true"
+      @open-settings="openSettingsAt()"
+      @open-help="helpOpen = true"
+      @open-search="toggleGlobalSearch()"
+    />
+    <div v-show="settings.viewMode !== 'reading'" class="shell">
         <!-- #168 — on a phone the side panes float over the editor instead of
              stealing its width; this catches the tap that dismisses them. -->
         <div
@@ -2573,7 +2570,6 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
         </div>
         <div v-if="sidebarCtx" class="sidebar-ctx__backdrop" @click="closeSidebarCtx" />
       </Teleport>
-    </template>
 
     <AIRewriteOverlay
       v-if="!IS_APP_STORE_BUILD"
