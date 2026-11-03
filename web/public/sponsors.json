@@ -45,8 +45,8 @@
       "name": "冰瞬若风",
       "since": "2026-10",
       "contribution": {
-        "en": "Senior tester who conducted meticulous testing of Markdown escape handling in Word & plain-text clipboard copy, unordered/ordered list group shortcut conversions, code fence shortcut cursor placement, and editor formatting edge cases.",
-        "zh": "资深测试，细致测试并反馈了 Markdown 转义字符在 Word 与纯文本复制中的处理、无序/有序列表快捷键整组联动转换、代码块快捷键光标落点以及编辑器排版细节。"
+        "en": "Senior tester who proposed and thoroughly verified a wide range of core v5.0.9–v5.0.12 requirements: list-nested code block copy/paste indent alignment & Ctrl+A selection, unordered/ordered list group shortcut conversions & 10+ marker layout, Markdown escape handling in live edit & Word/plain-text copy, triple-click line selection, large-file drag selection, custom fold keybindings, first-line tab titles, and missing temp-file save protection.",
+        "zh": "资深测试，提出并深入验证了 v5.0.9–v5.0.12 的众多核心需求与打磨细节：列表嵌套代码块复制/粘贴自动缩进对齐与块内 Ctrl+A 全选、无序/有序列表快捷键整组联动转换与两位数序号防折行、代码块快捷键光标落位、转义字符在实时编辑及 Word/纯文本复制中的处理、三击选行、大文件跨屏拖选、折叠快捷键改绑、首行作为标签页标题以及原文件缺失保存保护。"
       }
     },
     {
