@@ -4,7 +4,7 @@ const R = checks();
 act('settings.open');
 const panel = await waitFor(() => $$('.settings__nav-item').length >= 7 && $('.settings__body'), 3000);
 if (!R.t(!!panel, 'settings open with nav')) return R.done();
-const navs = $$('.settings__nav-item').filter(vis);
+const navs = $$('.settings__nav-item:not(.settings__nav-supporter)').filter(vis);
 R.eq(navs.map((n) => n.textContent.trim()), ['基础', '写作', '同步', '集成', '导出', '快捷键', '高级'], 'sections');
 for (const n of navs) {
   n.click(); await sleep(120);
