@@ -27,6 +27,8 @@ const QUOTE_PREFIX = /^([ \t]*(?:>[ \t]?)*)/;
 // A list marker right after the quote prefix: bullet or ordered, then an
 // optional task box.
 const LIST_MARKER = /^([ \t]*)(?:([-*+])|(\d{1,9})([.)]))([ \t]+)(\[[ xX]\][ \t]+)?/;
+// Ordered list marker missing its trailing space before CJK text (e.g. `1.当前...`).
+const NO_SPACE_CJK_ORDERED = /^([ \t]*)(\d{1,3})([.)])(?=[\u3400-\u9fff\uf900-\ufaff\u3000-\u303f\uff00-\uffef“”‘’（【《「『])/;
 const FENCE_LINE = /^([ \t]*(?:>[ \t]?)*)(`{3,}|~{3,})(.*)$/;
 
 /**
@@ -150,6 +152,7 @@ export function computeListContinuation(
   const hasQuote = quote.includes('>');
   const rest = line.slice(quote.length);
   const list = rest.match(LIST_MARKER);
+  const noSpaceList = !list ? rest.match(NO_SPACE_CJK_ORDERED) : null;
 
   let markerLen: number; // length of the whole marker on this line
   let nextMarker: string; // marker for the new line
@@ -162,6 +165,15 @@ export function computeListContinuation(
     const sep = gap.includes('\t') ? gap : gap.length > 4 ? ' ' : gap;
     const head = bullet ?? `${Number(num) + 1}${delim}`;
     nextMarker = `${quote}${indent}${head}${sep}${task ? '[ ] ' : ''}`;
+  } else if (noSpaceList) {
+    const [whole, indent, num, delim] = noSpaceList;
+    markerLen = quote.length + whole.length;
+    if (caret - lineStart < markerLen) return null;
+    const spacePos = lineStart + markerLen;
+    const insert = `\n${quote}${indent}${Number(num) + 1}${delim} `;
+    const value =
+      text.slice(0, spacePos) + ' ' + text.slice(spacePos, caret) + insert + text.slice(caret);
+    return { value, caret: caret + 1 + insert.length };
   } else if (hasQuote) {
     markerLen = quote.length;
     // `>` without a trailing space still continues as `> `.

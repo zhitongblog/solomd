@@ -56,11 +56,12 @@ interface Line {
   heading: boolean;
   /** Block construct (fence, heading, hr, table, math, HTML block) that cannot be lazy list continuation. */
   blockBreak: boolean;
-  item: { num: number; delim: string; numFrom: number; numTo: number } | null;
+  item: { num: number; delim: string; numFrom: number; numTo: number; missingSpace?: boolean } | null;
 }
 
 const QUOTE = /^((?:[ \t]*>[ \t]?)*)/;
 const ORDERED = /^([ \t]*)(\d{1,9})([.)])(?=[ \t]|$)/;
+const ORDERED_CJK_NO_SPACE = /^([ \t]*)(\d{1,3})([.)])(?=[\u3400-\u9fff\uf900-\ufaff\u3000-\u303f\uff00-\uffef“”‘’（【《「『])/;
 const BULLET = /^[ \t]*[-*+](?=[ \t]|$)/;
 const FENCE = /^ {0,3}(`{3,}|~{3,})/;
 const ATX_HEADING = /^[ \t]{0,3}#{1,6}(?!#)/;
@@ -111,9 +112,20 @@ function parseLines(text: string): Line[] {
       line.blockBreak = true;
     } else {
       const m = rest.match(ORDERED);
+      const mNoSpace = !m ? rest.match(ORDERED_CJK_NO_SPACE) : null;
       if (m) {
         const numFrom = start + quoteStr.length + m[1].length;
         line.item = { num: Number(m[2]), delim: m[3], numFrom, numTo: numFrom + m[2].length };
+        line.listMarker = true;
+      } else if (mNoSpace) {
+        const numFrom = start + quoteStr.length + mNoSpace[1].length;
+        line.item = {
+          num: Number(mNoSpace[2]),
+          delim: mNoSpace[3],
+          numFrom,
+          numTo: numFrom + mNoSpace[2].length,
+          missingSpace: true,
+        };
         line.listMarker = true;
       } else if (BULLET.test(rest)) {
         line.listMarker = true;
@@ -221,19 +233,29 @@ export function renumberChanges(
     for (const k of items) assigned.add(k);
     if (last < firstLine || i > lastLine) continue;
     const startNum = options?.resetFirstToOne ? 1 : lines[items[0]].item!.num;
+    const anyMissingSpace = items.some((k) => lines[k].item!.missingSpace);
     if (items.length < 2 && lines[items[0]].item!.num === startNum) continue;
     const nums = items.map((k) => lines[k].item!.num);
     if (
       !options?.forceConsecutive &&
       !options?.resetFirstToOne &&
+      !anyMissingSpace &&
       nums.every((n) => n === nums[0])
     ) {
       continue;
     }
     nums.forEach((n, idx) => {
       const want = startNum + idx;
-      if (n === want) return;
       const it = lines[items[idx]].item!;
+      if (it.missingSpace) {
+        changes.push({
+          from: it.numFrom,
+          to: it.numTo + it.delim.length,
+          insert: `${want}${it.delim} `,
+        });
+        return;
+      }
+      if (n === want) return;
       changes.push({ from: it.numFrom, to: it.numTo, insert: String(want) });
     });
   }

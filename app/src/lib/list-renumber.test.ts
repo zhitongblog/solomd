@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { mapPos, renumberAfterEdit, structuralEditRange } from './list-renumber.ts';
+import { renderMarkdown } from './markdown.ts';
 
 /** The stored document after editing `prev` into `next`. */
 function after(prev: string, next: string): string {
@@ -101,3 +102,31 @@ test('headings and block constructs split ordered lists even without blank lines
     '1. a\n2. b\n说明段落\n1. c\n2. d\n',
   );
 });
+
+test('ordered list item missing space before CJK (1.当前) keeps nested 2.1-2.3 and outer 3. aligned in editor and preview', () => {
+  const md = [
+    '# 规则',
+    '1.当前一',
+    '2. 原二',
+    '   1. 子一',
+    '   2. 子二',
+    '   3. 子三',
+    '3. 当三',
+    '4. 四',
+  ].join('\n');
+
+  const html = renderMarkdown(md);
+  // Outer <ol> has 4 direct items (`当前一`, `原二`, `当三`, `四`) and `原二` wraps a 3-item nested <ol>
+  assert.ok(html.includes('<li data-source-line="2">当前一</li>'), '1.当前一 should render as first <li>');
+  assert.ok(
+    html.includes('<li data-source-line="6">子三</li>\n</ol>\n</li>\n<li data-source-line="7">当三</li>'),
+    '3. 当三 should close the nested <ol> and be the 3rd outer <li>, not 2.4',
+  );
+
+  // Structural edit in the editor also normalizes `1.当前一` -> `1. 当前一`
+  assert.equal(
+    after('# 规则\n1.当前一\n2. 原二', '# 规则\n1.当前一\n2. 原二\n3. 当三'),
+    '# 规则\n1. 当前一\n2. 原二\n3. 当三',
+  );
+});
+

@@ -960,8 +960,20 @@ function normalizeListIndent(source: string): string {
   let curDelta = 0;
   let curOrig = -1;
   const markRe = /^(\s*)([-*+]|\d{1,9}[.)])(\s+)(.*)$/;
+  const noSpaceOrderedRe = /^(\s*)(\d{1,3}[.)])([^\s\d.)].*)$/;
+  const cjkLeadRe = /^[\u3400-\u9fff\uf900-\ufaff\u3000-\u303f\uff00-\uffef“”‘’（【《「『]/;
   const fenceRe = /^(\s*)(```+|~~~+)/;
-  for (const line of lines) {
+  const hasAdjacentListLine = (idx: number): boolean => {
+    for (let j = idx + 1; j < lines.length; j++) {
+      const next = lines[j];
+      if (fenceRe.test(next)) return false;
+      if (next.trim() === '') continue;
+      return markRe.test(next) || noSpaceOrderedRe.test(next);
+    }
+    return false;
+  };
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
     const fm = fenceRe.exec(line);
     if (fm) {
       if (!inFence) {
@@ -980,7 +992,17 @@ function normalizeListIndent(source: string): string {
       out.push(line);
       continue;
     }
-    const m = markRe.exec(line);
+    let m = markRe.exec(line);
+    if (!m) {
+      const ns = noSpaceOrderedRe.exec(line);
+      if (
+        ns &&
+        !line.includes('|') &&
+        (cjkLeadRe.test(ns[3]) || stack.length > 0 || hasAdjacentListLine(i))
+      ) {
+        m = [line, ns[1], ns[2], ' ', ns[3]] as unknown as RegExpExecArray;
+      }
+    }
     if (m) {
       const orig = expand(m[1]);
       // Content column = marker glyph + its trailing spaces. A child list must
