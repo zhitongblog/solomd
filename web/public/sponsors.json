@@ -42,7 +42,7 @@
       }
     },
     {
-      "name": "冰若舜风",
+      "name": "冰瞬若风",
       "since": "2026-10",
       "contribution": {
         "en": "Senior tester who conducted meticulous testing of Markdown escape handling in Word & plain-text clipboard copy, unordered/ordered list group shortcut conversions, code fence shortcut cursor placement, and editor formatting edge cases.",

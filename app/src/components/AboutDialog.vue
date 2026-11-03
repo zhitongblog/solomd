@@ -38,7 +38,7 @@ onMounted(async () => {
 // always appear even when offline.
 const sponsors = ref<string[]>(['tyysoft(太阳雨)']);
 const promoters = ref<string[]>(['Garfield', 'lcfactorization', '^9星守辰^']);
-const testers = ref<string[]>(['张工', '冰若舜风', 'tyysoft(太阳雨)', 'lcfactorization']);
+const testers = ref<string[]>(['张工', '冰瞬若风', 'tyysoft(太阳雨)', 'lcfactorization']);
 let sponsorsLoaded = false;
 async function loadSponsors() {
   if (sponsorsLoaded) return;
