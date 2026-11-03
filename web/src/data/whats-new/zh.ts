@@ -4,7 +4,7 @@
 import type { WhatsNewData } from './types';
 
 const data: WhatsNewData = {
-  version: "5.0.12",
+  version: "5.0.13",
   meta: {
     title: "SoloMD {VERSION} 更新 — v4.0 – v5.0 版本说明",
     description: "SoloMD {VERSION} 版本说明。v5.0：全界面重新设计（桌面安静单行顶栏、iPhone/安卓原生手机首页与全屏编辑、iPad 自适应抽屉、选中即排版气泡栏）。v4.11：AI/PDF 导出的畸形表格自动修复并正常渲染，新增「编号章节自动转标题」（6.2 → h2，可选开启）。v4.8：图床（PicGo / SM.MS / S3 / GitHub）。v4.6：知识图谱 + tldraw 白板。v4.0：内置 Agent 面板、定时 Recipe、Trace View、MCP Federation。",
