@@ -1340,10 +1340,50 @@ function normalizeImageBackslashPaths(source: string): string {
   return out.join('\n');
 }
 
+function normalizeFullwidthEscapes(source: string): string {
+  if (!source.includes('\\')) return source;
+  const lines = source.split('\n');
+  const out: string[] = [];
+  let inFence = false;
+  let fenceMarker = '';
+  const fenceRe = /^(\s*)(```+|~~~+)/;
+  for (const line of lines) {
+    const m = fenceRe.exec(line);
+    if (m) {
+      if (!inFence) {
+        inFence = true;
+        fenceMarker = m[2][0];
+      } else if (m[2][0] === fenceMarker && line.trim() === m[2]) {
+        inFence = false;
+        fenceMarker = '';
+      }
+      out.push(line);
+      continue;
+    }
+    if (inFence || !line.includes('\\')) {
+      out.push(line);
+      continue;
+    }
+    // Preserve inline code spans while unescaping `\` before fullwidth CJK punctuation
+    const parts = line.split(/(`+[^`]*`+)/g);
+    out.push(
+      parts
+        .map((seg, i) =>
+          i % 2 === 1
+            ? seg
+            : seg.replace(/\\([＃＊＿～｀［］（）｛｝｜！＞＋－．、【】《》“”‘’：；，。？])/g, '$1'),
+        )
+        .join(''),
+    );
+  }
+  return out.join('\n');
+}
+
 export function preprocessMarkdown(source: string): string {
   let s = normalizeTableDelimiters(unwrapInlineHtmlBlocks(source || ''));
   s = normalizeLatexDelimiters(s);
   s = normalizeImageBackslashPaths(s);
+  s = normalizeFullwidthEscapes(s);
   if (autoNumberHeadings) s = numberedSectionHeadings(s);
   // `\label` / `\eqref` are LaTeX that KaTeX does not implement — resolve
   // them to `\tag` + anchors + links here so preview, PDF, Word and image

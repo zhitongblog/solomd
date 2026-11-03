@@ -42,6 +42,14 @@
       }
     },
     {
+      "name": "冰若舜风",
+      "since": "2026-10",
+      "contribution": {
+        "en": "Senior tester who conducted meticulous testing of Markdown escape handling in Word & plain-text clipboard copy, unordered/ordered list group shortcut conversions, code fence shortcut cursor placement, and editor formatting edge cases.",
+        "zh": "资深测试，细致测试并反馈了 Markdown 转义字符在 Word 与纯文本复制中的处理、无序/有序列表快捷键整组联动转换、代码块快捷键光标落点以及编辑器排版细节。"
+      }
+    },
+    {
       "name": "tyysoft(太阳雨)",
       "github": "tyysoft",
       "since": "2026-09",

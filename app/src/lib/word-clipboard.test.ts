@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildWordClipboardHtml } from './word-clipboard.ts';
+import { stripMarkdownFormatting } from './clean-ai.ts';
+import { renderMarkdown } from './markdown.ts';
 
 test('strips .katex-html visual layer and promotes clean MathML for Word equations (#427)', () => {
   const rawHtml = `
@@ -61,4 +63,35 @@ test('converts <ol> and <ul> into explicit hanging-indent paragraphs and preserv
   assert.ok(out.includes('background: #ffe7cc'));
   assert.ok(out.includes('xmlns:w="urn:schemas-microsoft-com:office:word"'));
 });
+
+test('strips backslash escapes in plain-text and Word clipboard copy while preserving code spans', () => {
+  const md = [
+    '\\# 不是标题',
+    '\\*不是斜体\\* 且 \\*\\*不是粗体\\*\\*',
+    '1\\. 不是有序列表',
+    '\\- 不是无序列表',
+    '\\＃ 全角井号转义',
+    '行内代码 `\\# 保留反斜杠` 测试',
+    '```js',
+    'const s = "\\# 保留代码块反斜杠";',
+    '```',
+  ].join('\n');
+
+  const plain = stripMarkdownFormatting(md);
+  assert.ok(plain.includes('# 不是标题'), 'escaped # should become literal # without backslash');
+  assert.ok(!plain.includes('\\# 不是标题'), 'backslash before # should be removed in plain text');
+  assert.ok(plain.includes('*不是斜体* 且 **不是粗体**'), 'escaped * should become literal * without backslash');
+  assert.ok(plain.includes('1. 不是有序列表'), 'escaped 1\\. should become literal 1. without backslash');
+  assert.ok(plain.includes('- 不是无序列表'), 'escaped \\- should become literal - without backslash');
+  assert.ok(plain.includes('＃ 全角井号转义'), 'escaped fullwidth ＃ should become literal ＃ without backslash');
+  assert.ok(plain.includes('\\# 保留反斜杠'), 'inline code should keep backslash');
+  assert.ok(plain.includes('const s = "\\# 保留代码块反斜杠";'), 'fenced code block should keep backslash');
+
+  const wordHtml = buildWordClipboardHtml(renderMarkdown(md));
+  assert.ok(wordHtml.includes('># 不是标题') && !wordHtml.includes('<h1'), 'Word HTML should render literal # without backslash or <h1>');
+  assert.ok(!wordHtml.includes('\\# 不是标题'), 'Word HTML should not contain \\# outside code');
+  assert.ok(wordHtml.includes('＃ 全角井号转义'), 'Word HTML should unescape fullwidth \\＃');
+  assert.ok(wordHtml.includes('\\# 保留反斜杠'), 'Word HTML inline code should preserve \\#');
+});
+
 

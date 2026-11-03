@@ -98,7 +98,7 @@ test('quote toggles', () => {
 });
 
 test('code block wraps whole lines and unwraps', () => {
-  assert.equal(run('x\n|let a = 1;|\ny', 'codeblock'), 'x\n```|\nlet a = 1;\n```\ny');
+  assert.equal(run('x\n|let a = 1;|\ny', 'codeblock'), 'x\n```\nlet a = 1;|\n```\ny');
   assert.equal(run('|```\nlet a = 1;\n```|', 'codeblock'), '|let a = 1;|');
 });
 
@@ -136,15 +136,17 @@ test('mixed lines are completed, not toggled off; italic does not mistake bold',
 });
 
 test('code block toggles off with the caret on a fence line or inside the block', () => {
-  // F-6A: the wrap leaves the caret on the opening fence; a second press unwraps.
-  assert.equal(run('line one|', 'codeblock'), '```|\nline one\n```');
+  // Wrap leaves the caret on the inner body line; a second press unwraps.
+  assert.equal(run('line one|', 'codeblock'), '```\nline one|\n```');
+  assert.equal(run('```\nline one|\n```', 'codeblock'), 'line one|');
   assert.equal(run('```|\nline one\n```', 'codeblock'), '|line one');
   assert.equal(run('a\n```js\nlet |x = 1;\n```\nb', 'codeblock'), 'a\nlet |x = 1;\nb');
   assert.equal(run('```\nx\n```|', 'codeblock'), 'x|');
   assert.equal(run('~~~\n|x|\n~~~', 'codeblock'), '|x|');
   assert.equal(run('```|\n```', 'codeblock'), '|');
+  assert.equal(run('|', 'codeblock'), '```\n|\n```');
   // Between two blocks is in neither: it wraps.
-  assert.equal(run('```\na\n```\nmid|\n```\nb\n```', 'codeblock'), '```\na\n```\n```|\nmid\n```\n```\nb\n```');
+  assert.equal(run('```\na\n```\nmid|\n```\nb\n```', 'codeblock'), '```\na\n```\n```\nmid|\n```\n```\nb\n```');
   // A ``` inside a ~~~ block does not end it.
   assert.equal(run('~~~\n```\nx|\n~~~', 'codeblock'), '```\nx|');
 });
@@ -216,15 +218,15 @@ test('#442: underline wraps and unwraps with <u>...</u>', () => {
 test('code block on a list soft-break line indents fences and inner line to match the list item', () => {
   assert.equal(
     run('1. 列表一\n   |', 'codeblock'),
-    '1. 列表一\n   ```|\n   \n   ```',
+    '1. 列表一\n   ```\n   |\n   ```',
   );
   assert.equal(
     run('- 列表一\n  |', 'codeblock'),
-    '- 列表一\n  ```|\n  \n  ```',
+    '- 列表一\n  ```\n  |\n  ```',
   );
   assert.equal(
     run('1. 列表一\n|', 'codeblock'),
-    '1. 列表一\n   ```|\n   \n   ```',
+    '1. 列表一\n   ```\n   |\n   ```',
   );
 });
 
@@ -234,24 +236,33 @@ test('Tab on an unindented code fence under a list item indents the whole fenced
     '1. 列表一\n   ```|\n   \n   ```\n2. 列表二',
   );
   assert.equal(
+    await tab('1. 列表一\n```\n|\n```\n2. 列表二'),
+    '1. 列表一\n   ```\n   |\n   ```\n2. 列表二',
+  );
+  assert.equal(
     await tab('1. 列表一\n   ```|\n   \n   ```\n2. 列表二', true),
     '1. 列表一\n```|\n\n```\n2. 列表二',
   );
 });
 
-test('switching a line in a list group or contiguous plain paragraph to ordered list converts and renumbers the group', () => {
+test('switching a line in a list group or contiguous plain paragraph to ordered or unordered list converts the group', () => {
   // Unordered list group -> ordered list group
   assert.equal(run('- a\n- b|\n- c', 'ol'), '1. a\n2. b|\n3. c');
-  // Mixed unordered + ordered list group -> ordered list group with corrected numbering
+  // Ordered list group -> unordered list group
+  assert.equal(run('1. a|\n2. b\n3. c', 'ul'), '- a|\n- b\n- c');
+  assert.equal(run('1. a\n2. b|\n3. c', 'ul'), '- a\n- b|\n- c');
+  assert.equal(run('1. a|\n2. b', 'ul'), '- a|\n- b');
+  // Mixed unordered + ordered list group -> ordered or unordered list group
   assert.equal(run('- a|\n1. b\n2. c', 'ol'), '1. a|\n2. b\n3. c');
   assert.equal(run('1. a\n- b|\n2. c', 'ol'), '1. a\n2. b|\n3. c');
   assert.equal(run('1. a\n2. b\n- c|', 'ol'), '1. a\n2. b\n3. c|');
-  // Switching the first ordered item to unordered renumbers the remaining ordered items from 1
-  assert.equal(run('1. a|\n2. b\n3. c', 'ul'), '- a|\n1. b\n2. c');
-  assert.equal(run('1. a|\n2. b', 'ul'), '- a|\n1. b');
-  // Contiguous plain lines (not separated by blank lines) convert together and auto-number
+  assert.equal(run('1. a\n- b|\n3. c', 'ul'), '- a\n- b|\n- c');
+  // Contiguous plain lines (not separated by blank lines) convert together for both ol and ul
   assert.equal(run('first\nsec|ond\nthird', 'ol'), '1. first\n2. second|\n3. third');
   assert.equal(run('first\nsec|ond\n\nfourth', 'ol'), '1. first\n2. second|\n\nfourth');
   assert.equal(run('1. first\nsec|ond\nthird', 'ol'), '1. first\n2. second|\n3. third');
+  assert.equal(run('first\nsec|ond\nthird', 'ul'), '- first\n- second|\n- third');
+  assert.equal(run('first\nsec|ond\n\nfourth', 'ul'), '- first\n- second|\n\nfourth');
+  assert.equal(run('- first\nsec|ond\nthird', 'ul'), '- first\n- second|\n- third');
 });
 

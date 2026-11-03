@@ -60,16 +60,39 @@ export function cleanAIArtifacts(text: string): string {
 }
 
 /**
- * Heavy pass: clean AI artifacts AND strip all markdown formatting,
- * leaving plain prose. Useful when you want to paste the result into a
- * non-markdown context (email, plain text editor, presentation, etc.).
+ * Strip Markdown syntax (and unescape Markdown backslash escapes like `\#`,
+ * `\*`, `1\.`, `\[`) outside of fenced/inline code, leaving plain text.
+ * Shared by `stripMarkdownToPlain` and clipboard plain-text / Word copy.
  */
-export function stripMarkdownToPlain(text: string): string {
-  return cleanAIArtifacts(text)
-    // Fenced code blocks: keep contents, drop the fences
-    .replace(/```[a-zA-Z0-9_-]*\n([\s\S]*?)```/g, '$1')
-    // Inline code: drop backticks
-    .replace(/`([^`]+)`/g, '$1')
+export function stripMarkdownFormatting(text: string): string {
+  if (!text) return text;
+
+  const codeBlocks: string[] = [];
+  const inlineCodes: string[] = [];
+  const escapes: string[] = [];
+
+  let out = text
+    // 1. Protect fenced code blocks (drop fences, keep inner code verbatim)
+    .replace(/(?:```|~~~)[a-zA-Z0-9_-]*[ \t]*\r?\n([\s\S]*?)(?:```|~~~)/g, (_m, inner: string) => {
+      const idx = codeBlocks.push(inner.replace(/\r?\n$/, '')) - 1;
+      return `\uE000CB${idx}\uE001`;
+    })
+    // 2. Protect inline code spans (drop backticks, keep inner code verbatim)
+    .replace(/`([^`\n]+)`/g, (_m, inner: string) => {
+      const idx = inlineCodes.push(inner) - 1;
+      return `\uE000IC${idx}\uE001`;
+    })
+    // 3. Protect backslash-escaped Markdown punctuation (`\#` -> `#`, `\*` -> `*`, etc.)
+    // so they are neither treated as unescaped Markdown markers nor left with a stray `\`.
+    .replace(
+      /\\([!"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~＃＊＿～｀［］（）｛｝｜！＞＋－．、【】《》“”‘’：；，。？])/g,
+      (_m, ch: string) => {
+        const idx = escapes.push(ch) - 1;
+        return `\uE000ES${idx}\uE001`;
+      },
+    );
+
+  out = out
     // Images: ![alt](url) → alt
     .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1')
     // Links: [text](url) → text
@@ -84,18 +107,37 @@ export function stripMarkdownToPlain(text: string): string {
     .replace(/~~(.+?)~~/g, '$1')
     // Highlight: ==x== → x
     .replace(/==(.+?)==/g, '$1')
+    // Underline HTML tags: <u>x</u> → x
+    .replace(/<\/?u>/gi, '')
     // Headings: # x → x
-    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/^[ \t]{0,3}#{1,6}[ \t]+/gm, '')
     // Blockquote markers
-    .replace(/^>\s?/gm, '')
+    .replace(/^[ \t]*>[ \t]?/gm, '')
     // List markers (bullet, ordered, task)
-    .replace(/^\s*[-*+]\s+(?:\[[ xX]\]\s+)?/gm, '')
-    .replace(/^\s*\d+\.\s+/gm, '')
+    .replace(/^[ \t]*[-*+][ \t]+(?:\[[ xX]\][ \t]+)?/gm, '')
+    .replace(/^[ \t]*\d+[.)][ \t]+(?:\[[ xX]\][ \t]+)?/gm, '')
     // Horizontal rules
-    .replace(/^[-*_]{3,}\s*$/gm, '')
+    .replace(/^[ \t]*[-*_]{3,}[ \t]*$/gm, '')
     // Footnote definitions and inline refs
     .replace(/\[\^[^\]]+\]:[^\n]*/g, '')
-    .replace(/\[\^[^\]]+\]/g, '')
+    .replace(/\[\^[^\]]+\]/g, '');
+
+  // Restore escaped characters (without the leading `\`), inline code, and code blocks
+  out = out
+    .replace(/\uE000ES(\d+)\uE001/g, (_m, i) => escapes[Number(i)] ?? '')
+    .replace(/\uE000IC(\d+)\uE001/g, (_m, i) => inlineCodes[Number(i)] ?? '')
+    .replace(/\uE000CB(\d+)\uE001/g, (_m, i) => codeBlocks[Number(i)] ?? '');
+
+  return out;
+}
+
+/**
+ * Heavy pass: clean AI artifacts AND strip all markdown formatting,
+ * leaving plain prose. Useful when you want to paste the result into a
+ * non-markdown context (email, plain text editor, presentation, etc.).
+ */
+export function stripMarkdownToPlain(text: string): string {
+  return stripMarkdownFormatting(cleanAIArtifacts(text))
     // Final cleanup: collapse blank lines again, trim
     .replace(/\n{3,}/g, '\n\n')
     .trim();

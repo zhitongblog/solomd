@@ -384,6 +384,131 @@ function withListRenumber(doc: string, base: FormatEdit): FormatEdit {
 
 /**
  * When converting a single line (bare caret or single-line selection) to an
+ * unordered list (`ul`), convert the entire contiguous list group (when the
+ * line is an ordered/task item) or the entire contiguous block of plain lines
+ * not separated by blank lines.
+ */
+function toggleUnorderedList(doc: string, from: number, to: number): FormatEdit {
+  const [s, e] = lineSpan(doc, from, to);
+  const singleLine = !doc.slice(s, e).includes('\n');
+  if (singleLine && !enclosingFence(doc, from, to)) {
+    const lines = linesOf(doc);
+    const curIdx = lines.findIndex((l) => l.start === s);
+    if (curIdx >= 0) {
+      const quoteRe = /^((?:[ \t]*>[ \t]?)*)/;
+      const splitLine = (text: string) => {
+        const q = quoteRe.exec(text)![1];
+        const qDepth = (q.match(/>/g) ?? []).length;
+        const rest = text.slice(q.length);
+        const ind = /^[ \t]*/.exec(rest)![0];
+        return { q, qDepth, rest, ind, indW: indentWidth(ind), blank: rest.trim() === '' };
+      };
+      const cur = splitLine(lines[curIdx].text);
+      if (!cur.blank && !isBlockStopLine(cur.rest)) {
+        // 1. Contiguous block of plain/UL lines (at quote depth 0) with at least one plain line
+        if (cur.qDepth === 0 && (!ANY_LIST.test(cur.rest) || UL.test(cur.rest))) {
+          const isPlainOrUl = (i: number): boolean => {
+            if (enclosingFence(doc, lines[i].start, lines[i].end)) return false;
+            const info = splitLine(lines[i].text);
+            if (info.blank || info.qDepth !== 0 || isBlockStopLine(info.rest)) return false;
+            if (info.indW !== cur.indW) return false;
+            if (ANY_LIST.test(info.rest) && !UL.test(info.rest)) return false;
+            return true;
+          };
+          let first = curIdx;
+          let last = curIdx;
+          while (first > 0 && isPlainOrUl(first - 1)) first--;
+          while (last + 1 < lines.length && isPlainOrUl(last + 1)) last++;
+          let hasPlain = false;
+          for (let i = first; i <= last; i++) {
+            if (!UL.test(splitLine(lines[i].text).rest)) {
+              hasPlain = true;
+              break;
+            }
+          }
+          if (first < last && hasPlain) {
+            const rewritten = lines.slice(first, last + 1).map((l) => {
+              const info = splitLine(l.text);
+              const body = info.rest.replace(ANY_LIST, '').replace(/^[ \t]*/, '');
+              return `${info.ind}- ${body}`;
+            });
+            const spanStart = lines[first].start;
+            const spanEnd = lines[last].end;
+            const insert = rewritten.join('\n');
+            let caretEnd = spanStart;
+            for (let i = first; i <= curIdx; i++) {
+              caretEnd += rewritten[i - first].length + (i < curIdx ? 1 : 0);
+            }
+            const base: FormatEdit =
+              from === to
+                ? { from: spanStart, to: spanEnd, insert, selFrom: caretEnd, selTo: caretEnd }
+                : { from: spanStart, to: spanEnd, insert, selFrom: spanStart, selTo: spanStart + insert.length };
+            return withListRenumber(doc, base);
+          }
+        }
+        // 2. Contiguous list group that contains ordered/task items
+        if (ANY_LIST.test(cur.rest)) {
+          const siblings = new Set<number>([curIdx]);
+          let first = curIdx;
+          let last = curIdx;
+          for (let i = curIdx - 1; i >= 0; i--) {
+            if (enclosingFence(doc, lines[i].start, lines[i].end)) break;
+            const info = splitLine(lines[i].text);
+            if (info.blank || info.qDepth !== cur.qDepth || isBlockStopLine(info.rest)) break;
+            if (info.indW < cur.indW) break;
+            if (info.indW > cur.indW) continue;
+            if (ANY_LIST.test(info.rest)) {
+              siblings.add(i);
+              first = i;
+            } else {
+              break;
+            }
+          }
+          for (let i = curIdx + 1; i < lines.length; i++) {
+            if (enclosingFence(doc, lines[i].start, lines[i].end)) break;
+            const info = splitLine(lines[i].text);
+            if (info.blank || info.qDepth !== cur.qDepth || isBlockStopLine(info.rest)) break;
+            if (info.indW < cur.indW) break;
+            if (info.indW > cur.indW) continue;
+            if (ANY_LIST.test(info.rest)) {
+              siblings.add(i);
+              last = i;
+            } else {
+              break;
+            }
+          }
+          const hasNonUl = Array.from(siblings).some((i) => !UL.test(splitLine(lines[i].text).rest));
+          if (siblings.size > 1 && (!UL.test(cur.rest) || hasNonUl)) {
+            const rewritten = lines.slice(first, last + 1).map((l, idx) => {
+              const lineIdx = first + idx;
+              if (!siblings.has(lineIdx)) return l.text;
+              const info = splitLine(l.text);
+              const body = info.rest.replace(ANY_LIST, '').replace(/^[ \t]*/, '');
+              return `${info.q}${info.ind}- ${body}`;
+            });
+            const spanStart = lines[first].start;
+            const spanEnd = lines[last].end;
+            const insert = rewritten.join('\n');
+            let caretEnd = spanStart;
+            for (let i = first; i <= curIdx; i++) {
+              caretEnd += rewritten[i - first].length + (i < curIdx ? 1 : 0);
+            }
+            const base: FormatEdit =
+              from === to
+                ? { from: spanStart, to: spanEnd, insert, selFrom: caretEnd, selTo: caretEnd }
+                : { from: spanStart, to: spanEnd, insert, selFrom: spanStart, selTo: spanStart + insert.length };
+            return withListRenumber(doc, base);
+          }
+        }
+      }
+    }
+  }
+  const base = togglePrefix(doc, from, to, UL, (ind, rest) => `${ind}- ${rest}`, ANY_LIST);
+  return withListRenumber(doc, base);
+}
+
+/**
+ * When converting a single line (bare caret or single-line selection) to an
  * ordered list (`ol`), convert the entire contiguous list group (when the
  * line is an unordered/task item) or the entire contiguous block of plain
  * lines not separated by blank lines, and number them consecutively.
@@ -574,8 +699,8 @@ function toggleCodeBlock(doc: string, from: number, to: number): FormatEdit {
             .map((l) => (l.trim() === '' ? indent : l.startsWith(indent) ? l : indent + l.replace(/^[ \t]*/, '')))
             .join('\n');
   const insert = `${indent}\`\`\`\n${indentedBody}\n${indent}\`\`\``;
-  // Caret after the opening fence: the language is the next thing to type.
-  const caretPos = s + indent.length + 3;
+  // Caret on the code-block body line so the user can start typing code immediately.
+  const caretPos = s + indent.length + 4 + indentedBody.length;
   return { from: s, to: e, insert, selFrom: caretPos, selTo: caretPos };
 }
 
@@ -643,7 +768,7 @@ export function applyFormat(doc: string, from: number, to: number, kind: FormatK
     case 'quote':
       return togglePrefix(doc, a, b, QUOTE, (ind, rest) => `${ind}> ${rest}`, /^(\s*)(?=\S)/);
     case 'ul':
-      return withListRenumber(doc, togglePrefix(doc, a, b, UL, (ind, rest) => `${ind}- ${rest}`, ANY_LIST));
+      return toggleUnorderedList(doc, a, b);
     case 'ol':
       return toggleOrderedList(doc, a, b);
     case 'task':
@@ -704,30 +829,38 @@ export function listIndentEdit(doc: string, from: number, to: number, outdent: b
   if (b > a && last > first && b === lines[last].start) last--;
   const head = LIST_ITEM.exec(lines[first].text);
   if (!head || /^[ ]*\t/.test(lines[first].text)) {
-    // Allow Tab / Shift+Tab on the opening fence line of a fenced code block
-    // under a list item to indent/outdent the entire fenced block to the list
-    // item's content column.
+    // Allow Tab / Shift+Tab on the opening fence line (or empty body line) of a
+    // fenced code block under a list item to indent/outdent the entire fenced
+    // block to the list item's content column.
     const fence = enclosingFence(doc, a, b);
-    if (!fence || lines[first].start !== fence[0]) return null;
+    const fenceFirst = fence ? lines.findIndex((l) => l.start === fence[0]) : -1;
+    if (
+      !fence ||
+      fenceFirst < 0 ||
+      (first !== fenceFirst && !(a === b && lines[first].start === fence[1] && lines[first].text.trim() === ''))
+    ) {
+      return null;
+    }
     const fenceLast = lines.findIndex((l) => fence[3] <= l.end);
-    if (fenceLast < first) return null;
-    const fenceInd = leadingSpaces(lines[first].text);
-    const listIndent = enclosingListContentIndent(doc, lines[first].start);
+    if (fenceLast < fenceFirst) return null;
+    const fenceInd = leadingSpaces(lines[fenceFirst].text);
+    const listIndent = enclosingListContentIndent(doc, lines[fenceFirst].start);
     if (!listIndent) return null;
     const wantInd = outdent ? 0 : listIndent.length;
     const fDelta = wantInd - fenceInd;
     if (fDelta === 0 || (!outdent && fDelta < 0) || (outdent && fDelta > 0)) return null;
-    const movedFence = lines.slice(first, fenceLast + 1).map((l) => {
+    const movedFence = lines.slice(fenceFirst, fenceLast + 1).map((l) => {
       if (fDelta > 0) {
         if (l.text.trim() === '') return ' '.repeat(wantInd);
         return ' '.repeat(fDelta) + l.text;
       }
       return l.text.slice(Math.min(leadingSpaces(l.text), -fDelta));
     });
-    const fSpanStart = lines[first].start;
+    const fSpanStart = lines[fenceFirst].start;
     const fSpanEnd = lines[fenceLast].end;
     const fInsert = movedFence.join('\n');
-    const shiftPos = (p: number) => Math.max(fSpanStart, p + fDelta);
+    const linesBeforeCaret = first - fenceFirst + 1;
+    const shiftPos = (p: number) => Math.max(fSpanStart, p + fDelta * linesBeforeCaret);
     return {
       from: fSpanStart,
       to: fSpanEnd,
