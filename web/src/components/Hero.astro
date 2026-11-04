@@ -214,13 +214,24 @@ const initialDownloadsText = initialDownloads > 0 ? fmtDownloads(initialDownload
     </div>
     <a href="#download" class="hero__all-platforms">{tr.hero.ctaAllPlatforms}</a>
     {lang === 'zh' && (
-      <a
-        href={`https://gitee.com/zhitong45/solomd/releases/tag/v${VERSION}`}
-        class="hero__gitee"
-        rel="noopener"
-      >
-        🪞 国内用户：从 Gitee 镜像下载（更快）→
-      </a>
+      <div class="hero__mirrors">
+        🪞 国内用户高速下载：
+        <a
+          href={`https://atomgit.com/zhitongblog/solomd/releases/tag/v${VERSION}`}
+          class="hero__gitee"
+          rel="noopener"
+        >
+          AtomGit 镜像（G-Star）→
+        </a>
+        {' · '}
+        <a
+          href={`https://gitee.com/zhitong45/solomd/releases/tag/v${VERSION}`}
+          class="hero__gitee"
+          rel="noopener"
+        >
+          Gitee 镜像 →
+        </a>
+      </div>
     )}
     <div class="hero__chips">
       {tr.hero.chips.map((c) => <span class="chip">{c}</span>)}
@@ -271,7 +282,7 @@ const initialDownloadsText = initialDownloads > 0 ? fmtDownloads(initialDownload
     }
     // Any way of getting SoloMD counts: an installer, a store page, the
     // Gitee mirror, or copying the one-line install command.
-    var DOWNLOAD = /\/releases\/download\/|apps\.apple\.com|play\.google\.com\/store|apps\.microsoft\.com|gitee\.com\/[^/]+\/solomd\/releases/;
+    var DOWNLOAD = /\/releases\/download\/|apps\.apple\.com|play\.google\.com\/store|apps\.microsoft\.com|(?:gitee|atomgit)\.com\/[^/]+\/solomd\/releases/;
     document.addEventListener('click', function (e) {
       var t = e.target;
       if (!t || !t.closest) return;
@@ -607,6 +618,11 @@ const initialDownloadsText = initialDownloads > 0 ? fmtDownloads(initialDownload
   /* zh-only Gitee mirror hint, sits right below the "all platforms"
      link. Subtle red-orange to evoke Gitee's brand without competing
      with the primary CTA. */
+  .hero__mirrors {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin: 0 0 36px;
+  }
   .hero__gitee {
     display: inline-block;
     color: #c71d23;
@@ -615,7 +631,6 @@ const initialDownloadsText = initialDownloads > 0 ? fmtDownloads(initialDownload
     text-decoration: none;
     border-bottom: 1px dashed #c71d23;
     padding: 0 0 1px;
-    margin: 0 0 36px;
   }
   .hero__gitee:hover {
     border-bottom-style: solid;

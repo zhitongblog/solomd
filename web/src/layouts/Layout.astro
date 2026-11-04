@@ -283,7 +283,7 @@ const ogImage = lang === 'zh' ? 'https://solomd.app/og-image-zh.png' : 'https://
             return v && CODE.test(v.ref) && Date.now() - v.at < WINDOW ? v.ref : null;
           } catch (e) { return null; }
         }
-        var DOWNLOAD = /\/releases\/download\/|apps\.apple\.com|play\.google\.com\/store|apps\.microsoft\.com|gitee\.com\/[^/]+\/solomd\/releases/;
+        var DOWNLOAD = /\/releases\/download\/|apps\.apple\.com|play\.google\.com\/store|apps\.microsoft\.com|(?:gitee|atomgit)\.com\/[^/]+\/solomd\/releases/;
         document.addEventListener('click', function (e) {
           var ref = current();
           if (!ref || !e.target || !e.target.closest) return;

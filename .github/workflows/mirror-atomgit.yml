@@ -1,0 +1,55 @@
+# Mirror the GitHub repo to AtomGit on every push.
+#
+# Requires repo secret:
+#   ATOMGIT_TOKEN — AtomGit personal access token with Repository read/write scope
+#
+# Branches + tags both push so AtomGit tracks GitHub 1:1 (satisfying the G-Star
+# requirement to keep the AtomGit repository continuously up to date).
+
+name: Mirror to AtomGit
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch: {}
+
+concurrency:
+  group: mirror-atomgit
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    if: ${{ secrets.ATOMGIT_TOKEN != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout (full history, all refs)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push branches and tags to AtomGit
+        env:
+          ATOMGIT_TOKEN: ${{ secrets.ATOMGIT_TOKEN }}
+          ATOMGIT_USER: zhitongblog
+        run: |
+          set -euo pipefail
+          git remote set-head origin -d
+          ASKPASS="$RUNNER_TEMP/atomgit-askpass"
+          printf '%s\n' '#!/bin/sh' 'case "$1" in *Username*) printf "%s\n" "$ATOMGIT_USER" ;; *) printf "%s\n" "$ATOMGIT_TOKEN" ;; esac' > "$ASKPASS"
+          chmod 700 "$ASKPASS"
+          REMOTE="https://atomgit.com/${ATOMGIT_USER}/solomd.git"
+          for attempt in 1 2 3 4; do
+            if GIT_ASKPASS="$ASKPASS" GIT_TERMINAL_PROMPT=0 git push --prune --force "$REMOTE" \
+              "refs/remotes/origin/*:refs/heads/*" \
+              "refs/tags/*:refs/tags/*"; then
+              rm -f "$ASKPASS"
+              exit 0
+            fi
+            echo "push attempt ${attempt} failed; retrying in $((attempt * 10))s…"
+            sleep $((attempt * 10))
+          done
+          rm -f "$ASKPASS"
+          echo "all push attempts failed" >&2
+          exit 1

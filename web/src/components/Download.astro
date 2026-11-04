@@ -61,6 +61,7 @@ const msStoreVersion = await readStoreVersion();
 const APP_STORE = 'https://apps.apple.com/app/id6762498874';
 const GOOGLE_PLAY = 'https://play.google.com/store/apps/details?id=app.solomd';
 const GITEE_RELEASE = `https://gitee.com/zhitong45/solomd/releases/tag/v${VERSION}`;
+const ATOMGIT_RELEASE = `https://atomgit.com/zhitongblog/solomd/releases/tag/v${VERSION}`;
 
 async function readAppStoreVersion(): Promise<string | null> {
   try {
@@ -193,6 +194,10 @@ const platforms = [
           <span class="store-badge__name">{tr.download.stores.msStore}<span class="store-badge__ver"> v{msStoreVersion}</span></span>
           <span class="store-badge__note">{tr.download.stores.msStoreNote}</span>
         </a>
+        <a class="store-badge" href={ATOMGIT_RELEASE} target="_blank" rel="noopener">
+          <span class="store-badge__name">AtomGit<span class="store-badge__ver"> v{VERSION}</span></span>
+          <span class="store-badge__note">{lang === 'zh' ? '国内高速镜像 · G-Star 计划' : 'China Fast Mirror · G-Star'}</span>
+        </a>
       </div>
     </div>
 
@@ -263,6 +268,10 @@ const platforms = [
         {tr.download.allReleasesLink}
       </a>
       <br />
+      <a href={ATOMGIT_RELEASE} target="_blank" rel="noopener">
+        {lang === 'zh' ? '国内高速下载：AtomGit 镜像（G-Star） →' : 'Faster from mainland China: AtomGit mirror (G-Star) →'}
+      </a>
+      {' · '}
       <a href={GITEE_RELEASE} target="_blank" rel="noopener">{tr.download.mirror}</a>
     </p>
   </div>
