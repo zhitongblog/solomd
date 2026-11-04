@@ -32,16 +32,15 @@ jobs:
       - name: Push branches and tags to AtomGit
         env:
           ATOMGIT_TOKEN: ${{ secrets.ATOMGIT_TOKEN }}
-          ATOMGIT_USER: zhitongblog
         run: |
           set -euo pipefail
           git remote set-head origin -d
           ASKPASS="$RUNNER_TEMP/atomgit-askpass"
-          printf '%s\n' '#!/bin/sh' 'case "$1" in *Username*) printf "%s\n" "$ATOMGIT_USER" ;; *) printf "%s\n" "$ATOMGIT_TOKEN" ;; esac' > "$ASKPASS"
+          printf '%s\n' '#!/bin/sh' 'case "$1" in *Username*) printf "oauth2\n" ;; *) printf "%s\n" "$ATOMGIT_TOKEN" ;; esac' > "$ASKPASS"
           chmod 700 "$ASKPASS"
-          REMOTE="https://atomgit.com/${ATOMGIT_USER}/solomd.git"
+          REMOTE="https://atomgit.com/zhitongblog/solomd.git"
           for attempt in 1 2 3 4; do
-            if GIT_ASKPASS="$ASKPASS" GIT_TERMINAL_PROMPT=0 git push --prune --force "$REMOTE" \
+            if GIT_ASKPASS="$ASKPASS" GIT_TERMINAL_PROMPT=0 git -c credential.helper= push --prune --force "$REMOTE" \
               "refs/remotes/origin/*:refs/heads/*" \
               "refs/tags/*:refs/tags/*"; then
               rm -f "$ASKPASS"
