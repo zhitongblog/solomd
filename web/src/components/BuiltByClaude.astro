@@ -3,6 +3,10 @@ import { getT, type Lang } from '../i18n/translations';
 interface Props { lang: Lang }
 const { lang } = Astro.props;
 const tr = getT(lang);
+const isZh = lang === 'zh';
+const architectHref = isZh
+  ? 'https://doaipm.com/zh/about/?utm_source=solomd_bbc#work-with-me'
+  : 'https://doaipm.com/en/about/?utm_source=solomd_bbc#work-with-me';
 ---
 
 <section id="built-by-claude" class="bbc">
@@ -13,7 +17,19 @@ const tr = getT(lang);
         <h2>{tr.builtByClaude.heading}</h2>
         <p>{tr.builtByClaude.body}</p>
         <p class="bbc__note">{tr.builtByClaude.note}</p>
-        <a class="bbc__link" href="https://github.com/zhitongblog/solomd">{tr.builtByClaude.cta} →</a>
+        <p class="bbc__arch">
+          {isZh ? (
+            <>同一套「1 名产品架构师 + Claude Code」流水线还独立交付了 <a href="https://unterm.app" target="_blank" rel="noopener"><strong>Unterm</strong></a>（自研 Rust + wgpu 终端内核，152 个 MCP 方法与 Action Gateway）。</>
+          ) : (
+            <>The same 1-architect + Claude Code pipeline also shipped <a href="https://unterm.app" target="_blank" rel="noopener"><strong>Unterm</strong></a> — a custom Rust + wgpu terminal kernel exposing 152 MCP methods with an Action Gateway.</>
+          )}
+        </p>
+        <div class="bbc__actions">
+          <a class="bbc__link" href="https://github.com/zhitongblog/solomd">{tr.builtByClaude.cta} →</a>
+          <a class="bbc__link bbc__link--hire" href={architectHref} target="_blank" rel="noopener">
+            {isZh ? '💼 预约 100% 异步远程架构合作 (MCP / Rust / Tauri) →' : '💼 Hire the architect (100% async MCP / Rust / Tauri contracts) →'}
+          </a>
+        </div>
       </div>
     </div>
   </div>
@@ -48,14 +64,32 @@ const tr = getT(lang);
     color: var(--text-muted, inherit);
     font-size: 0.95em;
   }
+  .bbc__arch {
+    font-size: 0.94em;
+    padding-top: 6px;
+    border-top: 1px dashed var(--border);
+  }
+  .bbc__arch a {
+    color: inherit;
+    text-decoration: underline;
+  }
+  .bbc__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: center;
+    margin-top: 6px;
+  }
   .bbc__link {
     display: inline-block;
-    margin-top: 2px;
     font-weight: 600;
     color: var(--accent);
     text-decoration: none;
   }
   .bbc__link:hover { text-decoration: underline; }
+  .bbc__link--hire {
+    font-size: 0.94em;
+  }
 
   @media (max-width: 560px) {
     .bbc__card { flex-direction: column; gap: 12px; padding: 20px; }
