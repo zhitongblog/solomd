@@ -44,7 +44,8 @@ export interface ParsedImageAltSize {
   height: string | null;
 }
 
-const ALT_SIZE_RE = /^(.*?)\|\s*(\d{1,4}(?:%|px)?)(?:\s*[x×]\s*(\d{1,4}(?:%|px)?))?\s*$/i;
+const ALT_SIZE_RE =
+  /^(.*?)\|\s*(?:(\d{1,4}(?:%|px)?)(?:\s*[x×]\s*(\d{1,4}(?:%|px)?))?|[x×]\s*(\d{1,4}(?:%|px)?))\s*$/i;
 
 function normalizeImageDimension(dim: string): string {
   const trimmed = dim.trim();
@@ -52,18 +53,21 @@ function normalizeImageDimension(dim: string): string {
 }
 
 /**
- * #446 — Parse optional Obsidian/Markdown pipe size syntax at the end of an
- * image's alt text: `![alt|50%](url)`, `![|300](url)`, `![alt|400x300](url)`.
+ * #446 / #499 — Parse optional Obsidian/Markdown pipe size syntax at the end of
+ * an image's alt text: `![alt|50%](url)`, `![|300](url)`, `![alt|400x300](url)`
+ * and the height-only form `![alt|x250](url)` (width keeps its aspect ratio).
  */
 export function parseImageAltSize(rawAlt: string): ParsedImageAltSize {
   const m = ALT_SIZE_RE.exec(rawAlt);
   if (!m) {
     return { alt: rawAlt, width: null, height: null };
   }
+  const widthRaw = m[2] || null;
+  const heightRaw = m[3] || m[4] || null;
   return {
     alt: m[1].trimEnd(),
-    width: normalizeImageDimension(m[2]),
-    height: m[3] ? normalizeImageDimension(m[3]) : null,
+    width: widthRaw ? normalizeImageDimension(widthRaw) : null,
+    height: heightRaw ? normalizeImageDimension(heightRaw) : null,
   };
 }
 
@@ -443,6 +447,12 @@ export function resizeMarkdownImageLine(line: string, size: string): string | nu
     let attrs = htmlMatch[1]
       .replace(/\s+width\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')
       .replace(/\s+height\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '');
+    // #499 — reuse the Markdown alt grammar so "only height" (`x250`) works
+    // for HTML images too.
+    const spec = parseImageAltSize(`|${normalizedSize}`);
+    const dims: string[] = [];
+    if (spec.width) dims.push(`width: ${spec.width};`);
+    if (spec.height) dims.push(`height: ${spec.height};`);
     if (/\bstyle\s*=\s*"([^"]*)"/i.test(attrs)) {
       attrs = attrs.replace(/\bstyle\s*=\s*"([^"]*)"/i, (_m, styleBody: string) => {
         const cleaned = styleBody
@@ -450,12 +460,16 @@ export function resizeMarkdownImageLine(line: string, size: string): string | nu
           .replace(/^;\s*|\s*;$/g, '')
           .trim();
         if (isReset) return cleaned ? `style="${cleaned}"` : '';
-        const dim = normalizeImageDimension(normalizedSize);
-        return `style="${cleaned ? `${cleaned}; ` : ''}width: ${dim};"`;
+        return `style="${cleaned ? `${cleaned}; ` : ''}${dims.join(' ')}"`;
       });
     } else if (!isReset) {
-      const dim = normalizeImageDimension(normalizedSize);
-      attrs = `${attrs.trimEnd()} width="${dim.endsWith('px') ? dim.slice(0, -2) : dim}" style="width: ${dim};"`;
+      const wAttr = spec.width
+        ? ` width="${spec.width.endsWith('px') ? spec.width.slice(0, -2) : spec.width}"`
+        : '';
+      const hAttr = spec.height
+        ? ` height="${spec.height.endsWith('px') ? spec.height.slice(0, -2) : spec.height}"`
+        : '';
+      attrs = `${attrs.trimEnd()}${wAttr}${hAttr} style="${dims.join(' ')}"`;
     }
     const cleanAttrs = attrs.replace(/\s{2,}/g, ' ').trim();
     const selfClose = htmlMatch[2] ? ' /' : '';

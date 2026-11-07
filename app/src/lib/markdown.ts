@@ -126,6 +126,15 @@ export const md = new MarkdownIt({
 // autolinks continue to linkify as expected.
 md.linkify.set({ fuzzyLink: false });
 
+// #380 — allow `file:` link / image destinations
+const stockValidateLink = md.validateLink.bind(md);
+md.validateLink = (url: string): boolean => {
+  const str = String(url ?? '').trim().toLowerCase();
+  if (!str) return false;
+  if (str.startsWith('file:')) return true;
+  return stockValidateLink(url);
+};
+
 // #464 — Allow GFM tables to interrupt blockquotes and lists without requiring
 // a blank line, matching CodeMirror's GFM parser in Live mode (`> quote\n| a | b |`).
 const tableBlockRule = (md.block.ruler as any).__rules__?.find((r: any) => r.name === 'table');
@@ -228,11 +237,16 @@ md.renderer.rules.image = function (tokens, idx, options, env, self) {
     ? self.renderInlineAsText(token.children, options, env)
     : (token.content || token.attrGet('alt') || '');
   const parsed = parseImageAltSize(rawAlt);
-  if (parsed.width) {
+  if (parsed.width || parsed.height) {
     const existingStyle = token.attrGet('style');
-    const sizeStyle = `width: ${parsed.width};${parsed.height ? ` height: ${parsed.height};` : ''}`;
+    const sizeStyle = [
+      parsed.width ? `width: ${parsed.width};` : '',
+      parsed.height ? `height: ${parsed.height};` : '',
+    ]
+      .filter(Boolean)
+      .join(' ');
     token.attrSet('style', existingStyle ? `${existingStyle}; ${sizeStyle}` : sizeStyle);
-    if (parsed.width.endsWith('px')) {
+    if (parsed.width?.endsWith('px')) {
       token.attrSet('width', parsed.width.slice(0, -2));
     }
     if (parsed.height?.endsWith('px')) {
@@ -242,7 +256,7 @@ md.renderer.rules.image = function (tokens, idx, options, env, self) {
   const html = defaultImageRenderer
     ? defaultImageRenderer(tokens, idx, options, env, self)
     : self.renderToken(tokens, idx, options);
-  if (parsed.width) {
+  if (parsed.width || parsed.height) {
     return html.replace(/\balt="[^"]*"/, `alt="${escapeHtml(parsed.alt)}"`);
   }
   return html;
@@ -521,6 +535,22 @@ md.core.ruler.before('source_line_map', 'table_of_contents', (state) => {
 // the output, so documents built around `<div>…<img>…</div>` containers had no
 // sync anchors at all and the split panes drifted apart across those regions
 // (#203 双栏错位). Wrap the raw block in a neutral div carrying the line.
+const HTML_CONTAINER_TAG_RE = /<(\/?)(details|div|section|article|aside|figure|blockquote)\b[^>]*>/gi;
+function hasUnbalancedContainerHtml(html: string): boolean {
+  let depth = 0;
+  HTML_CONTAINER_TAG_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = HTML_CONTAINER_TAG_RE.exec(html)) !== null) {
+    if (m[1] === '/') {
+      depth -= 1;
+      if (depth < 0) return true;
+    } else {
+      depth += 1;
+    }
+  }
+  return depth !== 0;
+}
+
 const defaultHtmlBlock = md.renderer.rules.html_block;
 md.renderer.rules.html_block = function (tokens, idx, options, env, self) {
   const html = defaultHtmlBlock
@@ -529,8 +559,36 @@ md.renderer.rules.html_block = function (tokens, idx, options, env, self) {
   const tok = tokens[idx];
   const line = tok.map && tok.map.length > 0 ? tok.map[0] + 1 : 0;
   if (!line) return html;
+  // When a container HTML block (e.g. `<details><summary>...</summary>` followed
+  // by a blank line, a Markdown table, and `</details>`) is split across
+  // multiple tokens, wrapping the opening fragment in `<div data-source-line>`
+  // forces the browser/DOMPurify to auto-close `<details>` before `</div>`,
+  // pushing the inner `<table>` outside `<details>` (#500 T09-4). Stamp
+  // `data-source-line` onto the opening tag directly and leave closing
+  // fragments unwrapped.
+  if (hasUnbalancedContainerHtml(html)) {
+    if (/^\s*<\//.test(html)) return html;
+    return html.replace(/^(\s*<[a-zA-Z][\w:-]*)/, `$1 data-source-line="${line}"`);
+  }
   return `<div data-source-line="${line}">${html}</div>`;
 };
+
+// Terminate a GFM pipe table when a subsequent line contains no pipe (`|`)
+// character (#500 T08-9: prose line immediately following a table without an
+// intervening blank line should render as a `<p>` paragraph, not be swallowed
+// into `<tbody>`).
+md.block.ruler.before(
+  'table',
+  'table_no_pipe_terminator',
+  (state, startLine, _endLine, silent) => {
+    if (!silent || (state.parentType as string) !== 'table') return false;
+    const pos = state.bMarks[startLine] + state.tShift[startLine];
+    const max = state.eMarks[startLine];
+    const lineText = state.src.slice(pos, max);
+    return !lineText.includes('|');
+  },
+  { alt: ['blockquote'] },
+);
 
 // Custom core rule: detect GitHub-style task list items (a leading
 // `[ ]` / `[x]` in the first inline child of a list item) and:
@@ -785,7 +843,20 @@ function unwrapInlineHtmlBlocks(source: string): string {
     .map((seg) => {
       if (seg.isFence) return seg.text;
       return seg.text.replace(HTML_BLOCK_RE, (_match, _indent, html) => {
-        return `\n\n${html}\n\n`;
+        // Ensure `<details>` blocks that contain Markdown pipe tables without
+        // blank lines after `</summary>` / `<details>` or before `</details>`
+        // have blank lines so markdown-it parses the inner table rather than
+        // treating the whole `<details>` body as a single CommonMark Type-6
+        // raw HTML block.
+        const normalizedHtml = /^<details\b/i.test(html)
+          ? html
+              .replace(
+                /(<\/summary>[ \t]*)\n(?=[ \t]*\|[^\n]*\n[ \t]*\|?[\s:|-]+\|)/i,
+                '$1\n\n',
+              )
+              .replace(/(\n[ \t]*\|[^\n]*)\n(?=[ \t]*<\/details>)/i, '$1\n\n')
+          : html;
+        return `\n\n${normalizedHtml}\n\n`;
       });
     })
     .join('');
@@ -826,9 +897,11 @@ function splitTableRow(line: string): string[] {
 }
 
 /** Cell count as markdown-it sees it: split on `|`, drop the empty leading /
- *  trailing cells produced by an outer `| … |` border. */
+ *  trailing cells produced by an outer `| … |` border. Also strips leading
+ *  `>` blockquote markers so tables inside blockquotes are normalized properly. */
 function tableRowCells(line: string): string[] {
-  const cells = splitTableRow(line.trim());
+  const stripped = line.replace(/^\s*(?:>\s*)+/, '').trim();
+  const cells = splitTableRow(stripped);
   if (cells.length && cells[0].trim() === '') cells.shift();
   if (cells.length && cells[cells.length - 1].trim() === '') cells.pop();
   return cells;
@@ -872,7 +945,7 @@ function normalizeTableDelimiters(source: string): string {
   const out: string[] = [];
   let inFence = false;
   let fenceChar = '';
-  const fenceRe = /^(\s*)(```+|~~~+)/;
+  const fenceRe = /^(\s*(?:>\s*)*)(```+|~~~+)/;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const fm = fenceRe.exec(line);
@@ -915,9 +988,9 @@ function normalizeTableDelimiters(source: string): string {
         for (let k = 0; k < headerCells.length; k++) {
           fixed.push(normalizeDelimiterCell(delimCells[k]));
         }
-        const indent = (next.match(/^\s*/) as RegExpMatchArray)[0];
+        const prefix = (next.match(/^\s*(?:>\s*)*/) as RegExpMatchArray)[0];
         out.push(line); // header unchanged
-        out.push(`${indent}| ${fixed.join(' | ')} |`); // corrected delimiter
+        out.push(`${prefix}| ${fixed.join(' | ')} |`); // corrected delimiter
         i++; // skip the original malformed delimiter
         continue;
       }

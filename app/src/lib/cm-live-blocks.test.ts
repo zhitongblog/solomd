@@ -279,6 +279,101 @@ test('#504: findTableCellOffsetInLine locates exact column offsets in Markdown t
   const emptyCellPos = findTableCellOffsetInLine(edgeLine, 1, 0.5);
   assert.ok(emptyCellPos > secondPipe && emptyCellPos <= thirdPipe);
   assert.equal(findTableCellOffsetInLine(edgeLine, 2, 0), edgeLine.indexOf('第三列'));
+
+  // Outer-pipeless GFM table row (T08-6)
+  const noOuterPipe = '无首尾管道 | 2 | 3';
+  assert.equal(findTableCellOffsetInLine(noOuterPipe, 0, 0), 0);
+  assert.equal(findTableCellOffsetInLine(noOuterPipe, 1, 0), noOuterPipe.indexOf('2'));
+  assert.equal(findTableCellOffsetInLine(noOuterPipe, 2, 0), noOuterPipe.indexOf('3'));
+});
+
+test('#500: liveBlocksExtension renders outer-pipeless tables, header-only tables, 1-2 dash delimiters, and splits adjacent tables', () => {
+  const doc = [
+    'cursor line',
+    '',
+    'A | B | C',
+    '--- | :---: | ---',
+    '无首尾管道 | 2 | 3',
+    '',
+    '| 空表 | 只有表头 |',
+    '| :--- | ---: |',
+    '',
+    '| 变体A | 变体B | 变体C |',
+    '| :-- | --: | :-: |',
+    '| 1 | 2 | 3 |',
+    '',
+    '| 表一 | 列 |',
+    '| --- | --- |',
+    '| A | 1 |',
+    '| 表二 | 列 |',
+    '| --- | --- |',
+    '| B | 2 |',
+  ].join('\n');
+  const state = EditorState.create({
+    doc,
+    extensions: [
+      markdown({ base: markdownLanguage, addKeymap: false }),
+      liveBlocksExtension(),
+    ],
+    selection: { anchor: 0 },
+  });
+  const tableRanges: Array<[number, number]> = [];
+  for (const set of state.facet(EditorView.decorations)) {
+    set.between(0, state.doc.length, (from, to, deco) => {
+      const w = (deco.spec as { widget?: { constructor: { name: string } } }).widget;
+      if (w?.constructor.name === 'TableWidget') {
+        tableRanges.push([state.doc.lineAt(from).number, state.doc.lineAt(to).number]);
+      }
+    });
+  }
+  assert.deepEqual(tableRanges, [
+    [3, 5],   // T08-6 outer-pipeless table
+    [7, 8],   // T08-5 header-only table
+    [10, 12], // T08-7 2-dash delimiter table
+    [14, 16], // T09-5 adjacent table 1
+    [17, 19], // T09-5 adjacent table 2
+  ]);
+});
+
+test('#500: liveBlocksExtension ignores tables inside fenced code blocks past 4KB and dedents 4-space list tables', () => {
+  const padding = Array.from({ length: 120 }, (_, i) => `Paragraph line ${i + 1} with filler text to exceed 4KB initial Lezer parse budget.`).join('\n\n');
+  const doc = [
+    'cursor line',
+    '',
+    '- 列表项二',
+    '',
+    '    | 列A | 列B |',
+    '    | --- | --- |',
+    '    | 缩进 | 4 空格 |',
+    '',
+    padding,
+    '',
+    '```markdown',
+    '| 假表格 | 列 |',
+    '| --- | --- |',
+    '| 应保持 | 源码文本 |',
+    '```',
+  ].join('\n');
+  const state = EditorState.create({
+    doc,
+    extensions: [
+      markdown({ base: markdownLanguage, addKeymap: false }),
+      liveBlocksExtension(),
+    ],
+    selection: { anchor: 0 },
+  });
+  const tableWidgets: Array<{ fromLine: number; source: string }> = [];
+  for (const set of state.facet(EditorView.decorations)) {
+    set.between(0, state.doc.length, (from, _to, deco) => {
+      const w = (deco.spec as { widget?: { constructor: { name: string }; source?: string } }).widget;
+      if (w?.constructor.name === 'TableWidget') {
+        tableWidgets.push({ fromLine: state.doc.lineAt(from).number, source: w.source ?? '' });
+      }
+    });
+  }
+  // Only the list-indented table at line 5 should become a TableWidget; the fenced table past 4KB must stay code.
+  assert.equal(tableWidgets.length, 1);
+  assert.equal(tableWidgets[0].fromLine, 5);
 });
 
 test('liveBlocksExtension stays frozen while dragging and flushes on dragEndEffect', () => {

@@ -291,11 +291,14 @@ interface Settings {
   webdavEncrypted: boolean;
   webdavPassphrase: string;
   webdavAutoSync: boolean;
-  // Local personal cloud drive encrypted backup & sync directory (百度网盘 / 阿里云盘 / 夸克网盘 / OneDrive / iCloud / 坚果云).
+  // Local personal cloud drive backup & sync directory (百度网盘 / 阿里云盘 / 夸克网盘 / OneDrive / iCloud / 坚果云).
   cloudVaultDir: string;
   cloudVaultPassphrase: string;
   cloudVaultAutoSync: boolean;
-  // Direct Personal Cloud Drive OpenAPI encrypted backup & sync (百度网盘 OpenAPI / 阿里云盘 OpenAPI / OneDrive / Dropbox).
+  cloudVaultEncrypted: boolean;
+  cloudVaultAutoSubdir: boolean;
+  cloudVaultCategorizeFiles: boolean;
+  // Direct Personal Cloud Drive OpenAPI backup & sync (百度网盘 OpenAPI / 阿里云盘 OpenAPI / OneDrive / Dropbox).
   cloudApiProvider: 'baidu' | 'alipan' | 'onedrive' | 'dropbox';
   cloudApiToken: string;
   cloudApiClientId: string;
@@ -303,6 +306,13 @@ interface Settings {
   cloudApiRemotePath: string;
   cloudApiPassphrase: string;
   cloudApiAutoSync: boolean;
+  cloudApiSyncMode: 'folder' | 'bundle';
+  cloudApiEncrypted: boolean;
+  cloudApiAutoSubdir: boolean;
+  cloudApiCategorizeFiles: boolean;
+  // Local & Cloud Sync version snapshot retention settings
+  syncMaxVersions: number;
+  autoSnapshotOnSave: boolean;
   // v2.5 F2: writing stats — show the per-doc word/char goal pill in the
   // status bar. Off-by-default-ish: the pill stays inert unless the doc's
   // YAML front matter sets a `goal:` key, so this toggle is a hard kill
@@ -461,6 +471,9 @@ interface Settings {
   /** #347 — one-time: a saved `pdfDefaults.pageSize` of `A4` from before
    *  `Auto` existed was the untouched default, not a choice. */
   pdfPageSizeAutoMigrated: boolean;
+  /** #515 — one-time: `pdfDefaults.toc` used to default to `false` and is
+   *  stored inside the whole `pdfDefaults` blob. Flip it on once. */
+  pdfTocDefaultOnMigrated: boolean;
   // Promote plain numbered-section lines (`6.2 出口许可证管理目录`,
   // `6.2.1 …`) to headings whose level tracks the numbering depth. Off by
   // default — the promotion is heuristic (a line opening with a decimal like
@@ -602,7 +615,7 @@ export function defaultPdfDefaults(): PdfDefaults {
     fontSize: 11,
     footer: true,
     codeTheme: 'preview',
-    toc: false,
+    toc: true,
   };
 }
 
@@ -780,6 +793,9 @@ function defaults(): Settings {
     cloudVaultDir: '',
     cloudVaultPassphrase: '',
     cloudVaultAutoSync: false,
+    cloudVaultEncrypted: false,
+    cloudVaultAutoSubdir: true,
+    cloudVaultCategorizeFiles: true,
     cloudApiProvider: 'baidu',
     cloudApiToken: '',
     cloudApiClientId: '',
@@ -787,6 +803,12 @@ function defaults(): Settings {
     cloudApiRemotePath: '/apps/SoloMD',
     cloudApiPassphrase: '',
     cloudApiAutoSync: false,
+    cloudApiSyncMode: 'folder',
+    cloudApiEncrypted: false,
+    cloudApiAutoSubdir: true,
+    cloudApiCategorizeFiles: true,
+    syncMaxVersions: 20,
+    autoSnapshotOnSave: true,
     showWritingStats: true,
     showWorkspaceDailyTotal: false,
     pdfDefaults: defaultPdfDefaults(),
@@ -832,6 +854,7 @@ function defaults(): Settings {
     keybindings: {},
     smartQuotesOptInMigrated: true,
     pdfPageSizeAutoMigrated: true,
+    pdfTocDefaultOnMigrated: true,
     markdownAutoNumberHeadings: false,
     rsPaneOrder: ['search', 'outline', 'backlinks', 'relationships', 'tags', 'tasks', 'neighborhood', 'types', 'history', 'inspector', 'agent'],
     previewFontSize: 16,
@@ -992,6 +1015,12 @@ function load(): Settings {
           merged.pdfDefaults = { ...merged.pdfDefaults, pageSize: 'Auto' };
         }
         merged.pdfPageSizeAutoMigrated = true;
+      }
+      // #515 — `pdfDefaults.toc` used to start `false`. Turn it on once so
+      // existing installs get a table of contents by default too.
+      if (!parsed.pdfTocDefaultOnMigrated) {
+        merged.pdfDefaults = { ...merged.pdfDefaults, toc: true };
+        merged.pdfTocDefaultOnMigrated = true;
       }
       if (!parsed.smartQuotesOptInMigrated) {
         merged.smartQuotes = false;

@@ -1009,6 +1009,30 @@ export function useFiles() {
     if (tabs.activeTab) await saveTabAs(tabs.activeTab);
   }
 
+  /** Save all open tabs that have unsaved changes. */
+  async function saveAll(): Promise<void> {
+    window.dispatchEvent(new Event('solomd:flush-content-sync'));
+    const targets = tabs.tabs.filter((tab) =>
+      tab.filePath ? tabs.isDirty(tab.id) : tab.content !== tab.savedContent,
+    );
+    if (targets.length === 0) {
+      if (tabs.activeTab && !tabs.activeTab.filePath) {
+        await saveTab(tabs.activeTab);
+        return;
+      }
+      toasts.info(t('toast.allSaved'));
+      return;
+    }
+    let savedCount = 0;
+    for (const tab of targets) {
+      const ok = await saveTab(tab, { silent: true });
+      if (ok) savedCount += 1;
+    }
+    if (savedCount > 0) {
+      toasts.success(t('toast.savedAll', { count: savedCount }));
+    }
+  }
+
   // #85 — auto-save on window blur. Persist every dirty tab that already has
   // a file path, silently (no per-file toast). Untitled tabs are skipped on
   // purpose: saving them would pop a Save-As dialog, which is jarring when
@@ -1076,6 +1100,7 @@ export function useFiles() {
     filePickerStartDir,
     saveActive,
     saveActiveAs,
+    saveAll,
     // Exposed for the task panel: ticking a checkbox in a file that happens to
     // be open has to go through the tab, not straight to disk, or the tab's
     // in-memory copy would silently overwrite it on the next save.

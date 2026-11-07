@@ -104,6 +104,12 @@ async function copyNodePath(node: Node) {
   closeCtx();
 }
 
+function openNodeInNewWindow(node: Node) {
+  if (node.is_dir) return;
+  files.spawnAuxWindow(node.path);
+  closeCtx();
+}
+
 /** #120 — copy the node's path relative to the workspace root, slash-normalised. */
 async function copyNodeRelativePath(node: Node) {
   const folder = workspace.currentFolder;
@@ -2226,6 +2232,9 @@ onBeforeUnmount(() => {
            on Android, and iOS has no Finder), so the item just looked broken. -->
       <template v-if="!isMobile()">
         <div class="ftree__ctx-sep"></div>
+        <button v-if="ctx.node && !ctx.node.is_dir" class="ftree__ctx-item" @click="openNodeInNewWindow(ctx.node)">
+          {{ t('tabMenu.openInNewWindow') }}
+        </button>
         <button class="ftree__ctx-item" @click="revealNode(ctx.node ?? root!)">
           {{ t(revealLabelKey('explorer.reveal')) }}
         </button>

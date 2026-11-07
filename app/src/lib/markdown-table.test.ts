@@ -1,7 +1,11 @@
 /**
  * Unit tests for the table model behind the grid editor.
  *
- * Run from `app/`:  node src/lib/markdown-table.selftest.mjs
+ * Run from `app/`:  node --experimental-strip-types --test src/lib/markdown-table.test.ts
+ *
+ * The relative import carries its `.ts` extension because the fork's runner is
+ * Node's own (`node:test` + `--experimental-strip-types`), which does no
+ * bundler-style extension resolution.
  */
 
 import { test } from 'node:test';
@@ -21,9 +25,10 @@ import {
   deleteColumn,
   moveColumn,
   setAlign,
+  setAlignMany,
   setCell,
   emptyTable,
-} from './markdown-table';
+} from './markdown-table.ts';
 
 const SRC = ['| a | b |', '|---|---:|', '| 1 | 2 |', '| 3 | 4 |'].join('\n');
 
@@ -152,4 +157,35 @@ test('an empty table is a valid table', () => {
   const out = serializeTable(t);
   assert.deepEqual(parseTable(out)!.header, ['', '']);
   assert.equal(out.split('\n').length, 3);
+});
+
+// ---- #382: one alignment for several columns ----
+
+const WIDE = '| a | b | c |\n|---|:-:|--:|\n| 1 | 2 | 3 |';
+
+test('#382 setAlignMany aligns every selected column', () => {
+  const t = parseTable(WIDE)!;
+  const out = setAlignMany(t, [0, 2], 'right');
+  assert.deepEqual(out.aligns, ['right', 'center', 'right']);
+  // The delimiter row is what actually carries the alignment in the file.
+  assert.deepEqual(serializeTable(out).split('\n')[1], '| --: | :-: | --: |');
+});
+
+test('#382 setAlignMany ignores indices a stale selection may still hold', () => {
+  const t = parseTable(WIDE)!;
+  const out = setAlignMany(t, [2, 9, -1], 'left');
+  assert.deepEqual(out.aligns, [null, 'center', 'left']);
+});
+
+test('#382 a no-op returns the same model, so the dirty baseline is untouched', () => {
+  const t = parseTable(WIDE)!;
+  assert.equal(setAlignMany(t, [0], null), t);
+  assert.notEqual(setAlignMany(t, [0], 'center'), t);
+  // …and a single column still works, exactly like setAlign.
+  assert.deepEqual(setAlignMany(t, [1], 'right').aligns, [null, 'right', 'right']);
+});
+
+test('#382 an empty selection changes nothing', () => {
+  const t = parseTable(WIDE)!;
+  assert.equal(setAlignMany(t, [], 'center'), t);
 });

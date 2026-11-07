@@ -147,13 +147,19 @@ function relativeFilePath(fullPath: string): string {
   return fullPath.split(/[\\/]/).pop() || fullPath;
 }
 
-async function onTabAction(action: 'close' | 'closeLeft' | 'closeRight' | 'closeOthers' | 'closeSaved' | 'closeAll' | 'revealInFolder' | 'revealInFileTree' | 'copyFileName' | 'copyFilePath' | 'copyRelativePath') {
+async function onTabAction(action: 'close' | 'closeLeft' | 'closeRight' | 'closeOthers' | 'closeSaved' | 'closeAll' | 'revealInFolder' | 'revealInFileTree' | 'copyFileName' | 'copyFilePath' | 'copyRelativePath' | 'openInNewWindow') {
   const m = ctxMenu.value;
   closeCtxMenu();
   if (!m) return;
   const list = tabs.tabs;
   const idx = list.findIndex((t) => t.id === m.tabId);
   if (idx < 0) return;
+  if (action === 'openInNewWindow') {
+    const path = list[idx]?.filePath;
+    if (!path) return;
+    files.spawnAuxWindow(path);
+    return;
+  }
   if (action === 'copyFileName') {
     const name = list[idx]?.fileName;
     if (!name) return;
@@ -639,6 +645,7 @@ onBeforeUnmount(() => {
           {{ settings.language === 'zh' ? '复制相对路径' : 'Copy Relative Path' }}
         </button>
         <div class="ctx-sep" />
+        <button class="ctx-item" :disabled="!ctxFlags?.hasFilePath" @click="onTabAction('openInNewWindow')">{{ t('tabMenu.openInNewWindow') }}</button>
         <button class="ctx-item" :disabled="!ctxFlags?.hasFilePath" @click="onTabAction('revealInFolder')">{{ t(revealLabelKey('tabMenu.revealInFolder')) }}</button>
         <button class="ctx-item" :disabled="!ctxFlags?.hasFilePath" @click="onTabAction('revealInFileTree')">{{ t('tabMenu.revealInFileTree') }}</button>
         <div class="ctx-sep" />

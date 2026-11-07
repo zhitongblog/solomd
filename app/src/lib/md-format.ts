@@ -12,16 +12,19 @@
  */
 
 import { enclosingListContentIndent } from './list-continuation';
-import { applyChanges, mapPos, renumberChanges } from './list-renumber';
+import { applyChanges, mapPos, renumberChanges } from './list-renumber.ts';
 
 export type FormatKind =
   | 'bold'
+  | 'underline'
   | 'italic'
   | 'underline'
   | 'strike'
   | 'highlight'
   | 'code'
   | 'link'
+  | 'subscript'
+  | 'superscript'
   | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6'
   | 'quote'
   | 'ul'
@@ -31,6 +34,7 @@ export type FormatKind =
 
 export const FORMAT_KINDS: FormatKind[] = [
   'bold', 'italic', 'underline', 'strike', 'highlight', 'code', 'link',
+  'subscript', 'superscript',
   'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
   'quote', 'ul', 'ol', 'task', 'codeblock',
 ];
@@ -176,53 +180,56 @@ function toggleWrap(doc: string, from: number, to: number, marker: string): Form
   return { from: s, to: e, insert: marker + inner + marker, selFrom: s + w, selTo: e + w };
 }
 
-function toggleTagWrap(doc: string, from: number, to: number, openTag: string, closeTag: string): FormatEdit {
+/**
+ * `targetRange`'s word rule is happy to hand back `u>foo` for a caret inside
+ * `<u>foo</u>` — a tag name is made of word characters too. A bare caret's
+ * range is trimmed back to the text between the tags, so the span `toggleTag`
+ * looks at is the content and the tags around it stay visible.
+ */
+function textRun(doc: string, from: number, to: number): [number, number] {
   let [s, e] = targetRange(doc, from, to);
-  const ow = openTag.length;
-  const cw = closeTag.length;
-  if (
-    e - s >= ow + cw &&
-    doc.slice(s, s + ow).toLowerCase() === openTag &&
-    doc.slice(e - cw, e).toLowerCase() === closeTag
-  ) {
-    s += ow;
-    e -= cw;
+  const gt = doc.lastIndexOf('>', e - 1);
+  if (gt >= s) s = gt + 1;
+  const lt = doc.indexOf('<', s);
+  if (lt >= 0 && lt < e) e = lt;
+  return [s, e];
+}
+
+/**
+ * Underline, subscript and superscript — the three formats Markdown has no
+ * syntax of its own for. The renderer runs with `html: true` and the
+ * sanitizer passes inline HTML (`<sub>` is one of the tags it names), so
+ * these are written as the tags themselves and render everywhere the note
+ * goes. Still a toggle: run it with the caret inside the span and the tags
+ * come off, exactly like bold.
+ */
+function toggleTag(doc: string, from: number, to: number, tag: 'u' | 'sub' | 'sup'): FormatEdit {
+  const open = `<${tag}>`;
+  const close = `</${tag}>`;
+  let [s, e] = from === to ? textRun(doc, from, to) : targetRange(doc, from, to);
+  // A selection that includes its own tags counts as formatted too.
+  if (e - s >= open.length + close.length && doc.startsWith(open, s) && doc.endsWith(close, e)) {
+    s += open.length;
+    e -= close.length;
   }
   const inner = doc.slice(s, e);
-  if (
-    s >= ow &&
-    doc.slice(s - ow, s).toLowerCase() === openTag &&
-    doc.slice(e, e + cw).toLowerCase() === closeTag
-  ) {
-    return { from: s - ow, to: e + cw, insert: inner, selFrom: s - ow, selTo: e - ow };
+  const wraps =
+    s >= open.length &&
+    e + close.length <= doc.length &&
+    doc.slice(s - open.length, s) === open &&
+    doc.slice(e, e + close.length) === close;
+  if (wraps) {
+    return {
+      from: s - open.length,
+      to: e + close.length,
+      insert: inner,
+      selFrom: s - open.length,
+      selTo: e - open.length,
+    };
   }
-  if (from === to) {
-    const ls = from > 0 ? doc.lastIndexOf('\n', from - 1) + 1 : 0;
-    let le = doc.indexOf('\n', from);
-    if (le < 0) le = doc.length;
-    const lineLower = doc.slice(ls, le).toLowerCase();
-    let idx = 0;
-    while (idx < lineLower.length) {
-      const o = lineLower.indexOf(openTag, idx);
-      if (o < 0) break;
-      const c = lineLower.indexOf(closeTag, o + ow);
-      if (c < 0) break;
-      const openEnd = ls + o + ow;
-      const closeStart = ls + c;
-      if (from >= openEnd && from <= closeStart) {
-        return {
-          from: ls + o,
-          to: closeStart + cw,
-          insert: doc.slice(openEnd, closeStart),
-          selFrom: from - ow,
-          selTo: from - ow,
-        };
-      }
-      idx = c + cw;
-    }
-  }
-  return { from: s, to: e, insert: openTag + inner + closeTag, selFrom: s + ow, selTo: e + ow };
+  return { from: s, to: e, insert: open + inner + close, selFrom: s + open.length, selTo: e + open.length };
 }
+
 
 function toggleTagLines(doc: string, from: number, to: number, openTag: string, closeTag: string): FormatEdit {
   const ow = openTag.length;
@@ -778,11 +785,13 @@ export function applyFormat(doc: string, from: number, to: number, kind: FormatK
   switch (kind) {
     case 'bold': return toggleStars(doc, a, b, 2);
     case 'italic': return toggleStars(doc, a, b, 1);
-    case 'underline': return toggleTagWrap(doc, a, b, '<u>', '</u>');
     case 'strike': return toggleWrap(doc, a, b, '~~');
     case 'highlight': return toggleWrap(doc, a, b, '==');
     case 'code': return toggleWrap(doc, a, b, '`');
     case 'link': return makeLink(doc, a, b);
+    case 'underline': return toggleTag(doc, a, b, 'u');
+    case 'subscript': return toggleTag(doc, a, b, 'sub');
+    case 'superscript': return toggleTag(doc, a, b, 'sup');
     case 'quote':
       return togglePrefix(doc, a, b, QUOTE, (ind, rest) => `${ind}> ${rest}`, /^(\s*)(?=\S)/);
     case 'ul':

@@ -124,10 +124,12 @@ export function useShortcuts(hooks: Hooks = {}) {
     'file.import': () => void files.importDocuments(),
     'file.save': () => void files.saveActive(),
     'file.saveAs': () => void files.saveActiveAs(),
+    'file.saveAll': () => void files.saveAll(),
     'file.closeTab': () => {
       if (tabs.activeId) files.closeTabSafe(tabs.activeId);
     },
     'file.openExternal': () => runById('file.openExternal'),
+    'file.copyPath': () => runById('file.copyPath'),
     'tab.reopenClosed': () => void files.reopenClosedTab(),
     'window.new': () => runById('window.new'),
     'file.exit': () => void getCurrentWindow().close(),

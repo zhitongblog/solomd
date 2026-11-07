@@ -17,9 +17,11 @@
  *   history.initBtn, history.restore, history.confirmRestore,
  *   history.justNow, history.savedSnapshot, history.commitFailed
  */
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { invoke } from '@tauri-apps/api/core';
 import { useTabsStore } from '../stores/tabs';
 import { useWorkspaceStore } from '../stores/workspace';
+import { useSettingsStore } from '../stores/settings';
 import { useGitHistoryStore, type CommitMeta, type DiffResult } from '../stores/gitHistory';
 import { useToastsStore } from '../stores/toasts';
 import { useI18n } from '../i18n';
@@ -34,6 +36,7 @@ const gitBackend = hasGitBackend();
 
 const tabs = useTabsStore();
 const workspace = useWorkspaceStore();
+const settings = useSettingsStore();
 const gh = useGitHistoryStore();
 const toasts = useToastsStore();
 const { t } = useI18n();
@@ -43,13 +46,54 @@ const emit = defineEmits<{ close: [] }>();
 const activeFile = computed(() => tabs.activeTab?.filePath ?? null);
 const folder = computed(() => workspace.currentFolder);
 
+type HistoryTabMode = 'snapshots' | 'git';
+const activeMode = ref<HistoryTabMode>('snapshots');
+
+interface SyncVersionEntry {
+  id: string;
+  rel_path: string;
+  sha256: string;
+  size: number;
+  created_at: number;
+  label: string;
+  device: string;
+}
+
+const snapshots = ref<SyncVersionEntry[]>([]);
+const snapshotsLoading = ref(false);
+const expandedSnapId = ref<string | null>(null);
+const snapDiffCache = ref<Record<string, DiffResult | null>>({});
+
 const commits = ref<CommitMeta[]>([]);
 const loading = ref(false);
 const expandedSha = ref<string | null>(null);
 const diffCache = ref<Record<string, DiffResult | null>>({});
 
-async function reload() {
+async function reloadSnapshots() {
   if (!folder.value || !activeFile.value) {
+    snapshots.value = [];
+    return;
+  }
+  snapshotsLoading.value = true;
+  try {
+    snapshots.value = await invoke<SyncVersionEntry[]>('sync_list_file_versions', {
+      workspace: folder.value,
+      filePath: activeFile.value,
+    });
+  } catch {
+    snapshots.value = [];
+  } finally {
+    snapshotsLoading.value = false;
+  }
+}
+
+async function reload() {
+  void reloadSnapshots();
+  if (!folder.value || !activeFile.value) {
+    commits.value = [];
+    return;
+  }
+  if (!gitBackend) {
     commits.value = [];
     return;
   }
@@ -71,6 +115,8 @@ async function reload() {
 watch([folder, activeFile], () => {
   expandedSha.value = null;
   diffCache.value = {};
+  expandedSnapId.value = null;
+  snapDiffCache.value = {};
   reload();
 });
 
@@ -83,10 +129,94 @@ watch(
   },
 );
 
+function onSnapshotSavedEvent() {
+  snapDiffCache.value = {};
+  void reloadSnapshots();
+}
+
 onMounted(async () => {
-  if (folder.value) await gh.refreshStatus(folder.value);
+  window.addEventListener('solomd:snapshot-saved', onSnapshotSavedEvent);
+  window.addEventListener('solomd:remote-pulled', onSnapshotSavedEvent);
+  if (folder.value && gitBackend) await gh.refreshStatus(folder.value);
   reload();
 });
+
+onUnmounted(() => {
+  window.removeEventListener('solomd:snapshot-saved', onSnapshotSavedEvent);
+  window.removeEventListener('solomd:remote-pulled', onSnapshotSavedEvent);
+});
+
+async function saveManualSnapshot() {
+  if (!folder.value || !activeFile.value) return;
+  try {
+    const entry = await invoke<SyncVersionEntry | null>('sync_save_file_snapshot', {
+      workspace: folder.value,
+      filePath: activeFile.value,
+      label: settings.language === 'zh' ? '手动创建版本快照' : 'Manual snapshot',
+      maxVersions: settings.syncMaxVersions,
+    });
+    if (entry) {
+      toasts.success(
+        settings.language === 'zh'
+          ? `已保存版本快照 (${entry.sha256.slice(0, 7)})`
+          : `Saved version snapshot (${entry.sha256.slice(0, 7)})`,
+      );
+      snapDiffCache.value = {};
+      await reloadSnapshots();
+    } else {
+      toasts.info(
+        settings.language === 'zh'
+          ? '当前内容与最新快照相同，无需重复创建'
+          : 'Content matches latest snapshot',
+      );
+    }
+  } catch (e) {
+    toasts.error(String(e));
+  }
+}
+
+async function toggleSnapRow(id: string) {
+  if (expandedSnapId.value === id) {
+    expandedSnapId.value = null;
+    return;
+  }
+  expandedSnapId.value = id;
+  if (snapDiffCache.value[id] === undefined && folder.value && activeFile.value) {
+    try {
+      snapDiffCache.value[id] = await invoke<DiffResult>('sync_get_file_version_diff', {
+        workspace: folder.value,
+        filePath: activeFile.value,
+        versionId: id,
+      });
+    } catch {
+      snapDiffCache.value[id] = null;
+    }
+  }
+}
+
+async function onRestoreSnapshot(entry: SyncVersionEntry) {
+  if (!folder.value || !activeFile.value) return;
+  const shortSha = entry.sha256.slice(0, 7);
+  if (!window.confirm(t('history.confirmRestore', { sha: shortSha }))) return;
+  const tabId = tabs.activeTab?.id;
+  try {
+    const restored = await invoke<string>('sync_restore_file_version', {
+      workspace: folder.value,
+      filePath: activeFile.value,
+      versionId: entry.id,
+      maxVersions: settings.syncMaxVersions,
+    });
+    if (tabId) {
+      tabs.setContent(tabId, restored);
+      tabs.markSaved(tabId, activeFile.value);
+    }
+    snapDiffCache.value = {};
+    await reloadSnapshots();
+    toasts.success(t('history.restored', { sha: shortSha }));
+  } catch (e) {
+    toasts.error(`${t('history.commitFailed')}: ${e}`);
+  }
+}
 
 async function onInit() {
   if (!folder.value) return;
@@ -155,7 +285,11 @@ function timeAgo(unix: number): string {
   <div class="history rp">
     <PanelHeader
       :title="t('history.heading')"
-      :count="!loading && commits.length > 0 ? commits.length : null"
+      :count="
+        activeMode === 'snapshots'
+          ? (!snapshotsLoading && snapshots.length > 0 ? snapshots.length : null)
+          : (!loading && commits.length > 0 ? commits.length : null)
+      "
       @close="emit('close')"
     />
 
@@ -163,74 +297,192 @@ function timeAgo(unix: number): string {
          when a pull surfaced merge conflicts; auto-hides when empty. -->
     <GithubConflictPanel />
 
+    <div v-if="folder && activeFile" class="history__mode-bar">
+      <div class="history__mode-tabs">
+        <button
+          type="button"
+          class="history__mode-tab"
+          :class="{ 'history__mode-tab--active': activeMode === 'snapshots' }"
+          @click="activeMode = 'snapshots'"
+        >
+          {{ settings.language === 'zh' ? '云同步与本地快照' : 'Snapshots' }}
+          <span v-if="snapshots.length > 0" class="history__mode-badge">{{ snapshots.length }}</span>
+        </button>
+        <button
+          v-if="gitBackend"
+          type="button"
+          class="history__mode-tab"
+          :class="{ 'history__mode-tab--active': activeMode === 'git' }"
+          @click="activeMode = 'git'"
+        >
+          Git
+          <span v-if="commits.length > 0" class="history__mode-badge">{{ commits.length }}</span>
+        </button>
+      </div>
+      <button
+        v-if="activeMode === 'snapshots'"
+        type="button"
+        class="rp-btn rp-btn--sm"
+        @click="saveManualSnapshot"
+      >
+        {{ settings.language === 'zh' ? '📌 创建快照' : '📌 Snapshot' }}
+      </button>
+    </div>
+
     <!-- 1. No folder open -->
     <div v-if="!folder" class="rp-empty">
       {{ t('history.openFolder') }}
     </div>
 
-    <!-- 2a. #230 — platform has no git backend at all (Android) -->
-    <div v-else-if="!gitBackend" class="rp-empty">
-      <p class="history__msg">{{ t('settings.syncUnsupportedAndroid') }}</p>
-    </div>
-
-    <!-- 2. Folder is not under git -->
-    <div v-else-if="!gh.isInitialized" class="rp-empty">
-      <p class="history__msg">{{ t('history.notInitialized') }}</p>
-      <button class="rp-btn rp-btn--primary" :disabled="gh.loading" @click="onInit">
-        {{ gh.loading ? '…' : t('history.initBtn') }}
-      </button>
-    </div>
-
-    <!-- 3. No active file or no commits -->
     <div v-else-if="!activeFile" class="rp-empty">
       {{ t('history.noActive') }}
     </div>
-    <div v-else-if="loading" class="rp-empty">
-      {{ t('history.loading') }}
-    </div>
-    <div v-else-if="commits.length === 0" class="rp-empty">
-      {{ t('history.empty') }}
-    </div>
 
-    <!-- 4. Commit list -->
-    <ul v-else class="rp-body rp-list history__list">
-      <li v-for="c in commits" :key="c.sha" class="history__item">
-        <button
-          class="rp-row history__row"
-          :class="{ 'history__row--open': expandedSha === c.sha }"
-          :aria-expanded="expandedSha === c.sha"
-          @click="toggleRow(c.sha)"
-        >
-          <Icons class="rp-row__icon history__chev" name="chevron-right" :size="12" />
-          <span class="rp-row__label history__msg-line">{{ c.message }}</span>
-          <span class="rp-count history__time">{{ timeAgo(c.time) }}</span>
+    <!-- Mode A: Cross-platform Local & Cloud Sync Snapshots (`.solomd-sync/versions/`) -->
+    <template v-else-if="activeMode === 'snapshots'">
+      <div v-if="snapshotsLoading" class="rp-empty">
+        {{ t('history.loading') }}
+      </div>
+      <div v-else-if="snapshots.length === 0" class="rp-empty">
+        <p class="history__msg">
+          {{
+            settings.language === 'zh'
+              ? '暂无快照（保存笔记或同步到网盘时会自动留存版本）'
+              : 'No snapshots yet (saved automatically on save & cloud sync)'
+          }}
+        </p>
+        <button class="rp-btn rp-btn--primary" @click="saveManualSnapshot">
+          {{ settings.language === 'zh' ? '📌 立即创建首个版本快照' : '📌 Create First Snapshot' }}
         </button>
+      </div>
+      <ul v-else class="rp-body rp-list history__list">
+        <li v-for="s in snapshots" :key="s.id" class="history__item">
+          <button
+            class="rp-row history__row"
+            :class="{ 'history__row--open': expandedSnapId === s.id }"
+            :aria-expanded="expandedSnapId === s.id"
+            @click="toggleSnapRow(s.id)"
+          >
+            <Icons class="rp-row__icon history__chev" name="chevron-right" :size="12" />
+            <span class="rp-row__label history__msg-line">{{ s.label }}</span>
+            <span class="rp-count history__time">{{ timeAgo(s.created_at) }}</span>
+          </button>
 
-        <div v-if="expandedSha === c.sha" class="history__diff-wrap">
-          <div class="history__diff-toolbar">
-            <button class="rp-btn rp-btn--sm history__restore" @click="onRestore(c.sha, c.short_sha)">
-              <Icons name="undo" :size="12" />
-              {{ t('history.restore') }}
-            </button>
-            <span class="history__author"><span class="history__sha">{{ c.short_sha }}</span> · {{ c.author }}</span>
+          <div v-if="expandedSnapId === s.id" class="history__diff-wrap">
+            <div class="history__diff-toolbar">
+              <button class="rp-btn rp-btn--sm history__restore" @click="onRestoreSnapshot(s)">
+                <Icons name="undo" :size="12" />
+                {{ t('history.restore') }}
+              </button>
+              <span class="history__author">
+                <span class="history__sha">{{ s.sha256.slice(0, 7) }}</span> · {{ s.device }}
+              </span>
+            </div>
+            <div v-if="snapDiffCache[s.id] === undefined" class="history__diff-loading">
+              {{ t('history.loading') }}
+            </div>
+            <div v-else-if="!snapDiffCache[s.id]" class="history__diff-empty">
+              {{ t('history.diffUnavailable') }}
+            </div>
+            <pre v-else class="history__diff">
+<template v-for="(hunk, hi) in snapDiffCache[s.id]!.hunks" :key="hi"><span class="history__hunk-hdr">@@ -{{ hunk.old_start }},{{ hunk.old_lines }} +{{ hunk.new_start }},{{ hunk.new_lines }} @@</span>
+<template v-for="(line, li) in hunk.lines" :key="`${hi}-${li}`"><span :class="['history__line', `history__line--${line.kind}`]">{{ line.kind === 'add' ? '+' : line.kind === 'remove' ? '-' : ' ' }}{{ line.text }}</span>
+</template></template></pre>
           </div>
-          <div v-if="diffCache[c.sha] === undefined" class="history__diff-loading">
-            {{ t('history.loading') }}
-          </div>
-          <div v-else-if="!diffCache[c.sha]" class="history__diff-empty">
-            {{ t('history.diffUnavailable') }}
-          </div>
-          <pre v-else class="history__diff">
+        </li>
+      </ul>
+    </template>
+
+    <!-- Mode B: AutoGit per-note history -->
+    <template v-else>
+      <div v-if="!gitBackend" class="rp-empty">
+        <p class="history__msg">{{ t('settings.syncUnsupportedAndroid') }}</p>
+      </div>
+      <div v-else-if="!gh.isInitialized" class="rp-empty">
+        <p class="history__msg">{{ t('history.notInitialized') }}</p>
+        <button class="rp-btn rp-btn--primary" :disabled="gh.loading" @click="onInit">
+          {{ gh.loading ? '…' : t('history.initBtn') }}
+        </button>
+      </div>
+      <div v-else-if="loading" class="rp-empty">
+        {{ t('history.loading') }}
+      </div>
+      <div v-else-if="commits.length === 0" class="rp-empty">
+        {{ t('history.empty') }}
+      </div>
+      <ul v-else class="rp-body rp-list history__list">
+        <li v-for="c in commits" :key="c.sha" class="history__item">
+          <button
+            class="rp-row history__row"
+            :class="{ 'history__row--open': expandedSha === c.sha }"
+            :aria-expanded="expandedSha === c.sha"
+            @click="toggleRow(c.sha)"
+          >
+            <Icons class="rp-row__icon history__chev" name="chevron-right" :size="12" />
+            <span class="rp-row__label history__msg-line">{{ c.message }}</span>
+            <span class="rp-count history__time">{{ timeAgo(c.time) }}</span>
+          </button>
+
+          <div v-if="expandedSha === c.sha" class="history__diff-wrap">
+            <div class="history__diff-toolbar">
+              <button class="rp-btn rp-btn--sm history__restore" @click="onRestore(c.sha, c.short_sha)">
+                <Icons name="undo" :size="12" />
+                {{ t('history.restore') }}
+              </button>
+              <span class="history__author"><span class="history__sha">{{ c.short_sha }}</span> · {{ c.author }}</span>
+            </div>
+            <div v-if="diffCache[c.sha] === undefined" class="history__diff-loading">
+              {{ t('history.loading') }}
+            </div>
+            <div v-else-if="!diffCache[c.sha]" class="history__diff-empty">
+              {{ t('history.diffUnavailable') }}
+            </div>
+            <pre v-else class="history__diff">
 <template v-for="(hunk, hi) in diffCache[c.sha]!.hunks" :key="hi"><span class="history__hunk-hdr">@@ -{{ hunk.old_start }},{{ hunk.old_lines }} +{{ hunk.new_start }},{{ hunk.new_lines }} @@</span>
 <template v-for="(line, li) in hunk.lines" :key="`${hi}-${li}`"><span :class="['history__line', `history__line--${line.kind}`]">{{ line.kind === 'add' ? '+' : line.kind === 'remove' ? '-' : ' ' }}{{ line.text }}</span>
 </template></template></pre>
-        </div>
-      </li>
-    </ul>
+          </div>
+        </li>
+      </ul>
+    </template>
   </div>
 </template>
 
 <style scoped>
+.history__mode-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 4px 8px;
+  border-bottom: var(--bd-hair);
+}
+.history__mode-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.history__mode-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border: none;
+  border-radius: var(--r-sm, 4px);
+  background: transparent;
+  color: var(--text-3);
+  font-size: 11px;
+  cursor: pointer;
+}
+.history__mode-tab--active {
+  background: var(--fill-2, rgba(127, 127, 127, 0.14));
+  color: var(--text);
+  font-weight: 600;
+}
+.history__mode-badge {
+  font-size: 10px;
+  opacity: 0.75;
+}
 .history__msg {
   margin: 0 0 2px;
 }

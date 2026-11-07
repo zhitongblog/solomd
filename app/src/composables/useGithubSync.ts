@@ -15,6 +15,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { useGithubSyncStore, isGithubAuthError, classifyPushError } from '../stores/githubSync';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useSettingsStore } from '../stores/settings';
+import { useTabsStore } from '../stores/tabs';
 import { useToastsStore } from '../stores/toasts';
 import { useI18n } from '../i18n';
 import { hasGitBackend } from '../lib/platform';
@@ -23,6 +24,7 @@ export function useGithubSync() {
   const sync = useGithubSyncStore();
   const workspace = useWorkspaceStore();
   const settings = useSettingsStore();
+  const tabs = useTabsStore();
   const toasts = useToastsStore();
   const { t } = useI18n();
 
@@ -94,13 +96,17 @@ export function useGithubSync() {
     if (
       settings.cloudVaultAutoSync &&
       settings.cloudVaultDir.trim() &&
-      settings.cloudVaultPassphrase.trim()
+      (!settings.cloudVaultEncrypted || settings.cloudVaultPassphrase.trim())
     ) {
       try {
         await invoke('cloud_vault_push_workspace', {
           workspace: folder,
           vaultDir: settings.cloudVaultDir,
           passphrase: settings.cloudVaultPassphrase,
+          encrypted: settings.cloudVaultEncrypted,
+          autoWorkspaceSubdir: settings.cloudVaultAutoSubdir,
+          categorizeFiles: settings.cloudVaultCategorizeFiles,
+          maxVersions: settings.syncMaxVersions,
         });
       } catch (e) {
         toasts.warning(`Cloud Vault: ${e}`);
@@ -110,7 +116,8 @@ export function useGithubSync() {
     if (
       settings.cloudApiAutoSync &&
       settings.cloudApiToken.trim() &&
-      settings.cloudApiPassphrase.trim()
+      ((settings.cloudApiSyncMode === 'folder' && !settings.cloudApiEncrypted) ||
+        settings.cloudApiPassphrase.trim())
     ) {
       try {
         await invoke('cloud_api_push_workspace', {
@@ -119,6 +126,11 @@ export function useGithubSync() {
           accessToken: settings.cloudApiToken,
           remotePath: settings.cloudApiRemotePath || '/apps/SoloMD',
           passphrase: settings.cloudApiPassphrase,
+          syncMode: settings.cloudApiSyncMode,
+          encrypted: settings.cloudApiEncrypted,
+          autoWorkspaceSubdir: settings.cloudApiAutoSubdir,
+          categorizeFiles: settings.cloudApiCategorizeFiles,
+          maxVersions: settings.syncMaxVersions,
         });
       } catch (e) {
         toasts.warning(`Cloud API: ${e}`);
@@ -137,6 +149,18 @@ export function useGithubSync() {
   }
 
   function onSaved(): void {
+    const folder = workspace.currentFolder;
+    const activeFile = tabs.activeTab?.filePath;
+    if (folder && activeFile && settings.autoSnapshotOnSave) {
+      void invoke('sync_save_file_snapshot', {
+        workspace: folder,
+        filePath: activeFile,
+        label: settings.language === 'zh' ? '自动保存快照' : 'Auto-save snapshot',
+        maxVersions: settings.syncMaxVersions,
+      }).then(() => {
+        window.dispatchEvent(new CustomEvent('solomd:snapshot-saved'));
+      }).catch(() => {});
+    }
     if (pushTimer) clearTimeout(pushTimer);
     // 5s debounce: AutoGit has just committed; give the user a moment in
     // case they ⌘S three more times before going to lunch.

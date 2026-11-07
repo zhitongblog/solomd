@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { open as openDialog } from '@tauri-apps/plugin-dialog';
+import { openUrl } from '@tauri-apps/plugin-opener';
 import { useSettingsStore } from '../stores/settings';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useToastsStore } from '../stores/toasts';
@@ -23,6 +24,14 @@ const vaultPulling = ref(false);
 const vaultStatusText = ref('');
 const vaultStatusKind = ref<'ok' | 'err' | ''>('');
 
+interface DetectedCloudDir {
+  provider: string;
+  label: string;
+  base_dir: string;
+  suggested_vault_dir: string;
+}
+const detectedCloudDirs = ref<DetectedCloudDir[]>([]);
+
 const apiPushing = ref(false);
 const apiPulling = ref(false);
 const apiAuthLoading = ref(false);
@@ -30,8 +39,124 @@ const apiDeviceCode = ref('');
 const apiUserCode = ref('');
 const apiVerifyUrl = ref('');
 const apiQrUrl = ref('');
+const apiQuickAuthInstructions = ref('');
 const apiStatusText = ref('');
 const apiStatusKind = ref<'ok' | 'err' | ''>('');
+
+const pruningVersions = ref(false);
+
+onMounted(async () => {
+  try {
+    detectedCloudDirs.value = await invoke<DetectedCloudDir[]>('cloud_vault_detect_local_dirs');
+  } catch {
+    detectedCloudDirs.value = [];
+  }
+});
+
+function applyDetectedCloudDir(dir: string) {
+  settings.cloudVaultDir = dir;
+  settings.persist();
+  toasts.success(
+    settings.language === 'zh'
+      ? `已填入网盘专用目录：${dir}`
+      : `Selected cloud drive folder: ${dir}`,
+  );
+}
+
+function parseTokenFromInput(raw: string): string {
+  const s = raw.trim();
+  if (!s) return '';
+  if (s.startsWith('{')) {
+    try {
+      const obj = JSON.parse(s) as { access_token?: string };
+      if (typeof obj.access_token === 'string' && obj.access_token.trim()) {
+        return obj.access_token.trim();
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  const idx = s.indexOf('access_token=');
+  if (idx !== -1) {
+    const after = s.slice(idx + 'access_token='.length);
+    const match = after.match(/^([^&#\s"']+)/);
+    if (match?.[1]) {
+      try {
+        return decodeURIComponent(match[1]).trim();
+      } catch {
+        return match[1].trim();
+      }
+    }
+  }
+  return s;
+}
+
+function onTokenInputChange() {
+  const extracted = parseTokenFromInput(settings.cloudApiToken);
+  if (extracted && extracted !== settings.cloudApiToken) {
+    settings.cloudApiToken = extracted;
+    apiQuickAuthInstructions.value = '';
+    toasts.success(
+      settings.language === 'zh'
+        ? '已自动从回调链接中提取 Access Token！'
+        : 'Automatically extracted Access Token from URL!',
+    );
+  }
+  settings.persist();
+}
+
+function onTokenInputPaste() {
+  window.setTimeout(onTokenInputChange, 20);
+}
+
+async function openQuickBrowserAuth() {
+  try {
+    const res = await invoke<{ auth_url: string; instructions: string }>(
+      'cloud_api_build_quick_auth_url',
+      {
+        provider: settings.cloudApiProvider,
+        clientId: settings.cloudApiClientId || null,
+      },
+    );
+    apiQuickAuthInstructions.value = res.instructions;
+    apiStatusText.value = res.instructions;
+    apiStatusKind.value = 'ok';
+    try {
+      await openUrl(res.auth_url);
+    } catch {
+      window.open(res.auth_url, '_blank', 'noopener,noreferrer');
+    }
+  } catch (e) {
+    const msg = String((e as Error)?.message ?? e);
+    apiStatusText.value = msg;
+    apiStatusKind.value = 'err';
+    toasts.error(msg);
+  }
+}
+
+async function pruneOldVersions() {
+  if (!workspace.currentFolder) {
+    toasts.warning(t('menubar.openFolder'));
+    return;
+  }
+  pruningVersions.value = true;
+  try {
+    const count = await invoke<number>('sync_prune_file_versions', {
+      workspace: workspace.currentFolder,
+      filePath: null,
+      keep: Math.max(1, settings.syncMaxVersions || 20),
+    });
+    toasts.success(
+      settings.language === 'zh'
+        ? `已按保留策略清理 ${count} 个旧版本快照`
+        : `Pruned ${count} old version snapshots`,
+    );
+  } catch (e) {
+    toasts.error(String(e));
+  } finally {
+    pruningVersions.value = false;
+  }
+}
 
 function selectApiProvider(p: 'baidu' | 'alipan' | 'onedrive' | 'dropbox') {
   settings.cloudApiProvider = p;
@@ -126,10 +251,16 @@ async function pushCloudApi() {
       accessToken: settings.cloudApiToken,
       remotePath: settings.cloudApiRemotePath || '/apps/SoloMD',
       passphrase: settings.cloudApiPassphrase,
+      syncMode: settings.cloudApiSyncMode,
+      encrypted: settings.cloudApiEncrypted,
+      autoWorkspaceSubdir: settings.cloudApiAutoSubdir,
+      categorizeFiles: settings.cloudApiCategorizeFiles,
+      maxVersions: settings.syncMaxVersions,
     });
     apiStatusText.value = res.message;
     apiStatusKind.value = 'ok';
     toasts.success(res.message);
+    window.dispatchEvent(new CustomEvent('solomd:snapshot-saved'));
   } catch (e) {
     const msg = String((e as Error)?.message ?? e);
     apiStatusText.value = msg;
@@ -154,11 +285,17 @@ async function pullCloudApi() {
       accessToken: settings.cloudApiToken,
       remotePath: settings.cloudApiRemotePath || '/apps/SoloMD',
       passphrase: settings.cloudApiPassphrase,
+      syncMode: settings.cloudApiSyncMode,
+      encrypted: settings.cloudApiEncrypted,
+      autoWorkspaceSubdir: settings.cloudApiAutoSubdir,
+      categorizeFiles: settings.cloudApiCategorizeFiles,
+      maxVersions: settings.syncMaxVersions,
     });
     apiStatusText.value = res.message;
     apiStatusKind.value = 'ok';
     toasts.success(res.message);
     window.dispatchEvent(new CustomEvent('solomd:remote-pulled'));
+    window.dispatchEvent(new CustomEvent('solomd:snapshot-saved'));
   } catch (e) {
     const msg = String((e as Error)?.message ?? e);
     apiStatusText.value = msg;
@@ -298,10 +435,15 @@ async function pushCloudVault() {
       workspace: workspace.currentFolder,
       vaultDir: settings.cloudVaultDir,
       passphrase: settings.cloudVaultPassphrase,
+      encrypted: settings.cloudVaultEncrypted,
+      autoWorkspaceSubdir: settings.cloudVaultAutoSubdir,
+      categorizeFiles: settings.cloudVaultCategorizeFiles,
+      maxVersions: settings.syncMaxVersions,
     });
     vaultStatusText.value = res.message;
     vaultStatusKind.value = 'ok';
     toasts.success(res.message);
+    window.dispatchEvent(new CustomEvent('solomd:snapshot-saved'));
   } catch (e) {
     const msg = String((e as Error)?.message ?? e);
     vaultStatusText.value = msg;
@@ -324,11 +466,16 @@ async function pullCloudVault() {
       workspace: workspace.currentFolder,
       vaultDir: settings.cloudVaultDir,
       passphrase: settings.cloudVaultPassphrase,
+      encrypted: settings.cloudVaultEncrypted,
+      autoWorkspaceSubdir: settings.cloudVaultAutoSubdir,
+      categorizeFiles: settings.cloudVaultCategorizeFiles,
+      maxVersions: settings.syncMaxVersions,
     });
     vaultStatusText.value = res.message;
     vaultStatusKind.value = 'ok';
     toasts.success(res.message);
     window.dispatchEvent(new CustomEvent('solomd:remote-pulled'));
+    window.dispatchEvent(new CustomEvent('solomd:snapshot-saved'));
   } catch (e) {
     const msg = String((e as Error)?.message ?? e);
     vaultStatusText.value = msg;
@@ -548,25 +695,40 @@ async function pullCloudVault() {
     <h4 class="settings__heading">
       {{
         settings.language === 'zh'
-          ? '个人网盘同步目录 · 加密备份与多端同步 (百度网盘 / 阿里云盘 / 夸克 / OneDrive / iCloud)'
-          : 'Personal Cloud Drive Folder · Encrypted Backup & Sync (Baidu / Aliyun / OneDrive / iCloud)'
+          ? '个人网盘同步目录 · 免 Key 专用文件夹分类同步 (百度网盘 / 阿里云盘 / 夸克 / OneDrive / iCloud)'
+          : 'Personal Cloud Drive Folder · Keyless Dedicated Folder Sync (Baidu / Aliyun / OneDrive / iCloud)'
       }}
     </h4>
     <p class="settings__hint">
       {{
         settings.language === 'zh'
-          ? '无需配置服务器：直接选择您电脑上个人网盘客户端的本地同步盘目录（如百度网盘同步盘、阿里云盘备份盘、夸克网盘、OneDrive、iCloud Drive、坚果云等）。SoloMD 会使用 XChaCha20-Poly1305 + Argon2id 将笔记加密为 .enc 密文写入该网盘目录，既防止隐私泄露与网盘扫描误封，又能通过网盘客户端在多台设备间自动同步密文并一键解密还原。'
-          : 'Select any local sync folder managed by your personal cloud drive client (Baidu Netdisk, Aliyun Drive, OneDrive, iCloud Drive, Dropbox, Nutstore). SoloMD encrypts every note with XChaCha20-Poly1305 (.enc) into that folder so your cloud provider only ever sees ciphertext, and any device sharing that cloud folder can decrypt & sync.'
+          ? '无需申请开放平台 Key：直接选择（或一键填入检测到的）本机网盘客户端同步盘目录。SoloMD 会自动在网盘下创建当前笔记库的专用目录，将笔记与图片分门别类存放到对应文件夹中，并同步版本历史快照（可选明文存放以便手机网盘直接查看，或开启 .enc 端到端加密）。'
+          : 'No API key required: select your local cloud drive client folder. SoloMD automatically creates a dedicated workspace directory, organizes your notes and images into categorized folders, and syncs version history snapshots.'
       }}
     </p>
+
+    <div v-if="detectedCloudDirs.length > 0" class="webdav-sync__presets">
+      <span class="webdav-sync__preset-label">
+        {{ settings.language === 'zh' ? '✨ 检测到本机网盘目录（点击一键填入）：' : '✨ Detected Local Cloud Drives:' }}
+      </span>
+      <button
+        v-for="item in detectedCloudDirs"
+        :key="item.base_dir"
+        type="button"
+        class="settings__btn-secondary"
+        @click="applyDetectedCloudDir(item.suggested_vault_dir)"
+      >
+        {{ item.label }}
+      </button>
+    </div>
 
     <div class="webdav-sync__grid">
       <label class="webdav-sync__field" style="grid-column: 1 / -1;">
         <span>
           {{
             settings.language === 'zh'
-              ? '个人网盘加密库目录 (Cloud Drive Encrypted Vault Folder)'
-              : 'Cloud Drive Encrypted Vault Folder'
+              ? '个人网盘本地同步目录 (Cloud Drive Sync Folder)'
+              : 'Cloud Drive Sync Folder'
           }}
         </span>
         <div style="display: flex; gap: 8px; align-items: center;">
@@ -577,8 +739,8 @@ async function pullCloudVault() {
             style="flex: 1;"
             :placeholder="
               settings.language === 'zh'
-                ? '例如：D:\\BaiduNetdiskWorkspace\\SoloMD-Vault 或 ~/OneDrive/SoloMD-Vault'
-                : 'e.g. ~/OneDrive/SoloMD-Vault or D:\\BaiduNetdisk\\SoloMD-Vault'
+                ? '例如：D:\\BaiduNetdiskWorkspace\\SoloMD 或 ~/OneDrive/SoloMD'
+                : 'e.g. ~/OneDrive/SoloMD or D:\\BaiduNetdiskWorkspace\\SoloMD'
             "
             @change="saveConfig"
           />
@@ -592,7 +754,11 @@ async function pullCloudVault() {
         </div>
       </label>
 
-      <label class="webdav-sync__field" style="grid-column: 1 / -1;">
+      <label
+        v-if="settings.cloudVaultEncrypted"
+        class="webdav-sync__field"
+        style="grid-column: 1 / -1;"
+      >
         <span>
           {{
             settings.language === 'zh'
@@ -615,8 +781,53 @@ async function pullCloudVault() {
       <span>
         {{
           settings.language === 'zh'
-            ? '保存笔记时自动加密备份到该网盘目录'
-            : 'Auto-encrypt & backup to cloud drive folder on save'
+            ? '📂 自动在网盘创建当前工作区专用子目录 (如 SoloMD/<笔记库名>/)'
+            : '📂 Automatically create dedicated workspace folder (e.g. SoloMD/<WorkspaceName>/)'
+        }}
+      </span>
+      <input
+        v-model="settings.cloudVaultAutoSubdir"
+        type="checkbox"
+        @change="saveConfig"
+      />
+    </label>
+
+    <label class="settings__row">
+      <span>
+        {{
+          settings.language === 'zh'
+            ? '🗂️ 保持子目录结构，并将根目录散落文件自动分门别类 (笔记文档/、图片素材/、文献附件/)'
+            : '🗂️ Preserve subfolders and auto-categorize root files (Notes / Images / References)'
+        }}
+      </span>
+      <input
+        v-model="settings.cloudVaultCategorizeFiles"
+        type="checkbox"
+        @change="saveConfig"
+      />
+    </label>
+
+    <label class="settings__row">
+      <span>
+        {{
+          settings.language === 'zh'
+            ? '🔒 对同步文件启用端到端加密 (.enc) — 关闭则直接存放明文 .md，可在手机网盘 App 直接查看'
+            : '🔒 Encrypt files (.enc) — uncheck to store plaintext .md for direct viewing in mobile cloud apps'
+        }}
+      </span>
+      <input
+        v-model="settings.cloudVaultEncrypted"
+        type="checkbox"
+        @change="saveConfig"
+      />
+    </label>
+
+    <label class="settings__row">
+      <span>
+        {{
+          settings.language === 'zh'
+            ? '保存笔记时自动同步到该网盘专用目录'
+            : 'Auto-sync to cloud drive folder on save'
         }}
       </span>
       <input
@@ -630,25 +841,27 @@ async function pullCloudVault() {
       <button
         type="button"
         class="settings__btn-secondary"
-        :disabled="vaultPushing || !settings.cloudVaultDir || !settings.cloudVaultPassphrase"
+        :disabled="vaultPushing || !settings.cloudVaultDir || (settings.cloudVaultEncrypted && !settings.cloudVaultPassphrase)"
         @click="pushCloudVault"
       >
         {{
           vaultPushing
-            ? (settings.language === 'zh' ? '正在加密备份…' : 'Encrypting…')
-            : (settings.language === 'zh' ? '🔒 加密备份到网盘目录 (Push)' : '🔒 Encrypt & Backup to Cloud Folder')
+            ? (settings.language === 'zh' ? '正在同步到网盘目录…' : 'Syncing…')
+            : settings.cloudVaultEncrypted
+              ? (settings.language === 'zh' ? '🔒 加密分类同步到网盘目录 (Push)' : '🔒 Encrypt & Sync to Cloud Folder')
+              : (settings.language === 'zh' ? '📂 分类同步到网盘专用目录 (Push)' : '📂 Sync to Dedicated Cloud Folder')
         }}
       </button>
       <button
         type="button"
         class="settings__btn-secondary"
-        :disabled="vaultPulling || !settings.cloudVaultDir || !settings.cloudVaultPassphrase"
+        :disabled="vaultPulling || !settings.cloudVaultDir || (settings.cloudVaultEncrypted && !settings.cloudVaultPassphrase)"
         @click="pullCloudVault"
       >
         {{
           vaultPulling
-            ? (settings.language === 'zh' ? '正在解密同步…' : 'Decrypting…')
-            : (settings.language === 'zh' ? '🔓 从网盘目录解密多端同步 (Pull)' : '🔓 Decrypt & Sync from Cloud Folder')
+            ? (settings.language === 'zh' ? '正在从网盘拉取…' : 'Pulling…')
+            : (settings.language === 'zh' ? '📥 从网盘专用目录同步还原 (Pull)' : '📥 Pull & Restore from Cloud Folder')
         }}
       </button>
     </div>
@@ -669,15 +882,15 @@ async function pullCloudVault() {
     <h4 class="settings__heading">
       {{
         settings.language === 'zh'
-          ? '网盘开放平台直连 API · 免客户端加密备份与同步 (百度网盘 / 阿里云盘 / OneDrive / Dropbox)'
-          : 'Direct Cloud Drive OpenAPI · Clientless Encrypted Backup & Sync (Baidu / Aliyun / OneDrive / Dropbox)'
+          ? '网盘开放平台直连 API · 免客户端专用目录同步 (百度网盘 / 阿里云盘 / OneDrive / Dropbox)'
+          : 'Direct Cloud Drive OpenAPI · Clientless Folder & Bundle Sync (Baidu / Aliyun / OneDrive / Dropbox)'
       }}
     </h4>
     <p class="settings__hint">
       {{
         settings.language === 'zh'
-          ? '不依赖本地网盘同步客户端，也不需要搭建 WebDAV：直接通过官方开放平台 API 将整个笔记库压缩并用 Argon2id + XChaCha20-Poly1305 加密为单个密文包 (solomd-vault.enc) 上传至网盘（连文件名与目录结构也完全加密隐藏）。'
-          : 'No local sync client or WebDAV server required: compresses and encrypts your entire workspace with Argon2id + XChaCha20-Poly1305 into a single zero-knowledge bundle (solomd-vault.enc, hiding even filenames) and syncs directly via the cloud provider OpenAPI.'
+          ? '不安装网盘桌面客户端也可直接同步：支持「一键免申请 Key 浏览器授权登录」，自动在网盘 /apps/SoloMD/<工作区名>/ 下创建专用目录，将本地笔记与图片分门别类逐个增量上传，并自动在云端留存历史版本快照。'
+          : 'Sync directly without installing a desktop client: supports 1-click browser OAuth without registering a developer key, automatically creates a dedicated /apps/SoloMD/<Workspace>/ directory with categorized subfolders, incremental sync, and version history.'
       }}
     </p>
 
@@ -719,102 +932,6 @@ async function pullCloudVault() {
       </button>
     </div>
 
-    <div class="webdav-sync__grid">
-      <label class="webdav-sync__field" style="grid-column: 1 / -1;">
-        <span>
-          {{
-            settings.language === 'zh'
-              ? '开放平台 Access Token (可直接粘贴 Token，或使用下方扫码设备授权自动获取)'
-              : 'OpenAPI Access Token (paste directly or use OAuth Device Code below)'
-          }}
-        </span>
-        <input
-          v-model="settings.cloudApiToken"
-          type="password"
-          class="settings__input"
-          :placeholder="settings.language === 'zh' ? '粘贴网盘开放平台 Access Token…' : 'Paste Access Token…'"
-          autocomplete="new-password"
-          @change="saveConfig"
-        />
-      </label>
-
-      <label
-        v-if="settings.cloudApiProvider === 'baidu' || settings.cloudApiProvider === 'onedrive'"
-        class="webdav-sync__field"
-      >
-        <span>
-          {{
-            settings.language === 'zh'
-              ? '开放平台 AppKey / Client ID (选填，用于扫码授权)'
-              : 'AppKey / Client ID (optional, for Device OAuth)'
-          }}
-        </span>
-        <input
-          v-model="settings.cloudApiClientId"
-          type="text"
-          class="settings__input"
-          :placeholder="settings.cloudApiProvider === 'baidu' ? '百度网盘开放平台 AppKey' : 'Azure App Client ID'"
-          @change="saveConfig"
-        />
-      </label>
-
-      <label
-        v-if="settings.cloudApiProvider === 'baidu'"
-        class="webdav-sync__field"
-      >
-        <span>
-          {{
-            settings.language === 'zh'
-              ? '开放平台 SecretKey (选填，用于扫码授权换取 Token)'
-              : 'SecretKey (optional, for Baidu Device OAuth)'
-          }}
-        </span>
-        <input
-          v-model="settings.cloudApiClientSecret"
-          type="password"
-          class="settings__input"
-          placeholder="百度网盘开放平台 SecretKey"
-          autocomplete="new-password"
-          @change="saveConfig"
-        />
-      </label>
-
-      <label class="webdav-sync__field">
-        <span>
-          {{
-            settings.language === 'zh'
-              ? '网盘远程存储目录 (自动存放 solomd-vault.enc)'
-              : 'Remote Directory Path (stores solomd-vault.enc)'
-          }}
-        </span>
-        <input
-          v-model="settings.cloudApiRemotePath"
-          type="text"
-          class="settings__input"
-          :placeholder="settings.cloudApiProvider === 'baidu' ? '/apps/SoloMD' : '/SoloMD'"
-          @change="saveConfig"
-        />
-      </label>
-
-      <label class="webdav-sync__field">
-        <span>
-          {{
-            settings.language === 'zh'
-              ? '直连加密口令 (Passphrase — 本地高强度加密，多端输入相同口令即可解密)'
-              : 'Encryption Passphrase (enter same passphrase on all devices)'
-          }}
-        </span>
-        <input
-          v-model="settings.cloudApiPassphrase"
-          type="password"
-          class="settings__input"
-          :placeholder="settings.language === 'zh' ? '输入端到端加密口令…' : 'Enter encryption passphrase…'"
-          autocomplete="new-password"
-          @change="saveConfig"
-        />
-      </label>
-    </div>
-
     <div
       v-if="settings.cloudApiProvider === 'baidu' || settings.cloudApiProvider === 'onedrive'"
       class="webdav-sync__actions"
@@ -822,13 +939,25 @@ async function pullCloudVault() {
       <button
         type="button"
         class="settings__btn-secondary"
-        :disabled="apiAuthLoading || !settings.cloudApiClientId"
+        style="border-color: var(--accent); color: var(--accent); font-weight: 600;"
+        @click="openQuickBrowserAuth"
+      >
+        {{
+          settings.language === 'zh'
+            ? '🚀 免申请 Key · 一键打开浏览器扫码授权'
+            : '🚀 1-Click Keyless Browser Authorization'
+        }}
+      </button>
+      <button
+        type="button"
+        class="settings__btn-secondary"
+        :disabled="apiAuthLoading"
         @click="startDeviceAuth"
       >
         {{
           settings.language === 'zh'
-            ? '📲 获取扫码/设备授权码 (OAuth Device Code)'
-            : '📲 Start OAuth Device Code Login'
+            ? '📲 获取设备授权码 (Device Code)'
+            : '📲 Get Device Code'
         }}
       </button>
       <button
@@ -847,6 +976,13 @@ async function pullCloudVault() {
     </div>
 
     <div
+      v-if="apiQuickAuthInstructions"
+      style="padding: 8px 10px; border-radius: 6px; background: var(--bg-elevated, rgba(127,127,127,0.08)); font-size: 12px; line-height: 1.6;"
+    >
+      💡 {{ apiQuickAuthInstructions }}
+    </div>
+
+    <div
       v-if="apiUserCode"
       style="padding: 8px 10px; border-radius: 6px; background: var(--bg-elevated, rgba(127,127,127,0.08)); font-size: 12px; line-height: 1.6;"
     >
@@ -860,12 +996,186 @@ async function pullCloudVault() {
       </div>
     </div>
 
+    <div class="webdav-sync__grid">
+      <label class="webdav-sync__field" style="grid-column: 1 / -1;">
+        <span>
+          {{
+            settings.language === 'zh'
+              ? '授权凭证 Access Token（支持直接粘贴浏览器授权跳转后的整段网址 URL，会自动提取 Token）'
+              : 'Access Token (paste token or the full redirect URL after browser login — auto-extracted)'
+          }}
+        </span>
+        <input
+          v-model="settings.cloudApiToken"
+          type="password"
+          class="settings__input"
+          :placeholder="
+            settings.language === 'zh'
+              ? '粘贴授权后的浏览器网址 URL 或 Access Token…'
+              : 'Paste redirect URL or Access Token…'
+          "
+          autocomplete="new-password"
+          @change="onTokenInputChange"
+          @paste="onTokenInputPaste"
+        />
+      </label>
+
+      <label class="webdav-sync__field">
+        <span>
+          {{
+            settings.language === 'zh'
+              ? '网盘远程根目录 (自动在其下建立工作区专用目录)'
+              : 'Remote Base Directory'
+          }}
+        </span>
+        <input
+          v-model="settings.cloudApiRemotePath"
+          type="text"
+          class="settings__input"
+          :placeholder="settings.cloudApiProvider === 'baidu' ? '/apps/SoloMD' : '/SoloMD'"
+          @change="saveConfig"
+        />
+      </label>
+
+      <label class="webdav-sync__field">
+        <span>
+          {{
+            settings.language === 'zh'
+              ? '网盘同步存储方式'
+              : 'Cloud Sync Storage Mode'
+          }}
+        </span>
+        <select
+          v-model="settings.cloudApiSyncMode"
+          class="settings__input"
+          @change="saveConfig"
+        >
+          <option value="folder">
+            {{
+              settings.language === 'zh'
+                ? '📂 专用目录 + 文件夹分类逐文件增量同步 (推荐)'
+                : '📂 Dedicated Folder + Categorized Multi-file Sync (Recommended)'
+            }}
+          </option>
+          <option value="bundle">
+            {{
+              settings.language === 'zh'
+                ? '📦 单文件全库打包加密 (solomd-vault.enc)'
+                : '📦 Single Encrypted Archive Bundle (solomd-vault.enc)'
+            }}
+          </option>
+        </select>
+      </label>
+
+      <label
+        v-if="settings.cloudApiSyncMode === 'bundle' || settings.cloudApiEncrypted"
+        class="webdav-sync__field"
+        style="grid-column: 1 / -1;"
+      >
+        <span>
+          {{
+            settings.language === 'zh'
+              ? '端到端加密口令 (Passphrase — 多端同步请输入相同口令)'
+              : 'Encryption Passphrase (enter same passphrase on all devices)'
+          }}
+        </span>
+        <input
+          v-model="settings.cloudApiPassphrase"
+          type="password"
+          class="settings__input"
+          :placeholder="settings.language === 'zh' ? '输入端到端加密口令…' : 'Enter encryption passphrase…'"
+          autocomplete="new-password"
+          @change="saveConfig"
+        />
+      </label>
+    </div>
+
+    <template v-if="settings.cloudApiSyncMode === 'folder'">
+      <label class="settings__row">
+        <span>
+          {{
+            settings.language === 'zh'
+              ? '📂 自动按工作区名称在网盘建立专用目录 (如 /apps/SoloMD/<工作区名>/)'
+              : '📂 Auto-create dedicated workspace directory (e.g. /apps/SoloMD/<WorkspaceName>/)'
+          }}
+        </span>
+        <input
+          v-model="settings.cloudApiAutoSubdir"
+          type="checkbox"
+          @change="saveConfig"
+        />
+      </label>
+
+      <label class="settings__row">
+        <span>
+          {{
+            settings.language === 'zh'
+              ? '🗂️ 保持本地子文件夹分类，并将根目录散落文件自动归类到「笔记文档 / 图片素材 / 文献附件」'
+              : '🗂️ Keep subfolder tree and auto-categorize root files into Notes / Images / References'
+          }}
+        </span>
+        <input
+          v-model="settings.cloudApiCategorizeFiles"
+          type="checkbox"
+          @change="saveConfig"
+        />
+      </label>
+
+      <label class="settings__row">
+        <span>
+          {{
+            settings.language === 'zh'
+              ? '🔒 在分类目录中对单文件启用 .enc 加密（关闭则保持原格式 .md，可在百度网盘 App 直接阅读）'
+              : '🔒 Encrypt individual files (.enc) inside categorized folders'
+          }}
+        </span>
+        <input
+          v-model="settings.cloudApiEncrypted"
+          type="checkbox"
+          @change="saveConfig"
+        />
+      </label>
+    </template>
+
+    <details style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+      <summary style="cursor: pointer; user-select: none;">
+        {{
+          settings.language === 'zh'
+            ? '⚙️ 高级选项：使用自定义开放平台 AppKey / SecretKey（默认免填）'
+            : '⚙️ Advanced: Custom OpenAPI AppKey / SecretKey (optional)'
+        }}
+      </summary>
+      <div class="webdav-sync__grid" style="margin-top: 8px;">
+        <label class="webdav-sync__field">
+          <span>AppKey / Client ID</span>
+          <input
+            v-model="settings.cloudApiClientId"
+            type="text"
+            class="settings__input"
+            :placeholder="settings.cloudApiProvider === 'baidu' ? '内置默认 AppKey（可留空）' : 'Client ID'"
+            @change="saveConfig"
+          />
+        </label>
+        <label v-if="settings.cloudApiProvider === 'baidu'" class="webdav-sync__field">
+          <span>SecretKey</span>
+          <input
+            v-model="settings.cloudApiClientSecret"
+            type="password"
+            class="settings__input"
+            placeholder="仅设备码轮询模式需要（浏览器一键授权免填）"
+            autocomplete="new-password"
+            @change="saveConfig"
+          />
+        </label>
+      </div>
+    </details>
+
     <label class="settings__row">
       <span>
         {{
           settings.language === 'zh'
-            ? '保存笔记时自动通过网盘 API 加密上传备份'
-            : 'Auto-encrypt & upload via Cloud Drive API on save'
+            ? '保存笔记时自动通过网盘 API 增量同步'
+            : 'Auto-sync via Cloud Drive API on save'
         }}
       </span>
       <input
@@ -879,25 +1189,37 @@ async function pullCloudVault() {
       <button
         type="button"
         class="settings__btn-secondary"
-        :disabled="apiPushing || !settings.cloudApiToken || !settings.cloudApiPassphrase"
+        :disabled="
+          apiPushing ||
+          !settings.cloudApiToken ||
+          ((settings.cloudApiSyncMode === 'bundle' || settings.cloudApiEncrypted) &&
+            !settings.cloudApiPassphrase)
+        "
         @click="pushCloudApi"
       >
         {{
           apiPushing
-            ? (settings.language === 'zh' ? '正在打包加密上传…' : 'Encrypting & Uploading…')
-            : (settings.language === 'zh' ? '🔒 API 直连加密上传到网盘 (Push)' : '🔒 Encrypt & Push via Cloud API')
+            ? (settings.language === 'zh' ? '正在同步上传到网盘…' : 'Uploading…')
+            : settings.cloudApiSyncMode === 'folder'
+              ? (settings.language === 'zh' ? '📂 增量分类同步到网盘专用目录 (Push)' : '📂 Incremental Folder Push via Cloud API')
+              : (settings.language === 'zh' ? '🔒 打包加密上传到网盘 (Push)' : '🔒 Bundle & Push via Cloud API')
         }}
       </button>
       <button
         type="button"
         class="settings__btn-secondary"
-        :disabled="apiPulling || !settings.cloudApiToken || !settings.cloudApiPassphrase"
+        :disabled="
+          apiPulling ||
+          !settings.cloudApiToken ||
+          ((settings.cloudApiSyncMode === 'bundle' || settings.cloudApiEncrypted) &&
+            !settings.cloudApiPassphrase)
+        "
         @click="pullCloudApi"
       >
         {{
           apiPulling
-            ? (settings.language === 'zh' ? '正在下载解密还原…' : 'Downloading & Decrypting…')
-            : (settings.language === 'zh' ? '🔓 API 直连从网盘下载解密同步 (Pull)' : '🔓 Pull & Decrypt via Cloud API')
+            ? (settings.language === 'zh' ? '正在从网盘拉取同步…' : 'Downloading…')
+            : (settings.language === 'zh' ? '📥 从网盘专用目录拉取同步 (Pull)' : '📥 Pull & Sync via Cloud API')
         }}
       </button>
     </div>
@@ -912,6 +1234,75 @@ async function pullCloudVault() {
     >
       {{ apiStatusText }}
     </p>
+
+    <hr style="border: 0; border-top: 1px solid var(--border); margin: 14px 0 6px;" />
+
+    <h4 class="settings__heading">
+      {{
+        settings.language === 'zh'
+          ? '⏱️ 跨平台版本历史管理与云端版本归档 (.solomd-sync/versions)'
+          : '⏱️ Cross-Platform Version History & Cloud Version Archiving'
+      }}
+    </h4>
+    <p class="settings__hint">
+      {{
+        settings.language === 'zh'
+          ? '每次保存笔记或网盘同步覆盖前，自动在工作区 .solomd-sync/versions/ 及网盘端归档历史快照（按 SHA-256 自动去重）。不依赖本地 Git，在桌面端与移动端均可随时通过右侧「历史版本」面板查看行级差异 (Diff) 并一键回滚恢复。'
+          : 'Automatically archives deduplicated file snapshots into .solomd-sync/versions/ on save and before cloud sync overwrites. Works across desktop and mobile without requiring Git.'
+      }}
+    </p>
+
+    <label class="settings__row">
+      <span>
+        {{
+          settings.language === 'zh'
+            ? '保存与同步时自动留存历史版本快照'
+            : 'Automatically save version snapshots on save & sync'
+        }}
+      </span>
+      <input
+        v-model="settings.autoSnapshotOnSave"
+        type="checkbox"
+        @change="saveConfig"
+      />
+    </label>
+
+    <div class="webdav-sync__grid">
+      <label class="webdav-sync__field">
+        <span>
+          {{
+            settings.language === 'zh'
+              ? '单篇笔记最大保留历史版本数 (超出自动清理最旧快照)'
+              : 'Max Version Snapshots per File'
+          }}
+        </span>
+        <select
+          v-model.number="settings.syncMaxVersions"
+          class="settings__input"
+          @change="saveConfig"
+        >
+          <option :value="10">10 个版本</option>
+          <option :value="20">20 个版本 (推荐)</option>
+          <option :value="50">50 个版本</option>
+          <option :value="100">100 个版本</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="webdav-sync__actions">
+      <button
+        type="button"
+        class="settings__btn-secondary"
+        :disabled="pruningVersions"
+        @click="pruneOldVersions"
+      >
+        {{
+          pruningVersions
+            ? (settings.language === 'zh' ? '正在清理…' : 'Pruning…')
+            : (settings.language === 'zh' ? '🧹 立即按保留数量清理旧版本快照' : '🧹 Prune Old Snapshots Now')
+        }}
+      </button>
+    </div>
   </section>
 </template>
 

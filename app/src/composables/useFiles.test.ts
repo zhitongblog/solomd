@@ -116,3 +116,45 @@ test('confirmSaveMissingFile prompts before saving when original file no longer 
   assert.equal(confirmCalls, 0);
   assert.equal(writes.length, 1);
 });
+
+test('saveAll saves all dirty tabs with file paths and leaves clean tabs untouched', async () => {
+  setActivePinia(createPinia());
+  const tabs = useTabsStore();
+  const files = useFiles();
+
+  const tab1 = tabs.openFromDisk({
+    filePath: '/tmp/note-1.md',
+    content: '# Note 1\n',
+    encoding: 'UTF-8',
+    language: 'markdown',
+    hadBom: false,
+  });
+  const tab2 = tabs.openFromDisk({
+    filePath: '/tmp/note-2.md',
+    content: '# Note 2\n',
+    encoding: 'UTF-8',
+    language: 'markdown',
+    hadBom: false,
+  });
+  const tab3 = tabs.openFromDisk({
+    filePath: '/tmp/note-3.md',
+    content: '# Note 3\n',
+    encoding: 'UTF-8',
+    language: 'markdown',
+    hadBom: false,
+  });
+
+  tab1.content = '# Note 1 edited\n';
+  tab3.content = '# Note 3 edited\n';
+  writes.length = 0;
+
+  await files.saveAll();
+
+  assert.deepEqual(
+    writes.map((w) => w.path),
+    ['/tmp/note-1.md', '/tmp/note-3.md'],
+  );
+  assert.equal(tabs.isDirty(tab1.id), false);
+  assert.equal(tabs.isDirty(tab2.id), false);
+  assert.equal(tabs.isDirty(tab3.id), false);
+});

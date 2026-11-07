@@ -4,6 +4,7 @@ pub mod store_review;
 pub mod iap;
 pub mod ios_folder;
 pub mod commands;
+pub mod set_default;
 pub mod convert;
 // Image-bed (图床) upload: PicGo / shell command / sm.ms / S3-compatible / GitHub.
 pub mod image_upload;
@@ -218,6 +219,8 @@ pub fn run() {
             commands::print_webview_to_pdf,
             commands::copy_file,
             commands::download_and_install_update,
+            commands::cancel_update_download,
+            set_default::set_as_default_markdown_editor,
             convert::convert_file_to_markdown,
             storage_android::android_has_all_files_access,
             storage_android::android_request_all_files_access,
@@ -395,10 +398,17 @@ pub fn run() {
             webdav_sync::webdav_pull_workspace,
             webdav_sync::cloud_vault_push_workspace,
             webdav_sync::cloud_vault_pull_workspace,
+            webdav_sync::cloud_vault_detect_local_dirs,
+            webdav_sync::cloud_api_build_quick_auth_url,
             webdav_sync::cloud_api_start_device_auth,
             webdav_sync::cloud_api_poll_device_auth,
             webdav_sync::cloud_api_push_workspace,
             webdav_sync::cloud_api_pull_workspace,
+            webdav_sync::sync_save_file_snapshot,
+            webdav_sync::sync_list_file_versions,
+            webdav_sync::sync_get_file_version_diff,
+            webdav_sync::sync_restore_file_version,
+            webdav_sync::sync_prune_file_versions,
             crypto::crypto_status,
             crypto::crypto_set_passphrase,
             crypto::crypto_clear_passphrase,

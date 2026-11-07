@@ -774,6 +774,11 @@ pub fn fs_dir_exists(path: String) -> bool {
 }
 
 #[tauri::command]
+pub fn fs_files_exist(paths: Vec<String>) -> Vec<bool> {
+    paths.iter().map(|p| Path::new(p).is_file()).collect()
+}
+
+#[tauri::command]
 pub fn fs_file_exists(path: String) -> bool {
     Path::new(&path).is_file()
 }
@@ -2101,6 +2106,18 @@ async fn resolve_gitee_asset_url(
     None
 }
 
+/// Set by `cancel_update_download` while a download is in flight. Reset at the
+/// start of every download, so a cancelled run never poisons the next one.
+static UPDATE_CANCELLED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Stop the in-flight installer download. The partial file is discarded and
+/// `download_and_install_update` resolves with an `Err("cancelled")` the
+/// frontend recognises instead of falling back to the release page.
+#[tauri::command]
+pub fn cancel_update_download() {
+    UPDATE_CANCELLED.store(true, std::sync::atomic::Ordering::SeqCst);
+}
+
 /// Download the platform installer for `version` (switching to Gitee automatically
 /// when the visitor is in China, with cross-mirror fallback between Gitee and GitHub)
 /// and launch the installer directly.
@@ -2112,7 +2129,10 @@ pub async fn download_and_install_update(
 ) -> Result<String, String> {
     use futures_util::StreamExt;
     use std::io::Write;
+    use std::sync::atomic::Ordering;
     use tauri::Emitter;
+
+    UPDATE_CANCELLED.store(false, Ordering::SeqCst);
 
     let clean_ver = version.trim().trim_start_matches('v').to_string();
     if clean_ver.is_empty() {
@@ -2165,6 +2185,9 @@ pub async fn download_and_install_update(
     let mut downloaded_ok = false;
 
     for (source, url) in candidates {
+        if UPDATE_CANCELLED.load(Ordering::SeqCst) {
+            return Err("cancelled".to_string());
+        }
         let resp = match client.get(&url).send().await {
             Ok(r) => r,
             Err(e) => {
@@ -2199,8 +2222,13 @@ pub async fn download_and_install_update(
             .unwrap_or_else(std::time::Instant::now);
         let mut stream = resp.bytes_stream();
         let mut stream_err: Option<String> = None;
+        let mut cancelled_here = false;
 
         while let Some(chunk_res) = stream.next().await {
+            if UPDATE_CANCELLED.load(Ordering::SeqCst) {
+                cancelled_here = true;
+                break;
+            }
             match chunk_res {
                 Ok(chunk) => {
                     if let Err(e) = file.write_all(&chunk) {
@@ -2234,6 +2262,11 @@ pub async fn download_and_install_update(
                     break;
                 }
             }
+        }
+
+        if cancelled_here {
+            let _ = fs::remove_file(&part_path);
+            return Err("cancelled".to_string());
         }
 
         if let Some(err) = stream_err {

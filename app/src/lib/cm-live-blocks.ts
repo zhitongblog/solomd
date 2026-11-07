@@ -45,6 +45,13 @@ import {
   rewriteImageUrls,
 } from './image-resolve';
 import { renderMarkdown, extractImageRoot } from './markdown';
+import { parseTable } from './markdown-table';
+import {
+  HEADER_ROW,
+  applyCellEdit,
+  cellText,
+  stepCell,
+} from './table-cell-edit';
 import { findHtmlBlockEnd } from './html-live-render';
 import { openRenderedLink } from './link-open';
 import {
@@ -127,23 +134,61 @@ function quoteDepth(line: string): number {
 function stripQuotePrefix(line: string): string {
   return line.replace(/^\s*(?:>\s*)+/, '');
 }
+function hasUnescapedPipe(text: string): boolean {
+  const n = text.length;
+  let p = 0;
+  while (p < n) {
+    if (text[p] === '`') {
+      let ticks = 1;
+      while (p + ticks < n && text[p + ticks] === '`') ticks++;
+      let q = p + ticks;
+      let closed = -1;
+      while (q < n) {
+        if (text[q] === '`') {
+          let ticks2 = 1;
+          while (q + ticks2 < n && text[q + ticks2] === '`') ticks2++;
+          if (ticks2 === ticks) {
+            closed = q + ticks2;
+            break;
+          }
+          q += ticks2;
+        } else {
+          q++;
+        }
+      }
+      p = closed >= 0 ? closed : p + ticks;
+      continue;
+    }
+    if (text[p] === '\\' && p + 1 < n) {
+      p += 2;
+      continue;
+    }
+    if (text[p] === '|') return true;
+    p++;
+  }
+  return false;
+}
 function isPipeRow(line: string, expectedQuoteDepth?: number): boolean {
   if (expectedQuoteDepth !== undefined && quoteDepth(line) !== expectedQuoteDepth) return false;
   const trimmed = stripQuotePrefix(line).trim();
-  return trimmed.startsWith('|') && trimmed.endsWith('|') && trimmed.length > 2;
+  if (!trimmed || trimmed === '|') return false;
+  if (/^(?:[-+*]\s|\d+[.)]\s|#{1,6}\s|```|~~~)/.test(trimmed)) return false;
+  return hasUnescapedPipe(trimmed);
 }
 function isSeparatorRow(line: string, expectedQuoteDepth?: number): boolean {
+  if (expectedQuoteDepth !== undefined && quoteDepth(line) !== expectedQuoteDepth) return false;
   const trimmed = stripQuotePrefix(line).trim();
-  // `| --- | :---: |` etc. Only `:`, `-`, ` `, `|` characters allowed,
-  // and at least one `-` per cell.
-  return (
-    isPipeRow(line, expectedQuoteDepth) &&
-    // `-` must be last in the class so it's a literal, not the range `:`..`|`
-    // (which excludes `-` at 0x2D and made every real separator row fail —
-    // tables never collapsed to a widget in live-edit).
-    /^\|[\s:|-]+\|$/.test(trimmed) &&
-    /-{3,}/.test(trimmed)
-  );
+  if (!trimmed.includes('|')) return false;
+  const inner = trimmed.replace(/^\|/, '').replace(/\|$/, '');
+  const cells = inner.split('|');
+  if (cells.length === 0) return false;
+  let hasRealCell = false;
+  for (const c of cells) {
+    if (c.trim() === '') continue;
+    if (!/^\s*:?-+:?\s*$/.test(c)) return false;
+    hasRealCell = true;
+  }
+  return hasRealCell;
 }
 
 // Images report their real height only after they load, and CM6 does not
@@ -331,10 +376,20 @@ export function findTableCellOffsetInLine(
     p++;
   }
   if (pipes.length === 0) return n;
-  const maxCellIdx = Math.max(0, pipes.length - 2);
+  const prefixLen = (lineText.match(/^\s*(?:>\s*)*/)?.[0] ?? '').length;
+  const trimmedEnd = lineText.trimEnd().length;
+  const bounds: number[] = [];
+  if (pipes[0] !== prefixLen) {
+    bounds.push(prefixLen - 1);
+  }
+  bounds.push(...pipes);
+  if (pipes[pipes.length - 1] !== trimmedEnd - 1) {
+    bounds.push(n);
+  }
+  const maxCellIdx = Math.max(0, bounds.length - 2);
   const cellIdx = Math.max(0, Math.min(colIdx, maxCellIdx));
-  const cellStart = pipes[cellIdx] + 1;
-  const cellEnd = pipes[cellIdx + 1] ?? n;
+  const cellStart = bounds[cellIdx] + 1;
+  const cellEnd = bounds[cellIdx + 1] ?? n;
   const rawCell = lineText.slice(cellStart, cellEnd);
   const firstNonSpace = rawCell.search(/\S/);
   if (firstNonSpace < 0) {
@@ -347,6 +402,29 @@ export function findTableCellOffsetInLine(
   return contentStart + Math.round((contentEnd - contentStart) * ratio);
 }
 
+function dedentTableSource(source: string): string {
+  const lines = source.split('\n');
+  let minIndent = Infinity;
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    const m = line.match(/^[ \t]*/);
+    const indent = m ? m[0].length : 0;
+    if (indent < minIndent) minIndent = indent;
+  }
+  if (!Number.isFinite(minIndent) || minIndent <= 0) return source;
+  return lines.map((line) => (line.length >= minIndent ? line.slice(minIndent) : line)).join('\n');
+}
+
+/**
+ * The cell a rebuilt table widget should re-open after a write-back.
+ *
+ * Committing a cell replaces the whole widget, so the DOM holding the caret is
+ * destroyed and cannot be focused again. The replacement reads this at build
+ * time and puts the caret back — which is why it is module state and not a
+ * field on the widget being thrown away.
+ */
+let pendingCellFocus: { from: number; row: number; col: number; at: number } | null = null;
+
 class TableWidget extends WidgetType {
   // Cells can hold math / code: a widget built before KaTeX or highlight.js
   // arrived must not count as equal to the one built after (render-deps.ts).
@@ -355,18 +433,26 @@ class TableWidget extends WidgetType {
   private readonly imageRoot: string | null;
   private readonly filePath?: string;
   private readonly startLine: number;
+  // Document range this widget replaces. Cell editing writes back through it;
+  // -1 means "unknown" (a widget built without one simply stays read-only).
+  private readonly from: number;
+  private readonly to: number;
 
   constructor(
     source: string,
     imageRoot: string | null = null,
     filePath?: string,
     startLine: number = 0,
+    from: number = -1,
+    to: number = -1,
   ) {
     super();
     this.source = source;
     this.imageRoot = imageRoot;
     this.filePath = filePath;
     this.startLine = startLine;
+    this.from = from;
+    this.to = to;
   }
 
   eq(other: TableWidget): boolean {
@@ -375,6 +461,8 @@ class TableWidget extends WidgetType {
       other.imageRoot === this.imageRoot &&
       other.filePath === this.filePath &&
       other.startLine === this.startLine &&
+      other.from === this.from &&
+      other.to === this.to &&
       other.deps === this.deps
     );
   }
@@ -384,11 +472,14 @@ class TableWidget extends WidgetType {
     wrap.className = 'cm-live-block cm-live-block--table';
     // Render the table source through the same markdown pipeline used by the
     // preview pane so we get GFM alignment, inline formatting, etc. for free.
-    // We strip everything except the table rows from the rendered output.
-    const rawHtml = renderMarkdown(this.source);
+    // Dedent common leading spaces/tabs so a 4-space indented table nested
+    // inside a list item is rendered as a <table> rather than an indented
+    // <pre><code> block when sliced out of its parent list context.
+    const rawHtml = renderMarkdown(dedentTableSource(this.source));
     wrap.innerHTML = rewriteImageUrls(rawHtml, this.imageRoot, this.filePath);
     installSvgImageFallbacks(wrap);
     trackImageHeights(wrap);
+    const cellEditor = this.createCellEditor(wrap, view);
 
     // #504 — Clicking a rendered table cell in Live mode places the caret at
     // the exact Markdown table row (header or body row) and column cell offset,
@@ -401,6 +492,16 @@ class TableWidget extends WidgetType {
       const cell = target?.closest?.('th, td') as HTMLTableCellElement | null;
       const tr = target?.closest?.('tr') as HTMLTableRowElement | null;
       if (!cell && !tr) return;
+
+      // #500 — a click on a cell edits that cell in place. The caret mapping
+      // below is what used to turn the table back into source lines the moment
+      // anything needed changing; it stays as the fallback for read-only panes
+      // and for clicks that land on a row but not on a cell.
+      if (cell && cellEditor?.begin(ev, cell)) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        return;
+      }
 
       let targetLineNum = this.startLine;
       const sectionTag = tr?.parentElement?.tagName;
@@ -458,18 +559,190 @@ class TableWidget extends WidgetType {
     return wrap;
   }
 
-  ignoreEvent(event: Event): boolean {
-    if (
-      event.type === 'mousedown' &&
-      event instanceof MouseEvent &&
-      event.button === 0 &&
-      !(event.target as Element | null)?.closest?.('a') &&
-      !!(event.target as Element | null)?.closest?.('th, td, tr')
-    ) {
-      return true;
+  /**
+   * #500 — edit a table cell where it is, instead of falling back to the source.
+   */
+  private createCellEditor(
+    wrap: HTMLElement,
+    view?: EditorView,
+  ): { begin: (ev: MouseEvent, cell: HTMLTableCellElement) => boolean } | null {
+    const table = wrap.querySelector('table');
+    if (!table || !view || this.from < 0 || this.to < 0) return null;
+
+    const head = table.tHead;
+    let bodyRow = 0;
+    for (const row of Array.from(table.rows)) {
+      const r = head && row.parentElement === head ? HEADER_ROW : bodyRow++;
+      for (const cell of Array.from(row.cells)) {
+        cell.dataset.row = String(r);
+        cell.dataset.col = String(cell.cellIndex);
+      }
     }
-    return false;
+
+    let active: { cell: HTMLTableCellElement; row: number; col: number; html: string } | null = null;
+    let written = false;
+
+    const model = () => parseTable(this.source) ?? null;
+
+    const caretToEnd = (cell: HTMLElement) => {
+      const range = document.createRange();
+      range.selectNodeContents(cell);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+    };
+
+    const leave = (): { row: number; col: number; text: string } | null => {
+      const a = active;
+      if (!a) return null;
+      active = null;
+      const text = a.cell.textContent ?? '';
+      a.cell.classList.remove('cm-live-table__cell--editing');
+      a.cell.removeAttribute('contenteditable');
+      a.cell.removeAttribute('spellcheck');
+      a.cell.innerHTML = a.html;
+      return { row: a.row, col: a.col, text };
+    };
+
+    const commit = (focus: { row: number; col: number } | null): boolean => {
+      const done = leave();
+      if (!done || written) return false;
+      const markdown = applyCellEdit(this.source, done.row, done.col, done.text);
+      if (!markdown) return false;
+      written = true;
+      if (focus) {
+        pendingCellFocus = { from: this.from, row: focus.row, col: focus.col, at: Date.now() };
+      }
+      view.dispatch({
+        changes: { from: this.from, to: this.to, insert: markdown },
+        userEvent: 'input.table-cell',
+      });
+      return true;
+    };
+
+    const start = (cell: HTMLTableCellElement): boolean => {
+      const m = model();
+      if (!m) return false;
+      const row = Number(cell.dataset.row ?? HEADER_ROW);
+      const col = Number(cell.dataset.col ?? cell.cellIndex);
+      if (col < 0 || col >= m.header.length) return false;
+      if (row !== HEADER_ROW && (row < 0 || row >= m.rows.length)) return false;
+      active = { cell, row, col, html: cell.innerHTML };
+      cell.textContent = cellText(m, row, col);
+      cell.classList.add('cm-live-table__cell--editing');
+      cell.setAttribute('contenteditable', 'true');
+      cell.setAttribute('spellcheck', 'false');
+      cell.focus({ preventScroll: true });
+      return true;
+    };
+
+    const focusCell = (row: number, col: number): boolean => {
+      const cell = wrap.querySelector<HTMLTableCellElement>(
+        `[data-row="${row}"][data-col="${col}"]`,
+      );
+      if (!cell || !start(cell)) return false;
+      caretToEnd(cell);
+      return true;
+    };
+
+    const begin = (ev: MouseEvent, cell: HTMLTableCellElement): boolean => {
+      if (view.state.readOnly) return false;
+      const row = Number(cell.dataset.row ?? HEADER_ROW);
+      const col = Number(cell.dataset.col ?? cell.cellIndex);
+      if (active) commit({ row, col });
+      if (written) return true;
+      if (!start(cell)) return false;
+
+      const range = caretRangeAt(ev.clientX, ev.clientY);
+      const sel = window.getSelection();
+      if (range && cell.contains(range.startContainer)) {
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+      } else {
+        caretToEnd(cell);
+      }
+      return true;
+    };
+
+    wrap.addEventListener(
+      'keydown',
+      (ev: KeyboardEvent) => {
+        if (!active) return;
+        const here = { row: active.row, col: active.col };
+        if (ev.key === 'Escape') {
+          ev.preventDefault();
+          ev.stopPropagation();
+          leave();
+          view.focus();
+          return;
+        }
+        if (ev.key === 'Enter') {
+          ev.preventDefault();
+          ev.stopPropagation();
+          commit(here);
+          return;
+        }
+        if (ev.key === 'Tab') {
+          ev.preventDefault();
+          ev.stopPropagation();
+          const m = model();
+          const next = m ? stepCell(m, here.row, here.col, ev.shiftKey ? -1 : 1) : null;
+          if (commit(next)) return;
+          if (next && focusCell(next.row, next.col)) return;
+          leave();
+          view.focus();
+        }
+      },
+      true,
+    );
+
+    wrap.addEventListener('focusout', (ev: FocusEvent) => {
+      if (!active) return;
+      if (ev.target !== active.cell) return;
+      const next = ev.relatedTarget as Node | null;
+      if (next && wrap.contains(next)) return;
+      commit(null);
+    });
+
+    if (pendingCellFocus && pendingCellFocus.from === this.from) {
+      const pending = pendingCellFocus;
+      pendingCellFocus = null;
+      if (Date.now() - pending.at < 1000) {
+        requestAnimationFrame(() => {
+          if (wrap.isConnected) focusCell(pending.row, pending.col);
+        });
+      }
+    }
+
+    return { begin };
   }
+
+  ignoreEvent(event: Event): boolean {
+    const target = event.target as Element | null;
+    if (target?.closest?.('a')) return false;
+    return !!target?.closest?.('th, td, tr');
+  }
+
+  ignoreMutation(): boolean {
+    return true;
+  }
+}
+
+function caretRangeAt(x: number, y: number): Range | null {
+  const doc = document as Document & {
+    caretRangeFromPoint?: (px: number, py: number) => Range | null;
+    caretPositionFromPoint?: (px: number, py: number) => { offsetNode: Node; offset: number } | null;
+  };
+  if (typeof doc.caretRangeFromPoint === 'function') {
+    return doc.caretRangeFromPoint(x, y);
+  }
+  const pos = doc.caretPositionFromPoint?.(x, y);
+  if (!pos) return null;
+  const range = document.createRange();
+  range.setStart(pos.offsetNode, pos.offset);
+  range.collapse(true);
+  return range;
 }
 
 /** Raw block HTML rendered with the same markdown-it pipeline as Preview.vue. */
@@ -1066,6 +1339,35 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
             }
           },
         });
+        // CodeMirror's Lezer parser only parses the first ~3KB synchronously on
+        // initial state creation, so FencedCode nodes past that viewport horizon
+        // may not exist in `syntaxTree(state)` yet. Run a fast line-level fence
+        // pass across `sourceLines` so fenced code blocks anywhere in a long
+        // document never have their inner tables/math/HTML replaced by widgets.
+        let activeFenceChar = '';
+        let activeFenceLen = 0;
+        for (let idx = 0; idx < lastLine; idx += 1) {
+          const stripped = stripQuotePrefix(sourceLines[idx]);
+          if (!activeFenceChar) {
+            const openMatch = stripped.match(/^\s*(`{3,}|~{3,})(.*)$/);
+            if (openMatch) {
+              const marker = openMatch[1];
+              const info = openMatch[2];
+              // Backtick fences cannot contain backticks in their info string.
+              if (marker[0] !== '`' || !info.includes('`')) {
+                activeFenceChar = marker[0];
+                activeFenceLen = marker.length;
+              }
+            }
+          } else {
+            fenceBody[idx] = true;
+            const closeRe = new RegExp(`^\\s*${activeFenceChar}{${activeFenceLen},}\\s*$`);
+            if (closeRe.test(stripped)) {
+              activeFenceChar = '';
+              activeFenceLen = 0;
+            }
+          }
+        }
         const imageRefs = extractImageReferenceDefinitions(sourceLines, fenceBody);
         let i = 1;
         while (i <= lastLine) {
@@ -1388,20 +1690,32 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
             }
           }
 
-          // Table block — header + separator + ≥1 body row (including inside blockquotes, #480).
+          // Table block — header + separator + ≥0 body rows (including inside blockquotes, #480).
           const tableQuoteDepth = quoteDepth(line.text);
-          if (isPipeRow(line.text, tableQuoteDepth) && i + 1 <= lastLine) {
+          if (
+            isPipeRow(line.text, tableQuoteDepth) &&
+            !isSeparatorRow(line.text, tableQuoteDepth) &&
+            i + 1 <= lastLine
+          ) {
             const sepLine = doc.line(i + 1);
-            if (isSeparatorRow(sepLine.text, tableQuoteDepth) && i + 2 <= lastLine) {
-              // Walk forward as long as we keep seeing pipe rows at the same quote depth.
+            if (isSeparatorRow(sepLine.text, tableQuoteDepth)) {
+              // Walk forward as long as we keep seeing pipe rows at the same quote depth,
+              // stopping if a new adjacent table (header + separator row) begins immediately.
               let endI = i + 2;
               while (endI <= lastLine) {
                 const next = doc.line(endI);
                 if (!isPipeRow(next.text, tableQuoteDepth)) break;
+                if (
+                  !isSeparatorRow(next.text, tableQuoteDepth) &&
+                  endI + 1 <= lastLine &&
+                  isSeparatorRow(doc.line(endI + 1).text, tableQuoteDepth)
+                ) {
+                  break;
+                }
                 endI += 1;
               }
-              const tableEnd = endI - 1; // last pipe row
-              if (tableEnd >= i + 2) {
+              const tableEnd = endI - 1; // last pipe row (or separator row for header-only tables)
+              if (tableEnd >= i + 1) {
                 const cursorInside =
                   keepSource ||
                   (cursorLine >= i && cursorLine <= tableEnd
@@ -1420,6 +1734,8 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
                         opts.getImageRoot?.() ?? null,
                         opts.getFilePath?.(),
                         i,
+                        blockFrom,
+                        blockTo,
                       ),
                       block: true,
                     }),
@@ -1735,6 +2051,13 @@ export const liveBlocksTheme = EditorView.theme({
   '.cm-live-block--table thead th': {
     background: 'var(--bg-elev)',
     fontWeight: '600',
+  },
+  '.cm-live-block--table .cm-live-table__cell--editing': {
+    outline: '2px solid var(--accent)',
+    outlineOffset: '-2px',
+    background: 'var(--bg)',
+    whiteSpace: 'pre-wrap',
+    cursor: 'text',
   },
   // v4.3.0 issue #57a — paddings fold in the 0.6em that used to come from the
   // shared margin (see #155 note above) so the visual rhythm is unchanged.

@@ -247,3 +247,53 @@ title: Full document
   assert.match(html, /href="#%E5%85%A8%E6%96%87%E6%A0%87%E9%A2%98"/);
   assert.doesNotMatch(html, /md-frontmatter|Full document/);
 });
+
+test('#500 T08-9: 紧跟在表格后无空行的无竖线普通段落不会被吞入 tbody', () => {
+  const md = [
+    '上一段文字，下一行紧跟表格，中间没有空行。',
+    '| 紧贴 | 表格 |',
+    '| --- | --- |',
+    '| A | B |',
+    '表格结束后紧跟下一段文字，中间同样没有空行。',
+  ].join('\n');
+  const html = renderMarkdown(md);
+  assert.match(html, /<p[^>]*>上一段文字，下一行紧跟表格，中间没有空行。<\/p>/);
+  assert.match(html, /<table[^>]*>[\s\S]*?<\/table>\s*<p[^>]*>表格结束后紧跟下一段文字，中间同样没有空行。<\/p>/);
+});
+
+test('#500 T09-4: <details> 折叠块内的 Markdown 表格保持在 <details> 内部（含空行与无空行）', () => {
+  const withBlankLines = [
+    '<details>',
+    '<summary>展开查看表格</summary>',
+    '',
+    '| 折叠 | 内容 |',
+    '| --- | --- |',
+    '| A | 1 |',
+    '',
+    '</details>',
+  ].join('\n');
+  const html1 = renderMarkdown(withBlankLines);
+  assert.match(html1, /<details[^>]*>\s*<summary>展开查看表格<\/summary>\s*<table[^>]*>[\s\S]*?<\/table>\s*<\/details>/);
+
+  const withoutBlankLines = [
+    '<details>',
+    '<summary>展开查看表格</summary>',
+    '| 折叠 | 内容 |',
+    '| --- | --- |',
+    '| A | 1 |',
+    '</details>',
+  ].join('\n');
+  const html2 = renderMarkdown(withoutBlankLines);
+  assert.match(html2, /<details[^>]*>\s*<summary>展开查看表格<\/summary>\s*<table[^>]*>[\s\S]*?<\/table>\s*<\/details>/);
+});
+
+test('#500: 引用块内分隔行列数不一致的表格自动修复且保留 > 前缀', () => {
+  const md = [
+    '> | 列A | 列B | 列C |',
+    '> | :--- | ---: |',
+    '> | 1 | 2 | 3 |',
+  ].join('\n');
+  const html = renderMarkdown(md);
+  assert.match(html, /<blockquote[^>]*>\s*<table[^>]*>/);
+  assert.equal((html.match(/<th\b/g) || []).length, 3);
+});

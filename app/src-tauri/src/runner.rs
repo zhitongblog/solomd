@@ -430,29 +430,35 @@ fn clamp_window_to_monitor(win: &tauri::WebviewWindow) {
         return;
     }
 
-    // The macOS global menu bar overlays the top of the screen, so reserve a
-    // strip for it. Windows / Linux have no such bar — reserving there made a
-    // legitimately near-full-height restored window get shrunk by 40px.
-    #[cfg(target_os = "macos")]
-    const MENU_BAR_RESERVE: i32 = 40;
-    #[cfg(not(target_os = "macos"))]
-    const MENU_BAR_RESERVE: i32 = 0;
     const MIN_W: i32 = 480;
     const MIN_H: i32 = 360;
+    // Windows's invisible resize border makes `outer_size()` / `outer_position()`
+    // extend ~7px past the visible frame on each side: a window docked at the
+    // left edge of the screen reports `x = -7`, and one touching the taskbar
+    // reports a bottom edge a few pixels past `work_area`. Without slack, those
+    // legitimate positions fail the bounds check and snap back to screen centre
+    // on every launch (#517).
+    const EDGE_SLACK: i32 = 8;
 
     let Ok(Some(monitor)) = win.current_monitor() else { return; };
     let scale = monitor.scale_factor();
-    let mon_w = (monitor.size().width as f64 / scale).round() as i32;
-    let mon_h = (monitor.size().height as f64 / scale).round() as i32;
-    let mon_x = (monitor.position().x as f64 / scale).round() as i32;
-    let mon_y = (monitor.position().y as f64 / scale).round() as i32;
+    // #517 — clamp against `work_area` (screen minus Windows taskbar / macOS
+    // dock+menubar), not the raw panel size `monitor.size()`. Against the raw
+    // size a tall window whose bottom sat under the taskbar passed the clamp,
+    // left its status bar and resize grip unreachable behind the taskbar, and
+    // looked as if the app had forgotten the size the user set.
+    let work = monitor.work_area();
+    let mon_w = (work.size.width as f64 / scale).round() as i32;
+    let mon_h = (work.size.height as f64 / scale).round() as i32;
+    let mon_x = (work.position.x as f64 / scale).round() as i32;
+    let mon_y = (work.position.y as f64 / scale).round() as i32;
 
     let Ok(outer) = win.outer_size() else { return; };
     let cur_w = (outer.width as f64 / scale).round() as i32;
     let cur_h = (outer.height as f64 / scale).round() as i32;
 
-    let max_w = mon_w;
-    let max_h = mon_h - MENU_BAR_RESERVE;
+    let max_w = mon_w.max(MIN_W);
+    let max_h = mon_h.max(MIN_H);
     let new_w = cur_w.clamp(MIN_W, max_w);
     let new_h = cur_h.clamp(MIN_H, max_h);
     let size_clamped = new_w != cur_w || new_h != cur_h;
@@ -462,12 +468,11 @@ fn clamp_window_to_monitor(win: &tauri::WebviewWindow) {
     let cur_y = (outer_pos.y as f64 / scale).round() as i32;
 
     // Position is "off-monitor" if any edge of the window falls outside the
-    // current monitor's work area (top edge above the menu bar reserve, or
-    // any other edge past the monitor bounds for the post-clamp size).
-    let position_invalid = cur_x < mon_x
-        || cur_x + new_w > mon_x + mon_w
-        || cur_y < mon_y + MENU_BAR_RESERVE
-        || cur_y + new_h > mon_y + mon_h;
+    // current monitor's work area.
+    let position_invalid = cur_x < mon_x - EDGE_SLACK
+        || cur_x + new_w > mon_x + mon_w + EDGE_SLACK
+        || cur_y < mon_y - EDGE_SLACK
+        || cur_y + new_h > mon_y + mon_h + EDGE_SLACK;
 
     if size_clamped {
         let _ = win.set_size(tauri::LogicalSize::new(new_w as u32, new_h as u32));
@@ -475,8 +480,7 @@ fn clamp_window_to_monitor(win: &tauri::WebviewWindow) {
 
     if size_clamped || position_invalid {
         let new_x = mon_x + (mon_w - new_w) / 2;
-        let centered_y = mon_y + (mon_h - new_h) / 2;
-        let new_y = centered_y.max(mon_y + MENU_BAR_RESERVE);
+        let new_y = (mon_y + (mon_h - new_h) / 2).max(mon_y);
         let _ = win.set_position(tauri::LogicalPosition::new(new_x, new_y));
     }
 }
@@ -634,12 +638,14 @@ pub fn run_with(initial_file: Option<String>) {
             commands::print_webview_to_pdf,
             commands::copy_file,
             commands::download_and_install_update,
+            commands::cancel_update_download,
             image_upload::upload_image,
             commands::list_dir,
             commands::fs_create_file,
             commands::fs_create_dir,
             commands::fs_delete,
             commands::fs_dir_exists,
+            commands::fs_files_exist,
             commands::fs_file_exists,
             commands::webview_runtime_version,
             commands::fs_rename,
@@ -754,12 +760,19 @@ pub fn run_with(initial_file: Option<String>) {
             webdav_sync::webdav_test_connection,
             webdav_sync::webdav_push_workspace,
             webdav_sync::webdav_pull_workspace,
+            webdav_sync::cloud_vault_detect_local_dirs,
             webdav_sync::cloud_vault_push_workspace,
             webdav_sync::cloud_vault_pull_workspace,
+            webdav_sync::cloud_api_build_quick_auth_url,
             webdav_sync::cloud_api_start_device_auth,
             webdav_sync::cloud_api_poll_device_auth,
             webdav_sync::cloud_api_push_workspace,
             webdav_sync::cloud_api_pull_workspace,
+            webdav_sync::sync_save_file_snapshot,
+            webdav_sync::sync_list_file_versions,
+            webdav_sync::sync_get_file_version_diff,
+            webdav_sync::sync_restore_file_version,
+            webdav_sync::sync_prune_file_versions,
             crypto::crypto_status,
             crypto::crypto_set_passphrase,
             crypto::crypto_clear_passphrase,

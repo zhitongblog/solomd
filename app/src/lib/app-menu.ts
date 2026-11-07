@@ -182,6 +182,7 @@ export function buildAppMenu(ctx: MenuContext): TopMenu[] {
     sep,
     item('file.save', t('menubar.save')),
     item('file.saveAs', t('menubar.saveAs')),
+    item('file.saveAll', t('menubar.saveAll')),
     item('file.autoSave', t('menubar.autoSave'), { checked: state.autoSave }),
     sep,
     item('file.import', t('menubar.importDocs')),

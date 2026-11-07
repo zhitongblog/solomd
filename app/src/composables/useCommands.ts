@@ -182,6 +182,7 @@ export function useCommands(): Command[] {
     { id: 'file.open', title: 'Open File…', shortcut: kb('file.open'), run: () => files.openFile() },
     { id: 'file.save', title: 'Save', shortcut: kb('file.save'), run: () => files.saveActive() },
     { id: 'file.saveAs', title: 'Save As…', shortcut: kb('file.saveAs'), run: () => files.saveActiveAs() },
+    { id: 'file.saveAll', title: 'Save All', shortcut: kb('file.saveAll'), run: () => files.saveAll() },
     {
       id: 'file.openFolder',
       title: 'Open Folder…',
@@ -195,6 +196,7 @@ export function useCommands(): Command[] {
     {
       id: 'file.openExternal',
       title: 'Open in External Editor',
+      shortcut: kb('file.openExternal'),
       hint: 'Open file with system default editor',
       run: async () => {
         const tab = useTabsStore().activeTab;
@@ -210,6 +212,49 @@ export function useCommands(): Command[] {
         }
       },
     },
+    {
+      id: 'file.copyPath',
+      title: 'Copy File Path',
+      shortcut: kb('file.copyPath'),
+      hint: 'Copy the active document’s full file path to clipboard',
+      run: async () => {
+        const tab = useTabsStore().activeTab;
+        const path = tab?.filePath;
+        if (!path) {
+          toasts.warning(settings.language === 'zh' ? '请先保存文件再复制路径' : 'Save the file first before copying its path');
+          return;
+        }
+        try {
+          await writeText(path);
+          toasts.success(settings.language === 'zh' ? '文件路径已复制' : 'File path copied to clipboard');
+        } catch {
+          try {
+            await navigator.clipboard?.writeText?.(path);
+            toasts.success(settings.language === 'zh' ? '文件路径已复制' : 'File path copied to clipboard');
+          } catch (e) {
+            toasts.error(`${e}`);
+          }
+        }
+      },
+    },
+    ...(!isMobile()
+      ? [
+          {
+            id: 'file.openInNewWindow',
+            title: 'Open in New Window',
+            hint: 'Open the active document in a separate SoloMD window',
+            run: () => {
+              const tab = useTabsStore().activeTab;
+              const path = tab?.filePath;
+              if (!path) {
+                toasts.warning(settings.language === 'zh' ? '请先保存文件再在新窗口中打开' : 'Save the file first before opening in a new window');
+                return;
+              }
+              files.spawnAuxWindow(path);
+            },
+          },
+        ]
+      : []),
 
     { id: 'view.editor', title: 'View: Edit Only', run: () => settings.setViewMode('edit') },
     { id: 'view.split', title: 'View: Split', run: () => settings.setViewMode('split') },

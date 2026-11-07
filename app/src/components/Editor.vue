@@ -27,7 +27,7 @@ import {
   unfoldAllFolds,
   foldHeadingsToLevel,
 } from '../lib/cm-heading-fold';
-import { findTableSpan } from '../lib/markdown-table';
+import { findTableSpan, serializeTable } from '../lib/markdown-table';
 import { findMathSpanAt, collectLabels } from '../lib/equations';
 import { openFormulaEditor } from '../lib/formula-editor-bus';
 import { openTableEditor } from '../lib/table-editor-bus';
@@ -110,6 +110,8 @@ import { useWorkspaceIndexStore } from '../stores/workspaceIndex';
 import { isWindowsEditorRuntime, shouldUsePlainWindowsEditor } from '../lib/platform';
 import { isAndroid, isIOS, isMobile } from '../lib/platform';
 import SelectionBubble, { type BubbleSelection } from './SelectionBubble.vue';
+import TableToolbar from './TableToolbar.vue';
+import { applyTableAction, cellStart, rowAfterAction, tableAt, type TableAction, type TableToolbarState } from '../lib/table-toolbar';
 import { lineContext, nextHeadingKind, type Box } from '../lib/selection-bubble';
 import EditorContextMenu, { type EditorMenuAction, type EditorMenuSpell } from './EditorContextMenu.vue';
 import { lookupMisspelling, addToSpellDict } from '../lib/spell-suggest';
@@ -1041,9 +1043,26 @@ function splitPlainMarkdownBlocks(
       continue;
     }
 
-    if (kind === 'table') {
+    const isTableSepLine = (t: string) =>
+      /^\s{0,3}\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)+\|?\s*$/.test(t) ||
+      /^\s{0,3}\|\s*:?-+:?\s*\|\s*$/.test(t);
+    const isTableStartAt = (idx: number) =>
+      idx + 1 < lines.length &&
+      lines[idx].text.includes('|') &&
+      !isTableSepLine(lines[idx].text) &&
+      isTableSepLine(lines[idx + 1].text);
+
+    if (kind === 'table' || (kind === 'paragraph' && isTableStartAt(i))) {
       let j = i + 1;
-      while (j < lines.length && (kindFor(lines[j]) === 'table' || /^\s{0,3}\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(lines[j].text))) j++;
+      while (
+        j < lines.length &&
+        (kindFor(lines[j]) === 'table' ||
+          isTableSepLine(lines[j].text) ||
+          (kindFor(lines[j]) === 'paragraph' && lines[j].text.includes('|')))
+      ) {
+        if (j > i + 1 && isTableStartAt(j)) break;
+        j++;
+      }
       pushRange(line.start, lines[j - 1]?.end ?? line.end);
       i = j;
       continue;
@@ -1100,7 +1119,7 @@ function splitPlainMarkdownBlocks(
     }
 
     let j = i + 1;
-    while (j < lines.length && kindFor(lines[j]) === 'paragraph') j++;
+    while (j < lines.length && kindFor(lines[j]) === 'paragraph' && !isTableStartAt(j)) j++;
     pushRange(line.start, lines[j - 1]?.end ?? line.end);
     i = j;
   }
@@ -4133,7 +4152,7 @@ function markdownExt() {
     markdown({
       base: markdownLanguage,
       codeLanguages,
-      addKeymap: true,
+      addKeymap: false,
       extensions: [cjkFriendlyEmphasis],
     }),
     listRenumberFilter,
@@ -5128,6 +5147,81 @@ function openTableAtCursor(): void {
   });
 }
 
+// ── floating table toolbar (TableToolbar.vue) ──────────────────────────────
+const tableToolbarEnabled = computed(
+  () =>
+    !isMobile() &&
+    props.tab.language === 'markdown' &&
+    settings.viewMode !== 'preview' &&
+    settings.viewMode !== 'reading',
+);
+
+function editorTextAndCaret(): { text: string; caret: number } | null {
+  if (usePlainWindowsEditor) return { text: plainText.value || '', caret: plainCaretOffset() };
+  if (!view || view.composing) return null;
+  return { text: view.state.doc.toString(), caret: view.state.selection.main.head };
+}
+
+function tableToolbarTextarea(): HTMLTextAreaElement | null {
+  if (!usePlainWindowsEditor) return null;
+  return plainLiveEnabled.value ? plainBlockEditors.value[plainActiveBlock.value] : plainEditor.value;
+}
+
+function readTableToolbar(): TableToolbarState | null {
+  const own = usePlainWindowsEditor ? plainHostEl.value : view?.dom ?? null;
+  if (!own || !own.contains(document.activeElement)) return null;
+  const ed = editorTextAndCaret();
+  if (!ed) return null;
+  const hit = tableAt(ed.text, ed.caret);
+  if (!hit) return null;
+  return { model: hit.model, row: hit.row, col: hit.col, key: `${hit.from}:${hit.to}:${ed.caret}` };
+}
+
+function readTableToolbarRect(): Box | null {
+  const ed = editorTextAndCaret();
+  if (!ed) return null;
+  const hit = tableAt(ed.text, ed.caret);
+  if (!hit) return null;
+  if (!usePlainWindowsEditor) {
+    if (!view) return null;
+    const a = view.coordsAtPos(hit.from, 1);
+    const b = view.coordsAtPos(hit.to, -1);
+    if (!a || !b) return null;
+    return {
+      left: Math.min(a.left, b.left),
+      right: Math.max(a.right, b.right),
+      top: a.top,
+      bottom: b.bottom,
+    };
+  }
+  const el = tableToolbarTextarea();
+  if (!el) return null;
+  const base = plainLiveEnabled.value ? plainBlocks.value[plainActiveBlock.value]?.start ?? 0 : 0;
+  const box = selectionBoxPx(el, el.value, hit.from - base, hit.to - base);
+  const r = el.getBoundingClientRect();
+  const cs = getComputedStyle(el);
+  const ox = r.left + el.clientLeft + parseFloat(cs.paddingLeft || '0') - el.scrollLeft;
+  const oy = r.top + el.clientTop + parseFloat(cs.paddingTop || '0') - el.scrollTop;
+  return { left: box.left + ox, right: box.right + ox, top: box.top + oy, bottom: box.bottom + oy };
+}
+
+function onTableToolbarAction(action: TableAction): void {
+  const ed = editorTextAndCaret();
+  if (!ed) return;
+  const hit = tableAt(ed.text, ed.caret);
+  if (!hit) return;
+  const next = applyTableAction(hit.model, action, hit.row, hit.col);
+  if (next === hit.model) return;
+  const indent = /^[ \t]*/.exec(ed.text.slice(hit.from, hit.to))?.[0] ?? '';
+  const markdown = serializeTable(next)
+    .split('\n')
+    .map((line) => indent + line)
+    .join('\n');
+  const row = rowAfterAction(action, hit.row, next);
+  const col = Math.max(0, Math.min(hit.col, next.header.length - 1));
+  replaceDocRange(hit.from, hit.to, markdown, hit.from + cellStart(markdown, row, col));
+}
+
 /**
  * Open the formula editor on the math under the caret, or on an empty formula
  * when the caret is not in one — "insert a formula" and "fix this formula" are
@@ -5189,15 +5283,15 @@ function plainCaretOffset(): number {
 }
 
 /** Replace a document range in whichever editor this pane is running. */
-function replaceDocRange(from: number, to: number, text: string): void {
+function replaceDocRange(from: number, to: number, text: string, caret = from + text.length): void {
   if (usePlainWindowsEditor) {
     const src = plainText.value || '';
     recordPlainHistory();
-    applyPlainContent(src.slice(0, from) + text + src.slice(to), from + text.length);
+    applyPlainContent(src.slice(0, from) + text + src.slice(to), caret);
     return;
   }
   if (!view) return;
-  view.dispatch({ changes: { from, to, insert: text } });
+  view.dispatch({ changes: { from, to, insert: text }, selection: { anchor: caret } });
 }
 
 /**
@@ -6549,6 +6643,13 @@ const cls = computed(() => ({
     :read="readBubbleSelection"
     :rect="readBubbleRect"
     @format="applyFormatKind"
+  />
+  <TableToolbar
+    :host="bubbleHost"
+    :enabled="tableToolbarEnabled"
+    :read="readTableToolbar"
+    :rect="readTableToolbarRect"
+    @action="onTableToolbarAction"
   />
   <Teleport to="body">
     <EditorContextMenu

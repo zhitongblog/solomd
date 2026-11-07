@@ -138,6 +138,7 @@ export const KEY_ACTIONS: KeyActionDef[] = [
   { id: 'daily.openTomorrow', label: "Open Tomorrow's Daily Note", category: 'file', defaults: [] },
   { id: 'file.save', label: 'Save', category: 'file', defaults: ['Mod+S'] },
   { id: 'file.saveAs', label: 'Save As…', category: 'file', defaults: ['Mod+Shift+S'] },
+  { id: 'file.saveAll', label: 'Save All', category: 'file', defaults: ['Mod+Alt+Shift+S'] },
   { id: 'file.import', label: 'Import Documents…', category: 'file', defaults: ['Mod+Shift+L'] },
   { id: 'image.uploadLocalImages', label: 'Upload Local Images to Image Host…', category: 'file', defaults: [] },
   { id: 'export.html', label: 'Export as HTML', category: 'file', defaults: [] },
@@ -152,6 +153,7 @@ export const KEY_ACTIONS: KeyActionDef[] = [
   { id: 'inbox.open', label: 'Open Inbox', category: 'file', defaults: [] },
   { id: 'inbox.toggle', label: 'Toggle Inbox Flag / Organize', category: 'file', defaults: ['Mod+E'] },
   { id: 'file.openExternal', label: 'Open in External Editor', category: 'file', defaults: ['Mod+Shift+E'] },
+  { id: 'file.copyPath', label: 'Copy File Path', category: 'file', defaults: ['Mod+Alt+Shift+Y'] },
   { id: 'settings.open', label: 'Settings', category: 'file', defaults: ['Mod+Comma'] },
   { id: 'file.closeTab', label: 'Close Tab', category: 'file', defaults: ['Mod+W'] },
   // B4 — Typora's "reopen closed tab". ⌘⇧T was free, so it ships bound.

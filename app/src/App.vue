@@ -2000,13 +2000,23 @@ watch(
     }
   },
 );
+const toolbarMenuOpen = ref(false);
+window.addEventListener('solomd:toolbar-menu-state', (e) => {
+  toolbarMenuOpen.value = Boolean((e as CustomEvent<boolean>).detail);
+});
+function onTabletScrimClick() {
+  window.dispatchEvent(new Event('solomd:close-menus'));
+  if (settings.showFileTree) settings.toggleFileTree();
+}
 window.addEventListener('popstate', () => {
   if (phoneHistoryOps > 0) {
     phoneHistoryOps--;
     return;
   }
+  const hadMenu = toolbarMenuOpen.value;
+  window.dispatchEvent(new Event('solomd:close-menus'));
+  if (hadMenu) return;
   if (isNarrow.value && phone.view !== 'home') {
-    window.dispatchEvent(new Event('solomd:close-menus'));
     phone.show('home');
   }
 });
@@ -2337,10 +2347,10 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
           @click="closeNarrowDrawer"
         />
         <div
-          v-if="isTabletOverlay && !isNarrow && settings.showFileTree"
+          v-if="isTabletOverlay && !isNarrow && (settings.showFileTree || toolbarMenuOpen)"
           class="workspace__scrim"
           aria-hidden="true"
-          @click="settings.toggleFileTree()"
+          @click="onTabletScrimClick"
         />
         <!-- 5.0 §8 — phone: 笔记 home / search screens with the bottom bar. -->
         <div v-if="isNarrow && phone.view !== 'editor'" class="phone-screen">

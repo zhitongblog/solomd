@@ -89,6 +89,31 @@ test('#446: parseImageAltSize parses pipe width/height in alt text', () => {
   });
 });
 
+test('#499: height-only pipe size leaves the width automatic', () => {
+  assert.deepEqual(parseImageAltSize('screenshot|x250'), {
+    alt: 'screenshot',
+    width: null,
+    height: '250px',
+  });
+  assert.deepEqual(parseImageAltSize('|x250'), {
+    alt: '',
+    width: null,
+    height: '250px',
+  });
+  assert.equal(
+    resizeMarkdownImageLine('![photo](_assets/a.png)', 'x250'),
+    '![photo|x250](_assets/a.png)',
+  );
+  assert.equal(
+    resizeMarkdownImageLine('![photo|300](_assets/a.png)', '450x250'),
+    '![photo|450x250](_assets/a.png)',
+  );
+  assert.equal(
+    resizeMarkdownImageLine('<img src="a.png" alt="pic">', 'x250'),
+    '<img src="a.png" alt="pic" height="250" style="height: 250px;">',
+  );
+});
+
 test('#446: resizeMarkdownImageLine updates Markdown and HTML image lines', () => {
   assert.equal(
     resizeMarkdownImageLine('![photo](_assets/a.png)', '50%'),

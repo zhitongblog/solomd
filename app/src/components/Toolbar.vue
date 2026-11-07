@@ -442,6 +442,12 @@ function act(fn: () => unknown) {
   closeAllDropdowns();
   void fn();
 }
+function onDropdownMenuClick(e: MouseEvent) {
+  const btn = (e.target as HTMLElement | null)?.closest('button.dropdown__item');
+  if (btn) {
+    btn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+  }
+}
 function toggleThemeFromMenu() {
   closeAllDropdowns();
   settings.toggleTheme();
@@ -650,13 +656,9 @@ function openByKey(name: DropdownName) {
   void focusMenuItem('first');
 }
 const anyToolbarMenuOpen = computed(() => exportOpen.value || moreOpen.value);
-watch(
-  () => [menuPos.value, anyToolbarMenuOpen.value, menubarOpen.value],
-  () => {
-    if (anyToolbarMenuOpen.value || menubarOpen.value) keepMenuOnScreen();
-  },
-  { flush: 'post' },
-);
+watch(anyToolbarMenuOpen, (v) => {
+  window.dispatchEvent(new CustomEvent('solomd:toolbar-menu-state', { detail: v }));
+});
 watch(
   () => [menuPos.value, anyToolbarMenuOpen.value, menubarOpen.value],
   () => {
@@ -958,7 +960,14 @@ onBeforeUnmount(() => {
           <Icon name="share" />
         </button>
         <Teleport to="body">
-          <div v-if="exportOpen" class="dropdown__menu" role="menu" data-tb-menu :style="floatStyle" @keydown="onMenuKeydown">
+          <div
+            v-if="exportOpen"
+            class="dropdown__backdrop"
+            aria-hidden="true"
+            @pointerdown.stop.prevent="closeAllDropdowns"
+            @click.stop.prevent="closeAllDropdowns"
+          ></div>
+          <div v-if="exportOpen" class="dropdown__menu" role="menu" data-tb-menu :style="floatStyle" @keydown="onMenuKeydown" @click="onDropdownMenuClick">
             <button class="dropdown__item dropdown__item--single" role="menuitem" tabindex="-1" @mousedown.prevent="act(() => exporter.exportHtml())">
               <span class="dropdown__name">{{ t('toolbar.exportHtml') }}</span>
             </button>
@@ -1046,11 +1055,19 @@ onBeforeUnmount(() => {
         <Teleport to="body">
           <div
             v-if="moreOpen"
+            class="dropdown__backdrop"
+            aria-hidden="true"
+            @pointerdown.stop.prevent="closeAllDropdowns"
+            @click.stop.prevent="closeAllDropdowns"
+          ></div>
+          <div
+            v-if="moreOpen"
             class="dropdown__menu dropdown__menu--more"
             role="menu"
             data-tb-menu
             :style="floatStyle"
             @keydown="onMenuKeydown"
+            @click="onDropdownMenuClick"
           >
             <!-- Root page -->
             <template v-if="morePage === 'root'">
@@ -1107,6 +1124,11 @@ onBeforeUnmount(() => {
                 <span class="dropdown__name">{{ t('menubar.saveAs') }}</span>
                 <span v-if="chord('file.saveAs')" class="dropdown__shortcut">{{ chord('file.saveAs') }}</span>
               </button>
+              <button class="dropdown__item dropdown__item--single" role="menuitem" tabindex="-1" @mousedown.prevent="act(() => files.saveAll())">
+                <span class="dropdown__check"></span>
+                <span class="dropdown__name">{{ t('menubar.saveAll') }}</span>
+                <span v-if="chord('file.saveAll')" class="dropdown__shortcut">{{ chord('file.saveAll') }}</span>
+              </button>
               <template v-if="isMarkdown">
                 <div class="dropdown__sep"></div>
                 <button class="dropdown__item dropdown__item--single dropdown__item--sub" role="menuitem" tabindex="-1" @mousedown.prevent="goMorePage('insert')">
@@ -1138,7 +1160,6 @@ onBeforeUnmount(() => {
               </template>
               <div class="dropdown__sep"></div>
               <button
-                v-if="isNarrow"
                 class="dropdown__item dropdown__item--single"
                 role="menuitemcheckbox"
                 :aria-checked="!settings.rightSidebarHidden"
@@ -1147,6 +1168,7 @@ onBeforeUnmount(() => {
               >
                 <span class="dropdown__check">{{ settings.rightSidebarHidden ? '' : '✓' }}</span>
                 <span class="dropdown__name">{{ t('menubar.toggleRightSidebar') }}</span>
+                <span v-if="chord('view.toggleRightSidebar')" class="dropdown__shortcut">{{ chord('view.toggleRightSidebar') }}</span>
               </button>
               <button class="dropdown__item dropdown__item--single" role="menuitem" tabindex="-1" @mousedown.prevent="act(() => $emit('open-palette'))">
                 <span class="dropdown__check"></span>
@@ -1661,6 +1683,12 @@ onBeforeUnmount(() => {
   color: var(--text);
   border-radius: var(--r-sm);
   cursor: default;
+}
+.dropdown__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: transparent;
 }
 .dropdown__item:hover,
 .dropdown__item:focus-visible {
