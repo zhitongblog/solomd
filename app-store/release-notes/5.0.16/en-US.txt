@@ -2,4 +2,4 @@ SoloMD 5.0.16:
 • Viewport-gated lazy Mermaid rendering & shared LRU SVG cache (#522): diagrams now render serially on demand as they enter the viewport with main-thread yielding, eliminating freezes on diagram-heavy notes and preserving exact scroll positions.
 • Secondary sub-navigation for Cloud Sync settings (#524): organized Personal Cloud Drive sync into Direct Cloud API, Local Synced Folder Vault, WebDAV Sync, and Version History & Logs tabs.
 • Per-file E2EE toggle re-upload & Baidu Netdisk xpan directory auto-creation: toggling per-file encryption automatically re-encrypts and uploads unchanged files while cleaning up stale plaintext copies, and recreates deleted remote workspace folders.
-• IME & Outline polish: fixed multi-line IME custom phrase input and lazy list continuation (#521), and rendered ==highlight== / <mark> badges inside the Outline panel.
+• IME & Outline polish: fixed multi-line IME custom phrase input and lazy list continuation (#521), and rendered ==highlight== badges inside the Outline panel.

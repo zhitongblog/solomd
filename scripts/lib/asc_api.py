@@ -198,6 +198,45 @@ class Client:
                 "limit": 10,
             },
         )["data"]
+        if data:
+            return data[0]
+        # If an earlier version is sitting in WAITING_FOR_REVIEW, cancel its
+        # reviewSubmission so it returns to DEVELOPER_REJECTED and can be
+        # superseded by the newer version.
+        subs = self.get(
+            "/v1/reviewSubmissions",
+            **{
+                "filter[app]": app,
+                "filter[platform]": platform,
+                "filter[state]": "WAITING_FOR_REVIEW",
+                "limit": 10,
+            },
+        )["data"]
+        if subs:
+            for s in subs:
+                sid = s["id"]
+                self.patch(
+                    f"/v1/reviewSubmissions/{sid}",
+                    {
+                        "data": {
+                            "type": "reviewSubmissions",
+                            "id": sid,
+                            "attributes": {"canceled": True},
+                        }
+                    },
+                )
+            for _ in range(10):
+                time.sleep(2)
+                data = self.get(
+                    f"/v1/apps/{app}/appStoreVersions",
+                    **{
+                        "filter[platform]": platform,
+                        "filter[appStoreState]": ",".join(editable_states),
+                        "limit": 10,
+                    },
+                )["data"]
+                if data:
+                    break
         return data[0] if data else None
 
     def update_version_string(self, version_id: str, version_string: str):
