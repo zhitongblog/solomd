@@ -291,6 +291,8 @@ interface Settings {
   webdavEncrypted: boolean;
   webdavPassphrase: string;
   webdavAutoSync: boolean;
+  webdavAutoSubdir: boolean;
+  webdavCategorizeFiles: boolean;
   // Local personal cloud drive backup & sync directory (百度网盘 / 阿里云盘 / 夸克网盘 / OneDrive / iCloud / 坚果云).
   cloudVaultDir: string;
   cloudVaultPassphrase: string;
@@ -298,8 +300,8 @@ interface Settings {
   cloudVaultEncrypted: boolean;
   cloudVaultAutoSubdir: boolean;
   cloudVaultCategorizeFiles: boolean;
-  // Direct Personal Cloud Drive OpenAPI backup & sync (百度网盘 OpenAPI / 阿里云盘 OpenAPI / OneDrive / Dropbox).
-  cloudApiProvider: 'baidu' | 'alipan' | 'onedrive' | 'dropbox';
+  // Direct Personal Cloud Drive OpenAPI backup & sync (百度网盘 / 阿里云盘 / OneDrive / Dropbox / Google Drive / Cloudflare R2).
+  cloudApiProvider: 'baidu' | 'alipan' | 'onedrive' | 'dropbox' | 'gdrive' | 'r2';
   cloudApiToken: string;
   cloudApiClientId: string;
   cloudApiClientSecret: string;
@@ -310,6 +312,10 @@ interface Settings {
   cloudApiEncrypted: boolean;
   cloudApiAutoSubdir: boolean;
   cloudApiCategorizeFiles: boolean;
+  cloudR2Endpoint: string;
+  cloudR2Bucket: string;
+  cloudR2AccessKeyId: string;
+  cloudR2SecretAccessKey: string;
   // Local & Cloud Sync version snapshot retention settings
   syncMaxVersions: number;
   autoSnapshotOnSave: boolean;
@@ -790,6 +796,8 @@ function defaults(): Settings {
     webdavEncrypted: false,
     webdavPassphrase: '',
     webdavAutoSync: false,
+    webdavAutoSubdir: true,
+    webdavCategorizeFiles: true,
     cloudVaultDir: '',
     cloudVaultPassphrase: '',
     cloudVaultAutoSync: false,
@@ -807,6 +815,10 @@ function defaults(): Settings {
     cloudApiEncrypted: false,
     cloudApiAutoSubdir: true,
     cloudApiCategorizeFiles: true,
+    cloudR2Endpoint: '',
+    cloudR2Bucket: '',
+    cloudR2AccessKeyId: '',
+    cloudR2SecretAccessKey: '',
     syncMaxVersions: 20,
     autoSnapshotOnSave: true,
     showWritingStats: true,

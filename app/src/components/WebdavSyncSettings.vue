@@ -158,7 +158,9 @@ async function pruneOldVersions() {
   }
 }
 
-function selectApiProvider(p: 'baidu' | 'alipan' | 'onedrive' | 'dropbox') {
+function selectApiProvider(
+  p: 'baidu' | 'alipan' | 'onedrive' | 'dropbox' | 'gdrive' | 'r2',
+) {
   settings.cloudApiProvider = p;
   if (p === 'baidu' && (!settings.cloudApiRemotePath || settings.cloudApiRemotePath === '/SoloMD')) {
     settings.cloudApiRemotePath = '/apps/SoloMD';
@@ -169,7 +171,27 @@ function selectApiProvider(p: 'baidu' | 'alipan' | 'onedrive' | 'dropbox') {
   apiUserCode.value = '';
   apiVerifyUrl.value = '';
   apiQrUrl.value = '';
+  apiQuickAuthInstructions.value = '';
   settings.persist();
+}
+
+function getEffectiveApiToken(): string {
+  if (settings.cloudApiProvider === 'r2') {
+    const endpoint = settings.cloudR2Endpoint.trim();
+    const bucket = settings.cloudR2Bucket.trim();
+    const accessKeyId = settings.cloudR2AccessKeyId.trim();
+    const secretAccessKey = settings.cloudR2SecretAccessKey.trim();
+    if (!endpoint || !bucket || !accessKeyId || !secretAccessKey) {
+      return '';
+    }
+    return JSON.stringify({
+      endpoint,
+      bucket,
+      access_key_id: accessKeyId,
+      secret_access_key: secretAccessKey,
+    });
+  }
+  return settings.cloudApiToken.trim();
 }
 
 async function startDeviceAuth() {
@@ -248,8 +270,8 @@ async function pushCloudApi() {
     const res = await invoke<{ uploaded: number; message: string }>('cloud_api_push_workspace', {
       workspace: workspace.currentFolder,
       provider: settings.cloudApiProvider,
-      accessToken: settings.cloudApiToken,
-      remotePath: settings.cloudApiRemotePath || '/apps/SoloMD',
+      accessToken: getEffectiveApiToken(),
+      remotePath: settings.cloudApiRemotePath || '/SoloMD',
       passphrase: settings.cloudApiPassphrase,
       syncMode: settings.cloudApiSyncMode,
       encrypted: settings.cloudApiEncrypted,
@@ -282,8 +304,8 @@ async function pullCloudApi() {
     const res = await invoke<{ downloaded: number; message: string }>('cloud_api_pull_workspace', {
       workspace: workspace.currentFolder,
       provider: settings.cloudApiProvider,
-      accessToken: settings.cloudApiToken,
-      remotePath: settings.cloudApiRemotePath || '/apps/SoloMD',
+      accessToken: getEffectiveApiToken(),
+      remotePath: settings.cloudApiRemotePath || '/SoloMD',
       passphrase: settings.cloudApiPassphrase,
       syncMode: settings.cloudApiSyncMode,
       encrypted: settings.cloudApiEncrypted,
@@ -359,10 +381,14 @@ async function pushWorkspace() {
       remotePath: settings.webdavRemotePath || '/SoloMD',
       encrypted: settings.webdavEncrypted,
       passphrase: settings.webdavPassphrase,
+      autoWorkspaceSubdir: settings.webdavAutoSubdir,
+      categorizeFiles: settings.webdavCategorizeFiles,
+      maxVersions: settings.syncMaxVersions,
     });
     statusText.value = res.message;
     statusKind.value = 'ok';
     toasts.success(res.message);
+    window.dispatchEvent(new CustomEvent('solomd:snapshot-saved'));
   } catch (e) {
     const msg = String((e as Error)?.message ?? e);
     statusText.value = msg;
@@ -389,11 +415,15 @@ async function pullWorkspace() {
       remotePath: settings.webdavRemotePath || '/SoloMD',
       encrypted: settings.webdavEncrypted,
       passphrase: settings.webdavPassphrase,
+      autoWorkspaceSubdir: settings.webdavAutoSubdir,
+      categorizeFiles: settings.webdavCategorizeFiles,
+      maxVersions: settings.syncMaxVersions,
     });
     statusText.value = res.message;
     statusKind.value = 'ok';
     toasts.success(res.message);
     window.dispatchEvent(new CustomEvent('solomd:remote-pulled'));
+    window.dispatchEvent(new CustomEvent('solomd:snapshot-saved'));
   } catch (e) {
     const msg = String((e as Error)?.message ?? e);
     statusText.value = msg;
@@ -508,6 +538,36 @@ async function pullCloudVault() {
       <span>{{ settings.language === 'zh' ? '启用 WebDAV 同步' : 'Enable WebDAV Sync' }}</span>
       <input
         v-model="settings.webdavEnabled"
+        type="checkbox"
+        @change="saveConfig"
+      />
+    </label>
+
+    <label class="settings__row">
+      <span>
+        {{
+          settings.language === 'zh'
+            ? '📂 自动在 WebDAV 创建当前工作区专用子目录 (如 /SoloMD/<工作区名>/)'
+            : '📂 Automatically create dedicated workspace folder on WebDAV'
+        }}
+      </span>
+      <input
+        v-model="settings.webdavAutoSubdir"
+        type="checkbox"
+        @change="saveConfig"
+      />
+    </label>
+
+    <label class="settings__row">
+      <span>
+        {{
+          settings.language === 'zh'
+            ? '🗂️ 保持子目录结构，并将根目录散落文件自动分门别类 (笔记文档/、图片素材/、文献附件/)'
+            : '🗂️ Keep subfolder tree and auto-categorize root files on WebDAV'
+        }}
+      </span>
+      <input
+        v-model="settings.webdavCategorizeFiles"
         type="checkbox"
         @change="saveConfig"
       />
@@ -882,21 +942,21 @@ async function pullCloudVault() {
     <h4 class="settings__heading">
       {{
         settings.language === 'zh'
-          ? '网盘开放平台直连 API · 免客户端专用目录同步 (百度网盘 / 阿里云盘 / OneDrive / Dropbox)'
-          : 'Direct Cloud Drive OpenAPI · Clientless Folder & Bundle Sync (Baidu / Aliyun / OneDrive / Dropbox)'
+          ? '网盘开放平台 & 对象存储直连 API · 免客户端专用目录同步 (百度网盘 / 阿里云盘 / OneDrive / Dropbox / Google Drive / Cloudflare R2)'
+          : 'Direct Cloud Drive & Object Storage API · Clientless Folder Sync (Baidu / Aliyun / OneDrive / Dropbox / Google Drive / Cloudflare R2)'
       }}
     </h4>
     <p class="settings__hint">
       {{
         settings.language === 'zh'
-          ? '不安装网盘桌面客户端也可直接同步：支持「一键免申请 Key 浏览器授权登录」，自动在网盘 /apps/SoloMD/<工作区名>/ 下创建专用目录，将本地笔记与图片分门别类逐个增量上传，并自动在云端留存历史版本快照。'
-          : 'Sync directly without installing a desktop client: supports 1-click browser OAuth without registering a developer key, automatically creates a dedicated /apps/SoloMD/<Workspace>/ directory with categorized subfolders, incremental sync, and version history.'
+          ? '不安装网盘桌面客户端也可直接同步：支持百度网盘、阿里云盘、OneDrive、Dropbox、Google Drive「一键免申请 Key 浏览器授权登录」，以及 Cloudflare R2 (S3 兼容) 零出口流量直连；自动在云端创建工作区专用目录、将本地笔记与图片分门别类增量上传，并具备三路合并防冲突与历史版本快照归档。'
+          : 'Sync directly without installing a desktop client: supports 1-click keyless browser OAuth for Baidu Netdisk, Aliyun Drive, OneDrive, Dropbox, and Google Drive, plus zero-egress Cloudflare R2 (S3) storage with dedicated workspace folders, categorized files, 3-way conflict protection, and version snapshots.'
       }}
     </p>
 
     <div class="webdav-sync__presets">
       <span class="webdav-sync__preset-label">
-        {{ settings.language === 'zh' ? '选择网盘平台：' : 'Cloud Provider:' }}
+        {{ settings.language === 'zh' ? '选择云盘 / 对象存储：' : 'Cloud Provider:' }}
       </span>
       <button
         type="button"
@@ -925,15 +985,31 @@ async function pullCloudVault() {
       <button
         type="button"
         class="settings__btn-secondary"
+        :style="settings.cloudApiProvider === 'gdrive' ? 'border-color: var(--accent); color: var(--accent); font-weight: 600;' : ''"
+        @click="selectApiProvider('gdrive')"
+      >
+        Google Drive
+      </button>
+      <button
+        type="button"
+        class="settings__btn-secondary"
         :style="settings.cloudApiProvider === 'dropbox' ? 'border-color: var(--accent); color: var(--accent); font-weight: 600;' : ''"
         @click="selectApiProvider('dropbox')"
       >
         Dropbox
       </button>
+      <button
+        type="button"
+        class="settings__btn-secondary"
+        :style="settings.cloudApiProvider === 'r2' ? 'border-color: var(--accent); color: var(--accent); font-weight: 600;' : ''"
+        @click="selectApiProvider('r2')"
+      >
+        Cloudflare R2 (S3)
+      </button>
     </div>
 
     <div
-      v-if="settings.cloudApiProvider === 'baidu' || settings.cloudApiProvider === 'onedrive'"
+      v-if="settings.cloudApiProvider !== 'r2'"
       class="webdav-sync__actions"
     >
       <button
@@ -944,11 +1020,16 @@ async function pullCloudVault() {
       >
         {{
           settings.language === 'zh'
-            ? '🚀 免申请 Key · 一键打开浏览器扫码授权'
+            ? '🚀 免申请 Key · 一键打开浏览器授权登录'
             : '🚀 1-Click Keyless Browser Authorization'
         }}
       </button>
       <button
+        v-if="
+          settings.cloudApiProvider === 'baidu' ||
+          settings.cloudApiProvider === 'onedrive' ||
+          settings.cloudApiProvider === 'gdrive'
+        "
         type="button"
         class="settings__btn-secondary"
         :disabled="apiAuthLoading"
@@ -997,7 +1078,67 @@ async function pullCloudVault() {
     </div>
 
     <div class="webdav-sync__grid">
-      <label class="webdav-sync__field" style="grid-column: 1 / -1;">
+      <template v-if="settings.cloudApiProvider === 'r2'">
+        <label class="webdav-sync__field">
+          <span>
+            {{
+              settings.language === 'zh'
+                ? 'Cloudflare Account ID 或 S3 Endpoint 地址'
+                : 'Cloudflare Account ID or S3 Endpoint URL'
+            }}
+          </span>
+          <input
+            v-model="settings.cloudR2Endpoint"
+            type="text"
+            class="settings__input"
+            placeholder="https://<account_id>.r2.cloudflarestorage.com 或直接填 Account ID"
+            @change="saveConfig"
+          />
+        </label>
+
+        <label class="webdav-sync__field">
+          <span>
+            {{
+              settings.language === 'zh'
+                ? 'R2 存储桶名称 (Bucket Name)'
+                : 'R2 Bucket Name'
+            }}
+          </span>
+          <input
+            v-model="settings.cloudR2Bucket"
+            type="text"
+            class="settings__input"
+            placeholder="solomd-notes"
+            @change="saveConfig"
+          />
+        </label>
+
+        <label class="webdav-sync__field">
+          <span>Access Key ID</span>
+          <input
+            v-model="settings.cloudR2AccessKeyId"
+            type="text"
+            class="settings__input"
+            placeholder="R2 API Token Access Key ID"
+            autocomplete="off"
+            @change="saveConfig"
+          />
+        </label>
+
+        <label class="webdav-sync__field">
+          <span>Secret Access Key</span>
+          <input
+            v-model="settings.cloudR2SecretAccessKey"
+            type="password"
+            class="settings__input"
+            placeholder="R2 API Token Secret Access Key"
+            autocomplete="new-password"
+            @change="saveConfig"
+          />
+        </label>
+      </template>
+
+      <label v-else class="webdav-sync__field" style="grid-column: 1 / -1;">
         <span>
           {{
             settings.language === 'zh'
@@ -1191,7 +1332,7 @@ async function pullCloudVault() {
         class="settings__btn-secondary"
         :disabled="
           apiPushing ||
-          !settings.cloudApiToken ||
+          !getEffectiveApiToken() ||
           ((settings.cloudApiSyncMode === 'bundle' || settings.cloudApiEncrypted) &&
             !settings.cloudApiPassphrase)
         "
@@ -1201,8 +1342,8 @@ async function pullCloudVault() {
           apiPushing
             ? (settings.language === 'zh' ? '正在同步上传到网盘…' : 'Uploading…')
             : settings.cloudApiSyncMode === 'folder'
-              ? (settings.language === 'zh' ? '📂 增量分类同步到网盘专用目录 (Push)' : '📂 Incremental Folder Push via Cloud API')
-              : (settings.language === 'zh' ? '🔒 打包加密上传到网盘 (Push)' : '🔒 Bundle & Push via Cloud API')
+              ? (settings.language === 'zh' ? '📂 增量分类同步到云端专用目录 (Push)' : '📂 Incremental Folder Push via Cloud API')
+              : (settings.language === 'zh' ? '🔒 打包加密上传到云端 (Push)' : '🔒 Bundle & Push via Cloud API')
         }}
       </button>
       <button
@@ -1210,7 +1351,7 @@ async function pullCloudVault() {
         class="settings__btn-secondary"
         :disabled="
           apiPulling ||
-          !settings.cloudApiToken ||
+          !getEffectiveApiToken() ||
           ((settings.cloudApiSyncMode === 'bundle' || settings.cloudApiEncrypted) &&
             !settings.cloudApiPassphrase)
         "

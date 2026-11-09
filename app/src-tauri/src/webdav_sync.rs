@@ -28,10 +28,13 @@ const SYNC_MANIFEST_REL: &str = ".solomd-sync/manifest.json";
 const SYNC_VERSIONS_REL: &str = ".solomd-sync/versions";
 const DEFAULT_MAX_VERSIONS: usize = 20;
 
-/// Built-in public OAuth AppKey fallback so users can authorize via browser
-/// Implicit Grant (`response_type=token&redirect_uri=oob`) without registering
-/// a developer account first, while still allowing custom AppKey overrides.
+/// Built-in public OAuth Client IDs so users can authorize via browser
+/// without registering a developer account first, while still allowing custom Client ID overrides.
 const DEFAULT_BAIDU_OAUTH_CLIENT_ID: &str = "iYCeC9g08h5vuP9UqvPHKKSVrKFXGa1v";
+const DEFAULT_ALIPAN_OAUTH_CLIENT_ID: &str = "50929a2f00194127a7f3ce9d7b604e7f";
+const DEFAULT_ONEDRIVE_OAUTH_CLIENT_ID: &str = "d50ca740-c83f-4d1b-b616-12c519384f0c";
+const DEFAULT_DROPBOX_OAUTH_CLIENT_ID: &str = "n6f039234p498c0";
+const DEFAULT_GDRIVE_OAUTH_CLIENT_ID: &str = "202264815644.apps.googleusercontent.com";
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SyncFileManifestEntry {
@@ -805,10 +808,16 @@ pub fn cloud_vault_detect_local_dirs() -> Vec<DetectedCloudDir> {
         candidates.push(("baidu".into(), "百度网盘".into(), h.join("BaiduNetdisk")));
         candidates.push(("onedrive".into(), "OneDrive".into(), h.join("OneDrive")));
         candidates.push(("dropbox".into(), "Dropbox".into(), h.join("Dropbox")));
+        candidates.push(("gdrive".into(), "Google Drive".into(), h.join("Google Drive")));
+        candidates.push(("gdrive".into(), "Google Drive (My Drive)".into(), h.join("My Drive")));
         candidates.push(("nutstore".into(), "坚果云 (Nutstore)".into(), h.join("Nutstore Files")));
         candidates.push(("nutstore".into(), "我的坚果云".into(), h.join("我的坚果云")));
         candidates.push(("alipan".into(), "阿里云盘".into(), h.join("AliyunDrive")));
         candidates.push(("quark".into(), "夸克网盘".into(), h.join("QuarkDrive")));
+        candidates.push(("123pan".into(), "123云盘".into(), h.join("123Pan")));
+        candidates.push(("189cloud".into(), "天翼云盘".into(), h.join("天翼云盘")));
+        candidates.push(("mega".into(), "MEGA".into(), h.join("MEGA")));
+        candidates.push(("pcloud".into(), "pCloud".into(), h.join("pCloud Drive")));
         candidates.push((
             "icloud".into(),
             "iCloud Drive".into(),
@@ -829,7 +838,15 @@ pub fn cloud_vault_detect_local_dirs() -> Vec<DetectedCloudDir> {
                     } else if lower.contains("dropbox") {
                         candidates.push(("dropbox".into(), format!("Dropbox ({name})"), p));
                     } else if lower.contains("googledrive") {
-                        candidates.push(("google_drive".into(), format!("Google Drive ({name})"), p));
+                        let my_drive = p.join("My Drive");
+                        let cn_drive = p.join("我的云端硬盘");
+                        if my_drive.is_dir() {
+                            candidates.push(("gdrive".into(), format!("Google Drive ({name})"), my_drive));
+                        } else if cn_drive.is_dir() {
+                            candidates.push(("gdrive".into(), format!("Google Drive ({name})"), cn_drive));
+                        } else {
+                            candidates.push(("gdrive".into(), format!("Google Drive ({name})"), p));
+                        }
                     } else if lower.contains("aliyundrive") || lower.contains("adrive") {
                         candidates.push(("alipan".into(), format!("阿里云盘 ({name})"), p));
                     }
@@ -838,8 +855,8 @@ pub fn cloud_vault_detect_local_dirs() -> Vec<DetectedCloudDir> {
         }
     }
 
-    // Windows common drive letters for Baidu Netdisk / Aliyun Drive / Nutstore
-    for drive in ["C:\\", "D:\\", "E:\\", "F:\\"] {
+    // Windows common drive letters for Baidu Netdisk / Aliyun Drive / Nutstore / Google Drive
+    for drive in ["C:\\", "D:\\", "E:\\", "F:\\", "G:\\"] {
         let root = PathBuf::from(drive);
         if root.is_dir() {
             candidates.push(("baidu".into(), format!("百度网盘同步空间 ({drive})"), root.join("BaiduNetdiskWorkspace")));
@@ -848,6 +865,10 @@ pub fn cloud_vault_detect_local_dirs() -> Vec<DetectedCloudDir> {
             candidates.push(("alipan".into(), format!("阿里云盘 ({drive})"), root.join("AliyunDrive")));
             candidates.push(("quark".into(), format!("夸克网盘 ({drive})"), root.join("QuarkDrive")));
             candidates.push(("nutstore".into(), format!("我的坚果云 ({drive})"), root.join("我的坚果云")));
+            candidates.push(("gdrive".into(), format!("Google Drive ({drive})"), root.join("My Drive")));
+            candidates.push(("gdrive".into(), format!("Google Drive ({drive})"), root.join("我的云端硬盘")));
+            candidates.push(("123pan".into(), format!("123云盘 ({drive})"), root.join("123云盘")));
+            candidates.push(("189cloud".into(), format!("天翼云盘 ({drive})"), root.join("天翼云盘")));
         }
     }
 
@@ -891,22 +912,67 @@ pub fn cloud_api_build_quick_auth_url(
                 instructions: "在打开的百度网盘授权页扫码/确认登录 → 跳转后直接复制浏览器地址栏中的整段网址（或 access_token）→ 粘贴到下方 Token 输入框即可自动识别，无需申请 SecretKey！".into(),
             })
         }
-        "onedrive" => {
+        "alipan" => {
             let cid = if custom_cid.is_empty() {
-                return Err("OneDrive 需先在高级选项中填写 Azure Client ID 或直接粘贴 Access Token".into());
+                DEFAULT_ALIPAN_OAUTH_CLIENT_ID
             } else {
-                custom_cid
+                custom_cid.as_str()
             };
             let auth_url = format!(
-                "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id={}&response_type=token&redirect_uri=https://login.microsoftonline.com/common/oauth2/nativeclient&scope=Files.ReadWrite",
-                percent_encode_segment(&cid)
+                "https://openapi.alipan.com/oauth/authorize?client_id={}&redirect_uri=oob&scope=user:base,file:all:read,file:all:write&response_type=token",
+                percent_encode_segment(cid)
             );
             Ok(QuickAuthInfo {
                 auth_url,
-                instructions: "在浏览器完成微软账号授权后，复制跳转地址栏中的整段 URL 粘贴到下方 Token 输入框即可自动提取 Token。".into(),
+                instructions: "在打开的阿里云盘授权页面扫码登录 → 授权成功后复制跳转地址栏中的整段网址（或 access_token）→ 粘贴到下方 Token 输入框即可自动提取。".into(),
             })
         }
-        other => Err(format!("暂不支持 {other} 免 Key 快捷跳转，请直接粘贴 Access Token")),
+        "onedrive" => {
+            let cid = if custom_cid.is_empty() {
+                DEFAULT_ONEDRIVE_OAUTH_CLIENT_ID
+            } else {
+                custom_cid.as_str()
+            };
+            let auth_url = format!(
+                "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id={}&response_type=token&redirect_uri=https://login.microsoftonline.com/common/oauth2/nativeclient&scope=Files.ReadWrite",
+                percent_encode_segment(cid)
+            );
+            Ok(QuickAuthInfo {
+                auth_url,
+                instructions: "在浏览器完成微软 OneDrive 账号授权后，复制跳转后地址栏中的整段 URL（含 #access_token=...）粘贴到下方 Token 输入框即可自动提取 Token，或使用下方「设备码扫码登录」。".into(),
+            })
+        }
+        "dropbox" => {
+            let cid = if custom_cid.is_empty() {
+                DEFAULT_DROPBOX_OAUTH_CLIENT_ID
+            } else {
+                custom_cid.as_str()
+            };
+            let auth_url = format!(
+                "https://www.dropbox.com/oauth2/authorize?client_id={}&response_type=token&redirect_uri=https://localhost",
+                percent_encode_segment(cid)
+            );
+            Ok(QuickAuthInfo {
+                auth_url,
+                instructions: "在浏览器完成 Dropbox 授权后，即使 localhost 页面提示无法连接，只需复制浏览器地址栏中的整段 URL（含 #access_token=...）粘贴到下方 Token 输入框即可自动提取 Token！".into(),
+            })
+        }
+        "gdrive" => {
+            let cid = if custom_cid.is_empty() {
+                DEFAULT_GDRIVE_OAUTH_CLIENT_ID
+            } else {
+                custom_cid.as_str()
+            };
+            let auth_url = format!(
+                "https://accounts.google.com/o/oauth2/v2/auth?client_id={}&redirect_uri=https://developers.google.com/oauthplayground&response_type=token&scope=https://www.googleapis.com/auth/drive.file",
+                percent_encode_segment(cid)
+            );
+            Ok(QuickAuthInfo {
+                auth_url,
+                instructions: "在打开的 Google 账号授权页完成授权后，复制跳转地址栏中的整段 URL（含 #access_token=...）粘贴到下方 Token 输入框即可自动识别！".into(),
+            })
+        }
+        other => Err(format!("暂不支持 {other} 免 Key 快捷跳转，请直接粘贴凭证")),
     }
 }
 
@@ -1236,6 +1302,9 @@ pub async fn webdav_push_workspace(
     remote_path: String,
     encrypted: Option<bool>,
     passphrase: Option<String>,
+    auto_workspace_subdir: Option<bool>,
+    categorize_files: Option<bool>,
+    max_versions: Option<usize>,
 ) -> Result<WebdavSyncResult, String> {
     let ws_path = PathBuf::from(workspace.trim());
     if !ws_path.is_dir() {
@@ -1247,6 +1316,11 @@ pub async fn webdav_push_workspace(
 
     let use_encryption = encrypted.unwrap_or(false);
     let pass_str = passphrase.unwrap_or_default();
+    let auto_sub = auto_workspace_subdir.unwrap_or(true);
+    let cat_files = categorize_files.unwrap_or(false);
+    let max_v = max_versions.unwrap_or(DEFAULT_MAX_VERSIONS);
+
+    let target_remote = resolve_remote_workspace_dir("webdav", &remote_path, &ws_path, auto_sub);
 
     let mut files = Vec::new();
     collect_local_files(&ws_path, &ws_path, &mut files);
@@ -1256,7 +1330,7 @@ pub async fn webdav_push_workspace(
     ensure_remote_dir(
         &client,
         &url,
-        &remote_path,
+        &target_remote,
         "",
         username.trim(),
         password.as_str(),
@@ -1265,7 +1339,7 @@ pub async fn webdav_push_workspace(
     .await?;
 
     let enc_key: Option<[u8; 32]> = if use_encryption {
-        let manifest_url = build_target_url(&url, &remote_path, VAULT_MANIFEST_NAME);
+        let manifest_url = build_target_url(&url, &target_remote, VAULT_MANIFEST_NAME);
         let existing_resp = client
             .get(&manifest_url)
             .basic_auth(username.trim(), Some(password.as_str()))
@@ -1301,13 +1375,71 @@ pub async fn webdav_push_workspace(
         None
     };
 
+    // Fetch remote `.solomd-sync/manifest.json` if present for incremental SHA-256 skipping & 3-way conflict check
+    let sync_manifest_url = build_target_url(&url, &target_remote, SYNC_MANIFEST_REL);
+    let mut folder_manifest: SyncFolderManifest = match client
+        .get(&sync_manifest_url)
+        .basic_auth(username.trim(), Some(password.as_str()))
+        .send()
+        .await
+    {
+        Ok(r) if r.status().is_success() => {
+            let b = r.bytes().await.unwrap_or_default();
+            serde_json::from_slice(&b).unwrap_or_default()
+        }
+        _ => SyncFolderManifest {
+            version: 1,
+            workspace_name: workspace_folder_name(&ws_path),
+            updated_at: now_unix_secs(),
+            encrypted: use_encryption,
+            vault_crypto: None,
+            files: BTreeMap::new(),
+        },
+    };
+
+    let local_base = read_local_base_manifest(&ws_path);
     let mut uploaded = 0usize;
+    let mut skipped = 0usize;
+    let mut new_files_map = BTreeMap::new();
+
     for (rel, full_path) in files {
-        if let Some((parent, _)) = rel.rsplit_once('/') {
+        let plain_bytes = std::fs::read(&full_path)
+            .map_err(|e| format!("Failed to read {rel}: {e}"))?;
+        let sha = sha256_hex(&plain_bytes);
+        let cat_rel = map_categorized_rel_path(&rel, cat_files);
+        let remote_rel = if use_encryption {
+            format!("{cat_rel}.enc")
+        } else {
+            cat_rel.clone()
+        };
+
+        let base_sha = local_base
+            .as_ref()
+            .and_then(|m| m.files.get(&rel))
+            .map(|e| e.sha256.as_str());
+
+        if let Some(prev) = folder_manifest.files.get(&rel) {
+            if prev.sha256 == sha && prev.remote_rel == remote_rel && prev.encrypted == use_encryption {
+                new_files_map.insert(rel.clone(), prev.clone());
+                skipped += 1;
+                continue;
+            }
+            if base_sha == Some(sha.as_str()) {
+                // Local file was NOT modified on this device since last sync, while another device updated WebDAV
+                new_files_map.insert(rel.clone(), prev.clone());
+                skipped += 1;
+                continue;
+            }
+            let _ = save_local_version_snapshot(&ws_path, &rel, &plain_bytes, "WebDAV 同步快照", max_v);
+        } else {
+            let _ = save_local_version_snapshot(&ws_path, &rel, &plain_bytes, "首次 WebDAV 同步快照", max_v);
+        }
+
+        if let Some((parent, _)) = remote_rel.rsplit_once('/') {
             ensure_remote_dir(
                 &client,
                 &url,
-                &remote_path,
+                &target_remote,
                 parent,
                 username.trim(),
                 password.as_str(),
@@ -1315,15 +1447,14 @@ pub async fn webdav_push_workspace(
             )
             .await?;
         }
-        let plain_bytes = std::fs::read(&full_path)
-            .map_err(|e| format!("Failed to read {rel}: {e}"))?;
-        let (remote_rel, upload_bytes) = if let Some(ref key) = enc_key {
-            let cipher = super::crypto::encrypt_bytes(key, &rel, &plain_bytes)?;
-            (format!("{rel}.enc"), cipher)
+
+        let upload_bytes = if let Some(ref key) = enc_key {
+            super::crypto::encrypt_bytes(key, &rel, &plain_bytes)?
         } else {
-            (rel.clone(), plain_bytes)
+            plain_bytes.clone()
         };
-        let file_url = build_target_url(&url, &remote_path, &remote_rel);
+
+        let file_url = build_target_url(&url, &target_remote, &remote_rel);
         let resp = client
             .put(&file_url)
             .basic_auth(username.trim(), Some(password.as_str()))
@@ -1340,13 +1471,65 @@ pub async fn webdav_push_workspace(
         if !(200..300).contains(&code) {
             return Err(format!("Upload failed for {remote_rel} (HTTP {code})"));
         }
+        new_files_map.insert(
+            rel.clone(),
+            SyncFileManifestEntry {
+                local_rel: rel,
+                remote_rel,
+                sha256: sha,
+                size: plain_bytes.len() as u64,
+                updated_at: now_unix_secs(),
+                encrypted: use_encryption,
+            },
+        );
         uploaded += 1;
     }
 
+    for (rem_rel_key, rem_entry) in &folder_manifest.files {
+        if !new_files_map.contains_key(rem_rel_key) {
+            let was_deleted_locally = local_base
+                .as_ref()
+                .map(|b| b.files.contains_key(rem_rel_key))
+                .unwrap_or(false);
+            if !was_deleted_locally {
+                new_files_map.insert(rem_rel_key.clone(), rem_entry.clone());
+            }
+        }
+    }
+
+    folder_manifest.version = 1;
+    folder_manifest.workspace_name = workspace_folder_name(&ws_path);
+    folder_manifest.updated_at = now_unix_secs();
+    folder_manifest.encrypted = use_encryption;
+    folder_manifest.files = new_files_map;
+
+    write_local_base_manifest(&ws_path, &folder_manifest);
+    if ensure_remote_dir(
+        &client,
+        &url,
+        &target_remote,
+        SYNC_META_DIR,
+        username.trim(),
+        password.as_str(),
+        &mut created_dirs,
+    )
+    .await
+    .is_ok()
+    {
+        if let Ok(m_bytes) = serde_json::to_vec_pretty(&folder_manifest) {
+            let _ = client
+                .put(&sync_manifest_url)
+                .basic_auth(username.trim(), Some(password.as_str()))
+                .body(m_bytes)
+                .send()
+                .await;
+        }
+    }
+
     let msg = if use_encryption {
-        format!("已端到端加密上传 {uploaded} 个文件到 WebDAV (Encrypted & uploaded {uploaded} files)")
+        format!("已端到端加密上传 {uploaded} 个文件到 WebDAV ({target_remote}，跳过未改动 {skipped} 个)")
     } else {
-        format!("Uploaded {uploaded} files to WebDAV")
+        format!("已增量同步 {uploaded} 个文件到 WebDAV ({target_remote}，跳过未改动 {skipped} 个)")
     };
 
     Ok(WebdavSyncResult {
@@ -1365,6 +1548,9 @@ pub async fn webdav_pull_workspace(
     remote_path: String,
     encrypted: Option<bool>,
     passphrase: Option<String>,
+    auto_workspace_subdir: Option<bool>,
+    categorize_files: Option<bool>,
+    max_versions: Option<usize>,
 ) -> Result<WebdavSyncResult, String> {
     let ws_path = PathBuf::from(workspace.trim());
     if !ws_path.is_dir() {
@@ -1376,9 +1562,29 @@ pub async fn webdav_pull_workspace(
 
     let client = build_client()?;
     let pass_str = passphrase.unwrap_or_default();
+    let auto_sub = auto_workspace_subdir.unwrap_or(true);
+    let cat_files = categorize_files.unwrap_or(false);
+    let max_v = max_versions.unwrap_or(DEFAULT_MAX_VERSIONS);
+
+    // Check dedicated workspace subdir first; fallback to raw `remote_path` if subdir 404s
+    let candidate_remote = resolve_remote_workspace_dir("webdav", &remote_path, &ws_path, auto_sub);
+    let propfind = Method::from_bytes(b"PROPFIND").map_err(|e| e.to_string())?;
+    let probe_url = build_target_url(&url, &candidate_remote, "");
+    let target_remote = match client
+        .request(propfind.clone(), &probe_url)
+        .header("Depth", "0")
+        .basic_auth(username.trim(), Some(password.as_str()))
+        .send()
+        .await
+    {
+        Ok(r) if r.status().as_u16() == 404 && candidate_remote != normalize_remote_path(&remote_path) => {
+            remote_path.clone()
+        }
+        _ => candidate_remote,
+    };
 
     // Check if the remote folder has a `solomd-vault.json` encrypted manifest.
-    let manifest_url = build_target_url(&url, &remote_path, VAULT_MANIFEST_NAME);
+    let manifest_url = build_target_url(&url, &target_remote, VAULT_MANIFEST_NAME);
     let manifest_resp = client
         .get(&manifest_url)
         .basic_auth(username.trim(), Some(password.as_str()))
@@ -1404,19 +1610,41 @@ pub async fn webdav_pull_workspace(
         }
     };
 
-    let propfind = Method::from_bytes(b"PROPFIND").map_err(|e| e.to_string())?;
+    let sync_manifest_url = build_target_url(&url, &target_remote, SYNC_MANIFEST_REL);
+    let folder_manifest: Option<SyncFolderManifest> = match client
+        .get(&sync_manifest_url)
+        .basic_auth(username.trim(), Some(password.as_str()))
+        .send()
+        .await
+    {
+        Ok(r) if r.status().is_success() => {
+            let b = r.bytes().await.unwrap_or_default();
+            serde_json::from_slice(&b).ok()
+        }
+        _ => None,
+    };
+
+    let mut remote_to_entry: BTreeMap<String, SyncFileManifestEntry> = BTreeMap::new();
+    if let Some(ref fm) = folder_manifest {
+        for entry in fm.files.values() {
+            remote_to_entry.insert(entry.remote_rel.clone(), entry.clone());
+        }
+    }
+    let local_base = read_local_base_manifest(&ws_path);
 
     // Breadth-first `Depth: 1` traversal (works on all WebDAV servers including
     // 坚果云 Nutstore and Nextcloud, which reject `Depth: infinity`).
     let mut queue: Vec<String> = vec![String::new()];
     let mut visited_dirs: HashSet<String> = HashSet::new();
     let mut downloaded = 0usize;
+    let mut skipped = 0usize;
+    let mut conflicts = 0usize;
 
     while let Some(rel_dir) = queue.pop() {
         if !visited_dirs.insert(rel_dir.clone()) {
             continue;
         }
-        let dir_url = build_target_url(&url, &remote_path, &rel_dir);
+        let dir_url = build_target_url(&url, &target_remote, &rel_dir);
         let resp = client
             .request(propfind.clone(), &dir_url)
             .header("Depth", "1")
@@ -1443,13 +1671,12 @@ pub async fn webdav_pull_workspace(
         let xml = resp.text().await.unwrap_or_default();
         let entries = parse_propfind_xml(&xml);
         for (idx, (href, is_collection)) in entries.into_iter().enumerate() {
-            // The first entry in Depth:1 response is typically the directory itself.
             let decoded = percent_decode(&href);
             let trimmed_href = decoded.trim_end_matches('/');
             let Some(leaf) = trimmed_href.rsplit('/').next() else {
                 continue;
             };
-            if leaf.is_empty() || leaf.starts_with('.') || leaf == VAULT_MANIFEST_NAME {
+            if leaf.is_empty() || leaf.starts_with('.') || leaf == VAULT_MANIFEST_NAME || leaf == SYNC_META_DIR {
                 continue;
             }
             if idx == 0 {
@@ -1464,66 +1691,122 @@ pub async fn webdav_pull_workspace(
                 if !should_skip_dir(leaf) && visited_dirs.len() < 200 {
                     queue.push(child_rel);
                 }
-            } else if let Some(plain_rel) = child_rel.strip_suffix(".enc") {
-                let Some(ref key) = enc_key else {
-                    continue;
-                };
-                let local_target = ws_path.join(plain_rel);
-                if !should_sync_file(&local_target) {
-                    continue;
-                }
-                let file_url = build_target_url(&url, &remote_path, &child_rel);
-                let get_resp = client
-                    .get(&file_url)
-                    .basic_auth(username.trim(), Some(password.as_str()))
-                    .send()
-                    .await
-                    .map_err(|e| format!("Failed to download {child_rel}: {e}"))?;
-                if get_resp.status().is_success() {
-                    let cipher_bytes = get_resp
-                        .bytes()
-                        .await
-                        .map_err(|e| format!("Read error for {child_rel}: {e}"))?;
-                    let plain_bytes = super::crypto::decrypt_bytes(key, plain_rel, &cipher_bytes)?;
-                    if let Some(parent) = local_target.parent() {
-                        let _ = std::fs::create_dir_all(parent);
-                    }
-                    std::fs::write(&local_target, &plain_bytes)
-                        .map_err(|e| format!("Write error for {plain_rel}: {e}"))?;
-                    downloaded += 1;
-                }
             } else {
-                let local_target = ws_path.join(&child_rel);
+                let manifest_entry = remote_to_entry.get(&child_rel);
+                let local_rel = if let Some(me) = manifest_entry {
+                    me.local_rel.clone()
+                } else {
+                    let stripped = child_rel.strip_suffix(".enc").unwrap_or(&child_rel);
+                    unmap_categorized_rel_path(stripped, cat_files)
+                };
+                let local_target = ws_path.join(&local_rel);
                 if !should_sync_file(&local_target) {
                     continue;
                 }
-                let file_url = build_target_url(&url, &remote_path, &child_rel);
+
+                if let Some(me) = manifest_entry {
+                    if local_target.exists() {
+                        if let Ok(existing_bytes) = std::fs::read(&local_target) {
+                            if sha256_hex(&existing_bytes) == me.sha256 {
+                                skipped += 1;
+                                continue;
+                            }
+                        }
+                    }
+                }
+
+                let file_url = build_target_url(&url, &target_remote, &child_rel);
                 let get_resp = client
                     .get(&file_url)
                     .basic_auth(username.trim(), Some(password.as_str()))
                     .send()
                     .await
                     .map_err(|e| format!("Failed to download {child_rel}: {e}"))?;
-                if get_resp.status().is_success() {
-                    if let Some(parent) = local_target.parent() {
-                        let _ = std::fs::create_dir_all(parent);
-                    }
-                    let bytes = get_resp
-                        .bytes()
-                        .await
-                        .map_err(|e| format!("Read error for {child_rel}: {e}"))?;
-                    std::fs::write(&local_target, &bytes)
-                        .map_err(|e| format!("Write error for {child_rel}: {e}"))?;
-                    downloaded += 1;
+                if !get_resp.status().is_success() {
+                    continue;
                 }
+                let raw_bytes = get_resp
+                    .bytes()
+                    .await
+                    .map_err(|e| format!("Read error for {child_rel}: {e}"))?
+                    .to_vec();
+                let plain_bytes = if child_rel.ends_with(".enc") {
+                    let Some(ref key) = enc_key else {
+                        continue;
+                    };
+                    let stripped = child_rel.strip_suffix(".enc").unwrap_or(&child_rel);
+                    super::crypto::decrypt_bytes(key, &local_rel, &raw_bytes)
+                        .or_else(|_| super::crypto::decrypt_bytes(key, stripped, &raw_bytes))?
+                } else {
+                    raw_bytes
+                };
+
+                if local_target.exists() {
+                    if let Ok(existing) = std::fs::read(&local_target) {
+                        if existing != plain_bytes {
+                            let local_sha = sha256_hex(&existing);
+                            let remote_sha = sha256_hex(&plain_bytes);
+                            let base_sha = local_base
+                                .as_ref()
+                                .and_then(|m| m.files.get(&local_rel))
+                                .map(|e| e.sha256.as_str());
+                            if base_sha == Some(remote_sha.as_str()) {
+                                skipped += 1;
+                                continue;
+                            }
+                            if base_sha != Some(local_sha.as_str()) {
+                                let _ = save_local_version_snapshot(
+                                    &ws_path,
+                                    &local_rel,
+                                    &existing,
+                                    "WebDAV 多端冲突备份 (本地修改)",
+                                    max_v,
+                                );
+                                let _ = write_conflict_copy_file(
+                                    &ws_path,
+                                    &local_rel,
+                                    &existing,
+                                    &device_hostname(),
+                                );
+                                conflicts += 1;
+                            } else {
+                                let _ = save_local_version_snapshot(
+                                    &ws_path,
+                                    &local_rel,
+                                    &existing,
+                                    "WebDAV 拉取覆盖前备份",
+                                    max_v,
+                                );
+                            }
+                        } else {
+                            skipped += 1;
+                            continue;
+                        }
+                    }
+                }
+                if let Some(parent) = local_target.parent() {
+                    let _ = std::fs::create_dir_all(parent);
+                }
+                std::fs::write(&local_target, &plain_bytes)
+                    .map_err(|e| format!("Write error for {local_rel}: {e}"))?;
+                downloaded += 1;
             }
         }
     }
 
-    let msg = if enc_key.is_some() {
-        format!("已从 WebDAV 下载并解密 {downloaded} 个文件 (Downloaded & decrypted {downloaded} files)")
+    if let Some(ref fm) = folder_manifest {
+        write_local_base_manifest(&ws_path, fm);
+    }
+
+    let conflict_note = if conflicts > 0 {
+        format!("，检测到 {conflicts} 处多端冲突并已保存冲突副本")
     } else {
-        format!("Downloaded {downloaded} files from WebDAV")
+        String::new()
+    };
+    let msg = if enc_key.is_some() {
+        format!("已从 WebDAV ({target_remote}) 下载并解密 {downloaded} 个文件（跳过未改动 {skipped} 个{conflict_note}）")
+    } else {
+        format!("已从 WebDAV ({target_remote}) 同步更新 {downloaded} 个文件（跳过未改动 {skipped} 个{conflict_note}）")
     };
 
     Ok(WebdavSyncResult {
@@ -2357,12 +2640,17 @@ pub async fn cloud_api_start_device_auth(
 ) -> Result<DeviceAuthStart, String> {
     let prov = provider.trim().to_ascii_lowercase();
     let custom_cid = client_id.trim();
-    let cid = if custom_cid.is_empty() && prov == "baidu" {
-        DEFAULT_BAIDU_OAUTH_CLIENT_ID
-    } else if custom_cid.is_empty() {
-        return Err("请先填写开放平台 AppKey / Client ID，或使用「一键浏览器免 Key 授权」".into());
-    } else {
+    let cid = if !custom_cid.is_empty() {
         custom_cid
+    } else {
+        match prov.as_str() {
+            "baidu" => DEFAULT_BAIDU_OAUTH_CLIENT_ID,
+            "onedrive" => DEFAULT_ONEDRIVE_OAUTH_CLIENT_ID,
+            "gdrive" => DEFAULT_GDRIVE_OAUTH_CLIENT_ID,
+            "alipan" => DEFAULT_ALIPAN_OAUTH_CLIENT_ID,
+            "dropbox" => DEFAULT_DROPBOX_OAUTH_CLIENT_ID,
+            _ => return Err("请先填写开放平台 AppKey / Client ID，或使用「一键浏览器免 Key 授权」".into()),
+        }
     };
     let client = build_client()?;
     match prov.as_str() {
@@ -2458,8 +2746,53 @@ pub async fn cloud_api_start_device_auth(
                 ),
             })
         }
+        "gdrive" => {
+            let resp = client
+                .post("https://oauth2.googleapis.com/device/code")
+                .form(&[
+                    ("client_id", cid),
+                    ("scope", "https://www.googleapis.com/auth/drive.file"),
+                ])
+                .send()
+                .await
+                .map_err(|e| format!("请求 Google Drive 设备授权失败: {e}"))?;
+            let json: serde_json::Value = resp
+                .json()
+                .await
+                .map_err(|e| format!("解析 Google Drive 响应失败: {e}"))?;
+            if let Some(err) = json.get("error_description").and_then(|v| v.as_str()) {
+                return Err(format!("Google Drive 授权错误: {err}"));
+            }
+            let device_code = json
+                .get("device_code")
+                .and_then(|v| v.as_str())
+                .ok_or("未返回 device_code")?
+                .to_string();
+            let user_code = json
+                .get("user_code")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let verification_url = json
+                .get("verification_url")
+                .or_else(|| json.get("verification_uri"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("https://www.google.com/device")
+                .to_string();
+            let interval = json.get("interval").and_then(|v| v.as_u64()).unwrap_or(5);
+            Ok(DeviceAuthStart {
+                device_code,
+                user_code: user_code.clone(),
+                verification_url: verification_url.clone(),
+                qrcode_url: None,
+                interval,
+                message: format!(
+                    "请在浏览器打开 {verification_url} 并输入代码 【{user_code}】，授权后点击「完成授权获取 Token」"
+                ),
+            })
+        }
         other => Err(format!(
-            "当前网盘 ({other}) 请直接粘贴开放平台 Access Token"
+            "当前网盘 ({other}) 请使用上方「一键浏览器免 Key 授权」或直接粘贴 Access Token"
         )),
     }
 }
@@ -2472,12 +2805,24 @@ pub async fn cloud_api_poll_device_auth(
     device_code: String,
 ) -> Result<DeviceAuthPoll, String> {
     let client = build_client()?;
-    match provider.trim().to_ascii_lowercase().as_str() {
+    let prov = provider.trim().to_ascii_lowercase();
+    let custom_cid = client_id.trim();
+    let cid = if !custom_cid.is_empty() {
+        custom_cid
+    } else {
+        match prov.as_str() {
+            "baidu" => DEFAULT_BAIDU_OAUTH_CLIENT_ID,
+            "onedrive" => DEFAULT_ONEDRIVE_OAUTH_CLIENT_ID,
+            "gdrive" => DEFAULT_GDRIVE_OAUTH_CLIENT_ID,
+            _ => custom_cid,
+        }
+    };
+    match prov.as_str() {
         "baidu" => {
             let url = format!(
                 "https://openapi.baidu.com/oauth/2.0/token?grant_type=device_token&code={}&client_id={}&client_secret={}",
                 percent_encode_segment(device_code.trim()),
-                percent_encode_segment(client_id.trim()),
+                percent_encode_segment(cid),
                 percent_encode_segment(client_secret.trim()),
             );
             let resp = client
@@ -2517,7 +2862,7 @@ pub async fn cloud_api_poll_device_auth(
                 .post("https://login.microsoftonline.com/common/oauth2/v2.0/token")
                 .form(&[
                     ("grant_type", "urn:ietf:params:oauth:grant-type:device_code"),
-                    ("client_id", client_id.trim()),
+                    ("client_id", cid),
                     ("device_code", device_code.trim()),
                 ])
                 .send()
@@ -2536,6 +2881,45 @@ pub async fn cloud_api_poll_device_auth(
                         .and_then(|v| v.as_str())
                         .map(|s| s.to_string()),
                     message: "OneDrive 授权成功！已自动填入 Access Token".into(),
+                });
+            }
+            let err = json
+                .get("error_description")
+                .or_else(|| json.get("error"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("等待授权中");
+            Ok(DeviceAuthPoll {
+                status: "pending".into(),
+                access_token: None,
+                refresh_token: None,
+                message: format!("尚未完成授权: {err}"),
+            })
+        }
+        "gdrive" => {
+            let resp = client
+                .post("https://oauth2.googleapis.com/token")
+                .form(&[
+                    ("grant_type", "urn:ietf:params:oauth:grant-type:device_code"),
+                    ("client_id", cid),
+                    ("client_secret", client_secret.trim()),
+                    ("device_code", device_code.trim()),
+                ])
+                .send()
+                .await
+                .map_err(|e| format!("轮询 Google Drive Token 失败: {e}"))?;
+            let json: serde_json::Value = resp
+                .json()
+                .await
+                .map_err(|e| format!("解析 Google Drive Token 失败: {e}"))?;
+            if let Some(token) = json.get("access_token").and_then(|v| v.as_str()) {
+                return Ok(DeviceAuthPoll {
+                    status: "ok".into(),
+                    access_token: Some(token.to_string()),
+                    refresh_token: json
+                        .get("refresh_token")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string()),
+                    message: "Google Drive 授权成功！已自动填入 Access Token".into(),
                 });
             }
             let err = json
@@ -3626,6 +4010,7 @@ async fn onedrive_push_folder(
         None
     };
 
+    let local_base = read_local_base_manifest(workspace);
     let mut local_files = Vec::new();
     collect_local_files(workspace, workspace, &mut local_files);
     let mut uploaded = 0usize;
@@ -3638,8 +4023,18 @@ async fn onedrive_push_folder(
         let cat_rel = map_categorized_rel_path(&rel, categorize_files);
         let remote_rel = if encrypted { format!("{cat_rel}.enc") } else { cat_rel };
 
+        let base_sha = local_base
+            .as_ref()
+            .and_then(|m| m.files.get(&rel))
+            .map(|e| e.sha256.as_str());
+
         if let Some(prev) = manifest.files.get(&rel) {
             if prev.sha256 == sha && prev.remote_rel == remote_rel && prev.encrypted == encrypted {
+                new_files_map.insert(rel.clone(), prev.clone());
+                skipped += 1;
+                continue;
+            }
+            if base_sha == Some(sha.as_str()) {
                 new_files_map.insert(rel.clone(), prev.clone());
                 skipped += 1;
                 continue;
@@ -3695,11 +4090,145 @@ async fn onedrive_push_folder(
             .send()
             .await;
     }
+    write_local_base_manifest(workspace, &manifest);
 
     Ok(WebdavSyncResult {
         uploaded,
         downloaded: 0,
         message: format!("OneDrive 分类目录同步完成：上传 {uploaded} 个文件，跳过 {skipped} 个未改动文件 ({ws_remote_root})"),
+    })
+}
+
+async fn onedrive_pull_folder(
+    client: &reqwest::Client,
+    token: &str,
+    workspace: &Path,
+    remote_dir: &str,
+    encrypted: bool,
+    passphrase: &str,
+    auto_workspace_subdir: bool,
+    _categorize_files: bool,
+    max_versions: usize,
+) -> Result<WebdavSyncResult, String> {
+    let ws_remote_root =
+        resolve_remote_workspace_dir("onedrive", remote_dir, workspace, auto_workspace_subdir);
+    let manifest_rel = format!("{}/{}", ws_remote_root.trim_start_matches('/'), SYNC_MANIFEST_REL);
+    let manifest_url = format!(
+        "https://graph.microsoft.com/v1.0/me/drive/root:/{}:/content",
+        encode_rel_segments(&manifest_rel)
+    );
+
+    let resp = client
+        .get(&manifest_url)
+        .bearer_auth(token)
+        .send()
+        .await
+        .map_err(|e| format!("连接 OneDrive 失败: {e}"))?;
+    if !resp.status().is_success() {
+        return Err(format!("OneDrive 目录 ({ws_remote_root}) 下未找到同步清单 manifest.json"));
+    }
+    let m_bytes = resp.bytes().await.unwrap_or_default();
+    let manifest: SyncFolderManifest =
+        serde_json::from_slice(&m_bytes).map_err(|e| format!("解析 OneDrive 同步清单失败: {e}"))?;
+
+    let dec_key: Option<[u8; 32]> = if manifest.encrypted || encrypted {
+        let vc = manifest
+            .vault_crypto
+            .as_ref()
+            .ok_or("云端文件已开启加密，但清单缺少加密元数据")?;
+        Some(unlock_vault_manifest(vc, passphrase)?)
+    } else {
+        None
+    };
+
+    let local_base = read_local_base_manifest(workspace);
+    let mut downloaded = 0usize;
+    let mut skipped = 0usize;
+    let mut conflicts = 0usize;
+
+    for (local_rel, entry) in &manifest.files {
+        let target_local = workspace.join(local_rel);
+        let base_sha = local_base
+            .as_ref()
+            .and_then(|m| m.files.get(local_rel))
+            .map(|e| e.sha256.as_str());
+
+        if target_local.is_file() {
+            if let Ok(existing) = std::fs::read(&target_local) {
+                let local_sha = sha256_hex(&existing);
+                if local_sha == entry.sha256 {
+                    skipped += 1;
+                    continue;
+                }
+                if base_sha == Some(entry.sha256.as_str()) {
+                    skipped += 1;
+                    continue;
+                }
+                let _ = save_local_version_snapshot(
+                    workspace,
+                    local_rel,
+                    &existing,
+                    "OneDrive 拉取前本地快照",
+                    max_versions,
+                );
+                let is_conflict = match base_sha {
+                    Some(b_sha) => local_sha != b_sha && entry.sha256 != b_sha,
+                    None => true,
+                };
+                if is_conflict && write_conflict_copy_file(workspace, local_rel, &existing, "本地修改").is_some() {
+                    conflicts += 1;
+                }
+            }
+        }
+
+        let full_rel = format!("{}/{}", ws_remote_root.trim_start_matches('/'), entry.remote_rel);
+        let dl_url = format!(
+            "https://graph.microsoft.com/v1.0/me/drive/root:/{}:/content",
+            encode_rel_segments(&full_rel)
+        );
+        let dl_resp = client
+            .get(&dl_url)
+            .bearer_auth(token)
+            .send()
+            .await
+            .map_err(|e| format!("OneDrive 下载 {} 失败: {e}", entry.remote_rel))?;
+        if !dl_resp.status().is_success() {
+            continue;
+        }
+        let raw_bytes = dl_resp.bytes().await.unwrap_or_default().to_vec();
+        let plain_bytes = if entry.encrypted {
+            let key = dec_key.as_ref().ok_or("需要加密口令以解密 OneDrive 文件")?;
+            super::crypto::decrypt_bytes(key, local_rel, &raw_bytes)?
+        } else {
+            raw_bytes
+        };
+        if let Some(parent) = target_local.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        std::fs::write(&target_local, &plain_bytes)
+            .map_err(|e| format!("写入本地文件 {local_rel} 失败: {e}"))?;
+        let _ = save_local_version_snapshot(
+            workspace,
+            local_rel,
+            &plain_bytes,
+            "从 OneDrive 同步版本",
+            max_versions,
+        );
+        downloaded += 1;
+    }
+
+    write_local_base_manifest(workspace, &manifest);
+    let conflict_note = if conflicts > 0 {
+        format!("，检测到 {conflicts} 处多端并发修改并已生成冲突副本")
+    } else {
+        String::new()
+    };
+    Ok(WebdavSyncResult {
+        uploaded: 0,
+        downloaded,
+        message: format!(
+            "已从 OneDrive 专用目录 ({ws_remote_root}) 同步更新 {downloaded} 个文件（跳过未改动 {skipped} 个{conflict_note}）"
+        ),
     })
 }
 
@@ -3754,6 +4283,7 @@ async fn dropbox_push_folder(
         None
     };
 
+    let local_base = read_local_base_manifest(workspace);
     let mut local_files = Vec::new();
     collect_local_files(workspace, workspace, &mut local_files);
     let mut uploaded = 0usize;
@@ -3766,8 +4296,18 @@ async fn dropbox_push_folder(
         let cat_rel = map_categorized_rel_path(&rel, categorize_files);
         let remote_rel = if encrypted { format!("{cat_rel}.enc") } else { cat_rel };
 
+        let base_sha = local_base
+            .as_ref()
+            .and_then(|m| m.files.get(&rel))
+            .map(|e| e.sha256.as_str());
+
         if let Some(prev) = manifest.files.get(&rel) {
             if prev.sha256 == sha && prev.remote_rel == remote_rel && prev.encrypted == encrypted {
+                new_files_map.insert(rel.clone(), prev.clone());
+                skipped += 1;
+                continue;
+            }
+            if base_sha == Some(sha.as_str()) {
                 new_files_map.insert(rel.clone(), prev.clone());
                 skipped += 1;
                 continue;
@@ -3833,11 +4373,1480 @@ async fn dropbox_push_folder(
             .send()
             .await;
     }
+    write_local_base_manifest(workspace, &manifest);
 
     Ok(WebdavSyncResult {
         uploaded,
         downloaded: 0,
         message: format!("Dropbox 分类目录同步完成：上传 {uploaded} 个文件，跳过 {skipped} 个未改动文件 ({ws_remote_root})"),
+    })
+}
+
+async fn dropbox_pull_folder(
+    client: &reqwest::Client,
+    token: &str,
+    workspace: &Path,
+    remote_dir: &str,
+    encrypted: bool,
+    passphrase: &str,
+    auto_workspace_subdir: bool,
+    _categorize_files: bool,
+    max_versions: usize,
+) -> Result<WebdavSyncResult, String> {
+    let ws_remote_root =
+        resolve_remote_workspace_dir("dropbox", remote_dir, workspace, auto_workspace_subdir);
+    let manifest_path = format!("{ws_remote_root}/{SYNC_MANIFEST_REL}");
+    let arg = serde_json::json!({ "path": manifest_path }).to_string();
+    let resp = client
+        .post("https://content.dropboxapi.com/2/files/download")
+        .bearer_auth(token)
+        .header("Dropbox-API-Arg", arg)
+        .send()
+        .await
+        .map_err(|e| format!("连接 Dropbox 失败: {e}"))?;
+    if !resp.status().is_success() {
+        return Err(format!("Dropbox 目录 ({ws_remote_root}) 下未找到同步清单 manifest.json"));
+    }
+    let m_bytes = resp.bytes().await.unwrap_or_default();
+    let manifest: SyncFolderManifest =
+        serde_json::from_slice(&m_bytes).map_err(|e| format!("解析 Dropbox 同步清单失败: {e}"))?;
+
+    let dec_key: Option<[u8; 32]> = if manifest.encrypted || encrypted {
+        let vc = manifest
+            .vault_crypto
+            .as_ref()
+            .ok_or("云端文件已开启加密，但清单缺少加密元数据")?;
+        Some(unlock_vault_manifest(vc, passphrase)?)
+    } else {
+        None
+    };
+
+    let local_base = read_local_base_manifest(workspace);
+    let mut downloaded = 0usize;
+    let mut skipped = 0usize;
+    let mut conflicts = 0usize;
+
+    for (local_rel, entry) in &manifest.files {
+        let target_local = workspace.join(local_rel);
+        let base_sha = local_base
+            .as_ref()
+            .and_then(|m| m.files.get(local_rel))
+            .map(|e| e.sha256.as_str());
+
+        if target_local.is_file() {
+            if let Ok(existing) = std::fs::read(&target_local) {
+                let local_sha = sha256_hex(&existing);
+                if local_sha == entry.sha256 {
+                    skipped += 1;
+                    continue;
+                }
+                if base_sha == Some(entry.sha256.as_str()) {
+                    skipped += 1;
+                    continue;
+                }
+                let _ = save_local_version_snapshot(
+                    workspace,
+                    local_rel,
+                    &existing,
+                    "Dropbox 拉取前本地快照",
+                    max_versions,
+                );
+                let is_conflict = match base_sha {
+                    Some(b_sha) => local_sha != b_sha && entry.sha256 != b_sha,
+                    None => true,
+                };
+                if is_conflict && write_conflict_copy_file(workspace, local_rel, &existing, "本地修改").is_some() {
+                    conflicts += 1;
+                }
+            }
+        }
+
+        let target_path = format!("{ws_remote_root}/{}", entry.remote_rel);
+        let dl_arg = serde_json::json!({ "path": target_path }).to_string();
+        let dl_resp = client
+            .post("https://content.dropboxapi.com/2/files/download")
+            .bearer_auth(token)
+            .header("Dropbox-API-Arg", dl_arg)
+            .send()
+            .await
+            .map_err(|e| format!("Dropbox 下载 {} 失败: {e}", entry.remote_rel))?;
+        if !dl_resp.status().is_success() {
+            continue;
+        }
+        let raw_bytes = dl_resp.bytes().await.unwrap_or_default().to_vec();
+        let plain_bytes = if entry.encrypted {
+            let key = dec_key.as_ref().ok_or("需要加密口令以解密 Dropbox 文件")?;
+            super::crypto::decrypt_bytes(key, local_rel, &raw_bytes)?
+        } else {
+            raw_bytes
+        };
+        if let Some(parent) = target_local.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        std::fs::write(&target_local, &plain_bytes)
+            .map_err(|e| format!("写入本地文件 {local_rel} 失败: {e}"))?;
+        let _ = save_local_version_snapshot(
+            workspace,
+            local_rel,
+            &plain_bytes,
+            "从 Dropbox 同步版本",
+            max_versions,
+        );
+        downloaded += 1;
+    }
+
+    write_local_base_manifest(workspace, &manifest);
+    let conflict_note = if conflicts > 0 {
+        format!("，检测到 {conflicts} 处多端并发修改并已生成冲突副本")
+    } else {
+        String::new()
+    };
+    Ok(WebdavSyncResult {
+        uploaded: 0,
+        downloaded,
+        message: format!(
+            "已从 Dropbox 专用目录 ({ws_remote_root}) 同步更新 {downloaded} 个文件（跳过未改动 {skipped} 个{conflict_note}）"
+        ),
+    })
+}
+
+async fn alipan_upload_bytes_to_folder(
+    client: &reqwest::Client,
+    token: &str,
+    drive_id: &str,
+    folder_id: &str,
+    file_name: &str,
+    bytes: Vec<u8>,
+) -> Result<(), String> {
+    if let Some(old_id) = alipan_find_file_id(client, token, drive_id, folder_id, file_name).await? {
+        let _ = client
+            .post("https://openapi.alipan.com/adrive/v1.0/openFile/delete")
+            .bearer_auth(token)
+            .json(&serde_json::json!({
+                "drive_id": drive_id,
+                "file_id": old_id
+            }))
+            .send()
+            .await;
+    }
+
+    let create_resp = client
+        .post("https://openapi.alipan.com/adrive/v1.0/openFile/create")
+        .bearer_auth(token)
+        .json(&serde_json::json!({
+            "drive_id": drive_id,
+            "parent_file_id": folder_id,
+            "name": file_name,
+            "type": "file",
+            "check_name_mode": "overwrite",
+            "size": bytes.len(),
+            "part_info_list": [{ "part_number": 1 }]
+        }))
+        .send()
+        .await
+        .map_err(|e| format!("阿里云盘创建上传任务 {file_name} 失败: {e}"))?;
+    let create_json: serde_json::Value = create_resp
+        .json()
+        .await
+        .map_err(|e| format!("解析阿里云盘上传任务失败: {e}"))?;
+    let file_id = create_json
+        .get("file_id")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| format!("阿里云盘未返回 file_id: {create_json}"))?;
+    let upload_id = create_json
+        .get("upload_id")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| format!("阿里云盘未返回 upload_id: {create_json}"))?;
+    let upload_url = create_json
+        .get("part_info_list")
+        .and_then(|v| v.as_array())
+        .and_then(|arr| arr.first())
+        .and_then(|p| p.get("upload_url"))
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| format!("阿里云盘未返回 upload_url: {create_json}"))?;
+
+    let put_resp = client
+        .put(upload_url)
+        .body(bytes)
+        .send()
+        .await
+        .map_err(|e| format!("上传数据到阿里云盘失败: {e}"))?;
+    if !put_resp.status().is_success() {
+        return Err(format!("阿里云盘分片上传返回 HTTP {}", put_resp.status()));
+    }
+
+    let complete_resp = client
+        .post("https://openapi.alipan.com/adrive/v1.0/openFile/complete")
+        .bearer_auth(token)
+        .json(&serde_json::json!({
+            "drive_id": drive_id,
+            "file_id": file_id,
+            "upload_id": upload_id
+        }))
+        .send()
+        .await
+        .map_err(|e| format!("完成阿里云盘上传请求失败: {e}"))?;
+    if !complete_resp.status().is_success() {
+        let t = complete_resp.text().await.unwrap_or_default();
+        return Err(format!("阿里云盘确认上传失败: {t}"));
+    }
+    Ok(())
+}
+
+async fn alipan_download_bytes_from_folder(
+    client: &reqwest::Client,
+    token: &str,
+    drive_id: &str,
+    folder_id: &str,
+    file_name: &str,
+) -> Result<Option<Vec<u8>>, String> {
+    let Some(file_id) = alipan_find_file_id(client, token, drive_id, folder_id, file_name).await? else {
+        return Ok(None);
+    };
+    let dl_meta_resp = client
+        .post("https://openapi.alipan.com/adrive/v1.0/openFile/getDownloadUrl")
+        .bearer_auth(token)
+        .json(&serde_json::json!({
+            "drive_id": drive_id,
+            "file_id": file_id,
+            "expire_sec": 900
+        }))
+        .send()
+        .await
+        .map_err(|e| format!("获取阿里云盘下载链接失败: {e}"))?;
+    let dl_meta: serde_json::Value = dl_meta_resp
+        .json()
+        .await
+        .map_err(|e| format!("解析阿里云盘下载链接失败: {e}"))?;
+    let Some(url) = dl_meta.get("url").and_then(|v| v.as_str()) else {
+        return Ok(None);
+    };
+    let resp = client
+        .get(url)
+        .send()
+        .await
+        .map_err(|e| format!("下载阿里云盘文件失败: {e}"))?;
+    if !resp.status().is_success() {
+        return Ok(None);
+    }
+    let b = resp
+        .bytes()
+        .await
+        .map_err(|e| format!("读取阿里云盘文件字节失败: {e}"))?;
+    Ok(Some(b.to_vec()))
+}
+
+async fn alipan_push_folder(
+    client: &reqwest::Client,
+    token: &str,
+    workspace: &Path,
+    remote_dir: &str,
+    encrypted: bool,
+    passphrase: &str,
+    auto_workspace_subdir: bool,
+    categorize_files: bool,
+    max_versions: usize,
+) -> Result<WebdavSyncResult, String> {
+    let ws_remote_root =
+        resolve_remote_workspace_dir("alipan", remote_dir, workspace, auto_workspace_subdir);
+    let drive_id = alipan_get_drive_id(client, token).await?;
+    let meta_folder_path = format!("{ws_remote_root}/{SYNC_META_DIR}");
+    let meta_folder_id = alipan_ensure_folder(client, token, &drive_id, &meta_folder_path).await?;
+
+    let mut manifest: SyncFolderManifest = match alipan_download_bytes_from_folder(
+        client,
+        token,
+        &drive_id,
+        &meta_folder_id,
+        "manifest.json",
+    )
+    .await?
+    {
+        Some(b) => serde_json::from_slice(&b).unwrap_or_default(),
+        None => SyncFolderManifest {
+            version: 1,
+            workspace_name: workspace_folder_name(workspace),
+            updated_at: now_unix_secs(),
+            encrypted,
+            vault_crypto: None,
+            files: BTreeMap::new(),
+        },
+    };
+
+    let enc_key: Option<[u8; 32]> = if encrypted {
+        if let Some(ref vc) = manifest.vault_crypto {
+            Some(unlock_vault_manifest(vc, passphrase)?)
+        } else {
+            let (vc, k) = create_vault_manifest(passphrase)?;
+            manifest.vault_crypto = Some(vc);
+            Some(k)
+        }
+    } else {
+        None
+    };
+
+    let local_base = read_local_base_manifest(workspace);
+    let mut local_files = Vec::new();
+    collect_local_files(workspace, workspace, &mut local_files);
+    let mut uploaded = 0usize;
+    let mut skipped = 0usize;
+    let mut new_files_map = BTreeMap::new();
+    let mut folder_cache: BTreeMap<String, String> = BTreeMap::new();
+
+    for (rel, full_path) in local_files {
+        let plain_bytes = std::fs::read(&full_path).map_err(|e| format!("读取 {rel} 失败: {e}"))?;
+        let sha = sha256_hex(&plain_bytes);
+        let cat_rel = map_categorized_rel_path(&rel, categorize_files);
+        let remote_rel = if encrypted { format!("{cat_rel}.enc") } else { cat_rel };
+
+        let base_sha = local_base
+            .as_ref()
+            .and_then(|m| m.files.get(&rel))
+            .map(|e| e.sha256.as_str());
+
+        if let Some(prev) = manifest.files.get(&rel) {
+            if prev.sha256 == sha && prev.remote_rel == remote_rel && prev.encrypted == encrypted {
+                new_files_map.insert(rel.clone(), prev.clone());
+                skipped += 1;
+                continue;
+            }
+            if base_sha == Some(sha.as_str()) {
+                new_files_map.insert(rel.clone(), prev.clone());
+                skipped += 1;
+                continue;
+            }
+            let _ = save_local_version_snapshot(workspace, &rel, &plain_bytes, "阿里云盘同步快照", max_versions);
+        }
+
+        let upload_bytes = if let Some(ref key) = enc_key {
+            super::crypto::encrypt_bytes(key, &rel, &plain_bytes)?
+        } else {
+            plain_bytes.clone()
+        };
+
+        let full_remote = format!("{ws_remote_root}/{remote_rel}");
+        let (parent_dir, fname) = match full_remote.rfind('/') {
+            Some(idx) => (&full_remote[..idx], &full_remote[idx + 1..]),
+            None => (ws_remote_root.as_str(), full_remote.as_str()),
+        };
+        let parent_id = if let Some(cached) = folder_cache.get(parent_dir) {
+            cached.clone()
+        } else {
+            let pid = alipan_ensure_folder(client, token, &drive_id, parent_dir).await?;
+            folder_cache.insert(parent_dir.to_string(), pid.clone());
+            pid
+        };
+
+        alipan_upload_bytes_to_folder(client, token, &drive_id, &parent_id, fname, upload_bytes).await?;
+        new_files_map.insert(
+            rel.clone(),
+            SyncFileManifestEntry {
+                local_rel: rel,
+                remote_rel,
+                sha256: sha,
+                size: plain_bytes.len() as u64,
+                updated_at: now_unix_secs(),
+                encrypted,
+            },
+        );
+        uploaded += 1;
+    }
+
+    manifest.updated_at = now_unix_secs();
+    manifest.encrypted = encrypted;
+    manifest.files = new_files_map;
+    if let Ok(m_bytes) = serde_json::to_vec_pretty(&manifest) {
+        let _ = alipan_upload_bytes_to_folder(
+            client,
+            token,
+            &drive_id,
+            &meta_folder_id,
+            "manifest.json",
+            m_bytes,
+        )
+        .await;
+    }
+    write_local_base_manifest(workspace, &manifest);
+
+    Ok(WebdavSyncResult {
+        uploaded,
+        downloaded: 0,
+        message: format!("阿里云盘分类目录同步完成：上传 {uploaded} 个文件，跳过 {skipped} 个未改动文件 ({ws_remote_root})"),
+    })
+}
+
+async fn alipan_pull_folder(
+    client: &reqwest::Client,
+    token: &str,
+    workspace: &Path,
+    remote_dir: &str,
+    encrypted: bool,
+    passphrase: &str,
+    auto_workspace_subdir: bool,
+    _categorize_files: bool,
+    max_versions: usize,
+) -> Result<WebdavSyncResult, String> {
+    let ws_remote_root =
+        resolve_remote_workspace_dir("alipan", remote_dir, workspace, auto_workspace_subdir);
+    let drive_id = alipan_get_drive_id(client, token).await?;
+    let meta_folder_path = format!("{ws_remote_root}/{SYNC_META_DIR}");
+    let meta_folder_id = alipan_ensure_folder(client, token, &drive_id, &meta_folder_path).await?;
+
+    let m_bytes = alipan_download_bytes_from_folder(
+        client,
+        token,
+        &drive_id,
+        &meta_folder_id,
+        "manifest.json",
+    )
+    .await?
+    .ok_or_else(|| format!("阿里云盘专用目录 ({ws_remote_root}) 下未找到同步清单 manifest.json"))?;
+    let manifest: SyncFolderManifest =
+        serde_json::from_slice(&m_bytes).map_err(|e| format!("解析阿里云盘同步清单失败: {e}"))?;
+
+    let dec_key: Option<[u8; 32]> = if manifest.encrypted || encrypted {
+        let vc = manifest
+            .vault_crypto
+            .as_ref()
+            .ok_or("云端文件已开启加密，但清单缺少加密元数据")?;
+        Some(unlock_vault_manifest(vc, passphrase)?)
+    } else {
+        None
+    };
+
+    let local_base = read_local_base_manifest(workspace);
+    let mut downloaded = 0usize;
+    let mut skipped = 0usize;
+    let mut conflicts = 0usize;
+    let mut folder_cache: BTreeMap<String, String> = BTreeMap::new();
+
+    for (local_rel, entry) in &manifest.files {
+        let target_local = workspace.join(local_rel);
+        let base_sha = local_base
+            .as_ref()
+            .and_then(|m| m.files.get(local_rel))
+            .map(|e| e.sha256.as_str());
+
+        if target_local.is_file() {
+            if let Ok(existing) = std::fs::read(&target_local) {
+                let local_sha = sha256_hex(&existing);
+                if local_sha == entry.sha256 {
+                    skipped += 1;
+                    continue;
+                }
+                if base_sha == Some(entry.sha256.as_str()) {
+                    skipped += 1;
+                    continue;
+                }
+                let _ = save_local_version_snapshot(
+                    workspace,
+                    local_rel,
+                    &existing,
+                    "阿里云盘拉取前本地快照",
+                    max_versions,
+                );
+                let is_conflict = match base_sha {
+                    Some(b_sha) => local_sha != b_sha && entry.sha256 != b_sha,
+                    None => true,
+                };
+                if is_conflict && write_conflict_copy_file(workspace, local_rel, &existing, "本地修改").is_some() {
+                    conflicts += 1;
+                }
+            }
+        }
+
+        let full_remote = format!("{ws_remote_root}/{}", entry.remote_rel);
+        let (parent_dir, fname) = match full_remote.rfind('/') {
+            Some(idx) => (&full_remote[..idx], &full_remote[idx + 1..]),
+            None => (ws_remote_root.as_str(), full_remote.as_str()),
+        };
+        let parent_id = if let Some(cached) = folder_cache.get(parent_dir) {
+            cached.clone()
+        } else {
+            let pid = alipan_ensure_folder(client, token, &drive_id, parent_dir).await?;
+            folder_cache.insert(parent_dir.to_string(), pid.clone());
+            pid
+        };
+
+        let Some(raw_bytes) =
+            alipan_download_bytes_from_folder(client, token, &drive_id, &parent_id, fname).await?
+        else {
+            continue;
+        };
+        let plain_bytes = if entry.encrypted {
+            let key = dec_key.as_ref().ok_or("需要加密口令以解密阿里云盘文件")?;
+            super::crypto::decrypt_bytes(key, local_rel, &raw_bytes)?
+        } else {
+            raw_bytes
+        };
+        if let Some(parent) = target_local.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        std::fs::write(&target_local, &plain_bytes)
+            .map_err(|e| format!("写入本地文件 {local_rel} 失败: {e}"))?;
+        let _ = save_local_version_snapshot(
+            workspace,
+            local_rel,
+            &plain_bytes,
+            "从阿里云盘同步版本",
+            max_versions,
+        );
+        downloaded += 1;
+    }
+
+    write_local_base_manifest(workspace, &manifest);
+    let conflict_note = if conflicts > 0 {
+        format!("，检测到 {conflicts} 处多端并发修改并已生成冲突副本")
+    } else {
+        String::new()
+    };
+    Ok(WebdavSyncResult {
+        uploaded: 0,
+        downloaded,
+        message: format!(
+            "已从阿里云盘专用目录 ({ws_remote_root}) 同步更新 {downloaded} 个文件（跳过未改动 {skipped} 个{conflict_note}）"
+        ),
+    })
+}
+
+// ============================================================================
+// Google Drive REST API v3 Direct Folder & Bundle Sync
+// ============================================================================
+
+async fn gdrive_find_child_id(
+    client: &reqwest::Client,
+    token: &str,
+    parent_id: &str,
+    name: &str,
+    is_folder: bool,
+) -> Result<Option<String>, String> {
+    let escaped_name = name.replace('\\', "\\\\").replace('\'', "\\'");
+    let mime_clause = if is_folder {
+        " and mimeType = 'application/vnd.google-apps.folder'"
+    } else {
+        " and mimeType != 'application/vnd.google-apps.folder'"
+    };
+    let q = format!(
+        "'{parent_id}' in parents and name = '{escaped_name}' and trashed = false{mime_clause}"
+    );
+    let url = format!(
+        "https://www.googleapis.com/drive/v3/files?q={}&fields=files(id,name)&pageSize=5",
+        percent_encode_segment(&q)
+    );
+    let resp = client
+        .get(&url)
+        .bearer_auth(token)
+        .send()
+        .await
+        .map_err(|e| format!("查询 Google Drive 目录失败: {e}"))?;
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let text = resp.text().await.unwrap_or_default();
+        return Err(format!("Google Drive 查询返回 HTTP {status}: {text}"));
+    }
+    let json: serde_json::Value = resp
+        .json()
+        .await
+        .map_err(|e| format!("解析 Google Drive 响应失败: {e}"))?;
+    let id = json
+        .get("files")
+        .and_then(|v| v.as_array())
+        .and_then(|arr| arr.first())
+        .and_then(|item| item.get("id"))
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+    Ok(id)
+}
+
+async fn gdrive_ensure_folder_path(
+    client: &reqwest::Client,
+    token: &str,
+    folder_path: &str,
+) -> Result<String, String> {
+    let mut parent_id = "root".to_string();
+    for seg in folder_path.split('/').filter(|s| !s.is_empty()) {
+        if let Some(existing_id) = gdrive_find_child_id(client, token, &parent_id, seg, true).await? {
+            parent_id = existing_id;
+            continue;
+        }
+        let resp = client
+            .post("https://www.googleapis.com/drive/v3/files?fields=id")
+            .bearer_auth(token)
+            .json(&serde_json::json!({
+                "name": seg,
+                "mimeType": "application/vnd.google-apps.folder",
+                "parents": [parent_id]
+            }))
+            .send()
+            .await
+            .map_err(|e| format!("创建 Google Drive 目录 {seg} 失败: {e}"))?;
+        if !resp.status().is_success() {
+            let t = resp.text().await.unwrap_or_default();
+            return Err(format!("创建 Google Drive 目录 {seg} 失败: {t}"));
+        }
+        let json: serde_json::Value = resp
+            .json()
+            .await
+            .map_err(|e| format!("解析 Google Drive 目录创建响应失败: {e}"))?;
+        parent_id = json
+            .get("id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| format!("Google Drive 未返回目录 id: {json}"))?
+            .to_string();
+    }
+    Ok(parent_id)
+}
+
+async fn gdrive_upload_bytes_in_folder(
+    client: &reqwest::Client,
+    token: &str,
+    parent_id: &str,
+    file_name: &str,
+    bytes: Vec<u8>,
+) -> Result<(), String> {
+    let existing_id = gdrive_find_child_id(client, token, parent_id, file_name, false).await?;
+    let file_id = if let Some(id) = existing_id {
+        id
+    } else {
+        let create_resp = client
+            .post("https://www.googleapis.com/drive/v3/files?fields=id")
+            .bearer_auth(token)
+            .json(&serde_json::json!({
+                "name": file_name,
+                "parents": [parent_id]
+            }))
+            .send()
+            .await
+            .map_err(|e| format!("Google Drive 创建文件元数据 {file_name} 失败: {e}"))?;
+        if !create_resp.status().is_success() {
+            let t = create_resp.text().await.unwrap_or_default();
+            return Err(format!("Google Drive 创建文件 {file_name} 失败: {t}"));
+        }
+        let j: serde_json::Value = create_resp
+            .json()
+            .await
+            .map_err(|e| format!("解析 Google Drive 创建文件响应失败: {e}"))?;
+        j.get("id")
+            .and_then(|v| v.as_str())
+            .ok_or("Google Drive 未返回文件 id")?
+            .to_string()
+    };
+
+    let upload_url = format!(
+        "https://www.googleapis.com/upload/drive/v3/files/{}?uploadType=media",
+        percent_encode_segment(&file_id)
+    );
+    let resp = client
+        .patch(&upload_url)
+        .bearer_auth(token)
+        .header("Content-Type", "application/octet-stream")
+        .body(bytes)
+        .send()
+        .await
+        .map_err(|e| format!("Google Drive 上传文件内容 {file_name} 失败: {e}"))?;
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let text = resp.text().await.unwrap_or_default();
+        return Err(format!("Google Drive 上传 {file_name} 返回 HTTP {status}: {text}"));
+    }
+    Ok(())
+}
+
+async fn gdrive_download_bytes_in_folder(
+    client: &reqwest::Client,
+    token: &str,
+    parent_id: &str,
+    file_name: &str,
+) -> Result<Option<Vec<u8>>, String> {
+    let Some(file_id) = gdrive_find_child_id(client, token, parent_id, file_name, false).await? else {
+        return Ok(None);
+    };
+    let url = format!(
+        "https://www.googleapis.com/drive/v3/files/{}?alt=media",
+        percent_encode_segment(&file_id)
+    );
+    let resp = client
+        .get(&url)
+        .bearer_auth(token)
+        .send()
+        .await
+        .map_err(|e| format!("Google Drive 下载 {file_name} 失败: {e}"))?;
+    if !resp.status().is_success() {
+        return Ok(None);
+    }
+    let b = resp
+        .bytes()
+        .await
+        .map_err(|e| format!("读取 Google Drive 文件字节失败: {e}"))?;
+    Ok(Some(b.to_vec()))
+}
+
+async fn gdrive_upload_bundle(
+    client: &reqwest::Client,
+    token: &str,
+    remote_dir: &str,
+    bundle: Vec<u8>,
+) -> Result<(), String> {
+    let folder_id = gdrive_ensure_folder_path(client, token, remote_dir).await?;
+    gdrive_upload_bytes_in_folder(client, token, &folder_id, BUNDLE_FILENAME, bundle).await
+}
+
+async fn gdrive_download_bundle(
+    client: &reqwest::Client,
+    token: &str,
+    remote_dir: &str,
+) -> Result<Vec<u8>, String> {
+    let folder_id = gdrive_ensure_folder_path(client, token, remote_dir).await?;
+    gdrive_download_bytes_in_folder(client, token, &folder_id, BUNDLE_FILENAME)
+        .await?
+        .ok_or_else(|| format!("Google Drive 目录 ({remote_dir}) 下未找到加密备份包 {BUNDLE_FILENAME}"))
+}
+
+async fn gdrive_push_folder(
+    client: &reqwest::Client,
+    token: &str,
+    workspace: &Path,
+    remote_dir: &str,
+    encrypted: bool,
+    passphrase: &str,
+    auto_workspace_subdir: bool,
+    categorize_files: bool,
+    max_versions: usize,
+) -> Result<WebdavSyncResult, String> {
+    let ws_remote_root =
+        resolve_remote_workspace_dir("gdrive", remote_dir, workspace, auto_workspace_subdir);
+    let meta_folder_path = format!("{ws_remote_root}/{SYNC_META_DIR}");
+    let meta_folder_id = gdrive_ensure_folder_path(client, token, &meta_folder_path).await?;
+
+    let mut manifest: SyncFolderManifest = match gdrive_download_bytes_in_folder(
+        client,
+        token,
+        &meta_folder_id,
+        "manifest.json",
+    )
+    .await?
+    {
+        Some(b) => serde_json::from_slice(&b).unwrap_or_default(),
+        None => SyncFolderManifest {
+            version: 1,
+            workspace_name: workspace_folder_name(workspace),
+            updated_at: now_unix_secs(),
+            encrypted,
+            vault_crypto: None,
+            files: BTreeMap::new(),
+        },
+    };
+
+    let enc_key: Option<[u8; 32]> = if encrypted {
+        if let Some(ref vc) = manifest.vault_crypto {
+            Some(unlock_vault_manifest(vc, passphrase)?)
+        } else {
+            let (vc, k) = create_vault_manifest(passphrase)?;
+            manifest.vault_crypto = Some(vc);
+            Some(k)
+        }
+    } else {
+        None
+    };
+
+    let local_base = read_local_base_manifest(workspace);
+    let mut local_files = Vec::new();
+    collect_local_files(workspace, workspace, &mut local_files);
+    let mut uploaded = 0usize;
+    let mut skipped = 0usize;
+    let mut new_files_map = BTreeMap::new();
+    let mut folder_cache: BTreeMap<String, String> = BTreeMap::new();
+
+    for (rel, full_path) in local_files {
+        let plain_bytes = std::fs::read(&full_path).map_err(|e| format!("读取 {rel} 失败: {e}"))?;
+        let sha = sha256_hex(&plain_bytes);
+        let cat_rel = map_categorized_rel_path(&rel, categorize_files);
+        let remote_rel = if encrypted { format!("{cat_rel}.enc") } else { cat_rel };
+
+        let base_sha = local_base
+            .as_ref()
+            .and_then(|m| m.files.get(&rel))
+            .map(|e| e.sha256.as_str());
+
+        if let Some(prev) = manifest.files.get(&rel) {
+            if prev.sha256 == sha && prev.remote_rel == remote_rel && prev.encrypted == encrypted {
+                new_files_map.insert(rel.clone(), prev.clone());
+                skipped += 1;
+                continue;
+            }
+            if base_sha == Some(sha.as_str()) {
+                new_files_map.insert(rel.clone(), prev.clone());
+                skipped += 1;
+                continue;
+            }
+            let _ = save_local_version_snapshot(workspace, &rel, &plain_bytes, "Google Drive 同步快照", max_versions);
+        }
+
+        let upload_bytes = if let Some(ref key) = enc_key {
+            super::crypto::encrypt_bytes(key, &rel, &plain_bytes)?
+        } else {
+            plain_bytes.clone()
+        };
+
+        let full_remote = format!("{ws_remote_root}/{remote_rel}");
+        let (parent_dir, fname) = match full_remote.rfind('/') {
+            Some(idx) => (&full_remote[..idx], &full_remote[idx + 1..]),
+            None => (ws_remote_root.as_str(), full_remote.as_str()),
+        };
+        let parent_id = if let Some(cached) = folder_cache.get(parent_dir) {
+            cached.clone()
+        } else {
+            let pid = gdrive_ensure_folder_path(client, token, parent_dir).await?;
+            folder_cache.insert(parent_dir.to_string(), pid.clone());
+            pid
+        };
+
+        gdrive_upload_bytes_in_folder(client, token, &parent_id, fname, upload_bytes).await?;
+        new_files_map.insert(
+            rel.clone(),
+            SyncFileManifestEntry {
+                local_rel: rel,
+                remote_rel,
+                sha256: sha,
+                size: plain_bytes.len() as u64,
+                updated_at: now_unix_secs(),
+                encrypted,
+            },
+        );
+        uploaded += 1;
+    }
+
+    manifest.updated_at = now_unix_secs();
+    manifest.encrypted = encrypted;
+    manifest.files = new_files_map;
+    if let Ok(m_bytes) = serde_json::to_vec_pretty(&manifest) {
+        let _ = gdrive_upload_bytes_in_folder(
+            client,
+            token,
+            &meta_folder_id,
+            "manifest.json",
+            m_bytes,
+        )
+        .await;
+    }
+    write_local_base_manifest(workspace, &manifest);
+
+    Ok(WebdavSyncResult {
+        uploaded,
+        downloaded: 0,
+        message: format!("Google Drive 分类目录同步完成：上传 {uploaded} 个文件，跳过 {skipped} 个未改动文件 ({ws_remote_root})"),
+    })
+}
+
+async fn gdrive_pull_folder(
+    client: &reqwest::Client,
+    token: &str,
+    workspace: &Path,
+    remote_dir: &str,
+    encrypted: bool,
+    passphrase: &str,
+    auto_workspace_subdir: bool,
+    _categorize_files: bool,
+    max_versions: usize,
+) -> Result<WebdavSyncResult, String> {
+    let ws_remote_root =
+        resolve_remote_workspace_dir("gdrive", remote_dir, workspace, auto_workspace_subdir);
+    let meta_folder_path = format!("{ws_remote_root}/{SYNC_META_DIR}");
+    let meta_folder_id = gdrive_ensure_folder_path(client, token, &meta_folder_path).await?;
+
+    let m_bytes = gdrive_download_bytes_in_folder(
+        client,
+        token,
+        &meta_folder_id,
+        "manifest.json",
+    )
+    .await?
+    .ok_or_else(|| format!("Google Drive 专用目录 ({ws_remote_root}) 下未找到同步清单 manifest.json"))?;
+    let manifest: SyncFolderManifest =
+        serde_json::from_slice(&m_bytes).map_err(|e| format!("解析 Google Drive 同步清单失败: {e}"))?;
+
+    let dec_key: Option<[u8; 32]> = if manifest.encrypted || encrypted {
+        let vc = manifest
+            .vault_crypto
+            .as_ref()
+            .ok_or("云端文件已开启加密，但清单缺少加密元数据")?;
+        Some(unlock_vault_manifest(vc, passphrase)?)
+    } else {
+        None
+    };
+
+    let local_base = read_local_base_manifest(workspace);
+    let mut downloaded = 0usize;
+    let mut skipped = 0usize;
+    let mut conflicts = 0usize;
+    let mut folder_cache: BTreeMap<String, String> = BTreeMap::new();
+
+    for (local_rel, entry) in &manifest.files {
+        let target_local = workspace.join(local_rel);
+        let base_sha = local_base
+            .as_ref()
+            .and_then(|m| m.files.get(local_rel))
+            .map(|e| e.sha256.as_str());
+
+        if target_local.is_file() {
+            if let Ok(existing) = std::fs::read(&target_local) {
+                let local_sha = sha256_hex(&existing);
+                if local_sha == entry.sha256 {
+                    skipped += 1;
+                    continue;
+                }
+                if base_sha == Some(entry.sha256.as_str()) {
+                    skipped += 1;
+                    continue;
+                }
+                let _ = save_local_version_snapshot(
+                    workspace,
+                    local_rel,
+                    &existing,
+                    "Google Drive 拉取前本地快照",
+                    max_versions,
+                );
+                let is_conflict = match base_sha {
+                    Some(b_sha) => local_sha != b_sha && entry.sha256 != b_sha,
+                    None => true,
+                };
+                if is_conflict && write_conflict_copy_file(workspace, local_rel, &existing, "本地修改").is_some() {
+                    conflicts += 1;
+                }
+            }
+        }
+
+        let full_remote = format!("{ws_remote_root}/{}", entry.remote_rel);
+        let (parent_dir, fname) = match full_remote.rfind('/') {
+            Some(idx) => (&full_remote[..idx], &full_remote[idx + 1..]),
+            None => (ws_remote_root.as_str(), full_remote.as_str()),
+        };
+        let parent_id = if let Some(cached) = folder_cache.get(parent_dir) {
+            cached.clone()
+        } else {
+            let pid = gdrive_ensure_folder_path(client, token, parent_dir).await?;
+            folder_cache.insert(parent_dir.to_string(), pid.clone());
+            pid
+        };
+
+        let Some(raw_bytes) =
+            gdrive_download_bytes_in_folder(client, token, &parent_id, fname).await?
+        else {
+            continue;
+        };
+        let plain_bytes = if entry.encrypted {
+            let key = dec_key.as_ref().ok_or("需要加密口令以解密 Google Drive 文件")?;
+            super::crypto::decrypt_bytes(key, local_rel, &raw_bytes)?
+        } else {
+            raw_bytes
+        };
+        if let Some(parent) = target_local.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        std::fs::write(&target_local, &plain_bytes)
+            .map_err(|e| format!("写入本地文件 {local_rel} 失败: {e}"))?;
+        let _ = save_local_version_snapshot(
+            workspace,
+            local_rel,
+            &plain_bytes,
+            "从 Google Drive 同步版本",
+            max_versions,
+        );
+        downloaded += 1;
+    }
+
+    write_local_base_manifest(workspace, &manifest);
+    let conflict_note = if conflicts > 0 {
+        format!("，检测到 {conflicts} 处多端并发修改并已生成冲突副本")
+    } else {
+        String::new()
+    };
+    Ok(WebdavSyncResult {
+        uploaded: 0,
+        downloaded,
+        message: format!(
+            "已从 Google Drive 专用目录 ({ws_remote_root}) 同步更新 {downloaded} 个文件（跳过未改动 {skipped} 个{conflict_note}）"
+        ),
+    })
+}
+
+// ============================================================================
+// Cloudflare R2 / S3-Compatible Object Storage (Pure-Rust AWS Signature V4)
+// ============================================================================
+
+#[derive(Debug, Clone, Deserialize)]
+struct R2Credentials {
+    /// Either a full URL (`https://<account_id>.r2.cloudflarestorage.com`) or a Cloudflare Account ID.
+    endpoint: String,
+    bucket: String,
+    access_key_id: String,
+    secret_access_key: String,
+    #[serde(default)]
+    region: String,
+}
+
+impl R2Credentials {
+    fn parse(raw: &str) -> Result<Self, String> {
+        let trimmed = raw.trim();
+        let mut creds: R2Credentials = serde_json::from_str(trimmed).map_err(|_| {
+            "请填写完整的 Cloudflare R2 / S3 配置（Endpoint 或 Account ID、Bucket、Access Key ID、Secret Access Key）".to_string()
+        })?;
+        creds.endpoint = creds.endpoint.trim().trim_end_matches('/').to_string();
+        creds.bucket = creds.bucket.trim().trim_matches('/').to_string();
+        creds.access_key_id = creds.access_key_id.trim().to_string();
+        creds.secret_access_key = creds.secret_access_key.trim().to_string();
+        if creds.endpoint.is_empty()
+            || creds.bucket.is_empty()
+            || creds.access_key_id.is_empty()
+            || creds.secret_access_key.is_empty()
+        {
+            return Err("Cloudflare R2 的 Endpoint / Bucket / Access Key ID / Secret Access Key 均不能为空".into());
+        }
+        if !creds.endpoint.starts_with("http://") && !creds.endpoint.starts_with("https://") {
+            if creds.endpoint.contains('.') {
+                creds.endpoint = format!("https://{}", creds.endpoint);
+            } else {
+                // Treat bare string as Cloudflare Account ID
+                creds.endpoint = format!("https://{}.r2.cloudflarestorage.com", creds.endpoint);
+            }
+        }
+        if creds.region.trim().is_empty() {
+            creds.region = "auto".to_string();
+        }
+        Ok(creds)
+    }
+
+    fn host(&self) -> String {
+        let without_scheme = self
+            .endpoint
+            .strip_prefix("https://")
+            .or_else(|| self.endpoint.strip_prefix("http://"))
+            .unwrap_or(&self.endpoint);
+        without_scheme
+            .split('/')
+            .next()
+            .unwrap_or(without_scheme)
+            .to_string()
+    }
+}
+
+/// RFC 2104 HMAC-SHA256 implemented directly on top of `sha2::Sha256`.
+fn hmac_sha256(key: &[u8], data: &[u8]) -> [u8; 32] {
+    let mut k_block = [0u8; 64];
+    if key.len() > 64 {
+        let digest = Sha256::digest(key);
+        k_block[..32].copy_from_slice(&digest);
+    } else {
+        k_block[..key.len()].copy_from_slice(key);
+    }
+    let mut ipad = [0x36u8; 64];
+    let mut opad = [0x5cu8; 64];
+    for i in 0..64 {
+        ipad[i] ^= k_block[i];
+        opad[i] ^= k_block[i];
+    }
+    let mut inner = Sha256::new();
+    inner.update(ipad);
+    inner.update(data);
+    let inner_hash = inner.finalize();
+
+    let mut outer = Sha256::new();
+    outer.update(opad);
+    outer.update(inner_hash);
+    let out = outer.finalize();
+    let mut res = [0u8; 32];
+    res.copy_from_slice(&out);
+    res
+}
+
+/// Format Unix timestamp into `(YYYYMMDD, YYYYMMDDTHHMMSSZ)` in UTC for AWS Signature V4.
+fn format_amz_date(unix_secs: u64) -> (String, String) {
+    let days = (unix_secs / 86400) as i64;
+    let secs_of_day = (unix_secs % 86400) as u32;
+    let hour = secs_of_day / 3600;
+    let minute = (secs_of_day % 3600) / 60;
+    let second = secs_of_day % 60;
+
+    // Howard Hinnant's civil_from_days algorithm
+    let z = days + 719468;
+    let era = if z >= 0 { z } else { z - 146096 } / 146097;
+    let doe = (z - era * 146097) as u32;
+    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+    let y = (yoe as i64) + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let year = if m <= 2 { y + 1 } else { y };
+
+    let date_stamp = format!("{year:04}{m:02}{d:02}");
+    let amz_date = format!("{date_stamp}T{hour:02}{minute:02}{second:02}Z");
+    (date_stamp, amz_date)
+}
+
+fn build_s3_sigv4_headers(
+    creds: &R2Credentials,
+    method: &str,
+    canonical_uri: &str,
+    payload: &[u8],
+) -> (String, String, String) {
+    let (date_stamp, amz_date) = format_amz_date(now_unix_secs().max(0) as u64);
+    let payload_hash = sha256_hex(payload);
+    let host = creds.host();
+
+    let canonical_headers =
+        format!("host:{host}\nx-amz-content-sha256:{payload_hash}\nx-amz-date:{amz_date}\n");
+    let signed_headers = "host;x-amz-content-sha256;x-amz-date";
+    let canonical_request = format!(
+        "{method}\n{canonical_uri}\n\n{canonical_headers}\n{signed_headers}\n{payload_hash}"
+    );
+
+    let credential_scope = format!("{date_stamp}/{}/s3/aws4_request", creds.region);
+    let string_to_sign = format!(
+        "AWS4-HMAC-SHA256\n{amz_date}\n{credential_scope}\n{}",
+        sha256_hex(canonical_request.as_bytes())
+    );
+
+    let k_secret = format!("AWS4{}", creds.secret_access_key);
+    let k_date = hmac_sha256(k_secret.as_bytes(), date_stamp.as_bytes());
+    let k_region = hmac_sha256(&k_date, creds.region.as_bytes());
+    let k_service = hmac_sha256(&k_region, b"s3");
+    let k_signing = hmac_sha256(&k_service, b"aws4_request");
+    let sig_bytes = hmac_sha256(&k_signing, string_to_sign.as_bytes());
+    let signature: String = sig_bytes.iter().map(|b| format!("{b:02x}")).collect();
+
+    let auth_header = format!(
+        "AWS4-HMAC-SHA256 Credential={}/{credential_scope}, SignedHeaders={signed_headers}, Signature={signature}",
+        creds.access_key_id
+    );
+    (auth_header, amz_date, payload_hash)
+}
+
+async fn r2_put_object(
+    client: &reqwest::Client,
+    creds: &R2Credentials,
+    object_key: &str,
+    bytes: Vec<u8>,
+) -> Result<(), String> {
+    let clean_key = object_key.trim_start_matches('/');
+    let canonical_uri = format!(
+        "/{}/{}",
+        percent_encode_segment(&creds.bucket),
+        encode_rel_segments(clean_key)
+    );
+    let url = format!("{}{}", creds.endpoint, canonical_uri);
+    let (auth, amz_date, payload_hash) =
+        build_s3_sigv4_headers(creds, "PUT", &canonical_uri, &bytes);
+
+    let resp = client
+        .put(&url)
+        .header("Authorization", auth)
+        .header("x-amz-date", amz_date)
+        .header("x-amz-content-sha256", payload_hash)
+        .header("Content-Type", "application/octet-stream")
+        .body(bytes)
+        .send()
+        .await
+        .map_err(|e| format!("Cloudflare R2 上传 {clean_key} 失败: {e}"))?;
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let text = resp.text().await.unwrap_or_default();
+        return Err(format!("Cloudflare R2 上传 {clean_key} 返回 HTTP {status}: {text}"));
+    }
+    Ok(())
+}
+
+async fn r2_get_object(
+    client: &reqwest::Client,
+    creds: &R2Credentials,
+    object_key: &str,
+) -> Result<Option<Vec<u8>>, String> {
+    let clean_key = object_key.trim_start_matches('/');
+    let canonical_uri = format!(
+        "/{}/{}",
+        percent_encode_segment(&creds.bucket),
+        encode_rel_segments(clean_key)
+    );
+    let url = format!("{}{}", creds.endpoint, canonical_uri);
+    let (auth, amz_date, payload_hash) = build_s3_sigv4_headers(creds, "GET", &canonical_uri, b"");
+
+    let resp = client
+        .get(&url)
+        .header("Authorization", auth)
+        .header("x-amz-date", amz_date)
+        .header("x-amz-content-sha256", payload_hash)
+        .send()
+        .await
+        .map_err(|e| format!("Cloudflare R2 下载 {clean_key} 失败: {e}"))?;
+    if resp.status().as_u16() == 404 {
+        return Ok(None);
+    }
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let text = resp.text().await.unwrap_or_default();
+        return Err(format!("Cloudflare R2 下载 {clean_key} 返回 HTTP {status}: {text}"));
+    }
+    let b = resp
+        .bytes()
+        .await
+        .map_err(|e| format!("读取 Cloudflare R2 响应失败: {e}"))?;
+    Ok(Some(b.to_vec()))
+}
+
+async fn r2_upload_bundle(
+    client: &reqwest::Client,
+    raw_creds: &str,
+    remote_dir: &str,
+    bundle: Vec<u8>,
+) -> Result<(), String> {
+    let creds = R2Credentials::parse(raw_creds)?;
+    let key = format!("{}/{}", remote_dir.trim_matches('/'), BUNDLE_FILENAME);
+    r2_put_object(client, &creds, &key, bundle).await
+}
+
+async fn r2_download_bundle(
+    client: &reqwest::Client,
+    raw_creds: &str,
+    remote_dir: &str,
+) -> Result<Vec<u8>, String> {
+    let creds = R2Credentials::parse(raw_creds)?;
+    let key = format!("{}/{}", remote_dir.trim_matches('/'), BUNDLE_FILENAME);
+    r2_get_object(client, &creds, &key)
+        .await?
+        .ok_or_else(|| format!("Cloudflare R2 存储桶中未找到加密备份包 {key}"))
+}
+
+async fn r2_push_folder(
+    client: &reqwest::Client,
+    raw_creds: &str,
+    workspace: &Path,
+    remote_dir: &str,
+    encrypted: bool,
+    passphrase: &str,
+    auto_workspace_subdir: bool,
+    categorize_files: bool,
+    max_versions: usize,
+) -> Result<WebdavSyncResult, String> {
+    let creds = R2Credentials::parse(raw_creds)?;
+    let ws_remote_root =
+        resolve_remote_workspace_dir("r2", remote_dir, workspace, auto_workspace_subdir);
+    let prefix = ws_remote_root.trim_matches('/');
+    let manifest_key = format!("{prefix}/{SYNC_MANIFEST_REL}");
+
+    let mut manifest: SyncFolderManifest = match r2_get_object(client, &creds, &manifest_key).await? {
+        Some(b) => serde_json::from_slice(&b).unwrap_or_default(),
+        None => SyncFolderManifest {
+            version: 1,
+            workspace_name: workspace_folder_name(workspace),
+            updated_at: now_unix_secs(),
+            encrypted,
+            vault_crypto: None,
+            files: BTreeMap::new(),
+        },
+    };
+
+    let enc_key: Option<[u8; 32]> = if encrypted {
+        if let Some(ref vc) = manifest.vault_crypto {
+            Some(unlock_vault_manifest(vc, passphrase)?)
+        } else {
+            let (vc, k) = create_vault_manifest(passphrase)?;
+            manifest.vault_crypto = Some(vc);
+            Some(k)
+        }
+    } else {
+        None
+    };
+
+    let local_base = read_local_base_manifest(workspace);
+    let mut local_files = Vec::new();
+    collect_local_files(workspace, workspace, &mut local_files);
+    let mut uploaded = 0usize;
+    let mut skipped = 0usize;
+    let mut new_files_map = BTreeMap::new();
+
+    for (rel, full_path) in local_files {
+        let plain_bytes = std::fs::read(&full_path).map_err(|e| format!("读取 {rel} 失败: {e}"))?;
+        let sha = sha256_hex(&plain_bytes);
+        let cat_rel = map_categorized_rel_path(&rel, categorize_files);
+        let remote_rel = if encrypted { format!("{cat_rel}.enc") } else { cat_rel };
+
+        let base_sha = local_base
+            .as_ref()
+            .and_then(|m| m.files.get(&rel))
+            .map(|e| e.sha256.as_str());
+
+        if let Some(prev) = manifest.files.get(&rel) {
+            if prev.sha256 == sha && prev.remote_rel == remote_rel && prev.encrypted == encrypted {
+                new_files_map.insert(rel.clone(), prev.clone());
+                skipped += 1;
+                continue;
+            }
+            if base_sha == Some(sha.as_str()) {
+                new_files_map.insert(rel.clone(), prev.clone());
+                skipped += 1;
+                continue;
+            }
+            let _ = save_local_version_snapshot(
+                workspace,
+                &rel,
+                &plain_bytes,
+                "Cloudflare R2 同步快照",
+                max_versions,
+            );
+        }
+
+        let upload_bytes = if let Some(ref key) = enc_key {
+            super::crypto::encrypt_bytes(key, &rel, &plain_bytes)?
+        } else {
+            plain_bytes.clone()
+        };
+
+        let obj_key = format!("{prefix}/{remote_rel}");
+        r2_put_object(client, &creds, &obj_key, upload_bytes).await?;
+
+        new_files_map.insert(
+            rel.clone(),
+            SyncFileManifestEntry {
+                local_rel: rel,
+                remote_rel,
+                sha256: sha,
+                size: plain_bytes.len() as u64,
+                updated_at: now_unix_secs(),
+                encrypted,
+            },
+        );
+        uploaded += 1;
+    }
+
+    manifest.updated_at = now_unix_secs();
+    manifest.encrypted = encrypted;
+    manifest.files = new_files_map;
+    if let Ok(m_bytes) = serde_json::to_vec_pretty(&manifest) {
+        let _ = r2_put_object(client, &creds, &manifest_key, m_bytes).await;
+    }
+    write_local_base_manifest(workspace, &manifest);
+
+    Ok(WebdavSyncResult {
+        uploaded,
+        downloaded: 0,
+        message: format!(
+            "Cloudflare R2 分类目录同步完成：上传 {uploaded} 个文件，跳过 {skipped} 个未改动文件 ({}/{prefix})",
+            creds.bucket
+        ),
+    })
+}
+
+async fn r2_pull_folder(
+    client: &reqwest::Client,
+    raw_creds: &str,
+    workspace: &Path,
+    remote_dir: &str,
+    encrypted: bool,
+    passphrase: &str,
+    auto_workspace_subdir: bool,
+    _categorize_files: bool,
+    max_versions: usize,
+) -> Result<WebdavSyncResult, String> {
+    let creds = R2Credentials::parse(raw_creds)?;
+    let ws_remote_root =
+        resolve_remote_workspace_dir("r2", remote_dir, workspace, auto_workspace_subdir);
+    let prefix = ws_remote_root.trim_matches('/');
+    let manifest_key = format!("{prefix}/{SYNC_MANIFEST_REL}");
+
+    let m_bytes = r2_get_object(client, &creds, &manifest_key)
+        .await?
+        .ok_or_else(|| format!("Cloudflare R2 存储桶 ({}/{prefix}) 下未找到同步清单 manifest.json", creds.bucket))?;
+    let manifest: SyncFolderManifest =
+        serde_json::from_slice(&m_bytes).map_err(|e| format!("解析 Cloudflare R2 同步清单失败: {e}"))?;
+
+    let dec_key: Option<[u8; 32]> = if manifest.encrypted || encrypted {
+        let vc = manifest
+            .vault_crypto
+            .as_ref()
+            .ok_or("云端文件已开启加密，但清单缺少加密元数据")?;
+        Some(unlock_vault_manifest(vc, passphrase)?)
+    } else {
+        None
+    };
+
+    let local_base = read_local_base_manifest(workspace);
+    let mut downloaded = 0usize;
+    let mut skipped = 0usize;
+    let mut conflicts = 0usize;
+
+    for (local_rel, entry) in &manifest.files {
+        let target_local = workspace.join(local_rel);
+        let base_sha = local_base
+            .as_ref()
+            .and_then(|m| m.files.get(local_rel))
+            .map(|e| e.sha256.as_str());
+
+        if target_local.is_file() {
+            if let Ok(existing) = std::fs::read(&target_local) {
+                let local_sha = sha256_hex(&existing);
+                if local_sha == entry.sha256 {
+                    skipped += 1;
+                    continue;
+                }
+                if base_sha == Some(entry.sha256.as_str()) {
+                    skipped += 1;
+                    continue;
+                }
+                let _ = save_local_version_snapshot(
+                    workspace,
+                    local_rel,
+                    &existing,
+                    "Cloudflare R2 拉取前本地快照",
+                    max_versions,
+                );
+                let is_conflict = match base_sha {
+                    Some(b_sha) => local_sha != b_sha && entry.sha256 != b_sha,
+                    None => true,
+                };
+                if is_conflict && write_conflict_copy_file(workspace, local_rel, &existing, "本地修改").is_some() {
+                    conflicts += 1;
+                }
+            }
+        }
+
+        let obj_key = format!("{prefix}/{}", entry.remote_rel);
+        let Some(raw_bytes) = r2_get_object(client, &creds, &obj_key).await? else {
+            continue;
+        };
+        let plain_bytes = if entry.encrypted {
+            let key = dec_key.as_ref().ok_or("需要加密口令以解密 Cloudflare R2 文件")?;
+            super::crypto::decrypt_bytes(key, local_rel, &raw_bytes)?
+        } else {
+            raw_bytes
+        };
+        if let Some(parent) = target_local.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        std::fs::write(&target_local, &plain_bytes)
+            .map_err(|e| format!("写入本地文件 {local_rel} 失败: {e}"))?;
+        let _ = save_local_version_snapshot(
+            workspace,
+            local_rel,
+            &plain_bytes,
+            "从 Cloudflare R2 同步版本",
+            max_versions,
+        );
+        downloaded += 1;
+    }
+
+    write_local_base_manifest(workspace, &manifest);
+    let conflict_note = if conflicts > 0 {
+        format!("，检测到 {conflicts} 处多端并发修改并已生成冲突副本")
+    } else {
+        String::new()
+    };
+    Ok(WebdavSyncResult {
+        uploaded: 0,
+        downloaded,
+        message: format!(
+            "已从 Cloudflare R2 ({}/{prefix}) 同步更新 {downloaded} 个文件（跳过未改动 {skipped} 个{conflict_note}）",
+            creds.bucket
+        ),
     })
 }
 
@@ -3854,16 +5863,20 @@ pub async fn cloud_api_push_workspace(
     categorize_files: Option<bool>,
     max_versions: Option<usize>,
 ) -> Result<WebdavSyncResult, String> {
-    let token = extract_access_token(&access_token);
+    let prov = provider.trim().to_ascii_lowercase();
+    let token = if prov == "r2" {
+        access_token.trim().to_string()
+    } else {
+        extract_access_token(&access_token)
+    };
     if token.is_empty() {
-        return Err("请先授权或填入网盘 Access Token".into());
+        return Err("请先授权或填入网盘 Access Token / R2 密钥".into());
     }
     let ws = PathBuf::from(workspace.trim());
     if !ws.is_dir() {
         return Err("请先打开一个笔记文件夹 (Open a workspace folder first)".into());
     }
     let client = build_client()?;
-    let prov = provider.trim().to_ascii_lowercase();
     let mode = sync_mode.unwrap_or_else(|| "folder".to_string());
     let use_enc = encrypted.unwrap_or(false);
     let auto_sub = auto_workspace_subdir.unwrap_or(true);
@@ -3874,6 +5887,20 @@ pub async fn cloud_api_push_workspace(
         match prov.as_str() {
             "baidu" => {
                 return baidu_push_folder(
+                    &client,
+                    &token,
+                    &ws,
+                    &remote_path,
+                    use_enc,
+                    &passphrase,
+                    auto_sub,
+                    cat_files,
+                    max_v,
+                )
+                .await;
+            }
+            "alipan" => {
+                return alipan_push_folder(
                     &client,
                     &token,
                     &ws,
@@ -3914,6 +5941,34 @@ pub async fn cloud_api_push_workspace(
                 )
                 .await;
             }
+            "gdrive" => {
+                return gdrive_push_folder(
+                    &client,
+                    &token,
+                    &ws,
+                    &remote_path,
+                    use_enc,
+                    &passphrase,
+                    auto_sub,
+                    cat_files,
+                    max_v,
+                )
+                .await;
+            }
+            "r2" => {
+                return r2_push_folder(
+                    &client,
+                    &token,
+                    &ws,
+                    &remote_path,
+                    use_enc,
+                    &passphrase,
+                    auto_sub,
+                    cat_files,
+                    max_v,
+                )
+                .await;
+            }
             _ => {}
         }
     }
@@ -3930,6 +5985,8 @@ pub async fn cloud_api_push_workspace(
         "alipan" => alipan_upload_bundle(&client, &token, &target_remote, bundle).await?,
         "onedrive" => onedrive_upload_bundle(&client, &token, &target_remote, bundle).await?,
         "dropbox" => dropbox_upload_bundle(&client, &token, &target_remote, bundle).await?,
+        "gdrive" => gdrive_upload_bundle(&client, &token, &target_remote, bundle).await?,
+        "r2" => r2_upload_bundle(&client, &token, &target_remote, bundle).await?,
         other => return Err(format!("不支持的网盘开放平台类型: {other}")),
     }
 
@@ -3943,6 +6000,8 @@ pub async fn cloud_api_push_workspace(
                 "alipan" => "阿里云盘",
                 "onedrive" => "OneDrive",
                 "dropbox" => "Dropbox",
+                "gdrive" => "Google Drive",
+                "r2" => "Cloudflare R2",
                 _ => &prov,
             }
         ),
@@ -3962,35 +6021,114 @@ pub async fn cloud_api_pull_workspace(
     categorize_files: Option<bool>,
     max_versions: Option<usize>,
 ) -> Result<WebdavSyncResult, String> {
-    let token = extract_access_token(&access_token);
+    let prov = provider.trim().to_ascii_lowercase();
+    let token = if prov == "r2" {
+        access_token.trim().to_string()
+    } else {
+        extract_access_token(&access_token)
+    };
     if token.is_empty() {
-        return Err("请先授权或填入网盘 Access Token".into());
+        return Err("请先授权或填入网盘 Access Token / R2 密钥".into());
     }
     let ws = PathBuf::from(workspace.trim());
     if !ws.is_dir() {
         return Err("请先打开一个笔记文件夹 (Open a workspace folder first)".into());
     }
     let client = build_client()?;
-    let prov = provider.trim().to_ascii_lowercase();
     let mode = sync_mode.unwrap_or_else(|| "folder".to_string());
     let use_enc = encrypted.unwrap_or(false);
     let auto_sub = auto_workspace_subdir.unwrap_or(true);
     let cat_files = categorize_files.unwrap_or(true);
     let max_v = max_versions.unwrap_or(DEFAULT_MAX_VERSIONS);
 
-    if mode != "bundle" && prov == "baidu" {
-        return baidu_pull_folder(
-            &client,
-            &token,
-            &ws,
-            &remote_path,
-            use_enc,
-            &passphrase,
-            auto_sub,
-            cat_files,
-            max_v,
-        )
-        .await;
+    if mode != "bundle" {
+        match prov.as_str() {
+            "baidu" => {
+                return baidu_pull_folder(
+                    &client,
+                    &token,
+                    &ws,
+                    &remote_path,
+                    use_enc,
+                    &passphrase,
+                    auto_sub,
+                    cat_files,
+                    max_v,
+                )
+                .await;
+            }
+            "alipan" => {
+                return alipan_pull_folder(
+                    &client,
+                    &token,
+                    &ws,
+                    &remote_path,
+                    use_enc,
+                    &passphrase,
+                    auto_sub,
+                    cat_files,
+                    max_v,
+                )
+                .await;
+            }
+            "onedrive" => {
+                return onedrive_pull_folder(
+                    &client,
+                    &token,
+                    &ws,
+                    &remote_path,
+                    use_enc,
+                    &passphrase,
+                    auto_sub,
+                    cat_files,
+                    max_v,
+                )
+                .await;
+            }
+            "dropbox" => {
+                return dropbox_pull_folder(
+                    &client,
+                    &token,
+                    &ws,
+                    &remote_path,
+                    use_enc,
+                    &passphrase,
+                    auto_sub,
+                    cat_files,
+                    max_v,
+                )
+                .await;
+            }
+            "gdrive" => {
+                return gdrive_pull_folder(
+                    &client,
+                    &token,
+                    &ws,
+                    &remote_path,
+                    use_enc,
+                    &passphrase,
+                    auto_sub,
+                    cat_files,
+                    max_v,
+                )
+                .await;
+            }
+            "r2" => {
+                return r2_pull_folder(
+                    &client,
+                    &token,
+                    &ws,
+                    &remote_path,
+                    use_enc,
+                    &passphrase,
+                    auto_sub,
+                    cat_files,
+                    max_v,
+                )
+                .await;
+            }
+            _ => {}
+        }
     }
 
     let target_remote = resolve_remote_workspace_dir(&prov, &remote_path, &ws, auto_sub);
@@ -3999,6 +6137,8 @@ pub async fn cloud_api_pull_workspace(
         "alipan" => alipan_download_bundle(&client, &token, &target_remote).await?,
         "onedrive" => onedrive_download_bundle(&client, &token, &target_remote).await?,
         "dropbox" => dropbox_download_bundle(&client, &token, &target_remote).await?,
+        "gdrive" => gdrive_download_bundle(&client, &token, &target_remote).await?,
+        "r2" => r2_download_bundle(&client, &token, &target_remote).await?,
         other => return Err(format!("不支持的网盘开放平台类型: {other}")),
     };
 
@@ -4019,6 +6159,8 @@ pub async fn cloud_api_pull_workspace(
                 "alipan" => "阿里云盘",
                 "onedrive" => "OneDrive",
                 "dropbox" => "Dropbox",
+                "gdrive" => "Google Drive",
+                "r2" => "Cloudflare R2",
                 _ => &prov,
             }
         ),
@@ -4243,5 +6385,61 @@ mod tests {
 
     fn read_local_version_snapshots_for_test(ws: &Path, rel: &str, id: &str) -> Vec<u8> {
         read_local_version_snapshot(ws, rel, id).unwrap()
+    }
+
+    #[test]
+    fn cloudflare_r2_credentials_and_sigv4_signing_work() {
+        // 1. Bare Cloudflare Account ID expands to `https://<account_id>.r2.cloudflarestorage.com`
+        let creds = R2Credentials::parse(
+            r#"{
+                "endpoint": "acc1234567890abcdef",
+                "bucket": "solomd-notes",
+                "access_key_id": "AKIAIOSFODNN7EXAMPLE",
+                "secret_access_key": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+            }"#,
+        )
+        .unwrap();
+        assert_eq!(creds.endpoint, "https://acc1234567890abcdef.r2.cloudflarestorage.com");
+        assert_eq!(creds.host(), "acc1234567890abcdef.r2.cloudflarestorage.com");
+        assert_eq!(creds.bucket, "solomd-notes");
+        assert_eq!(creds.region, "auto");
+
+        // 2. RFC 4231 Test Case 2 for HMAC-SHA256 ("Jefe", "what do ya want for nothing?")
+        let mac = hmac_sha256(b"Jefe", b"what do ya want for nothing?");
+        let mac_hex: String = mac.iter().map(|b| format!("{b:02x}")).collect();
+        assert_eq!(
+            mac_hex,
+            "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843"
+        );
+
+        // 3. Civil UTC date formatting for AWS SigV4 (2023-05-24T00:00:00Z = 1684886400)
+        let (date_stamp, amz_date) = format_amz_date(1_684_886_400);
+        assert_eq!(date_stamp, "20230524");
+        assert_eq!(amz_date, "20230524T000000Z");
+
+        // 4. SigV4 Authorization header format
+        let (auth, _, payload_hash) =
+            build_s3_sigv4_headers(&creds, "PUT", "/solomd-notes/Notes/hello.md", b"# Hello R2");
+        assert!(auth.starts_with("AWS4-HMAC-SHA256 Credential=AKIAIOSFODNN7EXAMPLE/"));
+        assert!(auth.contains("/auto/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature="));
+        assert_eq!(payload_hash.len(), 64);
+    }
+
+    #[test]
+    fn keyless_quick_auth_urls_built_for_all_oauth_providers() {
+        for (prov, expected_host) in [
+            ("baidu", "openapi.baidu.com"),
+            ("alipan", "openapi.alipan.com"),
+            ("onedrive", "login.microsoftonline.com"),
+            ("dropbox", "www.dropbox.com"),
+            ("gdrive", "accounts.google.com"),
+        ] {
+            let info = cloud_api_build_quick_auth_url(prov.to_string(), None).unwrap();
+            assert!(
+                info.auth_url.contains(expected_host),
+                "provider {prov} url: {}",
+                info.auth_url
+            );
+        }
     }
 }

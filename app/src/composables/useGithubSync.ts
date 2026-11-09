@@ -87,6 +87,9 @@ export function useGithubSync() {
           remotePath: settings.webdavRemotePath || '/SoloMD',
           encrypted: settings.webdavEncrypted,
           passphrase: settings.webdavPassphrase,
+          autoWorkspaceSubdir: settings.webdavAutoSubdir,
+          categorizeFiles: settings.webdavCategorizeFiles,
+          maxVersions: settings.syncMaxVersions,
         });
       } catch (e) {
         toasts.warning(`WebDAV: ${e}`);
@@ -113,9 +116,24 @@ export function useGithubSync() {
       }
     }
 
+    const effectiveApiToken =
+      settings.cloudApiProvider === 'r2'
+        ? settings.cloudR2Endpoint.trim() &&
+          settings.cloudR2Bucket.trim() &&
+          settings.cloudR2AccessKeyId.trim() &&
+          settings.cloudR2SecretAccessKey.trim()
+          ? JSON.stringify({
+              endpoint: settings.cloudR2Endpoint.trim(),
+              bucket: settings.cloudR2Bucket.trim(),
+              access_key_id: settings.cloudR2AccessKeyId.trim(),
+              secret_access_key: settings.cloudR2SecretAccessKey.trim(),
+            })
+          : ''
+        : settings.cloudApiToken.trim();
+
     if (
       settings.cloudApiAutoSync &&
-      settings.cloudApiToken.trim() &&
+      effectiveApiToken &&
       ((settings.cloudApiSyncMode === 'folder' && !settings.cloudApiEncrypted) ||
         settings.cloudApiPassphrase.trim())
     ) {
@@ -123,8 +141,8 @@ export function useGithubSync() {
         await invoke('cloud_api_push_workspace', {
           workspace: folder,
           provider: settings.cloudApiProvider,
-          accessToken: settings.cloudApiToken,
-          remotePath: settings.cloudApiRemotePath || '/apps/SoloMD',
+          accessToken: effectiveApiToken,
+          remotePath: settings.cloudApiRemotePath || '/SoloMD',
           passphrase: settings.cloudApiPassphrase,
           syncMode: settings.cloudApiSyncMode,
           encrypted: settings.cloudApiEncrypted,
