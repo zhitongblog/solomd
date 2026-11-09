@@ -1,0 +1,5 @@
+SoloMD 5.0.16 :
+• Rendu Mermaid différé selon la zone visible et cache SVG partagé (#522) : les diagrammes sont rendus à la demande sans bloquer l’interface et la position de défilement est fidèlement conservée.
+• Navigation secondaire pour les réglages de synchronisation cloud (#524) : onglets dédiés pour l’API Cloud directe, le dossier local synchronisé, WebDAV et l’historique des versions.
+• Réenvoi automatique lors de l’activation du chiffrement par fichier et recréation automatique des dossiers distants supprimés.
+• Améliorations IME et Plan : saisie IME multiligne, continuation des listes (#521) et affichage des surlignages dans le plan.

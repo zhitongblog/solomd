@@ -1,0 +1,5 @@
+SoloMD 5.0.16:
+• Görünüm alanı odaklı tembel Mermaid çizimi ve paylaşımlı SVG önbelleği (#522): çok sayıda diyagram içeren notlar donmadan açılır ve kaydırma konumunu korur.
+• Bulut senkronizasyonu ayarları için alt gezinme sekmeleri (#524): Doğrudan Bulut API, Yerel Klasör, WebDAV ve Sürüm Geçmişi sekmeleri.
+• Dosya bazlı şifreleme açıldığında otomatik yeniden yükleme ve silinen uzak çalışma alanı klasörlerini otomatik oluşturma.
+• Çok satırlı IME ifadeleri, liste devamettirme (#521) ve Anahat panelinde vurgulama iyileştirmeleri.

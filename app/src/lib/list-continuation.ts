@@ -20,6 +20,8 @@
  * saying no (see `ListContinuationOptions`).
  */
 
+import { applyChanges, mapPos, renumberChanges } from './list-renumber.ts';
+
 export interface ContinuationEdit {
   value: string;
   caret: number;
@@ -44,11 +46,10 @@ const DEFAULT_OPTIONS: ListContinuationOptions = { listContinuation: true, autoN
 // Leading indent + any number of `>` quote markers (each with optional space).
 const QUOTE_PREFIX = /^([ \t]*(?:>[ \t]?)*)/;
 // A list marker right after the quote prefix: bullet or ordered, then an
-// optional task box. The ordered number is one or more levels (`1`, `1.1`,
-// `1.1.2`) and its trailing delimiter is optional, because a multi-level
-// outline carries that punctuation inside the number (`1.1 ` has no marker
-// delimiter of its own).
-const LIST_MARKER = /^([ \t]*)(?:([-*+])|(\d{1,9}(?:[.)]\d{1,9})*))([.)]?)([ \t]+)(\[[ xX]\][ \t]+)?/;
+// optional task box. The ordered number is either a multi-level outline (`1.1`,
+// `1.1.2`, which carries punctuation inside the token so a trailing delimiter
+// is optional) or a single-level integer followed by `.` or `)` (`1.`, `2)`).
+const LIST_MARKER = /^([ \t]*)(?:([-*+])|(\d{1,9}(?:[.)]\d{1,9})+|\d{1,9}(?=[.)])))([.)]?)([ \t]+)(\[[ xX]\][ \t]+)?/;
 // Ordered list marker missing its trailing space before CJK text (e.g. `1.当前...`).
 const NO_SPACE_CJK_ORDERED = /^([ \t]*)(\d{1,3})([.)])(?=[\u3400-\u9fff\uf900-\ufaff\u3000-\u303f\uff00-\uffef“”‘’（【《「『])/;
 const FENCE_LINE = /^([ \t]*(?:>[ \t]?)*)(`{3,}|~{3,})(.*)$/;
@@ -127,6 +128,85 @@ export function enclosingListContentIndent(text: string, lineStart: number): str
   return null;
 }
 
+function indentWidth(ws: string): number {
+  let w = 0;
+  for (const ch of ws) w += ch === '\t' ? 4 - (w % 4) : 1;
+  return w;
+}
+
+/**
+ * When pressing Enter on an empty nested list item, find the enclosing parent
+ * list level and return the marker for the next sibling at that parent level
+ * (so Enter outdents one level instead of jumping to column 0 and exiting the
+ * entire list). Returns null when the item is already at the outermost list
+ * level.
+ */
+function parentListNextMarker(
+  text: string,
+  lineStart: number,
+  quote: string,
+  indent: string,
+  num: string | undefined,
+  delim: string | undefined,
+  gap: string,
+  opts: ListContinuationOptions,
+): string | null {
+  const curIndentW = indentWidth(indent);
+  const curQuoteDepth = (quote.match(/>/g) ?? []).length;
+  const sep = gap.includes('\t') ? gap : gap.length > 4 ? ' ' : gap;
+
+  if (curIndentW > 0) {
+    const before = text.slice(0, lineStart);
+    const lines = before.split('\n');
+    const startIdx = lineStart > 0 && before.endsWith('\n') ? lines.length - 2 : lines.length - 1;
+    for (let i = startIdx; i >= 0; i--) {
+      const ln = lines[i];
+      const rawQ = ln.match(QUOTE_PREFIX)?.[1] ?? '';
+      const q = rawQ.includes('>') ? rawQ : '';
+      const qDepth = (q.match(/>/g) ?? []).length;
+      if (qDepth !== curQuoteDepth) break;
+      const r = ln.slice(q.length);
+      if (r.trim() === '') continue;
+      if (/^[ \t]{0,3}#{1,6}(?:[ \t]|$)/.test(r) || /^[ \t]{0,3}(?:[-*_][ \t]*){3,}$/.test(r)) {
+        break;
+      }
+      const m = r.match(LIST_MARKER);
+      if (m) {
+        const [, pIndent, pBullet, pNum, pDelim, pGap, pTask] = m;
+        const pIndentW = indentWidth(pIndent);
+        if (pIndentW < curIndentW) {
+          const pSep = pGap.includes('\t') ? pGap : pGap.length > 4 ? ' ' : pGap;
+          if (pBullet) {
+            return `${quote}${pIndent}${pBullet}${pSep}${pTask ? '[ ] ' : ''}`;
+          }
+          if (!opts.autoNumber) return null;
+          const nextNum = bumpNumberedToken(pNum) ?? pNum;
+          return `${quote}${pIndent}${nextNum}${pDelim}${pSep}${pTask ? '[ ] ' : ''}`;
+        }
+        continue;
+      }
+      const rLeadWs = /^[ \t]*/.exec(r)?.[0] ?? '';
+      if (indentWidth(rLeadWs) === 0) break;
+    }
+  }
+
+  // Multi-level outline number (e.g. `1.1 ` or `1.1.2 `) at top-level indent:
+  // step out to the parent outline number (`1.1` → `2.`, `1.1.2` → `1.2`).
+  if (num && opts.autoNumber) {
+    const parentMatch = /^(\d+(?:[.)]\d+)*)([.)])\d+$/.exec(num);
+    if (parentMatch) {
+      const parentPrefix = parentMatch[1];
+      const parentSep = parentMatch[2];
+      const nextParent = bumpNumberedToken(parentPrefix) ?? parentPrefix;
+      const hasFurtherDots = /[.)]/.test(nextParent);
+      const outDelim = delim || (!hasFurtherDots ? parentSep : '');
+      return `${quote}${indent}${nextParent}${outDelim}${sep}`;
+    }
+  }
+
+  return null;
+}
+
 export function computeListContinuation(
   text: string,
   selStart: number,
@@ -188,8 +268,9 @@ export function computeListContinuation(
     return null;
   }
 
-  const quote = line.match(QUOTE_PREFIX)?.[1] ?? '';
-  const hasQuote = quote.includes('>');
+  const rawQuote = line.match(QUOTE_PREFIX)?.[1] ?? '';
+  const hasQuote = rawQuote.includes('>');
+  const quote = hasQuote ? rawQuote : '';
   const rest = line.slice(quote.length);
   const list = rest.match(LIST_MARKER);
   const noSpaceList = !list ? rest.match(NO_SPACE_CJK_ORDERED) : null;
@@ -239,20 +320,111 @@ export function computeListContinuation(
     return null;
   }
 
-  // Caret inside (or before) the marker: splitting there would duplicate it.
-  if (caret - lineStart < markerLen) return null;
-
   const content = line.slice(markerLen);
-  if (content.trim() === '' && caret === lineEnd) {
-    // Empty item → drop the marker and end the list here. For a list inside a
-    // quote, keep the quote (`> - ` → `> `); a bare quote line ends the quote.
+  // Caret inside (or before) the marker: splitting there would duplicate it.
+  // On an empty bare quote line (`>| `), allow caret right after `>` before its
+  // trailing space to still exit the quote.
+  const minMarkerLen =
+    content.trim() === '' && hasQuote && !list && !noSpaceList
+      ? quote.replace(/[ \t]+$/, '').length
+      : markerLen;
+  if (caret - lineStart < minMarkerLen) return null;
+
+  if (content.trim() === '' && caret >= lineStart + minMarkerLen) {
+    if (list) {
+      const [, indent, , num, delim, gap] = list;
+      const outdented = parentListNextMarker(
+        text,
+        lineStart,
+        quote,
+        indent,
+        num,
+        delim,
+        gap,
+        opts,
+      );
+      if (outdented !== null) {
+        let value = text.slice(0, lineStart) + outdented + text.slice(lineEnd);
+        let nextCaret = lineStart + outdented.length;
+        const changes = renumberChanges(value, lineStart, nextCaret);
+        if (changes.length > 0) {
+          value = applyChanges(value, changes);
+          nextCaret = mapPos(nextCaret, changes);
+        }
+        return { value, caret: nextCaret };
+      }
+    }
+    // Empty top-level item → drop the marker and end the list here. For a list
+    // inside a quote, keep the quote (`> - ` → `> `); a bare quote line ends
+    // the quote.
     const keep = list && hasQuote ? (/[ \t]$/.test(quote) ? quote : `${quote} `) : '';
-    const value = text.slice(0, lineStart) + keep + text.slice(lineEnd);
-    return { value, caret: lineStart + keep.length };
+    let value = text.slice(0, lineStart) + keep + text.slice(lineEnd);
+    let nextCaret = lineStart + keep.length;
+    if (list) {
+      const changes = renumberChanges(value, lineStart, nextCaret);
+      if (changes.length > 0) {
+        value = applyChanges(value, changes);
+        nextCaret = mapPos(nextCaret, changes);
+      }
+    }
+    return { value, caret: nextCaret };
   }
 
   const insert = `\n${nextMarker}`;
   return { value: text.slice(0, caret) + insert + text.slice(caret), caret: caret + insert.length };
+}
+
+/**
+ * #521 — True when `caret` sits on a CommonMark "lazy continuation line" of an
+ * enclosing list item or blockquote: a non-blank, non-list, non-quote,
+ * non-fence line whose leading indentation is narrower than the enclosing list
+ * item's content column, and where a preceding contiguous non-blank line is a
+ * list item or quote. CodeMirror's `insertNewlineContinueMarkup` walks up the
+ * Lezer syntax tree to `ListItem`/`Blockquote` and spawns a new marker on
+ * Enter; intercepting lazy continuation lines in `markdownEnterCommand` gives a
+ * plain newline while keeping `addKeymap: true` active.
+ */
+export function isLazyListContinuationLine(
+  text: string,
+  selStart: number,
+  selEnd: number,
+): boolean {
+  if (selStart !== selEnd) return false;
+  const caret = selStart;
+  const lineStart = text.lastIndexOf('\n', caret - 1) + 1;
+  if (lineStart === 0) return false;
+  const nl = text.indexOf('\n', caret);
+  const lineEnd = nl < 0 ? text.length : nl;
+  const line = text.slice(lineStart, lineEnd);
+  if (line.trim() === '') return false;
+  if (insideFence(text, lineStart)) return false;
+  if (FENCE_LINE.test(line)) return false;
+  const rawQuote = line.match(QUOTE_PREFIX)?.[1] ?? '';
+  if (rawQuote.includes('>')) return false;
+  if (LIST_MARKER.test(line) || NO_SPACE_CJK_ORDERED.test(line)) return false;
+  if (/^[ \t]{0,3}#{1,6}(?:[ \t]|$)/.test(line) || /^[ \t]{0,3}(?:[-*_][ \t]*){3,}$/.test(line)) {
+    return false;
+  }
+
+  const listIndent = enclosingListContentIndent(text, lineStart);
+  const leadWs = /^[ \t]*/.exec(line)?.[0] ?? '';
+  if (listIndent && leadWs.length >= listIndent.length) return false;
+
+  const before = text.slice(0, lineStart - 1);
+  const lines = before.split('\n');
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const ln = lines[i];
+    if (ln.trim() === '') return false;
+    if (FENCE_LINE.test(ln)) return false;
+    if (/^[ \t]{0,3}#{1,6}(?:[ \t]|$)/.test(ln) || /^[ \t]{0,3}(?:[-*_][ \t]*){3,}$/.test(ln)) {
+      return false;
+    }
+    const q = ln.match(QUOTE_PREFIX)?.[1] ?? '';
+    if (q.includes('>')) return true;
+    const r = ln.slice(q.length);
+    if (LIST_MARKER.test(r) || NO_SPACE_CJK_ORDERED.test(r)) return true;
+  }
+  return false;
 }
 
 /**
@@ -293,8 +465,9 @@ export function computeListSoftBreak(
     return null;
   }
 
-  const quote = line.match(QUOTE_PREFIX)?.[1] ?? '';
-  const hasQuote = quote.includes('>');
+  const rawQuote = line.match(QUOTE_PREFIX)?.[1] ?? '';
+  const hasQuote = rawQuote.includes('>');
+  const quote = hasQuote ? rawQuote : '';
   const rest = line.slice(quote.length);
   const list = rest.match(LIST_MARKER);
 

@@ -3,7 +3,12 @@ import { computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useTabsStore } from '../stores/tabs';
 import { useSettingsStore } from '../stores/settings';
 import { useI18n } from '../i18n';
-import { extractOutline, type OutlineItem } from '../lib/markdown';
+import {
+  extractOutline,
+  parseOutlineSegments,
+  stripOutlineFormatting,
+  type OutlineItem,
+} from '../lib/markdown';
 import Icons from './Icons.vue';
 import PanelHeader from './panel/PanelHeader.vue';
 
@@ -290,9 +295,12 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onWindowKey));
         <button
           class="outline__label"
           @click.stop="emit('goto', it.line)"
-          :title="it.text"
+          :title="stripOutlineFormatting(it.text)"
         >
-          {{ it.text }}
+          <template v-for="(seg, si) in parseOutlineSegments(it.text)" :key="si">
+            <mark v-if="seg.mark" class="outline__mark">{{ seg.text }}</mark>
+            <template v-else>{{ seg.text }}</template>
+          </template>
         </button>
         <span
           v-if="labelAt(i)"
@@ -370,6 +378,12 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onWindowKey));
   overflow: hidden;
   text-overflow: ellipsis;
   cursor: pointer;
+}
+.outline__mark {
+  background: color-mix(in srgb, var(--accent, #ff9f40) 26%, transparent);
+  color: inherit;
+  padding: 0 0.2em;
+  border-radius: 3px;
 }
 .outline__keylabel {
   flex: 0 0 auto;

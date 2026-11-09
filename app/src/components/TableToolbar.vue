@@ -23,6 +23,7 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import Icon from './Icons.vue';
 import { useI18n } from '../i18n';
 import { isMobile } from '../lib/platform';
+import { isImeComposingActive } from '../lib/cm-ime-guard';
 import { placeBubble, type Box } from '../lib/selection-bubble';
 import { tableActionEnabled, type TableAction, type TableToolbarState } from '../lib/table-toolbar';
 import { tableIconPaths, type TableIcon } from '../lib/table-toolbar-icons';
@@ -57,7 +58,7 @@ function hide() {
 }
 
 function usable(): TableToolbarState | null {
-  if (!props.enabled || touchPlatform || composing) return null;
+  if (!props.enabled || touchPlatform || composing || isImeComposingActive()) return null;
   return props.read();
 }
 
@@ -144,7 +145,6 @@ function onCompositionStart() {
 }
 function onCompositionEnd() {
   composing = false;
-  schedule();
 }
 function onFocusOut() {
   // Focus moving between the plain editor's block textareas stays inside.
@@ -176,7 +176,6 @@ function bind(host: HTMLElement | null) {
   if (!host || touchPlatform) return;
   bound = host;
   host.addEventListener('keyup', schedule, true);
-  host.addEventListener('input', schedule, true);
   host.addEventListener('mouseup', schedule, true);
   host.addEventListener('scroll', schedule, true);
   host.addEventListener('keydown', onKeyDown, true);
@@ -192,7 +191,6 @@ function unbind() {
   if (!host) return;
   bound = null;
   host.removeEventListener('keyup', schedule, true);
-  host.removeEventListener('input', schedule, true);
   host.removeEventListener('mouseup', schedule, true);
   host.removeEventListener('scroll', schedule, true);
   host.removeEventListener('keydown', onKeyDown, true);

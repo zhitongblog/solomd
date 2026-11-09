@@ -1,0 +1,5 @@
+SoloMD 5.0.16:
+• Lazy Mermaid-rendering en gedeelde SVG-cache (#522): notities met veel diagrammen openen soepel en behouden de exacte scrollpositie.
+• Subnavigatie voor cloudsynchronisatie-instellingen (#524): overzichtelijke tabbladen voor directe Cloud-API, lokale map, WebDAV en versiegeschiedenis.
+• Automatische her-upload bij het inschakelen van versleuteling per bestand en herstel van verwijderde externe mappen.
+• Verbeteringen voor meerregelige IME-invoer, lijstvervolg (#521) en markeringen in het overzichtspaneel.

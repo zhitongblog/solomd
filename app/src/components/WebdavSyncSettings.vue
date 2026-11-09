@@ -45,6 +45,28 @@ const apiStatusKind = ref<'ok' | 'err' | ''>('');
 
 const pruningVersions = ref(false);
 
+type SyncSubTab = 'cloud_api' | 'local_vault' | 'webdav' | 'history';
+const activeSyncTab = ref<SyncSubTab>(
+  settings.cloudApiToken || settings.cloudR2Endpoint
+    ? 'cloud_api'
+    : settings.cloudVaultDir
+      ? 'local_vault'
+      : settings.webdavUrl || settings.webdavEnabled
+        ? 'webdav'
+        : 'cloud_api',
+);
+
+function syncSharedPassphrase() {
+  const shared =
+    settings.cloudApiPassphrase.trim() ||
+    settings.cloudVaultPassphrase.trim() ||
+    settings.webdavPassphrase.trim();
+  if (!shared) return;
+  if (!settings.cloudApiPassphrase) settings.cloudApiPassphrase = shared;
+  if (!settings.cloudVaultPassphrase) settings.cloudVaultPassphrase = shared;
+  if (!settings.webdavPassphrase) settings.webdavPassphrase = shared;
+}
+
 onMounted(async () => {
   try {
     detectedCloudDirs.value = await invoke<DetectedCloudDir[]>('cloud_vault_detect_local_dirs');
@@ -264,6 +286,20 @@ async function pushCloudApi() {
     toasts.warning(t('menubar.openFolder'));
     return;
   }
+  syncSharedPassphrase();
+  if (
+    (settings.cloudApiSyncMode === 'bundle' || settings.cloudApiEncrypted) &&
+    !settings.cloudApiPassphrase.trim()
+  ) {
+    const msg =
+      settings.language === 'zh'
+        ? '请先输入端到端加密口令 (Passphrase) 后再执行加密同步'
+        : 'Please enter an encryption passphrase before syncing';
+    apiStatusText.value = msg;
+    apiStatusKind.value = 'err';
+    toasts.warning(msg);
+    return;
+  }
   apiPushing.value = true;
   apiStatusText.value = '';
   try {
@@ -298,6 +334,7 @@ async function pullCloudApi() {
     toasts.warning(t('menubar.openFolder'));
     return;
   }
+  syncSharedPassphrase();
   apiPulling.value = true;
   apiStatusText.value = '';
   try {
@@ -329,6 +366,7 @@ async function pullCloudApi() {
 }
 
 function saveConfig() {
+  syncSharedPassphrase();
   settings.persist();
 }
 
@@ -519,6 +557,66 @@ async function pullCloudVault() {
 
 <template>
   <section class="settings__section webdav-sync">
+    <nav class="webdav-sync__subnav" role="tablist" aria-label="Sync mode navigation">
+      <button
+        type="button"
+        role="tab"
+        class="webdav-sync__subnav-tab"
+        :class="{ 'webdav-sync__subnav-tab--active': activeSyncTab === 'cloud_api' }"
+        :aria-selected="activeSyncTab === 'cloud_api'"
+        @click="activeSyncTab = 'cloud_api'"
+      >
+        {{
+          settings.language === 'zh'
+            ? '☁️ 网盘直连 API (百度/阿里/OneDrive/R2)'
+            : '☁️ Direct Cloud API (Baidu/Aliyun/OneDrive/R2)'
+        }}
+      </button>
+      <button
+        type="button"
+        role="tab"
+        class="webdav-sync__subnav-tab"
+        :class="{ 'webdav-sync__subnav-tab--active': activeSyncTab === 'local_vault' }"
+        :aria-selected="activeSyncTab === 'local_vault'"
+        @click="activeSyncTab = 'local_vault'"
+      >
+        {{
+          settings.language === 'zh'
+            ? '📂 本地网盘目录同步'
+            : '📂 Local Cloud Drive Folder'
+        }}
+      </button>
+      <button
+        type="button"
+        role="tab"
+        class="webdav-sync__subnav-tab"
+        :class="{ 'webdav-sync__subnav-tab--active': activeSyncTab === 'webdav' }"
+        :aria-selected="activeSyncTab === 'webdav'"
+        @click="activeSyncTab = 'webdav'"
+      >
+        {{
+          settings.language === 'zh'
+            ? '🌐 WebDAV 同步 (坚果云/NAS/AList)'
+            : '🌐 WebDAV (Nutstore/NAS/AList)'
+        }}
+      </button>
+      <button
+        type="button"
+        role="tab"
+        class="webdav-sync__subnav-tab"
+        :class="{ 'webdav-sync__subnav-tab--active': activeSyncTab === 'history' }"
+        :aria-selected="activeSyncTab === 'history'"
+        @click="activeSyncTab = 'history'"
+      >
+        {{
+          settings.language === 'zh'
+            ? '⏱️ 历史版本与快照策略'
+            : '⏱️ Version History & Snapshots'
+        }}
+      </button>
+    </nav>
+
+    <div v-show="activeSyncTab === 'webdav'" class="webdav-sync__panel">
     <h4 class="settings__heading">
       {{
         settings.language === 'zh'
@@ -749,9 +847,9 @@ async function pullCloudVault() {
     >
       {{ statusText }}
     </p>
+    </div>
 
-    <hr style="border: 0; border-top: 1px solid var(--border); margin: 14px 0 6px;" />
-
+    <div v-show="activeSyncTab === 'local_vault'" class="webdav-sync__panel">
     <h4 class="settings__heading">
       {{
         settings.language === 'zh'
@@ -813,28 +911,6 @@ async function pullCloudVault() {
           </button>
         </div>
       </label>
-
-      <label
-        v-if="settings.cloudVaultEncrypted"
-        class="webdav-sync__field"
-        style="grid-column: 1 / -1;"
-      >
-        <span>
-          {{
-            settings.language === 'zh'
-              ? '网盘加密口令 (Passphrase — 本地派生密钥，多台设备输入相同口令即可解密同步)'
-              : 'Vault Encryption Passphrase (used to derive XChaCha20-Poly1305 key via Argon2id)'
-          }}
-        </span>
-        <input
-          v-model="settings.cloudVaultPassphrase"
-          type="password"
-          class="settings__input"
-          :placeholder="settings.language === 'zh' ? '输入网盘加密口令…' : 'Enter vault encryption passphrase…'"
-          autocomplete="new-password"
-          @change="saveConfig"
-        />
-      </label>
     </div>
 
     <label class="settings__row">
@@ -878,6 +954,27 @@ async function pullCloudVault() {
       <input
         v-model="settings.cloudVaultEncrypted"
         type="checkbox"
+        @change="saveConfig"
+      />
+    </label>
+
+    <label
+      v-if="settings.cloudVaultEncrypted"
+      class="webdav-sync__field"
+    >
+      <span>
+        {{
+          settings.language === 'zh'
+            ? '🔑 网盘加密口令 (Passphrase — 本地派生密钥，多台设备输入相同口令即可解密同步)'
+            : '🔑 Vault Encryption Passphrase (used to derive XChaCha20-Poly1305 key via Argon2id)'
+        }}
+      </span>
+      <input
+        v-model="settings.cloudVaultPassphrase"
+        type="password"
+        class="settings__input"
+        :placeholder="settings.language === 'zh' ? '输入网盘加密口令…' : 'Enter vault encryption passphrase…'"
+        autocomplete="new-password"
         @change="saveConfig"
       />
     </label>
@@ -936,9 +1033,9 @@ async function pullCloudVault() {
     >
       {{ vaultStatusText }}
     </p>
+    </div>
 
-    <hr style="border: 0; border-top: 1px solid var(--border); margin: 14px 0 6px;" />
-
+    <div v-show="activeSyncTab === 'cloud_api'" class="webdav-sync__panel">
     <h4 class="settings__heading">
       {{
         settings.language === 'zh'
@@ -1207,28 +1304,6 @@ async function pullCloudVault() {
           </option>
         </select>
       </label>
-
-      <label
-        v-if="settings.cloudApiSyncMode === 'bundle' || settings.cloudApiEncrypted"
-        class="webdav-sync__field"
-        style="grid-column: 1 / -1;"
-      >
-        <span>
-          {{
-            settings.language === 'zh'
-              ? '端到端加密口令 (Passphrase — 多端同步请输入相同口令)'
-              : 'Encryption Passphrase (enter same passphrase on all devices)'
-          }}
-        </span>
-        <input
-          v-model="settings.cloudApiPassphrase"
-          type="password"
-          class="settings__input"
-          :placeholder="settings.language === 'zh' ? '输入端到端加密口令…' : 'Enter encryption passphrase…'"
-          autocomplete="new-password"
-          @change="saveConfig"
-        />
-      </label>
     </div>
 
     <template v-if="settings.cloudApiSyncMode === 'folder'">
@@ -1277,6 +1352,27 @@ async function pullCloudVault() {
         />
       </label>
     </template>
+
+    <label
+      v-if="settings.cloudApiSyncMode === 'bundle' || settings.cloudApiEncrypted"
+      class="webdav-sync__field"
+    >
+      <span>
+        {{
+          settings.language === 'zh'
+            ? '🔑 端到端加密口令 (Passphrase — 多端同步请输入相同口令)'
+            : '🔑 Encryption Passphrase (enter same passphrase on all devices)'
+        }}
+      </span>
+      <input
+        v-model="settings.cloudApiPassphrase"
+        type="password"
+        class="settings__input"
+        :placeholder="settings.language === 'zh' ? '输入端到端加密口令…' : 'Enter encryption passphrase…'"
+        autocomplete="new-password"
+        @change="saveConfig"
+      />
+    </label>
 
     <details style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
       <summary style="cursor: pointer; user-select: none;">
@@ -1330,37 +1426,31 @@ async function pullCloudVault() {
       <button
         type="button"
         class="settings__btn-secondary"
-        :disabled="
-          apiPushing ||
-          !getEffectiveApiToken() ||
-          ((settings.cloudApiSyncMode === 'bundle' || settings.cloudApiEncrypted) &&
-            !settings.cloudApiPassphrase)
-        "
+        :disabled="apiPushing || !getEffectiveApiToken()"
         @click="pushCloudApi"
       >
         {{
           apiPushing
             ? (settings.language === 'zh' ? '正在同步上传到网盘…' : 'Uploading…')
             : settings.cloudApiSyncMode === 'folder'
-              ? (settings.language === 'zh' ? '📂 增量分类同步到云端专用目录 (Push)' : '📂 Incremental Folder Push via Cloud API')
+              ? settings.cloudApiEncrypted
+                ? (settings.language === 'zh' ? '🔒 加密分类同步到云端专用目录 (Push)' : '🔒 Encrypted Folder Push via Cloud API')
+                : (settings.language === 'zh' ? '📂 增量分类同步到云端专用目录 (Push)' : '📂 Incremental Folder Push via Cloud API')
               : (settings.language === 'zh' ? '🔒 打包加密上传到云端 (Push)' : '🔒 Bundle & Push via Cloud API')
         }}
       </button>
       <button
         type="button"
         class="settings__btn-secondary"
-        :disabled="
-          apiPulling ||
-          !getEffectiveApiToken() ||
-          ((settings.cloudApiSyncMode === 'bundle' || settings.cloudApiEncrypted) &&
-            !settings.cloudApiPassphrase)
-        "
+        :disabled="apiPulling || !getEffectiveApiToken()"
         @click="pullCloudApi"
       >
         {{
           apiPulling
             ? (settings.language === 'zh' ? '正在从网盘拉取同步…' : 'Downloading…')
-            : (settings.language === 'zh' ? '📥 从网盘专用目录拉取同步 (Pull)' : '📥 Pull & Sync via Cloud API')
+            : settings.cloudApiEncrypted || settings.cloudApiSyncMode === 'bundle'
+              ? (settings.language === 'zh' ? '🔓 从网盘解密拉取同步 (Pull)' : '🔓 Pull & Decrypt via Cloud API')
+              : (settings.language === 'zh' ? '📥 从网盘专用目录拉取同步 (Pull)' : '📥 Pull & Sync via Cloud API')
         }}
       </button>
     </div>
@@ -1375,9 +1465,9 @@ async function pullCloudVault() {
     >
       {{ apiStatusText }}
     </p>
+    </div>
 
-    <hr style="border: 0; border-top: 1px solid var(--border); margin: 14px 0 6px;" />
-
+    <div v-show="activeSyncTab === 'history'" class="webdav-sync__panel">
     <h4 class="settings__heading">
       {{
         settings.language === 'zh'
@@ -1444,11 +1534,44 @@ async function pullCloudVault() {
         }}
       </button>
     </div>
+    </div>
   </section>
 </template>
 
 <style scoped>
 .webdav-sync {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.webdav-sync__subnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.webdav-sync__subnav-tab {
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated, rgba(127, 127, 127, 0.06));
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.webdav-sync__subnav-tab:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+.webdav-sync__subnav-tab--active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: rgba(59, 130, 246, 0.08);
+  font-weight: 600;
+}
+.webdav-sync__panel {
   display: flex;
   flex-direction: column;
   gap: 10px;

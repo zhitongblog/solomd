@@ -60,7 +60,7 @@ import {
   parseImageAltSize,
 } from './md-image-url';
 import { plantumlSvgUrl } from './plantuml';
-import { bindMermaidInteractions, initMermaid } from './mermaid-lazy';
+import { bindMermaidInteractions, peekMermaidSvg, renderMermaidCached } from './mermaid-lazy';
 import { getKatex, onRenderDepsChange, renderDepsVersion } from './render-deps';
 import {
   parseTldrawFence,
@@ -80,44 +80,14 @@ import {
 // preview), and it's part of the key, so switching theme renders fresh SVG
 // instead of reusing the light one.
 type MermaidTheme = 'dark' | 'default';
-const mermaidSvgCache = new Map<
-  string,
-  { svg: string | null; bindFunctions?: ((el: Element) => void) | null; error: string | null }
->();
-let mermaidIdSeq = 0;
-const mermaidKey = (source: string, theme: MermaidTheme) => `${theme}\u0000${source}`;
-// In-flight renders. A second caller has to wait for the same render, not
-// return straight away: the widget's toDOM relies on the promise resolving
-// only once the SVG is in the cache, to trigger the rebuild that swaps the
-// "Rendering…" placeholder for the diagram. Returning early made that rebuild
-// run before the render finished, and the placeholder stayed for good.
-const mermaidInflight = new Map<string, Promise<void>>();
-function ensureMermaidRendered(source: string, theme: MermaidTheme): Promise<void> {
-  const key = mermaidKey(source, theme);
-  const pending = mermaidInflight.get(key);
-  if (pending) return pending;
-  if (mermaidSvgCache.has(key)) return Promise.resolve();
-  // Reserve the slot first so concurrent calls don't double-render.
-  mermaidSvgCache.set(key, { svg: null, error: null });
-  const job = (async () => {
-    try {
-      const id = `cm-mmd-${++mermaidIdSeq}`;
-      const mermaid = await initMermaid({
-        startOnLoad: false,
-        securityLevel: 'strict',
-        theme,
-      });
-      const { svg, bindFunctions } = await mermaid.render(id, source);
-      mermaidSvgCache.set(key, { svg, bindFunctions, error: null });
-    } catch (e) {
-      mermaidSvgCache.set(key, { svg: null, error: (e as Error).message });
-    } finally {
-      mermaidInflight.delete(key);
-    }
-  })();
-  mermaidInflight.set(key, job);
-  return job;
-}
+// #522 — the SVG cache and the serial render queue now live in mermaid-lazy,
+// shared with the preview pane. This module used to own a private cache AND
+// kick off a render for every mermaid fence while building decorations over
+// the whole document: opening a note with 50 diagrams started 50 concurrent
+// CPU-bound renders and, worse, each completion dispatched a full relayout
+// (i.e. 50 more full-document decoration builds). Renders now start only
+// from `MermaidWidget.toDOM()`, which CodeMirror calls for visible blocks,
+// so off-screen diagrams cost nothing until they scroll into view.
 
 // Pipe table heuristic: a header line, a separator (`---` / `:---:`), then
 // at least one body row. We don't try to parse the GFM grammar ourselves —
@@ -210,7 +180,10 @@ onRenderDepsChange(() => {
   } catch {}
 });
 
-function scheduleImageRelayout(): void {
+// #522 — coalesce relayout requests. Every finished mermaid render used to
+// dispatch its own event, so N diagrams triggered N full-document decoration
+// rebuilds; one timer collapses a burst into a single rebuild.
+function scheduleRelayout(): void {
   if (relayoutTimer) return;
   relayoutTimer = setTimeout(() => {
     relayoutTimer = null;
@@ -237,7 +210,7 @@ function trackImageHeights(root: HTMLElement): void {
       if (img.naturalWidth && img.naturalHeight) {
         imageNaturalSizes.set(img.src, { w: img.naturalWidth, h: img.naturalHeight });
       }
-      scheduleImageRelayout();
+      scheduleRelayout();
     };
     if (img.complete) {
       // Cache hit: `complete` is already true here, but the box gets its real
@@ -980,7 +953,7 @@ class MermaidWidget extends WidgetType {
     this.source = source;
     this.theme = theme;
     this.filePath = filePath;
-    const cached = mermaidSvgCache.get(mermaidKey(source, theme));
+    const cached = peekMermaidSvg(theme, source);
     this.settled = !!(cached && (cached.svg || cached.error));
   }
 
@@ -999,7 +972,7 @@ class MermaidWidget extends WidgetType {
   toDOM(): HTMLElement {
     const wrap = document.createElement('div');
     wrap.className = 'cm-live-block cm-live-block--mermaid';
-    const cached = mermaidSvgCache.get(mermaidKey(this.source, this.theme));
+    const cached = peekMermaidSvg(this.theme, this.source);
     if (cached?.svg) {
       wrap.innerHTML = cached.svg;
       bindMermaidInteractions(wrap, cached.bindFunctions);
@@ -1014,14 +987,16 @@ class MermaidWidget extends WidgetType {
       wrap.textContent = `Mermaid: ${cached.error}`;
     } else {
       wrap.textContent = '⌛ Rendering Mermaid…';
-      ensureMermaidRendered(this.source, this.theme).then(() => {
+      // Only widgets CodeMirror actually mounted reach toDOM(), so this is
+      // the viewport gate: off-screen diagrams are never queued. `front`
+      // keeps a freshly scrolled-into-view diagram ahead of any background
+      // work from the preview pane.
+      void renderMermaidCached(this.theme, this.source, { front: true }).then(() => {
         // Ask the field to recompute now that the SVG cache is filled. We
         // can't hold an EditorView here (block decorations live in a state
         // field, built without a view), so signal via a window event that
         // the companion relayout plugin turns into a `relayoutEffect`.
-        try {
-          window.dispatchEvent(new CustomEvent('solomd:cm-relayout'));
-        } catch {}
+        scheduleRelayout();
       });
     }
     return wrap;
@@ -1636,9 +1611,11 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
                 }
                 const blockFrom = doc.line(i).from;
                 const blockTo = doc.line(endI).to;
-                // Kick off async render outside the build loop.
+                // #522 — no render kick-off here. This loop covers the whole
+                // document (state fields have no viewport), so calling it
+                // once per fence meant every diagram rendered on open. The
+                // widget's toDOM() starts the render for visible blocks only.
                 const mermaidTheme = opts.getMermaidTheme?.() ?? 'default';
-                ensureMermaidRendered(body, mermaidTheme);
                 builder.add(
                   blockFrom,
                   blockTo,

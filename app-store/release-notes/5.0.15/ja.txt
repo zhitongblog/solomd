@@ -1,0 +1,6 @@
+SoloMD 5.0.15 の新機能：
+• Google Drive と Cloudflare R2 (S3) のネイティブ直接同期を追加。OneDrive、Dropbox、WebDAV、Baidu、Aliyun Drive でキー申請不要のワンクリック認証、ワークスペース専用フォルダ、カテゴリ別増分同期に対応。
+• クロスプラットフォームのスナップショット履歴管理（.solomd-sync/versions/）と 3 ウェイ競合保護、行単位 Diff 表示、ワンクリック復元を追加。
+• 「すべて保存」ショートカット（⌘⌥⇧S / Ctrl+Alt+Shift+S）とメニュー項目を追加。
+• ライブ編集でのフローティング表ツールバー、セル直接編集、崩れた Markdown 表の自動修復。
+• リスト継続入力、プレビュー切替時のスクロール位置同期、iPadOS の安定性を改善。

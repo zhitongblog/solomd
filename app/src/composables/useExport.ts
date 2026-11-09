@@ -19,7 +19,7 @@ import { renderMarkdown, extractImageRoot } from '../lib/markdown';
 import { loadRenderDeps } from '../lib/render-deps';
 // Tiny shim: the mermaid bundle itself stays behind a dynamic import inside
 // it, so touching this module costs nothing at startup.
-import { initMermaid } from '../lib/mermaid-lazy';
+import { renderMermaidCached } from '../lib/mermaid-lazy';
 import { waitForPrintFonts } from '../lib/print-fonts';
 // Lazy like the three above: it carries KaTeX's stylesheet as a string and
 // is only needed when a note is actually exported to HTML.
@@ -185,10 +185,6 @@ function getEditorSelectionMd(content?: string): string | null {
   const text = sel.toString();
   return text.trim() ? text : null;
 }
-
-// Mermaid ids must be unique per render across the whole session — mermaid
-// keys internal state off them and reusing one yields an empty diagram.
-let printMermaidId = 0;
 
 export function useExport() {
   const tabs = useTabsStore();
@@ -380,28 +376,26 @@ export function useExport() {
   async function renderPrintMermaid(container: HTMLElement, dark: boolean) {
     const blocks = container.querySelectorAll('pre > code.language-mermaid');
     if (!blocks.length) return;   // no diagrams: never load the renderer
-    const mermaid = await initMermaid({
-      startOnLoad: false,
-      securityLevel: 'strict',
-      theme: dark ? 'dark' : 'default',
-    });
+    // #522 — shared serial queue + theme-keyed cache. `await` still waits
+    // for every diagram, so the native print sheet never sees a half-drawn
+    // overlay, but the UI stays responsive while they render.
+    const printThemeName = dark ? 'dark' : 'default';
     for (const block of Array.from(blocks)) {
       const pre = block.parentElement as HTMLElement | null;
       if (!pre) continue;
       const code = (block.textContent || '').trim();
-      const id = `print-mmd-${++printMermaidId}`;
-      try {
-        const { svg } = await mermaid.render(id, code);
+      const result = await renderMermaidCached(printThemeName, code);
+      if (result.svg) {
         const wrap = document.createElement('div');
         wrap.className = 'mermaid-block';
-        wrap.innerHTML = svg;
+        wrap.innerHTML = result.svg;
         pre.replaceWith(wrap);
-      } catch (e) {
+      } else {
         // A broken diagram must not abort the print — show the reason where
         // the diagram would have been, exactly like the Preview pane does.
         const err = document.createElement('pre');
         err.className = 'mermaid-error';
-        err.textContent = `Mermaid error: ${(e as Error).message}`;
+        err.textContent = `Mermaid error: ${result.error ?? 'unknown error'}`;
         pre.replaceWith(err);
       }
     }

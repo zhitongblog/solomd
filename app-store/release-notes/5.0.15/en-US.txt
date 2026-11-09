@@ -1,0 +1,6 @@
+SoloMD 5.0.15:
+• Added native Google Drive & Cloudflare R2 (S3) direct sync, and upgraded Baidu Netdisk, Aliyun Drive, OneDrive, Dropbox, and WebDAV with 1-click keyless browser OAuth, dedicated workspace folders, and categorized multi-file incremental sync.
+• Added cross-platform Snapshot Version History (.solomd-sync/versions/) with 3-way multi-device conflict protection, line-by-line diff viewer, and one-click restore.
+• Added a “Save All” shortcut (⌘⌥⇧S / Ctrl+Alt+Shift+S) and menu action.
+• Added a floating table toolbar, inline cell editing, and automatic repair for 6 types of malformed Markdown tables in Live Edit.
+• Fixed list continuation on Enter, exact viewport line alignment across Preview and Live Edit, and iPadOS launch stability.

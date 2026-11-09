@@ -1,0 +1,5 @@
+SoloMD 5.0.16:
+• Renderização inteligente sob demanda de diagramas Mermaid e cache SVG compartilhado (#522): abertura fluida em notas com muitos diagramas e preservação exata da posição de rolagem.
+• Subnavegação nas configurações de sincronização na nuvem (#524): abas dedicadas para API direta na nuvem, pasta local sincronizada, WebDAV e histórico de versões.
+• Reenvio automático ao ativar a criptografia por arquivo e recriação automática de pastas remotas excluídas.
+• Melhorias na entrada IME multilinha, continuação de listas (#521) e destaques no painel de sumário.

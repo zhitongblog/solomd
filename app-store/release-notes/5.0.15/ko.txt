@@ -1,0 +1,6 @@
+SoloMD 5.0.15 업데이트:
+• Google Drive 및 Cloudflare R2 (S3) 네이티브 직접 동기화 추가, OneDrive, Dropbox, WebDAV 등에서 키 발급 없이 원클릭 브라우저 인증, 워크스페이스 전용 폴더 및 카테고리별 증분 동기화 지원.
+• 크로스 플랫폼 스냅샷 버전 기록(.solomd-sync/versions/) 및 3-way 충돌 방지, 줄 단위 비교(Diff), 원클릭 복원 추가.
+• ‘모두 저장’ 단축키(⌘⌥⇧S / Ctrl+Alt+Shift+S) 및 메뉴 항목 추가.
+• 실시간 편집 모드의 플로팅 표 툴바, 셀 직접 편집 및 깨진 Markdown 표 자동 복구.
+• 목록 이어쓰기, 미리보기 전환 시 줄 위치 정렬 및 iPadOS 안정성 개선.

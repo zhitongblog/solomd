@@ -12,7 +12,7 @@
  */
 
 // @ts-ignore — html2pdf.js ships no types
-import { initMermaid } from './mermaid-lazy';
+import { renderMermaidCached } from './mermaid-lazy';
 import { sanitizeModernColors } from './export-colors';
 import { renderMarkdown, extractImageRoot } from './markdown';
 import { loadRenderDeps } from './render-deps';
@@ -220,30 +220,24 @@ const PDF_CSS = `
   }
 `;
 
-let mermaidId = 0;
-
 async function processMermaidBlocks(container: HTMLElement) {
   const blocks = container.querySelectorAll('pre > code.language-mermaid');
   if (!blocks.length) return;   // no diagrams: never pay for the renderer
-  const mermaid = await initMermaid({
-    startOnLoad: false,
-    securityLevel: 'strict',
-    theme: 'default',
-  });
+  // #522 — share the preview's serial queue and theme+source cache. Export
+  // containers are detached, so no isConnected guard here.
   for (const block of Array.from(blocks)) {
     const pre = block.parentElement as HTMLElement | null;
     if (!pre) continue;
     const code = (block.textContent || '').trim();
-    const id = `pdf-mmd-${++mermaidId}`;
-    try {
-      const { svg } = await mermaid.render(id, code);
+    const result = await renderMermaidCached('default', code);
+    if (result.svg) {
       const wrap = document.createElement('div');
       wrap.className = 'mermaid-block';
-      wrap.innerHTML = svg;
+      wrap.innerHTML = result.svg;
       pre.replaceWith(wrap);
-    } catch (e) {
+    } else {
       const err = document.createElement('pre');
-      err.textContent = `Mermaid error: ${(e as Error).message}`;
+      err.textContent = `Mermaid error: ${result.error ?? 'unknown error'}`;
       pre.replaceWith(err);
     }
   }

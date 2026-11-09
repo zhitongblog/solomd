@@ -1,0 +1,5 @@
+SoloMD 5.0.16:
+• Leniwe renderowanie diagramów Mermaid i współdzielona pamięć podręczna SVG (#522): płynne otwieranie notatek z wieloma diagramami oraz zachowanie pozycji przewijania.
+• Podnawigacja w ustawieniach synchronizacji w chmurze (#524): osobne karty dla bezpośredniego API chmury, folderu lokalnego, WebDAV i historii wersji.
+• Automatyczne ponowne przesyłanie po włączeniu szyfrowania plików oraz odtwarzanie usuniętych folderów zdalnych.
+• Poprawki wprowadzania wielowierszowych fraz IME, kontynuacji list (#521) oraz wyróżnień w panelu konspektu.

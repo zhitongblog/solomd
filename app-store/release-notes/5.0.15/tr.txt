@@ -1,0 +1,6 @@
+SoloMD 5.0.15:
+• Google Drive ve Cloudflare R2 (S3) doğrudan senkronizasyonu; OneDrive, Dropbox ve WebDAV için tek tıkla OAuth yetkilendirmesi, çalışma alanına özel klasörler ve kategorili artımlı senkronizasyon.
+• 3 yönlü çakışma koruması, satır farkı görünümü ve tek tıkla geri yükleme içeren anlık görüntü sürüm geçmişi (.solomd-sync/versions/).
+• Yeni "Tümünü Kaydet" kısayolu (⌘⌥⇧S / Ctrl+Alt+Shift+S) ve menü eylemi.
+• Yüzen tablo araç çubuğu, doğrudan hücre düzenleme ve bozuk Markdown tablolarını otomatik onarma.
+• Liste devamı, önizleme hizalaması ve iPadOS kararlılığı iyileştirmeleri.

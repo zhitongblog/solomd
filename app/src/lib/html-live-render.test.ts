@@ -6,6 +6,8 @@ import {
   findInlineHtmlSpans,
   findMarkSpans,
   maskInlineCode,
+  parseOutlineSegments,
+  stripOutlineFormatting,
 } from './html-live-render.ts';
 
 test('==mark== 高亮:识别、跳过内联代码、拒绝无效形态', () => {
@@ -70,3 +72,17 @@ test('inline HTML 属性和常用语义标签', () => {
     ['mark', 'underline', 'kbd'],
   );
 });
+
+test('大纲标题高亮片段解析支持 ==高亮== 与 <mark> 标签，并忽略行内代码中的等号', () => {
+  assert.deepEqual(parseOutlineSegments('第一章 ==重点内容== 总结'), [
+    { text: '第一章 ', mark: false },
+    { text: '重点内容', mark: true },
+    { text: ' 总结', mark: false },
+  ]);
+  assert.deepEqual(parseOutlineSegments('比较 `a == b` 与 <mark>核心结论</mark>'), [
+    { text: '比较 `a == b` 与 ', mark: false },
+    { text: '核心结论', mark: true },
+  ]);
+  assert.equal(stripOutlineFormatting('第一章 ==重点内容== 与 <mark>结论</mark>'), '第一章 重点内容 与 结论');
+});
+

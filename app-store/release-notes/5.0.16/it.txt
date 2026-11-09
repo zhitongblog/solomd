@@ -1,0 +1,5 @@
+SoloMD 5.0.16:
+• Rendering Mermaid lazy basato sulla vista e cache SVG condivisa (#522): apertura fluida anche con decine di diagrammi e mantenimento della posizione di scorrimento.
+• Navigazione secondaria nelle impostazioni di sincronizzazione cloud (#524): schede dedicate per API Cloud diretta, cartella locale, WebDAV e cronologia versioni.
+• Ricaricamento automatico all’attivazione della crittografia per singolo file e ricreazione delle cartelle remote eliminate.
+• Miglioramenti per input IME multiriga, elenchi (#521) ed evidenziazioni nel pannello Struttura.

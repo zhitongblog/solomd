@@ -14,6 +14,13 @@ import { numberEquations } from './equations';
 import { parseImageAltSize } from './md-image-url';
 import { sanitizeRenderedHtml } from './sanitize-html';
 import { getHljs, getKatex } from './render-deps';
+import {
+  parseOutlineSegments,
+  stripOutlineFormatting,
+  type OutlineSegment,
+} from './html-live-render';
+
+export { parseOutlineSegments, stripOutlineFormatting, type OutlineSegment };
 
 // NOTE: `@hedgedoc/markdown-it-task-lists` is installed but unusable here —
 // its compiled ESM entry does `import Token from 'markdown-it/lib/token.js'`

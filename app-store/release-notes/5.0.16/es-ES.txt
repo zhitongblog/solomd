@@ -1,0 +1,5 @@
+SoloMD 5.0.16:
+• Renderizado perezoso de diagramas Mermaid y caché SVG compartida (#522): los diagramas se renderizan bajo demanda al entrar en la vista sin bloquear la interfaz y conservando la posición exacta de desplazamiento.
+• Subnavegación secundaria en los ajustes de sincronización en la nube (#524): pestañas organizadas para API directa en la nube, carpeta sincronizada local, WebDAV e historial de versiones.
+• Reenvío al activar el cifrado por archivo y recreación automática de carpetas remotas en Baidu Netdisk.
+• Mejoras de IME y Esquema: entrada de frases IME multilínea, continuación de listas (#521) y resaltados en el panel de esquema.

@@ -1,0 +1,5 @@
+SoloMD 5.0.16:
+• Verzögertes Mermaid-Rendering nach Sichtbereich & gemeinsamer SVG-Cache (#522): Diagramme werden seriell bei Bedarf gerendert, ohne die Oberfläche bei großen Notizen zu blockieren, und die Scrollposition bleibt exakt erhalten.
+• Untermenü-Navigation für Cloud-Sync-Einstellungen (#524): übersichtliche Registerkarten für Direkt-Cloud-API, lokalen Sync-Ordner, WebDAV und Versionsverlauf.
+• Einzeldatei-Verschlüsselung & Ordner-Wiederherstellung: beim Umschalten der Ende-zu-Ende-Verschlüsselung werden unveränderte Dateien automatisch neu verschlüsselt hochgeladen.
+• Eingabemethoden- & Gliederungs-Verbesserungen: mehrzeilige IME-Textbausteine, Listenfortsetzung (#521) und Hervorhebungen in der Gliederung.

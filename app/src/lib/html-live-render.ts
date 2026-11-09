@@ -159,3 +159,51 @@ export function findInlineHtmlSpans(line: string): LiveInlineHtmlSpan[] {
   }
   return spans;
 }
+
+export interface OutlineSegment {
+  text: string;
+  mark: boolean;
+}
+
+/**
+ * Split an outline heading into plain and highlighted (`==...==` or
+ * `<mark>...</mark>`) segments while keeping inline-code spans untouched.
+ */
+export function parseOutlineSegments(text: string): OutlineSegment[] {
+  if (!text) return [];
+  const masked = maskInlineCode(text);
+  const spans: Array<{ openFrom: number; contentFrom: number; contentTo: number; closeTo: number }> = [
+    ...findMarkSpans(masked),
+    ...findInlineHtmlSpans(masked).filter((s) => s.kind === 'mark'),
+  ].sort((a, b) => a.openFrom - b.openFrom);
+
+  if (spans.length === 0) {
+    return [{ text, mark: false }];
+  }
+
+  const out: OutlineSegment[] = [];
+  let cursor = 0;
+  for (const span of spans) {
+    if (span.openFrom < cursor) continue;
+    if (span.openFrom > cursor) {
+      out.push({ text: text.slice(cursor, span.openFrom), mark: false });
+    }
+    const inner = text.slice(span.contentFrom, span.contentTo);
+    if (inner) {
+      out.push({ text: inner, mark: true });
+    }
+    cursor = span.closeTo;
+  }
+  if (cursor < text.length) {
+    out.push({ text: text.slice(cursor), mark: false });
+  }
+  return out;
+}
+
+/** Plain-text label for outline tooltips (`==高亮==` / `<mark>高亮</mark>` → `高亮`). */
+export function stripOutlineFormatting(text: string): string {
+  return parseOutlineSegments(text)
+    .map((s) => s.text)
+    .join('');
+}
+

@@ -1,0 +1,6 @@
+SoloMD 5.0.15 :
+• Synchronisation directe native avec Google Drive et Cloudflare R2 (S3), autorisation OAuth en un clic, dossiers dédiés par espace de travail et synchronisation incrémentielle catégorisée pour OneDrive, Dropbox et WebDAV.
+• Historique des versions par instantanés (.solomd-sync/versions/) avec protection contre les conflits à 3 voies, comparateur de différences et restauration en un clic.
+• Nouveau raccourci et action de menu « Tout enregistrer » (⌘⌥⇧S / Ctrl+Alt+Maj+S).
+• Barre d’outils flottante pour les tableaux, édition directe des cellules et réparation automatique des tableaux Markdown mal formés.
+• Améliorations de la continuation des listes, de l’alignement d’aperçu et de la stabilité sur iPadOS.

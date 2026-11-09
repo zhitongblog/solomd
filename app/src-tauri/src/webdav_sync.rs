@@ -1418,17 +1418,21 @@ pub async fn webdav_push_workspace(
             .and_then(|m| m.files.get(&rel))
             .map(|e| e.sha256.as_str());
 
+        let mut stale_remote_rel: Option<String> = None;
         if let Some(prev) = folder_manifest.files.get(&rel) {
             if prev.sha256 == sha && prev.remote_rel == remote_rel && prev.encrypted == use_encryption {
                 new_files_map.insert(rel.clone(), prev.clone());
                 skipped += 1;
                 continue;
             }
-            if base_sha == Some(sha.as_str()) {
+            if prev.remote_rel == remote_rel && prev.encrypted == use_encryption && base_sha == Some(sha.as_str()) {
                 // Local file was NOT modified on this device since last sync, while another device updated WebDAV
                 new_files_map.insert(rel.clone(), prev.clone());
                 skipped += 1;
                 continue;
+            }
+            if prev.remote_rel != remote_rel {
+                stale_remote_rel = Some(prev.remote_rel.clone());
             }
             let _ = save_local_version_snapshot(&ws_path, &rel, &plain_bytes, "WebDAV 同步快照", max_v);
         } else {
@@ -1470,6 +1474,14 @@ pub async fn webdav_push_workspace(
         }
         if !(200..300).contains(&code) {
             return Err(format!("Upload failed for {remote_rel} (HTTP {code})"));
+        }
+        if let Some(old_rel) = stale_remote_rel {
+            let old_url = build_target_url(&url, &target_remote, &old_rel);
+            let _ = client
+                .delete(&old_url)
+                .basic_auth(username.trim(), Some(password.as_str()))
+                .send()
+                .await;
         }
         new_files_map.insert(
             rel.clone(),
@@ -1998,10 +2010,17 @@ pub fn cloud_vault_push_options_inner(
             .and_then(|m| m.files.get(&rel))
             .map(|e| e.sha256.as_str());
 
+        let mut stale_remote_rel: Option<String> = None;
         if let Some(prev) = folder_manifest.files.get(&rel) {
+            if prev.remote_rel != remote_rel {
+                stale_remote_rel = Some(prev.remote_rel.clone());
+            }
             if prev.sha256 != sha {
                 // Multi-device three-way check:
-                if base_sha == Some(sha.as_str()) {
+                if prev.remote_rel == remote_rel
+                    && prev.encrypted == encrypted
+                    && base_sha == Some(sha.as_str())
+                {
                     // Local file was NOT modified on this device since last sync (`sha == base_sha`),
                     // while another device updated it on the cloud (`prev.sha256 != sha`).
                     // Fast-forward local file from cloud instead of overwriting cloud with stale local!
@@ -2103,6 +2122,12 @@ pub fn cloud_vault_push_options_inner(
         if !unchanged {
             std::fs::write(&target_file, &write_bytes)
                 .map_err(|e| format!("写入网盘文件 {remote_rel} 失败: {e}"))?;
+        }
+        if let Some(old_rel) = stale_remote_rel {
+            let old_file = target_root.join(&old_rel);
+            if old_file != target_file && old_file.is_file() {
+                let _ = std::fs::remove_file(old_file);
+            }
         }
 
         new_files_map.insert(
@@ -2963,26 +2988,7 @@ async fn baidu_upload_bundle(
     bundle: Vec<u8>,
 ) -> Result<(), String> {
     let (_, full_path) = build_cloud_remote_file_path("baidu", remote_dir);
-    let url = format!(
-        "https://d.pcs.baidu.com/rest/2.0/pcs/file?method=upload&access_token={}&path={}&ondup=overwrite",
-        percent_encode_segment(token),
-        percent_encode_segment(&full_path)
-    );
-    let part = reqwest::multipart::Part::bytes(bundle).file_name(BUNDLE_FILENAME);
-    let form = reqwest::multipart::Form::new().part("file", part);
-    let resp = client
-        .post(&url)
-        .header("User-Agent", "pan.baidu.com")
-        .multipart(form)
-        .send()
-        .await
-        .map_err(|e| format!("百度网盘上传请求失败: {e}"))?;
-    let status = resp.status();
-    let text = resp.text().await.unwrap_or_default();
-    if !status.is_success() || text.contains("\"error_code\"") {
-        return Err(format!("百度网盘上传失败 (HTTP {status}): {text}"));
-    }
-    Ok(())
+    baidu_upload_single_file(client, token, &full_path, bundle).await
 }
 
 async fn baidu_download_bundle(
@@ -3407,23 +3413,236 @@ async fn dropbox_download_bundle(
         .map_err(|e| format!("读取 Dropbox 加密包失败: {e}"))
 }
 
+/// Pure-Rust RFC 1321 MD5 digest (hex string) for Baidu Netdisk `xpan` `block_list`.
+pub(crate) fn md5_hex(data: &[u8]) -> String {
+    const S: [u32; 64] = [
+        7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22,
+        5,  9, 14, 20, 5,  9, 14, 20, 5,  9, 14, 20, 5,  9, 14, 20,
+        4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23,
+        6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21,
+    ];
+    const K: [u32; 64] = [
+        0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee,
+        0xf57c0faf, 0x4787c62a, 0xa8304613, 0xfd469501,
+        0x698098d8, 0x8b44f7af, 0xffff5bb1, 0x895cd7be,
+        0x6b901122, 0xfd987193, 0xa679438e, 0x49b40821,
+        0xf61e2562, 0xc040b340, 0x265e5a51, 0xe9b6c7aa,
+        0xd62f105d, 0x02441453, 0xd8a1e681, 0xe7d3fbc8,
+        0x21e1cde6, 0xc33707d6, 0xf4d50d87, 0x455a14ed,
+        0xa9e3e905, 0xfcefa3f8, 0x676f02d9, 0x8d2a4c8a,
+        0xfffa3942, 0x8771f681, 0x6d9d6122, 0xfde5380c,
+        0xa4beea44, 0x4bdecfa9, 0xf6bb4b60, 0xbebfbc70,
+        0x289b7ec6, 0xeaa127fa, 0xd4ef3085, 0x04881d05,
+        0xd9d4d039, 0xe6db99e5, 0x1fa27cf8, 0xc4ac5665,
+        0xf4292244, 0x432aff97, 0xab9423a7, 0xfc93a039,
+        0x655b59c3, 0x8f0ccc92, 0xffeff47d, 0x85845dd1,
+        0x6fa87e4f, 0xfe2ce6e0, 0xa3014314, 0x4e0811a1,
+        0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391,
+    ];
+
+    let mut a0: u32 = 0x67452301;
+    let mut b0: u32 = 0xefcdab89;
+    let mut c0: u32 = 0x98badcfe;
+    let mut d0: u32 = 0x10325476;
+
+    let bit_len = (data.len() as u64).wrapping_mul(8);
+    let mut msg = Vec::with_capacity(data.len() + 72);
+    msg.extend_from_slice(data);
+    msg.push(0x80);
+    while msg.len() % 64 != 56 {
+        msg.push(0);
+    }
+    msg.extend_from_slice(&bit_len.to_le_bytes());
+
+    for chunk in msg.chunks_exact(64) {
+        let mut m = [0u32; 16];
+        for (i, w) in chunk.chunks_exact(4).enumerate() {
+            m[i] = u32::from_le_bytes([w[0], w[1], w[2], w[3]]);
+        }
+        let (mut a, mut b, mut c, mut d) = (a0, b0, c0, d0);
+        for i in 0..64 {
+            let (f, g) = match i {
+                0..=15 => ((b & c) | (!b & d), i),
+                16..=31 => ((d & b) | (!d & c), (5 * i + 1) % 16),
+                32..=47 => (b ^ c ^ d, (3 * i + 5) % 16),
+                _ => (c ^ (b | !d), (7 * i) % 16),
+            };
+            let temp = d;
+            d = c;
+            c = b;
+            b = b.wrapping_add(
+                a.wrapping_add(f)
+                    .wrapping_add(K[i])
+                    .wrapping_add(m[g])
+                    .rotate_left(S[i]),
+            );
+            a = temp;
+        }
+        a0 = a0.wrapping_add(a);
+        b0 = b0.wrapping_add(b);
+        c0 = c0.wrapping_add(c);
+        d0 = d0.wrapping_add(d);
+    }
+
+    let mut out = [0u8; 16];
+    out[0..4].copy_from_slice(&a0.to_le_bytes());
+    out[4..8].copy_from_slice(&b0.to_le_bytes());
+    out[8..12].copy_from_slice(&c0.to_le_bytes());
+    out[12..16].copy_from_slice(&d0.to_le_bytes());
+    super::crypto::hex_encode(&out)
+}
+
+async fn baidu_delete_remote_file(
+    client: &reqwest::Client,
+    token: &str,
+    full_remote_path: &str,
+) {
+    let filelist = serde_json::json!([full_remote_path]).to_string();
+    let url = format!(
+        "https://pan.baidu.com/rest/2.0/xpan/file?method=filemanager&opera=delete&access_token={}",
+        percent_encode_segment(token)
+    );
+    let _ = client
+        .post(&url)
+        .header("User-Agent", "pan.baidu.com")
+        .form(&[("async", "1"), ("filelist", filelist.as_str())])
+        .send()
+        .await;
+}
+
+/// Official Baidu Netdisk `xpan` 3-step upload (`precreate` -> `pcs/superfile2` -> `create`).
+/// Automatically creates parent directories when `rtype=3` is set, and uses an ASCII
+/// multipart filename (`"upload.bin"`) so non-ASCII or `.enc` paths never fail on PCS nodes.
+async fn baidu_xpan_upload_file(
+    client: &reqwest::Client,
+    token: &str,
+    full_remote_path: &str,
+    bytes: &[u8],
+) -> Result<(), String> {
+    const CHUNK_SIZE: usize = 4 * 1024 * 1024;
+    let chunks: Vec<&[u8]> = if bytes.is_empty() {
+        vec![&[][..]]
+    } else {
+        bytes.chunks(CHUNK_SIZE).collect()
+    };
+    let block_md5s: Vec<String> = chunks.iter().map(|c| md5_hex(c)).collect();
+    let block_list_json = serde_json::to_string(&block_md5s).unwrap_or_else(|_| "[]".to_string());
+    let size_str = bytes.len().to_string();
+
+    let precreate_url = format!(
+        "https://pan.baidu.com/rest/2.0/xpan/file?method=precreate&access_token={}",
+        percent_encode_segment(token)
+    );
+    let pre_resp = client
+        .post(&precreate_url)
+        .header("User-Agent", "pan.baidu.com")
+        .form(&[
+            ("path", full_remote_path),
+            ("size", size_str.as_str()),
+            ("isdir", "0"),
+            ("autoinit", "1"),
+            ("rtype", "3"),
+            ("block_list", block_list_json.as_str()),
+        ])
+        .send()
+        .await
+        .map_err(|e| format!("百度网盘 precreate {full_remote_path} 失败: {e}"))?;
+    let pre_json: serde_json::Value = pre_resp
+        .json()
+        .await
+        .map_err(|e| format!("解析百度网盘 precreate 响应失败: {e}"))?;
+    let pre_errno = pre_json.get("errno").and_then(|v| v.as_i64()).unwrap_or(-1);
+    if pre_errno != 0 {
+        return Err(format!(
+            "百度网盘 precreate {full_remote_path} 失败 (errno={pre_errno}): {pre_json}"
+        ));
+    }
+    let uploadid = pre_json
+        .get("uploadid")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+
+    for (partseq, chunk) in chunks.iter().enumerate() {
+        let superfile_url = format!(
+            "https://d.pcs.baidu.com/rest/2.0/pcs/superfile2?method=upload&access_token={}&type=tmpfile&path={}&uploadid={}&partseq={partseq}",
+            percent_encode_segment(token),
+            percent_encode_segment(full_remote_path),
+            percent_encode_segment(&uploadid),
+        );
+        let part = reqwest::multipart::Part::bytes(chunk.to_vec()).file_name("upload.bin");
+        let form = reqwest::multipart::Form::new().part("file", part);
+        let up_resp = client
+            .post(&superfile_url)
+            .header("User-Agent", "pan.baidu.com")
+            .multipart(form)
+            .send()
+            .await
+            .map_err(|e| format!("百度网盘分片上传 {full_remote_path} 失败: {e}"))?;
+        let up_status = up_resp.status();
+        let up_text = up_resp.text().await.unwrap_or_default();
+        if !up_status.is_success() || up_text.contains("\"error_code\"") {
+            return Err(format!(
+                "百度网盘分片上传 {full_remote_path} 失败 (HTTP {up_status}): {up_text}"
+            ));
+        }
+    }
+
+    let create_url = format!(
+        "https://pan.baidu.com/rest/2.0/xpan/file?method=create&access_token={}",
+        percent_encode_segment(token)
+    );
+    let create_resp = client
+        .post(&create_url)
+        .header("User-Agent", "pan.baidu.com")
+        .form(&[
+            ("path", full_remote_path),
+            ("size", size_str.as_str()),
+            ("isdir", "0"),
+            ("rtype", "3"),
+            ("uploadid", uploadid.as_str()),
+            ("block_list", block_list_json.as_str()),
+        ])
+        .send()
+        .await
+        .map_err(|e| format!("百度网盘 create {full_remote_path} 失败: {e}"))?;
+    let create_json: serde_json::Value = create_resp
+        .json()
+        .await
+        .map_err(|e| format!("解析百度网盘 create 响应失败: {e}"))?;
+    let create_errno = create_json.get("errno").and_then(|v| v.as_i64()).unwrap_or(-1);
+    if create_errno != 0 {
+        return Err(format!(
+            "百度网盘创建文件 {full_remote_path} 失败 (errno={create_errno}): {create_json}"
+        ));
+    }
+    Ok(())
+}
+
 async fn baidu_upload_single_file(
     client: &reqwest::Client,
     token: &str,
     full_remote_path: &str,
     bytes: Vec<u8>,
 ) -> Result<(), String> {
-    let file_name = Path::new(full_remote_path)
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("file.md")
-        .to_string();
+    // Prefer official xpan 3-step upload (precreate -> superfile2 -> create), which
+    // reliably creates any deleted/missing parent directories (such as `/apps/SoloMD/<工作区>`)
+    // and supports `.enc` files of any size; fall back to direct PCS upload if needed.
+    if baidu_xpan_upload_file(client, token, full_remote_path, &bytes)
+        .await
+        .is_ok()
+    {
+        return Ok(());
+    }
+
     let url = format!(
         "https://d.pcs.baidu.com/rest/2.0/pcs/file?method=upload&access_token={}&path={}&ondup=overwrite",
         percent_encode_segment(token),
         percent_encode_segment(full_remote_path)
     );
-    let part = reqwest::multipart::Part::bytes(bytes).file_name(file_name);
+    // Always use an ASCII filename in the multipart Content-Disposition header;
+    // Baidu PCS uses the `path=` query parameter for the actual destination path.
+    let part = reqwest::multipart::Part::bytes(bytes).file_name("upload.bin");
     let form = reqwest::multipart::Form::new().part("file", part);
     let resp = client
         .post(&url)
@@ -3434,7 +3653,11 @@ async fn baidu_upload_single_file(
         .map_err(|e| format!("百度网盘上传 {full_remote_path} 失败: {e}"))?;
     let status = resp.status();
     let text = resp.text().await.unwrap_or_default();
-    if !status.is_success() || text.contains("\"error_code\"") {
+    let errno = serde_json::from_str::<serde_json::Value>(&text)
+        .ok()
+        .and_then(|v| v.get("errno").and_then(|e| e.as_i64()))
+        .unwrap_or(0);
+    if !status.is_success() || text.contains("\"error_code\"") || errno != 0 {
         return Err(format!("百度网盘上传 {full_remote_path} 失败 (HTTP {status}): {text}"));
     }
     Ok(())
@@ -3582,10 +3805,20 @@ async fn baidu_push_folder(
         }
     };
 
+    let local_base = read_local_base_manifest(workspace);
+
     // 2. Prepare encryption key if per-file encryption is enabled
     let enc_key: Option<[u8; 32]> = if encrypted {
         if let Some(ref vc) = manifest.vault_crypto {
             Some(unlock_vault_manifest(vc, passphrase)?)
+        } else if let Some(vc) = local_base
+            .as_ref()
+            .and_then(|m| m.vault_crypto.clone())
+            .filter(|vc| unlock_vault_manifest(vc, passphrase).is_ok())
+        {
+            let key = unlock_vault_manifest(&vc, passphrase)?;
+            manifest.vault_crypto = Some(vc);
+            Some(key)
         } else {
             let (vc, key) = create_vault_manifest(passphrase)?;
             manifest.vault_crypto = Some(vc);
@@ -3595,7 +3828,6 @@ async fn baidu_push_folder(
         None
     };
 
-    let local_base = read_local_base_manifest(workspace);
     let mut local_files = Vec::new();
     collect_local_files(workspace, workspace, &mut local_files);
 
@@ -3619,6 +3851,7 @@ async fn baidu_push_folder(
             .and_then(|m| m.files.get(&rel))
             .map(|e| e.sha256.as_str());
 
+        let mut stale_remote_full: Option<String> = None;
         // Check if unchanged in remote manifest
         if let Some(prev) = manifest.files.get(&rel) {
             if prev.sha256 == sha && prev.remote_rel == remote_rel && prev.encrypted == encrypted {
@@ -3626,7 +3859,10 @@ async fn baidu_push_folder(
                 skipped += 1;
                 continue;
             }
-            if base_sha == Some(sha.as_str()) {
+            if prev.remote_rel == remote_rel
+                && prev.encrypted == encrypted
+                && base_sha == Some(sha.as_str())
+            {
                 // Local file was NOT modified on this device since last sync (`sha == base_sha`),
                 // while another device updated it on Baidu Netdisk (`prev.sha256 != sha`).
                 // Preserve the newer cloud version in manifest instead of overwriting it with stale local!
@@ -3634,7 +3870,7 @@ async fn baidu_push_folder(
                 skipped += 1;
                 continue;
             }
-            // Content changed: archive local snapshot & cloud-side copy before overwriting
+            // Content or encryption mode changed: archive local snapshot & cloud-side copy before overwriting
             let _ = save_local_version_snapshot(
                 workspace,
                 &rel,
@@ -3657,6 +3893,9 @@ async fn baidu_push_folder(
                 old_sha8,
             )
             .await;
+            if prev.remote_rel != remote_rel {
+                stale_remote_full = Some(old_remote_full);
+            }
         } else {
             let _ = save_local_version_snapshot(
                 workspace,
@@ -3675,6 +3914,9 @@ async fn baidu_push_folder(
 
         let remote_full_path = format!("{ws_remote_root}/{remote_rel}");
         baidu_upload_single_file(client, token, &remote_full_path, upload_bytes).await?;
+        if let Some(old_full) = stale_remote_full {
+            baidu_delete_remote_file(client, token, &old_full).await;
+        }
 
         new_files_map.insert(
             rel.clone(),
@@ -3709,11 +3951,11 @@ async fn baidu_push_folder(
     manifest.encrypted = encrypted;
     manifest.files = new_files_map;
 
-    write_local_base_manifest(workspace, &manifest);
     if let Ok(manifest_bytes) = serde_json::to_vec_pretty(&manifest) {
         let manifest_remote_path = format!("{ws_remote_root}/{SYNC_MANIFEST_REL}");
-        let _ = baidu_upload_single_file(client, token, &manifest_remote_path, manifest_bytes).await;
+        baidu_upload_single_file(client, token, &manifest_remote_path, manifest_bytes).await?;
     }
+    write_local_base_manifest(workspace, &manifest);
 
     let mode_label = if encrypted { "加密分类目录" } else { "分类目录" };
     Ok(WebdavSyncResult {
@@ -3751,21 +3993,25 @@ async fn baidu_pull_folder(
         None
     };
 
+    let local_base = read_local_base_manifest(workspace);
     let is_encrypted = manifest_opt
         .as_ref()
         .map(|m| m.encrypted)
         .unwrap_or(encrypted);
     let enc_key: Option<[u8; 32]> = if is_encrypted {
-        if let Some(vc) = manifest_opt.as_ref().and_then(|m| m.vault_crypto.as_ref()) {
+        if let Some(vc) = manifest_opt
+            .as_ref()
+            .and_then(|m| m.vault_crypto.as_ref())
+            .or_else(|| local_base.as_ref().and_then(|m| m.vault_crypto.as_ref()))
+        {
             Some(unlock_vault_manifest(vc, passphrase)?)
         } else {
-            return Err("远端网盘目录为加密模式，但未找到加密元数据 manifest.json".into());
+            None
         }
     } else {
         None
     };
 
-    let local_base = read_local_base_manifest(workspace);
     let mut remote_to_entry: BTreeMap<String, SyncFileManifestEntry> = BTreeMap::new();
     if let Some(ref m) = manifest_opt {
         for entry in m.files.values() {
@@ -4028,16 +4274,23 @@ async fn onedrive_push_folder(
             .and_then(|m| m.files.get(&rel))
             .map(|e| e.sha256.as_str());
 
+        let mut stale_remote_rel: Option<String> = None;
         if let Some(prev) = manifest.files.get(&rel) {
             if prev.sha256 == sha && prev.remote_rel == remote_rel && prev.encrypted == encrypted {
                 new_files_map.insert(rel.clone(), prev.clone());
                 skipped += 1;
                 continue;
             }
-            if base_sha == Some(sha.as_str()) {
+            if prev.remote_rel == remote_rel
+                && prev.encrypted == encrypted
+                && base_sha == Some(sha.as_str())
+            {
                 new_files_map.insert(rel.clone(), prev.clone());
                 skipped += 1;
                 continue;
+            }
+            if prev.remote_rel != remote_rel {
+                stale_remote_rel = Some(prev.remote_rel.clone());
             }
             let _ = save_local_version_snapshot(workspace, &rel, &plain_bytes, "OneDrive 同步快照", max_versions);
         }
@@ -4063,6 +4316,14 @@ async fn onedrive_push_folder(
             .map_err(|e| format!("OneDrive 上传 {remote_rel} 失败: {e}"))?;
         if !resp.status().is_success() {
             return Err(format!("OneDrive 上传 {remote_rel} 返回 HTTP {}", resp.status()));
+        }
+        if let Some(old_rel) = stale_remote_rel {
+            let old_full_rel = format!("{}/{}", ws_remote_root.trim_start_matches('/'), old_rel);
+            let del_url = format!(
+                "https://graph.microsoft.com/v1.0/me/drive/root:/{}",
+                encode_rel_segments(&old_full_rel)
+            );
+            let _ = client.delete(&del_url).bearer_auth(token).send().await;
         }
         new_files_map.insert(
             rel.clone(),
@@ -4301,16 +4562,23 @@ async fn dropbox_push_folder(
             .and_then(|m| m.files.get(&rel))
             .map(|e| e.sha256.as_str());
 
+        let mut stale_remote_rel: Option<String> = None;
         if let Some(prev) = manifest.files.get(&rel) {
             if prev.sha256 == sha && prev.remote_rel == remote_rel && prev.encrypted == encrypted {
                 new_files_map.insert(rel.clone(), prev.clone());
                 skipped += 1;
                 continue;
             }
-            if base_sha == Some(sha.as_str()) {
+            if prev.remote_rel == remote_rel
+                && prev.encrypted == encrypted
+                && base_sha == Some(sha.as_str())
+            {
                 new_files_map.insert(rel.clone(), prev.clone());
                 skipped += 1;
                 continue;
+            }
+            if prev.remote_rel != remote_rel {
+                stale_remote_rel = Some(prev.remote_rel.clone());
             }
             let _ = save_local_version_snapshot(workspace, &rel, &plain_bytes, "Dropbox 同步快照", max_versions);
         }
@@ -4339,6 +4607,15 @@ async fn dropbox_push_folder(
             .map_err(|e| format!("Dropbox 上传 {remote_rel} 失败: {e}"))?;
         if !resp.status().is_success() {
             return Err(format!("Dropbox 上传 {remote_rel} 返回 HTTP {}", resp.status()));
+        }
+        if let Some(old_rel) = stale_remote_rel {
+            let old_path = format!("{ws_remote_root}/{old_rel}");
+            let _ = client
+                .post("https://api.dropboxapi.com/2/files/delete_v2")
+                .bearer_auth(token)
+                .json(&serde_json::json!({ "path": old_path }))
+                .send()
+                .await;
         }
         new_files_map.insert(
             rel.clone(),
@@ -4710,7 +4987,10 @@ async fn alipan_push_folder(
                 skipped += 1;
                 continue;
             }
-            if base_sha == Some(sha.as_str()) {
+            if prev.remote_rel == remote_rel
+                && prev.encrypted == encrypted
+                && base_sha == Some(sha.as_str())
+            {
                 new_files_map.insert(rel.clone(), prev.clone());
                 skipped += 1;
                 continue;
@@ -5174,7 +5454,10 @@ async fn gdrive_push_folder(
                 skipped += 1;
                 continue;
             }
-            if base_sha == Some(sha.as_str()) {
+            if prev.remote_rel == remote_rel
+                && prev.encrypted == encrypted
+                && base_sha == Some(sha.as_str())
+            {
                 new_files_map.insert(rel.clone(), prev.clone());
                 skipped += 1;
                 continue;
@@ -5681,7 +5964,10 @@ async fn r2_push_folder(
                 skipped += 1;
                 continue;
             }
-            if base_sha == Some(sha.as_str()) {
+            if prev.remote_rel == remote_rel
+                && prev.encrypted == encrypted
+                && base_sha == Some(sha.as_str())
+            {
                 new_files_map.insert(rel.clone(), prev.clone());
                 skipped += 1;
                 continue;
@@ -6441,5 +6727,41 @@ mod tests {
                 info.auth_url
             );
         }
+    }
+
+    #[test]
+    fn toggling_encryption_and_deleting_remote_workspace_dir_reuploads_encrypted_files() {
+        // RFC 1321 MD5 test vectors for Baidu xpan block_list
+        assert_eq!(md5_hex(b""), "d41d8cd98f00b204e9800998ecf8427e");
+        assert_eq!(md5_hex(b"abc"), "900150983cd24fb0d6963f7d28e17f72");
+
+        let tmp = tempfile::tempdir().unwrap();
+        let ws = tmp.path().join("MyNotes");
+        let cloud_root = tmp.path().join("apps").join("SoloMD");
+        std::fs::create_dir_all(&ws).unwrap();
+        std::fs::create_dir_all(&cloud_root).unwrap();
+        std::fs::write(ws.join("secret.md"), "# 机密笔记\n不可明文外泄").unwrap();
+
+        // 1. Initial sync without encryption -> writes plaintext `笔记文档/secret.md`
+        let res_plain = cloud_vault_push_options_inner(&ws, &cloud_root, "", false, true, true, 5).unwrap();
+        assert_eq!(res_plain.uploaded, 1);
+        let ws_cloud = cloud_root.join("MyNotes");
+        assert!(ws_cloud.join("笔记文档/secret.md").is_file());
+
+        // 2. Enable encryption WITHOUT modifying local file -> MUST re-upload as `.md.enc` and remove plaintext `.md`!
+        let res_enc = cloud_vault_push_options_inner(&ws, &cloud_root, "my-strong-pass", true, true, true, 5).unwrap();
+        assert_eq!(res_enc.uploaded, 1);
+        assert!(ws_cloud.join("笔记文档/secret.md.enc").is_file());
+        assert!(!ws_cloud.join("笔记文档/secret.md").exists());
+
+        // 3. User deletes the workspace folder on cloud drive (`apps/SoloMD/MyNotes`), keeping `apps/SoloMD`,
+        //    and re-syncs with encryption enabled -> MUST recreate folder and upload `.md.enc` cleanly!
+        std::fs::remove_dir_all(&ws_cloud).unwrap();
+        assert!(cloud_root.is_dir());
+        let res_resync = cloud_vault_push_options_inner(&ws, &cloud_root, "my-strong-pass", true, true, true, 5).unwrap();
+        assert_eq!(res_resync.uploaded, 1);
+        assert!(ws_cloud.join("笔记文档/secret.md.enc").is_file());
+        let ct = std::fs::read(ws_cloud.join("笔记文档/secret.md.enc")).unwrap();
+        assert_eq!(&ct[..4], b"SLMD");
     }
 }

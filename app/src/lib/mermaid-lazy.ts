@@ -139,6 +139,159 @@ export async function initMermaid(config: MermaidConfig): Promise<SafeMermaid> {
 }
 
 /**
+ * #522 — end the current task so pending input events, frames and timers
+ * run before the next heavy chunk. An `await` on a resolved promise only
+ * pumps microtasks: the chain never returns to the task queue, so a note
+ * with dozens of diagrams starves input and rAF for its whole render burst.
+ *
+ * A `setTimeout(0)` macrotask is deliberate. Chromium's `scheduler.yield()`
+ * was tried first (including `priority: 'user-visible'`) but measured worse
+ * in the #522 harness: 7 rAF frames / 122 ms worst gap over 50 diagrams,
+ * versus 53 frames / 64 ms with the timer — its user-priority continuation
+ * keeps getting scheduled ahead of rendering. WebKit / WebView2 fall through
+ * to this same path anyway, so there is one behaviour everywhere.
+ */
+export function yieldToMain(): Promise<void> {
+  return new Promise((r) => setTimeout(r, 0));
+}
+
+/**
+ * #522 — a note with dozens of mermaid diagrams froze the UI for up to a
+ * minute on open: every surface that renders mermaid (the preview pane, the
+ * plain-block pass, and the live-edit decoration build) fired all of its
+ * renders at once, back to back. `mermaid.render` is CPU-bound JS on the
+ * main thread, and one `await` chain of already-resolved promises never
+ * hands control back to the task queue, so input and frames starve.
+ *
+ * This FIFO runs one render job at a time and yields between jobs, so the
+ * total CPU is unchanged but the loop stays interruptible. `front: true`
+ * puts viewport jobs in a separate FIFO ahead of the background fill while
+ * preserving their document order. The queue is page-wide on purpose: the
+ * preview pane and the live editor can be showing the same note, and letting
+ * them race their renders is exactly the burst this exists to prevent.
+ */
+type MermaidJob = () => Promise<void>;
+interface QueuedMermaidJob {
+  job: MermaidJob;
+  done: () => void;
+}
+const mermaidFrontQueue: QueuedMermaidJob[] = [];
+const mermaidBackQueue: QueuedMermaidJob[] = [];
+let mermaidDraining = false;
+
+async function drainMermaidQueue(): Promise<void> {
+  if (mermaidDraining) return;
+  mermaidDraining = true;
+  try {
+    while (mermaidFrontQueue.length || mermaidBackQueue.length) {
+      const queue = mermaidFrontQueue.length ? mermaidFrontQueue : mermaidBackQueue;
+      const { job, done } = queue.shift()!;
+      try {
+        await job();
+      } catch {
+        /* jobs own their error reporting */
+      }
+      done();
+      await yieldToMain();
+    }
+  } finally {
+    mermaidDraining = false;
+  }
+}
+
+/**
+ * Run `job` through the shared serial queue. Resolves once the job has run
+ * (so inflight-tracking callers can keep their "same render, one waiter"
+ * semantics). Errors inside the job do not reject this promise — the job
+ * itself is responsible for reporting them.
+ */
+export function queueMermaidJob(job: MermaidJob, opts: { front?: boolean } = {}): Promise<void> {
+  return new Promise<void>((resolve) => {
+    const entry = { job, done: resolve };
+    (opts.front ? mermaidFrontQueue : mermaidBackQueue).push(entry);
+    void drainMermaidQueue();
+  });
+}
+
+/* ---- #522 shared SVG cache ---------------------------------------------
+ * The live-edit widgets had their own cache in cm-live-blocks.ts; the
+ * preview pane had none, so split view rebuilt its HTML on every keystroke
+ * and re-rendered every diagram in the note each time. One page-wide cache
+ * keyed by (theme, source) means a diagram is drawn once for the whole
+ * window, by whichever surface asked first.
+ */
+export interface CachedMermaidSvg {
+  svg: string | null;
+  bindFunctions?: ((el: Element) => void) | null;
+  error: string | null;
+}
+
+type MermaidThemeName = 'dark' | 'default';
+const MERMAID_CACHE_LIMIT = 200;
+const mermaidSvgCache = new Map<string, CachedMermaidSvg>();
+const mermaidSvgInflight = new Map<string, Promise<CachedMermaidSvg>>();
+const mermaidCacheKey = (theme: string, code: string) => `${theme}\u0000${code}`;
+
+function storeMermaidSvg(key: string, value: CachedMermaidSvg): void {
+  // Re-insert so the Map's iteration order doubles as an eviction order.
+  mermaidSvgCache.delete(key);
+  mermaidSvgCache.set(key, value);
+  while (mermaidSvgCache.size > MERMAID_CACHE_LIMIT) {
+    const oldest = mermaidSvgCache.keys().next().value;
+    if (oldest === undefined) break;
+    mermaidSvgCache.delete(oldest);
+  }
+}
+
+/** Synchronous read for widgets that must decide placeholder vs finished SVG. */
+export function peekMermaidSvg(theme: MermaidThemeName, code: string): CachedMermaidSvg | undefined {
+  return mermaidSvgCache.get(mermaidCacheKey(theme, code));
+}
+
+/**
+ * Render `code` once, serialised through the queue, and resolve with the
+ * cached entry (an `error` entry instead of an SVG on failure). Concurrent
+ * callers for the same theme+source share one job, so a split view plus a
+ * live-edit pane never draws the same diagram twice.
+ *
+ * `initMermaid` is called *inside* the job on purpose: `initialize` is
+ * last-call-wins on mermaid's singleton, so configuring a theme while an
+ * earlier queued job is still waiting would render it in the wrong palette.
+ */
+export function renderMermaidCached(
+  theme: MermaidThemeName,
+  code: string,
+  opts: { front?: boolean } = {},
+): Promise<CachedMermaidSvg> {
+  const key = mermaidCacheKey(theme, code);
+  const hit = mermaidSvgCache.get(key);
+  if (hit && (hit.svg || hit.error)) return Promise.resolve(hit);
+  const pending = mermaidSvgInflight.get(key);
+  if (pending) return pending;
+  // Reserve the slot so a second caller doesn't start a duplicate render.
+  storeMermaidSvg(key, { svg: null, error: null });
+  const job = queueMermaidJob(async () => {
+    try {
+      const mermaid = await initMermaid({
+        startOnLoad: false,
+        securityLevel: 'strict',
+        theme,
+      });
+      const { svg, bindFunctions } = await mermaid.render(`mmd-${++renderSeq}`, code);
+      storeMermaidSvg(key, { svg, bindFunctions, error: null });
+    } catch (e) {
+      storeMermaidSvg(key, {
+        svg: null,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }, opts).then(() => mermaidSvgCache.get(key) ?? { svg: null, error: 'Mermaid render failed' });
+  mermaidSvgInflight.set(key, job);
+  void job.finally(() => mermaidSvgInflight.delete(key));
+  return job;
+}
+
+/**
  * #462 — Wire Mermaid interactive tooltips & click callbacks on a rendered
  * diagram container, and ensure SVG nodes with `[title]` attributes also have
  * a native `<svg:title>` child so browser hover tooltips work reliably across

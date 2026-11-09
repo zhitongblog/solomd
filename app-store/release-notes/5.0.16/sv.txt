@@ -1,0 +1,5 @@
+SoloMD 5.0.16:
+• Lazy-rendering av Mermaid-diagram och delad SVG-cache (#522): anteckningar med många diagram öppnas utan fördröjning och behåller exakt rullningsposition.
+• Undernavigering i inställningarna för molnsynkronisering (#524): tydliga flikar för direkt moln-API, lokal synkmapp, WebDAV och versionshistorik.
+• Automatisk återuppladdning vid aktivering av filkryptering och återskapande av borttagna fjärrmappar.
+• Förbättrad flerradig IME-inmatning, listfortsättning (#521) och markeringar i dispositionsvyn.

@@ -6,6 +6,7 @@ import {
   computeListContinuation,
   computeListSoftBreak,
   insideFence,
+  isLazyListContinuationLine,
   repairIndentedFenceEdit,
   type ListContinuationOptions,
 } from './list-continuation.ts';
@@ -77,6 +78,34 @@ test('Enter on an empty item ends the list', () => {
   assert.equal(enter('> - |'), '> |');
 });
 
+test('Enter on an empty nested list item outdents to the parent list level before exiting', () => {
+  // Unordered sublist under unordered parent → aligns to parent `- `, second Enter exits
+  const step1 = enter('- 一级\n  - 二级\n  - |')!;
+  assert.equal(step1, '- 一级\n  - 二级\n- |');
+  assert.equal(enter(step1), '- 一级\n  - 二级\n|');
+
+  // Unordered sublist under ordered parent → aligns to parent `2. ` and renumbers following sibling
+  const orderedParent = enter('1. 一级A\n   - 二级\n   - |\n2. 一级B')!;
+  assert.equal(orderedParent, '1. 一级A\n   - 二级\n2. |\n3. 一级B');
+  assert.equal(enter(orderedParent), '1. 一级A\n   - 二级\n|\n2. 一级B');
+
+  // Ordered sublist under ordered parent
+  assert.equal(enter('1. 一级\n   1. 二级\n   2. |'), '1. 一级\n   1. 二级\n2. |');
+
+  // 3-level nested list steps out one level at a time
+  const lvl3 = '1. L1\n   - L2\n     - L3\n     - |';
+  const toLvl2 = enter(lvl3)!;
+  assert.equal(toLvl2, '1. L1\n   - L2\n     - L3\n   - |');
+  const toLvl1 = enter(toLvl2)!;
+  assert.equal(toLvl1, '1. L1\n   - L2\n     - L3\n2. |');
+  assert.equal(enter(toLvl1), '1. L1\n   - L2\n     - L3\n|');
+
+  // Multi-level outline number (`1.1` → `2.`)
+  const multiNum = enter('1. 一级\n1.1 二级\n1.2 |')!;
+  assert.equal(multiNum, '1. 一级\n1.1 二级\n2. |');
+  assert.equal(enter(multiNum), '1. 一级\n1.1 二级\n|');
+});
+
 test('Enter in the middle of an item splits it into two items', () => {
   assert.equal(enter('- ab|cd'), '- ab\n- |cd');
 });
@@ -90,9 +119,39 @@ test('plain newline cases', () => {
   assert.equal(enter('|- item'), null, 'caret before the marker');
   assert.equal(enter('-| item'), null, 'caret inside the marker');
   assert.equal(enter('-not a list|'), null);
+  assert.equal(enter('2026 a year|'), null, 'bare integer without . or ) is not an ordered list');
   assert.equal(enter('2026. a year|').startsWith('2026. a year\n2027. '), true);
+  assert.equal(enter('>| '), '|', 'caret right after > on empty quote line exits quote');
   const t = 'x';
   assert.equal(computeListContinuation(t, 0, 1), null, 'a selection');
+});
+
+test('isLazyListContinuationLine detects unindented lazy continuation lines (#521)', () => {
+  const lazyOrdered = '1. 第一项\n懒续行|';
+  const c1 = lazyOrdered.indexOf('|');
+  assert.equal(
+    isLazyListContinuationLine(lazyOrdered.replace('|', ''), c1, c1),
+    true,
+  );
+  const lazyBullet = '- 第一项\n懒续行|';
+  const c2 = lazyBullet.indexOf('|');
+  assert.equal(
+    isLazyListContinuationLine(lazyBullet.replace('|', ''), c2, c2),
+    true,
+  );
+  const indentedCont = '1. 第一项\n   缩进续行|';
+  const c3 = indentedCont.indexOf('|');
+  assert.equal(
+    isLazyListContinuationLine(indentedCont.replace('|', ''), c3, c3),
+    false,
+    'indented continuation is handled by computeListContinuation',
+  );
+  const afterBlank = '1. 第一项\n\n普通段落|';
+  const c4 = afterBlank.indexOf('|');
+  assert.equal(
+    isLazyListContinuationLine(afterBlank.replace('|', ''), c4, c4),
+    false,
+  );
 });
 
 test('lines inside fenced code do not continue', () => {

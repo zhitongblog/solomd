@@ -9,7 +9,7 @@
 
 // html2pdf.js bundles html2canvas; we import it directly for image-only use.
 // @ts-ignore — no types
-import { initMermaid } from './mermaid-lazy';
+import { renderMermaidCached } from './mermaid-lazy';
 import { sanitizeModernColors } from './export-colors';
 import { renderMarkdown, extractImageRoot } from './markdown';
 import { loadRenderDeps } from './render-deps';
@@ -146,32 +146,25 @@ const IMAGE_CSS = `
   .img-footer .brand { color: #ff9f40; font-weight: 600; }
 `;
 
-let mermaidId = 0;
-
 async function processMermaidBlocks(container: HTMLElement) {
   const blocks = container.querySelectorAll('pre > code.language-mermaid');
   if (!blocks.length) return;
-  const mermaid = await initMermaid({
-    startOnLoad: false,
-    securityLevel: 'strict',
-    theme: 'default',
-  });
+  // #522 — shared serial queue + cache; the export container is detached.
   for (const block of Array.from(blocks)) {
     const pre = block.parentElement as HTMLElement | null;
     if (!pre) continue;
     const code = (block.textContent || '').trim();
-    const id = `img-mmd-${++mermaidId}`;
-    try {
-      const { svg } = await mermaid.render(id, code);
+    const result = await renderMermaidCached('default', code);
+    if (result.svg) {
       const wrap = document.createElement('div');
       wrap.className = 'mermaid-block';
-      wrap.innerHTML = svg;
+      wrap.innerHTML = result.svg;
       pre.replaceWith(wrap);
-    } catch (e) {
+    } else {
       // Say why where the diagram would have been, like Preview does.
       const err = document.createElement('pre');
       err.className = 'mermaid-error';
-      err.textContent = `Mermaid error: ${(e as Error).message}`;
+      err.textContent = `Mermaid error: ${result.error ?? 'unknown error'}`;
       pre.replaceWith(err);
     }
   }
