@@ -11,6 +11,7 @@ export type ViewMode = 'edit' | 'preview' | 'split' | 'liveEdit' | 'reading';
 export type Theme =
   | 'light'
   | 'dark'
+  | 'lucius'
   | 'nord'
   | 'solarized-light'
   | 'solarized-dark'

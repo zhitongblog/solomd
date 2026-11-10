@@ -15,11 +15,14 @@
  * `node --test` without a DOM.
  */
 import {
+  emptyTable,
+  insertRow,
   parseTable,
   serializeTable,
   setCell,
+  type TableAlign,
   type TableModel,
-} from './markdown-table';
+} from './markdown-table.ts';
 
 /** Row index used for the header line, matching `setCell`'s convention. */
 export const HEADER_ROW = -1;
@@ -47,7 +50,7 @@ export function normalizeCellInput(raw: string): string {
  * before and put back after, or committing a cell would yank the table out of
  * the list it lives in.
  */
-function commonIndent(source: string): string {
+export function commonIndent(source: string): string {
   let indent: string | null = null;
   for (const line of source.split('\n')) {
     if (!line.trim()) continue;
@@ -90,6 +93,37 @@ export function applyCellEdit(
 }
 
 /**
+ * Apply an optional cell edit on (row, col) and append a new empty row at the
+ * bottom of the table — used when pressing Tab on the last cell of the last
+ * row (Excel / Typora / NoteGen style).
+ */
+export function applyCellEditAndAppendRow(
+  source: string,
+  row: number,
+  col: number,
+  raw: string,
+): { markdown: string; nextRow: number; nextCol: number } | null {
+  const model = parseTable(source);
+  if (!model) return null;
+  const nextText = normalizeCellInput(raw);
+  const updated =
+    col >= 0 &&
+    col < model.header.length &&
+    (row === HEADER_ROW || (row >= 0 && row < model.rows.length))
+      ? setCell(model, row, col, nextText)
+      : model;
+  const nextRow = updated.rows.length;
+  const withRow = insertRow(updated, nextRow);
+  const markdown = serializeTable(withRow);
+  const indent = commonIndent(source);
+  return {
+    markdown: indent ? markdown.split('\n').map((line) => indent + line).join('\n') : markdown,
+    nextRow,
+    nextCol: 0,
+  };
+}
+
+/**
  * Where Tab / Shift+Tab land: reading order, header cells first, then body
  * rows. Returns null past either end — the caller leaves the table instead of
  * wrapping around, which would trap the keyboard inside the widget.
@@ -107,4 +141,49 @@ export function stepCell(
   const total = (model.rows.length + 1) * cols;
   if (flat < 0 || flat >= total) return null;
   return { row: Math.floor(flat / cols) - 1, col: flat % cols };
+}
+
+/**
+ * Where ArrowUp / ArrowDown / Enter / Shift+Enter land within the same column.
+ * Header row is -1, body rows are 0..rows.length-1. Returns null when stepping
+ * above the header or below the last body row.
+ */
+export function stepCellVertical(
+  model: TableModel,
+  row: number,
+  col: number,
+  delta: 1 | -1,
+): { row: number; col: number } | null {
+  const cols = model.header.length;
+  if (cols === 0 || col < 0 || col >= cols) return null;
+  const nextRow = row + delta;
+  if (nextRow < HEADER_ROW || nextRow >= model.rows.length) return null;
+  return { row: nextRow, col };
+}
+
+/**
+ * Build a Markdown table snippet with `totalRows` total rows (1 header row +
+ * `max(1, totalRows - 1)` body rows) and `cols` columns, with `$|$` caret
+ * marker placed in the first header cell.
+ */
+export function buildInsertTableSnippet(
+  totalRows: number,
+  cols: number,
+  align: TableAlign = null,
+): string {
+  const safeCols = Math.max(1, Math.min(20, Math.round(cols) || 3));
+  const safeTotalRows = Math.max(2, Math.min(100, Math.round(totalRows) || 3));
+  const bodyRows = Math.max(1, safeTotalRows - 1);
+  const model = emptyTable(safeCols, bodyRows);
+  if (align) {
+    model.aligns = new Array(safeCols).fill(align);
+  }
+  const raw = serializeTable(model);
+  // Place the `$|$` caret marker inside the first header cell so both raw and
+  // live-rendered editors focus cell (-1, 0) immediately after insertion.
+  const firstPipe = raw.indexOf('|');
+  if (firstPipe >= 0) {
+    return `\n| $|$${raw.slice(firstPipe + 2)}\n`;
+  }
+  return `\n${raw}\n`;
 }

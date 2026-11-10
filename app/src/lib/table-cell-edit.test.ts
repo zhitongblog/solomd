@@ -15,9 +15,12 @@ import assert from 'node:assert/strict';
 import {
   HEADER_ROW,
   applyCellEdit,
+  applyCellEditAndAppendRow,
+  buildInsertTableSnippet,
   cellText,
   normalizeCellInput,
   stepCell,
+  stepCellVertical,
 } from './table-cell-edit.ts';
 import { parseTable } from './markdown-table.ts';
 
@@ -108,4 +111,39 @@ test('Tab walks header then body cells and stops at the ends', () => {
   // Shift+Tab mirrors it, and the first cell exits instead of wrapping.
   assert.deepEqual(stepCell(model, 0, 0, -1), { row: HEADER_ROW, col: 1 });
   assert.deepEqual(stepCell(model, HEADER_ROW, 0, -1), null);
+});
+
+test('stepCellVertical moves within the same column and stops at top/bottom', () => {
+  const model = parseTable(SOURCE);
+  assert.ok(model);
+  assert.deepEqual(stepCellVertical(model, HEADER_ROW, 1, 1), { row: 0, col: 1 });
+  assert.deepEqual(stepCellVertical(model, 0, 1, 1), { row: 1, col: 1 });
+  assert.equal(stepCellVertical(model, 1, 1, 1), null);
+  assert.deepEqual(stepCellVertical(model, 1, 1, -1), { row: 0, col: 1 });
+  assert.deepEqual(stepCellVertical(model, 0, 1, -1), { row: HEADER_ROW, col: 1 });
+  assert.equal(stepCellVertical(model, HEADER_ROW, 1, -1), null);
+});
+
+test('applyCellEditAndAppendRow commits the active cell and appends a blank row', () => {
+  const res = applyCellEditAndAppendRow(SOURCE, 1, 1, 'four');
+  assert.ok(res);
+  assert.equal(res.nextRow, 2);
+  assert.equal(res.nextCol, 0);
+  const after = parseTable(res.markdown);
+  assert.ok(after);
+  assert.deepEqual(after.rows, [
+    ['1', '2'],
+    ['3', 'four'],
+    ['', ''],
+  ]);
+});
+
+test('buildInsertTableSnippet generates a custom rows × cols GFM table with $|$ in first header cell', () => {
+  const snippet = buildInsertTableSnippet(4, 3);
+  const clean = snippet.replace('$|$', '');
+  const parsed = parseTable(clean.trim());
+  assert.ok(parsed);
+  assert.equal(parsed.header.length, 3);
+  assert.equal(parsed.rows.length, 3); // 4 total rows = 1 header + 3 body rows
+  assert.ok(snippet.includes('| $|$'));
 });

@@ -516,6 +516,8 @@ export const tr: I18n = {
     solidCursor: 'Sabit imleç (yanıp sönme yok)',
     selectionBubble: "Seçili metnin üzerinde biçim çubuğu göster",
     selectionBubbleHint: "Canlı ve kaynak modunda seçimin hemen üstünde kalın, italik, kod, bağlantı, başlık ve liste düğmeleri. Her düğme kısayoluyla aynı komutu çalıştırır.",
+    formatBar: "Düzenleyicinin üstünde biçimlendirme araç çubuğunu göster",
+    formatBarHint: "Kalın, başlıklar, listeler, kod, bağlantılar, resimler, tablolar ve geri al, metnin üstünde tek satırda gruplanır. Yalnızca menüler ve kısayollarla çalışmak için kapatın.",
     alwaysShowMarkers: "Markdown işaretlerini her zaman göster",
     alwaysShowMarkersHint: "Düzenlerken #, ** ve diğer işaretler imleç olmayan satırlarda gizlenmek yerine soluk olarak görünür kalır. Biçimlendirme sürer ve bir satıra tıklamak artık onu kaydırmaz. Görseller kendi satırının altında görünür; tablolar, formüller ve diyagramlar kaynak olarak kalır. CodeMirror düzenleyicisi için geçerlidir.",
     highlightCurrentLine: "Geçerli satırı vurgula",
@@ -2126,6 +2128,15 @@ export const tr: I18n = {
     apply: 'Uygula',
     cancel: 'İptal',
   },
+  insertTableDialog: {
+    title: 'Tablo Ekle',
+    sizeSection: 'Tablo boyutu',
+    columns: 'Sütun',
+    rows: 'Satır',
+    note: 'Bu satırların üzerine bir başlık satırı eklenir.',
+    ok: 'Tamam',
+    cancel: 'İptal',
+  },
   tableToolbar: {
     label: "Table tools",
     rowAbove: "Insert row above",
@@ -2400,9 +2411,13 @@ export const tr: I18n = {
   formatBar: {
     label: "Biçimlendirme",
     heading: "Başlık",
+    headingTip: "Başlık — düzey seç",
     image: "Görsel ekle",
     undo: "Geri al",
+    redo: "Yinele",
     hideKeyboard: "Klavyeyi gizle",
+    tableTip: "Tablo — boyut seçmek için sürükleyin veya görsel düzenleyiciyi açın",
+    tableCustom: "Özel tablo… ({cols} × {rows})",
   },
   // 5.0 sidebar (Sidebar.vue, docs/v5-ui-spec.md §4)
   sidebar: {

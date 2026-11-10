@@ -311,6 +311,29 @@
   --syn-type: #8be9fd; --syn-property: #50fa7b; --syn-operator: #ff79c6;
 }
 
+/* ---- Lucius (Eye-Care / 护眼) (#358) ---- */
+:root[data-theme="lucius"] {
+  color-scheme: light;
+  --bg: #eef3eb;
+  --bg-elev: #e3ece0;
+  --bg-hover: rgba(40, 51, 40, 0.055);
+  --bg-active: rgba(40, 51, 40, 0.095);
+  --border: #cfd9ca;
+  --text: #283328;
+  --text-muted: #526352;
+  --text-faint: #7c8f7c;
+  --accent: #3a7d44;
+  --accent-fg: #ffffff;
+  --md-h1: #1f4e2c; --md-h2: #245330; --md-h3: #283328;
+  --md-h4: #374737; --md-h5: #4a5a4a; --md-h6: #526352;
+  --md-strong: #1e291e; --md-em: #283328; --md-link: #2b6cb0;
+  --md-url: #526352; --md-code: #2e6f40; --md-code-bg: #e3ece0;
+  --md-quote: #526352; --md-list: #3a7d44; --md-hr: #cfd9ca;
+  --syn-keyword: #2e6f40; --syn-string: #3b7a57; --syn-number: #8c5a2b;
+  --syn-comment: #7c8f7c; --syn-function: #2b5b84; --syn-variable: #283328;
+  --syn-type: #7a5c2e; --syn-property: #2b5b84; --syn-operator: #2e6f40;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -742,7 +765,7 @@ button:disabled {
 }
 
 mark {
-  background: rgba(255, 159, 64, 0.28);
+  background: var(--mark-bg, rgba(255, 212, 0, 0.52));
   color: inherit;
   padding: 0 0.18em;
   border-radius: 2px;

@@ -311,7 +311,7 @@ function pickViewMode(mode: ViewModeId) {
 }
 
 const formatItems: Array<{ kind: string; label: string; action: string }> = [
-  'bold', 'italic', 'strike', 'highlight', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'task',
+  'bold', 'italic', 'underline', 'strike', 'highlight', 'superscript', 'subscript', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'task',
 ].map((kind) => ({ kind, label: `cmd.fmt.${kind}`, action: `fmt.${kind}` }));
 const menuPos = ref<{ top: number; left?: number; right?: number } | null>(null);
 const floatStyle = computed<Record<string, string | number> | undefined>(() => {
@@ -420,6 +420,11 @@ async function pickAndInsertImage() {
 function openImageUrlDialog() {
   closeAllDropdowns();
   window.dispatchEvent(new CustomEvent('solomd:open-image-url-dialog'));
+}
+
+function openInsertTableDialog() {
+  closeAllDropdowns();
+  window.dispatchEvent(new CustomEvent('solomd:open-insert-table-dialog'));
 }
 
 function shortPath(p: string) {
@@ -655,10 +660,32 @@ function openByKey(name: DropdownName) {
   if (!dropdowns[name].open.value) toggleDropdown(name);
   void focusMenuItem('first');
 }
-const anyToolbarMenuOpen = computed(() => exportOpen.value || moreOpen.value);
-watch(anyToolbarMenuOpen, (v) => {
+const anyToolbarMenuOpen = computed(
+  () => exportOpen.value || moreOpen.value || pomoOpen.value || Boolean(menubarOpen.value),
+);
+let menuHistoryDepth = 0;
+let menuHistoryPopping = false;
+watch(anyToolbarMenuOpen, (v, old) => {
   window.dispatchEvent(new CustomEvent('solomd:toolbar-menu-state', { detail: v }));
+  if (v && !old) {
+    history.pushState({ solomdMenu: true }, '');
+    menuHistoryDepth++;
+  } else if (!v && old && menuHistoryDepth > 0 && !menuHistoryPopping && history.state?.solomdMenu) {
+    menuHistoryDepth--;
+    menuHistoryPopping = true;
+    history.back();
+  }
 });
+function onMenuPopState() {
+  if (menuHistoryPopping) {
+    menuHistoryPopping = false;
+    return;
+  }
+  if (menuHistoryDepth > 0) {
+    menuHistoryDepth--;
+    closeAllDropdowns();
+  }
+}
 watch(
   () => [menuPos.value, anyToolbarMenuOpen.value, menubarOpen.value],
   () => {
@@ -752,6 +779,7 @@ onMounted(() => {
   document.addEventListener('keydown', onEscapeKey, true);
   window.addEventListener('resize', onViewportChange);
   window.addEventListener('scroll', onScrollAnywhere, true);
+  window.addEventListener('popstate', onMenuPopState);
   // Android Back on the phone shell (App.vue) closes an open menu too.
   window.addEventListener('solomd:close-menus', closeAllDropdowns);
   // Two Toolbars exist on Windows; only the header answers these.
@@ -760,6 +788,7 @@ onMounted(() => {
   window.addEventListener('solomd:toolbar-ai-rewrite', onAIRewrite);
 });
 onBeforeUnmount(() => {
+  window.removeEventListener('popstate', onMenuPopState);
   window.removeEventListener('solomd:close-menus', closeAllDropdowns);
   document.removeEventListener('click', onDocClick, true);
   document.removeEventListener('keydown', onEscapeKey, true);
@@ -900,9 +929,14 @@ onBeforeUnmount(() => {
     </button>
 
     <!-- A single pane's tab strip is teleported in here (PaneHost.vue); with
-         a split, each pane keeps its own strip and this stays an empty,
-         draggable stretch of title bar. -->
-    <div id="header-tabs" class="toolbar__tabs" />
+         a split (or when separateTabBarRow is enabled), each pane keeps its
+         own strip and this stays an empty, draggable stretch of title bar. -->
+    <div id="header-tabs" class="toolbar__tabs">
+      <span
+        v-if="settings.separateTabBarRow && tiles.root.type === 'leaf'"
+        class="toolbar__doc-title"
+      >{{ activeTabDisplayTitle }}</span>
+    </div>
 
     <div
       v-if="isMarkdown && !settings.toolbarHidden"
@@ -1286,7 +1320,7 @@ onBeforeUnmount(() => {
                 <span class="dropdown__check"></span>
                 <span class="dropdown__name">{{ t('toolbar.insertMathInline') }}</span>
               </button>
-              <button class="dropdown__item dropdown__item--single" role="menuitem" tabindex="-1" @mousedown.prevent="dispatchInsert('\n| $|$ | Header |\n| --- | --- |\n| cell | cell |\n')">
+              <button class="dropdown__item dropdown__item--single" role="menuitem" tabindex="-1" @mousedown.prevent="openInsertTableDialog()">
                 <span class="dropdown__check"></span>
                 <span class="dropdown__name">{{ t('toolbar.insertTable') }}</span>
               </button>
@@ -1407,6 +1441,67 @@ onBeforeUnmount(() => {
   height: 100%;
   display: flex;
   align-items: center;
+}
+.toolbar__doc-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+  padding: 0 6px;
+}
+.fmt-bar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 34px;
+  padding: 2px 12px;
+  background: var(--bg-sidebar);
+  border-bottom: var(--bd-hair);
+  overflow-x: auto;
+  flex-shrink: 0;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.fmt-bar__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 26px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: default;
+  flex-shrink: 0;
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.fmt-bar__btn:hover {
+  background: var(--fill-1);
+  color: var(--text);
+}
+.fmt-bar__btn:active {
+  background: var(--fill-2);
+  color: var(--text);
+}
+.fmt-bar__btn--bold { font-weight: 700; }
+.fmt-bar__btn--italic { font-style: italic; font-family: Georgia, serif; }
+.fmt-bar__btn--underline { text-decoration: underline; }
+.fmt-bar__btn--strike { text-decoration: line-through; }
+.fmt-bar__btn--mono { font-family: var(--font-mono); font-size: 11px; }
+.fmt-bar__sep {
+  width: 1px;
+  height: 16px;
+  background: var(--hairline);
+  margin: 0 4px;
+  flex-shrink: 0;
 }
 .toolbar__actions {
   display: flex;

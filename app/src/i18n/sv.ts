@@ -516,6 +516,8 @@ export const sv: I18n = {
     solidCursor: 'Fast markör (utan blinkning)',
     selectionBubble: "Visa ett formatfält över markerad text",
     selectionBubbleHint: "Fetstil, kursiv, kod, länk, rubriker och listor direkt ovanför markeringen, i live- och källkodsläge. Varje knapp kör samma kommando som sitt kortkommando.",
+    formatBar: "Visa formateringsfältet ovanför redigeraren",
+    formatBarHint: "Fet, rubriker, listor, kod, länkar, bilder, tabeller och ångra, grupperade på en rad ovanför texten. Stäng av för att arbeta enbart med menyer och kortkommandon.",
     alwaysShowMarkers: "Visa alltid Markdown-tecken",
     alwaysShowMarkersHint: "#, ** och andra tecken förblir synliga (nedtonade) när du redigerar, i stället för att döljas på rader utan markör. Formateringen syns och ett klick på en rad får den inte längre att hoppa. Bilder visas under sin rad; tabeller, formler och diagram förblir källkod. Gäller CodeMirror-redigeraren.",
     highlightCurrentLine: "Markera aktuell rad",
@@ -2126,6 +2128,15 @@ export const sv: I18n = {
     apply: 'Tillämpa',
     cancel: 'Avbryt',
   },
+  insertTableDialog: {
+    title: 'Infoga tabell',
+    sizeSection: 'Tabellstorlek',
+    columns: 'Kolumner',
+    rows: 'Rader',
+    note: 'En rubrikrad läggs till ovanför dessa rader.',
+    ok: 'OK',
+    cancel: 'Avbryt',
+  },
   tableToolbar: {
     label: "Table tools",
     rowAbove: "Insert row above",
@@ -2400,9 +2411,13 @@ export const sv: I18n = {
   formatBar: {
     label: "Formatering",
     heading: "Rubrik",
+    headingTip: "Rubrik — välj nivå",
     image: "Infoga bild",
     undo: "Ångra",
+    redo: "Gör om",
     hideKeyboard: "Dölj tangentbord",
+    tableTip: "Tabell — dra för att välja storlek eller öppna den visuella redigeraren",
+    tableCustom: "Anpassad tabell… ({cols} × {rows})",
   },
   // 5.0 sidebar (Sidebar.vue, docs/v5-ui-spec.md §4)
   sidebar: {

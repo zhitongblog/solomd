@@ -230,6 +230,110 @@ function toggleTag(doc: string, from: number, to: number, tag: 'u' | 'sub' | 'su
   return { from: s, to: e, insert: open + inner + close, selFrom: s + open.length, selTo: e + open.length };
 }
 
+export interface HighlightSwatch {
+  id: string;
+  color: string;
+  labelZh: string;
+  labelEn: string;
+}
+
+export const HIGHLIGHT_COLOR_SWATCHES: HighlightSwatch[] = [
+  { id: 'yellow', color: '#fde047', labelZh: '明黄', labelEn: 'Yellow' },
+  { id: 'orange', color: '#fdba74', labelZh: '暖橙', labelEn: 'Orange' },
+  { id: 'green', color: '#86efac', labelZh: '翠绿', labelEn: 'Green' },
+  { id: 'blue', color: '#93c5fd', labelZh: '天蓝', labelEn: 'Blue' },
+  { id: 'purple', color: '#d8b4fe', labelZh: '浅紫', labelEn: 'Purple' },
+  { id: 'pink', color: '#fda4af', labelZh: '珊瑚粉', labelEn: 'Pink' },
+];
+
+/**
+ * Apply or toggle a colored `<mark style="background-color: ...">` or standard
+ * `==...==` highlight on `[from, to]`.
+ * - When `color` is `''`, toggles `==...==` (or unwraps an enclosing `<mark...>`).
+ * - When `color` is non-empty, wraps with `<mark style="background-color: ${color}">...</mark>`
+ *   (or unwraps if already wrapped in the exact same color, or replaces an
+ *   existing `<mark...>` / `==...==` wrapper).
+ */
+export function applyHighlightColor(doc: string, from: number, to: number, color: string): FormatEdit {
+  const a = Math.max(0, Math.min(from, to, doc.length));
+  const b = Math.max(0, Math.min(Math.max(from, to), doc.length));
+  const trimmedColor = color.trim();
+
+  // Check if the selection (or caret) is inside a single-line `<mark ...>...</mark>` span
+  const ls = a > 0 ? doc.lastIndexOf('\n', a - 1) + 1 : 0;
+  let le = doc.indexOf('\n', b);
+  if (le < 0) le = doc.length;
+  const line = doc.slice(ls, le);
+  const markRe = /<mark\b[^>]*>(.*?)<\/mark\s*>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = markRe.exec(line)) !== null) {
+    const spanStart = ls + m.index;
+    const spanEnd = spanStart + m[0].length;
+    const openLen = m[0].indexOf('>') + 1;
+    const closeLen = m[0].length - m[0].toLowerCase().lastIndexOf('</');
+    const contentStart = spanStart + openLen;
+    const contentEnd = spanEnd - closeLen;
+    if (
+      (a >= contentStart && b <= contentEnd) ||
+      (a === spanStart && b === spanEnd)
+    ) {
+      const inner = doc.slice(contentStart, contentEnd);
+      const openTag = m[0].slice(0, openLen);
+      if (!trimmedColor) {
+        return {
+          from: spanStart,
+          to: spanEnd,
+          insert: inner,
+          selFrom: spanStart,
+          selTo: spanStart + inner.length,
+        };
+      }
+      const nextOpen = `<mark style="background-color: ${trimmedColor}">`;
+      const nextClose = '</mark>';
+      if (openTag.toLowerCase() === nextOpen.toLowerCase()) {
+        return {
+          from: spanStart,
+          to: spanEnd,
+          insert: inner,
+          selFrom: spanStart,
+          selTo: spanStart + inner.length,
+        };
+      }
+      const nextInsert = `${nextOpen}${inner}${nextClose}`;
+      return {
+        from: spanStart,
+        to: spanEnd,
+        insert: nextInsert,
+        selFrom: spanStart + nextOpen.length,
+        selTo: spanStart + nextOpen.length + inner.length,
+      };
+    }
+  }
+
+  if (!trimmedColor) {
+    return applyFormat(doc, a, b, 'highlight');
+  }
+
+  let [s, e] = a === b ? textRun(doc, a, b) : targetRange(doc, a, b);
+  if (e - s >= 4 && doc.slice(s, s + 2) === '==' && doc.slice(e - 2, e) === '==') {
+    s += 2;
+    e -= 2;
+  }
+  const hasEqWrap = s >= 2 && e + 2 <= doc.length && doc.slice(s - 2, s) === '==' && doc.slice(e, e + 2) === '==';
+  const inner = doc.slice(s, e);
+  const open = `<mark style="background-color: ${trimmedColor}">`;
+  const close = '</mark>';
+  const replaceFrom = hasEqWrap ? s - 2 : s;
+  const replaceTo = hasEqWrap ? e + 2 : e;
+  return {
+    from: replaceFrom,
+    to: replaceTo,
+    insert: `${open}${inner}${close}`,
+    selFrom: replaceFrom + open.length,
+    selTo: replaceFrom + open.length + inner.length,
+  };
+}
+
 
 function toggleTagLines(doc: string, from: number, to: number, openTag: string, closeTag: string): FormatEdit {
   const ow = openTag.length;
@@ -866,6 +970,36 @@ export function listIndentEdit(doc: string, from: number, to: number, outdent: b
       fenceFirst < 0 ||
       (first !== fenceFirst && !(a === b && lines[first].start === fence[1] && lines[first].text.trim() === ''))
     ) {
+      // #110 / #159 — Tab / Shift+Tab on an empty or whitespace-only line
+      // directly under a list item indents to (or outdents from) the parent
+      // list item's content column so typing `- sub` or `1. sub` after Tab
+      // forms a valid CommonMark nested list.
+      if (!fence && first === last && /^[ ]*$/.test(lines[first].text)) {
+        const listIndent = enclosingListContentIndent(doc, lines[first].start);
+        if (listIndent) {
+          const curInd = lines[first].text.length;
+          if (!outdent && curInd < listIndent.length) {
+            const wantInd = listIndent.length;
+            return {
+              from: lines[first].start,
+              to: lines[first].end,
+              insert: ' '.repeat(wantInd),
+              selFrom: lines[first].start + wantInd,
+              selTo: lines[first].start + wantInd,
+            };
+          }
+          if (outdent && curInd > 0) {
+            const wantInd = curInd <= listIndent.length ? 0 : Math.max(0, curInd - 4);
+            return {
+              from: lines[first].start,
+              to: lines[first].end,
+              insert: ' '.repeat(wantInd),
+              selFrom: lines[first].start + wantInd,
+              selTo: lines[first].start + wantInd,
+            };
+          }
+        }
+      }
       return null;
     }
     const fenceLast = lines.findIndex((l) => fence[3] <= l.end);

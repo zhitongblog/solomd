@@ -169,6 +169,22 @@ defineProps<{ name: string; size?: number }>();
       <line x1="12" y1="5" x2="12" y2="19" />
       <line x1="5" y1="12" x2="19" y2="12" />
     </template>
+    <template v-else-if="name === 'list-bullet'">
+      <rect x="3" y="5.2" width="3.2" height="3.2" rx="0.4" fill="currentColor" stroke="none" />
+      <rect x="3" y="10.4" width="3.2" height="3.2" rx="0.4" fill="currentColor" stroke="none" />
+      <rect x="3" y="15.6" width="3.2" height="3.2" rx="0.4" fill="currentColor" stroke="none" />
+      <line x1="9.4" y1="6.8" x2="21" y2="6.8" />
+      <line x1="9.4" y1="12" x2="21" y2="12" />
+      <line x1="9.4" y1="17.2" x2="21" y2="17.2" />
+    </template>
+    <template v-else-if="name === 'list-number'">
+      <text x="1.8" y="9.6" font-size="8" font-weight="600" font-family="system-ui, sans-serif" fill="currentColor" stroke="none">1</text>
+      <text x="1.8" y="14.8" font-size="8" font-weight="600" font-family="system-ui, sans-serif" fill="currentColor" stroke="none">2</text>
+      <text x="1.8" y="20" font-size="8" font-weight="600" font-family="system-ui, sans-serif" fill="currentColor" stroke="none">3</text>
+      <line x1="9.4" y1="6.8" x2="21" y2="6.8" />
+      <line x1="9.4" y1="12" x2="21" y2="12" />
+      <line x1="9.4" y1="17.2" x2="21" y2="17.2" />
+    </template>
     <template v-else-if="name === 'view-reading'">
       <!-- An open book — denotes "reading mode": full-bleed prose preview.
            Distinct from view-preview (an eye, which we use for the rendered-
@@ -270,6 +286,33 @@ defineProps<{ name: string; size?: number }>();
     <template v-else-if="name === 'redo'">
       <path d="M15 14l5-5-5-5" /><path d="M20 9H9a5 5 0 0 0 0 10h3" />
     </template>
+    <template v-else-if="name === 'underline'">
+      <path d="M7 4v7a5 5 0 0 0 10 0V4" /><line x1="5" y1="20" x2="19" y2="20" />
+    </template>
+    <template v-else-if="name === 'strikethrough'">
+      <path d="M16 4H9.5a3 3 0 0 0-.5 5.96" /><path d="M14 12a3.5 3.5 0 0 1 0 8H6.5" />
+      <line x1="4" y1="12" x2="20" y2="12" />
+    </template>
+    <template v-else-if="name === 'subscript'">
+      <text x="1.6" y="17" font-size="13" font-weight="600" font-family="system-ui, sans-serif" fill="currentColor" stroke="none">x</text>
+      <text x="13" y="21.5" font-size="8" font-weight="600" font-family="system-ui, sans-serif" fill="currentColor" stroke="none">2</text>
+    </template>
+    <template v-else-if="name === 'superscript'">
+      <text x="1.6" y="21" font-size="13" font-weight="600" font-family="system-ui, sans-serif" fill="currentColor" stroke="none">x</text>
+      <text x="13" y="9.5" font-size="8" font-weight="600" font-family="system-ui, sans-serif" fill="currentColor" stroke="none">2</text>
+    </template>
+    <template v-else-if="name === 'codeblock'">
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M9.5 10l-2 2.5 2 2.5" /><path d="M14.5 10l2 2.5-2 2.5" />
+    </template>
+    <template v-else-if="name === 'table'">
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <line x1="3" y1="10" x2="21" y2="10" /><line x1="3" y1="15" x2="21" y2="15" />
+      <line x1="9" y1="4" x2="9" y2="20" /><line x1="15" y1="4" x2="15" y2="20" />
+    </template>
+    <template v-else-if="name === 'text-cursor'">
+      <path d="M9 5h6M9 19h6M12 5v14" />
+    </template>
     <template v-else-if="name === 'keyboard-hide'">
       <rect x="2" y="5" width="20" height="11" rx="2" /><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M7 12.5h10M9 19.5l3 2 3-2" />
     </template>
@@ -367,6 +410,12 @@ defineProps<{ name: string; size?: number }>();
       <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
       <polyline points="14 3 14 8 19 8" />
       <path d="M9.5 15.5a3 3 0 0 0 5-1.5M14.5 12.5a3 3 0 0 0-5 1.5" />
+    </template>
+    <template v-else-if="name === 'diagram'">
+      <rect x="9" y="3" width="6" height="4" rx="1" />
+      <rect x="3" y="16" width="6" height="4" rx="1" />
+      <rect x="15" y="16" width="6" height="4" rx="1" />
+      <path d="M12 7v4M6 16v-3a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v3" />
     </template>
   </svg>
 </template>

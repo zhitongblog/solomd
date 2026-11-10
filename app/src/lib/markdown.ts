@@ -204,6 +204,114 @@ md.inline.ruler.before('link', 'wikilink', (state, silent) => {
   return false;
 });
 
+// ---- Superscript `^sup^` and Subscript `~sub~` (#284) -----------------------
+// Standard markdown-it-sup / markdown-it-sub rules:
+// - `^sup^` renders `<sup>sup</sup>` (ignoring `[^footnote]` and `^^`).
+// - `~sub~` renders `<sub>sub</sub>` (ignoring `~~strikethrough~~`).
+// - Unescaped spaces or newlines are disallowed inside the markers so prose like
+//   `~50 to ~60` is never misinterpreted as subscript.
+const UNESCAPE_RE = /\\([ \\!"#$%&'()*+,./:;<=>?@[\]^_`{|}~-])/g;
+
+md.inline.ruler.after('strikethrough', 'superscript', (state, silent) => {
+  const max = state.posMax;
+  const start = state.pos;
+  const src = state.src;
+  if (src.charCodeAt(start) !== 0x5e /* ^ */) return false;
+  if (silent) return false;
+  // Never steal footnote references `[^1]` or double carets `^^`.
+  if (start > 0 && (src.charCodeAt(start - 1) === 0x5b /* [ */ || src.charCodeAt(start - 1) === 0x5e)) {
+    return false;
+  }
+  if (start + 2 >= max) return false;
+  if (src.charCodeAt(start + 1) === 0x5e) return false;
+
+  state.pos = start + 1;
+  let found = false;
+  while (state.pos < max) {
+    const ch = src.charCodeAt(state.pos);
+    if (ch === 0x5e /* ^ */) {
+      if (state.pos + 1 < max && src.charCodeAt(state.pos + 1) === 0x5e) {
+        state.pos = start;
+        return false;
+      }
+      found = true;
+      break;
+    }
+    if (ch === 0x20 || ch === 0x09 || ch === 0x0a || ch === 0x0d) {
+      state.pos = start;
+      return false;
+    }
+    if (ch === 0x5c /* \ */ && state.pos + 1 < max) {
+      state.pos += 2;
+      continue;
+    }
+    state.pos++;
+  }
+  if (!found || start + 1 === state.pos) {
+    state.pos = start;
+    return false;
+  }
+  const content = src.slice(start + 1, state.pos);
+  state.posMax = state.pos;
+  state.pos = start + 1;
+  state.push('sup_open', 'sup', 1);
+  const textTok = state.push('text', '', 0);
+  textTok.content = content.replace(UNESCAPE_RE, '$1');
+  state.push('sup_close', 'sup', -1);
+  state.pos = state.posMax + 1;
+  state.posMax = max;
+  return true;
+});
+
+md.inline.ruler.after('strikethrough', 'subscript', (state, silent) => {
+  const max = state.posMax;
+  const start = state.pos;
+  const src = state.src;
+  if (src.charCodeAt(start) !== 0x7e /* ~ */) return false;
+  if (silent) return false;
+  // Never interfere with `~~strikethrough~~`.
+  if (start > 0 && src.charCodeAt(start - 1) === 0x7e) return false;
+  if (start + 2 >= max) return false;
+  if (src.charCodeAt(start + 1) === 0x7e) return false;
+
+  state.pos = start + 1;
+  let found = false;
+  while (state.pos < max) {
+    const ch = src.charCodeAt(state.pos);
+    if (ch === 0x7e /* ~ */) {
+      if (state.pos + 1 < max && src.charCodeAt(state.pos + 1) === 0x7e) {
+        state.pos = start;
+        return false;
+      }
+      found = true;
+      break;
+    }
+    if (ch === 0x20 || ch === 0x09 || ch === 0x0a || ch === 0x0d) {
+      state.pos = start;
+      return false;
+    }
+    if (ch === 0x5c /* \ */ && state.pos + 1 < max) {
+      state.pos += 2;
+      continue;
+    }
+    state.pos++;
+  }
+  if (!found || start + 1 === state.pos) {
+    state.pos = start;
+    return false;
+  }
+  const content = src.slice(start + 1, state.pos);
+  state.posMax = state.pos;
+  state.pos = start + 1;
+  state.push('sub_open', 'sub', 1);
+  const textTok = state.push('text', '', 0);
+  textTok.content = content.replace(UNESCAPE_RE, '$1');
+  state.push('sub_close', 'sub', -1);
+  state.pos = state.posMax + 1;
+  state.posMax = max;
+  return true;
+});
+
 // ---- Image with a space in its path (#345) -----------------------------------
 // CommonMark doesn't allow a space in a bare link destination, so
 // `![](D:/Program Files/a.png)` renders as literal text. SoloMD used to write

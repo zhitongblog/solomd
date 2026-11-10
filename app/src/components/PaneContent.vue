@@ -130,6 +130,79 @@ function gotoLine(line: number) {
 // the webview's native drag-drop handler swallows `draggable` drags.
 const isSplit = computed(() => showEditor.value && showPreview.value);
 const contentEl = ref<HTMLElement | null>(null);
+
+// #377 — Split mode hover line sync highlight between editor and preview.
+const editorHoverBand = ref<{ top: number; height: number } | null>(null);
+let lastHoveredPreviewEl: HTMLElement | null = null;
+
+function clearSplitHover() {
+  editorHoverBand.value = null;
+  if (lastHoveredPreviewEl) {
+    lastHoveredPreviewEl.classList.remove('split-hover-block');
+    lastHoveredPreviewEl = null;
+  }
+}
+
+function onEditorPointerMove(e: PointerEvent) {
+  if (!isSplit.value) return;
+  const ed = editorRef.value as unknown as {
+    lineAtCoords?: (x: number, y: number) => number | null;
+    lineBandRect?: (fromLine: number, toLine?: number) => { top: number; height: number } | null;
+  } | null;
+  if (!ed?.lineAtCoords || !ed.lineBandRect) return;
+  const line = ed.lineAtCoords(e.clientX, e.clientY);
+  if (!line) {
+    clearSplitHover();
+    return;
+  }
+  editorHoverBand.value = ed.lineBandRect(line, line);
+  const paneEl = contentEl.value;
+  const preview = paneEl?.querySelector('.pane--preview .preview-host') as HTMLElement | null;
+  if (!preview) return;
+  const previewLines = getPreviewElementsByLine(preview);
+  const idx = findAnchorIndex(previewLines, line);
+  const targetEl = idx >= 0 ? previewLines[idx].el : null;
+  if (targetEl !== lastHoveredPreviewEl) {
+    lastHoveredPreviewEl?.classList.remove('split-hover-block');
+    targetEl?.classList.add('split-hover-block');
+    lastHoveredPreviewEl = targetEl;
+  }
+}
+
+function onPreviewPointerMove(e: PointerEvent) {
+  if (!isSplit.value) return;
+  const target = (e.target as HTMLElement | null)?.closest?.('[data-source-line]') as HTMLElement | null;
+  if (!target) {
+    clearSplitHover();
+    return;
+  }
+  if (target !== lastHoveredPreviewEl) {
+    lastHoveredPreviewEl?.classList.remove('split-hover-block');
+    target.classList.add('split-hover-block');
+    lastHoveredPreviewEl = target;
+  }
+  const startLine = Number(target.getAttribute('data-source-line') || 0);
+  if (!startLine) {
+    editorHoverBand.value = null;
+    return;
+  }
+  const paneEl = contentEl.value;
+  const preview = paneEl?.querySelector('.pane--preview .preview-host') as HTMLElement | null;
+  let endLine = startLine;
+  if (preview) {
+    const previewLines = getPreviewElementsByLine(preview);
+    const next = previewLines.find((item) => item.line > startLine);
+    if (next) endLine = Math.max(startLine, next.line - 1);
+  }
+  const ed = editorRef.value as unknown as {
+    lineBandRect?: (fromLine: number, toLine?: number) => { top: number; height: number } | null;
+  } | null;
+  editorHoverBand.value = ed?.lineBandRect?.(startLine, endLine) ?? null;
+}
+
+watch(isSplit, (split) => {
+  if (!split) clearSplitHover();
+});
 // Live value while dragging; committed (and persisted) on pointerup so a drag
 // writes localStorage once instead of on every pointermove.
 const dragRatio = ref<number | null>(null);
@@ -738,7 +811,19 @@ function onPreviewSearchEvent(e: Event) {
       'pane-content--distinct': settings.distinctSplitPanes && showEditor && showPreview,
     }"
   >
-    <div class="pane pane--editor" v-if="tab" v-show="showEditor" :style="editorPaneStyle">
+    <div
+      class="pane pane--editor"
+      v-if="tab"
+      v-show="showEditor"
+      :style="editorPaneStyle"
+      @pointermove="onEditorPointerMove"
+      @pointerleave="clearSplitHover"
+    >
+      <div
+        v-if="isSplit && editorHoverBand"
+        class="split-hover-band"
+        :style="{ top: `${editorHoverBand.top}px`, height: `${editorHoverBand.height}px` }"
+      />
       <Editor
         :key="editorImplementationKey"
         ref="editorRef"
@@ -767,7 +852,12 @@ function onPreviewSearchEvent(e: Event) {
       @dblclick="resetSplitRatio"
       @keydown="onDividerKeydown"
     />
-    <div class="pane pane--preview" v-if="showPreview && tab">
+    <div
+      class="pane pane--preview"
+      v-if="showPreview && tab"
+      @pointermove="onPreviewPointerMove"
+      @pointerleave="clearSplitHover"
+    >
       <Preview
         ref="previewRef"
         :source="previewSource"
@@ -793,6 +883,23 @@ function onPreviewSearchEvent(e: Event) {
   flex: 1;
   min-width: 0;
   height: 100%;
+  position: relative;
+}
+.split-hover-band {
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  z-index: 2;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-left: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  transition: top 0.05s ease-out, height 0.05s ease-out;
+}
+.pane--preview :deep(.split-hover-block) {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-radius: 4px;
+  box-shadow: -3px 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent);
+  transition: background 0.1s ease-out;
 }
 .pane--editor + .pane--preview {
   border-left: var(--bd-hair);

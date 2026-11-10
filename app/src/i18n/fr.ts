@@ -516,6 +516,8 @@ export const fr: I18n = {
     solidCursor: 'Curseur fixe (sans clignotement)',
     selectionBubble: "Afficher une barre de mise en forme sur le texte sélectionné",
     selectionBubbleHint: "Gras, italique, code, lien, titres et listes juste au-dessus de la sélection, en mode direct et source. Chaque bouton exécute la même commande que son raccourci.",
+    formatBar: "Afficher la barre de mise en forme au-dessus de l’éditeur",
+    formatBarHint: "Gras, titres, listes, code, liens, images, tableaux et annuler, regroupés sur une ligne au-dessus du texte. Désactivez pour travailler uniquement avec les menus et les raccourcis.",
     alwaysShowMarkers: "Toujours afficher les marqueurs Markdown",
     alwaysShowMarkersHint: "Garder #, ** et les autres marqueurs visibles (atténués) pendant l’édition, au lieu de les masquer sur les lignes sans curseur. La mise en forme reste, et cliquer sur une ligne ne la fait plus sauter. Les images s’affichent sous leur ligne ; tableaux, formules et diagrammes restent en source. S’applique à l’éditeur CodeMirror.",
     highlightCurrentLine: "Surligner la ligne courante",
@@ -2109,6 +2111,15 @@ export const fr: I18n = {
     apply: 'Appliquer',
     cancel: 'Annuler',
   },
+  insertTableDialog: {
+    title: 'Insérer un tableau',
+    sizeSection: 'Taille du tableau',
+    columns: 'Colonnes',
+    rows: 'Lignes',
+    note: 'Une ligne d’en-tête est ajoutée au-dessus de ces lignes.',
+    ok: 'OK',
+    cancel: 'Annuler',
+  },
   tableToolbar: {
     label: "Table tools",
     rowAbove: "Insert row above",
@@ -2383,9 +2394,13 @@ export const fr: I18n = {
   formatBar: {
     label: "Mise en forme",
     heading: "Titre",
+    headingTip: "Titre — choisir le niveau",
     image: "Insérer une image",
     undo: "Annuler",
+    redo: "Rétablir",
     hideKeyboard: "Masquer le clavier",
+    tableTip: "Tableau — faites glisser pour choisir la taille, ou ouvrez l’éditeur visuel",
+    tableCustom: "Tableau personnalisé… ({cols} × {rows})",
   },
   // 5.0 sidebar (Sidebar.vue, docs/v5-ui-spec.md §4)
   sidebar: {

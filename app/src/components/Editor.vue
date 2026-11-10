@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, watch, computed, nextTick } from 'vue';
-import { EditorState, Compartment, Prec } from '@codemirror/state';
+import { EditorState, Compartment, Prec, Transaction } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, highlightActiveLine, drawSelection, rectangularSelection, crosshairCursor } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap, indentWithTab, undo as cmUndo, redo as cmRedo } from '@codemirror/commands';
 import { searchKeymap, search, openSearchPanel, closeSearchPanel, getSearchQuery, setSearchQuery } from '@codemirror/search';
 import { createFindPanel, type FindPanelLabels } from '../lib/cm-find-panel';
 import { tabCaretMemory, tabTopLineMemory, type TabCaretSnapshot } from '../lib/scroll-memory';
-import { syntaxHighlighting, defaultHighlightStyle, indentOnInput, bracketMatching } from '@codemirror/language';
+import { syntaxHighlighting, defaultHighlightStyle, indentOnInput, bracketMatching, indentUnit } from '@codemirror/language';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { cjkFriendlyEmphasis } from '../lib/cm-cjk-emphasis';
 import { bindMermaidInteractions, renderMermaidCached } from '../lib/mermaid-lazy';
@@ -27,7 +27,7 @@ import {
   unfoldAllFolds,
   foldHeadingsToLevel,
 } from '../lib/cm-heading-fold';
-import { findTableSpan, serializeTable } from '../lib/markdown-table';
+import { findTableSpan, parseTable, serializeTable } from '../lib/markdown-table';
 import { findMathSpanAt, collectLabels } from '../lib/equations';
 import { openFormulaEditor } from '../lib/formula-editor-bus';
 import { openTableEditor } from '../lib/table-editor-bus';
@@ -55,7 +55,7 @@ import { CursorHistoryQueue } from '../lib/cursor-history';
 import { caretRowInfo, caretTopPx, caretPointPx, lastVisualRowStart, firstVisualRowEnd, measureLineHeights, offsetAtPoint, selectionBoxPx } from '../lib/textarea-metrics';
 import { activeParagraphLines, lineAt } from '../lib/focus-paragraph';
 import { transformCase, nextCaseInCycle, caseTargetRange, type CaseMode } from '../lib/text-case';
-import { applyFormat, FORMAT_KINDS, listIndentEdit, type FormatKind } from '../lib/md-format';
+import { applyFormat, applyHighlightColor, FORMAT_KINDS, listIndentEdit, type FormatKind } from '../lib/md-format';
 import { useFormatHints } from '../composables/useFormatHints';
 import { useTabsStore } from '../stores/tabs';
 import { useSettingsStore, buildEditorFontStack } from '../stores/settings';
@@ -63,7 +63,17 @@ import { useToastsStore } from '../stores/toasts';
 import type { Tab } from '../types';
 import { livePreviewExtension, richHighlightOnly } from '../lib/cm-live-preview';
 import { liveEditExtension, setLiveEditCopyLabel } from '../lib/cm-live-render';
-import { liveBlocksExtension, liveBlocksTheme, extractImageRoot, findTableCellOffsetInLine } from '../lib/cm-live-blocks';
+import {
+  liveBlocksExtension,
+  liveBlocksTheme,
+  extractImageRoot,
+  findTableCellOffsetInLine,
+  bindDomTableCellEditor,
+  getActiveTableCellSession,
+  requestTableCellFocus,
+  type DomTableEditorHandle,
+} from '../lib/cm-live-blocks';
+import { HEADER_ROW, commonIndent } from '../lib/table-cell-edit';
 import { findTldrawFences, replaceBoardSnapshot } from '../lib/tldraw-board';
 import { dragAwareExtension } from '../lib/cm-drag-aware';
 import { imagePasteExtension, insertImageFromPath as cmInsertImageFromPath, imageTextFromPath, handleTextareaImagePaste, type ImagePasteOptions } from '../lib/cm-image-paste';
@@ -112,7 +122,7 @@ import { isWindowsEditorRuntime, shouldUsePlainWindowsEditor } from '../lib/plat
 import { isAndroid, isIOS, isMobile } from '../lib/platform';
 import SelectionBubble, { type BubbleSelection } from './SelectionBubble.vue';
 import TableToolbar from './TableToolbar.vue';
-import { applyTableAction, cellStart, rowAfterAction, tableAt, type TableAction, type TableToolbarState } from '../lib/table-toolbar';
+import { applyTableAction, cellStart, colAfterAction, rowAfterAction, tableAt, type TableAction, type TableToolbarState } from '../lib/table-toolbar';
 import { lineContext, nextHeadingKind, type Box } from '../lib/selection-bubble';
 import EditorContextMenu, { type EditorMenuAction, type EditorMenuSpell } from './EditorContextMenu.vue';
 import { lookupMisspelling, addToSpellDict } from '../lib/spell-suggest';
@@ -166,6 +176,8 @@ type PlainBlock = {
   text: string;
   hasTrailingNewline: boolean;
   html: string;
+  isTable?: boolean;
+  isMermaid?: boolean;
 };
 
 const props = withDefaults(
@@ -760,14 +772,25 @@ const plainBlocks = computed<PlainBlock[]>(() => {
   // not reimplement), and the toolbar/⌘J AI-rewrite absolute offsets.
   if (plainSelectAll.value) {
     const src = plainText.value || '';
-    return [{ id: 'select-all', start: 0, end: src.length, text: src, hasTrailingNewline: false, html: '' }];
+    return [{ id: 'select-all', start: 0, end: src.length, text: src, hasTrailingNewline: false, html: '', isTable: false }];
   }
-  return splitPlainMarkdownBlocks(plainText.value || '').map((block, index) => ({
-    ...block,
-    id: `${block.start}:${index}`,
-    html: index === plainActiveBlock.value ? '' : renderPlainBlock(block.text),
-  }));
+  return splitPlainMarkdownBlocks(plainText.value || '').map((block, index) => {
+    const isTable = !settings.alwaysShowMarkers && parseTable(block.text) !== null;
+    const isMermaid = /^\s*(`{3,}|~{3,})\s*mermaid\b/i.test(block.text);
+    return {
+      ...block,
+      id: `${block.start}:${index}`,
+      isTable,
+      isMermaid,
+      html:
+        index === plainActiveBlock.value && !isTable && !isMermaid
+          ? ''
+          : renderPlainBlock(block.text),
+    };
+  });
 });
+
+const plainTableHandles = new WeakMap<HTMLElement, DomTableEditorHandle>();
 
 function plainTocFingerprint(source: string): string {
   // FNV-1a keeps the cache key compact even for very large documents. The
@@ -828,6 +851,74 @@ async function processPlainLiveRenderedBlocks() {
   await nextTick();
   const hostEl = plainLiveHost.value;
   installSvgImageFallbacks(hostEl);
+
+  // #500 — Bind Excel-like in-place table cell editing to rendered table blocks
+  // on the Windows plain live block editor so tables stay rendered and never
+  // collapse back into raw pipe source in a <textarea>.
+  const tableRenders = hostEl.querySelectorAll<HTMLElement>(
+    '.plain-block__render--table[data-table-block-index]',
+  );
+  for (const renderEl of Array.from(tableRenders)) {
+    const blockIdx = Number(renderEl.dataset.tableBlockIndex ?? -1);
+    const block = plainBlocks.value[blockIdx];
+    if (!block || !block.isTable) continue;
+    const textEnd = block.start + block.text.length;
+    const bindKey = `${block.start}:${textEnd}:${block.text}`;
+    if (renderEl.dataset.tableBoundKey === bindKey) continue;
+    renderEl.dataset.tableBoundKey = bindKey;
+    const handle = bindDomTableCellEditor(renderEl, {
+      source: block.text,
+      from: block.start,
+      to: textEnd,
+      isReadOnly: () => false,
+      commitMarkdown: (markdown, nextFocus) => {
+        const nextCaret = nextFocus
+          ? block.start + cellStart(markdown, nextFocus.row, nextFocus.col)
+          : block.start;
+        replaceDocRange(block.start, textEnd, markdown, nextCaret);
+      },
+      exitTable: (direction) => {
+        if (direction === 'before') {
+          if (blockIdx > 0) {
+            const prevBlock = plainBlocks.value[blockIdx - 1];
+            activatePlainBlock(blockIdx - 1, prevBlock ? prevBlock.text.length : 0);
+          }
+        } else if (direction === 'after') {
+          if (blockIdx + 1 < plainBlocks.value.length) {
+            activatePlainBlock(blockIdx + 1, 0);
+          } else {
+            const doc = plainText.value || '';
+            const suffix = doc.endsWith('\n\n') ? '' : doc.endsWith('\n') ? '\n' : '\n\n';
+            if (suffix) {
+              replaceDocRange(doc.length, doc.length, suffix, doc.length + suffix.length);
+            }
+          }
+        }
+      },
+      onUndo: () => {
+        plainUndo();
+        return true;
+      },
+      onRedo: () => {
+        plainRedo();
+        return true;
+      },
+    });
+    if (handle) {
+      plainTableHandles.set(renderEl, handle);
+      renderEl.addEventListener('mousedown', (ev: MouseEvent) => {
+        if (ev.button !== 0) return;
+        const target = ev.target as Element | null;
+        if (target?.closest?.('a')) return;
+        const cell = target?.closest?.('th, td') as HTMLTableCellElement | null;
+        if (cell && handle.begin(ev, cell)) {
+          plainActiveBlock.value = blockIdx;
+          ev.preventDefault();
+          ev.stopPropagation();
+        }
+      });
+    }
+  }
 
   // v4.10 #163 — PlantUML fences (opt-in), same <img> swap as the preview pane.
   if (settings.plantumlEnabled && settings.plantumlServer) {
@@ -1598,10 +1689,28 @@ function plainInsertText(snippet: string) {
   if (plainLiveEnabled.value) {
     const index = plainActiveBlock.value;
     const el = plainBlockEditors.value[index];
-    if (!el) return;
+    const block = plainBlocks.value[index];
+    if (!el) {
+      if (!block) return;
+      const insertAt = block.start + block.text.length;
+      const prefix = snippet.startsWith('\n') ? '\n' : '\n\n';
+      const inserted = `${prefix}${parsed.text}`;
+      const trimmed = parsed.text.replace(/^\n+/, '');
+      if (!settings.alwaysShowMarkers && parseTable(trimmed.trim()) !== null) {
+        const leadingNewlines = inserted.length - inserted.replace(/^\n+/, '').length;
+        requestTableCellFocus(insertAt + leadingNewlines, HEADER_ROW, 0);
+      }
+      replaceDocRange(insertAt, insertAt, inserted, insertAt + prefix.length + parsed.head);
+      return;
+    }
     const start = el.selectionStart ?? 0;
     const end = el.selectionEnd ?? 0;
     const nextBlock = `${el.value.slice(0, start)}${parsed.text}${el.value.slice(end)}`;
+    const trimmed = parsed.text.replace(/^\n+/, '');
+    if (block && !settings.alwaysShowMarkers && parseTable(trimmed.trim()) !== null) {
+      const leadingNewlines = parsed.text.length - trimmed.length;
+      requestTableCellFocus(block.start + start + leadingNewlines, HEADER_ROW, 0);
+    }
     // Blocks re-split after the edit, so only a caret survives here; it goes
     // after any placeholder label.
     updatePlainBlock(index, nextBlock, start + parsed.head);
@@ -1706,7 +1815,7 @@ function handlePlainInput(event: Event) {
   if (plainComposing.value && (event as InputEvent).isComposing === false) {
     plainComposing.value = false;
   }
-  if (!plainComposing.value) {
+  if (!plainComposing.value && el.value !== plainText.value) {
     recordPlainHistory();
     if (props.tab.language === 'markdown') {
       const selPos = el.selectionStart ?? 0;
@@ -1796,6 +1905,14 @@ function applyPlainContent(content: string, caret: number) {
 }
 
 function plainUndo() {
+  // #512 — Skip any duplicate no-op snapshots at the top of the stack so the
+  // first Ctrl+Z after a mode switch or composition commit always undoes real text.
+  while (
+    plainUndoStack.length &&
+    plainUndoStack[plainUndoStack.length - 1].content === plainText.value
+  ) {
+    plainUndoStack.pop();
+  }
   if (!plainUndoStack.length) return;
   plainRedoStack.push({ content: plainText.value, caret: plainAbsoluteCaret() });
   const prev = plainUndoStack.pop() as PlainSnapshot;
@@ -1804,6 +1921,12 @@ function plainUndo() {
 }
 
 function plainRedo() {
+  while (
+    plainRedoStack.length &&
+    plainRedoStack[plainRedoStack.length - 1].content === plainText.value
+  ) {
+    plainRedoStack.pop();
+  }
   if (!plainRedoStack.length) return;
   plainUndoStack.push({ content: plainText.value, caret: plainAbsoluteCaret() });
   const next = plainRedoStack.pop() as PlainSnapshot;
@@ -2424,7 +2547,9 @@ function computePlainTabEdit(
   el: HTMLTextAreaElement,
   outdent: boolean,
 ): { value: string; selStart: number; selEnd: number } {
-  const INDENT = '  ';
+  // #110 / #159 — 4-space tab indent in source mode so nested ordered/unordered
+  // lists and code blocks satisfy CommonMark 4-space rules.
+  const INDENT = '    ';
   const v = el.value;
   const s = el.selectionStart ?? 0;
   const e = el.selectionEnd ?? 0;
@@ -2445,7 +2570,7 @@ function computePlainTabEdit(
   let deltaTotal = 0;
   const newLines = lines.map((ln, i) => {
     if (outdent) {
-      const m = ln.match(/^( {1,2}|\t)/);
+      const m = ln.match(/^( {1,4}|\t)/);
       const removed = m ? m[0].length : 0;
       if (i === 0) deltaFirst = -removed;
       deltaTotal -= removed;
@@ -3054,6 +3179,10 @@ function activatePlainBlockFromClick(index: number, event: MouseEvent) {
       return;
     }
   }
+  if (plainBlocks.value[index]?.isTable) {
+    plainActiveBlock.value = index;
+    return;
+  }
   if (index === plainActiveBlock.value) return;
   // #300 — a drag that selected rendered text ends in a click too. Turning
   // the block into a textarea at that point throws the selection away and
@@ -3143,6 +3272,23 @@ function togglePlainTask(index: number, ordinal: number) {
  */
 function activatePlainBlock(index: number, caret?: number, holdScroll = false) {
   const target = Math.max(0, Math.min(index, plainBlocks.value.length - 1));
+  const targetBlock = plainBlocks.value[target];
+  if (targetBlock?.isTable) {
+    plainActiveBlock.value = target;
+    const localCaret = caret != null ? Math.max(0, Math.min(caret, targetBlock.text.length)) : 0;
+    const hit = tableAt(targetBlock.text, localCaret);
+    const row = hit ? hit.row : HEADER_ROW;
+    const col = hit ? hit.col : 0;
+    requestTableCellFocus(targetBlock.start, row, col);
+    nextTick(() => {
+      const renderEl = plainLiveHost.value?.querySelector<HTMLElement>(
+        `.plain-block__render--table[data-table-block-index="${target}"]`,
+      );
+      const handle = renderEl ? plainTableHandles.get(renderEl) : null;
+      handle?.focusCell(row, col, 'end');
+    });
+    return;
+  }
   const host = plainLiveHost.value;
   const blockEl = holdScroll && host
     ? host.querySelectorAll<HTMLElement>(':scope > .plain-block')[target] ?? null
@@ -3231,7 +3377,7 @@ function onPlainLiveHostMouseDown(event: MouseEvent) {
   const host = plainLiveHost.value;
   if (!host || event.button !== 0) return;
   const target = event.target as HTMLElement | null;
-  if (target?.closest('button, input, .plain-find')) return;
+  if (target?.closest('button, input, .plain-find, .plain-block__render--table')) return;
   const clicks = plainClickCount(event);
   if (maybeSelectPlainParagraph(event, clicks)) return;
   if (maybeExtendPlainSelectionByClick(event)) return;
@@ -3654,6 +3800,7 @@ const editorCtx = ref<{
   y: number;
   hasSelection: boolean;
   hasImage: boolean;
+  imageDims?: { width: number; height: number; naturalWidth: number; naturalHeight: number } | null;
   spell: EditorMenuSpell | null;
 } | null>(null);
 // #376 — the misspelled word the menu was opened on, for replacing it with a
@@ -3779,7 +3926,20 @@ async function onEditorContextMenu(event: MouseEvent) {
       }
     }
   }
-  editorCtx.value = { x: event.clientX, y: event.clientY, hasSelection, hasImage: !!ctxImage, spell };
+  const imageDims = ctxImage
+    ? (() => {
+        const rect = ctxImage.getBoundingClientRect();
+        const nw = ctxImage.naturalWidth || Math.round(rect.width) || 0;
+        const nh = ctxImage.naturalHeight || Math.round(rect.height) || 0;
+        return {
+          width: Math.round(rect.width) || nw,
+          height: Math.round(rect.height) || nh,
+          naturalWidth: nw,
+          naturalHeight: nh,
+        };
+      })()
+    : null;
+  editorCtx.value = { x: event.clientX, y: event.clientY, hasSelection, hasImage: !!ctxImage, imageDims, spell };
 }
 
 /** Replace the right-clicked misspelling with `word` (#376) — one undoable
@@ -4042,13 +4202,14 @@ function updatePlainBlock(index: number, text: string, caret?: number) {
   // merged view, so offsets stay consistent for this edit.
   const wasSelectAll = plainSelectAll.value;
   plainSelectAll.value = false;
-  // Snapshot the pre-edit document for undo (coalesced) before we mutate it.
-  if (!plainComposing.value) recordPlainHistory();
   let nextCaret = block.start + (caret ?? text.length);
   // Re-attach the block separator that splitPlainMarkdownBlocks stripped from
   // the editable text, so neighbouring blocks don't merge on every edit.
   const tail = block.hasTrailingNewline ? '\n' : '';
   let next = `${plainText.value.slice(0, block.start)}${text}${tail}${plainText.value.slice(block.end)}`;
+  // #512 — Snapshot the pre-edit document for undo only when the edit actually
+  // changes the document content, preventing post-edit duplicate entries.
+  if (!plainComposing.value && next !== plainText.value) recordPlainHistory();
   const repaired = !plainComposing.value && props.tab.language === 'markdown'
     ? repairIndentedFenceEdit(next, Math.max(0, nextCaret - 1), nextCaret, nextCaret)
     : null;
@@ -4099,12 +4260,23 @@ function updatePlainBlock(index: number, text: string, caret?: number) {
   // everything, or type-over a doc that re-splits to one block). Skipping the
   // nextTick would leave focus on <body> and swallow every subsequent
   // keystroke — caught by real-key testing in the Windows VM.
-  if (!wasSelectAll && !repaired && nextIndex === index && nextBlock?.start === block.start && nextBlock?.text === text) {
+  if (
+    !wasSelectAll &&
+    !repaired &&
+    nextIndex === index &&
+    nextBlock?.start === block.start &&
+    nextBlock?.text === text &&
+    !plainBlocks.value[nextIndex]?.isTable
+  ) {
     emitPlainCursorAndSelection();
     return;
   }
   nextTick(() => {
     const activeBlock = plainBlocks.value[plainActiveBlock.value];
+    if (activeBlock?.isTable) {
+      activatePlainBlock(plainActiveBlock.value, Math.max(0, nextCaret - activeBlock.start));
+      return;
+    }
     const el = plainBlockEditors.value[plainActiveBlock.value];
     if (!el) return;
     // The active block changed to a different <textarea> (e.g. a re-split moved
@@ -4426,6 +4598,7 @@ function buildExtensions() {
           // need to flip `EditorState.allowMultipleSelections`.
           rectangularSelection(),
           crosshairCursor(),
+          indentUnit.of('    '),
           indentOnInput(),
           bracketMatching(),
           highlightActiveLine(),
@@ -4787,7 +4960,9 @@ function onTransformCase(e: Event) {
  * differ in how they hand those over and write the result back.
  */
 function onFormatMarkdown(e: Event) {
-  let kind = ((e as CustomEvent).detail || {}).kind as FormatKind | 'headingCycle';
+  const detail = (e as CustomEvent).detail || {};
+  let kind = detail.kind as FormatKind | 'headingCycle';
+  const color = typeof detail.color === 'string' ? detail.color : undefined;
   if (props.tab.id !== tabs.activeId) return;
   if (props.tab.language !== 'markdown') return;
   // 5.0 touch keyboard bar: one heading button that steps
@@ -4798,7 +4973,7 @@ function onFormatMarkdown(e: Event) {
     kind = nextHeadingKind(sel.doc, sel.from);
   }
   if (!FORMAT_KINDS.includes(kind)) return;
-  applyFormatKind(kind);
+  applyFormatKind(kind, color);
 }
 
 /** The text and selection the format commands work on, in either editor
@@ -4816,12 +4991,16 @@ function currentFormatSelection(): { doc: string; from: number; to: number } | n
 
 /** Run one `fmt.*` command on this editor — the shortcut, the Insert menu,
  *  the 5.0 selection bubble and the touch keyboard bar all land here. */
-function applyFormatKind(kind: FormatKind) {
+function applyFormatKind(kind: FormatKind, color?: string) {
   if (props.tab.language !== 'markdown') return;
   if (!usePlainWindowsEditor) {
     if (!view) return;
     const sel = view.state.selection.main;
-    const edit = applyFormat(view.state.doc.toString(), sel.from, sel.to, kind);
+    const docStr = view.state.doc.toString();
+    const edit =
+      kind === 'highlight' && color !== undefined
+        ? applyHighlightColor(docStr, sel.from, sel.to, color)
+        : applyFormat(docStr, sel.from, sel.to, kind);
     view.dispatch({
       changes: { from: edit.from, to: edit.to, insert: edit.insert },
       selection: { anchor: edit.selFrom, head: edit.selTo },
@@ -4836,7 +5015,10 @@ function applyFormatKind(kind: FormatKind) {
     ? plainBlockEditors.value[plainActiveBlock.value]
     : plainEditor.value;
   if (!el) return;
-  const edit = applyFormat(el.value, el.selectionStart ?? 0, el.selectionEnd ?? 0, kind);
+  const edit =
+    kind === 'highlight' && color !== undefined
+      ? applyHighlightColor(el.value, el.selectionStart ?? 0, el.selectionEnd ?? 0, color)
+      : applyFormat(el.value, el.selectionStart ?? 0, el.selectionEnd ?? 0, kind);
   const value = el.value.slice(0, edit.from) + edit.insert + el.value.slice(edit.to);
   recordPlainHistory();
   if (plainLiveEnabled.value) {
@@ -5219,6 +5401,17 @@ function tableToolbarTextarea(): HTMLTextAreaElement | null {
 function readTableToolbar(): TableToolbarState | null {
   const own = usePlainWindowsEditor ? plainHostEl.value : view?.dom ?? null;
   if (!own || !own.contains(document.activeElement)) return null;
+  const session = getActiveTableCellSession(own);
+  if (session) {
+    const model = session.getCurrentModel();
+    if (!model) return null;
+    return {
+      model,
+      row: session.row,
+      col: session.col,
+      key: `cell:${session.from}:${session.to}:${session.row}:${session.col}`,
+    };
+  }
   const ed = editorTextAndCaret();
   if (!ed) return null;
   const hit = tableAt(ed.text, ed.caret);
@@ -5227,6 +5420,12 @@ function readTableToolbar(): TableToolbarState | null {
 }
 
 function readTableToolbarRect(): Box | null {
+  const own = usePlainWindowsEditor ? plainHostEl.value : view?.dom ?? null;
+  const session = getActiveTableCellSession(own);
+  if (session) {
+    const r = session.tableEl.getBoundingClientRect();
+    return { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+  }
   const ed = editorTextAndCaret();
   if (!ed) return null;
   const hit = tableAt(ed.text, ed.caret);
@@ -5255,6 +5454,31 @@ function readTableToolbarRect(): Box | null {
 }
 
 function onTableToolbarAction(action: TableAction): void {
+  const own = usePlainWindowsEditor ? plainHostEl.value : view?.dom ?? null;
+  const session = getActiveTableCellSession(own);
+  if (session) {
+    const model = session.getCurrentModel();
+    if (!model) return;
+    const next = applyTableAction(model, action, session.row, session.col);
+    if (next === model) return;
+    const docText = usePlainWindowsEditor ? plainText.value || '' : view?.state.doc.toString() ?? '';
+    const indent = commonIndent(docText.slice(session.from, session.to));
+    const markdown = serializeTable(next)
+      .split('\n')
+      .map((line) => indent + line)
+      .join('\n');
+    const nextRow = rowAfterAction(action, session.row, next);
+    const nextCol = colAfterAction(action, session.col, next);
+    session.cancelCommit();
+    requestTableCellFocus(session.from, nextRow, nextCol);
+    replaceDocRange(
+      session.from,
+      session.to,
+      markdown,
+      session.from + cellStart(markdown, nextRow, nextCol),
+    );
+    return;
+  }
   const ed = editorTextAndCaret();
   if (!ed) return;
   const hit = tableAt(ed.text, ed.caret);
@@ -5267,7 +5491,7 @@ function onTableToolbarAction(action: TableAction): void {
     .map((line) => indent + line)
     .join('\n');
   const row = rowAfterAction(action, hit.row, next);
-  const col = Math.max(0, Math.min(hit.col, next.header.length - 1));
+  const col = colAfterAction(action, hit.col, next);
   replaceDocRange(hit.from, hit.to, markdown, hit.from + cellStart(markdown, row, col));
 }
 
@@ -5832,6 +6056,7 @@ watch(
       view.dispatch({
         changes: { from: 0, to: view.state.doc.length, insert: next },
         selection: { anchor: head },
+        annotations: Transaction.addToHistory.of(false),
       });
     }
   }
@@ -5960,11 +6185,15 @@ watch(
       void processPlainLiveRenderedBlocks();
     }
     if (oldMode === 'preview' || oldMode === 'reading') {
-      if (usePlainWindowsEditor) {
-        focusPlainEditor(true);
-      } else {
-        focusFreshCodeMirror();
-      }
+      const refocus = () => {
+        if (usePlainWindowsEditor) {
+          focusPlainEditor(true);
+        } else {
+          focusFreshCodeMirror();
+        }
+      };
+      refocus();
+      setTimeout(refocus, 120);
     }
   },
   { flush: 'sync' },
@@ -6282,6 +6511,12 @@ function insertMarkdown(snippet: string): void {
     return;
   }
   if (!view) return;
+  const session = getActiveTableCellSession(view.dom);
+  if (session && snippet.includes('\n')) {
+    session.cancelCommit();
+    const afterTable = Math.min(view.state.doc.length, session.to);
+    view.dispatch({ selection: { anchor: afterTable } });
+  }
   const parsed = parseInsertSnippet(snippet);
   const sel = view.state.selection.main;
   // Add a leading newline if not already at the start of a line, for block-level snippets.
@@ -6289,6 +6524,15 @@ function insertMarkdown(snippet: string): void {
     view.state.doc.sliceString(sel.from - 1, sel.from) !== '\n';
   const insertText = needsLeadingBreak ? '\n' + parsed.text : parsed.text;
   const base = sel.from + (needsLeadingBreak ? 1 : 0);
+  const trimmed = insertText.replace(/^\n+/, '');
+  if (
+    settings.viewMode === 'liveEdit' &&
+    !settings.alwaysShowMarkers &&
+    parseTable(trimmed.trim()) !== null
+  ) {
+    const leadingNewlines = insertText.length - trimmed.length;
+    requestTableCellFocus(sel.from + leadingNewlines, HEADER_ROW, 0);
+  }
   view.dispatch({
     changes: { from: sel.from, to: sel.to, insert: insertText },
     selection: { anchor: base + parsed.anchor, head: base + parsed.head },
@@ -6440,7 +6684,31 @@ function scrollToLineAtOffset(line: number, offsetTop = 8): void {
   view.scrollDOM.scrollTop = Math.max(0, view.scrollDOM.scrollTop + (y - scroller.top) - safeOffset);
 }
 
-defineExpose({ gotoLine, setCaret, insertImageFromPath, insertImageUrl, uploadLocalImages, getViewLine, getViewportAnchor, restoreSavedScroll, scrollToLine, scrollToLineAtOffset, lineTopY, insertMarkdown, openFind, applyFold, openTableAtCursor, openFormulaAtCursor });
+/** #377 — Resolve 1-indexed document line under viewport coordinates (x, y). */
+function lineAtCoords(x: number, y: number): number | null {
+  if (!view) return null;
+  const pos = view.posAtCoords({ x, y }, false);
+  if (pos == null) return null;
+  return view.state.doc.lineAt(pos).number;
+}
+
+/** #377 — Compute visual band `{ top, height }` relative to the editor host for a 1-indexed line range. */
+function lineBandRect(fromLine: number, toLine = fromLine): { top: number; height: number } | null {
+  if (!view || !host.value) return null;
+  const maxLine = view.state.doc.lines;
+  if (maxLine < 1) return null;
+  const l1 = Math.max(1, Math.min(Math.floor(fromLine), maxLine));
+  const l2 = Math.max(l1, Math.min(Math.floor(toLine), maxLine));
+  const b1 = view.lineBlockAt(view.state.doc.line(l1).from);
+  const b2 = view.lineBlockAt(view.state.doc.line(l2).from);
+  const hostRect = host.value.getBoundingClientRect();
+  const top = view.documentTop + b1.top - hostRect.top;
+  const height = Math.max(b1.height, b2.top + b2.height - b1.top);
+  if (top + height < 0 || top > hostRect.height) return null;
+  return { top, height };
+}
+
+defineExpose({ gotoLine, setCaret, insertImageFromPath, insertImageUrl, uploadLocalImages, getViewLine, getViewportAnchor, restoreSavedScroll, scrollToLine, scrollToLineAtOffset, lineTopY, lineAtCoords, lineBandRect, insertMarkdown, openFind, applyFold, openTableAtCursor, openFormulaAtCursor });
 
 const cls = computed(() => ({
   'cm-host': true,
@@ -6513,7 +6781,7 @@ const cls = computed(() => ({
           @click.stop="togglePlainFold(block)"
         >{{ t('fold.placeholder', { lines: plainHiddenLineCount(block) }) }}</span>
         <textarea
-          v-if="index === plainActiveBlock"
+          v-if="index === plainActiveBlock && !block.isTable"
           :ref="(el) => setPlainBlockEditor(index, el as HTMLTextAreaElement | null)"
           class="plain-block__textarea"
           :class="{
@@ -6536,8 +6804,13 @@ const cls = computed(() => ({
           @focus="emitPlainCursorAndSelection"
         ></textarea>
         <div
-          v-else
+          v-if="index !== plainActiveBlock || block.isTable || block.isMermaid"
           class="plain-block__render"
+          :class="{
+            'plain-block__render--table': block.isTable,
+            'plain-block__render--mermaid-below': index === plainActiveBlock && block.isMermaid,
+          }"
+          :data-table-block-index="block.isTable ? index : undefined"
           v-html="block.html"
         ></div>
         <!-- #330 — the current find match, drawn: the textarea paints no
@@ -6730,6 +7003,7 @@ const cls = computed(() => ({
       :y="editorCtx.y"
       :has-selection="editorCtx.hasSelection"
       :has-image="editorCtx.hasImage"
+      :image-dims="editorCtx.imageDims"
       :spell="editorCtx.spell"
       @action="onEditorMenuAction"
       @resize-image="onEditorMenuResizeImage"
@@ -6997,12 +7271,12 @@ const cls = computed(() => ({
 /* #467 / #486 — active editing line/block tint in non-dark and dark modes. */
 .plain-block-editor--hl-line .plain-block--active,
 .plain-block-editor--hl-line .plain-block--active .plain-block__textarea {
-  background: color-mix(in srgb, #f48fb1 22%, color-mix(in srgb, var(--accent) 8%, var(--bg)));
+  background: var(--active-line-bg, color-mix(in srgb, #f48fb1 24%, color-mix(in srgb, var(--accent) 10%, var(--bg))));
   border-radius: 3px;
 }
 .cm-host--dark.plain-block-editor--hl-line .plain-block--active,
 .cm-host--dark.plain-block-editor--hl-line .plain-block--active .plain-block__textarea {
-  background: color-mix(in srgb, #f48fb1 14%, color-mix(in srgb, var(--accent) 11%, var(--bg)));
+  background: var(--active-line-bg, color-mix(in srgb, #f48fb1 16%, color-mix(in srgb, var(--accent) 14%, var(--bg))));
   border-radius: 3px;
 }
 /* #316 — focus mode in the block live editor: one element per paragraph
@@ -7260,10 +7534,18 @@ const cls = computed(() => ({
 .plain-block__render :deep(td) {
   border: 1px solid var(--border);
   padding: 6px 12px;
+  min-width: 48px;
 }
 .plain-block__render :deep(thead th) {
   background: var(--bg-elev);
   font-weight: 600;
+}
+.plain-block__render :deep(.cm-live-table__cell--editing) {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  background: var(--bg);
+  white-space: pre-wrap;
+  cursor: text;
 }
 .plain-block__render :deep(hr) {
   border: none;

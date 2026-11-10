@@ -144,6 +144,28 @@ export function fillTocPageNumbers(
   }
 }
 
+/**
+ * #515 — Collect heading entries `[level, title, pageNumber]` from the print
+ * overlay so native PDF generation can attach a PDF document outline (bookmarks).
+ */
+export function collectPrintOutline(
+  content: HTMLElement,
+  pageOf: ((el: Element) => number) | null,
+): Array<[number, string, number]> {
+  const headings = Array.from(
+    content.querySelectorAll<HTMLElement>('h1, h2, h3, h4, h5, h6'),
+  ).filter((el) => !el.closest('.md-toc'));
+  const entries: Array<[number, string, number]> = [];
+  for (const el of headings) {
+    const level = Math.max(1, Math.min(6, Number(el.tagName.slice(1)) || 1));
+    const title = (el.textContent || '').replace(/\s+/g, ' ').trim();
+    if (!title) continue;
+    const page = pageOf ? Math.max(1, pageOf(el)) : 1;
+    entries.push([level, title, page]);
+  }
+  return entries;
+}
+
 export interface PrintPagination {
   /** 1-based page an element starts on. */
   pageOf(el: Element): number;

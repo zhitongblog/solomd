@@ -516,6 +516,8 @@ export const es: I18n = {
     solidCursor: 'Cursor fijo (sin parpadeo)',
     selectionBubble: "Mostrar una barra de formato sobre el texto seleccionado",
     selectionBubbleHint: "Negrita, cursiva, código, enlace, títulos y listas justo encima de la selección, en los modos en vivo y código fuente. Cada botón ejecuta el mismo comando que su atajo.",
+    formatBar: "Mostrar la barra de formato sobre el editor",
+    formatBarHint: "Negrita, títulos, listas, código, enlaces, imágenes, tablas y deshacer, agrupados en una fila sobre el texto. Desactívalo para trabajar solo con los menús y los atajos.",
     alwaysShowMarkers: "Mostrar siempre los marcadores Markdown",
     alwaysShowMarkersHint: "Mantener visibles (atenuados) #, ** y demás marcadores al editar, en vez de ocultarlos en las líneas sin cursor. El formato se sigue viendo y al hacer clic en una línea ya no salta. Las imágenes se muestran bajo su línea; tablas, fórmulas y diagramas quedan como código. Se aplica al editor CodeMirror.",
     highlightCurrentLine: "Resaltar la línea actual",
@@ -2109,6 +2111,15 @@ export const es: I18n = {
     apply: 'Aplicar',
     cancel: 'Cancelar',
   },
+  insertTableDialog: {
+    title: 'Insertar tabla',
+    sizeSection: 'Tamaño de la tabla',
+    columns: 'Columnas',
+    rows: 'Filas',
+    note: 'Sobre estas filas se añade una fila de encabezado.',
+    ok: 'Aceptar',
+    cancel: 'Cancelar',
+  },
   tableToolbar: {
     label: "Table tools",
     rowAbove: "Insert row above",
@@ -2383,9 +2394,13 @@ export const es: I18n = {
   formatBar: {
     label: "Formato",
     heading: "Título",
+    headingTip: "Título — elegir nivel",
     image: "Insertar imagen",
     undo: "Deshacer",
+    redo: "Rehacer",
     hideKeyboard: "Ocultar teclado",
+    tableTip: "Tabla — arrastra para elegir el tamaño o abre el editor visual",
+    tableCustom: "Tabla personalizada… ({cols} × {rows})",
   },
   // 5.0 sidebar (Sidebar.vue, docs/v5-ui-spec.md §4)
   sidebar: {

@@ -13,6 +13,7 @@ import { readText as readClipboardText } from '@tauri-apps/plugin-clipboard-mana
 import { setMarkdownHardBreaks, setMarkdownAutoNumberHeadings, setMarkdownSmartQuotes } from './lib/markdown';
 import { openNewWindow } from './lib/new-window';
 import { ensureSpellDict } from './lib/spell-suggest';
+import { buildInsertTableSnippet } from './lib/table-cell-edit';
 import Toolbar from './components/Toolbar.vue';
 import TelemetryBanner from './components/TelemetryBanner.vue';
 import TileRoot from './components/TileRoot.vue';
@@ -56,6 +57,7 @@ import UnsavedDialog from './components/UnsavedDialog.vue';
 import FileChangedDialog from './components/FileChangedDialog.vue';
 import Toast from './components/Toast.vue';
 import KeyboardBar from './components/KeyboardBar.vue';
+import FormatBar from './components/FormatBar.vue';
 import { forceKeyboardBarPreview } from './lib/platform';
 import { useTabsStore } from './stores/tabs';
 import { useSettingsStore, buildEditorFontStack, setRightSidebarShell } from './stores/settings';
@@ -203,6 +205,22 @@ function onImageUrlConfirm(url: string, alt: string) {
     }),
   );
 }
+// #500 — "Insert Table" dialog (with 8x8 hover grid + Rows × Columns inputs).
+const insertTableDialogOpen = ref(false);
+function onOpenInsertTableDialog() {
+  insertTableDialogOpen.value = true;
+}
+function onInsertTableConfirm(rows: number, cols: number, align: 'left' | 'center' | 'right' | null = null) {
+  insertTableDialogOpen.value = false;
+  window.dispatchEvent(
+    new CustomEvent('solomd:insert-markdown', {
+      detail: {
+        snippet: buildInsertTableSnippet(rows, cols, align),
+        paneId: tiles.focusedPaneId,
+      },
+    }),
+  );
+}
 // When a caller wants the Settings panel to land on a specific category
 // (e.g. the AI button → `integrations`), set this before opening; the
 // SettingsPanel watches it and switches activeCategory accordingly.
@@ -330,6 +348,8 @@ const { component: AgentSetupWizardC, open: wizardLazyOpen } = useLazyComponent(
   () => import('./components/AgentSetupWizard.vue'), () => wizardOpen.value);
 const { component: ImageUrlDialogC, open: imageUrlLazyOpen } = useLazyComponent(
   () => import('./components/ImageUrlDialog.vue'), () => imageUrlDialogOpen.value);
+const { component: InsertTableDialogC, open: insertTableLazyOpen } = useLazyComponent(
+  () => import('./components/InsertTableDialog.vue'), () => insertTableDialogOpen.value);
 const { component: AndroidFolderPickerC, open: androidPickerLazyOpen } = useLazyComponent(
   () => import('./components/AndroidFolderPicker.vue'), () => androidPickerOpen.value);
 
@@ -701,7 +721,7 @@ watchEffect(() => {
 watchEffect(() => {
   document.documentElement.style.setProperty(
     '--content-font-size',
-    `${settings.previewFontSize || 15}px`,
+    `${settings.previewFontSize || settings.fontSize || 16}px`,
   );
 });
 
@@ -785,8 +805,46 @@ watchEffect(() => {
   document.documentElement.setAttribute('data-theme', dataThemeFor(settings.theme, !!settings.customCssPath));
   // 5.0 tokens: the exact default palette stays out of a marketplace theme's way.
   document.documentElement.toggleAttribute('data-custom-theme', !!settings.customCssPath);
+  const dark = themeFamily(settings.theme) === 'dark';
+  const customBg = (dark ? settings.customBgDark : settings.customBgLight)?.trim() || '';
+  const customText = (dark ? settings.customTextDark : settings.customTextLight)?.trim() || '';
+  const customHighlight = (dark ? settings.customHighlightDark : settings.customHighlightLight)?.trim() || '';
+  const customActiveLine = (dark ? settings.customActiveLineDark : settings.customActiveLineLight)?.trim() || '';
+  const rootStyle = document.documentElement.style;
+  if (customBg && !settings.customCssPath) {
+    rootStyle.setProperty('--bg', customBg);
+    rootStyle.setProperty('--custom-bg', customBg);
+    rootStyle.setProperty('--bg-elev', `color-mix(in srgb, ${customBg} 94%, ${dark ? '#ffffff' : '#000000'})`);
+    rootStyle.setProperty('--bg-sidebar', `color-mix(in srgb, ${customBg} 96%, #000000)`);
+  } else {
+    rootStyle.removeProperty('--bg');
+    rootStyle.removeProperty('--custom-bg');
+    rootStyle.removeProperty('--bg-elev');
+    rootStyle.removeProperty('--bg-sidebar');
+  }
+  if (customText && !settings.customCssPath) {
+    rootStyle.setProperty('--text', customText);
+    rootStyle.setProperty('--custom-text', customText);
+  } else {
+    rootStyle.removeProperty('--text');
+    rootStyle.removeProperty('--custom-text');
+  }
+  if (customHighlight) {
+    rootStyle.setProperty('--custom-highlight', customHighlight);
+    rootStyle.setProperty('--mark-bg', `color-mix(in srgb, ${customHighlight} ${dark ? '52%' : '62%'}, transparent)`);
+  } else {
+    rootStyle.removeProperty('--custom-highlight');
+    rootStyle.removeProperty('--mark-bg');
+  }
+  if (customActiveLine) {
+    rootStyle.setProperty('--custom-active-line', customActiveLine);
+    rootStyle.setProperty('--active-line-bg', `color-mix(in srgb, ${customActiveLine} ${dark ? '30%' : '38%'}, transparent)`);
+  } else {
+    rootStyle.removeProperty('--custom-active-line');
+    rootStyle.removeProperty('--active-line-bg');
+  }
   if (isIOS()) {
-    invoke('ios_set_appearance', { dark: themeFamily(settings.theme) === 'dark' }).catch(() => {});
+    invoke('ios_set_appearance', { dark }).catch(() => {});
   }
   const overriddenBy = settings.customCssPath;
   if (!themeAppliedOnce) {
@@ -969,7 +1027,6 @@ const updateCheck = useUpdateCheck();
 const INSERT_SNIPPETS: Record<string, string> = {
   'insert.mathBlock': '\n$$\n$|$\n$$\n',
   'insert.mathInline': '$$|$$',
-  'insert.table': '\n| $|$ | Header |\n| --- | --- |\n| cell | cell |\n',
   'insert.mermaid': MERMAID_INSERT_SNIPPET,
   'insert.hr': '\n---\n',
 };
@@ -1034,6 +1091,10 @@ function dispatchMenuAction(id: string) {
   }
   if (id.startsWith('theme.set:')) {
     settings.setTheme(id.slice('theme.set:'.length) as Theme);
+    return;
+  }
+  if (id === 'insert.table') {
+    insertTableDialogOpen.value = true;
     return;
   }
   if (INSERT_SNIPPETS[id]) {
@@ -1521,6 +1582,7 @@ onMounted(async () => {
   // can detach it — otherwise every HMR remount stacks another listener.
   window.addEventListener('solomd:open-agent-wizard', onOpenAgentWizard);
   window.addEventListener('solomd:open-image-url-dialog', onOpenImageUrlDialog);
+  window.addEventListener('solomd:open-insert-table-dialog', onOpenInsertTableDialog);
 
   // Initialize tile layout: validate persisted state or create default
   tiles.validate(tabs.tabs);
@@ -1806,6 +1868,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('solomd:open-settings', onOpenSettingsEvent as EventListener);
   window.removeEventListener('solomd:open-agent-wizard', onOpenAgentWizard);
   window.removeEventListener('solomd:open-image-url-dialog', onOpenImageUrlDialog);
+  window.removeEventListener('solomd:open-insert-table-dialog', onOpenInsertTableDialog);
   if (unlistenOpened) {
     unlistenOpened();
     unlistenOpened = null;
@@ -2291,6 +2354,19 @@ const viewOpen = ref(false);
  */
 const savedViewsStore = useSavedViewsStore();
 const viewPaneVisible = computed(() => viewOpen.value && !!savedViewsStore.activeView);
+const showFormatBar = computed(
+  () =>
+    (settings.formatBar || settings.showFormattingBar) &&
+    !settings.toolbarHidden &&
+    !isMobile() &&
+    tabs.activeTab?.language === 'markdown' &&
+    settings.viewMode !== 'preview' &&
+    settings.viewMode !== 'reading' &&
+    !basesOpen.value &&
+    !inboxViewOpen.value &&
+    !typeLensOpen.value &&
+    !viewPaneVisible.value,
+);
 const aiHasKey = ref(false);
 async function refreshAiHasKey() {
   if (!settings.aiEnabled) { aiHasKey.value = false; return; }
@@ -2348,7 +2424,7 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
         />
         <div
           v-if="isTabletOverlay && !isNarrow && (settings.showFileTree || toolbarMenuOpen)"
-          class="workspace__scrim"
+          class="workspace__scrim workspace__scrim--tablet"
           aria-hidden="true"
           @click="onTabletScrimClick"
         />
@@ -2380,6 +2456,7 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
         @open-help="helpOpen = true"
         @open-search="toggleGlobalSearch()"
       />
+      <FormatBar v-if="showFormatBar" />
       <TelemetryBanner />
       <div class="workspace">
         <aside
@@ -2447,7 +2524,7 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
           <TypeLensView v-else-if="typeLensOpen" :type-name="typeLensName" />
           <ViewNoteList v-else-if="viewPaneVisible" />
           <TileRoot v-else :node="tiles.root" @cursor="onCursor" @selection="onSelection" />
-          <StatsPill v-if="!basesOpen && !inboxViewOpen && !typeLensOpen && !viewPaneVisible" :line="cursorLine" :col="cursorCol" :selection-text="selectionText" />
+          <StatsPill v-if="!basesOpen && !inboxViewOpen && !typeLensOpen && !viewPaneVisible && settings.showWritingStats" :line="cursorLine" :col="cursorCol" :selection-text="selectionText" />
         </div>
         <aside
           v-if="showRightSidebar && settings.outlineSide !== 'left'"
@@ -2625,6 +2702,13 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
       :open="imageUrlLazyOpen"
       @confirm="onImageUrlConfirm"
       @cancel="imageUrlDialogOpen = false"
+    />
+    <component
+      :is="InsertTableDialogC"
+      v-if="InsertTableDialogC"
+      :open="insertTableLazyOpen"
+      @confirm="onInsertTableConfirm"
+      @cancel="insertTableDialogOpen = false"
     />
     <SessionRestoreDialog />
     <!-- v4.6 F5 — saved-view create/edit modal (self-mounts via window events). -->
@@ -2848,6 +2932,12 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
   background: rgba(0, 0, 0, 0.32);
   border: 0;
   padding: 0;
+}
+/* #518 — on tablet portrait overlay, the scrim sits below the header toolbar
+   (z-index: 20) so tapping a toolbar menu button reaches the button directly
+   instead of being swallowed by the scrim. */
+.workspace__scrim--tablet {
+  z-index: 19;
 }
 /* The editor keeps the full width underneath the drawer. */
 .app--narrow .content {

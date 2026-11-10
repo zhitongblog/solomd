@@ -20,7 +20,6 @@ concurrency:
 
 jobs:
   mirror:
-    if: ${{ secrets.ATOMGIT_TOKEN != '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -34,6 +33,10 @@ jobs:
           ATOMGIT_TOKEN: ${{ secrets.ATOMGIT_TOKEN }}
         run: |
           set -euo pipefail
+          if [ -z "${ATOMGIT_TOKEN:-}" ]; then
+            echo "ATOMGIT_TOKEN secret is not set; skipping AtomGit mirror."
+            exit 0
+          fi
           git remote set-head origin -d
           ASKPASS="$RUNNER_TEMP/atomgit-askpass"
           printf '%s\n' '#!/bin/sh' 'case "$1" in *Username*) printf "oauth2\n" ;; *) printf "%s\n" "$ATOMGIT_TOKEN" ;; esac' > "$ASKPASS"

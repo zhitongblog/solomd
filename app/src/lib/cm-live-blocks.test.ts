@@ -411,3 +411,75 @@ test('liveBlocksExtension stays frozen while dragging and flushes on dragEndEffe
   state = state.update({ effects: dragEndEffect.of(null) }).state;
   assert.equal(countImageWidgets(state), 0);
 });
+
+test('#500: liveBlocksExtension keeps GFM tables rendered when cursor is inside unless keepSource is enabled', () => {
+  const doc = ['| 列A | 列B |', '| --- | --- |', '| 1 | 2 |'].join('\n');
+  const countTableWidgets = (s: EditorState) => {
+    let n = 0;
+    for (const set of s.facet(EditorView.decorations)) {
+      set.between(0, s.doc.length, (_from, _to, deco) => {
+        const w = (deco.spec as { widget?: { constructor: { name: string } } }).widget;
+        if (w?.constructor.name === 'TableWidget') n++;
+      });
+    }
+    return n;
+  };
+
+  let keepSource = false;
+  const stateInside = EditorState.create({
+    doc,
+    extensions: [
+      markdown({ base: markdownLanguage, addKeymap: false }),
+      liveBlocksExtension({ keepSource: () => keepSource }),
+    ],
+    selection: { anchor: 2 }, // Cursor right inside header row!
+  });
+  assert.equal(countTableWidgets(stateInside), 1);
+
+  keepSource = true;
+  const stateKeepSource = EditorState.create({
+    doc,
+    extensions: [
+      markdown({ base: markdownLanguage, addKeymap: false }),
+      liveBlocksExtension({ keepSource: () => keepSource }),
+    ],
+    selection: { anchor: 2 },
+  });
+  assert.equal(countTableWidgets(stateKeepSource), 0);
+});
+
+test('#372: liveBlocksExtension renders MermaidWidget below the fence when cursor is inside or keepSource is enabled', () => {
+  const doc = ['```mermaid', 'graph TD', '  A --> B', '```'].join('\n');
+  const getMermaidRanges = (s: EditorState) => {
+    const out: Array<{ from: number; to: number }> = [];
+    for (const set of s.facet(EditorView.decorations)) {
+      set.between(0, s.doc.length, (from, to, deco) => {
+        const w = (deco.spec as { widget?: { constructor: { name: string } } }).widget;
+        if (w?.constructor.name === 'MermaidWidget') out.push({ from, to });
+      });
+    }
+    return out;
+  };
+
+  // Cursor inside the mermaid fence: renders as a block widget right below the closing fence (from === to === doc.length)
+  const stateInside = EditorState.create({
+    doc,
+    extensions: [
+      markdown({ base: markdownLanguage, addKeymap: false }),
+      liveBlocksExtension({ keepSource: () => false }),
+    ],
+    selection: { anchor: 12 },
+  });
+  assert.deepEqual(getMermaidRanges(stateInside), [{ from: doc.length, to: doc.length }]);
+
+  // keepSource = true: also renders as a block widget below the closing fence
+  const stateKeepSource = EditorState.create({
+    doc,
+    extensions: [
+      markdown({ base: markdownLanguage, addKeymap: false }),
+      liveBlocksExtension({ keepSource: () => true }),
+    ],
+    selection: { anchor: 0 },
+  });
+  assert.deepEqual(getMermaidRanges(stateKeepSource), [{ from: doc.length, to: doc.length }]);
+});

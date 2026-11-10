@@ -11,7 +11,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { cellStart, columnAt, tableAt, applyTableAction, tableActionEnabled, rowAfterAction } from './table-toolbar.ts';
+import { cellStart, colAfterAction, columnAt, tableAt, applyTableAction, tableActionEnabled, rowAfterAction } from './table-toolbar.ts';
 import { parseTable, serializeTable } from './markdown-table.ts';
 
 const DOC = ['# Doc', '', '| a | b |', '| --- | --- |', '| 1 | 2 |', '| 3 | 4 |', '', 'after'].join('\n');
@@ -123,10 +123,12 @@ test('column operations act on the caret column', () => {
   assert.deepEqual(applyTableAction(model, 'col-move-left', 0, 1).header, ['b', 'a']);
 });
 
-test('align acts on the caret column only', () => {
+test('align acts on the caret column only, while align-all-* aligns every column (#382)', () => {
   const model = parseTable('| a | b |\n| --- | --- |\n| 1 | 2 |');
   assert.ok(model);
   assert.deepEqual(applyTableAction(model, 'align-right', 0, 1).aligns, [null, 'right']);
+  assert.deepEqual(applyTableAction(model, 'align-all-center', 0, 0).aligns, ['center', 'center']);
+  assert.deepEqual(applyTableAction(model, 'align-all-right', 0, 0).aligns, ['right', 'right']);
   // And the marker actually reaches the source, in the right column.
   const md = serializeTable(applyTableAction(model, 'align-center', 0, 0));
   const round = parseTable(md);
@@ -150,9 +152,14 @@ test('rowAfterAction follows the row the user just made', () => {
   const model = parseTable('| a | b |\n| --- | --- |\n| 1 | 2 |\n| 3 | 4 |');
   assert.ok(model);
   assert.equal(rowAfterAction('row-below', 0, model), 1);
+  assert.equal(rowAfterAction('row-below', -1, model), 0);
   assert.equal(rowAfterAction('row-above', 1, model), 1);
   assert.equal(rowAfterAction('row-delete', 1, model), 1);
   assert.equal(rowAfterAction('align-right', 0, model), 0);
+  assert.equal(colAfterAction('col-left', 1, model), 1);
+  assert.equal(colAfterAction('col-right', 0, model), 1);
+  assert.equal(colAfterAction('col-move-left', 1, model), 0);
+  assert.equal(colAfterAction('col-move-right', 0, model), 1);
 });
 
 test('cellStart points at the cell content, not the pipe', () => {

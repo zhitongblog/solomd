@@ -3,6 +3,7 @@ import { computed, h as hEdit, nextTick, onBeforeUnmount, onMounted, provide, re
 import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { revealInFileManager } from '../lib/reveal-in-file-manager';
+import { openPath } from '@tauri-apps/plugin-opener';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useFiles } from '../composables/useFiles';
 import { useInbox } from '../composables/useInbox';
@@ -108,6 +109,16 @@ function openNodeInNewWindow(node: Node) {
   if (node.is_dir) return;
   files.spawnAuxWindow(node.path);
   closeCtx();
+}
+
+/** #214 / #140 / #152 — open non-Markdown or any file with the OS default application. */
+async function openNodeWithDefaultApp(node: Node) {
+  closeCtx();
+  try {
+    await openPath(node.path);
+  } catch (err) {
+    toasts.error(String(err));
+  }
 }
 
 /** #120 — copy the node's path relative to the workspace root, slash-normalised. */
@@ -1921,7 +1932,10 @@ onBeforeUnmount(() => {
             v-if="localVault"
             class="ftree__tool"
             type="button"
-            :class="{ 'ftree__tool--on': extFilter.length > 0, 'ftree__tool--open': filterOpen }"
+            :class="{
+              'ftree__tool--on': extFilter.length > 0 || settings.explorerShowHidden,
+              'ftree__tool--open': filterOpen,
+            }"
             :title="t('explorer.filterByType') || 'Filter by file type'"
             :aria-label="t('explorer.filterByType') || 'Filter by file type'"
             aria-haspopup="menu"
@@ -2055,6 +2069,17 @@ onBeforeUnmount(() => {
         <div v-if="extList.length === 0" class="ftree__menu-empty">
           {{ t('explorer.filterNoTypes') || 'Nothing to filter yet.' }}
         </div>
+        <div class="ftree__menu-sep"></div>
+        <button
+          class="ftree__menu-item"
+          :class="{ 'ftree__menu-item--active': settings.explorerShowHidden }"
+          role="menuitemcheckbox"
+          :aria-checked="settings.explorerShowHidden"
+          @click="settings.toggleExplorerShowHidden()"
+        >
+          <span class="ftree__menu-check">{{ settings.explorerShowHidden ? '✓' : '' }}</span>
+          <span class="ftree__menu-name">{{ t('settings.explorerShowHidden') }}</span>
+        </button>
       </div>
 
       <!-- The folder itself is gone (moved in Finder, deleted, drive
@@ -2234,6 +2259,9 @@ onBeforeUnmount(() => {
         <div class="ftree__ctx-sep"></div>
         <button v-if="ctx.node && !ctx.node.is_dir" class="ftree__ctx-item" @click="openNodeInNewWindow(ctx.node)">
           {{ t('tabMenu.openInNewWindow') }}
+        </button>
+        <button v-if="ctx.node && !ctx.node.is_dir" class="ftree__ctx-item" @click="openNodeWithDefaultApp(ctx.node)">
+          {{ settings.language === 'zh' ? '使用默认应用打开' : 'Open with Default App' }}
         </button>
         <button class="ftree__ctx-item" @click="revealNode(ctx.node ?? root!)">
           {{ t(revealLabelKey('explorer.reveal')) }}

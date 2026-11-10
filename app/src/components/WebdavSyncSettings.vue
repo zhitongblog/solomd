@@ -753,81 +753,7 @@ async function pullCloudVault() {
 
 <template>
   <section class="settings__section webdav-sync">
-    <nav v-if="!searching" class="webdav-sync__subnav" role="tablist" aria-label="Sync mode navigation">
-      <button
-        v-if="includeGitTab"
-        type="button"
-        role="tab"
-        class="webdav-sync__subnav-tab"
-        :class="{ 'webdav-sync__subnav-tab--active': currentTab === 'git' }"
-        :aria-selected="currentTab === 'git'"
-        @click="currentTab = 'git'"
-      >
-        {{
-          settings.language === 'zh'
-            ? '🔀 Git 同步 (GitHub/GitLab/Gitea)'
-            : '🔀 Git Sync (GitHub/GitLab/Gitea)'
-        }}
-      </button>
-      <button
-        type="button"
-        role="tab"
-        class="webdav-sync__subnav-tab"
-        :class="{ 'webdav-sync__subnav-tab--active': currentTab === 'cloud_api' }"
-        :aria-selected="currentTab === 'cloud_api'"
-        @click="currentTab = 'cloud_api'"
-      >
-        {{
-          settings.language === 'zh'
-            ? '☁️ 网盘直连 API (百度/阿里/OneDrive/R2)'
-            : '☁️ Direct Cloud API (Baidu/Aliyun/OneDrive/R2)'
-        }}
-      </button>
-      <button
-        type="button"
-        role="tab"
-        class="webdav-sync__subnav-tab"
-        :class="{ 'webdav-sync__subnav-tab--active': currentTab === 'local_vault' }"
-        :aria-selected="currentTab === 'local_vault'"
-        @click="currentTab = 'local_vault'"
-      >
-        {{
-          settings.language === 'zh'
-            ? '📂 本地网盘目录同步'
-            : '📂 Local Cloud Drive Folder'
-        }}
-      </button>
-      <button
-        type="button"
-        role="tab"
-        class="webdav-sync__subnav-tab"
-        :class="{ 'webdav-sync__subnav-tab--active': currentTab === 'webdav' }"
-        :aria-selected="currentTab === 'webdav'"
-        @click="currentTab = 'webdav'"
-      >
-        {{
-          settings.language === 'zh'
-            ? '🌐 WebDAV 同步 (坚果云/NAS/AList)'
-            : '🌐 WebDAV (Nutstore/NAS/AList)'
-        }}
-      </button>
-      <button
-        type="button"
-        role="tab"
-        class="webdav-sync__subnav-tab"
-        :class="{ 'webdav-sync__subnav-tab--active': currentTab === 'history' }"
-        :aria-selected="currentTab === 'history'"
-        @click="currentTab = 'history'"
-      >
-        {{
-          settings.language === 'zh'
-            ? '⏱️ 历史版本与快照策略'
-            : '⏱️ Version History & Snapshots'
-        }}
-      </button>
-    </nav>
-
-    <!-- ==================== WebDAV 同步 (#525 布局优化) ==================== -->
+    <!-- ==================== WebDAV 同步 (#525 / #528 布局优化) ==================== -->
     <div v-show="searching || currentTab === 'webdav'" class="webdav-sync__panel">
       <h4 class="settings__heading">
         {{ settings.language === 'zh' ? 'WebDAV 同步' : 'WebDAV Sync' }}
@@ -1367,58 +1293,22 @@ async function pullCloudVault() {
         }}
       </div>
 
-      <div class="webdav-sync__presets">
-        <span class="webdav-sync__preset-label">
-          {{ settings.language === 'zh' ? '选择云盘 / 对象存储：' : 'Cloud Provider:' }}
-        </span>
-        <button
-          type="button"
-          class="settings__btn-secondary"
-          :style="settings.cloudApiProvider === 'baidu' ? 'border-color: var(--accent); color: var(--accent); font-weight: 600;' : ''"
-          @click="selectApiProvider('baidu')"
-        >
-          百度网盘 (Baidu Netdisk)
-        </button>
-        <button
-          type="button"
-          class="settings__btn-secondary"
-          :style="settings.cloudApiProvider === 'alipan' ? 'border-color: var(--accent); color: var(--accent); font-weight: 600;' : ''"
-          @click="selectApiProvider('alipan')"
-        >
-          阿里云盘 (Alipan)
-        </button>
-        <button
-          type="button"
-          class="settings__btn-secondary"
-          :style="settings.cloudApiProvider === 'onedrive' ? 'border-color: var(--accent); color: var(--accent); font-weight: 600;' : ''"
-          @click="selectApiProvider('onedrive')"
-        >
-          Microsoft OneDrive
-        </button>
-        <button
-          type="button"
-          class="settings__btn-secondary"
-          :style="settings.cloudApiProvider === 'gdrive' ? 'border-color: var(--accent); color: var(--accent); font-weight: 600;' : ''"
-          @click="selectApiProvider('gdrive')"
-        >
-          Google Drive
-        </button>
-        <button
-          type="button"
-          class="settings__btn-secondary"
-          :style="settings.cloudApiProvider === 'dropbox' ? 'border-color: var(--accent); color: var(--accent); font-weight: 600;' : ''"
-          @click="selectApiProvider('dropbox')"
-        >
-          Dropbox
-        </button>
-        <button
-          type="button"
-          class="settings__btn-secondary"
-          :style="settings.cloudApiProvider === 'r2' ? 'border-color: var(--accent); color: var(--accent); font-weight: 600;' : ''"
-          @click="selectApiProvider('r2')"
-        >
-          Cloudflare R2 (S3)
-        </button>
+      <div class="webdav-sync__server-row">
+        <label class="webdav-sync__inline-label">
+          <span>{{ settings.language === 'zh' ? '选择云盘 / 对象存储：' : 'Cloud Provider:' }}</span>
+          <select
+            :value="settings.cloudApiProvider"
+            class="settings__input webdav-sync__server-select"
+            @change="selectApiProvider(($event.target as HTMLSelectElement).value as 'baidu' | 'alipan' | 'onedrive' | 'dropbox' | 'gdrive' | 'r2')"
+          >
+            <option value="baidu">百度网盘 (Baidu Netdisk)</option>
+            <option value="alipan">阿里云盘 (Alipan)</option>
+            <option value="onedrive">Microsoft OneDrive</option>
+            <option value="gdrive">Google Drive</option>
+            <option value="dropbox">Dropbox</option>
+            <option value="r2">Cloudflare R2 (S3)</option>
+          </select>
+        </label>
       </div>
 
       <div

@@ -331,4 +331,17 @@ test('unordered, ordered, and task list formatting inside blockquotes keeps > in
   assert.equal(run('> |', 'task'), '> - [ ] |');
 });
 
+test('#110 / #159: Tab on an empty line below a list item indents to the parent content column', async () => {
+  // Under ordered list `1. `: 3 spaces so typing `- sub` or `1. sub` nests properly
+  assert.equal(await tab('1. 一级列表\n|'), '1. 一级列表\n   |');
+  // Under unordered list `- `: 2 spaces
+  assert.equal(await tab('- 一级列表\n|'), '- 一级列表\n  |');
+  // Under 2-digit ordered list `10. `: 4 spaces
+  assert.equal(await tab('10. 十级列表\n|'), '10. 十级列表\n    |');
+  // Shift+Tab outdents the whitespace line back to column 0
+  assert.equal(await tab('1. 一级列表\n   |', true), '1. 一级列表\n|');
+  assert.equal(await tab('- 一级列表\n  |', true), '- 一级列表\n|');
+});
+
+
 

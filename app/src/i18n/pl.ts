@@ -516,6 +516,8 @@ export const pl: I18n = {
     solidCursor: 'Stały kursor (bez migania)',
     selectionBubble: "Pokazuj pasek formatowania nad zaznaczonym tekstem",
     selectionBubbleHint: "Pogrubienie, kursywa, kod, link, nagłówki i listy tuż nad zaznaczeniem, w trybie na żywo i źródłowym. Każdy przycisk wykonuje to samo polecenie co jego skrót.",
+    formatBar: "Pokaż pasek formatowania nad edytorem",
+    formatBarHint: "Pogrubienie, nagłówki, listy, kod, linki, obrazy, tabele i cofnij — zgrupowane w jednym wierszu nad tekstem. Wyłącz, aby korzystać wyłącznie z menu i skrótów.",
     alwaysShowMarkers: "Zawsze pokazuj znaczniki Markdown",
     alwaysShowMarkersHint: "Znaczniki #, ** i inne pozostają widoczne (przygaszone) podczas edycji zamiast znikać w wierszach bez kursora. Formatowanie zostaje, a kliknięcie wiersza nie powoduje już skoku. Obrazy są pod swoim wierszem; tabele, wzory i diagramy zostają źródłem. Dotyczy edytora CodeMirror.",
     highlightCurrentLine: "Podświetlaj bieżący wiersz",
@@ -2126,6 +2128,15 @@ export const pl: I18n = {
     apply: 'Zastosuj',
     cancel: 'Anuluj',
   },
+  insertTableDialog: {
+    title: 'Wstaw tabelę',
+    sizeSection: 'Rozmiar tabeli',
+    columns: 'Kolumny',
+    rows: 'Wiersze',
+    note: 'Ponad tymi wierszami zostanie dodany wiersz nagłówka.',
+    ok: 'OK',
+    cancel: 'Anuluj',
+  },
   tableToolbar: {
     label: "Table tools",
     rowAbove: "Insert row above",
@@ -2400,9 +2411,13 @@ export const pl: I18n = {
   formatBar: {
     label: "Formatowanie",
     heading: "Nagłówek",
+    headingTip: "Nagłówek — wybierz poziom",
     image: "Wstaw obraz",
     undo: "Cofnij",
+    redo: "Ponów",
     hideKeyboard: "Ukryj klawiaturę",
+    tableTip: "Tabela — przeciągnij, aby wybrać rozmiar, albo otwórz edytor wizualny",
+    tableCustom: "Tabela niestandardowa… ({cols} × {rows})",
   },
   // 5.0 sidebar (Sidebar.vue, docs/v5-ui-spec.md §4)
   sidebar: {

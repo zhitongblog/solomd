@@ -64,6 +64,7 @@ import { isDragging, isDragEndTransaction } from './cm-drag-aware';
 import {
   findInlineHtmlSpans,
   findMarkSpans,
+  findSupSubSpans,
   maskInlineCode,
   type LiveInlineHtmlKind,
 } from './html-live-render';
@@ -106,13 +107,24 @@ const htmlSubMark = Decoration.mark({ class: 'cm-md-html-sub' });
 const htmlSupMark = Decoration.mark({ class: 'cm-md-html-sup' });
 const htmlKbdMark = Decoration.mark({ class: 'cm-md-html-kbd' });
 
-function inlineHtmlMark(kind: LiveInlineHtmlKind): Decoration {
+function inlineHtmlMark(kind: LiveInlineHtmlKind, bgColor?: string, textColor?: string): Decoration {
   switch (kind) {
     case 'strong': return strongMark;
     case 'em': return emMark;
     case 'underline': return htmlUnderlineMark;
     case 'strike': return strikeMark;
-    case 'mark': return htmlMarkMark;
+    case 'mark': {
+      if (bgColor || textColor) {
+        const styles: string[] = [];
+        if (bgColor) styles.push(`background-color: ${bgColor}`);
+        if (textColor) styles.push(`color: ${textColor}`);
+        return Decoration.mark({
+          class: 'cm-md-html-mark',
+          attributes: { style: styles.join('; ') },
+        });
+      }
+      return htmlMarkMark;
+    }
     case 'sub': return htmlSubMark;
     case 'sup': return htmlSupMark;
     case 'code': return codeMark;
@@ -706,7 +718,7 @@ function buildDecorations(view: EditorView, showMarkers = false): DecorationSet 
         ranges.push(tagDeco.range(base + span.openFrom, base + span.openTo));
         if (span.contentTo > span.contentFrom) {
           ranges.push(
-            inlineHtmlMark(span.kind).range(
+            inlineHtmlMark(span.kind, span.bgColor, span.textColor).range(
               base + span.contentFrom,
               base + span.contentTo,
             ),
@@ -719,6 +731,18 @@ function buildDecorations(view: EditorView, showMarkers = false): DecorationSet 
         ranges.push(
           htmlMarkMark.range(base + span.contentFrom, base + span.contentTo),
         );
+        ranges.push(tagDeco.range(base + span.closeFrom, base + span.closeTo));
+      }
+      for (const span of findSupSubSpans(scanText)) {
+        ranges.push(tagDeco.range(base + span.openFrom, base + span.openTo));
+        if (span.contentTo > span.contentFrom) {
+          ranges.push(
+            inlineHtmlMark(span.kind, span.bgColor, span.textColor).range(
+              base + span.contentFrom,
+              base + span.contentTo,
+            ),
+          );
+        }
         ranges.push(tagDeco.range(base + span.closeFrom, base + span.closeTo));
       }
     }
@@ -863,7 +887,8 @@ const liveEditTheme = EditorView.theme({
   '.cm-md-strike': { textDecoration: 'line-through', color: 'var(--text-muted)' },
   '.cm-md-html-u': { textDecoration: 'underline' },
   '.cm-md-html-mark': {
-    backgroundColor: 'color-mix(in srgb, var(--accent) 24%, transparent)',
+    backgroundColor: 'var(--mark-bg, rgba(255, 212, 0, 0.52))',
+    padding: '0 0.14em',
     borderRadius: '2px',
   },
   '.cm-md-html-sub': { fontSize: '0.75em', verticalAlign: 'sub' },

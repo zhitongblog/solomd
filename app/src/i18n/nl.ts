@@ -516,6 +516,8 @@ export const nl: I18n = {
     solidCursor: 'Vaste cursor (zonder knipperen)',
     selectionBubble: "Opmaakbalk boven geselecteerde tekst tonen",
     selectionBubbleHint: "Vet, cursief, code, link, koppen en lijsten direct boven de selectie, in live- en bronmodus. Elke knop voert hetzelfde commando uit als de sneltoets.",
+    formatBar: "Opmaakbalk boven de editor tonen",
+    formatBarHint: "Vet, koppen, lijsten, code, links, afbeeldingen, tabellen en ongedaan maken, gegroepeerd op één regel boven de tekst. Zet dit uit om alleen met menu’s en sneltoetsen te werken.",
     alwaysShowMarkers: "Markdown-tekens altijd tonen",
     alwaysShowMarkersHint: "#, ** en andere tekens blijven (gedimd) zichtbaar tijdens het bewerken, in plaats van te verdwijnen op regels zonder cursor. De opmaak blijft en klikken op een regel laat die niet meer verspringen. Afbeeldingen staan onder hun regel; tabellen, formules en diagrammen blijven bron. Geldt voor de CodeMirror-editor.",
     highlightCurrentLine: "Huidige regel markeren",
@@ -2126,6 +2128,15 @@ export const nl: I18n = {
     apply: 'Toepassen',
     cancel: 'Annuleren',
   },
+  insertTableDialog: {
+    title: 'Tabel invoegen',
+    sizeSection: 'Tabelgrootte',
+    columns: 'Kolommen',
+    rows: 'Rijen',
+    note: 'Boven deze rijen wordt een kopregel toegevoegd.',
+    ok: 'OK',
+    cancel: 'Annuleren',
+  },
   tableToolbar: {
     label: "Table tools",
     rowAbove: "Insert row above",
@@ -2400,9 +2411,13 @@ export const nl: I18n = {
   formatBar: {
     label: "Opmaak",
     heading: "Kop",
+    headingTip: "Kop — kies een niveau",
     image: "Afbeelding invoegen",
     undo: "Ongedaan maken",
+    redo: "Opnieuw",
     hideKeyboard: "Toetsenbord verbergen",
+    tableTip: "Tabel — sleep om een grootte te kiezen of open de visuele editor",
+    tableCustom: "Aangepaste tabel… ({cols} × {rows})",
   },
   // 5.0 sidebar (Sidebar.vue, docs/v5-ui-spec.md §4)
   sidebar: {

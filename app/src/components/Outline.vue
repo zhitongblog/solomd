@@ -380,7 +380,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onWindowKey));
   cursor: pointer;
 }
 .outline__mark {
-  background: color-mix(in srgb, var(--accent, #ff9f40) 26%, transparent);
+  background: var(--mark-bg, rgba(255, 212, 0, 0.52));
   color: inherit;
   padding: 0 0.2em;
   border-radius: 3px;

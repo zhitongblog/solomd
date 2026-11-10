@@ -61,6 +61,9 @@ interface Settings {
   solidCursor: boolean;
   // 5.0 — floating format bar over a text selection (desktop only).
   selectionBubble: boolean;
+  // 5.0 — the formatting toolbar above the editor (bold, headings, lists,
+  // code, links, images, tables, undo). Default ON.
+  formatBar: boolean;
   // #353 — keep Markdown markers (`#`, `**`, …) visible in the CodeMirror
   // live views instead of hiding them off the caret line, so clicking a line
   // doesn't reflow it. Styling (heading size, bold) still applies.
@@ -246,7 +249,21 @@ interface Settings {
   aiEnabled: boolean;
   aiProvider: string;
   aiModel: string;
+  aiModels: Record<string, string>;
   aiBaseUrl: string;
+  // #327: Optional custom background, text, highlight & active-line color overrides for light and dark theme families.
+  customBgLight: string;
+  customTextLight: string;
+  customBgDark: string;
+  customTextDark: string;
+  customHighlightLight: string;
+  customHighlightDark: string;
+  customActiveLineLight: string;
+  customActiveLineDark: string;
+  // #415 / #497: Optional persistent Markdown formatting toolbar row.
+  showFormattingBar: boolean;
+  // #519: Optional dedicated full-width row for the tab bar instead of sharing the header row.
+  separateTabBarRow: boolean;
   // v2.0 F5: Pandoc + citations
   workspaceBibliography: string;
   workspaceCsl: string;
@@ -506,7 +523,7 @@ interface Settings {
    *    changes). Better when notes get reshuffled often; clutters the file
    *    tree if every note has images. Issue: user feedback 2026-05-26.
    */
-  attachmentMode: 'shared' | 'per-file' | 'custom';
+  attachmentMode: 'shared' | 'per-file' | 'custom' | 'base64';
   // #7 (顾河) — Typora-style custom path template for `custom` attachment mode.
   // Supports `${filename}` (the note's name without extension). Relative
   // templates (`./images/${filename}/`, `assets/`) resolve against the note's
@@ -674,6 +691,7 @@ function defaults(): Settings {
     showLineNumbers: false,
     solidCursor: false,
     selectionBubble: true,
+    formatBar: true,
     alwaysShowMarkers: false,
     highlightCurrentLine: true,
     tabTitleFromFirstLine: false,
@@ -773,7 +791,18 @@ function defaults(): Settings {
     aiEnabled: false,
     aiProvider: 'openai',
     aiModel: '',
+    aiModels: {},
     aiBaseUrl: '',
+    customBgLight: '',
+    customTextLight: '',
+    customBgDark: '',
+    customTextDark: '',
+    customHighlightLight: '',
+    customHighlightDark: '',
+    customActiveLineLight: '',
+    customActiveLineDark: '',
+    showFormattingBar: true,
+    separateTabBarRow: false,
     workspaceBibliography: '',
     workspaceCsl: '',
     autoGitEnabled: false,
@@ -978,6 +1007,15 @@ function load(): Settings {
           if (isTreeSortMode(v)) merged.explorerSortByFolder[k] = v;
         }
       }
+      merged.aiModels = {};
+      if (parsed.aiModels && typeof parsed.aiModels === 'object') {
+        for (const [k, v] of Object.entries(parsed.aiModels)) {
+          if (typeof v === 'string' && v.trim() !== '') merged.aiModels[k] = v;
+        }
+      }
+      if (merged.aiProvider && merged.aiModel && !merged.aiModels[merged.aiProvider]) {
+        merged.aiModels[merged.aiProvider] = merged.aiModel;
+      }
       merged.splitRatio = clampSplitRatio(merged.splitRatio);
       if (!LT_MODES.includes(merged.ltMode)) merged.ltMode = 'off';
       if (merged.ltLevel !== 'picky') merged.ltLevel = 'default';
@@ -1043,10 +1081,14 @@ function load(): Settings {
       // default) while the preview is still at its own old default (15) —
       // untouched installs keep their 14/15 pair unchanged.
       if (!parsed.v4810PreviewFontSynced) {
-        if ((parsed.previewFontSize ?? 15) === 15 && merged.fontSize !== 14) {
+        if ((parsed.previewFontSize ?? 15) === 15) {
           merged.previewFontSize = Math.max(10, Math.min(32, merged.fontSize));
         }
         merged.v4810PreviewFontSynced = true;
+      } else if (parsed.previewFontSize === 15 && merged.fontSize === 14) {
+        // #384 — Ensure legacy 14/15 split defaults align so Reading / Preview
+        // mode font size matches Live Edit mode out of the box.
+        merged.previewFontSize = 14;
       }
       // #148 (mobile) — one-time: existing phone installs had the right sidebar
       // on, squeezing the editor. Hide it once; desktop untouched. User can
@@ -1077,7 +1119,7 @@ function load(): Settings {
 }
 
 const THEMES: readonly Theme[] = [
-  'light', 'dark', 'nord', 'solarized-light', 'solarized-dark', 'monokai', 'github-light', 'dracula',
+  'light', 'dark', 'lucius', 'nord', 'solarized-light', 'solarized-dark', 'monokai', 'github-light', 'dracula',
 ];
 export function isTheme(v: unknown): v is Theme {
   return typeof v === 'string' && (THEMES as readonly string[]).includes(v);
@@ -1565,11 +1607,71 @@ export const useSettingsStore = defineStore('settings', {
       this.persist();
     },
     setAiProvider(p: string) {
+      if (this.aiProvider && this.aiModel) {
+        this.aiModels = { ...(this.aiModels || {}), [this.aiProvider]: this.aiModel };
+      }
       this.aiProvider = p;
+      const savedModel = this.aiModels?.[p];
+      if (typeof savedModel === 'string' && savedModel.trim() !== '') {
+        this.aiModel = savedModel;
+      }
       this.persist();
     },
     setAiModel(m: string) {
       this.aiModel = m;
+      if (this.aiProvider) {
+        this.aiModels = { ...(this.aiModels || {}), [this.aiProvider]: m };
+      }
+      this.persist();
+    },
+    setCustomThemeColors(
+      patch: Partial<
+        Pick<
+          Settings,
+          | 'customBgLight'
+          | 'customTextLight'
+          | 'customBgDark'
+          | 'customTextDark'
+          | 'customHighlightLight'
+          | 'customHighlightDark'
+          | 'customActiveLineLight'
+          | 'customActiveLineDark'
+        >
+      >,
+    ) {
+      if (patch.customBgLight !== undefined) this.customBgLight = patch.customBgLight;
+      if (patch.customTextLight !== undefined) this.customTextLight = patch.customTextLight;
+      if (patch.customBgDark !== undefined) this.customBgDark = patch.customBgDark;
+      if (patch.customTextDark !== undefined) this.customTextDark = patch.customTextDark;
+      if (patch.customHighlightLight !== undefined) this.customHighlightLight = patch.customHighlightLight;
+      if (patch.customHighlightDark !== undefined) this.customHighlightDark = patch.customHighlightDark;
+      if (patch.customActiveLineLight !== undefined) this.customActiveLineLight = patch.customActiveLineLight;
+      if (patch.customActiveLineDark !== undefined) this.customActiveLineDark = patch.customActiveLineDark;
+      this.persist();
+    },
+    resetCustomThemeColors() {
+      this.customBgLight = '';
+      this.customTextLight = '';
+      this.customBgDark = '';
+      this.customTextDark = '';
+      this.customHighlightLight = '';
+      this.customHighlightDark = '';
+      this.customActiveLineLight = '';
+      this.customActiveLineDark = '';
+      this.persist();
+    },
+    toggleFormattingBar() {
+      this.formatBar = !this.formatBar;
+      this.showFormattingBar = this.formatBar;
+      this.persist();
+    },
+    toggleFormatBar() {
+      this.formatBar = !this.formatBar;
+      this.showFormattingBar = this.formatBar;
+      this.persist();
+    },
+    toggleSeparateTabBarRow() {
+      this.separateTabBarRow = !this.separateTabBarRow;
       this.persist();
     },
     setAiBaseUrl(u: string) {
@@ -1873,9 +1975,15 @@ export const useSettingsStore = defineStore('settings', {
     resetPreviewFontSize() { this.setPreviewFontSize(defaults().previewFontSize); },
     /** v4.3.5 — flip between `shared` (`_assets/`) and `per-file`
      *  (`<basename>.assets/`) attachment storage layouts. */
-    setAttachmentMode(mode: 'shared' | 'per-file' | 'custom') {
+    setAttachmentMode(mode: 'shared' | 'per-file' | 'custom' | 'base64') {
       this.attachmentMode =
-        mode === 'per-file' ? 'per-file' : mode === 'custom' ? 'custom' : 'shared';
+        mode === 'per-file'
+          ? 'per-file'
+          : mode === 'custom'
+            ? 'custom'
+            : mode === 'base64'
+              ? 'base64'
+              : 'shared';
       this.persist();
     },
     setDefaultExportDir(dir: string) {

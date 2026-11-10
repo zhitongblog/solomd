@@ -21,6 +21,7 @@ import {
   deleteColumn,
   moveColumn,
   setAlign,
+  setAlignMany,
   setCell,
   emptyTable,
   type TableAlign,
@@ -51,6 +52,8 @@ onBeforeUnmount(() => window.removeEventListener('solomd:table-close-request', r
 /** Which column the row/column buttons act on. -1 while the caret is in the
  *  header, which is still a column — the row index is what differs. */
 const focused = ref<{ row: number; col: number }>({ row: -1, col: 0 });
+/** #382 — multi-column selection for batch alignment (Click, Shift+Click, Cmd/Ctrl+Click, or Select All). */
+const selectedCols = ref<number[]>([0]);
 const gridEl = ref<HTMLElement | null>(null);
 
 watch(
@@ -60,6 +63,7 @@ watch(
     initialTable.value = serializeTable(model.value);
     closeConfirm.value = false;
     focused.value = { row: -1, col: 0 };
+    selectedCols.value = [0];
   },
 );
 
@@ -105,6 +109,53 @@ const vCellText = {
 
 function focusCell(row: number, col: number) {
   focused.value = { row, col };
+  if (!selectedCols.value.includes(col)) {
+    selectedCols.value = [col];
+  }
+}
+
+/** #382 — Click / Shift+Click / Ctrl(Cmd)+Click on a column header chip selects one or multiple columns. */
+function onSelectColumnHeader(col: number, e: MouseEvent) {
+  e.preventDefault();
+  if (e.shiftKey) {
+    const anchor = focused.value.col;
+    const lo = Math.min(anchor, col);
+    const hi = Math.max(anchor, col);
+    const range: number[] = [];
+    for (let i = lo; i <= hi; i++) range.push(i);
+    selectedCols.value = range;
+  } else if (e.metaKey || e.ctrlKey) {
+    if (selectedCols.value.includes(col)) {
+      if (selectedCols.value.length > 1) {
+        selectedCols.value = selectedCols.value.filter((c) => c !== col);
+      }
+    } else {
+      selectedCols.value = [...selectedCols.value, col].sort((a, b) => a - b);
+    }
+    focused.value = { row: focused.value.row, col };
+  } else {
+    selectedCols.value = [col];
+    focused.value = { row: focused.value.row, col };
+  }
+}
+
+function toggleSelectAllCols() {
+  const all = Array.from({ length: colCount.value }, (_, i) => i);
+  if (selectedCols.value.length === colCount.value) {
+    selectedCols.value = [focused.value.col];
+  } else {
+    selectedCols.value = all;
+  }
+}
+
+const activeAlignCols = computed<number[]>(() => {
+  const valid = selectedCols.value.filter((c) => c >= 0 && c < colCount.value);
+  return valid.length > 0 ? valid : [focused.value.col];
+});
+
+function isAlignActive(a: TableAlign): boolean {
+  const cols = activeAlignCols.value;
+  return cols.length > 0 && cols.every((c) => (model.value.aligns[c] ?? null) === a);
 }
 
 /** Restore focus into the grid after a structural change, so the keyboard
@@ -173,7 +224,11 @@ function colRight() {
   void refocus(focused.value.row, at + 1);
 }
 function chooseAlign(a: TableAlign) {
-  model.value = setAlign(model.value, focused.value.col, a);
+  syncDomCellsToModel();
+  const cols = activeAlignCols.value;
+  model.value = cols.length > 1
+    ? setAlignMany(model.value, cols, a)
+    : setAlign(model.value, cols[0] ?? focused.value.col, a);
 }
 
 /** #387 — Quickly resize the table to targetCols × targetRows via direct numeric input. */
@@ -316,9 +371,16 @@ function onKeydown(e: KeyboardEvent) {
         <div class="tbl__group">
           <span class="tbl__grouplabel">{{ t('tableEditor.align') }}</span>
           <button
+            type="button"
+            class="tbl__select-all-cols"
+            :class="{ 'tbl__on': selectedCols.length === colCount && colCount > 1 }"
+            :title="t('tableEditor.selectAllCols') !== 'tableEditor.selectAllCols' ? t('tableEditor.selectAllCols') : '全选所有列 (Shift/Ctrl+点击列头可多选)'"
+            @click="toggleSelectAllCols"
+          >∀</button>
+          <button
             v-for="a in ALIGNS"
             :key="String(a.value)"
-            :class="{ 'tbl__on': model.aligns[focused.col] === a.value }"
+            :class="{ 'tbl__on': isAlignActive(a.value) }"
             @click="chooseAlign(a.value)"
           >{{ a.label }}</button>
         </div>
@@ -327,11 +389,35 @@ function onKeydown(e: KeyboardEvent) {
       <div class="tbl__gridwrap" ref="gridEl">
         <table class="tbl__grid">
           <thead>
+            <tr class="tbl__colbar">
+              <th
+                v-for="(_, c) in model.header"
+                :key="`colbar-${c}`"
+                class="tbl__colbar-th"
+                :class="{ 'tbl__colbar-th--selected': activeAlignCols.includes(c) }"
+                :title="'点击选列，Shift+点击连选，Ctrl/⌘+点击多选'"
+                @mousedown="onSelectColumnHeader(c, $event)"
+              >
+                <span class="tbl__colbar-label">{{ c + 1 }}</span>
+                <span class="tbl__colbar-align">{{
+                  model.aligns[c] === 'left'
+                    ? '⟵'
+                    : model.aligns[c] === 'center'
+                      ? '↔'
+                      : model.aligns[c] === 'right'
+                        ? '⟶'
+                        : '─'
+                }}</span>
+              </th>
+            </tr>
             <tr>
               <th
                 v-for="(cell, c) in model.header"
                 :key="`h${c}`"
-                :class="{ 'tbl__focus': focused.row === -1 && focused.col === c }"
+                :class="{
+                  'tbl__focus': focused.row === -1 && focused.col === c,
+                  'tbl__col-selected': activeAlignCols.length > 1 && activeAlignCols.includes(c),
+                }"
               >
                 <div
                   class="tbl__cell"
@@ -350,7 +436,10 @@ function onKeydown(e: KeyboardEvent) {
               <td
                 v-for="(cell, c) in row"
                 :key="`c${r}-${c}`"
-                :class="{ 'tbl__focus': focused.row === r && focused.col === c }"
+                :class="{
+                  'tbl__focus': focused.row === r && focused.col === c,
+                  'tbl__col-selected': activeAlignCols.length > 1 && activeAlignCols.includes(c),
+                }"
               >
                 <div
                   class="tbl__cell"
@@ -524,6 +613,33 @@ function onKeydown(e: KeyboardEvent) {
 .tbl__grid th {
   background: var(--bg-elev);
   font-weight: 600;
+}
+.tbl__colbar-th {
+  padding: 2px 6px !important;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+  text-align: center;
+  background: color-mix(in srgb, var(--bg-elev) 75%, var(--bg)) !important;
+}
+.tbl__colbar-th:hover {
+  color: var(--text);
+  background: var(--bg-hover) !important;
+}
+.tbl__colbar-th--selected {
+  color: var(--accent, #ff9f40);
+  background: color-mix(in srgb, var(--accent, #ff9f40) 14%, var(--bg-elev)) !important;
+}
+.tbl__colbar-label {
+  margin-right: 4px;
+}
+.tbl__colbar-align {
+  opacity: 0.75;
+}
+.tbl__col-selected {
+  background: color-mix(in srgb, var(--accent, #ff9f40) 8%, transparent) !important;
 }
 .tbl__focus {
   outline: 2px solid var(--accent, #ff9f40);

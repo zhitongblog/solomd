@@ -104,6 +104,12 @@ const modelChoices = computed<string[]>(() => {
       }
     }
   }
+  // #299 — Merge live models fetched from GET {base}/models when available
+  if (probe.value?.ok && probe.value.models.length > 0) {
+    for (const m of probe.value.models) {
+      if (m) out.add(m);
+    }
+  }
   return Array.from(out);
 });
 
@@ -113,6 +119,10 @@ const modelChoices = computed<string[]>(() => {
 const needsKey = computed(() => !currentProviderConfig.value?.keyless);
 /** The self-hosted OpenAI-compatible branch (llama.cpp / LM Studio / vLLM). */
 const isCompat = computed(() => props.provider === 'openai-compat');
+/** #299 — Hosted OpenAI-compatible providers that expose GET {base}/models. */
+const canProbeModels = computed(
+  () => currentProviderConfig.value?.apiFormat === 'openai' && props.provider !== 'ollama',
+);
 
 // ---------------------------------------------------------------------------
 // Ollama detection cache (v4.0 Pillar 5)
@@ -335,15 +345,18 @@ async function refreshAll(): Promise<void> {
 
 watch(
   () => props.provider,
-  (p) => {
+  async (p) => {
     keyInput.value = '';
     status.value = null;
-    refreshHasKey(p);
+    probe.value = null;
+    await refreshHasKey(p);
     // Re-probe Ollama on every switch INTO ollama (force = false uses
     // the 30s cache so back-and-forth flips don't spam the server).
     if (p === 'ollama') void detectOllama(false);
-    if (p === 'openai-compat') {
-      probe.value = null;
+    if (
+      p === 'openai-compat' ||
+      (canProbeModels.value && (hasKey.value[p] || p === 'openrouter'))
+    ) {
       scheduleCompatProbe(0);
     }
   },
@@ -355,7 +368,10 @@ let baseUrlDebounce: number | null = null;
 watch(
   () => props.baseUrl,
   () => {
-    if (isCompat.value) {
+    if (
+      isCompat.value ||
+      (canProbeModels.value && (hasKey.value[props.provider] || props.provider === 'openrouter'))
+    ) {
       scheduleCompatProbe();
       return;
     }
@@ -368,10 +384,15 @@ watch(
   },
 );
 
-onMounted(() => {
-  void refreshAll();
+onMounted(async () => {
+  await refreshAll();
   if (props.provider === 'ollama') void detectOllama(false);
-  if (isCompat.value) scheduleCompatProbe(0);
+  if (
+    isCompat.value ||
+    (canProbeModels.value && (hasKey.value[props.provider] || props.provider === 'openrouter'))
+  ) {
+    scheduleCompatProbe(0);
+  }
 });
 
 onUnmounted(() => {
@@ -422,6 +443,7 @@ async function saveKey(): Promise<void> {
     keyInput.value = '';
     await refreshHasKey(props.provider);
     status.value = { kind: 'ok', msg: t('ai.verified') + ' · ' + verifiedMsg };
+    if (canProbeModels.value) scheduleCompatProbe(0);
   } catch (e) {
     status.value = { kind: 'err', msg: String(e) };
   } finally {
@@ -603,7 +625,8 @@ function onProviderChange(ev: Event): void {
   emit('update:provider', sel);
   const cfg = providerById(sel);
   if (cfg) {
-    emit('update:model', cfg.defaultModel);
+    const remembered = settingsStore.aiModels?.[sel]?.trim();
+    emit('update:model', remembered || cfg.defaultModel);
     emit('update:baseUrl', cfg.defaultBaseUrl || '');
   }
   // Clear any stale verify status from the previous provider.
@@ -655,6 +678,33 @@ function onProviderChange(ev: Event): void {
         <datalist :id="`ai-model-options-${provider}`">
           <option v-for="m in modelChoices" :key="m" :value="m" />
         </datalist>
+      </div>
+      <!-- #299 — Quick model dropdown selector + live /models refresh for hosted providers -->
+      <div
+        v-if="!isCompat && provider !== 'ollama' && modelChoices.length > 0"
+        class="ai-settings__row"
+      >
+        <span class="ai-settings__label">{{ t('ai.compat.pickModel') }}</span>
+        <div class="ai-settings__keyrow">
+          <select
+            class="ai-settings__input"
+            :value="modelChoices.includes(model) ? model : ''"
+            @change="emit('update:model', ($event.target as HTMLSelectElement).value)"
+          >
+            <option value="" disabled>—</option>
+            <option v-for="m in modelChoices" :key="m" :value="m">{{ m }}</option>
+          </select>
+          <button
+            v-if="canProbeModels"
+            type="button"
+            class="ai-settings__btn"
+            :disabled="probing"
+            :title="t('ai.ollama.refresh')"
+            @click="probeCompat()"
+          >
+            ↻ {{ t('ai.ollama.refresh') }}
+          </button>
+        </div>
       </div>
       <p v-if="currentProviderConfig?.modelHint" class="ai-settings__hint">
         {{ t('ai.modelHintPrefix') }}: {{ currentProviderConfig.modelHint }}

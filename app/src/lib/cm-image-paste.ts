@@ -22,6 +22,7 @@ import { isContentUri, isSafPath, sniffImageExt } from './image-source';
 import { fromSafPath, safEnsureSubdir, safList, safCreate, safWriteBase64 } from './saf-fs';
 import { insideFence } from './list-continuation';
 import { clipboardTableToMarkdown } from './table-paste';
+import { clipboardHtmlToMarkdown } from './html-paste';
 
 export interface ImagePasteOptions {
   getFilePath: () => string | undefined;
@@ -41,10 +42,10 @@ export interface ImagePasteOptions {
     key: string,
     params?: Record<string, unknown>,
   ) => void;
-  /** v4.3.5 — `shared` (`_assets/`) vs `per-file` (`<stem>.assets/`).
+  /** v4.3.5 — `shared` (`_assets/`) vs `per-file` (`<stem>.assets/`) vs `base64` (#413).
    *  Defaults to `shared` if absent (back-compat for callers that haven't
    *  been updated yet). */
-  getAttachmentMode?: () => 'shared' | 'per-file' | 'custom';
+  getAttachmentMode?: () => 'shared' | 'per-file' | 'custom' | 'base64';
   /** #88 — folder name for the `shared` attachment mode (default `_assets`).
    *  `per-file` mode always uses `<stem>.assets/` regardless of this. */
   getAssetsDirName?: () => string;
@@ -132,7 +133,7 @@ function basenameNoExt(p: string): string {
 function resolveAssetsDir(
   filePath: string,
   sepCh: string,
-  mode: 'shared' | 'per-file' | 'custom',
+  mode: 'shared' | 'per-file' | 'custom' | 'base64',
   sharedDirName: string,
   customPath?: string,
 ): { dir: string; urlPrefix: string } {
@@ -484,6 +485,30 @@ async function performUpload(
   }
 }
 
+const EXT_TO_MIME: Record<string, string> = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  svg: 'image/svg+xml',
+  bmp: 'image/bmp',
+  tiff: 'image/tiff',
+};
+
+/** #413 — Convert raw image bytes into an inline `![](data:image/...;base64,...)` Markdown string. */
+export function bytesToMarkdownBase64Image(bytes: Uint8Array, ext: string): string {
+  const mime = EXT_TO_MIME[ext.toLowerCase()] || 'image/png';
+  let binary = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  const b64 =
+    typeof btoa === 'function' ? btoa(binary) : Buffer.from(bytes).toString('base64');
+  return `![](data:${mime};base64,${b64})`;
+}
+
 /**
  * Persist image bytes locally and return the markdown link to insert, or null
  * on failure. Used by the Windows plain-textarea editor (which inserts text via
@@ -494,6 +519,9 @@ export async function saveImageBytes(
   ext: string,
   opts: ImagePasteOptions,
 ): Promise<string | null> {
+  if (opts.getAttachmentMode?.() === 'base64') {
+    return bytesToMarkdownBase64Image(bytes, ext);
+  }
   const { fullPath, insertText } = await prepareLocalTarget(makeFilename(ext), opts);
   return (await writeBytes(fullPath, bytes)) ? insertText : null;
 }
@@ -510,6 +538,10 @@ async function saveAndInsert(
   ext: string,
   opts: ImagePasteOptions,
 ): Promise<void> {
+  if (opts.getAttachmentMode?.() === 'base64') {
+    insertAtCursor(view, bytesToMarkdownBase64Image(bytes, ext));
+    return;
+  }
   const filename = makeFilename(ext);
   const up = opts.getUploader ? opts.getUploader(filename) : null;
   const local = await prepareLocalTarget(filename, opts);
@@ -644,7 +676,24 @@ export async function handleTextareaImagePaste(
       if (f) images.push({ blob: f, ext: extFromName(f.name) || extFromMime(item.type) });
     }
   }
-  if (images.length === 0) return false;
+  if (images.length === 0) {
+    // #308 — Rich-text HTML paste (from web pages, Word, Docs, Notion, etc.)
+    // converted to clean Markdown when no image file is on the clipboard.
+    try {
+      const mdHtml = clipboardHtmlToMarkdown(
+        cd.getData?.('text/html'),
+        cd.getData?.('text/plain'),
+      );
+      if (mdHtml) {
+        event.preventDefault();
+        insert(mdHtml);
+        return true;
+      }
+    } catch {
+      /* ignore clipboard read errors */
+    }
+    return false;
+  }
   event.preventDefault();
   for (const img of images) {
     const bytes = await readFileAsUint8(img.blob);
@@ -665,6 +714,9 @@ async function saveOrUploadText(
   ext: string,
   opts: ImagePasteOptions,
 ): Promise<string | null> {
+  if (opts.getAttachmentMode?.() === 'base64') {
+    return bytesToMarkdownBase64Image(bytes, ext);
+  }
   const filename = makeFilename(ext);
   const up = opts.getUploader ? opts.getUploader(filename) : null;
   const local = await prepareLocalTarget(filename, opts);
@@ -789,6 +841,15 @@ export async function insertImageFromPath(
     return;
   }
   const ext = extFromName(srcPath) || 'png';
+  if (opts.getAttachmentMode?.() === 'base64') {
+    try {
+      const raw = await invoke<number[]>('read_binary_file', { path: srcPath });
+      insertAtCursor(view, bytesToMarkdownBase64Image(new Uint8Array(raw), ext));
+    } catch (err) {
+      reportFailure(opts, err);
+    }
+    return;
+  }
   const filename = makeFilename(ext);
   const up = opts.getUploader ? opts.getUploader(filename) : null;
   const local = await prepareLocalTarget(filename, opts);
@@ -851,6 +912,15 @@ export async function imageTextFromPath(
     return saveOrUploadText(bytes, sniffImageExt(bytes) || extFromName(srcPath) || 'png', opts);
   }
   const ext = extFromName(srcPath) || 'png';
+  if (opts.getAttachmentMode?.() === 'base64') {
+    try {
+      const raw = await invoke<number[]>('read_binary_file', { path: srcPath });
+      return bytesToMarkdownBase64Image(new Uint8Array(raw), ext);
+    } catch (err) {
+      reportFailure(opts, err);
+      return null;
+    }
+  }
   const filename = makeFilename(ext);
   const up = opts.getUploader ? opts.getUploader(filename) : null;
   const local = await prepareLocalTarget(filename, opts);
@@ -926,7 +996,32 @@ export function imagePasteExtension(opts: ImagePasteOptions) {
           break;
         }
       }
-      if (!hasImage) return false;
+      if (!hasImage) {
+        // #308 — Rich-text HTML paste (from web pages, Word, Docs, Notion, etc.)
+        // converted to clean Markdown when not inside a fenced code block.
+        try {
+          const sel = view.state.selection.main;
+          const lineStart = view.state.doc.lineAt(sel.from).from;
+          if (!insideFence(view.state.doc.toString(), lineStart)) {
+            const mdHtml = clipboardHtmlToMarkdown(
+              cd.getData?.('text/html'),
+              cd.getData?.('text/plain'),
+            );
+            if (mdHtml) {
+              event.preventDefault();
+              view.dispatch({
+                ...view.state.replaceSelection(mdHtml),
+                userEvent: 'input.paste',
+                scrollIntoView: true,
+              });
+              return true;
+            }
+          }
+        } catch {
+          /* ignore clipboard read errors */
+        }
+        return false;
+      }
       event.preventDefault();
       void handlePaste(event, view, opts);
       return true;

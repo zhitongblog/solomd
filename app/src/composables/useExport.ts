@@ -5,7 +5,8 @@ import { invoke } from '@tauri-apps/api/core';
 import { writeText, writeHtml, writeImage } from '@tauri-apps/plugin-clipboard-manager';
 import { Image } from '@tauri-apps/api/image';
 import { documentDir, join } from '@tauri-apps/api/path';
-import { isIOS, isMacOS, isMobile, isWindowsDesktop } from '../lib/platform';
+import { isIOS, isMacOS, isMobile, isWindowsDesktop, revealLabelKey } from '../lib/platform';
+import { revealInFileManager } from '../lib/reveal-in-file-manager';
 // Loaded per export rather than at startup. Between them these three pull in
 // `docx`, jsPDF + html2canvas and the mermaid renderer — megabytes that a user
 // who only opens a note to read it should never have to compile.
@@ -29,6 +30,7 @@ import { exportDefaultPath } from '../lib/export-paths';
 import { useI18n } from '../i18n';
 import { mountPrintOverlay } from '../lib/print-overlay';
 import {
+  collectPrintOutline,
   decoratePrintToc,
   fillTocPageNumbers,
   printableBox,
@@ -262,6 +264,23 @@ export function useExport() {
     return t('toast.savedToIos', { name: filename });
   }
 
+  /** #418 — Post-export toast with a one-click "Reveal in Finder / Show in Explorer" action on desktop. */
+  function notifyExportSaved(path: string, message: string) {
+    if (isMobile()) {
+      toasts.success(message);
+      return;
+    }
+    toasts.push(
+      message,
+      'success',
+      6000,
+      () => {
+        void revealInFileManager(path);
+      },
+      { actionLabel: t(revealLabelKey('explorer.reveal')) },
+    );
+  }
+
   // Modern Clipboard API works on all desktops and on iOS 16+ WKWebView,
   // and supports rich types (HTML, PNG) — unlike Tauri's plugin-clipboard-
   // manager iOS implementation which only ships `writeText`.
@@ -291,7 +310,7 @@ export function useExport() {
       });
       toasts.dismiss(tid);
       await invoke('write_file', { path, content: html, encoding: 'UTF-8' });
-      toasts.success(isIOS() ? iosSavedToast(filename) : t('toast.exportedTo', { format: 'HTML' }));
+      notifyExportSaved(path, isIOS() ? iosSavedToast(filename) : t('toast.exportedTo', { format: 'HTML' }));
     } catch (e) {
       toasts.dismiss(tid);
       toasts.error(t('toast.exportFailedError', { error: String(e) }));
@@ -317,7 +336,7 @@ export function useExport() {
       const buffer = new Uint8Array(await blob.arrayBuffer());
       // Tauri 2 serializes Uint8Array as a number array which Rust accepts as Vec<u8>.
       await invoke('write_binary_file', { path, data: Array.from(buffer) });
-      toasts.success(isIOS() ? iosSavedToast(filename) : t('toast.exportedTo', { format: 'DOCX' }));
+      notifyExportSaved(path, isIOS() ? iosSavedToast(filename) : t('toast.exportedTo', { format: 'DOCX' }));
     } catch (e) {
       console.error(e);
       toasts.error(t('toast.formatExportFailed', { format: 'DOCX', error: String(e) }));
@@ -350,7 +369,7 @@ export function useExport() {
       const buffer = new Uint8Array(await blob.arrayBuffer());
       await invoke('write_binary_file', { path, data: Array.from(buffer) });
       toasts.dismiss(tid);
-      toasts.success(isIOS() ? iosSavedToast(filename) : t('toast.exportedTo', { format: 'PDF' }));
+      notifyExportSaved(path, isIOS() ? iosSavedToast(filename) : t('toast.exportedTo', { format: 'PDF' }));
     } catch (e) {
       console.error(e);
       toasts.dismiss(tid);
@@ -512,23 +531,36 @@ export function useExport() {
     // Give KaTeX / images a tick to apply layout before print.
     await new Promise((r) => setTimeout(r, 200));
 
-    // #347 — the TOC page gets a title, and page numbers when the page size is
-    // known (Settings → PDF or `pdf:` front matter). Measured after mermaid
-    // and the layout tick above, since both change where pages break.
-    if (pdfOpts.toc && printContent) {
+    // #347 / #515 — the TOC page gets a title and page numbers, and we also
+    // collect heading page numbers for the PDF document outline (bookmarks).
+    let printOutlines: Array<[number, string, number]> = [];
+    if (printContent) {
       try {
-        const nav = decoratePrintToc(printContent, t('settings.pdfDefaults.tocTitle'));
-        const box = printableBox(pdfOpts.pageSizeMm, pdfOpts.marginMm);
-        if (nav && box) {
-          withPrintPagination(printOverlay, printContent, box, (p) =>
-            fillTocPageNumbers(nav, printContent, p.pageOf),
-          );
-        } else if (nav) {
-          fillTocPageNumbers(nav, printContent, null);
+        const nav = pdfOpts.toc
+          ? decoratePrintToc(printContent, t('settings.pdfDefaults.tocTitle'))
+          : null;
+        const box = printableBox(
+          pdfOpts.pageSizeMm ?? { width: 210, height: 297 },
+          pdfOpts.marginMm ?? { top: 15, right: 15, bottom: 15, left: 15 },
+        );
+        if (box) {
+          withPrintPagination(printOverlay, printContent, box, (p) => {
+            if (nav) {
+              fillTocPageNumbers(
+                nav,
+                printContent,
+                pdfOpts.pageSizeMm && pdfOpts.marginMm ? p.pageOf : null,
+              );
+            }
+            printOutlines = collectPrintOutline(printContent, p.pageOf);
+          });
+        } else {
+          if (nav) fillTocPageNumbers(nav, printContent, null);
+          printOutlines = collectPrintOutline(printContent, null);
         }
       } catch (e) {
         // Numbers are a nicety; a failure here must never stop the print.
-        console.error('[print] toc page numbers failed', e);
+        console.error('[print] toc/outline page numbers failed', e);
       }
     }
     try {
@@ -552,12 +584,13 @@ export function useExport() {
                   mmToPt(pdfOpts.marginMm.left),
                 ]
               : [mmToPt(15), mmToPt(15), mmToPt(15), mmToPt(15)],
+            outlines: printOutlines,
           });
         } finally {
           toasts.dismiss(tid);
         }
         cleanup();
-        toasts.success(t('toast.exportedTo', { format: 'PDF' }));
+        notifyExportSaved(directPath, t('toast.exportedTo', { format: 'PDF' }));
         return;
       }
       await invoke('print_webview');
@@ -708,7 +741,7 @@ export function useExport() {
         : isSelection
           ? t('toast.exportedSelectionPng')
           : t('toast.exportedPng');
-      toasts.success(msg);
+      notifyExportSaved(path, msg);
     } catch (e) {
       console.error(e);
       toasts.dismiss(tid);

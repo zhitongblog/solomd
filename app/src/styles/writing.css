@@ -59,3 +59,15 @@ input.task-list-item-checkbox:checked {
 .preview-content thead th {
   background: var(--bg-elev);
 }
+/* #384 — subtle zebra striping on even table rows for easier horizontal scanning */
+.preview-content tbody tr:nth-child(even),
+.plain-block__render tbody tr:nth-child(even),
+.cm-live-table tbody tr:nth-child(even) {
+  background: color-mix(in srgb, var(--bg-elev) 55%, transparent);
+}
+/* #384 — subtle paper elevation in Reading mode */
+[data-reading-view] .preview-content--reading {
+  background: var(--bg);
+  border-radius: 12px;
+  box-shadow: 0 2px 24px rgba(0, 0, 0, 0.045);
+}

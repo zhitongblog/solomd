@@ -516,6 +516,8 @@ export const it: I18n = {
     solidCursor: 'Cursore fisso (senza lampeggio)',
     selectionBubble: "Mostra una barra di formattazione sul testo selezionato",
     selectionBubbleHint: "Grassetto, corsivo, codice, link, titoli ed elenchi subito sopra la selezione, nelle modalità live e sorgente. Ogni pulsante esegue lo stesso comando della sua scorciatoia.",
+    formatBar: "Mostra la barra di formattazione sopra l’editor",
+    formatBarHint: "Grassetto, titoli, elenchi, codice, link, immagini, tabelle e annulla, raggruppati in una riga sopra il testo. Disattiva per lavorare solo con menu e scorciatoie.",
     alwaysShowMarkers: "Mostra sempre i marcatori Markdown",
     alwaysShowMarkersHint: "Mantiene visibili (attenuati) #, ** e gli altri marcatori durante la modifica, invece di nasconderli nelle righe senza cursore. La formattazione resta e cliccare una riga non la fa più saltare. Le immagini appaiono sotto la loro riga; tabelle, formule e diagrammi restano sorgente. Vale per l’editor CodeMirror.",
     highlightCurrentLine: "Evidenzia la riga corrente",
@@ -2109,6 +2111,15 @@ export const it: I18n = {
     apply: 'Applica',
     cancel: 'Annulla',
   },
+  insertTableDialog: {
+    title: 'Inserisci tabella',
+    sizeSection: 'Dimensione tabella',
+    columns: 'Colonne',
+    rows: 'Righe',
+    note: 'Su queste righe viene aggiunta una riga di intestazione.',
+    ok: 'OK',
+    cancel: 'Annulla',
+  },
   tableToolbar: {
     label: "Table tools",
     rowAbove: "Insert row above",
@@ -2383,9 +2394,13 @@ export const it: I18n = {
   formatBar: {
     label: "Formattazione",
     heading: "Titolo",
+    headingTip: "Titolo — scegli il livello",
     image: "Inserisci immagine",
     undo: "Annulla",
+    redo: "Ripeti",
     hideKeyboard: "Nascondi tastiera",
+    tableTip: "Tabella — trascina per scegliere la dimensione o apri l’editor visuale",
+    tableCustom: "Tabella personalizzata… ({cols} × {rows})",
   },
   // 5.0 sidebar (Sidebar.vue, docs/v5-ui-spec.md §4)
   sidebar: {

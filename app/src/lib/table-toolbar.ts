@@ -22,6 +22,7 @@ import {
   moveRow,
   parseTable,
   setAlign,
+  setAlignMany,
   type TableModel,
 } from './markdown-table.ts';
 import { insideFence } from './list-continuation.ts';
@@ -40,7 +41,10 @@ export type TableAction =
   | 'col-move-right'
   | 'align-left'
   | 'align-center'
-  | 'align-right';
+  | 'align-right'
+  | 'align-all-left'
+  | 'align-all-center'
+  | 'align-all-right';
 
 /** A table the caret is inside, plus the cell it is on. */
 export interface TableHit {
@@ -204,6 +208,12 @@ export function applyTableAction(
       return setAlign(model, col, 'center');
     case 'align-right':
       return setAlign(model, col, 'right');
+    case 'align-all-left':
+      return setAlignMany(model, model.header.map((_, i) => i), 'left');
+    case 'align-all-center':
+      return setAlignMany(model, model.header.map((_, i) => i), 'center');
+    case 'align-all-right':
+      return setAlignMany(model, model.header.map((_, i) => i), 'right');
   }
 }
 
@@ -234,6 +244,10 @@ export function tableActionEnabled(
     case 'align-center':
     case 'align-right':
       return col >= 0 && col < cols;
+    case 'align-all-left':
+    case 'align-all-center':
+    case 'align-all-right':
+      return cols > 0;
     default:
       return true;
   }
@@ -247,15 +261,33 @@ export function rowAfterAction(action: TableAction, row: number, model: TableMod
     case 'row-above':
       return at;
     case 'row-below':
-      return at + 1;
+      return row < 0 ? 0 : at + 1;
     case 'row-delete':
-      return Math.max(0, Math.min(at, model.rows.length - 1));
+      return model.rows.length > 0 ? Math.max(0, Math.min(at, model.rows.length - 1)) : -1;
     case 'row-up':
       return Math.max(0, row - 1);
     case 'row-down':
       return Math.min(model.rows.length - 1, row + 1);
     default:
       return row;
+  }
+}
+
+/** The column the caret belongs to after `action` (e.g. moves into a newly
+ *  inserted column or follows a moved column). */
+export function colAfterAction(action: TableAction, col: number, model: TableModel): number {
+  const maxCol = Math.max(0, model.header.length - 1);
+  switch (action) {
+    case 'col-left':
+      return Math.max(0, Math.min(col, maxCol));
+    case 'col-right':
+      return Math.max(0, Math.min(col + 1, maxCol));
+    case 'col-move-left':
+      return Math.max(0, col - 1);
+    case 'col-move-right':
+      return Math.min(maxCol, col + 1);
+    default:
+      return Math.max(0, Math.min(col, maxCol));
   }
 }
 

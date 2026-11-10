@@ -516,6 +516,8 @@ export const ja: I18n = {
     solidCursor: 'カーソルを点滅させない',
     selectionBubble: "選択したテキストの上に書式バーを表示",
     selectionBubbleHint: "ライブ／ソースモードで、選択範囲の上に太字・斜体・コード・リンク・見出し・リストのボタンを表示します。各ボタンはショートカットと同じコマンドを実行します。",
+    formatBar: "エディターの上に書式ツールバーを表示",
+    formatBarHint: "太字・見出し・リスト・コード・リンク・画像・表・元に戻すを本文の上に 1 行でまとめて表示します。オフにするとメニューとショートカットのみになります。",
     alwaysShowMarkers: "Markdown 記号を常に表示",
     alwaysShowMarkersHint: "編集中も #、** などの記号を（薄く）表示し、カーソルのない行で隠さないようにします。書式はそのまま表示され、行をクリックしても表示が動きません。画像は行の下に表示され、表・数式・図はソースのままです。CodeMirror エディタに適用されます。",
     highlightCurrentLine: "現在の行をハイライト",
@@ -2109,6 +2111,15 @@ export const ja: I18n = {
     apply: '適用',
     cancel: 'キャンセル',
   },
+  insertTableDialog: {
+    title: '表の挿入',
+    sizeSection: '表のサイズ',
+    columns: '列数',
+    rows: '行数',
+    note: 'これらの行の上にヘッダー行が追加されます。',
+    ok: 'OK',
+    cancel: 'キャンセル',
+  },
   tableToolbar: {
     label: "Table tools",
     rowAbove: "Insert row above",
@@ -2383,9 +2394,13 @@ export const ja: I18n = {
   formatBar: {
     label: "書式",
     heading: "見出し",
+    headingTip: "見出し — レベルを選択",
     image: "画像を挿入",
     undo: "元に戻す",
+    redo: "やり直す",
     hideKeyboard: "キーボードを閉じる",
+    tableTip: "表 — ドラッグしてサイズを選択、またはビジュアル編集を開く",
+    tableCustom: "カスタム表…（{cols} × {rows}）",
   },
   // 5.0 sidebar (Sidebar.vue, docs/v5-ui-spec.md §4)
   sidebar: {

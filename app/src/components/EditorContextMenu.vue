@@ -36,6 +36,13 @@ export interface EditorMenuSpell {
   addWords?: string[];
 }
 
+export interface EditorMenuImageDims {
+  width: number;
+  height: number;
+  naturalWidth: number;
+  naturalHeight: number;
+}
+
 // `hasImage`: the right-click landed on a rendered image (#362) — offer
 // "Copy image" on top of the text items.
 const props = defineProps<{
@@ -43,6 +50,7 @@ const props = defineProps<{
   y: number;
   hasSelection: boolean;
   hasImage?: boolean;
+  imageDims?: EditorMenuImageDims | null;
   spell?: EditorMenuSpell | null;
 }>();
 const emit = defineEmits<{
@@ -61,6 +69,54 @@ const { t } = useI18n();
 const root = ref<HTMLElement | null>(null);
 const pos = ref({ left: props.x, top: props.y });
 const mod = usesCommandKey() ? '⌘' : 'Ctrl+';
+
+// #499 / #264 — Exact pixel width & height inputs with aspect-ratio lock.
+const pxWidth = ref<string>(props.imageDims?.width ? String(props.imageDims.width) : '');
+const pxHeight = ref<string>(props.imageDims?.height ? String(props.imageDims.height) : '');
+const lockAspect = ref(true);
+
+const aspectRatio = computed(() => {
+  const nw = props.imageDims?.naturalWidth || props.imageDims?.width || 0;
+  const nh = props.imageDims?.naturalHeight || props.imageDims?.height || 0;
+  return nw > 0 && nh > 0 ? nw / nh : 0;
+});
+
+function onPxWidthInput(e: Event) {
+  const val = (e.target as HTMLInputElement).value.trim();
+  pxWidth.value = val;
+  if (lockAspect.value && aspectRatio.value > 0) {
+    const n = Number.parseInt(val, 10);
+    if (Number.isFinite(n) && n > 0) {
+      pxHeight.value = String(Math.max(1, Math.round(n / aspectRatio.value)));
+    }
+  }
+}
+
+function onPxHeightInput(e: Event) {
+  const val = (e.target as HTMLInputElement).value.trim();
+  pxHeight.value = val;
+  if (lockAspect.value && aspectRatio.value > 0) {
+    const n = Number.parseInt(val, 10);
+    if (Number.isFinite(n) && n > 0) {
+      pxWidth.value = String(Math.max(1, Math.round(n * aspectRatio.value)));
+    }
+  }
+}
+
+function applyExactPxSize() {
+  const w = Number.parseInt(pxWidth.value, 10);
+  const h = Number.parseInt(pxHeight.value, 10);
+  const hasW = Number.isFinite(w) && w > 0;
+  const hasH = Number.isFinite(h) && h > 0;
+  if (!hasW && !hasH) return;
+  if (hasW && hasH) {
+    emit('resize-image', `${w}x${h}`);
+  } else if (hasW) {
+    emit('resize-image', `${w}`);
+  } else {
+    emit('resize-image', `x${h}`);
+  }
+}
 
 type Item = { id: EditorMenuAction; label: string; key: string; disabled: boolean; sep?: boolean };
 const items = computed<Item[]>(() => [
@@ -224,17 +280,59 @@ onBeforeUnmount(() => {
         role="group"
         :aria-label="t('overlay.imageSize')"
       >
-        <span class="editor-ctx__size-label">{{ t('overlay.imageSize') }}</span>
-        <div class="editor-ctx__size-pills">
+        <div class="editor-ctx__size-row">
+          <span class="editor-ctx__size-label">{{ t('overlay.imageSize') }}</span>
+          <div class="editor-ctx__size-pills">
+            <button
+              v-for="sz in IMAGE_SIZE_PRESETS"
+              :key="sz"
+              type="button"
+              class="editor-ctx__size-btn"
+              :data-size="sz"
+              @mousedown.prevent
+              @click="emit('resize-image', sz)"
+            >{{ sz }}</button>
+          </div>
+        </div>
+        <div class="editor-ctx__px-row" @mousedown.stop>
+          <input
+            type="number"
+            min="1"
+            max="9999"
+            class="editor-ctx__px-input"
+            placeholder="W"
+            aria-label="Width (px)"
+            :value="pxWidth"
+            @input="onPxWidthInput"
+            @keydown.enter.prevent="applyExactPxSize"
+          />
           <button
-            v-for="sz in IMAGE_SIZE_PRESETS"
-            :key="sz"
             type="button"
-            class="editor-ctx__size-btn"
-            :data-size="sz"
+            class="editor-ctx__lock-btn"
+            :class="{ 'editor-ctx__lock-btn--active': lockAspect }"
+            :title="lockAspect ? 'Lock aspect ratio' : 'Unlock aspect ratio'"
             @mousedown.prevent
-            @click="emit('resize-image', sz)"
-          >{{ sz }}</button>
+            @click="lockAspect = !lockAspect"
+          >{{ lockAspect ? '🔒' : '🔓' }}</button>
+          <input
+            type="number"
+            min="1"
+            max="9999"
+            class="editor-ctx__px-input"
+            placeholder="H"
+            aria-label="Height (px)"
+            :value="pxHeight"
+            @input="onPxHeightInput"
+            @keydown.enter.prevent="applyExactPxSize"
+          />
+          <span class="editor-ctx__px-unit">px</span>
+          <button
+            type="button"
+            class="editor-ctx__size-btn editor-ctx__px-apply"
+            data-action="apply-px-size"
+            @mousedown.prevent
+            @click="applyExactPxSize"
+          >✓</button>
         </div>
       </div>
     </template>
@@ -297,10 +395,57 @@ onBeforeUnmount(() => {
 }
 .editor-ctx__image-sizes {
   display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 10px 6px;
+}
+.editor-ctx__size-row {
+  display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 4px 10px 6px;
+}
+.editor-ctx__px-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.editor-ctx__px-input {
+  width: 58px;
+  padding: 2px 5px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.editor-ctx__px-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.editor-ctx__lock-btn {
+  padding: 1px 4px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  font-size: 11px;
+  cursor: pointer;
+  opacity: 0.65;
+}
+.editor-ctx__lock-btn--active {
+  opacity: 1;
+  border-color: var(--border);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.editor-ctx__px-unit {
+  color: var(--text-faint);
+  font-size: 11px;
+}
+.editor-ctx__px-apply {
+  margin-left: auto;
+  padding: 2px 7px;
+  font-weight: 600;
 }
 .editor-ctx__size-label {
   color: var(--text-muted, var(--text));

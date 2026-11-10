@@ -448,6 +448,13 @@ export function useCommands(): Command[] {
     },
 
     {
+      id: 'insert.table',
+      title: 'Insert Table…',
+      hint: 'Pick rows × columns from a grid or enter custom table dimensions',
+      run: () => window.dispatchEvent(new CustomEvent('solomd:open-insert-table-dialog')),
+    },
+
+    {
       id: 'editor.tableEditor',
       title: 'Edit Table…',
       shortcut: kb('editor.tableEditor'),

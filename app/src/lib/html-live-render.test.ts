@@ -5,10 +5,12 @@ import {
   findHtmlBlockEnd,
   findInlineHtmlSpans,
   findMarkSpans,
+  findSupSubSpans,
   maskInlineCode,
   parseOutlineSegments,
   stripOutlineFormatting,
 } from './html-live-render.ts';
+import { renderMarkdown } from './markdown.ts';
 
 test('==mark== 高亮:识别、跳过内联代码、拒绝无效形态', () => {
   const line = '前==重点内容==后,以及==第二处==。';
@@ -85,4 +87,45 @@ test('大纲标题高亮片段解析支持 ==高亮== 与 <mark> 标签，并忽
   ]);
   assert.equal(stripOutlineFormatting('第一章 ==重点内容== 与 <mark>结论</mark>'), '第一章 重点内容 与 结论');
 });
+
+test('#284 ^sup^ 上标与 ~sub~ 下标: Live Edit 识别、排除 ~~删除线~~ 与 [^脚注] 及 $数学公式$', () => {
+  const line = 'H~2~O 与 x^2^，忽略 ~~删除线~~、[^1] 脚注和 $a^2 + b_2$。';
+  const spans = findSupSubSpans(maskInlineCode(line));
+  assert.deepEqual(spans.map((s) => ({ kind: s.kind, text: line.slice(s.contentFrom, s.contentTo) })), [
+    { kind: 'sub', text: '2' },
+    { kind: 'sup', text: '2' },
+  ]);
+
+  const html = renderMarkdown('H~2~O and x^2^ plus ~~strike~~');
+  assert.match(html, /H<sub>2<\/sub>O/);
+  assert.match(html, /x<sup>2<\/sup>/);
+  assert.match(html, /<s>strike<\/s>/);
+});
+
+test('自定义高亮颜色: <mark style="background-color: ..."> 提取背景色与文字色，applyHighlightColor 支持包裹/替换/取消', async () => {
+  const { applyHighlightColor } = await import('./md-format.ts');
+  const line = '普通 <mark style="background-color: #fde047; color: #1f2328">重点</mark> 文本';
+  const spans = findInlineHtmlSpans(line);
+  assert.equal(spans.length, 1);
+  assert.equal(spans[0].kind, 'mark');
+  assert.equal(spans[0].bgColor, '#fde047');
+  assert.equal(spans[0].textColor, '#1f2328');
+
+  // Wrap plain selection in colored <mark>
+  const e1 = applyHighlightColor('hello world', 6, 11, '#86efac');
+  const doc1 = 'hello '.concat(e1.insert);
+  assert.equal(doc1, 'hello <mark style="background-color: #86efac">world</mark>');
+
+  // Replace existing colored <mark> with another color
+  const e2 = applyHighlightColor(doc1, e1.selFrom, e1.selTo, '#93c5fd');
+  const doc2 = doc1.slice(0, e2.from) + e2.insert + doc1.slice(e2.to);
+  assert.equal(doc2, 'hello <mark style="background-color: #93c5fd">world</mark>');
+
+  // Toggle off when applying the same color again
+  const e3 = applyHighlightColor(doc2, e2.selFrom, e2.selTo, '#93c5fd');
+  const doc3 = doc2.slice(0, e3.from) + e3.insert + doc2.slice(e3.to);
+  assert.equal(doc3, 'hello world');
+});
+
+
 

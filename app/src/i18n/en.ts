@@ -519,6 +519,8 @@ export const en = {
     solidCursor: 'Solid cursor (no blinking)',
     selectionBubble: "Show a format bar over selected text",
     selectionBubbleHint: "Bold, italic, code, link, headings and lists right above a selection, in live and source modes. Every button runs the same command as its shortcut.",
+    formatBar: "Show the formatting toolbar above the editor",
+    formatBarHint: "Bold, headings, lists, code, links, images, tables and undo, grouped in one row above the text. Turn it off to work with the menus and shortcuts alone.",
     alwaysShowMarkers: "Always show Markdown markers",
     alwaysShowMarkersHint: "Keep #, ** and other markers visible (dimmed) while editing, instead of hiding them on lines the cursor isn't on. Formatting still shows, and clicking a line no longer makes it jump. Images render below their line; tables, math and diagrams stay as source. Applies to the CodeMirror editor.",
     highlightCurrentLine: "Highlight the current line",
@@ -2138,6 +2140,15 @@ export const en = {
     apply: 'Apply',
     cancel: 'Cancel',
   },
+  insertTableDialog: {
+    title: 'Insert Table',
+    sizeSection: 'Table size',
+    columns: 'Columns',
+    rows: 'Rows',
+    note: 'A header row is added on top of these rows.',
+    ok: 'OK',
+    cancel: 'Cancel',
+  },
   tableToolbar: {
     label: "Table tools",
     rowAbove: "Insert row above",
@@ -2412,9 +2423,13 @@ export const en = {
   formatBar: {
     label: "Formatting",
     heading: "Heading",
+    headingTip: "Heading — pick a level",
     image: "Insert image",
     undo: "Undo",
+    redo: "Redo",
     hideKeyboard: "Hide keyboard",
+    tableTip: "Table — drag to choose a size, or open the visual editor",
+    tableCustom: "Custom table… ({cols} × {rows})",
   },
   // 5.0 sidebar (Sidebar.vue, docs/v5-ui-spec.md §4)
   sidebar: {

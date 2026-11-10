@@ -4,6 +4,7 @@ import PaneTabBar from './PaneTabBar.vue';
 import PaneContent from './PaneContent.vue';
 import { useTabsStore } from '../stores/tabs';
 import { useTilesStore } from '../stores/tiles';
+import { useSettingsStore } from '../stores/settings';
 import type { SplitDirection } from '../types';
 
 const props = defineProps<{
@@ -19,12 +20,14 @@ const emit = defineEmits<{
 
 const tabs = useTabsStore();
 const tiles = useTilesStore();
+const settings = useSettingsStore();
 
 const activeTab = computed(() => tabs.tabs.find((t) => t.id === props.activeTabId));
 
-// 5.0 (spec §3) — with one pane its tabs live in the window header; with a
-// split each pane keeps its own strip so it's clear which tabs are whose.
-const tabsInHeader = computed(() => tiles.root.type === 'leaf');
+// 5.0 (spec §3) — with one pane its tabs live in the window header (unless the
+// user opted into a dedicated tab bar row via #519); with a split each pane
+// keeps its own strip so it's clear which tabs are whose.
+const tabsInHeader = computed(() => tiles.root.type === 'leaf' && !settings.separateTabBarRow);
 const paneContentRef = ref<InstanceType<typeof PaneContent> | null>(null);
 
 // ---- Drop-zone overlay for drag-to-split ----

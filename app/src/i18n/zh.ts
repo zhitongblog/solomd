@@ -518,6 +518,8 @@ export const zh: I18n = {
     solidCursor: '光标不闪烁(实心光标)',
     selectionBubble: "选中文字时显示格式栏",
     selectionBubbleHint: "在实时和源码模式下，选中文字后在其上方显示加粗、斜体、代码、链接、标题和列表按钮。每个按钮与对应快捷键执行同一命令。",
+    formatBar: "在编辑器上方显示格式工具栏",
+    formatBarHint: "加粗、标题、列表、代码、链接、图片、表格与撤销，分组显示在正文上方的一行里。关闭后仅使用菜单与快捷键。",
     alwaysShowMarkers: "始终显示 Markdown 标记",
     alwaysShowMarkersHint: "编辑时保留 #、** 等标记（淡色显示），不再在光标不在的行上隐藏。格式照常显示，点击某一行时不会再跳动。图片显示在所在行下方；表格、公式和图表保持源码。适用于 CodeMirror 编辑器。",
     highlightCurrentLine: "高亮当前行",
@@ -2113,6 +2115,15 @@ export const zh: I18n = {
     apply: '应用',
     cancel: '取消',
   },
+  insertTableDialog: {
+    title: '插入表格',
+    sizeSection: '表格尺寸',
+    columns: '列数',
+    rows: '行数',
+    note: '表头行另计，会附加在这些行之上。',
+    ok: '确定',
+    cancel: '取消',
+  },
   tableToolbar: {
     label: "表格工具",
     rowAbove: "在上方插入行",
@@ -2387,9 +2398,13 @@ export const zh: I18n = {
   formatBar: {
     label: "格式",
     heading: "标题",
+    headingTip: "标题 — 选择级别",
     image: "插入图片",
     undo: "撤销",
+    redo: "重做",
     hideKeyboard: "收起键盘",
+    tableTip: "表格 — 拖动选择行列数，或打开可视化编辑",
+    tableCustom: "自定义表格…（{cols} × {rows}）",
   },
   // 5.0 sidebar (Sidebar.vue, docs/v5-ui-spec.md §4)
   sidebar: {

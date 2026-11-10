@@ -428,16 +428,20 @@ pub async fn print_webview_to_pdf(
     path: String,
     paper: Option<(f64, f64)>,
     margins: Option<(f64, f64, f64, f64)>,
+    outlines: Option<Vec<(u8, String, usize)>>,
 ) -> Result<(), String> {
     use objc2::runtime::AnyObject;
     use objc2::{class, msg_send};
-    use objc2_foundation::{NSSize, NSString, NSURL};
+    use objc2_foundation::{NSPoint, NSSize, NSString, NSURL};
 
     #[link(name = "AppKit", kind = "framework")]
     extern "C" {
         static NSPrintSaveJob: &'static NSString;
         static NSPrintJobSavingURL: &'static NSString;
     }
+
+    #[link(name = "PDFKit", kind = "framework")]
+    extern "C" {}
 
     let _ = std::fs::remove_file(&path);
     let (tx, rx) = std::sync::mpsc::channel::<Result<(), String>>();
@@ -527,6 +531,54 @@ pub async fn print_webview_to_pdf(
             let mut buf = Vec::new();
             f.read_to_end(&mut buf).map_err(|e| e.to_string())?;
             if buf.windows(5).any(|w| w == b"%%EOF") {
+                if let Some(items) = outlines.as_ref().filter(|v| !v.is_empty()) {
+                    unsafe {
+                        let url = NSURL::fileURLWithPath(&NSString::from_str(&path2));
+                        let doc_alloc: *mut AnyObject = msg_send![class!(PDFDocument), alloc];
+                        let doc: *mut AnyObject = msg_send![doc_alloc, initWithURL: &*url];
+                        if !doc.is_null() {
+                            let page_count: usize = msg_send![doc, pageCount];
+                            if page_count > 0 {
+                                let root: *mut AnyObject = msg_send![class!(PDFOutline), new];
+                                let mut stack: Vec<(u8, *mut AnyObject)> = Vec::new();
+                                for (level, label, page_num) in items {
+                                    let idx = page_num.saturating_sub(1).min(page_count - 1);
+                                    let page: *mut AnyObject = msg_send![doc, pageAtIndex: idx];
+                                    if page.is_null() {
+                                        continue;
+                                    }
+                                    let child: *mut AnyObject = msg_send![class!(PDFOutline), new];
+                                    let label_ns = NSString::from_str(label);
+                                    let _: () = msg_send![child, setLabel: &*label_ns];
+                                    let dest_alloc: *mut AnyObject =
+                                        msg_send![class!(PDFDestination), alloc];
+                                    let dest: *mut AnyObject = msg_send![
+                                        dest_alloc,
+                                        initWithPage: page,
+                                        atPoint: NSPoint::new(0.0, 792.0)
+                                    ];
+                                    if !dest.is_null() {
+                                        let _: () = msg_send![child, setDestination: dest];
+                                        let _: () = msg_send![dest, release];
+                                    }
+                                    while stack.last().is_some_and(|(l, _)| *l >= *level) {
+                                        stack.pop();
+                                    }
+                                    let parent = stack.last().map_or(root, |(_, node)| *node);
+                                    let n_children: usize = msg_send![parent, numberOfChildren];
+                                    let _: () =
+                                        msg_send![parent, insertChild: child, atIndex: n_children];
+                                    let _: () = msg_send![child, release];
+                                    stack.push((*level, child));
+                                }
+                                let _: () = msg_send![doc, setOutlineRoot: root];
+                                let _: bool = msg_send![doc, writeToURL: &*url];
+                                let _: () = msg_send![root, release];
+                            }
+                            let _: () = msg_send![doc, release];
+                        }
+                    }
+                }
                 return Ok(());
             }
         }
@@ -542,6 +594,7 @@ pub async fn print_webview_to_pdf(
     _path: String,
     _paper: Option<(f64, f64)>,
     _margins: Option<(f64, f64, f64, f64)>,
+    _outlines: Option<Vec<(u8, String, usize)>>,
 ) -> Result<(), String> {
     Err("direct PDF export is macOS-only; use print_webview".into())
 }

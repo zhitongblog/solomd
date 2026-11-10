@@ -13,13 +13,13 @@ function mkTheme(
 ): Extension {
   const theme = EditorView.theme(
     {
-      '&': { backgroundColor: bg, color: fg },
+      '&': { backgroundColor: `var(--custom-bg, ${bg})`, color: `var(--custom-text, ${fg})` },
       '.cm-content': { caretColor: cursor },
       '.cm-cursor, .cm-dropCursor': { borderLeftColor: cursor },
       // 5.0 §5 — selection is the accent wash for every theme (--accent-soft
       // derives from each theme's --accent); `selection` stays as a fallback.
       '.cm-selectionBackground, ::selection': { backgroundColor: `var(--accent-soft, ${selection}) !important` },
-      '.cm-gutters': { backgroundColor: bg, color: gutter, border: 'none' },
+      '.cm-gutters': { backgroundColor: `var(--custom-bg, ${bg})`, color: gutter, border: 'none' },
       '.cm-activeLineGutter': { color: cursor },
     },
     { dark: isDark(bg) },
@@ -127,6 +127,16 @@ const draculaTheme = lazyTheme(() => mkTheme(
   },
 ));
 
+// #358 — Lucius Eye-Care theme: warm sage-green low-glare paper surface
+const luciusTheme = lazyTheme(() => mkTheme(
+  '#eef3eb', '#283328', '#7c8f7c', 'rgba(58,125,68,0.16)', '#3a7d44',
+  {
+    keyword: '#2e6f40', string: '#3b7a57', number: '#8c5a2b', comment: '#7c8f7c',
+    function: '#2b5b84', variable: '#283328', type: '#7a5c2e', property: '#2b5b84',
+    heading: '#1f4e2c', operator: '#2e6f40', punctuation: '#4a5a4a',
+  },
+));
+
 // Map theme name → CodeMirror extension (empty = use CSS vars only)
 import { oneDark } from '@codemirror/theme-one-dark';
 import type { Theme } from '../types';
@@ -135,6 +145,7 @@ import type { Theme } from '../types';
 export function themeFamily(theme: Theme): 'light' | 'dark' {
   switch (theme) {
     case 'light':
+    case 'lucius':
     case 'github-light':
     case 'solarized-light':
       return 'light';
@@ -187,6 +198,7 @@ export function cmThemeFor(theme: Theme, customTheme = false): Extension {
   if (customTheme) return themeFamily(theme) === 'dark' ? oneDarkOnAppSurface() : [];
   switch (theme) {
     case 'dark': return oneDarkOnAppSurface();
+    case 'lucius': return luciusTheme();
     case 'nord': return nordTheme();
     case 'solarized-light': return solarizedLightTheme();
     case 'solarized-dark': return solarizedDarkTheme();
@@ -212,12 +224,12 @@ export function activeLineExtension(on: boolean): Extension {
   return EditorView.theme({
     '.cm-content .cm-line.cm-activeLine': {
       backgroundColor:
-        'color-mix(in srgb, #f48fb1 22%, color-mix(in srgb, var(--accent) 8%, transparent))',
+        'var(--active-line-bg, color-mix(in srgb, #f48fb1 24%, color-mix(in srgb, var(--accent) 10%, transparent)))',
       borderRadius: '3px',
     },
     '&.cm-dark .cm-content .cm-line.cm-activeLine': {
       backgroundColor:
-        'color-mix(in srgb, #f48fb1 14%, color-mix(in srgb, var(--accent) 11%, transparent))',
+        'var(--active-line-bg, color-mix(in srgb, #f48fb1 16%, color-mix(in srgb, var(--accent) 14%, transparent)))',
       borderRadius: '3px',
     },
   });
@@ -232,6 +244,7 @@ export function dataThemeFor(theme: Theme, customTheme = false): string {
 export const themeLabels: { value: Theme; label: string }[] = [
   { value: 'light', label: 'Light (Default)' },
   { value: 'dark', label: 'Dark (One Dark)' },
+  { value: 'lucius', label: 'Lucius (Eye-Care)' },
   { value: 'nord', label: 'Nord' },
   { value: 'solarized-light', label: 'Solarized Light' },
   { value: 'solarized-dark', label: 'Solarized Dark' },
@@ -253,7 +266,9 @@ export function themeOptions(t: (key: string) => string): { value: Theme | 'syst
         ? { ...th, label: t('settings.themeLight') }
         : th.value === 'dark'
           ? { ...th, label: t('settings.themeDark') }
-          : th,
+          : th.value === 'lucius'
+            ? { ...th, label: t('settings.themeLucius') !== 'settings.themeLucius' ? t('settings.themeLucius') : 'Lucius (护眼 / Eye-Care)' }
+            : th,
     ),
   ];
 }

@@ -516,6 +516,8 @@ export const ko: I18n = {
     solidCursor: '커서 깜박임 없음(고정 커서)',
     selectionBubble: "선택한 텍스트 위에 서식 막대 표시",
     selectionBubbleHint: "라이브 및 소스 모드에서 선택 영역 위에 굵게, 기울임, 코드, 링크, 제목, 목록 버튼을 표시합니다. 각 버튼은 해당 단축키와 같은 명령을 실행합니다.",
+    formatBar: "편집기 위에 서식 도구 모음 표시",
+    formatBarHint: "굵게, 제목, 목록, 코드, 링크, 이미지, 표, 실행 취소를 본문 위 한 줄에 묶어 표시합니다. 끄면 메뉴와 단축키만 사용합니다.",
     alwaysShowMarkers: "Markdown 기호 항상 표시",
     alwaysShowMarkersHint: "편집 중에도 #, ** 같은 기호를 흐리게 표시하고, 커서가 없는 줄에서 숨기지 않습니다. 서식은 그대로 보이며 줄을 클릭해도 화면이 튀지 않습니다. 이미지는 해당 줄 아래에 표시되고 표·수식·다이어그램은 소스로 유지됩니다. CodeMirror 편집기에 적용됩니다.",
     highlightCurrentLine: "현재 줄 강조",
@@ -2109,6 +2111,15 @@ export const ko: I18n = {
     apply: '적용',
     cancel: '취소',
   },
+  insertTableDialog: {
+    title: '표 삽입',
+    sizeSection: '표 크기',
+    columns: '열 수',
+    rows: '행 수',
+    note: '이 행 위에 머리글 행이 추가됩니다.',
+    ok: '확인',
+    cancel: '취소',
+  },
   tableToolbar: {
     label: "Table tools",
     rowAbove: "Insert row above",
@@ -2383,9 +2394,13 @@ export const ko: I18n = {
   formatBar: {
     label: "서식",
     heading: "제목",
+    headingTip: "제목 — 수준 선택",
     image: "이미지 삽입",
     undo: "실행 취소",
+    redo: "다시 실행",
     hideKeyboard: "키보드 숨기기",
+    tableTip: "표 — 끌어서 크기 선택, 또는 시각적 편집 열기",
+    tableCustom: "사용자 지정 표… ({cols} × {rows})",
   },
   // 5.0 sidebar (Sidebar.vue, docs/v5-ui-spec.md §4)
   sidebar: {

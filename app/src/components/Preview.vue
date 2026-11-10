@@ -1136,30 +1136,14 @@ defineExpose({ scrollToLine, openSearch });
 :where(.preview-content) table {
   border-collapse: collapse;
   margin: 1em 0;
-}
-:where(.preview-content--fit) table {
   width: 100%;
-}
-/* #367 — a table wider than the column scrolls on its own instead of
-   pushing the whole preview sideways (where the headings and prose scroll
-   away with it). `display: block` + `max-content` is the GitHub recipe: a
-   narrow table still sizes to its content, a wide one is capped at the column
-   and gets its own horizontal scrollbar. On screen only and only in the
-   preview pane — print/PDF overlays reuse `.preview-content` and must not
-   clip. Fit-width mode keeps its full-width tables (the block box would stop
-   them stretching); there the pane itself still scrolls. */
-@media screen {
-  .preview-host .preview-content:not(.preview-content--fit) table {
-    display: block;
-    width: max-content;
-    max-width: 100%;
-    overflow-x: auto;
-  }
+  max-width: 100%;
 }
 :where(.preview-content) th,
 :where(.preview-content) td {
   border: 1px solid var(--border);
   padding: 6px 12px;
+  overflow-wrap: break-word;
 }
 :where(.preview-content) hr {
   border: none;

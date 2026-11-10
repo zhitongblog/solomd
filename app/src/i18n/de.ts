@@ -516,6 +516,8 @@ export const de: I18n = {
     solidCursor: 'Durchgehender Cursor (kein Blinken)',
     selectionBubble: "Formatleiste über markiertem Text anzeigen",
     selectionBubbleHint: "Fett, kursiv, Code, Link, Überschriften und Listen direkt über der Auswahl – im Live- und Quelltextmodus. Jede Schaltfläche führt denselben Befehl aus wie ihr Tastenkürzel.",
+    formatBar: "Formatierungsleiste über dem Editor anzeigen",
+    formatBarHint: "Fett, Überschriften, Listen, Code, Links, Bilder, Tabellen und Rückgängig, gruppiert in einer Zeile über dem Text. Ausschalten, um nur mit Menüs und Tastenkürzeln zu arbeiten.",
     alwaysShowMarkers: "Markdown-Zeichen immer anzeigen",
     alwaysShowMarkersHint: "#, ** und andere Zeichen bleiben beim Bearbeiten (abgeschwächt) sichtbar, statt auf Zeilen ohne Cursor ausgeblendet zu werden. Die Formatierung bleibt, und ein Klick auf eine Zeile lässt sie nicht mehr springen. Bilder erscheinen unter ihrer Zeile; Tabellen, Formeln und Diagramme bleiben Quelltext. Gilt für den CodeMirror-Editor.",
     highlightCurrentLine: "Aktuelle Zeile hervorheben",
@@ -2109,6 +2111,15 @@ export const de: I18n = {
     apply: 'Übernehmen',
     cancel: 'Abbrechen',
   },
+  insertTableDialog: {
+    title: 'Tabelle einfügen',
+    sizeSection: 'Tabellengröße',
+    columns: 'Spalten',
+    rows: 'Zeilen',
+    note: 'Über diesen Zeilen wird zusätzlich eine Kopfzeile eingefügt.',
+    ok: 'OK',
+    cancel: 'Abbrechen',
+  },
   tableToolbar: {
     label: "Table tools",
     rowAbove: "Insert row above",
@@ -2383,9 +2394,13 @@ export const de: I18n = {
   formatBar: {
     label: "Formatierung",
     heading: "Überschrift",
+    headingTip: "Überschrift — Ebene wählen",
     image: "Bild einfügen",
     undo: "Rückgängig",
+    redo: "Wiederholen",
     hideKeyboard: "Tastatur ausblenden",
+    tableTip: "Tabelle — ziehen, um die Größe zu wählen, oder den visuellen Editor öffnen",
+    tableCustom: "Eigene Tabelle… ({cols} × {rows})",
   },
   // 5.0 sidebar (Sidebar.vue, docs/v5-ui-spec.md §4)
   sidebar: {
