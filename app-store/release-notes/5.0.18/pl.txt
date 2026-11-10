@@ -1,0 +1,6 @@
+SoloMD 5.0.18:
+• Bezpośrednia edycja tabel inline i wyrównywanie wielu kolumn (#500, #382, #526): edytuj komórki bezpośrednio w podglądzie na żywo z nawigacją Tab/Enter, zaznaczaniem wielu kolumn i wizualnym wyborem przy wstawianiu.
+• Precyzyjna zmiana rozmiaru obrazów i własny procent szerokości (#499, #372): przeciągnij róg obrazu lub wpisz dowolny procent; diagramy Mermaid renderują się domyślnie w linii.
+• Własne kolory wyróżnienia i motyw Lucius chroniący wzrok (#358, #327, #384): nowy motyw Lucius, wybór kolorów tła/tekstu oraz wielokolorowa paleta wyróżnień.
+• Natywne zakładki PDF (Outline), wklejanie bogatego HTML i indeksy górne/dolne (#515, #308, #284): eksport PDF generuje drzewo zakładek; wklejanie z Worda/WWW jako czysty Markdown.
+• Pasek formatowania, osobny wiersz kart i poprawki (#415, #497, #519, #518, #512, #110, #159, #299, #140, #528, #529): pasek formatowania z 7 szablonami Mermaid, pobieranie listy modeli AI i poprawki Cofnij.

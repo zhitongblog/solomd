@@ -897,6 +897,7 @@ export function useFiles() {
         });
       }
       tabs.markSaved(tab.id, path);
+      delete (tab as any).saveFailed;
       if (!isSaf && !isContentUri) {
         workspace.pushRecent(path);
         // v2.5: feed the ⌘P quick-switcher's MFU ranking.
@@ -918,6 +919,7 @@ export function useFiles() {
       return true;
     } catch (e) {
       console.error('save failed', e);
+      (tab as any).saveFailed = true;
       const errStr = String(e);
       if (!opts.silent) {
         toasts.warning(
@@ -926,7 +928,9 @@ export function useFiles() {
             : `Cannot overwrite "${tab.fileName}" (read-only or permission denied) — choose where to Save As`,
           6500,
         );
-        return await saveTabAs(tab, { suggestCopyName: true });
+        const savedAs = await saveTabAs(tab, { suggestCopyName: true });
+        if (savedAs) delete (tab as any).saveFailed;
+        return savedAs;
       }
       toasts.error(t('toast.saveFailed', { error: errStr }), 6000);
       return false;

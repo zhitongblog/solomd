@@ -1,0 +1,6 @@
+SoloMD 5.0.18:
+• Direkt inline-tabellredigering & flerkolumnsjustering (#500, #382, #526): redigera tabellceller direkt i live-vy med Tab/Enter-navigering, markering av flera kolumner och visuell tabellväljare vid infogning.
+• Exakt bildstorleksändring & anpassad breddprocent (#499, #372): dra i hörnhandtaget eller ange valfri breddprocent; Mermaid-diagram renderas inline som standard.
+• Anpassade markeringsfärger & ögonvänligt Lucius-tema (#358, #327, #384): nytt Lucius-tema, anpassade bakgrunds-/textfärger samt flerfärgad markeringspalett.
+• Inbyggda PDF-bokmärken (Outline), rik HTML-inklistring & upphöjd/nedsänkt text (#515, #308, #284): PDF-exporter innehåller nu ett bokmärkesträd; klistra in från Word/webb som ren Markdown.
+• Formateringsfält, separat flikrad & förbättringar (#415, #497, #519, #518, #512, #110, #159, #299, #140, #528, #529): formateringsfält med 7 Mermaid-mallar, hämtning av AI-modeller och Ångra-fixar.

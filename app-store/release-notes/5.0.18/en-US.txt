@@ -1,0 +1,6 @@
+SoloMD 5.0.18:
+• Spreadsheet-like inline table editing & multi-column alignment (#500, #382, #526): edit table cells directly in Live Preview with Tab/Enter navigation, multi-column selection, all-column alignment toggle, and visual grid + alignment picker when inserting tables.
+• Fine-grained image drag resize & custom width percentage (#499, #372): drag the corner handle or enter any width percentage on images in Live Edit; Mermaid diagrams render inline by default.
+• Custom highlight colors, Lucius eye-care theme & custom palette (#358, #327, #384): added Lucius theme, custom light/dark background & text color pickers, custom default highlight colors, and an inline multi-color highlight palette.
+• Native PDF outline bookmarks, rich HTML paste & sup/sub (#515, #308, #284): PDF exports now include a native hierarchical bookmark tree (PDF Outline); added rich HTML clipboard-to-Markdown paste and ^sup^ / ~sub~ syntax.
+• Format toolbar, separate tab bar & UX polish (#415, #497, #519, #518, #512, #110, #159, #299, #140, #528, #529): added optional Format Bar with 7 Mermaid templates, separate tab row, AI /models auto-fetching, tablet menu dismissal, and cross-view Undo fixes.

@@ -12,9 +12,9 @@ for (const n of navs) {
   const shown = $$('.settings__body section').filter(vis).length;
   R.t(title === n.textContent.trim() && shown > 0, `${n.textContent.trim()}: title "${title}", ${shown} sections`);
   if (n.textContent.trim() === '同步') {
-    const subs = $$('.settings__nav-subitem').filter(vis).map((s) => s.textContent.trim());
-    R.eq(subs, ['Git 同步', '网盘直连 API', '本地网盘目录', 'WebDAV 同步', '历史版本快照'], 'sync secondary nav items (#524)');
-    const webdavSub = $$('.settings__nav-subitem').find((s) => s.textContent.includes('WebDAV'));
+    const subs = $$('.settings__sync-subnav-tab').filter(vis).map((s) => s.textContent.trim());
+    R.eq(subs, ['Git 同步', '网盘直连 API', '本地网盘目录', 'WebDAV 同步', '历史版本快照'], 'sync secondary nav items (#524, #528)');
+    const webdavSub = $$('.settings__sync-subnav-tab').find((s) => s.textContent.includes('WebDAV'));
     webdavSub?.click(); await sleep(120);
     const fs = $('.webdav-sync__fieldset');
     R.t(!!fs && fs.disabled === !settings.webdavEnabled, 'webdav fieldset disabled state follows webdavEnabled (#525)');

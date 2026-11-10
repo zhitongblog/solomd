@@ -182,7 +182,7 @@ function onConfirm() {
       <DsButton variant="secondary" @click="emit('cancel')">
         {{ isZh ? '取消' : 'Cancel' }}
       </DsButton>
-      <DsButton variant="primary" @click="onConfirm">
+      <DsButton variant="primary" class="insert-table-dlg__btn--primary" @click="onConfirm">
         {{ isZh ? '插入表格' : 'Insert Table' }}
       </DsButton>
     </template>

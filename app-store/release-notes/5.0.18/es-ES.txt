@@ -1,0 +1,6 @@
+SoloMD 5.0.18:
+• Edición directa de tablas en línea y alineación multicolumna (#500, #382, #526): edita celdas directamente en vista previa en vivo con navegación Tab/Enter, selección de varias columnas y selector visual al insertar tablas.
+• Redimensionamiento preciso de imágenes y porcentaje personalizado (#499, #372): arrastra la esquina o ingresa cualquier porcentaje de ancho; los diagramas Mermaid se renderizan en línea por defecto.
+• Colores de resaltado personalizados y tema Lucius (#358, #327, #384): nuevo tema Lucius para descanso visual, colores personalizados de fondo/texto y paleta multicolor de resaltado.
+• Marcadores nativos en PDF (Outline), pegado HTML enriquecido y super/subíndice (#515, #308, #284): las exportaciones PDF incluyen árbol de marcadores nativo; pegado limpio desde Word/web a Markdown.
+• Barra de formato, fila de pestañas independiente y mejoras (#415, #497, #519, #518, #512, #110, #159, #299, #140, #528, #529): barra de formato opcional con 7 plantillas Mermaid, lista de modelos IA y correcciones de Deshacer.

@@ -144,7 +144,8 @@ function UiaFind([string]$spec, [IntPtr]$h = $script:target, [int]$timeoutMs = 4
     if ($c.Count -eq 0 -and $contains) { $c = @($all | ? { try { $n = $_.Current.Name; $okT = (-not $ct) -or ($_.Current.ControlType.ProgrammaticName -eq "ControlType.$ct"); $okT -and $n -and $n.Contains($spec) } catch { $false } }) }
     # native textareas have no Name: a '~text' spec also matches an Edit whose value contains the text
     if ($c.Count -eq 0 -and $spec) { $c = @($all | ? { try { $_.Current.ControlType.ProgrammaticName -eq 'ControlType.Edit' -and ((-not $ct) -or $ct -eq 'Edit') -and ([string](ValOf $_)).Contains($spec) } catch { $false } }) }
-    $c = @($c | ? { try { -not $_.Current.IsOffscreen -and $_.Current.BoundingRectangle.Width -gt 0 } catch { $false } })
+    $cVisible = @($c | ? { try { -not $_.Current.IsOffscreen -and $_.Current.BoundingRectangle.Width -gt 0 } catch { $false } })
+    $c = if ($cVisible.Count -gt 0 -or $ct -ne 'ListItem') { $cVisible } else { @($c | ? { try { $_.Current.BoundingRectangle.Width -gt 0 } catch { $false } }) }
     # containers (Group/Pane/Document) share names with their first child — prefer the leaf control
     $c = @(@($c | ? { $_.Current.ControlType.ProgrammaticName -notmatch 'Group|Pane|Document|Window' }) + @($c | ? { $_.Current.ControlType.ProgrammaticName -match 'Group|Pane|Document|Window' }))
     if ($c.Count -gt $idx) { return $c[$idx] }

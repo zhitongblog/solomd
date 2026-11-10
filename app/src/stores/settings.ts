@@ -691,7 +691,7 @@ function defaults(): Settings {
     showLineNumbers: false,
     solidCursor: false,
     selectionBubble: true,
-    formatBar: true,
+    formatBar: false,
     alwaysShowMarkers: false,
     highlightCurrentLine: true,
     tabTitleFromFirstLine: false,

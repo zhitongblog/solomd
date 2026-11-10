@@ -4,9 +4,10 @@ SEED_EXTRA='{"solomd.workspace.v1":{"recentFiles":[],"recentFolders":[],"current
 shot before >/dev/null
 key ctrl+alt+shift+o
 w=$(gtk_wait '^(Open Folder|Select Folder|Open|Select)' 15) || { shot nodialog >/dev/null; fail "no folder dialog appeared"; }
-note "dialog title: $(xdotool getwindowname "$w")"
+wtitle=$(xdotool getwindowname "$w" 2>/dev/null)
+note "dialog title: $wtitle"
 shot dialog >/dev/null
-gtk_open "$VAULT/" "^$(xdotool getwindowname "$w")\$" || fail "could not drive the folder dialog"
+gtk_open "$VAULT/" "${wtitle:+^${wtitle}$}" || fail "could not drive the folder dialog"
 sleep 2
 img=$(shot after)
 expect "tree lists the vault files (OCR 'long.md' and 'roundtrip.md')" bash -c "python3 '$RG_SUITE/lib/ocr.py' has '$img' eng long.md 260x750+0+150 && python3 '$RG_SUITE/lib/ocr.py' has '$img' eng roundtrip.md 260x750+0+150"

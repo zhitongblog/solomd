@@ -108,11 +108,12 @@ echo "    Keystore:   ${ANDROID_KEYSTORE_PATH:-<debug, no signing>}"
 if [ "$DEBUG" -eq 1 ]; then
   pnpm tauri android build --apk --debug
 else
-  # Build APKs and AAB in separate invocations so `splits.abi` is enabled
-  # for APK splits and disabled for the AAB (allowing `isShrinkResources = true`
-  # without hitting AGP issue #402800800).
-  pnpm tauri android build --apk
+  # Build AAB first and APKs second so `splits.abi` is enabled for APK splits
+  # and disabled for the AAB (allowing `isShrinkResources = true` without
+  # hitting AGP issue #402800800), and so `merged_jni_libs` + the APKs are
+  # always newer than `app/dist/index.html` for A00-install-verify.
   pnpm tauri android build --aab
+  pnpm tauri android build --apk
 fi
 
 OUT_DIR="src-tauri/gen/android/app/build/outputs"

@@ -30,8 +30,8 @@ ms:900
 nouia:L1.view-toggle-tree-ran|~\save.md@ListItem
 uclick:帮助@Button
 ms:700
-uia:L1.help-menu-open|~关于 SoloMD
+uia:L1.help-menu-open|关于
 shot:help
 key:esc
 ms:500
-nouia:L1.esc-closes-menu|~关于 SoloMD
+nouia:L1.esc-closes-menu|关于

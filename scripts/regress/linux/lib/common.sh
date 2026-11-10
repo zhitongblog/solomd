@@ -269,11 +269,25 @@ finish() { # SUMMARY
 # ------------------------------------------------------------ GTK dialogs ---
 # Any visible window that is not one of the app's own top-level windows.
 # gtk_wait REGEX [timeout] → window id of a dialog whose title matches.
-gtk_wait() { # newest matching window wins (ids grow)
-  local i w
+gtk_wait() { # newest matching window wins (ids grow); fallback to untitled GTK3 file dialog of our pid
+  local i w mw cand pid x y cw ch
+  mw=$(main_window 2>/dev/null || true)
   for ((i = 0; i < ${2:-15} * 4; i++)); do
     w=$(xdotool search --onlyvisible --name "$1" 2>/dev/null | sort -n | tail -1)
-    [ -n "$w" ] && { echo "$w"; return 0; }
+    [ -n "$w" ] && [ "$w" != "$mw" ] && { echo "$w"; return 0; }
+    if [ "$1" != '^Print$' ]; then
+      for cand in $(xdotool search --onlyvisible --class . 2>/dev/null | sort -n); do
+        [ "$cand" = "$mw" ] && continue
+        pid=$(xdotool getwindowpid "$cand" 2>/dev/null) || continue
+        our_pids | grep -qx "$pid" || continue
+        if [ -z "$(xdotool getwindowname "$cand" 2>/dev/null)" ]; then
+          read -r x y cw ch < <(win_geom "$cand")
+          if [ "${cw:-0}" -ge 400 ] && [ "${ch:-0}" -ge 300 ]; then
+            echo "$cand"; return 0
+          fi
+        fi
+      done
+    fi
     sleep 0.25
   done
   return 1
@@ -293,8 +307,8 @@ gtk_focus() {
 gtk_gone() { # WID [timeout]
   local i
   for ((i = 0; i < ${2:-10} * 4; i++)); do
-    xdotool getwindowname "$1" >/dev/null 2>&1 || return 0
-    xdotool search --onlyvisible --name . 2>/dev/null | grep -qx "$1" || return 0
+    xdotool getwindowgeometry "$1" >/dev/null 2>&1 || return 0
+    xdotool search --onlyvisible --class . 2>/dev/null | grep -qx "$1" || return 0
     sleep 0.25
   done
   return 1

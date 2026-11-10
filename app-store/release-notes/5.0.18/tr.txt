@@ -1,0 +1,6 @@
+SoloMD 5.0.18:
+• Doğrudan satır içi tablo düzenleme ve çoklu sütun hizalama (#500, #382, #526): canlı önizlemede hücreleri doğrudan düzenleyin, Tab/Enter ile gezinin, çoklu sütun seçin ve tablo eklerken görsel ızgarayı kullanın.
+• Hassas görsel boyutlandırma ve özel genişlik yüzdesi (#499, #372): görsel köşesini sürükleyin veya istediğiniz genişlik yüzdesini girin; Mermaid diyagramları varsayılan olarak satır içi çizilir.
+• Özel vurgulama renkleri ve göz dostu Lucius teması (#358, #327, #384): yeni Lucius teması, özel arka plan/metin renkleri ve çok renkli vurgulama paleti eklendi.
+• Yerel PDF yer imleri (Outline), zengin HTML yapıştırma ve üst/alt simge (#515, #308, #284): PDF dışa aktarımları hiyerarşik yer imi ağacı içerir; Word/web metinlerini temiz Markdown olarak yapıştırın.
+• Biçimlendirme çubuğu, ayrı sekme satırı ve iyileştirmeler (#415, #497, #519, #518, #512, #110, #159, #299, #140, #528, #529): 7 Mermaid şablonlu biçim çubuğu, AI model listesi çekme ve Geri Al düzeltmeleri.

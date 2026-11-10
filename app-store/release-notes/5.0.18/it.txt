@@ -1,0 +1,6 @@
+SoloMD 5.0.18:
+• Modifica diretta delle tabelle inline e allineamento multicolonna (#500, #382, #526): modifica le celle direttamente nella vista live con navigazione Tab/Invio, selezione multicolonna e griglia visiva all'inserimento.
+• Ridimensionamento preciso delle immagini e percentuale personalizzata (#499, #372): trascina l'angolo o inserisci qualsiasi percentuale di larghezza; diagrammi Mermaid renderizzati inline per impostazione predefinita.
+• Colori di evidenziazione personalizzati e tema Lucius (#358, #327, #384): nuovo tema Lucius riposante per gli occhi, colori sfondo/testo personalizzati e tavolozza di evidenziazione multicolore.
+• Segnalibri PDF nativi (Outline), incolla HTML ricco e apice/pedice (#515, #308, #284): le esportazioni PDF includono segnalibri gerarchici nativi; conversione da HTML ricco a Markdown.
+• Barra di formattazione, riga schede separata e miglioramenti (#415, #497, #519, #518, #512, #110, #159, #299, #140, #528, #529): barra di formattazione con 7 modelli Mermaid, elenco modelli IA e correzioni Annulla.

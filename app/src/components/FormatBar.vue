@@ -432,10 +432,11 @@ function insertMermaidTemplate(tpl: MermaidTemplate) {
   position: relative;
   z-index: var(--z-sticky);
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 2px;
-  height: 38px;
-  padding: 0 var(--sp-2);
+  min-height: 38px;
+  padding: 4px var(--sp-2);
   background: var(--bg);
   border-bottom: var(--bd-hair);
   user-select: none;

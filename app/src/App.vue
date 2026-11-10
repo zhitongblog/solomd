@@ -1605,7 +1605,11 @@ onMounted(async () => {
       // Editors sync their document into the store on a debounce; text typed
       // just before the close would otherwise miss the persist below.
       flushPendingEdits();
-      if (!(await confirmCloseWithUnsavedTabs(me === 'main'))) return;
+      const needsPrompt =
+        me !== 'main' ||
+        !settings.restoreSession ||
+        tabs.tabs.some((t) => t.content !== t.savedContent && (t as any).saveFailed);
+      if (needsPrompt && !(await confirmCloseWithUnsavedTabs(me === 'main'))) return;
       if (me !== 'main') {
         if (isAuxLabel(me)) windowsStore.unregister(me);
       } else {

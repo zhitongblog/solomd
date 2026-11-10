@@ -48,7 +48,13 @@ app_pid() { sh_ pidof "$PKG"; }
 
 launch_app() {
   sh_ am start -W -n "$PKG/.MainActivity" >/dev/null
-  wait_for 'webview' 40 || true
+  for _ in 1 2 3; do
+    if wait_for 'webview' 20; then return 0; fi
+    if has "^(Wait|等待)$" --class Button; then
+      tap "^(Wait|等待)$" --class Button || true
+      sh_ am start -W -n "$PKG/.MainActivity" >/dev/null
+    fi
+  done
 }
 
 force_stop() { sh_ am force-stop "$PKG"; }

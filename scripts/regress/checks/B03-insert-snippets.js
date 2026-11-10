@@ -3,7 +3,7 @@
 const R = checks();
 await fresh('ins.md', 'x\n');
 const cases = [
-  ['insert.table', /\| *Header *\|/, (d, s) => d.slice(s.from - 2, s.from) === '| ' || d.lineAt?.(0)],
+  ['insert.table', /\| *(Header *)?\|[\s\S]*\| *--- *\|/, (d, s) => d.slice(s.from - 2, s.from) === '| ' || d.lineAt?.(0)],
   ['insert.mathBlock', /\$\$\n\n?\$\$/, null],
   ['insert.mathInline', /\$\$/, null],
   ['insert.hr', /\n---\n/, null],
@@ -11,10 +11,12 @@ const cases = [
 for (const [id, re] of cases) {
   setDoc('x\n', 1);
   act(id); await sleep(120);
+  if (id === 'insert.table') { const b = await waitFor(() => $('.insert-table-dlg__btn--primary'), 2000); b?.click(); await sleep(120); }
   R.t(re.test(doc()), `${id} inserted: ${JSON.stringify(doc())}`);
 }
 setDoc('x\n', 1);
-act('insert.table'); await sleep(120);
+act('insert.table');
+{ const b = await waitFor(() => $('.insert-table-dlg__btn--primary'), 2000); b?.click(); await sleep(120); }
 { const v = V(); const line = v.state.doc.lineAt(v.state.selection.main.head); R.t(/^\| /.test(line.text) && v.state.selection.main.head > line.from, 'table: caret in the first cell (' + JSON.stringify(line.text) + ')'); }
 setDoc('x\n', 1);
 act('insert.mathInline'); await sleep(120);
