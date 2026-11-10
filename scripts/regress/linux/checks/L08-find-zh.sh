@@ -1,7 +1,7 @@
 # Ctrl+F in a 中文 UI: Chinese labels, focus in the query, n/m counter,
 # Enter steps, Esc closes.
-FIND=1180x90+260+98     # find bar area under the tab strip
-COUNT=120x30+535+102    # the n/m counter
+FIND=1180x95+260+138    # find bar area under the tab strip + format bar
+COUNT=120x30+535+142    # the n/m counter
 SEED_SETTINGS='{"language":"zh"}' start_on long.md || fail "app did not start"
 key ctrl+f; sleep 1
 img=$(shot open)
