@@ -13,10 +13,9 @@ When the user asks to `release` a new version (e.g. `X.Y.Z`), **NEVER** consider
 
 ## Required End-to-End Steps for Every Release (`vX.Y.Z`)
 
-1. **Update Website & Release Notes (`web/`)**:
-   - Add the `vX.Y.Z` changelog entry to `web/src/data/whats-new/zh.ts` and `web/src/data/whats-new/en.ts`.
-   - Bump the version string in `web/src/components/Download.astro`, `web/src/components/Hero.astro`, `web/src/components/FactPack.astro`, `web/src/layouts/Layout.astro`, `web/src/i18n/translations.ts`, and `web/src/data/whats-new/{de,es,fr}.ts`.
-   - Commit all code + `web/` changes so the working tree is clean.
+1. **Commit Code Changes Only (DO NOT Update `web/` Yet!)**:
+   - Commit all `app/`, `mcp-server/`, and `scripts/` changes so the working tree is clean.
+   - **CRITICAL**: Do **NOT** bump `VERSION` in `web/` before Step 6! Pushing `web/` to `main` early will cause Cloudflare Pages (or any early build) to point `solomd.app` download buttons at `vX.Y.Z` before the GitHub Release and Gitee mirror assets exist.
 
 2. **Bump Version & Push Tag**:
    - Run `./scripts/release.sh X.Y.Z` to bump `app/package.json`, `app/src-tauri/Cargo.toml`, `app/src-tauri/tauri.conf.json`, `mcp-server/Cargo.toml`, `mcp-server/mcpb/manifest.json`, and `scripts/solomd`, tag `vX.Y.Z`, and push to `origin`.
@@ -64,12 +63,19 @@ When the user asks to `release` a new version (e.g. `X.Y.Z`), **NEVER** consider
      ```
    - Verify with `gh release view vX.Y.Z` that the release is **Published (Latest)** (NOT `Draft`) and that all assets (`.dmg`, `.msi`, `-portable.zip`, `.deb`, `.rpm`, `.AppImage`, `.apk`, `.aab`, `.mcpb`, `SHA256SUMS.txt`) are present.
 
-6. **Sync to Gitee & AtomGit China Mirrors & Deploy Website**:
-   ```bash
-   ./scripts/release-to-gitee.sh vX.Y.Z
-   ./scripts/release-to-atomgit.sh vX.Y.Z
-   pnpm --dir web build && (cd web && npx wrangler pages deploy dist --project-name solomd --branch main)
-   ```
+6. **Sync to Gitee & AtomGit China Mirrors, THEN Update & Deploy Website (`web/`)**:
+   - First sync all release assets to Gitee & AtomGit:
+     ```bash
+     ./scripts/release-to-gitee.sh vX.Y.Z
+     ./scripts/release-to-atomgit.sh vX.Y.Z
+     ```
+   - **Only AFTER GitHub Release is Published (Latest) and Gitee/AtomGit mirrors are synced**, update `web/`:
+     - Add the `vX.Y.Z` changelog entry to `web/src/data/whats-new/zh.ts` and `web/src/data/whats-new/en.ts`.
+     - Bump the version string in `web/src/components/Download.astro`, `web/src/components/Hero.astro`, `web/src/components/FactPack.astro`, `web/src/layouts/Layout.astro`, `web/src/i18n/translations.ts`, and `web/src/data/whats-new/{de,es,fr}.ts`.
+     - Commit `web/`, push `main`, and deploy to Cloudflare Pages:
+     ```bash
+     pnpm --dir web build && (cd web && npx wrangler pages deploy dist --project-name solomd --branch main)
+     ```
 
 7. **Build, Upload & Submit to Apple App Store (macOS MAS & iOS)**:
    - Prepare localized release notes in `app-store/release-notes/X.Y.Z/` (`zh-Hans.txt`, `zh-Hant.txt`, `en-US.txt`, `de-DE.txt`, `es-ES.txt`, `fr-FR.txt`, `it.txt`, `ja.txt`, `ko.txt`, `nl-NL.txt`, `pl.txt`, `pt-BR.txt`, `ru.txt`, `sv.txt`, `tr.txt`, `uk.txt`).
