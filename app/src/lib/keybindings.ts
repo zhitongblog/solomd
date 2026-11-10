@@ -238,6 +238,9 @@ export const KEY_ACTIONS: KeyActionDef[] = [
   // #508 — Switch between recently used tabs (MRU order) via Ctrl+Tab / Ctrl+Shift+Tab.
   { id: 'tab.mru', label: 'Switch to Recent Tab', category: 'navigate', defaults: ['Mod+Tab'] },
   { id: 'tab.mruPrev', label: 'Switch to Previous Recent Tab', category: 'navigate', defaults: ['Mod+Shift+Tab'] },
+  // #491 — Navigate backward / forward through recent cursor positions.
+  { id: 'editor.cursorBack', label: 'Navigate Back (Cursor History)', category: 'navigate', defaults: ['Alt+ArrowLeft'] },
+  { id: 'editor.cursorForward', label: 'Navigate Forward (Cursor History)', category: 'navigate', defaults: ['Alt+ArrowRight'] },
   { id: 'tile.splitRight', label: 'Split Pane Right', category: 'navigate', defaults: ['Mod+Backslash'] },
   { id: 'tile.splitDown', label: 'Split Pane Down', category: 'navigate', defaults: ['Mod+Shift+Backslash'] },
   { id: 'tile.focusNext', label: 'Focus Next Pane', category: 'navigate', defaults: ['Mod+Alt+ArrowRight'] },

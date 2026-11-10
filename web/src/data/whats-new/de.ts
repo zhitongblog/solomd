@@ -4,7 +4,7 @@
 import type { WhatsNewData } from './types';
 
 const data: WhatsNewData = {
-  version: "5.0.16",
+  version: "5.0.17",
   meta: {
     title: "Neu in SoloMD {VERSION} — Versionshinweise v4.0 – v5.0",
     description: "Versionshinweise zu SoloMD {VERSION}. v5.0: neues Design auf Desktop, iPhone, Android und iPad. v4.11: fehlerhafte Tabellen aus KI-/PDF-Exporten reparieren und rendern sich von selbst, dazu optional nummerierte Abschnittsüberschriften. v4.8: Bild-Hosting (PicGo / SM.MS / S3 / GitHub). v4.6: Wissensgraph + tldraw-Whiteboards. v4.0: Inline-Agent-Panel, geplante Recipes, Trace-Ansicht, MCP-Föderation.",

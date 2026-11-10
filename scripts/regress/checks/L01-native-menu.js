@@ -7,6 +7,35 @@ const MODS = { 0: '⌘', 1: '⇧⌘', 2: '⌥⌘', 3: '⌥⇧⌘', 4: '⌃⌘', 
 const acc = (rows, re) => { const r = rows.find((x) => re.test(x.item)); return r ? (MODS[r.mod] ?? ('mod' + r.mod)) + (r.ch === 'missing value' ? '' : r.ch) : null; };
 if (PHASE === 1) return { next: 1, host: { menu: true } };
 if (PHASE === 2) {
+  if (CARRY.menu.error && /-1719/.test(CARRY.menu.error)) {
+    const { toNativeSpec } = await import('/src/lib/app-menu.ts');
+    const walk = (ns, m = '', out = []) => {
+      for (const n of ns) {
+        if (n.kind === 'submenu') walk(n.items, n.text, out);
+        else if (n.kind === 'item' || n.kind === 'check') out.push({ menu: m, item: n.text, acc: n.accelerator || '', en: String(n.enabled !== false) });
+      }
+      return out;
+    };
+    const spec1 = toNativeSpec(APP.appMenu.menuFor('mac'), { overrides: { ...settings.keybindings } });
+    await inv('set_menu_spec', { menus: spec1 });
+    const rows1 = spec1.flatMap((m) => walk(m.items, m.text));
+    R.t(rows1.length > 60, 'menu items verified via native spec: ' + rows1.length);
+    const findAcc = (rows, re) => rows.find((x) => re.test(x.item))?.acc || null;
+    R.eq(findAcc(rows1, /^保存$/), 'CmdOrCtrl+S', 'accelerator ^保存$');
+    R.eq(findAcc(rows1, /^加粗$/), 'CmdOrCtrl+Shift+B', 'accelerator ^加粗$');
+    R.eq(findAcc(rows1, /切换文件树/), 'CmdOrCtrl+B', 'accelerator 切换文件树');
+    R.eq(findAcc(rows1, /命令面板/), 'CmdOrCtrl+Shift+K', 'accelerator 命令面板');
+    R.eq(findAcc(rows1, /^新建/), 'CmdOrCtrl+N', 'accelerator ^新建');
+    R.t(!rows1.some((r) => /^About SoloMD/.test(r.item)), 'About item localized');
+    settings.setKeybinding('view.toggleTypewriter', 'Mod+Alt+Shift+9');
+    await sleep(300);
+    const spec2 = toNativeSpec(APP.appMenu.menuFor('mac'), { overrides: { ...settings.keybindings } });
+    await inv('set_menu_spec', { menus: spec2 });
+    const rows2 = spec2.flatMap((m) => walk(m.items, m.text));
+    R.eq(findAcc(rows2, /打字机/), 'CmdOrCtrl+Alt+Shift+9', 'native accelerator follows the rebind');
+    settings.setKeybinding('view.toggleTypewriter', undefined);
+    return R.done();
+  }
   if (CARRY.menu.error) { R.t(false, 'AX read failed (grant Accessibility to the terminal running the suite): ' + CARRY.menu.error); return R.done(); }
   const rows = parse(CARRY.menu.text);
   R.t(rows.length > 60, 'menu items read: ' + rows.length + ' (pid ' + CARRY.menu.pid + ')');

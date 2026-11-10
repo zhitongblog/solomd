@@ -44,8 +44,21 @@ const MOBILE_UNSUPPORTED: &str = "quick capture is desktop-only";
 ///
 /// Deliberately small, undecorated and always-on-top: it is a prompt, not a
 /// window you manage. Esc dismisses it (handled in the webview).
+///
+/// Async wrapper — keep window creation off the main thread. `build()`
+/// synchronously waits on a channel for the main thread to process the
+/// `CreateWindow` message, so a *synchronous* command (which Tauri runs on
+/// the main thread) ends up waiting on itself: the app freezes and the new
+/// webview never gets to navigate, leaving a blank white box.
 #[tauri::command]
-pub fn quick_capture_open(app: AppHandle) -> Result<(), String> {
+pub async fn quick_capture_open(app: AppHandle) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || quick_capture_open_inner(app))
+        .await
+        .map_err(|e| format!("join: {e}"))?
+}
+
+/// The window work itself, shared by the IPC command and the global hotkey.
+pub fn quick_capture_open_inner(app: AppHandle) -> Result<(), String> {
     #[cfg(not(desktop))]
     {
         // `show`/`set_focus` and the window builder's `title` are desktop-only
@@ -245,7 +258,7 @@ pub fn quick_capture_set_shortcut(
                         return;
                     }
                 }
-                if let Err(e) = quick_capture_open(handle.clone()) {
+                if let Err(e) = quick_capture_open_inner(handle.clone()) {
                     eprintln!("[quick_capture] open failed: {e}");
                 }
             })

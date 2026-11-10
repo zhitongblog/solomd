@@ -25,4 +25,13 @@ v.scrollDOM.scrollTop = 0;
 act('editor.jumpToSelection');
 await waitFor(() => v.scrollDOM.scrollTop > 1000, 2000);
 R.t(v.scrollDOM.scrollTop > 1000, 'jumpToSelection scrolls to line 250 (scrollTop ' + v.scrollDOM.scrollTop + ')');
+// #491: cursor history queue (editor.cursorBack / editor.cursorForward)
+const p10 = v.state.doc.line(10).from;
+const p80 = v.state.doc.line(80).from;
+v.dispatch({ selection: { anchor: p10, head: p10 } }); await sleep(50);
+v.dispatch({ selection: { anchor: p80, head: p80 } }); await sleep(50);
+act('editor.cursorBack'); await sleep(80);
+R.eq(lineOf(sel().from), 10, 'cursorBack jumps back to line 10');
+act('editor.cursorForward'); await sleep(80);
+R.eq(lineOf(sel().from), 80, 'cursorForward jumps forward to line 80');
 return R.done();

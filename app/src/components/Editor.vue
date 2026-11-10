@@ -51,6 +51,7 @@ import {
   shiftHeading,
   type EditorCommand,
 } from '../lib/editor-commands';
+import { CursorHistoryQueue } from '../lib/cursor-history';
 import { caretRowInfo, caretTopPx, caretPointPx, lastVisualRowStart, firstVisualRowEnd, measureLineHeights, offsetAtPoint, selectionBoxPx } from '../lib/textarea-metrics';
 import { activeParagraphLines, lineAt } from '../lib/focus-paragraph';
 import { transformCase, nextCaseInCycle, caseTargetRange, type CaseMode } from '../lib/text-case';
@@ -224,6 +225,15 @@ watch(
 
 const host = ref<HTMLDivElement | null>(null);
 let view: EditorView | null = null;
+const cursorHistoryByTab = new Map<string, CursorHistoryQueue>();
+function getCursorHistory(tabId = props.tab.id): CursorHistoryQueue {
+  let q = cursorHistoryByTab.get(tabId);
+  if (!q) {
+    q = new CursorHistoryQueue(10);
+    cursorHistoryByTab.set(tabId, q);
+  }
+  return q;
+}
 let cleanupRelayout: (() => void) | null = null;
 let cleanupTransformCase: (() => void) | null = null;
 let cleanupPlainSelection: (() => void) | null = null;
@@ -453,10 +463,9 @@ function noteTypedInTextarea(el: HTMLTextAreaElement, event: Event) {
 // composition is in flight the timer is left armed instead (same reasoning as
 // #186: never commit a half-composed doc).
 function flushContentSync() {
-  if (contentSyncTimer) {
-    clearTimeout(contentSyncTimer);
-    contentSyncTimer = null;
-  }
+  if (!contentSyncTimer) return;
+  clearTimeout(contentSyncTimer);
+  contentSyncTimer = null;
   if (!view || view.composing) return;
   const doc = view.state.doc.toString();
   if (doc !== props.tab.content) {
@@ -1254,6 +1263,7 @@ function emitPlainCursorAndSelection() {
     const lines = before.split('\n');
     const line = lines.length;
     const col = lines[lines.length - 1]?.length ?? 0;
+    getCursorHistory().record({ path: props.tab.filePath || props.tab.id, pos: block.start + head, line });
     emit('cursor', line, col + 1);
     emit('selection', plainSelectionText());
     if ((el.selectionStart ?? 0) === (el.selectionEnd ?? 0)) {
@@ -1267,6 +1277,7 @@ function emitPlainCursorAndSelection() {
   const lines = el.value.slice(0, head).split('\n');
   const line = lines.length;
   const col = lines[lines.length - 1]?.length ?? 0;
+  getCursorHistory().record({ path: props.tab.filePath || props.tab.id, pos: head, line });
   emit('cursor', line, col + 1);
   emit('selection', plainSelectionText());
   if ((el.selectionStart ?? 0) === (el.selectionEnd ?? 0)) {
@@ -4556,6 +4567,7 @@ function buildExtensions() {
       if (u.selectionSet) {
         const head = u.state.selection.main.head;
         const line = u.state.doc.lineAt(head);
+        getCursorHistory().record({ path: props.tab.filePath || props.tab.id, pos: head, line: line.number });
         emit('cursor', line.number, head - line.from + 1);
         // v4.3.0 issue #70: emit selection text so StatusBar can show
         // selected word/char count. Empty string when nothing's selected.
@@ -4666,6 +4678,11 @@ onMounted(() => {
     }),
     parent: host.value,
   });
+  {
+    const initHead = view.state.selection.main.head;
+    const initLine = view.state.doc.lineAt(initHead);
+    getCursorHistory().record({ path: props.tab.filePath || props.tab.id, pos: initHead, line: initLine.number });
+  }
   maybeRestoreSession();
   if (!isMobile()) {
     focusFreshCodeMirror();
@@ -4996,6 +5013,29 @@ function onEditorCommand(e: Event) {
 
   const headingMode = (c: EditorCommand) =>
     c === 'headingPromote' ? 'promote' : c === 'headingDemote' ? 'demote' : 'paragraph';
+
+  if (cmd === 'cursorBack' || cmd === 'cursorForward') {
+    const q = getCursorHistory();
+    const stop = cmd === 'cursorBack' ? q.back() : q.forward();
+    if (!stop) return;
+    q.withNavigation(() => {
+      if (!usePlainWindowsEditor) {
+        if (!view) return;
+        const clamped = Math.max(0, Math.min(stop.pos, view.state.doc.length));
+        view.dispatch({
+          selection: { anchor: clamped, head: clamped },
+          effects: EditorView.scrollIntoView(clamped, { y: 'center' }),
+          userEvent: 'select',
+        });
+        view.focus();
+      } else {
+        const doc = plainLiveEnabled.value ? plainText.value || '' : plainEditor.value?.value ?? plainText.value ?? '';
+        const clamped = Math.max(0, Math.min(stop.pos, doc.length));
+        selectPlainRange(clamped, clamped, true);
+      }
+    });
+    return;
+  }
 
   if (!usePlainWindowsEditor) {
     if (!view) return;
@@ -5701,6 +5741,11 @@ watch(
         selection: { anchor: Math.min(saved?.caret ?? 0, props.tab.content.length) },
       })
     );
+    {
+      const initHead = view.state.selection.main.head;
+      const initLine = view.state.doc.lineAt(initHead);
+      getCursorHistory().record({ path: props.tab.filePath || props.tab.id, pos: initHead, line: initLine.number });
+    }
     maybeRestoreSession();
     focusFreshCodeMirror();
     restoreCodeMirrorScroll(saved);

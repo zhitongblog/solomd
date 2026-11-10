@@ -26,4 +26,19 @@ for (const [mode, want] of Object.entries(modes)) {
   if (mode === 'edit') R.t(!$('.cm-content .katex', pane()), 'source mode shows raw TeX (no .katex in the editor)');
 }
 settings.setViewMode('liveEdit');
+await sleep(150);
+// #512 / #516 / #522: verify EditorView instance, caret, and undo history survive liveEdit -> edit -> split -> preview -> reading -> liveEdit
+await fresh('mode-keep.md', '# Heading\n\nline two\n\nline three\n');
+const v0 = V();
+v0.dispatch({ changes: { from: v0.state.doc.length, to: v0.state.doc.length, insert: 'added text\n' }, selection: { anchor: 15 }, userEvent: 'input.type' });
+await sleep(80);
+for (const m of ['edit', 'split', 'preview', 'reading', 'liveEdit']) {
+  settings.setViewMode(m);
+  await sleep(120);
+}
+R.t(V() === v0, 'EditorView instance preserved across all 5 view modes (no unmount)');
+R.eq(sel().from, 15, 'caret position preserved across all 5 view modes');
+act('edit.undo'); await sleep(100);
+R.t(!doc().includes('added text'), 'undo history preserved across all 5 view modes');
+settings.setViewMode('edit');
 return R.done();

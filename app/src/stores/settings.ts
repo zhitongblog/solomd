@@ -1393,12 +1393,12 @@ export const useSettingsStore = defineStore('settings', {
       }
     },
     toggleLivePreview() {
-      if (this.viewMode === 'split') {
-        this.livePreview = !this.livePreview;
-        this.persist();
-        return;
+      this.livePreview = !this.livePreview;
+      if (this.viewMode !== 'split' && (this.viewMode === 'edit' || this.viewMode === 'liveEdit')) {
+        this.viewMode = this.livePreview ? 'liveEdit' : 'edit';
+        this.lastNonReadingViewMode = this.viewMode;
       }
-      this.setViewMode(this.viewMode === 'liveEdit' ? 'edit' : 'liveEdit');
+      this.persist();
     },
     toggleSpellCheck() {
       this.spellCheck = !this.spellCheck;

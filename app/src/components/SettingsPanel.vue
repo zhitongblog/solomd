@@ -46,7 +46,7 @@ import IntegrationsSettings from './IntegrationsSettings.vue';
 // than a brand-new top-level category.
 import RecipesSettings from './RecipesSettings.vue';
 import GithubSyncSettings from './GithubSyncSettings.vue';
-import WebdavSyncSettings from './WebdavSyncSettings.vue';
+import WebdavSyncSettings, { type SyncSubTab } from './WebdavSyncSettings.vue';
 import CloudFolderBanner from './CloudFolderBanner.vue';
 import ProxySettings from './ProxySettings.vue';
 import LanguageToolSettings from './LanguageToolSettings.vue';
@@ -99,11 +99,26 @@ function withChord(key: string, actionId: string): string {
 // split into 6 groups so the user navigates by category, not by scroll.
 type SettingsCategory = 'basics' | 'writing' | 'sync' | 'integrations' | 'export' | 'keys' | 'advanced';
 const activeCategory = ref<SettingsCategory>('basics');
+const activeSyncBranch = ref<SyncSubTab>(gitBackend ? 'git' : 'cloud_api');
+const syncBranches = computed<Array<{ id: SyncSubTab; label: string }>>(() => {
+  const zh = isZhLocale.value;
+  const items: Array<{ id: SyncSubTab; label: string }> = [];
+  if (gitBackend) {
+    items.push({ id: 'git', label: zh ? 'Git 同步' : 'Git Sync' });
+  }
+  items.push(
+    { id: 'cloud_api', label: zh ? '网盘直连 API' : 'Direct Cloud API' },
+    { id: 'local_vault', label: zh ? '本地网盘目录' : 'Local Cloud Folder' },
+    { id: 'webdav', label: zh ? 'WebDAV 同步' : 'WebDAV Sync' },
+    { id: 'history', label: zh ? '历史版本快照' : 'Version Snapshots' },
+  );
+  return items;
+});
 // #144 — all six category pages share the single scrolling `.settings__body`
 // (pages are toggled via CSS display), so one page's scrollTop leaked into
 // every other page. Reset to top on each category switch.
 const bodyEl = ref<HTMLElement | null>(null);
-watch(activeCategory, () => {
+watch([activeCategory, activeSyncBranch], () => {
   bodyEl.value?.scrollTo({ top: 0 });
 });
 // ---------------------------------------------------------------------------
@@ -610,7 +625,7 @@ function markGroups() {
 }
 let groupObserver: MutationObserver | null = null;
 watch(
-  [() => props.open, activeCategory, searchQuery, () => settings.language],
+  [() => props.open, activeCategory, activeSyncBranch, searchQuery, () => settings.language],
   async () => {
     await nextTick();
     markGroups();
@@ -628,6 +643,12 @@ onUnmounted(() => groupObserver?.disconnect());
 function pickCategory(id: SettingsCategory) {
   searchQuery.value = '';
   activeCategory.value = id;
+}
+
+function pickSyncBranch(branch: SyncSubTab) {
+  searchQuery.value = '';
+  activeCategory.value = 'sync';
+  activeSyncBranch.value = branch;
 }
 
 /** Esc clears a query before it closes the dialog, and ⌘F / Ctrl+F jumps to
@@ -990,17 +1011,33 @@ function onSelectPdfFont(v: string) {
         <!-- v3.0 — left-side category nav. Click switches the right-side
              content panel; only one category visible at a time. -->
         <nav class="settings__nav">
-          <button
-            v-for="c in categories"
-            v-show="navVisible(c.id)"
-            :key="c.id"
-            class="settings__nav-item"
-            :class="{ 'settings__nav-item--active': !searching && activeCategory === c.id }"
-            @click="pickCategory(c.id)"
-          >
-            <Icons class="settings__nav-icon" :name="c.icon" :size="16" />
-            <span class="settings__nav-label">{{ t(c.labelKey) }}</span>
-          </button>
+          <template v-for="c in categories" :key="c.id">
+            <button
+              v-show="navVisible(c.id)"
+              class="settings__nav-item"
+              :class="{ 'settings__nav-item--active': !searching && activeCategory === c.id }"
+              @click="pickCategory(c.id)"
+            >
+              <Icons class="settings__nav-icon" :name="c.icon" :size="16" />
+              <span class="settings__nav-label">{{ t(c.labelKey) }}</span>
+            </button>
+            <div
+              v-if="!searching && c.id === 'sync' && activeCategory === 'sync'"
+              class="settings__nav-sublist"
+            >
+              <button
+                v-for="sub in syncBranches"
+                :key="sub.id"
+                type="button"
+                class="settings__nav-subitem"
+                :class="{ 'settings__nav-subitem--active': activeSyncBranch === sub.id }"
+                @click="pickSyncBranch(sub.id)"
+              >
+                <span class="settings__nav-subitem-dot" aria-hidden="true"></span>
+                <span class="settings__nav-label">{{ sub.label }}</span>
+              </button>
+            </div>
+          </template>
           <button
             type="button"
             class="settings__nav-item settings__nav-supporter"
@@ -1566,10 +1603,29 @@ function onSelectPdfFont(v: string) {
           </p>
         </section>
 
-        <section v-if="gitBackend" data-cat="sync">
+        <section v-if="gitBackend" v-show="searching || activeSyncBranch === 'git'" data-cat="sync">
           <h3 class="settings__group-title">
             {{ t('settings.versionHistoryHeading') }}
           </h3>
+          <nav
+            v-if="!searching"
+            class="settings__sync-subnav"
+            role="tablist"
+            aria-label="Sync mode navigation"
+          >
+            <button
+              v-for="sub in syncBranches"
+              :key="sub.id"
+              type="button"
+              role="tab"
+              class="settings__sync-subnav-tab"
+              :class="{ 'settings__sync-subnav-tab--active': activeSyncBranch === sub.id }"
+              :aria-selected="activeSyncBranch === sub.id"
+              @click="pickSyncBranch(sub.id)"
+            >
+              {{ sub.label }}
+            </button>
+          </nav>
           <label>
             <input type="checkbox" :checked="settings.autoGitEnabled" @change="settings.toggleAutoGit()" />
             {{ t('settings.autoGitEnabled') }}
@@ -1581,19 +1637,25 @@ function onSelectPdfFont(v: string) {
 
         <!-- v2.6.1 cloud-folder banner. Self-hides if the workspace isn't
              inside a known cloud-sync folder. -->
-        <div v-if="gitBackend" data-cat="sync"><CloudFolderBanner /></div>
+        <div v-if="gitBackend" v-show="searching || activeSyncBranch === 'git'" data-cat="sync"><CloudFolderBanner /></div>
 
         <!-- v2.6 GitHub sync — sits right under AutoGit since it pushes the
              same commits AutoGit produces; reads top-down as one story. -->
-        <div v-if="gitBackend" data-cat="sync"><GithubSyncSettings /></div>
-
-        <!-- #458 — WebDAV workspace sync (Nextcloud /堅果云 / Synology / ownCloud). -->
-        <div data-cat="sync"><WebdavSyncSettings /></div>
+        <div v-if="gitBackend" v-show="searching || activeSyncBranch === 'git'" data-cat="sync"><GithubSyncSettings /></div>
 
         <!-- v3.0 — proxy URL (network-level, applies to libgit2 push/pull
              across GitHub / GitLab / Gitea). Pulled out of GithubSyncSettings
              so users hitting timeouts find it at the top of the Sync tab. -->
-        <div v-if="gitBackend" data-cat="sync"><ProxySettings /></div>
+        <div v-if="gitBackend" v-show="searching || activeSyncBranch === 'git'" data-cat="sync"><ProxySettings /></div>
+
+        <!-- #458 / #524 / #525 — Cloud API, Local Cloud Folder, WebDAV, and Version Snapshots. -->
+        <div v-show="searching || activeSyncBranch !== 'git'" data-cat="sync">
+          <WebdavSyncSettings
+            v-model:active-tab="activeSyncBranch"
+            :searching="searching"
+            :include-git-tab="gitBackend"
+          />
+        </div>
 
         <section data-cat="writing">
           <label>
@@ -2733,6 +2795,86 @@ function onSelectPdfFont(v: string) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.settings__nav-sublist {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 1px 0 4px 16px;
+  padding-left: 8px;
+  border-left: 1.5px solid var(--border, rgba(128, 128, 128, 0.22));
+}
+.settings__nav-subitem {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 26px;
+  min-height: 26px;
+  padding: 0 8px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 430;
+  color: var(--text-2);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: default;
+  text-align: left;
+}
+.settings__nav-subitem:hover {
+  background: var(--fill-1);
+  color: var(--text);
+}
+.settings__nav-subitem--active,
+.settings__nav-subitem--active:hover {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-weight: 520;
+}
+.settings__nav-subitem-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.55;
+  flex-shrink: 0;
+}
+.settings__nav-subitem--active .settings__nav-subitem-dot {
+  opacity: 1;
+}
+.settings__sync-subnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 5px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  background: var(--bg-muted, rgba(128, 128, 128, 0.08));
+  border: 1px solid var(--border, rgba(128, 128, 128, 0.16));
+}
+.settings__sync-subnav-tab {
+  flex: 1 1 auto;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted, var(--text-2));
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+.settings__sync-subnav-tab:hover {
+  color: var(--text);
+  background: rgba(128, 128, 128, 0.08);
+}
+.settings__sync-subnav-tab--active {
+  background: var(--bg-elevated, var(--bg, #fff));
+  color: var(--accent, #2563eb);
+  border-color: var(--border, rgba(37, 99, 235, 0.28));
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  font-weight: 600;
 }
 
 /* v3.0 — single-source-of-truth visibility: each section/component

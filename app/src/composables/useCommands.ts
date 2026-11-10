@@ -308,6 +308,18 @@ export function useCommands(): Command[] {
     { id: 'tile.splitDown', title: 'Split Editor Down', shortcut: kb('tile.splitDown'), run: () => tiles.splitPane(tiles.focusedPaneId, 'vertical') },
     { id: 'tile.closePane', title: 'Close Pane', run: () => tiles.closePane(tiles.focusedPaneId) },
     { id: 'tile.focusNext', title: 'Focus Next Pane', shortcut: kb('tile.focusNext'), run: () => tiles.focusNextPane() },
+    {
+      id: 'editor.cursorBack',
+      title: 'Navigate Back (Cursor History)',
+      shortcut: kb('editor.cursorBack'),
+      run: () => window.dispatchEvent(new CustomEvent('solomd:editor-command', { detail: { cmd: 'cursorBack' } })),
+    },
+    {
+      id: 'editor.cursorForward',
+      title: 'Navigate Forward (Cursor History)',
+      shortcut: kb('editor.cursorForward'),
+      run: () => window.dispatchEvent(new CustomEvent('solomd:editor-command', { detail: { cmd: 'cursorForward' } })),
+    },
     { id: 'tile.focusPrev', title: 'Focus Previous Pane', shortcut: kb('tile.focusPrev'), run: () => tiles.focusPrevPane() },
 
     {
