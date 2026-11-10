@@ -2071,6 +2071,9 @@ const toolbarMenuOpen = ref(false);
 window.addEventListener('solomd:toolbar-menu-state', (e) => {
   toolbarMenuOpen.value = Boolean((e as CustomEvent<boolean>).detail);
 });
+window.addEventListener('solomd:menu-history-back', () => {
+  phoneHistoryOps++;
+});
 function onTabletScrimClick() {
   window.dispatchEvent(new Event('solomd:close-menus'));
   if (settings.showFileTree) settings.toggleFileTree();

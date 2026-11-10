@@ -227,7 +227,7 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 8px;
   /* Stay clear of iOS notch / home-indicator areas */
-  top: max(14px, env(safe-area-inset-top, 0px));
+  top: max(14px, env(safe-area-inset-top, 0px), var(--android-safe-top, 0px));
   right: max(18px, env(safe-area-inset-right, 0px));
 }
 .reading-view__winbtn {

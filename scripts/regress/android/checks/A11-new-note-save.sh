@@ -5,6 +5,7 @@ run_check() {
   tap "$RX_NEWNOTE" --class Button || { fail "no New note button"; return; }
   sleep 2
   in_editor || { shot A11-new >/dev/null; fail "New note did not open the editor"; return; }
+  tap '' --class EditText || true
   local tok="newnote-$RANDOM" fname="regress-new-$RANDOM.md"
   type_ascii "# Gamma"; key KEYCODE_ENTER; type_ascii "body $tok"; sleep 1
   shot A11-typed >/dev/null

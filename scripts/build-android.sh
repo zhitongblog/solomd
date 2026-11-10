@@ -113,7 +113,12 @@ else
   # hitting AGP issue #402800800), and so `merged_jni_libs` + the APKs are
   # always newer than `app/dist/index.html` for A00-install-verify.
   pnpm tauri android build --aab
-  pnpm tauri android build --apk
+  rm -rf src-tauri/gen/android/app/build/intermediates/merged_jni_libs
+  pnpm tauri android build --apk --config '{"build":{"beforeBuildCommand":""}}'
+  for jni_so in src-tauri/gen/android/app/build/intermediates/merged_jni_libs/*/*/out/arm64-v8a/libapp_lib.so; do
+    [ -f "$jni_so" ] && [ -f src-tauri/target/aarch64-linux-android/release/libapp_lib.so ] && \
+      touch -r src-tauri/target/aarch64-linux-android/release/libapp_lib.so "$jni_so"
+  done
 fi
 
 OUT_DIR="src-tauri/gen/android/app/build/outputs"

@@ -522,9 +522,12 @@ button:disabled {
      to become the safe area instead, or a full-height panel puts its close
      button under the notch and its footer under the home indicator — measured
      on an iOS simulator: panel top 16 against a 62px inset, bottom 940 against
-     a 956px viewport with a 34px inset. */
-  padding: calc(env(safe-area-inset-top) + 8px) calc(env(safe-area-inset-right) + 8px)
-    calc(env(safe-area-inset-bottom) + 8px) calc(env(safe-area-inset-left) + 8px);
+     a 956px viewport with a 34px inset. Android WebView reports env() as 0,
+     so include --android-safe-top/bottom (#153). */
+  padding: calc(max(env(safe-area-inset-top, 0px), var(--android-safe-top, 0px)) + 8px)
+    calc(env(safe-area-inset-right, 0px) + 8px)
+    calc(max(env(safe-area-inset-bottom, 0px), var(--android-safe-bottom, 0px)) + 8px)
+    calc(env(safe-area-inset-left, 0px) + 8px);
 }
 :root.narrow-viewport .ds-modal__panel {
   width: 100% !important;
@@ -577,7 +580,7 @@ button:disabled {
    screen a thumb can actually reach. */
 :root.narrow-viewport .reading-view__controls {
   top: auto;
-  bottom: max(16px, calc(env(safe-area-inset-bottom, 0px) + 8px));
+  bottom: max(16px, calc(max(env(safe-area-inset-bottom, 0px), var(--android-safe-bottom, 0px)) + 8px));
   right: max(16px, calc(env(safe-area-inset-right, 0px) + 8px));
 }
 /* Both the window buttons and the plain close button — the latter is the one

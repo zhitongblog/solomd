@@ -5734,10 +5734,10 @@ onBeforeUnmount(() => {
 // preserves the exact cursor and scroll position.
 
 function focusFreshCodeMirror() {
-  if (isMobile()) return;
+  if (isMobile() && (props.tab.filePath || props.tab.content !== '')) return;
   // After the palette / menu / tab bar click that ran the command has closed,
   // focus the editor without scrolling the viewport to the caret.
-  nextTick(() => {
+  const doFocus = () => {
     if (!view) return;
     const active = document.activeElement;
     const inModalOrSidebarInput =
@@ -5750,6 +5750,10 @@ function focusFreshCodeMirror() {
     if (savedSt > 0 && Math.abs(view.scrollDOM.scrollTop - savedSt) > 1) {
       view.scrollDOM.scrollTop = savedSt;
     }
+  };
+  nextTick(() => {
+    doFocus();
+    if (isMobile()) setTimeout(doFocus, 80);
   });
 }
 

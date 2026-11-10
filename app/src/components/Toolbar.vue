@@ -673,6 +673,7 @@ watch(anyToolbarMenuOpen, (v, old) => {
   } else if (!v && old && menuHistoryDepth > 0 && !menuHistoryPopping && history.state?.solomdMenu) {
     menuHistoryDepth--;
     menuHistoryPopping = true;
+    window.dispatchEvent(new Event('solomd:menu-history-back'));
     history.back();
   }
 });
