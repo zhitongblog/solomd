@@ -1,0 +1,5 @@
+SoloMD 5.0.17:
+• Secundaire synchronisatienavigatie en afzonderlijke subpagina’s (#524): Instellingen › Synchronisatie bevat nu een subboom in de zijbalk (Git, Cloud-API, Lokale map, WebDAV en Snapshotgeschiedenis).
+• Gestroomlijnde WebDAV- en cloudsynchronisatie met wachtwoordzinbevestiging (#525): compact tweekolomsraster met tooltips, vergrendelde velden wanneer WebDAV is uitgeschakeld, servervoorinstellingen (Nutstore, Nextcloud, AList, Aangepast) en verplichte bevestiging van de E2EE-wachtwoordzin.
+• Geschiedenis van cursorposities met Terug/Vooruit-navigatie (#491): wachtrij van 10 posities per tabblad via Alt+Links en Alt+Rechts.
+• Asynchrone Quick Capture-venstercreatie en stabiliteitsverbeteringen.

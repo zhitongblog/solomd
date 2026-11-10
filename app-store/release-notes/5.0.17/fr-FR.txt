@@ -1,0 +1,5 @@
+SoloMD 5.0.17 :
+• Arborescence secondaire de synchronisation et sous-pages isolées (#524) : Réglages › Synchronisation dispose désormais d’une sous-navigation latérale (Git, API Cloud, Dossier local, WebDAV, Historique des instantanés) affichant chaque méthode sur une page dédiée.
+• Interface WebDAV et Cloud épurée avec confirmation de phrase secrète (#525) : options en grille sur deux colonnes avec infobulles, champs verrouillés tant que WebDAV est désactivé, modèles de serveurs WebDAV (Nutstore, Nextcloud, AList, Personnalisé) et champ de confirmation du mot de passe de chiffrement de bout en bout.
+• Historique des positions du curseur avec navigation Précédent/Suivant (#491) : file de 10 positions par onglet accessible via Alt+Gauche et Alt+Droite.
+• Ouverture asynchrone de la capture rapide et améliorations de stabilité.

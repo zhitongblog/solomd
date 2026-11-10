@@ -1,0 +1,5 @@
+SoloMD 5.0.17:
+• Eşitleme ayarları için ikincil gezinme ağacı ve ayrı alt sayfalar (#524): Ayarlar › Eşitleme kenar çubuğuna alt ağaç (Git, Doğrudan Bulut API, Yerel Klasör, WebDAV ve Anlık Görüntü Geçmişi) eklendi.
+• Sadeleştirilmiş WebDAV ve Bulut Eşitleme düzeni ile E2EE parola doğrulaması (#525): ipuçlu iki sütunlu onay kutusu düzeni, WebDAV kapalıyken devre dışı kalan alanlar, sunucu şablonları (Nutstore, Nextcloud, AList, Özel) ve zorunlu şifreleme parolası doğrulama alanı.
+• İmleç konumu geçmiş kuyruğu ve Geri/İleri gezinme (#491): sekme başına 10 konumlu geçmiş kuyruğu (Alt+Sol ve Alt+Sağ).
+• Eşzamansız Hızlı Yakalama penceresi ve kararlılık iyileştirmeleri.

@@ -1,0 +1,5 @@
+SoloMD 5.0.17:
+• Árvore de navegação secundária em Sincronização e subpáginas isoladas (#524): Configurações › Sincronização agora conta com uma subárvore lateral (Git, API de Nuvem, Pasta Local, WebDAV e Histórico de Snapshots) com páginas dedicadas.
+• Layout otimizado de WebDAV e Nuvem com confirmação de frase-senha E2EE (#525): grade compacta de duas colunas com dicas, campos desativados enquanto o WebDAV estiver desligado, predefinições de servidor (Nutstore, Nextcloud, AList, Personalizado) e confirmação obrigatória da senha de criptografia.
+• Fila de histórico de posição do cursor com navegação Voltar/Avançar (#491): fila de 10 posições por aba usando Alt+Esquerda e Alt+Direita.
+• Janela de captura rápida assíncrona e melhorias de estabilidade.

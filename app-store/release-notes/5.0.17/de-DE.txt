@@ -1,0 +1,5 @@
+SoloMD 5.0.17:
+• Sekundäre Synchronisations-Navigation & eigene Unterseiten (#524): Einstellungen › Synchronisation bietet nun einen Unterbaum in der Seitenleiste (Git, Cloud-API, Lokaler Ordner, WebDAV, Versionsverlauf), sodass jede Methode auf einer eigenen Seite angezeigt wird.
+• Übersichtliches WebDAV- & Cloud-Sync-Layout mit Passphrase-Bestätigung (#525): Zweispaltiges Optionsraster mit Tooltips, deaktivierte Eingabefelder bei ausgeschaltetem WebDAV, Server-Vorlagen (Nutstore, Nextcloud, AList, Benutzerdefiniert) sowie ein Pflichtfeld zur Bestätigung der Verschlüsselungs-Passphrase samt Warnhinweis.
+• Cursor-Positionsverlauf mit Vor-/Zurück-Navigation (#491): Pro Tab werden bis zu 10 Cursor-Positionen gespeichert (Alt+Links / Alt+Rechts).
+• Asynchrones Quick-Capture-Fenster & Stabilitätsverbesserungen.

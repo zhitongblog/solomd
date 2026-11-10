@@ -1,0 +1,5 @@
+SoloMD 5.0.17:
+• Albero di navigazione secondario per la sincronizzazione e sottopagine dedicate (#524): Impostazioni › Sincronizzazione include ora una sottonavigazione laterale (Git, API Cloud, Cartella locale, WebDAV, Cronologia snapshot).
+• Layout WebDAV e Cloud ottimizzato con conferma della passphrase E2EE (#525): griglia compatta a due colonne con suggerimenti, campi disabilitati quando WebDAV è spento, preset del server WebDAV (Nutstore, Nextcloud, AList, Personalizzato) e conferma obbligatoria della passphrase di crittografia.
+• Cronologia delle posizioni del cursore con navigazione Indietro/Avanti (#491): coda di 10 posizioni per scheda tramite Alt+Sinistra e Alt+Destra.
+• Finestra di acquisizione rapida asincrona e miglioramenti di stabilità.

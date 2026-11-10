@@ -200,15 +200,15 @@ class Client:
         )["data"]
         if data:
             return data[0]
-        # If an earlier version is sitting in WAITING_FOR_REVIEW, cancel its
-        # reviewSubmission so it returns to DEVELOPER_REJECTED and can be
-        # superseded by the newer version.
+        # If an earlier version is sitting in WAITING_FOR_REVIEW or IN_REVIEW,
+        # cancel its reviewSubmission so it returns to DEVELOPER_REJECTED and
+        # can be superseded by the newer version.
         subs = self.get(
             "/v1/reviewSubmissions",
             **{
                 "filter[app]": app,
                 "filter[platform]": platform,
-                "filter[state]": "WAITING_FOR_REVIEW",
+                "filter[state]": "WAITING_FOR_REVIEW,IN_REVIEW",
                 "limit": 10,
             },
         )["data"]

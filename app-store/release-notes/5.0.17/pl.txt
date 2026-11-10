@@ -1,0 +1,5 @@
+SoloMD 5.0.17:
+• Drzewo podnawigacji synchronizacji i osobne podstrony (#524): w Ustawienia › Synchronizacja dodano podmenu boczne (Git, bezpośrednie API chmury, lokalny folder, WebDAV, historia migawek).
+• Uproszczony układ WebDAV i chmury z potwierdzeniem hasła szyfrowania (#525): dwukolumnowa siatka opcji z podpowiedziami, blokada pól przy wyłączonym WebDAV, szablony serwerów (Nutstore, Nextcloud, AList, własny) oraz obowiązkowe potwierdzenie hasła E2EE z ostrzeżeniem.
+• Historia pozycji kursora z nawigacją Wstecz/Dalej (#491): kolejka 10 pozycji na kartę obsługiwana skrótami Alt+Strzałka w lewo oraz Alt+Strzałka w prawo.
+• Asynchroniczne otwieranie okna szybkiego przechwytywania i poprawki stabilności.

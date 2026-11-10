@@ -1,0 +1,5 @@
+SoloMD 5.0.17:
+• Sekundärt navigeringsträd för synkronisering och separata undersidor (#524): Inställningar › Synkronisering har nu ett underträd i sidofältet (Git, Direkt moln-API, Lokal mapp, WebDAV och Snapshothistorik).
+• Strömlinjeformad WebDAV- och molnsynkronisering med bekräftelse av lösenfras (#525): kompakt tvåkolumnsrutnät med verktygstips, inaktiverade fält när WebDAV är avstängt, servermallar (Nutstore, Nextcloud, AList, Anpassad) och obligatorisk bekräftelse av E2EE-lösenfras.
+• Historikkö för markörpositioner med Bakåt/Framåt-navigering (#491): 10 platser per flik via Alt+Vänster och Alt+Höger.
+• Asynkront Quick Capture-fönster och stabilitetsförbättringar.

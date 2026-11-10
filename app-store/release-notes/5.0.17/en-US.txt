@@ -1,0 +1,5 @@
+SoloMD 5.0.17:
+• Secondary Sync navigation tree & isolated sub-pages (#524): expanded Settings › Sync with a sidebar sub-tree (Git Sync, Direct Cloud API, Local Synced Folder, WebDAV Sync, and Snapshot History) so each sync method renders on its own dedicated page.
+• Streamlined WebDAV & Cloud Sync layout with E2EE passphrase confirmation (#525): compacted sync checkboxes into a 2-column grid with hover tooltips; disabled WebDAV inputs until enabled; added WebDAV server presets (Nutstore, Nextcloud, AList / OpenList, Custom WebDAV); and added a mandatory Confirm Encryption Passphrase field with mismatch validation and a zero-knowledge warning box.
+• Cursor position history queue & Back/Forward navigation (#491): added a per-tab 10-slot cursor history queue supporting Alt+Left and Alt+Right navigation across editing locations.
+• Non-blocking Quick Capture window & stability hardening: moved Quick Capture window creation off the main thread and hardened live-preview toggles and Inbox frontmatter saves.
