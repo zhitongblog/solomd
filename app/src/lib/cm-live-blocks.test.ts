@@ -16,7 +16,12 @@ import { EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 
-import { findTableCellOffsetInLine, liveBlocksExtension } from './cm-live-blocks.ts';
+import {
+  findTableCellOffsetInLine,
+  liveBlocksExtension,
+  toggleMermaidFoldEffect,
+  toggleTableFoldEffect,
+} from './cm-live-blocks.ts';
 import { dragAwareExtension, dragStartEffect, dragEndEffect } from './cm-drag-aware.ts';
 import { extractImageReferenceDefinitions, findMarkdownImagesInLine } from './md-image-url.ts';
 
@@ -482,4 +487,151 @@ test('#372: liveBlocksExtension renders MermaidWidget below the fence when curso
     selection: { anchor: 0 },
   });
   assert.deepEqual(getMermaidRanges(stateKeepSource), [{ from: doc.length, to: doc.length }]);
+
+  // #530: toggling fold collapses lines 2..4 while keeping line 1 (` ```mermaid `) visible
+  const collapsedState = stateKeepSource.update({
+    effects: toggleMermaidFoldEffect.of({ line: 1, collapsed: true }),
+  }).state;
+  assert.deepEqual(getMermaidRanges(collapsedState), [
+    { from: collapsedState.doc.line(2).from, to: doc.length },
+  ]);
+
+  const expandedState = collapsedState.update({
+    effects: toggleMermaidFoldEffect.of({ line: 1, collapsed: false }),
+  }).state;
+  assert.deepEqual(getMermaidRanges(expandedState), [{ from: doc.length, to: doc.length }]);
+});
+
+test('Windows 10 CRLF and all 8 table forms render as <table> in Preview, CodeMirror Live Edit, and parseTable', async () => {
+  const { renderMarkdown } = await import('./markdown.ts');
+  const { parseTable } = await import('./markdown-table.ts');
+
+  const lfDoc = [
+    '# Windows 10 表格渲染全场景测试文档',
+    '',
+    '## 1. 标准 GFM 表格（左/中/右对齐）',
+    '| 功能模块 | 支持状态 | 快捷键 |',
+    '| :--- | :---: | ---: |',
+    '| 实时表格渲染 | 已支持 | `Ctrl+E` |',
+    '| 单元格内联编辑 | 已支持 | `Tab` / `Enter` |',
+    '',
+    '## 2. 无首尾管道符表格',
+    '字段名 | 类型 | 说明',
+    '--- | :---: | ---',
+    'id | number | 主键 ID',
+    'title | string | 笔记标题',
+    '',
+    '## 3. 紧跟段落文字无空行的表格',
+    '下方表格紧跟在本段文字后（中间无空行）：',
+    '| 平台 | 默认引擎 | 推荐设置 |',
+    '| --- | --- | --- |',
+    '| Windows 10 | Auto / CodeMirror | 设置 → 书写 → 编辑器引擎 |',
+    '',
+    '## 4. 列表项内嵌套的 4 空格缩进表格（含连续两个缩进表格）',
+    '- 列表项说明：',
+    '',
+    '    | 阶段 | 负责人 |',
+    '    | --- | --- |',
+    '    | 开发 | 张三 |',
+    '',
+    '    | 阶段 | 负责人 |',
+    '    | --- | --- |',
+    '    | 测试 | 李四 |',
+    '',
+    '## 5. 有序列表下紧跟的无缩进表格',
+    '1. 第一季度汇总：',
+    '| 月份 | 完成率 |',
+    '| --- | --- |',
+    '| 1月 | 100% |',
+    '',
+    '## 6. 顶层 4 空格缩进表格',
+    '    | 缩进列A | 缩进列B |',
+    '    | --- | --- |',
+    '    | 顶层4空格 | 正常渲染为表格 |',
+    '',
+    '## 7. 引用块内表格',
+    '> | 引用列1 | 引用列2 |',
+    '> | --- | --- |',
+    '> | 引用内容A | 引用内容B |',
+    '',
+    '## 8. 含转义管道符、行内代码与列数容错的表格',
+    '| 表达式 | 含义 | 示例 |',
+    '| --- | --- | --- | --- |',
+    '| `a \\| b` | 按位或 \\| 管道 | **通过** |',
+  ].join('\n');
+
+  // Simulate Windows 10 CRLF line endings
+  const crlfDoc = lfDoc.replace(/\n/g, '\r\n');
+
+  // 1) Preview / Reading mode (renderMarkdown) on CRLF document:
+  // All 9 tables (including the 2 consecutive 4-space tables in section 4) must render as <table>, NEVER <pre><code>
+  const html = renderMarkdown(crlfDoc);
+  const tableCount = (html.match(/<table\b/g) || []).length;
+  assert.equal(tableCount, 9, `expected all 9 tables to render as <table> in Preview, got ${tableCount}`);
+  assert.equal(html.includes('<pre><code>'), false, 'no table should fall back to an indented <pre><code> block');
+
+  // 2) CodeMirror Live Edit mode (liveBlocksExtension) on document:
+  const state = EditorState.create({
+    doc: lfDoc,
+    extensions: [
+      markdown({ base: markdownLanguage, addKeymap: false }),
+      liveBlocksExtension({ keepSource: () => false }),
+    ],
+    selection: { anchor: 0 },
+  });
+  const cmTableWidgets: number[] = [];
+  for (const set of state.facet(EditorView.decorations)) {
+    set.between(0, state.doc.length, (from, _to, deco) => {
+      const w = (deco.spec as { widget?: { constructor: { name: string } } }).widget;
+      if (w?.constructor.name === 'TableWidget') {
+        cmTableWidgets.push(state.doc.lineAt(from).number);
+      }
+    });
+  }
+  assert.equal(
+    cmTableWidgets.length,
+    9,
+    `expected all 9 tables to collapse to TableWidget in CodeMirror Live Edit, got ${cmTableWidgets.length} at lines ${JSON.stringify(cmTableWidgets)}`,
+  );
+
+  // 3) parseTable on CRLF and indented tables:
+  assert.notEqual(parseTable('    | 缩进列A | 缩进列B |\r\n    | --- | --- |\r\n    | 1 | 2 |'), null);
+  assert.notEqual(parseTable('> | 引用列1 | 引用列2 |\r\n> | --- | --- |\r\n> | 1 | 2 |'), null);
+});
+
+test('toggleTableFoldEffect expands and folds table source code independently of alwaysShowMarkers', () => {
+  const doc = ['# 标题', '- 列表项', '', '| 列A | 列B |', '| --- | --- |', '| 1 | 2 |'].join('\n');
+  const getWidgets = (s: EditorState) => {
+    const names: string[] = [];
+    for (const set of s.facet(EditorView.decorations)) {
+      set.between(0, s.doc.length, (_from, _to, deco) => {
+        const w = (deco.spec as { widget?: { constructor: { name: string } } }).widget;
+        if (w) names.push(w.constructor.name);
+      });
+    }
+    return names;
+  };
+
+  // Default (collapseBlockSource = true -> keepSource = false): table is folded into TableWidget
+  const initial = EditorState.create({
+    doc,
+    extensions: [
+      markdown({ base: markdownLanguage, addKeymap: false }),
+      liveBlocksExtension({ keepSource: () => false }),
+    ],
+    selection: { anchor: 0 },
+  });
+  assert.deepEqual(getWidgets(initial), ['TableWidget']);
+
+  // Click "</> 源码" on the table (line 4): expands table source and mounts TableFoldToggleWidget
+  const expanded = initial.update({
+    effects: toggleTableFoldEffect.of({ line: 4, collapsed: false }),
+  }).state;
+  assert.deepEqual(getWidgets(expanded), ['TableFoldToggleWidget']);
+
+  // Click "−" on line 4: folds table source back into TableWidget
+  const refolded = expanded.update({
+    effects: toggleTableFoldEffect.of({ line: 4, collapsed: true }),
+  }).state;
+  assert.deepEqual(getWidgets(refolded), ['TableWidget']);
 });

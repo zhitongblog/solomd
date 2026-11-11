@@ -164,15 +164,27 @@ const markerMark = Decoration.mark({ class: 'cm-md-marker' });
 // the liveEdit theme (here) and the edit-mode livePreview extension
 // (cm-live-preview.ts), which reuses these via the exports below.
 class BulletWidget extends WidgetType {
-  eq() {
-    return true;
+  constructor(
+    private readonly widthEm: number = 0,
+    private readonly leadSpaces: number = 0,
+  ) {
+    super();
+  }
+  eq(other: BulletWidget) {
+    return this.widthEm === other.widthEm && this.leadSpaces === other.leadSpaces;
   }
   toDOM() {
     const span = document.createElement('span');
-    span.className = 'cm-md-bullet';
-    span.textContent = '•';
+    span.className = this.widthEm > 0 ? 'cm-md-bullet cm-md-list-prefix' : 'cm-md-bullet';
+    span.textContent = this.widthEm > 0 ? `${' '.repeat(this.leadSpaces)}• ` : '•';
     span.style.color = 'var(--md-list)';
     span.style.fontWeight = '700';
+    if (this.widthEm > 0) {
+      span.style.display = 'inline-block';
+      span.style.width = `${this.widthEm.toFixed(2)}em`;
+      span.style.textIndent = '0';
+      span.style.whiteSpace = 'pre';
+    }
     span.setAttribute('aria-hidden', 'true');
     return span;
   }
@@ -344,6 +356,7 @@ function buildDecorations(view: EditorView, showMarkers = false): DecorationSet 
   const seenHeadingLines = new Set<number>();
   const seenListLines = new Set<number>();
   const seenInlineHtmlLines = new Set<number>();
+  const seenDefLines = new Set<number>();
 
   for (const { from, to } of view.visibleRanges) {
     tree.iterate({
@@ -369,9 +382,16 @@ function buildDecorations(view: EditorView, showMarkers = false): DecorationSet 
 
         // ---- Marker hiding (off-line only) ----
         if (HIDDEN_MARK_NODES.has(name)) {
-          if (showMarkers) {
+          // #530 — Keep ` ```mermaid ` visible on the opening fence line next
+          // to the `+`/`−` fold toggle button even when `showMarkers` is off.
+          const isMermaidHeaderMark =
+            (name === 'CodeMark' || name === 'CodeInfo') &&
+            /^\s*(`{3,}|~{3,})\s*mermaid\s*$/i.test(
+              view.state.doc.lineAt(nFrom).text,
+            );
+          if (showMarkers || isMermaidHeaderMark) {
             // Dimmed, never removed — so the line looks the same whether or
-            // not the caret is on it (#353).
+            // not the caret is on it (#353 / #530).
             if (nTo > nFrom) ranges.push(markerMark.range(nFrom, nTo));
             return;
           }
@@ -490,6 +510,16 @@ function buildDecorations(view: EditorView, showMarkers = false): DecorationSet 
           ).number;
           const isFenced = name === 'FencedCode';
           const firstLineObj = view.state.doc.line(startLine);
+          if (
+            !isFenced &&
+            firstLineObj.text.includes('|') &&
+            startLine + 1 <= endLine &&
+            /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)+\|?\s*$/.test(
+              view.state.doc.line(startLine + 1).text,
+            )
+          ) {
+            return;
+          }
           const fenceIndentCols = isFenced ? Math.max(0, nFrom - firstLineObj.from) : 0;
           let fencedMarginLeft = '';
           if (fenceIndentCols > 0) {
@@ -654,6 +684,14 @@ function buildDecorations(view: EditorView, showMarkers = false): DecorationSet 
                 leadFrom === lineObj.from
                   ? indentEm
                   : Math.min(8, (nFrom - leadFrom) * 0.55 + markEm);
+              if (!showMarkers && !caretTouches && isBullet && nTo > nFrom) {
+                ranges.push(
+                  Decoration.replace({
+                    widget: new BulletWidget(prefixWidthEm, nFrom - leadFrom),
+                  }).range(leadFrom, prefixTo),
+                );
+                return;
+              }
               ranges.push(
                 Decoration.mark({
                   class: 'cm-md-list-prefix',
@@ -744,6 +782,46 @@ function buildDecorations(view: EditorView, showMarkers = false): DecorationSet 
           );
         }
         ranges.push(tagDeco.range(base + span.closeFrom, base + span.closeTo));
+      }
+    }
+
+    // #285 — Definition list (`Term\n: Definition`) styling in Live Edit mode.
+    for (let lineNo = firstVisibleLine; lineNo <= lastVisibleLine; lineNo += 1) {
+      if (seenDefLines.has(lineNo)) continue;
+      const line = view.state.doc.line(lineNo);
+      if (seenFencedLines.has(line.from)) continue;
+      const ddMatch = line.text.match(/^[ ]{0,3}([:~])([ \t]+)(.+)$/);
+      if (!ddMatch) continue;
+      // Check if preceded by a non-empty term line or another `: def` line
+      let prevNo = lineNo - 1;
+      if (prevNo >= 1 && view.state.doc.line(prevNo).text.trim() === '') {
+        prevNo -= 1;
+      }
+      if (prevNo < 1) continue;
+      const prevLine = view.state.doc.line(prevNo);
+      if (seenFencedLines.has(prevLine.from) || prevLine.text.trim() === '') continue;
+      const prevIsDd = /^[ ]{0,3}[:~][ \t]+/.test(prevLine.text);
+      const prevIsTerm =
+        !prevIsDd &&
+        !/^\s*(?:#{1,6}[ \t]|`{3,}|~{3,}|>|[-*+][ \t]|\d+[.)][ \t]|\||<(?:!--|[a-zA-Z/]))/.test(
+          prevLine.text,
+        );
+      if (!prevIsDd && !prevIsTerm) continue;
+      if (prevIsTerm && !seenDefLines.has(prevNo)) {
+        seenDefLines.add(prevNo);
+        ranges.push(
+          Decoration.line({ class: 'cm-md-dt-line' }).range(prevLine.from),
+        );
+      }
+      seenDefLines.add(lineNo);
+      ranges.push(Decoration.line({ class: 'cm-md-dd-line' }).range(line.from));
+      const caretOnLine = lineNo >= fromLine && lineNo <= toLine;
+      const colonStart = line.from + line.text.indexOf(ddMatch[1]);
+      const colonEnd = colonStart + ddMatch[1].length + ddMatch[2].length;
+      if (!showMarkers && !caretOnLine) {
+        ranges.push(hideDeco.range(line.from, colonEnd));
+      } else {
+        ranges.push(markerMark.range(colonStart, colonStart + 1));
       }
     }
   }
@@ -946,6 +1024,17 @@ const liveEditTheme = EditorView.theme({
     padding: '0 16px',
     color: 'var(--text-2)',
     backgroundColor: 'var(--bg-elev)',
+  },
+  // #285 — Definition list (`Term\n: Definition`) styling in Live Edit mode.
+  '.cm-md-dt-line': {
+    fontWeight: '600',
+    color: 'var(--text)',
+  },
+  '.cm-md-dd-line': {
+    paddingLeft: '1.5em',
+    borderLeft: '2px solid var(--border)',
+    marginLeft: '0.5em',
+    color: 'var(--text-2)',
   },
 
   // 5.0 §5 — code block: --bg-elev card, 10px corners, 13px mono.

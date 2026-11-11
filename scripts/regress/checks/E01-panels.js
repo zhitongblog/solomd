@@ -12,6 +12,13 @@ await waitFor(() => pane('outline') && pane('backlinks') && pane('tags') && pane
 // Outline
 const items = $$('.outline__label', pane('outline') || document).map((e) => e.textContent.trim());
 R.eq(items, ['Fixture Vault', 'Tasks', 'Section Two', 'Deep heading'], 'outline headings');
+const collapseAllBtn = $('[data-testid="outline-collapse-all"]', pane('outline') || document);
+const expandAllBtn = $('[data-testid="outline-expand-all"]', pane('outline') || document);
+R.t(!!collapseAllBtn && !!expandAllBtn, 'outline has collapseAll and expandAll buttons');
+collapseAllBtn?.click(); for (let i = 0; i < 6; i++) await Promise.resolve();
+R.eq($$('.outline__label', pane('outline') || document).map((e) => e.textContent.trim()), ['Fixture Vault'], 'outline collapseAll collapses all child headings');
+expandAllBtn?.click(); for (let i = 0; i < 6; i++) await Promise.resolve();
+R.eq($$('.outline__label', pane('outline') || document).map((e) => e.textContent.trim()), ['Fixture Vault', 'Tasks', 'Section Two', 'Deep heading'], 'outline expandAll restores all headings');
 const sec = $$('.outline__label', pane('outline') || document).find((e) => e.textContent.trim() === 'Section Two');
 if (sec) { sec.click(); await sleep(300); R.eq(lineOf(V().state.selection.main.head), 11, 'outline click -> caret on "## Section Two" (line 11)'); }
 // Backlinks: Table Note.md links to README on FILE line 13 (5 lines of front matter)

@@ -718,6 +718,68 @@ function handleLinkClick(e: MouseEvent) {
   openRenderedLink(anchor, e, props.filePath);
 }
 
+// #377 — Bidirectional hover block highlight in Split View mode.
+let hoveredPreviewBlock: HTMLElement | null = null;
+function setHoveredPreviewBlock(el: HTMLElement | null) {
+  if (hoveredPreviewBlock === el) return;
+  hoveredPreviewBlock?.classList.remove('preview-split-hover');
+  hoveredPreviewBlock = el;
+  hoveredPreviewBlock?.classList.add('preview-split-hover');
+}
+
+function onPreviewMouseOver(e: MouseEvent) {
+  if (settings.viewMode !== 'split') {
+    setHoveredPreviewBlock(null);
+    return;
+  }
+  const block = (e.target as HTMLElement | null)?.closest?.(
+    '[data-source-line]',
+  ) as HTMLElement | null;
+  setHoveredPreviewBlock(block);
+  const line = block ? Number(block.getAttribute('data-source-line') || 0) : 0;
+  window.dispatchEvent(
+    new CustomEvent('solomd:split-hover-line', {
+      detail: { tabId: props.tabId, line, source: 'preview' },
+    }),
+  );
+}
+
+function onPreviewMouseLeave() {
+  if (!hoveredPreviewBlock) return;
+  setHoveredPreviewBlock(null);
+  window.dispatchEvent(
+    new CustomEvent('solomd:split-hover-line', {
+      detail: { tabId: props.tabId, line: 0, source: 'preview' },
+    }),
+  );
+}
+
+function onSplitHoverEvent(e: Event) {
+  const detail = (
+    e as CustomEvent<{ tabId?: string; line: number; source: 'editor' | 'preview' }>
+  ).detail;
+  if (!detail || detail.source === 'preview') return;
+  if (detail.tabId && props.tabId && detail.tabId !== props.tabId) return;
+  if (settings.viewMode !== 'split' || !detail.line || !host.value) {
+    setHoveredPreviewBlock(null);
+    return;
+  }
+  const nodes = Array.from(
+    host.value.querySelectorAll<HTMLElement>('[data-source-line]'),
+  );
+  if (!nodes.length) {
+    setHoveredPreviewBlock(null);
+    return;
+  }
+  let best = nodes[0];
+  for (const node of nodes) {
+    const ln = Number(node.getAttribute('data-source-line') || 0);
+    if (ln <= detail.line) best = node;
+    else break;
+  }
+  setHoveredPreviewBlock(best);
+}
+
 onMounted(async () => {
   await nextTick();
   const scrollHost = host.value?.parentElement as HTMLElement | null;
@@ -740,12 +802,18 @@ onMounted(async () => {
   host.value?.addEventListener('click', handleLinkClick);
   host.value?.addEventListener('click', onTaskCheckboxClick);
   host.value?.addEventListener('dblclick', onPreviewDblClick);
+  host.value?.addEventListener('mouseover', onPreviewMouseOver);
+  host.value?.addEventListener('mouseleave', onPreviewMouseLeave);
+  window.addEventListener('solomd:split-hover-line', onSplitHoverEvent);
 });
 
 onBeforeUnmount(() => {
   host.value?.removeEventListener('click', handleLinkClick);
   host.value?.removeEventListener('click', onTaskCheckboxClick);
   host.value?.removeEventListener('dblclick', onPreviewDblClick);
+  host.value?.removeEventListener('mouseover', onPreviewMouseOver);
+  host.value?.removeEventListener('mouseleave', onPreviewMouseLeave);
+  window.removeEventListener('solomd:split-hover-line', onSplitHoverEvent);
   const scrollHost = host.value?.parentElement as HTMLElement | null;
   for (const ev of ['wheel', 'pointerdown', 'touchstart', 'keydown'] as const) {
     scrollHost?.removeEventListener(ev, markMermaidUserIntent);
@@ -1133,6 +1201,23 @@ defineExpose({ scrollToLine, openSearch });
   color: var(--text-3);
   font-variant-numeric: tabular-nums;
 }
+:where(.preview-content) dl {
+  margin: 0.9em 0;
+}
+:where(.preview-content) dt {
+  font-weight: 600;
+  color: var(--text);
+  margin-top: 0.7em;
+}
+:where(.preview-content) dt:first-child {
+  margin-top: 0;
+}
+:where(.preview-content) dd {
+  margin: 0.25em 0 0.55em 1.5em;
+  padding-left: 0.65em;
+  border-left: 2px solid var(--border);
+  color: var(--text-2);
+}
 :where(.preview-content) table {
   border-collapse: collapse;
   margin: 1em 0;
@@ -1161,7 +1246,7 @@ defineExpose({ scrollToLine, openSearch });
 }
 :where(.preview-content) .mermaid-block {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   margin: 1.5em 0;
   cursor: zoom-in;
   transition: opacity 0.15s;
@@ -1404,5 +1489,10 @@ defineExpose({ scrollToLine, openSearch });
   opacity: 0.6;
   font-size: 11px;
   margin-left: 2px;
+}
+:where(.preview-content) .preview-split-hover {
+  background: color-mix(in srgb, var(--accent-soft) 32%, transparent);
+  border-radius: 4px;
+  transition: background 0.12s ease;
 }
 </style>

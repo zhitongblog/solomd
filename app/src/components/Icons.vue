@@ -417,5 +417,13 @@ defineProps<{ name: string; size?: number }>();
       <rect x="15" y="16" width="6" height="4" rx="1" />
       <path d="M12 7v4M6 16v-3a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v3" />
     </template>
+    <template v-else-if="name === 'fold-all'">
+      <polyline points="7 4 12 9 17 4" />
+      <polyline points="7 20 12 15 17 20" />
+    </template>
+    <template v-else-if="name === 'unfold-all'">
+      <polyline points="7 9 12 4 17 9" />
+      <polyline points="7 15 12 20 17 15" />
+    </template>
   </svg>
 </template>

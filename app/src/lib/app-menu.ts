@@ -163,6 +163,7 @@ export function buildAppMenu(ctx: MenuContext): TopMenu[] {
     item('file.new', t('menubar.newMd')),
     item('file.newText', t('menubar.newText')),
     item('file.newInFolder', t('cmd.file.newInFolder')),
+    item('file.newFromTemplate', t('types.templateLabel')),
     item('window.new', t('menubar.newWindow')),
     item('capture.quick', t('menubar.quickCapture')),
     sep,

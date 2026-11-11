@@ -127,6 +127,7 @@ export const KEY_ACTIONS: KeyActionDef[] = [
   // #338 — a note in the folder selected in the file tree (or the selected
   // file's folder).
   { id: 'file.newInFolder', label: 'New Note in Selected Folder', category: 'file', defaults: ['Mod+Alt+Shift+N'] },
+  { id: 'file.newFromTemplate', label: 'New Note from Template…', category: 'file', defaults: [] },
   { id: 'window.new', label: 'New Window', category: 'file', defaults: ['Mod+Shift+N'] },
   { id: 'capture.quick', label: 'Quick Capture…', category: 'file', defaults: [] },
   { id: 'file.open', label: 'Open File…', category: 'file', defaults: ['Mod+O'] },

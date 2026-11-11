@@ -68,6 +68,10 @@ interface Settings {
   // live views instead of hiding them off the caret line, so clicking a line
   // doesn't reflow it. Styling (heading size, bold) still applies.
   alwaysShowMarkers: boolean;
+  // Separate toggle for block-level live rendering (tables, Mermaid, PlantUML,
+  // math blocks, etc.): when true (default), table and diagram source code is
+  // hidden/collapsed into rendered widgets even if `alwaysShowMarkers` is on.
+  collapseBlockSource: boolean;
   // #344 — tint the caret line's background in the CodeMirror editor.
   highlightCurrentLine: boolean;
   /** Use the document's first non-empty line as the tab title instead of the
@@ -129,6 +133,9 @@ interface Settings {
    *  Windows menubar) stays. Where the OS draws the title bar, the whole
    *  toolbar goes. */
   toolbarHidden: boolean;
+  /** #208: hide the in-window top menubar (`File Edit Paragraph ...`) on
+   *  custom-titlebar platforms (Windows). */
+  hideMenuBar: boolean;
   typewriterMode: boolean;
   /** One-time tips when Markdown formatting is typed by hand (useFormatHints). */
   formatHints: boolean;
@@ -270,6 +277,8 @@ interface Settings {
   // v2.2: AutoGit per-note version history
   autoGitEnabled: boolean;
   autoGitDebounceSeconds: number;
+  /** #129: generate concise AI commit messages for AutoGit snapshots when AI is configured. */
+  autoGitAiMessage: boolean;
   /** Show the History pane in the right sidebar. v4.0.2: decoupled from
    *  autoGitEnabled so users can hide just the panel without disabling git
    *  sync entirely (issue #55 — Agent + History fighting for vertical space
@@ -693,6 +702,7 @@ function defaults(): Settings {
     selectionBubble: true,
     formatBar: false,
     alwaysShowMarkers: false,
+    collapseBlockSource: true,
     highlightCurrentLine: true,
     tabTitleFromFirstLine: false,
     confirmSaveMissingFile: false,
@@ -721,6 +731,7 @@ function defaults(): Settings {
     spellCheck: true,
     focusMode: false,
     toolbarHidden: false,
+    hideMenuBar: false,
     typewriterMode: false,
     formatHints: true,
     formatHintsSeen: [],
@@ -807,6 +818,7 @@ function defaults(): Settings {
     workspaceCsl: '',
     autoGitEnabled: false,
     autoGitDebounceSeconds: 30,
+    autoGitAiMessage: false,
     showHistoryPanel: true,
     showInspector: false,
     rightSidebarPaneHeights: {},
@@ -1300,6 +1312,10 @@ export const useSettingsStore = defineStore('settings', {
       this.alwaysShowMarkers = !this.alwaysShowMarkers;
       this.persist();
     },
+    toggleCollapseBlockSource() {
+      this.collapseBlockSource = !this.collapseBlockSource;
+      this.persist();
+    },
     toggleHighlightCurrentLine() {
       this.highlightCurrentLine = !this.highlightCurrentLine;
       this.persist();
@@ -1452,6 +1468,10 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleToolbarHidden() {
       this.toolbarHidden = !this.toolbarHidden;
+      this.persist();
+    },
+    toggleHideMenuBar() {
+      this.hideMenuBar = !this.hideMenuBar;
       this.persist();
     },
     toggleFormatHints() {
@@ -1692,6 +1712,10 @@ export const useSettingsStore = defineStore('settings', {
       // pane no longer disables sync. Re-enabling sync surfaces the panel
       // again only if the user hasn't explicitly hidden it.
       if (this.autoGitEnabled && !this.showHistoryPanel) this.showHistoryPanel = true;
+      this.persist();
+    },
+    toggleAutoGitAiMessage() {
+      this.autoGitAiMessage = !this.autoGitAiMessage;
       this.persist();
     },
     toggleHistoryPanel() {

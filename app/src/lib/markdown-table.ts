@@ -38,11 +38,18 @@ function looksLikeRow(line: string): boolean {
 
 /** `|---|:--:|` and friends. */
 export function isDelimiterRow(line: string): boolean {
-  const t = line.trim();
-  if (!t.includes('-')) return false;
+  const t = line.replace(/^\s*(?:>\s*)*/, '').trim();
+  if (!t.includes('-') || !t.includes('|')) return false;
   const cells = splitRow(t);
   if (cells.length === 0) return false;
-  return cells.every((c) => /^:?-{1,}:?$/.test(c.trim()));
+  let hasRealCell = false;
+  for (const c of cells) {
+    const ct = c.trim();
+    if (ct === '') continue;
+    if (!/^:?-{1,}:?$/.test(ct)) return false;
+    hasRealCell = true;
+  }
+  return hasRealCell;
 }
 
 /**

@@ -150,6 +150,119 @@ if (tableBlockRule) {
 }
 (md.block.ruler as any).__cache__ = null;
 
+// ---- Definition List (`Term\n: Definition`, #285) ---------------------------
+// Supports Pandoc / PHP Markdown Extra definition lists (`<dl><dt><dd>`).
+md.block.ruler.before(
+  'paragraph',
+  'deflist',
+  (state, startLine, endLine, silent) => {
+    const getLine = (lineNo: number): string => {
+      const pos = state.bMarks[lineNo] + state.tShift[lineNo];
+      const max = state.eMarks[lineNo];
+      return state.src.slice(pos, max);
+    };
+    const isDefMarkerLine = (lineNo: number): boolean => {
+      if (lineNo < 0 || lineNo >= endLine || state.isEmpty(lineNo)) return false;
+      if (state.sCount[lineNo] - state.blkIndent >= 4) return false;
+      return /^[:~][ \t]+/.test(getLine(lineNo));
+    };
+    const isTermCandidateLine = (lineNo: number): boolean => {
+      if (lineNo < 0 || lineNo >= endLine || state.isEmpty(lineNo)) return false;
+      if (state.sCount[lineNo] - state.blkIndent >= 4) return false;
+      const text = getLine(lineNo);
+      if (/^(?:#{1,6}[ \t]|`{3,}|~{3,}|>|[-*+][ \t]|\d+[.)][ \t]|[:~][ \t]|\||<(?:!--|[a-zA-Z/]))/.test(text)) {
+        return false;
+      }
+      if (/^(?:[-*_][ \t]*){3,}$/.test(text)) return false;
+      return true;
+    };
+    const matchTermGroupAt = (
+      fromLine: number,
+    ): { termEnd: number; ddStart: number } | null => {
+      if (!isTermCandidateLine(fromLine)) return null;
+      let tEnd = fromLine + 1;
+      while (tEnd < endLine && isTermCandidateLine(tEnd)) {
+        // Stop if `tEnd` itself is the last term directly above a `: def`
+        tEnd++;
+      }
+      let dd = tEnd;
+      if (dd < endLine && state.isEmpty(dd)) dd++;
+      if (!isDefMarkerLine(dd)) return null;
+      return { termEnd: tEnd, ddStart: dd };
+    };
+
+    const firstGroup = matchTermGroupAt(startLine);
+    if (!firstGroup) return false;
+    if (silent) return true;
+
+    const dlOpen = state.push('dl_open', 'dl', 1);
+    dlOpen.map = [startLine, 0];
+
+    let curLine = startLine;
+    while (curLine < endLine) {
+      const group = matchTermGroupAt(curLine);
+      if (!group) break;
+
+      for (let tl = curLine; tl < group.termEnd; tl++) {
+        const dtOpen = state.push('dt_open', 'dt', 1);
+        dtOpen.map = [tl, tl + 1];
+        const inlineTok = state.push('inline', '', 0);
+        inlineTok.content = getLine(tl).trim();
+        inlineTok.map = [tl, tl + 1];
+        inlineTok.children = [];
+        state.push('dt_close', 'dt', -1);
+      }
+
+      curLine = group.ddStart;
+      while (curLine < endLine) {
+        if (state.isEmpty(curLine)) {
+          if (curLine + 1 < endLine && isDefMarkerLine(curLine + 1)) {
+            curLine++;
+          } else {
+            break;
+          }
+        }
+        if (!isDefMarkerLine(curLine)) break;
+        const ddStartLine = curLine;
+        const firstMatch = getLine(curLine).match(/^[:~][ \t]+(.*)$/);
+        const ddLines: string[] = [firstMatch ? firstMatch[1] : ''];
+        curLine++;
+        while (
+          curLine < endLine &&
+          !state.isEmpty(curLine) &&
+          !isDefMarkerLine(curLine)
+        ) {
+          if (matchTermGroupAt(curLine)) break;
+          ddLines.push(getLine(curLine).trim());
+          curLine++;
+        }
+        const ddOpen = state.push('dd_open', 'dd', 1);
+        ddOpen.map = [ddStartLine, curLine];
+        const ddInline = state.push('inline', '', 0);
+        ddInline.content = ddLines.join('\n');
+        ddInline.map = [ddStartLine, curLine];
+        ddInline.children = [];
+        state.push('dd_close', 'dd', -1);
+      }
+
+      if (
+        curLine < endLine &&
+        state.isEmpty(curLine) &&
+        curLine + 1 < endLine &&
+        matchTermGroupAt(curLine + 1)
+      ) {
+        curLine++;
+      }
+    }
+
+    dlOpen.map = [startLine, curLine];
+    state.push('dl_close', 'dl', -1);
+    state.line = curLine;
+    return true;
+  },
+  { alt: ['paragraph', 'reference', 'blockquote'] },
+);
+
 // ---- Wikilink rule (`[[X]]`, `[[X|alias]]`, `[[X#heading]]`) ---------------
 // Used by F1 (v2.0). Renders into <a class="md-wikilink" data-wikilink-target="X">…</a>.
 // Preview.vue intercepts clicks and resolves through the workspace index.
@@ -388,6 +501,9 @@ const BLOCK_OPEN_TYPES = new Set([
   'list_item_open',
   'bullet_list_open',
   'ordered_list_open',
+  'dl_open',
+  'dt_open',
+  'dd_open',
   'table_open',
   'fence',
   'code_block',
@@ -1221,11 +1337,45 @@ function normalizeListIndent(source: string): string {
       const leadWs = (line.match(/^\s*/) as RegExpMatchArray)[0];
       const lead = expand(leadWs);
       if (stack.length && curOrig >= 0 && lead >= curOrig) {
+        const top = stack[stack.length - 1];
+        const next = lines[i + 1];
+        if (
+          top &&
+          line.includes('|') &&
+          !isTableDelimiterRow(line) &&
+          next !== undefined &&
+          next.includes('|') &&
+          isTableDelimiterRow(next)
+        ) {
+          const tableIndent = ' '.repeat(top.norm + top.markerWidth);
+          while (i < lines.length && lines[i].includes('|') && lines[i].trim() !== '') {
+            out.push(tableIndent + lines[i].trimStart());
+            i++;
+          }
+          i--;
+          continue;
+        }
         out.push(' '.repeat(Math.max(0, lead + curDelta)) + line.slice(leadWs.length));
       } else {
         stack.length = 0;
         curDelta = 0;
         curOrig = -1;
+        const next = lines[i + 1];
+        if (
+          lead >= 4 &&
+          line.includes('|') &&
+          !isTableDelimiterRow(line) &&
+          next !== undefined &&
+          next.includes('|') &&
+          isTableDelimiterRow(next)
+        ) {
+          while (i < lines.length && lines[i].includes('|') && lines[i].trim() !== '') {
+            out.push(lines[i].trimStart());
+            i++;
+          }
+          i--;
+          continue;
+        }
         out.push(line);
       }
     }
@@ -1590,7 +1740,8 @@ function normalizeFullwidthEscapes(source: string): string {
 }
 
 export function preprocessMarkdown(source: string): string {
-  let s = normalizeTableDelimiters(unwrapInlineHtmlBlocks(source || ''));
+  const clean = (source || '').replace(/\r\n?/g, '\n');
+  let s = normalizeTableDelimiters(unwrapInlineHtmlBlocks(clean));
   s = normalizeLatexDelimiters(s);
   s = normalizeImageBackslashPaths(s);
   s = normalizeFullwidthEscapes(s);
@@ -1659,7 +1810,7 @@ export interface OutlineItem {
 }
 
 export function extractOutline(source: string): OutlineItem[] {
-  const lines = source.split('\n');
+  const lines = (source || '').replace(/\r\n?/g, '\n').split('\n');
   const items: OutlineItem[] = [];
   let inFence = false;
   for (let i = 0; i < lines.length; i++) {

@@ -16,12 +16,14 @@ import Icon from './Icons.vue';
 import { useTabsStore } from '../stores/tabs';
 import { useTilesStore } from '../stores/tiles';
 import { useSettingsStore } from '../stores/settings';
+import { useFiles } from '../composables/useFiles';
 import { useI18n } from '../i18n';
 import { forceWinChromePreview, isMacOS, isWindowsDesktop } from '../lib/platform';
 
 const tabs = useTabsStore();
 const tiles = useTilesStore();
 const settings = useSettingsStore();
+const files = useFiles();
 const { t } = useI18n();
 
 const tab = computed(() => tabs.activeTab);
@@ -30,6 +32,10 @@ const isMac = isMacOS();
 function selectReadingTab(id: string) {
   tabs.activate(id);
   tiles.setActiveTab(tiles.focusedPaneId, id);
+}
+
+function closeReadingTab(id: string) {
+  files.closeTabSafe(id);
 }
 
 function exit() {
@@ -86,7 +92,7 @@ onBeforeUnmount(() => {
 <template>
   <div class="reading-view" data-reading-view>
     <div
-      v-if="tabs.tabs.length > 1"
+      v-if="tabs.tabs.length >= 1"
       class="reading-view__tabs"
       :class="{ 'reading-view__tabs--mac': isMac }"
       data-tauri-drag-region
@@ -102,6 +108,13 @@ onBeforeUnmount(() => {
           @click="selectReadingTab(item.id)"
         >
           <span class="reading-view__tab-title">{{ item.fileName.replace(/\.md$/i, '') || item.fileName }}</span>
+          <span
+            v-if="tabs.tabs.length > 1"
+            class="reading-view__tab-close"
+            role="button"
+            aria-label="Close tab"
+            @click.stop="closeReadingTab(item.id)"
+          >×</span>
         </button>
       </div>
     </div>
@@ -188,6 +201,9 @@ onBeforeUnmount(() => {
   gap: 4px;
 }
 .reading-view__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   max-width: 180px;
   padding: 4px 10px;
   border: 1px solid transparent;
@@ -200,6 +216,23 @@ onBeforeUnmount(() => {
   text-overflow: ellipsis;
   cursor: pointer;
   transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.reading-view__tab-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.reading-view__tab-close {
+  flex: none;
+  font-size: 13px;
+  line-height: 1;
+  opacity: 0.55;
+  padding: 0 2px;
+  border-radius: 3px;
+}
+.reading-view__tab-close:hover {
+  opacity: 1;
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
 }
 .reading-view__tab:hover {
   color: var(--text);

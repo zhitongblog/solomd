@@ -13,6 +13,28 @@ import { openUrl } from '@tauri-apps/plugin-opener';
 import { useFiles } from '../composables/useFiles';
 
 /**
+ * #380 — Convert a `file://...` URI (e.g. `file:///Users/me/doc.md` or
+ * `file:///C:/Users/me/doc.pdf`) into a decoded local filesystem path.
+ */
+export function fileUrlToLocalPath(href: string): string | null {
+  const trimmed = String(href ?? '').trim();
+  if (!/^file:/i.test(trimmed)) return null;
+  let rest = trimmed.replace(/^file:(?:\/\/(?:localhost)?)?/i, '').replace(/[#?].*$/, '');
+  try {
+    rest = decodeURIComponent(rest);
+  } catch {
+    /* keep raw rest */
+  }
+  if (/^\/[a-zA-Z]:[\\/]/.test(rest)) {
+    return rest.slice(1).replace(/\//g, '\\');
+  }
+  if (/^[a-zA-Z]:[\\/]/.test(rest)) {
+    return rest.replace(/\//g, '\\');
+  }
+  return rest.startsWith('/') ? rest : `/${rest}`;
+}
+
+/**
  * Handle a click that landed on (or inside) `anchor`. Returns true when the
  * click was consumed — the caller's event has been prevented.
  */
@@ -36,6 +58,14 @@ export function openRenderedLink(anchor: Element, e: Event, filePath?: string | 
   if (href.startsWith('#')) return false;
   e.preventDefault();
   e.stopPropagation();
+  // #380 — `file:///...` local file URI: resolve directly to local path
+  const fileTarget = fileUrlToLocalPath(href);
+  if (fileTarget) {
+    useFiles().openLinkedFile(fileTarget, { bypassNewWindow: true }).catch((err) => {
+      console.warn('[link] openLinkedFile (file://) failed:', fileTarget, err);
+    });
+    return true;
+  }
   // External URL: open in system browser
   if (/^(https?|mailto|tel):/i.test(href)) {
     openUrl(href).catch((err) => {
@@ -104,8 +134,8 @@ export function findMarkdownLinkAt(doc: string, pos: number): MarkdownLinkMatch 
     }
   }
 
-  // 3. Angle-bracket autolinks: `<https://...>` or `<mailto:...>`
-  const autoRe = /<((?:https?|mailto|tel):[^>\s]+)>/gi;
+  // 3. Angle-bracket autolinks: `<https://...>`, `<mailto:...>`, or `<file://...>`
+  const autoRe = /<((?:https?|mailto|tel|file):[^>\s]+)>/gi;
   for (let m = autoRe.exec(line); m; m = autoRe.exec(line)) {
     const start = m.index;
     const end = start + m[0].length;
@@ -114,8 +144,8 @@ export function findMarkdownLinkAt(doc: string, pos: number): MarkdownLinkMatch 
     }
   }
 
-  // 4. Bare URLs: `https://...` or `http://...`
-  const bareUrlRe = /https?:\/\/[^\s<>()[\]"'`]+/gi;
+  // 4. Bare URLs: `https://...`, `http://...`, or `file:///...`
+  const bareUrlRe = /(?:https?|file):\/\/[^\s<>()[\]"'`]+/gi;
   for (let m = bareUrlRe.exec(line); m; m = bareUrlRe.exec(line)) {
     const raw = m[0].replace(/[.,;:!?]+$/, '');
     const start = m.index;
@@ -143,6 +173,13 @@ export function openMarkdownHref(
     return true;
   }
   if (!href || href.startsWith('#')) return false;
+  const fileTarget = fileUrlToLocalPath(href);
+  if (fileTarget) {
+    useFiles().openLinkedFile(fileTarget, { bypassNewWindow: true }).catch((err) => {
+      console.warn('[link] openLinkedFile (file://) failed:', fileTarget, err);
+    });
+    return true;
+  }
   if (/^(https?|mailto|tel):/i.test(href)) {
     openUrl(href).catch((err) => {
       console.warn('[link] openUrl failed:', href, err);

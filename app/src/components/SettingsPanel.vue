@@ -846,6 +846,11 @@ const baseFontFamilies = [
   // Common CJK faces that already ship on the OS
   { label: 'PingFang SC', value: 'PingFang SC' },
   { label: 'Microsoft YaHei', value: 'Microsoft YaHei' },
+  { label: 'Noto Sans CJK SC (思源黑体)', value: 'Noto Sans CJK SC' },
+  { label: 'Noto Serif CJK SC (思源宋体)', value: 'Noto Serif CJK SC' },
+  { label: 'HarmonyOS Sans SC (鸿蒙黑体)', value: 'HarmonyOS Sans SC' },
+  { label: 'MiSans (小米兰亭)', value: 'MiSans' },
+  { label: 'Roboto', value: 'Roboto' },
   { label: 'Source Han Sans', value: 'Source Han Sans SC' },
   { label: 'Source Han Serif', value: 'Source Han Serif SC' },
   // Writing-friendly CJK faces (open source, install separately if missing)
@@ -901,6 +906,38 @@ function onSelectFontFamily(v: string) {
 function onCustomFontInput(v: string) {
   customFontFamily.value = v;
   if (v.trim()) settings.setFontFamily(v.trim());
+}
+const fontFileInput = ref<HTMLInputElement | null>(null);
+function triggerFontFilePick() {
+  fontFileInput.value?.click();
+}
+async function onFontFilePicked(e: Event) {
+  const input = e.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) return;
+  try {
+    const { cleanFontFamilyFromFilename } = await import('../lib/custom-font');
+    const { family } = cleanFontFamilyFromFilename(file.name);
+    const cleanFamily = family || file.name.replace(/\.[^.]+$/, '');
+    const buf = await file.arrayBuffer();
+    if (typeof FontFace !== 'undefined' && document.fonts) {
+      const face = new FontFace(cleanFamily, buf);
+      await face.load();
+      document.fonts.add(face);
+    }
+    inCustomMode.value = true;
+    customFontFamily.value = cleanFamily;
+    settings.setFontFamily(cleanFamily);
+    toasts.success(
+      settings.language === 'zh'
+        ? `已加载字体：${cleanFamily}`
+        : `Loaded font: ${cleanFamily}`,
+    );
+  } catch (err) {
+    toasts.error(String(err));
+  } finally {
+    input.value = '';
+  }
 }
 const fontFamilySelectValue = computed(() =>
   inCustomMode.value ? '__custom__' : settings.fontFamily
@@ -1175,10 +1212,26 @@ function onSelectPdfFont(v: string) {
 
         <section data-cat="basics">
           <label>{{ t('settings.fontFamily') }}</label>
-          <select :value="fontFamilySelectValue" @change="onSelectFontFamily(($event.target as HTMLSelectElement).value)">
-            <option v-for="f in fontFamilies" :key="f.label" :value="f.value">{{ f.label }}</option>
-            <option value="__custom__">{{ t('settings.customFont') }}</option>
-          </select>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <select
+              :value="fontFamilySelectValue"
+              style="flex:1;min-width:180px;"
+              @change="onSelectFontFamily(($event.target as HTMLSelectElement).value)"
+            >
+              <option v-for="f in fontFamilies" :key="f.label" :value="f.value">{{ f.label }}</option>
+              <option value="__custom__">{{ t('settings.customFont') }}</option>
+            </select>
+            <button type="button" class="hint-btn" @click="triggerFontFilePick">
+              {{ settings.language === 'zh' ? '选择字体文件…' : 'Browse font file…' }}
+            </button>
+            <input
+              ref="fontFileInput"
+              type="file"
+              accept=".ttf,.otf,.woff2,.woff,.ttc"
+              style="display:none;"
+              @change="onFontFilePicked"
+            />
+          </div>
           <input
             v-if="fontFamilySelectValue === '__custom__'"
             type="text"
@@ -1293,6 +1346,14 @@ function onSelectPdfFont(v: string) {
             {{ t('settings.alwaysShowMarkers') }}
           </label>
           <div class="hint">{{ t('settings.alwaysShowMarkersHint') }}</div>
+        </section>
+
+        <section data-cat="basics">
+          <label>
+            <input type="checkbox" :checked="settings.collapseBlockSource" @change="settings.toggleCollapseBlockSource()" />
+            {{ t('settings.collapseBlockSource') }}
+          </label>
+          <div class="hint">{{ t('settings.collapseBlockSourceHint') }}</div>
         </section>
 
         <section data-cat="basics">
@@ -1632,6 +1693,10 @@ function onSelectPdfFont(v: string) {
             <input type="checkbox" :checked="settings.separateTabBarRow" @change="settings.toggleSeparateTabBarRow()" />
             {{ settings.language === 'zh' ? '独立标签栏行（将标签页置于顶栏下方独立一行）' : 'Separate Tab Bar Row (show tabs in a dedicated row below header)' }}
           </label>
+          <label style="margin-top: 6px;">
+            <input type="checkbox" :checked="settings.hideMenuBar" @change="settings.toggleHideMenuBar()" />
+            {{ settings.language === 'zh' ? '隐藏顶部窗口菜单栏（Windows 标题栏中的 文件/编辑/段落 等菜单）' : 'Hide top in-window menu bar (File / Edit / Paragraph on Windows)' }}
+          </label>
         </section>
 
         <!-- 5.0 — the floating format bar over a selection. Desktop only:
@@ -1697,6 +1762,10 @@ function onSelectPdfFont(v: string) {
           <p class="setting-hint">
             {{ withChord('settings.autoGitHelp', 'file.save') }}
           </p>
+          <label v-if="settings.autoGitEnabled" style="margin-top: 6px;">
+            <input type="checkbox" :checked="settings.autoGitAiMessage" @change="settings.toggleAutoGitAiMessage()" />
+            {{ settings.language === 'zh' ? '使用 AI 自动生成 Git 提交信息摘要（需启用 AI 助手，失败时自动回退为时间戳）' : 'Use AI to summarize changes for AutoGit commit messages (falls back to timestamp)' }}
+          </label>
         </section>
 
         <!-- v2.6.1 cloud-folder banner. Self-hides if the workspace isn't

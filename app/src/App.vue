@@ -50,6 +50,7 @@ import { usePhoneStore } from './stores/phone';
 // v4.6 F5 — Saved filtered views (sidebar panel + filtered list + editor).
 import ViewNoteList from './components/ViewNoteList.vue';
 import ViewEditorDialog from './components/ViewEditorDialog.vue';
+import TemplatePickerDialog from './components/TemplatePickerDialog.vue';
 import { VIEW_OPEN_EVENT, VIEW_CLOSE_EVENT } from './composables/useSavedViews';
 import GlobalSearch from './components/GlobalSearch.vue';
 import ReadingView from './components/ReadingView.vue';
@@ -1365,15 +1366,28 @@ onMounted(async () => {
   // CSS vars (the .app padding uses max(env, var)). Physical px → CSS px via
   // devicePixelRatio. Runs only on Android; failures leave the vars unset (0).
   if (isAndroid()) {
-    try {
-      const insets = await invoke<{ top: number; bottom: number }>('android_system_insets');
-      const dpr = window.devicePixelRatio || 1;
-      const root = document.documentElement;
-      root.style.setProperty('--android-safe-top', `${Math.round((insets.top || 0) / dpr)}px`);
-      root.style.setProperty('--android-safe-bottom', `${Math.round((insets.bottom || 0) / dpr)}px`);
-    } catch (e) {
-      console.warn('android_system_insets failed', e);
-    }
+    const refreshAndroidInsets = async () => {
+      try {
+        const insets = await invoke<{ top: number; bottom: number }>('android_system_insets');
+        const dpr = window.devicePixelRatio || 1;
+        const root = document.documentElement;
+        const isLandscape = window.innerWidth > window.innerHeight;
+        const topPx = Math.round((insets.top || 0) / dpr);
+        // #479 — In landscape or when the gesture pill is minimal, avoid leaving
+        // a tall blank bottom bar; clamp gesture pill inset to a compact 16px max.
+        const rawBottomPx = Math.round((insets.bottom || 0) / dpr);
+        const bottomPx = isLandscape ? 0 : Math.min(rawBottomPx, 24);
+        root.style.setProperty('--android-safe-top', `${topPx}px`);
+        root.style.setProperty('--android-safe-bottom', `${bottomPx}px`);
+      } catch (e) {
+        console.warn('android_system_insets failed', e);
+      }
+    };
+    await refreshAndroidInsets();
+    window.addEventListener('resize', () => void refreshAndroidInsets());
+    window.addEventListener('orientationchange', () => {
+      setTimeout(() => void refreshAndroidInsets(), 150);
+    });
 
     // #148 — restore a previously-opened SAF vault. The tree URI + name are
     // persisted in the workspace store; the OS-level grant is separately
@@ -2720,6 +2734,7 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
     <SessionRestoreDialog />
     <!-- v4.6 F5 — saved-view create/edit modal (self-mounts via window events). -->
     <ViewEditorDialog />
+    <TemplatePickerDialog />
     <WhiteboardOverlay />
     <FileChangedDialog
       :open="fileChangedOpen"

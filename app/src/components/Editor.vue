@@ -17,7 +17,7 @@ import { parseInsertSnippet } from '../lib/insert-snippet';
 import { codeLanguages } from '../lib/code-languages';
 import { fenceLanguageComplete, fenceLanguageExtension } from '../lib/cm-fence-completion';
 import { filterFenceLanguages, isInsideFenceBefore, matchFenceOpener } from '../lib/fence-languages';
-import { vim, Vim } from '@replit/codemirror-vim';
+import { vim, Vim, getCM } from '@replit/codemirror-vim';
 import { cmThemeFor, mermaidThemeFor, activeLineExtension } from '../lib/themes';
 import { registerPlainSelectionGetter } from '../lib/plain-selection';
 import {
@@ -71,6 +71,7 @@ import {
   bindDomTableCellEditor,
   getActiveTableCellSession,
   requestTableCellFocus,
+  resetBlockFoldOverridesEffect,
   type DomTableEditorHandle,
 } from '../lib/cm-live-blocks';
 import { HEADER_ROW, commonIndent } from '../lib/table-cell-edit';
@@ -177,7 +178,10 @@ type PlainBlock = {
   hasTrailingNewline: boolean;
   html: string;
   isTable?: boolean;
+  isTableBlock?: boolean;
   isMermaid?: boolean;
+  sourceCollapsed?: boolean;
+  headingLevel?: number;
 };
 
 const props = withDefaults(
@@ -429,7 +433,42 @@ async function syncSystemClipboardToVimRegister() {
 // declines keys it has no mapping for (Enter, Tab, Mod-*), so list
 // continuation, indentation, autocomplete and app shortcuts still run.
 function vimExtension() {
-  return Prec.highest(vim());
+  return [
+    Prec.highest(vim()),
+    EditorView.domEventHandlers({
+      keydown(e, v) {
+        const cm = getCM(v) as { state?: { vim?: { insertMode?: boolean } } } | null;
+        if (!cm?.state?.vim || cm.state.vim.insertMode) return false;
+        // #492 — In Vim Normal/Visual mode, if an active CJK IME intercepts an
+        // ASCII letter key (`key === 'Process'` or `keyCode === 229`), abort the
+        // IME composition and forward the physical key directly to Vim.
+        if (
+          (e.key === 'Process' || e.keyCode === 229) &&
+          /^Key[A-Z]$/.test(e.code) &&
+          !e.ctrlKey &&
+          !e.metaKey &&
+          !e.altKey
+        ) {
+          const ch = e.shiftKey ? e.code.slice(3) : e.code.slice(3).toLowerCase();
+          e.preventDefault();
+          v.contentDOM.blur();
+          v.contentDOM.focus({ preventScroll: true });
+          Vim.handleKey(cm as any, ch, 'user');
+          return true;
+        }
+        return false;
+      },
+      compositionstart(_e, v) {
+        const cm = getCM(v) as { state?: { vim?: { insertMode?: boolean } } } | null;
+        if (cm?.state?.vim && !cm.state.vim.insertMode) {
+          v.contentDOM.blur();
+          v.contentDOM.focus({ preventScroll: true });
+          return true;
+        }
+        return false;
+      },
+    }),
+  ];
 }
 
 // `?forcePlain` query flag forces the Windows plain-textarea editor on any OS —
@@ -560,7 +599,7 @@ const plainEditor = ref<HTMLTextAreaElement | null>(null);
 const plainHostEl = ref<HTMLDivElement | null>(null);
 const plainLiveHost = ref<HTMLDivElement | null>(null);
 const plainBlockEditors = ref<Record<number, HTMLTextAreaElement | null>>({});
-const plainText = ref(props.tab.content || '');
+const plainText = ref((props.tab.content || '').replace(/\r\n?/g, '\n'));
 const plainActiveBlock = ref(0);
 // Select-all in the block live editor (user feedback, 4.8.10): native Ctrl+A
 // inside the active block's <textarea> can only reach that block, so "全选"
@@ -763,6 +802,19 @@ watch(plainText, (text) => {
   if (changed) plainFolds.value = next;
 });
 
+const plainSourceFoldOverrides = ref<Record<number, boolean>>({});
+
+function togglePlainBlockSourceFold(block: PlainBlock, index: number) {
+  const nextCollapsed = !block.sourceCollapsed;
+  plainSourceFoldOverrides.value = {
+    ...plainSourceFoldOverrides.value,
+    [block.start]: nextCollapsed,
+  };
+  if (!nextCollapsed) {
+    activatePlainBlock(index, 0, true);
+  }
+}
+
 const plainBlocks = computed<PlainBlock[]>(() => {
   if (!plainLiveEnabled.value) return [];
   // Select-all mode (user feedback, 4.8.10): the whole document is presented
@@ -774,16 +826,27 @@ const plainBlocks = computed<PlainBlock[]>(() => {
     const src = plainText.value || '';
     return [{ id: 'select-all', start: 0, end: src.length, text: src, hasTrailingNewline: false, html: '', isTable: false }];
   }
+  const overrides = plainSourceFoldOverrides.value;
   return splitPlainMarkdownBlocks(plainText.value || '').map((block, index) => {
-    const isTable = !settings.alwaysShowMarkers && parseTable(block.text) !== null;
+    const isTableBlock = parseTable(block.text) !== null;
     const isMermaid = /^\s*(`{3,}|~{3,})\s*mermaid\b/i.test(block.text);
+    const sourceCollapsed =
+      isTableBlock || isMermaid
+        ? (overrides[block.start] ?? settings.collapseBlockSource)
+        : false;
+    const isTable = isTableBlock && sourceCollapsed;
+    const headingMatch = /^\s*(#{1,6})\s+/.exec(block.text);
+    const headingLevel = headingMatch && !block.text.includes('\n') ? headingMatch[1].length : 0;
     return {
       ...block,
       id: `${block.start}:${index}`,
       isTable,
+      isTableBlock,
       isMermaid,
+      sourceCollapsed,
+      headingLevel,
       html:
-        index === plainActiveBlock.value && !isTable && !isMermaid
+        index === plainActiveBlock.value && !isTableBlock && !isMermaid
           ? ''
           : renderPlainBlock(block.text),
     };
@@ -820,23 +883,37 @@ function renderPlainBlock(src: string): string {
   // change when any of those headings changes.
   const tocSource = isTocBlock ? plainText.value || '' : undefined;
   const tocKey = tocSource === undefined ? '' : `\u0000toc:${plainTocFingerprint(tocSource)}`;
-  const key = `${settings.markdownHardBreaks ? 'hb' : 'sb'}${settings.markdownAutoNumberHeadings ? 'nh' : ''}d${renderDepsVersion.value}\u0000${props.tab.filePath || ''}\u0000${root}\u0000${src}${tocKey}`;
+  const key = `${settings.markdownHardBreaks ? 'hb' : 'sb'}${settings.markdownAutoNumberHeadings ? 'nh' : ''}${settings.alwaysShowMarkers ? 'mk' : ''}d${renderDepsVersion.value}\u0000${props.tab.filePath || ''}\u0000${root}\u0000${src}${tocKey}`;
   const cached = plainRenderCache.get(key);
   if (cached != null) return cached;
+  const indent = parseTable(src) !== null ? commonIndent(src) : '';
+  const mdInput =
+    indent.length > 0
+      ? src
+          .split('\n')
+          .map((l) => (l.startsWith(indent) ? l.slice(indent.length) : l))
+          .join('\n')
+      : src || '\n';
+  let rendered = renderMarkdown(mdInput, { tocSource })
+    .replace(
+      /(<input class="task-list-item-checkbox" type="checkbox"[^>]*?)\s+disabled=""/g,
+      '$1',
+    )
+    // #366 — markdown-it emits a hard break as `<br>\n`. Rendered `<p>` here
+    // is `white-space: pre-wrap`, so that `\n` became a SECOND line break:
+    // every line of a multi-line paragraph rendered double-spaced, then
+    // snapped back to single spacing when clicked into (the textarea) — the
+    // block's height halved/doubled on each click and the page jumped.
+    .replace(/<br>\n/g, '<br>');
+  if (settings.alwaysShowMarkers) {
+    const hMatch = /^(\s*#{1,6}\s+)/.exec(src);
+    if (hMatch && !src.includes('\n')) {
+      const markerHtml = `<span class="plain-md-marker">${hMatch[1]}</span>`;
+      rendered = rendered.replace(/^(<h[1-6][^>]*>)/i, `$1${markerHtml}`);
+    }
+  }
   const html = rewriteImageUrls(
-    // Drop `disabled` on task checkboxes so they can be clicked to toggle in the
-    // preview (handled by activatePlainBlockFromClick → togglePlainTask).
-    renderMarkdown(src || '\n', { tocSource })
-      .replace(
-        /(<input class="task-list-item-checkbox" type="checkbox"[^>]*?)\s+disabled=""/g,
-        '$1',
-      )
-      // #366 — markdown-it emits a hard break as `<br>\n`. Rendered `<p>` here
-      // is `white-space: pre-wrap`, so that `\n` became a SECOND line break:
-      // every line of a multi-line paragraph rendered double-spaced, then
-      // snapped back to single spacing when clicked into (the textarea) — the
-      // block's height halved/doubled on each click and the page jumped.
-      .replace(/<br>\n/g, '<br>'),
+    rendered,
     root,
     props.tab.filePath,
   );
@@ -1059,7 +1136,7 @@ function splitPlainMarkdownBlocks(
       start: pos,
       end,
       raw,
-      text: raw.endsWith('\n') ? raw.slice(0, -1) : raw,
+      text: raw.replace(/\r?\n$/, ''),
     });
     pos = end;
   }
@@ -1074,7 +1151,12 @@ function splitPlainMarkdownBlocks(
     // separator is reconstructed in updatePlainBlock.
     const raw = src.slice(start, end);
     const hasTrailingNewline = raw.endsWith('\n');
-    blocks.push({ start, end, text: hasTrailingNewline ? raw.slice(0, -1) : raw, hasTrailingNewline });
+    blocks.push({
+      start,
+      end,
+      text: (hasTrailingNewline ? raw.slice(0, -1) : raw).replace(/\r\n?/g, '\n'),
+      hasTrailingNewline,
+    });
   };
   const kindFor = (line: { text: string }) => {
     const text = line.text;
@@ -1143,23 +1225,24 @@ function splitPlainMarkdownBlocks(
     }
 
     const isTableSepLine = (t: string) =>
-      /^\s{0,3}\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)+\|?\s*$/.test(t) ||
-      /^\s{0,3}\|\s*:?-+:?\s*\|\s*$/.test(t);
+      /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)+\|?\s*$/.test(t) ||
+      /^\s*\|\s*:?-+:?\s*\|\s*$/.test(t);
     const isTableStartAt = (idx: number) =>
       idx + 1 < lines.length &&
       lines[idx].text.includes('|') &&
       !isTableSepLine(lines[idx].text) &&
       isTableSepLine(lines[idx + 1].text);
 
-    if (kind === 'table' || (kind === 'paragraph' && isTableStartAt(i))) {
+    if (isTableStartAt(i) || kind === 'table') {
       let j = i + 1;
       while (
         j < lines.length &&
         (kindFor(lines[j]) === 'table' ||
           isTableSepLine(lines[j].text) ||
-          (kindFor(lines[j]) === 'paragraph' && lines[j].text.includes('|')))
+          ((kindFor(lines[j]) === 'paragraph' || kindFor(lines[j]) === 'indented') &&
+            lines[j].text.includes('|')))
       ) {
-        if (j > i + 1 && isTableStartAt(j)) break;
+        if (isTableStartAt(j)) break;
         j++;
       }
       pushRange(line.start, lines[j - 1]?.end ?? line.end);
@@ -1170,6 +1253,7 @@ function splitPlainMarkdownBlocks(
     if (kind === 'list') {
       let j = i + 1;
       while (j < lines.length) {
+        if (isTableStartAt(j)) break;
         const nextLine = lines[j];
         const nextKind = kindFor(nextLine);
         const isIndentedContinuation = /^[ \t]{2,}\S/.test(nextLine.text);
@@ -1191,6 +1275,7 @@ function splitPlainMarkdownBlocks(
           continue;
         }
         if (nextKind === 'blank' && j + 1 < lines.length) {
+          if (isTableStartAt(j + 1)) break;
           const afterBlank = lines[j + 1];
           if (kindFor(afterBlank) === 'list' || /^[ \t]{2,}\S/.test(afterBlank.text)) {
             j++;
@@ -1696,7 +1781,7 @@ function plainInsertText(snippet: string) {
       const prefix = snippet.startsWith('\n') ? '\n' : '\n\n';
       const inserted = `${prefix}${parsed.text}`;
       const trimmed = parsed.text.replace(/^\n+/, '');
-      if (!settings.alwaysShowMarkers && parseTable(trimmed.trim()) !== null) {
+      if (settings.collapseBlockSource && parseTable(trimmed.trim()) !== null) {
         const leadingNewlines = inserted.length - inserted.replace(/^\n+/, '').length;
         requestTableCellFocus(insertAt + leadingNewlines, HEADER_ROW, 0);
       }
@@ -1707,7 +1792,7 @@ function plainInsertText(snippet: string) {
     const end = el.selectionEnd ?? 0;
     const nextBlock = `${el.value.slice(0, start)}${parsed.text}${el.value.slice(end)}`;
     const trimmed = parsed.text.replace(/^\n+/, '');
-    if (block && !settings.alwaysShowMarkers && parseTable(trimmed.trim()) !== null) {
+    if (block && settings.collapseBlockSource && parseTable(trimmed.trim()) !== null) {
       const leadingNewlines = parsed.text.length - trimmed.length;
       requestTableCellFocus(block.start + start + leadingNewlines, HEADER_ROW, 0);
     }
@@ -1741,7 +1826,8 @@ function focusPlainEditor(preventScroll = false) {
   });
 }
 
-function syncPlainEditorFromStore(text: string, preserveCaret = false) {
+function syncPlainEditorFromStore(rawText: string, preserveCaret = false) {
+  const text = (rawText || '').replace(/\r\n?/g, '\n');
   const el = plainEditor.value;
   plainText.value = text;
   if (!el) {
@@ -3179,7 +3265,7 @@ function activatePlainBlockFromClick(index: number, event: MouseEvent) {
       return;
     }
   }
-  if (plainBlocks.value[index]?.isTable) {
+  if (plainBlocks.value[index]?.sourceCollapsed) {
     plainActiveBlock.value = index;
     return;
   }
@@ -3450,7 +3536,8 @@ function autoSizePlainBlock(el: HTMLTextAreaElement) {
   const host = plainLiveHost.value;
   const keep = host ? host.scrollTop : 0;
   el.style.height = 'auto';
-  el.style.height = `${Math.max(plainLineHeightPx(), el.scrollHeight)}px`;
+  const lh = Number.parseFloat(window.getComputedStyle(el).lineHeight) || 24;
+  el.style.height = `${Math.max(lh, el.scrollHeight)}px`;
   if (host && host.scrollTop !== keep) host.scrollTop = keep;
 }
 
@@ -4502,8 +4589,10 @@ function richExtensionsFor(tab: Tab) {
             enabled: settings.plantumlEnabled,
             server: settings.plantumlServer,
           }),
-          // #353 — "Always show Markdown markers": keep every block's source.
-          keepSource: () => settings.alwaysShowMarkers,
+          // Decoupled from `alwaysShowMarkers`: `collapseBlockSource` controls
+          // whether tables, Mermaid diagrams, and other block widgets render
+          // and fold their source code.
+          keepSource: () => !settings.collapseBlockSource,
           getBoardStrings: () => ({
             loading: t('whiteboard.loading'),
             openFull: t('whiteboard.openFull'),
@@ -5691,7 +5780,70 @@ function saveCurrentTabCaret(tabId: string) {
   }
 }
 
+// #377 — Bidirectional hover block highlight in Split View mode.
+let hoveredCmLineEl: HTMLElement | null = null;
+function setHoveredCmLineEl(el: HTMLElement | null) {
+  if (hoveredCmLineEl === el) return;
+  hoveredCmLineEl?.classList.remove('cm-split-hover-line');
+  hoveredCmLineEl = el;
+  hoveredCmLineEl?.classList.add('cm-split-hover-line');
+}
+
+function onSplitHoverFromPreview(e: Event) {
+  const detail = (
+    e as CustomEvent<{ tabId?: string; line: number; source: 'editor' | 'preview' }>
+  ).detail;
+  if (!detail || detail.source === 'editor') return;
+  if (detail.tabId && detail.tabId !== props.tab.id) return;
+  if (settings.viewMode !== 'split' || !detail.line || !view) {
+    setHoveredCmLineEl(null);
+    return;
+  }
+  const lineNo = Math.max(1, Math.min(detail.line, view.state.doc.lines));
+  try {
+    const pos = view.state.doc.line(lineNo).from;
+    const domHit = view.domAtPos(pos);
+    const baseEl =
+      domHit.node instanceof HTMLElement ? domHit.node : domHit.node.parentElement;
+    const lineEl = baseEl?.closest?.('.cm-line') as HTMLElement | null;
+    setHoveredCmLineEl(lineEl ?? null);
+  } catch {
+    setHoveredCmLineEl(null);
+  }
+}
+
+function onEditorHostMouseMove(e: MouseEvent) {
+  if (settings.viewMode !== 'split' || !view) return;
+  const pos = view.posAtCoords({ x: e.clientX, y: e.clientY });
+  if (pos === null) return;
+  const line = view.state.doc.lineAt(pos).number;
+  window.dispatchEvent(
+    new CustomEvent('solomd:split-hover-line', {
+      detail: { tabId: props.tab.id, line, source: 'editor' },
+    }),
+  );
+}
+
+function onEditorHostMouseLeave() {
+  if (settings.viewMode !== 'split') return;
+  window.dispatchEvent(
+    new CustomEvent('solomd:split-hover-line', {
+      detail: { tabId: props.tab.id, line: 0, source: 'editor' },
+    }),
+  );
+}
+
+onMounted(() => {
+  window.addEventListener('solomd:split-hover-line', onSplitHoverFromPreview);
+  host.value?.addEventListener('mousemove', onEditorHostMouseMove, { passive: true });
+  host.value?.addEventListener('mouseleave', onEditorHostMouseLeave, { passive: true });
+});
+
 onBeforeUnmount(() => {
+  window.removeEventListener('solomd:split-hover-line', onSplitHoverFromPreview);
+  host.value?.removeEventListener('mousemove', onEditorHostMouseMove);
+  host.value?.removeEventListener('mouseleave', onEditorHostMouseLeave);
+  setHoveredCmLineEl(null);
   saveCurrentTabCaret(props.tab.id);
   cancelCmScrollRestore?.();
   cleanupRelayout?.();
@@ -6097,11 +6249,19 @@ watch(
   },
 );
 
-// #353 — markers shown/hidden is baked into the live bundles; swap them.
+// #353 — markers shown/hidden are baked into the live bundles; swap them.
 watch(
   () => settings.alwaysShowMarkers,
   () => {
     view?.dispatch({ effects: richCompartment.reconfigure(richExtensionsFor(props.tab)) });
+  },
+);
+
+watch(
+  () => settings.collapseBlockSource,
+  () => {
+    plainSourceFoldOverrides.value = {};
+    view?.dispatch({ effects: resetBlockFoldOverridesEffect.of(null) });
   },
 );
 
@@ -6531,7 +6691,7 @@ function insertMarkdown(snippet: string): void {
   const trimmed = insertText.replace(/^\n+/, '');
   if (
     settings.viewMode === 'liveEdit' &&
-    !settings.alwaysShowMarkers &&
+    settings.collapseBlockSource &&
     parseTable(trimmed.trim()) !== null
   ) {
     const leadingNewlines = insertText.length - trimmed.length;
@@ -6765,10 +6925,15 @@ const cls = computed(() => ({
         :key="block.id"
         :data-plain-block-index="index"
         class="plain-block"
-        :class="{
-          'plain-block--active': index === plainActiveBlock,
-          'plain-block--heading': !!plainHeadingFor(block),
-        }"
+        :class="[
+          {
+            'plain-block--active': index === plainActiveBlock,
+            'plain-block--heading': !!plainHeadingFor(block),
+            'plain-block--table': !!block.isTableBlock,
+            'plain-block--mermaid': !!block.isMermaid,
+          },
+          block.headingLevel ? `plain-block--h${block.headingLevel}` : '',
+        ]"
         @click="(event) => activatePlainBlockFromClick(index, event)"
       >
         <button
@@ -6784,8 +6949,18 @@ const cls = computed(() => ({
           class="plain-fold-count"
           @click.stop="togglePlainFold(block)"
         >{{ t('fold.placeholder', { lines: plainHiddenLineCount(block) }) }}</span>
+        <button
+          v-if="block.isTableBlock || block.isMermaid"
+          type="button"
+          class="plain-block-source-btn"
+          :class="{ 'is-expanded': !block.sourceCollapsed }"
+          :title="block.sourceCollapsed ? '展开源码' : '折叠源码'"
+          @mousedown.stop.prevent
+          @click.stop="togglePlainBlockSourceFold(block, index)"
+        >{{ block.sourceCollapsed ? '</> 源码' : '− 折叠源码' }}</button>
         <textarea
-          v-if="index === plainActiveBlock && !block.isTable"
+          v-if="index === plainActiveBlock && !block.sourceCollapsed"
+          rows="1"
           :ref="(el) => setPlainBlockEditor(index, el as HTMLTextAreaElement | null)"
           class="plain-block__textarea"
           :class="{
@@ -6808,11 +6983,11 @@ const cls = computed(() => ({
           @focus="emitPlainCursorAndSelection"
         ></textarea>
         <div
-          v-if="index !== plainActiveBlock || block.isTable || block.isMermaid"
+          v-if="index !== plainActiveBlock || block.isTableBlock || block.isMermaid"
           class="plain-block__render"
           :class="{
             'plain-block__render--table': block.isTable,
-            'plain-block__render--mermaid-below': index === plainActiveBlock && block.isMermaid,
+            'plain-block__render--mermaid-below': index === plainActiveBlock && !block.sourceCollapsed && (block.isMermaid || block.isTableBlock),
           }"
           :data-table-block-index="block.isTable ? index : undefined"
           v-html="block.html"
@@ -7383,32 +7558,71 @@ const cls = computed(() => ({
 .plain-block__render :deep(h3),
 .plain-block__render :deep(h4),
 .plain-block__render :deep(h5),
-.plain-block__render :deep(h6) {
+.plain-block__render :deep(h6),
+.plain-block--h1 .plain-block__textarea,
+.plain-block--h2 .plain-block__textarea,
+.plain-block--h3 .plain-block__textarea,
+.plain-block--h4 .plain-block__textarea,
+.plain-block--h5 .plain-block__textarea,
+.plain-block--h6 .plain-block__textarea {
   font-weight: 600;
   line-height: 1.25;
+  min-height: 1.25em;
   margin: 1.1em 0 0.45em;
 }
 /* 5.0 §2 type scale, in em of the body (30 / 20 / 17 at 16px) so a user's
    font size still scales the whole page. Same values as Preview.vue and the
    CodeMirror live view (lib/cm-live-render.ts). */
-.plain-block__render :deep(h1) {
+.plain-block__render :deep(h1),
+.plain-block--h1 .plain-block__textarea {
   font-size: 1.875em;
   font-weight: 650;
   letter-spacing: -0.015em;
 }
-.plain-block__render :deep(h2) {
+.plain-block__render :deep(h2),
+.plain-block--h2 .plain-block__textarea {
   font-size: 1.25em;
   font-weight: 620;
 }
-.plain-block__render :deep(h3) {
+.plain-block__render :deep(h3),
+.plain-block--h3 .plain-block__textarea {
   font-size: 1.125em;
 }
-.plain-block__render :deep(h4) {
+.plain-block__render :deep(h4),
+.plain-block--h4 .plain-block__textarea {
   font-size: 1.0625em;
 }
 .plain-block__render :deep(h5),
-.plain-block__render :deep(h6) {
+.plain-block__render :deep(h6),
+.plain-block--h5 .plain-block__textarea,
+.plain-block--h6 .plain-block__textarea {
   font-size: 1em;
+}
+.plain-block-source-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--bg-elev) 90%, transparent);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.3;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s, border-color 0.15s;
+  z-index: 3;
+}
+.plain-block:hover .plain-block-source-btn,
+.plain-block-source-btn.is-expanded,
+.plain-block-source-btn:focus-visible {
+  opacity: 1;
+}
+.plain-block-source-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
 }
 .plain-block__render :deep(p),
 .plain-block__render :deep(ul),
@@ -7417,7 +7631,7 @@ const cls = computed(() => ({
 .plain-block__render :deep(pre),
 .plain-block__render :deep(table) {
   margin-top: 0;
-  margin-bottom: 0.8em;
+  margin-bottom: 0;
 }
 .plain-block__render :deep(ul),
 .plain-block__render :deep(ol) {
@@ -7523,9 +7737,14 @@ const cls = computed(() => ({
 .plain-block__render :deep(blockquote > :last-child) {
   margin-bottom: 0;
 }
+.plain-block__render :deep(.plain-md-marker) {
+  color: var(--text-faint, #888);
+  font-weight: 500;
+  white-space: pre;
+}
 .plain-block__render :deep(ul),
 .plain-block__render :deep(ol) {
-  padding-left: 1.6em;
+  padding-left: 1.15em;
 }
 .plain-block__render :deep(li::marker) {
   color: var(--text-3);
@@ -7595,5 +7814,9 @@ const cls = computed(() => ({
 .plain-block__render :deep(.plain-block__broken) {
   color: var(--danger);
   white-space: pre-wrap;
+}
+:deep(.cm-split-hover-line) {
+  background: color-mix(in srgb, var(--accent-soft) 35%, transparent) !important;
+  border-radius: 3px;
 }
 </style>

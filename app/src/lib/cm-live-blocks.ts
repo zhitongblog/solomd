@@ -37,6 +37,87 @@ import {
 // view plugin. `relayoutEffect` lets the async Mermaid render (and any other
 // out-of-band trigger) ask the field to recompute.
 const relayoutEffect = StateEffect.define<null>();
+
+/**
+ * #530 — Explicit user fold/unfold toggle for ` ```mermaid ` code blocks in
+ * Live Edit mode (`true` = fold code body and show `[+] ```mermaid` + diagram;
+ * `false` = expand code body and show `[-] ```mermaid` + code + diagram).
+ */
+export const toggleMermaidFoldEffect = StateEffect.define<{
+  line: number;
+  collapsed: boolean;
+}>();
+
+const mermaidFoldState = StateField.define<ReadonlyMap<number, boolean>>({
+  create: () => new Map(),
+  update(map, tr) {
+    for (const e of tr.effects) {
+      if (e.is(resetBlockFoldOverridesEffect)) {
+        return new Map();
+      }
+    }
+    let next: Map<number, boolean> | null = null;
+    if (tr.docChanged && map.size > 0) {
+      next = new Map();
+      for (const [oldLine, val] of map.entries()) {
+        if (oldLine >= 1 && oldLine <= tr.startState.doc.lines) {
+          const oldPos = tr.startState.doc.line(oldLine).from;
+          const newPos = tr.changes.mapPos(oldPos, 1);
+          const newLine = tr.state.doc.lineAt(Math.min(newPos, tr.state.doc.length));
+          if (/^\s*(`{3,}|~{3,})\s*mermaid\s*$/i.test(newLine.text)) {
+            next.set(newLine.number, val);
+          }
+        }
+      }
+    }
+    for (const e of tr.effects) {
+      if (e.is(toggleMermaidFoldEffect)) {
+        if (!next) next = new Map(map);
+        next.set(e.value.line, e.value.collapsed);
+      }
+    }
+    return next ?? map;
+  },
+});
+
+export const toggleTableFoldEffect = StateEffect.define<{
+  line: number;
+  collapsed: boolean;
+}>();
+
+export const resetBlockFoldOverridesEffect = StateEffect.define<null>();
+
+const tableFoldState = StateField.define<ReadonlyMap<number, boolean>>({
+  create: () => new Map(),
+  update(map, tr) {
+    for (const e of tr.effects) {
+      if (e.is(resetBlockFoldOverridesEffect)) {
+        return new Map();
+      }
+    }
+    let next: Map<number, boolean> | null = null;
+    if (tr.docChanged && map.size > 0) {
+      next = new Map();
+      for (const [oldLine, val] of map.entries()) {
+        if (oldLine >= 1 && oldLine <= tr.startState.doc.lines) {
+          const oldPos = tr.startState.doc.line(oldLine).from;
+          const newPos = tr.changes.mapPos(oldPos, 1);
+          const newLine = tr.state.doc.lineAt(Math.min(newPos, tr.state.doc.length));
+          if (newLine.text.includes('|')) {
+            next.set(newLine.number, val);
+          }
+        }
+      }
+    }
+    for (const e of tr.effects) {
+      if (e.is(toggleTableFoldEffect)) {
+        if (!next) next = new Map(map);
+        next.set(e.value.line, e.value.collapsed);
+      }
+    }
+    return next ?? map;
+  },
+});
 import {
   installSvgImageFallbacks,
   isLocalSvgPath,
@@ -892,6 +973,32 @@ class TableWidget extends WidgetType {
       tableEditorHandles.set(wrap, cellEditor);
     }
 
+    if (this.startLine > 0) {
+      const srcBtn = document.createElement('button');
+      srcBtn.type = 'button';
+      srcBtn.className = 'cm-table-source-btn';
+      srcBtn.textContent = '</> 源码';
+      srcBtn.title = '展开表格 Markdown 源码';
+      srcBtn.setAttribute('aria-label', srcBtn.title);
+      srcBtn.addEventListener('mousedown', (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+      });
+      srcBtn.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const v = view ?? EditorView.findFromDOM(srcBtn);
+        if (!v || this.startLine < 1 || this.startLine > v.state.doc.lines) return;
+        const lineObj = v.state.doc.line(this.startLine);
+        v.dispatch({
+          selection: { anchor: lineObj.from },
+          effects: toggleTableFoldEffect.of({ line: this.startLine, collapsed: false }),
+        });
+        v.focus();
+      });
+      wrap.appendChild(srcBtn);
+    }
+
     // #504 — Clicking a rendered table cell in Live mode places the caret at
     // the exact Markdown table row (header or body row) and column cell offset,
     // and anchors scrollTop so the clicked row stays under the mouse cursor
@@ -1269,6 +1376,147 @@ function inlineMathSpans(text: string): Array<{ start: number; end: number; tex:
 // into a module-level cache; toDOM() pulls the SVG when available, falls
 // back to a "rendering…" placeholder, then dispatches `solomd:cm-relayout`
 // to ask the editor to rebuild decorations once the cache fills.
+/**
+ * #530 — Inline `+` / `−` fold toggle button on the opening ` ```mermaid `
+ * fence line so users can expand or collapse the Mermaid source code while
+ * keeping the rendered diagram below.
+ */
+class MermaidFoldToggleWidget extends WidgetType {
+  readonly startLine: number;
+  readonly endLine: number;
+  readonly collapsed: boolean;
+
+  constructor(startLine: number, endLine: number, collapsed: boolean) {
+    super();
+    this.startLine = startLine;
+    this.endLine = endLine;
+    this.collapsed = collapsed;
+  }
+
+  eq(other: MermaidFoldToggleWidget): boolean {
+    return (
+      other.startLine === this.startLine &&
+      other.endLine === this.endLine &&
+      other.collapsed === this.collapsed
+    );
+  }
+
+  toDOM(): HTMLElement {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `cm-mermaid-fold-btn${this.collapsed ? ' is-collapsed' : ' is-expanded'}`;
+    btn.textContent = this.collapsed ? '+' : '−';
+    btn.title = this.collapsed ? '展开 Mermaid 代码' : '折叠 Mermaid 代码';
+    btn.setAttribute('aria-label', btn.title);
+    btn.setAttribute('aria-expanded', String(!this.collapsed));
+    const handleToggle = (ev: Event) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const view = EditorView.findFromDOM(btn);
+      if (!view) return;
+      const doc = view.state.doc;
+      if (this.startLine < 1 || this.startLine > doc.lines) return;
+      const nextCollapsed = !this.collapsed;
+      const openLine = doc.line(this.startLine);
+      const closeLineNo = Math.min(this.endLine, doc.lines);
+      const bodyStartPos =
+        this.startLine + 1 <= closeLineNo
+          ? doc.line(this.startLine + 1).from
+          : openLine.to;
+      const bodyEndPos = doc.line(closeLineNo).to;
+      const sel = view.state.selection.main;
+      const cursorInBody =
+        nextCollapsed &&
+        ((sel.from >= bodyStartPos && sel.from <= bodyEndPos) ||
+          (sel.to >= bodyStartPos && sel.to <= bodyEndPos));
+      view.dispatch({
+        ...(cursorInBody ? { selection: { anchor: openLine.from } } : {}),
+        effects: toggleMermaidFoldEffect.of({
+          line: this.startLine,
+          collapsed: nextCollapsed,
+        }),
+      });
+    };
+    btn.addEventListener('mousedown', (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+    });
+    btn.addEventListener('click', handleToggle);
+    return btn;
+  }
+
+  ignoreEvent(): boolean {
+    return true;
+  }
+}
+
+class TableFoldToggleWidget extends WidgetType {
+  readonly startLine: number;
+  readonly endLine: number;
+  readonly collapsed: boolean;
+
+  constructor(startLine: number, endLine: number, collapsed: boolean) {
+    super();
+    this.startLine = startLine;
+    this.endLine = endLine;
+    this.collapsed = collapsed;
+  }
+
+  eq(other: TableFoldToggleWidget): boolean {
+    return (
+      other.startLine === this.startLine &&
+      other.endLine === this.endLine &&
+      other.collapsed === this.collapsed
+    );
+  }
+
+  toDOM(): HTMLElement {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `cm-mermaid-fold-btn cm-table-fold-btn${this.collapsed ? ' is-collapsed' : ' is-expanded'}`;
+    btn.textContent = this.collapsed ? '+' : '−';
+    btn.title = this.collapsed ? '展开表格源码' : '折叠并渲染表格';
+    btn.setAttribute('aria-label', btn.title);
+    btn.setAttribute('aria-expanded', String(!this.collapsed));
+    const handleToggle = (ev: Event) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const view = EditorView.findFromDOM(btn);
+      if (!view) return;
+      const doc = view.state.doc;
+      if (this.startLine < 1 || this.startLine > doc.lines) return;
+      const nextCollapsed = !this.collapsed;
+      const openLine = doc.line(this.startLine);
+      const closeLineNo = Math.min(this.endLine, doc.lines);
+      const blockFrom = openLine.from;
+      const blockTo = doc.line(closeLineNo).to;
+      const sel = view.state.selection.main;
+      const cursorInside =
+        nextCollapsed &&
+        ((sel.from >= blockFrom && sel.from <= blockTo) ||
+          (sel.to >= blockFrom && sel.to <= blockTo));
+      const safePos = blockFrom > 0 ? blockFrom - 1 : Math.min(doc.length, blockTo + 1);
+      view.dispatch({
+        ...(cursorInside ? { selection: { anchor: safePos } } : {}),
+        effects: toggleTableFoldEffect.of({
+          line: this.startLine,
+          collapsed: nextCollapsed,
+        }),
+      });
+    };
+    btn.addEventListener('mousedown', (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+    });
+    btn.addEventListener('click', handleToggle);
+    return btn;
+  }
+
+  ignoreEvent(): boolean {
+    return true;
+  }
+}
+
 class MermaidWidget extends WidgetType {
   /** Whether the cache held a finished result when this widget was built. */
   private readonly settled: boolean;
@@ -1634,7 +1882,7 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
         const fenceBody: boolean[] = new Array(lastLine).fill(false);
         syntaxTree(state).iterate({
           enter: (node) => {
-            if (node.name !== 'FencedCode' && node.name !== 'CodeBlock') return;
+            if (node.name !== 'FencedCode') return;
             const startLine = state.doc.lineAt(node.from).number;
             const endLine = state.doc.lineAt(Math.min(node.to, doc.length)).number;
             for (let ln = startLine + 1; ln <= endLine; ln += 1) {
@@ -1941,11 +2189,35 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
               // once per fence meant every diagram rendered on open. The
               // widget's toDOM() starts the render for visible blocks only.
               const mermaidTheme = opts.getMermaidTheme?.() ?? 'default';
-              const cursorInside = keepSource || (cursorLine >= i && cursorLine <= endI);
-              const cursorInsideEnd = cursorLineEnd >= i && cursorLineEnd <= endI;
-              if (!cursorInside && !cursorInsideEnd) {
+              const foldMap = state.field(mermaidFoldState, false);
+              const foldOverride = foldMap?.get(i);
+              const cursorInsideBody =
+                (cursorLine >= i + 1 && cursorLine <= endI) ||
+                (cursorLineEnd >= i + 1 && cursorLineEnd <= endI);
+              const defaultCollapsed =
+                !keepSource &&
+                !(cursorLine >= i && cursorLine <= endI) &&
+                !(cursorLineEnd >= i && cursorLineEnd <= endI);
+              const collapsed = cursorInsideBody
+                ? false
+                : foldOverride !== undefined
+                  ? foldOverride
+                  : defaultCollapsed;
+              // #530 — Always show the `+` / `−` fold toggle button on the
+              // opening ` ```mermaid ` fence line so the user can fold/unfold
+              // the Mermaid code block while keeping the diagram visible below.
+              builder.add(
+                blockFrom,
+                blockFrom,
+                Decoration.widget({
+                  widget: new MermaidFoldToggleWidget(i, endI, collapsed),
+                  side: -1,
+                }),
+              );
+              if (collapsed) {
+                const bodyFrom = i + 1 <= endI ? doc.line(i + 1).from : blockFrom;
                 builder.add(
-                  blockFrom,
+                  bodyFrom,
                   blockTo,
                   Decoration.replace({
                     widget: new MermaidWidget(body, mermaidTheme, opts.getFilePath?.()),
@@ -1953,10 +2225,9 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
                   }),
                 );
               } else {
-                // #372 — When the cursor is inside the ```mermaid code block or
-                // `alwaysShowMarkers` (`keepSource`) is enabled, keep the code
-                // block editable and render the live Mermaid diagram directly
-                // below the closing fence (just like standalone images).
+                // #372 / #530 — When expanded, keep the Mermaid code block
+                // editable and render the live Mermaid diagram directly below
+                // the closing fence.
                 builder.add(
                   blockTo,
                   blockTo,
@@ -2044,13 +2315,18 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
                 // `alwaysShowMarkers` (`keepSource`) is on, or for blockquote
                 // tables where `parseTable` does not apply.
                 const canInlineEdit = tableQuoteDepth === 0 && parseTable(source) !== null;
-                const cursorInside =
-                  keepSource ||
-                  (!canInlineEdit &&
-                    (cursorLine >= i && cursorLine <= tableEnd
-                      ? true
-                      : cursorLineEnd >= i && cursorLineEnd <= tableEnd));
-                if (!cursorInside) {
+                const tableFoldMap = state.field(tableFoldState, false);
+                const tableFoldOverride = tableFoldMap?.get(i);
+                const cursorInsideTable =
+                  (cursorLine >= i && cursorLine <= tableEnd) ||
+                  (cursorLineEnd >= i && cursorLineEnd <= tableEnd);
+                const defaultTableCollapsed =
+                  !keepSource && (canInlineEdit || !cursorInsideTable);
+                const tableCollapsed =
+                  tableFoldOverride !== undefined
+                    ? tableFoldOverride
+                    : defaultTableCollapsed;
+                if (tableCollapsed) {
                   builder.add(
                     blockFrom,
                     blockTo,
@@ -2064,6 +2340,15 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
                         blockTo,
                       ),
                       block: true,
+                    }),
+                  );
+                } else {
+                  builder.add(
+                    blockFrom,
+                    blockFrom,
+                    Decoration.widget({
+                      widget: new TableFoldToggleWidget(i, tableEnd, false),
+                      side: -1,
                     }),
                   );
                 }
@@ -2188,7 +2473,15 @@ export function liveBlocksExtension(opts: BlockOptions = {}) {
       if (isDragging(tr.state)) {
         return deco.map(tr.changes);
       }
-      if (tr.effects.some((e) => e.is(relayoutEffect))) {
+      if (
+        tr.effects.some(
+          (e) =>
+            e.is(relayoutEffect) ||
+            e.is(toggleMermaidFoldEffect) ||
+            e.is(toggleTableFoldEffect) ||
+            e.is(resetBlockFoldOverridesEffect),
+        )
+      ) {
         return buildBlockDecorations(tr.state, opts);
       }
       if (tr.selection) {
@@ -2329,7 +2622,7 @@ export function liveBlocksExtension(opts: BlockOptions = {}) {
     return [tr, { selection: EditorSelection.cursor(retarget), scrollIntoView: true, sequential: true }];
   });
 
-  return [field, relayout, blockArrowKeymap, vimBlockHop];
+  return [mermaidFoldState, tableFoldState, field, relayout, blockArrowKeymap, vimBlockHop];
 }
 
 /** Suggested CSS — pulled out so the editor's theme owns the rule set. */
@@ -2377,6 +2670,33 @@ export const liveBlocksTheme = EditorView.theme({
     color: 'var(--text-faint)',
     fontStyle: 'italic',
   },
+  '.cm-live-block--table': {
+    position: 'relative',
+  },
+  '.cm-table-source-btn': {
+    position: 'absolute',
+    top: '4px',
+    right: '4px',
+    padding: '2px 6px',
+    border: '1px solid var(--border)',
+    borderRadius: '4px',
+    background: 'color-mix(in srgb, var(--bg-elev) 90%, transparent)',
+    color: 'var(--text-muted)',
+    fontFamily: 'var(--font-mono)',
+    fontSize: '11px',
+    lineHeight: '1.3',
+    cursor: 'pointer',
+    opacity: '0',
+    transition: 'opacity 0.15s, color 0.15s, border-color 0.15s',
+    zIndex: '2',
+  },
+  '.cm-live-block--table:hover .cm-table-source-btn, .cm-table-source-btn:focus-visible': {
+    opacity: '1',
+  },
+  '.cm-table-source-btn:hover': {
+    color: 'var(--accent)',
+    borderColor: 'var(--accent)',
+  },
   '.cm-live-block--table blockquote': {
     margin: '0.2em 0',
     paddingLeft: '1em',
@@ -2414,13 +2734,43 @@ export const liveBlocksTheme = EditorView.theme({
     overflowX: 'auto',
     textAlign: 'center',
   },
+  // #530 — Left-align Mermaid diagrams like images (instead of centered), and
+  // style the `+` / `−` fold toggle button on the opening ` ```mermaid ` line.
   '.cm-live-block--mermaid': {
-    padding: '1.2em 0',
-    textAlign: 'center',
+    padding: '0.8em 0 1.2em 0',
+    textAlign: 'left',
   },
   '.cm-live-block--mermaid svg': {
     maxWidth: '100%',
     height: 'auto',
+    display: 'block',
+    margin: '0',
+  },
+  '.cm-mermaid-fold-btn': {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '16px',
+    height: '16px',
+    marginRight: '6px',
+    padding: '0',
+    border: '1px solid var(--border)',
+    borderRadius: '3px',
+    background: 'color-mix(in srgb, var(--bg-elev) 85%, transparent)',
+    color: 'var(--text-muted)',
+    fontFamily: 'var(--font-mono)',
+    fontSize: '12px',
+    fontWeight: '600',
+    lineHeight: '1',
+    cursor: 'pointer',
+    userSelect: 'none',
+    verticalAlign: 'middle',
+    transition: 'color 0.15s, border-color 0.15s, background 0.15s',
+  },
+  '.cm-mermaid-fold-btn:hover': {
+    color: 'var(--accent)',
+    borderColor: 'var(--accent)',
+    background: 'color-mix(in srgb, var(--accent-soft) 50%, var(--bg-elev))',
   },
   // v4.10 #163
   '.cm-live-block--plantuml': {

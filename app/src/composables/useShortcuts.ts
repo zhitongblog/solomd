@@ -120,6 +120,7 @@ export function useShortcuts(hooks: Hooks = {}) {
     'file.new': () => void files.newFile(),
     'file.newText': () => void files.newTextFile(),
     'file.newInFolder': () => runById('file.newInFolder'),
+    'file.newFromTemplate': () => runById('file.newFromTemplate'),
     'file.open': () => void files.openFile(),
     'file.import': () => void files.importDocuments(),
     'file.save': () => void files.saveActive(),
@@ -298,7 +299,14 @@ export function useShortcuts(hooks: Hooks = {}) {
     // Pomodoro session, AI rewrite opening its overlay twice. Only file /
     // window / navigation commands still run on top of it.
     const inEditor = e.target instanceof Element && !!e.target.closest('.cm-editor');
-    if (e.defaultPrevented && inEditor && !appRunsAfterEditor(actionId, combo)) return;
+    if (
+      e.defaultPrevented &&
+      inEditor &&
+      ((settings.vimMode && /^Mod\+[DUEYBF]$/i.test(combo)) ||
+        !appRunsAfterEditor(actionId, combo))
+    ) {
+      return;
+    }
     // Menu commands made bindable for the menus' sake (export, quick capture,
     // open folder…) need no handler of their own: they run as the palette does.
     const run = actions[actionId] ?? (commands.some((c) => c.id === actionId) ? () => runById(actionId) : undefined);

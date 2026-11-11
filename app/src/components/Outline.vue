@@ -131,11 +131,44 @@ function flattenVisible(
   return out;
 }
 
+function collectBranchLines(nodes: OutlineNode[]): number[] {
+  const out: number[] = [];
+  for (const node of nodes) {
+    if (node.children.length > 0) {
+      out.push(node.item.line);
+      out.push(...collectBranchLines(node.children));
+    }
+  }
+  return out;
+}
+
+const tree = computed(() => buildTree(items.value));
+const branchLines = computed(() => collectBranchLines(tree.value));
+const collapsedSet = computed(() => new Set(collapsedLinesFor(activeMarkdownTab.value?.id)));
+const anyCollapsed = computed(() =>
+  branchLines.value.some((line) => collapsedSet.value.has(line)),
+);
+const allCollapsed = computed(
+  () =>
+    branchLines.value.length > 0 &&
+    branchLines.value.every((line) => collapsedSet.value.has(line)),
+);
+
 const visibleItems = computed(() => {
-  const tree = buildTree(items.value);
-  const collapsed = new Set(collapsedLinesFor(activeMarkdownTab.value?.id));
-  return flattenVisible(tree, collapsed);
+  return flattenVisible(tree.value, collapsedSet.value);
 });
+
+function collapseAll() {
+  const tabId = activeMarkdownTab.value?.id;
+  if (!tabId || !branchLines.value.length) return;
+  setCollapsedLines(tabId, [...branchLines.value].sort((a, b) => a - b));
+}
+
+function expandAll() {
+  const tabId = activeMarkdownTab.value?.id;
+  if (!tabId) return;
+  setCollapsedLines(tabId, []);
+}
 
 function toggleCollapsed(line: number) {
   const tabId = activeMarkdownTab.value?.id;
@@ -271,7 +304,32 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onWindowKey));
     <PanelHeader
       :title="t('toolbar.outline')"
       @close="tabs.activeId && tabs.toggleOutline(tabs.activeId)"
-    />
+    >
+      <template v-if="branchLines.length > 0">
+        <button
+          class="rp-icon-btn"
+          type="button"
+          :disabled="!anyCollapsed"
+          :title="t('outline.expandAll')"
+          :aria-label="t('outline.expandAll')"
+          data-testid="outline-expand-all"
+          @click="expandAll"
+        >
+          <Icons name="unfold-all" :size="14" />
+        </button>
+        <button
+          class="rp-icon-btn"
+          type="button"
+          :disabled="allCollapsed"
+          :title="t('outline.collapseAll')"
+          :aria-label="t('outline.collapseAll')"
+          data-testid="outline-collapse-all"
+          @click="collapseAll"
+        >
+          <Icons name="fold-all" :size="14" />
+        </button>
+      </template>
+    </PanelHeader>
     <div v-if="!visibleItems.length" class="rp-empty">{{ t('outline.empty') }}</div>
     <ul ref="listRef" class="outline__list rp-body rp-list" v-else>
       <li
