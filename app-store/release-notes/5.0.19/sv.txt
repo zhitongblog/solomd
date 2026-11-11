@@ -1,0 +1,6 @@
+SoloMD 5.0.19:
+• Separat ihopfällning av källkod för tabeller och Mermaid: rendering av tabeller och Mermaid-diagram är nu frikopplad från "Visa alltid Markdown-markeringar", med en "</> Källkod"-knapp uppe till höger.
+• Disposition: expandera/fäll ihop alla och radbrytning (#124): knappar för att expandera eller fälla ihop alla rubriker med ett klick samt radbrytning i dispositionen.
+• Anteckningsmallar (#285): 5 inbyggda mallar och stöd för mappen templates/ med variablerna {{date}}, {{time}}, {{title}} och {{weekday}}.
+• Radsynkronisering vid hovring i delad vy & läsbredd (#377, #145): markera motsvarande rad vid hovring och välj läsbredd (600px / 760px / 960px / 100%).
+• Byta namn på taggar, flerval i filträdet och sökfilter (#397, #380, #129, #530, #322, #208): byt namn på eller ta bort taggar i hela valvet, markera flera filer, filtrera sökning efter sökväg/datum och kör Git auto-commit vid skrivpaus.

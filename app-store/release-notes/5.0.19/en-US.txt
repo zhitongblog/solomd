@@ -1,0 +1,6 @@
+SoloMD 5.0.19:
+• Standalone Block Source Folding & On-Demand Toggle: Decoupled table and Mermaid diagram rendering from "Always Show Markdown Markers" so headings and lists never jump on click while tables and Mermaid diagrams stay rendered with a top-right "</> Source" expand/collapse toggle.
+• Outline Expand/Collapse All & Table Rendering Fixes (#124): Added one-click Expand All, Collapse All, and text wrapping toggles to the Outline panel; fixed CRLF, list-indented, and blockquote table rendering plus heading click stability.
+• Note Templates System (#285): Create notes or insert snippets from 5 built-in templates or your workspace templates/ folder with {{date}}, {{time}}, {{title}}, and {{weekday}} variables.
+• Split Hover Line Sync & Reading Width Pill (#377, #145): Highlight matching lines across editor and preview on hover in Split mode; switch reading width (600px / 760px / 960px / 100%) from the status bar.
+• Vault Tag Rename/Delete, File Tree Multi-Select & Search Filters (#397, #380, #129, #530, #322, #208, #492, #479): Bulk rename/delete tags across notes, multi-select files in the tree, filter global search by path and date, reveal the toolbar on top-edge hover in Focus/Fullscreen mode, and debounce Git auto-commit during active typing.

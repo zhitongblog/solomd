@@ -1,0 +1,6 @@
+SoloMD 5.0.19:
+• Plegado independiente del código de tablas y Mermaid: el renderizado de tablas y diagramas Mermaid se separa de «Mostrar siempre marcadores Markdown», con botón «</> Código» para expandir o plegar.
+• Esquema: expandir/plegar todo y ajuste de línea (#124): botones de un clic para expandir o plegar todos los encabezados y ajuste de texto en el esquema; mejoras de renderizado de tablas.
+• Sistema de plantillas de notas (#285): 5 plantillas integradas y soporte para la carpeta templates/ con variables {{date}}, {{time}}, {{title}} y {{weekday}}.
+• Sincronización de línea al pasar el cursor y ancho de lectura (#377, #145): resaltado sincronizado en vista dividida y selector rápido de ancho (600px / 760px / 960px / 100%).
+• Gestión de etiquetas, selección múltiple y filtros de búsqueda (#397, #380, #129, #530, #322, #208): renombrar/eliminar etiquetas en toda la bóveda, selección múltiple en el árbol de archivos, filtros de ruta/fecha y auto-commit de Git sin interrupciones.

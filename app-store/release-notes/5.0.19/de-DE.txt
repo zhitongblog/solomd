@@ -1,0 +1,6 @@
+SoloMD 5.0.19:
+• Separates Einklappen von Tabellen- und Mermaid-Quelltext: Tabellen- und Mermaid-Rendering ist nun von „Markdown-Marker immer anzeigen“ entkoppelt, mit „</> Quelltext“-Umschalter oben rechts.
+• Gliederung: Alle auf-/zuklappen & Zeilenumbruch (#124): Ein-Klick-Buttons zum Auf- und Zuklappen aller Überschriften sowie Zeilenumbruch in der Gliederung; verbesserte Tabellen-Darstellung.
+• Notizvorlagen-System (#285): 5 integrierte Vorlagen sowie eigene Vorlagen aus templates/ mit {{date}}, {{time}}, {{title}} und {{weekday}}.
+• Geteilte Ansicht mit Zeilen-Synchronisation & Lesebreite (#377, #145): Hover-Hervorhebung zwischen Editor und Vorschau sowie Schnellwahl der Lesebreite (600px / 760px / 960px / 100%).
+• Tag-Umbenennung, Mehrfachauswahl im Dateibaum & Suchfilter (#397, #380, #129, #530, #322, #208): Tags tresorweit umbenennen/löschen, Dateien mehrfach auswählen, globale Suche nach Pfad/Datum filtern und Git-Auto-Commit im Tipp-Leerlauf ausführen.
