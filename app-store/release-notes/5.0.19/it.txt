@@ -1,5 +1,5 @@
 SoloMD 5.0.19:
-•Compressione indipendente del codice di tabelle e Mermaid: rendering di tabelle e diagrammi Mermaid separato da "Mostra sempre i marcatori Markdown", con pulsante "</> Codice" per espandere o comprimere.
+•Compressione indipendente del codice di tabelle e Mermaid: rendering di tabelle e diagrammi Mermaid separato da "Mostra sempre i marcatori Markdown", con pulsante "Codice" per espandere o comprimere.
 • Struttura: espandi/comprimi tutto e a capo automatico (#124): pulsanti rapidi per espandere o comprimere tutti i titoli nella struttura e miglioramenti al rendering delle tabelle.
 • Sistema di modelli di nota (#285): 5 modelli integrati e supporto per la cartella templates/ con variabili {{date}}, {{time}}, {{title}} e {{weekday}}.
 • Sincronizzazione riga al passaggio del mouse e larghezza di lettura (#377, #145): evidenziazione sincronizzata in vista divisa e selettore larghezza (600px / 760px / 960px / 100%).

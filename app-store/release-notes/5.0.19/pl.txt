@@ -1,5 +1,5 @@
 SoloMD 5.0.19:
-• Niezależne zwijanie kodu tabel i Mermaid: renderowanie tabel i diagramów Mermaid oddzielone od opcji „Zawsze pokazuj znaczniki Markdown", z przyciskiem „</> Kod" do rozwijania i zwijania.
+• Niezależne zwijanie kodu tabel i Mermaid: renderowanie tabel i diagramów Mermaid oddzielone od opcji „Zawsze pokazuj znaczniki Markdown", z przyciskiem „Kod" do rozwijania i zwijania.
 • Konspekt: rozwiń/zwiń wszystko i zawijanie wierszy (#124): przyciski szybkiego rozwijania i zwijania wszystkich nagłówków oraz zawijanie tekstu w konspekcie.
 • System szablonów notatek (#285): 5 wbudowanych szablonów oraz obsługa folderu templates/ ze zmiennymi {{date}}, {{time}}, {{title}} i {{weekday}}.
 • Synchronizacja wierszy po najechaniu i szerokość czytania (#377, #145): podświetlanie odpowiadających wierszy w widoku podzielonym oraz przełącznik szerokości (600px / 760px / 960px / 100%).

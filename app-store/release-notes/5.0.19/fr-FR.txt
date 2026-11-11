@@ -1,5 +1,5 @@
 SoloMD 5.0.19 :
-• Pliage indépendant du code source des tableaux et Mermaid : le rendu des tableaux et diagrammes Mermaid est dissocié de « Toujours afficher les marqueurs Markdown », avec un bouton « </> Source » pour déplier/replier.
+• Pliage indépendant du code source des tableaux et Mermaid : le rendu des tableaux et diagrammes Mermaid est dissocié de « Toujours afficher les marqueurs Markdown », avec un bouton « Source » pour déplier/replier.
 • Plan : tout déplier/replier et retour à la ligne (#124) : boutons en un clic pour tout déplier ou replier dans le plan et option de retour à la ligne des titres.
 • Système de modèles de notes (#285) : 5 modèles intégrés et prise en charge du dossier templates/ avec variables {{date}}, {{time}}, {{title}} et {{weekday}}.
 • Survol synchronisé en mode fractionné et largeur de lecture (#377, #145) : surlignage synchronisé entre éditeur et aperçu et sélecteur de largeur (600px / 760px / 960px / 100%).

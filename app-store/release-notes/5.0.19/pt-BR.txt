@@ -1,5 +1,5 @@
 SoloMD 5.0.19:
-• Recolhimento independente do código de tabelas e Mermaid: renderização de tabelas e diagramas Mermaid separada de "Sempre mostrar marcadores Markdown", com botão "</> Código" para expandir ou recolher.
+• Recolhimento independente do código de tabelas e Mermaid: renderização de tabelas e diagramas Mermaid separada de "Sempre mostrar marcadores Markdown", com botão "Código" para expandir ou recolher.
 • Sumário: expandir/recolher tudo e quebra de linha (#124): botões de um clique para expandir ou recolher todos os títulos e quebra automática de linha no sumário.
 • Sistema de modelos de notas (#285): 5 modelos integrados e suporte à pasta templates/ com variáveis {{date}}, {{time}}, {{title}} e {{weekday}}.
 • Sincronização de linha ao passar o cursor e largura de leitura (#377, #145): destaque sincronizado na visualização dividida e seletor rápido de largura (600px / 760px / 960px / 100%).

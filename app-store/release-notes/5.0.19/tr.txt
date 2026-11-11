@@ -1,5 +1,5 @@
 SoloMD 5.0.19:
-• Bağımsız Tablo ve Mermaid Kaynak Kodu Katlama: Tablo ve Mermaid diyagramı görünümü "Markdown İşaretlerini Her Zaman Göster" ayarından ayrıldı; sağ üstteki "</> Kaynak" düğmesiyle kod istendiğinde açılıp kapatılabilir.
+• Bağımsız Tablo ve Mermaid Kaynak Kodu Katlama: Tablo ve Mermaid diyagramı görünümü "Markdown İşaretlerini Her Zaman Göster" ayarından ayrıldı; sağ üstteki "Kaynak" düğmesiyle kod istendiğinde açılıp kapatılabilir.
 • Ана Hatlar: Tümünü Genişlet/Daralt ve Satır Kaydırma (#124): Ana hatlar paneline tek tıkla tümünü genişletme/daraltma ve uzun başlıkları kaydırma seçeneği eklendi.
 • Not Şablonları Sistemi (#285): 5 yerleşik şablon ve {{date}}, {{time}}, {{title}}, {{weekday}} değişkenleriyle templates/ klasörü desteği.
 • Bölünmüş Görünümde Satır Eşitleme ve Okuma Genişliği (#377, #145): Üzerine gelindiğinde karşı bölmedeki satırı vurgulama ve 600px / 760px / 960px / 100% okuma genişliği seçici.

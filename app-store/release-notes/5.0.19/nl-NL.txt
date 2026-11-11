@@ -1,5 +1,5 @@
 SoloMD 5.0.19:
-• Afzonderlijk inklappen van tabel- en Mermaid-broncode: weergave van tabellen en Mermaid-diagrammen losgekoppeld van 'Markdown-markeringen altijd tonen', met een '</> Bron'-knop rechtsboven.
+• Afzonderlijk inklappen van tabel- en Mermaid-broncode: weergave van tabellen en Mermaid-diagrammen losgekoppeld van 'Markdown-markeringen altijd tonen', met een 'Bron'-knop rechtsboven.
 • Overzicht: alles uit-/inklappen en tekstterugloop (#124): knoppen om alle koppen in één klik uit of in te klappen en tekstterugloop in het overzicht.
 • Notitiesjablonen (#285): 5 ingebouwde sjablonen en ondersteuning voor de map templates/ met {{date}}, {{time}}, {{title}} en {{weekday}}.
 • Regelsynchronisatie bij aanwijzen in gesplitste weergave & leesbreedte (#377, #145): markeer overeenkomende regels bij aanwijzen en kies snel de leesbreedte (600px / 760px / 960px / 100%).
