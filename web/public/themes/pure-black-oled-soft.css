@@ -1,0 +1,90 @@
+/*
+ * Pure Black (OLED) Soft — community theme for SoloMD.
+ * A softer variant of "Pure Black (OLED)" by alex: the same true #000
+ * background, with the neon green of the accent, list markers and syntax
+ * toned down for long sessions. Links keep the original bright green so
+ * they stand apart from inline code. Two low-contrast spots are fixed by
+ * the rules at the end of the file.
+ *
+ * Author:   eandreaja
+ * Based on: Pure Black (OLED) by alex (MIT)
+ * License:  MIT
+ */
+:root,
+:root[data-theme="light"],
+:root[data-theme="dark"] {
+  --bg: #000000;
+  --bg-elev: #0a0a0a;
+  --bg-hover: #141414;
+  --bg-active: #1f1f1f;
+  --border: #1f1f1f;
+  --text: #e8e8e8;
+  --text-muted: #9a9a9a;
+  --text-faint: #545454;
+  --accent: #34c176;        /* softer green: 9.0:1 on #000 (was #50fa7b, 15.3:1) */
+  --accent-fg: #000000;     /* text on accent: 9.0:1 */
+  --danger: #ff5555;
+
+  /* Markdown element colors */
+  --md-h1: #ffffff;
+  --md-h2: #f0f0f0;
+  --md-h3: #d8d8d8;
+  --md-h4: #c0c0c0;
+  --md-h5: #a8a8a8;
+  --md-h6: #888888;
+  --md-strong: #ffffff;
+  --md-em: #e8e8e8;
+  --md-link: #50fa7b;       /* original bright green, kept so links differ from inline code */
+  --md-url: #8be9fd;
+  --md-code: #2fa866;       /* inline code: 6.1:1 on --md-code-bg */
+  --md-code-bg: #141414;
+  --md-quote: #6a6a6a;
+  --md-list: #34c176;
+  --md-hr: #1f1f1f;
+
+  /* Code block syntax — high contrast */
+  --syn-keyword: #ff79c6;
+  --syn-string: #f1fa8c;
+  --syn-number: #bd93f9;
+  --syn-comment: #545454;
+  --syn-function: #34c176;
+  --syn-variable: #e8e8e8;
+  --syn-type: #8be9fd;
+  --syn-property: #34c176;
+  --syn-operator: #ff79c6;
+}
+
+/*
+ * Inline code (not fenced blocks).
+ * Live Edit and the preview pane paint inline code with var(--text), so
+ * --md-code alone does not reach them. Same selectors as the Ivory Amber
+ * theme; fenced code blocks are excluded with :not(pre). No !important.
+ */
+.cm-editor .cm-content .cm-md-code,
+.preview-content :not(pre) > code,
+.plain-block__render :not(pre) > code,
+.pdf-page :not(pre) > code,
+#solomd-print-overlay :not(pre) > code,
+.solomd-print-content :not(pre) > code {
+  color: var(--md-code);
+}
+
+/*
+ * Live Edit also colors the text inside the inline-code span through its
+ * highlighter (t.monospace -> var(--text)), which out-ranks the color set
+ * on the wrapper above. Color those inner spans too, and leave the dimmed
+ * marker characters (the backticks) as SoloMD paints them.
+ */
+.cm-editor .cm-content .cm-md-code span:not(.tok-meta, .cm-formatting, .cm-md-marker) {
+  color: var(--md-code);
+}
+
+/*
+ * Spelling popup (LanguageTool) suggestion buttons.
+ * SoloMD hardcodes `color: #fff` on var(--accent), which is 2.3:1 with this
+ * green. Use the theme's own --accent-fg instead (9.0:1). The extra classes
+ * out-rank CodeMirror's generated scope without needing !important.
+ */
+.cm-tooltip.cm-tooltip-hover .cm-lt-tooltip__fix {
+  color: var(--accent-fg);
+}

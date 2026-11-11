@@ -221,6 +221,20 @@
         "orange"
       ],
       "license": "MIT"
+    },
+    {
+      "id": "pure-black-oled-soft",
+      "name": "Pure Black (OLED) Soft",
+      "author": "eandreaja",
+      "description": "True #000 background with a softer, less neon green. Readable inline code and spelling-popup buttons.",
+      "url": "https://solomd.app/themes/pure-black-oled-soft.css",
+      "preview": "https://solomd.app/themes/preview/pure-black-oled-soft.png",
+      "tags": [
+        "dark",
+        "oled",
+        "green"
+      ],
+      "license": "MIT"
     }
   ]
 }
