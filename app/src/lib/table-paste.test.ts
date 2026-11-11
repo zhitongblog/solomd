@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import {
   clipboardTableToMarkdown,
   htmlTableToMarkdown,
+  isTableOnlyHtml,
   tsvToMarkdown,
 } from './table-paste.ts';
 
@@ -69,4 +70,35 @@ test('does not convert single-cell HTML or indented code with tabs (#460)', () =
   assert.equal(htmlTableToMarkdown('<table><tr><td>单格内容</td></tr></table>'), null);
   assert.equal(tsvToMarkdown('function foo() {\n\treturn 1;\n\t}'), null);
   assert.equal(clipboardTableToMarkdown('', '普通文本段落\n第二行'), null);
+});
+
+test('table inside a larger rich-text document is not converted alone (Outlook / Word)', () => {
+  const html = `<p>Intro text</p><table><tr><td>A</td><td>B</td></tr><tr><td>1</td><td>2</td></tr></table><p>Outro</p>`;
+  assert.equal(isTableOnlyHtml(html), false);
+  assert.equal(clipboardTableToMarkdown(html, 'Intro text\nA\tB\n1\t2\nOutro'), null);
+});
+
+test('table-only HTML (Excel / Word table + nbsp paragraph) is still a table', () => {
+  const html = `<html><body><!--StartFragment--><table><tr><td>A</td><td>B</td></tr></table><p class=MsoNormal>&nbsp;</p><!--EndFragment--></body></html>`;
+  assert.equal(isTableOnlyHtml(html), true);
+  assert.equal(clipboardTableToMarkdown(html, 'A\tB'), '| A | B |\n| --- | --- |\n|  |  |');
+});
+
+test('text between two tables counts as outside content', () => {
+  const html = `<table><tr><td>A</td></tr></table><p>between</p><table><tr><td>B</td></tr></table>`;
+  assert.equal(isTableOnlyHtml(html), false);
+});
+
+test('source newlines inside cells are whitespace, only <br> is a break', () => {
+  const html = `<table><tr><td>Оставить
+как есть</td><td>без
+изменений</td></tr><tr><td>a<br>b</td><td>c</td></tr></table>`;
+  assert.equal(
+    htmlTableToMarkdown(html),
+    [
+      '| Оставить как есть | без изменений |',
+      '| --- | --- |',
+      '| a<br>b | c |',
+    ].join('\n'),
+  );
 });

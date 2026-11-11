@@ -36,6 +36,11 @@ function cleanCellHtml(rawHtml: string): string {
     .replace(/<(?:style|script|meta|link|xml)\b[^>]*>[\s\S]*?<\/(?:style|script|xml)>/gi, '')
     .replace(/<(?:style|script|meta|link)\b[^>]*\/?>/gi, '');
 
+  // Newlines in HTML source are plain whitespace (Outlook / Word hard-wrap
+  // paragraphs inside cells), not line breaks. Only `<br>` and block
+  // boundaries below are real breaks.
+  text = text.replace(/\s*[\r\n]+\s*/g, ' ');
+
   // Turn explicit line breaks (`<br>`, adjacent block closes/opens) into `\n`
   // first, then collapse multi-line cell content into `<br>`.
   text = text
@@ -221,11 +226,30 @@ export function tsvToMarkdown(plainText: string): string | null {
  * Inspect `text/html` and `text/plain` from a paste event and return a GFM
  * Markdown table if the clipboard holds spreadsheet cells or an HTML table.
  */
+/**
+ * True when the clipboard HTML is essentially just one table (what Excel / WPS
+ * / Sheets put on the clipboard): nothing but whitespace or `&nbsp;` outside
+ * the `<table>`. A table embedded in a larger document (an Outlook / Word /
+ * web-page selection with paragraphs, headings, lists) must be left to the
+ * general HTML-to-Markdown converter so the surrounding content is not dropped.
+ */
+export function isTableOnlyHtml(html: string): boolean {
+  const withoutTable = html
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/<(?:style|script|head|xml)\b[^>]*>[\s\S]*?<\/(?:style|script|head|xml)\s*>/gi, '')
+    .replace(/<table\b[^>]*>[\s\S]*?<\/table\s*>/gi, '');
+  if (/<img\b/i.test(withoutTable)) return false;
+  const text = decodeHtmlEntities(withoutTable.replace(/<[^>]+>/g, ''));
+  return text.replace(/[\s ]+/g, '').length === 0;
+}
+
 export function clipboardTableToMarkdown(
   html: string | null | undefined,
   plainText: string | null | undefined,
 ): string | null {
-  if (html) {
+  if (html && /<table[\s>]/i.test(html)) {
+    // A table inside a larger rich-text document is not ours to convert alone.
+    if (!isTableOnlyHtml(html)) return null;
     const fromHtml = htmlTableToMarkdown(html);
     if (fromHtml) return fromHtml;
   }
