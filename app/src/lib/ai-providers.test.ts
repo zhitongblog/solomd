@@ -23,3 +23,10 @@ test('#481: Cheaper Inference is configured as an OpenAI-compatible aggregator g
   assert.equal(provider.defaultBaseUrl, 'https://api.cheaperinference.com/v1');
   assert.equal(provider.signupUrl, 'https://cheaperinference.com/markets');
 });
+
+test('Atlas Cloud is configured as an OpenAI-compatible aggregator gateway', () => {
+  const provider = providerById('atlascloud')!;
+  assert.equal(provider.apiFormat, 'openai');
+  assert.equal(provider.defaultBaseUrl, 'https://api.atlascloud.ai/v1');
+  assert.equal(provider.signupUrl, 'https://console.atlascloud.ai/api-keys');
+});

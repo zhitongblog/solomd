@@ -37,6 +37,7 @@ export type ProviderId =
   | 'openrouter'
   | 'opencode-go'
   | 'cheaper-inference'
+  | 'atlascloud'
   // Local
   | 'ollama'
   | 'openai-compat';
@@ -247,6 +248,17 @@ export const PROVIDERS: ProviderConfig[] = [
     defaultBaseUrl: 'https://api.cheaperinference.com/v1',
     modelHint: 'deepseek-v4-flash · deepseek-v4-pro · claude-sonnet-4-6 · gpt-5.6 · gemini-3.1-pro',
     signupUrl: 'https://cheaperinference.com/markets',
+  },
+  {
+    id: 'atlascloud',
+    label: 'Atlas Cloud (聚合网关)',
+    apiFormat: 'openai',
+    defaultModel: 'deepseek-ai/deepseek-v4-flash',
+    defaultBaseUrl: 'https://api.atlascloud.ai/v1',
+    // Ids from the public GET /v1/models (verified 2026-11-12).
+    modelHint:
+      'deepseek-ai/deepseek-v4-flash · deepseek-ai/deepseek-v4-pro · moonshotai/kimi-k3 · zai-org/glm-5.2 · qwen/qwen3.5-397b-a17b · minimaxai/minimax-m3',
+    signupUrl: 'https://console.atlascloud.ai/api-keys',
   },
   // ---- Local ---------------------------------------------------------
   {
