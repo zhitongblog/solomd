@@ -994,7 +994,12 @@ function onSelectPdfFont(v: string) {
   <DsModal
     :model-value="open"
     :title="t('settings.title')"
-    width="820px"
+    width="984px"
+    resizable
+    draggable
+    :min-width="760"
+    :min-height="460"
+    persist-key="solomd.settingsModalBounds"
     class="settings-modal"
     @update:model-value="emit('close')"
   >
@@ -3184,6 +3189,7 @@ function onSelectPdfFont(v: string) {
   cursor: pointer;
   transition: all 0.15s ease;
   text-align: center;
+  white-space: nowrap;
 }
 .settings__sync-subnav-tab:hover {
   color: var(--text);

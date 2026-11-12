@@ -148,6 +148,28 @@ const tableBlockRule = (md.block.ruler as any).__rules__?.find((r: any) => r.nam
 if (tableBlockRule) {
   tableBlockRule.alt = ['paragraph', 'reference', 'blockquote', 'list'];
 }
+
+// #546 — Preserve full-width ideographic spaces (`\u3000`, `　`) at the start
+// and end of paragraphs. Stock markdown-it calls `.trim()` on paragraph content,
+// which in JavaScript strips all Unicode whitespace including `U+3000`, eating
+// CJK first-line / dialogue indentation (`　　　　李玲：...`). CommonMark §2.1
+// only trims ASCII spaces/tabs (`U+0020` / `U+0009`).
+const origParagraphRule = (md.block.ruler as any).__rules__?.find((r: any) => r.name === 'paragraph')?.fn;
+if (origParagraphRule) {
+  md.block.ruler.at('paragraph', (state, startLine, endLine, silent) => {
+    const blkIndent = state.blkIndent;
+    const ok = origParagraphRule(state, startLine, endLine, silent);
+    if (ok && !silent) {
+      const tok = state.tokens[state.tokens.length - 2];
+      if (tok && tok.type === 'inline') {
+        tok.content = state
+          .getLines(startLine, state.line, blkIndent, false)
+          .replace(/^[ \t\r\n]+|[ \t\r\n]+$/g, '');
+      }
+    }
+    return ok;
+  });
+}
 (md.block.ruler as any).__cache__ = null;
 
 // ---- Definition List (`Term\n: Definition`, #285) ---------------------------
@@ -1294,10 +1316,10 @@ function normalizeListIndent(source: string): string {
   let fenceChar = '';
   let curDelta = 0;
   let curOrig = -1;
-  const markRe = /^(\s*)([-*+]|\d{1,9}[.)])(\s+)(.*)$/;
-  const noSpaceOrderedRe = /^(\s*)(\d{1,3}[.)])([^\s\d.)].*)$/;
+  const markRe = /^([ \t]*)([-*+]|\d{1,9}[.)])([ \t]+)(.*)$/;
+  const noSpaceOrderedRe = /^([ \t]*)(\d{1,3}[.)])([^\s\d.)].*)$/;
   const cjkLeadRe = /^[\u3400-\u9fff\uf900-\ufaff\u3000-\u303f\uff00-\uffef“”‘’（【《「『]/;
-  const fenceRe = /^(\s*)(```+|~~~+)/;
+  const fenceRe = /^([ \t]*)(```+|~~~+)/;
   const hasAdjacentListLine = (idx: number): boolean => {
     for (let j = idx + 1; j < lines.length; j++) {
       const next = lines[j];
@@ -1362,10 +1384,10 @@ function normalizeListIndent(source: string): string {
       curDelta = norm - orig;
       curOrig = orig;
       out.push(' '.repeat(norm) + m[2] + m[3] + m[4]);
-    } else if (line.trim() === '') {
+    } else if (line.replace(/^[ \t]+|[ \t]+$/g, '') === '') {
       out.push(line);
     } else {
-      const leadWs = (line.match(/^\s*/) as RegExpMatchArray)[0];
+      const leadWs = (line.match(/^[ \t]*/) as RegExpMatchArray)[0];
       const lead = expand(leadWs);
       if (stack.length && curOrig >= 0 && lead >= curOrig) {
         const top = stack[stack.length - 1];

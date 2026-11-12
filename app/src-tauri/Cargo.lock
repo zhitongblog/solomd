@@ -4723,6 +4723,7 @@ dependencies = [
 name = "solomd"
 version = "5.0.20"
 dependencies = [
+ "arboard",
  "argon2",
  "async-stream",
  "base64 0.22.1",

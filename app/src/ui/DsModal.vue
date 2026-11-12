@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { ref, watch, nextTick, onBeforeUnmount } from 'vue';
+import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue';
+
+interface PersistedModalBounds {
+  width?: number;
+  height?: number;
+  x?: number;
+  y?: number;
+}
 
 const props = withDefaults(
   defineProps<{
@@ -15,8 +22,26 @@ const props = withDefaults(
      * a redundant nested teleport.
      */
     teleport?: boolean;
+    /** #544 — Allow dragging edges/corners to resize the dialog panel. */
+    resizable?: boolean;
+    /** #544 — Allow dragging the modal header to reposition the dialog panel. */
+    draggable?: boolean;
+    /** Minimum width in px when resizing (default 420). */
+    minWidth?: number;
+    /** Minimum height in px when resizing (default 320). */
+    minHeight?: number;
+    /** localStorage key used to persist size and position across openings. */
+    persistKey?: string;
   }>(),
-  { closeOnBackdrop: true, width: '480px', teleport: true },
+  {
+    closeOnBackdrop: true,
+    width: '480px',
+    teleport: true,
+    resizable: false,
+    draggable: false,
+    minWidth: 420,
+    minHeight: 320,
+  },
 );
 
 const emit = defineEmits<{ 'update:modelValue': [boolean] }>();
@@ -27,6 +52,225 @@ defineOptions({ inheritAttrs: false });
 
 const panelRef = ref<HTMLElement | null>(null);
 let lastFocused: HTMLElement | null = null;
+
+const customBounds = ref<PersistedModalBounds | null>(null);
+const isInteracting = ref(false);
+let cleanupPointerListeners: (() => void) | null = null;
+
+function isNarrowViewport(): boolean {
+  return (
+    typeof document !== 'undefined' &&
+    (document.documentElement.classList.contains('narrow-viewport') || window.innerWidth <= 640)
+  );
+}
+
+function clampBounds(b: PersistedModalBounds): PersistedModalBounds {
+  if (typeof window === 'undefined') return b;
+  const margin = 12;
+  const vw = Math.max(320, window.innerWidth);
+  const vh = Math.max(240, window.innerHeight);
+  const maxW = Math.max(props.minWidth, vw - margin * 2);
+  const maxH = Math.max(props.minHeight, vh - margin * 2);
+  const next: PersistedModalBounds = {};
+  if (typeof b.width === 'number' && Number.isFinite(b.width)) {
+    next.width = Math.round(Math.min(Math.max(b.width, props.minWidth), maxW));
+  }
+  if (typeof b.height === 'number' && Number.isFinite(b.height)) {
+    next.height = Math.round(Math.min(Math.max(b.height, props.minHeight), maxH));
+  }
+  if (typeof b.x === 'number' && Number.isFinite(b.x) && typeof b.y === 'number' && Number.isFinite(b.y)) {
+    const w = next.width ?? panelRef.value?.offsetWidth ?? 600;
+    const h = next.height ?? panelRef.value?.offsetHeight ?? 480;
+    next.x = Math.round(Math.min(Math.max(b.x, margin), Math.max(margin, vw - w - margin)));
+    next.y = Math.round(Math.min(Math.max(b.y, margin), Math.max(margin, vh - h - margin)));
+  }
+  return next;
+}
+
+function loadPersistedBounds() {
+  if (!props.persistKey || isNarrowViewport()) {
+    customBounds.value = null;
+    return;
+  }
+  try {
+    const raw = localStorage.getItem(props.persistKey);
+    if (!raw) {
+      customBounds.value = null;
+      return;
+    }
+    const parsed = JSON.parse(raw) as PersistedModalBounds;
+    if (parsed && typeof parsed === 'object') {
+      customBounds.value = clampBounds(parsed);
+    }
+  } catch {
+    customBounds.value = null;
+  }
+}
+
+function savePersistedBounds() {
+  if (!props.persistKey || !customBounds.value) return;
+  try {
+    localStorage.setItem(props.persistKey, JSON.stringify(customBounds.value));
+  } catch {
+    // Ignore storage quota errors
+  }
+}
+
+const panelStyle = computed(() => {
+  const b = customBounds.value;
+  if (!b || isNarrowViewport()) {
+    return { width: props.width };
+  }
+  const style: Record<string, string> = {
+    width: b.width ? `${b.width}px` : props.width,
+  };
+  if (b.height) {
+    style.height = `${b.height}px`;
+  }
+  if (typeof b.x === 'number' && typeof b.y === 'number') {
+    style.position = 'fixed';
+    style.left = `${b.x}px`;
+    style.top = `${b.y}px`;
+    style.margin = '0';
+  }
+  return style;
+});
+
+type ResizeDir = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
+const resizeDirs: ResizeDir[] = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'];
+
+function startResize(dir: ResizeDir, e: PointerEvent) {
+  if (!props.resizable || isNarrowViewport() || e.button !== 0 || !panelRef.value) return;
+  e.preventDefault();
+  e.stopPropagation();
+
+  const rect = panelRef.value.getBoundingClientRect();
+  const startX = e.clientX;
+  const startY = e.clientY;
+  const startLeft = rect.left;
+  const startTop = rect.top;
+  const startWidth = rect.width;
+  const startHeight = rect.height;
+  const margin = 12;
+
+  isInteracting.value = true;
+
+  const onMove = (ev: PointerEvent) => {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const dx = ev.clientX - startX;
+    const dy = ev.clientY - startY;
+
+    let newLeft = startLeft;
+    let newTop = startTop;
+    let newWidth = startWidth;
+    let newHeight = startHeight;
+
+    if (dir.includes('e')) {
+      const maxW = Math.max(props.minWidth, vw - startLeft - margin);
+      newWidth = Math.min(Math.max(startWidth + dx, props.minWidth), maxW);
+    } else if (dir.includes('w')) {
+      const rightEdge = startLeft + startWidth;
+      const maxW = Math.max(props.minWidth, rightEdge - margin);
+      newWidth = Math.min(Math.max(startWidth - dx, props.minWidth), maxW);
+      newLeft = rightEdge - newWidth;
+    }
+
+    if (dir.includes('s')) {
+      const maxH = Math.max(props.minHeight, vh - startTop - margin);
+      newHeight = Math.min(Math.max(startHeight + dy, props.minHeight), maxH);
+    } else if (dir.includes('n')) {
+      const bottomEdge = startTop + startHeight;
+      const maxH = Math.max(props.minHeight, bottomEdge - margin);
+      newHeight = Math.min(Math.max(startHeight - dy, props.minHeight), maxH);
+      newTop = bottomEdge - newHeight;
+    }
+
+    customBounds.value = {
+      width: Math.round(newWidth),
+      height: Math.round(newHeight),
+      x: Math.round(newLeft),
+      y: Math.round(newTop),
+    };
+  };
+
+  const onUp = () => {
+    isInteracting.value = false;
+    savePersistedBounds();
+    cleanupPointerListeners?.();
+    cleanupPointerListeners = null;
+  };
+
+  window.addEventListener('pointermove', onMove);
+  window.addEventListener('pointerup', onUp);
+  window.addEventListener('pointercancel', onUp);
+  cleanupPointerListeners = () => {
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerup', onUp);
+    window.removeEventListener('pointercancel', onUp);
+  };
+}
+
+function startDragHeader(e: PointerEvent) {
+  if (!props.draggable || isNarrowViewport() || e.button !== 0 || !panelRef.value) return;
+  const target = e.target as HTMLElement | null;
+  if (target?.closest('button, a, input, select, textarea, [role="button"]')) return;
+  e.preventDefault();
+
+  const rect = panelRef.value.getBoundingClientRect();
+  const startX = e.clientX;
+  const startY = e.clientY;
+  const startLeft = rect.left;
+  const startTop = rect.top;
+  const startWidth = rect.width;
+  const startHeight = rect.height;
+  const margin = 12;
+
+  isInteracting.value = true;
+
+  const onMove = (ev: PointerEvent) => {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const dx = ev.clientX - startX;
+    const dy = ev.clientY - startY;
+    const newLeft = Math.min(
+      Math.max(startLeft + dx, margin),
+      Math.max(margin, vw - startWidth - margin),
+    );
+    const newTop = Math.min(
+      Math.max(startTop + dy, margin),
+      Math.max(margin, vh - startHeight - margin),
+    );
+    customBounds.value = {
+      width: Math.round(customBounds.value?.width ?? startWidth),
+      height: Math.round(customBounds.value?.height ?? startHeight),
+      x: Math.round(newLeft),
+      y: Math.round(newTop),
+    };
+  };
+
+  const onUp = () => {
+    isInteracting.value = false;
+    savePersistedBounds();
+    cleanupPointerListeners?.();
+    cleanupPointerListeners = null;
+  };
+
+  window.addEventListener('pointermove', onMove);
+  window.addEventListener('pointerup', onUp);
+  window.addEventListener('pointercancel', onUp);
+  cleanupPointerListeners = () => {
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerup', onUp);
+    window.removeEventListener('pointercancel', onUp);
+  };
+}
+
+function onWindowResize() {
+  if (customBounds.value && !isNarrowViewport()) {
+    customBounds.value = clampBounds(customBounds.value);
+  }
+}
 
 function close() {
   emit('update:modelValue', false);
@@ -75,27 +319,41 @@ watch(
   () => props.modelValue,
   async (open) => {
     if (open) {
+      loadPersistedBounds();
       lastFocused = document.activeElement as HTMLElement;
       document.addEventListener('keydown', onKeydown, true);
+      window.addEventListener('resize', onWindowResize);
       await nextTick();
       // A dialog can name its default control with `data-autofocus` (e.g. the
       // Save button in UnsavedDialog, #357); otherwise its first text field;
       // otherwise the panel itself.
       const preferred = panelRef.value?.querySelector<HTMLElement>('[data-autofocus]');
-      // Never the header ×: a focus ring on the close button would be the
-      // first thing the eye lands on otherwise.
-      const first = focusables().find((el) => el.matches('input, select, textarea'));
+      // Never the header × or an inline task-list checkbox (#543): only focus
+      // text-like inputs / selects / textareas by default.
+      const first = focusables().find((el) =>
+        el.matches(
+          'input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="range"]):not([type="color"]):not([type="file"]), select, textarea',
+        ),
+      );
       (preferred ?? first ?? panelRef.value)?.focus();
     } else {
+      cleanupPointerListeners?.();
+      cleanupPointerListeners = null;
+      isInteracting.value = false;
       document.removeEventListener('keydown', onKeydown, true);
+      window.removeEventListener('resize', onWindowResize);
       lastFocused?.focus?.();
       lastFocused = null;
     }
   },
+  { immediate: true },
 );
 
 onBeforeUnmount(() => {
+  cleanupPointerListeners?.();
+  cleanupPointerListeners = null;
   document.removeEventListener('keydown', onKeydown, true);
+  window.removeEventListener('resize', onWindowResize);
 });
 </script>
 
@@ -106,13 +364,31 @@ onBeforeUnmount(() => {
       <div
         ref="panelRef"
         class="ds-modal__panel"
+        :class="{
+          'ds-modal__panel--resizable': resizable,
+          'ds-modal__panel--interacting': isInteracting,
+        }"
         role="dialog"
         aria-modal="true"
         :aria-label="title"
         tabindex="-1"
-        :style="{ width }"
+        :style="panelStyle"
       >
-        <header v-if="title || $slots.header" class="ds-modal__head">
+        <template v-if="resizable">
+          <div
+            v-for="dir in resizeDirs"
+            :key="dir"
+            class="ds-modal__resize-handle"
+            :class="`ds-modal__resize-handle--${dir}`"
+            @pointerdown="startResize(dir, $event)"
+          />
+        </template>
+        <header
+          v-if="title || $slots.header"
+          class="ds-modal__head"
+          :class="{ 'ds-modal__head--draggable': draggable }"
+          @pointerdown="startDragHeader"
+        >
           <slot name="header">
             <h2 class="ds-modal__title">{{ title }}</h2>
           </slot>
@@ -176,12 +452,86 @@ onBeforeUnmount(() => {
 .ds-modal__panel:focus-visible {
   outline: none;
 }
+.ds-modal__panel--interacting {
+  user-select: none;
+}
 .ds-modal__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--sp-3);
   padding: 20px var(--sp-5) 4px;
+}
+.ds-modal__head--draggable {
+  cursor: move;
+  user-select: none;
+}
+:root.narrow-viewport .ds-modal__head--draggable {
+  cursor: default;
+}
+.ds-modal__resize-handle {
+  position: absolute;
+  z-index: 20;
+  touch-action: none;
+}
+:root.narrow-viewport .ds-modal__resize-handle {
+  display: none;
+}
+.ds-modal__resize-handle--n {
+  top: 0;
+  left: 10px;
+  right: 10px;
+  height: 6px;
+  cursor: ns-resize;
+}
+.ds-modal__resize-handle--s {
+  bottom: 0;
+  left: 10px;
+  right: 10px;
+  height: 6px;
+  cursor: ns-resize;
+}
+.ds-modal__resize-handle--e {
+  top: 10px;
+  bottom: 10px;
+  right: 0;
+  width: 6px;
+  cursor: ew-resize;
+}
+.ds-modal__resize-handle--w {
+  top: 10px;
+  bottom: 10px;
+  left: 0;
+  width: 6px;
+  cursor: ew-resize;
+}
+.ds-modal__resize-handle--ne {
+  top: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  cursor: nesw-resize;
+}
+.ds-modal__resize-handle--nw {
+  top: 0;
+  left: 0;
+  width: 12px;
+  height: 12px;
+  cursor: nwse-resize;
+}
+.ds-modal__resize-handle--se {
+  bottom: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  cursor: nwse-resize;
+}
+.ds-modal__resize-handle--sw {
+  bottom: 0;
+  left: 0;
+  width: 12px;
+  height: 12px;
+  cursor: nesw-resize;
 }
 .ds-modal__title {
   margin: 0;

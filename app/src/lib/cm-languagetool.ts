@@ -476,7 +476,7 @@ export const languagetoolTheme: Extension = EditorView.theme({
     padding: '2px 8px',
     font: 'inherit',
     fontWeight: '600',
-    color: '#fff',
+    color: 'var(--accent-fg, #fff)',
     background: 'var(--accent, #3b82f6)',
     cursor: 'pointer',
   },

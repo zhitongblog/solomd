@@ -821,6 +821,44 @@ pub fn webview_runtime_version() -> Option<String> {
     tauri::webview_version().ok()
 }
 
+/// #541 — Fallback clipboard text reader for Linux Wayland (e.g. Ubuntu 26.04 /
+/// GNOME 50 + GSConnect), where WebKitGTK's `ClipboardEvent.clipboardData` can
+/// arrive empty and `arboard` X11/wlr-data-control cannot read GNOME Shell's
+/// Wayland selection offer while `wl-paste` (or `xclip` / `xsel`) succeeds.
+#[tauri::command]
+pub async fn clipboard_read_text_fallback() -> Result<String, String> {
+    #[cfg(target_os = "linux")]
+    {
+        return tokio::task::spawn_blocking(|| {
+            let candidates: &[(&str, &[&str])] = &[
+                ("wl-paste", &["--no-newline"]),
+                ("wl-paste", &["--no-newline", "--type", "text/plain;charset=utf-8"]),
+                ("wl-paste", &["--no-newline", "--type", "text/plain"]),
+                ("wl-paste", &["--no-newline", "--type", "UTF8_STRING"]),
+                ("xclip", &["-o", "-selection", "clipboard"]),
+                ("xsel", &["-ob"]),
+            ];
+            for (bin, args) in candidates {
+                if let Ok(out) = std::process::Command::new(bin).args(*args).output() {
+                    if out.status.success() && !out.stdout.is_empty() {
+                        let text = String::from_utf8_lossy(&out.stdout).into_owned();
+                        if !text.is_empty() {
+                            return Ok(text);
+                        }
+                    }
+                }
+            }
+            Ok(String::new())
+        })
+        .await
+        .map_err(|e| e.to_string())?;
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        Ok(String::new())
+    }
+}
+
 #[tauri::command]
 pub fn fs_dir_exists(path: String) -> bool {
     Path::new(&path).is_dir()

@@ -36,3 +36,20 @@ export async function revealInFileManager(path: string): Promise<void> {
     throw revealErr;
   }
 }
+
+/**
+ * Open a directory `dir` directly inside Finder / Explorer / the Linux file
+ * manager (#547). Unlike `revealItemInDir` (which opens the *parent* directory
+ * and selects `dir`), `openPath(dir)` enters `dir` itself.
+ */
+export async function openDirectoryInFileManager(dir: string): Promise<void> {
+  const trimmed = dir.trim();
+  if (!trimmed) return;
+  try {
+    await openPath(trimmed);
+  } catch (openErr) {
+    await revealInFileManager(trimmed).catch(() => {
+      throw openErr;
+    });
+  }
+}

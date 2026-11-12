@@ -10,7 +10,52 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, HashSet};
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+static SYNC_APP_HANDLE: OnceLock<tauri::AppHandle> = OnceLock::new();
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SyncProgressPayload {
+    pub channel: String,
+    pub direction: String,
+    pub current: usize,
+    pub total: usize,
+    pub percent: u8,
+    pub message: String,
+}
+
+fn set_sync_app_handle(app: &tauri::AppHandle) {
+    let _ = SYNC_APP_HANDLE.set(app.clone());
+}
+
+fn emit_sync_progress(
+    channel: &str,
+    direction: &str,
+    current: usize,
+    total: usize,
+    message: impl Into<String>,
+) {
+    if let Some(app) = SYNC_APP_HANDLE.get() {
+        use tauri::Emitter;
+        let percent = if total == 0 {
+            0
+        } else {
+            ((current.saturating_mul(100)) / total).min(100) as u8
+        };
+        let _ = app.emit(
+            "solomd://sync-progress",
+            SyncProgressPayload {
+                channel: channel.to_string(),
+                direction: direction.to_string(),
+                current,
+                total,
+                percent,
+                message: message.into(),
+            },
+        );
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WebdavSyncResult {
@@ -1295,6 +1340,7 @@ pub async fn webdav_test_connection(
 
 #[tauri::command]
 pub async fn webdav_push_workspace(
+    app: tauri::AppHandle,
     workspace: String,
     url: String,
     username: String,
@@ -1306,6 +1352,7 @@ pub async fn webdav_push_workspace(
     categorize_files: Option<bool>,
     max_versions: Option<usize>,
 ) -> Result<WebdavSyncResult, String> {
+    set_sync_app_handle(&app);
     let ws_path = PathBuf::from(workspace.trim());
     if !ws_path.is_dir() {
         return Err("Open a workspace folder before syncing".into());
@@ -1324,6 +1371,14 @@ pub async fn webdav_push_workspace(
 
     let mut files = Vec::new();
     collect_local_files(&ws_path, &ws_path, &mut files);
+    let total_files = files.len();
+    emit_sync_progress(
+        "webdav",
+        "push",
+        0,
+        total_files.max(1),
+        format!("正在连接 WebDAV 服务器 ({target_remote})，共扫描到 {total_files} 个本地文件…"),
+    );
 
     let client = build_client()?;
     let mut created_dirs = HashSet::new();
@@ -1402,7 +1457,7 @@ pub async fn webdav_push_workspace(
     let mut skipped = 0usize;
     let mut new_files_map = BTreeMap::new();
 
-    for (rel, full_path) in files {
+    for (idx, (rel, full_path)) in files.into_iter().enumerate() {
         let plain_bytes = std::fs::read(&full_path)
             .map_err(|e| format!("Failed to read {rel}: {e}"))?;
         let sha = sha256_hex(&plain_bytes);
@@ -1423,12 +1478,26 @@ pub async fn webdav_push_workspace(
             if prev.sha256 == sha && prev.remote_rel == remote_rel && prev.encrypted == use_encryption {
                 new_files_map.insert(rel.clone(), prev.clone());
                 skipped += 1;
+                emit_sync_progress(
+                    "webdav",
+                    "push",
+                    idx + 1,
+                    total_files.max(1),
+                    format!("[{}/{}] 跳过未改动: {rel}", idx + 1, total_files),
+                );
                 continue;
             }
             if prev.remote_rel == remote_rel && prev.encrypted == use_encryption && base_sha == Some(sha.as_str()) {
                 // Local file was NOT modified on this device since last sync, while another device updated WebDAV
                 new_files_map.insert(rel.clone(), prev.clone());
                 skipped += 1;
+                emit_sync_progress(
+                    "webdav",
+                    "push",
+                    idx + 1,
+                    total_files.max(1),
+                    format!("[{}/{}] 保留云端更新: {rel}", idx + 1, total_files),
+                );
                 continue;
             }
             if prev.remote_rel != remote_rel {
@@ -1438,6 +1507,14 @@ pub async fn webdav_push_workspace(
         } else {
             let _ = save_local_version_snapshot(&ws_path, &rel, &plain_bytes, "首次 WebDAV 同步快照", max_v);
         }
+
+        emit_sync_progress(
+            "webdav",
+            "push",
+            idx,
+            total_files.max(1),
+            format!("[{}/{}] 正在上传: {rel}", idx + 1, total_files),
+        );
 
         if let Some((parent, _)) = remote_rel.rsplit_once('/') {
             ensure_remote_dir(
@@ -1486,7 +1563,7 @@ pub async fn webdav_push_workspace(
         new_files_map.insert(
             rel.clone(),
             SyncFileManifestEntry {
-                local_rel: rel,
+                local_rel: rel.clone(),
                 remote_rel,
                 sha256: sha,
                 size: plain_bytes.len() as u64,
@@ -1495,6 +1572,13 @@ pub async fn webdav_push_workspace(
             },
         );
         uploaded += 1;
+        emit_sync_progress(
+            "webdav",
+            "push",
+            idx + 1,
+            total_files.max(1),
+            format!("[{}/{}] 已上传: {rel}", idx + 1, total_files),
+        );
     }
 
     for (rem_rel_key, rem_entry) in &folder_manifest.files {
@@ -1543,6 +1627,7 @@ pub async fn webdav_push_workspace(
     } else {
         format!("已增量同步 {uploaded} 个文件到 WebDAV ({target_remote}，跳过未改动 {skipped} 个)")
     };
+    emit_sync_progress("webdav", "push", 100, 100, &msg);
 
     Ok(WebdavSyncResult {
         uploaded,
@@ -1553,6 +1638,7 @@ pub async fn webdav_push_workspace(
 
 #[tauri::command]
 pub async fn webdav_pull_workspace(
+    app: tauri::AppHandle,
     workspace: String,
     url: String,
     username: String,
@@ -1564,6 +1650,7 @@ pub async fn webdav_pull_workspace(
     categorize_files: Option<bool>,
     max_versions: Option<usize>,
 ) -> Result<WebdavSyncResult, String> {
+    set_sync_app_handle(&app);
     let ws_path = PathBuf::from(workspace.trim());
     if !ws_path.is_dir() {
         return Err("Open a workspace folder before syncing".into());
@@ -1571,6 +1658,14 @@ pub async fn webdav_pull_workspace(
     if url.trim().is_empty() {
         return Err("Configure WebDAV server URL in Settings › Sync first".into());
     }
+
+    emit_sync_progress(
+        "webdav",
+        "pull",
+        5,
+        100,
+        format!("正在连接 WebDAV 服务器 ({url})，读取远程目录清单…"),
+    );
 
     let client = build_client()?;
     let pass_str = passphrase.unwrap_or_default();
@@ -1721,12 +1816,28 @@ pub async fn webdav_pull_workspace(
                         if let Ok(existing_bytes) = std::fs::read(&local_target) {
                             if sha256_hex(&existing_bytes) == me.sha256 {
                                 skipped += 1;
+                                let total_est = remote_to_entry.len().max(downloaded + skipped + 1);
+                                emit_sync_progress(
+                                    "webdav",
+                                    "pull",
+                                    downloaded + skipped,
+                                    total_est,
+                                    format!("跳过未改动: {local_rel}"),
+                                );
                                 continue;
                             }
                         }
                     }
                 }
 
+                let total_est = remote_to_entry.len().max(downloaded + skipped + 1);
+                emit_sync_progress(
+                    "webdav",
+                    "pull",
+                    downloaded + skipped,
+                    total_est,
+                    format!("正在下载: {local_rel}"),
+                );
                 let file_url = build_target_url(&url, &target_remote, &child_rel);
                 let get_resp = client
                     .get(&file_url)
@@ -1802,6 +1913,14 @@ pub async fn webdav_pull_workspace(
                 std::fs::write(&local_target, &plain_bytes)
                     .map_err(|e| format!("Write error for {local_rel}: {e}"))?;
                 downloaded += 1;
+                let total_est = remote_to_entry.len().max(downloaded + skipped);
+                emit_sync_progress(
+                    "webdav",
+                    "pull",
+                    downloaded + skipped,
+                    total_est,
+                    format!("已下载还原: {local_rel}"),
+                );
             }
         }
     }
@@ -1820,6 +1939,7 @@ pub async fn webdav_pull_workspace(
     } else {
         format!("已从 WebDAV ({target_remote}) 同步更新 {downloaded} 个文件（跳过未改动 {skipped} 个{conflict_note}）")
     };
+    emit_sync_progress("webdav", "pull", 100, 100, &msg);
 
     Ok(WebdavSyncResult {
         uploaded: 0,
@@ -1988,13 +2108,21 @@ pub fn cloud_vault_push_options_inner(
 
     let mut files = Vec::new();
     collect_local_files(workspace, workspace, &mut files);
+    let total_files = files.len();
+    emit_sync_progress(
+        "local_vault",
+        "push",
+        0,
+        total_files.max(1),
+        format!("开始同步到网盘目录 ({})，共 {total_files} 个文件…", target_root.display()),
+    );
 
     let mut uploaded = 0usize;
     let mut downloaded = 0usize;
     let mut conflicts = 0usize;
     let mut new_files_map = BTreeMap::new();
 
-    for (rel, full_path) in files {
+    for (idx, (rel, full_path)) in files.into_iter().enumerate() {
         let plain_bytes = std::fs::read(&full_path)
             .map_err(|e| format!("读取 {rel} 失败: {e}"))?;
         let sha = sha256_hex(&plain_bytes);
@@ -2133,7 +2261,7 @@ pub fn cloud_vault_push_options_inner(
         new_files_map.insert(
             rel.clone(),
             SyncFileManifestEntry {
-                local_rel: rel,
+                local_rel: rel.clone(),
                 remote_rel,
                 sha256: sha,
                 size: plain_bytes.len() as u64,
@@ -2142,6 +2270,13 @@ pub fn cloud_vault_push_options_inner(
             },
         );
         uploaded += 1;
+        emit_sync_progress(
+            "local_vault",
+            "push",
+            idx + 1,
+            total_files.max(1),
+            format!("[{}/{}] 已同步: {rel}", idx + 1, total_files),
+        );
     }
 
     // Preserve any files in remote manifest that were created by another device
@@ -2183,13 +2318,15 @@ pub fn cloud_vault_push_options_inner(
     } else {
         String::new()
     };
+    let final_msg = format!(
+        "已{mode_desc} {uploaded} 个文件到网盘专用目录 ({}){conflict_note}",
+        target_root.display()
+    );
+    emit_sync_progress("local_vault", "push", 100, 100, &final_msg);
     Ok(WebdavSyncResult {
         uploaded,
         downloaded,
-        message: format!(
-            "已{mode_desc} {uploaded} 个文件到网盘专用目录 ({}){conflict_note}",
-            target_root.display()
-        ),
+        message: final_msg,
     })
 }
 
@@ -2314,6 +2451,14 @@ pub fn cloud_vault_pull_options_inner(
 
     let mut vault_files = Vec::new();
     collect_vault_files_any(&target_root, &target_root, is_actually_encrypted, &mut vault_files);
+    let total_files = vault_files.len();
+    emit_sync_progress(
+        "local_vault",
+        "pull",
+        0,
+        total_files.max(1),
+        format!("开始从网盘目录拉取 ({})，共 {total_files} 个文件…", target_root.display()),
+    );
 
     let mut downloaded = 0usize;
     let mut conflicts = 0usize;
@@ -2322,7 +2467,7 @@ pub fn cloud_vault_pull_options_inner(
         .map(|b| b.files.clone())
         .unwrap_or_default();
 
-    for (rem_rel_no_enc, file_path) in vault_files {
+    for (idx, (rem_rel_no_enc, file_path)) in vault_files.into_iter().enumerate() {
         let local_rel = remote_to_local
             .get(&rem_rel_no_enc)
             .cloned()
@@ -2407,7 +2552,7 @@ pub fn cloud_vault_pull_options_inner(
         pulled_files_map.insert(
             local_rel.clone(),
             SyncFileManifestEntry {
-                local_rel,
+                local_rel: local_rel.clone(),
                 remote_rel: remote_rel_stored,
                 sha256: remote_sha,
                 size: plain_bytes.len() as u64,
@@ -2416,6 +2561,13 @@ pub fn cloud_vault_pull_options_inner(
             },
         );
         downloaded += 1;
+        emit_sync_progress(
+            "local_vault",
+            "pull",
+            idx + 1,
+            total_files.max(1),
+            format!("[{}/{}] 已还原: {local_rel}", idx + 1, total_files),
+        );
     }
 
     let updated_base = SyncFolderManifest {
@@ -2439,13 +2591,15 @@ pub fn cloud_vault_pull_options_inner(
     } else {
         String::new()
     };
+    let final_msg = format!(
+        "已从网盘专用目录同步还原 {downloaded} 个文件 ({}){conflict_note}",
+        target_root.display()
+    );
+    emit_sync_progress("local_vault", "pull", 100, 100, &final_msg);
     Ok(WebdavSyncResult {
         uploaded: 0,
         downloaded,
-        message: format!(
-            "已从网盘专用目录同步还原 {downloaded} 个文件 ({}){conflict_note}",
-            target_root.display()
-        ),
+        message: final_msg,
     })
 }
 
@@ -2454,6 +2608,7 @@ pub fn cloud_vault_pull_options_inner(
 /// creating a dedicated workspace folder and organizing files into categorized folders.
 #[tauri::command]
 pub async fn cloud_vault_push_workspace(
+    app: tauri::AppHandle,
     workspace: String,
     vault_dir: String,
     passphrase: String,
@@ -2462,6 +2617,7 @@ pub async fn cloud_vault_push_workspace(
     categorize_files: Option<bool>,
     max_versions: Option<usize>,
 ) -> Result<WebdavSyncResult, String> {
+    set_sync_app_handle(&app);
     tauri::async_runtime::spawn_blocking(move || {
         cloud_vault_push_options_inner(
             Path::new(workspace.trim()),
@@ -2481,6 +2637,7 @@ pub async fn cloud_vault_push_workspace(
 /// back into `workspace`, preserving version history before overwriting modified files.
 #[tauri::command]
 pub async fn cloud_vault_pull_workspace(
+    app: tauri::AppHandle,
     workspace: String,
     vault_dir: String,
     passphrase: String,
@@ -2489,6 +2646,7 @@ pub async fn cloud_vault_pull_workspace(
     categorize_files: Option<bool>,
     max_versions: Option<usize>,
 ) -> Result<WebdavSyncResult, String> {
+    set_sync_app_handle(&app);
     tauri::async_runtime::spawn_blocking(move || {
         cloud_vault_pull_options_inner(
             Path::new(workspace.trim()),
@@ -3830,12 +3988,20 @@ async fn baidu_push_folder(
 
     let mut local_files = Vec::new();
     collect_local_files(workspace, workspace, &mut local_files);
+    let total_files = local_files.len();
+    emit_sync_progress(
+        "cloud_api",
+        "push",
+        0,
+        total_files.max(1),
+        format!("已扫描本地工作区，共 {total_files} 个文件待同步到百度网盘…"),
+    );
 
     let mut uploaded = 0usize;
     let mut skipped = 0usize;
     let mut new_files_map = BTreeMap::new();
 
-    for (rel, full_path) in local_files {
+    for (idx, (rel, full_path)) in local_files.into_iter().enumerate() {
         let plain_bytes =
             std::fs::read(&full_path).map_err(|e| format!("读取本地文件 {rel} 失败: {e}"))?;
         let sha = sha256_hex(&plain_bytes);
@@ -3921,7 +4087,7 @@ async fn baidu_push_folder(
         new_files_map.insert(
             rel.clone(),
             SyncFileManifestEntry {
-                local_rel: rel,
+                local_rel: rel.clone(),
                 remote_rel,
                 sha256: sha,
                 size: plain_bytes.len() as u64,
@@ -3930,6 +4096,13 @@ async fn baidu_push_folder(
             },
         );
         uploaded += 1;
+        emit_sync_progress(
+            "cloud_api",
+            "push",
+            idx + 1,
+            total_files.max(1),
+            format!("[{}/{}] 已上传: {rel}", idx + 1, total_files),
+        );
     }
 
     // Preserve any files in remote manifest that were created by another device
@@ -4189,6 +4362,14 @@ async fn baidu_pull_folder(
             std::fs::write(&local_target, &plain_bytes)
                 .map_err(|e| format!("写入本地文件 {local_rel} 失败: {e}"))?;
             downloaded += 1;
+            let total_est = remote_to_entry.len().max(downloaded + skipped);
+            emit_sync_progress(
+                "cloud_api",
+                "pull",
+                downloaded + skipped,
+                total_est,
+                format!("已下载还原: {local_rel}"),
+            );
         }
     }
 
@@ -4259,11 +4440,12 @@ async fn onedrive_push_folder(
     let local_base = read_local_base_manifest(workspace);
     let mut local_files = Vec::new();
     collect_local_files(workspace, workspace, &mut local_files);
+    let total_files = local_files.len();
     let mut uploaded = 0usize;
     let mut skipped = 0usize;
     let mut new_files_map = BTreeMap::new();
 
-    for (rel, full_path) in local_files {
+    for (idx, (rel, full_path)) in local_files.into_iter().enumerate() {
         let plain_bytes = std::fs::read(&full_path).map_err(|e| format!("读取 {rel} 失败: {e}"))?;
         let sha = sha256_hex(&plain_bytes);
         let cat_rel = map_categorized_rel_path(&rel, categorize_files);
@@ -4328,7 +4510,7 @@ async fn onedrive_push_folder(
         new_files_map.insert(
             rel.clone(),
             SyncFileManifestEntry {
-                local_rel: rel,
+                local_rel: rel.clone(),
                 remote_rel,
                 sha256: sha,
                 size: plain_bytes.len() as u64,
@@ -4337,6 +4519,13 @@ async fn onedrive_push_folder(
             },
         );
         uploaded += 1;
+        emit_sync_progress(
+            "cloud_api",
+            "push",
+            idx + 1,
+            total_files.max(1),
+            format!("[{}/{}] 已上传: {rel}", idx + 1, total_files),
+        );
     }
 
     manifest.updated_at = now_unix_secs();
@@ -4476,6 +4665,13 @@ async fn onedrive_pull_folder(
             max_versions,
         );
         downloaded += 1;
+        emit_sync_progress(
+            "cloud_api",
+            "pull",
+            downloaded + skipped,
+            manifest.files.len().max(1),
+            format!("已下载还原: {local_rel}"),
+        );
     }
 
     write_local_base_manifest(workspace, &manifest);
@@ -4547,11 +4743,12 @@ async fn dropbox_push_folder(
     let local_base = read_local_base_manifest(workspace);
     let mut local_files = Vec::new();
     collect_local_files(workspace, workspace, &mut local_files);
+    let total_files = local_files.len();
     let mut uploaded = 0usize;
     let mut skipped = 0usize;
     let mut new_files_map = BTreeMap::new();
 
-    for (rel, full_path) in local_files {
+    for (idx, (rel, full_path)) in local_files.into_iter().enumerate() {
         let plain_bytes = std::fs::read(&full_path).map_err(|e| format!("读取 {rel} 失败: {e}"))?;
         let sha = sha256_hex(&plain_bytes);
         let cat_rel = map_categorized_rel_path(&rel, categorize_files);
@@ -4620,7 +4817,7 @@ async fn dropbox_push_folder(
         new_files_map.insert(
             rel.clone(),
             SyncFileManifestEntry {
-                local_rel: rel,
+                local_rel: rel.clone(),
                 remote_rel,
                 sha256: sha,
                 size: plain_bytes.len() as u64,
@@ -4629,6 +4826,13 @@ async fn dropbox_push_folder(
             },
         );
         uploaded += 1;
+        emit_sync_progress(
+            "cloud_api",
+            "push",
+            idx + 1,
+            total_files.max(1),
+            format!("[{}/{}] 已上传: {rel}", idx + 1, total_files),
+        );
     }
 
     manifest.updated_at = now_unix_secs();
@@ -4770,6 +4974,13 @@ async fn dropbox_pull_folder(
             max_versions,
         );
         downloaded += 1;
+        emit_sync_progress(
+            "cloud_api",
+            "pull",
+            downloaded + skipped,
+            manifest.files.len().max(1),
+            format!("已下载还原: {local_rel}"),
+        );
     }
 
     write_local_base_manifest(workspace, &manifest);
@@ -4965,12 +5176,13 @@ async fn alipan_push_folder(
     let local_base = read_local_base_manifest(workspace);
     let mut local_files = Vec::new();
     collect_local_files(workspace, workspace, &mut local_files);
+    let total_files = local_files.len();
     let mut uploaded = 0usize;
     let mut skipped = 0usize;
     let mut new_files_map = BTreeMap::new();
     let mut folder_cache: BTreeMap<String, String> = BTreeMap::new();
 
-    for (rel, full_path) in local_files {
+    for (idx, (rel, full_path)) in local_files.into_iter().enumerate() {
         let plain_bytes = std::fs::read(&full_path).map_err(|e| format!("读取 {rel} 失败: {e}"))?;
         let sha = sha256_hex(&plain_bytes);
         let cat_rel = map_categorized_rel_path(&rel, categorize_files);
@@ -5006,7 +5218,7 @@ async fn alipan_push_folder(
 
         let full_remote = format!("{ws_remote_root}/{remote_rel}");
         let (parent_dir, fname) = match full_remote.rfind('/') {
-            Some(idx) => (&full_remote[..idx], &full_remote[idx + 1..]),
+            Some(slash_pos) => (&full_remote[..slash_pos], &full_remote[slash_pos + 1..]),
             None => (ws_remote_root.as_str(), full_remote.as_str()),
         };
         let parent_id = if let Some(cached) = folder_cache.get(parent_dir) {
@@ -5021,7 +5233,7 @@ async fn alipan_push_folder(
         new_files_map.insert(
             rel.clone(),
             SyncFileManifestEntry {
-                local_rel: rel,
+                local_rel: rel.clone(),
                 remote_rel,
                 sha256: sha,
                 size: plain_bytes.len() as u64,
@@ -5030,6 +5242,13 @@ async fn alipan_push_folder(
             },
         );
         uploaded += 1;
+        emit_sync_progress(
+            "cloud_api",
+            "push",
+            idx + 1,
+            total_files.max(1),
+            format!("[{}/{}] 已上传: {rel}", idx + 1, total_files),
+        );
     }
 
     manifest.updated_at = now_unix_secs();
@@ -5137,7 +5356,7 @@ async fn alipan_pull_folder(
 
         let full_remote = format!("{ws_remote_root}/{}", entry.remote_rel);
         let (parent_dir, fname) = match full_remote.rfind('/') {
-            Some(idx) => (&full_remote[..idx], &full_remote[idx + 1..]),
+            Some(slash_pos) => (&full_remote[..slash_pos], &full_remote[slash_pos + 1..]),
             None => (ws_remote_root.as_str(), full_remote.as_str()),
         };
         let parent_id = if let Some(cached) = folder_cache.get(parent_dir) {
@@ -5172,6 +5391,13 @@ async fn alipan_pull_folder(
             max_versions,
         );
         downloaded += 1;
+        emit_sync_progress(
+            "cloud_api",
+            "pull",
+            downloaded + skipped,
+            manifest.files.len().max(1),
+            format!("已下载还原: {local_rel}"),
+        );
     }
 
     write_local_base_manifest(workspace, &manifest);
@@ -5432,12 +5658,13 @@ async fn gdrive_push_folder(
     let local_base = read_local_base_manifest(workspace);
     let mut local_files = Vec::new();
     collect_local_files(workspace, workspace, &mut local_files);
+    let total_files = local_files.len();
     let mut uploaded = 0usize;
     let mut skipped = 0usize;
     let mut new_files_map = BTreeMap::new();
     let mut folder_cache: BTreeMap<String, String> = BTreeMap::new();
 
-    for (rel, full_path) in local_files {
+    for (idx, (rel, full_path)) in local_files.into_iter().enumerate() {
         let plain_bytes = std::fs::read(&full_path).map_err(|e| format!("读取 {rel} 失败: {e}"))?;
         let sha = sha256_hex(&plain_bytes);
         let cat_rel = map_categorized_rel_path(&rel, categorize_files);
@@ -5473,7 +5700,7 @@ async fn gdrive_push_folder(
 
         let full_remote = format!("{ws_remote_root}/{remote_rel}");
         let (parent_dir, fname) = match full_remote.rfind('/') {
-            Some(idx) => (&full_remote[..idx], &full_remote[idx + 1..]),
+            Some(slash_pos) => (&full_remote[..slash_pos], &full_remote[slash_pos + 1..]),
             None => (ws_remote_root.as_str(), full_remote.as_str()),
         };
         let parent_id = if let Some(cached) = folder_cache.get(parent_dir) {
@@ -5488,7 +5715,7 @@ async fn gdrive_push_folder(
         new_files_map.insert(
             rel.clone(),
             SyncFileManifestEntry {
-                local_rel: rel,
+                local_rel: rel.clone(),
                 remote_rel,
                 sha256: sha,
                 size: plain_bytes.len() as u64,
@@ -5497,6 +5724,13 @@ async fn gdrive_push_folder(
             },
         );
         uploaded += 1;
+        emit_sync_progress(
+            "cloud_api",
+            "push",
+            idx + 1,
+            total_files.max(1),
+            format!("[{}/{}] 已上传: {rel}", idx + 1, total_files),
+        );
     }
 
     manifest.updated_at = now_unix_secs();
@@ -5601,7 +5835,7 @@ async fn gdrive_pull_folder(
 
         let full_remote = format!("{ws_remote_root}/{}", entry.remote_rel);
         let (parent_dir, fname) = match full_remote.rfind('/') {
-            Some(idx) => (&full_remote[..idx], &full_remote[idx + 1..]),
+            Some(slash_pos) => (&full_remote[..slash_pos], &full_remote[slash_pos + 1..]),
             None => (ws_remote_root.as_str(), full_remote.as_str()),
         };
         let parent_id = if let Some(cached) = folder_cache.get(parent_dir) {
@@ -5636,6 +5870,13 @@ async fn gdrive_pull_folder(
             max_versions,
         );
         downloaded += 1;
+        emit_sync_progress(
+            "cloud_api",
+            "pull",
+            downloaded + skipped,
+            manifest.files.len().max(1),
+            format!("已下载还原: {local_rel}"),
+        );
     }
 
     write_local_base_manifest(workspace, &manifest);
@@ -5943,11 +6184,12 @@ async fn r2_push_folder(
     let local_base = read_local_base_manifest(workspace);
     let mut local_files = Vec::new();
     collect_local_files(workspace, workspace, &mut local_files);
+    let total_files = local_files.len();
     let mut uploaded = 0usize;
     let mut skipped = 0usize;
     let mut new_files_map = BTreeMap::new();
 
-    for (rel, full_path) in local_files {
+    for (idx, (rel, full_path)) in local_files.into_iter().enumerate() {
         let plain_bytes = std::fs::read(&full_path).map_err(|e| format!("读取 {rel} 失败: {e}"))?;
         let sha = sha256_hex(&plain_bytes);
         let cat_rel = map_categorized_rel_path(&rel, categorize_files);
@@ -5993,7 +6235,7 @@ async fn r2_push_folder(
         new_files_map.insert(
             rel.clone(),
             SyncFileManifestEntry {
-                local_rel: rel,
+                local_rel: rel.clone(),
                 remote_rel,
                 sha256: sha,
                 size: plain_bytes.len() as u64,
@@ -6002,6 +6244,13 @@ async fn r2_push_folder(
             },
         );
         uploaded += 1;
+        emit_sync_progress(
+            "cloud_api",
+            "push",
+            idx + 1,
+            total_files.max(1),
+            format!("[{}/{}] 已上传: {rel}", idx + 1, total_files),
+        );
     }
 
     manifest.updated_at = now_unix_secs();
@@ -6118,6 +6367,13 @@ async fn r2_pull_folder(
             max_versions,
         );
         downloaded += 1;
+        emit_sync_progress(
+            "cloud_api",
+            "pull",
+            downloaded + skipped,
+            manifest.files.len().max(1),
+            format!("已下载还原: {local_rel}"),
+        );
     }
 
     write_local_base_manifest(workspace, &manifest);
@@ -6138,6 +6394,7 @@ async fn r2_pull_folder(
 
 #[tauri::command]
 pub async fn cloud_api_push_workspace(
+    app: tauri::AppHandle,
     workspace: String,
     provider: String,
     access_token: String,
@@ -6149,6 +6406,7 @@ pub async fn cloud_api_push_workspace(
     categorize_files: Option<bool>,
     max_versions: Option<usize>,
 ) -> Result<WebdavSyncResult, String> {
+    set_sync_app_handle(&app);
     let prov = provider.trim().to_ascii_lowercase();
     let token = if prov == "r2" {
         access_token.trim().to_string()
@@ -6162,6 +6420,13 @@ pub async fn cloud_api_push_workspace(
     if !ws.is_dir() {
         return Err("请先打开一个笔记文件夹 (Open a workspace folder first)".into());
     }
+    emit_sync_progress(
+        "cloud_api",
+        "push",
+        2,
+        100,
+        format!("正在连接 {} 开放平台，准备扫描并上传文件…", prov),
+    );
     let client = build_client()?;
     let mode = sync_mode.unwrap_or_else(|| "folder".to_string());
     let use_enc = encrypted.unwrap_or(false);
@@ -6170,9 +6435,9 @@ pub async fn cloud_api_push_workspace(
     let max_v = max_versions.unwrap_or(DEFAULT_MAX_VERSIONS);
 
     if mode != "bundle" {
-        match prov.as_str() {
+        let res = match prov.as_str() {
             "baidu" => {
-                return baidu_push_folder(
+                baidu_push_folder(
                     &client,
                     &token,
                     &ws,
@@ -6183,10 +6448,10 @@ pub async fn cloud_api_push_workspace(
                     cat_files,
                     max_v,
                 )
-                .await;
+                .await
             }
             "alipan" => {
-                return alipan_push_folder(
+                alipan_push_folder(
                     &client,
                     &token,
                     &ws,
@@ -6197,10 +6462,10 @@ pub async fn cloud_api_push_workspace(
                     cat_files,
                     max_v,
                 )
-                .await;
+                .await
             }
             "onedrive" => {
-                return onedrive_push_folder(
+                onedrive_push_folder(
                     &client,
                     &token,
                     &ws,
@@ -6211,10 +6476,10 @@ pub async fn cloud_api_push_workspace(
                     cat_files,
                     max_v,
                 )
-                .await;
+                .await
             }
             "dropbox" => {
-                return dropbox_push_folder(
+                dropbox_push_folder(
                     &client,
                     &token,
                     &ws,
@@ -6225,10 +6490,10 @@ pub async fn cloud_api_push_workspace(
                     cat_files,
                     max_v,
                 )
-                .await;
+                .await
             }
             "gdrive" => {
-                return gdrive_push_folder(
+                gdrive_push_folder(
                     &client,
                     &token,
                     &ws,
@@ -6239,10 +6504,10 @@ pub async fn cloud_api_push_workspace(
                     cat_files,
                     max_v,
                 )
-                .await;
+                .await
             }
             "r2" => {
-                return r2_push_folder(
+                r2_push_folder(
                     &client,
                     &token,
                     &ws,
@@ -6253,18 +6518,28 @@ pub async fn cloud_api_push_workspace(
                     cat_files,
                     max_v,
                 )
-                .await;
+                .await
             }
-            _ => {}
-        }
+            other => Err(format!("不支持的网盘开放平台类型: {other}")),
+        }?;
+        emit_sync_progress("cloud_api", "push", 100, 100, &res.message);
+        return Ok(res);
     }
 
+    emit_sync_progress("cloud_api", "push", 25, 100, "正在打包并加密工作区文件…");
     let pass = passphrase.clone();
     let (bundle, count) =
         tauri::async_runtime::spawn_blocking(move || pack_encrypted_vault_bundle(&ws, &pass))
             .await
             .map_err(|e| format!("join: {e}"))??;
 
+    emit_sync_progress(
+        "cloud_api",
+        "push",
+        60,
+        100,
+        format!("正在上传加密归档包 ({count} 个文件)…"),
+    );
     let target_remote = resolve_remote_workspace_dir(&prov, &remote_path, Path::new(workspace.trim()), auto_sub);
     match prov.as_str() {
         "baidu" => baidu_upload_bundle(&client, &token, &target_remote, bundle).await?,
@@ -6276,26 +6551,29 @@ pub async fn cloud_api_push_workspace(
         other => return Err(format!("不支持的网盘开放平台类型: {other}")),
     }
 
+    let final_msg = format!(
+        "已将 {count} 个文件打包并端到端加密上传到 {} ({target_remote}/{BUNDLE_FILENAME})",
+        match prov.as_str() {
+            "baidu" => "百度网盘",
+            "alipan" => "阿里云盘",
+            "onedrive" => "OneDrive",
+            "dropbox" => "Dropbox",
+            "gdrive" => "Google Drive",
+            "r2" => "Cloudflare R2",
+            _ => &prov,
+        }
+    );
+    emit_sync_progress("cloud_api", "push", 100, 100, &final_msg);
     Ok(WebdavSyncResult {
         uploaded: count,
         downloaded: 0,
-        message: format!(
-            "已将 {count} 个文件打包并端到端加密上传到 {} ({target_remote}/{BUNDLE_FILENAME})",
-            match prov.as_str() {
-                "baidu" => "百度网盘",
-                "alipan" => "阿里云盘",
-                "onedrive" => "OneDrive",
-                "dropbox" => "Dropbox",
-                "gdrive" => "Google Drive",
-                "r2" => "Cloudflare R2",
-                _ => &prov,
-            }
-        ),
+        message: final_msg,
     })
 }
 
 #[tauri::command]
 pub async fn cloud_api_pull_workspace(
+    app: tauri::AppHandle,
     workspace: String,
     provider: String,
     access_token: String,
@@ -6307,6 +6585,7 @@ pub async fn cloud_api_pull_workspace(
     categorize_files: Option<bool>,
     max_versions: Option<usize>,
 ) -> Result<WebdavSyncResult, String> {
+    set_sync_app_handle(&app);
     let prov = provider.trim().to_ascii_lowercase();
     let token = if prov == "r2" {
         access_token.trim().to_string()
@@ -6320,6 +6599,13 @@ pub async fn cloud_api_pull_workspace(
     if !ws.is_dir() {
         return Err("请先打开一个笔记文件夹 (Open a workspace folder first)".into());
     }
+    emit_sync_progress(
+        "cloud_api",
+        "pull",
+        5,
+        100,
+        format!("正在连接 {} 开放平台，读取远程同步清单…", prov),
+    );
     let client = build_client()?;
     let mode = sync_mode.unwrap_or_else(|| "folder".to_string());
     let use_enc = encrypted.unwrap_or(false);
@@ -6328,9 +6614,9 @@ pub async fn cloud_api_pull_workspace(
     let max_v = max_versions.unwrap_or(DEFAULT_MAX_VERSIONS);
 
     if mode != "bundle" {
-        match prov.as_str() {
+        let res = match prov.as_str() {
             "baidu" => {
-                return baidu_pull_folder(
+                baidu_pull_folder(
                     &client,
                     &token,
                     &ws,
@@ -6341,10 +6627,10 @@ pub async fn cloud_api_pull_workspace(
                     cat_files,
                     max_v,
                 )
-                .await;
+                .await
             }
             "alipan" => {
-                return alipan_pull_folder(
+                alipan_pull_folder(
                     &client,
                     &token,
                     &ws,
@@ -6355,10 +6641,10 @@ pub async fn cloud_api_pull_workspace(
                     cat_files,
                     max_v,
                 )
-                .await;
+                .await
             }
             "onedrive" => {
-                return onedrive_pull_folder(
+                onedrive_pull_folder(
                     &client,
                     &token,
                     &ws,
@@ -6369,10 +6655,10 @@ pub async fn cloud_api_pull_workspace(
                     cat_files,
                     max_v,
                 )
-                .await;
+                .await
             }
             "dropbox" => {
-                return dropbox_pull_folder(
+                dropbox_pull_folder(
                     &client,
                     &token,
                     &ws,
@@ -6383,10 +6669,10 @@ pub async fn cloud_api_pull_workspace(
                     cat_files,
                     max_v,
                 )
-                .await;
+                .await
             }
             "gdrive" => {
-                return gdrive_pull_folder(
+                gdrive_pull_folder(
                     &client,
                     &token,
                     &ws,
@@ -6397,10 +6683,10 @@ pub async fn cloud_api_pull_workspace(
                     cat_files,
                     max_v,
                 )
-                .await;
+                .await
             }
             "r2" => {
-                return r2_pull_folder(
+                r2_pull_folder(
                     &client,
                     &token,
                     &ws,
@@ -6411,13 +6697,16 @@ pub async fn cloud_api_pull_workspace(
                     cat_files,
                     max_v,
                 )
-                .await;
+                .await
             }
-            _ => {}
-        }
+            other => Err(format!("不支持的网盘开放平台类型: {other}")),
+        }?;
+        emit_sync_progress("cloud_api", "pull", 100, 100, &res.message);
+        return Ok(res);
     }
 
     let target_remote = resolve_remote_workspace_dir(&prov, &remote_path, &ws, auto_sub);
+    emit_sync_progress("cloud_api", "pull", 40, 100, "正在下载远程加密归档包…");
     let bundle = match prov.as_str() {
         "baidu" => baidu_download_bundle(&client, &token, &target_remote).await?,
         "alipan" => alipan_download_bundle(&client, &token, &target_remote).await?,
@@ -6428,6 +6717,7 @@ pub async fn cloud_api_pull_workspace(
         other => return Err(format!("不支持的网盘开放平台类型: {other}")),
     };
 
+    emit_sync_progress("cloud_api", "pull", 80, 100, "正在解密并解包还原本地文件…");
     let pass = passphrase.clone();
     let extracted = tauri::async_runtime::spawn_blocking(move || {
         unpack_encrypted_vault_bundle(&ws, &bundle, &pass)
@@ -6435,21 +6725,23 @@ pub async fn cloud_api_pull_workspace(
     .await
     .map_err(|e| format!("join: {e}"))??;
 
+    let final_msg = format!(
+        "已从 {} 下载加密包并解密还原 {extracted} 个文件",
+        match prov.as_str() {
+            "baidu" => "百度网盘",
+            "alipan" => "阿里云盘",
+            "onedrive" => "OneDrive",
+            "dropbox" => "Dropbox",
+            "gdrive" => "Google Drive",
+            "r2" => "Cloudflare R2",
+            _ => &prov,
+        }
+    );
+    emit_sync_progress("cloud_api", "pull", 100, 100, &final_msg);
     Ok(WebdavSyncResult {
         uploaded: 0,
         downloaded: extracted,
-        message: format!(
-            "已从 {} 下载加密包并解密还原 {extracted} 个文件",
-            match prov.as_str() {
-                "baidu" => "百度网盘",
-                "alipan" => "阿里云盘",
-                "onedrive" => "OneDrive",
-                "dropbox" => "Dropbox",
-                "gdrive" => "Google Drive",
-                "r2" => "Cloudflare R2",
-                _ => &prov,
-            }
-        ),
+        message: final_msg,
     })
 }
 

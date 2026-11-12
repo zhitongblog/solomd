@@ -230,6 +230,9 @@ ndk-context = "0.1"
 # tree via tauri's GTK stack; we only name it so we can call GDBus directly.
 [target.'cfg(target_os = "linux")'.dependencies]
 gio = "0.18"
+# #541 — Enable Wayland data-control protocol on Linux so arboard can access
+# Wayland clipboard selections directly where supported by the compositor.
+arboard = { version = "3", features = ["wayland-data-control"] }
 
 [dev-dependencies]
 tempfile = "3"

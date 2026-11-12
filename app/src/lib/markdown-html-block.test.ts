@@ -47,3 +47,23 @@ test('#500 T08-9: terminates a GFM pipe table when followed immediately by a non
   assert.ok(html.includes('</tbody>\n</table>'));
   assert.match(html, /<p[^>]*>普通段落文字（没有空行也没有竖线）<\/p>/);
 });
+
+test('#546: preserves leading full-width ideographic spaces (U+3000) in paragraphs, blockquotes, and lists', () => {
+  const md = [
+    '　　　　李玲：世界上已经没有人会爱我了。',
+    '李玲愤然冲出屋子。',
+    '',
+    '　　第二段首行缩进两格。',
+    '',
+    '> 　　引用中的全角缩进',
+    '',
+    '- 　　列表项中的全角缩进',
+  ].join('\n');
+
+  const html = renderMarkdown(md);
+  assert.match(html, /<p[^>]*>　　　　李玲：世界上已经没有人会爱我了。<br>\n李玲愤然冲出屋子。<\/p>/);
+  assert.match(html, /<p[^>]*>　　第二段首行缩进两格。<\/p>/);
+  assert.match(html, /<blockquote[^>]*>\s*<p[^>]*>　　引用中的全角缩进<\/p>\s*<\/blockquote>/);
+  assert.match(html, /<li[^>]*>　　列表项中的全角缩进<\/li>/);
+});
+

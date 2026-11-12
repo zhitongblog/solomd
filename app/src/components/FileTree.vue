@@ -1679,6 +1679,14 @@ function isDeleteChord(e: KeyboardEvent): boolean {
 
 function onTreeKey(e: KeyboardEvent) {
   if (e.defaultPrevented || e.isComposing || e.keyCode === 229) return;
+  // #397 / #543 — When Quick Look is open, Space always closes it regardless of
+  // which element inside the modal or tree currently holds focus.
+  if (quickPreviewNode.value && e.key === ' ' && !e.altKey && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+    e.preventDefault();
+    e.stopPropagation();
+    closeQuickPreview();
+    return;
+  }
   const target = e.target as HTMLElement | null;
   // The inline rename box, the filter popover's inputs… type normally there.
   if (target?.closest('input, textarea, select, [contenteditable=""], [contenteditable="true"]')) return;
@@ -1699,12 +1707,6 @@ function onTreeKey(e: KeyboardEvent) {
   }
   // #397 — Space on a selected file opens Quick Look preview (like macOS Finder).
   if (e.key === ' ' && !e.altKey && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
-    if (quickPreviewNode.value) {
-      e.preventDefault();
-      e.stopPropagation();
-      quickPreviewNode.value = null;
-      return;
-    }
     const sel = selected.value;
     const node = sel && !sel.isDir ? findNode(sel.path) : null;
     if (node) {
@@ -1773,6 +1775,14 @@ async function openQuickPreview(node: Node) {
   } catch (err) {
     toasts.error(String(err));
   }
+}
+
+function closeQuickPreview() {
+  if (!quickPreviewNode.value) return;
+  quickPreviewNode.value = null;
+  void nextTick(() => {
+    treeEl.value?.focus({ preventScroll: true });
+  });
 }
 
 async function openQuickPreviewInEditor() {
@@ -1919,6 +1929,22 @@ function onWindowClick() {
   closeCtx();
 }
 function onWindowKey(e: KeyboardEvent) {
+  if (
+    !e.defaultPrevented &&
+    quickPreviewNode.value &&
+    e.key === ' ' &&
+    !e.altKey &&
+    !e.shiftKey &&
+    !e.ctrlKey &&
+    !e.metaKey &&
+    !e.isComposing &&
+    e.keyCode !== 229
+  ) {
+    e.preventDefault();
+    e.stopPropagation();
+    closeQuickPreview();
+    return;
+  }
   if (e.key === 'Escape') {
     closeCtx();
     closeSwitcher();
@@ -2399,7 +2425,7 @@ onBeforeUnmount(() => {
       :model-value="!!quickPreviewNode"
       :title="quickPreviewNode?.name ?? ''"
       width="680px"
-      @update:model-value="quickPreviewNode = null"
+      @update:model-value="closeQuickPreview"
     >
       <div v-if="quickPreviewNode" class="ftree__quicklook">
         <div
@@ -2421,7 +2447,7 @@ onBeforeUnmount(() => {
         <pre v-else class="ftree__quicklook-text">{{ quickPreviewNode.text }}</pre>
       </div>
       <template #footer>
-        <DsButton variant="ghost" @click="quickPreviewNode = null">
+        <DsButton variant="ghost" @click="closeQuickPreview">
           {{ settings.language?.startsWith('zh') ? '关闭' : 'Close' }}
         </DsButton>
         <DsButton variant="primary" @click="openQuickPreviewInEditor">

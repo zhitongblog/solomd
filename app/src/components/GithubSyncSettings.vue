@@ -315,18 +315,74 @@ async function unlink() {
   }
 }
 
+const gitProgressActive = ref(false);
+const gitProgressPercent = ref(0);
+const gitProgressDirection = ref<'push' | 'pull' | ''>('');
+const gitProgressLogs = ref<string[]>([]);
+let gitProgressTimer: number | null = null;
+
+function fmtGitLogTime(): string {
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  const ss = String(now.getSeconds()).padStart(2, '0');
+  return `${hh}:${mm}:${ss}`;
+}
+
+function appendGitLog(msg: string) {
+  if (!msg) return;
+  gitProgressLogs.value.push(`[${fmtGitLogTime()}] ${msg}`);
+  if (gitProgressLogs.value.length > 100) {
+    gitProgressLogs.value.splice(0, gitProgressLogs.value.length - 100);
+  }
+}
+
+function startGitProgress(dir: 'push' | 'pull', startMsg: string) {
+  if (gitProgressTimer !== null) {
+    window.clearInterval(gitProgressTimer);
+    gitProgressTimer = null;
+  }
+  gitProgressActive.value = true;
+  gitProgressPercent.value = 10;
+  gitProgressDirection.value = dir;
+  gitProgressLogs.value = [];
+  appendGitLog(startMsg);
+  gitProgressTimer = window.setInterval(() => {
+    if (gitProgressPercent.value < 88) {
+      gitProgressPercent.value = Math.min(88, gitProgressPercent.value + 7);
+    }
+  }, 350);
+}
+
+function finishGitProgress(ok: boolean, finalMsg: string) {
+  if (gitProgressTimer !== null) {
+    window.clearInterval(gitProgressTimer);
+    gitProgressTimer = null;
+  }
+  gitProgressActive.value = false;
+  if (ok) {
+    gitProgressPercent.value = 100;
+  }
+  appendGitLog(finalMsg);
+}
+
 async function pushNow() {
   if (!workspace.currentFolder) return;
   if (!commitMsg.value.trim()) {
     toasts.warning(t('githubSync.commitMsgEmptyError'));
     return;
   }
+  const msgText = commitMsg.value.trim();
+  startGitProgress('push', `${t('githubSync.pushing')} (${linkedRepoLabel.value || workspace.currentFolder}) — "${msgText}"`);
   try {
-    await sync.push(workspace.currentFolder, commitMsg.value.trim());
+    await sync.push(workspace.currentFolder, msgText);
     commitMsg.value = '';
-    toasts.success(tSync('pushedToast'));
+    const okMsg = tSync('pushedToast');
+    finishGitProgress(true, `✅ ${okMsg}`);
+    toasts.success(okMsg);
   } catch (e) {
     const errType = classifyPushError(e);
+    finishGitProgress(false, `❌ ${t('githubSync.pushFailed')}: ${e}`);
     if (errType === 'protected-branch') {
       toasts.warning(t('githubSync.pushBlockedByBranchProtection'), 8000);
     } else if (errType === 'non-fast-forward') {
@@ -339,17 +395,25 @@ async function pushNow() {
 
 async function pullNow() {
   if (!workspace.currentFolder) return;
+  startGitProgress('pull', `${t('githubSync.pulling')} (${linkedRepoLabel.value || workspace.currentFolder})…`);
   try {
     const r = await sync.pull(workspace.currentFolder);
     if (r.kind === 'up_to_date') {
-      toasts.info(t('githubSync.upToDate'));
+      const msg = t('githubSync.upToDate');
+      finishGitProgress(true, `✅ ${msg}`);
+      toasts.info(msg);
     } else if (r.kind === 'conflicts') {
-      toasts.warning(t('githubSync.pullConflicts', { n: String(r.conflicts.length) }));
+      const msg = t('githubSync.pullConflicts', { n: String(r.conflicts.length) });
+      finishGitProgress(false, `⚠️ ${msg}`);
+      toasts.warning(msg);
     } else {
-      toasts.success(tSync('pulledToast'));
+      const msg = tSync('pulledToast');
+      finishGitProgress(true, `✅ ${msg}`);
+      toasts.success(msg);
       window.dispatchEvent(new CustomEvent('solomd:remote-pulled'));
     }
   } catch (e) {
+    finishGitProgress(false, `❌ ${t('githubSync.pullFailed')}: ${e}`);
     const errType = classifyPullError(e);
     if (errType === 'auth') {
       // Handled by store.tokenInvalid flag → reconnect banner
@@ -968,6 +1032,34 @@ const linkedRepoLabel = computed(() => {
         </button>
       </div>
 
+      <div
+        v-if="gitProgressActive || gitProgressLogs.length > 0"
+        class="ghs-progress-card"
+      >
+        <div class="ghs-progress-head">
+          <span>
+            {{
+              gitProgressActive
+                ? (gitProgressDirection === 'pull' ? t('githubSync.pulling') : t('githubSync.pushing'))
+                : (settings.language === 'zh' ? '📋 Git 同步进度与日志' : '📋 Git Sync Progress & Log')
+            }}
+          </span>
+          <span class="ghs-progress-pct">{{ gitProgressPercent }}%</span>
+        </div>
+        <div class="ghs-progress-track">
+          <div
+            class="ghs-progress-fill"
+            :class="{ 'ghs-progress-fill--active': gitProgressActive }"
+            :style="{ width: `${Math.max(2, Math.min(100, gitProgressPercent))}%` }"
+          />
+        </div>
+        <div class="ghs-log-box">
+          <div v-for="(line, i) in gitProgressLogs" :key="i" class="ghs-log-line">
+            {{ line }}
+          </div>
+        </div>
+      </div>
+
       <!-- v3.0 — upgrade plaintext-linked workspace to E2EE. Closed-by-default
            card; clicking expands to passphrase + confirmation form.
            This matches the user mental model: "I'm linked already, I want
@@ -1437,5 +1529,75 @@ const linkedRepoLabel = computed(() => {
   font-size: 11px;
   color: var(--text-muted);
   line-height: 1.6;
+}
+.ghs-progress-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated, rgba(127, 127, 127, 0.06));
+}
+.ghs-progress-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+}
+.ghs-progress-pct {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.ghs-progress-track {
+  width: 100%;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(127, 127, 127, 0.18);
+  overflow: hidden;
+}
+.ghs-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent, #3b82f6);
+  transition: width 0.2s ease;
+}
+.ghs-progress-fill--active {
+  background: linear-gradient(
+    90deg,
+    var(--accent, #3b82f6) 0%,
+    rgba(96, 165, 250, 0.95) 50%,
+    var(--accent, #3b82f6) 100%
+  );
+  background-size: 200% 100%;
+  animation: ghs-shimmer 1.5s linear infinite;
+}
+@keyframes ghs-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+.ghs-log-box {
+  max-height: 110px;
+  overflow-y: auto;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: var(--bg-primary, rgba(0, 0, 0, 0.12));
+  border: 1px solid var(--border);
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+.ghs-log-line {
+  word-break: break-all;
 }
 </style>

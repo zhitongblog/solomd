@@ -7,7 +7,7 @@ import { useTabsStore } from '../stores/tabs';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useToastsStore } from '../stores/toasts';
 import { useExport } from '../composables/useExport';
-import { revealInFileManager } from '../lib/reveal-in-file-manager';
+import { openDirectoryInFileManager } from '../lib/reveal-in-file-manager';
 
 const props = defineProps<{
   open: boolean;
@@ -116,12 +116,17 @@ async function pickOutputDirectory() {
 }
 
 async function openOutputDirectory() {
-  const target = lastExportedPath.value || outputDir.value.trim();
-  if (!target) {
+  const dir = outputDir.value.trim();
+  if (!dir) {
     toasts.warning(isZh.value ? '请先选择输出目录' : 'Please select an output directory first');
     return;
   }
-  await revealInFileManager(target);
+  try {
+    await invoke('fs_create_dir', { path: dir }).catch(() => {});
+    await openDirectoryInFileManager(dir);
+  } catch (e) {
+    toasts.error(String(e));
+  }
 }
 
 interface DirItem {
@@ -305,15 +310,6 @@ async function runCustomExport() {
             />
             <button type="button" class="custom-export__btn" @click="pickOutputDirectory">
               {{ isZh ? '浏览…' : 'Browse…' }}
-            </button>
-            <button
-              type="button"
-              class="custom-export__btn"
-              :disabled="!outputDir.trim()"
-              :title="isZh ? '在资源管理器 / Finder 中打开输出目录' : 'Open output directory in file manager'"
-              @click="openOutputDirectory"
-            >
-              {{ isZh ? '📂 打开输出目录' : '📂 Open Output Dir' }}
             </button>
           </div>
         </div>
