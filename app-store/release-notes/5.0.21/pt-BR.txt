@@ -1,0 +1,5 @@
+SoloMD 5.0.21:
+• Virtual Workspace with Aliases & Notes (#205): Aggregate scattered Markdown files across projects (e.g. AGENTS.md, SOUL.md) into a unified sidebar group with automatic duplicate-name disambiguation, custom aliases, and notes.
+• TextPack Self-Contained Archives & Merged Book Export (#505, #359): Export and open .textpack / .textbundle self-contained Markdown archives with bundled assets; merge an entire folder of notes into a single compiled document with a master table of contents.
+• Native Markmap Mindmaps, Excalidraw & Generic Attachments (#363, #152, #418): Render ```markmap mindmaps and ```excalidraw scenes natively in Live Edit and Preview; attach any file into _assets/ with a Markdown link; drag headings in the Outline to reorder sections.
+• Vim Auto Input-Method Switch & Custom .vimrc Mappings (#492): Automatically switch back to ASCII input when leaving Insert mode and configure custom inoremap/nnoremap/vnoremap key mappings.
