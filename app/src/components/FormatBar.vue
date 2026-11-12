@@ -167,6 +167,20 @@ const MERMAID_TEMPLATES: MermaidTemplate[] = [
     fence: 'markmap',
     code: '# 核心主题\n## 分支一\n- 子节点 A\n- 子节点 B\n## 分支二\n- 子节点 C',
   },
+  {
+    id: 'whiteboard',
+    labelZh: '交互式画板 / 白板 (Whiteboard)',
+    labelEn: 'Interactive Whiteboard (tldraw)',
+    fence: 'tldraw id="board-1" height="420" width=""',
+    code: '{}',
+  },
+  {
+    id: 'excalidraw',
+    labelZh: 'Excalidraw 绘图 (```excalidraw)',
+    labelEn: 'Excalidraw Diagram (```excalidraw)',
+    fence: 'excalidraw',
+    code: '{\n  "type": "excalidraw",\n  "version": 2,\n  "elements": [\n    { "id": "box1", "type": "rectangle", "x": 20, "y": 20, "width": 140, "height": 60, "backgroundColor": "#a5d8ff" },\n    { "id": "txt1", "type": "text", "x": 45, "y": 42, "text": "Excalidraw", "fontSize": 16 }\n  ]\n}',
+  },
 ];
 
 function insertMermaidTemplate(tpl: MermaidTemplate) {

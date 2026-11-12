@@ -415,43 +415,50 @@ async function processWhiteboards() {
     const fence = fences[idx];
     const wrap = document.createElement('div');
     wrap.className = 'whiteboard-block';
-    const makeEditable = (svg: string) => {
-      wrap.innerHTML = svg;
-      // Only the editor preview can write back — read-only skins (slideshow,
-      // export) omit tabId, so the thumbnail stays a static image there.
-      if (fence && props.tabId) {
-        wrap.classList.add('whiteboard-block--clickable');
-        wrap.setAttribute('role', 'button');
-        wrap.setAttribute('tabindex', '0');
-        wrap.title = t('whiteboard.openFull');
-        const openFull = () => {
-          window.dispatchEvent(
-            new CustomEvent('solomd:whiteboard-open', {
-              detail: { boardId: fence.boardId, tabId: props.tabId, snapshot: fence.snapshot },
-            }),
-          );
-        };
-        wrap.addEventListener('click', openFull);
-        wrap.addEventListener('keydown', (ev) => {
-          if (ev.key === 'Enter' || ev.key === ' ') {
-            ev.preventDefault();
-            openFull();
-          }
-        });
-      }
+    const attachEditButton = () => {
+      if (!fence || !props.tabId) return;
+      wrap.classList.add('whiteboard-block--clickable');
+      wrap.setAttribute('role', 'button');
+      wrap.setAttribute('tabindex', '0');
+      wrap.title = t('whiteboard.openFull');
+      const openFull = () => {
+        window.dispatchEvent(
+          new CustomEvent('solomd:whiteboard-open', {
+            detail: { boardId: fence.boardId, tabId: props.tabId, snapshot: fence.snapshot },
+          }),
+        );
+      };
+      const editBtn = document.createElement('button');
+      editBtn.type = 'button';
+      editBtn.className = 'whiteboard-block__edit-btn';
+      editBtn.textContent = settings.language?.startsWith('zh') ? '✎ 编辑绘图' : '✎ Edit Drawing';
+      editBtn.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        openFull();
+      });
+      wrap.appendChild(editBtn);
+      wrap.addEventListener('click', openFull);
+      wrap.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter' || ev.key === ' ') {
+          ev.preventDefault();
+          openFull();
+        }
+      });
     };
     try {
       const svg = await boardToSvg(snapshot, theme);
       if (svg) {
-        makeEditable(svg);
+        wrap.innerHTML = svg;
       } else {
         wrap.classList.add('whiteboard-block--empty');
         wrap.textContent = t('whiteboard.empty');
       }
+      attachEditButton();
       pre.replaceWith(wrap);
     } catch {
       wrap.classList.add('whiteboard-block--empty');
       wrap.textContent = t('whiteboard.loadFailed');
+      attachEditButton();
       pre.replaceWith(wrap);
     }
   }

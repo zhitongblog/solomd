@@ -138,6 +138,75 @@ function openRecent(path: string) {
   void files.openPath(path, { bypassNewWindow: true });
 }
 
+// ── #205 Virtual Workspace (scattered files with aliases & notes) ───────────
+const editingVirtualPath = ref<string | null>(null);
+const editingVirtualAlias = ref('');
+const editingVirtualNote = ref('');
+
+const virtualDisplayItems = computed(() =>
+  workspace.virtualItems.map((it) => {
+    const parts = it.path.split(/[\\/]/).filter(Boolean);
+    const fileName = parts[parts.length - 1] ?? it.path;
+    const parentName = parts.length > 1 ? parts[parts.length - 2] : '';
+    return {
+      path: it.path,
+      displayName: it.alias || fileName,
+      subtitle: it.note || parentName,
+      alias: it.alias ?? '',
+      note: it.note ?? '',
+    };
+  }),
+);
+
+const canPinActiveTabToVirtual = computed(() => {
+  const fp = tabs.activeTab?.filePath;
+  if (!fp) return false;
+  return !workspace.virtualItems.some((it) => it.path === fp);
+});
+
+function pinActiveTabToVirtual() {
+  const fp = tabs.activeTab?.filePath;
+  if (!fp) return;
+  workspace.addVirtualItem(fp);
+}
+
+async function addScatteredFilesToVirtual() {
+  try {
+    const { open } = await import('@tauri-apps/plugin-dialog');
+    const selected = await open({
+      multiple: true,
+      filters: [{ name: 'Markdown', extensions: ['md', 'markdown', 'mdx', 'txt'] }],
+    });
+    if (!selected) return;
+    const list = Array.isArray(selected) ? selected : [selected];
+    for (const p of list) {
+      if (typeof p === 'string' && p.trim()) {
+        workspace.addVirtualItem(p);
+      }
+    }
+  } catch (err) {
+    console.warn('[Sidebar] addScatteredFilesToVirtual failed', err);
+  }
+}
+
+function startEditVirtualItem(item: { path: string; alias: string; note: string }) {
+  editingVirtualPath.value = item.path;
+  editingVirtualAlias.value = item.alias;
+  editingVirtualNote.value = item.note;
+}
+
+function saveEditVirtualItem(path: string) {
+  workspace.updateVirtualItem(path, {
+    alias: editingVirtualAlias.value,
+    note: editingVirtualNote.value,
+  });
+  editingVirtualPath.value = null;
+}
+
+function cancelEditVirtualItem() {
+  editingVirtualPath.value = null;
+}
+
 // ── tags ────────────────────────────────────────────────────────────────────
 const TAG_LIMIT = 8;
 const topTags = computed(() =>
@@ -342,6 +411,94 @@ onBeforeUnmount(() => {
           <span class="sb__row-label">{{ n.title }}</span>
         </button>
       </section>
+      <section class="sb__virtual" data-testid="virtual-workspace">
+        <div class="sb__virtual-head">
+          <span class="sb__label">{{ settings.language === 'zh' ? '虚拟工作空间' : 'Virtual Workspace' }}</span>
+          <div class="sb__virtual-actions">
+            <button
+              v-if="canPinActiveTabToVirtual"
+              class="sb__row-tool"
+              type="button"
+              :title="settings.language === 'zh' ? '将当前文档加入虚拟工作空间' : 'Pin active note to Virtual Workspace'"
+              @click="pinActiveTabToVirtual"
+            >📌</button>
+            <button
+              class="sb__row-tool"
+              type="button"
+              :title="settings.language === 'zh' ? '添加分散目录中的 Markdown 文件…' : 'Add scattered Markdown files…'"
+              @click="addScatteredFilesToVirtual"
+            >
+              <Icon name="plus" :size="14" />
+            </button>
+          </div>
+        </div>
+        <div v-if="virtualDisplayItems.length" class="sb__virtual-list">
+          <div
+            v-for="item in virtualDisplayItems"
+            :key="item.path"
+            class="sb__virtual-item"
+          >
+            <template v-if="editingVirtualPath === item.path">
+              <div class="sb__virtual-edit" @click.stop>
+                <input
+                  v-model="editingVirtualAlias"
+                  class="sb__virtual-input"
+                  :placeholder="settings.language === 'zh' ? '别名（如：前端 AGENTS.md）' : 'Alias (e.g. Frontend AGENTS.md)'"
+                  @keydown.enter.prevent="saveEditVirtualItem(item.path)"
+                  @keydown.escape.prevent="cancelEditVirtualItem"
+                />
+                <input
+                  v-model="editingVirtualNote"
+                  class="sb__virtual-input"
+                  :placeholder="settings.language === 'zh' ? '备注说明（可选）' : 'Note / comment (optional)'"
+                  @keydown.enter.prevent="saveEditVirtualItem(item.path)"
+                  @keydown.escape.prevent="cancelEditVirtualItem"
+                />
+                <div class="sb__virtual-edit-btns">
+                  <button type="button" class="sb__chip" @click="saveEditVirtualItem(item.path)">
+                    {{ settings.language === 'zh' ? '保存' : 'Save' }}
+                  </button>
+                  <button type="button" class="sb__chip" @click="cancelEditVirtualItem">
+                    {{ settings.language === 'zh' ? '取消' : 'Cancel' }}
+                  </button>
+                </div>
+              </div>
+            </template>
+            <template v-else>
+              <div
+                class="sb__row sb__row--split"
+                :class="{ 'sb__row--active': tabs.activeTab?.filePath === item.path }"
+              >
+                <button
+                  class="sb__row-main"
+                  type="button"
+                  :title="`${item.path}${item.note ? '\n备注: ' + item.note : ''}`"
+                  @click="openRecent(item.path)"
+                >
+                  <Icon name="file" :size="15" class="sb__row-icon" />
+                  <span class="sb__virtual-text">
+                    <span class="sb__row-label">{{ item.displayName }}</span>
+                    <span v-if="item.subtitle" class="sb__virtual-sub">{{ item.subtitle }}</span>
+                  </span>
+                </button>
+                <button
+                  class="sb__row-tool"
+                  type="button"
+                  :title="settings.language === 'zh' ? '设置别名与备注' : 'Edit alias & note'"
+                  @click.stop="startEditVirtualItem(item)"
+                >✎</button>
+                <button
+                  class="sb__row-tool"
+                  type="button"
+                  :title="settings.language === 'zh' ? '从虚拟工作空间移除' : 'Remove from Virtual Workspace'"
+                  @click.stop="workspace.removeVirtualItem(item.path)"
+                >×</button>
+              </div>
+            </template>
+          </div>
+        </div>
+      </section>
+
       <template v-if="hasFolder">
         <FileTree embedded />
 
@@ -1033,5 +1190,59 @@ onBeforeUnmount(() => {
 }
 .sb__fab:active {
   transform: scale(0.94);
+}
+.sb__virtual {
+  padding: 2px 8px 4px;
+}
+.sb__virtual-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 4px;
+}
+.sb__virtual-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.sb__virtual-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sb__virtual-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+.sb__virtual-sub {
+  font-size: 11px;
+  color: var(--text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sb__virtual-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  border-radius: var(--r-md);
+  background: var(--fill-1);
+}
+.sb__virtual-input {
+  width: 100%;
+  padding: 4px 6px;
+  font-size: 12px;
+  border: 1px solid var(--border, rgba(128, 128, 128, 0.25));
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+}
+.sb__virtual-edit-btns {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
 }
 </style>

@@ -2329,6 +2329,13 @@ onBeforeUnmount(() => {
         <kbd v-if="!isMobile()" class="ftree__ctx-kbd">Space</kbd>
       </button>
       <button
+        v-if="ctx.node && !ctx.node.is_dir"
+        class="ftree__ctx-item"
+        @click="workspace.addVirtualItem(ctx.node.path); closeCtx()"
+      >
+        {{ settings.language?.startsWith('zh') ? '加入虚拟工作空间' : 'Pin to Virtual Workspace' }}
+      </button>
+      <button
         v-if="ctx.node"
         class="ftree__ctx-item ftree__ctx-item--kbd"
         aria-keyshortcuts="F2"

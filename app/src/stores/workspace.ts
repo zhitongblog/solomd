@@ -5,6 +5,15 @@ const LS_KEY = 'solomd.workspace.v1';
 const MAX_RECENT = 12;
 const MAX_RECENT_FOLDERS = 8;
 
+export interface VirtualWorkspaceItem {
+  /** Absolute file path on disk. */
+  path: string;
+  /** Optional custom alias to disambiguate identically named files (e.g. "Frontend AGENTS.md"). */
+  alias?: string;
+  /** Optional note/comment describing the file's role. */
+  note?: string;
+}
+
 interface WorkspaceState {
   recentFiles: string[];
   recentFolders: string[];
@@ -15,6 +24,9 @@ interface WorkspaceState {
   // filesystem workspaces (desktop/iOS).
   safTreeUri: string | null;
   safName: string | null;
+  // #205 — Virtual Workspace: aggregate scattered Markdown files from multiple
+  // project directories into one logical sidebar group with aliases and notes.
+  virtualItems: VirtualWorkspaceItem[];
 }
 
 function load(): WorkspaceState {
@@ -28,10 +40,13 @@ function load(): WorkspaceState {
         currentFolder: typeof parsed.currentFolder === 'string' ? parsed.currentFolder : null,
         safTreeUri: typeof parsed.safTreeUri === 'string' ? parsed.safTreeUri : null,
         safName: typeof parsed.safName === 'string' ? parsed.safName : null,
+        virtualItems: Array.isArray(parsed.virtualItems)
+          ? parsed.virtualItems.filter((it): it is VirtualWorkspaceItem => !!it && typeof it.path === 'string' && it.path.length > 0)
+          : [],
       };
     }
   } catch {}
-  return { recentFiles: [], recentFolders: [], currentFolder: null, safTreeUri: null, safName: null };
+  return { recentFiles: [], recentFolders: [], currentFolder: null, safTreeUri: null, safName: null, virtualItems: [] };
 }
 
 export const useWorkspaceStore = defineStore('workspace', {
@@ -102,6 +117,61 @@ export const useWorkspaceStore = defineStore('workspace', {
     },
     clearRecentFolders() {
       this.recentFolders = [];
+      this.persist();
+    },
+    /** #205 — Add or update a scattered file in the Virtual Workspace. */
+    addVirtualItem(path: string, alias?: string, note?: string) {
+      const trimmedPath = path.trim();
+      if (!trimmedPath) return;
+      const existingIdx = this.virtualItems.findIndex((it) => it.path === trimmedPath);
+      const parts = trimmedPath.split(/[\\/]/).filter(Boolean);
+      const fileName = parts[parts.length - 1] ?? trimmedPath;
+      const parentName = parts.length > 1 ? parts[parts.length - 2] : '';
+      // If another item already shares the same basename (e.g. multiple AGENTS.md),
+      // default the alias to `<parentName> / <fileName>` when none is supplied.
+      const hasSameBasename = this.virtualItems.some(
+        (it) => it.path !== trimmedPath && (it.path.split(/[\\/]/).pop() ?? '') === fileName,
+      );
+      const resolvedAlias =
+        alias !== undefined
+          ? alias.trim() || undefined
+          : hasSameBasename && parentName
+            ? `${parentName} / ${fileName}`
+            : undefined;
+      const resolvedNote = note !== undefined ? note.trim() || undefined : undefined;
+      if (existingIdx >= 0) {
+        const prev = this.virtualItems[existingIdx];
+        this.virtualItems[existingIdx] = {
+          path: trimmedPath,
+          alias: resolvedAlias ?? prev.alias,
+          note: resolvedNote ?? prev.note,
+        };
+      } else {
+        this.virtualItems.push({
+          path: trimmedPath,
+          alias: resolvedAlias,
+          note: resolvedNote,
+        });
+      }
+      this.persist();
+    },
+    updateVirtualItem(path: string, patch: { alias?: string; note?: string }) {
+      const idx = this.virtualItems.findIndex((it) => it.path === path);
+      if (idx < 0) return;
+      const prev = this.virtualItems[idx];
+      this.virtualItems[idx] = {
+        ...prev,
+        alias: patch.alias !== undefined ? patch.alias.trim() || undefined : prev.alias,
+        note: patch.note !== undefined ? patch.note.trim() || undefined : prev.note,
+      };
+      this.persist();
+    },
+    removeVirtualItem(path: string) {
+      this.virtualItems = this.virtualItems.filter((it) => it.path !== path);
+      this.persist();
+    },
+    clearVirtualItems() {
+      this.virtualItems = [];
       this.persist();
     },
   },

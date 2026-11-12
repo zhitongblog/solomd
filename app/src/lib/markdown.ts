@@ -14,6 +14,7 @@ import { numberEquations } from './equations';
 import { parseImageAltSize } from './md-image-url';
 import { sanitizeRenderedHtml } from './sanitize-html';
 import { renderMarkmapSvg } from './markmap-render';
+import { renderExcalidrawSvg } from './excalidraw';
 import { getHljs, getKatex } from './render-deps';
 import {
   parseOutlineSegments,
@@ -584,10 +585,15 @@ md.renderer.rules.fence = function (tokens, idx, options, env, self) {
   // post-processor can find it).
   const info = (tok.info || '').trim().toLowerCase();
   const lang = info.split(/\s+/)[0];
-  if (!treatInfoAsCodeLine && lang === 'markmap') {
+  if (!treatInfoAsCodeLine && (lang === 'markmap' || lang === 'mm')) {
     const line = tok.map && tok.map.length > 0 ? tok.map[0] + 1 : 0;
     const lineAttr = line ? ` data-source-line="${line}"` : '';
     return `<div class="markmap-block"${lineAttr}>${renderMarkmapSvg(origContent)}</div>\n`;
+  }
+  if (!treatInfoAsCodeLine && lang === 'excalidraw') {
+    const line = tok.map && tok.map.length > 0 ? tok.map[0] + 1 : 0;
+    const lineAttr = line ? ` data-source-line="${line}"` : '';
+    return `<div class="excalidraw-block"${lineAttr}>${renderExcalidrawSvg(origContent)}</div>\n`;
   }
   if (!treatInfoAsCodeLine && (lang === 'mermaid' || lang === 'tldraw')) return html;
   // Inject .cb-line wrappers on each line. We do this on the rendered HTML
