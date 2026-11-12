@@ -1,0 +1,5 @@
+SoloMD 5.0.20:
+• Benutzerdefinierter & Ordner-Stapelexport (#535, #359): Exportieren Sie die aktuelle Notiz oder einen ganzen Ordner als PDF, HTML, DOCX oder PNG mit gespeichertem Zielordner.
+• Vault-Verwaltung & Synchronisierungsschutz (#531): Automatische Synchronisierung wird nur für registrierte Vaults ausgeführt und niemals beim Speichern externer Dateien.
+• Manuelles Einklappen von Mermaid / PlantUML & ruckelfreie Markdown-Marker (#530, #536): Diagramm-Quellcode klappt nur per Klick auf „+“ auf; sichtbare Markdown-Marker verhindern Zeilenverschiebungen beim Klicken.
+• Zeilennummern im Live-Modus, einheitliche Tabellenzeilenhöhe & Codeblock-Korrekturen (#532, #533, #534, #537).

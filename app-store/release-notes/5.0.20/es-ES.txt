@@ -1,0 +1,5 @@
+SoloMD 5.0.20:
+• Exportación personalizada y por lotes de carpetas (#535, #359): Exporta la nota actual o una carpeta completa a PDF, HTML, DOCX o PNG recordando el directorio de salida.
+• Gestión de bóvedas y sincronización protegida (#531): La sincronización automática solo se ejecuta en bóvedas registradas y nunca al guardar archivos externos.
+• Plegado manual de Mermaid / PlantUML y marcadores sin saltos (#530, #536): El código de diagramas permanece plegado al mover el cursor y solo se despliega manualmente.
+• Números de línea en modo en vivo, altura uniforme en filas de tablas y mejoras en bloques de código (#532, #533, #534, #537).

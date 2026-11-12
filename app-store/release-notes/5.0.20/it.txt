@@ -1,0 +1,5 @@
+SoloMD 5.0.20:
+• Esportazione personalizzata e in blocco di cartelle (#535, #359): Esporta la nota corrente o un’intera cartella in PDF, HTML, DOCX o PNG memorizzando la cartella di destinazione.
+• Gestione Vault e protezione sincronizzazione (#531): La sincronizzazione automatica viene eseguita solo per i vault registrati e mai salvando file esterni.
+• Chiusura manuale Mermaid / PlantUML e marcatori senza salti (#530, #536): Il codice dei diagrammi resta chiuso al passaggio del cursore e si apre solo manualmente.
+• Numeri di riga in modalità Live, altezza uniforme delle righe di tabella e correzioni ai blocchi di codice (#532, #533, #534, #537).

@@ -1,0 +1,5 @@
+SoloMD 5.0.20:
+• Anpassad export och batchexport av mappar (#535, #359): Exportera aktuell anteckning eller en hel mapp till PDF, HTML, DOCX eller PNG.
+• Valvhantering och synkroniseringsskydd (#531): Automatisk synkronisering körs endast för registrerade valv.
+• Manuell ihopfällning av Mermaid / PlantUML och stabila Markdown-markörer (#530, #536).
+• Radnummer i Live-läge, enhetlig radhöjd i tabeller och kodblocksförbättringar (#532, #533, #534, #537).

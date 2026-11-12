@@ -1,0 +1,5 @@
+SoloMD 5.0.20:
+• Exportação personalizada e em lote de pastas (#535, #359): Exporte a nota atual ou uma pasta inteira para PDF, HTML, DOCX ou PNG memorizando a pasta de saída.
+• Gerenciamento de Cofres (Vaults) e proteção de sincronização (#531): A sincronização automática só roda em cofres registrados e nunca ao salvar arquivos externos.
+• Recolhimento manual de Mermaid / PlantUML e marcadores sem salto (#530, #536).
+• Números de linha no modo ao vivo, altura uniforme em linhas de tabelas e melhorias em blocos de código (#532, #533, #534, #537).

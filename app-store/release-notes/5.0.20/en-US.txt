@@ -1,0 +1,5 @@
+SoloMD 5.0.20:
+• Custom & Batch Folder Export (#535, #359): Added "Custom / Batch Export…" dialog to export the current note or an entire folder (with subfolder structure) to PDF, HTML, DOCX, or PNG, remembering your output directory with a one-click Open Output Folder button.
+• Vault Management & Scoped Sync Guard (#531): Added "Vault Management" under Settings → Sync so auto-sync and save-triggered sync only run for registered vaults and never fire when saving external files on Desktop/Downloads.
+• Manual Mermaid / PlantUML Fold & Zero-Jump Markers (#530, #536): Diagram source stays folded when the cursor moves across fence lines and only expands when manually toggled via the "+" / "Source" button; "Always Show Markdown Markers" keeps all syntax markers visible with zero layout shift on click.
+• Live Line Numbers, Uniform Table Row Height & Code Block Fixes (#532, #533, #534, #537): Added line numbers in Windows Live Edit mode, unified empty and non-empty table row heights across all views/exports, defaulted the Custom CSS file picker to the themes folder, and fixed /code cursor placement and first-line code rendering.

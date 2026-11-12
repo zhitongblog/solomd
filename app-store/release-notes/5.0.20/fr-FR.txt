@@ -1,0 +1,5 @@
+SoloMD 5.0.20 :
+• Export personnalisé et par lot de dossiers (#535, #359) : Exportez la note actuelle ou un dossier entier en PDF, HTML, DOCX ou PNG avec mémorisation du dossier de sortie.
+• Gestion des coffres et protection de synchronisation (#531) : La synchronisation automatique ne s’exécute que pour les coffres enregistrés et jamais lors de l’enregistrement de fichiers externes.
+• Pliage manuel Mermaid / PlantUML et marqueurs sans saut (#530, #536) : Le code source des diagrammes reste plié au passage du curseur et ne s’ouvre que manuellement.
+• Numéros de ligne en mode direct, hauteur uniforme des lignes de tableau et correctifs de blocs de code (#532, #533, #534, #537).

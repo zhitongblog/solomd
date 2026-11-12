@@ -1,0 +1,5 @@
+SoloMD 5.0.20:
+• Eksport niestandardowy i zbiorczy folderów (#535, #359): Eksportuj bieżącą notatkę lub cały folder do PDF, HTML, DOCX lub PNG z zapamiętywaniem katalogu docelowego.
+• Zarządzanie skarbcami (Vault) i ochrona synchronizacji (#531): Automatyczna synchronizacja działa tylko dla zarejestrowanych skarbców.
+• Ręczne zwijanie Mermaid / PlantUML i stabilne znaczniki Markdown (#530, #536).
+• Numery linii w trybie na żywo, równa wysokość wierszy tabeli i poprawki bloków kodu (#532, #533, #534, #537).

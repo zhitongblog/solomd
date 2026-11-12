@@ -1,0 +1,5 @@
+SoloMD 5.0.20:
+• Aangepast & map-batchexport (#535, #359): Exporteer de huidige notitie of een volledige map naar PDF, HTML, DOCX of PNG met onthouden uitvoermap.
+• Kluisbeheer & synchronisatiebeveiliging (#531): Automatische synchronisatie werkt alleen voor geregistreerde kluizen en nooit bij het opslaan van externe bestanden.
+• Handmatig inklappen van Mermaid / PlantUML & stabiele Markdown-markeringen (#530, #536).
+• Regelnummers in Live-modus, gelijke tabelrijhoogtes & codeblokverbeteringen (#532, #533, #534, #537).

@@ -1,0 +1,5 @@
+SoloMD 5.0.20:
+• Özel ve Klasör Toplu Dışa Aktarma (#535, #359): Geçerli notu veya tüm klasörü PDF, HTML, DOCX veya PNG olarak dışa aktarın.
+• Kasa (Vault) Yönetimi ve Eşitleme Koruması (#531): Otomatik eşitleme yalnızca kayıtlı kasalar için çalışır, harici dosyaları kaydederken tetiklenmez.
+• Mermaid / PlantUML Manuel Katlama ve Zıplamasız Markdown İşaretçileri (#530, #536).
+• Canlı Düzenleme Satır Numaraları, Eşit Tablo Satır Yüksekliği ve Kod Bloğu İyileştirmeleri (#532, #533, #534, #537).
