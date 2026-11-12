@@ -2534,6 +2534,10 @@ function onSelectPdfFont(v: string) {
             {{ t('settings.toolbarHidden') }}
           </label>
           <p class="setting-hint">{{ withChord('settings.toolbarHiddenHint', 'view.toggleToolbar') }}</p>
+          <label>
+            <input type="checkbox" :checked="settings.toolbarShowLabels" @change="settings.toggleToolbarShowLabels()" />
+            {{ settings.language === 'zh' ? '顶部工具栏按钮显示文字标签（搜索 / 导出 / 侧栏 / 更多）' : 'Show text labels on top toolbar buttons (Search / Export / Sidebar / More)' }}
+          </label>
         </section>
 
         <section data-cat="writing">

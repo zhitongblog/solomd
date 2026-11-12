@@ -13,6 +13,7 @@ import yaml from 'js-yaml';
 import { numberEquations } from './equations';
 import { parseImageAltSize } from './md-image-url';
 import { sanitizeRenderedHtml } from './sanitize-html';
+import { renderMarkmapSvg } from './markmap-render';
 import { getHljs, getKatex } from './render-deps';
 import {
   parseOutlineSegments,
@@ -546,6 +547,7 @@ function isValidFenceInfoString(rawInfo: string): boolean {
   const firstWord = trimmed.split(/\s+/)[0].toLowerCase();
   if (
     firstWord === 'mermaid' ||
+    firstWord === 'markmap' ||
     firstWord === 'tldraw' ||
     firstWord === 'plantuml' ||
     firstWord === 'puml'
@@ -582,6 +584,11 @@ md.renderer.rules.fence = function (tokens, idx, options, env, self) {
   // post-processor can find it).
   const info = (tok.info || '').trim().toLowerCase();
   const lang = info.split(/\s+/)[0];
+  if (!treatInfoAsCodeLine && lang === 'markmap') {
+    const line = tok.map && tok.map.length > 0 ? tok.map[0] + 1 : 0;
+    const lineAttr = line ? ` data-source-line="${line}"` : '';
+    return `<div class="markmap-block"${lineAttr}>${renderMarkmapSvg(origContent)}</div>\n`;
+  }
   if (!treatInfoAsCodeLine && (lang === 'mermaid' || lang === 'tldraw')) return html;
   // Inject .cb-line wrappers on each line. We do this on the rendered HTML
   // because the highlight has already produced <span class="hljs-..."> spans
@@ -1881,4 +1888,49 @@ export function extractOutline(source: string): OutlineItem[] {
     }
   }
   return items;
+}
+
+/**
+ * #418 — Reorder a Markdown heading section (from `sourceHeadingLine` up to the
+ * next heading of equal or higher rank) before or after `targetHeadingLine`'s
+ * section.
+ */
+export function reorderMarkdownHeadingSection(
+  source: string,
+  sourceHeadingLine: number,
+  targetHeadingLine: number,
+  position: 'before' | 'after' = 'before',
+): string {
+  if (!source || sourceHeadingLine === targetHeadingLine) return source;
+  const outline = extractOutline(source);
+  const srcIdx = outline.findIndex((h) => h.line === sourceHeadingLine);
+  const dstIdx = outline.findIndex((h) => h.line === targetHeadingLine);
+  if (srcIdx < 0 || dstIdx < 0) return source;
+
+  const lines = source.replace(/\r\n?/g, '\n').split('\n');
+  const sectionRange = (idx: number): [number, number] => {
+    const h = outline[idx];
+    const start = h.line - 1;
+    let end = lines.length;
+    for (let j = idx + 1; j < outline.length; j++) {
+      if (outline[j].level <= h.level) {
+        end = outline[j].line - 1;
+        break;
+      }
+    }
+    return [start, end];
+  };
+
+  const [srcStart, srcEnd] = sectionRange(srcIdx);
+  const [dstStart, dstEnd] = sectionRange(dstIdx);
+  const insertAt = position === 'before' ? dstStart : dstEnd;
+  if (insertAt >= srcStart && insertAt <= srcEnd) {
+    return source;
+  }
+
+  const moved = lines.slice(srcStart, srcEnd);
+  const remaining = [...lines.slice(0, srcStart), ...lines.slice(srcEnd)];
+  const adjustedInsert = insertAt > srcStart ? insertAt - (srcEnd - srcStart) : insertAt;
+  remaining.splice(adjustedInsert, 0, ...moved);
+  return remaining.join('\n');
 }

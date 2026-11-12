@@ -114,6 +114,7 @@ interface MermaidTemplate {
   labelZh: string;
   labelEn: string;
   code: string;
+  fence?: string;
 }
 
 const MERMAID_TEMPLATES: MermaidTemplate[] = [
@@ -159,10 +160,18 @@ const MERMAID_TEMPLATES: MermaidTemplate[] = [
     labelEn: 'Mindmap',
     code: 'mindmap\n  root((核心主题))\n    分支一\n      子项 A\n    分支二\n      子项 B',
   },
+  {
+    id: 'markmap',
+    labelZh: 'Markmap 思维导图 (```markmap)',
+    labelEn: 'Markmap Mindmap (```markmap)',
+    fence: 'markmap',
+    code: '# 核心主题\n## 分支一\n- 子节点 A\n- 子节点 B\n## 分支二\n- 子节点 C',
+  },
 ];
 
 function insertMermaidTemplate(tpl: MermaidTemplate) {
-  const snippet = `\n\`\`\`mermaid\n${tpl.code}\n\`\`\`\n`;
+  const fence = tpl.fence || 'mermaid';
+  const snippet = `\n\`\`\`${fence}\n${tpl.code}\n\`\`\`\n`;
   window.dispatchEvent(
     new CustomEvent('solomd:insert-markdown', {
       detail: { snippet, paneId: tiles.focusedPaneId },
@@ -332,6 +341,14 @@ function insertMermaidTemplate(tpl: MermaidTemplate) {
       @click="command('editor.insertImage')"
     >
       <Icon name="image" />
+    </button>
+    <button
+      class="fbar__btn"
+      :title="settings.language === 'zh' ? '插入附件…' : 'Insert attachment…'"
+      :aria-label="settings.language === 'zh' ? '插入附件…' : 'Insert attachment…'"
+      @click="command('editor.insertAttachment')"
+    >
+      <Icon name="paperclip" />
     </button>
     <div class="fbar__pop">
       <button

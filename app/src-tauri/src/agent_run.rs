@@ -927,13 +927,30 @@ pub fn read_run_meta(workspace: &Path, run_id: &str) -> Result<RunMeta, String> 
 }
 
 pub fn write_run_meta(workspace: &Path, run_id: &str, meta: &RunMeta) -> Result<(), String> {
-    let path = workspace
+    let run_dir = workspace
         .join(".solomd")
         .join("agent-runs")
-        .join(run_id)
-        .join("meta.json");
+        .join(run_id);
+    fs::create_dir_all(&run_dir).map_err(|e| format!("create run dir: {e}"))?;
+    let path = run_dir.join("meta.json");
     let json = serde_json::to_string_pretty(meta).map_err(|e| format!("serialise meta: {e}"))?;
-    fs::write(&path, json).map_err(|e| format!("write meta: {e}"))
+    fs::write(&path, json).map_err(|e| format!("write meta: {e}"))?;
+    // #146 — Emit an explicit `decision.json` receipt when a run is accepted or
+    // rejected so external agents / audit scripts can inspect review decisions.
+    if let Some(accepted) = meta.accepted {
+        let decision = json!({
+            "run_id": meta.run_id,
+            "decision": if accepted { "accepted" } else { "rejected" },
+            "accepted": accepted,
+            "status": meta.status,
+            "decided_at": unix_secs_now(),
+            "branch": meta.recipe.as_ref().map(|r| r.branch.clone()),
+        });
+        if let Ok(decision_bytes) = serde_json::to_vec_pretty(&decision) {
+            let _ = fs::write(run_dir.join("decision.json"), decision_bytes);
+        }
+    }
+    Ok(())
 }
 
 pub fn read_trace(workspace: &Path, run_id: &str) -> Result<String, String> {

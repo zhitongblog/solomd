@@ -908,6 +908,7 @@ onBeforeUnmount(() => {
       'toolbar--lead': !settings.showFileTree,
       'toolbar--minimal': settings.toolbarHidden,
       'toolbar--narrow': isNarrow,
+      'toolbar--with-labels': settings.toolbarShowLabels && !isNarrow,
     }"
     @mousedown.capture="onTitleBarMouseDown"
     @dblclick="onTitleBarDblClick"
@@ -978,6 +979,7 @@ onBeforeUnmount(() => {
         :aria-label="t('toolbar.searchTooltip')"
       >
         <Icon name="search" />
+        <span v-if="settings.toolbarShowLabels" class="icon-btn__label">{{ settings.language === 'zh' ? '搜索' : 'Search' }}</span>
       </button>
 
       <div class="dropdown">
@@ -993,6 +995,7 @@ onBeforeUnmount(() => {
           :aria-label="t('toolbar.exportTooltip')"
         >
           <Icon name="share" />
+          <span v-if="settings.toolbarShowLabels && !isNarrow" class="icon-btn__label">{{ settings.language === 'zh' ? '导出' : 'Export' }}</span>
         </button>
         <Teleport to="body">
           <div
@@ -1075,6 +1078,7 @@ onBeforeUnmount(() => {
         :aria-pressed="!settings.rightSidebarHidden"
       >
         <Icon name="sidebar-right" />
+        <span v-if="settings.toolbarShowLabels" class="icon-btn__label">{{ settings.language === 'zh' ? '侧栏' : 'Sidebar' }}</span>
       </button>
 
       <div class="dropdown">
@@ -1090,6 +1094,7 @@ onBeforeUnmount(() => {
           :aria-label="t('header.more')"
         >
           <Icon name="more" />
+          <span v-if="settings.toolbarShowLabels && !isNarrow" class="icon-btn__label">{{ settings.language === 'zh' ? '更多' : 'More' }}</span>
         </button>
         <Teleport to="body">
           <div
@@ -1546,6 +1551,17 @@ onBeforeUnmount(() => {
 .icon-btn:focus-visible {
   outline: none;
   box-shadow: var(--ring);
+}
+.toolbar--with-labels .icon-btn {
+  width: auto;
+  min-width: 32px;
+  padding: 0 8px;
+  gap: 5px;
+}
+.icon-btn__label {
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 /* Touch screens (iPad): finger-sized targets in the header. */

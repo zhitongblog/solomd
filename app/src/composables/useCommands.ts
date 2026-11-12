@@ -530,6 +530,28 @@ export function useCommands(): Command[] {
       },
     },
 
+    {
+      id: 'editor.insertAttachment',
+      title: 'Insert attachment…',
+      hint: 'Pick any file — it is copied into the note’s attachments folder and a Markdown link is inserted',
+      run: async () => {
+        if (!tabs.activeTab) {
+          toasts.warning('No active document');
+          return;
+        }
+        const sel = await openFileDialog({
+          multiple: false,
+          defaultPath: await files.filePickerStartDir(),
+        });
+        if (typeof sel !== 'string') return;
+        window.dispatchEvent(
+          new CustomEvent('solomd:insert-image-path', {
+            detail: { path: sel, paneId: tiles.focusedPaneId },
+          }),
+        );
+      },
+    },
+
     // #296 / #274 — every formatting command, so they are discoverable from
     // the palette and not only by knowing the chord. Titles come from
     // `cmd.fmt.<kind>` in the locale files.

@@ -898,6 +898,39 @@ async function copyOrWriteLocal(srcPath: string, dstPath: string): Promise<void>
   await invoke('copy_file', { src: srcPath, dst: dstPath });
 }
 
+const IMAGE_EXT_SET = new Set([
+  'png',
+  'jpg',
+  'jpeg',
+  'gif',
+  'webp',
+  'bmp',
+  'svg',
+  'avif',
+  'tiff',
+  'tif',
+  'ico',
+]);
+
+function isImageExtension(ext: string): boolean {
+  return IMAGE_EXT_SET.has(ext.toLowerCase());
+}
+
+function attachmentBasename(srcPath: string): string {
+  const norm = srcPath.replace(/\\/g, '/');
+  const raw = norm.slice(norm.lastIndexOf('/') + 1).trim();
+  const safe = raw.replace(/[\\/:*?"<>|\r\n]+/g, '_');
+  return safe || `attachment-${timestamp()}-${randSuffix()}`;
+}
+
+function toAttachmentMarkdownLink(imageInsertText: string, label: string): string {
+  // Convert `![](url)` into `[label](url)`
+  const m = /^!\[[^\]]*\]\(([\s\S]*)\)$/.exec(imageInsertText.trim());
+  const url = m ? m[1] : imageInsertText;
+  const safeLabel = label.replace(/[\[\]]/g, '');
+  return `[${safeLabel || 'attachment'}](${url})`;
+}
+
 /**
  * Insert a markdown image reference for an OS file path that the user
  * dragged into the window. Unlike paste/drop on the editor DOM (where we
@@ -923,7 +956,22 @@ export async function insertImageFromPath(
     await saveAndInsert(view, bytes, sniffImageExt(bytes) || extFromName(srcPath) || 'png', opts);
     return;
   }
-  const ext = extFromName(srcPath) || 'png';
+  const rawExt = extFromName(srcPath);
+  // #152 — Non-image file attachment (`editor.insertAttachment`): preserve the
+  // original filename inside `_assets/` and insert `[filename.ext](_assets/filename.ext)`.
+  if (rawExt && !isImageExtension(rawExt)) {
+    const filename = attachmentBasename(srcPath);
+    const local = await prepareLocalTarget(filename, opts);
+    try {
+      await copyOrWriteLocal(srcPath, local.fullPath);
+    } catch (err) {
+      reportFailure(opts, err);
+      return;
+    }
+    insertAtCursor(view, toAttachmentMarkdownLink(local.insertText, filename));
+    return;
+  }
+  const ext = rawExt || 'png';
   if (opts.getAttachmentMode?.() === 'base64') {
     try {
       const raw = await invoke<number[]>('read_binary_file', { path: srcPath });
@@ -994,7 +1042,19 @@ export async function imageTextFromPath(
     }
     return saveOrUploadText(bytes, sniffImageExt(bytes) || extFromName(srcPath) || 'png', opts);
   }
-  const ext = extFromName(srcPath) || 'png';
+  const rawExt = extFromName(srcPath);
+  if (rawExt && !isImageExtension(rawExt)) {
+    const filename = attachmentBasename(srcPath);
+    const local = await prepareLocalTarget(filename, opts);
+    try {
+      await copyOrWriteLocal(srcPath, local.fullPath);
+      return toAttachmentMarkdownLink(local.insertText, filename);
+    } catch (err) {
+      reportFailure(opts, err);
+      return null;
+    }
+  }
+  const ext = rawExt || 'png';
   if (opts.getAttachmentMode?.() === 'base64') {
     try {
       const raw = await invoke<number[]>('read_binary_file', { path: srcPath });

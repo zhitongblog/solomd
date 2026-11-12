@@ -64,7 +64,7 @@ const mermaidFoldState = StateField.define<ReadonlyMap<number, boolean>>({
           const oldPos = tr.startState.doc.line(oldLine).from;
           const newPos = tr.changes.mapPos(oldPos, 1);
           const newLine = tr.state.doc.lineAt(Math.min(newPos, tr.state.doc.length));
-          if (/^\s*(`{3,}|~{3,})\s*mermaid\s*$/i.test(newLine.text)) {
+          if (/^\s*(`{3,}|~{3,})\s*(mermaid|markmap|mm|plantuml|puml)\s*$/i.test(newLine.text)) {
             next.set(newLine.number, val);
           }
         }
@@ -145,6 +145,7 @@ import {
   parseImageAltSize,
 } from './md-image-url';
 import { plantumlSvgUrl } from './plantuml';
+import { renderMarkmapSvg } from './markmap-render';
 import { bindMermaidInteractions, peekMermaidSvg, renderMermaidCached } from './mermaid-lazy';
 import { getKatex, onRenderDepsChange, renderDepsVersion } from './render-deps';
 import {
@@ -1629,6 +1630,31 @@ class PlantumlWidget extends WidgetType {
   }
 }
 
+// #363 — ```markmap fenced mindmap rendered synchronously as a vector SVG tree.
+class MarkmapWidget extends WidgetType {
+  readonly source: string;
+
+  constructor(source: string) {
+    super();
+    this.source = source;
+  }
+
+  eq(other: MarkmapWidget): boolean {
+    return other.source === this.source;
+  }
+
+  toDOM(): HTMLElement {
+    const wrap = document.createElement('div');
+    wrap.className = 'cm-live-block cm-live-block--mermaid cm-live-block--markmap';
+    wrap.innerHTML = renderMarkmapSvg(this.source);
+    return wrap;
+  }
+
+  ignoreEvent(): boolean {
+    return false;
+  }
+}
+
 // v4.6 F7 — ```tldraw fenced whiteboard. Unlike mermaid (which collapses only
 // when the cursor leaves), the board ALWAYS replaces the fence: the JSON is
 // never meant to be hand-edited. The widget mounts a LIVE tldraw editor via the
@@ -2236,6 +2262,66 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
                   blockTo,
                   Decoration.widget({
                     widget: new MermaidWidget(body, mermaidTheme, opts.getFilePath?.()),
+                    block: true,
+                    side: 1,
+                  }),
+                );
+              }
+              i = endI + 1;
+              continue;
+            }
+          }
+
+          // #363 — ```markmap / ```mm fenced mindmap block.
+          if (/^\s*(`{3,}|~{3,})\s*(markmap|mm)\s*$/i.test(line.text)) {
+            let endI = i + 1;
+            while (endI <= lastLine) {
+              const next = doc.line(endI);
+              if (/^\s*(`{3,}|~{3,})\s*$/.test(next.text)) break;
+              endI += 1;
+            }
+            if (endI <= lastLine) {
+              let body = '';
+              for (let k = i + 1; k < endI; k++) {
+                body += (k > i + 1 ? '\n' : '') + doc.line(k).text;
+              }
+              const blockFrom = doc.line(i).from;
+              const blockTo = doc.line(endI).to;
+              const foldMap = state.field(mermaidFoldState, false);
+              const foldOverride = foldMap?.get(i);
+              const cursorInsideBody =
+                (cursorLine >= i + 1 && cursorLine < endI) ||
+                (cursorLineEnd >= i + 1 && cursorLineEnd < endI);
+              const defaultCollapsed = !keepSource;
+              const collapsed = cursorInsideBody
+                ? false
+                : foldOverride !== undefined
+                  ? foldOverride
+                  : defaultCollapsed;
+              builder.add(
+                blockFrom,
+                blockFrom,
+                Decoration.widget({
+                  widget: new MermaidFoldToggleWidget(i, endI, collapsed),
+                  side: -1,
+                }),
+              );
+              if (collapsed) {
+                const bodyFrom = i + 1 <= endI ? doc.line(i + 1).from : blockFrom;
+                builder.add(
+                  bodyFrom,
+                  blockTo,
+                  Decoration.replace({
+                    widget: new MarkmapWidget(body),
+                    block: true,
+                  }),
+                );
+              } else {
+                builder.add(
+                  blockTo,
+                  blockTo,
+                  Decoration.widget({
+                    widget: new MarkmapWidget(body),
                     block: true,
                     side: 1,
                   }),

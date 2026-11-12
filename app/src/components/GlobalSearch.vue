@@ -39,6 +39,7 @@ const { t } = useI18n();
 
 const query = ref('');
 const titleOnly = ref(false);
+const expandedModal = ref(false);
 const hits = ref<SearchHit[]>([]);
 const loading = ref(false);
 const selectedIdx = ref(0);
@@ -200,15 +201,23 @@ function onKey(e: KeyboardEvent) {
 </script>
 
 <template>
-  <div class="sp">
+  <div class="sp" :class="{ 'sp--expanded': expandedModal }">
     <header class="sp__head">
       <span class="sp__title">{{ t('search.heading') }}</span>
-      <button
-        class="rs-pane-close"
-        type="button"
-        :title="t('rightSidebar.hidePane')"
-        @click="emit('close')"
-      >×</button>
+      <div class="sp__head-actions">
+        <button
+          class="rs-pane-close"
+          type="button"
+          :title="settings.language?.startsWith('zh') ? (expandedModal ? '收起为侧栏' : '展开为居中大窗') : (expandedModal ? 'Dock to sidebar' : 'Expand to modal view')"
+          @click="expandedModal = !expandedModal"
+        >{{ expandedModal ? '⤡' : '⤢' }}</button>
+        <button
+          class="rs-pane-close"
+          type="button"
+          :title="t('rightSidebar.hidePane')"
+          @click="emit('close')"
+        >×</button>
+      </div>
     </header>
     <div class="sp__input-wrap">
       <Icons class="sp__input-icon" name="search" :size="14" aria-hidden="true" />
@@ -272,6 +281,23 @@ function onKey(e: KeyboardEvent) {
   height: 100%;
   background: var(--bg);
   overflow: hidden;
+}
+.sp--expanded {
+  position: fixed;
+  top: 8vh;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(760px, 92vw);
+  height: min(640px, 82vh);
+  z-index: var(--z-modal, 200);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg, 12px);
+  box-shadow: var(--sh-pop, 0 20px 50px rgba(0, 0, 0, 0.35));
+}
+.sp__head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 .sp__head {
   display: flex;

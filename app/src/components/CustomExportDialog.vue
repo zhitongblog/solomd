@@ -26,7 +26,7 @@ const exporter = useExport();
 const isZh = computed(() => settings.language === 'zh');
 
 type ExportScope = 'current' | 'folder';
-type ExportFormat = 'pdf' | 'html' | 'docx' | 'png';
+type ExportFormat = 'pdf' | 'html' | 'docx' | 'png' | 'textpack';
 
 const scope = ref<ExportScope>('current');
 const format = ref<ExportFormat>(settings.lastCustomExportFormat || 'pdf');
@@ -337,6 +337,7 @@ async function runCustomExport() {
             <option value="html">{{ isZh ? '网页文件 (.html)' : 'Standalone HTML (.html)' }}</option>
             <option value="docx">{{ isZh ? 'Word 文档 (.docx)' : 'Word Document (.docx)' }}</option>
             <option value="png">{{ isZh ? 'PNG 长图 (.png)' : 'PNG Image (.png)' }}</option>
+            <option value="textpack">{{ isZh ? 'TextPack 自包含单文件容器 (.textpack)' : 'TextPack Self-Contained Bundle (.textpack)' }}</option>
           </select>
         </div>
 

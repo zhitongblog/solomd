@@ -830,9 +830,40 @@ export function useExport() {
     baseName: string;
     filePath?: string;
     outputPath: string;
-    format: 'pdf' | 'html' | 'docx' | 'png';
+    format: 'pdf' | 'html' | 'docx' | 'png' | 'textpack';
   }): Promise<void> {
     const { content, baseName, filePath, outputPath, format } = input;
+    if (format === 'textpack') {
+      const { rewriteMarkdownForTextBundle, createTextPackArchive } = await import('../lib/textbundle');
+      const { rewrittenMarkdown, assets } = rewriteMarkdownForTextBundle(content);
+      const assetBytes: Record<string, Uint8Array> = {};
+      const noteDir = filePath
+        ? filePath.slice(0, Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\')))
+        : '';
+      for (const ref of assets) {
+        let absPath = ref.rawPath;
+        try {
+          absPath = decodeURIComponent(absPath);
+        } catch {
+          // keep raw
+        }
+        if (!absPath.startsWith('/') && !/^[a-zA-Z]:[\\/]/.test(absPath) && noteDir) {
+          const sep = noteDir.includes('\\') ? '\\' : '/';
+          absPath = `${noteDir}${sep}${absPath.replace(/^\.[\\/]/, '').replace(/[\\/]/g, sep)}`;
+        }
+        try {
+          const bytes = await invoke<number[]>('read_binary_file', { path: absPath });
+          if (bytes && bytes.length > 0) {
+            assetBytes[ref.bundleFileName] = new Uint8Array(bytes);
+          }
+        } catch {
+          // Skip missing local asset
+        }
+      }
+      const zipBuf = createTextPackArchive(rewrittenMarkdown, assetBytes);
+      await invoke('write_binary_file', { path: outputPath, data: Array.from(zipBuf) });
+      return;
+    }
     if (format === 'html') {
       const html = await buildStandaloneHtml({
         content,

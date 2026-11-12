@@ -205,6 +205,8 @@ interface Settings {
   /** #208: hide the in-window top menubar (`File Edit Paragraph ...`) on
    *  custom-titlebar platforms (Windows). */
   hideMenuBar: boolean;
+  /** #318: show text labels next to toolbar icons (icon + label mode). */
+  toolbarShowLabels: boolean;
   /** #479: hide the top mobile status-bar reservation for full-screen immersion. */
   mobileHideStatusBar: boolean;
   typewriterMode: boolean;
@@ -424,9 +426,9 @@ interface Settings {
   // designated vault folders and saving an external file never triggers sync.
   syncVaults: SyncVaultEntry[];
   syncOnlyRegisteredVaults: boolean;
-  // #535 / #359 — Custom export dialog remembered directory & format.
+  // #535 / #359 / #505 — Custom export dialog remembered directory & format.
   lastCustomExportDir: string;
-  lastCustomExportFormat: 'pdf' | 'html' | 'docx' | 'png';
+  lastCustomExportFormat: 'pdf' | 'html' | 'docx' | 'png' | 'textpack';
   // v2.5 F2: writing stats — show the per-doc word/char goal pill in the
   // status bar. Off-by-default-ish: the pill stays inert unless the doc's
   // YAML front matter sets a `goal:` key, so this toggle is a hard kill
@@ -814,6 +816,7 @@ function defaults(): Settings {
     focusMode: false,
     toolbarHidden: false,
     hideMenuBar: false,
+    toolbarShowLabels: false,
     mobileHideStatusBar: false,
     typewriterMode: false,
     formatHints: true,
@@ -1563,6 +1566,10 @@ export const useSettingsStore = defineStore('settings', {
       this.hideMenuBar = !this.hideMenuBar;
       this.persist();
     },
+    toggleToolbarShowLabels() {
+      this.toolbarShowLabels = !this.toolbarShowLabels;
+      this.persist();
+    },
     toggleMobileHideStatusBar() {
       this.mobileHideStatusBar = !this.mobileHideStatusBar;
       this.persist();
@@ -1877,7 +1884,7 @@ export const useSettingsStore = defineStore('settings', {
       this.lastCustomExportDir = dir;
       this.persist();
     },
-    setLastCustomExportFormat(fmt: 'pdf' | 'html' | 'docx' | 'png') {
+    setLastCustomExportFormat(fmt: 'pdf' | 'html' | 'docx' | 'png' | 'textpack') {
       this.lastCustomExportFormat = fmt;
       this.persist();
     },

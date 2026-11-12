@@ -6,6 +6,7 @@ import { useI18n } from '../i18n';
 import {
   extractOutline,
   parseOutlineSegments,
+  reorderMarkdownHeadingSection,
   stripOutlineFormatting,
   type OutlineItem,
 } from '../lib/markdown';
@@ -30,6 +31,41 @@ const settings = useSettingsStore();
 const { t } = useI18n();
 const listRef = ref<HTMLUListElement | null>(null);
 const collapsedByTab = ref<Record<string, number[]>>({});
+const dragSourceLine = ref<number | null>(null);
+const dragOverLine = ref<number | null>(null);
+
+function onOutlineDragStart(line: number, ev: DragEvent) {
+  dragSourceLine.value = line;
+  if (ev.dataTransfer) {
+    ev.dataTransfer.effectAllowed = 'move';
+    ev.dataTransfer.setData('text/plain', String(line));
+  }
+}
+
+function onOutlineDragOver(line: number, ev: DragEvent) {
+  if (dragSourceLine.value == null || dragSourceLine.value === line) return;
+  ev.preventDefault();
+  dragOverLine.value = line;
+}
+
+function onOutlineDrop(targetLine: number, ev: DragEvent) {
+  ev.preventDefault();
+  const srcLine = dragSourceLine.value;
+  dragSourceLine.value = null;
+  dragOverLine.value = null;
+  const tab = activeMarkdownTab.value;
+  if (!tab || srcLine == null || srcLine === targetLine) return;
+  const pos = srcLine < targetLine ? 'after' : 'before';
+  const next = reorderMarkdownHeadingSection(tab.content, srcLine, targetLine, pos);
+  if (next !== tab.content) {
+    tabs.setContent(tab.id, next);
+  }
+}
+
+function onOutlineDragEnd() {
+  dragSourceLine.value = null;
+  dragOverLine.value = null;
+}
 
 // ---------------------------------------------------------------------------
 // v3.1.x keyboard jump (vimium-style)
@@ -335,9 +371,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onWindowKey));
       <li
         v-for="(it, i) in visibleItems"
         :key="`${it.line}-${it.text}`"
-        :class="['outline__item', 'rp-row', `outline__item--h${it.level}`, { 'outline__item--active': i === activeIndex, 'is-active': i === activeIndex }]"
+        draggable="true"
+        :class="['outline__item', 'rp-row', `outline__item--h${it.level}`, { 'outline__item--active': i === activeIndex, 'is-active': i === activeIndex, 'outline__item--dragover': dragOverLine === it.line }]"
         :style="{ '--outline-pl': 4 + it.depth * 14 + 'px' }"
         @click="emit('goto', it.line)"
+        @dragstart="onOutlineDragStart(it.line, $event)"
+        @dragover="onOutlineDragOver(it.line, $event)"
+        @drop="onOutlineDrop(it.line, $event)"
+        @dragend="onOutlineDragEnd"
       >
         <button
           v-if="it.hasChildren"
@@ -397,6 +438,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onWindowKey));
 }
 .outline__item--active {
   font-weight: 500;
+}
+.outline__item--dragover {
+  outline: 1px dashed var(--accent, #ff9f40);
+  background: var(--fill-1);
 }
 .outline__twisty {
   flex: 0 0 16px;
