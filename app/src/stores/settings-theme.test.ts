@@ -28,7 +28,7 @@ g.window = {
 if (!g.navigator) g.navigator = { userAgent: 'node', language: 'en-US', platform: 'MacIntel' };
 
 const { createPinia, setActivePinia } = await import('pinia');
-const { useSettingsStore } = await import('./settings');
+const { useSettingsStore, isPathInsideFolder, resolveSyncTargetFolder } = await import('./settings');
 const LS_KEY = 'solomd.settings.v1';
 
 function flipOs(toDark: boolean) {
@@ -94,3 +94,43 @@ test('any other invalid persisted theme is reset to the default', () => {
   assert.equal(s.followSystemTheme, false);
   assert.equal(s.theme, 'light');
 });
+
+test('#531: resolveSyncTargetFolder scopes sync strictly to registered Vaults and blocks external files', () => {
+  const vaults = [
+    { id: 'v1', name: 'MyNotes', localPath: '/Users/alex/MyNotes', enabled: true, provider: 'all' as const },
+    { id: 'v2', name: 'Work', localPath: 'D:\\Vaults\\Work', enabled: false, provider: 'git' as const },
+  ];
+  assert.equal(isPathInsideFolder('/Users/alex/MyNotes/sub/a.md', '/Users/alex/MyNotes'), true);
+  assert.equal(isPathInsideFolder('/Users/alex/MyNotesBackup/a.md', '/Users/alex/MyNotes'), false);
+  assert.equal(isPathInsideFolder('d:\\vaults\\work\\daily\\2026.md', 'D:/Vaults/Work'), true);
+
+  // Saving an external file (e.g. Desktop/temp.md) while MyNotes is open in sidebar must NEVER trigger sync
+  assert.equal(
+    resolveSyncTargetFolder('/Users/alex/Desktop/temp.md', '/Users/alex/MyNotes', vaults, true),
+    null,
+  );
+  // Even without registered vaults, saving an external file outside currentFolder never triggers workspace sync
+  assert.equal(
+    resolveSyncTargetFolder('/Users/alex/Desktop/temp.md', '/Users/alex/MyNotes', [], false),
+    null,
+  );
+
+  // Saving a file inside a registered Vault works even if sidebar is currently opened to another folder
+  assert.equal(
+    resolveSyncTargetFolder('/Users/alex/MyNotes/daily/note.md', '/Users/alex/Downloads', vaults, true),
+    '/Users/alex/MyNotes',
+  );
+
+  // A Vault with enabled=false blocks background/save sync
+  assert.equal(
+    resolveSyncTargetFolder('D:\\Vaults\\Work\\todo.md', 'D:\\Vaults\\Work', vaults, true),
+    null,
+  );
+
+  // Opening an unregistered folder in sidebar does not auto-sync when vaults are registered
+  assert.equal(
+    resolveSyncTargetFolder(undefined, '/Users/alex/RandomFolder', vaults, true),
+    null,
+  );
+});
+

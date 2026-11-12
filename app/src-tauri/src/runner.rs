@@ -725,6 +725,7 @@ pub fn run_with(initial_file: Option<String>) {
             themes::theme_install,
             themes::theme_uninstall,
             themes::theme_list_installed,
+            themes::theme_get_dir,
             cjk_proofread::cjk_proofread,
             github_sync::github_set_token,
             github_sync::github_clear_token,

@@ -337,6 +337,7 @@ pub fn run() {
             themes::theme_install,
             themes::theme_uninstall,
             themes::theme_list_installed,
+            themes::theme_get_dir,
             #[cfg(not(target_os = "android"))]
             github_sync::github_set_token,
             #[cfg(not(target_os = "android"))]

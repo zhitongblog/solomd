@@ -14,7 +14,7 @@ import { watch } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { useGithubSyncStore, isGithubAuthError, classifyPushError } from '../stores/githubSync';
 import { useWorkspaceStore } from '../stores/workspace';
-import { useSettingsStore } from '../stores/settings';
+import { useSettingsStore, resolveSyncTargetFolder } from '../stores/settings';
 import { useTabsStore } from '../stores/tabs';
 import { useToastsStore } from '../stores/toasts';
 import { useI18n } from '../i18n';
@@ -73,8 +73,15 @@ export function useGithubSync() {
     return `githubSync.${actual}`;
   }
 
-  async function pushIfWanted(): Promise<void> {
-    const folder = workspace.currentFolder;
+  async function pushIfWanted(targetFolderOverride?: string | null): Promise<void> {
+    const folder =
+      targetFolderOverride ??
+      resolveSyncTargetFolder(
+        tabs.activeTab?.filePath,
+        workspace.currentFolder,
+        settings.syncVaults,
+        settings.syncOnlyRegisteredVaults,
+      );
     if (!folder) return;
 
     if (settings.webdavEnabled && settings.webdavAutoSync && settings.webdavUrl.trim()) {
@@ -167,9 +174,15 @@ export function useGithubSync() {
   }
 
   function onSaved(): void {
-    const folder = workspace.currentFolder;
     const activeFile = tabs.activeTab?.filePath;
-    if (folder && activeFile && settings.autoSnapshotOnSave) {
+    const folder = resolveSyncTargetFolder(
+      activeFile,
+      workspace.currentFolder,
+      settings.syncVaults,
+      settings.syncOnlyRegisteredVaults,
+    );
+    if (!folder) return;
+    if (activeFile && settings.autoSnapshotOnSave) {
       void invoke('sync_save_file_snapshot', {
         workspace: folder,
         filePath: activeFile,
@@ -184,7 +197,7 @@ export function useGithubSync() {
     // case they ⌘S three more times before going to lunch.
     pushTimer = setTimeout(() => {
       pushTimer = null;
-      void pushIfWanted();
+      void pushIfWanted(folder);
     }, 5000);
   }
 

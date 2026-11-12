@@ -106,3 +106,17 @@ test('indented code blocks keep their content', () => {
   assert.ok(code.includes('a ==b== c'), code);
   assert.ok(code.includes('x ~~y~~ z'), code);
 });
+
+test('#537: non-language prose on the opening fence line is preserved as the first line of code', () => {
+  const doc = '```{内容写在这里 预览就不显示任何内容}\n{第二行才能预览}\n```';
+  const html = renderMarkdown(doc);
+  const code = codeText(html);
+  assert.ok(code.includes('{内容写在这里 预览就不显示任何内容}'), `missing line 1 in:\n${code}`);
+  assert.ok(code.includes('{第二行才能预览}'), `missing line 2 in:\n${code}`);
+  // Real language identifiers still act as info strings and do not leak into code body
+  const jsDoc = '```javascript\nconst x = 1;\n```';
+  const jsCode = codeText(renderMarkdown(jsDoc));
+  assert.ok(!jsCode.includes('javascript'));
+  assert.ok(jsCode.includes('const x = 1;'));
+});
+

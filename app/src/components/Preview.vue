@@ -1230,6 +1230,14 @@ defineExpose({ scrollToLine, openSearch });
   padding: 6px 12px;
   overflow-wrap: break-word;
 }
+:where(.preview-content) th::after,
+:where(.preview-content) td::after {
+  content: '\00a0';
+  display: inline-block;
+  width: 0;
+  overflow: hidden;
+  visibility: hidden;
+}
 :where(.preview-content) hr {
   border: none;
   border-top: 1px solid var(--hairline);

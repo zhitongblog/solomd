@@ -820,6 +820,77 @@ export function useExport() {
     await exportPdfPrint({ forcePrintDialog: true });
   }
 
+  /**
+   * #535 / #359 — Direct export of a single note to `outputPath` in the chosen
+   * format without opening a per-file Save dialog. Used by CustomExportDialog
+   * for both single-note custom export and batch folder export.
+   */
+  async function exportNoteToFile(input: {
+    content: string;
+    baseName: string;
+    filePath?: string;
+    outputPath: string;
+    format: 'pdf' | 'html' | 'docx' | 'png';
+  }): Promise<void> {
+    const { content, baseName, filePath, outputPath, format } = input;
+    if (format === 'html') {
+      const html = await buildStandaloneHtml({
+        content,
+        title: baseName,
+        filePath,
+        plantumlServer: plantumlServer(),
+        codeBlockLineNumbers: settings.codeBlockLineNumbers,
+        codeBlockWrap: settings.codeBlockWrap,
+      });
+      await invoke('write_file', { path: outputPath, content: html, encoding: 'UTF-8' });
+      return;
+    }
+    if (format === 'docx') {
+      const blob = await markdownToDocxBlob(
+        content,
+        baseName,
+        filePath,
+        settings.docxPreset,
+        t('docx.contents'),
+        plantumlServer(),
+      );
+      const buffer = new Uint8Array(await blob.arrayBuffer());
+      await invoke('write_binary_file', { path: outputPath, data: Array.from(buffer) });
+      return;
+    }
+    if (format === 'pdf') {
+      const pdfOpts = resolvePdfOptions(
+        settings.pdfDefaults,
+        content,
+        userTouchedPdfDefaults(settings.pdfDefaults),
+      );
+      const blob = await markdownToPdfBlob(
+        content,
+        baseName,
+        pdfOpts,
+        filePath,
+        plantumlServer(),
+        settings.codeBlockLineNumbers,
+      );
+      const buffer = new Uint8Array(await blob.arrayBuffer());
+      await invoke('write_binary_file', { path: outputPath, data: Array.from(buffer) });
+      return;
+    }
+    if (format === 'png') {
+      const blob = await markdownToImageBlob(content, baseName, filePath, {
+        branding: settings.imageExportBranding,
+        codeBlockLineNumbers: settings.codeBlockLineNumbers,
+        codeBlockWrap: settings.codeBlockWrap,
+      });
+      const buffer = new Uint8Array(await blob.arrayBuffer());
+      await invoke('write_binary_file', { path: outputPath, data: Array.from(buffer) });
+    }
+  }
+
+  function openCustomExportDialog() {
+    window.dispatchEvent(new CustomEvent('solomd:open-custom-export'));
+  }
+
   return {
     exportHtml,
     exportDocx,
@@ -827,6 +898,8 @@ export function useExport() {
     exportPdfPrint,
     printDocument,
     exportImage,
+    exportNoteToFile,
+    openCustomExportDialog,
     copyAsHtml,
     copyAsWord,
     copyAsPlainText,

@@ -107,6 +107,7 @@ const syncBranches = computed<Array<{ id: SyncSubTab; label: string }>>(() => {
     items.push({ id: 'git', label: zh ? 'Git 同步' : 'Git Sync' });
   }
   items.push(
+    { id: 'vaults', label: zh ? '笔记库管理' : 'Vault Management' },
     { id: 'cloud_api', label: zh ? '网盘直连 API' : 'Direct Cloud API' },
     { id: 'local_vault', label: zh ? '本地网盘目录' : 'Local Cloud Folder' },
     { id: 'webdav', label: zh ? 'WebDAV 同步' : 'WebDAV Sync' },
@@ -775,9 +776,10 @@ function onToggleOutlineGlobal() {
 }
 
 async function pickCustomCss() {
+  const themesDir = await invoke<string>('theme_get_dir').catch(() => undefined);
   const path = await openFileDialog({
     multiple: false,
-    defaultPath: await files.filePickerStartDir(),
+    defaultPath: themesDir || (await files.filePickerStartDir()),
     filters: [{ name: 'CSS', extensions: ['css'] }],
   });
   if (path && typeof path === 'string') {
@@ -1059,21 +1061,30 @@ function onSelectPdfFont(v: string) {
               <span class="settings__nav-label">{{ t(c.labelKey) }}</span>
             </button>
           </template>
-          <button
-            type="button"
-            class="settings__nav-item settings__nav-supporter"
-            :class="{ 'settings__nav-supporter--active': Boolean(activeSupporterBadge) }"
-            @click="supportModalOpen = true"
-          >
-            <Icons class="settings__nav-icon" name="heart" :size="16" />
-            <span class="settings__nav-label">
-              {{
-                activeSupporterBadge
-                  ? `${activeSupporterBadge.icon} ${activeSupporterBadge.label}`
-                  : t('about.sponsor')
-              }}
-            </span>
-          </button>
+          <div class="settings__nav-supporter-wrap">
+            <button
+              type="button"
+              class="settings__nav-item settings__nav-supporter"
+              :class="{ 'settings__nav-supporter--active': Boolean(activeSupporterBadge) }"
+              @click="supportModalOpen = true"
+            >
+              <Icons class="settings__nav-icon settings__nav-supporter-icon" name="heart" :size="16" />
+              <span class="settings__nav-label">
+                {{
+                  activeSupporterBadge
+                    ? `${activeSupporterBadge.icon} ${activeSupporterBadge.label}`
+                    : t('about.sponsor')
+                }}
+              </span>
+              <span class="settings__nav-supporter-pill">
+                {{
+                  activeSupporterBadge
+                    ? (isZhLocale ? '已点亮' : 'Active')
+                    : (isZhLocale ? '✨ 徽章' : '✨ Badge')
+                }}
+              </span>
+            </button>
+          </div>
         </nav>
       <div
         ref="bodyEl"
@@ -1209,6 +1220,54 @@ function onSelectPdfFont(v: string) {
             </button>
           </p>
         </section>
+
+        <!-- Supporter micro-guide card on the first page (Option A) -->
+        <div
+          data-cat="basics"
+          class="settings__supporter-guide"
+          :class="{ 'settings__supporter-guide--active': Boolean(activeSupporterBadge) }"
+        >
+          <div class="settings__supporter-guide-main">
+            <div class="settings__supporter-guide-title">
+              <span class="settings__supporter-guide-sparkle">✨</span>
+              <span>
+                {{
+                  activeSupporterBadge
+                    ? (isZhLocale ? '感谢你支持 SoloMD 独立开发' : 'Thank you for supporting SoloMD')
+                    : (isZhLocale ? '喜欢 SoloMD？' : 'Enjoying SoloMD?')
+                }}
+              </span>
+              <span v-if="activeSupporterBadge" class="settings__supporter-guide-tag">
+                {{ activeSupporterBadge.icon }} {{ activeSupporterBadge.label }}
+              </span>
+            </div>
+            <p class="settings__supporter-guide-desc">
+              {{
+                activeSupporterBadge
+                  ? (isZhLocale
+                      ? '你的专属「✨ 支持者」徽章已永久点亮，再次感谢你的认可与鼓励。'
+                      : 'Your exclusive "✨ Supporter" badge is permanently active. Thank you for helping keep SoloMD independent.')
+                  : (isZhLocale
+                      ? 'SoloMD 坚持本地优先、永久免费无广告。请开发者喝杯咖啡，即可永久点亮专属「✨ 支持者」徽章。'
+                      : 'SoloMD is local-first, free forever, and ad-free. Buy the developer a coffee to permanently unlock your "✨ Supporter" badge.')
+              }}
+            </p>
+          </div>
+          <button
+            type="button"
+            class="settings__supporter-guide-btn"
+            @click="supportModalOpen = true"
+          >
+            <Icons class="settings__supporter-guide-heart" name="heart" :size="14" />
+            <span>
+              {{
+                activeSupporterBadge
+                  ? (isZhLocale ? '查看支持者徽章' : 'View Badge')
+                  : (isZhLocale ? '支持独立开发' : 'Support SoloMD')
+              }}
+            </span>
+          </button>
+        </div>
 
         <section data-cat="basics">
           <label>{{ t('settings.fontFamily') }}</label>
@@ -2929,6 +2988,133 @@ function onSelectPdfFont(v: string) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.settings__nav-supporter-wrap {
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: var(--bd-hair);
+}
+.settings__nav-supporter {
+  width: 100%;
+  height: 34px;
+  min-height: 34px;
+  padding: 0 10px;
+  background: color-mix(in srgb, #f59e0b 8%, var(--fill-1));
+  border: 1px solid color-mix(in srgb, #f59e0b 22%, var(--border, rgba(128, 128, 128, 0.16)));
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+}
+.settings__nav-supporter:hover {
+  background: color-mix(in srgb, #f59e0b 14%, var(--fill-1));
+  border-color: color-mix(in srgb, #f59e0b 36%, var(--border, rgba(128, 128, 128, 0.25)));
+}
+.settings__nav-supporter .settings__nav-supporter-icon {
+  color: #f43f5e;
+}
+.settings__nav-supporter-pill {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 999px;
+  color: #b45309;
+  background: color-mix(in srgb, #f59e0b 18%, transparent);
+  border: 1px solid color-mix(in srgb, #f59e0b 32%, transparent);
+}
+:root[data-theme="dark"] .settings__nav-supporter-pill {
+  color: #fbbf24;
+}
+.settings__nav-supporter--active {
+  background: color-mix(in srgb, #f59e0b 12%, var(--fill-1));
+  border-color: color-mix(in srgb, #f59e0b 35%, transparent);
+}
+.settings__supporter-guide {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 12px 0;
+  padding: 13px 16px;
+  border-radius: 10px;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, #f59e0b 8%, var(--bg-elev, var(--fill-1))) 0%,
+    color-mix(in srgb, #f43f5e 6%, var(--bg-elev, var(--fill-1))) 100%
+  );
+  border: 1px solid color-mix(in srgb, #f59e0b 26%, var(--border, rgba(128, 128, 128, 0.18)));
+}
+.settings__body[data-active-cat="basics"] > .settings__supporter-guide[data-cat="basics"] {
+  display: flex;
+}
+.settings__supporter-guide-main {
+  min-width: 0;
+  flex: 1;
+}
+.settings__supporter-guide-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 3px;
+}
+.settings__supporter-guide-sparkle {
+  font-size: 14px;
+  line-height: 1;
+}
+.settings__supporter-guide-tag {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 999px;
+  color: #b45309;
+  background: color-mix(in srgb, #f59e0b 18%, transparent);
+  border: 1px solid color-mix(in srgb, #f59e0b 32%, transparent);
+}
+:root[data-theme="dark"] .settings__supporter-guide-tag {
+  color: #fbbf24;
+}
+.settings__supporter-guide-desc {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-2);
+}
+.settings__supporter-guide-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 13px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #fff !important;
+  background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%) !important;
+  border: none !important;
+  box-shadow: 0 2px 6px rgba(225, 29, 72, 0.22);
+  cursor: pointer !important;
+  transition: filter 0.15s ease, transform 0.12s ease;
+}
+.settings__supporter-guide-btn:hover {
+  filter: brightness(1.06);
+}
+.settings__supporter-guide-btn:active {
+  transform: translateY(1px);
+}
+.settings__supporter-guide-heart {
+  color: #fff;
+  flex-shrink: 0;
+}
+@media (max-width: 640px) {
+  .settings__supporter-guide {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 .settings__nav-sublist {
   display: flex;

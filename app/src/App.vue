@@ -211,6 +211,11 @@ const insertTableDialogOpen = ref(false);
 function onOpenInsertTableDialog() {
   insertTableDialogOpen.value = true;
 }
+// #535 & #359 — "Custom / Batch Export" dialog
+const customExportDialogOpen = ref(false);
+function onOpenCustomExportDialog() {
+  customExportDialogOpen.value = true;
+}
 function onInsertTableConfirm(rows: number, cols: number, align: 'left' | 'center' | 'right' | null = null) {
   insertTableDialogOpen.value = false;
   window.dispatchEvent(
@@ -351,6 +356,8 @@ const { component: ImageUrlDialogC, open: imageUrlLazyOpen } = useLazyComponent(
   () => import('./components/ImageUrlDialog.vue'), () => imageUrlDialogOpen.value);
 const { component: InsertTableDialogC, open: insertTableLazyOpen } = useLazyComponent(
   () => import('./components/InsertTableDialog.vue'), () => insertTableDialogOpen.value);
+const { component: CustomExportDialogC, open: customExportLazyOpen } = useLazyComponent(
+  () => import('./components/CustomExportDialog.vue'), () => customExportDialogOpen.value);
 const { component: AndroidFolderPickerC, open: androidPickerLazyOpen } = useLazyComponent(
   () => import('./components/AndroidFolderPicker.vue'), () => androidPickerOpen.value);
 
@@ -1597,6 +1604,7 @@ onMounted(async () => {
   window.addEventListener('solomd:open-agent-wizard', onOpenAgentWizard);
   window.addEventListener('solomd:open-image-url-dialog', onOpenImageUrlDialog);
   window.addEventListener('solomd:open-insert-table-dialog', onOpenInsertTableDialog);
+  window.addEventListener('solomd:open-custom-export', onOpenCustomExportDialog);
 
   // Initialize tile layout: validate persisted state or create default
   tiles.validate(tabs.tabs);
@@ -1887,6 +1895,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('solomd:open-agent-wizard', onOpenAgentWizard);
   window.removeEventListener('solomd:open-image-url-dialog', onOpenImageUrlDialog);
   window.removeEventListener('solomd:open-insert-table-dialog', onOpenInsertTableDialog);
+  window.removeEventListener('solomd:open-custom-export', onOpenCustomExportDialog);
   if (unlistenOpened) {
     unlistenOpened();
     unlistenOpened = null;
@@ -2730,6 +2739,12 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
       :open="insertTableLazyOpen"
       @confirm="onInsertTableConfirm"
       @cancel="insertTableDialogOpen = false"
+    />
+    <component
+      :is="CustomExportDialogC"
+      v-if="CustomExportDialogC"
+      :open="customExportLazyOpen"
+      @close="customExportDialogOpen = false"
     />
     <SessionRestoreDialog />
     <!-- v4.6 F5 — saved-view create/edit modal (self-mounts via window events). -->

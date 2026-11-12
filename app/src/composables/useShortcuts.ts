@@ -170,6 +170,7 @@ export function useShortcuts(hooks: Hooks = {}) {
     // and PNG stay palette-only — they're one-off exports.
     'export.copyMd': () => void exporter.copyAsMarkdown(),
     'export.pdfPrint': () => runById('export.pdfPrint'),
+    'export.custom': () => runById('export.custom'),
     'file.print': () => void exporter.printDocument(),
 
     'view.cycleView': () => settings.cycleViewMode(),

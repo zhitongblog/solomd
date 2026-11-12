@@ -199,6 +199,7 @@ export function buildAppMenu(ctx: MenuContext): TopMenu[] {
         item('export.pdfPrint', t('toolbar.exportPdfPrint')),
         item('export.pdf', t('toolbar.exportPdf')),
         item('export.image', t('toolbar.exportImage')),
+        item('export.custom', t('toolbar.exportCustom')),
         sep,
         // Pandoc-based: they tell the user when Pandoc is not installed.
         item('export.epub', t('cmd.export.epub')),

@@ -185,6 +185,13 @@ const PDF_CSS = `
     overflow-wrap: anywhere;
     word-break: break-word;
   }
+  :where(.pdf-page) th::after, :where(.pdf-page) td::after {
+    content: '\\00a0';
+    display: inline-block;
+    width: 0;
+    overflow: hidden;
+    visibility: hidden;
+  }
   /* #271 — short cells stay on one line (see markdown.ts table_short_cells). */
   :where(.pdf-page) .cell-nowrap { white-space: nowrap; }
   :where(.pdf-page) thead th {

@@ -518,18 +518,49 @@ const BLOCK_OPEN_TYPES = new Set([
 // `.preview-content` root — so flipping the setting is a pure-CSS swap,
 // no re-render needed.
 const defaultFenceRenderer = md.renderer.rules.fence;
+function isValidFenceInfoString(rawInfo: string): boolean {
+  const trimmed = rawInfo.trim();
+  if (!trimmed) return true;
+  const firstWord = trimmed.split(/\s+/)[0].toLowerCase();
+  if (
+    firstWord === 'mermaid' ||
+    firstWord === 'tldraw' ||
+    firstWord === 'plantuml' ||
+    firstWord === 'puml'
+  ) {
+    return true;
+  }
+  if (/^[a-zA-Z0-9_+#.-]+(?:\s+\{[^{}\n]*\})?$/.test(trimmed)) return true;
+  if (/^\{[a-zA-Z0-9_+#.,=\s-]+\}$/.test(trimmed)) return true;
+  return false;
+}
 md.renderer.rules.fence = function (tokens, idx, options, env, self) {
+  const tok = tokens[idx];
+  const origInfo = tok.info || '';
+  const origContent = tok.content || '';
+  // #537 — If the user typed non-language content directly after the opening
+  // ``` on line 1 (e.g. ```{内容写在这里} or ```第一行代码), treat it as the
+  // first line of the code block rather than swallowing it as an unknown
+  // language info string.
+  const treatInfoAsCodeLine = origInfo.trim().length > 0 && !isValidFenceInfoString(origInfo);
+  if (treatInfoAsCodeLine) {
+    tok.info = '';
+    tok.content = `${origInfo.trim()}\n${origContent}`;
+  }
   const html = defaultFenceRenderer
     ? defaultFenceRenderer(tokens, idx, options, env, self)
     : self.renderToken(tokens, idx, options);
+  if (treatInfoAsCodeLine) {
+    tok.info = origInfo;
+    tok.content = origContent;
+  }
   // Skip mermaid — Preview.vue replaces these blocks with rendered SVGs.
   // Skip tldraw (F7) the same way — Preview.vue swaps the ```tldraw fence for
   // a static board SVG thumbnail (the language class survives so the
   // post-processor can find it).
-  const tok = tokens[idx];
   const info = (tok.info || '').trim().toLowerCase();
   const lang = info.split(/\s+/)[0];
-  if (lang === 'mermaid' || lang === 'tldraw') return html;
+  if (!treatInfoAsCodeLine && (lang === 'mermaid' || lang === 'tldraw')) return html;
   // Inject .cb-line wrappers on each line. We do this on the rendered HTML
   // because the highlight has already produced <span class="hljs-..."> spans
   // that may straddle multiple lines (a few hljs grammars emit multi-line

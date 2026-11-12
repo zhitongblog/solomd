@@ -16,7 +16,7 @@
 import { watch } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { useSettingsStore } from '../stores/settings';
+import { useSettingsStore, resolveSyncTargetFolder } from '../stores/settings';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useGitHistoryStore } from '../stores/gitHistory';
 import { useTabsStore } from '../stores/tabs';
@@ -122,12 +122,17 @@ export function useAutoCommit() {
   async function performCommit(): Promise<void> {
     if (busy) return;
     if (!isEnabled()) return;
-    const folder = workspace.currentFolder;
+    const filePath = tabs.activeTab?.filePath ?? undefined;
+    const folder = resolveSyncTargetFolder(
+      filePath,
+      workspace.currentFolder,
+      settings.syncVaults,
+      settings.syncOnlyRegisteredVaults,
+    );
     if (!folder) return;
     busy = true;
     try {
       if (!(await ensureInitialized(folder))) return;
-      const filePath = tabs.activeTab?.filePath ?? undefined;
       try {
         const aiMessage = await generateAiCommitMessage(filePath);
         const sha = await gh.commit(folder, filePath, aiMessage);

@@ -345,9 +345,10 @@ export function useCommands(): Command[] {
       title: 'Theme: Set Custom CSS File…',
       hint: 'Pick a .css file to override SoloMD styles',
       run: async () => {
+        const themesDir = await invoke<string>('theme_get_dir').catch(() => undefined);
         const path = await openFileDialog({
           multiple: false,
-          defaultPath: await files.filePickerStartDir(),
+          defaultPath: themesDir || (await files.filePickerStartDir()),
           filters: [{ name: 'CSS', extensions: ['css'] }],
         });
         if (path && typeof path === 'string') {
@@ -671,6 +672,7 @@ export function useCommands(): Command[] {
     { id: 'file.print', title: 'Print…', hint: 'Open the system print dialog', shortcut: kb('file.print'), run: () => exporter.printDocument() },
     { id: 'export.pdf', title: 'Export to PDF (image)…', hint: 'rasterised, text not selectable', run: () => exporter.exportPdf() },
     { id: 'export.image', title: 'Export to Image (PNG)…', run: () => exporter.exportImage() },
+    { id: 'export.custom', title: 'Custom / Batch Export…', hint: 'export current file or entire folder to a custom directory', shortcut: kb('export.custom'), run: () => exporter.openCustomExportDialog() },
     { id: 'export.epub', title: 'Export to EPUB…', hint: 'via Pandoc', run: () => pandoc.exportTo('epub') },
     { id: 'export.odt', title: 'Export to ODT…', hint: 'via Pandoc', run: () => pandoc.exportTo('odt') },
     { id: 'export.latex', title: 'Export to LaTeX…', hint: 'via Pandoc', run: () => pandoc.exportTo('latex') },

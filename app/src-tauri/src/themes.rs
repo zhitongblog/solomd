@@ -126,6 +126,14 @@ pub fn theme_list_installed(app: AppHandle) -> Result<Vec<InstalledTheme>, Strin
     Ok(out)
 }
 
+/// Return the absolute path to `<config_dir>/themes` (creating it if needed)
+/// so the custom CSS file picker opens directly inside the themes directory (#534).
+#[tauri::command]
+pub fn theme_get_dir(app: AppHandle) -> Result<String, String> {
+    let dir = themes_dir(&app)?;
+    Ok(dir.to_string_lossy().to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::validate_id;

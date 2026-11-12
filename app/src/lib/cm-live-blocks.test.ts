@@ -635,3 +635,61 @@ test('toggleTableFoldEffect expands and folds table source code independently of
   }).state;
   assert.deepEqual(getWidgets(refolded), ['TableWidget']);
 });
+
+test('#536: Mermaid and PlantUML stay collapsed when cursor touches fence boundaries and only expand manually via toggleMermaidFoldEffect', () => {
+  const doc = [
+    '# Title',
+    '',
+    '```mermaid',
+    'graph TD; A-->B;',
+    '```',
+    '',
+    '```plantuml',
+    '@startuml',
+    'Alice -> Bob: Hi',
+    '@enduml',
+    '```',
+  ].join('\n');
+
+  const collect = (s: EditorState) => {
+    const out: Array<{ name: string; from: number; to: number }> = [];
+    for (const set of s.facet(EditorView.decorations)) {
+      set.between(0, s.doc.length, (from, to, deco) => {
+        const w = (deco.spec as { widget?: { constructor: { name: string } } }).widget;
+        if (w) out.push({ name: w.constructor.name, from, to });
+      });
+    }
+    return out;
+  };
+
+  // Cursor on opening fence line 3 (` ```mermaid `): Mermaid stays collapsed (from < to)
+  const onFenceStart = EditorState.create({
+    doc,
+    extensions: [
+      markdown({ base: markdownLanguage, addKeymap: false }),
+      liveBlocksExtension({
+        keepSource: () => false,
+        getPlantuml: () => ({ enabled: true, server: 'https://www.plantuml.com/plantuml' }),
+      }),
+    ],
+    selection: { anchor: doc.split('\n').slice(0, 2).join('\n').length + 1 },
+  });
+  const decosAtStart = collect(onFenceStart);
+  const mermaidAtStart = decosAtStart.find((d) => d.name === 'MermaidWidget');
+  const plantumlAtStart = decosAtStart.find((d) => d.name === 'PlantumlWidget');
+  assert.ok(mermaidAtStart && mermaidAtStart.from < mermaidAtStart.to, 'Mermaid must stay collapsed when cursor is on opening fence line');
+  assert.ok(plantumlAtStart && plantumlAtStart.from < plantumlAtStart.to, 'PlantUML must stay collapsed by default');
+
+  // Manually expand Mermaid (line 3) and PlantUML (line 7) via `+` button:
+  const manuallyExpanded = onFenceStart.update({
+    effects: [
+      toggleMermaidFoldEffect.of({ line: 3, collapsed: false }),
+      toggleMermaidFoldEffect.of({ line: 7, collapsed: false }),
+    ],
+  }).state;
+  const decosExpanded = collect(manuallyExpanded);
+  const mermaidExpanded = decosExpanded.find((d) => d.name === 'MermaidWidget');
+  const plantumlExpanded = decosExpanded.find((d) => d.name === 'PlantumlWidget');
+  assert.ok(mermaidExpanded && mermaidExpanded.from === mermaidExpanded.to, 'Mermaid renders as block widget below closing fence when expanded');
+  assert.ok(plantumlExpanded && plantumlExpanded.from === plantumlExpanded.to, 'PlantUML renders as block widget below closing fence when expanded');
+});

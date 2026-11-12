@@ -152,6 +152,13 @@ ${headCss ? `<style>${headCss}</style>\n` : ''}<style>
     overflow-wrap: anywhere;
     word-break: break-word;
   }
+  th::after, td::after {
+    content: '\\00a0';
+    display: inline-block;
+    width: 0;
+    overflow: hidden;
+    visibility: hidden;
+  }
   /* #271 — short cells stay on one line (see markdown.ts table_short_cells). */
   .cell-nowrap { white-space: nowrap; }
   thead th {

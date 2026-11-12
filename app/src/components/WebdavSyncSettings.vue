@@ -8,7 +8,7 @@ import { useWorkspaceStore } from '../stores/workspace';
 import { useToastsStore } from '../stores/toasts';
 import { useI18n } from '../i18n';
 
-export type SyncSubTab = 'git' | 'cloud_api' | 'local_vault' | 'webdav' | 'history';
+export type SyncSubTab = 'git' | 'vaults' | 'cloud_api' | 'local_vault' | 'webdav' | 'history';
 
 const props = withDefaults(
   defineProps<{
@@ -31,6 +31,107 @@ const settings = useSettingsStore();
 const workspace = useWorkspaceStore();
 const toasts = useToastsStore();
 const { t } = useI18n();
+
+const vaultSyncBusyId = ref('');
+
+async function pickAndAddSyncVault() {
+  try {
+    const picked = await openDialog({
+      directory: true,
+      multiple: false,
+      title: settings.language === 'zh' ? '选择要纳管同步的本地笔记库文件夹' : 'Select Local Vault Folder for Sync',
+    });
+    if (typeof picked === 'string' && picked.trim()) {
+      settings.addSyncVault(picked.trim());
+      toasts.success(settings.language === 'zh' ? '已添加到笔记库管理列表' : 'Added to Sync Vaults');
+    }
+  } catch (e) {
+    toasts.error(String(e));
+  }
+}
+
+function addCurrentWorkspaceAsVault() {
+  if (!workspace.currentFolder) return;
+  settings.addSyncVault(workspace.currentFolder);
+  toasts.success(settings.language === 'zh' ? '已将当前目录设为同步笔记库' : 'Added current workspace to Sync Vaults');
+}
+
+function openRegisteredVault(localPath: string) {
+  workspace.setFolder(localPath);
+  toasts.success(settings.language === 'zh' ? `已切换工作区至：${localPath}` : `Switched workspace to: ${localPath}`);
+}
+
+async function syncSingleVault(localPath: string, direction: 'push' | 'pull', id: string) {
+  vaultSyncBusyId.value = `${id}:${direction}`;
+  try {
+    let didRun = false;
+    if (settings.webdavEnabled && settings.webdavUrl.trim()) {
+      didRun = true;
+      const cmd = direction === 'push' ? 'webdav_push_workspace' : 'webdav_pull_workspace';
+      const res = await invoke<{ message: string }>(cmd, {
+        workspace: localPath,
+        url: settings.webdavUrl,
+        username: settings.webdavUsername,
+        password: settings.webdavPassword,
+        remotePath: settings.webdavRemotePath || '/SoloMD',
+        encrypted: settings.webdavEncrypted,
+        passphrase: settings.webdavPassphrase,
+        autoWorkspaceSubdir: settings.webdavAutoSubdir,
+        categorizeFiles: settings.webdavCategorizeFiles,
+        maxVersions: settings.syncMaxVersions,
+      });
+      toasts.success(res.message);
+    }
+    if (settings.cloudVaultDir.trim()) {
+      didRun = true;
+      const cmd = direction === 'push' ? 'cloud_vault_push_workspace' : 'cloud_vault_pull_workspace';
+      const res = await invoke<{ message: string }>(cmd, {
+        workspace: localPath,
+        vaultDir: settings.cloudVaultDir,
+        passphrase: settings.cloudVaultPassphrase,
+        encrypted: settings.cloudVaultEncrypted,
+        autoWorkspaceSubdir: settings.cloudVaultAutoSubdir,
+        categorizeFiles: settings.cloudVaultCategorizeFiles,
+        maxVersions: settings.syncMaxVersions,
+      });
+      toasts.success(res.message);
+    }
+    const token = getEffectiveApiToken();
+    if (token) {
+      didRun = true;
+      const cmd = direction === 'push' ? 'cloud_api_push_workspace' : 'cloud_api_pull_workspace';
+      const res = await invoke<{ message: string }>(cmd, {
+        workspace: localPath,
+        provider: settings.cloudApiProvider,
+        accessToken: token,
+        remotePath: settings.cloudApiRemotePath || '/SoloMD',
+        passphrase: settings.cloudApiPassphrase,
+        syncMode: settings.cloudApiSyncMode,
+        encrypted: settings.cloudApiEncrypted,
+        autoWorkspaceSubdir: settings.cloudApiAutoSubdir,
+        categorizeFiles: settings.cloudApiCategorizeFiles,
+        maxVersions: settings.syncMaxVersions,
+      });
+      toasts.success(res.message);
+    }
+    if (!didRun) {
+      toasts.warning(
+        settings.language === 'zh'
+          ? '请先在「网盘直连 API」、「本地网盘目录」或「WebDAV 同步」中配置至少一种同步方式'
+          : 'Please configure Direct Cloud API, Local Cloud Folder, or WebDAV first',
+      );
+      return;
+    }
+    if (direction === 'pull') {
+      window.dispatchEvent(new CustomEvent('solomd:remote-pulled'));
+    }
+    window.dispatchEvent(new CustomEvent('solomd:snapshot-saved'));
+  } catch (e) {
+    toasts.error(String((e as Error)?.message ?? e));
+  } finally {
+    vaultSyncBusyId.value = '';
+  }
+}
 
 const testing = ref(false);
 const pushing = ref(false);
@@ -753,6 +854,140 @@ async function pullCloudVault() {
 
 <template>
   <section class="settings__section webdav-sync">
+    <!-- ==================== 笔记库管理 (#531) ==================== -->
+    <div v-show="searching || currentTab === 'vaults'" class="webdav-sync__panel">
+      <h4 class="settings__heading">
+        {{ settings.language === 'zh' ? '📚 笔记库管理 (指定同步目录)' : '📚 Vault Management (Scoped Sync)' }}
+      </h4>
+      <div class="webdav-sync__info-banner">
+        <strong>{{ settings.language === 'zh' ? '说明：' : 'Note: ' }}</strong>
+        {{
+          settings.language === 'zh'
+            ? '在此注册需要同步的本地「笔记库」文件夹。启用后，仅笔记库内的文件才会触发自动同步——误打开其他普通文件夹或临时编辑保存桌面/下载目录的 .md 文件时均不会触发同步；同时即使未在侧边栏打开笔记库，直接编辑并保存属于某笔记库的文件也会自动识别并同步该笔记库。'
+            : 'Register local Vault folders for cloud sync. Only files inside registered Vaults trigger auto-sync — opening unrelated folders or saving standalone files outside a Vault will never trigger sync.'
+        }}
+      </div>
+
+      <div class="webdav-sync__check-grid">
+        <label class="webdav-sync__check-item">
+          <input
+            type="checkbox"
+            :checked="settings.syncOnlyRegisteredVaults"
+            @change="settings.toggleSyncOnlyRegisteredVaults()"
+          />
+          <span class="webdav-sync__check-label">
+            {{
+              settings.language === 'zh'
+                ? '仅同步下方已注册且启用的笔记库（防止误打开其他目录触发同步）'
+                : 'Only sync registered & enabled Vaults below'
+            }}
+          </span>
+        </label>
+      </div>
+
+      <div class="webdav-sync__actions">
+        <button
+          v-if="workspace.currentFolder"
+          type="button"
+          class="settings__btn-secondary"
+          @click="addCurrentWorkspaceAsVault"
+        >
+          {{
+            settings.language === 'zh'
+              ? `➕ 将当前打开目录加入笔记库 (${workspace.currentFolder.split(/[\\/]/).pop() || workspace.currentFolder})`
+              : '➕ Add Current Workspace Folder as Vault'
+          }}
+        </button>
+        <button
+          type="button"
+          class="settings__btn-secondary"
+          @click="pickAndAddSyncVault"
+        >
+          {{ settings.language === 'zh' ? '📁 选择本地文件夹添加为笔记库…' : '📁 Add Local Folder as Vault…' }}
+        </button>
+      </div>
+
+      <div v-if="settings.syncVaults.length === 0" class="setting-hint" style="padding: 8px 0;">
+        {{
+          settings.language === 'zh'
+            ? '暂未添加笔记库。点击上方按钮添加您的笔记库目录。'
+            : 'No vaults registered yet. Click a button above to add a local vault folder.'
+        }}
+      </div>
+
+      <div v-else style="display: flex; flex-direction: column; gap: 8px; margin-top: 4px;">
+        <div
+          v-for="v in settings.syncVaults"
+          :key="v.id"
+          style="display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-elevated, rgba(127,127,127,0.05)); flex-wrap: wrap;"
+        >
+          <label style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 200px; cursor: pointer;">
+            <input
+              type="checkbox"
+              :checked="v.enabled"
+              @change="settings.toggleSyncVault(v.id)"
+            />
+            <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
+              <div style="display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 13px;">
+                <span>{{ v.name }}</span>
+                <span
+                  v-if="workspace.currentFolder && workspace.currentFolder.replace(/\\/g, '/') === v.localPath.replace(/\\/g, '/')"
+                  style="font-size: 11px; padding: 1px 6px; border-radius: 4px; background: rgba(59, 130, 246, 0.15); color: var(--accent); font-weight: 500;"
+                >
+                  {{ settings.language === 'zh' ? '当前打开' : 'Active' }}
+                </span>
+              </div>
+              <span style="font-size: 11px; color: var(--text-muted); word-break: break-all;">{{ v.localPath }}</span>
+            </div>
+          </label>
+          <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+            <button
+              type="button"
+              class="settings__btn-secondary"
+              style="padding: 4px 8px; font-size: 12px;"
+              @click="openRegisteredVault(v.localPath)"
+            >
+              {{ settings.language === 'zh' ? '📂 打开' : '📂 Open' }}
+            </button>
+            <button
+              type="button"
+              class="settings__btn-secondary"
+              style="padding: 4px 8px; font-size: 12px;"
+              :disabled="vaultSyncBusyId !== ''"
+              @click="syncSingleVault(v.localPath, 'push', v.id)"
+            >
+              {{
+                vaultSyncBusyId === `${v.id}:push`
+                  ? (settings.language === 'zh' ? '上传中…' : 'Uploading…')
+                  : (settings.language === 'zh' ? '⬆️ 上传同步' : '⬆️ Push')
+              }}
+            </button>
+            <button
+              type="button"
+              class="settings__btn-secondary"
+              style="padding: 4px 8px; font-size: 12px;"
+              :disabled="vaultSyncBusyId !== ''"
+              @click="syncSingleVault(v.localPath, 'pull', v.id)"
+            >
+              {{
+                vaultSyncBusyId === `${v.id}:pull`
+                  ? (settings.language === 'zh' ? '拉取中…' : 'Pulling…')
+                  : (settings.language === 'zh' ? '⬇️ 从云端拉取' : '⬇️ Pull')
+              }}
+            </button>
+            <button
+              type="button"
+              class="settings__btn-secondary"
+              style="padding: 4px 8px; font-size: 12px; color: var(--danger, #e5484d);"
+              @click="settings.removeSyncVault(v.id)"
+            >
+              {{ settings.language === 'zh' ? '移除' : 'Remove' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ==================== WebDAV 同步 (#525 / #528 布局优化) ==================== -->
     <div v-show="searching || currentTab === 'webdav'" class="webdav-sync__panel">
       <h4 class="settings__heading">

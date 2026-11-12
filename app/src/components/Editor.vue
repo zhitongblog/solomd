@@ -182,6 +182,8 @@ type PlainBlock = {
   isMermaid?: boolean;
   sourceCollapsed?: boolean;
   headingLevel?: number;
+  startLine: number;
+  lineCount: number;
 };
 
 const props = withDefaults(
@@ -719,8 +721,8 @@ watch(
 );
 watch(plainText, schedulePlainGutter);
 watch(
-  () => [settings.wordWrap, settings.fontSize, settings.fontFamily],
-  () => nextTick(schedulePlainGutter),
+  () => [settings.wordWrap, settings.fontSize, settings.fontFamily, settings.showLineNumbers],
+  () => nextTick(recomputePlainGutter),
 );
 onBeforeUnmount(() => {
   plainGutterRO?.disconnect();
@@ -824,12 +826,32 @@ const plainBlocks = computed<PlainBlock[]>(() => {
   // not reimplement), and the toolbar/⌘J AI-rewrite absolute offsets.
   if (plainSelectAll.value) {
     const src = plainText.value || '';
-    return [{ id: 'select-all', start: 0, end: src.length, text: src, hasTrailingNewline: false, html: '', isTable: false }];
+    const lineCount = src.split('\n').length;
+    return [
+      {
+        id: 'select-all',
+        start: 0,
+        end: src.length,
+        text: src,
+        hasTrailingNewline: false,
+        html: '',
+        isTable: false,
+        startLine: 1,
+        lineCount,
+      },
+    ];
   }
   const overrides = plainSourceFoldOverrides.value;
+  let runningLine = 1;
   return splitPlainMarkdownBlocks(plainText.value || '').map((block, index) => {
+    const startLine = runningLine;
+    const lineCount = block.text.split('\n').length;
+    runningLine += lineCount;
     const isTableBlock = parseTable(block.text) !== null;
-    const isMermaid = /^\s*(`{3,}|~{3,})\s*mermaid\b/i.test(block.text);
+    const isMermaid =
+      /^\s*(`{3,}|~{3,})\s*mermaid\b/i.test(block.text) ||
+      (Boolean(settings.plantumlEnabled && settings.plantumlServer) &&
+        /^\s*(`{3,}|~{3,})\s*(?:plantuml|puml)\b/i.test(block.text));
     const sourceCollapsed =
       isTableBlock || isMermaid
         ? (overrides[block.start] ?? settings.collapseBlockSource)
@@ -845,6 +867,8 @@ const plainBlocks = computed<PlainBlock[]>(() => {
       isMermaid,
       sourceCollapsed,
       headingLevel,
+      startLine,
+      lineCount,
       html:
         index === plainActiveBlock.value && !isTableBlock && !isMermaid
           ? ''
@@ -866,12 +890,81 @@ function plainTocFingerprint(source: string): string {
   return `${source.length}:${(hash >>> 0).toString(36)}`;
 }
 
+function escapePlainHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function formatPlainInlineWithMarkers(raw: string): string {
+  const codeSpans: string[] = [];
+  const withCodePlaceholders = raw.replace(/(`+)([^`\n]+?)\1/g, (_m, ticks: string, inner: string) => {
+    const idx = codeSpans.length;
+    codeSpans.push(
+      `<span class="plain-md-marker">${escapePlainHtml(ticks)}</span><code>${escapePlainHtml(inner)}</code><span class="plain-md-marker">${escapePlainHtml(ticks)}</span>`,
+    );
+    return `\u0000CODE${idx}\u0000`;
+  });
+  let out = escapePlainHtml(withCodePlaceholders);
+  out = out.replace(
+    /\[\[([^\]\n]+)\]\]/g,
+    '<span class="plain-md-marker">[[</span><a class="md-wikilink" data-wikilink="$1">$1</a><span class="plain-md-marker">]]</span>',
+  );
+  out = out.replace(
+    /\[([^\]\n]+)\]\(([^)\n]+)\)/g,
+    '<span class="plain-md-marker">[</span><a href="$2">$1</a><span class="plain-md-marker">]($2)</span>',
+  );
+  out = out.replace(
+    /(\*\*|__)([^\n]+?)\1/g,
+    '<span class="plain-md-marker">$1</span><strong>$2</strong><span class="plain-md-marker">$1</span>',
+  );
+  out = out.replace(
+    /(~~)([^\n]+?)\1/g,
+    '<span class="plain-md-marker">$1</span><del>$2</del><span class="plain-md-marker">$1</span>',
+  );
+  out = out.replace(
+    /(==)([^\n]+?)\1/g,
+    '<span class="plain-md-marker">$1</span><mark>$2</mark><span class="plain-md-marker">$1</span>',
+  );
+  out = out.replace(
+    /(^|[^*])(\*)([^*\n]+?)\2(?!\*)/g,
+    '$1<span class="plain-md-marker">$2</span><em>$3</em><span class="plain-md-marker">$2</span>',
+  );
+  out = out.replace(/\u0000CODE(\d+)\u0000/g, (_m, idx) => codeSpans[Number(idx)] ?? '');
+  return out;
+}
+
+/**
+ * #536 — When `alwaysShowMarkers` is on in the Windows plain-block live editor,
+ * render text/heading/list/quote blocks with their exact Markdown markers preserved
+ * and matching `.plain-block__textarea` box metrics so clicking any line never
+ * causes layout shift or page jumping.
+ */
+function renderPlainVisibleMarkers(src: string): string {
+  const singleHeading = /^(\s*(#{1,6})\s+)(.*)$/.exec(src);
+  if (singleHeading && !src.includes('\n')) {
+    const level = singleHeading[2].length;
+    return `<h${level} class="plain-block__markers"><span class="plain-md-marker">${escapePlainHtml(singleHeading[1])}</span>${formatPlainInlineWithMarkers(singleHeading[3])}</h${level}>`;
+  }
+  const lines = src.split('\n').map((line) => {
+    if (/^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/.test(line)) {
+      return `<span class="plain-md-marker">${escapePlainHtml(line)}</span>`;
+    }
+    const prefixMatch = /^(\s*(?:[-+*]\s+\[[ xX]\]\s+|(?:[-+*]|\d+[.)])\s+|(?:>\s?)+|#{1,6}\s+))(.*)$/.exec(
+      line,
+    );
+    if (prefixMatch) {
+      return `<span class="plain-md-marker">${escapePlainHtml(prefixMatch[1])}</span>${formatPlainInlineWithMarkers(prefixMatch[2])}`;
+    }
+    return formatPlainInlineWithMarkers(line);
+  });
+  return `<div class="plain-block__markers">${lines.join('\n')}</div>`;
+}
+
 function renderPlainBlock(src: string): string {
   // A standalone thematic-break block ("---" / "***" / "___") would be misread
   // as a YAML front-matter fence when rendered in isolation (each block renders
   // on its own), producing an empty md-frontmatter element instead of a rule.
-  // Emit the <hr> directly.
-  if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(src)) return '<hr>';
+  // Emit the <hr> directly when markers are hidden.
+  if (!settings.alwaysShowMarkers && /^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(src)) return '<hr>';
   const root = extractMarkdownImageRoot(plainText.value || '');
   // #141 — the hard-breaks flag is part of the cache key so toggling the
   // setting invalidates previously rendered blocks. The per-call `breaks`
@@ -883,9 +976,25 @@ function renderPlainBlock(src: string): string {
   // change when any of those headings changes.
   const tocSource = isTocBlock ? plainText.value || '' : undefined;
   const tocKey = tocSource === undefined ? '' : `\u0000toc:${plainTocFingerprint(tocSource)}`;
-  const key = `${settings.markdownHardBreaks ? 'hb' : 'sb'}${settings.markdownAutoNumberHeadings ? 'nh' : ''}${settings.alwaysShowMarkers ? 'mk' : ''}d${renderDepsVersion.value}\u0000${props.tab.filePath || ''}\u0000${root}\u0000${src}${tocKey}`;
+  const key = `${settings.markdownHardBreaks ? 'hb' : 'sb'}${settings.markdownAutoNumberHeadings ? 'nh' : ''}${settings.alwaysShowMarkers ? 'mk2' : ''}d${renderDepsVersion.value}\u0000${props.tab.filePath || ''}\u0000${root}\u0000${src}${tocKey}`;
   const cached = plainRenderCache.get(key);
   if (cached != null) return cached;
+
+  const isRichBlock =
+    isTocBlock ||
+    parseTable(src) !== null ||
+    /^\s*(`{3,}|~{3,})/.test(src) ||
+    /^\s*(\$\$|\\\[)/.test(src) ||
+    /!\[[^\]]*\]\(|!\[[^\]]*\]\[/.test(src) ||
+    /^\s*<[a-zA-Z]/.test(src);
+
+  if (settings.alwaysShowMarkers && !isRichBlock) {
+    const html = renderPlainVisibleMarkers(src);
+    plainRenderCache.set(key, html);
+    if (plainRenderCache.size > 300) plainRenderCache.clear();
+    return html;
+  }
+
   const indent = parseTable(src) !== null ? commonIndent(src) : '';
   const mdInput =
     indent.length > 0
@@ -894,7 +1003,7 @@ function renderPlainBlock(src: string): string {
           .map((l) => (l.startsWith(indent) ? l.slice(indent.length) : l))
           .join('\n')
       : src || '\n';
-  let rendered = renderMarkdown(mdInput, { tocSource })
+  const rendered = renderMarkdown(mdInput, { tocSource })
     .replace(
       /(<input class="task-list-item-checkbox" type="checkbox"[^>]*?)\s+disabled=""/g,
       '$1',
@@ -905,13 +1014,6 @@ function renderPlainBlock(src: string): string {
     // snapped back to single spacing when clicked into (the textarea) — the
     // block's height halved/doubled on each click and the page jumped.
     .replace(/<br>\n/g, '<br>');
-  if (settings.alwaysShowMarkers) {
-    const hMatch = /^(\s*#{1,6}\s+)/.exec(src);
-    if (hMatch && !src.includes('\n')) {
-      const markerHtml = `<span class="plain-md-marker">${hMatch[1]}</span>`;
-      rendered = rendered.replace(/^(<h[1-6][^>]*>)/i, `$1${markerHtml}`);
-    }
-  }
   const html = rewriteImageUrls(
     rendered,
     root,
@@ -2597,6 +2699,7 @@ function applyPlainAutocomplete(item: AcItem) {
   const el = plainBlockEditors.value[plainActiveBlock.value];
   if (!el || acTriggerStart < 0) { closePlainAutocomplete(); return; }
   const index = plainActiveBlock.value;
+  const oldBlockStart = plainBlocks.value[index]?.start ?? 0;
   const caret = el.selectionStart ?? el.value.length;
   const start = acTriggerStart;
   const lineStart = el.value.lastIndexOf('\n', Math.max(0, start - 1)) + 1;
@@ -2606,14 +2709,19 @@ function applyPlainAutocomplete(item: AcItem) {
     : { text: item.insert, cursorOffset: item.cursorOffset };
   const value = el.value.slice(0, start) + expanded.text + el.value.slice(caret);
   const newCaret = start + expanded.cursorOffset;
+  const absCaret = oldBlockStart + newCaret;
   closePlainAutocomplete();
   updatePlainBlock(index, value, newCaret);
   nextTick(() => {
+    const activeBlock = plainBlocks.value[plainActiveBlock.value];
     const e2 = plainBlockEditors.value[plainActiveBlock.value];
-    if (e2) {
+    if (e2 && activeBlock) {
+      if (e2.value !== activeBlock.text) e2.value = activeBlock.text;
+      autoSizePlainBlock(e2);
       e2.focus();
-      const p = Math.min(newCaret, e2.value.length);
-      e2.setSelectionRange(p, p);
+      const relPos = Math.max(0, Math.min(absCaret - activeBlock.start, e2.value.length));
+      e2.setSelectionRange(relPos, relPos);
+      emitPlainCursorAndSelection();
     }
   });
 }
@@ -2901,15 +3009,32 @@ function handlePlainBlockKeydown(index: number, event: KeyboardEvent) {
       const blocks = plainBlocks.value;
       const pos = el.selectionStart ?? 0;
       const val = el.value;
+      const findNeighborEditableBlock = (fromIdx: number, step: -1 | 1): number => {
+        let cur = fromIdx + step;
+        while (cur >= 0 && cur < blocks.length) {
+          const b = blocks[cur];
+          // #536 — Step past collapsed Mermaid/PlantUML diagram blocks so arrow
+          // keys never get stuck or auto-expand folded diagram source code.
+          if (b && !(b.sourceCollapsed && !b.isTable)) return cur;
+          cur += step;
+        }
+        return -1;
+      };
       if (event.key === 'ArrowLeft' && pos === 0 && index > 0) {
-        event.preventDefault();
-        activatePlainBlock(index - 1, blocks[index - 1]?.text.length ?? 0);
-        return;
+        const prevIdx = findNeighborEditableBlock(index, -1);
+        if (prevIdx >= 0) {
+          event.preventDefault();
+          activatePlainBlock(prevIdx, blocks[prevIdx]?.text.length ?? 0);
+          return;
+        }
       }
       if (event.key === 'ArrowRight' && pos === val.length && index < blocks.length - 1) {
-        event.preventDefault();
-        activatePlainBlock(index + 1, 0);
-        return;
+        const nextIdx = findNeighborEditableBlock(index, 1);
+        if (nextIdx >= 0) {
+          event.preventDefault();
+          activatePlainBlock(nextIdx, 0);
+          return;
+        }
       }
       // ↑/↓ hand-off must key on *visual* rows, not logical lines (#155
       // follow-up): with soft wrap on, a long paragraph is ONE logical line,
@@ -2918,19 +3043,25 @@ function handlePlainBlockKeydown(index: number, event: KeyboardEvent) {
       if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
         const edge = plainCaretEdgeRows(el, val, pos);
         if (event.key === 'ArrowUp' && edge.firstRow && index > 0) {
-          event.preventDefault();
-          const prev = blocks[index - 1]?.text ?? '';
-          // First visual row starts at 0, so the visual column is `pos`.
-          // Land on the previous block's last visual row, same column.
-          activatePlainBlock(index - 1, Math.min(plainLastRowStart(el, prev) + pos, prev.length));
-          return;
+          const prevIdx = findNeighborEditableBlock(index, -1);
+          if (prevIdx >= 0) {
+            event.preventDefault();
+            const prev = blocks[prevIdx]?.text ?? '';
+            // First visual row starts at 0, so the visual column is `pos`.
+            // Land on the previous block's last visual row, same column.
+            activatePlainBlock(prevIdx, Math.min(plainLastRowStart(el, prev) + pos, prev.length));
+            return;
+          }
         }
         if (event.key === 'ArrowDown' && edge.lastRow && index < blocks.length - 1) {
-          event.preventDefault();
-          const next = blocks[index + 1]?.text ?? '';
-          const vcol = pos - plainLastRowStart(el, val);
-          activatePlainBlock(index + 1, Math.min(vcol, plainFirstRowEnd(el, next)));
-          return;
+          const nextIdx = findNeighborEditableBlock(index, 1);
+          if (nextIdx >= 0) {
+            event.preventDefault();
+            const next = blocks[nextIdx]?.text ?? '';
+            const vcol = pos - plainLastRowStart(el, val);
+            activatePlainBlock(nextIdx, Math.min(vcol, plainFirstRowEnd(el, next)));
+            return;
+          }
         }
       }
     }
@@ -3218,7 +3349,11 @@ function estimatePlainBlockCaretFromClick(index: number, event: MouseEvent): num
   const rect = render.getBoundingClientRect();
   const style = window.getComputedStyle(render);
   const lineHeight = Number.parseFloat(style.lineHeight) || (Number.parseFloat(style.fontSize) || 16) * 1.8;
-  const lineIndex = Math.max(0, Math.min(lines.length - 1, Math.floor((event.clientY - rect.top) / lineHeight)));
+  const isFencedBlock = /^[ \t]{0,3}(`{3,}|~{3,})/.test(block.text);
+  const minLine = isFencedBlock && lines.length >= 2 ? 1 : 0;
+  const maxLine = isFencedBlock && lines.length >= 3 ? lines.length - 2 : lines.length - 1;
+  const rawLineIndex = Math.floor((event.clientY - rect.top) / lineHeight) + (isFencedBlock ? 1 : 0);
+  const lineIndex = Math.max(minLine, Math.min(maxLine, rawLineIndex));
   let caret = 0;
   for (let i = 0; i < lineIndex; i++) caret += lines[i].length + 1;
   return caret;
@@ -4353,6 +4488,7 @@ function updatePlainBlock(index: number, text: string, caret?: number) {
     nextIndex === index &&
     nextBlock?.start === block.start &&
     nextBlock?.text === text &&
+    plainBlockEditors.value[index]?.value === text &&
     !plainBlocks.value[nextIndex]?.isTable
   ) {
     emitPlainCursorAndSelection();
@@ -6912,6 +7048,7 @@ const cls = computed(() => ({
         'plain-block-editor',
         {
           'plain-block-editor--cb-numbers': settings.codeBlockLineNumbers,
+          'plain-block-editor--line-numbers': settings.showLineNumbers,
           'plain-block-editor--focus': plainFocusMode,
           'plain-block-editor--hl-line': settings.highlightCurrentLine,
         },
@@ -6936,6 +7073,20 @@ const cls = computed(() => ({
         ]"
         @click="(event) => activatePlainBlockFromClick(index, event)"
       >
+        <div
+          v-if="settings.showLineNumbers"
+          class="plain-block__lineno"
+          aria-hidden="true"
+        >
+          <template v-if="index === plainActiveBlock && !block.sourceCollapsed && block.lineCount > 1">
+            <span
+              v-for="n in block.lineCount"
+              :key="n"
+              class="plain-block__lineno-item"
+            >{{ block.startLine + n - 1 }}</span>
+          </template>
+          <span v-else class="plain-block__lineno-item">{{ block.startLine }}</span>
+        </div>
         <button
           v-if="plainHeadingFor(block)"
           class="plain-fold-toggle"
@@ -7439,6 +7590,33 @@ const cls = computed(() => ({
   font-size: var(--plain-editor-font-size, 16px);
   line-height: 1.8;
 }
+.plain-block-editor--line-numbers {
+  padding-left: 56px;
+}
+.plain-block__lineno {
+  position: absolute;
+  left: -48px;
+  top: 1px;
+  width: 34px;
+  display: flex;
+  flex-direction: column;
+  text-align: right;
+  color: var(--text-faint, #999);
+  font-family: var(--plain-editor-font-family, var(--font-editor, var(--font-ui)));
+  font-size: var(--plain-editor-font-size, 16px);
+  line-height: 1.8;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+  pointer-events: none;
+}
+.plain-block--h1 .plain-block__lineno,
+.plain-block--h2 .plain-block__lineno,
+.plain-block--h3 .plain-block__lineno,
+.plain-block--h4 .plain-block__lineno,
+.plain-block--h5 .plain-block__lineno,
+.plain-block--h6 .plain-block__lineno {
+  top: 1.15em;
+}
 .plain-block {
   position: relative;
   min-height: 1.8em;
@@ -7742,6 +7920,24 @@ const cls = computed(() => ({
   font-weight: 500;
   white-space: pre;
 }
+.plain-block__render:has(> .plain-block__markers) {
+  padding: 0;
+}
+.plain-block__render :deep(.plain-block__markers) {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  margin: 0;
+  padding: 0;
+}
+.plain-block__render :deep(h1.plain-block__markers),
+.plain-block__render :deep(h2.plain-block__markers),
+.plain-block__render :deep(h3.plain-block__markers),
+.plain-block__render :deep(h4.plain-block__markers),
+.plain-block__render :deep(h5.plain-block__markers),
+.plain-block__render :deep(h6.plain-block__markers) {
+  margin: 1.1em 0 0.45em;
+}
 .plain-block__render :deep(ul),
 .plain-block__render :deep(ol) {
   padding-left: 1.15em;
@@ -7758,6 +7954,14 @@ const cls = computed(() => ({
   border: 1px solid var(--border);
   padding: 6px 12px;
   min-width: 48px;
+}
+.plain-block__render :deep(th::after),
+.plain-block__render :deep(td::after) {
+  content: '\00a0';
+  display: inline-block;
+  width: 0;
+  overflow: hidden;
+  visibility: hidden;
 }
 .plain-block__render :deep(thead th) {
   background: var(--bg-elev);

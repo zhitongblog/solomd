@@ -163,6 +163,15 @@ export const useThemesStore = defineStore('themes', {
       await this.refreshInstalled();
     },
 
+    async getThemesDir(): Promise<string | undefined> {
+      try {
+        const dir = await invoke<string>('theme_get_dir');
+        return dir || undefined;
+      } catch {
+        return undefined;
+      }
+    },
+
     toggleTag(tag: string) {
       const lower = tag.toLowerCase();
       const i = this.activeTags.indexOf(lower);

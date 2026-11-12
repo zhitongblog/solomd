@@ -2191,13 +2191,16 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
               const mermaidTheme = opts.getMermaidTheme?.() ?? 'default';
               const foldMap = state.field(mermaidFoldState, false);
               const foldOverride = foldMap?.get(i);
+              // #530 / #536 — Keep Mermaid source folded when the cursor merely
+              // lands on or passes through the fence boundaries (line `i` or `endI`)
+              // so arrow-key navigation never causes the page to jump. Only expand
+              // when manually unfolded via the `+` button (`foldOverride === false`),
+              // when `keepSource` is true, or when selection is strictly on an
+              // inner body line (`i + 1 .. endI - 1`, e.g. right after `/mermaid`).
               const cursorInsideBody =
-                (cursorLine >= i + 1 && cursorLine <= endI) ||
-                (cursorLineEnd >= i + 1 && cursorLineEnd <= endI);
-              const defaultCollapsed =
-                !keepSource &&
-                !(cursorLine >= i && cursorLine <= endI) &&
-                !(cursorLineEnd >= i && cursorLineEnd <= endI);
+                (cursorLine >= i + 1 && cursorLine < endI) ||
+                (cursorLineEnd >= i + 1 && cursorLineEnd < endI);
+              const defaultCollapsed = !keepSource;
               const collapsed = cursorInsideBody
                 ? false
                 : foldOverride !== undefined
@@ -2243,35 +2246,63 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
             }
           }
 
-          // v4.10 issue #163 — ```plantuml / ```puml fence (opt-in).
+          // v4.10 issue #163 / #536 — ```plantuml / ```puml fence (opt-in).
           const plantumlCfg = opts.getPlantuml?.();
           if (
             plantumlCfg?.enabled &&
             plantumlCfg.server &&
-            /^\s*```\s*(plantuml|puml)\s*$/i.test(line.text)
+            /^\s*(`{3,}|~{3,})\s*(plantuml|puml)\s*$/i.test(line.text)
           ) {
             let endI = i + 1;
             while (endI <= lastLine) {
               const next = doc.line(endI);
-              if (/^\s*```\s*$/.test(next.text)) break;
+              if (/^\s*(`{3,}|~{3,})\s*$/.test(next.text)) break;
               endI += 1;
             }
             if (endI <= lastLine) {
-              const cursorInside = keepSource || (cursorLine >= i && cursorLine <= endI);
-              const cursorInsideEnd = cursorLineEnd >= i && cursorLineEnd <= endI;
-              if (!cursorInside && !cursorInsideEnd) {
-                let body = '';
-                for (let k = i + 1; k < endI; k++) {
-                  body += (k > i + 1 ? '\n' : '') + doc.line(k).text;
-                }
-                const blockFrom = doc.line(i).from;
-                const blockTo = doc.line(endI).to;
+              let body = '';
+              for (let k = i + 1; k < endI; k++) {
+                body += (k > i + 1 ? '\n' : '') + doc.line(k).text;
+              }
+              const blockFrom = doc.line(i).from;
+              const blockTo = doc.line(endI).to;
+              const foldMap = state.field(mermaidFoldState, false);
+              const foldOverride = foldMap?.get(i);
+              const cursorInsideBody =
+                (cursorLine >= i + 1 && cursorLine < endI) ||
+                (cursorLineEnd >= i + 1 && cursorLineEnd < endI);
+              const defaultCollapsed = !keepSource;
+              const collapsed = cursorInsideBody
+                ? false
+                : foldOverride !== undefined
+                  ? foldOverride
+                  : defaultCollapsed;
+              builder.add(
+                blockFrom,
+                blockFrom,
+                Decoration.widget({
+                  widget: new MermaidFoldToggleWidget(i, endI, collapsed),
+                  side: -1,
+                }),
+              );
+              if (collapsed) {
+                const bodyFrom = i + 1 <= endI ? doc.line(i + 1).from : blockFrom;
                 builder.add(
-                  blockFrom,
+                  bodyFrom,
                   blockTo,
                   Decoration.replace({
                     widget: new PlantumlWidget(body, plantumlSvgUrl(plantumlCfg.server, body)),
                     block: true,
+                  }),
+                );
+              } else {
+                builder.add(
+                  blockTo,
+                  blockTo,
+                  Decoration.widget({
+                    widget: new PlantumlWidget(body, plantumlSvgUrl(plantumlCfg.server, body)),
+                    block: true,
+                    side: 1,
                   }),
                 );
               }
@@ -2715,6 +2746,13 @@ export const liveBlocksTheme = EditorView.theme({
     padding: '6px 12px',
     textAlign: 'left',
     minWidth: '48px',
+  },
+  '.cm-live-block--html th::after, .cm-live-block--html td::after, .cm-live-block--table th::after, .cm-live-block--table td::after': {
+    content: '"\\00a0"',
+    display: 'inline-block',
+    width: '0',
+    overflow: 'hidden',
+    visibility: 'hidden',
   },
   '.cm-live-block--table thead th': {
     background: 'var(--bg-elev)',

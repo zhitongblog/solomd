@@ -1025,6 +1025,10 @@ onBeforeUnmount(() => {
             <button class="dropdown__item dropdown__item--single" role="menuitem" tabindex="-1" @mousedown.prevent="act(() => exporter.exportImage())">
               <span class="dropdown__name">{{ t('toolbar.exportImage') }}</span>
             </button>
+            <button class="dropdown__item dropdown__item--single" role="menuitem" tabindex="-1" @mousedown.prevent="act(() => exporter.openCustomExportDialog())">
+              <span class="dropdown__name">{{ t('toolbar.exportCustom') }}</span>
+              <span v-if="chord('export.custom')" class="dropdown__shortcut">{{ chord('export.custom') }}</span>
+            </button>
             <div class="dropdown__sep"></div>
             <button class="dropdown__item dropdown__item--single" role="menuitem" tabindex="-1" @mousedown.prevent="act(() => exporter.copyAsHtml())">
               <span class="dropdown__name">{{ t('toolbar.copyHtml') }}</span>
