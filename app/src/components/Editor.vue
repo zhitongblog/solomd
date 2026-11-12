@@ -86,6 +86,8 @@ import { tagAutocompleteExtension, tagComplete } from '../lib/cm-tag-autocomplet
 import { citationsExtension, citationCompleteSource } from '../lib/cm-citations';
 import { autocompletion } from '@codemirror/autocomplete';
 import { aiRewriteExtension } from '../lib/cm-ai-rewrite';
+import { applyVimrcMappings } from '../lib/vimrc';
+import { invoke } from '@tauri-apps/api/core';
 import { cmKeyOwnedByApp, combosFor, toCodeMirrorKey, eventToCombo, resolveBindings } from '../lib/keybindings';
 import {
   docParagraphStarts,
@@ -435,8 +437,27 @@ async function syncSystemClipboardToVimRegister() {
 // declines keys it has no mapping for (Enter, Tab, Mod-*), so list
 // continuation, indentation, autocomplete and app shortcuts still run.
 function vimExtension() {
+  applyVimrcMappings(settings.vimrc, Vim as any);
+  let lastInsertMode: boolean | null = null;
   return [
     Prec.highest(vim()),
+    EditorView.updateListener.of((u) => {
+      if (!settings.vimAutoSwitchIm || !('__TAURI_INTERNALS__' in window)) return;
+      const cm = getCM(u.view) as { state?: { vim?: { insertMode?: boolean } } } | null;
+      if (!cm?.state?.vim) return;
+      const isInsert = Boolean(cm.state.vim.insertMode);
+      if (lastInsertMode === null) {
+        lastInsertMode = isInsert;
+        if (!isInsert) {
+          void invoke('vim_switch_input_method', { mode: 'normal' }).catch(() => {});
+        }
+        return;
+      }
+      if (isInsert !== lastInsertMode) {
+        lastInsertMode = isInsert;
+        void invoke('vim_switch_input_method', { mode: isInsert ? 'insert' : 'normal' }).catch(() => {});
+      }
+    }),
     EditorView.domEventHandlers({
       keydown(e, v) {
         const cm = getCM(v) as { state?: { vim?: { insertMode?: boolean } } } | null;
@@ -6363,6 +6384,15 @@ watch(
   () => settings.vimMode,
   (v) => {
     view?.dispatch({ effects: vimCompartment.reconfigure(v ? vimExtension() : []) });
+  }
+);
+
+watch(
+  () => settings.vimrc,
+  (rc) => {
+    if (settings.vimMode) {
+      applyVimrcMappings(rc, Vim as any);
+    }
   }
 );
 

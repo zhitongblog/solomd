@@ -205,12 +205,18 @@ interface Settings {
   /** #208: hide the in-window top menubar (`File Edit Paragraph ...`) on
    *  custom-titlebar platforms (Windows). */
   hideMenuBar: boolean;
+  /** #479: hide the top mobile status-bar reservation for full-screen immersion. */
+  mobileHideStatusBar: boolean;
   typewriterMode: boolean;
   /** One-time tips when Markdown formatting is typed by hand (useFormatHints). */
   formatHints: boolean;
   /** Hint keys already shown — `bold`, `heading`, … Never shown twice. */
   formatHintsSeen: string[];
   vimMode: boolean;
+  /** #492: automatically switch to ASCII input method on Vim Normal mode and restore on Insert mode. */
+  vimAutoSwitchIm: boolean;
+  /** #492: user-defined .vimrc mappings (e.g. `inoremap jj <Esc>`, `nnoremap H ^`). */
+  vimrc: string;
   /** Windows only: 'auto' (default — CodeMirror on WebView2 154+, the
    *  IME-safe native textarea below that), 'native' or 'codemirror' (#328,
    *  #344). Vim mode forces CodeMirror regardless. Ignored elsewhere. */
@@ -808,10 +814,13 @@ function defaults(): Settings {
     focusMode: false,
     toolbarHidden: false,
     hideMenuBar: false,
+    mobileHideStatusBar: false,
     typewriterMode: false,
     formatHints: true,
     formatHintsSeen: [],
     vimMode: false,
+    vimAutoSwitchIm: true,
+    vimrc: '',
     windowsEditorEngine: 'auto',
     windowsEditorEngineExplicit: false,
     uiFontSize: 13,
@@ -1554,6 +1563,10 @@ export const useSettingsStore = defineStore('settings', {
       this.hideMenuBar = !this.hideMenuBar;
       this.persist();
     },
+    toggleMobileHideStatusBar() {
+      this.mobileHideStatusBar = !this.mobileHideStatusBar;
+      this.persist();
+    },
     toggleFormatHints() {
       this.formatHints = !this.formatHints;
       this.persist();
@@ -1568,6 +1581,14 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleVimMode() {
       this.vimMode = !this.vimMode;
+      this.persist();
+    },
+    toggleVimAutoSwitchIm() {
+      this.vimAutoSwitchIm = !this.vimAutoSwitchIm;
+      this.persist();
+    },
+    setVimrc(v: string) {
+      this.vimrc = typeof v === 'string' ? v : '';
       this.persist();
     },
     setWindowsEditorEngine(engine: WindowsEditorEngine) {

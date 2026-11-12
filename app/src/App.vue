@@ -1378,19 +1378,17 @@ onMounted(async () => {
         const insets = await invoke<{ top: number; bottom: number }>('android_system_insets');
         const dpr = window.devicePixelRatio || 1;
         const root = document.documentElement;
-        const isLandscape = window.innerWidth > window.innerHeight;
-        const topPx = Math.round((insets.top || 0) / dpr);
-        // #479 — In landscape or when the gesture pill is minimal, avoid leaving
-        // a tall blank bottom bar; clamp gesture pill inset to a compact 16px max.
-        const rawBottomPx = Math.round((insets.bottom || 0) / dpr);
-        const bottomPx = isLandscape ? 0 : Math.min(rawBottomPx, 24);
+        const topPx = settings.mobileHideStatusBar ? 0 : Math.round((insets.top || 0) / dpr);
+        // #479 — Remove the redundant bottom blank row in both portrait and
+        // landscape on Android/HarmonyOS devices; also honor mobileHideStatusBar.
         root.style.setProperty('--android-safe-top', `${topPx}px`);
-        root.style.setProperty('--android-safe-bottom', `${bottomPx}px`);
+        root.style.setProperty('--android-safe-bottom', '0px');
       } catch (e) {
         console.warn('android_system_insets failed', e);
       }
     };
     await refreshAndroidInsets();
+    watch(() => settings.mobileHideStatusBar, () => void refreshAndroidInsets());
     window.addEventListener('resize', () => void refreshAndroidInsets());
     window.addEventListener('orientationchange', () => {
       setTimeout(() => void refreshAndroidInsets(), 150);

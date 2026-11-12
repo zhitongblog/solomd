@@ -16,3 +16,10 @@ test('OpenCode Go retains its default and only advertises its verified MiniMax M
   assert.equal(provider.defaultBaseUrl, 'https://opencode.ai/zen/go/v1');
   assert.deepEqual(provider.modelHint!.split(' · ').filter((id) => id.startsWith('minimax-')), ['minimax-m3']);
 });
+
+test('#481: Cheaper Inference is configured as an OpenAI-compatible aggregator gateway', () => {
+  const provider = providerById('cheaper-inference')!;
+  assert.equal(provider.apiFormat, 'openai');
+  assert.equal(provider.defaultBaseUrl, 'https://api.cheaperinference.com/v1');
+  assert.equal(provider.signupUrl, 'https://cheaperinference.com/markets');
+});

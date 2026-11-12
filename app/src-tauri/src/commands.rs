@@ -859,6 +859,95 @@ pub async fn clipboard_read_text_fallback() -> Result<String, String> {
     }
 }
 
+/// #492 — Automatically switch the OS input method to an ASCII layout when
+/// leaving Vim Insert mode (`mode == "normal"`), and restore the user's
+/// previous input method when re-entering Insert mode (`mode == "insert"`).
+#[tauri::command]
+pub fn vim_switch_input_method(app: tauri::AppHandle, mode: String) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        use std::ffi::c_void;
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        #[link(name = "Carbon", kind = "framework")]
+        extern "C" {
+            fn TISCopyCurrentKeyboardInputSource() -> *mut c_void;
+            fn TISCopyCurrentASCIICapableKeyboardInputSource() -> *mut c_void;
+            fn TISSelectInputSource(source: *mut c_void) -> i32;
+        }
+        #[link(name = "CoreFoundation", kind = "framework")]
+        extern "C" {
+            fn CFRelease(cf: *const c_void);
+        }
+
+        static SAVED_INPUT_SOURCE: AtomicUsize = AtomicUsize::new(0);
+
+        let is_insert = mode == "insert";
+        let _ = app.run_on_main_thread(move || unsafe {
+            if is_insert {
+                let prev = SAVED_INPUT_SOURCE.swap(0, Ordering::SeqCst) as *mut c_void;
+                if !prev.is_null() {
+                    let _ = TISSelectInputSource(prev);
+                    CFRelease(prev);
+                }
+            } else {
+                let current = TISCopyCurrentKeyboardInputSource();
+                let ascii = TISCopyCurrentASCIICapableKeyboardInputSource();
+                if !current.is_null() && !ascii.is_null() {
+                    if current != ascii {
+                        let old = SAVED_INPUT_SOURCE.swap(current as usize, Ordering::SeqCst)
+                            as *mut c_void;
+                        if !old.is_null() {
+                            CFRelease(old);
+                        }
+                        let _ = TISSelectInputSource(ascii);
+                    } else {
+                        CFRelease(current);
+                    }
+                } else if !current.is_null() {
+                    CFRelease(current);
+                }
+                if !ascii.is_null() {
+                    CFRelease(ascii);
+                }
+            }
+        });
+        return Ok(());
+    }
+    #[cfg(target_os = "linux")]
+    {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        static SAVED_FCITX_ACTIVE: AtomicBool = AtomicBool::new(false);
+        let _ = &app;
+        let is_insert = mode == "insert";
+        std::thread::spawn(move || {
+            for bin in ["fcitx5-remote", "fcitx-remote"] {
+                if is_insert {
+                    if SAVED_FCITX_ACTIVE.swap(false, Ordering::SeqCst) {
+                        let _ = std::process::Command::new(bin).arg("-o").output();
+                    }
+                    break;
+                } else if let Ok(out) = std::process::Command::new(bin).output() {
+                    if out.status.success() {
+                        let state = String::from_utf8_lossy(&out.stdout).trim().to_string();
+                        if state == "2" {
+                            SAVED_FCITX_ACTIVE.store(true, Ordering::SeqCst);
+                            let _ = std::process::Command::new(bin).arg("-c").output();
+                        }
+                        break;
+                    }
+                }
+            }
+        });
+        return Ok(());
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+    {
+        let _ = (&app, mode);
+        Ok(())
+    }
+}
+
 #[tauri::command]
 pub fn fs_dir_exists(path: String) -> bool {
     Path::new(&path).is_dir()

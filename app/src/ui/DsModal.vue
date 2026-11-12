@@ -423,7 +423,12 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--sp-5);
+  /* #479: Keep teleported modal panels below the Android/iOS status bar so the
+     top border and ✕ close button are never obscured on phones. */
+  padding-top: calc(max(env(safe-area-inset-top, 0px), var(--android-safe-top, 0px)) + var(--sp-4));
+  padding-bottom: calc(max(env(safe-area-inset-bottom, 0px), var(--android-safe-bottom, 0px)) + var(--sp-4));
+  padding-left: calc(env(safe-area-inset-left, 0px) + var(--sp-4));
+  padding-right: calc(env(safe-area-inset-right, 0px) + var(--sp-4));
 }
 .ds-modal__backdrop {
   position: absolute;

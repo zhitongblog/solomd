@@ -918,22 +918,17 @@ async function onFontFilePicked(e: Event) {
   const file = input.files?.[0];
   if (!file) return;
   try {
-    const { cleanFontFamilyFromFilename } = await import('../lib/custom-font');
-    const { family } = cleanFontFamilyFromFilename(file.name);
-    const cleanFamily = family || file.name.replace(/\.[^.]+$/, '');
+    const { persistPickedFontFile } = await import('../lib/custom-font');
     const buf = await file.arrayBuffer();
-    if (typeof FontFace !== 'undefined' && document.fonts) {
-      const face = new FontFace(cleanFamily, buf);
-      await face.load();
-      document.fonts.add(face);
-    }
-    inCustomMode.value = true;
-    customFontFamily.value = cleanFamily;
+    const cleanFamily = await persistPickedFontFile(file.name, buf);
+    await refreshLocalFonts(true);
+    inCustomMode.value = !fontFamilyPresetValues.value.has(cleanFamily);
+    customFontFamily.value = inCustomMode.value ? cleanFamily : '';
     settings.setFontFamily(cleanFamily);
     toasts.success(
       settings.language === 'zh'
-        ? `已加载字体：${cleanFamily}`
-        : `Loaded font: ${cleanFamily}`,
+        ? `已加载并保存字体：${cleanFamily}`
+        : `Loaded & saved font: ${cleanFamily}`,
     );
   } catch (err) {
     toasts.error(String(err));
@@ -1763,6 +1758,13 @@ function onSelectPdfFont(v: string) {
           </label>
         </section>
 
+        <section v-if="isMobile()" data-cat="basics">
+          <label>
+            <input type="checkbox" :checked="settings.mobileHideStatusBar" @change="settings.toggleMobileHideStatusBar()" />
+            {{ settings.language === 'zh' ? '隐藏顶部状态栏留白（全屏紧凑模式）' : 'Hide top status bar inset (compact full-screen mode)' }}
+          </label>
+        </section>
+
         <!-- 5.0 — the floating format bar over a selection. Desktop only:
              phones and tablets use the bar above the keyboard instead. -->
         <section v-if="!isMobile()" data-cat="writing">
@@ -2589,6 +2591,32 @@ function onSelectPdfFont(v: string) {
             <input type="checkbox" :checked="settings.vimMode" @change="settings.toggleVimMode()" />
             {{ t('settings.vimMode') }}
           </label>
+          <div v-if="settings.vimMode" style="margin-top: 8px; padding-left: 20px; display: flex; flex-direction: column; gap: 8px;">
+            <label>
+              <input type="checkbox" :checked="settings.vimAutoSwitchIm" @change="settings.toggleVimAutoSwitchIm()" />
+              {{
+                settings.language === 'zh'
+                  ? '自动切换输入法（退回命令模式自动切为英文，进入插入模式恢复原输入法）'
+                  : 'Auto-switch input method (ASCII in Normal mode, restore previous IME in Insert mode)'
+              }}
+            </label>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <span style="font-size: 12px; color: var(--text-muted);">
+                {{
+                  settings.language === 'zh'
+                    ? '自定义 Vimrc 键位映射（每行一条，支持 map / nmap / imap / vmap / nnoremap / inoremap / vnoremap / noremap）：'
+                    : 'Custom Vimrc key mappings (one per line: map / nmap / imap / vmap / nnoremap / inoremap / vnoremap / noremap):'
+                }}
+              </span>
+              <textarea
+                :value="settings.vimrc"
+                rows="3"
+                placeholder="inoremap jj <Esc>&#10;nnoremap H ^&#10;nnoremap L $"
+                style="font-family: var(--font-mono, monospace); font-size: 12px; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); resize: vertical;"
+                @input="settings.setVimrc(($event.target as HTMLTextAreaElement).value)"
+              />
+            </div>
+          </div>
         </section>
 
         <section v-if="windowsEditorRuntime" data-cat="writing">

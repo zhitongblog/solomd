@@ -32,6 +32,7 @@ const scope = ref<ExportScope>('current');
 const format = ref<ExportFormat>(settings.lastCustomExportFormat || 'pdf');
 const sourceFolder = ref<string>(workspace.currentFolder || '');
 const includeSubfolders = ref(true);
+const mergeIntoSingleDocument = ref(false);
 const outputDir = ref<string>('');
 const exporting = ref(false);
 const progressText = ref('');
@@ -206,34 +207,70 @@ async function runCustomExport() {
       if (mdFiles.length === 0) {
         throw new Error(isZh.value ? '所选文件夹中没有找到 .md 文档' : 'No .md files found in the selected folder');
       }
-      let exportedCount = 0;
-      let lastPath = outDir;
-      for (let i = 0; i < mdFiles.length; i++) {
-        const item = mdFiles[i];
+      if (mergeIntoSingleDocument.value) {
+        const folderName = folder.replace(/[/\\]+$/, '').split(/[/\\]/).pop() || 'Exported-Book';
+        const sections: string[] = [`# ${folderName}\n\n[TOC]`];
+        for (let i = 0; i < mdFiles.length; i++) {
+          const item = mdFiles[i];
+          progressText.value = isZh.value
+            ? `正在读取并合并章节 (${i + 1} / ${mdFiles.length})：${item.baseName}`
+            : `Reading & merging section (${i + 1} / ${mdFiles.length}): ${item.baseName}`;
+          const loaded = await invoke<string | { content: string }>('read_file', { path: item.path });
+          const raw = (typeof loaded === 'string' ? loaded : loaded?.content ?? '').trim();
+          const body = raw.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '').trim();
+          const hasTopHeading = /^#\s+\S/.test(body);
+          const chapterTitle = item.relDir ? `${item.relDir} / ${item.baseName}` : item.baseName;
+          sections.push(hasTopHeading ? body : `# ${chapterTitle}\n\n${body}`);
+        }
+        const mergedContent = sections.join('\n\n---\n\n');
+        const targetPath = joinOutputPath(outDir, `${folderName}.${ext}`);
         progressText.value = isZh.value
-          ? `正在批量导出 (${i + 1} / ${mdFiles.length})：${item.baseName}.${ext}`
-          : `Batch exporting (${i + 1} / ${mdFiles.length}): ${item.baseName}.${ext}`;
-        const loaded = await invoke<string | { content: string }>('read_file', { path: item.path });
-        const content = typeof loaded === 'string' ? loaded : loaded?.content ?? '';
-        const relFile = item.relDir ? `${item.relDir}/${item.baseName}.${ext}` : `${item.baseName}.${ext}`;
-        const targetPath = joinOutputPath(outDir, relFile);
+          ? `正在生成合集文档：${folderName}.${ext}…`
+          : `Generating combined document: ${folderName}.${ext}…`;
         await exporter.exportNoteToFile({
-          content,
-          baseName: item.baseName,
-          filePath: item.path,
+          content: mergedContent,
+          baseName: folderName,
+          filePath: mdFiles[0].path,
           outputPath: targetPath,
           format: format.value,
         });
-        lastPath = targetPath;
-        exportedCount++;
+        lastExportedPath.value = targetPath;
+        const msg = isZh.value
+          ? `合集导出完成：已将 ${mdFiles.length} 篇笔记合并导出至 ${targetPath}`
+          : `Combined export complete: ${mdFiles.length} notes merged into ${targetPath}`;
+        statusMessage.value = msg;
+        statusKind.value = 'ok';
+        toasts.success(msg);
+      } else {
+        let exportedCount = 0;
+        let lastPath = outDir;
+        for (let i = 0; i < mdFiles.length; i++) {
+          const item = mdFiles[i];
+          progressText.value = isZh.value
+            ? `正在批量导出 (${i + 1} / ${mdFiles.length})：${item.baseName}.${ext}`
+            : `Batch exporting (${i + 1} / ${mdFiles.length}): ${item.baseName}.${ext}`;
+          const loaded = await invoke<string | { content: string }>('read_file', { path: item.path });
+          const content = typeof loaded === 'string' ? loaded : loaded?.content ?? '';
+          const relFile = item.relDir ? `${item.relDir}/${item.baseName}.${ext}` : `${item.baseName}.${ext}`;
+          const targetPath = joinOutputPath(outDir, relFile);
+          await exporter.exportNoteToFile({
+            content,
+            baseName: item.baseName,
+            filePath: item.path,
+            outputPath: targetPath,
+            format: format.value,
+          });
+          lastPath = targetPath;
+          exportedCount++;
+        }
+        lastExportedPath.value = lastPath;
+        const msg = isZh.value
+          ? `批量导出完成：共导出 ${exportedCount} 篇文档至 ${outDir}`
+          : `Batch export complete: ${exportedCount} notes exported to ${outDir}`;
+        statusMessage.value = msg;
+        statusKind.value = 'ok';
+        toasts.success(msg);
       }
-      lastExportedPath.value = lastPath;
-      const msg = isZh.value
-        ? `批量导出完成：共导出 ${exportedCount} 篇文档至 ${outDir}`
-        : `Batch export complete: ${exportedCount} notes exported to ${outDir}`;
-      statusMessage.value = msg;
-      statusKind.value = 'ok';
-      toasts.success(msg);
     }
   } catch (e) {
     const errMsg = String((e as Error)?.message ?? e);
@@ -265,7 +302,7 @@ async function runCustomExport() {
             </label>
             <label class="custom-export__radio">
               <input v-model="scope" type="radio" value="folder" />
-              <span>{{ isZh ? '整个文件夹批量导出 (#359)' : 'Batch Export Folder' }}</span>
+              <span>{{ isZh ? '整个文件夹批量导出' : 'Batch Export Folder' }}</span>
             </label>
           </div>
         </div>
@@ -286,6 +323,10 @@ async function runCustomExport() {
           <label class="custom-export__checkbox">
             <input v-model="includeSubfolders" type="checkbox" />
             <span>{{ isZh ? '包含子文件夹中的所有 Markdown 文档（保持目录结构）' : 'Include subfolders (preserve directory structure)' }}</span>
+          </label>
+          <label class="custom-export__checkbox">
+            <input v-model="mergeIntoSingleDocument" type="checkbox" />
+            <span>{{ isZh ? '将所有笔记合并输出为 1 份文档成册（自动生成总目录与页码）' : 'Merge all notes into a single combined document (with Table of Contents)' }}</span>
           </label>
         </div>
 

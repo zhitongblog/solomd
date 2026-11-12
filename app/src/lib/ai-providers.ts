@@ -36,6 +36,7 @@ export type ProviderId =
   // Aggregator
   | 'openrouter'
   | 'opencode-go'
+  | 'cheaper-inference'
   // Local
   | 'ollama'
   | 'openai-compat';
@@ -237,6 +238,15 @@ export const PROVIDERS: ProviderConfig[] = [
     modelHint:
       'deepseek-v4-flash · deepseek-v4-pro · mimo-v2.5 · mimo-v2.5-pro · mimo-v2-pro · mimo-v2-omni · qwen3.8-max · qwen3.7-max · qwen3.7-plus · qwen3.6-plus · qwen3.5-plus · glm-5.2 · glm-5.1 · glm-5 · kimi-k3 · kimi-k2.7-code · kimi-k2.6 · kimi-k2.5 · minimax-m3 · gpt-5.6-luna · grok-4.5 · hy3',
     signupUrl: 'https://opencode.ai/auth',
+  },
+  {
+    id: 'cheaper-inference',
+    label: 'Cheaper Inference (聚合网关)',
+    apiFormat: 'openai',
+    defaultModel: 'deepseek-v4-flash',
+    defaultBaseUrl: 'https://api.cheaperinference.com/v1',
+    modelHint: 'deepseek-v4-flash · deepseek-v4-pro · claude-sonnet-4-6 · gpt-5.6 · gemini-3.1-pro',
+    signupUrl: 'https://cheaperinference.com/markets',
   },
   // ---- Local ---------------------------------------------------------
   {

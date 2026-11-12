@@ -136,96 +136,6 @@ function openRegisteredVault(localPath: string) {
   toasts.success(settings.language === 'zh' ? `已切换工作区至：${localPath}` : `Switched workspace to: ${localPath}`);
 }
 
-async function syncSingleVault(localPath: string, direction: 'push' | 'pull', id: string) {
-  vaultSyncBusyId.value = `${id}:${direction}`;
-  startChannelProgress(
-    'vaults',
-    direction,
-    direction === 'push'
-      ? `开始上传同步笔记库：${localPath}`
-      : `开始从云端拉取笔记库：${localPath}`,
-  );
-  try {
-    let didRun = false;
-    if (settings.webdavEnabled && settings.webdavUrl.trim()) {
-      didRun = true;
-      const cmd = direction === 'push' ? 'webdav_push_workspace' : 'webdav_pull_workspace';
-      const res = await invoke<{ message: string }>(cmd, {
-        workspace: localPath,
-        url: settings.webdavUrl,
-        username: settings.webdavUsername,
-        password: settings.webdavPassword,
-        remotePath: settings.webdavRemotePath || '/SoloMD',
-        encrypted: settings.webdavEncrypted,
-        passphrase: settings.webdavPassphrase,
-        autoWorkspaceSubdir: settings.webdavAutoSubdir,
-        categorizeFiles: settings.webdavCategorizeFiles,
-        maxVersions: settings.syncMaxVersions,
-      });
-      appendSyncLog('vaults', res.message);
-      toasts.success(res.message);
-    }
-    if (settings.cloudVaultDir.trim()) {
-      didRun = true;
-      const cmd = direction === 'push' ? 'cloud_vault_push_workspace' : 'cloud_vault_pull_workspace';
-      const res = await invoke<{ message: string }>(cmd, {
-        workspace: localPath,
-        vaultDir: settings.cloudVaultDir,
-        passphrase: settings.cloudVaultPassphrase,
-        encrypted: settings.cloudVaultEncrypted,
-        autoWorkspaceSubdir: settings.cloudVaultAutoSubdir,
-        categorizeFiles: settings.cloudVaultCategorizeFiles,
-        maxVersions: settings.syncMaxVersions,
-      });
-      appendSyncLog('vaults', res.message);
-      toasts.success(res.message);
-    }
-    const token = getEffectiveApiToken();
-    if (token) {
-      didRun = true;
-      const cmd = direction === 'push' ? 'cloud_api_push_workspace' : 'cloud_api_pull_workspace';
-      const res = await invoke<{ message: string }>(cmd, {
-        workspace: localPath,
-        provider: settings.cloudApiProvider,
-        accessToken: token,
-        remotePath: settings.cloudApiRemotePath || '/SoloMD',
-        passphrase: settings.cloudApiPassphrase,
-        syncMode: settings.cloudApiSyncMode,
-        encrypted: settings.cloudApiEncrypted,
-        autoWorkspaceSubdir: settings.cloudApiAutoSubdir,
-        categorizeFiles: settings.cloudApiCategorizeFiles,
-        maxVersions: settings.syncMaxVersions,
-      });
-      appendSyncLog('vaults', res.message);
-      toasts.success(res.message);
-    }
-    if (!didRun) {
-      const warnMsg =
-        settings.language === 'zh'
-          ? '请先在「网盘直连 API」、「本地网盘目录」或「WebDAV 同步」中配置至少一种同步方式'
-          : 'Please configure Direct Cloud API, Local Cloud Folder, or WebDAV first';
-      finishChannelProgress('vaults', false, warnMsg);
-      toasts.warning(warnMsg);
-      return;
-    }
-    finishChannelProgress(
-      'vaults',
-      true,
-      settings.language === 'zh' ? '✅ 笔记库同步完成' : '✅ Vault sync completed',
-    );
-    if (direction === 'pull') {
-      window.dispatchEvent(new CustomEvent('solomd:remote-pulled'));
-    }
-    window.dispatchEvent(new CustomEvent('solomd:snapshot-saved'));
-  } catch (e) {
-    const errMsg = String((e as Error)?.message ?? e);
-    finishChannelProgress('vaults', false, `❌ ${errMsg}`);
-    toasts.error(errMsg);
-  } finally {
-    vaultSyncBusyId.value = '';
-  }
-}
-
 const testing = ref(false);
 const pushing = ref(false);
 const pulling = ref(false);
@@ -1128,32 +1038,6 @@ async function pullCloudVault() {
               @click="openRegisteredVault(v.localPath)"
             >
               {{ settings.language === 'zh' ? '📂 打开' : '📂 Open' }}
-            </button>
-            <button
-              type="button"
-              class="settings__btn-secondary"
-              style="padding: 4px 8px; font-size: 12px;"
-              :disabled="vaultSyncBusyId !== ''"
-              @click="syncSingleVault(v.localPath, 'push', v.id)"
-            >
-              {{
-                vaultSyncBusyId === `${v.id}:push`
-                  ? (settings.language === 'zh' ? '上传中…' : 'Uploading…')
-                  : (settings.language === 'zh' ? '⬆️ 上传同步' : '⬆️ Push')
-              }}
-            </button>
-            <button
-              type="button"
-              class="settings__btn-secondary"
-              style="padding: 4px 8px; font-size: 12px;"
-              :disabled="vaultSyncBusyId !== ''"
-              @click="syncSingleVault(v.localPath, 'pull', v.id)"
-            >
-              {{
-                vaultSyncBusyId === `${v.id}:pull`
-                  ? (settings.language === 'zh' ? '拉取中…' : 'Pulling…')
-                  : (settings.language === 'zh' ? '⬇️ 从云端拉取' : '⬇️ Pull')
-              }}
             </button>
             <button
               type="button"

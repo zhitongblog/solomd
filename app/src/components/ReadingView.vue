@@ -91,8 +91,11 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="reading-view" data-reading-view>
+    <!-- #145: Hide the tab bar when only a single document is open for full immersion;
+         show the tab strip when multiple documents are open so the user can switch tabs
+         directly inside reading mode. -->
     <div
-      v-if="tabs.tabs.length >= 1"
+      v-if="tabs.tabs.length > 1"
       class="reading-view__tabs"
       :class="{ 'reading-view__tabs--mac': isMac }"
       data-tauri-drag-region

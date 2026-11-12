@@ -649,6 +649,7 @@ pub fn run_with(initial_file: Option<String>) {
             commands::fs_file_exists,
             commands::webview_runtime_version,
             commands::clipboard_read_text_fallback,
+            commands::vim_switch_input_method,
             commands::fs_rename,
             commands::fs_move,
             commands::fs_list_dirs,

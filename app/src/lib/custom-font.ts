@@ -152,6 +152,23 @@ export async function discoverLocalFontFiles(
   const seenPaths = new Set<string>();
   const out: DiscoveredFont[] = [];
 
+  try {
+    const persisted = await listPersistedFontRecords();
+    for (const rec of persisted) {
+      const idbPath = `idb://${rec.family}`;
+      if (seenPaths.has(idbPath.toLowerCase())) continue;
+      seenPaths.add(idbPath.toLowerCase());
+      out.push({
+        name: rec.name || `${rec.family}.ttf`,
+        path: idbPath,
+        stem: rec.stem || rec.family,
+        family: rec.family,
+      });
+    }
+  } catch {
+    // Ignore IDB errors
+  }
+
   const collectFromEntries = (entries: DirEntryLike[]) => {
     for (const entry of entries) {
       if (entry.is_dir || !FONT_EXT_RE.test(entry.name)) continue;
@@ -203,6 +220,86 @@ const GENERIC_FAMILIES = new Set([
 ]);
 
 const loadedSpecs = new Set<string>();
+
+interface PersistedFontRecord {
+  family: string;
+  stem: string;
+  name: string;
+  buffer: ArrayBuffer;
+}
+
+const IDB_NAME = 'solomd-custom-fonts';
+const IDB_STORE = 'fonts';
+
+function openFontIdb(): Promise<IDBDatabase | null> {
+  if (typeof indexedDB === 'undefined') return Promise.resolve(null);
+  return new Promise((resolve) => {
+    try {
+      const req = indexedDB.open(IDB_NAME, 1);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(IDB_STORE)) {
+          db.createObjectStore(IDB_STORE, { keyPath: 'family' });
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+/**
+ * #479 — Persist a user-picked `.ttf`/`.otf`/`.woff2` font file in IndexedDB so
+ * it survives app restarts on Android / iOS / desktop and appears in the font
+ * dropdown list.
+ */
+export async function persistPickedFontFile(fileName: string, buffer: ArrayBuffer): Promise<string> {
+  const { stem, family } = cleanFontFamilyFromFilename(fileName);
+  const cleanFamily = family || stem || fileName.replace(/\.[^.]+$/, '');
+  if (typeof FontFace !== 'undefined' && typeof document !== 'undefined' && document.fonts) {
+    const face = new FontFace(cleanFamily, buffer.slice(0));
+    await face.load();
+    document.fonts.add(face);
+    loadedSpecs.add(`token::${cleanFamily.toLowerCase()}`);
+  }
+  const db = await openFontIdb();
+  if (db) {
+    await new Promise<void>((resolve) => {
+      try {
+        const tx = db.transaction(IDB_STORE, 'readwrite');
+        tx.objectStore(IDB_STORE).put({
+          family: cleanFamily,
+          stem: stem || cleanFamily,
+          name: fileName,
+          buffer,
+        } satisfies PersistedFontRecord);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => resolve();
+      } catch {
+        resolve();
+      }
+    });
+  }
+  cachedDiscovered = null;
+  return cleanFamily;
+}
+
+export async function listPersistedFontRecords(): Promise<PersistedFontRecord[]> {
+  const db = await openFontIdb();
+  if (!db) return [];
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction(IDB_STORE, 'readonly');
+      const req = tx.objectStore(IDB_STORE).getAll();
+      req.onsuccess = () => resolve(Array.isArray(req.result) ? (req.result as PersistedFontRecord[]) : []);
+      req.onerror = () => resolve([]);
+    } catch {
+      resolve([]);
+    }
+  });
+}
 
 async function registerFontFile(
   path: string,
@@ -321,6 +418,29 @@ export async function ensureCustomFontLoaded(
     if (loadedSpecs.has(tokenKey)) {
       loadedAny = true;
       continue;
+    }
+
+    // Case 0: Check IndexedDB persisted fonts picked via file picker (#479)
+    try {
+      const persisted = await listPersistedFontRecords();
+      const matchedRec = persisted.find((r) =>
+        fontMatchesFile(token, {
+          name: r.name,
+          path: `idb://${r.family}`,
+          stem: r.stem,
+          family: r.family,
+        }),
+      );
+      if (matchedRec && typeof FontFace !== 'undefined' && typeof document !== 'undefined' && document.fonts) {
+        const face = new FontFace(matchedRec.family, matchedRec.buffer.slice(0));
+        await face.load();
+        document.fonts.add(face);
+        loadedSpecs.add(tokenKey);
+        loadedAny = true;
+        continue;
+      }
+    } catch {
+      // Ignore IDB load failure
     }
 
     // Case 1: User typed a direct file path or filename with extension (.ttf/.otf/...)
