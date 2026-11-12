@@ -2,4 +2,4 @@ SoloMD 5.0.21 更新：
 • 虛擬工作空間與檔案別名/備註（#205）：左側邊欄新增「虛擬工作空間」，支援跨目錄聚合分散的 Markdown 檔案（如各專案的 AGENTS.md、SOUL.md），自動區分同名檔案並支援自訂別名與備註。
 • TextPack 自包含打包與整庫合併匯出（#505, #359）：支援匯出與開啟 .textpack / .textbundle 圖文自包含容器；自訂批次匯出支援將整個資料夾合併為 1 份含總目錄與頁碼的文件成冊。
 • 原生 Markmap 心智圖、Excalidraw 與通用附件插入（#363, #152, #418）：原生支援 ```markmap 心智圖與 ```excalidraw 渲染及範本一鍵插入；支援任意格式附件自動歸檔至 _assets/ 並插入連結；支援大綱拖曳重排章節。
-• Vim 自動切換中英文輸入法與自訂 .vimrc（#492）：返回 Normal 模式自動切換為英文輸入法，支援自訂 inoremap / nnoremap 等鍵位映射（如 inoremap jj <Esc>）。
+• Vim 自動切換中英文輸入法與自訂 .vimrc（#492）：返回 Normal 模式自動切換為英文輸入法，支援自訂 inoremap / nnoremap 等鍵位映射（如 inoremap jj Esc）。
