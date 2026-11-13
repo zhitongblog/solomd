@@ -20,6 +20,7 @@ import { useSettingsStore } from '../stores/settings';
 import { useWritingSessionStore } from '../stores/writingSession';
 import { usePomodoroStore } from '../stores/pomodoro';
 import { cjkWordCount } from '../lib/chinese';
+import { computePdfPageBreaks } from '../lib/pdf-page-breaks';
 import { useInbox } from '../composables/useInbox';
 import { useI18n } from '../i18n';
 import Icon from './Icons.vue';
@@ -52,6 +53,18 @@ const fmt = (n: number) => n.toLocaleString();
 const pillLabel = computed(() =>
   t(mostlyCjk.value ? 'statsPill.cjk' : 'statsPill.words', { n: fmt(stats.value.total) }),
 );
+
+// #552 — PDF pagination estimate for the active Markdown document
+const pdfPagination = computed(() => {
+  if (!settings.showPdfPageBreaks || tabs.activeTab?.language !== 'markdown') return null;
+  const res = computePdfPageBreaks(content.value, settings.pdfDefaults);
+  const currentPage = res.pageForLine(Math.max(1, props.line || 1));
+  return {
+    currentPage,
+    totalPages: res.totalPages,
+    pageSizeLabel: res.pageSizeLabel,
+  };
+});
 
 const lang = computed(() =>
   tabs.activeTab?.language === 'markdown' ? t('statusbar.markdown') : t('statusbar.plaintext'),
@@ -168,6 +181,18 @@ watch(
         <span class="stats-pop__label">{{ t('statsPill.lines') }}</span>
         <span class="stats-pop__value">{{ fmt(lineCount) }}</span>
       </div>
+      <div v-if="pdfPagination" class="stats-pop__row">
+        <span class="stats-pop__label">{{ t('statsPill.pdfPage') }}</span>
+        <span class="stats-pop__value">
+          {{
+            t('statsPill.pdfPageValue', {
+              page: String(pdfPagination.currentPage),
+              total: String(pdfPagination.totalPages),
+              size: pdfPagination.pageSizeLabel,
+            })
+          }}
+        </span>
+      </div>
       <div class="stats-pop__row">
         <span class="stats-pop__label">{{ t('statsPill.wordsLabel') }}</span>
         <span class="stats-pop__value">{{ fmt(stats.total) }}</span>
@@ -234,6 +259,17 @@ watch(
       @click="toggle"
     >
       <span>{{ pillLabel }}</span>
+      <template v-if="pdfPagination">
+        <span class="stats-pill__sep" aria-hidden="true">·</span>
+        <span class="stats-pill__pdf">
+          {{
+            t('statsPill.pdfPageShort', {
+              page: String(pdfPagination.currentPage),
+              total: String(pdfPagination.totalPages),
+            })
+          }}
+        </span>
+      </template>
       <template v-if="pomodoro.active">
         <span class="stats-pill__sep" aria-hidden="true">·</span>
         <span class="stats-pill__pomo" :class="{ 'stats-pill__pomo--break': pomodoro.isBreak }">{{ pomodoro.countdown }}</span>

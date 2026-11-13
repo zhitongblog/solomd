@@ -1486,6 +1486,14 @@ function onSelectPdfFont(v: string) {
 
         <section data-cat="basics">
           <label>
+            <input type="checkbox" :checked="settings.showPdfPageBreaks" @change="settings.toggleShowPdfPageBreaks()" />
+            {{ t('settings.showPdfPageBreaks') }}
+          </label>
+          <div class="hint">{{ t('settings.showPdfPageBreaksHint') }}</div>
+        </section>
+
+        <section data-cat="basics">
+          <label>
             <input type="checkbox" :checked="settings.showOutline" @change="onToggleOutlineGlobal()" />
             {{ t('settings.showOutline') }}
           </label>
@@ -2060,6 +2068,14 @@ function onSelectPdfFont(v: string) {
             {{ t('settings.pdfDefaults.heading') }}
           </h3>
           <p class="setting-hint">{{ t('settings.pdfDefaults.headingHint') }}</p>
+        </section>
+
+        <section data-cat="export">
+          <label>
+            <input type="checkbox" :checked="settings.showPdfPageBreaks" @change="settings.toggleShowPdfPageBreaks()" />
+            {{ t('settings.showPdfPageBreaks') }}
+          </label>
+          <p class="setting-hint">{{ t('settings.showPdfPageBreaksHint') }}</p>
         </section>
 
         <section data-cat="export">

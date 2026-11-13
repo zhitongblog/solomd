@@ -310,6 +310,7 @@ export function useCommands(): Command[] {
     // to carry them. Settings / reading mode also have a chord.
     { id: 'view.toggleReading', title: 'View: Toggle Reading Mode', shortcut: kb('view.toggleReading'), run: () => settings.toggleReadingMode() },
     { id: 'view.toggleFitWidth', title: 'View: Toggle Preview Fit Width', run: () => settings.togglePreviewFitWidth() },
+    { id: 'view.togglePdfPageBreaks', title: 'View: Toggle PDF Page-Break Reference Lines', run: () => settings.toggleShowPdfPageBreaks() },
     { id: 'pomodoro.open', title: 'Writing Session (Pomodoro)…', hint: '25 / 50 / 90 minutes or a custom length', run: () => window.dispatchEvent(new CustomEvent('solomd:open-pomodoro')) },
     { id: 'settings.open', title: 'Settings', shortcut: kb('settings.open'), run: () => window.dispatchEvent(new CustomEvent('solomd:open-settings')) },
 
