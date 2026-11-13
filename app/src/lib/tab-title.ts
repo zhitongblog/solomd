@@ -14,8 +14,10 @@ export function extractFirstLineTitle(content: string | undefined | null): strin
   let i = 0;
   let fmTitle = '';
 
-  // Skip leading YAML frontmatter if present on line 0.
-  if (lines[0]?.trim() === '---') {
+  // Skip leading YAML frontmatter if present on line 0 (`---\n...\n---`), OR
+  // headless/dangling frontmatter (`inbox: true\n---`) left behind if the
+  // opening `---` fence was accidentally deleted.
+  if (lines[0]?.replace(/^\uFEFF/, '').trim() === '---') {
     i = 1;
     let closed = false;
     while (i < lines.length) {
@@ -32,6 +34,29 @@ export function extractFirstLineTitle(content: string | undefined | null): strin
       i++;
     }
     if (!closed) i = 1;
+  } else {
+    let j = 0;
+    let sawYamlKey = false;
+    const scanLimit = Math.min(lines.length, 25);
+    while (j < scanLimit) {
+      const t = lines[j].trim();
+      if (t === '---' || t === '...') {
+        if (sawYamlKey) {
+          i = j + 1;
+        }
+        break;
+      }
+      if (/^[a-zA-Z0-9_-]+\s*:\s*(?:.*)?$/.test(t)) {
+        sawYamlKey = true;
+        const m = /^title\s*:\s*(.+)$/i.exec(t);
+        if (m && !fmTitle) {
+          fmTitle = m[1].trim().replace(/^["']|["']$/g, '').trim();
+        }
+        j++;
+        continue;
+      }
+      break;
+    }
   }
 
   for (; i < lines.length; i++) {

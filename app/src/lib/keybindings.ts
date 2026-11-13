@@ -153,7 +153,11 @@ export const KEY_ACTIONS: KeyActionDef[] = [
   { id: 'export.copyMd', label: 'Copy as Markdown', category: 'file', defaults: ['Mod+Alt+C'] },
   { id: 'file.print', label: 'Print…', category: 'file', defaults: [] },
   { id: 'inbox.open', label: 'Open Inbox', category: 'file', defaults: [] },
-  { id: 'inbox.toggle', label: 'Toggle Inbox Flag / Organize', category: 'file', defaults: ['Mod+E'] },
+  // Unbound by default: Mod+E collides with Ctrl+E (macOS end-of-line / Vim
+  // scroll / Obsidian preview toggle / Typora math) and silently injects
+  // `---\ninbox: true\n---` into the active document on disk. Users who want a
+  // chord can bind it in Settings › Shortcuts.
+  { id: 'inbox.toggle', label: 'Toggle Inbox Flag / Organize', category: 'file', defaults: [] },
   { id: 'file.openExternal', label: 'Open in External Editor', category: 'file', defaults: ['Mod+Shift+E'] },
   { id: 'file.copyPath', label: 'Copy File Path', category: 'file', defaults: ['Mod+Alt+Shift+Y'] },
   { id: 'settings.open', label: 'Settings', category: 'file', defaults: ['Mod+Comma'] },

@@ -97,6 +97,25 @@ export function splitPlainMarkdownBlocks(src: string): PlainBlockRange[] {
 
   for (let i = 0; i < lines.length;) {
     const line = lines[i];
+    // Keep leading YAML front-matter (`---\n...\n---`) as a single block instead
+    // of splitting the opening `---` into a standalone `<hr>` thematic block
+    // (which caused `inbox: true\n---` to be separated from its opening fence).
+    if (i === 0 && line.text.replace(/^\uFEFF/, '').trim() === '---') {
+      let closeIdx = -1;
+      const maxFmLine = Math.min(lines.length, 100);
+      for (let k = 1; k < maxFmLine; k++) {
+        const kt = lines[k].text.trim();
+        if (kt === '---' || kt === '...') {
+          closeIdx = k;
+          break;
+        }
+      }
+      if (closeIdx > 0) {
+        pushRange(line.start, lines[closeIdx].end);
+        i = closeIdx + 1;
+        continue;
+      }
+    }
     const htmlEnd = findHtmlBlockEnd(lineTexts, i);
     if (htmlEnd !== null) {
       pushRange(line.start, lines[htmlEnd].end);

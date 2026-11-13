@@ -15,6 +15,9 @@ test('extractFirstLineTitle skips YAML frontmatter and falls back to frontmatter
 
   const onlyFm = '---\ntitle: "仅 Frontmatter 标题"\n---\n\n';
   assert.equal(extractFirstLineTitle(onlyFm), '仅 Frontmatter 标题');
+
+  const danglingInboxFm = 'inbox: true\n---\n# 真正的标题\n正文';
+  assert.equal(extractFirstLineTitle(danglingInboxFm), '真正的标题');
 });
 
 test('displayTabTitle and displayTabTooltip respect the setting flag', () => {

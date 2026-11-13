@@ -336,12 +336,27 @@ const HEADING_LEVELS: Record<string, number> = {
   SetextHeading1: 1, SetextHeading2: 2,
 };
 
+function frontMatterEndPos(doc: { lines: number; line: (n: number) => { text: string; to: number } }): number {
+  if (doc.lines < 2) return 0;
+  const first = doc.line(1).text.replace(/^\uFEFF/, '').trim();
+  if (first !== '---') return 0;
+  const maxLines = Math.min(doc.lines, 100);
+  for (let n = 2; n <= maxLines; n += 1) {
+    const t = doc.line(n).text.trim();
+    if (t === '---' || t === '...') {
+      return doc.line(n).to;
+    }
+  }
+  return 0;
+}
+
 function buildDecorations(view: EditorView, showMarkers = false): DecorationSet {
   const sel = view.state.selection.main;
   const dragging = isDragging(view.state);
   const fromLine = dragging ? -1 : view.state.doc.lineAt(sel.from).number;
   const toLine = dragging ? -1 : view.state.doc.lineAt(sel.to).number;
   const tree = syntaxTree(view.state);
+  const fmEnd = frontMatterEndPos(view.state.doc);
 
   // We collect into a flat list of `Range<Decoration>` and then call
   // `Decoration.set(ranges, /* sort */ true)` — that's the documented
@@ -366,6 +381,13 @@ function buildDecorations(view: EditorView, showMarkers = false): DecorationSet 
         const name = node.name;
         const nFrom = node.from;
         const nTo = node.to;
+        // Do not misparse leading YAML front-matter (`---\ninbox: true\n---`)
+        // as a HorizontalRule (<hr>) on line 1 + a SetextHeading2 on the
+        // closing `---` (which hid the opening `---` and left `inbox: true\n---`
+        // exposed as an H2 heading).
+        if (fmEnd > 0 && nFrom < fmEnd && name !== 'Document') {
+          return false;
+        }
         const lineAtNode = view.state.doc.lineAt(nFrom).number;
         const lineEndAtNode = view.state.doc.lineAt(
           Math.min(nTo, view.state.doc.length),

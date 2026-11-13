@@ -245,8 +245,8 @@ export function useShortcuts(hooks: Hooks = {}) {
     // note organized and jumps to the next one; elsewhere it degrades to the
     // plain front-matter toggle, and it's off entirely when opted out.
     'inbox.toggle': () => {
-      if (settings.inboxWorkflowEnabled) void inbox.organizeAndAdvance();
-      else inbox.toggleActive();
+      if (!settings.inboxWorkflowEnabled) return false;
+      void inbox.organizeAndAdvance();
     },
     // A no-op while a session runs, so the shortcut can't restart one and
     // lose the writing window in progress.

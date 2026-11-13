@@ -67,3 +67,8 @@ test('a nested same-tag container does not end the block early', () => {
     '',
   ]);
 });
+
+test('leading YAML front-matter stays a single block instead of splitting opening --- as <hr>', () => {
+  const src = '---\ninbox: true\ntitle: Demo\n---\n# Heading\n';
+  assert.deepEqual(texts(src), ['---\ninbox: true\ntitle: Demo\n---', '# Heading', '']);
+});

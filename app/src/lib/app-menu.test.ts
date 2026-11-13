@@ -286,7 +286,7 @@ test('menu coverage: the new submenus hold what they should', () => {
   assert.ok(itemIds(submenu(m, 'theme')!.items).includes('theme.customCss'));
   // Shortcuts survive the move into submenus.
   assert.equal(itemShortcut(find(m, 'daily.openToday'), ctx()), 'Ctrl+D');
-  assert.equal(itemShortcut(find(m, 'inbox.toggle'), ctx()), 'Ctrl+E');
+  assert.equal(itemShortcut(find(m, 'inbox.toggle'), ctx()), '');
   assert.equal(itemShortcut(find(m, 'view.toggleInspector'), ctx()), 'Ctrl+Shift+I');
   assert.equal(find(m, 'fold.level2').label, 'Show Down to Level 2');
 });
