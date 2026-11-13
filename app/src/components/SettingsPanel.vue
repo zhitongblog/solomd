@@ -801,6 +801,19 @@ async function pickDefaultExportDir() {
   }
 }
 
+/** #553 — pick a .docx whose styles / theme / page setup Word exports reuse. */
+async function pickDocxReferenceDoc() {
+  const path = await openFileDialog({
+    multiple: false,
+    directory: false,
+    defaultPath: settings.docxReferenceDoc || (await files.filePickerStartDir()),
+    filters: [{ name: 'Word Document', extensions: ['docx'] }],
+  });
+  if (path && typeof path === 'string') {
+    settings.setDocxReferenceDoc(path);
+  }
+}
+
 // Re-read the current custom CSS file from disk and re-apply it. Useful when
 // the user edits the .css file outside the app.
 const isCssRefreshing = ref(false);
@@ -1992,6 +2005,38 @@ function onSelectPdfFont(v: string) {
             <option value="academic">{{ t('settings.docxPresetAcademic') }}</option>
           </select>
           <p class="setting-hint">{{ t('settings.docxPresetHint') }}</p>
+        </section>
+
+        <!-- #553 — a user-owned .docx as a Word reference template. Also
+             exposed in the Custom Export dialog when DOCX is selected. -->
+        <section data-cat="export">
+          <label>{{ isZhLocale ? '自定义 Word 模板 (.docx)' : 'Custom Word Template (.docx)' }}</label>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <input
+              type="text"
+              :value="settings.docxReferenceDoc"
+              :placeholder="isZhLocale ? '可选：选择自己的 .docx 模板' : 'Optional: pick your own .docx template'"
+              spellcheck="false"
+              class="settings__field"
+              style="flex: 1;"
+              @change="settings.setDocxReferenceDoc(($event.target as HTMLInputElement).value)"
+            />
+            <button type="button" @click="pickDocxReferenceDoc">
+              {{ isZhLocale ? '浏览…' : 'Browse…' }}
+            </button>
+            <button
+              v-if="settings.docxReferenceDoc"
+              type="button"
+              @click="settings.setDocxReferenceDoc('')"
+            >
+              {{ isZhLocale ? '清除' : 'Clear' }}
+            </button>
+          </div>
+          <p class="setting-hint">
+            {{ isZhLocale
+              ? '导出 Word 时套用该模板的字体、标题/正文样式、主题配色与页面尺寸页边距；不套用页眉页脚和图片。适用于「文件 → 导出 → Word」及自定义/批量导出。'
+              : 'Word exports reuse this template’s fonts, heading/body styles, theme colours and page size/margins. Headers, footers and images are not carried over. Applies to File → Export → Word and Custom/Batch Export.' }}
+          </p>
         </section>
 
         <section data-cat="export">

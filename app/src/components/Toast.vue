@@ -12,11 +12,19 @@ const icons: Record<string, string> = {
   warning: 'info',
 };
 
+/** #553 — normalize the legacy single-action fields and the new action list
+ *  into one list so the template only has one rendering path. */
+function toastActions(t: Toast): Array<{ label: string; run: () => void }> {
+  if (t.actions?.length) return t.actions;
+  if (t.onClick && t.actionLabel) return [{ label: t.actionLabel, run: t.onClick }];
+  return [];
+}
+
 function onToastClick(t: Toast) {
   // A toast with an explicit action button keeps the old copy-on-click
   // behavior for the rest of its surface — a stray click on "Deleted x" must
   // not be read as "undo".
-  if (t.onClick && !t.actionLabel) {
+  if (!toastActions(t).length && t.onClick) {
     t.onClick();
     toasts.resolve(t.id);
     return;
@@ -24,8 +32,8 @@ function onToastClick(t: Toast) {
   navigator.clipboard.writeText(t.message).catch(() => {});
 }
 
-function onToastAction(t: Toast) {
-  t.onClick?.();
+function onToastAction(t: Toast, action: { label: string; run: () => void }) {
+  action.run();
   toasts.resolve(t.id);
 }
 </script>
@@ -43,10 +51,11 @@ function onToastAction(t: Toast) {
         <Icons class="toast__icon" :name="icons[t.kind] ?? 'info'" :size="16" aria-hidden="true" />
         <span class="toast__msg">{{ t.message }}</span>
         <button
-          v-if="t.onClick && t.actionLabel"
+          v-for="action in toastActions(t)"
+          :key="action.label"
           class="toast__action"
-          @click.stop="onToastAction(t)"
-        >{{ t.actionLabel }}</button>
+          @click.stop="onToastAction(t, action)"
+        >{{ action.label }}</button>
       </div>
     </transition-group>
   </div>

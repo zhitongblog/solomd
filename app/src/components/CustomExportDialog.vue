@@ -77,6 +77,17 @@ function onBackdropClick(e: MouseEvent) {
   if (shouldClose) emit('close');
 }
 
+/** #553 — the success toast gets a one-click way into the output folder. */
+function notifyExportSuccess(message: string, dir: string) {
+  toasts.push(
+    message,
+    'success',
+    6000,
+    () => { void openDirectoryInFileManager(dir); },
+    { actionLabel: isZh.value ? '打开输出目录' : 'Open Output Folder' },
+  );
+}
+
 watch(
   () => props.open,
   (isOpen) => {
@@ -134,6 +145,26 @@ async function pickOutputDirectory() {
     if (typeof picked === 'string' && picked.trim()) {
       outputDir.value = picked.trim();
       settings.setLastCustomExportDir(outputDir.value);
+    }
+  } catch (e) {
+    toasts.error(String(e));
+  }
+}
+
+/** #553 — a .docx used as a Word "reference doc": its styles, theme and page
+ *  setup are applied to the generated document. The path is a global setting
+ *  so the File → Export → Word path picks up the same template. */
+async function pickDocxTemplate() {
+  try {
+    const picked = await openDialog({
+      multiple: false,
+      directory: false,
+      defaultPath: settings.docxReferenceDoc || outputDir.value || workspace.currentFolder || undefined,
+      filters: [{ name: isZh.value ? 'Word 模板' : 'Word Template', extensions: ['docx'] }],
+      title: isZh.value ? '选择自定义 Word 模板 (.docx)' : 'Select Custom Word Template (.docx)',
+    });
+    if (typeof picked === 'string' && picked.trim()) {
+      settings.setDocxReferenceDoc(picked.trim());
     }
   } catch (e) {
     toasts.error(String(e));
@@ -220,7 +251,7 @@ async function runCustomExport() {
       const msg = isZh.value ? `导出成功：${targetPath}` : `Exported to: ${targetPath}`;
       statusMessage.value = msg;
       statusKind.value = 'ok';
-      toasts.success(msg);
+      notifyExportSuccess(msg, outDir);
     } else {
       const folder = sourceFolder.value.trim();
       if (!folder) {
@@ -264,7 +295,7 @@ async function runCustomExport() {
           : `Combined export complete: ${mdFiles.length} notes merged into ${targetPath}`;
         statusMessage.value = msg;
         statusKind.value = 'ok';
-        toasts.success(msg);
+        notifyExportSuccess(msg, outDir);
       } else {
         let exportedCount = 0;
         let lastPath = outDir;
@@ -293,7 +324,7 @@ async function runCustomExport() {
           : `Batch export complete: ${exportedCount} notes exported to ${outDir}`;
         statusMessage.value = msg;
         statusKind.value = 'ok';
-        toasts.success(msg);
+        notifyExportSuccess(msg, outDir);
       }
     }
   } catch (e) {
@@ -369,6 +400,37 @@ async function runCustomExport() {
             <option value="png">{{ isZh ? 'PNG 长图 (.png)' : 'PNG Image (.png)' }}</option>
             <option value="textpack">{{ isZh ? 'TextPack 自包含单文件容器 (.textpack)' : 'TextPack Self-Contained Bundle (.textpack)' }}</option>
           </select>
+        </div>
+
+        <!-- #553 — optional user-supplied .docx used as a Word reference doc. -->
+        <div v-if="format === 'docx'" class="custom-export__field">
+          <label class="custom-export__label">{{ isZh ? '自定义 Word 模板 (.docx)' : 'Custom Word Template (.docx)' }}</label>
+          <div class="custom-export__row">
+            <input
+              type="text"
+              class="custom-export__input"
+              :value="settings.docxReferenceDoc"
+              spellcheck="false"
+              :placeholder="isZh ? '可选：使用自己的 Word 模板…' : 'Optional: use your own Word template…'"
+              @change="settings.setDocxReferenceDoc(($event.target as HTMLInputElement).value.trim())"
+            />
+            <button type="button" class="custom-export__btn" @click="pickDocxTemplate">
+              {{ isZh ? '浏览…' : 'Browse…' }}
+            </button>
+            <button
+              v-if="settings.docxReferenceDoc"
+              type="button"
+              class="custom-export__btn"
+              @click="settings.setDocxReferenceDoc('')"
+            >
+              {{ isZh ? '清除' : 'Clear' }}
+            </button>
+          </div>
+          <p class="custom-export__hint">
+            {{ isZh
+              ? '导出时套用模板中的字体、标题/正文样式、主题配色与页面尺寸页边距；页眉页脚仍由内置「Word 导出样式」决定。'
+              : 'Applies the template fonts, heading/body styles, theme colours and page size/margins. Headers and footers still come from the built-in Word preset.' }}
+          </p>
         </div>
 
         <div class="custom-export__field">
@@ -478,6 +540,15 @@ async function runCustomExport() {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  /* The #553 Word-template field makes the dialog taller on short windows. */
+  max-height: min(70vh, 620px);
+  overflow-y: auto;
+}
+.custom-export__hint {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-muted);
 }
 .custom-export__field {
   display: flex;

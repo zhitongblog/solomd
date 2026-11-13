@@ -2,6 +2,12 @@ import { defineStore } from 'pinia';
 
 export type ToastKind = 'success' | 'error' | 'info' | 'warning';
 
+/** An explicit button rendered on the toast. */
+export interface ToastAction {
+  label: string;
+  run: () => void;
+}
+
 export interface Toast {
   id: number;
   kind: ToastKind;
@@ -14,6 +20,9 @@ export interface Toast {
    *  action the user is meant to notice — "Undo" — cannot rely on the whole
    *  surface being secretly clickable. */
   actionLabel?: string;
+  /** #553 — more than one button (e.g. "Open Folder" + "Reveal in Explorer").
+   *  Takes precedence over the single `actionLabel` / `onClick` pair. */
+  actions?: ToastAction[];
   /** Runs when the toast goes away without the action being taken (timeout or
    *  a manual dismiss). "Undo" needs this: the delete it is holding back has
    *  to happen once the offer expires. */
@@ -32,7 +41,7 @@ export const useToastsStore = defineStore('toasts', {
       kind: ToastKind = 'info',
       timeout = 2800,
       onClick?: () => void,
-      extra?: { actionLabel?: string; onExpire?: () => void },
+      extra?: { actionLabel?: string; actions?: ToastAction[]; onExpire?: () => void },
     ) {
       const id = nextId++;
       this.items.push({
@@ -42,6 +51,7 @@ export const useToastsStore = defineStore('toasts', {
         timeout,
         onClick,
         actionLabel: extra?.actionLabel,
+        actions: extra?.actions?.length ? extra.actions : undefined,
         onExpire: extra?.onExpire,
       });
       if (timeout > 0) {

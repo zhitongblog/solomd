@@ -6,7 +6,7 @@ import { writeText, writeHtml, writeImage } from '@tauri-apps/plugin-clipboard-m
 import { Image } from '@tauri-apps/api/image';
 import { documentDir, join } from '@tauri-apps/api/path';
 import { isIOS, isMacOS, isMobile, isWindowsDesktop, revealLabelKey } from '../lib/platform';
-import { revealInFileManager } from '../lib/reveal-in-file-manager';
+import { revealInFileManager, openDirectoryInFileManager, parentDirOf } from '../lib/reveal-in-file-manager';
 // Loaded per export rather than at startup. Between them these three pull in
 // `docx`, jsPDF + html2canvas and the mermaid renderer — megabytes that a user
 // who only opens a note to read it should never have to compile.
@@ -239,6 +239,21 @@ export function useExport() {
     return settings.plantumlEnabled && settings.plantumlServer ? settings.plantumlServer : null;
   }
 
+  /** #553 — load the configured .docx reference template. A stale / moved
+   *  path must not break the export, so failures fall back to the built-in
+   *  preset instead of surfacing as an export error. */
+  async function docxReferenceBytes(): Promise<Uint8Array | null> {
+    const path = settings.docxReferenceDoc?.trim();
+    if (!path) return null;
+    try {
+      const data = await invoke<number[]>('read_binary_file', { path });
+      return data?.length ? new Uint8Array(data) : null;
+    } catch (e) {
+      console.warn('[export] custom DOCX reference template unreadable, using built-in preset', e);
+      return null;
+    }
+  }
+
   async function pickWritePath(
     filename: string,
     filters: { name: string; extensions: string[] }[],
@@ -264,21 +279,27 @@ export function useExport() {
     return t('toast.savedToIos', { name: filename });
   }
 
-  /** #418 — Post-export toast with a one-click "Reveal in Finder / Show in Explorer" action on desktop. */
+  /** #418 / #553 — Post-export toast with buttons to open the output folder
+   *  and to reveal the exported file in Finder / Explorer. */
   function notifyExportSaved(path: string, message: string) {
     if (isMobile()) {
       toasts.success(message);
       return;
     }
-    toasts.push(
-      message,
-      'success',
-      6000,
-      () => {
-        void revealInFileManager(path);
+    const folder = parentDirOf(path);
+    const actions = [
+      ...(folder
+        ? [{
+            label: settings.language === 'zh' ? '打开所在文件夹' : 'Open Folder',
+            run: () => { void openDirectoryInFileManager(folder); },
+          }]
+        : []),
+      {
+        label: t(revealLabelKey('explorer.reveal')),
+        run: () => { void revealInFileManager(path); },
       },
-      { actionLabel: t(revealLabelKey('explorer.reveal')) },
-    );
+    ];
+    toasts.push(message, 'success', 6000, undefined, { actions });
   }
 
   // Modern Clipboard API works on all desktops and on iOS 16+ WKWebView,
@@ -332,6 +353,7 @@ export function useExport() {
         settings.docxPreset,
         t('docx.contents'),
         plantumlServer(),
+        await docxReferenceBytes(),
       );
       const buffer = new Uint8Array(await blob.arrayBuffer());
       // Tauri 2 serializes Uint8Array as a number array which Rust accepts as Vec<u8>.
@@ -884,6 +906,7 @@ export function useExport() {
         settings.docxPreset,
         t('docx.contents'),
         plantumlServer(),
+        await docxReferenceBytes(),
       );
       const buffer = new Uint8Array(await blob.arrayBuffer());
       await invoke('write_binary_file', { path: outputPath, data: Array.from(buffer) });

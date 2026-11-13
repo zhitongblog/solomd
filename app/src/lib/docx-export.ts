@@ -41,6 +41,7 @@ import {
 import { resolveImagePath } from './image-resolve';
 import { blobToPng, loadImageBlob } from './image-clipboard';
 import { isPlantumlLang, plantumlSvgUrl } from './plantuml';
+import { unzipSync, zipSync, strFromU8, strToU8 } from 'fflate';
 import type Token from 'markdown-it/lib/token.mjs';
 
 type BlockChild = Paragraph | Table;
@@ -792,6 +793,110 @@ function buildCover(tpl: DocxTemplate): Paragraph[] {
   return out;
 }
 
+/**
+ * #553 — Apply a user's .docx as a Word "reference document".
+ *
+ * The `docx` library builds a document from scratch; it cannot open an
+ * existing .docx as a template. Word's own "reference doc" convention (the
+ * one pandoc's `--reference-doc` uses) needs only a handful of package parts,
+ * so we swap those parts into the freshly generated zip:
+ *
+ *   - `word/styles.xml`  — Normal / Heading1..6 / caption / TOC styles, i.e.
+ *     the fonts, sizes, colours and paragraph spacing the user set up.
+ *   - `word/fontTable.xml`, `word/theme/theme1.xml` — fonts / theme colours
+ *     those styles point at.
+ *   - `<w:pgSz>` / `<w:pgMar>` from the template's `word/document.xml` —
+ *     paper size and margins.
+ *
+ * Existing parts are replaced in place (the manifests stay valid); the theme
+ * is added together with its content-type override and relationship because
+ * the generator does not emit one. Numbering, headers and footers are
+ * deliberately left alone: the generator's list numbering and preset-driven
+ * header/footer would otherwise point at ids and media that were never copied
+ * in. An unreadable / non-DOCX file is ignored rather than failing the whole
+ * export.
+ */
+const REFERENCE_STYLE_PARTS = [
+  'word/styles.xml',
+  'word/stylesWithEffects.xml',
+  'word/fontTable.xml',
+];
+const THEME_PART = 'word/theme/theme1.xml';
+
+async function applyDocxReference(blob: Blob, reference: Uint8Array): Promise<Blob> {
+  let generated: Record<string, Uint8Array>;
+  let template: Record<string, Uint8Array>;
+  try {
+    generated = unzipSync(new Uint8Array(await blob.arrayBuffer()));
+    template = unzipSync(reference);
+  } catch (e) {
+    console.warn('[docx] reference template is not a readable .docx, ignoring it', e);
+    return blob;
+  }
+  if (!template['word/styles.xml']) {
+    console.warn('[docx] reference template has no word/styles.xml, ignoring it');
+    return blob;
+  }
+
+  const merged: Record<string, Uint8Array> = {};
+  for (const [name, data] of Object.entries(generated)) {
+    if (!name.endsWith('/')) merged[name] = data;
+  }
+  for (const name of REFERENCE_STYLE_PARTS) {
+    if (template[name] && merged[name]) merged[name] = template[name];
+  }
+
+  // The generated package has no theme part of its own, so the template's
+  // theme has to be declared in both manifests before it can be added —
+  // otherwise Word reports a corrupt document.
+  if (template[THEME_PART]) {
+    merged[THEME_PART] = template[THEME_PART];
+    const typesName = '[Content_Types].xml';
+    if (merged[typesName]) {
+      let types = strFromU8(merged[typesName]);
+      if (!types.includes(`PartName="/${THEME_PART}"`)) {
+        types = types.replace(
+          '</Types>',
+          '<Override ContentType="application/vnd.openxmlformats-officedocument.theme+xml" ' +
+            `PartName="/${THEME_PART}"/></Types>`,
+        );
+        merged[typesName] = strToU8(types);
+      }
+    }
+    const relsName = 'word/_rels/document.xml.rels';
+    if (merged[relsName]) {
+      let rels = strFromU8(merged[relsName]);
+      if (!rels.includes('/relationships/theme"')) {
+        rels = rels.replace(
+          '</Relationships>',
+          '<Relationship Id="rIdSolomdTheme" ' +
+            'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" ' +
+            'Target="theme/theme1.xml"/></Relationships>',
+        );
+        merged[relsName] = strToU8(rels);
+      }
+    }
+  }
+
+  const tplDoc = template['word/document.xml'] ? strFromU8(template['word/document.xml']) : '';
+  if (tplDoc && merged['word/document.xml']) {
+    const lastMatch = (re: RegExp): string | null => {
+      const found = tplDoc.match(re);
+      return found && found.length ? found[found.length - 1] : null;
+    };
+    const pgSz = lastMatch(/<w:pgSz\b[^>]*\/>/g);
+    const pgMar = lastMatch(/<w:pgMar\b[^>]*\/>/g);
+    let docXml = strFromU8(merged['word/document.xml']);
+    if (pgSz) docXml = docXml.replace(/<w:pgSz\b[^>]*\/>/g, pgSz);
+    if (pgMar) docXml = docXml.replace(/<w:pgMar\b[^>]*\/>/g, pgMar);
+    merged['word/document.xml'] = strToU8(docXml);
+  }
+
+  return new Blob([zipSync(merged, { level: 6 })], {
+    type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  });
+}
+
 export async function markdownToDocxBlob(
   source: string,
   _title = 'Document',
@@ -802,6 +907,8 @@ export async function markdownToDocxBlob(
   contentsLabel = 'Contents',
   /** PlantUML server when PlantUML is on (#163); fences become diagrams. */
   plantumlServer: string | null = null,
+  /** #553 — bytes of the user's .docx reference template, when configured. */
+  referenceDocx?: Uint8Array | null,
 ): Promise<Blob> {
   srcImages.clear();
   nextOrderedListInstance = 0;
@@ -915,5 +1022,6 @@ export async function markdownToDocxBlob(
     ],
   });
 
-  return Packer.toBlob(doc);
+  const generated = await Packer.toBlob(doc);
+  return referenceDocx ? applyDocxReference(generated, referenceDocx) : generated;
 }
