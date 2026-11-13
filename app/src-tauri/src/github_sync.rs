@@ -77,11 +77,24 @@ fn keyring_entry() -> Result<keyring::Entry, String> {
 /// just to render a green dot. The marker file moves that prompt off
 /// the read path; the keychain only gets touched on push / pull (which
 /// the user explicitly initiates and where the prompt is meaningful).
-fn token_marker_path() -> Option<std::path::PathBuf> {
+fn user_home_dir() -> Option<std::path::PathBuf> {
     std::env::var_os("HOME")
         .map(std::path::PathBuf::from)
         .or_else(|| std::env::var_os("USERPROFILE").map(std::path::PathBuf::from))
-        .map(|h| h.join(".solomd").join("github-token-set"))
+        .or_else(|| {
+            if cfg!(target_os = "android") {
+                let p = std::path::PathBuf::from("/data/user/0/app.solomd/files");
+                if p.exists() {
+                    return Some(p);
+                }
+                return Some(std::env::temp_dir());
+            }
+            None
+        })
+}
+
+fn token_marker_path() -> Option<std::path::PathBuf> {
+    user_home_dir().map(|h| h.join(".solomd").join("github-token-set"))
 }
 
 fn write_token_marker() {
@@ -189,10 +202,7 @@ fn gitea_keyring_entry() -> Result<keyring::Entry, String> {
 }
 
 fn gitea_token_marker_path() -> Option<std::path::PathBuf> {
-    std::env::var_os("HOME")
-        .map(std::path::PathBuf::from)
-        .or_else(|| std::env::var_os("USERPROFILE").map(std::path::PathBuf::from))
-        .map(|h| h.join(".solomd").join("gitea-token-set"))
+    user_home_dir().map(|h| h.join(".solomd").join("gitea-token-set"))
 }
 
 fn gitea_write_token_marker() {
@@ -860,10 +870,7 @@ fn now_secs() -> i64 {
 // ---------------------------------------------------------------------------
 
 fn proxy_path() -> Option<PathBuf> {
-    std::env::var_os("HOME")
-        .map(PathBuf::from)
-        .or_else(|| std::env::var_os("USERPROFILE").map(PathBuf::from))
-        .map(|h| h.join(".solomd").join("proxy"))
+    user_home_dir().map(|h| h.join(".solomd").join("proxy"))
 }
 
 fn read_proxy_url() -> Option<String> {
@@ -938,10 +945,7 @@ fn make_proxy_options() -> git2::ProxyOptions<'static> {
 // ---------------------------------------------------------------------------
 
 fn gitea_url_path() -> Option<PathBuf> {
-    std::env::var_os("HOME")
-        .map(PathBuf::from)
-        .or_else(|| std::env::var_os("USERPROFILE").map(PathBuf::from))
-        .map(|h| h.join(".solomd").join("gitea-url"))
+    user_home_dir().map(|h| h.join(".solomd").join("gitea-url"))
 }
 
 fn read_gitea_url() -> Option<String> {

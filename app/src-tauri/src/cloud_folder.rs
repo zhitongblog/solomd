@@ -152,6 +152,16 @@ fn home() -> Option<PathBuf> {
     std::env::var_os("HOME")
         .map(PathBuf::from)
         .or_else(|| std::env::var_os("USERPROFILE").map(PathBuf::from))
+        .or_else(|| {
+            if cfg!(target_os = "android") {
+                let p = PathBuf::from("/data/user/0/app.solomd/files");
+                if p.exists() {
+                    return Some(p);
+                }
+                return Some(std::env::temp_dir());
+            }
+            None
+        })
 }
 
 fn device_id_path() -> Option<PathBuf> {

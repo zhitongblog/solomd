@@ -630,19 +630,81 @@ class MainActivity : TauriActivity() {
       JSONObject().apply { put("ok", false); put("e", msg) }.toString()
   }
 
+  private var retriedInitialLoad = false
+
   override fun onCreate(savedInstanceState: Bundle?) {
     instance = this
+    // Ensure $HOME points to the app's private files directory so Rust crates
+    // (github_sync, cloud_folder, ai_keystore, cost_meter) never fail with
+    // "no HOME directory" on Android.
+    try {
+      android.system.Os.setenv("HOME", filesDir.absolutePath, false)
+    } catch (_: Throwable) {
+    }
+    // Guarantee ProcessLifecycleOwner is initialized before WryActivity.onCreate
+    // registers WryLifecycleObserver (fixes blank screen when OEM ROMs delay
+    // ContentProvider / AppStartup initialization).
+    try {
+      androidx.startup.AppInitializer.getInstance(applicationContext)
+        .initializeComponent(androidx.lifecycle.ProcessLifecycleInitializer::class.java)
+    } catch (_: Throwable) {
+    }
     enableEdgeToEdge()
     super.onCreate(savedInstanceState)
   }
 
+  override fun onWebViewCreate(webView: android.webkit.WebView) {
+    super.onWebViewCreate(webView)
+    // Work around wry's CreateWebView race on Android 16 / ColorOS 16 where
+    // loadUrlMainThread("http://tauri.localhost/") is posted to an unattached
+    // WebView before setWebViewClient and setContentView are wired up.
+    val handler = android.os.Handler(android.os.Looper.getMainLooper())
+    handler.postDelayed({
+      try {
+        val currentUrl = webView.url
+        if (currentUrl.isNullOrEmpty() || currentUrl == "about:blank") {
+          webView.loadUrl("http://tauri.localhost/")
+        }
+      } catch (_: Throwable) {
+      }
+    }, 150)
+    handler.postDelayed({
+      try {
+        if (retriedInitialLoad) return@postDelayed
+        val currentUrl = webView.url
+        if (currentUrl.isNullOrEmpty() || currentUrl == "about:blank") {
+          retriedInitialLoad = true
+          webView.loadUrl("http://tauri.localhost/")
+          return@postDelayed
+        }
+        webView.evaluateJavascript(
+          "(function(){var r=document.getElementById('app');return (r&&r.childElementCount>0)||document.readyState==='loading'?'ok':'empty';})()"
+        ) { res ->
+          if (!retriedInitialLoad && res == "\"empty\"") {
+            retriedInitialLoad = true
+            webView.loadUrl("http://tauri.localhost/")
+          }
+        }
+      } catch (_: Throwable) {
+      }
+    }, 1200)
+  }
+
   override fun onDestroy() {
+    val finishingPermanently = !isChangingConfigurations
     if (instance === this) {
       billingClient?.endConnection()
       billingClient = null
       instance = null
     }
     super.onDestroy()
+    // WryLifecycleObserver.onCreate only fires once per OS process, while
+    // WryActivity.onDestroy tears down the tao Window permanently. If Android
+    // keeps the cached process alive after Activity destruction, relaunching
+    // MainActivity would otherwise open a blank window with no WebView.
+    if (finishingPermanently) {
+      android.os.Process.killProcess(android.os.Process.myPid())
+    }
   }
 
   @Deprecated("Deprecated in Java")

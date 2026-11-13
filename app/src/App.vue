@@ -895,6 +895,7 @@ watchEffect(() => {
 // every change. Passing null unregisters, which is what "off" has to mean for
 // a chord that would otherwise stay stolen from every other application.
 watchEffect(() => {
+  if (isMobile()) return;
   const accel = settings.quickCaptureEnabled ? settings.quickCaptureShortcut : null;
   invoke('quick_capture_set_shortcut', { accelerator: accel })
     .then(() => {
@@ -1387,7 +1388,7 @@ onMounted(async () => {
         console.warn('android_system_insets failed', e);
       }
     };
-    await refreshAndroidInsets();
+    void refreshAndroidInsets();
     watch(() => settings.mobileHideStatusBar, () => void refreshAndroidInsets());
     window.addEventListener('resize', () => void refreshAndroidInsets());
     window.addEventListener('orientationchange', () => {
@@ -1400,15 +1401,18 @@ onMounted(async () => {
     // or a fresh install), drop the stale vault so the user gets a clean "Open
     // Folder" prompt instead of a tree that errors on every read.
     if (workspace.safTreeUri) {
-      try {
-        const { safPersistedTrees } = await import('./lib/saf-fs');
-        const held = await safPersistedTrees();
-        if (!held.includes(workspace.safTreeUri)) {
-          workspace.setFolder(null);
+      const checkUri = workspace.safTreeUri;
+      void (async () => {
+        try {
+          const { safPersistedTrees } = await import('./lib/saf-fs');
+          const held = await safPersistedTrees();
+          if (!held.includes(checkUri)) {
+            workspace.setFolder(null);
+          }
+        } catch (e) {
+          console.warn('SAF vault restore check failed', e);
         }
-      } catch (e) {
-        console.warn('SAF vault restore check failed', e);
-      }
+      })();
     }
 
     // #148 — resolve a SAF folder pick after the system picker returns. The
@@ -1536,13 +1540,15 @@ onMounted(async () => {
     console.debug('deep-link plugin not active', err);
   }
 
-  try {
-    const pending = await invoke<string[]>('drain_pending_opens');
-    for (const p of pending || []) {
-      await files.openPath(p, { bypassNewWindow: true });
+  if (!isMobile()) {
+    try {
+      const pending = await invoke<string[]>('drain_pending_opens');
+      for (const p of pending || []) {
+        await files.openPath(p, { bypassNewWindow: true });
+      }
+    } catch (err) {
+      console.warn('drain_pending_opens failed', err);
     }
-  } catch (err) {
-    console.warn('drain_pending_opens failed', err);
   }
 
   // New-window launched via `?path=<encoded>` (used by the "open in new

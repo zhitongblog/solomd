@@ -71,18 +71,16 @@
 -keep class androidx.activity.ComponentActivity { *; }
 -keep class androidx.activity.SystemBarStyle** { *; }
 -keep class androidx.core.view.WindowCompat { *; }
+-keep class androidx.lifecycle.** { *; }
+-keep class androidx.startup.** { *; }
 
 -assumenosideeffects class android.view.Window {
     public void setStatusBarColor(int);
     public void setNavigationBarColor(int);
-    public android.view.WindowManager$LayoutParams getAttributes() return null;
 }
 -assumenosideeffects class androidx.activity.EdgeToEdge** {
     void adjustLayoutInDisplayCutoutMode(android.view.Window);
 }
 -assumenosideeffects interface androidx.activity.EdgeToEdge** {
     void adjustLayoutInDisplayCutoutMode(android.view.Window);
-}
--assumenosideeffects class android.graphics.BitmapFactory {
-    public static android.graphics.Bitmap decodeStream(java.io.InputStream) return null;
 }
