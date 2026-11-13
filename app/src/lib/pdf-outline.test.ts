@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+  encodePdfOutlineString,
   populatePdfOutline,
   rasterRowToPageNumber,
   type JsPdfOutlineLike,
@@ -68,4 +69,25 @@ test('#515 populatePdfOutline builds hierarchical H1-H6 bookmark tree', () => {
   // Skipped level H4 -> child of H1 #2
   assert.equal(calls[5].parent, calls[4]);
   assert.equal(calls[5].pageNumber, 4);
+});
+
+test('#563 populatePdfOutline patches makeString with UTF-16BE hex string so 0x0D bytes (名 U+540D, 不 U+4E0D) are never corrupted to 0x0A (吊, 上)', () => {
+  const outline: JsPdfOutlineLike = {
+    add(_parent, title) {
+      return { title };
+    },
+    makeString(val: string) {
+      return `(${val})`;
+    },
+  };
+
+  populatePdfOutline(outline, [{ level: 1, text: '01 书籍名与名不虚传', pageNumber: 1 }]);
+
+  // Pure ASCII stays a literal string via the original makeString
+  assert.equal(outline.makeString!('Chapter 1: Intro'), '(Chapter 1: Intro)');
+
+  // CJK characters containing 0x0D low byte (名=540D, 不=4E0D) are encoded as <FEFF...>
+  const hex = outline.makeString!('名不虚传');
+  assert.equal(hex, '<FEFF540D4E0D865A4F20>');
+  assert.equal(encodePdfOutlineString('01 书籍名'), '<FEFF0030003100204E667C4D540D>');
 });

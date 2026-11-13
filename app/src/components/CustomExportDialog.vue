@@ -9,6 +9,7 @@ import { useToastsStore } from '../stores/toasts';
 import { useExport } from '../composables/useExport';
 import { openDirectoryInFileManager } from '../lib/reveal-in-file-manager';
 import { sourceFolderFor, treeSelection } from '../lib/new-file-target';
+import { buildMergedBookMarkdown, type MergedNoteInput } from '../lib/merged-book';
 
 const props = defineProps<{
   open: boolean;
@@ -27,7 +28,7 @@ const exporter = useExport();
 const isZh = computed(() => settings.language === 'zh');
 
 type ExportScope = 'current' | 'folder';
-type ExportFormat = 'pdf' | 'html' | 'docx' | 'png' | 'textpack';
+type ExportFormat = 'pdf' | 'html' | 'docx' | 'epub' | 'png' | 'textpack';
 
 const scope = ref<ExportScope>('current');
 const format = ref<ExportFormat>(settings.lastCustomExportFormat || 'pdf');
@@ -218,7 +219,11 @@ async function collectMarkdownFiles(rootDir: string, recursive: boolean): Promis
       showHidden: false,
       withTimes: false,
     });
-    for (const entry of entries) {
+    const sorted = [...entries].sort((a, b) => {
+      if (a.is_dir !== b.is_dir) return a.is_dir ? -1 : 1;
+      return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+    });
+    for (const entry of sorted) {
       if (!entry.path || entry.name === '__solomd_truncated__') continue;
       if (entry.is_dir) {
         if (recursive && !entry.name.startsWith('.') && entry.name !== 'node_modules') {
@@ -283,20 +288,22 @@ async function runCustomExport() {
       }
       if (mergeIntoSingleDocument.value) {
         const folderName = folder.replace(/[/\\]+$/, '').split(/[/\\]/).pop() || 'Exported-Book';
-        const sections: string[] = [`# ${folderName}\n\n[TOC]`];
+        const mergedNotes: MergedNoteInput[] = [];
         for (let i = 0; i < mdFiles.length; i++) {
           const item = mdFiles[i];
           progressText.value = isZh.value
             ? `正在读取并合并章节 (${i + 1} / ${mdFiles.length})：${item.baseName}`
             : `Reading & merging section (${i + 1} / ${mdFiles.length}): ${item.baseName}`;
           const loaded = await invoke<string | { content: string }>('read_file', { path: item.path });
-          const raw = (typeof loaded === 'string' ? loaded : loaded?.content ?? '').trim();
-          const body = raw.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '').trim();
-          const hasTopHeading = /^#\s+\S/.test(body);
-          const chapterTitle = item.relDir ? `${item.relDir} / ${item.baseName}` : item.baseName;
-          sections.push(hasTopHeading ? body : `# ${chapterTitle}\n\n${body}`);
+          const raw = typeof loaded === 'string' ? loaded : loaded?.content ?? '';
+          mergedNotes.push({
+            path: item.path,
+            relDir: item.relDir,
+            baseName: item.baseName,
+            content: raw,
+          });
         }
-        const mergedContent = sections.join('\n\n---\n\n');
+        const mergedContent = buildMergedBookMarkdown(folderName, mergedNotes);
         const targetPath = joinOutputPath(outDir, `${folderName}.${ext}`);
         progressText.value = isZh.value
           ? `正在生成合集文档：${folderName}.${ext}…`
@@ -304,7 +311,7 @@ async function runCustomExport() {
         await exporter.exportNoteToFile({
           content: mergedContent,
           baseName: folderName,
-          filePath: mdFiles[0].path,
+          filePath: joinOutputPath(folder, `${folderName}.md`),
           outputPath: targetPath,
           format: format.value,
         });
@@ -423,6 +430,7 @@ async function runCustomExport() {
             <option value="pdf">{{ isZh ? 'PDF 文档 (.pdf)' : 'PDF Document (.pdf)' }}</option>
             <option value="html">{{ isZh ? '网页文件 (.html)' : 'Standalone HTML (.html)' }}</option>
             <option value="docx">{{ isZh ? 'Word 文档 (.docx)' : 'Word Document (.docx)' }}</option>
+            <option value="epub">{{ isZh ? 'EPUB 电子书 (.epub，需 Pandoc)' : 'EPUB eBook (.epub, requires Pandoc)' }}</option>
             <option value="png">{{ isZh ? 'PNG 长图 (.png)' : 'PNG Image (.png)' }}</option>
             <option value="textpack">{{ isZh ? 'TextPack 自包含单文件容器 (.textpack)' : 'TextPack Self-Contained Bundle (.textpack)' }}</option>
           </select>

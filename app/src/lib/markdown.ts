@@ -706,18 +706,38 @@ function tocHeadingText(inline: any): string {
 }
 
 function tocHeadingsFromTokens(tokens: any[]): TocHeading[] {
-  const headings: TocHeading[] = [];
+  const raw: Array<TocHeading & { tokenIndex: number; isFolder: boolean }> = [];
   for (let i = 0; i < tokens.length - 1; i++) {
     const open = tokens[i];
     const inline = tokens[i + 1];
     if (open.type !== 'heading_open' || inline?.type !== 'inline') continue;
-    const level = Number.parseInt(String(open.tag || '').slice(1), 10);
-    if (!Number.isFinite(level) || level < 1 || level > 6) continue;
-    const text = tocHeadingText(inline) || inline.content.trim();
-    const id = open.attrGet('id') || slugify(inline.content);
-    if (text && id) headings.push({ level, text, id });
+    const customLevel = Number.parseInt(String(open.attrGet('data-toc-level') || ''), 10);
+    const tagLevel = Number.parseInt(String(open.tag || '').slice(1), 10);
+    const level = Number.isFinite(customLevel) && customLevel >= 1 ? customLevel : tagLevel;
+    if (!Number.isFinite(level) || level < 1) continue;
+    const isFolder =
+      open.attrGet('data-toc-folder') === '1' ||
+      (inline.content || '').includes('<!-- solomd-toc-folder -->');
+    const text = (tocHeadingText(inline) || inline.content.trim())
+      .replace(/\s*<!--\s*solomd-toc-(?:level:\d+|folder)\s*-->/g, '')
+      .trim();
+    const id = open.attrGet('id') || slugify(text);
+    if (text && id) raw.push({ level, text, id, tokenIndex: i, isFolder });
   }
-  return headings;
+  // #562 — Folder headings emitted directly above the first note in that folder
+  // (with no body tokens between `heading_close` at `i + 2` and the next
+  // `heading_open` at `i + 3`) jump directly to that first note's first
+  // effective heading.
+  for (let k = raw.length - 2; k >= 0; k--) {
+    if (
+      raw[k].isFolder &&
+      raw[k + 1].tokenIndex === raw[k].tokenIndex + 3 &&
+      raw[k + 1].level > raw[k].level
+    ) {
+      raw[k].id = raw[k + 1].id;
+    }
+  }
+  return raw.map(({ level, text, id }) => ({ level, text, id }));
 }
 
 function escapeTocLinkLabel(text: string): string {
@@ -771,6 +791,40 @@ function tocListTokens(state: any, headings: TocHeading[]): any[] {
   }
   return tokens;
 }
+
+md.core.ruler.before('source_line_map', 'solomd_toc_level_attr', (state) => {
+  for (let i = 0; i < state.tokens.length - 1; i++) {
+    const open = state.tokens[i];
+    const inline = state.tokens[i + 1];
+    if (open.type !== 'heading_open' || inline?.type !== 'inline') continue;
+    const rawContent = inline.content || '';
+    const levelMatch = /<!--\s*solomd-toc-level:(\d+)\s*-->/.exec(rawContent);
+    const hasFolderTag = /<!--\s*solomd-toc-folder\s*-->/.test(rawContent);
+    if (!levelMatch && !hasFolderTag) continue;
+    if (levelMatch) open.attrSet('data-toc-level', levelMatch[1]);
+    if (hasFolderTag) open.attrSet('data-toc-folder', '1');
+    inline.content = rawContent
+      .replace(/\s*<!--\s*solomd-toc-(?:level:\d+|folder)\s*-->/g, '')
+      .trimEnd();
+    if (Array.isArray(inline.children)) {
+      while (inline.children.length > 0) {
+        const last = inline.children[inline.children.length - 1];
+        if (
+          last.type === 'html_inline' &&
+          /^<!--\s*solomd-toc-(?:level:\d+|folder)\s*-->$/.test((last.content || '').trim())
+        ) {
+          inline.children.pop();
+          if (inline.children.length > 0 && inline.children[inline.children.length - 1].type === 'text') {
+            inline.children[inline.children.length - 1].content =
+              inline.children[inline.children.length - 1].content.trimEnd();
+          }
+          continue;
+        }
+        break;
+      }
+    }
+  }
+});
 
 md.core.ruler.before('source_line_map', 'table_of_contents', (state) => {
   const env = (state.env || {}) as Record<string, unknown>;

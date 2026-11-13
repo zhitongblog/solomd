@@ -852,9 +852,25 @@ export function useExport() {
     baseName: string;
     filePath?: string;
     outputPath: string;
-    format: 'pdf' | 'html' | 'docx' | 'png' | 'textpack';
+    format: 'pdf' | 'html' | 'docx' | 'epub' | 'png' | 'textpack';
   }): Promise<void> {
     const { content, baseName, filePath, outputPath, format } = input;
+    if (format === 'epub') {
+      const { preprocessMarkdown } = await import('../lib/markdown');
+      const { pandocResourcePaths } = await import('../lib/pandoc-resource-paths');
+      const { useWorkspaceStore } = await import('../stores/workspace');
+      const workspace = useWorkspaceStore();
+      await invoke('pandoc_export', {
+        input: {
+          markdown: preprocessMarkdown(content),
+          outputPath,
+          toFormat: 'epub',
+          resourcePaths: pandocResourcePaths(filePath, workspace.currentFolder),
+          extraArgs: ['--toc', '--toc-depth=6'],
+        },
+      });
+      return;
+    }
     if (format === 'textpack') {
       const { rewriteMarkdownForTextBundle, createTextPackArchive } = await import('../lib/textbundle');
       const { rewrittenMarkdown, assets } = rewriteMarkdownForTextBundle(content);

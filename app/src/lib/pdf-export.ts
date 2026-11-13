@@ -295,6 +295,40 @@ export interface PdfOutlineHeading {
 
 export interface JsPdfOutlineLike {
   add(parent: unknown, title: string, options: { pageNumber: number }): unknown;
+  makeString?: (val: string) => string;
+}
+
+const HEX_OUTLINE_PATCHED = Symbol.for('solomd.pdfHexOutlineString');
+
+/**
+ * #563 — Encode a PDF `/Title` string safely for jsPDF's outline dictionary.
+ *
+ * jsPDF's default `outline.makeString(val)` writes a literal string
+ * `(` + `pdfEscape(to8bitStream(val))` + `)`. For non-ASCII text, `to8bitStream`
+ * emits UTF-16BE bytes (`\xfe\xff...`), and `pdfEscape` only escapes `\`, `(`, `)`.
+ * Any UTF-16 code unit whose high or low byte is `0x0D` (CR) — e.g. `名`
+ * (`U+540D`), `不` (`U+4E0D`), `－` (`U+FF0D`) — leaves a bare `0x0D` byte inside
+ * the literal string. Per ISO 32000-1 §7.3.4.2, PDF readers normalize bare CR
+ * in literal strings to `0x0A` (LF), shifting the code point by −3 (`名` → `吊`,
+ * `不` → `上`).
+ *
+ * Encoding non-ASCII titles as a UTF-16BE hexadecimal string `<FEFF...>` (§7.3.4.3)
+ * avoids literal-string EOL normalization and delimiter escaping altogether.
+ */
+export function encodePdfOutlineString(
+  val: string,
+  fallbackMakeString?: (s: string) => string,
+): string {
+  const str = String(val ?? '');
+  if (/^[\x20-\x7E]*$/.test(str)) {
+    if (fallbackMakeString) return fallbackMakeString(str);
+    return `(${str.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)')})`;
+  }
+  let hex = 'FEFF';
+  for (let i = 0; i < str.length; i++) {
+    hex += str.charCodeAt(i).toString(16).toUpperCase().padStart(4, '0');
+  }
+  return `<${hex}>`;
 }
 
 /**
@@ -329,6 +363,12 @@ export function populatePdfOutline(
   headings: PdfOutlineHeading[],
 ): void {
   if (!outline || typeof outline.add !== 'function' || !headings.length) return;
+  const patchedObj = outline as JsPdfOutlineLike & Record<symbol, boolean>;
+  if (typeof outline.makeString === 'function' && !patchedObj[HEX_OUTLINE_PATCHED]) {
+    const origMakeString = outline.makeString.bind(outline);
+    outline.makeString = (val: string) => encodePdfOutlineString(val, origMakeString);
+    patchedObj[HEX_OUTLINE_PATCHED] = true;
+  }
   const stack: Array<{ level: number; node: unknown }> = [];
   for (const h of headings) {
     const title = h.text.replace(/\s+/g, ' ').trim();
@@ -535,14 +575,29 @@ export async function capturePdfRaster(
     )
       .filter((el) => !el.closest('.md-toc'))
       .map((el) => {
-        const level = Number(el.tagName.slice(1)) || 1;
+        const customLevel = Number(el.getAttribute('data-toc-level'));
+        const level =
+          Number.isFinite(customLevel) && customLevel >= 1
+            ? customLevel
+            : Number(el.tagName.slice(1)) || 1;
         const text = (el.textContent || '').replace(/\s+/g, ' ').trim();
         const elRect = el.getBoundingClientRect();
         const relTopCss = Math.max(0, elRect.top - pageRect.top);
         const rasterY = canvas ? Math.round((relTopCss / pageHeightCss) * canvas.height) : 0;
-        return { level, text, rasterY };
+        return { el, level, text, rasterY };
       })
       .filter((h) => h.text.length > 0);
+    // #562 — Folder headings immediately preceding their first note's first
+    // heading jump to that first note heading's exact position/page.
+    for (let k = rawHeadings.length - 2; k >= 0; k--) {
+      if (
+        rawHeadings[k].el.getAttribute('data-toc-folder') === '1' &&
+        rawHeadings[k].el.nextElementSibling === rawHeadings[k + 1].el &&
+        rawHeadings[k + 1].level > rawHeadings[k].level
+      ) {
+        rawHeadings[k].rasterY = rawHeadings[k + 1].rasterY;
+      }
+    }
 
     let pageBreaks: number[] | null = null;
 
