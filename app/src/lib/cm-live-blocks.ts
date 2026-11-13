@@ -1201,13 +1201,41 @@ class HtmlBlockWidget extends WidgetType {
     }
     installSvgImageFallbacks(wrap);
     trackImageHeights(wrap);
+    this.bindDetailsToggles(wrap);
     return wrap;
+  }
+
+  /**
+   * A rendered `<details>` folds in place. Its summary is a control of the
+   * rendered view, not an editing gesture: letting the editor take the press
+   * put the caret inside the block and replaced this widget with the block's
+   * source on the very click that should have folded it, so the disclosure
+   * triangle did nothing at all.
+   */
+  private bindDetailsToggles(wrap: HTMLElement): void {
+    for (const summary of Array.from(wrap.querySelectorAll('summary'))) {
+      const details = summary.parentElement;
+      if (!(details instanceof HTMLDetailsElement)) continue;
+      summary.addEventListener('mousedown', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+      });
+      summary.addEventListener('click', (event) => {
+        // Cancel the native activation and flip `open` ourselves, so exactly
+        // one toggle happens per click whatever else handles the event.
+        event.preventDefault();
+        details.open = !details.open;
+        scheduleRelayout();
+      });
+    }
   }
 
   ignoreEvent(event: Event): boolean {
     if (event.type === 'contextmenu') return true;
     if (event instanceof MouseEvent && event.button === 2) return true;
-    return false;
+    // Summary presses belong to the disclosure (see bindDetailsToggles); every
+    // other press in the block keeps revealing the source, as before.
+    return event.target instanceof Element && event.target.closest('summary') !== null;
   }
 }
 
