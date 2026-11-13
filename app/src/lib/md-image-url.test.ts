@@ -6,6 +6,7 @@ import {
   encodeImageDestination,
   extractImageReferenceDefinitions,
   findMarkdownImagesInLine,
+  isStandaloneImageLine,
   markdownImage,
   parseImageAltSize,
   resizeMarkdownImageLine,
@@ -165,3 +166,29 @@ test('#506: findMarkdownImagesInLine parses complex Markdown image forms', () =>
   assert.deepEqual(findMarkdownImagesInLine('`![not-an-image](https://example.com/x.png)`'), []);
 });
 
+
+// ---- #561: standalone image lines (live mode keeps the source visible) ----
+test('isStandaloneImageLine: a lone image line, with or without padding', () => {
+  assert.equal(isStandaloneImageLine('![](assets/pic.png)'), true);
+  assert.equal(isStandaloneImageLine('   ![alt](<a b.png>)   '), true);
+  assert.equal(isStandaloneImageLine('[![alt](i.png)](https://example.com)'), true);
+  assert.equal(isStandaloneImageLine('![[图1] 描述](pic.png)'), true);
+});
+
+test('isStandaloneImageLine: anything with text around it is not standalone', () => {
+  assert.equal(isStandaloneImageLine('see ![](pic.png)'), false);
+  assert.equal(isStandaloneImageLine('![](pic.png) and more'), false);
+  assert.equal(isStandaloneImageLine('- ![](pic.png)'), false);
+  assert.equal(isStandaloneImageLine('> ![](pic.png)'), false);
+  assert.equal(isStandaloneImageLine('![](a.png) ![](b.png)'), false);
+  assert.equal(isStandaloneImageLine('![](a.png)\n![](b.png)'), false);
+  assert.equal(isStandaloneImageLine('`![](a.png)`'), false);
+  assert.equal(isStandaloneImageLine('![](a.png'), false);
+  assert.equal(isStandaloneImageLine('plain text'), false);
+});
+
+test('isStandaloneImageLine: reference-style image resolves through the ref map', () => {
+  const refs = new Map([['logo', 'assets/logo.png']]);
+  assert.equal(isStandaloneImageLine('![alt][logo]', refs), true);
+  assert.equal(isStandaloneImageLine('![alt][logo]'), false);
+});

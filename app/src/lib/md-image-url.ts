@@ -482,3 +482,21 @@ export function resizeMarkdownImageLine(line: string, size: string): string | nu
   return null;
 }
 
+
+/**
+ * #561 — `true` when the whole line is one Markdown image and nothing else.
+ *
+ * Live mode renders such a line as the picture; keeping that decision (and the
+ * "there is also a source line to show" decision that follows from it) in one
+ * tested place beats a regex duplicated across the editor front ends.
+ */
+export function isStandaloneImageLine(
+  line: string,
+  refMap?: ReadonlyMap<string, string>,
+): boolean {
+  if (!line.includes('![') || line.includes('\n')) return false;
+  const spans = findMarkdownImagesInLine(line, refMap);
+  if (spans.length !== 1) return false;
+  const span = spans[0]!;
+  return line.slice(0, span.start).trim() === '' && line.slice(span.end).trim() === '';
+}

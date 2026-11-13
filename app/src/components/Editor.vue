@@ -78,7 +78,12 @@ import { HEADER_ROW, commonIndent } from '../lib/table-cell-edit';
 import { findTldrawFences, replaceBoardSnapshot } from '../lib/tldraw-board';
 import { dragAwareExtension } from '../lib/cm-drag-aware';
 import { imagePasteExtension, insertImageFromPath as cmInsertImageFromPath, imageTextFromPath, handleTextareaImagePaste, getPlainTextFromClipboardData, readClipboardTextFallback, type ImagePasteOptions } from '../lib/cm-image-paste';
-import { markdownImage, encodeImageDestination, resizeMarkdownImageLine } from '../lib/md-image-url';
+import {
+  markdownImage,
+  encodeImageDestination,
+  resizeMarkdownImageLine,
+  isStandaloneImageLine,
+} from '../lib/md-image-url';
 import { resolveUploader, uploadImage, type ImageUploadSettings } from '../lib/image-upload';
 import { focusModeExtension, typewriterModeExtension } from '../lib/cm-focus-mode';
 import { wikilinkExtension, wikilinkComplete } from '../lib/cm-wikilink';
@@ -183,6 +188,8 @@ type PlainBlock = {
   isTable?: boolean;
   isTableBlock?: boolean;
   isMermaid?: boolean;
+  /** #561 — a standalone image line: source stays visible next to the picture. */
+  isImageBlock?: boolean;
   sourceCollapsed?: boolean;
   headingLevel?: number;
   startLine: number;
@@ -879,6 +886,12 @@ const plainBlocks = computed<PlainBlock[]>(() => {
         ? (overrides[block.start] ?? settings.collapseBlockSource)
         : false;
     const isTable = isTableBlock && sourceCollapsed;
+    // #561 — standalone image lines keep their source on screen, so entering
+    // the block does not make the picture vanish (and reappear on the way out).
+    // Those two swaps were the "跳闪": the block's height changed twice per
+    // click, once when the picture was replaced by `![](…)` and once when it
+    // came back.
+    const isImageBlock = isStandaloneImageLine(block.text);
     const headingMatch = /^\s*(#{1,6})\s+/.exec(block.text);
     const headingLevel = headingMatch && !block.text.includes('\n') ? headingMatch[1].length : 0;
     return {
@@ -887,12 +900,13 @@ const plainBlocks = computed<PlainBlock[]>(() => {
       isTable,
       isTableBlock,
       isMermaid,
+      isImageBlock,
       sourceCollapsed,
       headingLevel,
       startLine,
       lineCount,
       html:
-        index === plainActiveBlock.value && !isTableBlock && !isMermaid
+        index === plainActiveBlock.value && !isTableBlock && !isMermaid && !isImageBlock
           ? ''
           : renderPlainBlock(block.text),
     };
@@ -6930,6 +6944,10 @@ const cls = computed(() => ({
           @mousedown.stop.prevent
           @click.stop="togglePlainBlockSourceFold(block, index)"
         >{{ block.sourceCollapsed ? '</> 源码' : '− 折叠源码' }}</button>
+        <div
+          v-if="block.isImageBlock && index !== plainActiveBlock"
+          class="plain-block__image-source"
+        >{{ block.text }}</div>
         <textarea
           v-if="index === plainActiveBlock && !block.sourceCollapsed"
           rows="1"
@@ -6955,11 +6973,12 @@ const cls = computed(() => ({
           @focus="emitPlainCursorAndSelection"
         ></textarea>
         <div
-          v-if="index !== plainActiveBlock || block.isTableBlock || block.isMermaid"
+          v-if="index !== plainActiveBlock || block.isTableBlock || block.isMermaid || block.isImageBlock"
           class="plain-block__render"
           :class="{
             'plain-block__render--table': block.isTable,
             'plain-block__render--mermaid-below': index === plainActiveBlock && !block.sourceCollapsed && (block.isMermaid || block.isTableBlock),
+            'plain-block__render--image-below': block.isImageBlock && index === plainActiveBlock,
           }"
           :data-table-block-index="block.isTable ? index : undefined"
           v-html="block.html"
@@ -7527,6 +7546,28 @@ const cls = computed(() => ({
   line-height: 1.8;
   tab-size: 2;
   white-space: pre;
+}
+/* #561 — the source line of a standalone image block, shown while the block
+   is NOT being edited. It mirrors `.plain-block__textarea`'s box exactly
+   (same padding, font, line pitch, white-space) so swapping it for the
+   textarea on click changes nothing about the block's height. */
+.plain-block__image-source {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+  color: var(--text-3, var(--text-2));
+  font: inherit;
+  line-height: 1.8;
+  white-space: pre;
+  overflow: hidden;
+  cursor: text;
+}
+/* The picture itself stays below the source line while editing, so it never
+   disappears under the caret. */
+.plain-block__render--image-below {
+  margin-top: 0.25em;
 }
 .plain-block__textarea.plain-textarea--wrap {
   white-space: pre-wrap;
