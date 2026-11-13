@@ -29,6 +29,8 @@ import { useI18n } from '../i18n';
 import { useSettingsStore } from '../stores/settings';
 import { exportDefaultPath } from '../lib/export-paths';
 import { track } from '../lib/telemetry';
+import { pandocResourcePaths } from '../lib/pandoc-resource-paths';
+import { useWorkspaceStore } from '../stores/workspace';
 import {
   parseBibFile,
   parseCslJson,
@@ -124,6 +126,7 @@ function detectCitationFormat(path: string): 'bib' | 'csl-json' {
 export function usePandocExport() {
   const tabs = useTabsStore();
   const toasts = useToastsStore();
+  const workspace = useWorkspaceStore();
   const { t } = useI18n();
   const settings = useSettingsStore();
 
@@ -254,6 +257,7 @@ export function usePandocExport() {
           csl: csl ?? null,
           template: opts.template ?? null,
           extra_args: extraArgs,
+          resource_paths: pandocResourcePaths(ctx.filePath, workspace.currentFolder),
         },
       });
       toasts.dismiss(tid);
