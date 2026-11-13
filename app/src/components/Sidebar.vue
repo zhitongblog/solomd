@@ -714,8 +714,10 @@ onBeforeUnmount(() => {
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
-  scrollbar-width: thin;
-  scrollbar-color: var(--fill-2) transparent;
+  /* styles/scrollbars.css owns the thin bars. Setting the standard
+     scrollbar-width / scrollbar-color properties here switches those
+     ::-webkit-scrollbar rules off in WebView2, which hid the horizontal bar
+     on narrow sidebars. Leave them unset so side-scrolling stays visible. */
 }
 .sb__nav {
   flex: none;

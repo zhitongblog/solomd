@@ -871,7 +871,8 @@ async function startNewFile(parent: string) {
   // the placeholder, Finder-style.
   const el = editInput.value;
   if (el) {
-    el.focus();
+    // See startRename(): never let focus scroll the tree sideways.
+    el.focus({ preventScroll: true });
     const dot = el.value.lastIndexOf('.');
     el.setSelectionRange(0, dot > 0 ? dot : el.value.length);
   }
@@ -884,7 +885,8 @@ async function startNewFolder(parent: string) {
   await nextTick();
   const el = editInput.value;
   if (el) {
-    el.focus();
+    // See startRename(): never let focus scroll the tree sideways.
+    el.focus({ preventScroll: true });
     el.select();
   }
 }
@@ -901,7 +903,13 @@ async function startRename(node: Node) {
   await nextTick();
   const el = editInput.value;
   if (el) {
-    el.focus();
+    // Narrow sidebar: a plain focus() makes Chromium scroll the nearest
+    // horizontal scroller to reveal the caret, which slides the whole tree
+    // sideways and leaves the row flush against the left edge with no visible
+    // way back. Keep the current scroll offset instead; the edit row is pinned
+    // to the left edge (see the .ftree--editing styles) so its indentation
+    // stays visible even when the tree has been scrolled sideways.
+    el.focus({ preventScroll: true });
     const dot = el.value.lastIndexOf('.');
     el.setSelectionRange(0, dot > 0 ? dot : el.value.length);
   }
@@ -1973,7 +1981,7 @@ onBeforeUnmount(() => {
     class="ftree"
     tabindex="-1"
     @keydown="onTreeKey"
-    :class="{ 'ftree--fullnames': settings.explorerFullNames, 'ftree--embedded': props.embedded }"
+    :class="{ 'ftree--fullnames': settings.explorerFullNames, 'ftree--embedded': props.embedded, 'ftree--editing': !!editing }"
     :style="props.embedded ? undefined : { '--file-tree-width': settings.fileTreeWidth + 'px' }"
     @contextmenu.prevent="openCtx($event, null)"
   >
@@ -3123,8 +3131,10 @@ export const FileTreeNode = defineComponent({
   overflow-y: auto;
   overflow-x: auto;
   padding-bottom: var(--sp-2);
-  scrollbar-width: thin;
-  scrollbar-color: var(--fill-2) transparent;
+  /* Do NOT set scrollbar-width / scrollbar-color here: in Chromium >= 121
+     (WebView2) either one disables every ::-webkit-scrollbar rule from
+     styles/scrollbars.css, so the horizontal bar falls back to an invisible
+     overlay scrollbar. The app-wide thin bars apply by default instead. */
 }
 
 /* #282 — a persisted filter must never be invisible. */
@@ -3419,6 +3429,23 @@ export const FileTreeNode = defineComponent({
   min-height: 28px;
   padding: 0 8px 0 6px;
   position: relative;
+}
+/* Narrow sidebar + inline rename: #495 lets the tree grow wider than the
+   panel (width: max-content). Once the tree has been scrolled sideways, the
+   row being renamed would otherwise start off-screen and lose its indent, so
+   pin it to the scrollport's left edge while an edit is active. `left: 0`
+   keeps the row's own paddingLeft (the depth indent) visible. */
+.ftree--editing :deep(.ftree__edit) {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--bg-sidebar, var(--bg));
+}
+/* The input must never contribute its intrinsic width to the max-content
+   calculation of .ftree__list — that is what used to widen the whole tree on
+   rename and make the horizontal scroll jump. */
+.ftree--editing :deep(.ftree__edit-input) {
+  width: 0;
 }
 .ftree__body > .ftree__edit {
   margin: 0 var(--sp-2);
