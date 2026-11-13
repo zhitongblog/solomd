@@ -103,11 +103,13 @@ const activeSyncBranch = ref<SyncSubTab>(gitBackend ? 'git' : 'cloud_api');
 const syncBranches = computed<Array<{ id: SyncSubTab; label: string }>>(() => {
   const zh = isZhLocale.value;
   const items: Array<{ id: SyncSubTab; label: string }> = [];
+  // #555 — "先有库，再有同步": Vault Management is a setup/management page,
+  // so it leads the tab bar instead of sitting between the sync-action tabs.
+  items.push({ id: 'vaults', label: zh ? '笔记库管理' : 'Vault Management' });
   if (gitBackend) {
     items.push({ id: 'git', label: zh ? 'Git 同步' : 'Git Sync' });
   }
   items.push(
-    { id: 'vaults', label: zh ? '笔记库管理' : 'Vault Management' },
     { id: 'cloud_api', label: zh ? '网盘直连 API' : 'Direct Cloud API' },
     { id: 'local_vault', label: zh ? '本地网盘目录' : 'Local Cloud Folder' },
     { id: 'webdav', label: zh ? 'WebDAV 同步' : 'WebDAV Sync' },
