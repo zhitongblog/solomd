@@ -19,7 +19,9 @@ import { useToastsStore } from '../stores/toasts';
 import { useWorkspaceIndexStore } from '../stores/workspaceIndex';
 import { useAgentPanelStore } from '../stores/agentPanel';
 import { providerById, type ProviderId } from '../lib/ai-providers';
-import { parseWithWikilinks, chipLabel } from '../lib/wikilinks';
+import { renderMarkdown } from '../lib/markdown';
+import { sanitizeRenderedHtml } from '../lib/sanitize-html';
+import { openRenderedLink } from '../lib/link-open';
 import { useFiles } from '../composables/useFiles';
 import { useI18n } from '../i18n';
 import '../styles/panels.css';
@@ -400,11 +402,45 @@ onBeforeUnmount(() => {
   unlistenToolCall = unlistenToolResult = unlistenRunStarted = null;
 });
 
-// --- Wikilink handling --------------------------------------------------
-function renderRuns(text: string) {
-  return parseWithWikilinks(text);
+// --- Markdown rendering (#558) -------------------------------------------
+// Assistant replies arrived as Markdown and were shown as plain text, so
+// `**bold**`, lists, code fences and tables were all visible as punctuation.
+// Render them through the same renderer the preview pane uses, then sanitise:
+// `renderMarkdown` runs with `html: true` (notes are allowed inline HTML), and
+// an answer can quote a note the user did not write.
+const mdCache = new Map<string, string>();
+function assistantHtml(content: string): string {
+  const src = content || '';
+  const hit = mdCache.get(src);
+  if (hit !== undefined) return hit;
+  const html = sanitizeRenderedHtml(renderMarkdown(src));
+  // Streaming appends a chunk at a time: keep the last few answers only, so a
+  // long conversation does not retain every prefix of every reply.
+  if (mdCache.size > 40) mdCache.clear();
+  mdCache.set(src, html);
+  return html;
 }
 
+/**
+ * Clicks inside a rendered reply. Wikilinks go through this panel's own
+ * resolver (it strips `.md` and falls back to stem/substring, which is what an
+ * LLM-written `[[note.md]]` needs); everything else — external URLs, file
+ * links — takes the shared preview path.
+ */
+function onMessageClick(e: MouseEvent) {
+  const anchor = (e.target as HTMLElement | null)?.closest?.('a');
+  if (!anchor) return;
+  if (anchor.classList.contains('md-wikilink')) {
+    e.preventDefault();
+    const target = anchor.getAttribute('data-wikilink-target') || '';
+    const heading = anchor.getAttribute('data-wikilink-heading') || undefined;
+    void openWikilink(target, heading);
+    return;
+  }
+  openRenderedLink(anchor, e, null);
+}
+
+// --- Wikilink handling --------------------------------------------------
 async function openWikilink(target: string, heading?: string) {
   // Resolve via the workspace index (Rust-backed). The store's `resolve()`
   // does stem → title → substring fallback so partial matches still open.
@@ -422,10 +458,6 @@ async function openWikilink(target: string, heading?: string) {
   // Heading anchors are captured but not jumped to yet — `Editor.vue`
   // doesn't expose a scroll-to-heading API. Reserved for follow-up.
   void heading;
-}
-
-function chip(link: { target: string; heading?: string; alias?: string }) {
-  return chipLabel(link as any);
 }
 
 /**
@@ -561,18 +593,12 @@ watch(stateKey, (k) => {
           <template v-else>
             <div class="agent-panel__msg-role">{{ m.role }}</div>
             <div class="agent-panel__msg-body">
-              <template v-if="m.role === 'assistant'">
-                <template v-for="(run, ri) in renderRuns(m.content)" :key="ri">
-                  <button
-                    v-if="run.type === 'wikilink'"
-                    class="agent-panel__wiki"
-                    type="button"
-                    :title="run.heading ? `${run.target}#${run.heading}` : run.target"
-                    @click="openWikilink(run.target, run.heading)"
-                  ><Icons class="agent-panel__wiki-icon" name="link" :size="11" />{{ chip(run) }}</button>
-                  <span v-else>{{ run.value }}</span>
-                </template>
-              </template>
+              <div
+                v-if="m.role === 'assistant'"
+                class="agent-panel__md"
+                @click="onMessageClick"
+                v-html="assistantHtml(m.content)"
+              ></div>
               <span v-else>{{ m.content }}</span>
               <span
                 v-if="m.role === 'assistant' && agent.isStreaming && i === agent.messages.length - 1"
@@ -870,34 +896,110 @@ watch(stateKey, (k) => {
   color: var(--text-3);
 }
 
-/* --- Wikilink chips ------------------------------------------------------ */
-.agent-panel__wiki {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  margin: 0 1px;
-  padding: 0 7px;
-  height: 20px;
-  vertical-align: 1px;
-  border: 0;
+/* --- Rendered Markdown in replies (#558) --------------------------------- */
+/* `msg-body` keeps `white-space: pre-wrap` for the plain user/system text; the
+   rendered reply must not inherit it, or every newline inside the generated
+   HTML turns into a blank line. */
+.agent-panel__md {
+  white-space: normal;
+  min-width: 0;
+}
+.agent-panel__md :deep(p) {
+  margin: 0 0 0.55em;
+}
+.agent-panel__md :deep(p:last-child) {
+  margin-bottom: 0;
+}
+.agent-panel__md :deep(h1),
+.agent-panel__md :deep(h2),
+.agent-panel__md :deep(h3),
+.agent-panel__md :deep(h4),
+.agent-panel__md :deep(h5),
+.agent-panel__md :deep(h6) {
+  margin: 0.7em 0 0.35em;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.agent-panel__md :deep(h1) { font-size: 1.35em; }
+.agent-panel__md :deep(h2) { font-size: 1.22em; }
+.agent-panel__md :deep(h3) { font-size: 1.1em; }
+.agent-panel__md :deep(h4),
+.agent-panel__md :deep(h5),
+.agent-panel__md :deep(h6) { font-size: 1em; }
+.agent-panel__md :deep(ul),
+.agent-panel__md :deep(ol) {
+  margin: 0 0 0.55em;
+  padding-left: 1.4em;
+}
+.agent-panel__md :deep(li) {
+  margin: 0.15em 0;
+}
+.agent-panel__md :deep(li > p) {
+  margin: 0;
+}
+.agent-panel__md :deep(code) {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 0.92em;
+  padding: 1px 4px;
+  border-radius: var(--r-xs);
+  background: var(--fill-1);
+}
+.agent-panel__md :deep(pre) {
+  margin: 0 0 0.6em;
+  padding: 8px 10px;
+  border-radius: var(--r-md);
+  background: var(--fill-1);
+  overflow-x: auto;
+  line-height: 1.5;
+}
+.agent-panel__md :deep(pre code) {
+  padding: 0;
+  background: transparent;
+  white-space: pre;
+}
+.agent-panel__md :deep(blockquote) {
+  margin: 0 0 0.6em;
+  padding-left: 10px;
+  border-left: 2px solid var(--border);
+  color: var(--text-2);
+}
+.agent-panel__md :deep(a) {
+  color: var(--accent-text);
+  text-decoration: none;
+}
+.agent-panel__md :deep(a:hover) {
+  text-decoration: underline;
+}
+/* Wikilinks used to be separate chips; the renderer emits them as anchors, so
+   they get the chip look here. */
+.agent-panel__md :deep(a.md-wikilink) {
+  padding: 0 5px;
   border-radius: var(--r-full);
   background: var(--accent-soft);
   color: var(--accent-text);
-  font: inherit;
-  font-size: 12px;
-  line-height: 1;
-  cursor: pointer;
-  transition: background var(--dur-fast) var(--ease);
 }
-.agent-panel__wiki:hover {
-  background: color-mix(in srgb, var(--accent) 22%, transparent);
+.agent-panel__md :deep(hr) {
+  margin: 0.8em 0;
+  border: 0;
+  border-top: 1px solid var(--border);
 }
-.agent-panel__wiki:focus-visible {
-  outline: none;
-  box-shadow: var(--ring);
+.agent-panel__md :deep(table) {
+  margin: 0 0 0.6em;
+  border-collapse: collapse;
+  font-size: 0.95em;
+  display: block;
+  overflow-x: auto;
 }
-.agent-panel__wiki-icon {
-  opacity: 0.8;
+.agent-panel__md :deep(th),
+.agent-panel__md :deep(td) {
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  text-align: left;
+}
+.agent-panel__md :deep(img) {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--r-sm);
 }
 
 .agent-panel__error {
