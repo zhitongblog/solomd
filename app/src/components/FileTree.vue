@@ -733,11 +733,20 @@ const editInput = ref<HTMLInputElement | null>(null);
 // It used to sit at the very top of the tree whatever the target, so a file
 // created inside a folder three levels down appeared to be going to the
 // root. Nodes are rendered by FileTreeNode (a render function), which draws
-// the row through this. The tree filters (inbox, extension) can hide the
-// target, and then the row falls back to the top, where it always was.
+// the row through this.
+//
+// #556 / #557 — this used to bail out to the top-of-tree box whenever ANY
+// tree filter was on (`showInboxOnly` / `extFilter`), even though the row the
+// user just right-clicked was still on screen: keeping an extension filter
+// turned on silently moved every rename box to the top of the sidebar, which
+// is exactly the "编辑框跑到导航树上部" report. The target is reachable by
+// definition (it was clicked), so only its presence and expansion matter
+// here; `editFallbackTop` below is the safety net for the rare case where the
+// filter really does hide the row.
+const editingFallbackTop = ref(false);
 const editInTree = computed(() => {
   const e = editing.value;
-  if (!e || showInboxOnly.value || extFilter.value.length) return false;
+  if (!e || editingFallbackTop.value) return false;
   if (e.kind === 'rename') return !!e.original && !!findNode(e.original);
   return e.parent === root.value?.path || !!findNode(e.parent)?.expanded;
 });
@@ -862,57 +871,62 @@ async function expandForCreate(parent: string) {
   if (node && node.is_dir && !node.expanded) await expandDir(node);
 }
 
+/**
+ * Focus the inline box once Vue has drawn it, selecting the basename
+ * (Finder-style) or the whole name.
+ *
+ * #556 / #557 — the box is normally drawn inside the tree, by the row it
+ * belongs to. If a tree filter (inbox / extension) hides that row, nothing is
+ * drawn there at all, so fall back to the top-of-tree box rather than leaving
+ * the user with no input. `focus({ preventScroll: true })` is not cosmetic: a
+ * plain focus() makes Chromium scroll the nearest horizontal scroller to
+ * reveal the caret, which slides the tree sideways.
+ */
+async function focusInlineEdit(select: 'basename' | 'all') {
+  await nextTick();
+  let el = editInput.value;
+  if (!el) {
+    editingFallbackTop.value = true;
+    await nextTick();
+    el = editInput.value;
+  }
+  if (!el) return;
+  el.focus({ preventScroll: true });
+  if (select === 'all') {
+    el.select();
+    return;
+  }
+  const dot = el.value.lastIndexOf('.');
+  el.setSelectionRange(0, dot > 0 ? dot : el.value.length);
+}
+
 async function startNewFile(parent: string) {
   closeCtx();
   await expandForCreate(parent);
+  editingFallbackTop.value = false;
   editing.value = { kind: 'new-file', parent, name: 'untitled.md' };
-  await nextTick();
-  // Select just the basename (not the .md) so a single keystroke replaces
-  // the placeholder, Finder-style.
-  const el = editInput.value;
-  if (el) {
-    // See startRename(): never let focus scroll the tree sideways.
-    el.focus({ preventScroll: true });
-    const dot = el.value.lastIndexOf('.');
-    el.setSelectionRange(0, dot > 0 ? dot : el.value.length);
-  }
+  await focusInlineEdit('basename');
 }
 
 async function startNewFolder(parent: string) {
   closeCtx();
   await expandForCreate(parent);
+  editingFallbackTop.value = false;
   editing.value = { kind: 'new-dir', parent, name: 'New Folder' };
-  await nextTick();
-  const el = editInput.value;
-  if (el) {
-    // See startRename(): never let focus scroll the tree sideways.
-    el.focus({ preventScroll: true });
-    el.select();
-  }
+  await focusInlineEdit('all');
 }
 
 async function startRename(node: Node) {
   closeCtx();
   const parent = node.path.replace(/[\\/][^\\/]+$/, '');
+  editingFallbackTop.value = false;
   editing.value = {
     kind: 'rename',
     parent,
     original: node.path,
     name: node.name,
   };
-  await nextTick();
-  const el = editInput.value;
-  if (el) {
-    // Narrow sidebar: a plain focus() makes Chromium scroll the nearest
-    // horizontal scroller to reveal the caret, which slides the whole tree
-    // sideways and leaves the row flush against the left edge with no visible
-    // way back. Keep the current scroll offset instead; the edit row is pinned
-    // to the left edge (see the .ftree--editing styles) so its indentation
-    // stays visible even when the tree has been scrolled sideways.
-    el.focus({ preventScroll: true });
-    const dot = el.value.lastIndexOf('.');
-    el.setSelectionRange(0, dot > 0 ? dot : el.value.length);
-  }
+  await focusInlineEdit('basename');
 }
 
 function joinPath(parent: string, name: string): string {
@@ -1658,6 +1672,7 @@ function refocusTree(mode: 'fromEditor' | 'ifLost') {
 // the rename first), the keyboard is back in the tree rather than on <body>.
 let refocusAfterEdit = false;
 watch(editing, (e) => {
+  if (!e) editingFallbackTop.value = false;
   if (e || !refocusAfterEdit) return;
   refocusAfterEdit = false;
   refocusTree('ifLost');
