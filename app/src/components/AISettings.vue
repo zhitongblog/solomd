@@ -1226,12 +1226,20 @@ select.ai-settings__input {
 }
 .ai-settings__keystatus {
   display: flex;
-  align-items: center;
+  /* Narrow panels: the verification message drops under the badge instead of
+     squeezing it to a one-character column. */
+  flex-wrap: wrap;
+  align-items: flex-start;
   gap: 10px;
   padding-left: 120px;
   font-size: 11px;
 }
 .ai-settings__pill {
+  /* A flex item shrinks to its min-content width, which for "○ 未设置密钥"
+     is a single glyph — the badge then stacks one character per line.
+     Badges are short and fixed-shape: never shrink them. */
+  flex: 0 0 auto;
+  white-space: nowrap;
   padding: 2px 8px;
   border-radius: 999px;
   font-size: 11px;
@@ -1249,6 +1257,16 @@ select.ai-settings__input {
 .ai-settings__pill--err {
   color: #dc2626;
   border-color: rgba(220, 38, 38, 0.4);
+}
+.ai-settings__msg {
+  /* Provider errors are one long unbroken token (a JSON body, a URL), so the
+     default wrapping leaves them running past the card and getting clipped.
+     Let them break anywhere and wrap onto extra lines instead. */
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.45;
 }
 .ai-settings__msg--ok { color: #16a34a; }
 .ai-settings__msg--err { color: #dc2626; }
