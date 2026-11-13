@@ -53,6 +53,30 @@ function joinOutputPath(dir: string, relFile: string): string {
   return `${cleanDir}${sep}${cleanRel}`;
 }
 
+/**
+ * #551 — `@click.self` on the backdrop closes the dialog on ANY click whose
+ * target resolves to the backdrop. A drag that starts in a text field and ends
+ * outside the panel makes the backdrop the nearest common ancestor of the
+ * mousedown / mouseup targets, so Chromium fires `click` on it and the whole
+ * window disappears mid-selection. Require both ends of the gesture to be on
+ * the backdrop itself before dismissing.
+ */
+let backdropPointerDown = false;
+let backdropPointerUp = false;
+function onBackdropPointerDown(e: PointerEvent) {
+  backdropPointerDown = e.button === 0 && e.target === e.currentTarget;
+  backdropPointerUp = false;
+}
+function onBackdropPointerUp(e: PointerEvent) {
+  backdropPointerUp = e.target === e.currentTarget;
+}
+function onBackdropClick(e: MouseEvent) {
+  const shouldClose = backdropPointerDown && backdropPointerUp && e.target === e.currentTarget;
+  backdropPointerDown = false;
+  backdropPointerUp = false;
+  if (shouldClose) emit('close');
+}
+
 watch(
   () => props.open,
   (isOpen) => {
@@ -285,7 +309,13 @@ async function runCustomExport() {
 </script>
 
 <template>
-  <div v-if="open" class="custom-export-backdrop" @click.self="emit('close')">
+  <div
+    v-if="open"
+    class="custom-export-backdrop"
+    @pointerdown="onBackdropPointerDown"
+    @pointerup="onBackdropPointerUp"
+    @click.self="onBackdropClick"
+  >
     <div class="custom-export-dialog" role="dialog" aria-modal="true">
       <div class="custom-export__header">
         <h3>{{ isZh ? '自定义导出 / 批量导出' : 'Custom & Batch Export' }}</h3>

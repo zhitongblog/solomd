@@ -311,8 +311,25 @@ function onKeydown(e: KeyboardEvent) {
   }
 }
 
-function onBackdrop() {
-  if (props.closeOnBackdrop) close();
+// #551 — a text selection that starts inside the panel and ends on the
+// backdrop makes Chromium fire `click` on the backdrop (the nearest common
+// ancestor of mousedown / mouseup), so a naive `@click` closes the dialog
+// mid-drag. Require the whole gesture to happen on the backdrop itself.
+let backdropPointerDown = false;
+let backdropPointerUp = false;
+function onBackdropPointerDown(e: PointerEvent) {
+  backdropPointerDown = e.button === 0 && e.target === e.currentTarget;
+  backdropPointerUp = false;
+}
+function onBackdropPointerUp(e: PointerEvent) {
+  backdropPointerUp = e.target === e.currentTarget;
+}
+function onBackdrop(e: MouseEvent) {
+  const isBackdropClick =
+    backdropPointerDown && backdropPointerUp && e.target === e.currentTarget;
+  backdropPointerDown = false;
+  backdropPointerUp = false;
+  if (isBackdropClick && props.closeOnBackdrop) close();
 }
 
 watch(
@@ -360,7 +377,12 @@ onBeforeUnmount(() => {
 <template>
   <Teleport to="body" :disabled="!teleport">
     <div v-if="modelValue" class="ds-modal" role="presentation" v-bind="$attrs">
-      <div class="ds-modal__backdrop" @click="onBackdrop" />
+      <div
+        class="ds-modal__backdrop"
+        @pointerdown="onBackdropPointerDown"
+        @pointerup="onBackdropPointerUp"
+        @click="onBackdrop"
+      />
       <div
         ref="panelRef"
         class="ds-modal__panel"
