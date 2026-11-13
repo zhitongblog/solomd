@@ -49,6 +49,18 @@ export function newFileDirFor(
   return activeFilePath ? parentDirOf(activeFilePath) : null;
 }
 
+/**
+ * #554 — the source folder for a batch export, read from the Explorer's
+ * selected row: a folder is the source itself, a file contributes its parent
+ * folder. Unlike `newFileDirFor` there is no fallback to the open document —
+ * the caller decides what to do when nothing usable is selected. Android SAF
+ * `content://` URIs are not filesystem paths the batch walker can read.
+ */
+export function sourceFolderFor(selection: TreeSelection | null | undefined): string | null {
+  if (!selection?.path || selection.path.startsWith('content://')) return null;
+  return selection.isDir ? selection.path : parentDirOf(selection.path);
+}
+
 let selection: TreeSelection | null = null;
 
 /** Called by the Explorer whenever the user's selection changes. */

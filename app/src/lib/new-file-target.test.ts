@@ -3,7 +3,7 @@ import { test } from 'node:test';
 
 // Explicit .ts: `node --test` loads this module graph directly and Node's ESM
 // resolver will not guess an extension (tsconfig has allowImportingTsExtensions).
-import { newFileDirFor, parentDirOf, setTreeSelection, treeSelection } from './new-file-target.ts';
+import { newFileDirFor, parentDirOf, setTreeSelection, sourceFolderFor, treeSelection } from './new-file-target.ts';
 
 // ---- parentDirOf --------------------------------------------------------
 
@@ -49,6 +49,33 @@ test('a selection the tree cannot resolve still beats the open document', () => 
   // Home folder / root paths have no usable parent: fall through to the
   // document rather than handing the dialog an empty string.
   assert.equal(newFileDirFor({ path: '/note.md', isDir: false }, '/vault/sub/other.md'), '/vault/sub');
+});
+
+// ---- #554: batch-export source folder -----------------------------------
+
+test('#554 a selected folder is the batch-export source itself', () => {
+  assert.equal(
+    sourceFolderFor({ path: 'C:\\vault\\01 测试文件夹', isDir: true }),
+    'C:\\vault\\01 测试文件夹',
+  );
+  assert.equal(sourceFolderFor({ path: '/home/me/vault', isDir: true }), '/home/me/vault');
+});
+
+test('#554 a selected file contributes its parent folder', () => {
+  assert.equal(
+    sourceFolderFor({ path: 'C:\\vault\\00 需求\\note.md', isDir: false }),
+    'C:\\vault\\00 需求',
+  );
+  assert.equal(sourceFolderFor({ path: '/vault/sub/note.md', isDir: false }), '/vault/sub');
+});
+
+test('#554 no usable row and SAF URIs fall through to the caller', () => {
+  assert.equal(sourceFolderFor(null), null);
+  assert.equal(sourceFolderFor({ path: '/note.md', isDir: false }), null);
+  assert.equal(
+    sourceFolderFor({ path: 'content://com.android.externalstorage.documents/tree/primary', isDir: true }),
+    null,
+  );
 });
 
 // ---- the shared slot ----------------------------------------------------

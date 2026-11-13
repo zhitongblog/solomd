@@ -8,6 +8,7 @@ import { useWorkspaceStore } from '../stores/workspace';
 import { useToastsStore } from '../stores/toasts';
 import { useExport } from '../composables/useExport';
 import { openDirectoryInFileManager } from '../lib/reveal-in-file-manager';
+import { sourceFolderFor, treeSelection } from '../lib/new-file-target';
 
 const props = defineProps<{
   open: boolean;
@@ -54,6 +55,18 @@ function joinOutputPath(dir: string, relFile: string): string {
 }
 
 /**
+ * #554 — the Explorer publishes its current selection (a folder, or the file
+ * the user has open). A selected folder is the source folder itself; a
+ * selected file contributes its parent folder. Falls back to the vault root
+ * through the caller when no usable row is selected.
+ */
+function sourceFolderFromTree(): string {
+  // #554 — the Explorer's selected folder (or the parent of the selected
+  // file) becomes the batch-export source folder.
+  return sourceFolderFor(treeSelection()) ?? '';
+}
+
+/**
  * #551 — `@click.self` on the backdrop closes the dialog on ANY click whose
  * target resolves to the backdrop. A drag that starts in a text field and ends
  * outside the panel makes the backdrop the nearest common ancestor of the
@@ -93,7 +106,13 @@ watch(
   (isOpen) => {
     if (!isOpen) return;
     format.value = settings.lastCustomExportFormat || 'pdf';
-    if (!sourceFolder.value && workspace.currentFolder) {
+    // #554 — mirror the Explorer's current row into the source folder field.
+    // A tree selection always wins; without one keep the last manual choice,
+    // falling back to the vault root on the very first open.
+    const fromTree = sourceFolderFromTree();
+    if (fromTree) {
+      sourceFolder.value = fromTree;
+    } else if (!sourceFolder.value && workspace.currentFolder) {
       sourceFolder.value = workspace.currentFolder;
     }
     const activeNoteDir = parentDirOf(tabs.activeTab?.filePath);
@@ -381,6 +400,13 @@ async function runCustomExport() {
               {{ isZh ? '浏览…' : 'Browse…' }}
             </button>
           </div>
+          <!-- #554 — the path is taken from the Explorer's selected row on
+               open; browsing still overrides it for this session. -->
+          <p class="custom-export__hint">
+            {{ isZh
+              ? '打开窗口时自动填入导航树选中的文件夹（选中文件时取其所在文件夹），也可手动浏览修改。'
+              : 'Filled from the Explorer selection on open (a selected file uses its parent folder); you can still browse to override it.' }}
+          </p>
           <label class="custom-export__checkbox">
             <input v-model="includeSubfolders" type="checkbox" />
             <span>{{ isZh ? '包含子文件夹中的所有 Markdown 文档（保持目录结构）' : 'Include subfolders (preserve directory structure)' }}</span>
