@@ -2044,48 +2044,34 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
             continue;
           }
 
-          // Standalone HTML `<img ...>` line (#446).
+          // Standalone HTML `<img ...>` line (#446 / #561).
+          // Always keep the source line visible and mount the rendered image
+          // below it so clicking or moving the cursor across the image never
+          // causes the document to jump or flicker.
           if (/^\s*<img\b[^>]*>\s*$/i.test(line.text)) {
-            if (keepSource) {
-              builder.add(
-                line.to,
-                line.to,
-                Decoration.widget({
-                  widget: new HtmlBlockWidget(
-                    line.text,
-                    opts.getImageRoot?.() ?? null,
-                    opts.getFilePath?.(),
-                    i,
-                  ),
-                  block: true,
-                  side: 1,
-                }),
-              );
-              i += 1;
-              continue;
-            }
-            const cursorInside = i >= cursorLine && i <= cursorLineEnd;
-            if (!cursorInside) {
-              builder.add(
-                line.from,
-                line.to,
-                Decoration.replace({
-                  widget: new HtmlBlockWidget(
-                    line.text,
-                    opts.getImageRoot?.() ?? null,
-                    opts.getFilePath?.(),
-                    i,
-                  ),
-                  block: true,
-                }),
-              );
-            }
+            builder.add(
+              line.to,
+              line.to,
+              Decoration.widget({
+                widget: new HtmlBlockWidget(
+                  line.text,
+                  opts.getImageRoot?.() ?? null,
+                  opts.getFilePath?.(),
+                  i,
+                ),
+                block: true,
+                side: 1,
+              }),
+            );
             i += 1;
             continue;
           }
 
-          // #506 — Standalone Markdown image line (`![alt](url)`, `[![alt](img)](link)`,
-          // `![[1] alt](url)`, `![alt](<url>)`, `![alt][ref]`, etc.).
+          // #506 / #561 — Standalone Markdown image line (`![alt](url)`,
+          // `[![alt](img)](link)`, `![[1] alt](url)`, `![alt](<url>)`,
+          // `![alt][ref]`, etc.). Keep the Markdown source line visible above
+          // the rendered image widget at all times so cursor entry/exit never
+          // collapses or expands the image height.
           const lineImages = findMarkdownImagesInLine(line.text, imageRefs);
           const isStandaloneImage =
             lineImages.length === 1 &&
@@ -2093,50 +2079,23 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
             line.text.slice(lineImages[0].end).trim() === '';
           if (isStandaloneImage) {
             const imgSpan = lineImages[0];
-            if (keepSource) {
-              // Render below the source line and leave the line alone, so
-              // clicking into it changes nothing on screen.
-              const root = opts.getImageRoot?.() ?? null;
-              const filePath = opts.getFilePath?.();
-              const src = resolveImageSrc(imgSpan.src, root, filePath);
-              const localPath = resolveImagePath(imgSpan.src, root, filePath);
-              const needsFallback =
-                isLocalSvgPath(localPath) ||
-                localPath.startsWith('saf:') ||
-                /^\/(?:storage\/emulated\/0|sdcard)\//i.test(localPath);
-              builder.add(
-                line.to,
-                line.to,
-                Decoration.widget({
-                  widget: new ImageWidget(src, imgSpan.alt, needsFallback ? localPath : null, i),
-                  block: true,
-                  side: 1,
-                }),
-              );
-              i += 1;
-              continue;
-            }
-            const cursorInside = i >= cursorLine && i <= cursorLineEnd;
-            if (!cursorInside) {
-              const alt = imgSpan.alt;
-              const rawSrc = imgSpan.src;
-              const root = opts.getImageRoot?.() ?? null;
-              const filePath = opts.getFilePath?.();
-              const src = resolveImageSrc(rawSrc, root, filePath);
-              const localPath = resolveImagePath(rawSrc, root, filePath);
-              const needsFallback =
-                isLocalSvgPath(localPath) ||
-                localPath.startsWith('saf:') ||
-                /^\/(?:storage\/emulated\/0|sdcard)\//i.test(localPath);
-              builder.add(
-                line.from,
-                line.to,
-                Decoration.replace({
-                  widget: new ImageWidget(src, alt, needsFallback ? localPath : null, i),
-                  block: true,
-                }),
-              );
-            }
+            const root = opts.getImageRoot?.() ?? null;
+            const filePath = opts.getFilePath?.();
+            const src = resolveImageSrc(imgSpan.src, root, filePath);
+            const localPath = resolveImagePath(imgSpan.src, root, filePath);
+            const needsFallback =
+              isLocalSvgPath(localPath) ||
+              localPath.startsWith('saf:') ||
+              /^\/(?:storage\/emulated\/0|sdcard)\//i.test(localPath);
+            builder.add(
+              line.to,
+              line.to,
+              Decoration.widget({
+                widget: new ImageWidget(src, imgSpan.alt, needsFallback ? localPath : null, i),
+                block: true,
+                side: 1,
+              }),
+            );
             i += 1;
             continue;
           }
