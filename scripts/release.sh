@@ -61,7 +61,9 @@ rm scripts/solomd.bak
 
 git add app/src-tauri/tauri.conf.json app/package.json app/src-tauri/Cargo.toml app/src-tauri/Cargo.lock \
   mcp-server/Cargo.toml mcp-server/Cargo.lock mcp-server/mcpb/manifest.json scripts/solomd
-git commit -m "chore: bump version to $VERSION"
+git commit -m "chore: bump version to $VERSION
+
+Co-Authored-By: Antigravity <lixd220@gmail.com>"
 git tag "v$VERSION"
 
 echo ""
