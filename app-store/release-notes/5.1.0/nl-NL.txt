@@ -1,0 +1,5 @@
+SoloMD 5.1.0:
+• HTML-export met navigatie- en zoekbalk & samengevoegde boekexport (#562, #568, #569, #570): Zelfstandige HTML-exports bevatten nu een optioneel zijpaneel met bladwijzerboom en offline zoekfunctie; samengevoegde mapexports bouwen een hiërarchische inhoudsopgave, sluiten afbeeldingen en GIF's in als Base64 en ondersteunen EPUB.
+• PDF-bladwijzers, interactieve inhoudsopgave & pagina-eindelijnen (#552, #563, #565–#567): UTF-16BE PDF-bladwijzers, klikbare inhoudsopgave met paginanummers en optionele pagina-eindehulplijnen in de editor.
+• Aangepaste Word-sjablonen (.docx) & exportverbeteringen (#553, #554, #560): Gebruik je eigen .docx-sjabloon voor lettertypen, stijlen en pagina-indeling; open de uitvoermap met één klik na het exporteren.
+• Editor- en UI-verfijningen (#551, #556–#559, #561, #564): Stabiele afbeeldingsregels en soepel scrollen in tabellen in de Live-modus, inklapbare details-blokken en Markdown-weergave voor AI-antwoorden.

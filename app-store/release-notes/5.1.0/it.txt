@@ -1,0 +1,5 @@
+SoloMD 5.1.0:
+• Barra laterale di navigazione e ricerca HTML ed esportazione libro (#562, #568, #569, #570): L'esportazione HTML singola include una barra laterale opzionale con albero dei segnalibri e ricerca globale offline; l'esportazione combinata delle cartelle genera un indice gerarchico, incorpora immagini e GIF in Base64 e supporta EPUB.
+• Segnalibri PDF, indice interattivo e guide di interruzione pagina (#552, #563, #565–#567): Segnalibri PDF UTF-16BE, indice cliccabile con numeri di pagina precisi e linee guida opzionali per i salti pagina nell'editor.
+• Modelli Word personalizzati (.docx) e miglioramenti all'esportazione (#553, #554, #560): Applica font, stili e layout del tuo modello .docx; apri la cartella di output con un clic dopo l'esportazione.
+• Miglioramenti all'editor e all'interfaccia (#551, #556–#559, #561, #564): Immagini stabili e scorrimento fluido delle tabelle in modalità Live, blocchi details comprimibili e risposte IA rese in Markdown.

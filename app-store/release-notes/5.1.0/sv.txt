@@ -1,0 +1,5 @@
+SoloMD 5.1.0:
+• Navigerings- och sökpanel i HTML-export & sammanslagen bokexport (#562, #568, #569, #570): Fristående HTML-exporter har nu en valfri sidopanel med bokmärkesträd och global offlinesökning; sammanslagen mappexport skapar en hierarkisk innehållsförteckning, bäddar in bilder och GIF-filer som Base64 och stöder EPUB.
+• PDF-bokmärken, klickbar innehållsförteckning & sidbrytningslinjer (#552, #563, #565–#567): UTF-16BE PDF-bokmärken, klickbar innehållsförteckning med sidnummer samt valfria sidbrytningslinjer i redigeraren.
+• Anpassade Word-mallar (.docx) & exportförbättringar (#553, #554, #560): Använd din egen .docx-mall för typsnitt, format och sidlayout; öppna utdatamappen med ett klick efter export.
+• Redigerar- och gränssnittsförbättringar (#551, #556–#559, #561, #564): Stabila bildrader och smidig tabellrullning i Live-läge,hopfällbara details-block och Markdown-rendering för AI-svar.

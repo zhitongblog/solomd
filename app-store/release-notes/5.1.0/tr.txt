@@ -1,0 +1,5 @@
+SoloMD 5.1.0:
+• HTML Dışa Aktarmada Gezinme ve Arama Paneli ve Birleştirilmiş Kitap Dışa Aktarma (#562, #568, #569, #570): Tek dosya HTML dışa aktarmaları artık yer imi ağacı ve çevrimdışı genel arama içeren sekmeli bir yan panel sunuyor; klasör birleştirme dışa aktarması hiyerarşik içindekiler tablosu oluşturur, alt klasör resimlerini ve GIF'leri Base64 olarak gömer ve EPUB destekler.
+• PDF Yer İmleri, Etkileşimli İçindekiler ve Sayfa Sonu Kılavuzları (#552, #563, #565–#567): UTF-16BE PDF yer imleri, doğru sayfa numaralarına sahip tıklanabilir içindekiler bağlantıları ve düzenleyicide isteğe bağlı sayfa sonu kılavuz çizgileri.
+• Özel Word Şablonları (.docx) ve Dışa Aktarma İyileştirmeleri (#553, #554, #560): Kendi .docx şablonunuzun yazı tiplerini, stillerini ve sayfa düzenini uygulayın; dışa aktarma sonrasında çıktı klasörünü tek tıkla açın.
+• Düzenleyici ve Arayüz İyileştirmeleri (#551, #556–#559, #561, #564): Canlı modda kararlı resim satırları ve akıcı tablo kaydırma, daraltılabilir details blokları ve Markdown olarak işlenen yapay zeka yanıtları.

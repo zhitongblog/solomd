@@ -1,0 +1,5 @@
+SoloMD 5.1.0:
+• Barra lateral de navegação e busca em HTML e exportação de livros (#562, #568, #569, #570): Exportações em HTML único agora incluem uma barra lateral opcional com árvore de favoritos e busca global offline; a exportação combinada de pastas gera um sumário hierárquico, incorpora imagens e GIFs em Base64 e suporta EPUB.
+• Favoritos em PDF, sumário interativo e guias de quebra de página (#552, #563, #565–#567): Favoritos PDF em UTF-16BE, sumário clicável com numeração precisa e linhas-guia opcionais de quebra de página no editor.
+• Modelos personalizados do Word (.docx) e melhorias de exportação (#553, #554, #560): Aplique fontes, estilos e configuração de página do seu próprio modelo .docx; abra a pasta de saída com um clique após exportar.
+• Refinamentos no editor e na interface (#551, #556–#559, #561, #564): Linhas de imagem estáveis e rolagem fluida de tabelas no modo ao vivo, blocos details recolhíveis e respostas de IA renderizadas em Markdown.

@@ -1,0 +1,5 @@
+SoloMD 5.1.0:
+• HTML-Export mit Navigations- und Suchleiste & Buch-Sammelexport (#562, #568, #569, #570): Einzelne HTML-Exporte unterstützen eine mehrteilige Seitenleiste mit Lesezeichenbaum und Offline-Volltextsuche; Ordner-Sammelexporte erzeugen ein hierarchisches Inhaltsverzeichnis, betten Bilder/GIFs aus Unterordnern als Base64 ein und unterstützen EPUB.
+• PDF-Lesezeichen, Inhaltsverzeichnis & Seitenumbruchlinien (#552, #563, #565–#567): Korrekte UTF-16BE-PDF-Lesezeichen, anklickbares Inhaltsverzeichnis mit Seitenzahlen sowie optionale Seitenumbruch-Hilfslinien im Editor.
+• Eigene Word-Vorlagen (.docx) & Export-Verbesserungen (#553, #554, #560): Eigene .docx-Referenzvorlagen für Schriftarten, Stile und Seitenlayout; Ausgabeordner direkt nach dem Export öffnen.
+• Editor- & UI-Feinschliff (#551, #556–#559, #561, #564): Stabile Bildzeilen und flüssiges Tabellenscrollen im Live-Modus, einklappbare details-Blöcke und Markdown-Rendering für KI-Antworten.

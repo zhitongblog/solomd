@@ -1,0 +1,5 @@
+SoloMD 5.1.0:
+• Pasek nawigacji i wyszukiwania w eksporcie HTML oraz eksport książek (#562, #568, #569, #570): Eksport pojedynczego pliku HTML obsługuje opcjonalny panel boczny z drzewem zakładek i wyszukiwaniem pełnotekstowym offline; łączony eksport folderów tworzy hierarchiczny spis treści, osadza obrazy i GIF-y w Base64 oraz obsługuje format EPUB.
+• Zakładki PDF, interaktywny spis treści i linie podziału stron (#552, #563, #565–#567): Poprawne zakładki PDF UTF-16BE, klikalny spis treści z numerami stron oraz opcjonalne linie pomocnicze podziału stron w edytorze.
+• Własne szablony Word (.docx) i ulepszenia eksportu (#553, #554, #560): Stosuj czcionki, style i układ strony z własnego szablonu .docx; otwieraj folder wyjściowy jednym kliknięciem po eksporcie.
+• Ulepszenia edytora i interfejsu (#551, #556–#559, #561, #564): Stabilne wiersze obrazów i płynne przewijanie tabel w trybie na żywo, zwijane bloki details oraz renderowanie odpowiedzi AI w Markdown.

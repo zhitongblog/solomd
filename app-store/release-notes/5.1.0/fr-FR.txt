@@ -1,0 +1,5 @@
+SoloMD 5.1.0 :
+• Barre latérale de navigation et de recherche HTML & export de livre fusionné (#562, #568, #569, #570) : Les exports HTML autonomes proposent un panneau latéral à onglets avec arbre de signets et recherche plein texte hors ligne ; l'export fusionné de dossiers génère une table des matières hiérarchique, intègre les images/GIF des sous-dossiers en Base64 et prend en charge l'EPUB.
+• Signets PDF, sommaire interactif et guides de saut de page (#552, #563, #565–#567) : Signets PDF UTF-16BE, liens de sommaire cliquables avec numéros de page précis et lignes guides de saut de page dans l'éditeur.
+• Modèles Word personnalisés (.docx) et améliorations d'export (#553, #554, #560) : Appliquez les polices, styles et mises en page de votre modèle .docx ; ouvrez le dossier de sortie en un clic après l'export.
+• Raffinements de l'éditeur et de l'interface (#551, #556–#559, #561, #564) : Lignes d'image stables et défilement clavier fluide des tableaux en mode direct, blocs details repliables et réponses IA rendues en Markdown.

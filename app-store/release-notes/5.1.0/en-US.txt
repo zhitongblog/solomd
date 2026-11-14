@@ -1,0 +1,5 @@
+SoloMD 5.1.0:
+• Standalone HTML Navigation & Search Sidebar + Merged Book Export (#562, #568, #569, #570): Standalone HTML exports now include an optional multi-tab Navigation (hierarchical bookmark tree) and offline Global Search sidebar; merged folder exports build a hierarchical folder + 3-level note TOC, inline subfolder images and GIFs as Base64, and support single-file EPUB output.
+• PDF Outlines, Interactive TOC & Page-Break Guides (#552, #563, #565–#567): UTF-16BE PDF document bookmarks, clickable TOC links with accurate page numbers, and optional dashed PDF page-break guide lines with page indicators in the editor.
+• Custom Word Reference Templates & Export Polish (#553, #554, #560): Apply your own .docx template styles, fonts, and page setup to Word exports; default custom export source folder from Explorer selection and open the output folder with one click.
+• Editor & UI Refinements (#551, #556–#559, #561, #564): Stable image source lines and smooth table keyboard scrolling in Live mode, collapsible details blocks, Markdown-rendered AI replies, and smoother Explorer rename when filters are active.
