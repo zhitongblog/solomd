@@ -434,6 +434,14 @@ async function runCustomExport() {
             <option value="png">{{ isZh ? 'PNG 长图 (.png)' : 'PNG Image (.png)' }}</option>
             <option value="textpack">{{ isZh ? 'TextPack 自包含单文件容器 (.textpack)' : 'TextPack Self-Contained Bundle (.textpack)' }}</option>
           </select>
+          <label v-if="format === 'html'" class="custom-export__checkbox" style="margin-top: 4px;">
+            <input
+              type="checkbox"
+              :checked="settings.exportHtmlWithNav"
+              @change="settings.setExportHtmlWithNav(($event.target as HTMLInputElement).checked)"
+            />
+            <span>{{ isZh ? '导出 HTML 文件带导航栏（书签栏）与全局搜索面板' : 'Include navigation (bookmarks) & global search sidebar in HTML' }}</span>
+          </label>
         </div>
 
         <!-- #553 — optional user-supplied .docx used as a Word reference doc. -->

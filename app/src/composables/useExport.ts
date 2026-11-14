@@ -328,6 +328,8 @@ export function useExport() {
         plantumlServer: plantumlServer(),
         codeBlockLineNumbers: settings.codeBlockLineNumbers,
         codeBlockWrap: settings.codeBlockWrap,
+        withNav: settings.exportHtmlWithNav,
+        lang: settings.language,
       });
       toasts.dismiss(tid);
       await invoke('write_file', { path, content: html, encoding: 'UTF-8' });
@@ -861,13 +863,23 @@ export function useExport() {
       const { pandocResourcePaths } = await import('../lib/pandoc-resource-paths');
       const { useWorkspaceStore } = await import('../stores/workspace');
       const workspace = useWorkspaceStore();
+      const cleanedMarkdown = preprocessMarkdown(content)
+        .replace(/^[ \t]*\[toc\][ \t]*\r?$/gim, '')
+        .replace(/\s*<!--\s*solomd-toc-(?:level:\d+|folder)\s*-->/g, '');
+      const extraArgs = ['--toc', '--toc-depth=6', `--metadata=title:${baseName}`];
+      if (settings.markdownHardBreaks) {
+        extraArgs.push('--from=markdown+hard_line_breaks');
+      }
       await invoke('pandoc_export', {
-        input: {
-          markdown: preprocessMarkdown(content),
-          outputPath,
-          toFormat: 'epub',
-          resourcePaths: pandocResourcePaths(filePath, workspace.currentFolder),
-          extraArgs: ['--toc', '--toc-depth=6'],
+        args: {
+          input_markdown: cleanedMarkdown,
+          format: 'epub',
+          output_path: outputPath,
+          bibliography: null,
+          csl: null,
+          template: null,
+          extra_args: extraArgs,
+          resource_paths: pandocResourcePaths(filePath ?? null, workspace.currentFolder),
         },
       });
       return;
@@ -911,6 +923,8 @@ export function useExport() {
         plantumlServer: plantumlServer(),
         codeBlockLineNumbers: settings.codeBlockLineNumbers,
         codeBlockWrap: settings.codeBlockWrap,
+        withNav: settings.exportHtmlWithNav,
+        lang: settings.language,
       });
       await invoke('write_file', { path: outputPath, content: html, encoding: 'UTF-8' });
       return;

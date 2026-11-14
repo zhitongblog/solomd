@@ -21,6 +21,7 @@
  */
 
 import { findMarkdownImagesInLine } from './md-image-url';
+import { extractImageRoot } from './markdown';
 
 export interface MergedNoteInput {
   path?: string;
@@ -47,33 +48,110 @@ function normalizeRelDir(relDir: string): string[] {
     .filter(Boolean);
 }
 
+function isNonRelativeUrl(src: string): boolean {
+  return (
+    !src ||
+    /^(?:https?:|data:|blob:|asset:|tauri:|file:|\/|[a-zA-Z]:[\\/])/i.test(src)
+  );
+}
+
+function joinRelativeAssetPath(
+  src: string,
+  relDirSegments: string[],
+  noteImageRoot?: string | null,
+): string | null {
+  const trimmed = src.trim();
+  if (isNonRelativeUrl(trimmed)) return null;
+  const rootTrimmed = (noteImageRoot || '').trim();
+  if (rootTrimmed && (/^\//.test(rootTrimmed) || /^[a-zA-Z]:[\\/]/.test(rootTrimmed))) {
+    const cleanRoot = rootTrimmed.replace(/\\/g, '/').replace(/\/+$/, '');
+    const cleanRel = trimmed.replace(/\\/g, '/').replace(/^\.\//, '');
+    return `${cleanRoot}/${cleanRel}`;
+  }
+  const baseSegments = [...relDirSegments];
+  if (rootTrimmed) {
+    for (const seg of rootTrimmed.replace(/\\/g, '/').split('/')) {
+      const s = seg.trim();
+      if (!s || s === '.') continue;
+      if (s === '..') {
+        if (baseSegments.length > 0) baseSegments.pop();
+      } else {
+        baseSegments.push(s);
+      }
+    }
+  }
+  if (baseSegments.length === 0) return null;
+  const relParts = trimmed.replace(/\\/g, '/').split('/');
+  const combined = [...baseSegments];
+  for (const part of relParts) {
+    if (!part || part === '.') continue;
+    if (part === '..') {
+      if (combined.length > 0) combined.pop();
+      else combined.push('..');
+    } else {
+      combined.push(part);
+    }
+  }
+  return combined.join('/');
+}
+
 /**
  * When a note inside a subfolder (`relDir`) references a relative image
- * (`./assets/pic.png` or `assets/pic.png`), rewrite the path relative to the
- * root export folder (`<relDir>/assets/pic.png`) so merged exports find images
- * across all subfolders.
+ * (`./assets/pic.png`, `assets/pic.gif`, `<img src="assets/pic.gif">`, or
+ * `[id]: ./assets/pic.png`), rewrite the path relative to the root export
+ * folder (`<relDir>/assets/pic.png`) so merged exports find images and GIFs
+ * across all subfolders (#562, #568).
  */
-export function rewriteSubfolderRelativeImages(line: string, relDirSegments: string[]): string {
-  if (relDirSegments.length === 0 || !line.includes('![')) return line;
-  const spans = findMarkdownImagesInLine(line);
-  if (spans.length === 0) return line;
-  const prefix = relDirSegments.join('/');
+export function rewriteSubfolderRelativeImages(
+  line: string,
+  relDirSegments: string[],
+  noteImageRoot?: string | null,
+): string {
+  if (relDirSegments.length === 0 && !noteImageRoot) return line;
   let out = line;
-  for (let i = spans.length - 1; i >= 0; i--) {
-    const span = spans[i];
-    const src = span.src.trim();
-    if (
-      !src ||
-      /^(?:https?:|data:|blob:|asset:|tauri:|file:|\/|[a-zA-Z]:[\\/])/i.test(src)
-    ) {
-      continue;
+
+  // 1. Standard & linked Markdown images: `![alt](src)` / `[![alt](src)](href)`
+  if (out.includes('![')) {
+    const spans = findMarkdownImagesInLine(out);
+    for (let i = spans.length - 1; i >= 0; i--) {
+      const span = spans[i];
+      const joined = joinRelativeAssetPath(span.src, relDirSegments, noteImageRoot);
+      if (!joined) continue;
+      const fullSpan = out.slice(span.start, span.end);
+      let replaced = fullSpan;
+      if (fullSpan.includes(span.src)) {
+        replaced = fullSpan.replace(span.src, joined);
+      } else {
+        replaced = fullSpan.replace(/(\]\(\s*<?)([^>)\s]+)(>?\s*\))/, `$1${joined}$3`);
+      }
+      out = `${out.slice(0, span.start)}${replaced}${out.slice(span.end)}`;
     }
-    const cleanRel = src.replace(/^\.\//, '');
-    const joined = `${prefix}/${cleanRel}`;
-    const fullSpan = out.slice(span.start, span.end);
-    const replaced = fullSpan.replace(span.src, joined);
-    out = `${out.slice(0, span.start)}${replaced}${out.slice(span.end)}`;
   }
+
+  // 2. HTML `<img ... src="...">` tags
+  if (/<img\b/i.test(out)) {
+    out = out.replace(
+      /(<img\b[^>]*?\bsrc=)(["'])([^"']+)\2/gi,
+      (full, prefix: string, quote: string, src: string) => {
+        const joined = joinRelativeAssetPath(src, relDirSegments, noteImageRoot);
+        return joined ? `${prefix}${quote}${joined}${quote}` : full;
+      },
+    );
+  }
+
+  // 3. Markdown reference-style image/link definitions: `[id]: ./assets/pic.gif`
+  const refDefMatch = /^(\s*(?:>\s*)*\[[^\]]+\]:\s*)(<[^>\s]+>|[^\s]+)(.*)$/.exec(out);
+  if (refDefMatch) {
+    const rawDest = refDefMatch[2];
+    const hasAngles = rawDest.startsWith('<') && rawDest.endsWith('>');
+    const innerDest = hasAngles ? rawDest.slice(1, -1) : rawDest;
+    const joined = joinRelativeAssetPath(innerDest, relDirSegments, noteImageRoot);
+    if (joined) {
+      const wrapped = hasAngles || /\s/.test(joined) ? `<${joined}>` : joined;
+      out = `${refDefMatch[1]}${wrapped}${refDefMatch[3]}`;
+    }
+  }
+
   return out;
 }
 
@@ -83,6 +161,7 @@ export function transformNoteForMergedBook(
   folderDepth: number,
   relDirSegments: string[] = [],
 ): string {
+  const noteImageRoot = extractImageRoot(rawContent || '');
   const stripped = (rawContent || '')
     .replace(/^\uFEFF/, '')
     .replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '')
@@ -138,7 +217,7 @@ export function transformNoteForMergedBook(
       continue;
     }
 
-    outLines.push(rewriteSubfolderRelativeImages(rawLine, relDirSegments));
+    outLines.push(rewriteSubfolderRelativeImages(rawLine, relDirSegments, noteImageRoot));
   }
 
   const body = outLines.join('\n').trim();

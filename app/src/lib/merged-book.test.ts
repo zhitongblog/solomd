@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import { buildMergedBookMarkdown } from './merged-book';
 import { renderMarkdown } from './markdown';
+import { buildStandaloneHtml } from './html-export';
 
 test('#562: buildMergedBookMarkdown builds hierarchical folder + note TOC up to note level 3 and falls back to baseName when H1 is absent', () => {
   const merged = buildMergedBookMarkdown('01 书籍名', [
@@ -109,4 +110,69 @@ test('#562: multi-level nested folders all appear in TOC and all jump to the fir
   assert.equal(links.get('A组'), firstNoteHref);
   assert.ok(links.has('第一节'));
   assert.ok(links.has('1.1 小节'));
+});
+
+test('#568 & #570: merged HTML export embeds subfolder PNG/GIF images as base64 and builds navigation + search sidebar when withNav is enabled', async () => {
+  const merged = buildMergedBookMarkdown('01 书籍名', [
+    {
+      relDir: '01 测试文件夹/01 书籍名/第3篇 篇名3',
+      baseName: 'file_3-5',
+      content: [
+        '# 第3章 测试章节',
+        '',
+        '### 1.3.5 来个图片',
+        '',
+        '![截图](./assets/shot(1).png)',
+        '',
+        '### 1.3.6 来个动图',
+        '',
+        '![动图](assets/anim.gif)',
+        '',
+        '<img src="assets/inline-demo.gif" width="320" />',
+      ].join('\n'),
+    },
+  ]);
+
+  const fakeFiles = new Map<string, Uint8Array>([
+    ['D:/Vault/01 测试文件夹/01 书籍名/第3篇 篇名3/assets/shot(1).png', new Uint8Array([0x89, 0x50, 0x4e, 0x47])],
+    ['D:/Vault/01 测试文件夹/01 书籍名/第3篇 篇名3/assets/anim.gif', new Uint8Array([0x47, 0x49, 0x46, 0x38, 0x39, 0x61])],
+    ['D:/Vault/01 测试文件夹/01 书籍名/第3篇 篇名3/assets/inline-demo.gif', new Uint8Array([0x47, 0x49, 0x46, 0x38, 0x37, 0x61])],
+  ]);
+
+  const html = await buildStandaloneHtml({
+    content: merged,
+    title: '01 书籍名',
+    filePath: 'D:\\Vault\\01 书籍名.md',
+    readBytes: async (p) => fakeFiles.get(p) ?? null,
+    withNav: true,
+    lang: 'zh',
+  });
+
+  // 1) All 3 subfolder images (including spaced folder path, parens in filename, and HTML <img>) are base64-inlined
+  assert.match(html, /src="data:image\/png;base64,iVBORw=="|src="data:image\/png;base64,iVBORw0KGgo=/);
+  assert.equal((html.match(/data:image\/gif;base64,/g) || []).length, 2);
+
+  // 2) Navigation & Global Search multi-tab sidebar is present (#570)
+  assert.ok(html.includes('data-tab="nav"'), 'expected Navigation tab');
+  assert.ok(html.includes('导航栏'));
+  assert.ok(html.includes('data-tab="search"'), 'expected Global Search tab');
+  assert.ok(html.includes('全局搜索'));
+  assert.ok(html.includes('id="solomd-search-input"'));
+  assert.ok(html.includes('id="solomd-search-clear"'));
+  assert.ok(html.includes('id="solomd-nav-pane"'));
+  assert.ok(html.includes('1.3.5 来个图片'));
+  assert.ok(html.includes('1.3.6 来个动图'));
+});
+
+test('#570: single-note standalone HTML export without [TOC] builds hierarchical bookmark tree in sidebar when withNav is true', async () => {
+  const html = await buildStandaloneHtml({
+    content: '# 第一章 总览\n\n正文段落一\n\n## 1.1 安装说明\n\n正文段落二',
+    title: '用户手册',
+    withNav: true,
+    lang: 'zh',
+  });
+  assert.ok(html.includes('id="solomd-nav-pane"'));
+  assert.ok(html.includes('第一章 总览'));
+  assert.ok(html.includes('1.1 安装说明'));
+  assert.ok(html.includes('id="solomd-search-input"'));
 });

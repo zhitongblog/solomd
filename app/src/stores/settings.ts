@@ -459,6 +459,9 @@ interface Settings {
   // for a free MIT app), but explicitly toggleable in Settings → Export
   // for users who don't want the watermark on screenshots they share.
   imageExportBranding: boolean;
+  // #570 — Standalone HTML export includes a left multi-tab sidebar with
+  // bookmark navigation tree and global search panel.
+  exportHtmlWithNav: boolean;
   // v4.3.0: global UI zoom (scales the entire app — editor, preview, chrome,
   // sidebars, modals). Helpful on high-DPI screens where everything renders
   // too small even at the OS default scale. Range 0.75x – 2.5x. Wired via
@@ -970,6 +973,7 @@ function defaults(): Settings {
     slashCommandsEnabled: true,
     fenceLanguageSuggestions: true,
     imageExportBranding: true,
+    exportHtmlWithNav: true,
     globalZoom: 1,
     wheelZoomEnabled: true,
     quickCaptureEnabled: true,
@@ -2180,6 +2184,14 @@ export const useSettingsStore = defineStore('settings', {
     },
     setDefaultExportDir(dir: string) {
       this.defaultExportDir = (dir || '').trim();
+      this.persist();
+    },
+    toggleExportHtmlWithNav() {
+      this.exportHtmlWithNav = !this.exportHtmlWithNav;
+      this.persist();
+    },
+    setExportHtmlWithNav(enabled: boolean) {
+      this.exportHtmlWithNav = Boolean(enabled);
       this.persist();
     },
     // #7 — Typora-style custom path template (used when attachmentMode==='custom').

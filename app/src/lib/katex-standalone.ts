@@ -17,11 +17,15 @@ import katexCss from 'katex/dist/katex.min.css?raw';
 
 // Eager: these are only URL strings (the fonts are in the bundle already,
 // `main.ts` imports katex.min.css); the bytes are fetched on export.
-const fontUrls = import.meta.glob('/node_modules/katex/dist/fonts/*.woff2', {
-  query: '?url',
-  import: 'default',
-  eager: true,
-}) as Record<string, string>;
+const fontUrls = (
+  typeof import.meta.glob === 'function'
+    ? import.meta.glob('/node_modules/katex/dist/fonts/*.woff2', {
+        query: '?url',
+        import: 'default',
+        eager: true,
+      })
+    : {}
+) as Record<string, string>;
 
 let cached: Promise<string> | null = null;
 

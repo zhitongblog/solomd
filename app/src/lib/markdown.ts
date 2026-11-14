@@ -459,7 +459,7 @@ md.inline.ruler.after('strikethrough', 'subscript', (state, silent) => {
 // image extension. Under the standard grammar that text can only ever render
 // as the raw characters, so nothing that works today changes meaning.
 const SPACED_IMAGE_RE =
-  /^!\[([^\]\n]*)\]\(\s*([^()<>"'\n]*?\s[^()<>"'\n]*?\.(?:png|jpe?g|gif|webp|svg|bmp|avif|ico|tiff?))\s*\)/i;
+  /^!\[([^\]\n]*)\]\(\s*([^<>"'\n]*?\s[^<>"'\n]*?\.(?:png|jpe?g|gif|webp|svg|bmp|avif|ico|tiff?)(?:[?#][^\s)]*)?)\s*(?:(?:"[^"\n]*"|'[^'\n]*')\s*)?\)/i;
 md.inline.ruler.before('image', 'image_spaced_path', (state, silent) => {
   if (state.src.charCodeAt(state.pos) !== 0x21 /* ! */) return false;
   const m = SPACED_IMAGE_RE.exec(state.src.slice(state.pos, state.posMax));
