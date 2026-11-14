@@ -1,7 +1,7 @@
 {
   "name": "solomd",
   "private": true,
-  "version": "5.0.21",
+  "version": "5.1.0",
   "type": "module",
   "scripts": {
     "test": "bash scripts/run-tests.sh",
