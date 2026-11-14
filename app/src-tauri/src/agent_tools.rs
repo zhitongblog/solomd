@@ -1254,6 +1254,9 @@ fn agent_list_runs_inner(workspace: String) -> Result<Vec<Value>, String> {
 mod tests {
     use super::*;
     use std::fs;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    static NEXT_WS_ID: AtomicUsize = AtomicUsize::new(0);
 
     fn make_workspace() -> PathBuf {
         let id = format!("solomd-tools-{}", std::process::id());
@@ -1261,7 +1264,8 @@ mod tests {
             .duration_since(SystemTime::UNIX_EPOCH)
             .map(|d| d.as_nanos())
             .unwrap_or(0);
-        let dir = std::env::temp_dir().join(format!("{id}-{stamp}"));
+        let seq = NEXT_WS_ID.fetch_add(1, Ordering::Relaxed);
+        let dir = std::env::temp_dir().join(format!("{id}-{stamp}-{seq}"));
         fs::create_dir_all(&dir).unwrap();
         // Seed two notes.
         fs::write(

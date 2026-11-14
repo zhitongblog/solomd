@@ -170,21 +170,31 @@ echo "==> Regenerating .xcodeproj from project.yml"
 ( cd app/src-tauri/gen/apple && xcodegen generate )
 
 # ---------------------------------------------------------------------------
-# Which Xcode builds this. Set IOS_DEVELOPER_DIR (in .env.local) to pin one,
-# e.g. /Volumes/Dev/xcode26/Xcode-26.app/Contents/Developer.
+# Which Xcode builds this.
 #
-# Why it matters: an app linked against the iOS 27 SDK is killed at launch on
-# iOS 27 unless it has adopted the UIScene lifecycle, and Tauri 2.10/2.11 has
-# not (proper support is unreleased as of 2026-09). Apple rejected 4.13.3 for
-# exactly that (2.1a, crash in
-# _UIApplicationEvaluateRuntimeIssueForNoSceneLifecycleAdoption). Linked
-# against the iOS 26 SDK the same code runs fine on iOS 27.
+# Since SoloMD 5.0 adopts the UIScene lifecycle (`UIApplicationSceneManifest`
+# in `app/src-tauri/ios-project-overlay.yml`), it MUST be linked against the
+# iOS 27+ SDK (Xcode 27+) so iPhone Duo runs in native full-screen layout
+# rather than iOS 26 compatibility mode (#565).
+#
+# If `.env.local` still carries a legacy 4.14.x Xcode 26 pin (`*xcode26*` /
+# `*Xcode-26*`), automatically upgrade it to `/Applications/Xcode.app/Contents/Developer`
+# unless `IOS_FORCE_XCODE26=1` is explicitly set.
 #
 # Exporting DEVELOPER_DIR is NOT enough: the Tauri mobile CLI scrubs the
 # environment before it runs xcodebuild and keeps little more than PATH, so
 # the build silently falls back to `xcode-select -p`. PATH survives, so put
 # forwarding shims first on it.
 # ---------------------------------------------------------------------------
+if [ -z "${IOS_FORCE_XCODE26:-}" ]; then
+  case "${IOS_DEVELOPER_DIR:-}" in
+    ""|*xcode26*|*Xcode-26*)
+      if [ -x "/Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild" ]; then
+        IOS_DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
+      fi
+      ;;
+  esac
+fi
 if [ -n "${IOS_DEVELOPER_DIR:-}" ]; then
   [ -x "$IOS_DEVELOPER_DIR/usr/bin/xcodebuild" ] || { echo "ERROR: IOS_DEVELOPER_DIR has no xcodebuild: $IOS_DEVELOPER_DIR" >&2; exit 1; }
   SHIMS="$(mktemp -d)"
@@ -240,7 +250,14 @@ echo "==> Linked SDK: ${SDK_NAME:-unknown}"
 HAS_SCENES=$(unzip -p "$IPA" 'Payload/*.app/Info.plist' | plutil -extract UIApplicationSceneManifest xml1 -o - - >/dev/null 2>&1 && echo yes || echo no)
 echo "==> UIScene manifest: $HAS_SCENES"
 case "$SDK_NAME" in
-  iphoneos26.*) ;;
+  iphoneos26.*)
+    if [ "$HAS_SCENES" = yes ] && [ -z "${IOS_FORCE_XCODE26:-}" ]; then
+      echo "ERROR: $IPA is linked against '${SDK_NAME:-unknown}' (iOS 26 SDK)," >&2
+      echo "       which forces iPhone Duo into compatibility mode on iOS 27+ (#565)." >&2
+      echo "       Build with Xcode 27+ (/Applications/Xcode.app/Contents/Developer)." >&2
+      exit 1
+    fi
+    ;;
   *)
     if [ "$HAS_SCENES" != yes ] && [ -z "${IOS_ALLOW_NEW_SDK:-}" ]; then
       echo "ERROR: $IPA is linked against '${SDK_NAME:-unknown}' but declares no" >&2
@@ -250,6 +267,20 @@ case "$SDK_NAME" in
     fi
     ;;
 esac
+
+# #565 — Also package an unsigned .ipa in dist-ios/ for sideloading (AltStore /
+# SideStore / Sideloadly) when users cannot access the App Store.
+APP_VER=$(python3 -c "import json;print(json.load(open('app/src-tauri/tauri.conf.json'))['version'])")
+UNSIGNED_DIR="dist-ios"
+UNSIGNED_IPA="${UNSIGNED_DIR}/SoloMD_${APP_VER}_ios_unsigned.ipa"
+mkdir -p "$UNSIGNED_DIR"
+TMP_UNSIGNED=$(mktemp -d)
+unzip -q "$IPA" -d "$TMP_UNSIGNED"
+rm -rf "$TMP_UNSIGNED/Payload/SoloMD.app/_CodeSignature" \
+       "$TMP_UNSIGNED/Payload/SoloMD.app/embedded.mobileprovision"
+( cd "$TMP_UNSIGNED" && zip -qr "$OLDPWD/$UNSIGNED_IPA" Payload )
+rm -rf "$TMP_UNSIGNED"
+echo "==> Unsigned sideload .ipa: $UNSIGNED_IPA ($(du -h "$UNSIGNED_IPA" | cut -f1))"
 
 echo "==> Done: $IPA ($(du -h "$IPA" | cut -f1))"
 echo "    Submit: ./scripts/submit-ios.sh"

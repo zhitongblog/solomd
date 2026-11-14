@@ -558,9 +558,10 @@ export function useExport() {
     let printOutlines: Array<[number, string, number]> = [];
     if (printContent) {
       try {
-        const nav = pdfOpts.toc
-          ? decoratePrintToc(printContent, t('settings.pdfDefaults.tocTitle'))
-          : null;
+        const nav = decoratePrintToc(
+          printContent,
+          pdfOpts.toc ? t('settings.pdfDefaults.tocTitle') : '',
+        );
         const box = printableBox(
           pdfOpts.pageSizeMm ?? { width: 210, height: 297 },
           pdfOpts.marginMm ?? { top: 15, right: 15, bottom: 15, left: 15 },

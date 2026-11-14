@@ -730,15 +730,26 @@ button:disabled {
   color: var(--accent);
   text-decoration: underline;
 }
-/* #347 — the text PDF's table-of-contents page: a titled page rather than the
-   on-screen card, with a dotted leader to each entry's page number
+/* #347 / #566 — the PDF's table-of-contents page: a titled page rather than
+   the on-screen card, with a dotted leader to each entry's page number
    (lib/print-pages.ts fills the numbers; an entry without one drops the
    leader). */
-.solomd-print-content > .md-toc:first-child {
+.solomd-print-content .md-toc {
   border: none;
   background: transparent;
   padding: 0;
   margin: 0;
+}
+.solomd-print-content > h1:first-child:has(+ .md-toc),
+.solomd-print-content h1.pdf-doc-title {
+  text-align: center;
+  border-bottom: none !important;
+  padding-bottom: 0;
+}
+.solomd-print-content > .md-toc:first-child + hr,
+.solomd-print-content > h1:first-child + .md-toc + hr,
+.solomd-print-content hr.pdf-toc-hr {
+  display: none !important;
 }
 .solomd-print-content .md-toc__title {
   font-size: 1.6em;
@@ -877,10 +888,15 @@ div.mermaidTooltip {
   body.solomd-printing .md-toc {
     break-inside: avoid-page;
     background: transparent;
+    border: none;
+    padding: 0;
   }
-  /* #347 — a TOC at the top of the document (Settings → PDF "table of
-   * contents", or a leading [TOC]) is a page of its own. */
-  body.solomd-printing .solomd-print-content > .md-toc:first-child {
+  /* #347 / #566 — a TOC at the top of the document (Settings → PDF "table of
+   * contents", a leading [TOC], or H1 + [TOC] in merged book export) is a page
+   * of its own. */
+  body.solomd-printing .solomd-print-content > .md-toc:first-child,
+  body.solomd-printing .solomd-print-content > h1:first-child + .md-toc,
+  body.solomd-printing .solomd-print-content .md-toc.md-toc--lead {
     break-after: page;
     page-break-after: always;
   }

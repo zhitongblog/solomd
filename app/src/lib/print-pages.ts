@@ -99,10 +99,25 @@ export function decoratePrintToc(content: HTMLElement, title: string): HTMLEleme
   const nav = content.querySelector<HTMLElement>('nav.md-toc');
   if (!nav || nav.dataset.printDecorated) return nav;
   nav.dataset.printDecorated = '1';
-  const heading = document.createElement('div');
-  heading.className = 'md-toc__title';
-  heading.textContent = title;
-  nav.prepend(heading);
+  const prev = nav.previousElementSibling as HTMLElement | null;
+  if (prev?.tagName === 'H1') {
+    prev.classList.add('pdf-doc-title');
+  } else if (title) {
+    const heading = document.createElement('div');
+    heading.className = 'md-toc__title';
+    heading.textContent = title;
+    nav.prepend(heading);
+  }
+  if (
+    nav === content.firstElementChild ||
+    (prev === content.firstElementChild && prev?.tagName === 'H1')
+  ) {
+    nav.classList.add('md-toc--lead');
+    const next = nav.nextElementSibling as HTMLElement | null;
+    if (next?.tagName === 'HR') {
+      next.classList.add('pdf-toc-hr');
+    }
+  }
   for (const link of Array.from(nav.querySelectorAll<HTMLAnchorElement>('a.md-toc__link'))) {
     const text = document.createElement('span');
     text.className = 'md-toc__text';

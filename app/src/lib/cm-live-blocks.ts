@@ -726,12 +726,34 @@ export function bindDomTableCellEditor(
     return true;
   };
 
+  const scrollCellIntoView = (cell: HTMLTableCellElement): void => {
+    try {
+      cell.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+    } catch {
+      // Fallback for non-standard scrollIntoView implementations.
+    }
+    const scroller = wrap.closest?.('.plain-live-host, .cm-scroller') as HTMLElement | null;
+    if (!scroller || typeof cell.getBoundingClientRect !== 'function' || typeof scroller.getBoundingClientRect !== 'function') {
+      return;
+    }
+    const cellRect = cell.getBoundingClientRect();
+    const scrollerRect = scroller.getBoundingClientRect();
+    if (!(scrollerRect.height > 0) || !(cellRect.height > 0)) return;
+    const pad = 8;
+    if (cellRect.top < scrollerRect.top + pad) {
+      scroller.scrollTop -= scrollerRect.top + pad - cellRect.top;
+    } else if (cellRect.bottom > scrollerRect.bottom - pad) {
+      scroller.scrollTop += cellRect.bottom - (scrollerRect.bottom - pad);
+    }
+  };
+
   const focusCell = (row: number, col: number, caret: 'start' | 'end' = 'end'): boolean => {
     const cell = wrap.querySelector<HTMLTableCellElement>(
       `[data-row="${row}"][data-col="${col}"]`,
     );
     if (!cell || !start(cell)) return false;
     caretToEdge(cell, caret);
+    scrollCellIntoView(cell);
     return true;
   };
 
@@ -2733,23 +2755,29 @@ export function liveBlocksExtension(opts: BlockOptions = {}) {
         : fromLine.number > b && toLineNo < a;
       if (!jumpedOver) return;
       if (widget instanceof TableWidget) {
+        const parsed = parseTable(doc.sliceString(from, to));
+        const targetRow = forward
+          ? HEADER_ROW
+          : parsed && parsed.rows.length > 0
+            ? parsed.rows.length - 1
+            : HEADER_ROW;
         const wrapEl = view.dom.querySelector<HTMLElement>(
           `.cm-live-block--table[data-table-from="${from}"]`,
         );
         const handle = wrapEl ? tableEditorHandles.get(wrapEl) : null;
-        if (handle) {
-          const parsed = parseTable(doc.sliceString(from, to));
-          const targetRow = forward
-            ? HEADER_ROW
-            : parsed && parsed.rows.length > 0
-              ? parsed.rows.length - 1
-              : HEADER_ROW;
-          if (handle.focusCell(targetRow, 0, 'end')) {
-            handled = true;
-            return false;
-          }
+        if (handle && handle.focusCell(targetRow, 0, 'end')) {
+          handled = true;
+          return false;
         }
-        return;
+        requestTableCellFocus(from, targetRow, 0);
+        const edge = doc.line(forward ? a : b);
+        view.dispatch({
+          selection: { anchor: edge.from },
+          scrollIntoView: true,
+          userEvent: 'select',
+        });
+        handled = true;
+        return false;
       }
       const edge = doc.line(forward ? a : b);
       const col = Math.min(sel.head - fromLine.from, edge.length);

@@ -1,9 +1,14 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+  buildHtml2PdfOptions,
   encodePdfOutlineString,
+  populatePdfLinks,
   populatePdfOutline,
+  rasterRowToPageLocation,
   rasterRowToPageNumber,
+  type JsPdfLinkLike,
+  type JsPdfLinkTargetOptions,
   type JsPdfOutlineLike,
 } from './pdf-export';
 
@@ -90,4 +95,97 @@ test('#563 populatePdfOutline patches makeString with UTF-16BE hex string so 0x0
   const hex = outline.makeString!('名不虚传');
   assert.equal(hex, '<FEFF540D4E0D865A4F20>');
   assert.equal(encodePdfOutlineString('01 书籍名'), '<FEFF0030003100204E667C4D540D>');
+});
+
+test('#567 buildHtml2PdfOptions disables html2pdf hyperlinks plugin so #anchor links never become http://tauri.localhost/#... external URLs', () => {
+  const opts = buildHtml2PdfOptions('MyBook');
+  assert.equal(opts.enableLinks, false);
+});
+
+test('#566 & #567 populatePdfLinks maps internal TOC/#anchor links to native PDF page destinations and keeps external links', () => {
+  const breaks = [900, 1800];
+  assert.deepEqual(rasterRowToPageLocation(200, 1000, breaks), {
+    pageNumber: 1,
+    offsetInPagePx: 200,
+  });
+  assert.deepEqual(rasterRowToPageLocation(950, 1000, breaks), {
+    pageNumber: 2,
+    offsetInPagePx: 50,
+  });
+  assert.deepEqual(rasterRowToPageLocation(1900, 1000, breaks), {
+    pageNumber: 3,
+    offsetInPagePx: 100,
+  });
+
+  const recorded: Array<{
+    page: number;
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    options: JsPdfLinkTargetOptions;
+  }> = [];
+  let activePage = 1;
+  const pdf: JsPdfLinkLike = {
+    setPage(p: number) {
+      activePage = p;
+    },
+    link(x, y, w, h, options) {
+      recorded.push({ page: activePage, x, y, w, h, options });
+    },
+    internal: {
+      getNumberOfPages: () => 3,
+    },
+  };
+
+  populatePdfLinks(
+    pdf,
+    [
+      // TOC entry on Page 1 jumping to Chapter 1 on Page 2 (y = 950 -> offset 50px on page 2)
+      {
+        kind: 'internal',
+        rectRaster: { x: 100, y: 200, width: 600, height: 30 },
+        targetRasterY: 950,
+      },
+      // TOC entry on Page 1 jumping to Chapter 2 on Page 3 (y = 1900 -> offset 100px on page 3)
+      {
+        kind: 'internal',
+        rectRaster: { x: 100, y: 250, width: 600, height: 30 },
+        targetRasterY: 1900,
+      },
+      // External HTTPS link on Page 2 (y = 1100 -> offset 200px on page 2)
+      {
+        kind: 'external',
+        rectRaster: { x: 150, y: 1100, width: 200, height: 24 },
+        url: 'https://solomd.app/docs',
+      },
+    ],
+    {
+      canvasWidth: 1900,
+      pageHeightPx: 1000,
+      innerWidthMm: 190,
+      marginTopMm: 10,
+      marginLeftMm: 10,
+    },
+    breaks,
+  );
+
+  assert.equal(recorded.length, 3);
+  // 1st TOC link: on page 1, jumps to pageNumber 2 (no external url!)
+  assert.equal(recorded[0].page, 1);
+  assert.equal(recorded[0].options.url, undefined);
+  assert.equal(recorded[0].options.pageNumber, 2);
+  assert.equal(recorded[0].x, 20); // 10mm + 100 * 0.1mm
+  assert.equal(recorded[0].y, 30); // 10mm + 200 * 0.1mm
+  assert.equal(recorded[0].options.top, 13); // 10mm + 50 * 0.1mm - 2mm
+
+  // 2nd TOC link: on page 1, jumps to pageNumber 3
+  assert.equal(recorded[1].page, 1);
+  assert.equal(recorded[1].options.pageNumber, 3);
+  assert.equal(recorded[1].options.top, 18); // 10mm + 100 * 0.1mm - 2mm
+
+  // 3rd link: external URL on page 2
+  assert.equal(recorded[2].page, 2);
+  assert.equal(recorded[2].options.url, 'https://solomd.app/docs');
+  assert.equal(recorded[2].y, 30); // 10mm + (1100 - 900) * 0.1mm
 });

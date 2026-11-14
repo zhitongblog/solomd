@@ -24,6 +24,10 @@ merge:
         CODE_SIGN_STYLE: Manual
         CODE_SIGN_IDENTITY: Apple Distribution
         PROVISIONING_PROFILE_SPECIFIER: ${IOS_SIGNING_PROFILE_NAME}
+        # #565 — Ensure Universal (iPhone + iPad) device family so iPhone Duo
+        # (inner regular-width display) and iPadOS never fall back to iPhone-only
+        # compatibility mode when linked against the iOS 27+ SDK.
+        TARGETED_DEVICE_FAMILY: "1,2"
 
   targets:
     solomd_iOS:

@@ -62,6 +62,7 @@ app/src-tauri/*.provisionprofile
 
 # Android distribution artifacts (APK + AAB ship via GitHub Releases)
 dist-android/
+dist-ios/
 dist-msix/
 dist/
 
