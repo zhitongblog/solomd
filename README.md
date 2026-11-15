@@ -32,7 +32,7 @@
 
 Your notes live in a plain folder. **SoloMD gives you Typora’s quiet, centered writing feel, Obsidian’s local-first vault links, free encrypted sync across all 5 platforms, built-in 9-format export, and zero-config local AI + a 16-tool MCP server.**
 
-Built on Tauri 2 + Vue 3 + CodeMirror 6 + Rust. Universal macOS `.dmg` ~32 MB (~10–15 MB per single-arch desktop installer). Free, MIT-licensed, no account, no subscription, no plugin tax, no SoloMD-hosted servers. Your notes, AI keys, embeddings index, and git history stay on your device.
+Built on Tauri 2 + Vue 3 + CodeMirror 6 + Rust. ~14 MB on Windows, ~16 MB on Linux (`.deb`/`.rpm`), ~21 MB on Android (`arm64`), and ~30 MB for the dual-arch macOS Universal `.dmg`. Free, MIT-licensed, no account, no subscription, no plugin tax, no SoloMD-hosted servers. Your notes, AI keys, embeddings index, and git history stay on your device.
 
 ## What's new in v5.0 – v5.2
 
@@ -43,7 +43,7 @@ Built on Tauri 2 + Vue 3 + CodeMirror 6 + Rust. Universal macOS `.dmg` ~32 MB (~
 - **Lightweight declarative JSON extensions (`v5.2`)** — Drop simple JSON manifests into `<workspace>/.solomd/plugins/*.json` (or manage via *Settings → Extensions*) to add custom `/` slash templates, regex/template Command Palette transforms, and one-click Webhook publishers — zero Electron plugin bloat.
 - **CLI v2 & 16-tool MCP server (`v5.2`)** — `solomd open / new / list / search / export / daily / agent / mcp` from your terminal, plus `solomd-mcp` with multi-vault `--workspace` federation.
 
-## Three pillars in one ~15 MB app
+## Three pillars in one lightweight native app
 
 1. **Calm writing & publishing.** Pure WYSIWYG + Live Preview + Split view, floating selection formatting bar, Focus & Typewriter modes, fullscreen Slideshow (`⌘⌥P`), Vim mode, KaTeX math + Mermaid diagrams, image paste to `_assets/`, built-in 9-format export, and `.docx / .pdf / .xlsx / .pptx` drag-and-drop import to Markdown. First-class CJK encoding detection (UTF-8 / GBK / Big5 / Shift-JIS), character counts, and Simplified ↔ Traditional conversion.
 2. **Connected local vault across 5 platforms.** Native apps for **macOS, Windows (x64 + ARM64), Linux (x64 + ARM64), iOS/iPadOS, and Android** with cross-device session restore. `[[Wikilinks]]`, backlinks, YAML frontmatter properties, 100% offline semantic RAG search (`⌘⇧F`), AutoGit snapshot on every `⌘S` (libgit2 built in), and free vault-scoped encrypted sync.
@@ -173,7 +173,7 @@ winget install solomd
 | License | **MIT (Open Source)** | Proprietary (free) | Paid ($14.99) | MIT (dormant since 2023) |
 | Stack | Tauri 2 (Rust + native WebView) | Electron | Electron | Electron |
 | Platforms | **macOS · Win · Linux · iOS · Android** | macOS · Win · Linux · iOS · Android | macOS · Win · Linux | macOS · Win · Linux |
-| Installer | **~15 MB** (~32 MB universal Mac) | ~110 MB | ~70 MB | ~80 MB |
+| Installer | **~14 MB (Win) / ~16 MB (Linux) / ~30 MB (Mac Universal)** | ~110 MB | ~70 MB | ~80 MB |
 | **Pure WYSIWYG + Live Preview + Split** | **✅ All 3 modes** | 🟡 Live Preview only | ✅ | ✅ |
 | **Built-in 9-format export (no Pandoc install)** | **✅ v5.2** | 🟡 PDF only (plugins for others) | 🟡 Requires external Pandoc | ❌ |
 | **Free vault-scoped cloud & Git sync** | **✅ iCloud / OneDrive / WebDAV / S3 / Git** | ❌ ($96/yr Obsidian Sync) | ❌ | ❌ |

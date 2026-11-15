@@ -33,7 +33,7 @@
 
 你的笔记依然是一个普通的本地文件夹。**SoloMD 同时给你 Typora 般安静居中的写作手感、Obsidian 式的本地双链知识库、不收月租的五端加密同步、开箱直出的 9 格式导出中心，以及零配置本地 AI 与 16 工具 MCP 服务。**
 
-基于 Tauri 2 + Vue 3 + CodeMirror 6 + Rust 构建。单架构安装包仅约 10–15 MB（macOS 双架构通用包约 32 MB）。MIT 开源、无账号、无订阅、无插件税、无 SoloMD 中转服务器。你的笔记、API 密钥、语义嵌入索引与 Git 历史全部留在你自己的设备上。
+基于 Tauri 2 + Vue 3 + CodeMirror 6 + Rust 构建。Windows 安装包约 14 MB、Linux (`.deb`/`.rpm`) 约 16 MB、Android (`arm64`) 约 21 MB、macOS 双架构通用包 (`Universal .dmg`) 约 30 MB。MIT 开源、无账号、无订阅、无插件税、无 SoloMD 中转服务器。你的笔记、API 密钥、语义嵌入索引与 Git 历史全部留在你自己的设备上。
 
 ## v5.0 – v5.2 核心升级
 
@@ -44,7 +44,7 @@
 - **轻量级声明式 JSON 扩展 (`v5.2`)** —— 只需在 `<workspace>/.solomd/plugins/*.json` 放入简单的 JSON 文件（或在「设置 → 扩展」中管理），即可扩展自定义 `/` 斜杠模板、命令面板正则/模板文本转换与一键 Webhook 发布。
 - **CLI v2 与 16 工具 MCP 服务 (`v5.2`)** —— 终端命令 `solomd open / new / daily / list / search / export / agent / mcp`，搭配支持多知识库 Federation 的 `solomd-mcp`。
 
-## 一款 15 MB 应用里的三大支柱
+## 一款轻量原生应用里的三大支柱
 
 1. **纯粹写作与出版。** 纯正所见即所得 + 实时预览 + 分屏视图、选中悬浮格式条、焦点模式 + 打字机模式、全屏幻灯片演讲模式（`⌘⌥P`）、Vim 模式、KaTeX 数学公式 + Mermaid 图表、截图粘贴自动存入 `_assets/`、内置 9 格式导出中心，以及拖入 `.docx / .pdf / .xlsx / .pptx` 直接转为 Markdown。中文一等公民：自动编码识别（UTF-8 / GBK / Big5 / Shift-JIS）、CJK 精准字数统计与 OpenCC 简繁转换。
 2. **五端同步的本地双链知识库。** 原生覆盖 **macOS、Windows（x64 + ARM64）、Linux（x64 + ARM64）、iOS/iPadOS 与 Android**，支持跨设备标签页会话恢复。内置 `[[双链]]`、反向链接、YAML 属性面板、100% 离线运行的本地语义搜索（`⌘⇧F`）、每次 `⌘S` 自动提交的 AutoGit 版本历史（内置 libgit2），以及按知识库隔离的免费加密同步。
@@ -153,7 +153,7 @@ winget install solomd
 | 协议 | **MIT 开源** | 闭源专有（免费） | 闭源付费（$14.99） | MIT（2023 年起停更） |
 | 技术栈 | Tauri 2（Rust + 系统原生 WebView） | Electron | Electron | Electron |
 | 平台 | **macOS · Win · Linux · iOS · Android** | macOS · Win · Linux · iOS · Android | 仅桌面端 | 仅桌面端 |
-| 安装包 | **~15 MB**（Mac 双架构 ~32 MB） | ~110 MB | ~70 MB | ~80 MB |
+| 安装包 | **~14 MB (Win) / ~16 MB (Linux) / ~30 MB (Mac 通用包)** | ~110 MB | ~70 MB | ~80 MB |
 | **纯正所见即所得 + 实时预览 + 分屏** | **✅ 三种模式全齐** | 🟡 仅实时预览 | ✅ | ✅ |
 | **内置 9 格式直出导出（免装 Pandoc）** | **✅ v5.2** | 🟡 仅 PDF（其余靠插件） | 🟡 需自行安装 Pandoc | ❌ |
 | **按知识库隔离的免费云盘与 Git 同步** | **✅ iCloud / OneDrive / 坚果云 / WebDAV / S3 / Git** | ❌（官方同步 $96/年） | ❌ | ❌ |

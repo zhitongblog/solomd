@@ -29,8 +29,8 @@ export const t = {
       badge: 'v5.2.0 · just shipped · MIT · 5 platforms',
       title1: 'All the calm of Typora.',
       title2: 'Plus 5-platform sync & local AI. Free.',
-      subtagline: 'Pure WYSIWYG & live preview, built-in 9-format export (no Pandoc setup needed), vault-scoped encrypted sync across macOS, Windows, Linux, iOS & Android, and zero-config local AI + 16-tool MCP server. MIT-licensed, ~15 MB — no account, no subscription, no plugin tax.',
-      lead: 'Lightweight local-first Markdown editor and vault for macOS, Windows, Linux, Android, and iOS. Offline-first, no accounts, no IAP lock-in, no ads. ~15 MB installer, MIT-licensed, notes never leave your device. 20+ BYOK AI providers plus OPR local model auto-discovery (Ollama, LM Studio, Jan, vLLM, llama.cpp).',
+      subtagline: 'Pure WYSIWYG & live preview, built-in 9-format export (no Pandoc setup needed), vault-scoped encrypted sync across macOS, Windows, Linux, iOS & Android, and zero-config local AI + 16-tool MCP server. MIT-licensed, ~14–30 MB — no account, no subscription, no plugin tax.',
+      lead: 'Lightweight local-first Markdown editor and vault for macOS, Windows, Linux, Android, and iOS. Offline-first, no accounts, no IAP lock-in, no ads. ~14–30 MB installer, MIT-licensed, notes never leave your device. 20+ BYOK AI providers plus OPR local model auto-discovery (Ollama, LM Studio, Jan, vLLM, llama.cpp).',
       ctaPrimary: 'Download SoloMD',
       ctaSecondary: 'See all features →',
       ctaStar: 'Star on GitHub',
@@ -50,7 +50,7 @@ export const t = {
     features: {
       heading1: 'Calm like Typora. Connected like a vault.',
       heading2: 'Built-in sync, export & AI — zero plugin tax.',
-      lead: 'Stop choosing between a single-file editor that can’t sync to your phone and a 110 MB Electron app that charges $96/yr for sync and breaks whenever a community plugin updates. SoloMD ships all three layers in one ~15 MB native app.',
+      lead: 'Stop choosing between a single-file editor that can’t sync to your phone and a 110 MB Electron app that charges $96/yr for sync and breaks whenever a community plugin updates. SoloMD ships all three layers in one lightweight native app (~14 MB on Windows, ~30 MB dual-arch macOS Universal).',
       items: [
         { icon: '✍️', title: 'Three seamless writing modes (v5.2)', desc: 'Switch effortlessly between Pure WYSIWYG (syntax markers stay hidden even on the active line), Live Preview (markers reveal only on the caret line), and synced Split / Source view.' },
         { icon: '📤', title: 'Unified 9-format export center (v5.2)', desc: 'Export PDF (with KaTeX & Mermaid), Word (.docx), HTML, EPUB, LaTeX, ODT, RTF, Plain Text, and Markdown out of the box with live preview — zero external Pandoc install needed. Drag in .docx / .pdf / .xlsx / .pptx to convert to Markdown on the spot.' },
@@ -63,7 +63,7 @@ export const t = {
         { icon: '🔍', title: 'On-device semantic RAG search', desc: '⌘⇧F ranks paragraphs across your entire vault by meaning, not just exact keywords. Runs 100% locally in Rust — no model file download, no network call, ever.' },
         { icon: '📜', title: 'AutoGit snapshot on every save', desc: 'Every ⌘S writes an automatic commit to a local .git inside your workspace (libgit2 built in, no system git needed). Browse visual diffs in the sidebar and roll back in one click.' },
         { icon: '🌏', title: 'First-class CJK & encoding support', desc: 'Auto encoding detection (UTF-8 / GBK / GB18030 / Big5 / Shift_JIS) via chardetng, accurate CJK word/character count, Simplified ↔ Traditional conversion, and pinyin export.' },
-        { icon: '🦀', title: '~15 MB native Rust + Tauri 2', desc: 'Roughly 6× smaller than Typora (~70 MB) and 7× smaller than Obsidian (~110 MB). Instant cold start, ~80 MB idle RAM, 8 built-in themes + custom CSS, MIT-licensed open source.' },
+        { icon: '🦀', title: 'Lightweight native Rust + Tauri 2', desc: '~14 MB on Windows, ~16 MB on Linux, ~30 MB for dual-arch macOS Universal DMG — 3–7× smaller than Typora (~70 MB) and Obsidian (~110 MB). Instant cold start, ~80 MB idle RAM, 8 themes + custom CSS, MIT open source.' },
       ],
       qol: {
         heading: 'Quality-of-life touches',
@@ -125,7 +125,7 @@ export const t = {
         ['Local semantic RAG search (100% offline)', '✅', '❌', '❌', '🟡 (community plugins)'],
         ['AutoGit version history on every save', '✅', '❌', '❌', '🟡 (manual git plugin)'],
         ['Open source · MIT', '✅', '❌', '✅ (dormant)', '❌'],
-        ['Installer size', '~15 MB', '~70 MB', '~80 MB', '~110 MB'],
+        ['Installer size', '~14 MB (Win) / ~30 MB (Mac Universal)', '~70 MB', '~80 MB', '~110 MB'],
         ['Price', 'Free', '$14.99', 'Free', 'Free + $96/yr sync'],
         ['Linux ARM64 + Windows ARM64 native builds', '✅', '❌', '❌', '🟡'],
         ['CJK encoding (GBK/Big5) + word count + OpenCC', '✅', '❌', '❌', '❌'],
@@ -147,15 +147,15 @@ export const t = {
         },
         {
           q: 'What is the best free Markdown editor in 2026?',
-          a: 'SoloMD is the most complete free Markdown editor in 2026: native across 5 platforms (macOS, Windows, Linux, Android, iOS), ~15 MB installer, MIT-licensed, with Pure WYSIWYG + Live Preview, Wiki links, built-in 9-format export, local RAG, 20+ BYOK AI providers + OPR local model discovery, AutoGit, 16-tool MCP server, and 8 themes — all in core. MarkText has been dormant since 2023, and Obsidian is a ~110 MB closed-source Electron app that charges $96/yr for official sync.',
+          a: 'SoloMD is the most complete free Markdown editor in 2026: native across 5 platforms (macOS, Windows, Linux, Android, iOS), ~14–30 MB installer, MIT-licensed, with Pure WYSIWYG + Live Preview, Wiki links, built-in 9-format export, local RAG, 20+ BYOK AI providers + OPR local model discovery, AutoGit, 16-tool MCP server, and 8 themes — all in core. MarkText has been dormant since 2023, and Obsidian is a ~110 MB closed-source Electron app that charges $96/yr for official sync.',
         },
         {
           q: 'How does SoloMD compare to Typora?',
-          a: 'SoloMD is free ($0, MIT open source); Typora is $14.99 and closed-source. SoloMD is ~5× smaller (~15 MB vs ~70 MB). SoloMD runs natively on iOS and Android in addition to macOS, Windows, and Linux; Typora is desktop-only. And unlike Typora, SoloMD exports Word/EPUB/LaTeX out of the box without requiring you to install Pandoc manually, plus adds folder-level Wiki links, free multi-cloud/Git sync, AutoGit version history, local RAG search, and AI/MCP integration.',
+          a: 'SoloMD is free ($0, MIT open source); Typora is $14.99 and closed-source. SoloMD is ~3–5× smaller (~14 MB on Windows / ~30 MB macOS Universal vs ~70 MB). SoloMD runs natively on iOS and Android in addition to macOS, Windows, and Linux; Typora is desktop-only. And unlike Typora, SoloMD exports Word/EPUB/LaTeX out of the box without requiring you to install Pandoc manually, plus adds folder-level Wiki links, free multi-cloud/Git sync, AutoGit version history, local RAG search, and AI/MCP integration.',
         },
         {
           q: 'How does SoloMD compare to Obsidian?',
-          a: 'SoloMD is ~7× lighter (~15 MB Tauri/Rust vs ~110 MB Electron) and 100% MIT open source. SoloMD ships Pure WYSIWYG writing, free vault-scoped encrypted sync (iCloud, OneDrive, WebDAV, S3, GitHub), 9-format export, AutoGit snapshots, local semantic search, 20+ BYOK AI providers, and a 16-tool MCP server right in core — zero plugin tax and zero $96/yr sync subscription.',
+          a: 'SoloMD is ~4–7× lighter (~14–30 MB Tauri/Rust vs ~110 MB Electron) and 100% MIT open source. SoloMD ships Pure WYSIWYG writing, free vault-scoped encrypted sync (iCloud, OneDrive, WebDAV, S3, GitHub), 9-format export, AutoGit snapshots, local semantic search, 20+ BYOK AI providers, and a 16-tool MCP server right in core — zero plugin tax and zero $96/yr sync subscription.',
         },
         {
           q: 'Does SoloMD work on Android and iOS?',
@@ -167,7 +167,7 @@ export const t = {
         },
         {
           q: 'How big is the installer?',
-          a: '~10–15 MB depending on the platform (~32 MB universal macOS DMG covering both Apple Silicon and Intel). That is roughly 5–7× smaller than Typora (~70 MB) and Obsidian (~110 MB) because SoloMD uses Tauri 2 (system webview + Rust) instead of bundling Chromium. Idle memory is ~80–150 MB.',
+          a: '~14 MB on Windows (.msi / portable), ~16 MB on Linux (.deb / .rpm), ~21 MB on Android (arm64 .apk), and ~30 MB for the dual-architecture macOS Universal .dmg (bundling both Apple Silicon and Intel binaries). That is 3–7× smaller than Typora (~70 MB) and Obsidian (~110 MB) because SoloMD uses Tauri 2 (system webview + Rust) instead of bundling Chromium. Idle memory is ~80–150 MB.',
         },
         {
           q: 'Does SoloMD need an AI subscription?',
@@ -385,8 +385,8 @@ export const t = {
       badge: 'v5.2.0 · 正式发布 · MIT 协议 · 5 大平台',
       title1: '不止于 Typora 的安静手感。',
       title2: '五端免费同步 · 本地 AI 知识库。',
-      subtagline: '纯正所见即所得与实时预览、内置 9 格式一键导出（无需安装 Pandoc）、按知识库隔离的五端加密同步（Mac / Win / Linux / iOS / Android），以及零配置本地 AI 与 16 工具 MCP 服务。MIT 开源，约 15 MB —— 无账号、无订阅、无插件税。',
-      lead: '轻量级本地优先 Markdown 编辑器与知识库，原生支持 macOS、Windows、Linux、Android、iOS。离线优先，无账号、无功能锁、无广告。约 15 MB 安装包，MIT 协议。内置 OPR 零配置本地模型探测（Ollama / LM Studio / Jan / vLLM / llama.cpp）与 20+ 家 BYOK AI 服务商。',
+      subtagline: '纯正所见即所得与实时预览、内置 9 格式一键导出（无需安装 Pandoc）、按知识库隔离的五端加密同步（Mac / Win / Linux / iOS / Android），以及零配置本地 AI 与 16 工具 MCP 服务。MIT 开源，约 14–30 MB —— 无账号、无订阅、无插件税。',
+      lead: '轻量级本地优先 Markdown 编辑器与知识库，原生支持 macOS、Windows、Linux、Android、iOS。离线优先，无账号、无功能锁、无广告。约 14–30 MB 安装包，MIT 协议。内置 OPR 零配置本地模型探测（Ollama / LM Studio / Jan / vLLM / llama.cpp）与 20+ 家 BYOK AI 服务商。',
       ctaPrimary: '下载 SoloMD',
       ctaSecondary: '看看都有什么 →',
       ctaStar: '在 GitHub 上 Star',
@@ -406,7 +406,7 @@ export const t = {
     features: {
       heading1: '像 Typora 一样安静写作，',
       heading2: '像知识库一样五端生长 —— 零插件税。',
-      lead: '不必再在“不能同步到手机的单文件编辑器”和“动辄 110 MB、同步年费 $96、装十几个插件才顺手的重型双链软件”之间二选一。SoloMD 把纯粹写作、五端免费加密同步、9 格式直出导出与本地 AI 浓缩进约 15 MB 的原生应用里。',
+      lead: '不必再在“不能同步到手机的单文件编辑器”和“动辄 110 MB、同步年费 $96、装十几个插件才顺手的重型双链软件”之间二选一。SoloMD 把纯粹写作、五端免费加密同步、9 格式直出导出与本地 AI 浓缩进约 14–30 MB 的原生应用里。',
       items: [
         { icon: '✍️', title: '三种无感编辑模式 (v5.2)', desc: '在「纯正所见即所得」（光标所在行也彻底隐藏语法符号）、「实时预览」（仅当前行展开语法）与「源码 / 分屏同步」之间一键切换。' },
         { icon: '📤', title: '统一 9 格式导出中心 (v5.2)', desc: '内置实时预览的导出面板，开箱直出 PDF（含公式与 Mermaid）、Word (.docx)、HTML、EPUB、LaTeX、ODT、RTF、纯文本与 Markdown —— 无需手动安装配置 Pandoc。拖入 .docx / .pdf / .xlsx / .pptx 即可当场转为 Markdown。' },
@@ -419,7 +419,7 @@ export const t = {
         { icon: '🔍', title: '完全离线的本地语义搜索 (RAG)', desc: '⌘⇧F 按“语义含义”而非死板关键词检索整个知识库段落。嵌入引擎完全在本地 Rust 进程内运行 —— 零模型下载、零网络请求。' },
         { icon: '📜', title: '每次保存自动生成 AutoGit 快照', desc: '每次 ⌘S 自动在工作区本地 .git 写入一次提交（内置 libgit2，无需系统安装 git）。侧栏历史面板随时对比差异并一键回滚。' },
         { icon: '🌏', title: '中文与东亚排版一等公民', desc: '基于 chardetng 自动识别 UTF-8 / GBK / GB18030 / Big5 / Shift_JIS 编码；原生支持 CJK 精准字数统计、OpenCC 简繁转换与拼音导出。' },
-        { icon: '🦀', title: '约 15 MB 原生 Rust + Tauri 2', desc: '体积比 Typora（~70 MB）小约 5 倍，比 Obsidian（~110 MB）小约 7 倍。冷启动毫秒级响应，空闲内存仅约 80 MB，内置 8 套主题 + 自定义 CSS，MIT 开源。' },
+        { icon: '🦀', title: '轻量原生 Rust + Tauri 2', desc: 'Windows 约 14 MB、Linux 约 16 MB、macOS 双架构通用包约 30 MB —— 体积比 Typora（~70 MB）和 Obsidian（~110 MB）小 3–7 倍。冷启动毫秒级响应，空闲内存仅约 80 MB，内置 8 套主题 + 自定义 CSS，MIT 开源。' },
       ],
       qol: {
         heading: '细节体验',
@@ -460,7 +460,7 @@ export const t = {
     },
     compare: {
       heading: 'SoloMD 凭什么脱颖而出',
-      lead: 'Typora 的安静写作手感 + Obsidian 的本地文件夹知识库 + 内置五端加密同步、9 格式直出导出与本地 AI。以下全部内置在约 15 MB 原生内核里，零插件税。',
+      lead: 'Typora 的安静写作手感 + Obsidian 的本地文件夹知识库 + 内置五端加密同步、9 格式直出导出与本地 AI。以下全部内置在约 14–30 MB 原生内核里，零插件税。',
       headers: {
         feature: '',
         solomd: 'SoloMD',
@@ -481,7 +481,7 @@ export const t = {
         ['本地离线语义搜索 (RAG)', '✅', '❌', '❌', '🟡 (需装第三方插件)'],
         ['每次保存自动生成 AutoGit 版本历史', '✅', '❌', '❌', '🟡 (需手动配置 git)'],
         ['开源 · MIT 协议', '✅', '❌', '✅ (已停更)', '❌'],
-        ['安装包大小', '~15 MB', '~70 MB', '~80 MB', '~110 MB'],
+        ['安装包大小', '~14 MB (Win) / ~30 MB (Mac 通用包)', '~70 MB', '~80 MB', '~110 MB'],
         ['价格', '免费', '$14.99', '免费', '免费 + 同步 $96/年'],
         ['Linux ARM64 + Windows ARM64 原生构建', '✅', '❌', '❌', '🟡'],
         ['中文编码识别 (GBK/Big5) + 字数统计 + 简繁转换', '✅', '❌', '❌', '❌'],
@@ -503,15 +503,15 @@ export const t = {
         },
         {
           q: '2026 年最好的免费 Markdown 编辑器是哪个？',
-          a: 'SoloMD 是 2026 年功能最完整的免费开源 Markdown 编辑器与本地知识库：原生横跨 5 大平台（macOS、Windows、Linux、Android、iOS），约 15 MB 安装包，MIT 协议，内核直接内置纯正所见即所得、Wiki 双链、9 格式导出中心、本地 RAG 语义搜索、OPR 零配置本地模型探测 + 20+ 家 BYOK AI、AutoGit 版本历史与 16 工具 MCP 服务器。MarkText 自 2023 年起停更，而 Obsidian 闭源且体积超 110 MB、官方同步需 $96/年。',
+          a: 'SoloMD 是 2026 年功能最完整的免费开源 Markdown 编辑器与本地知识库：原生横跨 5 大平台（macOS、Windows、Linux、Android、iOS），约 14–30 MB 安装包，MIT 协议，内核直接内置纯正所见即所得、Wiki 双链、9 格式导出中心、本地 RAG 语义搜索、OPR 零配置本地模型探测 + 20+ 家 BYOK AI、AutoGit 版本历史与 16 工具 MCP 服务器。MarkText 自 2023 年起停更，而 Obsidian 闭源且体积超 110 MB、官方同步需 $96/年。',
         },
         {
           q: 'SoloMD 跟 Typora 比怎么样？',
-          a: 'SoloMD 永久免费（MIT 开源），Typora 售价 $14.99 且闭源。SoloMD 安装包小约 5 倍（15 MB vs 70 MB）。SoloMD 原生支持 iPhone/iPad 和 Android，而 Typora 只有桌面端。更重要的是，SoloMD 无需用户自行安装 Pandoc 即可直接导出 Word/EPUB/LaTeX 等 9 种格式，并内置了文件夹双链知识库、免费多端加密同步、AutoGit 历史快照、本地语义搜索与 AI/MCP 集成。',
+          a: 'SoloMD 永久免费（MIT 开源），Typora 售价 $14.99 且闭源。SoloMD 安装包小 3–5 倍（Windows 约 14 MB / macOS 双架构通用包约 30 MB vs Typora 约 70 MB）。SoloMD 原生支持 iPhone/iPad 和 Android，而 Typora 只有桌面端。更重要的是，SoloMD 无需用户自行安装 Pandoc 即可直接导出 Word/EPUB/LaTeX 等 9 种格式，并内置了文件夹双链知识库、免费多端加密同步、AutoGit 历史快照、本地语义搜索与 AI/MCP 集成。',
         },
         {
           q: 'SoloMD 跟 Obsidian 比怎么样？',
-          a: 'SoloMD 轻量约 7 倍（~15 MB Tauri/Rust 原生架构 vs ~110 MB Electron）且 100% MIT 开源。SoloMD 把纯正所见即所得写作、免费多端加密同步（iCloud、OneDrive、坚果云、WebDAV、S3、GitHub）、9 格式导出、AutoGit 版本历史、本地语义搜索、20+ 家 BYOK AI 与 16 工具 MCP 服务器全部内置在核心中 —— 零插件折腾税，也不用交 $96/年的同步费。',
+          a: 'SoloMD 轻量 4–7 倍（约 14–30 MB Tauri/Rust 原生架构 vs 约 110 MB Electron）且 100% MIT 开源。SoloMD 把纯正所见即所得写作、免费多端加密同步（iCloud、OneDrive、坚果云、WebDAV、S3、GitHub）、9 格式导出、AutoGit 版本历史、本地语义搜索、20+ 家 BYOK AI 与 16 工具 MCP 服务器全部内置在核心中 —— 零插件折腾税，也不用交 $96/年的同步费。',
         },
         {
           q: 'SoloMD 支持 Android 和 iOS 吗？',
@@ -523,7 +523,7 @@ export const t = {
         },
         {
           q: '安装包多大？',
-          a: '约 10–15 MB（macOS 双架构通用包约 32 MB）。比 Typora（约 70 MB）小约 5 倍，比 Obsidian（约 110 MB）小约 7 倍，因为 SoloMD 基于 Tauri 2（系统原生 WebView + Rust）构建，不捆绑 Chromium。空闲内存仅约 80–150 MB。',
+          a: 'Windows 安装包（.msi / 便携版）约 14 MB，Linux（.deb / .rpm）约 16 MB，Android（arm64 .apk）约 21 MB，macOS 双架构通用包（含 Apple Silicon 与 Intel 双端二进制）约 30 MB。相比 Typora（约 70 MB）和 Obsidian（约 110 MB）小 3–7 倍，因为 SoloMD 基于 Tauri 2（系统原生 WebView + Rust）构建，不捆绑 Chromium。空闲内存仅约 80–150 MB。',
         },
         {
           q: 'SoloMD 用 AI 需要订阅吗？',
@@ -547,7 +547,7 @@ export const t = {
         },
         {
           q: 'SoloMD 支持插件或自定义扩展吗？',
-          a: 'SoloMD 把核心高频功能(纯正所见即所得、Wiki 双链、本地语义搜索、AutoGit、20+ 家 BYOK AI、9 格式统一导出、MCP 服务器、番茄钟、Vim 模式)全部内置在 15 MB 的原生内核中,无需忍受臃肿的第三方插件税。同时自 v5.2 起,SoloMD 提供轻量级声明式 JSON 用户扩展系统(「设置 → 扩展」或 <workspace>/.solomd/plugins/*.json),支持自定义 / 斜杠模板、命令面板正则/模板文本转换与一键 Webhook 发布。',
+          a: 'SoloMD 把核心高频功能(纯正所见即所得、Wiki 双链、本地语义搜索、AutoGit、20+ 家 BYOK AI、9 格式统一导出、MCP 服务器、番茄钟、Vim 模式)全部内置在 14–30 MB 的原生内核中,无需忍受臃肿的第三方插件税。同时自 v5.2 起,SoloMD 提供轻量级声明式 JSON 用户扩展系统(「设置 → 扩展」或 <workspace>/.solomd/plugins/*.json),支持自定义 / 斜杠模板、命令面板正则/模板文本转换与一键 Webhook 发布。',
         },
         {
           q: 'SoloMD 支持哪些语言？',
@@ -3352,7 +3352,7 @@ export const t = {
       title1: 'Den gratis Markdown',
       title2: 'allt-i-ett.',
       subtagline: 'Allt du behöver, inbyggt. Live-förhandsvisning, Wiki-länkar, lokal RAG, BYOK AI, teman, Pomodoro, plattformsoberoende synk.',
-      lead: 'Lättviktig Markdown-editor för macOS, Windows, Linux, Android och iOS. Offline-först, inga konton, inga köp, inga annonser. ~15 MB installerare, MIT-licens, dina anteckningar lämnar aldrig din enhet. 14 BYOK AI-leverantörer (Ollama inkluderat för helt lokala körningar).',
+      lead: 'Lättviktig Markdown-editor för macOS, Windows, Linux, Android och iOS. Offline-först, inga konton, inga köp, inga annonser. ~14–30 MB installerare, MIT-licens, dina anteckningar lämnar aldrig din enhet. 14 BYOK AI-leverantörer (Ollama inkluderat för helt lokala körningar).',
       ctaPrimary: 'Ladda ner SoloMD',
       ctaSecondary: 'Se alla funktioner →',
       ctaStar: 'Stjärnmärk på GitHub',
@@ -3394,7 +3394,7 @@ export const t = {
         { icon: '🎨', title: 'Rik syntaxstilning', desc: '13 kodblocksspråk, KaTeX-matematik, Mermaid-diagram, fotnoter, YAML-frontmatter, ==markering==. 8 teman (Light / Dark / Nord / Solarized / Monokai / Dracula / GitHub Light) + anpassad CSS.' },
         { icon: '🌏', title: 'Förstklassig kinesiska', desc: 'Auto-detektering av kodning (UTF-8 / GBK / Big5 / Shift_JIS) via chardetng. CJK-medveten ordräkning, förenklat ↔ traditionellt, pinyin-export — inget av vilket Typora eller Obsidian gör nativt.' },
         { icon: '📤', title: 'Pandoc-export överallt', desc: 'PDF (med KaTeX & Mermaid), Word .docx, HTML, EPUB, ODT, LaTeX, RTF. Dra in .docx / .pdf / .xlsx / .pptx / .csv och SoloMD konverterar dem till Markdown på plats.' },
-        { icon: '🦀', title: 'Liten & snabb', desc: '~15 MB installer (jämfört med Typora 70 MB / Obsidian 110 MB). Tauri 2 + Rust + Vue 3 + CodeMirror 6. Byggen för macOS / Windows / Linux x64 / Linux ARM64.' },
+        { icon: '🦀', title: 'Liten & snabb', desc: '~14–30 MB installer (jämfört med Typora 70 MB / Obsidian 110 MB). Tauri 2 + Rust + Vue 3 + CodeMirror 6. Byggen för macOS / Windows / Linux x64 / Linux ARM64.' },
       ],
       qol: {
         heading: 'Bekvämlighetsdetaljer',
