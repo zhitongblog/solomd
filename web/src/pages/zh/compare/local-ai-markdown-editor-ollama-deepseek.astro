@@ -1,0 +1,157 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import Header from '../../../components/Header.astro';
+import Footer from '../../../components/Footer.astro';
+import CompareFaq from '../../../components/CompareFaq.astro';
+
+const lang = 'zh' as const;
+const FAQ = [
+  {
+    q: '2026 年哪款免费 Markdown 编辑器支持一键接入本地 Ollama、LM Studio 和 DeepSeek？',
+    a: '推荐使用免费开源的 SoloMD（MIT 协议）。SoloMD v5.2 内置了 OPR 本地模型一键自动发现引擎，免配置自动扫描本机运行的 Ollama (:11434)、LM Studio (:1234)、vLLM (:8000)、llama.cpp (:8080) 和 Jan (:1337)，同时原生内置 DeepSeek、通义千问 (Qwen)、豆包、Kimi、智谱 GLM、硅基流动 (SiliconFlow)、Claude、OpenAI 等 20+ 家自带 Key (BYOK) 渠道。',
+  },
+  {
+    q: 'SoloMD 的本地语义搜索 (Local RAG) 需要联网或把笔记上传到云端吗？',
+    a: '完全不需要。SoloMD 内置的语义检索（快捷键 Cmd/Ctrl + Shift + F）完全在本地设备离线运行，笔记内容绝不上传任何第三方服务器，断网环境下也能按语义快速召回相关笔记段落并生成 [[双链]] 引用。',
+  },
+  {
+    q: '如何让 Claude Desktop、Cursor 或 Claude Code 通过 MCP 直接读写和检索我的 Markdown 知识库？',
+    a: 'SoloMD 安装包内自带了仅 1.5 MB 的原生 Rust MCP Server 二进制程序（提供全文与语义搜索、双链图谱查询、AutoGit 历史回溯、多仓库联合检索等 13 个工具）。只需在终端运行 `solomd mcp-config` 或在「设置 → AI」中点击复制配置，10 秒即可接入 Claude Desktop 与 Cursor。',
+  },
+  {
+    q: '让 AI 自动整理笔记或修改文档时，如何防止 AI 乱改弄丢原文？',
+    a: 'SoloMD 独创了 AutoGit 分支沙箱保护机制：当 AI Agent 或定时任务修改笔记时，会自动在独立的 Git 分支上执行，并默认限制单次最多修改 5 个文件。你可以在界面上直观对比修改前后的 Diff 差异，满意后点击「接受」才会合并回主笔记，点击「拒绝」则一键无痕撤销。',
+  },
+];
+---
+
+<Layout
+  title="2026 支持本地 Ollama、LM Studio、DeepSeek 与 Claude MCP 的免费 AI Markdown 知识库对比"
+  description="拒绝每月几十元的 AI 会员订阅费！横向对比 SoloMD、Obsidian AI 插件、Notion AI 与 Cursor，详解如何用免费开源的 SoloMD 一键自动连接本地 Ollama / LM Studio 离线大模型与 DeepSeek API，实现本地 RAG 语义检索与 MCP 智能体协同。"
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main id="main" class="compare-page">
+    <article class="container compare-article">
+      <nav class="breadcrumbs">
+        <a href="/zh/">首页</a> / <a href="/zh/compare">对比</a> / <span>本地 Ollama 与 DeepSeek AI 知识库对比</span>
+      </nav>
+
+      <h1>2026 支持本地 Ollama、DeepSeek 与 Claude MCP 的免费 AI Markdown 知识库对比</h1>
+      <p class="lead">
+        想用 AI 检索个人笔记、润色长文或自动整理周报，却面临两难选择：用 Notion AI 等云端笔记不仅<strong>每个月要交 $10–$20 订阅费</strong>，还得把私密文档全部上传到别人的服务器；而在 Obsidian 里自己配 Copilot + 向量数据库插件，又经常遇到跨域报错、索引卡死、插件失效。
+        本文对比 2026 年主流 AI 笔记方案，看看免费开源的 <strong>SoloMD</strong> 如何把<strong>「Typora 级纯净写作 + 本地 Ollama 一键发现 + 20+ 国内/海外自带 Key 大模型 + 离线 RAG 语义搜索 + 原生 MCP Server」</strong>装进一个 ~14–30 MB 的轻量安装包里。
+      </p>
+
+      <h2>2026 主流 AI Markdown 笔记与知识库横向对比</h2>
+      <table class="compare-detail">
+        <thead>
+          <tr>
+            <th>核心能力</th>
+            <th>SoloMD v5.2（免费开源 MIT）</th>
+            <th>Obsidian + 社区 AI 插件</th>
+            <th>Notion AI</th>
+            <th>Cursor / VS Code</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th>AI 功能订阅费用</th>
+            <td><strong>¥0 永久免费</strong>（本地模型或自带 Key）</td>
+            <td>¥0（需自己折腾多款插件）</td>
+            <td>$10 / 月（约 ¥72/月）</td>
+            <td>$20 / 月（Cursor Pro）</td>
+          </tr>
+          <tr>
+            <th>本地大模型一键自动发现 (OPR)</th>
+            <td>✅ <strong>一键扫描免配置</strong>（Ollama / LM Studio / vLLM / llama.cpp / Jan）</td>
+            <td>🟡 需手动填端口并配置 CORS 环境变量</td>
+            <td>❌ 仅限云端，不支持本地模型</td>
+            <td>🟡 需手动配置转发接口</td>
+          </tr>
+          <tr>
+            <th>国内主流大模型原生支持</th>
+            <td>✅ <strong>内置 20+ 渠道</strong>（DeepSeek / 通义千问 / 豆包 / Kimi / 智谱 GLM / 硅基流动 / MiniMax）</td>
+            <td>🟡 需手动拼接 OpenAI 兼容 Base URL</td>
+            <td>❌ 锁定海外模型</td>
+            <td>🟡 需手动填自定义接口</td>
+          </tr>
+          <tr>
+            <th>纯本地离线语义搜索 (Local RAG)</th>
+            <td>✅ <strong>内置开箱即用 (`Cmd/Ctrl+Shift+F`)</strong> · 零数据上云</td>
+            <td>🟡 需安装 Smart Connections 等重型插件</td>
+            <td>❌ 必须上传云端索引</td>
+            <td>⚠️ 默认上传云端构建索引</td>
+          </tr>
+          <tr>
+            <th>内置 MCP Server（连 Claude / Cursor）</th>
+            <td>✅ <strong>自带 1.5MB 原生 Rust MCP 服务</strong>（13 个知识库工具）</td>
+            <td>🟡 需额外部署 Node.js / Python 脚本</td>
+            <td>🟡 云端 API MCP</td>
+            <td>✅ 作为 MCP 客户端调用</td>
+          </tr>
+          <tr>
+            <th>AI 修改文档防毁坏保护</th>
+            <td>✅ <strong>AutoGit 分支沙箱 + 可视化 Diff 接受/拒绝</strong></td>
+            <td>❌ 插件直接覆盖原文件，易误删</td>
+            <td>⚠️ 依赖云端页面历史</td>
+            <td>✅ 支持代码级 Diff 审查</td>
+          </tr>
+          <tr>
+            <th>中文沉浸式排版与导出手感</th>
+            <td>✅ <strong>零语法闪烁纯所见即所得 + 免 Pandoc 导出 Word/PDF</strong></td>
+            <td>⚠️ 半源码编辑体验</td>
+            <td>⚠️ 块编辑器（非原生本地 .md）</td>
+            <td>❌ 代码编辑器，不适合沉浸写作</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>为什么越来越多开发者与写作者选择「本地 Ollama + DeepSeek BYOK」？</h2>
+      <ul>
+        <li>
+          <strong>100% 物理断网可用的隐私安全（OPR 一键扫描）：</strong>对于工作周报、未公开研发文档、个人日记或涉密资料，任何云端上传都是不可接受的。SoloMD v5.2 内置 <strong>Open Provider Registry (OPR)</strong> 探测器，点击一下即可自动识别本机正在运行的 <strong>Ollama (<code>:11434</code>)、LM Studio (<code>:1234</code>)、vLLM (<code>:8000</code>)、llama.cpp (<code>:8080</code>) 和 Jan (<code>:1337</code>)</strong>，并自动拉取已下载的 Qwen、DeepSeek-R1、Llama 模型列表，零配置直接开聊。
+        </li>
+        <li>
+          <strong>自带 API Key (BYOK)，每个月花几毛钱享受顶级模型：</strong>需要联网调用满血版 DeepSeek-R1/V3、Kimi、豆包、通义千问或硅基流动（SiliconFlow）时，只需在「设置 → AI」中填入你自己的 API Key（加密保存在系统级钥匙串 macOS Keychain / Windows 凭据管理器中），按实际 Token 消耗计费，日常重度写作一个月往往不到 1～2 元人民币。
+        </li>
+        <li>
+          <strong>与整座知识库对话（带 <code>[[双链]]</code> 溯源引用）：</strong>在 SoloMD 右侧打开内联 Agent 面板，AI 会自动结合本地 RAG 语义检索阅读你笔记库中的相关文档，回答时每一处结论都附带可点击的 <code>[[笔记名]]</code> 引用卡片，并支持一键插入当前光标处。
+        </li>
+        <li>
+          <strong>一键把知识库变成 Claude Desktop 与 Cursor 的大脑（内置 MCP）：</strong>SoloMD 随安装包内置了独立的 <code>solomd-mcp</code> 原生二进制程序，支持<strong>多知识库联合挂载（Multi-Workspace Federation）</strong>。你在 Cursor 写代码或在 Claude Desktop 做研究时，AI 可以直接通过 MCP 检索你的本地 Markdown 笔记库。
+        </li>
+      </ul>
+
+      <CompareFaq heading="常见问题解答 (FAQ)" items={FAQ} />
+
+      <div class="compare-cta">
+        <a href="/zh/#download" class="btn btn--primary">免费下载 SoloMD（支持五端）</a>
+        <a href="/zh/docs/ai/" class="btn btn--secondary">查看 AI 与本地模型配置教程</a>
+      </div>
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .compare-article { max-width: 820px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .compare-article h1 { font-size: 2.1rem; line-height: 1.25; margin: 10px 0 20px; }
+  .compare-article h2 { font-size: 1.5rem; margin: 36px 0 14px; }
+  .compare-article h3 { font-size: 1.15rem; margin: 24px 0 10px; }
+  .compare-article .lead { font-size: 1.08rem; color: var(--text-muted, #555); margin-bottom: 32px; line-height: 1.75; }
+  .compare-detail { width: 100%; border-collapse: collapse; margin: 20px 0 28px; font-size: 14px; }
+  .compare-detail th, .compare-detail td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #eee; }
+  .compare-detail thead th { background: #fafafa; font-weight: 600; }
+  .compare-detail tbody th { font-weight: 500; width: 28%; }
+  .compare-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 40px; }
+  .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  .btn--primary { background: #ff9f40; color: #000; }
+  .btn--secondary { background: #111; color: #fff; }
+  .compare-article ul, .compare-article ol { padding-left: 22px; }
+  .compare-article li { margin: 8px 0; line-height: 1.7; }
+  .compare-article p { line-height: 1.75; margin: 12px 0; }
+  .compare-article code { background: #f5f5f0; padding: 1px 6px; border-radius: 4px; font-size: 0.92em; }
+</style>

@@ -1,0 +1,170 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import Header from '../../../components/Header.astro';
+import Footer from '../../../components/Footer.astro';
+import CompareFaq from '../../../components/CompareFaq.astro';
+
+const lang = 'zh' as const;
+const FAQ = [
+  {
+    q: '2026 年如何免费在 Windows、Mac、iPhone (iOS)、安卓和 Linux 之间同步 Markdown 笔记？',
+    a: '推荐使用免费开源的 SoloMD（MIT 协议）。它原生支持五端（macOS / Windows / Linux / iOS / Android），内置仓库级 AES-256-GCM 端到端加密云盘同步（直接搭配坚果云、OneDrive、iCloud、百度网盘、阿里云盘）以及基于私有 GitHub/Gitee 仓库的自动版本同步，零订阅费、无需折腾第三方插件。',
+  },
+  {
+    q: '为什么用 iCloud 或网盘同步 Obsidian 经常出现冲突副本或手机端加载卡死？',
+    a: '传统笔记软件会在 .obsidian 隐藏目录下高频读写大量 JSON 状态、插件缓存和索引文件。当多台设备同时打开时，网盘极易因为高频微文件锁冲突而产生大量 Conflict 副本；而在 Windows 上 iCloud 驱动还经常出现文件挂起未下载的问题。SoloMD 将笔记保持为纯净的 .md 文件，把高频 UI 缓存与同步目录解耦，并内置冲突副本保护与一键对比恢复。',
+  },
+  {
+    q: '笔记放在百度网盘、阿里云盘或 OneDrive 里安全吗？会被扫描和谐吗？',
+    a: 'SoloMD v5.1+ 内置了仓库级端到端加密（AES-256-GCM / XChaCha20-Poly1305，密钥通过 Argon2id 在本地派生）。开启加密后，落盘到网盘目录的是加密后的 .solomd-enc 密文文件，网盘服务端无法读取任何明文内容，彻底杜绝隐私泄露与误判。',
+  },
+  {
+    q: '我现有的 Obsidian 笔记库或 Typora 文件夹可以直接用 SoloMD 打开吗？',
+    a: '完全可以。SoloMD 100% 兼容标准 .md 文件、[[双向链接]]、YAML Frontmatter 属性以及 Typora 的 ./images/ 相对路径图片目录。你甚至可以在电脑上同时用 SoloMD 和 Obsidian 打开同一个文件夹。',
+  },
+];
+---
+
+<Layout
+  title="2026 免费替代 Obsidian Sync 方案对比：坚果云 WebDAV、iCloud、OneDrive、Git 与 SoloMD 五端加密同步"
+  description="不想每年花几百元订购 Obsidian Sync？横向对比 2026 年主流免费 Markdown 多端同步方案（iCloud、坚果云 WebDAV、OneDrive、Syncthing、Git 与 SoloMD 原生五端加密同步），解决 Windows + iPhone 或 Mac + 安卓跨生态同步痛点。"
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main id="main" class="compare-page">
+    <article class="container compare-article">
+      <nav class="breadcrumbs">
+        <a href="/zh/">首页</a> / <a href="/zh/compare">对比</a> / <span>免费多端同步方案对比</span>
+      </nav>
+
+      <h1>2026 免费替代 Obsidian Sync：五端 Markdown 同步方案深度对比</h1>
+      <p class="lead">
+        Obsidian 本体免费，但官方同步服务 <strong>Obsidian Sync 每年需要 $48–$96（约 ¥350–¥700/年）</strong>。
+        如果你是<strong>「Windows 电脑 + iPhone / iPad」</strong>或<strong>「Mac + 安卓手机 + Linux」</strong>的跨生态用户，用免费插件（如 Remotely Save、Self-hosted LiveSync、Git）自己搭同步，往往要经历配 WebDAV、排查冲突、手机端同步失败的漫长折腾。
+        本文对比 2026 年所有免费 Markdown 同步方案的真实优缺点，并介绍如何用免费开源的 <strong>SoloMD</strong> 实现零配置五端加密同步。
+      </p>
+
+      <h2>30 秒看懂 6 种主流 Markdown 同步方案</h2>
+      <table class="compare-detail">
+        <thead>
+          <tr>
+            <th>同步方案</th>
+            <th>每年费用</th>
+            <th>Win + iPhone / Mac + 安卓</th>
+            <th>端到端加密 (E2EE)</th>
+            <th>上手难度与稳定性</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th>SoloMD 原生五端同步（加密云盘 + Git + WebDAV）</th>
+            <td><strong>¥0 永久免费 (MIT)</strong></td>
+            <td>✅ 五端原生支持</td>
+            <td>✅ 内置 AES-256-GCM / XChaCha20</td>
+            <td><strong>5 分钟开箱即用</strong> · 无需装插件，内置 AutoGit 历史与冲突保护</td>
+          </tr>
+          <tr>
+            <th>Obsidian 官方 Sync</th>
+            <td>约 ¥350 – ¥700 / 年</td>
+            <td>✅ 全平台支持</td>
+            <td>✅ 内置端到端加密</td>
+            <td><strong>5 分钟</strong> · 体验稳定，但需持续付费订阅</td>
+          </tr>
+          <tr>
+            <th>纯 iCloud 云盘同步</th>
+            <td>¥0（免费 5GB）</td>
+            <td>⚠️ Win 端体验差 / ❌ 不支持安卓</td>
+            <td>⚠️ 仅苹果生态内加密</td>
+            <td>Windows 端 iCloud 极易卡在「等待下载」或产生大量冲突文件</td>
+          </tr>
+          <tr>
+            <th>坚果云 WebDAV + Remotely Save 插件</th>
+            <td>¥0（免费版有月流量限制）</td>
+            <td>✅ 支持跨平台</td>
+            <td>🟡 依赖插件加密</td>
+            <td>坚果云免费版上传 1GB/月、下载 3GB/月，图片多或高频全量扫描时易触发限流</td>
+          </tr>
+          <tr>
+            <th>OneDrive / 百度网盘 / 阿里云盘直接同步文件夹</th>
+            <td>¥0</td>
+            <td>⚠️ 手机端难以直接挂载本地库</td>
+            <td>❌ 网盘明文存储</td>
+            <td>电脑端可用，但手机端缺乏原生文件夹挂载支持，且明文存在网盘有隐私顾虑</td>
+          </tr>
+          <tr>
+            <th>Syncthing 局域网/点对点同步</th>
+            <td>¥0（开源）</td>
+            <td>⚠️ iOS 端受后台沙盒限制</td>
+            <td>✅ 传输加密</td>
+            <td>要求两台设备同时在线（或自备一台 24 小时开机的 NAS / 云服务器）</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>为什么自己折腾网盘/插件同步经常丢内容或出冲突？</h2>
+      <p>
+        很多用户以为同步 Markdown 只是同步几个几 KB 的 <code>.md</code> 文本文件，但实际上传统笔记软件最容易在以下三个地方翻车：
+      </p>
+      <ul>
+        <li><strong>隐藏配置目录高频读写风暴：</strong>每当你切换标签页、移动光标或运行社区插件，<code>.obsidian/workspace.json</code> 和插件缓存都会每秒改写。网盘客户端（如 iCloud、OneDrive、坚果云）面对多端同时改写隐藏小文件时，极易锁死或生成一堆冲突副本。</li>
+        <li><strong>跨系统生态割裂：</strong>国内最普遍的组合是「Windows 主力机 + iPhone」或「MacBook + 安卓旗舰机」。苹果 iCloud 在 Windows 上水土不服，而安卓根本没有官方 iCloud 客户端。</li>
+        <li><strong>网盘明文隐私担忧：</strong>把个人日记、工作周报、未公开项目文档以明文 <code>.md</code> 放进国内商业网盘，既担心隐私泄露，又怕个别敏感词导致文件被屏蔽无法分享。</li>
+      </ul>
+
+      <h2>SoloMD 如何免费解决「五端加密同步 + 版本历史」？</h2>
+      <p>
+        <strong>SoloMD</strong> 是一款基于 Tauri 2 + Rust 构建的开源原生 Markdown 编辑器（安装包仅 ~14–30 MB，覆盖 macOS、Windows、Linux、iOS 和 Android 五大平台）。它把同步和防丢直接做进了内核：
+      </p>
+      <ol>
+        <li>
+          <strong>仓库级端到端加密云盘同步（v5.1+）：</strong>你可以直接将笔记库放在 <strong>iCloud Drive、OneDrive、坚果云、百度网盘、阿里云盘或 Syncthing</strong> 同步目录中，并在「设置 → 同步」中开启 <strong>AES-256-GCM 仓库加密（<code>.solomd-enc</code>）</strong>。所有笔记在本地完成高强度加密后再交由网盘同步，网盘永远看不到任何一行明文。
+        </li>
+        <li>
+          <strong>内置原生 Git / GitHub / Gitee 加密同步 + AutoGit 时光机：</strong>无需安装命令行 Git 或配置 SSH 密钥，SoloMD 内置原生 <code>libgit2</code> 引擎与系统钥匙串凭证管理。每次按 <code>Ctrl/Cmd + S</code> 自动在本地生成秒级快照（AutoGit），随时对比差异、一键回滚；后台则可自动同步到你的私有 GitHub 仓库（同样支持 Argon2id + XChaCha20-Poly1305 端到端加密）。
+        </li>
+        <li>
+          <strong>零隐藏目录污染：</strong>SoloMD 将笔记库保持为纯粹的 <code>.md</code> 文件夹，把窗口布局等高频变动的本地缓存隔离在系统应用目录中，从根源上消除了多端网盘同步冲突。
+        </li>
+      </ol>
+
+      <h2>我可以同时混用 SoloMD 和 Obsidian / Typora 吗？</h2>
+      <p>
+        <strong>完全可以，而且零迁移成本。</strong>因为 SoloMD 读写的就是最标准的纯文本 <code>.md</code>、<code>[[双链]]</code>、YAML 属性和本地图片文件夹（如 <code>_assets/</code> 或 Typora 的 <code>./images/</code>）：
+      </p>
+      <ul>
+        <li>如果你重度依赖 Obsidian 的复杂社区插件，可以在电脑上保留 Obsidian，同时用 <strong>SoloMD 获得 Typora 级无语法干扰的纯净所见即所得（Pure WYSIWYG）写作手感 + 免费五端同步</strong>。</li>
+        <li>如果你原本只是想要一个「打开即写、多端同步、能一键导出漂亮 Word/PDF、还能直接连 DeepSeek / 本地 Ollama 检索知识库」的主力工具，SoloMD 一个软件就能同时替代付费的 Typora（¥89）和 Obsidian Sync（¥350+/年）。</li>
+      </ul>
+
+      <CompareFaq heading="常见问题解答 (FAQ)" items={FAQ} />
+
+      <div class="compare-cta">
+        <a href="/zh/#download" class="btn btn--primary">免费下载 SoloMD（五端通用）</a>
+        <a href="/zh/compare/vs-obsidian/" class="btn btn--secondary">查看 SoloMD vs Obsidian 完整对比</a>
+      </div>
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .compare-article { max-width: 820px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .compare-article h1 { font-size: 2.1rem; line-height: 1.25; margin: 10px 0 20px; }
+  .compare-article h2 { font-size: 1.5rem; margin: 36px 0 14px; }
+  .compare-article h3 { font-size: 1.15rem; margin: 24px 0 10px; }
+  .compare-article .lead { font-size: 1.08rem; color: var(--text-muted, #555); margin-bottom: 32px; line-height: 1.75; }
+  .compare-detail { width: 100%; border-collapse: collapse; margin: 20px 0 28px; font-size: 14px; }
+  .compare-detail th, .compare-detail td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #eee; }
+  .compare-detail thead th { background: #fafafa; font-weight: 600; }
+  .compare-detail tbody th { font-weight: 500; width: 28%; }
+  .compare-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 40px; }
+  .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  .btn--primary { background: #ff9f40; color: #000; }
+  .btn--secondary { background: #111; color: #fff; }
+  .compare-article ul, .compare-article ol { padding-left: 22px; }
+  .compare-article li { margin: 8px 0; line-height: 1.7; }
+  .compare-article p { line-height: 1.75; margin: 12px 0; }
+  .compare-article code { background: #f5f5f0; padding: 1px 6px; border-radius: 4px; font-size: 0.92em; }
+</style>

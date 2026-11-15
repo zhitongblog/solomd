@@ -1,0 +1,159 @@
+{
+  "version": 1,
+  "updatedAt": "2026-11-15T13:35:00+08:00",
+  "schedule": "0 10 * * 2,5",
+  "published": [
+    {
+      "slug": "free-obsidian-sync-alternative",
+      "publishedAt": "2026-11-15",
+      "enTitle": "Best Free Obsidian Sync Alternatives in 2026 (iCloud, OneDrive, WebDAV, Git & SoloMD)",
+      "zhTitle": "2026 免费替代 Obsidian Sync：五端 Markdown 同步方案深度对比",
+      "targetQueriesEn": [
+        "free obsidian sync alternative",
+        "sync obsidian between windows and iphone free",
+        "encrypted markdown sync icloud onedrive git"
+      ],
+      "targetQueriesZh": [
+        "Obsidian 免费同步方案",
+        "Windows 和 iPhone 免费同步 Markdown",
+        "坚果云 WebDAV Obsidian 替代"
+      ]
+    },
+    {
+      "slug": "markdown-to-word-pdf-without-pandoc",
+      "publishedAt": "2026-11-15",
+      "enTitle": "How to Export Markdown to Word (.docx) & PDF Without Installing Pandoc",
+      "zhTitle": "无需安装 Pandoc：如何一键将 Markdown 导出为 Word (.docx) 与带书签 PDF",
+      "targetQueriesEn": [
+        "export markdown to word without pandoc",
+        "typora pandoc docx alternative",
+        "merge markdown folder into pdf with table of contents"
+      ],
+      "targetQueriesZh": [
+        "Markdown 转 Word 不用安装 Pandoc",
+        "DeepSeek 公式导出 Word 不乱码",
+        "Markdown 批量合并导出带目录 PDF"
+      ]
+    },
+    {
+      "slug": "local-ai-markdown-editor-ollama-deepseek",
+      "publishedAt": "2026-11-15",
+      "enTitle": "Best Local AI Markdown Editor for Ollama, LM Studio, DeepSeek & Claude MCP (2026)",
+      "zhTitle": "2026 支持本地 Ollama、DeepSeek 与 Claude MCP 的免费 AI Markdown 知识库对比",
+      "targetQueriesEn": [
+        "markdown editor with local ollama",
+        "best mcp server for markdown notes",
+        "offline rag markdown knowledge base"
+      ],
+      "targetQueriesZh": [
+        "支持本地 Ollama 的笔记软件",
+        "DeepSeek 个人知识库 Markdown 软件",
+        "Claude MCP 本地 Markdown 笔记"
+      ]
+    }
+  ],
+  "pending": [
+    {
+      "slug": "markdown-to-wechat-feishu-notion-formatting",
+      "priority": 1,
+      "enTitle": "How to Copy Markdown to Notion, Confluence & Rich-Text Editors Without Broken Formatting",
+      "zhTitle": "Markdown 一键复制到微信公众号、飞书文档与知乎：免插件排版与图床自动上传指南",
+      "targetQueriesEn": [
+        "copy markdown as rich text html",
+        "paste markdown into confluence or notion with code highlighting",
+        "markdown image hosting s3 github r2"
+      ],
+      "targetQueriesZh": [
+        "Markdown 一键排版复制到微信公众号",
+        "Markdown 粘贴到飞书文档保留格式",
+        "免费开源带 PicGo / S3 图床的 Markdown 编辑器"
+      ],
+      "angle": "Highlight SoloMD's Copy as Rich HTML, Clean AI Artifacts button, auto-repaired AI tables, and 5 built-in image hosting backends (PicGo, S3/R2/OSS/COS, GitHub CDN, SM.MS, custom CLI) with local fallback."
+    },
+    {
+      "slug": "vs-logseq-joplin-upnote",
+      "priority": 2,
+      "enTitle": "SoloMD vs Logseq vs Joplin vs UpNote: Plain-File Privacy vs Database Note Apps (2026)",
+      "zhTitle": "SoloMD vs Logseq / Joplin / 思源笔记 / UpNote：纯文本 .md 与数据库笔记怎么选？",
+      "targetQueriesEn": [
+        "joplin vs obsidian vs solomd",
+        "logseq alternative plain markdown files",
+        "upnote vs free open source markdown editor"
+      ],
+      "targetQueriesZh": [
+        "Joplin 替代品 纯文本 Markdown",
+        "Logseq 与思源笔记对比 轻量替代",
+        "不锁定格式的开源笔记软件对比"
+      ],
+      "angle": "Compare file storage format (plain .md on disk vs SQLite/JSON/block databases), installer size (~14-30 MB vs 150+ MB), mobile speed, E2EE sync, and export quality."
+    },
+    {
+      "slug": "clean-chatgpt-deepseek-claude-markdown-paste",
+      "priority": 3,
+      "enTitle": "How to Clean Up Broken Markdown, Tables & Math Pasted from ChatGPT, Claude & DeepSeek",
+      "zhTitle": "如何一键修复从 DeepSeek、ChatGPT、豆包复制出来的残缺表格、LaTeX 公式与引用乱码",
+      "targetQueriesEn": [
+        "fix broken markdown tables from chatgpt",
+        "strip ai citations smart quotes zero width characters markdown",
+        "convert chatgpt latex brackets to markdown math"
+      ],
+      "targetQueriesZh": [
+        "DeepSeek 复制出来的公式和表格怎么导出 Word",
+        "清理 AI 生成文本的引用标记和特殊符号",
+        "ChatGPT 复制到 Markdown 表格错位修复"
+      ],
+      "angle": "Deep dive into SoloMD's One-Click Clean AI Artifacts button, malformed GFM table auto-repair engine (v4.11), LaTeX math rendering, and direct Word/PDF export."
+    },
+    {
+      "slug": "lightweight-markdown-editor-windows-cjk-ime",
+      "priority": 4,
+      "enTitle": "Best Lightweight Native Markdown Editor for Windows 11 & Linux (Under 16 MB, No Electron Bloat)",
+      "zhTitle": "告别百兆 Electron 内存怪兽：仅 14 MB 的 Windows / Linux 原生极速 Markdown 编辑器对比",
+      "targetQueriesEn": [
+        "lightweight markdown editor windows 11 no electron",
+        "tauri rust markdown editor linux wayland",
+        "fast startup markdown viewer and editor windows"
+      ],
+      "targetQueriesZh": [
+        "Windows 轻量级 Markdown 编辑器 替代 Typora",
+        "不卡顿的中文输入法 Markdown 编辑器",
+        "支持 GBK 编码自动识别的 Markdown 软件"
+      ],
+      "angle": "Compare Tauri 2 + Rust (~14 MB Win / ~16 MB Linux, <0.3s cold start, ~80-150 MB RAM) vs Electron editors (70-350 MB), plus GBK/Big5/Shift_JIS auto-detection and WebView2 CJK IME reliability."
+    },
+    {
+      "slug": "academic-markdown-editor-latex-bibtex-word-template",
+      "priority": 5,
+      "enTitle": "Best Markdown Editor for Academic Writing: @citekey BibTeX, KaTeX Math & Custom Word Thesis Templates",
+      "zhTitle": "高校硕博论文与科研写作 Markdown 指南：BibTeX 文献引用、公式编号与高校 Word 模板一键导出",
+      "targetQueriesEn": [
+        "academic markdown editor bibtex citations",
+        "markdown to word academic template",
+        "auto number headings markdown pdf docx"
+      ],
+      "targetQueriesZh": [
+        "用 Markdown 写毕业论文 导出高校 Word 模板",
+        "支持 BibTeX 文献引用和标题自动编号的 Markdown 编辑器",
+        "科研笔记 Markdown 导出 LaTeX 与 Word"
+      ],
+      "angle": "Show how researchers use SoloMD's @citekey BibTeX support, KaTeX + OMML Word math, 1-6 automatic heading numbering (1 / 1.1 / 1.1.1), custom .docx thesis templates, and LaTeX (.tex) export."
+    },
+    {
+      "slug": "ipad-iphone-android-markdown-editor-icloud-git",
+      "priority": 6,
+      "enTitle": "Best Free Markdown Editor for iPad, iPhone & Android with iCloud, Git & Folder Sync (2026)",
+      "zhTitle": "2026 最佳免费 iPad / iPhone / 安卓手机 Markdown 编辑器：支持 iCloud、Git 与离线全文搜索",
+      "targetQueriesEn": [
+        "free markdown editor ipad no subscription",
+        "ia writer free alternative ios android",
+        "android markdown editor git sync wikilinks"
+      ],
+      "targetQueriesZh": [
+        "iPad 免费好用的 Markdown 编辑器 替代 iA Writer",
+        "安卓手机支持双链和 Git 同步的 Markdown 笔记",
+        "iPhone 直接编辑 iCloud 文件夹的 Markdown 软件"
+      ],
+      "angle": "Compare SoloMD mobile (iOS/iPadOS App Store + Android Google Play / APK, $0 forever, zero telemetry on App Store, iOS Shortcuts support) vs iA Writer ($49.99), Bear ($3/mo), 1Writer, and Markor."
+    }
+  ]
+}

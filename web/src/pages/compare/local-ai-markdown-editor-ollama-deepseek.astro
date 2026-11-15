@@ -1,0 +1,164 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import CompareFaq from '../../components/CompareFaq.astro';
+
+const lang = 'en' as const;
+const FAQ = [
+  {
+    q: 'What is the best Markdown editor with built-in local Ollama and LM Studio support?',
+    a: 'SoloMD (free, MIT open source) includes native Open Provider Registry (OPR) auto-discovery that detects running Ollama (:11434), LM Studio (:1234), vLLM/LocalAI (:8000), llama.cpp (:8080), and Jan (:1337) servers in one click, plus an on-device semantic RAG search engine and a bundled MCP server.',
+  },
+  {
+    q: 'Do I have to pay a monthly AI subscription like Notion AI ($10/mo) to use AI in SoloMD?',
+    a: 'Never. SoloMD is 100% free and does not sell an AI subscription. You can run 100% offline local models via Ollama / LM Studio at $0 cost, or bring your own API key (BYOK) for 20+ cloud providers (DeepSeek, Claude, OpenAI, Gemini, Groq, OpenRouter, SiliconFlow, Qwen, Kimi, Doubao) stored securely in your OS Keychain.',
+  },
+  {
+    q: 'How does SoloMD protect my notes when an AI agent or MCP client edits my vault?',
+    a: 'SoloMD wraps agent runs and scheduled recipes in an AutoGit branch sandbox with a configurable write-cap (default 5 files). Every AI edit is isolated on a reviewable Git branch so you can inspect the exact diff and click Accept or Reject before anything touches your main notes.',
+  },
+  {
+    q: 'Can Claude Desktop, Cursor, or Codex CLI search and edit my SoloMD vault via MCP?',
+    a: 'Yes. SoloMD ships a 1.5 MB native Rust MCP sidecar binary (13 tools, including semantic search, backlinks, AutoGit history, and multi-workspace federation). Run `solomd mcp-config` or click Copy MCP Config in Settings → AI to connect Claude Desktop or Cursor in 10 seconds.',
+  },
+];
+---
+
+<Layout
+  title="Best Local AI Markdown Editor for Ollama, LM Studio, DeepSeek & Claude MCP (2026)"
+  description="Compare AI Markdown editors in 2026: SoloMD vs Notion AI vs Obsidian Copilot vs Cursor. Run 100% offline local AI (Ollama, LM Studio, vLLM, Jan) or 20+ BYOK providers (DeepSeek, Claude, OpenAI) with on-device RAG and a bundled MCP server for $0."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main id="main" class="compare-page">
+    <article class="container compare-article">
+      <nav class="breadcrumbs">
+        <a href="/">Home</a> / <a href="/compare">Compare</a> / <span>Local AI Markdown Editor (Ollama &amp; MCP)</span>
+      </nav>
+
+      <h1>Best Local AI Markdown Editor for Ollama, LM Studio, DeepSeek &amp; Claude MCP (2026)</h1>
+      <p class="lead">
+        Most "AI note-taking apps" in 2026 force a bad trade-off: either pay <strong>$10–$20/month for a cloud wrapper</strong> that locks your notes inside a proprietary database (Notion AI, Reflect, Mem), or spend hours wiring up brittle community plugins and Python vector databases in Obsidian.
+        Here is how <strong>SoloMD</strong> combines a <strong>~14–30 MB Typora-class Markdown editor</strong> with <strong>one-click local AI auto-discovery (Ollama, LM Studio, vLLM, Jan), 20+ BYOK cloud providers, on-device RAG search, and a bundled MCP server</strong> — completely free and open source.
+      </p>
+
+      <h2>AI Markdown Knowledge Base Comparison (2026)</h2>
+      <table class="compare-detail">
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th>SoloMD v5.2 (Free, MIT)</th>
+            <th>Obsidian + Copilot Plugins</th>
+            <th>Notion AI</th>
+            <th>Cursor / VS Code</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th>AI Subscription Cost</th>
+            <td><strong>$0 forever</strong> (Local or BYOK)</td>
+            <td>$0 (BYOK, plugin setup required)</td>
+            <td>$10 / month per user</td>
+            <td>$20 / month (Cursor Pro)</td>
+          </tr>
+          <tr>
+            <th>Local AI Auto-Discovery (OPR)</th>
+            <td>✅ <strong>1-click scan</strong> (Ollama, LM Studio, vLLM, llama.cpp, Jan)</td>
+            <td>🟡 Manual localhost URL &amp; CORS config</td>
+            <td>❌ Cloud-only</td>
+            <td>🟡 Manual custom endpoint</td>
+          </tr>
+          <tr>
+            <th>Built-in Cloud BYOK Providers</th>
+            <td>✅ <strong>20+ native providers</strong> (DeepSeek, Claude, OpenAI, Gemini, OpenRouter…)</td>
+            <td>✅ Via community plugins</td>
+            <td>❌ Locked to vendor models</td>
+            <td>✅ Supported</td>
+          </tr>
+          <tr>
+            <th>On-Device Semantic Search (Local RAG)</th>
+            <td>✅ <strong>Built-in (`Cmd/Ctrl+Shift+F`)</strong> · zero cloud upload</td>
+            <td>🟡 Requires Smart Connections / external embedding setup</td>
+            <td>❌ Cloud-indexed only</td>
+            <td>⚠️ Cloud codebase indexing</td>
+          </tr>
+          <tr>
+            <th>Bundled MCP Server (Claude Desktop / Cursor)</th>
+            <td>✅ <strong>1.5 MB Rust binary included</strong> (13 vault tools)</td>
+            <td>🟡 Requires third-party Node/Python MCP server</td>
+            <td>🟡 Cloud API MCP</td>
+            <td>✅ Acts as MCP client</td>
+          </tr>
+          <tr>
+            <th>Git Sandbox for AI Writes</th>
+            <td>✅ <strong>AutoGit branch sandbox + Accept/Reject diff</strong></td>
+            <td>❌ Plugins overwrite files directly</td>
+            <td>⚠️ Proprietary page history</td>
+            <td>✅ Diff view</td>
+          </tr>
+          <tr>
+            <th>Typora-style Pure WYSIWYG Writing</th>
+            <td>✅ <strong>Native Live Preview + Pure WYSIWYG</strong></td>
+            <td>⚠️ Partial Live Preview</td>
+            <td>✅ Block editor (not plain .md)</td>
+            <td>❌ Code editor first</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>Why writers and developers are switching to Local AI + BYOK</h2>
+      <ul>
+        <li>
+          <strong>100% air-gapped privacy with Ollama &amp; LM Studio:</strong> When you write personal journals, medical/legal notes, or proprietary engineering designs, sending paragraphs to a SaaS cloud is a non-starter. SoloMD v5.2’s <strong>Open Provider Registry (OPR)</strong> scanner automatically detects local servers on ports <code>:11434</code> (Ollama), <code>:1234</code> (LM Studio), <code>:8000</code> (vLLM/LocalAI), <code>:8080</code> (llama.cpp), and <code>:1337</code> (Jan) — no CORS headaches or JSON config files needed.
+        </li>
+        <li>
+          <strong>Pay pennies instead of $120/year with DeepSeek, SiliconFlow &amp; OpenRouter:</strong> When you do want frontier cloud reasoning, SoloMD lets you paste your own API key into your OS Keychain (macOS Keychain / Windows Credential Manager / Linux Secret Service). Using DeepSeek R1/V3 or Qwen via BYOK typically costs <strong>less than $0.20 per month</strong> for heavy daily writing, with a built-in opt-in token cost meter.
+        </li>
+        <li>
+          <strong>First-class Model Context Protocol (MCP) Server:</strong> Want Claude Desktop, Cursor, or Codex CLI to research across multiple Markdown vaults? SoloMD bundles a native 1.5 MB Rust MCP server supporting <strong>multi-workspace federation (<code>--workspace</code>)</strong>, semantic search, backlinks inspection, and AutoGit snapshot tools.
+        </li>
+      </ul>
+
+      <h2>Safe AI Automation: Scheduled Recipes + AutoGit Sandbox</h2>
+      <p>
+        Most AI plugins silently mutate your files, making it terrifying to let an agent reorganize tags or summarize a week of daily notes. SoloMD solves this with three architectural guardrails:
+      </p>
+      <ol>
+        <li><strong>AutoGit Branch Sandbox:</strong> Every multi-file agent run or scheduled recipe executes on an isolated Git branch inside your workspace and refuses to start if your working tree has unsaved changes.</li>
+        <li><strong>Write-Cap Protection:</strong> Agent runs default to a strict 5-file write cap so a hallucinating local model can never bulk-corrupt your vault.</li>
+        <li><strong>Replayable JSONL Traces:</strong> Every tool call and prompt step is logged locally so you can inspect, audit, or replay any agent run step by step.</li>
+      </ol>
+
+      <CompareFaq heading="Frequently Asked Questions" items={FAQ} />
+
+      <div class="compare-cta">
+        <a href="/#download" class="btn btn--primary">Download SoloMD Free</a>
+        <a href="/docs/ai/" class="btn btn--secondary">Explore AI &amp; MCP Documentation</a>
+      </div>
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .compare-article { max-width: 820px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .compare-article h1 { font-size: 2.2rem; line-height: 1.2; margin: 10px 0 20px; }
+  .compare-article h2 { font-size: 1.55rem; margin: 36px 0 14px; }
+  .compare-article h3 { font-size: 1.15rem; margin: 24px 0 10px; }
+  .compare-article .lead { font-size: 1.1rem; color: var(--text-muted, #555); margin-bottom: 32px; }
+  .compare-detail { width: 100%; border-collapse: collapse; margin: 20px 0 28px; font-size: 14px; }
+  .compare-detail th, .compare-detail td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #eee; }
+  .compare-detail thead th { background: #fafafa; font-weight: 600; }
+  .compare-detail tbody th { font-weight: 500; width: 28%; }
+  .compare-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 40px; }
+  .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  .btn--primary { background: #ff9f40; color: #000; }
+  .btn--secondary { background: #111; color: #fff; }
+  .compare-article ul, .compare-article ol { padding-left: 22px; }
+  .compare-article li { margin: 8px 0; line-height: 1.65; }
+  .compare-article p { line-height: 1.7; margin: 12px 0; }
+  .compare-article code { background: #f5f5f0; padding: 1px 6px; border-radius: 4px; font-size: 0.92em; }
+</style>

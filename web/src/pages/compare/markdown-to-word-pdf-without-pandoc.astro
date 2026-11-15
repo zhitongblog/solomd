@@ -1,0 +1,169 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import CompareFaq from '../../components/CompareFaq.astro';
+
+const lang = 'en' as const;
+const FAQ = [
+  {
+    q: 'Can I export Markdown to Word (.docx) and PDF without installing Pandoc or LaTeX?',
+    a: 'Yes. SoloMD includes a built-in native Rust + frontend export engine that converts single Markdown notes or entire multi-folder workspaces directly to Word (.docx), PDF (with clickable Table of Contents and UTF-16BE bookmarks), standalone HTML (with an interactive Bookmark Tree and offline full-text search sidebar), EPUB, ODT, RTF, LaTeX, PNG, and TextBundle — with zero external dependencies.',
+  },
+  {
+    q: 'Why do Typora and Obsidian require installing Pandoc for Word (.docx) export?',
+    a: 'Both Typora and Obsidian (via the Obsidian Pandoc plugin) delegate .docx, .epub, and .odt generation to an external Pandoc binary that you must download, install, and keep on your system PATH. SoloMD compiles native OOXML (.docx), EPUB, and PDF bookmark pipelines directly inside its ~14–30 MB installer.',
+  },
+  {
+    q: 'Does SoloMD preserve LaTeX math equations, Mermaid diagrams, and custom Word reference templates?',
+    a: 'Yes. When exporting to Word (.docx), SoloMD converts $inline$ and $$block$$ LaTeX equations into native Word OMML equations (editable inside Microsoft Word), renders Mermaid flowcharts cleanly, and lets you mount any custom .docx reference template so corporate or academic heading, body, and table styles are applied automatically.',
+  },
+  {
+    q: 'Can I merge an entire folder of Markdown notes into a single book PDF or Word document with a Table of Contents?',
+    a: 'Yes. Right-click any folder in SoloMD (or open File → Export Center) and select Merged Book Export. SoloMD builds a hierarchical multi-folder + 3-level heading Table of Contents with clickable page numbers, injects native PDF outline bookmarks, and embeds subfolder images as Base64.',
+  },
+];
+---
+
+<Layout
+  title="How to Export Markdown to Word (.docx) & PDF Without Pandoc (2026 Guide)"
+  description="Stop wrestling with Pandoc PATH errors and 4 GB TeX Live installs. Learn how to export Markdown notes and multi-folder books to Word (.docx with custom templates & native math), PDF with bookmarks, and searchable HTML in one click using SoloMD."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main id="main" class="compare-page">
+    <article class="container compare-article">
+      <nav class="breadcrumbs">
+        <a href="/">Home</a> / <a href="/compare">Compare</a> / <span>Markdown to Word &amp; PDF Without Pandoc</span>
+      </nav>
+
+      <h1>How to Export Markdown to Word (.docx) &amp; PDF Without Installing Pandoc</h1>
+      <p class="lead">
+        Writing in Markdown is fast and distraction-free — right up until a colleague, client, or university portal asks for a formatted <strong>Word (<code>.docx</code>)</strong> or <strong>PDF with clickable bookmarks and page numbers</strong>.
+        In Typora or Obsidian, exporting to <code>.docx</code> or <code>.epub</code> pops up an error demanding that you install <strong>Pandoc</strong> (and often a multi-gigabyte LaTeX distribution).
+        Here is how Markdown export compares across editors in 2026, and how <strong>SoloMD’s built-in 9-format Export Center</strong> handles single files and entire multi-folder books with zero external tools.
+      </p>
+
+      <h2>Markdown Export Comparison (2026)</h2>
+      <table class="compare-detail">
+        <thead>
+          <tr>
+            <th>Capability</th>
+            <th>SoloMD v5.2 (Free, MIT)</th>
+            <th>Typora ($14.99)</th>
+            <th>Obsidian + Pandoc Plugin</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th>Word (<code>.docx</code>) export without Pandoc</th>
+            <td>✅ <strong>Built-in native engine</strong></td>
+            <td>❌ Requires external Pandoc install</td>
+            <td>❌ Requires community plugin + Pandoc</td>
+          </tr>
+          <tr>
+            <th>Custom <code>.docx</code> Reference Style Template</th>
+            <td>✅ <strong>Mount any <code>.docx</code> template in dialog</strong></td>
+            <td>🟡 Requires custom Pandoc CLI flags</td>
+            <td>🟡 Requires manual CLI arguments</td>
+          </tr>
+          <tr>
+            <th>Editable Word Math (LaTeX → Native OMML)</th>
+            <td>✅ Native editable Word math equations</td>
+            <td>✅ Via Pandoc</td>
+            <td>⚠️ Frequently breaks without extra filters</td>
+          </tr>
+          <tr>
+            <th>PDF with Clickable TOC Page + Outline Bookmarks</th>
+            <td>✅ <strong>One-click toggle</strong> (UTF-16BE bookmarks + page numbers)</td>
+            <td>✅ Supported</td>
+            <td>⚠️ Basic print-to-PDF (no merged folder TOC)</td>
+          </tr>
+          <tr>
+            <th>Standalone HTML with Bookmark Tree &amp; Offline Search</th>
+            <td>✅ <strong>Interactive sidebar + full-text search</strong></td>
+            <td>⚠️ Basic TOC only, no search panel</td>
+            <td>❌ Requires third-party webpage export plugin</td>
+          </tr>
+          <tr>
+            <th>Multi-Folder Merged Book Export</th>
+            <td>✅ <strong>Merge entire vault/folder into 1 PDF / DOCX / HTML / EPUB</strong></td>
+            <td>❌ Single file only</td>
+            <td>❌ Single file only</td>
+          </tr>
+          <tr>
+            <th>CLI Headless Automation</th>
+            <td>✅ <code>solomd export note.md --format docx --toc</code></td>
+            <td>❌ No CLI</td>
+            <td>❌ No native CLI</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>3 common pain points when exporting Markdown to Word &amp; PDF</h2>
+      <ol>
+        <li>
+          <strong>"Pandoc not found in PATH":</strong> Non-technical teammates (or locked-down corporate Windows laptops) often cannot install command-line binaries or configure environment variables just to turn a meeting note into a <code>.docx</code> file.
+        </li>
+        <li>
+          <strong>Broken tables, CJK fonts, and missing subfolder images:</strong> AI-generated Markdown tables from ChatGPT/Claude/DeepSeek often have mismatched delimiter rows (<code>|---|---|</code>) that collapse into raw pipes on export, and relative images inside subfolders fail to resolve when merging multiple chapters.
+        </li>
+        <li>
+          <strong>Re-formatting headings in Microsoft Word every time:</strong> Default Markdown-to-Word converters spit out generic blue Calibri headings, forcing you to manually re-apply corporate or academic fonts, line spacing, and table borders after every export.
+        </li>
+      </ol>
+
+      <h2>How SoloMD’s Unified 9-Format Export Center works</h2>
+      <p>
+        In <strong>SoloMD v5.2</strong>, press <code>Cmd/Ctrl+Shift+E</code> (or right-click any folder in the sidebar) to open the unified <strong>Export Center</strong>:
+      </p>
+      <ul>
+        <li>
+          <strong>9 built-in formats out of the box:</strong> Export to <strong>PDF, Word (<code>.docx</code>), standalone HTML, EPUB, OpenDocument (<code>.odt</code>), LaTeX (<code>.tex</code>), RTF, long-image PNG, and TextBundle (<code>.textpack</code>)</strong> without installing Pandoc or TeX Live. (If you <em>do</em> have Pandoc installed and want custom filters, SoloMD can optionally invoke it too.)
+        </li>
+        <li>
+          <strong>Two unified switches for structure:</strong> Toggle <em>Include Bookmark Sidebar (HTML includes Search Panel)</em> and <em>Include Leading Table of Contents Page (with Page Numbers)</em> across PDF, HTML, Word, and EPUB.
+        </li>
+        <li>
+          <strong>Custom Word (<code>.docx</code>) template mounting:</strong> Pick your company letterhead, government report, or thesis <code>.docx</code> template once. SoloMD extracts its exact paragraph styles, heading hierarchy, table borders, and page margins and injects your Markdown content into them.
+        </li>
+        <li>
+          <strong>Auto-repaired AI tables &amp; automatic heading numbering:</strong> Malformed Markdown tables pasted from LLMs are repaired automatically before rendering, and you can toggle automatic <code>1 / 1.1 / 1.1.1</code> section numbering in one click.
+        </li>
+        <li>
+          <strong>One-click Copy as Rich HTML for WeChat / Notion / Confluence:</strong> Need to paste into a rich-text editor instead of sending a file? SoloMD copies inline-styled HTML straight to your clipboard.
+        </li>
+      </ul>
+
+      <CompareFaq heading="Frequently Asked Questions" items={FAQ} />
+
+      <div class="compare-cta">
+        <a href="/#download" class="btn btn--primary">Download SoloMD Free (~14–30 MB)</a>
+        <a href="/docs/export/" class="btn btn--secondary">Read Full Export Documentation</a>
+      </div>
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .compare-article { max-width: 820px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .compare-article h1 { font-size: 2.2rem; line-height: 1.2; margin: 10px 0 20px; }
+  .compare-article h2 { font-size: 1.55rem; margin: 36px 0 14px; }
+  .compare-article h3 { font-size: 1.15rem; margin: 24px 0 10px; }
+  .compare-article .lead { font-size: 1.1rem; color: var(--text-muted, #555); margin-bottom: 32px; }
+  .compare-detail { width: 100%; border-collapse: collapse; margin: 20px 0 28px; font-size: 14px; }
+  .compare-detail th, .compare-detail td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #eee; }
+  .compare-detail thead th { background: #fafafa; font-weight: 600; }
+  .compare-detail tbody th { font-weight: 500; width: 30%; }
+  .compare-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 40px; }
+  .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  .btn--primary { background: #ff9f40; color: #000; }
+  .btn--secondary { background: #111; color: #fff; }
+  .compare-article ul, .compare-article ol { padding-left: 22px; }
+  .compare-article li { margin: 8px 0; line-height: 1.65; }
+  .compare-article p { line-height: 1.7; margin: 12px 0; }
+  .compare-article code { background: #f5f5f0; padding: 1px 6px; border-radius: 4px; font-size: 0.92em; }
+</style>

@@ -134,6 +134,9 @@ Or download platform-specific installers from https://github.com/zhitongblog/sol
 - [vs MarkText](https://solomd.app/compare/vs-marktext/): comparison with the MIT WYSIWYG editor (revived May 2026).
 - [vs Tolaria](https://solomd.app/compare/vs-tolaria/): comparison with the desktop Notion-style block editor (BlockNote + tldraw whiteboards).
 - [Choosing a Markdown editor in 2026](https://solomd.app/compare/best-free-markdown-editors/): six editors on one set of dimensions — SoloMD, Typora, Obsidian, MarkText, Tolaria, VS Code — with each product's limitations and a decision guide.
+- [Best Free Obsidian Sync Alternatives (2026)](https://solomd.app/compare/free-obsidian-sync-alternative/): 5-platform comparison of iCloud, OneDrive, WebDAV, Syncthing, Git, and SoloMD's built-in AES-256-GCM encrypted cloud & Git sync.
+- [Export Markdown to Word (.docx) & PDF Without Pandoc](https://solomd.app/compare/markdown-to-word-pdf-without-pandoc/): how to export single notes or multi-folder books to Word (with custom `.docx` templates and native OMML math), bookmarked PDF, and searchable HTML without external Pandoc/LaTeX installs.
+- [Best Local AI Markdown Editor for Ollama, DeepSeek & Claude MCP](https://solomd.app/compare/local-ai-markdown-editor-ollama-deepseek/): comparison of local OPR auto-discovery (Ollama, LM Studio, vLLM, Jan), 20+ BYOK providers, on-device RAG, and bundled MCP server vs Notion AI, Obsidian Copilot, and Cursor.
 - [Docs / Getting Started](https://solomd.app/docs/getting-started/): install, first folder, tabs, view modes, saving.
 - [Docs / Editor](https://solomd.app/docs/editor/): live rendering, images, tables, math, diagrams, Vim / focus / typewriter modes.
 - [Docs / Images & Attachments](https://solomd.app/docs/images/): where pasted screenshots are saved — rename `_assets` (e.g. to `images`), per-note folders, Typora-compatible `./images/${filename}/` templates.

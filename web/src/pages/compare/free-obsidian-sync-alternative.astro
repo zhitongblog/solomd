@@ -1,0 +1,171 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import CompareFaq from '../../components/CompareFaq.astro';
+
+const lang = 'en' as const;
+const FAQ = [
+  {
+    q: 'How can I sync Markdown notes across Mac, Windows, Linux, iOS, and Android for free?',
+    a: 'Use SoloMD (free, MIT open source) with any cloud folder (iCloud Drive, OneDrive, Dropbox, Syncthing, Nutstore WebDAV) or a private GitHub repository. SoloMD includes built-in Vault-Scoped AES-256-GCM encryption (.solomd-enc), automatic conflict-copy protection, and native libgit2 sync on all 5 platforms with zero subscription fees.',
+  },
+  {
+    q: 'Why does iCloud or OneDrive sometimes corrupt or duplicate Obsidian vaults on mobile?',
+    a: 'Obsidian vaults store hundreds of small state files inside .obsidian/ (plugins, workspace cache, index databases) that constantly change on every open. Cloud drives struggle with rapid concurrent edits to hidden state folders. SoloMD avoids this by keeping notes as clean plain .md files, isolating local cache outside the synced folder, and offering deterministic conflict-copy detection.',
+  },
+  {
+    q: 'Does SoloMD support end-to-end encryption (E2EE) on third-party cloud drives?',
+    a: 'Yes. SoloMD v5.1+ ships Vault-Scoped Encrypted Cloud Drive Sync using Argon2id key derivation and AES-256-GCM / XChaCha20-Poly1305 encryption. Your notes are encrypted locally before iCloud, OneDrive, Dropbox, Nutstore, or GitHub ever sees them.',
+  },
+  {
+    q: 'Can I open my existing Obsidian vault in SoloMD without losing [[wikilinks]] or YAML frontmatter?',
+    a: 'Yes. SoloMD reads standard .md files, [[wikilinks]], #tags, YAML frontmatter, and attachment folders directly. You can even open the exact same folder in both SoloMD and Obsidian simultaneously.',
+  },
+];
+---
+
+<Layout
+  title="Best Free Obsidian Sync Alternatives in 2026 — iCloud, OneDrive, WebDAV, Git & SoloMD"
+  description="Compare every free way to sync Markdown notes across Windows, macOS, Linux, iOS, and Android in 2026: iCloud, OneDrive, Syncthing, WebDAV, Git, and SoloMD's built-in encrypted 5-platform sync."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main id="main" class="compare-page">
+    <article class="container compare-article">
+      <nav class="breadcrumbs">
+        <a href="/">Home</a> / <a href="/compare">Compare</a> / <span>Free Obsidian Sync Alternatives</span>
+      </nav>
+
+      <h1>Best Free Obsidian Sync Alternatives in 2026 (5-Platform Guide)</h1>
+      <p class="lead">
+        Obsidian is free for personal use, but official <strong>Obsidian Sync costs $4–$8/month ($48–$96/year)</strong>.
+        If you mix ecosystems — for example a <strong>Windows PC + iPhone/iPad</strong>, or <strong>Mac + Android + Linux</strong> —
+        setting up reliable free sync with plugins like Remotely Save or Obsidian Git can quickly turn into a weekend troubleshooting project.
+        Here is an honest, side-by-side comparison of every free Markdown sync method in 2026, and how <strong>SoloMD</strong> solves 5-platform encrypted sync out of the box for $0.
+      </p>
+
+      <h2>The 30-second comparison of Markdown sync options</h2>
+      <table class="compare-detail">
+        <thead>
+          <tr>
+            <th>Sync Method</th>
+            <th>Annual Cost</th>
+            <th>Win + iOS / Mac + Android</th>
+            <th>End-to-End Encryption</th>
+            <th>Setup &amp; Reliability</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th>SoloMD Built-in Sync (Git + Encrypted Cloud Folder + WebDAV)</th>
+            <td><strong>$0 forever (MIT)</strong></td>
+            <td>✅ Native on all 5 platforms</td>
+            <td>✅ Built-in AES-256-GCM / XChaCha20</td>
+            <td><strong>5 minutes</strong> · zero plugins required, built-in conflict recovery</td>
+          </tr>
+          <tr>
+            <th>Obsidian Official Sync</th>
+            <td>$48 – $96 / yr</td>
+            <td>✅ All platforms</td>
+            <td>✅ Built-in E2EE</td>
+            <td><strong>5 minutes</strong> · rock-solid, but paid subscription</td>
+          </tr>
+          <tr>
+            <th>iCloud Drive alone</th>
+            <td>$0 (5 GB free)</td>
+            <td>⚠️ Poor on Windows / ❌ No Android</td>
+            <td>⚠️ Apple ADP only</td>
+            <td>Frequent file eviction ("cloud icon" stalls) &amp; duplicate conflict files on Windows</td>
+          </tr>
+          <tr>
+            <th>OneDrive / Dropbox / Google Drive</th>
+            <td>$0 free tier</td>
+            <td>⚠️ Desktop only for folder vaults</td>
+            <td>❌ Plaintext on server</td>
+            <td>Obsidian mobile apps cannot natively mount OneDrive/Dropbox folders without third-party plugins</td>
+          </tr>
+          <tr>
+            <th>Obsidian + Remotely Save / LiveSync plugin</th>
+            <td>$0 (BYO WebDAV / S3 / CouchDB)</td>
+            <td>✅ Cross-platform</td>
+            <td>🟡 Optional (plugin-managed)</td>
+            <td>Community plugin; risk of sync loops or database corruption after app updates</td>
+          </tr>
+          <tr>
+            <th>Syncthing</th>
+            <td>$0 (open source)</td>
+            <td>⚠️ Limited on iOS (Mobius Sync paid/sandboxed)</td>
+            <td>✅ Transit encrypted</td>
+            <td>Requires at least two devices online simultaneously unless you run an always-on home server</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>Why DIY syncing breaks in traditional vault editors</h2>
+      <p>
+        When users complain about lost paragraphs or ratusan <code>Note (Conflict 2026-11-15).md</code> duplicates, the root cause is rarely the Markdown file itself — it is the hidden workspace directory:
+      </p>
+      <ul>
+        <li><strong>Hidden metadata churn:</strong> Traditional vault apps rewrite JSON state files inside <code>.obsidian/</code> every few seconds (cursor position, open tabs, plugin caches). Cloud drives like iCloud and OneDrive throttle or conflict when dozens of tiny hidden files mutate on two devices at once.</li>
+        <li><strong>Cross-ecosystem walls:</strong> Apple’s iCloud Drive works well between Mac and iPhone, but iCloud for Windows frequently locks files during background indexing. Conversely, Android has no official iCloud client at all.</li>
+        <li><strong>Mobile Git friction:</strong> Running Git sync on iOS or Android inside a plugin often hits WebView memory limits or requires external apps like Working Copy ($25) or Termux scripts.</li>
+      </ul>
+
+      <h2>How SoloMD gives you 5-platform encrypted sync for $0</h2>
+      <p>
+        <strong>SoloMD</strong> (~14–30 MB native Tauri 2 app for macOS, Windows, Linux, iOS, and Android) was designed from day one so that <strong>multi-device sync is a core primitive, not a paid add-on</strong>:
+      </p>
+      <ol>
+        <li>
+          <strong>Vault-Scoped Encrypted Cloud Drive Sync (v5.1+):</strong> Point SoloMD at any folder inside <strong>iCloud Drive, OneDrive, Dropbox, Nutstore (坚果云), Baidu Netdisk, Aliyun Drive, or Syncthing</strong>. Turn on <em>Vault Encryption</em> in Settings → Sync, and SoloMD encrypts every note locally with <strong>AES-256-GCM (<code>.solomd-enc</code>)</strong> before the cloud drive client touches disk.
+        </li>
+        <li>
+          <strong>Native GitHub / Git Sync with AutoGit History:</strong> SoloMD embeds native <code>libgit2</code> (on desktop) and direct Git REST/Tree sync, storing your credentials in the OS Keychain. Every <code>Cmd/Ctrl+S</code> creates a local AutoGit snapshot you can diff or roll back in one click, and background sync pushes to your private repository — optionally encrypted with <strong>Argon2id + XChaCha20-Poly1305</strong>.
+        </li>
+        <li>
+          <strong>Zero ".obsidian" state bloat:</strong> SoloMD keeps transient UI state outside your synced notes unless you explicitly export a portable workspace profile, eliminating 99% of cloud-drive sync conflicts.
+        </li>
+      </ol>
+
+      <h2>Can I use SoloMD alongside Obsidian or Typora?</h2>
+      <p>
+        Yes — and thousands of users do exactly that. Because SoloMD stores 100% standard plain-text <code>.md</code> files with standard YAML frontmatter and <code>[[wikilinks]]</code>:
+      </p>
+      <ul>
+        <li>You can keep Obsidian on your desktop for heavy Dataview/Excalidraw plugins while using <strong>SoloMD for instant-launch writing (&lt;0.3s startup, Typora-style Pure WYSIWYG mode) and free mobile/cross-platform sync</strong>.</li>
+        <li>Or you can replace both Typora ($14.99) and Obsidian Sync ($48/yr) with SoloMD alone — getting 9-format native export (PDF, Word <code>.docx</code>, HTML with offline search, EPUB), 20+ BYOK &amp; local Ollama AI providers, and 5-platform sync in a single ~14–30 MB app.</li>
+      </ul>
+
+      <CompareFaq heading="Frequently Asked Questions" items={FAQ} />
+
+      <div class="compare-cta">
+        <a href="/#download" class="btn btn--primary">Download SoloMD Free</a>
+        <a href="/compare/vs-obsidian/" class="btn btn--secondary">Read Full SoloMD vs Obsidian Comparison</a>
+      </div>
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .compare-article { max-width: 820px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .compare-article h1 { font-size: 2.2rem; line-height: 1.2; margin: 10px 0 20px; }
+  .compare-article h2 { font-size: 1.55rem; margin: 36px 0 14px; }
+  .compare-article h3 { font-size: 1.15rem; margin: 24px 0 10px; }
+  .compare-article .lead { font-size: 1.1rem; color: var(--text-muted, #555); margin-bottom: 32px; }
+  .compare-detail { width: 100%; border-collapse: collapse; margin: 20px 0 28px; font-size: 14px; }
+  .compare-detail th, .compare-detail td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #eee; }
+  .compare-detail thead th { background: #fafafa; font-weight: 600; }
+  .compare-detail tbody th { font-weight: 500; width: 28%; }
+  .compare-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 40px; }
+  .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  .btn--primary { background: #ff9f40; color: #000; }
+  .btn--secondary { background: #111; color: #fff; }
+  .compare-article ul, .compare-article ol { padding-left: 22px; }
+  .compare-article li { margin: 8px 0; line-height: 1.65; }
+  .compare-article p { line-height: 1.7; margin: 12px 0; }
+  .compare-article code { background: #f5f5f0; padding: 1px 6px; border-radius: 4px; font-size: 0.92em; }
+</style>

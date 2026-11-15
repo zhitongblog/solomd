@@ -1,0 +1,166 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import Header from '../../../components/Header.astro';
+import Footer from '../../../components/Footer.astro';
+import CompareFaq from '../../../components/CompareFaq.astro';
+
+const lang = 'zh' as const;
+const FAQ = [
+  {
+    q: '不安装 Pandoc 可以把 Markdown 导出为 Word (.docx) 吗？',
+    a: '可以。SoloMD 内置了原生的 9 合 1 导出中心，无需下载安装外部 Pandoc 或几 GB 的 LaTeX 环境，即可直接将单篇 Markdown 或整个多级文件夹导出为 Word (.docx)、带书签目录的 PDF、带离线全文检索侧栏的单文件 HTML、EPUB 电子书、ODT、LaTeX、RTF、长图 PNG 和 TextBundle。',
+  },
+  {
+    q: '导出 Word 时，如何套用单位公文模板或学校毕业论文的格式要求（如仿宋字体、行距、三线表）？',
+    a: '在 SoloMD 的导出中心选择 Word (.docx) 时，可以直接挂载任意自定义的 .docx 参考模板文件。SoloMD 会自动提取你模板中的一至六级标题样式、正文字体字号、段落行距、页边距与表格样式，导出后无需在 Word 里重新逐段调格式。',
+  },
+  {
+    q: '从 DeepSeek、ChatGPT 或 Kimi 复制过来的公式和表格，导出 Word 会乱码吗？',
+    a: '不会。SoloMD 不仅支持一键清理 AI 输出中的多余引用标记与零宽字符，还具备残缺 Markdown 表格自动修复能力，并在导出 Word (.docx) 时将 $...$ 和 $$...$$ LaTeX 数学公式自动转换为 Microsoft Word 原生可编辑的 OMML 公式对象。',
+  },
+  {
+    q: '能把一个文件夹里的几十篇 Markdown 笔记合并导出成一本带目录页码的 PDF 或 Word 书稿吗？',
+    a: '可以。在 SoloMD 左侧文件树右键任意文件夹（或打开导出中心切换为文件夹导出），选择「合并导出为单本文档」，即可自动生成包含文件夹层级 + 文内三级标题的首页目录（带页码跳转）、PDF 侧栏书签树（全面支持中文 UTF-16BE 不乱码）以及子目录图片的自动内嵌。',
+  },
+];
+---
+
+<Layout
+  title="无需安装 Pandoc：如何一键将 Markdown 导出为排版精美的 Word (.docx) 与带书签 PDF（支持自定义公文/论文模板）"
+  description="告别 Typora / Obsidian 导出 Word 报错要求安装 Pandoc 的烦恼。详解如何用免费开源的 SoloMD 一键将单篇或多文件夹 Markdown 导出为套用自定义样式模板的 Word (.docx)、带中文书签与页码目录的 PDF、以及带全文检索侧栏的单文件 HTML。"
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main id="main" class="compare-page">
+    <article class="container compare-article">
+      <nav class="breadcrumbs">
+        <a href="/zh/">首页</a> / <a href="/zh/compare">对比</a> / <span>免 Pandoc 导出 Word 与 PDF 指南</span>
+      </nav>
+
+      <h1>无需安装 Pandoc：如何一键将 Markdown 导出为 Word (.docx) 与带书签 PDF</h1>
+      <p class="lead">
+        用 Markdown 写文档、整理 DeepSeek/ChatGPT 回答非常爽快，但到了交付汇报、提交公文或发给同事审阅时，对方往往只认 <strong>Word (<code>.docx</code>)</strong> 或<strong>带侧栏书签与目录页码的 PDF</strong>。
+        在 Typora 或 Obsidian 中点击导出 Word，会立刻弹窗提示你必须先去下载安装命令行工具 <strong>Pandoc</strong> 并配置系统环境变量。
+        本文对比 2026 年主流 Markdown 编辑器的导出能力，并演示如何用免费开源的 <strong>SoloMD</strong> 免装任何外部依赖完成专业级排版导出。
+      </p>
+
+      <h2>主流 Markdown 编辑器导出能力对比（2026）</h2>
+      <table class="compare-detail">
+        <thead>
+          <tr>
+            <th>导出能力维度</th>
+            <th>SoloMD v5.2（免费开源 MIT）</th>
+            <th>Typora（¥89 付费）</th>
+            <th>Obsidian + Pandoc 插件</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th>免安装 Pandoc 直接导出 Word (<code>.docx</code>)</th>
+            <td>✅ <strong>内置原生引擎，开箱即用</strong></td>
+            <td>❌ 必须手动安装外部 Pandoc</td>
+            <td>❌ 必须装社区插件 + 外部 Pandoc</td>
+          </tr>
+          <tr>
+            <th>挂载自定义 Word (<code>.docx</code>) 样式模板（公文/论文）</th>
+            <td>✅ <strong>导出弹窗直接选择参考模板</strong></td>
+            <td>🟡 需手写 Pandoc 命令行参数</td>
+            <td>🟡 需配置复杂 CLI 参数</td>
+          </tr>
+          <tr>
+            <th>LaTeX 数学公式转 Word 原生可编辑公式 (OMML)</th>
+            <td>✅ 原生转换，Word 内可直接双击修改</td>
+            <td>✅ 依赖 Pandoc 转换</td>
+            <td>⚠️ 经常因环境缺失转成纯文本或报错</td>
+          </tr>
+          <tr>
+            <th>PDF 自动生成首页目录（带页码）+ 侧栏中文书签</th>
+            <td>✅ <strong>一键勾选</strong>（UTF-16BE 中文书签零乱码）</td>
+            <td>✅ 支持</td>
+            <td>⚠️ 仅基础打印，不支持多文件目录合并</td>
+          </tr>
+          <tr>
+            <th>单文件离线 HTML（含可折叠书签树 + 离线全文搜索）</th>
+            <td>✅ <strong>自带交互式导航侧栏与关键词高亮搜索</strong></td>
+            <td>⚠️ 仅基础大纲，无搜索面板</td>
+            <td>❌ 需依赖第三方网页导出插件</td>
+          </tr>
+          <tr>
+            <th>整个文件夹合并导出为一本 PDF / Word / EPUB 书稿</th>
+            <td>✅ <strong>支持多级子目录合并 + 子目录图片自动内嵌</strong></td>
+            <td>❌ 仅限单文件导出</td>
+            <td>❌ 仅限单文件导出</td>
+          </tr>
+          <tr>
+            <th>一级至六级标题自动编号（<code>1 / 1.1 / 1.1.1</code>）</th>
+            <td>✅ 内置开关，编辑器与导出同步生效</td>
+            <td>🟡 需手写自定义 CSS 计数器</td>
+            <td>🟡 需安装 Number Headings 插件</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>为什么传统 Markdown 转 Word / PDF 总是让人抓狂？</h2>
+      <ol>
+        <li>
+          <strong>「未找到 Pandoc」劝退普通用户与内网办公电脑：</strong>在很多公司内网电脑或普通办公本上，安装命令行工具、配置 PATH 环境变量非常繁琐，甚至因为权限受限根本无法安装。
+        </li>
+        <li>
+          <strong>AI 回答粘贴进编辑器后表格裂开、公式变源码：</strong>从 DeepSeek、ChatGPT、豆包或 Kimi 复制出来的长文，经常带有不规范的 Markdown 表格分隔行或 <code>\[ ... \]</code> 公式块，普通转换器导出的 Word 里全是乱码符号。
+        </li>
+        <li>
+          <strong>每次导出都要在 Word 里重新刷一遍格式：</strong>默认导出的 Word 往往是蓝色的西文标题字体，不符合国内单位公文（如方正小标宋/黑体/仿宋_GB2312）或高校论文格式规范。
+        </li>
+      </ol>
+
+      <h2>SoloMD 统一 9 合 1 导出中心的核心亮点</h2>
+      <p>
+        在 <strong>SoloMD v5.2</strong> 中，只需按下 <code>Ctrl/Cmd + Shift + E</code>（或在左侧文件树右键任意文件夹），即可打开统一的<strong>导出中心</strong>：
+      </p>
+      <ul>
+        <li>
+          <strong>9 种格式原生直出：</strong>内置支持 <strong>PDF、Word (<code>.docx</code>)、单文件离线 HTML、EPUB 电子书、ODT、LaTeX (<code>.tex</code>)、RTF、高清长图 PNG、TextBundle (<code>.textpack</code>)</strong>，整个安装包仅 ~14–30 MB，不依赖任何外部组件。
+        </li>
+        <li>
+          <strong>两大全局结构开关：</strong>不管是单篇导出还是整个文件夹合并成书，都可以一键勾选<strong>「包含书签侧边栏（HTML 含搜索面板）」</strong>与<strong>「包含首页目录页（带页码）」</strong>。
+        </li>
+        <li>
+          <strong>挂载自定义 <code>.docx</code> 参考模板：</strong>将你调好字体、行距、页眉页脚和表格样式的单位公文或论文 <code>.docx</code> 模板挂载上去，以后每次写完 Markdown 一键导出的就是完全符合规范的成品 Word 文档。
+        </li>
+        <li>
+          <strong>AI 残缺表格自动修复 + 微信公众号/飞书富文本一键复制：</strong>除了文件导出，SoloMD 还提供「复制为富文本 HTML」与「一键清理 AI 杂质」，可直接粘贴到微信公众号后台、飞书文档、Notion 或语雀，完美保留代码高亮与排版样式。
+        </li>
+      </ul>
+
+      <CompareFaq heading="常见问题解答 (FAQ)" items={FAQ} />
+
+      <div class="compare-cta">
+        <a href="/zh/#download" class="btn btn--primary">免费下载 SoloMD（~14–30 MB）</a>
+        <a href="/zh/docs/export/" class="btn btn--secondary">查看完整导出文档</a>
+      </div>
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .compare-article { max-width: 820px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .compare-article h1 { font-size: 2.1rem; line-height: 1.25; margin: 10px 0 20px; }
+  .compare-article h2 { font-size: 1.5rem; margin: 36px 0 14px; }
+  .compare-article h3 { font-size: 1.15rem; margin: 24px 0 10px; }
+  .compare-article .lead { font-size: 1.08rem; color: var(--text-muted, #555); margin-bottom: 32px; line-height: 1.75; }
+  .compare-detail { width: 100%; border-collapse: collapse; margin: 20px 0 28px; font-size: 14px; }
+  .compare-detail th, .compare-detail td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #eee; }
+  .compare-detail thead th { background: #fafafa; font-weight: 600; }
+  .compare-detail tbody th { font-weight: 500; width: 30%; }
+  .compare-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 40px; }
+  .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  .btn--primary { background: #ff9f40; color: #000; }
+  .btn--secondary { background: #111; color: #fff; }
+  .compare-article ul, .compare-article ol { padding-left: 22px; }
+  .compare-article li { margin: 8px 0; line-height: 1.7; }
+  .compare-article p { line-height: 1.75; margin: 12px 0; }
+  .compare-article code { background: #f5f5f0; padding: 1px 6px; border-radius: 4px; font-size: 0.92em; }
+</style>
