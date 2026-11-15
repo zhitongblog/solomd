@@ -223,3 +223,93 @@ function foreignObjectsToText(root: Element) {
     fo.replaceWith(g);
   }
 }
+
+function bytesToBase64(bytes: Uint8Array): string {
+  if (typeof Buffer !== 'undefined') {
+    return Buffer.from(bytes).toString('base64');
+  }
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const sub = bytes.subarray(i, Math.min(i + chunkSize, bytes.length));
+    binary += String.fromCharCode(...sub);
+  }
+  return btoa(binary);
+}
+
+/**
+ * #578 — Replace ` ```mermaid ... ``` ` / ` ~~~mermaid ... ~~~ ` fenced blocks
+ * in Markdown with rendered PNG `data:image/png;base64,...` images so Pandoc
+ * embeds crisp diagram images directly into EPUB / ODT / RTF outputs instead of
+ * showing raw Mermaid source code.
+ */
+export async function renderMermaidFencesInMarkdown(
+  markdown: string,
+  renderer: (source: string) => Promise<DiagramPng | null> = mermaidToPng,
+): Promise<string> {
+  if (!markdown || !/(?:`{3,}|~{3,})[ \t]*mermaid\b/i.test(markdown)) {
+    return markdown;
+  }
+  const lines = markdown.split(/\r?\n/);
+  const out: string[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    const rawLine = lines[i];
+    const openMatch = /^([ \t]*(?:>[ \t]*)*)(`{3,}|~{3,})[ \t]*([^\s`~]*)(.*)$/.exec(rawLine);
+    if (!openMatch) {
+      out.push(rawLine);
+      i++;
+      continue;
+    }
+    const indentPrefix = openMatch[1] || '';
+    const fenceMarker = openMatch[2];
+    const fenceChar = fenceMarker[0];
+    const fenceLen = fenceMarker.length;
+    const lang = (openMatch[3] || '').trim().toLowerCase();
+    const restInfo = openMatch[4] || '';
+    if (fenceChar === '`' && restInfo.includes('`')) {
+      out.push(rawLine);
+      i++;
+      continue;
+    }
+    // Find matching closing fence
+    let closeIdx = -1;
+    const bodyLines: string[] = [];
+    for (let j = i + 1; j < lines.length; j++) {
+      const candidate = lines[j];
+      const stripped = indentPrefix && candidate.startsWith(indentPrefix)
+        ? candidate.slice(indentPrefix.length)
+        : candidate.replace(/^[ \t]*(?:>[ \t]*)*/, '');
+      const closeMatch = new RegExp(`^[ \\t]*${fenceChar}{${fenceLen},}[ \\t]*$`).exec(stripped);
+      if (closeMatch) {
+        closeIdx = j;
+        break;
+      }
+      bodyLines.push(
+        indentPrefix && candidate.startsWith(indentPrefix)
+          ? candidate.slice(indentPrefix.length)
+          : candidate,
+      );
+    }
+    if (closeIdx < 0) {
+      out.push(rawLine);
+      i++;
+      continue;
+    }
+    if (lang === 'mermaid') {
+      const diagramCode = bodyLines.join('\n').trim();
+      const png = diagramCode ? await renderer(diagramCode) : null;
+      if (png && png.data.length > 0) {
+        const b64 = bytesToBase64(png.data);
+        out.push(`${indentPrefix}![](data:image/png;base64,${b64})`);
+        i = closeIdx + 1;
+        continue;
+      }
+    }
+    for (let k = i; k <= closeIdx; k++) {
+      out.push(lines[k]);
+    }
+    i = closeIdx + 1;
+  }
+  return out.join('\n');
+}

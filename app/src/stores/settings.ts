@@ -465,6 +465,11 @@ interface Settings {
   // #570 / #572 — Standalone HTML & PDF export includes a left bookmark
   // navigation tree (and global search panel in HTML).
   exportHtmlWithNav: boolean;
+  // #574 — Paginated HTML export (`<section class="page">`), splitting notes
+  // into per-note sections when `exportHtmlWithNav` is enabled.
+  exportHtmlPaginated: boolean;
+  // #584 — HTML export content max-width in px on desktop (`0` = unlimited).
+  exportHtmlContentWidth: number;
   // #572 — Include a Table of Contents page (with page numbers) at the start
   // of exported documents.
   exportIncludeTocPage: boolean;
@@ -981,6 +986,8 @@ function defaults(): Settings {
     fenceLanguageSuggestions: true,
     imageExportBranding: true,
     exportHtmlWithNav: true,
+    exportHtmlPaginated: false,
+    exportHtmlContentWidth: 960,
     exportIncludeTocPage: true,
     globalZoom: 1,
     wheelZoomEnabled: true,
@@ -2206,6 +2213,15 @@ export const useSettingsStore = defineStore('settings', {
     },
     setExportHtmlWithNav(enabled: boolean) {
       this.exportHtmlWithNav = Boolean(enabled);
+      this.persist();
+    },
+    setExportHtmlPaginated(enabled: boolean) {
+      this.exportHtmlPaginated = Boolean(enabled);
+      this.persist();
+    },
+    setExportHtmlContentWidth(widthPx: number) {
+      const n = Number.isFinite(widthPx) ? Math.max(0, Math.round(widthPx)) : 960;
+      this.exportHtmlContentWidth = n;
       this.persist();
     },
     toggleExportIncludeTocPage() {

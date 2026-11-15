@@ -724,19 +724,9 @@ function tocHeadingsFromTokens(tokens: any[]): TocHeading[] {
     const id = open.attrGet('id') || slugify(text);
     if (text && id) raw.push({ level, text, id, tokenIndex: i, isFolder });
   }
-  // #562 — Folder headings emitted directly above the first note in that folder
-  // (with no body tokens between `heading_close` at `i + 2` and the next
-  // `heading_open` at `i + 3`) jump directly to that first note's first
-  // effective heading.
-  for (let k = raw.length - 2; k >= 0; k--) {
-    if (
-      raw[k].isFolder &&
-      raw[k + 1].tokenIndex === raw[k].tokenIndex + 3 &&
-      raw[k + 1].level > raw[k].level
-    ) {
-      raw[k].id = raw[k + 1].id;
-    }
-  }
+  // #575 — Each folder-mapped heading keeps its own anchor `id` so clicking a
+  // folder node in the TOC / bookmarks jumps directly to that folder's heading
+  // (rather than skipping ahead to the first note heading under it).
   return raw.map(({ level, text, id }) => ({ level, text, id }));
 }
 
@@ -793,8 +783,22 @@ function tocListTokens(state: any, headings: TocHeading[]): any[] {
 }
 
 md.core.ruler.before('source_line_map', 'solomd_toc_level_attr', (state) => {
-  for (let i = 0; i < state.tokens.length - 1; i++) {
-    const open = state.tokens[i];
+  for (let i = 0; i < state.tokens.length; i++) {
+    const tok = state.tokens[i];
+    // #574 — Convert `<!-- solomd-page-break -->` before `<hr>` into a
+    // sanitizer-safe `data-solomd-page-break="1"` attribute on the `<hr>`.
+    if (
+      tok.type === 'html_block' &&
+      /^\s*<!--\s*solomd-page-break\s*-->\s*$/.test(tok.content || '')
+    ) {
+      tok.content = '';
+      if (state.tokens[i + 1]?.type === 'hr') {
+        state.tokens[i + 1].attrSet('data-solomd-page-break', '1');
+      }
+      continue;
+    }
+    if (i >= state.tokens.length - 1) continue;
+    const open = tok;
     const inline = state.tokens[i + 1];
     if (open.type !== 'heading_open' || inline?.type !== 'inline') continue;
     const rawContent = inline.content || '';

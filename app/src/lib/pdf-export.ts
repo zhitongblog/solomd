@@ -342,11 +342,39 @@ export interface PdfOutlineHeading {
   level: number;
   text: string;
   pageNumber: number;
+  /** #576 — Vertical offset from top of page (mm) so bookmarks scroll the exact heading to the top of the viewport. */
+  topMm?: number;
+  /** #575 — Omit `/Dest` when a folder node has no target heading position. */
+  noDest?: boolean;
+}
+
+export interface JsPdfOutlineOptions {
+  pageNumber: number;
+  top?: number;
+  noDest?: boolean;
 }
 
 export interface JsPdfOutlineLike {
-  add(parent: unknown, title: string, options: { pageNumber: number }): unknown;
+  add(parent: unknown, title: string, options: JsPdfOutlineOptions): unknown;
   makeString?: (val: string) => string;
+  renderItems?: (parent: any) => void;
+  ctx?: {
+    val?: string;
+    pdf?: {
+      setPage?: (page: number) => unknown;
+      internal?: {
+        getCurrentPageInfo?: () => { pageNumber?: number };
+        getPageInfo?: (pageNumber: number) => { objId: number };
+        getVerticalCoordinateString?: (y: number) => string;
+      };
+    };
+  };
+  objStart?: (item: any) => void;
+  objEnd?: () => void;
+  line?: (str: string) => void;
+  makeRef?: (item: any) => string;
+  count_r?: (ctx: { count: number }, item: any) => number;
+  count?: number;
 }
 
 export interface JsPdfLinkTargetOptions {
@@ -372,6 +400,7 @@ export interface PdfMeasuredLink {
 }
 
 const HEX_OUTLINE_PATCHED = Symbol.for('solomd.pdfHexOutlineString');
+const OUTLINE_DEST_PATCHED = Symbol.for('solomd.pdfOutlineDestTop');
 
 /**
  * #563 — Encode a PDF `/Title` string safely for jsPDF's outline dictionary.
@@ -514,10 +543,9 @@ export function decoratePdfToc(root: HTMLElement, tocTitle?: string): HTMLElemen
 }
 
 /**
- * #567 / #562 — Resolve an in-page `#anchor` href inside `root`.
- * Synthetic folder headings (`data-toc-folder="1"`) that immediately precede a
- * child heading advance to that child heading so folder TOC entries jump to the
- * exact start of the first note under them.
+ * #567 / #575 — Resolve an in-page `#anchor` href inside `root`.
+ * Each folder-mapped heading keeps its own anchor `id` and jumps directly to
+ * that folder's heading position.
  */
 export function resolvePdfAnchorTarget(
   root: ParentNode,
@@ -532,22 +560,12 @@ export function resolvePdfAnchorTarget(
   } catch {
     // Keep rawId when not valid percent-encoding.
   }
-  let target: HTMLElement | null = null;
   for (const el of Array.from(root.querySelectorAll<HTMLElement>('[id]'))) {
     if (el.id === decodedId || el.id === rawId) {
-      target = el;
-      break;
+      return el;
     }
   }
-  while (
-    target &&
-    target.getAttribute('data-toc-folder') === '1' &&
-    target.nextElementSibling instanceof HTMLElement &&
-    /^H[1-6]$/.test(target.nextElementSibling.tagName)
-  ) {
-    target = target.nextElementSibling;
-  }
-  return target;
+  return null;
 }
 
 /**
@@ -648,8 +666,9 @@ export function populatePdfLinks(
 }
 
 /**
- * #515 — Populate jsPDF's document outline (PDF left-sidebar bookmarks) with a
- * properly nested H1–H6 hierarchy so PDF readers show a collapsible TOC tree.
+ * #515 / #576 / #575 — Populate jsPDF's document outline (PDF left-sidebar bookmarks)
+ * with a nested H1–H6 hierarchy and exact `/XYZ` vertical coordinates so clicking
+ * any bookmark on a page scrolls that heading straight to the top of the viewport.
  */
 export function populatePdfOutline(
   outline: JsPdfOutlineLike | null | undefined,
@@ -662,6 +681,49 @@ export function populatePdfOutline(
     outline.makeString = (val: string) => encodePdfOutlineString(val, origMakeString);
     patchedObj[HEX_OUTLINE_PATCHED] = true;
   }
+  if (typeof outline.renderItems === 'function' && !patchedObj[OUTLINE_DEST_PATCHED]) {
+    outline.renderItems = function renderItemsWithExactTop(this: JsPdfOutlineLike, parentNode: any) {
+      const children: any[] = Array.isArray(parentNode?.children) ? parentNode.children : [];
+      const pdfDoc = this.ctx?.pdf;
+      const getVert = pdfDoc?.internal?.getVerticalCoordinateString;
+      const getPageInfo = pdfDoc?.internal?.getPageInfo;
+      const prevPage = pdfDoc?.internal?.getCurrentPageInfo?.()?.pageNumber;
+      for (let n = 0; n < children.length; n++) {
+        const item = children[n];
+        this.objStart?.(item);
+        this.line?.('/Title ' + (this.makeString ? this.makeString(item.title) : `(${item.title})`));
+        this.line?.('/Parent ' + this.makeRef?.(parentNode));
+        if (n > 0) this.line?.('/Prev ' + this.makeRef?.(children[n - 1]));
+        if (n < children.length - 1) this.line?.('/Next ' + this.makeRef?.(children[n + 1]));
+        if (Array.isArray(item.children) && item.children.length > 0) {
+          this.line?.('/First ' + this.makeRef?.(item.children[0]));
+          this.line?.('/Last ' + this.makeRef?.(item.children[item.children.length - 1]));
+        }
+        const subCount = this.count_r ? this.count_r({ count: 0 }, item) : 0;
+        this.count = subCount;
+        if (subCount > 0) this.line?.('/Count ' + subCount);
+        const opts = item.options as JsPdfOutlineOptions | undefined;
+        if (opts && !opts.noDest && opts.pageNumber && getPageInfo && getVert) {
+          const pageInfo = getPageInfo.call(pdfDoc?.internal, opts.pageNumber);
+          if (typeof pdfDoc?.setPage === 'function') {
+            pdfDoc.setPage(opts.pageNumber);
+          }
+          const topMm =
+            typeof opts.top === 'number' && Number.isFinite(opts.top) ? Math.max(0, opts.top) : 0;
+          const yCoord = getVert.call(pdfDoc?.internal, topMm);
+          this.line?.(`/Dest [${pageInfo.objId} 0 R /XYZ null ${yCoord} null]`);
+        }
+        this.objEnd?.();
+      }
+      if (typeof prevPage === 'number' && prevPage >= 1 && typeof pdfDoc?.setPage === 'function') {
+        pdfDoc.setPage(prevPage);
+      }
+      for (let s = 0; s < children.length; s++) {
+        this.renderItems?.(children[s]);
+      }
+    };
+    patchedObj[OUTLINE_DEST_PATCHED] = true;
+  }
   const stack: Array<{ level: number; node: unknown }> = [];
   for (const h of headings) {
     const title = h.text.replace(/\s+/g, ' ').trim();
@@ -672,7 +734,14 @@ export function populatePdfOutline(
       stack.pop();
     }
     const parent = stack.length > 0 ? stack[stack.length - 1].node : null;
-    const node = outline.add(parent, title, { pageNumber });
+    const addOpts: JsPdfOutlineOptions = { pageNumber };
+    if (typeof h.topMm === 'number' && Number.isFinite(h.topMm)) {
+      addOpts.top = Math.max(0, h.topMm);
+    }
+    if (h.noDest) {
+      addOpts.noDest = true;
+    }
+    const node = outline.add(parent, title, addOpts);
     stack.push({ level, node });
   }
 }
@@ -970,17 +1039,6 @@ export async function capturePdfRaster(
         return { el, level, text, relTopCss };
       })
       .filter((h) => h.text.length > 0);
-    // #562 — Folder headings immediately preceding their first note's first
-    // heading jump to that first note heading's exact position/page.
-    for (let k = rawHeadingsCss.length - 2; k >= 0; k--) {
-      if (
-        rawHeadingsCss[k].el.getAttribute('data-toc-folder') === '1' &&
-        rawHeadingsCss[k].el.nextElementSibling === rawHeadingsCss[k + 1].el &&
-        rawHeadingsCss[k + 1].level > rawHeadingsCss[k].level
-      ) {
-        rawHeadingsCss[k].relTopCss = rawHeadingsCss[k + 1].relTopCss;
-      }
-    }
 
     // #567 — Measure all internal (`#anchor`) and external links on the live
     // container so `finish()` can attach PDF link annotations aligned with
@@ -1120,15 +1178,28 @@ export async function capturePdfRaster(
           typeof pdf?.internal?.getNumberOfPages === 'function'
             ? pdf.internal.getNumberOfPages()
             : Infinity;
+        const marginArr = Array.isArray(opts.margin) ? opts.margin : [10, 10, 12, 10];
+        const marginTopMm = Number(marginArr[0]) || 0;
+        const marginLeftMm = Number(marginArr[1]) || 0;
+        const mmPerRasterPx =
+          canvas && inner && canvas.width > 0 && inner.width > 0
+            ? inner.width / canvas.width
+            : 0;
         if (exportFlags?.includeOutline !== false && pdf?.outline && rawHeadings.length > 0) {
-          const outlineHeadings: PdfOutlineHeading[] = rawHeadings.map((h) => ({
-            level: h.level,
-            text: h.text,
-            pageNumber: Math.min(
-              totalPages,
-              rasterRowToPageNumber(h.rasterY, geometry.pageHeightPx, pageBreaks),
-            ),
-          }));
+          const outlineHeadings: PdfOutlineHeading[] = rawHeadings.map((h) => {
+            const loc = rasterRowToPageLocation(h.rasterY, geometry.pageHeightPx, pageBreaks);
+            const pageNumber = Math.min(totalPages, Math.max(1, loc.pageNumber));
+            const topMm =
+              mmPerRasterPx > 0
+                ? Math.max(0, marginTopMm + loc.offsetInPagePx * mmPerRasterPx - 2)
+                : undefined;
+            return {
+              level: h.level,
+              text: h.text,
+              pageNumber,
+              topMm,
+            };
+          });
           try {
             populatePdfOutline(pdf.outline, outlineHeadings);
           } catch (err) {
@@ -1137,7 +1208,6 @@ export async function capturePdfRaster(
         }
         if (pdf && measuredLinks.length > 0 && canvas && inner) {
           try {
-            const marginArr = Array.isArray(opts.margin) ? opts.margin : [10, 10, 12, 10];
             populatePdfLinks(
               pdf,
               measuredLinks,
@@ -1145,8 +1215,8 @@ export async function capturePdfRaster(
                 canvasWidth: canvas.width,
                 pageHeightPx: geometry.pageHeightPx,
                 innerWidthMm: inner.width,
-                marginTopMm: Number(marginArr[0]) || 0,
-                marginLeftMm: Number(marginArr[1]) || 0,
+                marginTopMm,
+                marginLeftMm,
               },
               pageBreaks,
             );

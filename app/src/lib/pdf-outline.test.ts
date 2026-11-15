@@ -189,3 +189,83 @@ test('#566 & #567 populatePdfLinks maps internal TOC/#anchor links to native PDF
   assert.equal(recorded[2].options.url, 'https://solomd.app/docs');
   assert.equal(recorded[2].y, 30); // 10mm + (1100 - 900) * 0.1mm
 });
+
+test('#576 & #575 populatePdfOutline passes topMm and patches renderItems to emit exact /XYZ vertical coordinates and honor noDest', () => {
+  interface FakeOutlineItem {
+    id: number;
+    title: string;
+    options: { pageNumber?: number; top?: number; noDest?: boolean };
+    children: FakeOutlineItem[];
+  }
+  const root: { children: FakeOutlineItem[] } = { children: [] };
+  let nextId = 10;
+  const emittedLines: string[] = [];
+  let currentPage = 1;
+
+  const outline: JsPdfOutlineLike = {
+    ctx: {
+      pdf: {
+        setPage(p: number) {
+          currentPage = p;
+        },
+        internal: {
+          getCurrentPageInfo: () => ({ pageNumber: currentPage }),
+          getPageInfo: (pageNo: number) => ({ objId: pageNo * 100 + 3 }),
+          // A4 height 297mm = 841.89pt; PDF Y grows bottom-up: (297 - topMm) * (72 / 25.4)
+          getVerticalCoordinateString: (topMm: number) =>
+            ((297 - topMm) * (72 / 25.4)).toFixed(2),
+        },
+      },
+    },
+    add(parent, title, options) {
+      const node: FakeOutlineItem = {
+        id: nextId++,
+        title,
+        options,
+        children: [],
+      };
+      const container = (parent as FakeOutlineItem | null) ?? root;
+      container.children.push(node);
+      return node;
+    },
+    objStart() {},
+    objEnd() {},
+    makeRef(node: any) {
+      return `${node?.id ?? 1} 0 R`;
+    },
+    makeString(val: string) {
+      return `(${val})`;
+    },
+    count_r(_ctx: { count: number }, node: any) {
+      return Array.isArray(node?.children) ? node.children.length : 0;
+    },
+    line(str: string) {
+      emittedLines.push(str);
+    },
+    renderItems() {
+      throw new Error('unpatched renderItems should have been replaced');
+    },
+  };
+
+  populatePdfOutline(outline, [
+    { level: 1, text: 'Chapter 1', pageNumber: 1, topMm: 15 },
+    { level: 2, text: 'Section 1.1', pageNumber: 1, topMm: 95 },
+    { level: 2, text: 'Empty Folder Node', pageNumber: 1, noDest: true },
+    { level: 1, text: 'Chapter 2', pageNumber: 2, topMm: 40 },
+  ]);
+
+  outline.renderItems!(root);
+
+  const destLines = emittedLines.filter((l) => l.startsWith('/Dest '));
+  // 3 items have destinations; the `noDest: true` item must NOT emit `/Dest`.
+  // `renderItems` writes breadth-first per parent: Chapter 1 -> Chapter 2 -> Section 1.1
+  assert.equal(destLines.length, 3);
+  assert.equal(destLines[0], '/Dest [103 0 R /XYZ null 799.37 null]');
+  assert.equal(destLines[1], '/Dest [203 0 R /XYZ null 728.50 null]');
+  assert.equal(destLines[2], '/Dest [103 0 R /XYZ null 572.60 null]');
+  assert.notEqual(
+    destLines[0],
+    destLines[2],
+    'two headings on the same PDF page must have distinct /XYZ vertical coordinates',
+  );
+});

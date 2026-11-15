@@ -450,7 +450,7 @@ async function toggle(node: Node, how: 'click' | 'dblclick' | 'caret' = 'click')
  *  — unlike toggle() it neither closes an open folder, moves the selection,
  *  nor waits for a double click. */
 async function expandDir(node: Node) {
-  if (node.expanded) return;
+  if (node.expanded && node.children) return;
   if (!node.children) {
     node.loading = true;
     const { children, truncated } = await loadDir(node.path);
@@ -461,29 +461,40 @@ async function expandDir(node: Node) {
   node.expanded = true;
 }
 
-/** #400 — Recursively expand or collapse all subfolders under a directory node. */
-async function expandSubtree(node: Node, maxDepth = 4) {
+/** #400 / #582 — Recursively expand or collapse all subfolders under a directory node. */
+async function expandSubtree(node: Node | null, maxDepth = 64) {
+  const target = node ?? root.value;
   closeCtx();
+  if (!target) return;
+  const visited = new Set<string>();
+  let expandedCount = 0;
   async function walk(n: Node, depth: number) {
-    if (!n.is_dir || depth > maxDepth) return;
+    if (!n.is_dir || depth > maxDepth || expandedCount >= 2000) return;
+    if (n.path) {
+      if (visited.has(n.path)) return;
+      visited.add(n.path);
+    }
+    expandedCount++;
     await expandDir(n);
     for (const child of n.children ?? []) {
       if (child.is_dir) await walk(child, depth + 1);
     }
   }
-  await walk(node, 0);
+  await walk(target, 0);
 }
 
-function collapseSubtree(node: Node) {
+function collapseSubtree(node: Node | null) {
+  const target = node ?? root.value;
   closeCtx();
-  function walk(n: Node) {
+  if (!target) return;
+  function walk(n: Node, isRootContainer: boolean) {
     if (!n.is_dir) return;
-    n.expanded = false;
+    if (!isRootContainer) n.expanded = false;
     for (const child of n.children ?? []) {
-      if (child.is_dir) walk(child);
+      if (child.is_dir) walk(child, false);
     }
   }
-  walk(node);
+  walk(target, target === root.value);
 }
 
 watch(
@@ -2330,7 +2341,7 @@ onBeforeUnmount(() => {
           {{ t('explorer.newFolder') || 'New Folder' }}
         </button>
       </template>
-      <template v-if="ctx.node && ctx.node.is_dir">
+      <template v-if="(!ctx.node && root) || (ctx.node && ctx.node.is_dir)">
         <div class="ftree__ctx-sep"></div>
         <button class="ftree__ctx-item" @click="expandSubtree(ctx.node)">
           {{ t('explorer.expandSubtree') || '展开全部子目录' }}

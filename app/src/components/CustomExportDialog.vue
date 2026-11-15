@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import { useSettingsStore } from '../stores/settings';
@@ -10,6 +10,12 @@ import { useExport } from '../composables/useExport';
 import { openDirectoryInFileManager } from '../lib/reveal-in-file-manager';
 import { sourceFolderFor, treeSelection } from '../lib/new-file-target';
 import { buildMergedBookMarkdown, type MergedNoteInput } from '../lib/merged-book';
+import {
+  resolveRenamedExportPath,
+  splitExportPath,
+  suggestNumberedExportPath,
+  validateHtmlContentWidth,
+} from '../lib/export-overwrite';
 
 type ExportScope = 'current' | 'folder';
 type ExportFormat = 'pdf' | 'html' | 'docx' | 'epub' | 'odt' | 'latex' | 'rtf' | 'png' | 'textpack';
@@ -228,9 +234,23 @@ interface DirItem {
   is_dir: boolean;
 }
 
-async function collectMarkdownFiles(rootDir: string, recursive: boolean): Promise<Array<{ path: string; relDir: string; baseName: string }>> {
-  const out: Array<{ path: string; relDir: string; baseName: string }> = [];
-  async function walk(curDir: string, relPrefix: string) {
+interface CollectedExportItem {
+  path: string;
+  relDir: string;
+  baseName: string;
+  emptyDir?: boolean;
+}
+
+const ASSET_FOLDER_RE = /^(?:_?assets|images|img|media|attachments|static)$/i;
+
+async function collectMarkdownFiles(
+  rootDir: string,
+  recursive: boolean,
+  includeEmptyLeafDirs = false,
+): Promise<CollectedExportItem[]> {
+  const out: CollectedExportItem[] = [];
+  async function walk(curDir: string, relPrefix: string): Promise<number> {
+    const startLen = out.length;
     const entries = await invoke<DirItem[]>('list_dir', {
       path: curDir,
       showHidden: false,
@@ -244,17 +264,175 @@ async function collectMarkdownFiles(rootDir: string, recursive: boolean): Promis
       if (!entry.path || entry.name === '__solomd_truncated__') continue;
       if (entry.is_dir) {
         if (recursive && !entry.name.startsWith('.') && entry.name !== 'node_modules') {
-          await walk(entry.path, relPrefix ? `${relPrefix}/${entry.name}` : entry.name);
+          const childRel = relPrefix ? `${relPrefix}/${entry.name}` : entry.name;
+          const added = await walk(entry.path, childRel);
+          if (includeEmptyLeafDirs && added === 0 && !ASSET_FOLDER_RE.test(entry.name)) {
+            out.push({ path: '', relDir: childRel, baseName: '', emptyDir: true });
+          }
         }
       } else if (/\.(md|markdown)$/i.test(entry.name)) {
         const baseName = entry.name.replace(/\.(md|markdown)$/i, '');
         out.push({ path: entry.path, relDir: relPrefix, baseName });
       }
     }
+    return out.length - startLen;
   }
   await walk(rootDir, '');
   return out;
 }
+
+// #584 — Desktop HTML content width warning bubble
+const htmlWidthWarning = computed(() => {
+  const screenW = typeof window !== 'undefined' && window.screen?.width ? window.screen.width : 1920;
+  return validateHtmlContentWidth(settings.exportHtmlContentWidth, screenW, isZh.value);
+});
+
+function onHtmlWidthInput(ev: Event) {
+  const raw = (ev.target as HTMLInputElement).value.trim();
+  if (raw === '') {
+    settings.setExportHtmlContentWidth(0);
+    return;
+  }
+  const num = Number.parseInt(raw, 10);
+  if (Number.isFinite(num)) {
+    settings.setExportHtmlContentWidth(Math.max(0, num));
+  }
+}
+
+// #581 — Overwrite confirmation & New File Name `(1)` dialog state
+const overwritePromptOpen = ref(false);
+const overwriteTargetPath = ref('');
+const overwriteTargetName = ref('');
+let overwriteResolver: ((choice: 'overwrite' | 'rename' | 'cancel') => void) | null = null;
+
+const renamePromptOpen = ref(false);
+const renameOriginalPath = ref('');
+const renameInputValue = ref('');
+const renameInputEl = ref<HTMLInputElement | null>(null);
+let renameResolver: ((resolvedPath: string | null) => void) | null = null;
+
+function settleOverwritePrompt(choice: 'overwrite' | 'rename' | 'cancel') {
+  overwritePromptOpen.value = false;
+  const r = overwriteResolver;
+  overwriteResolver = null;
+  if (r) r(choice);
+}
+
+function cancelRenamePrompt() {
+  renamePromptOpen.value = false;
+  const r = renameResolver;
+  renameResolver = null;
+  if (r) r(null);
+}
+
+function confirmRenamePrompt() {
+  const resolved = resolveRenamedExportPath(renameOriginalPath.value, renameInputValue.value);
+  if (!resolved) {
+    toasts.warning(isZh.value ? '新文件名不能为空，请输入有效的文件名' : 'File name cannot be empty');
+    void nextTick(() => renameInputEl.value?.focus());
+    return;
+  }
+  renamePromptOpen.value = false;
+  const r = renameResolver;
+  renameResolver = null;
+  if (r) r(resolved);
+}
+
+async function resolveExportTargetConflict(desiredPath: string): Promise<string | null> {
+  let exists = false;
+  try {
+    exists = await invoke<boolean>('fs_file_exists', { path: desiredPath });
+  } catch {
+    exists = false;
+  }
+  if (!exists) return desiredPath;
+
+  const { fileName } = splitExportPath(desiredPath);
+  overwriteTargetPath.value = desiredPath;
+  overwriteTargetName.value = fileName;
+  overwritePromptOpen.value = true;
+
+  const choice = await new Promise<'overwrite' | 'rename' | 'cancel'>((resolve) => {
+    overwriteResolver = resolve;
+  });
+
+  if (choice === 'overwrite') return desiredPath;
+  if (choice === 'cancel') return null;
+
+  // Compute default numbered name `name(1).ext`, `name(2).ext`, ...
+  const suggested = await suggestNumberedExportPath(desiredPath, async (candidate) => {
+    try {
+      return await invoke<boolean>('fs_file_exists', { path: candidate });
+    } catch {
+      return false;
+    }
+  });
+  renameOriginalPath.value = desiredPath;
+  renameInputValue.value = suggested.fileName;
+  renamePromptOpen.value = true;
+  await nextTick();
+  if (renameInputEl.value) {
+    renameInputEl.value.focus();
+    const dot = suggested.fileName.lastIndexOf('.');
+    if (dot > 0) {
+      renameInputEl.value.setSelectionRange(0, dot);
+    } else {
+      renameInputEl.value.select();
+    }
+  }
+
+  return await new Promise<string | null>((resolve) => {
+    renameResolver = resolve;
+  });
+}
+
+// #580 & #581 — Escape key closes rename prompt, overwrite prompt, or custom export window
+function onGlobalKeydown(e: KeyboardEvent) {
+  if (!props.open) return;
+  if (e.key === 'Escape') {
+    if (renamePromptOpen.value) {
+      e.preventDefault();
+      e.stopPropagation();
+      cancelRenamePrompt();
+      return;
+    }
+    if (overwritePromptOpen.value) {
+      e.preventDefault();
+      e.stopPropagation();
+      settleOverwritePrompt('cancel');
+      return;
+    }
+    if (!exporting.value) {
+      e.preventDefault();
+      e.stopPropagation();
+      emit('close');
+    }
+    return;
+  }
+  if (overwritePromptOpen.value && !renamePromptOpen.value && !e.metaKey && !e.ctrlKey) {
+    const k = e.key.toLowerCase();
+    if (k === 'o') {
+      e.preventDefault();
+      settleOverwritePrompt('overwrite');
+    } else if (k === 'r') {
+      e.preventDefault();
+      settleOverwritePrompt('rename');
+    } else if (k === 'c') {
+      e.preventDefault();
+      settleOverwritePrompt('cancel');
+    }
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', onGlobalKeydown, true);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onGlobalKeydown, true);
+  if (overwriteResolver) settleOverwritePrompt('cancel');
+  if (renameResolver) cancelRenamePrompt();
+});
 
 async function runCustomExport() {
   const outDir = outputDir.value.trim();
@@ -279,8 +457,11 @@ async function runCustomExport() {
       }
       const rawName = (tab as { fileName?: string; title?: string }).fileName || (tab as { title?: string }).title || 'Untitled';
       const baseName = rawName.replace(/\.[^.]+$/, '') || 'Untitled';
-      const targetPath = joinOutputPath(outDir, `${baseName}.${ext}`);
-      progressText.value = isZh.value ? `正在导出 ${baseName}.${ext}…` : `Exporting ${baseName}.${ext}…`;
+      const desiredPath = joinOutputPath(outDir, `${baseName}.${ext}`);
+      const targetPath = await resolveExportTargetConflict(desiredPath);
+      if (!targetPath) return;
+      const finalFileName = splitExportPath(targetPath).fileName;
+      progressText.value = isZh.value ? `正在导出 ${finalFileName}…` : `Exporting ${finalFileName}…`;
       await exporter.exportNoteToFile({
         content: tab.content ?? '',
         baseName,
@@ -289,6 +470,8 @@ async function runCustomExport() {
         format: format.value,
         includeBookmarks: settings.exportHtmlWithNav,
         includeTocPage: settings.exportIncludeTocPage,
+        htmlPaginated: settings.exportHtmlPaginated,
+        htmlContentWidth: settings.exportHtmlContentWidth,
       });
       lastExportedPath.value = targetPath;
       const msg = isZh.value ? `导出成功：${targetPath}` : `Exported to: ${targetPath}`;
@@ -301,18 +484,37 @@ async function runCustomExport() {
         throw new Error(isZh.value ? '请选择要导出的源文件夹' : 'Please select a source folder');
       }
       progressText.value = isZh.value ? '正在扫描文件夹中的 Markdown 文档…' : 'Scanning folder for Markdown notes…';
-      const mdFiles = await collectMarkdownFiles(folder, includeSubfolders.value);
-      if (mdFiles.length === 0) {
+      const mdFiles = await collectMarkdownFiles(
+        folder,
+        includeSubfolders.value,
+        mergeIntoSingleDocument.value,
+      );
+      const realNoteFiles = mdFiles.filter((f) => !f.emptyDir);
+      if (realNoteFiles.length === 0) {
         throw new Error(isZh.value ? '所选文件夹中没有找到 .md 文档' : 'No .md files found in the selected folder');
       }
       if (mergeIntoSingleDocument.value) {
         const folderName = folder.replace(/[/\\]+$/, '').split(/[/\\]/).pop() || 'Exported-Book';
+        const desiredPath = joinOutputPath(outDir, `${folderName}.${ext}`);
+        const targetPath = await resolveExportTargetConflict(desiredPath);
+        if (!targetPath) return;
         const mergedNotes: MergedNoteInput[] = [];
+        let noteIdx = 0;
         for (let i = 0; i < mdFiles.length; i++) {
           const item = mdFiles[i];
+          if (item.emptyDir) {
+            mergedNotes.push({
+              relDir: item.relDir,
+              baseName: '',
+              content: '',
+              emptyDir: true,
+            });
+            continue;
+          }
+          noteIdx++;
           progressText.value = isZh.value
-            ? `正在读取并合并章节 (${i + 1} / ${mdFiles.length})：${item.baseName}`
-            : `Reading & merging section (${i + 1} / ${mdFiles.length}): ${item.baseName}`;
+            ? `正在读取并合并章节 (${noteIdx} / ${realNoteFiles.length})：${item.baseName}`
+            : `Reading & merging section (${noteIdx} / ${realNoteFiles.length}): ${item.baseName}`;
           const loaded = await invoke<string | { content: string }>('read_file', { path: item.path });
           const raw = typeof loaded === 'string' ? loaded : loaded?.content ?? '';
           mergedNotes.push({
@@ -323,10 +525,10 @@ async function runCustomExport() {
           });
         }
         const mergedContent = buildMergedBookMarkdown(folderName, mergedNotes);
-        const targetPath = joinOutputPath(outDir, `${folderName}.${ext}`);
+        const finalFileName = splitExportPath(targetPath).fileName;
         progressText.value = isZh.value
-          ? `正在生成合集文档：${folderName}.${ext}…`
-          : `Generating combined document: ${folderName}.${ext}…`;
+          ? `正在生成合集文档：${finalFileName}…`
+          : `Generating combined document: ${finalFileName}…`;
         await exporter.exportNoteToFile({
           content: mergedContent,
           baseName: folderName,
@@ -335,26 +537,30 @@ async function runCustomExport() {
           format: format.value,
           includeBookmarks: settings.exportHtmlWithNav,
           includeTocPage: settings.exportIncludeTocPage,
+          htmlPaginated: settings.exportHtmlPaginated,
+          htmlContentWidth: settings.exportHtmlContentWidth,
         });
         lastExportedPath.value = targetPath;
         const msg = isZh.value
-          ? `合集导出完成：已将 ${mdFiles.length} 篇笔记合并导出至 ${targetPath}`
-          : `Combined export complete: ${mdFiles.length} notes merged into ${targetPath}`;
+          ? `合集导出完成：已将 ${realNoteFiles.length} 篇笔记合并导出至 ${targetPath}`
+          : `Combined export complete: ${realNoteFiles.length} notes merged into ${targetPath}`;
         statusMessage.value = msg;
         statusKind.value = 'ok';
         notifyExportSuccess(msg, outDir);
       } else {
         let exportedCount = 0;
         let lastPath = outDir;
-        for (let i = 0; i < mdFiles.length; i++) {
-          const item = mdFiles[i];
+        for (let i = 0; i < realNoteFiles.length; i++) {
+          const item = realNoteFiles[i];
           progressText.value = isZh.value
-            ? `正在批量导出 (${i + 1} / ${mdFiles.length})：${item.baseName}.${ext}`
-            : `Batch exporting (${i + 1} / ${mdFiles.length}): ${item.baseName}.${ext}`;
+            ? `正在批量导出 (${i + 1} / ${realNoteFiles.length})：${item.baseName}.${ext}`
+            : `Batch exporting (${i + 1} / ${realNoteFiles.length}): ${item.baseName}.${ext}`;
           const loaded = await invoke<string | { content: string }>('read_file', { path: item.path });
           const content = typeof loaded === 'string' ? loaded : loaded?.content ?? '';
           const relFile = item.relDir ? `${item.relDir}/${item.baseName}.${ext}` : `${item.baseName}.${ext}`;
-          const targetPath = joinOutputPath(outDir, relFile);
+          const desiredPath = joinOutputPath(outDir, relFile);
+          const targetPath = await resolveExportTargetConflict(desiredPath);
+          if (!targetPath) return;
           await exporter.exportNoteToFile({
             content,
             baseName: item.baseName,
@@ -363,6 +569,8 @@ async function runCustomExport() {
             format: format.value,
             includeBookmarks: settings.exportHtmlWithNav,
             includeTocPage: settings.exportIncludeTocPage,
+            htmlPaginated: settings.exportHtmlPaginated,
+            htmlContentWidth: settings.exportHtmlContentWidth,
           });
           lastPath = targetPath;
           exportedCount++;
@@ -477,7 +685,48 @@ async function runCustomExport() {
               />
               <span>{{ isZh ? '添加目录页（文档开头的目录含页码）' : 'Include Table of Contents page (leading TOC with page numbers)' }}</span>
             </label>
+            <label
+              v-if="format === 'html'"
+              class="custom-export__checkbox"
+              :class="{ 'custom-export__checkbox--disabled': !settings.exportHtmlWithNav }"
+              style="margin-top: 2px;"
+              :title="isZh
+                ? '当选中该选项时，HTML文档右侧内容面板，将以原笔记文件为粒度分开载入。'
+                : 'When enabled, the right content pane loads notes one page at a time per source note file.'"
+            >
+              <input
+                type="checkbox"
+                :disabled="!settings.exportHtmlWithNav"
+                :checked="settings.exportHtmlWithNav && settings.exportHtmlPaginated"
+                @change="settings.setExportHtmlPaginated(($event.target as HTMLInputElement).checked)"
+              />
+              <span>{{ isZh ? 'HTML分页载入' : 'Paginated HTML loading' }}</span>
+            </label>
           </template>
+        </div>
+
+        <!-- #584 — HTML desktop content display width setting -->
+        <div v-if="format === 'html'" class="custom-export__field">
+          <label class="custom-export__label">{{ isZh ? 'HTML内容显示宽度（像素）' : 'HTML Content Width (px)' }}</label>
+          <div class="custom-export__row custom-export__width-row">
+            <input
+              type="number"
+              min="0"
+              step="50"
+              class="custom-export__input custom-export__width-input"
+              :value="settings.exportHtmlContentWidth"
+              @input="onHtmlWidthInput"
+            />
+            <span class="custom-export__unit">px</span>
+            <span v-if="htmlWidthWarning" class="custom-export__bubble" role="status">
+              {{ htmlWidthWarning }}
+            </span>
+          </div>
+          <p class="custom-export__hint">
+            {{ isZh
+              ? '0：不限制，内容铺满页面（默认 960 px；仅针对桌面端生效，手机端自动自适应全宽）。'
+              : '0 = unlimited full width (default 960 px; applies to desktop screens, mobile adapts automatically).' }}
+          </p>
         </div>
 
         <!-- #553 — optional user-supplied .docx used as a Word reference doc. -->
@@ -559,6 +808,92 @@ async function runCustomExport() {
             @click="runCustomExport"
           >
             {{ exporting ? (isZh ? '正在导出…' : 'Exporting…') : (isZh ? '开始导出' : 'Export Now') }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- #581 — Export Overwrite Confirmation Dialog -->
+    <div
+      v-if="overwritePromptOpen"
+      class="custom-export-subbackdrop"
+      @click.self="settleOverwritePrompt('cancel')"
+    >
+      <div class="custom-export-subdialog" role="alertdialog" aria-modal="true">
+        <div class="custom-export__header">
+          <h3>{{ isZh ? '导出覆盖确认' : 'Confirm Overwrite' }}</h3>
+          <button type="button" class="custom-export__close" @click="settleOverwritePrompt('cancel')">✕</button>
+        </div>
+        <div class="custom-export__body">
+          <p class="custom-export__prompt-msg">
+            {{ isZh
+              ? `目标文件“${overwriteTargetName}”已存在，请选择后续操作：`
+              : `Target file "${overwriteTargetName}" already exists. Choose an action:` }}
+          </p>
+          <p class="custom-export__hint" style="word-break: break-all;">{{ overwriteTargetPath }}</p>
+        </div>
+        <div class="custom-export__subfooter">
+          <button
+            type="button"
+            class="custom-export__btn custom-export__btn--primary"
+            @click="settleOverwritePrompt('overwrite')"
+          >
+            {{ isZh ? '覆盖(O)' : 'Overwrite (O)' }}
+          </button>
+          <button
+            type="button"
+            class="custom-export__btn"
+            @click="settleOverwritePrompt('rename')"
+          >
+            {{ isZh ? '重命名(R)' : 'Rename (R)' }}
+          </button>
+          <button
+            type="button"
+            class="custom-export__btn"
+            @click="settleOverwritePrompt('cancel')"
+          >
+            {{ isZh ? '取消(C)' : 'Cancel (C)' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- #581 — New File Name `(1)` Dialog -->
+    <div
+      v-if="renamePromptOpen"
+      class="custom-export-subbackdrop"
+      @click.self="cancelRenamePrompt"
+    >
+      <div class="custom-export-subdialog" role="dialog" aria-modal="true">
+        <div class="custom-export__header">
+          <h3>{{ isZh ? '新文件名' : 'New File Name' }}</h3>
+          <button type="button" class="custom-export__close" @click="cancelRenamePrompt">✕</button>
+        </div>
+        <div class="custom-export__body">
+          <label class="custom-export__label">{{ isZh ? '请输入导出文件的新名称：' : 'Enter new export file name:' }}</label>
+          <input
+            ref="renameInputEl"
+            v-model="renameInputValue"
+            type="text"
+            class="custom-export__input"
+            spellcheck="false"
+            @keydown.enter.prevent="confirmRenamePrompt"
+          />
+        </div>
+        <div class="custom-export__subfooter">
+          <button
+            type="button"
+            class="custom-export__btn custom-export__btn--primary"
+            @click="confirmRenamePrompt"
+          >
+            {{ isZh ? '确定(O)' : 'OK (O)' }}
+          </button>
+          <button
+            type="button"
+            class="custom-export__btn"
+            @click="cancelRenamePrompt"
+          >
+            {{ isZh ? '取消(C)' : 'Cancel (C)' }}
           </button>
         </div>
       </div>
@@ -726,5 +1061,83 @@ async function runCustomExport() {
 .custom-export__footer-right {
   display: flex;
   gap: 8px;
+}
+.custom-export__checkbox--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.custom-export__width-row {
+  position: relative;
+  flex-wrap: wrap;
+}
+.custom-export__width-input {
+  max-width: 150px;
+  flex: 0 0 150px;
+}
+.custom-export__unit {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.custom-export__bubble {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  margin-left: 4px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #92400e;
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.16);
+}
+.custom-export__bubble::before {
+  content: '';
+  position: absolute;
+  left: -5px;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  background: #fef3c7;
+  border-left: 1px solid #f59e0b;
+  border-bottom: 1px solid #f59e0b;
+  transform: translateY(-50%) rotate(45deg);
+}
+.custom-export-subbackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2300;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.custom-export-subdialog {
+  width: min(460px, 100%);
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 20px 56px rgba(0, 0, 0, 0.36);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.custom-export__prompt-msg {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text);
+}
+.custom-export__subfooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-elev);
 }
 </style>

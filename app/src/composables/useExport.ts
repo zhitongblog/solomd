@@ -341,6 +341,8 @@ export function useExport() {
         codeBlockLineNumbers: settings.codeBlockLineNumbers,
         codeBlockWrap: settings.codeBlockWrap,
         withNav: settings.exportHtmlWithNav,
+        paginated: settings.exportHtmlWithNav && settings.exportHtmlPaginated,
+        contentWidth: settings.exportHtmlContentWidth,
         withTocPage: settings.exportIncludeTocPage,
         lang: settings.language,
       });
@@ -893,6 +895,8 @@ export function useExport() {
     format: 'pdf' | 'html' | 'docx' | 'epub' | 'odt' | 'latex' | 'rtf' | 'png' | 'textpack';
     includeBookmarks?: boolean;
     includeTocPage?: boolean;
+    htmlPaginated?: boolean;
+    htmlContentWidth?: number;
   }): Promise<void> {
     const {
       content,
@@ -902,15 +906,23 @@ export function useExport() {
       format,
       includeBookmarks = settings.exportHtmlWithNav,
       includeTocPage = settings.exportIncludeTocPage,
+      htmlPaginated = settings.exportHtmlPaginated,
+      htmlContentWidth = settings.exportHtmlContentWidth,
     } = input;
     if (format === 'epub' || format === 'odt' || format === 'latex' || format === 'rtf') {
       const { preprocessMarkdown } = await import('../lib/markdown');
       const { pandocResourcePaths } = await import('../lib/pandoc-resource-paths');
       const { useWorkspaceStore } = await import('../stores/workspace');
       const workspace = useWorkspaceStore();
-      const cleanedMarkdown = preprocessMarkdown(content)
+      let cleanedMarkdown = preprocessMarkdown(content)
         .replace(/^[ \t]*\[toc\][ \t]*\r?$/gim, '')
-        .replace(/\s*<!--\s*solomd-toc-(?:level:\d+|folder)\s*-->/g, '');
+        .replace(/\s*<!--\s*solomd-(?:toc-(?:level:\d+|folder)|page-break)\s*-->/g, '');
+      // #578 — Render Mermaid fences to high-DPI PNG data URIs before Pandoc
+      // runs so EPUB / ODT / RTF exports display real diagrams instead of raw code.
+      if (format === 'epub' || format === 'odt' || format === 'rtf') {
+        const { renderMermaidFencesInMarkdown } = await import('../lib/diagram-export');
+        cleanedMarkdown = await renderMermaidFencesInMarkdown(cleanedMarkdown);
+      }
       const extraArgs: string[] = [`--metadata=title:${baseName}`];
       if (includeBookmarks || includeTocPage) {
         extraArgs.push('--toc', '--toc-depth=6');
@@ -920,6 +932,11 @@ export function useExport() {
       }
       if (settings.markdownHardBreaks) {
         extraArgs.push('--from=markdown+hard_line_breaks');
+      }
+      let cssContent: string | null = null;
+      if (format === 'epub') {
+        const { SOLOMD_EPUB_CSS } = await import('../lib/epub-style');
+        cssContent = SOLOMD_EPUB_CSS;
       }
       const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
       const yaml = fmMatch ? fmMatch[1] : '';
@@ -939,6 +956,7 @@ export function useExport() {
           template: null,
           extra_args: extraArgs,
           resource_paths: pandocResourcePaths(filePath ?? null, workspace.currentFolder),
+          css_content: cssContent,
         },
       });
       return;
@@ -983,6 +1001,8 @@ export function useExport() {
         codeBlockLineNumbers: settings.codeBlockLineNumbers,
         codeBlockWrap: settings.codeBlockWrap,
         withNav: includeBookmarks,
+        paginated: includeBookmarks && htmlPaginated,
+        contentWidth: htmlContentWidth,
         withTocPage: includeTocPage,
         lang: settings.language,
       });

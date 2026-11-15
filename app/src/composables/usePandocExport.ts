@@ -261,9 +261,19 @@ export function usePandocExport() {
     track('file_exported', { format: `pandoc_${format}` });
     const tid = toasts.info(t('toast.pandocExporting', { format }), 0);
     try {
+      let preparedInput = content;
+      if (format === 'epub' || format === 'odt' || format === 'rtf') {
+        const { renderMermaidFencesInMarkdown } = await import('../lib/diagram-export');
+        preparedInput = await renderMermaidFencesInMarkdown(preparedInput);
+      }
+      let cssContent: string | null = null;
+      if (format === 'epub') {
+        const { SOLOMD_EPUB_CSS } = await import('../lib/epub-style');
+        cssContent = SOLOMD_EPUB_CSS;
+      }
       await invoke('pandoc_export', {
         args: {
-          input_markdown: content,
+          input_markdown: preparedInput,
           format,
           output_path: outputPath,
           bibliography: bibliography ?? null,
@@ -271,6 +281,7 @@ export function usePandocExport() {
           template: opts.template ?? null,
           extra_args: extraArgs,
           resource_paths: pandocResourcePaths(ctx.filePath, workspace.currentFolder),
+          css_content: cssContent,
         },
       });
       toasts.dismiss(tid);

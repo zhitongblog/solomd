@@ -17,11 +17,13 @@ import { buildExportCustomCss, getActiveCustomCss } from './custom-theme';
 export interface HtmlNavOptions {
   navTreeHtml: string;
   isZh: boolean;
+  paginated?: boolean;
 }
 
 const NAV_SIDEBAR_CSS = `
   body.has-solomd-nav {
-    max-width: none;
+    max-width: none !important;
+    width: 100%;
     margin: 0;
     padding: 0;
     height: 100vh;
@@ -31,17 +33,31 @@ const NAV_SIDEBAR_CSS = `
   }
   .solomd-export-sidebar {
     width: 320px;
-    min-width: 240px;
-    max-width: 520px;
+    min-width: 180px;
+    max-width: 72vw;
     height: 100vh;
     display: flex;
     flex-direction: column;
-    padding: 12px 10px 12px 12px;
+    padding: 12px 6px 12px 12px;
     background: #f3f4f6;
-    border-right: 1px solid var(--rule, #d0d7de);
     box-sizing: border-box;
     flex-shrink: 0;
     user-select: none;
+  }
+  .solomd-sidebar-resizer {
+    width: 6px;
+    height: 100vh;
+    cursor: col-resize;
+    flex-shrink: 0;
+    background: transparent;
+    border-right: 1px solid var(--rule, #d0d7de);
+    transition: background-color 0.15s, border-color 0.15s;
+    z-index: 5;
+  }
+  .solomd-sidebar-resizer:hover,
+  .solomd-sidebar-resizer.is-dragging {
+    background: rgba(37, 99, 235, 0.16);
+    border-right-color: #2563eb;
   }
   .solomd-export-tabs {
     display: flex;
@@ -101,47 +117,118 @@ const NAV_SIDEBAR_CSS = `
     flex-direction: column;
     overflow: hidden;
   }
-  .solomd-nav-pane {
+  .solomd-nav-wrap {
     flex: 1;
-    overflow: auto;
-    padding: 12px 14px;
-    font-size: 14px;
-    line-height: 1.6;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
   }
+  .solomd-nav-wrap[hidden],
   .solomd-nav-pane[hidden],
   .solomd-search-pane[hidden] {
     display: none !important;
   }
+  .solomd-nav-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: #f8fafc;
+    border-bottom: 1px solid #e5e7eb;
+    flex-shrink: 0;
+  }
+  .solomd-nav-tool-btn {
+    appearance: none;
+    padding: 3px 10px;
+    font: 500 12px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #334155;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+  }
+  .solomd-nav-tool-btn:hover {
+    background: #eff6ff;
+    border-color: #93c5fd;
+    color: #1d4ed8;
+  }
+  .solomd-nav-pane {
+    flex: 1;
+    min-height: 0;
+    overflow-x: auto;
+    overflow-y: auto;
+    padding: 10px 12px;
+    font-size: 13.5px;
+    line-height: 1.55;
+  }
+  .solomd-nav-pane > ul.md-toc__list {
+    padding-left: 0;
+    width: max-content;
+    min-width: 100%;
+    box-sizing: border-box;
+  }
   .solomd-nav-pane ul.md-toc__list {
     margin: 0;
     padding-left: 18px;
-    list-style-type: disc;
-  }
-  .solomd-nav-pane ul.md-toc__list ul.md-toc__list {
-    padding-left: 20px;
-    list-style-type: circle;
-  }
-  .solomd-nav-pane ul.md-toc__list ul.md-toc__list ul.md-toc__list {
-    list-style-type: square;
+    list-style: none;
   }
   .solomd-nav-pane li.md-toc__item {
-    margin: 4px 0;
+    margin: 2px 0;
+    white-space: nowrap;
+  }
+  .solomd-nav-pane li.md-toc__item.is-collapsed > ul.md-toc__list {
+    display: none;
+  }
+  .solomd-toc-toggle {
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    margin-right: 4px;
+    padding: 0;
+    border: 1px solid #cbd5e1;
+    border-radius: 3px;
+    background: #f8fafc;
+    color: #475569;
+    font: 700 12px/1 monospace;
+    cursor: pointer;
+    vertical-align: middle;
+  }
+  .solomd-toc-toggle:hover {
+    border-color: #2563eb;
+    color: #2563eb;
+    background: #eff6ff;
+  }
+  .solomd-toc-spacer {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    margin-right: 4px;
+    vertical-align: middle;
   }
   .solomd-nav-pane a.md-toc__link {
-    color: var(--link, #0b5cad);
+    display: inline-block;
+    white-space: nowrap;
+    color: var(--ink, #1f2328);
     text-decoration: none;
-    border-bottom: 1px solid var(--link-soft, #c9dcf0);
-    padding: 1px 4px;
-    border-radius: 3px;
-    transition: background 0.15s, color 0.15s;
+    border-bottom: none;
+    padding: 2px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    vertical-align: middle;
+    transition: background 0.12s, color 0.12s;
   }
   .solomd-nav-pane a.md-toc__link:hover {
     background: #eff6ff;
-    border-bottom-color: var(--link, #0b5cad);
+    color: #1d4ed8;
   }
   .solomd-nav-pane a.md-toc__link.is-active {
-    background: #dbeafe;
-    color: #1d4ed8;
+    background: #2563EB !important;
+    color: #FFFFFF !important;
     font-weight: 600;
   }
   .solomd-search-pane {
@@ -246,7 +333,7 @@ const NAV_SIDEBAR_CSS = `
     box-sizing: border-box;
   }
   .solomd-export-article {
-    max-width: 820px;
+    max-width: var(--solomd-content-max-width, 960px);
     margin: 0 auto;
   }
   .solomd-search-flash {
@@ -256,21 +343,32 @@ const NAV_SIDEBAR_CSS = `
     transition: background-color 0.4s ease;
   }
   @media (max-width: 768px) {
+    body {
+      max-width: 100% !important;
+      padding: 0 20px 64px;
+    }
     body.has-solomd-nav {
       flex-direction: column;
       height: auto;
       overflow: auto;
     }
     .solomd-export-sidebar {
-      width: 100%;
+      width: 100% !important;
       max-width: none;
       height: 320px;
+      padding: 12px;
       border-right: none;
       border-bottom: 1px solid var(--rule, #d0d7de);
+    }
+    .solomd-sidebar-resizer {
+      display: none !important;
     }
     .solomd-export-main {
       height: auto;
       padding: 24px 20px 64px;
+    }
+    .solomd-export-article {
+      max-width: 100% !important;
     }
   }
   @media print {
@@ -280,7 +378,8 @@ const NAV_SIDEBAR_CSS = `
       overflow: visible;
       background: #ffffff;
     }
-    .solomd-export-sidebar {
+    .solomd-export-sidebar,
+    .solomd-sidebar-resizer {
       display: none !important;
     }
     .solomd-export-main {
@@ -291,13 +390,21 @@ const NAV_SIDEBAR_CSS = `
     .solomd-export-article {
       max-width: none;
     }
+    .solomd-export-article section.page {
+      display: block !important;
+    }
   }
 `;
 
 const NAV_SIDEBAR_SCRIPT = `<script>
 (function () {
   var tabs = document.querySelectorAll('.solomd-export-tab');
+  var sidebarEl = document.querySelector('.solomd-export-sidebar');
+  var resizerEl = document.getElementById('solomd-sidebar-resizer');
+  var navWrap = document.getElementById('solomd-nav-wrap');
   var navPane = document.getElementById('solomd-nav-pane');
+  var expandBtn = document.getElementById('solomd-nav-expand-btn');
+  var collapseBtn = document.getElementById('solomd-nav-collapse-btn');
   var searchPane = document.getElementById('solomd-search-pane');
   var searchInput = document.getElementById('solomd-search-input');
   var searchClear = document.getElementById('solomd-search-clear');
@@ -307,6 +414,30 @@ const NAV_SIDEBAR_SCRIPT = `<script>
   var articleEl = document.getElementById('solomd-export-article');
   if (!navPane || !searchPane || !mainEl || !articleEl) return;
 
+  // 1) Resizable navigation sidebar (#574)
+  if (resizerEl && sidebarEl) {
+    var dragging = false;
+    resizerEl.addEventListener('mousedown', function (e) {
+      if (e.button !== 0) return;
+      dragging = true;
+      resizerEl.classList.add('is-dragging');
+      document.body.style.cursor = 'col-resize';
+      e.preventDefault();
+    });
+    window.addEventListener('mousemove', function (e) {
+      if (!dragging) return;
+      var maxW = Math.max(260, Math.floor(window.innerWidth * 0.72));
+      var nextW = Math.min(maxW, Math.max(180, e.clientX));
+      sidebarEl.style.width = nextW + 'px';
+    });
+    window.addEventListener('mouseup', function () {
+      if (!dragging) return;
+      dragging = false;
+      resizerEl.classList.remove('is-dragging');
+      document.body.style.cursor = '';
+    });
+  }
+
   function switchTab(tabName) {
     for (var i = 0; i < tabs.length; i++) {
       var btn = tabs[i];
@@ -315,11 +446,13 @@ const NAV_SIDEBAR_SCRIPT = `<script>
       btn.setAttribute('aria-selected', active ? 'true' : 'false');
     }
     if (tabName === 'search') {
-      navPane.hidden = true;
+      if (navWrap) navWrap.hidden = true;
+      else navPane.hidden = true;
       searchPane.hidden = false;
       if (searchInput) searchInput.focus();
     } else {
       searchPane.hidden = true;
+      if (navWrap) navWrap.hidden = false;
       navPane.hidden = false;
     }
   }
@@ -328,6 +461,132 @@ const NAV_SIDEBAR_SCRIPT = `<script>
     tabs[i].addEventListener('click', function () {
       switchTab(this.getAttribute('data-tab') || 'nav');
     });
+  }
+
+  // 2) Tree expand / collapse icons (+/-) & toolbar recursive expand/collapse (#574)
+  function findDirectChildList(li) {
+    for (var c = 0; c < li.children.length; c++) {
+      if (li.children[c].tagName === 'UL') return li.children[c];
+    }
+    return null;
+  }
+
+  function setNodeExpanded(li, expanded) {
+    if (!li) return;
+    var childUl = findDirectChildList(li);
+    if (!childUl) return;
+    li.classList.toggle('is-collapsed', !expanded);
+    var toggle = li.querySelector(':scope > .solomd-toc-toggle');
+    if (toggle) {
+      toggle.textContent = expanded ? '-' : '+';
+      toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    }
+  }
+
+  function setSubtreeExpanded(rootContainer, expanded) {
+    if (!rootContainer) return;
+    if (rootContainer.tagName === 'LI') {
+      setNodeExpanded(rootContainer, expanded);
+    }
+    var descendants = rootContainer.querySelectorAll('li.md-toc__item');
+    for (var d = 0; d < descendants.length; d++) {
+      setNodeExpanded(descendants[d], expanded);
+    }
+  }
+
+  var allItems = Array.prototype.slice.call(navPane.querySelectorAll('li.md-toc__item'));
+  for (var idx = 0; idx < allItems.length; idx++) {
+    var li = allItems[idx];
+    if (li.querySelector(':scope > .solomd-toc-toggle, :scope > .solomd-toc-spacer')) continue;
+    var hasSub = !!findDirectChildList(li);
+    if (hasSub) {
+      var toggleBtn = document.createElement('button');
+      toggleBtn.type = 'button';
+      toggleBtn.className = 'solomd-toc-toggle';
+      toggleBtn.setAttribute('aria-expanded', 'true');
+      toggleBtn.textContent = '-';
+      (function (ownerLi) {
+        toggleBtn.addEventListener('click', function (ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          var collapsed = ownerLi.classList.contains('is-collapsed');
+          setNodeExpanded(ownerLi, collapsed);
+        });
+      })(li);
+      li.insertBefore(toggleBtn, li.firstChild);
+    } else {
+      var spacer = document.createElement('span');
+      spacer.className = 'solomd-toc-spacer';
+      spacer.setAttribute('aria-hidden', 'true');
+      li.insertBefore(spacer, li.firstChild);
+    }
+  }
+
+  var activeNavLink = null;
+  var navLinks = Array.prototype.slice.call(navPane.querySelectorAll('a.md-toc__link'));
+  function setActiveNavLink(link) {
+    activeNavLink = link || null;
+    for (var j = 0; j < navLinks.length; j++) {
+      navLinks[j].classList.toggle('is-active', navLinks[j] === link);
+    }
+  }
+
+  function expandAncestorsOfLink(link) {
+    var p = link ? link.parentElement : null;
+    while (p && p !== navPane) {
+      if (p.tagName === 'LI' && p.classList.contains('md-toc__item')) {
+        setNodeExpanded(p, true);
+      }
+      p = p.parentElement;
+    }
+  }
+
+  if (expandBtn) {
+    expandBtn.addEventListener('click', function () {
+      var selectedLi = activeNavLink && activeNavLink.closest ? activeNavLink.closest('li.md-toc__item') : null;
+      setSubtreeExpanded(selectedLi || navPane, true);
+    });
+  }
+
+  if (collapseBtn) {
+    collapseBtn.addEventListener('click', function () {
+      var selectedLi = activeNavLink && activeNavLink.closest ? activeNavLink.closest('li.md-toc__item') : null;
+      setSubtreeExpanded(selectedLi || navPane, false);
+    });
+  }
+
+  // 3) Paginated <section class="page"> switching (#574)
+  var pageSections = Array.prototype.slice.call(articleEl.querySelectorAll('section.page'));
+  function activatePageSection(sec) {
+    if (!sec || !pageSections.length) return false;
+    var changed = false;
+    for (var p = 0; p < pageSections.length; p++) {
+      var show = pageSections[p] === sec;
+      var curHidden = pageSections[p].style.display === 'none';
+      if (show && curHidden) changed = true;
+      pageSections[p].style.display = show ? 'block' : 'none';
+    }
+    if (changed) mainEl.scrollTop = 0;
+    return changed;
+  }
+
+  function activatePageForElement(el) {
+    if (!el || !pageSections.length) return;
+    var sec = el.closest ? el.closest('section.page') : null;
+    if (sec) activatePageSection(sec);
+  }
+
+  if (pageSections.length > 0) {
+    var hasVisiblePage = false;
+    for (var vp = 0; vp < pageSections.length; vp++) {
+      if (pageSections[vp].style.display !== 'none') {
+        hasVisiblePage = true;
+        break;
+      }
+    }
+    if (!hasVisiblePage) {
+      activatePageSection(pageSections[0]);
+    }
   }
 
   var flashTimer = null;
@@ -344,25 +603,21 @@ const NAV_SIDEBAR_SCRIPT = `<script>
     }, 2200);
   }
 
-  var navLinks = Array.prototype.slice.call(navPane.querySelectorAll('a.md-toc__link'));
-  function setActiveNavLink(link) {
-    for (var j = 0; j < navLinks.length; j++) {
-      navLinks[j].classList.toggle('is-active', navLinks[j] === link);
-    }
-  }
-
   for (var k = 0; k < navLinks.length; k++) {
     navLinks[k].addEventListener('click', function (e) {
+      e.preventDefault();
+      setActiveNavLink(this);
+      if (this.getAttribute('data-no-jump') === '1') return;
       var href = this.getAttribute('href') || '';
       if (href.charAt(0) !== '#') return;
       var rawId = href.slice(1);
+      if (!rawId) return;
       var decodedId = rawId;
       try { decodedId = decodeURIComponent(rawId); } catch (_) {}
       var target = document.getElementById(decodedId) || document.getElementById(rawId);
       if (target) {
-        e.preventDefault();
-        setActiveNavLink(this);
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        activatePageForElement(target);
+        target.scrollIntoView({ behavior: pageSections.length ? 'auto' : 'smooth', block: 'start' });
         flashTarget(target);
       }
     });
@@ -372,8 +627,10 @@ const NAV_SIDEBAR_SCRIPT = `<script>
   mainEl.addEventListener('scroll', function () {
     if (!headings.length || !navLinks.length) return;
     var mainRect = mainEl.getBoundingClientRect();
-    var currentId = headings[0].id;
+    var currentId = '';
     for (var h = 0; h < headings.length; h++) {
+      if (headings[h].offsetParent === null) continue;
+      if (!currentId) currentId = headings[h].id;
       var r = headings[h].getBoundingClientRect();
       if (r.top - mainRect.top <= 80) {
         currentId = headings[h].id;
@@ -381,6 +638,7 @@ const NAV_SIDEBAR_SCRIPT = `<script>
         break;
       }
     }
+    if (!currentId) return;
     for (var m = 0; m < navLinks.length; m++) {
       var href = navLinks[m].getAttribute('href') || '';
       var linkId = href.charAt(0) === '#' ? href.slice(1) : '';
@@ -495,7 +753,8 @@ const NAV_SIDEBAR_SCRIPT = `<script>
         var mIdx = parseInt(this.getAttribute('data-match-index') || '0', 10);
         var matchObj = matches[mIdx];
         if (matchObj && matchObj.el) {
-          matchObj.el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          activatePageForElement(matchObj.el);
+          matchObj.el.scrollIntoView({ behavior: pageSections.length ? 'auto' : 'smooth', block: 'center' });
           flashTarget(matchObj.el);
         }
       });
@@ -544,7 +803,15 @@ export const HTML_TEMPLATE = (
   customCss = '',
   bodyClasses = '',
   navOptions?: HtmlNavOptions,
-) => `<!doctype html>
+  contentWidth?: number,
+) => {
+  const resolvedMaxWidth =
+    typeof contentWidth === 'number' && Number.isFinite(contentWidth)
+      ? contentWidth <= 0
+        ? 'none'
+        : `${Math.round(contentWidth)}px`
+      : '960px';
+  return `<!doctype html>
 <html lang="${navOptions?.isZh ? 'zh-CN' : 'en'}">
 <head>
 <meta charset="utf-8">
@@ -559,6 +826,7 @@ ${headCss ? `<style>${headCss}</style>\n` : ''}<style>
      gray and links a sober blue. Deliberately no dark-mode variant: the file
      is a document, and mermaid diagrams are rendered for a light page. */
   :root {
+    --solomd-content-max-width: ${resolvedMaxWidth};
     --accent-rule: var(--md-h1, var(--accent, #3d444d));
     --link: var(--accent-text, var(--md-link, #0b5cad));
     --link-soft: #c9dcf0;
@@ -574,7 +842,7 @@ ${headCss ? `<style>${headCss}</style>\n` : ''}<style>
   }
   html, body { background: var(--paper); }
   body {
-    max-width: 760px;
+    max-width: var(--solomd-content-max-width, 960px);
     margin: 56px auto;
     padding: 0 56px 96px;
     font: 16px/1.75 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto,
@@ -763,7 +1031,13 @@ ${
     </button>
   </div>
   <div class="solomd-export-panel">
-    <nav id="solomd-nav-pane" class="solomd-nav-pane" role="tabpanel">${navOptions.navTreeHtml}</nav>
+    <div id="solomd-nav-wrap" class="solomd-nav-wrap" role="tabpanel">
+      <div class="solomd-nav-toolbar">
+        <button id="solomd-nav-expand-btn" type="button" class="solomd-nav-tool-btn">${navOptions.isZh ? '展开' : 'Expand'}</button>
+        <button id="solomd-nav-collapse-btn" type="button" class="solomd-nav-tool-btn">${navOptions.isZh ? '折叠' : 'Collapse'}</button>
+      </div>
+      <nav id="solomd-nav-pane" class="solomd-nav-pane">${navOptions.navTreeHtml}</nav>
+    </div>
     <div id="solomd-search-pane" class="solomd-search-pane" role="tabpanel" hidden>
       <div class="solomd-search-bar">
         <input id="solomd-search-input" type="text" class="solomd-search-input" placeholder="${navOptions.isZh ? '搜索关键字，回车搜索' : 'Type keyword, press Enter'}" autocomplete="off" />
@@ -773,6 +1047,7 @@ ${
     </div>
   </div>
 </aside>
+<div id="solomd-sidebar-resizer" class="solomd-sidebar-resizer" role="separator" aria-orientation="vertical" title="${navOptions.isZh ? '拖拽调整导航面板宽度' : 'Drag to resize navigation panel'}"></div>
 <main id="solomd-export-main" class="solomd-export-main">
   <article id="solomd-export-article" class="solomd-export-article">
 ${body}
@@ -783,6 +1058,7 @@ ${NAV_SIDEBAR_SCRIPT}`
 }
 </body>
 </html>`;
+};
 
 function escapeHtml(s: string) {
   return s.replace(/[&<>"']/g, (c) =>
@@ -810,14 +1086,11 @@ interface ExtractedHeading {
   isFolder: boolean;
 }
 
-function buildNestedTocHtml(headings: ExtractedHeading[]): string {
+export function buildNestedTocHtml(headings: ExtractedHeading[]): string {
   if (headings.length === 0) return '<ul class="md-toc__list"></ul>';
-  // Point folder nodes directly at the first note heading beneath them (#562)
-  for (let k = headings.length - 2; k >= 0; k--) {
-    if (headings[k].isFolder && headings[k + 1].level > headings[k].level) {
-      headings[k].id = headings[k + 1].id;
-    }
-  }
+  // #575 — Each folder heading keeps its own anchor `id`. If a folder node has
+  // no corresponding target heading in the document (`!h.id`), omit `href` and
+  // mark `data-no-jump="1"` so clicking it selects without jumping.
   const levelStack: number[] = [];
   let html = '';
   for (const h of headings) {
@@ -825,13 +1098,12 @@ function buildNestedTocHtml(headings: ExtractedHeading[]): string {
       levelStack.pop();
       html += '</li></ul>';
     }
-    if (levelStack.length === 0) {
-      html += '<ul class="md-toc__list">';
-    } else {
-      html += '<ul class="md-toc__list">';
-    }
+    html += '<ul class="md-toc__list">';
     levelStack.push(h.level);
-    html += `<li class="md-toc__item"><a href="#${encodeHtmlAttrId(h.id)}" class="md-toc__link">${escapeHtml(h.text)}</a>`;
+    const linkOpen = h.id
+      ? `<a href="#${encodeHtmlAttrId(h.id)}" class="md-toc__link">`
+      : `<a class="md-toc__link md-toc__link--no-target" data-no-jump="1">`;
+    html += `<li class="md-toc__item">${linkOpen}${escapeHtml(h.text)}</a>`;
   }
   while (levelStack.length > 0) {
     levelStack.pop();
@@ -844,6 +1116,27 @@ function buildNestedTocHtml(headings: ExtractedHeading[]): string {
     html = html.replace(/<\/ul><ul class="md-toc__list">/g, '');
   }
   return html;
+}
+
+/**
+ * #574 — Split rendered HTML body into `<section class="page" id="solomd-page-N" style="display:none">`
+ * fragments along note page-break markers (`<hr data-solomd-page-break="1">`).
+ */
+export function paginateHtmlBody(rawBody: string): string {
+  const parts = rawBody
+    .split(/<hr\b[^>]*\bdata-solomd-page-break=(?:"1"|'1')[^>]*\/?>/gi)
+    .map((chunk) => chunk.trim())
+    .filter((chunk) => chunk.length > 0);
+  if (parts.length === 0) return rawBody;
+  return parts
+    .map((chunk, idx) => {
+      const cleaned =
+        idx === 0
+          ? chunk.replace(/(<\/h1>\s*)<hr\b[^>]*\/?>/i, '$1')
+          : chunk;
+      return `<section class="page" id="solomd-page-${idx + 1}" style="display:none">\n${cleaned}\n</section>`;
+    })
+    .join('\n');
 }
 
 function encodeHtmlAttrId(id: string): string {
@@ -916,6 +1209,10 @@ export interface StandaloneHtmlInput {
   codeBlockWrap?: boolean;
   /** #570 — include left navigation (bookmark tree) & global search multi-tab sidebar. */
   withNav?: boolean;
+  /** #574 — split content into `<section class="page" style="display:none">` per note (only when `withNav` is true). */
+  paginated?: boolean;
+  /** #584 — desktop content max-width in px (`0` = unlimited full width). */
+  contentWidth?: number;
   /** #572 — include a Table of Contents block at the start of the document body. */
   withTocPage?: boolean;
   /** Optional UI language ('zh' | 'en', defaults to auto-detecting CJK). */
@@ -971,7 +1268,7 @@ export async function buildStandaloneHtml(input: StandaloneHtmlInput): Promise<s
   let navOptions: HtmlNavOptions | undefined;
   if (input.withNav) {
     const prepared = prepareHtmlNavSidebar(body, input.title, input.withTocPage === true);
-    body = prepared.body;
+    body = input.paginated ? paginateHtmlBody(prepared.body) : prepared.body;
     const isZh =
       input.lang !== undefined
         ? input.lang === 'zh'
@@ -979,7 +1276,16 @@ export async function buildStandaloneHtml(input: StandaloneHtmlInput): Promise<s
     navOptions = {
       navTreeHtml: prepared.navTreeHtml,
       isZh,
+      paginated: Boolean(input.paginated),
     };
   }
-  return HTML_TEMPLATE(input.title, body, headCss, customCss, bodyClasses, navOptions);
+  return HTML_TEMPLATE(
+    input.title,
+    body,
+    headCss,
+    customCss,
+    bodyClasses,
+    navOptions,
+    input.contentWidth,
+  );
 }

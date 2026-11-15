@@ -64,26 +64,34 @@ test('#562: buildMergedBookMarkdown builds hierarchical folder + note TOC up to 
   assert.ok(tocHtml.includes('第4章：章名4'));
   assert.ok(!tocHtml.includes('四级标题不进目录'), 'note H4 must not appear in TOC');
 
-  // 2) Folder TOC nodes point directly to the first note's first effective heading anchor
+  // 2) #575: Folder TOC nodes keep their own distinct anchor IDs and jump to each folder's own heading
   const linkRe = /<a[^>]+href="([^"]+)"[^>]*>([^<]+)<\/a>/g;
   const links = new Map<string, string>();
   let m: RegExpExecArray | null;
   while ((m = linkRe.exec(tocHtml)) !== null) {
     links.set(m[2].trim(), m[1]);
   }
-  assert.equal(
-    links.get('第1篇 篇名1'),
-    links.get('第1章：章名1'),
-    'folder node 第1篇 篇名1 should jump to its first note heading 第1章：章名1',
+  const folder1Href = links.get('第1篇 篇名1');
+  const note1Href = links.get('第1章：章名1');
+  const folder2Href = links.get('第2篇 篇名2');
+  const note2Href = links.get('第4章：章名4');
+  assert.ok(folder1Href && note1Href);
+  assert.ok(folder2Href && note2Href);
+  assert.notEqual(
+    folder1Href,
+    note1Href,
+    'folder node 第1篇 篇名1 should keep its own anchor separate from note heading 第1章：章名1',
   );
-  assert.equal(
-    links.get('第2篇 篇名2'),
-    links.get('第4章：章名4'),
-    'folder node 第2篇 篇名2 should jump to its first note heading 第4章：章名4',
+  assert.notEqual(
+    folder2Href,
+    note2Href,
+    'folder node 第2篇 篇名2 should keep its own anchor separate from note heading 第4章：章名4',
   );
+  assert.ok(html.includes(`id="${decodeURIComponent(folder1Href.slice(1))}"`));
+  assert.ok(html.includes(`id="${decodeURIComponent(folder2Href.slice(1))}"`));
 });
 
-test('#562: multi-level nested folders all appear in TOC and all jump to the first note heading under them', () => {
+test('#575: multi-level nested folders all appear in TOC and each jumps to its own distinct folder heading', () => {
   const merged = buildMergedBookMarkdown('01 书籍名', [
     {
       relDir: '第一部分/第1篇/A组',
@@ -104,10 +112,14 @@ test('#562: multi-level nested folders all appear in TOC and all jump to the fir
   }
 
   const firstNoteHref = links.get('第一章');
-  assert.ok(firstNoteHref);
-  assert.equal(links.get('第一部分'), firstNoteHref);
-  assert.equal(links.get('第1篇'), firstNoteHref);
-  assert.equal(links.get('A组'), firstNoteHref);
+  const p1Href = links.get('第一部分');
+  const p2Href = links.get('第1篇');
+  const p3Href = links.get('A组');
+  assert.ok(firstNoteHref && p1Href && p2Href && p3Href);
+  assert.equal(new Set([p1Href, p2Href, p3Href, firstNoteHref]).size, 4);
+  assert.ok(html.includes(`id="${decodeURIComponent(p1Href.slice(1))}"`));
+  assert.ok(html.includes(`id="${decodeURIComponent(p2Href.slice(1))}"`));
+  assert.ok(html.includes(`id="${decodeURIComponent(p3Href.slice(1))}"`));
   assert.ok(links.has('第一节'));
   assert.ok(links.has('1.1 小节'));
 });

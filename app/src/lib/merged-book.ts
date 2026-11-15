@@ -28,6 +28,8 @@ export interface MergedNoteInput {
   relDir: string;
   baseName: string;
   content: string;
+  /** #574 — True when representing an empty leaf subfolder with no notes. */
+  emptyDir?: boolean;
 }
 
 export function formatMergedHeading(level: number, text: string, isFolder = false): string {
@@ -234,7 +236,8 @@ export function buildMergedBookMarkdown(
   notes: MergedNoteInput[],
 ): string {
   const bookTitle = (folderName || 'Exported-Book').trim() || 'Exported-Book';
-  const sections: string[] = [`# ${bookTitle}\n\n[TOC]`];
+  const leadHeader = `# ${bookTitle}\n\n[TOC]`;
+  const noteSections: string[] = [];
   let activeFolders: string[] = [];
 
   for (const item of notes) {
@@ -253,14 +256,25 @@ export function buildMergedBookMarkdown(
     }
     activeFolders = segs;
 
+    if (item.emptyDir) {
+      if (folderHeadings.length > 0) {
+        noteSections.push(folderHeadings.join('\n\n'));
+      }
+      continue;
+    }
+
     const noteMarkdown = transformNoteForMergedBook(
       item.content,
       item.baseName,
       segs.length,
       segs,
     );
-    sections.push([...folderHeadings, noteMarkdown].join('\n\n'));
+    noteSections.push([...folderHeadings, noteMarkdown].join('\n\n'));
   }
 
-  return sections.join('\n\n---\n\n');
+  if (noteSections.length === 0) {
+    return leadHeader;
+  }
+  const joinedNotes = noteSections.join('\n\n<!-- solomd-page-break -->\n\n---\n\n');
+  return `${leadHeader}\n\n---\n\n${joinedNotes}`;
 }

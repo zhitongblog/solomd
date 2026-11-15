@@ -949,6 +949,7 @@ async function main() {
     case 'tex':
     case 'rtf': {
       const { execFileSync } = await import('node:child_process');
+      const os = await import('node:os');
       const pandocFmt = fmt === 'tex' ? 'latex' : fmt;
       const pandocArgs = [
         inputPath,
@@ -960,7 +961,30 @@ async function main() {
         outPath,
       ];
       if (args.toc) pandocArgs.push('--toc');
-      execFileSync('pandoc', pandocArgs, { stdio: 'inherit' });
+      let tmpCssPath = '';
+      if (pandocFmt === 'epub') {
+        const epubCss = `
+code { font-family: Menlo, Consolas, monospace; font-size: 0.88em; background-color: #f1f5f9; color: #0f172a; padding: 0.14em 0.38em; border-radius: 4px; border: 1px solid #e2e8f0; }
+pre, div.sourceCode { background-color: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 0.85em 1em; margin: 1em 0; overflow-x: auto; line-height: 1.55; white-space: pre-wrap; word-wrap: break-word; }
+div.sourceCode > pre { background-color: transparent !important; border: none !important; padding: 0 !important; margin: 0 !important; }
+pre code, div.sourceCode code { background-color: transparent !important; border: none !important; padding: 0 !important; }
+table { width: 100%; border-collapse: collapse; margin: 1.2em 0; font-size: 0.94em; border: 1px solid #cbd5e1; }
+th, td { border: 1px solid #cbd5e1; padding: 0.52em 0.78em; text-align: left; vertical-align: top; }
+thead th, tr.header th, th { background-color: #f1f5f9; color: #0f172a; font-weight: 700; border-bottom: 2px solid #94a3b8; }
+tbody tr:nth-child(even) td, tr.even td { background-color: #f8fafc; }
+img, svg { max-width: 100%; height: auto; }
+`;
+        tmpCssPath = path.join(os.tmpdir(), `solomd-cli-epub-${process.pid}-${Date.now()}.css`);
+        fs.writeFileSync(tmpCssPath, epubCss, 'utf8');
+        pandocArgs.push(`--css=${tmpCssPath}`);
+      }
+      try {
+        execFileSync('pandoc', pandocArgs, { stdio: 'inherit' });
+      } finally {
+        if (tmpCssPath) {
+          try { fs.unlinkSync(tmpCssPath); } catch {}
+        }
+      }
       break;
     }
   }
