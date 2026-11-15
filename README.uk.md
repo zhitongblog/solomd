@@ -98,7 +98,7 @@ solomd agent "перепиши щоденні нотатки цього тижн
 
 ## Встановлення
 
-Останній реліз: [**v4.0.0**](https://github.com/zhitongblog/solomd/releases/latest).
+Останній реліз: [**v5.2.0**](https://github.com/zhitongblog/solomd/releases/latest).
 
 ### macOS — універсальний dmg (Apple Silicon + Intel, підписаний + нотаризований)
 
@@ -109,7 +109,7 @@ brew install --cask zhitongblog/solomd/solomd
 Або завантажте dmg напряму:
 
 ```
-https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.0.0_universal.dmg
+https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_5.2.0_universal.dmg
 ```
 
 Або встановлення shell-командою в один рядок:
@@ -120,9 +120,8 @@ curl -fsSL https://solomd.app/install.sh | bash
 
 ### Windows — x64
 
-- [`SoloMD_4.0.0_x64_en-US.msi`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.0.0_x64_en-US.msi)
-- [`SoloMD_4.0.0_x64-setup.exe`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.0.0_x64-setup.exe) (NSIS)
-- [`SoloMD_4.0.0_x64-portable.zip`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.0.0_x64-portable.zip) — без інсталятора
+- [`SoloMD_5.2.0_x64_en-US.msi`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_5.2.0_x64_en-US.msi)
+- [`SoloMD_5.2.0_x64-portable.zip`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_5.2.0_x64-portable.zip) — без інсталятора
 
 ```powershell
 irm https://solomd.app/install.ps1 | iex

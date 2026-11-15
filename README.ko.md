@@ -99,7 +99,7 @@ solomd agent "이번 주 일일 노트를 주간 리뷰로 다시 써서 커밋�
 
 ## 설치
 
-최신 릴리스: [**v4.0.0**](https://github.com/zhitongblog/solomd/releases/latest).
+최신 릴리스: [**v5.2.0**](https://github.com/zhitongblog/solomd/releases/latest).
 
 ### macOS — universal dmg (Apple Silicon + Intel, 서명 + notarize)
 
@@ -110,7 +110,7 @@ brew install --cask zhitongblog/solomd/solomd
 또는 dmg 직접 다운로드:
 
 ```
-https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.0.0_universal.dmg
+https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_5.2.0_universal.dmg
 ```
 
 또는 한 줄 셸 설치:
@@ -121,9 +121,8 @@ curl -fsSL https://solomd.app/install.sh | bash
 
 ### Windows — x64
 
-- [`SoloMD_4.0.0_x64_en-US.msi`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.0.0_x64_en-US.msi)
-- [`SoloMD_4.0.0_x64-setup.exe`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.0.0_x64-setup.exe) (NSIS)
-- [`SoloMD_4.0.0_x64-portable.zip`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.0.0_x64-portable.zip) — 인스톨러 없음
+- [`SoloMD_5.2.0_x64_en-US.msi`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_5.2.0_x64_en-US.msi)
+- [`SoloMD_5.2.0_x64-portable.zip`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_5.2.0_x64-portable.zip) — 인스톨러 없음
 
 ```powershell
 irm https://solomd.app/install.ps1 | iex

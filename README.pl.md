@@ -98,7 +98,7 @@ Path traversal zabezpieczony. Żaden port sieciowy. LLM widzi tylko to, na co sk
 
 ## Instalacja
 
-Najnowsza wersja: [**v4.0.0**](https://github.com/zhitongblog/solomd/releases/latest).
+Najnowsza wersja: [**v5.2.0**](https://github.com/zhitongblog/solomd/releases/latest).
 
 ### macOS — Universal dmg (Apple Silicon + Intel, podpisany + notarialny)
 
@@ -109,7 +109,7 @@ brew install --cask zhitongblog/solomd/solomd
 Lub pobierz dmg bezpośrednio:
 
 ```
-https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.0.0_universal.dmg
+https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_5.2.0_universal.dmg
 ```
 
 Lub instalacja jednoliniowa shell:
@@ -120,9 +120,8 @@ curl -fsSL https://solomd.app/install.sh | bash
 
 ### Windows — x64
 
-- [`SoloMD_4.0.0_x64_en-US.msi`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.0.0_x64_en-US.msi)
-- [`SoloMD_4.0.0_x64-setup.exe`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.0.0_x64-setup.exe) (NSIS)
-- [`SoloMD_4.0.0_x64-portable.zip`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.0.0_x64-portable.zip) — bez instalatora
+- [`SoloMD_5.2.0_x64_en-US.msi`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_5.2.0_x64_en-US.msi)
+- [`SoloMD_5.2.0_x64-portable.zip`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_5.2.0_x64-portable.zip) — bez instalatora
 
 ```powershell
 irm https://solomd.app/install.ps1 | iex

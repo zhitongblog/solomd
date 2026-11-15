@@ -98,7 +98,7 @@ Path traversal'a karşı korumalı. Ağ portu yok. LLM yalnızca çalışma alan
 
 ## Kurulum
 
-En son sürüm: [**v4.0.0**](https://github.com/zhitongblog/solomd/releases/latest).
+En son sürüm: [**v5.2.0**](https://github.com/zhitongblog/solomd/releases/latest).
 
 ### macOS — Universal dmg (Apple Silicon + Intel, imzalı + noterlenmiş)
 
@@ -109,7 +109,7 @@ brew install --cask zhitongblog/solomd/solomd
 Veya dmg'yi doğrudan indirin:
 
 ```
-https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.0.0_universal.dmg
+https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_5.2.0_universal.dmg
 ```
 
 Veya tek satırlık shell kurulumu:
@@ -120,9 +120,8 @@ curl -fsSL https://solomd.app/install.sh | bash
 
 ### Windows — x64
 
-- [`SoloMD_4.0.0_x64_en-US.msi`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.0.0_x64_en-US.msi)
-- [`SoloMD_4.0.0_x64-setup.exe`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.0.0_x64-setup.exe) (NSIS)
-- [`SoloMD_4.0.0_x64-portable.zip`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.0.0_x64-portable.zip) — kurulumcu yok
+- [`SoloMD_5.2.0_x64_en-US.msi`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_5.2.0_x64_en-US.msi)
+- [`SoloMD_5.2.0_x64-portable.zip`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_5.2.0_x64-portable.zip) — kurulumcu yok
 
 ```powershell
 irm https://solomd.app/install.ps1 | iex

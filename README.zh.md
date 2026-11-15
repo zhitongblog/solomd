@@ -1,6 +1,6 @@
 # SoloMD
 
-> 让 Agent 住进来的编辑器。
+> 不止于 Typora 的安静手感 —— 五端免费同步、9 格式直出导出与本地 AI 的开源 Markdown 知识库。
 
 [![最新版本](https://img.shields.io/github/v/release/zhitongblog/solomd)](https://github.com/zhitongblog/solomd/releases/latest)
 [![License: MIT](https://img.shields.io/github/license/zhitongblog/solomd?color=orange)](LICENSE)
@@ -13,7 +13,7 @@
 
 🌐 **[English](README.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Deutsch](README.de.md) · [Français](README.fr.md) · [Español](README.es.md) · [Português](README.pt.md) · [Italiano](README.it.md) · [Polski](README.pl.md) · [Nederlands](README.nl.md) · [Türkçe](README.tr.md) · [Svenska](README.sv.md) · [Українська](README.uk.md)**
 
-[**下载最新版**](https://github.com/zhitongblog/solomd/releases/latest) · [**AtomGit 国内高速下载**](https://atomgit.com/zhitongblog/solomd/releases) · [**Gitee 镜像下载**](https://gitee.com/zhitong45/solomd/releases) · [**v4.0 发布说明**](https://solomd.app/zh/blog/v4-0-0-agent-native-author/) · [**官网**](https://solomd.app/zh) · [**安全说明**](https://solomd.app/zh/security)
+[**下载 v5.2.0 最新版**](https://github.com/zhitongblog/solomd/releases/latest) · [**AtomGit 国内高速下载**](https://atomgit.com/zhitongblog/solomd/releases/tag/v5.2.0) · [**Gitee 镜像下载**](https://gitee.com/zhitong45/solomd/releases/tag/v5.2.0) · [**v5.2 新特性**](https://solomd.app/zh/whats-new/) · [**对比 Obsidian & Typora**](https://solomd.app/zh/compare/) · [**官网**](https://solomd.app/zh) · [**安全说明**](https://solomd.app/zh/security)
 
 ⭐ **如果 SoloMD 值得留在你的电脑上，请[去 GitHub 点个 Star](https://github.com/zhitongblog/solomd)** —— 免费开源、一个人维护，Star 能让更多人发现它。
 
@@ -31,46 +31,50 @@
 >
 > **💼 面向团队与创始人（100% 异步远程架构合作）：** 用同一套「人类架构师 + Claude Code」流水线，维护者还独立构建了 **[Unterm](https://unterm.app)**（自研 Rust + wgpu 终端内核，暴露 152 个 MCP 方法与 Action Gateway 风险分级网关）。承接海内外 **100% 纯异步远程合同**（定制 MCP Server、Rust/Tauri 原生 Agent 桌面应用与自动化工程 —— 书面规格 + 演示视频 + 生产级 PR，零冗长会议）。[**查看架构作品集与合作方式 →**](https://doaipm.com/zh/about/?utm_source=solomd_readme#work-with-me)
 
-你的笔记是一个文件夹。**SoloMD 既是上面的编辑器、内置一等公民的 Agent 面板，也是 Claude Code / Cursor 直接能从外部驱动的 MCP 端点。** 同样的 `.md` 文件。在编辑器里跟你的 vault 对话；定时跑 recipe 不用守在键盘前；同一个 vault 还能交给任何 MCP 客户端。
+你的笔记依然是一个普通的本地文件夹。**SoloMD 同时给你 Typora 般安静居中的写作手感、Obsidian 式的本地双链知识库、不收月租的五端加密同步、开箱直出的 9 格式导出中心，以及零配置本地 AI 与 16 工具 MCP 服务。**
 
-基于 Tauri 2 + Vue 3 + CodeMirror 6 构建。Mac universal dmg ~32 MB。免费 / MIT / 无订阅 / 无 SoloMD 服务器。笔记、AI key、嵌入索引、git 历史，全部留在你自己的机器上。
+基于 Tauri 2 + Vue 3 + CodeMirror 6 + Rust 构建。单架构安装包仅约 10–15 MB（macOS 双架构通用包约 32 MB）。MIT 开源、无账号、无订阅、无插件税、无 SoloMD 中转服务器。你的笔记、API 密钥、语义嵌入索引与 Git 历史全部留在你自己的设备上。
 
-## 同一份产品的三半
+## v5.0 – v5.2 核心升级
 
-**编辑器。** WYSIWYG 实时编辑（Typora 风格）、标签 + 分屏、KaTeX + Mermaid 数学公式、图片粘贴到 `_assets/`、演讲模式（`⌘⌥P`）、Vim 模式、Hunspell + 中文校对、语义搜索（`⌘⇧F`）、wikilink + 反链、Pandoc 导出。CJK 编码（GBK / Big5 / Shift-JIS）自动识别。
+- **三种无感编辑模式 (`v5.2`)** —— 在 **纯正所见即所得**（即使光标所在行也彻底隐藏 Markdown 语法符号，杜绝跳行闪烁）、**实时预览**（仅当前行展开语法）与 **源码 / 分屏同步** 之间随时切换。
+- **统一 9 格式导出中心 (`v5.2`)** —— 带实时预览的统一导出面板，开箱直出 **PDF**（含 KaTeX 公式与 Mermaid 图表）、**Word (`.docx`)**、**HTML**、**EPUB**、**LaTeX**、**ODT**、**RTF**、**纯文本** 与 **Markdown** —— **无需手动折腾安装 Pandoc**。
+- **零配置本地 AI (OPR) + 20+ 家 BYOK 服务商 (`v5.2`)** —— 一键 Open Provider Registry (OPR) 自动探测本机正在运行的 **Ollama**、**LM Studio**、**Jan**、**vLLM** 与 **llama.cpp** 服务；或填入 DeepSeek、通义千问、智谱 GLM、Kimi、豆包、MiniMax、硅基流动、Claude、OpenAI、Gemini、Groq、OpenRouter 等 20+ 家厂商密钥（安全存储于系统钥匙串）。
+- **按知识库隔离的加密云盘与 Git 同步 (`v5.2`)** —— 每个工作区文件夹可独立绑定 **iCloud Drive**、**OneDrive**、**坚果云**、**百度网盘**、**阿里云盘**、**Syncthing**、**WebDAV**、**S3 / Cloudflare R2** 或 **GitHub / Gitee / GitLab**，支持可选的 **AES-256-GCM / XChaCha20-Poly1305** 端到端加密与冲突副本保护。
+- **轻量级声明式 JSON 扩展 (`v5.2`)** —— 只需在 `<workspace>/.solomd/plugins/*.json` 放入简单的 JSON 文件（或在「设置 → 扩展」中管理），即可扩展自定义 `/` 斜杠模板、命令面板正则/模板文本转换与一键 Webhook 发布。
+- **CLI v2 与 16 工具 MCP 服务 (`v5.2`)** —— 终端命令 `solomd open / new / daily / list / search / export / agent / mcp`，搭配支持多知识库 Federation 的 `solomd-mcp`。
 
-**端点。** 自带 `solomd-mcp` 二进制,把同一个 vault 暴露给任意 MCP 客户端 —— 开箱 16 个工具,其中 6 个 SoloMD 独有(`autogit_log`、`autogit_diff`、`autogit_rollback`、`sync_status`、`share_url`、`read_agent_trace`),别家 markdown MCP 服务都没有。v4.0 加了 `--workspace path1 --workspace path2` federation —— 一个 MCP 会话,多个 vault。再加一个 `solomd agent <prompt>` 命令行,把任务直接交给 Claude Code / Codex CLI,MCP 已预先连好。
+## 一款 15 MB 应用里的三大支柱
 
-**Agent 面板（v4.0）。** 右侧一等公民 Agent 面板：流式 chat-with-vault、`[[wikilink]]` 引用解析为真笔记跳转、工具调用卡片在对话流里展开、**插入** / **复制** 按钮把回复塞回当前编辑器。同时支持声明式 **Recipe** —— YAML 文件放在 `<workspace>/.solomd/agents/*.yml`,触发器 `cron` / `on-save` / `on-commit` / `on-tag-add` / 手动。**每次 Agent 写入都落到独立 AutoGit 分支上,你点 Accept 才合入 `main`**;单次 write-cap 默认 5;工作区脏时拒绝启动;每次运行生成可重放的 `trace.jsonl`,新增 `read_agent_trace` MCP 工具暴露给其他 agent。
+1. **纯粹写作与出版。** 纯正所见即所得 + 实时预览 + 分屏视图、选中悬浮格式条、焦点模式 + 打字机模式、全屏幻灯片演讲模式（`⌘⌥P`）、Vim 模式、KaTeX 数学公式 + Mermaid 图表、截图粘贴自动存入 `_assets/`、内置 9 格式导出中心，以及拖入 `.docx / .pdf / .xlsx / .pptx` 直接转为 Markdown。中文一等公民：自动编码识别（UTF-8 / GBK / Big5 / Shift-JIS）、CJK 精准字数统计与 OpenCC 简繁转换。
+2. **五端同步的本地双链知识库。** 原生覆盖 **macOS、Windows（x64 + ARM64）、Linux（x64 + ARM64）、iOS/iPadOS 与 Android**，支持跨设备标签页会话恢复。内置 `[[双链]]`、反向链接、YAML 属性面板、100% 离线运行的本地语义搜索（`⌘⇧F`）、每次 `⌘S` 自动提交的 AutoGit 版本历史（内置 libgit2），以及按知识库隔离的免费加密同步。
+3. **本地 AI 与 MCP 接口。** 选中文字 `⌘J` 行内改写/翻译/总结、右侧智能体面板（流式与整个知识库对话、`[[双链]]` 引用跳转、一键插入当前笔记）、OPR 本地模型自动探测 + 20+ BYOK，以及随包附带的 `solomd-mcp`（16 个工具直连 Claude Desktop、Cursor、Windsurf、Claude Code）。
 
-| 功能 | |
+| 功能 | 说明 |
 |---|---|
-| **Agent 面板** *(v4.0)* | 流式 chat-with-vault,跟大纲 / 反向链接 / 标签 / 历史平级。工具调用卡片在对话流里展开;回复"插入" / "复制"到当前编辑器;运行历史以 markdown 形式存在 `.solomd/agent-runs/`。 |
-| **定时 Recipe** *(v4.0)* | YAML 文件放在 vault 里。AutoGit 分支沙箱 + accept/reject UI 评审后再合 main。单次 write-cap(默认 5,硬上限 50)。自带 11 个起步模板。 |
-| **可重放 Trace** *(v4.0)* | 按步 `trace.jsonl`(`prompt` / `model_call` / `tool_call` / `tool_result` / `git_commit`)。"从第 N 步重放"按钮回退后重新跑。 |
-| **多 vault MCP Federation** *(v4.0)* | `solomd-mcp --workspace path1 --workspace path2`。一个 Claude Desktop 会话,多个 vault。设置 → 集成里有 MCP profile UI。 |
-| **Ollama 一等公民** *(v4.0)* | 自动检测 `localhost:11434`。三个模型预设(`qwen2.5:1.5b/7b/14b`)。Recipe 用 `provider: local` 跑零云成本自动循环。 |
-| **AI 改写,BYOK** | 14 个服务 —— OpenAI · Claude · Gemini · DeepSeek · 通义千问 · 智谱 GLM · Kimi · 豆包 · 硅基流动 · OpenRouter · Mistral · Groq · xAI · Ollama。Key 存在系统钥匙串里,直连厂商,不经我们手。 |
-| **GitHub 同步** | 每次保存推到自己的 GitHub 私库,定时拉取。可选端到端加密(Argon2id + XChaCha20-Poly1305)。GitLab / Gitea / 任意 HTTPS git 地址也支持。 |
-| **每篇笔记 AutoGit** | 每次 `⌘S` 在工作区里的本地 `.git` 写一次提交。libgit2 内嵌,不需要装系统 git。永不自动 push。 |
-| **内置 MCP server** | `solomd-mcp` 跟随安装包发出,16 个工具。默认走 stdio;可选 Streamable HTTP(`--transport http`,默认只监听本机,可要求 Bearer token)。默认只读,`--allow-write` 显式开启写入。 |
-| **本地 REST API** *(v4.0)* | 只监听 localhost,token 鉴权。和 MCP 同一套接口,给那些还没接 MCP 的客户端用 —— Alfred / Raycast / n8n / 你自己的脚本。 |
-| **BYOK 成本计** *(v4.0)* | 按 provider 累计 token 数,opt-in。设置 → 集成。 |
-| **云盘联动** | 工作区在 `~/Library/Mobile Documents/...` 或 `~/Dropbox/...` 里时,SoloMD 自动识别,并在此之上加一层跨设备会话恢复 —— 文件级同步交给系统。 |
-| **公开只读分享** | 命令面板 → 复制 `solomd.app/share/?repo=...&path=...` 链接。任何人在浏览器里就能阅读你公库里这篇笔记,不用装 SoloMD。 |
+| **三种编辑模式** *(v5.2)* | **纯正所见即所得**（光标所在行不跳出语法标记）、**实时预览**、**源码 / 分屏同步**。 |
+| **统一 9 格式导出中心** *(v5.2)* | 内置实时预览，一键导出 PDF、Word (.docx)、HTML、EPUB、LaTeX、ODT、RTF、TXT、MD —— 无需配置外部 Pandoc。 |
+| **按知识库隔离的云同步** *(v5.2)* | 每个知识库独立绑定 iCloud、OneDrive、坚果云、百度/阿里云盘、Syncthing、WebDAV、S3/R2 或 GitHub/Gitee/GitLab，支持端到端加密。 |
+| **OPR 本地 AI + 20+ BYOK** *(v5.2)* | 一键发现本机 Ollama / LM Studio / Jan / vLLM / llama.cpp，或直连 20+ 家云端大模型。密钥存于系统钥匙串。 |
+| **轻量 JSON 用户扩展** *(v5.2)* | `.solomd/plugins/*.json` 声明式扩展自定义 `/斜杠` 模板、正则/模板转换器与一键 Webhook 发布。 |
+| **智能体面板与行内 AI 改写** | 流式与知识库对话（带 `[[双链]]` 引用与一键插入/复制），以及 `⌘J` 选中文字即时改写润色。 |
+| **内置 16 工具 MCP Server** | `solomd-mcp` 随安装包附带，支持 `--workspace path1 --workspace path2` 多知识库 Federation，默认 stdio，可选本机 HTTP。 |
+| **每篇笔记 AutoGit 快照** | 每次 `⌘S` 自动在工作区本地 `.git` 写入提交（内置 libgit2，无需安装系统 git）。侧栏可视化对比 diff 并一键回滚。 |
+| **完全离线语义搜索 (RAG)** | `⌘⇧F` 按语义含义检索全库段落，Rust 进程内原生嵌入 —— 零模型下载、零网络请求。 |
 
 ## 怎么用
 
-macOS / Linux 装好 SoloMD 后:
+**1. 写作、双链与导出。** 打开任意 `.md` 文件夹。在顶栏一键切换「纯正所见即所得 / 实时预览 / 分屏」；按 `⌘⇧E`（或「文件 → 导出」）打开统一 9 格式导出中心。
 
-**1. 跟你的 vault 对话。** 打开右侧 Agent 面板(⌘⇧P → "View: Toggle Agent Panel" 如果隐藏了)。流式多轮 chat,工具调用卡片实时显示每次读写。回复太长?**插入**按钮把回复塞到当前笔记的光标处(有选区就替换);**复制**进剪贴板。
+**2. 行内改写或与知识库对话。** 选中文字按 `⌘J` 即可用 AI 润色/翻译/续写；或打开右侧智能体面板（`⌘⇧P` → *View: Toggle Agent Panel*）针对整个知识库多轮提问。在「设置 → AI」中点击 **自动发现本地模型** 即可一键连上本机 Ollama / LM Studio。
 
-**2. 定时跑 Recipe。** 设置 → Recipes → 浏览菜谱。11 个起步模板:周报、日报、TODO 抽取、翻译过一遍、引用清理、CJK 校对 agent、链接腐烂检测、front-matter 规范化、大纲转博客、重构过一遍、周度 tag 整理。安装、改 prompt、运行。
-
-**3. 从外部 LLM 客户端驱动同一个 vault。** 一键打印 MCP 配置:
+**3. 从 Claude Desktop / Cursor / Claude Code 驱动同一个知识库：**
 
 ```bash
+# 打印 MCP 配置片段…
 solomd mcp-config
+# …或一键自动写入本机已安装的 AI 客户端：
+solomd mcp install
 ```
 
 ```json
@@ -84,7 +88,7 @@ solomd mcp-config
 }
 ```
 
-粘到 Claude Desktop / Cursor / 等。多 vault federation 重复 `--workspace`:
+多知识库 Federation 只需重复 `--workspace`：
 
 ```json
 "args": [
@@ -93,44 +97,36 @@ solomd mcp-config
 ]
 ```
 
-**4. 或者一句话直接交给 claude / codex CLI:**
+**4. 或者在终端一句话交给 `claude` / `codex` CLI：**
 
 ```bash
-solomd agent "把这周的 daily 整理成 weekly review，提交并推送"
+solomd agent "把这周的 daily 笔记整理成周报并提交"
 ```
-
-路径穿越保护已加。LLM 只能看到你指给它的工作区。
 
 ## 安装
 
-最新版本:[**v4.0.0**](https://github.com/zhitongblog/solomd/releases/latest)。
+最新版本：[**v5.2.0（GitHub Releases）**](https://github.com/zhitongblog/solomd/releases/latest) · [**AtomGit 国内高速镜像**](https://atomgit.com/zhitongblog/solomd/releases/tag/v5.2.0) · [**Gitee 国内镜像**](https://gitee.com/zhitong45/solomd/releases/tag/v5.2.0)。
 
-**系统要求:**Windows 10+、macOS 10.15+、主流 Linux 发行版、iOS 15+、Android 7+(API 24)。
-Windows 7/8/8.1 无法支持——编译 SoloMD 的 Rust 工具链自 1.78 起要求 Windows 10,且微软已将 Windows 7 上的 WebView2(SoloMD 的渲染引擎)冻结在 109 版并停止安全更新——也不存在可用的历史版本。
+**系统要求：** Windows 10+、macOS 10.15+、主流 Linux 发行版、iOS 15+、Android 7+ (API 24)。
 
-### macOS — universal dmg(Apple Silicon + Intel,已签名 + 公证)
+### macOS — universal dmg（Apple Silicon + Intel，已签名 + 公证）
 
 ```bash
 brew install --cask zhitongblog/solomd/solomd
 ```
 
-或直接下 dmg:
-
-```
-https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.0.0_universal.dmg
-```
-
-或 curl 一键安装:
+或一行命令安装：
 
 ```bash
 curl -fsSL https://solomd.app/install.sh | bash
 ```
 
-### Windows — x64
+或直接下载：[`SoloMD_5.2.0_universal.dmg`](https://github.com/zhitongblog/solomd/releases/download/v5.2.0/SoloMD_5.2.0_universal.dmg) · [Mac App Store](https://apps.apple.com/app/solomd/id6762498874)
 
-- [`SoloMD_4.0.0_x64_en-US.msi`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.0.0_x64_en-US.msi)
-- [`SoloMD_4.0.0_x64-setup.exe`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.0.0_x64-setup.exe)(NSIS)
-- [`SoloMD_4.0.0_x64-portable.zip`](https://github.com/zhitongblog/solomd/releases/latest/download/SoloMD_4.0.0_x64-portable.zip) — 免安装版
+### Windows — x64 & ARM64
+
+- [`SoloMD_5.2.0_x64_en-US.msi`](https://github.com/zhitongblog/solomd/releases/download/v5.2.0/SoloMD_5.2.0_x64_en-US.msi) / [`SoloMD_5.2.0_arm64_en-US.msi`](https://github.com/zhitongblog/solomd/releases/download/v5.2.0/SoloMD_5.2.0_arm64_en-US.msi)
+- [`SoloMD_5.2.0_x64-portable.zip`](https://github.com/zhitongblog/solomd/releases/download/v5.2.0/SoloMD_5.2.0_x64-portable.zip) — 免安装便携版
 
 ```powershell
 irm https://solomd.app/install.ps1 | iex
@@ -142,46 +138,43 @@ winget install solomd
 
 ### Linux — x86_64 + aarch64
 
-- `.AppImage`(通用)、`.deb`(Debian/Ubuntu)、`.rpm`(Fedora/RHEL)—— 两种架构都在 [发布页](https://github.com/zhitongblog/solomd/releases/latest)。
-- Arch 用户:[`solomd-bin`](https://aur.archlinux.org/packages/solomd-bin)(AUR)。
+- `.AppImage`（通用）、`.deb`（Debian/Ubuntu）、`.rpm`（Fedora/RHEL）—— 两种架构均在 [发布页](https://github.com/zhitongblog/solomd/releases/latest)。
+- Arch 用户：[`solomd-bin`](https://aur.archlinux.org/packages/solomd-bin) (AUR)。
 
-### iPad
+### iPhone / iPad 与 Android
 
-[App Store](https://apps.apple.com/app/solomd/id6762498874) —— 同一引擎,原生 iPad UI。
+- **iOS / iPadOS：** [App Store](https://apps.apple.com/app/solomd/id6762498874)
+- **Android：** [Google Play](https://play.google.com/store/apps/details?id=app.solomd) 或直接下载 [`SoloMD_5.2.0_universal.apk`](https://github.com/zhitongblog/solomd/releases/download/v5.2.0/SoloMD_5.2.0_universal.apk)
 
 ## 横向对比
 
-| | SoloMD v4.5 | Obsidian | Typora | Tolaria |
+| | SoloMD v5.2 | Obsidian | Typora | MarkText |
 |---|---|---|---|---|
-| 协议 | **MIT** | 私有协议(免费) | 付费($14.99) | AGPL |
-| 技术栈 | Tauri 2(Rust + WebView) | Electron | Electron | Tauri 2 |
-| 平台 | macOS · Win · Linux · **iPad/iOS/安卓** | macOS · Win · Linux · iOS · Android | macOS · Win · Linux | macOS · Win · Linux |
-| 安装包 | ~32 MB(Mac)/ ~10 MB(Win) | ~120 MB | ~95 MB | ~25 MB |
-| **内置 Agent 面板** | **✅ v4.0** | 🟡 付费插件(Smart Composer / Copilot) | ❌ | 🟡 provider+agent,无内嵌面板 |
-| **定时 Agent Recipe** | **✅ v4.0** | ❌ | ❌ | ❌ |
-| **AutoGit 分支沙箱 + accept/reject** | **✅ v4.0** | ❌ | ❌ | ❌ |
-| **可重放 Agent Trace** | **✅ v4.0** | ❌ | ❌ | ❌ |
-| **多工作区** | **✅ v4.0 MCP Federation** | ❌ | ❌ | 🟡 多 vault |
-| **MCP server** | **✅ 内置 16 工具,6 个独家** | ❌(社区插件) | ❌ | ✅ 通用 |
-| **AI 改写内建** | **✅ 14 个 BYOK 服务** | 仅插件 | ❌ | ✅ 内置 provider |
-| GitHub 同步 | ✅ | ❌(Obsidian Sync $5/月) | ❌ | ❌ |
-| 端到端加密 | ✅ 在你自己的库里 | ✅ 在 Obsidian 服务器上 | ❌ | ❌ |
-| 本地语义搜索 | ✅ 默认关 | 仅插件 | ❌ | ❌ |
-| 每篇笔记版本历史 | ✅ AutoGit | 仅插件 | ❌ | ✅ |
-| Markdown 白板(tldraw) | ❌ | 🟡 Canvas(私有格式) | ❌ | ✅ |
-| CJK 编码(GBK / Big5) | ✅ 自动识别 | ❌ | ❌ | ❌ |
+| 协议 | **MIT 开源** | 闭源专有（免费） | 闭源付费（$14.99） | MIT（2023 年起停更） |
+| 技术栈 | Tauri 2（Rust + 系统原生 WebView） | Electron | Electron | Electron |
+| 平台 | **macOS · Win · Linux · iOS · Android** | macOS · Win · Linux · iOS · Android | 仅桌面端 | 仅桌面端 |
+| 安装包 | **~15 MB**（Mac 双架构 ~32 MB） | ~110 MB | ~70 MB | ~80 MB |
+| **纯正所见即所得 + 实时预览 + 分屏** | **✅ 三种模式全齐** | 🟡 仅实时预览 | ✅ | ✅ |
+| **内置 9 格式直出导出（免装 Pandoc）** | **✅ v5.2** | 🟡 仅 PDF（其余靠插件） | 🟡 需自行安装 Pandoc | ❌ |
+| **按知识库隔离的免费云盘与 Git 同步** | **✅ iCloud / OneDrive / 坚果云 / WebDAV / S3 / Git** | ❌（官方同步 $96/年） | ❌ | ❌ |
+| **端到端加密** | **✅ 加密存于你自己的网盘/仓库** | ✅ 仅限付费官方同步 | ❌ | ❌ |
+| **零配置本地 AI（OPR 自动探测）** | **✅ Ollama / LM Studio / Jan / vLLM** | 🟡 需第三方插件 | ❌ | ❌ |
+| **内置 BYOK AI 服务商** | **✅ 20+ 家（密钥存系统钥匙串）** | 🟡 单插件仅 1–2 家 | ❌ | ❌ |
+| **内置 MCP Server** | **✅ 16 工具 + 多知识库 Federation** | ❌（需社区插件） | ❌ | ❌ |
+| **轻量级声明式 JSON 扩展** | **✅ `.solomd/plugins/*.json`** | ✅ 重型 JS 插件 | ❌ | ❌ |
+| **本地离线语义搜索 (RAG)** | **✅ Rust 原生内嵌** | 🟡 需第三方插件 | ❌ | ❌ |
+| **每篇笔记自动版本历史** | **✅ AutoGit（内置 libgit2）** | 🟡 需手动配 git 插件 | ❌ | ❌ |
+| **中文编码 (GBK / Big5) + 简繁转换** | **✅ 自动识别** | ❌ | ❌ | ❌ |
 
-详细对比:[vs Obsidian](https://solomd.app/zh/compare/vs-obsidian) · [vs Typora](https://solomd.app/zh/compare/vs-typora) · [vs Tolaria](https://solomd.app/zh/compare/vs-tolaria) · [vs Marktext](https://solomd.app/zh/compare/vs-marktext)。
+详细对比：[vs Obsidian](https://solomd.app/zh/compare/vs-obsidian) · [vs Typora](https://solomd.app/zh/compare/vs-typora) · [vs Tolaria](https://solomd.app/zh/compare/vs-tolaria) · [vs MarkText](https://solomd.app/zh/compare/vs-marktext)。
 
 ## 隐私与安全
 
-纯客户端。你的 `.md` 文件留在你选的文件夹里。API key 存在系统钥匙串(macOS Keychain / Windows Credential Manager / Linux libsecret),**永远不进 localStorage 或配置文件**。AI 请求从你的机器直连厂商 —— 不经 SoloMD 中转。RAG 嵌入索引和 AutoGit 仓库都是本地。MCP server 默认走 stdio;可选的 HTTP 传输默认只监听本机,并可要求 Bearer token。整个代码库 MIT 协议,可审计。
+纯客户端架构。你的 `.md` 文件留在你选择的本地文件夹中。API 密钥保存在操作系统钥匙串（macOS Keychain / Windows Credential Manager / Linux libsecret），**绝不写入 `localStorage` 或明文配置文件**。AI 请求从你的设备直连你选择的厂商或本机模型 —— 不经过任何 SoloMD 服务器中转。语义搜索嵌入索引与 AutoGit 仓库全部在本地运行。MCP server 默认走 stdio；可选的 HTTP 传输默认仅监听本机回环地址并支持 Bearer token 鉴权。全部源码基于 MIT 协议公开可审计。
 
-**Agent 安全护栏(v4.0)。** 每次 Recipe 运行都开自己的 AutoGit 分支 —— `main` 在你点 Accept 之前一动不动。单次 write-cap(默认 5,硬上限 50)防止失控循环。Recipe runner 在工作区脏时直接拒绝启动(agent commit 不会扫到你的 WIP)。所有接受用户传入路径的 Tauri / MCP / REST 端点都前置拒绝 `..` 段和绝对路径。
+端到端加密同步采用 AES-256-GCM（网盘 `.solomd-enc` 同步）与 Argon2id → XChaCha20-Poly1305（Git/远端同步）。明文永远留在你的设备上，远端只存储密文。所有接受路径参数的 Tauri 与 MCP 接口均内置路径穿越防护。
 
-E2EE 同步用 Argon2id(RFC9106 默认参数)→ XChaCha20-Poly1305,确定性 nonce + path-as-AAD。明文留在你的设备上;远端只看到密文。`sync.json` 解析失败会**拒绝推送**,绝不降级到明文(v3.0.x 审计修过的一条)。
-
-完整说明:<https://solomd.app/zh/security>。
+完整说明：<https://solomd.app/zh/security>。
 
 ## 从源码编译
 

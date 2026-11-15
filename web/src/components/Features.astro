@@ -4,7 +4,7 @@ interface Props { lang: Lang }
 const { lang } = Astro.props;
 const tr = getT(lang);
 
-const NEW_TAGS = ['(v4)', '(v3.0)', '(v2.3)', '(v2.2)'];
+const NEW_TAGS = ['(v5.2)', '(v5)', '(v4)', '(v3.0)', '(v2.3)', '(v2.2)'];
 function tagOf(title: string): string | null {
   for (const tag of NEW_TAGS) {
     if (title.includes(tag)) return tag;
@@ -26,7 +26,7 @@ function stripTag(title: string): string {
       {tr.features.items.map((f) => {
         const tag = tagOf(f.title);
         const cleanTitle = stripTag(f.title);
-        const tagClass = tag === '(v4)' ? 'feature-tag feature-tag--v4' : tag === '(v3.0)' ? 'feature-tag feature-tag--v30' : tag === '(v2.3)' ? 'feature-tag feature-tag--v23' : tag === '(v2.2)' ? 'feature-tag feature-tag--v22' : '';
+        const tagClass = (tag === '(v5.2)' || tag === '(v4)') ? 'feature-tag feature-tag--v4' : (tag === '(v5)' || tag === '(v3.0)') ? 'feature-tag feature-tag--v30' : tag === '(v2.3)' ? 'feature-tag feature-tag--v23' : tag === '(v2.2)' ? 'feature-tag feature-tag--v22' : '';
         return (
           <article class={`feature-card${tag ? ' feature-card--new' : ''}`}>
             <div class="feature-card__head">
