@@ -19,7 +19,7 @@ const FAQ = [
   },
   {
     q: '都是离线纯文件吗?',
-    a: '是 —— 两者都离线优先、基于文件、无需账号。SoloMD 是 MIT 协议(约 15 MB);Tolaria 是 AGPL(约 25 MB)。',
+    a: '是 —— 两者都离线优先、基于文件、无需账号。SoloMD 是 MIT 协议(约 ~14–30 MB);Tolaria 是 AGPL(约 25 MB)。',
   },
 ];
 
@@ -182,13 +182,13 @@ const settingsRows: [string, string][] = [
       <h2>30 秒看完</h2>
       <table class="compare-detail">
         <thead>
-          <tr><th>&nbsp;</th><th>SoloMD v5.0</th><th>Tolaria（2026 年中）</th></tr>
+          <tr><th>&nbsp;</th><th>SoloMD v5.2</th><th>Tolaria（2026 年中）</th></tr>
         </thead>
         <tbody>
           <tr><th>价格</th><td><strong>免费</strong> / MIT</td><td><strong>免费</strong> / 开源（AGPL）</td></tr>
           <tr><th>技术栈</th><td>Tauri 2 + Vue 3 + CodeMirror 6 + Rust</td><td>Tauri 2 + React + TypeScript + BlockNote + Rust</td></tr>
           <tr><th>支持平台</th><td>macOS · Windows · Linux x64/ARM64 · <strong>iPad / iOS / Android</strong></td><td>macOS · Windows · Linux <em>（仅桌面端 · 无移动端）</em></td></tr>
-          <tr><th>安装包大小</th><td>~15 MB</td><td>~25 MB</td></tr>
+          <tr><th>安装包大小</th><td>~14–30 MB</td><td>~25 MB</td></tr>
           <tr><th>编辑模型</th><td>CodeMirror 源码模式 + 实时预览 + 分屏</td><td>Notion 式块编辑器 + 斜杠命令</td></tr>
           <tr><th>内置 AI provider（BYOK）</th><td>✅ <code>⌘J</code> · <strong>14 个</strong> · OS 钥匙串 · 流式 diff 浮层</td><td>✅ 直连：OpenAI · Anthropic · Gemini · OpenRouter · Ollama · LM Studio · 自定义</td></tr>
           <tr><th>内置流式 chat-with-vault 面板</th><td>✅ <strong>v4.0</strong> · 多轮 · 工具卡 · [[wikilink]] 引用 · 插入/复制</td><td>✅ 内置 AI 面板（<code>⌘⇧L</code>）· 多会话 · 流式 · 动作卡 · 目标选择器</td></tr>
@@ -283,7 +283,7 @@ const settingsRows: [string, string][] = [
         <li>你需要<strong>本地语义搜索</strong>（设备本地 RAG）—— Tolaria 没有。</li>
         <li>你需要从 <strong>.docx / .pdf / .xlsx / .pptx</strong> 导入 —— Tolaria 没有文件转换。</li>
         <li>你想要<strong>多标签 + 分屏</strong>、<strong>演讲模式</strong>（<code>⌘⌥P</code>）或 <strong>Vim 模式</strong> —— Tolaria 都没有。</li>
-        <li>你想要 <strong>14 个 AI provider</strong> 一个钥匙串面板搞定（含 DeepSeek · 通义千问 · GLM · Kimi · 火山方舟）—— Tolaria 内置清单更短。</li>
+        <li>你想要 <strong>20+ 个 AI provider</strong> 一个钥匙串面板搞定（含 DeepSeek · 通义千问 · GLM · Kimi · 火山方舟）—— Tolaria 内置清单更短。</li>
       </ul>
 
       <h2>什么时候选 Tolaria</h2>
@@ -295,7 +295,7 @@ const settingsRows: [string, string][] = [
         <li>你想要 Tolaria 的 <strong>6 个应用内 CLI 编码 Agent</strong>（Claude Code · Codex · OpenCode · Pi · Gemini · Kiro）直接停靠在应用里,而不是 SoloMD 的 <code>solomd agent</code> 转交。</li>
       </ul>
       <p>
-        差距基本已经抹平：MCP server、AutoGit 版本历史、多 vault、Windows、内置 AI 聊天面板、内置 AI provider —— 加上现在整套知识图谱层（属性、类型、类型化关系、Neighborhood 图谱、保存视图、Inbox、白板）—— 都<em>两者都有</em>。4.6 让 SoloMD 补齐了 Tolaria 的结构化那一半,同时保留自家的大优势：iPad / iOS / Android、CJK 编码（GBK / Big5 / Shift-JIS）、Pandoc / 引用导出、文件导入、设备本地 RAG、多标签 + 分屏、Vim、演讲模式、14 个 AI provider、定时 Agent recipe + AutoGit accept/reject 沙箱 + 可重放 trace、端到端加密同步、公开分享链接,以及 CLI。Tolaria 仅剩的优势是 BlockNote 块编辑器（以及应用内 CLI agent）。
+        差距基本已经抹平：MCP server、AutoGit 版本历史、多 vault、Windows、内置 AI 聊天面板、内置 AI provider —— 加上现在整套知识图谱层（属性、类型、类型化关系、Neighborhood 图谱、保存视图、Inbox、白板）—— 都<em>两者都有</em>。4.6 让 SoloMD 补齐了 Tolaria 的结构化那一半,同时保留自家的大优势：iPad / iOS / Android、CJK 编码（GBK / Big5 / Shift-JIS）、Pandoc / 引用导出、文件导入、设备本地 RAG、多标签 + 分屏、Vim、演讲模式、20+ 个 AI provider、定时 Agent recipe + AutoGit accept/reject 沙箱 + 可重放 trace、端到端加密同步、公开分享链接,以及 CLI。Tolaria 仅剩的优势是 BlockNote 块编辑器（以及应用内 CLI agent）。
       </p>
 
       <h2>两者共同点</h2>

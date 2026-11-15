@@ -71,7 +71,7 @@ When the user asks to `release` a new version (e.g. `X.Y.Z`), **NEVER** consider
      ```
    - **Only AFTER GitHub Release is Published (Latest) and Gitee/AtomGit mirrors are synced**, update `web/`:
      - Add the `vX.Y.Z` changelog entry to `web/src/data/whats-new/zh.ts` and `web/src/data/whats-new/en.ts`.
-     - Bump the version string in `web/src/components/Download.astro`, `web/src/components/Hero.astro`, `web/src/components/FactPack.astro`, `web/src/layouts/Layout.astro`, `web/src/i18n/translations.ts`, and `web/src/data/whats-new/{de,es,fr}.ts`.
+     - Bump the version string in `web/src/components/Header.astro`, `web/src/components/Download.astro`, `web/src/components/Hero.astro`, `web/src/components/FactPack.astro`, `web/src/layouts/Layout.astro`, `web/src/i18n/translations.ts`, and `web/src/data/whats-new/{de,es,fr}.ts`.
      - Commit `web/`, push `main`, and deploy to Cloudflare Pages:
      ```bash
      pnpm --dir web build && (cd web && npx wrangler pages deploy dist --project-name solomd --branch main)

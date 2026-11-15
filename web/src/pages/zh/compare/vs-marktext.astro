@@ -8,7 +8,7 @@ const lang = 'zh' as const;
 const FAQ = [
   {
     q: '都是免费 MIT 开源,为什么选 SoloMD 而不是 MarkText?',
-    a: 'SoloMD 有 MarkText 一直没有的东西:原生 iOS / Android 应用、内置 AI(14 个自带 Key 提供商)、本地语义搜索、AutoGit 版本历史、MCP 服务器、tldraw 白板和知识图谱。体积上是 Tauri 2 的约 15 MB 对 MarkText Electron 的约 80 MB。',
+    a: 'SoloMD 有 MarkText 一直没有的东西:原生 iOS / Android 应用、内置 AI(14 个自带 Key 提供商)、本地语义搜索、AutoGit 版本历史、MCP 服务器、tldraw 白板和知识图谱。体积上是 Tauri 2 的约 ~14–30 MB 对 MarkText Electron 的约 80 MB。',
   },
   {
     q: 'MarkText 还在维护吗?',
@@ -27,7 +27,7 @@ const FAQ = [
 
 <Layout
   title="SoloMD vs MarkText —— 两款免费开源 Markdown 编辑器对比"
-  description="SoloMD 和 MarkText 都是 MIT 开源。SoloMD 更小 (15 MB vs 90 MB)、活跃维护、内置语义搜索 / AutoGit / MCP server / 14 AI provider 和 CJK 编码;MarkText 历史更久但更新稀疏。详细对比。"
+  description="SoloMD 和 MarkText 都是 MIT 开源。SoloMD 更小 (~14–30 MB vs 90 MB)、活跃维护、内置语义搜索 / AutoGit / MCP server / 14 AI provider 和 CJK 编码;MarkText 历史更久但更新稀疏。详细对比。"
   lang={lang}
 >
   <Header lang={lang} />
@@ -39,7 +39,7 @@ const FAQ = [
 
       <h1>SoloMD vs MarkText：两款免费 Markdown 编辑器对比</h1>
       <p class="lead">
-        都是免费开源。<strong>SoloMD</strong> 更新、更小 (15 MB vs 90 MB)，
+        都是免费开源。<strong>SoloMD</strong> 更新、更小 (~14–30 MB vs 90 MB)，
         内置多标签、分屏、CJK 编码识别、语义搜索、AutoGit 历史、MCP server、14 AI provider。
         <strong>MarkText</strong> 历史更久 —— 沉寂多年后于 2026 年 5 月恢复维护（原作者回归,并把社区 fork 合并回主仓库）。
       </p>
@@ -47,11 +47,11 @@ const FAQ = [
       <h2>30 秒速览</h2>
       <table class="compare-detail">
         <thead>
-          <tr><th>&nbsp;</th><th>SoloMD v5.0</th><th>MarkText</th></tr>
+          <tr><th>&nbsp;</th><th>SoloMD v5.2</th><th>MarkText</th></tr>
         </thead>
         <tbody>
           <tr><th>许可证</th><td>MIT</td><td>MIT</td></tr>
-          <tr><th>安装包大小</th><td>~15 MB</td><td>~90 MB</td></tr>
+          <tr><th>安装包大小</th><td>~14–30 MB</td><td>~90 MB</td></tr>
           <tr><th>技术栈</th><td>Tauri 2 + Vue 3 + CodeMirror 6</td><td>Electron + Vue 2 + Muya</td></tr>
           <tr><th>活跃度</th><td>✅ 2026 年频繁更新</td><td>✅ 2026 年 5 月恢复维护（原作者回归;fork 已合并）—— 2022–2025 沉寂</td></tr>
           <tr><th>内置 Agent 面板（chat-with-vault）</th><td>✅ <strong>v4.0</strong></td><td>❌</td></tr>
@@ -63,7 +63,7 @@ const FAQ = [
           <tr><th>WYSIWYG 实时编辑</th><td>✅ <strong>v2.3</strong></td><td>✅ (核心特性)</td></tr>
           <tr><th>AutoGit 版本历史</th><td>✅ <strong>v2.2</strong></td><td>❌</td></tr>
           <tr><th>内置 MCP server</th><td>✅ <strong>v2.2</strong></td><td>❌</td></tr>
-          <tr><th>14 个 AI provider · BYOK</th><td>✅</td><td>❌</td></tr>
+          <tr><th>20+ 个 AI provider · BYOK</th><td>✅</td><td>❌</td></tr>
           <tr><th>多标签</th><td>✅</td><td>✅</td></tr>
           <tr><th>分屏视图</th><td>✅ 任意面板</td><td>❌</td></tr>
           <tr><th>实时预览</th><td>✅</td><td>✅ (核心特性)</td></tr>
@@ -85,7 +85,7 @@ const FAQ = [
 
       <h2>选 SoloMD 的情况</h2>
       <ul>
-        <li>想要最小体积 (15 MB vs 90 MB)。</li>
+        <li>想要最小体积 (~14–30 MB vs 90 MB)。</li>
         <li>想要<strong>分屏视图</strong> —— 一边源码一边预览,同步滚动。</li>
         <li>想要 <strong>Vim 快捷键</strong>。</li>
         <li>用<strong>中文 / 日文 / 韩文</strong> 写作 (SoloMD 自动识别 GBK / Big5;MarkText 需手动转码)。</li>
@@ -107,7 +107,7 @@ const FAQ = [
       <p>
         MarkText 基于 Electron,安装包自带一份 Chromium (~60 MB)。SoloMD 用 Tauri 2,
         直接调用系统原生 webview (Mac WKWebView / Win WebView2 / Linux WebKitGTK),不打 Chromium。
-        二进制只有 Rust 内核 + 紧凑的 Vue 3 + CodeMirror 6 bundle,装好约 15 MB。
+        二进制只有 Rust 内核 + 紧凑的 Vue 3 + CodeMirror 6 bundle,装好约 ~14–30 MB。
       </p>
 
       <h2>兼容性</h2>

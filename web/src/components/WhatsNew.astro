@@ -28,20 +28,20 @@ const v5Sections = data.sections.filter((html) => html.includes('>v5.'));
 const v4Sections = data.sections.filter((html) => !html.includes('>v5.'));
 
 const TAB_LABELS: Record<Lang, { v5: string; v4: string; all: string }> = {
-  en: { v5: 'SoloMD 5.0 (Latest)', v4: 'SoloMD 4.x Archive', all: 'All Releases' },
-  zh: { v5: 'SoloMD 5.0 新版专区', v4: 'SoloMD 4.x 历史版本', all: '全部版本' },
-  ja: { v5: 'SoloMD 5.0 (最新)', v4: 'SoloMD 4.x 履歴', all: 'すべて' },
-  ko: { v5: 'SoloMD 5.0 (최신)', v4: 'SoloMD 4.x 기록', all: '전체 버전' },
-  de: { v5: 'SoloMD 5.0 (Neu)', v4: 'SoloMD 4.x Archiv', all: 'Alle Versionen' },
-  fr: { v5: 'SoloMD 5.0 (Nouveau)', v4: 'SoloMD 4.x Archives', all: 'Toutes les versions' },
-  es: { v5: 'SoloMD 5.0 (Nuevo)', v4: 'SoloMD 4.x Archivo', all: 'Todas las versiones' },
-  pt: { v5: 'SoloMD 5.0 (Novo)', v4: 'SoloMD 4.x Arquivo', all: 'Todas as versões' },
-  it: { v5: 'SoloMD 5.0 (Nuovo)', v4: 'SoloMD 4.x Archivio', all: 'Tutte le versioni' },
-  pl: { v5: 'SoloMD 5.0 (Nowość)', v4: 'SoloMD 4.x Archiwum', all: 'Wszystkie wersje' },
-  nl: { v5: 'SoloMD 5.0 (Nieuw)', v4: 'SoloMD 4.x Archief', all: 'Alle versies' },
-  tr: { v5: 'SoloMD 5.0 (Yeni)', v4: 'SoloMD 4.x Arşiv', all: 'Tüm Sürümler' },
-  sv: { v5: 'SoloMD 5.0 (Nyhet)', v4: 'SoloMD 4.x Arkiv', all: 'Alla versioner' },
-  uk: { v5: 'SoloMD 5.0 (Нове)', v4: 'SoloMD 4.x Архів', all: 'Усі версії' },
+  en: { v5: 'SoloMD 5.x (Latest)', v4: 'SoloMD 4.x Archive', all: 'All Releases' },
+  zh: { v5: 'SoloMD 5.x 新版专区', v4: 'SoloMD 4.x 历史版本', all: '全部版本' },
+  ja: { v5: 'SoloMD 5.x (最新)', v4: 'SoloMD 4.x 履歴', all: 'すべて' },
+  ko: { v5: 'SoloMD 5.x (최신)', v4: 'SoloMD 4.x 기록', all: '전체 버전' },
+  de: { v5: 'SoloMD 5.x (Neu)', v4: 'SoloMD 4.x Archiv', all: 'Alle Versionen' },
+  fr: { v5: 'SoloMD 5.x (Nouveau)', v4: 'SoloMD 4.x Archives', all: 'Toutes les versions' },
+  es: { v5: 'SoloMD 5.x (Nuevo)', v4: 'SoloMD 4.x Archivo', all: 'Todas las versiones' },
+  pt: { v5: 'SoloMD 5.x (Novo)', v4: 'SoloMD 4.x Arquivo', all: 'Todas as versões' },
+  it: { v5: 'SoloMD 5.x (Nuovo)', v4: 'SoloMD 4.x Archivio', all: 'Tutte le versioni' },
+  pl: { v5: 'SoloMD 5.x (Nowość)', v4: 'SoloMD 4.x Archiwum', all: 'Wszystkie wersje' },
+  nl: { v5: 'SoloMD 5.x (Nieuw)', v4: 'SoloMD 4.x Archief', all: 'Alle versies' },
+  tr: { v5: 'SoloMD 5.x (Yeni)', v4: 'SoloMD 4.x Arşiv', all: 'Tüm Sürümler' },
+  sv: { v5: 'SoloMD 5.x (Nyhet)', v4: 'SoloMD 4.x Arkiv', all: 'Alla versioner' },
+  uk: { v5: 'SoloMD 5.x (Нове)', v4: 'SoloMD 4.x Архів', all: 'Усі версії' },
 };
 const tabLabels = TAB_LABELS[lang] ?? TAB_LABELS.en;
 

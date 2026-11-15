@@ -20,14 +20,14 @@ const FAQ = [
   },
   {
     q: 'How much lighter is SoloMD than Obsidian?',
-    a: 'The installer is ~15 MB versus ~110 MB for Obsidian, and idle memory is roughly 80–150 MB. SoloMD is built on Tauri 2 with a Rust backend rather than Electron.',
+    a: 'The installer is ~14–30 MB versus ~110 MB for Obsidian, and idle memory is roughly 80–150 MB. SoloMD is built on Tauri 2 with a Rust backend rather than Electron.',
   },
 ];
 ---
 
 <Layout
   title="SoloMD vs Obsidian — Simple Editor vs Knowledge Graph (2026)"
-  description="SoloMD ships local semantic search, AutoGit, MCP server, and 14 AI providers in core. Obsidian is a knowledge graph + plugin marketplace. Honest comparison of when each one wins."
+  description="SoloMD ships local semantic search, AutoGit, MCP server, and 20+ AI providers in core. Obsidian is a knowledge graph + plugin marketplace. Honest comparison of when each one wins."
   lang={lang}
 >
   <Header lang={lang} />
@@ -47,13 +47,13 @@ const FAQ = [
       <h2>Quick verdict</h2>
       <table class="compare-detail">
         <thead>
-          <tr><th>&nbsp;</th><th>SoloMD v5.0</th><th>Obsidian 1.x</th></tr>
+          <tr><th>&nbsp;</th><th>SoloMD v5.2</th><th>Obsidian 1.x</th></tr>
         </thead>
         <tbody>
           <tr><th>Mental model</th><td>Document editor + agent surface + AI / search / history toolkit</td><td>Vault / knowledge base + plugin marketplace</td></tr>
           <tr><th>Price</th><td><strong>Free</strong> (MIT)</td><td>Free incl. commercial (since Feb 2025) · optional Sync $5/mo · Publish $10/mo</td></tr>
           <tr><th>Open source</th><td>✅</td><td>❌ core closed; plugins open</td></tr>
-          <tr><th>Installer size</th><td>~15 MB</td><td>~130 MB</td></tr>
+          <tr><th>Installer size</th><td>~14–30 MB</td><td>~130 MB</td></tr>
           <tr><th>RAM at idle</th><td>~150 MB</td><td>~400 MB</td></tr>
           <tr><th>Inline Agent Panel (chat-with-vault)</th><td>✅ <strong>v4.0</strong> · streamed multi-turn · tool-call cards · [[wikilink]] citations · Insert / Copy to active note</td><td>🟡 paid plugins (Smart Composer, Copilot)</td></tr>
           <tr><th>Scheduled agent recipes</th><td>✅ <strong>v4.0</strong> · cron / on-save / on-commit / on-tag / manual · 11-recipe cookbook</td><td>❌</td></tr>
@@ -67,7 +67,7 @@ const FAQ = [
           <tr><th>WYSIWYG live edit mode</th><td>✅ <strong>v2.3</strong></td><td>✅ Live Preview</td></tr>
           <tr><th>AutoGit version history</th><td>✅ <strong>v2.2</strong> · per-save snapshots in core</td><td>❌ (set up Obsidian Git plugin manually)</td></tr>
           <tr><th>MCP server bundled</th><td>✅ <strong>v2.2</strong> · 1.5 MB sidecar</td><td>❌</td></tr>
-          <tr><th>14 AI providers, BYOK</th><td>✅ in core · keys in OS keychain</td><td>❌ (1–2 per AI plugin)</td></tr>
+          <tr><th>20+ AI providers, BYOK</th><td>✅ in core · keys in OS keychain</td><td>❌ (1–2 per AI plugin)</td></tr>
           <tr><th>Backlinks</th><td>✅ <strong>v2.0</strong> · sidebar panel</td><td>✅ core feature</td></tr>
           <tr><th>Graph view</th><td>❌ (intentionally skipped — see roadmap)</td><td>✅ core feature</td></tr>
           <tr><th>Plugins</th><td>❌ (Custom CSS yes)</td><td>✅ thousands</td></tr>
@@ -92,7 +92,7 @@ const FAQ = [
         <li>You want <strong>local semantic search</strong> in core, with no extra plugin and no cloud round-trip. Obsidian has third-party plugins (Smart Connections, etc.) — most cost $5–10/mo and many call hosted embedding APIs.</li>
         <li>You want <strong>per-save version history</strong> without configuring the Obsidian Git plugin and a cron schedule. SoloMD's AutoGit is one toggle.</li>
         <li>You want an <strong>MCP server</strong> so Claude Desktop / Cursor / Codex CLI can read your notes — Obsidian doesn't ship one.</li>
-        <li>You want <strong>14 AI providers in one BYOK panel</strong> instead of one or two per Obsidian AI plugin.</li>
+        <li>You want <strong>20+ AI providers in one BYOK panel</strong> instead of one or two per Obsidian AI plugin.</li>
         <li>Your docs live in a repo or sync folder and you want to double-click a .md file and have it open quickly.</li>
         <li>You care about install size / RAM. SoloMD is ~4× smaller and uses ~2.5× less memory.</li>
         <li>You're editing files with legacy encodings (CJK / GBK / Big5 / Shift-JIS). Obsidian requires UTF-8.</li>

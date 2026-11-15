@@ -19,7 +19,7 @@ const FAQ = [
   },
   {
     q: 'Do both work offline with plain files?',
-    a: 'Yes — both are offline-first and file-based with no account requirement. SoloMD is MIT-licensed (~15 MB); Tolaria is AGPL (~25 MB).',
+    a: 'Yes — both are offline-first and file-based with no account requirement. SoloMD is MIT-licensed (~14–30 MB); Tolaria is AGPL (~25 MB).',
   },
 ];
 
@@ -144,7 +144,7 @@ const settingsRows: [string, string][] = [
   ['<strong>AutoGit</strong> — enable + idle / inactive thresholds', '✅ AutoGit + debounce seconds'],
   ['<strong>Vaults</strong> — paths, labels, aliases, colours, mounted, default-new-note vault', '✅ multi-workspace + per-workspace tabs'],
   ['<strong>AI</strong> — enable AI', '✅ <code>aiEnabled</code>'],
-  ['AI — default agent (Claude Code / Codex / …)', '✅ provider + model selectors (14 providers)'],
+  ['AI — default agent (Claude Code / Codex / …)', '✅ provider + model selectors (20+ providers)'],
   ['AI — provider API keys', '✅ stored in OS keychain (not a settings file)'],
   ['AI — permission mode (safe / power-user)', '🟡 read-only default + agent write-cap sandbox'],
   ['<strong>Workflow</strong> — inbox enabled + auto-advance', '✅ <strong>v4.6</strong> · Inbox + <code>⌘E</code> mark-organized + auto-advance + inbox-zero'],
@@ -156,7 +156,7 @@ const settingsRows: [string, string][] = [
 
 <Layout
   title="SoloMD vs Tolaria — Tauri Markdown Editors Compared (2026)"
-  description="Two Tauri-based open-source Markdown editors, with Tolaria's complete feature & settings reference. As of v4.6 SoloMD matches Tolaria's whole knowledge-graph layer — properties inspector, type-driven sidebar, typed relationships, relationship graph, saved views, Inbox workflow, and tldraw whiteboards — and keeps its own edges: iPad + mobile, 14 AI providers, CJK encoding, Pandoc/citation export, file import, on-device RAG, scheduled agent recipes + AutoGit sandbox. Tolaria's remaining edge is its BlockNote block editor. Line-by-line comparison."
+  description="Two Tauri-based open-source Markdown editors, with Tolaria's complete feature & settings reference. As of v4.6 SoloMD matches Tolaria's whole knowledge-graph layer — properties inspector, type-driven sidebar, typed relationships, relationship graph, saved views, Inbox workflow, and tldraw whiteboards — and keeps its own edges: iPad + mobile, 20+ AI providers, CJK encoding, Pandoc/citation export, file import, on-device RAG, scheduled agent recipes + AutoGit sandbox. Tolaria's remaining edge is its BlockNote block editor. Line-by-line comparison."
   lang={lang}
 >
   <Header lang={lang} />
@@ -197,15 +197,15 @@ const settingsRows: [string, string][] = [
       <h2>The 30-second verdict</h2>
       <table class="compare-detail">
         <thead>
-          <tr><th>&nbsp;</th><th>SoloMD v5.0</th><th>Tolaria (mid-2026)</th></tr>
+          <tr><th>&nbsp;</th><th>SoloMD v5.2</th><th>Tolaria (mid-2026)</th></tr>
         </thead>
         <tbody>
           <tr><th>Price</th><td><strong>Free</strong> (MIT)</td><td><strong>Free</strong> (open source, AGPL)</td></tr>
           <tr><th>Stack</th><td>Tauri 2 + Vue 3 + CodeMirror 6 + Rust</td><td>Tauri 2 + React + TypeScript + BlockNote + Rust</td></tr>
           <tr><th>Platforms</th><td>macOS · Windows · Linux x64/ARM64 · <strong>iPad / iOS / Android</strong></td><td>macOS · Windows · Linux <em>(desktop only — no mobile)</em></td></tr>
-          <tr><th>Installer size</th><td>~15 MB</td><td>~25 MB</td></tr>
+          <tr><th>Installer size</th><td>~14–30 MB</td><td>~25 MB</td></tr>
           <tr><th>Editor model</th><td>CodeMirror source-mode + live preview + split</td><td>Block-based slash-command editor (Notion-style)</td></tr>
-          <tr><th>Built-in AI providers (BYOK)</th><td>✅ <code>⌘J</code> · <strong>14 providers</strong> · OS keychain · streaming diff overlay</td><td>✅ direct: OpenAI · Anthropic · Gemini · OpenRouter · Ollama · LM Studio · custom</td></tr>
+          <tr><th>Built-in AI providers (BYOK)</th><td>✅ <code>⌘J</code> · <strong>20+ providers</strong> · OS keychain · streaming diff overlay</td><td>✅ direct: OpenAI · Anthropic · Gemini · OpenRouter · Ollama · LM Studio · custom</td></tr>
           <tr><th>Inline streamed chat-with-vault panel</th><td>✅ <strong>v4.0</strong> · multi-turn · tool-call cards · [[wikilink]] citations · Insert / Copy</td><td>✅ docked AI panel (<code>⌘⇧L</code>) · multi-chat · streaming · action cards · target picker</td></tr>
           <tr><th>CLI coding agents</th><td>🟡 <code>solomd agent</code> hands the vault to Claude Code / Codex with MCP pre-wired</td><td>✅ <strong>6 agents</strong> in-app: Claude Code · Codex · OpenCode · Pi · Gemini CLI · Kiro, with Vault-Safe / Power-User modes</td></tr>
           <tr><th>Scheduled agent recipes</th><td>✅ <strong>v4.0</strong> · cron / on-save / on-commit / on-tag · 11-recipe cookbook</td><td>❌</td></tr>
@@ -301,7 +301,7 @@ const settingsRows: [string, string][] = [
         <li>You want <strong>local semantic search</strong> (on-device RAG) — Tolaria has none.</li>
         <li>You import from <strong>.docx / .pdf / .xlsx / .pptx</strong> — Tolaria has no file converter.</li>
         <li>You want <strong>multi-tab + split panes</strong>, <strong>presentation mode</strong> (<code>⌘⌥P</code>), or <strong>Vim mode</strong> — Tolaria has none of these.</li>
-        <li>You want <strong>14 AI providers</strong> in one keychain-backed panel (incl. DeepSeek · Qwen · GLM · Kimi · 火山方舟) — Tolaria's built-in list is shorter.</li>
+        <li>You want <strong>20+ AI providers</strong> in one keychain-backed panel (incl. DeepSeek · Qwen · GLM · Kimi · 火山方舟) — Tolaria's built-in list is shorter.</li>
       </ul>
 
       <h2>When to pick Tolaria</h2>
@@ -324,7 +324,7 @@ const settingsRows: [string, string][] = [
         <em>both</em>. With 4.6, SoloMD matches Tolaria's structural half while
         keeping its own large edges: iPad / iOS / Android, CJK encodings (GBK /
         Big5 / Shift-JIS), Pandoc / citation export, file import, on-device RAG,
-        multi-tab + split panes, Vim, presentation mode, 14 AI providers,
+        multi-tab + split panes, Vim, presentation mode, 20+ AI providers,
         scheduled agent recipes + AutoGit accept/reject sandbox + replayable
         trace, E2EE sync, public share links, and a CLI. Tolaria's remaining
         edge is the BlockNote block editor (and its in-app CLI agents).
