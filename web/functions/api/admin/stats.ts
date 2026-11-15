@@ -86,6 +86,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     activeToday,
     active7d,
     referrals,
+    webReferrers,
+    webPages,
   ] = await Promise.all([
     env.DB.prepare(
       'SELECT COUNT(*) AS events, COUNT(DISTINCT anon_id) AS unique_devices FROM events WHERE ts >= ? AND ts <= ?',
@@ -165,6 +167,33 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     )
       .bind(since, until)
       .all(),
+    // Organic web referrer domains (google.com, bing.com, chatgpt.com, doubao.com, etc.)
+    env.DB.prepare(
+      `SELECT COALESCE(json_extract(props, '$.ref_host'), 'direct') AS ref_host,
+              COUNT(*) AS visits,
+              COUNT(DISTINCT anon_id) AS visitors
+         FROM events
+        WHERE event = 'web_visit' AND ts >= ? AND ts <= ?
+        GROUP BY ref_host
+        ORDER BY visitors DESC
+        LIMIT 100`,
+    )
+      .bind(since, until)
+      .all(),
+    // Landing page views & download clicks by path
+    env.DB.prepare(
+      `SELECT COALESCE(json_extract(props, '$.path'), '/') AS path,
+              SUM(event = 'web_visit') AS visits,
+              SUM(event = 'web_download') AS downloads,
+              COUNT(DISTINCT anon_id) AS visitors
+         FROM events
+        WHERE event IN ('web_visit', 'web_download') AND ts >= ? AND ts <= ?
+        GROUP BY path
+        ORDER BY visits DESC
+        LIMIT 100`,
+    )
+      .bind(since, until)
+      .all(),
   ]);
 
   const body = {
@@ -183,6 +212,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     locales: locales.results || [],
     daily: daily.results || [],
     referrals: referrals.results || [],
+    web_referrers: webReferrers.results || [],
+    web_pages: webPages.results || [],
   };
 
   return new Response(JSON.stringify(body), {

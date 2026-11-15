@@ -276,20 +276,17 @@ if (!isLangHome) {
       ],
     })} />
 
-    <!-- Google AdSense -->
-    <meta name="google-adsense-account" content="ca-pub-7786364053868586">
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7786364053868586" crossorigin="anonymous"></script>
   </head>
   <body>
     <!-- Keyboard users land on the nav on every page; this lets them jump the
          whole header in one Tab. Visually hidden until focused. -->
     <a class="skip-link" href="#main">{lang === 'zh' ? '跳到主要内容' : 'Skip to main content'}</a>
     <slot />
-      <!-- Promoter referral codes (solomd.app/?ref=<code>, see /promote). Does
-         nothing for a visit without a code. With one: the code is kept for 30
-         days so a later download counts too, and two events go to /api/track —
-         ref_visit and ref_download — carrying only the code, the page path and
-         a random per-browser id. No IP, user agent or cookie is stored. -->
+      <!-- Privacy-first web funnel & promoter referral tracking.
+         Stores no IP, user agent, or third-party cookie. Sends:
+         - web_visit: { path, ref_host } on page load
+         - web_download: { kind, path } when a download link or install command is clicked
+         - ref_visit / ref_download: when a promoter ?ref=<code> is present -->
     <script is:inline>
       (function () {
         var KEY = 'solomd.ref', ANON = 'solomd.anon', WINDOW = 30 * 24 * 3600 * 1000;
@@ -312,6 +309,17 @@ if (!isLangHome) {
         }
         var url;
         try { url = new URL(location.href); } catch (e) { return; }
+        var refHost = 'direct';
+        try {
+          if (document.referrer) {
+            var rh = new URL(document.referrer).hostname.toLowerCase();
+            if (rh && rh !== location.hostname) refHost = rh;
+            else if (rh === location.hostname) refHost = 'internal';
+          }
+        } catch (e) {}
+        if (refHost !== 'internal') {
+          send('web_visit', { path: location.pathname, ref_host: refHost });
+        }
         var fresh = (url.searchParams.get('ref') || '').trim().toLowerCase();
         if (CODE.test(fresh)) {
           set(KEY, JSON.stringify({ ref: fresh, at: Date.now() }));
@@ -322,18 +330,22 @@ if (!isLangHome) {
         }
         function current() {
           try {
-            var v = JSON.parse(get(KEY) || 'null');
+            var v = JSON.parse(get(KEY || '') || 'null');
             return v && CODE.test(v.ref) && Date.now() - v.at < WINDOW ? v.ref : null;
           } catch (e) { return null; }
         }
         var DOWNLOAD = /\/releases\/download\/|apps\.apple\.com|play\.google\.com\/store|apps\.microsoft\.com|(?:gitee|atomgit)\.com\/[^/]+\/solomd\/releases/;
         document.addEventListener('click', function (e) {
-          var ref = current();
-          if (!ref || !e.target || !e.target.closest) return;
+          if (!e.target || !e.target.closest) return;
           var a = e.target.closest('a[href]');
           var copy = e.target.closest('.hi-copy');
           if ((a && DOWNLOAD.test(a.href)) || copy) {
-            send('ref_download', { ref: ref, kind: copy ? 'install-command' : a.hostname });
+            var kind = copy ? 'install-command' : a.hostname;
+            send('web_download', { kind: kind, path: location.pathname });
+            var ref = current();
+            if (ref) {
+              send('ref_download', { ref: ref, kind: kind });
+            }
           }
         }, true);
       })();
