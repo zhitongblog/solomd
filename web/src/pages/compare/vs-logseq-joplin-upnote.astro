@@ -1,0 +1,184 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import CompareFaq from '../../components/CompareFaq.astro';
+
+const lang = 'en' as const;
+const FAQ = [
+  {
+    q: 'What is the biggest difference between SoloMD and Joplin, Logseq, or UpNote?',
+    a: 'Storage architecture and zero lock-in. Joplin stores notes in a local SQLite database with UUID filenames on sync targets, UpNote stores notes in a proprietary cloud-synced database, and Logseq centers on bullet-list outliner syntax (and an evolving DB graph). SoloMD edits standard, human-readable .md files directly in any folder on your disk — readable by Git, VS Code, Obsidian, ripgrep, and AI CLI agents forever.',
+  },
+  {
+    q: 'How does SoloMD sync across Windows, macOS, Linux, iOS, and Android for free?',
+    a: 'SoloMD supports two zero-subscription paths across all 5 platforms: (1) direct folder & Vault-Scoped Cloud Drive Sync over iCloud Drive, OneDrive, WebDAV/Nutstore, or Syncthing with optional client-side AES-256-GCM encryption (.solomd-enc), and (2) built-in Git / GitHub sync with optional E2EE and automatic snapshot history.',
+  },
+  {
+    q: 'Can I migrate existing notes from Joplin, Logseq, or UpNote into SoloMD?',
+    a: 'Yes. Export your notebooks from Joplin or UpNote as "Markdown + Front Matter" (or point SoloMD straight at an existing Logseq pages/journals Markdown folder). Open that folder in SoloMD and your folder tree, [[wikilinks]], images, tags, and local RAG semantic search work immediately with zero import step.',
+  },
+  {
+    q: 'Does SoloMD support knowledge graphs, whiteboards, and AI like heavier PKM apps?',
+    a: 'Yes — inside a ~14–30 MB native Tauri 2 + Rust binary. SoloMD includes [[wikilinks]], backlinks, typed YAML frontmatter relationships with a per-note Neighborhood graph, saved filtered views, Markdown-backed tldraw whiteboards, on-device RAG semantic search, OPR 1-click local AI auto-discovery (Ollama, LM Studio, vLLM, Jan), 20+ BYOK cloud providers, and a bundled 1.5 MB Rust MCP server.',
+  },
+];
+---
+
+<Layout
+  title="SoloMD vs Logseq vs Joplin vs UpNote: Plain-File Privacy vs Database Note Apps (2026)"
+  description="Should you store your knowledge base in plain .md files or an app database? Compare SoloMD, Logseq, Joplin, and UpNote on storage lock-in, installer size (~14–30 MB vs 150+ MB), E2EE sync, local AI, and document export."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main id="main" class="compare-page">
+    <article class="container compare-article">
+      <nav class="breadcrumbs">
+        <a href="/">Home</a> / <a href="/compare">Compare</a> / <span>SoloMD vs Logseq vs Joplin vs UpNote</span>
+      </nav>
+
+      <h1>SoloMD vs Logseq vs Joplin vs UpNote: Plain-File Privacy vs Database Note Apps (2026)</h1>
+      <p class="lead">
+        When writers and developers look beyond Obsidian or Evernote in 2026, four names come up constantly: <strong>Logseq</strong>, <strong>Joplin</strong>, <strong>UpNote</strong>, and <strong>SoloMD</strong>.
+        While all four support Markdown syntax on the surface, they make fundamentally different architectural bets underneath: <strong>real plain-text <code>.md</code> folders on your filesystem</strong> versus <strong>SQLite, outliner-bullet, or cloud databases</strong>.
+        Here is an honest, engineering-level comparison to help you pick the right long-term home for your notes.
+      </p>
+
+      <h2>30-Second Comparison Matrix (2026)</h2>
+      <table class="compare-detail">
+        <thead>
+          <tr>
+            <th>Dimension</th>
+            <th>SoloMD v5.2</th>
+            <th>Logseq</th>
+            <th>Joplin</th>
+            <th>UpNote</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th>Price &amp; License</th>
+            <td><strong>$0 forever · MIT OSS</strong></td>
+            <td>$0 · AGPLv3 OSS</td>
+            <td>$0 app · AGPL / Cloud €2.99+/mo</td>
+            <td>Closed-source · Free tier / ~$1.99/mo or $39.99 lifetime</td>
+          </tr>
+          <tr>
+            <th>On-Disk Storage Format</th>
+            <td>✅ <strong>Plain <code>.md</code> files &amp; real OS folders</strong></td>
+            <td>⚠️ Bullet-list outliner <code>.md</code> / DB version</td>
+            <td>❌ Local SQLite DB (sync writes UUID <code>.md</code> blobs)</td>
+            <td>❌ Proprietary local + Firebase cloud DB</td>
+          </tr>
+          <tr>
+            <th>Desktop Installer Size</th>
+            <td>✅ <strong>~14–30 MB</strong> (Tauri 2 + Rust)</td>
+            <td>~160–220 MB (Electron)</td>
+            <td>~180–260 MB (Electron)</td>
+            <td>~110–150 MB (Electron)</td>
+          </tr>
+          <tr>
+            <th>Editing Experience</th>
+            <td>✅ <strong>Long-form Live Preview + Pure WYSIWYG + Source</strong></td>
+            <td>Outliner bullets only (not long-form prose)</td>
+            <td>Split-pane Markdown + Rich Text toggle</td>
+            <td>Polished rich-text / Markdown hybrid</td>
+          </tr>
+          <tr>
+            <th>Platforms (5)</th>
+            <td>✅ <strong>macOS, Win, Linux, iOS, Android</strong></td>
+            <td>✅ macOS, Win, Linux, iOS, Android</td>
+            <td>✅ macOS, Win, Linux, iOS, Android</td>
+            <td>✅ macOS, Win, Linux, iOS, Android</td>
+          </tr>
+          <tr>
+            <th>Encrypted Sync (E2EE)</th>
+            <td>✅ <strong>Free Vault-Scoped AES-256-GCM + Git E2EE</strong></td>
+            <td>🟡 Git / iCloud (official sync retired/transitioned)</td>
+            <td>✅ Built-in E2EE over WebDAV / S3 / OneDrive / Joplin Cloud</td>
+            <td>❌ Cloud sync is not client-side E2EE</td>
+          </tr>
+          <tr>
+            <th>Document &amp; Book Export</th>
+            <td>✅ <strong>9-format Export Center</strong> (DOCX templates, bookmarked PDF, searchable HTML, EPUB)</td>
+            <td>❌ Weak long-form export (bullet artifacts)</td>
+            <td>🟡 PDF / HTML / MD (no native DOCX template book merge)</td>
+            <td>🟡 PDF / HTML / MD / TXT</td>
+          </tr>
+          <tr>
+            <th>Local AI, RAG &amp; MCP Server</th>
+            <td>✅ <strong>OPR 1-click local AI + 20+ BYOK + offline RAG + 1.5 MB MCP</strong></td>
+            <td>🟡 Community plugins</td>
+            <td>🟡 Plugins</td>
+            <td>❌ No built-in local AI or MCP</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>Why storage format decides whether you own your notes in 10 years</h2>
+      <p>
+        Many apps advertise "Markdown support" when they only use Markdown as an <em>input shortcut</em> inside a database:
+      </p>
+      <ul>
+        <li>
+          <strong>Joplin’s SQLite + UUID trade-off:</strong> Joplin is battle-tested for Evernote `.enex` migrations and WebDAV E2EE sync, but you cannot simply open your Joplin folder in VS Code, Finder, or Claude Code and edit `project-plan.md`. On disk, Joplin stores notes inside SQLite and syncs opaque `a8f39c12e4...md` metadata blobs.
+        </li>
+        <li>
+          <strong>Logseq’s outliner trade-off:</strong> Logseq excels if you think strictly in indented daily-journal bullets and block references (`((uuid))`). However, every paragraph becomes a `- ` list item on disk, making it awkward to write clean long-form articles, READMEs, academic papers, or Word/PDF deliverables.
+        </li>
+        <li>
+          <strong>UpNote’s closed-source cloud trade-off:</strong> UpNote offers a fast, pleasant UI for casual note-taking at an affordable lifetime price, but your notes live in a closed-source cloud database without client-side end-to-end encryption, local AI, or direct filesystem interoperability.
+        </li>
+        <li>
+          <strong>SoloMD’s plain-folder guarantee:</strong> SoloMD never wraps your notes in a database. Your workspace is an ordinary folder of UTF-8 `.md` files and `_assets/` images. You can edit the exact same folder simultaneously with Git, VS Code, Obsidian, Cursor, or SoloMD’s bundled <strong>1.5 MB Rust MCP server</strong>.
+        </li>
+      </ul>
+
+      <h2>When each app is the right choice (honest verdict)</h2>
+      <ul>
+        <li>
+          <strong>Choose Logseq if:</strong> Your brain works purely in Roam-style daily journal bullet points, block-level transclusions, and PDF annotation highlights rather than full-page documents.
+        </li>
+        <li>
+          <strong>Choose Joplin if:</strong> You are migrating 20,000 legacy Evernote `.enex` web clippings and want a self-hosted Joplin Server database with strict notebook/tag parity.
+        </li>
+        <li>
+          <strong>Choose UpNote if:</strong> You want a turnkey consumer cloud account login with zero folder management and do not need open-source code, E2EE encryption, AI agents, or `.docx` publishing.
+        </li>
+        <li>
+          <strong>Choose SoloMD if:</strong> You want a <strong>~14–30 MB native Tauri + Rust app ($0 MIT)</strong> that edits real `.md` files on all 5 platforms, offers <strong>Pure WYSIWYG</strong> long-form writing, merges folders into bookmarked PDFs and custom-template Word `.docx` books without Pandoc, and connects privately to local Ollama/DeepSeek models and Claude MCP.
+        </li>
+      </ul>
+
+      <CompareFaq heading="Frequently Asked Questions" items={FAQ} />
+
+      <div class="compare-cta">
+        <a href="/#download" class="btn btn--primary">Download SoloMD Free (~14–30 MB)</a>
+        <a href="/compare/best-free-markdown-editors/" class="btn btn--secondary">See Full 6-Editor Comparison</a>
+      </div>
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .compare-article { max-width: 820px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .compare-article h1 { font-size: 2.2rem; line-height: 1.2; margin: 10px 0 20px; }
+  .compare-article h2 { font-size: 1.55rem; margin: 36px 0 14px; }
+  .compare-article h3 { font-size: 1.15rem; margin: 24px 0 10px; }
+  .compare-article .lead { font-size: 1.1rem; color: var(--text-muted, #555); margin-bottom: 32px; }
+  .compare-detail { width: 100%; border-collapse: collapse; margin: 20px 0 28px; font-size: 14px; }
+  .compare-detail th, .compare-detail td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #eee; }
+  .compare-detail thead th { background: #fafafa; font-weight: 600; }
+  .compare-detail tbody th { font-weight: 500; width: 24%; }
+  .compare-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 40px; }
+  .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  .btn--primary { background: #ff9f40; color: #000; }
+  .btn--secondary { background: #111; color: #fff; }
+  .compare-article ul, .compare-article ol { padding-left: 22px; }
+  .compare-article li { margin: 8px 0; line-height: 1.65; }
+  .compare-article p { line-height: 1.7; margin: 12px 0; }
+  .compare-article code { background: #f5f5f0; padding: 1px 6px; border-radius: 4px; font-size: 0.92em; }
+</style>

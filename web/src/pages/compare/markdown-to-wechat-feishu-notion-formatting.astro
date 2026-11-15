@@ -1,0 +1,169 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import CompareFaq from '../../components/CompareFaq.astro';
+
+const lang = 'en' as const;
+const FAQ = [
+  {
+    q: 'How do I copy Markdown into Notion, Confluence, Google Docs, or Substack without losing formatting?',
+    a: 'In SoloMD, click Edit → Copy as Rich HTML (or use the toolbar copy menu). Instead of copying raw # and ** symbols, SoloMD renders headings, nested lists, repaired GFM tables, syntax-highlighted code blocks, and math into clean inline-styled clipboard HTML that pastes directly into Notion, Confluence, Google Docs, Word, Apple Mail, and CMS editors.',
+  },
+  {
+    q: 'Why do images break when pasting Markdown into web editors or publishing platforms?',
+    a: 'Local relative paths like ./_assets/screenshot.png only exist on your hard drive, so browser-based rich-text editors cannot upload them automatically from Markdown text. SoloMD solves this with 5 built-in image hosting (CDN) backends — S3/Cloudflare R2/MinIO, GitHub Repo + jsDelivr/CDN, PicGo, SM.MS, and custom CLI scripts — uploading screenshots on paste and falling back to local _assets/ when offline.',
+  },
+  {
+    q: 'Can SoloMD clean up broken tables and citation tags pasted from ChatGPT, Claude, or DeepSeek before copying?',
+    a: 'Yes. SoloMD includes a one-click Clean AI Artifacts action that strips [cite_start], 【†source】 markers, zero-width characters, and smart quotes, while its v4.11 malformed-table auto-repair engine automatically fixes mismatched |---|---| delimiter columns before rendering to Rich HTML.',
+  },
+  {
+    q: 'When is a dedicated browser extension or CMS-specific formatter still useful alongside SoloMD?',
+    a: 'If you rely on proprietary interactive widgets (such as Notion database views, Confluence Jira macros, or custom WeChat SVG animation cards), you will still configure those widgets inside the target platform after pasting your formatted prose, code blocks, and CDN-backed images from SoloMD.',
+  },
+];
+---
+
+<Layout
+  title="How to Copy Markdown to Notion, Confluence & Rich-Text Editors Without Broken Formatting (2026)"
+  description="Stop re-formatting headings, broken AI tables, and missing local images after pasting Markdown. Learn how SoloMD copies inline-styled Rich HTML and auto-uploads images to S3, Cloudflare R2, GitHub CDN, or PicGo."
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main id="main" class="compare-page">
+    <article class="container compare-article">
+      <nav class="breadcrumbs">
+        <a href="/">Home</a> / <a href="/compare">Compare</a> / <span>Copy Markdown to Rich-Text Editors</span>
+      </nav>
+
+      <h1>How to Copy Markdown to Notion, Confluence &amp; Rich-Text Editors Without Broken Formatting</h1>
+      <p class="lead">
+        Drafting technical posts, release notes, and documentation in local Markdown is fast — until you paste that draft into <strong>Notion, Atlassian Confluence, Google Docs, Substack, WordPress, or WeChat Official Accounts</strong>.
+        Raw <code>**bold**</code> asterisks leak through, code blocks lose syntax colors, AI-generated tables collapse into pipe characters, and local screenshots vanish.
+        Here is how rich-text publishing workflows compare in 2026, and how <strong>SoloMD</strong> bridges local plain-text <code>.md</code> files with web publishing platforms in one click.
+      </p>
+
+      <h2>30-Second Rich-Text &amp; Image Publishing Comparison (2026)</h2>
+      <table class="compare-detail">
+        <thead>
+          <tr>
+            <th>Capability</th>
+            <th>SoloMD v5.2 ($0, MIT)</th>
+            <th>Typora ($14.99)</th>
+            <th>Obsidian ($0 + Plugins)</th>
+            <th>Web Formatter Websites</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th>One-Click Copy as Inline-Styled Rich HTML</th>
+            <td>✅ <strong>Built-in</strong> (headings, lists, code, tables, math)</td>
+            <td>✅ Copy without theme / HTML</td>
+            <td>⚠️ Requires community plugins</td>
+            <td>✅ Browser copy-paste</td>
+          </tr>
+          <tr>
+            <th>Built-in Image Hosting (S3 / R2 / GitHub / PicGo)</th>
+            <td>✅ <strong>5 native backends + offline local fallback</strong></td>
+            <td>🟡 PicGo / custom CLI only (no native S3/R2 UI)</td>
+            <td>❌ Requires third-party uploader plugin</td>
+            <td>❌ Manual upload or temporary host</td>
+          </tr>
+          <tr>
+            <th>One-Click Clean AI Artifacts &amp; Broken Tables</th>
+            <td>✅ <strong>Built-in AI cleaner + table auto-repair</strong></td>
+            <td>❌ Manual cleanup</td>
+            <td>❌ Manual or community regex plugin</td>
+            <td>❌ Breaks on malformed GFM tables</td>
+          </tr>
+          <tr>
+            <th>Privacy &amp; Offline Drafting</th>
+            <td>✅ <strong>100% local files (~14–30 MB native app)</strong></td>
+            <td>✅ Local files (~70 MB)</td>
+            <td>✅ Local vault (~110 MB)</td>
+            <td>❌ Must paste drafts into third-party web pages</td>
+          </tr>
+          <tr>
+            <th>5-Platform Support (Mac, Win, Linux, iOS, Android)</th>
+            <td>✅ <strong>All 5 platforms free</strong> (AES-256-GCM sync)</td>
+            <td>❌ Desktop only</td>
+            <td>✅ Desktop + Mobile (Sync $4–$5/mo)</td>
+            <td>🟡 Desktop browser focused</td>
+          </tr>
+          <tr>
+            <th>Local AI &amp; MCP Automation</th>
+            <td>✅ <strong>OPR 1-click local AI + 20+ BYOK + 1.5 MB MCP</strong></td>
+            <td>❌ None</td>
+            <td>🟡 Community plugins</td>
+            <td>❌ None</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>Why pasting Markdown into rich-text editors usually breaks</h2>
+      <ol>
+        <li>
+          <strong>Plain-text clipboard vs. HTML clipboard MIME types:</strong> When you press <code>Cmd/Ctrl+C</code> inside a source code editor like VS Code, the clipboard only receives <code>text/plain</code>. Rich-text editors like Confluence, Google Docs, or email clients treat it as literal paragraphs full of <code>###</code> and backticks instead of structured headings and tables.
+        </li>
+        <li>
+          <strong>Malformed tables &amp; citation noise from LLMs:</strong> Copying answers from ChatGPT, Claude, or DeepSeek often brings invisible zero-width spaces, citation tags (<code>【†source】</code>), and GFM tables whose <code>|---|---|</code> separator row has one too few columns — causing web parsers to drop the entire table.
+        </li>
+        <li>
+          <strong>Local image paths cannot cross into SaaS editors:</strong> A Markdown link like <code>![](_assets/arch-diagram.png)</code> points to your local disk. Pasting that document into Notion, Confluence, Medium, or Ghost leaves broken image placeholders unless images are hosted on HTTPS URLs or exported in a self-contained format.
+        </li>
+      </ol>
+
+      <h2>How SoloMD’s Rich-Copy &amp; Image Hosting workflow solves it</h2>
+      <ul>
+        <li>
+          <strong>Copy as Rich HTML with theme-accurate code &amp; table styles:</strong> SoloMD writes clean, inline-styled <code>text/html</code> alongside <code>text/plain</code> to your system clipboard. Code blocks keep readable monospace shading and line structure, lists keep proper indentation, and LaTeX math converts cleanly for Word and rich-text targets.
+        </li>
+        <li>
+          <strong>5 built-in image hosting backends with automatic offline fallback:</strong> Configure <strong>Cloudflare R2 / AWS S3 / MinIO</strong>, <strong>GitHub repository + CDN</strong>, <strong>PicGo</strong>, <strong>SM.MS</strong>, or any custom upload script in Settings → Images. Paste a screenshot into SoloMD and it uploads immediately, inserting the HTTPS URL. If you are on a plane with no Wi-Fi, SoloMD automatically saves to local <code>_assets/</code> instead of losing your screenshot.
+        </li>
+        <li>
+          <strong>Clean AI Artifacts before publishing:</strong> One toolbar click removes LLM citation clutter and repairs broken Markdown table delimiters on the fly. You can also edit in <strong>Pure WYSIWYG mode</strong> so syntax markers stay hidden even on the active line.
+        </li>
+        <li>
+          <strong>Webhook extensions &amp; 9-format Export Center:</strong> Need to push directly to an internal CMS API or hand off a file? Use SoloMD’s declarative JSON extensions (<code>.solomd/plugins/*.json</code>) for custom Webhook publishing, or use the built-in 9-format Export Center (DOCX, PDF, standalone searchable HTML, EPUB, ODT, RTF, LaTeX, PNG, TextBundle).
+        </li>
+      </ul>
+
+      <h2>When another tool may still fit better</h2>
+      <p>
+        Honest engineering trade-offs matter: if your team collaborates simultaneously with live multi-cursor comments inside a single document, draft directly in <strong>Notion, Google Docs, or Confluence</strong> rather than round-tripping Markdown. And if you design pixel-custom magazine layouts with animated SVG blocks for social media feeds, a specialized visual layout studio will still be your final step after drafting prose in SoloMD.
+      </p>
+
+      <CompareFaq heading="Frequently Asked Questions" items={FAQ} />
+
+      <div class="compare-cta">
+        <a href="/#download" class="btn btn--primary">Download SoloMD Free (~14–30 MB)</a>
+        <a href="/docs/images/" class="btn btn--secondary">Read Image Hosting &amp; S3/R2 Setup Guide</a>
+      </div>
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .compare-article { max-width: 820px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .compare-article h1 { font-size: 2.2rem; line-height: 1.2; margin: 10px 0 20px; }
+  .compare-article h2 { font-size: 1.55rem; margin: 36px 0 14px; }
+  .compare-article h3 { font-size: 1.15rem; margin: 24px 0 10px; }
+  .compare-article .lead { font-size: 1.1rem; color: var(--text-muted, #555); margin-bottom: 32px; }
+  .compare-detail { width: 100%; border-collapse: collapse; margin: 20px 0 28px; font-size: 14px; }
+  .compare-detail th, .compare-detail td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #eee; }
+  .compare-detail thead th { background: #fafafa; font-weight: 600; }
+  .compare-detail tbody th { font-weight: 500; width: 28%; }
+  .compare-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 40px; }
+  .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  .btn--primary { background: #ff9f40; color: #000; }
+  .btn--secondary { background: #111; color: #fff; }
+  .compare-article ul, .compare-article ol { padding-left: 22px; }
+  .compare-article li { margin: 8px 0; line-height: 1.65; }
+  .compare-article p { line-height: 1.7; margin: 12px 0; }
+  .compare-article code { background: #f5f5f0; padding: 1px 6px; border-radius: 4px; font-size: 0.92em; }
+</style>

@@ -1,0 +1,176 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import Header from '../../../components/Header.astro';
+import Footer from '../../../components/Footer.astro';
+import CompareFaq from '../../../components/CompareFaq.astro';
+
+const lang = 'zh' as const;
+const FAQ = [
+  {
+    q: 'SoloMD 与 Joplin、思源笔记、Logseq、UpNote 最本质的区别是什么？',
+    a: '最核心的区别在于「底层存储是否锁定你的数据」。Joplin 将笔记存在本地 SQLite 数据库中（同步盘里是乱码般的 UUID 文件名），思源笔记采用专属 .sy JSON 块结构文件，UpNote 采用闭源云数据库，Logseq 强制所有段落变成带连字符的大纲列表（及新数据库版）。而 SoloMD 100% 直接读写硬盘上最纯粹的标准 .md 文件夹，随时可用资源管理器、VS Code、Obsidian、Git 或 Claude Code 直接打开，零格式绑定。',
+  },
+  {
+    q: '纯文本 .md 文件也能实现端到端加密（E2EE）多端同步吗？',
+    a: '可以。SoloMD 在 macOS、Windows、Linux、iOS、Android 五端全部免费内置了两套同步机制：一是「按知识库隔离（Vault-Scoped）的网盘加密同步」，支持 iCloud、OneDrive、坚果云 WebDAV、百度网盘、阿里云盘或 Syncthing，开启 AES-256-GCM 加密后自动生成防偷窥的 .solomd-enc 密文副本；二是内置支持 E2EE 的 Git / GitHub 版本同步。',
+  },
+  {
+    q: '我已经有很多在 Joplin、思源笔记或语雀/UpNote 里的旧笔记，怎么迁移到 SoloMD？',
+    a: '在这些软件中选择「导出为标准 Markdown 目录（含图片资源文件夹）」，然后在 SoloMD 中点击「打开文件夹」直接选中导出的目录即可，无需任何复杂的导入转换流程。双链 [[笔记]]、YAML 属性、图片、全文秒搜与本地离线 RAG 语义检索即刻可用。',
+  },
+  {
+    q: 'SoloMD 安装包只有 14–30 MB，功能会比几百兆的思源或 Joplin 简陋吗？',
+    a: '恰恰相反。得益于 Tauri 2 + Rust 原生架构（无需捆绑百兆 Chromium 内核），SoloMD 在 ~14 MB (Win) / ~16 MB (Linux) / ~30 MB (Mac) 的极小体积内，完整内置了纯净所见即所得（Pure WYSIWYG）、免 Pandoc 9 合 1 导出中心（含自定义公文/论文 Word 模板与多文件夹合书 PDF）、tldraw 白板、知识图谱、5 大图床、OPR 本地大模型一键自动发现、20+ AI 渠道与 1.5 MB 原生 MCP 服务。',
+  },
+];
+---
+
+<Layout
+  title="SoloMD vs Logseq / Joplin / 思源笔记 / UpNote：纯文本 .md 与数据库笔记怎么选？（2026 深度对比）"
+  description="不想被笔记软件的私有 JSON/.sy 数据库或 UUID 文件名绑架？从底层存储格式、安装包体积（14 MB vs 200 MB+）、五端免费加密同步、本地 AI 与公文/论文 Word 导出五个维度横向对比 SoloMD、Joplin、Logseq、思源笔记与 UpNote。"
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main id="main" class="compare-page">
+    <article class="container compare-article">
+      <nav class="breadcrumbs">
+        <a href="/zh/">首页</a> / <a href="/zh/compare">对比</a> / <span>SoloMD vs Logseq / Joplin / 思源 / UpNote</span>
+      </nav>
+
+      <h1>SoloMD vs Logseq / Joplin / 思源笔记 / UpNote：纯文本 .md 与数据库笔记怎么选？</h1>
+      <p class="lead">
+        在寻找免费、跨平台、支持双链与隐私保护的个人知识库软件时，很多用户会在 <strong>Joplin</strong>、<strong>Logseq</strong>、<strong>思源笔记（SiYuan）</strong>、<strong>UpNote</strong> 与 <strong>SoloMD</strong> 之间犹豫。
+        虽然它们表面上都支持输入 Markdown 语法，但底层架构却分成截然不同的两大阵营：<strong>真正保存在硬盘文件夹里的标准 <code>.md</code> 纯文本</strong>，与<strong>包裹在 SQLite / JSON 块数据库里的私有格式</strong>。这篇对比帮你一次性看清十年后谁不会锁定你的知识资产。
+      </p>
+
+      <h2>30 秒核心指标横向对比（2026）</h2>
+      <table class="compare-detail">
+        <thead>
+          <tr>
+            <th>对比维度</th>
+            <th>SoloMD v5.2</th>
+            <th>Joplin</th>
+            <th>Logseq</th>
+            <th>思源笔记 / UpNote</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th>价格与开源协议</th>
+            <td><strong>永久免费 · MIT 开源</strong></td>
+            <td>应用免费 AGPL（官方云付费）</td>
+            <td>免费 · AGPLv3 开源</td>
+            <td>思源本地免费/云订阅 ¥68/年；UpNote 闭源买断/订阅</td>
+          </tr>
+          <tr>
+            <th>硬盘真实存储格式</th>
+            <td>✅ <strong>标准 <code>.md</code> 纯文本 + 原生子文件夹</strong></td>
+            <td>❌ 本地 SQLite 数据库（网盘内为 UUID 乱码文件名）</td>
+            <td>⚠️ 强制全篇 <code>- </code> 大纲列表（及新 DB 版）</td>
+            <td>❌ 思源为 <code>.sy</code> JSON 块文件；UpNote 为私有云库</td>
+          </tr>
+          <tr>
+            <th>桌面安装包体积</th>
+            <td>✅ <strong>~14–30 MB</strong>（Tauri 2 + Rust 极速冷启动）</td>
+            <td>~180–260 MB（Electron）</td>
+            <td>~160–220 MB（Electron）</td>
+            <td>~120–240 MB（Electron）</td>
+          </tr>
+          <tr>
+            <th>写作与排版体验</th>
+            <td>✅ <strong>长文所见即所得 + Pure WYSIWYG 零语法闪烁</strong></td>
+            <td>传统左右分栏 / 富文本切换</td>
+            <td>仅限缩进大纲子弹笔记，不适合写长文</td>
+            <td>思源为 Notion 式块编辑；UpNote 为轻量富文本</td>
+          </tr>
+          <tr>
+            <th>五端支持与免费加密同步</th>
+            <td>✅ <strong>五端免费</strong>（网盘 AES-256-GCM 加密 + Git）</td>
+            <td>✅ 五端支持（WebDAV / S3 / OneDrive E2EE）</td>
+            <td>✅ 五端支持（依赖自配 Git / iCloud）</td>
+            <td>✅ 五端支持（官方加密云同步通常需付费订阅或闭源）</td>
+          </tr>
+          <tr>
+            <th>正式文档与合并成书导出</th>
+            <td>✅ <strong>免 Pandoc 9 合 1 导出</strong>（自定义 Word 模板、中文书签 PDF、带搜索 HTML）</td>
+            <td>🟡 基础 PDF / HTML / MD 导出</td>
+            <td>❌ 导出长文全是列表圆点，排版困难</td>
+            <td>🟡 导出标准 Word 公文模板或多目录合书较弱</td>
+          </tr>
+          <tr>
+            <th>AI 时代的外部工具协同</th>
+            <td>✅ <strong>OPR 本地 AI 自动发现 + 20+ 渠道 + 内置 1.5 MB MCP</strong>（Cursor/Claude Code 可直接读写目录）</td>
+            <td>⚠️ 外部 AI Agent 无法直接按目录读写 SQLite</td>
+            <td>⚠️ 大纲格式与 DB 结构对通用脚本不够友好</td>
+            <td>⚠️ <code>.sy</code> JSON 或闭源库无法被外部编辑器直接打开</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>为什么到了 AI Agent 时代，「纯文本 .md 文件夹」变得前所未有地重要？</h2>
+      <p>
+        过去十年，笔记软件把数据存进 SQLite 或私有 JSON（如 Joplin 的 <code>7f9a2b...md</code> 或思源的 <code>.sy</code> 语法树），是为了方便自己在应用内部做索引。但在 2026 年，这种架构带来了三个明显痛点：
+      </p>
+      <ol>
+        <li>
+          <strong>无法与 AI 编程和智能体工具无缝共享同一个文件夹：</strong>当你使用 Claude Desktop、Cursor、Codex CLI 或命令行脚本整理知识库时，它们最擅长直接读写结构清晰的自然文件夹与 <code>.md</code> 纯文本，而不是去解析私有 JSON 块文件或闭源数据库。SoloMD 不仅直接操作原生文件夹，还内置了仅 1.5 MB 的 Rust 原生 <strong>MCP 服务器</strong>。
+        </li>
+        <li>
+          <strong>零迁移成本与百年可读性：</strong>哪怕 20 年后某款软件停止维护，SoloMD 留给你硬盘里的依然是分类整洁的文件夹、标准 UTF-8 <code>.md</code> 文章和旁边的 <code>_assets/</code> 图片，甚至连内置的 <code>tldraw</code> 白板和知识图谱关系也是直接保存在标准 YAML Frontmatter 和代码块里。
+        </li>
+        <li>
+          <strong>从随手记到正式交付文档无需二次搬运：</strong>在大纲软件（Logseq）或块编辑器里写完材料，想要交给领导、客户或导师一份符合字体规范的 <strong>Word (<code>.docx</code>)</strong> 或带目录页码的合集 <strong>PDF</strong>，往往要痛苦地重新排版。SoloMD 内置 9 合 1 导出中心，直接挂载你的 Word 模板一键直出成品。
+        </li>
+      </ol>
+
+      <h2>客观选型建议：哪款工具最适合你？</h2>
+      <ul>
+        <li>
+          <strong>选 Logseq：</strong>如果你几乎不写完整段落的长文章，每天所有的思考都习惯以缩进子弹列表（Outliner）、每日日记（Journals）和块级双链引用的方式记录。
+        </li>
+        <li>
+          <strong>选思源笔记（SiYuan）：</strong>如果你非常喜欢 Notion 式的块级拖拽分栏、挂件生态与 SQL 高级块查询，且接受数据以 <code>.sy</code> JSON 格式托管在工作空间内。
+        </li>
+        <li>
+          <strong>选 Joplin：</strong>如果你手头有上万条早年印象笔记（Evernote <code>.enex</code>）网页剪藏需要原样导入，并且已经搭好了自建 WebDAV / Joplin Server。
+        </li>
+        <li>
+          <strong>选 UpNote：</strong>如果你只需要一个界面清新的传统账号云笔记，不介意闭源与非端到端加密，也不需要本地大模型、图床和复杂 Word/PDF 导出。
+        </li>
+        <li>
+          <strong>选 SoloMD：</strong>如果你既想要 Typora 般丝滑的长文所见即所得（仅 <strong>~14–30 MB</strong>，秒开不占内存），又坚持<strong>笔记 100% 是硬盘上干净的标准 <code>.md</code> 文件</strong>，同时希望免费拥有五端网盘/Git 加密同步、DeepSeek/Ollama 本地 AI 与专业级 Word/PDF/HTML 导出能力。
+        </li>
+      </ul>
+
+      <CompareFaq heading="常见问题解答 (FAQ)" items={FAQ} />
+
+      <div class="compare-cta">
+        <a href="/zh/#download" class="btn btn--primary">免费下载 SoloMD（~14–30 MB）</a>
+        <a href="/zh/compare/best-free-markdown-editors/" class="btn btn--secondary">查看 6 款主流 Markdown 编辑器全景对比</a>
+      </div>
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .compare-article { max-width: 820px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .compare-article h1 { font-size: 2.1rem; line-height: 1.25; margin: 10px 0 20px; }
+  .compare-article h2 { font-size: 1.5rem; margin: 36px 0 14px; }
+  .compare-article h3 { font-size: 1.15rem; margin: 24px 0 10px; }
+  .compare-article .lead { font-size: 1.08rem; color: var(--text-muted, #555); margin-bottom: 32px; line-height: 1.75; }
+  .compare-detail { width: 100%; border-collapse: collapse; margin: 20px 0 28px; font-size: 14px; }
+  .compare-detail th, .compare-detail td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #eee; }
+  .compare-detail thead th { background: #fafafa; font-weight: 600; }
+  .compare-detail tbody th { font-weight: 500; width: 22%; }
+  .compare-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 40px; }
+  .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  .btn--primary { background: #ff9f40; color: #000; }
+  .btn--secondary { background: #111; color: #fff; }
+  .compare-article ul, .compare-article ol { padding-left: 22px; }
+  .compare-article li { margin: 8px 0; line-height: 1.7; }
+  .compare-article p { line-height: 1.75; margin: 12px 0; }
+  .compare-article code { background: #f5f5f0; padding: 1px 6px; border-radius: 4px; font-size: 0.92em; }
+</style>

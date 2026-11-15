@@ -1,0 +1,168 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import Header from '../../../components/Header.astro';
+import Footer from '../../../components/Footer.astro';
+import CompareFaq from '../../../components/CompareFaq.astro';
+
+const lang = 'zh' as const;
+const FAQ = [
+  {
+    q: '怎么把本地写好的 Markdown 一键复制到微信公众号后台、飞书文档、知乎或语雀而不丢格式？',
+    a: '在 SoloMD 中写完文章后，直接使用「复制为富文本 HTML」功能，即可将标题层级、引用块、带语法高亮与背景框的代码块、自动修复后的表格写入系统富文本剪贴板，直接 Ctrl/Cmd+V 粘贴到微信公众号编辑器、飞书文档、Notion、知乎或企业邮件中，不会出现满屏 # 和 ** 星号。',
+  },
+  {
+    q: '粘贴到公众号、知乎或外部平台时，本地截图无法显示怎么办？需要单独装 PicGo 吗？',
+    a: '不需要额外常驻重型插件。SoloMD 原生内置了 5 种图床上传后端：兼容 S3 协议（阿里云 OSS / 腾讯云 COS / Cloudflare R2 / MinIO）、GitHub 仓库 + CDN、SM.MS、PicGo 接口以及自定义命令行脚本（如 uPic / PicGo-Core）。截图粘贴进编辑器即自动上传替换为外链 URL；断网时自动降级保存到本地 _assets/ 目录，绝不丢图。',
+  },
+  {
+    q: '从 DeepSeek、ChatGPT、豆包或 Kimi 复制过来的回答，表格错位且带有很多引用乱码怎么快速处理？',
+    a: 'SoloMD 工具栏提供「一键清理 AI 杂质」按钮，可瞬间剥离 [cite_start]、【†source】、零宽字符与异常引号；同时内置 v4.11 残缺表格自动修复引擎，遇到大模型输出列数不匹配的 |---|---| 分隔行会自动补齐渲染，复制进飞书或 Word 依然是工整的原生表格。',
+  },
+  {
+    q: '什么时候仍然需要专门的公众号在线排版工具（如 mdnice、秀米）？',
+    a: '如果你的公众号推文重度依赖花式 SVG 点击展开动画、节日花边卡片或特定多列杂志图文模版，秀米等视觉排版工具依然更有优势。但对于技术博客、深度长文、AI 教程、产品周报与日常跨平台同步分发，SoloMD 本地离线创作 + 原生图床 + 一键富文本复制效率更高，且草稿永远不会泄露给第三方网页。',
+  },
+];
+---
+
+<Layout
+  title="Markdown 一键复制到微信公众号、飞书文档与知乎：免插件排版与图床自动上传指南（2026）"
+  description="告别把未公开草稿粘贴到网页排版工具的隐私风险与丢图烦恼。详解如何用免费开源的 SoloMD（仅 14–30 MB）实现一键清理 DeepSeek/ChatGPT 乱码表格、阿里云 OSS/腾讯云 COS/R2 图床自动上传与富文本一键复制。"
+  lang={lang}
+>
+  <Header lang={lang} />
+  <main id="main" class="compare-page">
+    <article class="container compare-article">
+      <nav class="breadcrumbs">
+        <a href="/zh/">首页</a> / <a href="/zh/compare">对比</a> / <span>Markdown 复制到公众号、飞书与图床指南</span>
+      </nav>
+
+      <h1>Markdown 一键复制到微信公众号、飞书文档与知乎：免插件排版与图床自动上传指南</h1>
+      <p class="lead">
+        很多开发者、产品经理和创作者喜欢在本地用 Markdown 写长文或整理 DeepSeek / ChatGPT 笔记，但一旦要把文章发布到<strong>微信公众号后台、飞书文档、钉钉文档、知乎、语雀或 Notion</strong>，就会立刻踩坑：代码块失去高亮缩成一团、AI 生成的表格直接裂成竖线文本、本地 <code>_assets/</code> 截图全变成裂图。
+        本文横向对比 2026 年主流 Markdown 排版与图床方案，演示如何用免费开源的 <strong>SoloMD</strong> 一站式打通本地写作与多平台发布。
+      </p>
+
+      <h2>30 秒看懂：主流 Markdown 富文本复制与图床能力对比（2026）</h2>
+      <table class="compare-detail">
+        <thead>
+          <tr>
+            <th>核心能力维度</th>
+            <th>SoloMD v5.2（免费开源 MIT）</th>
+            <th>Typora（¥89 付费闭源）</th>
+            <th>Obsidian + 社区插件</th>
+            <th>网页在线排版工具</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th>一键复制为带内联样式的富文本 HTML</th>
+            <td>✅ <strong>原生内置</strong>（保留代码框、表格、列表与公式）</td>
+            <td>✅ 支持复制富文本</td>
+            <td>⚠️ 需安装第三方公众号/富文本插件</td>
+            <td>✅ 网页内复制</td>
+          </tr>
+          <tr>
+            <th>原生内置图床（OSS / COS / R2 / GitHub / PicGo）</th>
+            <td>✅ <strong>内置 5 大图床直连 + 断网自动降级存本地</strong></td>
+            <td>🟡 依赖外部 PicGo 客户端或手写命令</td>
+            <td>❌ 必须安装第三方 Image Auto Upload 插件</td>
+            <td>⚠️ 临时图床易失效或需付费订阅</td>
+          </tr>
+          <tr>
+            <th>一键清理 AI 引用杂质 &amp; 残缺表格自动修复</th>
+            <td>✅ <strong>原生一键清理 + 错位表格自动修复</strong></td>
+            <td>❌ 需手动删改</td>
+            <td>❌ 需自行折腾正则脚本</td>
+            <td>❌ 遇到不规范表格直接渲染失败</td>
+          </tr>
+          <tr>
+            <th>安装包体积与草稿隐私安全</th>
+            <td>✅ <strong>~14–30 MB 原生应用，草稿 100% 留存本地</strong></td>
+            <td>✅ ~70 MB 本地存储</td>
+            <td>✅ ~110 MB 本地库</td>
+            <td>❌ 需将未发表草稿粘贴至第三方服务器</td>
+          </tr>
+          <tr>
+            <th>五端全平台与免费加密同步</th>
+            <td>✅ <strong>Win / Mac / Linux / iOS / 安卓全免费</strong>（含网盘加密同步）</td>
+            <td>❌ 仅桌面端，无手机版</td>
+            <td>✅ 五端支持（官方同步 $4–$5/月）</td>
+            <td>🟡 仅适合电脑浏览器</td>
+          </tr>
+          <tr>
+            <th>本地 AI（OPR 一键发现）与 MCP 服务</th>
+            <td>✅ <strong>OPR 自动发现 Ollama 等 + 20+ 渠道 + 1.5 MB MCP</strong></td>
+            <td>❌ 无</td>
+            <td>🟡 依赖重型社区插件</td>
+            <td>❌ 无</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>为什么普通 Markdown 复制到公众号和飞书总是翻车？</h2>
+      <ol>
+        <li>
+          <strong>纯文本剪贴板与富文本 DOM 的鸿沟：</strong>在普通代码编辑器里直接复制，剪贴板里只有 <code>text/plain</code> 纯文本。粘贴进微信公众号编辑器或企业邮箱时，标题 <code>###</code> 和加粗 <code>**</code> 不会被解析；而直接复制网页预览又容易丢失内联 CSS，导致代码块底纹和边框被微信后台过滤清空。
+        </li>
+        <li>
+          <strong>本地图片路径无法被网页后台读取：</strong>Markdown 里的 <code>![](./_assets/demo.png)</code> 指向你电脑硬盘里的相对路径，网页富文本编辑器出于浏览器安全沙箱限制，根本无法读取本地文件，一粘贴图片就全部丢失。
+        </li>
+        <li>
+          <strong>大模型生成内容的「隐形毒药」：</strong>从 DeepSeek、豆包、Kimi 或 ChatGPT 复制过来的内容，常常夹杂零宽字符、引用角标（如 <code>[cite_start]</code>）以及列数少一格的 Markdown 表格分隔符，导致粘贴后排版彻底错乱。
+        </li>
+      </ol>
+
+      <h2>SoloMD 如何免插件打通「写作 → 图床 → 多平台分发」？</h2>
+      <ul>
+        <li>
+          <strong>内置 5 种免插件图床后端，断网也能安心写：</strong>在 SoloMD「设置 → 图像」中，你可以直接配置 <strong>S3 兼容存储（阿里云 OSS、腾讯云 COS、Cloudflare R2、MinIO）</strong>、<strong>GitHub 仓库 + jsDelivr/CDN</strong>、<strong>SM.MS</strong>、<strong>PicGo</strong> 或任意自定义上传脚本。在编辑器里直接 <code>Ctrl/Cmd+V</code> 粘贴截图，SoloMD 会自动上传并替换为 HTTPS 图床链接；如果外网断开，会自动回退保存到本地 <code>_assets/</code> 文件夹，绝不卡死或丢图。
+        </li>
+        <li>
+          <strong>一键复制富文本 HTML + 纯净所见即所得（Pure WYSIWYG）：</strong>开启 v5.2 新增的「纯净所见即所得」模式，连光标所在行的 <code>#</code> 和 <code>**</code> 都不会闪烁跳动；写完后使用「复制为富文本 HTML」，代码块行号/底纹、引用块、多级列表和 Word 原生公式均可干净粘贴至飞书文档、微信公众号、知乎与 Notion。
+        </li>
+        <li>
+          <strong>一键清理 AI 杂质 + 9 合 1 导出中心兜底：</strong>不仅能一键清洗大模型输出并自动修复残缺表格，需要发正式附件时，还能免装 Pandoc 一键导出带高清长图（<strong>PNG 长图直发朋友圈/小红书/群聊</strong>）、套用公文模板的 <strong>Word (<code>.docx</code>)</strong>、带中文书签的 <strong>PDF</strong> 或带全文搜索侧栏的<strong>单文件 HTML</strong>。
+        </li>
+        <li>
+          <strong>轻量 JSON 扩展实现自定义 Webhook 发布：</strong>借助 <code>.solomd/plugins/*.json</code> 声明式扩展，高阶用户还可以配置专属 Webhook，一键将当前笔记推送到自建博客、内部 Wiki 或自动化工作流。
+        </li>
+      </ul>
+
+      <h2>客观建议：什么时候你仍然需要专用视觉排版器？</h2>
+      <p>
+        我们坚持工程上的诚实对比：如果你的公众号推文主打<strong>复杂 SVG 交互动画、多图滑动橱窗或时尚杂志风花边卡片</strong>，在 SoloMD 完成正文写作与 AI 润色后，最后一步放入秀米等视觉组件编辑器做装饰依然是合理搭配；而对于 90% 的<strong>技术干货、AI 深度评测、知识库沉淀、团队飞书文档与多平台同步发文</strong>，SoloMD 单一软件即可零成本搞定全部流程。
+      </p>
+
+      <CompareFaq heading="常见问题解答 (FAQ)" items={FAQ} />
+
+      <div class="compare-cta">
+        <a href="/zh/#download" class="btn btn--primary">免费下载 SoloMD（~14–30 MB）</a>
+        <a href="/zh/docs/images/" class="btn btn--secondary">查看图床（OSS / COS / R2 / PicGo）配置文档</a>
+      </div>
+    </article>
+  </main>
+  <Footer lang={lang} />
+</Layout>
+
+<style>
+  .compare-article { max-width: 820px; padding: 40px 20px 80px; }
+  .breadcrumbs { font-size: 13px; color: var(--text-muted, #8a8a8a); margin-bottom: 16px; }
+  .breadcrumbs a { color: inherit; }
+  .compare-article h1 { font-size: 2.1rem; line-height: 1.25; margin: 10px 0 20px; }
+  .compare-article h2 { font-size: 1.5rem; margin: 36px 0 14px; }
+  .compare-article h3 { font-size: 1.15rem; margin: 24px 0 10px; }
+  .compare-article .lead { font-size: 1.08rem; color: var(--text-muted, #555); margin-bottom: 32px; line-height: 1.75; }
+  .compare-detail { width: 100%; border-collapse: collapse; margin: 20px 0 28px; font-size: 14px; }
+  .compare-detail th, .compare-detail td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #eee; }
+  .compare-detail thead th { background: #fafafa; font-weight: 600; }
+  .compare-detail tbody th { font-weight: 500; width: 28%; }
+  .compare-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 40px; }
+  .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  .btn--primary { background: #ff9f40; color: #000; }
+  .btn--secondary { background: #111; color: #fff; }
+  .compare-article ul, .compare-article ol { padding-left: 22px; }
+  .compare-article li { margin: 8px 0; line-height: 1.7; }
+  .compare-article p { line-height: 1.75; margin: 12px 0; }
+  .compare-article code { background: #f5f5f0; padding: 1px 6px; border-radius: 4px; font-size: 0.92em; }
+</style>

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-11-15T13:35:00+08:00",
+  "updatedAt": "2026-11-15T18:50:00+08:00",
   "schedule": "0 10 * * 2,5",
   "published": [
     {
@@ -50,12 +50,10 @@
         "DeepSeek 个人知识库 Markdown 软件",
         "Claude MCP 本地 Markdown 笔记"
       ]
-    }
-  ],
-  "pending": [
+    },
     {
       "slug": "markdown-to-wechat-feishu-notion-formatting",
-      "priority": 1,
+      "publishedAt": "2026-11-15",
       "enTitle": "How to Copy Markdown to Notion, Confluence & Rich-Text Editors Without Broken Formatting",
       "zhTitle": "Markdown 一键复制到微信公众号、飞书文档与知乎：免插件排版与图床自动上传指南",
       "targetQueriesEn": [
@@ -67,12 +65,11 @@
         "Markdown 一键排版复制到微信公众号",
         "Markdown 粘贴到飞书文档保留格式",
         "免费开源带 PicGo / S3 图床的 Markdown 编辑器"
-      ],
-      "angle": "Highlight SoloMD's Copy as Rich HTML, Clean AI Artifacts button, auto-repaired AI tables, and 5 built-in image hosting backends (PicGo, S3/R2/OSS/COS, GitHub CDN, SM.MS, custom CLI) with local fallback."
+      ]
     },
     {
       "slug": "vs-logseq-joplin-upnote",
-      "priority": 2,
+      "publishedAt": "2026-11-15",
       "enTitle": "SoloMD vs Logseq vs Joplin vs UpNote: Plain-File Privacy vs Database Note Apps (2026)",
       "zhTitle": "SoloMD vs Logseq / Joplin / 思源笔记 / UpNote：纯文本 .md 与数据库笔记怎么选？",
       "targetQueriesEn": [
@@ -84,9 +81,10 @@
         "Joplin 替代品 纯文本 Markdown",
         "Logseq 与思源笔记对比 轻量替代",
         "不锁定格式的开源笔记软件对比"
-      ],
-      "angle": "Compare file storage format (plain .md on disk vs SQLite/JSON/block databases), installer size (~14-30 MB vs 150+ MB), mobile speed, E2EE sync, and export quality."
-    },
+      ]
+    }
+  ],
+  "pending": [
     {
       "slug": "clean-chatgpt-deepseek-claude-markdown-paste",
       "priority": 3,
