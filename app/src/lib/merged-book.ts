@@ -157,11 +157,54 @@ export function rewriteSubfolderRelativeImages(
   return out;
 }
 
+export interface MergedHeadingNumberState {
+  /** #585 — Running count of numbered level-1 chapters across merged notes. */
+  h1Count: number;
+}
+
+const MULTI_SEG_HEADING_NUM_RE = /^(\d+)((?:\.\d+)+\.?)[ \t]+(\S[\s\S]*)$/;
+const SINGLE_SEG_HEADING_NUM_RE = /^(\d+)(\.?)[ \t]+(\S[\s\S]*)$/;
+const CJK_COUNT_UNIT_PREFIX_RE = /^(?:个|种|条|项|大|步|天|周|月|年|分钟|小时|秒|次|款|类)/;
+
+function parseSingleLevel1HeadingNum(text: string): { dot: string; rest: string } | null {
+  const m = SINGLE_SEG_HEADING_NUM_RE.exec(text);
+  if (!m) return null;
+  const num = Number.parseInt(m[1], 10);
+  const dot = m[2] || '';
+  const rest = m[3];
+  if (!Number.isFinite(num) || num <= 0) return null;
+  if (!dot) {
+    // Avoid treating 4-digit years (`2026 年度总结`) or count phrases (`10 个技巧`) as chapter numbers
+    if (num >= 1000 || CJK_COUNT_UNIT_PREFIX_RE.test(rest)) return null;
+  }
+  return { dot, rest };
+}
+
+function rewriteHeadingFirstSegment(
+  rawLevel: number,
+  headingText: string,
+  chapterNum: number,
+): string {
+  if (chapterNum <= 0) return headingText;
+  const multi = MULTI_SEG_HEADING_NUM_RE.exec(headingText);
+  if (multi) {
+    return `${chapterNum}${multi[2]} ${multi[3]}`;
+  }
+  if (rawLevel === 1) {
+    const single = parseSingleLevel1HeadingNum(headingText);
+    if (single) {
+      return `${chapterNum}${single.dot} ${single.rest}`;
+    }
+  }
+  return headingText;
+}
+
 export function transformNoteForMergedBook(
   rawContent: string,
   baseName: string,
   folderDepth: number,
   relDirSegments: string[] = [],
+  numberState?: MergedHeadingNumberState,
 ): string {
   const noteImageRoot = extractImageRoot(rawContent || '');
   const stripped = (rawContent || '')
@@ -173,11 +216,73 @@ export function transformNoteForMergedBook(
   const lines = stripped ? stripped.split(/\r?\n/) : [];
   const outLines: string[] = [];
 
+  // #585 — Pre-scan non-fenced headings so we know whether an unnumbered H1 (or a
+  // note without any H1) still owns multi-segment numbered subheadings (`1.1`, `1.1.1`).
+  interface ScannedHeading {
+    lineIdx: number;
+    rawLevel: number;
+    text: string;
+    hasSubNumberedChildren?: boolean;
+  }
+  const scannedHeadings: ScannedHeading[] = [];
+  {
+    let scanFenceChar = '';
+    let scanFenceLen = 0;
+    let lastH1: ScannedHeading | null = null;
+    for (let idx = 0; idx < lines.length; idx++) {
+      const l = lines[idx];
+      const t = l.trimStart();
+      const fm = /^(`{3,}|~{3,})(.*)$/.exec(t);
+      if (fm) {
+        const marker = fm[1];
+        const info = fm[2] || '';
+        if (!scanFenceChar) {
+          if (marker[0] !== '`' || !info.includes('`')) {
+            scanFenceChar = marker[0];
+            scanFenceLen = marker.length;
+          }
+        } else if (marker[0] === scanFenceChar && marker.length >= scanFenceLen && info.trim() === '') {
+          scanFenceChar = '';
+          scanFenceLen = 0;
+        }
+        continue;
+      }
+      if (scanFenceChar) continue;
+      const hm = /^( {0,3})(#{1,6})[ \t]+(.+?)(?:[ \t]+#+[ \t]*)?$/.exec(l);
+      if (!hm) continue;
+      const lvl = hm[2].length;
+      const txt = hm[3].trim();
+      const entry: ScannedHeading = { lineIdx: idx, rawLevel: lvl, text: txt };
+      scannedHeadings.push(entry);
+      if (lvl === 1) {
+        lastH1 = entry;
+      } else if (MULTI_SEG_HEADING_NUM_RE.test(txt) && lastH1) {
+        lastH1.hasSubNumberedChildren = true;
+      }
+    }
+  }
+  const headingByLine = new Map<number, ScannedHeading>(
+    scannedHeadings.map((h) => [h.lineIdx, h]),
+  );
+  const hasAnyH1InScan = scannedHeadings.some((h) => h.rawLevel === 1);
+  const hasOrphanSubNumbers =
+    !hasAnyH1InScan && scannedHeadings.some((h) => MULTI_SEG_HEADING_NUM_RE.test(h.text));
+
+  const fallbackTitle = (baseName || 'Untitled').trim() || 'Untitled';
+  const fallbackSingleNum = !hasAnyH1InScan ? parseSingleLevel1HeadingNum(fallbackTitle) : null;
+
+  let activeChapterNum = 0;
+  if (numberState && !hasAnyH1InScan && (hasOrphanSubNumbers || fallbackSingleNum)) {
+    numberState.h1Count += 1;
+    activeChapterNum = numberState.h1Count;
+  }
+
   let fenceChar = '';
   let fenceLen = 0;
   let hasH1 = false;
 
-  for (const rawLine of lines) {
+  for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
+    const rawLine = lines[lineIdx];
     const trimmed = rawLine.trimStart();
     const fenceMatch = /^(`{3,}|~{3,})(.*)$/.exec(trimmed);
     if (fenceMatch) {
@@ -201,13 +306,33 @@ export function transformNoteForMergedBook(
       continue;
     }
 
-    const headingMatch = /^( {0,3})(#{1,6})[ \t]+(.+?)(?:[ \t]+#+[ \t]*)?$/.exec(rawLine);
-    if (headingMatch) {
-      const rawLevel = headingMatch[2].length;
-      const headingText = headingMatch[3].trim();
+    const scanned = headingByLine.get(lineIdx);
+    if (scanned) {
+      const rawLevel = scanned.rawLevel;
+      let headingText = scanned.text;
       if (rawLevel === 1) {
         hasH1 = true;
+        if (numberState) {
+          const isNumberedH1 =
+            parseSingleLevel1HeadingNum(headingText) !== null ||
+            MULTI_SEG_HEADING_NUM_RE.test(headingText) ||
+            Boolean(scanned.hasSubNumberedChildren);
+          if (isNumberedH1) {
+            numberState.h1Count += 1;
+            activeChapterNum = numberState.h1Count;
+          } else {
+            activeChapterNum = 0;
+          }
+        }
+      } else if (numberState && activeChapterNum === 0 && MULTI_SEG_HEADING_NUM_RE.test(headingText)) {
+        numberState.h1Count += 1;
+        activeChapterNum = numberState.h1Count;
       }
+
+      if (numberState && activeChapterNum > 0) {
+        headingText = rewriteHeadingFirstSegment(rawLevel, headingText, activeChapterNum);
+      }
+
       if (rawLevel <= 3) {
         const targetLevel = noteBaseLevel + (rawLevel - 1);
         outLines.push(formatMergedHeading(targetLevel, headingText));
@@ -223,9 +348,12 @@ export function transformNoteForMergedBook(
   }
 
   const body = outLines.join('\n').trim();
-  const fallbackTitle = (baseName || 'Untitled').trim() || 'Untitled';
   if (!hasH1) {
-    const synthesizedH1 = formatMergedHeading(noteBaseLevel, fallbackTitle);
+    const finalFallback =
+      numberState && activeChapterNum > 0
+        ? rewriteHeadingFirstSegment(1, fallbackTitle, activeChapterNum)
+        : fallbackTitle;
+    const synthesizedH1 = formatMergedHeading(noteBaseLevel, finalFallback);
     return body ? `${synthesizedH1}\n\n${body}` : synthesizedH1;
   }
   return body;
@@ -239,6 +367,7 @@ export function buildMergedBookMarkdown(
   const leadHeader = `# ${bookTitle}\n\n[TOC]`;
   const noteSections: string[] = [];
   let activeFolders: string[] = [];
+  const numberState: MergedHeadingNumberState = { h1Count: 0 };
 
   for (const item of notes) {
     const segs = normalizeRelDir(item.relDir);
@@ -268,6 +397,7 @@ export function buildMergedBookMarkdown(
       item.baseName,
       segs.length,
       segs,
+      numberState,
     );
     noteSections.push([...folderHeadings, noteMarkdown].join('\n\n'));
   }

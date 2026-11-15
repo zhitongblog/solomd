@@ -170,3 +170,80 @@ test('#578, #579, #583: renderMermaidFencesInMarkdown embeds PNG data URIs and S
     }
   }
 });
+
+test('#585: buildMergedBookMarkdown continuously renumbers hierarchical section numbers across multiple notes without touching years or count phrases', async () => {
+  const merged = buildMergedBookMarkdown('产品技术手册', [
+    {
+      relDir: '',
+      baseName: 'preface',
+      content: '# 前言\n\n本手册面向研发团队。',
+    },
+    {
+      relDir: '第1篇 基础',
+      baseName: 'ch1',
+      content: [
+        '# 1 环境准备',
+        '## 1.1 系统要求',
+        '### 1.1.1 硬件要求',
+        '### 1.1.2 软件要求',
+        '# 2 核心概念',
+        '## 2.1 数据模型',
+        '### 2.1.1 实体定义',
+      ].join('\n'),
+    },
+    {
+      relDir: '第2篇 进阶',
+      baseName: 'ch2',
+      content: [
+        '# 1 实战指南',
+        '## 1.1 接口联调',
+        '### 1.1.1 鉴权流程',
+        '### 1.1.2 错误码处理',
+        '#### 1.1.2.1 重试策略',
+      ].join('\n'),
+    },
+    {
+      relDir: '第2篇 进阶',
+      baseName: 'ch3',
+      content: [
+        '# 1. 运维部署',
+        '## 1.1 容器化部署',
+        '# 2026 年度演进路线',
+        '# 10 个高频排障技巧',
+      ].join('\n'),
+    },
+  ]);
+
+  const html = await buildStandaloneHtml({
+    content: merged,
+    title: '产品技术手册',
+    withNav: true,
+    lang: 'zh',
+  });
+
+  // Unnumbered preface stays unnumbered
+  assert.ok(html.includes('前言'));
+  // File 1 keeps chapters 1 and 2
+  assert.ok(html.includes('1 环境准备'));
+  assert.ok(html.includes('1.1 系统要求'));
+  assert.ok(html.includes('1.1.1 硬件要求'));
+  assert.ok(html.includes('1.1.2 软件要求'));
+  assert.ok(html.includes('2 核心概念'));
+  assert.ok(html.includes('2.1 数据模型'));
+  assert.ok(html.includes('2.1.1 实体定义'));
+
+  // File 2 (originally 1 / 1.1 / 1.1.1 / 1.1.2 / 1.1.2.1) continuously renumbers to 3.*
+  assert.ok(html.includes('3 实战指南'));
+  assert.ok(html.includes('3.1 接口联调'));
+  assert.ok(html.includes('3.1.1 鉴权流程'));
+  assert.ok(html.includes('3.1.2 错误码处理'));
+  assert.ok(html.includes('3.1.2.1 重试策略'));
+  assert.ok(!html.includes('1 实战指南'));
+  assert.ok(!html.includes('1.1 接口联调'));
+
+  // File 3 (dot style `1. `) continuously renumbers to `4. ` / `4.1`, while 4-digit years and CJK count phrases stay untouched
+  assert.ok(html.includes('4. 运维部署'));
+  assert.ok(html.includes('4.1 容器化部署'));
+  assert.ok(html.includes('2026 年度演进路线'));
+  assert.ok(html.includes('10 个高频排障技巧'));
+});
