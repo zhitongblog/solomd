@@ -298,10 +298,15 @@ interface Settings {
   showRelationships: boolean;
   // v2.0 F2: CodeMirror Hunspell spell-check (separate from browser-native `spellCheck` above).
   spellcheckEnabled: boolean;
-  // v2.0 F3: daily notes
+  // v2.0 F3: daily notes (master toggle so users who don't keep a daily
+  // journal can hide the "Today / 今日" button in the sidebar & tags panel).
+  dailyNotesEnabled: boolean;
   dailyNotesFolder: string;
   dailyNotesFormat: string;
   dailyNotesTemplate: string;
+  // #571 — automatically update workspace wikilinks and relative Markdown
+  // links when renaming or moving files/folders inside the workspace.
+  autoUpdateLinksOnRename: boolean;
   showTagsPanel: boolean;
   // Workspace-wide task panel: every `- [ ]` in the vault, grouped by file.
   showTasksPanel: boolean;
@@ -892,9 +897,11 @@ function defaults(): Settings {
     showBacklinks: true,
     showRelationships: false,
     spellcheckEnabled: false,
+    dailyNotesEnabled: true,
     dailyNotesFolder: 'Daily',
     dailyNotesFormat: 'YYYY-MM-DD.md',
     dailyNotesTemplate: '',
+    autoUpdateLinksOnRename: true,
     showTagsPanel: true,
     showTasksPanel: false,
     showNeighborhood: false,
@@ -2012,6 +2019,22 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleFenceLanguageSuggestions() {
       this.fenceLanguageSuggestions = !this.fenceLanguageSuggestions;
+      this.persist();
+    },
+    toggleDailyNotes() {
+      this.dailyNotesEnabled = !this.dailyNotesEnabled;
+      this.persist();
+    },
+    setDailyNotesEnabled(v: boolean) {
+      this.dailyNotesEnabled = Boolean(v);
+      this.persist();
+    },
+    toggleAutoUpdateLinksOnRename() {
+      this.autoUpdateLinksOnRename = !this.autoUpdateLinksOnRename;
+      this.persist();
+    },
+    setAutoUpdateLinksOnRename(v: boolean) {
+      this.autoUpdateLinksOnRename = Boolean(v);
       this.persist();
     },
     toggleImageExportBranding() {

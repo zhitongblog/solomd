@@ -195,6 +195,11 @@ export const KEY_ACTIONS: KeyActionDef[] = [
   { id: 'editor.deleteWord', label: 'Delete Word', category: 'edit', defaults: ['Mod+Shift+D'] },
   { id: 'editor.selectLine', label: 'Select Line', category: 'edit', defaults: ['Mod+L'] },
   { id: 'editor.jumpToSelection', label: 'Jump to Selection', category: 'edit', defaults: ['Mod+Alt+J'] },
+  // #436 — VS Code-style multi-cursor editing (Alt+Click also adds cursors).
+  { id: 'editor.selectNextOccurrence', label: 'Add Next Occurrence to Selection', category: 'edit', defaults: ['Mod+Alt+G'] },
+  { id: 'editor.selectAllOccurrences', label: 'Select All Occurrences', category: 'edit', defaults: ['Mod+Alt+Shift+G'] },
+  { id: 'editor.addCursorAbove', label: 'Add Cursor Above', category: 'edit', defaults: ['Mod+Alt+ArrowUp'] },
+  { id: 'editor.addCursorBelow', label: 'Add Cursor Below', category: 'edit', defaults: ['Mod+Alt+ArrowDown'] },
   { id: 'editor.aiRewrite', label: 'AI Rewrite Selection', category: 'edit', defaults: ['Mod+J'] },
   { id: 'clean.aiArtifacts', label: 'Clean AI Formatting Marks', category: 'edit', defaults: [] },
   { id: 'clean.stripMarkdown', label: 'Strip All Markdown', category: 'edit', defaults: [] },

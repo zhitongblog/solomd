@@ -9,6 +9,7 @@ import { useFiles } from '../composables/useFiles';
 import { useInbox } from '../composables/useInbox';
 import { useInboxView } from '../composables/useInboxView';
 import { useSettingsStore } from '../stores/settings';
+import { useWorkspaceIndexStore } from '../stores/workspaceIndex';
 import { useToastsStore } from '../stores/toasts';
 import { useGithubSyncStore } from '../stores/githubSync';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
@@ -72,6 +73,7 @@ const files = useFiles();
 const inbox = useInbox();
 const inboxView = useInboxView();
 const settings = useSettingsStore();
+const workspaceIndex = useWorkspaceIndexStore();
 const toasts = useToastsStore();
 const ghSync = useGithubSyncStore();
 
@@ -1029,15 +1031,42 @@ function rootLabel(): string {
   return t('explorer.vaultRoot') || 'Vault root';
 }
 
+/** #571 — Reload clean open tabs whose inbound links were updated on disk. */
+async function refreshRewrittenTabs(updatedPaths: string[], skipTarget: string) {
+  if (!updatedPaths?.length) return;
+  const skipPrefixes = [skipTarget + '/', skipTarget + '\\'];
+  for (const p of updatedPaths) {
+    if (p === skipTarget || skipPrefixes.some((pre) => p.startsWith(pre))) continue;
+    const tab = (tabs.tabs as { id: string; filePath?: string; content?: string; savedContent?: string }[]).find(
+      (t) => t.filePath === p,
+    );
+    if (!tab || tab.savedContent !== tab.content) continue;
+    try {
+      const fr = await invoke<{ content: string }>('read_file', { path: p });
+      tabs.setContent(tab.id, fr.content);
+      tabs.markSaved(tab.id, p);
+    } catch (err) {
+      console.warn('[FileTree] rewritten tab reload failed', err);
+    }
+  }
+  void workspaceIndex.rescan();
+}
+
 async function moveNode(from: string, destDir: string, isDir: boolean) {
   if (!canDropInto(from, destDir)) return;
   const name = baseName(from);
   const target = joinPath(destDir, name);
+  let updated: string[] = [];
   try {
     // A pending delete on the destination path would fire later and take the
     // moved file with it. Same race the new-file path guards against.
     await pendingDeletes.flushUnder(target);
-    await invoke('fs_move', { from, to: target });
+    updated = await invoke<string[]>('fs_move', {
+      from,
+      to: target,
+      workspaceRoot: workspace.currentFolder ?? undefined,
+      updateLinks: settings.autoUpdateLinksOnRename,
+    });
   } catch (err) {
     // By far the likeliest failure, and the raw Rust string is half English
     // and half absolute path — say it in the user's language instead.
@@ -1050,6 +1079,7 @@ async function moveNode(from: string, destDir: string, isDir: boolean) {
     return;
   }
   repointTabs(from, target, isDir);
+  void refreshRewrittenTabs(updated, target);
   scheduleRefresh();
   toasts.push(
     t('explorer.moved', { name, dest: rootRelative(destDir) || rootLabel() }),
@@ -1065,8 +1095,14 @@ async function moveNode(from: string, destDir: string, isDir: boolean) {
 /** Undo is the same move run backwards, which also puts the rewritten
  *  relative links back the way they were. */
 async function undoMove(current: string, original: string, isDir: boolean, name: string) {
+  let updated: string[] = [];
   try {
-    await invoke('fs_move', { from: current, to: original });
+    updated = await invoke<string[]>('fs_move', {
+      from: current,
+      to: original,
+      workspaceRoot: workspace.currentFolder ?? undefined,
+      updateLinks: settings.autoUpdateLinksOnRename,
+    });
   } catch (err) {
     toasts.error(
       t('explorer.moveFailed', { name, error: String(err) }) ||
@@ -1075,6 +1111,7 @@ async function undoMove(current: string, original: string, isDir: boolean, name:
     return;
   }
   repointTabs(current, original, isDir);
+  void refreshRewrittenTabs(updated, original);
   scheduleRefresh();
   toasts.info(t('explorer.moveUndone', { name }));
 }
@@ -1606,7 +1643,12 @@ async function commitEdit() {
         return;
       }
       await pendingDeletes.flushUnder(target);
-      await invoke('fs_rename', { from: e.original, to: target });
+      const updated = await invoke<string[]>('fs_rename', {
+        from: e.original,
+        to: target,
+        workspaceRoot: workspace.currentFolder ?? undefined,
+        updateLinks: settings.autoUpdateLinksOnRename,
+      });
       editing.value = null;
       // #342 — a renamed child keeps its hand-placed position.
       const key = orderKey(e.parent);
@@ -1618,16 +1660,10 @@ async function commitEdit() {
         void saveManualOrder();
       }
       scheduleRefresh();
-      // v4.3.5 — if the renamed file is open in a tab, the tab follows it.
-      // repointTab is shared with the move path: it keeps a dirty tab's
-      // unsaved edits and reloads a clean one, which picks up any per-file
-      // `.assets/` link rewrite the rename triggered (#91).
-      try {
-        const tab = tabs.tabs.find((t: { filePath?: string }) => t.filePath === e.original);
-        if (tab) await repointTab(tab, target);
-      } catch (err) {
-        console.warn('[FileTree.rename] tab refresh failed', err);
-      }
+      // v4.3.5 + #571 — repoint open tabs (including notes inside a renamed
+      // folder) and reload clean workspace tabs whose inbound links changed.
+      repointTabs(e.original, target, true);
+      void refreshRewrittenTabs(updated, target);
     }
   } catch (err) {
     toasts.error(String(err));

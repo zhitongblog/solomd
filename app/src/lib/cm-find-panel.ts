@@ -28,12 +28,18 @@ import {
   replaceNext,
   setSearchQuery,
 } from '@codemirror/search';
-import type { EditorState } from '@codemirror/state';
+import {
+  EditorSelection,
+  type EditorState,
+  type SelectionRange,
+  type Transaction,
+} from '@codemirror/state';
 import { runScopeHandlers, type EditorView, type Panel, type ViewUpdate } from '@codemirror/view';
 
 export interface FindPanelLabels {
   find: string;
   replace: string;
+  toggleReplace?: string;
   prev: string;
   next: string;
   matchCase: string;
@@ -42,6 +48,60 @@ export interface FindPanelLabels {
   replaceOne: string;
   replaceAll: string;
   close: string;
+}
+
+/**
+ * #419 — Expand or collapse the Replace row inside an open `.cm-find` panel.
+ */
+export function setFindPanelReplaceExpanded(host: ParentNode, open: boolean): void {
+  const panel = host.querySelector<HTMLElement>('.cm-find');
+  if (!panel) return;
+  const row = panel.querySelector<HTMLElement>('.cm-find__row--replace');
+  const btn = panel.querySelector<HTMLButtonElement>('button[name="toggleReplace"]');
+  if (!row || !btn) return;
+  row.hidden = !open;
+  panel.classList.toggle('cm-find--replace-open', open);
+  btn.textContent = open ? '▾' : '▸';
+  btn.setAttribute('aria-expanded', String(open));
+}
+
+/**
+ * #436 — Select all occurrences of the current selection (or word at caret)
+ * across the document, even when multiple cursors are already active (unlike
+ * `@codemirror/search`'s `selectSelectionMatches`, which bails out whenever
+ * `ranges.length > 1` or `main.empty`).
+ */
+export function selectAllOccurrencesCommand(target: {
+  state: EditorState;
+  dispatch: (tr: Transaction) => void;
+}): boolean {
+  const { state } = target;
+  let main = state.selection.main;
+  if (main.empty) {
+    const word = state.wordAt(main.head);
+    if (!word) return false;
+    main = EditorSelection.range(word.from, word.to);
+  }
+  const needle = state.sliceDoc(main.from, main.to);
+  if (!needle || needle.includes('\n')) return false;
+  const query = new SearchQuery({ search: needle });
+  if (!query.valid) return false;
+  const ranges: SelectionRange[] = [];
+  let mainIdx = 0;
+  const cur = query.getCursor(state, 0);
+  for (let step = cur.next(); !step.done; step = cur.next()) {
+    if (ranges.length >= COUNT_LIMIT) break;
+    if (step.value.from === main.from) mainIdx = ranges.length;
+    ranges.push(EditorSelection.range(step.value.from, step.value.to));
+  }
+  if (ranges.length === 0) return false;
+  target.dispatch(
+    state.update({
+      selection: EditorSelection.create(ranges, mainIdx),
+      userEvent: 'select.search.matches',
+    }),
+  );
+  return true;
 }
 
 /** Stop counting here — "1000+" is all anyone needs past that. */
@@ -140,7 +200,36 @@ export function createFindPanel(view: EditorView, labels: FindPanelLabels): Pane
   const reBtn = toggle('re', labels.regexp, '.*', 'regexp');
   const wordBtn = toggle('word', labels.wholeWord, 'W', 'wholeWord');
 
+  let replaceRow: HTMLDivElement | null = null;
+  let expandBtn: HTMLButtonElement | null = null;
+  const isReplaceOpen = () => !!replaceRow && !replaceRow.hidden;
+
+  const setReplaceOpen = (open: boolean) => {
+    if (replaceRow) replaceRow.hidden = !open;
+    dom.classList.toggle('cm-find--replace-open', open);
+    if (expandBtn) {
+      expandBtn.textContent = open ? '▾' : '▸';
+      expandBtn.setAttribute('aria-expanded', String(open));
+    }
+  };
+
   const findRow = el('div', { class: 'cm-find__row' });
+  if (!view.state.readOnly) {
+    expandBtn = iconBtn(
+      'toggleReplace',
+      labels.toggleReplace || labels.replace,
+      '▸',
+      () => {
+        const next = !isReplaceOpen();
+        setReplaceOpen(next);
+        if (!next && document.activeElement === replaceField) {
+          findField.focus();
+        }
+      },
+    );
+    expandBtn.setAttribute('aria-expanded', 'false');
+    findRow.append(expandBtn);
+  }
   findRow.append(
     findField,
     count,
@@ -157,7 +246,8 @@ export function createFindPanel(view: EditorView, labels: FindPanelLabels): Pane
   const dom = el('div', { class: 'cm-search cm-find', role: 'search' });
   dom.append(findRow);
   if (!view.state.readOnly) {
-    const replaceRow = el('div', { class: 'cm-find__row' });
+    replaceRow = el('div', { class: 'cm-find__row cm-find__row--replace' });
+    replaceRow.hidden = true;
     replaceRow.append(
       replaceField,
       textBtn('replace', labels.replaceOne, () => replaceCurrent(view)),
@@ -248,7 +338,11 @@ export function createFindPanel(view: EditorView, labels: FindPanelLabels): Pane
       if (k === 'h' || e.code === 'KeyH') {
         e.preventDefault();
         e.stopPropagation();
-        if (e.target === replaceField) {
+        if (!isReplaceOpen()) {
+          setReplaceOpen(true);
+          replaceField.focus();
+          replaceField.select();
+        } else if (e.target === replaceField) {
           closeSearchPanel(view);
           view.focus();
         } else {

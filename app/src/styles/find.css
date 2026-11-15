@@ -29,6 +29,12 @@
   gap: 4px;
   min-width: 0;
 }
+.cm-editor .cm-find .cm-find__row[hidden] {
+  display: none;
+}
+.cm-editor .cm-find .cm-find__row--replace {
+  padding-left: 32px;
+}
 .cm-editor .cm-find .cm-find__input {
   flex: 0 1 260px;
   min-width: 120px;

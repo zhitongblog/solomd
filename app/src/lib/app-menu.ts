@@ -295,6 +295,11 @@ export function buildAppMenu(ctx: MenuContext): TopMenu[] {
     item('editor.selectLine', t('cmd.editor.selectLine')),
     item('editor.jumpToSelection', t('cmd.editor.jumpToSelection')),
     sep,
+    item('editor.selectNextOccurrence', t('cmd.editor.selectNextOccurrence')),
+    item('editor.selectAllOccurrences', t('cmd.editor.selectAllOccurrences')),
+    item('editor.addCursorAbove', t('cmd.editor.addCursorAbove')),
+    item('editor.addCursorBelow', t('cmd.editor.addCursorBelow')),
+    sep,
     // AI first, then plain text processing — two different kinds of command.
     ...(ctx.aiAvailable ? [item('editor.aiRewrite', t('cmd.editor.aiRewrite'))] : []),
     item('clean.aiArtifacts', t('toolbar.cleanAiMarks')),

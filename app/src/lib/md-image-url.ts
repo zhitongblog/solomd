@@ -47,9 +47,32 @@ export interface ParsedImageAltSize {
 const ALT_SIZE_RE =
   /^(.*?)\|\s*(?:(\d{1,4}(?:%|px)?)(?:\s*[x×]\s*(\d{1,4}(?:%|px)?))?|[x×]\s*(\d{1,4}(?:%|px)?))\s*$/i;
 
+const EQ_SIZE_TOKEN_RE =
+  /^=\s*(?:(\d{1,4}(?:%|px)?)(?:\s*[x×]\s*(\d{1,4}(?:%|px)?)?)?|[x×]\s*(\d{1,4}(?:%|px)?))\s*$/i;
+
+const IMAGE_EXT_RE = /\.(?:png|jpe?g|gif|webp|svg|bmp|avif|ico|tiff?)(?:[?#][^\s)]*)?$/i;
+
 function normalizeImageDimension(dim: string): string {
   const trimmed = dim.trim();
   return /^\d+$/.test(trimmed) ? `${trimmed}px` : trimmed.toLowerCase();
+}
+
+/**
+ * #379 — Parse `=300x200`, `=300x`, `=x200`, `=300`, `=50%` size token used inside
+ * Markdown image destinations (`![alt](url =300x200)` / `![alt](url "title" =300x)`).
+ */
+export function parseImageEqSizeToken(
+  raw: string,
+): { width: string | null; height: string | null } | null {
+  const m = EQ_SIZE_TOKEN_RE.exec(raw.trim());
+  if (!m) return null;
+  const widthRaw = m[1] || null;
+  const heightRaw = m[2] || m[3] || null;
+  if (!widthRaw && !heightRaw) return null;
+  return {
+    width: widthRaw ? normalizeImageDimension(widthRaw) : null,
+    height: heightRaw ? normalizeImageDimension(heightRaw) : null,
+  };
 }
 
 /**
@@ -86,6 +109,14 @@ export interface ParsedMarkdownImageSpan {
   altEnd: number;
   /** Image destination URL/path. */
   src: string;
+  /** Optional title inside `![alt](url "title")`. */
+  title?: string;
+  /** Optional explicit width from `=WxH` or `![[img|W]]`. */
+  width?: string | null;
+  /** Optional explicit height from `=WxH` or `![[img|WxH]]`. */
+  height?: string | null;
+  /** True when parsed from an Obsidian-style `![[img.png]]` embed. */
+  isWikilink?: boolean;
   /** Optional outer link URL when wrapped as `[![alt](img)](href)`. */
   href?: string;
 }
@@ -138,7 +169,7 @@ function unescapeMarkdownUrl(raw: string): string {
 function parseLinkDestinationAndTitle(
   text: string,
   openParen: number,
-): { dest: string; end: number } | null {
+): { dest: string; end: number; title?: string; width?: string | null; height?: string | null } | null {
   const n = text.length;
   if (openParen >= n || text[openParen] !== '(') return null;
   let q = openParen + 1;
@@ -194,6 +225,10 @@ function parseLinkDestinationAndTitle(
     if (!dest) return null;
   }
 
+  let title: string | undefined;
+  let width: string | null | undefined;
+  let height: string | null | undefined;
+
   const wsStart = q;
   while (q < n && (text[q] === ' ' || text[q] === '\t')) q++;
   if (q < n && text[q] !== ')') {
@@ -213,28 +248,85 @@ function parseLinkDestinationAndTitle(
         }
       }
       if (closeTitle < 0) return null;
+      title = text.slice(q + 1, closeTitle);
       q = closeTitle + 1;
+      const wsAfterTitle = q;
       while (q < n && (text[q] === ' ' || text[q] === '\t')) q++;
-    } else {
-      // #345 / #506 — Fallback for unencoded spaces in image paths/URLs
-      // (`![](D:/Program Files/a.png)` or `![](https://example.com/a b.png)`),
-      // matching `image_spaced_path` in `markdown.ts`.
+      if (q < n && text[q] === '=' && q > wsAfterTitle) {
+        const closeParen = text.indexOf(')', q);
+        if (closeParen < 0) return null;
+        const eq = parseImageEqSizeToken(text.slice(q, closeParen));
+        if (!eq) return null;
+        width = eq.width;
+        height = eq.height;
+        q = closeParen;
+      }
+    } else if (text[q] === '=') {
+      // #379 — `![alt](url =300x200)` / `![alt](url =300x)` / `![alt](url =x200)`
       const closeParen = text.indexOf(')', q);
+      if (closeParen > q) {
+        const eq = parseImageEqSizeToken(text.slice(q, closeParen));
+        if (eq) {
+          return {
+            dest: unescapeMarkdownUrl(dest),
+            end: closeParen + 1,
+            title,
+            width: eq.width,
+            height: eq.height,
+          };
+        }
+      }
+      return null;
+    } else {
+      // #345 / #506 / #379 — Fallback for unencoded spaces in image paths/URLs
+      // (`![](D:/Program Files/a.png)`, `![](01 文件夹/shot(1).png)`, or
+      // `![](_assets/my pic.png =300x200)`). Walk balanced `(...)` from
+      // `openParen` so filenames like `shot(1).png` don't truncate early.
+      let closeParen = -1;
+      let parenDepth = 1;
+      for (let k = openParen + 1; k < n; k++) {
+        const ch = text[k];
+        if (ch === '\n' || ch === '\r') break;
+        if (ch === '\\' && k + 1 < n) {
+          k++;
+          continue;
+        }
+        if (ch === '(') parenDepth++;
+        else if (ch === ')') {
+          parenDepth--;
+          if (parenDepth === 0) {
+            closeParen = k;
+            break;
+          }
+        }
+      }
       if (closeParen < 0) return null;
-      const candidate = text.slice(openParen + 1, closeParen).trim();
-      if (
-        !candidate ||
-        /[<>"']/.test(candidate) ||
-        !/\.(?:png|jpe?g|gif|webp|svg|bmp|avif|ico|tiff?)(?:[?#][^\s)]*)?$/i.test(candidate)
-      ) {
+      let candidate = text.slice(openParen + 1, closeParen).trim();
+      let eqWidth: string | null | undefined;
+      let eqHeight: string | null | undefined;
+      const eqTrail = /\s+(=\s*[^\s)]+)\s*$/.exec(candidate);
+      if (eqTrail) {
+        const eq = parseImageEqSizeToken(eqTrail[1]);
+        if (eq) {
+          eqWidth = eq.width;
+          eqHeight = eq.height;
+          candidate = candidate.slice(0, eqTrail.index).trim();
+        }
+      }
+      if (!candidate || /[<>"']/.test(candidate) || !IMAGE_EXT_RE.test(candidate)) {
         return null;
       }
-      return { dest: unescapeMarkdownUrl(candidate), end: closeParen + 1 };
+      return {
+        dest: unescapeMarkdownUrl(candidate),
+        end: closeParen + 1,
+        width: eqWidth,
+        height: eqHeight,
+      };
     }
   }
 
   if (q >= n || text[q] !== ')') return null;
-  return { dest: unescapeMarkdownUrl(dest), end: q + 1 };
+  return { dest: unescapeMarkdownUrl(dest), end: q + 1, title, width, height };
 }
 
 function normalizeRefLabel(label: string): string {
@@ -298,7 +390,7 @@ function parseSingleImageAt(
   const altEnd = p;
   const alt = text.slice(altStart, altEnd);
 
-  // Inline destination: `![alt](url)`
+  // Inline destination: `![alt](url)` / `![alt](url =300x200)`
   if (p + 1 < n && text[p + 1] === '(') {
     const parsedDest = parseLinkDestinationAndTitle(text, p + 1);
     if (parsedDest) {
@@ -309,6 +401,9 @@ function parseSingleImageAt(
         altStart,
         altEnd,
         src: parsedDest.dest,
+        ...(parsedDest.title !== undefined ? { title: parsedDest.title } : {}),
+        ...(parsedDest.width ? { width: parsedDest.width } : {}),
+        ...(parsedDest.height ? { height: parsedDest.height } : {}),
       };
     }
   }
@@ -400,9 +495,64 @@ export function findMarkdownImagesInLine(
             altStart: inner.altStart,
             altEnd: inner.altEnd,
             src: inner.src,
+            ...(inner.title !== undefined ? { title: inner.title } : {}),
+            ...(inner.width ? { width: inner.width } : {}),
+            ...(inner.height ? { height: inner.height } : {}),
             href: outer.dest,
           });
           i = outer.end;
+          continue;
+        }
+      }
+    }
+    // #379 — Obsidian-style wikilink image embed: `![[img.png]]`, `![[img.png|300]]`,
+    // `![[folder/img.png|caption|300x200]]` (only when closing `]]` has no inner `[`/`]`
+    // so `![[1] alt](url)` continues to parse as a standard Markdown image).
+    if (line[i] === '!' && i + 3 < n && line[i + 1] === '[' && line[i + 2] === '[') {
+      let closeIdx = -1;
+      for (let k = i + 3; k < n - 1; k++) {
+        if (code[k] || line[k] === '[') break;
+        if (line[k] === ']') {
+          if (line[k + 1] === ']') {
+            closeIdx = k;
+          }
+          break;
+        }
+      }
+      if (closeIdx > i + 3) {
+        const innerRaw = line.slice(i + 3, closeIdx);
+        const firstPipe = innerRaw.indexOf('|');
+        const rawTarget = (firstPipe >= 0 ? innerRaw.slice(0, firstPipe) : innerRaw).trim();
+        if (rawTarget && IMAGE_EXT_RE.test(rawTarget)) {
+          const meta = firstPipe >= 0 ? innerRaw.slice(firstPipe + 1).trim() : '';
+          let alt = '';
+          let width: string | null = null;
+          let height: string | null = null;
+          if (meta) {
+            const candidate = meta.includes('|') ? meta : `|${meta}`;
+            const parsed = parseImageAltSize(candidate);
+            if (parsed.width || parsed.height) {
+              alt = parsed.alt;
+              width = parsed.width;
+              height = parsed.height;
+            } else {
+              alt = meta;
+            }
+          }
+          const altStart = firstPipe >= 0 ? i + 3 + firstPipe : closeIdx;
+          const altEnd = closeIdx;
+          out.push({
+            start: i,
+            end: closeIdx + 2,
+            alt: width || height ? `${alt}|${width ? (width.endsWith('px') ? width.slice(0, -2) : width) : ''}${height ? `x${height.endsWith('px') ? height.slice(0, -2) : height}` : ''}` : alt,
+            altStart,
+            altEnd,
+            src: rawTarget,
+            ...(width ? { width } : {}),
+            ...(height ? { height } : {}),
+            isWikilink: true,
+          });
+          i = closeIdx + 2;
           continue;
         }
       }
@@ -434,12 +584,29 @@ export function resizeMarkdownImageLine(line: string, size: string): string | nu
   if (mdImages.length > 0) {
     const first = mdImages[0];
     const baseAlt = parseImageAltSize(first.alt).alt;
+    if (first.isWikilink) {
+      const suffix = isReset
+        ? baseAlt
+          ? `|${baseAlt}`
+          : ''
+        : baseAlt
+          ? `|${baseAlt}|${normalizedSize}`
+          : `|${normalizedSize}`;
+      return `${line.slice(0, first.altStart)}${suffix}${line.slice(first.altEnd)}`;
+    }
+    const eqSuffixRe = /\s+=\s*(?:\d{1,4}(?:%|px)?(?:\s*[x×]\s*\d{1,4}(?:%|px)?)?|[x×]\s*\d{1,4}(?:%|px)?)\s*\)$/;
+    const rawTail = line.slice(first.altEnd, first.end);
+    if (eqSuffixRe.test(rawTail) && !first.alt.includes('|')) {
+      const nextTail = rawTail.replace(eqSuffixRe, isReset ? ')' : ` =${normalizedSize})`);
+      return `${line.slice(0, first.altStart)}${baseAlt}${nextTail}${line.slice(first.end)}`;
+    }
     const nextAlt = isReset
       ? baseAlt
       : baseAlt
         ? `${baseAlt}|${normalizedSize}`
         : `|${normalizedSize}`;
-    return `${line.slice(0, first.altStart)}${nextAlt}${line.slice(first.altEnd)}`;
+    const tail = rawTail.replace(eqSuffixRe, ')');
+    return `${line.slice(0, first.altStart)}${nextAlt}${tail}${line.slice(first.end)}`;
   }
 
   const htmlMatch = HTML_IMG_TAG_RE.exec(line);

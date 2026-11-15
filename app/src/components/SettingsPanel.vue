@@ -2683,7 +2683,7 @@ function onSelectPdfFont(v: string) {
           <button class="kb-btn kb-btn--wide" @click="settings.resetKeybindings()">{{ t('settings.keysResetAll') }}</button>
         </section>
 
-        <section data-cat="advanced">
+        <section v-if="settings.dailyNotesEnabled" data-cat="advanced">
           <label>{{ t('settings.dailyNotesFolder') }}</label>
           <input
             type="text"
@@ -2694,7 +2694,7 @@ function onSelectPdfFont(v: string) {
           />
         </section>
 
-        <section data-cat="advanced">
+        <section v-if="settings.dailyNotesEnabled" data-cat="advanced">
           <label>{{ t('settings.dailyNotesFormat') }}</label>
           <input
             type="text"
@@ -2868,6 +2868,17 @@ function onSelectPdfFont(v: string) {
           </label>
         </section>
 
+        <!-- Daily notes ("Today / 今日" button toggle) -->
+        <section data-cat="writing">
+          <label>
+            <input type="checkbox" :checked="settings.dailyNotesEnabled" @change="settings.toggleDailyNotes()" />
+            {{ t('settings.dailyNotesEnabled') }}
+          </label>
+          <div class="setting-hint">
+            {{ t('settings.dailyNotesEnabledHint') }}
+          </div>
+        </section>
+
         <!-- v4.6 F6 — Inbox workflow -->
         <section data-cat="writing">
           <label>
@@ -2883,6 +2894,17 @@ function onSelectPdfFont(v: string) {
           </label>
           <div v-if="settings.inboxWorkflowEnabled" class="setting-hint">
             {{ t('inbox.autoAdvanceSettingHint') }}
+          </div>
+        </section>
+
+        <!-- #571 — Auto-update workspace links on rename / move -->
+        <section data-cat="advanced">
+          <label>
+            <input type="checkbox" :checked="settings.autoUpdateLinksOnRename" @change="settings.toggleAutoUpdateLinksOnRename()" />
+            {{ t('settings.autoUpdateLinksOnRename') }}
+          </label>
+          <div class="setting-hint">
+            {{ t('settings.autoUpdateLinksOnRenameHint') }}
           </div>
         </section>
 

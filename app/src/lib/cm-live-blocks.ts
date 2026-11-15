@@ -330,6 +330,8 @@ class ImageWidget extends WidgetType {
     localPath: string | null = null,
     lineNumber: number = 0,
     inline: boolean = false,
+    explicitWidth: string | null = null,
+    explicitHeight: string | null = null,
   ) {
     super();
     this.src = src;
@@ -339,8 +341,8 @@ class ImageWidget extends WidgetType {
     this.inline = inline;
     const parsed = parseImageAltSize(alt);
     this.cleanAlt = parsed.alt;
-    this.width = parsed.width;
-    this.height = parsed.height;
+    this.width = explicitWidth || parsed.width;
+    this.height = explicitHeight || parsed.height;
   }
 
   eq(other: ImageWidget): boolean {
@@ -349,7 +351,9 @@ class ImageWidget extends WidgetType {
       other.alt === this.alt &&
       other.localPath === this.localPath &&
       other.lineNumber === this.lineNumber &&
-      other.inline === this.inline
+      other.inline === this.inline &&
+      other.width === this.width &&
+      other.height === this.height
     );
   }
 
@@ -2113,7 +2117,15 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
               line.to,
               line.to,
               Decoration.widget({
-                widget: new ImageWidget(src, imgSpan.alt, needsFallback ? localPath : null, i),
+                widget: new ImageWidget(
+                  src,
+                  imgSpan.alt,
+                  needsFallback ? localPath : null,
+                  i,
+                  false,
+                  imgSpan.width ?? null,
+                  imgSpan.height ?? null,
+                ),
                 block: true,
                 side: 1,
               }),
@@ -2587,7 +2599,15 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
               line.to,
               line.to,
               Decoration.widget({
-                widget: new ImageWidget(src, firstImg.alt, needsFallback ? localPath : null, i),
+                widget: new ImageWidget(
+                  src,
+                  firstImg.alt,
+                  needsFallback ? localPath : null,
+                  i,
+                  false,
+                  firstImg.width ?? null,
+                  firstImg.height ?? null,
+                ),
                 block: true,
                 side: 1,
               }),
@@ -2628,6 +2648,8 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
                       needsFallback ? localPath : null,
                       i,
                       true,
+                      imgSpan.width ?? null,
+                      imgSpan.height ?? null,
                     ),
                   }),
                 });

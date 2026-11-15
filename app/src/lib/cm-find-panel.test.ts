@@ -1,10 +1,15 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { EditorState, type TransactionSpec } from '@codemirror/state';
-import { SearchQuery, search, setSearchQuery } from '@codemirror/search';
+import { EditorState, Transaction, type TransactionSpec } from '@codemirror/state';
+import { SearchQuery, search, setSearchQuery, selectNextOccurrence } from '@codemirror/search';
 
-import { matchFrom, replaceCurrent } from './cm-find-panel.ts';
+import {
+  matchFrom,
+  replaceCurrent,
+  selectAllOccurrencesCommand,
+  setFindPanelReplaceExpanded,
+} from './cm-find-panel.ts';
 
 /** Just enough of an EditorView for the search commands: state + dispatch. */
 function fakeView(doc: string, caret: number, find: string, replace: string) {
@@ -47,4 +52,66 @@ test('Replace with no match selected yet replaces the next one', () => {
   const view = fakeView('x foo y foo', 1, 'foo', 'bar');
   replaceCurrent(view);
   assert.equal(view.state.doc.toString(), 'x bar y foo');
+});
+
+test('#419: setFindPanelReplaceExpanded toggles replace row visibility and chevron', () => {
+  const replaceRow = { hidden: true };
+  let ariaExpanded = 'false';
+  let panelOpenClass = false;
+  const toggleBtn = {
+    textContent: '▸',
+    setAttribute(name: string, val: string) {
+      if (name === 'aria-expanded') ariaExpanded = val;
+    },
+  };
+  const panel = {
+    classList: {
+      toggle(cls: string, force?: boolean) {
+        if (cls === 'cm-find--replace-open') panelOpenClass = Boolean(force);
+      },
+    },
+    querySelector(sel: string) {
+      if (sel === '.cm-find__row--replace') return replaceRow;
+      if (sel === 'button[name="toggleReplace"]') return toggleBtn;
+      return null;
+    },
+  };
+  const root = {
+    querySelector(sel: string) {
+      if (sel === '.cm-find') return panel;
+      return null;
+    },
+  } as unknown as ParentNode;
+
+  setFindPanelReplaceExpanded(root, true);
+  assert.equal(replaceRow.hidden, false);
+  assert.equal(panelOpenClass, true);
+  assert.equal(toggleBtn.textContent, '▾');
+  assert.equal(ariaExpanded, 'true');
+
+  setFindPanelReplaceExpanded(root, false);
+  assert.equal(replaceRow.hidden, true);
+  assert.equal(panelOpenClass, false);
+  assert.equal(toggleBtn.textContent, '▸');
+  assert.equal(ariaExpanded, 'false');
+});
+
+test('#436: allowMultipleSelections enables multi-cursor occurrence selection', () => {
+  let state = EditorState.create({
+    doc: 'alpha beta alpha gamma alpha',
+    selection: { anchor: 0, head: 5 },
+    extensions: [EditorState.allowMultipleSelections.of(true), search()],
+  });
+  const target = {
+    get state() {
+      return state;
+    },
+    dispatch(tr: Transaction) {
+      state = tr.state;
+    },
+  };
+  assert.equal(selectNextOccurrence(target), true);
+  assert.equal(state.selection.ranges.length, 2);
+  assert.equal(selectAllOccurrencesCommand(target), true);
+  assert.equal(state.selection.ranges.length, 3);
 });

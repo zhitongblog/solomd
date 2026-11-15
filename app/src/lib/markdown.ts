@@ -11,7 +11,7 @@ import mark from 'markdown-it-mark';
 import cjkFriendly from 'markdown-it-cjk-friendly';
 import yaml from 'js-yaml';
 import { numberEquations } from './equations';
-import { parseImageAltSize } from './md-image-url';
+import { findMarkdownImagesInLine, parseImageAltSize } from './md-image-url';
 import { sanitizeRenderedHtml } from './sanitize-html';
 import { renderMarkmapSvg } from './markmap-render';
 import { renderExcalidrawSvg } from './excalidraw';
@@ -458,27 +458,53 @@ md.inline.ruler.after('strikethrough', 'subscript', (state, silent) => {
 // single line, has no quotes, parentheses or angle brackets, and ends in an
 // image extension. Under the standard grammar that text can only ever render
 // as the raw characters, so nothing that works today changes meaning.
-const SPACED_IMAGE_RE =
-  /^!\[([^\]\n]*)\]\(\s*([^<>"'\n]*?\s[^<>"'\n]*?\.(?:png|jpe?g|gif|webp|svg|bmp|avif|ico|tiff?)(?:[?#][^\s)]*)?)\s*(?:(?:"[^"\n]*"|'[^'\n]*')\s*)?\)/i;
-md.inline.ruler.before('image', 'image_spaced_path', (state, silent) => {
+// #345 / #379 — Extended image syntax:
+// 1. Unencoded spaces in image paths (`![](_assets/my pic.png)`),
+// 2. Destination `=WxH` / `=Wx` / `=xH` / `=W` size suffix (`![](_assets/1.png =300x200)`),
+// 3. Obsidian-style wikilink image embeds (`![[pic.png]]`, `![[pic.png|300]]`, `![[pic.png|caption|300x200]]`).
+// Runs before `wikilink` and `image` so `![[pic.png|300]]` becomes a real `<img>`
+// token rather than `!<a class="md-wikilink">`. Plain CommonMark images with no
+// spaces, no `=WxH` suffix, and no `![[...]]` fall through to markdown-it's stock rule.
+md.inline.ruler.before('wikilink', 'image_extended', (state, silent) => {
   if (state.src.charCodeAt(state.pos) !== 0x21 /* ! */) return false;
-  const m = SPACED_IMAGE_RE.exec(state.src.slice(state.pos, state.posMax));
-  if (!m) return false;
-  const href = state.md.normalizeLink(m[2]);
+  const nextCh = state.src.charCodeAt(state.pos + 1);
+  if (nextCh !== 0x5b /* [ */) return false;
+  const lineEndIdx = state.src.indexOf('\n', state.pos);
+  const sliceEnd = lineEndIdx >= 0 && lineEndIdx < state.posMax ? lineEndIdx : state.posMax;
+  const lineSlice = state.src.slice(state.pos, sliceEnd);
+  const spans = findMarkdownImagesInLine(lineSlice);
+  if (spans.length === 0 || spans[0].start !== 0 || spans[0].href) return false;
+  const span = spans[0];
+  const rawSegment = lineSlice.slice(0, span.end);
+  const needsExtendedRule =
+    Boolean(span.isWikilink) ||
+    Boolean(span.width) ||
+    Boolean(span.height) ||
+    /\s/.test(span.src);
+  if (!needsExtendedRule) return false;
+
+  const href = state.md.normalizeLink(span.src);
   if (!state.md.validateLink(href)) return false;
   if (!silent) {
     const children: typeof state.tokens = [];
-    state.md.inline.parse(m[1], state.md, state.env, children);
+    state.md.inline.parse(span.alt, state.md, state.env, children);
     const token = state.push('image', 'img', 0);
-    token.attrs = [['src', href], ['alt', '']];
+    const attrs: [string, string][] = [['src', href], ['alt', '']];
+    if (span.title !== undefined) {
+      attrs.push(['title', span.title]);
+    }
+    token.attrs = attrs;
     token.children = children;
-    token.content = m[1];
+    token.content = span.alt;
+    if (span.width || span.height) {
+      token.meta = { ...(token.meta || {}), eqWidth: span.width ?? null, eqHeight: span.height ?? null };
+    }
   }
-  state.pos += m[0].length;
+  state.pos += rawSegment.length;
   return true;
 });
 
-// ---- Image size syntax (`![alt|50%](url)` / `![alt|300](url)`) (#446) -------
+// ---- Image size syntax (`![alt|50%](url)` / `![alt|300](url)` / `![](url =300x200)`) (#446, #379) -------
 const defaultImageRenderer = md.renderer.rules.image;
 md.renderer.rules.image = function (tokens, idx, options, env, self) {
   const token = tokens[idx];
@@ -489,20 +515,23 @@ md.renderer.rules.image = function (tokens, idx, options, env, self) {
     ? self.renderInlineAsText(token.children, options, env)
     : (token.content || token.attrGet('alt') || '');
   const parsed = parseImageAltSize(rawAlt);
-  if (parsed.width || parsed.height) {
+  const meta = (token.meta || {}) as { eqWidth?: string | null; eqHeight?: string | null };
+  const finalWidth = meta.eqWidth || parsed.width;
+  const finalHeight = meta.eqHeight || parsed.height;
+  if (finalWidth || finalHeight) {
     const existingStyle = token.attrGet('style');
     const sizeStyle = [
-      parsed.width ? `width: ${parsed.width};` : '',
-      parsed.height ? `height: ${parsed.height};` : '',
+      finalWidth ? `width: ${finalWidth};` : '',
+      finalHeight ? `height: ${finalHeight};` : '',
     ]
       .filter(Boolean)
       .join(' ');
     token.attrSet('style', existingStyle ? `${existingStyle}; ${sizeStyle}` : sizeStyle);
-    if (parsed.width?.endsWith('px')) {
-      token.attrSet('width', parsed.width.slice(0, -2));
+    if (finalWidth?.endsWith('px')) {
+      token.attrSet('width', finalWidth.slice(0, -2));
     }
-    if (parsed.height?.endsWith('px')) {
-      token.attrSet('height', parsed.height.slice(0, -2));
+    if (finalHeight?.endsWith('px')) {
+      token.attrSet('height', finalHeight.slice(0, -2));
     }
   }
   const html = defaultImageRenderer

@@ -2,9 +2,9 @@
 import { ref, onMounted, onBeforeUnmount, watch, computed, nextTick } from 'vue';
 import { EditorState, Compartment, Prec, Transaction } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, highlightActiveLine, drawSelection, rectangularSelection, crosshairCursor } from '@codemirror/view';
-import { defaultKeymap, history, historyKeymap, indentWithTab, undo as cmUndo, redo as cmRedo } from '@codemirror/commands';
-import { searchKeymap, search, openSearchPanel, closeSearchPanel, getSearchQuery, setSearchQuery } from '@codemirror/search';
-import { createFindPanel, type FindPanelLabels } from '../lib/cm-find-panel';
+import { defaultKeymap, history, historyKeymap, indentWithTab, undo as cmUndo, redo as cmRedo, addCursorAbove, addCursorBelow } from '@codemirror/commands';
+import { searchKeymap, search, openSearchPanel, closeSearchPanel, getSearchQuery, setSearchQuery, selectNextOccurrence } from '@codemirror/search';
+import { createFindPanel, setFindPanelReplaceExpanded, selectAllOccurrencesCommand, type FindPanelLabels } from '../lib/cm-find-panel';
 import { tabCaretMemory, tabTopLineMemory, type TabCaretSnapshot } from '../lib/scroll-memory';
 import { syntaxHighlighting, defaultHighlightStyle, indentOnInput, bracketMatching, indentUnit } from '@codemirror/language';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
@@ -129,7 +129,7 @@ import { installSvgImageFallbacks, rewriteImageUrls } from '../lib/image-resolve
 import { SLASH_BLOCKS, filterBlocks, expandSnippet, indentExpandedSnippet } from '../lib/slash-blocks';
 import { useWorkspaceIndexStore } from '../stores/workspaceIndex';
 import { isWindowsEditorRuntime, shouldUsePlainWindowsEditor } from '../lib/platform';
-import { isAndroid, isIOS, isMobile } from '../lib/platform';
+import { isAndroid, isIOS, isMobile, usesCommandKey } from '../lib/platform';
 import SelectionBubble, { type BubbleSelection } from './SelectionBubble.vue';
 import TableToolbar from './TableToolbar.vue';
 import { applyTableAction, cellStart, colAfterAction, rowAfterAction, tableAt, type TableAction, type TableToolbarState } from '../lib/table-toolbar';
@@ -283,6 +283,12 @@ const aiKeyCompartment = new Compartment();
 const baseKeymapCompartment = new Compartment();
 function baseKeymap() {
   const overrides = { ...settings.keybindings };
+  // When daily notes are disabled (and the user hasn't explicitly bound
+  // `daily.openToday`), free `Mod+D` so CodeMirror's `selectNextOccurrence`
+  // works out of the box like VS Code.
+  if (!settings.dailyNotesEnabled && overrides['daily.openToday'] === undefined) {
+    overrides['daily.openToday'] = null;
+  }
   return keymap.of(
     [...defaultKeymap, ...searchKeymap]
       .filter(
@@ -1972,6 +1978,7 @@ let plainFindAnchor = 0;
 const plainFindBoxes = ref<Array<{ top: number; left: number; width: number; height: number }>>([]);
 // Docks the find bar at the bottom while the current match sits under it.
 const plainFindDodge = ref(false);
+const plainReplaceOpen = ref(false);
 const plainFindBar = ref<HTMLElement | null>(null);
 
 function plainCaretDocOffset(): number {
@@ -2011,12 +2018,14 @@ function openPlainFind(replace = false) {
       closePlainFind(true);
       return;
     }
-    if (replace && document.activeElement === plainReplaceInput.value) {
+    if (replace && plainReplaceOpen.value && document.activeElement === plainReplaceInput.value) {
       closePlainFind(true);
       return;
     }
   }
   plainFindOpen.value = true;
+  if (replace) plainReplaceOpen.value = true;
+  else if (!wasOpen) plainReplaceOpen.value = false;
   if (!wasOpen) plainFindAnchor = plainCaretDocOffset();
   if (selected && !selected.includes('\n')) plainFindQuery.value = selected;
   nextTick(() => {
@@ -4650,11 +4659,17 @@ function buildExtensions() {
             drawSelection({ cursorBlinkRate: settings.solidCursor ? 0 : 1200 }),
           ),
           activeLineCompartment.of(activeLineExtension(settings.highlightCurrentLine)),
-          // #90 — column/rectangular selection: hold Alt (Option on macOS) and
-          // drag to select a vertical block. `crosshairCursor` swaps the I-beam
-          // for a crosshair while Alt is held so the user knows the mode is
-          // armed. CM6 already turns multiple selections on by default; no
-          // need to flip `EditorState.allowMultipleSelections`.
+          // #90 / #436 — Multi-cursor & rectangular column selection:
+          // `allowMultipleSelections` defaults to `false` in CM6 (`EditorState`),
+          // so it must be enabled explicitly for `Alt+Click`, `Mod+Click`,
+          // `selectNextOccurrence`, `addCursorAbove`/`Below`, and `Alt+Drag`
+          // column selection to hold multiple cursors.
+          EditorState.allowMultipleSelections.of(true),
+          EditorView.clickAddsSelectionRange.of(
+            (event) =>
+              (event.altKey && !event.shiftKey) ||
+              (usesCommandKey() ? event.metaKey : event.ctrlKey),
+          ),
           rectangularSelection(),
           crosshairCursor(),
           indentUnit.of('    '),
@@ -5295,6 +5310,14 @@ function onEditorCommand(e: Event) {
     const sel = v.state.selection.main;
     if (cmd === 'jumpToSelection') {
       v.dispatch({ effects: EditorView.scrollIntoView(sel, { y: 'center' }) });
+    } else if (cmd === 'selectNextOccurrence') {
+      selectNextOccurrence(v);
+    } else if (cmd === 'selectAllOccurrences') {
+      selectAllOccurrencesCommand(v);
+    } else if (cmd === 'addCursorAbove') {
+      addCursorAbove(v);
+    } else if (cmd === 'addCursorBelow') {
+      addCursorBelow(v);
     } else if (cmd === 'selectWord' || cmd === 'selectLine') {
       const r = cmd === 'selectWord' ? selectWordRange(doc, sel.from, sel.to) : selectLineRange(doc, sel.from, sel.to);
       if (r) v.dispatch({ selection: { anchor: r.from, head: r.to }, scrollIntoView: true, userEvent: 'select' });
@@ -5326,6 +5349,25 @@ function onEditorCommand(e: Event) {
     selectPlainRange(sel.from, sel.to, true);
     return;
   }
+  if (
+    cmd === 'selectNextOccurrence' ||
+    cmd === 'selectAllOccurrences' ||
+    cmd === 'addCursorAbove' ||
+    cmd === 'addCursorBelow'
+  ) {
+    if (cmd === 'selectNextOccurrence') {
+      if (sel.from === sel.to) {
+        const r = selectWordRange(doc, sel.from, sel.to);
+        if (r) selectPlainRange(r.from, r.to, true);
+      } else {
+        const needle = doc.slice(sel.from, sel.to);
+        let nextIdx = doc.indexOf(needle, sel.to);
+        if (nextIdx < 0) nextIdx = doc.indexOf(needle, 0);
+        if (nextIdx >= 0) selectPlainRange(nextIdx, nextIdx + needle.length, true);
+      }
+    }
+    return;
+  }
   if (cmd === 'selectWord' || cmd === 'selectLine') {
     const r = cmd === 'selectWord' ? selectWordRange(doc, sel.from, sel.to) : selectLineRange(doc, sel.from, sel.to);
     if (r) selectPlainRange(r.from, r.to, true);
@@ -5352,6 +5394,7 @@ function findPanelLabels(): FindPanelLabels {
   return {
     find: t('plainFind.findPlaceholder'),
     replace: t('plainFind.replacePlaceholder'),
+    toggleReplace: t('plainFind.toggleReplace'),
     prev: t('plainFind.prev'),
     next: t('plainFind.next'),
     matchCase: t('plainFind.matchCase'),
@@ -5371,6 +5414,8 @@ function openFind(replace = false): void {
   if (view) {
     const searchEl = view.dom.querySelector<HTMLInputElement>('.cm-search input[name=search]');
     const replaceEl = view.dom.querySelector<HTMLInputElement>('.cm-search input[name=replace]');
+    const replaceRow = view.dom.querySelector<HTMLElement>('.cm-find__row--replace');
+    const isReplaceVisible = !!replaceRow && !replaceRow.hidden;
     const sel = view.state.selection.main;
     const selectedText = sel.empty ? '' : view.state.sliceDoc(sel.from, sel.to);
     const curSearch = getSearchQuery(view.state).search;
@@ -5381,7 +5426,7 @@ function openFind(replace = false): void {
         view.focus();
         return;
       }
-      if (replace && replaceEl && document.activeElement === replaceEl) {
+      if (replace && isReplaceVisible && replaceEl && document.activeElement === replaceEl) {
         closeSearchPanel(view);
         view.focus();
         return;
@@ -5389,13 +5434,13 @@ function openFind(replace = false): void {
     }
     view.focus();
     openSearchPanel(view);
-    // CodeMirror's panel always carries the replace row; "Replace" (Ctrl+H)
-    // only decides which field gets the caret. With nothing to find yet the
-    // find field is the one that needs typing first.
-    if (replace && getSearchQuery(view.state).search) {
-      const field = view.dom.querySelector<HTMLInputElement>('.cm-search input[name=replace]');
-      field?.focus();
-      field?.select();
+    if (replace) {
+      setFindPanelReplaceExpanded(view.dom, true);
+      if (getSearchQuery(view.state).search) {
+        const field = view.dom.querySelector<HTMLInputElement>('.cm-search input[name=replace]');
+        field?.focus();
+        field?.select();
+      }
     }
   }
 }
@@ -6132,7 +6177,7 @@ watch(
 );
 
 watch(
-  () => JSON.stringify(settings.keybindings),
+  [() => JSON.stringify(settings.keybindings), () => settings.dailyNotesEnabled],
   () => {
     view?.dispatch({ effects: baseKeymapCompartment.reconfigure(baseKeymap()) });
   },
@@ -7133,6 +7178,13 @@ const cls = computed(() => ({
       @keydown.esc.prevent.stop="closePlainFind(true)"
     >
       <div class="plain-find__row">
+        <button
+          class="plain-find__btn"
+          :title="t('plainFind.toggleReplace')"
+          :aria-label="t('plainFind.toggleReplace')"
+          :aria-expanded="plainReplaceOpen"
+          @click="plainReplaceOpen = !plainReplaceOpen"
+        >{{ plainReplaceOpen ? '▾' : '▸' }}</button>
         <!-- Enter / Shift+Enter step through matches and keep focus here;
              Esc hands the editor the current match (#330). -->
         <input
@@ -7155,7 +7207,7 @@ const cls = computed(() => ({
         >Aa</button>
         <button class="plain-find__btn" :title="t('plainFind.close')" :aria-label="t('plainFind.close')" @click="closePlainFind(true)">✕</button>
       </div>
-      <div class="plain-find__row">
+      <div v-show="plainReplaceOpen" class="plain-find__row" style="padding-left: 30px;">
         <input
           ref="plainReplaceInput"
           class="plain-find__input"

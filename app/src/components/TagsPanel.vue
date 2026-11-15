@@ -20,12 +20,14 @@
  */
 import { computed } from 'vue';
 import { useWorkspaceIndexStore } from '../stores/workspaceIndex';
+import { useSettingsStore } from '../stores/settings';
 import { useDailyNotes } from '../composables/useDailyNotes';
 import { useI18n } from '../i18n';
 import Icons from './Icons.vue';
 import PanelHeader from './panel/PanelHeader.vue';
 
 const idx = useWorkspaceIndexStore();
+const settings = useSettingsStore();
 const daily = useDailyNotes();
 const { t } = useI18n();
 
@@ -59,25 +61,27 @@ function onTomorrow() {
 <template>
   <div class="tags-panel rp">
     <PanelHeader :title="t('tags.heading')" @close="emit('close')">
-      <button
-        class="rp-icon-btn"
-        type="button"
-        :title="t('tags.yesterdayBtn')"
-        :aria-label="t('tags.yesterdayBtn')"
-        @click="onYesterday"
-      ><Icons name="chevron-left" :size="14" /></button>
-      <button
-        class="tags-panel__today"
-        type="button"
-        @click="onToday"
-      >{{ t('tags.todayBtn') }}</button>
-      <button
-        class="rp-icon-btn"
-        type="button"
-        :title="t('tags.tomorrowBtn')"
-        :aria-label="t('tags.tomorrowBtn')"
-        @click="onTomorrow"
-      ><Icons name="chevron-right" :size="14" /></button>
+      <template v-if="settings.dailyNotesEnabled">
+        <button
+          class="rp-icon-btn"
+          type="button"
+          :title="t('tags.yesterdayBtn')"
+          :aria-label="t('tags.yesterdayBtn')"
+          @click="onYesterday"
+        ><Icons name="chevron-left" :size="14" /></button>
+        <button
+          class="tags-panel__today"
+          type="button"
+          @click="onToday"
+        >{{ t('tags.todayBtn') }}</button>
+        <button
+          class="rp-icon-btn"
+          type="button"
+          :title="t('tags.tomorrowBtn')"
+          :aria-label="t('tags.tomorrowBtn')"
+          @click="onTomorrow"
+        ><Icons name="chevron-right" :size="14" /></button>
+      </template>
     </PanelHeader>
 
     <div v-if="!hasFolder" class="rp-empty">{{ t('tags.openFolder') }}</div>

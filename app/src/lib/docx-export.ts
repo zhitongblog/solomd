@@ -32,6 +32,7 @@ import {
 } from 'docx';
 import { mermaidToPng } from './diagram-export';
 import { md, extractImageRoot, preprocessMarkdown } from './markdown';
+import { parseImageAltSize } from './md-image-url';
 import {
   resolveDocxTemplate,
   renderHeaderText,
@@ -154,13 +155,52 @@ async function prefetchImages(tokens: Token[], imageRoot: string | null, filePat
   );
 }
 
-function imageRun(img: ImageCache, alt: string, maxWidth = MAX_IMG_WIDTH): ImageRun {
-  const dim = scaleDimensions(img.width, img.height, maxWidth);
+function resolveDocxImageDim(
+  img: ImageCache,
+  alt: string,
+  maxWidth: number,
+  tok?: Token,
+): { cleanAlt: string; width: number; height: number } {
+  const parsed = parseImageAltSize(alt);
+  const meta = (tok?.meta || {}) as { eqWidth?: string | null; eqHeight?: string | null };
+  const rawW = meta.eqWidth || parsed.width;
+  const rawH = meta.eqHeight || parsed.height;
+  const parseDimPx = (spec: string | null | undefined, base: number): number | null => {
+    if (!spec) return null;
+    if (spec.endsWith('%')) {
+      const pct = Number.parseFloat(spec.slice(0, -1));
+      return pct > 0 ? Math.max(1, Math.round((base * pct) / 100)) : null;
+    }
+    const px = Number.parseFloat(spec.replace(/px$/i, ''));
+    return px > 0 ? Math.max(1, Math.round(px)) : null;
+  };
+  const explicitW = parseDimPx(rawW, maxWidth);
+  const explicitH = parseDimPx(rawH, img.height);
+  let w = img.width;
+  let h = img.height;
+  if (explicitW && explicitH) {
+    w = explicitW;
+    h = explicitH;
+  } else if (explicitW) {
+    const ratio = img.width > 0 ? explicitW / img.width : 1;
+    w = explicitW;
+    h = Math.max(1, Math.round(img.height * ratio));
+  } else if (explicitH) {
+    const ratio = img.height > 0 ? explicitH / img.height : 1;
+    h = explicitH;
+    w = Math.max(1, Math.round(img.width * ratio));
+  }
+  const scaled = scaleDimensions(w, h, maxWidth);
+  return { cleanAlt: parsed.alt, width: scaled.width, height: scaled.height };
+}
+
+function imageRun(img: ImageCache, alt: string, maxWidth = MAX_IMG_WIDTH, tok?: Token): ImageRun {
+  const dim = resolveDocxImageDim(img, alt, maxWidth, tok);
   return new ImageRun({
     type: img.type,
     data: img.data,
     transformation: { width: dim.width, height: dim.height },
-    altText: { name: alt || 'image', description: alt || 'image' },
+    altText: { name: dim.cleanAlt || 'image', description: dim.cleanAlt || 'image' },
   });
 }
 
@@ -301,7 +341,7 @@ function buildRuns(inlineToken: Token, style: RunStyle = {}): (TextRun | ImageRu
         // in its paragraph it is handled by buildBody (centered block).
         const src = tok.attrGet('src') || '';
         const img = srcImages.get(src);
-        if (img) push(imageRun(img, tok.content || ''));
+        if (img) push(imageRun(img, tok.content || '', MAX_IMG_WIDTH, tok));
         else push(new TextRun({ text: `[${tok.content || 'image'}]`, italics: true, color: '888888' }));
         break;
       }
@@ -430,7 +470,7 @@ async function buildBody(tokens: Token[], imageRoot: string | null, filePath?: s
           if (img) {
             out.push(
               new Paragraph({
-                children: [imageRun(img, alt)],
+                children: [imageRun(img, alt, MAX_IMG_WIDTH, imgTok)],
                 alignment: AlignmentType.CENTER,
                 spacing: { before: 160, after: 160 },
               })

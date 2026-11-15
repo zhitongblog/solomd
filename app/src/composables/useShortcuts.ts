@@ -149,6 +149,10 @@ export function useShortcuts(hooks: Hooks = {}) {
     'editor.deleteWord': () => editorCommand('deleteWord'),
     'editor.selectLine': () => editorCommand('selectLine'),
     'editor.jumpToSelection': () => editorCommand('jumpToSelection'),
+    'editor.selectNextOccurrence': () => editorCommand('selectNextOccurrence'),
+    'editor.selectAllOccurrences': () => editorCommand('selectAllOccurrences'),
+    'editor.addCursorAbove': () => editorCommand('addCursorAbove'),
+    'editor.addCursorBelow': () => editorCommand('addCursorBelow'),
     'editor.cursorBack': () => editorCommand('cursorBack'),
     'editor.cursorForward': () => editorCommand('cursorForward'),
     'heading.promote': () => editorCommand('headingPromote'),
@@ -240,7 +244,10 @@ export function useShortcuts(hooks: Hooks = {}) {
     'settings.open': () => hooks.openSettings?.(),
     'help.markdown': () => hooks.openHelp?.(),
     'proofread.cjk': () => hooks.openCjkProofread?.(),
-    'daily.openToday': () => runById('daily.openToday'),
+    'daily.openToday': () => {
+      if (!settings.dailyNotesEnabled) return false;
+      runById('daily.openToday');
+    },
     // v4.6 F6: inside the inbox context with auto-advance on, this marks the
     // note organized and jumps to the next one; elsewhere it degrades to the
     // plain front-matter toggle, and it's off entirely when opted out.

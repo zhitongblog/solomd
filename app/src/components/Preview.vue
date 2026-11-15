@@ -51,6 +51,7 @@ const settings = useSettingsStore();
 const tabs = useTabsStore();
 const { t } = useI18n();
 const host = ref<HTMLDivElement | null>(null);
+const scrollHostRef = ref<HTMLDivElement | null>(null);
 const searchOpen = ref(false);
 const searchRef = ref<InstanceType<typeof PreviewSearch> | null>(null);
 
@@ -812,7 +813,84 @@ onMounted(async () => {
   host.value?.addEventListener('mouseover', onPreviewMouseOver);
   host.value?.addEventListener('mouseleave', onPreviewMouseLeave);
   window.addEventListener('solomd:split-hover-line', onSplitHoverEvent);
+  focusIfReadingOrPreview();
 });
+
+function focusIfReadingOrPreview() {
+  if (props.skin !== 'reading' && settings.viewMode !== 'preview') return;
+  nextTick(() => {
+    const active = document.activeElement as HTMLElement | null;
+    if (
+      active &&
+      (active.tagName === 'INPUT' ||
+        active.tagName === 'TEXTAREA' ||
+        active.tagName === 'SELECT' ||
+        active.isContentEditable)
+    ) {
+      return;
+    }
+    scrollHostRef.value?.focus({ preventScroll: true });
+  });
+}
+
+watch(
+  () => [props.skin, settings.viewMode, props.tabId] as const,
+  () => {
+    focusIfReadingOrPreview();
+  },
+);
+
+// #437 — full keyboard scrolling in Reading & Preview modes (PageUp/PageDown,
+// Space/Shift+Space, Up/Down arrows, Home/End, and macOS Cmd+Up/Cmd+Down).
+function onHostKeydown(e: KeyboardEvent) {
+  if (e.defaultPrevented || e.altKey) return;
+  const target = e.target as HTMLElement | null;
+  if (
+    target &&
+    (target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.tagName === 'SELECT' ||
+      target.isContentEditable)
+  ) {
+    return;
+  }
+  const el = scrollHostRef.value ?? (host.value?.parentElement as HTMLElement | null);
+  if (!el) return;
+
+  if (e.key === 'PageDown' && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+    e.preventDefault();
+    el.scrollBy({ top: Math.round(el.clientHeight * 0.88), behavior: 'smooth' });
+  } else if (e.key === 'PageUp' && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+    e.preventDefault();
+    el.scrollBy({ top: -Math.round(el.clientHeight * 0.88), behavior: 'smooth' });
+  } else if (e.key === ' ' && !e.ctrlKey && !e.metaKey) {
+    e.preventDefault();
+    const dir = e.shiftKey ? -1 : 1;
+    el.scrollBy({ top: dir * Math.round(el.clientHeight * 0.85), behavior: 'smooth' });
+  } else if (e.key === 'ArrowDown') {
+    if (e.metaKey && !e.ctrlKey && !e.shiftKey) {
+      e.preventDefault();
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    } else if (!e.ctrlKey && !e.metaKey && !e.shiftKey) {
+      e.preventDefault();
+      el.scrollBy({ top: 56 });
+    }
+  } else if (e.key === 'ArrowUp') {
+    if (e.metaKey && !e.ctrlKey && !e.shiftKey) {
+      e.preventDefault();
+      el.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (!e.ctrlKey && !e.metaKey && !e.shiftKey) {
+      e.preventDefault();
+      el.scrollBy({ top: -56 });
+    }
+  } else if (e.key === 'Home' && !e.shiftKey) {
+    e.preventDefault();
+    el.scrollTo({ top: 0, behavior: 'smooth' });
+  } else if (e.key === 'End' && !e.shiftKey) {
+    e.preventDefault();
+    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+  }
+}
 
 onBeforeUnmount(() => {
   host.value?.removeEventListener('click', handleLinkClick);
@@ -968,7 +1046,15 @@ defineExpose({ scrollToLine, openSearch });
 </script>
 
 <template>
-  <div class="preview-host" :class="{ 'preview-host--reading': skin === 'reading' }" @copy="onPreviewCopy" @scroll.passive="onHostScroll">
+  <div
+    ref="scrollHostRef"
+    class="preview-host"
+    :class="{ 'preview-host--reading': skin === 'reading' }"
+    tabindex="0"
+    @copy="onPreviewCopy"
+    @keydown="onHostKeydown"
+    @scroll.passive="onHostScroll"
+  >
     <PreviewSearch
       v-if="searchOpen && host"
       ref="searchRef"
@@ -1037,6 +1123,7 @@ defineExpose({ scrollToLine, openSearch });
   overflow: auto;
   background: var(--bg);
   border-left: 1px solid var(--border);
+  outline: none;
 }
 :where(.preview-content) {
   /* v4.10 #165 — column width is user-tunable (previewMaxWidth setting sets

@@ -333,7 +333,7 @@ onBeforeUnmount(() => {
 
     <div class="sb__scroll">
       <nav v-if="phone" class="sb__cards" :aria-label="t('phone.notes')">
-        <button v-if="hasFolder" class="sb__card" type="button" @click="openToday">
+        <button v-if="hasFolder && settings.dailyNotesEnabled" class="sb__card" type="button" @click="openToday">
           <Icon name="today" :size="20" class="sb__card-icon" />
           <span class="sb__card-label">{{ t('sidebar.today') }}</span>
           <span class="sb__card-sub">{{ t('phone.daily') }}</span>
@@ -356,7 +356,7 @@ onBeforeUnmount(() => {
       </nav>
       <nav v-else class="sb__nav">
         <button
-          v-if="hasFolder"
+          v-if="hasFolder && settings.dailyNotesEnabled"
           class="sb__row"
           :class="{ 'sb__row--active': todayActive }"
           type="button"
