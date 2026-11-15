@@ -1297,7 +1297,7 @@ dependencies = [
 
 [[package]]
 name = "solomd-mcp"
-version = "5.2.0"
+version = "5.2.1"
 dependencies = [
  "anyhow",
  "axum",
