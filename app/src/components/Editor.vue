@@ -124,6 +124,7 @@ import { useRenderDepsVersion } from '../composables/useRenderDepsVersion';
 import { attachCodeCopyButtons } from '../lib/code-copy';
 import { plantumlSvgUrl } from '../lib/plantuml';
 import { stableClickSelection } from '../lib/cm-stable-click';
+import { focusCodeMirrorWithoutScroll, preservePointerFocusScroll } from '../lib/cm-preserve-focus';
 import { cjkDoubleClickSelection } from '../lib/cm-cjk-dblclick';
 import { installSvgImageFallbacks, rewriteImageUrls } from '../lib/image-resolve';
 import { SLASH_BLOCKS, filterBlocks, expandSnippet, indentExpandedSnippet } from '../lib/slash-blocks';
@@ -4649,6 +4650,7 @@ function buildExtensions() {
   return [
     imeCompositionGuard(),
     history(),
+    preservePointerFocusScroll(),
     ...(windowsImeSafeMode
       ? []
       : [
@@ -5922,11 +5924,7 @@ function focusFreshCodeMirror() {
       !active.closest('.cm-editor') &&
       (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT');
     if (inModalOrSidebarInput) return;
-    const savedSt = view.scrollDOM.scrollTop;
-    view.contentDOM.focus({ preventScroll: true });
-    if (savedSt > 0 && Math.abs(view.scrollDOM.scrollTop - savedSt) > 1) {
-      view.scrollDOM.scrollTop = savedSt;
-    }
+    focusCodeMirrorWithoutScroll(view);
   };
   nextTick(() => {
     doFocus();
