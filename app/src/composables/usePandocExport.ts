@@ -184,6 +184,19 @@ export function usePandocExport() {
     activeContent?: string,
     opts: ExportOptions = {}
   ): Promise<void> {
+    if (
+      format !== 'custom' &&
+      activeContent === undefined &&
+      typeof window !== 'undefined' &&
+      !(window as unknown as { __solomdSavePathOverride?: string }).__solomdSavePathOverride
+    ) {
+      window.dispatchEvent(
+        new CustomEvent('solomd:open-custom-export', {
+          detail: { scope: 'current', format },
+        }),
+      );
+      return;
+    }
     const ctx = activeContext();
     if (!ctx) return;
     // Gitee IJXS8V — run the same leniency preprocessors the preview uses

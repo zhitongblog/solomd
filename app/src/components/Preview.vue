@@ -1332,6 +1332,11 @@ defineExpose({ scrollToLine, openSearch });
   padding: 0.5em 0;
   margin: 0.5em 0;
 }
+/* #573 — prevent consecutive inline \dfrac / \frac items from stacking/colliding */
+:where(.preview-content) .katex:not(.katex-display .katex):has(.mfrac) {
+  display: inline-block;
+  margin: 0.2em 0;
+}
 /* Wikilinks (F1, v2.0) */
 .preview-content .md-wikilink {
   color: var(--accent-text);

@@ -211,9 +211,15 @@ const insertTableDialogOpen = ref(false);
 function onOpenInsertTableDialog() {
   insertTableDialogOpen.value = true;
 }
-// #535 & #359 — "Custom / Batch Export" dialog
+// #535 & #359 & #572 — "Custom / Batch Export" dialog
 const customExportDialogOpen = ref(false);
-function onOpenCustomExportDialog() {
+const customExportPreset = ref<{
+  scope?: 'current' | 'folder';
+  format?: 'pdf' | 'html' | 'docx' | 'epub' | 'odt' | 'latex' | 'rtf' | 'png' | 'textpack';
+} | null>(null);
+function onOpenCustomExportDialog(e?: Event) {
+  const detail = (e as CustomEvent | undefined)?.detail;
+  customExportPreset.value = detail && typeof detail === 'object' ? detail : null;
   customExportDialogOpen.value = true;
 }
 function onInsertTableConfirm(rows: number, cols: number, align: 'left' | 'center' | 'right' | null = null) {
@@ -876,6 +882,15 @@ watchEffect(() => {
 // shipped in 4.6 but setFolder was never called → persistence silently no-op'd).
 watchEffect(() => {
   properties.setFolder(workspace.currentFolder).catch(() => {});
+});
+
+// #173: auto-discover `<workspace>/.solomd/plugins/*.json` when opening a vault.
+watchEffect(() => {
+  const folder = workspace.currentFolder;
+  if (!folder || folder.startsWith('saf:') || folder.startsWith('content://')) return;
+  void import('./lib/user-plugins').then(({ syncWorkspacePlugins }) => {
+    syncWorkspacePlugins(folder).catch(() => {});
+  });
 });
 
 // v2.4: push the active folder into the capture endpoint's view of the
@@ -2748,6 +2763,7 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
       :is="CustomExportDialogC"
       v-if="CustomExportDialogC"
       :open="customExportLazyOpen"
+      :preset="customExportPreset"
       @close="customExportDialogOpen = false"
     />
     <SessionRestoreDialog />

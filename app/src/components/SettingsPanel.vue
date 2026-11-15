@@ -61,6 +61,14 @@ import { DsModal } from '../ui';
 import Icons from './Icons.vue';
 import { getDict } from '../i18n';
 import { flatten, englishFallbackNeedles, blockMatches, normalize, queryMatcher } from '../lib/settings-search';
+import {
+  getUserPlugins,
+  saveUserPlugins,
+  STARTER_PLUGIN_PRESETS,
+  syncWorkspacePlugins,
+  writePluginToWorkspace,
+  type UserPluginManifest,
+} from '../lib/user-plugins';
 import type { Theme } from '../types';
 
 const isMobilePlatform = isIOS();
@@ -85,6 +93,50 @@ const autoEngineName = computed(() =>
 const { t, lang } = useI18n();
 const supportModalOpen = ref(false);
 const isZhLocale = computed(() => String(lang.value || '').startsWith('zh'));
+const userPlugins = ref<UserPluginManifest[]>(getUserPlugins());
+
+function refreshUserPlugins() {
+  userPlugins.value = getUserPlugins();
+}
+
+function toggleUserPlugin(id: string) {
+  const next = userPlugins.value.map((p) =>
+    p.id === id ? { ...p, enabled: !p.enabled } : p,
+  );
+  saveUserPlugins(next);
+  userPlugins.value = next;
+}
+
+function removeUserPlugin(id: string) {
+  const next = userPlugins.value.filter((p) => p.id !== id);
+  saveUserPlugins(next);
+  userPlugins.value = next;
+}
+
+async function installStarterPlugin(preset: UserPluginManifest) {
+  const cur = getUserPlugins();
+  const idx = cur.findIndex((p) => p.id === preset.id);
+  const next = idx >= 0
+    ? cur.map((p, i) => (i === idx ? { ...preset, enabled: true } : p))
+    : [...cur, { ...preset, enabled: true }];
+  saveUserPlugins(next);
+  userPlugins.value = next;
+  const wsFolder = useWorkspaceStore().currentFolder;
+  if (wsFolder) {
+    try {
+      await writePluginToWorkspace(wsFolder, preset);
+    } catch {}
+  }
+}
+
+async function rescanWorkspacePlugins() {
+  const wsFolder = useWorkspaceStore().currentFolder;
+  if (wsFolder) {
+    userPlugins.value = await syncWorkspacePlugins(wsFolder);
+  } else {
+    refreshUserPlugins();
+  }
+}
 const activeSupporterBadge = computed(() => badgeInfo(supporterRecord.value.active, isZhLocale.value));
 void initSupporterState();
 // #180 — the chord in this sentence comes from the user's bindings, not from
@@ -1424,6 +1476,23 @@ function onSelectPdfFont(v: string) {
 
         <section data-cat="basics">
           <label>
+            <input
+              type="checkbox"
+              :checked="settings.hideActiveLineMarkers"
+              :disabled="settings.alwaysShowMarkers"
+              @change="settings.toggleHideActiveLineMarkers()"
+            />
+            {{ isZhLocale ? '纯粹所见即所得（光标所在行也隐藏 # / ** 等语法标记）' : 'Pure WYSIWYG (keep # / ** syntax markers hidden on active line)' }}
+          </label>
+          <div class="hint">
+            {{ isZhLocale
+              ? '开启后，点击或移动光标到某一行时不再展开 #、**、链接 URL 等语法字符，彻底消除光标切行时的文字横向位移（拖动选中文本时仍会显示源码）。'
+              : 'When enabled, clicking or moving the cursor onto a line keeps # / ** / link URLs hidden so text never shifts horizontally (selecting a range still reveals raw syntax).' }}
+          </div>
+        </section>
+
+        <section data-cat="basics">
+          <label>
             <input type="checkbox" :checked="settings.collapseBlockSource" @change="settings.toggleCollapseBlockSource()" />
             {{ t('settings.collapseBlockSource') }}
           </label>
@@ -1976,6 +2045,60 @@ function onSelectPdfFont(v: string) {
           </p>
         </section>
 
+        <section data-cat="integrations">
+          <h3 class="settings__group-title">
+            {{ isZhLocale ? '轻量扩展与自定义脚本 (.solomd/plugins)' : 'User Extensions & Custom Scripts (.solomd/plugins)' }}
+          </h3>
+          <p class="setting-hint">
+            {{ isZhLocale
+              ? '无需重新编译即可添加自定义「/」斜杠命令、文本转换规则（正则/模板）与 Webhook 发布动作。支持保存在本地或工作区 .solomd/plugins/*.json。'
+              : 'Extend SoloMD with declarative JSON manifests for custom "/" slash commands, regex/template text transforms, and webhook publishers.' }}
+          </p>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0;">
+            <button
+              v-for="preset in STARTER_PLUGIN_PRESETS"
+              :key="preset.id"
+              type="button"
+              style="font-size: 11px; padding: 4px 10px;"
+              @click="installStarterPlugin(preset)"
+            >
+              + {{ isZhLocale ? `安装预设：${preset.name}` : `Install: ${preset.name}` }}
+            </button>
+            <button
+              v-if="workspace.currentFolder"
+              type="button"
+              style="font-size: 11px; padding: 4px 10px;"
+              @click="rescanWorkspacePlugins()"
+            >
+              ↻ {{ isZhLocale ? '扫描工作区 .solomd/plugins' : 'Scan .solomd/plugins' }}
+            </button>
+          </div>
+          <div v-if="userPlugins.length > 0" style="display: flex; flex-direction: column; gap: 6px; margin-top: 8px;">
+            <div
+              v-for="pl in userPlugins"
+              :key="pl.id"
+              style="display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px;"
+            >
+              <label style="margin: 0; display: flex; align-items: center; gap: 8px; flex: 1;">
+                <input type="checkbox" :checked="pl.enabled" @change="toggleUserPlugin(pl.id)" />
+                <span>
+                  <strong>{{ pl.name }}</strong>
+                  <span v-if="pl.description" class="setting-hint" style="display: block; margin: 2px 0 0;">
+                    {{ pl.description }}
+                  </span>
+                </span>
+              </label>
+              <button
+                type="button"
+                style="font-size: 11px; padding: 2px 8px;"
+                @click="removeUserPlugin(pl.id)"
+              >
+                {{ isZhLocale ? '移除' : 'Remove' }}
+              </button>
+            </div>
+          </div>
+        </section>
+
         <section data-cat="export">
           <label>{{ t('settings.defaultExportDir') }}</label>
           <div style="display: flex; gap: 8px; align-items: center;">
@@ -2248,12 +2371,25 @@ function onSelectPdfFont(v: string) {
               :checked="settings.exportHtmlWithNav"
               @change="settings.toggleExportHtmlWithNav()"
             />
-            {{ isZhLocale ? '导出 HTML 文件带导航栏与全局搜索' : 'Include navigation & global search sidebar in exported HTML' }}
+            {{ isZhLocale ? '添加书签栏内容（HTML包含搜索面板）' : 'Include bookmark sidebar (HTML includes search panel)' }}
           </label>
           <p class="setting-hint">
             {{ isZhLocale
-              ? '开启后，通过「文件 → 导出 → 导出为 HTML…」或「自定义导出」生成的单文件 HTML 会附带左侧多标签页「导航栏（书签树）」与「全局搜索」面板。'
-              : 'Adds a left multi-tab sidebar with a hierarchical bookmark tree and offline full-text search to standalone HTML exports.' }}
+              ? '开启后，导出的 PDF 会自动嵌入原生左侧书签大纲树（/Outlines），导出的单文件 HTML 会附带左侧多标签页「导航栏（书签树）」与「全局搜索」面板。'
+              : 'Embeds a native PDF bookmark outline tree (/Outlines) and adds a left navigation + full-text search sidebar to standalone HTML exports.' }}
+          </p>
+          <label style="margin-top: 8px;">
+            <input
+              type="checkbox"
+              :checked="settings.exportIncludeTocPage"
+              @change="settings.toggleExportIncludeTocPage()"
+            />
+            {{ isZhLocale ? '添加目录页（文档开头的目录含页码）' : 'Include Table of Contents page at start of document (with page numbers)' }}
+          </label>
+          <p class="setting-hint">
+            {{ isZhLocale
+              ? '开启后，导出的 PDF、Word (.docx)、HTML、EPUB、ODT、LaTeX、RTF 会在文档开头生成可点击跳转的目录页（PDF 含右侧虚线引导与真实页码）。'
+              : 'Generates a clickable Table of Contents page at the start of exported PDF (with dotted leaders and page numbers), Word (.docx), HTML, EPUB, ODT, LaTeX, and RTF documents.' }}
           </p>
         </section>
 

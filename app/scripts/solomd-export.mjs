@@ -61,7 +61,7 @@ import {
 // ---------------------------------------------------------------------------
 
 function parseArgs(argv) {
-  const args = { input: null, format: 'html', output: null };
+  const args = { input: null, format: 'html', output: null, toc: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--format' || a === '-f') {
@@ -70,6 +70,10 @@ function parseArgs(argv) {
       args.output = argv[++i];
     } else if (a === '--number-headings') {
       args.numberHeadings = true;
+    } else if (a === '--toc') {
+      args.toc = true;
+    } else if (a === '--no-toc') {
+      args.toc = false;
     } else if (a === '--help' || a === '-h') {
       args.help = true;
     } else if (!args.input && !a.startsWith('-')) {
@@ -80,16 +84,17 @@ function parseArgs(argv) {
 }
 
 function printHelp() {
-  console.error(`solomd-export — convert .md to html / md / txt / docx
+  console.error(`solomd-export — convert .md to html / md / txt / docx / epub / odt / latex / rtf
 
 Usage:
-  solomd-export <input.md> [--format html|md|txt|docx] [--output <path>]
+  solomd-export <input.md> [--format html|md|txt|docx|epub|odt|latex|rtf] [--output <path>] [--toc]
 
 Options:
-  -f, --format <fmt>   Output format (default: html)
-  -o, --output <path>  Output file (default: <input>.<fmt> next to input)
+  -f, --format <fmt>     Output format (default: html)
+  -o, --output <path>    Output file (default: <input>.<fmt> next to input)
+      --toc              Include Table of Contents at the start of the document
       --number-headings  Promote numbered sections (6.2, 6.2.1) to headings
-  -h, --help           Show this help
+  -h, --help             Show this help
 
 Notes:
   - Reads the same markdown-it config as the SoloMD app
@@ -889,17 +894,35 @@ async function main() {
   const baseName = path.basename(inputPath).replace(/\.[^.]+$/, '');
   const dir = path.dirname(inputPath);
   const fmt = args.format.toLowerCase();
-  const validFormats = ['html', 'md', 'txt', 'docx'];
+  const validFormats = ['html', 'md', 'txt', 'docx', 'epub', 'odt', 'latex', 'tex', 'rtf'];
   if (!validFormats.includes(fmt)) {
     console.error(`solomd-export: unknown format: ${fmt} (try ${validFormats.join('|')})`);
     process.exit(2);
   }
 
-  const outPath = args.output ?? path.join(dir, `${baseName}.${fmt}`);
+  const ext = fmt === 'latex' ? 'tex' : fmt;
+  const outPath = args.output ?? path.join(dir, `${baseName}.${ext}`);
 
   switch (fmt) {
     case 'html': {
-      const body = renderHtml(stripFrontMatter(source));
+      let body = renderHtml(stripFrontMatter(source));
+      if (args.toc) {
+        const headings = [];
+        body = body.replace(/<h([1-6])([^>]*)>([\s\S]*?)<\/h\1>/gi, (full, lvl, attrs, inner) => {
+          const text = inner.replace(/<[^>]+>/g, '').trim();
+          const idMatch = /\bid="([^"]+)"/i.exec(attrs);
+          const id = idMatch ? idMatch[1] : `h-${headings.length + 1}`;
+          headings.push({ level: Number(lvl), id, text });
+          if (idMatch) return full;
+          return `<h${lvl}${attrs} id="${id}">${inner}</h${lvl}>`;
+        });
+        if (headings.length > 0) {
+          const items = headings
+            .map((h) => `<li style="margin-left:${(h.level - 1) * 16}px"><a href="#${h.id}">${h.text}</a></li>`)
+            .join('\n');
+          body = `<nav class="md-toc"><h2>Table of Contents</h2><ul>\n${items}\n</ul></nav>\n${body}`;
+        }
+      }
       const headCss = hasKatex(body) ? standaloneKatexCss() : '';
       fs.writeFileSync(outPath, htmlDoc(baseName, body, headCss), 'utf8');
       break;
@@ -918,6 +941,26 @@ async function main() {
       // a text placeholder.
       const buf = await markdownToDocxBuffer(source, baseName, inputPath);
       fs.writeFileSync(outPath, buf);
+      break;
+    }
+    case 'epub':
+    case 'odt':
+    case 'latex':
+    case 'tex':
+    case 'rtf': {
+      const { execFileSync } = await import('node:child_process');
+      const pandocFmt = fmt === 'tex' ? 'latex' : fmt;
+      const pandocArgs = [
+        inputPath,
+        '--from=markdown+tex_math_dollars+pipe_tables+task_lists+strikeout+footnotes',
+        `--to=${pandocFmt}`,
+        '--standalone',
+        `--resource-path=${dir}`,
+        '-o',
+        outPath,
+      ];
+      if (args.toc) pandocArgs.push('--toc');
+      execFileSync('pandoc', pandocArgs, { stdio: 'inherit' });
       break;
     }
   }

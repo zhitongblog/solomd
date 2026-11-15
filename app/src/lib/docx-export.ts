@@ -909,6 +909,8 @@ export async function markdownToDocxBlob(
   plantumlServer: string | null = null,
   /** #553 — bytes of the user's .docx reference template, when configured. */
   referenceDocx?: Uint8Array | null,
+  /** #572 — explicit override for whether to generate a leading Table of Contents page. */
+  includeTocPage?: boolean,
 ): Promise<Blob> {
   srcImages.clear();
   nextOrderedListInstance = 0;
@@ -916,7 +918,8 @@ export async function markdownToDocxBlob(
   // Apply the same leniency preprocessors the HTML render path uses (malformed
   // table delimiters, list re-indent, inline-HTML blocks) so DOCX export
   // doesn't silently drop tables/lists the preview shows correctly.
-  const tokens = md.parse(preprocessMarkdown(source ?? ''), {});
+  const cleanedSource = (source ?? '').replace(/^[ \t]*\[toc\][ \t]*\r?\n?/gim, '');
+  const tokens = md.parse(preprocessMarkdown(cleanedSource), {});
   const imageRoot = extractImageRoot(source || '');
   await prefetchImages(tokens, imageRoot, filePath);
   const blocks = await buildBody(tokens, imageRoot, filePath);
@@ -927,7 +930,8 @@ export async function markdownToDocxBlob(
 
   const front: BlockChild[] = [];
   if (tpl.cover) front.push(...buildCover(tpl));
-  if (tpl.toc) {
+  const wantToc = typeof includeTocPage === 'boolean' ? includeTocPage : tpl.toc;
+  if (wantToc) {
     // A Word TOC is a field, not text: Word fills it in and offers to update
     // it on open. Generating a static list instead would go stale the moment
     // anyone edited the document.

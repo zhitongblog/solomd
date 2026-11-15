@@ -2959,6 +2959,14 @@ export const liveBlocksTheme = EditorView.theme({
     overflowX: 'auto',
     textAlign: 'center',
   },
+  // #573 — Inline \dfrac / \frac inside consecutive list items or lines
+  // overflows a `display: inline` (line-height: 1.2) span and collides
+  // vertically. Promoting fraction-bearing inline math to `inline-block`
+  // with vertical margin makes the line box expand to fit the fraction.
+  '.cm-live-inline-math:has(.mfrac)': {
+    display: 'inline-block',
+    margin: '0.2em 0',
+  },
   // #530 — Left-align Mermaid diagrams like images (instead of centered), and
   // style the `+` / `−` fold toggle button on the opening ` ```mermaid ` line.
   '.cm-live-block--mermaid': {

@@ -44,7 +44,7 @@ const hideDeco = Decoration.replace({});
 // caret moves. Markers are dimmed so they read as syntax, not text.
 const markerMark = Decoration.mark({ class: 'cm-md-marker' });
 
-const makeLiveMarkdownPlugin = (showMarkers: boolean) => ViewPlugin.fromClass(
+const makeLiveMarkdownPlugin = (showMarkers: boolean, hideActiveLineMarkers = false) => ViewPlugin.fromClass(
   class {
     decorations: DecorationSet;
 
@@ -70,6 +70,13 @@ const makeLiveMarkdownPlugin = (showMarkers: boolean) => ViewPlugin.fromClass(
         return;
       }
       if (!showMarkers && update.selectionSet && !isDragging(update.state)) {
+        if (
+          hideActiveLineMarkers &&
+          update.startState.selection.main.empty &&
+          update.state.selection.main.empty
+        ) {
+          return;
+        }
         this.decorations = this.build(update.view);
       }
     }
@@ -78,8 +85,9 @@ const makeLiveMarkdownPlugin = (showMarkers: boolean) => ViewPlugin.fromClass(
       const builder = new RangeSetBuilder<Decoration>();
       const sel = view.state.selection.main;
       const dragging = isDragging(view.state);
-      const fromLine = dragging ? -1 : view.state.doc.lineAt(sel.from).number;
-      const toLine = dragging ? -1 : view.state.doc.lineAt(sel.to).number;
+      const suppressCaretReveal = dragging || (hideActiveLineMarkers && sel.empty);
+      const fromLine = suppressCaretReveal ? -1 : view.state.doc.lineAt(sel.from).number;
+      const toLine = suppressCaretReveal ? -1 : view.state.doc.lineAt(sel.to).number;
       const tree = syntaxTree(view.state);
 
       for (const { from, to } of view.visibleRanges) {
@@ -227,14 +235,21 @@ const liveTheme = EditorView.theme({
   },
 });
 
-const liveMarkdownPlugin = makeLiveMarkdownPlugin(false);
-const liveMarkdownPluginShowMarkers = makeLiveMarkdownPlugin(true);
+const liveMarkdownPlugin = makeLiveMarkdownPlugin(false, false);
+const liveMarkdownPluginHideActive = makeLiveMarkdownPlugin(false, true);
+const liveMarkdownPluginShowMarkers = makeLiveMarkdownPlugin(true, false);
 
 /** Full live-preview extension bundle. Pass `[]` to disable. */
-export function livePreviewExtension(opts: { showMarkers?: boolean } = {}) {
+export function livePreviewExtension(
+  opts: { showMarkers?: boolean; hideActiveLineMarkers?: boolean } = {},
+) {
   return [
     syntaxHighlighting(markdownRichStyle),
-    opts.showMarkers ? liveMarkdownPluginShowMarkers : liveMarkdownPlugin,
+    opts.showMarkers
+      ? liveMarkdownPluginShowMarkers
+      : opts.hideActiveLineMarkers
+        ? liveMarkdownPluginHideActive
+        : liveMarkdownPlugin,
     liveTheme,
   ];
 }

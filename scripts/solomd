@@ -134,9 +134,10 @@ cmd_help() {
     printf "  ${GREEN}%-22s${NC} %s\n" "open <title|path>" "Open file in SoloMD"
     printf "  ${GREEN}%-22s${NC} %s\n" "new <title> [text]" "Create new note + open"
     printf "  ${GREEN}%-22s${NC} %s\n" "list [folder]" "List markdown files"
+    printf "  ${GREEN}%-22s${NC} %s\n" "stats [folder]" "Show vault note count, lines, and word stats"
     printf "  ${GREEN}%-22s${NC} %s\n" "search <query>" "Search markdown for text"
     printf "  ${GREEN}%-22s${NC} %s\n" "cat <title|path>" "Print file content"
-    printf "  ${GREEN}%-22s${NC} %s\n" "export <file> -f FMT" "Export to html / md / txt / docx (needs a source checkout)"
+    printf "  ${GREEN}%-22s${NC} %s\n" "export <file> -f FMT" "Export to html / docx / epub / odt / latex / rtf / md / txt"
     printf "  ${GREEN}%-22s${NC} %s\n" "agent <prompt…>" "Run an LLM agent against the vault via MCP"
     printf "  ${GREEN}%-22s${NC} %s\n" "mcp <sub>" "Manage MCP integration (mcp help for subcommands)"
     printf "  ${GREEN}%-22s${NC} %s\n" "mcp-config" "Print the MCP config snippet (back-compat alias)"
@@ -275,10 +276,54 @@ cmd_cat() {
 # So an installed CLI says so plainly instead of pointing at a path that
 # was never going to exist. SOLOMD_EXPORT_SCRIPT points it at a checkout.
 usage_export() {
-    echo "Usage: solomd export <title|path> [--format html|md|txt|docx] [--output <path>] [--number-headings]"
+    echo "Usage: solomd export <title|path> [--format html|docx|epub|odt|latex|rtf|md|txt] [--output <path>] [--toc] [--number-headings]"
     echo "  Export with the same engine as the app. Default format html, written next to the note."
     echo "  Needs Node.js 18+ and a SoloMD source checkout with \`pnpm install\` run in app/:"
     echo "  run scripts/solomd from that checkout, or set SOLOMD_EXPORT_SCRIPT=<checkout>/app/scripts/solomd-export.mjs."
+}
+
+usage_stats() {
+    echo "Usage: solomd stats [folder|file]"
+    echo "  Print total markdown files, lines, and words in the vault folder or file (default: notes dir)."
+}
+
+cmd_stats() {
+    wants_help "$@" && { usage_stats; exit 0; }
+    local folder="${1:-$NOTES_DIR}"
+    [[ "$folder" != "/" ]] && folder="${folder%/}"
+    if [[ -f "$folder" ]]; then
+        local l w b
+        l=$(wc -l < "$folder" | tr -d ' ')
+        w=$(wc -w < "$folder" | tr -d ' ')
+        b=$(wc -c < "$folder" | tr -d ' ')
+        printf "${BOLD}Note Statistics (%s)${NC}\n" "$folder"
+        printf "  Lines: %d\n" "$l"
+        printf "  Words: %d\n" "$w"
+        printf "  Size:  %d bytes\n" "$b"
+        return 0
+    fi
+    if [[ ! -d "$folder" ]]; then
+        printf "${YELLOW}Not a folder:${NC} %s\n" "$folder" >&2
+        exit 1
+    fi
+    local files=0 lines=0 words=0 bytes=0
+    while IFS= read -r f; do
+        [[ -z "$f" ]] && continue
+        files=$((files + 1))
+        local l w b
+        l=$(wc -l < "$f" | tr -d ' ')
+        w=$(wc -w < "$f" | tr -d ' ')
+        b=$(wc -c < "$f" | tr -d ' ')
+        lines=$((lines + l))
+        words=$((words + w))
+        bytes=$((bytes + b))
+    done < <(find "$folder" -mindepth 1 \( -name ".*" -o -name node_modules \) -prune -o \
+        -type f \( -name "*.md" -o -name "*.markdown" \) -print 2>/dev/null)
+    printf "${BLUE}Vault Statistics${NC} (%s)\n" "$folder"
+    printf "  Notes: ${GREEN}%d${NC}\n" "$files"
+    printf "  Lines: ${GREEN}%d${NC}\n" "$lines"
+    printf "  Words: ${GREEN}%d${NC}\n" "$words"
+    printf "  Size:  ${GREEN}%d${NC} bytes\n" "$bytes"
 }
 
 cmd_export() {
@@ -766,6 +811,7 @@ case "${1:-help}" in
     open)       shift; cmd_open "$@" ;;
     new)        shift; cmd_new "$@" ;;
     list)       shift; cmd_list "$@" ;;
+    stats)      shift; cmd_stats "$@" ;;
     search)     shift; cmd_search "$@" ;;
     cat)        shift; cmd_cat "$@" ;;
     export)     shift; cmd_export "$@" ;;

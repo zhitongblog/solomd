@@ -37,8 +37,8 @@ onMounted(async () => {
 // app release. Seeded with the built-in list so sponsors/testers/promoters
 // always appear even when offline.
 const sponsors = ref<string[]>(['tyysoft(太阳雨)']);
-const promoters = ref<string[]>(['Garfield', 'lcfactorization', '^9星守辰^']);
-const testers = ref<string[]>(['张工', '冰瞬若风', 'tyysoft(太阳雨)', 'lcfactorization']);
+const promoters = ref<string[]>(['Garfield', 'lcfactorization', '^9星守辰^', 'LinuxLinks', 'ToBeFree', '极客范 (JikeFan)', 'BYOKList']);
+const testers = ref<string[]>(['张工', '冰瞬若风', 'tyysoft(太阳雨)', 'lcfactorization', 'ScienceZone', 'Limoncello-Zoey', 'davi-jorge-art', 'zhuhaisto', 'licryle', 'ed-edwin', 'xjfnet', 'Snowboy801']);
 let sponsorsLoaded = false;
 async function loadSponsors() {
   if (sponsorsLoaded) return;

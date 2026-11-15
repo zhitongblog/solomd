@@ -30,6 +30,32 @@
       "since": "2026-04",
       "platform": "统信玲珑",
       "url": "https://store.linyaps.org.cn/apps/app.solomd?arch=x86_64"
+    },
+    {
+      "name": "LinuxLinks",
+      "since": "2026-10",
+      "platform": "LinuxLinks",
+      "url": "https://www.linuxlinks.com/solomd-local-first-markdown-editor/",
+      "featured": true,
+      "quote": "SoloMD is a local-first Markdown editor and knowledge-base manager for people who want their notes to stay plain .md files on disk."
+    },
+    {
+      "name": "ToBeFree",
+      "since": "2026-10",
+      "platform": "ToBeFree.app",
+      "url": "https://tobefree.app/en/tools/solomd/"
+    },
+    {
+      "name": "极客范 (JikeFan)",
+      "since": "2026-11",
+      "platform": "JikeFan",
+      "url": "https://jikefan.com/en/app/solomd/5.0.14"
+    },
+    {
+      "name": "BYOKList",
+      "since": "2026-10",
+      "platform": "BYOKList",
+      "url": "https://byoklist.com/tool/solomd.app"
     }
   ],
   "testers": [
@@ -54,8 +80,8 @@
       "github": "tyysoft",
       "since": "2026-09",
       "contribution": {
-        "en": "80+ detailed bug reports and UX analyses covering file tree navigation, workspace management, table editor, keyboard shortcuts, and sponsoring research into end-to-end encrypted personal cloud drive backup & multi-device sync.",
-        "zh": "提交了 80+ 份详尽的问题报告与交互分析，深度覆盖文件树导航、工作区管理、表格编辑器及快捷键交互，并慷慨赞助支持笔记端到端加密备份至个人网盘与网盘多端同步方案研究。"
+        "en": "100+ detailed bug reports and UX designs across v4.14–v5.2.0 covering the Unified Export Center (#572), standalone HTML navigation & search sidebar (#570), merged book hierarchy (#562), PDF clickable TOC & UTF-16BE bookmarks (#563/#566/#567), file tree navigation, table editor, and sponsoring Vault-scoped end-to-end encrypted personal cloud drive backup & multi-device sync (#531).",
+        "zh": "累计提交 100+ 份详尽的问题报告与交互设计（v4.14–v5.2.0），深度覆盖全格式统一导出中心（#572）、单文件 HTML 书签栏与全文搜索面板（#570）、整书合并导出章节层级（#562）、PDF 可点击目录页与中文大纲书签（#563/#566/#567）、文件树导航、表格编辑器，并慷慨赞助支持基于知识库隔离的端到端加密个人网盘多端同步（#531）。"
       }
     },
     {
@@ -426,6 +452,28 @@
         "en": "Contributed Runcrate BYOK AI provider integration (#485).",
         "zh": "贡献了 Runcrate BYOK AI 服务商集成方案（#485）。"
       }
+    },
+    {
+      "name": "Lee (encircles)",
+      "github": "encircles",
+      "since": "2026-11",
+      "kind": "code",
+      "prs": ["#559"],
+      "contribution": {
+        "en": "Fixed <details><summary> in-place folding across both the CodeMirror live-edit engine and the Windows plain-block editor (#559).",
+        "zh": "修复了 <details><summary> 折叠块在 CodeMirror 实时编辑引擎与 Windows 块级编辑器中的原位折叠交互（#559）。"
+      }
+    },
+    {
+      "name": "ss9975591",
+      "github": "ss9975591",
+      "since": "2026-11",
+      "kind": "code",
+      "prs": ["#538"],
+      "contribution": {
+        "en": "Preserved surrounding prose content when pasting rich text containing HTML tables (#538).",
+        "zh": "修复了粘贴包含 HTML 表格的富文本时保留表格前后正文段落的解析逻辑（#538）。"
+      }
     }
   ],
   "communityReporters": [
@@ -610,6 +658,18 @@
     "easleyclaymore",
     "Vveeb",
     "luming8",
+    "AYSHSTUDIO",
+    "Zhanyuanium",
+    "Maybe5488",
+    "yamsjix",
+    "noFriesHere",
+    "mathews",
+    "haha-911",
+    "shan3i",
+    "bouda1",
+    "zoceany",
+    "ABPAjke",
+    "lee-nihao2333",
     {
       "name": "暗石绿 (qxwxxm)",
       "gitee": "qxwxxm"

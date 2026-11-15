@@ -11,8 +11,15 @@ import { openDirectoryInFileManager } from '../lib/reveal-in-file-manager';
 import { sourceFolderFor, treeSelection } from '../lib/new-file-target';
 import { buildMergedBookMarkdown, type MergedNoteInput } from '../lib/merged-book';
 
+type ExportScope = 'current' | 'folder';
+type ExportFormat = 'pdf' | 'html' | 'docx' | 'epub' | 'odt' | 'latex' | 'rtf' | 'png' | 'textpack';
+
 const props = defineProps<{
   open: boolean;
+  preset?: {
+    scope?: ExportScope;
+    format?: ExportFormat;
+  } | null;
 }>();
 
 const emit = defineEmits<{
@@ -27,11 +34,12 @@ const exporter = useExport();
 
 const isZh = computed(() => settings.language === 'zh');
 
-type ExportScope = 'current' | 'folder';
-type ExportFormat = 'pdf' | 'html' | 'docx' | 'epub' | 'png' | 'textpack';
-
 const scope = ref<ExportScope>('current');
 const format = ref<ExportFormat>(settings.lastCustomExportFormat || 'pdf');
+
+function formatExtension(fmt: ExportFormat): string {
+  return fmt === 'latex' ? 'tex' : fmt;
+}
 const sourceFolder = ref<string>(workspace.currentFolder || '');
 const includeSubfolders = ref(true);
 const mergeIntoSingleDocument = ref(false);
@@ -103,10 +111,19 @@ function notifyExportSuccess(message: string, dir: string) {
 }
 
 watch(
-  () => props.open,
-  (isOpen) => {
+  [() => props.open, () => props.preset],
+  ([isOpen, preset]) => {
     if (!isOpen) return;
-    format.value = settings.lastCustomExportFormat || 'pdf';
+    if (preset?.scope) {
+      scope.value = preset.scope;
+    } else {
+      scope.value = 'current';
+    }
+    if (preset?.format) {
+      format.value = preset.format;
+    } else {
+      format.value = settings.lastCustomExportFormat || 'pdf';
+    }
     // #554 — mirror the Explorer's current row into the source folder field.
     // A tree selection always wins; without one keep the last manual choice,
     // falling back to the vault root on the very first open.
@@ -252,7 +269,7 @@ async function runCustomExport() {
   statusMessage.value = '';
   statusKind.value = '';
   progressText.value = '';
-  const ext = format.value;
+  const ext = formatExtension(format.value);
 
   try {
     if (scope.value === 'current') {
@@ -270,6 +287,8 @@ async function runCustomExport() {
         filePath: tab.filePath,
         outputPath: targetPath,
         format: format.value,
+        includeBookmarks: settings.exportHtmlWithNav,
+        includeTocPage: settings.exportIncludeTocPage,
       });
       lastExportedPath.value = targetPath;
       const msg = isZh.value ? `导出成功：${targetPath}` : `Exported to: ${targetPath}`;
@@ -314,6 +333,8 @@ async function runCustomExport() {
           filePath: joinOutputPath(folder, `${folderName}.md`),
           outputPath: targetPath,
           format: format.value,
+          includeBookmarks: settings.exportHtmlWithNav,
+          includeTocPage: settings.exportIncludeTocPage,
         });
         lastExportedPath.value = targetPath;
         const msg = isZh.value
@@ -340,6 +361,8 @@ async function runCustomExport() {
             filePath: item.path,
             outputPath: targetPath,
             format: format.value,
+            includeBookmarks: settings.exportHtmlWithNav,
+            includeTocPage: settings.exportIncludeTocPage,
           });
           lastPath = targetPath;
           exportedCount++;
@@ -431,17 +454,30 @@ async function runCustomExport() {
             <option value="html">{{ isZh ? '网页文件 (.html)' : 'Standalone HTML (.html)' }}</option>
             <option value="docx">{{ isZh ? 'Word 文档 (.docx)' : 'Word Document (.docx)' }}</option>
             <option value="epub">{{ isZh ? 'EPUB 电子书 (.epub，需 Pandoc)' : 'EPUB eBook (.epub, requires Pandoc)' }}</option>
+            <option value="odt">{{ isZh ? 'ODT 文档 (.odt，需 Pandoc)' : 'OpenDocument Text (.odt, requires Pandoc)' }}</option>
+            <option value="latex">{{ isZh ? 'LaTeX 文档 (.tex，需 Pandoc)' : 'LaTeX Document (.tex, requires Pandoc)' }}</option>
+            <option value="rtf">{{ isZh ? 'RTF 富文本 (.rtf，需 Pandoc)' : 'Rich Text Format (.rtf, requires Pandoc)' }}</option>
             <option value="png">{{ isZh ? 'PNG 长图 (.png)' : 'PNG Image (.png)' }}</option>
             <option value="textpack">{{ isZh ? 'TextPack 自包含单文件容器 (.textpack)' : 'TextPack Self-Contained Bundle (.textpack)' }}</option>
           </select>
-          <label v-if="format === 'html'" class="custom-export__checkbox" style="margin-top: 4px;">
-            <input
-              type="checkbox"
-              :checked="settings.exportHtmlWithNav"
-              @change="settings.setExportHtmlWithNav(($event.target as HTMLInputElement).checked)"
-            />
-            <span>{{ isZh ? '导出 HTML 文件带导航栏（书签栏）与全局搜索面板' : 'Include navigation (bookmarks) & global search sidebar in HTML' }}</span>
-          </label>
+          <template v-if="format !== 'png' && format !== 'textpack'">
+            <label class="custom-export__checkbox" style="margin-top: 4px;">
+              <input
+                type="checkbox"
+                :checked="settings.exportHtmlWithNav"
+                @change="settings.setExportHtmlWithNav(($event.target as HTMLInputElement).checked)"
+              />
+              <span>{{ isZh ? '添加书签栏内容（HTML包含搜索面板）' : 'Include bookmark sidebar (HTML includes global search panel)' }}</span>
+            </label>
+            <label class="custom-export__checkbox" style="margin-top: 2px;">
+              <input
+                type="checkbox"
+                :checked="settings.exportIncludeTocPage"
+                @change="settings.setExportIncludeTocPage(($event.target as HTMLInputElement).checked)"
+              />
+              <span>{{ isZh ? '添加目录页（文档开头的目录含页码）' : 'Include Table of Contents page (leading TOC with page numbers)' }}</span>
+            </label>
+          </template>
         </div>
 
         <!-- #553 — optional user-supplied .docx used as a Word reference doc. -->

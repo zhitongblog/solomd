@@ -225,9 +225,42 @@ interface ModelProbe {
   error?: string | null;
 }
 
+interface DiscoveredOprProvider {
+  id: string;
+  name: string;
+  base_url: string;
+  models: string[];
+  source: string;
+}
+
 const probe = ref<ModelProbe | null>(null);
 const probing = ref(false);
 let probeDebounce: number | null = null;
+
+// #286 — Open Provider Registry (OPR) & Local AI Runner Auto-Discovery
+const oprProviders = ref<DiscoveredOprProvider[]>([]);
+const oprDiscovering = ref(false);
+const isZh = computed(() => (settingsStore.language || '').startsWith('zh'));
+
+async function discoverOpr(): Promise<void> {
+  if (oprDiscovering.value) return;
+  oprDiscovering.value = true;
+  try {
+    oprProviders.value = await invoke<DiscoveredOprProvider[]>('ai_discover_opr_providers');
+  } catch {
+    oprProviders.value = [];
+  } finally {
+    oprDiscovering.value = false;
+  }
+}
+
+function applyOprProvider(p: DiscoveredOprProvider): void {
+  emit('update:baseUrl', p.base_url);
+  if (p.models.length > 0) {
+    emit('update:model', p.models[0]);
+  }
+  scheduleCompatProbe(0);
+}
 
 async function probeCompat(): Promise<void> {
   const url = probeUrl.value;
@@ -353,6 +386,7 @@ watch(
     // Re-probe Ollama on every switch INTO ollama (force = false uses
     // the 30s cache so back-and-forth flips don't spam the server).
     if (p === 'ollama') void detectOllama(false);
+    if (p === 'openai-compat') void discoverOpr();
     if (
       p === 'openai-compat' ||
       (canProbeModels.value && (hasKey.value[p] || p === 'openrouter'))
@@ -387,6 +421,7 @@ watch(
 onMounted(async () => {
   await refreshAll();
   if (props.provider === 'ollama') void detectOllama(false);
+  if (isCompat.value) void discoverOpr();
   if (
     isCompat.value ||
     (canProbeModels.value && (hasKey.value[props.provider] || props.provider === 'openrouter'))
@@ -818,6 +853,38 @@ function onProviderChange(ev: Event): void {
             @click="probeCompat()"
           >
             {{ t('ai.ollama.refresh') }}
+          </button>
+
+          <button
+            type="button"
+            class="ai-settings__btn"
+            :disabled="oprDiscovering"
+            @click="discoverOpr()"
+          >
+            {{ oprDiscovering
+              ? (isZh ? '正在扫描 OPR…' : 'Scanning OPR…')
+              : (isZh ? '⚡ 自动发现本地服务 (OPR)' : '⚡ Discover Local Runners (OPR)') }}
+          </button>
+        </div>
+
+        <div
+          v-if="oprProviders.length > 0"
+          class="ai-settings__row"
+          style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px;"
+        >
+          <span class="ai-settings__hint" style="margin: 0;">
+            {{ isZh ? '已发现本地 AI 服务 (OPR)：' : 'Discovered local runners (OPR):' }}
+          </span>
+          <button
+            v-for="op in oprProviders"
+            :key="op.base_url"
+            type="button"
+            class="ai-settings__btn"
+            style="font-size: 11px; padding: 3px 8px;"
+            :title="`${op.base_url}${op.models.length ? ' · ' + op.models.join(', ') : ''}`"
+            @click="applyOprProvider(op)"
+          >
+            {{ op.name }} ({{ op.base_url.replace(/^https?:\/\//, '') }}<template v-if="op.models.length"> · {{ op.models.length }}</template>)
           </button>
         </div>
 

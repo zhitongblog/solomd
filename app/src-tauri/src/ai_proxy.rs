@@ -642,6 +642,232 @@ pub async fn ai_list_models(provider: String, base_url: Option<String>) -> Model
     }
 }
 
+// ---------------------------------------------------------------------------
+// #286 — Open Provider Registry (OPR) & Local AI Runner Auto-Discovery
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct DiscoveredOprProvider {
+    pub id: String,
+    pub name: String,
+    pub base_url: String,
+    pub models: Vec<String>,
+    /// Discovery source: "opr-manifest" | "opr-http" | "local-port"
+    pub source: String,
+}
+
+fn parse_opr_manifest_json(val: &Value, fallback_id: &str, source: &str) -> Option<DiscoveredOprProvider> {
+    let raw_url = val
+        .get("base_url")
+        .or_else(|| val.get("baseUrl"))
+        .or_else(|| val.get("endpoint"))
+        .or_else(|| val.get("url"))
+        .and_then(|v| v.as_str())?;
+    let base_url = normalize_openai_base(raw_url)?;
+    let id = val
+        .get("id")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or(fallback_id)
+        .to_string();
+    let name = val
+        .get("name")
+        .or_else(|| val.get("display_name"))
+        .or_else(|| val.get("displayName"))
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or(&id)
+        .to_string();
+    let mut models = Vec::new();
+    if let Some(arr) = val.get("models").and_then(|v| v.as_array()) {
+        for item in arr {
+            if let Some(s) = item.as_str() {
+                if !s.trim().is_empty() {
+                    models.push(s.trim().to_string());
+                }
+            } else if let Some(s) = item.get("id").or_else(|| item.get("name")).and_then(|v| v.as_str()) {
+                if !s.trim().is_empty() {
+                    models.push(s.trim().to_string());
+                }
+            }
+        }
+    }
+    Some(DiscoveredOprProvider {
+        id,
+        name,
+        base_url,
+        models,
+        source: source.to_string(),
+    })
+}
+
+fn scan_opr_manifest_dirs() -> Vec<DiscoveredOprProvider> {
+    let mut dirs_to_scan: Vec<PathBuf> = Vec::new();
+    if let Ok(env_dir) = std::env::var("OPR_DIR") {
+        let p = PathBuf::from(env_dir.trim());
+        if !p.as_os_str().is_empty() {
+            dirs_to_scan.push(p.clone());
+            dirs_to_scan.push(p.join("providers"));
+        }
+    }
+    if let Some(home) = std::env::var_os("HOME")
+        .or_else(|| std::env::var_os("USERPROFILE"))
+        .map(PathBuf::from)
+    {
+        dirs_to_scan.push(home.join(".config").join("opr").join("providers"));
+        dirs_to_scan.push(home.join(".opr").join("providers"));
+        dirs_to_scan.push(
+            home.join("Library")
+                .join("Application Support")
+                .join("opr")
+                .join("providers"),
+        );
+    }
+    if let Some(xdg) = std::env::var_os("XDG_CONFIG_HOME").map(PathBuf::from) {
+        dirs_to_scan.push(xdg.join("opr").join("providers"));
+    }
+    if let Some(appdata) = std::env::var_os("APPDATA").map(PathBuf::from) {
+        dirs_to_scan.push(appdata.join("opr").join("providers"));
+    }
+
+    let mut out: Vec<DiscoveredOprProvider> = Vec::new();
+    let mut seen_paths = std::collections::HashSet::new();
+
+    for dir in dirs_to_scan {
+        let Ok(entries) = std::fs::read_dir(&dir) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if !seen_paths.insert(path.clone()) {
+                continue;
+            }
+            let fname = path.file_name().and_then(|s| s.to_str()).unwrap_or("");
+            if !fname.ends_with(".json") {
+                continue;
+            }
+            let Ok(raw) = std::fs::read_to_string(&path) else {
+                continue;
+            };
+            let Ok(json) = serde_json::from_str::<Value>(&raw) else {
+                continue;
+            };
+            let stem = fname
+                .trim_end_matches(".opr.json")
+                .trim_end_matches(".json");
+            if let Some(p) = parse_opr_manifest_json(&json, stem, "opr-manifest") {
+                out.push(p);
+            }
+        }
+    }
+    out
+}
+
+/// Auto-discover local AI runners via Open Provider Registry (`*.opr.json`
+/// manifests, localhost OPR aggregator `127.0.0.1:49152/opr/v1/providers`,
+/// and standard local OpenAI-compatible ports such as LM Studio `:1234`,
+/// llama.cpp `:8080`, vLLM `:8000`, Jan `:1337`).
+#[tauri::command]
+pub async fn ai_discover_opr_providers() -> Vec<DiscoveredOprProvider> {
+    let mut discovered = tauri::async_runtime::spawn_blocking(scan_opr_manifest_dirs)
+        .await
+        .unwrap_or_default();
+
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_millis(650))
+        .connect_timeout(Duration::from_millis(450))
+        .build()
+        .ok();
+
+    if let Some(client) = client {
+        // 1. Query local OPR HTTP aggregator if running
+        if let Ok(resp) = client
+            .get("http://127.0.0.1:49152/opr/v1/providers")
+            .send()
+            .await
+        {
+            if resp.status().is_success() {
+                if let Ok(json) = resp.json::<Value>().await {
+                    let arr = json
+                        .get("providers")
+                        .or_else(|| json.get("data"))
+                        .and_then(|v| v.as_array())
+                        .or_else(|| json.as_array())
+                        .cloned()
+                        .unwrap_or_default();
+                    for (idx, item) in arr.iter().enumerate() {
+                        let fallback = format!("opr-{}", idx + 1);
+                        if let Some(p) = parse_opr_manifest_json(item, &fallback, "opr-http") {
+                            discovered.push(p);
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Probe well-known local OpenAI-compatible ports concurrently
+        let candidates = [
+            ("lm-studio", "LM Studio", "http://127.0.0.1:1234/v1"),
+            ("llama-cpp", "llama.cpp", "http://127.0.0.1:8080/v1"),
+            ("vllm", "vLLM", "http://127.0.0.1:8000/v1"),
+            ("jan", "Jan Local API", "http://127.0.0.1:1337/v1"),
+        ];
+        let mut tasks = Vec::new();
+        for (id, name, base) in candidates {
+            let c = client.clone();
+            tasks.push(async move {
+                let url = format!("{base}/models");
+                let resp = c.get(&url).send().await.ok()?;
+                if !resp.status().is_success() {
+                    return None;
+                }
+                let json: Value = resp.json().await.ok()?;
+                let arr = json
+                    .get("data")
+                    .and_then(|d| d.as_array())
+                    .or_else(|| json.as_array())
+                    .cloned()
+                    .unwrap_or_default();
+                let models: Vec<String> = arr
+                    .iter()
+                    .filter_map(|m| {
+                        m.get("id")
+                            .and_then(|v| v.as_str())
+                            .or_else(|| m.as_str())
+                            .map(|s| s.to_string())
+                    })
+                    .collect();
+                Some(DiscoveredOprProvider {
+                    id: id.to_string(),
+                    name: name.to_string(),
+                    base_url: base.to_string(),
+                    models,
+                    source: "local-port".to_string(),
+                })
+            });
+        }
+        let port_results = futures_util::future::join_all(tasks).await;
+        for item in port_results.into_iter().flatten() {
+            discovered.push(item);
+        }
+    }
+
+    // Deduplicate by normalized base_url, merging models if needed
+    let mut deduped: Vec<DiscoveredOprProvider> = Vec::new();
+    for item in discovered {
+        if let Some(existing) = deduped.iter_mut().find(|d| d.base_url == item.base_url) {
+            for m in item.models {
+                if !existing.models.contains(&m) {
+                    existing.models.push(m);
+                }
+            }
+        } else {
+            deduped.push(item);
+        }
+    }
+    deduped
+}
+
 // Keychain commands are `async` + `spawn_blocking` on purpose. A plain
 // `#[tauri::command] fn` runs on the main thread, and a keychain read can
 // block there for as long as macOS shows its "allow access" prompt — which
@@ -2976,5 +3202,25 @@ mod tests {
         let addr = serve_openai_ish(404, 200).await;
         let err = verify_against(addr, None).await.expect_err("should fail");
         assert!(err.contains("no model name"), "got {err}");
+    }
+
+    #[test]
+    fn opr_manifest_parses_standard_and_compact_shapes() {
+        let json = serde_json::json!({
+            "id": "lmstudio-local",
+            "name": "LM Studio",
+            "endpoint": "http://localhost:1234",
+            "models": [
+                { "id": "qwen2.5-coder-7b" },
+                "llama-3.2-3b"
+            ]
+        });
+        let p = super::parse_opr_manifest_json(&json, "fallback", "opr-manifest")
+            .expect("should parse OPR manifest");
+        assert_eq!(p.id, "lmstudio-local");
+        assert_eq!(p.name, "LM Studio");
+        assert_eq!(p.base_url, "http://localhost:1234/v1");
+        assert_eq!(p.models, vec!["qwen2.5-coder-7b", "llama-3.2-3b"]);
+        assert_eq!(p.source, "opr-manifest");
     }
 }

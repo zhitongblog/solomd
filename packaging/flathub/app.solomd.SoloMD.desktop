@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=SoloMD
+Comment=Local-first Markdown editor and personal knowledge vault
+Exec=solomd %U
+Icon=app.solomd.SoloMD
+Terminal=false
+Type=Application
+Categories=Office;TextEditor;Utility;
+MimeType=text/markdown;text/x-markdown;text/plain;
+StartupWMClass=solomd
+Keywords=Markdown;Notes;Editor;Knowledge;LaTeX;Mermaid;

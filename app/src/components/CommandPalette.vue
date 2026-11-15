@@ -23,7 +23,8 @@ const itemRefs = ref<(HTMLElement | null)[]>([]);
 function setItemRef(el: Element | unknown, i: number) {
   itemRefs.value[i] = (el as HTMLElement) ?? null;
 }
-const allCommands = useCommands();
+const initialCommands = useCommands() as Command[] & { __refreshPlugins?: () => Command[] };
+const activeCommands = ref<Command[]>(initialCommands);
 const { t } = useI18n();
 // #180 — read the chord at render time, not when the command list was built:
 // a rebind in Settings must show up here without reopening the app.
@@ -48,7 +49,7 @@ function localizedTitle(c: Command): string {
 const filtered = computed<Command[]>(() =>
   // Match both the localized title and the original English one, so
   // muscle-memory queries ("outline") keep working in any language.
-  fuzzyRank(query.value, allCommands, (c) => ({
+  fuzzyRank(query.value, activeCommands.value, (c) => ({
     primary: [localizedTitle(c), c.title],
     secondary: [c.id],
     literal: [c.hint ?? ''],
@@ -59,6 +60,9 @@ watch(
   () => props.open,
   async (v) => {
     if (v) {
+      if (typeof initialCommands.__refreshPlugins === 'function') {
+        activeCommands.value = initialCommands.__refreshPlugins();
+      }
       query.value = '';
       selectedIdx.value = 0;
       await nextTick();

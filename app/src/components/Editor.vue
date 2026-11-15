@@ -4570,7 +4570,10 @@ function richExtensionsFor(tab: Tab) {
           },
         }),
         liveBlocksTheme,
-      ], { showMarkers: settings.alwaysShowMarkers }),
+      ], {
+        showMarkers: settings.alwaysShowMarkers,
+        hideActiveLineMarkers: settings.hideActiveLineMarkers,
+      }),
       ...(settings.alwaysShowMarkers ? [] : [taskListExtension(), wikilinkExtension()]),
     ];
   }
@@ -4581,7 +4584,10 @@ function richExtensionsFor(tab: Tab) {
   }
   return settings.livePreview
     ? [
-        ...livePreviewExtension({ showMarkers: settings.alwaysShowMarkers }),
+        ...livePreviewExtension({
+          showMarkers: settings.alwaysShowMarkers,
+          hideActiveLineMarkers: settings.hideActiveLineMarkers,
+        }),
         ...(settings.alwaysShowMarkers ? [] : [taskListExtension(), wikilinkExtension()]),
       ]
     : richHighlightOnly();
@@ -6232,9 +6238,9 @@ watch(
   },
 );
 
-// #353 — markers shown/hidden are baked into the live bundles; swap them.
+// #353 / #303 — markers shown/hidden are baked into the live bundles; swap them.
 watch(
-  () => settings.alwaysShowMarkers,
+  [() => settings.alwaysShowMarkers, () => settings.hideActiveLineMarkers],
   () => {
     view?.dispatch({ effects: richCompartment.reconfigure(richExtensionsFor(props.tab)) });
   },
@@ -7886,6 +7892,10 @@ const cls = computed(() => ({
   padding: 0.5em 0;
   margin: 0.5em 0;
   text-align: center;
+}
+.plain-block__render :deep(.katex:not(.katex-display .katex):has(.mfrac)) {
+  display: inline-block;
+  margin: 0.2em 0;
 }
 .plain-block__render :deep(.plain-mermaid-block),
 .plain-block__render :deep(.plain-plantuml-block),

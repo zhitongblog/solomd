@@ -43,6 +43,12 @@ import {
   indentExpandedSnippet,
   type SlashBlock,
 } from './slash-blocks';
+import { getActiveUserSlashBlocks, formatDynamicTokens } from './user-plugins';
+
+function allSlashBlocks(): SlashBlock[] {
+  const custom = getActiveUserSlashBlocks();
+  return custom.length > 0 ? [...SLASH_BLOCKS, ...custom] : SLASH_BLOCKS;
+}
 
 // ---------------------------------------------------------------------------
 // Public types — keep label/hint overridable for i18n.
@@ -283,7 +289,7 @@ function renderPopup(view: EditorView, initial: SlashState): TooltipView {
   };
 
   const repaint = (s: SlashState) => {
-    const filtered = filterBlocks(SLASH_BLOCKS, s.query);
+    const filtered = filterBlocks(allSlashBlocks(), s.query);
     const clamped = clampIndex(s.selectedIndex, filtered.length);
     const queryChanged = s.query !== lastQuery;
     const indexChanged = clamped !== lastSelectedIndex;
@@ -345,7 +351,10 @@ function insertBlock(view: EditorView, state: SlashState, block: SlashBlock): vo
   const line = view.state.doc.lineAt(replaceFrom);
   const linePrefix = view.state.doc.sliceString(line.from, replaceFrom);
   const indent = /^[ \t]+$/.test(linePrefix) ? linePrefix : '';
-  const expanded = indentExpandedSnippet(expandSnippet(block.snippet, ''), indent);
+  const expanded = indentExpandedSnippet(
+    expandSnippet(formatDynamicTokens(block.snippet), ''),
+    indent,
+  );
   view.dispatch({
     changes: { from: replaceFrom, to: replaceTo, insert: expanded.text },
     selection: {
@@ -434,7 +443,7 @@ function makeUpdateListener(config: SlashCommandsConfig) {
 function navigate(view: EditorView, delta: number): boolean {
   const s = view.state.field(slashStateField, false);
   if (!s) return false;
-  const filtered = filterBlocks(SLASH_BLOCKS, s.query);
+  const filtered = filterBlocks(allSlashBlocks(), s.query);
   if (filtered.length === 0) return true; // swallow but no-op
   const next = (s.selectedIndex + delta + filtered.length) % filtered.length;
   view.dispatch({ effects: setSlashState.of({ ...s, selectedIndex: next }) });
@@ -451,7 +460,7 @@ function dismissPopup(view: EditorView): boolean {
 function commitSelected(view: EditorView): boolean {
   const s = view.state.field(slashStateField, false);
   if (!s) return false;
-  const filtered = filterBlocks(SLASH_BLOCKS, s.query);
+  const filtered = filterBlocks(allSlashBlocks(), s.query);
   if (filtered.length === 0) return true; // swallow Enter so we don't insert a newline
   const block = filtered[clampIndex(s.selectedIndex, filtered.length)];
   insertBlock(view, s, block);

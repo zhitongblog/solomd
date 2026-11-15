@@ -165,11 +165,15 @@ const markerMark = Decoration.mark({ class: 'cm-md-marker' });
 // the liveEdit theme (here) and the edit-mode livePreview extension
 // (cm-live-preview.ts), which reuses these via the exports below.
 class BulletWidget extends WidgetType {
+  readonly widthEm: number;
+  readonly leadSpaces: number;
   constructor(
-    private readonly widthEm: number = 0,
-    private readonly leadSpaces: number = 0,
+    widthEm: number = 0,
+    leadSpaces: number = 0,
   ) {
     super();
+    this.widthEm = widthEm;
+    this.leadSpaces = leadSpaces;
   }
   eq(other: BulletWidget) {
     return this.widthEm === other.widthEm && this.leadSpaces === other.leadSpaces;
@@ -248,8 +252,10 @@ export function setLiveEditCopyLabel(getter: () => string): void {
 }
 
 class CodeCopyWidget extends WidgetType {
-  constructor(readonly code: string) {
+  readonly code: string;
+  constructor(code: string) {
     super();
+    this.code = code;
   }
 
   eq(other: CodeCopyWidget) {
@@ -351,11 +357,18 @@ function frontMatterEndPos(doc: { lines: number; line: (n: number) => { text: st
   return 0;
 }
 
-function buildDecorations(view: EditorView, showMarkers = false): DecorationSet {
+export function buildDecorations(
+  view: EditorView,
+  showMarkers = false,
+  hideActiveLineMarkers = false,
+): DecorationSet {
   const sel = view.state.selection.main;
   const dragging = isDragging(view.state);
-  const fromLine = dragging ? -1 : view.state.doc.lineAt(sel.from).number;
-  const toLine = dragging ? -1 : view.state.doc.lineAt(sel.to).number;
+  const suppressCaretReveal = dragging || (hideActiveLineMarkers && sel.empty);
+  const realFromLine = dragging ? -1 : view.state.doc.lineAt(sel.from).number;
+  const realToLine = dragging ? -1 : view.state.doc.lineAt(sel.to).number;
+  const fromLine = suppressCaretReveal ? -1 : realFromLine;
+  const toLine = suppressCaretReveal ? -1 : realToLine;
   const tree = syntaxTree(view.state);
   const fmEnd = frontMatterEndPos(view.state.doc);
 
@@ -394,6 +407,7 @@ function buildDecorations(view: EditorView, showMarkers = false): DecorationSet 
           Math.min(nTo, view.state.doc.length),
         ).number;
         const caretTouches = lineEndAtNode >= fromLine && lineAtNode <= toLine;
+        const realCaretTouches = lineEndAtNode >= realFromLine && lineAtNode <= realToLine;
         const nodeLineText =
           lineAtNode === lineEndAtNode ? view.state.doc.line(lineAtNode).text : '';
         // #561 — Standalone image lines always keep their Markdown source line
@@ -406,7 +420,7 @@ function buildDecorations(view: EditorView, showMarkers = false): DecorationSet 
         // line (e.g. `- ![alt](url)`), `liveBlocksExtension` replaces the inline
         // `Image` range with an `ImageWidget`. Skip emitting overlapping
         // `hideDeco` replacements on child nodes inside that inline `Image`.
-        if (name === 'Image' && !onStandaloneImage && !showMarkers && !caretTouches) {
+        if (name === 'Image' && !onStandaloneImage && !showMarkers && !realCaretTouches) {
           return false;
         }
 
@@ -861,12 +875,12 @@ function buildDecorations(view: EditorView, showMarkers = false): DecorationSet 
   return Decoration.set(ranges, true);
 }
 
-const makeLiveRenderPlugin = (showMarkers: boolean) => ViewPlugin.fromClass(
+const makeLiveRenderPlugin = (showMarkers: boolean, hideActiveLineMarkers = false) => ViewPlugin.fromClass(
   class {
     decorations: DecorationSet;
 
     constructor(view: EditorView) {
-      this.decorations = buildDecorations(view, showMarkers);
+      this.decorations = buildDecorations(view, showMarkers, hideActiveLineMarkers);
     }
 
     update(u: ViewUpdate) {
@@ -884,13 +898,22 @@ const makeLiveRenderPlugin = (showMarkers: boolean) => ViewPlugin.fromClass(
       const imeFlush = u.transactions.some(isImeSafeFlushTransaction);
       const treeChanged = syntaxTree(u.state) !== syntaxTree(u.startState);
       if (u.docChanged || u.viewportChanged || dragEnded || imeFlush || treeChanged) {
-        this.decorations = buildDecorations(u.view, showMarkers);
+        this.decorations = buildDecorations(u.view, showMarkers, hideActiveLineMarkers);
         return;
       }
       // With markers always shown nothing depends on the caret, so a
       // selection move keeps the exact same decorations — no rebuild, no jump.
+      // Same when `hideActiveLineMarkers` (#303) is enabled and the caret moves
+      // between collapsed positions.
       if (!showMarkers && u.selectionSet && !isDragging(u.state)) {
-        this.decorations = buildDecorations(u.view);
+        if (
+          hideActiveLineMarkers &&
+          u.startState.selection.main.empty &&
+          u.state.selection.main.empty
+        ) {
+          return;
+        }
+        this.decorations = buildDecorations(u.view, showMarkers, hideActiveLineMarkers);
       }
     }
   },
@@ -1164,13 +1187,21 @@ const liveEditTheme = EditorView.theme({
  * we just splice them into the bundle so they live in the same
  * compartment as the rest of the live-edit machinery.
  */
-const liveRenderPlugin = makeLiveRenderPlugin(false);
-const liveRenderPluginShowMarkers = makeLiveRenderPlugin(true);
+const liveRenderPlugin = makeLiveRenderPlugin(false, false);
+const liveRenderPluginHideActive = makeLiveRenderPlugin(false, true);
+const liveRenderPluginShowMarkers = makeLiveRenderPlugin(true, false);
 
-export function liveEditExtension(blocks: any[] = [], opts: { showMarkers?: boolean } = {}) {
+export function liveEditExtension(
+  blocks: any[] = [],
+  opts: { showMarkers?: boolean; hideActiveLineMarkers?: boolean } = {},
+) {
   return [
     syntaxHighlighting(liveEditHighlightStyle),
-    opts.showMarkers ? liveRenderPluginShowMarkers : liveRenderPlugin,
+    opts.showMarkers
+      ? liveRenderPluginShowMarkers
+      : opts.hideActiveLineMarkers
+        ? liveRenderPluginHideActive
+        : liveRenderPlugin,
     liveEditTheme,
     ...blocks,
   ];

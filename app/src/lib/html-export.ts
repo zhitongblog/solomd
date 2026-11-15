@@ -705,6 +705,7 @@ ${headCss ? `<style>${headCss}</style>\n` : ''}<style>
     box-shadow: 0 1px 3px rgba(0, 0, 0, .08);
   }
   .katex-display { overflow-x: auto; overflow-y: hidden; padding: 0.5em 0; margin: 0.7em 0; }
+  .katex:not(.katex-display .katex):has(.mfrac) { display: inline-block; margin: 0.2em 0; }
   .mermaid-block, .plantuml-block { display: flex; justify-content: center; margin: 1.5em 0; }
   .mermaid-block svg, .plantuml-block svg { max-width: 100%; height: auto; }
   .plantuml-block img { box-shadow: none; border-radius: 0; margin: 0; }
@@ -857,6 +858,7 @@ function encodeHtmlAttrId(id: string): string {
 export function prepareHtmlNavSidebar(
   rawBody: string,
   fallbackTitle: string,
+  keepInlineToc = false,
 ): { body: string; navTreeHtml: string } {
   let headingCounter = 0;
   const headings: ExtractedHeading[] = [];
@@ -883,16 +885,17 @@ export function prepareHtmlNavSidebar(
   const tocMatch = /<nav\s+class=(["'])md-toc\1[^>]*>([\s\S]*?)<\/nav>/i.exec(bodyWithIds);
   if (tocMatch) {
     const navTreeHtml = tocMatch[2].trim();
-    const cleanedBody = bodyWithIds.replace(tocMatch[0], '');
+    const cleanedBody = keepInlineToc ? bodyWithIds : bodyWithIds.replace(tocMatch[0], '');
     return { body: cleanedBody, navTreeHtml };
   }
 
   if (headings.length === 0 && fallbackTitle.trim()) {
     headings.push({ level: 1, text: fallbackTitle.trim(), id: 'solomd-h-root', isFolder: false });
   }
+  const navTreeHtml = buildNestedTocHtml(headings);
   return {
-    body: bodyWithIds,
-    navTreeHtml: buildNestedTocHtml(headings),
+    body: keepInlineToc ? `<nav class="md-toc">${navTreeHtml}</nav>\n${bodyWithIds}` : bodyWithIds,
+    navTreeHtml,
   };
 }
 
@@ -913,6 +916,8 @@ export interface StandaloneHtmlInput {
   codeBlockWrap?: boolean;
   /** #570 — include left navigation (bookmark tree) & global search multi-tab sidebar. */
   withNav?: boolean;
+  /** #572 — include a Table of Contents block at the start of the document body. */
+  withTocPage?: boolean;
   /** Optional UI language ('zh' | 'en', defaults to auto-detecting CJK). */
   lang?: string;
 }
@@ -921,12 +926,21 @@ export async function buildStandaloneHtml(input: StandaloneHtmlInput): Promise<s
   // An export is rendered once: never with placeholder math / plain code.
   await loadRenderDeps();
   const imageRoot = extractImageRoot(input.content);
+  let effectiveContent = input.content;
+  if (input.withTocPage === true) {
+    const strippedFm = effectiveContent.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '');
+    if (!/^[ \t]*\[toc\][ \t]*$/im.test(strippedFm)) {
+      effectiveContent = `[TOC]\n\n${strippedFm}`;
+    }
+  } else if (input.withTocPage === false && !input.withNav) {
+    effectiveContent = effectiveContent.replace(/^[ \t]*\[toc\][ \t]*\r?\n+/im, '');
+  }
   // Local images are embedded as `data:` URLs first: a standalone .html has
   // no way to reach the app's `asset.localhost` protocol, so rewriting the
   // src into one — which is what makes images load inside the webview — left
   // every figure broken in the exported file.
   const withImages = await inlineLocalImages(
-    renderMarkdown(input.content),
+    renderMarkdown(effectiveContent),
     imageRoot,
     input.filePath,
     input.readBytes,
@@ -956,7 +970,7 @@ export async function buildStandaloneHtml(input: StandaloneHtmlInput): Promise<s
     .join(' ');
   let navOptions: HtmlNavOptions | undefined;
   if (input.withNav) {
-    const prepared = prepareHtmlNavSidebar(body, input.title);
+    const prepared = prepareHtmlNavSidebar(body, input.title, input.withTocPage === true);
     body = prepared.body;
     const isZh =
       input.lang !== undefined

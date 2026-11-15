@@ -1,0 +1,35 @@
+app-id: app.solomd.SoloMD
+runtime: org.gnome.Platform
+runtime-version: '47'
+sdk: org.gnome.Sdk
+command: solomd
+finish-args:
+  - --share=ipc
+  - --share=network
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --device=dri
+  - --filesystem=home
+  - --talk-name=org.freedesktop.Notifications
+  - --talk-name=org.freedesktop.secrets
+
+modules:
+  - name: solomd
+    buildsystem: simple
+    build-commands:
+      - ar x solomd.deb
+      - tar -xf data.tar.*
+      - cp -r usr/* /app/
+      - install -Dm644 app.solomd.SoloMD.metainfo.xml /app/share/metainfo/app.solomd.SoloMD.metainfo.xml
+      - install -Dm644 app.solomd.SoloMD.desktop /app/share/applications/app.solomd.SoloMD.desktop
+      - install -Dm644 /app/share/icons/hicolor/128x128/apps/solomd.png /app/share/icons/hicolor/128x128/apps/app.solomd.SoloMD.png
+    sources:
+      - type: file
+        only-arches:
+          - x86_64
+        url: https://github.com/zhitongblog/solomd/releases/download/v5.2.0/SoloMD_5.2.0_amd64.deb
+        dest-filename: solomd.deb
+      - type: file
+        path: app.solomd.SoloMD.metainfo.xml
+      - type: file
+        path: app.solomd.SoloMD.desktop

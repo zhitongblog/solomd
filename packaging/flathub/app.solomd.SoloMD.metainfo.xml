@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>app.solomd.SoloMD</id>
+  <name>SoloMD</name>
+  <summary>Native-fast, local-first Markdown editor and personal knowledge vault</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <developer id="app.solomd">
+    <name>SoloMD Team</name>
+  </developer>
+  <description>
+    <p>
+      SoloMD is a lightweight, local-first Markdown editor built on Rust and Tauri 2.
+      Your notes live as plain .md files on disk with zero telemetry, no mandatory cloud
+      account, and instant startup.
+    </p>
+    <p>Key features:</p>
+    <ul>
+      <li>WYSIWYG Live Edit, Split Preview, Source Mode, and distraction-free Reading Mode</li>
+      <li>Unified Export Center for PDF (with bookmarks and TOC page), Word (.docx), HTML, EPUB, ODT, LaTeX, RTF, PNG, and TextBundle</li>
+      <li>Built-in KaTeX math, Mermaid and PlantUML diagrams, and embedded tldraw whiteboards</li>
+      <li>Local-first Git, WebDAV, and cloud-folder synchronization with optional E2E encryption</li>
+      <li>Built-in MCP server and BYOK / local AI assistant (Ollama, LM Studio, llama.cpp, OPR)</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">app.solomd.SoloMD.desktop</launchable>
+  <url type="homepage">https://solomd.app</url>
+  <url type="bugtracker">https://github.com/zhitongblog/solomd/issues</url>
+  <url type="vcs-browser">https://github.com/zhitongblog/solomd</url>
+  <content_rating type="oars-1.1" />
+  <releases>
+    <release version="5.2.0" date="2026-11-14">
+      <description>
+        <p>Unified Export Center (#572), Pure WYSIWYG mode (#303), Open Provider Registry (OPR) local AI auto-discovery (#286), and lightweight user extensions (#173).</p>
+      </description>
+    </release>
+  </releases>
+</component>

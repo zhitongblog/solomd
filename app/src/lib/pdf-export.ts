@@ -16,7 +16,7 @@ import { renderMermaidCached } from './mermaid-lazy';
 import { sanitizeModernColors } from './export-colors';
 import { renderMarkdown, extractImageRoot } from './markdown';
 import { loadRenderDeps } from './render-deps';
-import type { ResolvedPdfOptions } from './pdf-options';
+import { withPdfToc, type ResolvedPdfOptions } from './pdf-options';
 import { inlineLocalImages, rewriteImageUrls, rewriteLinkUrls } from './image-resolve';
 import { blobToPng, loadImageBlob } from './image-clipboard';
 import { renderPlantumlForExport } from './plantuml';
@@ -90,6 +90,13 @@ const PDF_CSS = `
     padding: 0 !important;
     box-shadow: none !important;
   }
+  :where(.pdf-page) .md-toc__title {
+    font-size: 1.5em;
+    font-weight: 700;
+    text-align: center;
+    margin: 0 0 0.85em;
+    color: var(--md-h1, var(--text, #1f2328));
+  }
   :where(.pdf-page) .md-toc .md-toc__link {
     display: flex;
     align-items: baseline;
@@ -109,12 +116,6 @@ const PDF_CSS = `
   }
   :where(.pdf-page) .md-toc__link:not(.md-toc__link--paged) .md-toc__leader {
     display: none;
-  }
-  :where(.pdf-page) > .md-toc:first-child,
-  :where(.pdf-page) > h1:first-child + .md-toc,
-  :where(.pdf-page) .md-toc.md-toc--lead {
-    break-after: page;
-    page-break-after: always;
   }
   :where(.pdf-page) > .md-toc:first-child + hr,
   :where(.pdf-page) > h1:first-child + .md-toc + hr,
@@ -270,6 +271,10 @@ const PDF_CSS = `
     overflow-y: hidden;
     padding: 0.5em 0;
     margin: 0.5em 0;
+  }
+  .pdf-page .katex:not(.katex-display .katex):has(.mfrac) {
+    display: inline-block;
+    margin: 0.2em 0;
   }
 `;
 
@@ -457,7 +462,7 @@ export function rasterRowToPageNumber(
  * 3. Wraps each `.md-toc__link` label in `.md-toc__text` and appends
  *    `.md-toc__leader` + `.md-toc__page` slots so page numbers can be filled.
  */
-export function decoratePdfToc(root: HTMLElement): HTMLElement | null {
+export function decoratePdfToc(root: HTMLElement, tocTitle?: string): HTMLElement | null {
   const navs = Array.from(root.querySelectorAll<HTMLElement>('nav.md-toc'));
   if (!navs.length) return null;
   for (const nav of navs) {
@@ -468,13 +473,27 @@ export function decoratePdfToc(root: HTMLElement): HTMLElement | null {
       nav === root.firstElementChild ||
       (prev === root.firstElementChild && prev?.tagName === 'H1');
     if (isLeading) {
-      nav.classList.add('md-toc--lead', 'html2pdf__page-break');
+      nav.classList.add('md-toc--lead');
       if (prev?.tagName === 'H1') {
         prev.classList.add('pdf-doc-title');
+      } else if (tocTitle && !nav.querySelector('.md-toc__title')) {
+        const heading = root.ownerDocument.createElement('div');
+        heading.className = 'md-toc__title';
+        heading.textContent = tocTitle;
+        nav.prepend(heading);
       }
       const next = nav.nextElementSibling as HTMLElement | null;
       if (next?.tagName === 'HR') {
         next.classList.add('pdf-toc-hr');
+      }
+      // Place `.html2pdf__page-break` on a trailing sibling AFTER `nav` rather
+      // than on `nav` itself so `html2pdf`'s pre-order `querySelectorAll('*')`
+      // loop paginates all `.md-toc__link` rows across multi-page TOCs first
+      // before computing the end-of-TOC page break spacer (#566, #572).
+      if (!nav.nextElementSibling?.classList.contains('pdf-toc-break')) {
+        const breakEl = root.ownerDocument.createElement('div');
+        breakEl.className = 'pdf-toc-break html2pdf__page-break';
+        nav.parentNode?.insertBefore(breakEl, nav.nextSibling);
       }
     }
     for (const link of Array.from(nav.querySelectorAll<HTMLAnchorElement>('a.md-toc__link'))) {
@@ -738,6 +757,12 @@ async function inlineRemoteImages(container: HTMLElement): Promise<void> {
   );
 }
 
+export interface PdfExportFlags {
+  includeOutline?: boolean;
+  includeTocPage?: boolean;
+  tocTitle?: string;
+}
+
 export async function capturePdfRaster(
   source: string,
   title: string,
@@ -745,12 +770,23 @@ export async function capturePdfRaster(
   filePath?: string,
   plantumlServer?: string | null,
   codeBlockLineNumbers?: boolean,
+  exportFlags?: PdfExportFlags,
 ): Promise<PdfRasterCapture> {
   await loadRenderDeps(); // rendered once — no placeholder math / plain code
-  const rawHtml = renderMarkdown(source || '');
+  const imageRoot = extractImageRoot(source || '');
+  const stripped = (source || '').replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '');
+  const wantToc =
+    typeof exportFlags?.includeTocPage === 'boolean'
+      ? exportFlags.includeTocPage
+      : pdfOpts?.toc === true;
+  const preparedSource = wantToc
+    ? withPdfToc(stripped)
+    : exportFlags?.includeTocPage === false
+      ? stripped.replace(/^[ \t]*\[toc\][ \t]*\r?\n+/im, '')
+      : stripped;
+  const rawHtml = renderMarkdown(preparedSource);
   // v4.3.0 issue #77 — also rewrite link hrefs so local-file links
   // don't bake in `http://tauri.localhost/...` URLs.
-  const imageRoot = extractImageRoot(source || '');
   const withLocalImages = await inlineLocalImages(rawHtml, imageRoot, filePath);
   const html = rewriteLinkUrls(
     rewriteImageUrls(withLocalImages, imageRoot, filePath),
@@ -826,9 +862,12 @@ export async function capturePdfRaster(
     // cross-origin image when the host sends CORS headers, and most image
     // hosts don't — "导出为 pdf 图片，部分信息也丢失了".
     await inlineRemoteImages(page);
-    // #566 — Decorate any `[TOC]` block with dotted leaders, page-number slots,
-    // centered borderless document title H1, and a page break after a leading TOC.
-    decoratePdfToc(page);
+    // #566 / #572 — Decorate any `[TOC]` block with dotted leaders, page-number
+    // slots, centered borderless document title H1, and a page break after a leading TOC.
+    const defaultTocTitle = /[\u4e00-\u9fff]/.test(`${title} ${preparedSource.slice(0, 400)}`)
+      ? '目录'
+      : 'Contents';
+    decoratePdfToc(page, exportFlags?.tocTitle ?? defaultTocTitle);
     // Give the browser a tick to lay everything out (KaTeX fonts especially).
     await new Promise((r) => setTimeout(r, 60));
     // #115 — convert any modern CSS color functions (color()/oklch()/…) that
@@ -871,17 +910,17 @@ export async function capturePdfRaster(
       const nextPageTopCss =
         Math.ceil((tocBottomRel + 1) / singlePageHeightCss) * singlePageHeightCss + 4;
       const neededPad = Math.max(0, Math.round(nextPageTopCss - tocBottomRel));
-      const nextSibling = leadToc.nextElementSibling as HTMLElement | null;
+      const anchorEl = leadToc.nextElementSibling?.classList.contains('pdf-toc-break')
+        ? (leadToc.nextElementSibling as HTMLElement)
+        : leadToc;
+      const nextSibling = anchorEl.nextElementSibling as HTMLElement | null;
       if (nextSibling && !nextSibling.id && nextSibling.tagName === 'DIV' && !nextSibling.children.length) {
-        const currentH = parseFloat(nextSibling.style.height || '0') || 0;
-        if (currentH < neededPad) {
-          nextSibling.style.height = `${neededPad}px`;
-        }
+        nextSibling.style.height = `${neededPad}px`;
       } else if (neededPad > 0) {
         const pad = measurePage.ownerDocument.createElement('div');
         pad.style.display = 'block';
         pad.style.height = `${neededPad}px`;
-        leadToc.parentNode?.insertBefore(pad, leadToc.nextSibling);
+        anchorEl.parentNode?.insertBefore(pad, anchorEl.nextSibling);
       }
     }
 
@@ -1081,7 +1120,7 @@ export async function capturePdfRaster(
           typeof pdf?.internal?.getNumberOfPages === 'function'
             ? pdf.internal.getNumberOfPages()
             : Infinity;
-        if (pdf?.outline && rawHeadings.length > 0) {
+        if (exportFlags?.includeOutline !== false && pdf?.outline && rawHeadings.length > 0) {
           const outlineHeadings: PdfOutlineHeading[] = rawHeadings.map((h) => ({
             level: h.level,
             text: h.text,
@@ -1168,6 +1207,7 @@ export async function markdownToPdfBlob(
   filePath?: string,
   plantumlServer?: string | null,
   codeBlockLineNumbers?: boolean,
+  exportFlags?: PdfExportFlags,
 ): Promise<Blob> {
   // Timeout guard — prevents the export from hanging the UI indefinitely
   // if html2pdf.js or Mermaid gets stuck. It sweeps html2pdf's leftovers on
@@ -1188,6 +1228,7 @@ export async function markdownToPdfBlob(
       filePath,
       plantumlServer,
       codeBlockLineNumbers,
+      exportFlags,
     );
     try {
       // jsPDF slices the raster at a fixed page height, which shears whatever
@@ -1274,7 +1315,7 @@ export function buildHtml2PdfOptions(title: string, pdfOpts?: ResolvedPdfOptions
       avoid: [
         'pre', '.mermaid-block', 'table', 'blockquote',
         'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-        'p', 'li', 'img',
+        'p', 'li:not(.md-toc__item)', '.md-toc__link', 'img',
       ],
     },
   };
