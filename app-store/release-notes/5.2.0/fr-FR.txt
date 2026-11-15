@@ -1,0 +1,5 @@
+SoloMD 5.2.0 :
+• Centre d'exportation unifié (#566, #572) : Exportation de notes et de dossiers unifiée sur 9 formats (PDF, HTML, Word .docx, EPUB, ODT, LaTeX, RTF, PNG et TextBundle) avec options unifiées pour le volet de signets/recherche et la table des matières initiale, ainsi qu'une pagination PDF multi-pages fluide.
+• Mode WYSIWYG pur (#303) : Option permettant de masquer les marqueurs Markdown sur la ligne active tant qu'aucun texte n'est sélectionné.
+• Découverte IA locale & extensions (#173, #286) : Détection OPR en un clic des serveurs locaux Ollama, LM Studio, vLLM, llama.cpp et Jan ; extensions JSON déclaratives (.solomd/plugins/*.json) pour modèles /, transformations et webhooks.
+• Formules mathématiques (#573) : Correction du chevauchement vertical des fractions en ligne consécutives (\dfrac / \frac).

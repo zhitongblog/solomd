@@ -1,0 +1,5 @@
+SoloMD 5.2.0:
+• Unified Export Center (#566, #572): Single-note and folder exports now share one unified pipeline across 9 formats (PDF, HTML, Word .docx, EPUB, ODT, LaTeX, RTF, PNG, and TextBundle) with unified Bookmark/Search Sidebar and Leading TOC Page toggles, plus smooth multi-page PDF TOC pagination.
+• Pure WYSIWYG Edit Mode (#303): Optional "Hide Active Line Markers" setting keeps heading, bold, italic, link, and inline image syntax markers hidden on the cursor line until you select text or backspace into a marker boundary.
+• Local AI Auto-Discovery & Lightweight Extensions (#173, #286): One-click OPR discovery for local Ollama, LM Studio, vLLM, llama.cpp, and Jan servers; declarative JSON user extensions (.solomd/plugins/*.json) for custom / slash templates, Command Palette text transforms, and Webhook publishers.
+• Math Rendering Polish (#573): Fixed vertical overlap when consecutive lines or list items contain tall inline fractions (\dfrac / \frac).

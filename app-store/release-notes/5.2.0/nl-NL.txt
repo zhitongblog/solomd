@@ -1,0 +1,5 @@
+SoloMD 5.2.0:
+• Geünificeerd exportcentrum (#566, #572): Export van losse notities en mappen gecombineerd voor 9 formaten (PDF, HTML, Word .docx, EPUB, ODT, LaTeX, RTF, PNG en TextBundle) met uniforme opties voor bladwijzer-/zoekbalk en inhoudsopgavepagina, plus verbeterde PDF-inhoudsopgave over meerdere pagina's.
+• Pure WYSIWYG-modus (#303): Optionele instelling om Markdown-tekens op de actieve cursorregel verborgen te houden.
+• Lokale AI-detectie & extensies (#173, #286): OPR-detectie met één klik voor lokale Ollama-, LM Studio-, vLLM-, llama.cpp- en Jan-servers en declaratieve JSON-extensies (.solomd/plugins/*.json).
+• Wiskundige formules (#573): Verticale overlap van opeenvolgende inline-breuken (\dfrac / \frac) verholpen.

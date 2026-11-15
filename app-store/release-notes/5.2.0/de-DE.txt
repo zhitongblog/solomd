@@ -1,0 +1,5 @@
+SoloMD 5.2.0:
+• Vereinheitlichtes Export-Center (#566, #572): Einzelnotiz- und Ordner-Exporte nutzen jetzt eine gemeinsame Pipeline über 9 Formate (PDF, HTML, Word .docx, EPUB, ODT, LaTeX, RTF, PNG und TextBundle) mit einheitlichen Schaltern für Lesezeichen-/Suchleiste und vorangestelltes Inhaltsverzeichnis sowie sauberer mehrseitiger PDF-TOC-Paginierung.
+• Reiner WYSIWYG-Modus (#303): Optionale Einstellung „Syntax-Marker der aktiven Zeile ausblenden“ hält Überschriften-, Fettdruck-, Link- und Inline-Bild-Marker auch in der Cursorzeile verborgen.
+• Lokale KI-Erkennung & Erweiterungen (#173, #286): Ein-Klick-OPR-Erkennung für lokale Ollama-, LM Studio-, vLLM-, llama.cpp- und Jan-Server sowie deklarative JSON-Erweiterungen (.solomd/plugins/*.json) für /-Vorlagen, Text-Transformationen und Webhooks.
+• Formel-Feinschliff (#573): Behebt vertikale Überlappungen aufeinanderfolgender Inline-Brüche (\dfrac / \frac).

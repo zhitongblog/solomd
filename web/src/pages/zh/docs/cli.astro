@@ -61,6 +61,8 @@ const FAQ = [
           <tr><th><code>solomd list [子目录]</code></th><td>列出工作区（或指定子目录）的 Markdown 文件。</td></tr>
           <tr><th><code>solomd search &lt;查询&gt;</code></th><td>grep 整个仓库，返回路径与匹配行。</td></tr>
           <tr><th><code>solomd cat &lt;标题|路径&gt;</code></th><td>把笔记内容打到 stdout —— 可管道到 <code>pandoc</code>、<code>fzf</code> 等。</td></tr>
+          <tr><th><code>solomd stats [目录] [--json]</code></th><td>统计知识库全量指标（笔记总数、总词数、中英字符数、标题数、任务项、双链与标签统计），支持 <code>--json</code> 输出。</td></tr>
+          <tr><th><code>solomd export &lt;笔记&gt; [--format pdf|html|docx|epub|odt|latex|rtf] [--toc]</code></th><td>在终端无头导出笔记为 7 种格式，支持 <code>--toc</code> 自动生成目录。</td></tr>
           <tr><th><code>solomd help</code></th><td>显示完整的子命令列表。</td></tr>
         </tbody>
       </table>

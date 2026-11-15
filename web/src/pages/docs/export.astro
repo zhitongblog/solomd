@@ -9,11 +9,15 @@ const lang = 'en' as const;
 const FAQ = [
   {
     q: 'Which export formats are built in, and which need Pandoc?',
-    a: 'HTML, PDF (vector text and image), DOCX, and PNG export are built in with zero external dependencies across desktop and mobile (Android & iOS). EPUB, ODT, LaTeX, and RTF go through Pandoc if installed on your PATH.',
+    a: 'HTML, PDF (vector text and image), DOCX, PNG, and TextBundle (.textpack) export are built in with zero external dependencies across desktop and mobile (Android & iOS). EPUB, ODT, LaTeX (.tex), and RTF go through Pandoc if installed on your PATH.',
   },
   {
-    q: 'Do math equations, highlights, callouts, and diagrams survive DOCX export?',
-    a: 'Yes — SoloMD generates a true .docx file where KaTeX math becomes native editable Word equations (MathML), Mermaid and PlantUML diagrams are embedded as crisp images, and ==highlights==, sub/superscripts, callouts, task checkboxes (☐/☑), footnotes, and separate ordered list numbering runs are all preserved.',
+    q: 'Can I export a single note or an entire folder as a merged book with a Table of Contents and Bookmark Sidebar?',
+    a: 'Yes — the Unified Export Center (File → Custom Export / Folder Export) supports all 9 formats for both single notes and folders (either 1-to-1 mirrored subfolder export or merged into a single book). Two unified toggles let you include a Bookmark Sidebar (for HTML, a collapsible hierarchical bookmark tree + offline full-text search panel; for PDF, UTF-16BE outlines) and a clickable Leading Table of Contents Page with page numbers.',
+  },
+  {
+    q: 'Do math equations, highlights, callouts, diagrams, and custom Word templates survive DOCX export?',
+    a: 'Yes — SoloMD generates a true .docx file where KaTeX math becomes native editable Word equations (MathML), Mermaid and PlantUML diagrams are embedded as crisp images, ==highlights==, sub/superscripts, callouts, task checkboxes (☐/☑), and footnotes are preserved, and you can mount your own custom .docx reference template to apply your organization’s fonts, heading styles, and page margins.',
   },
   {
     q: 'How do I paste styled content with equations into Microsoft Word, WPS, Notion, or WeChat?',

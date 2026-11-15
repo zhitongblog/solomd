@@ -26,7 +26,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v5.1.0 · just shipped · MIT · 5 platforms',
+      badge: 'v5.2.0 · just shipped · MIT · 5 platforms',
       title1: 'Everything Typora does.',
       title2: 'Free.',
       subtagline: 'Live WYSIWYG preview, tabs, themes, PDF / Word export — plus AI rewrite, folder sync, and native iOS & Android apps. MIT-licensed. No account, no subscription, no ads.',
@@ -184,7 +184,7 @@ export const t = {
         },
         {
           q: 'Does SoloMD need an AI subscription?',
-          a: 'No. SoloMD ships AI rewrite (Cmd+J on a selection) with 14 BYOK — bring your own key — providers: OpenAI, Claude (Anthropic), Gemini, xAI Grok, Mistral, Groq, DeepSeek, Qwen, GLM, Kimi, Doubao, SiliconFlow, OpenRouter, and Ollama. Use Ollama for fully-local zero-cost runs (qwen2.5:1.5b is ~1 GB and runs on most laptops). SoloMD itself charges nothing for AI — you pay only your chosen provider per token, or nothing if you use Ollama.',
+          a: 'No. SoloMD ships AI rewrite (Cmd+J on a selection) and the Agent Panel with 20+ BYOK — bring your own key — providers (OpenAI, Claude, Gemini, xAI Grok, Mistral, Groq, DeepSeek, Qwen, GLM, Kimi, Doubao, MiniMax, SiliconFlow, OpenRouter, Requesty, Cheaper Inference, Runcrate, OpenCode Go, and Ollama), plus one-click Open Provider Registry (OPR) auto-discovery for local Ollama, LM Studio, vLLM, llama.cpp, and Jan servers. SoloMD itself charges nothing for AI — you pay only your chosen provider per token, or nothing if you run a local model.',
         },
         {
           q: 'Where are my API keys stored?',
@@ -200,11 +200,11 @@ export const t = {
         },
         {
           q: 'Can I sync my notes to other devices?',
-          a: 'Yes, via any folder-based sync service. SoloMD works perfectly with iCloud Drive, Dropbox, OneDrive, Syncthing, or any tool that syncs a folder. Just put your workspace inside the synced folder. Or use AutoGit + manual push to a private GitHub repo. Built-in CRDT sync is on the roadmap but intentionally not the v4 focus — we don\'t want to lock you into a SoloMD-specific server.',
+          a: 'Yes. SoloMD includes built-in Vault-Scoped Cloud Drive Sync (Settings → Sync → Cloud Drive) for iCloud Drive, OneDrive, Baidu Netdisk, Aliyun Drive, Nutstore, and Syncthing with optional AES-256-GCM end-to-end encryption (.solomd-enc) and conflict protection, as well as GitHub / GitLab / Gitea / WebDAV sync.',
         },
         {
-          q: 'Why are there no plugins?',
-          a: 'SoloMD intentionally omits a plugin marketplace to stay lightweight, stable, and easy to audit. The features serious writers ask for — Wiki links, semantic search, AutoGit, AI rewrite, 14 BYOK providers, MCP server, Pomodoro, image paste, KaTeX, Mermaid, focus mode, slideshow mode, Vim mode, custom CSS — all ship in core. Trade-off: no Obsidian-style third-party ecosystem.',
+          q: 'Does SoloMD support plugins or extensions?',
+          a: 'SoloMD ships every heavy feature in core (Wiki links, semantic RAG search, AutoGit, 20+ BYOK AI providers, unified 9-format export, MCP server, tldraw whiteboards, Pomodoro, Vim mode) so you never pay an Electron plugin tax. For custom workflows, v5.2+ includes lightweight declarative JSON User Extensions (Settings → Extensions or <workspace>/.solomd/plugins/*.json) for custom / slash templates, regex/template Command Palette transforms, and one-click Webhook publishers.',
         },
         {
           q: 'What languages does SoloMD support?',
@@ -395,7 +395,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v5.1.0 · 正式发布 · MIT 协议 · 5 大平台',
+      badge: 'v5.2.0 · 正式发布 · MIT 协议 · 5 大平台',
       title1: 'Typora 能做的，它全能做。',
       title2: '免费。',
       subtagline: '所见即所得实时预览、多标签、主题、PDF / Word 导出 —— 还有 AI 改写、文件夹同步、原生 iOS 与 Android 应用。MIT 开源，无账号、无订阅、无广告。',
@@ -553,7 +553,7 @@ export const t = {
         },
         {
           q: 'SoloMD 用 AI 需要订阅吗？',
-          a: '不需要。SoloMD 内置 AI 改写(Cmd+J 选中文本即用),支持 14 个 BYOK —— bring your own key —— 提供商:OpenAI、Claude、Gemini、xAI Grok、Mistral、Groq、DeepSeek、Qwen、GLM、Kimi、Doubao、SiliconFlow、OpenRouter、Ollama。用 Ollama 可完全本地零成本运行(qwen2.5:1.5b 约 1 GB,大多数笔记本能跑)。SoloMD 不收 AI 费 —— 你只按 token 付给你选的 provider,或者用 Ollama 一分不付。',
+          a: '不需要。SoloMD 内置 AI 改写(Cmd+J 选中文本即用)与智能体面板,支持 20+ 家 BYOK 自带密钥服务商(OpenAI、Claude、Gemini、xAI Grok、Mistral、Groq、DeepSeek、通义 Qwen、智谱 GLM、Kimi、豆包、MiniMax、硅基流动、OpenRouter 等),并支持一键 OPR 自动发现本机正在运行的 Ollama、LM Studio、vLLM、llama.cpp、Jan 本地模型服务。SoloMD 不收任何 AI 费用 —— 你只需按 token 付给你选的厂商,或者跑本地模型完全零成本。',
         },
         {
           q: 'API 密钥存哪里？',
@@ -569,11 +569,11 @@ export const t = {
         },
         {
           q: '能在多设备间同步笔记吗？',
-          a: '可以,用任何文件夹同步服务。SoloMD 跟 iCloud Drive、Dropbox、OneDrive、Syncthing 或任何同步文件夹的工具配合都很好。把工作区放进同步文件夹就行。或者用 AutoGit + 手动 push 到私有 GitHub 仓库。内置 CRDT 同步在 roadmap 上,但 v4 不重点做 —— 我们不想把你锁在 SoloMD 自己的服务器上。',
+          a: '可以。SoloMD 内置了基于知识库隔离的个人网盘同步(设置 → 同步 → 个人网盘),支持 iCloud Drive、OneDrive、百度网盘、阿里云盘、坚果云、Syncthing 等目录同步,并提供可选的 AES-256-GCM 端到端加密(.solomd-enc)与双端冲突副本保护;同时也支持 GitHub / Gitee / GitLab / Gitea 与 WebDAV 同步。',
         },
         {
-          q: '为什么没有插件系统？',
-          a: 'SoloMD 故意不做插件市场,为了保持轻量、稳定、易审计。严肃写作者要的功能 —— Wiki 链接、语义搜索、AutoGit、AI 改写、14 个 BYOK provider、MCP 服务器、Pomodoro、图片粘贴、KaTeX、Mermaid、专注模式、幻灯片模式、Vim 模式、自定义 CSS —— 全部在 core 里。代价:没有 Obsidian 那种第三方插件生态。',
+          q: 'SoloMD 支持插件或自定义扩展吗？',
+          a: 'SoloMD 把核心高频功能(Wiki 双链、本地语义搜索、AutoGit、20+ 家 BYOK AI、9 格式统一导出、MCP 服务器、tldraw 白板、番茄钟、Vim 模式)全部内置在 15 MB 的原生内核中,无需忍受臃肿的第三方插件税。同时自 v5.2 起,SoloMD 提供轻量级声明式 JSON 用户扩展系统(「设置 → 扩展」或 <workspace>/.solomd/plugins/*.json),支持自定义 / 斜杠模板、命令面板正则/模板文本转换与一键 Webhook 发布。',
         },
         {
           q: 'SoloMD 支持哪些语言？',
@@ -764,7 +764,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v5.1.0 · リリース · MIT · 5 プラットフォーム',
+      badge: 'v5.2.0 · リリース · MIT · 5 プラットフォーム',
       title1: '無料の Markdown',
       title2: 'フルセット。',
       subtagline: '欲しい機能、全部入り。ライブプレビュー、Wiki リンク、ローカル RAG、BYOK AI、テーマ、Pomodoro、クロスプラットフォーム同期 —— すべて内蔵。',
@@ -1025,7 +1025,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v5.1.0 · 출시 · MIT · 5 플랫폼',
+      badge: 'v5.2.0 · 출시 · MIT · 5 플랫폼',
       title1: '무료 Markdown',
       title2: '풀세트.',
       subtagline: '원하는 기능, 전부 내장. 라이브 미리보기, Wiki 링크, 로컬 RAG, BYOK AI, 테마, Pomodoro, 크로스 플랫폼 동기화.',
@@ -1286,7 +1286,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v5.1.0 · gerade veröffentlicht · MIT · 5 Plattformen',
+      badge: 'v5.2.0 · gerade veröffentlicht · MIT · 5 Plattformen',
       title1: 'Das kostenlose',
       title2: 'Markdown-Komplettpaket.',
       subtagline: 'Alles, was du brauchst — eingebaut. Live-Vorschau, Wiki-Links, lokales RAG, BYOK-KI, Themes, Pomodoro, plattformübergreifende Sync.',
@@ -1547,7 +1547,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v5.1.0 · vient de sortir · MIT · 5 plateformes',
+      badge: 'v5.2.0 · vient de sortir · MIT · 5 plateformes',
       title1: 'Le Markdown gratuit',
       title2: 'tout-en-un.',
       subtagline: 'Tout ce dont vous avez besoin, intégré. Aperçu en direct, liens Wiki, RAG local, IA BYOK, thèmes, Pomodoro, synchronisation multiplateforme.',
@@ -1808,7 +1808,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v5.1.0 · recién lanzado · MIT · 5 plataformas',
+      badge: 'v5.2.0 · recién lanzado · MIT · 5 plataformas',
       title1: 'El Markdown gratis',
       title2: 'todo en uno.',
       subtagline: 'Todo lo que necesitas, integrado. Vista previa en vivo, enlaces Wiki, RAG local, IA BYOK, temas, Pomodoro, sincronización multiplataforma.',
@@ -2069,7 +2069,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v5.1.0 · acabou de sair · MIT · 5 plataformas',
+      badge: 'v5.2.0 · acabou de sair · MIT · 5 plataformas',
       title1: 'O Markdown grátis',
       title2: 'pacote completo.',
       subtagline: 'Tudo o que você precisa, integrado. Pré-visualização ao vivo, links Wiki, RAG local, IA BYOK, temas, Pomodoro, sincronização multiplataforma.',
@@ -2330,7 +2330,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v5.1.0 · appena rilasciato · MIT · 5 piattaforme',
+      badge: 'v5.2.0 · appena rilasciato · MIT · 5 piattaforme',
       title1: 'Il Markdown gratuito',
       title2: 'tutto incluso.',
       subtagline: 'Tutto quello che ti serve, integrato. Anteprima dal vivo, link Wiki, RAG locale, IA BYOK, temi, Pomodoro, sincronizzazione multipiattaforma.',
@@ -2591,7 +2591,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v5.1.0 · świeża premiera · MIT · 5 platform',
+      badge: 'v5.2.0 · świeża premiera · MIT · 5 platform',
       title1: 'Darmowy Markdown',
       title2: 'wszystko w jednym.',
       subtagline: 'Wszystko, czego potrzebujesz — wbudowane. Podgląd na żywo, linki Wiki, lokalny RAG, BYOK AI, motywy, Pomodoro, synchronizacja wieloplatformowa.',
@@ -2852,7 +2852,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v5.1.0 · zojuist uitgebracht · MIT · 5 platforms',
+      badge: 'v5.2.0 · zojuist uitgebracht · MIT · 5 platforms',
       title1: 'De gratis Markdown',
       title2: 'alles-in-één.',
       subtagline: 'Alles wat je nodig hebt, ingebouwd. Live preview, Wiki-links, lokale RAG, BYOK AI, thema\'s, Pomodoro, platformoverschrijdende synchronisatie.',
@@ -3113,7 +3113,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v5.1.0 · yeni yayımlandı · MIT · 5 platform',
+      badge: 'v5.2.0 · yeni yayımlandı · MIT · 5 platform',
       title1: 'Ücretsiz Markdown',
       title2: 'tam paket.',
       subtagline: 'İhtiyacınız olan her şey, dahili. Canlı önizleme, Wiki bağlantıları, yerel RAG, BYOK AI, temalar, Pomodoro, çoklu platform senkronizasyonu.',
@@ -3374,7 +3374,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v5.1.0 · just släppt · MIT · 5 plattformar',
+      badge: 'v5.2.0 · just släppt · MIT · 5 plattformar',
       title1: 'Den gratis Markdown',
       title2: 'allt-i-ett.',
       subtagline: 'Allt du behöver, inbyggt. Live-förhandsvisning, Wiki-länkar, lokal RAG, BYOK AI, teman, Pomodoro, plattformsoberoende synk.',
@@ -3635,7 +3635,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v5.1.0 · щойно випущено · MIT · 5 платформ',
+      badge: 'v5.2.0 · щойно випущено · MIT · 5 платформ',
       title1: 'Безкоштовний Markdown',
       title2: 'все в одному.',
       subtagline: 'Усе, що вам потрібно, вбудовано. Живий перегляд, Wiki-посилання, локальний RAG, BYOK AI, теми, Pomodoro, кросплатформенна синхронізація.',

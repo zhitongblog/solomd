@@ -1,0 +1,5 @@
+SoloMD 5.2.0:
+• Birleştirilmiş Dışa Aktarma Merkezi (#566, #572): Tek not ve klasör dışa aktarma işlemleri 9 formatta (PDF, HTML, Word .docx, EPUB, ODT, LaTeX, RTF, PNG ve TextBundle) birleştirildi; yer imi/arama kenar çubuğu ve baştaki içindekiler sayfası seçenekleri ortaklaştırıldı ve çok sayfalı PDF içindekiler sayfalama sorunu giderildi.
+• Saf WYSIWYG Modu (#303): Aktif imleç satırında bile Markdown söz dizimi işaretlerini gizli tutan isteğe bağlı ayar eklendi.
+• Yerel YZ Otomatik Keşfi ve Uzantılar (#173, #286): Yerel Ollama, LM Studio, vLLM, llama.cpp ve Jan sunucuları için tek tıkla OPR keşfi ve JSON tabanlı kullanıcı uzantıları (.solomd/plugins/*.json) eklendi.
+• Matematik Formülleri (#573): Ardışık satırlardaki satır içi kesirlerin (\dfrac / \frac) üst üste binmesi düzeltildi.

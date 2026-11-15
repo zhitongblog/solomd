@@ -31,8 +31,8 @@ const lang = 'zh' as const;
             <td>设置 → AI → 选择服务商 —— Anthropic Claude、OpenAI、Google Gemini、DeepSeek、MiniMax 等 14+ 家 —— 粘贴你自己的 API Key。Key 存放在操作系统钥匙串里。自定义 Base URL 字段支持代理和各种兼容接口。</td>
           </tr>
           <tr>
-            <th>本地 (Ollama)</th>
-            <td>设置 → AI → 本地：SoloMD 自动检测正在运行的 Ollama，可以帮你拉取模型，一切都留在你的机器上 —— 隐私最强，成本为零。</td>
+            <th>本地 (Ollama 与 OPR 自动发现)</th>
+            <td>设置 → AI → 本地：SoloMD 自动检测正在运行的 Ollama（并可一键拉取推荐模型），或点击<strong>扫描本地 AI 服务 (OPR)</strong> 自动读取 <code>~/.open-provider-registry/providers.json</code> 并探测本机 Ollama (<code>:11434</code>)、LM Studio (<code>:1234</code>)、vLLM / LocalAI (<code>:8000</code>)、llama.cpp (<code>:8080</code>) 与 Jan (<code>:1337</code>)，一切都留在你的机器上 —— 隐私最强，成本为零。</td>
           </tr>
         </tbody>
       </table>

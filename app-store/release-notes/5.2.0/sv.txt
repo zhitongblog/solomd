@@ -1,0 +1,5 @@
+SoloMD 5.2.0:
+• Enhetligt exportcenter (#566, #572): Export av enskilda anteckningar och mappar har förenats för 9 format (PDF, HTML, Word .docx, EPUB, ODT, LaTeX, RTF, PNG och TextBundle) med gemensamma val för bokmärkes-/sökpanel och inledande innehållsförteckning samt förbättrad flersidig PDF-TOC-paginering.
+• Rent WYSIWYG-läge (#303): Alternativ för att dölja Markdown-markörer även på den aktiva markörraden.
+• Lokal AI-identifiering och tillägg (#173, #286): OPR-identifiering med ett klick för lokala Ollama-, LM Studio-, vLLM-, llama.cpp- och Jan-servrar samt deklarativa JSON-tillägg (.solomd/plugins/*.json).
+• Matematiska formler (#573): Åtgärdade vertikal överlappning för på varandra följande inline-bråk (\dfrac / \frac).

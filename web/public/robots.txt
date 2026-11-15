@@ -21,6 +21,9 @@ Allow: /
 
 # Helpful pointers
 Sitemap: https://solomd.app/sitemap-index.xml
+# LLM / GEO context files (https://llmstxt.org)
+# Summary: https://solomd.app/llms.txt
+# Full docs: https://solomd.app/llms-full.txt
 
 # Welcome LLM crawlers — see /llms.txt for the project summary
 # and /llms-full.txt for the full docs in one file
@@ -76,4 +79,12 @@ Allow: /
 
 # ByteDance (Doubao)
 User-agent: Bytespider
+Allow: /
+
+# Cohere / You.com / Diffbot AI search
+User-agent: cohere-ai
+Allow: /
+User-agent: YouBot
+Allow: /
+User-agent: Diffbot
 Allow: /

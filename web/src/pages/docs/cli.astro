@@ -63,6 +63,8 @@ const FAQ = [
           <tr><th><code>solomd list [folder]</code></th><td>List Markdown files in the workspace (or a sub-folder).</td></tr>
           <tr><th><code>solomd search &lt;query&gt;</code></th><td>Grep your notes. Returns paths + matching lines.</td></tr>
           <tr><th><code>solomd cat &lt;title|path&gt;</code></th><td>Print a note to stdout — pipe into <code>pandoc</code>, <code>fzf</code>, anything.</td></tr>
+          <tr><th><code>solomd stats [vault] [--json]</code></th><td>Compute vault-wide statistics (note count, total words, CJK/Latin characters, headings, tasks, wikilinks, tags) in human-readable or JSON format.</td></tr>
+          <tr><th><code>solomd export &lt;note&gt; [--format pdf|html|docx|epub|odt|latex|rtf] [--toc]</code></th><td>Headless export of any note with optional Table of Contents generation.</td></tr>
           <tr><th><code>solomd help</code></th><td>Show the full subcommand list.</td></tr>
         </tbody>
       </table>

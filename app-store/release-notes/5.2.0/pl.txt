@@ -1,0 +1,5 @@
+SoloMD 5.2.0:
+• Zunifikowane centrum eksportu (#566, #572): Eksport pojedynczych notatek i folderów w jednym oknie dla 9 formatów (PDF, HTML, Word .docx, EPUB, ODT, LaTeX, RTF, PNG i TextBundle) ze wspólnymi przełącznikami paska zakładek/wyszukiwania i strony spisu treści oraz płynnym łamaniem wielostronicowego spisu treści w PDF.
+• Tryb czystego WYSIWYG (#303): Opcja ukrywania znaczników Markdown w aktywnym wierszu kursora aż do zaznaczenia tekstu.
+• Automatyczne wykrywanie lokalnych modeli AI i rozszerzenia (#173, #286): Wykrywanie OPR jednym kliknięciem dla serwerów Ollama, LM Studio, vLLM, llama.cpp i Jan oraz deklaratywne rozszerzenia JSON (.solomd/plugins/*.json).
+• Formuły matematyczne (#573): Naprawiono nakładanie się kolejnych ułamków w wierszu (\dfrac / \frac).

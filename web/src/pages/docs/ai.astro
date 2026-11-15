@@ -31,8 +31,8 @@ const lang = 'en' as const;
             <td>Settings → AI → pick a provider — Anthropic Claude, OpenAI, Google Gemini, DeepSeek, MiniMax and 10+ more — and paste your own API key. Keys are stored in the OS keychain. A custom base URL field supports proxies and compatible endpoints.</td>
           </tr>
           <tr>
-            <th>Local (Ollama)</th>
-            <td>Settings → AI → Local: SoloMD detects a running Ollama, can pull a model for you, and everything stays on your machine — strongest privacy, zero cost.</td>
+            <th>Local (Ollama &amp; OPR Auto-Discovery)</th>
+            <td>Settings → AI → Local: SoloMD detects a running Ollama (and can pull a model for you), or click <strong>Discover Local AI (OPR)</strong> to scan <code>~/.open-provider-registry/providers.json</code> and probe local OpenAI-compatible servers (Ollama <code>:11434</code>, LM Studio <code>:1234</code>, vLLM / LocalAI <code>:8000</code>, llama.cpp <code>:8080</code>, Jan <code>:1337</code>). Everything stays on your machine — strongest privacy, zero cost.</td>
           </tr>
         </tbody>
       </table>
