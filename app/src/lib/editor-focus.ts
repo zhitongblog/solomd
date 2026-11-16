@@ -12,6 +12,9 @@
  * the keyboard from a place the user chose.
  */
 
+import { EditorView } from '@codemirror/view';
+import { focusCodeMirrorWithoutScroll } from './cm-preserve-focus';
+
 const EDITOR_TARGETS = '.cm-content, .plain-block--active textarea, .plain-editor';
 
 function isIdleFocus(): boolean {
@@ -44,7 +47,9 @@ export function focusActiveEditor(
   if (modalOpen() || (onlyIfIdle && !isIdleFocus())) return false;
   const target = activeEditorTarget(focusedPaneId, opts.strict);
   if (!target) return false;
-  target.focus({ preventScroll: true });
+  const view = target.classList.contains('cm-content') ? EditorView.findFromDOM(target) : null;
+  if (view) focusCodeMirrorWithoutScroll(view);
+  else target.focus({ preventScroll: true });
   return document.activeElement === target;
 }
 

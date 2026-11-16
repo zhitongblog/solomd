@@ -81,19 +81,26 @@ watch([query, titleOnly], () => {
   debounceTimer = window.setTimeout(doSearch, 220);
 });
 
+const TITLE_HIT_CAP = 200;
+let searchReqSeq = 0;
+
 async function doSearch() {
   const q = query.value.trim();
+  const reqId = ++searchReqSeq;
   if (!q) {
     hits.value = [];
+    loading.value = false;
     return;
   }
   loading.value = true;
   try {
+    let nextHits: SearchHit[];
     if (titleOnly.value) {
       const qLower = q.toLowerCase();
       const matched: SearchHit[] = [];
       const seenFiles = new Set<string>();
       for (const entry of wsIndex.entries) {
+        if (matched.length >= TITLE_HIT_CAP) break;
         const displayTitle = entry.title || entry.headings?.[0] || entry.name;
         if (
           entry.name.toLowerCase().includes(qLower) ||
@@ -110,7 +117,9 @@ async function doSearch() {
       }
       if (matched.length === 0) {
         const rawHits = await search.search(q);
+        if (reqId !== searchReqSeq) return;
         for (const h of rawHits) {
+          if (matched.length >= TITLE_HIT_CAP) break;
           const base = h.file.split(/[\\/]/).pop() ?? h.file;
           const isHeading = /^#{1,6}\s+/.test(h.snippet.trim());
           if (
@@ -122,21 +131,31 @@ async function doSearch() {
           }
         }
       }
-      hits.value = matched;
+      nextHits = matched;
     } else {
-      hits.value = await search.search(q);
+      nextHits = await search.search(q);
+      if (reqId !== searchReqSeq) return;
     }
+    hits.value = nextHits;
     selectedIdx.value = 0;
   } finally {
-    loading.value = false;
+    if (reqId === searchReqSeq) {
+      loading.value = false;
+    }
   }
 }
 
 const grouped = computed(() => {
-  const map = new Map<string, SearchHit[]>();
-  for (const h of hits.value) {
-    if (!map.has(h.file)) map.set(h.file, []);
-    map.get(h.file)!.push(h);
+  const map = new Map<string, Array<{ hit: SearchHit; idx: number }>>();
+  const list = hits.value;
+  for (let idx = 0; idx < list.length; idx++) {
+    const h = list[idx];
+    let group = map.get(h.file);
+    if (!group) {
+      group = [];
+      map.set(h.file, group);
+    }
+    group.push({ hit: h, idx });
   }
   return Array.from(map.entries());
 });
@@ -167,8 +186,23 @@ async function openHit(hit: SearchHit) {
 function highlight(snippet: string): string {
   const q = query.value.trim();
   if (!q) return escapeHtml(snippet);
-  const re = new RegExp(`(${escapeRe(q)})`, 'gi');
-  return escapeHtml(snippet).replace(re, '<mark>$1</mark>');
+  // Match against the raw text BEFORE HTML-escaping so queries like `a`, `&`,
+  // `<`, or `;` never slice inside `&amp;` / `&lt;` entities!
+  const re = new RegExp(escapeRe(q), 'gi');
+  let out = '';
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(snippet)) !== null) {
+    if (m[0].length === 0) {
+      re.lastIndex += 1;
+      continue;
+    }
+    out += escapeHtml(snippet.slice(last, m.index));
+    out += `<mark>${escapeHtml(m[0])}</mark>`;
+    last = m.index + m[0].length;
+  }
+  out += escapeHtml(snippet.slice(last));
+  return out;
 }
 
 function escapeHtml(s: string) {
@@ -183,6 +217,7 @@ function escapeRe(s: string) {
 }
 
 function onKey(e: KeyboardEvent) {
+  if (e.isComposing || e.keyCode === 229) return;
   if (e.key === 'Escape') {
     e.preventDefault();
     emit('close');
@@ -255,15 +290,15 @@ function onKey(e: KeyboardEvent) {
           :class="{ 'sp__file--active': file === activeFilePath }"
         >{{ shortPath(file) }}</div>
         <div
-          v-for="hit in fileHits"
-          :key="hit.line"
+          v-for="item in fileHits"
+          :key="item.idx"
           class="sp__hit"
-          :class="{ 'sp__hit--active': hits.indexOf(hit) === selectedIdx }"
-          @click="openHit(hit)"
-          @mouseenter="selectedIdx = hits.indexOf(hit)"
+          :class="{ 'sp__hit--active': item.idx === selectedIdx }"
+          @click="openHit(item.hit)"
+          @mouseenter="selectedIdx = item.idx"
         >
-          <span class="sp__lineno">L{{ hit.line }}</span>
-          <span class="sp__snippet" v-html="highlight(hit.snippet)"></span>
+          <span class="sp__lineno">L{{ item.hit.line }}</span>
+          <span class="sp__snippet" v-html="highlight(item.hit.snippet)"></span>
         </div>
       </div>
     </div>

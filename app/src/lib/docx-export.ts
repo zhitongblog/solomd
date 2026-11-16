@@ -29,6 +29,7 @@ import {
   PageBreak,
   TableOfContents,
   LineRuleType,
+  Bookmark,
 } from 'docx';
 import { mermaidToPng } from './diagram-export';
 import { md, extractImageRoot, preprocessMarkdown } from './markdown';
@@ -428,9 +429,45 @@ function findMatchingClose(tokens: Token[], start: number, openType: string, clo
  * list in the entire document shares `ordered-list-undefined` and continues
  * numbering from the previous section (`1, 2, 3` → `4, 5` → … → `45`).
  */
-let nextOrderedListInstance = 0;
+interface CollectedDocxHeading {
+  anchorId: string;
+  level: number;
+  text: string;
+}
 
-async function buildBody(tokens: Token[], imageRoot: string | null, filePath?: string): Promise<BlockChild[]> {
+let nextOrderedListInstance = 0;
+let nextHeadingAnchorId = 0;
+
+function extractInlinePlainText(inlineToken?: Token): string {
+  if (!inlineToken) return '';
+  if (!inlineToken.children || inlineToken.children.length === 0) {
+    return (inlineToken.content || '').replace(/\s+/g, ' ').trim();
+  }
+  const parts: string[] = [];
+  for (const ch of inlineToken.children) {
+    if (ch.type === 'text' || ch.type === 'code_inline' || ch.type === 'math_inline') {
+      parts.push(ch.content || '');
+    } else if (ch.type === 'softbreak' || ch.type === 'hardbreak') {
+      parts.push(' ');
+    }
+  }
+  return parts.join('').replace(/\s+/g, ' ').trim();
+}
+
+function escapeXmlText(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+async function buildBody(
+  tokens: Token[],
+  imageRoot: string | null,
+  filePath?: string,
+  tocHeadings?: CollectedDocxHeading[],
+): Promise<BlockChild[]> {
   const out: BlockChild[] = [];
   let i = 0;
   const listStack: { type: 'bullet' | 'ordered'; instance: number; itemParagraphs: number }[] = [];
@@ -442,10 +479,48 @@ async function buildBody(tokens: Token[], imageRoot: string | null, filePath?: s
         const level = tok.tag;
         const inline = tokens[i + 1];
         i += 3;
+        const rawLevelNum = Number(level.slice(1)) || 1;
+        let effectiveTocLevel = rawLevelNum;
+        if (inline?.content) {
+          const customLvlMatch = /<!--\s*solomd-toc-level:(\d+)\s*-->/.exec(inline.content);
+          if (customLvlMatch) {
+            effectiveTocLevel = Math.max(1, Number(customLvlMatch[1]) || rawLevelNum);
+          }
+          inline.content = inline.content.replace(
+            /\s*<!--\s*solomd-toc-(?:level:\d+|folder)\s*-->/g,
+            '',
+          );
+        }
+        if (inline?.children) {
+          for (const ch of inline.children) {
+            if ((ch.type === 'html_inline' || ch.type === 'text') && ch.content) {
+              ch.content = ch.content.replace(
+                /\s*<!--\s*solomd-toc-(?:level:\d+|folder)\s*-->/g,
+                '',
+              );
+            }
+          }
+        }
+        const headingRuns = buildRuns(inline);
+        const anchorId = `_TocSolomd_${++nextHeadingAnchorId}`;
+        const plainTitle = extractInlinePlainText(inline);
+        if (tocHeadings && plainTitle) {
+          tocHeadings.push({
+            anchorId,
+            level: Math.min(6, Math.max(1, effectiveTocLevel)),
+            text: plainTitle,
+          });
+        }
         out.push(
           new Paragraph({
             heading: HEADING_LEVELS[level],
-            children: buildRuns(inline),
+            alignment: AlignmentType.LEFT,
+            children: [
+              new Bookmark({
+                id: anchorId,
+                children: headingRuns as (TextRun | ImageRun)[],
+              }),
+            ],
             spacing: HEADING_SPACING[level] ?? { before: 240, after: 120 },
             keepNext: true,
           })
@@ -497,6 +572,7 @@ async function buildBody(tokens: Token[], imageRoot: string | null, filePath?: s
 
         out.push(
           new Paragraph({
+            alignment: AlignmentType.LEFT,
             children: buildRuns(inline),
             spacing: isInList ? { before: 60, after: 60 } : { before: 120, after: 120 },
             ...(isInList && isFirstListParagraph && topList && {
@@ -562,6 +638,7 @@ async function buildBody(tokens: Token[], imageRoot: string | null, filePath?: s
         lines.forEach((line, idx) => {
           out.push(
             new Paragraph({
+              alignment: AlignmentType.LEFT,
               children: [
                 new TextRun({
                   text: line || ' ',
@@ -585,6 +662,11 @@ async function buildBody(tokens: Token[], imageRoot: string | null, filePath?: s
         break;
       }
       case 'html_block': {
+        if (/<!--\s*solomd-page-break\s*-->/i.test(tok.content || '')) {
+          out.push(new Paragraph({ children: [new PageBreak()] }));
+          i += 1;
+          break;
+        }
         // A pasted `<img>` block (common when copying from the web). Other
         // raw HTML still has no DOCX equivalent and is skipped as before.
         const imgs = htmlImageSrcs(tok.content || '')
@@ -663,7 +745,12 @@ async function buildBody(tokens: Token[], imageRoot: string | null, filePath?: s
               }
               return j + 1;
             })();
-            const nestedBlocks = await buildBody(inner.slice(j, sliceEnd), imageRoot, filePath);
+            const nestedBlocks = await buildBody(
+              inner.slice(j, sliceEnd),
+              imageRoot,
+              filePath,
+              tocHeadings,
+            );
             for (const b of nestedBlocks) out.push(b);
             j = sliceEnd;
           }
@@ -772,8 +859,8 @@ function buildTable(inner: Token[]): Table | null {
           const runs = row.cells[c] ?? [];
           const cellChildren =
             runs.length > 0
-              ? [new Paragraph({ children: runs, spacing: { before: 40, after: 40 } })]
-              : [new Paragraph({ text: '' })];
+              ? [new Paragraph({ alignment: AlignmentType.LEFT, children: runs, spacing: { before: 40, after: 40 } })]
+              : [new Paragraph({ alignment: AlignmentType.LEFT, text: '' })];
           return new TableCell({
             children: cellChildren,
             shading: row.isHeader
@@ -937,6 +1024,71 @@ async function applyDocxReference(blob: Blob, reference: Uint8Array): Promise<Bl
   });
 }
 
+/**
+ * #592 & #593 — Post-process the generated DOCX ZIP so that:
+ * 1) `word/settings.xml` sets `<w:doNotExpandShiftReturn/>` (preventing Word/WPS
+ *    from stretching lines ending in `<w:br/>` across the full page width) and
+ *    `<w:updateFields w:val="true"/>` when a TOC is present;
+ * 2) When a `TableOfContents` (`TOC \h \o "1-6"`) is present, pre-populate its
+ *    cached field result between `separate` and `end` with indented, clickable
+ *    `<w:hyperlink w:anchor="_TocSolomd_N">` entries so WPS Office, Word, Pages,
+ *    and QuickLook display the full Table of Contents immediately on open (#593).
+ */
+async function postProcessDocxPackage(
+  blob: Blob,
+  wantToc: boolean,
+  tocHeadings: CollectedDocxHeading[],
+): Promise<Blob> {
+  const archive = unzipSync(new Uint8Array(await blob.arrayBuffer()));
+
+  if (archive['word/settings.xml']) {
+    let settingsXml = strFromU8(archive['word/settings.xml']);
+    if (!settingsXml.includes('<w:doNotExpandShiftReturn')) {
+      if (settingsXml.includes('<w:compat>')) {
+        settingsXml = settingsXml.replace('<w:compat>', '<w:compat><w:doNotExpandShiftReturn/>');
+      } else {
+        settingsXml = settingsXml.replace(
+          '</w:settings>',
+          '<w:compat><w:doNotExpandShiftReturn/></w:compat></w:settings>',
+        );
+      }
+    }
+    if (wantToc && !settingsXml.includes('<w:updateFields')) {
+      settingsXml = settingsXml.replace('</w:settings>', '<w:updateFields w:val="true"/></w:settings>');
+    }
+    archive['word/settings.xml'] = strToU8(settingsXml);
+  }
+
+  if (wantToc && tocHeadings.length > 0 && archive['word/document.xml']) {
+    let docXml = strFromU8(archive['word/document.xml']);
+    const tocCachedXml = tocHeadings
+      .map((h) => {
+        const indentTwips = Math.max(0, (h.level - 1) * 320);
+        const boldTag = h.level === 1 ? '<w:b/>' : '';
+        const sizeHalfPt = h.level === 1 ? 24 : h.level === 2 ? 22 : 21;
+        return (
+          `<w:p><w:pPr><w:jc w:val="left"/>` +
+          (indentTwips > 0 ? `<w:ind w:left="${indentTwips}"/>` : '') +
+          `<w:spacing w:before="40" w:after="60"/></w:pPr>` +
+          `<w:hyperlink w:history="1" w:anchor="${escapeXmlText(h.anchorId)}">` +
+          `<w:r><w:rPr>${boldTag}<w:color w:val="1F2328"/><w:sz w:val="${sizeHalfPt}"/></w:rPr>` +
+          `<w:t xml:space="preserve">${escapeXmlText(h.text)}</w:t></w:r>` +
+          `</w:hyperlink></w:p>`
+        );
+      })
+      .join('');
+    docXml = docXml.replace(
+      /(<w:instrText[^>]*>\s*TOC\b[\s\S]*?<w:fldChar w:fldCharType="separate"\s*\/>\s*<\/w:r>\s*<\/w:p>)/,
+      `$1${tocCachedXml}`,
+    );
+    archive['word/document.xml'] = strToU8(docXml);
+  }
+
+  return new Blob([zipSync(archive, { level: 6 })], {
+    type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  });
+}
+
 export async function markdownToDocxBlob(
   source: string,
   _title = 'Document',
@@ -954,6 +1106,7 @@ export async function markdownToDocxBlob(
 ): Promise<Blob> {
   srcImages.clear();
   nextOrderedListInstance = 0;
+  nextHeadingAnchorId = 0;
   plantumlServerForRun = plantumlServer;
   // Apply the same leniency preprocessors the HTML render path uses (malformed
   // table delimiters, list re-indent, inline-HTML blocks) so DOCX export
@@ -962,8 +1115,9 @@ export async function markdownToDocxBlob(
   const tokens = md.parse(preprocessMarkdown(cleanedSource), {});
   const imageRoot = extractImageRoot(source || '');
   await prefetchImages(tokens, imageRoot, filePath);
-  const blocks = await buildBody(tokens, imageRoot, filePath);
-  if (blocks.length === 0) blocks.push(new Paragraph({ text: '' }));
+  const tocHeadings: CollectedDocxHeading[] = [];
+  const blocks = await buildBody(tokens, imageRoot, filePath, tocHeadings);
+  if (blocks.length === 0) blocks.push(new Paragraph({ alignment: AlignmentType.LEFT, text: '' }));
 
   const tpl = resolveDocxTemplate(preset, source ?? '', _title);
   const headerText = renderHeaderText(tpl);
@@ -972,15 +1126,16 @@ export async function markdownToDocxBlob(
   if (tpl.cover) front.push(...buildCover(tpl));
   const wantToc = typeof includeTocPage === 'boolean' ? includeTocPage : tpl.toc;
   if (wantToc) {
-    // A Word TOC is a field, not text: Word fills it in and offers to update
-    // it on open. Generating a static list instead would go stale the moment
-    // anyone edited the document.
+    // Emit a real Word TOC field (`TOC \h \o "1-6"`) AND pre-populate its cached
+    // `<w:sdtContent>` entries in `postProcessDocxPackage` (#593) so both WPS
+    // Office and Word render the complete clickable TOC immediately on open.
     front.push(
       new Paragraph({
         heading: HeadingLevel.HEADING_1,
+        alignment: AlignmentType.LEFT,
         children: [new TextRun({ text: contentsLabel })],
       }),
-      new TableOfContents(contentsLabel, { hyperlink: true, headingStyleRange: '1-3' }),
+      new TableOfContents(contentsLabel, { hyperlink: true, headingStyleRange: '1-6' }),
       new Paragraph({ children: [new PageBreak()] }),
     );
   }
@@ -990,6 +1145,7 @@ export async function markdownToDocxBlob(
     creator: 'SoloMD',
     title: tpl.title || _title,
     description: 'Exported from SoloMD',
+    features: wantToc ? { updateFields: true } : undefined,
     styles: {
       default: {
         document: {
@@ -998,6 +1154,7 @@ export async function markdownToDocxBlob(
             ...(tpl.fontFamily ? { font: tpl.fontFamily } : {}),
           },
           paragraph: {
+            alignment: AlignmentType.LEFT,
             spacing: {
               after: Math.round(tpl.paragraphSpacingPt * 20), // twips
               line: Math.round(tpl.lineSpacing * 240),
@@ -1066,6 +1223,7 @@ export async function markdownToDocxBlob(
     ],
   });
 
-  const generated = await Packer.toBlob(doc);
+  const rawGenerated = await Packer.toBlob(doc);
+  const generated = await postProcessDocxPackage(rawGenerated, wantToc, tocHeadings);
   return referenceDocx ? applyDocxReference(generated, referenceDocx) : generated;
 }

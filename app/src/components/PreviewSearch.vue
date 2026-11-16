@@ -19,6 +19,7 @@ const matchTruncated = ref(false);
 const currentIdx = ref(0);
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+let observerTimer: ReturnType<typeof setTimeout> | null = null;
 let observer: MutationObserver | null = null;
 let markElements: HTMLElement[] = [];
 let activeMarkEl: HTMLElement | null = null;
@@ -66,11 +67,16 @@ function clearMarks() {
   }
 }
 
-function doSearch() {
+function doSearch(opts?: { preserveIndex?: boolean; scroll?: boolean }) {
   if (debounceTimer) {
     clearTimeout(debounceTimer);
     debounceTimer = null;
   }
+  if (observerTimer) {
+    clearTimeout(observerTimer);
+    observerTimer = null;
+  }
+  const prevIdx = currentIdx.value;
   clearMarks();
   const q = query.value.trim();
   if (!q || !props.container) return;
@@ -136,23 +142,28 @@ function doSearch() {
       markElements = createdMarks;
       matchCount.value = createdMarks.length;
       matchTruncated.value = truncated;
-      currentIdx.value = 0;
+      currentIdx.value =
+        opts?.preserveIndex && createdMarks.length > 0
+          ? Math.min(prevIdx, createdMarks.length - 1)
+          : 0;
     }
   } finally {
     resumeObserver();
   }
 
-  if (matchCount.value > 0) highlightCurrent();
+  if (matchCount.value > 0) highlightCurrent(opts?.scroll !== false);
 }
 
-function highlightCurrent() {
+function highlightCurrent(scroll = true) {
   if (!props.container || markElements.length === 0) return;
   if (activeMarkEl) activeMarkEl.classList.remove('ps-mark--current');
   const current = markElements[currentIdx.value] ?? null;
   activeMarkEl = current;
   if (current) {
     current.classList.add('ps-mark--current');
-    current.scrollIntoView({ block: 'center', behavior: 'auto' });
+    if (scroll) {
+      current.scrollIntoView({ block: 'center', behavior: 'auto' });
+    }
   }
 }
 
@@ -221,7 +232,11 @@ function setupObserver() {
   if (observer) observer.disconnect();
   observer = new MutationObserver(() => {
     if (query.value.trim()) {
-      nextTick(doSearch);
+      if (observerTimer) clearTimeout(observerTimer);
+      observerTimer = setTimeout(() => {
+        observerTimer = null;
+        doSearch({ preserveIndex: true, scroll: false });
+      }, 150);
     }
   });
   observer.observe(props.container, { childList: true, subtree: true });
@@ -240,6 +255,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   if (debounceTimer) clearTimeout(debounceTimer);
+  if (observerTimer) clearTimeout(observerTimer);
   observer?.disconnect();
   clearMarks();
 });

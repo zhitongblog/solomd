@@ -293,9 +293,13 @@ export function buildPagedCanvas(
   );
   if (!breaks.length) return null;
 
+  const pagedHeight = (breaks.length + 1) * pageHeightPx;
+  // Guard Chromium / WebView2's 32,767px <canvas> height limit on huge merged books.
+  if (pagedHeight > 32_500) return null;
+
   const out = document.createElement('canvas');
   out.width = width;
-  out.height = (breaks.length + 1) * pageHeightPx;
+  out.height = pagedHeight;
   const outCtx = out.getContext('2d');
   if (!outCtx) return null;
 

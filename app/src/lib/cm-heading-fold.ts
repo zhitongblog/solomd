@@ -58,8 +58,12 @@ function rangeForHeadingLine(state: EditorState, line0: number): FoldRange | nul
   const line = state.doc.line(line0 + 1);
   const canonical = foldable(state, line.from, line.to);
   if (canonical) return canonical;
-  // The syntax tree may not reach this far yet (CodeMirror parses lazily), so
-  // fall back to the text scan rather than silently skipping the section.
+  // Reuse the already-cached `headingsOf(state)` scan (`O(1)` lookup on cached array)
+  // instead of re-calling `state.doc.toString()` + `scanHeadings` per heading (`O(H * N)`).
+  const cached = headingsOf(state).find((h) => h.line === line0);
+  if (cached) {
+    return cached.foldable ? { from: cached.headingEnd, to: cached.end } : null;
+  }
   return foldRangeAtLine(state.doc.toString(), line0);
 }
 

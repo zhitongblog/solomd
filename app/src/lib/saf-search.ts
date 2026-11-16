@@ -55,9 +55,12 @@ export async function searchSafTree(
         continue;
       }
       const lines = content.split(/\r?\n/);
-      for (let i = 0; i < lines.length && hits.length < maxResults; i++) {
+      const perFileCap = maxResults >= 50 ? 25 : maxResults;
+      let fileHits = 0;
+      for (let i = 0; i < lines.length && hits.length < maxResults && fileHits < perFileCap; i++) {
         if (lines[i].toLowerCase().includes(needle)) {
           hits.push({ file: e.path, line: i + 1, snippet: [...lines[i]].slice(0, 200).join('') });
+          fileHits += 1;
         }
       }
     }

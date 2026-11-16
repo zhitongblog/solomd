@@ -124,6 +124,7 @@ import { useRenderDepsVersion } from '../composables/useRenderDepsVersion';
 import { attachCodeCopyButtons } from '../lib/code-copy';
 import { plantumlSvgUrl } from '../lib/plantuml';
 import { stableClickSelection } from '../lib/cm-stable-click';
+import { focusCodeMirrorWithoutScroll, preservePointerFocusScroll } from '../lib/cm-preserve-focus';
 import { cjkDoubleClickSelection } from '../lib/cm-cjk-dblclick';
 import { installSvgImageFallbacks, rewriteImageUrls } from '../lib/image-resolve';
 import { SLASH_BLOCKS, filterBlocks, expandSnippet, indentExpandedSnippet } from '../lib/slash-blocks';
@@ -859,8 +860,13 @@ function togglePlainBlockSourceFold(block: PlainBlock, index: number) {
 // `plainActiveBlock.value`, AND `renderPlainBlock` cleared `plainRenderCache`
 // whenever `.size > 300`, so every search keystroke / Enter jump in a >300-block
 // `.md` file re-split and re-rendered the entire document from scratch.
+let prevPlainBlocksMap = new Map<string, PlainBlock>();
+
 const plainParsedBlocks = computed<PlainBlock[]>(() => {
-  if (!plainLiveEnabled.value) return [];
+  if (!plainLiveEnabled.value) {
+    prevPlainBlocksMap.clear();
+    return [];
+  }
   // Select-all mode (user feedback, 4.8.10): the whole document is presented
   // as ONE active block so the <textarea>'s native selection can span it.
   if (plainSelectAll.value) {
@@ -883,25 +889,37 @@ const plainParsedBlocks = computed<PlainBlock[]>(() => {
   const fullSrc = plainText.value || '';
   const imageRoot = extractMarkdownImageRoot(fullSrc);
   const overrides = plainSourceFoldOverrides.value;
+  const collapseDefault = settings.collapseBlockSource;
+  const plantumlKey = settings.plantumlEnabled ? settings.plantumlServer || '' : '';
+  const tocSig = fullSrc.includes('[TOC]') || fullSrc.includes('[toc]') ? plainTocFingerprint(fullSrc) : '';
+  const nextMap = new Map<string, PlainBlock>();
   let runningLine = 1;
-  return splitPlainMarkdownBlocks(fullSrc).map((block, index) => {
+  const result = splitPlainMarkdownBlocks(fullSrc).map((block, index) => {
     const startLine = runningLine;
     const lineCount = block.text.split('\n').length;
     runningLine += lineCount;
+    const hasCustomFold = Object.prototype.hasOwnProperty.call(overrides, block.start);
+    const foldFlag = hasCustomFold ? String(overrides[block.start]) : `def:${collapseDefault}`;
+    const isTocBlock = tocSig !== '' && /^\s*\[toc\]\s*$/im.test(block.text);
+    const reuseKey = `${index}\0${block.start}\0${startLine}\0${block.hasTrailingNewline ? 1 : 0}\0${foldFlag}\0${imageRoot ?? ''}\0${plantumlKey}\0${isTocBlock ? tocSig : ''}\0${block.text}`;
+    const prev = prevPlainBlocksMap.get(reuseKey);
+    if (prev) {
+      nextMap.set(reuseKey, prev);
+      return prev;
+    }
     const isTableBlock = parseTable(block.text) !== null;
     const isMermaid =
       /^\s*(`{3,}|~{3,})\s*mermaid\b/i.test(block.text) ||
-      (Boolean(settings.plantumlEnabled && settings.plantumlServer) &&
-        /^\s*(`{3,}|~{3,})\s*(?:plantuml|puml)\b/i.test(block.text));
+      (Boolean(plantumlKey) && /^\s*(`{3,}|~{3,})\s*(?:plantuml|puml)\b/i.test(block.text));
     const sourceCollapsed =
       isTableBlock || isMermaid
-        ? (overrides[block.start] ?? settings.collapseBlockSource)
+        ? (overrides[block.start] ?? collapseDefault)
         : false;
     const isTable = isTableBlock && sourceCollapsed;
     const isImageBlock = isStandaloneImageLine(block.text);
     const headingMatch = /^\s*(#{1,6})\s+/.exec(block.text);
     const headingLevel = headingMatch && !block.text.includes('\n') ? headingMatch[1].length : 0;
-    return {
+    const created: PlainBlock = {
       ...block,
       id: `${block.start}:${index}`,
       isTable,
@@ -914,7 +932,11 @@ const plainParsedBlocks = computed<PlainBlock[]>(() => {
       lineCount,
       html: renderPlainBlock(block.text, imageRoot),
     };
+    nextMap.set(reuseKey, created);
+    return created;
   });
+  prevPlainBlocksMap = nextMap;
+  return result;
 });
 
 const plainBlocks = plainParsedBlocks;
@@ -922,14 +944,15 @@ const plainBlocks = plainParsedBlocks;
 const plainTableHandles = new WeakMap<HTMLElement, DomTableEditorHandle>();
 
 function plainTocFingerprint(source: string): string {
-  // FNV-1a keeps the cache key compact even for very large documents. The
-  // source itself is still passed to renderMarkdown, but is not retained in up
-  // to 300 historical Map keys while the user edits headings.
+  // Fingerprint only ATX/Setext heading lines so typing ordinary prose does not
+  // invalidate cached `[TOC]` blocks across a large document.
+  const headingMatches = source.match(/^[ \t]{0,3}(?:#{1,6}[ \t].+|(?:=+|-+)[ \t]*)$/gm);
+  const sig = headingMatches ? headingMatches.join('\n') : '';
   let hash = 0x811c9dc5;
-  for (let i = 0; i < source.length; i++) {
-    hash = Math.imul(hash ^ source.charCodeAt(i), 0x01000193);
+  for (let i = 0; i < sig.length; i++) {
+    hash = Math.imul(hash ^ sig.charCodeAt(i), 0x01000193);
   }
-  return `${source.length}:${(hash >>> 0).toString(36)}`;
+  return `${sig.length}:${(hash >>> 0).toString(36)}`;
 }
 
 function escapePlainHtml(s: string): string {
@@ -1385,10 +1408,13 @@ function emitPlainCursorAndSelection() {
     const block = plainBlocks.value[plainActiveBlock.value];
     if (!el || !block) return;
     const head = (el.selectionDirection === 'backward' ? el.selectionStart : el.selectionEnd) ?? 0;
-    const before = plainText.value.slice(0, block.start) + el.value.slice(0, head);
-    const lines = before.split('\n');
-    const line = lines.length;
-    const col = lines[lines.length - 1]?.length ?? 0;
+    let subLines = 0;
+    for (let k = 0; k < head; k++) {
+      if (el.value.charCodeAt(k) === 10) subLines++;
+    }
+    const line = block.startLine + subLines;
+    const lastNl = head > 0 ? el.value.lastIndexOf('\n', head - 1) : -1;
+    const col = head - (lastNl + 1);
     getCursorHistory().record({ path: props.tab.filePath || props.tab.id, pos: block.start + head, line });
     emit('cursor', line, col + 1);
     emit('selection', plainSelectionText());
@@ -1400,9 +1426,9 @@ function emitPlainCursorAndSelection() {
   const el = plainEditor.value;
   if (!el) return;
   const head = (el.selectionDirection === 'backward' ? el.selectionStart : el.selectionEnd) ?? 0;
-  const lines = el.value.slice(0, head).split('\n');
-  const line = lines.length;
-  const col = lines[lines.length - 1]?.length ?? 0;
+  const line = lineAt(el.value, head);
+  const lastNl = head > 0 ? el.value.lastIndexOf('\n', head - 1) : -1;
+  const col = head - (lastNl + 1);
   getCursorHistory().record({ path: props.tab.filePath || props.tab.id, pos: head, line });
   emit('cursor', line, col + 1);
   emit('selection', plainSelectionText());
@@ -2453,13 +2479,14 @@ function replacePlainAll() {
   if (!plainFindQuery.value || !plainMatches.value.length) return;
   recordPlainHistory();
   const r = plainReplaceValue.value;
-  let result = '';
+  const parts: string[] = [];
   let last = 0;
   for (const m of plainMatches.value) {
-    result += plainText.value.slice(last, m.start) + r;
+    parts.push(plainText.value.slice(last, m.start), r);
     last = m.end;
   }
-  result += plainText.value.slice(last);
+  parts.push(plainText.value.slice(last));
+  const result = parts.join('');
   applyPlainContent(result, result.length);
   nextTick(runPlainSearch);
 }
@@ -4725,6 +4752,7 @@ function buildExtensions() {
   return [
     imeCompositionGuard(),
     history(),
+    preservePointerFocusScroll(),
     ...(windowsImeSafeMode
       ? []
       : [
@@ -5602,6 +5630,12 @@ function readTableToolbar(): TableToolbarState | null {
       key: `cell:${session.from}:${session.to}:${session.row}:${session.col}`,
     };
   }
+  if (!usePlainWindowsEditor && view) {
+    // Fast-bail before materializing `doc.toString()` on every 60fps scroll frame
+    // when the caret's own line isn't even part of a pipe table!
+    const head = view.state.selection.main.head;
+    if (!view.state.doc.lineAt(head).text.includes('|')) return null;
+  }
   const ed = editorTextAndCaret();
   if (!ed) return null;
   const hit = tableAt(ed.text, ed.caret);
@@ -5615,6 +5649,12 @@ function readTableToolbarRect(): Box | null {
   if (session) {
     const r = session.tableEl.getBoundingClientRect();
     return { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+  }
+  if (!usePlainWindowsEditor && view) {
+    // Fast-bail before materializing `doc.toString()` on every 60fps scroll frame
+    // when the caret's own line isn't even part of a pipe table!
+    const head = view.state.selection.main.head;
+    if (!view.state.doc.lineAt(head).text.includes('|')) return null;
   }
   const ed = editorTextAndCaret();
   if (!ed) return null;
@@ -5668,6 +5708,10 @@ function onTableToolbarAction(action: TableAction): void {
       session.from + cellStart(markdown, nextRow, nextCol),
     );
     return;
+  }
+  if (!usePlainWindowsEditor && view) {
+    const head = view.state.selection.main.head;
+    if (!view.state.doc.lineAt(head).text.includes('|')) return;
   }
   const ed = editorTextAndCaret();
   if (!ed) return;
@@ -5998,11 +6042,7 @@ function focusFreshCodeMirror() {
       !active.closest('.cm-editor') &&
       (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT');
     if (inModalOrSidebarInput) return;
-    const savedSt = view.scrollDOM.scrollTop;
-    view.contentDOM.focus({ preventScroll: true });
-    if (savedSt > 0 && Math.abs(view.scrollDOM.scrollTop - savedSt) > 1) {
-      view.scrollDOM.scrollTop = savedSt;
-    }
+    focusCodeMirrorWithoutScroll(view);
   };
   nextTick(() => {
     doFocus();
@@ -6502,9 +6542,20 @@ watch(plainLiveEnabled, () => {
 watch(
   // renderDepsVersion: the blocks re-render when KaTeX / highlight.js land,
   // which puts mermaid / PlantUML fences back to source — process them again.
-  () => [plainLiveEnabled.value, plainText.value, settings.theme, settings.language, renderDepsVersion.value],
+  () => [plainLiveEnabled.value, settings.theme, settings.language, renderDepsVersion.value],
   () => {
     void processPlainLiveRenderedBlocks();
+  },
+  { flush: 'post' },
+);
+
+watch(
+  plainText,
+  () => {
+    if (!plainLiveEnabled.value) return;
+    // When typing inside a block, only the active block's live preview can
+    // change — avoid running 5 full-document `querySelectorAll` sweeps on every keystroke!
+    void processPlainLiveRenderedBlocks(plainActiveBlock.value);
   },
   { flush: 'post' },
 );
@@ -6706,14 +6757,14 @@ function getViewLine(): number | null {
             const idx = Number(node.getAttribute('data-plain-block-index') || '0');
             const b = blocks[idx];
             if (b) {
-              return plainText.value.slice(0, b.start).split('\n').length;
+              return b.startLine;
             }
           }
         }
       }
       const block = blocks[plainActiveBlock.value];
       if (!block) return 1;
-      return plainText.value.slice(0, block.start).split('\n').length;
+      return block.startLine;
     }
     const el = plainEditor.value;
     if (!el) return null;
@@ -6864,9 +6915,8 @@ function getViewportAnchor(): { line: number; offsetTop: number } | null {
           const subLines = el ? el.value.slice(0, el.selectionStart ?? 0).split('\n').length - 1 : 0;
           const caretOffsetTop = blockRect.top - hostRect.top + subLines * plainLineHeightPx();
           if (caretOffsetTop >= -4 && caretOffsetTop <= hostEl.clientHeight - 12) {
-            const blockStartLine = plainText.value.slice(0, activeBlock.start).split('\n').length;
             return {
-              line: blockStartLine + subLines,
+              line: activeBlock.startLine + subLines,
               offsetTop: Math.max(0, Math.round(caretOffsetTop)),
             };
           }
@@ -6879,7 +6929,7 @@ function getViewportAnchor(): { line: number; offsetTop: number } | null {
             const b = blocks[bIdx];
             if (b) {
               return {
-                line: plainText.value.slice(0, b.start).split('\n').length,
+                line: b.startLine,
                 offsetTop: Math.max(0, Math.round(rect.top - hostRect.top)),
               };
             }

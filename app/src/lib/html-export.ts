@@ -708,9 +708,17 @@ const NAV_SIDEBAR_SCRIPT = `<script>
       var start = Math.max(0, pos - 24);
       var end = Math.min(text.length, pos + kw.length + 44);
       var rawSlice = (start > 0 ? '…' : '') + text.slice(start, end) + (end < text.length ? '…' : '');
-      var snippet = escapeHtml(rawSlice).replace(re, function (m) {
-        return '<mark>' + m + '</mark>';
-      });
+      re.lastIndex = 0;
+      var snippet = '';
+      var lastIdx = 0;
+      var hitMatch;
+      while ((hitMatch = re.exec(rawSlice)) !== null) {
+        if (!hitMatch[0].length) { re.lastIndex += 1; continue; }
+        snippet += escapeHtml(rawSlice.slice(lastIdx, hitMatch.index));
+        snippet += '<mark>' + escapeHtml(hitMatch[0]) + '</mark>';
+        lastIdx = hitMatch.index + hitMatch[0].length;
+      }
+      snippet += escapeHtml(rawSlice.slice(lastIdx));
       var secTitle = nearestHeadingTitle(blk) || text.slice(0, 32);
       matches.push({
         el: blk,

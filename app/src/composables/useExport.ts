@@ -911,27 +911,26 @@ export function useExport() {
     } = input;
     if (format === 'epub' || format === 'odt' || format === 'latex' || format === 'rtf') {
       const { preprocessMarkdown } = await import('../lib/markdown');
+      const { buildPandocFromArg, prepareMarkdownForPandoc } = await import('../lib/pandoc-markdown');
       const { pandocResourcePaths } = await import('../lib/pandoc-resource-paths');
       const { useWorkspaceStore } = await import('../stores/workspace');
       const workspace = useWorkspaceStore();
-      let cleanedMarkdown = preprocessMarkdown(content)
-        .replace(/^[ \t]*\[toc\][ \t]*\r?$/gim, '')
-        .replace(/\s*<!--\s*solomd-(?:toc-(?:level:\d+|folder)|page-break)\s*-->/g, '');
+      let cleanedMarkdown = prepareMarkdownForPandoc(preprocessMarkdown(content));
       // #578 — Render Mermaid fences to high-DPI PNG data URIs before Pandoc
       // runs so EPUB / ODT / RTF exports display real diagrams instead of raw code.
       if (format === 'epub' || format === 'odt' || format === 'rtf') {
         const { renderMermaidFencesInMarkdown } = await import('../lib/diagram-export');
         cleanedMarkdown = await renderMermaidFencesInMarkdown(cleanedMarkdown);
       }
-      const extraArgs: string[] = [`--metadata=title:${baseName}`];
+      const extraArgs: string[] = [
+        buildPandocFromArg(settings.markdownHardBreaks),
+        `--metadata=title:${baseName}`,
+      ];
       if (includeBookmarks || includeTocPage) {
         extraArgs.push('--toc', '--toc-depth=6');
       }
       if (format === 'latex' || format === 'rtf') {
         extraArgs.push('--standalone');
-      }
-      if (settings.markdownHardBreaks) {
-        extraArgs.push('--from=markdown+hard_line_breaks');
       }
       let cssContent: string | null = null;
       if (format === 'epub') {

@@ -252,14 +252,30 @@ export function setLiveEditCopyLabel(getter: () => string): void {
 }
 
 class CodeCopyWidget extends WidgetType {
-  readonly code: string;
-  constructor(code: string) {
+  readonly doc: { line(n: number): { text: string } };
+  readonly isFenced: boolean;
+  readonly startLine: number;
+  readonly endLine: number;
+  constructor(
+    doc: { line(n: number): { text: string } },
+    isFenced: boolean,
+    startLine: number,
+    endLine: number,
+  ) {
     super();
-    this.code = code;
+    this.doc = doc;
+    this.isFenced = isFenced;
+    this.startLine = startLine;
+    this.endLine = endLine;
   }
 
   eq(other: CodeCopyWidget) {
-    return other.code === this.code;
+    return (
+      other.doc === this.doc &&
+      other.isFenced === this.isFenced &&
+      other.startLine === this.startLine &&
+      other.endLine === this.endLine
+    );
   }
 
   toDOM() {
@@ -282,7 +298,13 @@ class CodeCopyWidget extends WidgetType {
       ev.preventDefault();
       ev.stopPropagation();
       try {
-        await copyPlainText(this.code);
+        const code = codeBlockClipboardText(
+          this.doc,
+          this.isFenced,
+          this.startLine,
+          this.endLine,
+        );
+        await copyPlainText(code);
         btn.textContent = '✓';
         window.setTimeout(() => {
           if (btn.isConnected) btn.textContent = copyLabelGetter();
@@ -388,6 +410,10 @@ export function buildDecorations(
   const seenDefLines = new Set<number>();
 
   for (const { from, to } of view.visibleRanges) {
+    const firstVisibleLine = view.state.doc.lineAt(from).number;
+    const lastVisibleLine = view.state.doc.lineAt(
+      Math.min(to, view.state.doc.length),
+    ).number;
     tree.iterate({
       from,
       to,
@@ -534,7 +560,9 @@ export function buildDecorations(
           const endLine = view.state.doc.lineAt(
             Math.min(nTo, view.state.doc.length),
           ).number;
-          for (let ln = startLine; ln <= endLine; ln++) {
+          const loopStart = Math.max(startLine, firstVisibleLine);
+          const loopEnd = Math.min(endLine, lastVisibleLine);
+          for (let ln = loopStart; ln <= loopEnd; ln++) {
             const lineObj = view.state.doc.line(ln);
             if (!seenQuoteLines.has(lineObj.from)) {
               seenQuoteLines.add(lineObj.from);
@@ -603,7 +631,9 @@ export function buildDecorations(
             endLine > startLine &&
             /^\s*(`{3,}|~{3,})\s*$/.test(view.state.doc.line(endLine).text);
           const bodyEnd = hasClosingFence ? endLine - 1 : endLine;
-          for (let ln = startLine; ln <= endLine; ln++) {
+          const loopStart = Math.max(startLine, firstVisibleLine);
+          const loopEnd = Math.min(endLine, lastVisibleLine);
+          for (let ln = loopStart; ln <= loopEnd; ln++) {
             const lineObj = view.state.doc.line(ln);
             if (!seenFencedLines.has(lineObj.from)) {
               seenFencedLines.add(lineObj.from);
@@ -652,16 +682,22 @@ export function buildDecorations(
             && !seenCopyBlocks.has(firstLine.from)
           ) {
             seenCopyBlocks.add(firstLine.from);
-            const code = codeBlockClipboardText(
-              view.state.doc,
-              name === 'FencedCode',
-              startLine,
-              endLine,
-            );
-            if (code.trim()) {
+            let hasNonEmptyBody = false;
+            for (let probe = bodyStart; probe <= bodyEnd; probe += 1) {
+              if (view.state.doc.line(probe).text.trim().length > 0) {
+                hasNonEmptyBody = true;
+                break;
+              }
+            }
+            if (hasNonEmptyBody) {
               ranges.push(
                 Decoration.widget({
-                  widget: new CodeCopyWidget(code),
+                  widget: new CodeCopyWidget(
+                    view.state.doc,
+                    isFenced,
+                    startLine,
+                    endLine,
+                  ),
                   side: -1,
                 }).range(firstLine.from),
               );
@@ -783,49 +819,56 @@ export function buildDecorations(
     // line. Moving the caret onto the line reveals the exact source for
     // editing. Fenced-code lines and inline-code spans are skipped — they
     // must show their source verbatim.
-    const firstVisibleLine = view.state.doc.lineAt(from).number;
-    const lastVisibleLine = view.state.doc.lineAt(
-      Math.min(to, view.state.doc.length),
-    ).number;
     for (let lineNo = firstVisibleLine; lineNo <= lastVisibleLine; lineNo += 1) {
       if (seenInlineHtmlLines.has(lineNo)) continue;
       seenInlineHtmlLines.add(lineNo);
       if (!showMarkers && lineNo >= fromLine && lineNo <= toLine) continue;
       const line = view.state.doc.line(lineNo);
       if (seenFencedLines.has(line.from)) continue;
+      const rawText = line.text;
+      const hasAngle = rawText.includes('<');
+      const hasMarkEq = rawText.includes('==');
+      const hasSupSub = rawText.includes('^') || rawText.includes('~');
+      if (!hasAngle && !hasMarkEq && !hasSupSub) continue;
       const base = line.from;
-      const scanText = maskInlineCode(line.text);
+      const scanText = rawText.includes('`') ? maskInlineCode(rawText) : rawText;
       const tagDeco = showMarkers ? markerMark : hideDeco;
-      for (const span of findInlineHtmlSpans(scanText)) {
-        ranges.push(tagDeco.range(base + span.openFrom, base + span.openTo));
-        if (span.contentTo > span.contentFrom) {
-          ranges.push(
-            inlineHtmlMark(span.kind, span.bgColor, span.textColor).range(
-              base + span.contentFrom,
-              base + span.contentTo,
-            ),
-          );
+      if (hasAngle) {
+        for (const span of findInlineHtmlSpans(scanText)) {
+          ranges.push(tagDeco.range(base + span.openFrom, base + span.openTo));
+          if (span.contentTo > span.contentFrom) {
+            ranges.push(
+              inlineHtmlMark(span.kind, span.bgColor, span.textColor).range(
+                base + span.contentFrom,
+                base + span.contentTo,
+              ),
+            );
+          }
+          ranges.push(tagDeco.range(base + span.closeFrom, base + span.closeTo));
         }
-        ranges.push(tagDeco.range(base + span.closeFrom, base + span.closeTo));
       }
-      for (const span of findMarkSpans(scanText)) {
-        ranges.push(tagDeco.range(base + span.openFrom, base + span.openTo));
-        ranges.push(
-          htmlMarkMark.range(base + span.contentFrom, base + span.contentTo),
-        );
-        ranges.push(tagDeco.range(base + span.closeFrom, base + span.closeTo));
-      }
-      for (const span of findSupSubSpans(scanText)) {
-        ranges.push(tagDeco.range(base + span.openFrom, base + span.openTo));
-        if (span.contentTo > span.contentFrom) {
+      if (hasMarkEq) {
+        for (const span of findMarkSpans(scanText)) {
+          ranges.push(tagDeco.range(base + span.openFrom, base + span.openTo));
           ranges.push(
-            inlineHtmlMark(span.kind, span.bgColor, span.textColor).range(
-              base + span.contentFrom,
-              base + span.contentTo,
-            ),
+            htmlMarkMark.range(base + span.contentFrom, base + span.contentTo),
           );
+          ranges.push(tagDeco.range(base + span.closeFrom, base + span.closeTo));
         }
-        ranges.push(tagDeco.range(base + span.closeFrom, base + span.closeTo));
+      }
+      if (hasSupSub) {
+        for (const span of findSupSubSpans(scanText)) {
+          ranges.push(tagDeco.range(base + span.openFrom, base + span.openTo));
+          if (span.contentTo > span.contentFrom) {
+            ranges.push(
+              inlineHtmlMark(span.kind, span.bgColor, span.textColor).range(
+                base + span.contentFrom,
+                base + span.contentTo,
+              ),
+            );
+          }
+          ranges.push(tagDeco.range(base + span.closeFrom, base + span.closeTo));
+        }
       }
     }
 

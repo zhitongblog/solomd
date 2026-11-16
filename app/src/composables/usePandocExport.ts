@@ -210,7 +210,8 @@ export function usePandocExport() {
     // for the table-delimiter repair, the inline-HTML unwrap, and opt-in
     // heading numbers — all of which the user can see on screen and would
     // reasonably expect in a .docx.
-    const content = preprocessMarkdown(activeContent ?? ctx.content);
+    const { buildPandocFromArg, prepareMarkdownForPandoc } = await import('../lib/pandoc-markdown');
+    const content = prepareMarkdownForPandoc(preprocessMarkdown(activeContent ?? ctx.content));
 
     // Detect pandoc up front so the user gets a clear "install pandoc"
     // error before we open the save dialog.
@@ -239,10 +240,11 @@ export function usePandocExport() {
       extraArgs.push(...spec.extraArgs);
     }
     if (opts.extraArgs) extraArgs.push(...opts.extraArgs);
-    // #141 — keep pandoc's line-break semantics in lockstep with the in-app
-    // preview: with hard breaks on, a single newline is a real line break.
-    if (settings.markdownHardBreaks) {
-      extraArgs.push('--from=markdown+hard_line_breaks');
+    // #141 & #591 — keep pandoc's line-break and table semantics in lockstep
+    // with SoloMD's CommonMark/GFM preview unless the caller specified `--from`/`-f`.
+    const hasCustomFrom = extraArgs.some((a) => a === '-f' || a.startsWith('--from=') || a === '--from');
+    if (!hasCustomFrom) {
+      extraArgs.push(buildPandocFromArg(settings.markdownHardBreaks));
     }
 
     const filters =

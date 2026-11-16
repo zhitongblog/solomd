@@ -149,7 +149,23 @@ export function replaceCurrent(view: EditorView): boolean {
   if (target.from !== from || target.to !== to) {
     view.dispatch({ selection: { anchor: target.from, head: target.to } });
   }
-  return replaceNext(view);
+  const beforeLen = view.state.doc.length;
+  const replaced = replaceNext(view);
+  // Guard zero-length regexp matches (`^`, `$`, `\b`, `a*`): if `target.from === target.to`
+  // and `replaceNext` left the selection anchored at the same origin, advance by 1
+  // past the inserted text so repeated Replace clicks progress instead of looping.
+  if (replaced && target.from === target.to) {
+    const delta = Math.max(0, view.state.doc.length - beforeLen);
+    const curSel = view.state.selection.main;
+    if (curSel.from <= target.from + delta && curSel.empty) {
+      const nextAnchor = Math.min(view.state.doc.length, target.from + delta + 1);
+      const nextHit = matchFrom(view.state, query, nextAnchor);
+      if (nextHit && nextHit.from >= nextAnchor) {
+        view.dispatch({ selection: { anchor: nextHit.from, head: nextHit.to } });
+      }
+    }
+  }
+  return replaced;
 }
 
 export function createFindPanel(view: EditorView, labels: FindPanelLabels): Panel {
@@ -276,10 +292,15 @@ export function createFindPanel(view: EditorView, labels: FindPanelLabels): Pane
   }
 
   let commitTimer: ReturnType<typeof setTimeout> | null = null;
+  let recountTimer: ReturnType<typeof setTimeout> | null = null;
   function clearCommitTimer() {
     if (commitTimer !== null) {
       clearTimeout(commitTimer);
       commitTimer = null;
+    }
+    if (recountTimer !== null) {
+      clearTimeout(recountTimer);
+      recountTimer = null;
     }
   }
   function flushPendingCommit() {
@@ -304,8 +325,11 @@ export function createFindPanel(view: EditorView, labels: FindPanelLabels): Pane
   }
 
   function scheduleInputCommit() {
-    if (view.state.doc.length > LARGE_DOC_DEBOUNCE_CHARS && findField.value.length > 0) {
-      clearCommitTimer();
+    if (
+      findField.value.length > 0 &&
+      (view.state.doc.length > LARGE_DOC_DEBOUNCE_CHARS || query.regexp)
+    ) {
+      if (commitTimer !== null) clearTimeout(commitTimer);
       commitTimer = setTimeout(() => {
         commitTimer = null;
         commit();
@@ -449,8 +473,25 @@ export function createFindPanel(view: EditorView, labels: FindPanelLabels): Pane
         }
         syncToggles();
       }
-      if (queryChanged || update.docChanged) recount();
-      else if (update.selectionSet) renderCount();
+      if (queryChanged) {
+        if (recountTimer !== null) {
+          clearTimeout(recountTimer);
+          recountTimer = null;
+        }
+        recount();
+      } else if (update.docChanged) {
+        if (update.state.doc.length > LARGE_DOC_DEBOUNCE_CHARS) {
+          if (recountTimer !== null) clearTimeout(recountTimer);
+          recountTimer = setTimeout(() => {
+            recountTimer = null;
+            recount();
+          }, 120);
+        } else {
+          recount();
+        }
+      } else if (update.selectionSet) {
+        renderCount();
+      }
     },
   };
 }

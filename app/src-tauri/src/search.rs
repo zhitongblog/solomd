@@ -81,8 +81,12 @@ pub fn search_in_dir_inner(
             Ok(c) => c,
             Err(_) => continue,
         };
+        // Cap per-file hits when searching broad queries so a single huge note
+        // cannot consume the entire `max_results` budget and starve other files.
+        let per_file_cap = if max_results >= 50 { 25 } else { max_results };
+        let mut file_hits = 0usize;
         for (i, line) in content.lines().enumerate() {
-            if hits.len() >= max_results {
+            if hits.len() >= max_results || file_hits >= per_file_cap {
                 break;
             }
             if line.to_lowercase().contains(&needle) {
@@ -93,6 +97,7 @@ pub fn search_in_dir_inner(
                     line: i + 1,
                     snippet,
                 });
+                file_hits += 1;
             }
         }
     }

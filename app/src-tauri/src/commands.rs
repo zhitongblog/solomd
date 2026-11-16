@@ -964,13 +964,17 @@ pub fn fs_file_exists(path: String) -> bool {
 }
 
 #[tauri::command]
-pub fn fs_rename(
+pub async fn fs_rename(
     from: String,
     to: String,
     workspace_root: Option<String>,
     update_links: Option<bool>,
 ) -> Result<Vec<String>, String> {
-    fs_rename_with_workspace(from, to, workspace_root, update_links.unwrap_or(true))
+    tauri::async_runtime::spawn_blocking(move || {
+        fs_rename_with_workspace(from, to, workspace_root, update_links.unwrap_or(true))
+    })
+    .await
+    .map_err(|e| format!("join: {e}"))?
 }
 
 pub fn fs_rename_with_workspace(
@@ -1116,13 +1120,17 @@ fn rewrite_assets_refs(file: &Path, old_assets: &Path, new_assets: &Path) -> Res
 // ---------------------------------------------------------------------------
 
 #[tauri::command]
-pub fn fs_move(
+pub async fn fs_move(
     from: String,
     to: String,
     workspace_root: Option<String>,
     update_links: Option<bool>,
 ) -> Result<Vec<String>, String> {
-    fs_move_with_workspace(from, to, workspace_root, update_links.unwrap_or(true))
+    tauri::async_runtime::spawn_blocking(move || {
+        fs_move_with_workspace(from, to, workspace_root, update_links.unwrap_or(true))
+    })
+    .await
+    .map_err(|e| format!("join: {e}"))?
 }
 
 #[allow(dead_code)]
@@ -1491,6 +1499,11 @@ fn relink_moved_tree(new_root: &Path, old_root: &Path, moved_roots: &[Vec<String
             continue;
         }
         let Ok(bytes) = fs::read(&file) else { continue };
+        // Every Markdown link `[...](...)`, reference def `[id]: ...`, or wikilink
+        // `[[...]]` contains `]` — skip files with no `]` before UTF-8 + line regexes.
+        if !bytes.contains(&b']') {
+            continue;
+        }
         let Ok(body) = std::str::from_utf8(&bytes) else {
             continue;
         };
@@ -1819,7 +1832,10 @@ fn relink_inbound_workspace_links(
     let new_stem = strip_markdown_ext(&new_name).to_string();
 
     const SKIP_DIRS: &[&str] = &[".git", "node_modules", "target", "dist"];
-    let md_files: Vec<std::path::PathBuf> = walkdir::WalkDir::new(ws_root)
+    let old_name_lc = old_name.to_lowercase();
+    let mut md_files: Vec<std::path::PathBuf> = Vec::new();
+    let mut has_duplicate_non_md_name = false;
+    for entry in walkdir::WalkDir::new(ws_root)
         .into_iter()
         .filter_entry(|e| {
             if e.depth() == 0 {
@@ -1832,9 +1848,22 @@ fn relink_inbound_workspace_links(
             true
         })
         .filter_map(|e| e.ok())
-        .filter(|e| e.file_type().is_file() && is_markdown_path(e.path()))
-        .map(|e| e.path().to_path_buf())
-        .collect();
+    {
+        if !entry.file_type().is_file() {
+            continue;
+        }
+        let path = entry.path();
+        if is_markdown_path(path) {
+            md_files.push(path.to_path_buf());
+        } else if !is_dir
+            && !is_md_file
+            && !has_duplicate_non_md_name
+            && path != new_root
+            && entry.file_name().to_string_lossy().to_lowercase() == old_name_lc
+        {
+            has_duplicate_non_md_name = true;
+        }
+    }
 
     // Only rewrite stem-only `[[OldStem]]` when no OTHER file in the workspace
     // still carries that stem/filename (avoids clobbering ambiguous stems like
@@ -1849,20 +1878,7 @@ fn relink_inbound_workspace_links(
                         .unwrap_or(false)
             })
         } else {
-            let old_name_lc = old_name.to_lowercase();
-            !walkdir::WalkDir::new(ws_root)
-                .into_iter()
-                .filter_entry(|e| {
-                    e.depth() == 0
-                        || !e.file_type().is_dir()
-                        || !SKIP_DIRS.contains(&e.file_name().to_string_lossy().as_ref())
-                })
-                .filter_map(|e| e.ok())
-                .any(|e| {
-                    e.file_type().is_file()
-                        && e.path() != new_root
-                        && e.file_name().to_string_lossy().to_lowercase() == old_name_lc
-                })
+            !has_duplicate_non_md_name
         }
     };
 
@@ -1899,6 +1915,11 @@ fn relink_inbound_workspace_links(
         let rewrite_relative = !moved_across_dirs;
 
         let Ok(bytes) = fs::read(&file) else { continue };
+        // Every Markdown link `[...](...)`, reference def `[id]: ...`, or wikilink
+        // `[[...]]` contains `]` — skip files with no `]` before UTF-8 + line regexes.
+        if !bytes.contains(&b']') {
+            continue;
+        }
         let Ok(body) = std::str::from_utf8(&bytes) else {
             continue;
         };

@@ -8,6 +8,7 @@ import { useTilesStore } from '../stores/tiles';
 import { useTabsStore } from '../stores/tabs';
 import type { Tab } from '../types';
 import { isWindowsEditorRuntime, shouldUsePlainWindowsEditor } from '../lib/platform';
+import { createLaunchCursorRestore } from '../lib/launch-cursor-restore';
 import {
   previewScrollMemory,
   tabCaretMemory,
@@ -87,26 +88,21 @@ function onCursor(line: number, col: number) {
 // editor (preview-only mode keeps it pending until an editor shows it).
 // `setCaret(line, col)` is used when the editor exposes it; otherwise the
 // existing `gotoLine` lands on the right line (column 1).
-function restoreLaunchCursor() {
-  const tab = props.tab;
-  if (!tab || !isFocused.value || !showEditor.value) return;
-  const tabId = tab.id;
-  setTimeout(() => {
-    const ed = editorRef.value as unknown as {
+const launchCursorRestore = createLaunchCursorRestore({
+  getTabId: () => props.tab?.id,
+  canRestore: () => isFocused.value && showEditor.value && settings.viewMode !== 'reading',
+  getEditor: () =>
+    editorRef.value as unknown as {
       setCaret?: (line: number, col: number) => void;
       gotoLine?: (line: number) => void;
-    } | null;
-    if (!ed || props.tab?.id !== tabId) return;
-    const c = tabs.takeLaunchCursor(tabId);
-    if (!c) return;
-    if ((c.line <= 1 && c.col <= 1) || tabCaretMemory.has(tabId) || tabTopLineMemory.has(tabId)) {
-      return;
-    }
-    if (ed.setCaret) ed.setCaret(c.line, c.col);
-    else ed.gotoLine?.(c.line);
-  }, 150);
-}
-watch(() => [props.tab?.id, isFocused.value, showEditor.value], restoreLaunchCursor);
+    } | null,
+  takeCursor: (tabId) => tabs.takeLaunchCursor(tabId),
+  hasViewportMemory: (tabId) => tabCaretMemory.has(tabId) || tabTopLineMemory.has(tabId),
+});
+watch(
+  () => [props.tab?.id, isFocused.value, showEditor.value, settings.viewMode],
+  launchCursorRestore.schedule,
+);
 
 function onSelection(text: string) {
   if (isFocused.value) {
@@ -682,7 +678,7 @@ onMounted(() => {
     }
   }, 110);
   setTimeout(bindScrollSync, 300);
-  restoreLaunchCursor();
+  launchCursorRestore.schedule();
   window.addEventListener('solomd:outline-goto', onOutlineGotoEvent);
   window.addEventListener('solomd:insert-markdown', onInsertMarkdownEvent);
   window.addEventListener('solomd:insert-image-path', onInsertImagePathEvent);
@@ -696,6 +692,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  launchCursorRestore.cancel();
   syncEditorScroll?.();
   syncPreviewScroll?.();
   resizeObserver?.disconnect();
@@ -823,6 +820,10 @@ function onPreviewSearchEvent(e: Event) {
       :style="editorPaneStyle"
       @pointermove="onEditorPointerMove"
       @pointerleave="clearSplitHover"
+      @pointerdown.capture="launchCursorRestore.userIntent"
+      @touchstart.capture.passive="launchCursorRestore.userIntent"
+      @keydown.capture="launchCursorRestore.userIntent"
+      @wheel.capture.passive="launchCursorRestore.userIntent"
     >
       <div
         v-if="isSplit && editorHoverBand"

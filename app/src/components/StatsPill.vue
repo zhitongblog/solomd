@@ -54,10 +54,17 @@ const pillLabel = computed(() =>
   t(mostlyCjk.value ? 'statsPill.cjk' : 'statsPill.words', { n: fmt(stats.value.total) }),
 );
 
-// #552 — PDF pagination estimate for the active Markdown document
-const pdfPagination = computed(() => {
+// #552 — PDF pagination estimate for the active Markdown document.
+// Split full-document `computePdfPageBreaks` from `props.line` so moving the
+// caret across lines only runs `O(log P)` `pageForLine` instead of rescanning
+// the entire document on every `ArrowUp` / `ArrowDown` / click!
+const pdfBreaks = computed(() => {
   if (!settings.showPdfPageBreaks || tabs.activeTab?.language !== 'markdown') return null;
-  const res = computePdfPageBreaks(content.value, settings.pdfDefaults);
+  return computePdfPageBreaks(content.value, settings.pdfDefaults);
+});
+const pdfPagination = computed(() => {
+  const res = pdfBreaks.value;
+  if (!res) return null;
   const currentPage = res.pageForLine(Math.max(1, props.line || 1));
   return {
     currentPage,
