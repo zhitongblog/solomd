@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, watch, computed, nextTick } from 'vue';
+import { ref, shallowRef, onMounted, onBeforeUnmount, watch, computed, nextTick } from 'vue';
 import { EditorState, Compartment, Prec, Transaction } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, highlightActiveLine, drawSelection, rectangularSelection, crosshairCursor } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap, indentWithTab, undo as cmUndo, redo as cmRedo, addCursorAbove, addCursorBelow } from '@codemirror/commands';
@@ -854,13 +854,15 @@ function togglePlainBlockSourceFold(block: PlainBlock, index: number) {
   }
 }
 
-const plainBlocks = computed<PlainBlock[]>(() => {
+// Decouple heavy full-document Markdown splitting & rendering from
+// `plainActiveBlock` changes! Previously `plainBlocks` depended directly on
+// `plainActiveBlock.value`, AND `renderPlainBlock` cleared `plainRenderCache`
+// whenever `.size > 300`, so every search keystroke / Enter jump in a >300-block
+// `.md` file re-split and re-rendered the entire document from scratch.
+const plainParsedBlocks = computed<PlainBlock[]>(() => {
   if (!plainLiveEnabled.value) return [];
   // Select-all mode (user feedback, 4.8.10): the whole document is presented
   // as ONE active block so the <textarea>'s native selection can span it.
-  // Every selection consumer then works untouched — Ctrl+C/X, Delete,
-  // type-over, IME composition-over-selection (a WebView2 minefield we must
-  // not reimplement), and the toolbar/⌘J AI-rewrite absolute offsets.
   if (plainSelectAll.value) {
     const src = plainText.value || '';
     const lineCount = src.split('\n').length;
@@ -878,9 +880,11 @@ const plainBlocks = computed<PlainBlock[]>(() => {
       },
     ];
   }
+  const fullSrc = plainText.value || '';
+  const imageRoot = extractMarkdownImageRoot(fullSrc);
   const overrides = plainSourceFoldOverrides.value;
   let runningLine = 1;
-  return splitPlainMarkdownBlocks(plainText.value || '').map((block, index) => {
+  return splitPlainMarkdownBlocks(fullSrc).map((block, index) => {
     const startLine = runningLine;
     const lineCount = block.text.split('\n').length;
     runningLine += lineCount;
@@ -894,11 +898,6 @@ const plainBlocks = computed<PlainBlock[]>(() => {
         ? (overrides[block.start] ?? settings.collapseBlockSource)
         : false;
     const isTable = isTableBlock && sourceCollapsed;
-    // #561 — standalone image lines keep their source on screen, so entering
-    // the block does not make the picture vanish (and reappear on the way out).
-    // Those two swaps were the "跳闪": the block's height changed twice per
-    // click, once when the picture was replaced by `![](…)` and once when it
-    // came back.
     const isImageBlock = isStandaloneImageLine(block.text);
     const headingMatch = /^\s*(#{1,6})\s+/.exec(block.text);
     const headingLevel = headingMatch && !block.text.includes('\n') ? headingMatch[1].length : 0;
@@ -913,13 +912,12 @@ const plainBlocks = computed<PlainBlock[]>(() => {
       headingLevel,
       startLine,
       lineCount,
-      html:
-        index === plainActiveBlock.value && !isTableBlock && !isMermaid && !isImageBlock
-          ? ''
-          : renderPlainBlock(block.text),
+      html: renderPlainBlock(block.text, imageRoot),
     };
   });
 });
+
+const plainBlocks = plainParsedBlocks;
 
 const plainTableHandles = new WeakMap<HTMLElement, DomTableEditorHandle>();
 
@@ -1003,13 +1001,24 @@ function renderPlainVisibleMarkers(src: string): string {
   return `<div class="plain-block__markers">${lines.join('\n')}</div>`;
 }
 
-function renderPlainBlock(src: string): string {
+const PLAIN_RENDER_CACHE_MAX = 4000;
+function putPlainRenderCache(key: string, html: string): void {
+  if (plainRenderCache.has(key)) plainRenderCache.delete(key);
+  plainRenderCache.set(key, html);
+  if (plainRenderCache.size > PLAIN_RENDER_CACHE_MAX) {
+    const oldest = plainRenderCache.keys().next().value;
+    if (oldest !== undefined) plainRenderCache.delete(oldest);
+  }
+}
+
+function renderPlainBlock(src: string, precomputedRoot?: string | null): string {
   // A standalone thematic-break block ("---" / "***" / "___") would be misread
   // as a YAML front-matter fence when rendered in isolation (each block renders
   // on its own), producing an empty md-frontmatter element instead of a rule.
   // Emit the <hr> directly when markers are hidden.
   if (!settings.alwaysShowMarkers && /^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(src)) return '<hr>';
-  const root = extractMarkdownImageRoot(plainText.value || '');
+  const root =
+    precomputedRoot !== undefined ? precomputedRoot : extractMarkdownImageRoot(plainText.value || '');
   // #141 — the hard-breaks flag is part of the cache key so toggling the
   // setting invalidates previously rendered blocks. The per-call `breaks`
   // override is gone: the shared md singleton now follows the setting, so
@@ -1034,8 +1043,7 @@ function renderPlainBlock(src: string): string {
 
   if (settings.alwaysShowMarkers && !isRichBlock) {
     const html = renderPlainVisibleMarkers(src);
-    plainRenderCache.set(key, html);
-    if (plainRenderCache.size > 300) plainRenderCache.clear();
+    putPlainRenderCache(key, html);
     return html;
   }
 
@@ -1063,16 +1071,20 @@ function renderPlainBlock(src: string): string {
     root,
     props.tab.filePath,
   );
-  plainRenderCache.set(key, html);
-  if (plainRenderCache.size > 300) plainRenderCache.clear();
+  putPlainRenderCache(key, html);
   return html;
 }
 
 
-async function processPlainLiveRenderedBlocks() {
+async function processPlainLiveRenderedBlocks(onlyBlockIndex?: number) {
   if (!plainLiveEnabled.value || !plainLiveHost.value) return;
   await nextTick();
-  const hostEl = plainLiveHost.value;
+  const rootHost = plainLiveHost.value;
+  if (!rootHost) return;
+  const hostEl: HTMLElement =
+    onlyBlockIndex !== undefined
+      ? (rootHost.querySelectorAll<HTMLElement>('.plain-block')[onlyBlockIndex] ?? rootHost)
+      : rootHost;
   installSvgImageFallbacks(hostEl);
 
   // #500 — Bind Excel-like in-place table cell editing to rendered table blocks
@@ -1967,8 +1979,9 @@ const plainReplaceValue = ref('');
 const plainFindCaseSensitive = ref(false);
 const plainFindInput = ref<HTMLInputElement | null>(null);
 const plainReplaceInput = ref<HTMLInputElement | null>(null);
-const plainMatches = ref<Array<{ start: number; end: number }>>([]);
+const plainMatches = shallowRef<Array<{ start: number; end: number }>>([]);
 const plainMatchIndex = ref(0);
+let plainFindInputTimer: ReturnType<typeof setTimeout> | null = null;
 // Where the caret was when the find bar opened: typing a query jumps to the
 // first match from here on, the way Notepad and VS Code do, not from the top.
 let plainFindAnchor = 0;
@@ -2070,7 +2083,23 @@ function onPlainFindKeydown(event: KeyboardEvent) {
  * the editor gets focus from the find bar. Closing because the tab changed
  * must not: the match belongs to the previous document.
  */
+function flushPlainFindInput(): boolean {
+  if (!plainFindInputTimer) return false;
+  clearTimeout(plainFindInputTimer);
+  plainFindInputTimer = null;
+  if (plainFindInput.value && plainFindInput.value.value !== plainFindQuery.value) {
+    plainFindQuery.value = plainFindInput.value.value;
+  }
+  revealPlainMatchFromAnchor();
+  return true;
+}
+
 function closePlainFind(toMatch = false) {
+  if (toMatch) flushPlainFindInput();
+  else if (plainFindInputTimer) {
+    clearTimeout(plainFindInputTimer);
+    plainFindInputTimer = null;
+  }
   const m = plainMatches.value[plainMatchIndex.value];
   plainFindOpen.value = false;
   plainFindBoxes.value = [];
@@ -2098,15 +2127,27 @@ function onPlainFindEnter(event: KeyboardEvent) {
   if (event.isComposing || event.keyCode === 229) return;
   if (event.ctrlKey || event.metaKey || event.altKey) return;
   event.preventDefault();
+  if (flushPlainFindInput()) return;
   gotoPlainMatch(event.shiftKey ? -1 : 1);
 }
 
 function onPlainFindInput(value: string, composing = false) {
-  plainFindQuery.value = value;
-  // Not mid-IME-composition: moving the editor's selection while a Chinese
-  // IME is composing in this box cancels the composition, and the typed
-  // characters vanish. Jump once the composition commits (compositionend).
+  // Not mid-IME-composition: mutating `plainFindQuery` (which binds `:value` on
+  // the <input>) or moving the editor's selection while a CJK IME is composing
+  // disrupts WebView2 / WKWebView IME state. Commit once `compositionend` fires.
   if (composing) return;
+  if (plainFindInputTimer) {
+    clearTimeout(plainFindInputTimer);
+    plainFindInputTimer = null;
+  }
+  plainFindQuery.value = value;
+  if ((plainText.value?.length ?? 0) > 16384 && value.length > 0) {
+    plainFindInputTimer = setTimeout(() => {
+      plainFindInputTimer = null;
+      revealPlainMatchFromAnchor();
+    }, 50);
+    return;
+  }
   revealPlainMatchFromAnchor();
 }
 
@@ -2124,7 +2165,22 @@ function selectPlainRange(start: number, end: number, focusEditor = false) {
     nextTick(() => {
       const el = plainBlockEditors.value[plainActiveBlock.value];
       const b = plainBlocks.value[plainActiveBlock.value];
-      if (!el || !b) return;
+      if (!b) return;
+      if (!el) {
+        // Collapsed table / Mermaid block: no <textarea> is mounted while
+        // `sourceCollapsed` is true, so scroll the rendered block card into view
+        // instead of stalling on the match.
+        const host = plainLiveHost.value;
+        const blockEl = host?.querySelector<HTMLElement>(`[data-plain-block-index="${plainActiveBlock.value}"]`);
+        if (host && blockEl) {
+          const y = blockEl.getBoundingClientRect().top - host.getBoundingClientRect().top + blockEl.offsetHeight / 2;
+          host.scrollTop = Math.max(0, host.scrollTop + y - host.clientHeight / 2);
+        } else {
+          blockEl?.scrollIntoView({ block: 'center' });
+        }
+        plainFindBoxes.value = [];
+        return;
+      }
       // preventScroll: focus() otherwise scrolls the whole textarea into view
       // — for a tall block, its top — and the view visibly bounced from there
       // back to the match (#330).
@@ -2155,9 +2211,16 @@ function selectPlainRange(start: number, end: number, focusEditor = false) {
   if (!el) return;
   if (focusEditor) el.focus({ preventScroll: true });
   el.setSelectionRange(start, end);
-  // #255 — setSelectionRange() selects but never scrolls a <textarea>, so in a
-  // long document the counter moved ("3/12") while the view stayed put.
-  el.scrollTop = Math.max(0, plainPaddingTopPx(el) + caretTopPx(el, el.value, start) - el.clientHeight / 2);
+  // #255 — setSelectionRange() selects but never scrolls a <textarea>.
+  // Mirror only the target's own logical line (combined with `plainLineTopPx`)
+  // instead of laying out the entire multi-thousand-line document in a mirror div!
+  const text = el.value;
+  const lineStart = text.lastIndexOf('\n', Math.max(0, start - 1)) + 1;
+  const nl = text.indexOf('\n', lineStart);
+  const lineText = text.slice(lineStart, nl < 0 ? text.length : nl);
+  const point = caretPointPx(el, lineText, start - lineStart);
+  const lineTop = plainLineTopPx(lineAt(text, start), point.height || plainLineHeightPx());
+  el.scrollTop = Math.max(0, plainPaddingTopPx(el) + lineTop + point.top - el.clientHeight / 2);
   emitPlainCursorAndSelection();
   updatePlainFindBoxes();
 }
@@ -2279,9 +2342,19 @@ function updatePlainFindBoxes() {
     const text = el.value;
     const width = el.clientWidth;
     const c = plainFindFlowCache;
-    const rects = c && c.text === text && c.start === m.start && c.end === m.end && c.width === width
-      ? c.rects
-      : matchFlowRects(el, text, m.start, m.end);
+    let rects: Array<{ top: number; left: number; width: number; height: number }>;
+    if (c && c.text === text && c.start === m.start && c.end === m.end && c.width === width) {
+      rects = c.rects;
+    } else {
+      const lineStart = text.lastIndexOf('\n', Math.max(0, m.start - 1)) + 1;
+      const nl = text.indexOf('\n', lineStart);
+      const lineText = text.slice(lineStart, nl < 0 ? text.length : nl);
+      const localEnd = Math.min(lineText.length, m.end - lineStart);
+      const localRects = matchFlowRects(el, lineText, m.start - lineStart, localEnd);
+      const lh = localRects[0]?.height || plainLineHeightPx();
+      const baseTop = plainLineTopPx(lineAt(text, m.start), lh);
+      rects = localRects.map((r) => ({ ...r, top: baseTop + r.top }));
+    }
     plainFindFlowCache = { text, start: m.start, end: m.end, width, rects };
     const container = el.parentElement;
     if (!container) {
@@ -2334,6 +2407,7 @@ function updatePlainFindDodge() {
 }
 
 function gotoPlainMatch(delta: number) {
+  if (flushPlainFindInput()) return;
   if (!plainMatches.value.length) {
     runPlainSearch();
     if (!plainMatches.value.length) return;
@@ -2345,6 +2419,7 @@ function gotoPlainMatch(delta: number) {
 }
 
 function replacePlainCurrent() {
+  flushPlainFindInput();
   const m = plainMatches.value[plainMatchIndex.value];
   if (!m) return;
   recordPlainHistory();
@@ -2374,6 +2449,7 @@ watch(plainText, () => {
 });
 
 function replacePlainAll() {
+  flushPlainFindInput();
   if (!plainFindQuery.value || !plainMatches.value.length) return;
   recordPlainHistory();
   const r = plainReplaceValue.value;
@@ -6426,12 +6502,22 @@ watch(plainLiveEnabled, () => {
 watch(
   // renderDepsVersion: the blocks re-render when KaTeX / highlight.js land,
   // which puts mermaid / PlantUML fences back to source — process them again.
-  () => [plainLiveEnabled.value, plainText.value, plainActiveBlock.value, settings.theme, settings.language, renderDepsVersion.value],
+  () => [plainLiveEnabled.value, plainText.value, settings.theme, settings.language, renderDepsVersion.value],
   () => {
-    // No mermaid.initialize here any more: the render pass configures it with
-    // the current theme itself, and doing it here would load the renderer for
-    // a document that has no diagrams.
     void processPlainLiveRenderedBlocks();
+  },
+  { flush: 'post' },
+);
+
+watch(
+  plainActiveBlock,
+  (_nextIdx, oldIdx) => {
+    // Only the block we just stepped OUT of transitioned from <textarea> back to
+    // rendered HTML — scope DOM post-processing strictly to `oldIdx` instead of
+    // walking thousands of unchanged blocks on every search jump!
+    if (typeof oldIdx === 'number' && oldIdx >= 0) {
+      void processPlainLiveRenderedBlocks(oldIdx);
+    }
   },
   { flush: 'post' },
 );
@@ -6975,6 +7061,17 @@ const cls = computed(() => ({
     >
       <div
         v-for="(block, index) in plainBlocks"
+        v-memo="[
+          block,
+          index === plainActiveBlock,
+          plainBlockHidden(block, index),
+          plainHeadingFolded(block),
+          index === plainActiveBlock ? plainFindBoxes : null,
+          settings.showLineNumbers,
+          settings.wordWrap,
+          props.spellCheck,
+          plainSolidCaretOn,
+        ]"
         v-show="!plainBlockHidden(block, index)"
         :key="block.id"
         :data-plain-block-index="index"

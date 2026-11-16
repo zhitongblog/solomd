@@ -2003,10 +2003,11 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
         // document never have their inner tables/math/HTML replaced by widgets.
         let activeFenceChar = '';
         let activeFenceLen = 0;
+        let closeFenceRe: RegExp | null = null;
         for (let idx = 0; idx < lastLine; idx += 1) {
           const stripped = stripQuotePrefix(sourceLines[idx]);
           if (!activeFenceChar) {
-            const openMatch = stripped.match(/^\s*(`{3,}|~{3,})(.*)$/);
+            const openMatch = stripped.match(/^\s*(?:(?:[-+*]|\d+[.)])\s+)*(`{3,}|~{3,})(.*)$/);
             if (openMatch) {
               const marker = openMatch[1];
               const info = openMatch[2];
@@ -2014,14 +2015,17 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
               if (marker[0] !== '`' || !info.includes('`')) {
                 activeFenceChar = marker[0];
                 activeFenceLen = marker.length;
+                closeFenceRe = new RegExp(
+                  `^\\s*(?:(?:[-+*]|\\d+[.)])\\s+)*${activeFenceChar}{${activeFenceLen},}\\s*$`,
+                );
               }
             }
           } else {
             fenceBody[idx] = true;
-            const closeRe = new RegExp(`^\\s*${activeFenceChar}{${activeFenceLen},}\\s*$`);
-            if (closeRe.test(stripped)) {
+            if (closeFenceRe && closeFenceRe.test(stripped)) {
               activeFenceChar = '';
               activeFenceLen = 0;
+              closeFenceRe = null;
             }
           }
         }
@@ -2719,11 +2723,30 @@ export function liveBlocksExtension(opts: BlockOptions = {}) {
         return buildBlockDecorations(tr.state, opts);
       }
       if (tr.selection) {
-        return buildBlockDecorations(tr.state, opts);
+        // `buildBlockDecorations` only depends on the 1-indexed start/end line
+        // numbers of `selection.main` (and ignores selection altogether when
+        // `keepSource` is active). Skipping intra-line selection updates avoids
+        // rebuilding all block decorations on every character typed in Find
+        // (`a` -> `ab` -> `abc`) or intra-line `Enter` match jumps.
+        if (opts.keepSource?.() === true) {
+          return deco.map(tr.changes);
+        }
+        const prevSel = tr.startState.selection.main;
+        const nextSel = tr.state.selection.main;
+        const prevFromLine = tr.startState.doc.lineAt(prevSel.from).number;
+        const prevToLine = tr.startState.doc.lineAt(prevSel.to).number;
+        const nextFromLine = tr.state.doc.lineAt(nextSel.from).number;
+        const nextToLine = tr.state.doc.lineAt(nextSel.to).number;
+        if (prevFromLine !== nextFromLine || prevToLine !== nextToLine) {
+          return buildBlockDecorations(tr.state, opts);
+        }
       }
-      if (syntaxTree(tr.state) !== syntaxTree(tr.startState)) {
-        return buildBlockDecorations(tr.state, opts);
-      }
+      // Note: Do NOT rebuild full-document block decorations on background
+      // incremental Lezer `syntaxTree` parse slices (`!tr.docChanged`).
+      // `buildBlockDecorations` already performs a complete synchronous
+      // line-level fence scan across all lines on `create` and `docChanged`;
+      // rebuilding on every background parse chunk froze Find scrolling on
+      // large `.md` files.
       return deco.map(tr.changes);
     },
     provide: (f) => EditorView.decorations.from(f),

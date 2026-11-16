@@ -1189,10 +1189,13 @@ function dispatchMenuAction(id: string) {
     case 'editor.aiRewrite':
       window.dispatchEvent(new CustomEvent('solomd:toolbar-ai-rewrite'));
       return;
-    // Same routing as the Ctrl+F shortcut: preview has its own find, every
-    // editor mode opens the editor's find/replace bar.
+    // Same routing as the Ctrl+F shortcut: preview / reading has its own find,
+    // every editor mode opens the editor's find/replace bar.
     case 'edit.find':
-      if (settings.viewMode === 'preview' && tabs.activeTab?.language === 'markdown') {
+      if (
+        (settings.viewMode === 'preview' || settings.viewMode === 'reading') &&
+        tabs.activeTab?.language === 'markdown'
+      ) {
         window.dispatchEvent(new CustomEvent('solomd:preview-search', { detail: { paneId: tiles.focusedPaneId } }));
       } else {
         window.dispatchEvent(new CustomEvent('solomd:editor-find', { detail: { paneId: tiles.focusedPaneId } }));

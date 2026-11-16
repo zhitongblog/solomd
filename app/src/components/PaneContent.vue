@@ -797,6 +797,7 @@ function onFoldEvent(e: Event) {
 }
 
 function onPreviewSearchEvent(e: Event) {
+  if (settings.viewMode === 'reading') return;
   const { paneId } = (e as CustomEvent).detail;
   if (paneId !== props.paneId) return;
   (previewRef.value as unknown as { openSearch?: () => void } | null)?.openSearch?.();

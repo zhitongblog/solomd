@@ -28,6 +28,11 @@ const { t } = useI18n();
 
 const tab = computed(() => tabs.activeTab);
 const isMac = isMacOS();
+const previewRef = ref<InstanceType<typeof Preview> | null>(null);
+
+function onReadingSearchEvent() {
+  previewRef.value?.openSearch?.();
+}
 
 function selectReadingTab(id: string) {
   tabs.activate(id);
@@ -75,6 +80,7 @@ function winToggleMax() {
   if (hasTauriShell) void getCurrentWindow().toggleMaximize();
 }
 onMounted(async () => {
+  window.addEventListener('solomd:preview-search', onReadingSearchEvent);
   if (!winControls || !hasTauriShell) return;
   await refreshMaximized();
   try {
@@ -84,6 +90,7 @@ onMounted(async () => {
   }
 });
 onBeforeUnmount(() => {
+  window.removeEventListener('solomd:preview-search', onReadingSearchEvent);
   unlistenResize?.();
   unlistenResize = null;
 });
@@ -163,6 +170,7 @@ onBeforeUnmount(() => {
     </div>
     <div v-if="tab" class="reading-view__doc">
       <Preview
+        ref="previewRef"
         :source="tab.content"
         :file-path="tab.filePath"
         :tab-id="tab.id"

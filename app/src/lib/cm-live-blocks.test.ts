@@ -708,3 +708,42 @@ test('#536: Mermaid and PlantUML stay collapsed when cursor touches fence bounda
   assert.ok(mermaidExpanded && mermaidExpanded.from === mermaidExpanded.to, 'Mermaid renders as block widget below closing fence when expanded');
   assert.ok(plantumlExpanded && plantumlExpanded.from === plantumlExpanded.to, 'PlantUML renders as block widget below closing fence when expanded');
 });
+
+test('intra-line selection changes (incremental Find) skip full-document block decoration rebuild', () => {
+  const doc = [
+    '# Heading',
+    '',
+    'Paragraph with alpha beta gamma delta on line 3.',
+    '',
+    '| A | B |',
+    '| - | - |',
+    '| 1 | 2 |',
+  ].join('\n');
+
+  const line3Start = doc.indexOf('Paragraph');
+  const s0 = EditorState.create({
+    doc,
+    extensions: [
+      markdown({ base: markdownLanguage, addKeymap: false }),
+      liveBlocksExtension({ keepSource: () => false }),
+    ],
+    selection: { anchor: line3Start, head: line3Start + 1 },
+  });
+  const decos0 = s0.facet(EditorView.decorations)[0];
+
+  // Expanding or moving selection on the SAME line (e.g. typing `a` -> `al` -> `alpha` in Find)
+  // must reuse the exact same DecorationSet without rebuilding the whole document.
+  const s1 = s0.update({
+    selection: { anchor: line3Start + 15, head: line3Start + 20 },
+  }).state;
+  const decos1 = s1.facet(EditorView.decorations)[0];
+  assert.equal(decos1, decos0, 'same-line selection update should reuse existing DecorationSet');
+
+  // Moving selection into the table on line 5 MUST rebuild and reveal the table source.
+  const tableStart = doc.indexOf('| A | B |');
+  const s2 = s1.update({
+    selection: { anchor: tableStart + 2 },
+  }).state;
+  const decos2 = s2.facet(EditorView.decorations)[0];
+  assert.notEqual(decos2, decos1, 'cross-line selection into table must rebuild block decorations');
+});

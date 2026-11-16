@@ -211,18 +211,26 @@ export function useShortcuts(hooks: Hooks = {}) {
       if (settings.ragEnabled) hooks.openRagSearch?.();
       else hooks.openGlobalSearch?.();
     },
-    // Only the preview pane needs our own find; anywhere else the event must
-    // fall through to CodeMirror's.
+    // Only the preview / reading pane needs our own find; anywhere else the
+    // event must fall through to CodeMirror's (or the Windows plain editor's).
     'editor.find': () => {
-      if (settings.viewMode !== 'preview' || tabs.activeTab?.language !== 'markdown') return false;
+      if (
+        (settings.viewMode !== 'preview' && settings.viewMode !== 'reading') ||
+        tabs.activeTab?.language !== 'markdown'
+      ) {
+        return false;
+      }
       window.dispatchEvent(
         new CustomEvent('solomd:preview-search', { detail: { paneId: tiles.focusedPaneId } }),
       );
     },
     // Opens the same find bar with the caret in the replace field. The
-    // preview has no replace, so there it is the preview's find.
+    // preview / reading view has no replace, so there it is the preview's find.
     'editor.replace': () => {
-      if (settings.viewMode === 'preview' && tabs.activeTab?.language === 'markdown') {
+      if (
+        (settings.viewMode === 'preview' || settings.viewMode === 'reading') &&
+        tabs.activeTab?.language === 'markdown'
+      ) {
         window.dispatchEvent(
           new CustomEvent('solomd:preview-search', { detail: { paneId: tiles.focusedPaneId } }),
         );
