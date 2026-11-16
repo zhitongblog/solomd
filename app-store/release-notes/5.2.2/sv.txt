@@ -1,0 +1,5 @@
+SoloMD 5.2.2:
+• Blixtsnabb sökning i anteckningar: Över 20x snabbare sökning i stora Markdown-dokument i live-redigering, källkod, förhandsgranskning och läsläge (Cmd/Ctrl+F).
+• Stabilt första klick (#586): Åtgärdade oväntad rullning vid första klicket efter att ett långt dokument öppnats.
+• Pålitlig PDF-, EPUB- och Word-export (#590–#593): Korrekta PDF-bokmärken i sammanslagna böcker, rena --- avgränsare i EPUB samt vänsterjustering och förifyllt klickbart innehållsförteckning i DOCX.
+• Smidigare global sökning och namnbyte på filer.

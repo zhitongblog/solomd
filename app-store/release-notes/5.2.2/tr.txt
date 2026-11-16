@@ -1,0 +1,5 @@
+SoloMD 5.2.2:
+• Anında Belge İçi Arama: Büyük Markdown notlarında canlı düzenleme, kaynak, önizleme ve okuma modlarında (Cmd/Ctrl+F dahil) 20 kattan daha hızlı arama.
+• Kararlı İlk Tıklama (#586): Uzun bir not açıldıktan sonraki ilk tıklamada yaşanan beklenmedik kaydırma sorunu giderildi.
+• Güvenilir PDF, EPUB ve Word Dışa Aktarma (#590–#593): Birleştirilmiş PDF yer imleri düzeltildi, EPUB --- alt bilgi daralma sorunu çözüldü, DOCX sola hizalama ve hazır tıklanabilir içindekiler tablosu eklendi.
+• Daha akıcı genel arama ve dosya yeniden adlandırma.

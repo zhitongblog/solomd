@@ -1,0 +1,5 @@
+SoloMD 5.2.2:
+• Razendsnel zoeken in notities: Meer dan 20x sneller zoeken in grote Markdown-documenten in live-bewerking, broncode, voorbeeld en leesmodus (inclusief Cmd/Ctrl+F).
+• Stabiele eerste klik (#586): Geen onverwachte sprong naar het einde van lange documenten bij de eerste klik.
+• Betrouwbare PDF-, EPUB- & Word-export (#590–#593): Herstelde PDF-bladwijzers bij samengevoegde boeken, nette --- scheidingslijnen in EPUB en links uitgelijnde tekst met vooraf ingevulde inhoudsopgave in DOCX.
+• Soepeler globaal zoeken en bestanden hernoemen.

@@ -1,0 +1,5 @@
+SoloMD 5.2.2:
+• Sofortige Dokumentsuche: Deutlich schnellere Suche in großen Markdown-Notizen über Live-Edit-, Quell-, Vorschau- und Lesemodus hinweg (inkl. Cmd/Ctrl+F im Lesemodus).
+• Stabiler Fokus beim ersten Klick (#586): Kein unerwartetes Springen ans Dokumentende beim Öffnen langer Notizen.
+• Zuverlässiger PDF-, EPUB- & Word-Export (#590–#593): Korrekte PDF-Lesezeichenstruktur bei Buch-Exporten, saubere --- Fußzeilen in EPUB sowie linksbündiger Satz und sofort sichtbares Inhaltsverzeichnis in DOCX.
+• Verbesserte globale Suche und flüssigeres Umbenennen von Dateien im Arbeitsbereich.

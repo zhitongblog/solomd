@@ -1,0 +1,5 @@
+SoloMD 5.2.2:
+• Instant In-Document Search: Re-engineered Markdown search across Live Edit, Source, Preview, and Reading modes (20x+ faster on large notes), fixed jumping to collapsed tables and diagrams, and added Cmd/Ctrl+F in Reading View.
+• Stable First-Click Focus (#586): Fixed an issue on macOS/iOS where the first click after opening a long note could scroll to a stale caret position.
+• Reliable PDF, EPUB & Word Exports (#590–#593): Fixed unreadable PDFs when exporting multi-chapter books with outlines; prevented --- footer sections from rendering as narrow tables in EPUB; enforced crisp left alignment and pre-populated clickable Table of Contents entries in DOCX exports.
+• Smoother Global Search CJK input and non-blocking background link updates when renaming files.

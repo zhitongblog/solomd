@@ -1,0 +1,5 @@
+SoloMD 5.2.2:
+• Błyskawiczne wyszukiwanie w notatkach: Ponad 20-krotnie szybsze wyszukiwanie w dużych plikach Markdown we wszystkich trybach edycji, podglądu i czytania (Cmd/Ctrl+F).
+• Stabilne pierwsze kliknięcie (#586): Naprawiono nieoczekiwane przewijanie po otwarciu długiego dokumentu.
+• Niezawodny eksport PDF, EPUB i Word (#590–#593): Poprawiono zakładki PDF w łączonych książkach, separatory --- w EPUB oraz wyrównanie do lewej i gotowy klikalny spis treści w DOCX.
+• Płynniejsze wyszukiwanie globalne i zmiana nazw plików.

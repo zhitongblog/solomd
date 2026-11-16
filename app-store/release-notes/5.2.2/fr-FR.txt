@@ -1,0 +1,5 @@
+SoloMD 5.2.2 :
+• Recherche instantanée dans les notes : Recherche repensée et plus de 20x plus rapide dans les longs documents Markdown (édition directe, source, aperçu et mode lecture avec Cmd/Ctrl+F).
+• Premier clic stable (#586) : Correction du saut de défilement lors du premier clic après l'ouverture d'une longue note.
+• Exports PDF, EPUB et Word fiables (#590–#593) : Correction des signets PDF multi-chapitres, rendu propre des séparateurs --- en EPUB, alignement à gauche net et table des matières cliquable pré-remplie en DOCX.
+• Fluidité accrue de la recherche globale et du renommage de fichiers.
