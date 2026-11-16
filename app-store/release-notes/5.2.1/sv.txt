@@ -1,0 +1,5 @@
+SoloMD 5.2.1:
+• Automatisk länkuppdatering (#571): När anteckningar eller mappar byter namn eller flyttas uppdateras [[wikilänkar]], ![[inbäddade bilder]] och relativa Markdown-länkar automatiskt i hela arbetsytan.
+• Flermarkörredigering & valbar ”Idag”-knapp (#436): Fullt stöd för flera markörer (Alt/Cmd+Klick, kolumnmarkering, nästa/alla förekomster) samt en inställning för att dölja knappen ”Idag” om du inte skriver dagbok.
+• Bildstorlek, tangentbordsrullning & säker sökning (#379, #437, #419): Stöd för ![](url =300x200) och ![[img.png|300]]; full tangentbordsrullning i läs- och förhandsgranskningsläge; ersättningsraden är hopfälld som standard.
+• Exportförbättringar (#574–#585): Löpande kapitelnumrering i sammanslagna böcker, HTML-sidbrytning och kolumnbredd, exakta PDF-bokmärken, diagram i EPUB och skydd mot överskrivning.

@@ -1,0 +1,5 @@
+SoloMD 5.2.1:
+• Automatisch koppelingen bijwerken (#571): Bij het hernoemen of verplaatsen van notities en mappen worden [[wikilinks]], ![[ingesloten afbeeldingen]] en relatieve Markdown-links in de hele werkruimte automatisch bijgewerkt.
+• Multi-cursorbewerking & instelbare knop “Vandaag” (#436): Volledige multi-cursorondersteuning (Alt/Cmd+Klik, kolomselectie, volgende/alle overeenkomsten) en een optie om de knop “Vandaag” te verbergen als je geen dagboek bijhoudt.
+• Afbeeldingsgrootte, toetsenbordscrollen & veilig zoeken (#379, #437, #419): Ondersteuning voor ![](url =300x200) en ![[img.png|300]]; volledig scrollen met het toetsenbord in lees- en voorbeeldmodus; Vervangen standaard ingeklapt bij zoeken.
+• Exportverbeteringen (#574–#585): Doorlopende hoofdstuknummering bij samengevoegde boeken, HTML-paginering & kolombreedte, nauwkeurige PDF-bladwijzers, EPUB-diagrammen en overschrijfbeveiliging.

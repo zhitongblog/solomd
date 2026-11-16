@@ -1,0 +1,5 @@
+SoloMD 5.2.1:
+• Automatische Link-Aktualisierung (#571): Beim Umbenennen oder Verschieben von Notizen und Ordnern werden [[Wikilinks]], ![[Bildeinbettungen]] und relative Markdown-Links im gesamten Workspace automatisch angepasst.
+• Mehrfachcursor & konfigurierbare „Heute“-Schaltfläche (#436): Mehrfachcursor-Bearbeitung (Alt/Cmd+Klick, Spaltenauswahl, nächstes/alle Vorkommen auswählen) sowie eine Einstellung zum Ausblenden der Schaltfläche „Heute“, falls du kein Tagebuch führst.
+• Bildgrößen, Lesemodus-Tasten & kompakte Suche (#379, #437, #419): Unterstützung für ![](url =300x200) und ![[img.png|300]]; vollständiges Tastatur-Scrollen im Lese- und Vorschaumodus; die Ersetzen-Zeile ist bei der Suche standardmäßig eingeklappt.
+• Export-Verbesserungen (#574–#585): Fortlaufende Kapitelnummerierung beim Ordner-Export, HTML-Seitenansicht & Spaltenbreite, präzise PDF-Lesezeichen, EPUB-Diagramme sowie Überschreibschutz beim Export.

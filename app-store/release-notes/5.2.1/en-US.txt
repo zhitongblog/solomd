@@ -1,0 +1,5 @@
+SoloMD 5.2.1:
+• Workspace Link Auto-Update (#571): Renaming or moving notes and folders in the sidebar now automatically updates inbound [[WikiLinks]], ![[image embeds]], and relative Markdown links across your workspace while skipping code blocks.
+• Multi-Cursor Editing & Configurable Today Button (#436): Full multi-cursor editing (Alt/Cmd+Click, rectangular selection, add cursor above/below, select next/all occurrences) plus a new Writing setting to hide the "Today" daily note button if you don't keep a journal.
+• Image Size Syntax, Reading Keys & Safer Find (#379, #437, #419): Support for ![](url =300x200) and ![[img.png|300]] sizing; full keyboard scrolling in Reading & Preview modes (PageUp/PageDown, Space, Arrows, Home/End); Find opens with Replace collapsed by default.
+• Export Polish (#574–#585): Continuous chapter/section renumbering across merged book exports, HTML pagination & custom column width, accurate PDF bookmark jumps, embedded Mermaid PNGs in EPUB, and non-overwriting filename suggestions.

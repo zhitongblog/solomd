@@ -1,0 +1,5 @@
+SoloMD 5.2.1:
+• Atualização automática de links (#571): Renomear ou mover notas e pastas na barra lateral atualiza automaticamente [[wikilinks]], ![[imagens incorporadas]] e links Markdown relativos em todo o workspace.
+• Edição com múltiplos cursores e botão “Hoje” configurável (#436): Suporte completo a múltiplos cursores (Alt/Cmd+Clique, seleção em coluna, próxima/todas as ocorrências) e opção para ocultar o botão “Hoje” se você não escreve diário.
+• Tamanho de imagem, rolagem por teclado e busca segura (#379, #437, #419): Suporte para ![](url =300x200) e ![[img.png|300]]; rolagem completa pelo teclado nos modos leitura e visualização; linha Substituir recolhida por padrão.
+• Melhorias de exportação (#574–#585): Numeração contínua de capítulos em livros mesclados, paginação e largura HTML personalizada, favoritos PDF precisos, diagramas em EPUB e proteção contra sobrescrita.

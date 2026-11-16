@@ -1,0 +1,5 @@
+SoloMD 5.2.1:
+• Otomatik bağlantı güncelleme (#571): Kenar çubuğunda notlar veya klasörler yeniden adlandırıldığında ya da taşındığında çalışma alanındaki [[wikilink]], ![[resim gömme]] ve göreli Markdown bağlantıları otomatik güncellenir.
+• Çoklu imleç düzenleme ve ayarlanabilir “Bugün” düğmesi (#436): Tam çoklu imleç desteği (Alt/Cmd+Tıklama, sütun seçimi, sonraki/tüm eşleşmeler) ve günlük tutmayanlar için “Bugün” düğmesini gizleme seçeneği.
+• Resim boyutu, klavyeyle kaydırma ve güvenli arama (#379, #437, #419): ![](url =300x200) ve ![[img.png|300]] desteği; okuma ve önizleme modlarında tam klavye kaydırma; aramada Değiştir satırı varsayılan olarak kapalı.
+• Dışa aktarma iyileştirmeleri (#574–#585): Birleştirilmiş kitaplarda kesintisiz bölüm numaralandırma, HTML sayfalama ve sütun genişliği, hassas PDF yer imleri, EPUB diyagramları ve üzerine yazma koruması.
