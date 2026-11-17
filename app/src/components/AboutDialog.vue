@@ -7,6 +7,7 @@ import BrandMark from './BrandMark.vue';
 import Icons from './Icons.vue';
 import SupportDialog from './SupportDialog.vue';
 import { useI18n } from '../i18n';
+import { IS_APP_STORE_BUILD } from '../lib/app-build';
 import {
   supporterRecord,
   iapUseStoreFlow,
@@ -41,7 +42,7 @@ const promoters = ref<string[]>(['Garfield', 'lcfactorization', '^9星守辰^', 
 const testers = ref<string[]>(['张工', '冰瞬若风', 'tyysoft(太阳雨)', 'lcfactorization', 'ScienceZone', 'Limoncello-Zoey', 'davi-jorge-art', 'zhuhaisto', 'licryle', 'ed-edwin', 'xjfnet', 'Snowboy801']);
 let sponsorsLoaded = false;
 async function loadSponsors() {
-  if (sponsorsLoaded) return;
+  if (IS_APP_STORE_BUILD || sponsorsLoaded) return;
   sponsorsLoaded = true;
   try {
     const res = await fetch('https://solomd.app/sponsors.json', { signal: AbortSignal.timeout(5000) });

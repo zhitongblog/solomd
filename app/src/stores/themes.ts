@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { invoke } from '@tauri-apps/api/core';
+import { IS_APP_STORE_BUILD } from '../lib/app-build';
 
 /**
  * v2.5 — Community theme marketplace store.
@@ -95,6 +96,10 @@ export const useThemesStore = defineStore('themes', {
      * fresh; pass `force = true` (refresh button) to bypass.
      */
     async loadManifest(force = false) {
+      if (IS_APP_STORE_BUILD) {
+        await this.refreshInstalled();
+        return;
+      }
       const fresh =
         this.manifest !== null &&
         Date.now() - this.manifestFetchedAt < MANIFEST_TTL_MS;
