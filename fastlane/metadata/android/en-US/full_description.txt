@@ -1,0 +1,31 @@
+SoloMD is a calm, fast, local-first Markdown editor for Android, Windows, macOS, Linux, and iOS. Open the app and start writing — no account, no sign-up, no subscription.
+
+Your notes stay plain .md and .txt files in folders you control. Open any local folder (or sync folder via Syncthing, WebDAV, Git, or cloud storage) and edit files in place.
+
+WRITING FIRST
+- Live editing: Markdown syntax steps aside when the cursor leaves the line, keeping typography clean.
+- Focus mode dims everything except the current paragraph; typewriter mode keeps your active line centered.
+- Formatting toolbar and quick actions for headings, lists, links, tables, and code blocks.
+- Instant in-document search & replace (case-sensitive, whole-word, regex) plus workspace-wide full-text search.
+- Light and dark themes that follow system settings.
+
+ON PHONES & TABLETS
+- Thumb-friendly notes list, search, and quick new-note button on phones.
+- Folder tree sidebar, multi-tab workspace, split view, and live document outline on tablets.
+- Hardware keyboard and shortcut friendly.
+
+MARKDOWN THAT GOES FURTHER
+- WikiLinks [[Note]] with automatic link updates on file rename/move, backlinks, and tags.
+- KaTeX math (inline and display) and Mermaid diagrams (flowcharts, sequence, Gantt).
+- GFM tables, interactive task lists, footnotes, YAML front matter, highlights, and 13+ code languages.
+- Tap images or diagrams for full-screen pinch-zoom preview.
+- Optional BYOK / local AI assistant (Ollama, LM Studio, OpenAI-compatible endpoints) — disabled until configured.
+
+FOR CJK WRITERS
+- Simplified/Traditional Chinese conversion, Pinyin annotation, CJK-aware word count, and UTF-8/UTF-16/GBK/Big5 encoding support.
+
+EXPORT & SHARE
+- Export to standalone HTML, PDF, Word (.docx), or Markdown with rendered math, diagrams, and clickable Table of Contents.
+
+PRIVATE & OPEN SOURCE
+SoloMD collects zero telemetry: no account, no analytics, no ads, no tracking. Open source under the MIT license at https://github.com/zhitongblog/solomd

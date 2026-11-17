@@ -135,6 +135,13 @@ android {
     buildFeatures {
         buildConfig = true
     }
+
+    // Omit Google's encrypted DependencyInfoBlock from sideload/IzzyOnDroid/F-Droid
+    // APKs while keeping it enabled in Play Console AAB bundles.
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = true
+    }
 }
 
 rust {

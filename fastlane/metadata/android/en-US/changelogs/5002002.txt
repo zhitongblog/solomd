@@ -1,0 +1,3 @@
+- Re-engineered in-document Markdown search across Live Edit, Source, Preview, and Reading modes (20x+ faster on large notes)
+- Improved Global Search CJK IME handling and background link updates on file rename/move
+- Fixed PDF outline generation, EPUB thematic break formatting, and DOCX left alignment + clickable TOC (#590-#593)

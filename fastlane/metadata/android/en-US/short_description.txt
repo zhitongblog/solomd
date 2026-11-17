@@ -1,0 +1,1 @@
+Calm, local-first Markdown editor with folder sync, math, Mermaid & local AI
