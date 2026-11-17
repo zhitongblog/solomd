@@ -115,7 +115,15 @@ const packageManagers = [
   hasScoop && { name: 'Scoop', os: 'Windows', cmd: 'scoop bucket add extras\nscoop install solomd' },
   { name: 'AUR', os: 'Arch Linux', cmd: 'yay -S solomd-bin' },
 ].filter(Boolean) as { name: string; os: string; cmd: string }[];
-const releaseUrl = (version: string) => `https://github.com/${REPO}/releases/download/v${version}`;
+const githubReleaseUrl = (version: string) => `https://github.com/${REPO}/releases/download/v${version}`;
+// AtomGit serves the same assets as direct downloads (GET → the file itself)
+// and is fast from mainland China, where GitHub downloads often stall.
+const atomgitReleaseUrl = (version: string) => `https://atomgit.com/${REPO}/releases/download/v${version}`;
+const releaseUrl = (version: string, useMirror = false) =>
+  useMirror ? atomgitReleaseUrl(version) : githubReleaseUrl(version);
+// Obtainium tracks GitHub releases and updates the APK in place — the
+// no-store way to keep Android up to date.
+const OBTAINIUM_ADD = `https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/${REPO}`;
 
 const platforms = [
   {
@@ -168,6 +176,9 @@ const platforms = [
     primaryFile: `SoloMD_${VERSION}_universal.apk`,
     secondaryFile: `SoloMD_${VERSION}_arm64-v8a.apk`,
     tertiaryFile: `SoloMD_${VERSION}_armeabi-v7a.apk`,
+    // Chinese visitors get the APKs from the AtomGit mirror.
+    mirrorForZh: true,
+    obtainium: true,
   },
 ];
 ---
@@ -204,6 +215,7 @@ const platforms = [
     <div class="download__grid">
       {platforms.map((p) => {
         const meta = tr.download.platforms[p.key];
+        const useMirror = lang === 'zh' && 'mirrorForZh' in p && p.mirrorForZh;
         return (
           <article class="dl-card">
             <div class="dl-card__head">
@@ -213,17 +225,27 @@ const platforms = [
                 <div class="dl-card__note">{meta.note}</div>
               </div>
             </div>
-            <a href={`${releaseUrl(p.version)}/${p.primaryFile}`} class="btn btn--primary dl-card__btn">
+            <a href={`${releaseUrl(p.version, useMirror)}/${p.primaryFile}`} class="btn btn--primary dl-card__btn">
               {meta.primary}
             </a>
             {p.secondaryFile && 'secondary' in meta && (
-              <a href={`${releaseUrl(p.version)}/${p.secondaryFile}`} class="dl-card__alt">
+              <a href={`${releaseUrl(p.version, useMirror)}/${p.secondaryFile}`} class="dl-card__alt">
                 — {meta.secondary}
               </a>
             )}
             {p.tertiaryFile && 'tertiary' in meta && (
-              <a href={`${releaseUrl(p.version)}/${p.tertiaryFile}`} class="dl-card__alt">
+              <a href={`${releaseUrl(p.version, useMirror)}/${p.tertiaryFile}`} class="dl-card__alt">
                 — {meta.tertiary}
+              </a>
+            )}
+            {useMirror && (
+              <a href={`${githubReleaseUrl(p.version)}/${p.primaryFile}`} class="dl-card__alt">
+                — 海外用户：从 GitHub 下载
+              </a>
+            )}
+            {'obtainium' in p && p.obtainium && (
+              <a href={OBTAINIUM_ADD} class="dl-card__store" target="_blank" rel="noopener">
+                {lang === 'zh' ? '用 Obtainium 订阅自动更新' : 'Get auto-updates with Obtainium'} →
               </a>
             )}
             {'storeUrl' in p && p.storeUrl && 'store' in meta && (
