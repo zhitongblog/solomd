@@ -1,0 +1,5 @@
+SoloMD 5.2.3:
+• Verbesserter Export: Stapel- und Buch-Exporte erzeugen gestochen scharfe, durchsuchbare Text-PDFs mit Lesezeichen; eigene Word-Vorlagen (.docx) ordnen Überschriften 1–6 präzise zu; optimiertes EPUB-Inhaltsverzeichnis und HTML-Themennavigation (Vorheriges / Nächstes Thema).
+• Reines WYSIWYG ohne Syntax-Blitzen beim Überfahren oder Markieren von Text.
+• Flüssigere Listenfortsetzung nach Shift+Enter, **Fettdruck** in Mermaid-Diagrammen sowie getrennte Hintergrundfarben für Zitate und Codeblöcke.
+• Neues „Immer im Vordergrund“-Fenster, Bildformat beim Einfügen (PNG / WebP / JPG) und volle Unterstützung für deutsche QWERTZ-Tastenkürzel.

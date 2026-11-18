@@ -1,0 +1,5 @@
+SoloMD 5.2.3:
+• Verbeterde export: selecteerbare tekst-PDF’s met bladwijzers bij batchexport, nauwkeurige koppeling van Kop 1–6 in aangepaste Word-sjablonen (.docx), opgeschoonde EPUB-inhoudsopgave en Vorige / Volgende-navigatie in HTML-export.
+• Puur WYSIWYG zonder zichtbare Markdown-syntaxis bij aanwijzen of selecteren.
+• Soepele lijstvoorzetting na Shift+Enter, **vetgedrukte** tekst in Mermaid-diagrammen en aparte achtergrondkleuren voor citaten en codeblokken.
+• Venster altijd bovenop, instelbaar afbeeldingsformaat bij plakken (PNG / WebP / JPG) en sneltoetsen voor internationale toetsenborden.

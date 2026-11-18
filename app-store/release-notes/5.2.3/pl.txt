@@ -1,0 +1,5 @@
+SoloMD 5.2.3:
+• Ulepszony eksport: tekstowe pliki PDF z zakładkami w eksporcie zbiorczym, dokładne mapowanie stylów Nagłówek 1–6 w szablonach Word (.docx), przejrzysty spis treści EPUB oraz nawigacja Poprzedni / Następny w HTML.
+• Czysty tryb WYSIWYG bez odsłaniania składni Markdown podczas najeżdżania lub zaznaczania.
+• Płynne kontynuowanie list po Shift+Enter, obsługa **pogrubienia** w diagramach Mermaid oraz osobne kolory tła dla cytatów i bloków kodu.
+• Okno zawsze na wierzchu, wybór formatu wklejanych obrazów (PNG / WebP / JPG) i obsługa międzynarodowych układów klawiatury.

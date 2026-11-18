@@ -1,0 +1,5 @@
+SoloMD 5.2.3:
+• Förbättrad export: sökbara vektor-PDF-filer med bokmärken vid batchexport, exakt mappning av Rubrik 1–6 i egna Word-mallar (.docx), renare EPUB-innehållsförteckning samt Föregående / Nästa-navigering i fristående HTML.
+• Rent WYSIWYG-läge utan synlig Markdown-syntax vid hovring eller markering.
+• Smidig listfortsättning efter Skift+Retur, stöd för **fetstil** i Mermaid-diagram och separata bakgrundsfärger för citat och kodblock.
+• Fönster alltid överst, valbart bildformat vid inklistring (PNG / WebP / JPG) och genvägar anpassade för internationella tangentbord.

@@ -871,7 +871,7 @@ pub async fn print_webview_to_pdf(
             ps.set_printer("Print to File");
             ps.set("output-file-format", Some("pdf"));
             let file_uri = gio::File::for_path(&target).uri();
-            ps.set(gtk::PRINT_SETTINGS_OUTPUT_URI, Some(file_uri.as_str()));
+            ps.set(gtk::PRINT_SETTINGS_OUTPUT_URI.as_str(), Some(file_uri.as_str()));
             ps.set_print_pages(gtk::PrintPages::All);
 
             let page_setup = gtk::PageSetup::new();
@@ -3360,44 +3360,50 @@ pub async fn convert_image_format(
     format: String,
     quality: Option<u8>,
 ) -> Result<Vec<u8>, String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        let decoded = image::load_from_memory(&data)
-            .map_err(|e| format!("failed to decode pasted image: {e}"))?;
-        let mut out = Vec::new();
-        match format.trim().to_ascii_lowercase().as_str() {
-            "webp" => {
-                decoded
-                    .write_to(&mut std::io::Cursor::new(&mut out), image::ImageFormat::WebP)
-                    .map_err(|e| format!("failed to encode WebP: {e}"))?;
-            }
-            "jpg" | "jpeg" => {
-                let rgba = decoded.to_rgba8();
-                let (w, h) = rgba.dimensions();
-                let mut rgb = image::RgbImage::new(w, h);
-                for (x, y, px) in rgba.enumerate_pixels() {
-                    let a = px[3] as u16;
-                    let inv = 255 - a;
-                    let r = ((px[0] as u16 * a + 255 * inv + 127) / 255) as u8;
-                    let g = ((px[1] as u16 * a + 255 * inv + 127) / 255) as u8;
-                    let b = ((px[2] as u16 * a + 255 * inv + 127) / 255) as u8;
-                    rgb.put_pixel(x, y, image::Rgb([r, g, b]));
-                }
-                let q = quality.unwrap_or(86).clamp(1, 100);
-                let mut enc = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut out, q);
-                enc.encode_image(&rgb)
-                    .map_err(|e| format!("failed to encode JPEG: {e}"))?;
-            }
-            "png" => {
-                decoded
-                    .write_to(&mut std::io::Cursor::new(&mut out), image::ImageFormat::Png)
-                    .map_err(|e| format!("failed to encode PNG: {e}"))?;
-            }
-            other => return Err(format!("unsupported target image format: {other}")),
+    tauri::async_runtime::spawn_blocking(move || convert_image_format_inner(&data, &format, quality))
+        .await
+        .map_err(|e| format!("join: {e}"))?
+}
+
+pub fn convert_image_format_inner(
+    data: &[u8],
+    format: &str,
+    quality: Option<u8>,
+) -> Result<Vec<u8>, String> {
+    let decoded = image::load_from_memory(data)
+        .map_err(|e| format!("failed to decode pasted image: {e}"))?;
+    let mut out = Vec::new();
+    match format.trim().to_ascii_lowercase().as_str() {
+        "webp" => {
+            decoded
+                .write_to(&mut std::io::Cursor::new(&mut out), image::ImageFormat::WebP)
+                .map_err(|e| format!("failed to encode WebP: {e}"))?;
         }
-        Ok(out)
-    })
-    .await
-    .map_err(|e| format!("join: {e}"))?
+        "jpg" | "jpeg" => {
+            let rgba = decoded.to_rgba8();
+            let (w, h) = rgba.dimensions();
+            let mut rgb = image::RgbImage::new(w, h);
+            for (x, y, px) in rgba.enumerate_pixels() {
+                let a = px[3] as u16;
+                let inv = 255 - a;
+                let r = ((px[0] as u16 * a + 255 * inv + 127) / 255) as u8;
+                let g = ((px[1] as u16 * a + 255 * inv + 127) / 255) as u8;
+                let b = ((px[2] as u16 * a + 255 * inv + 127) / 255) as u8;
+                rgb.put_pixel(x, y, image::Rgb([r, g, b]));
+            }
+            let q = quality.unwrap_or(86).clamp(1, 100);
+            let mut enc = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut out, q);
+            enc.encode_image(&rgb)
+                .map_err(|e| format!("failed to encode JPEG: {e}"))?;
+        }
+        "png" => {
+            decoded
+                .write_to(&mut std::io::Cursor::new(&mut out), image::ImageFormat::Png)
+                .map_err(|e| format!("failed to encode PNG: {e}"))?;
+        }
+        other => return Err(format!("unsupported target image format: {other}")),
+    }
+    Ok(out)
 }
 
 #[cfg(test)]
@@ -3514,5 +3520,95 @@ mod encoding_round_trip_tests {
         let (read, disk) = round_trip("Big5", &bytes);
         assert_eq!(read.content, text);
         assert_eq!(disk, bytes.as_ref());
+    }
+}
+
+#[cfg(test)]
+mod v523_regression_tests {
+    use super::*;
+
+    #[test]
+    fn convert_image_format_encodes_webp_jpeg_and_png_with_alpha_compositing() {
+        let mut rgba = image::RgbaImage::new(16, 16);
+        // Top-left 8x8 block is fully transparent -> JPEG composites over white;
+        // bottom-right 8x8 block is opaque red (aligned to 8x8 DCT blocks).
+        for y in 8..16 {
+            for x in 8..16 {
+                rgba.put_pixel(x, y, image::Rgba([255, 0, 0, 255]));
+            }
+        }
+        let mut png_src = Vec::new();
+        image::DynamicImage::ImageRgba8(rgba)
+            .write_to(&mut std::io::Cursor::new(&mut png_src), image::ImageFormat::Png)
+            .unwrap();
+
+        let webp = convert_image_format_inner(&png_src, "webp", None).unwrap();
+        assert_eq!(&webp[0..4], b"RIFF");
+        assert_eq!(&webp[8..12], b"WEBP");
+
+        let jpg = convert_image_format_inner(&png_src, "jpg", Some(95)).unwrap();
+        assert_eq!(&jpg[0..2], &[0xFF, 0xD8]);
+        let decoded_jpg = image::load_from_memory(&jpg).unwrap().to_rgb8();
+        let top_left = decoded_jpg.get_pixel(0, 0);
+        assert!(top_left[0] > 245 && top_left[1] > 245 && top_left[2] > 245);
+        let bottom_right = decoded_jpg.get_pixel(12, 12);
+        assert!(bottom_right[0] > 240 && bottom_right[1] < 20 && bottom_right[2] < 20);
+
+        let png_out = convert_image_format_inner(&png_src, "png", None).unwrap();
+        assert_eq!(&png_out[0..8], &[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A]);
+    }
+
+    #[test]
+    fn inject_pdf_outlines_lopdf_builds_hierarchical_utf16be_bookmarks() {
+        use lopdf::{dictionary, Document, Object};
+        let dir = tempfile::tempdir().unwrap();
+        let pdf_path = dir.path().join("book.pdf");
+
+        let mut doc = Document::with_version("1.5");
+        let pages_id = doc.new_object_id();
+        let page1_id = doc.add_object(dictionary! {
+            "Type" => "Page",
+            "Parent" => pages_id,
+            "MediaBox" => vec![0.into(), 0.into(), 595.into(), 842.into()],
+        });
+        let page2_id = doc.add_object(dictionary! {
+            "Type" => "Page",
+            "Parent" => pages_id,
+            "MediaBox" => vec![0.into(), 0.into(), 595.into(), 842.into()],
+        });
+        doc.objects.insert(
+            pages_id,
+            Object::Dictionary(dictionary! {
+                "Type" => "Pages",
+                "Kids" => vec![page1_id.into(), page2_id.into()],
+                "Count" => 2,
+            }),
+        );
+        let catalog_id = doc.add_object(dictionary! {
+            "Type" => "Catalog",
+            "Pages" => pages_id,
+        });
+        doc.trailer.set("Root", catalog_id);
+        doc.save(&pdf_path).unwrap();
+
+        let items = vec![
+            (1u8, "1 第一章 概览".to_string(), 1usize),
+            (2u8, "1.1 子节 Architecture".to_string(), 2usize),
+            (1u8, "2 第二章 总结".to_string(), 2usize),
+        ];
+        let path_str = pdf_path.to_string_lossy().to_string();
+        inject_pdf_outlines_lopdf(&path_str, &items).unwrap();
+
+        let reloaded = Document::load(&pdf_path).unwrap();
+        let catalog = reloaded.catalog().unwrap();
+        let outlines_id = catalog.get(b"Outlines").unwrap().as_reference().unwrap();
+        let outlines_dict = reloaded.get_dictionary(outlines_id).unwrap();
+        assert_eq!(outlines_dict.get(b"Count").unwrap().as_i64().unwrap(), 3);
+        let first_id = outlines_dict.get(b"First").unwrap().as_reference().unwrap();
+        let first_dict = reloaded.get_dictionary(first_id).unwrap();
+        // First chapter has 1 child ("1.1 子节 Architecture")
+        assert_eq!(first_dict.get(b"Count").unwrap().as_i64().unwrap(), 1);
+        assert!(first_dict.get(b"First").is_ok());
+        assert!(first_dict.get(b"Next").is_ok());
     }
 }

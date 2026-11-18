@@ -1,0 +1,5 @@
+SoloMD 5.2.3:
+• Esportazione migliorata: PDF vettoriali con testo selezionabile e segnalibri; mappatura precisa degli stili Titolo 1–6 nei modelli Word (.docx); indice EPUB pulito e navigazione Precedente / Successivo in HTML autonomo.
+• Modalità WYSIWYG pura senza sintassi visibile al passaggio del mouse o durante la selezione.
+• Continuazione fluida degli elenchi dopo Maiusc+Invio, supporto **grassetto** nei diagrammi Mermaid e sfondi distinti per citazioni e codice.
+• Finestra sempre in primo piano, formato immagini incollate (PNG / WebP / JPG) e scorciatoie compatibili con tastiere internazionali.

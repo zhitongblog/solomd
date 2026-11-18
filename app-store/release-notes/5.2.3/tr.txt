@@ -1,0 +1,5 @@
+SoloMD 5.2.3:
+• Gelişmiş Dışa Aktarma: Yer imli ve metni seçilebilir vektörel PDF toplu dışa aktarma; özel Word (.docx) şablonlarında Başlık 1–6 stillerini doğru eşleştirme; düzenli EPUB içindekiler tablosu ve bağımsız HTML için Önceki / Sonraki konu gezintisi.
+• Üzerine gelindiğinde veya metin seçildiğinde Markdown işaretlerini gizleyen saf WYSIWYG deneyimi.
+• Shift+Enter sonrası Enter ile akıcı liste devamı, Mermaid diyagramlarında **kalın** metin desteği ve alıntı ile kod blokları için ayrı arka plan renkleri.
+• Her zaman üstte pencere modu, yapıştırılan görsel biçimi seçimi (PNG / WebP / JPG) ve uluslararası klavye kısayol uyumluluğu.

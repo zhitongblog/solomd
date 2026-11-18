@@ -1802,4 +1802,24 @@ mod url_owner_tests {
         assert_eq!(owner_from_url("https://gitee.com").as_deref(), None);
         assert_eq!(owner_from_url("not a url").as_deref(), None);
     }
+
+    #[test]
+    fn gitee_repo_raw_derives_clone_and_clean_html_urls() {
+        let json = r#"{
+            "name": "vault",
+            "full_name": "zhitongblog/vault",
+            "html_url": "https://gitee.com/zhitongblog/vault.git",
+            "private": true,
+            "default_branch": "master",
+            "updated_at": "2026-11-18T10:00:00+08:00"
+        }"#;
+        let raw: super::GiteeRepoRaw = serde_json::from_str(json).unwrap();
+        let repo: super::GitHubRepo = raw.into();
+        assert_eq!(repo.name, "vault");
+        assert_eq!(repo.full_name, "zhitongblog/vault");
+        assert_eq!(repo.clone_url, "https://gitee.com/zhitongblog/vault.git");
+        assert_eq!(repo.html_url, "https://gitee.com/zhitongblog/vault");
+        assert!(repo.private);
+        assert_eq!(repo.default_branch, "master");
+    }
 }

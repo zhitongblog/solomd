@@ -1,0 +1,5 @@
+SoloMD 5.2.3:
+• Exportação aprimorada: PDFs vetoriais com texto selecionável e marcadores; mapeamento preciso dos estilos Título 1–6 em modelos Word (.docx); sumário EPUB limpo e navegação Anterior / Próximo em HTML autônomo.
+• Modo WYSIWYG puro sem exibir sintaxe Markdown ao passar o cursor ou selecionar texto.
+• Continuação fluida de listas após Shift+Enter, suporte a **negrito** em diagramas Mermaid e cores de fundo distintas para citações e blocos de código.
+• Janela sempre no topo, escolha do formato de imagem colada (PNG / WebP / JPG) e atalhos compatíveis com teclados internacionais.

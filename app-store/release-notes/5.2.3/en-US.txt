@@ -1,0 +1,5 @@
+SoloMD 5.2.3:
+• Upgraded Export Pipeline: Batch and merged folder exports now produce crisp, selectable vector-text PDFs with outline bookmarks; custom Word (.docx) templates accurately map Heading 1–6 style IDs; cleaner merged-book root titles and EPUB Table of Contents formatting; standalone HTML exports gain a dedicated TOC page and optional Previous / Next topic navigation.
+• Pure WYSIWYG Polish: Strict zero-syntax rendering keeps raw Markdown markers hidden on hover, cursor movement, and text selection.
+• Lists, Diagrams & Typography: Smoother Enter list continuation after Shift+Enter soft breaks; **bold** text rendering inside Mermaid diagram labels; distinct blockquote and code block background colors with refined H1–H6 visual hierarchy.
+• Added Window Always-on-Top on macOS, configurable pasted image formats (PNG / WebP / JPG), and layout-aware keyboard shortcuts for international keyboards.
