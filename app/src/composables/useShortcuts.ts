@@ -190,6 +190,7 @@ export function useShortcuts(hooks: Hooks = {}) {
     'view.toggleOutline': () => runById('view.toggleOutline'),
     'view.toggleInspector': () => settings.toggleInspector(),
     'view.toggleToolbar': () => settings.toggleToolbarHidden(),
+    'view.toggleAlwaysOnTop': () => settings.toggleAlwaysOnTop(),
     'view.slideshow': () => runById('view.slideshow'),
     'view.toggleFocusMode': () => settings.toggleFocusMode(),
     'view.toggleTypewriter': () => settings.toggleTypewriterMode(),
@@ -288,6 +289,29 @@ export function useShortcuts(hooks: Hooks = {}) {
       e.preventDefault();
       void invoke('open_devtools_window').catch(() => {});
       return;
+    }
+    // #610 — On Windows/Linux non-US layouts (German QWERTZ, French AZERTY…),
+    // `AltGr` sends `ctrlKey: true, altKey: true` (`AltGraph`) to type third-level
+    // characters like `@`, `{`, `[`, `]`, `}`, `\`, `~`, `|`, `€`. Never hijack
+    // printable `AltGr` symbols when an editable input or editor has focus.
+    if (
+      typeof e.getModifierState === 'function' &&
+      e.getModifierState('AltGraph') &&
+      !e.metaKey &&
+      e.key &&
+      e.key.length === 1 &&
+      !/^[a-zA-Z0-9]$/.test(e.key)
+    ) {
+      const el = (e.target as HTMLElement | null) ?? (document.activeElement as HTMLElement | null);
+      if (
+        el &&
+        (el.tagName === 'INPUT' ||
+          el.tagName === 'TEXTAREA' ||
+          el.isContentEditable ||
+          !!el.closest('.cm-content'))
+      ) {
+        return;
+      }
     }
     const raw = eventToCombo(e);
     if (!raw) return;

@@ -18,7 +18,7 @@ import {
 } from '../lib/export-overwrite';
 
 type ExportScope = 'current' | 'folder';
-type ExportFormat = 'pdf' | 'html' | 'docx' | 'epub' | 'odt' | 'latex' | 'rtf' | 'png' | 'textpack';
+type ExportFormat = 'pdf' | 'pdf-image' | 'html' | 'docx' | 'epub' | 'odt' | 'latex' | 'rtf' | 'png' | 'textpack';
 
 const props = defineProps<{
   open: boolean;
@@ -44,7 +44,9 @@ const scope = ref<ExportScope>('current');
 const format = ref<ExportFormat>(settings.lastCustomExportFormat || 'pdf');
 
 function formatExtension(fmt: ExportFormat): string {
-  return fmt === 'latex' ? 'tex' : fmt;
+  if (fmt === 'latex') return 'tex';
+  if (fmt === 'pdf-image') return 'pdf';
+  return fmt;
 }
 const sourceFolder = ref<string>(workspace.currentFolder || '');
 const includeSubfolders = ref(true);
@@ -471,6 +473,7 @@ async function runCustomExport() {
         includeBookmarks: settings.exportHtmlWithNav,
         includeTocPage: settings.exportIncludeTocPage,
         htmlPaginated: settings.exportHtmlPaginated,
+        htmlTopicNav: settings.exportHtmlTopicNav,
         htmlContentWidth: settings.exportHtmlContentWidth,
       });
       lastExportedPath.value = targetPath;
@@ -524,7 +527,9 @@ async function runCustomExport() {
             content: raw,
           });
         }
-        const mergedContent = buildMergedBookMarkdown(folderName, mergedNotes);
+        const mergedContent = buildMergedBookMarkdown(folderName, mergedNotes, {
+          includeRootHeading: format.value === 'html',
+        });
         const finalFileName = splitExportPath(targetPath).fileName;
         progressText.value = isZh.value
           ? `正在生成合集文档：${finalFileName}…`
@@ -538,7 +543,9 @@ async function runCustomExport() {
           includeBookmarks: settings.exportHtmlWithNav,
           includeTocPage: settings.exportIncludeTocPage,
           htmlPaginated: settings.exportHtmlPaginated,
+          htmlTopicNav: settings.exportHtmlTopicNav,
           htmlContentWidth: settings.exportHtmlContentWidth,
+          isMergedBook: true,
         });
         lastExportedPath.value = targetPath;
         const msg = isZh.value
@@ -570,6 +577,7 @@ async function runCustomExport() {
             includeBookmarks: settings.exportHtmlWithNav,
             includeTocPage: settings.exportIncludeTocPage,
             htmlPaginated: settings.exportHtmlPaginated,
+            htmlTopicNav: settings.exportHtmlTopicNav,
             htmlContentWidth: settings.exportHtmlContentWidth,
           });
           lastPath = targetPath;
@@ -658,7 +666,8 @@ async function runCustomExport() {
         <div class="custom-export__field">
           <label class="custom-export__label">{{ isZh ? '导出格式' : 'Export Format' }}</label>
           <select v-model="format" class="custom-export__select">
-            <option value="pdf">{{ isZh ? 'PDF 文档 (.pdf)' : 'PDF Document (.pdf)' }}</option>
+            <option value="pdf">{{ isZh ? 'PDF 文档 - 文字版 (.pdf)' : 'PDF Document - Selectable Text (.pdf)' }}</option>
+            <option value="pdf-image">{{ isZh ? 'PDF 文档 - 图片版 (.pdf)' : 'PDF Document - Raster Image (.pdf)' }}</option>
             <option value="html">{{ isZh ? '网页文件 (.html)' : 'Standalone HTML (.html)' }}</option>
             <option value="docx">{{ isZh ? 'Word 文档 (.docx)' : 'Word Document (.docx)' }}</option>
             <option value="epub">{{ isZh ? 'EPUB 电子书 (.epub，需 Pandoc)' : 'EPUB eBook (.epub, requires Pandoc)' }}</option>
@@ -701,6 +710,23 @@ async function runCustomExport() {
                 @change="settings.setExportHtmlPaginated(($event.target as HTMLInputElement).checked)"
               />
               <span>{{ isZh ? 'HTML分页载入' : 'Paginated HTML loading' }}</span>
+            </label>
+            <label
+              v-if="format === 'html'"
+              class="custom-export__checkbox"
+              :class="{ 'custom-export__checkbox--disabled': !settings.exportHtmlWithNav || !settings.exportHtmlPaginated }"
+              style="margin-top: 2px;"
+              :title="isZh
+                ? '在HTML分页载入页面的顶部和底部显示“< 上一主题 / 下一主题 >”翻页按钮。'
+                : 'Show < Previous / Next > topic navigation buttons at the top and bottom of each HTML page.'"
+            >
+              <input
+                type="checkbox"
+                :disabled="!settings.exportHtmlWithNav || !settings.exportHtmlPaginated"
+                :checked="settings.exportHtmlWithNav && settings.exportHtmlPaginated && settings.exportHtmlTopicNav"
+                @change="settings.setExportHtmlTopicNav(($event.target as HTMLInputElement).checked)"
+              />
+              <span>{{ isZh ? '显示“< 上一主题 / 下一主题 >”导航按钮' : 'Show "< Previous / Next >" topic navigation buttons' }}</span>
             </label>
           </template>
         </div>

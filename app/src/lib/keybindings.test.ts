@@ -338,3 +338,64 @@ test('#508: useTabsStore MRU tab switching toggles between 2 most recent tabs an
   assert.notEqual(afterClose, tabD.id);
   assert.equal(afterClose, tabA.id);
 });
+
+test('#610: German QWERTZ and non-US keyboard layouts match layout-printed keys and macOS Option / IME fallbacks', async () => {
+  const { eventToCombo, setLayoutMapForTest } = await import('./keybindings.ts');
+  const ev = (init: Partial<KeyboardEvent>) =>
+    ({
+      key: '',
+      code: '',
+      keyCode: 0,
+      isComposing: false,
+      ctrlKey: false,
+      metaKey: false,
+      altKey: false,
+      shiftKey: false,
+      ...init,
+    }) as KeyboardEvent;
+
+  try {
+    // Simulate German QWERTZ layout map (`KeyZ` -> 'y', `KeyY` -> 'z')
+    setLayoutMapForTest(
+      new Map([
+        ['KeyZ', 'y'],
+        ['KeyY', 'z'],
+      ]),
+    );
+
+    // Y/Z swap on German QWERTZ (`Ctrl+Y`, `Ctrl+Z`, `Ctrl+Shift+Alt+Y`)
+    assert.equal(eventToCombo(ev({ key: 'y', code: 'KeyZ', ctrlKey: true })), 'Mod+Y');
+    assert.equal(eventToCombo(ev({ key: 'z', code: 'KeyY', ctrlKey: true })), 'Mod+Z');
+    assert.equal(
+      eventToCombo(ev({ key: 'Y', code: 'KeyZ', ctrlKey: true, altKey: true, shiftKey: true })),
+      'Mod+Alt+Shift+Y',
+    );
+
+    // macOS Option-composed non-ASCII glyph on German QWERTZ (`⌥Y` on physical `KeyZ` -> '¥')
+    assert.equal(eventToCombo(ev({ key: '¥', code: 'KeyZ', metaKey: true, altKey: true })), 'Mod+Alt+Y');
+
+    // Windows IME `Process` (`keyCode === 229`) on German QWERTZ (`KeyZ` -> 'Y')
+    assert.equal(
+      eventToCombo(ev({ key: 'Process', code: 'KeyZ', keyCode: 229, ctrlKey: true })),
+      'Mod+Y',
+    );
+
+    // German QWERTZ punctuation:
+    // - `-` is unshifted on physical `Slash` -> `Mod+Minus` (not `Mod+Slash`)
+    assert.equal(eventToCombo(ev({ key: '-', code: 'Slash', ctrlKey: true })), 'Mod+Minus');
+    // - `+` is unshifted on physical `BracketRight` -> `Mod+Equal` (zoom in)
+    assert.equal(eventToCombo(ev({ key: '+', code: 'BracketRight', ctrlKey: true })), 'Mod+Equal');
+    // - `=` is `Shift+0` -> `Mod+Equal`
+    assert.equal(
+      eventToCombo(ev({ key: '=', code: 'Digit0', ctrlKey: true, shiftKey: true })),
+      'Mod+Equal',
+    );
+    // - `/` is `Shift+7` -> `Mod+Slash` (toggle live/source mode)
+    assert.equal(
+      eventToCombo(ev({ key: '/', code: 'Digit7', ctrlKey: true, shiftKey: true })),
+      'Mod+Slash',
+    );
+  } finally {
+    setLayoutMapForTest(null);
+  }
+});

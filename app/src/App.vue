@@ -824,6 +824,8 @@ watchEffect(() => {
   const customText = (dark ? settings.customTextDark : settings.customTextLight)?.trim() || '';
   const customHighlight = (dark ? settings.customHighlightDark : settings.customHighlightLight)?.trim() || '';
   const customActiveLine = (dark ? settings.customActiveLineDark : settings.customActiveLineLight)?.trim() || '';
+  const customCodeBg = (dark ? settings.customCodeBgDark : settings.customCodeBgLight)?.trim() || '';
+  const customQuoteBg = (dark ? settings.customQuoteBgDark : settings.customQuoteBgLight)?.trim() || '';
   const rootStyle = document.documentElement.style;
   if (customBg && !settings.customCssPath) {
     rootStyle.setProperty('--bg', customBg);
@@ -857,6 +859,16 @@ watchEffect(() => {
     rootStyle.removeProperty('--custom-active-line');
     rootStyle.removeProperty('--active-line-bg');
   }
+  if (customCodeBg && !settings.customCssPath) {
+    rootStyle.setProperty('--md-code-bg', customCodeBg);
+  } else {
+    rootStyle.removeProperty('--md-code-bg');
+  }
+  if (customQuoteBg && !settings.customCssPath) {
+    rootStyle.setProperty('--md-quote-bg', customQuoteBg);
+  } else {
+    rootStyle.removeProperty('--md-quote-bg');
+  }
   if (isIOS()) {
     invoke('ios_set_appearance', { dark }).catch(() => {});
   }
@@ -871,6 +883,20 @@ watchEffect(() => {
     useToastsStore().warning(t('settings.customThemeOverrides', { name }), 6000);
   });
 });
+
+// #604 — Keep desktop window floating above other windows when Always on Top is toggled.
+watch(
+  () => settings.alwaysOnTop,
+  (pinned) => {
+    if (isMobile()) return;
+    try {
+      void getCurrentWindow().setAlwaysOnTop(pinned).catch(() => {});
+    } catch {
+      /* non-Tauri test/browser harness */
+    }
+  },
+  { immediate: true },
+);
 
 // v2.0: keep the Rust workspace index in sync with the active folder.
 watchEffect(() => {
@@ -1438,31 +1464,47 @@ onMounted(async () => {
     // (onActivityResult → native AtomicReference) can't be awaited inline; we
     // drain it on resume. The 'solomd:saf-picking' flag (set in openFolder)
     // scopes this to an in-flight pick.
-    const resolveSafPick = async () => {
+    let resolvingSafPick = false;
+    const resolveSafPick = async (maxAttempts = 16) => {
+      if (resolvingSafPick) return;
       if (localStorage.getItem('solomd:saf-picking') !== '1') return;
-      const { safResolvePicked } = await import('./lib/saf-fs');
-      for (let i = 0; i < 12; i++) {
-        let r: Awaited<ReturnType<typeof safResolvePicked>>;
-        try {
-          r = await safResolvePicked();
-        } catch {
-          return;
+      resolvingSafPick = true;
+      try {
+        const { safResolvePicked } = await import('./lib/saf-fs');
+        for (let i = 0; i < maxAttempts; i++) {
+          let r: Awaited<ReturnType<typeof safResolvePicked>>;
+          try {
+            r = await safResolvePicked();
+          } catch {
+            return;
+          }
+          if (r === 'pending') {
+            await new Promise((res) => setTimeout(res, 300));
+            continue;
+          }
+          localStorage.removeItem('solomd:saf-picking');
+          if (r) {
+            workspace.setSafVault(r.treeUri, `saf:${r.rootDocId}`, r.name);
+            if (!settings.showFileTree) settings.toggleFileTree();
+          }
+          return; // resolved (folder or cancel)
         }
-        if (r === 'pending') {
-          await new Promise((res) => setTimeout(res, 300));
-          continue;
-        }
-        localStorage.removeItem('solomd:saf-picking');
-        if (r) {
-          workspace.setSafVault(r.treeUri, `saf:${r.rootDocId}`, r.name);
-          if (!settings.showFileTree) settings.toggleFileTree();
-        }
-        return; // resolved (folder or cancel)
+      } finally {
+        resolvingSafPick = false;
       }
-      // still pending after retries — leave the flag so the next resume retries
+      // still pending after retries — leave the flag so the next resume/ready event retries
     };
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') void resolveSafPick();
+    });
+    window.addEventListener('focus', () => {
+      void resolveSafPick();
+    });
+    window.addEventListener('solomd:saf-pick-ready', () => {
+      void resolveSafPick(8);
+    });
+    window.addEventListener('solomd:saf-pick-poll', () => {
+      void resolveSafPick(200);
     });
     void resolveSafPick();
   }

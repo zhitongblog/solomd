@@ -1171,20 +1171,22 @@ defineExpose({ scrollToLine, openSearch });
   margin: 1.6em 0 0.5em;
 }
 :where(.preview-content) h1 {
-  font-size: 1.875em;
-  font-weight: 650;
+  font-size: 1.85em;
+  font-weight: 700;
   line-height: 1.25;
   letter-spacing: -0.015em;
   margin: 1.2em 0 0.6em;
+  color: var(--md-h1);
 }
 :where(.preview-content) h2 {
-  font-size: 1.25em;
-  font-weight: 620;
+  font-size: 1.52em;
+  font-weight: 650;
+  color: var(--md-h2);
 }
-:where(.preview-content) h3 { font-size: 1.125em; }
-:where(.preview-content) h4 { font-size: 1.0625em; }
-:where(.preview-content) h5,
-:where(.preview-content) h6 { font-size: 1em; }
+:where(.preview-content) h3 { font-size: 1.30em; font-weight: 620; color: var(--md-h3); }
+:where(.preview-content) h4 { font-size: 1.15em; font-weight: 600; color: var(--md-h4); }
+:where(.preview-content) h5 { font-size: 1.04em; font-weight: 600; color: var(--md-h5); }
+:where(.preview-content) h6 { font-size: 0.95em; font-weight: 600; color: var(--md-h6); }
 :where(.preview-content) > :first-child { margin-top: 0; }
 :where(.preview-content) p { margin: 0.9em 0; }
 :where(.preview-content) a {
@@ -1206,7 +1208,7 @@ defineExpose({ scrollToLine, openSearch });
   font-family: var(--font-mono);
   font-size: 0.8125em;
   line-height: 1.6;
-  background: var(--bg-elev);
+  background: var(--md-code-bg, var(--bg-elev));
   padding: 14px 16px;
   border-radius: var(--r-lg);
   overflow-x: auto;
@@ -1278,9 +1280,10 @@ defineExpose({ scrollToLine, openSearch });
 :where(.preview-content) blockquote {
   margin: 1em 0;
   padding: 12px 16px;
-  background: var(--bg-elev);
-  border-radius: var(--r-lg);
-  color: var(--text-2);
+  background: var(--md-quote-bg, var(--bg-elev));
+  border-left: 3px solid var(--md-quote-border, var(--accent));
+  border-radius: 4px var(--r-lg) var(--r-lg) 4px;
+  color: var(--md-quote, var(--text-2));
 }
 :where(.preview-content) blockquote > :first-child { margin-top: 0; }
 :where(.preview-content) blockquote > :last-child { margin-bottom: 0; }

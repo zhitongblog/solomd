@@ -168,8 +168,37 @@ const PDF_CSS = `
     color: var(--md-code, #1f2328);
   }
   :where(.pdf-page) pre code .hljs-keyword,
-  :where(.pdf-page) pre code .hljs-built_in,
-  :where(.pdf-page) pre code .hljs-tag { color: var(--syn-keyword, #116329); }
+  :where(.pdf-page) pre code .hljs-selector-tag,
+  :where(.pdf-page) pre code .hljs-doctag,
+  :where(.pdf-page) pre code .hljs-literal { color: var(--syn-keyword, #a626a4); }
+  :where(.pdf-page) pre code .hljs-string,
+  :where(.pdf-page) pre code .hljs-regexp,
+  :where(.pdf-page) pre code .hljs-template-tag,
+  :where(.pdf-page) pre code .hljs-template-variable,
+  :where(.pdf-page) pre code .hljs-addition { color: var(--syn-string, #50a14f); }
+  :where(.pdf-page) pre code .hljs-number,
+  :where(.pdf-page) pre code .hljs-symbol,
+  :where(.pdf-page) pre code .hljs-bullet { color: var(--syn-number, #986801); }
+  :where(.pdf-page) pre code .hljs-comment,
+  :where(.pdf-page) pre code .hljs-quote,
+  :where(.pdf-page) pre code .hljs-meta { color: var(--syn-comment, #6a737d); font-style: italic; }
+  :where(.pdf-page) pre code .hljs-function,
+  :where(.pdf-page) pre code .hljs-title,
+  :where(.pdf-page) pre code .hljs-built_in { color: var(--syn-function, #4078f2); }
+  :where(.pdf-page) pre code .hljs-type,
+  :where(.pdf-page) pre code .hljs-class,
+  :where(.pdf-page) pre code .hljs-params { color: var(--syn-type, #c18401); }
+  :where(.pdf-page) pre code .hljs-property,
+  :where(.pdf-page) pre code .hljs-attr,
+  :where(.pdf-page) pre code .hljs-attribute,
+  :where(.pdf-page) pre code .hljs-selector-class,
+  :where(.pdf-page) pre code .hljs-selector-id { color: var(--syn-property, #e45649); }
+  :where(.pdf-page) pre code .hljs-operator,
+  :where(.pdf-page) pre code .hljs-punctuation { color: var(--syn-operator, #0184bc); }
+  :where(.pdf-page) pre code .hljs-variable,
+  :where(.pdf-page) pre code .hljs-name,
+  :where(.pdf-page) pre code .hljs-tag { color: var(--syn-variable, #383a42); }
+  :where(.pdf-page) pre code .hljs-deletion { color: #d64545; }
   /* #454 — code block line numbers in PDF export when enabled */
   .pdf-page.cb-numbered-on pre.cb-numbered {
     counter-reset: cb-line;
@@ -840,6 +869,8 @@ export interface PdfExportFlags {
   includeOutline?: boolean;
   includeTocPage?: boolean;
   tocTitle?: string;
+  /** #597 — Optional cover page title for merged folder books (rendered as a non-heading div so it never enters bookmarks/TOC). */
+  coverTitle?: string;
 }
 
 export async function capturePdfRaster(
@@ -947,6 +978,22 @@ export async function capturePdfRaster(
       ? '目录'
       : 'Contents';
     decoratePdfToc(page, exportFlags?.tocTitle ?? defaultTocTitle);
+    // #597 — Prepend a non-heading cover page for merged folder books so Page 1
+    // displays the book/folder title without adding a root Heading 1 bookmark.
+    if (exportFlags?.coverTitle) {
+      const coverEl = document.createElement('div');
+      coverEl.className = 'pdf-book-cover';
+      coverEl.style.cssText = 'padding: 180px 24px 120px; text-align: center; page-break-after: always; break-after: page;';
+      const titleEl = document.createElement('div');
+      titleEl.className = 'pdf-book-cover__title';
+      titleEl.style.cssText = 'font-size: 2.2em; font-weight: 700; line-height: 1.35; color: #0f172a; word-break: break-word;';
+      titleEl.textContent = exportFlags.coverTitle;
+      coverEl.appendChild(titleEl);
+      const pbEl = document.createElement('div');
+      pbEl.className = 'html2pdf__page-break';
+      page.insertBefore(pbEl, page.firstChild);
+      page.insertBefore(coverEl, pbEl);
+    }
     // Give the browser a tick to lay everything out (KaTeX fonts especially).
     await new Promise((r) => setTimeout(r, 60));
     // #115 — convert any modern CSS color functions (color()/oklch()/…) that

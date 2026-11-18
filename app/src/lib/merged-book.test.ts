@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { buildMergedBookMarkdown } from './merged-book';
 import { renderMarkdown } from './markdown';
 import { buildStandaloneHtml } from './html-export';
+import { SOLOMD_EPUB_CSS } from './epub-style';
 
 test('#562: buildMergedBookMarkdown builds hierarchical folder + note TOC up to note level 3 and falls back to baseName when H1 is absent', () => {
   const merged = buildMergedBookMarkdown('01 书籍名', [
@@ -187,4 +188,71 @@ test('#570: single-note standalone HTML export without [TOC] builds hierarchical
   assert.ok(html.includes('第一章 总览'));
   assert.ok(html.includes('1.1 安装说明'));
   assert.ok(html.includes('id="solomd-search-input"'));
+});
+
+test('#594 & #598: merged paginated HTML with TOC page has dedicated #solomd-page-toc without standalone H1 cover page, and renders < 上一主题 / 下一主题 > topic nav buttons', async () => {
+  const merged = buildMergedBookMarkdown(
+    'Kubernetes 指南',
+    [
+      { relDir: '', baseName: '01-intro', content: '# 1 简介\n\n第一节内容' },
+      { relDir: '', baseName: '02-install', content: '# 2 安装\n\n第二节内容' },
+    ],
+    { includeRootHeading: true },
+  );
+
+  const htmlWithToc = await buildStandaloneHtml({
+    content: merged,
+    title: 'Kubernetes 指南',
+    withNav: true,
+    paginated: true,
+    withTocPage: true,
+    topicNav: true,
+    lang: 'zh',
+  });
+
+  // Dedicated TOC section exists and does NOT contain a duplicate root <h1>
+  assert.match(htmlWithToc, /id="solomd-page-toc"/);
+  assert.doesNotMatch(htmlWithToc, /data-book-root="1"/);
+  // Root bookmark in sidebar points to #solomd-page-toc
+  assert.match(htmlWithToc, /href="#solomd-page-toc"[^>]*>Kubernetes 指南<\/a>/);
+  // Topic nav buttons (< 上一主题 / 下一主题 >) are rendered at top and bottom
+  assert.ok(htmlWithToc.includes('<div class="solomd-topic-nav solomd-topic-nav--top"'));
+  assert.ok(htmlWithToc.includes('<div class="solomd-topic-nav solomd-topic-nav--bottom"'));
+  assert.ok(htmlWithToc.includes('上一主题'));
+  assert.ok(htmlWithToc.includes('下一主题'));
+
+  // Without TOC page, root bookmark points directly to first note (#solomd-page-1)
+  const htmlNoToc = await buildStandaloneHtml({
+    content: merged,
+    title: 'Kubernetes 指南',
+    withNav: true,
+    paginated: true,
+    withTocPage: false,
+    topicNav: false,
+    lang: 'zh',
+  });
+  assert.doesNotMatch(htmlNoToc, /id="solomd-page-toc"/);
+  assert.match(htmlNoToc, /href="#solomd-page-1"[^>]*>Kubernetes 指南<\/a>/);
+  assert.ok(!htmlNoToc.includes('<div class="solomd-topic-nav solomd-topic-nav--top"'));
+});
+
+test('#597: buildMergedBookMarkdown with includeRootHeading: false omits root folder H1 and promotes chapters to level 1', () => {
+  const merged = buildMergedBookMarkdown(
+    '技术合集',
+    [
+      { relDir: '', baseName: 'ch1', content: '# 第一章\n\n## 1.1 节' },
+      { relDir: '附录', baseName: 'app1', content: '# 附录 A' },
+    ],
+    { includeRootHeading: false },
+  );
+  assert.doesNotMatch(merged, /^#\s+技术合集/m);
+  assert.match(merged, /^# 第一章$/m);
+  assert.match(merged, /^## 1\.1 节$/m);
+  assert.match(merged, /^# 附录/m);
+  assert.match(merged, /^## 附录 A$/m);
+});
+
+test('#596: EPUB stylesheet suppresses automatic decimal list markers in TOC', () => {
+  assert.match(SOLOMD_EPUB_CSS, /nav#toc ol[\s\S]*?list-style-type:\s*none\s*!important/);
+  assert.match(SOLOMD_EPUB_CSS, /nav#toc li[\s\S]*?list-style-type:\s*none\s*!important/);
 });

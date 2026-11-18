@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { EditorState } from '@codemirror/state';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { buildDecorations } from './cm-live-render.ts';
+import { parseHljsHtmlSpans } from './cm-hljs-fallback.ts';
 import { buildStandaloneHtml, prepareHtmlNavSidebar } from './html-export.ts';
 import { buildHtml2PdfOptions } from './pdf-export.ts';
 import {
@@ -92,6 +93,43 @@ test('#303: buildDecorations keeps # and ** markers hidden on the active line wh
     if (from === 0 && to === 2) pureReplacedOnLine1 = true;
   });
   assert.equal(pureReplacedOnLine1, true);
+
+  // #605 — Even when selecting a range of text across bold/heading syntax,
+  // Pure WYSIWYG keeps # and ** hidden instead of flashing raw Markdown source.
+  const rangeState = EditorState.create({
+    doc,
+    selection: { anchor: 0, head: doc.length },
+    extensions: [markdown({ base: markdownLanguage })],
+  });
+  const rangeView = {
+    state: rangeState,
+    visibleRanges: [{ from: 0, to: doc.length }],
+  } as any;
+  const rangeDecos = buildDecorations(rangeView, false, true);
+  let rangeHidHeading = false;
+  let rangeHidBoldOpen = false;
+  const boldIdx = doc.indexOf('**');
+  rangeDecos.between(0, doc.length, (from, to) => {
+    if (from === 0 && to === 2) rangeHidHeading = true;
+    if (from === boldIdx && to === boldIdx + 2) rangeHidBoldOpen = true;
+  });
+  assert.equal(rangeHidHeading, true, 'expected # to stay hidden during range selection in Pure WYSIWYG');
+  assert.equal(rangeHidBoldOpen, true, 'expected ** to stay hidden during range selection in Pure WYSIWYG');
+});
+
+test('#589: parseHljsHtmlSpans maps highlight.js HTML tokens (including escaped entities) to exact source offsets', async () => {
+  const { createHljs } = await import('./hljs-setup');
+  const hl = createHljs();
+  const bashCode = 'echo "a < b & c > d" # comment\nif [ -f "$FILE" ]; then exit 0; fi';
+  const html = hl.highlight(bashCode, { language: 'bash', ignoreIllegals: true }).value;
+  const spans = parseHljsHtmlSpans(html, bashCode);
+  assert.ok(spans.length >= 4, 'expected bash keywords, strings, variables, and comments to produce spans');
+  const classes = new Set(spans.map((s) => s.cls));
+  assert.ok(classes.has('hljs-built_in') || classes.has('hljs-keyword'));
+  assert.ok(classes.has('hljs-string'));
+  assert.ok(classes.has('hljs-comment'));
+  const commentSpan = spans.find((s) => s.cls === 'hljs-comment')!;
+  assert.equal(bashCode.slice(commentSpan.from, commentSpan.to), '# comment');
 });
 
 test('#173: user-plugins expands dynamic tokens, registers slash commands, and applies regex/template transforms', () => {

@@ -27,6 +27,8 @@ const { t } = useI18n();
 
 const PAT_HELP_URL =
   'https://github.com/settings/tokens/new?scopes=repo&description=SoloMD%20sync';
+const GITEE_PAT_HELP_URL =
+  'https://gitee.com/profile/personal_access_tokens/new';
 
 const tokenInput = ref('');
 const tokenSaving = ref(false);
@@ -36,13 +38,17 @@ const creatingRepo = ref(false);
 const linking = ref(false);
 const showAdvanced = ref(false);
 
-// v2.6.3 — multi-provider + E2EE state
-// PR #150 narrowed this to 'github' | 'gitea'; restored to the full set —
-// GitLab and custom HTTPS remotes have been supported since v2.6.3 and are
-// still reachable through the clone-URL path below.
-const providerChoice = ref<'github' | 'gitlab' | 'codeberg' | 'gitea' | 'custom'>('github');
+// v2.6.3 / #602 — multi-provider + first-class Gitee (码云) + E2EE state
+const providerChoice = ref<'github' | 'gitee' | 'gitlab' | 'codeberg' | 'gitea' | 'custom'>('github');
 const isGiteaFamily = computed(() => providerChoice.value === 'gitea' || providerChoice.value === 'codeberg');
+const isGitee = computed(() => providerChoice.value === 'gitee');
 const giteaCloneUrl = ref('');
+const giteeTokenInput = ref('');
+const giteeTokenSaving = ref(false);
+const giteeRepoName = ref('');
+const giteeRepoPrivate = ref(true);
+const giteeCreatingRepo = ref(false);
+const giteeCloneUrl = ref('');
 // Gitee IKEQJ5 — GitLab and custom HTTPS remotes have no repo-list API to
 // browse, so pasting a clone URL is the ONLY way to link one. There was no
 // field for it: picking "Custom HTTPS git URL" led to a token box and then an
@@ -122,14 +128,16 @@ async function commitE2eeUpgrade() {
 }
 
 onMounted(async () => {
-  await sync.refreshHasToken();
+  await Promise.all([sync.refreshHasToken(), sync.refreshHasGiteeToken()]);
   if (workspace.currentFolder) {
     await sync.refreshStatus(workspace.currentFolder);
     // Sync provider choice with the linked workspace's provider so the
-    // correct setup flow (GitHub / Codeberg / Gitea) is shown.
+    // correct setup flow (GitHub / Gitee / Codeberg / Gitea) is shown.
     if (sync.status?.provider) {
       if (sync.status.provider === 'gitea' && /codeberg\.org/i.test(sync.status.remote_url ?? '')) {
         providerChoice.value = 'codeberg';
+      } else if (/gitee\.com/i.test(sync.status.remote_url ?? '') && sync.status.provider === 'gitee') {
+        providerChoice.value = 'gitee';
       } else {
         providerChoice.value = sync.status.provider as any;
       }
@@ -138,6 +146,9 @@ onMounted(async () => {
   // Initialize Gitea/Codeberg state when the active (or linked) provider is Gitea/Codeberg.
   if (sync.status?.provider === 'gitea' || isGiteaFamily.value) {
     await initGiteaState();
+  }
+  if (sync.status?.provider === 'gitee' || isGitee.value) {
+    await initGiteeState();
   }
   // GitHub-specific preloading only when GitHub is the active provider.
   if (providerChoice.value === 'github' && sync.hasToken && !sync.isLinked) {
@@ -153,6 +164,8 @@ async function reconnect() {
   if (isGiteaFamily.value) {
     await sync.clearGiteaToken();
     giteaStep.value = 'token';
+  } else if (isGitee.value) {
+    await sync.clearGiteeToken();
   } else {
     await sync.clearToken();
   }
@@ -170,6 +183,8 @@ watch(
   (p) => {
     if (p === 'gitea' || p === 'codeberg') {
       void initGiteaState();
+    } else if (p === 'gitee') {
+      void initGiteeState();
     }
   },
 );
@@ -454,6 +469,110 @@ function openPATHelp() {
   void openUrl(PAT_HELP_URL);
 }
 
+function openGiteePATHelp() {
+  void openUrl(GITEE_PAT_HELP_URL);
+}
+
+// ─── Gitee (码云) helpers (#602) ─────────────────────────────
+
+let _initGiteeBusy = false;
+async function initGiteeState() {
+  if (_initGiteeBusy) return;
+  _initGiteeBusy = true;
+  try {
+    await sync.refreshHasGiteeToken();
+    if (sync.hasGiteeToken) {
+      await Promise.all([
+        sync.refreshGiteeUser(),
+        !sync.isLinked ? sync.listGiteeRepos().catch(() => {}) : Promise.resolve(),
+      ]);
+    }
+  } finally {
+    _initGiteeBusy = false;
+  }
+}
+
+async function saveGiteeToken() {
+  const tok = giteeTokenInput.value.trim();
+  if (!tok) return;
+  giteeTokenSaving.value = true;
+  try {
+    await sync.setGiteeToken(tok);
+    giteeTokenInput.value = '';
+    toasts.success(t('githubSync.tokenSavedToast'));
+    await sync.listGiteeRepos().catch((e) => {
+      toasts.error(`${t('githubSync.tokenInvalid')}: ${e}`);
+      void sync.clearGiteeToken();
+    });
+  } catch (e) {
+    toasts.error(String(e));
+    void sync.clearGiteeToken();
+  } finally {
+    giteeTokenSaving.value = false;
+  }
+}
+
+async function clearGiteeToken() {
+  if (sync.status?.linked && workspace.currentFolder) {
+    await sync.unlink(workspace.currentFolder).catch(() => {});
+  }
+  await sync.clearGiteeToken();
+  toasts.info(t('githubSync.tokenClearedToast'));
+}
+
+async function refreshGiteeRepos() {
+  try {
+    await sync.listGiteeRepos();
+  } catch (e) {
+    toasts.error(String(e));
+  }
+}
+
+async function linkGiteeRepo(cloneUrl: string) {
+  if (!workspace.currentFolder) {
+    toasts.warning(t('githubSync.noWorkspace'));
+    return;
+  }
+  if (!settings.autoGitEnabled) settings.toggleAutoGit();
+  linking.value = true;
+  try {
+    await sync.link(workspace.currentFolder, cloneUrl, {
+      encrypted: enableE2ee.value,
+      provider: 'gitee',
+    });
+    toasts.success(t('githubSync.linkedToast'));
+  } catch (e) {
+    toasts.error(`${t('githubSync.linkFailed')}: ${e}`);
+  } finally {
+    linking.value = false;
+  }
+}
+
+async function linkGiteeClone() {
+  const url = giteeCloneUrl.value.trim();
+  if (!url) return;
+  await linkGiteeRepo(url);
+  giteeCloneUrl.value = '';
+}
+
+async function createGiteeRepoAction() {
+  const name = giteeRepoName.value.trim();
+  if (!name) return;
+  giteeCreatingRepo.value = true;
+  try {
+    const repo = await sync.createGiteeRepo(name, giteeRepoPrivate.value);
+    toasts.success(tSync('repoCreatedToast', { name: repo.full_name }));
+    giteeRepoName.value = '';
+    if (workspace.currentFolder) {
+      await linkGiteeRepo(repo.clone_url);
+    }
+  } catch (e) {
+    toasts.error(`${t('githubSync.repoCreateFailed')}: ${e}`);
+  } finally {
+    giteeCreatingRepo.value = false;
+  }
+}
+
 // ─── Gitea helpers ──────────────────────────────────────────
 
 let _initGiteaBusy = false;
@@ -604,22 +723,15 @@ const linkedRepoLabel = computed(() => {
 
 <template>
   <section class="ghs">
-    <h3 class="ghs__heading">{{ providerChoice === 'codeberg' ? 'Codeberg sync' : providerChoice === 'gitea' ? 'Gitea sync' : t('githubSync.heading') }}</h3>
-    <p class="ghs__intro">{{ isGiteaFamily ? t('githubSync.giteaIntro') : t('githubSync.intro') }}</p>
+    <h3 class="ghs__heading">{{ providerChoice === 'gitee' ? (settings.language === 'zh' ? 'Gitee（码云）同步' : 'Gitee sync') : providerChoice === 'codeberg' ? 'Codeberg sync' : providerChoice === 'gitea' ? 'Gitea sync' : t('githubSync.heading') }}</h3>
+    <p class="ghs__intro">{{ isGitee ? (settings.language === 'zh' ? '通过 Gitee（码云）国内高速 Git 仓库直连同步你的本地知识库，无需代理。' : 'Sync your vault directly with Gitee (gitee.com) via Personal Access Token.') : isGiteaFamily ? t('githubSync.giteaIntro') : t('githubSync.intro') }}</p>
 
-    <!-- Provider picker — always visible so the user can choose their sync
-         backend before anything else happens. This is the single picker for
-         the whole panel: PR #150 introduced it, and it structurally fixes what
-         #229 patched around, namely that the provider used to be selectable
-         only after a token had been saved — which a self-hosted user could never
-         reach, because their token was validated against api.github.com,
-         rejected, and deleted. The duplicate pickers #229 added to State 1 and
-         State 2 were removed in favour of this one. -->
     <div class="ghs-card" style="padding: 8px 12px;">
       <div class="ghs-sub-title" style="margin-top: 0;">{{ t('githubSync.providerTitle') }}</div>
       <div class="ghs-row">
         <select v-model="providerChoice" class="ghs-select" style="flex: 1;">
           <option value="github">GitHub</option>
+          <option value="gitee">{{ settings.language === 'zh' ? 'Gitee（码云，国内直连推荐）' : 'Gitee (gitee.com)' }}</option>
           <option value="gitlab">GitLab</option>
           <option value="codeberg">Codeberg</option>
           <option value="gitea">Gitea / Forgejo (self-hosted)</option>
@@ -631,11 +743,6 @@ const linkedRepoLabel = computed(() => {
       </p>
     </div>
 
-    <!-- v3.0 — first-time-setup hint. macOS prompts the user once for
-         the GitHub PAT and (if E2EE on) once for the encryption key.
-         Both prompts have "Always Allow" — clicking it once silences
-         all future runs. We surface this proactively so users don't
-         think the prompts are spam. -->
     <div class="ghs-keychain-hint">
       <span class="ghs-keychain-hint__icon">🔑</span>
       <div>
@@ -646,7 +753,7 @@ const linkedRepoLabel = computed(() => {
 
     <!-- Token-expired banner: the saved PAT was rejected by the provider (401 /
          Bad credentials). Sync is paused until the user reconnects. -->
-    <div v-if="sync.tokenInvalid || sync.giteaTokenInvalid" class="ghs-authwarn">
+    <div v-if="sync.tokenInvalid || sync.giteaTokenInvalid || sync.giteeTokenInvalid" class="ghs-authwarn">
       <span class="ghs-authwarn__icon">⚠️</span>
       <div class="ghs-authwarn__body">
         <strong>{{ isGiteaFamily ? t('githubSync.giteaTokenExpiredTitle') : t('githubSync.tokenExpiredTitle') }}</strong>
@@ -669,12 +776,34 @@ const linkedRepoLabel = computed(() => {
     <!-- ──────────────────────────────────────────────────────────────── -->
     <!-- State 1: no PAT — sign-in form                                   -->
     <!-- ──────────────────────────────────────────────────────────────── -->
-    <!-- Gitea has its own URL-then-token flow below; every other provider
-         (GitHub, GitLab, custom HTTPS) signs in with a bare token here. PR
-         #150 had narrowed this to `providerChoice === 'github'`, which left
-         GitLab / custom users with no card at all. The provider picker itself
-         now lives once, at the top of the panel. -->
-    <div v-if="!isGiteaFamily && !sync.hasToken" class="ghs-card">
+    <div v-if="isGitee && !sync.hasGiteeToken" class="ghs-card">
+      <div class="ghs-card__title">{{ settings.language === 'zh' ? '连接 Gitee（码云）私人令牌' : 'Connect with Gitee Personal Access Token' }}</div>
+      <p class="ghs-help">
+        {{ settings.language === 'zh'
+          ? '粘贴 Gitee 私人令牌（勾选 projects 与 user_info 权限），保存于系统钥匙串中，即可拉取仓库列表或一键创建私有知识库。'
+          : 'Paste a Gitee Personal Access Token (with projects & user_info scopes) to browse or create repositories.' }}
+      </p>
+      <div class="ghs-row">
+        <input
+          v-model="giteeTokenInput"
+          type="password"
+          autocomplete="off"
+          spellcheck="false"
+          class="ghs-input ghs-input--mono"
+          :placeholder="settings.language === 'zh' ? '粘贴 Gitee 私人令牌…' : 'Paste Gitee Personal Access Token…'"
+        />
+      </div>
+      <div class="ghs-row">
+        <button class="ghs-btn ghs-btn--primary" :disabled="giteeTokenSaving || !giteeTokenInput.trim()" @click="saveGiteeToken">
+          {{ giteeTokenSaving ? t('githubSync.tokenSaving') : t('githubSync.tokenSaveBtn') }}
+        </button>
+        <button class="ghs-btn" @click="openGiteePATHelp">
+          {{ settings.language === 'zh' ? '前往 Gitee 生成私人令牌 ↗' : 'Generate Gitee Token ↗' }}
+        </button>
+      </div>
+    </div>
+
+    <div v-else-if="!isGiteaFamily && !isGitee && !sync.hasToken" class="ghs-card">
       <div class="ghs-card__title">{{ t('githubSync.signInTitle') }}</div>
       <p class="ghs-help">{{ t('githubSync.signInHint') }}</p>
       <p v-if="providerChoice !== 'github'" class="ghs-help">
@@ -766,6 +895,9 @@ const linkedRepoLabel = computed(() => {
              to a neutral title. -->
         <template v-if="isGiteaFamily">
           {{ t('githubSync.giteaSignedInAs', { user: sync.giteaUser?.login ?? '…' }) }}
+        </template>
+        <template v-else-if="isGitee">
+          {{ t('githubSync.signedInAs', { user: sync.giteeUser?.login ?? '…' }) }}
         </template>
         <template v-else-if="providerChoice === 'github'">
           {{ t('githubSync.signedInAs', { user: sync.user?.login ?? '…' }) }}
@@ -936,6 +1068,90 @@ const linkedRepoLabel = computed(() => {
           </div>
         </div>
 
+        <!-- #602 — Gitee (码云): create new + pick existing + paste clone URL -->
+        <div v-if="isGitee && sync.hasGiteeToken" class="ghs-subblock">
+          <div class="ghs-subblock" style="border: none; padding-top: 0;">
+            <div class="ghs-sub-title">{{ t('githubSync.createNewTitle') }}</div>
+            <div class="ghs-row">
+              <input
+                v-model="giteeRepoName"
+                type="text"
+                class="ghs-input"
+                :placeholder="t('githubSync.newRepoPlaceholder')"
+              />
+            </div>
+            <div class="ghs-row">
+              <label class="ghs-checkbox">
+                <input v-model="giteeRepoPrivate" type="checkbox" />
+                {{ t('githubSync.privateRepo') }}
+              </label>
+            </div>
+            <div class="ghs-row">
+              <button
+                class="ghs-btn ghs-btn--primary"
+                :disabled="giteeCreatingRepo || !giteeRepoName.trim()"
+                @click="createGiteeRepoAction"
+              >
+                {{ giteeCreatingRepo ? t('githubSync.creatingRepo') : t('githubSync.createAndLinkBtn') }}
+              </button>
+            </div>
+          </div>
+
+          <div class="ghs-subblock">
+            <div class="ghs-sub-title">{{ t('githubSync.pickExistingTitle') }}</div>
+            <div v-if="sync.giteeLoading" class="ghs-help">{{ t('githubSync.loadingRepos') }}</div>
+            <div v-else-if="!sync.giteeRepos.length" class="ghs-help">
+              {{ t('githubSync.noReposFound') }}
+              <button class="ghs-btn ghs-btn--small" @click="refreshGiteeRepos">{{ t('githubSync.refreshRepos') }}</button>
+            </div>
+            <ul v-else class="ghs-repolist">
+              <li v-for="r in sync.giteeRepos" :key="r.full_name" class="ghs-repolist__item">
+                <div class="ghs-repolist__meta">
+                  <span class="ghs-repolist__name">{{ r.full_name }}</span>
+                  <span v-if="r.private" class="ghs-repolist__pill">{{ t('githubSync.privateBadge') }}</span>
+                </div>
+                <button
+                  class="ghs-btn ghs-btn--small"
+                  :disabled="linking"
+                  @click="linkGiteeRepo(r.clone_url)"
+                >
+                  {{ t('githubSync.linkBtn') }}
+                </button>
+              </li>
+            </ul>
+
+            <div class="ghs-subblock">
+              <div class="ghs-sub-title">{{ t('githubSync.giteaCloneUrlTitle') }}</div>
+              <div class="ghs-row">
+                <input
+                  v-model="giteeCloneUrl"
+                  type="text"
+                  class="ghs-input ghs-input--mono"
+                  placeholder="https://gitee.com/owner/repo.git"
+                />
+              </div>
+              <div class="ghs-row">
+                <button
+                  class="ghs-btn ghs-btn--primary"
+                  :disabled="linking || !giteeCloneUrl.trim()"
+                  @click="linkGiteeClone"
+                >
+                  {{ t('githubSync.linkBtn') }}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="ghs-row">
+            <button class="ghs-btn ghs-btn--ghost" @click="clearGiteeToken">
+              {{ t('githubSync.signOutBtn') }}
+            </button>
+            <button class="ghs-btn ghs-btn--ghost" @click="refreshGiteeRepos">
+              {{ t('githubSync.refreshRepos') }}
+            </button>
+          </div>
+        </div>
+
         <!-- Pick existing (GitHub only — repo list API is GitHub-shaped) -->
         <div v-if="providerChoice === 'github'" class="ghs-subblock">
           <div class="ghs-sub-title">{{ t('githubSync.pickExistingTitle') }}</div>
@@ -961,11 +1177,7 @@ const linkedRepoLabel = computed(() => {
           </ul>
         </div>
 
-        <!-- Sign-out is not GitHub-specific: `clearToken` drops whichever
-             provider's token is saved. Gating it on GitHub stranded GitLab /
-             custom users with a token they could not remove. Refreshing the
-             repo list stays GitHub-only — it is the only provider we list. -->
-        <div v-if="!isGiteaFamily" class="ghs-row">
+        <div v-if="!isGiteaFamily && !isGitee" class="ghs-row">
           <button class="ghs-btn ghs-btn--ghost" @click="clearToken">
             {{ t('githubSync.signOutBtn') }}
           </button>

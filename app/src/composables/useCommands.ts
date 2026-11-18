@@ -343,6 +343,7 @@ export function useCommands(): Command[] {
     { id: 'view.toggleReading', title: 'View: Toggle Reading Mode', shortcut: kb('view.toggleReading'), run: () => settings.toggleReadingMode() },
     { id: 'view.toggleFitWidth', title: 'View: Toggle Preview Fit Width', run: () => settings.togglePreviewFitWidth() },
     { id: 'view.togglePdfPageBreaks', title: 'View: Toggle PDF Page-Break Reference Lines', run: () => settings.toggleShowPdfPageBreaks() },
+    { id: 'view.toggleAlwaysOnTop', title: 'View: Toggle Always on Top', shortcut: kb('view.toggleAlwaysOnTop'), run: () => settings.toggleAlwaysOnTop() },
     { id: 'pomodoro.open', title: 'Writing Session (Pomodoro)…', hint: '25 / 50 / 90 minutes or a custom length', run: () => window.dispatchEvent(new CustomEvent('solomd:open-pomodoro')) },
     { id: 'settings.open', title: 'Settings', shortcut: kb('settings.open'), run: () => window.dispatchEvent(new CustomEvent('solomd:open-settings')) },
 
@@ -1040,7 +1041,9 @@ export function useCommands(): Command[] {
   // rather than letting the user find a command that can only fail.
   // Quick capture is a desktop window opened by an OS-level hotkey; neither
   // half exists on a phone, so the command would only ever fail there.
-  const desktopOnly = isMobile() ? built.filter((c) => c.id !== 'capture.quick') : built;
+  const desktopOnly = isMobile()
+    ? built.filter((c) => c.id !== 'capture.quick' && c.id !== 'view.toggleAlwaysOnTop')
+    : built;
   const finalCommands = !hasGitBackend()
     ? desktopOnly.filter(
         (c) => !c.id.startsWith('history.') && !c.id.startsWith('sync.'),

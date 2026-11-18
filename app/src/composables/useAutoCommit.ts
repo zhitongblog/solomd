@@ -129,7 +129,7 @@ export function useAutoCommit() {
       settings.syncVaults,
       settings.syncOnlyRegisteredVaults,
     );
-    if (!folder) return;
+    if (!folder || folder.startsWith('saf:') || filePath?.startsWith('content://')) return;
     busy = true;
     try {
       if (!(await ensureInitialized(folder))) return;

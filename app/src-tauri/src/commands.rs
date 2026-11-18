@@ -443,6 +443,11 @@ pub async fn print_webview_to_pdf(
     #[link(name = "PDFKit", kind = "framework")]
     extern "C" {}
 
+    if let Some(parent) = std::path::Path::new(&path).parent() {
+        if !parent.as_os_str().is_empty() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+    }
     let _ = std::fs::remove_file(&path);
     let (tx, rx) = std::sync::mpsc::channel::<Result<(), String>>();
     let target = path.clone();
@@ -587,7 +592,348 @@ pub async fn print_webview_to_pdf(
     .map_err(|e| format!("join: {e}"))?
 }
 
-#[cfg(not(target_os = "macos"))]
+/// #607 / #552 — Inject hierarchical UTF-16BE BOM PDF outlines (bookmarks) into
+/// a generated vector PDF file using `lopdf` (used on Windows & Linux where
+/// macOS PDFKit is not available).
+#[allow(dead_code)]
+fn inject_pdf_outlines_lopdf(path: &str, items: &[(u8, String, usize)]) -> Result<(), String> {
+    use lopdf::{Dictionary, Document, Object, ObjectId, StringFormat};
+
+    if items.is_empty() {
+        return Ok(());
+    }
+    let mut doc = Document::load(path).map_err(|e| format!("load pdf for outlines: {e}"))?;
+    let pages = doc.get_pages();
+    if pages.is_empty() {
+        return Ok(());
+    }
+    let page_ids: Vec<ObjectId> = pages.values().copied().collect();
+    let page_count = page_ids.len();
+
+    struct Node {
+        title: String,
+        page_obj: ObjectId,
+        children: Vec<usize>,
+        obj_id: ObjectId,
+    }
+
+    let root_id = doc.new_object_id();
+    let mut nodes: Vec<Node> = Vec::with_capacity(items.len());
+    let mut top_indices: Vec<usize> = Vec::new();
+    let mut stack: Vec<(u8, usize)> = Vec::new();
+
+    for (level, label, page_num) in items {
+        let idx = page_num.saturating_sub(1).min(page_count - 1);
+        let page_obj = page_ids[idx];
+        let node_idx = nodes.len();
+        let obj_id = doc.new_object_id();
+        nodes.push(Node {
+            title: label.clone(),
+            page_obj,
+            children: Vec::new(),
+            obj_id,
+        });
+        while stack.last().is_some_and(|(l, _)| *l >= *level) {
+            stack.pop();
+        }
+        if let Some((_, parent_idx)) = stack.last() {
+            nodes[*parent_idx].children.push(node_idx);
+        } else {
+            top_indices.push(node_idx);
+        }
+        stack.push((*level, node_idx));
+    }
+
+    fn utf16be_bom_bytes(s: &str) -> Vec<u8> {
+        let mut out = Vec::with_capacity(2 + s.len() * 2);
+        out.push(0xFE);
+        out.push(0xFF);
+        for u in s.encode_utf16() {
+            out.extend_from_slice(&u.to_be_bytes());
+        }
+        out
+    }
+
+    fn count_descendants(nodes: &[Node], indices: &[usize]) -> i64 {
+        let mut total = indices.len() as i64;
+        for &idx in indices {
+            total += count_descendants(nodes, &nodes[idx].children);
+        }
+        total
+    }
+
+    fn populate_siblings(
+        doc: &mut Document,
+        nodes: &[Node],
+        siblings: &[usize],
+        parent_id: ObjectId,
+    ) {
+        for (pos, &node_idx) in siblings.iter().enumerate() {
+            let node = &nodes[node_idx];
+            let mut dict = Dictionary::new();
+            dict.set(
+                "Title",
+                Object::String(utf16be_bom_bytes(&node.title), StringFormat::Hexadecimal),
+            );
+            dict.set("Parent", parent_id);
+            dict.set(
+                "Dest",
+                Object::Array(vec![
+                    node.page_obj.into(),
+                    Object::Name(b"XYZ".to_vec()),
+                    Object::Null,
+                    Object::Null,
+                    Object::Null,
+                ]),
+            );
+            if pos > 0 {
+                dict.set("Prev", nodes[siblings[pos - 1]].obj_id);
+            }
+            if pos + 1 < siblings.len() {
+                dict.set("Next", nodes[siblings[pos + 1]].obj_id);
+            }
+            if !node.children.is_empty() {
+                dict.set("First", nodes[node.children[0]].obj_id);
+                dict.set("Last", nodes[*node.children.last().unwrap()].obj_id);
+                dict.set(
+                    "Count",
+                    Object::Integer(count_descendants(nodes, &node.children)),
+                );
+                populate_siblings(doc, nodes, &node.children, node.obj_id);
+            }
+            doc.objects.insert(node.obj_id, Object::Dictionary(dict));
+        }
+    }
+
+    populate_siblings(&mut doc, &nodes, &top_indices, root_id);
+
+    let mut root_dict = Dictionary::new();
+    root_dict.set("Type", Object::Name(b"Outlines".to_vec()));
+    if !top_indices.is_empty() {
+        root_dict.set("First", nodes[top_indices[0]].obj_id);
+        root_dict.set("Last", nodes[*top_indices.last().unwrap()].obj_id);
+        root_dict.set(
+            "Count",
+            Object::Integer(count_descendants(&nodes, &top_indices)),
+        );
+    }
+    doc.objects.insert(root_id, Object::Dictionary(root_dict));
+
+    if let Ok(catalog) = doc.catalog_mut() {
+        catalog.set("Outlines", root_id);
+    }
+    doc.save(path).map_err(|e| format!("save pdf outlines: {e}"))?;
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+#[tauri::command]
+pub async fn print_webview_to_pdf(
+    window: tauri::WebviewWindow,
+    path: String,
+    paper: Option<(f64, f64)>,
+    margins: Option<(f64, f64, f64, f64)>,
+    outlines: Option<Vec<(u8, String, usize)>>,
+) -> Result<(), String> {
+    use webview2_com::Microsoft::Web::WebView2::Win32::{
+        ICoreWebView2Environment6, ICoreWebView2_2, ICoreWebView2_7,
+        COREWEBVIEW2_PRINT_ORIENTATION_LANDSCAPE, COREWEBVIEW2_PRINT_ORIENTATION_PORTRAIT,
+    };
+    use webview2_com::PrintToPdfCompletedHandler;
+    use windows_core::{Interface, PCWSTR};
+
+    if let Some(parent) = std::path::Path::new(&path).parent() {
+        if !parent.as_os_str().is_empty() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+    }
+    let _ = std::fs::remove_file(&path);
+
+    let (start_tx, start_rx) = std::sync::mpsc::channel::<Result<(), String>>();
+    let (done_tx, done_rx) = tokio::sync::oneshot::channel::<Result<(), String>>();
+    let target = path.clone();
+
+    window
+        .with_webview(move |platform| unsafe {
+            let run = || -> Result<(), String> {
+                let core = platform
+                    .controller()
+                    .CoreWebView2()
+                    .map_err(|e| format!("CoreWebView2: {e}"))?;
+                let core7 = core
+                    .cast::<ICoreWebView2_7>()
+                    .map_err(|e| format!("ICoreWebView2_7 (PrintToPdf requires WebView2 91+): {e}"))?;
+                let core2 = core
+                    .cast::<ICoreWebView2_2>()
+                    .map_err(|e| format!("ICoreWebView2_2: {e}"))?;
+                let env = core2
+                    .Environment()
+                    .map_err(|e| format!("WebView2 Environment: {e}"))?;
+                let env6 = env
+                    .cast::<ICoreWebView2Environment6>()
+                    .map_err(|e| format!("ICoreWebView2Environment6: {e}"))?;
+                let ps = env6
+                    .CreatePrintSettings()
+                    .map_err(|e| format!("CreatePrintSettings: {e}"))?;
+
+                if let Some((w_pt, h_pt)) = paper {
+                    if w_pt > h_pt {
+                        let _ = ps.SetOrientation(COREWEBVIEW2_PRINT_ORIENTATION_LANDSCAPE);
+                        let _ = ps.SetPageWidth(h_pt / 72.0);
+                        let _ = ps.SetPageHeight(w_pt / 72.0);
+                    } else {
+                        let _ = ps.SetOrientation(COREWEBVIEW2_PRINT_ORIENTATION_PORTRAIT);
+                        let _ = ps.SetPageWidth(w_pt / 72.0);
+                        let _ = ps.SetPageHeight(h_pt / 72.0);
+                    }
+                }
+                let (top, right, bottom, left) =
+                    margins.unwrap_or((42.52, 42.52, 42.52, 42.52));
+                let _ = ps.SetMarginTop(top / 72.0);
+                let _ = ps.SetMarginRight(right / 72.0);
+                let _ = ps.SetMarginBottom(bottom / 72.0);
+                let _ = ps.SetMarginLeft(left / 72.0);
+                let _ = ps.SetShouldPrintBackgrounds(true);
+                let _ = ps.SetShouldPrintHeaderAndFooter(false);
+
+                let wide_path: Vec<u16> = target.encode_utf16().chain(std::iter::once(0)).collect();
+                let handler = PrintToPdfCompletedHandler::create(Box::new(move |hr, is_success| {
+                    let outcome = match hr {
+                        Ok(()) if is_success => Ok(()),
+                        Ok(()) => Err("WebView2 PrintToPdf failed to write PDF".to_string()),
+                        Err(e) => Err(format!("WebView2 PrintToPdf error: {e}")),
+                    };
+                    let _ = done_tx.send(outcome);
+                    Ok(())
+                }));
+
+                core7
+                    .PrintToPdf(PCWSTR::from_raw(wide_path.as_ptr()), &ps, &handler)
+                    .map_err(|e| format!("PrintToPdf start: {e}"))?;
+                Ok(())
+            };
+            let _ = start_tx.send(run());
+        })
+        .map_err(|e| format!("with_webview: {e}"))?;
+
+    start_rx
+        .recv_timeout(std::time::Duration::from_secs(10))
+        .map_err(|_| "Timed out starting WebView2 PrintToPdf".to_string())??;
+
+    tokio::time::timeout(std::time::Duration::from_secs(120), done_rx)
+        .await
+        .map_err(|_| "PDF export timed out".to_string())?
+        .map_err(|_| "WebView2 PrintToPdf channel closed unexpectedly".to_string())??;
+
+    if let Some(items) = outlines.filter(|v| !v.is_empty()) {
+        let path2 = path.clone();
+        let _ = tauri::async_runtime::spawn_blocking(move || {
+            if let Err(e) = inject_pdf_outlines_lopdf(&path2, &items) {
+                eprintln!("[pdf] outline injection warning: {e}");
+            }
+        })
+        .await;
+    }
+    Ok(())
+}
+
+#[cfg(target_os = "linux")]
+#[tauri::command]
+pub async fn print_webview_to_pdf(
+    window: tauri::WebviewWindow,
+    path: String,
+    paper: Option<(f64, f64)>,
+    margins: Option<(f64, f64, f64, f64)>,
+    outlines: Option<Vec<(u8, String, usize)>>,
+) -> Result<(), String> {
+    use gio::prelude::*;
+    use std::sync::{Arc, Mutex};
+    use webkit2gtk::{PrintOperation, PrintOperationExt};
+
+    if let Some(parent) = std::path::Path::new(&path).parent() {
+        if !parent.as_os_str().is_empty() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+    }
+    let _ = std::fs::remove_file(&path);
+
+    let (start_tx, start_rx) = std::sync::mpsc::channel::<Result<(), String>>();
+    let (done_tx, done_rx) = tokio::sync::oneshot::channel::<Result<(), String>>();
+    let done_tx = Arc::new(Mutex::new(Some(done_tx)));
+    let target = path.clone();
+
+    window
+        .with_webview(move |wv| {
+            let webview = wv.inner();
+            let op = PrintOperation::new(&webview);
+
+            let ps = gtk::PrintSettings::new();
+            ps.set_printer("Print to File");
+            ps.set("output-file-format", Some("pdf"));
+            let file_uri = gio::File::for_path(&target).uri();
+            ps.set(gtk::PRINT_SETTINGS_OUTPUT_URI, Some(file_uri.as_str()));
+            ps.set_print_pages(gtk::PrintPages::All);
+
+            let page_setup = gtk::PageSetup::new();
+            if let Some((w_pt, h_pt)) = paper {
+                let paper_size = gtk::PaperSize::new_custom(
+                    "solomd-paper",
+                    "SoloMD Paper",
+                    w_pt,
+                    h_pt,
+                    gtk::Unit::Points,
+                );
+                page_setup.set_paper_size(&paper_size);
+            }
+            let (top, right, bottom, left) = margins.unwrap_or((42.52, 42.52, 42.52, 42.52));
+            page_setup.set_top_margin(top, gtk::Unit::Points);
+            page_setup.set_right_margin(right, gtk::Unit::Points);
+            page_setup.set_bottom_margin(bottom, gtk::Unit::Points);
+            page_setup.set_left_margin(left, gtk::Unit::Points);
+
+            op.set_print_settings(&ps);
+            op.set_page_setup(&page_setup);
+
+            let tx_ok = Arc::clone(&done_tx);
+            op.connect_finished(move |_| {
+                if let Some(tx) = tx_ok.lock().unwrap().take() {
+                    let _ = tx.send(Ok(()));
+                }
+            });
+            let tx_err = Arc::clone(&done_tx);
+            op.connect_failed(move |_, err| {
+                if let Some(tx) = tx_err.lock().unwrap().take() {
+                    let _ = tx.send(Err(err.to_string()));
+                }
+            });
+
+            op.print();
+            let _ = start_tx.send(Ok(()));
+        })
+        .map_err(|e| format!("with_webview: {e}"))?;
+
+    start_rx
+        .recv_timeout(std::time::Duration::from_secs(10))
+        .map_err(|_| "Timed out starting WebKitGTK print operation".to_string())??;
+
+    tokio::time::timeout(std::time::Duration::from_secs(120), done_rx)
+        .await
+        .map_err(|_| "PDF export timed out".to_string())?
+        .map_err(|_| "WebKitGTK print channel closed unexpectedly".to_string())??;
+
+    if let Some(items) = outlines.filter(|v| !v.is_empty()) {
+        let path2 = path.clone();
+        let _ = tauri::async_runtime::spawn_blocking(move || {
+            if let Err(e) = inject_pdf_outlines_lopdf(&path2, &items) {
+                eprintln!("[pdf] outline injection warning: {e}");
+            }
+        })
+        .await;
+    }
+    Ok(())
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
 #[tauri::command]
 pub async fn print_webview_to_pdf(
     _window: tauri::WebviewWindow,
@@ -596,7 +942,7 @@ pub async fn print_webview_to_pdf(
     _margins: Option<(f64, f64, f64, f64)>,
     _outlines: Option<Vec<(u8, String, usize)>>,
 ) -> Result<(), String> {
-    Err("direct PDF export is macOS-only; use print_webview".into())
+    Err("direct PDF export is desktop-only; use print_webview".into())
 }
 
 #[cfg(target_os = "android")]
@@ -3003,6 +3349,55 @@ pub async fn download_and_install_update(
     }
 
     Ok(dest_path.to_string_lossy().to_string())
+}
+
+/// #606 — Convert pasted image bytes between PNG, WebP, and JPEG (with white
+/// background compositing for RGBA -> JPEG). Used as a reliable cross-platform
+/// fallback when WKWebView's `<canvas>.toBlob('image/webp')` silently emits PNG.
+#[tauri::command]
+pub async fn convert_image_format(
+    data: Vec<u8>,
+    format: String,
+    quality: Option<u8>,
+) -> Result<Vec<u8>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let decoded = image::load_from_memory(&data)
+            .map_err(|e| format!("failed to decode pasted image: {e}"))?;
+        let mut out = Vec::new();
+        match format.trim().to_ascii_lowercase().as_str() {
+            "webp" => {
+                decoded
+                    .write_to(&mut std::io::Cursor::new(&mut out), image::ImageFormat::WebP)
+                    .map_err(|e| format!("failed to encode WebP: {e}"))?;
+            }
+            "jpg" | "jpeg" => {
+                let rgba = decoded.to_rgba8();
+                let (w, h) = rgba.dimensions();
+                let mut rgb = image::RgbImage::new(w, h);
+                for (x, y, px) in rgba.enumerate_pixels() {
+                    let a = px[3] as u16;
+                    let inv = 255 - a;
+                    let r = ((px[0] as u16 * a + 255 * inv + 127) / 255) as u8;
+                    let g = ((px[1] as u16 * a + 255 * inv + 127) / 255) as u8;
+                    let b = ((px[2] as u16 * a + 255 * inv + 127) / 255) as u8;
+                    rgb.put_pixel(x, y, image::Rgb([r, g, b]));
+                }
+                let q = quality.unwrap_or(86).clamp(1, 100);
+                let mut enc = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut out, q);
+                enc.encode_image(&rgb)
+                    .map_err(|e| format!("failed to encode JPEG: {e}"))?;
+            }
+            "png" => {
+                decoded
+                    .write_to(&mut std::io::Cursor::new(&mut out), image::ImageFormat::Png)
+                    .map_err(|e| format!("failed to encode PNG: {e}"))?;
+            }
+            other => return Err(format!("unsupported target image format: {other}")),
+        }
+        Ok(out)
+    })
+    .await
+    .map_err(|e| format!("join: {e}"))?
 }
 
 #[cfg(test)]

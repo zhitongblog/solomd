@@ -285,6 +285,7 @@ export const KEY_ACTIONS: KeyActionDef[] = [
   // (5.0 regression run, F-1). Bind it in Settings › Shortcuts.
   { id: 'pomodoro.startLast', label: 'Start Focused Writing Session', category: 'view', defaults: [] },
   { id: 'view.toggleToolbar', label: 'Show / Hide Toolbar Buttons', category: 'view', defaults: ['Mod+Alt+Shift+T'] },
+  { id: 'view.toggleAlwaysOnTop', label: 'Always on Top (Pin Window)', category: 'view', defaults: [] },
   // Zoom used to be hard-wired in App.vue. It is rebindable now because the
   // Typora / Word preset gives ⌘= / ⌘- / ⌘0 to the heading-level commands,
   // and a chord that cannot be unbound cannot be given away. The preview
@@ -350,17 +351,79 @@ const CODE_BY_PUNCT: Record<string, string> = Object.fromEntries(
   Object.entries(PUNCT_BY_CODE).map(([code, ch]) => [ch, code]),
 );
 
+/** Shifted US-ASCII punctuation mapped back to its canonical punctuation token. */
+const SHIFTED_PUNCT_TO_CODE: Record<string, string> = {
+  '+': 'Equal',
+  '_': 'Minus',
+  '|': 'Backslash',
+  '{': 'BracketLeft',
+  '}': 'BracketRight',
+  ':': 'Semicolon',
+  '"': 'Quote',
+  '<': 'Comma',
+  '>': 'Period',
+  '?': 'Slash',
+  '~': 'Backquote',
+};
+
+let cachedLayoutMap: ReadonlyMap<string, string> | null = null;
+let layoutMapInitialised = false;
+
+function ensureKeyboardLayoutMap(): void {
+  if (layoutMapInitialised) return;
+  layoutMapInitialised = true;
+  if (typeof navigator === 'undefined') return;
+  const kb = (navigator as Navigator & {
+    keyboard?: {
+      getLayoutMap?: () => Promise<ReadonlyMap<string, string>>;
+      addEventListener?: (type: string, listener: () => void) => void;
+    };
+  }).keyboard;
+  if (!kb?.getLayoutMap) return;
+  const refresh = () => {
+    kb.getLayoutMap?.().then((m) => {
+      cachedLayoutMap = m;
+    }).catch(() => {});
+  };
+  refresh();
+  kb.addEventListener?.('layoutchange', refresh);
+}
+
+/** Test hook for simulating QWERTZ / AZERTY `navigator.keyboard.getLayoutMap()`. */
+export function setLayoutMapForTest(map: ReadonlyMap<string, string> | null): void {
+  layoutMapInitialised = true;
+  cachedLayoutMap = map;
+}
+
+/**
+ * Resolve the ASCII letter (`A`–`Z`) produced by a physical `Key*` code on the
+ * user's active keyboard layout (e.g. `KeyZ` -> `'Y'` on German QWERTZ),
+ * falling back to the physical US QWERTY letter when the Keyboard API is
+ * unavailable or the layout maps the key to a non-Latin script.
+ */
+export function layoutLetterForCode(code: string): string {
+  ensureKeyboardLayoutMap();
+  const mapped = cachedLayoutMap?.get(code);
+  if (mapped && /^[a-zA-Z]$/.test(mapped)) {
+    return mapped.toUpperCase();
+  }
+  return /^Key[A-Z]$/.test(code) ? code.slice(3) : code;
+}
+
 /**
  * Normalized chord for a keydown, or null when the event carries no usable
  * key (a bare modifier, an IME composition).
  *
- * The `event.code` preference for Alt combos is load-bearing, not a style
- * choice: macOS composes Option+letter into another glyph (⌥C arrives as
- * "ç", ⌥N as "Dead"), so matching on `event.key` would make every Alt
- * shortcut silently dead there. Scoped to Alt so non-Latin layouts keep
- * using `key` for everything else.
+ * #610 — Layout-aware resolution: prefer the layout-resolved `event.key` for
+ * ASCII letters and punctuation before falling back to `event.code`, so
+ * German QWERTZ (`Y`/`Z` swapped, `-` on `Slash`, `+` on `BracketRight`,
+ * `/` on `Shift+7`, `=` on `Shift+0`) and French AZERTY match the character
+ * printed on the user's keycap, while macOS Option-composed glyphs (`⌥C` -> "ç",
+ * `⌥N` -> "Dead") and Windows IME `Process` (`keyCode === 229`) fall back
+ * through `layoutLetterForCode(e.code)`.
  */
 export function eventToCombo(e: KeyboardEvent): KeyCombo | null {
+  ensureKeyboardLayoutMap();
   if (e.isComposing) return null;
   const raw = e.key;
   if (!raw || raw === 'Dead' || raw === 'Unidentified') {
@@ -368,31 +431,54 @@ export function eventToCombo(e: KeyboardEvent): KeyCombo | null {
     // rather than dropping the event.
     if (!(e.altKey && /^(Key[A-Z]|Digit\d)$/.test(e.code))) return null;
   }
-  if (['Control', 'Meta', 'Shift', 'Alt', 'CapsLock'].includes(raw)) return null;
+  if (['Control', 'Meta', 'Shift', 'Alt', 'AltGraph', 'CapsLock'].includes(raw)) return null;
 
   let key: string;
+  let shiftConsumed = false;
   // Windows, with an input method attached to the focused field (a Chinese
   // IME — in its English mode too): keys the IME looks at arrive as
   // key "Process" / keyCode 229. Under a Ctrl/⌘ chord that is never text, so
-  // read the physical key — otherwise every chord typed into the editor is
-  // dead there and works everywhere else.
+  // read the layout/physical key — otherwise every chord typed into the editor
+  // is dead there and works everywhere else.
   const imeProcessed = (raw === 'Process' || e.keyCode === 229) && (e.ctrlKey || e.metaKey);
   if (imeProcessed && /^Key[A-Z]$/.test(e.code)) {
-    key = e.code.slice(3);
+    key = layoutLetterForCode(e.code);
   } else if (imeProcessed && /^Digit\d$/.test(e.code)) {
     key = e.code.slice(5);
-  } else if (e.altKey && /^Key[A-Z]$/.test(e.code)) {
-    key = e.code.slice(3).toUpperCase();
-  } else if (e.altKey && /^Digit\d$/.test(e.code)) {
-    // Same story for the number row: ⌥8 arrives as "•", ⌥7 as "¶".
-    key = e.code.slice(5);
-  } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && /^Digit\d$/.test(e.code)) {
-    // ⌘⇧0 arrives as ")" on a US layout — read the digit, so "editor: reset
-    // zoom" (Mod+Shift+0) matches on every layout.
-    key = e.code.slice(5);
+  } else if (imeProcessed && PUNCT_BY_CODE[e.code]) {
+    key = e.code;
   } else if (e.code === 'NumpadAdd' || e.code === 'NumpadSubtract') {
     // The keypad's + / − have always zoomed along with = / -.
     key = e.code === 'NumpadAdd' ? 'Equal' : 'Minus';
+  } else if (raw && CODE_BY_PUNCT[raw]) {
+    // Base punctuation character (`,`, `/`, `[`, `]`, `\`, `-`, `=`, `;`, `'`, `.`, `` ` ``).
+    // None of these can be produced with Shift on US QWERTY, so if `e.shiftKey`
+    // is set (e.g. German QWERTZ `Shift+7` -> `/`, `Shift+0` -> `=`), Shift was
+    // consumed to produce the punctuation glyph itself.
+    key = CODE_BY_PUNCT[raw];
+    if (e.shiftKey && (e.ctrlKey || e.metaKey || e.altKey)) {
+      shiftConsumed = true;
+    }
+  } else if (raw === '+') {
+    // Unshifted `+` key on German QWERTZ / Nordic / Spanish keyboards zooms in
+    // as `Mod+Equal`; shifted `+` (US `Shift+=`) keeps `Shift` as `Mod+Shift+Equal`.
+    key = 'Equal';
+  } else if (e.shiftKey && raw && SHIFTED_PUNCT_TO_CODE[raw]) {
+    key = SHIFTED_PUNCT_TO_CODE[raw];
+  } else if (raw && /^[a-zA-Z]$/.test(raw)) {
+    key = raw.toUpperCase();
+  } else if (raw && /^[0-9]$/.test(raw)) {
+    key = raw;
+  } else if (e.altKey && /^Key[A-Z]$/.test(e.code)) {
+    // macOS Option-composed non-ASCII glyph ("ç", "¥", "Dead") -> layout letter.
+    key = layoutLetterForCode(e.code);
+  } else if (e.altKey && /^Digit\d$/.test(e.code)) {
+    // Same story for the number row on macOS: ⌥8 arrives as "•", ⌥7 as "¶".
+    key = e.code.slice(5);
+  } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && /^Digit\d$/.test(e.code)) {
+    // ⌘⇧0 arrives as ")" on a US layout — read the digit, so "editor: reset
+    // zoom" (Mod+Shift+0) matches when Shift+Digit did not produce base punct.
+    key = e.code.slice(5);
   } else if (PUNCT_BY_CODE[e.code]) {
     key = e.code;
   } else if (/^F\d{1,2}$/.test(raw)) {
@@ -406,7 +492,7 @@ export function eventToCombo(e: KeyboardEvent): KeyCombo | null {
   const parts: string[] = [];
   if (e.ctrlKey || e.metaKey) parts.push('Mod');
   if (e.altKey) parts.push('Alt');
-  if (e.shiftKey) parts.push('Shift');
+  if (e.shiftKey && !shiftConsumed) parts.push('Shift');
   parts.push(key);
   return parts.join('+');
 }

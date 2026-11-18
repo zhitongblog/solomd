@@ -954,6 +954,7 @@ class TableWidget extends WidgetType {
   // -1 means "unknown" (a widget built without one simply stays read-only).
   private readonly from: number;
   private readonly to: number;
+  private readonly hideSourceBtn: boolean;
 
   constructor(
     source: string,
@@ -962,6 +963,7 @@ class TableWidget extends WidgetType {
     startLine: number = 0,
     from: number = -1,
     to: number = -1,
+    hideSourceBtn: boolean = false,
   ) {
     super();
     this.source = source;
@@ -970,6 +972,7 @@ class TableWidget extends WidgetType {
     this.startLine = startLine;
     this.from = from;
     this.to = to;
+    this.hideSourceBtn = hideSourceBtn;
   }
 
   eq(other: TableWidget): boolean {
@@ -980,6 +983,7 @@ class TableWidget extends WidgetType {
       other.startLine === this.startLine &&
       other.from === this.from &&
       other.to === this.to &&
+      other.hideSourceBtn === this.hideSourceBtn &&
       other.deps === this.deps
     );
   }
@@ -1001,7 +1005,7 @@ class TableWidget extends WidgetType {
       tableEditorHandles.set(wrap, cellEditor);
     }
 
-    if (this.startLine > 0) {
+    if (this.startLine > 0 && !this.hideSourceBtn) {
       const srcBtn = document.createElement('button');
       srcBtn.type = 'button';
       srcBtn.className = 'cm-table-source-btn';
@@ -1951,6 +1955,12 @@ interface BlockOptions {
    * are unaffected — they never reveal source anyway.
    */
   keepSource?: () => boolean;
+  /**
+   * #605 "Pure WYSIWYG" (`hideActiveLineMarkers && !alwaysShowMarkers`):
+   * hovering, clicking, moving the cursor, or selecting text never reveals raw
+   * Markdown syntax or `</> 源码` buttons.
+   */
+  pureWysiwyg?: () => boolean;
 }
 
 function buildBlockDecorations(state: EditorState, opts: BlockOptions): DecorationSet {
@@ -1959,6 +1969,7 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
         const cursorLine = state.doc.lineAt(sel.from).number;
         const cursorLineEnd = state.doc.lineAt(sel.to).number;
         const keepSource = opts.keepSource?.() === true;
+        const pureWysiwyg = !keepSource && opts.pureWysiwyg?.() === true;
 
         // Single pass over the whole doc — for each line, decide:
         //   * is it a standalone image line we should replace? (1 line)
@@ -2050,8 +2061,9 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
             const endI = htmlEndIndex + 1;
             const cursorInside =
               keepSource ||
-              (cursorLine >= i && cursorLine <= endI) ||
-              (cursorLineEnd >= i && cursorLineEnd <= endI);
+              (!pureWysiwyg &&
+                ((cursorLine >= i && cursorLine <= endI) ||
+                  (cursorLineEnd >= i && cursorLineEnd <= endI)));
             if (!cursorInside) {
               const blockFrom = line.from;
               const blockTo = doc.line(endI).to;
@@ -2074,34 +2086,37 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
             continue;
           }
 
-          // Standalone HTML `<img ...>` line (#446 / #561).
-          // Always keep the source line visible and mount the rendered image
-          // below it so clicking or moving the cursor across the image never
-          // causes the document to jump or flicker.
+          // Standalone HTML `<img ...>` line (#446 / #561 / #605).
+          // Keep the source line visible above the rendered image by default,
+          // or replace the line completely when Pure WYSIWYG (`pureWysiwyg`) is on.
           if (/^\s*<img\b[^>]*>\s*$/i.test(line.text)) {
-            builder.add(
-              line.to,
-              line.to,
-              Decoration.widget({
-                widget: new HtmlBlockWidget(
-                  line.text,
-                  opts.getImageRoot?.() ?? null,
-                  opts.getFilePath?.(),
-                  i,
-                ),
-                block: true,
-                side: 1,
-              }),
+            const imgHtmlWidget = new HtmlBlockWidget(
+              line.text,
+              opts.getImageRoot?.() ?? null,
+              opts.getFilePath?.(),
+              i,
             );
+            if (pureWysiwyg) {
+              builder.add(
+                line.from,
+                line.to,
+                Decoration.replace({ widget: imgHtmlWidget, block: true }),
+              );
+            } else {
+              builder.add(
+                line.to,
+                line.to,
+                Decoration.widget({ widget: imgHtmlWidget, block: true, side: 1 }),
+              );
+            }
             i += 1;
             continue;
           }
 
-          // #506 / #561 — Standalone Markdown image line (`![alt](url)`,
+          // #506 / #561 / #605 — Standalone Markdown image line (`![alt](url)`,
           // `[![alt](img)](link)`, `![[1] alt](url)`, `![alt](<url>)`,
           // `![alt][ref]`, etc.). Keep the Markdown source line visible above
-          // the rendered image widget at all times so cursor entry/exit never
-          // collapses or expands the image height.
+          // the rendered image widget unless Pure WYSIWYG (`pureWysiwyg`) is on.
           const lineImages = findMarkdownImagesInLine(line.text, imageRefs);
           const isStandaloneImage =
             lineImages.length === 1 &&
@@ -2117,23 +2132,28 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
               isLocalSvgPath(localPath) ||
               localPath.startsWith('saf:') ||
               /^\/(?:storage\/emulated\/0|sdcard)\//i.test(localPath);
-            builder.add(
-              line.to,
-              line.to,
-              Decoration.widget({
-                widget: new ImageWidget(
-                  src,
-                  imgSpan.alt,
-                  needsFallback ? localPath : null,
-                  i,
-                  false,
-                  imgSpan.width ?? null,
-                  imgSpan.height ?? null,
-                ),
-                block: true,
-                side: 1,
-              }),
+            const imageWidget = new ImageWidget(
+              src,
+              imgSpan.alt,
+              needsFallback ? localPath : null,
+              i,
+              false,
+              imgSpan.width ?? null,
+              imgSpan.height ?? null,
             );
+            if (pureWysiwyg) {
+              builder.add(
+                line.from,
+                line.to,
+                Decoration.replace({ widget: imageWidget, block: true }),
+              );
+            } else {
+              builder.add(
+                line.to,
+                line.to,
+                Decoration.widget({ widget: imageWidget, block: true, side: 1 }),
+              );
+            }
             i += 1;
             continue;
           }
@@ -2141,14 +2161,15 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
           // v4.3.0 issue #57a / #433 — block math (`$$…$$` or `\[…\]`).
           // Recognise either inline `$$E=mc^2$$` / `\[E=mc^2\]` on a single
           // line OR a multi-line block opened with `$$` / `\[` and closed with
-          // `$$` / `\]`. We only collapse if the cursor is outside.
+          // `$$` / `\]`. We only collapse if the cursor is outside (or pureWysiwyg is on).
           const trimmedLine = line.text.trim();
           if (trimmedLine.startsWith('$$') || trimmedLine.startsWith('\\[')) {
             const isBracket = trimmedLine.startsWith('\\[');
             const closeDelim = isBracket ? '\\]' : '$$';
             // Single-line `$$ ... $$` or `\[ ... \]`?
             if (trimmedLine.endsWith(closeDelim) && trimmedLine.length > 4) {
-              const cursorInside = keepSource || cursorLine === i || cursorLineEnd === i;
+              const cursorInside =
+                keepSource || (!pureWysiwyg && (cursorLine === i || cursorLineEnd === i));
               if (!cursorInside) {
                 builder.add(
                   line.from,
@@ -2176,9 +2197,12 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
               endI += 1;
             }
             if (endI <= lastLine) {
-              const cursorInside = keepSource || (cursorLine >= i && cursorLine <= endI);
-              const cursorInsideEnd = cursorLineEnd >= i && cursorLineEnd <= endI;
-              if (!cursorInside && !cursorInsideEnd) {
+              const cursorInside =
+                keepSource ||
+                (!pureWysiwyg &&
+                  ((cursorLine >= i && cursorLine <= endI) ||
+                    (cursorLineEnd >= i && cursorLineEnd <= endI)));
+              if (!cursorInside) {
                 const blockFrom = doc.line(i).from;
                 const blockTo = doc.line(endI).to;
                 const source = doc.sliceString(blockFrom, blockTo);
@@ -2275,27 +2299,30 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
               // when `keepSource` is true, or when selection is strictly on an
               // inner body line (`i + 1 .. endI - 1`, e.g. right after `/mermaid`).
               const cursorInsideBody =
-                (cursorLine >= i + 1 && cursorLine < endI) ||
-                (cursorLineEnd >= i + 1 && cursorLineEnd < endI);
+                !pureWysiwyg &&
+                ((cursorLine >= i + 1 && cursorLine < endI) ||
+                  (cursorLineEnd >= i + 1 && cursorLineEnd < endI));
               const defaultCollapsed = !keepSource;
-              const collapsed = cursorInsideBody
-                ? false
-                : foldOverride !== undefined
-                  ? foldOverride
-                  : defaultCollapsed;
-              // #530 — Always show the `+` / `−` fold toggle button on the
-              // opening ` ```mermaid ` fence line so the user can fold/unfold
-              // the Mermaid code block while keeping the diagram visible below.
-              builder.add(
-                blockFrom,
-                blockFrom,
-                Decoration.widget({
-                  widget: new MermaidFoldToggleWidget(i, endI, collapsed),
-                  side: -1,
-                }),
-              );
+              const collapsed = pureWysiwyg
+                ? true
+                : cursorInsideBody
+                  ? false
+                  : foldOverride !== undefined
+                    ? foldOverride
+                    : defaultCollapsed;
+              if (!pureWysiwyg) {
+                builder.add(
+                  blockFrom,
+                  blockFrom,
+                  Decoration.widget({
+                    widget: new MermaidFoldToggleWidget(i, endI, collapsed),
+                    side: -1,
+                  }),
+                );
+              }
               if (collapsed) {
-                const bodyFrom = i + 1 <= endI ? doc.line(i + 1).from : blockFrom;
+                const bodyFrom =
+                  pureWysiwyg || i + 1 > endI ? blockFrom : doc.line(i + 1).from;
                 builder.add(
                   bodyFrom,
                   blockTo,
@@ -2341,24 +2368,30 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
               const foldMap = state.field(mermaidFoldState, false);
               const foldOverride = foldMap?.get(i);
               const cursorInsideBody =
-                (cursorLine >= i + 1 && cursorLine < endI) ||
-                (cursorLineEnd >= i + 1 && cursorLineEnd < endI);
+                !pureWysiwyg &&
+                ((cursorLine >= i + 1 && cursorLine < endI) ||
+                  (cursorLineEnd >= i + 1 && cursorLineEnd < endI));
               const defaultCollapsed = !keepSource;
-              const collapsed = cursorInsideBody
-                ? false
-                : foldOverride !== undefined
-                  ? foldOverride
-                  : defaultCollapsed;
-              builder.add(
-                blockFrom,
-                blockFrom,
-                Decoration.widget({
-                  widget: new MermaidFoldToggleWidget(i, endI, collapsed),
-                  side: -1,
-                }),
-              );
+              const collapsed = pureWysiwyg
+                ? true
+                : cursorInsideBody
+                  ? false
+                  : foldOverride !== undefined
+                    ? foldOverride
+                    : defaultCollapsed;
+              if (!pureWysiwyg) {
+                builder.add(
+                  blockFrom,
+                  blockFrom,
+                  Decoration.widget({
+                    widget: new MermaidFoldToggleWidget(i, endI, collapsed),
+                    side: -1,
+                  }),
+                );
+              }
               if (collapsed) {
-                const bodyFrom = i + 1 <= endI ? doc.line(i + 1).from : blockFrom;
+                const bodyFrom =
+                  pureWysiwyg || i + 1 > endI ? blockFrom : doc.line(i + 1).from;
                 builder.add(
                   bodyFrom,
                   blockTo,
@@ -2401,24 +2434,30 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
               const foldMap = state.field(mermaidFoldState, false);
               const foldOverride = foldMap?.get(i);
               const cursorInsideBody =
-                (cursorLine >= i + 1 && cursorLine < endI) ||
-                (cursorLineEnd >= i + 1 && cursorLineEnd < endI);
+                !pureWysiwyg &&
+                ((cursorLine >= i + 1 && cursorLine < endI) ||
+                  (cursorLineEnd >= i + 1 && cursorLineEnd < endI));
               const defaultCollapsed = !keepSource;
-              const collapsed = cursorInsideBody
-                ? false
-                : foldOverride !== undefined
-                  ? foldOverride
-                  : defaultCollapsed;
-              builder.add(
-                blockFrom,
-                blockFrom,
-                Decoration.widget({
-                  widget: new MermaidFoldToggleWidget(i, endI, collapsed),
-                  side: -1,
-                }),
-              );
+              const collapsed = pureWysiwyg
+                ? true
+                : cursorInsideBody
+                  ? false
+                  : foldOverride !== undefined
+                    ? foldOverride
+                    : defaultCollapsed;
+              if (!pureWysiwyg) {
+                builder.add(
+                  blockFrom,
+                  blockFrom,
+                  Decoration.widget({
+                    widget: new MermaidFoldToggleWidget(i, endI, collapsed),
+                    side: -1,
+                  }),
+                );
+              }
               if (collapsed) {
-                const bodyFrom = i + 1 <= endI ? doc.line(i + 1).from : blockFrom;
+                const bodyFrom =
+                  pureWysiwyg || i + 1 > endI ? blockFrom : doc.line(i + 1).from;
                 builder.add(
                   bodyFrom,
                   blockTo,
@@ -2466,24 +2505,30 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
               const foldMap = state.field(mermaidFoldState, false);
               const foldOverride = foldMap?.get(i);
               const cursorInsideBody =
-                (cursorLine >= i + 1 && cursorLine < endI) ||
-                (cursorLineEnd >= i + 1 && cursorLineEnd < endI);
+                !pureWysiwyg &&
+                ((cursorLine >= i + 1 && cursorLine < endI) ||
+                  (cursorLineEnd >= i + 1 && cursorLineEnd < endI));
               const defaultCollapsed = !keepSource;
-              const collapsed = cursorInsideBody
-                ? false
-                : foldOverride !== undefined
-                  ? foldOverride
-                  : defaultCollapsed;
-              builder.add(
-                blockFrom,
-                blockFrom,
-                Decoration.widget({
-                  widget: new MermaidFoldToggleWidget(i, endI, collapsed),
-                  side: -1,
-                }),
-              );
+              const collapsed = pureWysiwyg
+                ? true
+                : cursorInsideBody
+                  ? false
+                  : foldOverride !== undefined
+                    ? foldOverride
+                    : defaultCollapsed;
+              if (!pureWysiwyg) {
+                builder.add(
+                  blockFrom,
+                  blockFrom,
+                  Decoration.widget({
+                    widget: new MermaidFoldToggleWidget(i, endI, collapsed),
+                    side: -1,
+                  }),
+                );
+              }
               if (collapsed) {
-                const bodyFrom = i + 1 <= endI ? doc.line(i + 1).from : blockFrom;
+                const bodyFrom =
+                  pureWysiwyg || i + 1 > endI ? blockFrom : doc.line(i + 1).from;
                 builder.add(
                   bodyFrom,
                   blockTo,
@@ -2537,11 +2582,10 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
                 const blockFrom = doc.line(i).from;
                 const blockTo = doc.line(tableEnd).to;
                 const source = doc.sliceString(blockFrom, blockTo);
-                // #500 — Standard and list-indented GFM tables stay rendered in
+                // #500 / #605 — Standard and list-indented GFM tables stay rendered in
                 // Live Edit mode so cells are edited in place like Excel (Nomo,
-                // NoteGen, VNote, Typora). Only reveal raw pipe source when
-                // `alwaysShowMarkers` (`keepSource`) is on, or for blockquote
-                // tables where `parseTable` does not apply.
+                // NoteGen, VNote, Typora). In Pure WYSIWYG mode (`pureWysiwyg`),
+                // tables stay rendered at all times without the `</> 源码` button.
                 const canInlineEdit = tableQuoteDepth === 0 && parseTable(source) !== null;
                 const tableFoldMap = state.field(tableFoldState, false);
                 const tableFoldOverride = tableFoldMap?.get(i);
@@ -2549,9 +2593,10 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
                   (cursorLine >= i && cursorLine <= tableEnd) ||
                   (cursorLineEnd >= i && cursorLineEnd <= tableEnd);
                 const defaultTableCollapsed =
-                  !keepSource && (canInlineEdit || !cursorInsideTable);
-                const tableCollapsed =
-                  tableFoldOverride !== undefined
+                  !keepSource && (pureWysiwyg || canInlineEdit || !cursorInsideTable);
+                const tableCollapsed = pureWysiwyg
+                  ? true
+                  : tableFoldOverride !== undefined
                     ? tableFoldOverride
                     : defaultTableCollapsed;
                 if (tableCollapsed) {
@@ -2566,6 +2611,7 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
                         i,
                         blockFrom,
                         blockTo,
+                        pureWysiwyg,
                       ),
                       block: true,
                     }),
@@ -2620,12 +2666,11 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
             continue;
           }
 
-          // v4.5.5 / #506 — inline math (`$…$`) and inline / list-item /
+          // v4.5.5 / #506 / #605 — inline math (`$…$`) and inline / list-item /
           // blockquote images (`- ![alt](url)`, `> ![alt](url)`, inline `![alt](url)`)
-          // on an otherwise-plain line. Render each span while the caret is
-          // off this line (same reveal model as the block widgets above: move
-          // the caret onto the line to edit source).
-          const inlineCursorHere = keepSource || (i >= cursorLine && i <= cursorLineEnd);
+          // on an otherwise-plain line.
+          const inlineCursorHere =
+            keepSource || (!pureWysiwyg && i >= cursorLine && i <= cursorLineEnd);
           if (!inlineCursorHere) {
             const hasMathCandidate =
               line.text.indexOf('$') !== -1 ||
@@ -2728,7 +2773,7 @@ export function liveBlocksExtension(opts: BlockOptions = {}) {
         // `keepSource` is active). Skipping intra-line selection updates avoids
         // rebuilding all block decorations on every character typed in Find
         // (`a` -> `ab` -> `abc`) or intra-line `Enter` match jumps.
-        if (opts.keepSource?.() === true) {
+        if (opts.keepSource?.() === true || opts.pureWysiwyg?.() === true) {
           return deco.map(tr.changes);
         }
         const prevSel = tr.startState.selection.main;

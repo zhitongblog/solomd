@@ -70,6 +70,29 @@ export function quoteUnquotedMermaidLabels(code: string): string {
   });
 }
 
+/**
+ * #600 — Convert Typora-style `**bold**` spans inside Mermaid node labels,
+ * edge labels, and subgraph titles into `<b>bold</b>` HTML tags, while leaving
+ * `%%` comment lines and native Mermaid markdown strings (`` "`...`" ``) untouched.
+ */
+export function formatMermaidInlineBold(code: string): string {
+  if (!code.includes('**')) return code;
+  return code
+    .split('\n')
+    .map((line) => {
+      if (/^\s*%%/.test(line) || !line.includes('**')) return line;
+      // Preserve Mermaid native markdown strings ("`...`") verbatim
+      const parts = line.split(/("`[^`]*`")/g);
+      return parts
+        .map((seg, idx) => {
+          if (idx % 2 === 1) return seg;
+          return seg.replace(/\*\*([^\s*](?:[^*\n]*?[^\s*])?)\*\*/g, '<b>$1</b>');
+        })
+        .join('');
+    })
+    .join('\n');
+}
+
 export function formatMermaidError(err: unknown, code?: string): string {
   const raw = err instanceof Error ? err.message : String(err ?? 'Unknown error');
   if (code && /\[[^\]"\n]*[@()][^\]"\n]*\]/.test(code) && !raw.includes('A["')) {
@@ -104,13 +127,14 @@ export async function safeRender(
       'visibility:hidden;pointer-events:none;overflow:hidden;',
   );
   doc.body.appendChild(host);
+  const prepared = formatMermaidInlineBold(code);
   try {
-    return await mermaid.render(renderId, code, host);
+    return await mermaid.render(renderId, prepared, host);
   } catch (firstErr) {
     // #276 — if the diagram failed to parse and contains unquoted `@` or `()`
     // inside `[...]` node labels, retry once with those labels quoted.
-    const quoted = quoteUnquotedMermaidLabels(code);
-    if (quoted !== code) {
+    const quoted = quoteUnquotedMermaidLabels(prepared);
+    if (quoted !== prepared) {
       removeMermaidLeftovers(renderId, doc);
       host.innerHTML = '';
       const retryId = `${id}-r${++renderSeq}`;

@@ -112,8 +112,12 @@ export function resolveSyncTargetFolder(
   return null;
 }
 
+export type PastedImageFormat = 'png' | 'webp' | 'jpg';
+
 interface Settings {
   theme: Theme;
+  /** #604 — Keep the desktop window pinned above other windows. */
+  alwaysOnTop: boolean;
   /** D6 — follow the OS light/dark appearance. While on, `theme` holds the
    *  resolved 'light' | 'dark', so every reader of `theme` keeps working. */
   followSystemTheme: boolean;
@@ -354,6 +358,11 @@ interface Settings {
   customHighlightDark: string;
   customActiveLineLight: string;
   customActiveLineDark: string;
+  // #588 — Independent custom code-block and blockquote background colors.
+  customCodeBgLight: string;
+  customCodeBgDark: string;
+  customQuoteBgLight: string;
+  customQuoteBgDark: string;
   // #415 / #497: Optional persistent Markdown formatting toolbar row.
   showFormattingBar: boolean;
   // #519: Optional dedicated full-width row for the tab bar instead of sharing the header row.
@@ -438,7 +447,7 @@ interface Settings {
   syncOnlyRegisteredVaults: boolean;
   // #535 / #359 / #505 — Custom export dialog remembered directory & format.
   lastCustomExportDir: string;
-  lastCustomExportFormat: 'pdf' | 'html' | 'docx' | 'epub' | 'odt' | 'latex' | 'rtf' | 'png' | 'textpack';
+  lastCustomExportFormat: 'pdf' | 'pdf-image' | 'html' | 'docx' | 'epub' | 'odt' | 'latex' | 'rtf' | 'png' | 'textpack';
   // v2.5 F2: writing stats — show the per-doc word/char goal pill in the
   // status bar. Off-by-default-ish: the pill stays inert unless the doc's
   // YAML front matter sets a `goal:` key, so this toggle is a hard kill
@@ -473,11 +482,15 @@ interface Settings {
   // #574 — Paginated HTML export (`<section class="page">`), splitting notes
   // into per-note sections when `exportHtmlWithNav` is enabled.
   exportHtmlPaginated: boolean;
+  // #598 — Show "< Previous / Next >" topic navigation buttons on paginated HTML sections.
+  exportHtmlTopicNav: boolean;
   // #584 — HTML export content max-width in px on desktop (`0` = unlimited).
   exportHtmlContentWidth: number;
   // #572 — Include a Table of Contents page (with page numbers) at the start
   // of exported documents.
   exportIncludeTocPage: boolean;
+  // #606 — Format used when saving pasted clipboard images into the vault (`png` | `webp` | `jpg`).
+  pastedImageFormat: PastedImageFormat;
   // v4.3.0: global UI zoom (scales the entire app — editor, preview, chrome,
   // sidebars, modals). Helpful on high-DPI screens where everything renders
   // too small even at the OS default scale. Range 0.75x – 2.5x. Wired via
@@ -929,6 +942,10 @@ function defaults(): Settings {
     customHighlightDark: '',
     customActiveLineLight: '',
     customActiveLineDark: '',
+    customCodeBgLight: '',
+    customCodeBgDark: '',
+    customQuoteBgLight: '',
+    customQuoteBgDark: '',
     showFormattingBar: true,
     separateTabBarRow: false,
     workspaceBibliography: '',
@@ -994,8 +1011,11 @@ function defaults(): Settings {
     imageExportBranding: true,
     exportHtmlWithNav: true,
     exportHtmlPaginated: false,
+    exportHtmlTopicNav: true,
     exportHtmlContentWidth: 960,
     exportIncludeTocPage: true,
+    pastedImageFormat: 'png',
+    alwaysOnTop: false,
     globalZoom: 1,
     wheelZoomEnabled: true,
     quickCaptureEnabled: true,
@@ -1808,6 +1828,10 @@ export const useSettingsStore = defineStore('settings', {
           | 'customHighlightDark'
           | 'customActiveLineLight'
           | 'customActiveLineDark'
+          | 'customCodeBgLight'
+          | 'customCodeBgDark'
+          | 'customQuoteBgLight'
+          | 'customQuoteBgDark'
         >
       >,
     ) {
@@ -1819,6 +1843,10 @@ export const useSettingsStore = defineStore('settings', {
       if (patch.customHighlightDark !== undefined) this.customHighlightDark = patch.customHighlightDark;
       if (patch.customActiveLineLight !== undefined) this.customActiveLineLight = patch.customActiveLineLight;
       if (patch.customActiveLineDark !== undefined) this.customActiveLineDark = patch.customActiveLineDark;
+      if (patch.customCodeBgLight !== undefined) this.customCodeBgLight = patch.customCodeBgLight;
+      if (patch.customCodeBgDark !== undefined) this.customCodeBgDark = patch.customCodeBgDark;
+      if (patch.customQuoteBgLight !== undefined) this.customQuoteBgLight = patch.customQuoteBgLight;
+      if (patch.customQuoteBgDark !== undefined) this.customQuoteBgDark = patch.customQuoteBgDark;
       this.persist();
     },
     resetCustomThemeColors() {
@@ -1830,6 +1858,18 @@ export const useSettingsStore = defineStore('settings', {
       this.customHighlightDark = '';
       this.customActiveLineLight = '';
       this.customActiveLineDark = '';
+      this.customCodeBgLight = '';
+      this.customCodeBgDark = '';
+      this.customQuoteBgLight = '';
+      this.customQuoteBgDark = '';
+      this.persist();
+    },
+    setAlwaysOnTop(val: boolean) {
+      this.alwaysOnTop = Boolean(val);
+      this.persist();
+    },
+    toggleAlwaysOnTop() {
+      this.alwaysOnTop = !this.alwaysOnTop;
       this.persist();
     },
     toggleFormattingBar() {
@@ -1928,7 +1968,7 @@ export const useSettingsStore = defineStore('settings', {
       this.lastCustomExportDir = dir;
       this.persist();
     },
-    setLastCustomExportFormat(fmt: 'pdf' | 'html' | 'docx' | 'epub' | 'odt' | 'latex' | 'rtf' | 'png' | 'textpack') {
+    setLastCustomExportFormat(fmt: 'pdf' | 'pdf-image' | 'html' | 'docx' | 'epub' | 'odt' | 'latex' | 'rtf' | 'png' | 'textpack') {
       this.lastCustomExportFormat = fmt;
       this.persist();
     },
@@ -2240,6 +2280,14 @@ export const useSettingsStore = defineStore('settings', {
     },
     setExportHtmlPaginated(enabled: boolean) {
       this.exportHtmlPaginated = Boolean(enabled);
+      this.persist();
+    },
+    setExportHtmlTopicNav(enabled: boolean) {
+      this.exportHtmlTopicNav = Boolean(enabled);
+      this.persist();
+    },
+    setPastedImageFormat(fmt: PastedImageFormat) {
+      this.pastedImageFormat = fmt === 'webp' || fmt === 'jpg' ? fmt : 'png';
       this.persist();
     },
     setExportHtmlContentWidth(widthPx: number) {

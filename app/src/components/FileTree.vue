@@ -500,7 +500,7 @@ function collapseSubtree(node: Node | null) {
 }
 
 watch(
-  () => workspace.currentFolder,
+  [() => workspace.currentFolder, () => workspace.safTreeUri],
   () => {
     // Leaving the folder ends the undo offer — the toast is about to be out of
     // sight, and a timer that fires against another workspace is a trap.
@@ -1594,7 +1594,9 @@ function onDragUp() {
   else if (from && dest) void moveNode(from, dest, isDir);
 }
 
+let committingEdit = false;
 async function commitEdit() {
+  if (committingEdit) return;
   const e = editing.value;
   if (!e) return;
   const name = e.name.trim();
@@ -1602,6 +1604,8 @@ async function commitEdit() {
     editing.value = null;
     return;
   }
+  committingEdit = true;
+  editing.value = null;
   try {
     if (e.kind === 'new-file') {
       // Default to .md when the user didn't type an extension — we only
@@ -1612,7 +1616,6 @@ async function commitEdit() {
       if (isSafPath(e.parent) && workspace.safTreeUri) {
         const { toSafPath } = await import('../lib/saf-fs');
         const newDocId = await safCreate(workspace.safTreeUri, fromSafPath(e.parent), finalName);
-        editing.value = null;
         scheduleRefresh();
         await files.openPath(toSafPath(newDocId), { bypassNewWindow: true });
         return;
@@ -1622,24 +1625,20 @@ async function commitEdit() {
       // file with it. Commit it now so the two never race.
       await pendingDeletes.flushUnder(target);
       await invoke('fs_create_file', { path: target, content: '' });
-      editing.value = null;
       scheduleRefresh();
       await files.openPath(target, { bypassNewWindow: true });
     } else if (e.kind === 'new-dir') {
       if (isSafPath(e.parent) && workspace.safTreeUri) {
         await safCreateDir(workspace.safTreeUri, fromSafPath(e.parent), name);
-        editing.value = null;
         scheduleRefresh();
         return;
       }
       await pendingDeletes.flushUnder(joinPath(e.parent, name));
       await invoke('fs_create_dir', { path: joinPath(e.parent, name) });
-      editing.value = null;
       scheduleRefresh();
     } else if (e.kind === 'rename' && e.original) {
       const target = joinPath(e.parent, name);
       if (target === e.original) {
-        editing.value = null;
         return;
       }
       await pendingDeletes.flushUnder(target);
@@ -1649,7 +1648,6 @@ async function commitEdit() {
         workspaceRoot: workspace.currentFolder ?? undefined,
         updateLinks: settings.autoUpdateLinksOnRename,
       });
-      editing.value = null;
       // #342 — a renamed child keeps its hand-placed position.
       const key = orderKey(e.parent);
       if (manualOrder.value[key]?.includes(baseName(e.original))) {
@@ -1667,6 +1665,8 @@ async function commitEdit() {
     }
   } catch (err) {
     toasts.error(String(err));
+  } finally {
+    committingEdit = false;
   }
 }
 

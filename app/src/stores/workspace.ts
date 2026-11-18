@@ -24,6 +24,9 @@ interface WorkspaceState {
   // filesystem workspaces (desktop/iOS).
   safTreeUri: string | null;
   safName: string | null;
+  /** #608 — Map of `saf:<rootDocId>` -> `{ treeUri, name }` so switching between
+   *  Android SAF recent folders restores the matching tree URI automatically. */
+  safVaults: Record<string, { treeUri: string; name: string }>;
   // #205 — Virtual Workspace: aggregate scattered Markdown files from multiple
   // project directories into one logical sidebar group with aliases and notes.
   virtualItems: VirtualWorkspaceItem[];
@@ -34,19 +37,28 @@ function load(): WorkspaceState {
     const raw = localStorage.getItem(LS_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<WorkspaceState>;
+      const safVaults: Record<string, { treeUri: string; name: string }> = {};
+      if (parsed.safVaults && typeof parsed.safVaults === 'object') {
+        for (const [k, v] of Object.entries(parsed.safVaults)) {
+          if (v && typeof v.treeUri === 'string' && v.treeUri) {
+            safVaults[k] = { treeUri: v.treeUri, name: typeof v.name === 'string' ? v.name : 'Vault' };
+          }
+        }
+      }
       return {
         recentFiles: Array.isArray(parsed.recentFiles) ? parsed.recentFiles : [],
         recentFolders: Array.isArray(parsed.recentFolders) ? parsed.recentFolders : [],
         currentFolder: typeof parsed.currentFolder === 'string' ? parsed.currentFolder : null,
         safTreeUri: typeof parsed.safTreeUri === 'string' ? parsed.safTreeUri : null,
         safName: typeof parsed.safName === 'string' ? parsed.safName : null,
+        safVaults,
         virtualItems: Array.isArray(parsed.virtualItems)
           ? parsed.virtualItems.filter((it): it is VirtualWorkspaceItem => !!it && typeof it.path === 'string' && it.path.length > 0)
           : [],
       };
     }
   } catch {}
-  return { recentFiles: [], recentFolders: [], currentFolder: null, safTreeUri: null, safName: null, virtualItems: [] };
+  return { recentFiles: [], recentFolders: [], currentFolder: null, safTreeUri: null, safName: null, safVaults: {}, virtualItems: [] };
 }
 
 export const useWorkspaceStore = defineStore('workspace', {
@@ -80,6 +92,9 @@ export const useWorkspaceStore = defineStore('workspace', {
       if (!folder || !folder.startsWith('saf:')) {
         this.safTreeUri = null;
         this.safName = null;
+      } else if (this.safVaults[folder]) {
+        this.safTreeUri = this.safVaults[folder].treeUri;
+        this.safName = this.safVaults[folder].name;
       }
       this.currentFolder = folder;
       if (folder) {
@@ -100,12 +115,14 @@ export const useWorkspaceStore = defineStore('workspace', {
         } catch {}
       }
     },
-    /** #148 — open a SAF (content-URI) vault. `rootPath` is `saf:<rootDocId>`. */
+    /** #148 / #608 — open a SAF (content-URI) vault. `rootPath` is `saf:<rootDocId>`. */
     setSafVault(treeUri: string, rootPath: string, name: string) {
+      this.safVaults = {
+        ...this.safVaults,
+        [rootPath]: { treeUri, name },
+      };
       this.safTreeUri = treeUri;
       this.safName = name;
-      // Reuse setFolder for tab-scoping/recents, but it would null out the SAF
-      // context (rootPath starts with "saf:" so it's preserved), so set after.
       this.setFolder(rootPath);
       this.safTreeUri = treeUri;
       this.safName = name;

@@ -192,7 +192,7 @@ export function splitPlainMarkdownBlocks(src: string): PlainBlockRange[] {
         if (isTableStartAt(j)) break;
         const nextLine = lines[j];
         const nextKind = kindFor(nextLine);
-        const isIndentedContinuation = /^[ \t]{2,}\S/.test(nextLine.text);
+        const isIndentedContinuation = /^(?:[ ]{2,}|\t+)/.test(nextLine.text);
         if ((nextKind === 'fence' || nextKind === 'mathfence') && isIndentedContinuation) {
           const trimmedNext = nextLine.text.trim();
           const closeMarker = nextKind === 'fence'

@@ -205,6 +205,7 @@ export function transformNoteForMergedBook(
   folderDepth: number,
   relDirSegments: string[] = [],
   numberState?: MergedHeadingNumberState,
+  includeRootHeading = true,
 ): string {
   const noteImageRoot = extractImageRoot(rawContent || '');
   const stripped = (rawContent || '')
@@ -212,7 +213,7 @@ export function transformNoteForMergedBook(
     .replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '')
     .trim();
 
-  const noteBaseLevel = 2 + Math.max(0, folderDepth);
+  const noteBaseLevel = (includeRootHeading ? 2 : 1) + Math.max(0, folderDepth);
   const lines = stripped ? stripped.split(/\r?\n/) : [];
   const outLines: string[] = [];
 
@@ -359,12 +360,28 @@ export function transformNoteForMergedBook(
   return body;
 }
 
+export interface MergedBookOptions {
+  /**
+   * #597 — When true (default, used by standalone HTML manuals so the left tree
+   * keeps its root book node), emits `# <folderName>` at level 1 and nests
+   * subfolders/notes starting at level 2. When false (PDF, Word, EPUB, etc.),
+   * omits the redundant root folder heading from bookmarks/TOC/body so chapters
+   * start cleanly at level 1 while `<folderName>` remains the document/cover title.
+   */
+  includeRootHeading?: boolean;
+}
+
 export function buildMergedBookMarkdown(
   folderName: string,
   notes: MergedNoteInput[],
+  options?: MergedBookOptions,
 ): string {
+  const includeRootHeading = options?.includeRootHeading ?? true;
   const bookTitle = (folderName || 'Exported-Book').trim() || 'Exported-Book';
-  const leadHeader = `# ${bookTitle}\n\n[TOC]`;
+  const leadHeader = includeRootHeading
+    ? `# ${bookTitle} <!-- solomd-book-root -->\n\n[TOC]`
+    : `[TOC]`;
+  const folderBaseLevel = includeRootHeading ? 2 : 1;
   const noteSections: string[] = [];
   let activeFolders: string[] = [];
   const numberState: MergedHeadingNumberState = { h1Count: 0 };
@@ -381,7 +398,7 @@ export function buildMergedBookMarkdown(
     }
     const folderHeadings: string[] = [];
     for (let d = common; d < segs.length; d++) {
-      folderHeadings.push(formatMergedHeading(2 + d, segs[d], true));
+      folderHeadings.push(formatMergedHeading(folderBaseLevel + d, segs[d], true));
     }
     activeFolders = segs;
 
@@ -398,13 +415,16 @@ export function buildMergedBookMarkdown(
       segs.length,
       segs,
       numberState,
+      includeRootHeading,
     );
     noteSections.push([...folderHeadings, noteMarkdown].join('\n\n'));
   }
 
   if (noteSections.length === 0) {
-    return leadHeader;
+    return includeRootHeading ? leadHeader : `# ${bookTitle}`;
   }
   const joinedNotes = noteSections.join('\n\n<!-- solomd-page-break -->\n\n---\n\n');
-  return `${leadHeader}\n\n---\n\n${joinedNotes}`;
+  return includeRootHeading
+    ? `${leadHeader}\n\n<!-- solomd-page-break -->\n\n---\n\n${joinedNotes}`
+    : `${leadHeader}\n\n${joinedNotes}`;
 }

@@ -18,6 +18,7 @@ export interface HtmlNavOptions {
   navTreeHtml: string;
   isZh: boolean;
   paginated?: boolean;
+  topicNav?: boolean;
 }
 
 const NAV_SIDEBAR_CSS = `
@@ -342,6 +343,61 @@ const NAV_SIDEBAR_CSS = `
     border-radius: 4px;
     transition: background-color 0.4s ease;
   }
+  .solomd-toc-page__title {
+    font-size: 1.55em;
+    font-weight: 700;
+    color: var(--ink, #1f2328);
+    margin: 0 0 18px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  /* #598 — Subtle technical-documentation "< Previous / Next >" topic buttons */
+  .solomd-topic-nav--top {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 10px;
+    margin-bottom: 22px;
+    border-bottom: 1px solid #e8ecf0;
+  }
+  .solomd-topic-nav--bottom {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 14px;
+    margin-top: 44px;
+    padding-top: 16px;
+    border-top: 1px solid #e8ecf0;
+  }
+  .solomd-topic-btn {
+    appearance: none;
+    font: 500 12.5px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    color: #475569;
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    padding: 4px 11px;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+  }
+  .solomd-topic-nav--bottom .solomd-topic-btn {
+    padding: 5px 14px;
+  }
+  .solomd-topic-btn:hover:not(:disabled) {
+    background: #eff6ff;
+    border-color: #93c5fd;
+    color: #1d4ed8;
+  }
+  .solomd-topic-btn:disabled {
+    opacity: 0.38;
+    cursor: not-allowed;
+  }
+  @media print {
+    .solomd-topic-nav {
+      display: none !important;
+    }
+  }
   @media (max-width: 768px) {
     body {
       max-width: 100% !important;
@@ -555,8 +611,11 @@ const NAV_SIDEBAR_SCRIPT = `<script>
     });
   }
 
-  // 3) Paginated <section class="page"> switching (#574)
+  // 3) Paginated <section class="page"> switching (#574, #594, #598)
   var pageSections = Array.prototype.slice.call(articleEl.querySelectorAll('section.page'));
+  var topicSections = pageSections.filter(function (s) {
+    return s.getAttribute('data-toc-section') !== '1';
+  });
   function activatePageSection(sec) {
     if (!sec || !pageSections.length) return false;
     var changed = false;
@@ -572,20 +631,43 @@ const NAV_SIDEBAR_SCRIPT = `<script>
 
   function activatePageForElement(el) {
     if (!el || !pageSections.length) return;
+    if (el.tagName === 'SECTION' && el.classList && el.classList.contains('page')) {
+      activatePageSection(el);
+      return;
+    }
     var sec = el.closest ? el.closest('section.page') : null;
     if (sec) activatePageSection(sec);
   }
 
-  if (pageSections.length > 0) {
-    var hasVisiblePage = false;
-    for (var vp = 0; vp < pageSections.length; vp++) {
-      if (pageSections[vp].style.display !== 'none') {
-        hasVisiblePage = true;
+  function syncNavToSection(sec) {
+    if (!sec || !navLinks.length) return;
+    if (sec.id === 'solomd-page-toc') {
+      setActiveNavLink(navLinks[0]);
+      return;
+    }
+    var firstHeading = sec.querySelector('h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]');
+    if (!firstHeading) return;
+    for (var ni = 0; ni < navLinks.length; ni++) {
+      var nh = navLinks[ni].getAttribute('href') || '';
+      var decodedNh = nh;
+      try { decodedNh = decodeURIComponent(nh); } catch (_) {}
+      if (nh === '#' + firstHeading.id || decodedNh === '#' + firstHeading.id) {
+        expandAncestorsOfLink(navLinks[ni]);
+        setActiveNavLink(navLinks[ni]);
+        if (navLinks[ni].scrollIntoView) navLinks[ni].scrollIntoView({ block: 'nearest' });
         break;
       }
     }
-    if (!hasVisiblePage) {
-      activatePageSection(pageSections[0]);
+  }
+
+  if (pageSections.length > 0) {
+    var tocSec = document.getElementById('solomd-page-toc');
+    if (tocSec) {
+      activatePageSection(tocSec);
+      if (navLinks.length > 0) setActiveNavLink(navLinks[0]);
+    } else {
+      activatePageSection(topicSections[0] || pageSections[0]);
+      syncNavToSection(topicSections[0] || pageSections[0]);
     }
   }
 
@@ -593,6 +675,7 @@ const NAV_SIDEBAR_SCRIPT = `<script>
   var lastFlashed = null;
   function flashTarget(el) {
     if (!el) return;
+    if (el.tagName === 'SECTION' && el.classList && el.classList.contains('page')) return;
     if (lastFlashed) lastFlashed.classList.remove('solomd-search-flash');
     if (flashTimer) clearTimeout(flashTimer);
     lastFlashed = el;
@@ -617,11 +700,57 @@ const NAV_SIDEBAR_SCRIPT = `<script>
       var target = document.getElementById(decodedId) || document.getElementById(rawId);
       if (target) {
         activatePageForElement(target);
-        target.scrollIntoView({ behavior: pageSections.length ? 'auto' : 'smooth', block: 'start' });
-        flashTarget(target);
+        if (!(target.tagName === 'SECTION' && target.classList && target.classList.contains('page'))) {
+          target.scrollIntoView({ behavior: pageSections.length ? 'auto' : 'smooth', block: 'start' });
+          flashTarget(target);
+        }
       }
     });
   }
+
+  articleEl.addEventListener('click', function (e) {
+    var targetEl = e.target;
+    if (!targetEl || !targetEl.closest) return;
+    var topicBtn = targetEl.closest('button.solomd-topic-btn');
+    if (topicBtn && !topicBtn.disabled) {
+      var curSec = topicBtn.closest('section.page');
+      var curIdx = topicSections.indexOf(curSec);
+      var dir = topicBtn.getAttribute('data-topic-dir');
+      var nextIdx = dir === 'prev' ? curIdx - 1 : curIdx + 1;
+      if (curIdx >= 0 && nextIdx >= 0 && nextIdx < topicSections.length) {
+        activatePageSection(topicSections[nextIdx]);
+        syncNavToSection(topicSections[nextIdx]);
+      }
+      return;
+    }
+    var inPageAnchor = targetEl.closest('a[href^="#"]');
+    if (inPageAnchor) {
+      var href = inPageAnchor.getAttribute('href') || '';
+      var rawId = href.slice(1);
+      if (!rawId) return;
+      var decodedId = rawId;
+      try { decodedId = decodeURIComponent(rawId); } catch (_) {}
+      var dest = document.getElementById(decodedId) || document.getElementById(rawId);
+      if (dest) {
+        e.preventDefault();
+        activatePageForElement(dest);
+        dest.scrollIntoView({ behavior: pageSections.length ? 'auto' : 'smooth', block: 'start' });
+        flashTarget(dest);
+        var destSec = dest.closest ? dest.closest('section.page') : null;
+        for (var li = 0; li < navLinks.length; li++) {
+          var nh = navLinks[li].getAttribute('href') || '';
+          var decNh = nh;
+          try { decNh = decodeURIComponent(nh); } catch (_) {}
+          if (nh === '#' + dest.id || decNh === '#' + dest.id) {
+            expandAncestorsOfLink(navLinks[li]);
+            setActiveNavLink(navLinks[li]);
+            return;
+          }
+        }
+        if (destSec) syncNavToSection(destSec);
+      }
+    }
+  });
 
   var headings = Array.prototype.slice.call(articleEl.querySelectorAll('h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]'));
   mainEl.addEventListener('scroll', function () {
@@ -923,8 +1052,37 @@ ${headCss ? `<style>${headCss}</style>\n` : ''}<style>
     font-size: .88em;
   }
   pre code .hljs-keyword,
-  pre code .hljs-built_in,
-  pre code .hljs-tag { color: var(--code-key); }
+  pre code .hljs-selector-tag,
+  pre code .hljs-doctag,
+  pre code .hljs-literal { color: var(--syn-keyword, #a626a4); }
+  pre code .hljs-string,
+  pre code .hljs-regexp,
+  pre code .hljs-template-tag,
+  pre code .hljs-template-variable,
+  pre code .hljs-addition { color: var(--syn-string, #50a14f); }
+  pre code .hljs-number,
+  pre code .hljs-symbol,
+  pre code .hljs-bullet { color: var(--syn-number, #986801); }
+  pre code .hljs-comment,
+  pre code .hljs-quote,
+  pre code .hljs-meta { color: var(--syn-comment, #6a737d); font-style: italic; }
+  pre code .hljs-function,
+  pre code .hljs-title,
+  pre code .hljs-built_in { color: var(--syn-function, #4078f2); }
+  pre code .hljs-type,
+  pre code .hljs-class,
+  pre code .hljs-params { color: var(--syn-type, #c18401); }
+  pre code .hljs-property,
+  pre code .hljs-attr,
+  pre code .hljs-attribute,
+  pre code .hljs-selector-class,
+  pre code .hljs-selector-id { color: var(--syn-property, #e45649); }
+  pre code .hljs-operator,
+  pre code .hljs-punctuation { color: var(--syn-operator, #0184bc); }
+  pre code .hljs-variable,
+  pre code .hljs-name,
+  pre code .hljs-tag { color: var(--syn-variable, var(--code-key, #383a42)); }
+  pre code .hljs-deletion { color: #d64545; }
   blockquote {
     border-left: 4px solid var(--accent-rule);
     background: var(--quote-bg);
@@ -1127,24 +1285,67 @@ export function buildNestedTocHtml(headings: ExtractedHeading[]): string {
 }
 
 /**
- * #574 — Split rendered HTML body into `<section class="page" id="solomd-page-N" style="display:none">`
+ * #574, #594, #598 — Split rendered HTML body into `<section class="page" ... style="display:none">`
  * fragments along note page-break markers (`<hr data-solomd-page-break="1">`).
+ * A standalone TOC block becomes `#solomd-page-toc` (`data-toc-section="1"`),
+ * and content sections optionally receive top-right & bottom-center `< Previous / Next >` buttons.
  */
-export function paginateHtmlBody(rawBody: string): string {
+export function paginateHtmlBody(
+  rawBody: string,
+  options?: { topicNav?: boolean; isZh?: boolean },
+): string {
   const parts = rawBody
     .split(/<hr\b[^>]*\bdata-solomd-page-break=(?:"1"|'1')[^>]*\/?>/gi)
     .map((chunk) => chunk.trim())
     .filter((chunk) => chunk.length > 0);
   if (parts.length === 0) return rawBody;
-  return parts
-    .map((chunk, idx) => {
+
+  const isTocOnlyChunk = (chunk: string) =>
+    chunk.includes('data-solomd-toc-only="1"') ||
+    (/^<nav\s+class=(["'])md-toc\1/i.test(chunk) && !/<h[1-6]\b/i.test(chunk));
+
+  const tocChunks: string[] = [];
+  const contentChunks: string[] = [];
+  for (let i = 0; i < parts.length; i++) {
+    if (i === 0 && isTocOnlyChunk(parts[i])) {
+      tocChunks.push(parts[i]);
+    } else {
       const cleaned =
-        idx === 0
-          ? chunk.replace(/(<\/h1>\s*)<hr\b[^>]*\/?>/i, '$1')
-          : chunk;
-      return `<section class="page" id="solomd-page-${idx + 1}" style="display:none">\n${cleaned}\n</section>`;
-    })
-    .join('\n');
+        contentChunks.length === 0
+          ? parts[i].replace(/(<\/h1>\s*)<hr\b[^>]*\/?>/i, '$1')
+          : parts[i];
+      contentChunks.push(cleaned);
+    }
+  }
+
+  const out: string[] = [];
+  for (const tc of tocChunks) {
+    out.push(
+      `<section class="page solomd-toc-section" id="solomd-page-toc" data-toc-section="1" style="display:none">\n${tc}\n</section>`,
+    );
+  }
+
+  const wantTopicNav = Boolean(options?.topicNav) && contentChunks.length > 1;
+  const prevLabel = options?.isZh ? '&lt; 上一主题' : '&lt; Previous';
+  const nextLabel = options?.isZh ? '下一主题 &gt;' : 'Next &gt;';
+
+  contentChunks.forEach((chunk, idx) => {
+    let inner = chunk;
+    if (wantTopicNav) {
+      const prevDisabled = idx === 0 ? ' disabled' : '';
+      const nextDisabled = idx === contentChunks.length - 1 ? ' disabled' : '';
+      const navButtons =
+        `<button type="button" class="solomd-topic-btn" data-topic-dir="prev"${prevDisabled}>${prevLabel}</button>` +
+        `<button type="button" class="solomd-topic-btn" data-topic-dir="next"${nextDisabled}>${nextLabel}</button>`;
+      inner =
+        `<div class="solomd-topic-nav solomd-topic-nav--top" aria-label="Topic navigation">${navButtons}</div>\n` +
+        `${chunk}\n` +
+        `<div class="solomd-topic-nav solomd-topic-nav--bottom" aria-label="Topic navigation">${navButtons}</div>`;
+    }
+    out.push(`<section class="page" id="solomd-page-${idx + 1}" style="display:none">\n${inner}\n</section>`);
+  });
+
+  return out.join('\n');
 }
 
 function encodeHtmlAttrId(id: string): string {
@@ -1152,16 +1353,20 @@ function encodeHtmlAttrId(id: string): string {
 }
 
 /**
- * #570 — Ensure every `<h1..h6>` in `rawBody` has an `id`, extract or build
- * the hierarchical bookmark tree for the left navigation pane, and remove
- * the duplicate top-of-page `<nav class="md-toc">` when the sidebar owns it.
+ * #570, #594 — Ensure every `<h1..h6>` in `rawBody` has an `id`, extract or build
+ * the hierarchical bookmark tree for the left navigation pane, and when paginated
+ * isolate the TOC into its own `<h1>`-free section (`#solomd-page-toc`) wired to
+ * the book root node in the navigation tree.
  */
 export function prepareHtmlNavSidebar(
   rawBody: string,
   fallbackTitle: string,
   keepInlineToc = false,
+  paginated = false,
+  isZh = false,
 ): { body: string; navTreeHtml: string } {
   let headingCounter = 0;
+  let bookRootId = '';
   const headings: ExtractedHeading[] = [];
 
   const bodyWithIds = rawBody.replace(
@@ -1172,8 +1377,10 @@ export function prepareHtmlNavSidebar(
       const customLevelMatch = /\bdata-toc-level=(["'])(\d+)\1/i.exec(attrs);
       const level = customLevelMatch ? Number.parseInt(customLevelMatch[2], 10) : tagLevel;
       const isFolder = /\bdata-toc-folder=(["'])1\1/i.test(attrs);
+      const isBookRoot = /\bdata-book-root=(["'])1\1/i.test(attrs);
       const idMatch = /\bid=(["'])([^"']+)\1/i.exec(attrs);
       const id = idMatch ? idMatch[2] : `solomd-h-${headingCounter}`;
+      if (isBookRoot && !bookRootId) bookRootId = id;
       const nextAttrs = idMatch ? attrs : `${attrs} id="${id}"`;
       const text = stripTagsAndComments(inner);
       if (text) {
@@ -1183,9 +1390,43 @@ export function prepareHtmlNavSidebar(
     },
   );
 
+  const rewriteRootHref = (treeHtml: string, targetAnchor: string): string => {
+    if (!bookRootId) return treeHtml;
+    const encoded = encodeURIComponent(bookRootId);
+    return treeHtml
+      .replace(`href="#${escapeHtml(bookRootId)}"`, `href="#${targetAnchor}"`)
+      .replace(`href="#${encoded}"`, `href="#${targetAnchor}"`);
+  };
+
   const tocMatch = /<nav\s+class=(["'])md-toc\1[^>]*>([\s\S]*?)<\/nav>/i.exec(bodyWithIds);
   if (tocMatch) {
-    const navTreeHtml = tocMatch[2].trim();
+    let navTreeHtml = tocMatch[2].trim();
+    if (paginated) {
+      let strippedRoot = bodyWithIds.replace(
+        /<h1\b[^>]*\bdata-book-root=(["'])1\1[^>]*>[\s\S]*?<\/h1>\s*(?:<hr\b(?![^>]*data-solomd-page-break)[^>]*\/?>\s*)?/i,
+        '',
+      );
+      if (keepInlineToc) {
+        const tocTitle = isZh ? '目录' : 'Contents';
+        const wrappedToc =
+          `<div class="solomd-toc-page" data-solomd-toc-only="1">` +
+          `<div class="solomd-toc-page__title">${tocTitle}</div>` +
+          `${tocMatch[0]}` +
+          `</div>`;
+        const afterToc = strippedRoot.slice(strippedRoot.indexOf(tocMatch[0]) + tocMatch[0].length);
+        const needsBreak = !/^\s*<hr\b[^>]*\bdata-solomd-page-break=/i.test(afterToc);
+        strippedRoot = strippedRoot.replace(
+          tocMatch[0],
+          needsBreak ? `${wrappedToc}\n<hr data-solomd-page-break="1">` : wrappedToc,
+        );
+        navTreeHtml = rewriteRootHref(navTreeHtml, 'solomd-page-toc');
+        return { body: strippedRoot, navTreeHtml };
+      } else {
+        strippedRoot = strippedRoot.replace(tocMatch[0], '');
+        navTreeHtml = rewriteRootHref(navTreeHtml, 'solomd-page-1');
+        return { body: strippedRoot, navTreeHtml };
+      }
+    }
     const cleanedBody = keepInlineToc ? bodyWithIds : bodyWithIds.replace(tocMatch[0], '');
     return { body: cleanedBody, navTreeHtml };
   }
@@ -1193,7 +1434,25 @@ export function prepareHtmlNavSidebar(
   if (headings.length === 0 && fallbackTitle.trim()) {
     headings.push({ level: 1, text: fallbackTitle.trim(), id: 'solomd-h-root', isFolder: false });
   }
-  const navTreeHtml = buildNestedTocHtml(headings);
+  let navTreeHtml = buildNestedTocHtml(headings);
+  if (paginated) {
+    const strippedRoot = bodyWithIds.replace(
+      /<h1\b[^>]*\bdata-book-root=(["'])1\1[^>]*>[\s\S]*?<\/h1>\s*/i,
+      '',
+    );
+    if (keepInlineToc) {
+      const tocTitle = isZh ? '目录' : 'Contents';
+      const tocBlock =
+        `<div class="solomd-toc-page" data-solomd-toc-only="1">` +
+        `<div class="solomd-toc-page__title">${tocTitle}</div>` +
+        `<nav class="md-toc">${navTreeHtml}</nav>` +
+        `</div>\n<hr data-solomd-page-break="1">\n`;
+      navTreeHtml = rewriteRootHref(navTreeHtml, 'solomd-page-toc');
+      return { body: `${tocBlock}${strippedRoot}`, navTreeHtml };
+    }
+    navTreeHtml = rewriteRootHref(navTreeHtml, 'solomd-page-1');
+    return { body: strippedRoot, navTreeHtml };
+  }
   return {
     body: keepInlineToc ? `<nav class="md-toc">${navTreeHtml}</nav>\n${bodyWithIds}` : bodyWithIds,
     navTreeHtml,
@@ -1223,6 +1482,8 @@ export interface StandaloneHtmlInput {
   contentWidth?: number;
   /** #572 — include a Table of Contents block at the start of the document body. */
   withTocPage?: boolean;
+  /** #598 — render "< Previous / Next >" topic navigation buttons on paginated HTML sections. */
+  topicNav?: boolean;
   /** Optional UI language ('zh' | 'en', defaults to auto-detecting CJK). */
   lang?: string;
 }
@@ -1275,16 +1536,26 @@ export async function buildStandaloneHtml(input: StandaloneHtmlInput): Promise<s
     .join(' ');
   let navOptions: HtmlNavOptions | undefined;
   if (input.withNav) {
-    const prepared = prepareHtmlNavSidebar(body, input.title, input.withTocPage === true);
-    body = input.paginated ? paginateHtmlBody(prepared.body) : prepared.body;
     const isZh =
       input.lang !== undefined
         ? input.lang === 'zh'
         : /[\u4e00-\u9fff]/.test(`${input.title} ${input.content.slice(0, 500)}`);
+    const prepared = prepareHtmlNavSidebar(
+      body,
+      input.title,
+      input.withTocPage === true,
+      Boolean(input.paginated),
+      isZh,
+    );
+    const useTopicNav = input.topicNav !== undefined ? input.topicNav : true;
+    body = input.paginated
+      ? paginateHtmlBody(prepared.body, { topicNav: useTopicNav, isZh })
+      : prepared.body;
     navOptions = {
       navTreeHtml: prepared.navTreeHtml,
       isZh,
       paginated: Boolean(input.paginated),
+      topicNav: Boolean(input.paginated && useTopicNav),
     };
   }
   return HTML_TEMPLATE(

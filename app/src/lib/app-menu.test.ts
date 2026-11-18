@@ -44,7 +44,7 @@ function ctx(over: Partial<MenuContext> = {}): MenuContext {
     state: {
       autoSave: false, viewMode: 'edit', focusMode: true, typewriter: false, spellCheck: true,
       livePreview: true, fitWidth: false, dark: false, theme: 'light',
-      wordWrap: true, lineNumbers: false, autoGit: false,
+      wordWrap: true, lineNumbers: false, autoGit: false, alwaysOnTop: false,
       panes: {
         outline: true, inspector: false, backlinks: true, relationships: false, neighborhood: false,
         tags: false, tasks: true, types: false, history: false, savedViews: false, agent: false,

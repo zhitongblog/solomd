@@ -53,6 +53,8 @@ export interface ImagePasteOptions {
    *  Supports `${filename}` (note stem). Relative templates resolve against
    *  the note's folder; absolute paths are used as-is. */
   getCustomPath?: () => string;
+  /** #606 — Target format for pasted raster images (`png` default, `webp`, or `jpg`). */
+  getPastedImageFormat?: () => 'png' | 'webp' | 'jpg';
 }
 
 /** Minimal front-matter imageRoot parser (kept local to avoid import cycles). */
@@ -509,16 +511,121 @@ export function bytesToMarkdownBase64Image(bytes: Uint8Array, ext: string): stri
   return `![](data:${mime};base64,${b64})`;
 }
 
+/** #606 — Convert pasted raster image bytes to the user's configured target
+ *  format (`png`, `webp`, or `jpg`). Preserves animated `gif` and vector `svg`
+ *  untouched. Falls back to the Rust `convert_image_format` command when
+ *  WKWebView's `<canvas>.toBlob('image/webp')` silently emits `'image/png'`. */
+export async function convertPastedImageBytes(
+  bytes: Uint8Array,
+  ext: string,
+  targetFormat?: 'png' | 'webp' | 'jpg',
+): Promise<{ bytes: Uint8Array; ext: string }> {
+  const normExt = ext.toLowerCase() === 'jpeg' ? 'jpg' : ext.toLowerCase();
+  if (!targetFormat || normExt === 'gif' || normExt === 'svg' || normExt === targetFormat) {
+    return { bytes, ext: normExt };
+  }
+  const targetMime =
+    targetFormat === 'webp'
+      ? 'image/webp'
+      : targetFormat === 'jpg'
+        ? 'image/jpeg'
+        : 'image/png';
+  const quality = targetFormat === 'png' ? undefined : 0.86;
+
+  // 1) Try fast browser `<canvas>` encoding first, verifying `blob.type === targetMime`
+  //    (Safari / WKWebView silently falls back to `image/png` on unsupported MIME types).
+  if (typeof document !== 'undefined') {
+    try {
+      const srcMime = EXT_TO_MIME[normExt] || 'image/png';
+      const srcBlob = new Blob([bytes as unknown as BlobPart], { type: srcMime });
+      let width = 0;
+      let height = 0;
+      let drawSource: CanvasImageSource | null = null;
+      let closeBitmap: (() => void) | null = null;
+
+      if (typeof createImageBitmap === 'function') {
+        const bmp = await createImageBitmap(srcBlob);
+        width = bmp.width;
+        height = bmp.height;
+        drawSource = bmp;
+        closeBitmap = () => bmp.close();
+      } else if (typeof Image !== 'undefined' && typeof URL !== 'undefined') {
+        const url = URL.createObjectURL(srcBlob);
+        try {
+          const imgEl = await new Promise<HTMLImageElement>((resolve, reject) => {
+            const el = new Image();
+            el.onload = () => resolve(el);
+            el.onerror = (e) => reject(e);
+            el.src = url;
+          });
+          width = imgEl.naturalWidth || imgEl.width;
+          height = imgEl.naturalHeight || imgEl.height;
+          drawSource = imgEl;
+        } finally {
+          URL.revokeObjectURL(url);
+        }
+      }
+
+      if (drawSource && width > 0 && height > 0) {
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        try {
+          if (ctx) {
+            if (targetFormat === 'jpg') {
+              ctx.fillStyle = '#ffffff';
+              ctx.fillRect(0, 0, width, height);
+            }
+            ctx.drawImage(drawSource, 0, 0);
+            const outBlob = await new Promise<Blob | null>((resolve) =>
+              canvas.toBlob(resolve, targetMime, quality),
+            );
+            if (outBlob && outBlob.type === targetMime) {
+              return { bytes: new Uint8Array(await outBlob.arrayBuffer()), ext: targetFormat };
+            }
+          }
+        } finally {
+          closeBitmap?.();
+        }
+      }
+    } catch {
+      /* fall through to Rust converter */
+    }
+  }
+
+  // 2) Fallback: native Rust `image` crate encoder (`convert_image_format`)
+  try {
+    const converted = await invoke<number[]>('convert_image_format', {
+      data: Array.from(bytes),
+      format: targetFormat,
+      quality: 86,
+    });
+    if (converted && converted.length > 0) {
+      return { bytes: new Uint8Array(converted), ext: targetFormat };
+    }
+  } catch (err) {
+    console.warn('[cm-image-paste] convert_image_format fallback failed, keeping original format', err);
+  }
+
+  return { bytes, ext: normExt };
+}
+
 /**
  * Persist image bytes locally and return the markdown link to insert, or null
  * on failure. Used by the Windows plain-textarea editor (which inserts text via
  * a callback rather than a CodeMirror view). No upload — kept simple.
  */
 export async function saveImageBytes(
-  bytes: Uint8Array,
-  ext: string,
+  rawBytes: Uint8Array,
+  rawExt: string,
   opts: ImagePasteOptions,
 ): Promise<string | null> {
+  const { bytes, ext } = await convertPastedImageBytes(
+    rawBytes,
+    rawExt,
+    opts.getPastedImageFormat?.(),
+  );
   if (opts.getAttachmentMode?.() === 'base64') {
     return bytesToMarkdownBase64Image(bytes, ext);
   }
@@ -534,10 +641,14 @@ export async function saveImageBytes(
  */
 async function saveAndInsert(
   view: EditorView,
-  bytes: Uint8Array,
-  ext: string,
+  rawBytes: Uint8Array,
+  rawExt: string,
   opts: ImagePasteOptions,
+  convertFormat = false,
 ): Promise<void> {
+  const { bytes, ext } = convertFormat
+    ? await convertPastedImageBytes(rawBytes, rawExt, opts.getPastedImageFormat?.())
+    : { bytes: rawBytes, ext: rawExt };
   if (opts.getAttachmentMode?.() === 'base64') {
     insertAtCursor(view, bytesToMarkdownBase64Image(bytes, ext));
     return;
@@ -793,10 +904,15 @@ export async function handleTextareaImagePaste(
  * upload before returning (no placeholder, unlike the CodeMirror path).
  */
 async function saveOrUploadText(
-  bytes: Uint8Array,
-  ext: string,
+  rawBytes: Uint8Array,
+  rawExt: string,
   opts: ImagePasteOptions,
 ): Promise<string | null> {
+  const { bytes, ext } = await convertPastedImageBytes(
+    rawBytes,
+    rawExt,
+    opts.getPastedImageFormat?.(),
+  );
   if (opts.getAttachmentMode?.() === 'base64') {
     return bytesToMarkdownBase64Image(bytes, ext);
   }
@@ -856,7 +972,7 @@ async function handlePaste(
   event.preventDefault();
   for (const img of images) {
     const bytes = await readFileAsUint8(img.blob);
-    await saveAndInsert(view, bytes, img.ext, opts);
+    await saveAndInsert(view, bytes, img.ext, opts, true);
   }
   return true;
 }
@@ -1105,7 +1221,7 @@ export function imagePasteExtension(opts: ImagePasteOptions) {
         void (async () => {
           const png = await readClipboardImageAsPng();
           if (png) {
-            await saveAndInsert(view, png, 'png', opts);
+            await saveAndInsert(view, png, 'png', opts, true);
             return;
           }
           const fallbackText = await readClipboardTextFallback();

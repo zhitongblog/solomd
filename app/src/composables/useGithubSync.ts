@@ -34,8 +34,12 @@ export function useGithubSync() {
    */
   function reportSyncError(e: unknown, fallbackKey: string): void {
     if (isGithubAuthError(e)) {
-      const wasInvalid = sync.tokenInvalid;
-      sync.tokenInvalid = true;
+      const wasInvalid = sync.tokenInvalid || sync.giteeTokenInvalid;
+      if (sync.status?.provider === 'gitee') {
+        sync.giteeTokenInvalid = true;
+      } else {
+        sync.tokenInvalid = true;
+      }
       const expKey = sync.status?.provider === 'gitea' ? 'githubSync.giteaTokenExpired' : 'githubSync.tokenExpired';
       if (!wasInvalid) toasts.error(t(expKey), 6000);
       return;

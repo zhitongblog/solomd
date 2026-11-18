@@ -878,6 +878,24 @@ onBeforeUnmount(() => {
     </nav>
     <span class="titlebar__title" aria-hidden="true">{{ activeTabDisplayTitle ? `${activeTabDisplayTitle} — SoloMD` : 'SoloMD' }}</span>
     <div class="win-controls" data-no-drag>
+      <button
+        class="win-controls__btn"
+        :class="{ 'win-controls__btn--pinned': settings.alwaysOnTop }"
+        @click="settings.toggleAlwaysOnTop()"
+        :title="t('menubar.alwaysOnTop')"
+        :aria-pressed="settings.alwaysOnTop"
+        tabindex="-1"
+      >
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+          <path
+            d="M9.8 1.8l4.4 4.4-1.4 1.4-.9-.9-2.8 2.8.4 3.3-1.3 1.3-2.5-2.5-3.3 3.3-.9-.9 3.3-3.3-2.5-2.5 1.3-1.3 3.3.4 2.8-2.8-.9-.9 1.4-1.4z"
+            :fill="settings.alwaysOnTop ? 'currentColor' : 'none'"
+            stroke="currentColor"
+            stroke-width="1.2"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </button>
       <button class="win-controls__btn" @click="winMinimize" :title="t('menubar.minimize')" tabindex="-1">
         <svg width="10" height="10" viewBox="0 0 10 10"><path d="M0 5h10" stroke="currentColor" stroke-width="1" /></svg>
       </button>
@@ -1757,6 +1775,12 @@ onBeforeUnmount(() => {
 .win-controls__btn.is-hover {
   background: var(--fill-1);
   color: var(--text);
+}
+.win-controls__btn--pinned {
+  color: var(--accent);
+}
+.win-controls__btn--pinned:hover {
+  color: var(--accent);
 }
 .win-controls__btn--close:hover {
   background: #c42b1c;

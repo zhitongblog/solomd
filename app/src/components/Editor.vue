@@ -94,7 +94,7 @@ import { autocompletion } from '@codemirror/autocomplete';
 import { aiRewriteExtension } from '../lib/cm-ai-rewrite';
 import { applyVimrcMappings } from '../lib/vimrc';
 import { invoke } from '@tauri-apps/api/core';
-import { cmKeyOwnedByApp, combosFor, toCodeMirrorKey, eventToCombo, resolveBindings } from '../lib/keybindings';
+import { cmKeyOwnedByApp, combosFor, toCodeMirrorKey, eventToCombo, resolveBindings, layoutLetterForCode } from '../lib/keybindings';
 import {
   docParagraphStarts,
   nextParagraphStart,
@@ -232,6 +232,7 @@ function imagePasteOpts(): ImagePasteOptions {
     getAttachmentMode: () => settings.attachmentMode,
     getAssetsDirName: () => settings.assetsDirName,
     getCustomPath: () => settings.attachmentCustomPath,
+    getPastedImageFormat: () => settings.pastedImageFormat,
     getUploader: (filename: string) =>
       resolveUploader(settings as unknown as ImageUploadSettings, filename),
     notify: (kind, key, params) => {
@@ -489,7 +490,8 @@ function vimExtension() {
           !e.metaKey &&
           !e.altKey
         ) {
-          const ch = e.shiftKey ? e.code.slice(3) : e.code.slice(3).toLowerCase();
+          const base = layoutLetterForCode(e.code);
+          const ch = e.shiftKey ? base : base.toLowerCase();
           e.preventDefault();
           v.contentDOM.blur();
           v.contentDOM.focus({ preventScroll: true });
@@ -2734,7 +2736,7 @@ function plainModLetter(event: KeyboardEvent): string {
     return raw.toLowerCase();
   }
   if ((raw === 'Process' || event.keyCode === 229) && /^Key[A-Z]$/.test(event.code)) {
-    return event.code.slice(3).toLowerCase();
+    return layoutLetterForCode(event.code).toLowerCase();
   }
   return '';
 }
@@ -4669,6 +4671,7 @@ function richExtensionsFor(tab: Tab) {
           // whether tables, Mermaid diagrams, and other block widgets render
           // and fold their source code.
           keepSource: () => !settings.collapseBlockSource,
+          pureWysiwyg: () => settings.hideActiveLineMarkers && !settings.alwaysShowMarkers,
           getBoardStrings: () => ({
             loading: t('whiteboard.loading'),
             openFull: t('whiteboard.openFull'),
@@ -7165,7 +7168,7 @@ const cls = computed(() => ({
           @click.stop="togglePlainFold(block)"
         >{{ t('fold.placeholder', { lines: plainHiddenLineCount(block) }) }}</span>
         <button
-          v-if="block.isTableBlock || block.isMermaid"
+          v-if="(block.isTableBlock || block.isMermaid) && !settings.hideActiveLineMarkers"
           type="button"
           class="plain-block-source-btn"
           :class="{ 'is-expanded': !block.sourceCollapsed }"
@@ -7174,7 +7177,7 @@ const cls = computed(() => ({
           @click.stop="togglePlainBlockSourceFold(block, index)"
         >{{ block.sourceCollapsed ? '</> 源码' : '− 折叠源码' }}</button>
         <div
-          v-if="block.isImageBlock && index !== plainActiveBlock"
+          v-if="block.isImageBlock && index !== plainActiveBlock && !settings.hideActiveLineMarkers"
           class="plain-block__image-source"
         >{{ block.text }}</div>
         <textarea
@@ -7851,28 +7854,40 @@ const cls = computed(() => ({
    CodeMirror live view (lib/cm-live-render.ts). */
 .plain-block__render :deep(h1),
 .plain-block--h1 .plain-block__textarea {
-  font-size: 1.875em;
-  font-weight: 650;
+  font-size: 1.85em;
+  font-weight: 700;
   letter-spacing: -0.015em;
+  color: var(--md-h1);
 }
 .plain-block__render :deep(h2),
 .plain-block--h2 .plain-block__textarea {
-  font-size: 1.25em;
-  font-weight: 620;
+  font-size: 1.52em;
+  font-weight: 650;
+  color: var(--md-h2);
 }
 .plain-block__render :deep(h3),
 .plain-block--h3 .plain-block__textarea {
-  font-size: 1.125em;
+  font-size: 1.30em;
+  font-weight: 620;
+  color: var(--md-h3);
 }
 .plain-block__render :deep(h4),
 .plain-block--h4 .plain-block__textarea {
-  font-size: 1.0625em;
+  font-size: 1.15em;
+  font-weight: 600;
+  color: var(--md-h4);
 }
 .plain-block__render :deep(h5),
+.plain-block--h5 .plain-block__textarea {
+  font-size: 1.04em;
+  font-weight: 600;
+  color: var(--md-h5);
+}
 .plain-block__render :deep(h6),
-.plain-block--h5 .plain-block__textarea,
 .plain-block--h6 .plain-block__textarea {
-  font-size: 1em;
+  font-size: 0.95em;
+  font-weight: 600;
+  color: var(--md-h6);
 }
 .plain-block-source-btn {
   position: absolute;
@@ -7944,7 +7959,7 @@ const cls = computed(() => ({
   font-family: var(--font-mono);
   font-size: 0.8125em;
   line-height: 1.6;
-  background: var(--bg-elev);
+  background: var(--md-code-bg, var(--bg-elev));
   padding: 14px 16px;
   border-radius: var(--r-lg);
   overflow-x: auto;
@@ -8006,9 +8021,10 @@ const cls = computed(() => ({
   margin-left: 0;
   margin-right: 0;
   padding: 12px 16px;
-  background: var(--bg-elev);
-  border-radius: var(--r-lg);
-  color: var(--text-2);
+  background: var(--md-quote-bg, var(--bg-elev));
+  border-left: 3px solid var(--md-quote-border, var(--accent));
+  border-radius: 4px var(--r-lg) var(--r-lg) 4px;
+  color: var(--md-quote, var(--text-2));
 }
 .plain-block__render :deep(blockquote > :last-child) {
   margin-bottom: 0;

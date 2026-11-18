@@ -172,7 +172,11 @@ export function collectPrintOutline(
   ).filter((el) => !el.closest('.md-toc'));
   const entries: Array<[number, string, number]> = [];
   for (const el of headings) {
-    const level = Math.max(1, Math.min(6, Number(el.tagName.slice(1)) || 1));
+    const customLvl = Number(el.getAttribute('data-toc-level'));
+    const level = Math.max(
+      1,
+      Math.min(6, Number.isFinite(customLvl) && customLvl >= 1 ? customLvl : Number(el.tagName.slice(1)) || 1),
+    );
     const title = (el.textContent || '').replace(/\s+/g, ' ').trim();
     if (!title) continue;
     const page = pageOf ? Math.max(1, pageOf(el)) : 1;

@@ -225,6 +225,7 @@ export function resolveDocxTemplate(
   preset: DocxPreset,
   source: string,
   fallbackTitle = '',
+  options?: { preferFallbackTitle?: boolean },
 ): DocxTemplate {
   const fm = parseDocxFrontMatter(source);
   const base = DOCX_PRESETS[fm.preset ?? preset] ?? DOCX_PRESETS.plain;
@@ -242,8 +243,7 @@ export function resolveDocxTemplate(
     title:
       fm.title ||
       frontMatterScalar(source, 'title') ||
-      firstHeading(source) ||
-      fallbackTitle,
+      (options?.preferFallbackTitle ? fallbackTitle || firstHeading(source) : firstHeading(source) || fallbackTitle),
     author: fm.author || frontMatterScalar(source, 'author'),
     date: fm.date || frontMatterScalar(source, 'date'),
   };

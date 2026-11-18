@@ -19,7 +19,7 @@ import { loadSafImageDataUrl } from '../lib/image-resolve';
 import { openPath as openWithSystemDefault } from '@tauri-apps/plugin-opener';
 import { useI18n } from '../i18n';
 import type { FileReadResult, Tab } from '../types';
-import { isSafPath, fromSafPath, safRead, safWrite, safLaunchPicker } from '../lib/saf-fs';
+import { isSafPath, toSafPath, fromSafPath, safList, safCreate, safRead, safWrite, safLaunchPicker } from '../lib/saf-fs';
 import { baseNameOf, fileNameOf, claimImportName, joinInFolder } from '../lib/import-plan';
 import { newFileDirFor, treeSelection } from '../lib/new-file-target';
 import { noteOwnWrite } from '../lib/external-change';
@@ -750,10 +750,10 @@ export function useFiles() {
       // ContentResolver (see lib/saf-fs.ts).
       try {
         // Launch and mark that a pick is in flight; App.vue resolves the result
-        // on resume (the picker backgrounds our WebView, so we can't await it
-        // inline — the JS poll loop is lost across the transition).
+        // on resume / focus / WebView callback / background poll (#608).
         localStorage.setItem('solomd:saf-picking', '1');
         await safLaunchPicker();
+        window.dispatchEvent(new Event('solomd:saf-pick-poll'));
       } catch (e) {
         localStorage.removeItem('solomd:saf-picking');
         toasts.error(String(e));
@@ -856,8 +856,71 @@ export function useFiles() {
    *  save dialog had already created the (empty) document, which is how
    *  "Save As produced a 0-byte file" happened on Android. */
   async function writeContentUri(uri: string, payload: string): Promise<void> {
-    const { writeTextFile } = await import('@tauri-apps/plugin-fs');
-    await writeTextFile(uri as unknown as string, payload);
+    try {
+      const { writeTextFile } = await import('@tauri-apps/plugin-fs');
+      await writeTextFile(uri as unknown as string, payload);
+    } catch {
+      await invoke('saf_write_content_uri', { uri, content: payload });
+    }
+  }
+
+  /** #608 — When an Android SAF folder (`workspace.safTreeUri`) is open and the
+   *  user saves a brand-new untitled note (`!tab.filePath`), create the file
+   *  directly inside the active SAF folder (or selected tree subfolder) via
+   *  `safCreate` so tapping `+` -> typing -> Save writes straight into the open
+   *  folder and refreshes `FileTree.vue` without forcing a broken Save-As picker. */
+  async function safResolveNewFilePath(tab: Tab): Promise<string | null> {
+    const treeUri = workspace.safTreeUri;
+    const rootFolder = workspace.currentFolder;
+    if (!treeUri || !rootFolder || !isSafPath(rootFolder)) return null;
+    const targetDir = newFileDirFor(treeSelection(), tabs.activeTab?.filePath);
+    const parentSafPath = targetDir && isSafPath(targetDir) ? targetDir : rootFolder;
+    const parentDocId = fromSafPath(parentSafPath);
+
+    const rawName =
+      deriveNameFromHeading(tab) ||
+      tab.fileName ||
+      (tab.language === 'markdown' ? 'Untitled.md' : 'Untitled.txt');
+    const hasExt = /\.[a-z0-9]+$/i.test(rawName);
+    const fname = hasExt ? rawName : `${rawName}.${tab.language === 'markdown' ? 'md' : 'txt'}`;
+
+    let taken = new Set<string>();
+    try {
+      const entries = await safList(treeUri, parentDocId);
+      taken = new Set(entries.map((e) => e.name.toLowerCase()));
+    } catch {
+      /* ignore listing errors; createDoc will still succeed */
+    }
+    const dot = fname.lastIndexOf('.');
+    const stem = dot > 0 ? fname.slice(0, dot) : fname;
+    const ext = dot > 0 ? fname.slice(dot) : '';
+    let finalName = fname;
+    for (let i = 2; taken.has(finalName.toLowerCase()) && i < 1000; i++) {
+      finalName = `${stem} ${i}${ext}`;
+    }
+    const mime = tab.language === 'markdown' ? 'text/markdown' : 'text/plain';
+    const docId = await safCreate(treeUri, parentDocId, finalName, mime);
+    return toSafPath(docId);
+  }
+
+  /** Map a standalone `content://.../document/<docId>` URI back to `saf:<docId>`
+   *  when it belongs to the currently open Android SAF vault. */
+  function mapContentUriToSafPath(uri: string): string {
+    const treeUri = workspace.safTreeUri;
+    const rootFolder = workspace.currentFolder;
+    if (!treeUri || !rootFolder || !isSafPath(rootFolder)) return uri;
+    const m = /\/document\/([^/?#]+)/.exec(uri);
+    if (!m) return uri;
+    try {
+      const docId = decodeURIComponent(m[1]);
+      const rootDocId = fromSafPath(rootFolder);
+      if (docId === rootDocId || docId.startsWith(`${rootDocId}/`) || (rootDocId.endsWith(':') && docId.startsWith(rootDocId))) {
+        return toSafPath(docId);
+      }
+    } catch {
+      /* keep raw content:// URI */
+    }
+    return uri;
   }
 
   /** Display name for a content:// URI ("…%2Fnote.md" → "note.md"). */
@@ -887,6 +950,16 @@ export function useFiles() {
         path = await iosResolvePath(tab);
         iosCopy = true;
       }
+    } else if (!path && isAndroid() && workspace.safTreeUri && isSafPath(workspace.currentFolder)) {
+      // #608 — Saving a brand-new untitled note while an Android SAF folder is
+      // open: create the note directly inside the open SAF folder so tapping
+      // `+` -> typing -> Save writes straight to the vault and refreshes the tree.
+      try {
+        path = (await safResolveNewFilePath(tab)) ?? undefined;
+      } catch (e) {
+        console.warn('[saveTab] safResolveNewFilePath failed, falling back to saveTabAs', e);
+      }
+      if (!path) return saveTabAs(tab);
     } else if (!path) {
       return saveTabAs(tab);
     }
@@ -943,12 +1016,12 @@ export function useFiles() {
         workspace.pushRecent(path);
         // v2.5: feed the ⌘P quick-switcher's MFU ranking.
         recentEdits.recordEdit(path);
-        // v2.2: notify the AutoGit composable so the debounced auto-commit
-        // pipeline picks up this save. Listener is in `useAutoCommit.ts`.
-        window.dispatchEvent(
-          new CustomEvent('solomd:saved', { detail: { filePath: path } }),
-        );
       }
+      // #608 — Always dispatch `solomd:saved` (including Android SAF / content://
+      // saves) so `FileTree.vue` refreshes immediately and displays newly saved notes.
+      window.dispatchEvent(
+        new CustomEvent('solomd:saved', { detail: { filePath: path } }),
+      );
       if (!opts.silent) {
         if (isIOS() && iosCopy) {
           const fname = path.split(/[\\/]/).pop() ?? path;
@@ -1018,8 +1091,14 @@ export function useFiles() {
       const isContentUri = path.startsWith('content://');
       if (isContentUri) {
         await writeContentUri(path, payload);
-        tabs.markSaved(tab.id, path);
-        const fileName = contentUriName(path);
+        const mappedPath = mapContentUriToSafPath(path);
+        tabs.markSaved(tab.id, mappedPath);
+        window.dispatchEvent(
+          new CustomEvent('solomd:saved', { detail: { filePath: mappedPath } }),
+        );
+        const fileName = isSafPath(mappedPath)
+          ? mappedPath.split(/[\\/:]/).pop() ?? contentUriName(path)
+          : contentUriName(path);
         toasts.success(t('toast.savedAs', { name: fileName }));
         return true;
       }

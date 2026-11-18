@@ -200,6 +200,21 @@ pub fn saf_create(
     }
 }
 
+/// #608 — Overwrite a standalone `content://` URI with UTF-8 text via JNI
+/// `ContentResolver` (fallback when `@tauri-apps/plugin-fs` rejects OEM URIs).
+#[tauri::command]
+pub fn saf_write_content_uri(uri: String, content: String) -> Result<(), String> {
+    #[cfg(target_os = "android")]
+    {
+        imp::write_content_uri_bytes(&uri, content.as_bytes())
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = (uri, content);
+        Err("SAF is Android-only".into())
+    }
+}
+
 /// Delete a document (file or empty directory).
 #[tauri::command]
 pub fn saf_delete(tree_uri: String, doc_id: String) -> Result<(), String> {
@@ -257,6 +272,18 @@ mod imp {
         Ok(())
     }
 
+    fn main_activity_class<'a>(env: &mut jni::JNIEnv<'a>) -> Result<jni::objects::JClass<'a>, String> {
+        let ctx = ndk_context::android_context();
+        let act = unsafe { JObject::from_raw(ctx.context().cast()) };
+        if !act.is_null() {
+            if let Ok(cls) = env.get_object_class(&act) {
+                return Ok(cls);
+            }
+            let _ = env.exception_clear();
+        }
+        env.find_class(CLS).map_err(|e| e.to_string())
+    }
+
     /// Call a static method returning a (nullable) java.lang.String.
     fn call_str_opt(
         method: &str,
@@ -264,7 +291,8 @@ mod imp {
         args: &[JValue],
     ) -> Result<Option<String>, String> {
         with_env(|env| {
-            let res = env.call_static_method(CLS, method, sig, args);
+            let cls = main_activity_class(env)?;
+            let res = env.call_static_method(cls, method, sig, args);
             check_exc(env, method)?;
             let obj = res.map_err(|e| e.to_string())?.l().map_err(|e| e.to_string())?;
             if obj.is_null() {
@@ -303,7 +331,8 @@ mod imp {
 
     pub fn pick_folder() -> Result<(), String> {
         with_env(|env| {
-            env.call_static_method(CLS, "launchFolderPicker", "()V", &[])
+            let cls = main_activity_class(env)?;
+            env.call_static_method(cls, "launchFolderPicker", "()V", &[])
                 .map_err(|e| e.to_string())?;
             check_exc(env, "launchFolderPicker")
         })

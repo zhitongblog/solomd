@@ -47,6 +47,28 @@ a {
   text-decoration: none;
 }
 
+/* #596 — Suppress automatic <ol> decimal list markers inside EPUB Table of Contents
+   so headings that already carry hierarchical numbers (1, 1.1, 1.2…) never double-number */
+nav#toc ol,
+nav[epub\\:type~="toc"] ol,
+ol.toc {
+  list-style-type: none !important;
+  padding-left: 1.2em;
+}
+
+nav#toc > ol,
+nav[epub\\:type~="toc"] > ol,
+ol.toc:first-of-type {
+  padding-left: 0;
+}
+
+nav#toc li,
+nav[epub\\:type~="toc"] li,
+ol.toc li {
+  list-style-type: none !important;
+  margin: 0.32em 0;
+}
+
 /* #583 — Inline code background shading */
 code {
   font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;

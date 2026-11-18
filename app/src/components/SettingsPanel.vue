@@ -1261,8 +1261,26 @@ function onSelectPdfFont(v: string) {
                 @input="settings.setCustomThemeColors(themeFamily(settings.theme) === 'dark' ? { customActiveLineDark: ($event.target as HTMLInputElement).value } : { customActiveLineLight: ($event.target as HTMLInputElement).value })"
               />
             </label>
+            <label style="display:inline-flex;align-items:center;gap:6px;margin:0;cursor:pointer;">
+              <span>{{ settings.language === 'zh' ? '代码块底色' : 'Code BG' }}</span>
+              <input
+                type="color"
+                :value="themeFamily(settings.theme) === 'dark' ? (settings.customCodeBgDark || '#24262a') : (settings.customCodeBgLight || '#f3f4f6')"
+                style="width:24px;height:24px;padding:0;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:transparent;"
+                @input="settings.setCustomThemeColors(themeFamily(settings.theme) === 'dark' ? { customCodeBgDark: ($event.target as HTMLInputElement).value } : { customCodeBgLight: ($event.target as HTMLInputElement).value })"
+              />
+            </label>
+            <label style="display:inline-flex;align-items:center;gap:6px;margin:0;cursor:pointer;">
+              <span>{{ settings.language === 'zh' ? '引用块底色' : 'Quote BG' }}</span>
+              <input
+                type="color"
+                :value="themeFamily(settings.theme) === 'dark' ? (settings.customQuoteBgDark || '#2b2722') : (settings.customQuoteBgLight || '#fcf8f1')"
+                style="width:24px;height:24px;padding:0;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:transparent;"
+                @input="settings.setCustomThemeColors(themeFamily(settings.theme) === 'dark' ? { customQuoteBgDark: ($event.target as HTMLInputElement).value } : { customQuoteBgLight: ($event.target as HTMLInputElement).value })"
+              />
+            </label>
             <button
-              v-if="settings.customBgLight || settings.customTextLight || settings.customBgDark || settings.customTextDark || settings.customHighlightLight || settings.customHighlightDark || settings.customActiveLineLight || settings.customActiveLineDark"
+              v-if="settings.customBgLight || settings.customTextLight || settings.customBgDark || settings.customTextDark || settings.customHighlightLight || settings.customHighlightDark || settings.customActiveLineLight || settings.customActiveLineDark || settings.customCodeBgLight || settings.customCodeBgDark || settings.customQuoteBgLight || settings.customQuoteBgDark"
               type="button"
               class="hint-btn"
               @click="settings.resetCustomThemeColors()"
@@ -1482,12 +1500,12 @@ function onSelectPdfFont(v: string) {
               :disabled="settings.alwaysShowMarkers"
               @change="settings.toggleHideActiveLineMarkers()"
             />
-            {{ isZhLocale ? '纯粹所见即所得（光标所在行也隐藏 # / ** 等语法标记）' : 'Pure WYSIWYG (keep # / ** syntax markers hidden on active line)' }}
+            {{ isZhLocale ? '纯粹所见即所得（始终隐藏 # / ** 等语法标记）' : 'Pure WYSIWYG (keep all Markdown syntax hidden at all times)' }}
           </label>
           <div class="hint">
             {{ isZhLocale
-              ? '开启后，点击或移动光标到某一行时不再展开 #、**、链接 URL 等语法字符，彻底消除光标切行时的文字横向位移（拖动选中文本时仍会显示源码）。'
-              : 'When enabled, clicking or moving the cursor onto a line keeps # / ** / link URLs hidden so text never shifts horizontally (selecting a range still reveals raw syntax).' }}
+              ? '开启后，鼠标悬停、点击、移动光标或拖动选中文本时均不显示 #、**、图片语法、链接 URL 及「源码」按钮，体验如同 Typora 的纯粹所见即所得模式。'
+              : 'When enabled, hovering, clicking, moving the cursor, or selecting text keeps #, **, image syntax, link URLs, and source buttons completely hidden — just like Typora.' }}
           </div>
         </section>
 
@@ -2417,6 +2435,23 @@ function onSelectPdfFont(v: string) {
             <option value="base64">{{ settings.language === 'zh' ? '内联 Base64（直接嵌入文档，单文件免外部图库）' : 'Inline Base64 (embed directly in .md file)' }}</option>
           </select>
           <p class="setting-hint">{{ t('settings.attachmentModeHint') }}</p>
+        </section>
+
+        <section data-cat="writing">
+          <label>{{ settings.language === 'zh' ? '粘贴图片保存格式' : 'Pasted Image Format' }}</label>
+          <select
+            :value="settings.pastedImageFormat"
+            @change="settings.setPastedImageFormat(($event.target as HTMLSelectElement).value as 'png' | 'webp' | 'jpg')"
+          >
+            <option value="png">{{ settings.language === 'zh' ? 'PNG（默认，无损清晰）' : 'PNG (Default, lossless)' }}</option>
+            <option value="webp">{{ settings.language === 'zh' ? 'WebP（推荐，体积更小、加载更快）' : 'WebP (Smaller file size, faster)' }}</option>
+            <option value="jpg">{{ settings.language === 'zh' ? 'JPG（高压缩比，透明背景自动填白）' : 'JPG (Compact, white background)' }}</option>
+          </select>
+          <p class="setting-hint">
+            {{ settings.language === 'zh'
+              ? '剪贴板截图粘贴到文档时自动转换为所选格式保存（GIF 动图与 SVG 矢量图保持原格式不变）。'
+              : 'Automatically converts pasted screenshots/bitmaps to the chosen format (animated GIF and vector SVG stay unchanged).' }}
+          </p>
         </section>
 
         <section data-cat="writing" v-if="settings.attachmentMode === 'shared'">

@@ -112,7 +112,6 @@ export function enclosingListContentIndent(text: string, lineStart: number): str
   const startIdx = lineStart > 0 && before.endsWith('\n') ? lines.length - 2 : lines.length - 1;
   for (let i = startIdx; i >= 0; i--) {
     const ln = lines[i];
-    if (ln.trim() === '') return null;
     const q = ln.match(QUOTE_PREFIX)?.[1] ?? '';
     const r = ln.slice(q.length);
     const m = r.match(LIST_MARKER);
@@ -122,8 +121,52 @@ export function enclosingListContentIndent(text: string, lineStart: number): str
       const head = bullet ?? `${num}${delim}`;
       return `${q}${ind}${' '.repeat(head.length + sep.length)}`;
     }
-    // An indented continuation line keeps scanning up to find the list item.
-    if (!/^[ \t]{2,}\S/.test(r)) return null;
+    // An indented continuation line (including a whitespace-only soft-break line)
+    // keeps scanning up to find the enclosing list item.
+    if (!/^(?:[ ]{2,}|\t+)/.test(r)) return null;
+  }
+  return null;
+}
+
+interface EnclosingListItemInfo {
+  contentIndent: string;
+  nextMarker: string;
+  isOrdered: boolean;
+}
+
+/**
+ * #609 — Scan upward from an indented continuation line (`Shift+Enter` soft
+ * break) to find the enclosing list item at the same `>` quote depth and build
+ * its next sibling marker so pressing `Enter` creates the next bullet/number.
+ */
+function enclosingListItemContinuation(
+  text: string,
+  lineStart: number,
+  expectedQuoteDepth: number,
+  opts: ListContinuationOptions,
+): EnclosingListItemInfo | null {
+  const before = text.slice(0, lineStart);
+  const lines = before.split('\n');
+  const startIdx = lineStart > 0 && before.endsWith('\n') ? lines.length - 2 : lines.length - 1;
+  for (let i = startIdx; i >= 0; i--) {
+    const ln = lines[i];
+    const rawQ = ln.match(QUOTE_PREFIX)?.[1] ?? '';
+    const q = rawQ.includes('>') ? rawQ : '';
+    const qDepth = (q.match(/>/g) ?? []).length;
+    if (qDepth !== expectedQuoteDepth) return null;
+    const r = ln.slice(q.length);
+    const m = r.match(LIST_MARKER);
+    if (m) {
+      const [, ind, bullet, num, delim, gap, task] = m;
+      if (!bullet && !opts.autoNumber) return null;
+      const sep = gap.includes('\t') ? gap : gap.length > 4 ? ' ' : gap;
+      const curHead = bullet ?? `${num}${delim}`;
+      const contentIndent = `${q}${ind}${' '.repeat(curHead.length + sep.length)}`;
+      const nextHead = bullet ?? `${bumpNumberedToken(num) ?? num}${delim}`;
+      const nextMarker = `${q}${ind}${nextHead}${sep}${task ? '[ ] ' : ''}`;
+      return { contentIndent, nextMarker, isOrdered: !bullet };
+    }
+    if (!/^(?:[ ]{2,}|\t+)/.test(r)) return null;
   }
   return null;
 }
@@ -298,26 +341,56 @@ export function computeListContinuation(
     const value =
       text.slice(0, spacePos) + ' ' + text.slice(spacePos, caret) + insert + text.slice(caret);
     return { value, caret: caret + 1 + insert.length };
-  } else if (hasQuote) {
-    markerLen = quote.length;
-    // `>` without a trailing space still continues as `> `.
-    nextMarker = /[ \t]$/.test(quote) ? quote : `${quote} `;
   } else {
-    // Check if this is an indented continuation line of a list item above it
-    // (e.g. created by Shift+Enter).
-    const listIndent = enclosingListContentIndent(text, lineStart);
-    const leadWs = /^[ \t]+/.exec(line)?.[0] ?? '';
-    if (listIndent && leadWs.length >= listIndent.length) {
-      if (line.trim() === '' && caret === lineEnd) {
-        // Enter on an empty list-continuation line drops the indentation.
-        return { value: text.slice(0, lineStart) + text.slice(lineEnd), caret: lineStart };
+    // #609 — Check if this is an indented continuation line of a list item above
+    // it (created by Shift+Enter, including inside blockquotes `> * item`).
+    // Pressing Enter starts the next sibling list item (`* `, `- `, `2. `, etc.)
+    // instead of spawning another unbulleted indented line.
+    const quoteDepth = (quote.match(/>/g) ?? []).length;
+    const enclosing = enclosingListItemContinuation(text, lineStart, quoteDepth, opts);
+    const restLeadWs = /^[ \t]*/.exec(rest)?.[0] ?? '';
+    const lineLead = `${quote}${restLeadWs}`;
+    if (
+      enclosing &&
+      restLeadWs.length > 0 &&
+      indentWidth(lineLead) >= indentWidth(enclosing.contentIndent)
+    ) {
+      if (rest.trim() === '' && caret === lineEnd) {
+        // Shift+Enter (empty soft-break line) followed by Enter: convert this
+        // line into the next list bullet/number; a second Enter on that empty
+        // marker line will exit the list cleanly.
+        let value = text.slice(0, lineStart) + enclosing.nextMarker + text.slice(lineEnd);
+        let nextCaret = lineStart + enclosing.nextMarker.length;
+        if (enclosing.isOrdered) {
+          const changes = renumberChanges(value, lineStart, nextCaret);
+          if (changes.length > 0) {
+            value = applyChanges(value, changes);
+            nextCaret = mapPos(nextCaret, changes);
+          }
+        }
+        return { value, caret: nextCaret };
       }
-      if (caret >= lineStart + leadWs.length) {
-        const insert = `\n${leadWs}`;
-        return { value: text.slice(0, caret) + insert + text.slice(caret), caret: caret + insert.length };
+      if (caret >= lineStart + lineLead.length) {
+        const insert = `\n${enclosing.nextMarker}`;
+        let value = text.slice(0, caret) + insert + text.slice(caret);
+        let nextCaret = caret + insert.length;
+        if (enclosing.isOrdered) {
+          const changes = renumberChanges(value, caret, nextCaret);
+          if (changes.length > 0) {
+            value = applyChanges(value, changes);
+            nextCaret = mapPos(nextCaret, changes);
+          }
+        }
+        return { value, caret: nextCaret };
       }
     }
-    return null;
+    if (hasQuote) {
+      markerLen = quote.length;
+      // `>` without a trailing space still continues as `> `.
+      nextMarker = /[ \t]$/.test(quote) ? quote : `${quote} `;
+    } else {
+      return null;
+    }
   }
 
   const content = line.slice(markerLen);

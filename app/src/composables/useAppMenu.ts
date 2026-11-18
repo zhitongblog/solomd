@@ -45,6 +45,7 @@ export function useAppMenu() {
         wordWrap: settings.wordWrap,
         lineNumbers: settings.showLineNumbers,
         autoGit: settings.autoGitEnabled,
+        alwaysOnTop: settings.alwaysOnTop,
         panes: {
           // The outline is per tab; the rest are workspace-wide settings.
           outline: !!tabs.activeTab?.showOutline,

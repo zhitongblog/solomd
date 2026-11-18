@@ -231,6 +231,36 @@ test('Shift+Enter inside list items indents to the item content column', () => {
   assert.equal(softEnter('- [ ] 任务一|'), '- [ ] 任务一\n  |');
   assert.equal(softEnter('  1. 子列表|'), '  1. 子列表\n     |');
   assert.equal(softEnter('1. 列表一\n   续行|'), '1. 列表一\n   续行\n   |');
+  // Multiple consecutive Shift+Enter presses preserve content indentation
+  const afterSoft1 = softEnter('* 列表项1|')!;
+  assert.equal(afterSoft1, '* 列表项1\n  |');
+  assert.equal(softEnter(afterSoft1), '* 列表项1\n  \n  |');
+});
+
+test('#609: Enter after Shift+Enter soft break in unordered/ordered/quoted lists creates next list item and second Enter exits', () => {
+  // Unordered list: * item -> Shift+Enter -> type line 2 -> Enter -> * next item
+  const s1 = softEnter('* 列表项1|')!;
+  assert.equal(s1, '* 列表项1\n  |');
+  const withText = s1.replace('|', '第一项的第二行|');
+  const nextItem = enter(withText)!;
+  assert.equal(nextItem, '* 列表项1\n  第一项的第二行\n* |');
+  // Pressing Enter on the empty `* |` exits the list cleanly
+  assert.equal(enter(nextItem), '* 列表项1\n  第一项的第二行\n|');
+
+  // Shift+Enter (empty soft-break line) followed directly by Enter converts line to `* |`
+  const directBullet = enter(s1)!;
+  assert.equal(directBullet, '* 列表项1\n* |');
+  assert.equal(enter(directBullet), '* 列表项1\n|');
+
+  // Ordered list with sibling renumbering
+  assert.equal(
+    enter('1. 第一项\n   第一项续行|\n2. 原第二项'),
+    '1. 第一项\n   第一项续行\n2. |\n3. 原第二项',
+  );
+
+  // Task list and blockquote list
+  assert.equal(enter('- [x] 任务1\n  详情说明|'), '- [x] 任务1\n  详情说明\n- [ ] |');
+  assert.equal(enter('> * 引用列表1\n>   引用续行|'), '> * 引用列表1\n>   引用续行\n> * |');
 });
 
 test('Enter on an indented fence opener or inside an indented fence preserves fence indent', () => {

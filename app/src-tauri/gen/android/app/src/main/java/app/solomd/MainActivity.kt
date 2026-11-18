@@ -311,8 +311,19 @@ class MainActivity : TauriActivity() {
           addFlags(
             Intent.FLAG_GRANT_READ_URI_PERMISSION or
               Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
-              Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+              Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION or
+              Intent.FLAG_GRANT_PREFIX_URI_PERMISSION
           )
+          if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            try {
+              val initial = DocumentsContract.buildDocumentUri(
+                "com.android.externalstorage.documents",
+                "primary:Documents"
+              )
+              putExtra(DocumentsContract.EXTRA_INITIAL_URI, initial)
+            } catch (_: Throwable) {
+            }
+          }
         }
         try {
           act.startActivityForResult(intent, REQ_PICK_TREE)
@@ -360,6 +371,7 @@ class MainActivity : TauriActivity() {
       val children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, docId)
       val r = resolver() ?: return err2("no resolver")
       val items = JSONArray()
+      val seenNames = HashSet<String>()
       r.query(
         children,
         arrayOf(
@@ -369,13 +381,35 @@ class MainActivity : TauriActivity() {
         ),
         null, null, null
       )?.use { c ->
+        val idIdx = c.getColumnIndex(DocumentsContract.Document.COLUMN_DOCUMENT_ID).let { if (it >= 0) it else 0 }
+        val nameIdx = c.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME).let { if (it >= 0) it else 1 }
+        val mimeIdx = c.getColumnIndex(DocumentsContract.Document.COLUMN_MIME_TYPE).let { if (it >= 0) it else 2 }
         while (c.moveToNext()) {
-          val cid = c.getString(0)
-          val name = if (c.isNull(1)) cid.substringAfterLast('/') else c.getString(1)
-          val mime = if (c.isNull(2)) "" else c.getString(2)
+          val cid = if (c.isNull(idIdx)) continue else c.getString(idIdx)
+          val name = if (c.isNull(nameIdx)) cid.substringAfterLast('/') else c.getString(nameIdx)
+          val mime = if (c.isNull(mimeIdx)) "" else c.getString(mimeIdx)
+          seenNames.add(name)
           items.put(JSONObject().apply {
             put("name", name); put("docId", cid); put("isDir", mime == DIR_MIME)
           })
+        }
+      }
+      // #608 — Fallback on OEM ROMs (ColorOS 16 / Android 16 DownloadsProvider)
+      // if ContentResolver hides non-media `.md` files on a directly readable primary path.
+      if (docId.startsWith("primary:")) {
+        val rel = docId.removePrefix("primary:").trimStart('/')
+        val dirFile = if (rel.isEmpty()) java.io.File("/storage/emulated/0") else java.io.File("/storage/emulated/0/$rel")
+        if (dirFile.isDirectory && dirFile.canRead()) {
+          dirFile.listFiles()?.forEach { f ->
+            if (!seenNames.contains(f.name)) {
+              val childRel = if (rel.isEmpty()) f.name else "$rel/${f.name}"
+              items.put(JSONObject().apply {
+                put("name", f.name)
+                put("docId", "primary:$childRel")
+                put("isDir", f.isDirectory)
+              })
+            }
+          }
         }
       }
       envelope { put("v", items) }
@@ -502,9 +536,23 @@ class MainActivity : TauriActivity() {
     fun createDoc(treeUri: String, parentDocId: String, mime: String, name: String): String { return try {
       val parent = DocumentsContract.buildDocumentUriUsingTree(Uri.parse(treeUri), parentDocId)
       val r = resolver() ?: return err2("no resolver")
-      val created = DocumentsContract.createDocument(r, parent, mime, name)
-        ?: return err2("createDocument null")
-      envelope { put("v", DocumentsContract.getDocumentId(created)) }
+      val candidateMimes = if (mime == DIR_MIME) {
+        listOf(DIR_MIME)
+      } else {
+        listOf(mime, "text/plain", "application/octet-stream").distinct()
+      }
+      var created: Uri? = null
+      var lastErr: Exception? = null
+      for (m in candidateMimes) {
+        try {
+          created = DocumentsContract.createDocument(r, parent, m, name)
+          if (created != null) break
+        } catch (e: Exception) {
+          lastErr = e
+        }
+      }
+      val docUri = created ?: return if (lastErr != null) err(lastErr) else err2("createDocument null")
+      envelope { put("v", DocumentsContract.getDocumentId(docUri)) }
     } catch (e: Exception) { err(e) } }
 
     /** Write Base64-encoded bytes to a standalone content:// URI (e.g. from ACTION_CREATE_DOCUMENT). */
@@ -713,15 +761,31 @@ class MainActivity : TauriActivity() {
     if (requestCode != REQ_PICK_TREE) return
     val uri: Uri? = data?.data
     if (resultCode == RESULT_OK && uri != null) {
-      val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or
+      val rwFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION or
         Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+      val grantedFlags = (data.flags and rwFlags).let { if (it != 0) it else rwFlags }
       try {
-        contentResolver.takePersistableUriPermission(uri, flags)
+        contentResolver.takePersistableUriPermission(uri, grantedFlags)
       } catch (_: SecurityException) {
+        try {
+          contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        } catch (_: SecurityException) {
+        }
       }
       pickedTreeUri.set(uri.toString())
     } else {
       pickedTreeUri.set("")
+    }
+    // #608 — Notify WebView immediately: on Android 16 / ColorOS 16 the SAF
+    // picker runs as a translucent overlay without firing `visibilitychange`.
+    runOnUiThread {
+      try {
+        findWebView(window?.decorView)?.evaluateJavascript(
+          "window.dispatchEvent(new Event('solomd:saf-pick-ready'))",
+          null
+        )
+      } catch (_: Throwable) {
+      }
     }
   }
 }

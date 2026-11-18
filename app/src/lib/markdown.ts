@@ -833,18 +833,20 @@ md.core.ruler.before('source_line_map', 'solomd_toc_level_attr', (state) => {
     const rawContent = inline.content || '';
     const levelMatch = /<!--\s*solomd-toc-level:(\d+)\s*-->/.exec(rawContent);
     const hasFolderTag = /<!--\s*solomd-toc-folder\s*-->/.test(rawContent);
-    if (!levelMatch && !hasFolderTag) continue;
+    const hasBookRootTag = /<!--\s*solomd-book-root\s*-->/.test(rawContent);
+    if (!levelMatch && !hasFolderTag && !hasBookRootTag) continue;
     if (levelMatch) open.attrSet('data-toc-level', levelMatch[1]);
     if (hasFolderTag) open.attrSet('data-toc-folder', '1');
+    if (hasBookRootTag) open.attrSet('data-book-root', '1');
     inline.content = rawContent
-      .replace(/\s*<!--\s*solomd-toc-(?:level:\d+|folder)\s*-->/g, '')
+      .replace(/\s*<!--\s*solomd-(?:toc-(?:level:\d+|folder)|book-root)\s*-->/g, '')
       .trimEnd();
     if (Array.isArray(inline.children)) {
       while (inline.children.length > 0) {
         const last = inline.children[inline.children.length - 1];
         if (
           last.type === 'html_inline' &&
-          /^<!--\s*solomd-toc-(?:level:\d+|folder)\s*-->$/.test((last.content || '').trim())
+          /^<!--\s*solomd-(?:toc-(?:level:\d+|folder)|book-root)\s*-->$/.test((last.content || '').trim())
         ) {
           inline.children.pop();
           if (inline.children.length > 0 && inline.children[inline.children.length - 1].type === 'text') {

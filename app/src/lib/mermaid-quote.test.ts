@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   quoteUnquotedMermaidLabels,
+  formatMermaidInlineBold,
   formatMermaidError,
   safeRender,
   type MermaidRenderer,
@@ -61,4 +62,23 @@ test('formatMermaidError appends a helpful quoting hint when a diagram with @ or
     'flowchart TD\n  A[foo @ bar] -->',
   );
   assert.ok(msg.includes('Hint: Wrap node labels containing "@" or "()" in quotes'));
+});
+
+test('#600: formatMermaidInlineBold converts **bold** spans in nodes, edges, and subgraphs to <b>...</b> while preserving %% comments and "`...`"', () => {
+  const input = [
+    'graph LR',
+    '  %% **comment untouched**',
+    '  A[**程序员转型方向**] -->|**核心路线**| B[**技术路线：成为专家**]',
+    '  subgraph B[**技术路线：成为专家**]',
+    '    B1[**AI/ML工程师**<br>学Python、PyTorch/TensorFlow框架]',
+    '    B2["`**native markdown**`"]',
+    '  end',
+  ].join('\n');
+
+  const out = formatMermaidInlineBold(input);
+  assert.ok(out.includes('%% **comment untouched**'));
+  assert.ok(out.includes('A[<b>程序员转型方向</b>] -->|<b>核心路线</b>| B[<b>技术路线：成为专家</b>]'));
+  assert.ok(out.includes('subgraph B[<b>技术路线：成为专家</b>]'));
+  assert.ok(out.includes('B1[<b>AI/ML工程师</b><br>学Python、PyTorch/TensorFlow框架]'));
+  assert.ok(out.includes('B2["`**native markdown**`"]'));
 });

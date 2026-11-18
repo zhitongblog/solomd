@@ -237,6 +237,7 @@ pub fn run() {
             saf_android::saf_write,
             saf_android::saf_write_base64,
             saf_android::saf_read_content_uri_base64,
+            saf_android::saf_write_content_uri,
             saf_android::saf_create,
             saf_android::saf_delete,
             image_upload::upload_image,
@@ -392,6 +393,18 @@ pub fn run() {
             github_sync::gitea_list_repos,
             #[cfg(not(target_os = "android"))]
             github_sync::gitea_create_vault_repo,
+            #[cfg(not(target_os = "android"))]
+            github_sync::gitee_set_token,
+            #[cfg(not(target_os = "android"))]
+            github_sync::gitee_clear_token,
+            #[cfg(not(target_os = "android"))]
+            github_sync::gitee_has_token,
+            #[cfg(not(target_os = "android"))]
+            github_sync::gitee_user,
+            #[cfg(not(target_os = "android"))]
+            github_sync::gitee_list_repos,
+            #[cfg(not(target_os = "android"))]
+            github_sync::gitee_create_vault_repo,
             cloud_folder::cloud_folder_detect,
             cloud_folder::device_id_get_or_create,
             cloud_folder::session_save,
@@ -465,6 +478,7 @@ pub fn run() {
             workspace_index::workspace_index_referenced_by,
             commands::update_frontmatter_property,
             commands::delete_frontmatter_property,
+            commands::convert_image_format,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");

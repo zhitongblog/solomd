@@ -5,7 +5,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { writeText, writeHtml, writeImage } from '@tauri-apps/plugin-clipboard-manager';
 import { Image } from '@tauri-apps/api/image';
 import { documentDir, join } from '@tauri-apps/api/path';
-import { isIOS, isMacOS, isMobile, isWindowsDesktop, revealLabelKey } from '../lib/platform';
+import { isIOS, isMobile, isWindowsDesktop, revealLabelKey } from '../lib/platform';
 import { revealInFileManager, openDirectoryInFileManager, parentDirOf } from '../lib/reveal-in-file-manager';
 // Loaded per export rather than at startup. Between them these three pull in
 // `docx`, jsPDF + html2canvas and the mermaid renderer — megabytes that a user
@@ -342,6 +342,7 @@ export function useExport() {
         codeBlockWrap: settings.codeBlockWrap,
         withNav: settings.exportHtmlWithNav,
         paginated: settings.exportHtmlWithNav && settings.exportHtmlPaginated,
+        topicNav: settings.exportHtmlWithNav && settings.exportHtmlPaginated && settings.exportHtmlTopicNav,
         contentWidth: settings.exportHtmlContentWidth,
         withTocPage: settings.exportIncludeTocPage,
         lang: settings.language,
@@ -387,10 +388,10 @@ export function useExport() {
     }
   }
 
-  /** Native-feel PDF export: build a real .pdf file via html2pdf.js. */
+  /** Native-feel PDF export: build a raster .pdf file via html2pdf.js. */
   async function exportPdf() {
     if (shouldUseUnifiedDialog()) {
-      openCustomExportDialog({ scope: 'current', format: 'pdf' });
+      openCustomExportDialog({ scope: 'current', format: 'pdf-image' });
       return;
     }
     track('file_exported', { format: 'pdf' });
@@ -500,7 +501,7 @@ export function useExport() {
     // `file.print` ("Print…") to open the native system print dialog.
     // Ask where to save BEFORE mounting the print overlay, so cancelling
     // leaves nothing behind.
-    const directPdf = !options?.forcePrintDialog && isMacOS() && !isIOS();
+    const directPdf = !options?.forcePrintDialog && !isMobile();
     let directPath: string | null = null;
     if (directPdf) {
       directPath = await pickWritePath(`${ctx.baseName}.pdf`, [{ name: 'PDF', extensions: ['pdf'] }]);
@@ -545,7 +546,7 @@ export function useExport() {
     // print headers/footers (date, title, URL) have nowhere to draw.
     const printCss = [
       buildPrintStyle(pdfOpts),
-      isWindowsDesktop() ? buildWindowsPrintFrameStyle(pdfOpts) : '',
+      isWindowsDesktop() && !directPath ? buildWindowsPrintFrameStyle(pdfOpts) : '',
     ].filter(Boolean).join('\n');
     const { overlay: printOverlay, content: printContent, cleanup } = mountPrintOverlay(
       body,
@@ -882,6 +883,151 @@ export function useExport() {
     await exportPdfPrint({ forcePrintDialog: true });
   }
 
+  let vectorPdfMutex: Promise<void> = Promise.resolve();
+
+  /**
+   * #607 & #595 — Render Markdown into `#solomd-print-overlay` and invoke the
+   * native WebView vector PDF engine (`print_webview_to_pdf` on macOS, Windows
+   * WebView2 `PrintToPdf`, and Linux WebKitGTK `PrintOperation`) so exported
+   * PDFs contain crisp, selectable vector text (~150–300 KB instead of 6 MB
+   * blurry raster images) plus clickable TOC links and UTF-16BE bookmarks.
+   */
+  async function exportMarkdownToVectorPdfFile(opts: {
+    content: string;
+    baseName: string;
+    filePath?: string;
+    outputPath: string;
+    includeBookmarks: boolean;
+    includeTocPage?: boolean;
+    isMergedBook?: boolean;
+  }): Promise<void> {
+    const prev = vectorPdfMutex;
+    let release!: () => void;
+    vectorPdfMutex = new Promise<void>((r) => {
+      release = r;
+    });
+    await prev;
+    try {
+      const pdfOpts = resolvePdfOptions(
+        settings.pdfDefaults,
+        opts.content,
+        userTouchedPdfDefaults(settings.pdfDefaults),
+      );
+      const stripped = opts.content.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '');
+      const wantToc =
+        typeof opts.includeTocPage === 'boolean' ? opts.includeTocPage : pdfOpts.toc;
+      const prepared = wantToc
+        ? withPdfToc(stripped)
+        : opts.includeTocPage === false
+          ? stripped.replace(/^[ \t]*\[toc\][ \t]*\r?\n+/im, '')
+          : stripped;
+      const imageRoot = extractImageRoot(prepared);
+      await loadRenderDeps();
+      const withLocalImages = await inlineLocalImages(
+        renderMarkdown(prepared),
+        imageRoot,
+        opts.filePath,
+      );
+      let body = rewriteLinkUrls(
+        rewriteImageUrls(withLocalImages, imageRoot, opts.filePath),
+        imageRoot,
+        opts.filePath,
+      );
+      if (opts.isMergedBook && opts.baseName.trim()) {
+        const esc = opts.baseName
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+        body = `<div class="pdf-book-cover"><div class="pdf-book-cover__title">${esc}</div></div>\n${body}`;
+      }
+
+      const printTheme = settings.printTheme || 'light';
+      const printCss = buildPrintStyle(pdfOpts);
+      const { overlay: printOverlay, content: printContent, cleanup } = mountPrintOverlay(
+        body,
+        printTheme,
+        printCss,
+        undefined,
+        {
+          codeBlockLineNumbers: settings.codeBlockLineNumbers,
+          codeBlockWrap: settings.codeBlockWrap,
+        },
+      );
+      try {
+        if (printContent) {
+          try {
+            await renderPrintMermaid(
+              printContent,
+              printTheme === 'dark' || (printTheme === 'follow' && settings.theme === 'dark'),
+            );
+          } catch (e) {
+            console.error('[pdf-print] mermaid render failed', e);
+          }
+          await renderPlantumlForExport(printContent, plantumlServer());
+        }
+        await waitForPrintFonts(printContent);
+        await new Promise((r) => setTimeout(r, 120));
+
+        let printOutlines: Array<[number, string, number]> = [];
+        if (printContent) {
+          try {
+            const nav = decoratePrintToc(
+              printContent,
+              wantToc ? t('settings.pdfDefaults.tocTitle') : '',
+            );
+            const box = printableBox(
+              pdfOpts.pageSizeMm ?? { width: 210, height: 297 },
+              pdfOpts.marginMm ?? { top: 15, right: 15, bottom: 15, left: 15 },
+            );
+            if (box) {
+              withPrintPagination(printOverlay, printContent, box, (p) => {
+                if (nav) {
+                  fillTocPageNumbers(
+                    nav,
+                    printContent,
+                    pdfOpts.pageSizeMm && pdfOpts.marginMm ? p.pageOf : null,
+                  );
+                }
+                if (opts.includeBookmarks) {
+                  printOutlines = collectPrintOutline(printContent, p.pageOf);
+                }
+              });
+            } else {
+              if (nav) fillTocPageNumbers(nav, printContent, null);
+              if (opts.includeBookmarks) {
+                printOutlines = collectPrintOutline(printContent, null);
+              }
+            }
+          } catch (e) {
+            console.error('[pdf-print] toc/outline page numbers failed', e);
+          }
+        }
+
+        const mmToPt = (mm: number) => (mm * 72) / 25.4;
+        await invoke('print_webview_to_pdf', {
+          path: opts.outputPath,
+          paper: pdfOpts.pageSizeMm
+            ? [mmToPt(pdfOpts.pageSizeMm.width), mmToPt(pdfOpts.pageSizeMm.height)]
+            : null,
+          margins: pdfOpts.marginMm
+            ? [
+                mmToPt(pdfOpts.marginMm.top),
+                mmToPt(pdfOpts.marginMm.right),
+                mmToPt(pdfOpts.marginMm.bottom),
+                mmToPt(pdfOpts.marginMm.left),
+              ]
+            : [mmToPt(15), mmToPt(15), mmToPt(15), mmToPt(15)],
+          outlines: opts.includeBookmarks ? printOutlines : [],
+        });
+      } finally {
+        cleanup();
+      }
+    } finally {
+      release();
+    }
+  }
+
   /**
    * #535 / #359 / #572 — Direct export of a single note to `outputPath` in the
    * chosen format without opening a per-file Save dialog. Used by CustomExportDialog
@@ -892,11 +1038,13 @@ export function useExport() {
     baseName: string;
     filePath?: string;
     outputPath: string;
-    format: 'pdf' | 'html' | 'docx' | 'epub' | 'odt' | 'latex' | 'rtf' | 'png' | 'textpack';
+    format: 'pdf' | 'pdf-image' | 'html' | 'docx' | 'epub' | 'odt' | 'latex' | 'rtf' | 'png' | 'textpack';
     includeBookmarks?: boolean;
     includeTocPage?: boolean;
     htmlPaginated?: boolean;
+    htmlTopicNav?: boolean;
     htmlContentWidth?: number;
+    isMergedBook?: boolean;
   }): Promise<void> {
     const {
       content,
@@ -907,7 +1055,9 @@ export function useExport() {
       includeBookmarks = settings.exportHtmlWithNav,
       includeTocPage = settings.exportIncludeTocPage,
       htmlPaginated = settings.exportHtmlPaginated,
+      htmlTopicNav = settings.exportHtmlTopicNav,
       htmlContentWidth = settings.exportHtmlContentWidth,
+      isMergedBook = false,
     } = input;
     if (format === 'epub' || format === 'odt' || format === 'latex' || format === 'rtf') {
       const { preprocessMarkdown } = await import('../lib/markdown');
@@ -1001,6 +1151,7 @@ export function useExport() {
         codeBlockWrap: settings.codeBlockWrap,
         withNav: includeBookmarks,
         paginated: includeBookmarks && htmlPaginated,
+        topicNav: includeBookmarks && htmlPaginated && htmlTopicNav,
         contentWidth: htmlContentWidth,
         withTocPage: includeTocPage,
         lang: settings.language,
@@ -1018,12 +1169,25 @@ export function useExport() {
         plantumlServer(),
         await docxReferenceBytes(),
         includeTocPage,
+        isMergedBook,
       );
       const buffer = new Uint8Array(await blob.arrayBuffer());
       await invoke('write_binary_file', { path: outputPath, data: Array.from(buffer) });
       return;
     }
-    if (format === 'pdf') {
+    if (format === 'pdf' && !isMobile()) {
+      await exportMarkdownToVectorPdfFile({
+        content,
+        baseName,
+        filePath,
+        outputPath,
+        includeBookmarks,
+        includeTocPage,
+        isMergedBook,
+      });
+      return;
+    }
+    if (format === 'pdf' || format === 'pdf-image') {
       const pdfOpts = resolvePdfOptions(
         settings.pdfDefaults,
         content,
@@ -1040,6 +1204,7 @@ export function useExport() {
           includeOutline: includeBookmarks,
           includeTocPage,
           tocTitle: t('settings.pdfDefaults.tocTitle'),
+          coverTitle: isMergedBook ? baseName : undefined,
         },
       );
       const buffer = new Uint8Array(await blob.arrayBuffer());
@@ -1059,7 +1224,7 @@ export function useExport() {
 
   function openCustomExportDialog(preset?: {
     scope?: 'current' | 'folder';
-    format?: 'pdf' | 'html' | 'docx' | 'epub' | 'odt' | 'latex' | 'rtf' | 'png' | 'textpack';
+    format?: 'pdf' | 'pdf-image' | 'html' | 'docx' | 'epub' | 'odt' | 'latex' | 'rtf' | 'png' | 'textpack';
   }) {
     window.dispatchEvent(new CustomEvent('solomd:open-custom-export', { detail: preset }));
   }

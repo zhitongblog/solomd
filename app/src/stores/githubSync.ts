@@ -27,7 +27,7 @@ import { hasGitBackend } from '../lib/platform';
  * early with a stable marker the UI can translate; the Sync panel is hidden on
  * Android anyway, so this is the belt to that braces.
  */
-const GIT_BACKED_COMMAND = /^(github_|proxy_)/;
+const GIT_BACKED_COMMAND = /^(github_|gitea_|gitee_|proxy_)/;
 
 export const SYNC_UNSUPPORTED = 'sync-unsupported-platform';
 
@@ -115,6 +115,13 @@ interface State {
   giteaLoading: boolean;
   giteaUrlValid: boolean | null;
   giteaTokenInvalid: boolean;
+
+  // #602 — Gitee (码云) state
+  hasGiteeToken: boolean;
+  giteeUser: GitHubUser | null;
+  giteeRepos: GitHubRepo[];
+  giteeLoading: boolean;
+  giteeTokenInvalid: boolean;
 }
 
 /** Does this error indicate the GitHub token is no longer valid (expired /
@@ -168,6 +175,13 @@ export const useGithubSyncStore = defineStore('githubSync', {
     giteaLoading: false,
     giteaUrlValid: null,
     giteaTokenInvalid: false,
+
+    // Gitee state (#602)
+    hasGiteeToken: false,
+    giteeUser: null,
+    giteeRepos: [],
+    giteeLoading: false,
+    giteeTokenInvalid: false,
   }),
 
   getters: {
@@ -460,6 +474,74 @@ export const useGithubSyncStore = defineStore('githubSync', {
         private: isPrivate,
       });
       this.giteaRepos.unshift(repo);
+      return repo;
+    },
+
+    // ─── Gitee (码云) actions (#602) ───────────────────────────
+
+    async refreshHasGiteeToken(): Promise<void> {
+      if (!hasGitBackend()) {
+        this.hasGiteeToken = false;
+        return;
+      }
+      try {
+        this.hasGiteeToken = await invoke<boolean>('gitee_has_token');
+      } catch {
+        this.hasGiteeToken = false;
+      }
+    },
+
+    async setGiteeToken(token: string): Promise<void> {
+      await invoke('gitee_set_token', { token });
+      this.hasGiteeToken = true;
+      await this.refreshGiteeUser();
+    },
+
+    async clearGiteeToken(): Promise<void> {
+      await invoke('gitee_clear_token');
+      this.hasGiteeToken = false;
+      this.giteeUser = null;
+      this.giteeRepos = [];
+      this.giteeTokenInvalid = false;
+    },
+
+    async refreshGiteeUser(): Promise<void> {
+      try {
+        this.giteeUser = await invoke<GitHubUser>('gitee_user');
+        this.giteeTokenInvalid = false;
+      } catch (e) {
+        this.lastError = String(e);
+        this.giteeUser = null;
+        if (/\b401\b|\b403\b|unauthorized|access_token/i.test(String(e))) {
+          this.giteeTokenInvalid = true;
+        }
+      }
+    },
+
+    async listGiteeRepos(): Promise<GitHubRepo[]> {
+      this.giteeLoading = true;
+      try {
+        this.giteeRepos = await invoke<GitHubRepo[]>('gitee_list_repos');
+        this.giteeTokenInvalid = false;
+        return this.giteeRepos;
+      } catch (e) {
+        this.lastError = String(e);
+        this.giteeRepos = [];
+        if (/\b401\b|\b403\b|unauthorized|access_token/i.test(String(e))) {
+          this.giteeTokenInvalid = true;
+        }
+        throw e;
+      } finally {
+        this.giteeLoading = false;
+      }
+    },
+
+    async createGiteeRepo(name: string, isPrivate: boolean): Promise<GitHubRepo> {
+      const repo = await invoke<GitHubRepo>('gitee_create_vault_repo', {
+        name,
+        private: isPrivate,
+      });
+      this.giteeRepos.unshift(repo);
       return repo;
     },
   },
