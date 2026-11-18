@@ -116,7 +116,11 @@ mod imp {
         let vm = unsafe { JavaVM::from_raw(ctx.vm().cast()) }.map_err(|e| e.to_string())?;
         let activity = unsafe { JObject::from_raw(ctx.context().cast()) };
         let mut env = vm.attach_current_thread().map_err(|e| e.to_string())?;
-        f(&mut env, &activity).map_err(|e| e.to_string())
+        let out = f(&mut env, &activity);
+        if env.exception_check().unwrap_or(false) {
+            let _ = env.exception_clear();
+        }
+        out.map_err(|e| e.to_string())
     }
 
     /// Read a `dimen` from the framework's `android` resource package (e.g.

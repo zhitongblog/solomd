@@ -256,12 +256,20 @@ mod imp {
     use jni::JavaVM;
 
     const CLS: &str = "app/solomd/MainActivity";
+    const CLS_DOT: &str = "app.solomd.MainActivity";
 
     fn with_env<T>(f: impl FnOnce(&mut jni::JNIEnv) -> Result<T, String>) -> Result<T, String> {
         let ctx = ndk_context::android_context();
         let vm = unsafe { JavaVM::from_raw(ctx.vm().cast()) }.map_err(|e| e.to_string())?;
         let mut env = vm.attach_current_thread().map_err(|e| e.to_string())?;
-        f(&mut env)
+        let out = f(&mut env);
+        // #611 — Never return to WebView's `@JavascriptInterface Ipc.postMessage`
+        // with a pending Java exception on JNIEnv; Chromium's JavaBridge otherwise
+        // throws "Error invoking postMessage: Java exception was raised during method invocation".
+        if env.exception_check().unwrap_or(false) {
+            let _ = env.exception_clear();
+        }
+        out
     }
 
     fn check_exc(env: &mut jni::JNIEnv, what: &str) -> Result<(), String> {
@@ -272,16 +280,35 @@ mod imp {
         Ok(())
     }
 
+    /// Resolve `app.solomd.MainActivity` safely on both WebView's JavaBridge thread
+    /// (`find_class` sees the app ClassLoader) and native Rust worker threads
+    /// (`ndk_context::android_context().context()` is `android.app.Application`,
+    /// whose `getClassLoader().loadClass(...)` resolves app classes; note that
+    /// `get_object_class(&app_ctx)` returns `android.app.Application`, NOT `MainActivity`!).
     fn main_activity_class<'a>(env: &mut jni::JNIEnv<'a>) -> Result<jni::objects::JClass<'a>, String> {
-        let ctx = ndk_context::android_context();
-        let act = unsafe { JObject::from_raw(ctx.context().cast()) };
-        if !act.is_null() {
-            if let Ok(cls) = env.get_object_class(&act) {
-                return Ok(cls);
-            }
-            let _ = env.exception_clear();
+        if let Ok(cls) = env.find_class(CLS) {
+            return Ok(cls);
         }
-        env.find_class(CLS).map_err(|e| e.to_string())
+        let _ = env.exception_clear();
+
+        let ctx = ndk_context::android_context();
+        let app_ctx = unsafe { JObject::from_raw(ctx.context().cast()) };
+        if app_ctx.is_null() {
+            return Err("Android context is null".into());
+        }
+        let loader_res = env.call_method(&app_ctx, "getClassLoader", "()Ljava/lang/ClassLoader;", &[]);
+        check_exc(env, "getClassLoader")?;
+        let loader = loader_res.map_err(|e| e.to_string())?.l().map_err(|e| e.to_string())?;
+        let cname = env.new_string(CLS_DOT).map_err(|e| e.to_string())?;
+        let cls_res = env.call_method(
+            &loader,
+            "loadClass",
+            "(Ljava/lang/String;)Ljava/lang/Class;",
+            &[JValue::Object(&cname)],
+        );
+        check_exc(env, "loadClass(MainActivity)")?;
+        let cls_obj = cls_res.map_err(|e| e.to_string())?.l().map_err(|e| e.to_string())?;
+        Ok(jni::objects::JClass::from(cls_obj))
     }
 
     /// Call a static method returning a (nullable) java.lang.String.
@@ -332,9 +359,9 @@ mod imp {
     pub fn pick_folder() -> Result<(), String> {
         with_env(|env| {
             let cls = main_activity_class(env)?;
-            env.call_static_method(cls, "launchFolderPicker", "()V", &[])
-                .map_err(|e| e.to_string())?;
-            check_exc(env, "launchFolderPicker")
+            let res = env.call_static_method(cls, "launchFolderPicker", "()V", &[]);
+            check_exc(env, "launchFolderPicker")?;
+            res.map(|_| ()).map_err(|e| e.to_string())
         })
     }
 

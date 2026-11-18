@@ -17,7 +17,7 @@ import { useTabsStore } from '../stores/tabs';
 import { useI18n } from '../i18n';
 import { isIOS, isMobile, revealLabelKey, usesCommandKey } from '../lib/platform';
 import { usePendingDeletes, isDeletePending, UNDO_WINDOW_MS } from '../composables/usePendingDeletes';
-import { isSafPath, fromSafPath, safList, safRead, safCreate, safCreateDir } from '../lib/saf-fs';
+import { isSafPath, fromSafPath, safList, safRead, safCreate, safCreateDir, safRecoverVaultForPath } from '../lib/saf-fs';
 import { renderMarkdown } from '../lib/markdown';
 import { resolveImageSrc, rewriteImageUrls } from '../lib/image-resolve';
 import {
@@ -303,9 +303,25 @@ function sortLabel(mode: TreeSortMode): string {
 
 async function loadDir(path: string): Promise<{ children: Node[]; truncated: boolean }> {
   try {
-    // #148 — SAF vault: list children via ContentResolver, not std::fs.
-    if (isSafPath(path) && workspace.safTreeUri) {
+    // #148 / #611 — SAF vault: list children via ContentResolver, never std::fs.
+    if (isSafPath(path)) {
+      if (!workspace.safTreeUri) {
+        const recovered = await safRecoverVaultForPath(path);
+        if (recovered) {
+          workspace.setSafVault(recovered.treeUri, path, recovered.name);
+          if (root.value && root.value.path === path) {
+            root.value.name = recovered.name;
+          }
+        }
+      }
+      if (!workspace.safTreeUri) {
+        throw new Error('SAF permission not granted for this folder — please re-select it');
+      }
       const safChildren = await safList(workspace.safTreeUri, fromSafPath(path));
+      if (path === workspace.currentFolder) {
+        rootMissing.value = false;
+        rootError.value = '';
+      }
       // A delete still inside its undo window is presented as done — the file
       // is on disk for a few more seconds but the user has been told it is gone.
       // The hidden-file filter is applied here rather than in the Kotlin

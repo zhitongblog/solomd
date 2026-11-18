@@ -1444,14 +1444,24 @@ onMounted(async () => {
     // persisted (takePersistableUriPermission). If that grant is gone (revoked,
     // or a fresh install), drop the stale vault so the user gets a clean "Open
     // Folder" prompt instead of a tree that errors on every read.
-    if (workspace.safTreeUri) {
+    if (workspace.safTreeUri || (workspace.currentFolder && workspace.currentFolder.startsWith('saf:'))) {
       const checkUri = workspace.safTreeUri;
+      const curFolder = workspace.currentFolder;
       void (async () => {
         try {
-          const { safPersistedTrees } = await import('./lib/saf-fs');
-          const held = await safPersistedTrees();
-          if (!held.includes(checkUri)) {
-            workspace.setFolder(null);
+          const { safPersistedTrees, safRecoverVaultForPath } = await import('./lib/saf-fs');
+          if (checkUri) {
+            const held = await safPersistedTrees();
+            if (!held.includes(checkUri)) {
+              workspace.setFolder(null);
+            }
+          } else if (curFolder && curFolder.startsWith('saf:')) {
+            const recovered = await safRecoverVaultForPath(curFolder);
+            if (recovered) {
+              workspace.setSafVault(recovered.treeUri, curFolder, recovered.name);
+            } else {
+              workspace.setFolder(null);
+            }
           }
         } catch (e) {
           console.warn('SAF vault restore check failed', e);

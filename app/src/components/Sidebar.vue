@@ -29,7 +29,7 @@ import { useInboxView } from '../composables/useInboxView';
 import { useDailyNotes } from '../composables/useDailyNotes';
 import { shortcutLabel } from '../lib/keybindings';
 import { isMobile, usesCommandKey } from '../lib/platform';
-import { isSafPath } from '../lib/saf-fs';
+import { isSafPath, safRecoverVaultForPath } from '../lib/saf-fs';
 import { parentDirOf } from '../lib/new-file-target';
 import { useI18n } from '../i18n';
 
@@ -233,7 +233,16 @@ const recentFolders = computed(() =>
 function openFolder() {
   void files.openFolder();
 }
-function pickFolder(path: string) {
+async function pickFolder(path: string) {
+  if (isSafPath(path) && !workspace.safVaults[path]) {
+    const recovered = await safRecoverVaultForPath(path);
+    if (recovered) {
+      workspace.setSafVault(recovered.treeUri, path, recovered.name);
+      return;
+    }
+    void files.openFolder();
+    return;
+  }
   workspace.setFolder(path);
 }
 
