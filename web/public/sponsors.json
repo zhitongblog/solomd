@@ -56,6 +56,43 @@
       "since": "2026-10",
       "platform": "BYOKList",
       "url": "https://byoklist.com/tool/solomd.app"
+    },
+    {
+      "name": "Jörg Kantel",
+      "since": "2026-06",
+      "platform": "Der Schockwellenreiter",
+      "url": "https://kantel.github.io/posts/2026061802_solomd/index.html",
+      "github": "kantel"
+    },
+    {
+      "name": "码客徐的小栈 (MakeXu)",
+      "since": "2026-11",
+      "platform": "MakeXu",
+      "url": "https://www.makexu.com/tools/solomd"
+    },
+    {
+      "name": "doaipm",
+      "since": "2026-11",
+      "platform": "doaipm",
+      "url": "https://doaipm.com/en/blog/best-free-markdown-editor/"
+    },
+    {
+      "name": "Tool Makers",
+      "since": "2026-11",
+      "platform": "Tool Makers",
+      "url": "https://toolmakers.dev/tools/solomd"
+    },
+    {
+      "name": "MCP Market",
+      "since": "2026-11",
+      "platform": "MCP Market",
+      "url": "https://mcpmarket.com/server/solomd"
+    },
+    {
+      "name": "AlternativeTo",
+      "since": "2026-11",
+      "platform": "AlternativeTo",
+      "url": "https://alternativeto.net/software/solomd/about/"
     }
   ],
   "testers": [
@@ -670,6 +707,13 @@
     "zoceany",
     "ABPAjke",
     "lee-nihao2333",
+    "jacekon",
+    "ziyue7575",
+    "chief1264",
+    "zhouchangsong",
+    "nickzengxl",
+    "P31-CPU",
+    "18954354671",
     {
       "name": "暗石绿 (qxwxxm)",
       "gitee": "qxwxxm"
