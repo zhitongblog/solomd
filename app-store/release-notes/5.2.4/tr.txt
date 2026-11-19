@@ -1,0 +1,5 @@
+SoloMD 5.2.4:
+• Ayarlanabilir Satır Yüksekliği ve Paragraf Aralığı: Ayarlar → Temel bölümünden satır yüksekliğini (1,20–2,60) ve paragraf aralığını (0–2,00em) özelleştirin.
+• Canlı Mod Tablo İyileştirmeleri: Tablolar artık tam düzenleyici genişliğine yayılır; hücre içi imleç tıklama, sürükleyerek metin seçme ve ⌘A düzeltildi.
+• Daha Belirgin Arama Vurgusu: Düzenleyici, önizleme, canlı tablolar ve genel arama sonrasında yüksek kontrastlı eşleşme vurgulaması.
+• Dışa Aktarma Düzeltmeleri: PDF dışa aktarmada içindekiler sonrası sayfa sonu zorlanır ve içindekiler sayfası kapalıyken HTML'de boş ilk bölüm kaldırılır.

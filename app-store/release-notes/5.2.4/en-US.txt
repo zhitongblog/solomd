@@ -1,0 +1,5 @@
+SoloMD 5.2.4:
+• Configurable Line Height & Paragraph Spacing: Fine-tune line height (1.20–2.60) and paragraph spacing (0–2.00em) in Settings → Basics across Live Edit, Source, Preview, and Reading View.
+• Live Table Editing & Layout: Tables now stretch cleanly to full editor width; restored native click-to-place caret, mouse-drag text selection, and cell-scoped ⌘A inside live table cells.
+• Clearer Search Highlighting: High-contrast match and active-match highlights across editor, preview, live tables, and Global Search jumps.
+• Export Polish: Forces a clean page break after the Table of Contents in batch/merged PDF exports, and omits the empty leading section in standalone HTML exports when the TOC page is unchecked.

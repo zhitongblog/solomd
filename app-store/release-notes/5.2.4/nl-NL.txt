@@ -1,0 +1,5 @@
+SoloMD 5.2.4:
+• Instelbare regelhoogte en alinea-afstand: Pas regelhoogte (1,20–2,60) en alinea-afstand (0–2,00em) aan in Instellingen → Basis voor alle weergaven.
+• Verbeterde tabellen in Live-modus: Tabellen vullen nu de volledige breedte van de editor; cursorplaatsing, tekstselectie slepen en ⌘A per cel hersteld.
+• Duidelijkere zoekmarkering: Hoog-contrast markering van zoekresultaten in editor, voorvertoning, tabellen en na globaal zoeken.
+• Exportverbeteringen: Geforceerde pagina-einde na inhoudsopgave in PDF-exports en geen lege startsectie meer in HTML-exports zonder inhoudsopgave.

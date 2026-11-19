@@ -1,0 +1,5 @@
+SoloMD 5.2.4 :
+• Hauteur de ligne et espacement des paragraphes réglables : Personnalisez la hauteur de ligne (1,20–2,60) et l'espacement (0–2,00em) dans Réglages → Général.
+• Tableaux en mode direct améliorés : Les tableaux occupent désormais toute la largeur de l'éditeur ; curseur au clic, sélection à la souris et ⌘A par cellule restaurés.
+• Surlignage de recherche plus lisible : Mise en évidence contrastée des résultats dans l'éditeur, l'aperçu, les tableaux et la recherche globale.
+• Corrections d'export : Saut de page forcé après la table des matières en PDF et suppression de la section vide initiale en HTML sans page de sommaire.

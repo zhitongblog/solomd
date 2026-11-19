@@ -1,0 +1,5 @@
+SoloMD 5.2.4:
+• Interlinea e spaziatura paragrafi configurabili: Regola interlinea (1,20–2,60) e spaziatura (0–2,00em) in Impostazioni → Base per tutte le modalità.
+• Tabelle in modalità Live migliorate: Le tabelle ora occupano l'intera larghezza dell'editor; ripristinati posizionamento cursore al clic, selezione con trascinamento e ⌘A nella cella.
+• Evidenziazione ricerca potenziata: Risultati più visibili in editor, anteprima, tabelle Live e ricerca globale.
+• Export perfezionati: Interruzione di pagina forzata dopo l'indice nei PDF e rimozione della sezione vuota iniziale nell'export HTML senza pagina indice.

@@ -1,0 +1,5 @@
+SoloMD 5.2.4:
+• Altura de línea y espaciado entre párrafos configurables: Ajusta la altura de línea (1.20–2.60) y el espaciado de párrafos (0–2.00em) en Ajustes → Básico.
+• Tablas en modo en vivo mejoradas: Las tablas ocupan el ancho completo del editor; se restauró el cursor al hacer clic, la selección con ratón y ⌘A por celda.
+• Resaltado de búsqueda más claro: Mayor contraste al resaltar coincidencias en el editor, vista previa, tablas en vivo y búsqueda global.
+• Mejoras de exportación: Salto de página limpio tras el índice en PDF y eliminación de la sección vacía inicial en HTML cuando no se incluye página de índice.

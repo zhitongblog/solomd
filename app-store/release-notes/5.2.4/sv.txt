@@ -1,0 +1,5 @@
+SoloMD 5.2.4:
+• Anpassningsbar radhöjd och styckeavstånd: Ställ in radhöjd (1,20–2,60) och styckeavstånd (0–2,00em) i Inställningar → Grundläggande.
+• Förbättrade tabeller i Live-läge: Tabeller fyller nu hela redigerarens bredd; klick för markörplacering, markering med mus och ⌘A per cell är återställda.
+• Tydligare sökmarkering: Högkontrastmarkering av sökträffar i redigeraren, förhandsvisningen, tabeller och vid global sökning.
+• Exportförbättringar: Sidbrytning efter innehållsförteckningen i PDF-export och ingen tom inledande sektion i HTML-export utan innehållsförteckning.

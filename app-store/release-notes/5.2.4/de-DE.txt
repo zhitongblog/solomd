@@ -1,0 +1,5 @@
+SoloMD 5.2.4:
+• Konfigurierbare Zeilenhöhe & Absatzabstand: Passen Sie Zeilenhöhe (1,20–2,60) und Absatzabstand (0–2,00em) in den Einstellungen für alle Ansichten an.
+• Verbesserte Tabellen im Live-Modus: Tabellen füllen nun die volle Editorbreite aus; Cursor-Positionierung, Textauswahl per Ziehen und zellenweises ⌘A in Live-Tabellen wiederhergestellt.
+• Deutlichere Suchhervorhebung: Kontrastreiche Hervorhebung aller Treffer in Editor, Vorschau, Live-Tabellen und nach der globalen Suche.
+• Export-Verbesserungen: Sauberer Seitenumbruch nach dem Inhaltsverzeichnis beim PDF-Export und keine leere Startseite beim HTML-Export ohne Inhaltsverzeichnis.

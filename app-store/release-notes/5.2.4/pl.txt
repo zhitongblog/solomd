@@ -1,0 +1,5 @@
+SoloMD 5.2.4:
+• Konfigurowalna wysokość linii i odstępy między akapitami: Dostosuj wysokość linii (1,20–2,60) i odstępy akapitów (0–2,00em) w Ustawieniach → Podstawowe.
+• Ulepszone tabele w trybie Live: Tabele rozciągają się na pełną szerokość edytora; przywrócono ustawianie kursora kliknięciem, zaznaczanie przeciąganiem i ⌘A w komórce.
+• Wyraźniejsze podświetlanie wyszukiwania: Lepszy kontrast wyników w edytorze, podglądzie, tabelach i po wyszukiwaniu globalnym.
+• Poprawki eksportu: Wymuszony podział strony po spisie treści w PDF oraz brak pustej sekcji startowej w HTML bez strony spisu treści.
