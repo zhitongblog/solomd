@@ -3,7 +3,7 @@ import { ref, shallowRef, onMounted, onBeforeUnmount, watch, computed, nextTick 
 import { EditorState, Compartment, Prec, Transaction } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, highlightActiveLine, drawSelection, rectangularSelection, crosshairCursor } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap, indentWithTab, undo as cmUndo, redo as cmRedo, addCursorAbove, addCursorBelow } from '@codemirror/commands';
-import { searchKeymap, search, openSearchPanel, closeSearchPanel, getSearchQuery, setSearchQuery, selectNextOccurrence } from '@codemirror/search';
+import { searchKeymap, search, openSearchPanel, closeSearchPanel, getSearchQuery, setSearchQuery, searchPanelOpen, selectNextOccurrence } from '@codemirror/search';
 import { createFindPanel, setFindPanelReplaceExpanded, selectAllOccurrencesCommand, type FindPanelLabels } from '../lib/cm-find-panel';
 import { tabCaretMemory, tabTopLineMemory, type TabCaretSnapshot } from '../lib/scroll-memory';
 import { syntaxHighlighting, defaultHighlightStyle, indentOnInput, bracketMatching, indentUnit } from '@codemirror/language';
@@ -67,6 +67,8 @@ import { pdfPageBreaksExtension } from '../lib/pdf-page-breaks';
 import {
   liveBlocksExtension,
   liveBlocksTheme,
+  externalSearchHighlightExtension,
+  setExternalSearchQueryEffect,
   extractImageRoot,
   findTableCellOffsetInLine,
   bindDomTableCellEditor,
@@ -75,6 +77,7 @@ import {
   resetBlockFoldOverridesEffect,
   type DomTableEditorHandle,
 } from '../lib/cm-live-blocks';
+import { applySearchMarksIn, clearSearchMarksIn, findPreviewHitsInText } from '../lib/preview-search-hits';
 import { HEADER_ROW, commonIndent } from '../lib/table-cell-edit';
 import { findTldrawFences, replaceBoardSnapshot } from '../lib/tldraw-board';
 import { dragAwareExtension } from '../lib/cm-drag-aware';
@@ -165,18 +168,34 @@ function firstMatch(query: ReturnType<typeof getSearchQuery>, view: EditorView, 
   return wrapped.done ? null : wrapped.value;
 }
 
+let cmFindAnchor = 0;
+
 const incrementalFindScroll = EditorView.updateListener.of((update) => {
-  if (!update.transactions.some((tr) => tr.effects.some((e) => e.is(setSearchQuery)))) return;
+  const wasOpen = searchPanelOpen(update.startState);
+  const isOpen = searchPanelOpen(update.state);
+  if (!wasOpen && isOpen) {
+    cmFindAnchor = update.startState.selection.main.from;
+  }
+  const queryUpdated = update.transactions.some((tr) => tr.effects.some((e) => e.is(setSearchQuery)));
+  if (!queryUpdated && isOpen && update.selectionSet && update.view.hasFocus) {
+    cmFindAnchor = update.state.selection.main.from;
+  }
+  if (!queryUpdated || !isOpen) return;
   const query = getSearchQuery(update.state);
   if (!query.valid || !query.search) return;
   const view = update.view;
-  const match = firstMatch(query, view, view.state.selection.main.from);
+  const anchor = Math.max(0, Math.min(cmFindAnchor, view.state.doc.length));
+  const match = firstMatch(query, view, anchor);
   if (!match) return;
-  // Dispatching synchronously from an updateListener is unsupported; defer a
-  // frame and re-check the query hasn't changed under us in the meantime.
+  // Defer a frame (dispatching synchronously inside updateListener is unsupported)
+  // and select the active match so `.cm-searchMatch-selected` highlights it
+  // vividly, the panel counter reads `1/N`, and Enter steps directly to `2/N`.
   requestAnimationFrame(() => {
-    if (!getSearchQuery(view.state).eq(query)) return;
-    view.dispatch({ effects: EditorView.scrollIntoView(match.from, { y: 'center' }) });
+    if (!searchPanelOpen(view.state) || !getSearchQuery(view.state).eq(query)) return;
+    view.dispatch({
+      selection: { anchor: match.from, head: match.to },
+      effects: EditorView.scrollIntoView(match.from, { y: 'center' }),
+    });
   });
 });
 
@@ -739,7 +758,9 @@ function onPlainScroll(event: Event) {
   // the scrolled text, so they have to follow the textarea's own scrolling.
   schedulePlainOverlays();
   // So does the find highlight (#330). Cheap: its rects are cached per match.
-  if (plainFindBoxes.value.length || plainFindOpen.value) updatePlainFindBoxes();
+  if (plainFindBoxes.value.length || plainFindOpen.value || plainExternalQuery.value) {
+    updatePlainFindBoxes();
+  }
 }
 
 watch(
@@ -1166,14 +1187,23 @@ async function processPlainLiveRenderedBlocks(onlyBlockIndex?: number) {
     });
     if (handle) {
       plainTableHandles.set(renderEl, handle);
+      renderEl.addEventListener('pointerdown', (ev: PointerEvent) => {
+        const target = ev.target as Element | null;
+        if (target?.closest?.('.cm-live-table__cell--editing')) {
+          ev.stopPropagation();
+        }
+      });
       renderEl.addEventListener('mousedown', (ev: MouseEvent) => {
         if (ev.button !== 0) return;
         const target = ev.target as Element | null;
         if (target?.closest?.('a')) return;
         const cell = target?.closest?.('th, td') as HTMLTableCellElement | null;
-        if (cell && handle.begin(ev, cell)) {
+        const beginState = cell ? handle.begin(ev, cell) : false;
+        if (beginState) {
           plainActiveBlock.value = blockIdx;
-          ev.preventDefault();
+          if (beginState === 'started') {
+            ev.preventDefault();
+          }
           ev.stopPropagation();
         }
       });
@@ -1235,6 +1265,7 @@ async function processPlainLiveRenderedBlocks(onlyBlockIndex?: number) {
     // No boards to swap in — the remaining code blocks are final, so hand
     // them their copy buttons and stop here.
     attachPlainCodeCopyButtons(hostEl);
+    syncPlainRenderedSearchMarks(false);
     return;
   }
   const { boardToSvg } = await import('../lib/tldraw-runtime');
@@ -1287,6 +1318,7 @@ async function processPlainLiveRenderedBlocks(onlyBlockIndex?: number) {
   }
 
   attachPlainCodeCopyButtons(hostEl);
+  syncPlainRenderedSearchMarks(false);
 }
 
 /**
@@ -2003,6 +2035,7 @@ function plainRedo() {
 // navigating selects the match in the right block. ----
 const plainFindOpen = ref(false);
 const plainFindQuery = ref('');
+const plainExternalQuery = ref('');
 const plainReplaceValue = ref('');
 const plainFindCaseSensitive = ref(false);
 const plainFindInput = ref<HTMLInputElement | null>(null);
@@ -2013,14 +2046,23 @@ let plainFindInputTimer: ReturnType<typeof setTimeout> | null = null;
 // Where the caret was when the find bar opened: typing a query jumps to the
 // first match from here on, the way Notepad and VS Code do, not from the top.
 let plainFindAnchor = 0;
-// #330 — the current match, drawn. Focus stays in the find box while you step
-// through matches (so Enter means "next", not "replace the match with a line
-// break"), and a <textarea> paints no selection while it is unfocused.
-const plainFindBoxes = ref<Array<{ top: number; left: number; width: number; height: number }>>([]);
+// #330 — the current match + visible matches, drawn. Focus stays in the find
+// box while you step through matches (so Enter means "next", not "replace the
+// match with a line break"), and a <textarea> paints no selection while unfocused.
+const plainFindBoxes = ref<
+  Array<{ top: number; left: number; width: number; height: number; current?: boolean }>
+>([]);
 // Docks the find bar at the bottom while the current match sits under it.
 const plainFindDodge = ref(false);
 const plainReplaceOpen = ref(false);
-const plainFindBar = ref<HTMLElement | null>(null);
+const plainFindBar = ref<HTMLDivElement | null>(null);
+
+const plainActiveSearchQuery = computed(() =>
+  plainFindOpen.value ? plainFindQuery.value : plainExternalQuery.value,
+);
+const plainActiveSearchCase = computed(() =>
+  plainFindOpen.value ? plainFindCaseSensitive.value : false,
+);
 
 function plainCaretDocOffset(): number {
   if (plainLiveEnabled.value) {
@@ -2032,14 +2074,15 @@ function plainCaretDocOffset(): number {
 }
 
 function runPlainSearch() {
-  const q = plainFindQuery.value;
+  const q = plainActiveSearchQuery.value;
   if (!q) {
     plainMatches.value = [];
     plainMatchIndex.value = 0;
     return;
   }
-  const hay = plainFindCaseSensitive.value ? plainText.value : plainText.value.toLowerCase();
-  const needle = plainFindCaseSensitive.value ? q : q.toLowerCase();
+  const caseSensitive = plainActiveSearchCase.value;
+  const hay = caseSensitive ? plainText.value : plainText.value.toLowerCase();
+  const needle = caseSensitive ? q : q.toLowerCase();
   const out: Array<{ start: number; end: number }> = [];
   let i = hay.indexOf(needle);
   while (i >= 0) {
@@ -2048,6 +2091,88 @@ function runPlainSearch() {
   }
   plainMatches.value = out;
   if (plainMatchIndex.value >= out.length) plainMatchIndex.value = 0;
+}
+
+function syncPlainRenderedSearchMarks(scrollCurrent = false) {
+  const host = plainLiveHost.value;
+  if (!plainLiveEnabled.value || !host) return;
+  const q = plainActiveSearchQuery.value.trim();
+  if (!q) {
+    clearSearchMarksIn(host);
+    return;
+  }
+  const caseSensitive = plainActiveSearchCase.value;
+  const curMatch = plainMatches.value[plainMatchIndex.value] ?? null;
+  const blockNodes = Array.from(host.querySelectorAll<HTMLElement>(':scope > .plain-block'));
+  let currentMarkEl: HTMLElement | null = null;
+  for (let bi = 0; bi < blockNodes.length; bi++) {
+    const blockEl = blockNodes[bi];
+    const renderEl = blockEl.querySelector<HTMLElement>('.plain-block__render');
+    if (!renderEl) continue;
+    const marks = applySearchMarksIn(renderEl, q, { caseSensitive });
+    if (marks.length === 0) continue;
+    const block = plainBlocks.value[bi];
+    if (!curMatch || !block || curMatch.start < block.start || curMatch.end > block.end) {
+      continue;
+    }
+    if (block.isTable) {
+      const localOffset = Math.max(0, curMatch.start - block.start);
+      const hitLineOffset = block.text.slice(0, localOffset).split('\n').length - 1;
+      const targetRow = hitLineOffset <= 0 ? HEADER_ROW : hitLineOffset - 2;
+      const lineStart = block.text.lastIndexOf('\n', Math.max(0, localOffset - 1)) + 1;
+      const beforeInLine = block.text.slice(lineStart, localOffset);
+      let pipes = 0;
+      let lastPipe = -1;
+      for (let k = 0; k < beforeInLine.length; k++) {
+        if (beforeInLine[k] === '\\') {
+          k++;
+          continue;
+        }
+        if (beforeInLine[k] === '|') {
+          pipes++;
+          lastPipe = k;
+        }
+      }
+      const rawLine = block.text.slice(lineStart).split('\n')[0] ?? '';
+      const hasLeadingPipe = /^\s*\|/.test(rawLine);
+      const targetCol = Math.max(0, hasLeadingPipe ? pipes - 1 : pipes);
+      const cellEl = renderEl.querySelector<HTMLElement>(
+        `[data-row="${targetRow}"][data-col="${targetCol}"]`,
+      );
+      if (cellEl) {
+        const cellMarks = marks.filter((mk) => cellEl.contains(mk));
+        if (cellMarks.length > 0) {
+          const beforeInCell = beforeInLine.slice(lastPipe + 1);
+          const ord = Math.min(
+            cellMarks.length - 1,
+            findPreviewHitsInText(beforeInCell, q, Infinity, caseSensitive).hits.length,
+          );
+          const chosen = cellMarks[ord] ?? cellMarks[0];
+          chosen.classList.add('ps-mark--current');
+          currentMarkEl = chosen;
+          continue;
+        }
+      }
+    }
+    let ordInBlock = 0;
+    for (let mi = 0; mi < plainMatchIndex.value; mi++) {
+      const prev = plainMatches.value[mi];
+      if (prev && prev.start >= block.start && prev.end <= block.end) {
+        ordInBlock++;
+      }
+    }
+    const chosen = marks[Math.min(marks.length - 1, ordInBlock)] ?? marks[0];
+    chosen.classList.add('ps-mark--current');
+    currentMarkEl = chosen;
+  }
+  if (scrollCurrent && currentMarkEl) {
+    const hostRect = host.getBoundingClientRect();
+    const markRect = currentMarkEl.getBoundingClientRect();
+    if (hostRect.height > 0) {
+      const y = markRect.top - hostRect.top + markRect.height / 2;
+      host.scrollTop = Math.max(0, host.scrollTop + y - host.clientHeight / 2);
+    }
+  }
 }
 
 function openPlainFind(replace = false) {
@@ -2064,6 +2189,7 @@ function openPlainFind(replace = false) {
       return;
     }
   }
+  plainExternalQuery.value = '';
   plainFindOpen.value = true;
   if (replace) plainReplaceOpen.value = true;
   else if (!wasOpen) plainReplaceOpen.value = false;
@@ -2129,10 +2255,13 @@ function closePlainFind(toMatch = false) {
     plainFindInputTimer = null;
   }
   const m = plainMatches.value[plainMatchIndex.value];
+  const hadQuery = !!plainFindQuery.value;
   plainFindOpen.value = false;
+  plainExternalQuery.value = '';
   plainFindBoxes.value = [];
   plainFindDodge.value = false;
-  if (toMatch && m && plainFindQuery.value) selectPlainRange(m.start, m.end, true);
+  syncPlainRenderedSearchMarks(false);
+  if (toMatch && m && hadQuery) selectPlainRange(m.start, m.end, true);
 }
 
 /** Jump to the first match at or after where the caret was when the bar opened. */
@@ -2141,6 +2270,7 @@ function revealPlainMatchFromAnchor() {
   const ms = plainMatches.value;
   if (!ms.length) {
     plainFindBoxes.value = [];
+    syncPlainRenderedSearchMarks(false);
     return;
   }
   const i = ms.findIndex((m) => m.start >= plainFindAnchor);
@@ -2197,7 +2327,7 @@ function selectPlainRange(start: number, end: number, focusEditor = false) {
       if (!el) {
         // Collapsed table / Mermaid block: no <textarea> is mounted while
         // `sourceCollapsed` is true, so scroll the rendered block card into view
-        // instead of stalling on the match.
+        // and highlight the exact matched cell / text node via `<mark class="ps-mark">`.
         const host = plainLiveHost.value;
         const blockEl = host?.querySelector<HTMLElement>(`[data-plain-block-index="${plainActiveBlock.value}"]`);
         if (host && blockEl) {
@@ -2207,6 +2337,7 @@ function selectPlainRange(start: number, end: number, focusEditor = false) {
           blockEl?.scrollIntoView({ block: 'center' });
         }
         plainFindBoxes.value = [];
+        syncPlainRenderedSearchMarks(true);
         return;
       }
       // preventScroll: focus() otherwise scrolls the whole textarea into view
@@ -2231,6 +2362,7 @@ function selectPlainRange(start: number, end: number, focusEditor = false) {
       }
       emitPlainCursorAndSelection();
       updatePlainFindBoxes();
+      syncPlainRenderedSearchMarks(false);
       pinPlainBlockInView();
     });
     return;
@@ -2338,24 +2470,23 @@ function matchFlowRects(el: HTMLTextAreaElement, text: string, s: number, e: num
   ];
 }
 
-/** Re-draw the current-match highlight (and dodge the bar if it covers it). */
+/** Re-draw the current-match + visible-matches highlights (and dodge the bar if it covers the current match). */
 function updatePlainFindBoxes() {
-  const m = plainFindOpen.value && plainFindQuery.value
-    ? plainMatches.value[plainMatchIndex.value]
-    : null;
+  const activeQuery = plainActiveSearchQuery.value;
+  const m = activeQuery ? plainMatches.value[plainMatchIndex.value] : null;
   const el = plainActiveTextarea();
-  if (!m || !el) {
+  if (!activeQuery || !m || !el) {
     plainFindBoxes.value = [];
     return;
   }
   const cs = window.getComputedStyle(el);
   const padTop = Number.parseFloat(cs.paddingTop) || 0;
   const padLeft = Number.parseFloat(cs.paddingLeft) || 0;
-  let boxes: Array<{ top: number; left: number; width: number; height: number }>;
+  let boxes: Array<{ top: number; left: number; width: number; height: number; current?: boolean }>;
   if (plainLiveEnabled.value) {
     const b = plainBlocks.value[plainActiveBlock.value];
     const block = el.parentElement;
-    if (!b || !block || m.start < b.start || m.end > b.end) {
+    if (!b || !block) {
       plainFindBoxes.value = [];
       return;
     }
@@ -2364,26 +2495,23 @@ function updatePlainFindBoxes() {
     const eRect = el.getBoundingClientRect();
     const ox = eRect.left - bRect.left + padLeft;
     const oy = eRect.top - bRect.top + padTop;
-    boxes = matchFlowRects(el, el.value, m.start - b.start, m.end - b.start)
-      .map((r) => ({ ...r, left: r.left + ox, top: r.top + oy }));
+    boxes = [];
+    const ms = plainMatches.value;
+    let countInBlock = 0;
+    for (let idx = 0; idx < ms.length; idx++) {
+      const hit = ms[idx];
+      if (hit.start < b.start || hit.end > b.end) continue;
+      if (countInBlock >= 150 && idx !== plainMatchIndex.value) continue;
+      countInBlock++;
+      const isCurrent = idx === plainMatchIndex.value;
+      const rects = matchFlowRects(el, el.value, hit.start - b.start, hit.end - b.start);
+      for (const r of rects) {
+        boxes.push({ ...r, left: r.left + ox, top: r.top + oy, current: isCurrent });
+      }
+    }
   } else {
     const text = el.value;
     const width = el.clientWidth;
-    const c = plainFindFlowCache;
-    let rects: Array<{ top: number; left: number; width: number; height: number }>;
-    if (c && c.text === text && c.start === m.start && c.end === m.end && c.width === width) {
-      rects = c.rects;
-    } else {
-      const lineStart = text.lastIndexOf('\n', Math.max(0, m.start - 1)) + 1;
-      const nl = text.indexOf('\n', lineStart);
-      const lineText = text.slice(lineStart, nl < 0 ? text.length : nl);
-      const localEnd = Math.min(lineText.length, m.end - lineStart);
-      const localRects = matchFlowRects(el, lineText, m.start - lineStart, localEnd);
-      const lh = localRects[0]?.height || plainLineHeightPx();
-      const baseTop = plainLineTopPx(lineAt(text, m.start), lh);
-      rects = localRects.map((r) => ({ ...r, top: baseTop + r.top }));
-    }
-    plainFindFlowCache = { text, start: m.start, end: m.end, width, rects };
     const container = el.parentElement;
     if (!container) {
       plainFindBoxes.value = [];
@@ -2393,10 +2521,51 @@ function updatePlainFindBoxes() {
     const eRect = el.getBoundingClientRect();
     const ox = eRect.left - cRect.left + padLeft - el.scrollLeft;
     const oy = eRect.top - cRect.top + padTop - el.scrollTop;
-    boxes = rects
-      .map((r) => ({ ...r, left: r.left + ox, top: r.top + oy }))
-      // Scrolled out of the textarea's own viewport: nothing to draw.
-      .filter((r) => r.top + r.height > eRect.top - cRect.top && r.top < eRect.bottom - cRect.top);
+    const viewTopInFlow = Math.max(0, el.scrollTop - el.clientHeight * 0.5);
+    const viewBottomInFlow = el.scrollTop + el.clientHeight * 1.5;
+    const defaultLh = plainLineHeightPx();
+
+    const measureFlatMatch = (hit: { start: number; end: number }, useCache: boolean) => {
+      if (useCache) {
+        const c = plainFindFlowCache;
+        if (c && c.text === text && c.start === hit.start && c.end === hit.end && c.width === width) {
+          return c.rects;
+        }
+      }
+      const lineStart = text.lastIndexOf('\n', Math.max(0, hit.start - 1)) + 1;
+      const nl = text.indexOf('\n', lineStart);
+      const lineText = text.slice(lineStart, nl < 0 ? text.length : nl);
+      const localEnd = Math.min(lineText.length, hit.end - lineStart);
+      const localRects = matchFlowRects(el, lineText, hit.start - lineStart, localEnd);
+      const lh = localRects[0]?.height || defaultLh;
+      const baseTop = plainLineTopPx(lineAt(text, hit.start), lh);
+      const computedRects = localRects.map((r) => ({ ...r, top: baseTop + r.top }));
+      if (useCache) {
+        plainFindFlowCache = { text, start: hit.start, end: hit.end, width, rects: computedRects };
+      }
+      return computedRects;
+    };
+
+    boxes = [];
+    const ms = plainMatches.value;
+    let measured = 0;
+    for (let idx = 0; idx < ms.length; idx++) {
+      const hit = ms[idx];
+      const isCurrent = idx === plainMatchIndex.value;
+      if (!isCurrent) {
+        if (measured >= 120) continue;
+        const approxTop = plainLineTopPx(lineAt(text, hit.start), defaultLh);
+        if (approxTop < viewTopInFlow || approxTop > viewBottomInFlow) continue;
+      }
+      measured++;
+      const rects = measureFlatMatch(hit, isCurrent);
+      for (const r of rects) {
+        const mapped = { ...r, left: r.left + ox, top: r.top + oy, current: isCurrent };
+        if (mapped.top + mapped.height > eRect.top - cRect.top && mapped.top < eRect.bottom - cRect.top) {
+          boxes.push(mapped);
+        }
+      }
+    }
   }
   plainFindBoxes.value = boxes;
   nextTick(updatePlainFindDodge);
@@ -2428,6 +2597,7 @@ function updatePlainFindDodge() {
   const barTop = fRect.top + 8;
   const barBottom = barTop + bar.offsetHeight;
   plainFindDodge.value = plainFindBoxes.value.some((r) => {
+    if (r.current === false) return false;
     const top = cRect.top + r.top;
     const left = cRect.left + r.left;
     return top < barBottom && top + r.height > barTop && left + r.width > barLeft && left < barRight;
@@ -2470,10 +2640,22 @@ function replacePlainCurrent() {
 // move every match after them; recount so the counter and the highlight stay
 // on real text instead of on stale offsets.
 watch(plainText, () => {
-  if (!plainFindOpen.value || !plainFindQuery.value) return;
+  if (!plainFindOpen.value) {
+    if (plainExternalQuery.value) {
+      plainExternalQuery.value = '';
+      plainMatches.value = [];
+      plainFindBoxes.value = [];
+      nextTick(() => syncPlainRenderedSearchMarks(false));
+    }
+    return;
+  }
+  if (!plainFindQuery.value) return;
   runPlainSearch();
   plainFindFlowCache = null;
-  nextTick(updatePlainFindBoxes);
+  nextTick(() => {
+    updatePlainFindBoxes();
+    syncPlainRenderedSearchMarks(false);
+  });
 });
 
 function replacePlainAll() {
@@ -2774,6 +2956,14 @@ function runPlainSelectAll(targetEl?: HTMLTextAreaElement | null): void {
 
 /** Shared keydown handling (undo/redo, Tab indent) for the plain editors. */
 function handlePlainKeydownShared(event: KeyboardEvent): boolean {
+  if (event.key === 'Escape' && !plainFindOpen.value && plainExternalQuery.value) {
+    event.preventDefault();
+    plainExternalQuery.value = '';
+    plainMatches.value = [];
+    plainFindBoxes.value = [];
+    syncPlainRenderedSearchMarks(false);
+    return true;
+  }
   const mod = event.ctrlKey || event.metaKey;
   const letter = mod ? plainModLetter(event) : '';
   if (mod && !event.altKey && !event.shiftKey && letter === 'f') {
@@ -4734,18 +4924,21 @@ const fontSizeTheme = (px: number, family: string) =>
     // more specific than this theme and repainted matches blue-outlined, and
     // the current one as accent-coloured text on a dark fill — unreadable.
     '.cm-searchMatch': {
-      backgroundColor: 'color-mix(in srgb, var(--accent, #ff9f40) 24%, transparent) !important',
-      outline: 'none !important',
+      backgroundColor: 'var(--search-match-bg, rgba(255, 208, 0, 0.48)) !important',
+      outline: '1px solid var(--search-match-border, rgba(208, 140, 0, 0.55)) !important',
       borderRadius: '2px',
     },
     '.cm-searchMatch.cm-searchMatch-selected': {
-      backgroundColor: 'var(--accent, #ff9f40) !important',
-      color: 'var(--accent-fg, #fff)',
-      outline: '1px solid var(--accent, #ff9f40) !important',
+      backgroundColor: 'var(--search-match-current-bg, #ff8c00) !important',
+      color: 'var(--search-match-current-fg, #ffffff) !important',
+      outline: '1px solid var(--search-match-current-bg, #ff8c00) !important',
+      borderRadius: '2px',
     },
     // The match's own text colour (a heading, a link…) would sit on the
-    // accent fill; inside the current match everything takes accent-fg.
-    '.cm-searchMatch.cm-searchMatch-selected *': { color: 'var(--accent-fg, #fff) !important' },
+    // accent fill; inside the current match everything takes search-match-current-fg.
+    '.cm-searchMatch.cm-searchMatch-selected *': {
+      color: 'var(--search-match-current-fg, #ffffff) !important',
+    },
   });
 
 function buildExtensions() {
@@ -4755,6 +4948,7 @@ function buildExtensions() {
   return [
     imeCompositionGuard(),
     history(),
+    externalSearchHighlightExtension(),
     preservePointerFocusScroll(),
     ...(windowsImeSafeMode
       ? []
@@ -5259,7 +5453,7 @@ function focusedPlainTextarea(): HTMLTextAreaElement | null {
 function readBubbleSelection(): BubbleSelection | null {
   if (!usePlainWindowsEditor) {
     if (!view || view.composing) return null;
-    if (!view.dom.contains(document.activeElement)) return null;
+    if (document.activeElement !== view.contentDOM) return null;
     const sel = view.state.selection.main;
     if (sel.empty) return null;
     const doc = view.state.doc;
@@ -6152,7 +6346,10 @@ function restoreCodeMirrorScroll(saved?: TabCaretSnapshot) {
 // The live block editor additionally re-renders its blocks asynchronously,
 // growing scrollHeight after the restore. Pin the saved position through that
 // settle window, backing off the moment the user scrolls themselves.
+let cancelPlainScrollRestore: (() => void) | null = null;
+
 function restorePlainScroll(saved?: TabCaretSnapshot) {
+  cancelPlainScrollRestore?.();
   const scroller = (): HTMLElement | null =>
     plainLiveEnabled.value ? plainLiveHost.value : plainEditor.value;
   const el = scroller();
@@ -6174,10 +6371,14 @@ function restorePlainScroll(saved?: TabCaretSnapshot) {
   const st = saved?.scrollTop ?? 0;
   el.scrollTop = st;
   let cancelled = false;
-  const cancel = () => {
-    cancelled = true;
-  };
   const intentEvents = ['wheel', 'pointerdown', 'keydown', 'touchstart'] as const;
+  const cancel = () => {
+    if (cancelled) return;
+    cancelled = true;
+    for (const ev of intentEvents) el.removeEventListener(ev, cancel);
+    if (cancelPlainScrollRestore === cancel) cancelPlainScrollRestore = null;
+  };
+  cancelPlainScrollRestore = cancel;
   for (const ev of intentEvents) el.addEventListener(ev, cancel, { passive: true });
   const reassert = () => {
     const cur = scroller();
@@ -6588,25 +6789,67 @@ watch(
   },
 );
 
-function gotoLine(line: number) {
+function gotoLine(line: number, highlightQuery?: string) {
+  cancelCmScrollRestore?.();
+  cancelPlainScrollRestore?.();
+  const q = (highlightQuery || '').trim();
   if (usePlainWindowsEditor) {
+    const lineStart = plainLineStartOffset(line);
+    if (q && !plainFindOpen.value) {
+      plainExternalQuery.value = q;
+      runPlainSearch();
+      const ms = plainMatches.value;
+      if (ms.length > 0) {
+        const nl = plainText.value.indexOf('\n', lineStart);
+        const lineEnd = nl < 0 ? plainText.value.length : nl;
+        let idx = ms.findIndex((m) => m.start >= lineStart && m.start <= lineEnd);
+        if (idx < 0) idx = ms.findIndex((m) => m.start >= lineStart);
+        if (idx < 0) idx = 0;
+        plainMatchIndex.value = idx;
+        const m = ms[idx];
+        selectPlainRange(m.start, m.end, true);
+        return;
+      }
+    } else if (!plainFindOpen.value && plainExternalQuery.value) {
+      plainExternalQuery.value = '';
+      plainMatches.value = [];
+      plainFindBoxes.value = [];
+      syncPlainRenderedSearchMarks(false);
+    }
     if (plainLiveEnabled.value) {
-      plainSetCaret(plainLineStartOffset(line));
+      plainSetCaret(lineStart);
       plainScrollToLine(line);
       return;
     }
     const el = plainEditor.value;
     if (!el) return;
-    plainSetCaret(plainLineStartOffset(line));
+    plainSetCaret(lineStart);
     plainScrollToLine(line);
     return;
   }
   if (!view) return;
   const safe = Math.max(1, Math.min(line, view.state.doc.lines));
   const lineObj = view.state.doc.line(safe);
+  if (q && !searchPanelOpen(view.state)) {
+    const hitIdx = lineObj.text.toLowerCase().indexOf(q.toLowerCase());
+    const matchFrom = hitIdx >= 0 ? lineObj.from + hitIdx : lineObj.from;
+    const matchTo = hitIdx >= 0 ? Math.min(lineObj.to, matchFrom + q.length) : lineObj.from;
+    view.dispatch({
+      selection: { anchor: matchFrom, head: matchTo },
+      effects: [
+        setExternalSearchQueryEffect.of(q),
+        EditorView.scrollIntoView(matchFrom, { y: 'center' }),
+      ],
+    });
+    view.focus();
+    return;
+  }
   view.dispatch({
     selection: { anchor: lineObj.from },
-    effects: EditorView.scrollIntoView(lineObj.from, { y: 'start', yMargin: 8 }),
+    effects: [
+      ...(searchPanelOpen(view.state) ? [] : [setExternalSearchQueryEffect.of('')]),
+      EditorView.scrollIntoView(lineObj.from, { y: 'start', yMargin: 8 }),
+    ],
   });
   view.focus();
 }
@@ -7226,6 +7469,7 @@ const cls = computed(() => ({
             v-for="(r, i) in plainFindBoxes"
             :key="'find-' + i"
             class="plain-find-hl"
+            :class="{ 'plain-find-hl--other': r.current === false }"
             aria-hidden="true"
             :style="{ top: r.top + 'px', left: r.left + 'px', width: r.width + 'px', height: r.height + 'px' }"
           ></div>
@@ -7312,6 +7556,7 @@ const cls = computed(() => ({
         v-for="(r, i) in plainFindBoxes"
         :key="'find-' + i"
         class="plain-find-hl"
+        :class="{ 'plain-find-hl--other': r.current === false }"
         aria-hidden="true"
         :style="{ top: r.top + 'px', left: r.left + 'px', width: r.width + 'px', height: r.height + 'px' }"
       ></div>
@@ -7485,15 +7730,19 @@ const cls = computed(() => ({
   top: auto;
   bottom: 8px;
 }
-/* #330 — the current match. Translucent so the glyphs underneath stay legible;
-   above the textarea, never takes a click. */
+/* #330 — the current & visible find matches. Translucent so the glyphs underneath
+   stay legible; above the textarea, never takes a click. */
 .plain-find-hl {
   position: absolute;
   z-index: 2;
   border-radius: 2px;
-  background: var(--accent);
-  opacity: 0.35;
+  background: rgba(255, 140, 0, 0.44);
+  box-shadow: 0 0 0 1.5px var(--search-match-current-bg, #ff8c00);
   pointer-events: none;
+}
+.plain-find-hl--other {
+  background: var(--search-match-bg, rgba(255, 208, 0, 0.44));
+  box-shadow: inset 0 0 0 1px var(--search-match-border, rgba(208, 140, 0, 0.5));
 }
 .plain-find__row {
   display: flex;
@@ -8087,6 +8336,8 @@ const cls = computed(() => ({
   background: var(--bg);
   white-space: pre-wrap;
   cursor: text;
+  user-select: text;
+  -webkit-user-select: text;
 }
 .plain-block__render :deep(hr) {
   border: none;

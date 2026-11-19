@@ -17,11 +17,16 @@ import { EditorView } from '@codemirror/view';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 
 import {
+  bindDomTableCellEditor,
+  externalSearchHighlightExtension,
+  externalSearchQueryField,
   findTableCellOffsetInLine,
   liveBlocksExtension,
+  setExternalSearchQueryEffect,
   toggleMermaidFoldEffect,
   toggleTableFoldEffect,
 } from './cm-live-blocks.ts';
+import { openSearchPanel, search } from '@codemirror/search';
 import { dragAwareExtension, dragStartEffect, dragEndEffect } from './cm-drag-aware.ts';
 import { extractImageReferenceDefinitions, findMarkdownImagesInLine } from './md-image-url.ts';
 
@@ -746,4 +751,142 @@ test('intra-line selection changes (incremental Find) skip full-document block d
   }).state;
   const decos2 = s2.facet(EditorView.decorations)[0];
   assert.notEqual(decos2, decos1, 'cross-line selection into table must rebuild block decorations');
+});
+
+test('TableWidget.ignoreEvent ignores selectionchange events so native cell drag-selection is preserved', () => {
+  const doc = ['| 血管 | 血液 |', '| - | - |', '| 肺动脉 | 静脉血 |'].join('\n');
+  const found = widgets(doc, 1).find((w) => w.widgetName === 'TableWidget');
+  assert.ok(found, 'TableWidget should be created');
+  assert.equal(
+    found.widget.ignoreEvent({ type: 'selectionchange', target: {} } as unknown as Event),
+    true,
+    'selectionchange inside active cell must be ignored by CodeMirror DOMObserver',
+  );
+});
+
+test('bindDomTableCellEditor returns "started" on first press and "editing" on subsequent clicks/drags inside the active cell', () => {
+  const prevDoc = (globalThis as any).document;
+  const prevWin = (globalThis as any).window;
+  try {
+    (globalThis as any).document = {
+      createRange: () => ({
+        selectNodeContents() {},
+        collapse() {},
+      }),
+    };
+    (globalThis as any).window = {
+      getSelection: () => ({
+        rangeCount: 0,
+        removeAllRanges() {},
+        addRange() {},
+      }),
+      dispatchEvent() {},
+    };
+
+    const makeCell = (text: string, cellIndex: number) => {
+      const attrs = new Map<string, string>();
+      const classes = new Set<string>();
+      return {
+        cellIndex,
+        dataset: {} as Record<string, string>,
+        innerHTML: text,
+        textContent: text,
+        isConnected: true,
+        classList: {
+          add: (c: string) => classes.add(c),
+          remove: (c: string) => classes.delete(c),
+          has: (c: string) => classes.has(c),
+        },
+        setAttribute: (k: string, v: string) => attrs.set(k, v),
+        removeAttribute: (k: string) => attrs.delete(k),
+        getAttribute: (k: string) => attrs.get(k) ?? null,
+        focus() {},
+        contains: () => false,
+        querySelectorAll: () => [],
+      };
+    };
+
+    const h0 = makeCell('血管', 0);
+    const h1 = makeCell('血液', 1);
+    const c0 = makeCell('肺动脉', 0);
+    const c1 = makeCell('静脉血', 1);
+    const tHead = {} as any;
+    const headRow = { parentElement: tHead, cells: [h0, h1] };
+    const bodyRow = { parentElement: {}, cells: [c0, c1] };
+    const table = { tHead, rows: [headRow, bodyRow] };
+    const wrap = {
+      dataset: {} as Record<string, string>,
+      isConnected: true,
+      querySelector: (sel: string) => (sel === 'table' ? table : null),
+      addEventListener() {},
+      contains: () => true,
+    };
+
+    let committedMarkdown = '';
+    const source = ['| 血管 | 血液 |', '| --- | --- |', '| 肺动脉 | 静脉血 |'].join('\n');
+    const handle = bindDomTableCellEditor(wrap as unknown as HTMLElement, {
+      source,
+      from: 0,
+      to: source.length,
+      isReadOnly: () => false,
+      commitMarkdown: (md) => {
+        committedMarkdown = md;
+      },
+      exitTable: () => {},
+    });
+    assert.ok(handle, 'table cell editor handle should bind');
+
+    const fakeMouse = { clientX: 20, clientY: 10, button: 0 } as unknown as MouseEvent;
+    // 1. First click into c0 starts inline editing -> returns 'started'
+    const first = handle.begin(fakeMouse, c0 as unknown as HTMLTableCellElement);
+    assert.equal(first, 'started');
+    assert.equal(c0.getAttribute('contenteditable'), 'true');
+
+    // 2. Subsequent click or drag inside the SAME active cell c0 -> returns 'editing'
+    // so callers only stopPropagation() and do NOT preventDefault(), allowing native
+    // caret repositioning and mouse-drag text selection inside the cell!
+    const second = handle.begin(fakeMouse, c0 as unknown as HTMLTableCellElement);
+    assert.equal(second, 'editing');
+
+    // 3. Clicking a DIFFERENT cell c1 commits c0 and enters c1 -> returns 'started'
+    c0.textContent = '肺静脉';
+    const third = handle.begin(fakeMouse, c1 as unknown as HTMLTableCellElement);
+    assert.equal(third, 'started');
+    assert.ok(committedMarkdown.includes('肺静脉'), 'switching cells should commit edited text');
+  } finally {
+    (globalThis as any).document = prevDoc;
+    (globalThis as any).window = prevWin;
+  }
+});
+
+test('externalSearchQueryField stores Global Search query and clears on edit or Ctrl+F open', () => {
+  let state = EditorState.create({
+    doc: '肺动脉里流的是静脉血，肺静脉里流的是动脉血',
+    extensions: [search(), externalSearchHighlightExtension()],
+  });
+  assert.equal(state.field(externalSearchQueryField), '');
+
+  state = state.update({
+    effects: setExternalSearchQueryEffect.of('  静脉血  '),
+  }).state;
+  assert.equal(state.field(externalSearchQueryField), '静脉血');
+
+  // Selection move preserves external search highlight
+  state = state.update({ selection: { anchor: 4, head: 7 } }).state;
+  assert.equal(state.field(externalSearchQueryField), '静脉血');
+
+  // Document edit clears external search highlight automatically
+  state = state.update({ changes: { from: 0, to: 0, insert: '！' } }).state;
+  assert.equal(state.field(externalSearchQueryField), '');
+
+  // Opening Ctrl+F search panel also clears external search highlight
+  state = state.update({ effects: setExternalSearchQueryEffect.of('动脉血') }).state;
+  assert.equal(state.field(externalSearchQueryField), '动脉血');
+  openSearchPanel({
+    state,
+    dispatch(...specs) {
+      state = state.update(...specs).state;
+    },
+  } as unknown as EditorView);
+  assert.equal(state.field(externalSearchQueryField), '');
 });

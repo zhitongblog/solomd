@@ -20,16 +20,115 @@
 
 import { RangeSetBuilder, StateField, StateEffect, Prec, EditorSelection, Transaction, EditorState } from '@codemirror/state';
 import { keymap } from '@codemirror/view';
-import type { DecorationSet } from '@codemirror/view';
+import type { DecorationSet, ViewUpdate } from '@codemirror/view';
+import { SearchQuery, getSearchQuery, searchPanelOpen, setSearchQuery } from '@codemirror/search';
 import { syntaxTree } from '@codemirror/language';
 import { isDragging, isDragEndTransaction } from './cm-drag-aware';
 import { frozenFieldDuringComposition, isImeSafeFlushTransaction } from './cm-ime-guard';
+import { applySearchMarksIn, clearSearchMarksIn, findPreviewHitsInText } from './preview-search-hits';
 import {
   Decoration,
   EditorView,
   ViewPlugin,
   WidgetType,
 } from '@codemirror/view';
+
+export const setExternalSearchQueryEffect = StateEffect.define<string>();
+
+export const externalSearchQueryField = StateField.define<string>({
+  create: () => '',
+  update(value, tr) {
+    for (const e of tr.effects) {
+      if (e.is(setExternalSearchQueryEffect)) return e.value.trim();
+    }
+    if (tr.docChanged || searchPanelOpen(tr.state)) return '';
+    return value;
+  },
+});
+
+const externalMatchMark = Decoration.mark({ class: 'cm-searchMatch' });
+const externalSelectedMatchMark = Decoration.mark({ class: 'cm-searchMatch cm-searchMatch-selected' });
+
+export function externalSearchHighlightExtension() {
+  const highlighter = ViewPlugin.fromClass(
+    class {
+      decorations: DecorationSet;
+      constructor(view: EditorView) {
+        this.decorations = this.build(view);
+      }
+      update(update: ViewUpdate) {
+        const prev = update.startState.field(externalSearchQueryField, false) ?? '';
+        const next = update.state.field(externalSearchQueryField, false) ?? '';
+        const prevPanel = searchPanelOpen(update.startState);
+        const nextPanel = searchPanelOpen(update.state);
+        if (
+          prev !== next ||
+          prevPanel !== nextPanel ||
+          (next && (update.docChanged || update.selectionSet || update.viewportChanged))
+        ) {
+          this.decorations = this.build(update.view);
+        }
+      }
+      build(view: EditorView): DecorationSet {
+        if (searchPanelOpen(view.state)) return Decoration.none;
+        const ext = view.state.field(externalSearchQueryField, false) ?? '';
+        if (!ext) return Decoration.none;
+        const sq = new SearchQuery({ search: ext });
+        if (!sq.valid) return Decoration.none;
+        const builder = new RangeSetBuilder<Decoration>();
+        const ranges = view.visibleRanges;
+        for (let i = 0; i < ranges.length; i++) {
+          let { from, to } = ranges[i];
+          while (i < ranges.length - 1 && to > ranges[i + 1].from - 500) {
+            to = ranges[++i].to;
+          }
+          const cur = sq.getCursor(view.state, from, to);
+          for (let step = cur.next(); !step.done; step = cur.next()) {
+            const m = step.value;
+            if (m.from >= m.to) continue;
+            const selected = view.state.selection.ranges.some(
+              (r) => r.from === m.from && r.to === m.to,
+            );
+            builder.add(m.from, m.to, selected ? externalSelectedMatchMark : externalMatchMark);
+          }
+        }
+        return builder.finish();
+      }
+    },
+    { decorations: (v) => v.decorations },
+  );
+
+  const clearOnEscape = keymap.of([
+    {
+      key: 'Escape',
+      run(view) {
+        const ext = view.state.field(externalSearchQueryField, false) ?? '';
+        if (!ext || searchPanelOpen(view.state)) return false;
+        view.dispatch({ effects: setExternalSearchQueryEffect.of('') });
+        return true;
+      },
+    },
+  ]);
+
+  return [externalSearchQueryField, Prec.low(highlighter), clearOnEscape];
+}
+
+function activeEditorSearchSpec(
+  state: EditorState,
+): { search: string; caseSensitive: boolean } | null {
+  if (searchPanelOpen(state)) {
+    const q = getSearchQuery(state);
+    if (q.valid && q.search.trim()) {
+      return { search: q.search, caseSensitive: q.caseSensitive };
+    }
+    return null;
+  }
+  const ext = state.field(externalSearchQueryField, false);
+  if (ext && ext.trim()) {
+    return { search: ext.trim(), caseSensitive: false };
+  }
+  return null;
+}
 
 // Block decorations (Decoration.replace with `block: true`) MUST come from a
 // StateField — CM6 throws "Block decorations may not be specified via plugins"
@@ -533,8 +632,10 @@ export interface DomTableEditorAdapter {
   onRedo?: () => boolean;
 }
 
+export type DomTableBeginState = 'editing' | 'started' | false;
+
 export interface DomTableEditorHandle {
-  begin: (ev: MouseEvent, cell: HTMLTableCellElement) => boolean;
+  begin: (ev: MouseEvent, cell: HTMLTableCellElement) => DomTableBeginState;
   focusCell: (row: number, col: number, caret?: 'start' | 'end') => boolean;
 }
 
@@ -720,6 +821,7 @@ export function bindDomTableCellEditor(
     const col = Number(cell.dataset.col ?? cell.cellIndex);
     if (col < 0 || col >= m.header.length) return false;
     if (row !== HEADER_ROW && (row < 0 || row >= m.rows.length)) return false;
+    clearSearchMarksIn(cell);
     active = { cell, row, col, html: cell.innerHTML };
     cell.textContent = cellText(m, row, col);
     cell.classList.add('cm-live-table__cell--editing');
@@ -761,26 +863,79 @@ export function bindDomTableCellEditor(
     return true;
   };
 
-  const begin = (ev: MouseEvent, cell: HTMLTableCellElement): boolean => {
+  let cleanupFirstPressDrag: (() => void) | null = null;
+
+  const begin = (ev: MouseEvent, cell: HTMLTableCellElement): DomTableBeginState => {
     if (adapter.isReadOnly()) return false;
     const row = Number(cell.dataset.row ?? HEADER_ROW);
     const col = Number(cell.dataset.col ?? cell.cellIndex);
     if (active && active.cell === cell) {
-      return true;
+      // Already editing this cell: do NOT preventDefault on mousedown so the
+      // browser natively repositions the caret at the clicked glyph, selects
+      // words on double-click, and supports native mouse-drag text selection.
+      return 'editing';
     }
+    cleanupFirstPressDrag?.();
+    cleanupFirstPressDrag = null;
     if (active) commit({ row, col });
-    if (written) return true;
+    if (written) return 'started';
     if (!start(cell)) return false;
 
     const range = caretRangeAt(ev.clientX, ev.clientY);
-    const sel = window.getSelection();
+    const sel = typeof window !== 'undefined' ? window.getSelection?.() : null;
     if (range && cell.contains(range.startContainer)) {
       sel?.removeAllRanges();
       sel?.addRange(range);
     } else {
       caretToEdge(cell, 'end');
     }
-    return true;
+
+    // Also support click-and-drag text selection right on the very first press
+    // that enters the cell (where mousedown had to replace rendered HTML with
+    // plain text and preventDefault).
+    if (
+      sel &&
+      sel.rangeCount > 0 &&
+      typeof window !== 'undefined' &&
+      typeof window.addEventListener === 'function'
+    ) {
+      const initRange = sel.getRangeAt(0);
+      const anchorNode = initRange.startContainer;
+      const anchorOffset = initRange.startOffset;
+      const startX = ev.clientX;
+      const startY = ev.clientY;
+      let dragging = false;
+      const stopDrag = () => {
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', stopDrag);
+        window.removeEventListener('blur', stopDrag);
+        if (cleanupFirstPressDrag === stopDrag) cleanupFirstPressDrag = null;
+      };
+      const onMove = (moveEv: MouseEvent) => {
+        if (!active || active.cell !== cell || !cell.isConnected) {
+          stopDrag();
+          return;
+        }
+        if ((moveEv.buttons & 1) === 0) {
+          stopDrag();
+          return;
+        }
+        if (!dragging && Math.abs(moveEv.clientX - startX) + Math.abs(moveEv.clientY - startY) < 3) {
+          return;
+        }
+        dragging = true;
+        const headRange = caretRangeAt(moveEv.clientX, moveEv.clientY);
+        if (headRange && cell.contains(headRange.startContainer) && typeof sel.setBaseAndExtent === 'function') {
+          sel.setBaseAndExtent(anchorNode, anchorOffset, headRange.startContainer, headRange.startOffset);
+        }
+      };
+      cleanupFirstPressDrag = stopDrag;
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', stopDrag);
+      window.addEventListener('blur', stopDrag);
+    }
+
+    return 'started';
   };
 
   wrap.addEventListener(
@@ -940,6 +1095,61 @@ export function bindDomTableCellEditor(
   return { begin, focusCell };
 }
 
+function syncTableWidgetSearchMarks(wrap: HTMLElement, state: EditorState): HTMLElement | null {
+  const spec = activeEditorSearchSpec(state);
+  if (!spec) {
+    clearSearchMarksIn(wrap);
+    return null;
+  }
+  const marks = applySearchMarksIn(wrap, spec.search, { caseSensitive: spec.caseSensitive });
+  if (marks.length === 0) return null;
+  const from = Number(wrap.dataset.tableFrom ?? -1);
+  const to = Number(wrap.dataset.tableTo ?? -1);
+  const sel = state.selection.main;
+  if (from >= 0 && to >= from && sel.from >= from && sel.to <= to) {
+    const source = state.doc.sliceString(from, Math.min(to, state.doc.length));
+    const localOffset = Math.max(0, sel.from - from);
+    const hitLineOffset = source.slice(0, localOffset).split('\n').length - 1;
+    const targetRow = hitLineOffset <= 0 ? HEADER_ROW : hitLineOffset - 2;
+    const lineStart = source.lastIndexOf('\n', Math.max(0, localOffset - 1)) + 1;
+    const beforeInLine = source.slice(lineStart, localOffset);
+    let pipes = 0;
+    let lastPipe = -1;
+    for (let k = 0; k < beforeInLine.length; k++) {
+      if (beforeInLine[k] === '\\') {
+        k++;
+        continue;
+      }
+      if (beforeInLine[k] === '|') {
+        pipes++;
+        lastPipe = k;
+      }
+    }
+    const rawLine = source.slice(lineStart).split('\n')[0] ?? '';
+    const hasLeadingPipe = /^\s*\|/.test(rawLine);
+    const targetCol = Math.max(0, hasLeadingPipe ? pipes - 1 : pipes);
+    const cellEl = wrap.querySelector<HTMLElement>(
+      `[data-row="${targetRow}"][data-col="${targetCol}"]`,
+    );
+    if (cellEl) {
+      const cellMarks = marks.filter((m) => cellEl.contains(m));
+      if (cellMarks.length > 0) {
+        const beforeInCell = beforeInLine.slice(lastPipe + 1);
+        const ord = Math.min(
+          cellMarks.length - 1,
+          findPreviewHitsInText(beforeInCell, spec.search, Infinity, spec.caseSensitive).hits.length,
+        );
+        const chosen = cellMarks[ord] ?? cellMarks[0];
+        chosen.classList.add('ps-mark--current');
+        return chosen;
+      }
+    }
+    marks[0].classList.add('ps-mark--current');
+    return marks[0];
+  }
+  return null;
+}
+
 const tableEditorHandles = new WeakMap<HTMLElement, DomTableEditorHandle>();
 
 class TableWidget extends WidgetType {
@@ -1031,6 +1241,13 @@ class TableWidget extends WidgetType {
       wrap.appendChild(srcBtn);
     }
 
+    wrap.addEventListener('pointerdown', (ev: PointerEvent) => {
+      const target = ev.target as Element | null;
+      if (target?.closest?.('.cm-live-table__cell--editing')) {
+        ev.stopPropagation();
+      }
+    });
+
     // #504 — Clicking a rendered table cell in Live mode places the caret at
     // the exact Markdown table row (header or body row) and column cell offset,
     // and anchors scrollTop so the clicked row stays under the mouse cursor
@@ -1047,8 +1264,11 @@ class TableWidget extends WidgetType {
       // below is what used to turn the table back into source lines the moment
       // anything needed changing; it stays as the fallback for read-only panes
       // and for clicks that land on a row but not on a cell.
-      if (cell && cellEditor?.begin(ev, cell)) {
-        ev.preventDefault();
+      const beginState = cell ? cellEditor?.begin(ev, cell) : false;
+      if (beginState) {
+        if (beginState === 'started') {
+          ev.preventDefault();
+        }
         ev.stopPropagation();
         return;
       }
@@ -1106,8 +1326,12 @@ class TableWidget extends WidgetType {
       });
     });
 
-    return wrap;
-  }
+      if (view) {
+        syncTableWidgetSearchMarks(wrap, view.state);
+      }
+
+      return wrap;
+    }
 
   /**
    * #500 — edit a table cell where it is, instead of falling back to the source.
@@ -1159,6 +1383,7 @@ class TableWidget extends WidgetType {
   }
 
   ignoreEvent(event: Event): boolean {
+    if (event.type === 'selectionchange') return true;
     const target = event.target as Element | null;
     if (target?.closest?.('a')) return false;
     return !!target?.closest?.('th, td, tr');
@@ -2930,7 +3155,50 @@ export function liveBlocksExtension(opts: BlockOptions = {}) {
     return [tr, { selection: EditorSelection.cursor(retarget), scrollIntoView: true, sequential: true }];
   });
 
-  return [mermaidFoldState, tableFoldState, field, relayout, blockArrowKeymap, vimBlockHop];
+  const tableSearchHighlighter = ViewPlugin.fromClass(
+    class {
+      constructor(view: EditorView) {
+        this.sync(view, false);
+      }
+      update(update: ViewUpdate) {
+        const queryChanged =
+          update.transactions.some((tr) =>
+            tr.effects.some((e) => e.is(setSearchQuery) || e.is(setExternalSearchQueryEffect)),
+          ) || searchPanelOpen(update.startState) !== searchPanelOpen(update.state);
+        if (queryChanged || update.docChanged || update.selectionSet || update.viewportChanged) {
+          this.sync(update.view, queryChanged || update.selectionSet);
+        }
+      }
+      sync(view: EditorView, scrollCurrent: boolean) {
+        const tables = view.dom.querySelectorAll<HTMLElement>('.cm-live-block--table');
+        if (tables.length === 0) return;
+        let currentMark: HTMLElement | null = null;
+        for (const wrap of Array.from(tables)) {
+          const hit = syncTableWidgetSearchMarks(wrap, view.state);
+          if (hit) currentMark = hit;
+        }
+        if (scrollCurrent && currentMark) {
+          requestAnimationFrame(() => {
+            if (currentMark?.isConnected) {
+              try {
+                currentMark.scrollIntoView({ block: 'center', behavior: 'auto' });
+              } catch {}
+            }
+          });
+        }
+      }
+    },
+  );
+
+  return [
+    mermaidFoldState,
+    tableFoldState,
+    field,
+    relayout,
+    tableSearchHighlighter,
+    blockArrowKeymap,
+    vimBlockHop,
+  ];
 }
 
 /** Suggested CSS — pulled out so the editor's theme owns the rule set. */
@@ -3041,6 +3309,8 @@ export const liveBlocksTheme = EditorView.theme({
     background: 'var(--bg)',
     whiteSpace: 'pre-wrap',
     cursor: 'text',
+    userSelect: 'text',
+    WebkitUserSelect: 'text',
   },
   // v4.3.0 issue #57a — paddings fold in the 0.6em that used to come from the
   // shared margin (see #155 note above) so the visual rhythm is unchanged.

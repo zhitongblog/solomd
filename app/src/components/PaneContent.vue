@@ -112,14 +112,14 @@ function onSelection(text: string) {
 
 let markScrollDriver: ((which: 'editor' | 'preview', ms?: number) => void) | null = null;
 
-function gotoLine(line: number) {
-  if (settings.viewMode === 'preview') {
-    previewRef.value?.scrollToLine(line);
+function gotoLine(line: number, highlightQuery?: string) {
+  if (settings.viewMode === 'preview' || settings.viewMode === 'reading') {
+    previewRef.value?.scrollToLine(line, highlightQuery);
   } else {
     markScrollDriver?.('editor', 400);
-    editorRef.value?.gotoLine(line);
+    editorRef.value?.gotoLine(line, highlightQuery);
     if (settings.viewMode === 'split') {
-      previewRef.value?.scrollToLine(line);
+      previewRef.value?.scrollToLine(line, highlightQuery);
     }
   }
 }
@@ -722,9 +722,9 @@ function onPreviewTopline(line: number) {
 }
 
 function onOutlineGotoEvent(e: Event) {
-  const { line, paneId } = (e as CustomEvent).detail;
+  const { line, paneId, query } = (e as CustomEvent).detail;
   if (paneId !== props.paneId) return;
-  gotoLine(line);
+  gotoLine(line, typeof query === 'string' ? query : undefined);
 }
 
 function onInsertMarkdownEvent(e: Event) {

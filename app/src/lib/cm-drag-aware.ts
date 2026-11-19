@@ -75,6 +75,10 @@ const dragTracker = ViewPlugin.fromClass(
         // Touch drags don't reproduce the WebView2 capture loss and CM has
         // its own touch handling; only guard mouse / pen, primary button.
         if (e.pointerType === 'touch' || e.button !== 0) return;
+        // Native contenteditable table cell editing handles its own click and
+        // mouse-drag text selection without freezing/rebuilding CM decorations.
+        const target = e.target as Element | null;
+        if (target?.closest?.('.cm-live-block--table, .cm-live-table__cell--editing')) return;
         pointerDown = true;
       };
       const onMove = (e: PointerEvent) => {

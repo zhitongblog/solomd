@@ -19,6 +19,7 @@ import { useI18n } from '../i18n';
 import { useSettingsStore } from '../stores/settings';
 import { useTabsStore } from '../stores/tabs';
 import PreviewSearch from './PreviewSearch.vue';
+import { applySearchMarksIn, clearSearchMarksIn } from '../lib/preview-search-hits';
 import { attachCodeCopyButtons as attachSharedCodeCopyButtons } from '../lib/code-copy';
 import { writePngToClipboard } from '../lib/image-clipboard';
 import { previewScrollMemory, tabTopLineMemory, tabViewportAnchorMemory } from '../lib/scroll-memory';
@@ -918,6 +919,7 @@ function openSearch() {
     searchOpen.value = false;
     return;
   }
+  clearSearchMarksIn(host.value);
   searchOpen.value = true;
   nextTick(() => searchRef.value?.focusInput());
 }
@@ -925,10 +927,9 @@ function openSearch() {
 /**
  * Scroll the preview pane so the element tagged with `data-source-line="N"`
  * (where N is the nearest line ≤ the requested line) is brought to the top.
- * Used by the outline when viewMode === 'preview' (the editor is unmounted
- * so its gotoLine is unavailable).
+ * Used by the outline and Global Search when viewMode === 'preview' / 'reading' / 'split'.
  */
-function scrollToLine(line: number) {
+function scrollToLine(line: number, highlightQuery?: string) {
   explicitLineJumped = true;
   const article = host.value;
   if (!article) return;
@@ -955,12 +956,33 @@ function scrollToLine(line: number) {
     }
   }
   const target = nodes[best];
+
+  let scrollAnchor: HTMLElement = target;
+  if (!searchOpen.value) {
+    const q = (highlightQuery || '').trim();
+    if (q) {
+      const marks = applySearchMarksIn(article, q);
+      if (marks.length > 0) {
+        const insideTarget = marks.find((m) => target.contains(m));
+        const currentMark =
+          insideTarget ??
+          marks.find((m) => (target.compareDocumentPosition(m) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0) ??
+          marks[0];
+        currentMark.classList.add('ps-mark--current');
+        scrollAnchor = currentMark;
+      }
+    } else {
+      clearSearchMarksIn(article);
+    }
+  }
+
   // #350 — measure against the scroll container itself. `offsetTop` is
   // relative to the offsetParent, and .preview-host is not positioned, so it
   // also counted the pane chrome above the preview: every jump overshot by
   // that much and the heading ended up hidden above the top edge.
-  const delta = target.getBoundingClientRect().top - container.getBoundingClientRect().top;
-  container.scrollTo({ top: Math.max(0, container.scrollTop + delta - TOP_GAP), behavior: 'smooth' });
+  const delta = scrollAnchor.getBoundingClientRect().top - container.getBoundingClientRect().top;
+  const desiredOffset = scrollAnchor === target ? TOP_GAP : Math.max(TOP_GAP, container.clientHeight * 0.35);
+  container.scrollTo({ top: Math.max(0, container.scrollTop + delta - desiredOffset), behavior: 'smooth' });
   flashTarget(target);
   emit('topline', Number(target.getAttribute('data-source-line') || line));
 }
@@ -1444,14 +1466,16 @@ defineExpose({ scrollToLine, openSearch });
 }
 /* Preview search highlights */
 .preview-content .ps-mark {
-  background: rgba(255, 159, 64, 0.3);
+  background: var(--search-match-bg, rgba(255, 208, 0, 0.48));
   color: inherit;
   padding: 1px 0;
   border-radius: 2px;
+  box-shadow: inset 0 0 0 1px var(--search-match-border, rgba(208, 140, 0, 0.5));
 }
 .preview-content .ps-mark--current {
-  background: var(--accent);
-  color: var(--accent-fg, #fff);
+  background: var(--search-match-current-bg, #ff8c00);
+  color: var(--search-match-current-fg, #ffffff);
+  box-shadow: 0 0 0 1px var(--search-match-current-bg, #ff8c00);
 }
 
 /* ----- v2.4 Reading mode skin -----

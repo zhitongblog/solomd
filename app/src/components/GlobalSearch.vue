@@ -170,14 +170,18 @@ function shortPath(p: string) {
 
 async function openHit(hit: SearchHit) {
   try {
+    const highlightQuery = titleOnly.value ? '' : query.value.trim();
     await files.openPath(hit.file);
-    nextTick(() => {
-      window.dispatchEvent(
-        new CustomEvent('solomd:outline-goto', {
-          detail: { line: hit.line, paneId: tiles.focusedPaneId },
-        }),
-      );
-    });
+    await nextTick();
+    window.dispatchEvent(
+      new CustomEvent('solomd:outline-goto', {
+        detail: {
+          line: hit.line,
+          paneId: tiles.focusedPaneId,
+          query: highlightQuery,
+        },
+      }),
+    );
   } catch (e) {
     console.error('GlobalSearch: openPath failed', e);
   }

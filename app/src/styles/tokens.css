@@ -69,6 +69,10 @@
   --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
   --select-inactive: color-mix(in srgb, var(--text) 9%, transparent);
   --mark-bg: rgba(255, 212, 0, 0.52);
+  --search-match-bg: rgba(255, 208, 0, 0.48);
+  --search-match-border: rgba(208, 140, 0, 0.55);
+  --search-match-current-bg: #ff8c00;
+  --search-match-current-fg: #ffffff;
   --active-line-bg: color-mix(in srgb, #f48fb1 24%, color-mix(in srgb, var(--accent) 10%, transparent));
 
   --sh-1: 0 1px 2px rgba(0, 0, 0, 0.06);
@@ -158,6 +162,10 @@
 ) {
   --scrim: rgba(0, 0, 0, 0.5);
   --mark-bg: rgba(255, 212, 59, 0.42);
+  --search-match-bg: rgba(255, 204, 0, 0.38);
+  --search-match-border: rgba(255, 204, 0, 0.58);
+  --search-match-current-bg: #ff922b;
+  --search-match-current-fg: #1a1a1a;
   --active-line-bg: color-mix(in srgb, #f48fb1 16%, color-mix(in srgb, var(--accent) 14%, transparent));
 }
 
