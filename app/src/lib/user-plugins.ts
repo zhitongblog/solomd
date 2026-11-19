@@ -15,6 +15,23 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { SlashBlock } from './slash-blocks';
 
+export type PluginCapability =
+  | 'doc:read'
+  | 'doc:write'
+  | 'frontmatter:read'
+  | 'frontmatter:write'
+  | 'ui:toast'
+  | 'net:fetch';
+
+export const ALL_PLUGIN_CAPABILITIES: readonly PluginCapability[] = [
+  'doc:read',
+  'doc:write',
+  'frontmatter:read',
+  'frontmatter:write',
+  'ui:toast',
+  'net:fetch',
+];
+
 export interface UserPluginSlashCommand {
   id: string;
   icon?: string;
@@ -28,7 +45,7 @@ export interface UserPluginTransform {
   id: string;
   title: string;
   hint?: string;
-  kind: 'regex' | 'template' | 'webhook';
+  kind: 'regex' | 'template' | 'webhook' | 'script';
   /** For kind === 'regex': regular expression pattern */
   find?: string;
   /** For kind === 'regex': replacement string */
@@ -41,6 +58,8 @@ export interface UserPluginTransform {
   webhookUrl?: string;
   method?: 'POST' | 'PUT';
   headers?: Record<string, string>;
+  /** For kind === 'script' (#173 v5.3): sandboxed JS body receiving capability-scoped `solomd` API */
+  script?: string;
 }
 
 export interface UserPluginManifest {
@@ -49,6 +68,8 @@ export interface UserPluginManifest {
   version?: string;
   description?: string;
   enabled: boolean;
+  /** #173 v5.3 — Declared capability scopes required by scripts / webhooks in this plugin. */
+  capabilities?: PluginCapability[];
   slashCommands?: UserPluginSlashCommand[];
   transforms?: UserPluginTransform[];
 }
@@ -129,6 +150,57 @@ export const STARTER_PLUGIN_PRESETS: UserPluginManifest[] = [
         hint: 'Insert > Updated: YYYY-MM-DD HH:mm at top of note',
         kind: 'template',
         template: '> Updated: ${datetime}\n\n${content}',
+      },
+    ],
+  },
+  {
+    id: 'reading-stats-frontmatter',
+    name: 'Reading Stats Frontmatter Script (v5.3)',
+    version: '1.0.0',
+    description: 'Sandboxed script that counts CJK + Latin words and updates words / reading_time in YAML frontmatter.',
+    enabled: true,
+    capabilities: ['doc:read', 'frontmatter:read', 'frontmatter:write', 'ui:toast'],
+    transforms: [
+      {
+        id: 'update-reading-stats',
+        title: 'Plugin: Update Word Count & Reading Time in Frontmatter',
+        hint: 'Sandboxed script (doc:read, frontmatter:write)',
+        kind: 'script',
+        script: [
+          'const raw = solomd.getContent();',
+          'const body = raw.replace(/^---\\r?\\n[\\s\\S]*?\\r?\\n---\\r?\\n?/, "");',
+          'const cjk = (body.match(/[\\u4e00-\\u9fff\\u3040-\\u30ff\\uac00-\\ud7af]/g) || []).length;',
+          'const latin = (body.replace(/[\\u4e00-\\u9fff\\u3040-\\u30ff\\uac00-\\ud7af]/g, " ").match(/[A-Za-z0-9_]+/g) || []).length;',
+          'const words = cjk + latin;',
+          'const mins = Math.max(1, Math.ceil(words / 300));',
+          'solomd.setFrontmatter({ words: String(words), reading_time: mins + " min" });',
+          'solomd.toast("Updated frontmatter: " + words + " words · ~" + mins + " min");',
+        ].join('\n'),
+      },
+    ],
+  },
+  {
+    id: 'link-reference-collector',
+    name: 'Link Reference Collector Script (v5.3)',
+    version: '1.0.0',
+    description: 'Sandboxed script that extracts all unique external URLs into a ## References appendix.',
+    enabled: true,
+    capabilities: ['doc:read', 'doc:write', 'ui:toast'],
+    transforms: [
+      {
+        id: 'collect-links',
+        title: 'Plugin: Collect External Links into ## References',
+        hint: 'Sandboxed script (doc:read, doc:write)',
+        kind: 'script',
+        script: [
+          'const src = solomd.getContent();',
+          'const urls = Array.from(new Set((src.match(/https?:\\/\\/[^\\s)\\]>"\']+/g) || [])));',
+          'if (urls.length === 0) { solomd.toast("No external links found."); return; }',
+          'const block = "\\n\\n## References\\n\\n" + urls.map((u, i) => (i + 1) + ". " + u).join("\\n") + "\\n";',
+          'const cleaned = src.replace(/\\n\\n## References\\n[\\s\\S]*$/, "");',
+          'solomd.setContent(cleaned + block);',
+          'solomd.toast("Collected " + urls.length + " unique link(s).");',
+        ].join('\n'),
       },
     ],
   },
@@ -250,12 +322,181 @@ export function applyUserTransformSync(
   return content;
 }
 
+function parseSimpleFrontmatter(content: string): {
+  entries: Record<string, string>;
+  hasBlock: boolean;
+  body: string;
+} {
+  const m = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(content);
+  if (!m) return { entries: {}, hasBlock: false, body: content };
+  const entries: Record<string, string> = {};
+  for (const line of m[1].split(/\r?\n/)) {
+    const kv = /^\s*([A-Za-z0-9_-]+)\s*:\s*(.*)$/.exec(line);
+    if (kv) {
+      entries[kv[1]] = kv[2].trim().replace(/^["']|["']$/g, '');
+    }
+  }
+  return { entries, hasBlock: true, body: content.slice(m[0].length) };
+}
+
+function applyFrontmatterPatch(content: string, patch: Record<string, string>): string {
+  const m = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(content);
+  const formatVal = (v: string) => (/[:#\n]/.test(v) ? JSON.stringify(v) : v);
+  if (!m) {
+    const lines = Object.entries(patch).map(([k, v]) => `${k}: ${formatVal(String(v))}`);
+    return `---\n${lines.join('\n')}\n---\n\n${content}`;
+  }
+  const existingLines = m[1].split(/\r?\n/);
+  const remaining = new Map(Object.entries(patch).map(([k, v]) => [k, String(v)]));
+  const nextLines = existingLines.map((line) => {
+    const kv = /^(\s*)([A-Za-z0-9_-]+)(\s*:\s*).*$/.exec(line);
+    if (kv && remaining.has(kv[2])) {
+      const val = remaining.get(kv[2])!;
+      remaining.delete(kv[2]);
+      return `${kv[1]}${kv[2]}: ${formatVal(val)}`;
+    }
+    return line;
+  });
+  for (const [k, v] of remaining.entries()) {
+    nextLines.push(`${k}: ${formatVal(v)}`);
+  }
+  return `---\n${nextLines.join('\n')}\n---\n${content.slice(m[0].length)}`;
+}
+
+/**
+ * #173 (v5.3) — Capability-scoped sandboxed plugin script runner.
+ * Shadows ambient browser/Node globals (`window`, `document`, `fetch`,
+ * `localStorage`, `globalThis`, etc.) and exposes only the declared `solomd`
+ * capability API.
+ */
+export function runSandboxedPluginScript(
+  script: string,
+  capabilities: PluginCapability[],
+  content: string,
+  meta: { title?: string; filePath?: string | null } = {},
+  now: Date = new Date(),
+): { content: string; toasts: string[] } {
+  const capSet = new Set<PluginCapability>(capabilities);
+  const requireCap = (cap: PluginCapability) => {
+    if (!capSet.has(cap)) {
+      throw new Error(`Capability denied: plugin requires "${cap}"`);
+    }
+  };
+  let currentContent = content;
+  const toasts: string[] = [];
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
+  const solomdApi = Object.freeze({
+    getContent(): string {
+      requireCap('doc:read');
+      return currentContent;
+    },
+    getTitle(): string {
+      requireCap('doc:read');
+      return meta.title || 'Untitled';
+    },
+    getFilePath(): string | null {
+      requireCap('doc:read');
+      return meta.filePath ?? null;
+    },
+    getFrontmatter(): Record<string, string> {
+      requireCap('frontmatter:read');
+      return { ...parseSimpleFrontmatter(currentContent).entries };
+    },
+    setContent(next: string): void {
+      requireCap('doc:write');
+      if (typeof next !== 'string') {
+        throw new Error('solomd.setContent expects a string');
+      }
+      currentContent = next;
+    },
+    setFrontmatter(patch: Record<string, string | number | boolean>): void {
+      requireCap('frontmatter:write');
+      if (!patch || typeof patch !== 'object') {
+        throw new Error('solomd.setFrontmatter expects an object');
+      }
+      const normalized: Record<string, string> = {};
+      for (const [k, v] of Object.entries(patch)) {
+        if (/^[A-Za-z0-9_-]+$/.test(k)) {
+          normalized[k] = String(v);
+        }
+      }
+      currentContent = applyFrontmatterPatch(currentContent, normalized);
+    },
+    toast(msg: string): void {
+      requireCap('ui:toast');
+      if (typeof msg === 'string' && msg.trim()) {
+        toasts.push(msg.trim());
+      }
+    },
+    now(): { date: string; time: string; datetime: string; iso: string } {
+      return {
+        date: dateStr,
+        time: timeStr,
+        datetime: `${dateStr} ${timeStr}`,
+        iso: now.toISOString(),
+      };
+    },
+  });
+
+  // Execute with ambient globals shadowed as undefined so the script cannot
+  // touch DOM, storage, network, or escape via globalThis.
+  const runner = new Function(
+    'solomd',
+    'window',
+    'document',
+    'globalThis',
+    'self',
+    'fetch',
+    'XMLHttpRequest',
+    'WebSocket',
+    'localStorage',
+    'sessionStorage',
+    'indexedDB',
+    'process',
+    'require',
+    `"use strict";\n${script}`,
+  );
+  runner(
+    solomdApi,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+  );
+  return { content: currentContent, toasts };
+}
+
 export async function runUserTransform(
   transform: UserPluginTransform,
   content: string,
-  meta: { title?: string; filePath?: string | null } = {},
+  meta: { title?: string; filePath?: string | null; capabilities?: PluginCapability[] } = {},
 ): Promise<{ content: string; message: string }> {
+  if (transform.kind === 'script') {
+    if (!transform.script?.trim()) {
+      throw new Error('Script body is missing in plugin configuration');
+    }
+    const caps = meta.capabilities ?? ['doc:read', 'doc:write', 'ui:toast'];
+    const result = runSandboxedPluginScript(transform.script, caps, content, meta);
+    return {
+      content: result.content,
+      message: result.toasts[result.toasts.length - 1] || `Ran script "${transform.title}"`,
+    };
+  }
   if (transform.kind === 'webhook') {
+    if (meta.capabilities && !meta.capabilities.includes('net:fetch')) {
+      throw new Error('Capability denied: webhook requires "net:fetch"');
+    }
     if (!transform.webhookUrl) {
       throw new Error('Webhook URL is missing in plugin configuration');
     }

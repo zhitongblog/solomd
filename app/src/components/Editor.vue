@@ -8210,10 +8210,10 @@ const cls = computed(() => ({
 }
 .plain-block__render :deep(ul),
 .plain-block__render :deep(ol) {
-  padding-left: 1.8em;
+  padding-left: 1.45em;
 }
 .plain-block__render :deep(ol > li) {
-  padding-left: 0.2em;
+  padding-left: 0;
 }
 .plain-block__render :deep(li::marker) {
   color: var(--text-3);

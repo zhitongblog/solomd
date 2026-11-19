@@ -730,15 +730,17 @@ export function buildDecorations(
             seenListLines.add(lineObj.from);
             const leadSpaces = nFrom - lineObj.from;
             const markLen = nTo - nFrom;
-            // #486 — Use a uniform column width (2.25em) for 1–2 digit ordered
-            // list markers (`1.`..`99.`) so single- and double-digit items in
-            // the same list share the exact same body text start X coordinate
-            // without overflowing on 2-digit Level-1 markers (`10. `..`99. `).
+            // #486 / #617 — Keep list markers tight and natural next to body text
+            // while still preserving hanging-indent alignment across wrapped lines:
+            // bullets `• ` take 0.95em, 1-digit `1.`..`9.` take 1.45em, 2-digit
+            // `10.`..`99.` take 1.95em, and 3+ digits scale smoothly.
             const markEm = isBullet
-              ? 1.25
-              : markLen <= 3
-                ? 2.25
-                : Math.min(6, markLen * 0.65 + 0.55);
+              ? 0.95
+              : markLen <= 2
+                ? 1.45
+                : markLen === 3
+                  ? 1.95
+                  : Math.min(6, markLen * 0.6 + 0.35);
             const indentEm = Math.min(8, leadSpaces * 0.55 + markEm);
             const indentStr = `${indentEm.toFixed(2)}em`;
             ranges.push(

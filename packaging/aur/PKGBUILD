@@ -1,0 +1,21 @@
+# Maintainer: zhitongblog <lixd220@gmail.com>
+pkgname=solomd-bin
+pkgver=5.2.4
+pkgrel=1
+pkgdesc="Lightweight local-first Markdown editor with live preview, AI rewrite, MCP server, and multi-cloud sync"
+arch=('x86_64' 'aarch64')
+url="https://solomd.app"
+license=('MIT')
+depends=('gtk3' 'webkit2gtk-4.1' 'libayatana-appindicator' 'librsvg')
+provides=('solomd')
+conflicts=('solomd')
+options=('!strip' '!debug')
+
+source_x86_64=("https://github.com/zhitongblog/solomd/releases/download/v${pkgver}/SoloMD_${pkgver}_amd64.deb")
+source_aarch64=("https://github.com/zhitongblog/solomd/releases/download/v${pkgver}/SoloMD_${pkgver}_arm64.deb")
+sha256sums_x86_64=('55895a4d20777aef3cada246c9296832c2e0aa060839fcbd3fc25c8dd8c9d9b0')
+sha256sums_aarch64=('e4932675e5e09d0016cc3e4df75a57e062ec4e1bdb22e909179009e3d25141b3')
+
+package() {
+  bsdtar -xf data.tar.* -C "${pkgdir}/"
+}

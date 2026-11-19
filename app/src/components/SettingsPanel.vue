@@ -2115,8 +2115,8 @@ function onSelectPdfFont(v: string) {
           </h3>
           <p class="setting-hint">
             {{ isZhLocale
-              ? '无需重新编译即可添加自定义「/」斜杠命令、文本转换规则（正则/模板）与 Webhook 发布动作。支持保存在本地或工作区 .solomd/plugins/*.json。'
-              : 'Extend SoloMD with declarative JSON manifests for custom "/" slash commands, regex/template text transforms, and webhook publishers.' }}
+              ? '无需重新编译即可添加自定义「/」斜杠命令、文本转换规则（正则/模板）、权限隔离沙箱脚本与 Webhook 发布动作。支持保存在本地或工作区 .solomd/plugins/*.json。'
+              : 'Extend SoloMD with declarative JSON manifests for custom "/" slash commands, regex/template transforms, capability-scoped sandboxed scripts, and webhook publishers.' }}
           </p>
           <div style="display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0;">
             <button
@@ -2149,6 +2149,18 @@ function onSelectPdfFont(v: string) {
                   <strong>{{ pl.name }}</strong>
                   <span v-if="pl.description" class="setting-hint" style="display: block; margin: 2px 0 0;">
                     {{ pl.description }}
+                  </span>
+                  <span
+                    v-if="pl.capabilities && pl.capabilities.length > 0"
+                    style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;"
+                  >
+                    <code
+                      v-for="cap in pl.capabilities"
+                      :key="cap"
+                      style="font-size: 10px; padding: 1px 5px; border-radius: 4px; background: var(--bg-elev); border: 1px solid var(--border); color: var(--text-muted);"
+                    >
+                      {{ cap }}
+                    </code>
                   </span>
                 </span>
               </label>

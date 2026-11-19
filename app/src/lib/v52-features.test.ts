@@ -143,7 +143,7 @@ test('#173: user-plugins expands dynamic tokens, registers slash commands, and a
   );
 
   saveUserPlugins(STARTER_PLUGIN_PRESETS);
-  assert.equal(getUserPlugins().length, 2);
+  assert.equal(getUserPlugins().length, STARTER_PLUGIN_PRESETS.length);
   const blocks = getActiveUserSlashBlocks();
   assert.ok(blocks.some((b) => b.id === 'note'));
   assert.ok(blocks.some((b) => b.id === 'meeting'));

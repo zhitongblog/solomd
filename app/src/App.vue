@@ -58,6 +58,7 @@ import ReadingView from './components/ReadingView.vue';
 import UnsavedDialog from './components/UnsavedDialog.vue';
 import FileChangedDialog from './components/FileChangedDialog.vue';
 import Toast from './components/Toast.vue';
+import WikiLinkHoverPreview from './components/WikiLinkHoverPreview.vue';
 import KeyboardBar from './components/KeyboardBar.vue';
 import FormatBar from './components/FormatBar.vue';
 import { forceKeyboardBarPreview } from './lib/platform';
@@ -2855,6 +2856,7 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
       @cancel="onFileChangedAction('cancel')"
     />
     <Toast />
+    <WikiLinkHoverPreview />
     <Transition name="zoom-hud-fade">
       <div v-if="zoomHudText" class="zoom-hud" role="status" aria-live="polite">
         {{ zoomHudText }}

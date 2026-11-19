@@ -181,6 +181,7 @@ export function useCommands(): Command[] {
               const res = await runUserTransform(tf, t.content, {
                 title: t.fileName,
                 filePath: t.filePath,
+                capabilities: plugin.capabilities,
               });
               if (res.content !== t.content) {
                 tabs.setContent(t.id, res.content);

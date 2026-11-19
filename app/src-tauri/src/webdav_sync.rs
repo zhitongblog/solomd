@@ -3856,48 +3856,100 @@ async fn baidu_archive_remote_version(
         .await;
 }
 
+fn sanitize_sync_error_message(msg: &str) -> String {
+    // Strip `access_token=...` query params so OAuth tokens never leak into sync logs.
+    if let Some(pos) = msg.find("access_token=") {
+        let before = &msg[..pos + "access_token=".len()];
+        let rest = &msg[pos + "access_token=".len()..];
+        let end = rest
+            .find(|c: char| c == '&' || c == ')' || c == ' ' || c == '"' || c == '\'')
+            .unwrap_or(rest.len());
+        format!("{before}[REDACTED]{}", &rest[end..])
+    } else {
+        msg.to_string()
+    }
+}
+
 async fn baidu_download_by_fsid(
     client: &reqwest::Client,
     token: &str,
     fs_id: u64,
 ) -> Result<Vec<u8>, String> {
-    let meta_url = format!(
-        "https://pan.baidu.com/rest/2.0/xpan/multimedia?method=filemetas&fsids=[{fs_id}]&dlink=1&access_token={}",
-        percent_encode_segment(token)
-    );
-    let meta_resp = client
-        .get(&meta_url)
-        .header("User-Agent", "pan.baidu.com")
-        .send()
-        .await
-        .map_err(|e| format!("获取百度网盘下载地址失败: {e}"))?;
-    let meta_json: serde_json::Value = meta_resp
-        .json()
-        .await
-        .map_err(|e| format!("解析百度网盘下载地址失败: {e}"))?;
-    let dlink = meta_json
-        .get("list")
-        .and_then(|v| v.as_array())
-        .and_then(|arr| arr.first())
-        .and_then(|item| item.get("dlink"))
-        .and_then(|v| v.as_str())
-        .ok_or("百度网盘未返回有效 dlink")?;
+    const MAX_ATTEMPTS: usize = 4;
+    let backoff_ms = [400u64, 1000, 2200];
+    let mut last_err = String::new();
 
-    let dl_url = format!("{dlink}&access_token={}", percent_encode_segment(token));
-    let dl_resp = client
-        .get(&dl_url)
-        .header("User-Agent", "pan.baidu.com")
-        .send()
-        .await
-        .map_err(|e| format!("下载百度网盘文件失败: {e}"))?;
-    if !dl_resp.status().is_success() {
-        return Err(format!("下载百度网盘文件返回 HTTP {}", dl_resp.status()));
+    for attempt in 0..MAX_ATTEMPTS {
+        if attempt > 0 {
+            let delay = backoff_ms.get(attempt - 1).copied().unwrap_or(2200);
+            tokio::time::sleep(std::time::Duration::from_millis(delay)).await;
+        }
+
+        let meta_url = format!(
+            "https://pan.baidu.com/rest/2.0/xpan/multimedia?method=filemetas&fsids=[{fs_id}]&dlink=1&access_token={}",
+            percent_encode_segment(token)
+        );
+        let mut meta_req = client.get(&meta_url).header("User-Agent", "pan.baidu.com");
+        if attempt > 0 {
+            meta_req = meta_req.header("Connection", "close");
+        }
+        let meta_resp = match meta_req.send().await {
+            Ok(r) => r,
+            Err(e) => {
+                last_err = sanitize_sync_error_message(&format!("获取百度网盘下载地址失败: {e}"));
+                continue;
+            }
+        };
+        let meta_json: serde_json::Value = match meta_resp.json().await {
+            Ok(j) => j,
+            Err(e) => {
+                last_err = sanitize_sync_error_message(&format!("解析百度网盘下载地址失败: {e}"));
+                continue;
+            }
+        };
+        let Some(dlink) = meta_json
+            .get("list")
+            .and_then(|v| v.as_array())
+            .and_then(|arr| arr.first())
+            .and_then(|item| item.get("dlink"))
+            .and_then(|v| v.as_str())
+        else {
+            let errno = meta_json.get("errno").and_then(|v| v.as_i64()).unwrap_or(-1);
+            last_err = format!("百度网盘未返回有效 dlink (errno={errno})");
+            continue;
+        };
+
+        let dl_url = format!("{dlink}&access_token={}", percent_encode_segment(token));
+        let mut dl_req = client.get(&dl_url).header("User-Agent", "pan.baidu.com");
+        if attempt > 0 {
+            // #618 — Avoid reusing dropped/stale keep-alive sockets on d.pcs.baidu.com.
+            dl_req = dl_req.header("Connection", "close");
+        }
+        let dl_resp = match dl_req.send().await {
+            Ok(r) => r,
+            Err(e) => {
+                last_err = sanitize_sync_error_message(&format!("下载百度网盘文件失败: {e}"));
+                continue;
+            }
+        };
+        if !dl_resp.status().is_success() {
+            last_err = format!("下载百度网盘文件返回 HTTP {}", dl_resp.status());
+            continue;
+        }
+        match dl_resp.bytes().await {
+            Ok(b) => return Ok(b.to_vec()),
+            Err(e) => {
+                last_err = sanitize_sync_error_message(&format!("读取百度网盘文件字节失败: {e}"));
+                continue;
+            }
+        }
     }
-    dl_resp
-        .bytes()
-        .await
-        .map(|b| b.to_vec())
-        .map_err(|e| format!("读取百度网盘文件字节失败: {e}"))
+
+    Err(if last_err.is_empty() {
+        "下载百度网盘文件失败（多次重试后仍未成功）".to_string()
+    } else {
+        last_err
+    })
 }
 
 async fn baidu_try_download_file(
@@ -4105,14 +4157,18 @@ async fn baidu_push_folder(
         );
     }
 
-    // Preserve any files in remote manifest that were created by another device
+    // Preserve any files in remote manifest that were created by another device,
+    // and delete remote copies of files that were renamed or deleted locally (#618).
     for (rem_rel_key, rem_entry) in &manifest.files {
         if !new_files_map.contains_key(rem_rel_key) {
             let was_deleted_locally = local_base
                 .as_ref()
                 .map(|b| b.files.contains_key(rem_rel_key))
                 .unwrap_or(false);
-            if !was_deleted_locally {
+            if was_deleted_locally {
+                let stale_full = format!("{ws_remote_root}/{}", rem_entry.remote_rel);
+                baidu_delete_remote_file(client, token, &stale_full).await;
+            } else {
                 new_files_map.insert(rem_rel_key.clone(), rem_entry.clone());
             }
         }
@@ -4296,6 +4352,10 @@ async fn baidu_pull_folder(
                 }
             }
 
+            if downloaded > 0 {
+                // #618 — Gentle pacing avoids d.pcs.baidu.com burst connection resets.
+                tokio::time::sleep(std::time::Duration::from_millis(80)).await;
+            }
             let raw_bytes = baidu_download_by_fsid(client, token, fs_id).await?;
             let plain_bytes = if rel_from_ws.ends_with(".enc") {
                 let Some(ref key) = enc_key else {
