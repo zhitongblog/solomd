@@ -95,6 +95,23 @@ function printRulesAsScreenCss(): string {
  * the pagination is measured with them in place; `fillTocPageNumbers` writes
  * the real numbers. Returns the TOC, or null if the document has none.
  */
+function isLeadingTocElement(nav: HTMLElement, root: HTMLElement): boolean {
+  let h1Count = 0;
+  let cur = nav.previousElementSibling as HTMLElement | null;
+  while (cur) {
+    if (cur.tagName === 'H1') {
+      h1Count++;
+      if (h1Count > 1) return false;
+    } else if (/^H[2-6]$/.test(cur.tagName)) {
+      return false;
+    } else if (cur.querySelector('h2, h3, h4, h5, h6')) {
+      return false;
+    }
+    cur = cur.previousElementSibling as HTMLElement | null;
+  }
+  return root.contains(nav);
+}
+
 export function decoratePrintToc(content: HTMLElement, title: string): HTMLElement | null {
   const nav = content.querySelector<HTMLElement>('nav.md-toc');
   if (!nav || nav.dataset.printDecorated) return nav;
@@ -102,16 +119,13 @@ export function decoratePrintToc(content: HTMLElement, title: string): HTMLEleme
   const prev = nav.previousElementSibling as HTMLElement | null;
   if (prev?.tagName === 'H1') {
     prev.classList.add('pdf-doc-title');
-  } else if (title) {
+  } else if (title && !nav.querySelector('.md-toc__title')) {
     const heading = document.createElement('div');
     heading.className = 'md-toc__title';
     heading.textContent = title;
     nav.prepend(heading);
   }
-  if (
-    nav === content.firstElementChild ||
-    (prev === content.firstElementChild && prev?.tagName === 'H1')
-  ) {
+  if (isLeadingTocElement(nav, content)) {
     nav.classList.add('md-toc--lead');
     const next = nav.nextElementSibling as HTMLElement | null;
     if (next?.tagName === 'HR') {

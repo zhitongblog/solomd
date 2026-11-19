@@ -467,6 +467,8 @@ export const fr: I18n = {
     customFontPlaceholder: 'Saisir le nom de la police, ex. PingFang SC',
     fontFamilyHint: 'Les polices d\'écriture recommandées (LXGW WenKai, Source Han, etc.) doivent être installées sur votre système. macOS : brew install --cask font-lxgw-wenkai. Repli sur PingFang si absente.',
     fontSize: 'Taille de police de l\'éditeur',
+    lineHeight: 'Hauteur de ligne',
+    paragraphSpacing: 'Espacement des paragraphes',
     uiFontSize: 'Taille de police de l\'interface',
     globalZoom: 'Zoom global',
     globalZoomHint: 'Met à l\'échelle toute l\'application — éditeur, aperçu et interface. Utile sur écrans haute résolution. Clavier : ⌘+ / ⌘− / ⌘0.',

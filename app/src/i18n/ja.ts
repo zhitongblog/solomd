@@ -467,6 +467,8 @@ export const ja: I18n = {
     customFontPlaceholder: 'フォント名を入力（例: PingFang SC）',
     fontFamilyHint: '推奨フォント (LXGW WenKai、Source Han など) はシステムにインストールが必要です。macOS: brew install --cask font-lxgw-wenkai。見つからない場合は PingFang にフォールバックします。',
     fontSize: 'エディタフォントサイズ',
+    lineHeight: '行の高さ',
+    paragraphSpacing: '段落間隔',
     uiFontSize: 'UI フォントサイズ',
     globalZoom: 'グローバルズーム',
     globalZoomHint: 'アプリ全体（エディタ・プレビュー・UI）をスケーリング。高解像度ディスプレイ向け。ショートカット: ⌘+ / ⌘− / ⌘0。',

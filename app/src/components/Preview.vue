@@ -1163,7 +1163,7 @@ defineExpose({ scrollToLine, openSearch });
   /* v4.3.0 PR #74 — preview-only font size; driven by settings.previewFontSize
      via the `--content-font-size` CSS custom property set in App.vue. */
   font-size: var(--content-font-size, 16px);
-  line-height: 1.8;
+  line-height: var(--editor-line-height, 1.8);
   /* #293 — prose must never push past the column. Text pasted out of Word, a
      web page or a chat transcript often joins its words with NO-BREAK SPACE
      (U+00A0) instead of U+0020; the reporter's file had 119 of them against 23
@@ -1210,7 +1210,7 @@ defineExpose({ scrollToLine, openSearch });
 :where(.preview-content) h5 { font-size: 1.04em; font-weight: 600; color: var(--md-h5); }
 :where(.preview-content) h6 { font-size: 0.95em; font-weight: 600; color: var(--md-h6); }
 :where(.preview-content) > :first-child { margin-top: 0; }
-:where(.preview-content) p { margin: 0.9em 0; }
+:where(.preview-content) p { margin: var(--paragraph-spacing, 0.9em) 0; }
 :where(.preview-content) a {
   color: var(--accent-text);
   text-decoration: underline;
@@ -1523,7 +1523,7 @@ defineExpose({ scrollToLine, openSearch });
      the user picked still wins via --content-font-family. */
   font-family: var(--content-font-family, var(--font-ui));
   font-size: var(--content-font-size, 16px);
-  line-height: 1.8;
+  line-height: var(--editor-line-height, 1.8);
   color: var(--text);
 }
 /* #117 — let the Fit-Width toggle widen reading mode too (full-bleed reading

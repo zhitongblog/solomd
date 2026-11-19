@@ -467,6 +467,8 @@ export const nl: I18n = {
     customFontPlaceholder: 'Voer een lettertypenaam in, bijv. PingFang SC',
     fontFamilyHint: 'Aanbevolen schrijflettertypen (LXGW WenKai, Source Han, enz.) moeten op je systeem geïnstalleerd zijn. macOS: brew install --cask font-lxgw-wenkai. Valt terug op PingFang als het ontbreekt.',
     fontSize: 'Lettergrootte editor',
+    lineHeight: 'Regelhoogte',
+    paragraphSpacing: 'Alinea-afstand',
     uiFontSize: 'Lettergrootte UI',
     globalZoom: 'Algemene zoom',
     globalZoomHint: 'Schaalt de hele app — editor, voorbeeld en interface. Handig op HiDPI-schermen. Toetsenbord: ⌘+ / ⌘− / ⌘0.',

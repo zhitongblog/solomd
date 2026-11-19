@@ -1294,10 +1294,29 @@ export function paginateHtmlBody(
   rawBody: string,
   options?: { topicNav?: boolean; isZh?: boolean },
 ): string {
+  const isMeaningfulChunk = (chunk: string) => {
+    if (!chunk) return false;
+    if (chunk.includes('data-solomd-toc-only="1"')) return true;
+    const withoutCommentsAndEmptyWrappers = chunk
+      .replace(/<!--[\s\S]*?-->/g, '')
+      .replace(/<div\b[^>]*\bdata-source-line=(?:"\d+"|'\d+')[^>]*>\s*<\/div>/gi, '')
+      .trim();
+    if (!withoutCommentsAndEmptyWrappers) return false;
+    if (/<(?:img|svg|table|hr|pre|iframe|video|audio|canvas|ul|ol|blockquote|details|math|nav)\b/i.test(withoutCommentsAndEmptyWrappers)) {
+      return true;
+    }
+    const textOnly = withoutCommentsAndEmptyWrappers.replace(/<[^>]+>/g, '').trim();
+    return textOnly.length > 0;
+  };
+
   const parts = rawBody
     .split(/<hr\b[^>]*\bdata-solomd-page-break=(?:"1"|'1')[^>]*\/?>/gi)
-    .map((chunk) => chunk.trim())
-    .filter((chunk) => chunk.length > 0);
+    .map((chunk) =>
+      chunk
+        .replace(/<div\b[^>]*\bdata-source-line=(?:"\d+"|'\d+')[^>]*>\s*<\/div>/gi, '')
+        .trim(),
+    )
+    .filter(isMeaningfulChunk);
   if (parts.length === 0) return rawBody;
 
   const isTocOnlyChunk = (chunk: string) =>

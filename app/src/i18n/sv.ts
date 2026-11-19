@@ -467,6 +467,8 @@ export const sv: I18n = {
     customFontPlaceholder: 'Ange teckensnittets namn, t.ex. PingFang SC',
     fontFamilyHint: 'Rekommenderade skrivteckensnitt (LXGW WenKai, Source Han m.fl.) måste vara installerade på systemet. macOS: brew install --cask font-lxgw-wenkai. Faller tillbaka till PingFang om de saknas.',
     fontSize: 'Teckenstorlek i editor',
+    lineHeight: 'Radhöjd',
+    paragraphSpacing: 'Styckeavstånd',
     uiFontSize: 'Teckenstorlek i gränssnitt',
     globalZoom: 'Global zoom',
     globalZoomHint: 'Skalar hela appen — editor, förhandsvisning och gränssnitt. Användbart på HiDPI-skärmar. Tangenter: ⌘+ / ⌘− / ⌘0.',

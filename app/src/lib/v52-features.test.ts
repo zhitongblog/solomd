@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { EditorState } from '@codemirror/state';
+import { ensureSyntaxTree } from '@codemirror/language';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { buildDecorations } from './cm-live-render.ts';
 import { parseHljsHtmlSpans } from './cm-hljs-fallback.ts';
@@ -75,6 +76,7 @@ test('#303: buildDecorations keeps # and ** markers hidden on the active line wh
     selection: { anchor: 2 },
     extensions: [markdown({ base: markdownLanguage })],
   });
+  ensureSyntaxTree(state, doc.length, 2000);
   const fakeView = {
     state,
     visibleRanges: [{ from: 0, to: doc.length }],
@@ -101,6 +103,7 @@ test('#303: buildDecorations keeps # and ** markers hidden on the active line wh
     selection: { anchor: 0, head: doc.length },
     extensions: [markdown({ base: markdownLanguage })],
   });
+  ensureSyntaxTree(rangeState, doc.length, 2000);
   const rangeView = {
     state: rangeState,
     visibleRanges: [{ from: 0, to: doc.length }],

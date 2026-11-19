@@ -467,6 +467,8 @@ export const pl: I18n = {
     customFontPlaceholder: 'Wpisz nazwę czcionki, np. PingFang SC',
     fontFamilyHint: 'Polecane czcionki do pisania (LXGW WenKai, Source Han itp.) muszą być zainstalowane w systemie. macOS: brew install --cask font-lxgw-wenkai. W razie braku używana jest PingFang.',
     fontSize: 'Rozmiar czcionki edytora',
+    lineHeight: 'Wysokość linii',
+    paragraphSpacing: 'Odstępy między akapitami',
     uiFontSize: 'Rozmiar czcionki interfejsu',
     globalZoom: 'Globalne powiększenie',
     globalZoomHint: 'Skaluje całą aplikację — edytor, podgląd i interfejs. Przydatne na ekranach HiDPI. Klawiatura: ⌘+ / ⌘− / ⌘0.',

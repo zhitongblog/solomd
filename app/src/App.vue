@@ -14,6 +14,7 @@ import { setMarkdownHardBreaks, setMarkdownAutoNumberHeadings, setMarkdownSmartQ
 import { openNewWindow } from './lib/new-window';
 import { ensureSpellDict } from './lib/spell-suggest';
 import { buildInsertTableSnippet } from './lib/table-cell-edit';
+import { getActiveTableCellSession } from './lib/cm-live-blocks';
 import Toolbar from './components/Toolbar.vue';
 import TelemetryBanner from './components/TelemetryBanner.vue';
 import TileRoot from './components/TileRoot.vue';
@@ -737,6 +738,14 @@ watchEffect(() => {
     '--content-font-size',
     `${settings.previewFontSize || settings.fontSize || 16}px`,
   );
+  document.documentElement.style.setProperty(
+    '--editor-line-height',
+    String(settings.lineHeight || 1.8),
+  );
+  document.documentElement.style.setProperty(
+    '--paragraph-spacing',
+    `${settings.paragraphSpacing ?? 0.9}em`,
+  );
 });
 
 // #141 — keep the markdown-it singleton's `breaks` option in lockstep with
@@ -1255,9 +1264,21 @@ function dispatchMenuAction(id: string) {
         })
         .catch(() => {});
       return;
-    case 'edit.selectAll':
+    case 'edit.selectAll': {
+      const cellSession = getActiveTableCellSession();
+      if (cellSession?.cellEl?.isConnected) {
+        const sel = window.getSelection();
+        if (sel) {
+          const range = document.createRange();
+          range.selectNodeContents(cellSession.cellEl);
+          sel.removeAllRanges();
+          sel.addRange(range);
+          return;
+        }
+      }
       document.execCommand('selectAll');
       return;
+    }
   }
   // A bindable action: exactly what its shortcut does. `false` means it
   // declined (e.g. formatting while a settings field has focus) — that is an

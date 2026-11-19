@@ -1411,6 +1411,52 @@ function onSelectPdfFont(v: string) {
         </section>
 
         <section data-cat="basics">
+          <label>
+            {{ t('settings.lineHeight') }}: {{ (settings.lineHeight || 1.8).toFixed(2) }}
+            <button
+              v-if="Math.abs((settings.lineHeight || 1.8) - 1.8) > 0.001"
+              type="button"
+              class="link-button"
+              style="margin-left: 8px;"
+              @click="settings.resetLineHeight()"
+            >
+              {{ t('settings.globalZoomReset') }}
+            </button>
+          </label>
+          <input
+            type="range"
+            min="1.2"
+            max="2.6"
+            step="0.05"
+            :value="settings.lineHeight || 1.8"
+            @input="settings.setLineHeight(+($event.target as HTMLInputElement).value)"
+          />
+        </section>
+
+        <section data-cat="basics">
+          <label>
+            {{ t('settings.paragraphSpacing') }}: {{ (settings.paragraphSpacing ?? 0.9).toFixed(2) }}em
+            <button
+              v-if="Math.abs((settings.paragraphSpacing ?? 0.9) - 0.9) > 0.001"
+              type="button"
+              class="link-button"
+              style="margin-left: 8px;"
+              @click="settings.resetParagraphSpacing()"
+            >
+              {{ t('settings.globalZoomReset') }}
+            </button>
+          </label>
+          <input
+            type="range"
+            min="0"
+            max="2"
+            step="0.05"
+            :value="settings.paragraphSpacing ?? 0.9"
+            @input="settings.setParagraphSpacing(+($event.target as HTMLInputElement).value)"
+          />
+        </section>
+
+        <section data-cat="basics">
           <label>{{ t('settings.uiFontSize') }}: {{ settings.uiFontSize }}px</label>
           <input
             type="range"

@@ -470,6 +470,8 @@ export const en = {
     customFontPlaceholder: 'Enter font name, e.g. PingFang SC',
     fontFamilyHint: 'Recommended writing fonts (LXGW WenKai, Source Han, etc.) need to be installed on your system. macOS: brew install --cask font-lxgw-wenkai. Falls back to PingFang if missing.',
     fontSize: 'Editor Font Size',
+    lineHeight: 'Line Height',
+    paragraphSpacing: 'Paragraph Spacing',
     uiFontSize: 'UI Font Size',
     globalZoom: 'Global Zoom',
     globalZoomHint: 'Scales the entire app — editor, preview, and chrome. Useful on high-DPI screens. Keyboard: ⌘+ / ⌘− / ⌘0.',

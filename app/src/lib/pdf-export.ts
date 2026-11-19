@@ -520,6 +520,23 @@ export function rasterRowToPageNumber(
  * 3. Wraps each `.md-toc__link` label in `.md-toc__text` and appends
  *    `.md-toc__leader` + `.md-toc__page` slots so page numbers can be filled.
  */
+function isLeadingPdfToc(nav: HTMLElement, root: HTMLElement): boolean {
+  let h1Count = 0;
+  let cur = nav.previousElementSibling as HTMLElement | null;
+  while (cur) {
+    if (cur.tagName === 'H1') {
+      h1Count++;
+      if (h1Count > 1) return false;
+    } else if (/^H[2-6]$/.test(cur.tagName)) {
+      return false;
+    } else if (cur.querySelector('h2, h3, h4, h5, h6')) {
+      return false;
+    }
+    cur = cur.previousElementSibling as HTMLElement | null;
+  }
+  return root.contains(nav);
+}
+
 export function decoratePdfToc(root: HTMLElement, tocTitle?: string): HTMLElement | null {
   const navs = Array.from(root.querySelectorAll<HTMLElement>('nav.md-toc'));
   if (!navs.length) return null;
@@ -527,9 +544,7 @@ export function decoratePdfToc(root: HTMLElement, tocTitle?: string): HTMLElemen
     if (nav.dataset.pdfDecorated === '1') continue;
     nav.dataset.pdfDecorated = '1';
     const prev = nav.previousElementSibling as HTMLElement | null;
-    const isLeading =
-      nav === root.firstElementChild ||
-      (prev === root.firstElementChild && prev?.tagName === 'H1');
+    const isLeading = isLeadingPdfToc(nav, root);
     if (isLeading) {
       nav.classList.add('md-toc--lead');
       if (prev?.tagName === 'H1') {

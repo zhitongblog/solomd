@@ -776,6 +776,7 @@ export function bindDomTableCellEditor(
     a.cell.classList.remove('cm-live-table__cell--editing');
     a.cell.removeAttribute('contenteditable');
     a.cell.removeAttribute('spellcheck');
+    a.cell.removeAttribute('tabindex');
     if (!written) {
       a.cell.innerHTML = a.html;
     }
@@ -827,6 +828,7 @@ export function bindDomTableCellEditor(
     cell.classList.add('cm-live-table__cell--editing');
     cell.setAttribute('contenteditable', 'true');
     cell.setAttribute('spellcheck', 'false');
+    cell.setAttribute('tabindex', '-1');
     cell.focus({ preventScroll: true });
     syncSession();
     return true;
@@ -945,9 +947,21 @@ export function bindDomTableCellEditor(
       const here = { row: active.row, col: active.col };
       const isMod = ev.metaKey || ev.ctrlKey;
 
-      // Formatting & Undo/Redo shortcuts inside cell
+      // Formatting, Select-All & Undo/Redo shortcuts inside cell
       if (isMod && !ev.altKey) {
         const lower = ev.key.toLowerCase();
+        if (lower === 'a' && !ev.shiftKey) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          const sel = window.getSelection();
+          if (sel) {
+            const range = document.createRange();
+            range.selectNodeContents(active.cell);
+            sel.removeAllRanges();
+            sel.addRange(range);
+          }
+          return;
+        }
         if (lower === 'b' && !ev.shiftKey) {
           ev.preventDefault();
           ev.stopPropagation();
@@ -1062,6 +1076,13 @@ export function bindDomTableCellEditor(
     },
     true,
   );
+
+  // #616 — Prevent regular caret/selection/typing keys (ArrowLeft, ArrowRight,
+  // Shift+Arrow*, Home/End, Backspace, Vim keys) from bubbling out of the
+  // active contenteditable cell into CodeMirror / Vim / window handlers.
+  wrap.addEventListener('keydown', (ev: KeyboardEvent) => {
+    if (active) ev.stopPropagation();
+  });
 
   wrap.addEventListener('focusout', (ev: FocusEvent) => {
     if (!active) return;
@@ -3236,6 +3257,7 @@ export const liveBlocksTheme = EditorView.theme({
     borderRadius: '6px',
   },
   '.cm-live-block--html table': {
+    width: '100%',
     borderCollapse: 'collapse',
   },
   '.cm-live-block--html th, .cm-live-block--html td': {
@@ -3280,6 +3302,7 @@ export const liveBlocksTheme = EditorView.theme({
     color: 'var(--text-muted)',
   },
   '.cm-live-block--table table': {
+    width: '100%',
     borderCollapse: 'collapse',
     margin: '0.4em 0',
     fontSize: '0.95em',

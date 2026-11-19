@@ -469,6 +469,8 @@ export const zh: I18n = {
     customFontPlaceholder: '输入字体名，如 PingFang SC',
     fontFamilyHint: '推荐写作字体（霞鹜文楷、思源黑/宋等）需先安装到系统。macOS：brew install --cask font-lxgw-wenkai。未安装时自动回退到 PingFang。',
     fontSize: '编辑器字号',
+    lineHeight: '行高',
+    paragraphSpacing: '段间隔',
     uiFontSize: '界面字号',
     globalZoom: '全局缩放',
     globalZoomHint: '缩放整个应用 — 编辑器、预览、界面。适合高分辨率屏幕。快捷键：⌘+ / ⌘− / ⌘0。',

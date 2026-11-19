@@ -696,6 +696,8 @@ const plainEditorStyle = computed(() => ({
   '--plain-editor-font-size': `${settings.fontSize || 14}px`,
   '--plain-editor-font-family': buildEditorFontStack(settings.fontFamily),
   '--plain-preview-font-size': `${settings.previewFontSize || settings.fontSize || 15}px`,
+  '--plain-editor-line-height': String(settings.lineHeight || 1.8),
+  '--plain-paragraph-spacing': `${settings.paragraphSpacing ?? 0.9}em`,
 }));
 
 // #161 — line-number gutter for the plain-textarea path. CodeMirror's
@@ -1361,15 +1363,16 @@ function plainPaddingTopPx(el: HTMLTextAreaElement): number {
 }
 
 function plainLineHeightPx(): number {
+  const lhRatio = settings.lineHeight || 1.8;
   const editor = plainLiveEnabled.value
     ? plainBlockEditors.value[plainActiveBlock.value]
     : plainEditor.value;
-  if (!editor) return Math.max(16, (settings.fontSize || 16) * 1.8);
+  if (!editor) return Math.max(16, (settings.fontSize || 16) * lhRatio);
   const style = window.getComputedStyle(editor);
   const n = Number.parseFloat(style.lineHeight);
   if (Number.isFinite(n) && n > 0) return n;
   const fs = Number.parseFloat(style.fontSize);
-  return Number.isFinite(fs) && fs > 0 ? fs * 1.8 : 29;
+  return Number.isFinite(fs) && fs > 0 ? fs * lhRatio : 29;
 }
 
 function plainSelectionText(): string {
@@ -4898,12 +4901,27 @@ function richExtensionsFor(tab: Tab) {
     : richHighlightOnly();
 }
 
-const fontSizeTheme = (px: number, family: string) =>
-  EditorView.theme({
+const fontSizeTheme = (
+  px: number,
+  family: string,
+  lineHeight: number = 1.8,
+  paragraphSpacing: number = 0.9,
+) => {
+  const lh = Number.isFinite(lineHeight) ? Math.max(1.2, Math.min(2.6, lineHeight)) : 1.8;
+  const ps = Number.isFinite(paragraphSpacing) ? Math.max(0, Math.min(2.0, paragraphSpacing)) : 0.9;
+  const blankLineLh = Math.max(0.25, Math.round(lh * (ps / 0.9) * 1000) / 1000);
+  const singleEnterPadEm = Math.max(0, Math.round(ps * 0.45 * 1000) / 1000);
+  return EditorView.theme({
     '&': { fontSize: `${px}px`, height: '100%' },
-    // 5.0 §5 — body 16/1.8 (the size is the user's; 1.8 is CJK-comfortable),
+    // 5.0 §5 + #612 — body 16/1.8 by default, user-configurable lineHeight & paragraphSpacing,
     // 20px above the first line (#435, #440), room to scroll the last line up to the eye.
-    '.cm-scroller': { fontFamily: buildEditorFontStack(family), lineHeight: '1.8' },
+    '.cm-scroller': { fontFamily: buildEditorFontStack(family), lineHeight: String(lh) },
+    '&.cm-live-edit .cm-content > .cm-line:not(.cm-md-fenced-line):has(> br:only-child)': {
+      lineHeight: String(blankLineLh),
+    },
+    '&.cm-live-edit .cm-content > .cm-line:not(.cm-md-fenced-line):not(.cm-md-list-line):not(.cm-md-quote-line):not([class*="cm-md-heading-line-"]):not(:has(> br:only-child)):has(+ .cm-line:not(.cm-md-fenced-line):not(.cm-md-list-line):not(:has(> br:only-child)))': {
+      paddingBottom: `${singleEnterPadEm}em`,
+    },
     '.cm-content': { padding: '20px 32px 30vh', caretColor: 'var(--accent)' },
     '.cm-gutters': {
       backgroundColor: 'transparent',
@@ -4940,6 +4958,7 @@ const fontSizeTheme = (px: number, family: string) =>
       color: 'var(--search-match-current-fg, #ffffff) !important',
     },
   });
+};
 
 function buildExtensions() {
   if (usePlainWindowsEditor) return [];
@@ -5010,7 +5029,14 @@ function buildExtensions() {
     ),
     themeCompartment.of(cmThemeFor(settings.theme, !!settings.customCssPath)),
     vimCompartment.of(settings.vimMode ? vimExtension() : []),
-    fontSizeCompartment.of(fontSizeTheme(settings.fontSize, settings.fontFamily)),
+    fontSizeCompartment.of(
+      fontSizeTheme(
+        settings.fontSize,
+        settings.fontFamily,
+        settings.lineHeight,
+        settings.paragraphSpacing,
+      ),
+    ),
     spellCheckCompartment.of(spellCheckExt(props.spellCheck)),
     focusCompartment.of(props.focusMode ? focusModeExtension() : []),
     typewriterCompartment.of(props.typewriterMode ? typewriterModeExtension() : []),
@@ -6677,9 +6703,17 @@ watch(
 );
 
 watch(
-  [() => settings.fontSize, () => settings.fontFamily],
-  ([n, f]) => {
-    view?.dispatch({ effects: fontSizeCompartment.reconfigure(fontSizeTheme(n, f)) });
+  [
+    () => settings.fontSize,
+    () => settings.fontFamily,
+    () => settings.lineHeight,
+    () => settings.paragraphSpacing,
+  ],
+  ([n, f, lh, ps]) => {
+    view?.dispatch({
+      effects: fontSizeCompartment.reconfigure(fontSizeTheme(n, f, lh, ps)),
+    });
+    schedulePlainGutter();
   }
 );
 
@@ -7839,7 +7873,7 @@ const cls = computed(() => ({
   caret-color: var(--accent);
   font-family: var(--plain-editor-font-family, var(--font-editor, var(--font-ui)));
   font-size: var(--plain-editor-font-size, 16px);
-  line-height: 1.8;
+  line-height: var(--plain-editor-line-height, var(--editor-line-height, 1.8));
   tab-size: 2;
   white-space: pre;
   overflow: auto;
@@ -7901,7 +7935,7 @@ const cls = computed(() => ({
   color: var(--text-faint, #999);
   font-family: var(--plain-editor-font-family, var(--font-editor, var(--font-ui)));
   font-size: var(--plain-editor-font-size, 16px);
-  line-height: 1.8;
+  line-height: var(--plain-editor-line-height, var(--editor-line-height, 1.8));
   text-align: right;
   user-select: none;
 }
@@ -7916,7 +7950,7 @@ const cls = computed(() => ({
   box-sizing: border-box;
   font-family: var(--plain-editor-font-family, var(--font-editor, var(--font-ui)));
   font-size: var(--plain-editor-font-size, 16px);
-  line-height: 1.8;
+  line-height: var(--plain-editor-line-height, var(--editor-line-height, 1.8));
 }
 .plain-block-editor--line-numbers {
   padding-left: 56px;
@@ -7932,7 +7966,7 @@ const cls = computed(() => ({
   color: var(--text-faint, #999);
   font-family: var(--plain-editor-font-family, var(--font-editor, var(--font-ui)));
   font-size: var(--plain-editor-font-size, 16px);
-  line-height: 1.8;
+  line-height: var(--plain-editor-line-height, var(--editor-line-height, 1.8));
   font-variant-numeric: tabular-nums;
   user-select: none;
   pointer-events: none;
@@ -7947,8 +7981,9 @@ const cls = computed(() => ({
 }
 .plain-block {
   position: relative;
-  min-height: 1.8em;
+  min-height: calc(var(--plain-editor-line-height, var(--editor-line-height, 1.8)) * 1em);
   padding: 1px 0;
+  margin-bottom: calc(var(--plain-paragraph-spacing, var(--paragraph-spacing, 0.9em)) * 0.45);
 }
 .plain-block--active {
   background: var(--bg);
@@ -8031,7 +8066,7 @@ const cls = computed(() => ({
      paragraph keeps its height when clicked into. At the inherited 1.6 every
      line shrank by 1.4px on activation: a 24-line block jumped ~34px.
      5.0: both at the editor's 1.8. */
-  line-height: 1.8;
+  line-height: var(--plain-editor-line-height, var(--editor-line-height, 1.8));
   tab-size: 2;
   white-space: pre;
 }
@@ -8047,7 +8082,7 @@ const cls = computed(() => ({
   margin: 0;
   color: var(--text-3, var(--text-2));
   font: inherit;
-  line-height: 1.8;
+  line-height: var(--plain-editor-line-height, var(--editor-line-height, 1.8));
   white-space: pre;
   overflow: hidden;
   cursor: text;
@@ -8078,7 +8113,7 @@ const cls = computed(() => ({
      to the old values for safety. */
   font-family: var(--plain-editor-font-family, var(--font-ui));
   font-size: var(--plain-editor-font-size, 16px);
-  line-height: 1.8;
+  line-height: var(--plain-editor-line-height, var(--editor-line-height, 1.8));
   padding: 0.05em 0;
 }
 .plain-block__render :deep(h1),
@@ -8310,6 +8345,7 @@ const cls = computed(() => ({
 }
 .plain-block__render :deep(table) {
   border-collapse: collapse;
+  width: 100%;
   max-width: 100%;
 }
 .plain-block__render :deep(th),

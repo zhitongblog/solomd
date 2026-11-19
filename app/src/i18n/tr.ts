@@ -467,6 +467,8 @@ export const tr: I18n = {
     customFontPlaceholder: 'Yazı tipi adı girin, örn. PingFang SC',
     fontFamilyHint: 'Önerilen yazı tipleri (LXGW WenKai, Source Han vb.) sisteminizde yüklü olmalıdır. macOS: brew install --cask font-lxgw-wenkai. Eksikse PingFang kullanılır.',
     fontSize: 'Düzenleyici Yazı Boyutu',
+    lineHeight: 'Satır Yüksekliği',
+    paragraphSpacing: 'Paragraf Aralığı',
     uiFontSize: 'Arayüz Yazı Boyutu',
     globalZoom: 'Genel Yakınlaştırma',
     globalZoomHint: 'Tüm uygulamayı ölçeklendirir — editör, önizleme ve arayüz. Yüksek DPI ekranlarda kullanışlı. Klavye: ⌘+ / ⌘− / ⌘0.',

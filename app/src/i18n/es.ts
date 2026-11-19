@@ -467,6 +467,8 @@ export const es: I18n = {
     customFontPlaceholder: 'Introducir nombre de fuente, ej. PingFang SC',
     fontFamilyHint: 'Las fuentes recomendadas (LXGW WenKai, Source Han, etc.) deben estar instaladas en tu sistema. macOS: brew install --cask font-lxgw-wenkai. Si falta, recurre a PingFang.',
     fontSize: 'Tamaño de fuente del editor',
+    lineHeight: 'Altura de línea',
+    paragraphSpacing: 'Espaciado entre párrafos',
     uiFontSize: 'Tamaño de fuente de la interfaz',
     globalZoom: 'Zoom global',
     globalZoomHint: 'Escala toda la aplicación — editor, vista previa e interfaz. Útil en pantallas de alta resolución. Teclado: ⌘+ / ⌘− / ⌘0.',

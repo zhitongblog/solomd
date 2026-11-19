@@ -467,6 +467,8 @@ export const ru: I18n = {
     customFontPlaceholder: 'Введите название шрифта, например PT Serif',
     fontFamilyHint: 'Рекомендуемые шрифты для письма (LXGW WenKai, Source Han и др.) должны быть установлены в системе. macOS: brew install --cask font-lxgw-wenkai. Если шрифта нет, используется PingFang.',
     fontSize: 'Размер шрифта редактора',
+    lineHeight: 'Межстрочный интервал',
+    paragraphSpacing: 'Интервал между абзацами',
     uiFontSize: 'Размер шрифта интерфейса',
     globalZoom: 'Общий масштаб',
     globalZoomHint: 'Масштабирует всё приложение — редактор, просмотр и панели. Удобно на экранах с высокой плотностью. Клавиши: ⌘+ / ⌘− / ⌘0.',

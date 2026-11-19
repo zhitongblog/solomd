@@ -301,6 +301,62 @@ class MainActivity : TauriActivity() {
 
     private fun resolver() = instance?.contentResolver
 
+    private fun primaryFileForDocId(docId: String): java.io.File? {
+      if (!docId.startsWith("primary:")) return null
+      val rel = docId.removePrefix("primary:").trimStart('/')
+      return if (rel.isEmpty()) {
+        java.io.File("/storage/emulated/0")
+      } else {
+        java.io.File("/storage/emulated/0", rel)
+      }
+    }
+
+    /** #611 — Query whether MANAGE_EXTERNAL_STORAGE is declared in this build and granted. */
+    @JvmStatic
+    fun allFilesAccessStatus(): String { return try {
+      val act = instance ?: return err2("no activity")
+      if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.R) {
+        return envelope {
+          put("v", JSONObject().put("supported", false).put("granted", true))
+        }
+      }
+      @Suppress("DEPRECATION")
+      val pkgInfo = act.packageManager.getPackageInfo(
+        act.packageName,
+        android.content.pm.PackageManager.GET_PERMISSIONS
+      )
+      val declared = pkgInfo.requestedPermissions?.contains(
+        android.Manifest.permission.MANAGE_EXTERNAL_STORAGE
+      ) == true
+      val granted = android.os.Environment.isExternalStorageManager()
+      envelope {
+        put("v", JSONObject().put("supported", declared).put("granted", granted))
+      }
+    } catch (e: Exception) { err(e) } }
+
+    /** #611 — Open Android system settings to grant MANAGE_EXTERNAL_STORAGE for this app. */
+    @JvmStatic
+    fun requestAllFilesAccess(): String { return try {
+      val act = instance ?: return err2("no activity")
+      if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+        act.runOnUiThread {
+          try {
+            val intent = Intent(
+              android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+              Uri.parse("package:${act.packageName}")
+            )
+            act.startActivity(intent)
+          } catch (_: Exception) {
+            try {
+              act.startActivity(Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+            } catch (_: Exception) {
+            }
+          }
+        }
+      }
+      envelope { put("v", true) }
+    } catch (e: Exception) { err(e) } }
+
     /** Launch the system folder picker. Clears any stale result first. */
     @JvmStatic
     fun launchFolderPicker() {
@@ -394,21 +450,19 @@ class MainActivity : TauriActivity() {
           })
         }
       }
-      // #608 — Fallback on OEM ROMs (ColorOS 16 / Android 16 DownloadsProvider)
-      // if ContentResolver hides non-media `.md` files on a directly readable primary path.
-      if (docId.startsWith("primary:")) {
+      // #608 / #611 — Fallback on OEM ROMs (ColorOS 16 / Android 16 Scoped Storage)
+      // when ContentResolver hides non-media `.md` files synced by external tools.
+      val dirFile = primaryFileForDocId(docId)
+      if (dirFile != null && dirFile.isDirectory && dirFile.canRead()) {
         val rel = docId.removePrefix("primary:").trimStart('/')
-        val dirFile = if (rel.isEmpty()) java.io.File("/storage/emulated/0") else java.io.File("/storage/emulated/0/$rel")
-        if (dirFile.isDirectory && dirFile.canRead()) {
-          dirFile.listFiles()?.forEach { f ->
-            if (!seenNames.contains(f.name)) {
-              val childRel = if (rel.isEmpty()) f.name else "$rel/${f.name}"
-              items.put(JSONObject().apply {
-                put("name", f.name)
-                put("docId", "primary:$childRel")
-                put("isDir", f.isDirectory)
-              })
-            }
+        dirFile.listFiles()?.forEach { f ->
+          if (!seenNames.contains(f.name)) {
+            val childRel = if (rel.isEmpty()) f.name else "$rel/${f.name}"
+            items.put(JSONObject().apply {
+              put("name", f.name)
+              put("docId", "primary:$childRel")
+              put("isDir", f.isDirectory)
+            })
           }
         }
       }
@@ -420,7 +474,13 @@ class MainActivity : TauriActivity() {
     fun readText(treeUri: String, docId: String): String { return try {
       val uri = DocumentsContract.buildDocumentUriUsingTree(Uri.parse(treeUri), docId)
       val r = resolver() ?: return err2("no resolver")
-      val text = r.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) }
+      val fromSaf: String? = try {
+        r.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) }
+      } catch (_: Exception) {
+        null
+      }
+      val text = fromSaf
+        ?: primaryFileForDocId(docId)?.takeIf { it.isFile && it.canRead() }?.readText(Charsets.UTF_8)
         ?: return err2("openInputStream null")
       envelope { put("v", text) }
     } catch (e: Exception) { err(e) } }
@@ -482,8 +542,15 @@ class MainActivity : TauriActivity() {
         val resolvedDocId = resolveChildDocIdBySegments(tree, rootDocId, segments)
         if (resolvedDocId != null) {
           val uri = DocumentsContract.buildDocumentUriUsingTree(tree, resolvedDocId)
-          bytes = r.openInputStream(uri)?.use { it.readBytes() }
+          bytes = try {
+            r.openInputStream(uri)?.use { it.readBytes() }
+          } catch (_: Exception) {
+            null
+          }
         }
+      }
+      if (bytes == null) {
+        bytes = primaryFileForDocId(docId)?.takeIf { it.isFile && it.canRead() }?.readBytes()
       }
       val data = bytes ?: return err2("openInputStream null")
       envelope { put("v", Base64.encodeToString(data, Base64.NO_WRAP)) }
@@ -494,8 +561,29 @@ class MainActivity : TauriActivity() {
     fun writeText(treeUri: String, docId: String, content: String): String { return try {
       val uri = DocumentsContract.buildDocumentUriUsingTree(Uri.parse(treeUri), docId)
       val r = resolver() ?: return err2("no resolver")
-      r.openOutputStream(uri, "wt")?.use { it.write(content.toByteArray(Charsets.UTF_8)) }
-        ?: return err2("openOutputStream null")
+      val wroteSaf = try {
+        val out = try {
+          r.openOutputStream(uri, "wt")
+        } catch (_: Exception) {
+          r.openOutputStream(uri, "w")
+        }
+        if (out != null) {
+          out.use {
+            it.write(content.toByteArray(Charsets.UTF_8))
+            it.flush()
+          }
+          true
+        } else {
+          false
+        }
+      } catch (_: Exception) {
+        false
+      }
+      if (!wroteSaf) {
+        val f = primaryFileForDocId(docId) ?: return err2("openOutputStream null")
+        f.parentFile?.mkdirs()
+        f.writeText(content, Charsets.UTF_8)
+      }
       envelope { put("v", true) }
     } catch (e: Exception) { err(e) } }
 
@@ -505,19 +593,33 @@ class MainActivity : TauriActivity() {
       val uri = DocumentsContract.buildDocumentUriUsingTree(Uri.parse(treeUri), docId)
       val r = resolver() ?: return err2("no resolver")
       val bytes = Base64.decode(b64, Base64.DEFAULT)
-      val stream = try {
-        r.openOutputStream(uri, "wt")
-      } catch (_: Exception) {
-        try {
-          r.openOutputStream(uri, "w")
+      val wroteSaf = try {
+        val stream = try {
+          r.openOutputStream(uri, "wt")
         } catch (_: Exception) {
-          r.openOutputStream(uri)
+          try {
+            r.openOutputStream(uri, "w")
+          } catch (_: Exception) {
+            r.openOutputStream(uri)
+          }
         }
+        if (stream != null) {
+          stream.use {
+            it.write(bytes)
+            it.flush()
+          }
+          true
+        } else {
+          false
+        }
+      } catch (_: Exception) {
+        false
       }
-      stream?.use {
-        it.write(bytes)
-        it.flush()
-      } ?: return err2("openOutputStream null")
+      if (!wroteSaf) {
+        val f = primaryFileForDocId(docId) ?: return err2("openOutputStream null")
+        f.parentFile?.mkdirs()
+        f.writeBytes(bytes)
+      }
       envelope { put("v", true) }
     } catch (e: Exception) { err(e) } }
 
@@ -551,8 +653,25 @@ class MainActivity : TauriActivity() {
           lastErr = e
         }
       }
-      val docUri = created ?: return if (lastErr != null) err(lastErr) else err2("createDocument null")
-      envelope { put("v", DocumentsContract.getDocumentId(docUri)) }
+      if (created != null) {
+        return envelope { put("v", DocumentsContract.getDocumentId(created)) }
+      }
+      val parentDir = primaryFileForDocId(parentDocId)
+      if (parentDir != null && parentDir.isDirectory && parentDir.canWrite()) {
+        val child = java.io.File(parentDir, name)
+        val ok = if (mime == DIR_MIME) {
+          child.exists() || child.mkdirs()
+        } else {
+          child.parentFile?.mkdirs()
+          if (!child.exists()) child.createNewFile() else true
+        }
+        if (ok) {
+          val rel = parentDocId.removePrefix("primary:").trimStart('/')
+          val childRel = if (rel.isEmpty()) name else "$rel/$name"
+          return envelope { put("v", "primary:$childRel") }
+        }
+      }
+      return if (lastErr != null) err(lastErr) else err2("createDocument null")
     } catch (e: Exception) { err(e) } }
 
     /** Write Base64-encoded bytes to a standalone content:// URI (e.g. from ACTION_CREATE_DOCUMENT). */
@@ -664,7 +783,12 @@ class MainActivity : TauriActivity() {
     fun deleteDoc(treeUri: String, docId: String): String { return try {
       val uri = DocumentsContract.buildDocumentUriUsingTree(Uri.parse(treeUri), docId)
       val r = resolver() ?: return err2("no resolver")
-      val ok = DocumentsContract.deleteDocument(r, uri)
+      val safDeleted = try {
+        DocumentsContract.deleteDocument(r, uri)
+      } catch (_: Exception) {
+        false
+      }
+      val ok = safDeleted || (primaryFileForDocId(docId)?.deleteRecursively() == true)
       envelope { put("v", ok) }
     } catch (e: Exception) { err(e) } }
 
@@ -699,6 +823,19 @@ class MainActivity : TauriActivity() {
     }
     enableEdgeToEdge()
     super.onCreate(savedInstanceState)
+  }
+
+  override fun onResume() {
+    super.onResume()
+    runOnUiThread {
+      try {
+        findWebView(window?.decorView)?.evaluateJavascript(
+          "window.dispatchEvent(new Event('solomd:android-storage-resume'))",
+          null
+        )
+      } catch (_: Throwable) {
+      }
+    }
   }
 
   override fun onWebViewCreate(webView: android.webkit.WebView) {

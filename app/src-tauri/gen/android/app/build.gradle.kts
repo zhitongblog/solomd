@@ -120,6 +120,32 @@ android {
     val isBundleTask = gradle.startParameter.taskNames.any {
         it.contains("bundle", ignoreCase = true)
     }
+    // #611 — Sideload APKs (GitHub / Gitee / solomd.app) declare MANAGE_EXTERNAL_STORAGE
+    // so OEM ROMs like ColorOS 16 / Android 16 do not hide externally synced `.md` files
+    // (Syncthing / FolderSync / VNote) inside `/storage/emulated/0/...` folders.
+    // Google Play AAB bundles (`bundle*`) keep `src/main/AndroidManifest.xml` untouched.
+    if (!isBundleTask) {
+        val baseManifest = file("src/main/AndroidManifest.xml")
+        val sideloadManifest = layout.buildDirectory
+            .file("generated/sideloadManifest/AndroidManifest.xml")
+            .get()
+            .asFile
+        sideloadManifest.parentFile.mkdirs()
+        val permSnippet = """
+    <uses-permission android:name="com.android.vending.BILLING" />
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
+""".trimIndent()
+        val updatedXml = baseManifest.readText().replace(
+            """    <uses-permission android:name="com.android.vending.BILLING" />""",
+            permSnippet
+        )
+        if (!sideloadManifest.exists() || sideloadManifest.readText() != updatedXml) {
+            sideloadManifest.writeText(updatedXml)
+        }
+        sourceSets.getByName("main").manifest.srcFile(sideloadManifest)
+    }
     splits {
         abi {
             isEnable = !isBundleTask

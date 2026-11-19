@@ -25,6 +25,42 @@ pub struct SafEntry {
     pub is_dir: bool,
 }
 
+/// #611 — Status of Android's MANAGE_EXTERNAL_STORAGE ("All Files Access") on sideload APKs.
+#[derive(Serialize, Deserialize, Clone)]
+pub struct SafAllFilesAccessStatus {
+    pub supported: bool,
+    pub granted: bool,
+}
+
+/// #611 — Check whether MANAGE_EXTERNAL_STORAGE is declared in this APK and granted.
+#[tauri::command]
+pub fn saf_all_files_access_status() -> Result<SafAllFilesAccessStatus, String> {
+    #[cfg(target_os = "android")]
+    {
+        imp::all_files_access_status()
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        Ok(SafAllFilesAccessStatus {
+            supported: false,
+            granted: true,
+        })
+    }
+}
+
+/// #611 — Open Android's system "All Files Access" settings screen for SoloMD.
+#[tauri::command]
+pub fn saf_request_all_files_access() -> Result<(), String> {
+    #[cfg(target_os = "android")]
+    {
+        imp::request_all_files_access()
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        Ok(())
+    }
+}
+
 /// Launch the system folder picker (ACTION_OPEN_DOCUMENT_TREE). Fire-and-forget;
 /// the frontend polls `saf_poll_picked` for the result.
 #[tauri::command]
@@ -251,7 +287,7 @@ pub fn android_poll_print_finished() -> Result<bool, String> {
 
 #[cfg(target_os = "android")]
 mod imp {
-    use super::SafEntry;
+    use super::{SafAllFilesAccessStatus, SafEntry};
     use jni::objects::{JObject, JString, JValue};
     use jni::JavaVM;
 
@@ -560,5 +596,16 @@ mod imp {
     pub fn poll_print_finished() -> Result<bool, String> {
         let s = call_str("pollPrintFinished", "()Ljava/lang/String;", &[])?;
         Ok(s == "1")
+    }
+
+    pub fn all_files_access_status() -> Result<SafAllFilesAccessStatus, String> {
+        let json = call_str("allFilesAccessStatus", "()Ljava/lang/String;", &[])?;
+        let val = unwrap_env(&json)?;
+        serde_json::from_value(val).map_err(|e| e.to_string())
+    }
+
+    pub fn request_all_files_access() -> Result<(), String> {
+        let json = call_str("requestAllFilesAccess", "()Ljava/lang/String;", &[])?;
+        unwrap_env(&json).map(|_| ())
     }
 }

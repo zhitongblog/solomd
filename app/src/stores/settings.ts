@@ -128,6 +128,9 @@ interface Settings {
   startupViewMode: ViewMode | null;
   fontSize: number;
   fontFamily: string;
+  // #612 — Configurable body line-height (1.2–2.6) and paragraph spacing (0–2.0em).
+  lineHeight: number;
+  paragraphSpacing: number;
   wordWrap: boolean;
   showLineNumbers: boolean;
   // #193 — non-blinking (solid) caret in the editor.
@@ -818,6 +821,8 @@ function defaults(): Settings {
     startupViewMode: null,
     fontSize: 16,
     fontFamily: DEFAULT_EDITOR_FONT,
+    lineHeight: 1.8,
+    paragraphSpacing: 0.9,
     wordWrap: true,
     showLineNumbers: false,
     solidCursor: false,
@@ -1270,6 +1275,14 @@ function load(): Settings {
       if ((parsed.theme as string) === 'system') merged.followSystemTheme = true;
       if (!isTheme(merged.theme)) merged.theme = systemTheme();
       if (merged.followSystemTheme) merged.theme = systemTheme();
+      merged.lineHeight =
+        typeof parsed.lineHeight === 'number' && Number.isFinite(parsed.lineHeight)
+          ? Math.max(1.2, Math.min(2.6, Math.round(parsed.lineHeight * 100) / 100))
+          : 1.8;
+      merged.paragraphSpacing =
+        typeof parsed.paragraphSpacing === 'number' && Number.isFinite(parsed.paragraphSpacing)
+          ? Math.max(0, Math.min(2.0, Math.round(parsed.paragraphSpacing * 100) / 100))
+          : 0.9;
       return merged;
     }
   } catch {}
@@ -1425,6 +1438,32 @@ export const useSettingsStore = defineStore('settings', {
     setFontFamily(f: string) {
       this.fontFamily = f;
       this.persist();
+    },
+    setLineHeight(n: number) {
+      const clamped = Number.isFinite(n)
+        ? Math.max(1.2, Math.min(2.6, Math.round(n * 100) / 100))
+        : 1.8;
+      this.lineHeight = clamped;
+      if (typeof document !== 'undefined') {
+        document.documentElement.style.setProperty('--editor-line-height', String(clamped));
+      }
+      this.persist();
+    },
+    resetLineHeight() {
+      this.setLineHeight(defaults().lineHeight);
+    },
+    setParagraphSpacing(n: number) {
+      const clamped = Number.isFinite(n)
+        ? Math.max(0, Math.min(2.0, Math.round(n * 100) / 100))
+        : 0.9;
+      this.paragraphSpacing = clamped;
+      if (typeof document !== 'undefined') {
+        document.documentElement.style.setProperty('--paragraph-spacing', `${clamped}em`);
+      }
+      this.persist();
+    },
+    resetParagraphSpacing() {
+      this.setParagraphSpacing(defaults().paragraphSpacing);
     },
     toggleWordWrap() {
       this.wordWrap = !this.wordWrap;

@@ -205,3 +205,30 @@ export async function safRecoverVaultForPath(safPath: string): Promise<SafVault 
   }
   return { treeUri: bestTreeUri, rootDocId: targetDocId, name };
 }
+
+export interface SafAllFilesAccessStatus {
+  supported: boolean;
+  granted: boolean;
+}
+
+/**
+ * #611 — Check whether MANAGE_EXTERNAL_STORAGE ("All Files Access") is declared
+ * in this APK and currently granted on Android 11+ (needed on OEM ROMs such as
+ * ColorOS 16 / Android 16 when Syncthing / VNote syncs non-media `.md` files).
+ */
+export async function safAllFilesAccessStatus(): Promise<SafAllFilesAccessStatus> {
+  try {
+    return await invoke<SafAllFilesAccessStatus>('saf_all_files_access_status');
+  } catch {
+    return { supported: false, granted: true };
+  }
+}
+
+/** #611 — Launch Android's system settings page to grant All Files Access. */
+export async function safRequestAllFilesAccess(): Promise<void> {
+  try {
+    await invoke('saf_request_all_files_access');
+  } catch {
+    /* ignore on unsupported platforms */
+  }
+}

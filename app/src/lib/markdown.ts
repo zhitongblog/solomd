@@ -814,16 +814,19 @@ function tocListTokens(state: any, headings: TocHeading[]): any[] {
 md.core.ruler.before('source_line_map', 'solomd_toc_level_attr', (state) => {
   for (let i = 0; i < state.tokens.length; i++) {
     const tok = state.tokens[i];
-    // #574 — Convert `<!-- solomd-page-break -->` before `<hr>` into a
-    // sanitizer-safe `data-solomd-page-break="1"` attribute on the `<hr>`.
+    // #574 / #615 — Convert `<!-- solomd-page-break -->` before `<hr>` into a
+    // sanitizer-safe `data-solomd-page-break="1"` attribute on the `<hr>` and
+    // drop the consumed `html_block` token so `source_line_map` does not emit
+    // an empty `<div data-source-line="..."></div>` wrapper before `<hr>`.
     if (
       tok.type === 'html_block' &&
       /^\s*<!--\s*solomd-page-break\s*-->\s*$/.test(tok.content || '')
     ) {
-      tok.content = '';
       if (state.tokens[i + 1]?.type === 'hr') {
         state.tokens[i + 1].attrSet('data-solomd-page-break', '1');
       }
+      state.tokens.splice(i, 1);
+      i--;
       continue;
     }
     if (i >= state.tokens.length - 1) continue;

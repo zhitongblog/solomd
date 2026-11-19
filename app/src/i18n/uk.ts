@@ -467,6 +467,8 @@ export const uk: I18n = {
     customFontPlaceholder: 'Введіть назву шрифту, напр. PingFang SC',
     fontFamilyHint: 'Рекомендовані шрифти для письма (LXGW WenKai, Source Han тощо) повинні бути встановлені у вашій системі. macOS: brew install --cask font-lxgw-wenkai. Якщо відсутні, використовується PingFang.',
     fontSize: 'Розмір шрифту редактора',
+    lineHeight: 'Міжрядковий інтервал',
+    paragraphSpacing: 'Відступ між абзацами',
     uiFontSize: 'Розмір шрифту інтерфейсу',
     globalZoom: 'Глобальне масштабування',
     globalZoomHint: 'Масштабує весь застосунок — редактор, попередній перегляд та інтерфейс. Корисно на дисплеях з високою щільністю пікселів. Клавіші: ⌘+ / ⌘− / ⌘0.',

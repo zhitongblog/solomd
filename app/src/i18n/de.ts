@@ -467,6 +467,8 @@ export const de: I18n = {
     customFontPlaceholder: 'Schriftname eingeben, z. B. PingFang SC',
     fontFamilyHint: 'Empfohlene Schreibschriften (LXGW WenKai, Source Han usw.) müssen auf Ihrem System installiert sein. macOS: brew install --cask font-lxgw-wenkai. Bei fehlender Schrift wird auf PingFang zurückgegriffen.',
     fontSize: 'Schriftgröße im Editor',
+    lineHeight: 'Zeilenhöhe',
+    paragraphSpacing: 'Absatzabstand',
     uiFontSize: 'Schriftgröße der Oberfläche',
     globalZoom: 'Globaler Zoom',
     globalZoomHint: 'Skaliert die gesamte App — Editor, Vorschau und Oberfläche. Nützlich auf HiDPI-Bildschirmen. Tastatur: ⌘+ / ⌘− / ⌘0.',

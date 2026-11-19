@@ -936,11 +936,13 @@ div.mermaidTooltip {
     line-height: 1.35;
     word-break: break-word;
   }
-  /* #347 / #566 — a TOC at the top of the document (Settings → PDF "table of
-   * contents", a leading [TOC], or H1 + [TOC] in merged book export) is a page
-   * of its own. */
+  /* #347 / #566 / #614 — a TOC at the top of the document (Settings → PDF "table of
+   * contents", a leading [TOC], H1 + [TOC], or .pdf-book-cover + [TOC] in merged
+   * / batch folder PDF export) is always a page of its own, never sharing its
+   * final page with body text. */
   body.solomd-printing .solomd-print-content > .md-toc:first-child,
   body.solomd-printing .solomd-print-content > h1:first-child + .md-toc,
+  body.solomd-printing .solomd-print-content .pdf-book-cover + .md-toc,
   body.solomd-printing .solomd-print-content .md-toc.md-toc--lead {
     break-after: page;
     page-break-after: always;

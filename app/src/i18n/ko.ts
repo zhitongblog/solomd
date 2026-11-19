@@ -467,6 +467,8 @@ export const ko: I18n = {
     customFontPlaceholder: '글꼴 이름 입력(예: PingFang SC)',
     fontFamilyHint: '추천 글꼴(LXGW WenKai, Source Han 등)은 시스템에 설치되어 있어야 합니다. macOS: brew install --cask font-lxgw-wenkai. 없으면 PingFang으로 대체됩니다.',
     fontSize: '에디터 글꼴 크기',
+    lineHeight: '줄 높이',
+    paragraphSpacing: '단락 간격',
     uiFontSize: 'UI 글꼴 크기',
     globalZoom: '전체 확대/축소',
     globalZoomHint: '앱 전체 — 편집기, 미리보기, UI를 축척. 고해상도 화면에 유용. 단축키: ⌘+ / ⌘− / ⌘0.',
