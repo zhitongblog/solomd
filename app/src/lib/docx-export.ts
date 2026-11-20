@@ -107,6 +107,7 @@ function htmlImageSrcs(html: string): string[] {
 
 /** Set per export run; buildBody's fence branch reads it. */
 let plantumlServerForRun: string | null = null;
+let mediaAlignmentForRun: (typeof AlignmentType)[keyof typeof AlignmentType] = AlignmentType.CENTER;
 
 function plantumlUrlFor(tok: Token): string | null {
   if (!plantumlServerForRun || tok.type !== 'fence') return null;
@@ -378,7 +379,7 @@ function mathBlockParagraph(latex: string): Paragraph {
       ...(idx > 0 ? [new TextRun({ break: 1 })] : []),
       new TextRun({ text: line, font: MATH_FONT }),
     ]),
-    alignment: AlignmentType.CENTER,
+    alignment: mediaAlignmentForRun,
     spacing: { before: 160, after: 160 },
   });
 }
@@ -547,7 +548,7 @@ async function buildBody(
             out.push(
               new Paragraph({
                 children: [imageRun(img, alt, MAX_IMG_WIDTH, imgTok)],
-                alignment: AlignmentType.CENTER,
+                alignment: mediaAlignmentForRun,
                 spacing: { before: 160, after: 160 },
               })
             );
@@ -564,7 +565,7 @@ async function buildBody(
                   color: '888888',
                 }),
               ],
-              alignment: AlignmentType.CENTER,
+              alignment: mediaAlignmentForRun,
               spacing: { before: 160, after: 160 },
             })
           );
@@ -605,7 +606,7 @@ async function buildBody(
           out.push(
             new Paragraph({
               children: [imageRun(pumlImg, 'PlantUML diagram')],
-              alignment: AlignmentType.CENTER,
+              alignment: mediaAlignmentForRun,
               spacing: { before: 160, after: 160 },
             })
           );
@@ -626,7 +627,7 @@ async function buildBody(
                     altText: { name: 'Mermaid diagram', description: 'Mermaid diagram' },
                   }),
                 ],
-                alignment: AlignmentType.CENTER,
+                alignment: mediaAlignmentForRun,
                 spacing: { before: 160, after: 160 },
               })
             );
@@ -677,7 +678,7 @@ async function buildBody(
           out.push(
             new Paragraph({
               children: imgs.map((img) => imageRun(img, '')),
-              alignment: AlignmentType.CENTER,
+              alignment: mediaAlignmentForRun,
               spacing: { before: 160, after: 160 },
             })
           );
@@ -1297,11 +1298,19 @@ export async function markdownToDocxBlob(
   includeTocPage?: boolean,
   /** #597 — merged folder book export: keep folder name as Page 1 cover title without adding a root Heading 1 bookmark. */
   isMergedBook?: boolean,
+  /** #624 — alignment for images, diagrams, and display math blocks (`left` | `center` | `right`). */
+  mediaAlign: 'left' | 'center' | 'right' = 'center',
 ): Promise<Blob> {
   srcImages.clear();
   nextOrderedListInstance = 0;
   nextHeadingAnchorId = 0;
   plantumlServerForRun = plantumlServer;
+  mediaAlignmentForRun =
+    mediaAlign === 'left'
+      ? AlignmentType.LEFT
+      : mediaAlign === 'right'
+        ? AlignmentType.RIGHT
+        : AlignmentType.CENTER;
   // Apply the same leniency preprocessors the HTML render path uses (malformed
   // table delimiters, list re-indent, inline-HTML blocks) so DOCX export
   // doesn't silently drop tables/lists the preview shows correctly.

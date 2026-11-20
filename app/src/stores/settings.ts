@@ -492,6 +492,9 @@ interface Settings {
   // #572 — Include a Table of Contents page (with page numbers) at the start
   // of exported documents.
   exportIncludeTocPage: boolean;
+  // #624 — Alignment of images, diagrams, and display math blocks in exported
+  // HTML / EPUB / PDF / Word documents (`left` | `center` | `right`).
+  exportMediaAlign: 'left' | 'center' | 'right';
   // #606 — Format used when saving pasted clipboard images into the vault (`png` | `webp` | `jpg`).
   pastedImageFormat: PastedImageFormat;
   // v4.3.0: global UI zoom (scales the entire app — editor, preview, chrome,
@@ -1019,6 +1022,7 @@ function defaults(): Settings {
     exportHtmlTopicNav: true,
     exportHtmlContentWidth: 960,
     exportIncludeTocPage: true,
+    exportMediaAlign: 'center' as 'left' | 'center' | 'right',
     pastedImageFormat: 'png',
     alwaysOnTop: false,
     globalZoom: 1,
@@ -2342,6 +2346,10 @@ export const useSettingsStore = defineStore('settings', {
     setExportIncludeTocPage(enabled: boolean) {
       this.exportIncludeTocPage = Boolean(enabled);
       this.pdfDefaults.toc = this.exportIncludeTocPage;
+      this.persist();
+    },
+    setExportMediaAlign(align: 'left' | 'center' | 'right') {
+      this.exportMediaAlign = align === 'left' || align === 'right' ? align : 'center';
       this.persist();
     },
     // #7 — Typora-style custom path template (used when attachmentMode==='custom').

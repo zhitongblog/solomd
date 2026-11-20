@@ -1503,6 +1503,8 @@ export interface StandaloneHtmlInput {
   withTocPage?: boolean;
   /** #598 — render "< Previous / Next >" topic navigation buttons on paginated HTML sections. */
   topicNav?: boolean;
+  /** #624 — alignment for images, diagrams, and display math blocks (`left` | `center` | `right`). */
+  mediaAlign?: 'left' | 'center' | 'right';
   /** Optional UI language ('zh' | 'en', defaults to auto-detecting CJK). */
   lang?: string;
 }
@@ -1577,13 +1579,35 @@ export async function buildStandaloneHtml(input: StandaloneHtmlInput): Promise<s
       topicNav: Boolean(input.paginated && useTopicNav),
     };
   }
+  const alignCss = exportMediaAlignCss(input.mediaAlign);
   return HTML_TEMPLATE(
     input.title,
     body,
     headCss,
-    customCss,
+    customCss ? `${customCss}\n${alignCss}` : alignCss,
     bodyClasses,
     navOptions,
     input.contentWidth,
   );
+}
+
+/**
+ * #624 — Generate CSS rules aligning standalone images, figures, Mermaid /
+ * PlantUML diagrams, and KaTeX display formulas across HTML / EPUB / PDF exports.
+ */
+export function exportMediaAlignCss(align?: 'left' | 'center' | 'right'): string {
+  const a = align === 'left' || align === 'right' ? align : 'center';
+  const justify = a === 'left' ? 'flex-start' : a === 'right' ? 'flex-end' : 'center';
+  return `
+p:has(> img:only-child), figure, .md-diagram, .mermaid-wrap, .katex-display, .katex-display > .katex {
+  text-align: ${a} !important;
+}
+p:has(> img:only-child) > img, figure > img {
+  display: inline-block;
+}
+.mermaid-wrap, .md-diagram {
+  display: flex;
+  justify-content: ${justify};
+}
+`;
 }

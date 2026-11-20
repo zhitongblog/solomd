@@ -450,6 +450,103 @@ fn workspace_index_rescan_inner(app: AppHandle) -> Result<usize, String> {
 // Internals
 // ---------------------------------------------------------------------------
 
+fn normalize_index_key(path: &Path) -> PathBuf {
+    let raw = path.to_string_lossy();
+    let stripped = raw.strip_prefix(r"\\?\").unwrap_or(&raw);
+    PathBuf::from(stripped)
+}
+
+fn path_same_file(a: &Path, b: &Path) -> bool {
+    let na = normalize_index_key(a);
+    let nb = normalize_index_key(b);
+    #[cfg(any(target_os = "windows", target_os = "macos"))]
+    {
+        na.to_string_lossy().replace('\\', "/").to_lowercase()
+            == nb.to_string_lossy().replace('\\', "/").to_lowercase()
+    }
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    {
+        na == nb
+    }
+}
+
+fn upsert_entry(entries: &mut HashMap<PathBuf, IndexEntry>, path: &Path, mut idx: IndexEntry) {
+    let key = normalize_index_key(path);
+    let dup_keys: Vec<PathBuf> = entries
+        .keys()
+        .filter(|k| *k != &key && path_same_file(k, &key))
+        .cloned()
+        .collect();
+    for dk in dup_keys {
+        entries.remove(&dk);
+    }
+    idx.path = key.to_string_lossy().to_string();
+    entries.insert(key, idx);
+}
+
+fn remove_entry(entries: &mut HashMap<PathBuf, IndexEntry>, path: &Path) -> bool {
+    let key = normalize_index_key(path);
+    let mut removed = entries.remove(&key).is_some();
+    let dup_keys: Vec<PathBuf> = entries
+        .keys()
+        .filter(|k| path_same_file(k, &key))
+        .cloned()
+        .collect();
+    for dk in dup_keys {
+        if entries.remove(&dk).is_some() {
+            removed = true;
+        }
+    }
+    removed
+}
+
+/// Immediately re-index a single file after an in-app write/delete so tag,
+/// backlink, and property panels update synchronously without waiting on OS
+/// file-watcher delivery or risking stale path-variant duplicates (#621).
+pub fn reindex_path(app: &AppHandle, path: &Path) {
+    let lower = path
+        .extension()
+        .and_then(|s| s.to_str())
+        .map(|s| s.to_lowercase())
+        .unwrap_or_default();
+    if lower != "md" && lower != "markdown" && lower != "mdown" {
+        return;
+    }
+    let root = match STATE.read().ok().and_then(|s| s.root.clone()) {
+        Some(r) => r,
+        None => return,
+    };
+    let norm_root = normalize_index_key(&root);
+    let norm_path = normalize_index_key(path);
+    #[cfg(any(target_os = "windows", target_os = "macos"))]
+    let inside = {
+        let r = norm_root.to_string_lossy().replace('\\', "/").to_lowercase();
+        let p = norm_path.to_string_lossy().replace('\\', "/").to_lowercase();
+        let r_trim = r.trim_end_matches('/');
+        p == r_trim || p.starts_with(&format!("{r_trim}/"))
+    };
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    let inside = norm_path.starts_with(&norm_root);
+    if !inside {
+        return;
+    }
+    let mut changed = false;
+    if norm_path.is_file() {
+        if let Ok(idx) = scan_file(&norm_path) {
+            if let Ok(mut s) = STATE.write() {
+                upsert_entry(&mut s.entries, &norm_path, idx);
+                changed = true;
+            }
+        }
+    } else if let Ok(mut s) = STATE.write() {
+        changed = remove_entry(&mut s.entries, &norm_path);
+    }
+    if changed {
+        let _ = save_cache(app, &root);
+        let _ = app.emit("solomd://index-updated", &"write");
+    }
+}
+
 fn scan_into(root: &Path) -> Result<(), String> {
     let mut new_entries: HashMap<PathBuf, IndexEntry> = HashMap::new();
     for entry in WalkDir::new(root)
@@ -470,7 +567,7 @@ fn scan_into(root: &Path) -> Result<(), String> {
             continue;
         }
         if let Ok(idx) = scan_file(path) {
-            new_entries.insert(path.to_path_buf(), idx);
+            upsert_entry(&mut new_entries, path, idx);
         }
     }
     let mut s = STATE.write().map_err(|e| e.to_string())?;
@@ -1308,17 +1405,18 @@ fn handle_event(app: &AppHandle, event: Event) {
         }
         let mut changed = false;
         for path in &still_pending {
-            if path.is_file() {
-                if let Ok(idx) = scan_file(path) {
+            let norm = normalize_index_key(path);
+            if norm.is_file() {
+                if let Ok(idx) = scan_file(&norm) {
                     if let Ok(mut s) = STATE.write() {
-                        s.entries.insert(path.clone(), idx);
+                        upsert_entry(&mut s.entries, &norm, idx);
                         changed = true;
                     }
                 }
             } else {
                 // Removed
                 if let Ok(mut s) = STATE.write() {
-                    if s.entries.remove(path).is_some() {
+                    if remove_entry(&mut s.entries, &norm) {
                         changed = true;
                     }
                 }

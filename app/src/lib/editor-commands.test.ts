@@ -192,3 +192,35 @@ test('indentCodeBlockPaste pads subsequent pasted lines with the code fence inde
   const outAtCol0 = indentCodeBlockPaste(docWithCol0BlankLine, cursorAtCol0, cursorAtCol0, snippet);
   assert.equal(outAtCol0, `${indent8}function hello() {\n${indent8}  return 1;\n${indent8}}`);
 });
+
+test('indentCodeBlockPaste aligns every row of a pasted Markdown table to list soft-break indentation', () => {
+  const table = '| A | B |\n| --- | --- |\n| 1 | 2 |';
+
+  // Ordered list soft-break (3 spaces)
+  const olDoc = '1. 列表项\n   ';
+  assert.equal(
+    indentCodeBlockPaste(olDoc, olDoc.length, olDoc.length, table),
+    '| A | B |\n   | --- | --- |\n   | 1 | 2 |',
+  );
+
+  // Unordered list soft-break (2 spaces), pasting an already-indented table dedents first
+  const ulDoc = '- 列表项\n  ';
+  const preIndentedTable = '    | A | B |\n    | --- | --- |\n    | 1 | 2 |\n';
+  assert.equal(
+    indentCodeBlockPaste(ulDoc, ulDoc.length, ulDoc.length, preIndentedTable),
+    '| A | B |\n  | --- | --- |\n  | 1 | 2 |\n',
+  );
+
+  // Blockquote list soft-break (`>   `)
+  const quoteDoc = '> - 引用列表\n>   ';
+  assert.equal(
+    indentCodeBlockPaste(quoteDoc, quoteDoc.length, quoteDoc.length, table),
+    '| A | B |\n>   | --- | --- |\n>   | 1 | 2 |',
+  );
+
+  // Pasting plain non-table text on a soft-break line is untouched
+  assert.equal(
+    indentCodeBlockPaste(olDoc, olDoc.length, olDoc.length, 'line 1\nline 2'),
+    'line 1\nline 2',
+  );
+});

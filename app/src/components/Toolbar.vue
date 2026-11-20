@@ -755,9 +755,14 @@ function onOpenPomodoroEvent() {
 function onDocClick(e: MouseEvent) {
   // Menus are teleported to <body>, so `.closest('.dropdown')` from a menu
   // item won't reach the original `.dropdown` wrapper — also check for the
-  // menu's own marker class.
+  // menu's own marker class and the Windows `.menubar` triggers.
   const target = e.target as HTMLElement | null;
-  if (target && (target.closest('.dropdown') || target.closest('.dropdown__menu'))) return;
+  if (
+    target &&
+    (target.closest('.dropdown') || target.closest('.dropdown__menu') || target.closest('.menubar'))
+  ) {
+    return;
+  }
   closeAllDropdowns();
 }
 function onViewportChange() {
@@ -817,6 +822,7 @@ onBeforeUnmount(() => {
         class="menubar__btn"
         :class="{ active: menubarOpen === m.id }"
         :data-menu="m.id"
+        @mousedown.prevent
         @click="toggleMenubar(m.id, $event)"
         @mouseenter="menubarHover(m.id, $event)"
       >{{ m.label }}</button>

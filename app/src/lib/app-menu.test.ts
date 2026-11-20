@@ -161,7 +161,7 @@ test('every menu id is something App.vue can dispatch', () => {
     'insert.mermaid', 'insert.hr',
     // palette commands
     'export.html', 'export.docx', 'export.pdf', 'export.image', 'clean.aiArtifacts',
-    'view.toggleSpellCheck', 'view.toggleLivePreview', 'view.toggleFitWidth', 'pomodoro.open',
+    'view.toggleSpellCheck', 'view.toggleLivePreview', 'view.toggleFitWidth', 'view.toggleFormatBar', 'pomodoro.open',
     'editor.insertImage', 'editor.insertImageUrl',
     // palette commands reached through the dispatchMenuAction fallback
     ...PALETTE_MENU_IDS,

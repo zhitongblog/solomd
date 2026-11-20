@@ -83,6 +83,9 @@ export interface MenuState {
   autoGit: boolean;
   /** #604 — Keep window floating above other windows. */
   alwaysOnTop: boolean;
+  /** Top toolbar hidden / Markdown formatting bar visible. */
+  toolbarHidden?: boolean;
+  formatBar?: boolean;
   /** Right-sidebar / left-sidebar pane visibility, for the 面板 check marks. */
   panes: {
     outline: boolean;
@@ -476,7 +479,8 @@ export function buildAppMenu(ctx: MenuContext): TopMenu[] {
       ],
     },
     // The toolbar is chrome, not a pane: it sits with the appearance items.
-    item('view.toggleToolbar', t('menubar.toggleToolbar')),
+    item('view.toggleToolbar', t('menubar.toggleToolbar'), { checked: !state.toolbarHidden }),
+    item('view.toggleFormatBar', t('settings.formatBar'), { checked: !!state.formatBar }),
     item('view.toggleAlwaysOnTop', t('menubar.alwaysOnTop'), { checked: state.alwaysOnTop }),
     sep,
     {

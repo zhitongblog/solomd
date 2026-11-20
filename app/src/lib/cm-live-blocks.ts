@@ -578,6 +578,18 @@ function dedentTableSource(source: string): string {
   return lines.map((line) => (line.length >= minIndent ? line.slice(minIndent) : line)).join('\n');
 }
 
+function tableIndentCols(source: string): number {
+  let minCols = Infinity;
+  for (const line of source.split('\n')) {
+    if (!line.trim()) continue;
+    const lead = /^[ \t]*/.exec(line)?.[0] ?? '';
+    let cols = 0;
+    for (const ch of lead) cols += ch === '\t' ? 4 - (cols % 4) : 1;
+    if (cols < minCols) minCols = cols;
+  }
+  return Number.isFinite(minCols) && minCols > 0 ? minCols : 0;
+}
+
 /**
  * The cell a rebuilt table widget should re-open after a write-back.
  *
@@ -1222,6 +1234,20 @@ class TableWidget extends WidgetType {
   toDOM(view?: EditorView): HTMLElement {
     const wrap = document.createElement('div');
     wrap.className = 'cm-live-block cm-live-block--table';
+    // Visually align list-indented tables (e.g. pasted after Shift+Enter soft
+    // break) under the enclosing list item's body column, matching cm-live-render.
+    const indentCols = tableIndentCols(this.source);
+    if (indentCols > 0) {
+      const marginEm =
+        indentCols === 2
+          ? 0.95
+          : indentCols === 3
+            ? 1.45
+            : indentCols === 4
+              ? 1.95
+              : Math.min(8, indentCols * 0.55);
+      wrap.style.marginLeft = `${marginEm.toFixed(2)}em`;
+    }
     // Render the table source through the same markdown pipeline used by the
     // preview pane so we get GFM alignment, inline formatting, etc. for free.
     // Dedent common leading spaces/tabs so a 4-space indented table nested

@@ -345,6 +345,7 @@ export function useExport() {
         topicNav: settings.exportHtmlWithNav && settings.exportHtmlPaginated && settings.exportHtmlTopicNav,
         contentWidth: settings.exportHtmlContentWidth,
         withTocPage: settings.exportIncludeTocPage,
+        mediaAlign: settings.exportMediaAlign,
         lang: settings.language,
       });
       toasts.dismiss(tid);
@@ -377,6 +378,8 @@ export function useExport() {
         plantumlServer(),
         await docxReferenceBytes(),
         settings.exportIncludeTocPage,
+        false,
+        settings.exportMediaAlign,
       );
       const buffer = new Uint8Array(await blob.arrayBuffer());
       // Tauri 2 serializes Uint8Array as a number array which Rust accepts as Vec<u8>.
@@ -544,8 +547,10 @@ export function useExport() {
     // pre-v2.5 webview-default behavior.
     // #347 — on Windows, move the page margins into the overlay so Chromium's
     // print headers/footers (date, title, URL) have nowhere to draw.
+    const { exportMediaAlignCss } = await import('../lib/html-export');
     const printCss = [
       buildPrintStyle(pdfOpts),
+      exportMediaAlignCss(settings.exportMediaAlign),
       isWindowsDesktop() && !directPath ? buildWindowsPrintFrameStyle(pdfOpts) : '',
     ].filter(Boolean).join('\n');
     const { overlay: printOverlay, content: printContent, cleanup } = mountPrintOverlay(
@@ -591,7 +596,7 @@ export function useExport() {
 
     // #347 / #515 — the TOC page gets a title and page numbers, and we also
     // collect heading page numbers for the PDF document outline (bookmarks).
-    let printOutlines: Array<[number, string, number]> = [];
+    let printOutlines: Array<[number, string, number, number]> = [];
     if (printContent) {
       try {
         const nav = decoratePrintToc(
@@ -611,11 +616,11 @@ export function useExport() {
                 pdfOpts.pageSizeMm && pdfOpts.marginMm ? p.pageOf : null,
               );
             }
-            printOutlines = collectPrintOutline(printContent, p.pageOf);
+            printOutlines = collectPrintOutline(printContent, p.pageOf, p.yRatioOf);
           });
         } else {
           if (nav) fillTocPageNumbers(nav, printContent, null);
-          printOutlines = collectPrintOutline(printContent, null);
+          printOutlines = collectPrintOutline(printContent, null, null);
         }
       } catch (e) {
         // Numbers are a nicety; a failure here must never stop the print.
@@ -943,7 +948,8 @@ export function useExport() {
       }
 
       const printTheme = settings.printTheme || 'light';
-      const printCss = buildPrintStyle(pdfOpts);
+      const { exportMediaAlignCss } = await import('../lib/html-export');
+      const printCss = `${buildPrintStyle(pdfOpts)}\n${exportMediaAlignCss(settings.exportMediaAlign)}`;
       const { overlay: printOverlay, content: printContent, cleanup } = mountPrintOverlay(
         body,
         printTheme,
@@ -969,7 +975,7 @@ export function useExport() {
         await waitForPrintFonts(printContent);
         await new Promise((r) => setTimeout(r, 120));
 
-        let printOutlines: Array<[number, string, number]> = [];
+        let printOutlines: Array<[number, string, number, number]> = [];
         if (printContent) {
           try {
             const nav = decoratePrintToc(
@@ -990,13 +996,13 @@ export function useExport() {
                   );
                 }
                 if (opts.includeBookmarks) {
-                  printOutlines = collectPrintOutline(printContent, p.pageOf);
+                  printOutlines = collectPrintOutline(printContent, p.pageOf, p.yRatioOf);
                 }
               });
             } else {
               if (nav) fillTocPageNumbers(nav, printContent, null);
               if (opts.includeBookmarks) {
-                printOutlines = collectPrintOutline(printContent, null);
+                printOutlines = collectPrintOutline(printContent, null, null);
               }
             }
           } catch (e) {
@@ -1084,8 +1090,11 @@ export function useExport() {
       }
       let cssContent: string | null = null;
       if (format === 'epub') {
-        const { SOLOMD_EPUB_CSS } = await import('../lib/epub-style');
-        cssContent = SOLOMD_EPUB_CSS;
+        const [{ SOLOMD_EPUB_CSS }, { exportMediaAlignCss }] = await Promise.all([
+          import('../lib/epub-style'),
+          import('../lib/html-export'),
+        ]);
+        cssContent = `${SOLOMD_EPUB_CSS}\n${exportMediaAlignCss(settings.exportMediaAlign)}`;
       }
       const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
       const yaml = fmMatch ? fmMatch[1] : '';
@@ -1154,6 +1163,7 @@ export function useExport() {
         topicNav: includeBookmarks && htmlPaginated && htmlTopicNav,
         contentWidth: htmlContentWidth,
         withTocPage: includeTocPage,
+        mediaAlign: settings.exportMediaAlign,
         lang: settings.language,
       });
       await invoke('write_file', { path: outputPath, content: html, encoding: 'UTF-8' });
@@ -1170,6 +1180,7 @@ export function useExport() {
         await docxReferenceBytes(),
         includeTocPage,
         isMergedBook,
+        settings.exportMediaAlign,
       );
       const buffer = new Uint8Array(await blob.arrayBuffer());
       await invoke('write_binary_file', { path: outputPath, data: Array.from(buffer) });

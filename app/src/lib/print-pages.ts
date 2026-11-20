@@ -180,11 +180,12 @@ export function fillTocPageNumbers(
 export function collectPrintOutline(
   content: HTMLElement,
   pageOf: ((el: Element) => number) | null,
-): Array<[number, string, number]> {
+  yRatioOf?: ((el: Element) => number) | null,
+): Array<[number, string, number, number]> {
   const headings = Array.from(
     content.querySelectorAll<HTMLElement>('h1, h2, h3, h4, h5, h6'),
   ).filter((el) => !el.closest('.md-toc'));
-  const entries: Array<[number, string, number]> = [];
+  const entries: Array<[number, string, number, number]> = [];
   for (const el of headings) {
     const customLvl = Number(el.getAttribute('data-toc-level'));
     const level = Math.max(
@@ -194,7 +195,8 @@ export function collectPrintOutline(
     const title = (el.textContent || '').replace(/\s+/g, ' ').trim();
     if (!title) continue;
     const page = pageOf ? Math.max(1, pageOf(el)) : 1;
-    entries.push([level, title, page]);
+    const yRatio = yRatioOf ? Math.max(0, Math.min(1, yRatioOf(el))) : 0;
+    entries.push([level, title, page, yRatio]);
   }
   return entries;
 }
@@ -202,6 +204,8 @@ export function collectPrintOutline(
 export interface PrintPagination {
   /** 1-based page an element starts on. */
   pageOf(el: Element): number;
+  /** Vertical offset ratio (0 = top of printable box, 1 = bottom) on the element's page. */
+  yRatioOf(el: Element): number;
   /** Total number of pages. */
   pages: number;
 }
@@ -251,11 +255,17 @@ export function withPrintPagination<T>(
 
   const spacers: HTMLElement[] = [];
   try {
-    const origin = content.getBoundingClientRect().left;
+    const contentRect = content.getBoundingClientRect();
+    const origin = contentRect.left;
+    const originTop = contentRect.top;
     const stride = box.width + GAP;
     const pageOf = (el: Element) => {
       const r = el.getBoundingClientRect();
       return Math.max(1, Math.floor((r.left - origin + 1) / stride) + 1);
+    };
+    const yRatioOf = (el: Element) => {
+      const r = el.getBoundingClientRect();
+      return box.height > 0 ? Math.max(0, Math.min(1, (r.top - originTop) / box.height)) : 0;
     };
     // Print repeats a table's header row at the top of every page the table
     // continues onto (#337); column fragmentation does not. Left alone, the
@@ -290,7 +300,7 @@ export function withPrintPagination<T>(
       if (r.width === 0 && r.height === 0) continue;
       last = Math.max(last, Math.floor((r.right - origin - 1) / stride) + 1);
     }
-    return use({ pageOf, pages: last });
+    return use({ pageOf, yRatioOf, pages: last });
   } finally {
     for (const s of spacers) s.remove();
     style.remove();

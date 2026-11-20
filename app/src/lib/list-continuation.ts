@@ -121,6 +121,11 @@ export function enclosingListContentIndent(text: string, lineStart: number): str
       const head = bullet ?? `${num}${delim}`;
       return `${q}${ind}${' '.repeat(head.length + sep.length)}`;
     }
+    const mNoSpace = r.match(NO_SPACE_CJK_ORDERED);
+    if (mNoSpace) {
+      const [, ind, num, delim] = mNoSpace;
+      return `${q}${ind}${' '.repeat(num.length + delim.length + 1)}`;
+    }
     // An indented continuation line (including a whitespace-only soft-break line)
     // keeps scanning up to find the enclosing list item.
     if (!/^(?:[ ]{2,}|\t+)/.test(r)) return null;
@@ -129,6 +134,7 @@ export function enclosingListContentIndent(text: string, lineStart: number): str
 }
 
 interface EnclosingListItemInfo {
+  itemIndent: string;
   contentIndent: string;
   nextMarker: string;
   isOrdered: boolean;
@@ -164,7 +170,15 @@ function enclosingListItemContinuation(
       const contentIndent = `${q}${ind}${' '.repeat(curHead.length + sep.length)}`;
       const nextHead = bullet ?? `${bumpNumberedToken(num) ?? num}${delim}`;
       const nextMarker = `${q}${ind}${nextHead}${sep}${task ? '[ ] ' : ''}`;
-      return { contentIndent, nextMarker, isOrdered: !bullet };
+      return { itemIndent: ind, contentIndent, nextMarker, isOrdered: !bullet };
+    }
+    const mNoSpace = r.match(NO_SPACE_CJK_ORDERED);
+    if (mNoSpace) {
+      if (!opts.autoNumber) return null;
+      const [, ind, num, delim] = mNoSpace;
+      const contentIndent = `${q}${ind}${' '.repeat(num.length + delim.length + 1)}`;
+      const nextMarker = `${q}${ind}${Number(num) + 1}${delim} `;
+      return { itemIndent: ind, contentIndent, nextMarker, isOrdered: true };
     }
     if (!/^(?:[ ]{2,}|\t+)/.test(r)) return null;
   }
@@ -350,10 +364,16 @@ export function computeListContinuation(
     const enclosing = enclosingListItemContinuation(text, lineStart, quoteDepth, opts);
     const restLeadWs = /^[ \t]*/.exec(rest)?.[0] ?? '';
     const lineLead = `${quote}${restLeadWs}`;
+    const minContIndent = enclosing
+      ? Math.min(
+          indentWidth(enclosing.contentIndent),
+          indentWidth(`${quote}${enclosing.itemIndent}`) + 2,
+        )
+      : 0;
     if (
       enclosing &&
       restLeadWs.length > 0 &&
-      indentWidth(lineLead) >= indentWidth(enclosing.contentIndent)
+      indentWidth(lineLead) >= minContIndent
     ) {
       if (rest.trim() === '' && caret === lineEnd) {
         // Shift+Enter (empty soft-break line) followed by Enter: convert this
@@ -481,7 +501,7 @@ export function isLazyListContinuationLine(
 
   const listIndent = enclosingListContentIndent(text, lineStart);
   const leadWs = /^[ \t]*/.exec(line)?.[0] ?? '';
-  if (listIndent && leadWs.length >= listIndent.length) return false;
+  if (listIndent && indentWidth(leadWs) >= indentWidth(listIndent)) return false;
 
   const before = text.slice(0, lineStart - 1);
   const lines = before.split('\n');
@@ -543,6 +563,7 @@ export function computeListSoftBreak(
   const quote = hasQuote ? rawQuote : '';
   const rest = line.slice(quote.length);
   const list = rest.match(LIST_MARKER);
+  const noSpaceList = !list ? rest.match(NO_SPACE_CJK_ORDERED) : null;
 
   if (list) {
     const [whole, indent, bullet, num, delim, gap] = list;
@@ -555,6 +576,18 @@ export function computeListSoftBreak(
     return { value: text.slice(0, caret) + insert + text.slice(caret), caret: caret + insert.length };
   }
 
+  if (noSpaceList) {
+    const [whole, indent, num, delim] = noSpaceList;
+    const markerLen = quote.length + whole.length;
+    if (caret - lineStart < markerLen) return null;
+    const spacePos = lineStart + markerLen;
+    const contentIndent = `${quote}${indent}${' '.repeat(num.length + delim.length + 1)}`;
+    const insert = `\n${contentIndent}`;
+    const value =
+      text.slice(0, spacePos) + ' ' + text.slice(spacePos, caret) + insert + text.slice(caret);
+    return { value, caret: caret + 1 + insert.length };
+  }
+
   if (hasQuote) {
     if (caret - lineStart < quote.length) return null;
     const leadWs = /^[ \t]*/.exec(rest)?.[0] ?? '';
@@ -565,7 +598,11 @@ export function computeListSoftBreak(
 
   const listIndent = enclosingListContentIndent(text, lineStart);
   const leadWs = /^[ \t]+/.exec(line)?.[0] ?? '';
-  if (listIndent && leadWs.length >= listIndent.length && caret >= lineStart + leadWs.length) {
+  if (
+    listIndent &&
+    indentWidth(leadWs) >= Math.min(indentWidth(listIndent), 2) &&
+    caret >= lineStart + leadWs.length
+  ) {
     const insert = `\n${leadWs}`;
     return { value: text.slice(0, caret) + insert + text.slice(caret), caret: caret + insert.length };
   }

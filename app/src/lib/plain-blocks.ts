@@ -189,10 +189,10 @@ export function splitPlainMarkdownBlocks(src: string): PlainBlockRange[] {
     if (kind === 'list') {
       let j = i + 1;
       while (j < lines.length) {
-        if (isTableStartAt(j)) break;
         const nextLine = lines[j];
         const nextKind = kindFor(nextLine);
         const isIndentedContinuation = /^(?:[ ]{2,}|\t+)/.test(nextLine.text);
+        if (isTableStartAt(j) && !isIndentedContinuation) break;
         if ((nextKind === 'fence' || nextKind === 'mathfence') && isIndentedContinuation) {
           const trimmedNext = nextLine.text.trim();
           const closeMarker = nextKind === 'fence'
@@ -211,8 +211,9 @@ export function splitPlainMarkdownBlocks(src: string): PlainBlockRange[] {
           continue;
         }
         if (nextKind === 'blank' && j + 1 < lines.length) {
-          if (isTableStartAt(j + 1)) break;
           const afterBlank = lines[j + 1];
+          const afterIndented = /^(?:[ ]{2,}|\t+)/.test(afterBlank.text);
+          if (isTableStartAt(j + 1) && !afterIndented) break;
           if (kindFor(afterBlank) === 'list' || /^[ \t]{2,}\S/.test(afterBlank.text)) {
             j++;
             continue;

@@ -4158,7 +4158,9 @@ async fn baidu_push_folder(
     }
 
     // Preserve any files in remote manifest that were created by another device,
-    // and delete remote copies of files that were renamed or deleted locally (#618).
+    // and delete remote copies of files (plus now-empty parent folders) that were
+    // renamed or deleted locally (#618, #619).
+    let mut candidate_stale_dirs: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
     for (rem_rel_key, rem_entry) in &manifest.files {
         if !new_files_map.contains_key(rem_rel_key) {
             let was_deleted_locally = local_base
@@ -4168,9 +4170,47 @@ async fn baidu_push_folder(
             if was_deleted_locally {
                 let stale_full = format!("{ws_remote_root}/{}", rem_entry.remote_rel);
                 baidu_delete_remote_file(client, token, &stale_full).await;
+                let mut cur = rem_entry.remote_rel.as_str();
+                while let Some(slash) = cur.rfind('/') {
+                    let parent = &cur[..slash];
+                    if parent.is_empty() {
+                        break;
+                    }
+                    candidate_stale_dirs.insert(parent.to_string());
+                    cur = parent;
+                }
             } else {
                 new_files_map.insert(rem_rel_key.clone(), rem_entry.clone());
             }
+        }
+    }
+    if !candidate_stale_dirs.is_empty() {
+        let mut active_dirs: std::collections::HashSet<String> = std::collections::HashSet::new();
+        for entry in new_files_map.values() {
+            let mut cur = entry.remote_rel.as_str();
+            while let Some(slash) = cur.rfind('/') {
+                let parent = &cur[..slash];
+                if parent.is_empty() {
+                    break;
+                }
+                active_dirs.insert(parent.to_string());
+                cur = parent;
+            }
+        }
+        let mut stale_dirs: Vec<String> = candidate_stale_dirs
+            .into_iter()
+            .filter(|d| !active_dirs.contains(d))
+            .collect();
+        // Delete deepest subdirectories first, then empty parent directories.
+        stale_dirs.sort_by(|a, b| {
+            b.matches('/')
+                .count()
+                .cmp(&a.matches('/').count())
+                .then_with(|| b.len().cmp(&a.len()))
+        });
+        for stale_dir in stale_dirs {
+            let stale_full = format!("{ws_remote_root}/{stale_dir}");
+            baidu_delete_remote_file(client, token, &stale_full).await;
         }
     }
 

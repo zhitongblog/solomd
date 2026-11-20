@@ -190,6 +190,7 @@ export function useShortcuts(hooks: Hooks = {}) {
     'view.toggleOutline': () => runById('view.toggleOutline'),
     'view.toggleInspector': () => settings.toggleInspector(),
     'view.toggleToolbar': () => settings.toggleToolbarHidden(),
+    'view.toggleFormatBar': () => settings.toggleFormatBar(),
     'view.toggleAlwaysOnTop': () => settings.toggleAlwaysOnTop(),
     'view.slideshow': () => runById('view.slideshow'),
     'view.toggleFocusMode': () => settings.toggleFocusMode(),

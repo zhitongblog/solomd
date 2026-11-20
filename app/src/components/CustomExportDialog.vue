@@ -694,6 +694,23 @@ async function runCustomExport() {
               />
               <span>{{ isZh ? '添加目录页（文档开头的目录含页码）' : 'Include Table of Contents page (leading TOC with page numbers)' }}</span>
             </label>
+            <div class="custom-export__align-row" style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+              <span style="font-size:12px;color:var(--text-2);">{{ isZh ? '图表与公式对齐' : 'Media & Math Alignment' }}</span>
+              <div style="display:inline-flex;gap:4px;">
+                <button
+                  v-for="opt in (['left', 'center', 'right'] as const)"
+                  :key="opt"
+                  type="button"
+                  class="custom-export__align-btn"
+                  :class="{ 'is-active': settings.exportMediaAlign === opt }"
+                  style="padding:2px 10px;font-size:12px;border-radius:5px;border:1px solid var(--border);cursor:pointer;"
+                  :style="settings.exportMediaAlign === opt ? 'background:var(--accent);color:#fff;border-color:var(--accent);' : 'background:var(--fill-1);color:var(--text-2);'"
+                  @click="settings.setExportMediaAlign(opt)"
+                >
+                  {{ isZh ? (opt === 'left' ? '居左' : opt === 'center' ? '居中' : '居右') : (opt === 'left' ? 'Left' : opt === 'center' ? 'Center' : 'Right') }}
+                </button>
+              </div>
+            </div>
             <label
               v-if="format === 'html'"
               class="custom-export__checkbox"

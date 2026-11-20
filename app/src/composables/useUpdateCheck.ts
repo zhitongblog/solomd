@@ -1,16 +1,29 @@
 import { ref } from 'vue';
 import { checkForUpdate, downloadAndInstallUpdate } from '../lib/check-update';
 import { useToastsStore } from '../stores/toasts';
+import { useTabsStore } from '../stores/tabs';
+import { useFiles } from './useFiles';
 import { useI18n } from '../i18n';
+import type { Tab } from '../types';
 
 /** Shared so the Settings button and Help → Check for Updates show one state. */
 const checking = ref(false);
 
-export async function runDirectUpdateInstall(version: string): Promise<void> {
+/** Count open tabs that currently have unsaved changes (saved files or non-empty untitled drafts). */
+export function countUnsavedTabs(
+  tabsList: ReadonlyArray<Pick<Tab, 'id' | 'filePath' | 'content' | 'savedContent'>>,
+  isDirty: (id: string) => boolean,
+): number {
+  return tabsList.filter((tab) =>
+    tab.filePath ? isDirty(tab.id) : tab.content !== tab.savedContent,
+  ).length;
+}
+
+async function startDownloadAndInstall(cleanVer: string, isZh: boolean): Promise<void> {
   const toasts = useToastsStore();
-  const { lang } = useI18n();
-  const isZh = lang.value === 'zh';
-  const cleanVer = version.replace(/^v/, '');
+  const tabs = useTabsStore();
+  const files = useFiles();
+
   const initMsg = isZh
     ? `正在下载更新 v${cleanVer}…`
     : `Downloading update v${cleanVer}…`;
@@ -28,13 +41,79 @@ export async function runDirectUpdateInstall(version: string): Promise<void> {
 
   toasts.resolve(toastId);
   if (ok) {
-    toasts.success(
-      isZh
-        ? `v${cleanVer} 下载完成，正在启动安装程序…`
-        : `v${cleanVer} downloaded — launching installer…`,
-      5000,
-    );
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('solomd:flush-content-sync'));
+    }
+    tabs.persist();
+    const stillDirty = countUnsavedTabs(tabs.tabs, (id) => tabs.isDirty(id));
+    if (stillDirty > 0) {
+      toasts.push(
+        isZh
+          ? `v${cleanVer} 下载完成，正在启动安装程序（仍有 ${stillDirty} 个未保存文档）`
+          : `v${cleanVer} downloaded — launching installer (${stillDirty} unsaved document(s))`,
+        'warning',
+        0,
+        () => { void files.saveAll(); },
+        { actionLabel: isZh ? '保存全部文档' : 'Save All' },
+      );
+    } else {
+      toasts.success(
+        isZh
+          ? `v${cleanVer} 下载完成，正在启动安装程序…`
+          : `v${cleanVer} downloaded — launching installer…`,
+        5000,
+      );
+    }
   }
+}
+
+export async function runDirectUpdateInstall(version: string): Promise<void> {
+  const toasts = useToastsStore();
+  const tabs = useTabsStore();
+  const files = useFiles();
+  const { lang } = useI18n();
+  const isZh = lang.value === 'zh';
+  const cleanVer = version.replace(/^v/, '');
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('solomd:flush-content-sync'));
+  }
+  tabs.persist();
+
+  const dirtyCount = countUnsavedTabs(tabs.tabs, (id) => tabs.isDirty(id));
+  if (dirtyCount > 0) {
+    toasts.push(
+      isZh
+        ? `升级到 v${cleanVer} 前有 ${dirtyCount} 个未保存文档，建议先保存`
+        : `${dirtyCount} unsaved document(s) open before updating to v${cleanVer}`,
+      'warning',
+      0,
+      undefined,
+      {
+        actions: [
+          {
+            label: isZh ? '保存全部并升级' : 'Save All & Update',
+            run: () => {
+              void (async () => {
+                await files.saveAll();
+                tabs.persist();
+                await startDownloadAndInstall(cleanVer, isZh);
+              })();
+            },
+          },
+          {
+            label: isZh ? '直接升级' : 'Update Anyway',
+            run: () => {
+              void startDownloadAndInstall(cleanVer, isZh);
+            },
+          },
+        ],
+      },
+    );
+    return;
+  }
+
+  await startDownloadAndInstall(cleanVer, isZh);
 }
 
 /**

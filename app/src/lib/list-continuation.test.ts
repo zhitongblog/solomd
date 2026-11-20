@@ -252,11 +252,24 @@ test('#609: Enter after Shift+Enter soft break in unordered/ordered/quoted lists
   assert.equal(directBullet, '* 列表项1\n* |');
   assert.equal(enter(directBullet), '* 列表项1\n|');
 
-  // Ordered list with sibling renumbering
+  // Ordered list: Shift+Enter -> Enter (both empty soft-break and with text) + sibling renumbering
+  const ordSoft = softEnter('1. 第一项|')!;
+  assert.equal(ordSoft, '1. 第一项\n   |');
+  assert.equal(enter(ordSoft), '1. 第一项\n2. |');
   assert.equal(
     enter('1. 第一项\n   第一项续行|\n2. 原第二项'),
     '1. 第一项\n   第一项续行\n2. |\n3. 原第二项',
   );
+  // Ordered list with no-space CJK (`1.第一项`): Shift+Enter normalises space & indents, Enter creates `2. `
+  const ordNoSpaceSoft = softEnter('1.第一项|')!;
+  assert.equal(ordNoSpaceSoft, '1. 第一项\n   |');
+  assert.equal(enter(ordNoSpaceSoft.replace('|', '续行|')), '1. 第一项\n   续行\n2. |');
+  // Ordered list with 2-space continuation indent or 3-space indent under 2-digit `10.` (post-renumber)
+  assert.equal(enter('1. 第一项\n  续行|'), '1. 第一项\n  续行\n2. |');
+  assert.equal(enter('10. 第十项\n   续行|'), '10. 第十项\n   续行\n11. |');
+  // Tab-indented continuation under ordered list supports both Shift+Enter and Enter
+  assert.equal(softEnter('1. 第一项\n\t续行|'), '1. 第一项\n\t续行\n\t|');
+  assert.equal(enter('1. 第一项\n\t续行|'), '1. 第一项\n\t续行\n2. |');
 
   // Task list and blockquote list
   assert.equal(enter('- [x] 任务1\n  详情说明|'), '- [x] 任务1\n  详情说明\n- [ ] |');

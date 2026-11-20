@@ -735,12 +735,24 @@ onBeforeUnmount(() => {
   color: var(--text-2);
 }
 .tab--active {
-  background: var(--fill-1);
+  position: relative;
+  background: color-mix(in srgb, var(--accent) 13%, var(--fill-1));
   color: var(--text);
-  font-weight: 540;
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 32%, transparent);
+}
+.tab--active::after {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 1px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
 }
 .tab--active:hover {
-  background: var(--fill-2);
+  background: color-mix(in srgb, var(--accent) 18%, var(--fill-1));
   color: var(--text);
 }
 .tab--dragging {

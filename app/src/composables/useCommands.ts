@@ -330,6 +330,7 @@ export function useCommands(): Command[] {
     { id: 'view.toggleSpellCheck', title: 'View: Toggle Spell Check', run: () => settings.toggleSpellCheck() },
     { id: 'view.toggleFocusMode', title: 'View: Toggle Focus Mode', shortcut: kb('view.toggleFocusMode'), run: () => settings.toggleFocusMode() },
     { id: 'view.toggleToolbar', title: 'View: Show / Hide Toolbar Buttons', shortcut: kb('view.toggleToolbar'), run: () => settings.toggleToolbarHidden() },
+    { id: 'view.toggleFormatBar', title: 'View: Show / Hide Formatting Toolbar', run: () => settings.toggleFormatBar() },
     { id: 'view.toggleMenuBar', title: 'View: Show / Hide Menu Bar', run: () => settings.toggleHideMenuBar() },
     { id: 'view.toggleTypewriter', title: 'View: Toggle Typewriter Mode', shortcut: kb('view.toggleTypewriter'), run: () => settings.toggleTypewriterMode() },
     { id: 'view.zoomUiIn', title: 'UI: Zoom In', shortcut: kb('view.zoomUiIn'), run: () => settings.zoomIn() },
