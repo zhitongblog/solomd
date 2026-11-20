@@ -1,0 +1,5 @@
+SoloMD 5.3.2 — Düzeltmeler:
+• Liste içindeki kod bloğu kapanışından sonra Enter, kod - veya 1. içerse bile sonraki öğeyi doğru oluşturur
+• Numaralı ve madde işaretli liste geçişi artık kod bloklarından sonraki öğeleri de kapsar
+• Canlı modda numaralı liste aralığı daha kompakt hale getirildi
+• Dosya silindiğinde açık sekmeler kapatılır ve otomatik kaydetmenin silinen notları yeniden oluşturması önlenir

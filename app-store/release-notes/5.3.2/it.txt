@@ -1,0 +1,5 @@
+SoloMD 5.3.2 — Correzioni:
+• Premere Invio dopo un blocco di codice in un elenco crea ora l’elemento successivo anche se il codice contiene - o 1.
+• Il passaggio tra elenchi numerati e puntati ora include gli elementi dopo i blocchi di codice
+• Spaziatura più compatta per gli elenchi numerati in modalità live
+• L’eliminazione dei file chiude le schede aperte impedendo al salvataggio automatico di ricrearli

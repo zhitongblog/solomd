@@ -1,0 +1,5 @@
+SoloMD 5.3.2 – Fehlerbehebungen:
+• Enter nach einem schließenden Codeblock in Listen erstellt nun zuverlässig den nächsten Listenpunkt, auch wenn der Codeblock - oder 1. enthält
+• Umschalten zwischen geordneten und ungeordneten Listen überspringt eingebettete Codeblöcke
+• Kompakterer Abstand für geordnete Listen im Live-Modus
+• Beim Löschen von Dateien werden offene Tabs geschlossen, sodass Auto-Save gelöschte Notizen nicht wiederherstellt

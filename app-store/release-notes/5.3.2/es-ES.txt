@@ -1,0 +1,5 @@
+SoloMD 5.3.2 — Correcciones:
+• Pulsar Enter tras cerrar un bloque de código dentro de una lista ahora crea el siguiente elemento incluso si el código contiene líneas con - o 1.
+• Alternar entre listas ordenadas y desordenadas ahora incluye elementos posteriores a bloques de código
+• Espaciado más compacto para listas ordenadas en modo en vivo
+• Al eliminar archivos se cierran sus pestañas abiertas para evitar que el autoguardado los vuelva a crear

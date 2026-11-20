@@ -1,0 +1,5 @@
+SoloMD 5.3.2 — Rättningar:
+• Enter efter ett avslutande kodblock i en lista skapar nu nästa punkt även när koden innehåller - eller 1.
+• Växling mellan numrerade och punktlistor omfattar nu objekt efter indragna kodblock
+• Tajtare avstånd för numrerade listor i liveläge
+• Radering av filer stänger öppna flikar så att autosparning inte återskapar raderade anteckningar

@@ -1,0 +1,5 @@
+SoloMD 5.3.2 — Poprawki:
+• Naciśnięcie Enter po zamknięciu bloku kodu na liście tworzy kolejny element nawet gdy kod zawiera linie z - lub 1.
+• Przełączanie list numerowanych i punktowanych obejmuje teraz elementy po blokach kodu
+• Bardziej zwarty odstęp znaczników list numerowanych w trybie na żywo
+• Usuwanie plików zamyka otwarte karty i zapobiega odtwarzaniu usuniętych notatek przez autozapis

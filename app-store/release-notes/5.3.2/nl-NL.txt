@@ -1,0 +1,5 @@
+SoloMD 5.3.2 — Oplossingen:
+• Enter na een sluitend codeblok in een lijst maakt nu betrouwbaar het volgende item aan, ook als de code - of 1. bevat
+• Wisselen tussen genummerde en ongenummerde lijsten slaat ingesprongen codeblokken voortaan over
+• Strakkere afstand voor genummerde lijsten in live-modus
+• Verwijderde bestanden sluiten nu hun open tabbladen zodat automatisch opslaan ze niet opnieuw aanmaakt

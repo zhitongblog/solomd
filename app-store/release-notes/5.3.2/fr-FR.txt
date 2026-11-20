@@ -1,0 +1,5 @@
+SoloMD 5.3.2 — Corrections :
+• Appuyer sur Entrée après la fermeture d’un bloc de code dans une liste crée désormais l’élément suivant même si le code contient - ou 1.
+• Basculer entre listes ordonnées et non ordonnées traverse désormais les blocs de code indentés
+• Espacement plus compact des listes ordonnées en mode direct
+• La suppression de fichiers ferme les onglets ouverts associés afin d’éviter que la sauvegarde automatique ne les recrée

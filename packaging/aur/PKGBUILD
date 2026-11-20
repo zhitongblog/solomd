@@ -1,6 +1,6 @@
 # Maintainer: zhitongblog <lixd220@gmail.com>
 pkgname=solomd-bin
-pkgver=5.3.1
+pkgver=5.3.2
 pkgrel=1
 pkgdesc="Lightweight local-first Markdown editor with live preview, AI rewrite, MCP server, and multi-cloud sync"
 arch=('x86_64' 'aarch64')
@@ -13,8 +13,8 @@ options=('!strip' '!debug')
 
 source_x86_64=("https://github.com/zhitongblog/solomd/releases/download/v${pkgver}/SoloMD_${pkgver}_amd64.deb")
 source_aarch64=("https://github.com/zhitongblog/solomd/releases/download/v${pkgver}/SoloMD_${pkgver}_arm64.deb")
-sha256sums_x86_64=('5c9eef0aa028073cdae59709466a3d6a14a52873f369ad79db5bf8ea490e7ce5')
-sha256sums_aarch64=('806d14a3860c508543b91e1147b232665b1c03ad54277f1407c6dc355fba046f')
+sha256sums_x86_64=('02927f7cb3fafdcdbf64de396dbd553d9032733f137f87d39a9134115320c8af')
+sha256sums_aarch64=('ad16de28f21e7c45f4369c9227ebad0f0273220578e8d26cfe95acf8878b866c')
 
 package() {
   bsdtar -xf data.tar.* -C "${pkgdir}/"

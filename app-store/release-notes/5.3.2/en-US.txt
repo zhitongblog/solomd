@@ -1,0 +1,5 @@
+SoloMD 5.3.2 — Fixes & Polish:
+• Pressing Enter after a closing code fence inside a list item now creates the next sibling list item even when the code block contains - or 1. lines
+• Toggling between ordered and unordered lists now spans across indented fenced code blocks inside list items
+• Tightened ordered list marker spacing in Live Edit to match unordered lists
+• Deleting files in the file tree now closes matching open tabs and prevents auto-save from recreating deleted daily notes or blank documents
