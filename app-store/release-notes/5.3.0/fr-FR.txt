@@ -1,0 +1,5 @@
+SoloMD 5.3.0 :
+• Scripts d’extensions en bac à sable : Déclarez des permissions précises dans vos extensions JSON pour exécuter des scripts isolés, avec deux modèles intégrés (statistiques Frontmatter et collecteur de liens).
+• Aperçu au survol des WikiLinks : Survolez un [[WikiLink]] pour afficher un extrait rendu de la note et l’ouvrir en un clic.
+• Sécurité et IA : CSP WebView multiplateforme activée et ajout d’Atlas Cloud comme passerelle IA.
+• Finitions et synchronisation : Espacement resserré des puces et numéros de liste en mode direct et synchronisation Baidu Netdisk fiabilisée.

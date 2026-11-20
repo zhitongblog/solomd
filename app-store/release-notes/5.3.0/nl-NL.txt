@@ -1,0 +1,5 @@
+SoloMD 5.3.0:
+• Sandboxed plug-inscripts met rechten: Voer veilige scripts met expliciete rechten uit in JSON-extensies, inclusief ingebouwde presets voor leesstatistieken en linkverzameling.
+• WikiLink-zweefvoorbeeld: Beweeg over een [[WikiLink]] om direct een voorvertoning van de notitie te zien.
+• Beveiliging & AI: WebView CSP ingeschakeld en Atlas Cloud toegevoegd als AI-aggregator.
+• Afwerking & synchronisatie: Strakkere afstand tussen lijstmarkeringen en tekst in Live-modus en betrouwbaardere Baidu Netdisk-synchronisatie.

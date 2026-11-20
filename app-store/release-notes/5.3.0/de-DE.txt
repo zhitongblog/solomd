@@ -1,0 +1,5 @@
+SoloMD 5.3.0:
+• Sandboxed Plugin-Skripte mit Berechtigungen: Führen Sie sichere, rechtebeschränkte Skripte in JSON-Erweiterungen aus (inkl. Wortzahl-Frontmatter- und Link-Sammler-Vorlagen).
+• WikiLink-Hover-Vorschau: Fahren Sie über beliebige [[WikiLinks]], um eine gerenderte Notizvorschau direkt im Schwebefenster zu sehen.
+• Sicherheit & KI: Plattformübergreifende WebView-CSP aktiviert und Atlas Cloud als KI-Aggregator hinzugefügt.
+• Feinschliff & Sync: Kompakterer Abstand zwischen Listenmarkierungen und Text im Live-Modus sowie stabilere Baidu-Netdisk-Synchronisation mit Wiederholungen und Bereinigung umbenannter Dateien.

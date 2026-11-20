@@ -1,0 +1,5 @@
+SoloMD 5.3.0:
+• İzin Kapsamlı Korumalı Alan Eklenti Betikleri: JSON uzantılarında güvenli betikler çalıştırın; yerleşik okuma istatistikleri ve bağlantı toplayıcı şablonları eklendi.
+• WikiLink Üzerine Gelme Önizlemesi: Herhangi bir [[WikiLink]] üzerine gelerek not özetini anında görüntüleyin.
+• Güvenlik ve Yapay Zeka: Platformlar arası WebView CSP etkinleştirildi ve Atlas Cloud sağlayıcısı eklendi.
+• İyileştirmeler ve Eşitleme: Canlı modda liste işaretleri ile metin arasındaki boşluk sıkılaştırıldı ve Baidu Netdisk eşitlemesi güçlendirildi.

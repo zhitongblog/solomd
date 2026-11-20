@@ -1,0 +1,5 @@
+SoloMD 5.3.0:
+• Skrypty wtyczek w piaskownicy z uprawnieniami: Uruchamiaj bezpieczne skrypty w rozszerzeniach JSON z wbudowanymi presetami statystyk czytania i zbierania linków.
+• Podgląd WikiLink po najechaniu: Najedź na [[WikiLink]], aby zobaczyć sformatowany fragment notatki i otworzyć ją jednym kliknięciem.
+• Bezpieczeństwo i AI: Włączono wieloplatformowe CSP w WebView oraz dodano dostawcę Atlas Cloud.
+• Poprawki i synchronizacja: Zmniejszono odstęp między numeracją/punktorami list a tekstem w trybie Live oraz usprawniono synchronizację Baidu Netdisk.

@@ -1,0 +1,5 @@
+SoloMD 5.3.0:
+• Capability-Scoped Sandboxed Plugin Scripts: Declare granular permissions in JSON extensions to run safe sandboxed scripts, shipping with built-in Reading Stats Frontmatter Updater and Link Reference Collector presets.
+• WikiLink Hover Preview: Hover any [[WikiLink]] in Live Edit, Preview, Reading View, or Agent Panel to inspect a rendered note excerpt and open it in one click.
+• Security & AI: Enabled cross-platform WebView CSP defence-in-depth and added Atlas Cloud as an OpenAI-compatible AI aggregator provider.
+• Polish & Sync Fixes: Tightened ordered and unordered list marker-to-text spacing in Live mode, and added retry + rename cleanup to Baidu Netdisk direct API sync.

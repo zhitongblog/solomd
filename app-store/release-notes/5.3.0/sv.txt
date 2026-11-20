@@ -1,0 +1,5 @@
+SoloMD 5.3.0:
+• Sandlådebaserade tilläggsskript med behörigheter: Kör säkra skript i JSON-tillägg med inbyggda förinställningar för lässtatistik och länksamling.
+• Förhandsvisning av WikiLinks vid hovring: Hovra över valfri [[WikiLink]] för att se ett förhandsutdrag av anteckningen.
+• Säkerhet och AI: WebView CSP aktiverad och Atlas Cloud tillagd som AI-aggregator.
+• Finjustering och synk: Tightare avstånd mellan listmarkörer och text i Live-läge samt stabilare synkronisering med Baidu Netdisk.

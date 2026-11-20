@@ -1,0 +1,5 @@
+SoloMD 5.3.0:
+• Scripts de plugins en sandbox con permisos: Declara permisos granulares en extensiones JSON para ejecutar scripts seguros, con preajustes de estadísticas de lectura y recopilador de enlaces.
+• Vista previa flotante de WikiLinks: Pasa el cursor sobre cualquier [[WikiLink]] para previsualizar la nota y abrirla con un clic.
+• Seguridad e IA: Política CSP multiplataforma activada en WebView y nuevo proveedor agregador Atlas Cloud.
+• Mejoras y sincronización: Espaciado más compacto entre viñetas/números y texto en modo en vivo, y sincronización más fiable con Baidu Netdisk.
