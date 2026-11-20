@@ -1,0 +1,7 @@
+SoloMD 5.3.1 — Correzioni e miglioramenti:
+• Elenchi numerati: Maiusc+Invio seguito da Invio crea ora in modo affidabile l’elemento successivo
+• Le tabelle Markdown incollate dopo un’interruzione morbida si allineano automaticamente all’indentazione dell’elenco
+• Evidenziazione ad alto contrasto per la scheda attiva in tutti i temi
+• Nuova opzione di allineamento per immagini, diagrammi e formule (Sinistra / Centro / Destra) in HTML, EPUB, PDF e Word
+• Coordinate verticali precise per i segnalibri PDF vettoriali
+• Aggiornamento immediato del pannello Tag al salvataggio

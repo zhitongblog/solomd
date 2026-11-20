@@ -1,0 +1,7 @@
+SoloMD 5.3.1 — Poprawki i ulepszenia:
+• Listy numerowane: Shift+Enter, a następnie Enter niezawodnie tworzy kolejny element listy
+• Tabele Markdown wklejane po miękkim podziale wiersza automatycznie wyrównują się do wcięcia listy
+• Wyższy kontrast wyróżnienia aktywnej karty we wszystkich motywach
+• Nowa opcja wyrównania grafik i wzorów (Do lewej / Wyśrodkuj / Do prawej) przy eksporcie do HTML, EPUB, PDF i Word
+• Precyzyjne współrzędne pionowe zakładek w wektorowym PDF
+• Natychmiastowe odświeżanie panelu tagów po zapisaniu zmian

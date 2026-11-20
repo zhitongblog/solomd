@@ -1,0 +1,8 @@
+SoloMD 5.3.1 — Fixes & Polish:
+• Fixed ordered list Shift+Enter soft-break continuation on Enter for no-space CJK items, post-renumber indents, and tabs
+• Auto-align pasted Markdown tables to list/blockquote soft-break indentation and visually align indented tables in Live Edit
+• Added high-contrast active tab highlight across all themes
+• Added Media & Math Alignment (Left / Center / Right) option for HTML, EPUB, PDF, and Word exports
+• Fixed vector PDF bookmark jump coordinates so bookmarks scroll directly to each heading
+• Fixed removed tags lingering in the Tags panel by refreshing the workspace index immediately on save
+• Added one-click Save All prompt for unsaved documents before in-app updates

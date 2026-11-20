@@ -1,0 +1,7 @@
+SoloMD 5.3.1 — Correcciones y mejoras:
+• Listas ordenadas: Shift+Enter seguido de Enter ahora crea el siguiente elemento de forma fiable
+• Las tablas Markdown pegadas tras un salto suave se alinean automáticamente y se renderizan indentadas en modo en vivo
+• Mayor contraste visual para la pestaña activa en todos los temas
+• Nueva opción de alineación de gráficos y fórmulas (Izquierda / Centro / Derecha) al exportar a HTML, EPUB, PDF y Word
+• Coordenadas verticales precisas para los marcadores de PDF vectorial
+• Actualización inmediata del panel de etiquetas al guardar tras eliminar etiquetas

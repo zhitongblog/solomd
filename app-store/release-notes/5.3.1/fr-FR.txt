@@ -1,0 +1,7 @@
+SoloMD 5.3.1 — Corrections et améliorations :
+• Listes ordonnées : Maj+Entrée suivi d’Entrée crée désormais l’élément suivant de manière fiable
+• Les tableaux Markdown collés après un saut de ligne s’alignent automatiquement sur l’indentation de la liste en mode direct
+• Mise en évidence à contraste élevé de l’onglet actif dans tous les thèmes
+• Nouvelle option d’alignement des images, schémas et formules (Gauche / Centré / Droite) pour HTML, EPUB, PDF et Word
+• Coordonnées verticales précises pour les signets PDF vectoriels
+• Mise à jour instantanée du panneau des étiquettes dès l’enregistrement

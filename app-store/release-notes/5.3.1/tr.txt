@@ -1,0 +1,7 @@
+SoloMD 5.3.1 — Düzeltmeler ve iyileştirmeler:
+• Numaralı listeler: Shift+Enter sonrası Enter artık bir sonraki öğeyi güvenilir biçimde oluşturur
+• Liste içi yumuşak satır sonuna yapıştırılan Markdown tabloları otomatik hizalanır ve canlı modda girintili görünür
+• Tüm temalarda etkin sekme için yüksek kontrastlı vurgulama
+• HTML, EPUB, PDF ve Word dışa aktarmalarında görsel ve formül hizalama (Sol / Orta / Sağ) seçeneği
+• Vektör PDF yer imleri için doğru dikey kaydırma koordinatları
+• Silinen etiketler kaydedildiğinde Etiketler panelinin anında güncellenmesi

@@ -1,0 +1,7 @@
+SoloMD 5.3.1 — Oplossingen en verbeteringen:
+• Genummerde lijsten: Shift+Enter gevolgd door Enter maakt nu betrouwbaar het volgende lijstitem aan
+• Geplakte Markdown-tabellen na een zachte regelafbreking worden automatisch uitgelijnd met de lijstinspringing
+• Hoger contrast voor het actieve tabblad in alle thema’s
+• Nieuwe uitlijningsoptie (Links / Midden / Rechts) voor afbeeldingen, diagrammen en formules bij export naar HTML, EPUB, PDF en Word
+• Nauwkeurige verticale bladwijzercoördinaten voor vector-PDF
+• Directe bijwerking van het tagpaneel na het opslaan van verwijderde tags

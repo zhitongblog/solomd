@@ -1,0 +1,7 @@
+SoloMD 5.3.1 – Fehlerbehebungen & Verbesserungen:
+• Geordnete Listen: Shift+Enter-Weichumbruch gefolgt von Enter erstellt nun zuverlässig den nächsten Listenpunkt
+• Eingefügte Markdown-Tabellen richten sich automatisch an Listen-Einzügen aus und werden im Live-Modus bündig dargestellt
+• Kontrastreichere Hervorhebung des aktiven Tabs in allen Themes
+• Neue Export-Option für Bild-, Diagramm- und Formel-Ausrichtung (Links / Zentriert / Rechts) in HTML, EPUB, PDF und Word
+• Präzise vertikale Sprungziele für PDF-Lesezeichen
+• Sofortige Aktualisierung des Tag-Panels beim Speichern nach dem Entfernen von Tags

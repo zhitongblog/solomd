@@ -1,0 +1,7 @@
+SoloMD 5.3.1 — Rättningar och förbättringar:
+• Numrerade listor: Shift+Enter följt av Enter skapar nu tillförlitligt nästa listpunkt
+• Inklistrade Markdown-tabeller efter mjuk radbrytning justeras automatiskt till listans indrag i liveläge
+• Tydligare kontrastmarkering för aktiv flik i alla teman
+• Ny justeringsinställning (Vänster / Centrerad / Höger) för bilder, diagram och formler vid export till HTML, EPUB, PDF och Word
+• Exakta vertikala koordinater för bokmärken i vektor-PDF
+• Omedelbar uppdatering av taggpanelen när borttagna taggar sparas
