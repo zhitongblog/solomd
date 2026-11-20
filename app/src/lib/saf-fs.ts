@@ -87,6 +87,11 @@ export async function safCreate(
   return await invoke<string>('saf_create', { treeUri, parentDocId, mime, name });
 }
 
+/** Delete a SAF document (file or directory). */
+export async function safDelete(treeUri: string, docId: string): Promise<void> {
+  await invoke('saf_delete', { treeUri, docId });
+}
+
 /** #502 — Create a folder under `parentDocId`; returns its documentId. */
 export async function safCreateDir(
   treeUri: string,

@@ -1966,14 +1966,32 @@ async function confirmDelete() {
   // file is untouched until then; the tree hides it in the meantime.
   const path = node.path;
   const name = node.name;
+  const isDir = !!node.is_dir;
+  if (editing.value && (samePath(editing.value.parent, path) || (isDir && segmentsBelow(path, editing.value.parent) !== null))) {
+    editing.value = null;
+  }
   await pendingDeletes.schedule({
     path,
     name,
-    isDir: !!node.is_dir,
+    isDir,
     delayMs: UNDO_WINDOW_MS,
     commit: async () => {
       try {
-        await invoke('fs_delete', { path });
+        if (isSafPath(path) && workspace.safTreeUri) {
+          const { safDelete } = await import('../lib/saf-fs');
+          await safDelete(workspace.safTreeUri, fromSafPath(path));
+        } else {
+          await invoke('fs_delete', { path });
+        }
+        // Close open tabs whose backing file was deleted so auto-save / blur
+        // can never silently recreate a deleted daily note or blank document.
+        const toClose = tabs.tabs.filter((tb) =>
+          tb.filePath &&
+          (samePath(tb.filePath, path) || (isDir && segmentsBelow(path, tb.filePath) !== null)),
+        );
+        for (const tb of toClose) {
+          tabs.closeTab(tb.id);
+        }
       } catch (e) {
         toasts.error(t('toast.deleteFailed', { error: String(e) }));
       }

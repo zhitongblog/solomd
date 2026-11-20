@@ -580,12 +580,22 @@ function toggleUnorderedList(doc: string, from: number, to: number): FormatEdit 
           const siblings = new Set<number>([curIdx]);
           let first = curIdx;
           let last = curIdx;
+          const isIndentedFenceInList = (i: number): 'inside' | 'stop' | 'none' => {
+            const fence = enclosingFence(doc, lines[i].start, lines[i].end);
+            if (!fence) return 'none';
+            const fEnd = doc.indexOf('\n', fence[0]);
+            const opener = splitLine(doc.slice(fence[0], fEnd < 0 ? doc.length : fEnd));
+            return opener.qDepth === cur.qDepth && opener.indW > cur.indW ? 'inside' : 'stop';
+          };
           for (let i = curIdx - 1; i >= 0; i--) {
-            if (enclosingFence(doc, lines[i].start, lines[i].end)) break;
+            const fState = isIndentedFenceInList(i);
+            if (fState === 'inside') continue;
+            if (fState === 'stop') break;
             const info = splitLine(lines[i].text);
-            if (info.blank || info.qDepth !== cur.qDepth || isBlockStopLine(info.rest)) break;
+            if (info.blank || info.qDepth !== cur.qDepth) break;
             if (info.indW < cur.indW) break;
             if (info.indW > cur.indW) continue;
+            if (isBlockStopLine(info.rest)) break;
             if (ANY_LIST.test(info.rest)) {
               siblings.add(i);
               first = i;
@@ -594,11 +604,14 @@ function toggleUnorderedList(doc: string, from: number, to: number): FormatEdit 
             }
           }
           for (let i = curIdx + 1; i < lines.length; i++) {
-            if (enclosingFence(doc, lines[i].start, lines[i].end)) break;
+            const fState = isIndentedFenceInList(i);
+            if (fState === 'inside') continue;
+            if (fState === 'stop') break;
             const info = splitLine(lines[i].text);
-            if (info.blank || info.qDepth !== cur.qDepth || isBlockStopLine(info.rest)) break;
+            if (info.blank || info.qDepth !== cur.qDepth) break;
             if (info.indW < cur.indW) break;
             if (info.indW > cur.indW) continue;
+            if (isBlockStopLine(info.rest)) break;
             if (ANY_LIST.test(info.rest)) {
               siblings.add(i);
               last = i;
@@ -707,12 +720,22 @@ function toggleOrderedList(doc: string, from: number, to: number): FormatEdit {
           const siblings = new Set<number>([curIdx]);
           let first = curIdx;
           let last = curIdx;
+          const isIndentedFenceInList = (i: number): 'inside' | 'stop' | 'none' => {
+            const fence = enclosingFence(doc, lines[i].start, lines[i].end);
+            if (!fence) return 'none';
+            const fEnd = doc.indexOf('\n', fence[0]);
+            const opener = splitLine(doc.slice(fence[0], fEnd < 0 ? doc.length : fEnd));
+            return opener.qDepth === cur.qDepth && opener.indW > cur.indW ? 'inside' : 'stop';
+          };
           for (let i = curIdx - 1; i >= 0; i--) {
-            if (enclosingFence(doc, lines[i].start, lines[i].end)) break;
+            const fState = isIndentedFenceInList(i);
+            if (fState === 'inside') continue;
+            if (fState === 'stop') break;
             const info = splitLine(lines[i].text);
-            if (info.blank || info.qDepth !== cur.qDepth || isBlockStopLine(info.rest)) break;
+            if (info.blank || info.qDepth !== cur.qDepth) break;
             if (info.indW < cur.indW) break;
             if (info.indW > cur.indW) continue;
+            if (isBlockStopLine(info.rest)) break;
             if (ANY_LIST.test(info.rest)) {
               siblings.add(i);
               first = i;
@@ -721,11 +744,14 @@ function toggleOrderedList(doc: string, from: number, to: number): FormatEdit {
             }
           }
           for (let i = curIdx + 1; i < lines.length; i++) {
-            if (enclosingFence(doc, lines[i].start, lines[i].end)) break;
+            const fState = isIndentedFenceInList(i);
+            if (fState === 'inside') continue;
+            if (fState === 'stop') break;
             const info = splitLine(lines[i].text);
-            if (info.blank || info.qDepth !== cur.qDepth || isBlockStopLine(info.rest)) break;
+            if (info.blank || info.qDepth !== cur.qDepth) break;
             if (info.indW < cur.indW) break;
             if (info.indW > cur.indW) continue;
+            if (isBlockStopLine(info.rest)) break;
             if (ANY_LIST.test(info.rest)) {
               siblings.add(i);
               last = i;

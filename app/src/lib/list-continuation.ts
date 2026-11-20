@@ -69,30 +69,53 @@ export function bumpNumberedToken(token: string): string | null {
   return `${head}${rest.slice(0, -1).join('')}${last[0]}${Number(last.slice(1)) + 1}`;
 }
 
+interface OpenFenceInfo {
+  indent: string;
+  ch: string;
+  len: number;
+}
+
+/**
+ * Scan `lines` top-down to classify which lines belong to a fenced code block
+ * (opening fence, body, or closing fence) and whether a fence is still open
+ * after the final line.
+ */
+function scanFences(lines: string[]): { inFence: boolean[]; open: OpenFenceInfo | null } {
+  const inFence = new Array<boolean>(lines.length).fill(false);
+  let open: OpenFenceInfo | null = null;
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(FENCE_LINE);
+    if (!open) {
+      if (m) {
+        const ch = m[2][0];
+        const rest = m[3];
+        if (!(ch === '`' && rest.includes('`'))) {
+          open = { indent: m[1], ch, len: m[2].length };
+          inFence[i] = true;
+        }
+      }
+    } else {
+      inFence[i] = true;
+      if (m && m[2][0] === open.ch && m[2].length >= open.len && m[3].trim() === '') {
+        open = null;
+      }
+    }
+  }
+  return { inFence, open };
+}
+
+function enclosingFenceInfo(text: string, lineStart: number): OpenFenceInfo | null {
+  const before = text.slice(0, lineStart);
+  return scanFences(before.split('\n')).open;
+}
+
 /**
  * If `lineStart` sits inside an open ``` / ~~~ fence of `text`, returns the
  * leading indent/quote prefix of that opening fence line (e.g. `""` or `"   "`);
  * otherwise returns `null`.
  */
 export function enclosingFenceIndent(text: string, lineStart: number): string | null {
-  let open: { indent: string; ch: string; len: number } | null = null;
-  const before = text.slice(0, lineStart);
-  for (const line of before.split('\n')) {
-    const m = line.match(FENCE_LINE);
-    if (!m) continue;
-    const indent = m[1];
-    const ch = m[2][0];
-    const len = m[2].length;
-    const rest = m[3];
-    if (!open) {
-      // A backtick opener's info string may not contain backticks.
-      if (ch === '`' && rest.includes('`')) continue;
-      open = { indent, ch, len };
-    } else if (ch === open.ch && len >= open.len && rest.trim() === '') {
-      open = null;
-    }
-  }
-  return open ? open.indent : null;
+  return enclosingFenceInfo(text, lineStart)?.indent ?? null;
 }
 
 /** True when `lineStart` sits inside an open ``` / ~~~ fence of `text`. */
@@ -102,7 +125,8 @@ export function insideFence(text: string, lineStart: number): boolean {
 
 /**
  * Find the content-column indentation of the list item enclosing `lineStart`
- * (scanning upward through non-blank lines), or `null` if not in a list item.
+ * (scanning upward through non-blank lines and skipping fenced code blocks),
+ * or `null` if not in a list item.
  */
 export function enclosingListContentIndent(text: string, lineStart: number): string | null {
   const before = text.slice(0, lineStart);
@@ -110,7 +134,9 @@ export function enclosingListContentIndent(text: string, lineStart: number): str
   // Note: `before` ends at `lineStart` (right after `\n`), so the last element
   // of `before.split('\n')` is `""` when `lineStart > 0`.
   const startIdx = lineStart > 0 && before.endsWith('\n') ? lines.length - 2 : lines.length - 1;
+  const { inFence } = scanFences(lines.slice(0, startIdx + 1));
   for (let i = startIdx; i >= 0; i--) {
+    if (inFence[i]) continue;
     const ln = lines[i];
     const q = ln.match(QUOTE_PREFIX)?.[1] ?? '';
     const r = ln.slice(q.length);
@@ -142,8 +168,10 @@ interface EnclosingListItemInfo {
 
 /**
  * #609 — Scan upward from an indented continuation line (`Shift+Enter` soft
- * break) to find the enclosing list item at the same `>` quote depth and build
- * its next sibling marker so pressing `Enter` creates the next bullet/number.
+ * break) to find the enclosing list item at the same `>` quote depth (skipping
+ * over any fenced code blocks nested inside the list item so `- ` / `1. ` lines
+ * inside code never hijack or truncate the list) and build its next sibling
+ * marker so pressing `Enter` creates the next bullet/number.
  */
 function enclosingListItemContinuation(
   text: string,
@@ -154,7 +182,9 @@ function enclosingListItemContinuation(
   const before = text.slice(0, lineStart);
   const lines = before.split('\n');
   const startIdx = lineStart > 0 && before.endsWith('\n') ? lines.length - 2 : lines.length - 1;
+  const { inFence } = scanFences(lines.slice(0, startIdx + 1));
   for (let i = startIdx; i >= 0; i--) {
+    if (inFence[i]) continue;
     const ln = lines[i];
     const rawQ = ln.match(QUOTE_PREFIX)?.[1] ?? '';
     const q = rawQ.includes('>') ? rawQ : '';
@@ -279,11 +309,21 @@ export function computeListContinuation(
   const lineEnd = nl < 0 ? text.length : nl;
   const line = text.slice(lineStart, lineEnd);
 
-  const fenceIndent = enclosingFenceIndent(text, lineStart);
-  if (fenceIndent !== null) {
+  const openInfo = enclosingFenceInfo(text, lineStart);
+  const closeFenceMatch = openInfo ? line.match(FENCE_LINE) : null;
+  const isClosingFenceAtCaret = Boolean(
+    openInfo &&
+      closeFenceMatch &&
+      closeFenceMatch[2][0] === openInfo.ch &&
+      closeFenceMatch[2].length >= openInfo.len &&
+      closeFenceMatch[3].trim() === '' &&
+      caret >= lineStart + closeFenceMatch[1].length + closeFenceMatch[2].length,
+  );
+  if (openInfo !== null && !isClosingFenceAtCaret) {
     // Inside an indented fenced code block (e.g. nested in a list item), keep
     // at least the opening fence's indentation on Enter so the new line does
     // not drop to column 0 and break the CommonMark fence/list.
+    const fenceIndent = openInfo.indent;
     const lineIndent = /^[ \t]*/.exec(line)?.[0] ?? '';
     const keepIndent = lineIndent.length >= fenceIndent.length ? lineIndent : fenceIndent;
     if (!keepIndent) return null;
@@ -297,7 +337,7 @@ export function computeListContinuation(
   //   at the fence's indentation instead of inserting a duplicate blank line.
   // - Otherwise, if the opening fence is indented, carry its indentation onto
   //   the new inner line.
-  const openFence = line.match(FENCE_LINE);
+  const openFence = !isClosingFenceAtCaret ? line.match(FENCE_LINE) : null;
   if (openFence && !(openFence[2][0] === '`' && openFence[3].includes('`'))) {
     const openerIndent = openFence[1];
     const fenceMarker = openFence[2];

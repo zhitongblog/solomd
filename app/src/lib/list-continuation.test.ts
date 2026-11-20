@@ -297,6 +297,16 @@ test('Enter on an indented fence opener or inside an indented fence preserves fe
     enter('1. 列表一\n   ```\n   const a = 1;|\n   ```'),
     '1. 列表一\n   ```\n   const a = 1;\n   |\n   ```',
   );
+  // Pressing Enter after a closing fence inside a list item creates the next
+  // sibling list item even when the code block contains `- ` or `1. ` lines:
+  assert.equal(
+    enter('1. 列表一\n   ```md\n   - code bullet\n   1. code num\n   ```|'),
+    '1. 列表一\n   ```md\n   - code bullet\n   1. code num\n   ```\n2. |',
+  );
+  assert.equal(
+    enter('- 无序一\n  ```md\n  1. code num\n  - code bullet\n  ```|'),
+    '- 无序一\n  ```md\n  1. code num\n  - code bullet\n  ```\n- |',
+  );
 });
 
 test('repairIndentedFenceEdit restores missing list-fence indent when typing on an empty inner line', () => {

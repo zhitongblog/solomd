@@ -1169,6 +1169,14 @@ export function useFiles() {
     window.dispatchEvent(new Event('solomd:flush-content-sync'));
     for (const tab of tabs.tabs) {
       if (tab.filePath && tabs.isDirty(tab.id)) {
+        if (!isSafPath(tab.filePath)) {
+          try {
+            const exists = await invoke<boolean>('fs_exists', { path: tab.filePath });
+            if (!exists) continue;
+          } catch {
+            // If fs_exists is unavailable, proceed with normal saveTab check.
+          }
+        }
         await saveTab(tab, { silent: true });
       }
     }

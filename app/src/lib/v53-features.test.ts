@@ -18,8 +18,8 @@ test('#617: live mode ordered and unordered list markers use tighter natural spa
   const cmLiveRender = fs.readFileSync(path.join(APP_ROOT, 'src/lib/cm-live-render.ts'), 'utf8');
   assert.ok(cmLiveRender.includes('? 0.95'), 'bullet marker width should be tightened to 0.95em');
   assert.ok(cmLiveRender.includes('markLen <= 2'), '1-digit ordered markers should use tighter column width');
-  assert.ok(cmLiveRender.includes('? 1.45'), '1-digit ordered markers should be 1.45em');
-  assert.ok(cmLiveRender.includes('? 1.95'), '2-digit ordered markers should be 1.95em');
+  assert.ok(cmLiveRender.includes('? 1.15'), '1-digit ordered markers should be 1.15em');
+  assert.ok(cmLiveRender.includes('? 1.65'), '2-digit ordered markers should be 1.65em');
 });
 
 test('#173 (v5.3): sandboxed plugin scripts enforce capability scopes, shadow globals, and run built-in presets', async () => {

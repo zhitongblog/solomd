@@ -343,5 +343,12 @@ test('#110 / #159: Tab on an empty line below a list item indents to the parent 
   assert.equal(await tab('- 一级列表\n  |', true), '- 一级列表\n|');
 });
 
+test('switching ordered/unordered list skips indented fenced code blocks inside list items', () => {
+  const ulWithCode = '- 第一项|\n  ```js\n  const x = 1;\n  ```\n- 第二项';
+  const olWithCode = '1. 第一项|\n  ```js\n  const x = 1;\n  ```\n2. 第二项';
+  assert.equal(run(ulWithCode, 'ol'), olWithCode);
+  assert.equal(run(olWithCode, 'ul'), ulWithCode);
+});
+
 
 

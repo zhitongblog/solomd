@@ -1242,9 +1242,9 @@ class TableWidget extends WidgetType {
         indentCols === 2
           ? 0.95
           : indentCols === 3
-            ? 1.45
+            ? 1.15
             : indentCols === 4
-              ? 1.95
+              ? 1.65
               : Math.min(8, indentCols * 0.55);
       wrap.style.marginLeft = `${marginEm.toFixed(2)}em`;
     }
