@@ -1,0 +1,5 @@
+• Supporto completo per YAML Frontmatter: evidenziazione nativa, scheda proprietà richiudibile in Live Edit e comando di inserimento.
+• Creazione multipla di note dal menu contestuale delle cartelle (un file per riga, .md automatico).
+• Barra degli strumenti personalizzabile.
+• Aggiunta evidenziazione della sintassi per ahk, awk, bash e lua.
+• Stile delle schede attive più sobrio e correzione rinomina cartelle.

@@ -1,0 +1,6 @@
+• Full YAML Frontmatter support: native YAML syntax highlighting, collapsible properties card in Live Edit, polished preview rendering, and Insert Frontmatter command.
+• Batch New Files: right-click any folder to create multiple Markdown notes at once (one per line, auto-appending .md).
+• Customizable Toolbar: pin your favorite actions to the top toolbar.
+• Added syntax highlighting for ahk (AutoHotkey), awk, bash, and lua code blocks.
+• Calmer active tab styling with a clean bottom accent bar.
+• Fixed CJK folder rename edge cases and file tree refresh consistency.

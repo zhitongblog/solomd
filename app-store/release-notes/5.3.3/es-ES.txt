@@ -1,0 +1,5 @@
+• Soporte completo para YAML Frontmatter: resaltado nativo, tarjeta de propiedades plegable en edición en vivo y comando de inserción.
+• Creación masiva de notas desde el menú contextual de carpetas (un nombre por línea, .md automático).
+• Barra de herramientas personalizable.
+• Resaltado de sintaxis añadido para ahk, awk, bash y lua.
+• Estilo de pestaña activa más limpio y corrección al renombrar carpetas.

@@ -1,0 +1,5 @@
+• Fullt stöd för YAML Frontmatter: inbyggd syntaxmarkering, hopfällbart egenskapskort i Live Edit och infogningskommando.
+• Skapa flera anteckningar samtidigt från mappens snabbmeny (en per rad, automatiskt .md).
+• Anpassningsbart verktygsfält.
+• Syntaxmarkering tillagd för ahk, awk, bash och lua.
+• Lugnare stil på aktiv flik och åtgärdad mappnamnsändring.

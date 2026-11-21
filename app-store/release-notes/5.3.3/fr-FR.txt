@@ -1,0 +1,5 @@
+• Prise en charge complète du YAML Frontmatter : coloration syntaxique native, carte de propriétés repliable en édition directe et commande d’insertion.
+• Création de notes par lot depuis le menu contextuel des dossiers (un nom par ligne, .md automatique).
+• Barre d’outils personnalisable pour vos actions favorites.
+• Coloration syntaxique ajoutée pour ahk, awk, bash et lua.
+• Style d’onglet actif plus sobre et correction du renommage de dossiers.

@@ -1,0 +1,5 @@
+• Vollständige YAML-Frontmatter-Unterstützung: native Syntaxhervorhebung, einklappbare Eigenschaftskarte im Live-Modus und Einfügebefehl.
+• Stapel-Erstellung von Notizen im Ordner-Kontextmenü (eine Datei pro Zeile, automatisches .md).
+• Anpassbare Symbolleiste für häufig genutzte Aktionen.
+• Syntaxhervorhebung für ahk, awk, bash und lua hinzugefügt.
+• Ruhigeres Design aktiver Tabs sowie Behebung von Ordner-Umbenennungsfehlern.

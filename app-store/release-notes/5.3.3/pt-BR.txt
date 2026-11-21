@@ -1,0 +1,5 @@
+• Suporte completo a YAML Frontmatter: realce nativo, cartão de propriedades recolhível no Live Edit e comando de inserção.
+• Criação em lote de notas pelo menu de contexto da pasta (um arquivo por linha, .md automático).
+• Barra de ferramentas personalizável.
+• Realce de sintaxe adicionado para ahk, awk, bash e lua.
+• Visual mais limpo da aba ativa e correção ao renomear pastas.

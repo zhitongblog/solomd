@@ -1,0 +1,5 @@
+• Tam YAML Frontmatter desteği: yerel sözdizimi vurgulama, Canlı Düzenleme’de daraltılabilir özellik kartı ve ekleme komutu.
+• Klasör sağ tık menüsünden toplu not oluşturma (her satıra bir dosya, otomatik .md).
+• Özelleştirilebilir araç çubuğu.
+• ahk, awk, bash ve lua için kod vurgulama eklendi.
+• Daha sade etkin sekme görünümü ve klasör yeniden adlandırma düzeltmesi.

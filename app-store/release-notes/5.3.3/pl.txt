@@ -1,0 +1,5 @@
+• Pełna obsługa YAML Frontmatter: natywne kolorowanie składni, zwijana karta właściwości w trybie Live Edit i polecenie wstawiania.
+• Zbiorcze tworzenie notatek z menu kontekstowego folderu (jedna nazwa w wierszu, automatyczne .md).
+• Konfigurowalny pasek narzędzi.
+• Dodano kolorowanie składni dla ahk, awk, bash i lua.
+• Spokojniejszy styl aktywnej karty oraz poprawka zmiany nazw folderów.

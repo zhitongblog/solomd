@@ -1,0 +1,5 @@
+• Volledige YAML Frontmatter-ondersteuning: native syntaxiskleuring, inklapbare eigenschappenkaart in Live Edit en invoegcommando.
+• Meerdere notities tegelijk aanmaken via het map-contextmenu (één per regel, automatisch .md).
+• Aanpasbare werkbalk met favoriete acties.
+• Syntaxiskleuring toegevoegd voor ahk, awk, bash en lua.
+• Rustigere weergave van actieve tabbladen en reparatie van map-hernoeming.
