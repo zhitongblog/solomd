@@ -396,6 +396,11 @@ fn fit_main_window_once(win: &tauri::WebviewWindow) {
         return;
     }
     clamp_window_to_monitor(win);
+    // #633 — Ensure Windows 11 taskbar / Alt+Tab always receives WM_SETICON
+    // when revealing a frameless hidden-at-startup window.
+    if let Some(icon) = win.app_handle().default_window_icon().cloned() {
+        let _ = win.set_icon(icon);
+    }
     let _ = win.show();
     let _ = win.unminimize();
     let _ = win.set_focus();
@@ -705,6 +710,9 @@ pub fn run_with(initial_file: Option<String>) {
             git_history::git_workspace_status,
             git_history::git_init_workspace,
             git_history::git_auto_commit,
+            git_history::git_stage,
+            git_history::git_cli_pull,
+            git_history::git_cli_push,
             git_history::git_file_history,
             git_history::git_file_diff,
             git_history::git_file_at_version,
@@ -889,6 +897,9 @@ pub fn run_with(initial_file: Option<String>) {
             // run-loop event match (`RunEvent::Ready` + 400ms timer) acts
             // as a fallback when there's no saved state to restore.
             if let Some(win) = app.get_webview_window("main") {
+                if let Some(icon) = app.default_window_icon().cloned() {
+                    let _ = win.set_icon(icon);
+                }
                 let win_clone = win.clone();
                 win.on_window_event(move |event| {
                     if matches!(

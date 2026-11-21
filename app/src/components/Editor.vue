@@ -8,6 +8,7 @@ import { createFindPanel, setFindPanelReplaceExpanded, selectAllOccurrencesComma
 import { tabCaretMemory, tabTopLineMemory, type TabCaretSnapshot } from '../lib/scroll-memory';
 import { syntaxHighlighting, defaultHighlightStyle, indentOnInput, bracketMatching, indentUnit } from '@codemirror/language';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
+import { yamlFrontmatter } from '@codemirror/lang-yaml';
 import { cjkFriendlyEmphasis } from '../lib/cm-cjk-emphasis';
 import { bindMermaidInteractions, renderMermaidCached } from '../lib/mermaid-lazy';
 import { parseInsertSnippet } from '../lib/insert-snippet';
@@ -4689,11 +4690,13 @@ function markdownExt() {
         { key: 'Enter', run: markdownEnterCommand },
       ]),
     ),
-    markdown({
-      base: markdownLanguage,
-      codeLanguages,
-      addKeymap: true,
-      extensions: [cjkFriendlyEmphasis],
+    yamlFrontmatter({
+      content: markdown({
+        base: markdownLanguage,
+        codeLanguages,
+        addKeymap: true,
+        extensions: [cjkFriendlyEmphasis],
+      }),
     }),
     listRenumberFilter,
   ];
@@ -5192,6 +5195,37 @@ onMounted(() => {
   // to exist on ALL three editor paths, and the CodeMirror-only setup that
   // follows is unreachable on Windows. (Putting it further down is what made
   // the first attempt silently no-op on the plain editors.)
+  function onInsertFrontmatter() {
+    const active = tabs.activeTab;
+    if (!active || active.language !== 'markdown') return;
+    if (props.tab && props.tab.id !== active.id) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const stem = (active.fileName || '').replace(/\.[^.]+$/, '');
+    const snippet = `---\ntitle: ${stem}\ndate: ${today}\ntags: []\n---\n\n`;
+    if (view) {
+      const doc = view.state.doc;
+      const firstLine = doc.lines >= 1 ? doc.line(1).text.trim() : '';
+      if (firstLine === '---' && doc.lines >= 2) {
+        const target = doc.line(2).to;
+        view.dispatch({ selection: { anchor: target }, scrollIntoView: true });
+        view.focus();
+        return;
+      }
+      const caretPos = `---\ntitle: ${stem}`.length;
+      view.dispatch({
+        changes: { from: 0, to: 0, insert: snippet },
+        selection: { anchor: caretPos },
+        scrollIntoView: true,
+        userEvent: 'input',
+      });
+      view.focus();
+      return;
+    }
+    const cur = active.content || '';
+    if (cur.startsWith('---\n') || cur.startsWith('---\r\n')) return;
+    tabs.setContent(active.id, snippet + cur);
+  }
+  window.addEventListener('solomd:insert-frontmatter', onInsertFrontmatter);
   window.addEventListener('solomd:transform-case', onTransformCase as EventListener);
   window.addEventListener('solomd:format-markdown', onFormatMarkdown as EventListener);
   window.addEventListener('solomd:editor-command', onEditorCommand as EventListener);
@@ -5200,6 +5234,7 @@ onMounted(() => {
   window.addEventListener('focus', syncSystemClipboardToVimRegister);
   void syncSystemClipboardToVimRegister();
   cleanupTransformCase = () => {
+    window.removeEventListener('solomd:insert-frontmatter', onInsertFrontmatter);
     window.removeEventListener('focus', syncSystemClipboardToVimRegister);
     window.removeEventListener('keydown', onPlainWindowKeydown);
     window.removeEventListener('solomd:editor-history', onEditorHistory as EventListener);

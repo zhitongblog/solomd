@@ -11,7 +11,12 @@ import { useRagStore } from '../stores/rag';
 import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
 import { themeOptions, themeFamily } from '../lib/themes';
 import { useI18n } from '../i18n';
+import { winTitleBar } from '../lib/chrome';
 import { quickCaptureError } from '../lib/quick-capture-status';
+
+function openToolbarCustomize() {
+  window.dispatchEvent(new CustomEvent('solomd:open-toolbar-customize'));
+}
 import {
   activeKeyActions,
   combosFor,
@@ -2846,6 +2851,15 @@ function onSelectPdfFont(v: string) {
             <input type="checkbox" :checked="settings.toolbarShowLabels" @change="settings.toggleToolbarShowLabels()" />
             {{ settings.language === 'zh' ? '顶部工具栏按钮显示文字标签（搜索 / 导出 / 侧栏 / 更多）' : 'Show text labels on top toolbar buttons (Search / Export / Sidebar / More)' }}
           </label>
+          <label v-if="winTitleBar">
+            <input type="checkbox" :checked="settings.toolbarInTitlebar" @change="settings.toggleToolbarInTitlebar()" />
+            {{ t('toolbarCustom.dockInTitlebar') }}
+          </label>
+          <div style="margin-top: 6px;">
+            <button type="button" class="btn-secondary" @click="openToolbarCustomize">
+              {{ t('toolbarCustom.title') }}
+            </button>
+          </div>
         </section>
 
         <section data-cat="writing">

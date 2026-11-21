@@ -603,6 +603,12 @@ export function useCommands(): Command[] {
     // there is nothing selected. Shift+F3 cycles lower → UPPER → Title, which
     // is the Word convention most writers already have in their fingers.
     {
+      id: 'editor.insertFrontmatter',
+      title: 'Insert YAML Frontmatter',
+      hint: 'Add or focus leading YAML metadata block (title, date, tags)',
+      run: () => window.dispatchEvent(new CustomEvent('solomd:insert-frontmatter')),
+    },
+    {
       id: 'editor.caseCycle',
       title: 'Cycle Case (lower / UPPER / Title)',
       hint: 'Selection, or the word under the cursor',

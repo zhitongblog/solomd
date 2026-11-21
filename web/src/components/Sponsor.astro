@@ -320,6 +320,23 @@ const inApp = IN_APP_COPY[lang] || IN_APP_COPY.en;
       </div>
     )}
 
+    {testers.length > 0 && (
+      <div class="sponsor__thanks">
+        <h3>{lang === 'zh' ? '感谢深度测试者' : 'Thanks to our deep testers'}</h3>
+        <ul class="sponsor__names">
+          {testers.map((t) => (
+            <li>
+              {t.github ? (
+                <a href={`https://github.com/${t.github}`} target="_blank" rel="noopener">{t.name}</a>
+              ) : (
+                t.name
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
+    )}
+
     <div class="thanks-wall-cta">
       <a href={thanksHref} class="thanks-wall-cta__link">
         {lang === 'zh'

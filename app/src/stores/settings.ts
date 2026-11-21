@@ -219,6 +219,11 @@ interface Settings {
   hideMenuBar: boolean;
   /** #318: show text labels next to toolbar icons (icon + label mode). */
   toolbarShowLabels: boolean;
+  /** #622: on Windows custom-titlebar, place the toolbar right after the menubar
+   *  so the tab bar row has 100% width for open tabs. */
+  toolbarInTitlebar: boolean;
+  /** #622: ordered list of visible toolbar action IDs. */
+  toolbarItems: string[];
   /** #479: hide the top mobile status-bar reservation for full-screen immersion. */
   mobileHideStatusBar: boolean;
   typewriterMode: boolean;
@@ -865,6 +870,8 @@ function defaults(): Settings {
     toolbarHidden: false,
     hideMenuBar: false,
     toolbarShowLabels: false,
+    toolbarInTitlebar: true,
+    toolbarItems: ['viewMode', 'search', 'export', 'rightSidebar', 'more'],
     mobileHideStatusBar: false,
     typewriterMode: false,
     formatHints: true,
@@ -1675,6 +1682,29 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleToolbarShowLabels() {
       this.toolbarShowLabels = !this.toolbarShowLabels;
+      this.persist();
+    },
+    toggleToolbarInTitlebar() {
+      this.toolbarInTitlebar = !this.toolbarInTitlebar;
+      this.persist();
+    },
+    toggleToolbarItem(id: string) {
+      const cur = Array.isArray(this.toolbarItems) ? [...this.toolbarItems] : [];
+      const idx = cur.indexOf(id);
+      if (idx >= 0) {
+        cur.splice(idx, 1);
+      } else {
+        cur.push(id);
+      }
+      this.toolbarItems = cur;
+      this.persist();
+    },
+    setToolbarItems(items: string[]) {
+      this.toolbarItems = [...items];
+      this.persist();
+    },
+    resetToolbarItems() {
+      this.toolbarItems = ['viewMode', 'search', 'export', 'rightSidebar', 'more'];
       this.persist();
     },
     toggleMobileHideStatusBar() {

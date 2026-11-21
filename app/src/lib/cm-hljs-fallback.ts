@@ -39,6 +39,11 @@ const SKIP_FENCE_LANGS = new Set([
 ]);
 
 const HLJS_LANG_ALIASES: Record<string, string> = {
+  ahk: 'autohotkey',
+  autohotkey: 'autohotkey',
+  gawk: 'awk',
+  mawk: 'awk',
+  nawk: 'awk',
   sh: 'bash',
   zsh: 'bash',
   fish: 'bash',

@@ -72,6 +72,59 @@ const streamingError = ref<string | null>(null);
 const requestId = ref<string | null>(null);
 const sentBanner = ref(false);
 
+// #634 — Persist the 15 most-recent custom rewrite prompts with hover-bubble preview.
+const PROMPT_HISTORY_KEY = 'solomd.aiRewritePromptHistory';
+const MAX_PROMPT_HISTORY = 15;
+const promptHistory = ref<string[]>(loadPromptHistory());
+const historyOpen = ref(false);
+const hoveredPrompt = ref<string | null>(null);
+
+function loadPromptHistory(): string[] {
+  try {
+    const raw = localStorage.getItem(PROMPT_HISTORY_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
+      .slice(0, MAX_PROMPT_HISTORY);
+  } catch {
+    return [];
+  }
+}
+
+function recordPromptHistory(prompt: string): void {
+  const trimmed = prompt.trim();
+  if (!trimmed) return;
+  const next = [trimmed, ...promptHistory.value.filter((p) => p !== trimmed)].slice(
+    0,
+    MAX_PROMPT_HISTORY,
+  );
+  promptHistory.value = next;
+  try {
+    localStorage.setItem(PROMPT_HISTORY_KEY, JSON.stringify(next));
+  } catch {
+    /* quota / private mode */
+  }
+}
+
+function pickHistoryPrompt(p: string): void {
+  customPrompt.value = p;
+  historyOpen.value = false;
+  hoveredPrompt.value = null;
+}
+
+function removeHistoryPrompt(p: string): void {
+  const next = promptHistory.value.filter((item) => item !== p);
+  promptHistory.value = next;
+  if (hoveredPrompt.value === p) hoveredPrompt.value = null;
+  try {
+    localStorage.setItem(PROMPT_HISTORY_KEY, JSON.stringify(next));
+  } catch {
+    /* ignore */
+  }
+}
+
 const proposedRef = ref<HTMLDivElement | null>(null);
 
 /**
@@ -228,6 +281,11 @@ async function startAction(a: AIAction): Promise<void> {
     action.value = a;
     return;
   }
+  if (a.custom) {
+    recordPromptHistory(customPrompt.value);
+    historyOpen.value = false;
+    hoveredPrompt.value = null;
+  }
   action.value = a;
   reset();
   streaming.value = true;
@@ -377,7 +435,47 @@ onBeforeUnmount(() => {
           {{ t(a.labelKey) }}
         </button>
         <div v-if="action?.custom" class="ai-overlay__custom">
-          <label class="ai-overlay__label">{{ t('ai.customPrompt') }}</label>
+          <div class="ai-overlay__custom-head">
+            <label class="ai-overlay__label">{{ t('ai.customPrompt') }}</label>
+            <div class="ai-overlay__history-wrap">
+              <button
+                type="button"
+                class="ai-overlay__history-btn"
+                :disabled="promptHistory.length === 0"
+                :aria-expanded="historyOpen"
+                @click="historyOpen = !historyOpen"
+              >
+                {{ t('ai.promptHistory') || 'History' }} ({{ promptHistory.length }}) ▾
+              </button>
+              <div
+                v-if="historyOpen && promptHistory.length > 0"
+                class="ai-overlay__history-menu"
+                role="listbox"
+                @mouseleave="hoveredPrompt = null"
+              >
+                <div
+                  v-for="(item, idx) in promptHistory"
+                  :key="idx"
+                  class="ai-overlay__history-item"
+                  role="option"
+                  :title="item"
+                  @mouseenter="hoveredPrompt = item"
+                  @click="pickHistoryPrompt(item)"
+                >
+                  <span class="ai-overlay__history-text">{{ item }}</span>
+                  <button
+                    type="button"
+                    class="ai-overlay__history-del"
+                    aria-label="Remove"
+                    @click.stop="removeHistoryPrompt(item)"
+                  >×</button>
+                </div>
+                <div v-if="hoveredPrompt" class="ai-overlay__history-bubble">
+                  {{ hoveredPrompt }}
+                </div>
+              </div>
+            </div>
+          </div>
           <textarea
             v-model="customPrompt"
             class="ai-overlay__textarea"
@@ -560,6 +658,93 @@ onBeforeUnmount(() => {
   padding: 8px;
 }
 
+.ai-overlay__custom-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ai-overlay__history-wrap {
+  position: relative;
+}
+.ai-overlay__history-btn {
+  padding: 3px 9px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-2);
+  font-size: 12px;
+  cursor: pointer;
+}
+.ai-overlay__history-btn:hover:not(:disabled) {
+  background: var(--fill-1);
+  color: var(--text);
+}
+.ai-overlay__history-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.ai-overlay__history-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 40;
+  width: 320px;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--bg-elev, var(--bg));
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+  padding: 4px;
+}
+.ai-overlay__history-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12.5px;
+  color: var(--text);
+}
+.ai-overlay__history-item:hover {
+  background: var(--fill-1);
+}
+.ai-overlay__history-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ai-overlay__history-del {
+  flex-shrink: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 4px;
+}
+.ai-overlay__history-del:hover {
+  color: var(--danger, #dc2626);
+}
+.ai-overlay__history-bubble {
+  position: sticky;
+  bottom: 0;
+  margin-top: 4px;
+  padding: 8px 10px;
+  border-top: 1px solid var(--hairline);
+  background: var(--bg-sidebar, var(--bg));
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  border-radius: 0 0 6px 6px;
+}
 .ai-overlay__diff {
   padding: 12px 14px;
   display: flex;

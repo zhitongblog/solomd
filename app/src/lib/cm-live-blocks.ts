@@ -19,6 +19,7 @@
  */
 
 import { RangeSetBuilder, StateField, StateEffect, Prec, EditorSelection, Transaction, EditorState } from '@codemirror/state';
+import yaml from 'js-yaml';
 import { keymap } from '@codemirror/view';
 import type { DecorationSet, ViewUpdate } from '@codemirror/view';
 import { SearchQuery, getSearchQuery, searchPanelOpen, setSearchQuery } from '@codemirror/search';
@@ -34,6 +35,202 @@ import {
 } from '@codemirror/view';
 
 export const setExternalSearchQueryEffect = StateEffect.define<string>();
+
+// ---------------------------------------------------------------------------
+// #626 — Collapsible YAML Frontmatter Properties Widget for Live Edit.
+// ---------------------------------------------------------------------------
+let frontmatterCollapsedSession = false;
+
+function formatFmDate(d: Date): string {
+  if (Number.isNaN(d.getTime())) return String(d);
+  const iso = d.toISOString();
+  return iso.endsWith('T00:00:00.000Z') ? iso.slice(0, 10) : iso.replace('T', ' ').slice(0, 19);
+}
+
+function renderFmValueDom(val: unknown): HTMLElement {
+  const wrap = document.createElement('span');
+  wrap.className = 'cm-frontmatter-card__val';
+  if (val === null || val === undefined) {
+    wrap.classList.add('md-frontmatter-empty');
+    wrap.textContent = '—';
+    return wrap;
+  }
+  if (val instanceof Date) {
+    wrap.classList.add('md-frontmatter-date');
+    wrap.textContent = formatFmDate(val);
+    return wrap;
+  }
+  if (typeof val === 'boolean') {
+    const badge = document.createElement('span');
+    badge.className = `md-frontmatter-bool md-frontmatter-bool--${val ? 'true' : 'false'}`;
+    badge.textContent = val ? '✓ true' : '✕ false';
+    wrap.appendChild(badge);
+    return wrap;
+  }
+  if (Array.isArray(val)) {
+    if (val.length === 0) {
+      wrap.classList.add('md-frontmatter-empty');
+      wrap.textContent = '[]';
+      return wrap;
+    }
+    const chips = document.createElement('span');
+    chips.className = 'md-frontmatter-chips';
+    for (const item of val) {
+      const chip = document.createElement('span');
+      chip.className = 'md-frontmatter-chip';
+      chip.textContent =
+        item instanceof Date
+          ? formatFmDate(item)
+          : typeof item === 'object' && item !== null
+            ? JSON.stringify(item)
+            : String(item ?? '');
+      chips.appendChild(chip);
+    }
+    wrap.appendChild(chips);
+    return wrap;
+  }
+  if (typeof val === 'string') {
+    const trimmed = val.trim();
+    if (/^https?:\/\/\S+$/i.test(trimmed)) {
+      const a = document.createElement('a');
+      a.className = 'md-frontmatter-link';
+      a.href = trimmed;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.textContent = trimmed;
+      a.addEventListener('mousedown', (e) => e.stopPropagation());
+      wrap.appendChild(a);
+      return wrap;
+    }
+    wrap.textContent = val;
+    return wrap;
+  }
+  if (typeof val === 'object') {
+    const code = document.createElement('code');
+    code.textContent = JSON.stringify(val);
+    wrap.appendChild(code);
+    return wrap;
+  }
+  wrap.textContent = String(val);
+  return wrap;
+}
+
+class FrontmatterWidget extends WidgetType {
+  readonly yamlBody: string;
+  readonly editPos: number;
+
+  constructor(yamlBody: string, editPos: number) {
+    super();
+    this.yamlBody = yamlBody;
+    this.editPos = editPos;
+  }
+
+  eq(other: FrontmatterWidget): boolean {
+    return this.yamlBody === other.yamlBody && this.editPos === other.editPos;
+  }
+
+  toDOM(view: EditorView): HTMLElement {
+    const card = document.createElement('div');
+    card.className = 'cm-frontmatter-card';
+
+    let entries: [string, unknown][] | null = null;
+    let parseErr: string | null = null;
+    try {
+      const parsed = yaml.load(this.yamlBody);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        entries = Object.entries(parsed as Record<string, unknown>);
+      } else if (this.yamlBody.trim() === '') {
+        entries = [];
+      } else {
+        parseErr = 'Frontmatter must be a YAML mapping (key: value).';
+      }
+    } catch (e) {
+      parseErr = e instanceof Error ? e.message : String(e);
+    }
+
+    const head = document.createElement('div');
+    head.className = 'cm-frontmatter-card__head';
+
+    const titleWrap = document.createElement('span');
+    titleWrap.className = 'cm-frontmatter-card__title';
+    const chevron = document.createElement('span');
+    chevron.textContent = frontmatterCollapsedSession ? '▸' : '▾';
+    const label = document.createElement('span');
+    label.textContent = 'YAML Frontmatter';
+    titleWrap.appendChild(chevron);
+    titleWrap.appendChild(label);
+    if (entries) {
+      const badge = document.createElement('span');
+      badge.className = 'cm-frontmatter-card__badge';
+      badge.textContent = String(entries.length);
+      titleWrap.appendChild(badge);
+    }
+
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.className = 'cm-frontmatter-card__edit';
+    editBtn.textContent = 'YAML';
+    editBtn.title = 'Edit YAML frontmatter';
+    editBtn.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const targetPos = Math.min(this.editPos, view.state.doc.length);
+      view.dispatch({
+        selection: { anchor: targetPos },
+        scrollIntoView: true,
+      });
+      view.focus();
+    });
+
+    head.appendChild(titleWrap);
+    head.appendChild(editBtn);
+    card.appendChild(head);
+
+    const body = document.createElement('div');
+    body.className = 'cm-frontmatter-card__body';
+    if (frontmatterCollapsedSession && !parseErr) {
+      body.style.display = 'none';
+    }
+
+    if (parseErr) {
+      const errEl = document.createElement('div');
+      errEl.className = 'cm-frontmatter-card__err';
+      errEl.textContent = parseErr;
+      body.appendChild(errEl);
+    } else if (entries && entries.length > 0) {
+      const grid = document.createElement('div');
+      grid.className = 'cm-frontmatter-card__grid';
+      for (const [k, v] of entries) {
+        const keyEl = document.createElement('span');
+        keyEl.className = 'cm-frontmatter-card__key';
+        keyEl.textContent = k;
+        grid.appendChild(keyEl);
+        grid.appendChild(renderFmValueDom(v));
+      }
+      body.appendChild(grid);
+    } else {
+      const emptyEl = document.createElement('span');
+      emptyEl.className = 'md-frontmatter-empty';
+      emptyEl.textContent = 'Empty frontmatter';
+      body.appendChild(emptyEl);
+    }
+
+    head.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      frontmatterCollapsedSession = !frontmatterCollapsedSession;
+      chevron.textContent = frontmatterCollapsedSession ? '▸' : '▾';
+      body.style.display = frontmatterCollapsedSession ? 'none' : '';
+    });
+
+    card.appendChild(body);
+    return card;
+  }
+
+  ignoreEvent(): boolean {
+    return true;
+  }
+}
 
 export const externalSearchQueryField = StateField.define<string>({
   create: () => '',
@@ -2314,6 +2511,43 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
         }
         const imageRefs = extractImageReferenceDefinitions(sourceLines, fenceBody);
         let i = 1;
+
+        // #626 — Leading YAML frontmatter block (`---\n...\n---` on line 1).
+        // Replace with a collapsible properties card when the caret is outside;
+        // moving the caret into lines 1..fmEnd reveals syntax-highlighted YAML.
+        if (lastLine >= 2 && sourceLines[0].trim() === '---') {
+          let fmEndLine = 0;
+          const scanLimit = Math.min(lastLine, 200);
+          for (let ln = 2; ln <= scanLimit; ln += 1) {
+            const trimmed = sourceLines[ln - 1].trim();
+            if (trimmed === '---' || trimmed === '...') {
+              fmEndLine = ln;
+              break;
+            }
+          }
+          if (fmEndLine >= 2) {
+            const cursorInside =
+              keepSource ||
+              (cursorLine >= 1 && cursorLine <= fmEndLine) ||
+              (cursorLineEnd >= 1 && cursorLineEnd <= fmEndLine);
+            if (!cursorInside) {
+              const blockFrom = doc.line(1).from;
+              const blockTo = doc.line(fmEndLine).to;
+              const yamlBody = sourceLines.slice(1, fmEndLine - 1).join('\n');
+              const editPos = fmEndLine >= 2 ? doc.line(2).from : blockFrom;
+              builder.add(
+                blockFrom,
+                blockTo,
+                Decoration.replace({
+                  widget: new FrontmatterWidget(yamlBody, editPos),
+                  block: true,
+                }),
+              );
+            }
+            i = fmEndLine + 1;
+          }
+        }
+
         while (i <= lastLine) {
           const line = doc.line(i);
 

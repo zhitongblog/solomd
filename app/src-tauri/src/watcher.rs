@@ -316,21 +316,31 @@ pub fn unwatch_file(
     state: tauri::State<'_, WatcherState>,
     path: String,
 ) -> Result<(), String> {
-    let canonical = PathBuf::from(&path)
-        .canonicalize()
-        .map_err(|e| format!("canonicalize failed: {e}"))?;
-    let parent = match canonical.parent() {
-        Some(p) => p.to_path_buf(),
-        None => return Ok(()),
-    };
+    let resolved_canonical = PathBuf::from(&path).canonicalize().ok();
 
-    let parent_now_empty = {
+    let (canonical, parent_now_empty) = {
         let mut inner = state.inner.lock().unwrap();
-        if inner.watched_files.remove(&canonical).is_none() {
-            return Ok(()); // wasn't watching it
-        }
+        // If the file or its parent directory was already renamed/deleted on
+        // disk, `canonicalize()` fails; fall back to matching the original
+        // path string we recorded in `watched_files`.
+        let key = match resolved_canonical {
+            Some(c) if inner.watched_files.contains_key(&c) => Some(c),
+            _ => inner
+                .watched_files
+                .iter()
+                .find(|(_, orig)| orig.as_str() == path.as_str())
+                .map(|(k, _)| k.clone()),
+        };
+        let Some(canonical) = key else {
+            return Ok(());
+        };
+        inner.watched_files.remove(&canonical);
         inner.stamps.remove(&canonical);
-        if let Some(count) = inner.watched_dirs.get_mut(&parent) {
+        let parent = match canonical.parent() {
+            Some(p) => p.to_path_buf(),
+            None => return Ok(()),
+        };
+        let empty = if let Some(count) = inner.watched_dirs.get_mut(&parent) {
             *count -= 1;
             if *count == 0 {
                 inner.watched_dirs.remove(&parent);
@@ -340,17 +350,72 @@ pub fn unwatch_file(
             }
         } else {
             false
-        }
+        };
+        (parent, empty)
     };
 
     if parent_now_empty {
         let mut guard = state.debouncer.lock().unwrap();
         if let Some(ref mut debouncer) = *guard {
-            let _ = debouncer.watcher().unwatch(&parent);
+            let _ = debouncer.watcher().unwatch(&canonical);
         }
     }
 
     Ok(())
+}
+
+/// Release any OS directory watches covering `target` itself or any descendant
+/// of `target`. On Windows, `notify::ReadDirectoryChangesWatcher` holds open
+/// directory handles that cause `fs::rename` on that folder (or an ancestor)
+/// to fail with `os error 5` / `os error 32`.
+pub fn unwatch_under_path(state: &WatcherState, target: &std::path::Path) {
+    let canonical_target = target.canonicalize().unwrap_or_else(|_| target.to_path_buf());
+    let dirs_to_unwatch: Vec<PathBuf> = {
+        let mut inner = state.inner.lock().unwrap();
+        let files_to_remove: Vec<PathBuf> = inner
+            .watched_files
+            .keys()
+            .filter(|p| p.starts_with(&canonical_target))
+            .cloned()
+            .collect();
+        let mut empty_dirs = Vec::new();
+        for f in files_to_remove {
+            inner.watched_files.remove(&f);
+            inner.stamps.remove(&f);
+            if let Some(parent) = f.parent() {
+                if let Some(count) = inner.watched_dirs.get_mut(parent) {
+                    *count = count.saturating_sub(1);
+                    if *count == 0 {
+                        inner.watched_dirs.remove(parent);
+                        empty_dirs.push(parent.to_path_buf());
+                    }
+                }
+            }
+        }
+        // Also drop any remaining watched_dirs entry under canonical_target directly.
+        let extra_dirs: Vec<PathBuf> = inner
+            .watched_dirs
+            .keys()
+            .filter(|d| d.starts_with(&canonical_target))
+            .cloned()
+            .collect();
+        for d in extra_dirs {
+            inner.watched_dirs.remove(&d);
+            if !empty_dirs.contains(&d) {
+                empty_dirs.push(d);
+            }
+        }
+        empty_dirs
+    };
+
+    if !dirs_to_unwatch.is_empty() {
+        let mut guard = state.debouncer.lock().unwrap();
+        if let Some(ref mut debouncer) = *guard {
+            for dir in dirs_to_unwatch {
+                let _ = debouncer.watcher().unwatch(&dir);
+            }
+        }
+    }
 }
 
 #[cfg(test)]

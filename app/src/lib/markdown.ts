@@ -1140,6 +1140,49 @@ function escapeHtml(s: string): string {
     .replace(/'/g, '&#39;');
 }
 
+function formatFrontMatterDate(d: Date): string {
+  if (Number.isNaN(d.getTime())) return String(d);
+  const iso = d.toISOString();
+  return iso.endsWith('T00:00:00.000Z') ? iso.slice(0, 10) : iso.replace('T', ' ').slice(0, 19);
+}
+
+function renderFrontMatterValueHtml(v: unknown): string {
+  if (v === null || v === undefined) return '<span class="md-frontmatter-empty">—</span>';
+  if (v instanceof Date) {
+    return `<span class="md-frontmatter-date">${escapeHtml(formatFrontMatterDate(v))}</span>`;
+  }
+  if (typeof v === 'boolean') {
+    return `<span class="md-frontmatter-bool md-frontmatter-bool--${v ? 'true' : 'false'}">${v ? '✓ true' : '✕ false'}</span>`;
+  }
+  if (Array.isArray(v)) {
+    if (v.length === 0) return '<span class="md-frontmatter-empty">[]</span>';
+    const chips = v
+      .map((item) => {
+        const text =
+          item instanceof Date
+            ? formatFrontMatterDate(item)
+            : typeof item === 'object' && item !== null
+              ? JSON.stringify(item)
+              : String(item ?? '');
+        return `<span class="md-frontmatter-chip">${escapeHtml(text)}</span>`;
+      })
+      .join('');
+    return `<span class="md-frontmatter-chips">${chips}</span>`;
+  }
+  if (typeof v === 'string') {
+    const trimmed = v.trim();
+    if (/^https?:\/\/\S+$/i.test(trimmed)) {
+      const safe = escapeHtml(trimmed);
+      return `<a class="md-frontmatter-link" href="${safe}" target="_blank" rel="noopener noreferrer">${safe}</a>`;
+    }
+    return escapeHtml(v);
+  }
+  if (typeof v === 'object') {
+    return `<code>${escapeHtml(JSON.stringify(v))}</code>`;
+  }
+  return escapeHtml(String(v));
+}
+
 function renderFrontMatterHtml(raw: string): string {
   let parsed: unknown;
   try {
@@ -1167,17 +1210,9 @@ function renderFrontMatterHtml(raw: string): string {
     )}</pre>`;
   }
   const rows = entries
-    .map(([k, v]) => {
-      const valueText =
-        v === null || v === undefined
-          ? ''
-          : typeof v === 'object'
-            ? JSON.stringify(v)
-            : String(v);
-      return `<dt>${escapeHtml(k)}</dt><dd>${escapeHtml(valueText)}</dd>`;
-    })
+    .map(([k, v]) => `<dt>${escapeHtml(k)}</dt><dd>${renderFrontMatterValueHtml(v)}</dd>`)
     .join('');
-  return `<div class="md-frontmatter"><dl>${rows}</dl></div>`;
+  return `<details class="md-frontmatter" open><summary class="md-frontmatter__summary">YAML <span class="md-frontmatter__count">${entries.length}</span></summary><dl>${rows}</dl></details>`;
 }
 
 // Tags that markdown-it will treat as HTML blocks when they start at column 0

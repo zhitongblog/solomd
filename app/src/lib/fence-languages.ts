@@ -79,6 +79,8 @@ const CODE_LANGUAGES: FenceLanguage[] = codeLanguages.map((lang) => {
  *  so the picker cannot start promising languages the preview silently
  *  ignores. */
 const PREVIEW_ONLY: Array<[string, string[]]> = [
+  ['autohotkey', ['ahk']],
+  ['awk', []],
   ['bash', ['sh', 'zsh', 'shell']],
   ['csharp', ['cs']],
   ['diff', []],

@@ -486,7 +486,6 @@ onBeforeUnmount(() => {
   <div
     class="pane-tabbar"
     :class="`pane-tabbar--${placement}`"
-    :data-tauri-drag-region="placement === 'header' ? '' : undefined"
   >
     <div class="tabs" ref="tabsEl" @wheel.prevent="onTabsWheel">
       <!-- The loop variable is `tab`, not `t`: `t` is the i18n function in
@@ -550,12 +549,11 @@ onBeforeUnmount(() => {
         <Icon name="plus" :size="16" />
       </button>
     </div>
-    <!-- Empty strip space after the "+" (browser-style). In the header this
-         is what drags the window; the tabs themselves never do. -->
-    <div
-      class="tabs__filler"
-      :data-tauri-drag-region="placement === 'header' ? '' : undefined"
-    ></div>
+    <!-- Empty strip space after the "+" (browser-style). Window dragging on
+         macOS is driven explicitly by Toolbar.vue's onTitleBarMouseDown (never
+         via data-tauri-drag-region, which double-fires startDragging on
+         Windows and causes click-through to background apps, #630). -->
+    <div class="tabs__filler"></div>
     <button
       v-if="canClosePane"
       class="tabbar__btn tabbar__close-pane"
@@ -736,10 +734,10 @@ onBeforeUnmount(() => {
 }
 .tab--active {
   position: relative;
-  background: color-mix(in srgb, var(--accent) 13%, var(--fill-1));
+  background: var(--fill-1);
   color: var(--text);
   font-weight: 600;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 32%, transparent);
+  box-shadow: inset 0 0 0 1px var(--hairline);
 }
 .tab--active::after {
   content: '';
@@ -752,7 +750,7 @@ onBeforeUnmount(() => {
   background: var(--accent);
 }
 .tab--active:hover {
-  background: color-mix(in srgb, var(--accent) 18%, var(--fill-1));
+  background: var(--fill-2);
   color: var(--text);
 }
 .tab--dragging {

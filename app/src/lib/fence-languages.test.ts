@@ -3,7 +3,9 @@ import { test } from 'node:test';
 
 import { CompletionContext } from '@codemirror/autocomplete';
 import { EditorState } from '@codemirror/state';
-import hljs from 'highlight.js/lib/common';
+import { createHljs } from './hljs-setup.ts';
+
+const hljs = createHljs();
 
 import { fenceLanguageComplete } from './cm-fence-completion.ts';
 import { codeLanguages } from './code-languages.ts';

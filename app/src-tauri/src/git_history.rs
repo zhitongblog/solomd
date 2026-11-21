@@ -450,6 +450,95 @@ pub async fn git_auto_commit(
     Ok(result)
 }
 
+/// #620 — Stage changes (`git add`) without committing.
+/// When `file_path` is `None`, stages all workspace changes (`git add -A`).
+/// Returns the number of staged index entries with diffs against HEAD (or index count on unborn HEAD).
+pub fn git_stage_inner(folder: String, file_path: Option<String>) -> Result<usize, String> {
+    let repo = open_repo(&folder)?;
+    let pathspec = match file_path.as_ref() {
+        Some(abs) => match rel_path(&repo, abs) {
+            Some(r) => Some(r),
+            None => return Err(format!("file is outside workspace: {}", abs)),
+        },
+        None => None,
+    };
+    stage(&repo, pathspec.as_deref())?;
+
+    let mut opts = git2::StatusOptions::new();
+    opts.include_untracked(false)
+        .recurse_untracked_dirs(false)
+        .include_ignored(false);
+    let statuses = repo
+        .statuses(Some(&mut opts))
+        .map_err(|e| format!("status: {}", e))?;
+    let staged_count = statuses
+        .iter()
+        .filter(|e| {
+            let s = e.status();
+            s.is_index_new()
+                || s.is_index_modified()
+                || s.is_index_deleted()
+                || s.is_index_renamed()
+                || s.is_index_typechange()
+        })
+        .count();
+    Ok(staged_count)
+}
+
+#[tauri::command]
+pub async fn git_stage(folder: String, file_path: Option<String>) -> Result<usize, String> {
+    tauri::async_runtime::spawn_blocking(move || git_stage_inner(folder, file_path))
+        .await
+        .map_err(|e| format!("join: {e}"))?
+}
+
+#[cfg(not(target_os = "ios"))]
+fn run_git_cli(folder: &str, args: &[&str]) -> Result<String, String> {
+    let mut cmd = std::process::Command::new("git");
+    cmd.arg("-C").arg(folder).args(args);
+    cmd.env("GIT_TERMINAL_PROMPT", "0");
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    let output = cmd.output().map_err(|e| format!("failed to run git: {e}"))?;
+    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+    if output.status.success() {
+        Ok(if !stdout.is_empty() { stdout } else { stderr })
+    } else {
+        let detail = if !stderr.is_empty() { stderr } else { stdout };
+        Err(if detail.is_empty() {
+            format!("git {} failed with status {}", args.join(" "), output.status)
+        } else {
+            detail
+        })
+    }
+}
+
+#[cfg(target_os = "ios")]
+fn run_git_cli(_folder: &str, _args: &[&str]) -> Result<String, String> {
+    Err("system git CLI is not available on iOS; please link GitHub/Gitee/Gitea Sync in Settings".into())
+}
+
+/// #620 — Run `git pull` via system git CLI (supports SSH & local credential helpers).
+#[tauri::command]
+pub async fn git_cli_pull(folder: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || run_git_cli(&folder, &["pull"]))
+        .await
+        .map_err(|e| format!("join: {e}"))?
+}
+
+/// #620 — Run `git push` via system git CLI (supports SSH & local credential helpers).
+#[tauri::command]
+pub async fn git_cli_push(folder: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || run_git_cli(&folder, &["push"]))
+        .await
+        .map_err(|e| format!("join: {e}"))?
+}
+
 pub fn git_file_history_inner(
     folder: String,
     file_path: String,

@@ -14,7 +14,7 @@
  * The sidebar owns the width (settings.fileTreeWidth) and the resize handle;
  * only the middle part scrolls.
  */
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import Icon from './Icons.vue';
 import FileTree from './FileTree.vue';
 import ViewsPanel from './ViewsPanel.vue';
@@ -23,10 +23,12 @@ import { useSettingsStore } from '../stores/settings';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useWorkspaceIndexStore } from '../stores/workspaceIndex';
 import { useTabsStore } from '../stores/tabs';
+import { useGitHistoryStore } from '../stores/gitHistory';
 import { useFiles } from '../composables/useFiles';
 import { useInbox } from '../composables/useInbox';
 import { useInboxView } from '../composables/useInboxView';
 import { useDailyNotes } from '../composables/useDailyNotes';
+import { useGitQuickActions } from '../composables/useGitQuickActions';
 import { shortcutLabel } from '../lib/keybindings';
 import { isMobile, usesCommandKey } from '../lib/platform';
 import { isSafPath, safRecoverVaultForPath } from '../lib/saf-fs';
@@ -56,9 +58,22 @@ const files = useFiles();
 const inbox = useInbox();
 const inboxView = useInboxView();
 const daily = useDailyNotes();
+const gitHistory = useGitHistoryStore();
+const gitQuick = useGitQuickActions();
 const { t } = useI18n();
 
 const hasFolder = computed(() => !!workspace.currentFolder);
+
+// #620 — Probe git status whenever a folder opens so the main-UI Git quick
+// actions (`add` / `pull` / `push`) appear immediately without having to open
+// the History panel first.
+watch(
+  () => workspace.currentFolder,
+  (folder) => {
+    void gitHistory.refreshStatus(folder);
+  },
+  { immediate: true },
+);
 
 // ── search field ────────────────────────────────────────────────────────────
 // The chord that works right now (#180): read from the user's bindings.
@@ -585,6 +600,42 @@ onBeforeUnmount(() => {
       <div class="sb__foot-sync">
         <!-- Sync belongs to the open folder: nothing to report without one. -->
         <SyncStatusPill v-if="hasFolder" variant="footer" />
+        <!-- #620 — Quick Git Add / Pull / Push actions for any git workspace. -->
+        <div v-if="gitQuick.isGitRepo.value" class="sb__git-quick" role="group" :aria-label="t('gitQuick.groupLabel')">
+          <button
+            class="sb__git-btn"
+            type="button"
+            :disabled="gitQuick.busyAdd.value"
+            :title="t('gitQuick.addTitle')"
+            :aria-label="t('gitQuick.addTitle')"
+            @click="gitQuick.gitAdd()"
+          >
+            <Icon name="plus" :size="13" />
+            <span>{{ t('gitQuick.addShort') }}</span>
+          </button>
+          <button
+            class="sb__git-btn"
+            type="button"
+            :disabled="gitQuick.busyPull.value"
+            :title="t('gitQuick.pullTitle')"
+            :aria-label="t('gitQuick.pullTitle')"
+            @click="gitQuick.gitPull()"
+          >
+            <Icon name="download" :size="13" />
+            <span>{{ t('gitQuick.pullShort') }}</span>
+          </button>
+          <button
+            class="sb__git-btn"
+            type="button"
+            :disabled="gitQuick.busyPush.value"
+            :title="t('gitQuick.pushTitle')"
+            :aria-label="t('gitQuick.pushTitle')"
+            @click="gitQuick.gitPush()"
+          >
+            <Icon name="upload" :size="13" />
+            <span>{{ t('gitQuick.pushShort') }}</span>
+          </button>
+        </div>
       </div>
       <button
         class="sb__icon-btn"
@@ -1255,5 +1306,42 @@ onBeforeUnmount(() => {
   display: flex;
   gap: 6px;
   justify-content: flex-end;
+}
+.sb__foot-sync {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+.sb__git-quick {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.sb__git-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 24px;
+  padding: 0 6px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.sb__git-btn:hover:not(:disabled) {
+  background: var(--fill-1);
+  color: var(--text);
+}
+.sb__git-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 </style>

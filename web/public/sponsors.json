@@ -5,6 +5,14 @@
       "name": "tyysoft(太阳雨)",
       "since": "2026-09",
       "github": "tyysoft"
+    },
+    {
+      "name": "m*p",
+      "since": "2026-04"
+    },
+    {
+      "name": "*和",
+      "since": "2026-04"
     }
   ],
   "promoters": [
@@ -200,6 +208,51 @@
       "contribution": {
         "en": "Testing of Windows custom titlebar controls, Vim mode keybindings, ==highlight== syntax and Typewriter Mode, Select All editing workflows, and PDF export line wrapping.",
         "zh": "测试并反馈了 Windows 窗口控制按钮、Vim 模式按键映射、==高亮== 语法与打字机模式、全选编辑工作流以及导出 PDF 自动换行问题。"
+      }
+    },
+    {
+      "name": "nickzengxl",
+      "github": "nickzengxl",
+      "since": "2026-11",
+      "contribution": {
+        "en": "7 high-signal bug reports and feature proposals across v5.2–v5.3: full-width table layout (#613), line height & paragraph spacing controls (#612), workspace tag index cleanup on delete (#621), main-UI Git add/pull/push quick actions (#620), YAML frontmatter rendering (#626), and calmer active tab bar styling (#631).",
+        "zh": "连续提交 7 份高质量问题与体验优化建议（v5.2–v5.3）：表格横向铺满编辑器（#613）、行高与段间距配置（#612）、删除标签后索引残留修复（#621）、主界面 Git 快捷入口（#620）、YAML frontmatter 支持（#626）以及多标签栏高亮配色优化（#631）。"
+      }
+    },
+    {
+      "name": "Howard-Zhou-77",
+      "github": "Howard-Zhou-77",
+      "since": "2026-11",
+      "contribution": {
+        "en": "Detailed Android mobile testing with screen recordings that pinpointed Android SAF folder creation, storage permission fallback, and cold-start issues (#502, #550, #608, #611).",
+        "zh": "持续深度测试 Android 移动端并提供清晰录屏，精准协助定位 Android SAF 文件夹创建、存储权限回退与启动白屏等关键问题（#502、#550、#608、#611）。"
+      }
+    },
+    {
+      "name": "FFS-GmbH",
+      "github": "FFS-GmbH",
+      "since": "2026-11",
+      "contribution": {
+        "en": "Precise editor engine testing covering non-US keyboard layout shortcut dispatch (#610), unordered list soft-break continuation (#609), and live-mode table scroll stability (#564).",
+        "zh": "精准定位多个编辑器底层问题：非美式键盘布局快捷键适配（#610）、无序列表软换行续写（#609）以及实时模式表格滚动异常（#564）。"
+      }
+    },
+    {
+      "name": "yamsjix",
+      "github": "yamsjix",
+      "since": "2026-11",
+      "contribution": {
+        "en": "In-depth testing of custom DOCX template heading/outline preservation (#553, #603) and Linux glibc 2.28 compatibility on UOS / Kylin / Debian 10 (#601).",
+        "zh": "深入测试自定义 DOCX 模板导出大纲层级保留（#553、#603）以及 UOS/麒麟/Debian 10 等 glibc 2.28 Linux 桌面环境兼容性（#601）。"
+      }
+    },
+    {
+      "name": "zhouchangsong",
+      "github": "zhouchangsong",
+      "since": "2026-11",
+      "contribution": {
+        "en": "Detailed feedback on Mermaid bold syntax rendering (#600) and Windows 11 taskbar icon behavior (#633).",
+        "zh": "细致反馈了 Mermaid 图表粗体语法渲染（#600）与 Windows 11 任务栏图标显示问题（#633）。"
       }
     }
   ],
@@ -714,6 +767,8 @@
     "nickzengxl",
     "P31-CPU",
     "18954354671",
+    "patrickstar007",
+    "Howard-Zhou-77",
     {
       "name": "暗石绿 (qxwxxm)",
       "gitee": "qxwxxm"

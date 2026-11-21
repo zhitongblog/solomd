@@ -57,6 +57,9 @@ interface State {
   /** Cached per-file commit lists, keyed by absolute file path. */
   history: Record<string, CommitMeta[]>;
   loading: boolean;
+  staging: boolean;
+  pulling: boolean;
+  pushing: boolean;
   lastError: string | null;
 }
 
@@ -68,6 +71,9 @@ export const useGitHistoryStore = defineStore('gitHistory', {
     status: null,
     history: {},
     loading: false,
+    staging: false,
+    pulling: false,
+    pushing: false,
     lastError: null,
   }),
 
@@ -188,6 +194,56 @@ export const useGitHistoryStore = defineStore('gitHistory', {
       } catch (e) {
         this.lastError = String(e);
         return null;
+      }
+    },
+
+    /** #620 — Stage changes (`git add`) without committing. */
+    async stage(folder: string, filePath?: string): Promise<number> {
+      this.staging = true;
+      try {
+        const count = await invoke<number>('git_stage', {
+          folder,
+          filePath: filePath ?? null,
+        });
+        await this.refreshStatus(folder);
+        return count;
+      } catch (e) {
+        this.lastError = String(e);
+        throw e;
+      } finally {
+        this.staging = false;
+      }
+    },
+
+    /** #620 — Run system `git pull` for plain local git repos. */
+    async cliPull(folder: string): Promise<string> {
+      this.pulling = true;
+      try {
+        const out = await invoke<string>('git_cli_pull', { folder });
+        this.history = {};
+        await this.refreshStatus(folder);
+        window.dispatchEvent(new CustomEvent('solomd:remote-pulled'));
+        return out;
+      } catch (e) {
+        this.lastError = String(e);
+        throw e;
+      } finally {
+        this.pulling = false;
+      }
+    },
+
+    /** #620 — Run system `git push` for plain local git repos. */
+    async cliPush(folder: string): Promise<string> {
+      this.pushing = true;
+      try {
+        const out = await invoke<string>('git_cli_push', { folder });
+        await this.refreshStatus(folder);
+        return out;
+      } catch (e) {
+        this.lastError = String(e);
+        throw e;
+      } finally {
+        this.pushing = false;
       }
     },
 

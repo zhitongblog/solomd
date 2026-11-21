@@ -3,10 +3,13 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import Icon from './Icons.vue';
 import BrandMark from './BrandMark.vue';
 import PomodoroPopover from './PomodoroPopover.vue';
+import ToolbarCustomizeModal from './ToolbarCustomizeModal.vue';
 import { useTabsStore } from '../stores/tabs';
 import { useSettingsStore } from '../stores/settings';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useTilesStore } from '../stores/tiles';
+import { useGitQuickActions } from '../composables/useGitQuickActions';
+import { normalizeToolbarItems, type ToolbarItemId } from '../lib/toolbar-items';
 import { track } from '../lib/telemetry';
 import { getPlainSelection } from '../lib/plain-selection';
 import { useFiles } from '../composables/useFiles';
@@ -25,7 +28,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
 import { isIOS, isMobile, isWindowsDesktop, usesCommandKey } from '../lib/platform';
-import { macTitleBar, winTitleBar, customTitleBar } from '../lib/chrome';
+import { macTitleBar, winTitleBar } from '../lib/chrome';
 import { displayTabTitle } from '../lib/tab-title';
 
 const hasTauriShell = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
@@ -84,8 +87,42 @@ const tiles = useTilesStore();
 const files = useFiles();
 const exporter = useExport();
 const toasts = useToastsStore();
+const gitQuick = useGitQuickActions();
 
 const isMarkdown = computed(() => tabs.activeTab?.language === 'markdown');
+
+// #622 — Customizable toolbar items & docking into the Windows titlebar
+// right after the menubar so the entire tab-bar row belongs to open tabs.
+const customizeOpen = ref(false);
+const titlebarSlotReady = ref(false);
+const activeToolbarItems = computed(() => new Set(normalizeToolbarItems(settings.toolbarItems)));
+function hasToolbarItem(id: ToolbarItemId): boolean {
+  return activeToolbarItems.value.has(id);
+}
+const dockInTitlebar = computed(
+  () =>
+    !isTitlebar.value &&
+    winTitleBar &&
+    settings.toolbarInTitlebar &&
+    !settings.hideMenuBar &&
+    !isNarrow.value &&
+    titlebarSlotReady.value,
+);
+function onOpenCustomizeEvent() {
+  customizeOpen.value = true;
+}
+function onInsertFrontmatterQuick() {
+  window.dispatchEvent(new CustomEvent('solomd:insert-frontmatter'));
+}
+function onToggleInspectorQuick() {
+  settings.toggleInspector();
+}
+function onToggleOutlineQuick() {
+  settings.toggleOutline();
+}
+function onToggleThemeQuick() {
+  settings.toggleTheme();
+}
 
 // #127 — drag the window by the title bar. The declarative
 // `data-tauri-drag-region` attribute proved unreliable on macOS once the
@@ -106,14 +143,21 @@ function isInteractiveTitleBarTarget(el: EventTarget | null): boolean {
     'button, input, select, textarea, a, [role="tab"], [contenteditable="true"], .dropdown__menu, [data-no-drag]',
   );
 }
+// #630 — On Windows (`winTitleBar`), the dedicated 44px `variant="titlebar"`
+// row above the header handles window dragging and double-click maximize.
+// Running `startDragging()` from `variant="header"` (the tab bar row) causes
+// WebView2 to release capture and click-through to windows behind SoloMD.
+const canDragThisBar = computed(() =>
+  isTitlebar.value ? winTitleBar : macTitleBar,
+);
 function onTitleBarMouseDown(e: MouseEvent) {
-  if (!customTitleBar || e.button !== 0 || e.detail > 1) return;
+  if (!canDragThisBar.value || e.button !== 0 || e.detail > 1) return;
   if (isInteractiveTitleBarTarget(e.target)) return;
   if (!('__TAURI_INTERNALS__' in window)) return;
   void getCurrentWindow().startDragging();
 }
 function onTitleBarDblClick(e: MouseEvent) {
-  if (!customTitleBar) return;
+  if (!canDragThisBar.value) return;
   if (isInteractiveTitleBarTarget(e.target)) return;
   if (!('__TAURI_INTERNALS__' in window)) return;
   void getCurrentWindow().toggleMaximize();
@@ -790,8 +834,10 @@ onMounted(() => {
   window.addEventListener('solomd:close-menus', closeAllDropdowns);
   // Two Toolbars exist on Windows; only the header answers these.
   if (isTitlebar.value) return;
+  titlebarSlotReady.value = !!document.getElementById('titlebar-toolbar-slot');
   window.addEventListener('solomd:open-pomodoro', onOpenPomodoroEvent);
   window.addEventListener('solomd:toolbar-ai-rewrite', onAIRewrite);
+  window.addEventListener('solomd:open-toolbar-customize', onOpenCustomizeEvent);
 });
 onBeforeUnmount(() => {
   window.removeEventListener('popstate', onMenuPopState);
@@ -802,6 +848,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('scroll', onScrollAnywhere, true);
   window.removeEventListener('solomd:open-pomodoro', onOpenPomodoroEvent);
   window.removeEventListener('solomd:toolbar-ai-rewrite', onAIRewrite);
+  window.removeEventListener('solomd:open-toolbar-customize', onOpenCustomizeEvent);
 });
 </script>
 
@@ -882,6 +929,9 @@ onBeforeUnmount(() => {
         </div>
       </Teleport>
     </nav>
+    <!-- #622 — Slot right after the menubar where the header's toolbar docks
+         when `toolbarInTitlebar` is enabled on Windows. -->
+    <div id="titlebar-toolbar-slot" class="titlebar__toolbar-slot" data-no-drag></div>
     <span class="titlebar__title" aria-hidden="true">{{ activeTabDisplayTitle ? `${activeTabDisplayTitle} — SoloMD` : 'SoloMD' }}</span>
     <div class="win-controls" data-no-drag>
       <button
@@ -964,49 +1014,176 @@ onBeforeUnmount(() => {
       >{{ activeTabDisplayTitle }}</span>
     </div>
 
-    <div
-      v-if="isMarkdown && !settings.toolbarHidden"
-      class="seg"
-      :class="{ 'seg--none': segIndex < 0 }"
-      role="radiogroup"
-      :aria-label="t('header.viewModes')"
-      :style="{ '--seg-i': Math.max(0, segIndex) }"
-    >
-      <span class="seg__thumb" aria-hidden="true" />
-      <button
-        v-for="m in segModes"
-        :key="m.mode"
-        class="seg__btn"
-        :class="{ 'is-on': settings.viewMode === m.mode }"
-        role="radio"
-        :aria-checked="settings.viewMode === m.mode"
-        @click="pickViewMode(m.mode)"
-      >{{ t(m.label) }}</button>
-    </div>
-
-    <div v-if="!settings.toolbarHidden" class="toolbar__actions">
-      <button
-        v-if="isNarrow && isMarkdown"
-        class="icon-btn"
-        :class="{ active: settings.viewMode === 'preview' }"
-        :title="settings.viewMode === 'preview' ? t('header.segLive') : t('header.segPreview')"
-        :aria-label="settings.viewMode === 'preview' ? t('header.segLive') : t('header.segPreview')"
-        @click="togglePhonePreview"
+    <Teleport to="#titlebar-toolbar-slot" :disabled="!dockInTitlebar">
+      <div
+        v-if="!settings.toolbarHidden"
+        class="toolbar__dock-wrap"
+        :class="{
+          'toolbar__dock-wrap--in-titlebar': dockInTitlebar,
+          'toolbar--with-labels': settings.toolbarShowLabels && !isNarrow && !dockInTitlebar,
+        }"
+        data-no-drag
       >
-        <Icon :name="settings.viewMode === 'preview' ? 'pencil' : 'eye'" />
-      </button>
-      <button
-        v-if="!isNarrow"
-        class="icon-btn"
-        @click="$emit('open-search')"
-        :title="tip('toolbar.searchTooltip', 'search.global')"
-        :aria-label="t('toolbar.searchTooltip')"
-      >
-        <Icon name="search" />
-        <span v-if="settings.toolbarShowLabels" class="icon-btn__label">{{ settings.language === 'zh' ? '搜索' : 'Search' }}</span>
-      </button>
+        <div
+          v-if="isMarkdown && hasToolbarItem('viewMode') && !isNarrow"
+          class="seg"
+          :class="{ 'seg--none': segIndex < 0 }"
+          role="radiogroup"
+          :aria-label="t('header.viewModes')"
+          :style="{ '--seg-i': Math.max(0, segIndex) }"
+        >
+          <span class="seg__thumb" aria-hidden="true" />
+          <button
+            v-for="m in segModes"
+            :key="m.mode"
+            class="seg__btn"
+            :class="{ 'is-on': settings.viewMode === m.mode }"
+            role="radio"
+            :aria-checked="settings.viewMode === m.mode"
+            @click="pickViewMode(m.mode)"
+          >{{ t(m.label) }}</button>
+        </div>
 
-      <div class="dropdown">
+        <div class="toolbar__actions">
+          <button
+            v-if="isNarrow && isMarkdown"
+            class="icon-btn"
+            :class="{ active: settings.viewMode === 'preview' }"
+            :title="settings.viewMode === 'preview' ? t('header.segLive') : t('header.segPreview')"
+            :aria-label="settings.viewMode === 'preview' ? t('header.segLive') : t('header.segPreview')"
+            @click="togglePhonePreview"
+          >
+            <Icon :name="settings.viewMode === 'preview' ? 'pencil' : 'eye'" />
+          </button>
+
+          <!-- #622 — Optional customizable quick buttons -->
+          <button
+            v-if="!isNarrow && hasToolbarItem('newFile')"
+            class="icon-btn"
+            @click="files.newFile()"
+            :title="t('toolbarCustom.item.newFile')"
+            :aria-label="t('toolbarCustom.item.newFile')"
+          >
+            <Icon name="plus" />
+          </button>
+          <button
+            v-if="!isNarrow && hasToolbarItem('save')"
+            class="icon-btn"
+            @click="files.saveActive()"
+            :title="t('toolbarCustom.item.save')"
+            :aria-label="t('toolbarCustom.item.save')"
+          >
+            <Icon name="save" />
+          </button>
+          <button
+            v-if="!isNarrow && hasToolbarItem('outline')"
+            class="icon-btn"
+            :class="{ active: settings.showOutline }"
+            @click="onToggleOutlineQuick"
+            :title="t('toolbarCustom.item.outline')"
+            :aria-label="t('toolbarCustom.item.outline')"
+          >
+            <Icon name="list" />
+          </button>
+          <button
+            v-if="!isNarrow && hasToolbarItem('inspector')"
+            class="icon-btn"
+            @click="onToggleInspectorQuick"
+            :title="t('toolbarCustom.item.inspector')"
+            :aria-label="t('toolbarCustom.item.inspector')"
+          >
+            <Icon name="info" />
+          </button>
+          <button
+            v-if="!isNarrow && isMarkdown && hasToolbarItem('insertFrontmatter')"
+            class="icon-btn"
+            @click="onInsertFrontmatterQuick"
+            :title="t('toolbarCustom.item.insertFrontmatter')"
+            :aria-label="t('toolbarCustom.item.insertFrontmatter')"
+          >
+            <Icon name="code" />
+          </button>
+          <button
+            v-if="!isNarrow && hasToolbarItem('formatBar')"
+            class="icon-btn"
+            :class="{ active: settings.formatBar }"
+            @click="settings.toggleFormatBar()"
+            :title="t('toolbarCustom.item.formatBar')"
+            :aria-label="t('toolbarCustom.item.formatBar')"
+          >
+            <Icon name="type" />
+          </button>
+          <button
+            v-if="!isNarrow && hasToolbarItem('focusMode')"
+            class="icon-btn"
+            :class="{ active: settings.focusMode }"
+            @click="settings.toggleFocusMode()"
+            :title="t('toolbarCustom.item.focusMode')"
+            :aria-label="t('toolbarCustom.item.focusMode')"
+          >
+            <Icon name="maximize" />
+          </button>
+          <button
+            v-if="!isNarrow && hasToolbarItem('theme')"
+            class="icon-btn"
+            @click="onToggleThemeQuick"
+            :title="t('toolbarCustom.item.theme')"
+            :aria-label="t('toolbarCustom.item.theme')"
+          >
+            <Icon :name="settings.theme === 'dark' ? 'sun' : 'moon'" />
+          </button>
+          <button
+            v-if="!isNarrow && hasToolbarItem('gitAdd') && gitQuick.isGitRepo.value"
+            class="icon-btn"
+            :disabled="gitQuick.busyAdd.value"
+            @click="gitQuick.gitAdd()"
+            :title="t('gitQuick.addTitle')"
+            :aria-label="t('gitQuick.addTitle')"
+          >
+            <Icon name="plus" />
+          </button>
+          <button
+            v-if="!isNarrow && hasToolbarItem('gitPull') && gitQuick.isGitRepo.value"
+            class="icon-btn"
+            :disabled="gitQuick.busyPull.value"
+            @click="gitQuick.gitPull()"
+            :title="t('gitQuick.pullTitle')"
+            :aria-label="t('gitQuick.pullTitle')"
+          >
+            <Icon name="download" />
+          </button>
+          <button
+            v-if="!isNarrow && hasToolbarItem('gitPush') && gitQuick.isGitRepo.value"
+            class="icon-btn"
+            :disabled="gitQuick.busyPush.value"
+            @click="gitQuick.gitPush()"
+            :title="t('gitQuick.pushTitle')"
+            :aria-label="t('gitQuick.pushTitle')"
+          >
+            <Icon name="upload" />
+          </button>
+          <button
+            v-if="!isNarrow && hasToolbarItem('settings')"
+            class="icon-btn"
+            @click="$emit('open-settings')"
+            :title="t('toolbarCustom.item.settings')"
+            :aria-label="t('toolbarCustom.item.settings')"
+          >
+            <Icon name="settings" />
+          </button>
+
+          <button
+            v-if="!isNarrow && hasToolbarItem('search')"
+            class="icon-btn"
+            @click="$emit('open-search')"
+            :title="tip('toolbar.searchTooltip', 'search.global')"
+            :aria-label="t('toolbar.searchTooltip')"
+          >
+            <Icon name="search" />
+            <span v-if="settings.toolbarShowLabels && !dockInTitlebar" class="icon-btn__label">{{ settings.language === 'zh' ? '搜索' : 'Search' }}</span>
+          </button>
+
+          <div v-if="hasToolbarItem('export') || isNarrow" class="dropdown">
         <button
           ref="exportBtnRef"
           class="icon-btn"
@@ -1093,7 +1270,7 @@ onBeforeUnmount(() => {
       </div>
 
       <button
-        v-if="!isNarrow"
+        v-if="!isNarrow && hasToolbarItem('rightSidebar')"
         class="icon-btn"
         :class="{ active: !settings.rightSidebarHidden }"
         @click="settings.toggleRightSidebar"
@@ -1102,10 +1279,10 @@ onBeforeUnmount(() => {
         :aria-pressed="!settings.rightSidebarHidden"
       >
         <Icon name="sidebar-right" />
-        <span v-if="settings.toolbarShowLabels" class="icon-btn__label">{{ settings.language === 'zh' ? '侧栏' : 'Sidebar' }}</span>
+        <span v-if="settings.toolbarShowLabels && !dockInTitlebar" class="icon-btn__label">{{ settings.language === 'zh' ? '侧栏' : 'Sidebar' }}</span>
       </button>
 
-      <div class="dropdown">
+      <div v-if="hasToolbarItem('more') || isNarrow" class="dropdown">
         <button
           ref="moreBtnRef"
           class="icon-btn"
@@ -1242,6 +1419,10 @@ onBeforeUnmount(() => {
                 <span class="dropdown__check"></span>
                 <span class="dropdown__name">{{ t('header.palette') }}</span>
                 <span v-if="chord('palette.open')" class="dropdown__shortcut">{{ chord('palette.open') }}</span>
+              </button>
+              <button class="dropdown__item dropdown__item--single" role="menuitem" tabindex="-1" @mousedown.prevent="act(() => { customizeOpen = true; })">
+                <span class="dropdown__check"></span>
+                <span class="dropdown__name">{{ t('toolbarCustom.title') }}</span>
               </button>
               <button
                 class="dropdown__item dropdown__item--single"
@@ -1432,6 +1613,10 @@ onBeforeUnmount(() => {
         </Teleport>
       </div>
     </div>
+      </div>
+    </Teleport>
+
+    <ToolbarCustomizeModal v-model="customizeOpen" />
 
     <!-- Writing-session presets, opened from the palette ("solomd:open-pomodoro"). -->
     <Teleport to="body">
@@ -1720,6 +1905,34 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+.titlebar__toolbar-slot {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: 6px;
+}
+.toolbar__dock-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.toolbar__dock-wrap--in-titlebar {
+  gap: 4px;
+  padding-left: 8px;
+  border-left: 1px solid var(--hairline);
+}
+.toolbar__dock-wrap--in-titlebar :deep(.seg) {
+  height: 26px;
+}
+.toolbar__dock-wrap--in-titlebar :deep(.seg__btn) {
+  height: 22px;
+  font-size: 12px;
+}
+.toolbar__dock-wrap--in-titlebar :deep(.icon-btn) {
+  width: 28px;
+  height: 28px;
 }
 .titlebar__title {
   flex: 1 1 0;

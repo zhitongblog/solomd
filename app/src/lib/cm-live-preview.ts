@@ -40,6 +40,19 @@ const HIDDEN_MARK_NODES = new Set<string>([
 
 const hideDeco = Decoration.replace({});
 
+function isInsideFrontmatter(doc: EditorView['state']['doc'], pos: number): boolean {
+  if (doc.lines < 2) return false;
+  if (doc.line(1).text.trim() !== '---') return false;
+  for (let ln = 2; ln <= Math.min(doc.lines, 200); ln++) {
+    const line = doc.line(ln);
+    const t = line.text.trim();
+    if (t === '---' || t === '...') {
+      return pos <= line.to;
+    }
+  }
+  return false;
+}
+
 // #353 "Always show Markdown markers": nothing is hidden or replaced, so the
 // rendered styling (heading size, bold) stays and no line reflows when the
 // caret moves. Markers are dimmed so they read as syntax, not text.
@@ -142,6 +155,8 @@ const makeLiveMarkdownPlugin = (showMarkers: boolean, hideActiveLineMarkers = fa
             }
             if (name === 'HorizontalRule') {
               if (showMarkers || onCaretLine || node.to <= node.from) return;
+              // #626 — never replace YAML frontmatter `---` delimiters with <hr>.
+              if (node.from === 0 || isInsideFrontmatter(view.state.doc, node.from)) return;
               builder.add(node.from, node.to, hrDeco);
               return;
             }

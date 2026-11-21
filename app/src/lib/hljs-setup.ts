@@ -10,6 +10,8 @@
 import hljs from 'highlight.js/lib/core';
 import type { HLJSApi, LanguageFn } from 'highlight.js';
 import hl_xml from 'highlight.js/lib/languages/xml';
+import hl_autohotkey from 'highlight.js/lib/languages/autohotkey';
+import hl_awk from 'highlight.js/lib/languages/awk';
 import hl_bash from 'highlight.js/lib/languages/bash';
 import hl_c from 'highlight.js/lib/languages/c';
 import hl_cpp from 'highlight.js/lib/languages/cpp';
@@ -48,6 +50,8 @@ import hl_wasm from 'highlight.js/lib/languages/wasm';
 
 const HLJS_LANGUAGES: [string, LanguageFn][] = [
   ['xml', hl_xml],
+  ['autohotkey', hl_autohotkey],
+  ['awk', hl_awk],
   ['bash', hl_bash],
   ['c', hl_c],
   ['cpp', hl_cpp],
