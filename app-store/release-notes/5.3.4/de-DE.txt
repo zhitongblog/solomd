@@ -1,0 +1,7 @@
+• Vertikale Multi-Tab-Seitenleiste rechts: Schlanke Icon-Leiste gibt jedem Panel volle Höhe, mit Ein-Klick-Umschaltung zurück zum Stapelmodus.
+• Tägliche Synchronisierungs-Logdateien (30 Tage Aufbewahrung) sowie Hilfe → Log-Ordner öffnen & Logs auf Desktop exportieren.
+• Konflikt- & Snapshot-Manager: Zeilenweiser Diff zwischen Arbeits- und Konfliktkopie inkl. manuellem Zusammenführen.
+• YAML-Frontmatter-Tags werden nun in der globalen #tag-/tag:-Suche gefunden.
+• Syntaxfarben für ahk, awk, bash und lua im CodeMirror-Live-Modus behoben.
+• Abstand zwischen Aufzählungszeichen und Text in verschachtelten Listen korrigiert (inkl. • / ◦ / ▪ je Ebene).
+• Aufgabenpanel sortiert jetzt nach Dokument- und Baumreihenfolge mit Filterfeld; Git-Quick-Push, KI-Prompt-Verlauf & Symbolleisten-Dialog behoben.

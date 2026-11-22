@@ -952,6 +952,7 @@ pub async fn sync_export_logs_to_desktop(app: tauri::AppHandle) -> Result<String
     set_sync_app_handle(&app);
     use tauri::Manager;
     let log_dir = resolve_sync_log_dir(&app)?;
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
     let desktop_dir = app
         .path()
         .desktop_dir()
@@ -960,6 +961,11 @@ pub async fn sync_export_logs_to_desktop(app: tauri::AppHandle) -> Result<String
         .or_else(|| SYNC_DATA_DIR_OVERRIDE.get().cloned())
         .or_else(|| app.path().app_data_dir().ok())
         .ok_or_else(|| "failed to resolve desktop or app data dir".to_string())?;
+    #[cfg(any(target_os = "android", target_os = "ios"))]
+    let desktop_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("failed to resolve app data dir: {e}"))?;
 
     tauri::async_runtime::spawn_blocking(move || {
         let date_tag = chrono::Local::now().format("%Y-%m-%d_%H%M%S").to_string();

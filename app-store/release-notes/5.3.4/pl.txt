@@ -1,0 +1,7 @@
+• Pionowy panel boczny z kartami: każdy panel ma pełną wysokość, z szybkim przełączaniem do trybu stosu.
+• Dzienne pliki dziennika synchronizacji (30 dni) oraz Pomoc → Otwórz folder dzienników / Eksportuj na pulpit.
+• Menedżer konfliktów i migawek: porównywanie linia po linii oraz ręczne scalanie kopii.
+• Tagi YAML Frontmatter są teraz wyszukiwane przez #tag / tag:.
+• Naprawiono kolorowanie składni ahk, awk, bash i lua w trybie na żywo CodeMirror.
+• Naprawiono odstępy w zagnieżdżonych listach i dodano symbole poziomów (• / ◦ / ▪).
+• Panel Zadań zachowuje kolejność w dokumencie i dodaje pole filtrowania; poprawiono Git Push, historię AI i okno paska narzędzi.

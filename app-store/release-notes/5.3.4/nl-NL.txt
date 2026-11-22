@@ -1,0 +1,7 @@
+• Verticale zijbalk met tabbladen rechts: elk paneel krijgt volledige hoogte, met één klik terug naar gestapelde weergave.
+• Dagelijkse synchronisatielogs (30 dagen bewaard) plus Help → Logmap openen & Logs naar bureaublad exporteren.
+• Conflicten- & snapshotbeheer: regel-voor-regel diff en handmatig samenvoegen van conflictkopieën.
+• YAML Frontmatter-tags worden nu gevonden bij globaal zoeken op #tag / tag:.
+• Syntaxiskleuren hersteld voor ahk, awk, bash en lua in CodeMirror live-modus.
+• Consistente afstand in geneste lijsten met niveau-symbolen (• / ◦ / ▪).
+• Takenpaneel volgt nu document- en boomvolgorde met filterveld; Git push, AI-geschiedenis en werkbalkdialoog opgelost.

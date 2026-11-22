@@ -1,0 +1,7 @@
+• Barra lateral derecha con pestañas verticales: cada panel aprovecha toda la altura, con cambio en un clic al modo apilado.
+• Registros diarios de sincronización (retención de 30 días) y Ayuda → Abrir carpeta de registros / Exportar al escritorio.
+• Gestor de conflictos e instantáneas: comparación línea a línea y fusión manual entre copia de trabajo y copia en conflicto.
+• Las etiquetas de YAML Frontmatter ahora aparecen en la búsqueda global #tag / tag:.
+• Colores de resaltado corregidos para ahk, awk, bash y lua en modo en vivo de CodeMirror.
+• Espaciado uniforme en listas anidadas y viñetas diferenciadas por nivel (• / ◦ / ▪).
+• Panel de Tareas ordenado según el documento con filtro rápido; correcciones en Git Push rápido, historial de IA y personalización de barra de herramientas.

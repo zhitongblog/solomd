@@ -1,0 +1,7 @@
+• Vertikala flikar i höger sidofält: varje panel får full höjd, med ett klick tillbaka till staplat läge.
+• Dagliga synkroniseringsloggar (30 dagars historik) samt Hjälp → Öppna loggmapp / Exportera loggar till skrivbordet.
+• Konflikt- och ögonblicksbildshanterare: radvis diff och manuell sammanslagning.
+• YAML Frontmatter-taggar hittas nu i global #tag / tag:-sökning.
+• Syntaxfärger åtgärdade för ahk, awk, bash och lua i CodeMirror live-läge.
+• Jämnare avstånd i kapslade listor och nivåspecifika punkter (• / ◦ / ▪).
+• Uppgiftspanelen följer dokumentordning med filterfält; fixar för Git Push, AI-historik och verktygsfältsdialog.

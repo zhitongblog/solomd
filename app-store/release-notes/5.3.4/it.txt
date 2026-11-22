@@ -1,0 +1,7 @@
+• Barra laterale destra a schede verticali: barra icone sottile per usare tutta l’altezza di ogni pannello, con passaggio rapido alla modalità impilata.
+• Log giornalieri di sincronizzazione (30 giorni) e Aiuto → Apri cartella dei log / Esporta sul desktop.
+• Gestore conflitti e snapshot: confronto riga per riga e unione manuale delle copie in conflitto.
+• I tag YAML Frontmatter ora vengono trovati nella ricerca globale #tag / tag:.
+• Colori di evidenziazione sintattica corretti per ahk, awk, bash e lua in CodeMirror.
+• Spaziatura uniforme negli elenchi annidati con simboli per livello (• / ◦ / ▪).
+• Pannello Attività ordinato secondo il documento con filtro rapido; corretti Git Push rapido, cronologia AI e personalizzazione barra strumenti.

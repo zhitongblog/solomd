@@ -1,0 +1,7 @@
+• Vertical multi-tab Right Sidebar: a slim vertical icon rail gives each panel (Outline, Tasks, Tags, History, Agent, etc.) full height, with one-click toggle back to stacked mode.
+• Daily Sync Log Files (30-day retention) plus Help → Open Log Directory and Export Logs to Desktop (.zip).
+• Sync Conflict & Snapshot Manager: inspect working copy vs. conflict copy with line-level diff, jump to snapshot folder, and keep local, apply conflict copy, or manually merge.
+• Fixed YAML Frontmatter tags not appearing in #tag / tag: global search, plus support for singular tag: keys.
+• Fixed CodeMirror live-mode syntax colors for ahk, awk, bash, and lua code blocks.
+• Fixed nested list bullet-to-text spacing, improved visual nesting indent, and cycled per-level bullets (• / ◦ / ▪).
+• Tasks panel now preserves document & file-tree order with an inline filter box; fixed Git quick add/push, AI Rewrite prompt history dropdown, and Toolbar customization modal.

@@ -1,0 +1,7 @@
+• Dikey sekmeli sağ kenar çubuğu: her panel tam yüksekliği kullanır, tek tıkla yığın moduna geçilebilir.
+• Günlük eşitleme günlük dosyaları (30 gün saklama) ve Yardım → Günlük Klasörünü Aç / Masaüstüne Aktar.
+• Çakışma ve Anlık Görüntü Yöneticisi: satır düzeyinde fark karşılaştırma ve elle birleştirme.
+• YAML Frontmatter etiketleri artık #tag / tag: genel aramasında bulunuyor.
+• CodeMirror canlı modda ahk, awk, bash ve lua sözdizimi renkleri düzeltildi.
+• İç içe listelerde madde işareti-metin aralığı düzeltildi ve seviye işaretleri (• / ◦ / ▪) eklendi.
+• Görevler paneli belge sırasını korur ve filtre kutusu içerir; Git hızlı gönderme, yapay zeka geçmişi ve araç çubuğu penceresi düzeltildi.

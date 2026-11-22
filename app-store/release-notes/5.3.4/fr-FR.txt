@@ -1,0 +1,7 @@
+• Barre latérale droite à onglets verticaux : un rail d’icônes fin offre toute la hauteur à chaque panneau, avec bascule en un clic vers le mode empilé.
+• Journaux quotidiens de synchronisation (conservation 30 jours) et Aide → Ouvrir le dossier des journaux / Exporter sur le bureau.
+• Gestionnaire de conflits et instantanés : comparaison ligne par ligne et fusion manuelle des copies en conflit.
+• Les tags YAML Frontmatter apparaissent désormais dans la recherche globale #tag / tag:.
+• Coloration syntaxique corrigée pour ahk, awk, bash et lua en mode direct CodeMirror.
+• Espacement corrigé dans les listes imbriquées avec puces par niveau (• / ◦ / ▪).
+• Panneau Tâches trié selon l’ordre du document avec champ de filtre ; correctifs Git Push rapide, historique IA et personnalisation de la barre d’outils.

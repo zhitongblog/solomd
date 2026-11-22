@@ -1,0 +1,7 @@
+• Barra lateral direita com abas verticais: cada painel ocupa toda a altura, com alternância em um clique para o modo empilhado.
+• Logs diários de sincronização (retenção de 30 dias) e Ajuda → Abrir pasta de logs / Exportar para a área de trabalho.
+• Gerenciador de conflitos e snapshots: diff linha por linha e mesclagem manual de cópias em conflito.
+• Tags no YAML Frontmatter agora aparecem na busca global #tag / tag:.
+• Cores de destaque corrigidas para ahk, awk, bash e lua no modo ao vivo do CodeMirror.
+• Espaçamento corrigido em listas aninhadas com marcadores por nível (• / ◦ / ▪).
+• Painel de Tarefas ordenado pelo documento com filtro rápido; correções no Git Push rápido, histórico de IA e personalização da barra de ferramentas.
