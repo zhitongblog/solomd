@@ -65,6 +65,8 @@ export const de: I18n = {
     find: "Suchen…",
     about: 'Über SoloMD',
     aboutShort: 'Über',
+    openLogDir: 'Log-Ordner öffnen',
+    exportLogs: 'Logs auf Desktop exportieren',
     minimize: 'Minimieren',
     maximize: 'Maximieren',
     restore: 'Wiederherstellen',
@@ -1438,6 +1440,7 @@ export const de: I18n = {
     tasks: 'Aufgaben',
     neighborhood: "Nachbarschaft",
     history: 'Verlauf',
+    inspector: 'Eigenschaften',
     agent: 'Agent',
   },
   inbox: {

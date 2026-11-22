@@ -32,6 +32,8 @@ const HistoryPanel = defineAsyncComponent(() => import('./components/HistoryPane
 const PropertiesInspector = defineAsyncComponent(() => import('./components/PropertiesInspector.vue'));
 const AgentPanel = defineAsyncComponent(() => import('./components/AgentPanel.vue'));
 import RsSplitter from './components/RsSplitter.vue';
+import RsIcon from './components/Icons.vue';
+const SyncConflictModal = defineAsyncComponent(() => import('./components/SyncConflictModal.vue'));
 import { useAutoCommit } from './composables/useAutoCommit';
 import { useGithubSync } from './composables/useGithubSync';
 import { useSessionRestore } from './composables/useSessionRestore';
@@ -1214,6 +1216,28 @@ function dispatchMenuAction(id: string) {
     case 'help.cli':
       openHelpAt('cli');
       return;
+    case 'help.openLogDir':
+      void invoke<string>('sync_get_log_dir')
+        .then((dir) => openPath(dir))
+        .catch((e) =>
+          void import('./stores/toasts').then(({ useToastsStore }) => useToastsStore().error(String(e))),
+        );
+      return;
+    case 'help.exportLogs':
+      void invoke<string>('sync_export_logs_to_desktop')
+        .then((zipPath) =>
+          void import('./stores/toasts').then(({ useToastsStore }) =>
+            useToastsStore().success(
+              settings.language?.startsWith('zh')
+                ? `日志已打包至：${zipPath}`
+                : `Logs exported to: ${zipPath}`,
+            ),
+          ),
+        )
+        .catch((e) =>
+          void import('./stores/toasts').then(({ useToastsStore }) => useToastsStore().error(String(e))),
+        );
+      return;
     case 'help.checkUpdate':
       void updateCheck.manualCheckUpdate();
       return;
@@ -1956,6 +1980,7 @@ window.addEventListener(VIEW_OPEN_EVENT, onOpenView as EventListener);
 window.addEventListener(VIEW_CLOSE_EVENT, onCloseView as EventListener);
 window.addEventListener('solomd:leave-center-overlay', onLeaveCenterOverlay);
 window.addEventListener('solomd:open-settings', onOpenSettingsEvent as EventListener);
+window.addEventListener('solomd:open-sync-conflicts', onOpenSyncConflictsEvent);
 
 function onPageHide() {
   flushPendingEdits();
@@ -1988,6 +2013,7 @@ onBeforeUnmount(() => {
   window.removeEventListener(VIEW_OPEN_EVENT, onOpenView as EventListener);
   window.removeEventListener(VIEW_CLOSE_EVENT, onCloseView as EventListener);
   window.removeEventListener('solomd:open-settings', onOpenSettingsEvent as EventListener);
+  window.removeEventListener('solomd:open-sync-conflicts', onOpenSyncConflictsEvent);
   window.removeEventListener('solomd:open-agent-wizard', onOpenAgentWizard);
   window.removeEventListener('solomd:open-image-url-dialog', onOpenImageUrlDialog);
   window.removeEventListener('solomd:open-insert-table-dialog', onOpenInsertTableDialog);
@@ -2331,6 +2357,52 @@ const visibleRsPanes = computed(() => {
     .map((id) => ({ id: id as 'search' | 'outline' | 'backlinks' | 'relationships' | 'tags' | 'tasks' | 'neighborhood' | 'types' | 'history' | 'inspector' | 'agent' }));
 });
 
+// #637 — Sync Conflict & Snapshot Manager modal state.
+const syncConflictOpen = ref(false);
+function onOpenSyncConflictsEvent() {
+  settingsOpen.value = false;
+  syncConflictOpen.value = true;
+}
+
+// #647 — Right sidebar vertical multi-tab layout support.
+const RS_PANE_ICONS: Record<string, string> = {
+  search: 'search',
+  outline: 'outline',
+  backlinks: 'external',
+  relationships: 'type-project',
+  tags: 'type-generic',
+  tasks: 'list-bullet',
+  neighborhood: 'type-idea',
+  types: 'type-book',
+  history: 'recent',
+  inspector: 'settings',
+  agent: 'live',
+};
+const effectiveRightTab = computed(() => {
+  const panes = visibleRsPanes.value;
+  if (panes.length === 0) return null;
+  if (panes.some((p) => p.id === settings.activeRightTab)) return settings.activeRightTab;
+  return panes[0].id;
+});
+const renderedRsPanes = computed(() => {
+  const panes = visibleRsPanes.value;
+  if (settings.rightSidebarLayout !== 'tabs') return panes;
+  const active = effectiveRightTab.value;
+  return active ? panes.filter((p) => p.id === active) : panes.slice(0, 1);
+});
+watch(
+  () => visibleRsPanes.value.map((p) => p.id),
+  (nextIds, prevIds) => {
+    const prevSet = new Set<string>(prevIds ?? []);
+    const added = nextIds.find((id) => !prevSet.has(id));
+    if (added) {
+      settings.setActiveRightTab(added);
+    } else if (nextIds.length > 0 && !(nextIds as string[]).includes(settings.activeRightTab)) {
+      settings.setActiveRightTab(nextIds[0]);
+    }
+  },
+);
+
 // #131 — sidebar pane reordering via the ⋮⋮ grip.
 //
 // This used HTML5 drag-and-drop (`draggable` + dragstart/dragover/drop), but
@@ -2424,10 +2496,17 @@ function paneStyle(id: string) {
 // bumps to 440 when the agent panel is on (chat needs real estate).
 // User resizes above the auto-bump are honored.
 const sideSidebarStyle = computed(() => {
-  const w =
-    showAgentPane.value && settings.sideSidebarWidth <= 260
+  const isTabs = settings.rightSidebarLayout === 'tabs';
+  const agentFocused = isTabs
+    ? effectiveRightTab.value === 'agent'
+    : showAgentPane.value;
+  const baseW =
+    agentFocused && settings.sideSidebarWidth <= 260
       ? 440
       : settings.sideSidebarWidth;
+  // #647 — Account for the 36px vertical tab rail so the active pane keeps
+  // its full configured width without squishing panel headers.
+  const w = isTabs ? baseW + 36 : baseW;
   return { width: `${w}px`, flexBasis: `${w}px` };
 });
 
@@ -2588,12 +2667,37 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
         <aside
           v-if="showRightSidebar && settings.outlineSide === 'left'"
           class="side-sidebar side-sidebar--left"
+          :class="{ 'side-sidebar--tabbed': settings.rightSidebarLayout === 'tabs' }"
           :style="sideSidebarStyle"
           @contextmenu.prevent="openSidebarCtx"
         >
           <div class="side-sidebar__resize side-sidebar__resize--right" @mousedown="onSidebarResize('left', $event)" />
-          <template v-for="(p, idx) in visibleRsPanes" :key="p.id">
-            <RsSplitter v-if="idx > 0" :above="visibleRsPanes[idx-1].id" :below="p.id" />
+          <div v-if="settings.rightSidebarLayout === 'tabs'" class="side-sidebar__rail side-sidebar__rail--left">
+            <button
+              v-for="p in visibleRsPanes"
+              :key="p.id"
+              type="button"
+              class="side-sidebar__tab"
+              :class="{ 'is-active': effectiveRightTab === p.id }"
+              :title="t(`rsPane.${p.id}`)"
+              :aria-label="t(`rsPane.${p.id}`)"
+              @click="settings.setActiveRightTab(p.id)"
+            >
+              <RsIcon :name="RS_PANE_ICONS[p.id] || 'outline'" :size="16" />
+            </button>
+            <div class="side-sidebar__rail-spacer" />
+            <button
+              type="button"
+              class="side-sidebar__tab side-sidebar__tab--layout"
+              :title="settings.language?.startsWith('zh') ? '切换为纵向堆叠模式' : 'Switch to stacked layout'"
+              @click="settings.toggleRightSidebarLayout()"
+            >
+              <RsIcon name="sidebar-right" :size="15" />
+            </button>
+          </div>
+          <div class="side-sidebar__body">
+          <template v-for="(p, idx) in renderedRsPanes" :key="p.id">
+            <RsSplitter v-if="settings.rightSidebarLayout !== 'tabs' && idx > 0" :above="renderedRsPanes[idx-1].id" :below="p.id" />
             <div
               :data-rs-pane="p.id"
               :class="[
@@ -2602,9 +2706,10 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
                 draggingPaneId === p.id ? 'rs-pane-host--dragging' : '',
                 dragOverPaneId === p.id ? 'rs-pane-host--drop-target' : '',
               ]"
-              :style="paneStyle(p.id)"
+              :style="settings.rightSidebarLayout === 'tabs' ? {} : paneStyle(p.id)"
             >
               <div
+                v-if="settings.rightSidebarLayout !== 'tabs'"
                 class="rs-pane-grip"
                 :title="t('rsPane.dragToReorder')"
                 @pointerdown="startPaneReorder($event, p.id)"
@@ -2643,6 +2748,7 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
               />
             </div>
           </template>
+          </div>
         </aside>
         <div class="content">
           <BasesView v-if="basesOpen" />
@@ -2655,12 +2761,14 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
         <aside
           v-if="showRightSidebar && settings.outlineSide !== 'left'"
           class="side-sidebar side-sidebar--right"
+          :class="{ 'side-sidebar--tabbed': settings.rightSidebarLayout === 'tabs' }"
           :style="sideSidebarStyle"
           @contextmenu.prevent="openSidebarCtx"
         >
           <div class="side-sidebar__resize side-sidebar__resize--left" @mousedown="onSidebarResize('right', $event)" />
-          <template v-for="(p, idx) in visibleRsPanes" :key="p.id">
-            <RsSplitter v-if="idx > 0" :above="visibleRsPanes[idx-1].id" :below="p.id" />
+          <div class="side-sidebar__body">
+          <template v-for="(p, idx) in renderedRsPanes" :key="p.id">
+            <RsSplitter v-if="settings.rightSidebarLayout !== 'tabs' && idx > 0" :above="renderedRsPanes[idx-1].id" :below="p.id" />
             <div
               :data-rs-pane="p.id"
               :class="[
@@ -2669,9 +2777,10 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
                 draggingPaneId === p.id ? 'rs-pane-host--dragging' : '',
                 dragOverPaneId === p.id ? 'rs-pane-host--drop-target' : '',
               ]"
-              :style="paneStyle(p.id)"
+              :style="settings.rightSidebarLayout === 'tabs' ? {} : paneStyle(p.id)"
             >
               <div
+                v-if="settings.rightSidebarLayout !== 'tabs'"
                 class="rs-pane-grip"
                 :title="t('rsPane.dragToReorder')"
                 @pointerdown="startPaneReorder($event, p.id)"
@@ -2710,6 +2819,30 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
               />
             </div>
           </template>
+          </div>
+          <div v-if="settings.rightSidebarLayout === 'tabs'" class="side-sidebar__rail side-sidebar__rail--right">
+            <button
+              v-for="p in visibleRsPanes"
+              :key="p.id"
+              type="button"
+              class="side-sidebar__tab"
+              :class="{ 'is-active': effectiveRightTab === p.id }"
+              :title="t(`rsPane.${p.id}`)"
+              :aria-label="t(`rsPane.${p.id}`)"
+              @click="settings.setActiveRightTab(p.id)"
+            >
+              <RsIcon :name="RS_PANE_ICONS[p.id] || 'outline'" :size="16" />
+            </button>
+            <div class="side-sidebar__rail-spacer" />
+            <button
+              type="button"
+              class="side-sidebar__tab side-sidebar__tab--layout"
+              :title="settings.language?.startsWith('zh') ? '切换为纵向堆叠模式' : 'Switch to stacked layout'"
+              @click="settings.toggleRightSidebarLayout()"
+            >
+              <RsIcon name="sidebar-right" :size="15" />
+            </button>
+          </div>
         </aside>
       </div>
         </div>
@@ -2780,6 +2913,11 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
             <span class="sidebar-ctx__check">{{ settings.showAgentPanel ? '✓' : '' }}</span>
             {{ t('rsPane.agent') }}
           </label>
+          <div style="height: 1px; background: var(--hairline); margin: 4px 0;" />
+          <label class="sidebar-ctx__item" @click="settings.toggleRightSidebarLayout(); closeSidebarCtx()">
+            <span class="sidebar-ctx__check">{{ settings.rightSidebarLayout === 'tabs' ? '✓' : '' }}</span>
+            {{ settings.language?.startsWith('zh') ? '竖向多标签模式' : 'Vertical tab mode' }}
+          </label>
         </div>
         <div v-if="sidebarCtx" class="sidebar-ctx__backdrop" @click="closeSidebarCtx" />
       </Teleport>
@@ -2813,6 +2951,7 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
     <component :is="CjkProofreadC" v-if="CjkProofreadC" :open="cjkProofreadLazyOpen" @close="cjkProofreadOpen = false" />
     <component :is="AboutDialogC" v-if="AboutDialogC" :open="aboutLazyOpen" @close="aboutOpen = false" />
     <component :is="AgentSetupWizardC" v-if="!IS_APP_STORE_BUILD && AgentSetupWizardC" :open="wizardLazyOpen" @close="wizardOpen = false" />
+    <SyncConflictModal v-if="syncConflictOpen" v-model="syncConflictOpen" />
     <UnsavedDialog
       :open="unsavedOpen"
       :mode="unsavedMode"
@@ -3107,6 +3246,63 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
   flex: 0 0 260px;
   min-width: 240px;
   background: var(--bg);
+}
+.side-sidebar--tabbed {
+  flex-direction: row;
+}
+.side-sidebar__body {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.side-sidebar__rail {
+  flex: 0 0 36px;
+  width: 36px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 0;
+  gap: 4px;
+  background: var(--bg-sidebar, var(--bg));
+}
+.side-sidebar__rail--right {
+  border-left: var(--bd-hair);
+}
+.side-sidebar__rail--left {
+  border-right: var(--bd-hair);
+}
+.side-sidebar__rail-spacer {
+  flex: 1 1 auto;
+}
+.side-sidebar__tab {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  position: relative;
+}
+.side-sidebar__tab:hover {
+  color: var(--text);
+  background: var(--fill-1);
+}
+.side-sidebar__tab.is-active {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+.side-sidebar__tab--layout {
+  opacity: 0.7;
+}
+.side-sidebar__tab--layout:hover {
+  opacity: 1;
 }
 .side-sidebar--left {
   border-right: var(--bd-hair);

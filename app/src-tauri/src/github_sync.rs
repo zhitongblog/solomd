@@ -1337,6 +1337,7 @@ pub fn github_push_inner(
     commit_message: Option<String>,
 ) -> Result<(), String> {
     let path = PathBuf::from(&folder);
+    super::webdav_sync::append_sync_log("github", "push", &format!("开始 Git 推送: {folder}"));
     let cfg = load_config(&path)?.unwrap_or_default();
     let repo_dir = git_dir(&path)?;
     if cfg.encrypted {
@@ -1345,8 +1346,10 @@ pub fn github_push_inner(
             .clone()
             .unwrap_or_else(|| "encrypted: workspace state at push".to_string());
         commit_shadow_if_dirty(&repo_dir, &msg)?;
-    } else if let Some(msg) = commit_message {
-        super::git_history::git_auto_commit_inner(folder.clone(), None, Some(msg))?;
+    } else {
+        // #641 — Always auto-commit pending staged/working-tree edits before
+        // pushing (commit_staged is a clean no-op when the tree matches HEAD).
+        super::git_history::git_auto_commit_inner(folder.clone(), None, commit_message)?;
     }
     let repo = Repository::open(&repo_dir).map_err(|e| e.to_string())?;
 
@@ -1648,6 +1651,7 @@ fn finalize_decrypt(cfg: &SyncConfig, workspace: &Path) -> Result<(), String> {
 #[tauri::command]
 pub async fn github_pull(folder: String) -> Result<PullResult, String> {
     let path = PathBuf::from(&folder);
+    super::webdav_sync::append_sync_log("github", "pull", &format!("开始 Git 拉取: {folder}"));
     let cfg = load_config(&path)?.unwrap_or_default();
     let token = match cfg.provider.as_str() {
         "gitea" => gitea_read_token()?.ok_or("no Gitea token set")?,

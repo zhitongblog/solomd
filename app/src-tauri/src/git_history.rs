@@ -257,6 +257,11 @@ fn stage(repo: &Repository, pathspec: Option<&str>) -> Result<(), String> {
                 .map_err(|e| format!("index add: {}", e))?;
         }
     } else {
+        // #641 — Stage deletions of previously tracked files before add_all
+        // (libgit2's add_all alone does not record deleted tracked files).
+        index
+            .update_all(["*"].iter(), None)
+            .map_err(|e| format!("index update_all: {}", e))?;
         index
             .add_all(["*"].iter(), IndexAddOption::DEFAULT, None)
             .map_err(|e| format!("index add_all: {}", e))?;

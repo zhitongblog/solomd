@@ -93,6 +93,16 @@ test('sort: open before done, then due, then priority, then title', () => {
   assert.deepEqual(order, ['also today', 'today', 'later', 'no date', 'finished']);
 });
 
+test('#642: sort preserves document line order when due/priority tie', () => {
+  const list = [
+    { done: false, line: 10, meta: parseTaskMeta('zebra task') },
+    { done: false, line: 2, meta: parseTaskMeta('middle task') },
+    { done: false, line: 25, meta: parseTaskMeta('alpha task') },
+  ];
+  const order = [...list].sort(compareTasks).map((x) => x.meta.title);
+  assert.deepEqual(order, ['middle task', 'zebra task', 'alpha task']);
+});
+
 test('toggling rewrites only the checkbox on that line', () => {
   const doc = ['# H', '', '- [ ] one', '- [x] two', 'plain line'].join('\n');
   assert.equal(

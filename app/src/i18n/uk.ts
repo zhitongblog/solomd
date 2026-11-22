@@ -65,6 +65,8 @@ export const uk: I18n = {
     find: "Знайти…",
     about: 'Про SoloMD',
     aboutShort: 'Про програму',
+    openLogDir: 'Відкрити папку журналів',
+    exportLogs: 'Експортувати журнали на робочий стіл',
     minimize: 'Згорнути',
     maximize: 'Розгорнути',
     restore: 'Відновити',
@@ -1441,6 +1443,7 @@ export const uk: I18n = {
     tasks: 'Завдання',
     neighborhood: "Сусідство",
     history: 'Історія',
+    inspector: 'Властивості',
     agent: 'Агент',
   },
   inbox: {

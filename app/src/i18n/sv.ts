@@ -65,6 +65,8 @@ export const sv: I18n = {
     find: "Sök…",
     about: 'Om SoloMD',
     aboutShort: 'Om',
+    openLogDir: 'Öppna loggmapp',
+    exportLogs: 'Exportera loggar till skrivbordet',
     minimize: 'Minimera',
     maximize: 'Maximera',
     restore: 'Återställ',
@@ -1441,6 +1443,7 @@ export const sv: I18n = {
     tasks: 'Uppgifter',
     neighborhood: "Grannskap",
     history: 'Historik',
+    inspector: 'Egenskaper',
     agent: 'Agent',
   },
   inbox: {

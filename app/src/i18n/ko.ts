@@ -65,6 +65,8 @@ export const ko: I18n = {
     find: "찾기…",
     about: 'SoloMD 정보',
     aboutShort: '정보',
+    openLogDir: '로그 폴더 열기',
+    exportLogs: '로그를 바탕화면에 내보내기',
     minimize: '최소화',
     maximize: '최대화',
     restore: '이전 크기로 복원',
@@ -1438,6 +1440,7 @@ export const ko: I18n = {
     tasks: '작업',
     neighborhood: "이웃 관계",
     history: '기록',
+    inspector: '속성',
     agent: '에이전트',
   },
   inbox: {

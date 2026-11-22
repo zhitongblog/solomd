@@ -65,6 +65,8 @@ export const ru: I18n = {
     find: "Найти…",
     about: 'О SoloMD',
     aboutShort: 'О программе',
+    openLogDir: 'Открыть папку логов',
+    exportLogs: 'Экспортировать логи на рабочий стол',
     minimize: 'Свернуть',
     maximize: 'Развернуть',
     restore: 'Восстановить',
@@ -1433,6 +1435,7 @@ export const ru: I18n = {
     tasks: 'Задачи',
     neighborhood: 'Окружение',
     history: 'История',
+    inspector: 'Свойства',
     agent: 'Агент',
   },
   inbox: {

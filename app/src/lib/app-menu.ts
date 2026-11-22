@@ -510,6 +510,9 @@ export function buildAppMenu(ctx: MenuContext): TopMenu[] {
     item('help.shortcuts', t('menubar.helpShortcuts')),
     item('help.cli', t('menubar.helpCli')),
     item('help.welcomeTour', t('menubar.welcomeTour')),
+    sep,
+    item('help.openLogDir', t('menubar.openLogDir')),
+    item('help.exportLogs', t('menubar.exportLogs')),
     ...(ctx.updateCheckAvailable ? [sep, item('help.checkUpdate', t('menubar.checkUpdate'))] : []),
     sep,
     // Inside Help the context is clear, so Windows / Linux say just "About"

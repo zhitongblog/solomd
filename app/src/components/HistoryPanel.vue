@@ -269,6 +269,10 @@ async function onRestore(sha: string, shortSha: string) {
  * for anything older than ~30 days. Cheap, no Intl.RelativeTimeFormat —
  * the panel updates on each open so we don't need a ticker.
  */
+function openSyncConflicts() {
+  window.dispatchEvent(new CustomEvent('solomd:open-sync-conflicts'));
+}
+
 function timeAgo(unix: number): string {
   const now = Math.floor(Date.now() / 1000);
   const delta = Math.max(0, now - unix);
@@ -291,7 +295,17 @@ function timeAgo(unix: number): string {
           : (!loading && commits.length > 0 ? commits.length : null)
       "
       @close="emit('close')"
-    />
+    >
+      <button
+        v-if="folder"
+        type="button"
+        class="rp-icon-btn"
+        :title="settings.language === 'zh' ? '同步冲突与快照管理' : 'Sync Conflict Manager'"
+        @click="openSyncConflicts"
+      >
+        <Icons name="git" :size="13" />
+      </button>
+    </PanelHeader>
 
     <!-- v2.6 — GitHub sync conflict resolver. Sits above the commit list
          when a pull surfaced merge conflicts; auto-hides when empty. -->

@@ -65,6 +65,8 @@ export const en = {
     find: "Find…",
     about: 'About SoloMD',
     aboutShort: 'About',
+    openLogDir: 'Open Log Directory',
+    exportLogs: 'Export Logs to Desktop',
     minimize: 'Minimize',
     maximize: 'Maximize',
     restore: 'Restore',
@@ -1448,6 +1450,7 @@ export const en = {
     tasks: 'Tasks',
     neighborhood: 'Neighborhood',
     history: 'History',
+    inspector: 'Properties',
     agent: 'Agent',
   },
   inbox: {

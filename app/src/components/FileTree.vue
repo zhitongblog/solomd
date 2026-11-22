@@ -768,9 +768,14 @@ function onBeforeUnload() {
   void pendingDeletes.flushAll();
 }
 
+function onRefreshTreeEvent() {
+  scheduleRefresh();
+}
+
 onMounted(async () => {
   window.addEventListener('solomd:saved', onSaved as EventListener);
   window.addEventListener('solomd:remote-pulled', onRemotePulled as EventListener);
+  window.addEventListener('solomd:refresh-tree', onRefreshTreeEvent);
   window.addEventListener('beforeunload', onBeforeUnload);
   try {
     unlistenIndex = await listen('solomd://index-updated', () => scheduleRefresh());
@@ -784,6 +789,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   window.removeEventListener('solomd:saved', onSaved as EventListener);
   window.removeEventListener('solomd:remote-pulled', onRemotePulled as EventListener);
+  window.removeEventListener('solomd:refresh-tree', onRefreshTreeEvent);
   window.removeEventListener('beforeunload', onBeforeUnload);
   // Hiding the tree unmounts it; a selection left behind would keep aiming
   // "new file" at a folder the user can no longer see.
@@ -1073,15 +1079,18 @@ async function repointTab(
 /** Every tab under the moved path follows it — a folder move has to repoint
  *  each open note inside it, not just an exact match. */
 function repointTabs(from: string, to: string, isDir: boolean) {
-  const prefixes = isDir ? [from + '/', from + '\\'] : [];
   for (const tab of [...tabs.tabs] as { id: string; filePath?: string }[]) {
     const fp = tab.filePath;
     if (!fp) continue;
     let next: string | null = null;
-    if (fp === from) {
+    if (samePath(fp, from)) {
       next = to;
-    } else if (prefixes.some((pre) => fp.startsWith(pre))) {
-      next = to + fp.slice(from.length);
+    } else if (isDir) {
+      const rel = segmentsBelow(from, fp);
+      if (rel !== null) {
+        const sep = sepOf(to);
+        next = rel.length > 0 ? `${to}${sep}${rel.join(sep)}` : to;
+      }
     }
     if (next) void repointTab(tab, next);
   }
@@ -1108,22 +1117,23 @@ function rootLabel(): string {
   return t('explorer.vaultRoot') || 'Vault root';
 }
 
-/** #571 — Reload clean open tabs whose inbound links were updated on disk. */
+/** #571 / #639 — Reload clean open tabs whose inbound links were updated on disk,
+ *  and always trigger a workspace index rescan so renamed paths stay fresh. */
 async function refreshRewrittenTabs(updatedPaths: string[], skipTarget: string) {
-  if (!updatedPaths?.length) return;
-  const skipPrefixes = [skipTarget + '/', skipTarget + '\\'];
-  for (const p of updatedPaths) {
-    if (p === skipTarget || skipPrefixes.some((pre) => p.startsWith(pre))) continue;
-    const tab = (tabs.tabs as { id: string; filePath?: string; content?: string; savedContent?: string }[]).find(
-      (t) => t.filePath === p,
-    );
-    if (!tab || tab.savedContent !== tab.content) continue;
-    try {
-      const fr = await invoke<{ content: string }>('read_file', { path: p });
-      tabs.setContent(tab.id, fr.content);
-      tabs.markSaved(tab.id, p);
-    } catch (err) {
-      console.warn('[FileTree] rewritten tab reload failed', err);
+  if (updatedPaths?.length) {
+    for (const p of updatedPaths) {
+      if (samePath(p, skipTarget) || segmentsBelow(skipTarget, p) !== null) continue;
+      const tab = (tabs.tabs as { id: string; filePath?: string; content?: string; savedContent?: string }[]).find(
+        (t) => t.filePath && samePath(t.filePath, p),
+      );
+      if (!tab || tab.savedContent !== tab.content) continue;
+      try {
+        const fr = await invoke<{ content: string }>('read_file', { path: p });
+        tabs.setContent(tab.id, fr.content);
+        tabs.markSaved(tab.id, p);
+      } catch (err) {
+        console.warn('[FileTree] rewritten tab reload failed', err);
+      }
     }
   }
   void workspaceIndex.rescan();

@@ -91,8 +91,8 @@ const mode = computed<Mode>(() => {
   if (s.dirty) {
     return {
       glyph: '●',
-      label: withChord('githubSync.pillDirty', 'file.save') || 'Uncommitted local changes — save with ⌘S',
-      action: 'noop',
+      label: withChord('githubSync.pillDirty', 'file.save') || 'Uncommitted local changes — click to commit & push',
+      action: 'push',
       tone: 'warn',
     };
   }

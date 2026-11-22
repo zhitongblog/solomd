@@ -135,6 +135,33 @@ async function doSearch() {
     } else {
       nextHits = await search.search(q);
       if (reqId !== searchReqSeq) return;
+      // #648 — When searching for a `#tag` or `tag:name`, also surface notes whose
+      // YAML frontmatter `tags:` / `tag:` metadata matches (frontmatter tags are
+      // typically written without `#`, so literal text search for `#tag` misses them).
+      const tagMatch = q.match(/^(?:#|tag:#?)([^\s#]+)$/i);
+      if (tagMatch) {
+        const needle = tagMatch[1].toLowerCase();
+        const seenFiles = new Set(nextHits.map((h) => h.file));
+        const fmHits: SearchHit[] = [];
+        for (const entry of wsIndex.entries) {
+          if (seenFiles.has(entry.path) || !entry.tags?.length) continue;
+          const matchedTags = entry.tags.filter((tg) => {
+            const tl = tg.toLowerCase();
+            return tl === needle || tl.startsWith(`${needle}/`);
+          });
+          if (matchedTags.length > 0) {
+            seenFiles.add(entry.path);
+            fmHits.push({
+              file: entry.path,
+              line: 1,
+              snippet: `tags: ${matchedTags.map((tg) => `#${tg}`).join(' ')}`,
+            });
+          }
+        }
+        if (fmHits.length > 0) {
+          nextHits = [...fmHits, ...nextHits];
+        }
+      }
     }
     hits.value = nextHits;
     selectedIdx.value = 0;
@@ -170,7 +197,13 @@ function shortPath(p: string) {
 
 async function openHit(hit: SearchHit) {
   try {
-    const highlightQuery = titleOnly.value ? '' : query.value.trim();
+    const rawQ = query.value.trim();
+    const tagBare = rawQ.match(/^(?:#|tag:#?)([^\s#]+)$/i)?.[1];
+    const highlightQuery = titleOnly.value
+      ? ''
+      : hit.line === 1 && hit.snippet.startsWith('tags: ') && tagBare
+        ? tagBare
+        : rawQ;
     await files.openPath(hit.file);
     await nextTick();
     window.dispatchEvent(
@@ -190,9 +223,12 @@ async function openHit(hit: SearchHit) {
 function highlight(snippet: string): string {
   const q = query.value.trim();
   if (!q) return escapeHtml(snippet);
+  // #648 — Normalize `tag:foo` / `tag:#foo` so `#foo` or `foo` highlights cleanly in snippets.
+  const tagQ = q.match(/^tag:#?([^\s#]+)$/i)?.[1];
+  const pattern = tagQ ? `#?${escapeRe(tagQ)}` : escapeRe(q);
   // Match against the raw text BEFORE HTML-escaping so queries like `a`, `&`,
   // `<`, or `;` never slice inside `&amp;` / `&lt;` entities!
-  const re = new RegExp(escapeRe(q), 'gi');
+  const re = new RegExp(pattern, 'gi');
   let out = '';
   let last = 0;
   let m: RegExpExecArray | null;

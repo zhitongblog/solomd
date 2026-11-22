@@ -15,6 +15,9 @@ import { winTitleBar } from '../lib/chrome';
 import { quickCaptureError } from '../lib/quick-capture-status';
 
 function openToolbarCustomize() {
+  // #644 — Close Settings first so ToolbarCustomizeModal (same DsModal z-index,
+  // mounted earlier in <body> via Toolbar.vue) is never hidden behind Settings.
+  emit('close');
   window.dispatchEvent(new CustomEvent('solomd:open-toolbar-customize'));
 }
 import {

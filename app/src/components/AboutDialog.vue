@@ -52,6 +52,7 @@ const promoters = ref<string[]>([
   'Tool Makers',
   'MCP Market',
   'AlternativeTo',
+  'tyysoft(太阳雨)',
 ]);
 const testers = ref<string[]>(['张工', '冰瞬若风', 'tyysoft(太阳雨)', 'lcfactorization', 'ScienceZone', 'Limoncello-Zoey', 'davi-jorge-art', 'zhuhaisto', 'licryle', 'ed-edwin', 'xjfnet', 'Snowboy801']);
 let sponsorsLoaded = false;
@@ -63,10 +64,13 @@ async function loadSponsors() {
     if (!res.ok) return;
     const data = await res.json();
     const names = (list: unknown) =>
-      (Array.isArray(list) ? list : [])
-        .map((s: { name?: unknown }) => (typeof s?.name === 'string' ? s.name.trim() : ''))
-        .filter((n: string) => n.length > 0 && n.length <= 40)
-        .slice(0, 200);
+      Array.from(
+        new Set(
+          (Array.isArray(list) ? list : [])
+            .map((s: { name?: unknown }) => (typeof s?.name === 'string' ? s.name.trim() : ''))
+            .filter((n: string) => n.length > 0 && n.length <= 40),
+        ),
+      ).slice(0, 200);
     const sList = names(data?.sponsors);
     const pList = names(data?.promoters);
     const tList = names(data?.testers);

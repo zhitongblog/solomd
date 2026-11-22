@@ -1,0 +1,545 @@
+<script setup lang="ts">
+/**
+ * #637 — Sync Conflict & Snapshot Manager Modal.
+ *
+ * Scans the active workspace for side-by-side sync conflict copies
+ * (`* (冲突副本 *).*`), displays a line-level diff against the working copy,
+ * shows the `.solomd-sync/versions` snapshot directory, and lets the user
+ * keep the working copy, replace with the conflict copy, or manually merge.
+ */
+import { computed, ref, watch } from 'vue';
+import { invoke } from '@tauri-apps/api/core';
+import { openPath } from '@tauri-apps/plugin-opener';
+import DsModal from '../ui/DsModal.vue';
+import DsButton from '../ui/DsButton.vue';
+import { useWorkspaceStore } from '../stores/workspace';
+import { useTabsStore } from '../stores/tabs';
+import { useSettingsStore } from '../stores/settings';
+import { useToastsStore } from '../stores/toasts';
+
+export interface SyncConflictEntry {
+  base_rel: string;
+  conflict_rel: string;
+  base_exists: boolean;
+  conflict_mtime: number;
+  conflict_size: number;
+  snapshot_dir: string;
+}
+
+interface DiffLine {
+  kind: 'context' | 'add' | 'del';
+  text: string;
+}
+
+interface DiffHunk {
+  header: string;
+  lines: DiffLine[];
+}
+
+interface SyncConflictDiff {
+  base_rel: string;
+  conflict_rel: string;
+  base_text: string;
+  conflict_text: string;
+  added_lines: number;
+  removed_lines: number;
+  hunks: DiffHunk[];
+}
+
+const props = defineProps<{ modelValue: boolean }>();
+const emit = defineEmits<{ (e: 'update:modelValue', v: boolean): void }>();
+
+const workspace = useWorkspaceStore();
+const tabs = useTabsStore();
+const settings = useSettingsStore();
+const toasts = useToastsStore();
+
+const zh = computed(() => settings.language?.startsWith('zh'));
+const folder = computed(() => workspace.currentFolder);
+
+const loading = ref(false);
+const resolving = ref(false);
+const conflicts = ref<SyncConflictEntry[]>([]);
+const selectedRel = ref<string | null>(null);
+const diff = ref<SyncConflictDiff | null>(null);
+const diffLoading = ref(false);
+const mergeMode = ref(false);
+const mergedText = ref('');
+
+const selectedEntry = computed(
+  () => conflicts.value.find((c) => c.conflict_rel === selectedRel.value) ?? null,
+);
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatTime(unix: number): string {
+  if (!unix) return '';
+  const d = new Date(unix * 1000);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+async function reload() {
+  if (!folder.value) {
+    conflicts.value = [];
+    selectedRel.value = null;
+    diff.value = null;
+    return;
+  }
+  loading.value = true;
+  try {
+    conflicts.value = await invoke<SyncConflictEntry[]>('sync_list_conflicts', {
+      workspace: folder.value,
+    });
+    if (conflicts.value.length > 0) {
+      const keep = conflicts.value.some((c) => c.conflict_rel === selectedRel.value);
+      selectedRel.value = keep ? selectedRel.value : conflicts.value[0].conflict_rel;
+      await loadDiff();
+    } else {
+      selectedRel.value = null;
+      diff.value = null;
+    }
+  } catch (e) {
+    toasts.error(String(e));
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function loadDiff() {
+  const entry = selectedEntry.value;
+  if (!folder.value || !entry) {
+    diff.value = null;
+    return;
+  }
+  diffLoading.value = true;
+  mergeMode.value = false;
+  try {
+    const res = await invoke<SyncConflictDiff>('sync_diff_conflict', {
+      workspace: folder.value,
+      baseRel: entry.base_rel,
+      conflictRel: entry.conflict_rel,
+    });
+    diff.value = res;
+    mergedText.value = res.base_text || res.conflict_text;
+  } catch (e) {
+    diff.value = null;
+    toasts.error(String(e));
+  } finally {
+    diffLoading.value = false;
+  }
+}
+
+async function selectConflict(rel: string) {
+  selectedRel.value = rel;
+  await loadDiff();
+}
+
+function reloadOpenBaseTab(baseRel: string, content: string) {
+  if (!folder.value) return;
+  const norm = `${folder.value.replace(/\\/g, '/').replace(/\/+$/, '')}/${baseRel}`.toLowerCase();
+  for (const tab of tabs.tabs) {
+    if (!tab.filePath) continue;
+    if (tab.filePath.replace(/\\/g, '/').toLowerCase() === norm) {
+      tabs.setContent(tab.id, content);
+      tabs.markSaved(tab.id, tab.filePath);
+    }
+  }
+}
+
+function closeOpenConflictTab(conflictRel: string) {
+  if (!folder.value) return;
+  const norm = `${folder.value.replace(/\\/g, '/').replace(/\/+$/, '')}/${conflictRel}`.toLowerCase();
+  for (const tab of [...tabs.tabs]) {
+    if (!tab.filePath) continue;
+    if (tab.filePath.replace(/\\/g, '/').toLowerCase() === norm) {
+      tabs.closeTab(tab.id);
+    }
+  }
+}
+
+async function resolve(strategy: 'keep_base' | 'use_conflict' | 'manual_merge') {
+  const entry = selectedEntry.value;
+  if (!folder.value || !entry || resolving.value) return;
+  resolving.value = true;
+  try {
+    await invoke('sync_resolve_conflict', {
+      workspace: folder.value,
+      baseRel: entry.base_rel,
+      conflictRel: entry.conflict_rel,
+      strategy,
+      mergedContent: strategy === 'manual_merge' ? mergedText.value : null,
+    });
+    if (strategy === 'use_conflict' && diff.value) {
+      reloadOpenBaseTab(entry.base_rel, diff.value.conflict_text);
+    } else if (strategy === 'manual_merge') {
+      reloadOpenBaseTab(entry.base_rel, mergedText.value);
+    }
+    closeOpenConflictTab(entry.conflict_rel);
+    toasts.success(
+      zh.value
+        ? strategy === 'keep_base'
+          ? '已保留工作副本并移除冲突副本'
+          : strategy === 'use_conflict'
+            ? '已采用冲突副本覆盖工作副本（原版本已保存快照）'
+            : '已保存手工合并结果并移除冲突副本'
+        : 'Conflict resolved',
+    );
+    window.dispatchEvent(new CustomEvent('solomd:refresh-tree'));
+    await reload();
+  } catch (e) {
+    toasts.error(String(e));
+  } finally {
+    resolving.value = false;
+  }
+}
+
+async function openSnapshotDir() {
+  if (!folder.value) return;
+  try {
+    const dir = await invoke<string>('sync_ensure_snapshot_dir', {
+      workspace: folder.value,
+    });
+    await openPath(dir);
+  } catch (e) {
+    toasts.error(String(e));
+  }
+}
+
+watch(
+  () => props.modelValue,
+  (open) => {
+    if (open) void reload();
+  },
+);
+</script>
+
+<template>
+  <DsModal
+    :model-value="props.modelValue"
+    :title="zh ? '同步冲突与快照管理' : 'Sync Conflict & Snapshot Manager'"
+    width="860px"
+    @update:model-value="emit('update:modelValue', $event)"
+  >
+    <div class="scm">
+      <div class="scm__bar">
+        <span class="scm__summary">
+          {{
+            zh
+              ? `当前工作区共检测到 ${conflicts.length} 个冲突副本`
+              : `${conflicts.length} conflict copy(ies) detected in workspace`
+          }}
+        </span>
+        <div class="scm__bar-actions">
+          <DsButton variant="ghost" size="sm" @click="openSnapshotDir">
+            {{ zh ? '打开快照目录' : 'Open Snapshot Dir' }}
+          </DsButton>
+          <DsButton variant="ghost" size="sm" :disabled="loading" @click="reload">
+            {{ zh ? '刷新' : 'Refresh' }}
+          </DsButton>
+        </div>
+      </div>
+
+      <div v-if="!folder" class="scm__empty">
+        {{ zh ? '请先打开一个工作区文件夹。' : 'Open a workspace folder first.' }}
+      </div>
+      <div v-else-if="loading" class="scm__empty">
+        {{ zh ? '正在扫描冲突副本…' : 'Scanning conflict copies…' }}
+      </div>
+      <div v-else-if="conflicts.length === 0" class="scm__empty">
+        {{ zh ? '当前工作区没有未处理的同步冲突副本。' : 'No unresolved sync conflict copies in this workspace.' }}
+      </div>
+
+      <div v-else class="scm__body">
+        <aside class="scm__list">
+          <button
+            v-for="c in conflicts"
+            :key="c.conflict_rel"
+            type="button"
+            class="scm__item"
+            :class="{ 'is-active': c.conflict_rel === selectedRel }"
+            @click="selectConflict(c.conflict_rel)"
+          >
+            <span class="scm__item-base">{{ c.base_rel }}</span>
+            <span class="scm__item-conflict">{{ c.conflict_rel }}</span>
+            <span class="scm__item-meta">{{ formatTime(c.conflict_mtime) }} · {{ formatSize(c.conflict_size) }}</span>
+          </button>
+        </aside>
+
+        <section v-if="selectedEntry" class="scm__detail">
+          <div class="scm__paths">
+            <div><strong>{{ zh ? '工作副本：' : 'Working copy:' }}</strong> <code>{{ selectedEntry.base_rel }}</code></div>
+            <div><strong>{{ zh ? '冲突副本：' : 'Conflict copy:' }}</strong> <code>{{ selectedEntry.conflict_rel }}</code></div>
+            <div><strong>{{ zh ? '快照位置：' : 'Snapshots:' }}</strong> <code>{{ selectedEntry.snapshot_dir }}</code></div>
+          </div>
+
+          <div v-if="diffLoading" class="scm__empty">{{ zh ? '正在计算差异…' : 'Computing diff…' }}</div>
+
+          <template v-else-if="diff">
+            <div class="scm__mode-row">
+              <button
+                type="button"
+                class="scm__tab"
+                :class="{ 'is-on': !mergeMode }"
+                @click="mergeMode = false"
+              >
+                {{ zh ? `差异对比 (+${diff.added_lines} / -${diff.removed_lines})` : `Diff (+${diff.added_lines} / -${diff.removed_lines})` }}
+              </button>
+              <button
+                type="button"
+                class="scm__tab"
+                :class="{ 'is-on': mergeMode }"
+                @click="mergeMode = true"
+              >
+                {{ zh ? '手工合并编辑' : 'Manual Merge' }}
+              </button>
+            </div>
+
+            <div v-if="!mergeMode" class="scm__diff">
+              <div v-if="diff.hunks.length === 0" class="scm__empty">
+                {{ zh ? '工作副本与冲突副本内容完全一致，可直接保留工作副本。' : 'Both files have identical content.' }}
+              </div>
+              <div v-for="(h, hi) in diff.hunks" :key="hi" class="scm__hunk">
+                <div class="scm__hunk-head">{{ h.header }}</div>
+                <pre
+                  v-for="(ln, li) in h.lines"
+                  :key="li"
+                  class="scm__line"
+                  :class="`scm__line--${ln.kind}`"
+                >{{ ln.kind === 'add' ? '+' : ln.kind === 'del' ? '-' : ' ' }} {{ ln.text }}</pre>
+              </div>
+            </div>
+
+            <div v-else class="scm__merge">
+              <div class="scm__merge-tools">
+                <DsButton variant="ghost" size="sm" @click="mergedText = diff.base_text">
+                  {{ zh ? '填入工作副本' : 'Load Working Copy' }}
+                </DsButton>
+                <DsButton variant="ghost" size="sm" @click="mergedText = diff.conflict_text">
+                  {{ zh ? '填入冲突副本' : 'Load Conflict Copy' }}
+                </DsButton>
+                <DsButton
+                  variant="ghost"
+                  size="sm"
+                  @click="mergedText = `${diff.base_text}\n\n---\n\n${diff.conflict_text}`"
+                >
+                  {{ zh ? '拼接两份内容' : 'Concatenate Both' }}
+                </DsButton>
+              </div>
+              <textarea v-model="mergedText" class="scm__textarea" spellcheck="false" />
+            </div>
+
+            <div class="scm__actions">
+              <DsButton variant="ghost" size="sm" :disabled="resolving" @click="resolve('keep_base')">
+                {{ zh ? '保留工作副本（删冲突副本）' : 'Keep Working Copy' }}
+              </DsButton>
+              <DsButton variant="ghost" size="sm" :disabled="resolving" @click="resolve('use_conflict')">
+                {{ zh ? '采用冲突副本覆盖' : 'Use Conflict Copy' }}
+              </DsButton>
+              <DsButton
+                v-if="mergeMode"
+                variant="primary"
+                size="sm"
+                :disabled="resolving"
+                @click="resolve('manual_merge')"
+              >
+                {{ zh ? '保存手工合并结果' : 'Save Manual Merge' }}
+              </DsButton>
+            </div>
+          </template>
+        </section>
+      </div>
+    </div>
+  </DsModal>
+</template>
+
+<style scoped>
+.scm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 360px;
+  max-height: 70vh;
+}
+.scm__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.scm__summary {
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+.scm__bar-actions {
+  display: flex;
+  gap: 6px;
+}
+.scm__empty {
+  padding: 28px 12px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-3);
+}
+.scm__body {
+  display: flex;
+  gap: 12px;
+  min-height: 0;
+  flex: 1;
+}
+.scm__list {
+  width: 240px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-right: 1px solid var(--hairline);
+  padding-right: 10px;
+}
+.scm__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  padding: 7px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+.scm__item:hover {
+  background: var(--fill-1);
+}
+.scm__item.is-active {
+  background: var(--accent-soft, rgba(59, 130, 246, 0.12));
+  border-color: var(--accent);
+}
+.scm__item-base {
+  font-size: 12.5px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.scm__item-conflict {
+  font-size: 11px;
+  color: var(--text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.scm__item-meta {
+  font-size: 10.5px;
+  color: var(--text-3);
+}
+.scm__detail {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.scm__paths {
+  font-size: 11.5px;
+  color: var(--text-2);
+  background: var(--fill-1);
+  border-radius: 6px;
+  padding: 6px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  word-break: break-all;
+}
+.scm__paths code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.scm__mode-row {
+  display: flex;
+  gap: 6px;
+}
+.scm__tab {
+  padding: 4px 10px;
+  font-size: 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+}
+.scm__tab.is-on {
+  background: var(--fill-2);
+  color: var(--text);
+  font-weight: 600;
+}
+.scm__diff {
+  flex: 1;
+  min-height: 180px;
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  background: var(--bg);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.scm__hunk-head {
+  padding: 3px 8px;
+  font-size: 11px;
+  color: var(--text-3);
+  background: var(--fill-1);
+  border-bottom: 1px solid var(--hairline);
+}
+.scm__line {
+  margin: 0;
+  padding: 1px 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.45;
+}
+.scm__line--add {
+  background: rgba(34, 197, 94, 0.14);
+}
+.scm__line--del {
+  background: rgba(239, 68, 68, 0.14);
+}
+.scm__merge {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 200px;
+}
+.scm__merge-tools {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.scm__textarea {
+  flex: 1;
+  min-height: 200px;
+  width: 100%;
+  resize: vertical;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.scm__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--hairline);
+}
+</style>

@@ -11,7 +11,9 @@ import { computed } from 'vue';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useGitHistoryStore } from '../stores/gitHistory';
 import { useGithubSyncStore } from '../stores/githubSync';
+import { useTabsStore } from '../stores/tabs';
 import { useGithubSync } from './useGithubSync';
+import { useFiles } from './useFiles';
 import { useToastsStore } from '../stores/toasts';
 import { useI18n } from '../i18n';
 import { hasGitBackend } from '../lib/platform';
@@ -20,7 +22,9 @@ export function useGitQuickActions() {
   const workspace = useWorkspaceStore();
   const gitHistory = useGitHistoryStore();
   const githubSync = useGithubSyncStore();
+  const tabs = useTabsStore();
   const ghSync = useGithubSync();
+  const files = useFiles();
   const toasts = useToastsStore();
   const { t } = useI18n();
 
@@ -37,6 +41,25 @@ export function useGitQuickActions() {
   const busyPull = computed(() => gitHistory.pulling || githubSync.pulling);
   const busyPush = computed(() => gitHistory.pushing || githubSync.pushing);
 
+  /** #641 — Flush unsaved open tabs inside the current workspace before staging/pushing
+   *  so edits that haven't hit autosave yet are actually included in git add / push. */
+  async function flushDirtyWorkspaceTabs() {
+    const root = folder.value;
+    if (!root) return;
+    const normRoot = root.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+    for (const tab of [...tabs.tabs]) {
+      if (tab.content === tab.savedContent || !tab.filePath) continue;
+      const normPath = tab.filePath.replace(/\\/g, '/').toLowerCase();
+      if (normPath === normRoot || normPath.startsWith(normRoot + '/')) {
+        try {
+          await files.saveTab(tab, { silent: true });
+        } catch {
+          // Best-effort; let the user see any save error separately.
+        }
+      }
+    }
+  }
+
   async function gitAdd() {
     if (!folder.value) {
       toasts.warning(t('gitQuick.noFolder'));
@@ -47,6 +70,7 @@ export function useGitQuickActions() {
       return;
     }
     try {
+      await flushDirtyWorkspaceTabs();
       const count = await gitHistory.stage(folder.value);
       if (count > 0) {
         toasts.success(t('gitQuick.stagedCount', { count }));
@@ -88,16 +112,18 @@ export function useGitQuickActions() {
       toasts.warning(t('gitQuick.notGitRepo'));
       return;
     }
+    await flushDirtyWorkspaceTabs();
     if (githubSync.isLinked) {
+      // #641 — Always commit staged/working-tree edits before pushing so
+      // `git add` → `push` (or one-click `push`) never silently pushes an old HEAD.
       await ghSync.pushNow();
       return;
     }
     try {
-      // Auto-commit pending workspace changes before pushing so a quick
-      // "Add → Push" or one-click "Push" never silently pushes an old HEAD.
-      if (gitHistory.status?.dirty) {
-        await gitHistory.commit(folder.value);
-      }
+      // #641 — Always invoke commit unconditionally (commit_staged returns None
+      // cleanly when HEAD already matches the index/working tree) instead of
+      // relying on a potentially stale or extension-filtered `status.dirty` flag.
+      await gitHistory.commit(folder.value);
       const out = await gitHistory.cliPush(folder.value);
       toasts.success(out ? t('gitQuick.pushDoneDetail', { detail: out.split('\n')[0] }) : t('gitQuick.pushDone'));
     } catch (err) {

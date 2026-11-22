@@ -91,10 +91,9 @@ const gitQuick = useGitQuickActions();
 
 const isMarkdown = computed(() => tabs.activeTab?.language === 'markdown');
 
-// #622 — Customizable toolbar items & docking into the Windows titlebar
+// #622 / #644 — Customizable toolbar items & docking into the Windows titlebar
 // right after the menubar so the entire tab-bar row belongs to open tabs.
 const customizeOpen = ref(false);
-const titlebarSlotReady = ref(false);
 const activeToolbarItems = computed(() => new Set(normalizeToolbarItems(settings.toolbarItems)));
 function hasToolbarItem(id: ToolbarItemId): boolean {
   return activeToolbarItems.value.has(id);
@@ -104,9 +103,7 @@ const dockInTitlebar = computed(
     !isTitlebar.value &&
     winTitleBar &&
     settings.toolbarInTitlebar &&
-    !settings.hideMenuBar &&
-    !isNarrow.value &&
-    titlebarSlotReady.value,
+    !isNarrow.value,
 );
 function onOpenCustomizeEvent() {
   customizeOpen.value = true;
@@ -834,7 +831,6 @@ onMounted(() => {
   window.addEventListener('solomd:close-menus', closeAllDropdowns);
   // Two Toolbars exist on Windows; only the header answers these.
   if (isTitlebar.value) return;
-  titlebarSlotReady.value = !!document.getElementById('titlebar-toolbar-slot');
   window.addEventListener('solomd:open-pomodoro', onOpenPomodoroEvent);
   window.addEventListener('solomd:toolbar-ai-rewrite', onAIRewrite);
   window.addEventListener('solomd:open-toolbar-customize', onOpenCustomizeEvent);
@@ -1014,7 +1010,7 @@ onBeforeUnmount(() => {
       >{{ activeTabDisplayTitle }}</span>
     </div>
 
-    <Teleport to="#titlebar-toolbar-slot" :disabled="!dockInTitlebar">
+    <Teleport to="#titlebar-toolbar-slot" :disabled="!dockInTitlebar" defer>
       <div
         v-if="!settings.toolbarHidden"
         class="toolbar__dock-wrap"
@@ -1196,7 +1192,7 @@ onBeforeUnmount(() => {
           :aria-label="t('toolbar.exportTooltip')"
         >
           <Icon name="share" />
-          <span v-if="settings.toolbarShowLabels && !isNarrow" class="icon-btn__label">{{ settings.language === 'zh' ? '导出' : 'Export' }}</span>
+          <span v-if="settings.toolbarShowLabels && !isNarrow && !dockInTitlebar" class="icon-btn__label">{{ settings.language === 'zh' ? '导出' : 'Export' }}</span>
         </button>
         <Teleport to="body">
           <div
@@ -1295,7 +1291,7 @@ onBeforeUnmount(() => {
           :aria-label="t('header.more')"
         >
           <Icon name="more" />
-          <span v-if="settings.toolbarShowLabels && !isNarrow" class="icon-btn__label">{{ settings.language === 'zh' ? '更多' : 'More' }}</span>
+          <span v-if="settings.toolbarShowLabels && !isNarrow && !dockInTitlebar" class="icon-btn__label">{{ settings.language === 'zh' ? '更多' : 'More' }}</span>
         </button>
         <Teleport to="body">
           <div
@@ -1924,7 +1920,7 @@ onBeforeUnmount(() => {
   border-left: 1px solid var(--hairline);
 }
 .toolbar__dock-wrap--in-titlebar :deep(.seg) {
-  height: 26px;
+  height: 28px;
 }
 .toolbar__dock-wrap--in-titlebar :deep(.seg__btn) {
   height: 22px;

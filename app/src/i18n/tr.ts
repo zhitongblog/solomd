@@ -65,6 +65,8 @@ export const tr: I18n = {
     find: "Bul…",
     about: 'SoloMD Hakkında',
     aboutShort: 'Hakkında',
+    openLogDir: 'Günlük Klasörünü Aç',
+    exportLogs: 'Günlükleri Masaüstüne Aktar',
     minimize: 'Simge Durumuna Küçült',
     maximize: 'Ekranı Kapla',
     restore: 'Geri Yükle',
@@ -1441,6 +1443,7 @@ export const tr: I18n = {
     tasks: 'Görevler',
     neighborhood: "Komşuluk",
     history: 'Geçmiş',
+    inspector: 'Özellikler',
     agent: 'Aracı',
   },
   inbox: {

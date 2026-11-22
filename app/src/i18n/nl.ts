@@ -65,6 +65,8 @@ export const nl: I18n = {
     find: "Zoeken…",
     about: 'Over SoloMD',
     aboutShort: 'Over',
+    openLogDir: 'Logmap openen',
+    exportLogs: 'Logs naar bureaublad exporteren',
     minimize: 'Minimaliseren',
     maximize: 'Maximaliseren',
     restore: 'Herstellen',
@@ -1441,6 +1443,7 @@ export const nl: I18n = {
     tasks: 'Taken',
     neighborhood: "Omgeving",
     history: 'Geschiedenis',
+    inspector: 'Eigenschappen',
     agent: 'Agent',
   },
   inbox: {

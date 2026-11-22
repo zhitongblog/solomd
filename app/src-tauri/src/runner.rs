@@ -792,6 +792,12 @@ pub fn run_with(initial_file: Option<String>) {
             webdav_sync::sync_get_file_version_diff,
             webdav_sync::sync_restore_file_version,
             webdav_sync::sync_prune_file_versions,
+            webdav_sync::sync_get_log_dir,
+            webdav_sync::sync_export_logs_to_desktop,
+            webdav_sync::sync_list_conflicts,
+            webdav_sync::sync_diff_conflict,
+            webdav_sync::sync_resolve_conflict,
+            webdav_sync::sync_ensure_snapshot_dir,
             crypto::crypto_status,
             crypto::crypto_set_passphrase,
             crypto::crypto_clear_passphrase,
@@ -871,6 +877,10 @@ pub fn run_with(initial_file: Option<String>) {
             let _ = app_handle.emit("solomd://menu", id);
         })
         .setup(|app| {
+            webdav_sync::init_sync_app_handle(
+                app.handle(),
+                portable::app_data_dir(app.path()).ok(),
+            );
             // #428 — Reopen the last bookmarked workspace folder on macOS ahead
             // of the frontend's initial `list_dir` call so `~/Documents` and
             // other user-selected folders keep their security-scoped access.

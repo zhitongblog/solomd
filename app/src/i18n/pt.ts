@@ -67,6 +67,8 @@ export const pt: I18n = {
     find: "Localizar…",
     about: 'Sobre o SoloMD',
     aboutShort: 'Sobre',
+    openLogDir: 'Abrir pasta de logs',
+    exportLogs: 'Exportar logs para a área de trabalho',
     minimize: 'Minimizar',
     maximize: 'Maximizar',
     restore: 'Restaurar',
@@ -1440,6 +1442,7 @@ export const pt: I18n = {
     tasks: 'Tarefas',
     neighborhood: "Vizinhança",
     history: 'Histórico',
+    inspector: 'Propriedades',
     agent: 'Agente',
   },
   inbox: {

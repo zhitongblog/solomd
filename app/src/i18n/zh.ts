@@ -66,6 +66,8 @@ export const zh: I18n = {
     find: "查找…",
     about: '关于 SoloMD',
     aboutShort: '关于',
+    openLogDir: '打开日志目录',
+    exportLogs: '日志文件打包到桌面',
     minimize: '最小化',
     maximize: '最大化',
     restore: '还原',
@@ -1436,6 +1438,7 @@ export const zh: I18n = {
     tasks: '任务',
     neighborhood: "关系网络",
     history: '历史',
+    inspector: '属性检查器',
     agent: 'AI 助手',
   },
   inbox: {

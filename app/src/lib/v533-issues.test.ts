@@ -74,10 +74,37 @@ describe('v5.3.3 issue fixes (#620, #622, #626, #628, #629, #630, #631)', () => 
     assert.match(awkOut, /hljs-/);
   });
 
-  it('#634: AIRewriteOverlay persists up to 15 custom prompts with hover preview bubble', () => {
+  it('#634 / #643: AIRewriteOverlay persists up to 15 custom prompts without an extra bottom menu item', () => {
     const overlay = fs.readFileSync(path.join(root, 'components/AIRewriteOverlay.vue'), 'utf8');
     assert.match(overlay, /MAX_PROMPT_HISTORY\s*=\s*15/);
-    assert.match(overlay, /ai-overlay__history-bubble/);
+    assert.match(overlay, /:title="item"/);
+    assert.doesNotMatch(overlay, /ai-overlay__history-bubble/);
     assert.match(overlay, /recordPromptHistory/);
+  });
+
+  it('#638: hljs-theme.css scopes .cm-line .hljs-* so CodeMirror monospace color cannot override hljs colors', () => {
+    const css = fs.readFileSync(path.join(root, 'styles/hljs-theme.css'), 'utf8');
+    assert.match(css, /\.cm-line\s+\.hljs-keyword/);
+    assert.match(css, /\.cm-line\s+\.hljs-string/);
+    assert.match(css, /\.cm-line\s+\.hljs-comment/);
+  });
+
+  it('#640: live list rendering separates leading indent from fixed-width marker and cycles per-level bullets', () => {
+    const cm = fs.readFileSync(path.join(root, 'lib/cm-live-render.ts'), 'utf8');
+    assert.match(cm, /BULLET_SYMBOLS\s*=\s*\['•',\s*'◦',\s*'▪'\]/);
+    assert.match(cm, /cm-md-list-indent/);
+  });
+
+  it('#644: SettingsPanel closes before opening ToolbarCustomizeModal and Toolbar uses deferred Teleport', () => {
+    const settings = fs.readFileSync(path.join(root, 'components/SettingsPanel.vue'), 'utf8');
+    const toolbar = fs.readFileSync(path.join(root, 'components/Toolbar.vue'), 'utf8');
+    assert.match(settings, /function openToolbarCustomize\(\)[\s\S]*?emit\('close'\)/);
+    assert.match(toolbar, /<Teleport to="#titlebar-toolbar-slot" :disabled="!dockInTitlebar" defer>/);
+  });
+
+  it('#648: GlobalSearch matches YAML frontmatter tags on #tag / tag: queries', () => {
+    const search = fs.readFileSync(path.join(root, 'components/GlobalSearch.vue'), 'utf8');
+    assert.match(search, /q\.match\(\/\^\(\?:#\|tag:#\?\)/);
+    assert.match(search, /wsIndex\.entries/);
   });
 });

@@ -101,6 +101,20 @@
       "since": "2026-11",
       "platform": "AlternativeTo",
       "url": "https://alternativeto.net/software/solomd/about/"
+    },
+    {
+      "name": "tyysoft(太阳雨)",
+      "since": "2026-11",
+      "platform": "CSDN",
+      "url": "https://tyysoft.blog.csdn.net/article/details/170355638",
+      "github": "tyysoft"
+    },
+    {
+      "name": "tyysoft(太阳雨)",
+      "since": "2026-11",
+      "platform": "博客园",
+      "url": "https://www.cnblogs.com/tyysoft/p/23603038",
+      "github": "tyysoft"
     }
   ],
   "testers": [

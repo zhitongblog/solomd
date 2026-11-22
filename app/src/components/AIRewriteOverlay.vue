@@ -72,12 +72,11 @@ const streamingError = ref<string | null>(null);
 const requestId = ref<string | null>(null);
 const sentBanner = ref(false);
 
-// #634 — Persist the 15 most-recent custom rewrite prompts with hover-bubble preview.
+// #634 / #643 — Persist the 15 most-recent custom rewrite prompts.
 const PROMPT_HISTORY_KEY = 'solomd.aiRewritePromptHistory';
 const MAX_PROMPT_HISTORY = 15;
 const promptHistory = ref<string[]>(loadPromptHistory());
 const historyOpen = ref(false);
-const hoveredPrompt = ref<string | null>(null);
 
 function loadPromptHistory(): string[] {
   try {
@@ -111,13 +110,11 @@ function recordPromptHistory(prompt: string): void {
 function pickHistoryPrompt(p: string): void {
   customPrompt.value = p;
   historyOpen.value = false;
-  hoveredPrompt.value = null;
 }
 
 function removeHistoryPrompt(p: string): void {
   const next = promptHistory.value.filter((item) => item !== p);
   promptHistory.value = next;
-  if (hoveredPrompt.value === p) hoveredPrompt.value = null;
   try {
     localStorage.setItem(PROMPT_HISTORY_KEY, JSON.stringify(next));
   } catch {
@@ -284,7 +281,6 @@ async function startAction(a: AIAction): Promise<void> {
   if (a.custom) {
     recordPromptHistory(customPrompt.value);
     historyOpen.value = false;
-    hoveredPrompt.value = null;
   }
   action.value = a;
   reset();
@@ -451,7 +447,6 @@ onBeforeUnmount(() => {
                 v-if="historyOpen && promptHistory.length > 0"
                 class="ai-overlay__history-menu"
                 role="listbox"
-                @mouseleave="hoveredPrompt = null"
               >
                 <div
                   v-for="(item, idx) in promptHistory"
@@ -459,7 +454,6 @@ onBeforeUnmount(() => {
                   class="ai-overlay__history-item"
                   role="option"
                   :title="item"
-                  @mouseenter="hoveredPrompt = item"
                   @click="pickHistoryPrompt(item)"
                 >
                   <span class="ai-overlay__history-text">{{ item }}</span>
@@ -469,9 +463,6 @@ onBeforeUnmount(() => {
                     aria-label="Remove"
                     @click.stop="removeHistoryPrompt(item)"
                   >×</button>
-                </div>
-                <div v-if="hoveredPrompt" class="ai-overlay__history-bubble">
-                  {{ hoveredPrompt }}
                 </div>
               </div>
             </div>
@@ -730,20 +721,6 @@ onBeforeUnmount(() => {
 }
 .ai-overlay__history-del:hover {
   color: var(--danger, #dc2626);
-}
-.ai-overlay__history-bubble {
-  position: sticky;
-  bottom: 0;
-  margin-top: 4px;
-  padding: 8px 10px;
-  border-top: 1px solid var(--hairline);
-  background: var(--bg-sidebar, var(--bg));
-  color: var(--text);
-  font-size: 12px;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-break: break-word;
-  border-radius: 0 0 6px 6px;
 }
 .ai-overlay__diff {
   padding: 12px 14px;

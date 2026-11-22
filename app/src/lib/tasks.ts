@@ -120,6 +120,8 @@ export function isOverdue(due: string | null, today: string): boolean {
 export interface SortableTask {
   done: boolean;
   meta: TaskMeta;
+  /** Optional 1-based line number for preserving document order (#642). */
+  line?: number;
 }
 
 /**
@@ -135,6 +137,9 @@ export function compareTasks(a: SortableTask, b: SortableTask): number {
   const aP = a.meta.priority ? PRIORITY_RANK[a.meta.priority] : 3;
   const bP = b.meta.priority ? PRIORITY_RANK[b.meta.priority] : 3;
   if (aP !== bP) return aP - bP;
+  if (a.line != null && b.line != null && a.line !== b.line) {
+    return a.line - b.line;
+  }
   return a.meta.title.localeCompare(b.meta.title);
 }
 

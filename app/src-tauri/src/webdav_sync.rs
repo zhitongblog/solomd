@@ -9,11 +9,96 @@ use reqwest::Method;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, HashSet};
+use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::sync::OnceLock;
+use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 static SYNC_APP_HANDLE: OnceLock<tauri::AppHandle> = OnceLock::new();
+static SYNC_DATA_DIR_OVERRIDE: OnceLock<PathBuf> = OnceLock::new();
+static SYNC_LOG_LOCK: OnceLock<Mutex<Option<String>>> = OnceLock::new();
+
+const SYNC_LOG_RETENTION_DAYS: i64 = 30;
+
+/// #636 — Initialize the global sync AppHandle (and optional portable-mode app_data_dir)
+/// once at app startup so sync logs from GitHub/conflict resolution are never dropped.
+pub fn init_sync_app_handle(app: &tauri::AppHandle, data_dir_override: Option<PathBuf>) {
+    let _ = SYNC_APP_HANDLE.set(app.clone());
+    if let Some(dir) = data_dir_override {
+        let _ = SYNC_DATA_DIR_OVERRIDE.set(dir);
+    }
+}
+
+fn resolve_sync_log_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    use tauri::Manager;
+    let base = if let Some(dir) = SYNC_DATA_DIR_OVERRIDE.get() {
+        dir.clone()
+    } else {
+        app.path()
+            .app_data_dir()
+            .map_err(|e| format!("failed to resolve app data dir: {e}"))?
+    };
+    let dir = base.join("logs");
+    std::fs::create_dir_all(&dir).map_err(|e| format!("failed to create logs dir: {e}"))?;
+    Ok(dir)
+}
+
+fn prune_old_sync_logs(log_dir: &Path, today: chrono::NaiveDate) {
+    let Ok(entries) = std::fs::read_dir(log_dir) else {
+        return;
+    };
+    let cutoff = today - chrono::Duration::days(SYNC_LOG_RETENTION_DAYS);
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+        let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
+            continue;
+        };
+        if let Some(date_str) = name
+            .strip_prefix("sync-")
+            .and_then(|s| s.strip_suffix(".log"))
+        {
+            if let Ok(d) = chrono::NaiveDate::parse_from_str(date_str, "%Y-%m-%d") {
+                if d < cutoff {
+                    let _ = std::fs::remove_file(&path);
+                }
+            }
+        }
+    }
+}
+
+/// #636 — Append one timestamped line to `<app_data_dir>/logs/sync-YYYY-MM-DD.log`
+/// and prune daily log files older than 30 days once per day.
+pub fn append_sync_log(channel: &str, direction: &str, message: &str) {
+    let Some(app) = SYNC_APP_HANDLE.get() else {
+        return;
+    };
+    let Ok(log_dir) = resolve_sync_log_dir(app) else {
+        return;
+    };
+    let now = chrono::Local::now();
+    let date_key = now.format("%Y-%m-%d").to_string();
+    let ts = now.format("%Y-%m-%d %H:%M:%S").to_string();
+    let lock = SYNC_LOG_LOCK.get_or_init(|| Mutex::new(None));
+    let Ok(mut last_pruned) = lock.lock() else {
+        return;
+    };
+    if last_pruned.as_deref() != Some(date_key.as_str()) {
+        prune_old_sync_logs(&log_dir, now.date_naive());
+        *last_pruned = Some(date_key.clone());
+    }
+    let log_file = log_dir.join(format!("sync-{date_key}.log"));
+    if let Ok(mut f) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&log_file)
+    {
+        let clean = message.replace('\r', " ").replace('\n', " ");
+        let _ = writeln!(f, "[{ts}] [{channel}/{direction}] {clean}");
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SyncProgressPayload {
@@ -36,6 +121,8 @@ fn emit_sync_progress(
     total: usize,
     message: impl Into<String>,
 ) {
+    let msg = message.into();
+    append_sync_log(channel, direction, &msg);
     if let Some(app) = SYNC_APP_HANDLE.get() {
         use tauri::Emitter;
         let percent = if total == 0 {
@@ -51,7 +138,7 @@ fn emit_sync_progress(
                 current,
                 total,
                 percent,
-                message: message.into(),
+                message: msg,
             },
         );
     }
@@ -344,7 +431,11 @@ fn write_local_base_manifest(workspace: &Path, manifest: &SyncFolderManifest) {
 }
 
 fn is_conflict_copy_rel(rel_path: &str) -> bool {
-    rel_path.contains(" (冲突副本 ")
+    Path::new(rel_path)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .map(|name| name.contains(" (冲突副本 "))
+        .unwrap_or(false)
 }
 
 /// Write a side-by-side conflict copy (`<stem> (冲突副本 <origin> <timestamp>_<sha6>).<ext>`)
@@ -388,6 +479,17 @@ pub fn write_conflict_copy_file(
         let _ = std::fs::create_dir_all(tp);
     }
     if std::fs::write(&target, conflicting_bytes).is_ok() {
+        // #636 / #637 — Record exact conflict copy filename and snapshot directory
+        // in both the live sync log stream and the persistent daily log file.
+        emit_sync_progress(
+            "sync",
+            "conflict",
+            0,
+            0,
+            format!(
+                "冲突已处理: 原文件={local_rel} | 冲突副本={conflict_rel} | 快照目录={SYNC_VERSIONS_REL}"
+            ),
+        );
         Some(conflict_rel)
     } else {
         None
@@ -829,6 +931,381 @@ pub async fn sync_prune_file_versions(
             }
         }
         Ok(pruned)
+    })
+    .await
+    .map_err(|e| format!("join: {e}"))?
+}
+
+/// #636 — Return `<app_data_dir>/logs` (creating it if needed) so the Help menu
+/// can open it in the OS file manager.
+#[tauri::command]
+pub fn sync_get_log_dir(app: tauri::AppHandle) -> Result<String, String> {
+    set_sync_app_handle(&app);
+    let dir = resolve_sync_log_dir(&app)?;
+    Ok(dir.to_string_lossy().to_string())
+}
+
+/// #636 — Zip all `.log` files in `<app_data_dir>/logs` to the user's Desktop
+/// (falling back to `<app_data_dir>` if Desktop is unavailable) and return the zip path.
+#[tauri::command]
+pub async fn sync_export_logs_to_desktop(app: tauri::AppHandle) -> Result<String, String> {
+    set_sync_app_handle(&app);
+    use tauri::Manager;
+    let log_dir = resolve_sync_log_dir(&app)?;
+    let desktop_dir = app
+        .path()
+        .desktop_dir()
+        .ok()
+        .filter(|d| d.is_dir())
+        .or_else(|| SYNC_DATA_DIR_OVERRIDE.get().cloned())
+        .or_else(|| app.path().app_data_dir().ok())
+        .ok_or_else(|| "failed to resolve desktop or app data dir".to_string())?;
+
+    tauri::async_runtime::spawn_blocking(move || {
+        let date_tag = chrono::Local::now().format("%Y-%m-%d_%H%M%S").to_string();
+        let zip_path = desktop_dir.join(format!("SoloMD-logs-{date_tag}.zip"));
+        let file = std::fs::File::create(&zip_path)
+            .map_err(|e| format!("failed to create log archive: {e}"))?;
+        let mut zip = zip::ZipWriter::new(file);
+        let options = zip::write::SimpleFileOptions::default()
+            .compression_method(zip::CompressionMethod::Deflated);
+
+        let mut added = 0usize;
+        if let Ok(entries) = std::fs::read_dir(&log_dir) {
+            let mut log_files: Vec<PathBuf> = entries
+                .flatten()
+                .map(|e| e.path())
+                .filter(|p| {
+                    p.is_file()
+                        && p.extension()
+                            .and_then(|e| e.to_str())
+                            .map(|e| e.eq_ignore_ascii_case("log"))
+                            .unwrap_or(false)
+                })
+                .collect();
+            log_files.sort();
+            for p in log_files {
+                if let (Some(name), Ok(bytes)) =
+                    (p.file_name().and_then(|n| n.to_str()), std::fs::read(&p))
+                {
+                    if zip.start_file(name, options).is_ok() && zip.write_all(&bytes).is_ok() {
+                        added += 1;
+                    }
+                }
+            }
+        }
+        if added == 0 {
+            let _ = zip.start_file("README.txt", options);
+            let _ = zip.write_all(b"No sync log files recorded yet.\n");
+        }
+        zip.finish()
+            .map_err(|e| format!("failed to finalize log archive: {e}"))?;
+        Ok(zip_path.to_string_lossy().to_string())
+    })
+    .await
+    .map_err(|e| format!("join: {e}"))?
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SyncConflictEntry {
+    pub base_rel: String,
+    pub conflict_rel: String,
+    pub base_exists: bool,
+    pub conflict_mtime: u64,
+    pub conflict_size: u64,
+    pub snapshot_dir: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SyncConflictDiff {
+    pub base_rel: String,
+    pub conflict_rel: String,
+    pub base_text: String,
+    pub conflict_text: String,
+    pub added_lines: usize,
+    pub removed_lines: usize,
+    pub hunks: Vec<SnapshotDiffHunk>,
+}
+
+fn derive_base_rel_from_conflict(conflict_rel: &str) -> Option<String> {
+    let p = Path::new(conflict_rel);
+    let fname = p.file_name()?.to_str()?;
+    let marker_idx = fname.rfind(" (冲突副本 ")?;
+    let after = &fname[marker_idx..];
+    let close_idx = after.find(')')?;
+    let base_name = format!("{}{}", &fname[..marker_idx], &after[close_idx + 1..]);
+    if base_name.is_empty() {
+        return None;
+    }
+    match p.parent() {
+        Some(parent) if !parent.as_os_str().is_empty() => {
+            let parent_str = parent
+                .components()
+                .map(|c| c.as_os_str().to_string_lossy().into_owned())
+                .collect::<Vec<_>>()
+                .join("/");
+            Some(format!("{parent_str}/{base_name}"))
+        }
+        _ => Some(base_name),
+    }
+}
+
+/// #637 — Strictly validate that a relative path stays inside `ws` (no absolute
+/// paths, no `..` traversal, and canonicalized path/parent stays under `ws`).
+fn resolve_safe_workspace_rel(ws: &Path, rel: &str) -> Result<PathBuf, String> {
+    use std::path::Component;
+    let trimmed = rel.trim();
+    if trimmed.is_empty() {
+        return Err("路径不能为空".to_string());
+    }
+    let rel_path = Path::new(trimmed);
+    if rel_path.is_absolute() {
+        return Err("不允许使用绝对路径".to_string());
+    }
+    let mut clean = PathBuf::new();
+    for comp in rel_path.components() {
+        match comp {
+            Component::Normal(seg) => clean.push(seg),
+            Component::CurDir => {}
+            Component::ParentDir | Component::RootDir | Component::Prefix(_) => {
+                return Err("不允许访问工作区之外的路径".to_string());
+            }
+        }
+    }
+    if clean.as_os_str().is_empty() {
+        return Err("无效的相对路径".to_string());
+    }
+    let ws_canon = std::fs::canonicalize(ws).map_err(|e| format!("无效的工作区目录: {e}"))?;
+    let joined = ws_canon.join(&clean);
+    if joined.exists() {
+        let canon = std::fs::canonicalize(&joined).map_err(|e| format!("无法解析目标路径: {e}"))?;
+        if !canon.starts_with(&ws_canon) {
+            return Err("路径超出工作区范围".to_string());
+        }
+        return Ok(canon);
+    }
+    // For not-yet-existing base files, verify the nearest existing ancestor is inside `ws_canon`.
+    let mut anc = joined.parent();
+    while let Some(a) = anc {
+        if a.exists() {
+            let a_canon = std::fs::canonicalize(a).map_err(|e| format!("无法解析父目录: {e}"))?;
+            if !a_canon.starts_with(&ws_canon) {
+                return Err("路径超出工作区范围".to_string());
+            }
+            break;
+        }
+        anc = a.parent();
+    }
+    Ok(joined)
+}
+
+/// #637 — Ensure `<workspace>/.solomd-sync/versions` exists and return its native path.
+#[tauri::command]
+pub fn sync_ensure_snapshot_dir(workspace: String) -> Result<String, String> {
+    let ws = Path::new(workspace.trim());
+    if !ws.is_dir() {
+        return Err("工作区目录不存在".to_string());
+    }
+    let dir = ws.join(SYNC_VERSIONS_REL);
+    std::fs::create_dir_all(&dir).map_err(|e| format!("无法创建快照目录: {e}"))?;
+    Ok(dir.to_string_lossy().to_string())
+}
+
+/// #637 — Scan the workspace for sync conflict copies (`* (冲突副本 *).*`) paired
+/// with their working copy file and snapshot directory.
+#[tauri::command]
+pub async fn sync_list_conflicts(workspace: String) -> Result<Vec<SyncConflictEntry>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let ws = Path::new(workspace.trim());
+        if !ws.is_dir() {
+            return Ok(vec![]);
+        }
+        let snapshot_dir = ws.join(SYNC_VERSIONS_REL).to_string_lossy().to_string();
+        let mut out = Vec::new();
+        for entry in walkdir::WalkDir::new(ws)
+            .follow_links(false)
+            .into_iter()
+            .filter_entry(|e| {
+                let name = e.file_name().to_string_lossy();
+                name != ".git" && name != SYNC_META_DIR && name != "node_modules"
+            })
+            .flatten()
+        {
+            if !entry.file_type().is_file() {
+                continue;
+            }
+            let Ok(rel_p) = entry.path().strip_prefix(ws) else {
+                continue;
+            };
+            let rel = rel_p
+                .components()
+                .map(|c| c.as_os_str().to_string_lossy().into_owned())
+                .collect::<Vec<_>>()
+                .join("/");
+            if !is_conflict_copy_rel(&rel) {
+                continue;
+            }
+            let Some(base_rel) = derive_base_rel_from_conflict(&rel) else {
+                continue;
+            };
+            let meta = entry.metadata().ok();
+            let conflict_size = meta.as_ref().map(|m| m.len()).unwrap_or(0);
+            let conflict_mtime = meta
+                .as_ref()
+                .and_then(|m| m.modified().ok())
+                .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
+                .map(|d| d.as_secs())
+                .unwrap_or(0);
+            let base_exists = ws.join(&base_rel).is_file();
+            out.push(SyncConflictEntry {
+                base_rel,
+                conflict_rel: rel,
+                base_exists,
+                conflict_mtime,
+                conflict_size,
+                snapshot_dir: snapshot_dir.clone(),
+            });
+        }
+        out.sort_by(|a, b| b.conflict_mtime.cmp(&a.conflict_mtime));
+        Ok(out)
+    })
+    .await
+    .map_err(|e| format!("join: {e}"))?
+}
+
+/// #637 — Return both texts and a line-level diff between the working copy and conflict copy.
+#[tauri::command]
+pub async fn sync_diff_conflict(
+    workspace: String,
+    base_rel: String,
+    conflict_rel: String,
+) -> Result<SyncConflictDiff, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let ws = Path::new(workspace.trim());
+        let base_path = resolve_safe_workspace_rel(ws, &base_rel)?;
+        let conflict_path = resolve_safe_workspace_rel(ws, &conflict_rel)?;
+        if !is_conflict_copy_rel(&conflict_rel) {
+            return Err("目标文件不是同步冲突副本".to_string());
+        }
+        let base_text = if base_path.is_file() {
+            std::fs::read_to_string(&base_path).unwrap_or_default()
+        } else {
+            String::new()
+        };
+        let conflict_text = std::fs::read_to_string(&conflict_path)
+            .map_err(|e| format!("无法读取冲突副本: {e}"))?;
+        let diff = compute_snapshot_diff(&base_text, &conflict_text, &conflict_rel);
+        let mut added_lines = 0usize;
+        let mut removed_lines = 0usize;
+        for h in &diff.hunks {
+            for ln in &h.lines {
+                if ln.kind == "add" {
+                    added_lines += 1;
+                } else if ln.kind == "del" {
+                    removed_lines += 1;
+                }
+            }
+        }
+        Ok(SyncConflictDiff {
+            base_rel,
+            conflict_rel,
+            base_text,
+            conflict_text,
+            added_lines,
+            removed_lines,
+            hunks: diff.hunks,
+        })
+    })
+    .await
+    .map_err(|e| format!("join: {e}"))?
+}
+
+/// #637 — Resolve a sync conflict copy via `keep_base`, `use_conflict`, or `manual_merge`.
+#[tauri::command]
+pub async fn sync_resolve_conflict(
+    workspace: String,
+    base_rel: String,
+    conflict_rel: String,
+    strategy: String,
+    merged_content: Option<String>,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let ws = Path::new(workspace.trim());
+        if !is_conflict_copy_rel(&conflict_rel) {
+            return Err("目标文件不是同步冲突副本，拒绝修改或删除".to_string());
+        }
+        let base_path = resolve_safe_workspace_rel(ws, &base_rel)?;
+        let conflict_path = resolve_safe_workspace_rel(ws, &conflict_rel)?;
+        if !conflict_path.is_file() {
+            return Err("冲突副本文件不存在".to_string());
+        }
+        match strategy.as_str() {
+            "keep_base" => {
+                std::fs::remove_file(&conflict_path)
+                    .map_err(|e| format!("删除冲突副本失败: {e}"))?;
+                append_sync_log(
+                    "sync",
+                    "resolve",
+                    &format!("保留工作副本并删除冲突副本: {conflict_rel}"),
+                );
+            }
+            "use_conflict" => {
+                if base_path.is_file() {
+                    if let Ok(old_bytes) = std::fs::read(&base_path) {
+                        let _ = save_local_version_snapshot(
+                            ws,
+                            base_rel.trim(),
+                            &old_bytes,
+                            "before-conflict-replace",
+                            DEFAULT_MAX_VERSIONS,
+                        );
+                    }
+                }
+                let conflict_bytes = std::fs::read(&conflict_path)
+                    .map_err(|e| format!("读取冲突副本失败: {e}"))?;
+                if let Some(parent) = base_path.parent() {
+                    let _ = std::fs::create_dir_all(parent);
+                }
+                std::fs::write(&base_path, &conflict_bytes)
+                    .map_err(|e| format!("写入工作副本失败: {e}"))?;
+                std::fs::remove_file(&conflict_path)
+                    .map_err(|e| format!("删除冲突副本失败: {e}"))?;
+                append_sync_log(
+                    "sync",
+                    "resolve",
+                    &format!("采用冲突副本覆盖工作副本: {base_rel} <- {conflict_rel}"),
+                );
+            }
+            "manual_merge" => {
+                let merged = merged_content
+                    .ok_or_else(|| "缺少手工合并后的内容".to_string())?;
+                if base_path.is_file() {
+                    if let Ok(old_bytes) = std::fs::read(&base_path) {
+                        let _ = save_local_version_snapshot(
+                            ws,
+                            base_rel.trim(),
+                            &old_bytes,
+                            "before-conflict-merge",
+                            DEFAULT_MAX_VERSIONS,
+                        );
+                    }
+                }
+                if let Some(parent) = base_path.parent() {
+                    let _ = std::fs::create_dir_all(parent);
+                }
+                std::fs::write(&base_path, merged.as_bytes())
+                    .map_err(|e| format!("写入合并结果失败: {e}"))?;
+                std::fs::remove_file(&conflict_path)
+                    .map_err(|e| format!("删除冲突副本失败: {e}"))?;
+                append_sync_log(
+                    "sync",
+                    "resolve",
+                    &format!("手工合并冲突并删除冲突副本: {base_rel} (已移除 {conflict_rel})"),
+                );
+            }
+            other => return Err(format!("未知的冲突处理策略: {other}")),
+        }
+        Ok(())
     })
     .await
     .map_err(|e| format!("join: {e}"))?

@@ -607,6 +607,10 @@ fn scan_file(path: &Path) -> Result<IndexEntry, String> {
         if let Some(t) = map.get("tags") {
             collect_yaml_tags(t, &mut tags);
         }
+        // #648 — Also recognize singular `tag:` frontmatter key.
+        if let Some(t) = map.get("tag") {
+            collect_yaml_tags(t, &mut tags);
+        }
     }
     tags.sort();
     tags.dedup();
@@ -908,7 +912,7 @@ fn strip_inline_code(s: &str) -> String {
 fn collect_yaml_tags(value: &serde_json::Value, out: &mut Vec<String>) {
     match value {
         serde_json::Value::String(s) => {
-            for piece in s.split(|c: char| c == ',' || c.is_whitespace()) {
+            for piece in s.split(|c: char| c == ',' || c == '，' || c == '、' || c.is_whitespace()) {
                 let t = piece.trim().trim_start_matches('#');
                 if !t.is_empty() {
                     out.push(t.to_string());

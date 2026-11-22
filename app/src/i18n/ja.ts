@@ -65,6 +65,8 @@ export const ja: I18n = {
     find: "検索…",
     about: 'SoloMD について',
     aboutShort: 'バージョン情報',
+    openLogDir: 'ログフォルダを開く',
+    exportLogs: 'ログをデスクトップにエクスポート',
     minimize: '最小化',
     maximize: '最大化',
     restore: '元のサイズに戻す',
@@ -1438,6 +1440,7 @@ export const ja: I18n = {
     tasks: 'タスク',
     neighborhood: "関連ノート",
     history: '履歴',
+    inspector: 'プロパティ',
     agent: 'エージェント',
   },
   inbox: {

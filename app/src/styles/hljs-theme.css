@@ -3,21 +3,33 @@
  * CSS variables so syntax colors follow the active app theme
  * (Light / Dark / Nord / Solarized / Monokai / GitHub Light / Dracula).
  *
+ * #638 — Prefix `.cm-line .hljs-*` alongside `.hljs-*` so specificity (0,2,0)
+ * beats CodeMirror's dynamically injected `t.monospace` `.ͼXX` rule (0,1,0)
+ * in live-edit and edit modes.
+ *
  * Reference: https://highlightjs.readthedocs.io/en/latest/css-classes-reference.html
  */
 
+.cm-line .hljs,
 .hljs {
   display: block;
   color: var(--syn-variable);
   background: transparent;
 }
 
+.cm-line .hljs-comment,
+.cm-line .hljs-quote,
 .hljs-comment,
 .hljs-quote {
   color: var(--syn-comment);
   font-style: italic;
 }
 
+.cm-line .hljs-keyword,
+.cm-line .hljs-selector-tag,
+.cm-line .hljs-meta .hljs-keyword,
+.cm-line .hljs-doctag,
+.cm-line .hljs-literal,
 .hljs-keyword,
 .hljs-selector-tag,
 .hljs-meta .hljs-keyword,
@@ -26,6 +38,11 @@
   color: var(--syn-keyword);
 }
 
+.cm-line .hljs-string,
+.cm-line .hljs-regexp,
+.cm-line .hljs-template-tag,
+.cm-line .hljs-template-variable,
+.cm-line .hljs-addition,
 .hljs-string,
 .hljs-regexp,
 .hljs-template-tag,
@@ -34,12 +51,21 @@
   color: var(--syn-string);
 }
 
+.cm-line .hljs-number,
+.cm-line .hljs-symbol,
+.cm-line .hljs-bullet,
 .hljs-number,
 .hljs-symbol,
 .hljs-bullet {
   color: var(--syn-number);
 }
 
+.cm-line .hljs-function,
+.cm-line .hljs-title,
+.cm-line .hljs-title.function_,
+.cm-line .hljs-title.class_,
+.cm-line .hljs-built_in,
+.cm-line .hljs-class .hljs-title,
 .hljs-function,
 .hljs-title,
 .hljs-title.function_,
@@ -49,12 +75,22 @@
   color: var(--syn-function);
 }
 
+.cm-line .hljs-type,
+.cm-line .hljs-class,
+.cm-line .hljs-params,
 .hljs-type,
 .hljs-class,
 .hljs-params {
   color: var(--syn-type);
 }
 
+.cm-line .hljs-property,
+.cm-line .hljs-attr,
+.cm-line .hljs-attribute,
+.cm-line .hljs-selector-attr,
+.cm-line .hljs-selector-pseudo,
+.cm-line .hljs-selector-class,
+.cm-line .hljs-selector-id,
 .hljs-property,
 .hljs-attr,
 .hljs-attribute,
@@ -65,33 +101,43 @@
   color: var(--syn-property);
 }
 
+.cm-line .hljs-operator,
+.cm-line .hljs-punctuation,
 .hljs-operator,
 .hljs-punctuation {
   color: var(--syn-operator);
 }
 
+.cm-line .hljs-variable,
+.cm-line .hljs-name,
+.cm-line .hljs-tag,
 .hljs-variable,
 .hljs-name,
 .hljs-tag {
   color: var(--syn-variable);
 }
 
+.cm-line .hljs-meta,
 .hljs-meta {
   color: var(--syn-comment);
 }
 
+.cm-line .hljs-deletion,
 .hljs-deletion {
   color: var(--danger, #d64545);
 }
 
+.cm-line .hljs-emphasis,
 .hljs-emphasis {
   font-style: italic;
 }
 
+.cm-line .hljs-strong,
 .hljs-strong {
   font-weight: bold;
 }
 
+.cm-line .hljs-link,
 .hljs-link {
   color: var(--accent);
   text-decoration: underline;

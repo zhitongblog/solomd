@@ -16,6 +16,7 @@ import { computed, ref } from 'vue';
 import { useTasks, type WorkspaceTask } from '../composables/useTasks';
 import { useFiles } from '../composables/useFiles';
 import { useWorkspaceIndexStore } from '../stores/workspaceIndex';
+import { useSettingsStore } from '../stores/settings';
 import { useTilesStore } from '../stores/tiles';
 import { useI18n } from '../i18n';
 import Icons from './Icons.vue';
@@ -26,6 +27,7 @@ import { isOverdue, localDateKey } from '../lib/tasks';
 const { tasks, toggle } = useTasks();
 const files = useFiles();
 const idx = useWorkspaceIndexStore();
+const settings = useSettingsStore();
 const tiles = useTilesStore();
 const { t } = useI18n();
 
@@ -34,6 +36,7 @@ const emit = defineEmits<{ (e: 'close'): void }>();
 type Filter = 'open' | 'today' | 'all';
 const filter = ref<Filter>('open');
 const priorityOnly = ref(false);
+const searchQuery = ref('');
 
 /** Recomputed per render rather than cached: the panel can be open across
  *  midnight, and a stale "today" is how a task silently stops being overdue. */
@@ -48,11 +51,37 @@ const visible = computed<WorkspaceTask[]>(() => {
     );
   }
   if (priorityOnly.value) list = list.filter((x) => x.meta.priority !== null);
+  const q = searchQuery.value.trim().toLowerCase();
+  if (q) {
+    list = list.filter(
+      (x) =>
+        x.meta.title.toLowerCase().includes(q) ||
+        x.raw.toLowerCase().includes(q) ||
+        x.fileName.toLowerCase().includes(q),
+    );
+  }
   return list;
 });
 
-/** Grouped by file so a row's origin is obvious without repeating the file
- *  name on every line. */
+/** #642 — Compare two file paths in file-tree order (directories before files
+ *  at each level, natural numeric-aware alphabetical within the same folder). */
+function compareTreePaths(a: string, b: string): number {
+  const aSegs = a.replace(/\\/g, '/').split('/');
+  const bSegs = b.replace(/\\/g, '/').split('/');
+  const minLen = Math.min(aSegs.length, bSegs.length);
+  for (let i = 0; i < minLen; i++) {
+    if (aSegs[i] === bSegs[i]) continue;
+    const aIsDir = i < aSegs.length - 1;
+    const bIsDir = i < bSegs.length - 1;
+    if (aIsDir !== bIsDir) return aIsDir ? -1 : 1;
+    const cmp = aSegs[i].localeCompare(bSegs[i], undefined, { numeric: true, sensitivity: 'base' });
+    if (cmp !== 0) return cmp;
+  }
+  return aSegs.length - bSegs.length;
+}
+
+/** #642 — Grouped by file in navigation-tree order; within each file, tasks
+ *  keep their original document order (`line` ascending) instead of alphabetical. */
 const groups = computed(() => {
   const byFile = new Map<string, { fileName: string; items: WorkspaceTask[] }>();
   for (const task of visible.value) {
@@ -60,7 +89,13 @@ const groups = computed(() => {
     g.items.push(task);
     byFile.set(task.path, g);
   }
-  return [...byFile.entries()].map(([path, g]) => ({ path, ...g }));
+  return [...byFile.entries()]
+    .sort(([a], [b]) => compareTreePaths(a, b))
+    .map(([path, g]) => ({
+      path,
+      fileName: g.fileName,
+      items: [...g.items].sort((a, b) => a.line - b.line),
+    }));
 });
 
 const openCount = computed(() => tasks.value.filter((x) => !x.done).length);
@@ -86,7 +121,18 @@ async function openTask(task: WorkspaceTask) {
 
 <template>
   <div class="tasks-panel rp">
-    <PanelHeader :title="t('tasks.heading')" :count="openCount || null" @close="emit('close')" />
+    <PanelHeader :title="t('tasks.heading')" :count="openCount || null" @close="emit('close')">
+      <div class="tasks-panel__search">
+        <input
+          v-model="searchQuery"
+          type="search"
+          class="tasks-panel__search-input"
+          :placeholder="settings.language?.startsWith('zh') ? '过滤任务…' : 'Filter…'"
+          :aria-label="settings.language?.startsWith('zh') ? '过滤任务' : 'Filter tasks'"
+          spellcheck="false"
+        />
+      </div>
+    </PanelHeader>
 
     <div class="tasks-panel__filters">
       <SegControl
@@ -151,6 +197,26 @@ async function openTask(task: WorkspaceTask) {
 </template>
 
 <style scoped>
+.tasks-panel__search {
+  flex: 1 1 90px;
+  min-width: 72px;
+  max-width: 150px;
+}
+.tasks-panel__search-input {
+  width: 100%;
+  height: 22px;
+  padding: 0 7px;
+  font-size: 11.5px;
+  color: var(--text);
+  background: var(--fill-1);
+  border: 1px solid var(--hairline);
+  border-radius: 5px;
+  outline: none;
+}
+.tasks-panel__search-input:focus {
+  border-color: var(--accent);
+  background: var(--bg);
+}
 .tasks-panel__filters {
   flex: 0 0 auto;
   display: flex;

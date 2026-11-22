@@ -204,6 +204,11 @@ interface Settings {
    *  the ⌥⌘B shortcut, or the command palette to hide it; toggling again
    *  restores all previously-enabled panes in their previous state. */
   rightSidebarHidden: boolean;
+  /** #647 — Right sidebar layout: `'tabs'` (vertical icon rail + single full-height
+   *  active pane) or `'stack'` (legacy multi-pane vertical stack with splitters). */
+  rightSidebarLayout: 'tabs' | 'stack';
+  /** #647 — Active pane id when `rightSidebarLayout === 'tabs'`. */
+  activeRightTab: string;
   livePreview: boolean;
   v503SourceModeMigrated?: boolean;
   // Editor super features
@@ -863,6 +868,8 @@ function defaults(): Settings {
     // 5.0 — writing first: a new install opens on the text alone; the right
     // sidebar is one click (or ⌘⌥B) away. Saved settings are untouched.
     rightSidebarHidden: true,
+    rightSidebarLayout: 'tabs',
+    activeRightTab: 'outline',
     livePreview: false,
     v503SourceModeMigrated: true,
     spellCheck: true,
@@ -1279,6 +1286,9 @@ function load(): Settings {
         merged.highlightCurrentLine = true;
         merged.v507HighlightLineMigrated = true;
       }
+      if (merged.rightSidebarLayout !== 'tabs' && merged.rightSidebarLayout !== 'stack') {
+        merged.rightSidebarLayout = 'tabs';
+      }
       // D6 — a theme outside the built-in list (e.g. a hand-edited or
       // MCP-written 'system') rendered as a bare white page; reset it to the
       // default, and treat a literal 'system' as the follow-OS option.
@@ -1655,6 +1665,19 @@ export const useSettingsStore = defineStore('settings', {
         this.rightSidebarHidden = false;
         this.persist();
       }
+    },
+    setRightSidebarLayout(layout: 'tabs' | 'stack') {
+      this.rightSidebarLayout = layout;
+      this.persist();
+    },
+    toggleRightSidebarLayout() {
+      this.rightSidebarLayout = this.rightSidebarLayout === 'tabs' ? 'stack' : 'tabs';
+      this.persist();
+    },
+    setActiveRightTab(id: string) {
+      if (!id || this.activeRightTab === id) return;
+      this.activeRightTab = id;
+      this.persist();
     },
     toggleLivePreview() {
       this.livePreview = !this.livePreview;

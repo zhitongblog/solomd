@@ -193,6 +193,7 @@ pub fn run() {
             {
                 let _ = app;
             }
+            webdav_sync::init_sync_app_handle(app.handle(), None);
             // v4.0 Pillar 2 — start the cron-trigger loop. Sleeps until
             // a `schedule` recipe is due; harmless when no recipes are
             // loaded yet (the loop polls workspace state every minute).
@@ -440,6 +441,12 @@ pub fn run() {
             webdav_sync::sync_get_file_version_diff,
             webdav_sync::sync_restore_file_version,
             webdav_sync::sync_prune_file_versions,
+            webdav_sync::sync_get_log_dir,
+            webdav_sync::sync_export_logs_to_desktop,
+            webdav_sync::sync_list_conflicts,
+            webdav_sync::sync_diff_conflict,
+            webdav_sync::sync_resolve_conflict,
+            webdav_sync::sync_ensure_snapshot_dir,
             crypto::crypto_status,
             crypto::crypto_set_passphrase,
             crypto::crypto_clear_passphrase,

@@ -165,24 +165,27 @@ const markerMark = Decoration.mark({ class: 'cm-md-marker' });
 // Widgets carry their own inline styling so they render correctly under BOTH
 // the liveEdit theme (here) and the edit-mode livePreview extension
 // (cm-live-preview.ts), which reuses these via the exports below.
+const BULLET_SYMBOLS = ['•', '◦', '▪'] as const;
+
 class BulletWidget extends WidgetType {
   readonly widthEm: number;
-  readonly leadSpaces: number;
+  readonly depth: number;
   constructor(
     widthEm: number = 0,
-    leadSpaces: number = 0,
+    depth: number = 0,
   ) {
     super();
     this.widthEm = widthEm;
-    this.leadSpaces = leadSpaces;
+    this.depth = depth;
   }
   eq(other: BulletWidget) {
-    return this.widthEm === other.widthEm && this.leadSpaces === other.leadSpaces;
+    return this.widthEm === other.widthEm && this.depth === other.depth;
   }
   toDOM() {
     const span = document.createElement('span');
     span.className = this.widthEm > 0 ? 'cm-md-bullet cm-md-list-prefix' : 'cm-md-bullet';
-    span.textContent = this.widthEm > 0 ? `${' '.repeat(this.leadSpaces)}• ` : '•';
+    const symbol = BULLET_SYMBOLS[Math.max(0, this.depth) % BULLET_SYMBOLS.length];
+    span.textContent = symbol;
     span.style.color = 'var(--md-list)';
     span.style.fontWeight = '700';
     if (this.widthEm > 0) {
@@ -730,6 +733,16 @@ export function buildDecorations(
             seenListLines.add(lineObj.from);
             const leadSpaces = nFrom - lineObj.from;
             const markLen = nTo - nFrom;
+            // #640 — Compute list nesting depth from ancestor list nodes so:
+            //  1. Each nesting level gets a clear ~4-space visual indent (`1.4em`)
+            //  2. Bullet markers cycle `•` → `◦` → `▪` across levels
+            //  3. Leading indent is placed strictly BEFORE the marker so the gap
+            //     between marker and item text is identical at every level.
+            let listDepth = 0;
+            for (let p = node.node.parent; p; p = p.parent) {
+              if (p.name === 'BulletList' || p.name === 'OrderedList') listDepth++;
+            }
+            const depth = Math.max(0, listDepth - 1);
             // #486 / #617 — Keep list markers tight and natural next to body text
             // while still preserving hanging-indent alignment across wrapped lines:
             // bullets `• ` take 0.95em, 1-digit `1.`..`9.` take 1.15em, 2-digit
@@ -741,7 +754,11 @@ export function buildDecorations(
                 : markLen === 3
                   ? 1.65
                   : Math.min(6, markLen * 0.55 + 0.15);
-            const indentEm = Math.min(8, leadSpaces * 0.55 + markEm);
+            const leadEm =
+              leadSpaces > 0
+                ? Math.min(10, Math.max(depth * 1.4, leadSpaces * 0.55))
+                : 0;
+            const indentEm = Math.min(12, leadEm + markEm);
             const indentStr = `${indentEm.toFixed(2)}em`;
             ranges.push(
               Decoration.line({
@@ -751,29 +768,38 @@ export function buildDecorations(
                 },
               }).range(lineObj.from),
             );
-            // #486 — Wrap the list prefix (leading spaces + marker + trailing
-            // space) in an inline-block span of width `indentStr` (`text-indent: 0`)
-            // so the first line's body text starts at the exact same X offset
-            // (`indentStr`) as soft-wrapped continuation lines (`padding-left`).
-            // `white-space: pre` ensures the marker + trailing space can never
-            // wrap onto a second line inside the inline-block (#10).
-            if (!isTask && after === ' ') {
-              let leadFrom = nFrom;
-              while (
-                leadFrom > lineObj.from &&
-                view.state.doc.sliceString(leadFrom - 1, leadFrom) === ' '
-              ) {
-                leadFrom--;
-              }
-              const prefixWidthEm =
-                leadFrom === lineObj.from
-                  ? indentEm
-                  : Math.min(8, (nFrom - leadFrom) * 0.55 + markEm);
+            // #486 / #640 — Give leading spaces/tabs their own fixed-width inline-block
+            // (`leadEm`) and the marker + trailing space its own fixed-width
+            // inline-block (`markEm`) so proportional-font spaces never inflate
+            // the gap AFTER the marker on nested levels.
+            let leadFrom = nFrom;
+            while (leadFrom > lineObj.from) {
+              const ch = view.state.doc.sliceString(leadFrom - 1, leadFrom);
+              if (ch === ' ' || ch === '\t') leadFrom--;
+              else break;
+            }
+            const spanLeadEm =
+              leadFrom === lineObj.from
+                ? leadEm
+                : nFrom > leadFrom
+                  ? Math.min(10, Math.max(depth * 1.4, (nFrom - leadFrom) * 0.55))
+                  : 0;
+            if (nFrom > leadFrom && spanLeadEm > 0) {
+              ranges.push(
+                Decoration.mark({
+                  class: 'cm-md-list-indent',
+                  attributes: {
+                    style: `display: inline-block; min-width: ${spanLeadEm.toFixed(2)}em; text-indent: 0; white-space: pre;`,
+                  },
+                }).range(leadFrom, nFrom),
+              );
+            }
+            if (!isTask && (after === ' ' || after === '\t')) {
               if (!showMarkers && !caretTouches && isBullet && nTo > nFrom) {
                 ranges.push(
                   Decoration.replace({
-                    widget: new BulletWidget(prefixWidthEm, nFrom - leadFrom),
-                  }).range(leadFrom, prefixTo),
+                    widget: new BulletWidget(markEm, depth),
+                  }).range(nFrom, prefixTo),
                 );
                 return;
               }
@@ -781,9 +807,9 @@ export function buildDecorations(
                 Decoration.mark({
                   class: 'cm-md-list-prefix',
                   attributes: {
-                    style: `display: inline-block; width: ${prefixWidthEm.toFixed(2)}em; text-indent: 0; white-space: pre; font-variant-numeric: tabular-nums;`,
+                    style: `display: inline-block; width: ${markEm.toFixed(2)}em; text-indent: 0; white-space: pre; font-variant-numeric: tabular-nums;`,
                   },
-                }).range(leadFrom, prefixTo),
+                }).range(nFrom, prefixTo),
               );
             }
           }
@@ -793,7 +819,16 @@ export function buildDecorations(
             // Hide "- " (dash + trailing space) — the checkbox renders the item.
             ranges.push(hideDeco.range(nFrom, prefixTo));
           } else {
-            ranges.push(bulletDeco.range(nFrom, nTo));
+            let listDepth = 0;
+            for (let p = node.node.parent; p; p = p.parent) {
+              if (p.name === 'BulletList' || p.name === 'OrderedList') listDepth++;
+            }
+            const depth = Math.max(0, listDepth - 1);
+            ranges.push(
+              depth > 0
+                ? Decoration.replace({ widget: new BulletWidget(0, depth) }).range(nFrom, nTo)
+                : bulletDeco.range(nFrom, nTo),
+            );
           }
           return;
         }
