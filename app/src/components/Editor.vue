@@ -8367,14 +8367,34 @@ const cls = computed(() => ({
 }
 .plain-block__render :deep(ul),
 .plain-block__render :deep(ol) {
-  padding-left: 1.45em;
+  padding-left: 1.8em;
+}
+.plain-block__render :deep(ul.contains-task-list) {
+  padding-left: 1.25rem;
 }
 .plain-block__render :deep(ol > li) {
-  padding-left: 0;
+  padding-left: 0.2em;
 }
 .plain-block__render :deep(li::marker) {
   color: var(--text-3);
   font-variant-numeric: tabular-nums;
+}
+.plain-block__render :deep(dl) {
+  margin: 0;
+}
+.plain-block__render :deep(dt) {
+  font-weight: 600;
+  color: var(--text);
+  margin-top: 0.7em;
+}
+.plain-block__render :deep(dt:first-child) {
+  margin-top: 0;
+}
+.plain-block__render :deep(dd) {
+  margin: 0.25em 0 0.55em 1.5em;
+  padding-left: 0.65em;
+  border-left: 2px solid var(--border);
+  color: var(--text-2);
 }
 .plain-block__render :deep(p) {
   white-space: pre-wrap;
@@ -8387,6 +8407,28 @@ const cls = computed(() => ({
 }
 .plain-block__render :deep(a:hover) {
   text-decoration-color: currentColor;
+}
+.plain-block__render :deep(.md-wikilink) {
+  color: var(--accent-text);
+  background: color-mix(in srgb, var(--accent, #ff9f40) 10%, transparent);
+  padding: 1px 5px;
+  border-radius: 4px;
+  text-decoration: none;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.plain-block__render :deep(.md-wikilink:hover) {
+  background: color-mix(in srgb, var(--accent, #ff9f40) 22%, transparent);
+  text-decoration: underline;
+}
+.plain-block__render :deep(kbd) {
+  font-family: var(--font-mono);
+  font-size: 0.82em;
+  background-color: var(--md-code-bg, var(--bg-elev));
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.05em 0.3em;
 }
 .plain-block__render :deep(code) {
   font-family: var(--font-mono);
@@ -8492,13 +8534,6 @@ const cls = computed(() => ({
 .plain-block__render :deep(h5.plain-block__markers),
 .plain-block__render :deep(h6.plain-block__markers) {
   margin: 1.1em 0 0.45em;
-}
-.plain-block__render :deep(ul),
-.plain-block__render :deep(ol) {
-  padding-left: 1.15em;
-}
-.plain-block__render :deep(li::marker) {
-  color: var(--text-3);
 }
 .plain-block__render :deep(table) {
   border-collapse: collapse;

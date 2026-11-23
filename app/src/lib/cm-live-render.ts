@@ -221,6 +221,14 @@ class HrWidget extends WidgetType {
 }
 
 export const bulletDeco = Decoration.replace({ widget: new BulletWidget() });
+const bulletDecoByDepth = [
+  bulletDeco,
+  Decoration.replace({ widget: new BulletWidget(0, 1) }),
+  Decoration.replace({ widget: new BulletWidget(0, 2) }),
+] as const;
+export function bulletDecoForDepth(depth: number): Decoration {
+  return bulletDecoByDepth[Math.max(0, depth) % bulletDecoByDepth.length];
+}
 export const hrDeco = Decoration.replace({ widget: new HrWidget() });
 
 // Does the `ListMark`'s ListItem hold a GFM TaskMarker (`[ ]` / `[x]`)?
@@ -630,14 +638,24 @@ export function buildDecorations(
                     const isBullet = mark === '-' || mark === '*' || mark === '+';
                     const leadSpaces = ch.from - markLine.from;
                     const markLen = ch.to - ch.from;
+                    let listDepth = 0;
+                    for (let p = cur.parent; p; p = p.parent) {
+                      if (p.name === 'BulletList' || p.name === 'OrderedList') listDepth++;
+                    }
+                    const depth = Math.max(0, listDepth - 1);
+                    const baseIndentEm = 0.75;
                     const markEm = isBullet
-                      ? 1.25
-                      : markLen <= 3
-                        ? 2.25
-                        : Math.min(6, markLen * 0.65 + 0.55);
-                    indentEm = isBullet
-                      ? Math.min(6, Math.max(1.15, leadSpaces * 0.55 + 1.15))
-                      : Math.min(8, leadSpaces * 0.55 + markEm);
+                      ? 0.95
+                      : markLen <= 2
+                        ? 1.15
+                        : markLen === 3
+                          ? 1.65
+                          : Math.min(6, markLen * 0.55 + 0.15);
+                    const leadEm =
+                      leadSpaces > 0
+                        ? Math.min(10, Math.max(depth * 1.4, leadSpaces * 0.55))
+                        : 0;
+                    indentEm = baseIndentEm + Math.min(12, leadEm + markEm);
                     break;
                   }
                 }
@@ -1192,9 +1210,8 @@ const liveEditTheme = EditorView.theme({
     color: 'var(--text)',
   },
   '.cm-md-dd-line': {
-    paddingLeft: '1.5em',
-    borderLeft: '2px solid var(--border)',
-    marginLeft: '0.5em',
+    paddingLeft: '1.65em',
+    boxShadow: 'inset 2px 0 0 0 var(--border)',
     color: 'var(--text-2)',
   },
 
@@ -1216,6 +1233,12 @@ const liveEditTheme = EditorView.theme({
     paddingBottom: '10px',
     borderBottomLeftRadius: 'var(--r-lg)',
     borderBottomRightRadius: 'var(--r-lg)',
+  },
+  '.cm-md-quote-line.cm-md-block-first': {
+    borderTopLeftRadius: '4px',
+  },
+  '.cm-md-quote-line.cm-md-block-last': {
+    borderBottomLeftRadius: '4px',
   },
   // A code block's first and last lines are its (hidden) fences, which are
   // already a line of air each — the card needs no extra inset there.

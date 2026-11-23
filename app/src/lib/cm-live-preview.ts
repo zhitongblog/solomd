@@ -25,7 +25,7 @@ import {
 import { frozenDuringComposition, isImeSafeFlushTransaction } from './cm-ime-guard';
 import { tags as t } from '@lezer/highlight';
 import { isDragging, isDragEndTransaction } from './cm-drag-aware';
-import { bulletDeco, hrDeco, listItemHasTask, type MdSyntaxNode } from './cm-live-render';
+import { bulletDecoForDepth, hrDeco, listItemHasTask, type MdSyntaxNode } from './cm-live-render';
 import { hljsFallbackExtension } from './cm-hljs-fallback';
 
 // Marker node names (from @lezer/markdown) we want to hide off-line.
@@ -149,7 +149,11 @@ const makeLiveMarkdownPlugin = (showMarkers: boolean, hideActiveLineMarkers = fa
                 );
                 builder.add(node.from, after === ' ' ? node.to + 1 : node.to, hideDeco);
               } else {
-                builder.add(node.from, node.to, bulletDeco);
+                let listDepth = 0;
+                for (let p = node.node.parent; p; p = p.parent) {
+                  if (p.name === 'BulletList' || p.name === 'OrderedList') listDepth++;
+                }
+                builder.add(node.from, node.to, bulletDecoForDepth(Math.max(0, listDepth - 1)));
               }
               return;
             }
