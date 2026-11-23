@@ -1,0 +1,8 @@
+v5.3.5 Kararlılık ve Düzenleme İyileştirmeleri:
+• Canlı Düzenleme modunda kod bloğu sözdizimi vurgulama düzeltildi
+• Otomatik başlık numaralandırma artık yıl/tarih öneklerini silmiyor
+• Belge içi #bağlantı atlamaları tüm modlarda ve bölünmüş panellerde düzeltildi
+• Daireli rakamlar (①②③), HTML blok boşlukları ve paragraf aralığı iyileştirildi
+• Not açıldığında YAML frontmatter kartı anında işleniyor
+• Genel arama kapatıldığında vurgular otomatik temizleniyor
+• Bulut eşitleme varsayılan olarak 1:1 klasör yapısını koruyor; genişletilmiş çakışma yöneticisi ve onay eklendi

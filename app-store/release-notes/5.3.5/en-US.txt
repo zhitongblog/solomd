@@ -1,0 +1,9 @@
+v5.3.5 Stability & Editing Polish:
+• Fixed code block syntax highlighting in Live Edit mode
+• Fixed heading auto-numbering stripping year/date prefixes
+• Fixed intra-document #anchor link jumps across all modes and split panes
+• Fixed circled numeral (①②③) font rendering
+• Fixed Live Edit paragraph spacing and YAML frontmatter card initial rendering
+• Fixed extra blank lines and spacing inside raw HTML blocks
+• Auto-clear editor search highlights when closing Global Search, and auto-replace clean blank Untitled tabs when opening files
+• Preserve 1:1 directory structure by default in cloud sync, with an enlarged Conflict Manager and native confirmation dialogs

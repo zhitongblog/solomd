@@ -1,0 +1,8 @@
+v5.3.5 Stabilité et confort d'édition :
+• Correction de la coloration syntaxique des blocs de code en édition en direct
+• La numérotation automatique des titres ne supprime plus les années ou dates
+• Correction des liens d'ancres internes # dans tous les modes et panneaux
+• Correction des chiffres cerclés (①②③), des blocs HTML et de l'espacement des paragraphes
+• Affichage immédiat des cartes YAML frontmatter à l'ouverture
+• Nettoyage des surlignages à la fermeture de la recherche globale et remplacement des onglets vides
+• Synchronisation conservant la structure 1:1 par défaut avec gestionnaire de conflits agrandi et confirmation

@@ -1,0 +1,8 @@
+v5.3.5 Estabilidad y mejoras de edición:
+• Corregido el resaltado de sintaxis en bloques de código en modo edición en vivo
+• La numeración automática de encabezados ya no elimina prefijos de año o fecha
+• Corregidos los saltos de enlaces internos #ancla en todos los modos y paneles
+• Corregida la tipografía de números en círculo (①②③) y el espaciado de bloques HTML
+• Corregido el espaciado de párrafos y la vista inicial de tarjetas YAML frontmatter
+• Limpieza automática de resaltados al cerrar búsqueda global y reemplazo de pestañas vacías
+• Sincronización conserva la estructura de carpetas 1:1 por defecto con diálogo de confirmación en conflictos

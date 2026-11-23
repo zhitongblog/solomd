@@ -1,0 +1,8 @@
+v5.3.5 Stabilność i ulepszenia edycji:
+• Naprawiono podświetlanie składni bloków kodu w trybie Live Edit
+• Automatyczna numeracja nagłówków nie usuwa już lat ani dat
+• Naprawiono wewnętrzne linki #kotwice we wszystkich trybach i panelach
+• Poprawiono wyświetlanie cyfr w kółkach (①②③), bloków HTML i odstępów akapitów
+• Natychmiastowe renderowanie kart YAML frontmatter przy otwieraniu notatek
+• Automatyczne czyszczenie podświetleń wyszukiwania globalnego i zastępowanie pustych kart
+• Synchronizacja domyślnie zachowuje strukturę folderów 1:1 z powiększonym menedżerem konfliktów i potwierdzeniem

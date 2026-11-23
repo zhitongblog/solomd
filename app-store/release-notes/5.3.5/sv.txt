@@ -1,0 +1,8 @@
+v5.3.5 Stabilitet och redigeringsförbättringar:
+• Åtgärdade syntaxmarkering i kodblock i Live Edit-läge
+• Automatisk rubriknumrering tar inte längre bort år eller datum
+• Åtgärdade interna #ankarlänkar i alla vyer och delade paneler
+• Förbättrad visning av inringade siffror (①②③), HTML-block och styckeavstånd
+• YAML frontmatter visas direkt som kort när anteckningar öppnas
+• Rensar sökmarkeringar automatiskt när global sökning stängs
+• Synkronisering behåller 1:1-mappstruktur som standard med större konflikthanterare och bekräftelse

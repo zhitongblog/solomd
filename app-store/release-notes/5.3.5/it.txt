@@ -1,0 +1,8 @@
+v5.3.5 Stabilità e miglioramenti di editing:
+• Risolta l'evidenziazione della sintassi nei blocchi di codice in Live Edit
+• La numerazione automatica dei titoli non rimuove più anni o date
+• Risolti i salti ai link interni #ancora in tutte le modalità e pannelli
+• Corretto il rendering dei numeri cerchiati (①②③) e la spaziatura dei blocchi HTML
+• Corretta la spaziatura dei paragrafi e il rendering iniziale del frontmatter YAML
+• Pulizia automatica degli evidenziatori alla chiusura della ricerca globale
+• Sincronizzazione con struttura cartelle 1:1 predefinita e conferma nativa nel gestore conflitti

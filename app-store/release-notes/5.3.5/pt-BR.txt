@@ -1,0 +1,8 @@
+v5.3.5 Estabilidade e melhorias de edição:
+• Corrigido o destaque de sintaxe em blocos de código no modo Live Edit
+• Numeração automática de títulos não remove mais prefixos de ano ou data
+• Corrigidos links internos #âncora em todos os modos e painéis divididos
+• Corrigida a exibição de números circulados (①②③), blocos HTML e espaçamento
+• Renderização imediata de cartões YAML frontmatter ao abrir notas
+• Limpeza automática de destaques ao fechar a busca global e substituição de abas vazias
+• Sincronização preserva estrutura 1:1 por padrão com gerenciador de conflitos ampliado e confirmação

@@ -1,0 +1,8 @@
+v5.3.5 Stabilität & Bearbeitungskomfort:
+• Codeblock-Syntaxhervorhebung im Live-Edit-Modus behoben
+• Automatische Überschriftennummerierung entfernt keine Jahres-/Datumspräfixe mehr
+• Interne #Anker-Links funktionieren nun in allen Ansichten und geteilten Bereichen
+• Darstellung eingekreister Ziffern (①②③) und HTML-Blockabstände korrigiert
+• Absatzabstände im Live-Edit und sofortige YAML-Frontmatter-Darstellung behoben
+• Globale Suche räumt Hervorhebungen beim Schließen auf; leere Standard-Tabs werden beim Öffnen ersetzt
+• Cloud-Sync behält standardmäßig die 1:1-Ordnerstruktur bei; vergrößerter Konfliktmanager mit Bestätigungsdialog

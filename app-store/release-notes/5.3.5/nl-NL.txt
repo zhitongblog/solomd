@@ -1,0 +1,8 @@
+v5.3.5 Stabiliteit & bewerkingsverbeteringen:
+• Syntaxismarkering van codeblokken in Live Edit opgelost
+• Automatische kopnummering verwijdert geen jaar- of datumvoorvoegsels meer
+• Interne #anker-links werken nu in alle weergaven en gesplitste vensters
+• Weergave van omcirkelde cijfers (①②③), HTML-blokken en alinea-afstand verbeterd
+• Directe weergave van YAML-frontmatterkaarten bij het openen van notities
+• Zoekmarkeringen worden automatisch gewist bij sluiten van globaal zoeken
+• Cloud-sync behoudt standaard de 1:1-mapstructuur met vergrote conflictbeheerder en bevestiging
