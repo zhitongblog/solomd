@@ -1903,6 +1903,7 @@ onBeforeUnmount(() => {
   gap: 0;
   background: var(--bg-sidebar);
   z-index: 30;
+  overflow: hidden;
 }
 .titlebar__icon {
   width: 44px;
@@ -1915,7 +1916,9 @@ onBeforeUnmount(() => {
 .titlebar__toolbar-slot {
   display: inline-flex;
   align-items: center;
-  flex-shrink: 0;
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
   margin-left: 6px;
 }
 .toolbar__dock-wrap {
@@ -1958,6 +1961,9 @@ onBeforeUnmount(() => {
 .menubar {
   display: flex;
   align-items: center;
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
   position: relative;
   z-index: 1;
 }
@@ -1979,6 +1985,7 @@ onBeforeUnmount(() => {
 }
 .win-controls {
   display: flex;
+  flex-shrink: 0;
   margin-left: auto;
   height: 100%;
   position: relative;

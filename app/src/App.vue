@@ -328,7 +328,17 @@ function ctxToggle(toggleFn: () => void) {
  * this because they were already routed through `ctxToggle`, which un-hides the
  * strip when a toggle turns a pane on.
  */
+function closeGlobalSearch() {
+  searchPrefill.value = undefined;
+  ctxToggle(() => {
+    searchOpen.value = false;
+  });
+}
+
 function toggleGlobalSearch() {
+  // #656 — Opening search directly from the toolbar/shortcut should start fresh,
+  // never resurrecting a stale tag filter from an earlier click.
+  searchPrefill.value = undefined;
   if (
     searchOpen.value &&
     settings.rightSidebarLayout === 'tabs' &&
@@ -2749,7 +2759,7 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
               <GlobalSearch
                 v-if="p.id === 'search'"
                 :prefill="searchPrefill"
-                @close="searchOpen = false"
+                @close="closeGlobalSearch"
               />
               <Outline v-if="p.id === 'outline'" :cursor-line="outlineLine" @goto="onOutlineGoto" />
               <BacklinksPanel v-if="p.id === 'backlinks'" @close="ctxToggle(() => settings.toggleBacklinks())" />
@@ -2820,7 +2830,7 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
               <GlobalSearch
                 v-if="p.id === 'search'"
                 :prefill="searchPrefill"
-                @close="searchOpen = false"
+                @close="closeGlobalSearch"
               />
               <Outline v-if="p.id === 'outline'" :cursor-line="outlineLine" @goto="onOutlineGoto" />
               <BacklinksPanel v-if="p.id === 'backlinks'" @close="ctxToggle(() => settings.toggleBacklinks())" />

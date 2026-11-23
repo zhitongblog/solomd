@@ -320,9 +320,31 @@ export const useTabsStore = defineStore('tabs', {
         lineEnding,
         showOutline: payload.language === 'markdown' && settings.showOutline,
       };
-      this.tabs.push(tab);
+      // #649 — When opening a real file from disk, replace/dismiss a clean empty
+      // default `Untitled.md` tab (only when it is the sole tab or the active tab,
+      // so an unfocused split pane's blank scratchpad is never silently destroyed).
+      const isDisposableUntitled = (t: Tab) =>
+        !t.filePath && t.content === '' && t.savedContent === '' && !t.pinned;
+      const disposableIdx = this.tabs.findIndex(
+        (t) => isDisposableUntitled(t) && (this.tabs.length === 1 || t.id === this.activeId),
+      );
+      const disposableId = disposableIdx >= 0 ? this.tabs[disposableIdx].id : null;
+      if (disposableIdx >= 0) {
+        this.tabs.splice(disposableIdx, 1, tab);
+      } else {
+        this.tabs.push(tab);
+      }
       this.activeId = tab.id;
       recordMruVisit(tab.id);
+      if (disposableId) {
+        try {
+          const tiles = useTilesStore();
+          tiles.syncFromTabs(tab.id);
+          tiles.removePaneReferences(disposableId);
+        } catch {
+          /* unit tests without tiles store */
+        }
+      }
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('solomd:leave-center-overlay'));
       }

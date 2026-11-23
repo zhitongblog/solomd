@@ -1,6 +1,6 @@
-SoloMD is a calm, fast Markdown editor for iPhone and iPad. Open the app and you are writing — no account, no sign-up, no subscription.
+SoloMD is a 100% free forever, calm, fast local-first Markdown editor for iPhone and iPad. Open the app and start writing immediately — no account, no sign-up, no subscription, no ads.
 
-Your notes are plain .md and .txt files. Keep them in SoloMD's folder in the Files app, or open a folder you already use, and edit the files right where they are. Any editor on any device can read them, today and in ten years.
+Your notes stay plain .md and .txt files in iCloud, the Files app, or any folder you already use. Every editor on every device can read them today and ten years from now.
 
 WRITING FIRST
 

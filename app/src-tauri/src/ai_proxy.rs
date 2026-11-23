@@ -87,6 +87,29 @@ fn with_optional_bearer(rb: reqwest::RequestBuilder, key: &str) -> reqwest::Requ
     }
 }
 
+/// #659 — Attach provider-specific required headers (e.g. OpenCode Go requires
+/// `x-opencode-session` and a non-empty `User-Agent` or returns 400 MissingSessionID).
+fn with_provider_headers(
+    rb: reqwest::RequestBuilder,
+    provider: &str,
+    base: &str,
+    session_id: &str,
+) -> reqwest::RequestBuilder {
+    let is_opencode_go = provider.eq_ignore_ascii_case("opencode-go")
+        || base.to_ascii_lowercase().contains("opencode.ai/zen/go");
+    if is_opencode_go {
+        let sid = if session_id.trim().is_empty() {
+            "ses_solomd_default".to_string()
+        } else {
+            format!("ses_solomd_{}", session_id.trim())
+        };
+        rb.header("x-opencode-session", sid)
+            .header("user-agent", format!("opencode/1.0 SoloMD/{}", env!("CARGO_PKG_VERSION")))
+    } else {
+        rb
+    }
+}
+
 /// Clean up a user-typed OpenAI-compatible base URL.
 ///
 /// The convention (same as the OpenAI SDK) is that the base already carries
@@ -383,6 +406,7 @@ fn drop_cancel_flag(id: &str) {
 /// text on failure so the UI can show it verbatim.
 async fn openai_chat_ping(
     client: &reqwest::Client,
+    provider: &str,
     base: &str,
     key: &str,
     model: Option<&str>,
@@ -397,7 +421,7 @@ async fn openai_chat_ping(
         "max_tokens": 1,
         "messages": [{"role": "user", "content": "ping"}]
     });
-    let res = with_optional_bearer(client.post(&url), key)
+    let res = with_provider_headers(with_optional_bearer(client.post(&url), key), provider, base, "verify")
         .json(&body)
         .send()
         .await
@@ -446,7 +470,7 @@ pub async fn ai_verify_key(
         "openai" => {
             let base = openai_base(base_url.as_deref());
             let url = format!("{base}/models");
-            let res = with_optional_bearer(client.get(&url), &key_str)
+            let res = with_provider_headers(with_optional_bearer(client.get(&url), &key_str), &provider, &base, "verify")
                 .send()
                 .await
                 .map_err(|e| format!("network: {e}"))?;
@@ -474,7 +498,7 @@ pub async fn ai_verify_key(
             // completions work fine, and refusing to verify left those
             // users unable to finish setup. Ask the endpoint the question
             // that actually matters instead.
-            match openai_chat_ping(&client, &base, &key_str, model.as_deref()).await {
+            match openai_chat_ping(&client, &provider, &base, &key_str, model.as_deref()).await {
                 Ok(msg) => Ok(msg),
                 Err(ping_err) => Err(format!(
                     "HTTP {status}: {} · {ping_err}",
@@ -587,7 +611,7 @@ pub async fn ai_list_models(provider: String, base_url: Option<String>) -> Model
         }
     };
 
-    let resp = match with_optional_bearer(client.get(&url), &key).send().await {
+    let resp = match with_provider_headers(with_optional_bearer(client.get(&url), &key), &provider, &base, "models").send().await {
         Ok(r) => r,
         Err(e) => {
             return ModelProbe {
@@ -1276,7 +1300,7 @@ async fn run_openai(
     });
 
     let client = http_client()?;
-    let resp = with_optional_bearer(client.post(&url), api_key)
+    let resp = with_provider_headers(with_optional_bearer(client.post(&url), api_key), &req.provider, &base, request_id)
         .header("content-type", "application/json")
         .json(&body)
         .send()
@@ -1366,7 +1390,7 @@ async fn run_chat_openai(
     });
 
     let client = http_client()?;
-    let resp = with_optional_bearer(client.post(&url), api_key)
+    let resp = with_provider_headers(with_optional_bearer(client.post(&url), api_key), &req.provider, &base, request_id)
         .header("content-type", "application/json")
         .json(&body)
         .send()
@@ -2663,12 +2687,23 @@ async fn openai_one_turn(
     };
 
     let client = http_client()?;
+    let provider_name = req.provider.clone();
+    let base_for_req = base.clone();
+    let req_id_for_req = request_id.to_string();
     let send_once = |body: Value| {
         let url = url.clone();
         let api_key = api_key.to_string();
         let client = client.clone();
+        let provider_name = provider_name.clone();
+        let base_for_req = base_for_req.clone();
+        let req_id_for_req = req_id_for_req.clone();
         async move {
-            with_optional_bearer(client.post(&url), &api_key)
+            with_provider_headers(
+                with_optional_bearer(client.post(&url), &api_key),
+                &provider_name,
+                &base_for_req,
+                &req_id_for_req,
+            )
                 .header("content-type", "application/json")
                 .json(&body)
                 .send()

@@ -9,7 +9,7 @@
  * `hljs-*` classes to `Decoration.mark` spans styled by `styles/hljs-theme.css`.
  */
 import { LanguageDescription, syntaxTree } from '@codemirror/language';
-import { StateEffect, type Extension, type Range } from '@codemirror/state';
+import { Prec, StateEffect, type Extension, type Range } from '@codemirror/state';
 import {
   Decoration,
   type DecorationSet,
@@ -218,7 +218,10 @@ function buildHljsFallbackDecorations(view: EditorView): DecorationSet {
 }
 
 export function hljsFallbackExtension(): Extension {
-  return ViewPlugin.fromClass(
+  // #660 — Must run at `Prec.highest` (above CodeMirror's `Prec.high`
+  // treeHighlighter) so `.hljs-*` spans nest INSIDE the `t.monospace` `.ͼXX`
+  // span and paint `--syn-*` syntax colors instead of being overridden by it.
+  return Prec.highest(ViewPlugin.fromClass(
     class {
       decorations: DecorationSet;
       private unsubscribe: (() => void) | null = null;
@@ -263,5 +266,5 @@ export function hljsFallbackExtension(): Extension {
       }
     },
     { decorations: (v) => v.decorations },
-  );
+  ));
 }

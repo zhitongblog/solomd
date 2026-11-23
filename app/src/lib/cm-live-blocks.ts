@@ -2528,8 +2528,9 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
           if (fmEndLine >= 2) {
             const cursorInside =
               keepSource ||
-              (cursorLine >= 1 && cursorLine <= fmEndLine) ||
-              (cursorLineEnd >= 1 && cursorLineEnd <= fmEndLine);
+              (!pureWysiwyg &&
+                ((cursorLine >= 1 && cursorLine <= fmEndLine) ||
+                  (cursorLineEnd >= 1 && cursorLineEnd <= fmEndLine)));
             if (!cursorInside) {
               const blockFrom = doc.line(1).from;
               const blockTo = doc.line(fmEndLine).to;
@@ -3510,6 +3511,17 @@ export const liveBlocksTheme = EditorView.theme({
   '.cm-live-block--html': {
     maxWidth: '100%',
     overflowX: 'auto',
+    whiteSpace: 'normal',
+    padding: '0.25em 0',
+  },
+  '.cm-live-block--html > :first-child': {
+    marginTop: '0',
+  },
+  '.cm-live-block--html > :last-child': {
+    marginBottom: '0',
+  },
+  '.cm-live-block--html pre': {
+    whiteSpace: 'pre-wrap',
   },
   '.cm-live-block--html img': {
     maxWidth: '100%',

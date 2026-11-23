@@ -1146,6 +1146,7 @@ function renderPlainBlock(src: string, precomputedRoot?: string | null): string 
   const isRichBlock =
     isTocBlock ||
     parseTable(src) !== null ||
+    /^---[ \t]*\r?\n[\s\S]*?\r?\n(?:---|\.\.\.)[ \t]*$/.test(src.trim()) ||
     /^\s*(`{3,}|~{3,})/.test(src) ||
     /^\s*(\$\$|\\\[)/.test(src) ||
     /!\[[^\]]*\]\(|!\[[^\]]*\]\[/.test(src) ||
@@ -4933,6 +4934,9 @@ function richExtensionsFor(tab: Tab) {
     // Cursor enters → widget unmounts → source returns. Image paths
     // resolve via the same extractImageRoot used by Preview/Export.
     return [
+      // #652 — Mark the `.cm-editor` root with `cm-live-edit` so paragraph-spacing
+      // rules scoped under `&.cm-live-edit` in `fontSizeTheme` actually apply.
+      EditorView.editorAttributes.of({ class: 'cm-live-edit' }),
       ...liveEditExtension([
         liveBlocksExtension({
           getImageRoot: () => extractImageRoot(tab.content || ''),
@@ -5361,6 +5365,43 @@ onMounted(() => {
     };
   }
 
+  // #650 — When opening a Markdown note with YAML frontmatter in Live Edit
+  // (and no saved caret), park the initial caret/block right AFTER the closing
+  // `---` so the frontmatter renders as a card immediately instead of raw YAML.
+  const isYamlFrontmatterBlock = (src: string): boolean => {
+    const m = /^---[ \t]*\r?\n([\s\S]*?)\r?\n(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/.exec(src);
+    if (!m) return false;
+    return /^[ \t]*[A-Za-z0-9_\-\u4e00-\u9fff]+[ \t]*:/m.test(m[1]);
+  };
+  const defaultStartAfterFrontmatter = (docText: string): number => {
+    if (props.tab.language !== 'markdown' || activeEditorViewMode.value !== 'liveEdit') return 0;
+    const m = /^---[ \t]*\r?\n([\s\S]*?)\r?\n(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/.exec(docText);
+    if (!m || !/^[ \t]*[A-Za-z0-9_\-\u4e00-\u9fff]+[ \t]*:/m.test(m[1])) return 0;
+    let pos = m[0].length;
+    while (pos < docText.length && (docText[pos] === '\n' || docText[pos] === '\r')) pos++;
+    return pos < docText.length ? pos : 0;
+  };
+
+  // #656 — Listen for global search clear on BOTH CodeMirror and Windows plain editor.
+  const onClearSearchHighlight = () => {
+    if (view) {
+      view.dispatch({ effects: setExternalSearchQueryEffect.of('') });
+    }
+    if (usePlainWindowsEditor) {
+      plainExternalQuery.value = '';
+      if (!plainFindOpen.value) {
+        plainMatches.value = [];
+        plainFindBoxes.value = [];
+      }
+    }
+  };
+  window.addEventListener('solomd:clear-search-highlight', onClearSearchHighlight);
+  const prevCleanupRelayout = cleanupRelayout;
+  cleanupRelayout = () => {
+    prevCleanupRelayout?.();
+    window.removeEventListener('solomd:clear-search-highlight', onClearSearchHighlight);
+  };
+
   if (usePlainWindowsEditor) {
     const savedInit = tabCaretMemory.get(props.tab.id);
     syncPlainEditorFromStore(props.tab.content);
@@ -5369,6 +5410,11 @@ onMounted(() => {
     if (savedInit && plainLiveEnabled.value && typeof savedInit.activeBlock === 'number') {
       const blocks = plainBlocks.value;
       plainActiveBlock.value = Math.max(0, Math.min(savedInit.activeBlock, Math.max(0, blocks.length - 1)));
+    } else if (plainLiveEnabled.value && plainBlocks.value.length > 1) {
+      const firstSrc = plainBlocks.value[0]?.text?.trim() ?? '';
+      if (isYamlFrontmatterBlock(firstSrc)) {
+        plainActiveBlock.value = 1;
+      }
     }
     focusPlainEditor(true);
     restorePlainScroll(savedInit);
@@ -5383,11 +5429,12 @@ onMounted(() => {
   }
   if (!host.value) return;
   const savedInit = tabCaretMemory.get(props.tab.id);
+  const initialCaret = savedInit?.caret ?? defaultStartAfterFrontmatter(props.tab.content);
   view = new EditorView({
     state: EditorState.create({
       doc: props.tab.content,
       extensions: buildExtensions(),
-      selection: { anchor: Math.max(0, Math.min(savedInit?.caret ?? 0, props.tab.content.length)) },
+      selection: { anchor: Math.max(0, Math.min(initialCaret, props.tab.content.length)) },
     }),
     parent: host.value,
   });
@@ -5416,7 +5463,9 @@ onMounted(() => {
   const onRelayout = () => view?.requestMeasure();
   window.addEventListener('solomd:relayout', onRelayout);
   window.addEventListener('solomd:flush-content-sync', flushContentSync);
+  const prevCleanup = cleanupRelayout;
   cleanupRelayout = () => {
+    prevCleanup?.();
     window.removeEventListener('solomd:relayout', onRelayout);
     window.removeEventListener('solomd:flush-content-sync', flushContentSync);
   };
@@ -6597,6 +6646,17 @@ watch(
     if (oldId) {
       saveCurrentTabCaret(oldId);
     }
+    // #650 — When opening a Markdown note with YAML frontmatter in Live Edit
+    // (and no saved caret), park the initial caret/block right AFTER the closing
+    // `---` so the frontmatter renders as a card immediately instead of raw YAML.
+    const defaultStartAfterFrontmatter = (docText: string): number => {
+      if (props.tab.language !== 'markdown' || activeEditorViewMode.value !== 'liveEdit') return 0;
+      const m = /^---[ \t]*\r?\n([\s\S]*?)\r?\n(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/.exec(docText);
+      if (!m || !/^[ \t]*[A-Za-z0-9_\-\u4e00-\u9fff]+[ \t]*:/m.test(m[1])) return 0;
+      let pos = m[0].length;
+      while (pos < docText.length && (docText[pos] === '\n' || docText[pos] === '\r')) pos++;
+      return pos < docText.length ? pos : 0;
+    };
     const saved = newId ? tabCaretMemory.get(newId) : undefined;
     if (usePlainWindowsEditor) {
       // The Editor component is reused across tabs (no :key), so switching to /
@@ -6614,6 +6674,12 @@ watch(
       if (saved && plainLiveEnabled.value && typeof saved.activeBlock === 'number') {
         const blocks = plainBlocks.value;
         plainActiveBlock.value = Math.max(0, Math.min(saved.activeBlock, Math.max(0, blocks.length - 1)));
+      } else if (plainLiveEnabled.value && plainBlocks.value.length > 1) {
+        const firstSrc = plainBlocks.value[0]?.text?.trim() ?? '';
+        const fm = /^---[ \t]*\r?\n([\s\S]*?)\r?\n(?:---|\.\.\.)[ \t]*$/.exec(firstSrc);
+        if (fm && /^[ \t]*[A-Za-z0-9_\-\u4e00-\u9fff]+[ \t]*:/m.test(fm[1])) {
+          plainActiveBlock.value = 1;
+        }
       }
       void processPlainLiveRenderedBlocks();
       focusPlainEditor(true);
@@ -6624,11 +6690,12 @@ watch(
       return;
     }
     if (!view) return;
+    const defaultAnchor = saved?.caret ?? defaultStartAfterFrontmatter(props.tab.content);
     view.setState(
       EditorState.create({
         doc: props.tab.content,
         extensions: buildExtensions(),
-        selection: { anchor: Math.min(saved?.caret ?? 0, props.tab.content.length) },
+        selection: { anchor: Math.min(defaultAnchor, props.tab.content.length) },
       })
     );
     {

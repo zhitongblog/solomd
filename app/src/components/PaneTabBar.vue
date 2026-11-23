@@ -734,10 +734,10 @@ onBeforeUnmount(() => {
 }
 .tab--active {
   position: relative;
-  background: var(--fill-1);
+  background: transparent;
   color: var(--text);
   font-weight: 600;
-  box-shadow: inset 0 0 0 1px var(--hairline);
+  box-shadow: none;
 }
 .tab--active::after {
   content: '';
@@ -750,7 +750,7 @@ onBeforeUnmount(() => {
   background: var(--accent);
 }
 .tab--active:hover {
-  background: var(--fill-2);
+  background: var(--fill-1);
   color: var(--text);
 }
 .tab--dragging {

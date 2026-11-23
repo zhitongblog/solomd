@@ -48,10 +48,10 @@ describe('v5.3.3 issue fixes (#620, #622, #626, #628, #629, #630, #631)', () => 
     }
   });
 
-  it('#630 & #631: PaneTabBar has no data-tauri-drag-region and keeps calm neutral active tab with accent bottom bar', () => {
+  it('#630, #631 & #657: PaneTabBar has no data-tauri-drag-region and keeps clean bottom-accent active tab', () => {
     const tabBar = fs.readFileSync(path.join(root, 'components/PaneTabBar.vue'), 'utf8');
     assert.doesNotMatch(tabBar, /:data-tauri-drag-region=/);
-    assert.match(tabBar, /\.tab--active\s*\{[\s\S]*?background:\s*var\(--fill-1\)/);
+    assert.match(tabBar, /\.tab--active\s*\{[\s\S]*?background:\s*transparent/);
     assert.match(tabBar, /\.tab--active::after\s*\{[\s\S]*?background:\s*var\(--accent\)/);
   });
 
@@ -152,5 +152,77 @@ describe('v5.3.3 issue fixes (#620, #622, #626, #628, #629, #630, #631)', () => 
     const syncModal = fs.readFileSync(path.join(root, 'components/SyncConflictModal.vue'), 'utf8');
     assert.match(syncModal, /immediate:\s*true/);
     assert.match(syncModal, /let diffSeq = 0;/);
+  });
+});
+
+describe('v5.3.5 issue fixes (#649-#677)', () => {
+  it('#660: hljsFallbackExtension wraps ViewPlugin in Prec.highest so hljs marks nest inside CM monospace spans', () => {
+    const hljsFallback = fs.readFileSync(path.join(root, 'lib/cm-hljs-fallback.ts'), 'utf8');
+    assert.match(hljsFallback, /Prec\.highest\(/);
+  });
+
+  it('#659: ai_proxy attaches OpenCode Go session and user-agent headers', () => {
+    const aiProxy = fs.readFileSync(path.join(root, '../src-tauri/src/ai_proxy.rs'), 'utf8');
+    assert.match(aiProxy, /fn with_provider_headers\(/);
+    assert.match(aiProxy, /x-opencode-session/);
+    assert.match(aiProxy, /opencode\/1\.0 SoloMD/);
+  });
+
+  it('#664: WebDAV categorizeFiles defaults to false and sync UI labels it accurately', () => {
+    const settings = fs.readFileSync(path.join(root, 'stores/settings.ts'), 'utf8');
+    const syncVue = fs.readFileSync(path.join(root, 'components/WebdavSyncSettings.vue'), 'utf8');
+    assert.match(settings, /webdavCategorizeFiles:\s*false/);
+    assert.doesNotMatch(syncVue, /'保持目录结构'/);
+    assert.match(syncVue, /'根目录文件自动分类'/);
+  });
+
+  it('#667: openRenderedLink and openMarkdownHref dispatch solomd:anchor-goto for #hash links', () => {
+    const linkOpen = fs.readFileSync(path.join(root, 'lib/link-open.ts'), 'utf8');
+    const pane = fs.readFileSync(path.join(root, 'components/PaneContent.vue'), 'utf8');
+    assert.match(linkOpen, /solomd:anchor-goto/);
+    assert.match(pane, /onAnchorGotoEvent/);
+  });
+
+  it('#662: circled numerals font-face is declared top-level with unicode-range and spliced into font stacks', () => {
+    const css = fs.readFileSync(path.join(root, 'styles/main.css'), 'utf8');
+    const settings = fs.readFileSync(path.join(root, 'stores/settings.ts'), 'utf8');
+    assert.match(css, /@font-face\s*\{\s*font-family:\s*["']SoloMD Circled["']/);
+    assert.match(css, /unicode-range:\s*U\+2460-24FF/);
+    assert.match(settings, /SoloMD Circled/);
+  });
+
+  it('#656: GlobalSearch clears prefill on close and dispatches solomd:clear-search-highlight', () => {
+    const appVue = fs.readFileSync(path.join(root, 'App.vue'), 'utf8');
+    const searchVue = fs.readFileSync(path.join(root, 'components/GlobalSearch.vue'), 'utf8');
+    const editorVue = fs.readFileSync(path.join(root, 'components/Editor.vue'), 'utf8');
+    assert.match(appVue, /function closeGlobalSearch\(\)/);
+    assert.match(searchVue, /solomd:clear-search-highlight/);
+    assert.match(editorVue, /solomd:clear-search-highlight/);
+  });
+
+  it('#652 & #650: Editor attaches cm-live-edit class and skips initial caret past YAML frontmatter', () => {
+    const editorVue = fs.readFileSync(path.join(root, 'components/Editor.vue'), 'utf8');
+    assert.match(editorVue, /class:\s*'cm-live-edit'/);
+    assert.match(editorVue, /defaultStartAfterFrontmatter/);
+  });
+
+  it('#654 & #655: HTML live blocks reset white-space to normal with compact vertical padding', () => {
+    const liveBlocks = fs.readFileSync(path.join(root, 'lib/cm-live-blocks.ts'), 'utf8');
+    assert.match(liveBlocks, /'\.cm-live-block--html':\s*\{[\s\S]*?whiteSpace:\s*'normal'/);
+    assert.match(liveBlocks, /'\.cm-live-block--html pre':\s*\{[\s\S]*?whiteSpace:\s*'pre-wrap'/);
+  });
+
+  it('#649: openFromDisk replaces disposable blank Untitled.md tab in-place', () => {
+    const tabs = fs.readFileSync(path.join(root, 'stores/tabs.ts'), 'utf8');
+    assert.match(tabs, /!t\.filePath && t\.content === '' && t\.savedContent === '' && !t\.pinned/);
+  });
+
+  it('#670 & #677: Windows titlebar keeps win-controls flex-shrink: 0 and SyncConflictModal confirms before destructive resolve', () => {
+    const toolbar = fs.readFileSync(path.join(root, 'components/Toolbar.vue'), 'utf8');
+    const syncModal = fs.readFileSync(path.join(root, 'components/SyncConflictModal.vue'), 'utf8');
+    assert.match(toolbar, /\.win-controls\s*\{[\s\S]*?flex-shrink:\s*0/);
+    assert.match(toolbar, /\.titlebar__toolbar-slot\s*\{[\s\S]*?min-width:\s*0/);
+    assert.match(syncModal, /width="1040px"/);
+    assert.match(syncModal, /tauriConfirm\(confirmMsg/);
   });
 });

@@ -1200,8 +1200,8 @@ async function pullCloudVault() {
           :class="{ 'webdav-sync__check-item--disabled': !settings.webdavEnabled }"
           :title="
             settings.language === 'zh'
-              ? '保持子目录结构，并将根目录散落文件自动分门别类 (笔记文档 / 图片素材 / 文献附件)'
-              : 'Preserve subfolder structure and auto-categorize root files (Notes / Images / References)'
+              ? '勾选后会将根目录散落文件自动归类至 笔记文档 / 图片素材 / 文献附件；不勾选则完全按本地目录 1:1 同步'
+              : 'Auto-categorize root files into Notes / Images / References; uncheck to keep exact 1:1 local directory structure'
           "
         >
           <input
@@ -1211,7 +1211,7 @@ async function pullCloudVault() {
             @change="saveConfig"
           />
           <span class="webdav-sync__check-label">
-            {{ settings.language === 'zh' ? '保持目录结构' : 'Keep Directory Structure' }}
+            {{ settings.language === 'zh' ? '根目录文件自动分类' : 'Auto-categorize Root Files' }}
           </span>
         </label>
 
@@ -1512,7 +1512,7 @@ async function pullCloudVault() {
             @change="saveConfig"
           />
           <span class="webdav-sync__check-label">
-            {{ settings.language === 'zh' ? '保持目录结构' : 'Keep Directory Structure' }}
+            {{ settings.language === 'zh' ? '根目录文件自动分类' : 'Auto-categorize Root Files' }}
           </span>
         </label>
 
@@ -1852,7 +1852,7 @@ async function pullCloudVault() {
             @change="saveConfig"
           />
           <span class="webdav-sync__check-label">
-            {{ settings.language === 'zh' ? '保持目录结构' : 'Keep Directory Structure' }}
+            {{ settings.language === 'zh' ? '根目录文件自动分类' : 'Auto-categorize Root Files' }}
           </span>
         </label>
 

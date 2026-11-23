@@ -1,18 +1,98 @@
 {
- "en-US": {"subtitle": "Local Markdown notes & editor", "keywords": "markdown,editor,notes,writing,md,latex,math,mermaid,plain text,journal,outline,writer,diagram", "promotionalText": "SoloMD 5.0: a calmer writing window — a phone layout made for iPhone, a redesigned iPad and Mac app, and a find bar that stays out of your way."},
- "zh-Hans": {"subtitle": "本地纯文本 Markdown 笔记与编辑器", "keywords": "markdown,编辑器,笔记,写作,md,公式,latex,数学,图表,纯文本,代码,日记,大纲,简繁,拼音,校对,文档,博客,记事本", "promotionalText": "SoloMD 5.0：更安静的写作窗口——为 iPhone 重做的手机布局，重新设计的 iPad 与 Mac 界面，查找栏不再挡路。"},
- "de-DE": {"subtitle": "Lokale Markdown-Notizen", "keywords": "markdown,editor,notizen,schreiben,md,latex,formeln,mermaid,text,tagebuch,gliederung,diagramm", "promotionalText": "SoloMD 5.0: ein ruhigeres Schreibfenster – ein Layout fürs iPhone, eine neu gestaltete iPad- und Mac-App und eine Suchleiste, die dir nicht im Weg steht."},
- "es-ES": {"subtitle": "Notas y editor Markdown local", "keywords": "markdown,editor,notas,escritura,md,latex,fórmulas,mermaid,texto plano,diario,esquema,diagrama,bloc", "promotionalText": "SoloMD 5.0: una ventana de escritura más tranquila, un diseño pensado para iPhone, apps de iPad y Mac rediseñadas y una barra de búsqueda que no estorba."},
- "fr-FR": {"subtitle": "Notes et éditeur Markdown", "keywords": "markdown,éditeur,notes,écriture,md,latex,maths,mermaid,texte brut,journal,plan,diagramme,bloc-notes", "promotionalText": "SoloMD 5.0 : une fenêtre d’écriture plus calme, une mise en page pensée pour l’iPhone, des apps iPad et Mac repensées et une barre de recherche qui ne gêne plus."},
- "it": {"subtitle": "Note ed editor Markdown locale", "keywords": "markdown,editor,note,scrittura,md,latex,formule,matematica,mermaid,testo,diario,schema,diagramma", "promotionalText": "SoloMD 5.0: una finestra di scrittura più tranquilla, un layout pensato per iPhone, app per iPad e Mac ridisegnate e una barra di ricerca che non intralcia."},
- "ja": {"subtitle": "ローカル Markdown メモ＆エディタ", "keywords": "markdown,メモ,ノート,文章,執筆,テキスト,md,latex,数式,mermaid,図,アウトライン,日記,ブログ,原稿,プレーンテキスト", "promotionalText": "SoloMD 5.0：もっと静かな執筆ウインドウへ。iPhone のために作り直したレイアウト、新しくなった iPad と Mac のアプリ、そして邪魔にならない検索バー。"},
- "ko": {"subtitle": "로컬 Markdown 노트 및 편집기", "keywords": "markdown,마크다운,편집기,메모,노트,글쓰기,md,latex,수식,mermaid,다이어그램,텍스트,일기,개요,블로그,에디터", "promotionalText": "SoloMD 5.0: 더 차분한 글쓰기 창. iPhone에 맞춘 새 레이아웃, 새롭게 디자인한 iPad와 Mac 앱, 그리고 방해가 되지 않는 찾기 막대."},
- "nl-NL": {"subtitle": "Lokale Markdown-notities", "keywords": "markdown,editor,notities,tekst,md,latex,wiskunde,mermaid,platte tekst,dagboek,overzicht,diagram,code", "promotionalText": "SoloMD 5.0: een rustiger schrijfvenster — een indeling gemaakt voor iPhone, een vernieuwde iPad- en Mac-app, en een zoekbalk die je niet in de weg zit."},
- "pl": {"subtitle": "Lokalne notatki w Markdown", "keywords": "markdown,edytor,notatki,notatnik,md,latex,matematyka,wzory,mermaid,tekst,dziennik,konspekt,diagram", "promotionalText": "SoloMD 5.0: spokojniejsze okno do pisania — układ stworzony dla iPhone’a, przeprojektowana aplikacja na iPada i Maca oraz pasek wyszukiwania, który nie przeszkadza."},
- "pt-BR": {"subtitle": "Notas e editor Markdown local", "keywords": "markdown,editor,notas,anotações,texto,md,latex,matemática,mermaid,diário,escrever,diagrama,código", "promotionalText": "SoloMD 5.0: uma janela de escrita mais tranquila — layout feito para o iPhone, apps de iPad e Mac redesenhados e uma barra de busca que não atrapalha."},
- "sv": {"subtitle": "Lokala Markdown-anteckningar", "keywords": "markdown,redigerare,anteckningar,text,md,latex,matte,mermaid,ren text,dagbok,disposition,diagram,kod", "promotionalText": "SoloMD 5.0: ett lugnare skrivfönster — en layout gjord för iPhone, en omgjord app för iPad och Mac, och ett sökfält som inte står i vägen."},
- "tr": {"subtitle": "Yerel Markdown not editörü", "keywords": "markdown,editör,not,notlar,yazı,metin,md,latex,matematik,mermaid,günlük,taslak,diyagram,düz metin", "promotionalText": "SoloMD 5.0: daha sakin bir yazı penceresi — iPhone için yapılmış bir telefon düzeni, yeniden tasarlanan iPad ve Mac uygulaması ve yolunuzdan çekilen bir arama çubuğu."},
- "uk": {"subtitle": "Локальні нотатки Markdown", "keywords": "markdown,редактор,нотатки,текст,md,latex,формули,математика,mermaid,щоденник,блокнот,діаграми", "promotionalText": "SoloMD 5.0: спокійніше вікно для письма — макет, створений для iPhone, оновлені застосунки для iPad і Mac та панель пошуку, яка не заважає."},
- "zh-Hant": {"subtitle": "本地純文字 Markdown 筆記與編輯器", "keywords": "markdown,編輯器,筆記,寫作,md,公式,latex,數學,圖表,純文字,程式碼,日記,大綱,簡繁,拼音,校對,文件,部落格,記事本", "promotionalText": "SoloMD 5.0：更安靜的寫作視窗——為 iPhone 重做的手機版面，重新設計的 iPad 與 Mac 介面，尋找列不再擋路。"},
- "ru": {"subtitle": "Локальные заметки Markdown", "keywords": "markdown,редактор,заметки,текст,md,latex,формулы,математика,mermaid,дневник,блокнот,диаграммы", "promotionalText": "SoloMD 5.0: более спокойное окно для письма — раскладка, созданная для iPhone, обновлённые приложения для iPad и Mac и панель поиска, которая не мешает."}
+  "en-US": {
+    "name": "SoloMD: Markdown Editor & Note",
+    "subtitle": "Free Offline Writer, PDF, Math",
+    "keywords": "md,writing,plain,text,latex,mermaid,diagram,table,outline,wiki,pkm,vault,docx,word,epub,sync,journal",
+    "promotionalText": "100% free forever — no subscriptions, no account, no tracking. Live WYSIWYG Markdown with KaTeX math, Mermaid diagrams, 9-format export (PDF/Word/HTML) & cloud sync."
+  },
+  "zh-Hans": {
+    "name": "SoloMD - 免费 Markdown 笔记编辑器",
+    "subtitle": "纯文本双链写作 · 公式图表 · 导出PDF/Word",
+    "keywords": "md,文档,大纲,任务,清单,知识库,离线,开源,无广告,无订阅,latex,katex,mermaid,流程图,思维导图,表格,代码,同步,网盘,icloud,简繁,拼音,校对,日记,博客,排版",
+    "promotionalText": "100% 永久免费、无订阅、无广告。支持纯粹所见即所得、KaTeX 公式、Mermaid 图表、9 种格式一键导出（PDF 书签目录/Word/HTML）与多端云同步。"
+  },
+  "zh-Hant": {
+    "name": "SoloMD - 免費 Markdown 筆記編輯器",
+    "subtitle": "純文字雙鏈寫作 · 公式圖表 · 匯出PDF/Word",
+    "keywords": "md,文件,大綱,任務,清單,知識庫,離線,開源,無廣告,無訂閱,latex,katex,mermaid,流程圖,心智圖,表格,程式碼,同步,雲端,icloud,簡繁,拼音,校對,日記,部落格,排版",
+    "promotionalText": "100% 永久免費、無訂閱、無廣告。支援純粹所見即所得、KaTeX 公式、Mermaid 圖表、9 種格式一鍵匯出（PDF 書籤目錄/Word/HTML）與多端雲同步。"
+  },
+  "ja": {
+    "name": "SoloMD - 無料Markdownメモ＆エディタ",
+    "subtitle": "オフライン執筆・数式図表・PDF/Word出力",
+    "keywords": "md,ノート,文章,テキスト,latex,mermaid,フローチャート,表,アウトライン,リンク,知識ベース,タスク,同期,icloud,日記,ブログ,原稿,無料,広告なし,オープンソース",
+    "promotionalText": "完全無料・サブスク不要・広告なし。ライブプレビュー、KaTeX数式、Mermaid図表、PDF目次/Word/HTMLなど9形式エクスポートとクラウド同期に対応。"
+  },
+  "ko": {
+    "name": "SoloMD - 무료 Markdown 노트 편집기",
+    "subtitle": "오프라인 글쓰기 · 수식/도표 · PDF/Word",
+    "keywords": "마크다운,md,메모,문서,텍스트,latex,mermaid,다이어그램,표,개요,백링크,지식베이스,할일,동기화,icloud,일기,블로그,코드,광고없음,오픈소스",
+    "promotionalText": "영구 무료 · 구독 없음 · 광고 없음. 실시간 WYSIWYG 마크다운, KaTeX 수식, Mermaid 다이어그램, PDF/Word/HTML 9종 내보내기 및 클라우드 동기화 지원."
+  },
+  "de-DE": {
+    "name": "SoloMD: Markdown Editor & Note",
+    "subtitle": "Kostenlos, Offline, PDF, LaTeX",
+    "keywords": "notizen,schreiben,md,formeln,mermaid,diagramm,tabelle,text,tagebuch,gliederung,wiki,word,docx,sync",
+    "promotionalText": "100 % dauerhaft kostenlos — kein Abo, kein Konto, kein Tracking. Live-WYSIWYG-Markdown mit KaTeX, Mermaid, PDF/Word/HTML-Export und Cloud-Sync."
+  },
+  "es-ES": {
+    "name": "SoloMD: Editor Markdown Notas",
+    "subtitle": "Gratis Offline · PDF, Word",
+    "keywords": "escritura,md,latex,fórmulas,mermaid,diagrama,tabla,texto,diario,esquema,wiki,docx,epub,sync,bloc",
+    "promotionalText": "100 % gratis para siempre — sin suscripciones, sin cuenta ni rastreo. Markdown WYSIWYG en vivo con KaTeX, Mermaid, exportación PDF/Word/HTML y sincronización."
+  },
+  "fr-FR": {
+    "name": "SoloMD : Éditeur Markdown Note",
+    "subtitle": "Gratuit Hors-ligne, PDF, Maths",
+    "keywords": "notes,écriture,md,latex,mermaid,diagramme,tableau,texte,journal,plan,wiki,word,docx,epub,sync,code",
+    "promotionalText": "100 % gratuit à vie — sans abonnement, sans compte, sans suivi. Markdown WYSIWYG avec KaTeX, Mermaid, export PDF/Word/HTML et synchronisation cloud."
+  },
+  "it": {
+    "name": "SoloMD: Editor Markdown e Note",
+    "subtitle": "Gratis Offline · PDF, Word",
+    "keywords": "scrittura,md,latex,formule,mermaid,diagramma,tabella,testo,diario,schema,wiki,docx,epub,sync,codice",
+    "promotionalText": "100% gratis per sempre — nessun abbonamento, nessun account, nessun tracciamento. Markdown WYSIWYG live con KaTeX, Mermaid, export PDF/Word/HTML e sync."
+  },
+  "nl-NL": {
+    "name": "SoloMD: Markdown Editor & Note",
+    "subtitle": "Gratis Offline · PDF, Word",
+    "keywords": "notities,schrijven,md,latex,wiskunde,mermaid,diagram,tabel,tekst,dagboek,overzicht,wiki,docx,sync",
+    "promotionalText": "100% gratis voor altijd — geen abonnement, geen account, geen tracking. Live WYSIWYG Markdown met KaTeX, Mermaid, PDF/Word/HTML-export en cloud-sync."
+  },
+  "pl": {
+    "name": "SoloMD: Markdown i Notatki",
+    "subtitle": "Darmowy Offline, PDF, Word",
+    "keywords": "notatki,notatnik,md,latex,wzory,mermaid,diagram,tabela,tekst,dziennik,konspekt,wiki,docx,epub,sync",
+    "promotionalText": "100% za darmo na zawsze — bez subskrypcji, konta i śledzenia. Markdown WYSIWYG na żywo z KaTeX, Mermaid, eksportem PDF/Word/HTML i synchronizacją."
+  },
+  "pt-BR": {
+    "name": "SoloMD: Editor Markdown Notas",
+    "subtitle": "Grátis Offline · PDF, Word",
+    "keywords": "anotações,escrever,md,latex,matemática,mermaid,diagrama,tabela,texto,diário,wiki,docx,epub,sync",
+    "promotionalText": "100% grátis para sempre — sem assinatura, sem conta, sem rastreamento. Markdown WYSIWYG ao vivo com KaTeX, Mermaid, exportação PDF/Word/HTML e nuvem."
+  },
+  "ru": {
+    "name": "SoloMD: Markdown заметки текст",
+    "subtitle": "Бесплатно, Офлайн, PDF, Word",
+    "keywords": "редактор,md,latex,формулы,mermaid,диаграммы,таблицы,дневник,блокнот,вики,docx,epub,синхронизация",
+    "promotionalText": "100% бесплатно навсегда — без подписок, аккаунта и слежки. Живой WYSIWYG Markdown с KaTeX, Mermaid, экспортом в PDF/Word/HTML и облачной синхронизацией."
+  },
+  "sv": {
+    "name": "SoloMD: Markdown-redigerare",
+    "subtitle": "Gratis Offline · PDF, Word",
+    "keywords": "anteckningar,skriva,md,latex,matte,mermaid,diagram,tabell,text,dagbok,wiki,docx,epub,synk,kod",
+    "promotionalText": "100 % gratis för alltid — ingen prenumeration, inget konto, ingen spårning. Live WYSIWYG Markdown med KaTeX, Mermaid, PDF/Word/HTML-export och molnsynk."
+  },
+  "tr": {
+    "name": "SoloMD: Markdown Not Editörü",
+    "subtitle": "Ücretsiz Çevrimdışı, PDF, Word",
+    "keywords": "notlar,yazı,metin,md,latex,matematik,mermaid,diyagram,tablo,günlük,taslak,wiki,docx,epub,senkron",
+    "promotionalText": "Sonsuza kadar %100 ücretsiz — abonelik, hesap veya takip yok. KaTeX, Mermaid, PDF/Word/HTML dışa aktarma ve bulut eşitleme ile canlı WYSIWYG Markdown."
+  },
+  "uk": {
+    "name": "SoloMD: Markdown нотатки текст",
+    "subtitle": "Безкоштовно, Офлайн, PDF, Word",
+    "keywords": "редактор,md,latex,формули,mermaid,діаграми,таблиці,щоденник,блокнот,вікі,docx,epub,синхронізація",
+    "promotionalText": "100% безкоштовно назавжди — без підписок, акаунта й стеження. Живий WYSIWYG Markdown із KaTeX, Mermaid, експортом у PDF/Word/HTML та хмарною синхронізацією."
+  }
 }

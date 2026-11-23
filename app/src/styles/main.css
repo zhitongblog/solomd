@@ -10,6 +10,21 @@
 @import "./scrollbars.css";
 @import "./find.css";
 
+/* #662 — Uniform font for circled numbers ①–⑳ (U+2460–24FF, U+3251–32BF):
+   Windows Microsoft YaHei only covers ①–⑩ (GB2312), causing ⑪–⑳ to fall back
+   to tiny glyphs in Segoe UI Symbol. Scoping a single font to enclosed
+   alphanumerics guarantees identical size across ①–⑳ on every platform. */
+@font-face {
+  font-family: "SoloMD Circled";
+  src: local("PingFang SC"),
+    local("Hiragino Kaku Gothic ProN"),
+    local("Yu Gothic UI"),
+    local("Meiryo"),
+    local("Noto Sans CJK SC"),
+    local("Segoe UI Symbol");
+  unicode-range: U+2460-24FF, U+3251-325F, U+32B1-32BF;
+}
+
 :root {
   /* v4.3.0 issue #78 — tell native form controls (most importantly
      <select>) to render in the LIGHT palette by default. Without this,
@@ -91,7 +106,7 @@
      overrode Windows YaHei everywhere with the (deliberately soft,
      handwritten) LXGW glyphs and made the UI look thin/blurry — see
      issue #43. */
-  --font-ui: system-ui, -apple-system, BlinkMacSystemFont,
+  --font-ui: "SoloMD Circled", system-ui, -apple-system, BlinkMacSystemFont,
     "Segoe UI Variable Text", "Segoe UI",
     "PingFang SC", "PingFang TC", "Hiragino Sans GB", "Heiti SC",
     "Microsoft YaHei UI", "Microsoft YaHei", "Inter", Roboto, "Helvetica Neue", sans-serif,

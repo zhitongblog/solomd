@@ -9,6 +9,7 @@
  */
 import { computed, ref, watch } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
+import { confirm as tauriConfirm } from '@tauri-apps/plugin-dialog';
 import { openPath } from '@tauri-apps/plugin-opener';
 import DsModal from '../ui/DsModal.vue';
 import DsButton from '../ui/DsButton.vue';
@@ -175,6 +176,27 @@ function closeOpenConflictTab(conflictRel: string) {
 async function resolve(strategy: 'keep_base' | 'use_conflict' | 'manual_merge') {
   const entry = selectedEntry.value;
   if (!folder.value || !entry || resolving.value) return;
+  const confirmMsg = zh.value
+    ? strategy === 'keep_base'
+      ? `确定保留工作副本「${entry.base_rel}」并删除冲突副本「${entry.conflict_rel}」？`
+      : strategy === 'use_conflict'
+        ? `确定用冲突副本「${entry.conflict_rel}」覆盖工作副本「${entry.base_rel}」？（原工作副本将自动保存快照）`
+        : `确定将当前手工合并内容写入「${entry.base_rel}」并删除冲突副本「${entry.conflict_rel}」？`
+    : strategy === 'keep_base'
+      ? `Keep working copy "${entry.base_rel}" and delete conflict copy "${entry.conflict_rel}"?`
+      : strategy === 'use_conflict'
+        ? `Overwrite "${entry.base_rel}" with conflict copy "${entry.conflict_rel}"? (A snapshot of the current working copy will be saved.)`
+        : `Save merged content to "${entry.base_rel}" and delete conflict copy "${entry.conflict_rel}"?`;
+  let ok = false;
+  try {
+    ok = await tauriConfirm(confirmMsg, {
+      title: zh.value ? '确认解决同步冲突' : 'Confirm Conflict Resolution',
+      kind: 'warning',
+    });
+  } catch {
+    ok = window.confirm(confirmMsg);
+  }
+  if (!ok) return;
   resolving.value = true;
   try {
     await invoke('sync_resolve_conflict', {
@@ -233,7 +255,7 @@ watch(
   <DsModal
     :model-value="props.modelValue"
     :title="zh ? '同步冲突与快照管理' : 'Sync Conflict & Snapshot Manager'"
-    width="860px"
+    width="1040px"
     @update:model-value="emit('update:modelValue', $event)"
   >
     <div class="scm">
@@ -373,8 +395,8 @@ watch(
   display: flex;
   flex-direction: column;
   gap: 10px;
-  min-height: 360px;
-  max-height: 70vh;
+  min-height: 460px;
+  max-height: 82vh;
 }
 .scm__bar {
   display: flex;
@@ -491,8 +513,7 @@ watch(
 }
 .scm__diff {
   flex: 1;
-  min-height: 180px;
-  max-height: 320px;
+  min-height: 280px;
   overflow: auto;
   border: 1px solid var(--hairline);
   border-radius: 6px;
@@ -525,7 +546,7 @@ watch(
   display: flex;
   flex-direction: column;
   gap: 6px;
-  min-height: 200px;
+  min-height: 280px;
 }
 .scm__merge-tools {
   display: flex;
@@ -534,7 +555,7 @@ watch(
 }
 .scm__textarea {
   flex: 1;
-  min-height: 200px;
+  min-height: 280px;
   width: 100%;
   resize: vertical;
   padding: 8px 10px;

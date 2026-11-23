@@ -86,6 +86,8 @@ onBeforeUnmount(() => {
     window.clearTimeout(debounceTimer);
     debounceTimer = null;
   }
+  // #656 — Clear lingering editor match highlights when search panel closes.
+  window.dispatchEvent(new CustomEvent('solomd:clear-search-highlight'));
 });
 
 const TITLE_HIT_CAP = 200;
@@ -97,6 +99,7 @@ async function doSearch() {
   if (!q) {
     hits.value = [];
     loading.value = false;
+    window.dispatchEvent(new CustomEvent('solomd:clear-search-highlight'));
     return;
   }
   loading.value = true;

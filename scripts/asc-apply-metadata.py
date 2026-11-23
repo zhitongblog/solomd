@@ -29,7 +29,7 @@ from asc_api import Client, make_token  # noqa: E402
 
 BUNDLE_ID = "app.solomd"
 PLATFORMS = {"ios": "IOS", "macos": "MAC_OS", "mac": "MAC_OS"}
-LIMITS = {"description": 4000, "keywords": 100, "promotionalText": 170, "subtitle": 30}
+LIMITS = {"name": 30, "description": 4000, "keywords": 100, "promotionalText": 170, "subtitle": 30}
 #: Versions in these states can still take listing edits.
 EDITABLE = {"PREPARE_FOR_SUBMISSION", "DEVELOPER_REJECTED", "REJECTED",
             "METADATA_REJECTED", "INVALID_BINARY"}
@@ -137,19 +137,27 @@ def main():
     have_info = {l["attributes"]["locale"]: l for l in client.get(
         f"/v1/appInfos/{info['id']}/appInfoLocalizations", limit=200)["data"]}
     for locale, fields in listing.items():
+        desired_name = fields.get("name") or "SoloMD"
+        desired_sub = fields["subtitle"]
         if locale in have_info:
-            if have_info[locale]["attributes"].get("subtitle") == fields["subtitle"]:
+            cur_attrs = have_info[locale]["attributes"]
+            patch_attrs = {}
+            if cur_attrs.get("subtitle") != desired_sub:
+                patch_attrs["subtitle"] = desired_sub
+            if fields.get("name") and cur_attrs.get("name") != desired_name:
+                patch_attrs["name"] = desired_name
+            if not patch_attrs:
                 continue
-            print(f"    subtitle {locale}: update")
+            print(f"    appInfo {locale}: update {', '.join(patch_attrs)}")
             client.patch(f"/v1/appInfoLocalizations/{have_info[locale]['id']}", {
                 "data": {"type": "appInfoLocalizations", "id": have_info[locale]["id"],
-                         "attributes": {"subtitle": fields["subtitle"]}}})
+                         "attributes": patch_attrs}})
         else:
-            print(f"    subtitle {locale}: NEW locale")
+            print(f"    appInfo {locale}: NEW locale")
             client.post("/v1/appInfoLocalizations", {
                 "data": {"type": "appInfoLocalizations",
-                         "attributes": {"locale": locale, "name": "SoloMD",
-                                        "subtitle": fields["subtitle"]},
+                         "attributes": {"locale": locale, "name": desired_name,
+                                        "subtitle": desired_sub},
                          "relationships": {"appInfo": {
                              "data": {"type": "appInfos", "id": info["id"]}}}}})
     print("==> done")

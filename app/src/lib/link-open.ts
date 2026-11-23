@@ -54,8 +54,16 @@ export function openRenderedLink(anchor: Element, e: Event, filePath?: string | 
     anchor.getAttributeNS?.('http://www.w3.org/1999/xlink', 'href') ||
     null;
   if (!href) return false;
-  // Allow in-page anchor jumps (#heading)
-  if (href.startsWith('#')) return false;
+  // #667 — In-page anchor jumps (`#heading`) across Live Edit, Source, Split & Preview.
+  if (href.startsWith('#')) {
+    e.preventDefault();
+    e.stopPropagation();
+    const paneId = (anchor.closest('[data-pane-id]') as HTMLElement | null)?.dataset.paneId;
+    window.dispatchEvent(
+      new CustomEvent('solomd:anchor-goto', { detail: { anchor: href.slice(1), paneId } }),
+    );
+    return true;
+  }
   e.preventDefault();
   e.stopPropagation();
   // #380 — `file:///...` local file URI: resolve directly to local path
@@ -172,7 +180,13 @@ export function openMarkdownHref(
     window.dispatchEvent(new CustomEvent('solomd:wiki-open', { detail: { target: href } }));
     return true;
   }
-  if (!href || href.startsWith('#')) return false;
+  if (!href) return false;
+  if (href.startsWith('#')) {
+    window.dispatchEvent(
+      new CustomEvent('solomd:anchor-goto', { detail: { anchor: href.slice(1) } }),
+    );
+    return true;
+  }
   const fileTarget = fileUrlToLocalPath(href);
   if (fileTarget) {
     useFiles().openLinkedFile(fileTarget, { bypassNewWindow: true }).catch((err) => {

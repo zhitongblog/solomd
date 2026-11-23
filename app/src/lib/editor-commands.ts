@@ -587,7 +587,13 @@ function contentStart(line: string): number {
   return m ? m[0].length : line.length - line.trimStart().length;
 }
 
-const HEADING_NUM_PREFIX = /^(\d+(?:\.\d+)*\.?[ \t]+)/;
+// #669 — Match only genuine heading-number prefixes (`1. `, `1.1 `, `1.1.1 `)
+// produced by autoNumberHeadings:
+//  - Single-segment prefix MUST have a trailing dot (`1. `..`999. `), never a
+//    bare number (`2026 年度总结`) or 4-digit year (`2026.`).
+//  - Multi-segment prefix rejects 4-digit years (`2026.11.23 `) and leading-zero
+//    dates (`01.05 `, `2026.05.01 `).
+const HEADING_NUM_PREFIX = /^(?:[1-9]\d{0,2}\.[ \t]+|[1-9]\d{0,2}(?:\.[1-9]\d{0,2})+\.?[ \t]+)/;
 
 /**
  * #474 — Automatically number (or renumber / unnumber) multi-level ATX

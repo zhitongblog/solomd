@@ -224,3 +224,19 @@ test('indentCodeBlockPaste aligns every row of a pasted Markdown table to list s
     'line 1\nline 2',
   );
 });
+
+test('#669: autoNumberHeadings never strips bare years or date prefixes from headings', () => {
+  const doc = '# 2026 年度总结\n## 2026.11.23 发布记录\n### 01.05 里程碑';
+  const eAdd = autoNumberHeadings(doc, 0, 0, 'add');
+  assert.ok(eAdd);
+  const afterAdd = doc.slice(0, eAdd!.from) + eAdd!.insert + doc.slice(eAdd!.to);
+  assert.equal(
+    afterAdd,
+    '# 1. 2026 年度总结\n## 1.1 2026.11.23 发布记录\n### 1.1.1 01.05 里程碑',
+  );
+  // Removing heading numbers restores the original years/dates intact
+  const eRem = autoNumberHeadings(afterAdd, 0, 0, 'remove');
+  assert.ok(eRem);
+  const afterRem = afterAdd.slice(0, eRem!.from) + eRem!.insert + afterAdd.slice(eRem!.to);
+  assert.equal(afterRem, doc);
+});

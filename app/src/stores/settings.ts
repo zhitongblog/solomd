@@ -14,15 +14,29 @@ const LS_KEY = 'solomd.settings.v1';
 // CJK + generic fallback appended after the user's chosen face. This way
 // Latin glyphs come from the user's pick while CJK still falls back to
 // a real CJK font instead of whatever the generic `monospace` happens to be.
+// #662 — `"SoloMD Circled"` is scoped via `@font-face` `unicode-range` strictly
+// to enclosed alphanumerics (`①–⑳`), guaranteeing uniform glyph size past `⑩`.
+const CIRCLED_NUM_FONT = '"SoloMD Circled"';
 const CJK_FALLBACK =
   '"PingFang SC", "PingFang TC", "Hiragino Sans GB", "Microsoft YaHei", "Heiti SC", "Noto Sans CJK SC"';
 
 export function buildEditorFontStack(face: string): string {
   const trimmed = face.trim();
-  if (!trimmed) return `${CJK_FALLBACK}, sans-serif`;
-  // If user pasted a full stack already (contains comma), use as-is but still
-  // append CJK fallback for safety.
-  if (trimmed.includes(',')) return `${trimmed}, ${CJK_FALLBACK}`;
+  if (!trimmed) return `${CIRCLED_NUM_FONT}, ${CJK_FALLBACK}, sans-serif`;
+  // If user pasted a full stack already (contains comma), prepend the circled
+  // number font and splice CJK fallback BEFORE any trailing generic family.
+  if (trimmed.includes(',')) {
+    const parts = trimmed.split(',').map((s) => s.trim()).filter(Boolean);
+    const generics = new Set(['sans-serif', 'serif', 'monospace', 'system-ui', 'ui-sans-serif', 'ui-serif', 'ui-monospace']);
+    let tailIdx = parts.length;
+    while (tailIdx > 0 && generics.has(parts[tailIdx - 1].toLowerCase())) {
+      tailIdx--;
+    }
+    if (tailIdx < parts.length) {
+      return [CIRCLED_NUM_FONT, ...parts.slice(0, tailIdx), CJK_FALLBACK, ...parts.slice(tailIdx)].join(', ');
+    }
+    return `${CIRCLED_NUM_FONT}, ${trimmed}, ${CJK_FALLBACK}`;
+  }
   const isFileOrPath = /\.(ttf|otf|woff2|woff|ttc)$/i.test(trimmed) || /[\\/]/.test(trimmed);
   if (isFileOrPath) {
     const { stem, family } = cleanFontFamilyFromFilename(trimmed);
@@ -30,12 +44,12 @@ export function buildEditorFontStack(face: string): string {
       /\s/.test(n) && !/^["']/.test(n) ? `"${n}"` : n,
     );
     if (names.length > 0) {
-      return `${names.join(', ')}, ${CJK_FALLBACK}, "JetBrains Mono", Menlo, Consolas, monospace`;
+      return `${CIRCLED_NUM_FONT}, ${names.join(', ')}, ${CJK_FALLBACK}, "JetBrains Mono", Menlo, Consolas, monospace`;
     }
   }
   const needsQuote = /[\s/.\\]/.test(trimmed) && !/^["']/.test(trimmed);
   const quoted = needsQuote ? `"${trimmed}"` : trimmed;
-  return `${quoted}, ${CJK_FALLBACK}, "JetBrains Mono", Menlo, Consolas, monospace`;
+  return `${CIRCLED_NUM_FONT}, ${quoted}, ${CJK_FALLBACK}, "JetBrains Mono", Menlo, Consolas, monospace`;
 }
 
 /** 5.0 default editor face: the "System Sans" preset in Settings (same value,
@@ -1000,13 +1014,15 @@ function defaults(): Settings {
     webdavPassphrase: '',
     webdavAutoSync: false,
     webdavAutoSubdir: true,
-    webdavCategorizeFiles: true,
+    // #664 — Preserve exact 1:1 local directory structure by default instead of
+    // relocating root .md files into `笔记文档/` (which breaks relative links).
+    webdavCategorizeFiles: false,
     cloudVaultDir: '',
     cloudVaultPassphrase: '',
     cloudVaultAutoSync: false,
     cloudVaultEncrypted: false,
     cloudVaultAutoSubdir: true,
-    cloudVaultCategorizeFiles: true,
+    cloudVaultCategorizeFiles: false,
     cloudApiProvider: 'baidu',
     cloudApiToken: '',
     cloudApiClientId: '',
@@ -1017,7 +1033,7 @@ function defaults(): Settings {
     cloudApiSyncMode: 'folder',
     cloudApiEncrypted: false,
     cloudApiAutoSubdir: true,
-    cloudApiCategorizeFiles: true,
+    cloudApiCategorizeFiles: false,
     cloudR2Endpoint: '',
     cloudR2Bucket: '',
     cloudR2AccessKeyId: '',

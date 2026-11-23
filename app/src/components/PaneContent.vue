@@ -9,6 +9,7 @@ import { useTabsStore } from '../stores/tabs';
 import type { Tab } from '../types';
 import { isWindowsEditorRuntime, shouldUsePlainWindowsEditor } from '../lib/platform';
 import { createLaunchCursorRestore } from '../lib/launch-cursor-restore';
+import { extractOutline, slugify } from '../lib/markdown';
 import {
   previewScrollMemory,
   tabCaretMemory,
@@ -680,6 +681,7 @@ onMounted(() => {
   setTimeout(bindScrollSync, 300);
   launchCursorRestore.schedule();
   window.addEventListener('solomd:outline-goto', onOutlineGotoEvent);
+  window.addEventListener('solomd:anchor-goto', onAnchorGotoEvent);
   window.addEventListener('solomd:insert-markdown', onInsertMarkdownEvent);
   window.addEventListener('solomd:insert-image-path', onInsertImagePathEvent);
   window.addEventListener('solomd:insert-image-url', onInsertImageUrlEvent);
@@ -699,6 +701,7 @@ onBeforeUnmount(() => {
   resizeObserver = null;
   document.body.classList.remove('split-divider--dragging');
   window.removeEventListener('solomd:outline-goto', onOutlineGotoEvent);
+  window.removeEventListener('solomd:anchor-goto', onAnchorGotoEvent);
   window.removeEventListener('solomd:insert-markdown', onInsertMarkdownEvent);
   window.removeEventListener('solomd:insert-image-path', onInsertImagePathEvent);
   window.removeEventListener('solomd:insert-image-url', onInsertImageUrlEvent);
@@ -725,6 +728,48 @@ function onOutlineGotoEvent(e: Event) {
   const { line, paneId, query } = (e as CustomEvent).detail;
   if (paneId !== props.paneId) return;
   gotoLine(line, typeof query === 'string' ? query : undefined);
+}
+
+/** #667 — Resolve `#anchor` intra-document heading/footnote links across
+ *  Live Edit, Source, Split, and Preview modes. */
+function onAnchorGotoEvent(e: Event) {
+  const detail = (e as CustomEvent).detail ?? {};
+  const targetPaneId = typeof detail.paneId === 'string' && detail.paneId ? detail.paneId : null;
+  if (targetPaneId ? targetPaneId !== props.paneId : !isFocused.value) return;
+  if (!props.tab) return;
+  const raw = String(detail.anchor ?? '').trim();
+  if (!raw) return;
+  let decoded = raw;
+  try {
+    decoded = decodeURIComponent(raw);
+  } catch {
+    /* keep raw */
+  }
+  const targetSlug = slugify(decoded);
+  const targetLower = decoded.trim().toLowerCase();
+
+  // 1. Try matching a heading in the current Markdown document via extractOutline.
+  const headings = extractOutline(props.tab.content || '');
+  const matched =
+    headings.find((h) => h.slug === raw || h.slug === decoded || h.slug === targetSlug) ??
+    headings.find((h) => h.text.trim().toLowerCase() === targetLower);
+  if (matched) {
+    gotoLine(matched.line);
+    return;
+  }
+
+  // 2. Fallback for footnotes (`#fn1`) or custom `<a id="...">` in Preview DOM.
+  const root = contentEl.value;
+  if (root) {
+    for (const cand of [raw, decoded, targetSlug]) {
+      if (!cand) continue;
+      const el = root.querySelector(`[id="${CSS.escape(cand)}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+    }
+  }
 }
 
 function onInsertMarkdownEvent(e: Event) {

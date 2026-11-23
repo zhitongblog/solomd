@@ -1,6 +1,6 @@
-SoloMD is a calm, fast Markdown editor for the Mac. Open the app and you are writing — no account, no sign-up, no subscription.
+SoloMD is a 100% free forever, calm, fast local-first Markdown editor for Mac. Open the app and start writing immediately — no account, no sign-up, no subscription, no ads.
 
-Your notes are plain .md and .txt files in folders you choose. Open a folder you already use and edit the files right where they are. Any editor on any platform can read them, today and in ten years.
+Your notes stay plain .md and .txt files in folders you choose — featuring Pure WYSIWYG live editing, KaTeX math, Mermaid diagrams, a 9-format Export Center (vector PDF with bookmarks & TOC, Word .docx templates, standalone HTML with search), a vertical multi-tab sidebar, and multi-cloud sync.
 
 WRITING FIRST
 
