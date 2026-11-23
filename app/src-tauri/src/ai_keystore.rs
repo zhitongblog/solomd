@@ -218,8 +218,8 @@ fn hex_encode(b: &[u8]) -> String {
 }
 
 fn hex_decode(s: &str) -> Result<Vec<u8>, String> {
-    if s.len() % 2 != 0 {
-        return Err("hex string has odd length".into());
+    if !s.is_ascii() || s.len() % 2 != 0 {
+        return Err("hex string must be even-length ASCII".into());
     }
     (0..s.len())
         .step_by(2)
@@ -462,5 +462,12 @@ mod tests {
         assert_eq!(file_read_key("qwen").unwrap(), "persist-me");
 
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn hex_decode_rejects_non_ascii_without_panicking() {
+        assert!(hex_decode("中文").is_err());
+        assert!(hex_decode("a中").is_err());
+        assert_eq!(hex_decode("0a1b").unwrap(), vec![0x0a, 0x1b]);
     }
 }

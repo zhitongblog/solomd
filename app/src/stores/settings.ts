@@ -140,6 +140,7 @@ interface Settings {
   // 5.0 — the formatting toolbar above the editor (bold, headings, lists,
   // code, links, images, tables, undo). Default ON.
   formatBar: boolean;
+  v535FormatBarDefaultOnMigrated?: boolean;
   // #353 — keep Markdown markers (`#`, `**`, …) visible in the CodeMirror
   // live views instead of hiding them off the caret line, so clicking a line
   // doesn't reflow it. Styling (heading size, bold) still applies.
@@ -732,10 +733,14 @@ interface Settings {
     showBacklinks: boolean;
     showRelationships: boolean;
     showTagsPanel: boolean;
+    showTasksPanel?: boolean;
     showNeighborhood: boolean;
     showTypesPanel: boolean;
     showHistoryPanel: boolean;
+    showInspector?: boolean;
     showAgentPanel: boolean;
+    tasks?: boolean;
+    inspector?: boolean;
   } | null;
 }
 
@@ -840,7 +845,8 @@ function defaults(): Settings {
     showLineNumbers: false,
     solidCursor: false,
     selectionBubble: true,
-    formatBar: false,
+    formatBar: true,
+    v535FormatBarDefaultOnMigrated: true,
     alwaysShowMarkers: false,
     hideActiveLineMarkers: false,
     collapseBlockSource: true,
@@ -1286,6 +1292,18 @@ function load(): Settings {
         merged.highlightCurrentLine = true;
         merged.v507HighlightLineMigrated = true;
       }
+      if (!parsed.v535FormatBarDefaultOnMigrated) {
+        merged.formatBar = true;
+        merged.showFormattingBar = true;
+        if (merged.viewMode === 'preview') {
+          merged.viewMode = 'liveEdit';
+        }
+        merged.v535FormatBarDefaultOnMigrated = true;
+      } else {
+        const fmtOn = Boolean(parsed.formatBar ?? parsed.showFormattingBar ?? true);
+        merged.formatBar = fmtOn;
+        merged.showFormattingBar = fmtOn;
+      }
       if (merged.rightSidebarLayout !== 'tabs' && merged.rightSidebarLayout !== 'stack') {
         merged.rightSidebarLayout = 'tabs';
       }
@@ -1315,6 +1333,17 @@ const THEMES: readonly Theme[] = [
 ];
 export function isTheme(v: unknown): v is Theme {
   return typeof v === 'string' && (THEMES as readonly string[]).includes(v);
+}
+export function themeFamily(theme: Theme): 'light' | 'dark' {
+  switch (theme) {
+    case 'light':
+    case 'lucius':
+    case 'github-light':
+    case 'solarized-light':
+      return 'light';
+    default:
+      return 'dark';
+  }
 }
 function systemTheme(): Theme {
   const dark =
@@ -1603,10 +1632,14 @@ export const useSettingsStore = defineStore('settings', {
           showBacklinks: this.showBacklinks,
           showRelationships: this.showRelationships,
           showTagsPanel: this.showTagsPanel,
+          showTasksPanel: this.showTasksPanel,
           showNeighborhood: this.showNeighborhood,
           showTypesPanel: this.showTypesPanel,
           showHistoryPanel: this.showHistoryPanel,
+          showInspector: this.showInspector,
           showAgentPanel: this.showAgentPanel,
+          tasks: this.showTasksPanel,
+          inspector: this.showInspector,
         };
         this.rightSidebarHidden = true;
       } else {
@@ -1616,13 +1649,29 @@ export const useSettingsStore = defineStore('settings', {
           this.showBacklinks = saved.showBacklinks;
           this.showRelationships = saved.showRelationships;
           this.showTagsPanel = saved.showTagsPanel;
+          if (saved.showTasksPanel !== undefined || saved.tasks !== undefined) {
+            this.showTasksPanel = Boolean(saved.showTasksPanel ?? saved.tasks);
+          }
           this.showNeighborhood = saved.showNeighborhood;
           this.showTypesPanel = saved.showTypesPanel;
           this.showHistoryPanel = saved.showHistoryPanel;
+          if (saved.showInspector !== undefined || saved.inspector !== undefined) {
+            this.showInspector = Boolean(saved.showInspector ?? saved.inspector);
+          }
           this.showAgentPanel = saved.showAgentPanel;
           this._rsPanesBeforeHide = null;
         }
-        if (!this.showBacklinks && !this.showRelationships && !this.showTagsPanel && !this.showTypesPanel && !this.showNeighborhood && !this.showHistoryPanel && !this.showAgentPanel) {
+        if (
+          !this.showBacklinks &&
+          !this.showRelationships &&
+          !this.showTagsPanel &&
+          !this.showTasksPanel &&
+          !this.showTypesPanel &&
+          !this.showNeighborhood &&
+          !this.showHistoryPanel &&
+          !this.showInspector &&
+          !this.showAgentPanel
+        ) {
           this.showBacklinks = true;
           this.showTagsPanel = true;
         }
@@ -1649,10 +1698,14 @@ export const useSettingsStore = defineStore('settings', {
       showBacklinks: boolean;
       showRelationships: boolean;
       showTagsPanel: boolean;
+      showTasksPanel?: boolean;
       showNeighborhood: boolean;
       showTypesPanel: boolean;
       showHistoryPanel: boolean;
+      showInspector?: boolean;
       showAgentPanel: boolean;
+      tasks?: boolean;
+      inspector?: boolean;
     }) {
       this._rsPanesBeforeHide = paneBeforeToggle;
       this.rightSidebarHidden = true;
@@ -1817,13 +1870,31 @@ export const useSettingsStore = defineStore('settings', {
       this.persist();
     },
     toggleBacklinks() {
+      if (this.rightSidebarLayout === 'tabs' && this.showBacklinks && !this.rightSidebarHidden && this.activeRightTab !== 'backlinks') {
+        this.activeRightTab = 'backlinks';
+        this.ensureRightSidebarVisible();
+        this.persist();
+        return;
+      }
       this.showBacklinks = !this.showBacklinks;
-      if (this.showBacklinks) this.ensureRightSidebarVisible();
+      if (this.showBacklinks) {
+        this.ensureRightSidebarVisible();
+        this.activeRightTab = 'backlinks';
+      }
       this.persist();
     },
     toggleRelationships() {
+      if (this.rightSidebarLayout === 'tabs' && this.showRelationships && !this.rightSidebarHidden && this.activeRightTab !== 'relationships') {
+        this.activeRightTab = 'relationships';
+        this.ensureRightSidebarVisible();
+        this.persist();
+        return;
+      }
       this.showRelationships = !this.showRelationships;
-      if (this.showRelationships) this.ensureRightSidebarVisible();
+      if (this.showRelationships) {
+        this.ensureRightSidebarVisible();
+        this.activeRightTab = 'relationships';
+      }
       this.persist();
     },
     toggleSpellcheckEnabled() {
@@ -1831,28 +1902,74 @@ export const useSettingsStore = defineStore('settings', {
       this.persist();
     },
     toggleTagsPanel() {
+      if (this.rightSidebarLayout === 'tabs' && this.showTagsPanel && !this.rightSidebarHidden && this.activeRightTab !== 'tags') {
+        this.activeRightTab = 'tags';
+        this.ensureRightSidebarVisible();
+        this.persist();
+        return;
+      }
       this.showTagsPanel = !this.showTagsPanel;
-      if (this.showTagsPanel) this.ensureRightSidebarVisible();
+      if (this.showTagsPanel) {
+        this.ensureRightSidebarVisible();
+        this.activeRightTab = 'tags';
+      }
       this.persist();
     },
     toggleTasksPanel() {
+      if (this.rightSidebarLayout === 'tabs' && this.showTasksPanel && !this.rightSidebarHidden && this.activeRightTab !== 'tasks') {
+        this.activeRightTab = 'tasks';
+        this.ensureRightSidebarVisible();
+        this.persist();
+        return;
+      }
       this.showTasksPanel = !this.showTasksPanel;
+      if (this.showTasksPanel) {
+        this.ensureRightSidebarVisible();
+        this.activeRightTab = 'tasks';
+      }
       this.persist();
     },
     toggleNeighborhood() {
+      if (this.rightSidebarLayout === 'tabs' && this.showNeighborhood && !this.rightSidebarHidden && this.activeRightTab !== 'neighborhood') {
+        this.activeRightTab = 'neighborhood';
+        this.ensureRightSidebarVisible();
+        this.persist();
+        return;
+      }
       this.showNeighborhood = !this.showNeighborhood;
-      if (this.showNeighborhood) this.ensureRightSidebarVisible();
+      if (this.showNeighborhood) {
+        this.ensureRightSidebarVisible();
+        this.activeRightTab = 'neighborhood';
+      }
       this.persist();
     },
     // v4.6 F2 — toggle the Types (types-as-lenses) sidebar pane.
     toggleTypesPanel() {
+      if (this.rightSidebarLayout === 'tabs' && this.showTypesPanel && !this.rightSidebarHidden && this.activeRightTab !== 'types') {
+        this.activeRightTab = 'types';
+        this.ensureRightSidebarVisible();
+        this.persist();
+        return;
+      }
       this.showTypesPanel = !this.showTypesPanel;
-      if (this.showTypesPanel) this.ensureRightSidebarVisible();
+      if (this.showTypesPanel) {
+        this.ensureRightSidebarVisible();
+        this.activeRightTab = 'types';
+      }
       this.persist();
     },
     toggleAgentPanel() {
+      if (this.rightSidebarLayout === 'tabs' && this.showAgentPanel && !this.rightSidebarHidden && this.activeRightTab !== 'agent') {
+        this.activeRightTab = 'agent';
+        this.ensureRightSidebarVisible();
+        this.persist();
+        return;
+      }
       this.showAgentPanel = !this.showAgentPanel;
-      if (this.showAgentPanel) this.ensureRightSidebarVisible();
+      if (this.showAgentPanel) {
+        this.ensureRightSidebarVisible();
+        this.activeRightTab = 'agent';
+      }
       this.persist();
     },
     toggleAgentAllowWrite() {
@@ -1969,13 +2086,21 @@ export const useSettingsStore = defineStore('settings', {
       this.persist();
     },
     toggleFormattingBar() {
-      this.formatBar = !this.formatBar;
-      this.showFormattingBar = this.formatBar;
+      const next = !(this.formatBar || this.showFormattingBar);
+      this.formatBar = next;
+      this.showFormattingBar = next;
+      if (next && this.viewMode === 'preview') {
+        this.viewMode = 'liveEdit';
+      }
       this.persist();
     },
     toggleFormatBar() {
-      this.formatBar = !this.formatBar;
-      this.showFormattingBar = this.formatBar;
+      const next = !(this.formatBar || this.showFormattingBar);
+      this.formatBar = next;
+      this.showFormattingBar = next;
+      if (next && this.viewMode === 'preview') {
+        this.viewMode = 'liveEdit';
+      }
       this.persist();
     },
     toggleSeparateTabBarRow() {
@@ -2007,14 +2132,32 @@ export const useSettingsStore = defineStore('settings', {
       this.persist();
     },
     toggleHistoryPanel() {
+      if (this.rightSidebarLayout === 'tabs' && this.showHistoryPanel && !this.rightSidebarHidden && this.activeRightTab !== 'history') {
+        this.activeRightTab = 'history';
+        this.ensureRightSidebarVisible();
+        this.persist();
+        return;
+      }
       this.showHistoryPanel = !this.showHistoryPanel;
-      if (this.showHistoryPanel) this.ensureRightSidebarVisible();
+      if (this.showHistoryPanel) {
+        this.ensureRightSidebarVisible();
+        this.activeRightTab = 'history';
+      }
       this.persist();
     },
     /** v4.6 F1 — toggle the Properties inspector pane (⌘⇧I). */
     toggleInspector() {
+      if (this.rightSidebarLayout === 'tabs' && this.showInspector && !this.rightSidebarHidden && this.activeRightTab !== 'inspector') {
+        this.activeRightTab = 'inspector';
+        this.ensureRightSidebarVisible();
+        this.persist();
+        return;
+      }
       this.showInspector = !this.showInspector;
-      if (this.showInspector) this.ensureRightSidebarVisible();
+      if (this.showInspector) {
+        this.ensureRightSidebarVisible();
+        this.activeRightTab = 'inspector';
+      }
       this.persist();
     },
     setRightSidebarPaneHeight(paneId: string, px: number) {

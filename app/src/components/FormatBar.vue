@@ -77,6 +77,7 @@ const hover = ref<GridSize | null>(null);
 /** Only a press that started on a cell may insert, so releasing a drag that
  *  began somewhere else — or a plain click elsewhere — cannot drop a table. */
 const armed = ref(false);
+const justInserted = ref(false);
 const size = computed(() => hover.value ?? { cols: 1, rows: 1 });
 
 const cellSize = (index: number): GridSize =>
@@ -94,10 +95,11 @@ function endPick() {
   armed.value = false;
   insertTable();
 }
-/** Leaving the grid ends a drag that is still held; the highlighted size
- *  stays as the readout, the way the last hovered cell does in Word. */
+/** Leaving the panel ends a drag that is still held and resets hover/justInserted. */
 function leaveGrid() {
   armed.value = false;
+  hover.value = null;
+  justInserted.value = false;
 }
 function insertTable() {
   const { cols, rows } = size.value;
@@ -107,6 +109,7 @@ function insertTable() {
     }),
   );
   hover.value = null;
+  justInserted.value = true;
 }
 
 interface MermaidTemplate {
@@ -364,19 +367,20 @@ function insertMermaidTemplate(tpl: MermaidTemplate) {
     >
       <Icon name="paperclip" />
     </button>
-    <div class="fbar__pop">
+    <div class="fbar__pop" :class="{ 'fbar__pop--closed': justInserted }" @mouseleave="leaveGrid">
       <button
         class="fbar__btn"
         :title="t('formatBar.tableTip')"
         :aria-label="t('formatBar.tableTip')"
         aria-haspopup="true"
+        @mouseenter="justInserted = false"
         @click="command('insert.table')"
       >
         <Icon name="table" />
       </button>
-      <div class="fbar__panel">
+      <div class="fbar__panel" @mouseleave="leaveGrid" @mouseup.prevent="endPick">
         <div class="fbar__panel-box">
-          <div class="fbar__grid" @mouseleave="leaveGrid" @mouseup.prevent="endPick">
+          <div class="fbar__grid" @mouseup.prevent="endPick">
             <button
               v-for="cell in cells"
               :key="cell"
@@ -517,8 +521,8 @@ function insertMermaidTemplate(tpl: MermaidTemplate) {
   display: none;
   padding-top: 6px;
 }
-.fbar__pop:hover .fbar__panel,
-.fbar__pop:focus-within .fbar__panel {
+.fbar__pop:not(.fbar__pop--closed):hover .fbar__panel,
+.fbar__pop:not(.fbar__pop--closed):focus-within .fbar__panel {
   display: block;
 }
 .fbar__panel-box {

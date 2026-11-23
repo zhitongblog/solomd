@@ -31,7 +31,6 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::Duration;
 
@@ -81,8 +80,6 @@ static STATE: Lazy<Mutex<InnerState>> = Lazy::new(|| {
         shutdown_gen: 0,
     })
 });
-
-static SERVER_RUNNING: AtomicBool = AtomicBool::new(false);
 
 // ---------------------------------------------------------------------------
 // Token generation. Same construction as dev_bridge — 32 hex chars derived
@@ -210,20 +207,36 @@ pub fn current_target() -> Option<(PathBuf, String)> {
 // ---------------------------------------------------------------------------
 
 fn spawn_if_needed(app: AppHandle) {
-    if SERVER_RUNNING.swap(true, Ordering::SeqCst) {
-        // Another accept-loop is already alive; it'll pick up the new
-        // token / config on the next request.
-        return;
-    }
+    let my_gen = {
+        let mut s = STATE.lock().expect("capture state lock");
+        if !s.enabled || s.running {
+            // Another accept-loop is already alive; it'll pick up the new
+            // token / config on the next request.
+            return;
+        }
+        s.running = true;
+        s.shutdown_gen
+    };
     tauri::async_runtime::spawn(async move {
-        if let Err(e) = serve(app).await {
+        if let Err(e) = serve(app.clone(), my_gen).await {
             eprintln!("[capture_endpoint] fatal: {e}");
         }
-        SERVER_RUNNING.store(false, Ordering::SeqCst);
+        let should_cleanup = {
+            let mut s = STATE.lock().expect("capture state lock");
+            if s.shutdown_gen == my_gen {
+                s.running = false;
+                true
+            } else {
+                false
+            }
+        };
+        if should_cleanup {
+            cleanup_port_token(&app);
+        }
     });
 }
 
-async fn serve(app: AppHandle) -> Result<(), String> {
+async fn serve(app: AppHandle, my_gen: u64) -> Result<(), String> {
     let port = STATE.lock().expect("capture state lock").port;
     let listener = TcpListener::bind(format!("127.0.0.1:{port}"))
         .await
@@ -231,11 +244,13 @@ async fn serve(app: AppHandle) -> Result<(), String> {
     let bound_port = listener.local_addr().map(|a| a.port()).unwrap_or(port);
     {
         let mut s = STATE.lock().expect("capture state lock");
+        if !s.enabled || s.shutdown_gen != my_gen {
+            return Ok(());
+        }
         s.port = bound_port;
         s.running = true;
     }
 
-    let my_gen = STATE.lock().expect("capture state lock").shutdown_gen;
     write_port_token(&app, bound_port);
 
     eprintln!(
@@ -270,11 +285,6 @@ async fn serve(app: AppHandle) -> Result<(), String> {
         });
     }
 
-    {
-        let mut s = STATE.lock().expect("capture state lock");
-        s.running = false;
-    }
-    cleanup_port_token(&app);
     eprintln!("[capture_endpoint] stopped");
     Ok(())
 }

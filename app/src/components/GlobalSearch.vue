@@ -14,7 +14,7 @@ const { isNarrow } = useViewport();
  * Mounts when the parent renders the 'search' pane in the rs-pane-host stack;
  * unmounts on close. ⌘⇧F toggles the parent's `searchOpen` ref.
  */
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useGlobalSearch, type SearchHit } from '../composables/useGlobalSearch';
 import { useFiles } from '../composables/useFiles';
 import { useTabsStore } from '../stores/tabs';
@@ -81,6 +81,13 @@ watch([query, titleOnly], () => {
   debounceTimer = window.setTimeout(doSearch, 220);
 });
 
+onBeforeUnmount(() => {
+  if (debounceTimer != null) {
+    window.clearTimeout(debounceTimer);
+    debounceTimer = null;
+  }
+});
+
 const TITLE_HIT_CAP = 200;
 let searchReqSeq = 0;
 
@@ -133,24 +140,31 @@ async function doSearch() {
       }
       nextHits = matched;
     } else {
-      nextHits = await search.search(q);
+      const tagMatch = q.match(/^(?:#|tag:#?)([^\s#]+)$/i);
+      const wantedTag = tagMatch ? tagMatch[1] : null;
+      nextHits = await search.search(wantedTag ? `#${wantedTag}` : q);
       if (reqId !== searchReqSeq) return;
       // #648 — When searching for a `#tag` or `tag:name`, also surface notes whose
       // YAML frontmatter `tags:` / `tag:` metadata matches (frontmatter tags are
       // typically written without `#`, so literal text search for `#tag` misses them).
-      const tagMatch = q.match(/^(?:#|tag:#?)([^\s#]+)$/i);
-      if (tagMatch) {
-        const needle = tagMatch[1].toLowerCase();
-        const seenFiles = new Set(nextHits.map((h) => h.file));
+      if (wantedTag) {
+        const needle = wantedTag.toLowerCase();
+        const tagTokenRe = new RegExp(
+          `(^|[\\s([{\"'،、，。；：！？])#${escapeRe(wantedTag)}(?:\\/[\\p{L}\\p{N}_-]+)*(?=$|[\\s)\\]}\"'.,;:!?،、，。；：！？])`,
+          'iu',
+        );
+        const seenTagFiles = new Set(
+          nextHits.filter((h) => tagTokenRe.test(h.snippet)).map((h) => h.file),
+        );
         const fmHits: SearchHit[] = [];
         for (const entry of wsIndex.entries) {
-          if (seenFiles.has(entry.path) || !entry.tags?.length) continue;
+          if (seenTagFiles.has(entry.path) || !entry.tags?.length) continue;
           const matchedTags = entry.tags.filter((tg) => {
             const tl = tg.toLowerCase();
             return tl === needle || tl.startsWith(`${needle}/`);
           });
           if (matchedTags.length > 0) {
-            seenFiles.add(entry.path);
+            seenTagFiles.add(entry.path);
             fmHits.push({
               file: entry.path,
               line: 1,

@@ -430,6 +430,32 @@ fn write_local_base_manifest(workspace: &Path, manifest: &SyncFolderManifest) {
     }
 }
 
+fn write_local_base_manifest_after_pull(
+    workspace: &Path,
+    remote_manifest: &SyncFolderManifest,
+    local_base: Option<&SyncFolderManifest>,
+    downloaded_or_matched: &HashSet<String>,
+) {
+    let mut updated = remote_manifest.clone();
+    let mut files = BTreeMap::new();
+    for (local_rel, remote_entry) in &remote_manifest.files {
+        if downloaded_or_matched.contains(local_rel) {
+            files.insert(local_rel.clone(), remote_entry.clone());
+        } else if let Some(prev) = local_base.and_then(|b| b.files.get(local_rel)) {
+            files.insert(local_rel.clone(), prev.clone());
+        }
+    }
+    if let Some(base) = local_base {
+        for (local_rel, prev_entry) in &base.files {
+            if !files.contains_key(local_rel) && !remote_manifest.files.contains_key(local_rel) {
+                files.insert(local_rel.clone(), prev_entry.clone());
+            }
+        }
+    }
+    updated.files = files;
+    write_local_base_manifest(workspace, &updated);
+}
+
 fn is_conflict_copy_rel(rel_path: &str) -> bool {
     Path::new(rel_path)
         .file_name()
@@ -871,6 +897,7 @@ pub async fn sync_restore_file_version(
             std::fs::create_dir_all(parent)
                 .map_err(|e| format!("创建目录失败: {e}"))?;
         }
+        super::watcher::mark_self_write(&target.to_string_lossy());
         std::fs::write(&target, &snap_bytes)
             .map_err(|e| format!("写入恢复文件失败: {e}"))?;
         Ok(String::from_utf8_lossy(&snap_bytes).into_owned())
@@ -1207,7 +1234,7 @@ pub async fn sync_diff_conflict(
             for ln in &h.lines {
                 if ln.kind == "add" {
                     added_lines += 1;
-                } else if ln.kind == "del" {
+                } else if ln.kind == "remove" || ln.kind == "del" {
                     removed_lines += 1;
                 }
             }
@@ -1272,6 +1299,7 @@ pub async fn sync_resolve_conflict(
                 if let Some(parent) = base_path.parent() {
                     let _ = std::fs::create_dir_all(parent);
                 }
+                super::watcher::mark_self_write(&base_path.to_string_lossy());
                 std::fs::write(&base_path, &conflict_bytes)
                     .map_err(|e| format!("写入工作副本失败: {e}"))?;
                 std::fs::remove_file(&conflict_path)
@@ -1299,6 +1327,7 @@ pub async fn sync_resolve_conflict(
                 if let Some(parent) = base_path.parent() {
                     let _ = std::fs::create_dir_all(parent);
                 }
+                super::watcher::mark_self_write(&base_path.to_string_lossy());
                 std::fs::write(&base_path, merged.as_bytes())
                     .map_err(|e| format!("写入合并结果失败: {e}"))?;
                 std::fs::remove_file(&conflict_path)
@@ -2226,6 +2255,7 @@ pub async fn webdav_pull_workspace(
     // 坚果云 Nutstore and Nextcloud, which reject `Depth: infinity`).
     let mut queue: Vec<String> = vec![String::new()];
     let mut visited_dirs: HashSet<String> = HashSet::new();
+    let mut downloaded_or_matched: HashSet<String> = HashSet::new();
     let mut downloaded = 0usize;
     let mut skipped = 0usize;
     let mut conflicts = 0usize;
@@ -2298,6 +2328,7 @@ pub async fn webdav_pull_workspace(
                     if local_target.exists() {
                         if let Ok(existing_bytes) = std::fs::read(&local_target) {
                             if sha256_hex(&existing_bytes) == me.sha256 {
+                                downloaded_or_matched.insert(local_rel.clone());
                                 skipped += 1;
                                 let total_est = remote_to_entry.len().max(downloaded + skipped + 1);
                                 emit_sync_progress(
@@ -2385,6 +2416,7 @@ pub async fn webdav_pull_workspace(
                                 );
                             }
                         } else {
+                            downloaded_or_matched.insert(local_rel.clone());
                             skipped += 1;
                             continue;
                         }
@@ -2395,6 +2427,7 @@ pub async fn webdav_pull_workspace(
                 }
                 std::fs::write(&local_target, &plain_bytes)
                     .map_err(|e| format!("Write error for {local_rel}: {e}"))?;
+                downloaded_or_matched.insert(local_rel.clone());
                 downloaded += 1;
                 let total_est = remote_to_entry.len().max(downloaded + skipped);
                 emit_sync_progress(
@@ -2409,7 +2442,7 @@ pub async fn webdav_pull_workspace(
     }
 
     if let Some(ref fm) = folder_manifest {
-        write_local_base_manifest(&ws_path, fm);
+        write_local_base_manifest_after_pull(&ws_path, fm, local_base.as_ref(), &downloaded_or_matched);
     }
 
     let conflict_note = if conflicts > 0 {
@@ -2535,6 +2568,14 @@ pub fn cloud_vault_push_options_inner(
     }
     if workspace == vault_dir || vault_dir.starts_with(workspace) {
         return Err("网盘同步目录不能与当前笔记目录相同或位于其内部 (Vault folder must be outside workspace)".into());
+    }
+    if let (Ok(ws_canon), Ok(vault_canon)) = (
+        std::fs::canonicalize(workspace),
+        std::fs::canonicalize(vault_dir),
+    ) {
+        if ws_canon == vault_canon || vault_canon.starts_with(&ws_canon) {
+            return Err("网盘同步目录不能与当前笔记目录相同或位于其内部 (Vault folder must be outside workspace)".into());
+        }
     }
 
     let target_root = if auto_workspace_subdir {
@@ -4774,6 +4815,7 @@ async fn baidu_pull_folder(
     // BFS traversal of ws_remote_root on Baidu Netdisk
     let mut queue = vec![ws_remote_root.clone()];
     let mut visited = HashSet::new();
+    let mut downloaded_or_matched: HashSet<String> = HashSet::new();
     let mut downloaded = 0usize;
     let mut skipped = 0usize;
     let mut conflicts = 0usize;
@@ -4868,6 +4910,7 @@ async fn baidu_pull_folder(
                 if local_target.exists() {
                     if let Ok(existing_bytes) = std::fs::read(&local_target) {
                         if sha256_hex(&existing_bytes) == me.sha256 {
+                            downloaded_or_matched.insert(local_rel.clone());
                             skipped += 1;
                             continue;
                         }
@@ -4932,6 +4975,7 @@ async fn baidu_pull_folder(
                             );
                         }
                     } else {
+                        downloaded_or_matched.insert(local_rel.clone());
                         skipped += 1;
                         continue;
                     }
@@ -4944,6 +4988,7 @@ async fn baidu_pull_folder(
             }
             std::fs::write(&local_target, &plain_bytes)
                 .map_err(|e| format!("写入本地文件 {local_rel} 失败: {e}"))?;
+            downloaded_or_matched.insert(local_rel.clone());
             downloaded += 1;
             let total_est = remote_to_entry.len().max(downloaded + skipped);
             emit_sync_progress(
@@ -4957,7 +5002,7 @@ async fn baidu_pull_folder(
     }
 
     if let Some(ref m) = manifest_opt {
-        write_local_base_manifest(workspace, m);
+        write_local_base_manifest_after_pull(workspace, m, local_base.as_ref(), &downloaded_or_matched);
     }
 
     let conflict_note = if conflicts > 0 {
@@ -5175,6 +5220,7 @@ async fn onedrive_pull_folder(
     };
 
     let local_base = read_local_base_manifest(workspace);
+    let mut downloaded_or_matched: HashSet<String> = HashSet::new();
     let mut downloaded = 0usize;
     let mut skipped = 0usize;
     let mut conflicts = 0usize;
@@ -5190,6 +5236,7 @@ async fn onedrive_pull_folder(
             if let Ok(existing) = std::fs::read(&target_local) {
                 let local_sha = sha256_hex(&existing);
                 if local_sha == entry.sha256 {
+                    downloaded_or_matched.insert(local_rel.clone());
                     skipped += 1;
                     continue;
                 }
@@ -5247,6 +5294,7 @@ async fn onedrive_pull_folder(
             "从 OneDrive 同步版本",
             max_versions,
         );
+        downloaded_or_matched.insert(local_rel.clone());
         downloaded += 1;
         emit_sync_progress(
             "cloud_api",
@@ -5257,7 +5305,7 @@ async fn onedrive_pull_folder(
         );
     }
 
-    write_local_base_manifest(workspace, &manifest);
+    write_local_base_manifest_after_pull(workspace, &manifest, local_base.as_ref(), &downloaded_or_matched);
     let conflict_note = if conflicts > 0 {
         format!("，检测到 {conflicts} 处多端并发修改并已生成冲突副本")
     } else {
@@ -5486,6 +5534,7 @@ async fn dropbox_pull_folder(
     };
 
     let local_base = read_local_base_manifest(workspace);
+    let mut downloaded_or_matched: HashSet<String> = HashSet::new();
     let mut downloaded = 0usize;
     let mut skipped = 0usize;
     let mut conflicts = 0usize;
@@ -5501,6 +5550,7 @@ async fn dropbox_pull_folder(
             if let Ok(existing) = std::fs::read(&target_local) {
                 let local_sha = sha256_hex(&existing);
                 if local_sha == entry.sha256 {
+                    downloaded_or_matched.insert(local_rel.clone());
                     skipped += 1;
                     continue;
                 }
@@ -5556,6 +5606,7 @@ async fn dropbox_pull_folder(
             "从 Dropbox 同步版本",
             max_versions,
         );
+        downloaded_or_matched.insert(local_rel.clone());
         downloaded += 1;
         emit_sync_progress(
             "cloud_api",
@@ -5566,7 +5617,7 @@ async fn dropbox_pull_folder(
         );
     }
 
-    write_local_base_manifest(workspace, &manifest);
+    write_local_base_manifest_after_pull(workspace, &manifest, local_base.as_ref(), &downloaded_or_matched);
     let conflict_note = if conflicts > 0 {
         format!("，检测到 {conflicts} 处多端并发修改并已生成冲突副本")
     } else {
@@ -5897,6 +5948,7 @@ async fn alipan_pull_folder(
     };
 
     let local_base = read_local_base_manifest(workspace);
+    let mut downloaded_or_matched: HashSet<String> = HashSet::new();
     let mut downloaded = 0usize;
     let mut skipped = 0usize;
     let mut conflicts = 0usize;
@@ -5913,6 +5965,7 @@ async fn alipan_pull_folder(
             if let Ok(existing) = std::fs::read(&target_local) {
                 let local_sha = sha256_hex(&existing);
                 if local_sha == entry.sha256 {
+                    downloaded_or_matched.insert(local_rel.clone());
                     skipped += 1;
                     continue;
                 }
@@ -5973,6 +6026,7 @@ async fn alipan_pull_folder(
             "从阿里云盘同步版本",
             max_versions,
         );
+        downloaded_or_matched.insert(local_rel.clone());
         downloaded += 1;
         emit_sync_progress(
             "cloud_api",
@@ -5983,7 +6037,7 @@ async fn alipan_pull_folder(
         );
     }
 
-    write_local_base_manifest(workspace, &manifest);
+    write_local_base_manifest_after_pull(workspace, &manifest, local_base.as_ref(), &downloaded_or_matched);
     let conflict_note = if conflicts > 0 {
         format!("，检测到 {conflicts} 处多端并发修改并已生成冲突副本")
     } else {
@@ -6376,6 +6430,7 @@ async fn gdrive_pull_folder(
     };
 
     let local_base = read_local_base_manifest(workspace);
+    let mut downloaded_or_matched: HashSet<String> = HashSet::new();
     let mut downloaded = 0usize;
     let mut skipped = 0usize;
     let mut conflicts = 0usize;
@@ -6392,6 +6447,7 @@ async fn gdrive_pull_folder(
             if let Ok(existing) = std::fs::read(&target_local) {
                 let local_sha = sha256_hex(&existing);
                 if local_sha == entry.sha256 {
+                    downloaded_or_matched.insert(local_rel.clone());
                     skipped += 1;
                     continue;
                 }
@@ -6452,6 +6508,7 @@ async fn gdrive_pull_folder(
             "从 Google Drive 同步版本",
             max_versions,
         );
+        downloaded_or_matched.insert(local_rel.clone());
         downloaded += 1;
         emit_sync_progress(
             "cloud_api",
@@ -6462,7 +6519,7 @@ async fn gdrive_pull_folder(
         );
     }
 
-    write_local_base_manifest(workspace, &manifest);
+    write_local_base_manifest_after_pull(workspace, &manifest, local_base.as_ref(), &downloaded_or_matched);
     let conflict_note = if conflicts > 0 {
         format!("，检测到 {conflicts} 处多端并发修改并已生成冲突副本")
     } else {
@@ -6888,6 +6945,7 @@ async fn r2_pull_folder(
     };
 
     let local_base = read_local_base_manifest(workspace);
+    let mut downloaded_or_matched: HashSet<String> = HashSet::new();
     let mut downloaded = 0usize;
     let mut skipped = 0usize;
     let mut conflicts = 0usize;
@@ -6903,6 +6961,7 @@ async fn r2_pull_folder(
             if let Ok(existing) = std::fs::read(&target_local) {
                 let local_sha = sha256_hex(&existing);
                 if local_sha == entry.sha256 {
+                    downloaded_or_matched.insert(local_rel.clone());
                     skipped += 1;
                     continue;
                 }
@@ -6949,6 +7008,7 @@ async fn r2_pull_folder(
             "从 Cloudflare R2 同步版本",
             max_versions,
         );
+        downloaded_or_matched.insert(local_rel.clone());
         downloaded += 1;
         emit_sync_progress(
             "cloud_api",
@@ -6959,7 +7019,7 @@ async fn r2_pull_folder(
         );
     }
 
-    write_local_base_manifest(workspace, &manifest);
+    write_local_base_manifest_after_pull(workspace, &manifest, local_base.as_ref(), &downloaded_or_matched);
     let conflict_note = if conflicts > 0 {
         format!("，检测到 {conflicts} 处多端并发修改并已生成冲突副本")
     } else {
@@ -7638,5 +7698,26 @@ mod tests {
         assert!(ws_cloud.join("笔记文档/secret.md.enc").is_file());
         let ct = std::fs::read(ws_cloud.join("笔记文档/secret.md.enc")).unwrap();
         assert_eq!(&ct[..4], b"SLMD");
+    }
+
+    #[test]
+    fn sync_diff_conflict_counts_removed_and_added_lines() {
+        let tmp = tempfile::tempdir().unwrap();
+        let ws = tmp.path();
+        std::fs::write(ws.join("note.md"), "line1\nremoved_line_a\nremoved_line_b\n").unwrap();
+        std::fs::write(
+            ws.join("note (冲突副本 dev 100_abc123).md"),
+            "line1\nadded_line_x\n",
+        )
+        .unwrap();
+
+        let res = tauri::async_runtime::block_on(sync_diff_conflict(
+            ws.to_string_lossy().to_string(),
+            "note.md".to_string(),
+            "note (冲突副本 dev 100_abc123).md".to_string(),
+        ))
+        .unwrap();
+        assert_eq!(res.added_lines, 1);
+        assert_eq!(res.removed_lines, 2);
     }
 }

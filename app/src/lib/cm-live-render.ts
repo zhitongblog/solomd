@@ -521,10 +521,28 @@ export function buildDecorations(
         // ---- Headings: line class for sizing + heading mark on text ----
         if (HEADING_LEVELS[name]) {
           const level = HEADING_LEVELS[name];
-          const lineObj = view.state.doc.lineAt(nFrom);
-          if (!seenHeadingLines.has(lineObj.from)) {
-            seenHeadingLines.add(lineObj.from);
-            ranges.push(headingLine(level).range(lineObj.from));
+          const isSetext = name === 'SetextHeading1' || name === 'SetextHeading2';
+          let lastContentLine = lineAtNode;
+          if (isSetext) {
+            let underlineLine = lineEndAtNode;
+            for (let ch = node.node.firstChild; ch; ch = ch.nextSibling) {
+              if (ch.name === 'HeaderMark') {
+                underlineLine = view.state.doc.lineAt(ch.from).number;
+                break;
+              }
+            }
+            lastContentLine = Math.max(lineAtNode, underlineLine - 1);
+          }
+          for (
+            let ln = Math.max(firstVisibleLine, lineAtNode);
+            ln <= Math.min(lastVisibleLine, lastContentLine);
+            ln += 1
+          ) {
+            const lineObj = view.state.doc.line(ln);
+            if (!seenHeadingLines.has(lineObj.from)) {
+              seenHeadingLines.add(lineObj.from);
+              ranges.push(headingLine(level).range(lineObj.from));
+            }
           }
           if (nFrom < nTo) {
             ranges.push(

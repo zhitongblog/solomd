@@ -1190,7 +1190,15 @@ pub fn fs_create_dir(path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn fs_delete(path: String) -> Result<(), String> {
+pub fn fs_delete(
+    watcher: tauri::State<'_, super::watcher::WatcherState>,
+    path: String,
+) -> Result<(), String> {
+    super::watcher::unwatch_under_path(&watcher, Path::new(&path));
+    fs_delete_inner(path)
+}
+
+pub fn fs_delete_inner(path: String) -> Result<(), String> {
     let p = Path::new(&path);
     if !p.exists() {
         return Ok(()); // idempotent — already gone is fine
@@ -1348,7 +1356,73 @@ pub fn vim_switch_input_method(app: tauri::AppHandle, mode: String) -> Result<()
         });
         return Ok(());
     }
-    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+    #[cfg(target_os = "windows")]
+    {
+        use std::sync::atomic::{AtomicBool, AtomicIsize, Ordering};
+        use tauri::Manager;
+        use windows_sys::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, SendMessageW};
+
+        #[link(name = "imm32")]
+        extern "system" {
+            fn ImmGetDefaultIMEWnd(hwnd: isize) -> isize;
+        }
+
+        const WM_IME_CONTROL: u32 = 0x0283;
+        const IMC_GETCONVERSIONMODE: usize = 0x0001;
+        const IMC_SETCONVERSIONMODE: usize = 0x0002;
+        const IMC_GETOPENSTATUS: usize = 0x0005;
+        const IMC_SETOPENSTATUS: usize = 0x0006;
+        const IME_CMODE_NATIVE: isize = 0x0001;
+
+        static SAVED_IME_ACTIVE: AtomicBool = AtomicBool::new(false);
+        static SAVED_IME_CONV: AtomicIsize = AtomicIsize::new(IME_CMODE_NATIVE);
+
+        let is_insert = mode == "insert";
+        let main_hwnd = app
+            .get_webview_window("main")
+            .and_then(|w| w.hwnd().ok())
+            .map(|h| h.0 as isize)
+            .unwrap_or(0);
+
+        unsafe {
+            let fg = GetForegroundWindow() as isize;
+            let target_hwnd = if fg != 0 { fg } else { main_hwnd };
+            if target_hwnd == 0 {
+                return Ok(());
+            }
+            let ime_wnd = ImmGetDefaultIMEWnd(target_hwnd);
+            if ime_wnd == 0 {
+                return Ok(());
+            }
+            if is_insert {
+                if SAVED_IME_ACTIVE.swap(false, Ordering::SeqCst) {
+                    let conv = SAVED_IME_CONV.load(Ordering::SeqCst);
+                    SendMessageW(ime_wnd as _, WM_IME_CONTROL, IMC_SETOPENSTATUS, 1);
+                    SendMessageW(
+                        ime_wnd as _,
+                        WM_IME_CONTROL,
+                        IMC_SETCONVERSIONMODE,
+                        conv | IME_CMODE_NATIVE,
+                    );
+                }
+            } else {
+                let open = SendMessageW(ime_wnd as _, WM_IME_CONTROL, IMC_GETOPENSTATUS, 0);
+                let conv = SendMessageW(ime_wnd as _, WM_IME_CONTROL, IMC_GETCONVERSIONMODE, 0);
+                if open != 0 && (conv & IME_CMODE_NATIVE) != 0 {
+                    SAVED_IME_CONV.store(conv, Ordering::SeqCst);
+                    SAVED_IME_ACTIVE.store(true, Ordering::SeqCst);
+                    SendMessageW(
+                        ime_wnd as _,
+                        WM_IME_CONTROL,
+                        IMC_SETCONVERSIONMODE,
+                        conv & !IME_CMODE_NATIVE,
+                    );
+                }
+            }
+        }
+        return Ok(());
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
     {
         let _ = (&app, mode);
         Ok(())
@@ -1547,11 +1621,13 @@ fn rewrite_assets_refs(file: &Path, old_assets: &Path, new_assets: &Path) -> Res
 
 #[tauri::command]
 pub async fn fs_move(
+    watcher: tauri::State<'_, super::watcher::WatcherState>,
     from: String,
     to: String,
     workspace_root: Option<String>,
     update_links: Option<bool>,
 ) -> Result<Vec<String>, String> {
+    super::watcher::unwatch_under_path(&watcher, Path::new(&from));
     tauri::async_runtime::spawn_blocking(move || {
         fs_move_with_workspace(from, to, workspace_root, update_links.unwrap_or(true))
     })
@@ -2628,6 +2704,7 @@ pub fn entry_times(meta: &fs::Metadata) -> (Option<u64>, Option<u64>) {
 /// "instant" and "10 seconds with the antivirus also doing on-access
 /// scanning". Reported by user 2026-04-26 as "Win 下打开一个文件比较多
 /// 的目录还是有些卡顿".
+#[allow(dead_code)]
 pub fn list_dir_inner(path: String, show_hidden: bool) -> Result<Vec<DirEntry>, String> {
     list_dir_with(path, show_hidden, false)
 }
@@ -3073,18 +3150,26 @@ pub fn delete_frontmatter_property_str(raw: &str, key: &str) -> Result<String, S
 /// the open editor without a re-read. Body bytes + key order are preserved.
 #[tauri::command]
 pub async fn update_frontmatter_property(
+    app: tauri::AppHandle,
     path: String,
     key: String,
     value: serde_json::Value,
 ) -> Result<String, String> {
-    tauri::async_runtime::spawn_blocking(move || {
+    let path_for_index = path.clone();
+    let next = tauri::async_runtime::spawn_blocking(move || {
         let raw = fs::read_to_string(&path).map_err(|e| e.to_string())?;
         let next = set_frontmatter_property_str(&raw, &key, &value)?;
+        super::watcher::mark_self_write(&path);
         fs::write(&path, &next).map_err(|e| e.to_string())?;
-        Ok(next)
+        Ok::<String, String>(next)
     })
     .await
-    .map_err(|e| format!("join: {e}"))?
+    .map_err(|e| format!("join: {e}"))??;
+    #[cfg(not(target_os = "android"))]
+    super::workspace_index::reindex_path(&app, Path::new(&path_for_index));
+    #[cfg(target_os = "android")]
+    let _ = (&app, &path_for_index);
+    Ok(next)
 }
 
 /// Tauri command: surgically delete a frontmatter property on `path` and
@@ -3092,17 +3177,25 @@ pub async fn update_frontmatter_property(
 /// of the remaining keys are preserved.
 #[tauri::command]
 pub async fn delete_frontmatter_property(
+    app: tauri::AppHandle,
     path: String,
     key: String,
 ) -> Result<String, String> {
-    tauri::async_runtime::spawn_blocking(move || {
+    let path_for_index = path.clone();
+    let next = tauri::async_runtime::spawn_blocking(move || {
         let raw = fs::read_to_string(&path).map_err(|e| e.to_string())?;
         let next = delete_frontmatter_property_str(&raw, &key)?;
+        super::watcher::mark_self_write(&path);
         fs::write(&path, &next).map_err(|e| e.to_string())?;
-        Ok(next)
+        Ok::<String, String>(next)
     })
     .await
-    .map_err(|e| format!("join: {e}"))?
+    .map_err(|e| format!("join: {e}"))??;
+    #[cfg(not(target_os = "android"))]
+    super::workspace_index::reindex_path(&app, Path::new(&path_for_index));
+    #[cfg(target_os = "android")]
+    let _ = (&app, &path_for_index);
+    Ok(next)
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -3405,6 +3498,11 @@ pub async fn download_and_install_update(
             .arg(&dest_path)
             .spawn()
             .map_err(|e| format!("failed to launch MSI installer: {e}"))?;
+        let app_for_exit = app.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(600));
+            app_for_exit.exit(0);
+        });
     }
 
     #[cfg(target_os = "macos")]

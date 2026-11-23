@@ -16,6 +16,7 @@ import { useWorkspaceStore } from '../stores/workspace';
 import { useTabsStore } from '../stores/tabs';
 import { useSettingsStore } from '../stores/settings';
 import { useToastsStore } from '../stores/toasts';
+import { samePath } from '../lib/path-key';
 
 export interface SyncConflictEntry {
   base_rel: string;
@@ -110,10 +111,14 @@ async function reload() {
   }
 }
 
+let diffSeq = 0;
+
 async function loadDiff() {
   const entry = selectedEntry.value;
+  const seq = ++diffSeq;
   if (!folder.value || !entry) {
     diff.value = null;
+    diffLoading.value = false;
     return;
   }
   diffLoading.value = true;
@@ -124,13 +129,17 @@ async function loadDiff() {
       baseRel: entry.base_rel,
       conflictRel: entry.conflict_rel,
     });
+    if (seq !== diffSeq) return;
     diff.value = res;
     mergedText.value = res.base_text || res.conflict_text;
   } catch (e) {
+    if (seq !== diffSeq) return;
     diff.value = null;
     toasts.error(String(e));
   } finally {
-    diffLoading.value = false;
+    if (seq === diffSeq) {
+      diffLoading.value = false;
+    }
   }
 }
 
@@ -141,11 +150,12 @@ async function selectConflict(rel: string) {
 
 function reloadOpenBaseTab(baseRel: string, content: string) {
   if (!folder.value) return;
-  const norm = `${folder.value.replace(/\\/g, '/').replace(/\/+$/, '')}/${baseRel}`.toLowerCase();
+  const full = `${folder.value.replace(/\\/g, '/').replace(/\/+$/, '')}/${baseRel}`;
+  const normalized = content.replace(/\r\n/g, '\n');
   for (const tab of tabs.tabs) {
     if (!tab.filePath) continue;
-    if (tab.filePath.replace(/\\/g, '/').toLowerCase() === norm) {
-      tabs.setContent(tab.id, content);
+    if (samePath(tab.filePath, full)) {
+      tabs.setContent(tab.id, normalized);
       tabs.markSaved(tab.id, tab.filePath);
     }
   }
@@ -153,10 +163,10 @@ function reloadOpenBaseTab(baseRel: string, content: string) {
 
 function closeOpenConflictTab(conflictRel: string) {
   if (!folder.value) return;
-  const norm = `${folder.value.replace(/\\/g, '/').replace(/\/+$/, '')}/${conflictRel}`.toLowerCase();
+  const full = `${folder.value.replace(/\\/g, '/').replace(/\/+$/, '')}/${conflictRel}`;
   for (const tab of [...tabs.tabs]) {
     if (!tab.filePath) continue;
-    if (tab.filePath.replace(/\\/g, '/').toLowerCase() === norm) {
+    if (samePath(tab.filePath, full)) {
       tabs.closeTab(tab.id);
     }
   }
@@ -215,6 +225,7 @@ watch(
   (open) => {
     if (open) void reload();
   },
+  { immediate: true },
 );
 </script>
 

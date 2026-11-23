@@ -41,6 +41,19 @@ fn sync_windows() -> &'static Mutex<HashMap<PathBuf, Instant>> {
     SYNC_REWRITE_WINDOWS.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
+fn normalize_watch_key(p: &str) -> String {
+    let stripped = p
+        .strip_prefix(r"\\?\")
+        .or_else(|| p.strip_prefix("//?/"))
+        .unwrap_or(p);
+    let unified = stripped.replace('\\', "/");
+    if cfg!(target_os = "windows") {
+        unified.to_ascii_lowercase()
+    } else {
+        unified
+    }
+}
+
 /// Called by write_file after a successful save to suppress the watcher event.
 ///
 /// Opportunistically purges entries older than `SELF_WRITE_SUPPRESSION_MS`
@@ -50,7 +63,9 @@ pub fn mark_self_write(path: &str) {
     let mut map = self_writes().lock().unwrap();
     let cutoff = Duration::from_millis(SELF_WRITE_RETENTION_MS);
     map.retain(|_, (t, _)| t.elapsed() < cutoff);
-    map.insert(path.to_string(), (Instant::now(), SystemTime::now()));
+    let stamps = (Instant::now(), SystemTime::now());
+    map.insert(path.to_string(), stamps);
+    map.insert(normalize_watch_key(path), stamps);
 }
 
 /// #148 follow-up — late-event self-write check. A watcher event that arrives
@@ -224,6 +239,8 @@ fn ensure_watcher(app: &AppHandle, state: &WatcherState) {
                 let map = self_writes().lock().unwrap();
                 map.get(&canonical_str)
                     .or_else(|| map.get(&original_path))
+                    .or_else(|| map.get(&normalize_watch_key(&canonical_str)))
+                    .or_else(|| map.get(&normalize_watch_key(&original_path)))
                     .copied()
             };
             let suppressed = self_write.map_or(false, |(instant, wall)| {

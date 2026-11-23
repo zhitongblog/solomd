@@ -134,3 +134,34 @@ test('#531: resolveSyncTargetFolder scopes sync strictly to registered Vaults an
   );
 });
 
+test('formatBar and showFormattingBar default on, migrate stale off/preview state once, and toggle in sync', () => {
+  const s1 = fresh();
+  assert.equal(s1.formatBar, true);
+  assert.equal(s1.showFormattingBar, true);
+
+  store.set(
+    LS_KEY,
+    JSON.stringify({
+      formatBar: false,
+      showFormattingBar: false,
+      viewMode: 'preview',
+    }),
+  );
+  const s2 = fresh();
+  assert.equal(s2.formatBar, true);
+  assert.equal(s2.showFormattingBar, true);
+  assert.equal(s2.viewMode, 'liveEdit');
+  assert.equal(s2.v535FormatBarDefaultOnMigrated, true);
+
+  s2.toggleFormatBar();
+  assert.equal(s2.formatBar, false);
+  assert.equal(s2.showFormattingBar, false);
+
+  s2.setViewMode('preview');
+  s2.toggleFormattingBar();
+  assert.equal(s2.formatBar, true);
+  assert.equal(s2.showFormattingBar, true);
+  assert.equal(s2.viewMode, 'liveEdit');
+});
+
+

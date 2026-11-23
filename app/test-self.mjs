@@ -1,5 +1,6 @@
 // Self-test for SoloMD pure libs (run with: npx tsx test-self.mjs)
-import { simplifiedToTraditional, traditionalToSimplified, pinyin, cjkWordCount } from './src/lib/chinese.ts';
+import { cjkWordCount } from './src/lib/chinese.ts';
+import { simplifiedToTraditional, traditionalToSimplified, pinyin } from './src/lib/chinese-convert.ts';
 import { extractOutline, renderMarkdown } from './src/lib/markdown.ts';
 import { rewriteImageUrls, svgTextToDataUrl } from './src/lib/image-resolve.ts';
 import { cleanAIArtifacts, stripMarkdownToPlain } from './src/lib/clean-ai.ts';

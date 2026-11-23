@@ -1,4 +1,4 @@
-import { samePath } from '../lib/path-key';
+import { samePath, pathKey as normalizePathKey } from '../lib/path-key';
 import { defineStore } from 'pinia';
 import type { Language, Tab } from '../types';
 import { useSettingsStore } from './settings';
@@ -600,14 +600,22 @@ export const useTabsStore = defineStore('tabs', {
         // once every pane was toggled off, the sidebar auto-hid and every
         // outline entry point (shortcut / settings / tab button) flipped the
         // flag invisibly, with no surface left to re-open it from.
-        if (t.showOutline) useSettingsStore().ensureRightSidebarVisible();
+        if (t.showOutline) {
+          const settings = useSettingsStore();
+          settings.ensureRightSidebarVisible();
+          settings.setActiveRightTab('outline');
+        }
       }
     },
     setShowOutlineAll(value: boolean) {
       for (const t of this.tabs) {
         if (t.language === 'markdown') t.showOutline = value;
       }
-      if (value) useSettingsStore().ensureRightSidebarVisible();
+      if (value) {
+        const settings = useSettingsStore();
+        settings.ensureRightSidebarVisible();
+        settings.setActiveRightTab('outline');
+      }
     },
     persist() {
       try {
@@ -650,6 +658,9 @@ export const useTabsStore = defineStore('tabs', {
     onWorkspaceSwitched(prevFolder: string | null, newFolder: string | null) {
       const settings = useSettingsStore();
       if (!settings.perWorkspaceTabs) return;
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('solomd:flush-content-sync'));
+      }
       // Remember what was open in the workspace we're leaving.
       this.persistToFolder(prevFolder);
       // Tabs that must follow the user regardless of workspace: anything
@@ -673,9 +684,10 @@ export const useTabsStore = defineStore('tabs', {
         // workspace's bucket share an id, so without this they'd both be
         // added and untitled tabs would multiply on every workspace switch.
         if (seenIds.has(t.id)) return;
-        if (t.filePath && seenPaths.has(t.filePath)) return;
+        const pk = t.filePath ? normalizePathKey(t.filePath) : '';
+        if (pk && seenPaths.has(pk)) return;
         seenIds.add(t.id);
-        if (t.filePath) seenPaths.add(t.filePath);
+        if (pk) seenPaths.add(pk);
         merged.push(t);
       };
       // Carried tabs win (they hold the live, possibly-unsaved content).

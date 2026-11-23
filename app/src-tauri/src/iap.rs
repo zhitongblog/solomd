@@ -15,6 +15,7 @@
 use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 
+#[allow(dead_code)]
 pub const TIP_PRODUCT_IDS: &[&str] = &[
     "app.solomd.tip.coffee",
     "app.solomd.tip.meal",

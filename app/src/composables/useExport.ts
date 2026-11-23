@@ -50,6 +50,7 @@ import {
 } from '../lib/pdf-options';
 
 import { stripMarkdownFormatting } from '../lib/clean-ai';
+import { getPlainSelection } from '../lib/plain-selection';
 
 /** Strip Markdown syntax (and unescape `\#`, `\*`, etc.) to produce plain prose. */
 function stripMarkdown(src: string): string {
@@ -85,7 +86,10 @@ function stripMarkdown(src: string): string {
  */
 function cmSelectionText(): string | null {
   const editors = Array.from(document.querySelectorAll<HTMLElement>('.cm-editor'));
-  if (!editors.length) return null;
+  if (!editors.length) {
+    const plain = getPlainSelection()?.selection ?? '';
+    return plain.trim() ? plain : null;
+  }
   // Prefer the focused editor; fall back to any editor that holds a non-empty
   // selection (covers blur-on-toolbar-click and split panes / tiles).
   const focused = document.querySelector<HTMLElement>('.cm-editor.cm-focused');
@@ -103,7 +107,8 @@ function cmSelectionText(): string | null {
       return text.trim() ? text : null;
     }
   }
-  return null;
+  const plain = getPlainSelection()?.selection ?? '';
+  return plain.trim() ? plain : null;
 }
 
 /** Nearest ancestor element carrying a source-line annotation, walking up. */
@@ -173,6 +178,8 @@ function getEditorSelectionMd(content?: string): string | null {
   if (typeof document === 'undefined') return null;
   const cmText = cmSelectionText();
   if (cmText) return cmText;
+  const plainSel = getPlainSelection()?.selection?.trim();
+  if (plainSel) return plainSel;
   if (content != null) {
     const previewText = previewSelectionToSource(content);
     if (previewText) return previewText;
@@ -182,7 +189,7 @@ function getEditorSelectionMd(content?: string): string | null {
   const range = sel.getRangeAt(0);
   let node: Node | null = range.commonAncestorContainer;
   while (node && node.nodeType === Node.TEXT_NODE) node = node.parentNode;
-  const inEditor = (node as Element | null)?.closest?.('.cm-editor');
+  const inEditor = (node as Element | null)?.closest?.('.cm-editor, .plain-host');
   if (!inEditor) return null;
   const text = sel.toString();
   return text.trim() ? text : null;

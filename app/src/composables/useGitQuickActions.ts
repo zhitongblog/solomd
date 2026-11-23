@@ -7,7 +7,7 @@
  *  - Plain local Git repositories using SSH or system credential helpers
  *    (`git_stage` / `git_cli_pull` / `git_cli_push`).
  */
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useGitHistoryStore } from '../stores/gitHistory';
 import { useGithubSyncStore } from '../stores/githubSync';
@@ -30,6 +30,16 @@ export function useGitQuickActions() {
 
   const folder = computed(() => workspace.currentFolder);
 
+  watch(
+    () => workspace.currentFolder,
+    (f) => {
+      if (f && hasGitBackend()) {
+        void gitHistory.refreshStatus(f);
+      }
+    },
+    { immediate: true },
+  );
+
   const isGitRepo = computed(
     () =>
       hasGitBackend() &&
@@ -46,6 +56,9 @@ export function useGitQuickActions() {
   async function flushDirtyWorkspaceTabs() {
     const root = folder.value;
     if (!root) return;
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('solomd:flush-content-sync'));
+    }
     const normRoot = root.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
     for (const tab of [...tabs.tabs]) {
       if (tab.content === tab.savedContent || !tab.filePath) continue;

@@ -255,6 +255,7 @@ pub fn run() {
             commands::fs_create_dir,
             commands::fs_delete,
             commands::fs_dir_exists,
+            commands::fs_files_exist,
             commands::fs_file_exists,
             commands::webview_runtime_version,
             commands::clipboard_read_text_fallback,

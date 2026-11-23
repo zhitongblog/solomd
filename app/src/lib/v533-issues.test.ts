@@ -2,7 +2,8 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { renderMarkdown } from './markdown.ts';
+import { renderMarkdown, extractOutline } from './markdown.ts';
+import { applyFormat } from './md-format.ts';
 import {
   ALL_TOOLBAR_ITEMS,
   DEFAULT_TOOLBAR_ITEMS,
@@ -106,5 +107,50 @@ describe('v5.3.3 issue fixes (#620, #622, #626, #628, #629, #630, #631)', () => 
     const search = fs.readFileSync(path.join(root, 'components/GlobalSearch.vue'), 'utf8');
     assert.match(search, /q\.match\(\/\^\(\?:#\|tag:#\?\)/);
     assert.match(search, /wsIndex\.entries/);
+  });
+
+  it('code-review fixes: extractOutline ignores headings inside ~~~ tilde fences and 4-backtick outer fences', () => {
+    const doc = [
+      '# Real H1',
+      '~~~bash',
+      '# Not a heading inside tilde fence',
+      '~~~',
+      '````markdown',
+      '```',
+      '# Not a heading inside 4-backtick fence',
+      '```',
+      '````',
+      '## Real H2',
+    ].join('\n');
+    const items = extractOutline(doc);
+    assert.deepEqual(
+      items.map((i) => ({ level: i.level, text: i.text })),
+      [
+        { level: 1, text: 'Real H1' },
+        { level: 2, text: 'Real H2' },
+      ],
+    );
+  });
+
+  it('code-review fixes: applyFormat unwraps enclosing <u>/<sub>/<sup> when bare caret is inside CJK or multi-word text', () => {
+    const doc = '前缀 <u>中文下划线内容</u> 后缀';
+    const caret = doc.indexOf('下划线');
+    const res = applyFormat(doc, caret, caret, 'underline');
+    assert.ok(res);
+    const out = doc.slice(0, res.from) + res.insert + doc.slice(res.to);
+    assert.equal(out, '前缀 中文下划线内容 后缀');
+  });
+
+  it('code-review fixes: Icons.vue defines every icon referenced by ALL_TOOLBAR_ITEMS, SyncConflictModal loads immediately', () => {
+    const iconsVue = fs.readFileSync(path.join(root, 'components/Icons.vue'), 'utf8');
+    for (const item of ALL_TOOLBAR_ITEMS) {
+      assert.ok(
+        iconsVue.includes(`'${item.icon}'`),
+        `Icons.vue must define icon "${item.icon}" for toolbar item "${item.id}"`,
+      );
+    }
+    const syncModal = fs.readFileSync(path.join(root, 'components/SyncConflictModal.vue'), 'utf8');
+    assert.match(syncModal, /immediate:\s*true/);
+    assert.match(syncModal, /let diffSeq = 0;/);
   });
 });

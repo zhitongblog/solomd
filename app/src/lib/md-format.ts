@@ -18,7 +18,6 @@ export type FormatKind =
   | 'bold'
   | 'underline'
   | 'italic'
-  | 'underline'
   | 'strike'
   | 'highlight'
   | 'code'
@@ -226,6 +225,31 @@ function toggleTag(doc: string, from: number, to: number, tag: 'u' | 'sub' | 'su
       selFrom: s - open.length,
       selTo: e - open.length,
     };
+  }
+  const ls = from > 0 ? doc.lastIndexOf('\n', from - 1) + 1 : 0;
+  let le = doc.indexOf('\n', to);
+  if (le < 0) le = doc.length;
+  if (doc.indexOf('\n', from) < 0 || doc.indexOf('\n', from) >= to) {
+    const line = doc.slice(ls, le);
+    let idx = 0;
+    while (idx < line.length) {
+      const o = line.indexOf(open, idx);
+      if (o < 0) break;
+      const c = line.indexOf(close, o + open.length);
+      if (c < 0) break;
+      const openEnd = ls + o + open.length;
+      const closeStart = ls + c;
+      if (closeStart > openEnd && from >= openEnd && to <= closeStart) {
+        return {
+          from: ls + o,
+          to: closeStart + close.length,
+          insert: doc.slice(openEnd, closeStart),
+          selFrom: from - open.length,
+          selTo: to - open.length,
+        };
+      }
+      idx = c + close.length;
+    }
   }
   return { from: s, to: e, insert: open + inner + close, selFrom: s + open.length, selTo: e + open.length };
 }

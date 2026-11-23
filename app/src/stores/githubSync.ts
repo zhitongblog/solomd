@@ -343,6 +343,9 @@ export const useGithubSyncStore = defineStore('githubSync', {
         this.status = null;
         return;
       }
+      if (this.folder !== folder) {
+        this.status = null;
+      }
       this.folder = folder;
       try {
         this.status = await invoke<SyncStatus>('github_sync_status', { folder });

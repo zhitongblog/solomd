@@ -1938,7 +1938,7 @@ function onSelectPdfFont(v: string) {
           </label>
           <p class="setting-hint">{{ t('settings.selectionBubbleHint') }}</p>
           <label style="margin-top: 8px;">
-            <input type="checkbox" :checked="settings.showFormattingBar" @change="settings.toggleFormattingBar()" />
+            <input type="checkbox" :checked="settings.formatBar || settings.showFormattingBar" @change="settings.toggleFormattingBar()" />
             {{ settings.language === 'zh' ? '显示顶部常驻格式工具栏（加粗、标题、列表、表格等）' : 'Show persistent top formatting toolbar (Bold, Headings, Lists, Table, etc.)' }}
           </label>
         </section>

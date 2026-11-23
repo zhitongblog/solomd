@@ -1389,18 +1389,25 @@ fn handle_event(app: &AppHandle, event: Event) {
     std::thread::spawn(move || {
         std::thread::sleep(Duration::from_millis(200));
         let now2 = SystemTime::now();
-        let still_pending: Vec<PathBuf> = {
+        let still_pending: Vec<(PathBuf, SystemTime)> = {
             let pending = match PENDING.lock() {
                 Ok(p) => p,
                 Err(_) => return,
             };
             paths
                 .into_iter()
-                .filter(|p| {
-                    pending
-                        .get(p)
-                        .map(|t| now2.duration_since(*t).map(|d| d.as_millis() >= 180).unwrap_or(true))
-                        .unwrap_or(false)
+                .filter_map(|p| {
+                    pending.get(&p).and_then(|&t| {
+                        let ready = now2
+                            .duration_since(t)
+                            .map(|d| d.as_millis() >= 180)
+                            .unwrap_or(true);
+                        if ready {
+                            Some((p, t))
+                        } else {
+                            None
+                        }
+                    })
                 })
                 .collect()
         };
@@ -1408,7 +1415,7 @@ fn handle_event(app: &AppHandle, event: Event) {
             return;
         }
         let mut changed = false;
-        for path in &still_pending {
+        for (path, _) in &still_pending {
             let norm = normalize_index_key(path);
             if norm.is_file() {
                 if let Ok(idx) = scan_file(&norm) {
@@ -1427,8 +1434,10 @@ fn handle_event(app: &AppHandle, event: Event) {
             }
         }
         if let Ok(mut pending) = PENDING.lock() {
-            for p in &still_pending {
-                pending.remove(p);
+            for (p, snapshot_ts) in &still_pending {
+                if pending.get(p).is_some_and(|&cur_ts| cur_ts <= *snapshot_ts) {
+                    pending.remove(p);
+                }
             }
         }
         if changed {

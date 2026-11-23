@@ -140,16 +140,66 @@ fn locate_pandoc() -> Option<PathBuf> {
 #[cfg(target_os = "windows")]
 fn locate_pandoc() -> Option<PathBuf> {
     // `where pandoc` may print multiple lines — first hit wins.
-    let out = no_window_command("where").arg("pandoc").output().ok()?;
-    if !out.status.success() {
-        return None;
+    if let Ok(out) = no_window_command("where").arg("pandoc").output() {
+        if out.status.success() {
+            let stdout = String::from_utf8_lossy(&out.stdout);
+            let first = stdout.lines().next().unwrap_or("").trim().to_string();
+            if !first.is_empty() {
+                let p = PathBuf::from(&first);
+                if p.is_file() {
+                    return Some(p);
+                }
+            }
+        }
     }
-    let stdout = String::from_utf8_lossy(&out.stdout);
-    let first = stdout.lines().next().unwrap_or("").trim().to_string();
-    if first.is_empty() {
-        return None;
+    // Fallback: probe standard Windows per-user and machine-wide install dirs
+    // (MSI / Winget / Scoop / Chocolatey) when PATH has not refreshed yet.
+    for candidate in windows_pandoc_fallback_candidates() {
+        if candidate.is_file() {
+            return Some(candidate);
+        }
     }
-    Some(PathBuf::from(first))
+    None
+}
+
+#[cfg(any(target_os = "windows", test))]
+fn windows_pandoc_fallback_candidates() -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    if let Some(local) = std::env::var_os("LOCALAPPDATA") {
+        out.push(PathBuf::from(&local).join("Pandoc").join("pandoc.exe"));
+        out.push(
+            PathBuf::from(local)
+                .join("Programs")
+                .join("Pandoc")
+                .join("pandoc.exe"),
+        );
+    }
+    if let Some(pf) = std::env::var_os("ProgramFiles") {
+        out.push(PathBuf::from(pf).join("Pandoc").join("pandoc.exe"));
+    }
+    if let Some(pf86) = std::env::var_os("ProgramFiles(x86)") {
+        out.push(PathBuf::from(pf86).join("Pandoc").join("pandoc.exe"));
+    }
+    if let Some(home) = std::env::var_os("USERPROFILE") {
+        let h = PathBuf::from(home);
+        out.push(h.join("scoop").join("shims").join("pandoc.exe"));
+        out.push(
+            h.join("scoop")
+                .join("apps")
+                .join("pandoc")
+                .join("current")
+                .join("pandoc.exe"),
+        );
+    }
+    if let Some(pd) = std::env::var_os("ProgramData") {
+        out.push(
+            PathBuf::from(pd)
+                .join("chocolatey")
+                .join("bin")
+                .join("pandoc.exe"),
+        );
+    }
+    out
 }
 
 /// Run a Pandoc conversion. We always go through a temp file rather than

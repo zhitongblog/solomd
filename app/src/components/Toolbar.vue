@@ -5,7 +5,7 @@ import BrandMark from './BrandMark.vue';
 import PomodoroPopover from './PomodoroPopover.vue';
 import ToolbarCustomizeModal from './ToolbarCustomizeModal.vue';
 import { useTabsStore } from '../stores/tabs';
-import { useSettingsStore } from '../stores/settings';
+import { useSettingsStore, themeFamily } from '../stores/settings';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useTilesStore } from '../stores/tiles';
 import { useGitQuickActions } from '../composables/useGitQuickActions';
@@ -115,7 +115,15 @@ function onToggleInspectorQuick() {
   settings.toggleInspector();
 }
 function onToggleOutlineQuick() {
-  settings.toggleOutline();
+  if (tabs.activeId) {
+    tabs.toggleOutline(tabs.activeId);
+    if (tabs.activeTab?.showOutline) {
+      settings.ensureRightSidebarVisible();
+      settings.setActiveRightTab('outline');
+    }
+  } else {
+    settings.toggleOutline();
+  }
 }
 function onToggleThemeQuick() {
   settings.toggleTheme();
@@ -858,7 +866,7 @@ onBeforeUnmount(() => {
     @dblclick="onTitleBarDblClick"
   >
     <span class="titlebar__icon" aria-hidden="true"><BrandMark :size="18" /></span>
-    <nav v-if="!settings.hideMenuBar" class="menubar" data-no-drag :aria-label="t('menubar.file')">
+    <nav v-if="!settings.hideMenuBar && !isNarrow" class="menubar" data-no-drag :aria-label="t('menubar.file')">
       <button
         v-for="m in menubarTree"
         :key="m.id"
@@ -1016,6 +1024,7 @@ onBeforeUnmount(() => {
         class="toolbar__dock-wrap"
         :class="{
           'toolbar__dock-wrap--in-titlebar': dockInTitlebar,
+          'toolbar__dock-wrap--with-divider': dockInTitlebar && !settings.hideMenuBar && !isNarrow,
           'toolbar--with-labels': settings.toolbarShowLabels && !isNarrow && !dockInTitlebar,
         }"
         data-no-drag
@@ -1074,7 +1083,7 @@ onBeforeUnmount(() => {
           <button
             v-if="!isNarrow && hasToolbarItem('outline')"
             class="icon-btn"
-            :class="{ active: settings.showOutline }"
+            :class="{ active: !!tabs.activeTab?.showOutline && !settings.rightSidebarHidden }"
             @click="onToggleOutlineQuick"
             :title="t('toolbarCustom.item.outline')"
             :aria-label="t('toolbarCustom.item.outline')"
@@ -1084,6 +1093,7 @@ onBeforeUnmount(() => {
           <button
             v-if="!isNarrow && hasToolbarItem('inspector')"
             class="icon-btn"
+            :class="{ active: settings.showInspector && !settings.rightSidebarHidden }"
             @click="onToggleInspectorQuick"
             :title="t('toolbarCustom.item.inspector')"
             :aria-label="t('toolbarCustom.item.inspector')"
@@ -1102,7 +1112,7 @@ onBeforeUnmount(() => {
           <button
             v-if="!isNarrow && hasToolbarItem('formatBar')"
             class="icon-btn"
-            :class="{ active: settings.formatBar }"
+            :class="{ active: settings.formatBar || settings.showFormattingBar }"
             @click="settings.toggleFormatBar()"
             :title="t('toolbarCustom.item.formatBar')"
             :aria-label="t('toolbarCustom.item.formatBar')"
@@ -1126,7 +1136,7 @@ onBeforeUnmount(() => {
             :title="t('toolbarCustom.item.theme')"
             :aria-label="t('toolbarCustom.item.theme')"
           >
-            <Icon :name="settings.theme === 'dark' ? 'sun' : 'moon'" />
+            <Icon :name="themeFamily(settings.theme) === 'dark' ? 'sun' : 'moon'" />
           </button>
           <button
             v-if="!isNarrow && hasToolbarItem('gitAdd') && gitQuick.isGitRepo.value"
@@ -1916,6 +1926,8 @@ onBeforeUnmount(() => {
 }
 .toolbar__dock-wrap--in-titlebar {
   gap: 4px;
+}
+.toolbar__dock-wrap--with-divider {
   padding-left: 8px;
   border-left: 1px solid var(--hairline);
 }

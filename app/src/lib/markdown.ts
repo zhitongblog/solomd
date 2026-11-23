@@ -2005,14 +2005,27 @@ export interface OutlineItem {
 export function extractOutline(source: string): OutlineItem[] {
   const lines = (source || '').replace(/\r\n?/g, '\n').split('\n');
   const items: OutlineItem[] = [];
-  let inFence = false;
+  let fenceChar = '';
+  let fenceLen = 0;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    if (/^```/.test(line)) {
-      inFence = !inFence;
-      continue;
+    const fenceMatch = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line);
+    if (fenceMatch) {
+      const run = fenceMatch[1];
+      const rest = fenceMatch[2];
+      if (!fenceChar) {
+        if (run[0] !== '`' || !rest.includes('`')) {
+          fenceChar = run[0];
+          fenceLen = run.length;
+          continue;
+        }
+      } else if (run[0] === fenceChar && run.length >= fenceLen && /^\s*$/.test(rest)) {
+        fenceChar = '';
+        fenceLen = 0;
+        continue;
+      }
     }
-    if (inFence) continue;
+    if (fenceChar) continue;
     const m = /^(#{1,6})\s+(.+?)\s*#*\s*$/.exec(line);
     if (m) {
       const level = m[1].length;

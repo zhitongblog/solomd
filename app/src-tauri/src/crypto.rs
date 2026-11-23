@@ -154,13 +154,18 @@ pub(crate) fn hex_encode(b: &[u8]) -> String {
 }
 
 pub(crate) fn hex_decode(s: &str) -> Result<Vec<u8>, String> {
-    if s.len() % 2 != 0 {
-        return Err("hex string has odd length".into());
+    if !s.is_ascii() || s.len() % 2 != 0 {
+        return Err("hex string must be even-length ASCII".into());
     }
     (0..s.len())
         .step_by(2)
         .map(|i| u8::from_str_radix(&s[i..i + 2], 16).map_err(|e| e.to_string()))
         .collect()
+}
+
+pub fn load_key(workspace: &Path) -> Result<[u8; 32], String> {
+    read_key_from_keyring(workspace)?
+        .ok_or_else(|| "encryption key missing — set passphrase again".to_string())
 }
 
 fn load_config(workspace: &Path) -> Result<Option<EncryptionConfig>, String> {
@@ -719,5 +724,13 @@ mod tests {
         let bad = crypto_set_passphrase_blocking(folder, "guess".into());
         assert!(bad.is_err());
         let _ = crypto_clear_passphrase_blocking(ws.to_string_lossy().to_string());
+    }
+
+    #[test]
+    fn hex_decode_rejects_non_ascii_without_panicking() {
+        // Multi-byte UTF-8 with even byte length (e.g. 6 bytes for "中文") must return Err, not panic on slice boundary.
+        assert!(hex_decode("中文").is_err());
+        assert!(hex_decode("a中").is_err());
+        assert!(hex_decode("00ff").is_ok());
     }
 }

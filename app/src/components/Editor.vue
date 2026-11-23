@@ -1,3 +1,12 @@
+<script lang="ts">
+let nextEditorUid = 1;
+let lastFocusedEditorUid = 0;
+const mountedEditorsByUid = new Map<
+  number,
+  { getTabId: () => string; getRootEl: () => HTMLElement | null }
+>();
+</script>
+
 <script setup lang="ts">
 import { ref, shallowRef, onMounted, onBeforeUnmount, watch, computed, nextTick } from 'vue';
 import { EditorState, Compartment, Prec, Transaction } from '@codemirror/state';
@@ -276,6 +285,45 @@ watch(
 
 const host = ref<HTMLDivElement | null>(null);
 let view: EditorView | null = null;
+const editorUid = nextEditorUid++;
+
+function markEditorFocused() {
+  lastFocusedEditorUid = editorUid;
+}
+
+function getEditorRootEl(): HTMLElement | null {
+  return usePlainWindowsEditor ? plainHostEl.value : host.value;
+}
+
+function isPrimaryActiveEditor(): boolean {
+  if (!props.tab || props.tab.id !== tabs.activeId) return false;
+  const sameTabEditors: Array<{ uid: number; root: HTMLElement | null }> = [];
+  for (const [uid, entry] of mountedEditorsByUid.entries()) {
+    if (entry.getTabId() === props.tab.id) {
+      sameTabEditors.push({ uid, root: entry.getRootEl() });
+    }
+  }
+  if (sameTabEditors.length <= 1) {
+    if (typeof document === 'undefined') return true;
+    const allEditors = document.querySelectorAll('.cm-editor, .plain-host');
+    if (allEditors.length <= 1) return true;
+  }
+  const myRoot = getEditorRootEl();
+  const activeEl = typeof document !== 'undefined' ? document.activeElement : null;
+  if (myRoot && activeEl && myRoot.contains(activeEl)) {
+    lastFocusedEditorUid = editorUid;
+    return true;
+  }
+  for (const other of sameTabEditors) {
+    if (other.uid !== editorUid && other.root && activeEl && other.root.contains(activeEl)) {
+      return false;
+    }
+  }
+  if (lastFocusedEditorUid > 0 && sameTabEditors.some((e) => e.uid === lastFocusedEditorUid)) {
+    return lastFocusedEditorUid === editorUid;
+  }
+  return sameTabEditors.length === 0 || sameTabEditors[0].uid === editorUid;
+}
 const cursorHistoryByTab = new Map<string, CursorHistoryQueue>();
 function getCursorHistory(tabId = props.tab.id): CursorHistoryQueue {
   let q = cursorHistoryByTab.get(tabId);
@@ -636,7 +684,20 @@ function syncEditorContentSoon(text: string) {
 watch(
   () => settings.autoNumberHeadings,
   (enabled) => {
-    if (props.tab.id !== tabs.activeId || props.tab.language !== 'markdown') return;
+    if (!isPrimaryActiveEditor() || props.tab.language !== 'markdown') return;
+    if (usePlainWindowsEditor) {
+      if (plainComposing.value) return;
+      const curDoc = plainText.value || '';
+      const sel = plainAbsoluteSelection() ?? { from: 0, to: 0 };
+      const edit = autoNumberHeadings(curDoc, sel.from, sel.to, enabled ? 'add' : 'remove');
+      if (edit) {
+        const updated = curDoc.slice(0, edit.from) + edit.insert + curDoc.slice(edit.to);
+        recordPlainHistory();
+        syncPlainEditorFromStore(updated, true);
+        tabs.setContent(props.tab.id, updated);
+      }
+      return;
+    }
     if (view && !view.composing) {
       const curDoc = view.state.doc.toString();
       const sel = view.state.selection.main;
@@ -1844,6 +1905,31 @@ function syncPlainEditorFromStore(rawText: string, preserveCaret = false) {
   const text = (rawText || '').replace(/\r\n?/g, '\n');
   const el = plainEditor.value;
   plainText.value = text;
+  if (plainLiveEnabled.value) {
+    plainActiveBlock.value = Math.max(0, Math.min(plainActiveBlock.value, Math.max(0, plainBlocks.value.length - 1)));
+    nextTick(() => {
+      if (plainText.value !== text) return;
+      plainActiveBlock.value = Math.max(0, Math.min(plainActiveBlock.value, Math.max(0, plainBlocks.value.length - 1)));
+      const block = plainBlocks.value[plainActiveBlock.value];
+      const bEl = plainBlockEditors.value[plainActiveBlock.value];
+      if (block && bEl && bEl.value !== block.text) {
+        const from = bEl.selectionStart;
+        const to = bEl.selectionEnd;
+        const hadFocus = document.activeElement === bEl;
+        bEl.value = block.text;
+        if (preserveCaret) {
+          const a = Math.min(from ?? 0, block.text.length);
+          const b = Math.min(to ?? a, block.text.length);
+          bEl.setSelectionRange(a, b);
+          if (hadFocus && document.activeElement !== bEl) bEl.focus({ preventScroll: true });
+        }
+      }
+      if (bEl) autoSizePlainBlock(bEl);
+      emitPlainCursorAndSelection();
+      syncPlainLiveScroll();
+    });
+    return;
+  }
   if (!el) {
     // #281 — the flat textarea may not exist *yet*. Watchers run before Vue
     // patches the DOM, so a tab switch that also flips `plainLiveEnabled`
@@ -5191,6 +5277,10 @@ function maybeRestoreSession() {
 }
 
 onMounted(() => {
+  mountedEditorsByUid.set(editorUid, {
+    getTabId: () => props.tab.id,
+    getRootEl: getEditorRootEl,
+  });
   // Registered before the plain-editor early return below — this listener has
   // to exist on ALL three editor paths, and the CodeMirror-only setup that
   // follows is unreachable on Windows. (Putting it further down is what made
@@ -5198,7 +5288,7 @@ onMounted(() => {
   function onInsertFrontmatter() {
     const active = tabs.activeTab;
     if (!active || active.language !== 'markdown') return;
-    if (props.tab && props.tab.id !== active.id) return;
+    if (!isPrimaryActiveEditor()) return;
     const today = new Date().toISOString().slice(0, 10);
     const stem = (active.fileName || '').replace(/\.[^.]+$/, '');
     const snippet = `---\ntitle: ${stem}\ndate: ${today}\ntags: []\n---\n\n`;
@@ -5221,8 +5311,12 @@ onMounted(() => {
       view.focus();
       return;
     }
-    const cur = active.content || '';
+    const cur = (usePlainWindowsEditor ? plainText.value : active.content) || '';
     if (cur.startsWith('---\n') || cur.startsWith('---\r\n')) return;
+    if (usePlainWindowsEditor) {
+      recordPlainHistory();
+      syncPlainEditorFromStore(snippet + cur);
+    }
     tabs.setContent(active.id, snippet + cur);
   }
   window.addEventListener('solomd:insert-frontmatter', onInsertFrontmatter);
@@ -5343,8 +5437,8 @@ function onTransformCase(e: Event) {
   const detail = (e as CustomEvent).detail || {};
   const mode: CaseMode | 'cycle' = detail.mode || 'cycle';
   // Split view mounts one Editor per pane and they all hear this event, so
-  // only the one showing the active tab may act.
-  if (props.tab.id !== tabs.activeId) return;
+  // only the primary active editor showing the active tab may act.
+  if (!isPrimaryActiveEditor()) return;
 
   if (!usePlainWindowsEditor) {
     if (!view) return;
@@ -5409,7 +5503,7 @@ function onFormatMarkdown(e: Event) {
   const detail = (e as CustomEvent).detail || {};
   let kind = detail.kind as FormatKind | 'headingCycle';
   const color = typeof detail.color === 'string' ? detail.color : undefined;
-  if (props.tab.id !== tabs.activeId) return;
+  if (!isPrimaryActiveEditor()) return;
   if (props.tab.language !== 'markdown') return;
   // 5.0 touch keyboard bar: one heading button that steps
   // paragraph → H1 → H2 → H3 → paragraph, each step an ordinary fmt.hN.
@@ -5559,7 +5653,7 @@ function readBubbleRect(): Box | null {
 
 /** Undo / redo from the touch keyboard bar, on either editor. */
 function onEditorHistory(e: Event) {
-  if (props.tab.id !== tabs.activeId) return;
+  if (!isPrimaryActiveEditor()) return;
   const op = ((e as CustomEvent).detail || {}).op as 'undo' | 'redo';
   if (!usePlainWindowsEditor) {
     if (!view) return;
@@ -5580,7 +5674,7 @@ function onEditorHistory(e: Event) {
  */
 function onPlainWindowKeydown(event: KeyboardEvent) {
   if (event.defaultPrevented) return;
-  if (props.tab.id !== tabs.activeId) return;
+  if (!isPrimaryActiveEditor()) return;
   if (settings.viewMode === 'preview' || settings.viewMode === 'reading') return;
   const active = document.activeElement;
   if (
@@ -5636,7 +5730,7 @@ function onPlainWindowKeydown(event: KeyboardEvent) {
 function onEditorCommand(e: Event) {
   const cmd = ((e as CustomEvent).detail || {}).cmd as EditorCommand;
   if (!EDITOR_COMMANDS.includes(cmd)) return;
-  if (props.tab.id !== tabs.activeId) return;
+  if (!isPrimaryActiveEditor()) return;
   if (MARKDOWN_ONLY_COMMANDS.has(cmd) && props.tab.language !== 'markdown') return;
 
   const headingMode = (c: EditorCommand) =>
@@ -6243,12 +6337,22 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  mountedEditorsByUid.delete(editorUid);
+  if (lastFocusedEditorUid === editorUid) lastFocusedEditorUid = 0;
   window.removeEventListener('solomd:split-hover-line', onSplitHoverFromPreview);
   host.value?.removeEventListener('mousemove', onEditorHostMouseMove);
   host.value?.removeEventListener('mouseleave', onEditorHostMouseLeave);
   setHoveredCmLineEl(null);
   saveCurrentTabCaret(props.tab.id);
   cancelCmScrollRestore?.();
+  cancelPlainScrollRestore?.();
+  plainPinStop?.();
+  if (plainFindInputTimer) {
+    clearTimeout(plainFindInputTimer);
+    plainFindInputTimer = null;
+  }
+  window.removeEventListener('mousemove', onPlainDragMove);
+  window.removeEventListener('mouseup', onPlainDragEnd);
   cleanupRelayout?.();
   cleanupTransformCase?.();
   cleanupTransformCase = null;
@@ -6976,13 +7080,13 @@ function insertImageUrl(url: string, alt = ''): void {
  * via toasts. No-op (with a hint) when no uploader is configured.
  */
 async function uploadLocalImages(): Promise<void> {
-  if (!view) return;
+  if (!view && !usePlainWindowsEditor) return;
   const up0 = resolveUploader(settings as unknown as ImageUploadSettings, 'x.png');
   if (settings.imageUploader === 'none' || !up0) {
     toasts.info(t('toast.noUploaderConfigured'));
     return;
   }
-  const doc = view.state.doc.toString();
+  const doc = view ? view.state.doc.toString() : (plainText.value || props.tab.content || '');
   // Match markdown image links with a local (non-remote) src.
   const re = /!\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
   const targets: { src: string }[] = [];
@@ -7026,7 +7130,8 @@ async function uploadLocalImages(): Promise<void> {
  *  absolute filesystem path for upload. */
 async function resolveLocalImageAbsPath(src: string): Promise<string | null> {
   const { resolveImagePath } = await import('../lib/image-resolve');
-  const imageRoot = parseFrontMatterImageRoot(props.tab.content) ?? null;
+  const sourceText = usePlainWindowsEditor ? (plainText.value || props.tab.content) : props.tab.content;
+  const imageRoot = parseFrontMatterImageRoot(sourceText) ?? null;
   // resolveImagePath decodes the src exactly once itself; decoding here too
   // turned a file named `100%.png` (written as `100%25.png`) into garbage.
   const abs = resolveImagePath(src, imageRoot, props.tab.filePath);
@@ -7035,6 +7140,19 @@ async function resolveLocalImageAbsPath(src: string): Promise<string | null> {
 
 /** Replace every `](oldSrc)` occurrence in the live doc with the new URL. */
 function replaceAllImageSrc(oldSrc: string, newUrl: string): void {
+  if (usePlainWindowsEditor && !view) {
+    const doc = plainText.value || props.tab.content || '';
+    const needle = `](${oldSrc})`;
+    if (!doc.includes(needle)) return;
+    const encoded = encodeImageDestination(newUrl);
+    const updated = doc.split(needle).join(`](${encoded})`);
+    if (updated !== doc) {
+      recordPlainHistory();
+      syncPlainEditorFromStore(updated, true);
+      tabs.setContent(props.tab.id, updated);
+    }
+    return;
+  }
   if (!view) return;
   const doc = view.state.doc.toString();
   const changes: { from: number; to: number; insert: string }[] = [];
@@ -7399,12 +7517,16 @@ const cls = computed(() => ({
     v-if="!usePlainWindowsEditor"
     :class="cls"
     ref="host"
+    @focusin="markEditorFocused"
+    @pointerdown="markEditorFocused"
     @contextmenu="onEditorContextMenu"
   ></div>
   <div
     v-else
     ref="plainHostEl"
     class="plain-host"
+    @focusin="markEditorFocused"
+    @pointerdown="markEditorFocused"
     @mousedown.capture="onEditorMouseDownCapture"
     @contextmenu="onEditorContextMenu"
   >

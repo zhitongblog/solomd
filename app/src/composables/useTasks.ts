@@ -14,6 +14,7 @@ import { useToastsStore } from '../stores/toasts';
 import { useI18n } from '../i18n';
 import { useFiles } from './useFiles';
 import { parseTaskMeta, compareTasks, toggleTaskLine, type TaskMeta } from '../lib/tasks';
+import { samePath } from '../lib/path-key';
 import type { FileReadResult } from '../types';
 
 export interface WorkspaceTask {
@@ -61,7 +62,10 @@ export function useTasks() {
    * disk) disagreeing with what the user just clicked.
    */
   async function toggle(task: WorkspaceTask): Promise<void> {
-    const openTab = tabs.tabs.find((t) => t.filePath === task.path);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('solomd:flush-content-sync'));
+    }
+    const openTab = tabs.tabs.find((t) => samePath(t.filePath, task.path));
     try {
       if (openTab) {
         const next = toggleTaskLine(openTab.content ?? '', task.line);

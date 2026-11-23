@@ -1049,7 +1049,7 @@ export function bindDomTableCellEditor(
     } catch {
       // Fallback for non-standard scrollIntoView implementations.
     }
-    const scroller = wrap.closest?.('.plain-live-host, .cm-scroller') as HTMLElement | null;
+    const scroller = wrap.closest?.('.plain-block-editor, .plain-live-host, .cm-scroller') as HTMLElement | null;
     if (!scroller || typeof cell.getBoundingClientRect !== 'function' || typeof scroller.getBoundingClientRect !== 'function') {
       return;
     }

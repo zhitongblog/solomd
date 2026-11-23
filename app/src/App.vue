@@ -285,7 +285,10 @@ function rsPaneSnapshot() {
     showNeighborhood: settings.showNeighborhood,
     showTypesPanel: settings.showTypesPanel,
     showHistoryPanel: settings.showHistoryPanel,
+    showInspector: settings.showInspector,
     showAgentPanel: settings.showAgentPanel,
+    tasks: settings.showTasksPanel,
+    inspector: settings.showInspector,
   };
 }
 /** Run a pane toggle and reconcile sidebar visibility: hide it if the
@@ -302,7 +305,8 @@ function ctxToggle(toggleFn: () => void) {
     !settings.showTasksPanel &&
     !showNeighborhoodPane.value &&
     !settings.showTypesPanel &&
-    !settings.showHistoryPanel &&
+    !showHistoryPane.value &&
+    !settings.showInspector &&
     (IS_APP_STORE_BUILD || !settings.showAgentPanel);
   if (noPanesVisible) {
     settings.hideRightSidebarFromPane(before);
@@ -325,8 +329,21 @@ function ctxToggle(toggleFn: () => void) {
  * strip when a toggle turns a pane on.
  */
 function toggleGlobalSearch() {
+  if (
+    searchOpen.value &&
+    settings.rightSidebarLayout === 'tabs' &&
+    effectiveRightTab.value !== 'search'
+  ) {
+    settings.setActiveRightTab('search');
+    settings.ensureRightSidebarVisible();
+    closeSidebarCtx();
+    return;
+  }
   ctxToggle(() => {
     searchOpen.value = !searchOpen.value;
+    if (searchOpen.value) {
+      settings.setActiveRightTab('search');
+    }
   });
 }
 
@@ -334,6 +351,7 @@ function toggleGlobalSearch() {
 function openGlobalSearchPane() {
   ctxToggle(() => {
     searchOpen.value = true;
+    settings.setActiveRightTab('search');
   });
 }
 
@@ -1067,6 +1085,8 @@ function onFilterTag(tag: string) {
 let unlistenOpened: UnlistenFn | null = null;
 let unlistenMenu: UnlistenFn | null = null;
 let unlistenWindowDestroyed: UnlistenFn | null = null;
+let unlistenCloseRequested: UnlistenFn | null = null;
+let unlistenDragDrop: UnlistenFn | null = null;
 
 async function openExternalFile() {
   const filePath = tabs.activeTab?.filePath;
@@ -1737,7 +1757,7 @@ onMounted(async () => {
   // the one being closed in the payload — the event reaches every window, and
   // each must only act on its own close.
   try {
-    await listen<string>('solomd://close-requested', async (e) => {
+    unlistenCloseRequested = await listen<string>('solomd://close-requested', async (e) => {
       const me = getCurrentWindow().label;
       if (e.payload && e.payload !== me) return;
       if (tableEditor.session) {
@@ -1803,7 +1823,7 @@ onMounted(async () => {
   try {
     const webview = getCurrentWebview();
     const IMAGE_DROP_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'avif', 'tiff']);
-    await webview.onDragDropEvent(async (event) => {
+    unlistenDragDrop = await webview.onDragDropEvent(async (event) => {
       if (event.payload.type === 'drop') {
         for (const path of event.payload.paths) {
           const ext = (path.split('.').pop() || '').toLowerCase();
@@ -2030,6 +2050,14 @@ onBeforeUnmount(() => {
   if (unlistenWindowDestroyed) {
     unlistenWindowDestroyed();
     unlistenWindowDestroyed = null;
+  }
+  if (unlistenCloseRequested) {
+    unlistenCloseRequested();
+    unlistenCloseRequested = null;
+  }
+  if (unlistenDragDrop) {
+    unlistenDragDrop();
+    unlistenDragDrop = null;
   }
 });
 
@@ -2393,11 +2421,15 @@ const renderedRsPanes = computed(() => {
 watch(
   () => visibleRsPanes.value.map((p) => p.id),
   (nextIds, prevIds) => {
-    const prevSet = new Set<string>(prevIds ?? []);
-    const added = nextIds.find((id) => !prevSet.has(id));
-    if (added) {
-      settings.setActiveRightTab(added);
-    } else if (nextIds.length > 0 && !(nextIds as string[]).includes(settings.activeRightTab)) {
+    if (prevIds && prevIds.length > 0 && nextIds.length === prevIds.length + 1) {
+      const prevSet = new Set<string>(prevIds);
+      const added = nextIds.find((id) => !prevSet.has(id));
+      if (added) {
+        settings.setActiveRightTab(added);
+        return;
+      }
+    }
+    if (nextIds.length > 0 && !(nextIds as string[]).includes(settings.activeRightTab)) {
       settings.setActiveRightTab(nextIds[0]);
     }
   },
@@ -2877,7 +2909,7 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
             <span class="sidebar-ctx__check">{{ searchOpen ? '✓' : '' }}</span>
             {{ t('rsPane.search') }}
           </label>
-          <label class="sidebar-ctx__item" @click="ctxToggle(() => { if (tabs.activeTab) tabs.toggleOutline(tabs.activeTab.id) })">
+          <label class="sidebar-ctx__item" @click="ctxToggle(() => { if (tabs.activeTab) { tabs.toggleOutline(tabs.activeTab.id); if (tabs.activeTab.showOutline) settings.setActiveRightTab('outline'); } })">
             <span class="sidebar-ctx__check">{{ showOutlinePane ? '✓' : '' }}</span>
             {{ t('rsPane.outline') }}
           </label>

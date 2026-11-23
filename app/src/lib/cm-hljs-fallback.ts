@@ -115,9 +115,22 @@ export function parseHljsHtmlSpans(html: string, code: string): HljsSpan[] {
         spans.push({ from: top.start, to: pos, cls: top.cls });
       }
     } else if (tok.startsWith('&') && tok.endsWith(';') && tok.length > 2) {
-      // Every HTML entity emitted by highlight.js (`&lt;`, `&gt;`, `&amp;`,
-      // `&quot;`, `&#x27;`, `&#39;`) represents 1 UTF-16 code unit in `code`.
-      pos += 1;
+      // Named HTML entities emitted by highlight.js (`&lt;`, `&gt;`, `&amp;`,
+      // `&quot;`) are 1 UTF-16 code unit; numeric entities (`&#x...;`, `&#...;`)
+      // may decode to an astral code point (2 UTF-16 code units).
+      let charLen = 1;
+      if (tok.startsWith('&#x') || tok.startsWith('&#X')) {
+        const cp = Number.parseInt(tok.slice(3, -1), 16);
+        if (Number.isFinite(cp) && cp >= 0 && cp <= 0x10ffff) {
+          charLen = String.fromCodePoint(cp).length;
+        }
+      } else if (tok.startsWith('&#')) {
+        const cp = Number.parseInt(tok.slice(2, -1), 10);
+        if (Number.isFinite(cp) && cp >= 0 && cp <= 0x10ffff) {
+          charLen = String.fromCodePoint(cp).length;
+        }
+      }
+      pos += charLen;
     } else {
       pos += tok.length;
     }
