@@ -776,13 +776,18 @@ export function buildDecorations(
               leadSpaces > 0
                 ? Math.min(10, Math.max(depth * 1.4, leadSpaces * 0.55))
                 : 0;
+            // Give top-level list lines a base left indentation (`0.75em`) so bullets
+            // and ordered markers sit indented relative to headings/paragraphs (matching
+            // Preview/Split mode) while preserving hanging-indent alignment on wrapped lines.
+            const baseIndentEm = 0.75;
             const indentEm = Math.min(12, leadEm + markEm);
-            const indentStr = `${indentEm.toFixed(2)}em`;
+            const padLeftStr = `${(baseIndentEm + indentEm).toFixed(2)}em`;
+            const textIndentStr = `-${indentEm.toFixed(2)}em`;
             ranges.push(
               Decoration.line({
                 class: 'cm-md-list-line',
                 attributes: {
-                  style: `padding-left: ${indentStr}; text-indent: -${indentStr};`,
+                  style: `padding-left: ${padLeftStr}; text-indent: ${textIndentStr};`,
                 },
               }).range(lineObj.from),
             );
