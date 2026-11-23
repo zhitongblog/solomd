@@ -145,6 +145,7 @@ a.btn--primary:hover,
 .btn--primary:hover {
   background: var(--ink-soft);
   color: var(--bg);
+  transform: translateY(-1px);
   text-decoration: none;
 }
 a.btn--secondary,
@@ -187,10 +188,10 @@ a.btn--accent:hover,
    removed in favor of negative space so the page reads as a long
    document rather than a stack of cards. */
 section {
-  padding: 112px 0;
+  padding: 88px 0;
 }
 @media (max-width: 720px) {
-  section { padding: 72px 0; }
+  section { padding: 60px 0; }
 }
 
 .lead {

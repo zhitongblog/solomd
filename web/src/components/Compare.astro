@@ -4,7 +4,7 @@ interface Props { lang: Lang }
 const { lang } = Astro.props;
 const tr = getT(lang);
 
-// /compare/ sub-pages exist only in en + zh; ja/ko link to en.
+// /compare/ sub-pages exist only in en + zh; other locales link to en.
 const compareIndex = lang === 'zh' ? '/zh/compare/' : '/compare/';
 const moreLabel = {
   en: 'See each editor side-by-side →',
@@ -23,76 +23,76 @@ const moreLabel = {
   uk: 'Подивитися кожен редактор поруч →',
 }[lang];
 
-const winsAll = {
+const winsAll: Record<Lang, { icon: 'export' | 'sync' | 'ai'; title: string; desc: string }[]> = {
   en: [
-    { icon: '📤', title: 'Built-in 9-format export', desc: 'Export PDF, Word (.docx), EPUB, HTML & LaTeX out of the box with live preview — unlike Typora or Obsidian, zero external Pandoc install needed.' },
-    { icon: '☁️', title: 'Free 5-platform vault sync', desc: 'Sync across macOS, Windows, Linux, iOS & Android via iCloud, OneDrive, WebDAV, S3, or Git with E2EE — no $96/yr Obsidian Sync subscription.' },
-    { icon: '🦙', title: 'Zero-config local AI & 16-tool MCP', desc: 'OPR auto-detects local Ollama / LM Studio, plus 20+ BYOK providers, local semantic RAG search, and a bundled 16-tool MCP server.' },
+    { icon: 'export', title: 'Built-in 9-format export', desc: 'Export PDF, Word (.docx), EPUB, HTML & LaTeX out of the box with live preview — unlike Typora or Obsidian, zero external Pandoc install needed.' },
+    { icon: 'sync', title: 'Free 5-platform vault sync', desc: 'Sync across macOS, Windows, Linux, iOS & Android via iCloud, OneDrive, WebDAV, S3, or Git with E2EE — no $96/yr Obsidian Sync subscription.' },
+    { icon: 'ai', title: 'Zero-config local AI & 16-tool MCP', desc: 'OPR auto-detects local Ollama / LM Studio, plus 20+ BYOK providers, local semantic RAG search, and a bundled 16-tool MCP server.' },
   ],
   zh: [
-    { icon: '📤', title: '内置 9 格式直出导出', desc: '开箱直出 PDF、Word (.docx)、EPUB、HTML 与 LaTeX 并带实时预览 —— 无需像 Typora 那样手动折腾安装 Pandoc。' },
-    { icon: '☁️', title: '五端免费加密知识库同步', desc: '支持 Mac、Win、Linux、iOS 与 Android 通过 iCloud、OneDrive、坚果云、WebDAV、S3 或 Git 端到端加密同步 —— 省下 $96/年的同步订阅费。' },
-    { icon: '🦙', title: '零配置本地 AI 与 16 工具 MCP', desc: 'OPR 自动发现本机 Ollama / LM Studio，支持 20+ 家 BYOK 服务商、本地离线语义搜索与 16 工具 MCP 服务。' },
+    { icon: 'export', title: '内置 9 格式直出导出', desc: '开箱直出 PDF、Word (.docx)、EPUB、HTML 与 LaTeX 并带实时预览 —— 无需像 Typora 那样手动折腾安装 Pandoc。' },
+    { icon: 'sync', title: '五端免费加密知识库同步', desc: '支持 Mac、Win、Linux、iOS 与 Android 通过 iCloud、OneDrive、坚果云、WebDAV、S3 或 Git 端到端加密同步 —— 省下 $96/年的同步订阅费。' },
+    { icon: 'ai', title: '零配置本地 AI 与 16 工具 MCP', desc: 'OPR 自动发现本机 Ollama / LM Studio，支持 20+ 家 BYOK 服务商、本地离线语义搜索与 16 工具 MCP 服务。' },
   ],
   ja: [
-    { icon: '🔍', title: 'ローカルセマンティック検索', desc: 'Obsidian / Typora / MarkText はどれも core に含まない。SoloMD は ⌘⇧F でオン、デバイス内 embedder、モデルダウンロードなし、ネットワークコールなし。' },
-    { icon: '📜', title: 'AutoGit バージョン履歴', desc: '毎回の ⌘S がローカル .git スナップショット — サイドバー履歴パネルから 1 クリックで復元。同類は手動 git 配線。' },
-    { icon: '🔌', title: 'MCP サーバー内蔵', desc: '1.5 MB バイナリ、8 個の読み取り専用ツール。vault を Claude Desktop / Cursor / Codex CLI に接続。' },
+    { icon: 'export', title: '9形式の内蔵ダイレクト出力', desc: 'PDF・Word (.docx)・EPUB・HTML・LaTeX を標準出力。Typora や Obsidian のように外部 Pandoc を導入する必要はありません。' },
+    { icon: 'sync', title: '5プラットフォーム無料の暗号化同期', desc: 'macOS・Windows・Linux・iOS・Android を iCloud / OneDrive / WebDAV / S3 / Git で E2EE 同期。月額課金なし。' },
+    { icon: 'ai', title: 'ローカル AI 自動検出 & 16ツール MCP', desc: 'OPR でローカル Ollama / LM Studio を自動検出し、20+ の BYOK、ローカル RAG 検索、16ツールの MCP サーバーを内蔵。' },
   ],
   ko: [
-    { icon: '🔍', title: '로컬 시맨틱 검색', desc: 'Obsidian / Typora / MarkText 모두 core에 없음. SoloMD ⌘⇧F: 기기 내 embedder, 모델 다운로드 없음, 네트워크 호출 없음.' },
-    { icon: '📜', title: 'AutoGit 버전 기록', desc: '⌘S마다 로컬 .git 스냅샷 — 사이드바 기록 패널에서 원클릭 복원. 동급 에디터는 git 수동 연결 필요.' },
-    { icon: '🔌', title: 'MCP 서버 내장', desc: '1.5 MB 바이너리, 8개 읽기 전용 도구. vault를 Claude Desktop / Cursor / Codex CLI에 연결.' },
+    { icon: 'export', title: '9가지 형식 기본 내보내기', desc: 'PDF, Word(.docx), EPUB, HTML, LaTeX를 별도 Pandoc 설치 없이 바로 내보냅니다.' },
+    { icon: 'sync', title: '5개 플랫폼 무료 암호화 동기화', desc: 'iCloud, OneDrive, WebDAV, S3, Git 기반 종단간 암호화 동기화 — 연 $96 구독료가 필요 없습니다.' },
+    { icon: 'ai', title: '로컬 AI 자동 감지 & 16개 도구 MCP', desc: 'Ollama / LM Studio 자동 감지, 20+ BYOK 모델, 로컬 시맨틱 RAG 검색 및 16개 도구 MCP 서버 내장.' },
   ],
   de: [
-    { icon: '🔍', title: 'Lokale semantische Suche', desc: 'Obsidian, Typora und MarkText überspringen das alle im Kern. SoloMD ⌘⇧F: On-Device-Embedder, kein Modell-Download, kein Netzwerkaufruf.' },
-    { icon: '📜', title: 'AutoGit Versionsverlauf', desc: 'Jedes ⌘S wird ein lokaler .git-Snapshot — Sidebar-Verlaufspanel stellt mit einem Klick wieder her. Konkurrenten lassen Sie git manuell verdrahten.' },
-    { icon: '🔌', title: 'MCP-Server gebündelt', desc: '1,5 MB Binary, 8 Nur-Lese-Tools. Stecken Sie Ihren Vault in Claude Desktop, Cursor oder Codex CLI.' },
+    { icon: 'export', title: '9 Formate direkt integriert', desc: 'PDF, Word (.docx), EPUB, HTML & LaTeX direkt exportieren — ohne externes Pandoc-Setup wie bei Typora oder Obsidian.' },
+    { icon: 'sync', title: 'Kostenloser 5-Plattform-Sync', desc: 'E2EE-Sync über macOS, Windows, Linux, iOS & Android via iCloud, OneDrive, WebDAV, S3 oder Git — ohne 96 $/Jahr Abo.' },
+    { icon: 'ai', title: 'Lokale KI & 16-Tool-MCP-Server', desc: 'OPR erkennt Ollama / LM Studio automatisch, plus 20+ BYOK-Anbieter, lokales RAG und gebündelter 16-Tool-MCP-Server.' },
   ],
   fr: [
-    { icon: '🔍', title: 'Recherche sémantique locale', desc: 'Obsidian, Typora et MarkText l\'omettent tous du core. SoloMD ⌘⇧F : embedder sur l\'appareil, pas de téléchargement de modèle, pas d\'appel réseau.' },
-    { icon: '📜', title: 'Historique de versions AutoGit', desc: 'Chaque ⌘S devient un snapshot .git local — panneau d\'historique sidebar restaure en un clic. Les concurrents vous laissent câbler git manuellement.' },
-    { icon: '🔌', title: 'Serveur MCP empaqueté', desc: '1,5 Mo de binaire, 8 outils en lecture seule. Branchez votre vault dans Claude Desktop, Cursor ou Codex CLI.' },
+    { icon: 'export', title: 'Export intégré en 9 formats', desc: 'Exportez en PDF, Word (.docx), EPUB, HTML et LaTeX sans installer Pandoc séparément.' },
+    { icon: 'sync', title: 'Sync chiffrée gratuite sur 5 plateformes', desc: 'Synchronisez macOS, Windows, Linux, iOS et Android via iCloud, OneDrive, WebDAV, S3 ou Git sans abonnement.' },
+    { icon: 'ai', title: 'IA locale & serveur MCP 16 outils', desc: 'Détection auto d’Ollama / LM Studio, 20+ fournisseurs BYOK, recherche RAG locale et serveur MCP 16 outils inclus.' },
   ],
   es: [
-    { icon: '🔍', title: 'Búsqueda semántica local', desc: 'Obsidian, Typora y MarkText todos lo omiten en el core. SoloMD ⌘⇧F: embedder en dispositivo, sin descarga de modelo, sin llamada de red.' },
-    { icon: '📜', title: 'Historial de versiones AutoGit', desc: 'Cada ⌘S se vuelve un snapshot .git local — panel de historial en sidebar restaura en un clic. Los competidores te dejan cablear git manualmente.' },
-    { icon: '🔌', title: 'Servidor MCP empaquetado', desc: '1,5 MB de binario, 8 herramientas de solo lectura. Conecta tu vault a Claude Desktop, Cursor o Codex CLI.' },
+    { icon: 'export', title: 'Exportación integrada en 9 formatos', desc: 'Exporta a PDF, Word (.docx), EPUB, HTML y LaTeX sin instalar Pandoc por separado.' },
+    { icon: 'sync', title: 'Sincronización cifrada gratis en 5 plataformas', desc: 'Sincroniza macOS, Windows, Linux, iOS y Android con iCloud, OneDrive, WebDAV, S3 o Git sin suscripciones.' },
+    { icon: 'ai', title: 'IA local sin configuración y MCP de 16 herramientas', desc: 'Detecta Ollama / LM Studio automáticamente, más 20+ proveedores BYOK, búsqueda RAG local y servidor MCP integrado.' },
   ],
   pt: [
-    { icon: '🔍', title: 'Busca semântica local', desc: 'Obsidian, Typora e MarkText todos omitem do core. SoloMD ⌘⇧F: embedder no dispositivo, sem download de modelo, sem chamada de rede.' },
-    { icon: '📜', title: 'Histórico de versões AutoGit', desc: 'Cada ⌘S vira um snapshot .git local — painel de histórico em sidebar restaura em um clique. Concorrentes te deixam ligar git manualmente.' },
-    { icon: '🔌', title: 'Servidor MCP empacotado', desc: '1,5 MB de binário, 8 ferramentas somente leitura. Plugue seu vault em Claude Desktop, Cursor ou Codex CLI.' },
+    { icon: 'export', title: 'Exportação integrada em 9 formatos', desc: 'Exporte PDF, Word (.docx), EPUB, HTML e LaTeX direto do app — sem precisar instalar Pandoc.' },
+    { icon: 'sync', title: 'Sync criptografado grátis em 5 plataformas', desc: 'Sincronize macOS, Windows, Linux, iOS e Android via iCloud, OneDrive, WebDAV, S3 ou Git sem assinatura.' },
+    { icon: 'ai', title: 'IA local & servidor MCP com 16 ferramentas', desc: 'Detecção automática de Ollama / LM Studio, 20+ provedores BYOK, busca RAG local e servidor MCP embutido.' },
   ],
   it: [
-    { icon: '🔍', title: 'Ricerca semantica locale', desc: 'Obsidian, Typora e MarkText la saltano tutti nel core. SoloMD ⌘⇧F: embedder on-device, nessun download di modello, nessuna chiamata di rete.' },
-    { icon: '📜', title: 'Cronologia versioni AutoGit', desc: 'Ogni ⌘S diventa uno snapshot .git locale — pannello cronologia in sidebar ripristina con un clic. I concorrenti ti lasciano cablare git manualmente.' },
-    { icon: '🔌', title: 'Server MCP empacchettato', desc: '1,5 MB di binario, 8 strumenti sola lettura. Collega il tuo vault a Claude Desktop, Cursor o Codex CLI.' },
+    { icon: 'export', title: 'Esportazione integrata in 9 formati', desc: 'Esporta in PDF, Word (.docx), EPUB, HTML e LaTeX subito, senza installare Pandoc.' },
+    { icon: 'sync', title: 'Sync cifrato gratuito su 5 piattaforme', desc: 'Sincronizza macOS, Windows, Linux, iOS e Android via iCloud, OneDrive, WebDAV, S3 o Git senza abbonamento.' },
+    { icon: 'ai', title: 'AI locale & server MCP a 16 strumenti', desc: 'Rilevamento automatico di Ollama / LM Studio, 20+ provider BYOK, ricerca RAG locale e server MCP integrato.' },
   ],
   pl: [
-    { icon: '🔍', title: 'Lokalne wyszukiwanie semantyczne', desc: 'Obsidian, Typora i MarkText wszystkie pomijają to w core. SoloMD ⌘⇧F: embedder na urządzeniu, brak pobierania modelu, brak wywołań sieciowych.' },
-    { icon: '📜', title: 'Historia wersji AutoGit', desc: 'Każde ⌘S staje się lokalnym snapshotem .git — panel historii w pasku bocznym przywraca jednym kliknięciem. Konkurenci zostawiają cię z ręcznym podłączeniem git.' },
-    { icon: '🔌', title: 'Wbudowany serwer MCP', desc: 'Binarka 1,5 MB, 8 narzędzi tylko do odczytu. Podłącz swój vault do Claude Desktop, Cursor lub Codex CLI.' },
+    { icon: 'export', title: 'Wbudowany eksport do 9 formatów', desc: 'Eksportuj PDF, Word (.docx), EPUB, HTML i LaTeX od ręki — bez ręcznej instalacji Pandoc.' },
+    { icon: 'sync', title: 'Darmowa szyfrowana synchronizacja (5 platform)', desc: 'Synchronizuj macOS, Windows, Linux, iOS i Android przez iCloud, OneDrive, WebDAV, S3 lub Git bez abonamentu.' },
+    { icon: 'ai', title: 'Lokalne AI i serwer MCP (16 narzędzi)', desc: 'Automatyczne wykrywanie Ollama / LM Studio, 20+ dostawców BYOK, lokalne RAG i wbudowany serwer MCP.' },
   ],
   nl: [
-    { icon: '🔍', title: 'Lokale semantische zoekfunctie', desc: 'Obsidian, Typora en MarkText slaan dit allemaal over in de core. SoloMD ⌘⇧F: embedder op het apparaat, geen modeldownload, geen netwerkoproep.' },
-    { icon: '📜', title: 'AutoGit versiegeschiedenis', desc: 'Elke ⌘S wordt een lokale .git-snapshot — sidebargeschiedenispaneel herstelt met één klik. Concurrenten laten je git handmatig bedraden.' },
-    { icon: '🔌', title: 'MCP-server gebundeld', desc: 'Binary van 1,5 MB, 8 alleen-lezen-tools. Sluit je vault aan op Claude Desktop, Cursor of Codex CLI.' },
+    { icon: 'export', title: 'Ingebouwde export naar 9 formaten', desc: 'Exporteer direct naar PDF, Word (.docx), EPUB, HTML en LaTeX zonder Pandoc te installeren.' },
+    { icon: 'sync', title: 'Gratis versleutelde sync op 5 platforms', desc: 'Synchroniseer macOS, Windows, Linux, iOS en Android via iCloud, OneDrive, WebDAV, S3 of Git zonder abonnement.' },
+    { icon: 'ai', title: 'Lokale AI & 16-tool MCP-server', desc: 'Automatische detectie van Ollama / LM Studio, 20+ BYOK-providers, lokaal RAG en ingebouwde MCP-server.' },
   ],
   tr: [
-    { icon: '🔍', title: 'Yerel semantik arama', desc: 'Obsidian, Typora ve MarkText hepsi çekirdekte atlıyor. SoloMD ⌘⇧F: cihaz üstünde embedder, model indirme yok, ağ çağrısı yok.' },
-    { icon: '📜', title: 'AutoGit sürüm geçmişi', desc: 'Her ⌘S yerel bir .git anlık görüntüsü olur — sidebar geçmiş paneli tek tıkla geri yükler. Rakipler git\'i elle bağlamanı bekler.' },
-    { icon: '🔌', title: 'Paketlenmiş MCP sunucusu', desc: '1,5 MB ikili, 8 salt-okunur araç. Vault\'unuzu Claude Desktop, Cursor veya Codex CLI\'ya bağlayın.' },
+    { icon: 'export', title: 'Yerleşik 9 format dışa aktarma', desc: 'Harici Pandoc kurmadan PDF, Word (.docx), EPUB, HTML ve LaTeX olarak doğrudan dışa aktarın.' },
+    { icon: 'sync', title: '5 platformda ücretsiz şifreli eşitleme', desc: 'iCloud, OneDrive, WebDAV, S3 veya Git ile aboneliksiz uçtan uca şifreli eşitleme.' },
+    { icon: 'ai', title: 'Sıfır ayar yerel AI ve 16 araçlı MCP', desc: 'Ollama / LM Studio otomatik algılama, 20+ BYOK sağlayıcı, yerel RAG arama ve yerleşik MCP sunucusu.' },
   ],
   sv: [
-    { icon: '🔍', title: 'Lokal semantisk sökning', desc: 'Obsidian, Typora och MarkText hoppar alla över detta i kärnan. SoloMD ⌘⇧F: embedder på enheten, ingen modellnedladdning, inget nätverksanrop.' },
-    { icon: '📜', title: 'AutoGit versionshistorik', desc: 'Varje ⌘S blir en lokal .git-snapshot — sidopanel-historik återställer med ett klick. Konkurrenter lämnar dig att koppla git manuellt.' },
-    { icon: '🔌', title: 'MCP-server medföljer', desc: '1,5 MB binär, 8 läs-endast-verktyg. Anslut din vault till Claude Desktop, Cursor eller Codex CLI.' },
+    { icon: 'export', title: 'Inbyggd export till 9 format', desc: 'Exportera PDF, Word (.docx), EPUB, HTML och LaTeX direkt — utan separat Pandoc-installation.' },
+    { icon: 'sync', title: 'Gratis krypterad synk på 5 plattformar', desc: 'Synka macOS, Windows, Linux, iOS och Android via iCloud, OneDrive, WebDAV, S3 eller Git utan prenumeration.' },
+    { icon: 'ai', title: 'Lokal AI & 16-verktygs MCP-server', desc: 'Automatisk identifiering av Ollama / LM Studio, 20+ BYOK-leverantörer, lokal RAG och inbyggd MCP-server.' },
   ],
   uk: [
-    { icon: '🔍', title: 'Локальний семантичний пошук', desc: 'Obsidian, Typora та MarkText — усі пропускають це у core. SoloMD ⌘⇧F: embedder на пристрої, без завантаження моделі, без мережевих викликів.' },
-    { icon: '📜', title: 'Історія версій AutoGit', desc: 'Кожне ⌘S стає локальним .git-снапшотом — панель історії у бічній панелі відновлює одним кліком. Конкуренти залишають вам підключати git вручну.' },
-    { icon: '🔌', title: 'Сервер MCP у комплекті', desc: 'Бінарник 1,5 МБ, 8 інструментів лише для читання. Підключіть свій vault до Claude Desktop, Cursor або Codex CLI.' },
+    { icon: 'export', title: 'Вбудований експорт у 9 форматів', desc: 'Експортуйте PDF, Word (.docx), EPUB, HTML і LaTeX одразу — без ручного встановлення Pandoc.' },
+    { icon: 'sync', title: 'Безкоштовна шифрована синхронізація (5 платформ)', desc: 'Синхронізуйте macOS, Windows, Linux, iOS та Android через iCloud, OneDrive, WebDAV, S3 або Git без підписки.' },
+    { icon: 'ai', title: 'Локальний ШІ та MCP-сервер (16 інструментів)', desc: 'Автовиявлення Ollama / LM Studio, 20+ провайдерів BYOK, локальний RAG-пошук і вбудований MCP-сервер.' },
   ],
 };
 const wins = winsAll[lang];
@@ -108,7 +108,17 @@ const wins = winsAll[lang];
     <div class="compare__wins">
       {wins.map((w) => (
         <div class="compare__win">
-          <div class="compare__win-icon">{w.icon}</div>
+          <div class="compare__win-icon" aria-hidden="true">
+            {w.icon === 'export' && (
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18v-6"/><path d="m9 15 3-3 3 3"/></svg>
+            )}
+            {w.icon === 'sync' && (
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/><path d="M12 13v4"/><path d="m10 15 2-2 2 2"/></svg>
+            )}
+            {w.icon === 'ai' && (
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></svg>
+            )}
+          </div>
           <h3>{w.title}</h3>
           <p>{w.desc}</p>
         </div>
@@ -148,45 +158,58 @@ const wins = winsAll[lang];
 <style>
   .compare__header {
     text-align: center;
-    margin-bottom: 32px;
+    margin-bottom: 36px;
     max-width: 720px;
     margin-left: auto;
     margin-right: auto;
   }
-  .compare__header .lead { margin: 16px auto 0; }
+  .compare__header .lead { margin: 14px auto 0; }
 
   .compare__wins {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 16px;
-    margin: 0 0 36px;
+    gap: 18px;
+    margin: 0 0 40px;
   }
   .compare__win {
     background: var(--bg-elev);
-    border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
-    border-radius: 12px;
-    padding: 20px 22px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 22px 24px;
+    transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+  }
+  .compare__win:hover {
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px -14px rgba(31, 30, 28, 0.16);
   }
   .compare__win-icon {
-    font-size: 26px;
-    margin-bottom: 8px;
-    line-height: 1;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: var(--accent-soft);
+    color: var(--accent-deep);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
   }
   .compare__win h3 {
-    font-size: 1rem;
+    font-size: 1.02rem;
     margin: 0 0 8px;
   }
   .compare__win p {
     margin: 0;
-    font-size: 13px;
+    font-size: 13.5px;
     color: var(--text-muted);
     line-height: 1.6;
   }
 
   .compare__table-wrap {
     overflow-x: auto;
-    border-radius: 12px;
+    border-radius: 14px;
     border: 1px solid var(--border);
+    box-shadow: 0 4px 20px -10px rgba(31, 30, 28, 0.08);
   }
   .compare__table {
     width: 100%;
@@ -197,25 +220,28 @@ const wins = winsAll[lang];
   }
   .compare__table thead th {
     background: var(--bg-soft);
-    padding: 14px 16px;
+    padding: 15px 16px;
     text-align: center;
     font-weight: 600;
     color: var(--text);
     border-bottom: 1px solid var(--border);
   }
+  .compare__table tbody tr:hover {
+    background: color-mix(in srgb, var(--bg-soft) 55%, transparent);
+  }
   .compare__table tbody th {
     text-align: left;
-    padding: 12px 16px;
+    padding: 13px 18px;
     font-weight: 500;
     color: var(--text-muted);
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid var(--hairline);
     white-space: nowrap;
   }
   .compare__table tbody td {
     text-align: center;
-    padding: 12px 16px;
+    padding: 13px 16px;
     color: var(--text);
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid var(--hairline);
   }
   .compare__table tbody tr:last-child th,
   .compare__table tbody tr:last-child td {
@@ -232,7 +258,7 @@ const wins = winsAll[lang];
     margin-top: 24px;
   }
   .compare__more a {
-    color: var(--accent);
+    color: var(--accent-deep);
     font-size: 14px;
     font-weight: 600;
     text-decoration: none;

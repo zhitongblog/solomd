@@ -19,7 +19,7 @@ const MS_STORE = 'https://apps.microsoft.com/detail/9nxghk2ll1q4';
 // or block because Microsoft's catalogue is slow, so an unreachable endpoint
 // just leaves the last known-good value in place. Bump it with each store
 // submission; the live read above is what visitors normally see.
-const MS_STORE_VERSION_PIN = '4.14.11';
+const MS_STORE_VERSION_PIN = '5.3.4';
 
 async function readStoreVersion(): Promise<string> {
   const url =
@@ -219,7 +219,23 @@ const platforms = [
         return (
           <article class="dl-card">
             <div class="dl-card__head">
-              <div class="dl-card__icon">{p.icon}</div>
+              <div class="dl-card__icon" aria-hidden="true">
+                {p.key === 'macos' && (
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.33c.64-.78 1.08-1.86.96-2.94-.93.04-2.06.62-2.72 1.4-.58.68-1.1 1.79-.96 2.84 1.04.08 2.09-.52 2.72-1.3Z"/></svg>
+                )}
+                {(p.key === 'windows' || p.key === 'windowsArm') && (
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M3 5.55 10.35 4.5v7.05H3V5.55Zm8.35-1.18L21 3v8.55h-9.65V4.37ZM3 12.55h7.35v7.05L3 18.55v-6Zm8.35 0H21V21l-9.65-1.37v-7.08Z"/></svg>
+                )}
+                {p.key === 'linux' && (
+                  <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+                )}
+                {p.key === 'linuxArm' && (
+                  <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></svg>
+                )}
+                {p.key === 'android' && (
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M17.6 9.48 19.44 6.3a.36.36 0 0 0-.13-.49.36.36 0 0 0-.49.13l-1.87 3.24a11.4 11.4 0 0 0-9.9 0L5.18 5.94a.36.36 0 0 0-.49-.13.36.36 0 0 0-.13.49l1.84 3.18A10.7 10.7 0 0 0 1 18.5h22a10.7 10.7 0 0 0-5.4-9.02ZM7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Zm10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Z"/></svg>
+                )}
+              </div>
               <div>
                 <h3>{meta.name}</h3>
                 <div class="dl-card__note">{meta.note}</div>
@@ -338,20 +354,35 @@ const platforms = [
   .dl-card {
     background: var(--bg-elev);
     border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 26px;
+    border-radius: 14px;
+    padding: 24px;
     display: flex;
     flex-direction: column;
-    transition: all 0.2s;
+    transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
   }
-  .dl-card:hover { border-color: var(--accent); }
+  .dl-card:hover {
+    border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px -14px rgba(31, 30, 28, 0.16);
+  }
   .dl-card__head {
     display: flex;
     align-items: center;
     gap: 14px;
-    margin-bottom: 22px;
+    margin-bottom: 20px;
   }
-  .dl-card__icon { font-size: 36px; line-height: 1; }
+  .dl-card__icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 11px;
+    background: var(--bg-soft);
+    border: 1px solid var(--hairline);
+    color: var(--ink);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
   .dl-card h3 { margin: 0 0 4px; font-size: 1.1rem; }
   .dl-card__note { font-size: 12px; color: var(--text-muted); }
   .dl-card__btn {
