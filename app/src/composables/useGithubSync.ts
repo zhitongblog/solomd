@@ -248,10 +248,119 @@ export function useGithubSync() {
     }, minutes * 60_000);
   }
 
+  let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /**
+   * #673 — Pull all enabled sync backends (Git, WebDAV, Cloud Vault, Cloud API)
+   * when the machine reconnects to the network so multi-device edits stay in sync.
+   */
+  async function pullAllOnReconnect(): Promise<void> {
+    const folder = workspace.currentFolder;
+    if (!folder) return;
+    let pulledAny = false;
+
+    if (hasGitBackend() && sync.status?.linked) {
+      await pullIfWanted();
+    }
+
+    if (settings.webdavEnabled && settings.webdavAutoSync && settings.webdavUrl.trim()) {
+      try {
+        const res = await invoke<{ downloaded?: number }>('webdav_pull_workspace', {
+          workspace: folder,
+          url: settings.webdavUrl,
+          username: settings.webdavUsername,
+          password: settings.webdavPassword,
+          remotePath: settings.webdavRemotePath || '/SoloMD',
+          encrypted: settings.webdavEncrypted,
+          passphrase: settings.webdavPassphrase,
+          autoWorkspaceSubdir: settings.webdavAutoSubdir,
+          categorizeFiles: settings.webdavCategorizeFiles,
+          maxVersions: settings.syncMaxVersions,
+        });
+        if ((res?.downloaded ?? 0) > 0) pulledAny = true;
+      } catch {
+        /* reconnect pull is best-effort */
+      }
+    }
+
+    if (
+      settings.cloudVaultAutoSync &&
+      settings.cloudVaultDir.trim() &&
+      (!settings.cloudVaultEncrypted || settings.cloudVaultPassphrase.trim())
+    ) {
+      try {
+        const res = await invoke<{ downloaded?: number }>('cloud_vault_pull_workspace', {
+          workspace: folder,
+          vaultDir: settings.cloudVaultDir,
+          passphrase: settings.cloudVaultPassphrase,
+          encrypted: settings.cloudVaultEncrypted,
+          autoWorkspaceSubdir: settings.cloudVaultAutoSubdir,
+          categorizeFiles: settings.cloudVaultCategorizeFiles,
+          maxVersions: settings.syncMaxVersions,
+        });
+        if ((res?.downloaded ?? 0) > 0) pulledAny = true;
+      } catch {
+        /* best-effort */
+      }
+    }
+
+    const effectiveApiToken =
+      settings.cloudApiProvider === 'r2'
+        ? settings.cloudR2Endpoint.trim() &&
+          settings.cloudR2Bucket.trim() &&
+          settings.cloudR2AccessKeyId.trim() &&
+          settings.cloudR2SecretAccessKey.trim()
+          ? JSON.stringify({
+              endpoint: settings.cloudR2Endpoint.trim(),
+              bucket: settings.cloudR2Bucket.trim(),
+              access_key_id: settings.cloudR2AccessKeyId.trim(),
+              secret_access_key: settings.cloudR2SecretAccessKey.trim(),
+            })
+          : ''
+        : settings.cloudApiToken.trim();
+    if (
+      settings.cloudApiAutoSync &&
+      effectiveApiToken &&
+      ((settings.cloudApiSyncMode === 'folder' && !settings.cloudApiEncrypted) ||
+        settings.cloudApiPassphrase.trim())
+    ) {
+      try {
+        const res = await invoke<{ downloaded?: number }>('cloud_api_pull_workspace', {
+          workspace: folder,
+          provider: settings.cloudApiProvider,
+          accessToken: effectiveApiToken,
+          remotePath: settings.cloudApiRemotePath || '/SoloMD',
+          passphrase: settings.cloudApiPassphrase,
+          syncMode: settings.cloudApiSyncMode,
+          encrypted: settings.cloudApiEncrypted,
+          autoWorkspaceSubdir: settings.cloudApiAutoSubdir,
+          categorizeFiles: settings.cloudApiCategorizeFiles,
+          maxVersions: settings.syncMaxVersions,
+        });
+        if ((res?.downloaded ?? 0) > 0) pulledAny = true;
+      } catch {
+        /* best-effort */
+      }
+    }
+
+    if (pulledAny) {
+      window.dispatchEvent(new CustomEvent('solomd:remote-pulled'));
+    }
+  }
+
+  function onNetworkOnline(): void {
+    if (reconnectTimer) clearTimeout(reconnectTimer);
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null;
+      void pullAllOnReconnect();
+    }, 2500);
+  }
+
   function start(): void {
     if (listening) return;
     listening = true;
     window.addEventListener('solomd:saved', onSaved as EventListener);
+    window.addEventListener('online', onNetworkOnline);
 
     // #230 — no libgit2 in the Android binary, so git push/pull is desktop/iOS
     // only; WebDAV & Cloud Vault auto-sync above still run on all platforms.
@@ -283,6 +392,7 @@ export function useGithubSync() {
     if (!listening) return;
     listening = false;
     window.removeEventListener('solomd:saved', onSaved as EventListener);
+    window.removeEventListener('online', onNetworkOnline);
     if (pulltimer) {
       clearInterval(pulltimer);
       pulltimer = null;
@@ -290,6 +400,10 @@ export function useGithubSync() {
     if (pushTimer) {
       clearTimeout(pushTimer);
       pushTimer = null;
+    }
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = null;
     }
   }
 

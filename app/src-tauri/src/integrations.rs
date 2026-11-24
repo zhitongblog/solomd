@@ -342,6 +342,19 @@ fn ai_client_config_path(client_id: &str, app: &AppHandle) -> Option<PathBuf> {
                 None
             }
         }
+        // #651 — Codex CLI (`~/.codex/config.toml`), OpenCode (`~/.config/opencode/opencode.json`),
+        // and DSH CLI (`~/.dsh/mcp.json`).
+        "codex" => home.map(|h| h.join(".codex/config.toml")),
+        "opencode" => {
+            if cfg!(target_os = "windows") {
+                std::env::var_os("APPDATA")
+                    .map(|a| PathBuf::from(a).join("opencode/opencode.json"))
+                    .or_else(|| home.map(|h| h.join(".config/opencode/opencode.json")))
+            } else {
+                home.map(|h| h.join(".config/opencode/opencode.json"))
+            }
+        }
+        "dsh" => home.map(|h| h.join(".dsh/mcp.json")),
         _ => None,
     }
 }
@@ -360,6 +373,9 @@ fn ai_client_probe_dir(client_id: &str, app: &AppHandle) -> Option<PathBuf> {
 const AI_CLIENTS: &[(&str, &str)] = &[
     ("claude-desktop", "Claude Desktop"),
     ("claude-code", "Claude Code"),
+    ("codex", "Codex CLI"),
+    ("dsh", "DSH"),
+    ("opencode", "OpenCode"),
     ("cursor", "Cursor"),
     ("cline", "Cline (VS Code)"),
     ("continue", "Continue.dev"),
@@ -519,7 +535,7 @@ fn splice_solomd_entry(
     entry: JsonValue,
 ) -> Result<(), String> {
     match client_id {
-        "claude-desktop" | "claude-code" | "cursor" => {
+        "claude-desktop" | "claude-code" | "cursor" | "dsh" | "opencode" => {
             let map = config
                 .as_object_mut()
                 .ok_or("root is not a JSON object")?;
@@ -591,12 +607,49 @@ pub fn inject_mcp(
         .to_string_lossy()
         .to_string();
     let args = build_solomd_args(&workspace, allow_write);
+    // Codex CLI uses TOML (`[mcp_servers.solomd]`) instead of JSON.
+    if client_id == "codex" {
+        if let Some(parent) = config_path.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| format!("mkdir {}: {e}", parent.display()))?;
+        }
+        let existing = std::fs::read_to_string(&config_path).unwrap_or_default();
+        let cleaned = remove_codex_toml_block(&existing);
+        let args_toml = args
+            .iter()
+            .map(|a| serde_json::to_string(a).unwrap_or_else(|_| format!("\"{a}\"")))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let cmd_toml = serde_json::to_string(&mcp_path).unwrap_or_else(|_| format!("\"{mcp_path}\""));
+        let block = format!("\n[mcp_servers.solomd]\ncommand = {cmd_toml}\nargs = [{args_toml}]\n");
+        let next = format!("{}{block}", cleaned.trim_end());
+        std::fs::write(&config_path, next).map_err(|e| format!("write {}: {e}", config_path.display()))?;
+        return Ok(config_path.to_string_lossy().to_string());
+    }
     let entry = build_solomd_entry(&client_id, &mcp_path, &args);
 
     let mut config = read_json_or_empty(&config_path)?;
     splice_solomd_entry(&client_id, &mut config, entry)?;
     write_json_with_backup(&config_path, &config)?;
     Ok(config_path.to_string_lossy().to_string())
+}
+
+fn remove_codex_toml_block(raw: &str) -> String {
+    let mut out: Vec<&str> = Vec::new();
+    let mut skipping = false;
+    for line in raw.lines() {
+        let trimmed = line.trim();
+        if trimmed == "[mcp_servers.solomd]" {
+            skipping = true;
+            continue;
+        }
+        if skipping && trimmed.starts_with('[') {
+            skipping = false;
+        }
+        if !skipping {
+            out.push(line);
+        }
+    }
+    out.join("\n")
 }
 
 /// Frontend command: remove the solomd entry from one client's config
@@ -608,9 +661,16 @@ pub fn remove_mcp(app: AppHandle, client_id: String) -> Result<(), String> {
     if !config_path.exists() {
         return Ok(());
     }
+    if client_id == "codex" {
+        let existing = std::fs::read_to_string(&config_path).unwrap_or_default();
+        let cleaned = remove_codex_toml_block(&existing);
+        std::fs::write(&config_path, format!("{}\n", cleaned.trim_end()))
+            .map_err(|e| format!("write {}: {e}", config_path.display()))?;
+        return Ok(());
+    }
     let mut config = read_json_or_empty(&config_path)?;
     match client_id.as_str() {
-        "claude-desktop" | "claude-code" | "cursor" | "cline" => {
+        "claude-desktop" | "claude-code" | "cursor" | "cline" | "dsh" | "opencode" => {
             if let Some(servers) = config
                 .get_mut("mcpServers")
                 .and_then(|v| v.as_object_mut())

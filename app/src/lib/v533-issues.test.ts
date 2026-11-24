@@ -311,4 +311,122 @@ describe('v5.3.6 feedback: table drag-select, Mermaid zoom, non-MD highlighting 
     assert.match(appVue, /--media-align/);
     assert.match(appVue, /--media-justify/);
   });
+
+  it('LaTeX $$ block + Enter + IME input: no overlapping live-render decorations inside math blocks, MathWidget is contentEditable=false, and plain-blocks keeps single-line $$ isolated', async () => {
+    const { EditorState } = await import('@codemirror/state');
+    const { markdown } = await import('@codemirror/lang-markdown');
+    const { GFM } = await import('@lezer/markdown');
+    const { buildDecorations } = await import('./cm-live-render.ts');
+    const { splitPlainMarkdownBlocks } = await import('./plain-blocks.ts');
+
+    const doc = [
+      '最后联立方程',
+      '$$',
+      '\\begin{cases}',
+      'Ax+By+C=0 \\\\',
+      'Bx-Ay=Bx_0-Ay_0',
+      '\\end{cases}',
+      '$$',
+      'j',
+    ].join('\n');
+    const state = EditorState.create({
+      doc,
+      selection: { anchor: doc.length },
+      extensions: [markdown({ extensions: [GFM] })],
+    });
+    const fakeView = {
+      state,
+      visibleRanges: [{ from: 0, to: doc.length }],
+    } as unknown as import('@codemirror/view').EditorView;
+
+    const deco = buildDecorations(fakeView, false, false);
+    const mathStart = doc.indexOf('$$');
+    const mathEnd = doc.lastIndexOf('$$') + 2;
+    const overlapping: Array<{ from: number; to: number }> = [];
+    deco.between(mathStart, mathEnd, (from, to) => {
+      overlapping.push({ from, to });
+    });
+    assert.deepEqual(
+      overlapping,
+      [],
+      'cm-live-render must not emit overlapping Emphasis/Escape decorations inside $$...$$ blocks',
+    );
+
+    // MathWidget isolates KaTeX DOM from contentEditable/IME selection
+    const liveBlocks = fs.readFileSync(path.join(root, 'lib/cm-live-blocks.ts'), 'utf8');
+    assert.match(liveBlocks, /wrap\.contentEditable = 'false';/);
+    assert.match(liveBlocks, /'\.cm-live-block--math':[\s\S]*?userSelect:\s*'none'/);
+
+    // Plain-block editor keeps single-line $$...$$ as its own block so Enter + typing never merges
+    const singleMathBlocks = splitPlainMarkdownBlocks('$$E=mc^2$$\nj');
+    assert.equal(singleMathBlocks.length, 2);
+    assert.equal(singleMathBlocks[0].text, '$$E=mc^2$$');
+    assert.equal(singleMathBlocks[1].text, 'j');
+  });
+
+  it('v5.4.0 features (#651, #653, #665, #668, #671, #672, #673, #674, #675, #692): snippets, :::alert-*, VS Code preset, custom toolbar cmd:*, and settings sub-tabs', async () => {
+    const { expandSnippet, pinSnippetToTop, extractFirstH1Title } = await import('./snippets.ts');
+    const { renderMarkdown } = await import('./markdown.ts');
+    const { VSCODE_PRESET, vscodePresetActive } = await import('./keybindings.ts');
+    const { normalizeToolbarItems, defaultIconForCommand, commandCategoryOf } = await import('./toolbar-items.ts');
+
+    // #653: Snippets variable expansion (%%, @@, ${filebase}, ${title}, ${filebaseprev}, ${filebasenext}, date/time)
+    const fixedDate = new Date(2026, 10, 22, 9, 5, 3); // 2026-11-22 09:05:03 Sunday
+    const exp = expandSnippet(
+      '<div>${title}|${filebase}|${filebaseprev}|${filebasenext}|${date}|${time}|${ts}|${weekday}|${weekdaycn}|%%@@</div>',
+      {
+        selection: 'SELECTED',
+        filebase: 'note-2',
+        title: extractFirstH1Title('# First Heading\nbody'),
+        filebaseprev: 'note-1',
+        filebasenext: 'note-3',
+        now: fixedDate,
+      },
+    );
+    assert.equal(
+      exp.text,
+      '<div>First Heading|note-2|note-1|note-3|2026-11-22|09:05:03|20261122090503|Sunday|星期日|SELECTED</div>',
+    );
+    assert.equal(exp.cursorOffset, exp.text.indexOf('</div>'));
+
+    const pinned = pinSnippetToTop(
+      [
+        { id: 'a', name: 'A', content: '1', updatedAt: 1 },
+        { id: 'b', name: 'B', content: '2', updatedAt: 1 },
+      ],
+      'b',
+    );
+    assert.equal(pinned[0].id, 'b');
+
+    // #653: :::alert-danger / :::alert-info container blocks render as .md-callout
+    const alertHtml = renderMarkdown(':::alert-danger 警告\n危险内容\n:::');
+    assert.match(alertHtml, /class="[^"]*md-callout md-callout--caution/);
+    assert.match(alertHtml, /危险内容/);
+
+    // #692: VS Code shortcut preset maps Ctrl/Cmd+Shift+P -> palette.open & Ctrl/Cmd+B -> fmt.bold
+    assert.equal(VSCODE_PRESET['palette.open'], 'Mod+Shift+P');
+    assert.equal(VSCODE_PRESET['fmt.bold'], 'Mod+B');
+    assert.equal(vscodePresetActive(VSCODE_PRESET), true);
+    assert.equal(vscodePresetActive({}), false);
+
+    // #665: Toolbar items accept arbitrary `cmd:*` commands and derive categories + icons
+    const items = normalizeToolbarItems(['viewMode', 'cmd:sync.webdavPush', 'cmd:export.html', 'invalid-id']);
+    assert.deepEqual(items, ['viewMode', 'cmd:sync.webdavPush', 'cmd:export.html']);
+    assert.equal(defaultIconForCommand('sync.webdavPush'), 'upload');
+    assert.equal(commandCategoryOf('export.html'), 'export');
+
+    // #668, #671, #673, #674, #651 source checks
+    const settingsPanel = fs.readFileSync(path.join(root, 'components/SettingsPanel.vue'), 'utf8');
+    assert.match(settingsPanel, /basicsBranches/);
+    assert.match(settingsPanel, /data-active-basics/);
+    assert.match(settingsPanel, /windowRestoreMode/);
+    assert.match(settingsPanel, /settings\.deviceId/);
+
+    const ghSync = fs.readFileSync(path.join(root, 'composables/useGithubSync.ts'), 'utf8');
+    assert.match(ghSync, /addEventListener\('online'/);
+
+    const integrationsRs = fs.readFileSync(path.join(root, '../src-tauri/src/integrations.rs'), 'utf8');
+    assert.match(integrationsRs, /"codex"/);
+    assert.match(integrationsRs, /"dsh"/);
+  });
 });

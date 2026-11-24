@@ -25,6 +25,7 @@ const NeighborhoodPanel = defineAsyncComponent(() => import('./components/Neighb
 const RelationshipsPanel = defineAsyncComponent(() => import('./components/RelationshipsPanel.vue'));
 const TagsPanel = defineAsyncComponent(() => import('./components/TagsPanel.vue'));
 const TasksPanel = defineAsyncComponent(() => import('./components/TasksPanel.vue'));
+const SnippetsPanel = defineAsyncComponent(() => import('./components/SnippetsPanel.vue'));
 const TableEditor = defineAsyncComponent(() => import('./components/TableEditor.vue'));
 const FormulaEditor = defineAsyncComponent(() => import('./components/FormulaEditor.vue'));
 const TypesPanel = defineAsyncComponent(() => import('./components/TypesPanel.vue'));
@@ -2121,6 +2122,7 @@ const showTagsPane = computed(
 const showTasksPane = computed(
   () => settings.showTasksPanel && !!workspace.currentFolder,
 );
+const showSnippetsPane = computed(() => settings.showSnippetsPanel);
 // v4.6 F4 — Neighborhood relationship explorer. Markdown-only, needs a folder
 // (frontmatter wikilink groups are resolved against the workspace index).
 const showNeighborhoodPane = computed(
@@ -2332,6 +2334,7 @@ const rightSidebarHasRenderablePane = computed(
     showRelationshipsPane.value ||
     showTagsPane.value ||
     showTasksPane.value ||
+    showSnippetsPane.value ||
     showNeighborhoodPane.value ||
     showTypesPane.value ||
     showHistoryPane.value ||
@@ -2397,20 +2400,21 @@ const visibleRsPanes = computed(() => {
   // v4.3.0 issue #57b — order driven by settings.rsPaneOrder so users can
   // drag-reorder. Unknown ids (newly-shipped future panes) get appended at
   // the end so a SoloMD update doesn't blow away an existing user layout.
-  const all: Record<'search' | 'outline' | 'backlinks' | 'relationships' | 'tags' | 'tasks' | 'neighborhood' | 'types' | 'history' | 'inspector' | 'agent', boolean> = {
+  const all: Record<'search' | 'outline' | 'backlinks' | 'relationships' | 'tags' | 'tasks' | 'snippets' | 'neighborhood' | 'types' | 'history' | 'inspector' | 'agent', boolean> = {
     search: showSearchPane.value,
     outline: showOutlinePane.value,
     backlinks: showBacklinksPane.value,
     relationships: showRelationshipsPane.value,
     tags: showTagsPane.value,
     tasks: showTasksPane.value,
+    snippets: showSnippetsPane.value,
     neighborhood: showNeighborhoodPane.value,
     types: showTypesPane.value,
     history: showHistoryPane.value,
     inspector: showInspectorPane.value,
     agent: showAgentPane.value,
   };
-  const known = ['search', 'outline', 'backlinks', 'relationships', 'tags', 'tasks', 'neighborhood', 'types', 'history', 'inspector', 'agent'] as const;
+  const known = ['search', 'outline', 'backlinks', 'relationships', 'tags', 'tasks', 'snippets', 'neighborhood', 'types', 'history', 'inspector', 'agent'] as const;
   const ordered: string[] = [];
   for (const id of settings.rsPaneOrder || []) {
     if (id in all && !ordered.includes(id)) ordered.push(id);
@@ -2420,7 +2424,7 @@ const visibleRsPanes = computed(() => {
   }
   return ordered
     .filter((id) => all[id as keyof typeof all])
-    .map((id) => ({ id: id as 'search' | 'outline' | 'backlinks' | 'relationships' | 'tags' | 'tasks' | 'neighborhood' | 'types' | 'history' | 'inspector' | 'agent' }));
+    .map((id) => ({ id: id as 'search' | 'outline' | 'backlinks' | 'relationships' | 'tags' | 'tasks' | 'snippets' | 'neighborhood' | 'types' | 'history' | 'inspector' | 'agent' }));
 });
 
 // #637 — Sync Conflict & Snapshot Manager modal state.
@@ -2438,6 +2442,7 @@ const RS_PANE_ICONS: Record<string, string> = {
   relationships: 'type-project',
   tags: 'type-generic',
   tasks: 'list-bullet',
+  snippets: 'code',
   neighborhood: 'type-idea',
   types: 'type-book',
   history: 'recent',
@@ -2801,6 +2806,10 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
                 v-if="p.id === 'tasks'"
                 @close="ctxToggle(() => settings.toggleTasksPanel())"
               />
+              <SnippetsPanel
+                v-if="p.id === 'snippets'"
+                :selection-text="selectionText"
+              />
               <NeighborhoodPanel
                 v-if="p.id === 'neighborhood'"
                 @close="ctxToggle(() => settings.toggleNeighborhood())"
@@ -2871,6 +2880,10 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
               <TasksPanel
                 v-if="p.id === 'tasks'"
                 @close="ctxToggle(() => settings.toggleTasksPanel())"
+              />
+              <SnippetsPanel
+                v-if="p.id === 'snippets'"
+                :selection-text="selectionText"
               />
               <NeighborhoodPanel
                 v-if="p.id === 'neighborhood'"

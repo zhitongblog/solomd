@@ -224,6 +224,36 @@ fn save_language_preference(lang: String) -> Result<(), String> {
     std::fs::write(&path, lang.trim()).map_err(|e| e.to_string())
 }
 
+fn window_restore_mode_path() -> std::path::PathBuf {
+    let mut p = dirs_home().unwrap_or_else(std::env::temp_dir);
+    p.push(".solomd-window-restore");
+    p
+}
+
+/// #671 — User preference for restoring a window whose saved position falls
+/// partially outside the monitor work area:
+/// - `"clamp"` (default): recenter on monitor BEFORE showing (no visible jump)
+/// - `"keep"`: preserve exact last position (only recenter if completely off-screen)
+/// - `"center"`: always center on current monitor before showing
+fn read_window_restore_mode() -> String {
+    let path = window_restore_mode_path();
+    std::fs::read_to_string(&path)
+        .ok()
+        .map(|s| s.trim().to_string())
+        .filter(|s| matches!(s.as_str(), "clamp" | "keep" | "center"))
+        .unwrap_or_else(|| "clamp".to_string())
+}
+
+#[tauri::command]
+fn save_window_restore_mode(mode: String) -> Result<(), String> {
+    let m = mode.trim();
+    if !matches!(m, "clamp" | "keep" | "center") {
+        return Err(format!("invalid window restore mode: {m}"));
+    }
+    let path = window_restore_mode_path();
+    std::fs::write(&path, m).map_err(|e| e.to_string())
+}
+
 /// Pages that belong to the app itself: the bundled frontend (served from
 /// `tauri.localhost` on Windows), the dev server, and the internal schemes.
 #[cfg_attr(not(target_os = "windows"), allow(dead_code))]
@@ -488,12 +518,28 @@ fn clamp_window_to_monitor(win: &tauri::WebviewWindow) {
     let cur_x = (outer_pos.x as f64 / scale).round() as i32;
     let cur_y = (outer_pos.y as f64 / scale).round() as i32;
 
-    // Position is "off-monitor" if any edge of the window falls outside the
-    // current monitor's work area.
-    let position_invalid = cur_x < mon_x - EDGE_SLACK
-        || cur_x + new_w > mon_x + mon_w + EDGE_SLACK
-        || cur_y < mon_y - EDGE_SLACK
-        || cur_y + new_h > mon_y + mon_h + EDGE_SLACK;
+    let restore_mode = read_window_restore_mode();
+
+    // Position check depends on user preference (#671):
+    // - "center": always center on current monitor before showing.
+    // - "keep": preserve exact last position even if partially off-screen / over
+    //   taskbar; only recenter if virtually invisible (< 24px inside monitor).
+    // - "clamp" (default): recenter if any edge falls outside the work area.
+    let position_invalid = match restore_mode.as_str() {
+        "center" => true,
+        "keep" => {
+            cur_x + new_w <= mon_x + 24
+                || cur_x >= mon_x + mon_w - 24
+                || cur_y + new_h <= mon_y + 24
+                || cur_y >= mon_y + mon_h - 24
+        }
+        _ => {
+            cur_x < mon_x - EDGE_SLACK
+                || cur_x + new_w > mon_x + mon_w + EDGE_SLACK
+                || cur_y < mon_y - EDGE_SLACK
+                || cur_y + new_h > mon_y + mon_h + EDGE_SLACK
+        }
+    };
 
     if size_clamped {
         let _ = win.set_size(tauri::LogicalSize::new(new_w as u32, new_h as u32));
@@ -628,10 +674,13 @@ pub fn run_with(initial_file: Option<String>) {
             // NOT ::all(): DECORATIONS must never be restored from disk — the
             // frameless Windows build (decorations:false, unified title bar)
             // would get the native title bar resurrected by state saved from
-            // a pre-4.12 decorated install. Decorations are config-owned.
+            // a pre-4.12 decorated install. Also exclude VISIBLE (#671) so the
+            // plugin restores size/position while hidden and `fit_main_window_once`
+            // clamps/centers BEFORE calling `win.show()` (no visible jump!).
             .with_state_flags(
                 tauri_plugin_window_state::StateFlags::all()
-                    - tauri_plugin_window_state::StateFlags::DECORATIONS,
+                    - tauri_plugin_window_state::StateFlags::DECORATIONS
+                    - tauri_plugin_window_state::StateFlags::VISIBLE,
             )
             // The quick-capture box is undecorated, fixed-size and always on
             // top by design; restoring a remembered geometry would hand it a
@@ -814,6 +863,10 @@ pub fn run_with(initial_file: Option<String>) {
             webdav_sync::sync_list_conflicts,
             webdav_sync::sync_diff_conflict,
             webdav_sync::sync_resolve_conflict,
+            webdav_sync::sync_check_journal_conflict,
+            webdav_sync::sync_append_journal,
+            webdav_sync::sync_extract_remote_removals,
+            save_window_restore_mode,
             webdav_sync::sync_ensure_snapshot_dir,
             crypto::crypto_status,
             crypto::crypto_set_passphrase,

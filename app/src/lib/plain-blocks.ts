@@ -66,7 +66,15 @@ export function splitPlainMarkdownBlocks(src: string): PlainBlockRange[] {
     // splitter walked into it line by line and any line indented 4+ spaces
     // (routine inside `aligned`) became its own indented-code block, so the
     // formula rendered as three pieces with a grey slab in the middle.
-    // `$$E=mc^2$$` closes on its own line and is not an opener.
+    // `$$E=mc^2$$` / `\[E=mc^2\]` closes on its own line: keep it as its own
+    // standalone block so pressing Enter and typing on the next line never
+    // merges back into the math block and unmounts the active `<textarea>`.
+    if (
+      (/^\$\$.*\$\$$/.test(trimmed) && trimmed.length > 4) ||
+      (/^\\\[.*\\\]$/.test(trimmed) && trimmed.length > 4)
+    ) {
+      return 'mathsingle';
+    }
     if (
       (/^\$\$/.test(trimmed) && !/^\$\$.*\$\$$/.test(trimmed)) ||
       (/^\\\[/.test(trimmed) && !/^\\\[.*\\\]$/.test(trimmed))
@@ -124,7 +132,12 @@ export function splitPlainMarkdownBlocks(src: string): PlainBlockRange[] {
     }
     const kind = kindFor(line);
 
-    if (kind === 'blank' || kind === 'heading' || kind === 'thematic') {
+    if (
+      kind === 'blank' ||
+      kind === 'heading' ||
+      kind === 'thematic' ||
+      kind === 'mathsingle'
+    ) {
       pushRange(line.start, line.end);
       i++;
       continue;

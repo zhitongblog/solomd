@@ -257,7 +257,7 @@ export function useFiles() {
 
   async function openPath(
     path: string,
-    opts: { bypassNewWindow?: boolean; fromTree?: boolean } = {},
+    opts: { bypassNewWindow?: boolean; fromTree?: boolean; skipAutoOpenSiblings?: boolean } = {},
   ) {
     // #148 — see importContentUri; must run before any path parsing below.
     if (isAndroid() && path.startsWith('content://')) {
@@ -421,13 +421,91 @@ export function useFiles() {
         requestRevealInTree(path);
       }
 
-      tabs.openFromDisk({
+      const openedTab = tabs.openFromDisk({
         filePath: path,
         content: result.content,
         encoding: result.encoding,
         language: result.language,
         hadBom: result.had_bom,
       });
+
+      // #672 — Auto-group by parent folder and/or auto-open sibling files in the same folder.
+      const parentDir = path.replace(/[\\/][^\\/]+$/, '');
+      if (parentDir && parentDir !== path) {
+        if (settings.autoGroupTabsByFolder) {
+          const grp = tabs.ensureFolderGroup(parentDir);
+          tabs.assignTabToGroup(openedTab.id, grp.id);
+        }
+        if (
+          !opts.skipAutoOpenSiblings &&
+          !isSaf &&
+          settings.autoOpenSiblingFiles !== 'off'
+        ) {
+          const normParent = parentDir.replace(/\\/g, '/').replace(/\/+$/, '');
+          const allowedFolders = (settings.autoOpenSiblingFolders || '')
+            .split(/[\r\n,]+/)
+            .map((s) => s.trim().replace(/\\/g, '/').replace(/\/+$/, ''))
+            .filter(Boolean);
+          const folderAllowed =
+            settings.autoOpenSiblingFiles === 'all' ||
+            allowedFolders.some(
+              (f) => normParent === f || normParent.startsWith(f + '/'),
+            );
+          if (folderAllowed) {
+            const allowedExts = (settings.autoOpenSiblingExtensions || '.md,.markdown,.txt')
+              .split(/[\s,;]+/)
+              .map((e) => e.trim().toLowerCase())
+              .filter(Boolean)
+              .map((e) => (e.startsWith('.') ? e : '.' + e));
+            void (async () => {
+              try {
+                const entries = await invoke<Array<{ path: string; name: string; is_dir: boolean }>>('list_dir', {
+                  path: parentDir,
+                  showHidden: false,
+                  withTimes: false,
+                });
+                const siblings = entries
+                  .filter(
+                    (e) =>
+                      !e.is_dir &&
+                      e.path !== path &&
+                      allowedExts.some((ext) => e.name.toLowerCase().endsWith(ext)),
+                  )
+                  .slice(0, 20);
+                if (siblings.length > 0) {
+                  const grp = tabs.ensureFolderGroup(parentDir);
+                  tabs.assignTabToGroup(openedTab.id, grp.id);
+                  for (const sib of siblings) {
+                    const existing = tabs.tabs.find(
+                      (t) => t.filePath && t.filePath.replace(/\\/g, '/') === sib.path.replace(/\\/g, '/'),
+                    );
+                    if (existing) {
+                      tabs.assignTabToGroup(existing.id, grp.id);
+                      continue;
+                    }
+                    try {
+                      const fr = await invoke<FileReadResult>('read_file', { path: sib.path });
+                      const sibTab = tabs.openFromDisk({
+                        filePath: sib.path,
+                        content: fr.content,
+                        encoding: fr.encoding,
+                        language: fr.language,
+                        hadBom: fr.had_bom,
+                      });
+                      tabs.assignTabToGroup(sibTab.id, grp.id);
+                    } catch {
+                      /* skip unreadable sibling */
+                    }
+                  }
+                  tabs.activate(openedTab.id);
+                }
+              } catch {
+                /* ignore list_dir errors */
+              }
+            })();
+          }
+        }
+      }
       workspace.pushRecent(path);
       // 5.0 phone shell: opening a note shows the editor — also when it is the
       // tab that is already active (tapping the note you just backed out of),

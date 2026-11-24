@@ -1710,7 +1710,25 @@ async fn ensure_remote_dir(
     Ok(())
 }
 
+/// #675 — Sync `.solomd/order.json` and `.solomd/sort.json` across devices so
+/// file-tree manual order and sort mode remain identical after cloud sync.
+fn is_sync_tree_meta(path: &Path) -> bool {
+    let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
+        return false;
+    };
+    if name != "order.json" && name != "sort.json" && name != "sync-journal.log" {
+        return false;
+    }
+    path.parent()
+        .and_then(|p| p.file_name())
+        .and_then(|n| n.to_str())
+        == Some(".solomd")
+}
+
 fn should_skip_dir(name: &str) -> bool {
+    if name == ".solomd" {
+        return false;
+    }
     name.starts_with('.')
         || name == "node_modules"
         || name == "target"
@@ -1718,6 +1736,13 @@ fn should_skip_dir(name: &str) -> bool {
 }
 
 fn should_sync_file(path: &Path) -> bool {
+    if is_sync_tree_meta(path) {
+        return true;
+    }
+    // Never sync arbitrary files inside `.solomd/` other than the allowlisted tree meta files above.
+    if path.components().any(|c| c.as_os_str() == ".solomd") {
+        return false;
+    }
     let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
         return false;
     };
@@ -7386,6 +7411,267 @@ pub async fn cloud_api_pull_workspace(
         downloaded: extracted,
         message: final_msg,
     })
+}
+
+// ---------------------------------------------------------------------------
+// #674 — Multi-device sync journal & overwrite / deletion guard
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SyncJournalOp {
+    pub kind: String, // "ADD" | "MOD" | "RMV"
+    pub path: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SyncJournalEntry {
+    pub timestamp: u64,
+    pub device_id: String,
+    pub ops: Vec<SyncJournalOp>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SyncJournalConflict {
+    pub has_conflict: bool,
+    pub other_devices: Vec<String>,
+    pub conflicting_files: Vec<String>,
+    pub latest_remote_ts: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SyncRemovalBatch {
+    pub timestamp: u64,
+    pub device_id: String,
+    pub paths: Vec<String>,
+}
+
+pub fn parse_sync_journal(content: &str) -> Vec<SyncJournalEntry> {
+    let mut entries: Vec<SyncJournalEntry> = Vec::new();
+    for raw_line in content.lines() {
+        let line = raw_line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        if line.starts_with('[') {
+            if let Some(close_idx) = line.find(']') {
+                let kind = line[1..close_idx].trim().to_string();
+                let path = line[close_idx + 1..].trim().to_string();
+                if matches!(kind.as_str(), "ADD" | "MOD" | "RMV") && !path.is_empty() {
+                    if let Some(last) = entries.last_mut() {
+                        last.ops.push(SyncJournalOp { kind, path });
+                    }
+                }
+            }
+            continue;
+        }
+        if let Some((ts_str, dev_str)) = line.split_once(':') {
+            if let Ok(timestamp) = ts_str.trim().parse::<u64>() {
+                let device_id = dev_str.trim().to_string();
+                if !device_id.is_empty() {
+                    entries.push(SyncJournalEntry {
+                        timestamp,
+                        device_id,
+                        ops: Vec::new(),
+                    });
+                }
+            }
+        }
+    }
+    entries
+}
+
+pub fn format_sync_journal_entry(
+    timestamp: u64,
+    device_id: &str,
+    ops: &[SyncJournalOp],
+) -> String {
+    let mut out = format!("{timestamp}: {device_id}\n");
+    for op in ops {
+        out.push_str(&format!("[{}]{}\n", op.kind, op.path));
+    }
+    out
+}
+
+pub fn check_journal_conflict_inner(
+    local_journal: &str,
+    remote_journal: &str,
+    my_device_id: &str,
+    pending_paths: &[String],
+) -> SyncJournalConflict {
+    let local_entries = parse_sync_journal(local_journal);
+    let remote_entries = parse_sync_journal(remote_journal);
+    let local_last_ts = local_entries.last().map(|e| e.timestamp).unwrap_or(0);
+    let latest_remote_ts = remote_entries.last().map(|e| e.timestamp).unwrap_or(0);
+
+    let pending_set: std::collections::HashSet<&str> =
+        pending_paths.iter().map(|s| s.as_str()).collect();
+    let mut other_devices: Vec<String> = Vec::new();
+    let mut conflicting_files: Vec<String> = Vec::new();
+
+    for entry in remote_entries.iter().filter(|e| e.timestamp > local_last_ts) {
+        if entry.device_id != my_device_id {
+            if !other_devices.contains(&entry.device_id) {
+                other_devices.push(entry.device_id.clone());
+            }
+            for op in &entry.ops {
+                if (pending_set.is_empty() || pending_set.contains(op.path.as_str()))
+                    && !conflicting_files.contains(&op.path)
+                {
+                    conflicting_files.push(op.path.clone());
+                }
+            }
+        }
+    }
+
+    let has_conflict = !other_devices.is_empty()
+        && (pending_set.is_empty() || !conflicting_files.is_empty());
+
+    SyncJournalConflict {
+        has_conflict,
+        other_devices,
+        conflicting_files,
+        latest_remote_ts,
+    }
+}
+
+pub fn extract_remote_removals_inner(
+    local_journal: &str,
+    remote_journal: &str,
+    my_device_id: &str,
+) -> Vec<SyncRemovalBatch> {
+    let local_entries = parse_sync_journal(local_journal);
+    let remote_entries = parse_sync_journal(remote_journal);
+    let local_last_ts = local_entries.last().map(|e| e.timestamp).unwrap_or(0);
+
+    remote_entries
+        .into_iter()
+        .filter(|e| e.timestamp > local_last_ts && e.device_id != my_device_id)
+        .filter_map(|e| {
+            let paths: Vec<String> = e
+                .ops
+                .into_iter()
+                .filter(|op| op.kind == "RMV")
+                .map(|op| op.path)
+                .collect();
+            if paths.is_empty() {
+                None
+            } else {
+                Some(SyncRemovalBatch {
+                    timestamp: e.timestamp,
+                    device_id: e.device_id,
+                    paths,
+                })
+            }
+        })
+        .collect()
+}
+
+#[tauri::command]
+pub async fn sync_check_journal_conflict(
+    local_journal: String,
+    remote_journal: String,
+    my_device_id: String,
+    pending_paths: Vec<String>,
+) -> Result<SyncJournalConflict, String> {
+    Ok(check_journal_conflict_inner(
+        &local_journal,
+        &remote_journal,
+        &my_device_id,
+        &pending_paths,
+    ))
+}
+
+#[tauri::command]
+pub async fn sync_append_journal(
+    workspace: String,
+    device_id: String,
+    ops: Vec<SyncJournalOp>,
+) -> Result<String, String> {
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let meta_dir = PathBuf::from(&workspace).join(".solomd");
+    std::fs::create_dir_all(&meta_dir).map_err(|e| e.to_string())?;
+    let journal_path = meta_dir.join("sync-journal.log");
+    let mut existing = std::fs::read_to_string(&journal_path).unwrap_or_default();
+    if !existing.is_empty() && !existing.ends_with('\n') {
+        existing.push('\n');
+    }
+    existing.push_str(&format_sync_journal_entry(ts, &device_id, &ops));
+    // Keep last 500 lines so the journal stays tiny and fast.
+    let lines: Vec<&str> = existing.lines().collect();
+    let trimmed = if lines.len() > 500 {
+        format!("{}\n", lines[lines.len() - 500..].join("\n"))
+    } else {
+        existing
+    };
+    std::fs::write(&journal_path, &trimmed).map_err(|e| e.to_string())?;
+    Ok(trimmed)
+}
+
+#[tauri::command]
+pub async fn sync_extract_remote_removals(
+    local_journal: String,
+    remote_journal: String,
+    my_device_id: String,
+) -> Result<Vec<SyncRemovalBatch>, String> {
+    Ok(extract_remote_removals_inner(
+        &local_journal,
+        &remote_journal,
+        &my_device_id,
+    ))
+}
+
+#[cfg(test)]
+mod v540_sync_tests {
+    use super::*;
+
+    #[test]
+    fn tree_order_and_sort_meta_are_syncable_while_other_dot_solomd_files_are_skipped() {
+        assert!(should_sync_file(Path::new("/vault/.solomd/order.json")));
+        assert!(should_sync_file(Path::new("/vault/.solomd/sort.json")));
+        assert!(should_sync_file(Path::new("/vault/.solomd/sync-journal.log")));
+        assert!(!should_sync_file(Path::new("/vault/.solomd/session.abc.json")));
+        assert!(!should_sync_file(Path::new("/vault/.solomd/agent-runs/1.md")));
+        assert!(!should_skip_dir(".solomd"));
+        assert!(should_skip_dir(".git"));
+    }
+
+    #[test]
+    fn sync_journal_detects_other_device_conflict_and_groups_removals() {
+        let local = "1700000100: dev-A\n[MOD]notes/a.md\n";
+        let remote = concat!(
+            "1700000100: dev-A\n[MOD]notes/a.md\n",
+            "1700000200: dev-B\n[MOD]notes/a.md\n[RMV]notes/old.md\n",
+            "1700000300: dev-B\n[ADD]notes/new.md\n[RMV]notes/trash.md\n",
+        );
+
+        let conflict = check_journal_conflict_inner(
+            local,
+            remote,
+            "dev-A",
+            &["notes/a.md".to_string()],
+        );
+        assert!(conflict.has_conflict);
+        assert_eq!(conflict.other_devices, vec!["dev-B".to_string()]);
+        assert_eq!(conflict.conflicting_files, vec!["notes/a.md".to_string()]);
+
+        let no_conflict = check_journal_conflict_inner(
+            local,
+            remote,
+            "dev-A",
+            &["notes/untouched.md".to_string()],
+        );
+        assert!(!no_conflict.has_conflict);
+
+        let removals = extract_remote_removals_inner(local, remote, "dev-A");
+        assert_eq!(removals.len(), 2);
+        assert_eq!(removals[0].timestamp, 1700000200);
+        assert_eq!(removals[0].paths, vec!["notes/old.md".to_string()]);
+        assert_eq!(removals[1].timestamp, 1700000300);
+        assert_eq!(removals[1].paths, vec!["notes/trash.md".to_string()]);
+    }
 }
 
 #[cfg(test)]

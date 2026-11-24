@@ -44,6 +44,18 @@ export interface Tab {
   /** Last caret position (1-based line and column) reported by the editor.
    *  Persisted with the tab so a relaunch puts the caret back. */
   cursor?: { line: number; col: number };
+  /** #672 — Optional tab group ID this tab belongs to. */
+  groupId?: string;
+}
+
+/** #672 — Browser-style collapsible color-coded tab group. */
+export interface TabGroup {
+  id: string;
+  name: string;
+  color: string;
+  collapsed: boolean;
+  /** Optional folder path when auto-grouped by parent directory. */
+  folderPath?: string;
 }
 
 export interface FileReadResult {

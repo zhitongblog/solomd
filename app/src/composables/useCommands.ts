@@ -787,6 +787,12 @@ export function useCommands(): Command[] {
       run: () => settings.toggleViewsPanel(),
     },
     {
+      id: 'view.toggleSnippets',
+      title: 'View: Toggle Snippets Panel',
+      hint: 'Show / hide the Snippets panel in the sidebar',
+      run: () => settings.toggleSnippetsPanel(),
+    },
+    {
       id: 'views.create',
       title: 'View: Create Saved View…',
       hint: 'Define a persistent filtered note list (saved to .solomd/views/)',

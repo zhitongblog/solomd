@@ -278,10 +278,34 @@ function orderPath(): string | null {
   if (!rootPath || isSafPath(rootPath)) return null;
   return joinPath(joinPath(rootPath, '.solomd'), 'order.json');
 }
+function sortMetaPath(): string | null {
+  const rootPath = workspace.currentFolder;
+  if (!rootPath || isSafPath(rootPath)) return null;
+  return joinPath(joinPath(rootPath, '.solomd'), 'sort.json');
+}
 async function loadManualOrder() {
   manualOrder.value = {};
   const path = orderPath();
   if (!path) return;
+  // #675 — Restore vault-synced sort mode if present in `.solomd/sort.json`.
+  const sPath = sortMetaPath();
+  if (sPath && workspace.currentFolder) {
+    try {
+      const sfr = await invoke<{ content: string }>('read_file', { path: sPath });
+      const sp = JSON.parse(sfr.content);
+      if (
+        sp &&
+        typeof sp.mode === 'string' &&
+        ['name-asc', 'name-desc', 'created-asc', 'created-desc', 'modified-desc', 'manual'].includes(sp.mode)
+      ) {
+        if (settings.explorerSortByFolder[workspace.currentFolder] !== sp.mode) {
+          settings.setExplorerSort(workspace.currentFolder, sp.mode as TreeSortMode);
+        }
+      }
+    } catch {
+      /* no sort.json yet */
+    }
+  }
   try {
     const fr = await invoke<{ content: string }>('read_file', { path });
     const parsed = JSON.parse(fr.content);
@@ -328,6 +352,21 @@ function setSortMode(mode: TreeSortMode) {
   if (!folder) return;
   const hadTimes = sortNeedsTimes(sortMode.value);
   settings.setExplorerSort(folder, mode);
+  // #675 — Persist sort mode to `<vault>/.solomd/sort.json` so cloud sync
+  // keeps file-tree order identical across PCs.
+  const sPath = sortMetaPath();
+  if (sPath) {
+    void invoke('fs_create_dir', { path: sPath.replace(/[\\/][^\\/]+$/, '') })
+      .catch(() => {})
+      .then(() =>
+        invoke('write_file', {
+          path: sPath,
+          content: JSON.stringify({ mode }, null, 2) + '\n',
+          encoding: 'UTF-8',
+        }),
+      )
+      .catch(() => {});
+  }
   // Date and manual modes need timestamps the plain listing doesn't carry,
   // so switching into one re-lists; otherwise re-sorting in place is enough.
   if (sortNeedsTimes(mode) && !hadTimes) void refreshTreePreservingExpansion();

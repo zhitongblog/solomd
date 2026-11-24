@@ -1909,6 +1909,10 @@ class MathWidget extends WidgetType {
   toDOM(): HTMLElement {
     const wrap = document.createElement('div');
     wrap.className = 'cm-live-block cm-live-block--math';
+    // Isolate KaTeX DOM from CodeMirror's contentEditable surface so IME
+    // composition on the line right below a collapsed `$$...$$` block never
+    // bleeds into the MathML / aria-hidden spans.
+    wrap.contentEditable = 'false';
     try {
       wrap.innerHTML = renderMarkdown(this.source);
     } catch (e) {
@@ -2878,8 +2882,11 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
             const closeDelim = isBracket ? '\\]' : '$$';
             // Single-line `$$ ... $$` or `\[ ... \]`?
             if (trimmedLine.endsWith(closeDelim) && trimmedLine.length > 4) {
+              // Always keep math source editable while the cursor is inside it
+              // (even in Pure WYSIWYG mode) so typing or pressing Enter never
+              // traps IME composition against an atomic `block: true` widget.
               const cursorInside =
-                keepSource || (!pureWysiwyg && (cursorLine === i || cursorLineEnd === i));
+                keepSource || cursorLine === i || cursorLineEnd === i;
               if (!cursorInside) {
                 builder.add(
                   line.from,
@@ -2909,9 +2916,8 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
             if (endI <= lastLine) {
               const cursorInside =
                 keepSource ||
-                (!pureWysiwyg &&
-                  ((cursorLine >= i && cursorLine <= endI) ||
-                    (cursorLineEnd >= i && cursorLineEnd <= endI)));
+                (cursorLine >= i && cursorLine <= endI) ||
+                (cursorLineEnd >= i && cursorLineEnd <= endI);
               if (!cursorInside) {
                 const blockFrom = doc.line(i).from;
                 const blockTo = doc.line(endI).to;
@@ -3857,6 +3863,8 @@ export const liveBlocksTheme = EditorView.theme({
     padding: '1em 0',
     overflowX: 'auto',
     textAlign: 'var(--media-align, left)',
+    userSelect: 'none',
+    WebkitUserSelect: 'none',
   },
   // #573 — Inline \dfrac / \frac inside consecutive list items or lines
   // overflows a `display: inline` (line-height: 1.2) span and collides

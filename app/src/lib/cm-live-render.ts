@@ -421,6 +421,60 @@ export function buildDecorations(
   const seenInlineHtmlLines = new Set<number>();
   const seenDefLines = new Set<number>();
 
+  // Collect line numbers belonging to closed `$$...$$` / `\[...\]` math blocks
+  // (skipping fenced code blocks) so we never emit overlapping Markdown
+  // decorations (`EmphasisMark` on `_`, `Escape` on `\\`, `^...^` sup/sub)
+  // inside a `MathWidget` block replacement.
+  const mathBlockLines = new Set<number>();
+  {
+    const doc = view.state.doc;
+    let maxVisLine = 0;
+    for (const { to } of view.visibleRanges) {
+      const ln = doc.lineAt(Math.min(to, doc.length)).number;
+      if (ln > maxVisLine) maxVisLine = ln;
+    }
+    const scanLimit = Math.min(doc.lines, maxVisLine + 50);
+    let inFence: string | null = null;
+    for (let ln = 1; ln <= scanLimit; ln += 1) {
+      const trimmed = doc.line(ln).text.trim();
+      const fenceMatch = /^(`{3,}|~{3,})/.exec(trimmed);
+      if (fenceMatch) {
+        const ch = fenceMatch[1][0];
+        if (!inFence) {
+          inFence = ch;
+        } else if (inFence === ch && new RegExp(`^${ch}{3,}\\s*$`).test(trimmed)) {
+          inFence = null;
+        }
+        continue;
+      }
+      if (inFence) continue;
+      if (trimmed.startsWith('$$') || trimmed.startsWith('\\[')) {
+        const isBracket = trimmed.startsWith('\\[');
+        const closeDelim = isBracket ? '\\]' : '$$';
+        if (trimmed.endsWith(closeDelim) && trimmed.length > 4) {
+          mathBlockLines.add(ln);
+          continue;
+        }
+        let endLn = ln + 1;
+        while (endLn <= doc.lines) {
+          const nt = doc.line(endLn).text.trim();
+          if (
+            isBracket
+              ? nt.startsWith('\\]') || nt.endsWith('\\]')
+              : nt.startsWith('$$') || nt.endsWith('$$')
+          ) {
+            break;
+          }
+          endLn += 1;
+        }
+        if (endLn <= doc.lines) {
+          for (let k = ln; k <= endLn; k += 1) mathBlockLines.add(k);
+          ln = endLn;
+        }
+      }
+    }
+  }
+
   for (const { from, to } of view.visibleRanges) {
     const firstVisibleLine = view.state.doc.lineAt(from).number;
     const lastVisibleLine = view.state.doc.lineAt(
@@ -444,6 +498,13 @@ export function buildDecorations(
         const lineEndAtNode = view.state.doc.lineAt(
           Math.min(nTo, view.state.doc.length),
         ).number;
+        if (
+          name !== 'Document' &&
+          name !== 'Paragraph' &&
+          (mathBlockLines.has(lineAtNode) || mathBlockLines.has(lineEndAtNode))
+        ) {
+          return false;
+        }
         const caretTouches = lineEndAtNode >= fromLine && lineAtNode <= toLine;
         const nodeLineText =
           lineAtNode === lineEndAtNode ? view.state.doc.line(lineAtNode).text : '';
@@ -914,6 +975,7 @@ export function buildDecorations(
     for (let lineNo = firstVisibleLine; lineNo <= lastVisibleLine; lineNo += 1) {
       if (seenInlineHtmlLines.has(lineNo)) continue;
       seenInlineHtmlLines.add(lineNo);
+      if (mathBlockLines.has(lineNo)) continue;
       if (!showMarkers && lineNo >= fromLine && lineNo <= toLine) continue;
       const line = view.state.doc.line(lineNo);
       if (seenFencedLines.has(line.from)) continue;
@@ -967,6 +1029,7 @@ export function buildDecorations(
     // #285 — Definition list (`Term\n: Definition`) styling in Live Edit mode.
     for (let lineNo = firstVisibleLine; lineNo <= lastVisibleLine; lineNo += 1) {
       if (seenDefLines.has(lineNo)) continue;
+      if (mathBlockLines.has(lineNo)) continue;
       const line = view.state.doc.line(lineNo);
       if (seenFencedLines.has(line.from)) continue;
       const ddMatch = line.text.match(/^[ ]{0,3}([:~])([ \t]+)(.+)$/);

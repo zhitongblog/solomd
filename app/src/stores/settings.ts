@@ -10,6 +10,30 @@ import {
 } from '../lib/quick-capture-shortcut';
 
 const LS_KEY = 'solomd.settings.v1';
+const DEVICE_ID_KEY = 'solomd.deviceId.v1';
+
+/**
+ * #674 — Machine-local persistent UUID (never synced to cloud).
+ * Displayed in the Settings modal header and written into `.solomd/sync-journal.log`.
+ */
+function loadOrCreateDeviceId(): string {
+  try {
+    const existing = localStorage.getItem(DEVICE_ID_KEY);
+    if (existing && existing.trim().length >= 8) return existing.trim();
+  } catch {
+    /* ignore */
+  }
+  const generated =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : 'dev-' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+  try {
+    localStorage.setItem(DEVICE_ID_KEY, generated);
+  } catch {
+    /* ignore */
+  }
+  return generated;
+}
 
 // CJK + generic fallback appended after the user's chosen face. This way
 // Latin glyphs come from the user's pick while CJK still falls back to
@@ -242,8 +266,24 @@ interface Settings {
   /** #622: on Windows custom-titlebar, place the toolbar right after the menubar
    *  so the tab bar row has 100% width for open tabs. */
   toolbarInTitlebar: boolean;
-  /** #622: ordered list of visible toolbar action IDs. */
+  /** #622 / #665: ordered list of visible toolbar action IDs (built-in or `cmd:<id>`). */
   toolbarItems: string[];
+  /** #665: optional user-selected custom icon name per toolbar item ID. */
+  toolbarItemIcons: Record<string, string>;
+  /** #653: right-sidebar Snippets panel visibility. */
+  showSnippetsPanel: boolean;
+  /** #671: window position restore mode when saved bounds are partially off-screen. */
+  windowRestoreMode: 'clamp' | 'keep' | 'center';
+  /** #672: automatically group open tabs by their parent folder. */
+  autoGroupTabsByFolder: boolean;
+  /** #672: automatically open sibling supported files when opening a note. */
+  autoOpenSiblingFiles: 'off' | 'all' | 'folders';
+  /** #672: newline/comma-separated folder paths when autoOpenSiblingFiles === 'folders'. */
+  autoOpenSiblingFolders: string;
+  /** #672: comma-separated extensions to auto-open (e.g. `.md,.markdown,.txt`). */
+  autoOpenSiblingExtensions: string;
+  /** #674: machine-local persistent UUID (never synced to cloud) for multi-device sync guard. */
+  deviceId: string;
   /** #479: hide the top mobile status-bar reservation for full-screen immersion. */
   mobileHideStatusBar: boolean;
   typewriterMode: boolean;
@@ -903,6 +943,14 @@ function defaults(): Settings {
     toolbarShowLabels: false,
     toolbarInTitlebar: true,
     toolbarItems: ['viewMode', 'search', 'export', 'rightSidebar', 'more'],
+    toolbarItemIcons: {} as Record<string, string>,
+    showSnippetsPanel: false,
+    windowRestoreMode: 'clamp' as 'clamp' | 'keep' | 'center',
+    autoGroupTabsByFolder: false,
+    autoOpenSiblingFiles: 'off' as 'off' | 'all' | 'folders',
+    autoOpenSiblingFolders: '',
+    autoOpenSiblingExtensions: '.md,.markdown,.txt',
+    deviceId: loadOrCreateDeviceId(),
     mobileHideStatusBar: false,
     typewriterMode: false,
     formatHints: true,
@@ -1106,7 +1154,7 @@ function defaults(): Settings {
     pdfPageSizeAutoMigrated: true,
     pdfTocDefaultOnMigrated: true,
     markdownAutoNumberHeadings: false,
-    rsPaneOrder: ['search', 'outline', 'backlinks', 'relationships', 'tags', 'tasks', 'neighborhood', 'types', 'history', 'inspector', 'agent'],
+    rsPaneOrder: ['search', 'outline', 'backlinks', 'relationships', 'tags', 'tasks', 'snippets', 'neighborhood', 'types', 'history', 'inspector', 'agent'],
     previewFontSize: 16,
     attachmentMode: 'shared',
     defaultExportDir: '',
@@ -1803,6 +1851,51 @@ export const useSettingsStore = defineStore('settings', {
     },
     resetToolbarItems() {
       this.toolbarItems = ['viewMode', 'search', 'export', 'rightSidebar', 'more'];
+      this.toolbarItemIcons = {};
+      this.persist();
+    },
+    setToolbarItemIcon(id: string, icon: string) {
+      const next = { ...(this.toolbarItemIcons || {}) };
+      if (!icon) delete next[id];
+      else next[id] = icon;
+      this.toolbarItemIcons = next;
+      this.persist();
+    },
+    setWindowRestoreMode(mode: 'clamp' | 'keep' | 'center') {
+      this.windowRestoreMode = mode;
+      this.persist();
+      void import('@tauri-apps/api/core')
+        .then(({ invoke }) => invoke('save_window_restore_mode', { mode }))
+        .catch(() => {});
+    },
+    toggleAutoGroupTabsByFolder() {
+      this.autoGroupTabsByFolder = !this.autoGroupTabsByFolder;
+      this.persist();
+    },
+    setAutoOpenSiblingFiles(mode: 'off' | 'all' | 'folders') {
+      this.autoOpenSiblingFiles = mode;
+      this.persist();
+    },
+    setAutoOpenSiblingFolders(val: string) {
+      this.autoOpenSiblingFolders = val;
+      this.persist();
+    },
+    setAutoOpenSiblingExtensions(val: string) {
+      this.autoOpenSiblingExtensions = val;
+      this.persist();
+    },
+    toggleSnippetsPanel() {
+      if (this.rightSidebarLayout === 'tabs' && this.showSnippetsPanel && !this.rightSidebarHidden && this.activeRightTab !== 'snippets') {
+        this.activeRightTab = 'snippets';
+        this.ensureRightSidebarVisible();
+        this.persist();
+        return;
+      }
+      this.showSnippetsPanel = !this.showSnippetsPanel;
+      if (this.showSnippetsPanel) {
+        this.ensureRightSidebarVisible();
+        this.activeRightTab = 'snippets';
+      }
       this.persist();
     },
     toggleMobileHideStatusBar() {

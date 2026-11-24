@@ -1,6 +1,6 @@
 import { samePath, pathKey as normalizePathKey } from '../lib/path-key';
 import { defineStore } from 'pinia';
-import type { Language, Tab } from '../types';
+import type { Language, Tab, TabGroup } from '../types';
 import { useSettingsStore } from './settings';
 import { useTilesStore } from './tiles';
 import { useWritingSessionStore } from './writingSession';
@@ -56,7 +56,18 @@ function inferLanguage(name: string): Language {
 interface PersistedState {
   tabs: Tab[];
   activeId: string;
+  groups: TabGroup[];
 }
+
+export const TAB_GROUP_COLORS = [
+  '#3b82f6',
+  '#10b981',
+  '#f59e0b',
+  '#ef4444',
+  '#8b5cf6',
+  '#ec4899',
+  '#06b6d4',
+];
 
 /** Read-only check for the "restore previous session" setting, inlined
  *  from localStorage so we can run before the settings store hydrates. */
@@ -139,7 +150,11 @@ function readBucket(key: string): PersistedState | null {
             t.savedContent = t.savedContent.replace(/\r\n/g, '\n');
           }
         }
-        return { tabs: data.tabs, activeId: data.activeId || '' };
+        return {
+          tabs: data.tabs,
+          activeId: data.activeId || '',
+          groups: Array.isArray(data.groups) ? data.groups : [],
+        };
       }
     }
   } catch {}
@@ -147,10 +162,10 @@ function readBucket(key: string): PersistedState | null {
 }
 
 function loadPersisted(): PersistedState {
-  if (!restoreSessionEnabled()) return { tabs: [], activeId: '' };
+  if (!restoreSessionEnabled()) return { tabs: [], activeId: '', groups: [] };
   // Per-workspace OFF → behave exactly like before (single global blob).
   if (!perWorkspaceTabsEnabled()) {
-    return readBucket(bucketKey(null)) ?? { tabs: [], activeId: '' };
+    return readBucket(bucketKey(null)) ?? { tabs: [], activeId: '', groups: [] };
   }
   const folder = currentWorkspaceFolder();
   const bucket = readBucket(bucketKey(folder));
@@ -159,7 +174,7 @@ function loadPersisted(): PersistedState {
   // tab blob; they start from their own (possibly empty) bucket and get
   // their document via the `?path=` query param. Only the main window runs
   // the upgrade migration below.
-  if (windowScopeSuffix()) return { tabs: [], activeId: '' };
+  if (windowScopeSuffix()) return { tabs: [], activeId: '', groups: [] };
   // First launch after upgrade: no bucket yet for this workspace. Seed it
   // by scoping the legacy global tab list to the current folder (plus any
   // untitled or unsaved tabs), so an upgrading user with tabs accumulated
@@ -170,9 +185,13 @@ function loadPersisted(): PersistedState {
       (t) => !t.filePath || inFolder(t.filePath, folder) || isDirty(t),
     );
     const activeKept = scoped.some((t) => t.id === legacy.activeId);
-    return { tabs: scoped, activeId: activeKept ? legacy.activeId : scoped[0]?.id ?? '' };
+    return {
+      tabs: scoped,
+      activeId: activeKept ? legacy.activeId : scoped[0]?.id ?? '',
+      groups: Array.isArray(legacy.groups) ? legacy.groups : [],
+    };
   }
-  return { tabs: [], activeId: '' };
+  return { tabs: [], activeId: '', groups: [] };
 }
 
 /**
@@ -639,11 +658,79 @@ export const useTabsStore = defineStore('tabs', {
         settings.setActiveRightTab('outline');
       }
     },
+    // ---- #672 Tab Groups ----
+    createGroup(name: string, opts?: { color?: string; folderPath?: string; tabIds?: string[] }): TabGroup {
+      const color = opts?.color ?? TAB_GROUP_COLORS[this.groups.length % TAB_GROUP_COLORS.length];
+      const group: TabGroup = {
+        id: `grp-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+        name: name.trim() || 'Group',
+        color,
+        collapsed: false,
+        folderPath: opts?.folderPath,
+      };
+      this.groups.push(group);
+      if (opts?.tabIds) {
+        for (const tid of opts.tabIds) {
+          const tab = this.tabs.find((t) => t.id === tid);
+          if (tab) tab.groupId = group.id;
+        }
+      }
+      this.persist();
+      return group;
+    },
+    ensureFolderGroup(folderPath: string): TabGroup {
+      const norm = folderPath.replace(/\\/g, '/').replace(/\/+$/, '');
+      const existing = this.groups.find((g) => g.folderPath === norm);
+      if (existing) return existing;
+      const folderName = norm.split('/').filter(Boolean).pop() || norm || 'Folder';
+      return this.createGroup(folderName, { folderPath: norm });
+    },
+    assignTabToGroup(tabId: string, groupId: string | undefined) {
+      const tab = this.tabs.find((t) => t.id === tabId);
+      if (!tab) return;
+      tab.groupId = groupId;
+      // Prune empty groups automatically.
+      this.groups = this.groups.filter((g) => this.tabs.some((t) => t.groupId === g.id));
+      this.persist();
+    },
+    toggleGroupCollapsed(groupId: string) {
+      const g = this.groups.find((x) => x.id === groupId);
+      if (!g) return;
+      g.collapsed = !g.collapsed;
+      this.persist();
+    },
+    renameGroup(groupId: string, name: string) {
+      const g = this.groups.find((x) => x.id === groupId);
+      if (!g) return;
+      g.name = name.trim() || g.name;
+      this.persist();
+    },
+    setGroupColor(groupId: string, color: string) {
+      const g = this.groups.find((x) => x.id === groupId);
+      if (!g) return;
+      g.color = color;
+      this.persist();
+    },
+    ungroup(groupId: string) {
+      for (const t of this.tabs) {
+        if (t.groupId === groupId) t.groupId = undefined;
+      }
+      this.groups = this.groups.filter((g) => g.id !== groupId);
+      this.persist();
+    },
+    closeGroup(groupId: string) {
+      const toClose = this.tabs.filter((t) => t.groupId === groupId && !t.pinned).map((t) => t.id);
+      for (const id of toClose) {
+        this.closeTab(id);
+      }
+      this.groups = this.groups.filter((g) => this.tabs.some((t) => t.groupId === g.id));
+      this.persist();
+    },
     persist() {
       try {
         localStorage.setItem(
           bucketKey(currentWorkspaceFolder()),
-          JSON.stringify({ tabs: this.tabs, activeId: this.activeId }),
+          JSON.stringify({ tabs: this.tabs, activeId: this.activeId, groups: this.groups }),
         );
       } catch {}
     },
@@ -669,7 +756,7 @@ export const useTabsStore = defineStore('tabs', {
       try {
         localStorage.setItem(
           bucketKey(folder),
-          JSON.stringify({ tabs: this.tabs, activeId: this.activeId }),
+          JSON.stringify({ tabs: this.tabs, activeId: this.activeId, groups: this.groups }),
         );
       } catch {}
     },

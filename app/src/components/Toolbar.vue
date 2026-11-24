@@ -9,7 +9,12 @@ import { useSettingsStore, themeFamily } from '../stores/settings';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useTilesStore } from '../stores/tiles';
 import { useGitQuickActions } from '../composables/useGitQuickActions';
-import { normalizeToolbarItems, type ToolbarItemId } from '../lib/toolbar-items';
+import {
+  defaultIconForCommand,
+  normalizeToolbarItems,
+  type ToolbarItemId,
+} from '../lib/toolbar-items';
+import { useCommands } from '../composables/useCommands';
 import { track } from '../lib/telemetry';
 import { getPlainSelection } from '../lib/plain-selection';
 import { useFiles } from '../composables/useFiles';
@@ -94,9 +99,28 @@ const isMarkdown = computed(() => tabs.activeTab?.language === 'markdown');
 // #622 / #644 — Customizable toolbar items & docking into the Windows titlebar
 // right after the menubar so the entire tab-bar row belongs to open tabs.
 const customizeOpen = ref(false);
-const activeToolbarItems = computed(() => new Set(normalizeToolbarItems(settings.toolbarItems)));
+const allPaletteCommands = computed(() => useCommands());
+const normalizedToolbarItems = computed(() => normalizeToolbarItems(settings.toolbarItems));
+const activeToolbarItems = computed(() => new Set(normalizedToolbarItems.value));
+const customCommandItems = computed(() => {
+  const cmdMap = new Map(allPaletteCommands.value.map((c) => [c.id, c]));
+  return normalizedToolbarItems.value
+    .filter((id) => id.startsWith('cmd:'))
+    .map((id) => {
+      const cmdId = id.slice(4);
+      const cmd = cmdMap.get(cmdId);
+      const localized = t(`cmd.${cmdId}`);
+      const label = localized && localized !== `cmd.${cmdId}` ? localized : (cmd?.title ?? cmdId);
+      const icon = settings.toolbarItemIcons?.[id] || defaultIconForCommand(cmdId);
+      return { id, cmdId, label, icon, run: cmd?.run };
+    })
+    .filter((entry) => typeof entry.run === 'function');
+});
 function hasToolbarItem(id: ToolbarItemId): boolean {
   return activeToolbarItems.value.has(id);
+}
+function runCustomToolbarCommand(item: { run?: () => void | Promise<void> }) {
+  void item.run?.();
 }
 const dockInTitlebar = computed(
   () =>
@@ -1274,6 +1298,20 @@ onBeforeUnmount(() => {
           </div>
         </Teleport>
       </div>
+
+      <!-- #665 — User-added arbitrary command palette actions -->
+      <button
+        v-for="item in customCommandItems"
+        v-show="!isNarrow"
+        :key="item.id"
+        class="icon-btn"
+        @click="runCustomToolbarCommand(item)"
+        :title="item.label"
+        :aria-label="item.label"
+      >
+        <Icon :name="item.icon" />
+        <span v-if="settings.toolbarShowLabels && !dockInTitlebar" class="icon-btn__label">{{ item.label }}</span>
+      </button>
 
       <button
         v-if="!isNarrow && hasToolbarItem('rightSidebar')"

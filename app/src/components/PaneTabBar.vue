@@ -112,6 +112,63 @@ function onTogglePin() {
   if (m) tabs.togglePin(m.tabId);
 }
 
+// #672 — Tab Groups helpers
+const visibleStripTabs = computed(() => {
+  const collapsedIds = new Set(tabs.groups.filter((g) => g.collapsed).map((g) => g.id));
+  if (collapsedIds.size === 0) return tabs.tabs;
+  return tabs.tabs.filter((t) => !t.groupId || !collapsedIds.has(t.groupId) || t.id === props.activeTabId);
+});
+function tabGroupColor(groupId?: string): string | undefined {
+  if (!groupId) return undefined;
+  return tabs.groups.find((g) => g.id === groupId)?.color;
+}
+const ctxTabHasGroup = computed(() => {
+  const m = ctxMenu.value;
+  if (!m) return false;
+  return !!tabs.tabs.find((t) => t.id === m.tabId)?.groupId;
+});
+function onCreateGroupFromCtxTab() {
+  const m = ctxMenu.value;
+  closeCtxMenu();
+  if (!m) return;
+  const tab = tabs.tabs.find((t) => t.id === m.tabId);
+  const defaultName =
+    tab?.filePath?.replace(/\\/g, '/').split('/').slice(-2, -1)[0] ||
+    (settings.language === 'zh' ? '标签组' : 'Group');
+  const name = window.prompt(
+    settings.language === 'zh' ? '输入标签组名称：' : 'Tab group name:',
+    defaultName,
+  );
+  if (name === null) return;
+  tabs.createGroup(name || defaultName, { tabIds: [m.tabId] });
+}
+function onAssignCtxTabToGroup(groupId: string) {
+  const m = ctxMenu.value;
+  closeCtxMenu();
+  if (m) tabs.assignTabToGroup(m.tabId, groupId);
+}
+function onRemoveCtxTabFromGroup() {
+  const m = ctxMenu.value;
+  closeCtxMenu();
+  if (m) tabs.assignTabToGroup(m.tabId, undefined);
+}
+function onGroupContextMenu(groupId: string) {
+  const grp = tabs.groups.find((g) => g.id === groupId);
+  if (!grp) return;
+  const nextName = window.prompt(
+    settings.language === 'zh'
+      ? '重命名标签组（清空并确认可解散该组）：'
+      : 'Rename tab group (leave empty to ungroup):',
+    grp.name,
+  );
+  if (nextName === null) return;
+  if (!nextName.trim()) {
+    tabs.ungroup(groupId);
+  } else {
+    tabs.renameGroup(groupId, nextName);
+  }
+}
+
 function onToggleOutline() {
   const m = ctxMenu.value;
   closeCtxMenu();
@@ -321,6 +378,14 @@ function onPointerUp(e: PointerEvent) {
   if (split) {
     tiles.splitPane(split.paneId, split.direction, start.tabId);
   } else {
+    // #672 — Dropping a tab directly onto a group chip assigns it to that group.
+    const under = document.elementFromPoint(e.clientX, e.clientY);
+    const overGroupEl = under?.closest<HTMLElement>('[data-group-id]');
+    if (overGroupEl?.dataset.groupId) {
+      tabs.assignTabToGroup(start.tabId, overGroupEl.dataset.groupId);
+      tiles.endTabDrag();
+      return;
+    }
     // Reorder: insert relative to the tab under the pointer. Right half of the
     // target inserts AFTER it, left half BEFORE — same rule as before.
     const overId = tabIdAt(e.clientX, e.clientY);
@@ -331,6 +396,11 @@ function onPointerUp(e: PointerEvent) {
         const rect = overEl?.getBoundingClientRect();
         const after = rect ? e.clientX > rect.left + rect.width / 2 : false;
         tabs.reorder(start.tabId, after ? targetIdx + 1 : targetIdx);
+        // Adopt the target tab's group if dragged onto a grouped tab.
+        const targetTab = tabs.tabs[targetIdx];
+        if (targetTab && targetTab.groupId !== undefined) {
+          tabs.assignTabToGroup(start.tabId, targetTab.groupId);
+        }
       }
     }
   }
@@ -488,11 +558,28 @@ onBeforeUnmount(() => {
     :class="`pane-tabbar--${placement}`"
   >
     <div class="tabs" ref="tabsEl" @wheel.prevent="onTabsWheel">
+      <!-- #672 — Collapsible color-coded Tab Group chips -->
+      <button
+        v-for="grp in tabs.groups"
+        :key="'grp-' + grp.id"
+        type="button"
+        class="tab-group-chip"
+        :class="{ 'tab-group-chip--collapsed': grp.collapsed }"
+        :data-group-id="grp.id"
+        :style="{ '--grp-color': grp.color }"
+        :title="`${grp.name} (${tabs.tabs.filter((t) => t.groupId === grp.id).length})`"
+        @click.stop="tabs.toggleGroupCollapsed(grp.id)"
+        @contextmenu.prevent.stop="onGroupContextMenu(grp.id)"
+      >
+        <span class="tab-group-chip__dot" />
+        <span class="tab-group-chip__name">{{ grp.name }}</span>
+        <span class="tab-group-chip__count">{{ tabs.tabs.filter((t) => t.groupId === grp.id).length }}</span>
+      </button>
       <!-- The loop variable is `tab`, not `t`: `t` is the i18n function in
            this component, and `v-for="t in …"` silently shadowed it — any
            `t('key')` written inside the row would have called the tab. -->
       <div
-        v-for="tab in tabs.tabs"
+        v-for="tab in visibleStripTabs"
         :key="tab.id"
         :data-tab-id="tab.id"
         class="tab"
@@ -501,7 +588,9 @@ onBeforeUnmount(() => {
           'tab--dirty': tabs.isDirty(tab.id),
           'tab--pinned': !!tab.pinned,
           'tab--dragging': tiles.dragTabId === tab.id,
+          'tab--grouped': !!tab.groupId,
         }"
+        :style="tabGroupColor(tab.groupId) ? { borderTop: `2px solid ${tabGroupColor(tab.groupId)}` } : undefined"
         role="tab"
         :aria-selected="tab.id === activeTabId"
         @click="onTabClick(tab.id)"
@@ -618,6 +707,20 @@ onBeforeUnmount(() => {
       >
         <button class="ctx-item" @click="onTogglePin">
           {{ ctxFlags?.pinned ? (settings.language === 'zh' ? '取消固定标签页' : 'Unpin Tab') : (settings.language === 'zh' ? '固定标签页' : 'Pin Tab') }}
+        </button>
+        <button class="ctx-item" @click="onCreateGroupFromCtxTab">
+          {{ settings.language === 'zh' ? '新建标签组并加入' : 'Add to New Tab Group' }}
+        </button>
+        <button
+          v-for="grp in tabs.groups"
+          :key="'ctx-grp-' + grp.id"
+          class="ctx-item"
+          @click="onAssignCtxTabToGroup(grp.id)"
+        >
+          {{ settings.language === 'zh' ? `加入标签组：${grp.name}` : `Move to Group: ${grp.name}` }}
+        </button>
+        <button v-if="ctxTabHasGroup" class="ctx-item" @click="onRemoveCtxTabFromGroup">
+          {{ settings.language === 'zh' ? '移出标签组' : 'Remove from Group' }}
         </button>
         <div class="ctx-sep" />
         <button class="ctx-item" @click="onTabAction('close')">{{ t('tabMenu.close') }}</button>
@@ -943,5 +1046,35 @@ onBeforeUnmount(() => {
   border-radius: var(--r-full);
   background: var(--text-3);
   flex: 0 0 auto;
+}
+.tab-group-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 8px;
+  margin: auto 4px auto 2px;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--grp-color, var(--accent)) 45%, transparent);
+  background: color-mix(in srgb, var(--grp-color, var(--accent)) 14%, transparent);
+  color: var(--text);
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.tab-group-chip--collapsed {
+  opacity: 0.78;
+}
+.tab-group-chip__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--grp-color, var(--accent));
+}
+.tab-group-chip__count {
+  font-size: 10.5px;
+  opacity: 0.75;
 }
 </style>

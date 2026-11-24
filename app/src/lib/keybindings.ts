@@ -664,6 +664,30 @@ export function writerPresetActive(
 }
 
 /**
+ * #692 — VS Code-style shortcut preset:
+ * - `Ctrl/Cmd+Shift+P` opens the Command Palette (instead of cycling view mode)
+ * - `Ctrl/Cmd+B` toggles Bold (instead of toggling the file tree)
+ * - `Ctrl/Cmd+Shift+B` toggles the File Tree
+ * - `Ctrl/Cmd+Alt+P` cycles Edit / Split / Preview view mode
+ */
+export const VSCODE_PRESET: Record<string, KeyCombo> = {
+  'palette.open': 'Mod+Shift+P',
+  'view.cycleView': 'Mod+Alt+P',
+  'fmt.bold': 'Mod+B',
+  'view.toggleFileTree': 'Mod+Shift+B',
+};
+
+/** True when all bindings of the VS Code preset are active. */
+export function vscodePresetActive(
+  overrides: KeyOverrides = {},
+): boolean {
+  return Object.entries(VSCODE_PRESET).every(([id, combo]) => {
+    const now = combosFor(id, overrides);
+    return now.length === 1 && now[0] === normalizeCombo(combo);
+  });
+}
+
+/**
  * The "Typora / Word" preset — a tester's full remap (bug/B4, section 八,
  * 28 changes), offered as one click rather than shipped as the defaults:
  *

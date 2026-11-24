@@ -1,16 +1,21 @@
 //! v4.0 — provider pricing lookup for cost estimation.
 //!
-//! Hard-coded per-provider published rates (USD per 1M tokens) used to
-//! turn the `usage` numbers we collect off each agent run into a dollar
+//! Turns the `usage` numbers we collect off each agent run into a dollar
 //! cost estimate written to `meta.json.cost_usd_estimate` and rendered in
-//! the trace footer / Recent Runs list.
+//! the trace footer / Recent Runs list. Rates are USD per 1M tokens.
 //!
-//! These are launch-day defaults — no live pricing fetch. We match the
-//! incoming `model` string with a *prefix* check so that dated variants
-//! (e.g. `claude-sonnet-4-6-20251205`) snap to the unsuffixed entry. If
-//! nothing matches, we return `(0.0, 0.0)` and the cost estimate stays
-//! at zero, which renders as `$0.0000` in the UI — accurate and honest
-//! rather than wrong.
+//! Anthropic, OpenAI, Gemini and DeepSeek rates come from the `llm-prices`
+//! crate: a dated, source-cited table of each provider's list prices that
+//! resolves dated snapshots (`claude-sonnet-4-6-20251205`), `-latest`
+//! aliases and `models/` prefixes to the right row. It is compiled in, so
+//! there is still no live pricing fetch. Bumping the crate picks up new
+//! models and price changes.
+//!
+//! Providers `llm-prices` does not cover (Qwen, GLM, Kimi, Doubao,
+//! MiniMax) use the hand-maintained table below, matched with a *prefix*
+//! check so that dated variants snap to the unsuffixed entry. If nothing
+//! matches, we return `(0.0, 0.0)` and the cost estimate stays at zero,
+//! which renders as `$0.0000` in the UI.
 //!
 //! Local providers (Ollama) and aggregators where the per-call cost
 //! depends on the routed model (OpenRouter, SiliconFlow, Groq, Mistral
@@ -19,6 +24,9 @@
 /// Returns `(input_per_1m_usd, output_per_1m_usd)` for the given
 /// provider + model. Falls back to `(0.0, 0.0)` when unknown.
 pub fn rates_for(provider: &str, model: &str) -> (f64, f64) {
+    if let Some(rates) = list_price_rates(provider, model) {
+        return rates;
+    }
     let model_lc = model.to_ascii_lowercase();
     let table = price_table();
     for (p, m, r_in, r_out) in table {
@@ -27,6 +35,19 @@ pub fn rates_for(provider: &str, model: &str) -> (f64, f64) {
         }
     }
     (0.0, 0.0)
+}
+
+/// List prices from `llm-prices` for the first-party APIs it covers.
+/// `None` for every other provider, or when the table has no input and
+/// output price for the model (embeddings, unknown ids).
+fn list_price_rates(provider: &str, model: &str) -> Option<(f64, f64)> {
+    let price = match provider {
+        "anthropic" | "openai" | "gemini" | "deepseek" => {
+            llm_prices::lookup_provider(provider, model)?
+        }
+        _ => return None,
+    };
+    Some((price.input?, price.output?))
 }
 
 /// Compute a USD cost estimate from token counts + a model id. Returns 0
@@ -39,25 +60,15 @@ pub fn estimate_cost_usd(provider: &str, model: &str, tokens_in: u64, tokens_out
     ((tokens_in as f64) * rin + (tokens_out as f64) * rout) / 1_000_000.0
 }
 
-/// Provider, model-prefix, $/1M input, $/1M output.
+/// Provider, model-prefix, $/1M input, $/1M output, for providers that
+/// `llm-prices` does not cover.
 ///
 /// Order matters only when two prefixes for the same provider could both
 /// match — list the more specific one first. Today every entry is unique
 /// so the order is alphabetical for readability.
 fn price_table() -> &'static [(&'static str, &'static str, f64, f64)] {
     &[
-        // ---- OpenAI -----------------------------------------------------
-        ("openai", "gpt-4o-mini", 0.15, 0.6),
-        ("openai", "gpt-4o", 2.5, 10.0),
-        // ---- Anthropic --------------------------------------------------
-        ("anthropic", "claude-sonnet-4-6", 3.0, 15.0),
-        ("anthropic", "claude-haiku-4-5", 0.8, 4.0),
-        ("anthropic", "claude-opus-4-7", 15.0, 75.0),
-        // ---- Gemini (OpenAI-compat or Google native) --------------------
-        ("gemini", "gemini-2.5-flash", 0.075, 0.3),
-        ("gemini", "gemini-1.5-pro", 1.25, 5.0),
-        // ---- DeepSeek ---------------------------------------------------
-        ("deepseek", "deepseek-chat", 0.14, 0.28),
+        // OpenAI, Anthropic, Gemini and DeepSeek: see `list_price_rates`.
         // ---- Qwen -------------------------------------------------------
         ("qwen", "qwen-max", 2.0, 6.0),
         // ---- GLM --------------------------------------------------------
@@ -140,7 +151,41 @@ mod tests {
     #[test]
     fn case_insensitive_model_match() {
         let (i, _o) = rates_for("anthropic", "Claude-Haiku-4-5");
-        assert_eq!(i, 0.8);
+        assert_eq!(i, 1.0);
+    }
+
+    #[test]
+    fn list_prices_match_provider_pricing_pages() {
+        // The old hand table had Opus 4.7 at 15/75, Haiku 4.5 at 0.8/4 and
+        // Gemini 2.5 Flash at 0.075/0.3.
+        assert_eq!(rates_for("anthropic", "claude-opus-4-7"), (5.0, 25.0));
+        assert_eq!(rates_for("anthropic", "claude-haiku-4-5"), (1.0, 5.0));
+        assert_eq!(rates_for("gemini", "gemini-2.5-flash"), (0.3, 2.5));
+        // 10k in + 2k out on Opus 4.7: 0.05 + 0.05 = $0.10 (was $0.30).
+        let c = estimate_cost_usd("anthropic", "claude-opus-4-7", 10_000, 2_000);
+        assert!((c - 0.10).abs() < 1e-9, "got {c}");
+    }
+
+    #[test]
+    fn current_models_are_priced_instead_of_zero() {
+        for (provider, model) in [
+            ("openai", "gpt-5.2"),
+            ("openai", "gpt-5-mini"),
+            ("anthropic", "claude-fable-5"),
+            ("gemini", "gemini-3-flash-preview"),
+            ("gemini", "models/gemini-3.1-pro-preview"),
+        ] {
+            let (i, o) = rates_for(provider, model);
+            assert!(
+                i > 0.0 && o > 0.0,
+                "{provider}/{model} priced at ({i}, {o})"
+            );
+        }
+    }
+
+    #[test]
+    fn embedding_rows_without_output_price_stay_zero() {
+        assert_eq!(rates_for("openai", "text-embedding-3-small"), (0.0, 0.0));
     }
 
     #[test]

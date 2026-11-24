@@ -1083,6 +1083,83 @@ md.core.ruler.after('inline', 'task_lists', (state) => {
   return false;
 });
 
+// #653 — Fenced alert / callout container syntax (`:::alert-info [Title]`,
+// `:::alert-warning`, `:::alert-danger`, `:::alert-success`, `:::note`,
+// `:::tip`, `:::info`, `:::warning`, `:::danger`, `:::caution`, `:::important`).
+// Renders using the same `.md-callout` classes as GitHub callouts so preview,
+// live edit, and HTML/PDF export all style them consistently.
+md.block.ruler.before('fence', 'alert_container', (state, startLine, endLine, silent) => {
+  const startPos = state.bMarks[startLine] + state.tShift[startLine];
+  const maxPos = state.eMarks[startLine];
+  if (startPos + 3 > maxPos) return false;
+  const firstLine = state.src.slice(startPos, maxPos).trim();
+  const openMatch = /^:{3,}\s*(?:alert-)?(info|note|tip|success|important|warning|danger|caution)\b(.*)$/i.exec(
+    firstLine,
+  );
+  if (!openMatch) return false;
+  const fenceLen = /^(:{3,})/.exec(firstLine)![1].length;
+  const rawKind = openMatch[1].toLowerCase();
+  const customTitle = openMatch[2].trim();
+  const kindMap: Record<string, string> = {
+    info: 'note',
+    note: 'note',
+    tip: 'tip',
+    success: 'tip',
+    important: 'important',
+    warning: 'warning',
+    danger: 'caution',
+    caution: 'caution',
+  };
+  const kind = kindMap[rawKind] || 'note';
+
+  let nextLine = startLine + 1;
+  let foundClose = false;
+  const closeRe = new RegExp(`^:{${fenceLen},}\\s*$`);
+  while (nextLine < endLine) {
+    const pos = state.bMarks[nextLine] + state.tShift[nextLine];
+    const max = state.eMarks[nextLine];
+    if (closeRe.test(state.src.slice(pos, max).trim())) {
+      foundClose = true;
+      break;
+    }
+    nextLine += 1;
+  }
+  if (!foundClose) return false;
+  if (silent) return true;
+
+  const oldParent = state.parentType;
+  const oldLineMax = state.lineMax;
+  state.parentType = 'blockquote';
+  state.lineMax = nextLine;
+
+  const openToken = state.push('blockquote_open', 'blockquote', 1);
+  openToken.markup = ':'.repeat(fenceLen);
+  openToken.block = true;
+  openToken.map = [startLine, nextLine + 1];
+  openToken.attrJoin('class', `md-callout md-callout--${kind}`);
+  openToken.attrSet('data-alert-kind', rawKind);
+
+  if (customTitle) {
+    const titleOpen = state.push('paragraph_open', 'p', 1);
+    titleOpen.attrJoin('class', 'md-callout__custom-title');
+    const titleInline = state.push('inline', '', 0);
+    titleInline.content = customTitle;
+    titleInline.children = [];
+    state.push('paragraph_close', 'p', -1);
+  }
+
+  state.md.block.tokenize(state, startLine + 1, nextLine);
+
+  const closeToken = state.push('blockquote_close', 'blockquote', -1);
+  closeToken.markup = ':'.repeat(fenceLen);
+  closeToken.block = true;
+
+  state.parentType = oldParent;
+  state.lineMax = oldLineMax;
+  state.line = nextLine + 1;
+  return true;
+});
+
 // GitHub-style callouts: a blockquote whose first line is `[!NOTE]` (or TIP /
 // IMPORTANT / WARNING / CAUTION) renders as a tinted callout card with a
 // label row — the syntax GitHub and Obsidian users expect to just work. The
