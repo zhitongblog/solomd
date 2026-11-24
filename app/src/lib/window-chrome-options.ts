@@ -1,4 +1,3 @@
-import { LogicalPosition } from '@tauri-apps/api/dpi';
 import { isMacOS, isWindowsDesktop } from './platform';
 
 /**
@@ -11,7 +10,6 @@ export function windowChromeOptions() {
     return {
       titleBarStyle: 'overlay' as const,
       hiddenTitle: true,
-      trafficLightPosition: new LogicalPosition(20, 20),
     };
   }
   return { decorations: !isWindowsDesktop() };

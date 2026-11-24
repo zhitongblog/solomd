@@ -730,12 +730,24 @@ watchEffect(() => {
 // stays as the browser-mode fallback where getCurrentWebview() throws.
 watchEffect(() => {
   const z = settings.globalZoom || 1;
+  if (macTitleBar) {
+    document.documentElement.style.setProperty('--mac-titlebar-zoom', String(z));
+  }
   try {
     const webview = getCurrentWebview();
     void webview
       .setZoom(z)
       .then(() => {
         (document.documentElement.style as any).zoom = '';
+        if (macTitleBar) {
+          void invoke<number | null>('sync_macos_titlebar')
+            .then((rightEdge) => {
+              if (rightEdge != null) {
+                document.documentElement.style.setProperty('--mac-window-controls-right', `${rightEdge}px`);
+              }
+            })
+            .catch(() => {});
+        }
       })
       .catch(() => {
         (document.documentElement.style as any).zoom = String(z);
