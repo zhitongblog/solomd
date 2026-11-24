@@ -428,5 +428,11 @@ describe('v5.3.6 feedback: table drag-select, Mermaid zoom, non-MD highlighting 
     const integrationsRs = fs.readFileSync(path.join(root, '../src-tauri/src/integrations.rs'), 'utf8');
     assert.match(integrationsRs, /"codex"/);
     assert.match(integrationsRs, /"dsh"/);
+
+    // TableWidget isolates contentEditable='false' & stops beforeinput/input propagation
+    // so typing multiple English characters in a cell never collapses to 1 character.
+    const liveBlocks = fs.readFileSync(path.join(root, 'lib/cm-live-blocks.ts'), 'utf8');
+    assert.match(liveBlocks, /wrap\.className = 'cm-live-block cm-live-block--table';[\s\S]*?wrap\.contentEditable = 'false';/);
+    assert.match(liveBlocks, /'beforeinput'[\s\S]*?'input'[\s\S]*?ev\.stopPropagation\(\)/);
   });
 });

@@ -1431,11 +1431,29 @@ export function bindDomTableCellEditor(
   );
 
   // #616 — Prevent regular caret/selection/typing keys (ArrowLeft, ArrowRight,
-  // Shift+Arrow*, Home/End, Backspace, Vim keys) from bubbling out of the
-  // active contenteditable cell into CodeMirror / Vim / window handlers.
+  // Shift+Arrow*, Home/End, Backspace, Vim keys) and input/IME events from
+  // bubbling out of the active contenteditable cell into CodeMirror / Vim /
+  // window handlers (without this, typing English characters in a table cell
+  // bubbles `beforeinput`/`input` to `.cm-content` and replaces the cell on
+  // every keystroke so only 1 character appears).
   wrap.addEventListener('keydown', (ev: KeyboardEvent) => {
     if (active) ev.stopPropagation();
   });
+  for (const evName of [
+    'beforeinput',
+    'input',
+    'keypress',
+    'keyup',
+    'compositionstart',
+    'compositionupdate',
+    'compositionend',
+    'paste',
+    'cut',
+  ] as const) {
+    wrap.addEventListener(evName, (ev: Event) => {
+      if (active) ev.stopPropagation();
+    });
+  }
 
   wrap.addEventListener('focusout', (ev: FocusEvent) => {
     const next = ev.relatedTarget as Node | null;
@@ -1576,6 +1594,11 @@ class TableWidget extends WidgetType {
   toDOM(view?: EditorView): HTMLElement {
     const wrap = document.createElement('div');
     wrap.className = 'cm-live-block cm-live-block--table';
+    // Isolate the table widget from CodeMirror's `.cm-content[contenteditable="true"]`
+    // editing host so an active `td[contenteditable="true"]` cell becomes its own
+    // independent editing host (otherwise Chromium/WebKit routes `beforeinput`/`input`
+    // for ASCII typing to `.cm-content`, overwriting the cell to 1 character!).
+    wrap.contentEditable = 'false';
     // Visually align list-indented tables (e.g. pasted after Shift+Enter soft
     // break) under the enclosing list item's body column, matching cm-live-render.
     const indentCols = tableIndentCols(this.source);
@@ -1775,6 +1798,23 @@ class TableWidget extends WidgetType {
     if (event.type === 'selectionchange') return true;
     const target = event.target as Element | null;
     if (target?.closest?.('a')) return false;
+    // When any table cell is actively being edited, ignore all typing/input/IME
+    // events so CodeMirror never intercepts keystrokes intended for the cell.
+    if (
+      activeTableCellSession &&
+      (event.type === 'beforeinput' ||
+        event.type === 'input' ||
+        event.type === 'keydown' ||
+        event.type === 'keypress' ||
+        event.type === 'keyup' ||
+        event.type === 'compositionstart' ||
+        event.type === 'compositionupdate' ||
+        event.type === 'compositionend' ||
+        event.type === 'paste' ||
+        event.type === 'cut')
+    ) {
+      return true;
+    }
     if (
       target?.classList?.contains?.('cm-live-block--table') &&
       target.querySelector('.cm-live-table__cell--selected')
