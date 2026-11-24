@@ -1,0 +1,7 @@
+SoloMD v5.4.0 — İş akışı, özelleştirme ve senkronizasyon güncellemesi:
+
+• Kod Parçacıkları (Snippets) paneli ve %%, @@ ile 19 değişken destekli :::alert-* blokları.
+• Daraltılabilir sekme grupları ve aynı klasördeki dosyaları otomatik açma.
+• Herhangi bir komutu özel simgelerle araç çubuğuna sabitleme.
+• 6 alt sekmeli Genel ayarlar, VS Code kısayol ön ayarı, yeniden bağlanınca otomatik senkronizasyon ve dosya ağacı sırası eşitleme.
+• LaTeX $$ bloğu sonrası IME donması ve pencere konumu sıçraması giderildi.

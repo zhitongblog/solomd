@@ -1,0 +1,7 @@
+SoloMD v5.4.0 — Uppgradering av arbetsflöde, anpassning och synkronisering:
+
+• Snippets-panel och :::alert-* block med %%, @@ och 19 inbyggda variabler.
+• Hopvikbara flikgrupper och valfri automatisk öppning av filer i samma mapp.
+• Utökat anpassat verktygsfält för valfria kommandon med anpassade ikoner.
+• Allmänna inställningar i 6 underflikar, VS Code-genvägar, autosynk vid återanslutning och synkad filträdsordning.
+• Åtgärdade IME-låsning efter LaTeX $$-block och fönsterhopp vid återställning.

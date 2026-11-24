@@ -1,0 +1,7 @@
+SoloMD v5.4.0 — Mejoras de flujo de trabajo, personalización y sincronización:
+
+• Panel de fragmentos (Snippets) y contenedores :::alert-* con %%, @@ y 19 variables.
+• Grupos de pestañas plegables y apertura automática de archivos en la misma carpeta.
+• Barra de herramientas ampliada para cualquier comando con iconos personalizables.
+• Ajustes generales en 6 subpestañas, atajos estilo VS Code, sincronización automática al reconectar y orden sincronizado del árbol.
+• Corrección del bloqueo IME tras bloques LaTeX $$ y del salto al restaurar la ventana.

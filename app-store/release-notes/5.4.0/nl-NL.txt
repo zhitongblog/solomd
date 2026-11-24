@@ -1,0 +1,7 @@
+SoloMD v5.4.0 — Workflow-, aanpassings- en synchronisatie-upgrade:
+
+• Snippets-paneel en :::alert-* blokken met %%, @@ en 19 ingebouwde variabelen.
+• Inklapbare tabgroepen en optioneel automatisch openen van bestanden in dezelfde map.
+• Uitgebreide aangepaste werkbalk voor elk commando met eigen pictogrammen.
+• Algemene instellingen in 6 subtabbladen, VS Code-sneltoetspreset, automatische sync bij herverbinding en gesynchroniseerde boomvolgorde.
+• Opgelost: LaTeX $$-IME-vastloper na Enter en venstersprong bij herstel.

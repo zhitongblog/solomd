@@ -1,0 +1,7 @@
+SoloMD v5.4.0 — Aggiornamento workflow, personalizzazione e sincronizzazione:
+
+• Pannello Snippet e blocchi :::alert-* con %%, @@ e 19 variabili integrate.
+• Gruppi di schede comprimibili e apertura automatica dei file nella stessa cartella.
+• Barra degli strumenti personalizzabile con qualsiasi comando e icone personalizzate.
+• Impostazioni generali in 6 sottoschede, preset scorciatoie VS Code, sincronizzazione automatica alla riconnessione e ordine dell'albero sincronizzato.
+• Risolto il blocco IME dopo blocchi LaTeX $$ e il salto al ripristino della finestra.

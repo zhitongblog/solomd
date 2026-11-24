@@ -1,0 +1,7 @@
+SoloMD v5.4.0 — Workflow-, Anpassungs- & Sync-Upgrade:
+
+• Snippets-Panel & :::alert-* Container mit %% Auswahl, @@ Cursor und 19 Variablen.
+• Einklappbare Tab-Gruppen und optionales automatisches Öffnen von Nachbardateien.
+• Erweiterte benutzerdefinierte Symbolleiste für beliebige Befehle inkl. eigener Icons.
+• Allgemeine Einstellungen in 6 Unter-Tabs, VS Code Tastenkürzel-Preset, Auto-Sync bei Wiederverbindung und Dateibaum-Reihenfolge-Sync.
+• Behebt LaTeX-$$-IME-Hänger nach Enter und Fenstersprung beim Wiederherstellen.

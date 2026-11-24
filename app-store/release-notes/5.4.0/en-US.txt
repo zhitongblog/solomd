@@ -1,0 +1,9 @@
+SoloMD v5.4.0 — Workflow, Customization & Sync Power-Up:
+
+• Snippets Panel & :::alert-* Callouts: New right-sidebar Snippets panel with %% selection wrapping, @@ cursor placement, 19 built-in variables, and native :::alert-info/warning/danger/success containers.
+• Browser-Style Tab Groups: Collapsible color-coded tab groups, drag-to-group, and optional auto-open sibling files in the same folder.
+• Expanded Custom Toolbar: Pin any command palette action to the toolbar with category filtering, search, reordering, and custom icons.
+• Organized General Settings: Split into 6 sub-tabs (Appearance, Typography, Editor, Rendering, Layout, Navigation) with cross-tab search.
+• VS Code Shortcut Preset: One-click preset mapping Cmd/Ctrl+Shift+P to Command Palette and Cmd/Ctrl+B to Bold.
+• Multi-Device Sync Polish: Auto-sync on network reconnect, synced file-tree order & sort mode, and per-device UUID sync journal.
+• Fixes: Resolved Live Edit LaTeX $$ block + Enter + IME freeze, eliminated off-screen window restore jump, accurate llm-prices agent cost estimates, and added Codex CLI / DSH / OpenCode MCP support.
