@@ -1,0 +1,7 @@
+v5.3.6 Prestaties, bewerken & exporteren:
+• Sterk verlaagd CPU-gebruik met hljs-LRU-cache en gebundelde Rust-watcher
+• Live-tabellen ondersteunen slepend selecteren van meerdere cellen/rijen, TSV-kopie en wissen
+• Mermaid-diagrammen met volledig scherm zoom en pannen
+• Syntaxismarkering voor code- en tekstbestanden (.xml, .py, .json, .yaml, .sh, .lua, .toml)
+• Oplossingen voor alinea-afstand, citaatlijsten, lokale Git-tijdzone, EPUB, media-uitlijning en Word-sjablonen
+• Conflictbeheer met vaste hoogte, zij-aan-zij diff en inline samenvoegen

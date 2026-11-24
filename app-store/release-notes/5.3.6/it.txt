@@ -1,0 +1,7 @@
+v5.3.6 Prestazioni, editing ed esportazione:
+• Netta riduzione della CPU con cache LRU hljs e watcher Rust aggregato
+• Tabelle Live Edit con selezione trascinata di più celle/righe, copia TSV e cancellazione rapida
+• Diagrammi Mermaid con zoom e panoramica a schermo intero
+• Evidenziazione sintassi per file di codice (.xml, .py, .json, .yaml, .sh, .lua, .toml)
+• Correzioni per spaziatura paragrafi, elenchi nelle citazioni, fuso orario Git, EPUB, allineamento media e modelli Word
+• Gestore conflitti ad altezza fissa con diff affiancato e unione in linea

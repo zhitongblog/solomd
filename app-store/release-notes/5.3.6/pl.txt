@@ -1,0 +1,7 @@
+v5.3.6 Wydajność, edycja i eksport:
+• Znacznie niższe zużycie CPU dzięki pamięci podręcznej LRU hljs i grupowaniu zdarzeń Rust
+• Tabele Live Edit z zaznaczaniem przeciąganiem wielu komórek/wierszy, kopiowaniem TSV i czyszczeniem
+• Diagramy Mermaid z pełnoekranowym powiększaniem i przesuwaniem
+• Podświetlanie składni dla plików kodu (.xml, .py, .json, .yaml, .sh, .lua, .toml)
+• Poprawki odstępów akapitów, list w cytatach, lokalnej strefy czasowej Git, EPUB, wyrównania mediów i szablonów Word
+• Menedżer konfliktów ze stałą wysokością, widokiem obok siebie i scalaniem w linii

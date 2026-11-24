@@ -1,0 +1,8 @@
+v5.3.6 Performance, Editing & Export Upgrade:
+• Major CPU reduction: hljs LRU cache, coalesced Rust workspace watcher with directory ignore list, and intra-line editor short-circuits
+• Live Edit tables now support rectangular multi-cell & row drag selection, Shift+Click range select, TSV copy, and batch clear
+• Live Edit Mermaid diagrams now support fullscreen zoom/pan overlay on click or hover button
+• Native syntax highlighting for non-Markdown code & config files (.xml, .py, .json, .yaml, .sh, .lua, .toml, etc.)
+• Fixed Live Edit hard-Enter paragraph spacing, blockquote list alignment, Git local-timezone commit timestamps, and macOS title-bar alignment
+• Fixed EPUB blockquote list parsing, export image/diagram alignment, and duplicate heading numbers with custom Word templates
+• Added editor/preview/reading media alignment setting, optional DOCX 2-CJK-char first-line indent, and side-by-side Sync Conflict diff & inline merge

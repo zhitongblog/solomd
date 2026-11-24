@@ -1,0 +1,7 @@
+v5.3.6 Performans, düzenleme ve dışa aktarma:
+• hljs LRU önbelleği ve birleştirilmiş Rust izleyici ile büyük CPU tasarrufu
+• Canlı tablolarda çoklu hücre/satır sürükleyerek seçme, TSV kopyalama ve toplu temizleme
+• Canlı düzenlemede Mermaid diyagramları için tam ekran yakınlaştırma ve kaydırma
+• Kod ve metin dosyaları (.xml, .py, .json, .yaml, .sh, .lua, .toml) için sözdizimi vurgulama
+• Paragraf aralığı, alıntı listeleri, yerel Git saat dilimi, EPUB, medya hizalama ve Word şablonu düzeltmeleri
+• Sabit yükseklikli, yan yana fark/düzenleme ve satır içi birleştirmeli çakışma yöneticisi

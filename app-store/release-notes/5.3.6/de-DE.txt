@@ -1,0 +1,7 @@
+v5.3.6 Leistung, Editor & Export:
+• Deutlich geringere CPU-Last durch hljs-LRU-Cache und gebündelten Rust-Watcher
+• Live-Tabellen unterstützen Mehrfach-Zellen-/Zeilenauswahl per Ziehen, TSV-Kopie und Löschen
+• Mermaid-Diagramme im Live-Modus mit Vollbild-Zoom und Schwenken
+• Syntaxhervorhebung für Code- und Textdateien (.xml, .py, .json, .yaml, .sh, .lua, .toml)
+• Korrekturen für Absatzabstand, Zitatlisten, lokale Git-Zeitstempel, EPUB-Export, Medienausrichtung und benutzerdefinierte Word-Vorlagen
+• Konfliktmanager mit fester Höhe, nebeneinanderliegendem Diff & Editor sowie Inline-Merge

@@ -1,0 +1,7 @@
+v5.3.6 Prestanda, redigering & export:
+• Kraftigt minskad CPU-användning med hljs LRU-cache och sammanslagen Rust-watcher
+• Live-tabeller stöder dragmarkering av flera celler/rader, TSV-kopiering och rensning
+• Mermaid-diagram med helskärmszoom och panorering
+• Syntaxmarkering för kod- och textfiler (.xml, .py, .json, .yaml, .sh, .lua, .toml)
+• Fixar för styckeavstånd, citatlistor, lokal Git-tidszon, EPUB, mediejustering och Word-mallar
+• Konflikthanterare med fast höjd, sida-vid-sida diff och inline-sammanfogning
