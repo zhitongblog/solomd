@@ -270,8 +270,11 @@ export function usePandocExport() {
       }
       let cssContent: string | null = null;
       if (format === 'epub') {
-        const { SOLOMD_EPUB_CSS } = await import('../lib/epub-style');
-        cssContent = SOLOMD_EPUB_CSS;
+        const [{ SOLOMD_EPUB_CSS }, { exportMediaAlignCss }] = await Promise.all([
+          import('../lib/epub-style'),
+          import('../lib/html-export'),
+        ]);
+        cssContent = SOLOMD_EPUB_CSS + '\n' + exportMediaAlignCss(settings.exportMediaAlign);
       }
       await invoke('pandoc_export', {
         args: {

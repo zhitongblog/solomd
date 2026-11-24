@@ -110,13 +110,9 @@ export function spellcheckExtension(opts: SpellcheckOptions): Extension {
       }
 
       update(update: ViewUpdate) {
-        // Re-spell on doc edits, viewport scroll, or geometry shifts (font
-        // resize, panel toggle…). Selection-only changes don't matter.
-        if (
-          update.docChanged ||
-          update.viewportChanged ||
-          update.geometryChanged
-        ) {
+        // Re-spell on doc edits or viewport scroll. Skip geometryChanged to avoid
+        // repeated 300ms cycles on layout/scrollbar shifts; selection-only changes don't matter.
+        if (update.docChanged || update.viewportChanged) {
           this.schedule();
         }
       }
@@ -221,8 +217,13 @@ export function spellcheckExtension(opts: SpellcheckOptions): Extension {
             builder.add(start, end, misspelledMark);
           }
         }
-        this.decorations = builder.finish();
-        this.redraw();
+        const nextDecos = builder.finish();
+        const hadAny = this.decorations.size > 0;
+        const hasAny = nextDecos.size > 0;
+        this.decorations = nextDecos;
+        if (hadAny || hasAny) {
+          this.redraw();
+        }
       }
 
       /** Make CodeMirror pick up `decorations` set outside its update cycle.

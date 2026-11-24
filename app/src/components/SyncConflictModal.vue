@@ -1,11 +1,12 @@
 <script setup lang="ts">
 /**
- * #637 — Sync Conflict & Snapshot Manager Modal.
+ * #637 / #677 / #687 / #689 — Sync Conflict & Snapshot Manager Modal.
  *
  * Scans the active workspace for side-by-side sync conflict copies
- * (`* (冲突副本 *).*`), displays a line-level diff against the working copy,
- * shows the `.solomd-sync/versions` snapshot directory, and lets the user
- * keep the working copy, replace with the conflict copy, or manually merge.
+ * (`* (冲突副本 *).*`), shows the color-coded line diff side-by-side with the
+ * live merge editor at a fixed non-jumping height, supports smart inline
+ * `<<<<<<<<` diff-based merging anchored on the working copy, and confirms
+ * before destructive resolution.
  */
 import { computed, ref, watch } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
@@ -65,7 +66,6 @@ const conflicts = ref<SyncConflictEntry[]>([]);
 const selectedRel = ref<string | null>(null);
 const diff = ref<SyncConflictDiff | null>(null);
 const diffLoading = ref(false);
-const mergeMode = ref(false);
 const mergedText = ref('');
 
 const selectedEntry = computed(
@@ -83,6 +83,62 @@ function formatTime(unix: number): string {
   const d = new Date(unix * 1000);
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/**
+ * #689 — Build an inline merged text anchored on `baseText`, inserting lines
+ * added/modified in `conflictText` at their exact diff positions prefixed with
+ * `<<<<<<<<` so the user can jump straight to every conflict mark.
+ */
+function buildInlineDiffMerge(baseText: string, conflictText: string): string {
+  const normBase = baseText.replace(/\r\n/g, '\n');
+  const normConflict = conflictText.replace(/\r\n/g, '\n');
+  if (!normConflict) return normBase;
+  if (!normBase) {
+    return normConflict
+      .split('\n')
+      .map((line) => `<<<<<<<<${line}`)
+      .join('\n');
+  }
+  const a = normBase.split('\n');
+  const b = normConflict.split('\n');
+  const m = a.length;
+  const n = b.length;
+  // Guard DP size for very large files (~2000+ lines) by falling back cleanly.
+  if (m * n > 4_000_000) {
+    return `${baseText}\n\n<<<<<<<<\n${conflictText}`;
+  }
+  const dp: Uint32Array[] = Array.from({ length: m + 1 }, () => new Uint32Array(n + 1));
+  for (let i = m - 1; i >= 0; i--) {
+    for (let j = n - 1; j >= 0; j--) {
+      dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+    }
+  }
+  const out: string[] = [];
+  let i = 0;
+  let j = 0;
+  while (i < m && j < n) {
+    if (a[i] === b[j]) {
+      out.push(a[i]);
+      i++;
+      j++;
+    } else if (dp[i + 1][j] >= dp[i][j + 1]) {
+      // Base-only line: keep unmarked as requested in #689.
+      out.push(a[i]);
+      i++;
+    } else {
+      // Conflict-only / modified line: insert inline with `<<<<<<<<` prefix.
+      out.push(`<<<<<<<<${b[j]}`);
+      j++;
+    }
+  }
+  while (i < m) {
+    out.push(a[i++]);
+  }
+  while (j < n) {
+    out.push(`<<<<<<<<${b[j++]}`);
+  }
+  return out.join('\n');
 }
 
 async function reload() {
@@ -123,7 +179,6 @@ async function loadDiff() {
     return;
   }
   diffLoading.value = true;
-  mergeMode.value = false;
   try {
     const res = await invoke<SyncConflictDiff>('sync_diff_conflict', {
       workspace: folder.value,
@@ -255,7 +310,7 @@ watch(
   <DsModal
     :model-value="props.modelValue"
     :title="zh ? '同步冲突与快照管理' : 'Sync Conflict & Snapshot Manager'"
-    width="1040px"
+    width="1120px"
     @update:model-value="emit('update:modelValue', $event)"
   >
     <div class="scm">
@@ -313,57 +368,48 @@ watch(
           <div v-if="diffLoading" class="scm__empty">{{ zh ? '正在计算差异…' : 'Computing diff…' }}</div>
 
           <template v-else-if="diff">
-            <div class="scm__mode-row">
-              <button
-                type="button"
-                class="scm__tab"
-                :class="{ 'is-on': !mergeMode }"
-                @click="mergeMode = false"
-              >
-                {{ zh ? `差异对比 (+${diff.added_lines} / -${diff.removed_lines})` : `Diff (+${diff.added_lines} / -${diff.removed_lines})` }}
-              </button>
-              <button
-                type="button"
-                class="scm__tab"
-                :class="{ 'is-on': mergeMode }"
-                @click="mergeMode = true"
-              >
-                {{ zh ? '手工合并编辑' : 'Manual Merge' }}
-              </button>
-            </div>
+            <div class="scm__split">
+              <div class="scm__pane">
+                <div class="scm__pane-head">
+                  <span>{{ zh ? `差异参考 (+${diff.added_lines} / -${diff.removed_lines})` : `Diff Reference (+${diff.added_lines} / -${diff.removed_lines})` }}</span>
+                </div>
+                <div class="scm__diff">
+                  <div v-if="diff.hunks.length === 0" class="scm__empty">
+                    {{ zh ? '工作副本与冲突副本内容完全一致，可直接保留工作副本。' : 'Both files have identical content.' }}
+                  </div>
+                  <div v-for="(h, hi) in diff.hunks" :key="hi" class="scm__hunk">
+                    <div class="scm__hunk-head">{{ h.header }}</div>
+                    <pre
+                      v-for="(ln, li) in h.lines"
+                      :key="li"
+                      class="scm__line"
+                      :class="`scm__line--${ln.kind}`"
+                    >{{ ln.kind === 'add' ? '+' : ln.kind === 'del' ? '-' : ' ' }} {{ ln.text }}</pre>
+                  </div>
+                </div>
+              </div>
 
-            <div v-if="!mergeMode" class="scm__diff">
-              <div v-if="diff.hunks.length === 0" class="scm__empty">
-                {{ zh ? '工作副本与冲突副本内容完全一致，可直接保留工作副本。' : 'Both files have identical content.' }}
+              <div class="scm__pane">
+                <div class="scm__pane-head">
+                  <span>{{ zh ? '手工合并修复区' : 'Merge Editor' }}</span>
+                  <div class="scm__merge-tools">
+                    <DsButton variant="ghost" size="sm" @click="mergedText = diff.base_text">
+                      {{ zh ? '填入工作副本' : 'Working' }}
+                    </DsButton>
+                    <DsButton variant="ghost" size="sm" @click="mergedText = diff.conflict_text">
+                      {{ zh ? '填入冲突副本' : 'Conflict' }}
+                    </DsButton>
+                    <DsButton
+                      variant="ghost"
+                      size="sm"
+                      @click="mergedText = buildInlineDiffMerge(diff.base_text, diff.conflict_text)"
+                    >
+                      {{ zh ? '拼接工作&冲突副本 (<<<<<<<<)' : 'Inline Merge (<<<<<<<<)' }}
+                    </DsButton>
+                  </div>
+                </div>
+                <textarea v-model="mergedText" class="scm__textarea" spellcheck="false" />
               </div>
-              <div v-for="(h, hi) in diff.hunks" :key="hi" class="scm__hunk">
-                <div class="scm__hunk-head">{{ h.header }}</div>
-                <pre
-                  v-for="(ln, li) in h.lines"
-                  :key="li"
-                  class="scm__line"
-                  :class="`scm__line--${ln.kind}`"
-                >{{ ln.kind === 'add' ? '+' : ln.kind === 'del' ? '-' : ' ' }} {{ ln.text }}</pre>
-              </div>
-            </div>
-
-            <div v-else class="scm__merge">
-              <div class="scm__merge-tools">
-                <DsButton variant="ghost" size="sm" @click="mergedText = diff.base_text">
-                  {{ zh ? '填入工作副本' : 'Load Working Copy' }}
-                </DsButton>
-                <DsButton variant="ghost" size="sm" @click="mergedText = diff.conflict_text">
-                  {{ zh ? '填入冲突副本' : 'Load Conflict Copy' }}
-                </DsButton>
-                <DsButton
-                  variant="ghost"
-                  size="sm"
-                  @click="mergedText = `${diff.base_text}\n\n---\n\n${diff.conflict_text}`"
-                >
-                  {{ zh ? '拼接两份内容' : 'Concatenate Both' }}
-                </DsButton>
-              </div>
-              <textarea v-model="mergedText" class="scm__textarea" spellcheck="false" />
             </div>
 
             <div class="scm__actions">
@@ -374,13 +420,12 @@ watch(
                 {{ zh ? '采用冲突副本覆盖' : 'Use Conflict Copy' }}
               </DsButton>
               <DsButton
-                v-if="mergeMode"
                 variant="primary"
                 size="sm"
                 :disabled="resolving"
                 @click="resolve('manual_merge')"
               >
-                {{ zh ? '保存手工合并结果' : 'Save Manual Merge' }}
+                {{ zh ? '保存修复内容为工作副本（删冲突副本）' : 'Save Merged Result' }}
               </DsButton>
             </div>
           </template>
@@ -391,18 +436,21 @@ watch(
 </template>
 
 <style scoped>
+/* #687 — Fixed uniform modal height so switching conflicts or editing never jumps. */
 .scm {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  min-height: 460px;
-  max-height: 82vh;
+  height: 78vh;
+  min-height: 520px;
+  max-height: 86vh;
 }
 .scm__bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  flex-shrink: 0;
 }
 .scm__summary {
   font-size: 12.5px;
@@ -425,7 +473,7 @@ watch(
   flex: 1;
 }
 .scm__list {
-  width: 240px;
+  width: 220px;
   flex-shrink: 0;
   overflow-y: auto;
   display: flex;
@@ -474,6 +522,7 @@ watch(
 .scm__detail {
   flex: 1;
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -488,32 +537,51 @@ watch(
   flex-direction: column;
   gap: 2px;
   word-break: break-all;
+  flex-shrink: 0;
 }
 .scm__paths code {
   font-family: var(--font-mono);
   font-size: 11px;
 }
-.scm__mode-row {
+.scm__split {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+@media (max-width: 820px) {
+  .scm__split {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr;
+  }
+}
+.scm__pane {
+  min-width: 0;
+  min-height: 0;
   display: flex;
+  flex-direction: column;
   gap: 6px;
 }
-.scm__tab {
-  padding: 4px 10px;
+.scm__pane-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  flex-wrap: wrap;
   font-size: 12px;
-  border: 1px solid var(--hairline);
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-2);
-  cursor: pointer;
-}
-.scm__tab.is-on {
-  background: var(--fill-2);
-  color: var(--text);
   font-weight: 600;
+  color: var(--text-2);
+  flex-shrink: 0;
+}
+.scm__merge-tools {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
 }
 .scm__diff {
   flex: 1;
-  min-height: 280px;
+  min-height: 0;
   overflow: auto;
   border: 1px solid var(--hairline);
   border-radius: 6px;
@@ -541,23 +609,11 @@ watch(
 .scm__line--del {
   background: rgba(239, 68, 68, 0.14);
 }
-.scm__merge {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-height: 280px;
-}
-.scm__merge-tools {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
 .scm__textarea {
   flex: 1;
-  min-height: 280px;
+  min-height: 0;
   width: 100%;
-  resize: vertical;
+  resize: none;
   padding: 8px 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -573,5 +629,6 @@ watch(
   gap: 8px;
   padding-top: 6px;
   border-top: 1px solid var(--hairline);
+  flex-shrink: 0;
 }
 </style>

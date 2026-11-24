@@ -517,9 +517,13 @@ interface Settings {
   // #572 — Include a Table of Contents page (with page numbers) at the start
   // of exported documents.
   exportIncludeTocPage: boolean;
-  // #624 — Alignment of images, diagrams, and display math blocks in exported
+  // #624 / #686 — Alignment of images, diagrams, and display math blocks in exported
   // HTML / EPUB / PDF / Word documents (`left` | `center` | `right`).
   exportMediaAlign: 'left' | 'center' | 'right';
+  // #684 — Alignment of images, diagrams, and display math in Live Edit, Preview, and Reading views.
+  editorMediaAlign: 'left' | 'center' | 'right';
+  // #691 — Automatically apply 2-CJK-char first-line paragraph indent on DOCX export.
+  docxFirstLineIndent: boolean;
   // #606 — Format used when saving pasted clipboard images into the vault (`png` | `webp` | `jpg`).
   pastedImageFormat: PastedImageFormat;
   // v4.3.0: global UI zoom (scales the entire app — editor, preview, chrome,
@@ -1059,6 +1063,8 @@ function defaults(): Settings {
     exportHtmlContentWidth: 960,
     exportIncludeTocPage: true,
     exportMediaAlign: 'center' as 'left' | 'center' | 'right',
+    editorMediaAlign: 'left' as 'left' | 'center' | 'right',
+    docxFirstLineIndent: false,
     pastedImageFormat: 'png',
     alwaysOnTop: false,
     globalZoom: 1,
@@ -2562,6 +2568,14 @@ export const useSettingsStore = defineStore('settings', {
     },
     setExportMediaAlign(align: 'left' | 'center' | 'right') {
       this.exportMediaAlign = align === 'left' || align === 'right' ? align : 'center';
+      this.persist();
+    },
+    setEditorMediaAlign(align: 'left' | 'center' | 'right') {
+      this.editorMediaAlign = align === 'center' || align === 'right' ? align : 'left';
+      this.persist();
+    },
+    toggleDocxFirstLineIndent() {
+      this.docxFirstLineIndent = !this.docxFirstLineIndent;
       this.persist();
     },
     // #7 — Typora-style custom path template (used when attachmentMode==='custom').

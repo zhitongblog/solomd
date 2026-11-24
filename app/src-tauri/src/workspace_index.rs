@@ -1340,9 +1340,10 @@ fn extract_summary(body: &str) -> String {
 
 fn make_watcher(app: AppHandle, root: PathBuf) -> Result<RecommendedWatcher, String> {
     let app_for_handler = app.clone();
+    let root_for_handler = root.clone();
     let mut watcher = notify::recommended_watcher(move |res: notify::Result<Event>| {
         if let Ok(ev) = res {
-            handle_event(&app_for_handler, ev);
+            handle_event(&app_for_handler, &root_for_handler, ev);
         }
     })
     .map_err(|e| e.to_string())?;
@@ -1352,7 +1353,35 @@ fn make_watcher(app: AppHandle, root: PathBuf) -> Result<RecommendedWatcher, Str
     Ok(watcher)
 }
 
-fn handle_event(app: &AppHandle, event: Event) {
+static WATCHER_FLUSH_RUNNING: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
+
+fn should_ignore_watch_path(root: &Path, path: &Path) -> bool {
+    let rel = path.strip_prefix(root).unwrap_or(path);
+    for comp in rel.components() {
+        if let std::path::Component::Normal(os) = comp {
+            if let Some(name) = os.to_str() {
+                if matches!(
+                    name,
+                    ".git"
+                        | "node_modules"
+                        | ".solomd"
+                        | ".solomd-sync"
+                        | "target"
+                        | "dist"
+                        | ".next"
+                        | ".cache"
+                        | "__pycache__"
+                ) {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
+fn handle_event(app: &AppHandle, root: &Path, event: Event) {
     let interesting = matches!(
         event.kind,
         EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_)
@@ -1361,13 +1390,16 @@ fn handle_event(app: &AppHandle, event: Event) {
         return;
     }
     let now = SystemTime::now();
-    let mut to_rescan: Vec<PathBuf> = Vec::new();
-    {
+    let should_spawn = {
         let mut pending = match PENDING.lock() {
             Ok(p) => p,
             Err(_) => return,
         };
+        let mut added = false;
         for path in event.paths {
+            if should_ignore_watch_path(root, &path) {
+                continue;
+            }
             let lower = path
                 .extension()
                 .and_then(|s| s.to_str())
@@ -1376,81 +1408,103 @@ fn handle_event(app: &AppHandle, event: Event) {
             if lower != "md" && lower != "markdown" && lower != "mdown" {
                 continue;
             }
-            pending.insert(path.clone(), now);
-            to_rescan.push(path);
+            pending.insert(path, now);
+            added = true;
         }
-    }
-    if to_rescan.is_empty() {
+        if !added {
+            false
+        } else {
+            // Acquire the worker flag while holding `PENDING` lock so the worker
+            // thread cannot observe an empty map and clear the flag concurrently.
+            WATCHER_FLUSH_RUNNING
+                .compare_exchange(
+                    false,
+                    true,
+                    std::sync::atomic::Ordering::SeqCst,
+                    std::sync::atomic::Ordering::SeqCst,
+                )
+                .is_ok()
+        }
+    };
+    if !should_spawn {
         return;
     }
-    // Debounce: run rescan in a separate thread after 200ms of quiet.
     let app_for_thread = app.clone();
-    let paths = to_rescan.clone();
     std::thread::spawn(move || {
-        std::thread::sleep(Duration::from_millis(200));
-        let now2 = SystemTime::now();
-        let still_pending: Vec<(PathBuf, SystemTime)> = {
-            let pending = match PENDING.lock() {
-                Ok(p) => p,
-                Err(_) => return,
-            };
-            paths
-                .into_iter()
-                .filter_map(|p| {
-                    pending.get(&p).and_then(|&t| {
-                        let ready = now2
+        loop {
+            std::thread::sleep(Duration::from_millis(450));
+            let now2 = SystemTime::now();
+            let ready_paths: Vec<(PathBuf, SystemTime)> = {
+                let pending = match PENDING.lock() {
+                    Ok(p) => p,
+                    Err(_) => {
+                        WATCHER_FLUSH_RUNNING.store(false, std::sync::atomic::Ordering::SeqCst);
+                        return;
+                    }
+                };
+                if pending.is_empty() {
+                    WATCHER_FLUSH_RUNNING.store(false, std::sync::atomic::Ordering::SeqCst);
+                    return;
+                }
+                pending
+                    .iter()
+                    .filter_map(|(p, &t)| {
+                        let is_ready = now2
                             .duration_since(t)
-                            .map(|d| d.as_millis() >= 180)
+                            .map(|d| d.as_millis() >= 380)
                             .unwrap_or(true);
-                        if ready {
-                            Some((p, t))
+                        if is_ready {
+                            Some((p.clone(), t))
                         } else {
                             None
                         }
                     })
-                })
-                .collect()
-        };
-        if still_pending.is_empty() {
-            return;
-        }
-        let mut changed = false;
-        for (path, _) in &still_pending {
-            let norm = normalize_index_key(path);
-            if norm.is_file() {
-                if let Ok(idx) = scan_file(&norm) {
-                    if let Ok(mut s) = STATE.write() {
-                        upsert_entry(&mut s.entries, &norm, idx);
-                        changed = true;
+                    .collect()
+            };
+            if ready_paths.is_empty() {
+                continue;
+            }
+            let mut changed = false;
+            for (path, _) in &ready_paths {
+                let norm = normalize_index_key(path);
+                if norm.is_file() {
+                    if let Ok(idx) = scan_file(&norm) {
+                        if let Ok(mut s) = STATE.write() {
+                            upsert_entry(&mut s.entries, &norm, idx);
+                            changed = true;
+                        }
                     }
-                }
-            } else {
-                // Removed
-                if let Ok(mut s) = STATE.write() {
+                } else if let Ok(mut s) = STATE.write() {
                     if remove_entry(&mut s.entries, &norm) {
                         changed = true;
                     }
                 }
             }
-        }
-        if let Ok(mut pending) = PENDING.lock() {
-            for (p, snapshot_ts) in &still_pending {
-                if pending.get(p).is_some_and(|&cur_ts| cur_ts <= *snapshot_ts) {
-                    pending.remove(p);
+            if let Ok(mut pending) = PENDING.lock() {
+                for (p, snapshot_ts) in &ready_paths {
+                    if pending.get(p).is_some_and(|&cur_ts| cur_ts <= *snapshot_ts) {
+                        pending.remove(p);
+                    }
                 }
             }
-        }
-        if changed {
-            // Persist + notify. IMPORTANT: don't hold STATE.read() across
-            // save_cache(), which itself acquires STATE.read() — recursive
-            // reads on std::sync::RwLock can deadlock on macOS when a
-            // writer is queued in between. Clone `root` out, drop the
-            // guard, then call save_cache.
-            let root = STATE.read().ok().and_then(|s| s.root.clone());
-            if let Some(root) = root {
-                let _ = save_cache(&app_for_thread, &root);
+            if changed {
+                let root = STATE.read().ok().and_then(|s| s.root.clone());
+                if let Some(root) = root {
+                    let _ = save_cache(&app_for_thread, &root);
+                }
+                let _ = app_for_thread.emit("solomd://index-updated", &"watch");
             }
-            let _ = app_for_thread.emit("solomd://index-updated", &"watch");
+            // Atomically check `PENDING` and release `WATCHER_FLUSH_RUNNING`
+            // under the same mutex so no event can be stranded.
+            if let Ok(pending) = PENDING.lock() {
+                if pending.is_empty() {
+                    WATCHER_FLUSH_RUNNING.store(false, std::sync::atomic::Ordering::SeqCst);
+                    return;
+                }
+            } else {
+                WATCHER_FLUSH_RUNNING.store(false, std::sync::atomic::Ordering::SeqCst);
+                return;
+            }
         }
     });
 }
@@ -1476,7 +1530,7 @@ fn save_cache(app: &AppHandle, root: &Path) -> Result<(), String> {
     };
     let s = STATE.read().map_err(|e| e.to_string())?;
     let entries: Vec<&IndexEntry> = s.entries.values().collect();
-    let json = serde_json::to_vec_pretty(&entries).map_err(|e| e.to_string())?;
+    let json = serde_json::to_vec(&entries).map_err(|e| e.to_string())?;
     fs::write(path, json).map_err(|e| e.to_string())
 }
 

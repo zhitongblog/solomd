@@ -767,7 +767,14 @@ export function buildDecorations(
           const prefixTo = after === ' ' ? nTo + 1 : nTo;
           if (!seenListLines.has(lineObj.from)) {
             seenListLines.add(lineObj.from);
-            const leadSpaces = nFrom - lineObj.from;
+            // #678 — When a list item lives inside a blockquote (`> - item`),
+            // exclude the leading `> ` quote prefix from `leadSpaces` and add
+            // `.cm-md-quote-line`'s 16px left padding so blockquote list markers
+            // align with plain blockquote text instead of clobbering padding.
+            const quotePrefixMatch = /^(?:[ \t]*>[ \t]?)+/.exec(lineObj.text);
+            const inQuote = !!quotePrefixMatch;
+            const quotePrefixLen = quotePrefixMatch ? quotePrefixMatch[0].length : 0;
+            const leadSpaces = Math.max(0, nFrom - (lineObj.from + quotePrefixLen));
             const markLen = nTo - nFrom;
             // #640 — Compute list nesting depth from ancestor list nodes so:
             //  1. Each nesting level gets a clear ~4-space visual indent (`1.4em`)
@@ -797,9 +804,12 @@ export function buildDecorations(
             // Give top-level list lines a base left indentation (`0.75em`) so bullets
             // and ordered markers sit indented relative to headings/paragraphs (matching
             // Preview/Split mode) while preserving hanging-indent alignment on wrapped lines.
-            const baseIndentEm = 0.75;
+            // Inside a blockquote, start flush with the blockquote's 16px text edge.
+            const baseIndentEm = inQuote ? 0 : 0.75;
             const indentEm = Math.min(12, leadEm + markEm);
-            const padLeftStr = `${(baseIndentEm + indentEm).toFixed(2)}em`;
+            const padLeftStr = inQuote
+              ? `calc(16px + ${indentEm.toFixed(2)}em)`
+              : `${(baseIndentEm + indentEm).toFixed(2)}em`;
             const textIndentStr = `-${indentEm.toFixed(2)}em`;
             ranges.push(
               Decoration.line({
@@ -813,14 +823,15 @@ export function buildDecorations(
             // (`leadEm`) and the marker + trailing space its own fixed-width
             // inline-block (`markEm`) so proportional-font spaces never inflate
             // the gap AFTER the marker on nested levels.
+            const leadLimit = lineObj.from + quotePrefixLen;
             let leadFrom = nFrom;
-            while (leadFrom > lineObj.from) {
+            while (leadFrom > leadLimit) {
               const ch = view.state.doc.sliceString(leadFrom - 1, leadFrom);
               if (ch === ' ' || ch === '\t') leadFrom--;
               else break;
             }
             const spanLeadEm =
-              leadFrom === lineObj.from
+              leadFrom === leadLimit
                 ? leadEm
                 : nFrom > leadFrom
                   ? Math.min(10, Math.max(depth * 1.4, (nFrom - leadFrom) * 0.55))
@@ -1031,6 +1042,16 @@ const makeLiveRenderPlugin = (showMarkers: boolean, hideActiveLineMarkers = fals
       // between collapsed positions.
       if (!showMarkers && u.selectionSet && !isDragging(u.state)) {
         if (hideActiveLineMarkers) {
+          return;
+        }
+        const prevSel = u.startState.selection.main;
+        const nextSel = u.state.selection.main;
+        const prevFromLine = u.startState.doc.lineAt(prevSel.from).number;
+        const prevToLine = u.startState.doc.lineAt(prevSel.to).number;
+        const nextFromLine = u.state.doc.lineAt(nextSel.from).number;
+        const nextToLine = u.state.doc.lineAt(nextSel.to).number;
+        // Skip full-viewport decoration rebuild when cursor moves within the same line.
+        if (prevFromLine === nextFromLine && prevToLine === nextToLine && prevSel.empty === nextSel.empty) {
           return;
         }
         this.decorations = buildDecorations(u.view, showMarkers, hideActiveLineMarkers);

@@ -91,8 +91,8 @@ chrome** (📁 🗂 🧹 ✨ ⚙️ … all go).
 └───────────────────────┴──────────────────────────────────────────────────────┘
 ```
 
-- The sidebar is **full window height**; the traffic lights sit in its top 52 px
-  (`trafficLightPosition` in `tauri.conf.json`), vertically centred on the header line.
+- The sidebar is **full window height**; the traffic lights sit in its top 52 px,
+  vertically centred on the header line.
 - With the sidebar hidden, the header gains left padding for the traffic lights and a
   sidebar button.
 - Header = drag region (double-click zooms, as today). Tabs for a single pane render in the

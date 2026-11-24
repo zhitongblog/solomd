@@ -11,8 +11,11 @@
  * matches SoloMD's CommonMark/GFM preview semantics.
  */
 export function buildPandocFromArg(hardBreaks: boolean): string {
+  // #683 — Enable `lists_without_preceding_blankline` and disable
+  // `blank_before_blockquote` so lists inside blockquotes (e.g. `> text\n> - item`)
+  // parse identically to CommonMark/GFM instead of rendering as raw Markdown in EPUB.
   return (
-    '--from=markdown-multiline_tables-simple_tables-grid_tables' +
+    '--from=markdown-multiline_tables-simple_tables-grid_tables+lists_without_preceding_blankline-blank_before_blockquote' +
     (hardBreaks ? '+hard_line_breaks' : '')
   );
 }

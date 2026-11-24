@@ -141,42 +141,10 @@ fn rel_path(repo: &Repository, abs: &str) -> Option<String> {
     Some(stripped.to_string_lossy().replace('\\', "/"))
 }
 
-/// Default auto-commit message: `auto: 2026-04-24 09:30:01`.
+/// #682 — Default auto-commit message in the user's local timezone:
+/// `auto: 2026-04-24 09:30:01`.
 fn default_auto_message() -> String {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let secs = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs() as i64)
-        .unwrap_or(0);
-    // Tiny, dep-free local-time formatter. We display in UTC to avoid pulling
-    // chrono just for one timestamp; users see this only in commit messages.
-    format!("auto: {}", format_unix_utc(secs))
-}
-
-/// Format `YYYY-MM-DD HH:MM:SS` in UTC from a unix timestamp.
-fn format_unix_utc(secs: i64) -> String {
-    // Days since epoch + seconds-of-day.
-    let days = secs.div_euclid(86_400);
-    let mut sod = secs.rem_euclid(86_400);
-    let h = sod / 3600;
-    sod %= 3600;
-    let m = sod / 60;
-    let s = sod % 60;
-    // Civil-from-days (Howard Hinnant). Handles leap years correctly.
-    let z = days + 719_468;
-    let era = z.div_euclid(146_097);
-    let doe = z.rem_euclid(146_097);
-    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
-    let y = yoe + era * 400;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let d = doy - (153 * mp + 2) / 5 + 1;
-    let mo = if mp < 10 { mp + 3 } else { mp - 9 };
-    let y = if mo <= 2 { y + 1 } else { y };
-    format!(
-        "{:04}-{:02}-{:02} {:02}:{:02}:{:02}",
-        y, mo, d, h, m, s
-    )
+    format!("auto: {}", chrono::Local::now().format("%Y-%m-%d %H:%M:%S"))
 }
 
 /// Whether the file under `path` is tracked by the repo.

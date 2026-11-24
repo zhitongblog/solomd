@@ -387,6 +387,7 @@ export function useExport() {
         settings.exportIncludeTocPage,
         false,
         settings.exportMediaAlign,
+        settings.docxFirstLineIndent,
       );
       const buffer = new Uint8Array(await blob.arrayBuffer());
       // Tauri 2 serializes Uint8Array as a number array which Rust accepts as Vec<u8>.
@@ -1188,6 +1189,7 @@ export function useExport() {
         includeTocPage,
         isMergedBook,
         settings.exportMediaAlign,
+        settings.docxFirstLineIndent,
       );
       const buffer = new Uint8Array(await blob.arrayBuffer());
       await invoke('write_binary_file', { path: outputPath, data: Array.from(buffer) });

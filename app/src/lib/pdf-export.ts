@@ -241,6 +241,8 @@ const PDF_CSS = `
     break-inside: avoid;
   }
   :where(.pdf-page) blockquote p { margin: .35em 0; }
+  :where(.pdf-page) blockquote ul, :where(.pdf-page) blockquote ol { padding-left: 1.3em; margin: .35em 0; }
+  :where(.pdf-page) blockquote ul.contains-task-list { padding-left: 0; }
   :where(.pdf-page) ul, :where(.pdf-page) ol { padding-left: 1.8em; margin: .9em 0; }
   :where(.pdf-page) li { margin: .3em 0; }
   :where(.pdf-page) table {

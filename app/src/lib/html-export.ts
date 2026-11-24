@@ -1093,6 +1093,10 @@ ${headCss ? `<style>${headCss}</style>\n` : ''}<style>
     border-radius: 0 4px 4px 0;
   }
   blockquote p { margin: .4em 0; }
+  blockquote > :first-child { margin-top: 0; }
+  blockquote > :last-child { margin-bottom: 0; }
+  blockquote ul, blockquote ol { padding-left: 1.3em; margin: .35em 0; }
+  blockquote ul.contains-task-list { padding-left: 0; }
   ul, ol { padding-left: 1.8em; margin: .9em 0; }
   li { margin: .3em 0; }
   li > p { margin: .3em 0; }
@@ -1592,22 +1596,57 @@ export async function buildStandaloneHtml(input: StandaloneHtmlInput): Promise<s
 }
 
 /**
- * #624 — Generate CSS rules aligning standalone images, figures, Mermaid /
- * PlantUML diagrams, and KaTeX display formulas across HTML / EPUB / PDF exports.
+ * #624 / #686 — Generate CSS rules aligning standalone images, figures,
+ * Mermaid / PlantUML / Whiteboard diagrams, and KaTeX display formulas across
+ * HTML / EPUB / PDF / Image exports.
  */
 export function exportMediaAlignCss(align?: 'left' | 'center' | 'right'): string {
   const a = align === 'left' || align === 'right' ? align : 'center';
   const justify = a === 'left' ? 'flex-start' : a === 'right' ? 'flex-end' : 'center';
+  const mLeft = a === 'left' ? '0' : 'auto';
+  const mRight = a === 'right' ? '0' : 'auto';
   return `
-p:has(> img:only-child), figure, .md-diagram, .mermaid-wrap, .katex-display, .katex-display > .katex {
+p:has(> img:only-child),
+p:has(> a:only-child > img:only-child),
+figure,
+.md-diagram,
+.mermaid-wrap,
+.mermaid-block,
+.plantuml-block,
+.whiteboard-block,
+.katex-display,
+.katex-display > .katex {
   text-align: ${a} !important;
 }
-p:has(> img:only-child) > img, figure > img {
+p:has(> img:only-child) > img,
+p:has(> a:only-child > img:only-child) > a,
+p:has(> a:only-child > img:only-child) > a > img,
+figure > img {
   display: inline-block;
 }
-.mermaid-wrap, .md-diagram {
-  display: flex;
-  justify-content: ${justify};
+.preview-content > img,
+.solomd-print-content > img,
+.pdf-page > img,
+.img-page > img,
+article > img,
+body > img {
+  display: block;
+  margin-left: ${mLeft} !important;
+  margin-right: ${mRight} !important;
+}
+.mermaid-wrap,
+.md-diagram,
+.mermaid-block,
+.plantuml-block,
+.whiteboard-block {
+  display: flex !important;
+  justify-content: ${justify} !important;
+}
+.mermaid-block > svg,
+.plantuml-block > img,
+.whiteboard-block > svg {
+  margin-left: ${mLeft} !important;
+  margin-right: ${mRight} !important;
 }
 `;
 }

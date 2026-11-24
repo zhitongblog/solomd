@@ -1465,6 +1465,56 @@ function onSelectPdfFont(v: string) {
         </section>
 
         <section data-cat="basics">
+          <label>
+            {{ settings.language === 'zh' ? '图片、图表、公式对齐方式' : 'Images, Diagrams & Math Alignment' }}
+          </label>
+          <div style="display:flex;gap:6px;margin-top:6px;">
+            <button
+              v-for="opt in (['left', 'center', 'right'] as const)"
+              :key="opt"
+              type="button"
+              class="settings-seg-btn"
+              :class="{ 'is-active': settings.editorMediaAlign === opt }"
+              :style="settings.editorMediaAlign === opt ? 'padding:4px 12px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-size:12px;cursor:pointer;' : 'padding:4px 12px;border-radius:6px;border:1px solid var(--border);background:var(--fill-1);color:var(--text-2);font-size:12px;cursor:pointer;'"
+              @click="settings.setEditorMediaAlign(opt)"
+            >
+              {{
+                opt === 'left'
+                  ? (settings.language === 'zh' ? '居左' : 'Left')
+                  : opt === 'center'
+                    ? (settings.language === 'zh' ? '居中' : 'Center')
+                    : (settings.language === 'zh' ? '居右' : 'Right')
+              }}
+            </button>
+          </div>
+          <p class="setting-hint">
+            {{
+              settings.language === 'zh'
+                ? '对实时编辑、预览与阅读模式生效（自定义导出可独立设置）。'
+                : 'Applies to Live Edit, Preview, and Reading modes (Custom Export has its own override).'
+            }}
+          </p>
+        </section>
+
+        <section data-cat="basics">
+          <label>
+            <input
+              type="checkbox"
+              :checked="settings.docxFirstLineIndent"
+              @change="settings.toggleDocxFirstLineIndent()"
+            />
+            {{ settings.language === 'zh' ? '正文自动增加段落前置空格（Word 导出首行缩进 2 字符）' : 'Auto First-Line Paragraph Indent (DOCX Export)' }}
+          </label>
+          <p class="setting-hint">
+            {{
+              settings.language === 'zh'
+                ? '开启后导出 .docx 时自动为每个正文段落设置首行缩进 2 个中文字符（标题、列表、代码块与图片不受影响）。'
+                : 'Automatically indents the first line of body paragraphs by 2 CJK chars when exporting to Word (.docx).'
+            }}
+          </p>
+        </section>
+
+        <section data-cat="basics">
           <label>{{ t('settings.uiFontSize') }}: {{ settings.uiFontSize }}px</label>
           <input
             type="range"

@@ -1649,10 +1649,10 @@ onBeforeUnmount(() => {
   user-select: none;
   -webkit-user-select: none;
 }
-/* Sidebar hidden on macOS: the traffic lights now float over the header's
-   left end (they sit at x≈20…72 in the 52px line). */
+/* Match the gap from the native window controls to the sidebar button
+   with the gap from the button to the tab strip (6px gap + 2px margin). */
 .toolbar--mac.toolbar--lead {
-  padding-left: 80px;
+  padding-left: calc(var(--mac-window-controls-right, 80px) / var(--mac-titlebar-zoom, 1) + var(--sp-2));
 }
 .toolbar--minimal .toolbar__tabs {
   justify-content: center;

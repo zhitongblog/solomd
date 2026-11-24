@@ -87,6 +87,15 @@ const makeLiveMarkdownPlugin = (showMarkers: boolean, hideActiveLineMarkers = fa
         if (hideActiveLineMarkers) {
           return;
         }
+        const prevSel = update.startState.selection.main;
+        const nextSel = update.state.selection.main;
+        const prevFromLine = update.startState.doc.lineAt(prevSel.from).number;
+        const prevToLine = update.startState.doc.lineAt(prevSel.to).number;
+        const nextFromLine = update.state.doc.lineAt(nextSel.from).number;
+        const nextToLine = update.state.doc.lineAt(nextSel.to).number;
+        if (prevFromLine === nextFromLine && prevToLine === nextToLine && prevSel.empty === nextSel.empty) {
+          return;
+        }
         this.decorations = this.build(update.view);
       }
     }

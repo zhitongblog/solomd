@@ -25,6 +25,7 @@ import type { DecorationSet, ViewUpdate } from '@codemirror/view';
 import { SearchQuery, getSearchQuery, searchPanelOpen, setSearchQuery } from '@codemirror/search';
 import { syntaxTree } from '@codemirror/language';
 import { isDragging, isDragEndTransaction } from './cm-drag-aware';
+import { openImageOverlay } from './image-overlay';
 import { frozenFieldDuringComposition, isImeSafeFlushTransaction } from './cm-ime-guard';
 import { applySearchMarksIn, clearSearchMarksIn, findPreviewHitsInText } from './preview-search-hits';
 import {
@@ -1032,6 +1033,7 @@ export function bindDomTableCellEditor(
     if (col < 0 || col >= m.header.length) return false;
     if (row !== HEADER_ROW && (row < 0 || row >= m.rows.length)) return false;
     clearSearchMarksIn(cell);
+    lastAnchor = { row, col };
     active = { cell, row, col, html: cell.innerHTML };
     cell.textContent = cellText(m, row, col);
     cell.classList.add('cm-live-table__cell--editing');
@@ -1075,11 +1077,60 @@ export function bindDomTableCellEditor(
   };
 
   let cleanupFirstPressDrag: (() => void) | null = null;
+  let cellRange: { r1: number; c1: number; r2: number; c2: number } | null = null;
+  let lastAnchor: { row: number; col: number } | null = null;
+
+  const clearCellRange = () => {
+    if (!cellRange) return;
+    cellRange = null;
+    for (const el of Array.from(wrap.querySelectorAll('.cm-live-table__cell--selected'))) {
+      el.classList.remove('cm-live-table__cell--selected');
+    }
+  };
+
+  const applyCellRangeHighlight = () => {
+    for (const el of Array.from(wrap.querySelectorAll<HTMLTableCellElement>('th[data-row], td[data-row]'))) {
+      if (!cellRange) {
+        el.classList.remove('cm-live-table__cell--selected');
+        continue;
+      }
+      const r = Number(el.dataset.row ?? HEADER_ROW);
+      const c = Number(el.dataset.col ?? el.cellIndex);
+      const rMin = Math.min(cellRange.r1, cellRange.r2);
+      const rMax = Math.max(cellRange.r1, cellRange.r2);
+      const cMin = Math.min(cellRange.c1, cellRange.c2);
+      const cMax = Math.max(cellRange.c1, cellRange.c2);
+      const inRange = r >= rMin && r <= rMax && c >= cMin && c <= cMax;
+      el.classList.toggle('cm-live-table__cell--selected', inRange);
+    }
+  };
+
+  const focusWrapForRange = () => {
+    if (!wrap.hasAttribute('tabindex')) wrap.setAttribute('tabindex', '-1');
+    wrap.focus({ preventScroll: true });
+  };
 
   const begin = (ev: MouseEvent, cell: HTMLTableCellElement): DomTableBeginState => {
     if (adapter.isReadOnly()) return false;
     const row = Number(cell.dataset.row ?? HEADER_ROW);
     const col = Number(cell.dataset.col ?? cell.cellIndex);
+
+    // Shift+Click extends a rectangular multi-cell / multi-row selection from the anchor cell.
+    if (ev.shiftKey && lastAnchor && (lastAnchor.row !== row || lastAnchor.col !== col)) {
+      cleanupFirstPressDrag?.();
+      cleanupFirstPressDrag = null;
+      if (active) commit(null);
+      if (written) return 'started';
+      window.getSelection?.()?.removeAllRanges();
+      cellRange = { r1: lastAnchor.row, c1: lastAnchor.col, r2: row, c2: col };
+      applyCellRangeHighlight();
+      focusWrapForRange();
+      return 'started';
+    }
+
+    clearCellRange();
+    lastAnchor = { row, col };
+
     if (active && active.cell === cell) {
       // Already editing this cell: do NOT preventDefault on mousedown so the
       // browser natively repositions the caret at the clicked glyph, selects
@@ -1101,18 +1152,15 @@ export function bindDomTableCellEditor(
       caretToEdge(cell, 'end');
     }
 
-    // Also support click-and-drag text selection right on the very first press
-    // that enters the cell (where mousedown had to replace rendered HTML with
-    // plain text and preventDefault).
+    // Support BOTH intra-cell text drag selection AND cross-cell / row rectangular
+    // drag selection right on the first press.
     if (
-      sel &&
-      sel.rangeCount > 0 &&
       typeof window !== 'undefined' &&
       typeof window.addEventListener === 'function'
     ) {
-      const initRange = sel.getRangeAt(0);
-      const anchorNode = initRange.startContainer;
-      const anchorOffset = initRange.startOffset;
+      const initRange = sel && sel.rangeCount > 0 ? sel.getRangeAt(0) : null;
+      const anchorNode = initRange?.startContainer ?? null;
+      const anchorOffset = initRange?.startOffset ?? 0;
       const startX = ev.clientX;
       const startY = ev.clientY;
       let dragging = false;
@@ -1123,7 +1171,7 @@ export function bindDomTableCellEditor(
         if (cleanupFirstPressDrag === stopDrag) cleanupFirstPressDrag = null;
       };
       const onMove = (moveEv: MouseEvent) => {
-        if (!active || active.cell !== cell || !cell.isConnected) {
+        if (!wrap.isConnected) {
           stopDrag();
           return;
         }
@@ -1135,9 +1183,35 @@ export function bindDomTableCellEditor(
           return;
         }
         dragging = true;
-        const headRange = caretRangeAt(moveEv.clientX, moveEv.clientY);
-        if (headRange && cell.contains(headRange.startContainer) && typeof sel.setBaseAndExtent === 'function') {
-          sel.setBaseAndExtent(anchorNode, anchorOffset, headRange.startContainer, headRange.startOffset);
+        const hitEl =
+          typeof document.elementFromPoint === 'function'
+            ? (document.elementFromPoint(moveEv.clientX, moveEv.clientY)?.closest?.('th, td') as HTMLTableCellElement | null)
+            : null;
+        if (hitEl && wrap.contains(hitEl)) {
+          const hitRow = Number(hitEl.dataset.row ?? HEADER_ROW);
+          const hitCol = Number(hitEl.dataset.col ?? hitEl.cellIndex);
+          if (hitRow !== row || hitCol !== col || cellRange !== null) {
+            if (active) {
+              leave();
+              sel?.removeAllRanges();
+              focusWrapForRange();
+            }
+            cellRange = { r1: row, c1: col, r2: hitRow, c2: hitCol };
+            applyCellRangeHighlight();
+            return;
+          }
+        }
+        if (
+          active &&
+          active.cell === cell &&
+          cell.isConnected &&
+          sel &&
+          anchorNode
+        ) {
+          const headRange = caretRangeAt(moveEv.clientX, moveEv.clientY);
+          if (headRange && cell.contains(headRange.startContainer) && typeof sel.setBaseAndExtent === 'function') {
+            sel.setBaseAndExtent(anchorNode, anchorOffset, headRange.startContainer, headRange.startOffset);
+          }
         }
       };
       cleanupFirstPressDrag = stopDrag;
@@ -1152,6 +1226,76 @@ export function bindDomTableCellEditor(
   wrap.addEventListener(
     'keydown',
     (ev: KeyboardEvent) => {
+      // Multi-cell / row selection keyboard shortcuts (Copy / Clear / Select All / Escape)
+      if (!active && cellRange) {
+        const isMod = ev.metaKey || ev.ctrlKey;
+        const rMin = Math.min(cellRange.r1, cellRange.r2);
+        const rMax = Math.max(cellRange.r1, cellRange.r2);
+        const cMin = Math.min(cellRange.c1, cellRange.c2);
+        const cMax = Math.max(cellRange.c1, cellRange.c2);
+        if (ev.key === 'Escape') {
+          ev.preventDefault();
+          ev.stopPropagation();
+          clearCellRange();
+          return;
+        }
+        if (isMod && !ev.altKey && ev.key.toLowerCase() === 'a') {
+          const m = model();
+          if (m) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            cellRange = {
+              r1: HEADER_ROW,
+              c1: 0,
+              r2: m.rows.length > 0 ? m.rows.length - 1 : HEADER_ROW,
+              c2: Math.max(0, m.header.length - 1),
+            };
+            applyCellRangeHighlight();
+          }
+          return;
+        }
+        if (isMod && !ev.altKey && ev.key.toLowerCase() === 'c') {
+          const m = model();
+          if (m) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            const lines: string[] = [];
+            for (let r = rMin; r <= rMax; r++) {
+              const vals: string[] = [];
+              for (let c = cMin; c <= cMax; c++) {
+                vals.push(cellText(m, r, c));
+              }
+              lines.push(vals.join('\t'));
+            }
+            const tsv = lines.join('\n');
+            void navigator.clipboard?.writeText?.(tsv).catch(() => {});
+          }
+          return;
+        }
+        if (ev.key === 'Backspace' || ev.key === 'Delete') {
+          const m = model();
+          if (m && !adapter.isReadOnly()) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            let nextMd: string | null = adapter.source;
+            for (let r = rMin; r <= rMax; r++) {
+              for (let c = cMin; c <= cMax; c++) {
+                if (!nextMd) break;
+                nextMd = applyCellEdit(nextMd, r, c, '') ?? nextMd;
+              }
+            }
+            clearCellRange();
+            if (nextMd && nextMd !== adapter.source) {
+              written = true;
+              adapter.commitMarkdown(nextMd, null);
+            }
+          }
+          return;
+        }
+        // Keep unhandled keys from leaking to CodeMirror while a table range is selected.
+        ev.stopPropagation();
+        return;
+      }
       if (!active) return;
       const here = { row: active.row, col: active.col };
       const isMod = ev.metaKey || ev.ctrlKey;
@@ -1294,10 +1438,11 @@ export function bindDomTableCellEditor(
   });
 
   wrap.addEventListener('focusout', (ev: FocusEvent) => {
-    if (!active) return;
-    if (ev.target !== active.cell) return;
     const next = ev.relatedTarget as Node | null;
     if (next && wrap.contains(next)) return;
+    if (cellRange) clearCellRange();
+    if (!active) return;
+    if (ev.target !== active.cell) return;
     commit(null);
   });
 
@@ -1630,6 +1775,12 @@ class TableWidget extends WidgetType {
     if (event.type === 'selectionchange') return true;
     const target = event.target as Element | null;
     if (target?.closest?.('a')) return false;
+    if (
+      target?.classList?.contains?.('cm-live-block--table') &&
+      target.querySelector('.cm-live-table__cell--selected')
+    ) {
+      return true;
+    }
     return !!target?.closest?.('th, td, tr');
   }
 
@@ -2046,6 +2197,23 @@ class TableFoldToggleWidget extends WidgetType {
   }
 }
 
+function openMermaidZoomOverlay(wrap: HTMLElement): void {
+  const svg = wrap.querySelector('svg');
+  if (!svg) return;
+  const zh = typeof document !== 'undefined' && document.documentElement.lang?.startsWith('zh');
+  openImageOverlay({
+    source: svg,
+    strings: {
+      close: zh ? '关闭' : 'Close',
+      zoomIn: zh ? '放大' : 'Zoom in',
+      zoomOut: zh ? '缩小' : 'Zoom out',
+      resetZoom: zh ? '重置缩放' : 'Reset zoom',
+      image: zh ? '图片' : 'Image',
+      diagram: zh ? '图表' : 'Diagram',
+    },
+  });
+}
+
 class MermaidWidget extends WidgetType {
   /** Whether the cache held a finished result when this widget was built. */
   private readonly settled: boolean;
@@ -2081,11 +2249,41 @@ class MermaidWidget extends WidgetType {
     if (cached?.svg) {
       wrap.innerHTML = cached.svg;
       bindMermaidInteractions(wrap, cached.bindFunctions);
+      const zoomBtn = document.createElement('button');
+      zoomBtn.type = 'button';
+      zoomBtn.className = 'cm-mermaid-zoom-btn';
+      zoomBtn.title = '放大查看 / Zoom';
+      zoomBtn.setAttribute('aria-label', 'Zoom diagram');
+      zoomBtn.textContent = '⤢';
+      zoomBtn.addEventListener('mousedown', (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+      });
+      zoomBtn.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        openMermaidZoomOverlay(wrap);
+      });
+      wrap.appendChild(zoomBtn);
+      wrap.addEventListener('mousedown', (ev) => {
+        if ((ev.target as Element | null)?.closest?.('a, button')) return;
+        // Prevent CodeMirror from moving the caret into the fenced body on click
+        // (unfolding is handled by the `+` / `−` button on the opening fence line).
+        if (ev.button === 0) {
+          ev.preventDefault();
+          ev.stopPropagation();
+        }
+      });
       wrap.addEventListener('click', (ev) => {
         const anchor = (ev.target as Element | null)?.closest?.('a');
         if (anchor) {
           openRenderedLink(anchor, ev, this.filePath);
+          return;
         }
+        if ((ev.target as Element | null)?.closest?.('button')) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        openMermaidZoomOverlay(wrap);
       });
     } else if (cached?.error) {
       wrap.classList.add('cm-live-block--broken');
@@ -2107,7 +2305,12 @@ class MermaidWidget extends WidgetType {
     return wrap;
   }
 
-  ignoreEvent(): boolean {
+  ignoreEvent(ev: Event): boolean {
+    const target = ev.target as Element | null;
+    if (target?.closest?.('.cm-mermaid-zoom-btn')) return true;
+    if (this.settled && (ev.type === 'mousedown' || ev.type === 'click' || ev.type === 'dblclick')) {
+      return !target?.closest?.('a');
+    }
     return false;
   }
 }
@@ -3439,6 +3642,7 @@ export function liveBlocksExtension(opts: BlockOptions = {}) {
 
   const tableSearchHighlighter = ViewPlugin.fromClass(
     class {
+      private hadActiveQuery = false;
       constructor(view: EditorView) {
         this.sync(view, false);
       }
@@ -3452,6 +3656,11 @@ export function liveBlocksExtension(opts: BlockOptions = {}) {
         }
       }
       sync(view: EditorView, scrollCurrent: boolean) {
+        const panelActive = searchPanelOpen(view.state) && !!getSearchQuery(view.state).search;
+        const extActive = !!(view.state.field(externalSearchQueryField, false) ?? '');
+        const active = panelActive || extActive;
+        if (!active && !this.hadActiveQuery) return;
+        this.hadActiveQuery = active;
         const tables = view.dom.querySelectorAll<HTMLElement>('.cm-live-block--table');
         if (tables.length === 0) return;
         let currentMark: HTMLElement | null = null;
@@ -3501,6 +3710,8 @@ export const liveBlocksTheme = EditorView.theme({
     height: 'auto',
     borderRadius: '6px',
     display: 'block',
+    marginLeft: 'var(--media-margin-left, 0)',
+    marginRight: 'var(--media-margin-right, auto)',
   },
   '.cm-live-block--image-inline': {
     display: 'inline-block',
@@ -3542,6 +3753,39 @@ export const liveBlocksTheme = EditorView.theme({
   },
   '.cm-live-block--table': {
     position: 'relative',
+  },
+  '.cm-mermaid-zoom-btn': {
+    position: 'absolute',
+    bottom: '8px',
+    right: '8px',
+    width: '28px',
+    height: '28px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    border: '1px solid var(--border)',
+    borderRadius: '6px',
+    background: 'color-mix(in srgb, var(--bg-elev) 90%, transparent)',
+    color: 'var(--text-muted)',
+    fontSize: '14px',
+    lineHeight: '1',
+    cursor: 'pointer',
+    opacity: '0',
+    transition: 'opacity 0.15s, color 0.15s, border-color 0.15s',
+    zIndex: '2',
+  },
+  '.cm-live-block--mermaid:hover .cm-mermaid-zoom-btn, .cm-mermaid-zoom-btn:focus-visible': {
+    opacity: '1',
+  },
+  '.cm-mermaid-zoom-btn:hover': {
+    color: 'var(--accent)',
+    borderColor: 'var(--accent)',
+  },
+  '.cm-live-block--table .cm-live-table__cell--selected': {
+    background: 'color-mix(in srgb, var(--accent) 18%, transparent)',
+    boxShadow: 'inset 0 0 0 1px var(--accent)',
+    userSelect: 'none',
+    WebkitUserSelect: 'none',
   },
   '.cm-table-source-btn': {
     position: 'absolute',
@@ -3612,7 +3856,7 @@ export const liveBlocksTheme = EditorView.theme({
   '.cm-live-block--math': {
     padding: '1em 0',
     overflowX: 'auto',
-    textAlign: 'center',
+    textAlign: 'var(--media-align, left)',
   },
   // #573 — Inline \dfrac / \frac inside consecutive list items or lines
   // overflows a `display: inline` (line-height: 1.2) span and collides
@@ -3625,14 +3869,19 @@ export const liveBlocksTheme = EditorView.theme({
   // #530 — Left-align Mermaid diagrams like images (instead of centered), and
   // style the `+` / `−` fold toggle button on the opening ` ```mermaid ` line.
   '.cm-live-block--mermaid': {
+    position: 'relative',
     padding: '0.8em 0 1.2em 0',
-    textAlign: 'left',
+    textAlign: 'var(--media-align, left)',
+    cursor: 'zoom-in',
   },
   '.cm-live-block--mermaid svg': {
     maxWidth: '100%',
     height: 'auto',
     display: 'block',
-    margin: '0',
+    marginTop: '0',
+    marginBottom: '0',
+    marginLeft: 'var(--media-margin-left, 0)',
+    marginRight: 'var(--media-margin-right, auto)',
   },
   '.cm-mermaid-fold-btn': {
     display: 'inline-flex',

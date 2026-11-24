@@ -76,7 +76,63 @@ const HLJS_LANG_ALIASES: Record<string, string> = {
   gql: 'graphql',
 };
 
+const HLJS_DIRECT_EXTS = new Set([
+  'bash', 'shell', 'lua', 'awk', 'autohotkey', 'ini', 'makefile', 'csharp',
+  'kotlin', 'swift', 'ruby', 'php', 'perl', 'objectivec', 'diff', 'graphql',
+  'scss', 'less', 'r', 'scala', 'dart', 'nginx', 'cmake', 'tex', 'latex',
+  'groovy', 'elixir', 'erlang', 'haskell', 'ocaml', 'julia', 'clojure',
+  'protobuf', 'proto', 'vim', 'dos', 'tcl', 'vbnet', 'fsharp', 'fortran',
+]);
+
+export function resolveHljsLangForFile(fileName: string): string | null {
+  const base = fileName.split(/[\\/]/).pop()?.toLowerCase() ?? '';
+  if (!base) return null;
+  if (base === 'makefile' || base === 'gnumakefile') return 'makefile';
+  if (base === 'dockerfile' || base.startsWith('dockerfile.')) return 'bash';
+  const dot = base.lastIndexOf('.');
+  if (dot < 0 || dot === base.length - 1) return null;
+  const ext = base.slice(dot + 1);
+  if (SKIP_FENCE_LANGS.has(ext)) return null;
+  const aliased = HLJS_LANG_ALIASES[ext];
+  if (aliased) return aliased;
+  if (HLJS_DIRECT_EXTS.has(ext)) return ext === 'proto' ? 'protobuf' : ext;
+  return null;
+}
+
 const MAX_FALLBACK_CODE_CHARS = 24_000;
+const MAX_AUTO_DETECT_CHARS = 2_000;
+const SPAN_CACHE_MAX = 160;
+const spanCache = new Map<string, HljsSpan[]>();
+
+function cachedHljsSpans(hl: NonNullable<ReturnType<typeof getHljs>>, mappedLang: string, code: string): HljsSpan[] {
+  const key = `${mappedLang}\0${code}`;
+  const hit = spanCache.get(key);
+  if (hit !== undefined) {
+    // Refresh LRU position
+    spanCache.delete(key);
+    spanCache.set(key, hit);
+    return hit;
+  }
+  let html = '';
+  try {
+    if (mappedLang && hl.getLanguage(mappedLang)) {
+      html = hl.highlight(code, { language: mappedLang, ignoreIllegals: true }).value;
+    } else if (!mappedLang && code.length <= MAX_AUTO_DETECT_CHARS) {
+      html = hl.highlightAuto(code).value;
+    } else {
+      return [];
+    }
+  } catch {
+    return [];
+  }
+  const spans = html ? parseHljsHtmlSpans(html, code) : [];
+  if (spanCache.size >= SPAN_CACHE_MAX) {
+    const oldest = spanCache.keys().next().value;
+    if (oldest !== undefined) spanCache.delete(oldest);
+  }
+  spanCache.set(key, spans);
+  return spans;
+}
 
 const markCache = new Map<string, Decoration>();
 function markForClass(cls: string): Decoration {
@@ -183,19 +239,7 @@ function buildHljsFallbackDecorations(view: EditorView): DecorationSet {
         if (!code.trim()) return false;
 
         const mappedLang = rawLang ? (HLJS_LANG_ALIASES[rawLang] ?? rawLang) : '';
-        let html = '';
-        try {
-          if (mappedLang && hl.getLanguage(mappedLang)) {
-            html = hl.highlight(code, { language: mappedLang, ignoreIllegals: true }).value;
-          } else {
-            html = hl.highlightAuto(code).value;
-          }
-        } catch {
-          return false;
-        }
-        if (!html) return false;
-
-        const spans = parseHljsHtmlSpans(html, code);
+        const spans = cachedHljsSpans(hl, mappedLang, code);
         for (const sp of spans) {
           // Split multi-line spans at '\n' so mark decorations stay strictly intra-line.
           let segStart = sp.from;
@@ -257,6 +301,90 @@ export function hljsFallbackExtension(): Extension {
           u.transactions.some(isImeSafeFlushTransaction)
         ) {
           this.decorations = buildHljsFallbackDecorations(u.view);
+        }
+      }
+
+      destroy() {
+        this.unsubscribe?.();
+        this.unsubscribe = null;
+      }
+    },
+    { decorations: (v) => v.decorations },
+  ));
+}
+
+function buildHljsDocumentDecorations(view: EditorView, mappedLang: string): DecorationSet {
+  const hl = getHljs();
+  if (!hl || !hl.getLanguage(mappedLang)) return Decoration.none;
+  const doc = view.state.doc;
+  const ranges: Range<Decoration>[] = [];
+  for (const { from, to } of view.visibleRanges) {
+    // Expand to full line boundaries so tokenizers see complete lines.
+    const startLine = doc.lineAt(from);
+    const endLine = doc.lineAt(to);
+    const sliceFrom = startLine.from;
+    const sliceTo = Math.min(endLine.to, sliceFrom + MAX_FALLBACK_CODE_CHARS);
+    if (sliceTo <= sliceFrom) continue;
+    const code = doc.sliceString(sliceFrom, sliceTo);
+    if (!code.trim()) continue;
+    const spans = cachedHljsSpans(hl, mappedLang, code);
+    for (const sp of spans) {
+      let segStart = sp.from;
+      while (segStart < sp.to) {
+        const nl = code.indexOf('\n', segStart);
+        const segEnd = nl >= 0 && nl < sp.to ? nl : sp.to;
+        if (segEnd > segStart) {
+          ranges.push(markForClass(sp.cls).range(sliceFrom + segStart, sliceFrom + segEnd));
+        }
+        if (nl < 0 || nl >= sp.to) break;
+        segStart = nl + 1;
+      }
+    }
+  }
+  return ranges.length > 0 ? Decoration.set(ranges, true) : Decoration.none;
+}
+
+/**
+ * Whole-document highlight.js syntax coloring for non-Markdown files whose
+ * language isn't covered by `@codemirror/lang-*` (e.g. `.sh`, `.lua`, `.toml`,
+ * `.ini`, `.awk`, `.ahk`, `.diff`, `Makefile`, etc.).
+ */
+export function hljsDocumentExtension(langHint: string): Extension {
+  const mappedLang = HLJS_LANG_ALIASES[langHint.toLowerCase()] ?? langHint.toLowerCase();
+  return Prec.highest(ViewPlugin.fromClass(
+    class {
+      decorations: DecorationSet;
+      private unsubscribe: (() => void) | null = null;
+
+      constructor(view: EditorView) {
+        this.decorations = buildHljsDocumentDecorations(view, mappedLang);
+        this.unsubscribe = onRenderDepsChange(() => {
+          queueMicrotask(() => {
+            try {
+              view.dispatch({ effects: hljsReadyEffect.of(null) });
+            } catch {
+              /* view may have been destroyed */
+            }
+          });
+        });
+      }
+
+      update(u: ViewUpdate) {
+        const frozen = frozenDuringComposition(u, this.decorations);
+        if (frozen) {
+          this.decorations = frozen;
+          return;
+        }
+        const hljsReady = u.transactions.some((tr) =>
+          tr.effects.some((e) => e.is(hljsReadyEffect)),
+        );
+        if (
+          u.docChanged ||
+          u.viewportChanged ||
+          hljsReady ||
+          u.transactions.some(isImeSafeFlushTransaction)
+        ) {
+          this.decorations = buildHljsDocumentDecorations(u.view, mappedLang);
         }
       }
 

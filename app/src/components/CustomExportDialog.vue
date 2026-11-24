@@ -695,7 +695,7 @@ async function runCustomExport() {
               <span>{{ isZh ? '添加目录页（文档开头的目录含页码）' : 'Include Table of Contents page (leading TOC with page numbers)' }}</span>
             </label>
             <div class="custom-export__align-row" style="display:flex;align-items:center;gap:8px;margin-top:6px;">
-              <span style="font-size:12px;color:var(--text-2);">{{ isZh ? '图表与公式对齐' : 'Media & Math Alignment' }}</span>
+              <span style="font-size:12px;color:var(--text-2);">{{ isZh ? '图片、图表与公式对齐' : 'Images, Diagrams & Math Alignment' }}</span>
               <div style="display:inline-flex;gap:4px;">
                 <button
                   v-for="opt in (['left', 'center', 'right'] as const)"

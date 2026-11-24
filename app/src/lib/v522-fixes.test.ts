@@ -65,7 +65,7 @@ test('#591: prepareMarkdownForPandoc + buildPandocFromArg prevent --- disclaimer
   const fromArg = buildPandocFromArg(true);
   assert.equal(
     fromArg,
-    '--from=markdown-multiline_tables-simple_tables-grid_tables+hard_line_breaks',
+    '--from=markdown-multiline_tables-simple_tables-grid_tables+lists_without_preceding_blankline-blank_before_blockquote+hard_line_breaks',
   );
   assert.doesNotMatch(prepared, /solomd-page-break/);
   assert.doesNotMatch(prepared, /\[TOC\]/i);

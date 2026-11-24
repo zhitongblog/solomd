@@ -730,12 +730,24 @@ watchEffect(() => {
 // stays as the browser-mode fallback where getCurrentWebview() throws.
 watchEffect(() => {
   const z = settings.globalZoom || 1;
+  if (macTitleBar) {
+    document.documentElement.style.setProperty('--mac-titlebar-zoom', String(z));
+  }
   try {
     const webview = getCurrentWebview();
     void webview
       .setZoom(z)
       .then(() => {
         (document.documentElement.style as any).zoom = '';
+        if (macTitleBar) {
+          void invoke<number | null>('sync_macos_titlebar')
+            .then((rightEdge) => {
+              if (rightEdge != null) {
+                document.documentElement.style.setProperty('--mac-window-controls-right', `${rightEdge}px`);
+              }
+            })
+            .catch(() => {});
+        }
       })
       .catch(() => {
         (document.documentElement.style as any).zoom = String(z);
@@ -776,6 +788,22 @@ watchEffect(() => {
   document.documentElement.style.setProperty(
     '--paragraph-spacing',
     `${settings.paragraphSpacing ?? 0.9}em`,
+  );
+  // #684 — Unified alignment CSS variables for images, diagrams, and display math
+  // across Live Edit, Preview, and Reading modes.
+  const ma = settings.editorMediaAlign || 'left';
+  document.documentElement.style.setProperty('--media-align', ma);
+  document.documentElement.style.setProperty(
+    '--media-justify',
+    ma === 'center' ? 'center' : ma === 'right' ? 'flex-end' : 'flex-start',
+  );
+  document.documentElement.style.setProperty(
+    '--media-margin-left',
+    ma === 'left' ? '0' : 'auto',
+  );
+  document.documentElement.style.setProperty(
+    '--media-margin-right',
+    ma === 'right' ? '0' : 'auto',
   );
 });
 

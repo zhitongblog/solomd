@@ -222,7 +222,93 @@ describe('v5.3.5 issue fixes (#649-#677)', () => {
     const syncModal = fs.readFileSync(path.join(root, 'components/SyncConflictModal.vue'), 'utf8');
     assert.match(toolbar, /\.win-controls\s*\{[\s\S]*?flex-shrink:\s*0/);
     assert.match(toolbar, /\.titlebar__toolbar-slot\s*\{[\s\S]*?min-width:\s*0/);
-    assert.match(syncModal, /width="1040px"/);
+    assert.match(syncModal, /width="1120px"/);
     assert.match(syncModal, /tauriConfirm\(confirmMsg/);
+  });
+});
+
+describe('v5.3.6 feedback: table drag-select, Mermaid zoom, non-MD highlighting & CPU optimization', () => {
+  it('non-MD syntax highlighting resolves native CM grammars (.xml, .py, .json, .yaml) and hljs (.sh, .lua, .toml, Makefile)', async () => {
+    const { codeLanguages } = await import('./code-languages.ts');
+    const { LanguageDescription } = await import('@codemirror/language');
+    const { resolveHljsLangForFile } = await import('./cm-hljs-fallback.ts');
+
+    for (const f of ['config.xml', 'app.py', 'data.json', 'ci.yml', 'main.ts', 'index.html', 'style.css', 'lib.rs', 'query.sql']) {
+      assert.ok(LanguageDescription.matchFilename(codeLanguages, f), `${f} should match a CodeMirror grammar`);
+    }
+    assert.equal(resolveHljsLangForFile('deploy.sh'), 'bash');
+    assert.equal(resolveHljsLangForFile('init.lua'), 'lua');
+    assert.equal(resolveHljsLangForFile('Cargo.toml'), 'ini');
+    assert.equal(resolveHljsLangForFile('Makefile'), 'makefile');
+    assert.equal(resolveHljsLangForFile('notes.txt'), null);
+  });
+
+  it('Live Edit MermaidWidget and Windows plain mermaid blocks wire openImageOverlay zoom button and dblclick', () => {
+    const liveBlocks = fs.readFileSync(path.join(root, 'lib/cm-live-blocks.ts'), 'utf8');
+    const editorVue = fs.readFileSync(path.join(root, 'components/Editor.vue'), 'utf8');
+    assert.match(liveBlocks, /openMermaidZoomOverlay/);
+    assert.match(liveBlocks, /cm-mermaid-zoom-btn/);
+    assert.match(editorVue, /openImageOverlay/);
+    assert.match(editorVue, /plain-mermaid-block/);
+  });
+
+  it('Live Edit tables support multi-cell/row rectangular drag selection, copy, and clear', () => {
+    const liveBlocks = fs.readFileSync(path.join(root, 'lib/cm-live-blocks.ts'), 'utf8');
+    assert.match(liveBlocks, /cm-live-table__cell--selected/);
+    assert.match(liveBlocks, /applyCellRangeHighlight/);
+    assert.match(liveBlocks, /document\.elementFromPoint/);
+  });
+
+  it('CPU hotpaths are guarded: hljs LRU cache, watcher coalescing & ignore list, intra-line selection skip, and tableSearchHighlighter short-circuit', () => {
+    const hljsFallback = fs.readFileSync(path.join(root, 'lib/cm-hljs-fallback.ts'), 'utf8');
+    const wsIndexRs = fs.readFileSync(path.join(root, '../src-tauri/src/workspace_index.rs'), 'utf8');
+    const liveRender = fs.readFileSync(path.join(root, 'lib/cm-live-render.ts'), 'utf8');
+    const liveBlocks = fs.readFileSync(path.join(root, 'lib/cm-live-blocks.ts'), 'utf8');
+    const spell = fs.readFileSync(path.join(root, 'lib/cm-spellcheck.ts'), 'utf8');
+
+    assert.match(hljsFallback, /cachedHljsSpans/);
+    assert.match(hljsFallback, /MAX_AUTO_DETECT_CHARS/);
+    assert.match(wsIndexRs, /WATCHER_FLUSH_RUNNING/);
+    assert.match(wsIndexRs, /should_ignore_watch_path/);
+    assert.match(liveRender, /prevFromLine === nextFromLine && prevToLine === nextToLine/);
+    assert.match(liveBlocks, /private hadActiveQuery = false;/);
+    assert.doesNotMatch(spell, /update\.geometryChanged/);
+  });
+
+  it('#678, #679, #682, #683, #684, #686, #687, #689, #690, #691: v5.3.6 bug & polish checks', async () => {
+    const { buildPandocFromArg } = await import('./pandoc-markdown.ts');
+    const { exportMediaAlignCss } = await import('./html-export.ts');
+
+    // #683: Pandoc reader enables lists_without_preceding_blankline & disables blank_before_blockquote
+    const fromArg = buildPandocFromArg(true);
+    assert.match(fromArg, /\+lists_without_preceding_blankline/);
+    assert.match(fromArg, /-blank_before_blockquote/);
+
+    // #686: exportMediaAlignCss targets actual .mermaid-block / .plantuml-block / standalone img classes
+    const centerCss = exportMediaAlignCss('center');
+    assert.match(centerCss, /\.mermaid-block/);
+    assert.match(centerCss, /justify-content:\s*center\s*!important/);
+    assert.match(centerCss, /p:has\(> a:only-child > img:only-child\)/);
+
+    // #682: git_history.rs uses chrono::Local::now() instead of UTC
+    const gitHistRs = fs.readFileSync(path.join(root, '../src-tauri/src/git_history.rs'), 'utf8');
+    assert.match(gitHistRs, /chrono::Local::now\(\)/);
+
+    // #687 & #689: SyncConflictModal has fixed height, side-by-side split, and inline <<<<<<<< merge
+    const syncModal = fs.readFileSync(path.join(root, 'components/SyncConflictModal.vue'), 'utf8');
+    assert.match(syncModal, /height:\s*78vh;/);
+    assert.match(syncModal, /scm__split/);
+    assert.match(syncModal, /buildInlineDiffMerge/);
+    assert.match(syncModal, /<<<<<<<</);
+
+    // #690 & #691: docx-export detects template-numbered heading levels & supports firstLineIndent
+    const docxExport = fs.readFileSync(path.join(root, 'lib/docx-export.ts'), 'utf8');
+    assert.match(docxExport, /detectTemplateNumberedHeadingLevels/);
+    assert.match(docxExport, /firstLineIndentTwipsForRun/);
+
+    // #684: editorMediaAlign CSS vars wired in App.vue & settings.ts
+    const appVue = fs.readFileSync(path.join(root, 'App.vue'), 'utf8');
+    assert.match(appVue, /--media-align/);
+    assert.match(appVue, /--media-justify/);
   });
 });

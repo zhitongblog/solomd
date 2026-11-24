@@ -48,6 +48,10 @@ mod quick_capture;
 #[path = "window_labels.rs"]
 mod window_labels;
 
+#[cfg(target_os = "macos")]
+#[path = "mac_chrome.rs"]
+mod mac_chrome;
+
 // v4.0 — public REST API mirroring the agent_tools surface for non-MCP
 // clients. Declared in both lib.rs and runner.rs so the binary's compile
 // root resolves `crate::rest_api` the same way the lib does.
@@ -370,6 +374,18 @@ fn set_max_button_rect(x: f64, y: f64, w: f64, h: f64, scale: f64) {
     let _ = (x, y, w, h, scale);
 }
 
+#[tauri::command]
+async fn sync_macos_titlebar(window: tauri::WebviewWindow) -> tauri::Result<Option<f64>> {
+    #[cfg(target_os = "macos")]
+    if window_labels::is_editor_window(window.label()) {
+        let (send, receive) = tokio::sync::oneshot::channel();
+        mac_chrome::align(&window, Some(send))?;
+        return Ok(receive.await.ok());
+    }
+    let _ = window;
+    Ok(None)
+}
+
 pub struct PendingOpen(pub Mutex<Vec<String>>);
 
 /// Command: returns all paths queued by macOS Apple Events / CLI args
@@ -665,6 +681,7 @@ pub fn run_with(initial_file: Option<String>) {
             force_close_window,
             set_menu_spec,
             set_max_button_rect,
+            sync_macos_titlebar,
             save_language_preference,
             set_default::set_as_default_markdown_editor,
             convert::convert_file_to_markdown,
@@ -1031,6 +1048,18 @@ pub fn run_with(initial_file: Option<String>) {
                     } else if window_labels::is_editor_window(&other) {
                         let _ = app_handle.emit("solomd://close-requested", other.clone());
                     }
+                }
+            }
+
+            // AppKit can relayout the title bar during resize and fullscreen transitions.
+            #[cfg(target_os = "macos")]
+            RunEvent::WindowEvent {
+                event: tauri::WindowEvent::Resized(_) | tauri::WindowEvent::Focused(true),
+                label,
+                ..
+            } if window_labels::is_editor_window(label) => {
+                if let Some(window) = app_handle.get_webview_window(label) {
+                    let _ = mac_chrome::align(&window, None);
                 }
             }
 

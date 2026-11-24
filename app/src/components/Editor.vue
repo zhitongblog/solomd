@@ -24,7 +24,8 @@ import { parseInsertSnippet } from '../lib/insert-snippet';
 // The grammar imports and the `codeLanguages` list they feed now live in
 // `lib/code-languages.ts`: the ``` fence-language picker (#297) derives its
 // catalogue from that same list, so there is only one copy to keep in sync.
-import { codeLanguages } from '../lib/code-languages';
+import { codeLanguages, loadPlainLanguageExtension } from '../lib/code-languages';
+import { openImageOverlay } from '../lib/image-overlay';
 import { fenceLanguageComplete, fenceLanguageExtension } from '../lib/cm-fence-completion';
 import { filterFenceLanguages, isInsideFenceBefore, matchFenceOpener } from '../lib/fence-languages';
 import { vim, Vim, getCM } from '@replit/codemirror-vim';
@@ -636,7 +637,7 @@ function flushContentSync() {
 
 let skipNextAutoNumber = false;
 
-function syncEditorContentSoon(text: string) {
+function syncEditorContentSoon(text?: string) {
   if (contentSyncTimer) clearTimeout(contentSyncTimer);
   contentSyncTimer = setTimeout(() => {
     contentSyncTimer = null;
@@ -677,7 +678,9 @@ function syncEditorContentSoon(text: string) {
       tabs.setContent(props.tab.id, curDoc);
       return;
     }
-    tabs.setContent(props.tab.id, text);
+    if (typeof text === 'string') {
+      tabs.setContent(props.tab.id, text);
+    }
   }, 350);
 }
 
@@ -1317,6 +1320,44 @@ async function processPlainLiveRenderedBlocks(onlyBlockIndex?: number) {
       const wrap = document.createElement('div');
       wrap.className = 'plain-mermaid-block';
       wrap.innerHTML = result.svg;
+      const zoomBtn = document.createElement('button');
+      zoomBtn.type = 'button';
+      zoomBtn.className = 'cm-mermaid-zoom-btn';
+      zoomBtn.title = settings.language === 'zh' ? '放大查看' : 'Zoom diagram';
+      zoomBtn.setAttribute('aria-label', 'Zoom diagram');
+      zoomBtn.textContent = '⤢';
+      const openZoom = () => {
+        const svg = wrap.querySelector('svg');
+        if (!svg) return;
+        const zh = settings.language === 'zh';
+        openImageOverlay({
+          source: svg,
+          strings: {
+            close: zh ? '关闭' : 'Close',
+            zoomIn: zh ? '放大' : 'Zoom in',
+            zoomOut: zh ? '缩小' : 'Zoom out',
+            resetZoom: zh ? '重置缩放' : 'Reset zoom',
+            image: zh ? '图片' : 'Image',
+            diagram: zh ? '图表' : 'Diagram',
+          },
+        });
+      };
+      zoomBtn.addEventListener('mousedown', (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+      });
+      zoomBtn.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        openZoom();
+      });
+      wrap.appendChild(zoomBtn);
+      wrap.addEventListener('dblclick', (ev) => {
+        if ((ev.target as Element | null)?.closest?.('a, button')) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        openZoom();
+      });
       pre.replaceWith(wrap);
       bindMermaidInteractions(wrap, result.bindFunctions);
     } else {
@@ -5002,18 +5043,19 @@ const fontSizeTheme = (
 ) => {
   const lh = Number.isFinite(lineHeight) ? Math.max(1.2, Math.min(2.6, lineHeight)) : 1.8;
   const ps = Number.isFinite(paragraphSpacing) ? Math.max(0, Math.min(2.0, paragraphSpacing)) : 0.9;
-  const blankLineLh = Math.max(0.25, Math.round(lh * (ps / 0.9) * 1000) / 1000);
-  const singleEnterPadEm = Math.max(0, Math.round(ps * 0.45 * 1000) / 1000);
+  // #679 — In CodeMirror, soft-wrapped visual lines share a single `.cm-line`,
+  // while every hard Enter (`\n`) starts a new `.cm-line`. Apply the configured
+  // `paragraphSpacing` directly as `paddingBottom` on hard-Enter paragraph lines
+  // (excluding code fences, lists, quotes, headings, and blank lines) rather than
+  // shrinking it to 45% or requiring blank lines between paragraphs.
+  const paraPadEm = Math.max(0, Math.round(ps * 1000) / 1000);
   return EditorView.theme({
     '&': { fontSize: `${px}px`, height: '100%' },
     // 5.0 §5 + #612 — body 16/1.8 by default, user-configurable lineHeight & paragraphSpacing,
     // 20px above the first line (#435, #440), room to scroll the last line up to the eye.
     '.cm-scroller': { fontFamily: buildEditorFontStack(family), lineHeight: String(lh) },
-    '&.cm-live-edit .cm-content > .cm-line:not(.cm-md-fenced-line):has(> br:only-child)': {
-      lineHeight: String(blankLineLh),
-    },
-    '&.cm-live-edit .cm-content > .cm-line:not(.cm-md-fenced-line):not(.cm-md-list-line):not(.cm-md-quote-line):not([class*="cm-md-heading-line-"]):not(:has(> br:only-child)):has(+ .cm-line:not(.cm-md-fenced-line):not(.cm-md-list-line):not(:has(> br:only-child)))': {
-      paddingBottom: `${singleEnterPadEm}em`,
+    '&.cm-live-edit .cm-content > .cm-line:not(.cm-md-fenced-line):not(.cm-md-list-line):not(.cm-md-quote-line):not([class*="cm-md-heading-line-"]):not(:has(> br:only-child))': {
+      paddingBottom: `${paraPadEm}em`,
     },
     '.cm-content': { padding: '20px 32px 30vh', caretColor: 'var(--accent)' },
     '.cm-gutters': {
@@ -5223,13 +5265,9 @@ function buildExtensions() {
         if (u.transactions.some((tr) => tr.isUserEvent('undo'))) {
           skipNextAutoNumber = true;
         }
-        const text = u.state.doc.toString();
-        // #450 — Always arm the debounced sync even if `u.view.composing` is
-        // true during an IME candidate commit (e.g. 清风/五笔/拼音 on Windows):
-        // `syncEditorContentSoon` checks `view.composing` when the timer fires
-        // and re-arms until composition ends, so no IME-committed edit is ever
-        // stranded without syncing to `tabs.setContent`.
-        syncEditorContentSoon(text);
+        // Avoid serializing the entire document on every keystroke; the 350ms
+        // debounced timer reads `view.state.doc.toString()` once when it fires.
+        syncEditorContentSoon();
       }
       if (u.docChanged && !u.view.composing && props.tab.language === 'markdown') {
         for (const tr of u.transactions) {
@@ -5438,6 +5476,9 @@ onMounted(() => {
     }),
     parent: host.value,
   });
+  if (props.tab.language !== 'markdown') {
+    applyLanguageExtensionForTab(props.tab);
+  }
   {
     const initHead = view.state.selection.main.head;
     const initLine = view.state.doc.lineAt(initHead);
@@ -6923,15 +6964,38 @@ watch(
   }
 );
 
-watch(
-  () => props.tab.language,
-  (l) => {
-    view?.dispatch({
+let plainLangLoadSeq = 0;
+function applyLanguageExtensionForTab(tab: { language: string; fileName: string }) {
+  if (!view || usePlainWindowsEditor) return;
+  if (tab.language === 'markdown') {
+    plainLangLoadSeq++;
+    view.dispatch({
       effects: [
-        langCompartment.reconfigure(l === 'markdown' ? [markdownExt()] : []),
+        langCompartment.reconfigure([markdownExt()]),
         richCompartment.reconfigure(richExtensionsFor(props.tab)),
       ],
     });
+    return;
+  }
+  const seq = ++plainLangLoadSeq;
+  view.dispatch({
+    effects: [
+      langCompartment.reconfigure([]),
+      richCompartment.reconfigure(richExtensionsFor(props.tab)),
+    ],
+  });
+  void loadPlainLanguageExtension(tab.fileName).then((ext) => {
+    if (seq !== plainLangLoadSeq || !view || props.tab.language === 'markdown') return;
+    view.dispatch({
+      effects: langCompartment.reconfigure(ext),
+    });
+  });
+}
+
+watch(
+  () => [props.tab.language, props.tab.fileName] as const,
+  () => {
+    applyLanguageExtensionForTab(props.tab);
   }
 );
 
@@ -8661,15 +8725,52 @@ const cls = computed(() => ({
 .plain-block__render :deep(.plain-mermaid-block),
 .plain-block__render :deep(.plain-plantuml-block),
 .plain-block__render :deep(.plain-whiteboard-block) {
+  position: relative;
   margin: 1em 0;
   max-width: 100%;
   overflow: auto;
 }
+.plain-block__render :deep(.plain-mermaid-block .cm-mermaid-zoom-btn) {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--bg-elev) 90%, transparent);
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s, border-color 0.15s;
+  z-index: 2;
+}
+.plain-block__render :deep(.plain-mermaid-block:hover .cm-mermaid-zoom-btn),
+.plain-block__render :deep(.plain-mermaid-block .cm-mermaid-zoom-btn:focus-visible) {
+  opacity: 1;
+}
+.plain-block__render :deep(.plain-mermaid-block .cm-mermaid-zoom-btn:hover) {
+  color: var(--accent);
+  border-color: var(--accent);
+}
 .plain-block__render :deep(.plain-mermaid-block svg),
 .plain-block__render :deep(.plain-plantuml-block img),
 .plain-block__render :deep(.plain-whiteboard-block svg) {
+  display: block;
   max-width: 100%;
   height: auto;
+  margin-left: var(--media-margin-left, 0);
+  margin-right: var(--media-margin-right, auto);
+}
+.plain-block__render :deep(p:has(> img:only-child)),
+.plain-block__render :deep(.katex-display),
+.plain-block__render :deep(.katex-display > .katex) {
+  text-align: var(--media-align, left);
 }
 .plain-block__render :deep(.plain-whiteboard-block) {
   border: 1px solid var(--border);

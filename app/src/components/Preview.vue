@@ -1309,6 +1309,15 @@ defineExpose({ scrollToLine, openSearch });
 }
 :where(.preview-content) blockquote > :first-child { margin-top: 0; }
 :where(.preview-content) blockquote > :last-child { margin-bottom: 0; }
+/* #678 — Align list markers inside blockquotes with plain blockquote text. */
+:where(.preview-content) blockquote ul,
+:where(.preview-content) blockquote ol {
+  padding-left: 1.3em;
+  margin: 0.35em 0;
+}
+:where(.preview-content) blockquote ul.contains-task-list {
+  padding-left: 0;
+}
 :where(.preview-content) ul,
 :where(.preview-content) ol {
   padding-left: 1.8em;
@@ -1362,6 +1371,10 @@ defineExpose({ scrollToLine, openSearch });
   border-top: 1px solid var(--hairline);
   margin: 2em 0;
 }
+:where(.preview-content) p:has(> img:only-child),
+:where(.preview-content) p:has(> a:only-child > img:only-child) {
+  text-align: var(--media-align, left);
+}
 :where(.preview-content) img {
   max-width: 100%;
   border-radius: 4px;
@@ -1373,7 +1386,7 @@ defineExpose({ scrollToLine, openSearch });
 }
 :where(.preview-content) .mermaid-block {
   display: flex;
-  justify-content: flex-start;
+  justify-content: var(--media-justify, flex-start);
   margin: 1.5em 0;
   cursor: zoom-in;
   transition: opacity 0.15s;
@@ -1381,8 +1394,12 @@ defineExpose({ scrollToLine, openSearch });
 /* v4.10 #163 — PlantUML server-rendered diagrams. */
 :where(.preview-content) .plantuml-block {
   display: flex;
-  justify-content: center;
+  justify-content: var(--media-justify, flex-start);
   margin: 1.5em 0;
+}
+:where(.preview-content) .katex-display,
+:where(.preview-content) .katex-display > .katex {
+  text-align: var(--media-align, left);
 }
 :where(.preview-content) .plantuml-block img {
   max-width: 100%;
