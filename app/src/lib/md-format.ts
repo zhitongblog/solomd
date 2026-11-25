@@ -644,11 +644,15 @@ function toggleUnorderedList(doc: string, from: number, to: number): FormatEdit 
             }
           }
           const hasNonUl = Array.from(siblings).some((i) => !UL.test(splitLine(lines[i].text).rest));
-          if (siblings.size > 1 && (!UL.test(cur.rest) || hasNonUl)) {
+          if (siblings.size > 1) {
+            const removeAll = UL.test(cur.rest) && !hasNonUl;
             const rewritten = lines.slice(first, last + 1).map((l, idx) => {
               const lineIdx = first + idx;
               if (!siblings.has(lineIdx)) return l.text;
               const info = splitLine(l.text);
+              if (removeAll) {
+                return `${info.q}${info.rest.replace(UL, '$1')}`;
+              }
               const body = info.rest.replace(ANY_LIST, '').replace(/^[ \t]*/, '');
               return `${normalizeQuotePrefix(info.q)}${info.ind}- ${body}`;
             });
@@ -784,12 +788,16 @@ function toggleOrderedList(doc: string, from: number, to: number): FormatEdit {
             }
           }
           const hasNonOl = Array.from(siblings).some((i) => !OL.test(splitLine(lines[i].text).rest));
-          if (siblings.size > 1 && (!OL.test(cur.rest) || hasNonOl)) {
+          if (siblings.size > 1) {
+            const removeAll = OL.test(cur.rest) && !hasNonOl;
             let num = 1;
             const rewritten = lines.slice(first, last + 1).map((l, idx) => {
               const lineIdx = first + idx;
               if (!siblings.has(lineIdx)) return l.text;
               const info = splitLine(l.text);
+              if (removeAll) {
+                return `${info.q}${info.rest.replace(OL, '$1')}`;
+              }
               const body = info.rest.replace(ANY_LIST, '').replace(/^[ \t]*/, '');
               return `${normalizeQuotePrefix(info.q)}${info.ind}${num++}. ${body}`;
             });

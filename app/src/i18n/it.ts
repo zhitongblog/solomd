@@ -2402,6 +2402,10 @@ export const it: I18n = {
       webdavPush: 'Sincronizzazione WebDAV: carica area di lavoro',
       webdavPull: 'Sincronizzazione WebDAV: scarica area di lavoro',
       webdavSettings: 'Sincronizzazione WebDAV: impostazioni…',
+      cloudApiPush: 'API Cloud: Carica sul server cloud',
+      cloudApiPull: 'API Cloud: Scarica dal server cloud',
+      cloudVaultPush: 'Cartella cloud locale: Carica nella cartella di sincronizzazione',
+      cloudVaultPull: 'Cartella cloud locale: Ripristina dalla cartella di sincronizzazione',
     },
     note: {
       copyGitUrl: 'Copia URL Git della nota',

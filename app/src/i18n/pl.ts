@@ -2419,6 +2419,10 @@ export const pl: I18n = {
       webdavPush: 'Synchronizacja WebDAV: wyślij obszar roboczy',
       webdavPull: 'Synchronizacja WebDAV: pobierz obszar roboczy',
       webdavSettings: 'Synchronizacja WebDAV: ustawienia…',
+      cloudApiPush: 'API dysku w chmurze: Wyślij na serwer w chmurze',
+      cloudApiPull: 'API dysku w chmurze: Pobierz z serwera w chmurze',
+      cloudVaultPush: 'Lokalny folder w chmurze: Wyślij do folderu synchronizacji',
+      cloudVaultPull: 'Lokalny folder w chmurze: Przywróć z folderu synchronizacji',
     },
     note: {
       copyGitUrl: 'Kopiuj adres URL Git notatki',

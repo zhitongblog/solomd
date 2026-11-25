@@ -1103,7 +1103,7 @@ function onSelectPdfFont(v: string) {
 <template>
   <DsModal
     :model-value="open"
-    :title="`${t('settings.title')} (${(settings.deviceId || '').slice(0, 8)})`"
+    :title="t('settings.title')"
     width="984px"
     resizable
     draggable
@@ -1113,6 +1113,18 @@ function onSelectPdfFont(v: string) {
     class="settings-modal"
     @update:model-value="emit('close')"
   >
+    <template #header>
+      <div class="settings-modal__title-wrap">
+        <h2 class="ds-modal__title">{{ t('settings.title') }}</h2>
+        <span
+          v-if="settings.deviceId"
+          class="settings-modal__device-id"
+          :title="settings.deviceId"
+        >
+          {{ settings.language === 'zh' ? '设备ID：' : 'Device ID: ' }}{{ settings.deviceId.slice(0, 8) }}
+        </span>
+      </div>
+    </template>
       <div class="settings__search">
         <input
           ref="searchInput"
@@ -4497,5 +4509,21 @@ input[type='range']:disabled {
 }
 .ds-modal.settings-modal .settings__body > div[data-cat] :is(h3, h4) {
   text-align: left;
+}
+.ds-modal.settings-modal .settings-modal__title-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+.ds-modal.settings-modal .settings-modal__device-id {
+  font-size: 11px;
+  font-weight: 400;
+  font-family: var(--font-mono);
+  color: var(--text-3);
+  opacity: 0.72;
+  letter-spacing: 0.01em;
+  user-select: text;
+  white-space: nowrap;
 }
 </style>

@@ -2402,6 +2402,10 @@ export const ko: I18n = {
       webdavPush: 'WebDAV 동기화: 작업 공간 업로드',
       webdavPull: 'WebDAV 동기화: 작업 공간 다운로드',
       webdavSettings: 'WebDAV 동기화: 설정…',
+      cloudApiPush: '클라우드 드라이브 API: 클라우드 서버에 업로드',
+      cloudApiPull: '클라우드 드라이브 API: 클라우드 서버에서 다운로드',
+      cloudVaultPush: '로컬 클라우드 폴더: 동기화 폴더에 업로드',
+      cloudVaultPull: '로컬 클라우드 폴더: 동기화 폴더에서 복원',
     },
     note: {
       copyGitUrl: '노트 Git URL 복사',

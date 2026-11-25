@@ -350,5 +350,17 @@ test('switching ordered/unordered list skips indented fenced code blocks inside 
   assert.equal(run(olWithCode, 'ul'), ulWithCode);
 });
 
+test('toggling off an ordered or unordered list removes markers from all sibling items in the group', () => {
+  assert.equal(run('1. a\n2. b|\n3. c', 'ol'), 'a\nb|\nc');
+  assert.equal(run('1. a|\n2. b\n3. c', 'ol'), 'a|\nb\nc');
+  assert.equal(run('- a\n- b|\n- c', 'ul'), 'a\nb|\nc');
+  assert.equal(run('- a|\n- b\n- c', 'ul'), 'a|\nb\nc');
+  // Nested child items under siblings remain intact while top-level siblings unwrap
+  assert.equal(run('1. a|\n   - child\n2. b', 'ol'), 'a|\n   - child\nb');
+  // Inside a blockquote
+  assert.equal(run('> 1. 甲\n> 2. 乙|\n> 3. 丙', 'ol'), '> 甲\n> 乙|\n> 丙');
+  assert.equal(run('> - 甲\n> - 乙|\n> - 丙', 'ul'), '> 甲\n> 乙|\n> 丙');
+});
+
 
 

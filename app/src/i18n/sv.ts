@@ -2419,6 +2419,10 @@ export const sv: I18n = {
       webdavPush: 'WebDAV-synk: ladda upp arbetsyta',
       webdavPull: 'WebDAV-synk: ladda ner arbetsyta',
       webdavSettings: 'WebDAV-synk: inställningar…',
+      cloudApiPush: 'Molnlagrings-API: Ladda upp till molnserver',
+      cloudApiPull: 'Molnlagrings-API: Ladda ner från molnserver',
+      cloudVaultPush: 'Lokal molnmapp: Ladda upp till synkmapp',
+      cloudVaultPull: 'Lokal molnmapp: Återställ från synkmapp',
     },
     note: {
       copyGitUrl: 'Kopiera anteckningens Git-URL',

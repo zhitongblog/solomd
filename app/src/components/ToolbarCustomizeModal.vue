@@ -7,9 +7,11 @@ import { useSettingsStore } from '../stores/settings';
 import { useCommands } from '../composables/useCommands';
 import {
   ALL_TOOLBAR_ITEMS,
+  TOOLBAR_EMOJI_ICON_OPTIONS,
   TOOLBAR_ICON_OPTIONS,
   commandCategoryOf,
   defaultIconForCommand,
+  isCustomGlyphIcon,
   normalizeToolbarItems,
   type ToolbarItemId,
 } from '../lib/toolbar-items';
@@ -34,6 +36,8 @@ const categoryFilter = ref<string>('all');
 const searchQuery = ref('');
 const selectedAvailId = ref<ToolbarItemId | null>(null);
 const selectedActiveId = ref<ToolbarItemId | null>(null);
+const iconTab = ref<'mono' | 'color'>('mono');
+const customGlyphInput = ref('');
 
 const activeItems = computed<ToolbarItemId[]>(() => normalizeToolbarItems(settings.toolbarItems));
 const activeSet = computed(() => new Set<string>(activeItems.value));
@@ -118,7 +122,18 @@ function moveSelected(delta: -1 | 1) {
 
 function pickIcon(icon: string) {
   if (!selectedActiveId.value) return;
-  settings.setToolbarItemIcon(selectedActiveId.value, icon);
+  const trimmed = icon.trim();
+  if (!trimmed) return;
+  settings.setToolbarItemIcon(selectedActiveId.value, trimmed);
+}
+
+function applyCustomGlyph() {
+  const val = customGlyphInput.value.trim();
+  if (!val || !selectedActiveId.value) return;
+  // Take up to 2 grapheme units (handles surrogate-pair emojis cleanly).
+  const chars = Array.from(val).slice(0, 2).join('');
+  pickIcon(chars);
+  customGlyphInput.value = '';
 }
 
 const categories = computed(() => [
@@ -138,7 +153,7 @@ const categories = computed(() => [
   <DsModal
     :model-value="props.modelValue"
     :title="t('toolbarCustom.title')"
-    width="760px"
+    width="840px"
     @update:model-value="emit('update:modelValue', $event)"
   >
     <div class="tcm">
@@ -224,27 +239,80 @@ const categories = computed(() => [
               :class="{ 'is-selected': selectedActiveId === id }"
               @click="selectedActiveId = id"
             >
-              <Icon :name="iconFor(id)" :size="14" />
+              <span v-if="isCustomGlyphIcon(iconFor(id))" class="tcm__row-glyph">{{ iconFor(id) }}</span>
+              <Icon v-else :name="iconFor(id)" :size="15" />
               <span class="tcm__row-label">{{ labelFor(id) }}</span>
             </button>
           </div>
+        </div>
+      </div>
 
-          <div v-if="selectedActiveId" class="tcm__icons">
-            <div class="tcm__icons-label">{{ t('toolbarCustom.pickIcon') }}</div>
-            <div class="tcm__icon-grid">
+      <!-- #696 — Full-width enlarged icon picker with monochrome + colorful icons + custom emoji -->
+      <div v-if="selectedActiveId" class="tcm__icons">
+        <div class="tcm__icons-head">
+          <span class="tcm__icons-label">
+            {{ t('toolbarCustom.pickIcon') }} · <strong>{{ labelFor(selectedActiveId) }}</strong>
+          </span>
+          <div class="tcm__icons-tabs">
+            <button
+              type="button"
+              class="tcm__tab"
+              :class="{ 'is-on': iconTab === 'mono' }"
+              @click="iconTab = 'mono'"
+            >
+              {{ settings.language === 'zh' ? '单色图标' : 'Monochrome' }}
+            </button>
+            <button
+              type="button"
+              class="tcm__tab"
+              :class="{ 'is-on': iconTab === 'color' }"
+              @click="iconTab = 'color'"
+            >
+              {{ settings.language === 'zh' ? '彩色图标' : 'Colorful' }}
+            </button>
+            <form class="tcm__custom-glyph" @submit.prevent="applyCustomGlyph">
+              <input
+                v-model="customGlyphInput"
+                type="text"
+                maxlength="4"
+                class="tcm__glyph-input"
+                :placeholder="settings.language === 'zh' ? '自定义 Emoji…' : 'Custom emoji…'"
+              />
               <button
-                v-for="ic in TOOLBAR_ICON_OPTIONS"
-                :key="ic"
-                type="button"
-                class="tcm__icon-btn"
-                :class="{ 'is-on': iconFor(selectedActiveId) === ic }"
-                :title="ic"
-                @click="pickIcon(ic)"
+                type="submit"
+                class="tcm__glyph-apply"
+                :disabled="!customGlyphInput.trim()"
               >
-                <Icon :name="ic" :size="14" />
+                {{ settings.language === 'zh' ? '应用' : 'Apply' }}
               </button>
-            </div>
+            </form>
           </div>
+        </div>
+        <div v-if="iconTab === 'mono'" class="tcm__icon-grid">
+          <button
+            v-for="ic in TOOLBAR_ICON_OPTIONS"
+            :key="ic"
+            type="button"
+            class="tcm__icon-btn"
+            :class="{ 'is-on': iconFor(selectedActiveId) === ic }"
+            :title="ic"
+            @click="pickIcon(ic)"
+          >
+            <Icon :name="ic" :size="18" />
+          </button>
+        </div>
+        <div v-else class="tcm__icon-grid">
+          <button
+            v-for="em in TOOLBAR_EMOJI_ICON_OPTIONS"
+            :key="em"
+            type="button"
+            class="tcm__icon-btn tcm__icon-btn--emoji"
+            :class="{ 'is-on': iconFor(selectedActiveId) === em }"
+            :title="em"
+            @click="pickIcon(em)"
+          >
+            <span>{{ em }}</span>
+          </button>
         </div>
       </div>
     </div>
@@ -385,36 +453,110 @@ const categories = computed(() => [
   justify-content: center;
   gap: 8px;
 }
+.tcm__row-glyph {
+  width: 15px;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1;
+  flex-shrink: 0;
+}
 .tcm__icons {
   border: 1px solid var(--hairline);
-  border-radius: 8px;
-  padding: 8px;
+  border-radius: 10px;
+  padding: 12px;
   background: var(--fill-1);
 }
+.tcm__icons-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
 .tcm__icons-label {
-  font-size: 11.5px;
+  font-size: 12.5px;
   color: var(--text-2);
-  margin-bottom: 6px;
+}
+.tcm__icons-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tcm__tab {
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-2);
+  font-size: 12px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.tcm__tab.is-on {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg));
+  font-weight: 500;
+}
+.tcm__custom-glyph {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 4px;
+}
+.tcm__glyph-input {
+  width: 106px;
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 12px;
+  padding: 4px 7px;
+}
+.tcm__glyph-apply {
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 12px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+.tcm__glyph-apply:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 .tcm__icon-grid {
   display: grid;
-  grid-template-columns: repeat(10, minmax(0, 1fr));
-  gap: 4px;
+  grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
+  gap: 6px;
+  max-height: 156px;
+  overflow-y: auto;
+  padding: 2px;
 }
 .tcm__icon-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 26px;
+  height: 36px;
   border: 1px solid var(--hairline);
-  border-radius: 5px;
+  border-radius: 7px;
   background: var(--bg);
-  color: var(--text-2);
+  color: var(--text);
   cursor: pointer;
+  transition: border-color 120ms ease, background-color 120ms ease, transform 120ms ease;
+}
+.tcm__icon-btn:hover {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--hairline));
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg));
+}
+.tcm__icon-btn--emoji {
+  font-size: 19px;
+  line-height: 1;
 }
 .tcm__icon-btn.is-on {
   border-color: var(--accent);
   color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 12%, var(--bg));
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg));
 }
 </style>

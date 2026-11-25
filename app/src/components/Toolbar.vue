@@ -11,6 +11,7 @@ import { useTilesStore } from '../stores/tiles';
 import { useGitQuickActions } from '../composables/useGitQuickActions';
 import {
   defaultIconForCommand,
+  isCustomGlyphIcon,
   normalizeToolbarItems,
   type ToolbarItemId,
 } from '../lib/toolbar-items';
@@ -1309,7 +1310,8 @@ onBeforeUnmount(() => {
         :title="item.label"
         :aria-label="item.label"
       >
-        <Icon :name="item.icon" />
+        <span v-if="isCustomGlyphIcon(item.icon)" class="icon-btn__glyph">{{ item.icon }}</span>
+        <Icon v-else :name="item.icon" />
         <span v-if="settings.toolbarShowLabels && !dockInTitlebar" class="icon-btn__label">{{ item.label }}</span>
       </button>
 
@@ -2219,5 +2221,14 @@ onBeforeUnmount(() => {
   color: var(--text-3);
   font-size: 12px;
   text-align: center;
+}
+.icon-btn__glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  font-size: 14px;
+  line-height: 1;
 }
 </style>

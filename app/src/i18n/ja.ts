@@ -2402,6 +2402,10 @@ export const ja: I18n = {
       webdavPush: 'WebDAV 同期: ワークスペースをアップロード',
       webdavPull: 'WebDAV 同期: ワークスペースをダウンロード',
       webdavSettings: 'WebDAV 同期: 設定…',
+      cloudApiPush: 'クラウドドライブ API: クラウドサーバーにアップロード',
+      cloudApiPull: 'クラウドドライブ API: クラウドサーバーからダウンロード',
+      cloudVaultPush: 'ローカルクラウドフォルダ: 同期フォルダにアップロード',
+      cloudVaultPull: 'ローカルクラウドフォルダ: 同期フォルダから復元',
     },
     note: {
       copyGitUrl: 'ノートの Git URL をコピー',

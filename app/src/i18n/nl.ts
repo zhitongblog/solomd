@@ -2419,6 +2419,10 @@ export const nl: I18n = {
       webdavPush: 'WebDAV-synchronisatie: werkruimte uploaden',
       webdavPull: 'WebDAV-synchronisatie: werkruimte downloaden',
       webdavSettings: 'WebDAV-synchronisatie: instellingen…',
+      cloudApiPush: 'Cloud Drive API: Uploaden naar cloudserver',
+      cloudApiPull: 'Cloud Drive API: Downloaden van cloudserver',
+      cloudVaultPush: 'Lokale cloudmap: Uploaden naar synchronisatiemap',
+      cloudVaultPull: 'Lokale cloudmap: Herstellen vanuit synchronisatiemap',
     },
     note: {
       copyGitUrl: 'Git-URL van notitie kopiëren',

@@ -2406,6 +2406,10 @@ export const zh: I18n = {
       webdavPush: 'WebDAV 同步:上传当前工作区',
       webdavPull: 'WebDAV 同步:下载到当前工作区',
       webdavSettings: 'WebDAV 同步:打开同步设置…',
+      cloudApiPush: '网盘直连 API:上传到网盘服务器',
+      cloudApiPull: '网盘直连 API:从网盘服务器下载',
+      cloudVaultPush: '本地网盘目录:上传到网盘同步目录',
+      cloudVaultPull: '本地网盘目录:从网盘同步目录还原',
     },
     note: {
       copyGitUrl: '复制笔记 Git 链接',

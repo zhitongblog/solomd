@@ -413,47 +413,103 @@ export function indentCodeBlockPaste(
   const prefixBefore = doc.slice(firstLineStart, selFrom);
 
   if (!matchedIndent) {
-    // When pasting a Markdown table onto a list/quote soft-break indented line
-    // (e.g. `1. item\n   |` or `- item\n  |` or `> - item\n>   |`), align every
-    // subsequent row of the pasted table to the same indentation so both Live
-    // Edit and Preview render it cleanly inside the enclosing list item.
-    if (/^(?:[ \t]*(?:>[ \t]?)*)[ \t]+$/.test(prefixBefore)) {
-      const normalizedTable = rawText.replace(/\r\n?/g, '\n');
-      const tableLines = normalizedTable.split('\n');
+    const normalizedPaste = rawText.replace(/\r\n?/g, '\n');
+
+    // Helper: align a Markdown table to a given continuation prefix (`   `, `>   `, etc.).
+    const alignPastedTable = (contPrefix: string): string | null => {
+      const tableLines = normalizedPaste.split('\n');
       const nonEmpty = tableLines.filter((l) => l.trim().length > 0);
       const isTableSep = (s: string) =>
         /^[ \t]*\|?[ \t]*:?-{1,}:?[ \t]*(?:\|[ \t]*:?-{1,}:?[ \t]*)+\|?[ \t]*$/.test(s) ||
         /^[ \t]*\|[ \t]*:?-{1,}:?[ \t]*\|[ \t]*$/.test(s);
       if (
-        nonEmpty.length >= 2 &&
-        nonEmpty[0].includes('|') &&
-        !isTableSep(nonEmpty[0]) &&
-        isTableSep(nonEmpty[1])
+        nonEmpty.length < 2 ||
+        !nonEmpty[0].includes('|') ||
+        isTableSep(nonEmpty[0]) ||
+        !isTableSep(nonEmpty[1])
       ) {
-        // Dedent any common leading spaces/tabs from the pasted table first so
-        // copying a table from one list depth into another never double-indents.
-        let sharedLead: string | null = null;
-        for (const l of nonEmpty) {
-          const lead = /^[ \t]*/.exec(l)?.[0] ?? '';
-          if (sharedLead === null) {
-            sharedLead = lead;
-          } else {
-            let k = 0;
-            while (k < sharedLead.length && k < lead.length && sharedLead[k] === lead[k]) k++;
-            sharedLead = sharedLead.slice(0, k);
-          }
+        return null;
+      }
+      // Dedent any common leading spaces/tabs from the pasted table first so
+      // copying a table from one list depth into another never double-indents.
+      let sharedLead: string | null = null;
+      for (const l of nonEmpty) {
+        const lead = /^[ \t]*/.exec(l)?.[0] ?? '';
+        if (sharedLead === null) {
+          sharedLead = lead;
+        } else {
+          let k = 0;
+          while (k < sharedLead.length && k < lead.length && sharedLead[k] === lead[k]) k++;
+          sharedLead = sharedLead.slice(0, k);
         }
-        const stripLen = sharedLead?.length ?? 0;
-        return tableLines
+      }
+      const stripLen = sharedLead?.length ?? 0;
+      return tableLines
+        .map((line, idx) => {
+          const stripped = stripLen > 0 && line.length >= stripLen ? line.slice(stripLen) : line;
+          if (idx === 0) return stripped;
+          if (stripped.length === 0) return '';
+          return `${contPrefix}${stripped}`;
+        })
+        .join('\n');
+    };
+
+    // 1. Pasting onto a list/quote soft-break indented line (e.g. `1. item\n   |`,
+    //    `- item\n  |`, or `> - item\n>   |`): align Markdown tables (with dedent)
+    //    and multi-line plain text so subsequent lines stay aligned as soft breaks
+    //    inside the enclosing list item.
+    if (/^(?:[ \t]*(?:>[ \t]?)*)[ \t]+$/.test(prefixBefore)) {
+      const alignedTable = alignPastedTable(prefixBefore);
+      if (alignedTable !== null) return alignedTable;
+
+      if (normalizedPaste.includes('\n')) {
+        // Only treat this indented line as a list soft-break when an earlier
+        // non-blank line in the same block is a list item (or continuation).
+        const curLineIdx = doc.slice(0, firstLineStart).split('\n').length - 1;
+        let underList = false;
+        for (let i = curLineIdx - 1; i >= 0; i--) {
+          const prev = lines[i];
+          if (prev.trim() === '') break;
+          if (/^(?:[ \t]*(?:>[ \t]?)*)[ \t]*(?:[-*+]|\d+[.)])[ \t]+/.test(prev)) {
+            underList = true;
+            break;
+          }
+          if (!/^(?:[ \t]*(?:>[ \t]?)*)[ \t]+/.test(prev)) break;
+        }
+        if (underList) {
+          const pasteLines = normalizedPaste.split('\n');
+          return pasteLines
+            .map((line, idx) => {
+              if (idx === 0) return line;
+              if (line.length === 0) return '';
+              return `${prefixBefore}${line}`;
+            })
+            .join('\n');
+        }
+      }
+    }
+
+    // 2. Pasting multi-line content directly inside a list item line
+    //    (e.g. `- item|`, `1. |`, `- [ ] task|`, `> 1. item|`): align lines
+    //    from line 2 onward to the list item's content column as soft breaks.
+    if (normalizedPaste.includes('\n')) {
+      const listMatch = /^((?:[ \t]*(?:>[ \t]?)*))([ \t]*)((?:[-*+]|\d+[.)])[ \t]+)/.exec(prefixBefore);
+      if (listMatch) {
+        const [, quotePrefix, indent, marker] = listMatch;
+        const contPrefix = `${quotePrefix}${indent}${' '.repeat(marker.length)}`;
+        const alignedTable = alignPastedTable(contPrefix);
+        if (alignedTable !== null) return alignedTable;
+        const pasteLines = normalizedPaste.split('\n');
+        return pasteLines
           .map((line, idx) => {
-            const stripped = stripLen > 0 && line.length >= stripLen ? line.slice(stripLen) : line;
-            if (idx === 0) return stripped;
-            if (stripped.length === 0) return '';
-            return `${prefixBefore}${stripped}`;
+            if (idx === 0) return line;
+            if (line.length === 0) return '';
+            return `${contPrefix}${line}`;
           })
           .join('\n');
       }
     }
+
     return rawText;
   }
 

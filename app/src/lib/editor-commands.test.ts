@@ -218,9 +218,33 @@ test('indentCodeBlockPaste aligns every row of a pasted Markdown table to list s
     '| A | B |\n>   | --- | --- |\n>   | 1 | 2 |',
   );
 
-  // Pasting plain non-table text on a soft-break line is untouched
+  // Multi-line plain text pasted on a list soft-break line aligns subsequent lines as soft breaks
   assert.equal(
     indentCodeBlockPaste(olDoc, olDoc.length, olDoc.length, 'line 1\nline 2'),
+    'line 1\n   line 2',
+  );
+
+  // Multi-line plain text pasted directly inside a list item aligns line 2+ to the item content column
+  const olItem = '1. 第一项';
+  assert.equal(
+    indentCodeBlockPaste(olItem, olItem.length, olItem.length, '补充一\n补充二\n\n补充三'),
+    '补充一\n   补充二\n\n   补充三',
+  );
+  const ulItem = '  - 子项 ';
+  assert.equal(
+    indentCodeBlockPaste(ulItem, ulItem.length, ulItem.length, 'alpha\nbeta'),
+    'alpha\n    beta',
+  );
+  const quoteOlItem = '> 1. 引用项 ';
+  assert.equal(
+    indentCodeBlockPaste(quoteOlItem, quoteOlItem.length, quoteOlItem.length, 'a\nb'),
+    'a\n>    b',
+  );
+
+  // Pasting plain text on a non-list line stays completely untouched
+  const plainDoc = '普通段落';
+  assert.equal(
+    indentCodeBlockPaste(plainDoc, plainDoc.length, plainDoc.length, 'line 1\nline 2'),
     'line 1\nline 2',
   );
 });

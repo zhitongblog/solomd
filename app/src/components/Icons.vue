@@ -316,7 +316,7 @@ defineProps<{ name: string; size?: number }>();
     <template v-else-if="name === 'keyboard-hide'">
       <rect x="2" y="5" width="20" height="11" rx="2" /><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M7 12.5h10M9 19.5l3 2 3-2" />
     </template>
-    <template v-else-if="name === 'sparkle'">
+    <template v-else-if="name === 'sparkle' || name === 'sparkles'">
       <path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z" />
     </template>
     <template v-else-if="name === 'sync'">
@@ -440,6 +440,13 @@ defineProps<{ name: string; size?: number }>();
       <circle cx="6" cy="18" r="2.5" />
       <line x1="6" y1="8.5" x2="6" y2="15.5" />
       <path d="M18 10.5v1a4 4 0 0 1-4 4H6" />
+    </template>
+    <template v-else-if="name === 'bookmark'">
+      <path d="M6 4h12a1 1 0 0 1 1 1v16l-7-4-7 4V5a1 1 0 0 1 1-1z" />
+    </template>
+    <template v-else-if="name === 'terminal'">
+      <polyline points="4 17 10 11 4 5" />
+      <line x1="12" y1="19" x2="20" y2="19" />
     </template>
   </svg>
 </template>

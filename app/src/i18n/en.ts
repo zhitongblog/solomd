@@ -2431,6 +2431,10 @@ export const en = {
       webdavPush: 'WebDAV Sync: Upload Workspace Now',
       webdavPull: 'WebDAV Sync: Download Workspace Now',
       webdavSettings: 'WebDAV Sync: Settings…',
+      cloudApiPush: 'Cloud Drive API: Upload to Cloud Server',
+      cloudApiPull: 'Cloud Drive API: Download from Cloud Server',
+      cloudVaultPush: 'Local Cloud Folder: Upload to Sync Folder',
+      cloudVaultPull: 'Local Cloud Folder: Restore from Sync Folder',
     },
     note: {
       copyGitUrl: 'Copy Note Git URL',

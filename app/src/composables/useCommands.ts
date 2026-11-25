@@ -947,6 +947,186 @@ export function useCommands(): Command[] {
       hint: 'Configure WebDAV server URL, credentials, and remote directory',
       run: () => window.dispatchEvent(new CustomEvent('solomd:open-settings', { detail: { section: 'sync' } })),
     },
+    {
+      id: 'sync.cloudApiPush',
+      title: 'Cloud Drive API: Upload to Cloud Server',
+      hint: 'Upload the current workspace directly via the configured Cloud Drive API',
+      run: async () => {
+        if (!ws.currentFolder) {
+          toasts.warning(settings.language === 'zh' ? '请先打开一个工作区文件夹' : 'Open a workspace folder first');
+          return;
+        }
+        const token =
+          settings.cloudApiProvider === 'r2'
+            ? settings.cloudR2Endpoint.trim() &&
+              settings.cloudR2Bucket.trim() &&
+              settings.cloudR2AccessKeyId.trim() &&
+              settings.cloudR2SecretAccessKey.trim()
+              ? JSON.stringify({
+                  endpoint: settings.cloudR2Endpoint.trim(),
+                  bucket: settings.cloudR2Bucket.trim(),
+                  access_key_id: settings.cloudR2AccessKeyId.trim(),
+                  secret_access_key: settings.cloudR2SecretAccessKey.trim(),
+                })
+              : ''
+            : settings.cloudApiToken.trim();
+        if (!token) {
+          window.dispatchEvent(new CustomEvent('solomd:open-settings', { detail: { section: 'sync' } }));
+          toasts.info(
+            settings.language === 'zh'
+              ? '请先在设置 › 同步中配置网盘直连 API 凭据'
+              : 'Configure your Cloud Drive API credentials in Settings › Sync first',
+          );
+          return;
+        }
+        try {
+          const { invoke } = await import('@tauri-apps/api/core');
+          const res = await invoke<{ uploaded: number; message: string }>('cloud_api_push_workspace', {
+            workspace: ws.currentFolder,
+            provider: settings.cloudApiProvider,
+            accessToken: token,
+            remotePath: settings.cloudApiRemotePath || '/SoloMD',
+            passphrase: settings.cloudApiPassphrase,
+            syncMode: settings.cloudApiSyncMode,
+            encrypted: settings.cloudApiEncrypted,
+            autoWorkspaceSubdir: settings.cloudApiAutoSubdir,
+            categorizeFiles: settings.cloudApiCategorizeFiles,
+            maxVersions: settings.syncMaxVersions,
+          });
+          window.dispatchEvent(new CustomEvent('solomd:snapshot-saved'));
+          toasts.success(res.message);
+        } catch (e) {
+          toasts.warning(`Cloud API: ${e}`);
+        }
+      },
+    },
+    {
+      id: 'sync.cloudApiPull',
+      title: 'Cloud Drive API: Download from Cloud Server',
+      hint: 'Download and restore the current workspace from the configured Cloud Drive API',
+      run: async () => {
+        if (!ws.currentFolder) {
+          toasts.warning(settings.language === 'zh' ? '请先打开一个工作区文件夹' : 'Open a workspace folder first');
+          return;
+        }
+        const token =
+          settings.cloudApiProvider === 'r2'
+            ? settings.cloudR2Endpoint.trim() &&
+              settings.cloudR2Bucket.trim() &&
+              settings.cloudR2AccessKeyId.trim() &&
+              settings.cloudR2SecretAccessKey.trim()
+              ? JSON.stringify({
+                  endpoint: settings.cloudR2Endpoint.trim(),
+                  bucket: settings.cloudR2Bucket.trim(),
+                  access_key_id: settings.cloudR2AccessKeyId.trim(),
+                  secret_access_key: settings.cloudR2SecretAccessKey.trim(),
+                })
+              : ''
+            : settings.cloudApiToken.trim();
+        if (!token) {
+          window.dispatchEvent(new CustomEvent('solomd:open-settings', { detail: { section: 'sync' } }));
+          toasts.info(
+            settings.language === 'zh'
+              ? '请先在设置 › 同步中配置网盘直连 API 凭据'
+              : 'Configure your Cloud Drive API credentials in Settings › Sync first',
+          );
+          return;
+        }
+        try {
+          const { invoke } = await import('@tauri-apps/api/core');
+          const res = await invoke<{ downloaded: number; message: string }>('cloud_api_pull_workspace', {
+            workspace: ws.currentFolder,
+            provider: settings.cloudApiProvider,
+            accessToken: token,
+            remotePath: settings.cloudApiRemotePath || '/SoloMD',
+            passphrase: settings.cloudApiPassphrase,
+            syncMode: settings.cloudApiSyncMode,
+            encrypted: settings.cloudApiEncrypted,
+            autoWorkspaceSubdir: settings.cloudApiAutoSubdir,
+            categorizeFiles: settings.cloudApiCategorizeFiles,
+            maxVersions: settings.syncMaxVersions,
+          });
+          window.dispatchEvent(new CustomEvent('solomd:remote-pulled'));
+          window.dispatchEvent(new CustomEvent('solomd:snapshot-saved'));
+          toasts.success(res.message);
+        } catch (e) {
+          toasts.warning(`Cloud API: ${e}`);
+        }
+      },
+    },
+    {
+      id: 'sync.cloudVaultPush',
+      title: 'Local Cloud Folder: Upload to Sync Folder',
+      hint: 'Upload the current workspace to the configured local cloud sync directory',
+      run: async () => {
+        if (!ws.currentFolder) {
+          toasts.warning(settings.language === 'zh' ? '请先打开一个工作区文件夹' : 'Open a workspace folder first');
+          return;
+        }
+        if (!settings.cloudVaultDir.trim()) {
+          window.dispatchEvent(new CustomEvent('solomd:open-settings', { detail: { section: 'sync' } }));
+          toasts.info(
+            settings.language === 'zh'
+              ? '请先在设置 › 同步中配置本地网盘同步目录'
+              : 'Configure your local cloud sync folder in Settings › Sync first',
+          );
+          return;
+        }
+        try {
+          const { invoke } = await import('@tauri-apps/api/core');
+          const res = await invoke<{ uploaded: number; message: string }>('cloud_vault_push_workspace', {
+            workspace: ws.currentFolder,
+            vaultDir: settings.cloudVaultDir,
+            passphrase: settings.cloudVaultPassphrase,
+            encrypted: settings.cloudVaultEncrypted,
+            autoWorkspaceSubdir: settings.cloudVaultAutoSubdir,
+            categorizeFiles: settings.cloudVaultCategorizeFiles,
+            maxVersions: settings.syncMaxVersions,
+          });
+          window.dispatchEvent(new CustomEvent('solomd:snapshot-saved'));
+          toasts.success(res.message);
+        } catch (e) {
+          toasts.warning(`Cloud Folder: ${e}`);
+        }
+      },
+    },
+    {
+      id: 'sync.cloudVaultPull',
+      title: 'Local Cloud Folder: Restore from Sync Folder',
+      hint: 'Restore the current workspace from the configured local cloud sync directory',
+      run: async () => {
+        if (!ws.currentFolder) {
+          toasts.warning(settings.language === 'zh' ? '请先打开一个工作区文件夹' : 'Open a workspace folder first');
+          return;
+        }
+        if (!settings.cloudVaultDir.trim()) {
+          window.dispatchEvent(new CustomEvent('solomd:open-settings', { detail: { section: 'sync' } }));
+          toasts.info(
+            settings.language === 'zh'
+              ? '请先在设置 › 同步中配置本地网盘同步目录'
+              : 'Configure your local cloud sync folder in Settings › Sync first',
+          );
+          return;
+        }
+        try {
+          const { invoke } = await import('@tauri-apps/api/core');
+          const res = await invoke<{ downloaded: number; message: string }>('cloud_vault_pull_workspace', {
+            workspace: ws.currentFolder,
+            vaultDir: settings.cloudVaultDir,
+            passphrase: settings.cloudVaultPassphrase,
+            encrypted: settings.cloudVaultEncrypted,
+            autoWorkspaceSubdir: settings.cloudVaultAutoSubdir,
+            categorizeFiles: settings.cloudVaultCategorizeFiles,
+            maxVersions: settings.syncMaxVersions,
+          });
+          window.dispatchEvent(new CustomEvent('solomd:remote-pulled'));
+          window.dispatchEvent(new CustomEvent('solomd:snapshot-saved'));
+          toasts.success(res.message);
+        } catch (e) {
+          toasts.warning(`Cloud Folder: ${e}`);
+        }
+      },
+    },
 
     {
       id: 'help.welcomeTour',

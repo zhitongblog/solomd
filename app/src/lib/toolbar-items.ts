@@ -66,29 +66,85 @@ export const ALL_TOOLBAR_ITEMS: ToolbarItemMeta[] = [
   { id: 'more', icon: 'more', labelKey: 'toolbarCustom.item.more', group: 'core' },
 ];
 
-/** #665 — Icon choices available in the custom toolbar icon picker. */
+/** #665 / #696 — Built-in monochrome SVG icon choices in the custom toolbar icon picker. */
 export const TOOLBAR_ICON_OPTIONS: string[] = [
   'sparkles',
   'upload',
   'download',
+  'cloud',
+  'sync',
+  'refresh',
+  'git',
   'export',
+  'share',
   'file',
   'folder',
   'save',
   'search',
   'code',
+  'codeblock',
   'list',
+  'task',
+  'table',
   'type',
   'eye',
   'sun',
+  'moon',
   'settings',
+  'wrench',
   'plus',
   'info',
   'maximize',
   'sidebar-right',
   'bookmark',
   'terminal',
+  'star',
+  'heart',
+  'tag',
+  'globe',
+  'plug',
+  'paperclip',
+  'pencil',
+  'home',
+  'check-circle',
+  'today',
+  'inbox',
+  'command',
 ];
+
+/** #696 — Curated colorful emoji icon choices for custom toolbar buttons. */
+export const TOOLBAR_EMOJI_ICON_OPTIONS: string[] = [
+  '☁️',
+  '⬆️',
+  '⬇️',
+  '🔄',
+  '📁',
+  '📝',
+  '💾',
+  '🔍',
+  '⚡',
+  '✨',
+  '📌',
+  '🔖',
+  '🏷️',
+  '📊',
+  '🎨',
+  '🌙',
+  '☀️',
+  '⚙️',
+  '🛠️',
+  '🚀',
+  '🤖',
+  '📚',
+  '✅',
+  '🔒',
+];
+
+/** True when a toolbar icon value is a custom emoji / glyph rather than an Icons.vue SVG name. */
+export function isCustomGlyphIcon(icon: string | undefined | null): boolean {
+  if (!icon) return false;
+  return !/^[a-z0-9-]+$/i.test(icon);
+}
 
 /** Map any command ID (`sync.webdavPush`, `export.html`, etc.) to a sensible default icon. */
 export function defaultIconForCommand(cmdId: string): string {

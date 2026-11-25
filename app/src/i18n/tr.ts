@@ -2419,6 +2419,10 @@ export const tr: I18n = {
       webdavPush: 'WebDAV Eşitleme: Çalışma Alanını Yükle',
       webdavPull: 'WebDAV Eşitleme: Çalışma Alanını İndir',
       webdavSettings: 'WebDAV Eşitleme: Ayarlar…',
+      cloudApiPush: 'Bulut Sürücü API: Bulut Sunucusuna Yükle',
+      cloudApiPull: 'Bulut Sürücü API: Bulut Sunucusundan İndir',
+      cloudVaultPush: 'Yerel Bulut Klasörü: Eşitleme Klasörüne Yükle',
+      cloudVaultPull: 'Yerel Bulut Klasörü: Eşitleme Klasöründen Geri Yükle',
     },
     note: {
       copyGitUrl: 'Notun Git URL\'sini Kopyala',

@@ -2402,6 +2402,10 @@ export const de: I18n = {
       webdavPush: 'WebDAV-Sync: Arbeitsbereich hochladen',
       webdavPull: 'WebDAV-Sync: Arbeitsbereich herunterladen',
       webdavSettings: 'WebDAV-Sync: Einstellungen…',
+      cloudApiPush: 'Cloud-Drive-API: Auf Cloud-Server hochladen',
+      cloudApiPull: 'Cloud-Drive-API: Vom Cloud-Server herunterladen',
+      cloudVaultPush: 'Lokaler Cloud-Ordner: In Sync-Ordner hochladen',
+      cloudVaultPull: 'Lokaler Cloud-Ordner: Aus Sync-Ordner wiederherstellen',
     },
     note: {
       copyGitUrl: 'Git-URL der Notiz kopieren',

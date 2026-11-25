@@ -452,5 +452,25 @@ describe('v5.3.6 feedback: table drag-select, Mermaid zoom, non-MD highlighting 
     assert.match(settingsPanel, /data-basics="navigation"[\s\S]{0,160}explorerDoubleClickFiles/);
     assert.match(settingsPanel, /data-basics="layout"[\s\S]{0,160}settings\.toolbarHidden/);
     assert.match(settingsPanel, /data-basics="appearance"[\s\S]{0,120}settings\.customCss/);
+
+    // #695: Cloud Drive API & Local Cloud Folder sync commands registered under sync category
+    const commandsSrc = fs.readFileSync(path.join(root, 'composables/useCommands.ts'), 'utf8');
+    assert.match(commandsSrc, /id: 'sync\.cloudApiPush'/);
+    assert.match(commandsSrc, /id: 'sync\.cloudApiPull'/);
+    assert.match(commandsSrc, /id: 'sync\.cloudVaultPush'/);
+    assert.match(commandsSrc, /id: 'sync\.cloudVaultPull'/);
+    assert.equal(commandCategoryOf('sync.cloudApiPush'), 'sync');
+    assert.equal(commandCategoryOf('sync.cloudVaultPull'), 'sync');
+
+    // #696: Enlarged custom toolbar icon picker with colorful emojis & custom glyph helper
+    const { TOOLBAR_ICON_OPTIONS, TOOLBAR_EMOJI_ICON_OPTIONS, isCustomGlyphIcon } = await import('./toolbar-items.ts');
+    assert.ok(TOOLBAR_ICON_OPTIONS.length >= 35);
+    assert.ok(TOOLBAR_EMOJI_ICON_OPTIONS.length >= 20);
+    assert.equal(isCustomGlyphIcon('upload'), false);
+    assert.equal(isCustomGlyphIcon('☁️'), true);
+
+    // #697: Settings modal header shows muted Device ID label instead of bold raw UUID in title
+    assert.match(settingsPanel, /settings-modal__device-id/);
+    assert.match(settingsPanel, /设备ID：/);
   });
 });

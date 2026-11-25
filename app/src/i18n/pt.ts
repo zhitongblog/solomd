@@ -2404,6 +2404,10 @@ export const pt: I18n = {
       webdavPush: 'Sincronização WebDAV: enviar espaço de trabalho',
       webdavPull: 'Sincronização WebDAV: baixar espaço de trabalho',
       webdavSettings: 'Sincronização WebDAV: configurações…',
+      cloudApiPush: 'API de Nuvem: Enviar para o servidor na nuvem',
+      cloudApiPull: 'API de Nuvem: Baixar do servidor na nuvem',
+      cloudVaultPush: 'Pasta local na nuvem: Enviar para a pasta de sincronização',
+      cloudVaultPull: 'Pasta local na nuvem: Restaurar da pasta de sincronização',
     },
     note: {
       copyGitUrl: 'Copiar URL Git da nota',
