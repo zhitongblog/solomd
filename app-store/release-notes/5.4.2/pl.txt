@@ -1,0 +1,8 @@
+SoloMD v5.4.2 — Synchronizacja wielourządzeniowa i usprawnienia edytora:
+
+• Naprawiono błąd synchronizacji w chmurze, który pomijał zdalne aktualizacje po wysłaniu innych plików z drugiego komputera (#700).
+• Dodano automatyczne pobieranie przy uruchomieniu aplikacji oraz podgląd postępu na pasku stanu (#701).
+• Wklejanie wielu linii w elementach listy wyrównuje kolejne linie; ponowne użycie skrótu listy usuwa format całej grupy.
+• Znaczniki w trybie czystego WYSIWYG pozostają ukryte w edytorze plain-block w Windows (#698).
+• Dodano polecenia synchronizacji API chmury i lokalnego folderu do paska narzędzi (#695) oraz powiększono wybór ikon (42 SVG, 24 emoji i własny znak) (#696).
+• Stonowano wygląd ID urządzenia w nagłówku Ustawień (#697) i poprawiono układ listy rozwijanej w Nawigacji (#702).

@@ -1,0 +1,8 @@
+SoloMD v5.4.2 — Multi-Device-Sync & Editor-Feinschliff:
+
+• Fehler behoben, bei dem Cloud-Sync auf einem zweiten Gerät nach dem Hochladen anderer Dateien entfernte Aktualisierungen beim Herunterladen übersprang (#700).
+• Automatischer Sync-Abruf beim App-Start für alle aktivierten Backends inklusive Live-Fortschritt in der Statusleiste (#701).
+• Mehrzeiliges Einfügen in Listen richtet Folgezeilen sauber aus; erneutes Drücken des Listen-Kürzels hebt die gesamte Listengruppe auf.
+• Pure-WYSIWYG-Syntaxmarker bleiben im Windows-Plain-Block-Editor verborgen (#698).
+• Fehlende Cloud-API- und lokale Cloud-Ordner-Sync-Befehle zur benutzerdefinierten Symbolleiste hinzugefügt (#695) und das Symbolauswahlfeld mit 42 SVG-Symbolen, 24 Emojis und eigener Eingabe vergrößert (#696).
+• Geräte-ID in der Einstellungs-Titelleiste dezenter gestaltet (#697) und Dropdown-Ausrichtung unter Navigation korrigiert (#702).

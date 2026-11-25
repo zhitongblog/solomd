@@ -26,7 +26,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v5.4.1 · just shipped · MIT · 5 platforms',
+      badge: 'v5.4.2 · just shipped · MIT · 5 platforms',
       title1: 'All the calm of Typora.',
       title2: 'Plus 5-platform sync & local AI. Free.',
       subtagline: 'Pure WYSIWYG & live preview, built-in 9-format export (no Pandoc setup needed), vault-scoped encrypted sync across macOS, Windows, Linux, iOS & Android, and zero-config local AI + 16-tool MCP server. MIT-licensed, ~14–30 MB — no account, no subscription, no plugin tax.',
@@ -382,7 +382,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v5.4.1 · 正式发布 · MIT 协议 · 5 大平台',
+      badge: 'v5.4.2 · 正式发布 · MIT 协议 · 5 大平台',
       title1: '不止于 Typora 的安静手感。',
       title2: '五端免费同步 · 本地 AI 知识库。',
       subtagline: '纯正所见即所得与实时预览、内置 9 格式一键导出（无需安装 Pandoc）、按知识库隔离的五端加密同步（Mac / Win / Linux / iOS / Android），以及零配置本地 AI 与 16 工具 MCP 服务。MIT 开源，约 14–30 MB —— 无账号、无订阅、无插件税。',
@@ -738,7 +738,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v5.4.1 · リリース · MIT · 5 プラットフォーム',
+      badge: 'v5.4.2 · リリース · MIT · 5 プラットフォーム',
       title1: 'Typora の静けさをそのまま。',
       title2: '5 端末の無料同期とローカル AI をプラス。',
       subtagline: '純粋 WYSIWYG & ライブプレビュー、Pandoc 不要の 9 形式統合エクスポート、macOS・Windows・Linux・iOS・Android 間の暗号化同期、OPR ローカル AI 自動検出 + 16 ツール MCP サーバー。MIT ライセンス、約 14–30 MB —— アカウント不要・サブスク不要・プラグイン税ゼロ。',
@@ -999,7 +999,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v5.4.1 · 출시 · MIT · 5 플랫폼',
+      badge: 'v5.4.2 · 출시 · MIT · 5 플랫폼',
       title1: 'Typora의 차분함 그대로.',
       title2: '5대 플랫폼 무료 동기화와 로컬 AI까지.',
       subtagline: '순수 WYSIWYG 및 라이브 프리뷰, Pandoc 설치가 필요 없는 9가지 포맷 통합 내보내기, macOS·Windows·Linux·iOS·Android 간 종단간 암호화 동기화, 로컬 AI 자동 감지(OPR) + 16개 도구 MCP 서버. MIT 라이선스, 약 14–30 MB — 계정·구독·플러그인 세금 제로.',
@@ -1260,7 +1260,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v5.4.1 · gerade veröffentlicht · MIT · 5 Plattformen',
+      badge: 'v5.4.2 · gerade veröffentlicht · MIT · 5 Plattformen',
       title1: 'Die ganze Ruhe von Typora.',
       title2: 'Plus 5-Plattform-Sync & lokale KI. Kostenlos.',
       subtagline: 'Pure WYSIWYG & Live-Vorschau, integrierter 9-Format-Export (kein Pandoc nötig), verschlüsselte Synchronisation für macOS, Windows, Linux, iOS & Android sowie lokale KI ohne Konfiguration + 16-Tool-MCP-Server. MIT-Lizenz, ~14–30 MB — kein Konto, kein Abo.',
@@ -1521,7 +1521,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v5.4.1 · vient de sortir · MIT · 5 plateformes',
+      badge: 'v5.4.2 · vient de sortir · MIT · 5 plateformes',
       title1: 'Tout le calme de Typora.',
       title2: 'Plus la synchro 5 plateformes et l’IA locale. Gratuit.',
       subtagline: 'Pure WYSIWYG et aperçu en direct, export intégré en 9 formats (sans Pandoc), synchronisation chiffrée sur macOS, Windows, Linux, iOS et Android, IA locale sans configuration + serveur MCP à 16 outils. Licence MIT, ~14–30 Mo — sans compte, sans abonnement.',
@@ -1782,7 +1782,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v5.4.1 · recién lanzado · MIT · 5 plataformas',
+      badge: 'v5.4.2 · recién lanzado · MIT · 5 plataformas',
       title1: 'Toda la calma de Typora.',
       title2: 'Más sincronización en 5 plataformas e IA local. Gratis.',
       subtagline: 'Pure WYSIWYG y vista previa en vivo, exportación integrada en 9 formatos (sin instalar Pandoc), sincronización cifrada en macOS, Windows, Linux, iOS y Android, e IA local sin configuración + servidor MCP de 16 herramientas. Licencia MIT, ~14–30 MB — sin cuentas ni suscripciones.',
@@ -2043,7 +2043,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v5.4.1 · acabou de sair · MIT · 5 plataformas',
+      badge: 'v5.4.2 · acabou de sair · MIT · 5 plataformas',
       title1: 'Toda a calma do Typora.',
       title2: 'Mais sincronização em 5 plataformas e IA local. Grátis.',
       subtagline: 'Pure WYSIWYG e pré-visualização ao vivo, exportação integrada em 9 formatos (sem Pandoc), sincronização criptografada no macOS, Windows, Linux, iOS e Android, e IA local sem configuração + servidor MCP de 16 ferramentas. Licença MIT, ~14–30 MB — sem conta, sem assinatura.',
@@ -2304,7 +2304,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v5.4.1 · appena rilasciato · MIT · 5 piattaforme',
+      badge: 'v5.4.2 · appena rilasciato · MIT · 5 piattaforme',
       title1: 'Tutta la calma di Typora.',
       title2: 'Più sincronizzazione su 5 piattaforme e IA locale. Gratis.',
       subtagline: 'Pure WYSIWYG e anteprima dal vivo, esportazione integrata in 9 formati (senza Pandoc), sincronizzazione crittografata su macOS, Windows, Linux, iOS e Android, IA locale a configurazione zero + server MCP a 16 strumenti. Licenza MIT, ~14–30 MB — nessun account, nessun abbonamento.',
@@ -2565,7 +2565,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v5.4.1 · świeża premiera · MIT · 5 platform',
+      badge: 'v5.4.2 · świeża premiera · MIT · 5 platform',
       title1: 'Cały spokój Typory.',
       title2: 'Plus synchronizacja na 5 platformach i lokalna AI. Za darmo.',
       subtagline: 'Pure WYSIWYG i podgląd na żywo, wbudowany eksport do 9 formatów (bez instalacji Pandoca), szyfrowana synchronizacja na macOS, Windows, Linux, iOS i Androidzie oraz lokalna AI bez konfiguracji + 16-narzędziowy serwer MCP. Licencja MIT, ~14–30 MB — bez konta i subskrypcji.',
@@ -2826,7 +2826,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v5.4.1 · zojuist uitgebracht · MIT · 5 platforms',
+      badge: 'v5.4.2 · zojuist uitgebracht · MIT · 5 platforms',
       title1: 'Alle rust van Typora.',
       title2: 'Plus synchronisatie op 5 platformen & lokale AI. Gratis.',
       subtagline: 'Pure WYSIWYG & live voorbeeld, ingebouwde export naar 9 formaten (geen Pandoc nodig), versleutelde synchronisatie op macOS, Windows, Linux, iOS & Android en lokale AI zonder configuratie + 16-tool MCP-server. MIT-licentie, ~14–30 MB — geen account, geen abonnement.',
@@ -3087,7 +3087,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v5.4.1 · yeni yayımlandı · MIT · 5 platform',
+      badge: 'v5.4.2 · yeni yayımlandı · MIT · 5 platform',
       title1: 'Typora’nın tüm dinginliği.',
       title2: 'Artı 5 platformda senkronizasyon ve yerel AI. Ücretsiz.',
       subtagline: 'Pure WYSIWYG ve canlı önizleme, Pandoc gerektirmeyen 9 formatlı dışa aktarma merkezi, macOS, Windows, Linux, iOS ve Android arasında şifreli senkronizasyon, sıfır ayarlı yerel AI + 16 araçlı MCP sunucusu. MIT lisanslı, ~14–30 MB — hesap yok, abonelik yok.',
@@ -3348,7 +3348,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v5.4.1 · just släppt · MIT · 5 plattformar',
+      badge: 'v5.4.2 · just släppt · MIT · 5 plattformar',
       title1: 'Allt lugn från Typora.',
       title2: 'Plus synk på 5 plattformar och lokal AI. Gratis.',
       subtagline: 'Pure WYSIWYG och liveförhandsgranskning, inbyggd export i 9 format (ingen Pandoc krävs), krypterad synk över macOS, Windows, Linux, iOS och Android samt lokal AI utan konfiguration + MCP-server med 16 verktyg. MIT-licens, ~14–30 MB — inget konto, ingen prenumeration.',
@@ -3609,7 +3609,7 @@ export const t = {
       github: 'GitHub →',
     },
     hero: {
-      badge: 'v5.4.1 · щойно випущено · MIT · 5 платформ',
+      badge: 'v5.4.2 · щойно випущено · MIT · 5 платформ',
       title1: 'Увесь спокій Typora.',
       title2: 'Плюс синхронізація на 5 платформах і локальний ШІ. Безкоштовно.',
       subtagline: 'Pure WYSIWYG та живий перегляд, вбудований експорт у 9 форматів (без встановлення Pandoc), зашифрована синхронізація між macOS, Windows, Linux, iOS та Android, локальний ШІ без налаштувань + MCP-сервер на 16 інструментів. Ліцензія MIT, ~14–30 МБ — без акаунтів і підписок.',

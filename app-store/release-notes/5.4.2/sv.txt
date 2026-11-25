@@ -1,0 +1,8 @@
+SoloMD v5.4.2 — Molnsynk och redigeringsförbättringar:
+
+• Åtgärdade molnsynkfel där uppladdning av andra filer på en andra dator gjorde att fjärrändringar hoppades över vid hämtning (#700).
+• Lade till automatisk synkhämtning vid start med direkt förloppsindikator i statusfältet (#701).
+• Flerradig inklistring i listor justerar efterföljande rader snyggt; upprepat listkortkommando tar bort formatet för hela gruppen.
+• Pure WYSIWYG-markörer förblir dolda i Windows plain-block-redigerare (#698).
+• Lade till moln-API- och lokal molnmappssynk i anpassat verktygsfält (#695) och förstorade ikonväljaren med 42 SVG-ikoner, 24 emojis och egen inmatning (#696).
+• Nedtonad Enhets-ID i Inställningar (#697) och rättad justering av rullgardinsmenyn under Navigering (#702).

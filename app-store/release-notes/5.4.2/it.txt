@@ -1,0 +1,8 @@
+SoloMD v5.4.2 — Sincronizzazione multi-dispositivo e rifiniture dell'editor:
+
+• Risolto il problema nella sincronizzazione cloud che saltava gli aggiornamenti remoti dopo il caricamento di altri file da un secondo PC (#700).
+• Aggiunto il download automatico all'avvio con indicatore di avanzamento in tempo reale nella barra di stato (#701).
+• Incollare più righe negli elenchi allinea automaticamente le righe successive; ripetere la scorciatoia rimuove il formato dall'intero gruppo.
+• I marcatori in modalità WYSIWYG puro restano nascosti nell'editor plain-block di Windows (#698).
+• Aggiunti i comandi Cloud API e cartella cloud locale alla barra personalizzata (#695) e ingrandito il selettore icone con 42 icone SVG, 24 emoji e input personalizzato (#696).
+• Stile più discreto per l'ID dispositivo in Impostazioni (#697) e allineamento del menu a tendina in Navigazione (#702).

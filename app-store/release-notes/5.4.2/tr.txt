@@ -1,0 +1,8 @@
+SoloMD v5.4.2 — Çoklu Cihaz Eşitleme ve Düzenleyici İyileştirmeleri:
+
+• İkinci bilgisayarda başka dosyalar yüklendikten sonra uzaktaki güncellemelerin indirmede atlanması hatası giderildi (#700).
+• Uygulama açılışında otomatik eşitleme indirmesi ve durum çubuğunda canlı ilerleme göstergesi eklendi (#701).
+• Liste öğelerine çok satırlı yapıştırmada 2. satırdan itibaren hizalama ve aynı liste kısayoluyla tüm grubu kaldırma eklendi.
+• Windows plain-block düzenleyicisinde Saf WYSIWYG işaretçileri gizli tutulur (#698).
+• Özel araç çubuğuna Bulut API ve yerel bulut klasörü eşitleme komutları eklendi (#695), simge seçici 42 SVG, 24 renkli emoji ve özel girişle büyütüldü (#696).
+• Ayarlar başlığındaki Cihaz Kimliği sadeleştirildi (#697) ve Gezinme açılır menü hizalaması düzeltildi (#702).

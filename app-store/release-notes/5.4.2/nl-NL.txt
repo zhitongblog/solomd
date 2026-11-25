@@ -1,0 +1,8 @@
+SoloMD v5.4.2 — Synchronisatie en editorverbeteringen:
+
+• Opgelost dat cloudsynchronisatie op een tweede pc externe updates oversloeg na het uploaden van andere bestanden (#700).
+• Automatische synchronisatie-download bij het opstarten toegevoegd met live voortgang in de statusbalk (#701).
+• Meerdere regels plakken in lijsten lijnt vervolgregels netjes uit; dezelfde lijstsneltoets herhalen heft de hele lijstgroep op.
+• Pure WYSIWYG-markeringen blijven verborgen in de Windows plain-block editor (#698).
+• Cloud-API- en lokale cloudmap-commando's toegevoegd aan de werkbalk (#695) en het pictogrammenpaneel vergroot met 42 SVG-iconen, 24 emoji's en eigen invoer (#696).
+• Subtielere weergave van Apparaat-ID in Instellingen (#697) en uitlijning van de keuzelijst onder Navigatie gecorrigeerd (#702).

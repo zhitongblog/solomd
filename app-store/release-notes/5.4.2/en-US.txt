@@ -1,0 +1,8 @@
+SoloMD v5.4.2 — Multi-Device Sync & Editor Polish:
+
+• Fixed multi-device cloud sync where pushing other files on a second PC could cause remote updates from another device to be skipped on pull (#700).
+• Added routine startup sync pull across enabled cloud backends with live progress displayed in the main status bar pill (#701).
+• Multi-line paste inside list items now aligns lines 2+ as clean soft breaks; repeating the same list shortcut toggles off the entire sibling list group.
+• Kept Pure WYSIWYG syntax markers hidden on the Windows plain-block editor and cross-block selections (#698).
+• Added Cloud Drive API and Local Cloud Folder push/pull commands to Custom Toolbar (#695) and enlarged the icon picker with 42 SVG icons, 24 colorful emoji presets, and custom emoji input (#696).
+• Refined Settings header Device ID styling (#697) and navigation dropdown alignment (#702).
