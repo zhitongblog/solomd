@@ -1,0 +1,5 @@
+SoloMD v5.4.1 — Correctifs de saisie et d'organisation des paramètres :
+
+• Correction de la saisie de caractères latins dans les cellules de tableau en mode édition en direct.
+• Correction des sauts de curseur sous Windows 11 lors de la saisie de ponctuation CJK ou après `- ` (#693).
+• Réorganisation affinée des 6 sous-onglets des paramètres généraux (#694).

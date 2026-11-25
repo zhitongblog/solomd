@@ -1,0 +1,5 @@
+SoloMD v5.4.1 — Redigerings- och inställningsfixar:
+
+• Åtgärdade ett fel där endast ett tecken visades vid inmatning i tabellceller.
+• Åtgärdade markörhopp i Windows 11 vid CJK-skiljetecken och efter `- `-listor (#693).
+• Förfinade grupperingen i de 6 flikarna under Allmänna inställningar (#694).

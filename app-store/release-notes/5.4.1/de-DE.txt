@@ -1,0 +1,5 @@
+SoloMD v5.4.1 — Eingabe- & Einstellungs-Feinschliff:
+
+• Fehler behoben, bei dem beim Tippen mehrerer englischer Zeichen in Tabellenzellen nur 1 Zeichen angezeigt wurde.
+• Windows-11-Cursorsprung bei CJK-Interpunktion und direkt nach `- `-Listen behoben (#693).
+• Feinschliff der 6 Unter-Tabs in den Allgemeinen Einstellungen (#694).

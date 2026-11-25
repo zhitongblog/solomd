@@ -1,0 +1,5 @@
+SoloMD v5.4.1 — Poprawki edytora i ustawień:
+
+• Naprawiono błąd powodujący wyświetlanie tylko jednego znaku przy wpisywaniu tekstu w komórkach tabeli.
+• Naprawiono przeskoki kursora w Windows 11 przy znakach CJK oraz po wpisaniu listy `- ` (#693).
+• Dopracowano podział 6 zakładek w ustawieniach ogólnych (#694).

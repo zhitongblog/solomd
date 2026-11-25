@@ -1,0 +1,5 @@
+SoloMD v5.4.1 — Editor Input & Settings Polish:
+
+• Fixed Live Edit table cell input where typing multiple English characters collapsed to a single character.
+• Fixed Windows 11 cursor jumping +1 character when typing CJK punctuation inside parentheses or Chinese prose, and prevented caret jumps right after typing `- ` for bullet lists (#693).
+• Refined the 6 General Settings sub-tabs so typography, editor active-line highlight, media alignment, file-tree navigation, toolbar/tab layout, and Custom CSS Theme all sit in their most intuitive tabs (#694).

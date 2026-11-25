@@ -1,0 +1,5 @@
+SoloMD v5.4.1 — Düzenleyici ve ayar iyileştirmeleri:
+
+• Canlı düzenleme tablo hücrelerinde birden fazla İngilizce karakter yazarken tek karakter görünmesi düzeltildi.
+• Windows 11'de CJK noktalama ve `- ` listeleri sonrası imleç sıçraması giderildi (#693).
+• Genel ayarların 6 alt sekmesindeki gruplama iyileştirildi (#694).

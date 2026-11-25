@@ -1,0 +1,5 @@
+SoloMD v5.4.1 — Correcciones de edición y ajustes:
+
+• Corregido un fallo al escribir varios caracteres en inglés dentro de celdas de tabla en modo edición en vivo.
+• Corregido el salto del cursor en Windows 11 al escribir puntuación CJK o tras listas `- ` (#693).
+• Clasificación refinada de las 6 subpestañas de Ajustes generales (#694).

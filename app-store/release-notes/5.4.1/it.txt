@@ -1,0 +1,5 @@
+SoloMD v5.4.1 — Correzioni di digitazione e impostazioni:
+
+• Risolto un problema durante la digitazione di testo inglese nelle celle delle tabelle in modifica live.
+• Risolti i salti del cursore su Windows 11 con punteggiatura CJK e dopo liste `- ` (#693).
+• Migliorata l'organizzazione delle 6 sottoschede delle impostazioni generali (#694).

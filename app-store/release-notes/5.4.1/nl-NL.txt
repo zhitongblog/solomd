@@ -1,0 +1,5 @@
+SoloMD v5.4.1 — Invoer- en instellingenverbeteringen:
+
+• Opgelost dat bij het typen van Engelse tekens in tabelcellen slechts één teken werd weergegeven.
+• Cursorsprong op Windows 11 bij CJK-interpunctie en na `- `-lijsten opgelost (#693).
+• Indeling van de 6 algemene instellingen-subtabbladen verder verfijnd (#694).
