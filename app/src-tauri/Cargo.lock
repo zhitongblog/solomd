@@ -4787,7 +4787,7 @@ dependencies = [
 
 [[package]]
 name = "solomd"
-version = "5.4.1"
+version = "5.4.2"
 dependencies = [
  "arboard",
  "argon2",
