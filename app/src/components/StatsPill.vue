@@ -19,6 +19,7 @@ import { useTabsStore } from '../stores/tabs';
 import { useSettingsStore } from '../stores/settings';
 import { useWritingSessionStore } from '../stores/writingSession';
 import { usePomodoroStore } from '../stores/pomodoro';
+import { useGithubSyncStore } from '../stores/githubSync';
 import { cjkWordCount } from '../lib/chinese';
 import { computePdfPageBreaks } from '../lib/pdf-page-breaks';
 import { useInbox } from '../composables/useInbox';
@@ -37,8 +38,39 @@ const tabs = useTabsStore();
 const settings = useSettingsStore();
 const writingSession = useWritingSessionStore();
 const pomodoro = usePomodoroStore();
+const githubSync = useGithubSyncStore();
 const inbox = useInbox();
 const { t } = useI18n();
+
+// #701 — Live sync status indicator in the always-visible status pill so
+// startup/manual cloud downloads & uploads stay visibly tracked in the status bar.
+const cloudSyncBusy = ref(false);
+const cloudSyncDir = ref<'push' | 'pull'>('pull');
+const cloudSyncPercent = ref(0);
+const cloudSyncMessage = ref('');
+let cloudSyncClearTimer: ReturnType<typeof setTimeout> | null = null;
+let unlistenSyncProgress: (() => void) | null = null;
+
+const liveSyncLabel = computed(() => {
+  const isZh = settings.language === 'zh';
+  if (cloudSyncBusy.value) {
+    const pct = cloudSyncPercent.value > 0 && cloudSyncPercent.value < 100 ? ` ${cloudSyncPercent.value}%` : '';
+    if (cloudSyncPercent.value >= 100) {
+      return isZh
+        ? (cloudSyncDir.value === 'pull' ? '同步下载完成' : '同步上传完成')
+        : (cloudSyncDir.value === 'pull' ? 'Sync downloaded' : 'Sync uploaded');
+    }
+    return isZh
+      ? `${cloudSyncDir.value === 'pull' ? '同步下载中' : '同步上传中'}${pct}`
+      : `${cloudSyncDir.value === 'pull' ? 'Downloading' : 'Uploading'}${pct}`;
+  }
+  if (githubSync.pulling) return isZh ? '同步拉取中…' : 'Pulling…';
+  if (githubSync.pushing) return isZh ? '同步推送中…' : 'Pushing…';
+  return '';
+});
+const liveSyncSpinning = computed(
+  () => (cloudSyncBusy.value && cloudSyncPercent.value < 100) || githubSync.pulling || githubSync.pushing,
+);
 
 // ---- Counts (same tokenizer as the old status bar, lib/chinese.ts) ----
 const content = computed(() => tabs.activeTab?.content ?? '');
@@ -157,12 +189,45 @@ onMounted(() => {
   document.addEventListener('pointerdown', onDocPointerDown, true);
   document.addEventListener('keydown', onKeydown, true);
   if (settings.focusMode) attachNear(true);
+  if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
+    void import('@tauri-apps/api/event')
+      .then(({ listen }) =>
+        listen<{ channel: string; direction: 'push' | 'pull'; percent: number; message: string }>(
+          'solomd:sync-progress',
+          (ev) => {
+            const p = ev.payload;
+            if (!p) return;
+            if (cloudSyncClearTimer) {
+              clearTimeout(cloudSyncClearTimer);
+              cloudSyncClearTimer = null;
+            }
+            cloudSyncBusy.value = true;
+            cloudSyncDir.value = p.direction === 'push' ? 'push' : 'pull';
+            cloudSyncPercent.value = Math.max(0, Math.min(100, Math.round(p.percent ?? 0)));
+            cloudSyncMessage.value = p.message || '';
+            if (cloudSyncPercent.value >= 100) {
+              cloudSyncClearTimer = setTimeout(() => {
+                cloudSyncBusy.value = false;
+                cloudSyncClearTimer = null;
+              }, 2600);
+            }
+          },
+        ),
+      )
+      .then((unlisten) => {
+        unlistenSyncProgress = unlisten;
+      })
+      .catch(() => {});
+  }
 });
 onBeforeUnmount(() => {
   document.removeEventListener('pointerdown', onDocPointerDown, true);
   document.removeEventListener('keydown', onKeydown, true);
   attachNear(false);
   if (raf) cancelAnimationFrame(raf);
+  if (cloudSyncClearTimer) clearTimeout(cloudSyncClearTimer);
+  unlistenSyncProgress?.();
+  unlistenSyncProgress = null;
 });
 // Close when the document changes under us (tab switch).
 watch(
@@ -265,6 +330,13 @@ watch(
       :aria-label="t('statsPill.title')"
       @click="toggle"
     >
+      <template v-if="liveSyncLabel">
+        <span class="stats-pill__sync" :title="cloudSyncMessage || liveSyncLabel">
+          <span class="stats-pill__sync-icon" :class="{ 'is-spinning': liveSyncSpinning }" aria-hidden="true">{{ liveSyncSpinning ? '↻' : '✓' }}</span>
+          <span>{{ liveSyncLabel }}</span>
+        </span>
+        <span class="stats-pill__sep" aria-hidden="true">·</span>
+      </template>
       <span>{{ pillLabel }}</span>
       <template v-if="pdfPagination">
         <span class="stats-pill__sep" aria-hidden="true">·</span>
@@ -337,6 +409,22 @@ watch(
 }
 .stats-pill__sep {
   opacity: 0.6;
+}
+.stats-pill__sync {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent-text);
+  font-weight: 500;
+}
+.stats-pill__sync-icon.is-spinning {
+  display: inline-block;
+  animation: stats-pill-spin 1s linear infinite;
+}
+@keyframes stats-pill-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 .stats-pill__sel {
   display: inline-flex;

@@ -2080,15 +2080,16 @@ function onSelectPdfFont(v: string) {
           </select>
         </section>
 
-        <!-- #672 — Tab Groups & Auto-Open Sibling Files -->
+        <!-- #672 / #702 — Tab Groups & Auto-Open Sibling Files -->
         <section data-cat="basics" data-basics="navigation">
           <label>
             <input type="checkbox" :checked="settings.autoGroupTabsByFolder" @change="settings.toggleAutoGroupTabsByFolder()" />
             {{ settings.language === 'zh' ? '按所在目录自动归类标签组（浏览器风格可折叠标签组）' : 'Auto-group tabs by parent folder (collapsible tab groups)' }}
           </label>
-          <label style="margin-top: 10px;">
-            {{ settings.language === 'zh' ? '打开文件时自动打开同目录其他文件' : 'Auto-open sibling files in same folder' }}
-          </label>
+        </section>
+
+        <section data-cat="basics" data-basics="navigation">
+          <label>{{ settings.language === 'zh' ? '打开文件时自动打开同目录其他文件' : 'Auto-open sibling files in same folder' }}</label>
           <select
             :value="settings.autoOpenSiblingFiles"
             @change="settings.setAutoOpenSiblingFiles(($event.target as HTMLSelectElement).value as 'off' | 'all' | 'folders')"
@@ -2100,7 +2101,7 @@ function onSelectPdfFont(v: string) {
           <input
             v-if="settings.autoOpenSiblingFiles === 'folders'"
             type="text"
-            style="margin-top: 6px;"
+            style="grid-column: 1 / -1; margin-top: 6px;"
             :value="settings.autoOpenSiblingFolders"
             :placeholder="settings.language === 'zh' ? '输入文件夹路径，多个用逗号分隔' : 'Comma-separated folder paths'"
             @change="settings.setAutoOpenSiblingFolders(($event.target as HTMLInputElement).value)"
@@ -2108,7 +2109,7 @@ function onSelectPdfFont(v: string) {
           <input
             v-if="settings.autoOpenSiblingFiles !== 'off'"
             type="text"
-            style="margin-top: 6px;"
+            style="grid-column: 1 / -1; margin-top: 6px;"
             :value="settings.autoOpenSiblingExtensions"
             :placeholder="settings.language === 'zh' ? '自动打开的文件后缀（默认 .md,.markdown,.txt）' : 'File extensions (default .md,.markdown,.txt)'"
             @change="settings.setAutoOpenSiblingExtensions(($event.target as HTMLInputElement).value)"

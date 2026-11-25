@@ -456,6 +456,41 @@ fn write_local_base_manifest_after_pull(
     write_local_base_manifest(workspace, &updated);
 }
 
+/// #700 — Write `.solomd-sync/manifest.json` after a push WITHOUT poisoning it
+/// with remote-only versions this device has never downloaded.
+///
+/// Only entries whose local file on disk actually matches `remote_entry.sha256`
+/// are promoted to the new remote SHA. Entries preserved from another device
+/// (local disk still holds an older version, or the file doesn't exist locally
+/// yet) keep their previous `local_base` entry (if any) or are omitted, so:
+/// 1. A subsequent pull on this device won't mistake `base_sha == remote_sha`
+///    and skip downloading the other device's newer file (#700).
+/// 2. A subsequent push on this device won't mistake an unpulled remote-only
+///    file as "deleted locally" and delete it from the cloud.
+fn write_local_base_manifest_after_push(
+    workspace: &Path,
+    remote_manifest: &SyncFolderManifest,
+    local_base: Option<&SyncFolderManifest>,
+) {
+    let mut updated = remote_manifest.clone();
+    let mut files = BTreeMap::new();
+    for (local_rel, remote_entry) in &remote_manifest.files {
+        let local_path = workspace.join(local_rel);
+        let local_matches_remote = std::fs::read(&local_path)
+            .map(|bytes| sha256_hex(&bytes) == remote_entry.sha256)
+            .unwrap_or(false);
+        if local_matches_remote {
+            files.insert(local_rel.clone(), remote_entry.clone());
+        } else if local_path.is_file() {
+            if let Some(prev) = local_base.and_then(|b| b.files.get(local_rel)) {
+                files.insert(local_rel.clone(), prev.clone());
+            }
+        }
+    }
+    updated.files = files;
+    write_local_base_manifest(workspace, &updated);
+}
+
 fn is_conflict_copy_rel(rel_path: &str) -> bool {
     Path::new(rel_path)
         .file_name()
@@ -2136,7 +2171,7 @@ pub async fn webdav_push_workspace(
     folder_manifest.encrypted = use_encryption;
     folder_manifest.files = new_files_map;
 
-    write_local_base_manifest(&ws_path, &folder_manifest);
+    write_local_base_manifest_after_push(&ws_path, &folder_manifest, local_base.as_ref());
     if ensure_remote_dir(
         &client,
         &url,
@@ -2853,7 +2888,7 @@ pub fn cloud_vault_push_options_inner(
     if let Ok(json) = serde_json::to_string_pretty(&folder_manifest) {
         let _ = std::fs::write(&sync_manifest_path, json);
     }
-    write_local_base_manifest(workspace, &folder_manifest);
+    write_local_base_manifest_after_push(workspace, &folder_manifest, local_base.as_ref());
 
     // Sync & union-merge version history snapshots between local workspace and cloud drive folder
     sync_versions_dir_between(
@@ -4773,7 +4808,7 @@ async fn baidu_push_folder(
         let manifest_remote_path = format!("{ws_remote_root}/{SYNC_MANIFEST_REL}");
         baidu_upload_single_file(client, token, &manifest_remote_path, manifest_bytes).await?;
     }
-    write_local_base_manifest(workspace, &manifest);
+    write_local_base_manifest_after_push(workspace, &manifest, local_base.as_ref());
 
     let mode_label = if encrypted { "加密分类目录" } else { "分类目录" };
     Ok(WebdavSyncResult {
@@ -5193,7 +5228,7 @@ async fn onedrive_push_folder(
             .send()
             .await;
     }
-    write_local_base_manifest(workspace, &manifest);
+    write_local_base_manifest_after_push(workspace, &manifest, local_base.as_ref());
 
     Ok(WebdavSyncResult {
         uploaded,
@@ -5510,7 +5545,7 @@ async fn dropbox_push_folder(
             .send()
             .await;
     }
-    write_local_base_manifest(workspace, &manifest);
+    write_local_base_manifest_after_push(workspace, &manifest, local_base.as_ref());
 
     Ok(WebdavSyncResult {
         uploaded,
@@ -5924,7 +5959,7 @@ async fn alipan_push_folder(
         )
         .await;
     }
-    write_local_base_manifest(workspace, &manifest);
+    write_local_base_manifest_after_push(workspace, &manifest, local_base.as_ref());
 
     Ok(WebdavSyncResult {
         uploaded,
@@ -6408,7 +6443,7 @@ async fn gdrive_push_folder(
         )
         .await;
     }
-    write_local_base_manifest(workspace, &manifest);
+    write_local_base_manifest_after_push(workspace, &manifest, local_base.as_ref());
 
     Ok(WebdavSyncResult {
         uploaded,
@@ -6924,7 +6959,7 @@ async fn r2_push_folder(
     if let Ok(m_bytes) = serde_json::to_vec_pretty(&manifest) {
         let _ = r2_put_object(client, &creds, &manifest_key, m_bytes).await;
     }
-    write_local_base_manifest(workspace, &manifest);
+    write_local_base_manifest_after_push(workspace, &manifest, local_base.as_ref());
 
     Ok(WebdavSyncResult {
         uploaded,
@@ -8005,5 +8040,61 @@ mod tests {
         .unwrap();
         assert_eq!(res.added_lines, 1);
         assert_eq!(res.removed_lines, 2);
+    }
+
+    #[test]
+    fn issue_700_push_after_remote_edit_does_not_poison_local_base_and_subsequent_pull_downloads_update() {
+        let tmp = tempfile::tempdir().unwrap();
+        let pc_b = tmp.path().join("pc_b").join("MyVault");
+        std::fs::create_dir_all(&pc_b).unwrap();
+
+        // Initial synced state on PC-B: both `shared.md` (v1) and `other.md` (v1) are on disk.
+        std::fs::write(pc_b.join("shared.md"), "v1 from A").unwrap();
+        std::fs::write(pc_b.join("other.md"), "other v2 from B").unwrap();
+
+        let sha_shared_v1 = sha256_hex(b"v1 from A");
+        let sha_shared_v2 = sha256_hex(b"v2 updated on A");
+        let sha_other_v1 = sha256_hex(b"other v1");
+        let sha_other_v2 = sha256_hex(b"other v2 from B");
+        let sha_only_a = sha256_hex(b"brand new on A");
+
+        let make_entry = |rel: &str, sha: &str| SyncFileManifestEntry {
+            local_rel: rel.to_string(),
+            remote_rel: format!("笔记文档/{rel}.enc"),
+            sha256: sha.to_string(),
+            size: 16,
+            updated_at: 100,
+            encrypted: true,
+        };
+
+        // PC-B's previous local_base before pushing:
+        let mut local_base = SyncFolderManifest::default();
+        local_base.files.insert("shared.md".into(), make_entry("shared.md", &sha_shared_v1));
+        local_base.files.insert("other.md".into(), make_entry("other.md", &sha_other_v1));
+
+        // Remote manifest after PC-B pushes `other.md` (v2) while preserving PC-A's newer `shared.md` (v2)
+        // and PC-A's newly created `only_on_a.md`:
+        let mut remote_manifest = SyncFolderManifest::default();
+        remote_manifest.files.insert("shared.md".into(), make_entry("shared.md", &sha_shared_v2));
+        remote_manifest.files.insert("other.md".into(), make_entry("other.md", &sha_other_v2));
+        remote_manifest.files.insert("only_on_a.md".into(), make_entry("only_on_a.md", &sha_only_a));
+
+        write_local_base_manifest_after_push(&pc_b, &remote_manifest, Some(&local_base));
+
+        let updated_base = read_local_base_manifest(&pc_b).unwrap();
+        // 1. `other.md` was uploaded from PC-B and matches disk -> promoted to v2.
+        assert_eq!(
+            updated_base.files.get("other.md").map(|e| e.sha256.as_str()),
+            Some(sha_other_v2.as_str())
+        );
+        // 2. `shared.md` on disk is still v1 while remote is v2 -> MUST stay v1 in local_base
+        //    so the subsequent pull sees `base_sha (v1) != remote_sha (v2)` and downloads v2! (#700)
+        assert_eq!(
+            updated_base.files.get("shared.md").map(|e| e.sha256.as_str()),
+            Some(sha_shared_v1.as_str())
+        );
+        // 3. `only_on_a.md` does not exist on PC-B yet -> MUST NOT be added to local_base
+        //    so a future push on PC-B won't misclassify it as "deleted locally".
+        assert!(!updated_base.files.contains_key("only_on_a.md"));
     }
 }

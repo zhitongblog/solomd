@@ -249,12 +249,15 @@ export function useGithubSync() {
   }
 
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  let startupPullTimer: ReturnType<typeof setTimeout> | null = null;
+  let startupPullDone = false;
 
   /**
-   * #673 — Pull all enabled sync backends (Git, WebDAV, Cloud Vault, Cloud API)
-   * when the machine reconnects to the network so multi-device edits stay in sync.
+   * #673 / #701 — Pull all enabled sync backends (Git, WebDAV, Cloud Vault, Cloud API)
+   * on app startup and whenever the machine reconnects to the network so multi-device
+   * edits stay in sync automatically.
    */
-  async function pullAllOnReconnect(): Promise<void> {
+  async function pullAllEnabledSyncs(): Promise<void> {
     const folder = workspace.currentFolder;
     if (!folder) return;
     let pulledAny = false;
@@ -279,7 +282,7 @@ export function useGithubSync() {
         });
         if ((res?.downloaded ?? 0) > 0) pulledAny = true;
       } catch {
-        /* reconnect pull is best-effort */
+        /* best-effort */
       }
     }
 
@@ -348,11 +351,22 @@ export function useGithubSync() {
     }
   }
 
+  function scheduleStartupPull(): void {
+    if (startupPullDone || !workspace.currentFolder) return;
+    if (startupPullTimer) clearTimeout(startupPullTimer);
+    startupPullTimer = setTimeout(() => {
+      startupPullTimer = null;
+      if (startupPullDone || !workspace.currentFolder) return;
+      startupPullDone = true;
+      void pullAllEnabledSyncs();
+    }, 2000);
+  }
+
   function onNetworkOnline(): void {
     if (reconnectTimer) clearTimeout(reconnectTimer);
     reconnectTimer = setTimeout(() => {
       reconnectTimer = null;
-      void pullAllOnReconnect();
+      void pullAllEnabledSyncs();
     }, 2500);
   }
 
@@ -362,8 +376,19 @@ export function useGithubSync() {
     window.addEventListener('solomd:saved', onSaved as EventListener);
     window.addEventListener('online', onNetworkOnline);
 
+    // #701 — Run one routine pull on app startup once the workspace folder is
+    // loaded, covering Git, WebDAV, Local Cloud Folder, and Cloud Drive API.
+    watch(
+      () => workspace.currentFolder,
+      (f) => {
+        if (f && !startupPullDone) scheduleStartupPull();
+      },
+      { immediate: true },
+    );
+
     // #230 — no libgit2 in the Android binary, so git push/pull is desktop/iOS
-    // only; WebDAV & Cloud Vault auto-sync above still run on all platforms.
+    // only; WebDAV, Local Cloud Folder & Cloud Drive API auto-sync above still
+    // run on all platforms.
     if (!hasGitBackend()) return;
 
     // Whenever workspace changes, refresh the linked status. Whenever
@@ -380,12 +405,6 @@ export function useGithubSync() {
       () => rescheduleTimer(),
       { immediate: true },
     );
-
-    // Best-effort: on boot, do one immediate pull if linked. Catches the
-    // common "edited on iPad last night" case the moment the app opens.
-    setTimeout(() => {
-      void pullIfWanted();
-    }, 2000);
   }
 
   function stop(): void {
@@ -404,6 +423,10 @@ export function useGithubSync() {
     if (reconnectTimer) {
       clearTimeout(reconnectTimer);
       reconnectTimer = null;
+    }
+    if (startupPullTimer) {
+      clearTimeout(startupPullTimer);
+      startupPullTimer = null;
     }
   }
 

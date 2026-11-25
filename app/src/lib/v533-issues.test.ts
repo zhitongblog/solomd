@@ -472,5 +472,17 @@ describe('v5.3.6 feedback: table drag-select, Mermaid zoom, non-MD highlighting 
     // #697: Settings modal header shows muted Device ID label instead of bold raw UUID in title
     assert.match(settingsPanel, /settings-modal__device-id/);
     assert.match(settingsPanel, /设备ID：/);
+
+    // #701: Startup routine pull covers all enabled sync backends & StatsPill tracks live sync progress
+    assert.match(ghSync, /function scheduleStartupPull/);
+    const statsPill = fs.readFileSync(path.join(root, 'components/StatsPill.vue'), 'utf8');
+    assert.match(statsPill, /solomd:sync-progress/);
+    assert.match(statsPill, /stats-pill__sync/);
+
+    // #702: autoOpenSiblingFiles select sits in its own navigation <section> with label:first-child + select
+    assert.match(
+      settingsPanel,
+      /<section data-cat="basics" data-basics="navigation">\s*<label>\{\{ settings\.language === 'zh' \? '打开文件时自动打开同目录其他文件'[\s\S]*?<\/label>\s*<select[\s\S]*?settings\.autoOpenSiblingFiles/,
+    );
   });
 });
