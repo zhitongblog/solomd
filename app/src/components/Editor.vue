@@ -31,6 +31,7 @@ import { filterFenceLanguages, isInsideFenceBefore, matchFenceOpener } from '../
 import { vim, Vim, getCM } from '@replit/codemirror-vim';
 import { cmThemeFor, mermaidThemeFor, activeLineExtension } from '../lib/themes';
 import { registerPlainSelectionGetter } from '../lib/plain-selection';
+import { renderPlainVisibleMarkers, renderPlainMirror } from '../lib/plain-markers';
 import {
   headingFoldExtension,
   toggleHeadingFoldAtCursor,
@@ -223,6 +224,9 @@ type PlainBlock = {
   /** #561 — a standalone image line: source stays visible next to the picture. */
   isImageBlock?: boolean;
   sourceCollapsed?: boolean;
+  /** #698 — pure WYSIWYG: same-metrics source render with marker spans the
+   * stylesheet hides; stacked under the transparent <textarea> while active. */
+  mirrorHtml?: string;
   headingLevel?: number;
   startLine: number;
   lineCount: number;
@@ -952,11 +956,25 @@ function togglePlainBlockSourceFold(block: PlainBlock, index: number) {
 // `.md` file re-split and re-rendered the entire document from scratch.
 let prevPlainBlocksMap = new Map<string, PlainBlock>();
 
+/**
+ * #698 — pure WYSIWYG on the Windows plain-block live editor. CodeMirror hides
+ * markers with decorations; a <textarea> cannot, so the active block instead
+ * stacks the (glyph-transparent) source textarea over `renderPlainMirror`, a
+ * render with the same box metrics whose marker spans the stylesheet hides.
+ * Block sources that CodeMirror replaces outright in pure mode (tables,
+ * Mermaid, image lines) stay collapsed here so clicking them never opens a
+ * source textarea either.
+ */
+const plainPureMirror = computed(
+  () => settings.hideActiveLineMarkers && !settings.alwaysShowMarkers,
+);
+
 const plainParsedBlocks = computed<PlainBlock[]>(() => {
   if (!plainLiveEnabled.value) {
     prevPlainBlocksMap.clear();
     return [];
   }
+  const pureMirror = plainPureMirror.value;
   // Select-all mode (user feedback, 4.8.10): the whole document is presented
   // as ONE active block so the <textarea>'s native selection can span it.
   if (plainSelectAll.value) {
@@ -970,6 +988,7 @@ const plainParsedBlocks = computed<PlainBlock[]>(() => {
         text: src,
         hasTrailingNewline: false,
         html: '',
+        mirrorHtml: pureMirror ? renderPlainMirror(src) : '',
         isTable: false,
         startLine: 1,
         lineCount,
@@ -991,7 +1010,7 @@ const plainParsedBlocks = computed<PlainBlock[]>(() => {
     const hasCustomFold = Object.prototype.hasOwnProperty.call(overrides, block.start);
     const foldFlag = hasCustomFold ? String(overrides[block.start]) : `def:${collapseDefault}`;
     const isTocBlock = tocSig !== '' && /^\s*\[toc\]\s*$/im.test(block.text);
-    const reuseKey = `${index}\0${block.start}\0${startLine}\0${block.hasTrailingNewline ? 1 : 0}\0${foldFlag}\0${imageRoot ?? ''}\0${plantumlKey}\0${isTocBlock ? tocSig : ''}\0${block.text}`;
+    const reuseKey = `${index}\0${block.start}\0${startLine}\0${block.hasTrailingNewline ? 1 : 0}\0${foldFlag}\0${imageRoot ?? ''}\0${plantumlKey}\0${isTocBlock ? tocSig : ''}\0${pureMirror ? 'pm' : ''}\0${block.text}`;
     const prev = prevPlainBlocksMap.get(reuseKey);
     if (prev) {
       nextMap.set(reuseKey, prev);
@@ -1001,12 +1020,13 @@ const plainParsedBlocks = computed<PlainBlock[]>(() => {
     const isMermaid =
       /^\s*(`{3,}|~{3,})\s*mermaid\b/i.test(block.text) ||
       (Boolean(plantumlKey) && /^\s*(`{3,}|~{3,})\s*(?:plantuml|puml)\b/i.test(block.text));
-    const sourceCollapsed =
-      isTableBlock || isMermaid
+    const isImageBlock = isStandaloneImageLine(block.text);
+    const sourceCollapsed = pureMirror
+      ? isTableBlock || isMermaid || isImageBlock
+      : isTableBlock || isMermaid
         ? (overrides[block.start] ?? collapseDefault)
         : false;
     const isTable = isTableBlock && sourceCollapsed;
-    const isImageBlock = isStandaloneImageLine(block.text);
     const headingMatch = /^\s*(#{1,6})\s+/.exec(block.text);
     const headingLevel = headingMatch && !block.text.includes('\n') ? headingMatch[1].length : 0;
     const created: PlainBlock = {
@@ -1021,6 +1041,9 @@ const plainParsedBlocks = computed<PlainBlock[]>(() => {
       startLine,
       lineCount,
       html: renderPlainBlock(block.text, imageRoot),
+      // The mirror is only stacked under the active block's textarea, which
+      // collapsed sources never get — skip building it for them.
+      mirrorHtml: pureMirror && !sourceCollapsed ? renderPlainMirror(block.text) : '',
     };
     nextMap.set(reuseKey, created);
     return created;
@@ -1043,75 +1066,6 @@ function plainTocFingerprint(source: string): string {
     hash = Math.imul(hash ^ sig.charCodeAt(i), 0x01000193);
   }
   return `${sig.length}:${(hash >>> 0).toString(36)}`;
-}
-
-function escapePlainHtml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
-function formatPlainInlineWithMarkers(raw: string): string {
-  const codeSpans: string[] = [];
-  const withCodePlaceholders = raw.replace(/(`+)([^`\n]+?)\1/g, (_m, ticks: string, inner: string) => {
-    const idx = codeSpans.length;
-    codeSpans.push(
-      `<span class="plain-md-marker">${escapePlainHtml(ticks)}</span><code>${escapePlainHtml(inner)}</code><span class="plain-md-marker">${escapePlainHtml(ticks)}</span>`,
-    );
-    return `\u0000CODE${idx}\u0000`;
-  });
-  let out = escapePlainHtml(withCodePlaceholders);
-  out = out.replace(
-    /\[\[([^\]\n]+)\]\]/g,
-    '<span class="plain-md-marker">[[</span><a class="md-wikilink" data-wikilink="$1">$1</a><span class="plain-md-marker">]]</span>',
-  );
-  out = out.replace(
-    /\[([^\]\n]+)\]\(([^)\n]+)\)/g,
-    '<span class="plain-md-marker">[</span><a href="$2">$1</a><span class="plain-md-marker">]($2)</span>',
-  );
-  out = out.replace(
-    /(\*\*|__)([^\n]+?)\1/g,
-    '<span class="plain-md-marker">$1</span><strong>$2</strong><span class="plain-md-marker">$1</span>',
-  );
-  out = out.replace(
-    /(~~)([^\n]+?)\1/g,
-    '<span class="plain-md-marker">$1</span><del>$2</del><span class="plain-md-marker">$1</span>',
-  );
-  out = out.replace(
-    /(==)([^\n]+?)\1/g,
-    '<span class="plain-md-marker">$1</span><mark>$2</mark><span class="plain-md-marker">$1</span>',
-  );
-  out = out.replace(
-    /(^|[^*])(\*)([^*\n]+?)\2(?!\*)/g,
-    '$1<span class="plain-md-marker">$2</span><em>$3</em><span class="plain-md-marker">$2</span>',
-  );
-  out = out.replace(/\u0000CODE(\d+)\u0000/g, (_m, idx) => codeSpans[Number(idx)] ?? '');
-  return out;
-}
-
-/**
- * #536 — When `alwaysShowMarkers` is on in the Windows plain-block live editor,
- * render text/heading/list/quote blocks with their exact Markdown markers preserved
- * and matching `.plain-block__textarea` box metrics so clicking any line never
- * causes layout shift or page jumping.
- */
-function renderPlainVisibleMarkers(src: string): string {
-  const singleHeading = /^(\s*(#{1,6})\s+)(.*)$/.exec(src);
-  if (singleHeading && !src.includes('\n')) {
-    const level = singleHeading[2].length;
-    return `<h${level} class="plain-block__markers"><span class="plain-md-marker">${escapePlainHtml(singleHeading[1])}</span>${formatPlainInlineWithMarkers(singleHeading[3])}</h${level}>`;
-  }
-  const lines = src.split('\n').map((line) => {
-    if (/^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/.test(line)) {
-      return `<span class="plain-md-marker">${escapePlainHtml(line)}</span>`;
-    }
-    const prefixMatch = /^(\s*(?:[-+*]\s+\[[ xX]\]\s+|(?:[-+*]|\d+[.)])\s+|(?:>\s?)+|#{1,6}\s+))(.*)$/.exec(
-      line,
-    );
-    if (prefixMatch) {
-      return `<span class="plain-md-marker">${escapePlainHtml(prefixMatch[1])}</span>${formatPlainInlineWithMarkers(prefixMatch[2])}`;
-    }
-    return formatPlainInlineWithMarkers(line);
-  });
-  return `<div class="plain-block__markers">${lines.join('\n')}</div>`;
 }
 
 const PLAIN_RENDER_CACHE_MAX = 4000;
@@ -7753,6 +7707,9 @@ const cls = computed(() => ({
           :class="{
             'plain-textarea--wrap': settings.wordWrap,
             'plain-textarea--solid-caret': plainSolidCaretOn,
+            // #698 + IME: while an input-method composition is in flight the
+            // text exists only inside the <textarea> — it must stay visible.
+            'plain-block__textarea--pure': plainPureMirror && !plainComposing,
           }"
           :spellcheck="props.spellCheck"
           :wrap="settings.wordWrap ? 'soft' : 'off'"
@@ -7769,16 +7726,22 @@ const cls = computed(() => ({
           @select="emitPlainCursorAndSelection"
           @focus="emitPlainCursorAndSelection"
         ></textarea>
+        <!-- #698 — in pure WYSIWYG the active block keeps its render too: a
+             same-metrics mirror (marker spans hidden) stacked under the
+             transparent textarea, so editing/selecting shows content only. -->
         <div
-          v-if="index !== plainActiveBlock || block.isTableBlock || block.isMermaid || block.isImageBlock"
+          v-if="index !== plainActiveBlock || block.isTableBlock || block.isMermaid || block.isImageBlock || (plainPureMirror && !block.sourceCollapsed)"
           class="plain-block__render"
           :class="{
             'plain-block__render--table': block.isTable,
             'plain-block__render--mermaid-below': index === plainActiveBlock && !block.sourceCollapsed && (block.isMermaid || block.isTableBlock),
             'plain-block__render--image-below': block.isImageBlock && index === plainActiveBlock,
+            'plain-block__render--pure': index === plainActiveBlock && plainPureMirror && !block.sourceCollapsed,
+            'plain-block__render--pure-nowrap': index === plainActiveBlock && plainPureMirror && !block.sourceCollapsed && !settings.wordWrap,
           }"
           :data-table-block-index="block.isTable ? index : undefined"
-          v-html="block.html"
+          :aria-hidden="index === plainActiveBlock && plainPureMirror && !block.sourceCollapsed ? 'true' : undefined"
+          v-html="index === plainActiveBlock && plainPureMirror && !block.sourceCollapsed ? block.mirrorHtml : block.html"
         ></div>
         <!-- #330 — the current find match, drawn: the textarea paints no
              selection while the find box has focus. Positioned inside its
@@ -8383,6 +8346,51 @@ const cls = computed(() => ({
 .plain-block__textarea.plain-textarea--wrap {
   white-space: pre-wrap;
   overflow-wrap: break-word;
+}
+/* #698 — pure WYSIWYG on the Windows block editor: the active block's
+   <textarea> keeps the real Markdown for input, caret and selection, but its
+   glyphs are transparent while `.plain-block__render--pure` beneath shows the
+   same source text with the marker spans hidden. Both use the shared metrics
+   (.plain-block__textarea / .plain-block__markers), so the caret and the
+   selection tint stay aligned with the visible text. */
+.plain-block__textarea.plain-block__textarea--pure {
+  position: relative;
+  z-index: 1;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  caret-color: var(--accent);
+  background: transparent;
+}
+.plain-block-editor--hl-line .plain-block--active .plain-block__textarea.plain-block__textarea--pure {
+  background: transparent;
+}
+.plain-block__textarea.plain-block__textarea--pure::selection {
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+/* The pure mirror is an overlay, not a layout element: absolutely covering the
+   active textarea's box (the 1px block padding included), inert to the
+   pointer, and clipped if the two engines' line breaking drifts a pixel. */
+.plain-block__render--pure {
+  position: absolute;
+  top: 1px;
+  left: 0;
+  right: 0;
+  bottom: 1px;
+  z-index: 0;
+  padding: 0;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.plain-block__render--pure :deep(.plain-md-marker) {
+  visibility: hidden;
+}
+.plain-block__render--pure.plain-block__render--pure-nowrap :deep(.plain-block__markers) {
+  white-space: pre;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 .plain-block__textarea::selection,
 .plain-editor::selection {
