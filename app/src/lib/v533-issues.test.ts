@@ -434,5 +434,23 @@ describe('v5.3.6 feedback: table drag-select, Mermaid zoom, non-MD highlighting 
     const liveBlocks = fs.readFileSync(path.join(root, 'lib/cm-live-blocks.ts'), 'utf8');
     assert.match(liveBlocks, /wrap\.className = 'cm-live-block cm-live-block--table';[\s\S]*?wrap\.contentEditable = 'false';/);
     assert.match(liveBlocks, /'beforeinput'[\s\S]*?'input'[\s\S]*?ev\.stopPropagation\(\)/);
+
+    // #693: Windows CJK punctuation beforeinput interception prevents +1 char caret jump in （） and 登记|开闸
+    const { shouldInterceptWindowsCjkPunctuation } = await import('./cm-ime-guard.ts');
+    assert.equal(shouldInterceptWindowsCjkPunctuation(true, false, 'insertText', '、'), true);
+    assert.equal(shouldInterceptWindowsCjkPunctuation(true, false, 'insertText', '，'), true);
+    assert.equal(shouldInterceptWindowsCjkPunctuation(true, false, 'insertText', 'a'), false);
+    assert.equal(shouldInterceptWindowsCjkPunctuation(true, true, 'insertText', '、'), false);
+    assert.equal(shouldInterceptWindowsCjkPunctuation(false, false, 'insertText', '、'), false);
+
+    // #694: Fine-tuned Basics sub-tabs in SettingsPanel.vue
+    assert.match(settingsPanel, /data-basics="typography"[\s\S]{0,120}settings\.lineHeight/);
+    assert.match(settingsPanel, /data-basics="typography"[\s\S]{0,120}settings\.paragraphSpacing/);
+    assert.match(settingsPanel, /data-basics="typography"[\s\S]{0,160}docxFirstLineIndent/);
+    assert.match(settingsPanel, /data-basics="editor"[\s\S]{0,200}highlightCurrentLine/);
+    assert.match(settingsPanel, /data-basics="preview"[\s\S]{0,160}图片、图表、公式对齐方式/);
+    assert.match(settingsPanel, /data-basics="navigation"[\s\S]{0,160}explorerDoubleClickFiles/);
+    assert.match(settingsPanel, /data-basics="layout"[\s\S]{0,160}settings\.toolbarHidden/);
+    assert.match(settingsPanel, /data-basics="appearance"[\s\S]{0,120}settings\.customCss/);
   });
 });

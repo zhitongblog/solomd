@@ -916,11 +916,17 @@ export function buildDecorations(
                 );
                 return;
               }
+              // #693 — While the caret is actively on this list line, avoid
+              // wrapping `- ` / `1. ` in `display: inline-block` so typing `- `
+              // followed by text on Windows WebView2 never hits an inline-block
+              // boundary caret jump.
               ranges.push(
                 Decoration.mark({
                   class: 'cm-md-list-prefix',
                   attributes: {
-                    style: `display: inline-block; width: ${markEm.toFixed(2)}em; text-indent: 0; white-space: pre; font-variant-numeric: tabular-nums;`,
+                    style: caretTouches
+                      ? 'white-space: pre; font-variant-numeric: tabular-nums;'
+                      : `display: inline-block; width: ${markEm.toFixed(2)}em; text-indent: 0; white-space: pre; font-variant-numeric: tabular-nums;`,
                   },
                 }).range(nFrom, prefixTo),
               );

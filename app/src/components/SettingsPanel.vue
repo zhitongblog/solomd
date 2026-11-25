@@ -1479,7 +1479,7 @@ function onSelectPdfFont(v: string) {
           />
         </section>
 
-        <section data-cat="basics" data-basics="appearance">
+        <section data-cat="basics" data-basics="typography">
           <label>
             {{ t('settings.lineHeight') }}: {{ (settings.lineHeight || 1.8).toFixed(2) }}
             <button
@@ -1502,7 +1502,7 @@ function onSelectPdfFont(v: string) {
           />
         </section>
 
-        <section data-cat="basics" data-basics="appearance">
+        <section data-cat="basics" data-basics="typography">
           <label>
             {{ t('settings.paragraphSpacing') }}: {{ (settings.paragraphSpacing ?? 0.9).toFixed(2) }}em
             <button
@@ -1525,7 +1525,7 @@ function onSelectPdfFont(v: string) {
           />
         </section>
 
-        <section data-cat="basics" data-basics="appearance">
+        <section data-cat="basics" data-basics="preview">
           <label>
             {{ settings.language === 'zh' ? '图片、图表、公式对齐方式' : 'Images, Diagrams & Math Alignment' }}
           </label>
@@ -1557,7 +1557,7 @@ function onSelectPdfFont(v: string) {
           </p>
         </section>
 
-        <section data-cat="basics" data-basics="appearance">
+        <section data-cat="basics" data-basics="typography">
           <label>
             <input
               type="checkbox"
@@ -1682,7 +1682,7 @@ function onSelectPdfFont(v: string) {
           <div class="hint">{{ t('settings.collapseBlockSourceHint') }}</div>
         </section>
 
-        <section data-cat="basics" data-basics="appearance">
+        <section data-cat="basics" data-basics="editor">
           <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
             <label style="margin:0;">
               <input type="checkbox" :checked="settings.highlightCurrentLine" @change="settings.toggleHighlightCurrentLine()" />
@@ -1986,7 +1986,7 @@ function onSelectPdfFont(v: string) {
           </label>
         </section>
 
-        <section data-cat="basics" data-basics="appearance">
+        <section data-cat="basics" data-basics="navigation">
           <label>
             <input
               type="checkbox"
@@ -1997,7 +1997,7 @@ function onSelectPdfFont(v: string) {
           </label>
         </section>
 
-        <section data-cat="basics" data-basics="appearance">
+        <section data-cat="basics" data-basics="navigation">
           <label>
             <input
               type="checkbox"
@@ -2015,14 +2015,14 @@ function onSelectPdfFont(v: string) {
           </label>
         </section>
 
-        <section data-cat="basics" data-basics="appearance">
+        <section data-cat="basics" data-basics="layout">
           <label>
             <input type="checkbox" :checked="settings.showTagsPanel" @change="settings.toggleTagsPanel()" />
             {{ t('settings.showTagsPanel') }}
           </label>
         </section>
 
-        <section v-if="!isMobile()" data-cat="basics" data-basics="appearance">
+        <section v-if="!isMobile()" data-cat="basics" data-basics="layout">
           <label>
             <input type="checkbox" :checked="settings.separateTabBarRow" @change="settings.toggleSeparateTabBarRow()" />
             {{ settings.language === 'zh' ? '独立标签栏行（将标签页置于顶栏下方独立一行）' : 'Separate Tab Bar Row (show tabs in a dedicated row below header)' }}
@@ -2031,6 +2031,28 @@ function onSelectPdfFont(v: string) {
             <input type="checkbox" :checked="settings.hideMenuBar" @change="settings.toggleHideMenuBar()" />
             {{ settings.language === 'zh' ? '隐藏顶部窗口菜单栏（Windows 标题栏中的 文件/编辑/段落 等菜单）' : 'Hide top in-window menu bar (File / Edit / Paragraph on Windows)' }}
           </label>
+        </section>
+
+        <!-- #694 — Toolbar visibility & layout controls grouped in Basics -> Layout -->
+        <section v-if="!isMobile()" data-cat="basics" data-basics="layout">
+          <label>
+            <input type="checkbox" :checked="settings.toolbarHidden" @change="settings.toggleToolbarHidden()" />
+            {{ t('settings.toolbarHidden') }}
+          </label>
+          <p class="setting-hint">{{ withChord('settings.toolbarHiddenHint', 'view.toggleToolbar') }}</p>
+          <label>
+            <input type="checkbox" :checked="settings.toolbarShowLabels" @change="settings.toggleToolbarShowLabels()" />
+            {{ settings.language === 'zh' ? '顶部工具栏按钮显示文字标签（搜索 / 导出 / 侧栏 / 更多）' : 'Show text labels on top toolbar buttons (Search / Export / Sidebar / More)' }}
+          </label>
+          <label v-if="winTitleBar">
+            <input type="checkbox" :checked="settings.toolbarInTitlebar" @change="settings.toggleToolbarInTitlebar()" />
+            {{ t('toolbarCustom.dockInTitlebar') }}
+          </label>
+          <div style="margin-top: 6px;">
+            <button type="button" class="btn-secondary" @click="openToolbarCustomize">
+              {{ t('toolbarCustom.title') }}
+            </button>
+          </div>
         </section>
 
         <!-- #671 — Window position restore behavior when partially off-screen -->
@@ -3020,24 +3042,6 @@ function onSelectPdfFont(v: string) {
             <input type="checkbox" :checked="settings.focusMode" @change="settings.toggleFocusMode()" />
             {{ t('settings.focusMode') }}
           </label>
-          <label>
-            <input type="checkbox" :checked="settings.toolbarHidden" @change="settings.toggleToolbarHidden()" />
-            {{ t('settings.toolbarHidden') }}
-          </label>
-          <p class="setting-hint">{{ withChord('settings.toolbarHiddenHint', 'view.toggleToolbar') }}</p>
-          <label>
-            <input type="checkbox" :checked="settings.toolbarShowLabels" @change="settings.toggleToolbarShowLabels()" />
-            {{ settings.language === 'zh' ? '顶部工具栏按钮显示文字标签（搜索 / 导出 / 侧栏 / 更多）' : 'Show text labels on top toolbar buttons (Search / Export / Sidebar / More)' }}
-          </label>
-          <label v-if="winTitleBar">
-            <input type="checkbox" :checked="settings.toolbarInTitlebar" @change="settings.toggleToolbarInTitlebar()" />
-            {{ t('toolbarCustom.dockInTitlebar') }}
-          </label>
-          <div style="margin-top: 6px;">
-            <button type="button" class="btn-secondary" @click="openToolbarCustomize">
-              {{ t('toolbarCustom.title') }}
-            </button>
-          </div>
         </section>
 
         <section data-cat="writing">
@@ -3303,12 +3307,12 @@ function onSelectPdfFont(v: string) {
           </div>
         </section>
 
-        <section data-cat="advanced">
+        <!-- #694 — Custom CSS Theme placed in Basics -> Appearance adjacent to Theme -->
+        <section data-cat="basics" data-basics="appearance">
           <label>{{ t('settings.customCss') }}</label>
           <div class="row" style="gap: 8px; align-items: center; flex-wrap: wrap;">
             <button @click="pickCustomCss">{{ t('settings.pickCss') }}</button>
             <button v-if="!IS_APP_STORE_BUILD" @click="openThemeMarketplace">{{ t('themes.browseBtn') }}</button>
-            <button v-if="!IS_APP_STORE_BUILD && !isMobile" type="button" @click="invoke('open_devtools_window').catch(() => {})">DevTools (F12)</button>
             <button v-if="settings.customCssPath" @click="settings.setCustomCssPath('')">{{ t('settings.clear') }}</button>
           </div>
           <div v-if="settings.customCssPath" class="css-path-row" style="font-size: 11px; color: var(--text-faint); word-break: break-all; margin-top: 4px;">
@@ -3321,6 +3325,13 @@ function onSelectPdfFont(v: string) {
             </button>
           </div>
           <p v-if="!IS_APP_STORE_BUILD" class="setting-hint">{{ t('themes.browseHint') }}</p>
+        </section>
+
+        <section v-if="!IS_APP_STORE_BUILD && !isMobile" data-cat="advanced">
+          <label>DevTools</label>
+          <div class="row" style="gap: 8px; align-items: center; flex-wrap: wrap;">
+            <button type="button" @click="invoke('open_devtools_window').catch(() => {})">DevTools (F12)</button>
+          </div>
         </section>
 
         <section data-cat="advanced">
