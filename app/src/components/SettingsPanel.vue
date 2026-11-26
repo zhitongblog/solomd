@@ -1561,7 +1561,7 @@ function onSelectPdfFont(v: string) {
           <label>
             {{ settings.language === 'zh' ? '图片、图表、公式对齐方式' : 'Images, Diagrams & Math Alignment' }}
           </label>
-          <div class="settings__field" style="display:flex;gap:6px;justify-content:flex-end;">
+          <div class="settings__field settings__field--seg" style="display:flex;gap:6px;justify-content:flex-end;">
             <button
               v-for="opt in (['left', 'center', 'right'] as const)"
               :key="opt"
@@ -4205,6 +4205,14 @@ select:focus {
 .settings__field--num {
   width: 76px;
   font-variant-numeric: tabular-nums;
+}
+/* #717 — Segmented button rows share the inline right-hand grid slot of
+   .settings__field without inheriting text-input background/padding/height. */
+.settings__field--seg {
+  height: auto;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
 }
 select {
   width: 100%;

@@ -1381,7 +1381,11 @@ defineExpose({ scrollToLine, openSearch });
   text-align: var(--media-align, left);
 }
 :where(.preview-content) > img,
-:where(.preview-content) > figure > img {
+:where(.preview-content) > div[data-source-line] > img,
+:where(.preview-content) > a:only-child > img,
+:where(.preview-content) > div[data-source-line] > a:only-child > img,
+:where(.preview-content) > figure > img,
+:where(.preview-content) > div[data-source-line] > figure > img {
   display: block;
   margin-left: var(--media-margin-left, 0);
   margin-right: var(--media-margin-right, auto);

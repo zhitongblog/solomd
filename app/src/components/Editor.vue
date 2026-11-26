@@ -8776,7 +8776,13 @@ const cls = computed(() => ({
 }
 .plain-block__render :deep(.plain-mermaid-block svg),
 .plain-block__render :deep(.plain-plantuml-block img),
-.plain-block__render :deep(.plain-whiteboard-block svg) {
+.plain-block__render :deep(.plain-whiteboard-block svg),
+.plain-block__render :deep(> img),
+.plain-block__render :deep(> div[data-source-line] > img),
+.plain-block__render :deep(> a:only-child > img),
+.plain-block__render :deep(> div[data-source-line] > a:only-child > img),
+.plain-block__render :deep(> figure > img),
+.plain-block__render :deep(> div[data-source-line] > figure > img) {
   display: block;
   max-width: 100%;
   height: auto;

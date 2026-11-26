@@ -3786,8 +3786,10 @@ export const liveBlocksTheme = EditorView.theme({
     borderRadius: '6px',
   },
   // #716 — Standalone HTML <img> tags (e.g. `<img src="..." />`, `<p><img></p>`,
-  // `<a><img></a>`, `<figure><img></figure>`) honor the unified media alignment setting.
-  '.cm-live-block--html > img, .cm-live-block--html > p:has(> img:only-child) > img, .cm-live-block--html > a:only-child > img, .cm-live-block--html > figure > img': {
+  // `<a><img></a>`, `<figure><img></figure>`, including when markdown-it wraps
+  // raw `html_block` tokens inside `<div data-source-line="...">`) honor the
+  // unified media alignment setting.
+  '.cm-live-block--html > img, .cm-live-block--html > div[data-source-line] > img, .cm-live-block--html > p:has(> img:only-child) > img, .cm-live-block--html > div[data-source-line] > p:has(> img:only-child) > img, .cm-live-block--html > a:only-child > img, .cm-live-block--html > div[data-source-line] > a:only-child > img, .cm-live-block--html > figure > img, .cm-live-block--html > div[data-source-line] > figure > img': {
     display: 'block',
     marginLeft: 'var(--media-margin-left, 0)',
     marginRight: 'var(--media-margin-right, auto)',

@@ -34,11 +34,11 @@ test('#715: DOCX export converts Markdown tables, indented pipe tables, and HTML
   }
 });
 
-test('#716 & #719: Live Edit HTML <img> and multi-line KaTeX display math honor --media-align / --media-margin', () => {
+test('#716 & #719: Live Edit, Preview, and Plain Editor HTML <img> (incl. data-source-line wrapper) and multi-line KaTeX honor --media-align / --media-margin', () => {
   const liveBlocks = fs.readFileSync(path.join(srcDir, 'lib/cm-live-blocks.ts'), 'utf8');
   assert.match(
     liveBlocks,
-    /'\.cm-live-block--html > img,[\s\S]*?marginLeft:\s*'var\(--media-margin-left, 0\)'/,
+    /'\.cm-live-block--html > img, \.cm-live-block--html > div\[data-source-line\] > img,[\s\S]*?marginLeft:\s*'var\(--media-margin-left, 0\)'/,
   );
   assert.match(
     liveBlocks,
@@ -48,15 +48,25 @@ test('#716 & #719: Live Edit HTML <img> and multi-line KaTeX display math honor 
   const previewVue = fs.readFileSync(path.join(srcDir, 'components/Preview.vue'), 'utf8');
   assert.match(
     previewVue,
-    /:where\(\.preview-content\) > img[\s\S]*?margin-left:\s*var\(--media-margin-left, 0\)/,
+    /:where\(\.preview-content\) > img,\s*:where\(\.preview-content\) > div\[data-source-line\] > img[\s\S]*?margin-left:\s*var\(--media-margin-left, 0\)/,
+  );
+
+  const editorVue = fs.readFileSync(path.join(srcDir, 'components/Editor.vue'), 'utf8');
+  assert.match(
+    editorVue,
+    /\.plain-block__render :deep\(> div\[data-source-line\] > img\)[\s\S]*?margin-left:\s*var\(--media-margin-left, 0\)/,
   );
 });
 
-test('#717: Settings media alignment buttons sit inline flush-right via .settings__field', () => {
+test('#717: Settings media alignment buttons sit inline flush-right via .settings__field--seg without input chrome', () => {
   const settingsPanel = fs.readFileSync(path.join(srcDir, 'components/SettingsPanel.vue'), 'utf8');
   assert.match(
     settingsPanel,
-    /Images, Diagrams & Math Alignment[\s\S]{0,200}<div class="settings__field"[^>]*justify-content:flex-end/,
+    /Images, Diagrams & Math Alignment[\s\S]{0,200}<div class="settings__field settings__field--seg"[^>]*justify-content:flex-end/,
+  );
+  assert.match(
+    settingsPanel,
+    /\.settings__field--seg\s*\{[\s\S]*?background:\s*transparent;/,
   );
 });
 
