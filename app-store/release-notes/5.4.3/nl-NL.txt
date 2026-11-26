@@ -1,0 +1,5 @@
+• Lijsten & plakken: Meerregelig plakken in lijsten wordt automatisch uitgelijnd; schakelen tussen niveaus en alinea-afstand in live-modus opgelost
+• Cloudsync: Conflictbeveiliging voor alle kanalen, apparaat-UUID-logs, auto-pull na slaapstand, directe synchronisatie van boomvolgorde en live voortgang in de statusbalk
+• Uitlijning & lightbox: HTML <img>-tags en meerregelige $$-formules volgen globale uitlijning; afbeeldingen openen niet meer kleiner dan in het document
+• Exporteren: Word (.docx) ondersteunt HTML-tabellen en ingesprongen tabellen; PDF/EPUB-uitlijning en takenlijsten verbeterd
+• Interface: Welkomstrondleiding als submenu, fragmentinstellingen, eigen pictogrammen voor alle werkbalkknoppen en volledige .textpack-ondersteuning

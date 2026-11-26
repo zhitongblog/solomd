@@ -1,0 +1,5 @@
+• Listas y pegado: Alineación automática al pegar varias líneas en listas, corrección de saltos al alternar listas multinivel y espaciado en edición en vivo
+• Sincronización en la nube: Protección contra conflictos en todos los canales, registros con UUID de dispositivo, sincronización automática tras suspensión, orden del árbol al instante y progreso en vivo en la barra inferior
+• Alineación y visor: Las etiquetas HTML <img> y fórmulas $$ multilínea respetan la alineación global; el visor de imágenes ya no las muestra más pequeñas que en el documento
+• Exportación: Word (.docx) ahora convierte tablas HTML y tablas indentadas; mejoras de alineación y listas de tareas en PDF/EPUB
+• Interfaz: Recorrido de bienvenida en submenú, acceso a fragmentos, iconos personalizados en toda la barra y soporte completo de .textpack

@@ -1,0 +1,5 @@
+• Elenchi e incolla: Allineamento automatico per incolla multilinea negli elenchi, correzione del passaggio tra elenchi multilivello e spaziatura in modifica dal vivo
+• Sincronizzazione cloud: Protezione dai conflitti su tutti i canali, log con UUID dispositivo, pull automatico al risveglio, sincronizzazione immediata dell'ordine dei file e progresso live nella barra di stato
+• Allineamento e anteprima: Tag HTML <img> e formule $$ multilinea rispettano l'allineamento globale; il lightbox non apre più immagini più piccole del documento
+• Esportazione: Word (.docx) converte tabelle HTML e tabelle indentate; correzioni per immagini e elenchi attività PDF/EPUB
+• Interfaccia: Tour di benvenuto come sottomenu, impostazioni snippet, icone personalizzate per tutta la barra strumenti e supporto completo .textpack

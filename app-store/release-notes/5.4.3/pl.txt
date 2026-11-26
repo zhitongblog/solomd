@@ -1,0 +1,5 @@
+• Listy i wklejanie: Automatyczne wyrównanie wieloliniowego wklejania na listach, poprawki przełączania list wielopoziomowych i odstępów akapitów w edycji na żywo
+• Synchronizacja w chmurze: Ochrona przed konfliktami we wszystkich kanałach, logi z UUID urządzenia, auto-pull po wybudzeniu, natychmiastowa synchronizacja kolejności drzewa i pasek postępu na dole
+• Wyrównanie i podgląd: Tagi HTML <img> i wieloliniowe wzory $$ respektują globalne wyrównanie; podgląd zdjęć nie otwiera ich już mniejszych niż w dokumencie
+• Eksport: Word (.docx) obsługuje tabele HTML i wcięte tabele Markdown; poprawki PDF/EPUB
+• Interfejs: Przewodnik powitalny jako podmenu, ustawienia fragmentów, własne ikony dla wszystkich przycisków paska i pełna obsługa .textpack
