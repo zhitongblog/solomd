@@ -218,9 +218,14 @@ test('indentCodeBlockPaste aligns every row of a pasted Markdown table to list s
     '| A | B |\n>   | --- | --- |\n>   | 1 | 2 |',
   );
 
-  // Multi-line plain text pasted on a list soft-break line aligns subsequent lines as soft breaks
+  // Multi-line plain text pasted on a list soft-break line (empty OR with existing text) aligns lines 2+
   assert.equal(
     indentCodeBlockPaste(olDoc, olDoc.length, olDoc.length, 'line 1\nline 2'),
+    'line 1\n   line 2',
+  );
+  const olContDoc = '1. 列表项\n   已有文字 ';
+  assert.equal(
+    indentCodeBlockPaste(olContDoc, olContDoc.length, olContDoc.length, 'line 1\r\nline 2'),
     'line 1\n   line 2',
   );
 

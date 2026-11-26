@@ -454,13 +454,19 @@ export function indentCodeBlockPaste(
         .join('\n');
     };
 
-    // 1. Pasting onto a list/quote soft-break indented line (e.g. `1. item\n   |`,
-    //    `- item\n  |`, or `> - item\n>   |`): align Markdown tables (with dedent)
-    //    and multi-line plain text so subsequent lines stay aligned as soft breaks
-    //    inside the enclosing list item.
-    if (/^(?:[ \t]*(?:>[ \t]?)*)[ \t]+$/.test(prefixBefore)) {
-      const alignedTable = alignPastedTable(prefixBefore);
-      if (alignedTable !== null) return alignedTable;
+    // 1. Pasting onto a list/quote soft-break indented line — either empty
+    //    (`1. item\n   |`, `- item\n  |`, `> - item\n>   |`) or with existing
+    //    continuation text (`1. item\n   foo|`): align Markdown tables (with
+    //    dedent) and multi-line plain text so lines 2+ stay aligned as soft
+    //    breaks inside the enclosing list item.
+    const softBreakLead = /^((?:[ \t]*(?:>[ \t]?)*)[ \t]+)/.exec(prefixBefore);
+    if (softBreakLead) {
+      const contPrefix = softBreakLead[1];
+      const isWhitespaceOnly = contPrefix.length === prefixBefore.length;
+      if (isWhitespaceOnly) {
+        const alignedTable = alignPastedTable(contPrefix);
+        if (alignedTable !== null) return alignedTable;
+      }
 
       if (normalizedPaste.includes('\n')) {
         // Only treat this indented line as a list soft-break when an earlier
@@ -482,7 +488,7 @@ export function indentCodeBlockPaste(
             .map((line, idx) => {
               if (idx === 0) return line;
               if (line.length === 0) return '';
-              return `${prefixBefore}${line}`;
+              return `${contPrefix}${line}`;
             })
             .join('\n');
         }
