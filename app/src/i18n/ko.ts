@@ -148,6 +148,10 @@ export const ko: I18n = {
     customCss: "사용자 CSS 파일…",
     clearCustomCss: "사용자 CSS 지우기",
     welcomeTour: "시작 가이드",
+    tourWelcome: "환영합니다",
+    tourSyntax: "Markdown 문법",
+    tourLiveEdit: "라이브 편집",
+    tourSlideshow: "슬라이드쇼 모드",
   },
   // 5.0 window header (Toolbar.vue)
   // 5.0 phone shell (Sidebar variant=phone, PhoneTabBar, Toolbar)

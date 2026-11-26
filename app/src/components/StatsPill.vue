@@ -192,8 +192,9 @@ onMounted(() => {
   if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
     void import('@tauri-apps/api/event')
       .then(({ listen }) =>
+        // #721 — Match Rust's `solomd://sync-progress` event name (was missing `//`).
         listen<{ channel: string; direction: 'push' | 'pull'; percent: number; message: string }>(
-          'solomd:sync-progress',
+          'solomd://sync-progress',
           (ev) => {
             const p = ev.payload;
             if (!p) return;
@@ -208,6 +209,7 @@ onMounted(() => {
             if (cloudSyncPercent.value >= 100) {
               cloudSyncClearTimer = setTimeout(() => {
                 cloudSyncBusy.value = false;
+                cloudSyncMessage.value = '';
                 cloudSyncClearTimer = null;
               }, 2600);
             }
@@ -238,10 +240,10 @@ watch(
 
 <template>
   <div
-    v-if="tabs.activeTab"
+    v-if="tabs.activeTab || liveSyncLabel"
     ref="root"
     class="stats-pill"
-    :class="{ 'stats-pill--hidden': hidden, 'stats-pill--open': open }"
+    :class="{ 'stats-pill--hidden': hidden && !liveSyncLabel, 'stats-pill--open': open }"
     data-stats-pill
   >
     <div v-if="open" class="stats-pop" role="dialog" :aria-label="t('statsPill.title')">
@@ -333,11 +335,11 @@ watch(
       <template v-if="liveSyncLabel">
         <span class="stats-pill__sync" :title="cloudSyncMessage || liveSyncLabel">
           <span class="stats-pill__sync-icon" :class="{ 'is-spinning': liveSyncSpinning }" aria-hidden="true">{{ liveSyncSpinning ? '↻' : '✓' }}</span>
-          <span>{{ liveSyncLabel }}</span>
+          <span class="stats-pill__sync-text">{{ cloudSyncMessage ? `${liveSyncLabel} · ${cloudSyncMessage}` : liveSyncLabel }}</span>
         </span>
-        <span class="stats-pill__sep" aria-hidden="true">·</span>
+        <span v-if="tabs.activeTab" class="stats-pill__sep" aria-hidden="true">·</span>
       </template>
-      <span>{{ pillLabel }}</span>
+      <span v-if="tabs.activeTab">{{ pillLabel }}</span>
       <template v-if="pdfPagination">
         <span class="stats-pill__sep" aria-hidden="true">·</span>
         <span class="stats-pill__pdf">
@@ -416,6 +418,12 @@ watch(
   gap: 4px;
   color: var(--accent-text);
   font-weight: 500;
+  max-width: min(460px, 50vw);
+}
+.stats-pill__sync-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .stats-pill__sync-icon.is-spinning {
   display: inline-block;

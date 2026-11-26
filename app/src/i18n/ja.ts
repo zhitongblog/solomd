@@ -148,6 +148,10 @@ export const ja: I18n = {
     customCss: "カスタム CSS ファイル…",
     clearCustomCss: "カスタム CSS をクリア",
     welcomeTour: "ウェルカムツアー",
+    tourWelcome: "ようこそ",
+    tourSyntax: "Markdown 記法",
+    tourLiveEdit: "ライブ編集",
+    tourSlideshow: "スライドショーモード",
   },
   // 5.0 window header (Toolbar.vue)
   // 5.0 phone shell (Sidebar variant=phone, PhoneTabBar, Toolbar)

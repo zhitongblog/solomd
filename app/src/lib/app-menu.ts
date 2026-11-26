@@ -511,7 +511,17 @@ export function buildAppMenu(ctx: MenuContext): TopMenu[] {
     item('help.markdown', t('menubar.mdHelp')),
     item('help.shortcuts', t('menubar.helpShortcuts')),
     item('help.cli', t('menubar.helpCli')),
-    item('help.welcomeTour', t('menubar.welcomeTour')),
+    {
+      type: 'submenu',
+      id: 'help.welcomeTour',
+      label: t('menubar.welcomeTour'),
+      items: [
+        item('help.tourWelcome', t('menubar.tourWelcome')),
+        item('help.tourSyntax', t('menubar.tourSyntax')),
+        item('help.tourLiveEdit', t('menubar.tourLiveEdit')),
+        item('help.tourSlideshow', t('menubar.tourSlideshow')),
+      ],
+    },
     sep,
     item('help.openLogDir', t('menubar.openLogDir')),
     item('help.exportLogs', t('menubar.exportLogs')),

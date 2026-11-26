@@ -1380,6 +1380,12 @@ defineExpose({ scrollToLine, openSearch });
 :where(.preview-content) p:has(> a:only-child > img:only-child) {
   text-align: var(--media-align, left);
 }
+:where(.preview-content) > img,
+:where(.preview-content) > figure > img {
+  display: block;
+  margin-left: var(--media-margin-left, 0);
+  margin-right: var(--media-margin-right, auto);
+}
 :where(.preview-content) img {
   max-width: 100%;
   border-radius: 4px;

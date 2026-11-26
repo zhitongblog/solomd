@@ -643,6 +643,23 @@ async function buildBody(
             break;
           }
         }
+        // #715 — Indented code blocks (`code_block`, NOT fenced `fence`) whose
+        // content is actually a Markdown pipe table (e.g. a table accidentally
+        // indented by 4+ spaces or a tab) should export as a real Word table
+        // rather than a shaded code block.
+        if (tok.type === 'code_block' && looksLikeMarkdownPipeTable(tok.content || '')) {
+          const dedented = (tok.content || '')
+            .split('\n')
+            .map((l) => l.trim())
+            .join('\n');
+          const subTokens = md.parse(preprocessMarkdown(dedented), {});
+          const subBlocks = await buildBody(subTokens, imageRoot, filePath, tocHeadings, hasReference);
+          if (subBlocks.length > 0) {
+            out.push(...subBlocks);
+            i += 1;
+            break;
+          }
+        }
         const lines = (tok.content || '').replace(/\n$/, '').split('\n');
         const last = lines.length - 1;
         lines.forEach((line, idx) => {
@@ -676,6 +693,17 @@ async function buildBody(
           out.push(new Paragraph({ children: [new PageBreak()] }));
           i += 1;
           break;
+        }
+        // #715 — Convert HTML <table> blocks (e.g. pasted forms or merged-cell
+        // tables) into real Word <w:tbl> tables instead of dropping them.
+        if (/<table[\s>]/i.test(tok.content || '')) {
+          const htmlTable = buildHtmlTable(tok.content || '');
+          if (htmlTable) {
+            out.push(htmlTable);
+            out.push(new Paragraph({ text: '', spacing: { before: 0, after: 120 } }));
+            i += 1;
+            break;
+          }
         }
         // A pasted `<img>` block (common when copying from the web). Other
         // raw HTML still has no DOCX equivalent and is skipped as before.
@@ -880,6 +908,115 @@ function buildTable(inner: Token[]): Table | null {
           });
         }),
       })
+  );
+
+  return new Table({
+    rows: docxRows,
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: {
+      top: { style: BorderStyle.SINGLE, size: 4, color: 'E6E2D8' },
+      bottom: { style: BorderStyle.SINGLE, size: 4, color: 'E6E2D8' },
+      left: { style: BorderStyle.SINGLE, size: 4, color: 'E6E2D8' },
+      right: { style: BorderStyle.SINGLE, size: 4, color: 'E6E2D8' },
+      insideHorizontal: { style: BorderStyle.SINGLE, size: 4, color: 'E6E2D8' },
+      insideVertical: { style: BorderStyle.SINGLE, size: 4, color: 'E6E2D8' },
+    },
+  });
+}
+
+/** #715 — Heuristic check for an indented Markdown pipe table that CommonMark
+ *  turned into a `code_block` token. */
+function looksLikeMarkdownPipeTable(text: string): boolean {
+  const lines = text
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+  if (lines.length < 2) return false;
+  const header = lines[0];
+  const delim = lines[1];
+  if (!header.includes('|') || !delim.includes('|')) return false;
+  return /^\|?\s*:?-{1,}:?\s*(\|\s*:?-{1,}:?\s*)+\|?$/.test(delim);
+}
+
+/** #715 — Decode basic HTML entities for HTML table cell text. */
+function decodeBasicHtmlEntities(s: string): string {
+  return s
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)));
+}
+
+/** #715 — Parse a raw HTML `<table>` block into a Word `Table` (supports `<tr>`,
+ *  `<th>`, `<td>`, `colspan`, `rowspan`, and `<br>` line breaks). */
+function buildHtmlTable(html: string): Table | null {
+  const rowMatches = html.match(/<tr\b[^>]*>[\s\S]*?<\/tr>/gi);
+  if (!rowMatches || rowMatches.length === 0) return null;
+
+  interface ParsedHtmlCell {
+    text: string;
+    isHeader: boolean;
+    colSpan: number;
+    rowSpan: number;
+  }
+  const rows: { cells: ParsedHtmlCell[]; isHeaderRow: boolean }[] = [];
+
+  for (const rowHtml of rowMatches) {
+    const cellRe = /<(t[hd])\b([^>]*)>([\s\S]*?)<\/\1>/gi;
+    const cells: ParsedHtmlCell[] = [];
+    let m: RegExpExecArray | null;
+    while ((m = cellRe.exec(rowHtml)) !== null) {
+      const tag = m[1].toLowerCase();
+      const attrs = m[2] || '';
+      const inner = m[3] || '';
+      const colSpanMatch = /\bcolspan\s*=\s*["']?(\d+)/i.exec(attrs);
+      const rowSpanMatch = /\browspan\s*=\s*["']?(\d+)/i.exec(attrs);
+      const colSpan = colSpanMatch ? Math.max(1, parseInt(colSpanMatch[1], 10)) : 1;
+      const rowSpan = rowSpanMatch ? Math.max(1, parseInt(rowSpanMatch[1], 10)) : 1;
+      const text = decodeBasicHtmlEntities(
+        inner
+          .replace(/<br\s*\/?>/gi, '\n')
+          .replace(/<\/p>\s*<p\b[^>]*>/gi, '\n')
+          .replace(/<[^>]+>/g, ''),
+      ).trim();
+      cells.push({ text, isHeader: tag === 'th', colSpan, rowSpan });
+    }
+    if (cells.length > 0) {
+      rows.push({ cells, isHeaderRow: cells.every((c) => c.isHeader) });
+    }
+  }
+
+  if (rows.length === 0) return null;
+
+  const docxRows = rows.map(
+    (row) =>
+      new TableRow({
+        tableHeader: row.isHeaderRow,
+        children: row.cells.map((cell) => {
+          const lines = cell.text ? cell.text.split('\n') : [''];
+          const children = lines.map(
+            (line) =>
+              new Paragraph({
+                alignment: AlignmentType.LEFT,
+                spacing: { before: 40, after: 40 },
+                children: [new TextRun({ text: line, bold: cell.isHeader })],
+              }),
+          );
+          return new TableCell({
+            children,
+            columnSpan: cell.colSpan > 1 ? cell.colSpan : undefined,
+            rowSpan: cell.rowSpan > 1 ? cell.rowSpan : undefined,
+            shading: cell.isHeader
+              ? { type: ShadingType.SOLID, color: 'FFE7CC', fill: 'FFE7CC' }
+              : undefined,
+            margins: { top: 80, bottom: 80, left: 120, right: 120 },
+          });
+        }),
+      }),
   );
 
   return new Table({

@@ -1217,13 +1217,58 @@ fn resolve_safe_workspace_rel(ws: &Path, rel: &str) -> Result<PathBuf, String> {
     Ok(joined)
 }
 
+/// #718 — Resolve a frontend workspace string to a real filesystem `PathBuf`.
+/// On Android, opening a folder via SAF stores the virtual path `saf:primary:Documents/Notes`
+/// (or `saf:<volume>:<rel>`, `saf:raw:/storage/...`). When All Files Access is granted,
+/// `/storage/emulated/0/<rel>` is directly readable/writable by Rust `std::fs`, so mapping
+/// the SAF virtual path lets WebDAV / Cloud API / Sync Folder work seamlessly on Android.
+fn resolve_workspace_path(workspace: &str) -> PathBuf {
+    let trimmed = workspace.trim();
+    if let Some(rest) = trimmed.strip_prefix("saf:") {
+        let decoded = rest.replace("%3A", ":").replace("%3a", ":").replace("%2F", "/").replace("%2f", "/");
+        if let Some(rel) = decoded.strip_prefix("primary:") {
+            let clean = rel.trim_start_matches('/');
+            return if clean.is_empty() {
+                PathBuf::from("/storage/emulated/0")
+            } else {
+                PathBuf::from("/storage/emulated/0").join(clean)
+            };
+        }
+        if let Some(raw) = decoded.strip_prefix("raw:") {
+            if !raw.is_empty() {
+                return PathBuf::from(raw);
+            }
+        }
+        if let Some((vol, rel)) = decoded.split_once(':') {
+            if !vol.is_empty() && !vol.contains('/') {
+                let clean = rel.trim_start_matches('/');
+                let base = PathBuf::from("/storage").join(vol);
+                return if clean.is_empty() { base } else { base.join(clean) };
+            }
+        }
+    }
+    PathBuf::from(trimmed)
+}
+
+fn validate_workspace_dir(workspace: &str, default_err: &str) -> Result<PathBuf, String> {
+    let ws = resolve_workspace_path(workspace);
+    if ws.is_dir() {
+        return Ok(ws);
+    }
+    if workspace.trim().starts_with("saf:") {
+        return Err(format!(
+            "Android 端云同步需要「所有文件访问」权限才能读写目录 {}，请在系统设置中授予 SoloMD 文件管理权限，或通过本地存储路径重新打开工作区 (Android sync requires All Files Access for {})",
+            ws.display(),
+            ws.display()
+        ));
+    }
+    Err(default_err.to_string())
+}
+
 /// #637 — Ensure `<workspace>/.solomd-sync/versions` exists and return its native path.
 #[tauri::command]
 pub fn sync_ensure_snapshot_dir(workspace: String) -> Result<String, String> {
-    let ws = Path::new(workspace.trim());
-    if !ws.is_dir() {
-        return Err("工作区目录不存在".to_string());
-    }
+    let ws = validate_workspace_dir(&workspace, "工作区目录不存在")?;
     let dir = ws.join(SYNC_VERSIONS_REL);
     std::fs::create_dir_all(&dir).map_err(|e| format!("无法创建快照目录: {e}"))?;
     Ok(dir.to_string_lossy().to_string())
@@ -1234,13 +1279,13 @@ pub fn sync_ensure_snapshot_dir(workspace: String) -> Result<String, String> {
 #[tauri::command]
 pub async fn sync_list_conflicts(workspace: String) -> Result<Vec<SyncConflictEntry>, String> {
     tauri::async_runtime::spawn_blocking(move || {
-        let ws = Path::new(workspace.trim());
+        let ws = resolve_workspace_path(&workspace);
         if !ws.is_dir() {
             return Ok(vec![]);
         }
         let snapshot_dir = ws.join(SYNC_VERSIONS_REL).to_string_lossy().to_string();
         let mut out = Vec::new();
-        for entry in walkdir::WalkDir::new(ws)
+        for entry in walkdir::WalkDir::new(&ws)
             .follow_links(false)
             .into_iter()
             .filter_entry(|e| {
@@ -1252,7 +1297,7 @@ pub async fn sync_list_conflicts(workspace: String) -> Result<Vec<SyncConflictEn
             if !entry.file_type().is_file() {
                 continue;
             }
-            let Ok(rel_p) = entry.path().strip_prefix(ws) else {
+            let Ok(rel_p) = entry.path().strip_prefix(&ws) else {
                 continue;
             };
             let rel = rel_p
@@ -1975,10 +2020,7 @@ pub async fn webdav_push_workspace(
     max_versions: Option<usize>,
 ) -> Result<WebdavSyncResult, String> {
     set_sync_app_handle(&app);
-    let ws_path = PathBuf::from(workspace.trim());
-    if !ws_path.is_dir() {
-        return Err("Open a workspace folder before syncing".into());
-    }
+    let ws_path = validate_workspace_dir(&workspace, "Open a workspace folder before syncing")?;
     if url.trim().is_empty() {
         return Err("Configure WebDAV server URL in Settings › Sync first".into());
     }
@@ -2290,10 +2332,7 @@ pub async fn webdav_pull_workspace(
     max_versions: Option<usize>,
 ) -> Result<WebdavSyncResult, String> {
     set_sync_app_handle(&app);
-    let ws_path = PathBuf::from(workspace.trim());
-    if !ws_path.is_dir() {
-        return Err("Open a workspace folder before syncing".into());
-    }
+    let ws_path = validate_workspace_dir(&workspace, "Open a workspace folder before syncing")?;
     if url.trim().is_empty() {
         return Err("Configure WebDAV server URL in Settings › Sync first".into());
     }
@@ -3270,8 +3309,9 @@ pub async fn cloud_vault_push_workspace(
 ) -> Result<WebdavSyncResult, String> {
     set_sync_app_handle(&app);
     tauri::async_runtime::spawn_blocking(move || {
+        let ws = validate_workspace_dir(&workspace, "请先打开一个笔记文件夹 (Open a workspace folder first)")?;
         cloud_vault_push_options_inner(
-            Path::new(workspace.trim()),
+            &ws,
             Path::new(vault_dir.trim()),
             &passphrase,
             encrypted.unwrap_or(true),
@@ -3299,8 +3339,9 @@ pub async fn cloud_vault_pull_workspace(
 ) -> Result<WebdavSyncResult, String> {
     set_sync_app_handle(&app);
     tauri::async_runtime::spawn_blocking(move || {
+        let ws = validate_workspace_dir(&workspace, "请先打开一个笔记文件夹 (Open a workspace folder first)")?;
         cloud_vault_pull_options_inner(
-            Path::new(workspace.trim()),
+            &ws,
             Path::new(vault_dir.trim()),
             &passphrase,
             encrypted.unwrap_or(true),
@@ -7292,10 +7333,7 @@ pub async fn cloud_api_push_workspace(
     if token.is_empty() {
         return Err("请先授权或填入网盘 Access Token / R2 密钥".into());
     }
-    let ws = PathBuf::from(workspace.trim());
-    if !ws.is_dir() {
-        return Err("请先打开一个笔记文件夹 (Open a workspace folder first)".into());
-    }
+    let ws = validate_workspace_dir(&workspace, "请先打开一个笔记文件夹 (Open a workspace folder first)")?;
     emit_sync_progress(
         "cloud_api",
         "push",
@@ -7471,10 +7509,7 @@ pub async fn cloud_api_pull_workspace(
     if token.is_empty() {
         return Err("请先授权或填入网盘 Access Token / R2 密钥".into());
     }
-    let ws = PathBuf::from(workspace.trim());
-    if !ws.is_dir() {
-        return Err("请先打开一个笔记文件夹 (Open a workspace folder first)".into());
-    }
+    let ws = validate_workspace_dir(&workspace, "请先打开一个笔记文件夹 (Open a workspace folder first)")?;
     emit_sync_progress(
         "cloud_api",
         "pull",
@@ -7879,6 +7914,34 @@ mod v540_sync_tests {
         assert_eq!(removals[0].paths, vec!["notes/old.md".to_string()]);
         assert_eq!(removals[1].timestamp, 1700000300);
         assert_eq!(removals[1].paths, vec!["notes/trash.md".to_string()]);
+    }
+
+    #[test]
+    fn resolve_workspace_path_maps_android_saf_paths() {
+        assert_eq!(
+            resolve_workspace_path("saf:primary:Documents/SoloMD"),
+            PathBuf::from("/storage/emulated/0/Documents/SoloMD")
+        );
+        assert_eq!(
+            resolve_workspace_path("saf:primary%3ADocuments%2FNotes"),
+            PathBuf::from("/storage/emulated/0/Documents/Notes")
+        );
+        assert_eq!(
+            resolve_workspace_path("saf:primary:"),
+            PathBuf::from("/storage/emulated/0")
+        );
+        assert_eq!(
+            resolve_workspace_path("saf:raw:/storage/emulated/0/Vault"),
+            PathBuf::from("/storage/emulated/0/Vault")
+        );
+        assert_eq!(
+            resolve_workspace_path("saf:1234-5678:Notes"),
+            PathBuf::from("/storage/1234-5678/Notes")
+        );
+        assert_eq!(
+            resolve_workspace_path("/Users/alex/notes"),
+            PathBuf::from("/Users/alex/notes")
+        );
     }
 }
 

@@ -287,7 +287,8 @@ async function loadManualOrder() {
   manualOrder.value = {};
   const path = orderPath();
   if (!path) return;
-  // #675 — Restore vault-synced sort mode if present in `.solomd/sort.json`.
+  // #675 / #720 — Restore vault-synced sort mode if present in `.solomd/sort.json`.
+  let hasSortMeta = false;
   const sPath = sortMetaPath();
   if (sPath && workspace.currentFolder) {
     try {
@@ -298,6 +299,7 @@ async function loadManualOrder() {
         typeof sp.mode === 'string' &&
         ['name-asc', 'name-desc', 'created-asc', 'created-desc', 'modified-desc', 'manual'].includes(sp.mode)
       ) {
+        hasSortMeta = true;
         if (settings.explorerSortByFolder[workspace.currentFolder] !== sp.mode) {
           settings.setExplorerSort(workspace.currentFolder, sp.mode as TreeSortMode);
         }
@@ -315,6 +317,18 @@ async function loadManualOrder() {
         if (Array.isArray(v)) clean[k] = v.filter((x) => typeof x === 'string');
       }
       manualOrder.value = clean;
+      // #720 — If `.solomd/order.json` was synced from another PC (with non-empty
+      // entries) but `.solomd/sort.json` does not exist yet and this device has not
+      // explicitly chosen another sort mode, activate `manual` mode automatically so
+      // the synced file-tree order takes effect immediately.
+      if (
+        !hasSortMeta &&
+        workspace.currentFolder &&
+        !settings.explorerSortByFolder[workspace.currentFolder] &&
+        Object.values(clean).some((arr) => arr.length > 0)
+      ) {
+        settings.setExplorerSort(workspace.currentFolder, 'manual');
+      }
     }
   } catch {
     /* no order file yet — every folder falls back to creation order */
@@ -330,6 +344,16 @@ async function saveManualOrder() {
       content: JSON.stringify(manualOrder.value, null, 2) + '\n',
       encoding: 'UTF-8',
     });
+    // #720 — Always persist `.solomd/sort.json` alongside `order.json` so cloud
+    // sync carries both the manual order and the active sort mode to other PCs.
+    const sPath = sortMetaPath();
+    if (sPath) {
+      await invoke('write_file', {
+        path: sPath,
+        content: JSON.stringify({ mode: sortMode.value }, null, 2) + '\n',
+        encoding: 'UTF-8',
+      }).catch(() => {});
+    }
   } catch (err) {
     toasts.error(String(err));
   }
@@ -796,7 +820,14 @@ async function refreshTreePreservingExpansion(renameMap?: { from: string; to: st
 }
 
 function onSaved() { scheduleRefresh(); }
-function onRemotePulled() { scheduleRefresh(); }
+function onRemotePulled() {
+  // #720 — Reload synced `.solomd/order.json` and `.solomd/sort.json` before
+  // refreshing the tree so the pulled order applies immediately without reopening.
+  void loadManualOrder().then(() => {
+    resortLoaded();
+    scheduleRefresh();
+  });
+}
 
 let unlistenIndex: UnlistenFn | null = null;
 let unlistenCapture: UnlistenFn | null = null;

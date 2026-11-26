@@ -1561,7 +1561,7 @@ function onSelectPdfFont(v: string) {
           <label>
             {{ settings.language === 'zh' ? '图片、图表、公式对齐方式' : 'Images, Diagrams & Math Alignment' }}
           </label>
-          <div style="display:flex;gap:6px;margin-top:6px;">
+          <div class="settings__field" style="display:flex;gap:6px;justify-content:flex-end;">
             <button
               v-for="opt in (['left', 'center', 'right'] as const)"
               :key="opt"

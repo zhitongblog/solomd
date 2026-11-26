@@ -90,7 +90,7 @@ const PALETTE_MENU_IDS = [
   'theme.customCss', 'theme.clearCustomCss',
   'fold.level1', 'fold.level2', 'fold.level3', 'fold.level4', 'fold.level5', 'fold.level6',
   // Help
-  'help.welcomeTour',
+  'help.tourWelcome', 'help.tourSyntax', 'help.tourLiveEdit', 'help.tourSlideshow',
 ];
 
 /** The submenu (any depth) with this id. */

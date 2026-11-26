@@ -148,6 +148,10 @@ export const nl: I18n = {
     customCss: "Aangepast CSS-bestand…",
     clearCustomCss: "Aangepaste CSS wissen",
     welcomeTour: "Welkomstrondleiding",
+    tourWelcome: "Welkom",
+    tourSyntax: "Markdown-syntaxis",
+    tourLiveEdit: "Live bewerken",
+    tourSlideshow: "Presentatiemodus",
   },
   // 5.0 window header (Toolbar.vue)
   // 5.0 phone shell (Sidebar variant=phone, PhoneTabBar, Toolbar)

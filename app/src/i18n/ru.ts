@@ -148,6 +148,10 @@ export const ru: I18n = {
     customCss: "Свой CSS-файл…",
     clearCustomCss: "Очистить свой CSS",
     welcomeTour: "Приветственный тур",
+    tourWelcome: "Добро пожаловать",
+    tourSyntax: "Синтаксис Markdown",
+    tourLiveEdit: "Живое редактирование",
+    tourSlideshow: "Режим презентации",
   },
   // 5.0 window header (Toolbar.vue)
   // 5.0 phone shell (Sidebar variant=phone, PhoneTabBar, Toolbar)

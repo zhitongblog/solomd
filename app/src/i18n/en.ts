@@ -148,6 +148,10 @@ export const en = {
     customCss: "Custom CSS File…",
     clearCustomCss: "Clear Custom CSS",
     welcomeTour: "Welcome Tour",
+    tourWelcome: "Welcome",
+    tourSyntax: "Markdown Syntax",
+    tourLiveEdit: "Live Edit",
+    tourSlideshow: "Slideshow Mode",
   },
   // 5.0 window header (Toolbar.vue)
   // 5.0 phone shell (Sidebar variant=phone, PhoneTabBar, Toolbar)

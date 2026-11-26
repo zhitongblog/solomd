@@ -39,7 +39,7 @@ export interface OverlayOptions {
 const ZOOM_STEP = 0.25;
 const MIN_SCALE = 0.1;
 const MAX_SCALE = 10;
-const FIT_PADDING = 80;
+const FIT_PADDING = 48;
 
 // ── Singleton state ─────────────────────────────────────────────────
 
@@ -51,6 +51,9 @@ interface ActiveOverlay {
   listeners: Array<{ el: EventTarget; type: string; fn: EventListener; capture: boolean }>;
   triggerEl: HTMLElement | null;
   didPan: boolean;
+  /** Rendered dimensions of the clicked source element in the document (#722). */
+  sourceWidth: number;
+  sourceHeight: number;
 }
 
 let active: ActiveOverlay | null = null;
@@ -294,21 +297,38 @@ function fitToScreen() {
     natH = child.offsetHeight;
   }
 
-  const availW = rect.width - FIT_PADDING;
-  const availH = rect.height - FIT_PADDING;
+  const availW = Math.max(120, rect.width - FIT_PADDING);
+  const availH = Math.max(120, rect.height - FIT_PADDING);
 
   let displayW: number;
   let displayH: number;
+  let initialPanY = 0;
 
   if (natW <= 0 || natH <= 0) {
     displayW = availW;
     displayH = availH;
   } else {
-    // Scale content to fill available space, allow up to 2x upscale
+    // #722 — Scale content to fill available space, allowing up to 3x upscale
+    // so small/Retina images enlarge cleanly in the lightbox.
     const fitScale = Math.min(availW / natW, availH / natH);
-    const finalScale = Math.min(fitScale, 2);
+    const finalScale = Math.min(fitScale, 3);
     displayW = natW * finalScale;
     displayH = natH * finalScale;
+
+    // #722 — Never open an image *smaller* than it was rendered in the document
+    // (e.g. tall screenshots constrained by viewport height on macOS). When the
+    // viewport is wide enough, expand to at least 115% of its document width
+    // (capped at available width) and align tall images to the top so they can
+    // be panned naturally.
+    const srcW = active.sourceWidth;
+    if (child instanceof HTMLImageElement && srcW > 0 && displayW < srcW && availW > displayW) {
+      const targetW = Math.min(availW, Math.max(srcW * 1.15, displayW));
+      displayW = targetW;
+      displayH = targetW * (natH / natW);
+      if (displayH > availH) {
+        initialPanY = Math.round((displayH - availH) / 2);
+      }
+    }
   }
 
   // Set CSS dimensions directly on the element — flexbox centers it
@@ -318,7 +338,7 @@ function fitToScreen() {
   // Reset user zoom/pan — content is already at the right size via CSS
   scale = 1;
   panX = 0;
-  panY = 0;
+  panY = initialPanY;
   applyTransform();
   updateZoomDisplay();
 }
@@ -380,11 +400,24 @@ export function openImageOverlay(opts: OverlayOptions) {
   const viewport = document.createElement('div');
   viewport.className = 'io-viewport';
 
+  // Capture rendered dimensions of the source element in the document before
+  // opening the overlay (#722).
+  const srcRect = source.getBoundingClientRect();
+  const sourceWidth = srcRect.width || 0;
+  const sourceHeight = srcRect.height || 0;
+
   // Clone source
   const clone = source.cloneNode(true) as HTMLElement;
   const isSvg = source instanceof SVGElement;
   if (clone instanceof HTMLImageElement) {
     clone.draggable = false;
+    // Strip document-inherited sizing/constraints so they never cap lightbox size (#722).
+    clone.removeAttribute('width');
+    clone.removeAttribute('height');
+    clone.style.removeProperty('width');
+    clone.style.removeProperty('height');
+    clone.style.maxWidth = 'none';
+    clone.style.maxHeight = 'none';
   }
   if (isSvg) {
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
@@ -445,6 +478,8 @@ export function openImageOverlay(opts: OverlayOptions) {
     listeners: [],
     triggerEl: document.activeElement as HTMLElement | null,
     didPan: false,
+    sourceWidth,
+    sourceHeight,
   };
 
   document.body.appendChild(backdrop);

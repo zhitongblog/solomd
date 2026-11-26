@@ -17,7 +17,7 @@ import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 // cost every launch for a command most users never run.
 const loadChineseConvert = () => import('../lib/chinese-convert');
 import { cleanAIArtifacts, stripMarkdownToPlain } from '../lib/clean-ai';
-import { openWelcomeTour } from '../lib/welcome-tour';
+import { openWelcomeTour, openWelcomeTourDoc } from '../lib/welcome-tour';
 import { formatMarkdown } from '../lib/markdown-format';
 import { openPath } from '@tauri-apps/plugin-opener';
 import { useDailyNotes } from './useDailyNotes';
@@ -1131,11 +1131,35 @@ export function useCommands(): Command[] {
     {
       id: 'help.welcomeTour',
       title: 'Open Welcome Tour',
-      hint: 'Open 4 in-memory tutorial tabs (Welcome, Syntax, Slideshow, Shortcuts)',
+      hint: 'Open in-memory tutorial tabs (Welcome, Syntax, Live Edit, Slideshow)',
       run: () => {
         openWelcomeTour();
         toasts.success(settings.language === 'zh' ? '已打开教程' : 'Welcome tour opened');
       },
+    },
+    {
+      id: 'help.tourWelcome',
+      title: 'Welcome Guide',
+      hint: 'Open the Welcome tutorial document',
+      run: () => openWelcomeTourDoc('welcome'),
+    },
+    {
+      id: 'help.tourSyntax',
+      title: 'Markdown Syntax Guide',
+      hint: 'Open the Markdown syntax tutorial document',
+      run: () => openWelcomeTourDoc('syntax'),
+    },
+    {
+      id: 'help.tourLiveEdit',
+      title: 'Live Edit Demo',
+      hint: 'Open the Live Edit tutorial document',
+      run: () => openWelcomeTourDoc('liveEdit'),
+    },
+    {
+      id: 'help.tourSlideshow',
+      title: 'Slideshow Mode Guide',
+      hint: 'Open the Slideshow tutorial document',
+      run: () => openWelcomeTourDoc('slideshow'),
     },
     {
       id: 'help.markdown',

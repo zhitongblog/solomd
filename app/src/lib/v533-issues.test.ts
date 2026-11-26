@@ -476,7 +476,7 @@ describe('v5.3.6 feedback: table drag-select, Mermaid zoom, non-MD highlighting 
     // #701: Startup routine pull covers all enabled sync backends & StatsPill tracks live sync progress
     assert.match(ghSync, /function scheduleStartupPull/);
     const statsPill = fs.readFileSync(path.join(root, 'components/StatsPill.vue'), 'utf8');
-    assert.match(statsPill, /solomd:sync-progress/);
+    assert.match(statsPill, /solomd:\/\/sync-progress/);
     assert.match(statsPill, /stats-pill__sync/);
 
     // #702: autoOpenSiblingFiles select sits in its own navigation <section> with label:first-child + select

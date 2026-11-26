@@ -3785,6 +3785,13 @@ export const liveBlocksTheme = EditorView.theme({
     height: 'auto',
     borderRadius: '6px',
   },
+  // #716 — Standalone HTML <img> tags (e.g. `<img src="..." />`, `<p><img></p>`,
+  // `<a><img></a>`, `<figure><img></figure>`) honor the unified media alignment setting.
+  '.cm-live-block--html > img, .cm-live-block--html > p:has(> img:only-child) > img, .cm-live-block--html > a:only-child > img, .cm-live-block--html > figure > img': {
+    display: 'block',
+    marginLeft: 'var(--media-margin-left, 0)',
+    marginRight: 'var(--media-margin-right, auto)',
+  },
   '.cm-live-block--html table': {
     width: '100%',
     borderCollapse: 'collapse',
@@ -3905,6 +3912,12 @@ export const liveBlocksTheme = EditorView.theme({
     textAlign: 'var(--media-align, left)',
     userSelect: 'none',
     WebkitUserSelect: 'none',
+  },
+  // #719 — KaTeX's own `.katex-display` and `.katex-display > .katex` default
+  // to `text-align: center`, which overrides `.cm-live-block--math` for multi-line
+  // `$$...$$` display math blocks. Override them directly to honor `--media-align`.
+  '.cm-live-block--math .katex-display, .cm-live-block--math .katex-display > .katex': {
+    textAlign: 'var(--media-align, left)',
   },
   // #573 — Inline \dfrac / \frac inside consecutive list items or lines
   // overflows a `display: inline` (line-height: 1.2) span and collides

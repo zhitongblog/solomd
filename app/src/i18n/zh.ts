@@ -149,6 +149,10 @@ export const zh: I18n = {
     customCss: "自定义 CSS 文件…",
     clearCustomCss: "清除自定义 CSS",
     welcomeTour: "欢迎导览",
+    tourWelcome: "欢迎使用",
+    tourSyntax: "Markdown 语法",
+    tourLiveEdit: "实时编辑",
+    tourSlideshow: "演讲模式",
   },
   // 5.0 window header (Toolbar.vue)
   // 5.0 phone shell (Sidebar variant=phone, PhoneTabBar, Toolbar)

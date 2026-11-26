@@ -148,6 +148,10 @@ export const uk: I18n = {
     customCss: "Власний файл CSS…",
     clearCustomCss: "Очистити власний CSS",
     welcomeTour: "Вітальний тур",
+    tourWelcome: "Ласкаво просимо",
+    tourSyntax: "Синтаксис Markdown",
+    tourLiveEdit: "Редагування наживо",
+    tourSlideshow: "Режим презентації",
   },
   // 5.0 window header (Toolbar.vue)
   // 5.0 phone shell (Sidebar variant=phone, PhoneTabBar, Toolbar)

@@ -148,6 +148,10 @@ export const tr: I18n = {
     customCss: "Özel CSS Dosyası…",
     clearCustomCss: "Özel CSS’i Temizle",
     welcomeTour: "Hoş Geldin Turu",
+    tourWelcome: "Hoş Geldiniz",
+    tourSyntax: "Markdown Sözdizimi",
+    tourLiveEdit: "Canlı Düzenleme",
+    tourSlideshow: "Sunum Modu",
   },
   // 5.0 window header (Toolbar.vue)
   // 5.0 phone shell (Sidebar variant=phone, PhoneTabBar, Toolbar)
