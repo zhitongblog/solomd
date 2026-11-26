@@ -4997,18 +4997,17 @@ const fontSizeTheme = (
 ) => {
   const lh = Number.isFinite(lineHeight) ? Math.max(1.2, Math.min(2.6, lineHeight)) : 1.8;
   const ps = Number.isFinite(paragraphSpacing) ? Math.max(0, Math.min(2.0, paragraphSpacing)) : 0.9;
-  // #679 — In CodeMirror, soft-wrapped visual lines share a single `.cm-line`,
-  // while every hard Enter (`\n`) starts a new `.cm-line`. Apply the configured
-  // `paragraphSpacing` directly as `paddingBottom` on hard-Enter paragraph lines
-  // (excluding code fences, lists, quotes, headings, and blank lines) rather than
-  // shrinking it to 45% or requiring blank lines between paragraphs.
-  const paraPadEm = Math.max(0, Math.round(ps * 1000) / 1000);
+  // #679 / #709 — Apply a balanced fraction (45%, matching the plain-block editor)
+  // of `paragraphSpacing` on hard-Enter lines, and NEVER stack extra bottom padding
+  // onto lines already followed by a blank line (`<br:only-child>`) so blank-line
+  // paragraphs and before/after list gaps stay natural and match Split Preview.
+  const paraPadEm = Math.max(0, Math.round(ps * 0.45 * 1000) / 1000);
   return EditorView.theme({
     '&': { fontSize: `${px}px`, height: '100%' },
     // 5.0 §5 + #612 — body 16/1.8 by default, user-configurable lineHeight & paragraphSpacing,
     // 20px above the first line (#435, #440), room to scroll the last line up to the eye.
     '.cm-scroller': { fontFamily: buildEditorFontStack(family), lineHeight: String(lh) },
-    '&.cm-live-edit .cm-content > .cm-line:not(.cm-md-fenced-line):not(.cm-md-list-line):not(.cm-md-quote-line):not([class*="cm-md-heading-line-"]):not(:has(> br:only-child))': {
+    '&.cm-live-edit .cm-content > .cm-line:not(.cm-md-fenced-line):not(.cm-md-list-line):not(.cm-md-quote-line):not([class*="cm-md-heading-line-"]):not(:has(> br:only-child)):not(:has(+ .cm-line > br:only-child))': {
       paddingBottom: `${paraPadEm}em`,
     },
     // #709 — Give the trailing line of a list or blockquote block the same

@@ -142,4 +142,13 @@ test('List Toggle: multi-level nested UL <-> OL switching shifts child indents c
   // Toggling off 1st-level or 2nd-level nested list clears only that sibling level
   assert.equal(runFmt('1. a|\n   - sub1\n2. b', 'ol'), 'a|\n   - sub1\nb');
   assert.equal(runFmt('1. a\n   1. sub1|\n   2. sub2\n2. b', 'ol'), '1. a\n   sub1|\n   sub2\n2. b');
+
+  // Re-enabling 1st-level OL/UL after toggling off MUST jump over 2nd-level children and restore ALL 1st-level siblings
+  const olOff = runFmt('1. a|\n   - sub1\n   - sub2\n2. b', 'ol');
+  assert.equal(olOff, 'a|\n   - sub1\n   - sub2\nb');
+  assert.equal(runFmt(olOff, 'ol'), '1. a|\n   - sub1\n   - sub2\n2. b');
+
+  const ulOff = runFmt('- a|\n  - sub1\n  - sub2\n- b', 'ul');
+  assert.equal(ulOff, 'a|\n  - sub1\n  - sub2\nb');
+  assert.equal(runFmt(ulOff, 'ul'), '- a|\n  - sub1\n  - sub2\n- b');
 });

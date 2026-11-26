@@ -558,29 +558,52 @@ function toggleUnorderedList(doc: string, from: number, to: number): FormatEdit 
       };
       const cur = splitLine(lines[curIdx].text);
       if (!cur.blank && !isBlockStopLine(cur.rest)) {
-        // 1. Contiguous block of plain/UL lines (at the same quote depth) with at least one plain line
+        // 1. Contiguous block of plain/UL lines (at the same quote depth & indent),
+        //    skipping deeper-indented child lines (e.g. 2nd-level sub-lists or
+        //    indented code blocks) so re-enabling UL after toggling off never gets
+        //    broken by nested children.
         if (!ANY_LIST.test(cur.rest) || UL.test(cur.rest)) {
-          const isPlainOrUl = (i: number): boolean => {
-            if (enclosingFence(doc, lines[i].start, lines[i].end)) return false;
-            const info = splitLine(lines[i].text);
-            if (info.blank || info.qDepth !== cur.qDepth || isBlockStopLine(info.rest)) return false;
-            if (info.indW !== cur.indW) return false;
-            if (ANY_LIST.test(info.rest) && !UL.test(info.rest)) return false;
-            return true;
-          };
+          const siblings = new Set<number>([curIdx]);
           let first = curIdx;
           let last = curIdx;
-          while (first > 0 && isPlainOrUl(first - 1)) first--;
-          while (last + 1 < lines.length && isPlainOrUl(last + 1)) last++;
-          let hasPlain = false;
-          for (let i = first; i <= last; i++) {
-            if (!UL.test(splitLine(lines[i].text).rest)) {
-              hasPlain = true;
-              break;
-            }
+          const isIndentedFenceInPlain = (i: number): 'inside' | 'stop' | 'none' => {
+            const fence = enclosingFence(doc, lines[i].start, lines[i].end);
+            if (!fence) return 'none';
+            const fEnd = doc.indexOf('\n', fence[0]);
+            const opener = splitLine(doc.slice(fence[0], fEnd < 0 ? doc.length : fEnd));
+            return opener.qDepth === cur.qDepth && opener.indW > cur.indW ? 'inside' : 'stop';
+          };
+          for (let i = curIdx - 1; i >= 0; i--) {
+            const fState = isIndentedFenceInPlain(i);
+            if (fState === 'inside') continue;
+            if (fState === 'stop') break;
+            const info = splitLine(lines[i].text);
+            if (info.blank || info.qDepth !== cur.qDepth) break;
+            if (info.indW < cur.indW) break;
+            if (info.indW > cur.indW) continue;
+            if (isBlockStopLine(info.rest)) break;
+            if (ANY_LIST.test(info.rest) && !UL.test(info.rest)) break;
+            siblings.add(i);
+            first = i;
           }
-          if (first < last && hasPlain) {
-            const rewritten = lines.slice(first, last + 1).map((l) => {
+          for (let i = curIdx + 1; i < lines.length; i++) {
+            const fState = isIndentedFenceInPlain(i);
+            if (fState === 'inside') continue;
+            if (fState === 'stop') break;
+            const info = splitLine(lines[i].text);
+            if (info.blank || info.qDepth !== cur.qDepth) break;
+            if (info.indW < cur.indW) break;
+            if (info.indW > cur.indW) continue;
+            if (isBlockStopLine(info.rest)) break;
+            if (ANY_LIST.test(info.rest) && !UL.test(info.rest)) break;
+            siblings.add(i);
+            last = i;
+          }
+          const hasPlain = Array.from(siblings).some((i) => !UL.test(splitLine(lines[i].text).rest));
+          if (siblings.size > 1 && hasPlain) {
+            const rewritten = lines.slice(first, last + 1).map((l, idx) => {
+              const lineIdx = first + idx;
+              if (!siblings.has(lineIdx)) return l.text;
               const info = splitLine(l.text);
               const body = info.rest.replace(ANY_LIST, '').replace(/^[ \t]*/, '');
               return `${normalizeQuotePrefix(info.q)}${info.ind}- ${body}`;
@@ -721,32 +744,55 @@ function toggleOrderedList(doc: string, from: number, to: number): FormatEdit {
       const cur = splitLine(lines[curIdx].text);
       if (!cur.blank && !isBlockStopLine(cur.rest)) {
         // First check if `cur` is part of a contiguous block of plain/OL lines
-        // (at the same quote depth) that has at least one plain line to convert.
+        // (at the same quote depth & indent) that has at least one plain line to
+        // convert, skipping deeper-indented child lines (e.g. 2nd-level lists)
+        // so re-enabling OL after toggling off never gets broken by nested children.
         if (!ANY_LIST.test(cur.rest) || OL.test(cur.rest)) {
-          const isPlainOrOl = (i: number): boolean => {
-            if (enclosingFence(doc, lines[i].start, lines[i].end)) return false;
-            const info = splitLine(lines[i].text);
-            if (info.blank || info.qDepth !== cur.qDepth || isBlockStopLine(info.rest)) return false;
-            if (info.indW !== cur.indW) return false;
-            if (ANY_LIST.test(info.rest) && !OL.test(info.rest)) return false;
-            return true;
-          };
+          const siblings = new Set<number>([curIdx]);
           let first = curIdx;
           let last = curIdx;
-          while (first > 0 && isPlainOrOl(first - 1)) first--;
-          while (last + 1 < lines.length && isPlainOrOl(last + 1)) last++;
-          let hasPlain = false;
-          for (let i = first; i <= last; i++) {
-            if (!OL.test(splitLine(lines[i].text).rest)) {
-              hasPlain = true;
-              break;
-            }
+          const isIndentedFenceInPlain = (i: number): 'inside' | 'stop' | 'none' => {
+            const fence = enclosingFence(doc, lines[i].start, lines[i].end);
+            if (!fence) return 'none';
+            const fEnd = doc.indexOf('\n', fence[0]);
+            const opener = splitLine(doc.slice(fence[0], fEnd < 0 ? doc.length : fEnd));
+            return opener.qDepth === cur.qDepth && opener.indW > cur.indW ? 'inside' : 'stop';
+          };
+          for (let i = curIdx - 1; i >= 0; i--) {
+            const fState = isIndentedFenceInPlain(i);
+            if (fState === 'inside') continue;
+            if (fState === 'stop') break;
+            const info = splitLine(lines[i].text);
+            if (info.blank || info.qDepth !== cur.qDepth) break;
+            if (info.indW < cur.indW) break;
+            if (info.indW > cur.indW) continue;
+            if (isBlockStopLine(info.rest)) break;
+            if (ANY_LIST.test(info.rest) && !OL.test(info.rest)) break;
+            siblings.add(i);
+            first = i;
           }
-          if (first < last && hasPlain) {
+          for (let i = curIdx + 1; i < lines.length; i++) {
+            const fState = isIndentedFenceInPlain(i);
+            if (fState === 'inside') continue;
+            if (fState === 'stop') break;
+            const info = splitLine(lines[i].text);
+            if (info.blank || info.qDepth !== cur.qDepth) break;
+            if (info.indW < cur.indW) break;
+            if (info.indW > cur.indW) continue;
+            if (isBlockStopLine(info.rest)) break;
+            if (ANY_LIST.test(info.rest) && !OL.test(info.rest)) break;
+            siblings.add(i);
+            last = i;
+          }
+          const hasPlain = Array.from(siblings).some((i) => !OL.test(splitLine(lines[i].text).rest));
+          if (siblings.size > 1 && hasPlain) {
+            let num = 1;
             const rewritten = lines.slice(first, last + 1).map((l, idx) => {
+              const lineIdx = first + idx;
+              if (!siblings.has(lineIdx)) return l.text;
               const info = splitLine(l.text);
               const body = info.rest.replace(ANY_LIST, '').replace(/^[ \t]*/, '');
-              return `${normalizeQuotePrefix(info.q)}${info.ind}${idx + 1}. ${body}`;
+              return `${normalizeQuotePrefix(info.q)}${info.ind}${num++}. ${body}`;
             });
             const spanStart = lines[first].start;
             const spanEnd = lines[last].end;
