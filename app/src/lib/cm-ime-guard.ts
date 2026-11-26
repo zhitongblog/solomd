@@ -34,7 +34,8 @@ let imeComposing = false;
 let imeFreezeActive = false;
 let imeIdleTimer: ReturnType<typeof setTimeout> | null = null;
 const isWindowsImeHost =
-  typeof navigator !== 'undefined' && /Win/i.test(navigator.platform);
+  typeof navigator !== 'undefined' &&
+  (/Win/i.test(navigator.platform || '') || /Windows/i.test(navigator.userAgent || ''));
 
 export const imeSafeFlushEffect = StateEffect.define<void>();
 
@@ -72,15 +73,16 @@ function holdImeFreeze(view: EditorView, composing: boolean) {
 }
 
 /**
- * #693 — On Windows 11 WebView2 (Chromium), committing fullwidth CJK
- * punctuation (`、` `，` `。` `：` `；` `？` `！` `“”` `（）` etc.) directly
- * via non-composing `beforeinput` (`insertText`) in the middle of existing text
- * (e.g. `（|）` or `登记|开闸`) causes Windows TSF to misreport the post-insert
- * selection offset by +1 extra character, jumping the caret outside `）` or past
- * the next CJK character. Intercepting and dispatching directly through CM6
- * keeps the caret at the exact `from + data.length` offset.
+ * #693 / #705 — On Windows 11 WebView2 (Chromium), committing CJK or ASCII
+ * punctuation/symbols (`、` `，` `。` `：` `；` `？` `！` `“”` `（）` `,` `.`
+ * `:` `;` `(` `)` etc.) via non-composing `beforeinput` (`insertText` /
+ * `insertReplacementText`) in the middle of existing text (e.g. `（|）` or
+ * `登记|开闸`) causes Windows TSF to misreport the post-insert selection offset
+ * by +1 extra character, jumping the caret outside `）` or past the next CJK
+ * character. Intercepting and dispatching directly through CM6 keeps the caret
+ * at the exact `from + data.length` offset.
  */
-const CJK_PUNCT_RE = /[\u3000-\u303f\uff00-\uffef“”‘’—…·]/;
+const WINDOWS_PUNCT_RE = /[\u3000-\u303f\uff00-\uffef“”‘’—…·!-/:-@\[-`{-~]/;
 
 export function shouldInterceptWindowsCjkPunctuation(
   isWindows: boolean,
@@ -88,9 +90,10 @@ export function shouldInterceptWindowsCjkPunctuation(
   inputType: string,
   data: string | null | undefined,
 ): boolean {
-  if (!isWindows || isComposing || inputType !== 'insertText') return false;
+  if (!isWindows || isComposing) return false;
+  if (inputType !== 'insertText' && inputType !== 'insertReplacementText') return false;
   if (!data || data.length === 0 || data.length > 4) return false;
-  return CJK_PUNCT_RE.test(data);
+  return WINDOWS_PUNCT_RE.test(data);
 }
 
 /**

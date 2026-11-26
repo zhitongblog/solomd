@@ -85,7 +85,7 @@ const PALETTE_MENU_IDS = [
   'tile.closePane', 'bases.open', 'views.create', 'type.create', 'tags.refresh',
   // View
   'view.toggleBacklinks', 'view.relationships', 'view.toggleNeighborhood', 'view.toggleTagsPanel',
-  'view.toggleTasksPanel', 'view.toggleTypesPanel', 'view.toggleHistoryPanel', 'views.toggle',
+  'view.toggleTasksPanel', 'view.toggleSnippets', 'view.toggleTypesPanel', 'view.toggleHistoryPanel', 'views.toggle',
   'view.toggleAgentPanel', 'view.resetSidebarPanes', 'view.toggleWrap', 'view.toggleLineNumbers',
   'theme.customCss', 'theme.clearCustomCss',
   'fold.level1', 'fold.level2', 'fold.level3', 'fold.level4', 'fold.level5', 'fold.level6',

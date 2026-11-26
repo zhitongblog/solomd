@@ -135,6 +135,7 @@ export const ko: I18n = {
     paneNeighborhood: "이웃 관계",
     paneTags: "태그",
     paneTasks: "작업",
+    paneSnippets: "스니펫",
     paneTypes: "유형",
     paneHistory: "기록",
     paneSavedViews: "저장된 뷰",

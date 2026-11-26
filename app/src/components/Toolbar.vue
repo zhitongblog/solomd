@@ -120,6 +120,10 @@ const customCommandItems = computed(() => {
 function hasToolbarItem(id: ToolbarItemId): boolean {
   return activeToolbarItems.value.has(id);
 }
+/** #708 — Resolve custom user-selected icon (SVG name or emoji glyph) for built-in toolbar buttons. */
+function builtinIconFor(id: ToolbarItemId, fallback: string): string {
+  return settings.toolbarItemIcons?.[id] || fallback;
+}
 function runCustomToolbarCommand(item: { run?: () => void | Promise<void> }) {
   void item.run?.();
 }
@@ -1086,7 +1090,7 @@ onBeforeUnmount(() => {
             <Icon :name="settings.viewMode === 'preview' ? 'pencil' : 'eye'" />
           </button>
 
-          <!-- #622 — Optional customizable quick buttons -->
+          <!-- #622 / #708 — Optional customizable quick buttons (all honor custom icons) -->
           <button
             v-if="!isNarrow && hasToolbarItem('newFile')"
             class="icon-btn"
@@ -1094,7 +1098,8 @@ onBeforeUnmount(() => {
             :title="t('toolbarCustom.item.newFile')"
             :aria-label="t('toolbarCustom.item.newFile')"
           >
-            <Icon name="plus" />
+            <span v-if="isCustomGlyphIcon(builtinIconFor('newFile', 'plus'))" class="icon-btn__glyph">{{ builtinIconFor('newFile', 'plus') }}</span>
+            <Icon v-else :name="builtinIconFor('newFile', 'plus')" />
           </button>
           <button
             v-if="!isNarrow && hasToolbarItem('save')"
@@ -1103,7 +1108,8 @@ onBeforeUnmount(() => {
             :title="t('toolbarCustom.item.save')"
             :aria-label="t('toolbarCustom.item.save')"
           >
-            <Icon name="save" />
+            <span v-if="isCustomGlyphIcon(builtinIconFor('save', 'save'))" class="icon-btn__glyph">{{ builtinIconFor('save', 'save') }}</span>
+            <Icon v-else :name="builtinIconFor('save', 'save')" />
           </button>
           <button
             v-if="!isNarrow && hasToolbarItem('outline')"
@@ -1113,7 +1119,8 @@ onBeforeUnmount(() => {
             :title="t('toolbarCustom.item.outline')"
             :aria-label="t('toolbarCustom.item.outline')"
           >
-            <Icon name="list" />
+            <span v-if="isCustomGlyphIcon(builtinIconFor('outline', 'list'))" class="icon-btn__glyph">{{ builtinIconFor('outline', 'list') }}</span>
+            <Icon v-else :name="builtinIconFor('outline', 'list')" />
           </button>
           <button
             v-if="!isNarrow && hasToolbarItem('inspector')"
@@ -1123,7 +1130,8 @@ onBeforeUnmount(() => {
             :title="t('toolbarCustom.item.inspector')"
             :aria-label="t('toolbarCustom.item.inspector')"
           >
-            <Icon name="info" />
+            <span v-if="isCustomGlyphIcon(builtinIconFor('inspector', 'info'))" class="icon-btn__glyph">{{ builtinIconFor('inspector', 'info') }}</span>
+            <Icon v-else :name="builtinIconFor('inspector', 'info')" />
           </button>
           <button
             v-if="!isNarrow && isMarkdown && hasToolbarItem('insertFrontmatter')"
@@ -1132,7 +1140,8 @@ onBeforeUnmount(() => {
             :title="t('toolbarCustom.item.insertFrontmatter')"
             :aria-label="t('toolbarCustom.item.insertFrontmatter')"
           >
-            <Icon name="code" />
+            <span v-if="isCustomGlyphIcon(builtinIconFor('insertFrontmatter', 'code'))" class="icon-btn__glyph">{{ builtinIconFor('insertFrontmatter', 'code') }}</span>
+            <Icon v-else :name="builtinIconFor('insertFrontmatter', 'code')" />
           </button>
           <button
             v-if="!isNarrow && hasToolbarItem('formatBar')"
@@ -1142,7 +1151,8 @@ onBeforeUnmount(() => {
             :title="t('toolbarCustom.item.formatBar')"
             :aria-label="t('toolbarCustom.item.formatBar')"
           >
-            <Icon name="type" />
+            <span v-if="isCustomGlyphIcon(builtinIconFor('formatBar', 'type'))" class="icon-btn__glyph">{{ builtinIconFor('formatBar', 'type') }}</span>
+            <Icon v-else :name="builtinIconFor('formatBar', 'type')" />
           </button>
           <button
             v-if="!isNarrow && hasToolbarItem('focusMode')"
@@ -1152,7 +1162,8 @@ onBeforeUnmount(() => {
             :title="t('toolbarCustom.item.focusMode')"
             :aria-label="t('toolbarCustom.item.focusMode')"
           >
-            <Icon name="maximize" />
+            <span v-if="isCustomGlyphIcon(builtinIconFor('focusMode', 'maximize'))" class="icon-btn__glyph">{{ builtinIconFor('focusMode', 'maximize') }}</span>
+            <Icon v-else :name="builtinIconFor('focusMode', 'maximize')" />
           </button>
           <button
             v-if="!isNarrow && hasToolbarItem('theme')"
@@ -1161,7 +1172,8 @@ onBeforeUnmount(() => {
             :title="t('toolbarCustom.item.theme')"
             :aria-label="t('toolbarCustom.item.theme')"
           >
-            <Icon :name="themeFamily(settings.theme) === 'dark' ? 'sun' : 'moon'" />
+            <span v-if="isCustomGlyphIcon(builtinIconFor('theme', themeFamily(settings.theme) === 'dark' ? 'sun' : 'moon'))" class="icon-btn__glyph">{{ builtinIconFor('theme', themeFamily(settings.theme) === 'dark' ? 'sun' : 'moon') }}</span>
+            <Icon v-else :name="builtinIconFor('theme', themeFamily(settings.theme) === 'dark' ? 'sun' : 'moon')" />
           </button>
           <button
             v-if="!isNarrow && hasToolbarItem('gitAdd') && gitQuick.isGitRepo.value"
@@ -1171,7 +1183,8 @@ onBeforeUnmount(() => {
             :title="t('gitQuick.addTitle')"
             :aria-label="t('gitQuick.addTitle')"
           >
-            <Icon name="plus" />
+            <span v-if="isCustomGlyphIcon(builtinIconFor('gitAdd', 'plus'))" class="icon-btn__glyph">{{ builtinIconFor('gitAdd', 'plus') }}</span>
+            <Icon v-else :name="builtinIconFor('gitAdd', 'plus')" />
           </button>
           <button
             v-if="!isNarrow && hasToolbarItem('gitPull') && gitQuick.isGitRepo.value"
@@ -1181,7 +1194,8 @@ onBeforeUnmount(() => {
             :title="t('gitQuick.pullTitle')"
             :aria-label="t('gitQuick.pullTitle')"
           >
-            <Icon name="download" />
+            <span v-if="isCustomGlyphIcon(builtinIconFor('gitPull', 'download'))" class="icon-btn__glyph">{{ builtinIconFor('gitPull', 'download') }}</span>
+            <Icon v-else :name="builtinIconFor('gitPull', 'download')" />
           </button>
           <button
             v-if="!isNarrow && hasToolbarItem('gitPush') && gitQuick.isGitRepo.value"
@@ -1191,7 +1205,8 @@ onBeforeUnmount(() => {
             :title="t('gitQuick.pushTitle')"
             :aria-label="t('gitQuick.pushTitle')"
           >
-            <Icon name="upload" />
+            <span v-if="isCustomGlyphIcon(builtinIconFor('gitPush', 'upload'))" class="icon-btn__glyph">{{ builtinIconFor('gitPush', 'upload') }}</span>
+            <Icon v-else :name="builtinIconFor('gitPush', 'upload')" />
           </button>
           <button
             v-if="!isNarrow && hasToolbarItem('settings')"
@@ -1200,7 +1215,8 @@ onBeforeUnmount(() => {
             :title="t('toolbarCustom.item.settings')"
             :aria-label="t('toolbarCustom.item.settings')"
           >
-            <Icon name="settings" />
+            <span v-if="isCustomGlyphIcon(builtinIconFor('settings', 'settings'))" class="icon-btn__glyph">{{ builtinIconFor('settings', 'settings') }}</span>
+            <Icon v-else :name="builtinIconFor('settings', 'settings')" />
           </button>
 
           <button
@@ -1210,7 +1226,8 @@ onBeforeUnmount(() => {
             :title="tip('toolbar.searchTooltip', 'search.global')"
             :aria-label="t('toolbar.searchTooltip')"
           >
-            <Icon name="search" />
+            <span v-if="isCustomGlyphIcon(builtinIconFor('search', 'search'))" class="icon-btn__glyph">{{ builtinIconFor('search', 'search') }}</span>
+            <Icon v-else :name="builtinIconFor('search', 'search')" />
             <span v-if="settings.toolbarShowLabels && !dockInTitlebar" class="icon-btn__label">{{ settings.language === 'zh' ? '搜索' : 'Search' }}</span>
           </button>
 
@@ -1226,7 +1243,8 @@ onBeforeUnmount(() => {
           :title="t('toolbar.exportTooltip')"
           :aria-label="t('toolbar.exportTooltip')"
         >
-          <Icon name="share" />
+          <span v-if="isCustomGlyphIcon(builtinIconFor('export', 'share'))" class="icon-btn__glyph">{{ builtinIconFor('export', 'share') }}</span>
+          <Icon v-else :name="builtinIconFor('export', 'share')" />
           <span v-if="settings.toolbarShowLabels && !isNarrow && !dockInTitlebar" class="icon-btn__label">{{ settings.language === 'zh' ? '导出' : 'Export' }}</span>
         </button>
         <Teleport to="body">
@@ -1324,7 +1342,8 @@ onBeforeUnmount(() => {
         :aria-label="t('toolbar.rightSidebarTooltip')"
         :aria-pressed="!settings.rightSidebarHidden"
       >
-        <Icon name="sidebar-right" />
+        <span v-if="isCustomGlyphIcon(builtinIconFor('rightSidebar', 'sidebar-right'))" class="icon-btn__glyph">{{ builtinIconFor('rightSidebar', 'sidebar-right') }}</span>
+        <Icon v-else :name="builtinIconFor('rightSidebar', 'sidebar-right')" />
         <span v-if="settings.toolbarShowLabels && !dockInTitlebar" class="icon-btn__label">{{ settings.language === 'zh' ? '侧栏' : 'Sidebar' }}</span>
       </button>
 
@@ -1340,7 +1359,8 @@ onBeforeUnmount(() => {
           :title="t('header.more')"
           :aria-label="t('header.more')"
         >
-          <Icon name="more" />
+          <span v-if="isCustomGlyphIcon(builtinIconFor('more', 'more'))" class="icon-btn__glyph">{{ builtinIconFor('more', 'more') }}</span>
+          <Icon v-else :name="builtinIconFor('more', 'more')" />
           <span v-if="settings.toolbarShowLabels && !isNarrow && !dockInTitlebar" class="icon-btn__label">{{ settings.language === 'zh' ? '更多' : 'More' }}</span>
         </button>
         <Teleport to="body">

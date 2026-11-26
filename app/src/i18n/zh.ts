@@ -136,6 +136,7 @@ export const zh: I18n = {
     paneNeighborhood: "关系网络",
     paneTags: "标签",
     paneTasks: "任务",
+    paneSnippets: "代码片段",
     paneTypes: "类型",
     paneHistory: "历史版本",
     paneSavedViews: "已保存视图",

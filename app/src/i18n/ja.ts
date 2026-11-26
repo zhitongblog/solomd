@@ -135,6 +135,7 @@ export const ja: I18n = {
     paneNeighborhood: "関連ノート",
     paneTags: "タグ",
     paneTasks: "タスク",
+    paneSnippets: "スニペット",
     paneTypes: "タイプ",
     paneHistory: "履歴",
     paneSavedViews: "保存したビュー",

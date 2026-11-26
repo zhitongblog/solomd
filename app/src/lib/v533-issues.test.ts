@@ -484,5 +484,34 @@ describe('v5.3.6 feedback: table drag-select, Mermaid zoom, non-MD highlighting 
       settingsPanel,
       /<section data-cat="basics" data-basics="navigation">\s*<label>\{\{ settings\.language === 'zh' \? '打开文件时自动打开同目录其他文件'[\s\S]*?<\/label>\s*<select[\s\S]*?settings\.autoOpenSiblingFiles/,
     );
+
+    // #703: Snippets panel toggle exposed in View -> Panels menu and Settings -> Basics -> Layout
+    const appMenuSrc = fs.readFileSync(path.join(root, 'lib/app-menu.ts'), 'utf8');
+    assert.match(appMenuSrc, /view\.toggleSnippets/);
+    assert.match(settingsPanel, /settings\.showSnippetsPanel/);
+
+    // #704: exportMediaAlignCss aligns standalone images inside <p> / <figure> without requiring :has()
+    const { exportMediaAlignCss } = await import('./html-export.ts');
+    assert.match(exportMediaAlignCss('center'), /p > img:only-child[\s\S]*?margin-left: auto !important/);
+    assert.match(exportMediaAlignCss('right'), /p > img:only-child[\s\S]*?margin-left: auto !important;[\s\S]*?margin-right: 0 !important/);
+
+    // #705: Windows punctuation guard also intercepts ASCII symbols & insertReplacementText
+    assert.equal(shouldInterceptWindowsCjkPunctuation(true, false, 'insertText', '('), true);
+    assert.equal(shouldInterceptWindowsCjkPunctuation(true, false, 'insertReplacementText', '、'), true);
+
+    // #708: Built-in toolbar buttons resolve custom icons via builtinIconFor
+    const toolbarSrc = fs.readFileSync(path.join(root, 'components/Toolbar.vue'), 'utf8');
+    assert.match(toolbarSrc, /function builtinIconFor/);
+    assert.match(toolbarSrc, /builtinIconFor\('save'/);
+    assert.match(toolbarSrc, /builtinIconFor\('search'/);
+
+    // #709: Live Edit trailing list line gets symmetric paragraph bottom spacing
+    const editorSrc = fs.readFileSync(path.join(root, 'components/Editor.vue'), 'utf8');
+    assert.match(editorSrc, /\.cm-line\.cm-md-list-line:has\(\+ \.cm-line:not\(\.cm-md-list-line\)/);
+
+    // #710: .textpack extracts to isolated .solomd-textpack dir and repacks on save
+    const useFilesSrc = fs.readFileSync(path.join(root, 'composables/useFiles.ts'), 'utf8');
+    assert.match(useFilesSrc, /\.solomd-textpack/);
+    assert.match(useFilesSrc, /if \(tab\.textpackPath\)/);
   });
 });

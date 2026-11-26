@@ -135,6 +135,7 @@ export const tr: I18n = {
     paneNeighborhood: "Komşuluk",
     paneTags: "Etiketler",
     paneTasks: "Görevler",
+    paneSnippets: "Kod Parçacıkları",
     paneTypes: "Türler",
     paneHistory: "Geçmiş",
     paneSavedViews: "Kayıtlı Görünümler",

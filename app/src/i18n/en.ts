@@ -135,6 +135,7 @@ export const en = {
     paneNeighborhood: "Neighborhood",
     paneTags: "Tags",
     paneTasks: "Tasks",
+    paneSnippets: "Snippets",
     paneTypes: "Types",
     paneHistory: "History",
     paneSavedViews: "Saved Views",

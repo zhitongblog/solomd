@@ -46,6 +46,8 @@ export interface Tab {
   cursor?: { line: number; col: number };
   /** #672 — Optional tab group ID this tab belongs to. */
   groupId?: string;
+  /** #710 — Original `.textpack` archive path when editing an unpacked TextPack bundle. */
+  textpackPath?: string;
 }
 
 /** #672 — Browser-style collapsible color-coded tab group. */

@@ -2980,6 +2980,10 @@ watchEffect(() => { void settings.aiEnabled; void settings.aiProvider; refreshAi
             <span class="sidebar-ctx__check">{{ settings.showTasksPanel ? '✓' : '' }}</span>
             {{ t('rsPane.tasks') }}
           </label>
+          <label class="sidebar-ctx__item" @click="ctxToggle(() => { settings.toggleSnippetsPanel() })">
+            <span class="sidebar-ctx__check">{{ settings.showSnippetsPanel ? '✓' : '' }}</span>
+            {{ t('menubar.paneSnippets') }}
+          </label>
           <label class="sidebar-ctx__item" @click="ctxToggle(() => { settings.toggleNeighborhood() })">
             <span class="sidebar-ctx__check">{{ settings.showNeighborhood ? '✓' : '' }}</span>
             {{ t('rsPane.neighborhood') }}

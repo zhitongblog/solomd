@@ -95,6 +95,7 @@ export interface MenuState {
     neighborhood: boolean;
     tags: boolean;
     tasks: boolean;
+    snippets?: boolean;
     types: boolean;
     history: boolean;
     savedViews: boolean;
@@ -427,6 +428,7 @@ export function buildAppMenu(ctx: MenuContext): TopMenu[] {
         item('view.toggleNeighborhood', t('menubar.paneNeighborhood'), { checked: state.panes.neighborhood }),
         item('view.toggleTagsPanel', t('menubar.paneTags'), { checked: state.panes.tags }),
         item('view.toggleTasksPanel', t('menubar.paneTasks'), { checked: state.panes.tasks }),
+        item('view.toggleSnippets', t('menubar.paneSnippets'), { checked: !!state.panes.snippets }),
         item('view.toggleTypesPanel', t('menubar.paneTypes'), { checked: state.panes.types }),
         item('view.toggleHistoryPanel', t('menubar.paneHistory'), { checked: state.panes.history }),
         item('views.toggle', t('menubar.paneSavedViews'), { checked: state.panes.savedViews }),

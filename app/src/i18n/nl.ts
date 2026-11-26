@@ -135,6 +135,7 @@ export const nl: I18n = {
     paneNeighborhood: "Omgeving",
     paneTags: "Tags",
     paneTasks: "Taken",
+    paneSnippets: "Snippets",
     paneTypes: "Types",
     paneHistory: "Geschiedenis",
     paneSavedViews: "Opgeslagen weergaven",

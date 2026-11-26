@@ -135,6 +135,7 @@ export const fr: I18n = {
     paneNeighborhood: "Voisinage",
     paneTags: "Tags",
     paneTasks: "Tâches",
+    paneSnippets: "Extraits",
     paneTypes: "Types",
     paneHistory: "Historique",
     paneSavedViews: "Vues enregistrées",

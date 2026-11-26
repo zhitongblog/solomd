@@ -135,6 +135,7 @@ export const it: I18n = {
     paneNeighborhood: "Vicinato",
     paneTags: "Tags",
     paneTasks: "Attività",
+    paneSnippets: "Snippet",
     paneTypes: "Tipi",
     paneHistory: "Cronologia",
     paneSavedViews: "Viste salvate",

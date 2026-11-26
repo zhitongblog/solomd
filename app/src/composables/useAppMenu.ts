@@ -57,6 +57,7 @@ export function useAppMenu() {
           neighborhood: settings.showNeighborhood,
           tags: settings.showTagsPanel,
           tasks: settings.showTasksPanel,
+          snippets: settings.showSnippetsPanel,
           types: settings.showTypesPanel,
           history: settings.showHistoryPanel,
           savedViews: settings.showViewsPanel,

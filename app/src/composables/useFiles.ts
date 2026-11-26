@@ -331,8 +331,13 @@ export function useFiles() {
     }
 
     const ext = (path.split('.').pop() || '').toLowerCase();
+    let textpackSourcePath: string | undefined;
+    let textpackDisplayName: string | undefined;
 
-    // #505 — Open `.textpack` (ZIP bundle) or `.textbundle` (directory bundle).
+    // #505 / #710 — Open `.textpack` (ZIP bundle) or `.textbundle` (directory bundle).
+    // Extract `.textpack` into an isolated working folder (`<parent>/.solomd-textpack/<stem>/`)
+    // so it NEVER overwrites an existing sibling `<stem>.md`, and remember `textpackSourcePath`
+    // so saving repacks both Markdown and newly pasted images directly back into the `.textpack`.
     if (ext === 'textpack') {
       try {
         const { extractTextPackArchive } = await import('../lib/textbundle');
@@ -342,11 +347,13 @@ export function useFiles() {
         const parentDir = lastSep > 0 ? path.slice(0, lastSep) : '';
         const fileName = lastSep >= 0 ? path.slice(lastSep + 1) : path;
         const stem = fileName.replace(/\.textpack$/i, '') || 'Bundle';
-        const assetsFolder = `${stem}.assets`;
+        const assetsFolder = 'assets';
         const unpacked = extractTextPackArchive(new Uint8Array(rawBytes), assetsFolder);
         if (parentDir) {
+          const workDir = `${parentDir}${sep}.solomd-textpack${sep}${stem}`;
+          await invoke('fs_create_dir', { path: workDir }).catch(() => {});
           if (unpacked.assets.length > 0) {
-            const absAssetsDir = `${parentDir}${sep}${assetsFolder}`;
+            const absAssetsDir = `${workDir}${sep}${assetsFolder}`;
             await invoke('fs_create_dir', { path: absAssetsDir }).catch(() => {});
             for (const asset of unpacked.assets) {
               await invoke('write_binary_file', {
@@ -355,8 +362,10 @@ export function useFiles() {
               });
             }
           }
-          const mdPath = `${parentDir}${sep}${stem}.md`;
+          const mdPath = `${workDir}${sep}${stem}.md`;
           await invoke('write_file', { path: mdPath, content: unpacked.markdown, encoding: 'UTF-8' });
+          textpackSourcePath = path;
+          textpackDisplayName = fileName;
           path = mdPath;
         }
       } catch (e) {
@@ -428,6 +437,10 @@ export function useFiles() {
         language: result.language,
         hadBom: result.had_bom,
       });
+      if (textpackSourcePath) {
+        openedTab.textpackPath = textpackSourcePath;
+        if (textpackDisplayName) openedTab.fileName = textpackDisplayName;
+      }
 
       // #672 — Auto-group by parent folder and/or auto-open sibling files in the same folder.
       const parentDir = path.replace(/[\\/][^\\/]+$/, '');
@@ -1087,6 +1100,42 @@ export function useFiles() {
           content: payload,
           encoding: tab.encoding || 'UTF-8',
         });
+        // #710 — When editing an opened `.textpack` archive, repack the updated
+        // Markdown and all referenced local images/assets directly back into the
+        // original `.textpack` ZIP file so edits & pasted screenshots persist.
+        if (tab.textpackPath) {
+          const { rewriteMarkdownForTextBundle, createTextPackArchive } = await import(
+            '../lib/textbundle'
+          );
+          const { rewrittenMarkdown, assets } = rewriteMarkdownForTextBundle(payload);
+          const assetBytes: Record<string, Uint8Array> = {};
+          const noteDir = path.slice(0, Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\')));
+          const sep = path.includes('\\') ? '\\' : '/';
+          for (const ref of assets) {
+            let absPath = ref.rawPath;
+            try {
+              absPath = decodeURIComponent(absPath);
+            } catch {
+              // keep raw
+            }
+            if (!absPath.startsWith('/') && !/^[a-zA-Z]:[\\/]/.test(absPath) && noteDir) {
+              absPath = `${noteDir}${sep}${absPath.replace(/^\.[\\/]/, '').replace(/[\\/]/g, sep)}`;
+            }
+            try {
+              const bytes = await invoke<number[]>('read_binary_file', { path: absPath });
+              if (bytes && bytes.length > 0) {
+                assetBytes[ref.bundleFileName] = new Uint8Array(bytes);
+              }
+            } catch {
+              // Keep going if an optional external/missing asset cannot be read
+            }
+          }
+          const zipBuf = createTextPackArchive(rewrittenMarkdown, assetBytes);
+          await invoke('write_binary_file', {
+            path: tab.textpackPath,
+            data: Array.from(zipBuf),
+          });
+        }
       }
       tabs.markSaved(tab.id, path);
       delete (tab as any).saveFailed;

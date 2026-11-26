@@ -135,6 +135,7 @@ export const uk: I18n = {
     paneNeighborhood: "Сусідство",
     paneTags: "Теги",
     paneTasks: "Завдання",
+    paneSnippets: "Сніпети",
     paneTypes: "Типи",
     paneHistory: "Історія",
     paneSavedViews: "Збережені подання",

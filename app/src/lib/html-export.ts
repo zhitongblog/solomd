@@ -1624,13 +1624,19 @@ p:has(> a:only-child > img:only-child) > a > img,
 figure > img {
   display: inline-block;
 }
+/* #704 — Block + auto-margin alignment for standalone images inside <p> / <figure>
+   so PDF print engines and EPUB readers that lack CSS :has() support still honor
+   left / center / right media alignment reliably. */
+p > img:only-child,
+p > a:only-child > img:only-child,
+figure > img,
 .preview-content > img,
 .solomd-print-content > img,
 .pdf-page > img,
 .img-page > img,
 article > img,
 body > img {
-  display: block;
+  display: block !important;
   margin-left: ${mLeft} !important;
   margin-right: ${mRight} !important;
 }

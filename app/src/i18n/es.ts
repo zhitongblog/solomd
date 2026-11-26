@@ -135,6 +135,7 @@ export const es: I18n = {
     paneNeighborhood: "Vecindario",
     paneTags: "Tags",
     paneTasks: "Tareas",
+    paneSnippets: "Fragmentos",
     paneTypes: "Tipos",
     paneHistory: "Historial",
     paneSavedViews: "Vistas guardadas",

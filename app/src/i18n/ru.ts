@@ -135,6 +135,7 @@ export const ru: I18n = {
     paneNeighborhood: "Окружение",
     paneTags: "Теги",
     paneTasks: "Задачи",
+    paneSnippets: "Сниппеты",
     paneTypes: "Типы",
     paneHistory: "История",
     paneSavedViews: "Сохранённые представления",

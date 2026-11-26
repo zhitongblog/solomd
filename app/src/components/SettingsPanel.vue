@@ -2032,6 +2032,10 @@ function onSelectPdfFont(v: string) {
             <input type="checkbox" :checked="settings.showTagsPanel" @change="settings.toggleTagsPanel()" />
             {{ t('settings.showTagsPanel') }}
           </label>
+          <label style="margin-top: 6px;">
+            <input type="checkbox" :checked="settings.showSnippetsPanel" @change="settings.toggleSnippetsPanel()" />
+            {{ settings.language === 'zh' ? '显示右侧栏「代码片段」面板（支持内置变量与 :::alert-* 模板）' : 'Show Snippets panel in right sidebar (built-in variables & templates)' }}
+          </label>
         </section>
 
         <section v-if="!isMobile()" data-cat="basics" data-basics="layout">

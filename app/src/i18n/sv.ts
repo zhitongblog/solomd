@@ -135,6 +135,7 @@ export const sv: I18n = {
     paneNeighborhood: "Grannskap",
     paneTags: "Taggar",
     paneTasks: "Uppgifter",
+    paneSnippets: "Kodsnuttar",
     paneTypes: "Typer",
     paneHistory: "Historik",
     paneSavedViews: "Sparade vyer",

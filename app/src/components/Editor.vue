@@ -5011,6 +5011,15 @@ const fontSizeTheme = (
     '&.cm-live-edit .cm-content > .cm-line:not(.cm-md-fenced-line):not(.cm-md-list-line):not(.cm-md-quote-line):not([class*="cm-md-heading-line-"]):not(:has(> br:only-child))': {
       paddingBottom: `${paraPadEm}em`,
     },
+    // #709 — Give the trailing line of a list or blockquote block the same
+    // bottom paragraph spacing when immediately followed by a non-list/non-quote
+    // line, so the gap before and after a list matches symmetrically.
+    '&.cm-live-edit .cm-content > .cm-line.cm-md-list-line:has(+ .cm-line:not(.cm-md-list-line):not(:has(> br:only-child)))': {
+      paddingBottom: `${paraPadEm}em`,
+    },
+    '&.cm-live-edit .cm-content > .cm-line.cm-md-quote-line:has(+ .cm-line:not(.cm-md-quote-line):not(:has(> br:only-child)))': {
+      paddingBottom: `${paraPadEm}em`,
+    },
     '.cm-content': { padding: '20px 32px 30vh', caretColor: 'var(--accent)' },
     '.cm-gutters': {
       backgroundColor: 'transparent',
