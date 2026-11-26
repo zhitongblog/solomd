@@ -1,5 +1,5 @@
 • Listes et collage : Alignement automatique des collages multilignes dans les listes, correction du basculement multiniveau et des espacements en édition directe
 • Synchronisation cloud : Protection contre les conflits sur tous les canaux, journaux par UUID d’appareil, récupération automatique au réveil, ordre de l’arborescence instantané et progression en direct dans la barre d’état
-• Alignement et aperçu : Les balises HTML <img> et formules $$ multilignes suivent l’alignement global ; la visionneuse n’ouvre plus les images plus petites que dans le document
+• Alignement et aperçu : Les balises HTML img et formules $$ multilignes suivent l’alignement global ; la visionneuse n’ouvre plus les images plus petites que dans le document
 • Export : Word (.docx) prend en charge les tableaux HTML et tableaux indentés ; correctifs d’alignement PDF/EPUB
 • Interface : Visite guidée en sous-menu, paramètres d’extraits, icônes personnalisées pour toute la barre d’outils et prise en charge complète de .textpack

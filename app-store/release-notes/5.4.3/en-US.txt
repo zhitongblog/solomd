@@ -1,5 +1,5 @@
 • List editing & paste polish: Auto-align multi-line pastes as soft breaks inside list items, fix multi-level OL/UL toggle gaps, and refine Live Edit paragraph spacing
 • Cloud sync upgrades: Concurrent-edit conflict guard across all sync backends, per-device UUID sync logs, sleep/wake auto-pull, instant file-tree order sync, and live single-line sync status in the bottom bar
-• Media alignment & lightbox: Standalone HTML <img> tags and multi-line $$ display math now honor global alignment; clicked images no longer open smaller than in the document
-• Export fixes: Word (.docx) now converts HTML <table> and indented pipe tables, plus PDF/EPUB image alignment and task-list fixes
-• Workflow & UI: Help > Welcome Tour is now a 4-item submenu, plus Snippets settings, custom icons for all toolbar buttons, and full .textpack support
+• Media alignment & lightbox: Standalone HTML img tags and multi-line $$ display math now honor global alignment; clicked images no longer open smaller than in the document
+• Export fixes: Word (.docx) now converts HTML table and indented pipe tables, plus PDF/EPUB image alignment and task-list fixes
+• Workflow & UI: Help  Welcome Tour is now a 4-item submenu, plus Snippets settings, custom icons for all toolbar buttons, and full .textpack support

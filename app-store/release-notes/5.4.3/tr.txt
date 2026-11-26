@@ -1,5 +1,5 @@
 • Liste düzenleme ve yapıştırma: Listelerde çok satırlı yapıştırmalar otomatik hizalanır; çok düzeyli liste geçişi ve canlı düzenleme paragraf boşlukları düzeltildi
 • Bulut eşitleme: Tüm kanallarda çakışma koruması, cihaz UUID günlükleri, uyku sonrası otomatik çekme, anında dosya ağacı sırası eşitleme ve alt çubukta canlı ilerleme
-• Hizalama ve önizleme: HTML <img> etiketleri ve çok satırlı $$ formülleri genel hizalamaya uyar; ışık kutusu artık görselleri belgeden küçük açmaz
+• Hizalama ve önizleme: HTML img etiketleri ve çok satırlı $$ formülleri genel hizalamaya uyar; ışık kutusu artık görselleri belgeden küçük açmaz
 • Dışa aktarma: Word (.docx) HTML tablolarını ve girintili tabloları dönüştürür; PDF/EPUB iyileştirmeleri
 • Arayüz: Hoş Geldin Turu alt menü oldu, kod parçacıkları ayarları, tüm araç çubuğu düğmeleri için özel simgeler ve tam .textpack desteği

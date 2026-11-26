@@ -1,5 +1,5 @@
 • Listas e colagem: Alinhamento automático ao colar várias linhas em listas, correção na alternância multinível e no espaçamento em edição ao vivo
 • Sincronização em nuvem: Proteção contra conflitos em todos os canais, logs com UUID do dispositivo, pull automático ao despertar, ordem da árvore instantânea e progresso ao vivo na barra inferior
-• Alinhamento e visualização: Tags HTML <img> e fórmulas $$ multilinha seguem o alinhamento global; a visualização de imagens não abre mais menor que no documento
+• Alinhamento e visualização: Tags HTML img e fórmulas $$ multilinha seguem o alinhamento global; a visualização de imagens não abre mais menor que no documento
 • Exportação: Word (.docx) converte tabelas HTML e tabelas indentadas; correções em PDF/EPUB
 • Interface: Tour de boas-vindas em submenu, configurações de snippets, ícones personalizados em toda a barra e suporte completo a .textpack

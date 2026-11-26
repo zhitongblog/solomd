@@ -1,5 +1,5 @@
 • Listor & inklistring: Automatisk justering vid flerradig inklistring i listor, åtgärdade nivåbyten och styckeavstånd i direktredigering
 • Molnsynk: Konfliktskydd i alla kanaler, enhets-UUID i loggar, automatisk hämtning efter viloläge, direkt synk av filträdets ordning och live-status i statusfältet
-• Justering & förhandsvisning: HTML <img>-taggar och flerradiga $$-formler följer global justering; bildvisaren öppnar inte längre bilder mindre än i dokumentet
+• Justering & förhandsvisning: HTML img-taggar och flerradiga $$-formler följer global justering; bildvisaren öppnar inte längre bilder mindre än i dokumentet
 • Export: Word (.docx) stöder HTML-tabeller och indragna tabeller; förbättringar i PDF/EPUB
 • Gränssnitt: Välkomstguide som undermeny, kodsnuttar, egna ikoner för alla verktygsknappar och fullt .textpack-stöd

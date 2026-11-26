@@ -1,5 +1,5 @@
 • Listen & Einfügen: Mehrzeiliges Einfügen in Listen richtet sich automatisch aus; mehrstufige OL/UL-Umschaltung und Absatzabstände im Live-Modus behoben
 • Cloud-Sync: Konfliktschutz für alle Sync-Kanäle, Geräte-UUID-Logs, Auto-Pull nach Ruhezustand, sofortige Dateibaum-Sortiersynchronisierung und Live-Fortschritt in der Statusleiste
-• Ausrichtung & Vorschau: HTML-<img>-Tags und mehrzeilige $$-Formeln folgen der globalen Ausrichtung; Lightbox-Bilder werden nicht mehr kleiner als im Dokument geöffnet
+• Ausrichtung & Vorschau: HTML-img-Tags und mehrzeilige $$-Formeln folgen der globalen Ausrichtung; Lightbox-Bilder werden nicht mehr kleiner als im Dokument geöffnet
 • Export: Word (.docx) unterstützt HTML-Tabellen und eingerückte Pipe-Tabellen; PDF/EPUB-Bildausrichtung und Aufgabenlisten korrigiert
 • Oberfläche: Willkommenstour als Untermenü, Snippets-Einstellungen, eigene Symbole für alle Toolbar-Buttons und volle .textpack-Unterstützung
