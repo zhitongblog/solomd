@@ -345,7 +345,7 @@ test('#110 / #159: Tab on an empty line below a list item indents to the parent 
 
 test('switching ordered/unordered list skips indented fenced code blocks inside list items', () => {
   const ulWithCode = '- 第一项|\n  ```js\n  const x = 1;\n  ```\n- 第二项';
-  const olWithCode = '1. 第一项|\n  ```js\n  const x = 1;\n  ```\n2. 第二项';
+  const olWithCode = '1. 第一项|\n   ```js\n   const x = 1;\n   ```\n2. 第二项';
   assert.equal(run(ulWithCode, 'ol'), olWithCode);
   assert.equal(run(olWithCode, 'ul'), ulWithCode);
 });
@@ -360,6 +360,13 @@ test('toggling off an ordered or unordered list removes markers from all sibling
   // Inside a blockquote
   assert.equal(run('> 1. 甲\n> 2. 乙|\n> 3. 丙', 'ol'), '> 甲\n> 乙|\n> 丙');
   assert.equal(run('> - 甲\n> - 乙|\n> - 丙', 'ul'), '> 甲\n> 乙|\n> 丙');
+});
+
+test('switching multi-level UL <-> OL adjusts child indentation so nested lists never split/renumber', () => {
+  const nestedUl = '- a|\n  - sub1\n  - sub2\n- b';
+  const nestedOl = '1. a|\n   - sub1\n   - sub2\n2. b';
+  assert.equal(run(nestedUl, 'ol'), nestedOl);
+  assert.equal(run(nestedOl, 'ul'), nestedUl);
 });
 
 

@@ -888,9 +888,16 @@ mark.ps-mark.ps-mark--current {
 .md-callout--caution { border-left-color: #c93c37; }
 .md-callout--caution::before { content: '🛑 Caution'; color: #c93c37; }
 
+/* #712 — Only suppress bullet markers on actual `.task-list-item` rows so mixed
+   unordered + task lists (including inside blockquotes) keep bullets on plain `- ` items. */
 .contains-task-list {
-  list-style: none;
   padding-left: 1.25rem;
+}
+.contains-task-list > li.task-list-item {
+  list-style: none;
+}
+.contains-task-list > li:not(.task-list-item) {
+  list-style: disc;
 }
 .task-list-item {
   position: relative;

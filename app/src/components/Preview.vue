@@ -1318,6 +1318,11 @@ defineExpose({ scrollToLine, openSearch });
 :where(.preview-content) blockquote ul.contains-task-list {
   padding-left: 0;
 }
+/* #712 — When a blockquote list mixes regular bullets and task items, keep left
+   padding so regular `- ` bullet markers render visibly inside the blockquote. */
+:where(.preview-content) blockquote ul.contains-task-list:has(> li:not(.task-list-item)) {
+  padding-left: 1.3em;
+}
 :where(.preview-content) ul,
 :where(.preview-content) ol {
   padding-left: 1.8em;

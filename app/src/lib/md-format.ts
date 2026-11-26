@@ -646,13 +646,33 @@ function toggleUnorderedList(doc: string, from: number, to: number): FormatEdit 
           const hasNonUl = Array.from(siblings).some((i) => !UL.test(splitLine(lines[i].text).rest));
           if (siblings.size > 1) {
             const removeAll = UL.test(cur.rest) && !hasNonUl;
+            let activeChildDelta = 0;
             const rewritten = lines.slice(first, last + 1).map((l, idx) => {
               const lineIdx = first + idx;
-              if (!siblings.has(lineIdx)) return l.text;
+              if (!siblings.has(lineIdx)) {
+                if (activeChildDelta !== 0 && !removeAll) {
+                  const info = splitLine(l.text);
+                  if (!info.blank && info.indW > cur.indW) {
+                    if (activeChildDelta < 0) {
+                      const trim = Math.min(-activeChildDelta, info.ind.length);
+                      if (trim > 0 && /^ +$/.test(info.ind.slice(0, trim))) {
+                        return `${info.q}${info.rest.slice(trim)}`;
+                      }
+                    } else {
+                      return `${info.q}${' '.repeat(activeChildDelta)}${info.rest}`;
+                    }
+                  }
+                }
+                return l.text;
+              }
               const info = splitLine(l.text);
               if (removeAll) {
+                activeChildDelta = 0;
                 return `${info.q}${info.rest.replace(UL, '$1')}`;
               }
+              const oldMarkerMatch = ANY_LIST.exec(info.rest);
+              const oldMarkerLen = oldMarkerMatch ? oldMarkerMatch[0].length - info.ind.length : 2;
+              activeChildDelta = 2 - oldMarkerLen;
               const body = info.rest.replace(ANY_LIST, '').replace(/^[ \t]*/, '');
               return `${normalizeQuotePrefix(info.q)}${info.ind}- ${body}`;
             });
@@ -791,15 +811,36 @@ function toggleOrderedList(doc: string, from: number, to: number): FormatEdit {
           if (siblings.size > 1) {
             const removeAll = OL.test(cur.rest) && !hasNonOl;
             let num = 1;
+            let activeChildDelta = 0;
             const rewritten = lines.slice(first, last + 1).map((l, idx) => {
               const lineIdx = first + idx;
-              if (!siblings.has(lineIdx)) return l.text;
+              if (!siblings.has(lineIdx)) {
+                if (activeChildDelta !== 0 && !removeAll) {
+                  const info = splitLine(l.text);
+                  if (!info.blank && info.indW > cur.indW) {
+                    if (activeChildDelta > 0) {
+                      return `${info.q}${' '.repeat(activeChildDelta)}${info.rest}`;
+                    } else {
+                      const trim = Math.min(-activeChildDelta, info.ind.length);
+                      if (trim > 0 && /^ +$/.test(info.ind.slice(0, trim))) {
+                        return `${info.q}${info.rest.slice(trim)}`;
+                      }
+                    }
+                  }
+                }
+                return l.text;
+              }
               const info = splitLine(l.text);
               if (removeAll) {
+                activeChildDelta = 0;
                 return `${info.q}${info.rest.replace(OL, '$1')}`;
               }
+              const marker = `${num++}. `;
+              const oldMarkerMatch = ANY_LIST.exec(info.rest);
+              const oldMarkerLen = oldMarkerMatch ? oldMarkerMatch[0].length - info.ind.length : marker.length;
+              activeChildDelta = marker.length - oldMarkerLen;
               const body = info.rest.replace(ANY_LIST, '').replace(/^[ \t]*/, '');
-              return `${normalizeQuotePrefix(info.q)}${info.ind}${num++}. ${body}`;
+              return `${normalizeQuotePrefix(info.q)}${info.ind}${marker}${body}`;
             });
             const spanStart = lines[first].start;
             const spanEnd = lines[last].end;

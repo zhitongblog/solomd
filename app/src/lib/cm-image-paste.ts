@@ -23,6 +23,7 @@ import { fromSafPath, safEnsureSubdir, safList, safCreate, safWriteBase64 } from
 import { insideFence } from './list-continuation';
 import { clipboardTableToMarkdown } from './table-paste';
 import { clipboardHtmlToMarkdown } from './html-paste';
+import { indentCodeBlockPaste } from './editor-commands';
 
 export interface ImagePasteOptions {
   getFilePath: () => string | undefined;
@@ -863,7 +864,11 @@ export async function handleTextareaImagePaste(
       );
       if (mdHtml) {
         event.preventDefault();
-        insert(mdHtml);
+        const el = event.currentTarget as HTMLTextAreaElement | null;
+        const out = el
+          ? indentCodeBlockPaste(el.value, el.selectionStart ?? 0, el.selectionEnd ?? 0, mdHtml)
+          : mdHtml;
+        insert(out);
         return true;
       }
     } catch {
@@ -1282,8 +1287,9 @@ export function imagePasteExtension(opts: ImagePasteOptions) {
             );
             if (mdHtml) {
               event.preventDefault();
+              const out = indentCodeBlockPaste(view.state.doc.toString(), sel.from, sel.to, mdHtml);
               view.dispatch({
-                ...view.state.replaceSelection(mdHtml),
+                ...view.state.replaceSelection(out),
                 userEvent: 'input.paste',
                 scrollIntoView: true,
               });

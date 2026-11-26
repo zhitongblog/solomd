@@ -69,6 +69,20 @@ ol.toc li {
   margin: 0.32em 0;
 }
 
+/* #714 — Suppress bullet dots on Pandoc EPUB task-list items so checkboxes match PDF output */
+ul.task-list,
+ul.contains-task-list {
+  padding-left: 0.4em;
+}
+ul.task-list > li,
+li.task-list-item,
+ul.contains-task-list > li.task-list-item {
+  list-style-type: none !important;
+}
+ul.contains-task-list > li:not(.task-list-item) {
+  list-style-type: disc !important;
+}
+
 /* #583 — Inline code background shading */
 code {
   font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;

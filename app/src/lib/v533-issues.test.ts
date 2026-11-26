@@ -513,5 +513,23 @@ describe('v5.3.6 feedback: table drag-select, Mermaid zoom, non-MD highlighting 
     const useFilesSrc = fs.readFileSync(path.join(root, 'composables/useFiles.ts'), 'utf8');
     assert.match(useFilesSrc, /\.solomd-textpack/);
     assert.match(useFilesSrc, /if \(tab\.textpackPath\)/);
+
+    // #711: Sleep/wake clock-jump heartbeat & visibilitychange trigger routine pull
+    assert.match(ghSync, /wakeHeartbeatTimer/);
+    assert.match(ghSync, /visibilitychange/);
+
+    // #712: Mixed unordered + task lists keep bullets on non-task items
+    const mainCss = fs.readFileSync(path.join(root, 'styles/main.css'), 'utf8');
+    assert.match(mainCss, /\.contains-task-list > li:not\(\.task-list-item\)\s*\{\s*list-style:\s*disc;/);
+
+    // #713: Custom CSS Theme sits right below Theme in SettingsPanel.vue
+    const themeIdx = settingsPanel.indexOf("t('settings.theme')");
+    const customCssIdx = settingsPanel.indexOf("t('settings.customCss')");
+    const supporterIdx = settingsPanel.indexOf('settings__supporter-guide');
+    assert.ok(themeIdx > 0 && customCssIdx > themeIdx && customCssIdx < supporterIdx);
+
+    // #714: SOLOMD_EPUB_CSS suppresses bullet dots on task-list items
+    const { SOLOMD_EPUB_CSS } = await import('./epub-style.ts');
+    assert.match(SOLOMD_EPUB_CSS, /ul\.task-list > li[\s\S]*?list-style-type:\s*none\s*!important/);
   });
 });

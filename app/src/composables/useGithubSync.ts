@@ -250,6 +250,9 @@ export function useGithubSync() {
 
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   let startupPullTimer: ReturnType<typeof setTimeout> | null = null;
+  let wakeHeartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  let lastHeartbeatAt = Date.now();
+  let lastHiddenAt: number | null = null;
   let startupPullDone = false;
 
   /**
@@ -370,11 +373,45 @@ export function useGithubSync() {
     }, 2500);
   }
 
+  /**
+   * #711 — Windows laptops waking from lid-close sleep/hibernate often do NOT
+   * fire the browser `online` event. Detect wake via both a 30s clock-jump
+   * heartbeat (>60s wall-clock jump) and `visibilitychange` after >=60s hidden,
+   * mapping wake directly onto the same debounced `onNetworkOnline()` pull.
+   */
+  function onVisibilityChange(): void {
+    if (typeof document === 'undefined') return;
+    if (document.visibilityState === 'hidden') {
+      lastHiddenAt = Date.now();
+    } else if (document.visibilityState === 'visible') {
+      const now = Date.now();
+      const sleptMs = lastHiddenAt ? now - lastHiddenAt : 0;
+      lastHiddenAt = null;
+      if (sleptMs >= 60_000 || now - lastHeartbeatAt >= 60_000) {
+        lastHeartbeatAt = now;
+        onNetworkOnline();
+      }
+    }
+  }
+
   function start(): void {
     if (listening) return;
     listening = true;
+    lastHeartbeatAt = Date.now();
     window.addEventListener('solomd:saved', onSaved as EventListener);
     window.addEventListener('online', onNetworkOnline);
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', onVisibilityChange);
+    }
+    if (wakeHeartbeatTimer) clearInterval(wakeHeartbeatTimer);
+    wakeHeartbeatTimer = setInterval(() => {
+      const now = Date.now();
+      const gap = now - lastHeartbeatAt;
+      lastHeartbeatAt = now;
+      if (gap >= 60_000) {
+        onNetworkOnline();
+      }
+    }, 30_000);
 
     // #701 — Run one routine pull on app startup once the workspace folder is
     // loaded, covering Git, WebDAV, Local Cloud Folder, and Cloud Drive API.
@@ -412,6 +449,13 @@ export function useGithubSync() {
     listening = false;
     window.removeEventListener('solomd:saved', onSaved as EventListener);
     window.removeEventListener('online', onNetworkOnline);
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    }
+    if (wakeHeartbeatTimer) {
+      clearInterval(wakeHeartbeatTimer);
+      wakeHeartbeatTimer = null;
+    }
     if (pulltimer) {
       clearInterval(pulltimer);
       pulltimer = null;

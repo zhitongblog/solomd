@@ -1387,6 +1387,26 @@ function onSelectPdfFont(v: string) {
           </p>
         </section>
 
+        <!-- #694 / #713 — Custom CSS Theme placed directly below Theme in Basics -> Appearance -->
+        <section data-cat="basics" data-basics="appearance">
+          <label>{{ t('settings.customCss') }}</label>
+          <div class="row" style="gap: 8px; align-items: center; flex-wrap: wrap;">
+            <button @click="pickCustomCss">{{ t('settings.pickCss') }}</button>
+            <button v-if="!IS_APP_STORE_BUILD" @click="openThemeMarketplace">{{ t('themes.browseBtn') }}</button>
+            <button v-if="settings.customCssPath" @click="settings.setCustomCssPath('')">{{ t('settings.clear') }}</button>
+          </div>
+          <div v-if="settings.customCssPath" class="css-path-row" style="font-size: 11px; color: var(--text-faint); word-break: break-all; margin-top: 4px;">
+            <span>{{ settings.customCssPath }}</span>
+            <button type="button" class="refresh-css-btn" :title="t('settings.refreshCss')" :aria-label="t('settings.refreshCss')" :disabled="isCssRefreshing" @click="refreshCustomCss">
+              <svg :class="{ 'is-spinning': isCssRefreshing }" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12a9 9 0 1 1-2.64-6.36L21 8" />
+                <path d="M21 3v5h-5" />
+              </svg>
+            </button>
+          </div>
+          <p v-if="!IS_APP_STORE_BUILD" class="setting-hint">{{ t('themes.browseHint') }}</p>
+        </section>
+
         <!-- Supporter micro-guide card on the first page (Option A) -->
         <div
           data-cat="basics" data-basics="appearance"
@@ -3322,26 +3342,6 @@ function onSelectPdfFont(v: string) {
           <div class="setting-hint">
             {{ t('settings.telemetryHint') }}
           </div>
-        </section>
-
-        <!-- #694 — Custom CSS Theme placed in Basics -> Appearance adjacent to Theme -->
-        <section data-cat="basics" data-basics="appearance">
-          <label>{{ t('settings.customCss') }}</label>
-          <div class="row" style="gap: 8px; align-items: center; flex-wrap: wrap;">
-            <button @click="pickCustomCss">{{ t('settings.pickCss') }}</button>
-            <button v-if="!IS_APP_STORE_BUILD" @click="openThemeMarketplace">{{ t('themes.browseBtn') }}</button>
-            <button v-if="settings.customCssPath" @click="settings.setCustomCssPath('')">{{ t('settings.clear') }}</button>
-          </div>
-          <div v-if="settings.customCssPath" class="css-path-row" style="font-size: 11px; color: var(--text-faint); word-break: break-all; margin-top: 4px;">
-            <span>{{ settings.customCssPath }}</span>
-            <button type="button" class="refresh-css-btn" :title="t('settings.refreshCss')" :aria-label="t('settings.refreshCss')" :disabled="isCssRefreshing" @click="refreshCustomCss">
-              <svg :class="{ 'is-spinning': isCssRefreshing }" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 12a9 9 0 1 1-2.64-6.36L21 8" />
-                <path d="M21 3v5h-5" />
-              </svg>
-            </button>
-          </div>
-          <p v-if="!IS_APP_STORE_BUILD" class="setting-hint">{{ t('themes.browseHint') }}</p>
         </section>
 
         <section v-if="!IS_APP_STORE_BUILD && !isMobile" data-cat="advanced">
