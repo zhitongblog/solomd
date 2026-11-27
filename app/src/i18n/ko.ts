@@ -2174,6 +2174,7 @@ export const ko: I18n = {
     alignCenter: "Align center",
     alignRight: "Align right",
     more: "More",
+    tableDelete: "표 삭제",
   },
   docx: {
     contents: '목차',

@@ -415,7 +415,7 @@ export function computeListContinuation(
       restLeadWs.length > 0 &&
       indentWidth(lineLead) >= minContIndent
     ) {
-      if (rest.trim() === '' && caret === lineEnd) {
+      if (rest.trim() === '' && caret >= lineStart + quote.length) {
         // Shift+Enter (empty soft-break line) followed by Enter: convert this
         // line into the next list bullet/number; a second Enter on that empty
         // marker line will exit the list cleanly.
@@ -430,7 +430,22 @@ export function computeListContinuation(
         }
         return { value, caret: nextCaret };
       }
-      if (caret >= lineStart + lineLead.length) {
+      if (caret === lineStart + lineLead.length) {
+        // Caret at the start of a non-empty soft-break continuation line:
+        // promote this line directly into the next sibling list item without
+        // leaving a blank indented line above it.
+        let value = text.slice(0, lineStart) + enclosing.nextMarker + text.slice(caret);
+        let nextCaret = lineStart + enclosing.nextMarker.length;
+        if (enclosing.isOrdered) {
+          const changes = renumberChanges(value, lineStart, nextCaret);
+          if (changes.length > 0) {
+            value = applyChanges(value, changes);
+            nextCaret = mapPos(nextCaret, changes);
+          }
+        }
+        return { value, caret: nextCaret };
+      }
+      if (caret > lineStart + lineLead.length) {
         const insert = `\n${enclosing.nextMarker}`;
         let value = text.slice(0, caret) + insert + text.slice(caret);
         let nextCaret = caret + insert.length;

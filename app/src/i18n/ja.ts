@@ -2174,6 +2174,7 @@ export const ja: I18n = {
     alignCenter: "Align center",
     alignRight: "Align right",
     more: "More",
+    tableDelete: "表を削除",
   },
   docx: {
     contents: '目次',

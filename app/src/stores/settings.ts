@@ -566,6 +566,9 @@ interface Settings {
   docxFirstLineIndent: boolean;
   // #606 — Format used when saving pasted clipboard images into the vault (`png` | `webp` | `jpg`).
   pastedImageFormat: PastedImageFormat;
+  // Multi-line paste behavior inside list items: align lines 2+ as soft breaks
+  // (default) or convert each pasted line into a sibling list item.
+  listMultiLinePasteMode: 'softBreak' | 'listItems';
   // v4.3.0: global UI zoom (scales the entire app — editor, preview, chrome,
   // sidebars, modals). Helpful on high-DPI screens where everything renders
   // too small even at the OS default scale. Range 0.75x – 2.5x. Wired via
@@ -1114,6 +1117,7 @@ function defaults(): Settings {
     editorMediaAlign: 'left' as 'left' | 'center' | 'right',
     docxFirstLineIndent: false,
     pastedImageFormat: 'png',
+    listMultiLinePasteMode: 'softBreak',
     alwaysOnTop: false,
     globalZoom: 1,
     wheelZoomEnabled: true,
@@ -2642,6 +2646,10 @@ export const useSettingsStore = defineStore('settings', {
     },
     setPastedImageFormat(fmt: PastedImageFormat) {
       this.pastedImageFormat = fmt === 'webp' || fmt === 'jpg' ? fmt : 'png';
+      this.persist();
+    },
+    setListMultiLinePasteMode(mode: 'softBreak' | 'listItems') {
+      this.listMultiLinePasteMode = mode === 'listItems' ? 'listItems' : 'softBreak';
       this.persist();
     },
     setExportHtmlContentWidth(widthPx: number) {

@@ -350,6 +350,15 @@ export function dedentCodeBlockSelection(
     .join('\n');
 }
 
+export type ListMultiLinePasteMode = 'softBreak' | 'listItems';
+
+export interface PasteIndentOptions {
+  /** How lines 2+ are formatted when pasting multi-line text inside a list item.
+   *  - `'softBreak'` (default): align to the list item's content column.
+   *  - `'listItems'`: convert each non-empty line into a sibling list item. */
+  listMultiLineMode?: ListMultiLinePasteMode;
+}
+
 /**
  * Align pasted text to the enclosing fenced code block's opening-fence
  * indentation (`fenceIndent`), while preserving each pasted line's relative
@@ -360,6 +369,7 @@ export function indentCodeBlockPaste(
   from: number,
   to: number,
   rawText: string,
+  opts?: PasteIndentOptions,
 ): string {
   if (!rawText) return rawText;
   const selFrom = Math.max(0, Math.min(from, to, doc.length));
@@ -506,6 +516,30 @@ export function indentCodeBlockPaste(
         const alignedTable = alignPastedTable(contPrefix);
         if (alignedTable !== null) return alignedTable;
         const pasteLines = normalizedPaste.split('\n');
+        const hasFence = pasteLines.some((l) => FENCE_LINE.test(l));
+        if (opts?.listMultiLineMode === 'listItems' && !hasFence) {
+          const afterMarker = prefixBefore.slice(listMatch[0].length);
+          const taskMatch = /^\[[ xX]\][ \t]+/.exec(afterMarker);
+          const taskPrefix = taskMatch ? '[ ] ' : '';
+          const olMatch = /^(\d+)([.)])([ \t]+)$/.exec(marker);
+          let nextNum = olMatch ? Number(olMatch[1]) : 0;
+          const olDelim = olMatch ? olMatch[2] : '.';
+          const olGap = olMatch ? olMatch[3] : ' ';
+          return pasteLines
+            .map((line, idx) => {
+              if (idx === 0) return line;
+              if (line.length === 0) return '';
+              if (/^[ \t]*(?:[-*+]|\d+[.)])[ \t]+/.test(line)) {
+                return `${quotePrefix}${indent}${line}`;
+              }
+              if (olMatch) {
+                nextNum += 1;
+                return `${quotePrefix}${indent}${nextNum}${olDelim}${olGap}${taskPrefix}${line}`;
+              }
+              return `${quotePrefix}${indent}${marker}${taskPrefix}${line}`;
+            })
+            .join('\n');
+        }
         return pasteLines
           .map((line, idx) => {
             if (idx === 0) return line;

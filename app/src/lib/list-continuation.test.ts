@@ -274,6 +274,19 @@ test('#609: Enter after Shift+Enter soft break in unordered/ordered/quoted lists
   // Task list and blockquote list
   assert.equal(enter('- [x] 任务1\n  详情说明|'), '- [x] 任务1\n  详情说明\n- [ ] |');
   assert.equal(enter('> * 引用列表1\n>   引用续行|'), '> * 引用列表1\n>   引用续行\n> * |');
+
+  // Caret at the start of a soft-break continuation line promotes it directly
+  // into the next sibling list item without leaving a blank indented line:
+  assert.equal(enter('1. 第一项\n   |续行文字'), '1. 第一项\n2. |续行文字');
+  assert.equal(
+    enter('1. 第一项\n   |续行文字\n2. 原第二项'),
+    '1. 第一项\n2. |续行文字\n3. 原第二项',
+  );
+  assert.equal(enter('- 第一项\n  |续行文字'), '- 第一项\n- |续行文字');
+  assert.equal(enter('- [x] 任务1\n  |续行文字'), '- [x] 任务1\n- [ ] |续行文字');
+  assert.equal(enter('> 1. 引用1\n>    |引用续行'), '> 1. 引用1\n> 2. |引用续行');
+  // Empty soft-break line with caret inside the leading spaces also converts cleanly:
+  assert.equal(enter('1. 第一项\n |  '), '1. 第一项\n2. |');
 });
 
 test('Enter on an indented fence opener or inside an indented fence preserves fence indent', () => {

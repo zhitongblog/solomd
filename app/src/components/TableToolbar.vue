@@ -412,6 +412,26 @@ defineExpose({ hide, refresh });
           </button>
         </div>
       </div>
+
+      <span class="tbl-bar__sep" aria-hidden="true" />
+
+      <button
+        class="tbl-bar__btn is-danger"
+        :title="t('tableToolbar.tableDelete')"
+        :aria-label="t('tableToolbar.tableDelete')"
+        :disabled="!enabled('table-delete')"
+        data-action="table-delete"
+        @click="run('table-delete')"
+      >
+        <svg class="tbl-bar__icon" viewBox="0 0 30 30" aria-hidden="true" focusable="false">
+          <path
+            v-for="(p, i) in tableIconPaths('table-delete')"
+            :key="i"
+            :d="p.d"
+            :class="p.tone ? `tbl-ic tbl-ic--${p.tone}` : undefined"
+          />
+        </svg>
+      </button>
     </div>
   </Teleport>
 </template>

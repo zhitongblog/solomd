@@ -2174,6 +2174,7 @@ export const fr: I18n = {
     alignCenter: "Align center",
     alignRight: "Align right",
     more: "More",
+    tableDelete: "Supprimer le tableau",
   },
   docx: {
     contents: 'Sommaire',

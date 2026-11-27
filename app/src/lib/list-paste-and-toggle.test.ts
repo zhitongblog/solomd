@@ -31,14 +31,18 @@ function runFmt(marked: string, kind: FormatKind): string {
 }
 
 /** Helper: simulate pasting `clip` at `|` (or replacing `|...|`) in `marked`. */
-function runPaste(marked: string, clip: string): string {
+function runPaste(
+  marked: string,
+  clip: string,
+  mode?: 'softBreak' | 'listItems',
+): string {
   const first = marked.indexOf('|');
   const second = marked.indexOf('|', first + 1);
   assert.ok(first >= 0, 'test input needs a | marker');
   const doc = marked.replace(/\|/g, '');
   const from = first;
   const to = second >= 0 ? second - 1 : first;
-  const inserted = indentCodeBlockPaste(doc, from, to, clip);
+  const inserted = indentCodeBlockPaste(doc, from, to, clip, mode ? { listMultiLineMode: mode } : undefined);
   return doc.slice(0, from) + inserted + doc.slice(to);
 }
 
@@ -81,11 +85,36 @@ test('List Paste: Notepad++ Windows CRLF multi-line plain text aligns as soft br
   assert.equal(runPaste('普通段落\n  缩进 |', 'a\r\nb'), '普通段落\n  缩进 a\r\nb');
 });
 
+test('List Paste: listItems mode converts lines 2+ into sibling list items while keeping tables and fences intact', () => {
+  const crlf = '第一行\r\n第二行\r\n第三行';
+
+  // Unordered, ordered (auto-incrementing), nested, task, blockquote
+  assert.equal(runPaste('- |', crlf, 'listItems'), '- 第一行\n- 第二行\n- 第三行');
+  assert.equal(runPaste('1. |', crlf, 'listItems'), '1. 第一行\n2. 第二行\n3. 第三行');
+  assert.equal(runPaste('  - |', 'a\nb', 'listItems'), '  - a\n  - b');
+  assert.equal(runPaste('   10. |', 'a\nb', 'listItems'), '   10. a\n   11. b');
+  assert.equal(runPaste('- [ ] |', '任务1\n任务2', 'listItems'), '- [ ] 任务1\n- [ ] 任务2');
+  assert.equal(runPaste('> - |', 'a\nb', 'listItems'), '> - a\n> - b');
+  assert.equal(runPaste('> 1. |', 'a\nb', 'listItems'), '> 1. a\n> 2. b');
+
+  // Blank lines stay blank without incrementing ordered number
+  assert.equal(runPaste('1. |', 'a\n\nb', 'listItems'), '1. a\n\n2. b');
+
+  // Already-prefixed list lines do not get double-prefixed
+  assert.equal(runPaste('- |', 'a\n- b\n  - c', 'listItems'), '- a\n- b\n  - c');
+
+  // Tables and fenced code blocks still stay intact (never prefixed with `- `)
+  const table = '| A | B |\n| - | - |\n| 1 | 2 |';
+  assert.equal(runPaste('- |', table, 'listItems'), '- | A | B |\n  | - | - |\n  | 1 | 2 |');
+  const fence = '```ts\nconst x = 1;\n```';
+  assert.equal(runPaste('- |', fence, 'listItems'), '- ```ts\n  const x = 1;\n  ```');
+});
+
 test('List Paste: HTML rich-text paste path also routes through indentCodeBlockPaste', () => {
   const src = fs.readFileSync(path.join(__dirname, 'cm-image-paste.ts'), 'utf8');
   assert.match(src, /import \{ indentCodeBlockPaste \} from '\.\/editor-commands'/);
-  assert.match(src, /indentCodeBlockPaste\(el\.value, el\.selectionStart \?\? 0, el\.selectionEnd \?\? 0, mdHtml\)/);
-  assert.match(src, /indentCodeBlockPaste\(view\.state\.doc\.toString\(\), sel\.from, sel\.to, mdHtml\)/);
+  assert.match(src, /indentCodeBlockPaste\(el\.value, el\.selectionStart \?\? 0, el\.selectionEnd \?\? 0, mdHtml/);
+  assert.match(src, /indentCodeBlockPaste\(view\.state\.doc\.toString\(\), sel\.from, sel\.to, mdHtml/);
 });
 
 test('List Toggle: 1st-level OL/UL repeat shortcut clears entire contiguous sibling group from any line', () => {

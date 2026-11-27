@@ -2176,6 +2176,7 @@ export const pt: I18n = {
     alignCenter: "Align center",
     alignRight: "Align right",
     more: "More",
+    tableDelete: "Excluir tabela",
   },
   docx: {
     contents: 'Índice',

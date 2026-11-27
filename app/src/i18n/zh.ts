@@ -2178,6 +2178,7 @@ export const zh: I18n = {
     alignCenter: "居中对齐",
     alignRight: "右对齐",
     more: "更多",
+    tableDelete: "删除表格",
   },
   docx: {
     contents: '目录',

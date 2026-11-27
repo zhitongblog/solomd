@@ -1760,6 +1760,26 @@ function onSelectPdfFont(v: string) {
           <div class="hint">{{ t('settings.confirmSaveMissingFileHint') }}</div>
         </section>
 
+        <section data-cat="basics" data-basics="editor">
+          <label>{{ isZhLocale ? '列表内粘贴多行文本' : 'Multi-line paste in lists' }}</label>
+          <select
+            :value="settings.listMultiLinePasteMode"
+            @change="settings.setListMultiLinePasteMode(($event.target as HTMLSelectElement).value as 'softBreak' | 'listItems')"
+          >
+            <option value="softBreak">
+              {{ isZhLocale ? '对齐为软换行（默认）' : 'Align as soft breaks (default)' }}
+            </option>
+            <option value="listItems">
+              {{ isZhLocale ? '每行转为同级列表项' : 'Convert each line to a sibling list item' }}
+            </option>
+          </select>
+          <div class="hint">
+            {{ isZhLocale
+              ? '在列表项内粘贴多行纯文本时，默认从第 2 行起自动缩进为软换行续行；切换为“每行转为同级列表项”后会自动补齐 - / 递增编号（表格和代码块仍保持原样缩进）。'
+              : 'When pasting multi-line text inside a list item, lines 2+ align as soft breaks by default. Switch to sibling list items to prefix each line with - or incrementing numbers (tables and fenced code blocks stay intact).' }}
+          </div>
+        </section>
+
         <section data-cat="basics" data-basics="preview">
           <label>
             <input type="checkbox" :checked="settings.autoNumberHeadings" @change="settings.toggleAutoNumberHeadings()" />

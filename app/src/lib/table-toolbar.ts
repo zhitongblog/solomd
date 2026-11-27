@@ -44,7 +44,8 @@ export type TableAction =
   | 'align-right'
   | 'align-all-left'
   | 'align-all-center'
-  | 'align-all-right';
+  | 'align-all-right'
+  | 'table-delete';
 
 /** A table the caret is inside, plus the cell it is on. */
 export interface TableHit {
@@ -214,7 +215,30 @@ export function applyTableAction(
       return setAlignMany(model, model.header.map((_, i) => i), 'center');
     case 'align-all-right':
       return setAlignMany(model, model.header.map((_, i) => i), 'right');
+    case 'table-delete':
+      return model;
   }
+}
+
+/**
+ * Document range to remove when deleting the whole table (`from..to`).
+ * Consumes one adjacent newline so deleting a table does not leave behind an
+ * extra orphan blank line, while keeping Undo as a single atomic edit.
+ */
+export function tableDeleteRange(
+  text: string,
+  from: number,
+  to: number,
+): { from: number; to: number; caret: number } {
+  const start = Math.max(0, Math.min(from, text.length));
+  const end = Math.max(start, Math.min(to, text.length));
+  if (end < text.length && text[end] === '\n') {
+    return { from: start, to: end + 1, caret: start };
+  }
+  if (start > 0 && text[start - 1] === '\n') {
+    return { from: start - 1, to: end, caret: start - 1 };
+  }
+  return { from: start, to: end, caret: start };
 }
 
 /** Whether an action can do anything here — the difference between a button

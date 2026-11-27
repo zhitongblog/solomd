@@ -56,6 +56,8 @@ export interface ImagePasteOptions {
   getCustomPath?: () => string;
   /** #606 — Target format for pasted raster images (`png` default, `webp`, or `jpg`). */
   getPastedImageFormat?: () => 'png' | 'webp' | 'jpg';
+  /** Multi-line paste behavior inside list items (`'softBreak'` default or `'listItems'`). */
+  getListMultiLinePasteMode?: () => 'softBreak' | 'listItems';
 }
 
 /** Minimal front-matter imageRoot parser (kept local to avoid import cycles). */
@@ -866,7 +868,9 @@ export async function handleTextareaImagePaste(
         event.preventDefault();
         const el = event.currentTarget as HTMLTextAreaElement | null;
         const out = el
-          ? indentCodeBlockPaste(el.value, el.selectionStart ?? 0, el.selectionEnd ?? 0, mdHtml)
+          ? indentCodeBlockPaste(el.value, el.selectionStart ?? 0, el.selectionEnd ?? 0, mdHtml, {
+              listMultiLineMode: opts.getListMultiLinePasteMode?.(),
+            })
           : mdHtml;
         insert(out);
         return true;
@@ -1287,7 +1291,9 @@ export function imagePasteExtension(opts: ImagePasteOptions) {
             );
             if (mdHtml) {
               event.preventDefault();
-              const out = indentCodeBlockPaste(view.state.doc.toString(), sel.from, sel.to, mdHtml);
+              const out = indentCodeBlockPaste(view.state.doc.toString(), sel.from, sel.to, mdHtml, {
+                listMultiLineMode: opts.getListMultiLinePasteMode?.(),
+              });
               view.dispatch({
                 ...view.state.replaceSelection(out),
                 userEvent: 'input.paste',

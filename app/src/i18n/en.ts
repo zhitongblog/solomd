@@ -2203,6 +2203,7 @@ export const en = {
     alignCenter: "Align center",
     alignRight: "Align right",
     more: "More",
+    tableDelete: "Delete table",
   },
   docx: {
     contents: 'Contents',

@@ -57,7 +57,8 @@ export type TableIcon =
   | 'move-row-up'
   | 'move-row-down'
   | 'move-col-left'
-  | 'move-col-right';
+  | 'move-col-right'
+  | 'table-delete';
 
 export const TABLE_ICON_PATHS: Record<TableIcon, TableIconPath[]> = {
   // ── insert rows ──────────────────────────────────────────────────────────
@@ -98,6 +99,12 @@ export const TABLE_ICON_PATHS: Record<TableIcon, TableIconPath[]> = {
     line('M1.5 1.5v12h7'), line('M28.5 1.5v12h-7'),
     band('M10 1.5h10v12l-5 6.5-5-6.5z'),
     cross('M10 21 20 29'), cross('M20 21 10 29'),
+  ],
+  'table-delete': [
+    grid('M9.5 2v17'), grid('M17.5 2v13'),
+    grid('M2 9.5h22'), grid('M2 17.5h13'),
+    line('M2 2h22v13'), line('M2 2v22h13'),
+    cross('M18 18 28 28'), cross('M28 18 18 28'),
   ],
   // ── alignment ───────────────────────────────────────────────────────────
   // Four ragged rules whose short rule moves left/centre/right.

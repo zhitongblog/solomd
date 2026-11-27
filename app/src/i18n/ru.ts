@@ -2165,6 +2165,7 @@ export const ru: I18n = {
     alignCenter: "Align center",
     alignRight: "Align right",
     more: "More",
+    tableDelete: "Удалить таблицу",
   },
   docx: {
     contents: 'Содержание',

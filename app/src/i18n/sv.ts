@@ -2191,6 +2191,7 @@ export const sv: I18n = {
     alignCenter: "Align center",
     alignRight: "Align right",
     more: "More",
+    tableDelete: "Ta bort tabell",
   },
   docx: {
     contents: 'Innehåll',

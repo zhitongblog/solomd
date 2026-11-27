@@ -2191,6 +2191,7 @@ export const uk: I18n = {
     alignCenter: "Align center",
     alignRight: "Align right",
     more: "More",
+    tableDelete: "Видалити таблицю",
   },
   docx: {
     contents: 'Зміст',

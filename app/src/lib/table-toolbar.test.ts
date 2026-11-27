@@ -11,7 +11,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { cellStart, colAfterAction, columnAt, tableAt, applyTableAction, tableActionEnabled, rowAfterAction } from './table-toolbar.ts';
+import { cellStart, colAfterAction, columnAt, tableAt, applyTableAction, tableActionEnabled, rowAfterAction, tableDeleteRange } from './table-toolbar.ts';
 import { parseTable, serializeTable } from './markdown-table.ts';
 
 const DOC = ['# Doc', '', '| a | b |', '| --- | --- |', '| 1 | 2 |', '| 3 | 4 |', '', 'after'].join('\n');
@@ -183,4 +183,30 @@ test('an action on a parsed table round-trips through serialize', () => {
   assert.ok(hit);
   assert.equal(hit.row, 1);
   assert.equal(hit.col, 0);
+});
+
+test('table-delete action is always enabled and tableDeleteRange removes table cleanly', () => {
+  const hit = tableAt(DOC, lineOffset(DOC, 4) + 4);
+  assert.ok(hit);
+  assert.equal(tableActionEnabled(hit.model, 'table-delete', -1, 0), true);
+  assert.equal(tableActionEnabled(hit.model, 'table-delete', 0, 0), true);
+
+  // Table in middle of doc: consumes its trailing newline without double blank lines
+  const mid = tableDeleteRange(DOC, hit.from, hit.to);
+  assert.equal(DOC.slice(0, mid.from) + DOC.slice(mid.to), '# Doc\n\n\nafter');
+  assert.equal(mid.caret, hit.from);
+
+  // Standalone table
+  const only = '| a | b |\n| - | - |\n| 1 | 2 |';
+  const delOnly = tableDeleteRange(only, 0, only.length);
+  assert.equal(only.slice(0, delOnly.from) + only.slice(delOnly.to), '');
+  assert.equal(delOnly.caret, 0);
+
+  // Table at end of doc: consumes its preceding newline
+  const tail = 'before\n| a | b |\n| - | - |\n| 1 | 2 |';
+  const hitTail = tableAt(tail, tail.length - 2);
+  assert.ok(hitTail);
+  const delTail = tableDeleteRange(tail, hitTail.from, hitTail.to);
+  assert.equal(tail.slice(0, delTail.from) + tail.slice(delTail.to), 'before');
+  assert.equal(delTail.caret, 6);
 });

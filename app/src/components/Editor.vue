@@ -148,7 +148,7 @@ import { isWindowsEditorRuntime, shouldUsePlainWindowsEditor } from '../lib/plat
 import { isAndroid, isIOS, isMobile, usesCommandKey } from '../lib/platform';
 import SelectionBubble, { type BubbleSelection } from './SelectionBubble.vue';
 import TableToolbar from './TableToolbar.vue';
-import { applyTableAction, cellStart, colAfterAction, rowAfterAction, tableAt, type TableAction, type TableToolbarState } from '../lib/table-toolbar';
+import { applyTableAction, cellStart, colAfterAction, rowAfterAction, tableAt, tableDeleteRange, type TableAction, type TableToolbarState } from '../lib/table-toolbar';
 import { lineContext, nextHeadingKind, type Box } from '../lib/selection-bubble';
 import EditorContextMenu, { type EditorMenuAction, type EditorMenuSpell } from './EditorContextMenu.vue';
 import { lookupMisspelling, addToSpellDict } from '../lib/spell-suggest';
@@ -267,6 +267,7 @@ function imagePasteOpts(): ImagePasteOptions {
     getAssetsDirName: () => settings.assetsDirName,
     getCustomPath: () => settings.attachmentCustomPath,
     getPastedImageFormat: () => settings.pastedImageFormat,
+    getListMultiLinePasteMode: () => settings.listMultiLinePasteMode,
     getUploader: (filename: string) =>
       resolveUploader(settings as unknown as ImageUploadSettings, filename),
     notify: (kind, key, params) => {
@@ -1825,7 +1826,9 @@ function handlePlainPaste(event: ClipboardEvent) {
       if (raw && el) {
         const from = el.selectionStart ?? 0;
         const to = el.selectionEnd ?? 0;
-        const indented = indentCodeBlockPaste(el.value, from, to, raw);
+        const indented = indentCodeBlockPaste(el.value, from, to, raw, {
+          listMultiLineMode: settings.listMultiLinePasteMode,
+        });
         if (indented !== raw) {
           event.preventDefault();
           plainInsertText(indented);
@@ -4558,7 +4561,9 @@ async function onEditorMenuAction(id: EditorMenuAction) {
       if (text) {
         const out =
           props.tab.language === 'markdown'
-            ? indentCodeBlockPaste(v.state.doc.toString(), sel.from, sel.to, text)
+            ? indentCodeBlockPaste(v.state.doc.toString(), sel.from, sel.to, text, {
+                listMultiLineMode: settings.listMultiLinePasteMode,
+              })
             : text;
         v.dispatch({ ...v.state.replaceSelection(out), userEvent: 'input.paste', scrollIntoView: true });
       }
@@ -4595,7 +4600,9 @@ async function onEditorMenuAction(id: EditorMenuAction) {
     if (!text) return;
     const out =
       props.tab.language === 'markdown'
-        ? indentCodeBlockPaste(el.value, el.selectionStart ?? 0, el.selectionEnd ?? 0, text)
+        ? indentCodeBlockPaste(el.value, el.selectionStart ?? 0, el.selectionEnd ?? 0, text, {
+            listMultiLineMode: settings.listMultiLinePasteMode,
+          })
         : text;
     el.focus();
     document.execCommand('insertText', false, out);
@@ -5198,7 +5205,9 @@ function buildExtensions() {
     EditorView.clipboardInputFilter.of((text, state) => {
       if (props.tab.language !== 'markdown' || state.selection.ranges.length !== 1) return text;
       const sel = state.selection.main;
-      return indentCodeBlockPaste(state.doc.toString(), sel.from, sel.to, text);
+      return indentCodeBlockPaste(state.doc.toString(), sel.from, sel.to, text, {
+        listMultiLineMode: settings.listMultiLinePasteMode,
+      });
     }),
     EditorView.domEventHandlers({
       mousedown(event, v) {
@@ -6091,6 +6100,13 @@ function onTableToolbarAction(action: TableAction): void {
   const own = usePlainWindowsEditor ? plainHostEl.value : view?.dom ?? null;
   const session = getActiveTableCellSession(own);
   if (session) {
+    if (action === 'table-delete') {
+      const docText = usePlainWindowsEditor ? plainText.value || '' : view?.state.doc.toString() ?? '';
+      const del = tableDeleteRange(docText, session.from, session.to);
+      session.cancelCommit();
+      replaceDocRange(del.from, del.to, '', del.caret);
+      return;
+    }
     const model = session.getCurrentModel();
     if (!model) return;
     const next = applyTableAction(model, action, session.row, session.col);
@@ -6121,6 +6137,11 @@ function onTableToolbarAction(action: TableAction): void {
   if (!ed) return;
   const hit = tableAt(ed.text, ed.caret);
   if (!hit) return;
+  if (action === 'table-delete') {
+    const del = tableDeleteRange(ed.text, hit.from, hit.to);
+    replaceDocRange(del.from, del.to, '', del.caret);
+    return;
+  }
   const next = applyTableAction(hit.model, action, hit.row, hit.col);
   if (next === hit.model) return;
   const indent = /^[ \t]*/.exec(ed.text.slice(hit.from, hit.to))?.[0] ?? '';
