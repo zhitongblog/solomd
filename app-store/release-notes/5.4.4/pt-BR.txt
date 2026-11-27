@@ -1,0 +1,5 @@
+• Editor e tabelas: Botão Excluir tabela na barra flutuante, Enter no início de uma quebra suave continua a lista sem linha em branco e nova opção para colar várias linhas em listas
+• WYSIWYG puro e visualização: Corrigidos os saltos de janela ao clicar e unificado o espaçamento de parágrafos e listas
+• Painel de snippets: Corrigida a inserção por clique e clique duplo, restaurado o botão Novo snippet e menu de contexto isolado
+• Sincronização e conflitos: Corrigido o download WebDAV com 0 arquivos, acelerado o Baidu Netdisk, diálogo de confirmação em conflitos de envio e abertura automática do gerenciador de conflitos ao baixar
+• Exportação e .textpack: Corrigido o alinhamento de imagens em PDF e listas de tarefas em EPUB; .textpack agora extrai na pasta temporária do sistema com limpeza automática e reempacotamento nativo

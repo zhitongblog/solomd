@@ -1,0 +1,5 @@
+• Redigerare och tabeller: Lade till knappen Ta bort tabell i tabellverktygsfältet, Enter i början av en mjuk radbrytning fortsätter listan utan tom rad och ny inställning för flerradig inklistring i listor
+• Rent WYSIWYG och förhandsgranskning: Åtgärdade fönsterhopp vid klick och enhetligade stycke- och listavstånd
+• Kodsnuttar: Fixade infogning vid klick/dubbelklick, lade till knappen Ny kodsnutt och isolerade högerklicksmenyn
+• Synk och konfliktskydd: Fixade WebDAV-hämtning med 0 filer, snabbade upp Baidu Netdisk, lade till bekräftelsedialog vid uppladdningskonflikt och automatisk öppning av konflikthanteraren
+• Export och .textpack: Fixade PDF-bildjustering och EPUB-uppgiftslistor; .textpack packas upp i systemets tempmapp med automatisk rensning och inbyggd ompackning

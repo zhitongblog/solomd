@@ -1,0 +1,5 @@
+• Editor & Tabellen: Schaltfläche „Tabelle löschen“ in der Tabellenleiste hinzugefügt, Enter am Anfang eines weichen Umbruchs setzt Listen ohne Leerzeile fort, neue Option für mehrzeiliges Einfügen in Listen
+• Reines WYSIWYG & Vorschau: Fenstersprünge beim Klicken behoben und Absatz-/Listenabstände in der Vorschau vereinheitlicht
+• Snippets-Panel: Einfügen per Klick/Doppelklick korrigiert, Schaltfläche „Neues Snippet“ ergänzt und Kontextmenü isoliert
+• Cloud-Sync & Konfliktschutz: WebDAV-Download-Bug behoben, Baidu-Netdisk-Abruf beschleunigt, Bestätigungsdialog bei Upload-Konflikten und automatisches Öffnen des Konfliktmanagers bei Download-Konflikten
+• Export & .textpack: PDF-Bildausrichtung und EPUB-Aufgabenlisten korrigiert; .textpack nutzt das System-Temp-Verzeichnis mit automatischer Bereinigung und nativem Streaming-Repack

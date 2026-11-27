@@ -1,0 +1,5 @@
+• Editor y tablas: Botón Eliminar tabla en la barra flotante, Enter al inicio de un salto suave continúa la lista sin línea en blanco, y nuevo ajuste para pegar varias líneas en listas
+• WYSIWYG puro y vista previa: Corregidos los saltos de ventana al hacer clic y unificado el espaciado entre párrafos y listas
+• Panel de fragmentos: Corregida la inserción con clic y doble clic, restaurado el botón Nuevo fragmento y menú contextual propio
+• Sincronización y conflictos: Corregida la descarga WebDAV con 0 archivos, acelerada la descarga de Baidu Netdisk, diálogo de confirmación ante conflictos de subida y apertura automática del gestor de conflictos al descargar
+• Exportación y .textpack: Corregida la alineación de imágenes en PDF y las listas de tareas en EPUB; .textpack ahora se descomprime en el directorio temporal del sistema con limpieza automática y reempaquetado nativo

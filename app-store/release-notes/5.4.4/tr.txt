@@ -1,0 +1,5 @@
+• Düzenleyici ve tablolar: Tablo araç çubuğuna Tabloyu sil düğmesi eklendi, yumuşak satır sonu başında Enter boş satır bırakmadan listeyi sürdürür, listelere çok satırlı yapıştırma ayarı eklendi
+• Saf WYSIWYG ve önizleme: Tıklamada pencere zıplaması giderildi ve paragraf/liste boşlukları eşitlendi
+• Kod parçacıkları paneli: Tıklama ve çift tıklama ile ekleme düzeltildi, Yeni parçacık düğmesi eklendi ve sağ tık menüsü ayrıldı
+• Senkronizasyon ve çakışma koruması: WebDAV 0 dosya indirme hatası giderildi, Baidu Netdisk hızlandırıldı, yükleme çakışmalarında onay penceresi ve indirme çakışmalarında otomatik çakışma yöneticisi eklendi
+• Dışa aktarma ve .textpack: PDF görsel hizalaması ve EPUB görev listeleri düzeltildi; .textpack sistem geçici klasöründe açılıp otomatik temizlenir ve yerel olarak yeniden paketlenir

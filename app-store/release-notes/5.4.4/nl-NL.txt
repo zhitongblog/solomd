@@ -1,0 +1,5 @@
+• Editor en tabellen: Knop Tabel verwijderen toegevoegd aan de zwevende werkbalk, Enter aan het begin van een zachte regelovergang zet lijsten zonder lege regel voort, nieuwe instelling voor meerregelig plakken in lijsten
+• Puur WYSIWYG en voorbeeld: Verspringen bij klikken opgelost en alinea-/lijstafstanden gelijkgetrokken
+• Snippets-paneel: Invoegen via klik/dubbelklik hersteld, knop Nieuw snippet toegevoegd en contextmenu geïsoleerd
+• Synchronisatie en conflicten: WebDAV-downloadfout opgelost, Baidu Netdisk versneld, bevestigingsvenster bij uploadconflicten en automatisch openen van conflictbeheer bij downloadconflicten
+• Export en .textpack: PDF-afbeeldingsuitlijning en EPUB-takenlijsten hersteld; .textpack gebruikt de systeem-tempmap met automatische opschoning en native herpakken

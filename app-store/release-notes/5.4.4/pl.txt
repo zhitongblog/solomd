@@ -1,0 +1,5 @@
+• Edytor i tabele: Dodano przycisk Usuń tabelę na pasku tabeli, Enter na początku miękkiego podziału kontynuuje listę bez pustej linii, nowa opcja wklejania wielu linii w listach
+• Czysty WYSIWYG i podgląd: Naprawiono przeskakiwanie okna po kliknięciu i ujednolicono odstępy akapitów i list
+• Panel fragmentów: Naprawiono wstawianie kliknięciem i dwuklikiem, dodano przycisk Nowy fragment i odizolowano menu kontekstowe
+• Synchronizacja i konflikty: Naprawiono pobieranie WebDAV z 0 plikami, przyspieszono Baidu Netdisk, dodano okno potwierdzenia konfliktów wysyłania i automatyczne otwieranie menedżera konfliktów
+• Eksport i .textpack: Poprawiono wyrównanie obrazów w PDF i listy zadań w EPUB; .textpack rozpakowuje się w folderze tymczasowym systemu z automatycznym czyszczeniem i natywnym pakowaniem

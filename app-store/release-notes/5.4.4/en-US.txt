@@ -1,0 +1,5 @@
+• Editor & table upgrades: Added a one-click Delete Table button to the floating table toolbar, Enter at the start of a list soft break now continues the list cleanly without a blank line, and added a setting for multi-line pastes inside lists (soft break vs. sibling list items)
+• Pure WYSIWYG & preview fixes: Fixed click-induced window jumps in Pure WYSIWYG mode and unified paragraph/list spacing in Preview
+• Snippets panel improvements: Fixed single-click and double-click insertion, restored the New Snippet button, compacted snippet cards, and isolated the right-click menu
+• Cloud sync & conflict protection: Fixed WebDAV pull returning 0 files on Nutstore and similar servers, accelerated Baidu Netdisk pulls via recursive listing, added a blocking confirm dialog on push conflicts, and auto-open the Conflict Manager on pull conflicts
+• Export & .textpack fixes: Fixed PDF image alignment and EPUB blockquote task-list bullets/indentation; .textpack now unpacks in the OS temp dir with auto-cleanup and streams repacks natively

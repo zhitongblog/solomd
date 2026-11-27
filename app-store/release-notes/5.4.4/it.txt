@@ -1,0 +1,5 @@
+• Editor e tabelle: Aggiunto il pulsante Elimina tabella nella barra mobile, Invio all'inizio di un'interruzione morbida continua l'elenco senza riga vuota, nuova opzione per incollare più righe negli elenchi
+• WYSIWYG puro e anteprima: Risolti i salti della finestra al clic e uniformata la spaziatura tra paragrafi ed elenchi
+• Pannello snippet: Corretto l'inserimento con clic e doppio clic, ripristinato il pulsante Nuovo snippet e menu contestuale isolato
+• Sincronizzazione e conflitti: Risolto il pull WebDAV a 0 file, accelerato Baidu Netdisk, aggiunta finestra di conferma per conflitti in upload e apertura automatica del gestore conflitti in download
+• Esportazione e .textpack: Corretto l'allineamento immagini PDF e le liste attività EPUB; .textpack usa la cartella temporanea di sistema con pulizia automatica e ricompressione nativa

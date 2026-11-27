@@ -1,0 +1,5 @@
+• Éditeur et tableaux : Bouton Supprimer le tableau ajouté à la barre flottante, Entrée en début de saut souple poursuit la liste sans ligne vide, et nouvelle option de collage multiligne dans les listes
+• WYSIWYG pur et aperçu : Sauts de fenêtre au clic corrigés et espacement paragraphes/listes harmonisé
+• Panneau d'extraits : Insertion par clic et double-clic réparée, bouton Nouvel extrait restauré et menu contextuel dédié
+• Synchronisation et conflits : Téléchargement WebDAV corrigé, synchronisation Baidu Netdisk accélérée, boîte de confirmation en cas de conflit d'envoi et ouverture automatique du gestionnaire de conflits
+• Export et .textpack : Alignement des images PDF et listes de tâches EPUB corrigés ; .textpack utilise le dossier temporaire système avec nettoyage automatique et rempaquetage natif
