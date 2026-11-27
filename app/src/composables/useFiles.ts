@@ -1359,7 +1359,7 @@ export function useFiles() {
       workDirToClean &&
       !tabs.tabs.some((other) => other.textpackWorkDir === workDirToClean)
     ) {
-      void invoke('fs_delete', { path: workDirToClean }).catch(() => {});
+      void invoke('cleanup_temp_dir', { path: workDirToClean }).catch(() => {});
     }
   }
 

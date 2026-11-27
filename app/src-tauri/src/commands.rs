@@ -404,6 +404,41 @@ pub fn get_temp_dir() -> String {
     std::env::temp_dir().to_string_lossy().to_string()
 }
 
+/// #724 — Permanently remove an unpacked `.textpack` working folder under
+/// `<OS temp>/solomd-textpack` without sending temporary files to the OS
+/// Recycle Bin / Trash (unlike `fs_delete`). Refuses paths outside that root.
+pub fn cleanup_temp_dir_inner(path: String) -> Result<(), String> {
+    let target = Path::new(&path);
+    if !target.exists() {
+        return Ok(());
+    }
+    let allowed_root = std::env::temp_dir().join("solomd-textpack");
+    if !allowed_root.exists() {
+        return Err("refusing to remove path outside solomd-textpack temp root".into());
+    }
+    let root_canon = fs::canonicalize(&allowed_root)
+        .map_err(|e| format!("canonicalize temp root failed: {e}"))?;
+    let target_canon = fs::canonicalize(target)
+        .map_err(|e| format!("canonicalize target failed: {e}"))?;
+    if target_canon == root_canon || !target_canon.starts_with(&root_canon) {
+        return Err("refusing to remove path outside solomd-textpack temp root".into());
+    }
+    if target_canon.is_dir() {
+        fs::remove_dir_all(&target_canon).map_err(|e| format!("cleanup temp dir failed: {e}"))
+    } else {
+        fs::remove_file(&target_canon).map_err(|e| format!("cleanup temp file failed: {e}"))
+    }
+}
+
+#[tauri::command]
+pub fn cleanup_temp_dir(
+    watcher: tauri::State<'_, super::watcher::WatcherState>,
+    path: String,
+) -> Result<(), String> {
+    super::watcher::unwatch_under_path(&watcher, Path::new(&path));
+    cleanup_temp_dir_inner(path)
+}
+
 /// #724 — Stream-repack a `.textpack` ZIP archive natively in Rust on a
 /// blocking thread so notes with 30–200+ pasted images never freeze WebView2
 /// or blow up IPC JSON limits (`Array.from(zipBuf)`).
@@ -3912,5 +3947,25 @@ mod v523_regression_tests {
         assert_eq!(updated.len(), 1);
         let index = fs::read_to_string(dir.path().join("index.md")).unwrap();
         assert!(index.contains("第9篇：打包、安全与部署/note.md"));
+    }
+
+    #[test]
+    fn issue_724_cleanup_temp_dir_scoped_to_solomd_textpack_root() {
+        let root = std::env::temp_dir().join("solomd-textpack");
+        let work = root.join(format!("unit-test-{}", std::process::id()));
+        fs::create_dir_all(work.join("assets")).unwrap();
+        fs::write(work.join("note.md"), "# temp\n").unwrap();
+
+        // Refuses the root folder itself and any directory outside it.
+        assert!(cleanup_temp_dir_inner(root.to_string_lossy().to_string()).is_err());
+        let outside = tempfile::tempdir().unwrap();
+        assert!(cleanup_temp_dir_inner(outside.path().to_string_lossy().to_string()).is_err());
+        assert!(outside.path().exists());
+
+        // Permanently removes a valid child directory under <temp>/solomd-textpack.
+        cleanup_temp_dir_inner(work.to_string_lossy().to_string()).unwrap();
+        assert!(!work.exists());
+        // Idempotent when already removed.
+        cleanup_temp_dir_inner(work.to_string_lossy().to_string()).unwrap();
     }
 }

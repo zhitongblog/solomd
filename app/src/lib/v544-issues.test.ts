@@ -40,12 +40,19 @@ test('#730: Preview ul/ol honors --paragraph-spacing and tightens li > p margins
   assert.match(previewVue, /:where\(\.preview-content\) li > p\s*\{\s*margin:\s*0\.25em 0;\s*\}/);
 });
 
-test('#724: .textpack extracts to OS temp dir, cleans up on tab close, repacks natively in Rust, and never falls back to -copy.md', () => {
+test('#724: .textpack extracts to OS temp dir, permanently cleans up on tab close, repacks natively in Rust, and never falls back to -copy.md', () => {
   const useFiles = fs.readFileSync(path.join(srcRoot, 'composables/useFiles.ts'), 'utf8');
   assert.match(useFiles, /invoke<string>\('get_temp_dir'\)/);
   assert.match(useFiles, /invoke\('repack_textpack'/);
+  assert.match(useFiles, /invoke\('cleanup_temp_dir'/);
   assert.match(useFiles, /if \(tab\.textpackPath\) \{[\s\S]*?return false;/);
   assert.match(useFiles, /const workDirToClean = tab\.textpackWorkDir;/);
+  const runnerRs = fs.readFileSync(path.resolve(srcRoot, '../src-tauri/src/runner.rs'), 'utf8');
+  assert.match(runnerRs, /commands::get_temp_dir/);
+  assert.match(runnerRs, /commands::cleanup_temp_dir/);
+  assert.match(runnerRs, /commands::repack_textpack/);
+  const libRs = fs.readFileSync(path.resolve(srcRoot, '../src-tauri/src/lib.rs'), 'utf8');
+  assert.match(libRs, /commands::cleanup_temp_dir/);
 });
 
 test('#725 & #726: SnippetsPanel dispatches activePaneId, uses default PanelHeader slot, has toolbar New button, and isolates right-click menu', () => {
@@ -57,7 +64,7 @@ test('#725 & #726: SnippetsPanel dispatches activePaneId, uses default PanelHead
   assert.match(panel, /@contextmenu\.prevent\.stop="openBlankCtx\(\$event\)"/);
 });
 
-test('#728 & #729: Push conflict guard opens blocking confirm dialog and pull conflicts auto-open SyncConflictModal', () => {
+test('#728 & #729: Push conflict guard opens blocking confirm dialog across all 3 channels and pull conflicts auto-open SyncConflictModal', () => {
   const ghSync = fs.readFileSync(path.join(srcRoot, 'composables/useGithubSync.ts'), 'utf8');
   const wdSettings = fs.readFileSync(path.join(srcRoot, 'components/WebdavSyncSettings.vue'), 'utf8');
   assert.match(ghSync, /handlePushConflictError/);
@@ -65,4 +72,14 @@ test('#728 & #729: Push conflict guard opens blocking confirm dialog and pull co
   assert.match(ghSync, /openConflictModalIfDetected/);
   assert.match(wdSettings, /confirmDialog\(promptMsg/);
   assert.match(wdSettings, /solomd:open-sync-conflicts/);
+  // All 3 push handlers use confirmPushConflict, and none of the pull catch blocks call pull recursively.
+  assert.match(wdSettings, /async function pushCloudApi[\s\S]*?confirmPushConflict\(msg\)/);
+  assert.match(wdSettings, /async function pushWorkspace[\s\S]*?confirmPushConflict\(msg\)/);
+  assert.match(wdSettings, /async function pushCloudVault[\s\S]*?confirmPushConflict\(msg\)/);
+  const pullCloudApiBody = wdSettings.match(/async function pullCloudApi\(\)[\s\S]*?\n\}/)?.[0] ?? '';
+  const pullWorkspaceBody = wdSettings.match(/async function pullWorkspace\(\)[\s\S]*?\n\}/)?.[0] ?? '';
+  const pullCloudVaultBody = wdSettings.match(/async function pullCloudVault\(\)[\s\S]*?\n\}/)?.[0] ?? '';
+  assert.doesNotMatch(pullCloudApiBody, /confirmPushConflict|apiPushing\.value\s*=\s*false/);
+  assert.doesNotMatch(pullWorkspaceBody, /confirmPushConflict|pushing\.value\s*=\s*false/);
+  assert.match(pullCloudVaultBody, /solomd:open-sync-conflicts/);
 });
