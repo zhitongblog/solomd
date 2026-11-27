@@ -333,11 +333,12 @@ export function useFiles() {
     const ext = (path.split('.').pop() || '').toLowerCase();
     let textpackSourcePath: string | undefined;
     let textpackDisplayName: string | undefined;
+    let textpackWorkDir: string | undefined;
 
-    // #505 / #710 — Open `.textpack` (ZIP bundle) or `.textbundle` (directory bundle).
-    // Extract `.textpack` into an isolated working folder (`<parent>/.solomd-textpack/<stem>/`)
-    // so it NEVER overwrites an existing sibling `<stem>.md`, and remember `textpackSourcePath`
-    // so saving repacks both Markdown and newly pasted images directly back into the `.textpack`.
+    // #505 / #710 / #724 — Open `.textpack` (ZIP bundle) or `.textbundle` (directory bundle).
+    // Extract `.textpack` into the OS temp directory (`<temp>/solomd-textpack/<stem>-<ts>/`)
+    // so it NEVER pollutes the user's working folder or overwrites a sibling `<stem>.md`,
+    // and clean up `textpackWorkDir` automatically when the tab closes.
     if (ext === 'textpack') {
       try {
         const { extractTextPackArchive } = await import('../lib/textbundle');
@@ -349,23 +350,32 @@ export function useFiles() {
         const stem = fileName.replace(/\.textpack$/i, '') || 'Bundle';
         const assetsFolder = 'assets';
         const unpacked = extractTextPackArchive(new Uint8Array(rawBytes), assetsFolder);
-        if (parentDir) {
-          const workDir = `${parentDir}${sep}.solomd-textpack${sep}${stem}`;
+        const sysTmp = await invoke<string>('get_temp_dir').catch(() => '');
+        const cleanTmp = sysTmp ? sysTmp.replace(/[/\\]+$/, '') : '';
+        const tmpSep = cleanTmp.includes('\\') ? '\\' : sep;
+        const workDir = cleanTmp
+          ? `${cleanTmp}${tmpSep}solomd-textpack${tmpSep}${stem}-${Date.now()}`
+          : parentDir
+            ? `${parentDir}${sep}.solomd-textpack${sep}${stem}`
+            : '';
+        if (workDir) {
+          const dirSep = workDir.includes('\\') ? '\\' : '/';
           await invoke('fs_create_dir', { path: workDir }).catch(() => {});
           if (unpacked.assets.length > 0) {
-            const absAssetsDir = `${workDir}${sep}${assetsFolder}`;
+            const absAssetsDir = `${workDir}${dirSep}${assetsFolder}`;
             await invoke('fs_create_dir', { path: absAssetsDir }).catch(() => {});
             for (const asset of unpacked.assets) {
               await invoke('write_binary_file', {
-                path: `${absAssetsDir}${sep}${asset.name}`,
+                path: `${absAssetsDir}${dirSep}${asset.name}`,
                 data: Array.from(asset.bytes),
               });
             }
           }
-          const mdPath = `${workDir}${sep}${stem}.md`;
+          const mdPath = `${workDir}${dirSep}${stem}.md`;
           await invoke('write_file', { path: mdPath, content: unpacked.markdown, encoding: 'UTF-8' });
           textpackSourcePath = path;
           textpackDisplayName = fileName;
+          textpackWorkDir = workDir;
           path = mdPath;
         }
       } catch (e) {
@@ -439,6 +449,7 @@ export function useFiles() {
       });
       if (textpackSourcePath) {
         openedTab.textpackPath = textpackSourcePath;
+        if (textpackWorkDir) openedTab.textpackWorkDir = textpackWorkDir;
         if (textpackDisplayName) openedTab.fileName = textpackDisplayName;
       }
 
@@ -1100,17 +1111,15 @@ export function useFiles() {
           content: payload,
           encoding: tab.encoding || 'UTF-8',
         });
-        // #710 — When editing an opened `.textpack` archive, repack the updated
-        // Markdown and all referenced local images/assets directly back into the
-        // original `.textpack` ZIP file so edits & pasted screenshots persist.
+        // #710 / #724 — When editing an opened `.textpack` archive, repack natively
+        // in Rust (streaming assets from disk) so 30–200+ pasted images never freeze
+        // the UI or fail IPC serialization.
         if (tab.textpackPath) {
-          const { rewriteMarkdownForTextBundle, createTextPackArchive } = await import(
-            '../lib/textbundle'
-          );
+          const { rewriteMarkdownForTextBundle } = await import('../lib/textbundle');
           const { rewrittenMarkdown, assets } = rewriteMarkdownForTextBundle(payload);
-          const assetBytes: Record<string, Uint8Array> = {};
           const noteDir = path.slice(0, Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\')));
           const sep = path.includes('\\') ? '\\' : '/';
+          const assetPairs: Array<[string, string]> = [];
           for (const ref of assets) {
             let absPath = ref.rawPath;
             try {
@@ -1121,19 +1130,12 @@ export function useFiles() {
             if (!absPath.startsWith('/') && !/^[a-zA-Z]:[\\/]/.test(absPath) && noteDir) {
               absPath = `${noteDir}${sep}${absPath.replace(/^\.[\\/]/, '').replace(/[\\/]/g, sep)}`;
             }
-            try {
-              const bytes = await invoke<number[]>('read_binary_file', { path: absPath });
-              if (bytes && bytes.length > 0) {
-                assetBytes[ref.bundleFileName] = new Uint8Array(bytes);
-              }
-            } catch {
-              // Keep going if an optional external/missing asset cannot be read
-            }
+            assetPairs.push([ref.bundleFileName, absPath]);
           }
-          const zipBuf = createTextPackArchive(rewrittenMarkdown, assetBytes);
-          await invoke('write_binary_file', {
-            path: tab.textpackPath,
-            data: Array.from(zipBuf),
+          await invoke('repack_textpack', {
+            outputPath: tab.textpackPath,
+            markdown: rewrittenMarkdown,
+            assets: assetPairs,
           });
         }
       }
@@ -1163,6 +1165,16 @@ export function useFiles() {
       (tab as any).saveFailed = true;
       const errStr = String(e);
       if (!opts.silent) {
+        if (tab.textpackPath) {
+          // #724 — Never silently fall back to `-copy.md` when repacking a `.textpack` fails.
+          toasts.error(
+            settings.language === 'zh'
+              ? `保存 .textpack 失败：${errStr}`
+              : `Failed to save .textpack: ${errStr}`,
+            6500,
+          );
+          return false;
+        }
         toasts.warning(
           settings.language === 'zh'
             ? `无法直接保存「${tab.fileName}」（可能为只读文件），请选择另存为位置`
@@ -1341,7 +1353,14 @@ export function useFiles() {
       }
       // 'discard' → fall through to close
     }
+    const workDirToClean = tab.textpackWorkDir;
     tabs.closeTab(id);
+    if (
+      workDirToClean &&
+      !tabs.tabs.some((other) => other.textpackWorkDir === workDirToClean)
+    ) {
+      void invoke('fs_delete', { path: workDirToClean }).catch(() => {});
+    }
   }
 
   return {

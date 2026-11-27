@@ -12,6 +12,7 @@
  */
 import { watch } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
+import { confirm as tauriConfirm } from '@tauri-apps/plugin-dialog';
 import { useGithubSyncStore, isGithubAuthError, classifyPushError } from '../stores/githubSync';
 import { useWorkspaceStore } from '../stores/workspace';
 import { useSettingsStore, resolveSyncTargetFolder } from '../stores/settings';
@@ -77,6 +78,47 @@ export function useGithubSync() {
     return `githubSync.${actual}`;
   }
 
+  let pushConflictPromptActive = false;
+
+  /**
+   * #728 — When multi-device overwrite protection blocks a push, surface a
+   * blocking confirmation dialog so the user cannot miss it and can pull
+   * immediately to merge conflicts.
+   */
+  async function handlePushConflictError(label: string, err: unknown): Promise<void> {
+    const msg = String((err as Error)?.message ?? err);
+    if (!msg.includes('检测到多端并发修改') && !/concurrent modification/i.test(msg)) {
+      toasts.warning(`${label}: ${msg}`);
+      return;
+    }
+    if (pushConflictPromptActive) return;
+    pushConflictPromptActive = true;
+    try {
+      const isZh = settings.language === 'zh';
+      const promptMsg = isZh
+        ? `${msg}\n\n是否立即从云端同步下载并处理冲突？`
+        : `${msg}\n\nPull from cloud now to merge conflicts?`;
+      const ok = await tauriConfirm(promptMsg, {
+        title: isZh ? '同步冲突保护' : 'Sync Conflict Protection',
+        kind: 'warning',
+        okLabel: isZh ? '立即同步下载' : 'Pull Now',
+        cancelLabel: isZh ? '稍后处理' : 'Later',
+      }).catch(() => window.confirm(promptMsg));
+      if (ok) {
+        await pullAllEnabledSyncs();
+      }
+    } finally {
+      pushConflictPromptActive = false;
+    }
+  }
+
+  /** #729 — Immediately open the Conflict & Snapshot Manager if a pull surfaced conflicts. */
+  function openConflictModalIfDetected(message?: string): void {
+    if (message && /(?:冲突|conflict)/i.test(message)) {
+      window.dispatchEvent(new CustomEvent('solomd:open-sync-conflicts'));
+    }
+  }
+
   async function pushIfWanted(targetFolderOverride?: string | null): Promise<void> {
     const folder =
       targetFolderOverride ??
@@ -103,7 +145,7 @@ export function useGithubSync() {
           maxVersions: settings.syncMaxVersions,
         });
       } catch (e) {
-        toasts.warning(`WebDAV: ${e}`);
+        await handlePushConflictError('WebDAV', e);
       }
     }
 
@@ -123,7 +165,7 @@ export function useGithubSync() {
           maxVersions: settings.syncMaxVersions,
         });
       } catch (e) {
-        toasts.warning(`Cloud Vault: ${e}`);
+        await handlePushConflictError('Cloud Vault', e);
       }
     }
 
@@ -162,7 +204,7 @@ export function useGithubSync() {
           maxVersions: settings.syncMaxVersions,
         });
       } catch (e) {
-        toasts.warning(`Cloud API: ${e}`);
+        await handlePushConflictError('Cloud API', e);
       }
     }
 
@@ -271,7 +313,7 @@ export function useGithubSync() {
 
     if (settings.webdavEnabled && settings.webdavAutoSync && settings.webdavUrl.trim()) {
       try {
-        const res = await invoke<{ downloaded?: number }>('webdav_pull_workspace', {
+        const res = await invoke<{ downloaded?: number; message?: string }>('webdav_pull_workspace', {
           workspace: folder,
           url: settings.webdavUrl,
           username: settings.webdavUsername,
@@ -284,6 +326,7 @@ export function useGithubSync() {
           maxVersions: settings.syncMaxVersions,
         });
         if ((res?.downloaded ?? 0) > 0) pulledAny = true;
+        openConflictModalIfDetected(res?.message);
       } catch {
         /* best-effort */
       }
@@ -295,7 +338,7 @@ export function useGithubSync() {
       (!settings.cloudVaultEncrypted || settings.cloudVaultPassphrase.trim())
     ) {
       try {
-        const res = await invoke<{ downloaded?: number }>('cloud_vault_pull_workspace', {
+        const res = await invoke<{ downloaded?: number; message?: string }>('cloud_vault_pull_workspace', {
           workspace: folder,
           vaultDir: settings.cloudVaultDir,
           passphrase: settings.cloudVaultPassphrase,
@@ -305,6 +348,7 @@ export function useGithubSync() {
           maxVersions: settings.syncMaxVersions,
         });
         if ((res?.downloaded ?? 0) > 0) pulledAny = true;
+        openConflictModalIfDetected(res?.message);
       } catch {
         /* best-effort */
       }
@@ -331,7 +375,7 @@ export function useGithubSync() {
         settings.cloudApiPassphrase.trim())
     ) {
       try {
-        const res = await invoke<{ downloaded?: number }>('cloud_api_pull_workspace', {
+        const res = await invoke<{ downloaded?: number; message?: string }>('cloud_api_pull_workspace', {
           workspace: folder,
           provider: settings.cloudApiProvider,
           accessToken: effectiveApiToken,
@@ -344,6 +388,7 @@ export function useGithubSync() {
           maxVersions: settings.syncMaxVersions,
         });
         if ((res?.downloaded ?? 0) > 0) pulledAny = true;
+        openConflictModalIfDetected(res?.message);
       } catch {
         /* best-effort */
       }

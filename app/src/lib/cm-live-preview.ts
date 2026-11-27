@@ -77,7 +77,8 @@ const makeLiveMarkdownPlugin = (showMarkers: boolean, hideActiveLineMarkers = fa
       }
       // Skip marker-toggle rebuilds during pointer drag-selection — see
       // cm-drag-aware.ts for the Windows WebView2 pointer-capture reason.
-      const dragEnded = update.transactions.some(isDragEndTransaction);
+      const dragEnded =
+        !hideActiveLineMarkers && !showMarkers && update.transactions.some(isDragEndTransaction);
       const imeFlush = update.transactions.some(isImeSafeFlushTransaction);
       if (update.docChanged || update.viewportChanged || dragEnded || imeFlush) {
         this.decorations = this.build(update.view);

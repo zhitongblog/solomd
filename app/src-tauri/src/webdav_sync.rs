@@ -1917,43 +1917,108 @@ fn collect_local_files(root: &Path, dir: &Path, out: &mut Vec<(String, PathBuf)>
     }
 }
 
-/// Extract `<d:href>` / `<D:href>` / `<href>` entries from a WebDAV `PROPFIND` XML response,
-/// paired with whether the `<response>` contains `<collection/>`.
+/// #731 — Extract `<d:href>` / `<D:href>` / `<href>` entries from a WebDAV
+/// `PROPFIND` XML response, paired with whether the `<response>` contains
+/// `<collection/>`. Properly advances past the opening `<d:response>` tag before
+/// searching for the closing `</d:response>` tag so servers like Nutstore (坚果云)
+/// that emit `<d:response>` without attributes are parsed reliably.
 fn parse_propfind_xml(xml: &str) -> Vec<(String, bool)> {
     let mut results = Vec::new();
     let lower = xml.to_ascii_lowercase();
+    let bytes = lower.as_bytes();
     let mut pos = 0;
-    while let Some(resp_start) = lower[pos..].find("response") {
-        let abs_start = pos + resp_start;
-        // Ensure it's an opening tag `<d:response` or `<response`
-        if abs_start == 0 || !matches!(xml.as_bytes()[abs_start - 1], b'<' | b':') {
+
+    while let Some(rel) = lower[pos..].find("response") {
+        let abs_start = pos + rel;
+        // Must be an opening tag (`<response` or `<prefix:response`), NOT a closing `</...response>`.
+        let is_open_tag = if abs_start > 0 && bytes[abs_start - 1] == b'<' {
+            true
+        } else if abs_start > 1 && bytes[abs_start - 1] == b':' {
+            // Walk back over namespace prefix to verify `<` without `/`
+            let mut k = abs_start - 2;
+            while k > 0 && bytes[k] != b'<' && bytes[k] != b'>' && !bytes[k].is_ascii_whitespace() {
+                k -= 1;
+            }
+            bytes[k] == b'<' && bytes.get(k + 1) != Some(&b'/')
+        } else {
+            false
+        };
+        if !is_open_tag {
             pos = abs_start + 8;
             continue;
         }
-        let Some(resp_end_rel) = lower[abs_start..].find("response>") else {
+        // Verify tag name ends with whitespace, `>`, or `/`
+        let after_name = abs_start + 8;
+        if let Some(&next_b) = bytes.get(after_name) {
+            if !matches!(next_b, b'>' | b'/' | b' ' | b'\t' | b'\r' | b'\n') {
+                pos = after_name;
+                continue;
+            }
+        }
+        let Some(open_end_rel) = lower[after_name..].find('>') else {
             break;
         };
-        let block_end = abs_start + resp_end_rel + 9;
-        let block = &xml[abs_start..block_end];
-        let block_lower = &lower[abs_start..block_end];
-        pos = block_end;
+        let body_start = after_name + open_end_rel + 1;
 
-        // Extract href
-        if let Some(href_open) = block_lower.find("href>") {
-            let content_start = href_open + 5;
-            if let Some(href_close) = block_lower[content_start..].find("href>") {
-                let raw_inside = &block[content_start..content_start + href_close];
-                // Strip trailing `</d:` or `</`
+        // Find matching closing `</...response>` after the opening tag's `>`.
+        let mut search = body_start;
+        let mut block_end = None;
+        while let Some(close_rel) = lower[search..].find("response>") {
+            let close_pos = search + close_rel;
+            // Verify it's a closing tag (`</response>` or `</prefix:response>`)
+            let mut k = close_pos;
+            while k > body_start && bytes[k - 1] != b'<' && bytes[k - 1] != b'>' {
+                k -= 1;
+            }
+            if k > body_start && bytes[k - 1] == b'<' && bytes.get(k) == Some(&b'/') {
+                block_end = Some(close_pos + 9);
+                break;
+            }
+            search = close_pos + 9;
+        }
+        let Some(end) = block_end else {
+            break;
+        };
+
+        let block = &xml[body_start..end];
+        let block_lower = &lower[body_start..end];
+        pos = end;
+
+        // Extract `<...href>...</...href>`
+        let mut hpos = 0;
+        while let Some(hrel) = block_lower[hpos..].find("href") {
+            let hstart = hpos + hrel;
+            let hb = block_lower.as_bytes();
+            let valid_open = (hstart > 0 && hb[hstart - 1] == b'<')
+                || (hstart > 1 && hb[hstart - 1] == b':' && !block_lower[..hstart].ends_with("</"));
+            let hafter = hstart + 4;
+            if !valid_open
+                || !matches!(
+                    hb.get(hafter),
+                    Some(b'>' | b' ' | b'\t' | b'\r' | b'\n')
+                )
+            {
+                hpos = hafter;
+                continue;
+            }
+            let Some(hopen_gt) = block_lower[hafter..].find('>') else {
+                break;
+            };
+            let content_start = hafter + hopen_gt + 1;
+            if let Some(hclose_rel) = block_lower[content_start..].find("href>") {
+                let raw_inside = &block[content_start..content_start + hclose_rel];
                 let href = raw_inside
                     .trim_end_matches(|c: char| c != '<')
                     .trim_end_matches('<')
                     .trim();
-                let is_collection = block_lower.contains(":collection")
-                    || block_lower.contains("<collection");
+                let is_collection =
+                    block_lower.contains(":collection") || block_lower.contains("<collection");
                 if !href.is_empty() {
                     results.push((href.to_string(), is_collection));
                 }
+                break;
             }
+            break;
         }
     }
     results
@@ -5001,85 +5066,186 @@ async fn baidu_pull_folder(
         }
     }
 
-    // BFS traversal of ws_remote_root on Baidu Netdisk
-    let mut queue = vec![ws_remote_root.clone()];
-    let mut visited = HashSet::new();
+    // #733 — Fast path: Baidu Pan `method=listall&recursion=1` fetches up to
+    // 1,000 files across all subdirectories per request (20s+ BFS -> ~1s).
+    // Falls back cleanly to per-directory BFS `method=list` if `listall` errors.
+    let mut fast_files: Option<Vec<(String, String, u64)>> = None;
+    {
+        let mut collected: Vec<(String, String, u64)> = Vec::new();
+        let mut start: u64 = 0;
+        let mut ok = true;
+        for _page in 0..50 {
+            let listall_url = format!(
+                "https://pan.baidu.com/rest/2.0/xpan/file?method=listall&path={}&recursion=1&limit=1000&start={}&access_token={}",
+                percent_encode_segment(&ws_remote_root),
+                start,
+                percent_encode_segment(token)
+            );
+            let resp = match client
+                .get(&listall_url)
+                .header("User-Agent", "pan.baidu.com")
+                .send()
+                .await
+            {
+                Ok(r) => r,
+                Err(_) => {
+                    ok = false;
+                    break;
+                }
+            };
+            let json: serde_json::Value = match resp.json().await {
+                Ok(v) => v,
+                Err(_) => {
+                    ok = false;
+                    break;
+                }
+            };
+            let errno = json.get("errno").and_then(|v| v.as_i64()).unwrap_or(-1);
+            if errno != 0 {
+                ok = false;
+                break;
+            }
+            if let Some(items) = json.get("list").and_then(|v| v.as_array()) {
+                for item in items {
+                    if item.get("isdir").and_then(|v| v.as_u64()).unwrap_or(0) == 1 {
+                        continue;
+                    }
+                    let Some(server_path) = item.get("path").and_then(|v| v.as_str()) else {
+                        continue;
+                    };
+                    let Some(name) = item.get("server_filename").and_then(|v| v.as_str()) else {
+                        continue;
+                    };
+                    let Some(fs_id) = item.get("fs_id").and_then(|v| v.as_u64()) else {
+                        continue;
+                    };
+                    if name.starts_with('.') || name == SYNC_META_DIR || name == BUNDLE_FILENAME {
+                        continue;
+                    }
+                    let rel = server_path
+                        .strip_prefix(&ws_remote_root)
+                        .unwrap_or(server_path)
+                        .trim_start_matches('/');
+                    // Skip files inside hidden or ignored directories
+                    let mut skip = false;
+                    for seg in rel.split('/').rev().skip(1) {
+                        if seg.starts_with('.') || seg == SYNC_META_DIR || should_skip_dir(seg) {
+                            skip = true;
+                            break;
+                        }
+                    }
+                    if skip {
+                        continue;
+                    }
+                    collected.push((server_path.to_string(), name.to_string(), fs_id));
+                }
+            }
+            let has_more = json.get("has_more").and_then(|v| v.as_u64()).unwrap_or(0) == 1;
+            if !has_more {
+                break;
+            }
+            let cursor = json.get("cursor").and_then(|v| v.as_u64()).unwrap_or(0);
+            if cursor <= start {
+                break;
+            }
+            start = cursor;
+        }
+        if ok {
+            fast_files = Some(collected);
+        }
+    }
+
+    // Collect files via fast `listall` when available, else BFS traversal of ws_remote_root
+    let mut remote_files: Vec<(String, u64)> = Vec::new();
+    if let Some(fast) = fast_files {
+        for (server_path, _name, fs_id) in fast {
+            remote_files.push((server_path, fs_id));
+        }
+    } else {
+        let mut queue = vec![ws_remote_root.clone()];
+        let mut visited = HashSet::new();
+
+        while let Some(cur_dir) = queue.pop() {
+            if !visited.insert(cur_dir.clone()) {
+                continue;
+            }
+            let list_url = format!(
+                "https://pan.baidu.com/rest/2.0/xpan/file?method=list&dir={}&access_token={}",
+                percent_encode_segment(&cur_dir),
+                percent_encode_segment(token)
+            );
+            let list_resp = client
+                .get(&list_url)
+                .header("User-Agent", "pan.baidu.com")
+                .send()
+                .await
+                .map_err(|e| format!("百度网盘目录查询失败: {e}"))?;
+            let list_json: serde_json::Value = list_resp
+                .json()
+                .await
+                .map_err(|e| format!("解析百度网盘目录失败: {e}"))?;
+            let errno = list_json.get("errno").and_then(|v| v.as_i64()).unwrap_or(0);
+            if errno != 0 {
+                // If the dedicated workspace folder doesn't exist yet, try legacy bundle fallback
+                if cur_dir == ws_remote_root {
+                    if let Ok(bundle) = baidu_download_bundle(client, token, remote_dir).await {
+                        let ws_buf = workspace.to_path_buf();
+                        let pass_str = passphrase.to_string();
+                        let count = tauri::async_runtime::spawn_blocking(move || {
+                            unpack_encrypted_vault_bundle(&ws_buf, &bundle, &pass_str)
+                        })
+                        .await
+                        .map_err(|e| format!("join: {e}"))??;
+                        return Ok(WebdavSyncResult {
+                            uploaded: 0,
+                            downloaded: count,
+                            message: format!("已从百度网盘旧版加密包还原 {count} 个文件"),
+                        });
+                    }
+                }
+                return Err(format!(
+                    "百度网盘目录 {cur_dir} 查询失败 (errno={errno})，请确认已执行过上传同步"
+                ));
+            }
+
+            let Some(items) = list_json.get("list").and_then(|v| v.as_array()) else {
+                continue;
+            };
+            for item in items {
+                let is_dir = item.get("isdir").and_then(|v| v.as_u64()).unwrap_or(0) == 1;
+                let Some(server_path) = item.get("path").and_then(|v| v.as_str()) else {
+                    continue;
+                };
+                let Some(name) = item.get("server_filename").and_then(|v| v.as_str()) else {
+                    continue;
+                };
+                if name.starts_with('.') || name == SYNC_META_DIR || name == BUNDLE_FILENAME {
+                    continue;
+                }
+                if is_dir {
+                    if !should_skip_dir(name) && visited.len() < 200 {
+                        queue.push(server_path.to_string());
+                    }
+                    continue;
+                }
+                let Some(fs_id) = item.get("fs_id").and_then(|v| v.as_u64()) else {
+                    continue;
+                };
+                remote_files.push((server_path.to_string(), fs_id));
+            }
+        }
+    }
+
     let mut downloaded_or_matched: HashSet<String> = HashSet::new();
     let mut downloaded = 0usize;
     let mut skipped = 0usize;
     let mut conflicts = 0usize;
 
-    while let Some(cur_dir) = queue.pop() {
-        if !visited.insert(cur_dir.clone()) {
-            continue;
-        }
-        let list_url = format!(
-            "https://pan.baidu.com/rest/2.0/xpan/file?method=list&dir={}&access_token={}",
-            percent_encode_segment(&cur_dir),
-            percent_encode_segment(token)
-        );
-        let list_resp = client
-            .get(&list_url)
-            .header("User-Agent", "pan.baidu.com")
-            .send()
-            .await
-            .map_err(|e| format!("百度网盘目录查询失败: {e}"))?;
-        let list_json: serde_json::Value = list_resp
-            .json()
-            .await
-            .map_err(|e| format!("解析百度网盘目录失败: {e}"))?;
-        let errno = list_json.get("errno").and_then(|v| v.as_i64()).unwrap_or(0);
-        if errno != 0 {
-            // If the dedicated workspace folder doesn't exist yet, try legacy bundle fallback
-            if cur_dir == ws_remote_root {
-                if let Ok(bundle) = baidu_download_bundle(client, token, remote_dir).await {
-                    let ws_buf = workspace.to_path_buf();
-                    let pass_str = passphrase.to_string();
-                    let count = tauri::async_runtime::spawn_blocking(move || {
-                        unpack_encrypted_vault_bundle(&ws_buf, &bundle, &pass_str)
-                    })
-                    .await
-                    .map_err(|e| format!("join: {e}"))??;
-                    return Ok(WebdavSyncResult {
-                        uploaded: 0,
-                        downloaded: count,
-                        message: format!("已从百度网盘旧版加密包还原 {count} 个文件"),
-                    });
-                }
-            }
-            return Err(format!(
-                "百度网盘目录 {cur_dir} 查询失败 (errno={errno})，请确认已执行过上传同步"
-            ));
-        }
-
-        let Some(items) = list_json.get("list").and_then(|v| v.as_array()) else {
-            continue;
-        };
-        for item in items {
-            let is_dir = item.get("isdir").and_then(|v| v.as_u64()).unwrap_or(0) == 1;
-            let Some(server_path) = item.get("path").and_then(|v| v.as_str()) else {
-                continue;
-            };
-            let Some(name) = item.get("server_filename").and_then(|v| v.as_str()) else {
-                continue;
-            };
-            if name.starts_with('.') || name == SYNC_META_DIR || name == BUNDLE_FILENAME {
-                continue;
-            }
-            if is_dir {
-                if !should_skip_dir(name) && visited.len() < 200 {
-                    queue.push(server_path.to_string());
-                }
-                continue;
-            }
-
-            let Some(fs_id) = item.get("fs_id").and_then(|v| v.as_u64()) else {
-                continue;
-            };
-            let rel_from_ws = server_path
-                .strip_prefix(&ws_remote_root)
-                .unwrap_or(server_path)
-                .trim_start_matches('/');
+    for (server_path, fs_id) in remote_files {
+        let rel_from_ws = server_path
+            .strip_prefix(&ws_remote_root)
+            .unwrap_or(&server_path)
+            .trim_start_matches('/');
 
             let manifest_entry = remote_to_entry.get(rel_from_ws);
             let local_rel = if let Some(me) = manifest_entry {
@@ -5187,7 +5353,6 @@ async fn baidu_pull_folder(
                 total_est,
                 format!("已下载还原: {local_rel}"),
             );
-        }
     }
 
     if let Some(ref m) = manifest_opt {
@@ -8354,5 +8519,29 @@ mod tests {
         assert!(!old_new_fmt.exists());
         assert!(!old_legacy.exists());
         assert!(fresh_new_fmt.exists());
+    }
+
+    #[test]
+    fn issue_731_parse_propfind_xml_nutstore_and_nextcloud() {
+        // Nutstore (坚果云) emits `<d:response>` without attributes — the old
+        // parser matched `response>` inside the opening tag and returned empty!
+        let nutstore_xml = r#"<?xml version="1.0" encoding="utf-8"?>
+<d:multistatus xmlns:d="DAV:">
+  <d:response><d:href>/dav/SoloMD/</d:href><d:propstat><d:prop><d:resourcetype><d:collection/></d:resourcetype></d:prop></d:propstat></d:response>
+  <d:response><d:href>/dav/SoloMD/hello.md</d:href><d:propstat><d:prop><d:resourcetype/></d:prop></d:propstat></d:response>
+  <d:response><d:href>/dav/SoloMD/sub/</d:href><d:propstat><d:prop><d:resourcetype><d:collection /></d:resourcetype></d:prop></d:propstat></d:response>
+</d:multistatus>"#;
+        let entries = parse_propfind_xml(nutstore_xml);
+        assert_eq!(entries.len(), 3);
+        assert_eq!(entries[0], ("/dav/SoloMD/".into(), true));
+        assert_eq!(entries[1], ("/dav/SoloMD/hello.md".into(), false));
+        assert_eq!(entries[2], ("/dav/SoloMD/sub/".into(), true));
+
+        // Nextcloud / Apache style with attributes and uppercase `D:` prefix
+        let nextcloud_xml = r#"<D:multistatus xmlns:D="DAV:">
+  <D:response xmlns:lp1="DAV:"><D:href>/remote.php/dav/files/u/SoloMD/a.md</D:href><D:propstat><D:prop><lp1:resourcetype/></D:prop></D:propstat></D:response>
+</D:multistatus>"#;
+        let nc = parse_propfind_xml(nextcloud_xml);
+        assert_eq!(nc, vec![("/remote.php/dav/files/u/SoloMD/a.md".into(), false)]);
     }
 }

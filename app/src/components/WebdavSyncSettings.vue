@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
-import { open as openDialog } from '@tauri-apps/plugin-dialog';
+import { open as openDialog, confirm as confirmDialog } from '@tauri-apps/plugin-dialog';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { useSettingsStore } from '../stores/settings';
 import { useWorkspaceStore } from '../stores/workspace';
@@ -620,6 +620,23 @@ async function pushCloudApi() {
     apiStatusKind.value = 'err';
     finishChannelProgress('cloud_api', false, `❌ ${msg}`);
     toasts.error(msg);
+    if (msg.includes('检测到多端并发修改') || /concurrent modification/i.test(msg)) {
+      const isZh = settings.language === 'zh';
+      const promptMsg = isZh
+        ? `${msg}\n\n是否立即从云端同步下载并处理冲突？`
+        : `${msg}\n\nPull from cloud now to merge conflicts?`;
+      const ok = await confirmDialog(promptMsg, {
+        title: isZh ? '同步冲突保护' : 'Sync Conflict Protection',
+        kind: 'warning',
+        okLabel: isZh ? '立即同步下载' : 'Pull Now',
+        cancelLabel: isZh ? '稍后处理' : 'Later',
+      }).catch(() => window.confirm(promptMsg));
+      if (ok) {
+        apiPushing.value = false;
+        void pullCloudApi();
+        return;
+      }
+    }
   } finally {
     apiPushing.value = false;
   }
@@ -659,12 +676,32 @@ async function pullCloudApi() {
     toasts.success(res.message);
     window.dispatchEvent(new CustomEvent('solomd:remote-pulled'));
     window.dispatchEvent(new CustomEvent('solomd:snapshot-saved'));
+    if (/(?:冲突|conflict)/i.test(res.message)) {
+      window.dispatchEvent(new CustomEvent('solomd:open-sync-conflicts'));
+    }
   } catch (e) {
     const msg = String((e as Error)?.message ?? e);
     apiStatusText.value = msg;
     apiStatusKind.value = 'err';
     finishChannelProgress('cloud_api', false, `❌ ${msg}`);
     toasts.error(msg);
+    if (msg.includes('检测到多端并发修改') || /concurrent modification/i.test(msg)) {
+      const isZh = settings.language === 'zh';
+      const promptMsg = isZh
+        ? `${msg}\n\n是否立即从云端同步下载并处理冲突？`
+        : `${msg}\n\nPull from cloud now to merge conflicts?`;
+      const ok = await confirmDialog(promptMsg, {
+        title: isZh ? '同步冲突保护' : 'Sync Conflict Protection',
+        kind: 'warning',
+        okLabel: isZh ? '立即同步下载' : 'Pull Now',
+        cancelLabel: isZh ? '稍后处理' : 'Later',
+      }).catch(() => window.confirm(promptMsg));
+      if (ok) {
+        apiPushing.value = false;
+        void pullCloudApi();
+        return;
+      }
+    }
   } finally {
     apiPulling.value = false;
   }
@@ -775,6 +812,23 @@ async function pushWorkspace() {
     statusKind.value = 'err';
     finishChannelProgress('webdav', false, `❌ ${msg}`);
     toasts.error(msg);
+    if (msg.includes('检测到多端并发修改') || /concurrent modification/i.test(msg)) {
+      const isZh = settings.language === 'zh';
+      const promptMsg = isZh
+        ? `${msg}\n\n是否立即从云端同步下载并处理冲突？`
+        : `${msg}\n\nPull from cloud now to merge conflicts?`;
+      const ok = await confirmDialog(promptMsg, {
+        title: isZh ? '同步冲突保护' : 'Sync Conflict Protection',
+        kind: 'warning',
+        okLabel: isZh ? '立即同步下载' : 'Pull Now',
+        cancelLabel: isZh ? '稍后处理' : 'Later',
+      }).catch(() => window.confirm(promptMsg));
+      if (ok) {
+        pushing.value = false;
+        void pullWorkspace();
+        return;
+      }
+    }
   } finally {
     pushing.value = false;
   }
@@ -814,12 +868,32 @@ async function pullWorkspace() {
     toasts.success(res.message);
     window.dispatchEvent(new CustomEvent('solomd:remote-pulled'));
     window.dispatchEvent(new CustomEvent('solomd:snapshot-saved'));
+    if (/(?:冲突|conflict)/i.test(res.message)) {
+      window.dispatchEvent(new CustomEvent('solomd:open-sync-conflicts'));
+    }
   } catch (e) {
     const msg = String((e as Error)?.message ?? e);
     statusText.value = msg;
     statusKind.value = 'err';
     finishChannelProgress('webdav', false, `❌ ${msg}`);
     toasts.error(msg);
+    if (msg.includes('检测到多端并发修改') || /concurrent modification/i.test(msg)) {
+      const isZh = settings.language === 'zh';
+      const promptMsg = isZh
+        ? `${msg}\n\n是否立即从云端同步下载并处理冲突？`
+        : `${msg}\n\nPull from cloud now to merge conflicts?`;
+      const ok = await confirmDialog(promptMsg, {
+        title: isZh ? '同步冲突保护' : 'Sync Conflict Protection',
+        kind: 'warning',
+        okLabel: isZh ? '立即同步下载' : 'Pull Now',
+        cancelLabel: isZh ? '稍后处理' : 'Later',
+      }).catch(() => window.confirm(promptMsg));
+      if (ok) {
+        pushing.value = false;
+        void pullWorkspace();
+        return;
+      }
+    }
   } finally {
     pulling.value = false;
   }

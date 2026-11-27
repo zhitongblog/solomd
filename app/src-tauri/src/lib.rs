@@ -222,6 +222,8 @@ pub fn run() {
             commands::fetch_image_bytes,
             commands::write_file,
             commands::write_binary_file,
+            commands::get_temp_dir,
+            commands::repack_textpack,
             commands::print_webview,
             commands::print_webview_to_pdf,
             commands::copy_file,

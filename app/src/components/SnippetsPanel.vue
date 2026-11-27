@@ -1,51 +1,48 @@
 <template>
   <div class="snippets-panel">
-    <PanelHeader :title="t('snippets.title')" @close="settings.toggleSnippetsPanel()">
-      <template #actions>
-        <button
-          class="snippets-panel__add-btn"
-          :title="t('snippets.add')"
-          @click="openCreate"
-        >
-          +
-        </button>
-      </template>
+    <PanelHeader :title="t('snippets.title')" :count="filteredSnippets.length" @close="settings.toggleSnippetsPanel()">
+      <button
+        class="rp-icon-btn"
+        type="button"
+        :title="t('snippets.add')"
+        :aria-label="t('snippets.add')"
+        @click="openCreate"
+      >
+        +
+      </button>
     </PanelHeader>
 
-    <div class="snippets-panel__search">
+    <div class="snippets-panel__toolbar">
       <input
         v-model="query"
         class="snippets-panel__input"
         type="search"
         :placeholder="t('snippets.searchPlaceholder')"
       />
+      <button
+        type="button"
+        class="snippets-panel__new-btn"
+        :title="t('snippets.add')"
+        @click="openCreate"
+      >
+        + {{ t('snippets.add') }}
+      </button>
     </div>
 
-    <div class="snippets-panel__list" @contextmenu.prevent>
+    <div class="snippets-panel__list" @contextmenu.prevent.stop="openBlankCtx($event)">
       <div
         v-for="item in filteredSnippets"
         :key="item.id"
         class="snippets-panel__item"
         :title="t('snippets.dblClickHint')"
         @dblclick="insertSnippet(item)"
-        @contextmenu.prevent="openCtx($event, item)"
+        @contextmenu.prevent.stop="openCtx($event, item)"
       >
         <div class="snippets-panel__item-head">
           <span class="snippets-panel__item-name">{{ item.name }}</span>
           <span v-if="item.category" class="snippets-panel__item-cat">{{ item.category }}</span>
         </div>
         <pre class="snippets-panel__item-preview">{{ previewText(item.content) }}</pre>
-        <div class="snippets-panel__item-actions">
-          <button class="snippets-panel__mini-btn" @click.stop="insertSnippet(item)">
-            {{ t('snippets.insert') }}
-          </button>
-          <button class="snippets-panel__mini-btn" @click.stop="openEdit(item)">
-            {{ t('snippets.edit') }}
-          </button>
-          <button class="snippets-panel__mini-btn snippets-panel__mini-btn--danger" @click.stop="removeSnippet(item.id)">
-            {{ t('snippets.delete') }}
-          </button>
-        </div>
       </div>
 
       <div v-if="filteredSnippets.length === 0" class="snippets-panel__empty">
@@ -53,17 +50,21 @@
       </div>
     </div>
 
-    <!-- Right-click context menu -->
+    <!-- Right-click context menu (#726) -->
     <div
       v-if="ctxMenu"
       class="snippets-panel__ctx"
       :style="{ left: ctxMenu.x + 'px', top: ctxMenu.y + 'px' }"
       @click.stop
     >
-      <button @click="insertSnippet(ctxMenu.item); ctxMenu = null">{{ t('snippets.insert') }}</button>
-      <button @click="openEdit(ctxMenu.item); ctxMenu = null">{{ t('snippets.edit') }}</button>
-      <button @click="duplicateSnippet(ctxMenu.item); ctxMenu = null">{{ t('snippets.duplicate') }}</button>
-      <button class="danger" @click="removeSnippet(ctxMenu.item.id); ctxMenu = null">{{ t('snippets.delete') }}</button>
+      <template v-if="ctxMenu.item">
+        <button @click="insertSnippet(ctxMenu.item); ctxMenu = null">{{ t('snippets.insert') }}</button>
+        <button @click="openEdit(ctxMenu.item); ctxMenu = null">{{ t('snippets.edit') }}</button>
+        <button @click="duplicateSnippet(ctxMenu.item); ctxMenu = null">{{ t('snippets.duplicate') }}</button>
+        <button class="danger" @click="removeSnippet(ctxMenu.item.id); ctxMenu = null">{{ t('snippets.delete') }}</button>
+        <div class="snippets-panel__ctx-sep" />
+      </template>
+      <button @click="openCreate(); ctxMenu = null">+ {{ t('snippets.add') }}</button>
     </div>
 
     <!-- Add / Edit modal -->
@@ -123,6 +124,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import PanelHeader from './panel/PanelHeader.vue';
 import { useSettingsStore } from '../stores/settings';
 import { useTabsStore } from '../stores/tabs';
+import { useTilesStore } from '../stores/tiles';
 import { useWorkspaceIndexStore } from '../stores/workspaceIndex';
 import { useI18n } from '../i18n';
 import {
@@ -142,12 +144,13 @@ const props = defineProps<{
 
 const settings = useSettingsStore();
 const tabs = useTabsStore();
+const tiles = useTilesStore();
 const wsIndex = useWorkspaceIndexStore();
 const { t } = useI18n();
 
 const snippets = ref<SnippetItem[]>(loadSnippets());
 const query = ref('');
-const ctxMenu = ref<{ x: number; y: number; item: SnippetItem } | null>(null);
+const ctxMenu = ref<{ x: number; y: number; item: SnippetItem | null } | null>(null);
 
 const editorOpen = ref(false);
 const editingId = ref<string | null>(null);
@@ -209,7 +212,11 @@ function insertSnippet(item: SnippetItem) {
     filebasenext: next,
   });
   const payload = toInsertMarkdownPayload(expanded);
-  window.dispatchEvent(new CustomEvent('solomd:insert-markdown', { detail: { snippet: payload } }));
+  window.dispatchEvent(
+    new CustomEvent('solomd:insert-markdown', {
+      detail: { snippet: payload, paneId: tiles.focusedPaneId },
+    }),
+  );
 
   // Auto-pin most recently used snippet to index 0 (#653).
   snippets.value = pinSnippetToTop(snippets.value, item.id);
@@ -297,6 +304,10 @@ function openCtx(e: MouseEvent, item: SnippetItem) {
   ctxMenu.value = { x: e.clientX, y: e.clientY, item };
 }
 
+function openBlankCtx(e: MouseEvent) {
+  ctxMenu.value = { x: e.clientX, y: e.clientY, item: null };
+}
+
 function closeCtx() {
   ctxMenu.value = null;
 }
@@ -318,42 +329,50 @@ onBeforeUnmount(() => {
   overflow: hidden;
   font-size: 13px;
 }
-.snippets-panel__add-btn {
-  border: 1px solid var(--border);
-  background: var(--bg-soft);
-  color: var(--fg);
-  border-radius: 6px;
-  width: 24px;
-  height: 24px;
-  font-size: 15px;
-  line-height: 1;
-  cursor: pointer;
-}
-.snippets-panel__search {
+.snippets-panel__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   padding: 8px 10px 6px;
   border-bottom: 1px solid var(--border);
 }
 .snippets-panel__input {
-  width: 100%;
-  padding: 6px 8px;
+  flex: 1;
+  min-width: 0;
+  padding: 5px 8px;
   border-radius: 6px;
   border: 1px solid var(--border);
   background: var(--bg);
   color: var(--fg);
   font-size: 12px;
 }
+.snippets-panel__new-btn {
+  flex-shrink: 0;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-soft);
+  color: var(--fg);
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.snippets-panel__new-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
 .snippets-panel__list {
   flex: 1;
   overflow-y: auto;
-  padding: 8px;
+  padding: 6px 8px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 5px;
 }
 .snippets-panel__item {
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 8px 10px;
+  border-radius: 7px;
+  padding: 6px 9px;
   background: var(--bg);
   cursor: pointer;
   transition: border-color 0.15s ease;
@@ -366,7 +385,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 .snippets-panel__item-name {
   font-weight: 600;
@@ -384,7 +403,7 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
 }
 .snippets-panel__item-preview {
-  margin: 0 0 6px;
+  margin: 0;
   font-size: 11px;
   font-family: var(--font-mono, monospace);
   color: var(--fg-muted);
@@ -392,22 +411,10 @@ onBeforeUnmount(() => {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.snippets-panel__item-actions {
-  display: flex;
-  gap: 6px;
-}
-.snippets-panel__mini-btn {
-  font-size: 11px;
-  padding: 2px 7px;
-  border-radius: 5px;
-  border: 1px solid var(--border);
-  background: var(--bg-soft);
-  color: var(--fg);
-  cursor: pointer;
-}
-.snippets-panel__mini-btn--danger:hover {
-  color: var(--danger, #e53935);
-  border-color: var(--danger, #e53935);
+.snippets-panel__ctx-sep {
+  height: 1px;
+  margin: 3px 4px;
+  background: var(--border);
 }
 .snippets-panel__empty {
   text-align: center;

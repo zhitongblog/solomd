@@ -397,6 +397,90 @@ pub fn write_binary_file_inner(path: String, data: Vec<u8>) -> Result<(), String
     Ok(())
 }
 
+/// #724 — Return the OS temporary directory so `.textpack` archives can unpack
+/// into a clean temp folder instead of polluting the user's working directory.
+#[tauri::command]
+pub fn get_temp_dir() -> String {
+    std::env::temp_dir().to_string_lossy().to_string()
+}
+
+/// #724 — Stream-repack a `.textpack` ZIP archive natively in Rust on a
+/// blocking thread so notes with 30–200+ pasted images never freeze WebView2
+/// or blow up IPC JSON limits (`Array.from(zipBuf)`).
+#[tauri::command]
+pub async fn repack_textpack(
+    output_path: String,
+    markdown: String,
+    assets: Vec<(String, String)>,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        use std::io::Write;
+        use zip::write::SimpleFileOptions;
+        use zip::CompressionMethod;
+
+        let out = Path::new(&output_path);
+        if let Some(parent) = out.parent() {
+            if !parent.as_os_str().is_empty() {
+                fs::create_dir_all(parent).map_err(|e| format!("mkdir failed: {e}"))?;
+            }
+        }
+        let tmp_name = format!(
+            ".{}.solomd-tmp-{}",
+            out.file_name().and_then(|n| n.to_str()).unwrap_or("bundle.textpack"),
+            std::process::id()
+        );
+        let tmp_path = out
+            .parent()
+            .map(|p| p.join(&tmp_name))
+            .unwrap_or_else(|| std::path::PathBuf::from(&tmp_name));
+
+        let file = fs::File::create(&tmp_path)
+            .map_err(|e| format!("create temp textpack failed: {e}"))?;
+        let mut zip = zip::ZipWriter::new(file);
+
+        let opts_deflated =
+            SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
+        let opts_stored =
+            SimpleFileOptions::default().compression_method(CompressionMethod::Stored);
+
+        let info_json = "{\n  \"version\": 2,\n  \"type\": \"net.daringfireball.markdown\",\n  \"creatorIdentifier\": \"app.solomd.editor\"\n}\n";
+        zip.start_file("info.json", opts_deflated)
+            .map_err(|e| format!("zip info.json failed: {e}"))?;
+        zip.write_all(info_json.as_bytes())
+            .map_err(|e| format!("write info.json failed: {e}"))?;
+
+        zip.start_file("text.markdown", opts_deflated)
+            .map_err(|e| format!("zip text.markdown failed: {e}"))?;
+        zip.write_all(markdown.as_bytes())
+            .map_err(|e| format!("write text.markdown failed: {e}"))?;
+
+        let mut seen = std::collections::HashSet::new();
+        for (bundle_name, abs_src) in assets {
+            if bundle_name.is_empty() || !seen.insert(bundle_name.clone()) {
+                continue;
+            }
+            if let Ok(mut src_file) = fs::File::open(&abs_src) {
+                let entry_name = format!("assets/{bundle_name}");
+                zip.start_file(&entry_name, opts_stored)
+                    .map_err(|e| format!("zip asset {bundle_name} failed: {e}"))?;
+                std::io::copy(&mut src_file, &mut zip)
+                    .map_err(|e| format!("copy asset {bundle_name} failed: {e}"))?;
+            }
+        }
+
+        zip.finish().map_err(|e| format!("zip finish failed: {e}"))?;
+        // Replace target archive atomically where supported; fall back to copy+remove on Windows if needed.
+        if let Err(_) = fs::rename(&tmp_path, out) {
+            fs::copy(&tmp_path, out).map_err(|e| format!("replace textpack failed: {e}"))?;
+            let _ = fs::remove_file(&tmp_path);
+        }
+        super::watcher::mark_self_write(&output_path);
+        Ok(())
+    })
+    .await
+    .map_err(|e| format!("repack_textpack join error: {e}"))?
+}
+
 /// Trigger the OS native print dialog for the given webview window. The
 /// frontend should first mount a print-friendly overlay so only the rendered
 /// markdown (not the editor UI) is included in the print.

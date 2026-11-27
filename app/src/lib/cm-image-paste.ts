@@ -979,9 +979,15 @@ async function handlePaste(
   if (images.length === 0) return false;
 
   event.preventDefault();
-  for (const img of images) {
+  for (let idx = 0; idx < images.length; idx++) {
+    const img = images[idx];
     const bytes = await readFileAsUint8(img.blob);
     await saveAndInsert(view, bytes, img.ext, opts, true);
+    // #724 — Yield between images on bulk pastes (30–200+ images) so WebView2
+    // stays responsive to menus and window controls.
+    if (images.length > 3 && idx + 1 < images.length) {
+      await new Promise((r) => setTimeout(r, 16));
+    }
   }
   return true;
 }
@@ -1006,9 +1012,13 @@ async function handleDrop(
   if (images.length === 0) return false;
 
   event.preventDefault();
-  for (const img of images) {
+  for (let idx = 0; idx < images.length; idx++) {
+    const img = images[idx];
     const bytes = await readFileAsUint8(img.file);
     await saveAndInsert(view, bytes, img.ext, opts);
+    if (images.length > 3 && idx + 1 < images.length) {
+      await new Promise((r) => setTimeout(r, 16));
+    }
   }
   return true;
 }

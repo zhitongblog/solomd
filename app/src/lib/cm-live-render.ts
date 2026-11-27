@@ -1098,7 +1098,8 @@ const makeLiveRenderPlugin = (showMarkers: boolean, hideActiveLineMarkers = fals
       }
       // See cm-drag-aware.ts — freeze marker toggles during pointer drag
       // so Windows WebView2 doesn't lose pointer capture mid-selection.
-      const dragEnded = u.transactions.some(isDragEndTransaction);
+      const dragEnded =
+        !hideActiveLineMarkers && !showMarkers && u.transactions.some(isDragEndTransaction);
       const imeFlush = u.transactions.some(isImeSafeFlushTransaction);
       const treeChanged = syntaxTree(u.state) !== syntaxTree(u.startState);
       if (u.docChanged || u.viewportChanged || dragEnded || imeFlush || treeChanged) {

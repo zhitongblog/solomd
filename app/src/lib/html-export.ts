@@ -1606,8 +1606,18 @@ export function exportMediaAlignCss(align?: 'left' | 'center' | 'right'): string
   const mLeft = a === 'left' ? '0' : 'auto';
   const mRight = a === 'right' ? '0' : 'auto';
   return `
+.solomd-print-content,
+.pdf-page,
+.img-page,
+.preview-content {
+  --media-align: ${a};
+  --media-margin-left: ${mLeft};
+  --media-margin-right: ${mRight};
+}
 p:has(> img:only-child),
 p:has(> a:only-child > img:only-child),
+div[data-source-line]:has(> img:only-child),
+div[data-source-line]:has(> a:only-child > img:only-child),
 figure,
 .md-diagram,
 .mermaid-wrap,
@@ -1624,11 +1634,16 @@ p:has(> a:only-child > img:only-child) > a > img,
 figure > img {
   display: inline-block;
 }
-/* #704 — Block + auto-margin alignment for standalone images inside <p> / <figure>
-   so PDF print engines and EPUB readers that lack CSS :has() support still honor
-   left / center / right media alignment reliably. */
+/* #704 / #734 — Block + auto-margin alignment for standalone images inside
+   <p> / <figure> / <div data-source-line> / <li> so PDF print engines and EPUB
+   readers (with or without CSS :has() support, and for raw HTML <img> tags)
+   always honor left / center / right export media alignment reliably. */
 p > img:only-child,
 p > a:only-child > img:only-child,
+div[data-source-line] > img,
+div[data-source-line] > a:only-child > img,
+div[data-source-line] > figure > img,
+li > img:only-child,
 figure > img,
 .preview-content > img,
 .solomd-print-content > img,

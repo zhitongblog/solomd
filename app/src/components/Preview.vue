@@ -1326,6 +1326,14 @@ defineExpose({ scrollToLine, openSearch });
 :where(.preview-content) ul,
 :where(.preview-content) ol {
   padding-left: 1.8em;
+  margin: var(--paragraph-spacing, 0.9em) 0;
+}
+:where(.preview-content) li > ul,
+:where(.preview-content) li > ol {
+  margin: 0.2em 0;
+}
+:where(.preview-content) li > p {
+  margin: 0.25em 0;
 }
 :where(.preview-content) ol > li {
   padding-left: 0.2em;

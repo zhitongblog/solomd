@@ -48,6 +48,8 @@ export interface Tab {
   groupId?: string;
   /** #710 — Original `.textpack` archive path when editing an unpacked TextPack bundle. */
   textpackPath?: string;
+  /** #724 — Temporary unpacked working directory for `.textpack`, cleaned up on tab close. */
+  textpackWorkDir?: string;
 }
 
 /** #672 — Browser-style collapsible color-coded tab group. */

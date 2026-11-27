@@ -69,17 +69,48 @@ ol.toc li {
   margin: 0.32em 0;
 }
 
-/* #714 — Suppress bullet dots on Pandoc EPUB task-list items so checkboxes match PDF output */
+/* #714 / #727 — Suppress bullet dots on Pandoc EPUB task-list items (including
+   inside blockquotes) and align task-list indentation with regular ul / ol lists */
+ul,
+ol {
+  padding-left: 1.8em;
+}
+blockquote ul,
+blockquote ol {
+  padding-left: 1.5em;
+}
 ul.task-list,
 ul.contains-task-list {
-  padding-left: 0.4em;
+  list-style: none !important;
+  list-style-type: none !important;
+  padding-left: 1.8em;
+}
+blockquote ul.task-list,
+blockquote ul.contains-task-list {
+  list-style: none !important;
+  list-style-type: none !important;
+  padding-left: 1.5em;
 }
 ul.task-list > li,
+blockquote ul.task-list > li,
 li.task-list-item,
-ul.contains-task-list > li.task-list-item {
+ul.contains-task-list > li.task-list-item,
+blockquote ul.contains-task-list > li.task-list-item,
+li:has(> input[type="checkbox"]),
+li:has(> label > input[type="checkbox"]),
+li:has(> p > input[type="checkbox"]),
+li:has(> p > label > input[type="checkbox"]) {
+  list-style: none !important;
   list-style-type: none !important;
 }
-ul.contains-task-list > li:not(.task-list-item) {
+ul.task-list > li input[type="checkbox"],
+li.task-list-item input[type="checkbox"],
+blockquote ul.task-list > li input[type="checkbox"] {
+  margin-left: -1.35em;
+  margin-right: 0.45em;
+}
+ul.contains-task-list > li:not(.task-list-item),
+blockquote ul.contains-task-list > li:not(.task-list-item) {
   list-style-type: disc !important;
 }
 
