@@ -619,6 +619,119 @@ pub async fn repack_textpack(
     .map_err(|e| format!("repack_textpack join error: {e}"))?
 }
 
+/// #735 — Stream-extract a `.textpack` ZIP archive natively in Rust on a
+/// blocking thread so opening 170MB–300MB+ `.textpack` bundles never loads the
+/// whole archive into WebView2 JS memory or crashes IPC with giant JSON arrays.
+/// Returns the extracted `<output_dir>/<stem>.md` path.
+pub fn extract_textpack_inner(
+    archive_path: &str,
+    output_dir: &str,
+    stem: &str,
+) -> Result<String, String> {
+    use std::io::Read;
+
+    let zip_file =
+        fs::File::open(archive_path).map_err(|e| format!("open textpack failed: {e}"))?;
+    let mut archive =
+        zip::ZipArchive::new(zip_file).map_err(|e| format!("invalid textpack archive: {e}"))?;
+
+    let out_dir = Path::new(output_dir);
+    fs::create_dir_all(out_dir).map_err(|e| format!("mkdir work dir failed: {e}"))?;
+    let assets_dir = out_dir.join("assets");
+
+    let mut primary_md_idx: Option<usize> = None;
+    let mut fallback_md_idx: Option<usize> = None;
+
+    for idx in 0..archive.len() {
+        let mut entry = archive
+            .by_index(idx)
+            .map_err(|e| format!("read zip entry {idx} failed: {e}"))?;
+        if entry.is_dir() {
+            continue;
+        }
+        let raw_name = entry.name().replace('\\', "/");
+        if raw_name.contains("__MACOSX") || raw_name.ends_with('/') {
+            continue;
+        }
+        let lower = raw_name.to_ascii_lowercase();
+
+        // Check for bundled asset (`assets/<name>` or `<bundle>/assets/<name>`)
+        if let Some(pos) = lower.find("assets/") {
+            let is_boundary = pos == 0 || lower.as_bytes()[pos - 1] == b'/';
+            if is_boundary {
+                let tail = &raw_name[pos + "assets/".len()..];
+                let base_name = tail.rsplit('/').next().unwrap_or(tail);
+                if !base_name.is_empty()
+                    && base_name != "."
+                    && base_name != ".."
+                    && !base_name.contains('/')
+                    && !base_name.contains('\\')
+                {
+                    fs::create_dir_all(&assets_dir)
+                        .map_err(|e| format!("mkdir assets dir failed: {e}"))?;
+                    let dest = assets_dir.join(base_name);
+                    let mut out_f = fs::File::create(&dest)
+                        .map_err(|e| format!("create asset {base_name} failed: {e}"))?;
+                    std::io::copy(&mut entry, &mut out_f)
+                        .map_err(|e| format!("extract asset {base_name} failed: {e}"))?;
+                }
+                continue;
+            }
+        }
+
+        let file_base = lower.rsplit('/').next().unwrap_or(&lower);
+        if matches!(file_base, "text.markdown" | "text.md" | "text.txt") {
+            if primary_md_idx.is_none() {
+                primary_md_idx = Some(idx);
+            }
+        } else if (file_base.ends_with(".markdown") || file_base.ends_with(".md"))
+            && fallback_md_idx.is_none()
+        {
+            fallback_md_idx = Some(idx);
+        }
+    }
+
+    let mut markdown = String::new();
+    if let Some(md_idx) = primary_md_idx.or(fallback_md_idx) {
+        let mut md_entry = archive
+            .by_index(md_idx)
+            .map_err(|e| format!("read markdown entry failed: {e}"))?;
+        md_entry
+            .read_to_string(&mut markdown)
+            .map_err(|e| format!("decode markdown entry failed: {e}"))?;
+    }
+
+    // Normalize `./assets/` references to `assets/` so relative paths resolve inside `output_dir`.
+    let normalized_md = markdown.replace("(./assets/", "(assets/").replace("\"./assets/", "\"assets/").replace("'./assets/", "'assets/");
+    let safe_stem = stem
+        .chars()
+        .filter(|c| !matches!(c, '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|'))
+        .collect::<String>();
+    let safe_stem = if safe_stem.trim().is_empty() {
+        "Bundle".to_string()
+    } else {
+        safe_stem
+    };
+    let md_path = out_dir.join(format!("{safe_stem}.md"));
+    fs::write(&md_path, normalized_md.as_bytes())
+        .map_err(|e| format!("write extracted markdown failed: {e}"))?;
+
+    Ok(md_path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+pub async fn extract_textpack(
+    archive_path: String,
+    output_dir: String,
+    stem: String,
+) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        extract_textpack_inner(&archive_path, &output_dir, &stem)
+    })
+    .await
+    .map_err(|e| format!("extract_textpack join error: {e}"))?
+}
+
 /// Trigger the OS native print dialog for the given webview window. The
 /// frontend should first mount a print-friendly overlay so only the rendered
 /// markdown (not the editor UI) is included in the print.
@@ -4094,5 +4207,49 @@ mod v523_regression_tests {
         // Re-writing with append=false truncates cleanly
         write_binary_file_chunk_inner(&path_str, b"fresh", false).unwrap();
         assert_eq!(fs::read(&target).unwrap(), b"fresh");
+    }
+
+    #[test]
+    fn issue_735_extract_textpack_streams_markdown_and_assets_without_traversal() {
+        use std::io::Write;
+        use zip::write::SimpleFileOptions;
+
+        let dir = tempfile::tempdir().unwrap();
+        let archive_path = dir.path().join("big-bundle.textpack");
+        {
+            let file = fs::File::create(&archive_path).unwrap();
+            let mut zip = zip::ZipWriter::new(file);
+            let opts = SimpleFileOptions::default();
+            zip.start_file("info.json", opts).unwrap();
+            zip.write_all(br#"{"version":2,"type":"net.daringfireball.markdown"}"#)
+                .unwrap();
+            zip.start_file("text.markdown", opts).unwrap();
+            zip.write_all(b"# Big Note\n\n![](./assets/photo.png)\n<img src=\"./assets/pic.jpg\" />\n")
+                .unwrap();
+            zip.start_file("assets/photo.png", opts).unwrap();
+            zip.write_all(b"\x89PNG\r\n\x1a\nFAKEPNG").unwrap();
+            zip.start_file("assets/pic.jpg", opts).unwrap();
+            zip.write_all(b"\xff\xd8\xffFAKEJPG").unwrap();
+            zip.finish().unwrap();
+        }
+
+        let work_dir = dir.path().join("out");
+        let md_path = extract_textpack_inner(
+            &archive_path.to_string_lossy(),
+            &work_dir.to_string_lossy(),
+            "big-bundle",
+        )
+        .unwrap();
+        let md = fs::read_to_string(&md_path).unwrap();
+        assert!(md.contains("![](assets/photo.png)"));
+        assert!(md.contains("<img src=\"assets/pic.jpg\" />"));
+        assert_eq!(
+            fs::read(work_dir.join("assets").join("photo.png")).unwrap(),
+            b"\x89PNG\r\n\x1a\nFAKEPNG"
+        );
+        assert_eq!(
+            fs::read(work_dir.join("assets").join("pic.jpg")).unwrap(),
+            b"\xff\xd8\xffFAKEJPG"
+        );
     }
 }

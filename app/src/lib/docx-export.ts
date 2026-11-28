@@ -559,35 +559,49 @@ async function buildBody(
 
         // Check if this paragraph contains a standalone image (image-only paragraph)
         if (inline && isImageOnlyParagraph(inline)) {
-          const imgTok = inline.children!.find(c => c.type === 'image')!;
-          const src = imgTok.attrGet('src') || '';
-          const alt = imgTok.content || imgTok.attrGet('alt') || '';
-          const img = srcImages.get(src);
-          if (img) {
-            out.push(
-              new Paragraph({
-                children: [imageRun(img, alt, MAX_IMG_WIDTH, imgTok)],
-                alignment: mediaAlignmentForRun,
-                spacing: { before: 160, after: 160 },
-              })
-            );
-            break;
-          }
+          out.push(buildStandaloneImageParagraph(inline.children || []));
+          break;
+        }
 
-          // Fallback: placeholder for an image that could not be read
-          out.push(
-            new Paragraph({
-              children: [
-                new TextRun({
-                  text: src ? `[image: ${alt}] (${src})` : `[image: ${alt}]`,
-                  italics: true,
-                  color: '888888',
-                }),
-              ],
-              alignment: mediaAlignmentForRun,
-              spacing: { before: 160, after: 160 },
-            })
-          );
+        // #734 — When a list item or paragraph has text followed by a line break
+        // and an image-only line (e.g. `- Caption\n![...](...)` or `- Caption\n<img .../>`),
+        // split into separate Word paragraphs so the text stays left-aligned with its
+        // list marker while the image honors `mediaAlignmentForRun` (left/center/right).
+        const splitSegments = inline?.children ? splitInlineImageSegments(inline.children) : null;
+        if (splitSegments) {
+          let emittedListBullet = false;
+          for (const seg of splitSegments) {
+            if (seg.kind === 'image') {
+              out.push(buildStandaloneImageParagraph(seg.tokens));
+            } else {
+              const fakeInline = { ...inline, children: seg.tokens } as Token;
+              const attachList = isInList && isFirstListParagraph && !emittedListBullet && topList;
+              if (attachList) emittedListBullet = true;
+              out.push(
+                new Paragraph({
+                  alignment: AlignmentType.LEFT,
+                  children: buildRuns(fakeInline),
+                  spacing: isInList ? { before: 60, after: 60 } : { before: 120, after: 120 },
+                  ...(attachList && {
+                    numbering:
+                      topList.type === 'ordered'
+                        ? { reference: 'ordered-list', level: listLevel, instance: topList.instance }
+                        : undefined,
+                    bullet:
+                      topList.type === 'bullet'
+                        ? { level: listLevel }
+                        : undefined,
+                  }),
+                  ...(isInList && !attachList && {
+                    indent: { left: 720 * (listLevel + 1) },
+                  }),
+                  ...(!isInList && firstLineIndentTwipsForRun > 0 && {
+                    indent: { firstLine: firstLineIndentTwipsForRun },
+                  }),
+                })
+              );
+            }
+          }
           break;
         }
 
@@ -847,19 +861,118 @@ async function buildBody(
   return out;
 }
 
-/** Check if an inline token's children consist of only a single image (possibly wrapped in a link). */
+/** Check whether a slice of inline tokens consists solely of a single image
+ *  (Markdown `![...](...)`, linked `[![...](...)](...)`, or raw HTML `<img ...>`). */
+function isStandaloneImageTokens(tokens: Token[]): boolean {
+  const nonWs = tokens.filter(
+    (c) => !(c.type === 'text' && !c.content.trim()) && c.type !== 'softbreak' && c.type !== 'hardbreak',
+  );
+  if (nonWs.length === 1 && nonWs[0].type === 'image') return true;
+  if (
+    nonWs.length === 1 &&
+    nonWs[0].type === 'html_inline' &&
+    htmlImageSrcs(nonWs[0].content || '').length > 0 &&
+    (nonWs[0].content || '').replace(HTML_IMG_RE, '').trim() === ''
+  ) {
+    return true;
+  }
+  if (
+    nonWs.length === 3 &&
+    nonWs[0].type === 'link_open' &&
+    nonWs[1].type === 'image' &&
+    nonWs[2].type === 'link_close'
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/** Build a Word Paragraph for a standalone image token slice honoring `mediaAlignmentForRun`. */
+function buildStandaloneImageParagraph(tokens: Token[]): Paragraph {
+  const imgTok = tokens.find((c) => c.type === 'image');
+  if (imgTok) {
+    const src = imgTok.attrGet('src') || '';
+    const alt = imgTok.content || imgTok.attrGet('alt') || '';
+    const img = srcImages.get(src);
+    if (img) {
+      return new Paragraph({
+        children: [imageRun(img, alt, MAX_IMG_WIDTH, imgTok)],
+        alignment: mediaAlignmentForRun,
+        spacing: { before: 160, after: 160 },
+      });
+    }
+    return new Paragraph({
+      children: [
+        new TextRun({
+          text: src ? `[image: ${alt}] (${src})` : `[image: ${alt}]`,
+          italics: true,
+          color: '888888',
+        }),
+      ],
+      alignment: mediaAlignmentForRun,
+      spacing: { before: 160, after: 160 },
+    });
+  }
+  const htmlTok = tokens.find((c) => c.type === 'html_inline');
+  const srcs = htmlTok ? htmlImageSrcs(htmlTok.content || '') : [];
+  const runs: (ImageRun | TextRun)[] = [];
+  for (const src of srcs) {
+    const img = srcImages.get(src);
+    if (img) {
+      runs.push(imageRun(img, ''));
+    } else {
+      runs.push(new TextRun({ text: `[image] (${src})`, italics: true, color: '888888' }));
+    }
+  }
+  return new Paragraph({
+    children: runs.length > 0 ? runs : [new TextRun({ text: '' })],
+    alignment: mediaAlignmentForRun,
+    spacing: { before: 160, after: 160 },
+  });
+}
+
+/** #734 — Split an inline token list on line breaks (`softbreak`/`hardbreak`) when
+ *  at least one line is a standalone image and at least one line is non-image text. */
+function splitInlineImageSegments(
+  children: Token[],
+): Array<{ kind: 'text' | 'image'; tokens: Token[] }> | null {
+  const lines: Token[][] = [];
+  let cur: Token[] = [];
+  for (const ch of children) {
+    if (ch.type === 'softbreak' || ch.type === 'hardbreak') {
+      if (cur.length > 0) lines.push(cur);
+      cur = [];
+    } else {
+      cur.push(ch);
+    }
+  }
+  if (cur.length > 0) lines.push(cur);
+  if (lines.length < 2) return null;
+
+  const hasImgLine = lines.some((l) => isStandaloneImageTokens(l));
+  if (!hasImgLine) return null;
+
+  const out: Array<{ kind: 'text' | 'image'; tokens: Token[] }> = [];
+  for (const line of lines) {
+    if (isStandaloneImageTokens(line)) {
+      out.push({ kind: 'image', tokens: line });
+    } else {
+      const prev = out[out.length - 1];
+      if (prev && prev.kind === 'text') {
+        const br = { type: 'softbreak', tag: 'br', nesting: 0, content: '' } as Token;
+        prev.tokens.push(br, ...line);
+      } else {
+        out.push({ kind: 'text', tokens: [...line] });
+      }
+    }
+  }
+  return out;
+}
+
+/** Check if an inline token's children consist of only a single image (possibly wrapped in a link or HTML `<img>`). */
 function isImageOnlyParagraph(inline: Token): boolean {
   if (!inline.children) return false;
-  const nonWhitespace = inline.children.filter(
-    c => !(c.type === 'text' && !c.content.trim()) && c.type !== 'softbreak'
-  );
-  if (nonWhitespace.length === 1 && nonWhitespace[0].type === 'image') return true;
-  // Link wrapping an image: link_open → image → link_close
-  if (nonWhitespace.length === 3
-    && nonWhitespace[0].type === 'link_open'
-    && nonWhitespace[1].type === 'image'
-    && nonWhitespace[2].type === 'link_close') return true;
-  return false;
+  return isStandaloneImageTokens(inline.children);
 }
 
 /**

@@ -1189,10 +1189,10 @@ export function useExport() {
     if (format === 'textpack') {
       const { rewriteMarkdownForTextBundle, createTextPackArchive } = await import('../lib/textbundle');
       const { rewrittenMarkdown, assets } = rewriteMarkdownForTextBundle(content);
-      const assetBytes: Record<string, Uint8Array> = {};
       const noteDir = filePath
         ? filePath.slice(0, Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\')))
         : '';
+      const assetPairs: Array<[string, string]> = [];
       for (const ref of assets) {
         let absPath = ref.rawPath;
         try {
@@ -1204,11 +1204,24 @@ export function useExport() {
           const sep = noteDir.includes('\\') ? '\\' : '/';
           absPath = `${noteDir}${sep}${absPath.replace(/^\.[\\/]/, '').replace(/[\\/]/g, sep)}`;
         }
+        assetPairs.push([ref.bundleFileName, absPath]);
+      }
+      // #735 — Stream `.textpack` creation natively in Rust for filesystem targets so
+      // 170MB+ bundles never materialize hundreds of MB of assets in WebView2 JS memory.
+      if (!outputPath.startsWith('content://')) {
+        await invoke('repack_textpack', {
+          outputPath,
+          markdown: rewrittenMarkdown,
+          assets: assetPairs,
+        });
+        return;
+      }
+      const assetBytes: Record<string, Uint8Array> = {};
+      for (const [bundleFileName, absPath] of assetPairs) {
         try {
-          const bytes = await invoke<number[]>('read_binary_file', { path: absPath });
-          if (bytes && bytes.length > 0) {
-            assetBytes[ref.bundleFileName] = new Uint8Array(bytes);
-          }
+          const raw = await invoke<ArrayBuffer | Uint8Array | number[]>('read_binary_file_raw', { path: absPath });
+          const bytes = raw instanceof ArrayBuffer ? new Uint8Array(raw) : new Uint8Array(raw);
+          if (bytes.length > 0) assetBytes[bundleFileName] = bytes;
         } catch {
           // Skip missing local asset
         }

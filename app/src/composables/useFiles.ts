@@ -335,21 +335,17 @@ export function useFiles() {
     let textpackDisplayName: string | undefined;
     let textpackWorkDir: string | undefined;
 
-    // #505 / #710 / #724 — Open `.textpack` (ZIP bundle) or `.textbundle` (directory bundle).
-    // Extract `.textpack` into the OS temp directory (`<temp>/solomd-textpack/<stem>-<ts>/`)
-    // so it NEVER pollutes the user's working folder or overwrites a sibling `<stem>.md`,
+    // #505 / #710 / #724 / #735 — Open `.textpack` (ZIP bundle) or `.textbundle` (directory bundle).
+    // Stream-extract `.textpack` natively in Rust into `<temp>/solomd-textpack/<stem>-<ts>/`
+    // so 170MB–300MB+ bundles never OOM WebView2 or pollute the user's working folder,
     // and clean up `textpackWorkDir` automatically when the tab closes.
     if (ext === 'textpack') {
       try {
-        const { extractTextPackArchive } = await import('../lib/textbundle');
-        const rawBytes = await invoke<number[]>('read_binary_file', { path });
         const sep = path.includes('\\') ? '\\' : '/';
         const lastSep = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
         const parentDir = lastSep > 0 ? path.slice(0, lastSep) : '';
         const fileName = lastSep >= 0 ? path.slice(lastSep + 1) : path;
         const stem = fileName.replace(/\.textpack$/i, '') || 'Bundle';
-        const assetsFolder = 'assets';
-        const unpacked = extractTextPackArchive(new Uint8Array(rawBytes), assetsFolder);
         const sysTmp = await invoke<string>('get_temp_dir').catch(() => '');
         const cleanTmp = sysTmp ? sysTmp.replace(/[/\\]+$/, '') : '';
         const tmpSep = cleanTmp.includes('\\') ? '\\' : sep;
@@ -359,20 +355,11 @@ export function useFiles() {
             ? `${parentDir}${sep}.solomd-textpack${sep}${stem}`
             : '';
         if (workDir) {
-          const dirSep = workDir.includes('\\') ? '\\' : '/';
-          await invoke('fs_create_dir', { path: workDir }).catch(() => {});
-          if (unpacked.assets.length > 0) {
-            const absAssetsDir = `${workDir}${dirSep}${assetsFolder}`;
-            await invoke('fs_create_dir', { path: absAssetsDir }).catch(() => {});
-            for (const asset of unpacked.assets) {
-              await invoke('write_binary_file', {
-                path: `${absAssetsDir}${dirSep}${asset.name}`,
-                data: Array.from(asset.bytes),
-              });
-            }
-          }
-          const mdPath = `${workDir}${dirSep}${stem}.md`;
-          await invoke('write_file', { path: mdPath, content: unpacked.markdown, encoding: 'UTF-8' });
+          const mdPath = await invoke<string>('extract_textpack', {
+            archivePath: path,
+            outputDir: workDir,
+            stem,
+          });
           textpackSourcePath = path;
           textpackDisplayName = fileName;
           textpackWorkDir = workDir;

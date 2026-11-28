@@ -226,6 +226,7 @@ pub fn run() {
             commands::write_binary_file_chunk_raw,
             commands::get_temp_dir,
             commands::cleanup_temp_dir,
+            commands::extract_textpack,
             commands::repack_textpack,
             commands::print_webview,
             commands::print_webview_to_pdf,

@@ -186,6 +186,9 @@ interface Settings {
   // #303 — Pure WYSIWYG mode: keep Markdown syntax markers hidden even on the
   // active cursor line so clicking a line never shifts text horizontally.
   hideActiveLineMarkers: boolean;
+  // #737 — Collapse inactive blank lines in Live Edit so the visual flow stays
+  // closer to Preview / WYSIWYG layout (active cursor line expands on focus).
+  hideBlankLinesInLiveEdit: boolean;
   // Separate toggle for block-level live rendering (tables, Mermaid, PlantUML,
   // math blocks, etc.): when true (default), table and diagram source code is
   // hidden/collapsed into rendered widgets even if `alwaysShowMarkers` is on.
@@ -910,6 +913,7 @@ function defaults(): Settings {
     v535FormatBarDefaultOnMigrated: true,
     alwaysShowMarkers: false,
     hideActiveLineMarkers: false,
+    hideBlankLinesInLiveEdit: false,
     collapseBlockSource: true,
     highlightCurrentLine: true,
     tabTitleFromFirstLine: false,
@@ -1625,6 +1629,10 @@ export const useSettingsStore = defineStore('settings', {
     toggleHideActiveLineMarkers() {
       this.hideActiveLineMarkers = !this.hideActiveLineMarkers;
       if (this.hideActiveLineMarkers) this.alwaysShowMarkers = false;
+      this.persist();
+    },
+    toggleHideBlankLinesInLiveEdit() {
+      this.hideBlankLinesInLiveEdit = !this.hideBlankLinesInLiveEdit;
       this.persist();
     },
     toggleCollapseBlockSource() {

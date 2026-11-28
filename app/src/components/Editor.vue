@@ -7623,6 +7623,8 @@ const cls = computed(() => ({
   // CSS as the preview so behaviour matches across modes.
   'cb-wrap-on': settings.codeBlockWrap,
   'cb-numbered-on': settings.codeBlockLineNumbers,
+  // #737 — Collapse inactive blank lines in Live Edit for WYSIWYG parity with Preview.
+  'cm-collapse-blank-lines': settings.hideBlankLinesInLiveEdit,
 }));
 </script>
 
@@ -8861,5 +8863,17 @@ const cls = computed(() => ({
   color: var(--text-3);
   background: var(--bg);
   border: 1px dashed color-mix(in srgb, var(--accent) 40%, var(--border));
+}
+.cm-collapse-blank-lines :deep(.cm-live-edit .cm-content > .cm-line:not(.cm-activeLine):not(.cm-md-fenced-line):has(> br:only-child)) {
+  height: 4px;
+  line-height: 4px;
+  font-size: 4px;
+  min-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  overflow: hidden;
+}
+.cm-collapse-blank-lines :deep(.cm-live-edit .cm-content > .cm-line:not(.cm-md-fenced-line):not(:has(> br:only-child)):has(+ .cm-line:not(.cm-activeLine):not(.cm-md-fenced-line):has(> br:only-child))) {
+  padding-bottom: calc(var(--paragraph-spacing, 0.9em) * 0.45);
 }
 </style>

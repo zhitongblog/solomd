@@ -3,19 +3,53 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { unzipSync, strFromU8 } from 'fflate';
 import { exportMediaAlignCss } from './html-export.ts';
 import { SOLOMD_EPUB_CSS } from './epub-style.ts';
+import { markdownToDocxBlob } from './docx-export.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const srcRoot = path.resolve(__dirname, '..');
 
-test('#734: exportMediaAlignCss aligns data-source-line HTML <img> and overrides --media-margin vars in PDF/HTML/EPUB', () => {
+test('#734: exportMediaAlignCss aligns data-source-line and br+img continuation HTML/MD images in PDF/HTML/EPUB/Preview and DOCX', async () => {
   const rightCss = exportMediaAlignCss('right');
   assert.match(rightCss, /--media-align:\s*right;/);
   assert.match(rightCss, /--media-margin-left:\s*auto;/);
   assert.match(rightCss, /--media-margin-right:\s*0;/);
   assert.match(rightCss, /div\[data-source-line\] > img/);
   assert.match(rightCss, /li > img:only-child/);
+  assert.match(rightCss, /p > br \+ img/);
+  assert.match(rightCss, /li > br \+ img/);
+
+  const previewVue = fs.readFileSync(path.join(srcRoot, 'components/Preview.vue'), 'utf8');
+  assert.match(previewVue, /:where\(\.preview-content\) p > br \+ img/);
+
+  // Repro from issue #734 attachment: list item caption immediately followed by image on next line
+  const repro = [
+    '- 这是网络图片',
+    '![Markdown Logo](https://example.com/a.png "Markdown Logo")  ',
+    '',
+    '- 这是本地图片',
+    '![|25%](_assets/local.png)',
+    '',
+    '- HTML表达的图片：',
+    '<img src="https://example.com/b.png" alt="Logo" style="width: 100px; height: 100px;" />',
+  ].join('\n');
+
+  const leftBlob = await markdownToDocxBlob(repro, 'ReproLeft', undefined, undefined, undefined, undefined, undefined, false, false, 'left');
+  const leftXml = strFromU8(unzipSync(new Uint8Array(await leftBlob.arrayBuffer()))['word/document.xml']);
+  assert.equal((leftXml.match(/<w:jc w:val="center"\/>/g) || []).length, 0, 'left alignment should have no centered image paragraphs');
+  assert.equal((leftXml.match(/<w:jc w:val="right"\/>/g) || []).length, 0, 'left alignment should have no right-aligned image paragraphs');
+
+  const centerBlob = await markdownToDocxBlob(repro, 'ReproCenter', undefined, undefined, undefined, undefined, undefined, false, false, 'center');
+  const centerXml = strFromU8(unzipSync(new Uint8Array(await centerBlob.arrayBuffer()))['word/document.xml']);
+  const centerCount = (centerXml.match(/<w:jc w:val="center"\/>/g) || []).length;
+  assert.ok(centerCount >= 3, `expected all 3 continuation images to be centered in DOCX, got ${centerCount}`);
+
+  const rightBlob = await markdownToDocxBlob(repro, 'ReproRight', undefined, undefined, undefined, undefined, undefined, false, false, 'right');
+  const rightXml = strFromU8(unzipSync(new Uint8Array(await rightBlob.arrayBuffer()))['word/document.xml']);
+  const rightCount = (rightXml.match(/<w:jc w:val="right"\/>/g) || []).length;
+  assert.ok(rightCount >= 3, `expected all 3 continuation images to be right-aligned in DOCX, got ${rightCount}`);
 });
 
 test('#727: SOLOMD_EPUB_CSS suppresses task-list bullets inside blockquotes and aligns task-list indent with ul/ol', () => {
@@ -124,4 +158,21 @@ test('#735 & desktop parity: every non-mobile Tauri command in lib.rs is also re
   );
   assert.ok(runnerCmds.has('commands::read_binary_file_raw'));
   assert.ok(runnerCmds.has('commands::write_binary_file_chunk_raw'));
+  assert.ok(runnerCmds.has('commands::extract_textpack'));
+
+  const useFiles = fs.readFileSync(path.join(srcRoot, 'composables/useFiles.ts'), 'utf8');
+  assert.match(useFiles, /invoke<string>\('extract_textpack'/);
+  const useExport = fs.readFileSync(path.join(srcRoot, 'composables/useExport.ts'), 'utf8');
+  assert.match(useExport, /invoke\('repack_textpack'/);
+});
+
+test('#737: hideBlankLinesInLiveEdit setting toggles .cm-collapse-blank-lines in Live Edit', () => {
+  const settingsTs = fs.readFileSync(path.join(srcRoot, 'stores/settings.ts'), 'utf8');
+  const settingsPanel = fs.readFileSync(path.join(srcRoot, 'components/SettingsPanel.vue'), 'utf8');
+  const editorVue = fs.readFileSync(path.join(srcRoot, 'components/Editor.vue'), 'utf8');
+  assert.match(settingsTs, /hideBlankLinesInLiveEdit:\s*boolean/);
+  assert.match(settingsTs, /toggleHideBlankLinesInLiveEdit\(\)/);
+  assert.match(settingsPanel, /toggleHideBlankLinesInLiveEdit/);
+  assert.match(editorVue, /'cm-collapse-blank-lines':\s*settings\.hideBlankLinesInLiveEdit/);
+  assert.match(editorVue, /\.cm-collapse-blank-lines\s+:deep\(/);
 });

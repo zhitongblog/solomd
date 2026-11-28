@@ -1393,7 +1393,11 @@ defineExpose({ scrollToLine, openSearch });
 :where(.preview-content) > a:only-child > img,
 :where(.preview-content) > div[data-source-line] > a:only-child > img,
 :where(.preview-content) > figure > img,
-:where(.preview-content) > div[data-source-line] > figure > img {
+:where(.preview-content) > div[data-source-line] > figure > img,
+:where(.preview-content) p > br + img,
+:where(.preview-content) p > br + a:has(> img:only-child) > img,
+:where(.preview-content) li > br + img,
+:where(.preview-content) li > br + a:has(> img:only-child) > img {
   display: block;
   margin-left: var(--media-margin-left, 0);
   margin-right: var(--media-margin-right, auto);

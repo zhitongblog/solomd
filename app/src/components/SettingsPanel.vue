@@ -1708,6 +1708,22 @@ function onSelectPdfFont(v: string) {
 
         <section data-cat="basics" data-basics="editor">
           <label>
+            <input
+              type="checkbox"
+              :checked="settings.hideBlankLinesInLiveEdit"
+              @change="settings.toggleHideBlankLinesInLiveEdit()"
+            />
+            {{ isZhLocale ? '实时模式下隐藏空行（贴近最终排版效果）' : 'Collapse blank lines in Live Edit (WYSIWYG layout)' }}
+          </label>
+          <div class="hint">
+            {{ isZhLocale
+              ? '开启后，实时模式下非光标所在空行将自动折叠为紧凑段距（光标移入该空行时自动展开以便编辑，不影响源码与导出）。'
+              : 'When enabled, inactive blank lines in Live Edit collapse into compact paragraph gaps (moving the cursor onto a blank line expands it for editing; source text and exports are unchanged).' }}
+          </div>
+        </section>
+
+        <section data-cat="basics" data-basics="editor">
+          <label>
             <input type="checkbox" :checked="settings.collapseBlockSource" @change="settings.toggleCollapseBlockSource()" />
             {{ t('settings.collapseBlockSource') }}
           </label>
