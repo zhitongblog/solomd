@@ -297,6 +297,67 @@ const inApp = IN_APP_COPY[lang] || IN_APP_COPY.en;
       <a class="btn btn--primary promote-card__cta" href={promoteHref}>{tr.sponsor.promoteCta}</a>
     </div>
 
+    <!-- Cross-promo for author's sister Android apps beta testing on doaipm.com -->
+    <div class="beta-promo" id="sister-beta">
+      <div class="beta-promo__head">
+        <span class="inapp-supporter__pill">
+          {lang === 'zh' ? '🧪 免费帮忙 · 姐妹应用内测招募' : '🧪 Free Way to Help · Android Beta'}
+        </span>
+        <h3>
+          {lang === 'zh'
+            ? '顺手帮作者内测 3 款同源本地 Android 应用（SoloPDF · 承历 · 轻鼾记）'
+            : 'Help test 3 more local-first Android apps on Google Play (SoloPDF · Chengli · SnorePuff)'}
+        </h3>
+      </div>
+      <p class="beta-promo__desc">
+        {lang === 'zh'
+          ? 'Google Play 个人开发者新应用上架需要至少 12 位测试者连续体验 14 天。只需两步即可免费帮大忙：① 先加入共用测试群组，② 接受任意一款或三款应用的 Play 内测邀请并安装留存。完整说明与更多独立作品见 doaipm.com：'
+          : 'Google Play requires 12+ opt-in testers for 14 days before new indie apps can launch. Two quick steps help tremendously: ① join the shared Google Tester Group, ② opt in to any (or all 3) apps below. Full details and more indie tools on doaipm.com:'}
+      </p>
+      <div class="beta-promo__actions">
+        <a
+          class="btn btn--primary beta-promo__btn"
+          href="https://groups.google.com/g/solomd-android-testers"
+          target="_blank"
+          rel="noopener"
+        >
+          {lang === 'zh' ? '① 加入 Google 测试群组 ↗' : '① Join Tester Group ↗'}
+        </a>
+        <a
+          class="btn btn--secondary beta-promo__btn"
+          href="https://play.google.com/apps/testing/app.solopdf"
+          target="_blank"
+          rel="noopener"
+        >
+          {lang === 'zh' ? '② SoloPDF（本地 PDF 批注）↗' : '② Opt-in: SoloPDF ↗'}
+        </a>
+        <a
+          class="btn btn--secondary beta-promo__btn"
+          href="https://play.google.com/apps/testing/com.freetools.chengli"
+          target="_blank"
+          rel="noopener"
+        >
+          {lang === 'zh' ? '② 承历（传统历法日程）↗' : '② Opt-in: Chengli ↗'}
+        </a>
+        <a
+          class="btn btn--secondary beta-promo__btn"
+          href="https://play.google.com/apps/testing/com.doaipm.snorepuff"
+          target="_blank"
+          rel="noopener"
+        >
+          {lang === 'zh' ? '② 轻鼾记（离线鼾声日记）↗' : '② Opt-in: SnorePuff ↗'}
+        </a>
+        <a
+          class="beta-promo__more"
+          href={lang === 'zh' ? 'https://doaipm.com/?utm_source=solomd' : 'https://doaipm.com/en/?utm_source=solomd'}
+          target="_blank"
+          rel="noopener"
+        >
+          {lang === 'zh' ? '前往 doaipm.com 查看全部招募详情 →' : 'View full details on doaipm.com →'}
+        </a>
+      </div>
+    </div>
+
     {featuredPromoters.length > 0 && (
       <div class="promote-featured">
         <h3>{tr.sponsor.featuredHeading}</h3>
@@ -584,5 +645,51 @@ const inApp = IN_APP_COPY[lang] || IN_APP_COPY.en;
     background: color-mix(in srgb, var(--accent) 18%, transparent);
     border-color: var(--accent);
     transform: translateY(-1px);
+  }
+
+  .beta-promo {
+    background: var(--bg-elev);
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+    border-radius: 16px;
+    padding: 22px 26px;
+    margin: 20px auto 0;
+    text-align: left;
+  }
+  .beta-promo__head {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .beta-promo__head h3 {
+    margin: 0;
+    font-size: 16px;
+    color: var(--text);
+  }
+  .beta-promo__desc {
+    margin: 0 0 16px;
+    font-size: 13.5px;
+    line-height: 1.65;
+    color: var(--text-2);
+  }
+  .beta-promo__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+  }
+  .beta-promo__btn {
+    font-size: 13px;
+    padding: 8px 14px;
+  }
+  .beta-promo__more {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--accent);
+    margin-left: 4px;
+  }
+  .beta-promo__more:hover {
+    text-decoration: underline;
   }
 </style>
