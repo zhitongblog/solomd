@@ -2835,8 +2835,14 @@ function buildBlockDecorations(state: EditorState, opts: BlockOptions): Decorati
                   block: true,
                 }),
               );
+              i = endI + 1;
+              continue;
             }
-            i = endI + 1;
+            // #732 — When the cursor is inside a multi-line HTML wrapper (such
+            // as `<div align="center">…</div>` at the top of a README), do NOT
+            // skip lines `i+1..endI` — let inner Markdown images/badges/tables
+            // still render their live widgets instead of staying raw text.
+            i += 1;
             continue;
           }
 

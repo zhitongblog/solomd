@@ -890,3 +890,27 @@ test('externalSearchQueryField stores Global Search query and clears on edit or 
   } as unknown as EditorView);
   assert.equal(state.field(externalSearchQueryField), '');
 });
+
+test('#732: linked badge images inside <div align="center"> still render ImageWidgets when cursor is inside the HTML block', () => {
+  const doc = [
+    '<div align="center">',
+    '',
+    '# 缠论线段自动划分',
+    '',
+    '[![预发布](https://img.shields.io/badge/预发布-v0.1.0--rc.2-e9b45c?style=flat-square)](https://github.com/example/repo/releases/tag/v0.1.0-rc.2)',
+    '[![适用平台](https://img.shields.io/badge/适用-通达信_Windows-76cbb4?style=flat-square)](#安装说明)',
+    '[![开源许可](https://img.shields.io/badge/开源-MIT-8aa3c3?style=flat-square)](LICENSE)',
+    '',
+    '</div>',
+  ].join('\n');
+
+  // Cursor on line 1 (`<div align="center">`, default on file open):
+  // HtmlBlockWidget does not replace the block, so inner badge lines must
+  // still produce ImageWidgets rather than being skipped as raw text.
+  const insideHits = widgets(doc, 1).filter((w) => w.widgetName === 'ImageWidget');
+  assert.equal(
+    insideHits.length,
+    3,
+    `expected 3 ImageWidgets inside <div align="center"> when cursor is on line 1, got ${insideHits.length}`,
+  );
+});

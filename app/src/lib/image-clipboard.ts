@@ -87,10 +87,18 @@ export async function loadImageBlob(src: string, localPath?: string | null): Pro
     (/^[a-z]:[\\/]/i.test(src) ? src : null);
   if (local) {
     try {
-      const bytes = toBytes(await invoke('read_binary_file', { path: local }));
+      // #735 — Prefer raw binary IPC (`ArrayBuffer`) so multi-hundred-MB DOCX
+      // exports don't blow up WebView2 memory with JSON `number[]` arrays.
+      const raw = await invoke<ArrayBuffer | Uint8Array | number[]>('read_binary_file_raw', { path: local });
+      const bytes = raw instanceof ArrayBuffer ? new Uint8Array(raw) : toBytes(raw);
       if (bytes.length) return new Blob([bytes as BlobPart], { type: mimeForPath(local) });
     } catch {
-      // Fall through to fetching the displayed URL.
+      try {
+        const bytes = toBytes(await invoke('read_binary_file', { path: local }));
+        if (bytes.length) return new Blob([bytes as BlobPart], { type: mimeForPath(local) });
+      } catch {
+        // Fall through to fetching the displayed URL.
+      }
     }
   }
   try {

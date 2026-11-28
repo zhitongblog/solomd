@@ -5028,10 +5028,18 @@ async fn baidu_pull_folder(
     categorize_files: bool,
     max_versions: usize,
 ) -> Result<WebdavSyncResult, String> {
+    let pull_started = std::time::Instant::now();
     let ws_remote_root =
         resolve_remote_workspace_dir("baidu", remote_dir, workspace, auto_workspace_subdir);
     let meta_remote_dir = format!("{ws_remote_root}/{SYNC_META_DIR}");
 
+    // #733 — Stage 1: Fetch remote manifest.json with timing log
+    let t_manifest = std::time::Instant::now();
+    append_sync_log(
+        "cloud_api",
+        "pull",
+        &format!("[1/4] 正在读取百度网盘同步清单 ({meta_remote_dir}/manifest.json)…"),
+    );
     let manifest_opt: Option<SyncFolderManifest> = if let Some(bytes) =
         baidu_try_download_file(client, token, &meta_remote_dir, "manifest.json").await
     {
@@ -5039,6 +5047,21 @@ async fn baidu_pull_folder(
     } else {
         None
     };
+    append_sync_log(
+        "cloud_api",
+        "pull",
+        &match &manifest_opt {
+            Some(m) => format!(
+                "[1/4] 已读取远程同步清单：{} 条记录（耗时 {}ms）",
+                m.files.len(),
+                t_manifest.elapsed().as_millis()
+            ),
+            None => format!(
+                "[1/4] 未找到远程同步清单，将按目录全量比对（耗时 {}ms）",
+                t_manifest.elapsed().as_millis()
+            ),
+        },
+    );
 
     let local_base = read_local_base_manifest(workspace);
     let is_encrypted = manifest_opt
@@ -5066,17 +5089,26 @@ async fn baidu_pull_folder(
         }
     }
 
-    // #733 — Fast path: Baidu Pan `method=listall&recursion=1` fetches up to
-    // 1,000 files across all subdirectories per request (20s+ BFS -> ~1s).
-    // Falls back cleanly to per-directory BFS `method=list` if `listall` errors.
+    // #733 — Stage 2: Fast path via Baidu Pan `xpan/multimedia?method=listall&recursion=1`
+    // (fetches up to 1,000 files across all subdirectories per request).
+    // Falls back to concurrent BFS `xpan/file?method=list` if `listall` errors.
+    let t_list = std::time::Instant::now();
+    append_sync_log(
+        "cloud_api",
+        "pull",
+        &format!("[2/4] 正在获取远程文件列表（方式: multimedia/listall 递归，目录: {ws_remote_root}）…"),
+    );
     let mut fast_files: Option<Vec<(String, String, u64)>> = None;
+    let mut listall_fail_reason: Option<String> = None;
+    let mut listall_pages: usize = 0;
     {
         let mut collected: Vec<(String, String, u64)> = Vec::new();
         let mut start: u64 = 0;
         let mut ok = true;
         for _page in 0..50 {
+            listall_pages += 1;
             let listall_url = format!(
-                "https://pan.baidu.com/rest/2.0/xpan/file?method=listall&path={}&recursion=1&limit=1000&start={}&access_token={}",
+                "https://pan.baidu.com/rest/2.0/xpan/multimedia?method=listall&path={}&recursion=1&limit=1000&start={}&access_token={}",
                 percent_encode_segment(&ws_remote_root),
                 start,
                 percent_encode_segment(token)
@@ -5088,20 +5120,28 @@ async fn baidu_pull_folder(
                 .await
             {
                 Ok(r) => r,
-                Err(_) => {
+                Err(e) => {
+                    listall_fail_reason = Some(format!("网络请求失败: {e}"));
                     ok = false;
                     break;
                 }
             };
+            let status = resp.status();
             let json: serde_json::Value = match resp.json().await {
                 Ok(v) => v,
-                Err(_) => {
+                Err(e) => {
+                    listall_fail_reason = Some(format!("HTTP {status} JSON 解析失败: {e}"));
                     ok = false;
                     break;
                 }
             };
             let errno = json.get("errno").and_then(|v| v.as_i64()).unwrap_or(-1);
             if errno != 0 {
+                let errmsg = json
+                    .get("errmsg")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                listall_fail_reason = Some(format!("errno={errno} {errmsg}").trim().to_string());
                 ok = false;
                 break;
             }
@@ -5155,86 +5195,146 @@ async fn baidu_pull_folder(
         }
     }
 
-    // Collect files via fast `listall` when available, else BFS traversal of ws_remote_root
+    // Collect files via fast `listall` when available, else concurrent BFS traversal of ws_remote_root
     let mut remote_files: Vec<(String, u64)> = Vec::new();
     if let Some(fast) = fast_files {
+        append_sync_log(
+            "cloud_api",
+            "pull",
+            &format!(
+                "[2/4] listall 快速列举成功：共 {} 个文件（{} 页，耗时 {}ms）",
+                fast.len(),
+                listall_pages,
+                t_list.elapsed().as_millis()
+            ),
+        );
         for (server_path, _name, fs_id) in fast {
             remote_files.push((server_path, fs_id));
         }
     } else {
+        append_sync_log(
+            "cloud_api",
+            "pull",
+            &format!(
+                "[2/4] listall 不可用（{}），回退并发目录遍历 method=list…",
+                listall_fail_reason.as_deref().unwrap_or("未知错误")
+            ),
+        );
+        let t_bfs = std::time::Instant::now();
         let mut queue = vec![ws_remote_root.clone()];
         let mut visited = HashSet::new();
+        const BFS_CONCURRENCY: usize = 4;
 
-        while let Some(cur_dir) = queue.pop() {
-            if !visited.insert(cur_dir.clone()) {
-                continue;
+        while !queue.is_empty() {
+            let mut batch: Vec<String> = Vec::with_capacity(BFS_CONCURRENCY);
+            while batch.len() < BFS_CONCURRENCY {
+                let Some(cur_dir) = queue.pop() else {
+                    break;
+                };
+                if visited.insert(cur_dir.clone()) {
+                    batch.push(cur_dir);
+                }
             }
-            let list_url = format!(
-                "https://pan.baidu.com/rest/2.0/xpan/file?method=list&dir={}&access_token={}",
-                percent_encode_segment(&cur_dir),
-                percent_encode_segment(token)
-            );
-            let list_resp = client
-                .get(&list_url)
-                .header("User-Agent", "pan.baidu.com")
-                .send()
-                .await
-                .map_err(|e| format!("百度网盘目录查询失败: {e}"))?;
-            let list_json: serde_json::Value = list_resp
-                .json()
-                .await
-                .map_err(|e| format!("解析百度网盘目录失败: {e}"))?;
-            let errno = list_json.get("errno").and_then(|v| v.as_i64()).unwrap_or(0);
-            if errno != 0 {
-                // If the dedicated workspace folder doesn't exist yet, try legacy bundle fallback
-                if cur_dir == ws_remote_root {
-                    if let Ok(bundle) = baidu_download_bundle(client, token, remote_dir).await {
-                        let ws_buf = workspace.to_path_buf();
-                        let pass_str = passphrase.to_string();
-                        let count = tauri::async_runtime::spawn_blocking(move || {
-                            unpack_encrypted_vault_bundle(&ws_buf, &bundle, &pass_str)
-                        })
+            if batch.is_empty() {
+                break;
+            }
+
+            let mut handles = Vec::with_capacity(batch.len());
+            for cur_dir in batch {
+                let client_c = client.clone();
+                let token_c = token.to_string();
+                let list_url = format!(
+                    "https://pan.baidu.com/rest/2.0/xpan/file?method=list&dir={}&access_token={}",
+                    percent_encode_segment(&cur_dir),
+                    percent_encode_segment(&token_c)
+                );
+                handles.push(async move {
+                    let list_resp = client_c
+                        .get(&list_url)
+                        .header("User-Agent", "pan.baidu.com")
+                        .send()
                         .await
-                        .map_err(|e| format!("join: {e}"))??;
-                        return Ok(WebdavSyncResult {
-                            uploaded: 0,
-                            downloaded: count,
-                            message: format!("已从百度网盘旧版加密包还原 {count} 个文件"),
-                        });
-                    }
-                }
-                return Err(format!(
-                    "百度网盘目录 {cur_dir} 查询失败 (errno={errno})，请确认已执行过上传同步"
-                ));
+                        .map_err(|e| format!("百度网盘目录查询失败: {e}"))?;
+                    let list_json: serde_json::Value = list_resp
+                        .json()
+                        .await
+                        .map_err(|e| format!("解析百度网盘目录失败: {e}"))?;
+                    Ok::<(String, serde_json::Value), String>((cur_dir, list_json))
+                });
             }
 
-            let Some(items) = list_json.get("list").and_then(|v| v.as_array()) else {
-                continue;
-            };
-            for item in items {
-                let is_dir = item.get("isdir").and_then(|v| v.as_u64()).unwrap_or(0) == 1;
-                let Some(server_path) = item.get("path").and_then(|v| v.as_str()) else {
-                    continue;
-                };
-                let Some(name) = item.get("server_filename").and_then(|v| v.as_str()) else {
-                    continue;
-                };
-                if name.starts_with('.') || name == SYNC_META_DIR || name == BUNDLE_FILENAME {
-                    continue;
-                }
-                if is_dir {
-                    if !should_skip_dir(name) && visited.len() < 200 {
-                        queue.push(server_path.to_string());
+            let results = futures_util::future::join_all(handles).await;
+            for res in results {
+                let (cur_dir, list_json) = res?;
+                let errno = list_json.get("errno").and_then(|v| v.as_i64()).unwrap_or(0);
+                if errno != 0 {
+                    // If the dedicated workspace folder doesn't exist yet, try legacy bundle fallback
+                    if cur_dir == ws_remote_root {
+                        if let Ok(bundle) = baidu_download_bundle(client, token, remote_dir).await {
+                            let ws_buf = workspace.to_path_buf();
+                            let pass_str = passphrase.to_string();
+                            let count = tauri::async_runtime::spawn_blocking(move || {
+                                unpack_encrypted_vault_bundle(&ws_buf, &bundle, &pass_str)
+                            })
+                            .await
+                            .map_err(|e| format!("join: {e}"))??;
+                            return Ok(WebdavSyncResult {
+                                uploaded: 0,
+                                downloaded: count,
+                                message: format!("已从百度网盘旧版加密包还原 {count} 个文件"),
+                            });
+                        }
                     }
-                    continue;
+                    return Err(format!(
+                        "百度网盘目录 {cur_dir} 查询失败 (errno={errno})，请确认已执行过上传同步"
+                    ));
                 }
-                let Some(fs_id) = item.get("fs_id").and_then(|v| v.as_u64()) else {
+
+                let Some(items) = list_json.get("list").and_then(|v| v.as_array()) else {
                     continue;
                 };
-                remote_files.push((server_path.to_string(), fs_id));
+                for item in items {
+                    let is_dir = item.get("isdir").and_then(|v| v.as_u64()).unwrap_or(0) == 1;
+                    let Some(server_path) = item.get("path").and_then(|v| v.as_str()) else {
+                        continue;
+                    };
+                    let Some(name) = item.get("server_filename").and_then(|v| v.as_str()) else {
+                        continue;
+                    };
+                    if name.starts_with('.') || name == SYNC_META_DIR || name == BUNDLE_FILENAME {
+                        continue;
+                    }
+                    if is_dir {
+                        if !should_skip_dir(name) && visited.len() < 200 {
+                            queue.push(server_path.to_string());
+                        }
+                        continue;
+                    }
+                    let Some(fs_id) = item.get("fs_id").and_then(|v| v.as_u64()) else {
+                        continue;
+                    };
+                    remote_files.push((server_path.to_string(), fs_id));
+                }
             }
         }
+        append_sync_log(
+            "cloud_api",
+            "pull",
+            &format!(
+                "[2/4] 并发目录遍历完成：扫描 {} 个目录，发现 {} 个文件（耗时 {}ms）",
+                visited.len(),
+                remote_files.len(),
+                t_bfs.elapsed().as_millis()
+            ),
+        );
     }
+
+    let t_compare = std::time::Instant::now();
+    append_sync_log(
+        "cloud_api",
+        "pull",
+        &format!("[3/4] 开始比对本地文件（远程共 {} 个文件）…", remote_files.len()),
+    );
 
     let mut downloaded_or_matched: HashSet<String> = HashSet::new();
     let mut downloaded = 0usize;
@@ -5358,6 +5458,16 @@ async fn baidu_pull_folder(
     if let Some(ref m) = manifest_opt {
         write_local_base_manifest_after_pull(workspace, m, local_base.as_ref(), &downloaded_or_matched);
     }
+
+    append_sync_log(
+        "cloud_api",
+        "pull",
+        &format!(
+            "[4/4] 比对与下载完成：更新 {downloaded} 个，跳过 {skipped} 个，冲突 {conflicts} 个（比对+下载耗时 {}ms，总耗时 {}ms）",
+            t_compare.elapsed().as_millis(),
+            pull_started.elapsed().as_millis()
+        ),
+    );
 
     let conflict_note = if conflicts > 0 {
         format!("，检测到 {conflicts} 处多端并发修改并已生成冲突副本与历史快照")

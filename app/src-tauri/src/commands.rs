@@ -287,6 +287,19 @@ pub async fn read_binary_file(path: String) -> Result<Vec<u8>, String> {
     .map_err(|e| format!("join: {e}"))?
 }
 
+/// #735 — Raw binary counterpart to `read_binary_file` using Tauri 2's zero-JSON
+/// `ipc::Response`. Avoids expanding large images into 4x–12x JSON `number[]`
+/// arrays during multi-hundred-MB DOCX/PDF exports.
+#[tauri::command]
+pub async fn read_binary_file_raw(path: String) -> Result<tauri::ipc::Response, String> {
+    let bytes = tauri::async_runtime::spawn_blocking(move || {
+        fs::read(&path).map_err(|e| format!("read failed: {e}"))
+    })
+    .await
+    .map_err(|e| format!("join: {e}"))??;
+    Ok(tauri::ipc::Response::new(bytes))
+}
+
 /// Upper bound for `fetch_image_bytes`: an image bigger than this is not
 /// something anyone means to paste into a forum post, and it keeps a bad URL
 /// from streaming an arbitrary amount of data into memory.
@@ -352,6 +365,96 @@ pub async fn write_binary_file(
     })
     .await
     .map_err(|e| format!("join: {e}"))?
+}
+
+fn percent_decode_header(input: &str) -> Result<String, String> {
+    let bytes = input.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' && i + 2 < bytes.len() {
+            let hex = std::str::from_utf8(&bytes[i + 1..i + 3])
+                .map_err(|_| "invalid percent-encoding".to_string())?;
+            let val = u8::from_str_radix(hex, 16)
+                .map_err(|_| "invalid hex in header".to_string())?;
+            out.push(val);
+            i += 3;
+        } else {
+            out.push(bytes[i]);
+            i += 1;
+        }
+    }
+    String::from_utf8(out).map_err(|_| "invalid utf-8 in path header".to_string())
+}
+
+/// #735 — Streamed raw-binary chunk writer for large exports (e.g. 289MB+ DOCX
+/// with many embedded images). Receives raw `Uint8Array` body without JSON
+/// serialization (`Array.from` on a 289MB buffer explodes V8/WebView2 memory and
+/// exceeds IPC limits).
+#[tauri::command]
+pub async fn write_binary_file_chunk_raw(
+    app: tauri::AppHandle,
+    request: tauri::ipc::Request<'_>,
+) -> Result<(), String> {
+    let raw_path = request
+        .headers()
+        .get("x-solomd-path")
+        .and_then(|v| v.to_str().ok())
+        .ok_or_else(|| "missing x-solomd-path header".to_string())?;
+    let path = percent_decode_header(raw_path)?;
+    let append = request
+        .headers()
+        .get("x-solomd-append")
+        .and_then(|v| v.to_str().ok())
+        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false);
+    let data = match request.body() {
+        tauri::ipc::InvokeBody::Raw(bytes) => bytes.clone(),
+        tauri::ipc::InvokeBody::Json(_) => {
+            return Err("write_binary_file_chunk_raw requires a raw binary body".into())
+        }
+    };
+
+    tauri::async_runtime::spawn_blocking(move || {
+        #[cfg(target_os = "android")]
+        if path.starts_with("content://") {
+            if append {
+                return Err("chunked append not supported on Android content:// URIs".into());
+            }
+            return write_android_content_uri(&app, &path, &data);
+        }
+        #[cfg(not(target_os = "android"))]
+        let _ = &app;
+        write_binary_file_chunk_inner(&path, &data, append)
+    })
+    .await
+    .map_err(|e| format!("join: {e}"))?
+}
+
+pub fn write_binary_file_chunk_inner(path: &str, data: &[u8], append: bool) -> Result<(), String> {
+    use std::io::Write;
+    if !append {
+        if let Some(parent) = Path::new(path).parent() {
+            if !parent.as_os_str().is_empty() {
+                fs::create_dir_all(parent)
+                    .map_err(|e| format!("mkdir failed: {e}"))?;
+            }
+        }
+    }
+    let mut opts = fs::OpenOptions::new();
+    opts.create(true).write(true);
+    if append {
+        opts.append(true);
+    } else {
+        opts.truncate(true);
+    }
+    let mut file = opts
+        .open(path)
+        .map_err(|e| format!("open failed: {e}"))?;
+    file.write_all(data)
+        .map_err(|e| format!("write failed: {e}"))?;
+    crate::watcher::mark_self_write(path);
+    Ok(())
 }
 
 /// #148 / Android export fix — `saveDialog` on Android launches SAF's
@@ -3967,5 +4070,29 @@ mod v523_regression_tests {
         assert!(!work.exists());
         // Idempotent when already removed.
         cleanup_temp_dir_inner(work.to_string_lossy().to_string()).unwrap();
+    }
+
+    #[test]
+    fn issue_735_chunked_binary_write_and_header_decode() {
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("中文目录").join("large export.docx");
+        let path_str = target.to_string_lossy().to_string();
+
+        // Percent-decoding UTF-8 header paths (spaces + CJK)
+        let encoded = "C%3A%2FUsers%2F%E6%B5%8B%E8%AF%95%2Fdoc%201.docx";
+        assert_eq!(
+            percent_decode_header(encoded).unwrap(),
+            "C:/Users/测试/doc 1.docx"
+        );
+
+        // Multi-chunk write: first chunk creates/truncates, subsequent chunks append
+        write_binary_file_chunk_inner(&path_str, b"PK\x03\x04chunk1", false).unwrap();
+        write_binary_file_chunk_inner(&path_str, b"-chunk2", true).unwrap();
+        write_binary_file_chunk_inner(&path_str, b"-chunk3", true).unwrap();
+        assert_eq!(fs::read(&target).unwrap(), b"PK\x03\x04chunk1-chunk2-chunk3");
+
+        // Re-writing with append=false truncates cleanly
+        write_binary_file_chunk_inner(&path_str, b"fresh", false).unwrap();
+        assert_eq!(fs::read(&target).unwrap(), b"fresh");
     }
 }

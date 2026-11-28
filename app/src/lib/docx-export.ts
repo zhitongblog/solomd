@@ -151,12 +151,26 @@ async function loadDocxImage(src: string, imageRoot: string | null, filePath?: s
   }
 }
 
+const DOCX_IMAGE_PREFETCH_CONCURRENCY = 4;
+
 async function prefetchImages(tokens: Token[], imageRoot: string | null, filePath?: string) {
   const srcs = new Set<string>();
   collectImageSrcs(tokens, srcs);
-  await Promise.all(
-    [...srcs].map(async (src) => srcImages.set(src, await loadDocxImage(src, imageRoot, filePath))),
+  const queue = [...srcs];
+  if (queue.length === 0) return;
+  let cursor = 0;
+  // #735 — Bounded concurrency prevents firing hundreds of simultaneous IPC
+  // image reads when exporting image-heavy documents (e.g. 289MB+ DOCX).
+  const workers = Array.from(
+    { length: Math.min(DOCX_IMAGE_PREFETCH_CONCURRENCY, queue.length) },
+    async () => {
+      while (cursor < queue.length) {
+        const src = queue[cursor++];
+        srcImages.set(src, await loadDocxImage(src, imageRoot, filePath));
+      }
+    },
   );
+  await Promise.all(workers);
 }
 
 function resolveDocxImageDim(
@@ -1357,9 +1371,24 @@ async function applyDocxReference(blob: Blob, reference: Uint8Array): Promise<Bl
     merged['word/document.xml'] = strToU8(docXml);
   }
 
-  return new Blob([zipSync(merged, { level: 6 })], {
+  return new Blob([zipDocxArchive(merged) as BlobPart], {
     type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   });
+}
+
+/**
+ * #735 — Pack DOCX entries with STORE (`level: 0`) for already-compressed
+ * media assets (`word/media/*`) and DEFLATE (`level: 6`) for XML/rels.
+ * Re-deflating hundreds of MB of PNG/JPG images synchronously on the UI thread
+ * freezes WebView2 and spikes memory past OOM limits.
+ */
+function zipDocxArchive(entries: Record<string, Uint8Array>): Uint8Array {
+  const weighted: Record<string, [Uint8Array, { level: 0 | 6 }]> = {};
+  for (const [name, data] of Object.entries(entries)) {
+    const isMedia = name.startsWith('word/media/');
+    weighted[name] = [data, { level: isMedia ? 0 : 6 }];
+  }
+  return zipSync(weighted);
 }
 
 /**
@@ -1422,7 +1451,7 @@ async function postProcessDocxPackage(
     archive['word/document.xml'] = strToU8(docXml);
   }
 
-  return new Blob([zipSync(archive, { level: 6 })], {
+  return new Blob([zipDocxArchive(archive) as BlobPart], {
     type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   });
 }
@@ -1641,7 +1670,14 @@ export async function markdownToDocxBlob(
     ],
   });
 
-  const rawGenerated = await Packer.toBlob(doc);
-  const generated = await postProcessDocxPackage(rawGenerated, wantToc, tocHeadings);
-  return referenceDocx ? applyDocxReference(generated, referenceDocx) : generated;
+  try {
+    const rawGenerated = await Packer.toBlob(doc);
+    // #735 — Release cached image buffers before unzip/rezip post-processing so
+    // GC can reclaim hundreds of MB on image-heavy documents.
+    srcImages.clear();
+    const generated = await postProcessDocxPackage(rawGenerated, wantToc, tocHeadings);
+    return referenceDocx ? applyDocxReference(generated, referenceDocx) : generated;
+  } finally {
+    srcImages.clear();
+  }
 }

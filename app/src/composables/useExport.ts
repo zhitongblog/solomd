@@ -364,6 +364,70 @@ export function useExport() {
     }
   }
 
+  /**
+   * #735 — Stream a Blob to disk in 4 MiB raw-binary IPC chunks so large
+   * exports (e.g. 289MB+ DOCX with many images) never materialize a giant
+   * `Array.from(buffer)` JSON array in WebView2 memory.
+   */
+  const BINARY_WRITE_CHUNK_BYTES = 4 * 1024 * 1024;
+
+  async function writeBlobToFile(path: string, blob: Blob): Promise<void> {
+    if (path.startsWith('content://')) {
+      const buffer = new Uint8Array(await blob.arrayBuffer());
+      await invoke('write_binary_file', { path, data: Array.from(buffer) });
+      return;
+    }
+    const total = blob.size;
+    if (total === 0) {
+      await invoke('write_binary_file_chunk_raw', new Uint8Array(0), {
+        headers: {
+          'x-solomd-path': encodeURIComponent(path),
+          'x-solomd-append': '0',
+        },
+      });
+      return;
+    }
+    const encodedPath = encodeURIComponent(path);
+    for (let offset = 0; offset < total; offset += BINARY_WRITE_CHUNK_BYTES) {
+      const end = Math.min(offset + BINARY_WRITE_CHUNK_BYTES, total);
+      const chunk = new Uint8Array(await blob.slice(offset, end).arrayBuffer());
+      await invoke('write_binary_file_chunk_raw', chunk, {
+        headers: {
+          'x-solomd-path': encodedPath,
+          'x-solomd-append': offset > 0 ? '1' : '0',
+        },
+      });
+    }
+  }
+
+  async function writeBytesToFile(path: string, bytes: Uint8Array): Promise<void> {
+    if (path.startsWith('content://')) {
+      await invoke('write_binary_file', { path, data: Array.from(bytes) });
+      return;
+    }
+    const total = bytes.byteLength;
+    const encodedPath = encodeURIComponent(path);
+    if (total === 0) {
+      await invoke('write_binary_file_chunk_raw', new Uint8Array(0), {
+        headers: {
+          'x-solomd-path': encodedPath,
+          'x-solomd-append': '0',
+        },
+      });
+      return;
+    }
+    for (let offset = 0; offset < total; offset += BINARY_WRITE_CHUNK_BYTES) {
+      const end = Math.min(offset + BINARY_WRITE_CHUNK_BYTES, total);
+      const chunk = bytes.subarray(offset, end);
+      await invoke('write_binary_file_chunk_raw', chunk, {
+        headers: {
+          'x-solomd-path': encodedPath,
+          'x-solomd-append': offset > 0 ? '1' : '0',
+        },
+      });
+    }
+  }
+
   async function exportDocx() {
     if (shouldUseUnifiedDialog()) {
       openCustomExportDialog({ scope: 'current', format: 'docx' });
@@ -389,9 +453,7 @@ export function useExport() {
         settings.exportMediaAlign,
         settings.docxFirstLineIndent,
       );
-      const buffer = new Uint8Array(await blob.arrayBuffer());
-      // Tauri 2 serializes Uint8Array as a number array which Rust accepts as Vec<u8>.
-      await invoke('write_binary_file', { path, data: Array.from(buffer) });
+      await writeBlobToFile(path, blob);
       notifyExportSaved(path, isIOS() ? iosSavedToast(filename) : t('toast.exportedTo', { format: 'DOCX' }));
     } catch (e) {
       console.error(e);
@@ -431,8 +493,7 @@ export function useExport() {
           tocTitle: t('settings.pdfDefaults.tocTitle'),
         },
       );
-      const buffer = new Uint8Array(await blob.arrayBuffer());
-      await invoke('write_binary_file', { path, data: Array.from(buffer) });
+      await writeBlobToFile(path, blob);
       toasts.dismiss(tid);
       notifyExportSaved(path, isIOS() ? iosSavedToast(filename) : t('toast.exportedTo', { format: 'PDF' }));
     } catch (e) {
@@ -809,8 +870,7 @@ export function useExport() {
         codeBlockLineNumbers: settings.codeBlockLineNumbers,
         codeBlockWrap: settings.codeBlockWrap,
       });
-      const buffer = new Uint8Array(await blob.arrayBuffer());
-      await invoke('write_binary_file', { path, data: Array.from(buffer) });
+      await writeBlobToFile(path, blob);
       toasts.dismiss(tid);
       const msg = isIOS()
         ? iosSavedToast(filename)
@@ -884,8 +944,7 @@ export function useExport() {
         toasts.error(t('toast.copyImageFailed', { error: String(clipboardError) }));
         return;
       }
-      const buffer = new Uint8Array(await blob.arrayBuffer());
-      await invoke('write_binary_file', { path, data: Array.from(buffer) });
+      await writeBlobToFile(path, blob);
       toasts.success(isIOS() ? iosSavedToast(filename) : t('toast.clipboardSavedPng'));
     } catch (e2) {
       toasts.error(t('toast.copyImageFailed', { error: String(e2) }));
@@ -1155,7 +1214,7 @@ export function useExport() {
         }
       }
       const zipBuf = createTextPackArchive(rewrittenMarkdown, assetBytes);
-      await invoke('write_binary_file', { path: outputPath, data: Array.from(zipBuf) });
+      await writeBytesToFile(outputPath, zipBuf);
       return;
     }
     if (format === 'html') {
@@ -1191,8 +1250,7 @@ export function useExport() {
         settings.exportMediaAlign,
         settings.docxFirstLineIndent,
       );
-      const buffer = new Uint8Array(await blob.arrayBuffer());
-      await invoke('write_binary_file', { path: outputPath, data: Array.from(buffer) });
+      await writeBlobToFile(outputPath, blob);
       return;
     }
     if (format === 'pdf' && !isMobile()) {
@@ -1227,8 +1285,7 @@ export function useExport() {
           coverTitle: isMergedBook ? baseName : undefined,
         },
       );
-      const buffer = new Uint8Array(await blob.arrayBuffer());
-      await invoke('write_binary_file', { path: outputPath, data: Array.from(buffer) });
+      await writeBlobToFile(outputPath, blob);
       return;
     }
     if (format === 'png') {
@@ -1237,8 +1294,7 @@ export function useExport() {
         codeBlockLineNumbers: settings.codeBlockLineNumbers,
         codeBlockWrap: settings.codeBlockWrap,
       });
-      const buffer = new Uint8Array(await blob.arrayBuffer());
-      await invoke('write_binary_file', { path: outputPath, data: Array.from(buffer) });
+      await writeBlobToFile(outputPath, blob);
     }
   }
 
