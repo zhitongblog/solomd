@@ -115,6 +115,32 @@
       "platform": "博客园",
       "url": "https://www.cnblogs.com/tyysoft/p/23603038",
       "github": "tyysoft"
+    },
+    {
+      "name": "效率火箭 (xlrocket)",
+      "since": "2026-05",
+      "platform": "效率火箭",
+      "url": "https://xlrocket.blog/2026/05/17/2026-%E5%B9%B4%EF%BC%8C%E5%B0%8F%E8%80%8C%E7%BE%8E-markdown-%E7%BC%96%E8%BE%91%E5%99%A8%EF%BC%8C%E6%AD%A3%E5%9C%A8%E5%8F%98%E6%88%90-ai-agent-%E7%9A%84%E6%9C%AC%E5%9C%B0%E5%B7%A5%E4%BD%9C%E5%8F%B0/",
+      "featured": true,
+      "quote": "2026 年，小而美 Markdown 编辑器，正在变成 AI Agent 的本地工作台。"
+    },
+    {
+      "name": "MEFCL",
+      "since": "2026-11",
+      "platform": "MEFCL",
+      "url": "https://www.mefcl.com/solomd.html"
+    },
+    {
+      "name": "Argusic",
+      "since": "2026-11",
+      "platform": "YouTube",
+      "url": "https://www.youtube.com/watch?v=YwiDNNJ0spw"
+    },
+    {
+      "name": "TolsAI",
+      "since": "2026-11",
+      "platform": "TolsAI",
+      "url": "https://www.tolsai.com/tools/zhitongblog-solomd"
     }
   ],
   "testers": [
