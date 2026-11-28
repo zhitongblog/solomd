@@ -453,7 +453,7 @@ pub fn write_binary_file_chunk_inner(path: &str, data: &[u8], append: bool) -> R
         .map_err(|e| format!("open failed: {e}"))?;
     file.write_all(data)
         .map_err(|e| format!("write failed: {e}"))?;
-    crate::watcher::mark_self_write(path);
+    super::watcher::mark_self_write(path);
     Ok(())
 }
 

@@ -83,3 +83,45 @@ test('#728 & #729: Push conflict guard opens blocking confirm dialog across all 
   assert.doesNotMatch(pullWorkspaceBody, /confirmPushConflict|pushing\.value\s*=\s*false/);
   assert.match(pullCloudVaultBody, /solomd:open-sync-conflicts/);
 });
+
+test('#735 & desktop parity: every non-mobile Tauri command in lib.rs is also registered in runner.rs', () => {
+  const extractCommands = (filePath: string): Set<string> => {
+    const src = fs.readFileSync(filePath, 'utf8');
+    const startToken = 'tauri::generate_handler![';
+    const startIdx = src.indexOf(startToken);
+    assert.ok(startIdx >= 0, `missing ${startToken} in ${filePath}`);
+    let depth = 1;
+    let i = startIdx + startToken.length;
+    for (; i < src.length && depth > 0; i++) {
+      if (src[i] === '[') depth += 1;
+      else if (src[i] === ']') depth -= 1;
+    }
+    assert.equal(depth, 0, `unbalanced brackets in ${filePath}`);
+    const body = src
+      .slice(startIdx + startToken.length, i - 1)
+      .replace(/\/\/[^\n]*/g, '')
+      .replace(/#\[[^\]]*\]/g, '');
+    const cmds = body
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+    return new Set(cmds);
+  };
+
+  const libCmds = extractCommands(path.resolve(srcRoot, '../src-tauri/src/lib.rs'));
+  const runnerCmds = extractCommands(path.resolve(srcRoot, '../src-tauri/src/runner.rs'));
+
+  // Explicit mobile-only modules (Android SAF / storage) are intentionally excluded from desktop runner.rs.
+  const mobileOnlyPrefix = /^(?:saf_android::|storage_android::)/;
+  const missingInDesktop = [...libCmds]
+    .filter((cmd) => !mobileOnlyPrefix.test(cmd) && !runnerCmds.has(cmd))
+    .sort();
+
+  assert.deepEqual(
+    missingInDesktop,
+    [],
+    `commands registered in lib.rs but missing from desktop runner.rs: ${missingInDesktop.join(', ')}`,
+  );
+  assert.ok(runnerCmds.has('commands::read_binary_file_raw'));
+  assert.ok(runnerCmds.has('commands::write_binary_file_chunk_raw'));
+});

@@ -701,9 +701,11 @@ pub fn run_with(initial_file: Option<String>) {
         .invoke_handler(tauri::generate_handler![
             commands::read_file,
             commands::read_binary_file,
+            commands::read_binary_file_raw,
             commands::fetch_image_bytes,
             commands::write_file,
             commands::write_binary_file,
+            commands::write_binary_file_chunk_raw,
             commands::get_temp_dir,
             commands::cleanup_temp_dir,
             commands::repack_textpack,
